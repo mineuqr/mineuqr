@@ -37,7 +37,7 @@ router.post("/api/auth/login", async (req: Request, res: Response) => {
 
     // Create session token (same as OAuth flow)
     const sessionToken = await sdk.createSessionToken(user.openId, {
-      name: user.name || "",
+      name: user.name || user.email || "User",
     });
 
     // Set session cookie (same as OAuth)

@@ -1,5 +1,4 @@
 import { useAuth } from "@/_core/hooks/useAuth";
-import { getLoginUrl } from "@/const";
 import { useState, useEffect } from "react";
 import { useRoute, useLocation } from "wouter";
 import { motion } from "framer-motion";
