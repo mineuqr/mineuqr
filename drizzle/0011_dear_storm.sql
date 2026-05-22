@@ -1,0 +1,3 @@
+ALTER TABLE `renewal_notifications` MODIFY COLUMN `subscriptionId` int;--> statement-breakpoint
+ALTER TABLE `renewal_notifications` MODIFY COLUMN `notificationType` enum('7_days_before','1_day_before','on_renewal','failed_renewal','subscription_created','subscription_updated','subscription_deleted','subscription_activated','role_changed') NOT NULL;--> statement-breakpoint
+ALTER TABLE `renewal_notifications` ADD `message` varchar(500);

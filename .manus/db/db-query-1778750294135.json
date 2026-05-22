@@ -1,0 +1,32 @@
+{
+  "query": "SELECT * FROM order_items WHERE orderId = 6;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway05.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2fe5J8XJDcV9Gt9.root --database fcy9GqTzfuy9H9eCsDbdLA --execute SELECT * FROM order_items WHERE orderId = 6;",
+  "rows": [
+    {
+      "id": "2",
+      "orderId": "6",
+      "menuItemId": "1",
+      "nameAr": "تبولة",
+      "nameEn": "Tabbouleh",
+      "price": "25.00",
+      "quantity": "1",
+      "notes": "NULL",
+      "createdAt": "2026-05-14 09:18:06"
+    },
+    {
+      "id": "3",
+      "orderId": "6",
+      "menuItemId": "2",
+      "nameAr": "حمص",
+      "nameEn": "Hummus",
+      "price": "20.00",
+      "quantity": "2",
+      "notes": "NULL",
+      "createdAt": "2026-05-14 09:18:06"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\torderId\tmenuItemId\tnameAr\tnameEn\tprice\tquantity\tnotes\tcreatedAt\n2\t6\t1\tتبولة\tTabbouleh\t25.00\t1\tNULL\t2026-05-14 09:18:06\n3\t6\t2\tحمص\tHummus\t20.00\t2\tNULL\t2026-05-14 09:18:06\n",
+  "stderr": "",
+  "execution_time_ms": 1729
+}

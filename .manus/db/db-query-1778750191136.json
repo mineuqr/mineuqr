@@ -1,0 +1,55 @@
+{
+  "query": "SELECT * FROM orders ORDER BY id DESC LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway05.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2fe5J8XJDcV9Gt9.root --database fcy9GqTzfuy9H9eCsDbdLA --execute SELECT * FROM orders ORDER BY id DESC LIMIT 5;",
+  "rows": [
+    {
+      "id": "3",
+      "restaurantId": "1",
+      "tableId": "1",
+      "tableNumber": "1",
+      "customerName": "test",
+      "customerPhone": "NULL",
+      "status": "pending",
+      "notes": "NULL",
+      "totalAmount": "50.00",
+      "orderNumber": "ORD-0003",
+      "whatsappSent": "0",
+      "createdAt": "2026-05-14 09:16:23",
+      "updatedAt": "2026-05-14 09:16:23"
+    },
+    {
+      "id": "2",
+      "restaurantId": "1",
+      "tableId": "0",
+      "tableNumber": "1",
+      "customerName": "NULL",
+      "customerPhone": "NULL",
+      "status": "pending",
+      "notes": "NULL",
+      "totalAmount": "25.00",
+      "orderNumber": "ORD-0002",
+      "whatsappSent": "0",
+      "createdAt": "2026-05-14 09:16:15",
+      "updatedAt": "2026-05-14 09:16:15"
+    },
+    {
+      "id": "1",
+      "restaurantId": "1",
+      "tableId": "1",
+      "tableNumber": "1",
+      "customerName": "NULL",
+      "customerPhone": "NULL",
+      "status": "pending",
+      "notes": "NULL",
+      "totalAmount": "25.00",
+      "orderNumber": "ORD-0001",
+      "whatsappSent": "0",
+      "createdAt": "2026-05-14 09:16:08",
+      "updatedAt": "2026-05-14 09:16:08"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\trestaurantId\ttableId\ttableNumber\tcustomerName\tcustomerPhone\tstatus\tnotes\ttotalAmount\torderNumber\twhatsappSent\tcreatedAt\tupdatedAt\n3\t1\t1\t1\ttest\tNULL\tpending\tNULL\t50.00\tORD-0003\t0\t2026-05-14 09:16:23\t2026-05-14 09:16:23\n2\t1\t0\t1\tNULL\tNULL\tpending\tNULL\t25.00\tORD-0002\t0\t2026-05-14 09:16:15\t2026-05-14 09:16:15\n1\t1\t1\t1\tNULL\tNULL\tpending\tNULL\t25.00\tORD-0001\t0\t2026-05-14 09:16:08\t2026-05-14 09:16:08\n",
+  "stderr": "",
+  "execution_time_ms": 1849
+}

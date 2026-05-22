@@ -1,0 +1,223 @@
+import { useState, useEffect } from "react";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { trpc } from "@/lib/trpc";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import { User, Mail, Lock, Save, Loader2, Shield } from "lucide-react";
+import { useLocation } from "wouter";
+
+export default function Profile() {
+  const { user, isAuthenticated } = useAuth();
+  const [, setLocation] = useLocation();
+  const { t, language } = useLanguage();
+  const isRtl = language === "ar";
+
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
+  const { data: profile, isLoading } = trpc.profile.get.useQuery(undefined, {
+    enabled: isAuthenticated,
+  });
+
+  useEffect(() => {
+    if (profile) {
+      setName(profile.name || "");
+      setEmail(profile.email || "");
+    }
+  }, [profile]);
+
+  const utils = trpc.useUtils();
+
+  const updateProfileMutation = trpc.profile.update.useMutation({
+    onSuccess: () => {
+      toast.success(t('profile.updateSuccess'));
+      utils.profile.get.invalidate();
+      utils.auth.me.invalidate();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const changePasswordMutation = trpc.profile.changePassword.useMutation({
+    onSuccess: () => {
+      toast.success(t('profile.passwordChanged'));
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  if (!isAuthenticated) {
+    setLocation("/");
+    return null;
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const handleUpdateProfile = () => {
+    if (!name.trim()) {
+      toast.error(t('profile.nameRequired'));
+      return;
+    }
+    updateProfileMutation.mutate({
+      name: name.trim(),
+      email: email.trim() || undefined,
+    });
+  };
+
+  const handleChangePassword = () => {
+    if (!currentPassword) {
+      toast.error(t('profile.currentPasswordRequired'));
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast.error(t('profile.passwordMinLength'));
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error(t('profile.passwordMismatch'));
+      return;
+    }
+    changePasswordMutation.mutate({
+      currentPassword,
+      newPassword,
+    });
+  };
+
+  const isLocalAuth = profile?.loginMethod === "email";
+
+  return (
+    <div className="container max-w-2xl py-8" dir={isRtl ? "rtl" : "ltr"}>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
+          <User className="h-8 w-8 text-primary" />
+          {t('profile.title')}
+        </h1>
+        <p className="text-muted-foreground mt-2">{t('profile.subtitle')}</p>
+      </div>
+
+      {/* Profile Info Card */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Mail className="h-5 w-5" />
+            {t('profile.personalInfo')}
+          </CardTitle>
+          <CardDescription>{t('profile.personalInfoDesc')}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label className="text-foreground">{t('profile.name')}</Label>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={t('profile.namePlaceholder')}
+              className="mt-1 bg-input border-border text-foreground"
+            />
+          </div>
+          <div>
+            <Label className="text-foreground">{t('profile.email')}</Label>
+            <Input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder={t('profile.emailPlaceholder')}
+              className="mt-1 bg-input border-border text-foreground"
+              dir="ltr"
+            />
+          </div>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Shield className="h-4 w-4" />
+            <span>{t('profile.role')}: <strong className="text-foreground">{profile?.role === 'admin' ? t('profile.admin') : t('profile.user')}</strong></span>
+          </div>
+          <Button
+            onClick={handleUpdateProfile}
+            disabled={updateProfileMutation.isPending}
+            className="w-full sm:w-auto"
+          >
+            {updateProfileMutation.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : (
+              <Save className="h-4 w-4 mr-2" />
+            )}
+            {t('profile.saveChanges')}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Change Password Card - Only for local auth users */}
+      {isLocalAuth && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Lock className="h-5 w-5" />
+              {t('profile.changePassword')}
+            </CardTitle>
+            <CardDescription>{t('profile.changePasswordDesc')}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label className="text-foreground">{t('profile.currentPassword')}</Label>
+              <Input
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                placeholder="••••••••"
+                className="mt-1 bg-input border-border text-foreground"
+                dir="ltr"
+              />
+            </div>
+            <div>
+              <Label className="text-foreground">{t('profile.newPassword')}</Label>
+              <Input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder={t('profile.newPasswordPlaceholder')}
+                className="mt-1 bg-input border-border text-foreground"
+                dir="ltr"
+              />
+            </div>
+            <div>
+              <Label className="text-foreground">{t('profile.confirmPassword')}</Label>
+              <Input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder={t('profile.confirmPasswordPlaceholder')}
+                className="mt-1 bg-input border-border text-foreground"
+                dir="ltr"
+              />
+            </div>
+            <Button
+              onClick={handleChangePassword}
+              disabled={changePasswordMutation.isPending}
+              variant="outline"
+              className="w-full sm:w-auto"
+            >
+              {changePasswordMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Lock className="h-4 w-4 mr-2" />
+              )}
+              {t('profile.updatePassword')}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}

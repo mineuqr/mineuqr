@@ -1,0 +1,40 @@
+{
+  "query": "SELECT nameAr, nameEn, priceMonthly, priceYearly, maxRestaurants, maxItemsPerRestaurant, maxCategories, featuresAr FROM subscription_plans ORDER BY id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway05.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2fe5J8XJDcV9Gt9.root --database fcy9GqTzfuy9H9eCsDbdLA --execute SELECT nameAr, nameEn, priceMonthly, priceYearly, maxRestaurants, maxItemsPerRestaurant, maxCategories, featuresAr FROM subscription_plans ORDER BY id;",
+  "rows": [
+    {
+      "nameAr": "الخطة الأساسية",
+      "nameEn": "Basic Plan",
+      "priceMonthly": "19.00",
+      "priceYearly": "175.00",
+      "maxRestaurants": "1",
+      "maxItemsPerRestaurant": "100",
+      "maxCategories": "10",
+      "featuresAr": "[\"منيو رقمي واحد\",\"رمز QR مخصص\",\"دعم اللغة العربية والإنجليزية\",\"تحليلات أساسية\",\"دعم العملاء عبر البريد الإلكتروني\"]"
+    },
+    {
+      "nameAr": "الخطة الاحترافية",
+      "nameEn": "Professional Plan",
+      "priceMonthly": "35.00",
+      "priceYearly": "299.00",
+      "maxRestaurants": "5",
+      "maxItemsPerRestaurant": "500",
+      "maxCategories": "25",
+      "featuresAr": "[\"حتى 5 مطاعم\",\"رموز QR متعددة\",\"تحليلات متقدمة\",\"تخصيص الألوان والقوالب\",\"دعم أولوية\",\"تقارير شهرية\"]"
+    },
+    {
+      "nameAr": "الخطة المؤسسية",
+      "nameEn": "Enterprise Plan",
+      "priceMonthly": "59.00",
+      "priceYearly": "499.00",
+      "maxRestaurants": "999",
+      "maxItemsPerRestaurant": "9999",
+      "maxCategories": "100",
+      "featuresAr": "[\"مطاعم غير محدودة\",\"أصناف غير محدودة\",\"تحليلات شاملة\",\"دعم مخصص 24/7\",\"تقارير مخصصة\",\"تكامل متقدم\"]"
+    }
+  ],
+  "messages": [],
+  "stdout": "nameAr\tnameEn\tpriceMonthly\tpriceYearly\tmaxRestaurants\tmaxItemsPerRestaurant\tmaxCategories\tfeaturesAr\nالخطة الأساسية\tBasic Plan\t19.00\t175.00\t1\t100\t10\t[\"منيو رقمي واحد\",\"رمز QR مخصص\",\"دعم اللغة العربية والإنجليزية\",\"تحليلات أساسية\",\"دعم العملاء عبر البريد الإلكتروني\"]\nالخطة الاحترافية\tProfessional Plan\t35.00\t299.00\t5\t500\t25\t[\"حتى 5 مطاعم\",\"رموز QR متعددة\",\"تحليلات متقدمة\",\"تخصيص الألوان والقوالب\",\"دعم أولوية\",\"تقارير شهرية\"]\nالخطة المؤسسية\tEnterprise Plan\t59.00\t499.00\t999\t9999\t100\t[\"مطاعم غير محدودة\",\"أصناف غير محدودة\",\"تحليلات شاملة\",\"دعم مخصص 24/7\",\"تقارير مخصصة\",\"تكامل متقدم\"]\n",
+  "stderr": "",
+  "execution_time_ms": 2442
+}

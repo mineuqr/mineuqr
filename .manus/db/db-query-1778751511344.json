@@ -1,0 +1,19 @@
+{
+  "query": "SELECT id, userId, notificationType, message, isRead, isSent, createdAt FROM renewal_notifications WHERE notificationType = 'new_order' ORDER BY id DESC LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway05.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2fe5J8XJDcV9Gt9.root --database fcy9GqTzfuy9H9eCsDbdLA --execute SELECT id, userId, notificationType, message, isRead, isSent, createdAt FROM renewal_notifications WHERE notificationType = 'new_order' ORDER BY id DESC LIMIT 5;",
+  "rows": [
+    {
+      "id": "210001",
+      "userId": "1",
+      "notificationType": "new_order",
+      "message": "طلب جديد #ORD-0012 - طاولة 1 - تبولة x2 - المجموع: 50.00 $",
+      "isRead": "0",
+      "isSent": "1",
+      "createdAt": "2026-05-14 09:38:23"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tuserId\tnotificationType\tmessage\tisRead\tisSent\tcreatedAt\n210001\t1\tnew_order\tطلب جديد #ORD-0012 - طاولة 1 - تبولة x2 - المجموع: 50.00 $\t0\t1\t2026-05-14 09:38:23\n",
+  "stderr": "",
+  "execution_time_ms": 1714
+}

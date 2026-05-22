@@ -1,0 +1,28 @@
+{
+  "query": "SELECT id, nameEn, features, featuresAr FROM subscription_plans ORDER BY sortOrder;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway05.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2fe5J8XJDcV9Gt9.root --database fcy9GqTzfuy9H9eCsDbdLA --execute SELECT id, nameEn, features, featuresAr FROM subscription_plans ORDER BY sortOrder;",
+  "rows": [
+    {
+      "id": "30001",
+      "nameEn": "Basic Plan",
+      "features": "[\"One Digital Menu\",\"Custom QR Code\",\"Arabic & English Support\",\"Basic Analytics\",\"Email Customer Support\"]",
+      "featuresAr": "[\"منيو رقمي واحد\",\"رمز QR مخصص\",\"دعم اللغة العربية والإنجليزية\",\"تحليلات أساسية\",\"دعم العملاء عبر البريد الإلكتروني\"]"
+    },
+    {
+      "id": "30002",
+      "nameEn": "Professional Plan",
+      "features": "[\"Up to 5 Restaurants\",\"Multiple QR Codes\",\"Advanced Analytics\",\"Color & Theme Customization\",\"Priority Support\",\"Monthly Reports\"]",
+      "featuresAr": "[\"حتى 5 مطاعم\",\"رموز QR متعددة\",\"تحليلات متقدمة\",\"تخصيص الألوان والقوالب\",\"دعم أولوية\",\"تقارير شهرية\"]"
+    },
+    {
+      "id": "30003",
+      "nameEn": "Enterprise Plan",
+      "features": "[\"Unlimited Restaurants\",\"Unlimited Items\",\"Comprehensive Analytics\",\"24/7 Dedicated Support\",\"Custom Reports\",\"Advanced Integration\"]",
+      "featuresAr": "[\"مطاعم غير محدودة\",\"أصناف غير محدودة\",\"تحليلات شاملة\",\"دعم مخصص 24/7\",\"تقارير مخصصة\",\"تكامل متقدم\"]"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tnameEn\tfeatures\tfeaturesAr\n30001\tBasic Plan\t[\"One Digital Menu\",\"Custom QR Code\",\"Arabic & English Support\",\"Basic Analytics\",\"Email Customer Support\"]\t[\"منيو رقمي واحد\",\"رمز QR مخصص\",\"دعم اللغة العربية والإنجليزية\",\"تحليلات أساسية\",\"دعم العملاء عبر البريد الإلكتروني\"]\n30002\tProfessional Plan\t[\"Up to 5 Restaurants\",\"Multiple QR Codes\",\"Advanced Analytics\",\"Color & Theme Customization\",\"Priority Support\",\"Monthly Reports\"]\t[\"حتى 5 مطاعم\",\"رموز QR متعددة\",\"تحليلات متقدمة\",\"تخصيص الألوان والقوالب\",\"دعم أولوية\",\"تقارير شهرية\"]\n30003\tEnterprise Plan\t[\"Unlimited Restaurants\",\"Unlimited Items\",\"Comprehensive Analytics\",\"24/7 Dedicated Support\",\"Custom Reports\",\"Advanced Integration\"]\t[\"مطاعم غير محدودة\",\"أصناف غير محدودة\",\"تحليلات شاملة\",\"دعم مخصص 24/7\",\"تقارير مخصصة\",\"تكامل متقدم\"]\n",
+  "stderr": "",
+  "execution_time_ms": 1784
+}

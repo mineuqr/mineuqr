@@ -1,0 +1,307 @@
+import { mysqlTable, mysqlSchema, AnyMySqlColumn, int, varchar, text, timestamp, decimal, mysqlEnum, index, boolean } from "drizzle-orm/mysql-core"
+import { sql } from "drizzle-orm"
+
+// ─── Categories Table ──────────────────────────────────────
+export const categories = mysqlTable("categories", {
+	id: int().autoincrement().notNull(),
+	restaurantId: int().notNull(),
+	nameAr: varchar({ length: 255 }).notNull(),
+	nameEn: varchar({ length: 255 }),
+	descriptionAr: text(),
+	descriptionEn: text(),
+	iconName: varchar({ length: 64 }),
+	sortOrder: int().default(0).notNull(),
+	isActive: boolean().default(true).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+// ─── Menu Items Table ──────────────────────────────────────
+export const menuItems = mysqlTable("menu_items", {
+	id: int().autoincrement().notNull(),
+	categoryId: int().notNull(),
+	restaurantId: int().notNull(),
+	nameAr: varchar({ length: 255 }).notNull(),
+	nameEn: varchar({ length: 255 }),
+	descriptionAr: text(),
+	descriptionEn: text(),
+	price: decimal({ precision: 10, scale: 2 }).notNull(),
+	imageUrl: text(),
+	isAvailable: boolean().default(true).notNull(),
+	sortOrder: int().default(0).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+	calories: int(),
+});
+
+// ─── Offers Table ──────────────────────────────────────────
+export const offers = mysqlTable("offers", {
+	id: int().autoincrement().notNull(),
+	restaurantId: int().notNull(),
+	titleAr: varchar({ length: 255 }).notNull(),
+	titleEn: varchar({ length: 255 }),
+	descriptionAr: text(),
+	descriptionEn: text(),
+	offerType: mysqlEnum(['daily','weekly','monthly']).notNull(),
+	originalPrice: decimal({ precision: 10, scale: 2 }).notNull(),
+	offerPrice: decimal({ precision: 10, scale: 2 }).notNull(),
+	imageUrl: text(),
+	startDate: timestamp({ mode: 'string' }).notNull(),
+	endDate: timestamp({ mode: 'string' }).notNull(),
+	isActive: boolean().default(true).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+// ─── Restaurants Table ─────────────────────────────────────
+export const restaurants = mysqlTable("restaurants", {
+	id: int().autoincrement().notNull(),
+	userId: int().notNull(),
+	slug: varchar({ length: 128 }).notNull(),
+	nameAr: varchar({ length: 255 }).notNull(),
+	nameEn: varchar({ length: 255 }),
+	descriptionAr: text(),
+	descriptionEn: text(),
+	logoUrl: text(),
+	coverUrl: text(),
+	ownerEmail: varchar({ length: 320 }),
+	phone: varchar({ length: 32 }),
+	address: text(),
+	countryCode: varchar({ length: 2 }),
+	currencyCode: varchar({ length: 3 }).default('SAR'),
+	currencySymbol: varchar({ length: 10 }).default('ر.س'),
+	isActive: boolean().default(true).notNull(),
+	viewCount: int().default(0).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+	menuTemplate: varchar({ length: 32 }).default('classic').notNull(),
+	customColors: text(),
+	customFonts: text(),
+	whatsapp: varchar({ length: 32 }),
+	snapchat: varchar({ length: 128 }),
+	instagram: varchar({ length: 128 }),
+	xTwitter: varchar({ length: 128 }),
+	locationUrl: text(),
+	workingHours: text(),
+	temporaryClosure: text(),
+	tableLabel: mysqlEnum('table_label', ['tables','rooms']).default('tables').notNull(),
+},
+(table) => [
+	index("restaurants_slug_unique").on(table.slug),
+]);
+
+// ─── Subscription Plans Table ──────────────────────────────
+export const subscriptionPlans = mysqlTable("subscription_plans", {
+	id: int().autoincrement().notNull(),
+	nameAr: varchar({ length: 255 }).notNull(),
+	nameEn: varchar({ length: 255 }).notNull(),
+	descriptionAr: text(),
+	descriptionEn: text(),
+	priceMonthly: decimal({ precision: 10, scale: 2 }).notNull(),
+	priceYearly: decimal({ precision: 10, scale: 2 }),
+	maxRestaurants: int().default(1).notNull(),
+	maxItemsPerRestaurant: int().default(100).notNull(),
+	maxCategories: int().default(10).notNull(),
+	features: text(),
+	featuresAr: text(),
+	stripePriceIdMonthly: varchar({ length: 255 }),
+	stripePriceIdYearly: varchar({ length: 255 }),
+	isActive: boolean().default(true).notNull(),
+	sortOrder: int().default(0).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+// ─── User Subscriptions Table ──────────────────────────────
+export const userSubscriptions = mysqlTable("user_subscriptions", {
+	id: int().autoincrement().notNull(),
+	userId: int().notNull(),
+	restaurantId: int().notNull(),
+	planId: int().notNull(),
+	status: mysqlEnum(['active','canceled','expired','trial']).default('trial').notNull(),
+	billingCycle: mysqlEnum(['monthly','yearly']).default('monthly').notNull(),
+	stripeSubscriptionId: varchar({ length: 255 }),
+	stripeCustomerId: varchar({ length: 255 }),
+	currentPeriodStart: timestamp({ mode: 'string' }).notNull(),
+	currentPeriodEnd: timestamp({ mode: 'string' }).notNull(),
+	trialEndsAt: timestamp({ mode: 'string' }),
+	canceledAt: timestamp({ mode: 'string' }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+// ─── Users Table ───────────────────────────────────────────
+export const users = mysqlTable("users", {
+	id: int().autoincrement().notNull(),
+	openId: varchar({ length: 64 }).notNull(),
+	name: text(),
+	email: varchar({ length: 320 }),
+	loginMethod: varchar({ length: 64 }),
+	passwordHash: varchar({ length: 255 }),
+	role: mysqlEnum(['user','admin']).default('user').notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+	lastSignedIn: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("users_openId_unique").on(table.openId),
+]);
+
+// ─── Invoices Table ────────────────────────────────────────
+export const invoices = mysqlTable("invoices", {
+	id: int().autoincrement().notNull(),
+	userId: int().notNull(),
+	subscriptionId: int().notNull(),
+	amount: decimal({ precision: 10, scale: 2 }).notNull(),
+	currency: varchar({ length: 3 }).default('USD').notNull(),
+	status: mysqlEnum(['pending','paid','failed','refunded']).default('pending').notNull(),
+	invoiceNumber: varchar({ length: 64 }).notNull(),
+	pdfUrl: text(),
+	issuedAt: timestamp({ mode: 'string' }).notNull(),
+	dueAt: timestamp({ mode: 'string' }).notNull(),
+	paidAt: timestamp({ mode: 'string' }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+// ─── Countries & Currencies Table ─────────────────────────────
+export const countriesCurrencies = mysqlTable("countries_currencies", {
+	id: int().autoincrement().notNull(),
+	countryNameAr: varchar({ length: 255 }).notNull(),
+	countryNameEn: varchar({ length: 255 }).notNull(),
+	countryCode: varchar({ length: 2 }).notNull(),
+	currencyCode: varchar({ length: 3 }).notNull(),
+	currencySymbol: varchar({ length: 10 }).notNull(),
+	currencyNameAr: varchar({ length: 255 }).notNull(),
+	currencyNameEn: varchar({ length: 255 }).notNull(),
+	isActive: boolean().default(true).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("countries_currencies_code_unique").on(table.countryCode),
+]);
+
+// ─── Renewal Notifications Table ────────────────────────────
+export const renewalNotifications = mysqlTable("renewal_notifications", {
+	id: int().autoincrement().notNull(),
+	userId: int().notNull(),
+	subscriptionId: int(),
+	notificationType: mysqlEnum(['7_days_before','1_day_before','on_renewal','failed_renewal','subscription_created','subscription_updated','subscription_deleted','subscription_activated','role_changed','custom_message','new_order']).notNull(),
+	message: varchar({ length: 500 }),
+	isRead: boolean().default(false).notNull(),
+	isSent: boolean().default(false).notNull(),
+	sentAt: timestamp({ mode: 'string' }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+// ─── Type Exports ──────────────────────────────────────────
+export type InsertUser = typeof users.$inferInsert;
+export type SelectUser = typeof users.$inferSelect;
+
+export type InsertRestaurant = typeof restaurants.$inferInsert;
+export type SelectRestaurant = typeof restaurants.$inferSelect;
+
+export type InsertCategory = typeof categories.$inferInsert;
+export type SelectCategory = typeof categories.$inferSelect;
+
+export type InsertMenuItem = typeof menuItems.$inferInsert;
+export type SelectMenuItem = typeof menuItems.$inferSelect;
+
+export type InsertOffer = typeof offers.$inferInsert;
+export type SelectOffer = typeof offers.$inferSelect;
+
+export type InsertSubscriptionPlan = typeof subscriptionPlans.$inferInsert;
+export type SelectSubscriptionPlan = typeof subscriptionPlans.$inferSelect;
+
+export type InsertUserSubscription = typeof userSubscriptions.$inferInsert;
+export type SelectUserSubscription = typeof userSubscriptions.$inferSelect;
+
+export type InsertInvoice = typeof invoices.$inferInsert;
+export type SelectInvoice = typeof invoices.$inferSelect;
+
+export type InsertRenewalNotification = typeof renewalNotifications.$inferInsert;
+export type SelectRenewalNotification = typeof renewalNotifications.$inferSelect;
+
+export type InsertCountryCurrency = typeof countriesCurrencies.$inferInsert;
+export type SelectCountryCurrency = typeof countriesCurrencies.$inferSelect;
+
+// ─── Restaurant Holidays Table ────────────────────────────────────────────────────────────────────────────────────────────────
+export const restaurantHolidays = mysqlTable("restaurant_holidays", {
+	id: int().autoincrement().notNull(),
+	restaurantId: int().notNull(),
+	titleAr: varchar({ length: 255 }).notNull(),
+	titleEn: varchar({ length: 255 }),
+	date: varchar({ length: 10 }).notNull(),
+	isFullDayClosed: boolean().default(true).notNull(),
+	openTime: varchar({ length: 5 }),
+	closeTime: varchar({ length: 5 }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+export type InsertRestaurantHoliday = typeof restaurantHolidays.$inferInsert;
+export type SelectRestaurantHoliday = typeof restaurantHolidays.$inferSelect;
+
+// ─── Restaurant Tables (Dining Tables) ────────────────────────────
+export const restaurantTables = mysqlTable("restaurant_tables", {
+	id: int().autoincrement().notNull(),
+	restaurantId: int().notNull(),
+	tableNumber: int().notNull(),
+	nameAr: varchar({ length: 100 }),
+	nameEn: varchar({ length: 100 }),
+	qrCodeUrl: text(),
+	isActive: boolean().default(true).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("restaurant_tables_restaurant_id").on(table.restaurantId),
+]);
+
+// ─── Orders Table ─────────────────────────────────────────────────
+export const orders = mysqlTable("orders", {
+	id: int().autoincrement().notNull(),
+	restaurantId: int().notNull(),
+	tableId: int().notNull(),
+	tableNumber: int().notNull(),
+	customerName: varchar({ length: 255 }),
+	customerPhone: varchar({ length: 32 }),
+	status: mysqlEnum(['pending','preparing','ready','served','cancelled']).default('pending').notNull(),
+	notes: text(),
+	totalAmount: decimal({ precision: 10, scale: 2 }).notNull(),
+	orderNumber: varchar({ length: 32 }).notNull(),
+	whatsappSent: boolean().default(false).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("orders_restaurant_id").on(table.restaurantId),
+	index("orders_table_id").on(table.tableId),
+	index("orders_status").on(table.status),
+]);
+
+// ─── Order Items Table ────────────────────────────────────────────
+export const orderItems = mysqlTable("order_items", {
+	id: int().autoincrement().notNull(),
+	orderId: int().notNull(),
+	menuItemId: int().notNull(),
+	nameAr: varchar({ length: 255 }).notNull(),
+	nameEn: varchar({ length: 255 }),
+	price: decimal({ precision: 10, scale: 2 }).notNull(),
+	quantity: int().default(1).notNull(),
+	notes: text(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("order_items_order_id").on(table.orderId),
+]);
+
+export type InsertRestaurantTable = typeof restaurantTables.$inferInsert;
+export type SelectRestaurantTable = typeof restaurantTables.$inferSelect;
+
+export type InsertOrder = typeof orders.$inferInsert;
+export type SelectOrder = typeof orders.$inferSelect;
+
+export type InsertOrderItem = typeof orderItems.$inferInsert;
+export type SelectOrderItem = typeof orderItems.$inferSelect;

@@ -1,0 +1,1 @@
+ALTER TABLE `restaurants` ADD `table_label` enum('tables','rooms') DEFAULT 'tables' NOT NULL;
