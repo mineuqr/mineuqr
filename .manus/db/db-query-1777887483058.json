@@ -1,9 +1,0 @@
-{
-  "query": "ALTER TABLE `renewal_notifications` MODIFY COLUMN `subscriptionId` int;",
-  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway05.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2fe5J8XJDcV9Gt9.root --database fcy9GqTzfuy9H9eCsDbdLA --execute ALTER TABLE `renewal_notifications` MODIFY COLUMN `subscriptionId` int;",
-  "rows": [],
-  "messages": [],
-  "stdout": "",
-  "stderr": "",
-  "execution_time_ms": 1719
-}

@@ -1,9 +1,0 @@
-{
-  "query": "ALTER TABLE `restaurants` ADD `temporaryClosure` text;\n\nCREATE TABLE `restaurant_holidays` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `restaurantId` int NOT NULL,\n  `titleAr` varchar(255) NOT NULL,\n  `titleEn` varchar(255),\n  `date` varchar(10) NOT NULL,\n  `isFullDayClosed` boolean NOT NULL DEFAULT true,\n  `openTime` varchar(5),\n  `closeTime` varchar(5),\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`),\n  INDEX `idx_holidays_restaurant` (`restaurantId`),\n  INDEX `idx_holidays_date` (`date`)\n);",
-  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway05.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2fe5J8XJDcV9Gt9.root --database fcy9GqTzfuy9H9eCsDbdLA --execute ALTER TABLE `restaurants` ADD `temporaryClosure` text;\n\nCREATE TABLE `restaurant_holidays` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `restaurantId` int NOT NULL,\n  `titleAr` varchar(255) NOT NULL,\n  `titleEn` varchar(255),\n  `date` varchar(10) NOT NULL,\n  `isFullDayClosed` boolean NOT NULL DEFAULT true,\n  `openTime` varchar(5),\n  `closeTime` varchar(5),\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`),\n  INDEX `idx_holidays_restaurant` (`restaurantId`),\n  INDEX `idx_holidays_date` (`date`)\n);",
-  "rows": [],
-  "messages": [],
-  "stdout": "",
-  "stderr": "",
-  "execution_time_ms": 2368
-}

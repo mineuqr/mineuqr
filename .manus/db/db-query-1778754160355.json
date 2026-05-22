@@ -1,9 +1,0 @@
-{
-  "query": "UPDATE subscription_plans SET features = '[\"Up to 5 Restaurants\",\"Multiple QR Codes\",\"Advanced Analytics\",\"Color & Theme Customization\",\"Priority Support\",\"Monthly Reports\",\"Table Ordering System\"]', featuresAr = '[\"حتى 5 مطاعم\",\"رموز QR متعددة\",\"تحليلات متقدمة\",\"تخصيص الألوان والقوالب\",\"دعم أولوية\",\"تقارير شهرية\",\"نظام الطلب عبر الطاولات\"]' WHERE id = 30002;\n\nUPDATE subscription_plans SET features = '[\"Unlimited Restaurants\",\"Unlimited Items\",\"Comprehensive Analytics\",\"24/7 Dedicated Support\",\"Custom Reports\",\"Advanced Integration\",\"Table Ordering System\"]', featuresAr = '[\"مطاعم غير محدودة\",\"أصناف غير محدودة\",\"تحليلات شاملة\",\"دعم مخصص 24/7\",\"تقارير مخصصة\",\"تكامل متقدم\",\"نظام الطلب عبر الطاولات\"]' WHERE id = 30003;",
-  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway05.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2fe5J8XJDcV9Gt9.root --database fcy9GqTzfuy9H9eCsDbdLA --execute UPDATE subscription_plans SET features = '[\"Up to 5 Restaurants\",\"Multiple QR Codes\",\"Advanced Analytics\",\"Color & Theme Customization\",\"Priority Support\",\"Monthly Reports\",\"Table Ordering System\"]', featuresAr = '[\"حتى 5 مطاعم\",\"رموز QR متعددة\",\"تحليلات متقدمة\",\"تخصيص الألوان والقوالب\",\"دعم أولوية\",\"تقارير شهرية\",\"نظام الطلب عبر الطاولات\"]' WHERE id = 30002;\n\nUPDATE subscription_plans SET features = '[\"Unlimited Restaurants\",\"Unlimited Items\",\"Comprehensive Analytics\",\"24/7 Dedicated Support\",\"Custom Reports\",\"Advanced Integration\",\"Table Ordering System\"]', featuresAr = '[\"مطاعم غير محدودة\",\"أصناف غير محدودة\",\"تحليلات شاملة\",\"دعم مخصص 24/7\",\"تقارير مخصصة\",\"تكامل متقدم\",\"نظام الطلب عبر الطاولات\"]' WHERE id = 30003;",
-  "rows": [],
-  "messages": [],
-  "stdout": "",
-  "stderr": "",
-  "execution_time_ms": 1991
-}
