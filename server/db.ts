@@ -483,6 +483,27 @@ export async function getSubscriptionByRestaurantId(restaurantId: number) {
   return result[0];
 }
 
+/** Per-restaurant subscription first; otherwise owner's user-level subscription row. */
+export async function getOrderingSubscriptionForRestaurant(restaurantId: number) {
+  const byRestaurant = await getSubscriptionByRestaurantId(restaurantId);
+  if (byRestaurant) return byRestaurant;
+  const restaurant = await getRestaurantById(restaurantId);
+  if (!restaurant) return undefined;
+  return getUserSubscription(restaurant.userId);
+}
+
+export async function restaurantAllowsTableOrdering(restaurantId: number): Promise<boolean> {
+  const subscription = await getOrderingSubscriptionForRestaurant(restaurantId);
+  if (!subscription || !["active", "trial"].includes(subscription.status)) {
+    return false;
+  }
+  const plan = await getSubscriptionPlanById(subscription.planId);
+  if (!plan || plan.id === 30001) {
+    return false;
+  }
+  return true;
+}
+
 export async function createSubscriptionForRestaurant(data: InsertUserSubscription) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -865,6 +886,19 @@ export async function getOrdersByRestaurant(restaurantId: number, status?: strin
   return db.select().from(orders)
     .where(eq(orders.restaurantId, restaurantId))
     .orderBy(desc(orders.createdAt));
+}
+
+export async function getOrdersWithItemsByRestaurant(
+  restaurantId: number,
+  status?: string
+) {
+  const orderList = await getOrdersByRestaurant(restaurantId, status);
+  return Promise.all(
+    orderList.map(async (order) => ({
+      ...order,
+      items: await getOrderItemsByOrderId(order.id),
+    }))
+  );
 }
 
 export async function getOrderById(id: number) {

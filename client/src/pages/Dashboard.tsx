@@ -4,6 +4,7 @@ import OrderAlertSystem from "@/components/OrderAlertSystem";
 import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { resolveImageUrl } from "@/lib/utils";
+import { formatRiyadhDateTime } from "@/lib/datetime";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
   QrCode, Plus, Store, LayoutGrid, UtensilsCrossed,
@@ -2927,6 +2928,40 @@ function OrdersTab({ restaurantId, currencySymbol, tableLabel }: { restaurantId:
                   </p>
                 )}
 
+                {order.customerPhone && (
+                  <p className="text-sm text-muted-foreground mb-1">
+                    {order.customerPhone}
+                  </p>
+                )}
+
+                {order.notes && (
+                  <p className="text-xs text-muted-foreground mb-2 italic">
+                    {order.notes}
+                  </p>
+                )}
+
+                {Array.isArray(order.items) && order.items.length > 0 && (
+                  <ul className="mt-2 mb-3 space-y-1 border-t border-border/40 pt-2">
+                    {order.items.map((line: any) => (
+                      <li
+                        key={line.id}
+                        className="flex items-center justify-between text-sm gap-2"
+                      >
+                        <span className="text-foreground">
+                          {language === "ar"
+                            ? line.nameAr
+                            : line.nameEn || line.nameAr}
+                          <span className="text-muted-foreground"> ×{line.quantity}</span>
+                        </span>
+                        <span className="text-muted-foreground shrink-0">
+                          {(parseFloat(line.price) * line.quantity).toFixed(2)}{" "}
+                          {currencySymbol || "ر.س"}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
                 <div className="flex items-center justify-between mt-3">
                   <span className="font-bold text-foreground">
                     {order.totalAmount} {currencySymbol || "ر.س"}
@@ -2976,7 +3011,17 @@ function OrdersTab({ restaurantId, currencySymbol, tableLabel }: { restaurantId:
                 </div>
 
                 <p className="text-xs text-muted-foreground mt-2">
-                  {new Date(order.createdAt).toLocaleString(language === "ar" ? "ar-SA" : "en-US")}
+                  {formatRiyadhDateTime(
+                    order.createdAt,
+                    language === "ar" ? "ar-SA" : "en-US",
+                    {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    }
+                  )}
                 </p>
               </CardContent>
             </Card>

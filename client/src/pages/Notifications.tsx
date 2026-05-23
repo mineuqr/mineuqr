@@ -8,10 +8,12 @@ import { Badge } from "@/components/ui/badge";
 import { Bell, CheckCircle2, AlertCircle, RefreshCw, Filter, BellRing, Clock, CreditCard, PlusCircle, Edit, Trash2, ShieldCheck, ArrowRight, ShoppingCart } from "lucide-react";
 import { Link } from "wouter";
 import { toast } from "sonner";
+import { formatRiyadhDate, formatRiyadhTime } from "@/lib/datetime";
 
 export default function Notifications() {
   const { user } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const dateLocale = language === "ar" ? "ar-SA" : "en-US";
   const [filter, setFilter] = useState<"all" | "unread">("all");
 
   const { data: notifications, isLoading, error, refetch } = trpc.notification.list.useQuery(undefined, {
@@ -248,7 +250,7 @@ export default function Notifications() {
                           {getNotificationTitle(notification.notificationType)}
                         </CardTitle>
                         <CardDescription className="mt-1">
-                          {new Date(notification.createdAt).toLocaleDateString("ar-SA")} - {new Date(notification.createdAt).toLocaleTimeString("ar-SA")}
+                          {formatRiyadhDate(notification.createdAt, dateLocale)} - {formatRiyadhTime(notification.createdAt, dateLocale)}
                         </CardDescription>
                       </div>
                     </div>

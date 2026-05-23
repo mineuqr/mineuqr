@@ -7,12 +7,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Download, FileText, AlertCircle, Filter, Receipt, CreditCard, Clock } from "lucide-react";
 import { Link } from "wouter";
+import { formatRiyadhDate } from "@/lib/datetime";
 
 type InvoiceStatus = "pending" | "paid" | "failed" | "refunded";
 
 export default function Invoices() {
   const { user } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const dateLocale = language === "ar" ? "ar-SA" : "en-US";
   const [statusFilter, setStatusFilter] = useState<InvoiceStatus | "all">("all");
 
   const { data: invoices, isLoading, error } = trpc.invoice.list.useQuery(undefined, {
@@ -184,7 +186,7 @@ export default function Invoices() {
                         {t("invoices.invoice")} #{invoice.invoiceNumber}
                       </CardTitle>
                       <CardDescription>
-                        {t("invoices.issuedDate")}: {new Date(invoice.issuedAt).toLocaleDateString()}
+                        {t("invoices.issuedDate")}: {formatRiyadhDate(invoice.issuedAt, dateLocale)}
                       </CardDescription>
                     </div>
                     <Badge
@@ -218,14 +220,14 @@ export default function Invoices() {
                     <div>
                       <p className="text-sm text-muted-foreground">{t("invoices.dueDate")}</p>
                       <p className="text-lg font-semibold text-foreground">
-                        {new Date(invoice.dueAt).toLocaleDateString()}
+                        {formatRiyadhDate(invoice.dueAt, dateLocale)}
                       </p>
                     </div>
                     {invoice.paidAt && (
                       <div>
                         <p className="text-sm text-muted-foreground">{t("invoices.paidDate")}</p>
                         <p className="text-lg font-semibold text-green-400">
-                          {new Date(invoice.paidAt).toLocaleDateString()}
+                          {formatRiyadhDate(invoice.paidAt, dateLocale)}
                         </p>
                       </div>
                     )}

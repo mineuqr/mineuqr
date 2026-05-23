@@ -26,7 +26,8 @@ import {
   createInvoice, updateInvoice, getUserById,
   getHolidaysByRestaurant, createHoliday, updateHoliday, deleteHoliday, getHolidayById,
   getTablesByRestaurant, getTableById, getTableByRestaurantAndNumber, createTable, updateTable, deleteTable, createMultipleTables,
-  getOrdersByRestaurant, getOrderById, createOrder, updateOrderStatus, getOrderItemsByOrderId, createOrderItems, generateOrderNumber, getActiveOrdersCount,
+  getOrdersByRestaurant, getOrdersWithItemsByRestaurant, getOrderById, createOrder, updateOrderStatus, getOrderItemsByOrderId, createOrderItems, generateOrderNumber, getActiveOrdersCount,
+  restaurantAllowsTableOrdering,
 } from "./db";
 import { putUploadedFile } from "./local-uploads";
 import { notifyOwner } from "./_core/notification";
@@ -1531,15 +1532,8 @@ const orderRouter = router({
   canOrder: publicProcedure
     .input(z.object({ restaurantId: z.number() }))
     .query(async ({ input }) => {
-      const subscription = await getSubscriptionByRestaurantId(input.restaurantId);
-      if (!subscription || !['active', 'trial'].includes(subscription.status)) {
-        return { canOrder: false };
-      }
-      const plan = await getSubscriptionPlanById(subscription.planId);
-      if (!plan || plan.id === 30001) {
-        return { canOrder: false };
-      }
-      return { canOrder: true };
+      const canOrder = await restaurantAllowsTableOrdering(input.restaurantId);
+      return { canOrder };
     }),
   // Public: create order (no auth needed)
   create: publicProcedure
@@ -1560,14 +1554,8 @@ const orderRouter = router({
       })),
     }))
     .mutation(async ({ input }) => {
-      // Check if restaurant has professional or enterprise subscription for ordering
-      const subscription = await getSubscriptionByRestaurantId(input.restaurantId);
-      if (!subscription || !['active', 'trial'].includes(subscription.status)) {
-        throw new TRPCError({ code: 'FORBIDDEN', message: 'ميزة الطلب عبر المنيو متاحة فقط للمشتركين في الخطة الاحترافية أو المؤسسية' });
-      }
-      const plan = await getSubscriptionPlanById(subscription.planId);
-      // Plan IDs: 30001=Basic, 30002=Professional, 30003=Enterprise
-      if (!plan || plan.id === 30001) {
+      const allowsOrdering = await restaurantAllowsTableOrdering(input.restaurantId);
+      if (!allowsOrdering) {
         throw new TRPCError({ code: 'FORBIDDEN', message: 'ميزة الطلب عبر المنيو متاحة فقط للمشتركين في الخطة الاحترافية أو المؤسسية' });
       }
       const { items, ...orderData } = input;
@@ -1613,7 +1601,7 @@ const orderRouter = router({
       status: z.string().optional(),
     }))
     .query(async ({ input }) => {
-      return getOrdersByRestaurant(input.restaurantId, input.status);
+      return getOrdersWithItemsByRestaurant(input.restaurantId, input.status);
     }),
   getById: protectedProcedure
     .input(z.object({ id: z.number() }))
