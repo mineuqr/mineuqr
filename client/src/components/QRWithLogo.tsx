@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
+import { resolveImageUrl } from '@/lib/utils';
 
 interface QRWithLogoProps {
   value: string;
@@ -37,8 +38,10 @@ export const QRWithLogo: React.FC<QRWithLogoProps> = ({
     console.log('[QRWithLogo] logoUrl:', logoUrl);
   }, [logoUrl]);
 
+  const logoSrc = resolveImageUrl(logoUrl);
+
   // إذا لم يكن هناك شعار أو تم تعطيل عرض الشعار، عرض QR عادي
-  if (!showLogo || !logoUrl || logoUrl.trim() === '') {
+  if (!showLogo || !logoSrc) {
     return (
       <div
         className="inline-block p-6 rounded-2xl"
@@ -98,7 +101,7 @@ export const QRWithLogo: React.FC<QRWithLogoProps> = ({
         }}
       >
         <img
-          src={logoUrl}
+          src={logoSrc}
           alt="Restaurant Logo"
           style={{
             width: '100%',

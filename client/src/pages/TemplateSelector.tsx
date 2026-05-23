@@ -13,6 +13,7 @@ import { Link } from "wouter";
 import ColorCustomizer from "@/components/ColorCustomizer";
 import FontCustomizer from "@/components/FontCustomizer";
 import { trpc } from "@/lib/trpc";
+import { resolveImageUrl } from "@/lib/utils";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function TemplateSelector() {
@@ -165,8 +166,8 @@ export default function TemplateSelector() {
 
       <div className="container py-6">
         <div className="cinematic-card rounded-xl p-4 mb-8 flex items-center gap-4">
-          {(restaurant as any).logoUrl ? (
-            <img src={(restaurant as any).logoUrl} alt="" className="w-12 h-12 rounded-xl object-cover" />
+          {resolveImageUrl((restaurant as any).logoUrl) ? (
+            <img src={resolveImageUrl((restaurant as any).logoUrl)} alt="" className="w-12 h-12 rounded-xl object-cover" />
           ) : (
             <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
               <Store className="w-6 h-6 text-primary" />

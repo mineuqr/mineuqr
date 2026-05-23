@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import OrderAlertSystem from "@/components/OrderAlertSystem";
 import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
+import { resolveImageUrl } from "@/lib/utils";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
   QrCode, Plus, Store, LayoutGrid, UtensilsCrossed,
@@ -224,8 +225,8 @@ function RestaurantsList({ onSelect }: { onSelect: (id: number) => void }) {
               <CardContent className="p-5">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    {r.logoUrl ? (
-                      <img src={r.logoUrl} alt="" className="w-12 h-12 rounded-xl object-cover" />
+                    {resolveImageUrl(r.logoUrl) ? (
+                      <img src={resolveImageUrl(r.logoUrl)} alt="" className="w-12 h-12 rounded-xl object-cover" />
                     ) : (
                       <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
                         <Store className="w-6 h-6 text-primary" />
@@ -560,8 +561,8 @@ function RestaurantDetail({ restaurantId, onBack }: { restaurantId: number; onBa
       {/* Restaurant Header */}
       <div className="cinematic-card rounded-xl p-6 mb-6">
         <div className="flex items-start gap-4">
-          {restaurant.logoUrl ? (
-            <img src={restaurant.logoUrl} alt="" className="w-16 h-16 rounded-xl object-cover" />
+          {resolveImageUrl(restaurant.logoUrl) ? (
+            <img src={resolveImageUrl(restaurant.logoUrl)} alt="" className="w-16 h-16 rounded-xl object-cover" />
           ) : (
             <div className="w-16 h-16 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
               <Store className="w-8 h-8 text-primary" />
@@ -940,12 +941,14 @@ function ItemsView({
         </Card>
       ) : (
         <div className="space-y-3">
-          {items.map((item) => (
+          {items.map((item) => {
+            const itemImageSrc = resolveImageUrl(item.imageUrl);
+            return (
             <Card key={item.id} className="bg-card border-border">
               <CardContent className="p-4">
                 <div className="flex items-start gap-4">
-                  {item.imageUrl ? (
-                    <img src={item.imageUrl} alt="" className="w-20 h-20 rounded-lg object-cover shrink-0" />
+                  {itemImageSrc ? (
+                    <img src={itemImageSrc} alt="" className="w-20 h-20 rounded-lg object-cover shrink-0" />
                   ) : (
                     <div className="w-20 h-20 rounded-lg bg-secondary flex items-center justify-center shrink-0">
                       <ImageIcon className="w-8 h-8 text-muted-foreground/50" />
@@ -984,7 +987,8 @@ function ItemsView({
                 </div>
               </CardContent>
             </Card>
-          ))}
+          );
+          })}
         </div>
       )}
 
@@ -1045,53 +1049,42 @@ function ItemFormDialog({
   const [price, setPrice] = useState(item?.price || "");
   const [calories, setCalories] = useState(item?.calories || "");
   const [sortOrder, setSortOrder] = useState(item?.sortOrder ?? 0);
-  const [imagePreview, setImagePreview] = useState<string | null>(item?.imageUrl || null);
+  const [imagePreview, setImagePreview] = useState<string | null>(
+    resolveImageUrl(item?.imageUrl) || null
+  );
   const [imageFile, setImageFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const utils = trpc.useUtils();
 
-  const createMutation = trpc.menuItem.create.useMutation({
-    onSuccess: async (data) => {
-      if (imageFile && data.id) {
-        await uploadImageForItem(data.id);
-      }
-      utils.menuItem.listByCategory.invalidate();
-      utils.restaurant.stats.invalidate();
-      toast.success(t('dashboard.successAdded'));
-      onClose();
-    },
-    onError: (err) => toast.error(err.message),
-  });
+  useEffect(() => {
+    if (!open) return;
+    setImagePreview(resolveImageUrl(item?.imageUrl) || null);
+    setImageFile(null);
+  }, [open, item?.id, item?.imageUrl]);
 
-  const updateMutation = trpc.menuItem.update.useMutation({
-    onSuccess: () => {
-      utils.menuItem.listByCategory.invalidate();
-      toast.success(t('dashboard.successUpdated'));
-      onClose();
-    },
-    onError: (err) => toast.error(err.message),
-  });
+  const createMutation = trpc.menuItem.create.useMutation();
+  const updateMutation = trpc.menuItem.update.useMutation();
+  const uploadImageMutation = trpc.menuItem.uploadImage.useMutation();
 
-  const uploadImageMutation = trpc.menuItem.uploadImage.useMutation({
-    onSuccess: () => {
-      utils.menuItem.listByCategory.invalidate();
-    },
-  });
+  const readFileAsBase64 = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve((reader.result as string).split(",")[1]);
+      reader.onerror = () => reject(new Error("Failed to read image"));
+      reader.readAsDataURL(file);
+    });
 
-  const uploadImageForItem = async (itemId: number) => {
-    if (!imageFile) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const base64 = (reader.result as string).split(",")[1];
-      uploadImageMutation.mutate({
-        itemId,
-        imageData: base64,
-        fileName: imageFile.name,
-        contentType: imageFile.type,
-      });
-    };
-    reader.readAsDataURL(imageFile);
+  const uploadImageForItem = async (itemId: number, file: File) => {
+    const imageData = await readFileAsBase64(file);
+    const { url } = await uploadImageMutation.mutateAsync({
+      itemId,
+      imageData,
+      fileName: file.name,
+      contentType: file.type,
+    });
+    setImagePreview(resolveImageUrl(url) || url);
+    return url;
   };
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1104,44 +1097,49 @@ function ItemFormDialog({
   };
 
   const handleSubmit = async () => {
-    if (item) {
-      if (imageFile) {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const base64 = (reader.result as string).split(",")[1];
-          uploadImageMutation.mutate({
-            itemId: item.id,
-            imageData: base64,
-            fileName: imageFile.name,
-            contentType: imageFile.type,
-          });
-        };
-        reader.readAsDataURL(imageFile);
+    try {
+      if (item) {
+        if (imageFile) {
+          await uploadImageForItem(item.id, imageFile);
+        }
+        await updateMutation.mutateAsync({
+          id: item.id,
+          nameAr,
+          nameEn: nameEn || undefined,
+          descriptionAr: descriptionAr || undefined,
+          descriptionEn: descriptionEn || undefined,
+          price,
+          calories: calories ? Number(calories) : undefined,
+        });
+        toast.success(t('dashboard.successUpdated'));
+      } else {
+        const data = await createMutation.mutateAsync({
+          categoryId,
+          restaurantId,
+          nameAr,
+          nameEn: nameEn || undefined,
+          descriptionAr: descriptionAr || undefined,
+          descriptionEn: descriptionEn || undefined,
+          price,
+          calories: calories ? Number(calories) : undefined,
+        });
+        if (imageFile && data.id) {
+          await uploadImageForItem(data.id, imageFile);
+        }
+        toast.success(t('dashboard.successAdded'));
       }
-      updateMutation.mutate({
-        id: item.id,
-        nameAr,
-        nameEn: nameEn || undefined,
-        descriptionAr: descriptionAr || undefined,
-        descriptionEn: descriptionEn || undefined,
-        price,
-        calories: calories ? Number(calories) : undefined,
-      });
-    } else {
-      createMutation.mutate({
-        categoryId,
-        restaurantId,
-        nameAr,
-        nameEn: nameEn || undefined,
-        descriptionAr: descriptionAr || undefined,
-        descriptionEn: descriptionEn || undefined,
-        price,
-        calories: calories ? Number(calories) : undefined,
-      });
+      await utils.menuItem.listByCategory.invalidate();
+      utils.restaurant.stats.invalidate();
+      onClose();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : String(err));
     }
   };
 
-  const isPending = createMutation.isPending || updateMutation.isPending;
+  const isPending =
+    createMutation.isPending ||
+    updateMutation.isPending ||
+    uploadImageMutation.isPending;
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
@@ -1161,7 +1159,7 @@ function ItemFormDialog({
               className="mt-1 border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:border-primary/50 transition"
             >
               {imagePreview ? (
-                <img src={imagePreview} alt="" className="w-32 h-32 rounded-lg object-cover mx-auto" />
+                <img src={resolveImageUrl(imagePreview) ?? imagePreview} alt="" className="w-32 h-32 rounded-lg object-cover mx-auto" />
               ) : (
                 <div className="py-4">
                   <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
@@ -1722,8 +1720,8 @@ function OffersTab({ restaurantId, currencySymbol }: { restaurantId: number; cur
               <Card key={offer.id} className={`overflow-hidden ${isExpired ? 'opacity-60' : ''}`}>
                 <CardContent className="p-4">
                   <div className="flex items-start gap-4">
-                    {offer.imageUrl && (
-                      <img src={offer.imageUrl} alt="" className="w-20 h-20 rounded-lg object-cover shrink-0" />
+                    {resolveImageUrl(offer.imageUrl) && (
+                      <img src={resolveImageUrl(offer.imageUrl)} alt="" className="w-20 h-20 rounded-lg object-cover shrink-0" />
                     )}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
@@ -2024,8 +2022,8 @@ function OfferFormDialog({
             <div>
               <Label>{t('dashboard.uploadOfferImage')}</Label>
               <div className="mt-1 flex items-center gap-3">
-                {imageUrl ? (
-                  <img src={imageUrl} alt="" className="w-20 h-20 rounded-lg object-cover" />
+                {resolveImageUrl(imageUrl) ? (
+                  <img src={resolveImageUrl(imageUrl)} alt="" className="w-20 h-20 rounded-lg object-cover" />
                 ) : (
                   <div className="w-20 h-20 rounded-lg bg-secondary flex items-center justify-center">
                     <ImageIcon className="w-8 h-8 text-muted-foreground" />
@@ -2273,9 +2271,9 @@ function SettingsTab({ restaurant, onBack }: { restaurant: any; onBack: () => vo
               onDrop={(e) => handleDrop(e, "logo")}
             >
               <div className="flex flex-col items-center gap-4">
-                {restaurant.logoUrl ? (
+                {resolveImageUrl(restaurant.logoUrl) ? (
                   <div className="relative inline-block">
-                    <img src={restaurant.logoUrl} alt="" className="w-24 h-24 rounded-lg object-cover" />
+                    <img src={resolveImageUrl(restaurant.logoUrl)} alt="" className="w-24 h-24 rounded-lg object-cover" />
                     <div className="absolute inset-0 bg-black/0 hover:bg-black/40 rounded-lg transition-colors flex items-center justify-center gap-2 opacity-0 hover:opacity-100">
                       <Button
                         size="sm"
@@ -2335,9 +2333,9 @@ function SettingsTab({ restaurant, onBack }: { restaurant: any; onBack: () => vo
               onDrop={(e) => handleDrop(e, "cover")}
             >
               <div className="flex flex-col items-center gap-4">
-                {restaurant.coverUrl ? (
+                {resolveImageUrl(restaurant.coverUrl) ? (
                   <div className="relative w-full">
-                    <img src={restaurant.coverUrl} alt="" className="w-full h-40 rounded-lg object-cover" />
+                    <img src={resolveImageUrl(restaurant.coverUrl)} alt="" className="w-full h-40 rounded-lg object-cover" />
                     <div className="absolute inset-0 bg-black/0 hover:bg-black/40 rounded-lg transition-colors flex items-center justify-center gap-2 opacity-0 hover:opacity-100">
                       <Button
                         size="sm"

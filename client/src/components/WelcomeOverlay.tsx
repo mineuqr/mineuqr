@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, ChevronLeft, ChevronRight } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { resolveImageUrl } from "@/lib/utils";
 
 interface WelcomeOverlayProps {
   restaurantName: string;
@@ -74,9 +75,9 @@ export default function WelcomeOverlay({ restaurantName, logoUrl, accentColor = 
               animate={{ scale: 1, rotate: 0 }}
               transition={{ type: "spring", stiffness: 180, damping: 14, delay: 0.15 }}
             >
-              {logoUrl ? (
+              {resolveImageUrl(logoUrl) ? (
                 <img
-                  src={logoUrl}
+                  src={resolveImageUrl(logoUrl)}
                   alt=""
                   className="w-28 h-28 sm:w-36 sm:h-36 rounded-3xl object-cover shadow-2xl"
                   style={{ border: `4px solid ${accentColor}60` }}

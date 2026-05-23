@@ -28,7 +28,7 @@ import {
   getTablesByRestaurant, getTableById, getTableByRestaurantAndNumber, createTable, updateTable, deleteTable, createMultipleTables,
   getOrdersByRestaurant, getOrderById, createOrder, updateOrderStatus, getOrderItemsByOrderId, createOrderItems, generateOrderNumber, getActiveOrdersCount,
 } from "./db";
-import { storagePut } from "./storage";
+import { putUploadedFile } from "./local-uploads";
 import { notifyOwner } from "./_core/notification";
 import { notifyOwnerNewRestaurant, notifyOwnerNewSubscription, notifyOwnerSubscriptionCancelled } from "./owner-email-notifications";
 import { generateInvoicePDFBuffer } from "./invoice-pdf";
@@ -274,8 +274,10 @@ const restaurantRouter = router({
       if (!restaurant) throw new TRPCError({ code: "FORBIDDEN", message: "غير مصرح بالوصول" });
       if (restaurant.userId !== ctx.user.id && ctx.user.role !== 'admin') throw new TRPCError({ code: "FORBIDDEN", message: "غير مصرح بالوصول" });
       const buffer = Buffer.from(input.imageData, "base64");
-      const key = `restaurants/${input.restaurantId}/${input.imageType}-${nanoid(8)}-${input.fileName}`;
-      const { url } = await storagePut(key, buffer, input.contentType);
+      const safeFileName = input.fileName.replace(/[^\w.\-]+/g, "_");
+      const folder = input.imageType === "logo" ? "logos" : "covers";
+      const key = `${folder}/${input.restaurantId}/${nanoid(8)}-${safeFileName}`;
+      const { url } = await putUploadedFile(key, buffer, input.contentType, ctx.req);
       if (input.imageType === "logo") {
         await updateRestaurant(input.restaurantId, { logoUrl: url });
       } else {
@@ -453,8 +455,9 @@ const menuItemRouter = router({
       if (!restaurant) throw new Error("غير مصرح");
       if (restaurant.userId !== ctx.user.id && ctx.user.role !== 'admin') throw new Error("غير مصرح");
       const buffer = Buffer.from(input.imageData, "base64");
-      const key = `items/${item.restaurantId}/${input.itemId}-${nanoid(8)}-${input.fileName}`;
-      const { url } = await storagePut(key, buffer, input.contentType);
+      const safeFileName = input.fileName.replace(/[^\w.\-]+/g, "_");
+      const key = `items/${item.restaurantId}/${input.itemId}-${nanoid(8)}-${safeFileName}`;
+      const { url } = await putUploadedFile(key, buffer, input.contentType, ctx.req);
       await updateMenuItem(input.itemId, { imageUrl: url });
       return { url };
     }),
@@ -556,8 +559,9 @@ const offerRouter = router({
       if (!restaurant) throw new Error("\u063a\u064a\u0631 \u0645\u0635\u0631\u062d");
       if (restaurant.userId !== ctx.user.id && ctx.user.role !== 'admin') throw new Error("\u063a\u064a\u0631 \u0645\u0635\u0631\u062d");
       const buffer = Buffer.from(input.imageData, "base64");
-      const key = `offers/${offer.restaurantId}/${input.offerId}-${nanoid(8)}-${input.fileName}`;
-      const { url } = await storagePut(key, buffer, input.contentType);
+      const safeFileName = input.fileName.replace(/[^\w.\-]+/g, "_");
+      const key = `offers/${offer.restaurantId}/${input.offerId}-${nanoid(8)}-${safeFileName}`;
+      const { url } = await putUploadedFile(key, buffer, input.contentType, ctx.req);
       await updateOffer(input.offerId, { imageUrl: url });
       return { url };
     }),
@@ -1034,8 +1038,8 @@ const adminRouter = router({
           paidAt: now.toISOString(),
           billingCycle: input.billingCycle,
         });
-        const fileKey = `invoices/${input.userId}/${invoiceNumber}.pdf`;
-        const { url: pdfUrl } = await storagePut(fileKey, pdfBuffer, "application/pdf");
+        const fileKey = `pdfs/${input.userId}/${invoiceNumber}.pdf`;
+        const { url: pdfUrl } = await putUploadedFile(fileKey, pdfBuffer, "application/pdf", ctx.req);
         await updateInvoice(invoiceResult.id, { pdfUrl });
       } catch (e) { /* invoice generation failure is non-critical */ }
       return { success: true, subscriptionId: result.id };
@@ -1202,9 +1206,8 @@ const adminRouter = router({
         paidAt: now.toISOString(),
         billingCycle: sub.billingCycle || "monthly",
       });
-      // Upload to S3
-      const fileKey = `invoices/${input.userId}/${invoiceNumber}.pdf`;
-      const { url: pdfUrl } = await storagePut(fileKey, pdfBuffer, "application/pdf");
+      const fileKey = `pdfs/${input.userId}/${invoiceNumber}.pdf`;
+      const { url: pdfUrl } = await putUploadedFile(fileKey, pdfBuffer, "application/pdf", ctx.req);
       // Update invoice with PDF URL
       await updateInvoice(invoiceResult.id, { pdfUrl });
       return { success: true, pdfUrl, invoiceId: invoiceResult.id };

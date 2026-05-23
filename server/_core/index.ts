@@ -10,6 +10,11 @@ import { serveStatic, setupVite } from "./vite";
 import { handlePayPalWebhook } from "../paypal-webhook";
 import { handleTapWebhook } from "../tap-webhook";
 import { localAuthRouter } from "../auth-local";
+import {
+  ensureUploadsDir,
+  UPLOADS_DIR,
+  useLocalUploads,
+} from "../local-uploads";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -40,6 +45,11 @@ async function startServer() {
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
+
+  if (useLocalUploads()) {
+    await ensureUploadsDir();
+    app.use("/uploads", express.static(UPLOADS_DIR));
+  }
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
   

@@ -7,6 +7,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import AddToCartButton from "@/components/AddToCartButton";
+import { resolveImageUrl } from "@/lib/utils";
 
 // Template configuration
 export const TEMPLATES = [
@@ -488,9 +489,9 @@ function TemplateHeader({ restaurant, accentColor, textColor, titleExtra }: { re
 
   return (
     <header className="relative">
-      {restaurant.coverUrl ? (
+      {resolveImageUrl(restaurant.coverUrl) ? (
         <div className="h-48 sm:h-56 relative overflow-hidden">
-          <img src={restaurant.coverUrl} alt="" className="w-full h-full object-cover" />
+          <img src={resolveImageUrl(restaurant.coverUrl)} alt="" className="w-full h-full object-cover" />
           <div className="absolute inset-0" style={{ background: `linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0.3), transparent)` }} />
         </div>
       ) : (
@@ -500,8 +501,8 @@ function TemplateHeader({ restaurant, accentColor, textColor, titleExtra }: { re
       )}
       <div className="container relative -mt-16 pb-4">
         <div className="flex items-end gap-4">
-          {restaurant.logoUrl ? (
-            <img src={restaurant.logoUrl} alt="" className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-cover shadow-xl" style={{ border: `3px solid ${accentColor}40` }} />
+          {resolveImageUrl(restaurant.logoUrl) ? (
+            <img src={resolveImageUrl(restaurant.logoUrl)} alt="" className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-cover shadow-xl" style={{ border: `3px solid ${accentColor}40` }} />
           ) : (
             <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl shadow-xl flex items-center justify-center" style={{ background: `${accentColor}15`, border: `3px solid ${accentColor}40` }}>
               <Store className="w-10 h-10" style={{ color: accentColor }} />
@@ -828,8 +829,8 @@ function Grid({ items, accentColor, cardStyle, cardBg, textColor, pricePrefix, c
             style={cardBg ? { background: cardBg } : undefined}
           >
             <div className="flex">
-              {item.imageUrl ? (
-                <img src={item.imageUrl} alt={item.nameAr} className="w-40 h-40 sm:w-48 sm:h-48 object-cover shrink-0" />
+              {resolveImageUrl(item.imageUrl) ? (
+                <img src={resolveImageUrl(item.imageUrl)} alt={item.nameAr} className="w-40 h-40 sm:w-48 sm:h-48 object-cover shrink-0" />
               ) : (
                 <div className="w-40 h-40 sm:w-48 sm:h-48 flex items-center justify-center shrink-0" style={{ background: `${accentColor}08` }}>
                   <UtensilsCrossed className="w-12 h-12 opacity-20" style={{ color: textColor }} />
@@ -889,8 +890,8 @@ function ListView({ items, accentColor, cardStyle, cardBg, textColor, pricePrefi
             style={cardBg ? { background: cardBg } : undefined}
           >
             <div className="flex items-center gap-3 p-3">
-              {item.imageUrl ? (
-                <img src={item.imageUrl} alt={item.nameAr} className="w-16 h-16 rounded-lg object-cover shrink-0" />
+              {resolveImageUrl(item.imageUrl) ? (
+                <img src={resolveImageUrl(item.imageUrl)} alt={item.nameAr} className="w-16 h-16 rounded-lg object-cover shrink-0" />
               ) : (
                 <div className="w-16 h-16 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${accentColor}10` }}>
                   <UtensilsCrossed className="w-6 h-6 opacity-20" style={{ color: textColor }} />
@@ -1086,8 +1087,8 @@ function OffersSection({ offers, accentColor, textColor, cardBg, currencySymbol,
                   </div>
                 )}
                 <div className="flex">
-                   {offer.imageUrl ? (
-                    <img src={offer.imageUrl} alt={offer.titleAr} className="w-40 h-40 sm:w-48 sm:h-48 object-cover shrink-0" />
+                   {resolveImageUrl(offer.imageUrl) ? (
+                    <img src={resolveImageUrl(offer.imageUrl)} alt={offer.titleAr} className="w-40 h-40 sm:w-48 sm:h-48 object-cover shrink-0" />
                   ) : (
                     <div className="w-40 h-40 sm:w-48 sm:h-48 flex items-center justify-center shrink-0" style={{ background: `${accentColor}15` }}>
                       <Tag className="w-12 h-12 opacity-30" style={{ color: accentColor }} />
