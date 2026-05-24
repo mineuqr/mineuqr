@@ -15,6 +15,19 @@ import {
 } from "recharts";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
+import { cn } from "@/lib/utils";
+
+const statDash = {
+  shell: "min-h-screen bg-background",
+  shellGlow:
+    "pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,oklch(0.65_0.18_195/12%),transparent)]",
+  main: "mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8",
+  card: "rounded-xl border border-border/50 bg-card/40 shadow-sm backdrop-blur-sm",
+  pageTitle: "text-2xl font-semibold tracking-tight text-foreground sm:text-3xl",
+  sectionTitle: "text-sm font-semibold text-foreground",
+  sectionSub: "mt-1 text-xs text-muted-foreground",
+  kpiCard: "rounded-xl border border-border/50 bg-card/40 shadow-sm",
+};
 
 interface SubDetail {
   id: number;
@@ -38,12 +51,17 @@ export default function Statistics() {
   const { user, isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
   const [months] = useState(12);
+  const { data: stats, isLoading: statsLoading } = trpc.admin.getStatistics.useQuery();
+  const { data: revenueData, isLoading: revenueLoading } = trpc.admin.getRevenueByMonth.useQuery();
+  const { data: subscriptionDetails, isLoading: detailsLoading } = trpc.admin.getSubscriptionDetails.useQuery();
+  const { data: extendedStats, isLoading: extendedLoading } = trpc.admin.getExtendedStats.useQuery();
 
   // Check if user is admin
-  if (!isAuthenticated || user?.role !== "admin") {
+  if (!isAuthenticated || user?.role !== "admin") 
     return (
-      <div className="min-h-screen cinematic-bg flex items-center justify-center p-4">
-        <Card className="max-w-md w-full bg-card border-border">
+      <div className={cn(statDash.shell, "flex items-center justify-center p-4")}>
+        <div className={statDash.shellGlow} aria-hidden />
+        <Card className={cn(statDash.card, "max-w-md w-full")}>
           <CardContent className="p-8 text-center">
             <Store className="w-16 h-16 text-primary mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-foreground mb-2">{t("admin.accessDenied")}</h2>
@@ -55,12 +73,7 @@ export default function Statistics() {
         </Card>
       </div>
     );
-  }
-
-  const { data: stats, isLoading: statsLoading } = trpc.admin.getStatistics.useQuery();
-  const { data: revenueData, isLoading: revenueLoading } = trpc.admin.getRevenueByMonth.useQuery();
-  const { data: subscriptionDetails, isLoading: detailsLoading } = trpc.admin.getSubscriptionDetails.useQuery();
-  const { data: extendedStats, isLoading: extendedLoading } = trpc.admin.getExtendedStats.useQuery();
+  
 
   const exportToCSV = () => {
     if (!subscriptionDetails) return;
@@ -100,36 +113,48 @@ export default function Statistics() {
 
   if (statsLoading || revenueLoading || detailsLoading || extendedLoading) {
     return (
-      <div className="min-h-screen cinematic-bg flex justify-center items-center py-20">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className={cn(statDash.shell, "flex items-center justify-center py-24")}>
+        <div className={statDash.shellGlow} aria-hidden />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen cinematic-bg">
-      {/* Top Nav */}
-      <nav className="sticky top-0 z-50 border-b border-border/30 bg-background/80 backdrop-blur-xl">
-        <div className="container flex items-center justify-between h-14">
+    <div className={statDash.shell}>
+      <div className={statDash.shellGlow} aria-hidden />
+      <div className={cn(statDash.main, "space-y-8")}>
+        <div className="flex flex-col gap-4 border-b border-border/40 pb-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <button onClick={() => setLocation("/admin")} className="flex items-center gap-2 hover:opacity-80 transition">
-              <ArrowRight className={`w-5 h-5 text-primary ${language === "en" ? "rotate-180" : ""}`} />
-              <span className="font-bold text-foreground">{t("admin.statistics") || "Statistics"}</span>
+            <button
+              type="button"
+              onClick={() => setLocation("/admin")}
+              className="flex h-9 w-9 items-center justify-center rounded-lg border border-border/50 bg-muted/30 text-muted-foreground transition hover:bg-muted/50 hover:text-foreground"
+            >
+              <ArrowRight className={cn("h-4 w-4", language === "en" ? "rotate-180" : "")} />
             </button>
+            <div>
+              <h1 className={statDash.pageTitle}>{t("admin.statistics") || "Statistics"}</h1>
+              <p className={statDash.sectionSub}>
+                {language === "ar" ? "تحليلات المنصة والاشتراكات" : "Platform and subscription analytics"}
+              </p>
+            </div>
           </div>
-          <Button onClick={exportToCSV} variant="outline" size="sm">
-            <Download className="w-4 h-4 ml-2" />
+          <Button onClick={exportToCSV} variant="outline" size="sm" className="shrink-0 shadow-sm">
+            <Download className="h-4 w-4" />
             {t("common.export") || "Export CSV"}
           </Button>
         </div>
-      </nav>
 
-      <main className="container py-6 space-y-6">
-        {/* Platform Overview Cards */}
-        <div>
-          <h2 className="text-lg font-bold text-foreground mb-4">{t("admin.platformOverview") || "Platform Overview"}</h2>
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-            <Card className="bg-card border-border">
+        <div className="space-y-4">
+          <div>
+            <h2 className={statDash.sectionTitle}>{t("admin.platformOverview") || "Platform Overview"}</h2>
+            <p className={statDash.sectionSub}>
+              {language === "ar" ? "مؤشرات النمو على مستوى المنصة" : "High-level platform growth metrics"}
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
+            <Card className={statDash.kpiCard}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">{t("admin.totalRestaurants") || "Total Restaurants"}</CardTitle>
                 <UtensilsCrossed className="w-4 h-4 text-primary" />
@@ -139,7 +164,7 @@ export default function Statistics() {
               </CardContent>
             </Card>
 
-            <Card className="bg-card border-border">
+            <Card className={statDash.kpiCard}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">{t("admin.totalUsers") || "Total Users"}</CardTitle>
                 <Users className="w-4 h-4 text-blue-400" />
@@ -149,7 +174,7 @@ export default function Statistics() {
               </CardContent>
             </Card>
 
-            <Card className="bg-card border-border">
+            <Card className={statDash.kpiCard}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">{t("admin.totalMenuItems") || "Total Menu Items"}</CardTitle>
                 <LayoutGrid className="w-4 h-4 text-accent" />
@@ -159,7 +184,7 @@ export default function Statistics() {
               </CardContent>
             </Card>
 
-            <Card className="bg-card border-border">
+            <Card className={statDash.kpiCard}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">{t("admin.totalCategories") || "Total Categories"}</CardTitle>
                 <FolderOpen className="w-4 h-4 text-emerald-400" />
@@ -169,7 +194,7 @@ export default function Statistics() {
               </CardContent>
             </Card>
 
-            <Card className="bg-card border-border">
+            <Card className={statDash.kpiCard}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">{t("admin.totalOffers") || "Total Offers"}</CardTitle>
                 <Tag className="w-4 h-4 text-yellow-400" />
@@ -181,9 +206,15 @@ export default function Statistics() {
           </div>
         </div>
 
-        {/* Subscription KPI Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="bg-card border-border">
+        <div className="space-y-4">
+          <div>
+            <h2 className={statDash.sectionTitle}>{t("admin.totalSubscribers") || "Subscriptions"}</h2>
+            <p className={statDash.sectionSub}>
+              {language === "ar" ? "أداء الاشتراكات والإيرادات" : "Subscription performance and revenue"}
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+          <Card className={statDash.kpiCard}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">{t("admin.totalSubscribers") || "Total Subscribers"}</CardTitle>
               <Users className="w-4 h-4 text-primary" />
@@ -196,7 +227,7 @@ export default function Statistics() {
             </CardContent>
           </Card>
 
-          <Card className="bg-card border-border">
+          <Card className={statDash.kpiCard}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">{t("admin.totalRevenue") || "Total Revenue"}</CardTitle>
               <DollarSign className="w-4 h-4 text-accent" />
@@ -209,7 +240,7 @@ export default function Statistics() {
             </CardContent>
           </Card>
 
-          <Card className="bg-card border-border">
+          <Card className={statDash.kpiCard}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">{t("admin.renewalRate") || "Renewal Rate"}</CardTitle>
               <TrendingUp className="w-4 h-4 text-green-500" />
@@ -222,7 +253,7 @@ export default function Statistics() {
             </CardContent>
           </Card>
 
-          <Card className="bg-card border-border">
+          <Card className={statDash.kpiCard}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">{t("admin.churnRate") || "Churn Rate"}</CardTitle>
               <RotateCcw className="w-4 h-4 text-red-500" />
@@ -234,12 +265,11 @@ export default function Statistics() {
               </p>
             </CardContent>
           </Card>
+          </div>
         </div>
 
-        {/* Charts Row 1 */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Revenue Chart */}
-          <Card className="bg-card border-border">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-6">
+          <Card className={statDash.card}>
             <CardHeader>
               <CardTitle>{t("admin.revenueByMonth") || "Revenue by Month"}</CardTitle>
             </CardHeader>
@@ -257,8 +287,7 @@ export default function Statistics() {
             </CardContent>
           </Card>
 
-          {/* User & Restaurant Growth Chart */}
-          <Card className="bg-card border-border">
+          <Card className={statDash.card}>
             <CardHeader>
               <CardTitle>{t("admin.userGrowth") || "User & Restaurant Growth"}</CardTitle>
             </CardHeader>
@@ -278,10 +307,8 @@ export default function Statistics() {
           </Card>
         </div>
 
-        {/* Charts Row 2 */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Subscriptions by Plan */}
-          <Card className="bg-card border-border">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-6">
+          <Card className={statDash.card}>
             <CardHeader>
               <CardTitle>{t("admin.subscriptionsByPlan") || "Subscriptions by Plan"}</CardTitle>
             </CardHeader>
@@ -308,8 +335,7 @@ export default function Statistics() {
             </CardContent>
           </Card>
 
-          {/* Subscription Status Breakdown */}
-          <Card className="bg-card border-border">
+          <Card className={statDash.card}>
             <CardHeader>
               <CardTitle>{t("admin.subscriptionStatus") || "Subscription Status"}</CardTitle>
             </CardHeader>
@@ -336,15 +362,16 @@ export default function Statistics() {
           </Card>
         </div>
 
-        {/* Subscriptions Table */}
-        <Card className="bg-card border-border">
-          <CardHeader>
-            <CardTitle>{t("admin.subscriptionDetails") || "Subscription Details"}</CardTitle>
+        <Card className={statDash.card}>
+          <CardHeader className="border-b border-border/40 pb-4">
+            <CardTitle className="text-base font-semibold">
+              {t("admin.subscriptionDetails") || "Subscription Details"}
+            </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
+          <CardContent className="pt-4">
+            <div className="overflow-x-auto rounded-lg border border-border/40">
               <table className="w-full text-sm">
-                <thead className="border-b border-border/30">
+                <thead className="border-b border-border/40 bg-muted/20">
                   <tr>
                     <th className="text-start py-2 px-2 font-semibold">{t("admin.restaurant") || "Restaurant"}</th>
                     <th className="text-start py-2 px-2 font-semibold">{t("admin.owner") || "Owner"}</th>
@@ -389,7 +416,7 @@ export default function Statistics() {
             </div>
           </CardContent>
         </Card>
-      </main>
+      </div>
     </div>
   );
 }

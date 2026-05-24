@@ -3,17 +3,18 @@ import { Button } from "@/components/ui/button";
 import OrderAlertSystem from "@/components/OrderAlertSystem";
 import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
-import { resolveImageUrl } from "@/lib/utils";
-import { formatRiyadhDateTime } from "@/lib/datetime";
+import { cn, resolveImageUrl } from "@/lib/utils";
+import { formatRiyadhDateTime, parseDbUtcTimestamp } from "@/lib/datetime";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
   QrCode, Plus, Store, LayoutGrid, UtensilsCrossed,
   BarChart3, Eye, Trash2, Pencil, ArrowRight, LogOut,
   ChevronLeft, Home, Settings, Image as ImageIcon, Loader2,
   Check, X, Upload, GripVertical, Palette, Tag, Calendar, Clock, User, Bell,
-  AlertTriangle, CalendarPlus, ClipboardList, Grid3X3, Download, Copy
+  AlertTriangle, CalendarPlus, ClipboardList, Grid3X3, Download, Copy,
+  TrendingUp, DollarSign, CheckCircle2, Clock3
 } from "lucide-react";
-import { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo, type ComponentType } from "react";
 import { useLocation, useRoute } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -33,6 +34,159 @@ import { toast } from "sonner";
 import { QRCodeSVG } from "qrcode.react";
 import { QRWithLogo } from "@/components/QRWithLogo";
 
+// ─── Dashboard UI primitives (Stripe / Linear–style) ─────────
+
+const dash = {
+  shell: "min-h-screen bg-background",
+  shellGlow:
+    "pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,oklch(0.65_0.18_195/12%),transparent)]",
+  nav: "sticky top-0 z-50 border-b border-border/40 bg-background/75 backdrop-blur-xl",
+  navInner: "mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-6 px-5 sm:h-[4.5rem] sm:px-8 lg:px-10",
+  main: "mx-auto w-full max-w-7xl px-5 py-8 sm:px-8 sm:py-10 lg:px-10 lg:py-12",
+  card: "rounded-2xl border border-border/45 bg-card/35 shadow-sm backdrop-blur-sm",
+  cardHover:
+    "rounded-2xl border border-border/45 bg-card/35 shadow-sm backdrop-blur-sm transition-all duration-200 hover:border-border/70 hover:bg-card/50 hover:shadow-md",
+  pageTitle: "text-2xl font-semibold tracking-tight text-foreground sm:text-3xl lg:text-[2rem]",
+  pageSub: "mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-[0.9375rem]",
+  stack: "flex flex-col gap-10 sm:gap-12 lg:gap-14",
+  section: "flex flex-col gap-8 sm:gap-10",
+  label: "text-[0.6875rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground/90",
+  group: "rounded-2xl border border-border/40 bg-muted/10 p-5 sm:p-7 lg:p-8",
+  groupDivider: "border-t border-border/35 pt-6 sm:pt-8",
+  contentPanel: "rounded-2xl border border-border/40 bg-card/25 p-6 sm:p-8 lg:p-10",
+};
+
+type DashTab = { id: string; label: string; icon: ComponentType<{ className?: string }> };
+
+function DashboardSegmentedControl({
+  tabs,
+  activeId,
+  onChange,
+  className,
+  size = "md",
+}: {
+  tabs: DashTab[];
+  activeId: string;
+  onChange: (id: string) => void;
+  className?: string;
+  size?: "md" | "sm";
+}) {
+  const pad = size === "sm" ? "p-1" : "p-1.5";
+  const btn = size === "sm" ? "py-2.5 px-3.5 text-xs sm:text-sm" : "py-3 px-4 text-sm";
+
+  return (
+    <div
+      className={cn(
+        "inline-flex w-full gap-1 rounded-2xl border border-border/40 bg-muted/15 shadow-sm",
+        pad,
+        className
+      )}
+      role="tablist"
+    >
+      {tabs.map((tab) => {
+        const active = activeId === tab.id;
+        return (
+          <button
+            key={tab.id}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(tab.id)}
+            className={cn(
+              "flex flex-1 items-center justify-center gap-2 rounded-xl font-medium transition-all duration-150 whitespace-nowrap min-h-[2.5rem] sm:min-h-[2.75rem]",
+              btn,
+              active
+                ? "bg-background text-foreground shadow-sm ring-1 ring-border/60"
+                : "text-muted-foreground hover:bg-background/50 hover:text-foreground"
+            )}
+          >
+            <tab.icon className="h-4 w-4 shrink-0 opacity-80" />
+            <span className="truncate">{tab.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Primary tabs: Reports visually left, Orders visually right (incl. RTL). */
+function DashboardPrimaryTabs({
+  reportsTab,
+  ordersTab,
+  activeId,
+  onChange,
+}: {
+  reportsTab: DashTab;
+  ordersTab: DashTab;
+  activeId: string | null;
+  onChange: (id: string) => void;
+}) {
+  const renderBtn = (tab: DashTab, gridClass: string) => {
+    const active = activeId === tab.id;
+    return (
+      <button
+        type="button"
+        role="tab"
+        aria-selected={active}
+        onClick={() => onChange(tab.id)}
+        className={cn(
+          gridClass,
+          "flex min-h-[3rem] items-center justify-center gap-2.5 rounded-xl px-4 py-3.5 text-sm font-medium transition-all duration-150 sm:min-h-[3.25rem] sm:px-5 sm:text-[0.9375rem]",
+          active
+            ? "bg-background text-foreground shadow-sm ring-1 ring-border/60"
+            : "text-muted-foreground hover:bg-background/40 hover:text-foreground"
+        )}
+      >
+        <tab.icon className="h-4 w-4 shrink-0" />
+        <span className="truncate">{tab.label}</span>
+      </button>
+    );
+  };
+
+  return (
+    <div
+      className="grid w-full grid-cols-2 gap-1.5 rounded-2xl border border-border/40 bg-muted/15 p-1.5 shadow-sm"
+      role="tablist"
+    >
+      {renderBtn(reportsTab, "col-start-1 rtl:col-start-2")}
+      {renderBtn(ordersTab, "col-start-2 rtl:col-start-1")}
+    </div>
+  );
+}
+
+function DashboardStatCard({
+  label,
+  value,
+  icon: Icon,
+  tone = "default",
+}: {
+  label: string;
+  value: number | string;
+  icon: ComponentType<{ className?: string }>;
+  tone?: "default" | "primary" | "accent";
+}) {
+  const valueTone =
+    tone === "primary"
+      ? "text-primary"
+      : tone === "accent"
+        ? "text-accent"
+        : "text-foreground";
+
+  return (
+    <div className={cn(dash.card, "p-5 sm:p-6 lg:p-7")}>
+      <div className="flex items-start justify-between gap-3">
+        <p className={dash.label}>{label}</p>
+        <div className="rounded-lg border border-border/40 bg-muted/25 p-2">
+          <Icon className="h-4 w-4 text-muted-foreground" />
+        </div>
+      </div>
+      <p className={cn("mt-4 text-3xl font-semibold tabular-nums tracking-tight sm:mt-5 sm:text-4xl", valueTone)}>
+        {value}
+      </p>
+    </div>
+  );
+}
+
 // ─── Notification Badge ─────────────────────────────────────
 function NotificationBadge() {
   const { data: notifications } = trpc.notification.list.useQuery(undefined, {
@@ -47,34 +201,81 @@ function NotificationBadge() {
   );
 }
 
+// ─── Dashboard URL helpers ───────────────────────────────────
+
+const DASHBOARD_LAST_RESTAURANT_KEY = "dashboard:lastRestaurantId";
+
+function parseRestaurantId(raw: string | null | undefined): number | null {
+  if (!raw) return null;
+  const id = parseInt(raw, 10);
+  return Number.isFinite(id) && id > 0 ? id : null;
+}
+
+function readDashboardUrlState(pathSection: string | undefined) {
+  const urlParams = new URLSearchParams(window.location.search);
+  const sectionParam = urlParams.get("section");
+  const pathRestaurantId =
+    pathSection && /^\d+$/.test(pathSection) ? parseRestaurantId(pathSection) : null;
+  const restaurantIdFromUrl =
+    parseRestaurantId(urlParams.get("restaurant")) ?? pathRestaurantId;
+  const effectiveSection =
+    sectionParam || (pathSection && !pathRestaurantId ? pathSection : null);
+  const openOrdersTab = effectiveSection === "orders";
+
+  return { restaurantIdFromUrl, openOrdersTab };
+}
+
 // ─── Dashboard Layout ───────────────────────────────────────
 
 export default function Dashboard() {
   const { user, loading, isAuthenticated, logout } = useAuth();
   const { t, language, dir } = useLanguage();
   const [, setLocation] = useLocation();
-  // Read restaurant ID from query parameter (used by admin panel edit button)
-  const urlParams = new URLSearchParams(window.location.search);
-  const restaurantParam = urlParams.get('restaurant');
+  const [, routeParams] = useRoute("/dashboard/:section");
+  const { restaurantIdFromUrl, openOrdersTab } = readDashboardUrlState(routeParams?.section);
+  const needsRestaurantResolve = openOrdersTab && !restaurantIdFromUrl;
+
   const [activeSection, setActiveSection] = useState<"restaurants" | "restaurant-detail">(
-    restaurantParam ? "restaurant-detail" : "restaurants"
+    restaurantIdFromUrl || openOrdersTab ? "restaurant-detail" : "restaurants"
   );
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<number | null>(
-    restaurantParam ? parseInt(restaurantParam, 10) : null
+    restaurantIdFromUrl
   );
+
+  const { data: restaurants, isLoading: restaurantsResolving } = trpc.restaurant.list.useQuery(
+    undefined,
+    { enabled: isAuthenticated && needsRestaurantResolve }
+  );
+
+  useEffect(() => {
+    if (!needsRestaurantResolve || !restaurants?.length) return;
+    const storedId = parseRestaurantId(sessionStorage.getItem(DASHBOARD_LAST_RESTAURANT_KEY));
+    const resolvedId =
+      storedId && restaurants.some((r) => r.id === storedId) ? storedId : restaurants[0].id;
+    setSelectedRestaurantId(resolvedId);
+    setActiveSection("restaurant-detail");
+  }, [needsRestaurantResolve, restaurants]);
+
+  useEffect(() => {
+    if (selectedRestaurantId) {
+      sessionStorage.setItem(DASHBOARD_LAST_RESTAURANT_KEY, String(selectedRestaurantId));
+    }
+  }, [selectedRestaurantId]);
 
   if (loading) {
     return (
-      <div className="min-h-screen cinematic-bg flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className={cn(dash.shell, "flex items-center justify-center")}>
+        <div className={dash.shellGlow} aria-hidden />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen cinematic-bg flex items-center justify-center p-4" dir={dir}>
-        <Card className="max-w-md w-full bg-card border-border">
+      <div className={cn(dash.shell, "flex items-center justify-center p-4")} dir={dir}>
+        <div className={dash.shellGlow} aria-hidden />
+        <Card className={cn(dash.card, "max-w-md w-full")}>
           <CardContent className="p-8 text-center">
             <QrCode className="w-16 h-16 text-primary mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-foreground mb-2">{t('common.loginRequired')}</h2>
@@ -94,67 +295,99 @@ export default function Dashboard() {
   const handleSelectRestaurant = (id: number) => {
     setSelectedRestaurantId(id);
     setActiveSection("restaurant-detail");
+    sessionStorage.setItem(DASHBOARD_LAST_RESTAURANT_KEY, String(id));
   };
 
   return (
-    <div className="min-h-screen cinematic-bg" dir={dir}>
-      {/* Order Alert System - real-time notifications */}
+    <div className={dash.shell} dir={dir}>
+      <div className={dash.shellGlow} aria-hidden />
       <OrderAlertSystem />
-      {/* Top Nav */}
-      <nav className="sticky top-0 z-50 border-b border-border/30 bg-background/80 backdrop-blur-xl">
-        <div className="container flex items-center justify-between h-14">
-          <div className="flex items-center gap-3">
-            <button onClick={() => setLocation("/")} className="flex items-center gap-2 hover:opacity-80 transition">
+      <nav className={dash.nav}>
+        <div className={dash.navInner}>
+          <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+            <button
+              type="button"
+              onClick={() => setLocation("/")}
+              className="flex shrink-0 items-center gap-2 rounded-lg px-1 py-1 transition hover:opacity-90"
+            >
               <img
                 src="https://d2xsxph8kpxj0f.cloudfront.net/310519663504545475/fcy9GqTzfuy9H9eCsDbdLA/mineuqr-logo_150417d8.png"
                 alt="mineuqr"
-                className="h-12 w-auto object-contain"
+                className="h-9 w-auto object-contain sm:h-10"
               />
-              <span className="text-lg font-bold text-foreground">mineuqr</span>
+              <span className="hidden text-base font-semibold tracking-tight text-foreground sm:inline">
+                mineuqr
+              </span>
             </button>
             {activeSection === "restaurant-detail" && (
               <>
-                <Separator orientation="vertical" className="h-5" />
+                <Separator orientation="vertical" className="hidden h-6 sm:block" />
                 <button
-                  onClick={() => { setActiveSection("restaurants"); setSelectedRestaurantId(null); }}
-                  className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition"
+                  type="button"
+                  onClick={() => {
+                    setActiveSection("restaurants");
+                    setSelectedRestaurantId(null);
+                  }}
+                  className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-muted-foreground transition hover:bg-muted/30 hover:text-foreground"
                 >
-                  <ChevronLeft className="w-4 h-4" />
-                  {t('dashboard.backToRestaurants')}
+                  <ChevronLeft className="h-4 w-4 rtl:rotate-180" />
+                  <span className="truncate">{t("dashboard.backToRestaurants")}</span>
                 </button>
               </>
             )}
           </div>
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-muted-foreground hidden sm:block">
-              {t('common.welcome')}, {user?.name || t('dashboard.user')}
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            <span className="hidden text-sm text-muted-foreground lg:inline">
+              {t("common.welcome")}, {user?.name || t("dashboard.user")}
             </span>
-            <Button variant="outline" size="sm" onClick={() => setLocation('/notifications')} className="border-border/50 text-foreground relative">
-              <Bell className="w-4 h-4" />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setLocation("/notifications")}
+              className="relative h-9 w-9 text-muted-foreground hover:text-foreground"
+            >
+              <Bell className="h-4 w-4" />
               <NotificationBadge />
             </Button>
-            <Button variant="outline" size="sm" onClick={() => setLocation('/profile')} className="border-border/50 text-foreground">
-              <User className="w-4 h-4 sm:ml-1" />
-              <span className="hidden sm:inline">{t('profile.title')}</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setLocation("/profile")}
+              className="h-9 gap-1.5 text-muted-foreground hover:text-foreground"
+            >
+              <User className="h-4 w-4" />
+              <span className="hidden sm:inline">{t("profile.title")}</span>
             </Button>
-            <Button variant="outline" size="sm" onClick={logout} className="border-border/50 text-foreground">
-              <LogOut className="w-4 h-4 sm:ml-1" />
-              <span className="hidden sm:inline">{t('dashboard.signOut')}</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={logout}
+              className="h-9 gap-1.5 text-muted-foreground hover:text-foreground"
+            >
+              <LogOut className="h-4 w-4" />
+              <span className="hidden sm:inline">{t("dashboard.signOut")}</span>
             </Button>
           </div>
         </div>
       </nav>
 
-      {/* Content */}
-      <main className="container py-6">
+      <main className={dash.main}>
         {activeSection === "restaurants" ? (
           <RestaurantsList onSelect={handleSelectRestaurant} />
         ) : selectedRestaurantId ? (
           <RestaurantDetail
+            key={selectedRestaurantId}
             restaurantId={selectedRestaurantId}
+            initialTab={openOrdersTab ? "orders" : "reports"}
             onBack={() => { setActiveSection("restaurants"); setSelectedRestaurantId(null); }}
           />
-        ) : null}
+        ) : needsRestaurantResolve && restaurantsResolving ? (
+          <div className="flex justify-center py-20">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        ) : (
+          <RestaurantsList onSelect={handleSelectRestaurant} />
+        )}
       </main>
     </div>
   );
@@ -187,43 +420,45 @@ function RestaurantsList({ onSelect }: { onSelect: (id: number) => void }) {
   };
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
+    <div className={dash.stack}>
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">{t('dashboard.myRestaurants')}</h1>
-          <p className="text-muted-foreground text-sm mt-1">{t('dashboard.myRestaurantsDesc')}</p>
+          <h1 className={dash.pageTitle}>{t("dashboard.myRestaurants")}</h1>
+          <p className={dash.pageSub}>{t("dashboard.myRestaurantsDesc")}</p>
         </div>
-        <Button onClick={() => setShowCreate(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground">
-          <Plus className="w-4 h-4 ml-1" />
-          {t('dashboard.addRestaurant')}
+        <Button onClick={() => setShowCreate(true)} className="shrink-0 shadow-sm">
+          <Plus className="h-4 w-4" />
+          {t("dashboard.addRestaurant")}
         </Button>
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center py-20">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <div className="flex justify-center py-24">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       ) : !restaurants?.length ? (
-        <Card className="bg-card border-border">
-          <CardContent className="p-12 text-center">
-            <Store className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
-            <h3 className="text-xl font-semibold text-foreground mb-2">{t('dashboard.noRestaurants')}</h3>
-            <p className="text-muted-foreground mb-6">{t('dashboard.noRestaurantsDesc')}</p>
-            <Button onClick={() => setShowCreate(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground">
-              <Plus className="w-4 h-4 ml-1" />
-              {t('dashboard.addNewRestaurant')}
+        <Card className={cn(dash.card, "border-dashed")}>
+          <CardContent className="p-12 text-center sm:p-16">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl border border-border/50 bg-muted/30">
+              <Store className="h-7 w-7 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-semibold text-foreground">{t("dashboard.noRestaurants")}</h3>
+            <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">{t("dashboard.noRestaurantsDesc")}</p>
+            <Button onClick={() => setShowCreate(true)} className="mt-6 shadow-sm">
+              <Plus className="h-4 w-4" />
+              {t("dashboard.addNewRestaurant")}
             </Button>
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-6 lg:grid-cols-3">
           {restaurants.map((r) => (
             <Card
               key={r.id}
-              className="bg-card border-border hover:border-primary/40 transition-all cursor-pointer group"
+              className={cn(dash.cardHover, "cursor-pointer group")}
               onClick={() => onSelect(r.id)}
             >
-              <CardContent className="p-5">
+              <CardContent className="p-6 sm:p-7">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
                     {resolveImageUrl(r.logoUrl) ? (
@@ -474,9 +709,105 @@ function CreateRestaurantDialog({ open, onClose }: { open: boolean; onClose: () 
   );
 }
 
+// ─── Restaurant detail sections ─────────────────────────────
+
+function RestaurantHeaderCard({ restaurant }: { restaurant: any }) {
+  return (
+    <div className={cn(dash.card, "p-6 sm:p-8")}>
+      <div className="flex items-start gap-5 sm:gap-6">
+        {resolveImageUrl(restaurant.logoUrl) ? (
+          <img
+            src={resolveImageUrl(restaurant.logoUrl)}
+            alt=""
+            className="h-14 w-14 shrink-0 rounded-xl border border-border/40 object-cover shadow-sm sm:h-16 sm:w-16"
+          />
+        ) : (
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 sm:h-16 sm:w-16">
+            <Store className="h-7 w-7 text-primary sm:h-8 sm:w-8" />
+          </div>
+        )}
+        <div className="min-w-0 flex-1">
+          <h1 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">{restaurant.nameAr}</h1>
+          {restaurant.nameEn && (
+            <p className="mt-1.5 text-sm text-muted-foreground">{restaurant.nameEn}</p>
+          )}
+          {restaurant.descriptionAr && (
+            <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+              {restaurant.descriptionAr}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RestaurantStatisticsSection({
+  stats,
+  t,
+  ariaLabel,
+  language,
+}: {
+  stats?: { totalCategories?: number; totalItems?: number; viewCount?: number };
+  t: (key: string) => string;
+  ariaLabel: string;
+  language: string;
+}) {
+  const overviewTitle = language === "ar" ? "نظرة عامة" : "Overview";
+
+  return (
+    <section className="flex flex-col gap-8 sm:gap-10" aria-label={ariaLabel}>
+      <div className="space-y-2">
+        <h2 className="text-base font-semibold tracking-tight text-foreground sm:text-lg">{overviewTitle}</h2>
+        <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
+          {language === "ar" ? "مؤشرات الأداء الرئيسية لمطعمك" : "Key performance metrics for your restaurant"}
+        </p>
+      </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-5 lg:gap-6">
+        <DashboardStatCard
+          label={t("dashboard.category")}
+          value={stats?.totalCategories ?? 0}
+          icon={LayoutGrid}
+          tone="primary"
+        />
+        <DashboardStatCard
+          label={t("dashboard.item")}
+          value={stats?.totalItems ?? 0}
+          icon={UtensilsCrossed}
+          tone="accent"
+        />
+        <DashboardStatCard
+          label={t("dashboard.visit")}
+          value={stats?.viewCount ?? 0}
+          icon={Eye}
+          tone="default"
+        />
+      </div>
+    </section>
+  );
+}
+
+type RestaurantTab =
+  | "reports"
+  | "orders"
+  | "categories"
+  | "offers"
+  | "tables"
+  | "qr"
+  | "templates"
+  | "settings";
+
 // ─── Restaurant Detail ──────────────────────────────────────
 
-function RestaurantDetail({ restaurantId, onBack }: { restaurantId: number; onBack: () => void }) {
+function RestaurantDetail({
+  restaurantId,
+  onBack,
+  initialTab = "reports",
+}: {
+  restaurantId: number;
+  onBack: () => void;
+  initialTab?: RestaurantTab;
+}) {
   const { t, language } = useLanguage();
   const { data: restaurant, isLoading } = trpc.restaurant.getById.useQuery({ id: restaurantId });
   const { data: stats } = trpc.restaurant.stats.useQuery({ id: restaurantId });
@@ -488,7 +819,7 @@ function RestaurantDetail({ restaurantId, onBack }: { restaurantId: number; onBa
     { restaurantId },
     { enabled: !!restaurantId }
   );
-  const [activeTab, setActiveTab] = useState<"categories" | "offers" | "orders" | "tables" | "qr" | "templates" | "settings">("categories");
+  const [activeTab, setActiveTab] = useState<RestaurantTab>(initialTab);
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
 
   // Check subscription expiry warning
@@ -514,25 +845,55 @@ function RestaurantDetail({ restaurantId, onBack }: { restaurantId: number; onBa
     return <div className="text-center py-20 text-muted-foreground">{t('dashboard.restaurantNotFound')}</div>;
   }
 
-  const tabs = [
-    { id: "categories" as const, label: t('dashboard.categoriesAndItems'), icon: LayoutGrid },
-    { id: "offers" as const, label: t('dashboard.offers'), icon: Tag },
-    { id: "orders" as const, label: language === 'ar' ? 'الطلبات' : 'Orders', icon: ClipboardList },
-    { id: "tables" as const, label: language === 'ar' ? (restaurant?.tableLabel === 'rooms' ? 'الغرف' : 'الطاولات') : (restaurant?.tableLabel === 'rooms' ? 'Rooms' : 'Tables'), icon: Grid3X3 },
-    { id: "qr" as const, label: t('dashboard.qrCode'), icon: QrCode },
-    { id: "templates" as const, label: t('dashboard.templates'), icon: Palette },
-    { id: "settings" as const, label: t('dashboard.settings'), icon: Settings },
+  const reportsLabel = language === "ar" ? "التقارير والإحصائيات" : "Statistics / Reports";
+  const ordersLabel = language === "ar" ? "الطلبات" : "Orders";
+  const statsAriaLabel = language === "ar" ? "التقارير والإحصائيات" : "Statistics and reports";
+
+  const primaryTabs = [
+    { id: "reports" as const, label: reportsLabel, icon: BarChart3 },
+    { id: "orders" as const, label: ordersLabel, icon: ClipboardList },
   ];
 
+  const managementTabs = [
+    { id: "categories" as const, label: t("dashboard.categoriesAndItems"), icon: LayoutGrid },
+    { id: "offers" as const, label: t("dashboard.offers"), icon: Tag },
+    {
+      id: "tables" as const,
+      label:
+        language === "ar"
+          ? restaurant?.tableLabel === "rooms"
+            ? "الغرف"
+            : "الطاولات"
+          : restaurant?.tableLabel === "rooms"
+            ? "Rooms"
+            : "Tables",
+      icon: Grid3X3,
+    },
+    { id: "qr" as const, label: t("dashboard.qrCode"), icon: QrCode },
+    { id: "templates" as const, label: t("dashboard.templates"), icon: Palette },
+    { id: "settings" as const, label: t("dashboard.settings"), icon: Settings },
+  ];
+
+  const managementTabItems: DashTab[] = managementTabs.map((tab) => ({
+    id: tab.id,
+    label: tab.label,
+    icon: tab.icon,
+  }));
+
+  const isWorkspaceView = activeTab === "reports" || activeTab === "orders";
+  const isMenuView = !isWorkspaceView;
+
   return (
-    <div>
-      {/* Subscription Warning Banner */}
+    <div className={dash.stack}>
       {subscriptionWarning && (
-        <div className={`rounded-xl p-4 mb-4 flex items-center gap-3 ${
-          subscriptionWarning.type === 'expired'
-            ? 'bg-red-500/10 border border-red-500/30 text-red-400'
-            : 'bg-yellow-500/10 border border-yellow-500/30 text-yellow-400'
-        }`}>
+        <div
+          className={cn(
+            "flex items-center gap-4 rounded-2xl border p-5 sm:p-6",
+            subscriptionWarning.type === "expired"
+              ? "border-red-500/30 bg-red-500/10 text-red-400"
+              : "border-yellow-500/30 bg-yellow-500/10 text-yellow-400"
+          )}
+        >
           <Clock className="w-5 h-5 shrink-0" />
           <div className="flex-1">
             <p className="font-semibold text-sm">
@@ -559,86 +920,111 @@ function RestaurantDetail({ restaurantId, onBack }: { restaurantId: number; onBa
         </div>
       )}
 
-      {/* Restaurant Header */}
-      <div className="cinematic-card rounded-xl p-6 mb-6">
-        <div className="flex items-start gap-4">
-          {resolveImageUrl(restaurant.logoUrl) ? (
-            <img src={resolveImageUrl(restaurant.logoUrl)} alt="" className="w-16 h-16 rounded-xl object-cover" />
-          ) : (
-            <div className="w-16 h-16 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-              <Store className="w-8 h-8 text-primary" />
-            </div>
-          )}
-          <div className="flex-1 min-w-0">
-            <h1 className="text-2xl font-bold text-foreground">{restaurant.nameAr}</h1>
-            {restaurant.nameEn && <p className="text-muted-foreground">{restaurant.nameEn}</p>}
-            {restaurant.descriptionAr && <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{restaurant.descriptionAr}</p>}
-          </div>
-        </div>
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 mt-6">
-          <div className="bg-secondary/50 rounded-lg p-3 text-center">
-            <p className="text-2xl font-bold text-primary">{stats?.totalCategories ?? 0}</p>
-            <p className="text-xs text-muted-foreground">{t('dashboard.category')}</p>
-          </div>
-          <div className="bg-secondary/50 rounded-lg p-3 text-center">
-            <p className="text-2xl font-bold text-accent">{stats?.totalItems ?? 0}</p>
-            <p className="text-xs text-muted-foreground">{t('dashboard.item')}</p>
-          </div>
-          <div className="bg-secondary/50 rounded-lg p-3 text-center">
-            <p className="text-2xl font-bold text-foreground">{stats?.viewCount ?? 0}</p>
-            <p className="text-xs text-muted-foreground">{t('dashboard.visit')}</p>
-          </div>
-        </div>
-      </div>
+      <RestaurantHeaderCard restaurant={restaurant} />
 
-      {/* Tabs */}
-      <div className="flex gap-1 mb-6 bg-secondary/30 rounded-lg p-1 overflow-x-auto scrollbar-hide">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center justify-center gap-1.5 py-2.5 px-3 sm:px-4 rounded-md text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${
-              activeTab === tab.id
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <tab.icon className="w-4 h-4" />
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      {/* Workspace: Reports + Orders — visually separated from menu tools */}
+      <section className={cn(dash.group, "space-y-6 sm:space-y-8")} aria-label={language === "ar" ? "لوحة التحكم" : "Workspace"}>
+        <div className="space-y-1.5">
+          <p className={dash.label}>{language === "ar" ? "لوحة التحكم" : "Workspace"}</p>
+          <p className="text-sm text-muted-foreground">
+            {language === "ar" ? "التقارير والطلبات" : "Reports and live orders"}
+          </p>
+        </div>
 
-      {/* Tab Content */}
-      {activeTab === "categories" && (
-        <CategoriesTab
-          restaurantId={restaurantId}
-          categories={categoriesList || []}
-          isLoading={catsLoading}
-          selectedCategoryId={selectedCategoryId}
-          onSelectCategory={setSelectedCategoryId}
-          currencySymbol={(restaurant as any)?.currencySymbol}
+        <DashboardPrimaryTabs
+          reportsTab={primaryTabs[0]}
+          ordersTab={primaryTabs[1]}
+          activeId={activeTab === "reports" || activeTab === "orders" ? activeTab : null}
+          onChange={(id) => setActiveTab(id as RestaurantTab)}
         />
-      )}
-      {activeTab === "offers" && <OffersTab restaurantId={restaurantId} currencySymbol={(restaurant as any)?.currencySymbol} />}
-      {activeTab === "orders" && <OrdersTab restaurantId={restaurantId} currencySymbol={(restaurant as any)?.currencySymbol} tableLabel={(restaurant as any)?.tableLabel} />}
-      {activeTab === "tables" && <TablesTab restaurantId={restaurantId} restaurant={restaurant} />}
-      {activeTab === "qr" && <QRTab restaurant={restaurant} />}
-      {activeTab === "templates" && (
-        <div className="text-center py-12">
-          <Palette className="w-16 h-16 text-primary mx-auto mb-4" />
-          <h3 className="text-xl font-bold text-foreground mb-2">{t('dashboard.templateDesign')}</h3>
-          <p className="text-muted-foreground mb-6">{t('dashboard.chooseTemplate')}</p>
-          <a href={`/dashboard/templates/${restaurantId}`}>
-            <Button className="bg-primary hover:bg-primary/90">
-              <Palette className="w-4 h-4 ml-2" />
-              {t('dashboard.selectTemplateBtn')}
-            </Button>
-          </a>
+
+        {activeTab === "reports" && (
+          <div className={cn(dash.groupDivider)}>
+            <RestaurantStatisticsSection
+              stats={
+                stats ?? {
+                  totalCategories: 0,
+                  totalItems: 0,
+                  viewCount: restaurant.viewCount ?? 0,
+                }
+              }
+              t={t}
+              ariaLabel={statsAriaLabel}
+              language={language}
+            />
+          </div>
+        )}
+
+        {activeTab === "orders" && (
+          <div className={cn(dash.groupDivider)}>
+            <section aria-label={ordersLabel}>
+              <OrdersTab
+                restaurantId={restaurantId}
+                currencySymbol={(restaurant as any)?.currencySymbol}
+                tableLabel={(restaurant as any)?.tableLabel}
+              />
+            </section>
+          </div>
+        )}
+      </section>
+
+      {/* Menu management — separate block below workspace */}
+      <section className={cn(dash.group, "space-y-6 sm:space-y-8")} aria-label={language === "ar" ? "إدارة المنيو" : "Menu management"}>
+        <div className="space-y-1.5">
+          <p className={dash.label}>{language === "ar" ? "إدارة المنيو" : "Menu management"}</p>
+          <p className="text-sm text-muted-foreground">
+            {language === "ar" ? "الفئات والعروض والإعدادات" : "Categories, offers, QR, and settings"}
+          </p>
         </div>
-      )}
-      {activeTab === "settings" && <SettingsTab restaurant={restaurant} onBack={onBack} />}
+
+        <div className="overflow-x-auto pb-1 scrollbar-hide">
+          <DashboardSegmentedControl
+            tabs={managementTabItems}
+            activeId={isMenuView ? activeTab : ""}
+            onChange={(id) => setActiveTab(id as RestaurantTab)}
+            className="min-w-full sm:min-w-0"
+            size="sm"
+          />
+        </div>
+
+        {isMenuView && (
+          <div className={cn(dash.contentPanel, dash.groupDivider, "min-h-[14rem]")}>
+            {activeTab === "categories" && (
+              <CategoriesTab
+                restaurantId={restaurantId}
+                categories={categoriesList || []}
+                isLoading={catsLoading}
+                selectedCategoryId={selectedCategoryId}
+                onSelectCategory={setSelectedCategoryId}
+                currencySymbol={(restaurant as any)?.currencySymbol}
+              />
+            )}
+            {activeTab === "offers" && (
+              <OffersTab restaurantId={restaurantId} currencySymbol={(restaurant as any)?.currencySymbol} />
+            )}
+            {activeTab === "tables" && <TablesTab restaurantId={restaurantId} restaurant={restaurant} />}
+            {activeTab === "qr" && <QRTab restaurant={restaurant} />}
+            {activeTab === "templates" && (
+              <div className="py-10 text-center sm:py-14">
+                <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-border/45 bg-muted/20">
+                  <Palette className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="text-lg font-semibold text-foreground sm:text-xl">{t("dashboard.templateDesign")}</h3>
+                <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
+                  {t("dashboard.chooseTemplate")}
+                </p>
+                <a href={`/dashboard/templates/${restaurantId}`} className="mt-8 inline-block">
+                  <Button className="shadow-sm">
+                    <Palette className="h-4 w-4" />
+                    {t("dashboard.selectTemplateBtn")}
+                  </Button>
+                </a>
+              </div>
+            )}
+            {activeTab === "settings" && <SettingsTab restaurant={restaurant} onBack={onBack} />}
+          </div>
+        )}
+      </section>
     </div>
   );
 }
@@ -2794,19 +3180,201 @@ function SettingsTab({ restaurant, onBack }: { restaurant: any; onBack: () => vo
 }
 
 
+// ─── Orders workspace helpers (production OrdersTab parity) ───
+
+type DashboardOrder = {
+  id: number;
+  status: string;
+  totalAmount: string;
+  createdAt: string;
+  orderNumber?: string;
+  tableNumber?: number;
+  customerName?: string;
+  customerPhone?: string;
+  notes?: string;
+  items?: unknown[];
+};
+
+function riyadhYmd(value: string | Date | null | undefined): string {
+  const date = parseDbUtcTimestamp(value);
+  if (!date) return "";
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Riyadh",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
+function riyadhYearMonth(value: string | Date | null | undefined): { year: number; month: number } | null {
+  const date = parseDbUtcTimestamp(value);
+  if (!date) return null;
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Riyadh",
+    year: "numeric",
+    month: "numeric",
+  }).formatToParts(date);
+  const year = Number(parts.find((p) => p.type === "year")?.value);
+  const month = Number(parts.find((p) => p.type === "month")?.value);
+  if (!year || !month) return null;
+  return { year, month };
+}
+
+function riyadhDayOfMonth(value: string | Date | null | undefined): number {
+  const date = parseDbUtcTimestamp(value);
+  if (!date) return 0;
+  return Number(
+    new Intl.DateTimeFormat("en", { timeZone: "Asia/Riyadh", day: "numeric" }).format(date)
+  );
+}
+
+function orderAmount(order: DashboardOrder): number {
+  return Number.parseFloat(String(order.totalAmount ?? "0")) || 0;
+}
+
+function isCompletedOrder(status: string) {
+  return status === "served";
+}
+
+function buildOrderStatistics(orders: DashboardOrder[]) {
+  const todayKey = riyadhYmd(new Date());
+  const nowParts = riyadhYearMonth(new Date());
+  const todayOrders = orders.filter((o) => riyadhYmd(o.createdAt) === todayKey);
+  const monthOrders = orders.filter((o) => {
+    const ym = riyadhYearMonth(o.createdAt);
+    return ym && nowParts && ym.year === nowParts.year && ym.month === nowParts.month;
+  });
+  const completedToday = todayOrders.filter((o) => isCompletedOrder(o.status));
+  const pendingToday = todayOrders.filter((o) => o.status === "pending" || o.status === "preparing");
+  const statusBreakdown = ["pending", "preparing", "ready", "served", "cancelled"]
+    .map((status) => ({
+      status,
+      count: todayOrders.filter((o) => o.status === status).length,
+    }))
+    .filter((row) => row.count > 0);
+  const monthCompleted = monthOrders.filter((o) => isCompletedOrder(o.status));
+  return {
+    today: {
+      totalOrders: todayOrders.length,
+      completedOrders: completedToday.length,
+      completedSales: completedToday.reduce((sum, o) => sum + orderAmount(o), 0),
+      pendingOrders: pendingToday.length,
+      statusBreakdown,
+    },
+    month: {
+      totalOrders: monthOrders.length,
+      totalSales: monthCompleted.reduce((sum, o) => sum + orderAmount(o), 0),
+      completedOrders: monthCompleted.length,
+    },
+  };
+}
+
+function buildTodayReport(orders: DashboardOrder[]) {
+  const todayKey = riyadhYmd(new Date());
+  const completed = orders.filter(
+    (o) => riyadhYmd(o.createdAt) === todayKey && isCompletedOrder(o.status)
+  );
+  return {
+    count: completed.length,
+    totalSales: completed.reduce((sum, o) => sum + orderAmount(o), 0),
+  };
+}
+
+function buildMonthlyReport(orders: DashboardOrder[], year: number, month: number) {
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const rows: { day: number; count: number; totalSales: number }[] = [];
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dayOrders = orders.filter((o) => {
+      const ym = riyadhYearMonth(o.createdAt);
+      return ym && ym.year === year && ym.month === month && riyadhDayOfMonth(o.createdAt) === day;
+    });
+    if (dayOrders.length === 0) continue;
+    const completed = dayOrders.filter((o) => isCompletedOrder(o.status));
+    rows.push({
+      day,
+      count: dayOrders.length,
+      totalSales: completed.reduce((sum, o) => sum + orderAmount(o), 0),
+    });
+  }
+  return rows;
+}
+
+function buildYearlySummary(orders: DashboardOrder[], year: number) {
+  const rows: { month: number; count: number; totalSales: number }[] = [];
+  for (let month = 1; month <= 12; month++) {
+    const monthOrders = orders.filter((o) => {
+      const ym = riyadhYearMonth(o.createdAt);
+      return ym && ym.year === year && ym.month === month;
+    });
+    if (monthOrders.length === 0) continue;
+    const completed = monthOrders.filter((o) => isCompletedOrder(o.status));
+    rows.push({
+      month,
+      count: monthOrders.length,
+      totalSales: completed.reduce((sum, o) => sum + orderAmount(o), 0),
+    });
+  }
+  return rows;
+}
+
+function downloadCsv(filename: string, rows: string[][]) {
+  const bom = "\uFEFF";
+  const body = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+  const blob = new Blob([bom + body], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 // ─── Orders Tab ─────────────────────────────────────────────
 function OrdersTab({ restaurantId, currencySymbol, tableLabel }: { restaurantId: number; currencySymbol?: string; tableLabel?: string }) {
-  const { t, language } = useLanguage();
+  const { language } = useLanguage();
   const isRooms = tableLabel === 'rooms';
   const unitAr = isRooms ? 'غرفة' : 'طاولة';
   const unitEn = isRooms ? 'Room' : 'Table';
+  const sym = currencySymbol || "ر.س";
+  const nowParts = riyadhYearMonth(new Date()) ?? { year: new Date().getFullYear(), month: new Date().getMonth() + 1 };
+  const [workspaceMode, setWorkspaceMode] = useState<"orders" | "reports">("orders");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [reportYear, setReportYear] = useState(nowParts.year);
+  const [reportMonth, setReportMonth] = useState(nowParts.month);
   const [lastOrderCount, setLastOrderCount] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const { data: orders, refetch } = trpc.order.list.useQuery(
-    { restaurantId, status: statusFilter === "all" ? undefined : statusFilter },
+  const monthNames =
+    language === "ar"
+      ? ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"]
+      : ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+  const { data: allOrders, refetch } = trpc.order.list.useQuery(
+    { restaurantId },
     { refetchInterval: 5000 }
+  );
+
+  const orders = useMemo(() => {
+    const list = (allOrders ?? []) as DashboardOrder[];
+    if (statusFilter === "all") return list;
+    return list.filter((o) => o.status === statusFilter);
+  }, [allOrders, statusFilter]);
+
+  const orderStats = useMemo(
+    () => buildOrderStatistics((allOrders ?? []) as DashboardOrder[]),
+    [allOrders]
+  );
+  const todayReport = useMemo(
+    () => buildTodayReport((allOrders ?? []) as DashboardOrder[]),
+    [allOrders]
+  );
+  const monthlyReport = useMemo(
+    () => buildMonthlyReport((allOrders ?? []) as DashboardOrder[], reportYear, reportMonth),
+    [allOrders, reportYear, reportMonth]
+  );
+  const yearlySummary = useMemo(
+    () => buildYearlySummary((allOrders ?? []) as DashboardOrder[], reportYear),
+    [allOrders, reportYear]
   );
 
   // Sound notification for new orders
@@ -2875,40 +3443,207 @@ function OrdersTab({ restaurantId, currencySymbol, tableLabel }: { restaurantId:
     onSuccess: () => refetch(),
   });
 
+  const exportMonthlyExcel = () => {
+    const header =
+      language === "ar"
+        ? ["اليوم", "عدد الطلبات", "إجمالي المبيعات"]
+        : ["Day", "Orders", "Total Sales"];
+    const rows = monthlyReport.map((row) => [
+      String(row.day),
+      String(row.count),
+      row.totalSales.toFixed(2),
+    ]);
+    downloadCsv(`monthly-report-${reportYear}-${reportMonth}.csv`, [header, ...rows]);
+  };
+
+  const exportYearlyExcel = () => {
+    const header =
+      language === "ar"
+        ? ["الشهر", "عدد الطلبات", "إجمالي المبيعات"]
+        : ["Month", "Orders", "Total Sales"];
+    const rows = yearlySummary.map((row) => [
+      monthNames[(row.month || 1) - 1],
+      String(row.count),
+      row.totalSales.toFixed(2),
+    ]);
+    downloadCsv(`yearly-summary-${reportYear}.csv`, [header, ...rows]);
+  };
+
   return (
-    <div className="space-y-4">
-      {/* Status Filter */}
-      <div className="flex flex-wrap gap-2">
-        {["all", "pending", "preparing", "ready", "served", "cancelled"].map((status) => (
-          <button
-            key={status}
-            onClick={() => setStatusFilter(status)}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-              statusFilter === status
-                ? "bg-primary text-primary-foreground border-primary"
-                : "bg-card border-border text-muted-foreground hover:bg-accent"
-            }`}
-          >
-            {status === "all"
-              ? (language === "ar" ? "الكل" : "All")
-              : (language === "ar" ? statusLabels[status]?.ar : statusLabels[status]?.en)}
-          </button>
-        ))}
+    <div className="space-y-8">
+      <div className="flex items-center gap-2 rounded-lg border border-border bg-card p-1">
+        <button
+          type="button"
+          onClick={() => setWorkspaceMode("orders")}
+          className={cn(
+            "flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium tracking-tight transition-colors",
+            workspaceMode === "orders"
+              ? "bg-primary text-primary-foreground shadow-sm"
+              : "text-muted-foreground hover:bg-accent hover:text-foreground"
+          )}
+        >
+          <ClipboardList className="h-4 w-4" />
+          {language === "ar" ? "الطلبات" : "Orders"}
+        </button>
+        <button
+          type="button"
+          onClick={() => setWorkspaceMode("reports")}
+          className={cn(
+            "flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium tracking-tight transition-colors",
+            workspaceMode === "reports"
+              ? "bg-primary text-primary-foreground shadow-sm"
+              : "text-muted-foreground hover:bg-accent hover:text-foreground"
+          )}
+        >
+          <BarChart3 className="h-4 w-4" />
+          {language === "ar" ? "التقارير" : "Reports"}
+        </button>
       </div>
 
-      {/* Orders List */}
+      {workspaceMode === "orders" && (
+        <>
+          <div className="animate-fade-in-up space-y-4">
+            <div>
+              <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
+                <BarChart3 className="h-4 w-4 text-primary" />
+                {language === "ar" ? "إحصائيات اليوم" : "Today's Statistics"}
+              </h3>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div className="rounded-lg bg-card p-3 ring-1 ring-border/50">
+                  <div className="mb-1 flex items-center gap-2">
+                    <div className="flex h-6 w-6 items-center justify-center rounded-md bg-blue-500/10">
+                      <ClipboardList className="h-3 w-3 text-blue-400" />
+                    </div>
+                  </div>
+                  <p className="text-lg font-semibold tabular-nums text-foreground">{orderStats.today.totalOrders}</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {language === "ar" ? "إجمالي الطلبات" : "Total Orders"}
+                  </p>
+                </div>
+                <div className="rounded-lg bg-card p-3 ring-1 ring-border/50">
+                  <div className="mb-1 flex items-center gap-2">
+                    <div className="flex h-6 w-6 items-center justify-center rounded-md bg-green-500/10">
+                      <CheckCircle2 className="h-3 w-3 text-green-400" />
+                    </div>
+                  </div>
+                  <p className="text-lg font-semibold tabular-nums text-foreground">{orderStats.today.completedOrders}</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {language === "ar" ? "طلبات مكتملة" : "Completed"}
+                  </p>
+                </div>
+                <div className="rounded-lg bg-card p-3 ring-1 ring-border/50">
+                  <div className="mb-1 flex items-center gap-2">
+                    <div className="flex h-6 w-6 items-center justify-center rounded-md bg-emerald-500/10">
+                      <DollarSign className="h-3 w-3 text-emerald-400" />
+                    </div>
+                  </div>
+                  <p className="text-lg font-semibold tabular-nums text-foreground">
+                    {Number(orderStats.today.completedSales).toFixed(0)}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {language === "ar" ? `مبيعات اليوم (${sym})` : `Today Sales (${sym})`}
+                  </p>
+                </div>
+                <div className="rounded-lg bg-card p-3 ring-1 ring-border/50">
+                  <div className="mb-1 flex items-center gap-2">
+                    <div className="flex h-6 w-6 items-center justify-center rounded-md bg-amber-500/10">
+                      <Clock3 className="h-3 w-3 text-amber-400" />
+                    </div>
+                  </div>
+                  <p className="text-lg font-semibold tabular-nums text-foreground">{orderStats.today.pendingOrders}</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {language === "ar" ? "قيد الانتظار" : "Pending"}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
+                <TrendingUp className="h-4 w-4 text-primary" />
+                {language === "ar" ? "إحصائيات الشهر" : "Monthly Statistics"}
+              </h3>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                <div className="rounded-lg bg-card p-3 ring-1 ring-border/50">
+                  <p className="text-lg font-semibold tabular-nums text-foreground">{orderStats.month.totalOrders}</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {language === "ar" ? "إجمالي الطلبات" : "Total Orders"}
+                  </p>
+                </div>
+                <div className="rounded-lg bg-card p-3 ring-1 ring-border/50">
+                  <p className="text-lg font-semibold tabular-nums text-foreground">{orderStats.month.completedOrders}</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {language === "ar" ? "طلبات مكتملة" : "Completed"}
+                  </p>
+                </div>
+                <div className="rounded-lg bg-card p-3 ring-1 ring-border/50">
+                  <p className="text-lg font-semibold tabular-nums text-foreground">
+                    {Number(orderStats.month.totalSales).toFixed(0)}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {language === "ar" ? `مبيعات الشهر (${sym})` : `Month Sales (${sym})`}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {orderStats.today.statusBreakdown.length > 0 && (
+              <div>
+                <h3 className="mb-3 text-sm font-semibold text-foreground">
+                  {language === "ar" ? "حالات طلبات اليوم" : "Today's Order Status"}
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {orderStats.today.statusBreakdown.map((row) => (
+                    <div
+                      key={row.status}
+                      className="rounded-full border border-border/50 bg-card px-3 py-1.5 text-xs"
+                    >
+                      <span className="font-medium text-foreground">
+                        {language === "ar" ? statusLabels[row.status]?.ar : statusLabels[row.status]?.en}
+                      </span>
+                      <span className="mx-1 text-muted-foreground">·</span>
+                      <span className="tabular-nums text-muted-foreground">{row.count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-wrap gap-2 rounded-2xl border border-border/40 bg-muted/10 p-1.5 sm:p-2">
+            {["all", "pending", "preparing", "ready", "served", "cancelled"].map((status) => (
+              <button
+                key={status}
+                type="button"
+                onClick={() => setStatusFilter(status)}
+                className={cn(
+                  "rounded-xl px-3.5 py-2 text-xs font-medium transition-all sm:text-sm",
+                  statusFilter === status
+                    ? "bg-background text-foreground shadow-sm ring-1 ring-border/60"
+                    : "text-muted-foreground hover:bg-background/50 hover:text-foreground"
+                )}
+              >
+                {status === "all"
+                  ? (language === "ar" ? "الكل" : "All")
+                  : (language === "ar" ? statusLabels[status]?.ar : statusLabels[status]?.en)}
+              </button>
+            ))}
+          </div>
+
       {!orders || orders.length === 0 ? (
-        <div className="text-center py-12">
-          <ClipboardList className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
-          <p className="text-muted-foreground">
+        <div className="py-16 text-center sm:py-20">
+          <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-border/45 bg-muted/20">
+            <ClipboardList className="h-7 w-7 text-muted-foreground/60" />
+          </div>
+          <p className="text-sm text-muted-foreground">
             {language === "ar" ? "لا توجد طلبات" : "No orders yet"}
           </p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4 sm:space-y-5">
           {orders.map((order: any) => (
-            <Card key={order.id} className="border-border/50">
-              <CardContent className="p-4">
+            <Card key={order.id} className={cn(dash.card, "border-border/40")}>
+              <CardContent className="p-5 sm:p-6">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
                     <span className="font-mono text-sm font-bold text-primary">#{order.orderNumber}</span>
@@ -3026,6 +3761,193 @@ function OrdersTab({ restaurantId, currencySymbol, tableLabel }: { restaurantId:
               </CardContent>
             </Card>
           ))}
+        </div>
+      )}
+        </>
+      )}
+
+      {workspaceMode === "reports" && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="rounded-xl bg-card p-4 ring-1 ring-border">
+              <div className="mb-2 flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                </div>
+              </div>
+              <p className="text-2xl font-semibold tabular-nums tracking-tight text-foreground">{todayReport.count}</p>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {language === "ar" ? "طلبات مكتملة اليوم" : "Today's Completed Orders"}
+              </p>
+            </div>
+            <div className="rounded-xl bg-card p-4 ring-1 ring-border">
+              <div className="mb-2 flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10">
+                  <DollarSign className="h-4 w-4 text-amber-400" />
+                </div>
+              </div>
+              <p className="text-2xl font-semibold tabular-nums tracking-tight text-foreground">
+                {todayReport.totalSales.toFixed(2)} <span className="text-xs font-normal text-muted-foreground">{sym}</span>
+              </p>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {language === "ar" ? "مبيعات اليوم" : "Today's Sales"}
+              </p>
+            </div>
+          </div>
+
+          <Card className="rounded-xl ring-1 ring-border">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between gap-3">
+                <CardTitle className="text-sm font-semibold">
+                  {language === "ar" ? "تقرير شهري" : "Monthly Report"}
+                </CardTitle>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={exportMonthlyExcel}
+                    className="rounded border border-green-500/30 bg-green-500/10 px-2 py-1 text-xs text-green-400 transition-colors hover:bg-green-500/20"
+                    title={language === "ar" ? "تصدير Excel" : "Export Excel"}
+                  >
+                    Excel
+                  </button>
+                  <div className="h-4 w-px bg-border/30" />
+                  <select
+                    value={reportMonth}
+                    onChange={(e) => setReportMonth(Number(e.target.value))}
+                    className="rounded-md border border-border bg-card px-2 py-1 text-xs text-foreground"
+                  >
+                    {monthNames.map((name, idx) => (
+                      <option key={name} value={idx + 1}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={reportYear}
+                    onChange={(e) => setReportYear(Number(e.target.value))}
+                    className="rounded-md border border-border bg-card px-2 py-1 text-xs text-foreground"
+                  >
+                    {[2024, 2025, 2026, 2027].map((y) => (
+                      <option key={y} value={y}>
+                        {y}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0">
+              {monthlyReport.length === 0 ? (
+                <p className="py-8 text-center text-sm text-muted-foreground">
+                  {language === "ar" ? "لا توجد بيانات لهذا الشهر" : "No data for this month"}
+                </p>
+              ) : (
+                <>
+                  <div className="mb-4 flex items-center justify-between rounded-lg bg-accent/30 p-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground">
+                        {language === "ar" ? "إجمالي الطلبات" : "Total Orders"}
+                      </p>
+                      <p className="text-lg font-bold tracking-tight text-foreground">
+                        {monthlyReport.reduce((sum, row) => sum + row.count, 0)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">
+                        {language === "ar" ? "إجمالي المبيعات" : "Total Sales"}
+                      </p>
+                      <p className="text-lg font-bold tracking-tight text-foreground">
+                        {monthlyReport.reduce((sum, row) => sum + row.totalSales, 0).toFixed(2)} {sym}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="max-h-64 space-y-1.5 overflow-y-auto">
+                    {monthlyReport.map((row) => {
+                      const maxCount = Math.max(...monthlyReport.map((r) => r.count), 1);
+                      return (
+                        <div
+                          key={row.day}
+                          className="flex items-center justify-between rounded-lg bg-accent/20 p-2.5"
+                        >
+                          <span className="text-sm font-medium text-foreground">
+                            {language === "ar" ? `يوم ${row.day}` : `Day ${row.day}`}
+                          </span>
+                          <div className="flex items-center gap-3 text-end text-xs">
+                            <span className="text-muted-foreground">
+                              {row.count} {language === "ar" ? "طلب" : "orders"}
+                            </span>
+                            <span className="font-medium text-foreground">
+                              {row.totalSales.toFixed(2)} {sym}
+                            </span>
+                            <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
+                              <div
+                                className="h-full rounded-full bg-primary/70"
+                                style={{ width: `${(row.count / maxCount) * 100}%` }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-xl ring-1 ring-border">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between gap-3">
+                <CardTitle className="text-sm font-semibold">
+                  {language === "ar" ? "ملخص سنوي" : "Yearly Summary"}
+                </CardTitle>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={exportYearlyExcel}
+                    className="rounded border border-green-500/30 bg-green-500/10 px-2 py-1 text-xs text-green-400 transition-colors hover:bg-green-500/20"
+                  >
+                    Excel
+                  </button>
+                  <div className="h-4 w-px bg-border/30" />
+                  <span className="text-sm text-muted-foreground">{reportYear}</span>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0">
+              {yearlySummary.length === 0 ? (
+                <p className="py-8 text-center text-sm text-muted-foreground">
+                  {language === "ar" ? "لا توجد بيانات لهذه السنة" : "No data for this year"}
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {yearlySummary.map((row) => (
+                    <div
+                      key={row.month}
+                      className="flex items-center justify-between rounded-lg bg-accent/20 p-3"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20">
+                          <span className="text-xs font-bold text-primary">{row.month}</span>
+                        </div>
+                        <span className="text-sm font-medium tracking-tight text-foreground">
+                          {monthNames[(row.month || 1) - 1]}
+                        </span>
+                      </div>
+                      <div className="text-end">
+                        <p className="text-sm font-semibold text-foreground">
+                          {row.totalSales.toFixed(2)} {sym}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {row.count} {language === "ar" ? "طلب" : "orders"}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>
