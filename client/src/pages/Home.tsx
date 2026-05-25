@@ -81,7 +81,7 @@ export default function Home() {
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/30 bg-background/60 backdrop-blur-xl">
         <div className="container flex items-center justify-between h-16 gap-2">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 shrink-0">
             <img
               src="https://d2xsxph8kpxj0f.cloudfront.net/310519663504545475/fcy9GqTzfuy9H9eCsDbdLA/mineuqr-logo_150417d8.png"
               alt="mineuqr"
@@ -95,10 +95,10 @@ export default function Home() {
           <div className="hidden sm:flex items-center gap-2 sm:gap-3 flex-wrap">
             <Button
               variant="ghost"
-              onClick={() => setLocation("/about")}
+              onClick={() => setLocation("/")}
               className="text-foreground hover:text-primary font-semibold"
             >
-              {t('nav.about')}
+              {t('nav.home')}
             </Button>
             <Button
               variant="ghost"
@@ -151,7 +151,7 @@ export default function Home() {
               </>
             ) : (
               <Button
-                onClick={() => { window.location.href = getLoginUrl(); }}
+                onClick={() => setLocation(getLoginUrl())}
                 className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
               >
                 {t('common.login')}
@@ -193,10 +193,10 @@ export default function Home() {
           <div className="sm:hidden border-t border-border/30 bg-background/95 backdrop-blur-xl px-4 py-4 space-y-2">
             <Button
               variant="ghost"
-              onClick={() => { setLocation("/about"); setMobileMenuOpen(false); }}
+              onClick={() => { setLocation("/"); setMobileMenuOpen(false); }}
               className="w-full justify-start text-foreground hover:text-primary font-semibold"
             >
-              {t('nav.about')}
+              {t('nav.home')}
             </Button>
             <Button
               variant="ghost"
@@ -231,7 +231,7 @@ export default function Home() {
               </>
             ) : (
               <Button
-                onClick={() => { window.location.href = getLoginUrl(); }}
+                onClick={() => { setLocation(getLoginUrl()); setMobileMenuOpen(false); }}
                 className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
               >
                 {t('common.login')}

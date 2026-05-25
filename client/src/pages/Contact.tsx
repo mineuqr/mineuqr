@@ -4,6 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { useLocation } from "wouter";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { getLoginUrl } from "@/const";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { trpc } from "@/lib/trpc";
@@ -13,6 +15,7 @@ import { toast } from "sonner";
 
 export default function Contact() {
   const [, setLocation] = useLocation();
+  const { isAuthenticated } = useAuth();
   const { t, language, dir } = useLanguage();
   const [formData, setFormData] = useState({
     name: "",
@@ -56,19 +59,46 @@ export default function Contact() {
       {/* Navigation */}
       <nav className="sticky top-0 z-50 border-b border-border/30 bg-background/80 backdrop-blur-xl">
         <div className="container flex items-center justify-between h-14">
-          <button
-            onClick={() => setLocation("/")}
-            className="flex items-center gap-2 hover:opacity-80 transition"
-          >
+          <div className="flex items-center gap-2 shrink-0">
             <img
               src="https://d2xsxph8kpxj0f.cloudfront.net/310519663504545475/fcy9GqTzfuy9H9eCsDbdLA/mineuqr-logo_150417d8.png"
               alt="mineuqr"
               className="h-12 w-auto object-contain"
             />
             <span className="text-lg font-bold text-foreground">mineuqr</span>
-          </button>
-          <div className="flex items-center gap-3">
+          </div>
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+            <Button
+              variant="ghost"
+              onClick={() => setLocation("/")}
+              className="text-foreground hover:text-primary font-semibold"
+            >
+              {t("nav.home")}
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => setLocation("/pricing")}
+              className="text-foreground hover:text-primary font-semibold"
+            >
+              {t("nav.pricing")}
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => setLocation("/contact")}
+              className="text-primary font-semibold"
+            >
+              {t("nav.contact")}
+            </Button>
             <LanguageSwitcher />
+            <Button
+              onClick={() => {
+                if (isAuthenticated) setLocation("/dashboard");
+                else setLocation(getLoginUrl());
+              }}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+            >
+              {isAuthenticated ? t("nav.dashboard") : t("common.login")}
+            </Button>
           </div>
         </div>
       </nav>

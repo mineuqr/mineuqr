@@ -13,7 +13,7 @@ import {
   Check, X, Upload, GripVertical, Palette, Tag, Calendar, Clock, User, Bell,
   AlertTriangle, CalendarPlus, ClipboardList, Grid3X3, Download, Copy,
   TrendingUp, DollarSign, CheckCircle2, Clock3, LayoutDashboard,
-  Menu, CreditCard, Sparkles
+  Menu, CreditCard, Sparkles, Globe
 } from "lucide-react";
 import { useState, useRef, useCallback, useEffect, useMemo, type ComponentType } from "react";
 import { useLocation, useRoute } from "wouter";
@@ -168,6 +168,16 @@ function DashboardSidebar({
   const inRestaurant = activeSection === "restaurant-detail" && !!onRestaurantTabChange;
 
   const topNavItems = [
+    {
+      id: "website",
+      label: language === "ar" ? "العودة للموقع" : "Back to Website",
+      icon: Globe,
+      active: false,
+      onClick: () => {
+        setLocation("/");
+        onMobileClose();
+      },
+    },
     {
       id: "restaurants",
       label: language === "ar" ? "مطاعمي" : "My Restaurants",
@@ -398,6 +408,16 @@ function DashboardTopBar({
       </div>
 
       <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="hidden border-border/50 text-muted-foreground hover:text-foreground sm:inline-flex"
+          onClick={() => setLocation("/")}
+        >
+          <Globe className="h-4 w-4 me-1.5" />
+          {language === "ar" ? "العودة للموقع" : "Back to Website"}
+        </Button>
         <Button
           variant="ghost"
           size="icon"

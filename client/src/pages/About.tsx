@@ -79,7 +79,7 @@ export default function About() {
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/30 bg-background/60 backdrop-blur-xl">
         <div className="container flex items-center justify-between h-16">
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => setLocation("/")}>
+          <div className="flex items-center gap-3 shrink-0">
             <img
               src="https://d2xsxph8kpxj0f.cloudfront.net/310519663504545475/fcy9GqTzfuy9H9eCsDbdLA/mineuqr-logo_150417d8.png"
               alt="mineuqr"
@@ -89,29 +89,37 @@ export default function About() {
               mine<span className="text-gradient-teal">uqr</span>
             </span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+            <Button
+              variant="ghost"
+              onClick={() => setLocation("/")}
+              className="text-foreground hover:text-primary font-semibold"
+            >
+              {t("nav.home")}
+            </Button>
             <Button
               variant="ghost"
               onClick={() => setLocation("/pricing")}
               className="text-foreground hover:text-primary font-semibold"
             >
-              {t("common.pricing")}
+              {t("nav.pricing")}
             </Button>
             <Button
               variant="ghost"
-              onClick={() => setLocation("/about")}
-              className="text-primary font-semibold"
+              onClick={() => setLocation("/contact")}
+              className="text-foreground hover:text-primary font-semibold"
             >
-              {t("common.about")}
+              {t("nav.contact")}
             </Button>
+            <LanguageSwitcher />
             <Button
               onClick={() => {
                 if (isAuthenticated) setLocation("/dashboard");
-                else window.location.href = getLoginUrl();
+                else setLocation(getLoginUrl());
               }}
               className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
             >
-              {isAuthenticated ? t("common.dashboard") : t("common.startNow")}
+              {isAuthenticated ? t("nav.dashboard") : t("common.login")}
             </Button>
           </div>
         </div>
