@@ -27,13 +27,16 @@ import SubscriberLogin from "./pages/SubscriberLogin";
 import Profile from "./pages/Profile";
 import Notifications from "./pages/Notifications";
 import { useLanguage } from "./contexts/LanguageContext";
-import LoadingScreen from "./pages/LoadingScreen";
 import { Suspense } from "react";
+
+function RouteTransitionFallback() {
+  return <div className="min-h-screen bg-[#0b0e14]" aria-hidden />;
+}
 
 function Router() {
   const { dir } = useLanguage();
   return (
-    <Suspense fallback={<LoadingScreen />}>
+    <Suspense fallback={<RouteTransitionFallback />}>
       <Switch>
         <Route path="/" component={Home} />
         <Route path="/dashboard" component={Dashboard} />

@@ -32,7 +32,7 @@ export default function LoadingScreen() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#0b0e14] flex items-center justify-center p-4">
       <Card className="w-full max-w-sm bg-slate-800 border-slate-700 shadow-2xl">
         <div className="p-8 text-center space-y-6">
           {/* Logo */}

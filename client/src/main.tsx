@@ -6,7 +6,7 @@ import { createRoot } from "react-dom/client";
 import superjson from "superjson";
 import { LanguageProvider } from "./contexts/LanguageContext";
 import App from "./App";
-import { getLoginUrl } from "./const";
+import { getLoginUrl, spaNavigate } from "./const";
 import "./index.css";
 
 const queryClient = new QueryClient();
@@ -19,7 +19,7 @@ const redirectToLoginIfUnauthorized = (error: unknown) => {
 
   if (!isUnauthorized) return;
 
-  window.location.href = getLoginUrl();
+  spaNavigate(getLoginUrl());
 };
 
 queryClient.getQueryCache().subscribe(event => {

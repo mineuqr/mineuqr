@@ -81,16 +81,22 @@ export default function Home() {
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/30 bg-background/60 backdrop-blur-xl">
         <div className="container flex items-center justify-between h-16 gap-2">
-          <div className="flex items-center gap-3 shrink-0">
+          <button
+            type="button"
+            onClick={() => setLocation("/")}
+            className="brand-mark flex items-center gap-3 shrink-0 rounded-lg transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+            aria-label={language === "ar" ? "الصفحة الرئيسية" : "Go to homepage"}
+          >
             <img
               src="https://d2xsxph8kpxj0f.cloudfront.net/310519663504545475/fcy9GqTzfuy9H9eCsDbdLA/mineuqr-logo_150417d8.png"
-              alt="mineuqr"
+              alt=""
               className="h-14 w-auto object-contain"
+              draggable={false}
             />
             <span className="text-2xl font-bold text-foreground hidden sm:inline">
               mine<span className="text-gradient-teal">uqr</span>
             </span>
-          </div>
+          </button>
           {/* Desktop Navigation */}
           <div className="hidden sm:flex items-center gap-2 sm:gap-3 flex-wrap">
             <Button
@@ -291,7 +297,7 @@ export default function Home() {
                 size="lg"
                 onClick={() => {
                   if (isAuthenticated) setLocation("/dashboard");
-                  else window.location.href = getLoginUrl();
+                  else setLocation(getLoginUrl());
                 }}
                 className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-lg px-8 py-6 rounded-xl glow-teal"
               >
@@ -456,7 +462,7 @@ export default function Home() {
               size="lg"
               onClick={() => {
                 if (isAuthenticated) setLocation("/dashboard");
-                else window.location.href = getLoginUrl();
+                else setLocation(getLoginUrl());
               }}
               className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-lg px-10 py-6 rounded-xl"
             >

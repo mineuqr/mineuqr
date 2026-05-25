@@ -1,7 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import OrderAlertSystem from "@/components/OrderAlertSystem";
-import { getLoginUrl } from "@/const";
+import { getLoginUrl, spaNavigate } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { cn, resolveImageUrl } from "@/lib/utils";
 import { formatRiyadhDateTime, parseDbUtcTimestamp } from "@/lib/datetime";
@@ -50,7 +50,7 @@ const dash = {
   sidebarNavIconActive: "bg-primary/25 text-primary",
   sidebarNavIconIdle: "bg-white/[0.06] text-muted-foreground group-hover:bg-white/[0.1] group-hover:text-foreground",
   sidebarSectionLabel:
-    "px-5 pb-3 pt-8 text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground/90 first:pt-5",
+    "ui-chrome px-5 pb-3 pt-8 text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground/90 first:pt-5",
   sidebarNavActive:
     "bg-primary/20 font-semibold text-primary ring-1 ring-inset ring-primary/35 before:absolute before:end-0 before:top-1/2 before:h-10 before:w-1 before:-translate-y-1/2 before:rounded-full before:bg-primary before:shadow-[0_0_14px] before:shadow-primary/60 rtl:before:end-auto rtl:before:start-0",
   sidebarNavIdle:
@@ -65,8 +65,9 @@ const dash = {
   hero:
     "relative overflow-hidden rounded-2xl border border-border/40 bg-gradient-to-br from-[#161b22] via-[#141a24] to-primary/10 p-7 sm:p-9",
   kpiCard: "rounded-2xl border border-border/40 bg-[#161b22] p-6 sm:p-7",
-  pageTitle: "text-3xl font-semibold tracking-tight text-foreground sm:text-4xl",
-  pageSub: "mt-2.5 max-w-2xl text-base leading-relaxed text-muted-foreground",
+  pageTitle:
+    "page-heading text-3xl font-semibold tracking-tight text-foreground sm:text-4xl",
+  pageSub: "ui-chrome mt-2.5 max-w-2xl text-base leading-relaxed text-muted-foreground",
   stack: "flex flex-col gap-10 sm:gap-12",
   section: "flex flex-col gap-7 sm:gap-9",
   label: "text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground/90 sm:text-sm",
@@ -263,14 +264,23 @@ function DashboardSidebar({
 
   const sidebarBody = (
     <>
-      <div className="flex h-[5rem] shrink-0 items-center gap-4 border-b border-border/30 px-6">
+      <button
+        type="button"
+        onClick={() => {
+          setLocation("/");
+          onMobileClose();
+        }}
+        className="brand-mark flex h-[5rem] w-full shrink-0 items-center gap-4 border-b border-border/30 px-6 text-start transition hover:bg-white/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+        aria-label={language === "ar" ? "الصفحة الرئيسية" : "Go to homepage"}
+      >
         <img
           src="https://d2xsxph8kpxj0f.cloudfront.net/310519663504545475/fcy9GqTzfuy9H9eCsDbdLA/mineuqr-logo_150417d8.png"
-          alt="mineuqr"
+          alt=""
           className="h-11 w-auto object-contain"
+          draggable={false}
         />
         <span className="text-xl font-semibold tracking-tight text-foreground">mineuqr</span>
-      </div>
+      </button>
 
       <nav className="flex-1 overflow-y-auto overscroll-contain px-5 py-6" aria-label="Dashboard">
         <p className={dash.sidebarSectionLabel}>{language === "ar" ? "عام" : "General"}</p>
@@ -554,7 +564,7 @@ export default function Dashboard() {
             <h2 className="text-2xl font-bold text-foreground mb-2">{t('common.loginRequired')}</h2>
             <p className="text-muted-foreground mb-6">{t('common.loginRequiredDesc')}</p>
             <Button
-              onClick={() => { window.location.href = getLoginUrl(); }}
+              onClick={() => spaNavigate(getLoginUrl())}
               className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold w-full"
             >
               {t('common.login')}
@@ -673,7 +683,7 @@ function RestaurantsList({
       <div className={cn(dash.hero)}>
         <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0 flex-1 space-y-3">
-            <p className="text-sm text-muted-foreground">
+            <p className="ui-chrome text-sm text-muted-foreground">
               {language === "ar" ? "مرحباً بعودتك 👋" : "Welcome back 👋"}
             </p>
             <h1 className={dash.pageTitle}>
@@ -1026,18 +1036,18 @@ function RestaurantHeaderCard({ restaurant }: { restaurant: any }) {
     <div className={cn(dash.hero)}>
       <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0 flex-1 space-y-4">
-          <p className="text-base text-muted-foreground">
+          <p className="ui-chrome text-base text-muted-foreground">
             {language === "ar" ? "مرحباً بعودتك 👋" : "Welcome back 👋"}
           </p>
           <div>
-            <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+            <h1 className="page-heading text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
               {restaurant.nameAr}
             </h1>
             {restaurant.nameEn ? (
               <p className="mt-2 text-base text-muted-foreground">{restaurant.nameEn}</p>
             ) : null}
           </div>
-          <p className="max-w-xl text-base leading-relaxed text-muted-foreground">
+          <p className="ui-chrome max-w-xl text-base leading-relaxed text-muted-foreground">
             {restaurant.descriptionAr ||
               (language === "ar"
                 ? "أدر منيوك الرقمي والطلبات والتقارير من مكان واحد."

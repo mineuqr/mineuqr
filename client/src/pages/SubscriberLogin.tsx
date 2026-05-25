@@ -37,7 +37,7 @@ export default function SubscriberLogin() {
       toast.success(t("auth.loginSuccess"));
 
       // Redirect to dashboard
-      window.location.href = "/dashboard";
+      setLocation("/dashboard");
     } catch (error) {
       toast.error(t("auth.loginError"));
     } finally {

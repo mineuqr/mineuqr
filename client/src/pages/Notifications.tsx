@@ -178,8 +178,8 @@ export default function Notifications() {
               </Button>
             </Link>
             <div>
-              <h1 className="text-3xl font-bold text-white mb-1">{t("notifications.title") || "الإشعارات"}</h1>
-              <p className="text-cyan-300 text-sm">{t("notifications.description") || "تابع آخر التحديثات على اشتراكك"}</p>
+              <h1 className="page-heading text-3xl font-bold text-white mb-1">{t("notifications.title") || "الإشعارات"}</h1>
+              <p className="ui-chrome text-cyan-300 text-sm">{t("notifications.description") || "تابع آخر التحديثات على اشتراكك"}</p>
             </div>
           </div>
           {unreadCount > 0 && (

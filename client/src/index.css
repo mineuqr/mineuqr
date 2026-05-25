@@ -119,8 +119,19 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    /* Prevent white flash between route remounts (dashboard ↔ public). */
+    background-color: #0b0e14;
+    color-scheme: dark;
+  }
   body {
     @apply bg-background text-foreground font-sans;
+    min-height: 100%;
+    background-color: #0b0e14;
+  }
+  #root {
+    min-height: 100%;
+    background-color: #0b0e14;
   }
   /* RTL support */
   html[dir="rtl"] body {
@@ -148,6 +159,41 @@
   input[type="checkbox"]:not(:disabled),
   input[type="radio"]:not(:disabled) {
     @apply cursor-pointer;
+  }
+
+  /* Non-editable UI copy: no accidental text caret / selection */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  [data-slot="card-title"],
+  [data-slot="card-description"] {
+    user-select: none;
+    -webkit-user-select: none;
+    caret-color: transparent;
+    cursor: default;
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="file"]),
+  textarea,
+  select {
+    user-select: text;
+    cursor: text;
+  }
+
+  h1[contenteditable],
+  h2[contenteditable],
+  h3[contenteditable],
+  h4[contenteditable],
+  h5[contenteditable],
+  h6[contenteditable],
+  [data-slot="card-title"][contenteditable],
+  [data-slot="card-description"][contenteditable] {
+    cursor: default !important;
+    caret-color: transparent !important;
+    user-select: none !important;
   }
 }
 
@@ -213,6 +259,9 @@
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    user-select: none;
+    -webkit-user-select: none;
+    caret-color: transparent;
   }
 
   .text-gradient-orange {
@@ -220,6 +269,46 @@
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    user-select: none;
+    -webkit-user-select: none;
+    caret-color: transparent;
+  }
+
+  /* Logo wordmarks, page titles, section labels */
+  .brand-mark,
+  .page-heading,
+  .ui-chrome {
+    user-select: none;
+    -webkit-user-select: none;
+    caret-color: transparent;
+    cursor: default;
+  }
+
+  .brand-mark * {
+    user-select: none;
+    -webkit-user-select: none;
+    caret-color: transparent;
+  }
+
+  button.brand-mark,
+  a.brand-mark {
+    cursor: pointer;
+  }
+
+  .brand-mark[contenteditable="true"],
+  .brand-mark[contenteditable="plaintext-only"],
+  .page-heading[contenteditable="true"],
+  .page-heading[contenteditable="plaintext-only"],
+  .ui-chrome[contenteditable="true"],
+  .ui-chrome[contenteditable="plaintext-only"] {
+    cursor: default !important;
+    caret-color: transparent !important;
+    user-select: none !important;
+  }
+
+  button.brand-mark[contenteditable],
+  a.brand-mark[contenteditable] {
+    cursor: pointer !important;
   }
 }
 

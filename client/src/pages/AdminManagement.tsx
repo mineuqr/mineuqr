@@ -881,7 +881,11 @@ export default function AdminManagement() {
       <nav className="sticky top-0 z-50 border-b border-border/30 bg-background/80 backdrop-blur-xl">
         <div className="container flex items-center justify-between h-14">
           <div className="flex items-center gap-3">
-            <button onClick={() => setLocation("/")} className="flex items-center gap-2 hover:opacity-80 transition">
+            <button
+              type="button"
+              onClick={() => setLocation("/")}
+              className="brand-mark flex items-center gap-2 transition hover:opacity-80 select-none outline-none focus-visible:ring-2 focus-visible:ring-ring/50 rounded-md"
+            >
               <Store className="w-6 h-6 text-primary" />
               <span className="font-bold text-foreground">{t('admin.title')}</span>
             </button>
@@ -903,8 +907,8 @@ export default function AdminManagement() {
       <main className="container py-6">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">{t('admin.title')}</h1>
-            <p className="text-muted-foreground mt-2">{t('admin.subtitle')}</p>
+            <h1 className="page-heading text-3xl font-bold text-foreground">{t('admin.title')}</h1>
+            <p className="ui-chrome text-muted-foreground mt-2">{t('admin.subtitle')}</p>
           </div>
           <Button
             onClick={() => { resetForm(); setShowCreateDialog(true); }}

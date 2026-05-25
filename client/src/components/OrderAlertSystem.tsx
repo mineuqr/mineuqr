@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { spaNavigate } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { ShoppingCart, Volume2, VolumeX, X, ExternalLink } from "lucide-react";
@@ -204,7 +205,7 @@ export default function OrderAlertSystem() {
                   </p>
                   <button
                     onClick={() => {
-                      window.location.href = "/dashboard?section=orders";
+                      spaNavigate("/dashboard?section=orders");
                     }}
                     className="mt-2 inline-flex items-center gap-1 text-xs text-orange-400 hover:text-orange-300 font-medium transition-colors"
                   >

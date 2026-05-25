@@ -59,14 +59,20 @@ export default function Contact() {
       {/* Navigation */}
       <nav className="sticky top-0 z-50 border-b border-border/30 bg-background/80 backdrop-blur-xl">
         <div className="container flex items-center justify-between h-14">
-          <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => setLocation("/")}
+            className="brand-mark flex items-center gap-2 shrink-0 rounded-lg transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+            aria-label={language === "ar" ? "الصفحة الرئيسية" : "Go to homepage"}
+          >
             <img
               src="https://d2xsxph8kpxj0f.cloudfront.net/310519663504545475/fcy9GqTzfuy9H9eCsDbdLA/mineuqr-logo_150417d8.png"
-              alt="mineuqr"
+              alt=""
               className="h-12 w-auto object-contain"
+              draggable={false}
             />
             <span className="text-lg font-bold text-foreground">mineuqr</span>
-          </div>
+          </button>
           <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
             <Button
               variant="ghost"
