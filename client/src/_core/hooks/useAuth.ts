@@ -36,8 +36,10 @@ export function useAuth(options?: UseAuthOptions) {
       }
       throw error;
     } finally {
+      // Keep client session empty; do not invalidate/refetch auth.me here — a surviving
+      // cookie would rehydrate the user immediately after logout.
       utils.auth.me.setData(undefined, null);
-      await utils.auth.me.invalidate();
+      localStorage.removeItem("manus-runtime-user-info");
     }
   }, [logoutMutation, utils]);
 

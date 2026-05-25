@@ -1,4 +1,5 @@
-import type { CookieOptions, Request } from "express";
+import { COOKIE_NAME } from "@shared/const";
+import type { CookieOptions, Request, Response } from "express";
 
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
 
@@ -45,4 +46,24 @@ export function getSessionCookieOptions(
     sameSite: "none",
     secure: isSecureRequest(req),
   };
+}
+
+/**
+ * Clear app_session_id using every sameSite/secure pair used at login.
+ * OAuth sets cookies via getSessionCookieOptions (sameSite: none); email login uses sameSite: lax.
+ * clearCookie only removes a cookie when path/sameSite/secure match how it was set.
+ */
+export function clearSessionCookie(res: Response, req: Request): void {
+  const oauthStyle = getSessionCookieOptions(req);
+  const variants: Pick<CookieOptions, "httpOnly" | "path" | "sameSite" | "secure">[] = [
+    oauthStyle,
+    { httpOnly: true, path: "/", sameSite: "lax", secure: true },
+    { httpOnly: true, path: "/", sameSite: "lax", secure: false },
+    { httpOnly: true, path: "/", sameSite: "none", secure: true },
+    { httpOnly: true, path: "/", sameSite: "none", secure: false },
+  ];
+
+  for (const opts of variants) {
+    res.clearCookie(COOKIE_NAME, opts);
+  }
 }

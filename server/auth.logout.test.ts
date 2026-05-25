@@ -49,14 +49,28 @@ describe("auth.logout", () => {
     const result = await caller.auth.logout();
 
     expect(result).toEqual({ success: true });
-    expect(clearedCookies).toHaveLength(1);
-    expect(clearedCookies[0]?.name).toBe(COOKIE_NAME);
-    expect(clearedCookies[0]?.options).toMatchObject({
-      maxAge: -1,
-      secure: true,
-      sameSite: "none",
-      httpOnly: true,
-      path: "/",
-    });
+    // One clear per login cookie variant (OAuth none + email lax, each secure true/false).
+    expect(clearedCookies).toHaveLength(5);
+    expect(clearedCookies.every((c) => c.name === COOKIE_NAME)).toBe(true);
+    expect(clearedCookies).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          options: expect.objectContaining({
+            secure: true,
+            sameSite: "none",
+            httpOnly: true,
+            path: "/",
+          }),
+        }),
+        expect.objectContaining({
+          options: expect.objectContaining({
+            secure: false,
+            sameSite: "lax",
+            httpOnly: true,
+            path: "/",
+          }),
+        }),
+      ])
+    );
   });
 });

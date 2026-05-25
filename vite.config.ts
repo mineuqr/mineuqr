@@ -82,21 +82,13 @@ function vitePluginManusDebugCollector(): Plugin {
       if (process.env.NODE_ENV === "production") {
         return html;
       }
+    
       return {
         html,
-        tags: [
-          {
-            tag: "script",
-            attrs: {
-              src: "/__manus__/debug-collector.js",
-              defer: true,
-            },
-            injectTo: "head",
-          },
-        ],
+        tags: [],
       };
     },
-
+    
     configureServer(server: ViteDevServer) {
       // POST /__manus__/logs: Browser sends logs (written directly to files)
       server.middlewares.use("/__manus__/logs", (req, res, next) => {
