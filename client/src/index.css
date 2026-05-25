@@ -123,6 +123,8 @@
     /* Prevent white flash between route remounts (dashboard ↔ public). */
     background-color: #0b0e14;
     color-scheme: dark;
+    /* Hide text insertion caret everywhere; restore on form fields below */
+    caret-color: transparent;
   }
   body {
     @apply bg-background text-foreground font-sans;
@@ -162,38 +164,61 @@
   }
 
   /* Non-editable UI copy: no accidental text caret / selection */
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6,
-  [data-slot="card-title"],
-  [data-slot="card-description"] {
+  :where(
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6,
+    p,
+    span,
+    li,
+    label,
+    a,
+    td,
+    th,
+    [data-slot="card-title"],
+    [data-slot="card-description"]
+  ) {
     user-select: none;
     -webkit-user-select: none;
     caret-color: transparent;
     cursor: default;
   }
 
-  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="file"]),
-  textarea,
-  select {
+  :where(button, [role="button"]) {
+    user-select: none;
+    -webkit-user-select: none;
+    caret-color: transparent;
+  }
+
+  :where(
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="file"]),
+    textarea,
+    select
+  ) {
     user-select: text;
+    -webkit-user-select: text;
+    caret-color: auto;
     cursor: text;
   }
 
-  h1[contenteditable],
-  h2[contenteditable],
-  h3[contenteditable],
-  h4[contenteditable],
-  h5[contenteditable],
-  h6[contenteditable],
-  [data-slot="card-title"][contenteditable],
-  [data-slot="card-description"][contenteditable] {
-    cursor: default !important;
-    caret-color: transparent !important;
-    user-select: none !important;
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    caret-color: transparent;
+  }
+
+  /* Long-form copy (Terms/Privacy/etc.) */
+  .leading-relaxed :where(p, li, span) {
+    user-select: text;
+    -webkit-user-select: text;
+  }
+
+  .select-text,
+  .select-text * {
+    user-select: text !important;
+    -webkit-user-select: text !important;
   }
 }
 
@@ -319,4 +344,17 @@
 }
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+/*
+ * Phantom caret fix: dev Manus runtime sets contenteditable + cursor:text on UI nodes.
+ * Must be unlayered + !important to load after injected runtime styles.
+ */
+:not(input):not(textarea)[contenteditable="true"],
+:not(input):not(textarea)[contenteditable="plaintext-only"] {
+  caret-color: transparent !important;
+  cursor: default !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -webkit-user-modify: read-only !important;
 }
