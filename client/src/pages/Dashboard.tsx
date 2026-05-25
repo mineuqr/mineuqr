@@ -5,6 +5,7 @@ import { getLoginUrl, spaNavigate } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { cn, resolveImageUrl } from "@/lib/utils";
 import { formatRiyadhDateTime, parseDbUtcTimestamp } from "@/lib/datetime";
+import { downloadSalesReportXlsx } from "@/lib/excel";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
   QrCode, Plus, Store, LayoutGrid, UtensilsCrossed,
@@ -1326,7 +1327,14 @@ function RestaurantDetail({
       {activeTab === "reports" && (
         <ReportsTab
           restaurantId={restaurantId}
+          restaurantName={
+            language === "ar"
+              ? (restaurant as { nameAr?: string })?.nameAr
+              : (restaurant as { nameEn?: string })?.nameEn ||
+                (restaurant as { nameAr?: string })?.nameAr
+          }
           currencySymbol={(restaurant as { currencySymbol?: string })?.currencySymbol}
+          currencyCode={(restaurant as { currencyCode?: string })?.currencyCode}
           stats={statsPayload}
           t={t}
           language={language}
@@ -3664,29 +3672,21 @@ function buildYearlySummary(orders: DashboardOrder[], year: number) {
   return rows;
 }
 
-function downloadCsv(filename: string, rows: string[][]) {
-  const bom = "\uFEFF";
-  const body = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
-  const blob = new Blob([bom + body], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
 // ─── Reports Tab ────────────────────────────────────────────
 function ReportsTab({
   restaurantId,
+  restaurantName,
   currencySymbol,
+  currencyCode,
   stats,
   t,
   language,
   statsAriaLabel,
 }: {
   restaurantId: number;
+  restaurantName?: string;
   currencySymbol?: string;
+  currencyCode?: string;
   stats: { totalCategories?: number; totalItems?: number; viewCount?: number };
   t: (key: string) => string;
   language: string;
@@ -3730,29 +3730,49 @@ function ReportsTab({
   };
 
   const exportMonthlyExcel = () => {
-    const header =
-      language === "ar"
+    const isAr = language === "ar";
+    void downloadSalesReportXlsx({
+      language: isAr ? "ar" : "en",
+      filename: `monthly-report-${reportYear}-${reportMonth}`,
+      sheetName: isAr ? "تقرير شهري" : "Monthly Report",
+      reportTitle: isAr ? "تقرير شهري" : "Monthly Report",
+      reportSubtitle: `${monthNames[reportMonth - 1]} ${reportYear}`,
+      columnHeaders: isAr
         ? ["اليوم", "عدد الطلبات", "إجمالي المبيعات"]
-        : ["Day", "Orders", "Total Sales"];
-    const rows = monthlyReport.map((row) => [
-      String(row.day),
-      String(row.count),
-      row.totalSales.toFixed(2),
-    ]);
-    downloadCsv(`monthly-report-${reportYear}-${reportMonth}.csv`, [header, ...rows]);
+        : ["Day", "Orders", "Total Sales"],
+      rows: monthlyReport.map((row) => ({
+        label: isAr ? `يوم ${row.day}` : `Day ${row.day}`,
+        orderCount: row.count,
+        totalSales: row.totalSales,
+      })),
+      currencySymbol: sym,
+      currencyCode: currencyCode || (sym === "ر.س" || sym === "SAR" ? "SAR" : undefined),
+      totalsLabel: isAr ? "الإجمالي" : "Total",
+      restaurantName,
+    });
   };
 
   const exportYearlyExcel = () => {
-    const header =
-      language === "ar"
+    const isAr = language === "ar";
+    void downloadSalesReportXlsx({
+      language: isAr ? "ar" : "en",
+      filename: `yearly-summary-${reportYear}`,
+      sheetName: isAr ? "ملخص سنوي" : "Yearly Summary",
+      reportTitle: isAr ? "ملخص سنوي" : "Yearly Summary",
+      reportSubtitle: isAr ? `السنة ${reportYear}` : `Year ${reportYear}`,
+      columnHeaders: isAr
         ? ["الشهر", "عدد الطلبات", "إجمالي المبيعات"]
-        : ["Month", "Orders", "Total Sales"];
-    const rows = yearlySummary.map((row) => [
-      monthNames[(row.month || 1) - 1],
-      String(row.count),
-      row.totalSales.toFixed(2),
-    ]);
-    downloadCsv(`yearly-summary-${reportYear}.csv`, [header, ...rows]);
+        : ["Month", "Orders", "Total Sales"],
+      rows: yearlySummary.map((row) => ({
+        label: monthNames[(row.month || 1) - 1],
+        orderCount: row.count,
+        totalSales: row.totalSales,
+      })),
+      currencySymbol: sym,
+      currencyCode: currencyCode || (sym === "ر.س" || sym === "SAR" ? "SAR" : undefined),
+      totalsLabel: isAr ? "الإجمالي" : "Total",
+      restaurantName,
+    });
   };
 
   return (
