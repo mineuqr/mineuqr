@@ -12,17 +12,20 @@ import {
   type ReportSheetLayout,
 } from "./reportLayout";
 import {
+  buildExcelCurrencyNumFmt,
+  normalizeCurrencyCode,
+  type CurrencyFormatInput,
+} from "../currencyLocale";
+import {
   REPORT_ROW_HEIGHTS,
   REPORT_THEME,
   bodyFont,
   cellBorder,
-  currencyNumFmt,
   isRtl,
   reportAlignment,
   solidFill,
   totalsFont,
   totalsRowBorder,
-  type CurrencyFormatConfig,
   type ReportLanguage,
 } from "./reportTheme";
 
@@ -57,10 +60,11 @@ function sanitizeSheetName(name: string): string {
   return cleaned.slice(0, 31);
 }
 
-function resolveCurrency(config: SalesReportExportConfig): CurrencyFormatConfig {
+function resolveCurrency(config: SalesReportExportConfig): CurrencyFormatInput {
   return {
-    symbol: config.currencySymbol,
-    code: config.currencyCode,
+    language: config.language,
+    currencyCode: normalizeCurrencyCode(config.currencyCode, config.currencySymbol),
+    currencySymbol: config.currencySymbol,
     decimalPlaces: 2,
   };
 }
@@ -92,7 +96,7 @@ function applyDataRow(
   rowIndex: number,
   data: SalesReportDataRow,
   language: ReportLanguage,
-  currency: CurrencyFormatConfig,
+  currency: CurrencyFormatInput,
   zebra: boolean
 ) {
   const row = sheet.getRow(rowIndex);
@@ -118,7 +122,7 @@ function applyDataRow(
 
   const salesCell = row.getCell(3);
   salesCell.value = data.totalSales;
-  salesCell.numFmt = currencyNumFmt(currency);
+  salesCell.numFmt = buildExcelCurrencyNumFmt(currency);
   salesCell.font = bodyFont(language);
   salesCell.fill = fill;
   salesCell.alignment = reportAlignment(language, "center");
@@ -134,7 +138,7 @@ function applyTotalsRow(
   totalOrders: number,
   totalSales: number,
   language: ReportLanguage,
-  currency: CurrencyFormatConfig
+  currency: CurrencyFormatInput
 ) {
   const row = sheet.getRow(rowIndex);
   const fill = solidFill(REPORT_THEME.totalsBg);
@@ -159,7 +163,7 @@ function applyTotalsRow(
 
   const c3 = row.getCell(3);
   c3.value = totalSales;
-  c3.numFmt = currencyNumFmt(currency);
+  c3.numFmt = buildExcelCurrencyNumFmt(currency);
   c3.font = font;
   c3.fill = fill;
   c3.alignment = reportAlignment(language, "center");

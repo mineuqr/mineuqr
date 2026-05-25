@@ -3746,7 +3746,7 @@ function ReportsTab({
         totalSales: row.totalSales,
       })),
       currencySymbol: sym,
-      currencyCode: currencyCode || (sym === "ر.س" || sym === "SAR" ? "SAR" : undefined),
+      currencyCode,
       totalsLabel: isAr ? "الإجمالي" : "Total",
       restaurantName,
     });
@@ -3769,7 +3769,7 @@ function ReportsTab({
         totalSales: row.totalSales,
       })),
       currencySymbol: sym,
-      currencyCode: currencyCode || (sym === "ر.س" || sym === "SAR" ? "SAR" : undefined),
+      currencyCode,
       totalsLabel: isAr ? "الإجمالي" : "Total",
       restaurantName,
     });

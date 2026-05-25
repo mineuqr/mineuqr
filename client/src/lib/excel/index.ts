@@ -8,7 +8,15 @@ export {
 export {
   REPORT_THEME,
   currencyNumFmt,
-  currencyNumFmtFromSymbol,
   type CurrencyFormatConfig,
   type ReportLanguage,
 } from "./reportTheme";
+
+export {
+  buildExcelCurrencyNumFmt,
+  formatCurrencyAmount,
+  normalizeCurrencyCode,
+  normalizeAppLanguage,
+  type AppLanguage,
+  type CurrencyFormatInput,
+} from "../currencyLocale";

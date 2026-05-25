@@ -43,11 +43,7 @@ export const TABLE_COLUMN_WIDTHS = {
 
 export type ReportLanguage = "ar" | "en";
 
-export type CurrencyFormatConfig = {
-  symbol: string;
-  code?: string;
-  decimalPlaces?: number;
-};
+export type { CurrencyFormatInput as CurrencyFormatConfig } from "../currencyLocale";
 
 export function isRtl(language: ReportLanguage): boolean {
   return language === "ar";
@@ -174,34 +170,4 @@ export function totalsFont(language: ReportLanguage): Partial<Font> {
   };
 }
 
-export function currencyNumFmt(config: CurrencyFormatConfig): string {
-  const decimals = Math.max(0, config.decimalPlaces ?? 2);
-  const decimalPart = decimals > 0 ? `.${"0".repeat(decimals)}` : "";
-  const base = `#,##0${decimalPart}`;
-  const code = (config.code ?? "").toUpperCase();
-  const symbol = config.symbol.trim();
-
-  if (code === "SAR" || symbol === "ر.س" || symbol === "SAR" || symbol === "ر.س.") {
-    return `${base} "ر.س"`;
-  }
-  if (code === "USD" || symbol === "$") {
-    return `"$"${base}`;
-  }
-  if (code === "EUR" || symbol === "€") {
-    return `${base} "€"`;
-  }
-  if (code === "AED") {
-    return `${base} "د.إ"`;
-  }
-
-  const escaped = symbol.replace(/"/g, '""');
-  if (!escaped) return base;
-  if (/[\u0600-\u06FF]/.test(symbol)) {
-    return `${base} "${escaped}"`;
-  }
-  return `${base} "${escaped}"`;
-}
-
-export function currencyNumFmtFromSymbol(symbol: string): string {
-  return currencyNumFmt({ symbol });
-}
+export { buildExcelCurrencyNumFmt as currencyNumFmt } from "../currencyLocale";
