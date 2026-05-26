@@ -6,11 +6,15 @@ export const LOGIN_PATH = "/login";
 export const getLoginUrl = () => LOGIN_PATH;
 
 /** Wouter-compatible client navigation without a full document reload. */
-export function spaNavigate(path: string) {
+export function spaNavigate(path: string, options?: { replace?: boolean }) {
   if (typeof window === "undefined") return;
   const target = path.startsWith("/") ? path : `/${path}`;
   const current = `${window.location.pathname}${window.location.search}`;
   if (current === target) return;
-  window.history.pushState(null, "", target);
+  if (options?.replace) {
+    window.history.replaceState(null, "", target);
+  } else {
+    window.history.pushState(null, "", target);
+  }
   window.dispatchEvent(new PopStateEvent("popstate"));
 }

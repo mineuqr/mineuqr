@@ -491,10 +491,28 @@ function readDashboardUrlState(pathSection: string | undefined) {
     parseRestaurantId(urlParams.get("restaurant")) ?? pathRestaurantId;
   const effectiveSection =
     sectionParam || (pathSection && !pathRestaurantId ? pathSection : null);
-  const openOrdersTab = effectiveSection === "orders";
   const tabFromSection = sectionToRestaurantTab(effectiveSection);
+  const needsRestaurantResolve = Boolean(tabFromSection && !restaurantIdFromUrl);
 
-  return { restaurantIdFromUrl, openOrdersTab, tabFromSection };
+  return { restaurantIdFromUrl, tabFromSection, needsRestaurantResolve };
+}
+
+function buildDashboardPath(params: {
+  restaurantId?: number | null;
+  section?: RestaurantTab | null;
+}): string {
+  if (!params.restaurantId) return "/dashboard";
+  const search = new URLSearchParams();
+  search.set("restaurant", String(params.restaurantId));
+  if (params.section) search.set("section", params.section);
+  return `/dashboard?${search.toString()}`;
+}
+
+function syncDashboardUrl(
+  params: { restaurantId?: number | null; section?: RestaurantTab | null },
+  options?: { replace?: boolean }
+) {
+  spaNavigate(buildDashboardPath(params), options);
 }
 
 // ─── Dashboard Layout ───────────────────────────────────────
@@ -502,42 +520,73 @@ function readDashboardUrlState(pathSection: string | undefined) {
 export default function Dashboard() {
   const { user, loading, isAuthenticated, logout } = useAuth();
   const { t, language, dir } = useLanguage();
+  const [location] = useLocation();
   const [, routeParams] = useRoute("/dashboard/:section");
-  const { restaurantIdFromUrl, openOrdersTab, tabFromSection } = readDashboardUrlState(routeParams?.section);
-  const needsRestaurantResolve = openOrdersTab && !restaurantIdFromUrl;
+  const urlState = useMemo(
+    () => readDashboardUrlState(routeParams?.section),
+    [location, routeParams?.section]
+  );
+  const { restaurantIdFromUrl, tabFromSection, needsRestaurantResolve } = urlState;
 
   const [activeSection, setActiveSection] = useState<"restaurants" | "restaurant-detail">(
-    restaurantIdFromUrl || openOrdersTab ? "restaurant-detail" : "restaurants"
+    restaurantIdFromUrl || tabFromSection ? "restaurant-detail" : "restaurants"
   );
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<number | null>(
     restaurantIdFromUrl
   );
-  const [restaurantTab, setRestaurantTab] = useState<RestaurantTab>(
-    tabFromSection ?? (openOrdersTab ? "orders" : "home")
-  );
+  const [restaurantTab, setRestaurantTab] = useState<RestaurantTab>(tabFromSection ?? "home");
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const selectedRestaurantIdRef = useRef<number | null>(restaurantIdFromUrl);
+
+  useEffect(() => {
+    selectedRestaurantIdRef.current = selectedRestaurantId;
+  }, [selectedRestaurantId]);
 
   const { data: sidebarRestaurant } = trpc.restaurant.getById.useQuery(
     { id: selectedRestaurantId! },
     { enabled: !!selectedRestaurantId && activeSection === "restaurant-detail" }
   );
 
+  // Restore restaurant + tab from URL (refresh, deep links, browser back/forward).
   useEffect(() => {
-    if (tabFromSection) setRestaurantTab(tabFromSection);
-  }, [tabFromSection]);
+    if (restaurantIdFromUrl) {
+      setSelectedRestaurantId(restaurantIdFromUrl);
+      setActiveSection("restaurant-detail");
+      if (tabFromSection) setRestaurantTab(tabFromSection);
+      else setRestaurantTab("home");
+      return;
+    }
+    if (tabFromSection) {
+      setActiveSection("restaurant-detail");
+      setRestaurantTab(tabFromSection);
+      return;
+    }
+    setActiveSection("restaurants");
+    setSelectedRestaurantId(null);
+    setRestaurantTab("home");
+  }, [restaurantIdFromUrl, tabFromSection]);
 
   const { data: restaurants, isLoading: restaurantsResolving } = trpc.restaurant.list.useQuery(
     undefined,
     { enabled: isAuthenticated && needsRestaurantResolve }
   );
 
+  const resolvingSectionRef = useRef(tabFromSection);
+
+  useEffect(() => {
+    resolvingSectionRef.current = tabFromSection;
+  }, [tabFromSection]);
+
   useEffect(() => {
     if (!needsRestaurantResolve || !restaurants?.length) return;
     const storedId = parseRestaurantId(sessionStorage.getItem(DASHBOARD_LAST_RESTAURANT_KEY));
     const resolvedId =
       storedId && restaurants.some((r) => r.id === storedId) ? storedId : restaurants[0].id;
+    const section = resolvingSectionRef.current ?? "home";
     setSelectedRestaurantId(resolvedId);
     setActiveSection("restaurant-detail");
+    setRestaurantTab(section);
+    syncDashboardUrl({ restaurantId: resolvedId, section }, { replace: true });
   }, [needsRestaurantResolve, restaurants]);
 
   useEffect(() => {
@@ -545,6 +594,29 @@ export default function Dashboard() {
       sessionStorage.setItem(DASHBOARD_LAST_RESTAURANT_KEY, String(selectedRestaurantId));
     }
   }, [selectedRestaurantId]);
+
+  const handleSelectRestaurant = useCallback((id: number) => {
+    setSelectedRestaurantId(id);
+    setActiveSection("restaurant-detail");
+    setRestaurantTab("home");
+    sessionStorage.setItem(DASHBOARD_LAST_RESTAURANT_KEY, String(id));
+    syncDashboardUrl({ restaurantId: id, section: "home" });
+  }, []);
+
+  const handleBackToRestaurants = useCallback(() => {
+    setActiveSection("restaurants");
+    setSelectedRestaurantId(null);
+    setRestaurantTab("home");
+    syncDashboardUrl({});
+  }, []);
+
+  const handleRestaurantTabChange = useCallback((tab: RestaurantTab) => {
+    setRestaurantTab(tab);
+    const id = selectedRestaurantIdRef.current;
+    if (id) {
+      syncDashboardUrl({ restaurantId: id, section: tab }, { replace: true });
+    }
+  }, []);
 
   if (loading) {
     return (
@@ -576,19 +648,6 @@ export default function Dashboard() {
     );
   }
 
-  const handleSelectRestaurant = (id: number) => {
-    setSelectedRestaurantId(id);
-    setActiveSection("restaurant-detail");
-    setRestaurantTab("home");
-    sessionStorage.setItem(DASHBOARD_LAST_RESTAURANT_KEY, String(id));
-  };
-
-  const handleBackToRestaurants = () => {
-    setActiveSection("restaurants");
-    setSelectedRestaurantId(null);
-    setRestaurantTab("home");
-  };
-
   return (
     <div className={dash.shell} dir={dir}>
       <div className={dash.shellGlow} aria-hidden />
@@ -601,7 +660,7 @@ export default function Dashboard() {
         onMobileClose={() => setMobileSidebarOpen(false)}
         restaurantTab={activeSection === "restaurant-detail" ? restaurantTab : undefined}
         onRestaurantTabChange={
-          activeSection === "restaurant-detail" ? setRestaurantTab : undefined
+          activeSection === "restaurant-detail" ? handleRestaurantTabChange : undefined
         }
         tablesLabel={
           sidebarRestaurant?.tableLabel === "rooms"
@@ -628,7 +687,7 @@ export default function Dashboard() {
               key={selectedRestaurantId}
               restaurantId={selectedRestaurantId}
               activeTab={restaurantTab}
-              onTabChange={setRestaurantTab}
+              onTabChange={handleRestaurantTabChange}
               onBack={handleBackToRestaurants}
             />
           ) : needsRestaurantResolve && restaurantsResolving ? (
