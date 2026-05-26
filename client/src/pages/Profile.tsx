@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuthGate } from "@/_core/hooks/useAuthGate";
-import { AuthGatePending } from "@/components/AuthGate";
-import { getLoginUrl, spaNavigate } from "@/const";
+import { AuthGatePending, LoginRequiredCard, PageDataLoading } from "@/components/AuthGate";
 import { trpc } from "@/lib/trpc";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
@@ -59,28 +58,11 @@ export default function Profile() {
   }
 
   if (gate.showLoginRequired) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh] p-4">
-        <Card className="max-w-md w-full">
-          <CardContent className="p-8 text-center">
-            <Shield className="w-12 h-12 text-primary mx-auto mb-4" />
-            <h2 className="text-xl font-bold text-foreground mb-2">{t("common.loginRequired")}</h2>
-            <p className="text-muted-foreground mb-6">{t("common.loginRequiredDesc")}</p>
-            <Button onClick={() => spaNavigate(getLoginUrl())} className="w-full">
-              {t("common.login")}
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
+    return <LoginRequiredCard />;
   }
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <PageDataLoading />;
   }
 
   const handleUpdateProfile = () => {

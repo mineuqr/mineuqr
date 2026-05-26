@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useAuthGate } from "@/_core/hooks/useAuthGate";
-import { AdminAccessDenied, AuthGatePending } from "@/components/AuthGate";
+import { AdminAccessDenied, AuthGatePending, PageDataLoading } from "@/components/AuthGate";
 import { adminQueriesEnabled } from "@/lib/queryRuntime";
 import { trpc } from "@/lib/trpc";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -953,9 +953,7 @@ export default function AdminManagement() {
 
         {/* Restaurants List */}
         {restaurantsLoading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          </div>
+          <PageDataLoading minHeight="min-h-[12rem]" />
         ) : !restaurants || restaurants.length === 0 ? (
           <Card className="bg-card border-border">
             <CardContent className="p-12 text-center">

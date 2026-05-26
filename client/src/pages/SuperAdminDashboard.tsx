@@ -1,5 +1,5 @@
 import { useAuthGate } from "@/_core/hooks/useAuthGate";
-import { AuthGatePending, SuperAdminAccessDenied } from "@/components/AuthGate";
+import { AuthGatePending, PageDataLoading, SuperAdminAccessDenied } from "@/components/AuthGate";
 import { trpc } from "@/lib/trpc";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
@@ -153,11 +153,7 @@ export default function SuperAdminDashboard() {
             </div>
           </CardHeader>
           <CardContent>
-            {isLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="w-6 h-6 animate-spin text-primary" />
-              </div>
-            ) : filteredUsers.length === 0 ? (
+            {filteredUsers.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 لا توجد مستخدمين
               </div>

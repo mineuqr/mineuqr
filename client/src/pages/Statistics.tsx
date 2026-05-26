@@ -2,12 +2,12 @@ import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuthGate } from "@/_core/hooks/useAuthGate";
-import { AuthGatePending } from "@/components/AuthGate";
+import { AdminAccessDenied, AuthGatePending, PageDataLoading } from "@/components/AuthGate";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
-  Loader2, TrendingUp, Users, DollarSign, RotateCcw, Download, ArrowRight, Store,
+  TrendingUp, Users, DollarSign, RotateCcw, Download, ArrowRight,
   UtensilsCrossed, LayoutGrid, Tag, FolderOpen
 } from "lucide-react";
 import {
@@ -85,18 +85,9 @@ export default function Statistics() {
 
   if (gate.showAdminDenied) {
     return (
-      <div className={cn(statDash.shell, "flex items-center justify-center p-4")}>
+      <div className={statDash.shell}>
         <div className={statDash.shellGlow} aria-hidden />
-        <Card className={cn(statDash.card, "max-w-md w-full")}>
-          <CardContent className="p-8 text-center">
-            <Store className="w-16 h-16 text-primary mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-foreground mb-2">{t("admin.accessDenied")}</h2>
-            <p className="text-muted-foreground mb-6">{t("admin.adminOnly")}</p>
-            <Button onClick={() => setLocation("/")} className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold w-full">
-              {t("common.back")}
-            </Button>
-          </CardContent>
-        </Card>
+        <AdminAccessDenied shellClassName="min-h-screen flex items-center justify-center p-4" />
       </div>
     );
   }
@@ -139,9 +130,9 @@ export default function Statistics() {
 
   if (statsLoading || revenueLoading || detailsLoading || extendedLoading) {
     return (
-      <div className={cn(statDash.shell, "flex items-center justify-center py-24")}>
+      <div className={statDash.shell}>
         <div className={statDash.shellGlow} aria-hidden />
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <PageDataLoading minHeight="min-h-screen" />
       </div>
     );
   }

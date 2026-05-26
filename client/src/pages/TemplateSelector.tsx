@@ -1,5 +1,5 @@
 import { useAuthGate } from "@/_core/hooks/useAuthGate";
-import { AuthGatePending } from "@/components/AuthGate";
+import { AuthGatePending, LoginRequiredCard, PageDataLoading } from "@/components/AuthGate";
 import { useState, useEffect } from "react";
 import { useRoute, useLocation } from "wouter";
 import { motion } from "framer-motion";
@@ -85,28 +85,16 @@ export default function TemplateSelector() {
 
   if (gate.showLoginRequired) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4" dir={dir}>
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-foreground mb-4">{t('template.loginRequired')}</h2>
-
-          <Button
-  disabled
-  className="bg-primary opacity-50 cursor-not-allowed"
->
-  <ArrowRight className="w-4 h-4 ml-2" />
-  {t('template.login')}
-</Button>
-        </div>
-      </div>
+      <LoginRequiredCard
+        className="min-h-screen bg-background"
+        minHeight="min-h-screen"
+        title={t("template.loginRequired")}
+      />
     );
   }
 
   if (restaurantLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
+    return <PageDataLoading minHeight="min-h-screen" className="bg-background" />;
   }
 
   if (!restaurant) {

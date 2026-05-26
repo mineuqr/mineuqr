@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuthGate } from "@/_core/hooks/useAuthGate";
-import { AdminAccessDenied, AuthGatePending } from "@/components/AuthGate";
+import { AdminAccessDenied, AuthGatePending, PageDataLoading } from "@/components/AuthGate";
 import { adminQueriesEnabled } from "@/lib/queryRuntime";
 import { trpc } from "@/lib/trpc";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -67,6 +67,10 @@ export default function Users() {
     return <AdminAccessDenied />;
   }
 
+  if (usersLoading) {
+    return <PageDataLoading />;
+  }
+
   const filteredUsers =
     users?.filter(
       (u: any) =>
@@ -116,11 +120,7 @@ export default function Users() {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            {usersLoading ? (
-              <div className="flex justify-center items-center p-8">
-                <Loader2 className="w-6 h-6 text-primary animate-spin" />
-              </div>
-            ) : filteredUsers.length === 0 ? (
+            {filteredUsers.length === 0 ? (
               <div className="p-8 text-center text-muted-foreground">{t("users.noUsers")}</div>
             ) : (
               <div className="overflow-x-auto">

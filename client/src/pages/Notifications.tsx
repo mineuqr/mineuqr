@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useAuthGate } from "@/_core/hooks/useAuthGate";
-import { AuthGatePending } from "@/components/AuthGate";
+import { AuthGatePending, LoginRequiredPanel, PageDataLoading } from "@/components/AuthGate";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -127,33 +127,29 @@ export default function Notifications() {
     );
   }
 
+  const notificationsShell =
+    "min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900";
+
   if (gate.showLoginRequired) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
-        <Card className="w-full max-w-md bg-card border-border">
-          <CardHeader>
-            <CardTitle>{t("notifications.title") || "الإشعارات"}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">
-              {t("notifications.loginRequired") || "يجب تسجيل الدخول لعرض الإشعارات"}
-            </p>
-            <Link href="/dashboard">
-              <Button className="w-full">{t("common.dashboard") || "لوحة التحكم"}</Button>
-            </Link>
-          </CardContent>
-        </Card>
-      </div>
+      <LoginRequiredPanel
+        shellClassName={notificationsShell}
+        title={t("notifications.title") || "الإشعارات"}
+        description={
+          t("notifications.loginRequired") || "يجب تسجيل الدخول لعرض الإشعارات"
+        }
+      >
+        <Link href="/dashboard">
+          <Button className="w-full">{t("common.dashboard") || "لوحة التحكم"}</Button>
+        </Link>
+      </LoginRequiredPanel>
     );
   }
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-400 mx-auto mb-4"></div>
-          <p className="text-white">{t("common.loading") || "جاري التحميل..."}</p>
-        </div>
+      <div className={notificationsShell}>
+        <PageDataLoading minHeight="min-h-screen" className="bg-transparent" />
       </div>
     );
   }
