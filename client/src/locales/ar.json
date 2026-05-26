@@ -846,7 +846,13 @@
     "searchPlaceholder": "ابحث بالاسم، البريد، أو الهاتف...",
     "filterByStatus": "تصفية حسب الحالة",
     "allStatuses": "جميع الحالات",
-    "ownerName": "اسم المالك"
+    "ownerName": "اسم المالك",
+    "noRestaurantsFiltered": "لا توجد مطاعم تطابق البحث أو التصفية",
+    "noRestaurantsFilteredDesc": "جرّب تعديل كلمة البحث أو فلتر الحالة",
+    "editRestaurant": "تعديل المطعم",
+    "deleteRestaurantAction": "حذف المطعم",
+    "restaurantActions": "إجراءات المطعم",
+    "userActions": "إجراءات المستخدم"
   },
   "template": {
     "selectTemplate": "اختيار قالب المنيو",
@@ -1005,6 +1011,8 @@
     "description": "عرض وإدارة جميع المستخدمين المسجلين في النظام",
     "list": "قائمة المستخدمين",
     "noUsers": "لا توجد مستخدمون",
+    "noUsersFiltered": "لا يوجد مستخدمون يطابقون البحث",
+    "noUsersFilteredDesc": "جرّب اسمًا أو بريدًا مختلفًا",
     "searchPlaceholder": "ابحث عن اسم أو بريد إلكتروني...",
     "name": "الاسم",
     "email": "البريد الإلكتروني",

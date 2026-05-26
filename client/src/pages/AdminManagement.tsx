@@ -19,7 +19,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { Plus, Trash2, Edit, Loader2, Store, UserPlus, Key, Search, Filter, X, Bell, Send, Users, FileText, Download } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
@@ -35,6 +35,13 @@ import {
   adminActionBtn,
   adminDash,
 } from "@/components/admin/layout";
+import {
+  AdminActionGroup,
+  AdminEmptyState,
+  AdminIconButton,
+  AdminLoadingState,
+  ResponsiveOperationsBar,
+} from "@/components/admin/operations";
 import { computeAdminKPIs } from "@/lib/admin/computeAdminKPIs";
 import { formatPlanPriceForCycle, formatSubscriptionEndDate } from "@/lib/subscription";
 import type { BillingCycle } from "@/lib/subscription";
@@ -218,239 +225,308 @@ function UsersSection() {
     }
   };
 
-  if (usersLoading) {
+  const renderUserActions = (u: any) => {
+    if (editingUserId === u.id) {
+      return (
+        <AdminActionGroup
+          ariaLabel={t("admin.userActions")}
+          primary={
+            <>
+              <Button
+                size="sm"
+                variant="default"
+                onClick={() => updateRoleMutation.mutate({ userId: u.id, role: editingRole })}
+                disabled={updateRoleMutation.isPending}
+                className={adminDash.opBtn}
+              >
+                {updateRoleMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : (t("admin.save") || "حفظ")}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setEditingUserId(null)}
+                className={adminDash.opBtn}
+              >
+                {t("admin.cancel") || "إلغاء"}
+              </Button>
+            </>
+          }
+        />
+      );
+    }
+
     return (
-      <div className={adminDash.card}>
-        <div className="flex items-center justify-center gap-3 p-8">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          <span className="text-sm text-muted-foreground">
-            {t("common.loading") || "Loading..."}
-          </span>
-        </div>
-      </div>
+      <AdminActionGroup
+        ariaLabel={t("admin.userActions")}
+        primary={
+          u.id !== user?.id ? (
+            <AdminIconButton
+              label={language === "ar" ? "تعديل الدور" : "Edit role"}
+              onClick={() => {
+                setEditingUserId(u.id);
+                setEditingRole(u.role);
+              }}
+            >
+              <Edit className="h-3.5 w-3.5" />
+            </AdminIconButton>
+          ) : null
+        }
+        secondary={
+          u.subscription ? (
+            <>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => openEditSubDialog(u)}
+                className={cn(adminDash.opBtn, adminActionBtn.info)}
+              >
+                {t("admin.editSubscription")}
+              </Button>
+              <AdminIconButton
+                label={t("admin.deleteSubscription")}
+                onClick={() => setDeleteSubUserId(u.id)}
+                className={adminActionBtn.danger}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </AdminIconButton>
+              <AdminIconButton
+                label={language === "ar" ? "إنشاء فاتورة PDF" : "Generate invoice PDF"}
+                onClick={() =>
+                  generateInvoiceMutation.mutate({
+                    userId: u.id,
+                    subscriptionId: u.subscription?.id || 0,
+                  })
+                }
+                disabled={generateInvoiceMutation.isPending}
+                className={adminActionBtn.teal}
+              >
+                {generateInvoiceMutation.isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <FileText className="h-3.5 w-3.5" />
+                )}
+              </AdminIconButton>
+            </>
+          ) : (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => openCreateSubDialog(u)}
+              className={cn(adminDash.opBtn, adminActionBtn.success)}
+            >
+              <Plus className="h-3 w-3 me-1" />
+              {language === "ar" ? "اشتراك" : "Subscribe"}
+            </Button>
+          )
+        }
+        neutral={
+          <AdminIconButton
+            label={language === "ar" ? "إرسال إشعار" : "Send notification"}
+            onClick={() => openNotifyDialog(u.id, u.name || u.email || "المستخدم")}
+            className={adminActionBtn.warning}
+          >
+            <Bell className="h-3.5 w-3.5" />
+          </AdminIconButton>
+        }
+        danger={
+          u.id !== user?.id ? (
+            <AdminIconButton
+              label={language === "ar" ? "حذف المستخدم" : "Delete user"}
+              onClick={() => setDeleteUserId(u.id)}
+              variant="destructive"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </AdminIconButton>
+          ) : null
+        }
+      />
     );
+  };
+
+  const hasUsers = (allUsers?.length ?? 0) > 0;
+  const hasFilteredUsers = filteredUsers.length > 0;
+
+  if (usersLoading) {
+    return <AdminLoadingState variant="cardList" rows={3} label={t("common.loading") || "Loading..."} />;
   }
 
   return (
-    <>
-      {/* Search + Bulk Notify */}
+    <TooltipProvider>
       <Card className={adminDash.operationsCard}>
-        <CardContent className="p-4">
-          <div className="flex gap-2 items-center">
-            <Search className="w-5 h-5 text-muted-foreground" />
-            <Input
-              placeholder={t('users.searchPlaceholder') || 'بحث بالاسم أو البريد...'}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-background border-border text-foreground flex-1"
-            />
+        <CardContent className="p-3 sm:p-4">
+          <ResponsiveOperationsBar ariaLabel={t("users.searchPlaceholder")}>
+            <div className="relative min-w-0 flex-1">
+              <Search className="absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+              <Input
+                placeholder={t("users.searchPlaceholder") || "بحث بالاسم أو البريد..."}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="border-border bg-background pe-10 text-foreground"
+                aria-label={t("users.searchPlaceholder")}
+              />
+            </div>
             <Button
               variant="outline"
               size="sm"
               onClick={() => setBulkNotifyDialogOpen(true)}
-              className="text-xs border-amber-500 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 whitespace-nowrap"
+              className={cn(adminDash.opBtn, adminActionBtn.warning, "whitespace-nowrap")}
             >
-              <Bell className="w-4 h-4 ms-1" />
-              إشعار للجميع
+              <Bell className="h-4 w-4 me-1" aria-hidden />
+              {language === "ar" ? "إشعار للجميع" : "Notify all"}
             </Button>
-          </div>
+          </ResponsiveOperationsBar>
         </CardContent>
       </Card>
 
-      {/* Users Table */}
       <Card className={adminDash.operationsCard}>
-        <CardHeader className="bg-background border-b border-border py-3">
-          <CardTitle className="text-foreground text-lg">
-            {t('users.list') || 'قائمة المستخدمين'} ({filteredUsers.length})
+        <CardHeader className="border-b border-border bg-background/50 py-3">
+          <CardTitle className="text-base text-foreground sm:text-lg">
+            {t("users.list") || "قائمة المستخدمين"} ({filteredUsers.length})
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          {filteredUsers.length === 0 ? (
-            <div className="p-8 text-center text-muted-foreground">
-              {t('users.noUsers') || 'لا يوجد مستخدمين'}
-            </div>
+          {!hasUsers ? (
+            <AdminEmptyState
+              icon={Users}
+              title={t("users.noUsers") || "لا يوجد مستخدمين"}
+              description={t("users.description") || undefined}
+            />
+          ) : !hasFilteredUsers ? (
+            <AdminEmptyState
+              icon={Search}
+              title={t("users.noUsersFiltered")}
+              description={t("users.noUsersFilteredDesc")}
+            />
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-background border-b border-border">
-                  <tr>
-                    <th className="px-4 py-3 text-right text-sm font-semibold text-foreground">
-                      {t('users.name') || 'الاسم'}
-                    </th>
-                    <th className="px-4 py-3 text-right text-sm font-semibold text-foreground">
-                      {t('users.email') || 'البريد'}
-                    </th>
-                    <th className="px-4 py-3 text-right text-sm font-semibold text-foreground">
-                      {t('users.role') || 'الدور'}
-                    </th>
-                    <th className="px-4 py-3 text-right text-sm font-semibold text-foreground">
-                      الاشتراك
-                    </th>
-                    <th className="px-4 py-3 text-right text-sm font-semibold text-foreground">
-                      الباقة
-                    </th>
-                    <th className="px-4 py-3 text-right text-sm font-semibold text-foreground">
-                      تاريخ الانتهاء
-                    </th>
-                    <th className="px-4 py-3 text-right text-sm font-semibold text-foreground">
-                      {t('users.actions') || 'الإجراءات'}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredUsers.map((u: any, idx: number) => (
-                    <tr key={u.id} className={idx % 2 === 0 ? 'bg-background' : 'bg-card'}>
-                      <td className="px-4 py-3 text-sm text-foreground">
-                        <div className="flex items-center gap-2">
-                          {u.role === 'admin' ? (
-                            <Badge variant="default" className="text-xs">Admin</Badge>
-                          ) : (
-                            <Badge variant="secondary" className="text-xs">User</Badge>
-                          )}
-                          {u.name || ('بدون اسم')}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground">
-                        {u.email || '-'}
-                      </td>
-                      <td className="px-4 py-3 text-sm">
-                        {editingUserId === u.id ? (
-                          <Select value={editingRole} onValueChange={(val: any) => setEditingRole(val)}>
-                            <SelectTrigger className="w-24 bg-background border-border">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="user">مستخدم</SelectItem>
-                              <SelectItem value="admin">مسؤول</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        ) : (
-                          <Badge variant={u.role === 'admin' ? 'default' : 'secondary'}>
-                            {u.role === 'admin' ? 'مسؤول' : 'مستخدم'}
-                          </Badge>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-sm">
-                        {u.subscription ? getStatusBadge(u.subscription.status) : (
-                          <Badge variant="outline" className="text-xs text-muted-foreground">بدون اشتراك</Badge>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground">
-                        {u.plan ? (language === 'ar' ? u.plan.nameAr : u.plan.nameEn) : '-'}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground">
-                        {u.subscription?.currentPeriodEnd ? new Date(u.subscription.currentPeriodEnd).toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US') : '-'}
-                      </td>
-                      <td className="px-4 py-3 text-sm">
-                        <div className="flex gap-1 flex-wrap">
-                          {editingUserId === u.id ? (
-                            <>
-                              <Button
-                                size="sm"
-                                variant="default"
-                                onClick={() => updateRoleMutation.mutate({ userId: u.id, role: editingRole })}
-                                disabled={updateRoleMutation.isPending}
-                                className="text-xs"
-                              >
-                                {updateRoleMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : 'حفظ'}
-                              </Button>
-                              <Button size="sm" variant="outline" onClick={() => setEditingUserId(null)} className="text-xs">
-                                إلغاء
-                              </Button>
-                            </>
-                          ) : (
-                            <>
-                              {u.id !== user?.id && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => { setEditingUserId(u.id); setEditingRole(u.role); }}
-                                  className="text-xs"
-                                  title="تعديل الدور"
-                                >
-                                  <Edit className="w-3 h-3" />
-                                </Button>
-                              )}
-                              {/* Subscription actions */}
-                              {u.subscription ? (
-                                <>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => openEditSubDialog(u)}
-                                    className={`text-xs ${adminActionBtn.info}`}
-                                    title="تعديل الاشتراك"
-                                  >
-                                    تعديل الاشتراك
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => setDeleteSubUserId(u.id)}
-                                    className={`text-xs ${adminActionBtn.danger}`}
-                                    title="حذف الاشتراك"
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => generateInvoiceMutation.mutate({ userId: u.id, subscriptionId: u.subscription?.id || 0 })}
-                                    disabled={generateInvoiceMutation.isPending}
-                                    className={`text-xs ${adminActionBtn.teal}`}
-                                    title="إنشاء فاتورة PDF"
-                                  >
-                                    {generateInvoiceMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <FileText className="w-3 h-3" />}
-                                  </Button>
-                                </>
-                              ) : (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => openCreateSubDialog(u)}
-                                  className={`text-xs ${adminActionBtn.success}`}
-                                  title="إنشاء اشتراك"
-                                >
-                                  <Plus className="w-3 h-3 ms-1" />
-                                  اشتراك
-                                </Button>
-                              )}
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => openNotifyDialog(u.id, u.name || u.email || 'المستخدم')}
-                                className={`text-xs ${adminActionBtn.warning}`}
-                                title="إرسال إشعار"
-                              >
-                                <Bell className="w-3 h-3" />
-                              </Button>
-                              {u.id !== user?.id && (
-                                <Button
-                                  size="sm"
-                                  variant="destructive"
-                                  onClick={() => setDeleteUserId(u.id)}
-                                  className="text-xs"
-                                  title="حذف المستخدم"
-                                >
-                                  <Trash2 className="w-3 h-3" />
-                                </Button>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      </td>
+            <>
+              {/* Mobile / tablet card layout */}
+              <div className="divide-y divide-border/50 lg:hidden" role="list">
+                {filteredUsers.map((u: any) => (
+                  <article key={u.id} className="space-y-3 p-4" role="listitem">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant={u.role === "admin" ? "default" : "secondary"} className="text-xs">
+                        {u.role === "admin" ? "Admin" : "User"}
+                      </Badge>
+                      <span className="font-medium text-foreground">{u.name || (language === "ar" ? "بدون اسم" : "No name")}</span>
+                      {u.subscription ? getStatusBadge(u.subscription.status) : (
+                        <Badge variant="outline" className="text-xs text-muted-foreground">
+                          {language === "ar" ? "بدون اشتراك" : "No subscription"}
+                        </Badge>
+                      )}
+                    </div>
+                    <dl className="grid gap-2 text-sm">
+                      <div className="flex flex-wrap gap-x-2">
+                        <dt className="text-muted-foreground">{t("users.email")}:</dt>
+                        <dd dir="ltr" className="text-foreground">{u.email || "-"}</dd>
+                      </div>
+                      <div className="flex flex-wrap gap-x-2">
+                        <dt className="text-muted-foreground">{language === "ar" ? "الباقة" : "Plan"}:</dt>
+                        <dd className="text-muted-foreground">
+                          {u.plan ? (language === "ar" ? u.plan.nameAr : u.plan.nameEn) : "-"}
+                        </dd>
+                      </div>
+                      <div className="flex flex-wrap gap-x-2">
+                        <dt className="text-muted-foreground">{language === "ar" ? "تاريخ الانتهاء" : "End date"}:</dt>
+                        <dd dir="ltr" className="tabular-nums text-muted-foreground">
+                          {u.subscription?.currentPeriodEnd
+                            ? formatSubscriptionEndDate(u.subscription.currentPeriodEnd, language === "ar" ? "ar" : "en")
+                            : "-"}
+                        </dd>
+                      </div>
+                    </dl>
+                    {renderUserActions(u)}
+                  </article>
+                ))}
+              </div>
+
+              {/* Desktop table */}
+              <div className="hidden overflow-x-auto lg:block">
+                <table className="w-full min-w-[720px]">
+                  <thead className="border-b border-border bg-background/50">
+                    <tr>
+                      <th scope="col" className="px-4 py-3 text-start text-sm font-semibold text-foreground">
+                        {t("users.name") || "الاسم"}
+                      </th>
+                      <th scope="col" className="px-4 py-3 text-start text-sm font-semibold text-foreground">
+                        {t("users.email") || "البريد"}
+                      </th>
+                      <th scope="col" className="px-4 py-3 text-start text-sm font-semibold text-foreground">
+                        {t("users.role") || "الدور"}
+                      </th>
+                      <th scope="col" className="px-4 py-3 text-start text-sm font-semibold text-foreground">
+                        {language === "ar" ? "الاشتراك" : "Subscription"}
+                      </th>
+                      <th scope="col" className="px-4 py-3 text-start text-sm font-semibold text-foreground">
+                        {language === "ar" ? "الباقة" : "Plan"}
+                      </th>
+                      <th scope="col" className="px-4 py-3 text-start text-sm font-semibold text-foreground">
+                        {language === "ar" ? "تاريخ الانتهاء" : "End date"}
+                      </th>
+                      <th scope="col" className="px-4 py-3 text-start text-sm font-semibold text-foreground">
+                        {t("users.actions") || "الإجراءات"}
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {filteredUsers.map((u: any, idx: number) => (
+                      <tr key={u.id} className={idx % 2 === 0 ? "bg-background/30" : "bg-card/30"}>
+                        <td className="px-4 py-3 text-sm text-foreground">
+                          <div className="flex items-center gap-2">
+                            <Badge variant={u.role === "admin" ? "default" : "secondary"} className="text-xs">
+                              {u.role === "admin" ? "Admin" : "User"}
+                            </Badge>
+                            {u.name || (language === "ar" ? "بدون اسم" : "No name")}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground" dir="ltr">
+                          {u.email || "-"}
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          {editingUserId === u.id ? (
+                            <Select value={editingRole} onValueChange={(val: "admin" | "user") => setEditingRole(val)}>
+                              <SelectTrigger className="h-8 w-28 border-border bg-background">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="user">{language === "ar" ? "مستخدم" : "User"}</SelectItem>
+                                <SelectItem value="admin">{language === "ar" ? "مسؤول" : "Admin"}</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <Badge variant={u.role === "admin" ? "default" : "secondary"}>
+                              {u.role === "admin" ? (language === "ar" ? "مسؤول" : "Admin") : (language === "ar" ? "مستخدم" : "User")}
+                            </Badge>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          {u.subscription ? getStatusBadge(u.subscription.status) : (
+                            <Badge variant="outline" className="text-xs text-muted-foreground">
+                              {language === "ar" ? "بدون اشتراك" : "No subscription"}
+                            </Badge>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground">
+                          {u.plan ? (language === "ar" ? u.plan.nameAr : u.plan.nameEn) : "-"}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground" dir="ltr">
+                          {u.subscription?.currentPeriodEnd
+                            ? formatSubscriptionEndDate(u.subscription.currentPeriodEnd, language === "ar" ? "ar" : "en")
+                            : "-"}
+                        </td>
+                        <td className="min-w-[220px] px-4 py-3 text-sm">{renderUserActions(u)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
 
       {/* Subscription Create/Edit Dialog */}
       <Dialog open={subDialogUser !== null} onOpenChange={(open) => !open && setSubDialogUser(null)}>
-        <DialogContent className="bg-card border-border max-w-md w-[95vw]">
+        <DialogContent className={adminDash.dialogContent}>
           <DialogHeader>
             <DialogTitle className="text-foreground">
               {subDialogMode === 'create' ? 'إنشاء اشتراك جديد' : 'تعديل الاشتراك'}
@@ -515,7 +591,7 @@ function UsersSection() {
 
       {/* Send Custom Notification Dialog */}
       <Dialog open={notifyDialogOpen} onOpenChange={(open) => !open && setNotifyDialogOpen(false)}>
-        <DialogContent className="bg-card border-border max-w-md w-[95vw]">
+        <DialogContent className={adminDash.dialogContent}>
           <DialogHeader>
             <DialogTitle className="text-foreground flex items-center gap-2">
               <Bell className="w-5 h-5 text-amber-500" />
@@ -557,7 +633,7 @@ function UsersSection() {
 
       {/* Bulk Notification Dialog */}
       <Dialog open={bulkNotifyDialogOpen} onOpenChange={(open) => !open && setBulkNotifyDialogOpen(false)}>
-        <DialogContent className="bg-card border-border max-w-md w-[95vw]">
+        <DialogContent className={adminDash.dialogContent}>
           <DialogHeader>
             <DialogTitle className="text-foreground flex items-center gap-2">
               <Users className="w-5 h-5 text-amber-500" />
@@ -618,7 +694,7 @@ function UsersSection() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </TooltipProvider>
   );
 }
 
@@ -864,6 +940,26 @@ export default function AdminManagement() {
     return subscription.status;
   };
 
+  const filteredRestaurants = useMemo(() => {
+    if (!restaurants) return [];
+    const query = searchQuery.toLowerCase().trim();
+    return restaurants.filter((restaurant: any) => {
+      const subscription = getSubscriptionForRestaurant(restaurant.id);
+      const status = getSubscriptionStatus(subscription);
+      const matchesSearch =
+        !query ||
+        (restaurant.nameAr || "").toLowerCase().includes(query) ||
+        (restaurant.nameEn || "").toLowerCase().includes(query) ||
+        (restaurant.ownerName || "").toLowerCase().includes(query) ||
+        (restaurant.ownerEmail || "").toLowerCase().includes(query) ||
+        (restaurant.phone || "").includes(query);
+      const matchesStatus = statusFilter === "all" || status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [restaurants, searchQuery, statusFilter, restaurantsWithSubs]);
+
+  const hasRestaurants = (restaurants?.length ?? 0) > 0;
+
   if (gate.isPending) {
     return <AuthGatePending />;
   }
@@ -873,6 +969,7 @@ export default function AdminManagement() {
   }
 
   return (
+    <TooltipProvider>
     <AdminPageShell
       title={t("admin.title")}
       subtitle={t("admin.subtitle")}
@@ -909,6 +1006,7 @@ export default function AdminManagement() {
           expiringSoonHint: t("admin.expiringSoonHint"),
           estimatedMrrHint: t("admin.estimatedMrrHint"),
         }}
+        loadingLabel={t("common.loading")}
       />
 
       <AdminSection
@@ -918,28 +1016,30 @@ export default function AdminManagement() {
       >
         <AdminOperationsSection
           toolbar={
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <div className="relative flex-1">
-                <Search className="absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <ResponsiveOperationsBar ariaLabel={t("admin.searchPlaceholder")}>
+              <div className="relative min-w-0 flex-1">
+                <Search className="absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
                 <Input
                   placeholder={t("admin.searchPlaceholder")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="border-border bg-card pe-10 text-foreground"
+                  aria-label={t("admin.searchPlaceholder")}
                 />
                 {searchQuery ? (
                   <button
                     type="button"
                     onClick={() => setSearchQuery("")}
-                    className="absolute start-3 top-1/2 -translate-y-1/2"
+                    className="absolute start-3 top-1/2 -translate-y-1/2 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    aria-label={language === "ar" ? "مسح البحث" : "Clear search"}
                   >
                     <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
                   </button>
                 ) : null}
               </div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full border-border bg-card sm:w-[200px]">
-                  <Filter className="me-2 h-4 w-4 shrink-0 text-muted-foreground" />
+                <SelectTrigger className="h-9 w-full border-border bg-card sm:w-[200px]" aria-label={t("admin.filterByStatus")}>
+                  <Filter className="me-2 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
                   <SelectValue placeholder={t("admin.filterByStatus")} />
                 </SelectTrigger>
                 <SelectContent>
@@ -951,25 +1051,17 @@ export default function AdminManagement() {
                   <SelectItem value="inactive">{t("subscription.status.inactive")}</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
+            </ResponsiveOperationsBar>
           }
         >
         {restaurantsLoading ? (
-          <div className="grid gap-4">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className={cn(adminDash.operationsCard, "p-6 space-y-3")}>
-                <Skeleton className="h-6 w-48" />
-                <Skeleton className="h-4 w-full max-w-md" />
-                <Skeleton className="h-4 w-3/4" />
-              </div>
-            ))}
-          </div>
-        ) : !restaurants || restaurants.length === 0 ? (
-          <Card className={adminDash.operationsCard}>
-            <CardContent className="p-12 text-center">
-              <Store className="mx-auto mb-4 h-16 w-16 text-muted-foreground" />
-              <h3 className="mb-2 text-xl font-semibold text-foreground">{t("admin.noRestaurants")}</h3>
-              <p className="mb-6 text-muted-foreground">{t("admin.startAdding")}</p>
+          <AdminLoadingState variant="cardList" rows={3} label={t("common.loading")} />
+        ) : !hasRestaurants ? (
+          <AdminEmptyState
+            icon={Store}
+            title={t("admin.noRestaurants")}
+            description={t("admin.startAdding")}
+            action={
               <Button
                 onClick={() => {
                   resetForm();
@@ -980,119 +1072,142 @@ export default function AdminManagement() {
                 <Plus className="h-4 w-4 me-2" />
                 {t("admin.addFirstRestaurant")}
               </Button>
-            </CardContent>
-          </Card>
+            }
+          />
+        ) : filteredRestaurants.length === 0 ? (
+          <AdminEmptyState
+            icon={Search}
+            title={t("admin.noRestaurantsFiltered")}
+            description={t("admin.noRestaurantsFilteredDesc")}
+          />
         ) : (
           <div className="grid gap-4">
-            {restaurants.filter((restaurant: any) => {
+            {filteredRestaurants.map((restaurant: any) => {
               const subscription = getSubscriptionForRestaurant(restaurant.id);
               const status = getSubscriptionStatus(subscription);
-              // Filter by search query
-              const query = searchQuery.toLowerCase().trim();
-              const matchesSearch = !query || 
-                (restaurant.nameAr || '').toLowerCase().includes(query) ||
-                (restaurant.nameEn || '').toLowerCase().includes(query) ||
-                (restaurant.ownerName || '').toLowerCase().includes(query) ||
-                (restaurant.ownerEmail || '').toLowerCase().includes(query) ||
-                (restaurant.phone || '').includes(query);
-              // Filter by status
-              const matchesStatus = statusFilter === 'all' || status === statusFilter;
-              return matchesSearch && matchesStatus;
-            }).map((restaurant: any) => {
-              const subscription = getSubscriptionForRestaurant(restaurant.id);
-              const status = getSubscriptionStatus(subscription);
-              
+
               return (
-                <Card key={restaurant.id} className={cn(adminDash.operationsCard, "transition hover:border-primary/40")}>
-                  <CardContent className="p-4 sm:p-6">
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="text-lg font-semibold text-foreground">{restaurant.nameAr}</h3>
-                          {restaurant.nameEn && <span className="text-sm text-muted-foreground">({restaurant.nameEn})</span>}
-                          <Badge variant={status === 'active' ? 'default' : 'secondary'}>
-                            {t(`subscription.status.${status}`)}
-                          </Badge>
+                <Card
+                  key={restaurant.id}
+                  className={cn(adminDash.operationsCard, "transition hover:border-primary/40")}
+                >
+                  <CardContent className="space-y-4 p-4 sm:p-6">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-lg font-semibold text-foreground">{restaurant.nameAr}</h3>
+                      {restaurant.nameEn ? (
+                        <span className="text-sm text-muted-foreground" dir="ltr">
+                          ({restaurant.nameEn})
+                        </span>
+                      ) : null}
+                      <Badge variant={status === "active" ? "default" : "secondary"}>
+                        {t(`subscription.status.${status}`)}
+                      </Badge>
+                    </div>
+                    {restaurant.descriptionAr ? (
+                      <p className="text-sm text-muted-foreground">{restaurant.descriptionAr}</p>
+                    ) : null}
+                    <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+                      {restaurant.ownerName ? (
+                        <div>
+                          <dt className="text-muted-foreground">{t("admin.ownerName")}</dt>
+                          <dd className="ms-0 mt-0.5 text-foreground">{restaurant.ownerName}</dd>
                         </div>
-                        {restaurant.descriptionAr && (
-                          <p className="text-sm text-muted-foreground mb-3">{restaurant.descriptionAr}</p>
-                        )}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                          {restaurant.ownerName && (
-                            <div>
-                              <span className="text-muted-foreground">{t('admin.ownerName')}:</span>
-                              <span className="ms-2 text-foreground">{restaurant.ownerName}</span>
-                            </div>
-                          )}
-                          {restaurant.ownerEmail && (
-                            <div>
-                              <span className="text-muted-foreground">{t('admin.ownerEmail')}:</span>
-                              <span className="ms-2 text-foreground" dir="ltr">{restaurant.ownerEmail}</span>
-                            </div>
-                          )}
-                          {restaurant.phone && (
-                            <div>
-                              <span className="text-muted-foreground">{t('admin.phone')}:</span>
-                              <span className="ms-2 text-foreground">{restaurant.phone}</span>
-                            </div>
-                          )}
-                          {restaurant.address && (
-                            <div>
-                              <span className="text-muted-foreground">{t('admin.address')}:</span>
-                              <span className="ms-2 text-foreground">{restaurant.address}</span>
-                            </div>
-                          )}
-                          {restaurant.countryCode && (
-                            <div>
-                              <span className="text-muted-foreground">{t('dashboard.country')}:</span>
-                              <span className="ms-2 text-foreground">{restaurant.countryCode}</span>
-                            </div>
-                          )}
-                          {restaurant.currencyCode && (
-                            <div>
-                              <span className="text-muted-foreground">{t('dashboard.currency')}:</span>
-                              <span className="ms-2 text-foreground">{restaurant.currencySymbol} ({restaurant.currencyCode})</span>
-                            </div>
-                          )}
-                          {subscription && (
-                            <>
-                              <div>
-                                <span className="text-muted-foreground">{t('admin.plan')}:</span>
-                                <span className="ms-2 text-foreground">{plans?.find((p: any) => p.id === subscription.planId)?.nameAr || subscription.planId}</span>
-                              </div>
-                              <div>
-                                <span className="text-muted-foreground">{t('admin.billingCycle')}:</span>
-                                <span className="ms-2 text-foreground">{t(`subscription.billingCycle.${subscription.billingCycle}`)}</span>
-                              </div>
-                              <div>
-                                <span className="text-muted-foreground">{language === "ar" ? "السعر" : "Price"}:</span>
-                                <span className="ms-2" dir="ltr">
-                                  {formatPlanPriceForCycle(
-                                    plans?.find((p: any) => p.id === subscription.planId),
-                                    subscription.billingCycle as BillingCycle,
-                                    language === "ar" ? "ar" : "en"
-                                  )}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="text-muted-foreground">{t('admin.periodEnd')}:</span>
-                                <span className="ms-2 text-foreground" dir="ltr">
-                                  {formatSubscriptionEndDate(subscription.currentPeriodEnd, language === "ar" ? "ar" : "en")}
-                                </span>
-                              </div>
-                            </>
-                          )}
+                      ) : null}
+                      {restaurant.ownerEmail ? (
+                        <div>
+                          <dt className="text-muted-foreground">{t("admin.ownerEmail")}</dt>
+                          <dd className="ms-0 mt-0.5 text-foreground" dir="ltr">
+                            {restaurant.ownerEmail}
+                          </dd>
                         </div>
-                        {/* Subscription Action Buttons */}
-                        <div className="flex flex-wrap gap-2 mt-3">
-                          {!subscription && (
+                      ) : null}
+                      {restaurant.phone ? (
+                        <div>
+                          <dt className="text-muted-foreground">{t("admin.phone")}</dt>
+                          <dd className="ms-0 mt-0.5 text-foreground" dir="ltr">
+                            {restaurant.phone}
+                          </dd>
+                        </div>
+                      ) : null}
+                      {restaurant.address ? (
+                        <div>
+                          <dt className="text-muted-foreground">{t("admin.address")}</dt>
+                          <dd className="ms-0 mt-0.5 text-foreground">{restaurant.address}</dd>
+                        </div>
+                      ) : null}
+                      {restaurant.countryCode ? (
+                        <div>
+                          <dt className="text-muted-foreground">{t("dashboard.country")}</dt>
+                          <dd className="ms-0 mt-0.5 text-foreground">{restaurant.countryCode}</dd>
+                        </div>
+                      ) : null}
+                      {restaurant.currencyCode ? (
+                        <div>
+                          <dt className="text-muted-foreground">{t("dashboard.currency")}</dt>
+                          <dd className="ms-0 mt-0.5 text-foreground" dir="ltr">
+                            {restaurant.currencySymbol} ({restaurant.currencyCode})
+                          </dd>
+                        </div>
+                      ) : null}
+                      {subscription ? (
+                        <>
+                          <div>
+                            <dt className="text-muted-foreground">{t("admin.plan")}</dt>
+                            <dd className="ms-0 mt-0.5 text-foreground">
+                              {plans?.find((p: any) => p.id === subscription.planId)?.nameAr || subscription.planId}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt className="text-muted-foreground">{t("admin.billingCycle")}</dt>
+                            <dd className="ms-0 mt-0.5 text-foreground">
+                              {t(`subscription.billingCycle.${subscription.billingCycle}`)}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt className="text-muted-foreground">{t("admin.periodEnd")}</dt>
+                            <dd className="ms-0 mt-0.5 text-foreground" dir="ltr">
+                              {formatSubscriptionEndDate(
+                                subscription.currentPeriodEnd,
+                                language === "ar" ? "ar" : "en"
+                              )}
+                            </dd>
+                          </div>
+                          <div className="sm:col-span-2">
+                            <dt className="text-muted-foreground">
+                              {language === "ar" ? "السعر" : "Price"}
+                            </dt>
+                            <dd className="ms-0 mt-0.5" dir="ltr">
+                              {formatPlanPriceForCycle(
+                                plans?.find((p: any) => p.id === subscription.planId),
+                                subscription.billingCycle as BillingCycle,
+                                language === "ar" ? "ar" : "en"
+                              )}
+                            </dd>
+                          </div>
+                        </>
+                      ) : null}
+                    </dl>
+
+                    <AdminActionGroup
+                      ariaLabel={t("admin.restaurantActions")}
+                      primary={
+                        <AdminIconButton
+                          label={t("admin.editRestaurant")}
+                          onClick={() => setLocation(`/dashboard?restaurant=${restaurant.id}`)}
+                        >
+                          <Edit className="h-3.5 w-3.5" />
+                        </AdminIconButton>
+                      }
+                      secondary={
+                        <>
+                          {!subscription ? (
                             <Button
                               size="sm"
                               variant="outline"
-                              className="border-primary/50 text-primary hover:bg-primary/10"
+                              className={cn(adminDash.opBtn, adminActionBtn.primary)}
                               onClick={() => {
                                 if (!plans || plans.length === 0) {
-                                  toast.error(t('admin.noPlansAvailable'));
+                                  toast.error(t("admin.noPlansAvailable"));
                                   return;
                                 }
                                 createSubscriptionMutation.mutate({
@@ -1103,76 +1218,83 @@ export default function AdminManagement() {
                               }}
                               disabled={createSubscriptionMutation.isPending}
                             >
-                              {createSubscriptionMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin me-1" /> : null}
-                              {t('admin.activateSubscription')}
+                              {createSubscriptionMutation.isPending ? (
+                                <Loader2 className="h-3 w-3 animate-spin me-1" />
+                              ) : null}
+                              {t("admin.activateSubscription")}
                             </Button>
-                          )}
-                          {subscription && subscription.status === 'active' && (
+                          ) : null}
+                          {subscription && subscription.status === "active" ? (
                             <>
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className={adminActionBtn.info}
+                                className={cn(adminDash.opBtn, adminActionBtn.info)}
                                 onClick={() => {
                                   setEditSubId(subscription.id);
                                   setEditSubPlanId(subscription.planId?.toString() || "");
                                   setEditSubBillingCycle(subscription.billingCycle || "monthly");
-                                  setEditSubEndDate(subscription.currentPeriodEnd ? new Date(subscription.currentPeriodEnd).toISOString().split('T')[0] : "");
+                                  setEditSubEndDate(
+                                    subscription.currentPeriodEnd
+                                      ? new Date(subscription.currentPeriodEnd).toISOString().split("T")[0]
+                                      : ""
+                                  );
                                   setEditSubStatus(subscription.status);
                                   setEditSubDialogOpen(true);
                                 }}
                               >
-                                <Edit className="w-3 h-3 me-1" />
-                                {t('admin.editSubscription')}
+                                <Edit className="h-3 w-3 me-1" />
+                                {t("admin.editSubscription")}
                               </Button>
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className={adminActionBtn.danger}
-                                onClick={() => deleteSubscriptionMutation.mutate({ subscriptionId: subscription.id })}
+                                className={cn(adminDash.opBtn, adminActionBtn.danger)}
+                                onClick={() =>
+                                  deleteSubscriptionMutation.mutate({ subscriptionId: subscription.id })
+                                }
                                 disabled={deleteSubscriptionMutation.isPending}
                               >
-                                {deleteSubscriptionMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin me-1" /> : <Trash2 className="w-3 h-3 me-1" />}
-                                {t('admin.deleteSubscription')}
+                                {deleteSubscriptionMutation.isPending ? (
+                                  <Loader2 className="h-3 w-3 animate-spin me-1" />
+                                ) : (
+                                  <Trash2 className="h-3 w-3 me-1" />
+                                )}
+                                {t("admin.deleteSubscription")}
                               </Button>
                             </>
-                          )}
-                          {subscription && subscription.status === 'canceled' && (
+                          ) : null}
+                          {subscription && subscription.status === "canceled" ? (
                             <Button
                               size="sm"
                               variant="outline"
-                              className={adminActionBtn.success}
-                              onClick={() => updateSubscriptionMutation.mutate({
-                                subscriptionId: subscription.id,
-                                status: "active",
-                              })}
+                              className={cn(adminDash.opBtn, adminActionBtn.success)}
+                              onClick={() =>
+                                updateSubscriptionMutation.mutate({
+                                  subscriptionId: subscription.id,
+                                  status: "active",
+                                })
+                              }
                               disabled={updateSubscriptionMutation.isPending}
                             >
-                              {updateSubscriptionMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin me-1" /> : null}
-                              {t('admin.reactivateSubscription')}
+                              {updateSubscriptionMutation.isPending ? (
+                                <Loader2 className="h-3 w-3 animate-spin me-1" />
+                              ) : null}
+                              {t("admin.reactivateSubscription")}
                             </Button>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex shrink-0 gap-2 sm:ms-4">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setLocation(`/dashboard?restaurant=${restaurant.id}`)}
-                          className="border-border/50 text-foreground"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button
+                          ) : null}
+                        </>
+                      }
+                      danger={
+                        <AdminIconButton
+                          label={t("admin.deleteRestaurantAction")}
                           variant="destructive"
-                          size="sm"
                           onClick={() => setDeleteRestaurantId(restaurant.id)}
-                          className="bg-red-600 hover:bg-red-700"
                         >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </AdminIconButton>
+                      }
+                    />
                   </CardContent>
                 </Card>
               );
@@ -1192,7 +1314,7 @@ export default function AdminManagement() {
 
       {/* Create Restaurant Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={(open) => { if (!open) { setShowCreateDialog(false); resetForm(); } }}>
-        <DialogContent className="bg-card border-border max-w-md w-[95vw] sm:w-full max-h-[90vh] overflow-y-auto">
+        <DialogContent className={adminDash.dialogContent}>
           <DialogHeader>
             <DialogTitle className="text-foreground">{t('admin.addRestaurant')}</DialogTitle>
             <DialogDescription className="text-muted-foreground">{t('admin.enterRestaurantData')}</DialogDescription>
@@ -1419,7 +1541,7 @@ export default function AdminManagement() {
 
       {/* Edit Subscription Dialog */}
       <Dialog open={editSubDialogOpen} onOpenChange={(open) => { if (!open) setEditSubDialogOpen(false); }}>
-        <DialogContent className="bg-card border-border max-w-md w-[95vw] sm:w-full">
+        <DialogContent className={adminDash.dialogContent}>
           <DialogHeader>
             <DialogTitle className="text-foreground">{t('admin.editSubscription')}</DialogTitle>
             <DialogDescription className="text-muted-foreground">{t('admin.editSubscriptionDesc')}</DialogDescription>
@@ -1464,5 +1586,6 @@ export default function AdminManagement() {
         </DialogContent>
       </Dialog>
     </AdminPageShell>
+    </TooltipProvider>
   );
 }

@@ -846,7 +846,13 @@
     "searchPlaceholder": "Search by name, email, or phone...",
     "filterByStatus": "Filter by status",
     "allStatuses": "All statuses",
-    "ownerName": "Owner name"
+    "ownerName": "Owner name",
+    "noRestaurantsFiltered": "No restaurants match your search or filter",
+    "noRestaurantsFilteredDesc": "Try adjusting the search term or status filter",
+    "editRestaurant": "Edit restaurant",
+    "deleteRestaurantAction": "Delete restaurant",
+    "restaurantActions": "Restaurant actions",
+    "userActions": "User actions"
   },
   "template": {
     "selectTemplate": "Select Menu Template",
@@ -1005,6 +1011,8 @@
     "description": "View and manage all registered users in the system",
     "list": "Users List",
     "noUsers": "No users found",
+    "noUsersFiltered": "No users match your search",
+    "noUsersFilteredDesc": "Try a different name or email",
     "searchPlaceholder": "Search by name or email...",
     "name": "Name",
     "email": "Email",

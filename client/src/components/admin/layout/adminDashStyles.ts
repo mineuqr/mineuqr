@@ -13,6 +13,13 @@ export const adminDash = {
   card: "rounded-xl border border-border/50 bg-card/40 shadow-sm backdrop-blur-sm",
   kpiCard: "rounded-xl border border-border/50 bg-card/40 shadow-sm backdrop-blur-sm",
   operationsCard: "rounded-xl border border-border/50 bg-card/40 shadow-sm overflow-hidden",
+  /** Consistent operational button sizing */
+  opBtn: "h-8 min-h-8 shrink-0 text-xs",
+  actionPrimary: "",
+  actionSecondary: "",
+  /** Scroll-safe dialog content for mobile */
+  dialogContent:
+    "bg-card border-border max-w-md w-[calc(100vw-2rem)] sm:w-full max-h-[min(90vh,720px)] overflow-y-auto",
 } as const;
 
 /** Dark-mode-safe outline action buttons for admin tables/cards. */

@@ -8,6 +8,7 @@ import {
 import type { AdminKPIValues } from "@/lib/admin/computeAdminKPIs";
 import { ADMIN_EXPIRING_SOON_DAYS } from "@/lib/admin/computeAdminKPIs";
 import { formatCurrencySAR } from "@/lib/subscription";
+import { AdminLoadingState } from "../operations/AdminLoadingState";
 import { AdminSection } from "./AdminSection";
 import { AdminStatCard } from "./AdminStatCard";
 
@@ -28,6 +29,7 @@ type AdminKPISectionProps = {
     expiringSoonHint?: string;
     estimatedMrrHint?: string;
   };
+  loadingLabel?: string;
 };
 
 export function AdminKPISection({
@@ -37,12 +39,16 @@ export function AdminKPISection({
   title,
   description,
   labels = {},
+  loadingLabel,
 }: AdminKPISectionProps) {
   const isAr = locale === "ar";
   const mrrDisplay = formatCurrencySAR(kpis.estimatedMrr, locale);
 
   return (
     <AdminSection title={title} description={description}>
+      {loading ? (
+        <AdminLoadingState variant="kpiStrip" label={loadingLabel} />
+      ) : (
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
         <AdminStatCard
           title={labels.activeRestaurants ?? (isAr ? "المطاعم النشطة" : "Active Restaurants")}
@@ -100,6 +106,7 @@ export function AdminKPISection({
           />
         </div>
       </div>
+      )}
     </AdminSection>
   );
 }
