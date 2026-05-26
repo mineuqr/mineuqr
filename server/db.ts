@@ -17,6 +17,7 @@ import {
   orderItems, InsertOrderItem,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
+import { parseStoredUtcInstant } from "@shared/utils/timezone";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -615,7 +616,9 @@ export async function getRevenueByMonth(months: number = 12) {
     
     const monthRevenue = allSubs
       .filter(s => {
-        const createdDate = new Date(s.createdAt);
+        // DB DATETIME assumed UTC — align with Dashboard TZ-5a parse semantics (TZ-5b.0).
+        const createdDate = parseStoredUtcInstant(s.createdAt);
+        if (!createdDate) return false;
         return createdDate.getFullYear() === monthDate.getFullYear() && 
                createdDate.getMonth() === monthDate.getMonth() &&
                (s.status === 'active' || s.status === 'trial');
@@ -697,7 +700,9 @@ export async function getExtendedAdminStats() {
   const allSubs = await db.select().from(userSubscriptions);
   const allOffers = await db.select().from(offers);
 
-  // Users registered per month (last 12 months)
+  // Users registered per month (last 12 months).
+  // Month bucket boundaries remain server-local for now (TZ-5b.1); record instants
+  // are parsed as UTC via parseStoredUtcInstant to match Dashboard TZ-5a semantics.
   const now = new Date();
   const userGrowth: { month: string; users: number; restaurants: number }[] = [];
   for (let i = 11; i >= 0; i--) {
@@ -706,12 +711,14 @@ export async function getExtendedAdminStats() {
     const monthStr = monthDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
 
     const usersInMonth = allUsers.filter(u => {
-      const d = new Date(u.createdAt);
+      const d = parseStoredUtcInstant(u.createdAt);
+      if (!d) return false;
       return d >= monthDate && d < nextMonth;
     }).length;
 
     const restaurantsInMonth = allRestaurants.filter(r => {
-      const d = new Date(r.createdAt);
+      const d = parseStoredUtcInstant(r.createdAt);
+      if (!d) return false;
       return d >= monthDate && d < nextMonth;
     }).length;
 
