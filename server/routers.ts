@@ -1558,7 +1558,7 @@ const orderRouter = router({
     .input(z.object({
       restaurantId: z.number(),
       tableId: z.number(),
-      tableNumber: z.number(),
+      tableNumber: z.number().int().min(1),
       customerName: z.string().nullish(),
       customerPhone: z.string().nullish(),
       notes: z.string().nullish(),
@@ -1567,20 +1567,39 @@ const orderRouter = router({
         nameAr: z.string(),
         nameEn: z.string().nullish(),
         price: z.string(),
-        quantity: z.number().min(1),
+        quantity: z.number().int().min(1).max(99),
         notes: z.string().nullish(),
-      })),
+      })).min(1),
     }))
     .mutation(async ({ input }) => {
+      const restaurant = await getRestaurantById(input.restaurantId);
+      if (!restaurant) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "المطعم غير موجود" });
+      }
+      if (!restaurant.isActive) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "المطعم غير متاح حالياً" });
+      }
+
       const allowsOrdering = await restaurantAllowsTableOrdering(input.restaurantId);
       if (!allowsOrdering) {
         throw new TRPCError({ code: 'FORBIDDEN', message: 'ميزة الطلب عبر المنيو متاحة فقط للمشتركين في الخطة الاحترافية أو المؤسسية' });
       }
-      const { items, ...orderData } = input;
+
+      const table = await getTableByRestaurantAndNumber(input.restaurantId, input.tableNumber);
+      if (!table) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "الطاولة غير موجودة" });
+      }
+
+      const { items } = input;
       const totalAmount = items.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0);
       const orderNumber = await generateOrderNumber(input.restaurantId);
       const result = await createOrder({
-        ...orderData,
+        restaurantId: input.restaurantId,
+        tableId: table.id,
+        tableNumber: table.tableNumber,
+        customerName: input.customerName,
+        customerPhone: input.customerPhone,
+        notes: input.notes,
         totalAmount: totalAmount.toFixed(2),
         orderNumber,
       }) as { id: number } | null;
@@ -1596,18 +1615,15 @@ const orderRouter = router({
         })));
         // Send notification to restaurant owner
         try {
-          const restaurant = await getRestaurantById(input.restaurantId);
-          if (restaurant) {
-            const itemsSummary = items.map(i => `${i.nameAr} x${i.quantity}`).join('، ');
-            await createNotification({
-              userId: restaurant.userId,
-              notificationType: 'new_order',
-              message: `طلب جديد #${orderNumber} - طاولة ${input.tableNumber} - ${itemsSummary} - المجموع: ${totalAmount.toFixed(2)} ${restaurant.currencySymbol || 'ر.س'}`,
-              isRead: false,
-              isSent: true,
-              sentAt: new Date().toISOString().slice(0, 19).replace('T', ' '),
-            });
-          }
+          const itemsSummary = items.map(i => `${i.nameAr} x${i.quantity}`).join('، ');
+          await createNotification({
+            userId: restaurant.userId,
+            notificationType: 'new_order',
+            message: `طلب جديد #${orderNumber} - طاولة ${table.tableNumber} - ${itemsSummary} - المجموع: ${totalAmount.toFixed(2)} ${restaurant.currencySymbol || 'ر.س'}`,
+            isRead: false,
+            isSent: true,
+            sentAt: new Date().toISOString().slice(0, 19).replace('T', ' '),
+          });
         } catch (e) { /* notification failure is non-critical */ }
       }
       return { orderId: result?.id, orderNumber };
