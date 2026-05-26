@@ -137,3 +137,33 @@ export function formatInRestaurantTimezone(
     ...options,
   }).format(date);
 }
+
+/** Display formatters fixed to APP_TIMEZONE (Riyadh). */
+export function formatRiyadhDateTime(
+  value: string | Date | null | undefined,
+  locale: string,
+  options?: Intl.DateTimeFormatOptions
+): string {
+  return formatInRestaurantTimezone(value, locale, options, APP_TIMEZONE);
+}
+
+export function formatRiyadhDate(
+  value: string | Date | null | undefined,
+  locale: string
+): string {
+  return formatRiyadhDateTime(value, locale, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+export function formatRiyadhTime(
+  value: string | Date | null | undefined,
+  locale: string
+): string {
+  return formatRiyadhDateTime(value, locale, {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
