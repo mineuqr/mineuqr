@@ -1,5 +1,7 @@
+import { useAuth } from "@/_core/hooks/useAuth";
 import { useEffect, useRef, useState } from "react";
 import { spaNavigate } from "@/const";
+import { DASHBOARD_NOTIFICATION_POLL_MS, useDevQueryRuntimeLog } from "@/lib/queryRuntime";
 import { trpc } from "@/lib/trpc";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { ShoppingCart, Volume2, VolumeX, X, ExternalLink } from "lucide-react";
@@ -66,7 +68,16 @@ interface OrderAlert {
  * and shows a custom popup + plays a sound when a new order arrives.
  */
 export default function OrderAlertSystem() {
+  const { isAuthenticated, authPending } = useAuth();
   const { language } = useLanguage();
+  const notifyEnabled = !authPending && isAuthenticated;
+
+  useDevQueryRuntimeLog("notification.getUnread", {
+    enabled: notifyEnabled,
+    authPending,
+    isAuthenticated,
+    pollMs: DASHBOARD_NOTIFICATION_POLL_MS,
+  });
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [alerts, setAlerts] = useState<OrderAlert[]>([]);
   const lastSeenIdRef = useRef<number>(0);
@@ -78,9 +89,9 @@ export default function OrderAlertSystem() {
     soundEnabledRef.current = soundEnabled;
   }, [soundEnabled]);
 
-  // Poll unread notifications every 8 seconds
   const { data: unreadNotifications } = trpc.notification.getUnread.useQuery(undefined, {
-    refetchInterval: 8000,
+    enabled: notifyEnabled,
+    refetchInterval: notifyEnabled ? DASHBOARD_NOTIFICATION_POLL_MS : false,
   });
 
   // Process notifications when data changes

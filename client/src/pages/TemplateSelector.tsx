@@ -1,4 +1,5 @@
-import { useAuth } from "@/_core/hooks/useAuth";
+import { useAuthGate } from "@/_core/hooks/useAuthGate";
+import { AuthGatePending } from "@/components/AuthGate";
 import { useState, useEffect } from "react";
 import { useRoute, useLocation } from "wouter";
 import { motion } from "framer-motion";
@@ -17,7 +18,8 @@ import { resolveImageUrl } from "@/lib/utils";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function TemplateSelector() {
-  const { user, loading: authLoading, isAuthenticated } = useAuth();
+  const gate = useAuthGate();
+  const { user, isAuthenticated, authResolved } = gate;
   const { t, language, dir } = useLanguage();
   const [, params] = useRoute("/dashboard/templates/:restaurantId");
   const restaurantId = Number(params?.restaurantId) || 0;
@@ -25,12 +27,12 @@ export default function TemplateSelector() {
 
   const { data: restaurant, isLoading: restaurantLoading, error: restaurantError, refetch: refetchRestaurant } = trpc.restaurant.getById.useQuery(
     { id: restaurantId },
-    { enabled: !!restaurantId && isAuthenticated }
+    { enabled: authResolved && !!restaurantId && isAuthenticated }
   );
 
   const { data: subscriptionData, error: subscriptionError } = trpc.subscription.checkTrialStatus.useQuery(
     undefined,
-    { enabled: isAuthenticated }
+    { enabled: authResolved && isAuthenticated }
   );
 
   const utils = trpc.useUtils();
@@ -77,15 +79,11 @@ export default function TemplateSelector() {
     });
   };
 
-  if (authLoading || restaurantLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
+  if (gate.isPending) {
+    return <AuthGatePending />;
   }
 
-  if (!isAuthenticated) {
+  if (gate.showLoginRequired) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4" dir={dir}>
         <div className="text-center">
@@ -99,6 +97,14 @@ export default function TemplateSelector() {
   {t('template.login')}
 </Button>
         </div>
+      </div>
+    );
+  }
+
+  if (restaurantLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }

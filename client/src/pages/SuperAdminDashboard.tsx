@@ -1,4 +1,5 @@
-import { useAuth } from "@/_core/hooks/useAuth";
+import { useAuthGate } from "@/_core/hooks/useAuthGate";
+import { AuthGatePending, SuperAdminAccessDenied } from "@/components/AuthGate";
 import { trpc } from "@/lib/trpc";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
@@ -9,23 +10,35 @@ import { toast } from "sonner";
 import { Loader2, Store, Users, BarChart3, Search, Trash2, Shield } from "lucide-react";
 import { useLocation } from "wouter";
 import { useState, useMemo } from "react";
+import { adminQueriesEnabled } from "@/lib/queryRuntime";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
 export default function SuperAdminDashboard() {
-  const { user, isAuthenticated } = useAuth();
+  const gate = useAuthGate();
+  const { user, isAuthenticated, authPending } = gate;
   const [, setLocation] = useLocation();
   const { t, language } = useLanguage();
   const [searchTerm, setSearchTerm] = useState("");
   const [deleteUserId, setDeleteUserId] = useState<number | null>(null);
 
-  // Fetch all users
-  const { data: allUsers, isLoading: usersLoading } = trpc.admin.listAllUsers.useQuery();
+  const adminEnabled = adminQueriesEnabled(
+    authPending,
+    isAuthenticated,
+    user?.role === "admin"
+  );
 
-  // Fetch extended stats
-  const { data: stats, isLoading: statsLoading } = trpc.admin.getExtendedStats.useQuery();
+  const { data: allUsers, isLoading: usersLoading } = trpc.admin.listAllUsers.useQuery(
+    undefined,
+    { enabled: adminEnabled }
+  );
+
+  const { data: stats, isLoading: statsLoading } = trpc.admin.getExtendedStats.useQuery(
+    undefined,
+    { enabled: adminEnabled }
+  );
 
   // Delete user mutation
   const deleteUserMutation = trpc.admin.deleteUser.useMutation({
@@ -49,25 +62,12 @@ export default function SuperAdminDashboard() {
 
   const isLoading = usersLoading || statsLoading;
 
-  // Check if user is admin
-  if (!isAuthenticated || user?.role !== 'admin') {
-    return (
-      <div className="min-h-screen cinematic-bg flex items-center justify-center p-4">
-        <Card className="max-w-md w-full bg-card border-border">
-          <CardContent className="p-8 text-center">
-            <Shield className="w-16 h-16 text-primary mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-foreground mb-2">غير مصرح</h2>
-            <p className="text-muted-foreground mb-6">هذه الصفحة متاحة فقط للمسؤولين</p>
-            <Button
-              onClick={() => setLocation("/")}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold w-full"
-            >
-              العودة للرئيسية
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
+  if (gate.isPending) {
+    return <AuthGatePending />;
+  }
+
+  if (gate.showAdminDenied) {
+    return <SuperAdminAccessDenied />;
   }
 
   return (

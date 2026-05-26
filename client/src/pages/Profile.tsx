@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
-import { useAuth } from "@/_core/hooks/useAuth";
+import { useAuthGate } from "@/_core/hooks/useAuthGate";
+import { AuthGatePending } from "@/components/AuthGate";
+import { getLoginUrl, spaNavigate } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
@@ -8,11 +10,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { User, Mail, Lock, Save, Loader2, Shield } from "lucide-react";
-import { useLocation } from "wouter";
-
 export default function Profile() {
-  const { user, isAuthenticated } = useAuth();
-  const [, setLocation] = useLocation();
+  const gate = useAuthGate();
+  const { user, isAuthenticated, authResolved } = gate;
   const { t, language } = useLanguage();
   const isRtl = language === "ar";
 
@@ -23,7 +23,7 @@ export default function Profile() {
   const [confirmPassword, setConfirmPassword] = useState("");
 
   const { data: profile, isLoading } = trpc.profile.get.useQuery(undefined, {
-    enabled: isAuthenticated,
+    enabled: authResolved && isAuthenticated,
   });
 
   useEffect(() => {
@@ -54,9 +54,25 @@ export default function Profile() {
     onError: (err) => toast.error(err.message),
   });
 
-  if (!isAuthenticated) {
-    setLocation("/");
-    return null;
+  if (gate.isPending) {
+    return <AuthGatePending minHeight="min-h-[60vh]" />;
+  }
+
+  if (gate.showLoginRequired) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh] p-4">
+        <Card className="max-w-md w-full">
+          <CardContent className="p-8 text-center">
+            <Shield className="w-12 h-12 text-primary mx-auto mb-4" />
+            <h2 className="text-xl font-bold text-foreground mb-2">{t("common.loginRequired")}</h2>
+            <p className="text-muted-foreground mb-6">{t("common.loginRequiredDesc")}</p>
+            <Button onClick={() => spaNavigate(getLoginUrl())} className="w-full">
+              {t("common.login")}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   if (isLoading) {

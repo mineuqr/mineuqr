@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { useAuth } from "@/_core/hooks/useAuth";
+import { useAuthGate } from "@/_core/hooks/useAuthGate";
+import { AuthGatePending } from "@/components/AuthGate";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +17,7 @@ import {
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
+import { adminQueriesEnabled } from "@/lib/queryRuntime";
 
 const statDash = {
   shell: "min-h-screen bg-background",
@@ -48,16 +50,40 @@ interface PlanCount {
 
 export default function Statistics() {
   const { t, language } = useLanguage();
-  const { user, isAuthenticated } = useAuth();
+  const gate = useAuthGate();
+  const { user, isAuthenticated, authPending } = gate;
   const [, setLocation] = useLocation();
   const [months] = useState(12);
-  const { data: stats, isLoading: statsLoading } = trpc.admin.getStatistics.useQuery();
-  const { data: revenueData, isLoading: revenueLoading } = trpc.admin.getRevenueByMonth.useQuery();
-  const { data: subscriptionDetails, isLoading: detailsLoading } = trpc.admin.getSubscriptionDetails.useQuery();
-  const { data: extendedStats, isLoading: extendedLoading } = trpc.admin.getExtendedStats.useQuery();
+  const adminEnabled = adminQueriesEnabled(
+    authPending,
+    isAuthenticated,
+    user?.role === "admin"
+  );
+  const { data: stats, isLoading: statsLoading } = trpc.admin.getStatistics.useQuery(
+    undefined,
+    { enabled: adminEnabled }
+  );
+  const { data: revenueData, isLoading: revenueLoading } = trpc.admin.getRevenueByMonth.useQuery(
+    undefined,
+    { enabled: adminEnabled }
+  );
+  const { data: subscriptionDetails, isLoading: detailsLoading } =
+    trpc.admin.getSubscriptionDetails.useQuery(undefined, { enabled: adminEnabled });
+  const { data: extendedStats, isLoading: extendedLoading } = trpc.admin.getExtendedStats.useQuery(
+    undefined,
+    { enabled: adminEnabled }
+  );
 
-  // Check if user is admin
-  if (!isAuthenticated || user?.role !== "admin") 
+  if (gate.isPending) {
+    return (
+      <div className={cn(statDash.shell, "flex items-center justify-center p-4")}>
+        <div className={statDash.shellGlow} aria-hidden />
+        <AuthGatePending minHeight="min-h-0" />
+      </div>
+    );
+  }
+
+  if (gate.showAdminDenied) {
     return (
       <div className={cn(statDash.shell, "flex items-center justify-center p-4")}>
         <div className={statDash.shellGlow} aria-hidden />
@@ -73,7 +99,7 @@ export default function Statistics() {
         </Card>
       </div>
     );
-  
+  }
 
   const exportToCSV = () => {
     if (!subscriptionDetails) return;

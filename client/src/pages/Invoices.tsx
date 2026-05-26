@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { useAuth } from "@/_core/hooks/useAuth";
+import { useAuthGate } from "@/_core/hooks/useAuthGate";
+import { AuthGatePending } from "@/components/AuthGate";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,13 +13,14 @@ import { formatRiyadhDate } from "@/lib/datetime";
 type InvoiceStatus = "pending" | "paid" | "failed" | "refunded";
 
 export default function Invoices() {
-  const { user } = useAuth();
+  const gate = useAuthGate();
+  const { authResolved, isAuthenticated } = gate;
   const { t, language } = useLanguage();
   const dateLocale = language === "ar" ? "ar-SA" : "en-US";
   const [statusFilter, setStatusFilter] = useState<InvoiceStatus | "all">("all");
 
   const { data: invoices, isLoading, error } = trpc.invoice.list.useQuery(undefined, {
-    enabled: !!user,
+    enabled: authResolved && isAuthenticated,
   });
 
   const filteredInvoices = useMemo(() => {
@@ -38,7 +40,11 @@ export default function Invoices() {
     };
   }, [invoices]);
 
-  if (!user) {
+  if (gate.isPending) {
+    return <AuthGatePending />;
+  }
+
+  if (gate.showLoginRequired) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Card className="w-full max-w-md">

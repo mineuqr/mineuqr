@@ -54,6 +54,7 @@ export function useAuth(options?: UseAuthOptions) {
       user: meQuery.data ?? null,
       /** Initial auth.me in flight — not the same as "logged out". */
       authPending,
+      authResolved: !authPending,
       loading: authPending || logoutMutation.isPending,
       error: meQuery.error ?? logoutMutation.error ?? null,
       isAuthenticated: Boolean(meQuery.data),

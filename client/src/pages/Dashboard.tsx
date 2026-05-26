@@ -1,4 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useAuthGate } from "@/_core/hooks/useAuthGate";
 import { Button } from "@/components/ui/button";
 import OrderAlertSystem from "@/components/OrderAlertSystem";
 import { getLoginUrl, spaNavigate } from "@/const";
@@ -6,6 +7,12 @@ import { trpc } from "@/lib/trpc";
 import { cn, resolveImageUrl } from "@/lib/utils";
 import { formatRiyadhDateTime, parseDbUtcTimestamp } from "@/lib/datetime";
 import { downloadSalesReportXlsx } from "@/lib/excel";
+import {
+  DASHBOARD_ORDER_LIST_POLL_MS,
+  orderListQueryOptions,
+  restaurantQueriesEnabled,
+  useDevQueryRuntimeLog,
+} from "@/lib/queryRuntime";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
   QrCode, Plus, Store, LayoutGrid, UtensilsCrossed,
@@ -460,12 +467,12 @@ function DashboardTopBar({
 
 // ─── Notification Badge ─────────────────────────────────────
 function NotificationBadge() {
-  const { isAuthenticated } = useAuth();
-  const { data: notifications } = trpc.notification.list.useQuery(undefined, {
-    enabled: isAuthenticated,
-    refetchInterval: 30000, // Refresh every 30s
+  const { isAuthenticated, authPending } = useAuth();
+  const badgeEnabled = !authPending && isAuthenticated;
+  const { data: unreadNotifications } = trpc.notification.getUnread.useQuery(undefined, {
+    enabled: badgeEnabled,
   });
-  const unreadCount = (notifications as any[] || []).filter((n: any) => !n.isRead).length;
+  const unreadCount = unreadNotifications?.length ?? 0;
   if (unreadCount === 0) return null;
   return (
     <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
@@ -537,8 +544,8 @@ function syncDashboardUrl(
 // ─── Dashboard Layout ───────────────────────────────────────
 
 export default function Dashboard() {
-  const { user, authPending, isAuthenticated, logout } = useAuth();
-  const authResolved = !authPending;
+  const gate = useAuthGate();
+  const { user, authPending, authResolved, isAuthenticated, logout } = gate;
   const { t, language, dir } = useLanguage();
   const [location] = useLocation();
   const [, routeParams] = useRoute("/dashboard/:section");
@@ -566,6 +573,7 @@ export default function Dashboard() {
     { id: selectedRestaurantId! },
     {
       enabled:
+        authResolved &&
         isAuthenticated &&
         !!selectedRestaurantId &&
         activeSection === "restaurant-detail",
@@ -593,7 +601,7 @@ export default function Dashboard() {
 
   const { data: restaurants, isLoading: restaurantsResolving } = trpc.restaurant.list.useQuery(
     undefined,
-    { enabled: isAuthenticated && needsRestaurantResolve }
+    { enabled: authResolved && isAuthenticated && needsRestaurantResolve }
   );
 
   const resolvingSectionRef = useRef(tabFromSection);
@@ -643,7 +651,7 @@ export default function Dashboard() {
     }
   }, []);
 
-  if (authResolved && !isAuthenticated) {
+  if (gate.showLoginRequired) {
     return (
       <div className={cn(dash.shell, "flex items-center justify-center p-4")} dir={dir}>
         <div className={dash.shellGlow} aria-hidden />
@@ -696,7 +704,7 @@ export default function Dashboard() {
           onOpenMobileMenu={() => setMobileSidebarOpen(true)}
         />
         <main className={dash.main}>
-          {!authResolved ? (
+          {gate.isPending ? (
             <DashboardMainSkeleton />
           ) : activeSection === "restaurants" ? (
             <RestaurantsList onSelect={handleSelectRestaurant} userName={user?.name} />
@@ -730,10 +738,11 @@ function RestaurantsList({
   onSelect: (id: number) => void;
   userName?: string | null;
 }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, authPending } = useAuth();
+  const authResolved = !authPending;
   const { data: restaurants, isLoading, refetch } = trpc.restaurant.list.useQuery(
     undefined,
-    { enabled: isAuthenticated }
+    { enabled: authResolved && isAuthenticated }
   );
   const { t, language } = useLanguage();
   const [showCreate, setShowCreate] = useState(false);
@@ -1246,10 +1255,17 @@ function RestaurantHomePanel({
   restaurantId: number;
   onTabChange: (tab: RestaurantTab) => void;
 }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, authPending } = useAuth();
+  const ordersEnabled = restaurantQueriesEnabled(authPending, isAuthenticated, restaurantId);
+  useDevQueryRuntimeLog("order.list", {
+    enabled: ordersEnabled,
+    authPending,
+    isAuthenticated,
+    pollMs: ordersEnabled ? DASHBOARD_ORDER_LIST_POLL_MS : undefined,
+  });
   const { data: recentOrders } = trpc.order.list.useQuery(
     { restaurantId },
-    { enabled: isAuthenticated, refetchInterval: 15000 }
+    orderListQueryOptions(ordersEnabled)
   );
   const recent = (recentOrders ?? []).slice(0, 5);
 
@@ -1307,26 +1323,31 @@ function RestaurantDetail({
   onTabChange: (tab: RestaurantTab) => void;
 }) {
   const { t, language } = useLanguage();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, authPending } = useAuth();
+  const queriesEnabled = restaurantQueriesEnabled(
+    authPending,
+    isAuthenticated,
+    restaurantId
+  );
   const loadStats =
     activeTab === "home" || activeTab === "reports";
   const loadCategories = activeTab === "categories";
 
   const { data: restaurant, isLoading } = trpc.restaurant.getById.useQuery(
     { id: restaurantId },
-    { enabled: isAuthenticated && !!restaurantId }
+    { enabled: queriesEnabled }
   );
   const { data: stats } = trpc.restaurant.stats.useQuery(
     { id: restaurantId },
-    { enabled: isAuthenticated && !!restaurantId && loadStats }
+    { enabled: queriesEnabled && loadStats }
   );
   const { data: categoriesList, isLoading: catsLoading } = trpc.category.list.useQuery(
     { restaurantId },
-    { enabled: isAuthenticated && !!restaurantId && loadCategories }
+    { enabled: queriesEnabled && loadCategories }
   );
   const { data: subscriptionData } = trpc.subscription.getByRestaurant.useQuery(
     { restaurantId },
-    { enabled: isAuthenticated && !!restaurantId }
+    { enabled: queriesEnabled }
   );
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
 
@@ -1723,7 +1744,13 @@ function ItemsView({
   currencySymbol?: string;
 }) {
   const { t } = useLanguage();
-  const { data: items, isLoading } = trpc.menuItem.listByCategory.useQuery({ categoryId });
+  const { isAuthenticated, authPending } = useAuth();
+  const queriesEnabled =
+    restaurantQueriesEnabled(authPending, isAuthenticated, restaurantId) && categoryId > 0;
+  const { data: items, isLoading } = trpc.menuItem.listByCategory.useQuery(
+    { categoryId },
+    { enabled: queriesEnabled }
+  );
   const [showAddItem, setShowAddItem] = useState(false);
   const [editItem, setEditItem] = useState<any>(null);
   const [deleteItemId, setDeleteItemId] = useState<number | null>(null);
@@ -2489,7 +2516,12 @@ function QRTab({ restaurant }: { restaurant: any }) {
 
 function OffersTab({ restaurantId, currencySymbol }: { restaurantId: number; currencySymbol?: string }) {
   const { t, language } = useLanguage();
-  const { data: offers, isLoading } = trpc.offer.list.useQuery({ restaurantId });
+  const { isAuthenticated, authPending } = useAuth();
+  const queriesEnabled = restaurantQueriesEnabled(authPending, isAuthenticated, restaurantId);
+  const { data: offers, isLoading } = trpc.offer.list.useQuery(
+    { restaurantId },
+    { enabled: queriesEnabled }
+  );
   const [showForm, setShowForm] = useState(false);
   const [editingOffer, setEditingOffer] = useState<any>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
@@ -2950,7 +2982,16 @@ function SettingsTab({ restaurant, onBack }: { restaurant: any; onBack: () => vo
   const [holidayOpen, setHolidayOpen] = useState('09:00');
   const [holidayClose, setHolidayClose] = useState('23:00');
 
-  const { data: holidays, refetch: refetchHolidays } = trpc.holiday.list.useQuery({ restaurantId: restaurant.id });
+  const { isAuthenticated, authPending } = useAuth();
+  const queriesEnabled = restaurantQueriesEnabled(
+    authPending,
+    isAuthenticated,
+    restaurant?.id ?? 0
+  );
+  const { data: holidays, refetch: refetchHolidays } = trpc.holiday.list.useQuery(
+    { restaurantId: restaurant.id },
+    { enabled: queriesEnabled }
+  );
   const createHolidayMut = trpc.holiday.create.useMutation({ onSuccess: () => { refetchHolidays(); setShowAddHoliday(false); setHolidayTitleAr(''); setHolidayTitleEn(''); setHolidayDate(''); setHolidayFullDay(true); } });
   const deleteHolidayMut = trpc.holiday.delete.useMutation({ onSuccess: () => refetchHolidays() });
 
@@ -3795,7 +3836,18 @@ function ReportsTab({
       ? ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"]
       : ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
-  const { data: allOrders } = trpc.order.list.useQuery({ restaurantId }, { refetchInterval: 10000 });
+  const { isAuthenticated, authPending } = useAuth();
+  const ordersEnabled = restaurantQueriesEnabled(authPending, isAuthenticated, restaurantId);
+  useDevQueryRuntimeLog("order.list", {
+    enabled: ordersEnabled,
+    authPending,
+    isAuthenticated,
+    pollMs: ordersEnabled ? DASHBOARD_ORDER_LIST_POLL_MS : undefined,
+  });
+  const { data: allOrders } = trpc.order.list.useQuery(
+    { restaurantId },
+    orderListQueryOptions(ordersEnabled)
+  );
 
   const orderStats = useMemo(
     () => buildOrderStatistics((allOrders ?? []) as DashboardOrder[]),
@@ -4020,6 +4072,8 @@ function ReportsTab({
 // ─── Orders Tab ─────────────────────────────────────────────
 function OrdersTab({ restaurantId, currencySymbol, tableLabel }: { restaurantId: number; currencySymbol?: string; tableLabel?: string }) {
   const { language } = useLanguage();
+  const { isAuthenticated, authPending } = useAuth();
+  const ordersEnabled = restaurantQueriesEnabled(authPending, isAuthenticated, restaurantId);
   const isRooms = tableLabel === "rooms";
   const unitAr = isRooms ? "غرفة" : "طاولة";
   const unitEn = isRooms ? "Room" : "Table";
@@ -4027,9 +4081,15 @@ function OrdersTab({ restaurantId, currencySymbol, tableLabel }: { restaurantId:
   const [lastOrderCount, setLastOrderCount] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  useDevQueryRuntimeLog("order.list", {
+    enabled: ordersEnabled,
+    authPending,
+    isAuthenticated,
+    pollMs: ordersEnabled ? DASHBOARD_ORDER_LIST_POLL_MS : undefined,
+  });
   const { data: allOrders, refetch } = trpc.order.list.useQuery(
     { restaurantId },
-    { refetchInterval: 5000 }
+    orderListQueryOptions(ordersEnabled)
   );
 
   const orders = useMemo(() => {
@@ -4250,6 +4310,8 @@ function OrdersTab({ restaurantId, currencySymbol, tableLabel }: { restaurantId:
 // ─── Tables Tab ─────────────────────────────────────────────
 function TablesTab({ restaurantId, restaurant }: { restaurantId: number; restaurant: any }) {
   const { t, language } = useLanguage();
+  const { isAuthenticated, authPending } = useAuth();
+  const queriesEnabled = restaurantQueriesEnabled(authPending, isAuthenticated, restaurantId);
   const [tableCount, setTableCount] = useState(10);
   const [startFrom, setStartFrom] = useState(1);
   const [tableQRFgColor, setTableQRFgColor] = useState("#000000");
@@ -4266,7 +4328,10 @@ function TablesTab({ restaurantId, restaurant }: { restaurantId: number; restaur
   const unitLabelPluralAr = isRooms ? 'غرف' : 'طاولات';
   const unitLabelPluralEn = isRooms ? 'Rooms' : 'Tables';
 
-  const { data: tables, refetch } = trpc.table.list.useQuery({ restaurantId });
+  const { data: tables, refetch } = trpc.table.list.useQuery(
+    { restaurantId },
+    { enabled: queriesEnabled }
+  );
   const createMultipleMutation = trpc.table.createMultiple.useMutation({
     onSuccess: () => {
       refetch();

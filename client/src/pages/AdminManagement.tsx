@@ -1,5 +1,7 @@
 import { useState, useMemo } from "react";
-import { useAuth } from "@/_core/hooks/useAuth";
+import { useAuthGate } from "@/_core/hooks/useAuthGate";
+import { AdminAccessDenied, AuthGatePending } from "@/components/AuthGate";
+import { adminQueriesEnabled } from "@/lib/queryRuntime";
 import { trpc } from "@/lib/trpc";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
@@ -21,6 +23,7 @@ import { toast } from "sonner";
 import { Plus, Trash2, Edit, Loader2, Store, UserPlus, Key, Search, Filter, X, Bell, Send, Users, FileText, Download } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { useLocation } from "wouter";
 
 // ─── Users Section Component ───────────────────────────────────────
@@ -637,7 +640,8 @@ function UsersSection() {
 }
 
 export default function AdminManagement() {
-  const { user, isAuthenticated } = useAuth();
+  const gate = useAuthGate();
+  const { user, isAuthenticated, authPending } = gate;
   const [, setLocation] = useLocation();
   const { t, language } = useLanguage();
   
@@ -679,9 +683,18 @@ export default function AdminManagement() {
   const [editSubEndDate, setEditSubEndDate] = useState("");
   const [editSubStatus, setEditSubStatus] = useState<string>("active");
 
+  const adminEnabled = adminQueriesEnabled(
+    authPending,
+    isAuthenticated,
+    user?.role === "admin"
+  );
+
   // Queries
-  const { data: plans } = trpc.subscription.listPlans.useQuery();
-  const { data: restaurantsWithSubs, isLoading: restaurantsLoading, refetch: refetchSubs } = trpc.admin.listAllRestaurantsWithSubscriptions.useQuery();
+  const { data: plans } = trpc.subscription.listPlans.useQuery(undefined, {
+    enabled: adminEnabled,
+  });
+  const { data: restaurantsWithSubs, isLoading: restaurantsLoading, refetch: refetchSubs } =
+    trpc.admin.listAllRestaurantsWithSubscriptions.useQuery(undefined, { enabled: adminEnabled });
   // Use restaurantsWithSubs as the main restaurants list for admin
   const restaurants = restaurantsWithSubs;
   const refetchRestaurants = refetchSubs;
@@ -854,25 +867,12 @@ export default function AdminManagement() {
     return subscription.status;
   };
 
-  // Check if user is admin (after all hooks)
-  if (!isAuthenticated || user?.role !== 'admin') {
-    return (
-      <div className="min-h-screen cinematic-bg flex items-center justify-center p-4">
-        <Card className="max-w-md w-full bg-card border-border">
-          <CardContent className="p-8 text-center">
-            <Store className="w-16 h-16 text-primary mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-foreground mb-2">{t('admin.accessDenied')}</h2>
-            <p className="text-muted-foreground mb-6">{t('admin.adminOnly')}</p>
-            <Button
-              onClick={() => setLocation("/")}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold w-full"
-            >
-              {t('common.back')}
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
+  if (gate.isPending) {
+    return <AuthGatePending />;
+  }
+
+  if (gate.showAdminDenied) {
+    return <AdminAccessDenied />;
   }
 
   return (

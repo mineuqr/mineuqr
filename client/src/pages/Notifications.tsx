@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
-import { useAuth } from "@/_core/hooks/useAuth";
+import { useAuthGate } from "@/_core/hooks/useAuthGate";
+import { AuthGatePending } from "@/components/AuthGate";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -11,13 +12,14 @@ import { toast } from "sonner";
 import { formatRiyadhDate, formatRiyadhTime } from "@/lib/datetime";
 
 export default function Notifications() {
-  const { user } = useAuth();
+  const gate = useAuthGate();
+  const { user, authResolved, isAuthenticated } = gate;
   const { t, language } = useLanguage();
   const dateLocale = language === "ar" ? "ar-SA" : "en-US";
   const [filter, setFilter] = useState<"all" | "unread">("all");
 
   const { data: notifications, isLoading, error, refetch } = trpc.notification.list.useQuery(undefined, {
-    enabled: !!user,
+    enabled: authResolved && isAuthenticated,
   });
 
   const markAsReadMutation = trpc.notification.markAsRead.useMutation({
@@ -117,7 +119,15 @@ export default function Notifications() {
     return t(`notifications.type.${type}`) || titles[type] || type;
   };
 
-  if (!user) {
+  if (gate.isPending) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+        <AuthGatePending className="bg-transparent" />
+      </div>
+    );
+  }
+
+  if (gate.showLoginRequired) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
         <Card className="w-full max-w-md bg-card border-border">
