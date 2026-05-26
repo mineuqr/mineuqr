@@ -1472,13 +1472,17 @@ const holidayRouter = router({
 const tableRouter = router({
   list: protectedProcedure
     .input(z.object({ restaurantId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      await assertRestaurantAccess(ctx, input.restaurantId);
       return getTablesByRestaurant(input.restaurantId);
     }),
   getById: protectedProcedure
     .input(z.object({ id: z.number() }))
-    .query(async ({ input }) => {
-      return getTableById(input.id);
+    .query(async ({ input, ctx }) => {
+      const table = await getTableById(input.id);
+      if (!table) return null;
+      await assertRestaurantAccess(ctx, table.restaurantId);
+      return table;
     }),
   create: protectedProcedure
     .input(z.object({
@@ -1487,7 +1491,8 @@ const tableRouter = router({
       nameAr: z.string().optional(),
       nameEn: z.string().optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await assertRestaurantAccess(ctx, input.restaurantId);
       return createTable(input);
     }),
   createMultiple: protectedProcedure
@@ -1496,7 +1501,8 @@ const tableRouter = router({
       count: z.number().min(1).max(500),
       startFrom: z.number().min(1).default(1),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await assertRestaurantAccess(ctx, input.restaurantId);
       return createMultipleTables(input.restaurantId, input.count, input.startFrom);
     }),
   update: protectedProcedure
@@ -1507,14 +1513,22 @@ const tableRouter = router({
       nameEn: z.string().optional(),
       isActive: z.boolean().optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      const table = await getTableById(input.id);
+      if (table) {
+        await assertRestaurantAccess(ctx, table.restaurantId);
+      }
       const { id, ...data } = input;
       await updateTable(id, data);
       return { success: true };
     }),
   delete: protectedProcedure
     .input(z.object({ id: z.number() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      const table = await getTableById(input.id);
+      if (table) {
+        await assertRestaurantAccess(ctx, table.restaurantId);
+      }
       await deleteTable(input.id);
       return { success: true };
     }),
