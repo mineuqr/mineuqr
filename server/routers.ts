@@ -29,6 +29,7 @@ import {
   restaurantAllowsTableOrdering,
 } from "./db";
 import { assertRestaurantAccess } from "./restaurantAccess";
+import { isRestaurantOpen, parseTemporaryClosure } from "./lib/restaurantHours";
 import { putUploadedFile } from "./local-uploads";
 import { notifyOwner } from "./_core/notification";
 import { notifyOwnerNewRestaurant, notifyOwnerNewSubscription, notifyOwnerSubscriptionCancelled } from "./owner-email-notifications";
@@ -1578,6 +1579,22 @@ const orderRouter = router({
       }
       if (!restaurant.isActive) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "المطعم غير متاح حالياً" });
+      }
+
+      const temporaryClosure = parseTemporaryClosure(restaurant.temporaryClosure);
+      if (temporaryClosure?.active) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "المطعم مغلق مؤقتاً" });
+      }
+
+      if (restaurant.workingHours) {
+        const openNow = isRestaurantOpen({
+          workingHours: restaurant.workingHours,
+          temporaryClosure: restaurant.temporaryClosure,
+          applyTemporaryClosure: false,
+        });
+        if (!openNow) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "المطعم مغلق حالياً" });
+        }
       }
 
       const allowsOrdering = await restaurantAllowsTableOrdering(input.restaurantId);
