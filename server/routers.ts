@@ -29,6 +29,7 @@ import {
   restaurantAllowsTableOrdering,
 } from "./db";
 import { assertRestaurantAccess } from "./restaurantAccess";
+import { assertAdminAccess, assertNotSelfAdminTarget } from "./_core/assertAdminAccess";
 import { isRestaurantOpen, parseTemporaryClosure } from "./lib/restaurantHours";
 import { todayYmd } from "@shared/utils/timezone";
 import { putUploadedFile } from "./local-uploads";
@@ -938,9 +939,8 @@ const adminRouter = router({
       role: z.enum(["admin", "user"]),
     }))
     .mutation(async ({ input, ctx }) => {
-      if (ctx.user.role !== "admin") {
-        throw new TRPCError({ code: "FORBIDDEN", message: "غير مصرح" });
-      }
+      assertAdminAccess(ctx, "admin.updateUserRole");
+      assertNotSelfAdminTarget(ctx, input.userId, "update_role");
       return updateUserRole(input.userId, input.role);
     }),
 
@@ -949,9 +949,8 @@ const adminRouter = router({
       userId: z.number(),
     }))
     .mutation(async ({ input, ctx }) => {
-      if (ctx.user.role !== "admin") {
-        throw new TRPCError({ code: "FORBIDDEN", message: "غير مصرح" });
-      }
+      assertAdminAccess(ctx, "admin.deleteUser");
+      assertNotSelfAdminTarget(ctx, input.userId, "delete_user");
       return deleteUser(input.userId);
     }),
 
@@ -1672,9 +1671,10 @@ const orderRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       const order = await getOrderById(input.id);
-      if (order) {
-        await assertRestaurantAccess(ctx, order.restaurantId);
+      if (!order) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "الطلب غير موجود" });
       }
+      await assertRestaurantAccess(ctx, order.restaurantId, "order.updateStatus");
       await updateOrderStatus(input.id, input.status);
       return { success: true };
     }),

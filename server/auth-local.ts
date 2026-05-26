@@ -1,11 +1,44 @@
 import { Router, Request, Response } from "express";
 import bcrypt from "bcryptjs";
+import { parse as parseCookieHeader } from "cookie";
 import * as db from "./db";
 import { sdk } from "./_core/sdk";
 import { COOKIE_NAME } from "@shared/const";
 import { setSessionCookie } from "./_core/cookies";
+import { ENV } from "./_core/env";
+import {
+  logFailedLogin,
+  logRateLimitExceeded,
+  logSuccessfulLogin,
+} from "./_core/authAudit";
+import {
+  AUTH_BURST_LIMIT,
+  checkRateLimit,
+  clearRateLimit,
+  getAuthBurstKey,
+  getLoginRateLimitKey,
+  LOGIN_RATE_LIMIT,
+} from "./_core/rateLimit";
 
 const router = Router();
+
+function parseCookies(cookieHeader: string | undefined): Map<string, string> {
+  if (!cookieHeader) return new Map();
+  return new Map(Object.entries(parseCookieHeader(cookieHeader)));
+}
+
+function genericAuthError(res: Response) {
+  return res.status(401).json({ error: "بيانات الدخول غير صحيحة" });
+}
+
+function rateLimitedResponse(res: Response, retryAfterMs: number) {
+  const retryAfterSec = Math.ceil(retryAfterMs / 1000);
+  res.setHeader("Retry-After", String(retryAfterSec));
+  return res.status(429).json({
+    error: "محاولات كثيرة. يرجى المحاولة لاحقاً",
+    retryAfterSec,
+  });
+}
 
 /**
  * POST /api/auth/login
@@ -13,47 +46,64 @@ const router = Router();
  */
 router.post("/api/auth/login", async (req: Request, res: Response) => {
   try {
+    const burst = checkRateLimit(getAuthBurstKey(req), AUTH_BURST_LIMIT);
+    if (!burst.allowed) {
+      logRateLimitExceeded(req, getAuthBurstKey(req));
+      return rateLimitedResponse(res, burst.retryAfterMs ?? AUTH_BURST_LIMIT.windowMs);
+    }
+
     const { email, password } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ error: "البريد الإلكتروني وكلمة المرور مطلوبان" });
     }
 
-    // Find user by email
-    const user = await db.getUserByEmail(email);
+    const emailStr = String(email);
+    const loginKey = getLoginRateLimitKey(req, emailStr);
+    const loginLimit = checkRateLimit(loginKey, LOGIN_RATE_LIMIT);
+    if (!loginLimit.allowed) {
+      logFailedLogin(req, emailStr, "rate_limited");
+      logRateLimitExceeded(req, loginKey);
+      return rateLimitedResponse(res, loginLimit.retryAfterMs ?? LOGIN_RATE_LIMIT.windowMs);
+    }
+
+    const user = await db.getUserByEmail(emailStr);
     if (!user) {
-      return res.status(401).json({ error: "بيانات الدخول غير صحيحة" });
+      logFailedLogin(req, emailStr, "user_not_found");
+      return genericAuthError(res);
     }
 
-    // Check if user has a password set
     if (!user.passwordHash) {
-      return res.status(401).json({ error: "هذا الحساب لا يدعم تسجيل الدخول بكلمة المرور" });
+      logFailedLogin(req, emailStr, "no_password");
+      return genericAuthError(res);
     }
 
-    // Verify password
-    const isValid = await bcrypt.compare(password, user.passwordHash);
+    const isValid = await bcrypt.compare(String(password), user.passwordHash);
     if (!isValid) {
-      return res.status(401).json({ error: "بيانات الدخول غير صحيحة" });
+      logFailedLogin(req, emailStr, "invalid_credentials");
+      return genericAuthError(res);
     }
 
-    // Create session token (same as OAuth flow)
+    clearRateLimit(loginKey);
+    clearRateLimit(getAuthBurstKey(req));
+
     const sessionToken = await sdk.createSessionToken(user.openId, {
       name: user.name || user.email || "User",
     });
 
     setSessionCookie(res, req, sessionToken);
 
-    // Explicit sign-in: always refresh lastSignedIn (authenticateRequest throttles routine calls).
     await db.upsertUser({
       openId: user.openId,
       lastSignedIn: new Date().toISOString(),
     });
 
-    if (process.env.AUTH_DEBUG === "1") {
-      console.info("[Auth] Local login succeeded", { userId: user.id });
-    }
+    logSuccessfulLogin(req, user.id);
 
-    return res.json({ success: true, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
+    return res.json({
+      success: true,
+      user: { id: user.id, name: user.name, email: user.email, role: user.role },
+    });
   } catch (error) {
     console.error("[Auth Local] Login error:", error);
     return res.status(500).json({ error: "حدث خطأ في تسجيل الدخول" });
@@ -69,8 +119,12 @@ router.post("/api/auth/change-password", async (req: Request, res: Response) => 
     const cookies = parseCookies(req.headers.cookie);
     const sessionCookie = cookies.get(COOKIE_NAME);
     const session = await sdk.verifySession(sessionCookie);
-    
+
     if (!session) {
+      return res.status(401).json({ error: "غير مصرح" });
+    }
+
+    if (ENV.appId && session.appId !== ENV.appId) {
       return res.status(401).json({ error: "غير مصرح" });
     }
 
@@ -84,16 +138,17 @@ router.post("/api/auth/change-password", async (req: Request, res: Response) => 
       return res.status(404).json({ error: "المستخدم غير موجود" });
     }
 
-    // If user has existing password, verify current password
-    if (user.passwordHash && currentPassword) {
-      const isValid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (user.passwordHash) {
+      if (!currentPassword) {
+        return res.status(400).json({ error: "كلمة المرور الحالية مطلوبة" });
+      }
+      const isValid = await bcrypt.compare(String(currentPassword), user.passwordHash);
       if (!isValid) {
         return res.status(401).json({ error: "كلمة المرور الحالية غير صحيحة" });
       }
     }
 
-    // Hash new password and update
-    const passwordHash = await bcrypt.hash(newPassword, 12);
+    const passwordHash = await bcrypt.hash(String(newPassword), 12);
     await db.updateUserPassword(user.openId, passwordHash);
 
     return res.json({ success: true });
@@ -102,11 +157,5 @@ router.post("/api/auth/change-password", async (req: Request, res: Response) => 
     return res.status(500).json({ error: "حدث خطأ" });
   }
 });
-
-function parseCookies(cookieHeader: string | undefined): Map<string, string> {
-  if (!cookieHeader) return new Map();
-  const pairs = cookieHeader.split(";").map(s => s.trim().split("="));
-  return new Map(pairs.map(([k, ...v]) => [k, v.join("=")]));
-}
 
 export { router as localAuthRouter };

@@ -278,6 +278,11 @@ class SDKServer {
       throw ForbiddenError("Invalid session cookie");
     }
 
+    if (ENV.appId && session.appId !== ENV.appId) {
+      console.warn("[Auth] Session appId mismatch — rejecting token");
+      throw ForbiddenError("Invalid session cookie");
+    }
+
     const sessionUserId = session.openId;
     const signedInAt = new Date();
     let user = await db.getUserByOpenId(sessionUserId);

@@ -1,6 +1,7 @@
 import type { SelectUser } from "../drizzle/schema";
 import { getRestaurantById } from "./db";
 import { TRPCError } from "@trpc/server";
+import { logTenantBoundaryViolation } from "./_core/authAudit";
 
 type AuthContext = { user: SelectUser };
 
@@ -12,13 +13,15 @@ const FORBIDDEN_MESSAGE = "غير مصرح بالوصول";
  */
 export async function assertRestaurantAccess(
   ctx: AuthContext,
-  restaurantId: number
+  restaurantId: number,
+  action = "access"
 ): Promise<void> {
   const restaurant = await getRestaurantById(restaurantId);
   if (!restaurant) {
     throw new TRPCError({ code: "FORBIDDEN", message: FORBIDDEN_MESSAGE });
   }
   if (restaurant.userId !== ctx.user.id && ctx.user.role !== "admin") {
+    logTenantBoundaryViolation(ctx.user, restaurantId, action);
     throw new TRPCError({ code: "FORBIDDEN", message: FORBIDDEN_MESSAGE });
   }
 }

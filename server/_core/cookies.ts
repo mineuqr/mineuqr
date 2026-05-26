@@ -74,6 +74,8 @@ export function setSessionCookie(
  * Clear app_session_id using every sameSite/secure pair used at login.
  * OAuth sets cookies via getSessionCookieOptions (sameSite: none); email login uses sameSite: lax.
  * clearCookie only removes a cookie when path/sameSite/secure match how it was set.
+ *
+ * Requires trust proxy in production so isSecureRequest() matches login-time cookie flags.
  */
 export function clearSessionCookie(res: Response, req: Request): void {
   const oauthStyle = getSessionCookieOptions(req);

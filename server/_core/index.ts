@@ -10,6 +10,7 @@ import { serveStatic, setupVite } from "./vite";
 import { handlePayPalWebhook } from "../paypal-webhook";
 import { handleTapWebhook } from "../tap-webhook";
 import { localAuthRouter } from "../auth-local";
+import { validateAuthSecurityConfig, shouldTrustProxy } from "./authSecurity";
 import {
   ensureUploadsDir,
   UPLOADS_DIR,
@@ -36,8 +37,14 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 }
 
 async function startServer() {
+  validateAuthSecurityConfig();
+
   const app = express();
   const server = createServer(app);
+
+  if (shouldTrustProxy()) {
+    app.set("trust proxy", 1);
+  }
   
   // Tap Payments webhook
   app.post("/api/tap/webhook", express.json(), handleTapWebhook);
