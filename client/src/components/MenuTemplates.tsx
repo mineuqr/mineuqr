@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import AddToCartButton from "@/components/AddToCartButton";
 import { resolveImageUrl } from "@/lib/utils";
-import { APP_TIMEZONE } from "@/lib/datetime";
+import { getOpenStatusFromRestaurant, todayYmd } from "@/lib/restaurantHours";
 
 // Template configuration
 export const TEMPLATES = [
@@ -460,72 +460,14 @@ function PatternOverlay({ patternId, accentColor }: { patternId: string; accentC
   );
 }
 
-function timeToMinutes(hhmm: string): number | null {
-  const [hStr, mStr] = hhmm.trim().split(":");
-  if (hStr === undefined || mStr === undefined) return null;
-  const h = parseInt(hStr, 10);
-  const m = parseInt(mStr, 10);
-  if (Number.isNaN(h) || Number.isNaN(m) || h < 0 || h > 23 || m < 0 || m > 59) return null;
-  return h * 60 + m;
-}
-
-function isOpenInRange(open: string, close: string, nowMinutes: number): boolean {
-  const openMin = timeToMinutes(open);
-  const closeMin = timeToMinutes(close);
-  if (openMin === null || closeMin === null) return false;
-  if (openMin <= closeMin) {
-    return nowMinutes >= openMin && nowMinutes <= closeMin;
-  }
-  return nowMinutes >= openMin || nowMinutes <= closeMin;
-}
-
-function getRiyadhMinutesNow(now: Date): number {
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: APP_TIMEZONE,
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).formatToParts(now);
-  const hour = parseInt(parts.find((p) => p.type === "hour")?.value ?? "0", 10);
-  const minute = parseInt(parts.find((p) => p.type === "minute")?.value ?? "0", 10);
-  return hour * 60 + minute;
-}
-
-function getRiyadhWeekdayIndex(now: Date): number {
-  const weekday = new Intl.DateTimeFormat("en-US", {
-    timeZone: APP_TIMEZONE,
-    weekday: "short",
-  }).format(now);
-  const map: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
-  return map[weekday] ?? now.getDay();
-}
-
 function TemplateHeader({ restaurant, accentColor, textColor, titleExtra }: { restaurant: any; accentColor: string; textColor?: string; titleExtra?: React.ReactNode }) {
   const tc = textColor || "white";
   const [showHours, setShowHours] = useState(false);
   const [showContact, setShowContact] = useState(false);
 
-  // Calculate open/closed status
-  const getOpenStatus = () => {
-    if (!restaurant.workingHours) return null;
-    try {
-      const hours = typeof restaurant.workingHours === 'string' ? JSON.parse(restaurant.workingHours) : restaurant.workingHours;
-      const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-      const hasAnyOpen = days.some(d => hours[d] && !hours[d].closed);
-      if (!hasAnyOpen) return null;
-      const now = new Date();
-      const currentDay = days[getRiyadhWeekdayIndex(now)];
-      const currentHour = hours[currentDay];
-      let isOpenNow = false;
-      if (currentHour && !currentHour.closed) {
-        const nowMinutes = getRiyadhMinutesNow(now);
-        isOpenNow = isOpenInRange(currentHour.open, currentHour.close, nowMinutes);
-      }
-      return { isOpenNow, hours, days, currentDay };
-    } catch { return null; }
-  };
-
-  const openStatus = getOpenStatus();
+  const openStatus = restaurant.workingHours
+    ? getOpenStatusFromRestaurant({ workingHours: restaurant.workingHours })
+    : null;
   const hasContactInfo = restaurant.phone || restaurant.address || restaurant.whatsapp || restaurant.instagram || restaurant.snapchat || restaurant.xTwitter || restaurant.locationUrl;
 
   return (
@@ -637,7 +579,7 @@ function TemplateHeader({ restaurant, accentColor, textColor, titleExtra }: { re
                 </div>
                 {/* Upcoming Holidays inside hours section */}
                 {restaurant.holidays && restaurant.holidays.length > 0 && (() => {
-                  const today = new Date().toISOString().split('T')[0];
+                  const today = todayYmd();
                   const upcoming = restaurant.holidays.filter((h: any) => h.date >= today).slice(0, 3);
                   if (upcoming.length === 0) return null;
                   return (

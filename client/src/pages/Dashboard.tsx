@@ -6,6 +6,7 @@ import { getLoginUrl, spaNavigate } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { cn, resolveImageUrl } from "@/lib/utils";
 import { formatRiyadhDateTime, parseDbUtcTimestamp } from "@/lib/datetime";
+import { todayYmd } from "@/lib/restaurantHours";
 import { downloadSalesReportXlsx } from "@/lib/excel";
 import {
   DASHBOARD_ORDER_LIST_POLL_MS,
@@ -3600,7 +3601,7 @@ function SettingsTab({ restaurant, onBack }: { restaurant: any; onBack: () => vo
           {holidays && holidays.length > 0 ? (
             <div className="space-y-2">
               {holidays.map((h) => {
-                const isPast = h.date < new Date().toISOString().split('T')[0];
+                const isPast = h.date < todayYmd();
                 return (
                   <div key={h.id} className={`flex items-center justify-between p-3 rounded-lg border ${isPast ? 'border-border/50 opacity-60' : 'border-border'} bg-background`}>
                     <div className="flex-1">
