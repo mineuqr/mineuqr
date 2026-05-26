@@ -1,10 +1,8 @@
-import { useAuthGate } from "@/_core/hooks/useAuthGate";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { Loader2, Shield, Store } from "lucide-react";
-import type { ReactNode } from "react";
 import { useLocation } from "wouter";
 
 /** Centered spinner while auth.me is resolving (no denied/login UI). */
@@ -24,47 +22,6 @@ export function AuthGatePending({
       <Loader2 className="h-8 w-8 animate-spin text-primary" />
     </div>
   );
-}
-
-type AuthGateProps = {
-  children: ReactNode;
-  pending?: ReactNode;
-  /** Shown when resolved and not authenticated */
-  loginRequired?: ReactNode;
-  /** Shown when requireAdmin and user is not admin (or guest) */
-  accessDenied?: ReactNode;
-  requireAuth?: boolean;
-  requireAdmin?: boolean;
-  className?: string;
-};
-
-/**
- * Renders children only after auth resolves. While pending: skeleton/spinner only.
- */
-export function AuthGate({
-  children,
-  pending,
-  loginRequired,
-  accessDenied,
-  requireAuth = false,
-  requireAdmin = false,
-  className,
-}: AuthGateProps) {
-  const gate = useAuthGate();
-
-  if (gate.isPending) {
-    return <>{pending ?? <AuthGatePending className={className} />}</>;
-  }
-
-  if (requireAuth && gate.showLoginRequired) {
-    return <>{loginRequired ?? null}</>;
-  }
-
-  if (requireAdmin && gate.showAdminDenied) {
-    return <>{accessDenied ?? <AdminAccessDenied className={className} />}</>;
-  }
-
-  return <>{children}</>;
 }
 
 /** Shared admin access-denied card (only after auth resolved). */
