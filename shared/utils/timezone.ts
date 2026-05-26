@@ -167,3 +167,65 @@ export function formatRiyadhTime(
     minute: "2-digit",
   });
 }
+
+export type BusinessYearMonth = {
+  year: number;
+  month: number;
+};
+
+/** Calendar year/month in APP_TIMEZONE for a stored instant (Dashboard TZ-5a compatible). */
+export function restaurantYearMonth(
+  value: string | Date | null | undefined,
+  timeZone: string = APP_TIMEZONE
+): BusinessYearMonth | null {
+  const local = convertUtcToRestaurantTime(value, timeZone);
+  if (!local?.ymd) return null;
+  const [year, month] = local.ymd.split("-").map(Number);
+  return year && month ? { year, month } : null;
+}
+
+/** Business calendar year/month N months before the anchor instant (0 = current month). */
+export function businessYearMonthMonthsAgo(
+  monthsAgo: number,
+  now: Date = new Date(),
+  timeZone: string = APP_TIMEZONE
+): BusinessYearMonth {
+  const anchor = getRestaurantNow(now, timeZone);
+  let year = Number(anchor.ymd.slice(0, 4));
+  let month = Number(anchor.ymd.slice(5, 7));
+  month -= monthsAgo;
+  while (month <= 0) {
+    month += 12;
+    year -= 1;
+  }
+  return { year, month };
+}
+
+/** True when a stored UTC instant falls in the given business calendar month. */
+export function isInBusinessYearMonth(
+  value: string | Date | null | undefined,
+  year: number,
+  month: number,
+  timeZone: string = APP_TIMEZONE
+): boolean {
+  const ym = restaurantYearMonth(value, timeZone);
+  return ym !== null && ym.year === year && ym.month === month;
+}
+
+/** Chart label for a business calendar month (e.g. "May 2026"). */
+export function formatBusinessYearMonthLabel(
+  year: number,
+  month: number,
+  locale: string = "en-US",
+  timeZone: string = APP_TIMEZONE
+): string {
+  const paddedMonth = String(month).padStart(2, "0");
+  const sample = parseStoredUtcInstant(`${year}-${paddedMonth}-15T12:00:00Z`);
+  if (!sample) return `${month}/${year}`;
+  return formatInRestaurantTimezone(
+    sample,
+    locale,
+    { year: "numeric", month: "short" },
+    timeZone
+  );
+}
