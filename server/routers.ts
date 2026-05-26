@@ -28,6 +28,7 @@ import {
   getOrdersByRestaurant, getOrdersWithItemsByRestaurant, getOrderById, createOrder, updateOrderStatus, getOrderItemsByOrderId, createOrderItems, generateOrderNumber, getActiveOrdersCount,
   restaurantAllowsTableOrdering,
 } from "./db";
+import { assertRestaurantAccess } from "./restaurantAccess";
 import { putUploadedFile } from "./local-uploads";
 import { notifyOwner } from "./_core/notification";
 import { notifyOwnerNewRestaurant, notifyOwnerNewSubscription, notifyOwnerSubscriptionCancelled } from "./owner-email-notifications";
@@ -1599,14 +1600,16 @@ const orderRouter = router({
       restaurantId: z.number(),
       status: z.string().optional(),
     }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      await assertRestaurantAccess(ctx, input.restaurantId);
       return getOrdersWithItemsByRestaurant(input.restaurantId, input.status);
     }),
   getById: protectedProcedure
     .input(z.object({ id: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const order = await getOrderById(input.id);
       if (!order) return null;
+      await assertRestaurantAccess(ctx, order.restaurantId);
       const items = await getOrderItemsByOrderId(input.id);
       return { ...order, items };
     }),
@@ -1615,13 +1618,18 @@ const orderRouter = router({
       id: z.number(),
       status: z.enum(['pending', 'preparing', 'ready', 'served', 'cancelled']),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      const order = await getOrderById(input.id);
+      if (order) {
+        await assertRestaurantAccess(ctx, order.restaurantId);
+      }
       await updateOrderStatus(input.id, input.status);
       return { success: true };
     }),
   activeCount: protectedProcedure
     .input(z.object({ restaurantId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      await assertRestaurantAccess(ctx, input.restaurantId);
       return getActiveOrdersCount(input.restaurantId);
     }),
   // Public: get order status (for customer tracking)
