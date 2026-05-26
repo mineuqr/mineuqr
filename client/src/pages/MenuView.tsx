@@ -7,13 +7,14 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { CartProvider } from "@/contexts/CartContext";
 import CartDrawer from "@/components/CartDrawer";
 import WelcomeOverlay from "@/components/WelcomeOverlay";
+import { isRestaurantOpen } from "@/lib/restaurantHours";
 
 export default function MenuView() {
   const [, params] = useRoute("/menu/:slug/table/:tableNumber");
   const [, params2] = useRoute("/menu/:slug");
   const slug = params?.slug || params2?.slug || "";
   const tableNumber = params?.tableNumber ? parseInt(params.tableNumber) : 0;
-  const { t, dir } = useLanguage();
+  const { t, dir, language } = useLanguage();
 
   const { data: restaurant, isLoading: restaurantLoading } = trpc.restaurant.getBySlug.useQuery(
     { slug },
@@ -49,6 +50,21 @@ export default function MenuView() {
     { enabled: !!restaurant?.id && tableNumber > 0, staleTime: 0, gcTime: 0, refetchOnMount: "always" }
   );
   const canOrder = orderCheck?.canOrder ?? false;
+
+  const orderingAllowedByHours = useMemo(() => {
+    const raw = (restaurant as { workingHours?: unknown })?.workingHours;
+    if (!raw) return true;
+    return isRestaurantOpen({
+      workingHours: raw,
+      applyTemporaryClosure: false,
+    });
+  }, [restaurant]);
+
+  const canPlaceOrder =
+    tableNumber > 0 && canOrder && orderingAllowedByHours;
+  const orderingTableNumber = canPlaceOrder ? tableNumber : 0;
+  const showClosedNotice =
+    tableNumber > 0 && canOrder && !orderingAllowedByHours && !!(restaurant as { workingHours?: unknown })?.workingHours;
 
   const trackViewMutation = trpc.restaurant.trackView.useMutation();
 
@@ -161,6 +177,14 @@ export default function MenuView() {
         logoUrl={(restaurant as any)?.logoUrl}
         accentColor={welcomeAccentColor}
       />
+      {showClosedNotice && (
+        <div
+          className="fixed top-0 left-0 right-0 z-[90] px-4 py-2 text-center text-sm font-medium bg-red-500/90 text-white shadow-md"
+          dir={dir}
+        >
+          {language === "ar" ? "المطعم مغلق حالياً" : "The restaurant is closed right now"}
+        </div>
+      )}
       <TemplateComponent
         restaurant={{ ...restaurant, holidays: holidays || [] }}
         categories={categoriesList || []}
@@ -174,9 +198,9 @@ export default function MenuView() {
         customColors={customColors}
         customFonts={customFonts}
         offers={activeOffers || []}
-        tableNumber={canOrder ? tableNumber : 0}
+        tableNumber={orderingTableNumber}
       />
-      {tableNumber > 0 && canOrder && (
+      {canPlaceOrder && (
         <CartDrawer
           restaurantId={restaurant.id}
           tableId={tableData?.id || 0}
