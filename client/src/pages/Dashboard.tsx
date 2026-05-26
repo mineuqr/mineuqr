@@ -43,6 +43,11 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { QRCodeSVG } from "qrcode.react";
 import { QRWithLogo } from "@/components/QRWithLogo";
+import {
+  RestaurantBasicInfoSection,
+  RestaurantContactLinksSection,
+  WorkingHoursEditor,
+} from "@/components/RestaurantSettingsSections";
 
 // ─── Dashboard UI primitives (Stripe / Linear–style) ─────────
 
@@ -3132,7 +3137,7 @@ function SettingsTab({ restaurant, onBack }: { restaurant: any; onBack: () => vo
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="mx-auto max-w-3xl space-y-6">
       {/* Images */}
       <Card className="bg-card border-border">
         <CardHeader>
@@ -3267,111 +3272,55 @@ function SettingsTab({ restaurant, onBack }: { restaurant: any; onBack: () => vo
       </Card>
 
       {/* Info */}
-      <Card className="bg-card border-border">
-        <CardHeader>
-          <CardTitle className="text-foreground text-lg">{t('dashboard.restaurantData')}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <Label className="text-foreground">{t('dashboard.restaurantNameAr')}</Label>
-              <Input value={nameAr} onChange={(e) => setNameAr(e.target.value)} className="mt-1 bg-input border-border text-foreground" />
-            </div>
-            <div>
-              <Label className="text-foreground">{t('dashboard.restaurantNameEn')}</Label>
-              <Input value={nameEn} onChange={(e) => setNameEn(e.target.value)} className="mt-1 bg-input border-border text-foreground" dir="ltr" />
-            </div>
-          </div>
-          <div>
-            <Label className="text-foreground">{t('dashboard.descriptionAr2')}</Label>
-            <Textarea value={descriptionAr} onChange={(e) => setDescriptionAr(e.target.value)} className="mt-1 bg-input border-border text-foreground" rows={3} />
-          </div>
-          <div>
-            <Label className="text-foreground">{t('dashboard.descriptionEn')}</Label>
-            <Textarea value={descriptionEn} onChange={(e) => setDescriptionEn(e.target.value)} className="mt-1 bg-input border-border text-foreground" rows={3} dir="ltr" />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <Label className="text-foreground">{t('dashboard.phone')}</Label>
-              <Input value={phone} onChange={(e) => setPhone(e.target.value)} className="mt-1 bg-input border-border text-foreground" dir="ltr" />
-            </div>
-            <div>
-              <Label className="text-foreground">{t('dashboard.address')}</Label>
-              <Input value={address} onChange={(e) => setAddress(e.target.value)} className="mt-1 bg-input border-border text-foreground" />
-            </div>
-          </div>
+      <Card className={dash.card}>
+        <CardContent className="space-y-8 p-6 sm:p-8">
+          <RestaurantBasicInfoSection
+            t={t}
+            language={language}
+            nameAr={nameAr}
+            setNameAr={setNameAr}
+            nameEn={nameEn}
+            setNameEn={setNameEn}
+            descriptionAr={descriptionAr}
+            setDescriptionAr={setDescriptionAr}
+            descriptionEn={descriptionEn}
+            setDescriptionEn={setDescriptionEn}
+          />
 
-          {/* Social Media Links */}
-          <div className="border-t border-border pt-4 mt-4">
-            <Label className="text-foreground font-bold text-base mb-3 block">{t('dashboard.socialLinks')}</Label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <Label className="text-foreground text-sm">{t('dashboard.whatsapp')}</Label>
-                <Input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="966501234567" className="mt-1 bg-input border-border text-foreground" dir="ltr" />
-              </div>
-              <div>
-                <Label className="text-foreground text-sm">{t('dashboard.instagram')}</Label>
-                <Input value={instagram} onChange={(e) => setInstagram(e.target.value)} placeholder="restaurant_name" className="mt-1 bg-input border-border text-foreground" dir="ltr" />
-              </div>
-              <div>
-                <Label className="text-foreground text-sm">{t('dashboard.snapchat')}</Label>
-                <Input value={snapchat} onChange={(e) => setSnapchat(e.target.value)} placeholder="restaurant_snap" className="mt-1 bg-input border-border text-foreground" dir="ltr" />
-              </div>
-              <div>
-                <Label className="text-foreground text-sm">{t('dashboard.xTwitter')}</Label>
-                <Input value={xTwitter} onChange={(e) => setXTwitter(e.target.value)} placeholder="restaurant_x" className="mt-1 bg-input border-border text-foreground" dir="ltr" />
-              </div>
-            </div>
-            <div className="mt-3">
-              <Label className="text-foreground text-sm">{t('dashboard.locationUrl')}</Label>
-              <Input value={locationUrl} onChange={(e) => setLocationUrl(e.target.value)} placeholder="https://maps.google.com/..." className="mt-1 bg-input border-border text-foreground" dir="ltr" />
-            </div>
-          </div>
+          <RestaurantContactLinksSection
+            t={t}
+            language={language}
+            phone={phone}
+            setPhone={setPhone}
+            address={address}
+            setAddress={setAddress}
+            whatsapp={whatsapp}
+            setWhatsapp={setWhatsapp}
+            locationUrl={locationUrl}
+            setLocationUrl={setLocationUrl}
+            instagram={instagram}
+            setInstagram={setInstagram}
+            snapchat={snapchat}
+            setSnapchat={setSnapchat}
+            xTwitter={xTwitter}
+            setXTwitter={setXTwitter}
+          />
 
-          {/* Working Hours */}
-          <div className="border-t border-border pt-4 mt-4">
-            <Label className="text-foreground font-bold text-base mb-3 block">{t('dashboard.workingHours')}</Label>
-            <div className="space-y-2">
-              {(['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const).map((day) => (
-                <div key={day} className="flex items-center gap-2 sm:gap-3">
-                  <span className="text-foreground text-sm w-20 sm:w-24 shrink-0">{t(`dashboard.days.${day}`)}</span>
-                  <Switch
-                    checked={!workingHours[day]?.closed}
-                    onCheckedChange={(checked) => setWorkingHours(prev => ({ ...prev, [day]: { ...prev[day], closed: !checked } }))}
-                  />
-                  {!workingHours[day]?.closed ? (
-                    <div className="flex items-center gap-1 sm:gap-2 flex-1">
-                      <Input
-                        type="time"
-                        value={workingHours[day]?.open || '09:00'}
-                        onChange={(e) => setWorkingHours(prev => ({ ...prev, [day]: { ...prev[day], open: e.target.value } }))}
-                        className="bg-input border-border text-foreground text-sm h-8 w-24 sm:w-28"
-                        dir="ltr"
-                      />
-                      <span className="text-muted-foreground text-xs">-</span>
-                      <Input
-                        type="time"
-                        value={workingHours[day]?.close || '23:00'}
-                        onChange={(e) => setWorkingHours(prev => ({ ...prev, [day]: { ...prev[day], close: e.target.value } }))}
-                        className="bg-input border-border text-foreground text-sm h-8 w-24 sm:w-28"
-                        dir="ltr"
-                      />
-                    </div>
-                  ) : (
-                    <span className="text-muted-foreground text-sm">{t('dashboard.closed')}</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
+          <WorkingHoursEditor
+            t={t}
+            language={language}
+            workingHours={workingHours}
+            setWorkingHours={setWorkingHours}
+          />
 
-          <div>
-            <Label className="text-foreground">{t('dashboard.country')}</Label>
-            <select
-              value={selectedCountry}
-              onChange={(e) => handleCountryChange(e.target.value)}
-              className="mt-1 w-full rounded-md border border-border bg-input px-3 py-2 text-foreground"
-            >
+          <div className="space-y-6 border-t border-border/30 pt-8">
+            <div>
+              <Label className="text-sm font-medium text-foreground">{t('dashboard.country')}</Label>
+              <select
+                value={selectedCountry}
+                onChange={(e) => handleCountryChange(e.target.value)}
+                className="mt-2 h-11 w-full rounded-xl border border-border/45 bg-[#0f131a]/90 px-3 text-foreground shadow-none transition-[border-color,box-shadow] focus-visible:border-primary/45 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/15"
+              >
               <option value="">{t('dashboard.selectCountry')}</option>
               {countries?.map((c) => (
                 <option key={c.countryCode} value={c.countryCode}>
@@ -3488,10 +3437,11 @@ function SettingsTab({ restaurant, onBack }: { restaurant: any; onBack: () => vo
               tableLabel,
             })}
             disabled={updateMutation.isPending}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground w-full"
+            className="h-11 w-full rounded-xl bg-primary text-primary-foreground shadow-none hover:bg-primary/90"
           >
             {updateMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : t('dashboard.save')}
           </Button>
+          </div>
         </CardContent>
       </Card>
 
