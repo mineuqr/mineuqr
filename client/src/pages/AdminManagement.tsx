@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useAuthGate } from "@/_core/hooks/useAuthGate";
-import { AdminAccessDenied, AuthGatePending, PageDataLoading } from "@/components/AuthGate";
+import { AdminAccessDenied, AuthGatePending } from "@/components/AuthGate";
 import { adminQueriesEnabled } from "@/lib/queryRuntime";
 import { trpc } from "@/lib/trpc";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -19,6 +19,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { Plus, Trash2, Edit, Loader2, Store, UserPlus, Key, Search, Filter, X, Bell, Send, Users, FileText, Download } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
@@ -26,8 +27,18 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useLocation } from "wouter";
 import { SubscriptionAdminFormFields } from "@/components/admin/subscription/SubscriptionAdminFormFields";
+import {
+  AdminKPISection,
+  AdminOperationsSection,
+  AdminPageShell,
+  AdminSection,
+  adminActionBtn,
+  adminDash,
+} from "@/components/admin/layout";
+import { computeAdminKPIs } from "@/lib/admin/computeAdminKPIs";
 import { formatPlanPriceForCycle, formatSubscriptionEndDate } from "@/lib/subscription";
 import type { BillingCycle } from "@/lib/subscription";
+import { cn } from "@/lib/utils";
 
 // ─── Users Section Component ───────────────────────────────────────
 function UsersSection() {
@@ -209,8 +220,13 @@ function UsersSection() {
 
   if (usersLoading) {
     return (
-      <div className="flex justify-center items-center p-8">
-        <Loader2 className="w-6 h-6 text-primary animate-spin" />
+      <div className={adminDash.card}>
+        <div className="flex items-center justify-center gap-3 p-8">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          <span className="text-sm text-muted-foreground">
+            {t("common.loading") || "Loading..."}
+          </span>
+        </div>
       </div>
     );
   }
@@ -218,7 +234,7 @@ function UsersSection() {
   return (
     <>
       {/* Search + Bulk Notify */}
-      <Card className="mb-4 bg-card border-border">
+      <Card className={adminDash.operationsCard}>
         <CardContent className="p-4">
           <div className="flex gap-2 items-center">
             <Search className="w-5 h-5 text-muted-foreground" />
@@ -232,7 +248,7 @@ function UsersSection() {
               variant="outline"
               size="sm"
               onClick={() => setBulkNotifyDialogOpen(true)}
-              className="text-xs border-amber-500 text-amber-600 hover:bg-amber-50 whitespace-nowrap"
+              className="text-xs border-amber-500 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 whitespace-nowrap"
             >
               <Bell className="w-4 h-4 ms-1" />
               إشعار للجميع
@@ -242,7 +258,7 @@ function UsersSection() {
       </Card>
 
       {/* Users Table */}
-      <Card className="bg-card border-border overflow-hidden">
+      <Card className={adminDash.operationsCard}>
         <CardHeader className="bg-background border-b border-border py-3">
           <CardTitle className="text-foreground text-lg">
             {t('users.list') || 'قائمة المستخدمين'} ({filteredUsers.length})
@@ -362,7 +378,7 @@ function UsersSection() {
                                     size="sm"
                                     variant="outline"
                                     onClick={() => openEditSubDialog(u)}
-                                    className="text-xs border-blue-500 text-blue-600 hover:bg-blue-50"
+                                    className={`text-xs ${adminActionBtn.info}`}
                                     title="تعديل الاشتراك"
                                   >
                                     تعديل الاشتراك
@@ -371,7 +387,7 @@ function UsersSection() {
                                     size="sm"
                                     variant="outline"
                                     onClick={() => setDeleteSubUserId(u.id)}
-                                    className="text-xs border-red-500 text-red-600 hover:bg-red-50"
+                                    className={`text-xs ${adminActionBtn.danger}`}
                                     title="حذف الاشتراك"
                                   >
                                     <Trash2 className="w-3 h-3" />
@@ -381,7 +397,7 @@ function UsersSection() {
                                     variant="outline"
                                     onClick={() => generateInvoiceMutation.mutate({ userId: u.id, subscriptionId: u.subscription?.id || 0 })}
                                     disabled={generateInvoiceMutation.isPending}
-                                    className="text-xs border-teal-500 text-teal-600 hover:bg-teal-50"
+                                    className={`text-xs ${adminActionBtn.teal}`}
                                     title="إنشاء فاتورة PDF"
                                   >
                                     {generateInvoiceMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <FileText className="w-3 h-3" />}
@@ -392,10 +408,10 @@ function UsersSection() {
                                   size="sm"
                                   variant="outline"
                                   onClick={() => openCreateSubDialog(u)}
-                                  className="text-xs border-green-500 text-green-600 hover:bg-green-50"
+                                  className={`text-xs ${adminActionBtn.success}`}
                                   title="إنشاء اشتراك"
                                 >
-                                  <Plus className="w-3 h-3 ml-1" />
+                                  <Plus className="w-3 h-3 ms-1" />
                                   اشتراك
                                 </Button>
                               )}
@@ -403,7 +419,7 @@ function UsersSection() {
                                 size="sm"
                                 variant="outline"
                                 onClick={() => openNotifyDialog(u.id, u.name || u.email || 'المستخدم')}
-                                className="text-xs border-amber-500 text-amber-600 hover:bg-amber-50"
+                                className={`text-xs ${adminActionBtn.warning}`}
                                 title="إرسال إشعار"
                               >
                                 <Bell className="w-3 h-3" />
@@ -666,6 +682,20 @@ export default function AdminManagement() {
   const restaurants = restaurantsWithSubs;
   const refetchRestaurants = refetchSubs;
   const { data: countries } = trpc.countryCurrency.getAll.useQuery();
+  const { data: adminStats, isLoading: statsLoading } = trpc.admin.getStatistics.useQuery(
+    undefined,
+    { enabled: adminEnabled }
+  );
+  const { data: extendedStats, isLoading: extendedLoading } = trpc.admin.getExtendedStats.useQuery(
+    undefined,
+    { enabled: adminEnabled }
+  );
+
+  const kpiLoading = restaurantsLoading || statsLoading || extendedLoading;
+  const kpis = useMemo(
+    () => computeAdminKPIs(restaurantsWithSubs, adminStats, extendedStats),
+    [restaurantsWithSubs, adminStats, extendedStats]
+  );
 
   const handleCountryChange = (countryCode: string) => {
     setSelectedCountry(countryCode);
@@ -843,96 +873,112 @@ export default function AdminManagement() {
   }
 
   return (
-    <div className="min-h-screen cinematic-bg">
-      {/* Top Nav */}
-      <nav className="sticky top-0 z-50 border-b border-border/30 bg-background/80 backdrop-blur-xl">
-        <div className="container flex items-center justify-between h-14">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setLocation("/")}
-              className="brand-mark flex items-center gap-2 transition hover:opacity-80 select-none outline-none focus-visible:ring-2 focus-visible:ring-ring/50 rounded-md"
-            >
-              <Store className="w-6 h-6 text-primary" />
-              <span className="font-bold text-foreground">{t('admin.title')}</span>
-            </button>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              onClick={() => setLocation("/statistics")}
-              variant="outline"
-              size="sm"
-              className="text-xs"
-            >
-              {t('admin.statistics') || 'Statistics'}
-            </Button>
-          </div>
-        </div>
-      </nav>
+    <AdminPageShell
+      title={t("admin.title")}
+      subtitle={t("admin.subtitle")}
+      statsLabel={t("admin.statistics") || "Statistics"}
+      onNavigateHome={() => setLocation("/")}
+      onNavigateStats={() => setLocation("/statistics")}
+      headerActions={
+        <Button
+          onClick={() => {
+            resetForm();
+            setShowCreateDialog(true);
+          }}
+          className="bg-primary text-primary-foreground hover:bg-primary/90"
+        >
+          <Plus className="h-4 w-4 me-2" />
+          {t("admin.addRestaurant")}
+        </Button>
+      }
+    >
+      <AdminKPISection
+        kpis={kpis}
+        loading={kpiLoading}
+        locale={language === "ar" ? "ar" : "en"}
+        title={t("admin.kpiOverview")}
+        description={t("admin.kpiOverviewDesc")}
+        labels={{
+          activeRestaurants: t("admin.activeRestaurants"),
+          activeSubscriptions: t("admin.activeSubscriptions"),
+          expiringSoon: t("admin.expiringSoon"),
+          estimatedMrr: t("admin.estimatedMrr"),
+          totalUsers: t("admin.totalUsers"),
+          activeRestaurantsHint: t("admin.activeRestaurantsHint"),
+          activeSubscriptionsHint: t("admin.activeAndTrial"),
+          expiringSoonHint: t("admin.expiringSoonHint"),
+          estimatedMrrHint: t("admin.estimatedMrrHint"),
+        }}
+      />
 
-      {/* Content */}
-      <main className="container py-6">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="page-heading text-3xl font-bold text-foreground">{t('admin.title')}</h1>
-            <p className="ui-chrome text-muted-foreground mt-2">{t('admin.subtitle')}</p>
-          </div>
-          <Button
-            onClick={() => { resetForm(); setShowCreateDialog(true); }}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground"
-          >
-            <Plus className="w-4 h-4 ml-2" />
-            {t('admin.addRestaurant')}
-          </Button>
-        </div>
-
-        {/* Search & Filter */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-6">
-          <div className="relative flex-1">
-            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder={t('admin.searchPlaceholder')}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pr-10 bg-card border-border text-foreground"
-            />
-            {searchQuery && (
-              <button onClick={() => setSearchQuery("")} className="absolute left-3 top-1/2 -translate-y-1/2">
-                <X className="w-4 h-4 text-muted-foreground hover:text-foreground" />
-              </button>
-            )}
-          </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-full sm:w-[200px] bg-card border-border">
-              <Filter className="w-4 h-4 ml-2 text-muted-foreground" />
-              <SelectValue placeholder={t('admin.filterByStatus')} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t('admin.allStatuses')}</SelectItem>
-              <SelectItem value="active">{t('subscription.status.active')}</SelectItem>
-              <SelectItem value="trial">{t('subscription.status.trial')}</SelectItem>
-              <SelectItem value="expired">{t('subscription.status.expired')}</SelectItem>
-              <SelectItem value="canceled">{t('subscription.status.canceled')}</SelectItem>
-              <SelectItem value="inactive">{t('subscription.status.inactive')}</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Restaurants List */}
+      <AdminSection
+        title={t("admin.restaurantsSection")}
+        description={t("admin.restaurantsSectionDesc")}
+        icon={Store}
+      >
+        <AdminOperationsSection
+          toolbar={
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <div className="relative flex-1">
+                <Search className="absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder={t("admin.searchPlaceholder")}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="border-border bg-card pe-10 text-foreground"
+                />
+                {searchQuery ? (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery("")}
+                    className="absolute start-3 top-1/2 -translate-y-1/2"
+                  >
+                    <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                  </button>
+                ) : null}
+              </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full border-border bg-card sm:w-[200px]">
+                  <Filter className="me-2 h-4 w-4 shrink-0 text-muted-foreground" />
+                  <SelectValue placeholder={t("admin.filterByStatus")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t("admin.allStatuses")}</SelectItem>
+                  <SelectItem value="active">{t("subscription.status.active")}</SelectItem>
+                  <SelectItem value="trial">{t("subscription.status.trial")}</SelectItem>
+                  <SelectItem value="expired">{t("subscription.status.expired")}</SelectItem>
+                  <SelectItem value="canceled">{t("subscription.status.canceled")}</SelectItem>
+                  <SelectItem value="inactive">{t("subscription.status.inactive")}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          }
+        >
         {restaurantsLoading ? (
-          <PageDataLoading minHeight="min-h-[12rem]" />
+          <div className="grid gap-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className={cn(adminDash.operationsCard, "p-6 space-y-3")}>
+                <Skeleton className="h-6 w-48" />
+                <Skeleton className="h-4 w-full max-w-md" />
+                <Skeleton className="h-4 w-3/4" />
+              </div>
+            ))}
+          </div>
         ) : !restaurants || restaurants.length === 0 ? (
-          <Card className="bg-card border-border">
+          <Card className={adminDash.operationsCard}>
             <CardContent className="p-12 text-center">
-              <Store className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-foreground mb-2">{t('admin.noRestaurants')}</h3>
-              <p className="text-muted-foreground mb-6">{t('admin.startAdding')}</p>
+              <Store className="mx-auto mb-4 h-16 w-16 text-muted-foreground" />
+              <h3 className="mb-2 text-xl font-semibold text-foreground">{t("admin.noRestaurants")}</h3>
+              <p className="mb-6 text-muted-foreground">{t("admin.startAdding")}</p>
               <Button
-                onClick={() => { resetForm(); setShowCreateDialog(true); }}
-                className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                onClick={() => {
+                  resetForm();
+                  setShowCreateDialog(true);
+                }}
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
               >
-                <Plus className="w-4 h-4 ml-2" />
-                {t('admin.addFirstRestaurant')}
+                <Plus className="h-4 w-4 me-2" />
+                {t("admin.addFirstRestaurant")}
               </Button>
             </CardContent>
           </Card>
@@ -957,9 +1003,9 @@ export default function AdminManagement() {
               const status = getSubscriptionStatus(subscription);
               
               return (
-                <Card key={restaurant.id} className="bg-card border-border hover:border-primary/50 transition">
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between">
+                <Card key={restaurant.id} className={cn(adminDash.operationsCard, "transition hover:border-primary/40")}>
+                  <CardContent className="p-4 sm:p-6">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
                           <h3 className="text-lg font-semibold text-foreground">{restaurant.nameAr}</h3>
@@ -975,37 +1021,37 @@ export default function AdminManagement() {
                           {restaurant.ownerName && (
                             <div>
                               <span className="text-muted-foreground">{t('admin.ownerName')}:</span>
-                              <span className="ml-2 text-foreground">{restaurant.ownerName}</span>
+                              <span className="ms-2 text-foreground">{restaurant.ownerName}</span>
                             </div>
                           )}
                           {restaurant.ownerEmail && (
                             <div>
                               <span className="text-muted-foreground">{t('admin.ownerEmail')}:</span>
-                              <span className="ml-2 text-foreground" dir="ltr">{restaurant.ownerEmail}</span>
+                              <span className="ms-2 text-foreground" dir="ltr">{restaurant.ownerEmail}</span>
                             </div>
                           )}
                           {restaurant.phone && (
                             <div>
                               <span className="text-muted-foreground">{t('admin.phone')}:</span>
-                              <span className="ml-2 text-foreground">{restaurant.phone}</span>
+                              <span className="ms-2 text-foreground">{restaurant.phone}</span>
                             </div>
                           )}
                           {restaurant.address && (
                             <div>
                               <span className="text-muted-foreground">{t('admin.address')}:</span>
-                              <span className="ml-2 text-foreground">{restaurant.address}</span>
+                              <span className="ms-2 text-foreground">{restaurant.address}</span>
                             </div>
                           )}
                           {restaurant.countryCode && (
                             <div>
                               <span className="text-muted-foreground">{t('dashboard.country')}:</span>
-                              <span className="ml-2 text-foreground">{restaurant.countryCode}</span>
+                              <span className="ms-2 text-foreground">{restaurant.countryCode}</span>
                             </div>
                           )}
                           {restaurant.currencyCode && (
                             <div>
                               <span className="text-muted-foreground">{t('dashboard.currency')}:</span>
-                              <span className="ml-2 text-foreground">{restaurant.currencySymbol} ({restaurant.currencyCode})</span>
+                              <span className="ms-2 text-foreground">{restaurant.currencySymbol} ({restaurant.currencyCode})</span>
                             </div>
                           )}
                           {subscription && (
@@ -1057,7 +1103,7 @@ export default function AdminManagement() {
                               }}
                               disabled={createSubscriptionMutation.isPending}
                             >
-                              {createSubscriptionMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin ml-1" /> : null}
+                              {createSubscriptionMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin me-1" /> : null}
                               {t('admin.activateSubscription')}
                             </Button>
                           )}
@@ -1066,7 +1112,7 @@ export default function AdminManagement() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="border-blue-500/50 text-blue-400 hover:bg-blue-500/10"
+                                className={adminActionBtn.info}
                                 onClick={() => {
                                   setEditSubId(subscription.id);
                                   setEditSubPlanId(subscription.planId?.toString() || "");
@@ -1076,17 +1122,17 @@ export default function AdminManagement() {
                                   setEditSubDialogOpen(true);
                                 }}
                               >
-                                <Edit className="w-3 h-3 ml-1" />
+                                <Edit className="w-3 h-3 me-1" />
                                 {t('admin.editSubscription')}
                               </Button>
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="border-red-500/50 text-red-500 hover:bg-red-500/10"
+                                className={adminActionBtn.danger}
                                 onClick={() => deleteSubscriptionMutation.mutate({ subscriptionId: subscription.id })}
                                 disabled={deleteSubscriptionMutation.isPending}
                               >
-                                {deleteSubscriptionMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin ml-1" /> : <Trash2 className="w-3 h-3 ml-1" />}
+                                {deleteSubscriptionMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin me-1" /> : <Trash2 className="w-3 h-3 me-1" />}
                                 {t('admin.deleteSubscription')}
                               </Button>
                             </>
@@ -1095,20 +1141,20 @@ export default function AdminManagement() {
                             <Button
                               size="sm"
                               variant="outline"
-                              className="border-green-500/50 text-green-500 hover:bg-green-500/10"
+                              className={adminActionBtn.success}
                               onClick={() => updateSubscriptionMutation.mutate({
                                 subscriptionId: subscription.id,
                                 status: "active",
                               })}
                               disabled={updateSubscriptionMutation.isPending}
                             >
-                              {updateSubscriptionMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin ml-1" /> : null}
+                              {updateSubscriptionMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin me-1" /> : null}
                               {t('admin.reactivateSubscription')}
                             </Button>
                           )}
                         </div>
                       </div>
-                      <div className="flex gap-2 ml-4">
+                      <div className="flex shrink-0 gap-2 sm:ms-4">
                         <Button
                           variant="outline"
                           size="sm"
@@ -1133,15 +1179,17 @@ export default function AdminManagement() {
             })}
           </div>
         )}
-         {/* Users Section */}
-        <div className="mt-10">
-          <div className="flex items-center gap-3 mb-4">
-            <UserPlus className="w-6 h-6 text-primary" />
-            <h2 className="text-2xl font-bold text-foreground">{t('users.title') || 'إدارة المستخدمين'}</h2>
-          </div>
-          <UsersSection />
-        </div>
-      </main>
+        </AdminOperationsSection>
+      </AdminSection>
+
+      <AdminSection
+        title={t("users.title") || "Users Management"}
+        description={t("admin.usersSectionDesc")}
+        icon={Users}
+      >
+        <UsersSection />
+      </AdminSection>
+
       {/* Create Restaurant Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={(open) => { if (!open) { setShowCreateDialog(false); resetForm(); } }}>
         <DialogContent className="bg-card border-border max-w-md w-[95vw] sm:w-full max-h-[90vh] overflow-y-auto">
@@ -1339,7 +1387,7 @@ export default function AdminManagement() {
               disabled={isCreating}
               className="bg-primary hover:bg-primary/90 text-primary-foreground"
             >
-              {isCreating && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
+              {isCreating && <Loader2 className="w-4 h-4 me-2 animate-spin" />}
               {t('admin.create')}
             </Button>
           </DialogFooter>
@@ -1409,12 +1457,12 @@ export default function AdminManagement() {
               disabled={updateSubscriptionMutation.isPending}
               className="bg-primary hover:bg-primary/90 text-primary-foreground"
             >
-              {updateSubscriptionMutation.isPending && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
+              {updateSubscriptionMutation.isPending && <Loader2 className="w-4 h-4 me-2 animate-spin" />}
               {t('admin.save')}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </AdminPageShell>
   );
 }
