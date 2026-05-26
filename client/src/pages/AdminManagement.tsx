@@ -25,6 +25,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useLocation } from "wouter";
+import { SubscriptionAdminFormFields } from "@/components/admin/subscription/SubscriptionAdminFormFields";
+import { formatPlanPriceForCycle, formatSubscriptionEndDate } from "@/lib/subscription";
+import type { BillingCycle } from "@/lib/subscription";
 
 // ─── Users Section Component ───────────────────────────────────────
 function UsersSection() {
@@ -231,7 +234,7 @@ function UsersSection() {
               onClick={() => setBulkNotifyDialogOpen(true)}
               className="text-xs border-amber-500 text-amber-600 hover:bg-amber-50 whitespace-nowrap"
             >
-              <Bell className="w-4 h-4 ml-1" />
+              <Bell className="w-4 h-4 ms-1" />
               إشعار للجميع
             </Button>
           </div>
@@ -440,58 +443,22 @@ function UsersSection() {
               {subDialogUser?.name || subDialogUser?.email || 'المستخدم'}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div>
-              <Label className="text-foreground">الباقة</Label>
-              <Select value={subPlanId} onValueChange={setSubPlanId}>
-                <SelectTrigger className="bg-background border-border mt-1">
-                  <SelectValue placeholder="اختر الباقة" />
-                </SelectTrigger>
-                <SelectContent>
-                  {plans?.map((p: any) => (
-                    <SelectItem key={p.id} value={p.id.toString()}>
-                      {language === 'ar' ? p.nameAr : p.nameEn} - {p.priceMonthly} ر.س/شهر
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label className="text-foreground">دورة الفوترة</Label>
-              <Select value={subBillingCycle} onValueChange={(v: any) => setSubBillingCycle(v)}>
-                <SelectTrigger className="bg-background border-border mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="monthly">شهري</SelectItem>
-                  <SelectItem value="yearly">سنوي</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label className="text-foreground">حالة الاشتراك</Label>
-              <Select value={subStatus} onValueChange={(v: any) => setSubStatus(v)}>
-                <SelectTrigger className="bg-background border-border mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">فعال</SelectItem>
-                  <SelectItem value="trial">تجريبي</SelectItem>
-                  <SelectItem value="expired">منتهي</SelectItem>
-                  <SelectItem value="canceled">ملغي</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label className="text-foreground">تاريخ انتهاء الاشتراك (اختياري)</Label>
-              <Input
-                type="date"
-                value={subEndDate}
-                onChange={(e) => setSubEndDate(e.target.value)}
-                className="bg-background border-border mt-1"
-              />
-            </div>
-          </div>
+          <SubscriptionAdminFormFields
+            plans={plans}
+            planId={subPlanId}
+            onPlanIdChange={setSubPlanId}
+            billingCycle={subBillingCycle}
+            onBillingCycleChange={setSubBillingCycle}
+            endDate={subEndDate}
+            onEndDateChange={setSubEndDate}
+            locale={language === "ar" ? "ar" : "en"}
+            planLabel={language === "ar" ? "الباقة" : "Plan"}
+            billingCycleLabel={language === "ar" ? "دورة الفوترة" : "Billing cycle"}
+            endDateLabel={language === "ar" ? "تاريخ انتهاء الاشتراك (اختياري)" : "Subscription end (optional)"}
+            status={subStatus}
+            onStatusChange={setSubStatus}
+            showStatus
+          />
           <DialogFooter>
             <Button variant="outline" onClick={() => setSubDialogUser(null)}>إلغاء</Button>
             <Button
@@ -552,7 +519,7 @@ function UsersSection() {
                 className="bg-background border-border mt-1 min-h-[100px] text-foreground"
                 maxLength={500}
               />
-              <p className="text-xs text-muted-foreground mt-1 text-left">{notifyMessage.length}/500</p>
+              <p className="text-xs text-muted-foreground mt-1 text-end">{notifyMessage.length}/500</p>
             </div>
           </div>
           <DialogFooter>
@@ -565,7 +532,7 @@ function UsersSection() {
               {sendNotifyMutation.isPending ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
-                <><Send className="w-4 h-4 ml-1" /> إرسال</>
+                <><Send className="w-4 h-4 ms-1" /> إرسال</>
               )}
             </Button>
           </DialogFooter>
@@ -594,7 +561,7 @@ function UsersSection() {
                 className="bg-background border-border mt-1 min-h-[100px] text-foreground"
                 maxLength={500}
               />
-              <p className="text-xs text-muted-foreground mt-1 text-left">{bulkNotifyMessage.length}/500</p>
+              <p className="text-xs text-muted-foreground mt-1 text-end">{bulkNotifyMessage.length}/500</p>
             </div>
           </div>
           <DialogFooter>
@@ -607,7 +574,7 @@ function UsersSection() {
               {sendBulkNotifyMutation.isPending ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
-                <><Send className="w-4 h-4 ml-1" /> إرسال للجميع</>
+                <><Send className="w-4 h-4 ms-1" /> إرسال للجميع</>
               )}
             </Button>
           </DialogFooter>
@@ -1045,15 +1012,27 @@ export default function AdminManagement() {
                             <>
                               <div>
                                 <span className="text-muted-foreground">{t('admin.plan')}:</span>
-                                <span className="ml-2 text-foreground">{plans?.find((p: any) => p.id === subscription.planId)?.nameAr || subscription.planId}</span>
+                                <span className="ms-2 text-foreground">{plans?.find((p: any) => p.id === subscription.planId)?.nameAr || subscription.planId}</span>
                               </div>
                               <div>
                                 <span className="text-muted-foreground">{t('admin.billingCycle')}:</span>
-                                <span className="ml-2 text-foreground">{t(`subscription.billingCycle.${subscription.billingCycle}`)}</span>
+                                <span className="ms-2 text-foreground">{t(`subscription.billingCycle.${subscription.billingCycle}`)}</span>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">{language === "ar" ? "السعر" : "Price"}:</span>
+                                <span className="ms-2" dir="ltr">
+                                  {formatPlanPriceForCycle(
+                                    plans?.find((p: any) => p.id === subscription.planId),
+                                    subscription.billingCycle as BillingCycle,
+                                    language === "ar" ? "ar" : "en"
+                                  )}
+                                </span>
                               </div>
                               <div>
                                 <span className="text-muted-foreground">{t('admin.periodEnd')}:</span>
-                                <span className="ml-2 text-foreground">{new Date(subscription.currentPeriodEnd).toLocaleDateString()}</span>
+                                <span className="ms-2 text-foreground" dir="ltr">
+                                  {formatSubscriptionEndDate(subscription.currentPeriodEnd, language === "ar" ? "ar" : "en")}
+                                </span>
                               </div>
                             </>
                           )}
@@ -1336,42 +1315,20 @@ export default function AdminManagement() {
                 </div>
               </div>
             )}
-            <div>
-              <Label className="text-foreground">{t('admin.plan')} *</Label>
-              <Select value={planId} onValueChange={setPlanId}>
-                <SelectTrigger className="bg-input border-border text-foreground">
-                  <SelectValue placeholder={t('admin.selectPlan')} />
-                </SelectTrigger>
-                <SelectContent className="bg-card border-border">
-                  {plans?.map((plan: any) => (
-                    <SelectItem key={plan.id} value={plan.id.toString()} className="text-foreground">
-                      {plan.nameAr}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label className="text-foreground">{t('admin.billingCycle')}</Label>
-              <Select value={billingCycle} onValueChange={(v: any) => setBillingCycle(v)}>
-                <SelectTrigger className="bg-input border-border text-foreground">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-card border-border">
-                  <SelectItem value="monthly" className="text-foreground">{t('subscription.billingCycle.monthly')}</SelectItem>
-                  <SelectItem value="yearly" className="text-foreground">{t('subscription.billingCycle.yearly')}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label className="text-foreground">{t('admin.subscriptionEndDate')}</Label>
-              <Input
-                type="date"
-                value={subscriptionEndDate}
-                onChange={(e) => setSubscriptionEndDate(e.target.value)}
-                className="mt-1 bg-input border-border text-foreground"
-              />
-            </div>
+            <SubscriptionAdminFormFields
+              plans={plans}
+              planId={planId}
+              onPlanIdChange={setPlanId}
+              billingCycle={billingCycle}
+              onBillingCycleChange={(cycle: BillingCycle) => setBillingCycle(cycle)}
+              endDate={subscriptionEndDate}
+              onEndDateChange={setSubscriptionEndDate}
+              locale={language === "ar" ? "ar" : "en"}
+              planLabel={`${t("admin.plan")} *`}
+              billingCycleLabel={t("admin.billingCycle")}
+              endDateLabel={t("admin.subscriptionEndDate")}
+              showStatus={false}
+            />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => { setShowCreateDialog(false); resetForm(); }} className="border-border/50 text-foreground">
@@ -1419,41 +1376,20 @@ export default function AdminManagement() {
             <DialogTitle className="text-foreground">{t('admin.editSubscription')}</DialogTitle>
             <DialogDescription className="text-muted-foreground">{t('admin.editSubscriptionDesc')}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label className="text-foreground">{t('admin.plan')}</Label>
-              <select
-                value={editSubPlanId}
-                onChange={(e) => setEditSubPlanId(e.target.value)}
-                className="w-full mt-1 bg-input border border-border rounded-md px-3 py-2 text-foreground"
-              >
-                {plans?.map((plan: any) => (
-                  <option key={plan.id} value={plan.id}>{plan.nameAr} - {plan.nameEn}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <Label className="text-foreground">{t('admin.billingCycle')}</Label>
-              <select
-                value={editSubBillingCycle}
-                onChange={(e) => setEditSubBillingCycle(e.target.value as "monthly" | "yearly")}
-                className="w-full mt-1 bg-input border border-border rounded-md px-3 py-2 text-foreground"
-              >
-                <option value="monthly">{t('subscription.billingCycle.monthly')}</option>
-                <option value="yearly">{t('subscription.billingCycle.yearly')}</option>
-              </select>
-            </div>
-            <div>
-              <Label className="text-foreground">{t('admin.periodEnd')}</Label>
-              <Input
-                type="date"
-                value={editSubEndDate}
-                onChange={(e) => setEditSubEndDate(e.target.value)}
-                className="mt-1 bg-input border-border text-foreground"
-                dir="ltr"
-              />
-            </div>
-          </div>
+          <SubscriptionAdminFormFields
+            plans={plans}
+            planId={editSubPlanId}
+            onPlanIdChange={setEditSubPlanId}
+            billingCycle={editSubBillingCycle}
+            onBillingCycleChange={setEditSubBillingCycle}
+            endDate={editSubEndDate}
+            onEndDateChange={setEditSubEndDate}
+            locale={language === "ar" ? "ar" : "en"}
+            planLabel={t("admin.plan")}
+            billingCycleLabel={t("admin.billingCycle")}
+            endDateLabel={t("admin.periodEnd")}
+            showStatus={false}
+          />
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditSubDialogOpen(false)} className="border-border/50 text-foreground">
               {t('admin.cancel')}
