@@ -460,7 +460,9 @@ function DashboardTopBar({
 
 // ─── Notification Badge ─────────────────────────────────────
 function NotificationBadge() {
+  const { isAuthenticated } = useAuth();
   const { data: notifications } = trpc.notification.list.useQuery(undefined, {
+    enabled: isAuthenticated,
     refetchInterval: 30000, // Refresh every 30s
   });
   const unreadCount = (notifications as any[] || []).filter((n: any) => !n.isRead).length;
@@ -469,6 +471,23 @@ function NotificationBadge() {
     <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
       {unreadCount > 9 ? "9+" : unreadCount}
     </span>
+  );
+}
+
+// ─── Dashboard loading skeleton (auth.me in flight) ─────────
+
+function DashboardMainSkeleton() {
+  return (
+    <div className="animate-pulse space-y-6 p-1">
+      <div className="h-8 w-56 max-w-full rounded-lg bg-muted/40" />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="h-28 rounded-2xl bg-muted/30" />
+        ))}
+      </div>
+      <div className="h-48 rounded-2xl bg-muted/25" />
+      <div className="h-32 rounded-2xl bg-muted/20" />
+    </div>
   );
 }
 
@@ -518,7 +537,8 @@ function syncDashboardUrl(
 // ─── Dashboard Layout ───────────────────────────────────────
 
 export default function Dashboard() {
-  const { user, loading, isAuthenticated, logout } = useAuth();
+  const { user, authPending, isAuthenticated, logout } = useAuth();
+  const authResolved = !authPending;
   const { t, language, dir } = useLanguage();
   const [location] = useLocation();
   const [, routeParams] = useRoute("/dashboard/:section");
@@ -544,7 +564,12 @@ export default function Dashboard() {
 
   const { data: sidebarRestaurant } = trpc.restaurant.getById.useQuery(
     { id: selectedRestaurantId! },
-    { enabled: !!selectedRestaurantId && activeSection === "restaurant-detail" }
+    {
+      enabled:
+        isAuthenticated &&
+        !!selectedRestaurantId &&
+        activeSection === "restaurant-detail",
+    }
   );
 
   // Restore restaurant + tab from URL (refresh, deep links, browser back/forward).
@@ -618,16 +643,7 @@ export default function Dashboard() {
     }
   }, []);
 
-  if (loading) {
-    return (
-      <div className={cn(dash.shell, "flex items-center justify-center")}>
-        <div className={dash.shellGlow} aria-hidden />
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
+  if (authResolved && !isAuthenticated) {
     return (
       <div className={cn(dash.shell, "flex items-center justify-center p-4")} dir={dir}>
         <div className={dash.shellGlow} aria-hidden />
@@ -651,11 +667,11 @@ export default function Dashboard() {
   return (
     <div className={dash.shell} dir={dir}>
       <div className={dash.shellGlow} aria-hidden />
-      <OrderAlertSystem />
+      {isAuthenticated ? <OrderAlertSystem /> : null}
       <DashboardSidebar
         activeSection={activeSection}
         onRestaurants={handleBackToRestaurants}
-        onLogout={logout}
+        onLogout={isAuthenticated ? logout : () => {}}
         mobileOpen={mobileSidebarOpen}
         onMobileClose={() => setMobileSidebarOpen(false)}
         restaurantTab={activeSection === "restaurant-detail" ? restaurantTab : undefined}
@@ -680,7 +696,9 @@ export default function Dashboard() {
           onOpenMobileMenu={() => setMobileSidebarOpen(true)}
         />
         <main className={dash.main}>
-          {activeSection === "restaurants" ? (
+          {!authResolved ? (
+            <DashboardMainSkeleton />
+          ) : activeSection === "restaurants" ? (
             <RestaurantsList onSelect={handleSelectRestaurant} userName={user?.name} />
           ) : selectedRestaurantId ? (
             <RestaurantDetail
@@ -712,7 +730,11 @@ function RestaurantsList({
   onSelect: (id: number) => void;
   userName?: string | null;
 }) {
-  const { data: restaurants, isLoading, refetch } = trpc.restaurant.list.useQuery();
+  const { isAuthenticated } = useAuth();
+  const { data: restaurants, isLoading, refetch } = trpc.restaurant.list.useQuery(
+    undefined,
+    { enabled: isAuthenticated }
+  );
   const { t, language } = useLanguage();
   const [showCreate, setShowCreate] = useState(false);
   const [deleteRestaurantId, setDeleteRestaurantId] = useState<number | null>(null);
@@ -1224,9 +1246,10 @@ function RestaurantHomePanel({
   restaurantId: number;
   onTabChange: (tab: RestaurantTab) => void;
 }) {
+  const { isAuthenticated } = useAuth();
   const { data: recentOrders } = trpc.order.list.useQuery(
     { restaurantId },
-    { refetchInterval: 15000 }
+    { enabled: isAuthenticated, refetchInterval: 15000 }
   );
   const recent = (recentOrders ?? []).slice(0, 5);
 
@@ -1284,15 +1307,26 @@ function RestaurantDetail({
   onTabChange: (tab: RestaurantTab) => void;
 }) {
   const { t, language } = useLanguage();
-  const { data: restaurant, isLoading } = trpc.restaurant.getById.useQuery({ id: restaurantId });
-  const { data: stats } = trpc.restaurant.stats.useQuery({ id: restaurantId });
+  const { isAuthenticated } = useAuth();
+  const loadStats =
+    activeTab === "home" || activeTab === "reports";
+  const loadCategories = activeTab === "categories";
+
+  const { data: restaurant, isLoading } = trpc.restaurant.getById.useQuery(
+    { id: restaurantId },
+    { enabled: isAuthenticated && !!restaurantId }
+  );
+  const { data: stats } = trpc.restaurant.stats.useQuery(
+    { id: restaurantId },
+    { enabled: isAuthenticated && !!restaurantId && loadStats }
+  );
   const { data: categoriesList, isLoading: catsLoading } = trpc.category.list.useQuery(
     { restaurantId },
-    { enabled: !!restaurantId }
+    { enabled: isAuthenticated && !!restaurantId && loadCategories }
   );
   const { data: subscriptionData } = trpc.subscription.getByRestaurant.useQuery(
     { restaurantId },
-    { enabled: !!restaurantId }
+    { enabled: isAuthenticated && !!restaurantId }
   );
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
 

@@ -1,3 +1,4 @@
+import { isAuthMeInitialLoadPending } from "@/lib/authSession";
 import { trpc } from "@/lib/trpc";
 import { UNAUTHED_ERR_MSG } from '@shared/const';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -18,6 +19,9 @@ const redirectToLoginIfUnauthorized = (error: unknown) => {
   const isUnauthorized = error.message === UNAUTHED_ERR_MSG;
 
   if (!isUnauthorized) return;
+
+  // Session may still be resolving; do not redirect until auth.me has settled.
+  if (isAuthMeInitialLoadPending(queryClient)) return;
 
   spaNavigate(getLoginUrl());
 };

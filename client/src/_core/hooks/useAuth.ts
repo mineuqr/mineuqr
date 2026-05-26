@@ -1,3 +1,4 @@
+import { authMeQueryOptions } from "@/lib/authSession";
 import { getLoginUrl, spaNavigate } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { TRPCClientError } from "@trpc/client";
@@ -15,10 +16,7 @@ export function useAuth(options?: UseAuthOptions) {
   const utils = trpc.useUtils();
   const [pathname] = useLocation();
 
-  const meQuery = trpc.auth.me.useQuery(undefined, {
-    retry: false,
-    refetchOnWindowFocus: false,
-  });
+  const meQuery = trpc.auth.me.useQuery(undefined, authMeQueryOptions);
 
   const logoutMutation = trpc.auth.logout.useMutation({
     onSuccess: () => {
@@ -45,6 +43,8 @@ export function useAuth(options?: UseAuthOptions) {
     }
   }, [logoutMutation, utils]);
 
+  const authPending = meQuery.isPending && meQuery.data === undefined;
+
   const state = useMemo(() => {
     localStorage.setItem(
       "manus-runtime-user-info",
@@ -52,21 +52,23 @@ export function useAuth(options?: UseAuthOptions) {
     );
     return {
       user: meQuery.data ?? null,
-      loading: meQuery.isLoading || logoutMutation.isPending,
+      /** Initial auth.me in flight — not the same as "logged out". */
+      authPending,
+      loading: authPending || logoutMutation.isPending,
       error: meQuery.error ?? logoutMutation.error ?? null,
       isAuthenticated: Boolean(meQuery.data),
     };
   }, [
     meQuery.data,
     meQuery.error,
-    meQuery.isLoading,
+    authPending,
     logoutMutation.error,
     logoutMutation.isPending,
   ]);
 
   useEffect(() => {
     if (!redirectOnUnauthenticated) return;
-    if (meQuery.isLoading || logoutMutation.isPending) return;
+    if (authPending || logoutMutation.isPending) return;
     if (state.user) return;
     if (typeof window === "undefined") return;
     if (pathname === redirectPath) return;
@@ -76,7 +78,7 @@ export function useAuth(options?: UseAuthOptions) {
     redirectOnUnauthenticated,
     redirectPath,
     logoutMutation.isPending,
-    meQuery.isLoading,
+    authPending,
     state.user,
     pathname,
   ]);
