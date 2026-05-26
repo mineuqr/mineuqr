@@ -1,4 +1,4 @@
-import { COOKIE_NAME } from "@shared/const";
+import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import type { CookieOptions, Request, Response } from "express";
 
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
@@ -22,30 +22,52 @@ function isSecureRequest(req: Request) {
   return protoList.some(proto => proto.trim().toLowerCase() === "https");
 }
 
-export function getSessionCookieOptions(
+/**
+ * Cookie attributes used when setting app_session_id (OAuth + local login).
+ * Local HTTP dev uses lax/non-secure for same-origin SPA; HTTPS uses none/secure.
+ */
+export function getSetSessionCookieOptions(
   req: Request
-): Pick<CookieOptions, "domain" | "httpOnly" | "path" | "sameSite" | "secure"> {
-  // const hostname = req.hostname;
-  // const shouldSetDomain =
-  //   hostname &&
-  //   !LOCAL_HOSTS.has(hostname) &&
-  //   !isIpAddress(hostname) &&
-  //   hostname !== "127.0.0.1" &&
-  //   hostname !== "::1";
+): Pick<CookieOptions, "httpOnly" | "path" | "sameSite" | "secure"> {
+  const secure = isSecureRequest(req);
+  const host = (req.hostname || "").toLowerCase();
+  const isLocal = LOCAL_HOSTS.has(host) || isIpAddress(host);
 
-  // const domain =
-  //   shouldSetDomain && !hostname.startsWith(".")
-  //     ? `.${hostname}`
-  //     : shouldSetDomain
-  //       ? hostname
-  //       : undefined;
+  if (isLocal && !secure) {
+    return {
+      httpOnly: true,
+      path: "/",
+      sameSite: "lax",
+      secure: false,
+    };
+  }
 
   return {
     httpOnly: true,
     path: "/",
     sameSite: "none",
-    secure: isSecureRequest(req),
+    secure: true,
   };
+}
+
+/** @deprecated Alias for clearCookie variant matching current setSessionCookie policy */
+export function getSessionCookieOptions(
+  req: Request
+): Pick<CookieOptions, "httpOnly" | "path" | "sameSite" | "secure"> {
+  return getSetSessionCookieOptions(req);
+}
+
+/** Set app_session_id after OAuth or email/password login (shared policy). */
+export function setSessionCookie(
+  res: Response,
+  req: Request,
+  token: string,
+  maxAgeMs: number = ONE_YEAR_MS
+): void {
+  res.cookie(COOKIE_NAME, token, {
+    ...getSetSessionCookieOptions(req),
+    maxAge: maxAgeMs,
+  });
 }
 
 /**

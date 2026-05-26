@@ -18,6 +18,18 @@ import type {
 const isNonEmptyString = (value: unknown): value is string =>
   typeof value === "string" && value.length > 0;
 
+/** Avoid writing lastSignedIn on every tRPC request (session still validated each time). */
+const LAST_SIGNED_IN_THROTTLE_MS = 15 * 60 * 1000;
+
+function shouldRefreshLastSignedIn(
+  lastSignedIn: string | Date | null | undefined
+): boolean {
+  if (!lastSignedIn) return true;
+  const last = new Date(lastSignedIn);
+  if (Number.isNaN(last.getTime())) return true;
+  return Date.now() - last.getTime() >= LAST_SIGNED_IN_THROTTLE_MS;
+}
+
 export type SessionPayload = {
   openId: string;
   appId: string;
@@ -292,10 +304,14 @@ class SDKServer {
       throw ForbiddenError("User not found");
     }
 
-    await db.upsertUser({
-      openId: user.openId,
-      lastSignedIn: signedInAt.toISOString(),
-    });
+    if (shouldRefreshLastSignedIn(user.lastSignedIn)) {
+      await db.upsertUser({
+        openId: user.openId,
+        lastSignedIn: signedInAt.toISOString(),
+      });
+    } else if (process.env.AUTH_DEBUG === "1") {
+      console.info("[Auth] authenticateRequest: skipped lastSignedIn (throttled)");
+    }
 
     return user;
   }

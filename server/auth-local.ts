@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import * as db from "./db";
 import { sdk } from "./_core/sdk";
 import { COOKIE_NAME } from "@shared/const";
+import { setSessionCookie } from "./_core/cookies";
 
 const router = Router();
 
@@ -40,20 +41,17 @@ router.post("/api/auth/login", async (req: Request, res: Response) => {
       name: user.name || user.email || "User",
     });
 
-    // Set session cookie (same as OAuth)
-    res.cookie(COOKIE_NAME, sessionToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 365 * 24 * 60 * 60 * 1000, // 1 year
-      path: "/",
-    });
+    setSessionCookie(res, req, sessionToken);
 
-    // Update last signed in
+    // Explicit sign-in: always refresh lastSignedIn (authenticateRequest throttles routine calls).
     await db.upsertUser({
       openId: user.openId,
       lastSignedIn: new Date().toISOString(),
     });
+
+    if (process.env.AUTH_DEBUG === "1") {
+      console.info("[Auth] Local login succeeded", { userId: user.id });
+    }
 
     return res.json({ success: true, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
   } catch (error) {

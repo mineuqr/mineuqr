@@ -83,6 +83,7 @@ export function useAuth(options?: UseAuthOptions) {
 
   return {
     ...state,
+    /** Prefer syncAuthAfterLogin() immediately after POST /api/auth/login. */
     refresh: () => meQuery.refetch(),
     logout,
   };

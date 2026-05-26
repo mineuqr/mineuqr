@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { syncAuthAfterLogin } from "@/lib/authSession";
+import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +13,7 @@ import { Mail, Lock, ArrowLeft, LogIn } from "lucide-react";
 export default function SubscriberLogin() {
   const { t, language } = useLanguage();
   const [, setLocation] = useLocation();
+  const utils = trpc.useUtils();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -36,7 +39,12 @@ export default function SubscriberLogin() {
 
       toast.success(t("auth.loginSuccess"));
 
-      // Redirect to dashboard
+      const user = await syncAuthAfterLogin(utils);
+      if (!user) {
+        toast.error(t("auth.loginError"));
+        return;
+      }
+
       setLocation("/dashboard");
     } catch (error) {
       toast.error(t("auth.loginError"));

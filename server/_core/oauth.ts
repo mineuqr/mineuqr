@@ -1,7 +1,7 @@
-import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
+import { ONE_YEAR_MS } from "@shared/const";
 import type { Express, Request, Response } from "express";
 import * as db from "../db";
-import { getSessionCookieOptions } from "./cookies";
+import { setSessionCookie } from "./cookies";
 import { sdk } from "./sdk";
 import { createTrialSubscription } from "../create-trial-subscription";
 import { notifyOwnerNewUser } from "../owner-email-notifications";
@@ -67,8 +67,10 @@ export function registerOAuthRoutes(app: Express) {
         expiresInMs: ONE_YEAR_MS,
       });
 
-      const cookieOptions = getSessionCookieOptions(req);
-      res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+      setSessionCookie(res, req, sessionToken, ONE_YEAR_MS);
+      if (process.env.AUTH_DEBUG === "1") {
+        console.info("[Auth] OAuth callback: session cookie set");
+      }
 
       res.redirect(302, "/");
     } catch (error) {
