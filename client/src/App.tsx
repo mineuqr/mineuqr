@@ -8,8 +8,6 @@ import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import MenuView from "./pages/MenuView";
 import Pricing from "./pages/Pricing";
-import PaymentSuccess from "./pages/PaymentSuccess";
-import PaymentCancel from "./pages/PaymentCancel";
 import SubscriptionSuccess from "./pages/SubscriptionSuccess";
 import SubscriptionCancel from "./pages/SubscriptionCancel";
 import PaymentHistory from "./pages/PaymentHistory";
