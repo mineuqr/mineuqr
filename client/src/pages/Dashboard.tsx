@@ -5,8 +5,7 @@ import OrderAlertSystem from "@/components/OrderAlertSystem";
 import { getLoginUrl, spaNavigate } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { cn, resolveImageUrl } from "@/lib/utils";
-import { formatRiyadhDateTime, parseDbUtcTimestamp } from "@/lib/datetime";
-import { todayYmd } from "@/lib/restaurantHours";
+import { formatRiyadhDateTime, todayYmd, convertUtcToRestaurantTime } from "@/lib/datetime";
 import { downloadSalesReportXlsx } from "@/lib/excel";
 import {
   DASHBOARD_ORDER_LIST_POLL_MS,
@@ -3635,37 +3634,23 @@ type DashboardOrder = {
   items?: unknown[];
 };
 
-function riyadhYmd(value: string | Date | null | undefined): string {
-  const date = parseDbUtcTimestamp(value);
-  if (!date) return "";
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Riyadh",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(date);
+function orderDateYmd(value: string | Date | null | undefined): string {
+  return convertUtcToRestaurantTime(value)?.ymd ?? "";
 }
 
-function riyadhYearMonth(value: string | Date | null | undefined): { year: number; month: number } | null {
-  const date = parseDbUtcTimestamp(value);
-  if (!date) return null;
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Riyadh",
-    year: "numeric",
-    month: "numeric",
-  }).formatToParts(date);
-  const year = Number(parts.find((p) => p.type === "year")?.value);
-  const month = Number(parts.find((p) => p.type === "month")?.value);
-  if (!year || !month) return null;
-  return { year, month };
+function orderDateYearMonth(
+  value: string | Date | null | undefined
+): { year: number; month: number } | null {
+  const ymd = orderDateYmd(value);
+  if (!ymd) return null;
+  const [year, month] = ymd.split("-").map(Number);
+  return year && month ? { year, month } : null;
 }
 
-function riyadhDayOfMonth(value: string | Date | null | undefined): number {
-  const date = parseDbUtcTimestamp(value);
-  if (!date) return 0;
-  return Number(
-    new Intl.DateTimeFormat("en", { timeZone: "Asia/Riyadh", day: "numeric" }).format(date)
-  );
+function orderDateDay(value: string | Date | null | undefined): number {
+  const ymd = orderDateYmd(value);
+  if (!ymd) return 0;
+  return Number(ymd.split("-")[2]) || 0;
 }
 
 function orderAmount(order: DashboardOrder): number {
@@ -3677,11 +3662,11 @@ function isCompletedOrder(status: string) {
 }
 
 function buildOrderStatistics(orders: DashboardOrder[]) {
-  const todayKey = riyadhYmd(new Date());
-  const nowParts = riyadhYearMonth(new Date());
-  const todayOrders = orders.filter((o) => riyadhYmd(o.createdAt) === todayKey);
+  const todayKey = todayYmd();
+  const nowParts = orderDateYearMonth(new Date());
+  const todayOrders = orders.filter((o) => orderDateYmd(o.createdAt) === todayKey);
   const monthOrders = orders.filter((o) => {
-    const ym = riyadhYearMonth(o.createdAt);
+    const ym = orderDateYearMonth(o.createdAt);
     return ym && nowParts && ym.year === nowParts.year && ym.month === nowParts.month;
   });
   const completedToday = todayOrders.filter((o) => isCompletedOrder(o.status));
@@ -3710,9 +3695,9 @@ function buildOrderStatistics(orders: DashboardOrder[]) {
 }
 
 function buildTodayReport(orders: DashboardOrder[]) {
-  const todayKey = riyadhYmd(new Date());
+  const todayKey = todayYmd();
   const completed = orders.filter(
-    (o) => riyadhYmd(o.createdAt) === todayKey && isCompletedOrder(o.status)
+    (o) => orderDateYmd(o.createdAt) === todayKey && isCompletedOrder(o.status)
   );
   return {
     count: completed.length,
@@ -3725,8 +3710,8 @@ function buildMonthlyReport(orders: DashboardOrder[], year: number, month: numbe
   const rows: { day: number; count: number; totalSales: number }[] = [];
   for (let day = 1; day <= daysInMonth; day++) {
     const dayOrders = orders.filter((o) => {
-      const ym = riyadhYearMonth(o.createdAt);
-      return ym && ym.year === year && ym.month === month && riyadhDayOfMonth(o.createdAt) === day;
+      const ym = orderDateYearMonth(o.createdAt);
+      return ym && ym.year === year && ym.month === month && orderDateDay(o.createdAt) === day;
     });
     if (dayOrders.length === 0) continue;
     const completed = dayOrders.filter((o) => isCompletedOrder(o.status));
@@ -3743,7 +3728,7 @@ function buildYearlySummary(orders: DashboardOrder[], year: number) {
   const rows: { month: number; count: number; totalSales: number }[] = [];
   for (let month = 1; month <= 12; month++) {
     const monthOrders = orders.filter((o) => {
-      const ym = riyadhYearMonth(o.createdAt);
+      const ym = orderDateYearMonth(o.createdAt);
       return ym && ym.year === year && ym.month === month;
     });
     if (monthOrders.length === 0) continue;
@@ -3778,7 +3763,7 @@ function ReportsTab({
   statsAriaLabel: string;
 }) {
   const sym = currencySymbol || "ر.س";
-  const nowParts = riyadhYearMonth(new Date()) ?? { year: new Date().getFullYear(), month: new Date().getMonth() + 1 };
+  const nowParts = orderDateYearMonth(new Date()) ?? { year: new Date().getFullYear(), month: new Date().getMonth() + 1 };
   const [reportYear, setReportYear] = useState(nowParts.year);
   const [reportMonth, setReportMonth] = useState(nowParts.month);
 
