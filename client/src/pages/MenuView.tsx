@@ -7,7 +7,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { CartProvider } from "@/contexts/CartContext";
 import CartDrawer from "@/components/CartDrawer";
 import WelcomeOverlay from "@/components/WelcomeOverlay";
-import { isRestaurantOpen } from "@/lib/restaurantHours";
+import { isRestaurantOpen, parseTemporaryClosure } from "@/lib/restaurantHours";
 
 export default function MenuView() {
   const [, params] = useRoute("/menu/:slug/table/:tableNumber");
@@ -51,20 +51,23 @@ export default function MenuView() {
   );
   const canOrder = orderCheck?.canOrder ?? false;
 
-  const orderingAllowedByHours = useMemo(() => {
-    const raw = (restaurant as { workingHours?: unknown })?.workingHours;
-    if (!raw) return true;
+  const orderingAllowed = useMemo(() => {
+    const r = restaurant as {
+      workingHours?: unknown;
+      temporaryClosure?: unknown;
+    };
+    if (parseTemporaryClosure(r?.temporaryClosure)?.active) return false;
+    if (!r?.workingHours) return true;
     return isRestaurantOpen({
-      workingHours: raw,
-      applyTemporaryClosure: false,
+      workingHours: r.workingHours,
+      temporaryClosure: r.temporaryClosure,
+      applyTemporaryClosure: true,
     });
   }, [restaurant]);
 
-  const canPlaceOrder =
-    tableNumber > 0 && canOrder && orderingAllowedByHours;
+  const canPlaceOrder = tableNumber > 0 && canOrder && orderingAllowed;
   const orderingTableNumber = canPlaceOrder ? tableNumber : 0;
-  const showClosedNotice =
-    tableNumber > 0 && canOrder && !orderingAllowedByHours && !!(restaurant as { workingHours?: unknown })?.workingHours;
+  const showClosedNotice = tableNumber > 0 && canOrder && !orderingAllowed;
 
   const trackViewMutation = trpc.restaurant.trackView.useMutation();
 
