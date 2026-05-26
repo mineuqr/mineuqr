@@ -197,3 +197,44 @@ export function isRestaurantOpenNow(params: {
     applyTemporaryClosure: false,
   });
 }
+
+export type OpenStatusResult = {
+  isOpenNow: boolean;
+  hours: NormalizedWorkingHours;
+  days: readonly WeekdayKey[];
+  currentDay: WeekdayKey;
+};
+
+/**
+ * Menu header open/closed state (working hours only; no temporary closure on badge).
+ */
+export function getOpenStatusFromRestaurant(params: {
+  workingHours: unknown;
+  now?: Date;
+  timeZone?: string;
+}): OpenStatusResult | null {
+  const hours = normalizeWorkingHours(params.workingHours);
+  if (!hours) return null;
+
+  const hasAnyOpen = WEEKDAY_KEYS.some((d) => !hours[d].closed);
+  if (!hasAnyOpen) return null;
+
+  const { weekdayIndex } = getRestaurantNow(
+    params.now ?? new Date(),
+    params.timeZone
+  );
+  const currentDay = WEEKDAY_KEYS[weekdayIndex];
+  const isOpenNow = isRestaurantOpen({
+    workingHours: hours,
+    now: params.now,
+    timeZone: params.timeZone,
+    applyTemporaryClosure: false,
+  });
+
+  return {
+    isOpenNow,
+    hours,
+    days: WEEKDAY_KEYS,
+    currentDay,
+  };
+}
