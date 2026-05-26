@@ -30,6 +30,7 @@ import {
 } from "./db";
 import { assertRestaurantAccess } from "./restaurantAccess";
 import { isRestaurantOpen, parseTemporaryClosure } from "./lib/restaurantHours";
+import { todayYmd } from "@shared/utils/timezone";
 import { putUploadedFile } from "./local-uploads";
 import { notifyOwner } from "./_core/notification";
 import { notifyOwnerNewRestaurant, notifyOwnerNewSubscription, notifyOwnerSubscriptionCancelled } from "./owner-email-notifications";
@@ -1416,7 +1417,7 @@ const holidayRouter = router({
   listPublic: publicProcedure
     .input(z.object({ restaurantId: z.number() }))
     .query(async ({ input }) => {
-      const today = new Date().toISOString().split('T')[0];
+      const today = todayYmd();
       const holidays = await getHolidaysByRestaurant(input.restaurantId);
       return holidays.filter(h => h.date >= today);
     }),
