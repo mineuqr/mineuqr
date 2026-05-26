@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import AddToCartButton from "@/components/AddToCartButton";
 import { resolveImageUrl } from "@/lib/utils";
+import { APP_TIMEZONE } from "@/lib/datetime";
 
 // Template configuration
 export const TEMPLATES = [
@@ -459,6 +460,46 @@ function PatternOverlay({ patternId, accentColor }: { patternId: string; accentC
   );
 }
 
+function timeToMinutes(hhmm: string): number | null {
+  const [hStr, mStr] = hhmm.trim().split(":");
+  if (hStr === undefined || mStr === undefined) return null;
+  const h = parseInt(hStr, 10);
+  const m = parseInt(mStr, 10);
+  if (Number.isNaN(h) || Number.isNaN(m) || h < 0 || h > 23 || m < 0 || m > 59) return null;
+  return h * 60 + m;
+}
+
+function isOpenInRange(open: string, close: string, nowMinutes: number): boolean {
+  const openMin = timeToMinutes(open);
+  const closeMin = timeToMinutes(close);
+  if (openMin === null || closeMin === null) return false;
+  if (openMin <= closeMin) {
+    return nowMinutes >= openMin && nowMinutes <= closeMin;
+  }
+  return nowMinutes >= openMin || nowMinutes <= closeMin;
+}
+
+function getRiyadhMinutesNow(now: Date): number {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: APP_TIMEZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(now);
+  const hour = parseInt(parts.find((p) => p.type === "hour")?.value ?? "0", 10);
+  const minute = parseInt(parts.find((p) => p.type === "minute")?.value ?? "0", 10);
+  return hour * 60 + minute;
+}
+
+function getRiyadhWeekdayIndex(now: Date): number {
+  const weekday = new Intl.DateTimeFormat("en-US", {
+    timeZone: APP_TIMEZONE,
+    weekday: "short",
+  }).format(now);
+  const map: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  return map[weekday] ?? now.getDay();
+}
+
 function TemplateHeader({ restaurant, accentColor, textColor, titleExtra }: { restaurant: any; accentColor: string; textColor?: string; titleExtra?: React.ReactNode }) {
   const tc = textColor || "white";
   const [showHours, setShowHours] = useState(false);
@@ -473,12 +514,12 @@ function TemplateHeader({ restaurant, accentColor, textColor, titleExtra }: { re
       const hasAnyOpen = days.some(d => hours[d] && !hours[d].closed);
       if (!hasAnyOpen) return null;
       const now = new Date();
-      const currentDay = days[now.getDay()];
+      const currentDay = days[getRiyadhWeekdayIndex(now)];
       const currentHour = hours[currentDay];
       let isOpenNow = false;
       if (currentHour && !currentHour.closed) {
-        const nowTime = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-        isOpenNow = nowTime >= currentHour.open && nowTime <= currentHour.close;
+        const nowMinutes = getRiyadhMinutesNow(now);
+        isOpenNow = isOpenInRange(currentHour.open, currentHour.close, nowMinutes);
       }
       return { isOpenNow, hours, days, currentDay };
     } catch { return null; }
