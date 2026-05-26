@@ -376,7 +376,10 @@ const categoryRouter = router({
 const menuItemRouter = router({
   listByCategory: protectedProcedure
     .input(z.object({ categoryId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      const category = await getCategoryById(input.categoryId);
+      if (!category) return [];
+      await assertRestaurantAccess(ctx, category.restaurantId);
       return getMenuItemsByCategory(input.categoryId);
     }),
 
@@ -582,7 +585,8 @@ const subscriptionRouter = router({
 
   getByRestaurant: protectedProcedure
     .input(z.object({ restaurantId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      await assertRestaurantAccess(ctx, input.restaurantId);
       const subscription = await getSubscriptionByRestaurantId(input.restaurantId);
       if (!subscription) return null;
       const plan = await getSubscriptionPlanById(subscription.planId);
