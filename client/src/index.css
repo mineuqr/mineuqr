@@ -407,3 +407,29 @@
   -webkit-user-select: none !important;
   -webkit-user-modify: read-only !important;
 }
+
+/*
+ * Native <input type="date"> — LTR date text only (RTL form layout unchanged).
+ * Does not flip the control chrome; targets WebKit/Blink editable mask only.
+ */
+input[type="date"].subscription-date-input-ltr::-webkit-datetime-edit,
+input[type="date"].subscription-date-input-ltr::-webkit-datetime-edit-fields-wrapper {
+  direction: ltr;
+  unicode-bidi: plaintext;
+  writing-mode: horizontal-tb;
+}
+
+input[type="date"].subscription-date-input-ltr::-webkit-datetime-edit-text,
+input[type="date"].subscription-date-input-ltr::-webkit-datetime-edit-month-field,
+input[type="date"].subscription-date-input-ltr::-webkit-datetime-edit-day-field,
+input[type="date"].subscription-date-input-ltr::-webkit-datetime-edit-year-field {
+  direction: ltr;
+  unicode-bidi: plaintext;
+  font-variant-numeric: tabular-nums;
+}
+
+input[type="date"].subscription-date-input-ltr::-webkit-date-and-time-value {
+  direction: ltr;
+  unicode-bidi: plaintext;
+  font-variant-numeric: tabular-nums;
+}
