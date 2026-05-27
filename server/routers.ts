@@ -1306,9 +1306,7 @@ const profileRouter = router({
   // ─── Users Management ───────────────────────
   listAllUsers: protectedProcedure
     .query(async ({ ctx }) => {
-      if (ctx.user.role !== "admin") {
-        throw new TRPCError({ code: "FORBIDDEN", message: "غير مصرح" });
-      }
+      assertAdminAccess(ctx, "profile.listAllUsers");
       return getAllUsers();
     }),
 
@@ -1318,12 +1316,8 @@ const profileRouter = router({
       role: z.enum(["admin", "user"]),
     }))
     .mutation(async ({ input, ctx }) => {
-      if (ctx.user.role !== "admin") {
-        throw new TRPCError({ code: "FORBIDDEN", message: "غير مصرح" });
-      }
-      if (input.userId === ctx.user.id) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "لا يمكنك تعديل دورك الخاص" });
-      }
+      assertAdminAccess(ctx, "profile.updateUserRole");
+      assertNotSelfAdminTarget(ctx, input.userId, "update_role");
       return updateUserRole(input.userId, input.role);
     }),
 
@@ -1332,12 +1326,8 @@ const profileRouter = router({
       userId: z.number(),
     }))
     .mutation(async ({ input, ctx }) => {
-      if (ctx.user.role !== "admin") {
-        throw new TRPCError({ code: "FORBIDDEN", message: "غير مصرح" });
-      }
-      if (input.userId === ctx.user.id) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "لا يمكنك حذف حسابك الخاص" });
-      }
+      assertAdminAccess(ctx, "profile.deleteUser");
+      assertNotSelfAdminTarget(ctx, input.userId, "delete_user");
       return deleteUser(input.userId);
     }),
 });
