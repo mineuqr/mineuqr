@@ -134,7 +134,9 @@ const restaurantRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       const restaurant = await getRestaurantById(input.id);
-      if (!restaurant) throw new Error("المطعم غير موجود");
+      if (!restaurant) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "المطعم غير موجود" });
+      }
       await assertRestaurantAccess(ctx, input.id, "restaurant.update");
       const { id, ...data } = input;
       await updateRestaurant(id, data);
@@ -145,7 +147,9 @@ const restaurantRouter = router({
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input, ctx }) => {
       const restaurant = await getRestaurantById(input.id);
-      if (!restaurant) throw new Error("المطعم غير موجود");
+      if (!restaurant) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "المطعم غير موجود" });
+      }
       await assertRestaurantAccess(ctx, input.id, "restaurant.delete");
       await deleteRestaurant(input.id);
       return { success: true };
@@ -355,7 +359,9 @@ const categoryRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       const category = await getCategoryById(input.id);
-      if (!category) throw new Error("الفئة غير موجودة");
+      if (!category) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "الفئة غير موجودة" });
+      }
       await assertRestaurantAccess(ctx, category.restaurantId, "category.update");
       const { id, ...data } = input;
       await updateCategory(id, data);
@@ -366,7 +372,9 @@ const categoryRouter = router({
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input, ctx }) => {
       const category = await getCategoryById(input.id);
-      if (!category) throw new Error("الفئة غير موجودة");
+      if (!category) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "الفئة غير موجودة" });
+      }
       await assertRestaurantAccess(ctx, category.restaurantId, "category.delete");
       await deleteCategory(input.id);
       return { success: true };
@@ -429,7 +437,9 @@ const menuItemRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       const item = await getMenuItemById(input.id);
-      if (!item) throw new Error("الصنف غير موجود");
+      if (!item) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "الصنف غير موجود" });
+      }
       await assertRestaurantAccess(ctx, item.restaurantId, "menuItem.update");
 
       // Relational tenant integrity: prevents cross-tenant category reassignment on update.
@@ -449,7 +459,9 @@ const menuItemRouter = router({
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input, ctx }) => {
       const item = await getMenuItemById(input.id);
-      if (!item) throw new Error("الصنف غير موجود");
+      if (!item) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "الصنف غير موجود" });
+      }
       await assertRestaurantAccess(ctx, item.restaurantId, "menuItem.delete");
       await deleteMenuItem(input.id);
       return { success: true };
@@ -464,7 +476,9 @@ const menuItemRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       const item = await getMenuItemById(input.itemId);
-      if (!item) throw new Error("الصنف غير موجود");
+      if (!item) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "الصنف غير موجود" });
+      }
       await assertRestaurantAccess(ctx, item.restaurantId, "menuItem.uploadImage");
       const buffer = Buffer.from(input.imageData, "base64");
       const safeFileName = input.fileName.replace(/[^\w.\-]+/g, "_");
@@ -534,7 +548,9 @@ const offerRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       const offer = await getOfferById(input.id);
-      if (!offer) throw new Error("\u0627\u0644\u0639\u0631\u0636 \u063a\u064a\u0631 \u0645\u0648\u062c\u0648\u062f");
+      if (!offer) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "العرض غير موجود" });
+      }
       await assertRestaurantAccess(ctx, offer.restaurantId, "offer.update");
       const { id, ...data } = input;
       const updateData: Record<string, unknown> = { ...data };
@@ -548,7 +564,9 @@ const offerRouter = router({
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input, ctx }) => {
       const offer = await getOfferById(input.id);
-      if (!offer) throw new Error("\u0627\u0644\u0639\u0631\u0636 \u063a\u064a\u0631 \u0645\u0648\u062c\u0648\u062f");
+      if (!offer) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "العرض غير موجود" });
+      }
       await assertRestaurantAccess(ctx, offer.restaurantId, "offer.delete");
       await deleteOffer(input.id);
       return { success: true };
@@ -563,7 +581,9 @@ const offerRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       const offer = await getOfferById(input.offerId);
-      if (!offer) throw new Error("\u0627\u0644\u0639\u0631\u0636 \u063a\u064a\u0631 \u0645\u0648\u062c\u0648\u062f");
+      if (!offer) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "العرض غير موجود" });
+      }
       await assertRestaurantAccess(ctx, offer.restaurantId, "offer.uploadImage");
       const buffer = Buffer.from(input.imageData, "base64");
       const safeFileName = input.fileName.replace(/[^\w.\-]+/g, "_");
