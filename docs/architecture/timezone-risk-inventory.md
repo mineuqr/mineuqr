@@ -10,8 +10,8 @@ Canonical contract: [timezone-contract.md](./timezone-contract.md)
 
 | File | Risk type | Explanation | Phase |
 |------|-----------|-------------|-------|
-| `server/db.ts` — `isSubscriptionActive`, `getTrialEndDate` | Host-local parse | `new Date(subscription.*)` on DB strings without `Z` is environment-dependent; directly gates feature access. | **TZ-6B** |
-| `server/routers/scheduled-tasks.ts` — `sendRenewalNotifications` | Host-local parse + day math | `new Date(currentPeriodEnd)` and ms-based “days left” drift at midnight; not business-timezone aware. | **TZ-6B** |
+| ~~`server/db.ts` — `isSubscriptionActive`, `getTrialEndDate`~~ | ~~Host-local parse~~ | **TZ-6B done** — uses `parseStoredUtcInstant`. | — |
+| ~~`server/routers/scheduled-tasks.ts` — `sendRenewalNotifications`~~ | ~~Host-local parse~~ | **TZ-6B done** — `parseStoredUtcInstant` for `currentPeriodEnd`; day math still UTC ms-based (business-TZ day buckets deferred). | **TZ-6C+** (optional day-boundary) |
 | `server/db.ts` — `getRevenueByMonth` | Host-local bucketing | Month boundaries use `new Date(y, m, 1)` + `getMonth()`; inconsistent with business-month helpers in `getExtendedAdminStats`. | **TZ-6D** |
 | `server/routers.ts` — admin subscription create/update | Civil date → instant ambiguity | `subscriptionEndDate` (`YYYY-MM-DD`) converted via `new Date(...).toISOString()`; semantics differ from display helpers. | **TZ-6B** |
 | `server/tap-webhook.ts`, `server/paypal-webhook.ts` | Host-local period math | Period end via `setMonth` / `setFullYear` on host `Date`; PayPal path ignores billing cycle. | **TZ-6B** |

@@ -1,5 +1,6 @@
 import { router, publicProcedure } from "../_core/trpc";
 import { z } from "zod";
+import { parseStoredUtcInstant } from "@shared/utils/timezone";
 import { getAllSubscriptions, createNotification, markNotificationAsSent, getUnsentNotifications } from "../db";
 import { notifyOwner } from "../_core/notification";
 
@@ -13,17 +14,13 @@ export const scheduledTasksRouter = router({
     .mutation(async ({ input }) => {
       try {
         const now = new Date();
-        // TODO(TZ-6B): This job currently uses host-local `Date` math and `new Date(storedString)`
-        // for subscription timestamps. Stabilize by parsing with `parseStoredUtcInstant(...)` and
-        // defining "days until expiry" in an explicit business timezone (Riyadh baseline) to avoid
-        // off-by-one behavior around midnight and future DST zones.
         const expiryDate = new Date(now.getTime() + input.daysBeforeExpiry * 24 * 60 * 60 * 1000);
 
-        // Get all subscriptions and filter active ones expiring soon
         const allSubscriptions = await getAllSubscriptions();
         const expiringSubscriptions = allSubscriptions.filter(sub => {
           if (sub.status !== "active") return false;
-          const periodEnd = new Date(sub.currentPeriodEnd);
+          const periodEnd = parseStoredUtcInstant(sub.currentPeriodEnd);
+          if (!periodEnd) return false;
           return periodEnd < expiryDate;
         });
 
@@ -42,7 +39,9 @@ export const scheduledTasksRouter = router({
             continue;
           }
 
-          const periodEnd = new Date(subscription.currentPeriodEnd);
+          const periodEnd = parseStoredUtcInstant(subscription.currentPeriodEnd);
+          if (!periodEnd) continue;
+
           const daysUntilExpiry = Math.ceil(
             (periodEnd.getTime() - now.getTime()) / (24 * 60 * 60 * 1000)
           );
