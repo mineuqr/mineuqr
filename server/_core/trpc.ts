@@ -4,6 +4,7 @@ import superjson from "superjson";
 import type { TrpcContext } from "./context";
 import { opsLog } from "./opsLog";
 import { trackSuspiciousActivity } from "./suspiciousActivity";
+import { OPS_EVENT } from "./opsTaxonomy";
 
 const t = initTRPC.context<TrpcContext>().create({
   transformer: superjson,
@@ -34,7 +35,7 @@ const runtimeDiagnostics = t.middleware(async (opts) => {
 
     if (isUnexpected || OPS_TRPC_DEBUG) {
       opsLog({
-        type: isUnexpected ? "trpc_runtime_failure" : "trpc_error",
+        type: isUnexpected ? OPS_EVENT.trpc_runtime_failure : OPS_EVENT.trpc_error,
         category: "RUNTIME",
         severity: isUnexpected ? "error" : "warn",
         ts: new Date().toISOString(),

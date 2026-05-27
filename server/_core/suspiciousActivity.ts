@@ -1,4 +1,5 @@
 import { opsLog, type OpsCategory } from "./opsLog";
+import { OPS_EVENT } from "./opsTaxonomy";
 
 type SuspiciousSignal =
   | "failed_login"
@@ -87,14 +88,14 @@ function cleanup(now: number): void {
 function suspiciousTypeFor(signal: SuspiciousSignal): string {
   switch (signal) {
     case "tenant_boundary_violation":
-      return "suspicious_tenant_activity";
+      return OPS_EVENT.suspicious_tenant_activity;
     case "unauthorized_admin_access":
-      return "suspicious_admin_activity";
+      return OPS_EVENT.suspicious_admin_activity;
     case "failed_login":
     case "rate_limit_exceeded":
-      return "suspicious_auth_activity";
+      return OPS_EVENT.suspicious_auth_activity;
     case "trpc_runtime_failure":
-      return "runtime_failure_burst";
+      return OPS_EVENT.runtime_failure_burst;
     default:
       return "suspicious_activity";
   }

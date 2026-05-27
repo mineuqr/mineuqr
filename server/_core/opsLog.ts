@@ -64,6 +64,17 @@ function consoleFnForSeverity(severity: OpsSeverity): (msg?: unknown, ...args: u
 /**
  * Lightweight structured operational logger (MON-1A).
  *
+ * Taxonomy guidance (MON-1D):
+ * - type: snake_case, stable vocabulary (prefer `opsTaxonomy.ts`)
+ * - route: HTTP route / Express path
+ * - procedure: tRPC procedure path
+ * - action: semantic operation (avoid using for query/mutation kind)
+ * - severity:
+ *   - debug: optional diagnostics
+ *   - info: expected meaningful events
+ *   - warn: suspicious/denied/degraded
+ *   - error: unexpected failures
+ *
  * - Human-readable by default: `[OPS][CATEGORY][severity] type` + event object
  * - Optional JSON mode (disabled by default): `OPS_LOG_JSON=1` emits a single JSON line
  */

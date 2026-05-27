@@ -3,6 +3,7 @@ import type { SelectUser } from "../../drizzle/schema";
 import { opsLog } from "./opsLog";
 import { getCorrelationId } from "./requestContext";
 import { trackSuspiciousActivity } from "./suspiciousActivity";
+import { OPS_EVENT } from "./opsTaxonomy";
 
 type AuditUser = Pick<SelectUser, "id" | "role" | "email"> | null | undefined;
 
@@ -36,7 +37,7 @@ export function logFailedLogin(
   const payload = basePayload(req, { email, reason });
   const correlationId = getCorrelationId(req);
   opsLog({
-    type: "failed_login",
+    type: OPS_EVENT.failed_login,
     category: "AUTH",
     severity: "warn",
     ts: payload.ts,
@@ -68,7 +69,7 @@ export function logSuccessfulLogin(req: Request, userId: number): void {
   if (process.env.AUTH_DEBUG === "1") {
     const payload = basePayload(req, { userId });
     opsLog({
-      type: "login_success",
+      type: OPS_EVENT.login_success,
       category: "AUTH",
       severity: "info",
       ts: payload.ts,
@@ -92,7 +93,7 @@ export function logUnauthorizedAdminAccess(
   procedure?: string
 ): void {
   opsLog({
-    type: "unauthorized_admin_access",
+    type: OPS_EVENT.unauthorized_admin_access,
     category: "ADMIN",
     severity: "warn",
     ts: new Date().toISOString(),
@@ -115,7 +116,7 @@ export function logTenantBoundaryViolation(
   action: string
 ): void {
   opsLog({
-    type: "tenant_boundary_violation",
+    type: OPS_EVENT.tenant_boundary_violation,
     category: "TENANT",
     severity: "warn",
     ts: new Date().toISOString(),
@@ -136,7 +137,7 @@ export function logRateLimitExceeded(req: Request, key: string): void {
   const payload = basePayload(req, { key });
   const correlationId = getCorrelationId(req);
   opsLog({
-    type: "rate_limit_exceeded",
+    type: OPS_EVENT.rate_limit_exceeded,
     category: "AUTH",
     severity: "warn",
     ts: payload.ts,
