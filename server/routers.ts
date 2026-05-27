@@ -1356,9 +1356,7 @@ const holidayRouter = router({
   list: protectedProcedure
     .input(z.object({ restaurantId: z.number() }))
     .query(async ({ input, ctx }) => {
-      const restaurant = await getRestaurantById(input.restaurantId);
-      if (!restaurant) throw new TRPCError({ code: 'FORBIDDEN' });
-      if (restaurant.userId !== ctx.user.id && ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN' });
+      await assertRestaurantAccess(ctx, input.restaurantId, "holiday.list");
       return getHolidaysByRestaurant(input.restaurantId);
     }),
 
@@ -1381,9 +1379,7 @@ const holidayRouter = router({
       closeTime: z.string().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
-      const restaurant = await getRestaurantById(input.restaurantId);
-      if (!restaurant) throw new TRPCError({ code: 'FORBIDDEN' });
-      if (restaurant.userId !== ctx.user.id && ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN' });
+      await assertRestaurantAccess(ctx, input.restaurantId, "holiday.create");
       const id = await createHoliday(input);
       return { success: true, id };
     }),
@@ -1401,9 +1397,7 @@ const holidayRouter = router({
     .mutation(async ({ input, ctx }) => {
       const holiday = await getHolidayById(input.id);
       if (!holiday) throw new TRPCError({ code: 'NOT_FOUND' });
-      const restaurant = await getRestaurantById(holiday.restaurantId);
-      if (!restaurant) throw new TRPCError({ code: 'FORBIDDEN' });
-      if (restaurant.userId !== ctx.user.id && ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN' });
+      await assertRestaurantAccess(ctx, holiday.restaurantId, "holiday.update");
       const { id, ...data } = input;
       await updateHoliday(id, data);
       return { success: true };
@@ -1414,9 +1408,7 @@ const holidayRouter = router({
     .mutation(async ({ input, ctx }) => {
       const holiday = await getHolidayById(input.id);
       if (!holiday) throw new TRPCError({ code: 'NOT_FOUND' });
-      const restaurant = await getRestaurantById(holiday.restaurantId);
-      if (!restaurant) throw new TRPCError({ code: 'FORBIDDEN' });
-      if (restaurant.userId !== ctx.user.id && ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN' });
+      await assertRestaurantAccess(ctx, holiday.restaurantId, "holiday.delete");
       await deleteHoliday(input.id);
       return { success: true };
     }),

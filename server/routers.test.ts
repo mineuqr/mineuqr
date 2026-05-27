@@ -64,7 +64,20 @@ const mocks = vi.hoisted(() => {
     updatedAt: new Date(),
   };
 
-  return { mockRestaurant, mockCategory, mockMenuItem, mockTable };
+  const mockHoliday = {
+    id: 1,
+    restaurantId: 1,
+    titleAr: "عطلة",
+    titleEn: "Holiday",
+    date: "2099-01-01",
+    isFullDayClosed: true,
+    openTime: null,
+    closeTime: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  return { mockRestaurant, mockCategory, mockMenuItem, mockTable, mockHoliday };
 });
 
 vi.mock("./db", () => ({
@@ -115,6 +128,15 @@ vi.mock("./db", () => ({
   }),
   updateTable: vi.fn().mockResolvedValue(undefined),
   deleteTable: vi.fn().mockResolvedValue(undefined),
+
+  getHolidaysByRestaurant: vi.fn().mockResolvedValue([mocks.mockHoliday]),
+  getHolidayById: vi.fn().mockImplementation(async (id: number) => {
+    if (id === mocks.mockHoliday.id) return { ...mocks.mockHoliday };
+    return undefined;
+  }),
+  createHoliday: vi.fn().mockResolvedValue(2),
+  updateHoliday: vi.fn().mockResolvedValue(undefined),
+  deleteHoliday: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("./storage", () => ({
@@ -301,6 +323,51 @@ describe("table router", () => {
     await expect(caller.table.delete({ id: 999 })).rejects.toThrow(
       /الطاولة غير موجودة/
     );
+  });
+});
+
+// ─── Holiday Tests (STAB-SEC-1B.3D) ───────────────────────────
+
+describe("holiday router", () => {
+  it("A) owner manages own holiday → success", async () => {
+    const caller = appRouter.createCaller(createAuthContext(1));
+    const created = await caller.holiday.create({
+      restaurantId: 1,
+      titleAr: "عطلة جديدة",
+      date: "2099-01-02",
+      isFullDayClosed: true,
+    });
+    expect(created).toEqual({ success: true, id: 2 });
+
+    const updated = await caller.holiday.update({ id: 1, titleAr: "محدث" });
+    expect(updated).toEqual({ success: true });
+
+    const deleted = await caller.holiday.delete({ id: 1 });
+    expect(deleted).toEqual({ success: true });
+  });
+
+  it("B) non-owner manages another tenant holiday → FORBIDDEN (audited)", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const caller = appRouter.createCaller(createAuthContext(999));
+
+    await expect(caller.holiday.list({ restaurantId: 1 })).rejects.toThrow(
+      /غير مصرح بالوصول/
+    );
+
+    expect(
+      warn.mock.calls.some(
+        (c) => c[0] === "[AuthAudit] tenant_boundary_violation"
+      )
+    ).toBe(true);
+    warn.mockRestore();
+  });
+
+  it("C) missing holiday entity → NOT_FOUND preserved", async () => {
+    const caller = appRouter.createCaller(createAuthContext(1));
+    await expect(caller.holiday.update({ id: 999, titleAr: "x" })).rejects.toThrow(
+      /NOT_FOUND/
+    );
+    await expect(caller.holiday.delete({ id: 999 })).rejects.toThrow(/NOT_FOUND/);
   });
 });
 
