@@ -1,5 +1,6 @@
 import type { Request } from "express";
 import type { SelectUser } from "../../drizzle/schema";
+import { opsLog } from "./opsLog";
 
 type AuditUser = Pick<SelectUser, "id" | "role" | "email"> | null | undefined;
 
@@ -18,7 +19,7 @@ function basePayload(req: Request, extra?: Record<string, unknown>) {
   return {
     ts: new Date().toISOString(),
     ip: clientIp(req),
-    path: req.path,
+    route: req.path,
     method: req.method,
     ...extra,
   };
@@ -30,13 +31,43 @@ export function logFailedLogin(
   email: string,
   reason: "invalid_credentials" | "no_password" | "user_not_found" | "rate_limited"
 ): void {
-  console.warn("[AuthAudit] failed_login", basePayload(req, { email, reason }));
+  const payload = basePayload(req, { email, reason });
+  opsLog({
+    type: "failed_login",
+    category: "AUTH",
+    severity: "warn",
+    ts: payload.ts,
+    route: payload.route,
+    ip: payload.ip,
+    method: payload.method,
+    metadata: {
+      legacyPrefix: "AuthAudit",
+      legacyType: "failed_login",
+      email,
+      reason,
+    },
+  });
 }
 
 /** Log successful local login (minimal PII). */
 export function logSuccessfulLogin(req: Request, userId: number): void {
   if (process.env.AUTH_DEBUG === "1") {
-    console.info("[AuthAudit] login_success", basePayload(req, { userId }));
+    const payload = basePayload(req, { userId });
+    opsLog({
+      type: "login_success",
+      category: "AUTH",
+      severity: "info",
+      ts: payload.ts,
+      actorId: userId,
+      route: payload.route,
+      ip: payload.ip,
+      method: payload.method,
+      metadata: {
+        legacyPrefix: "AuthAudit",
+        legacyType: "login_success",
+        userId,
+      },
+    });
   }
 }
 
@@ -45,11 +76,20 @@ export function logUnauthorizedAdminAccess(
   user: AuditUser,
   procedure?: string
 ): void {
-  console.warn("[AuthAudit] unauthorized_admin_access", {
+  opsLog({
+    type: "unauthorized_admin_access",
+    category: "ADMIN",
+    severity: "warn",
     ts: new Date().toISOString(),
-    userId: user?.id ?? null,
+    actorId: user?.id ?? null,
     role: user?.role ?? null,
-    procedure: procedure ?? "unknown",
+    route: procedure ?? "unknown",
+    action: "admin_access",
+    metadata: {
+      legacyPrefix: "AuthAudit",
+      legacyType: "unauthorized_admin_access",
+      procedure: procedure ?? "unknown",
+    },
   });
 }
 
@@ -59,16 +99,38 @@ export function logTenantBoundaryViolation(
   restaurantId: number,
   action: string
 ): void {
-  console.warn("[AuthAudit] tenant_boundary_violation", {
+  opsLog({
+    type: "tenant_boundary_violation",
+    category: "TENANT",
+    severity: "warn",
     ts: new Date().toISOString(),
-    userId: user?.id ?? null,
+    actorId: user?.id ?? null,
     role: user?.role ?? null,
     restaurantId,
     action,
+    metadata: {
+      legacyPrefix: "AuthAudit",
+      legacyType: "tenant_boundary_violation",
+      action,
+    },
   });
 }
 
 /** Log rate-limit blocks on auth endpoints. */
 export function logRateLimitExceeded(req: Request, key: string): void {
-  console.warn("[AuthAudit] rate_limit_exceeded", basePayload(req, { key }));
+  const payload = basePayload(req, { key });
+  opsLog({
+    type: "rate_limit_exceeded",
+    category: "AUTH",
+    severity: "warn",
+    ts: payload.ts,
+    route: payload.route,
+    ip: payload.ip,
+    method: payload.method,
+    metadata: {
+      legacyPrefix: "AuthAudit",
+      legacyType: "rate_limit_exceeded",
+      key,
+    },
+  });
 }
