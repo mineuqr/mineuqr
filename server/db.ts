@@ -611,22 +611,18 @@ export async function getRevenueByMonth(months: number = 12) {
 
   const allSubs = await db.select().from(userSubscriptions);
   const allPlans = await db.select().from(subscriptionPlans);
-  
-  const now = new Date();
+
   const revenueData: { month: string; revenue: number }[] = [];
 
+  // Business-calendar buckets in APP_TIMEZONE (aligned with getExtendedAdminStats.userGrowth).
   for (let i = months - 1; i >= 0; i--) {
-    const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const monthStr = monthDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
-    
+    const bucket = businessYearMonthMonthsAgo(i);
+    const monthStr = formatBusinessYearMonthLabel(bucket.year, bucket.month);
+
     const monthRevenue = allSubs
-      .filter(s => {
-        // DB DATETIME assumed UTC — align with Dashboard TZ-5a parse semantics (TZ-5b.0).
-        const createdDate = parseStoredUtcInstant(s.createdAt);
-        if (!createdDate) return false;
-        return createdDate.getFullYear() === monthDate.getFullYear() && 
-               createdDate.getMonth() === monthDate.getMonth() &&
-               (s.status === 'active' || s.status === 'trial');
+      .filter((s) => {
+        if (s.status !== "active" && s.status !== "trial") return false;
+        return isInBusinessYearMonth(s.createdAt, bucket.year, bucket.month);
       })
       .reduce((sum, sub) => {
         const plan = allPlans.find(p => p.id === sub.planId);

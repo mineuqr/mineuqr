@@ -12,7 +12,7 @@ Canonical contract: [timezone-contract.md](./timezone-contract.md)
 |------|-----------|-------------|-------|
 | ~~`server/db.ts` — `isSubscriptionActive`, `getTrialEndDate`~~ | ~~Host-local parse~~ | **TZ-6B done** — uses `parseStoredUtcInstant`. | — |
 | ~~`server/routers/scheduled-tasks.ts` — `sendRenewalNotifications`~~ | ~~Host-local parse~~ | **TZ-6B done** — `parseStoredUtcInstant` for `currentPeriodEnd`; day math still UTC ms-based (business-TZ day buckets deferred). | **TZ-6C+** (optional day-boundary) |
-| `server/db.ts` — `getRevenueByMonth` | Host-local bucketing | Month boundaries use `new Date(y, m, 1)` + `getMonth()`; inconsistent with business-month helpers in `getExtendedAdminStats`. | **TZ-6D** |
+| ~~`server/db.ts` — `getRevenueByMonth`~~ | ~~Host-local bucketing~~ | **TZ-6D done** — uses `businessYearMonthMonthsAgo` + `isInBusinessYearMonth` + `formatBusinessYearMonthLabel`. | — |
 | `server/routers.ts` — admin subscription create/update | Civil date → instant ambiguity | `subscriptionEndDate` (`YYYY-MM-DD`) converted via `new Date(...).toISOString()`; semantics differ from display helpers. | **TZ-6B** |
 | `server/tap-webhook.ts`, `server/paypal-webhook.ts` | Host-local period math | Period end via `setMonth` / `setFullYear` on host `Date`; PayPal path ignores billing cycle. | **TZ-6B** |
 | `server/create-trial-subscription.ts` | Host-local period math | Trial end uses `setDate(+14)` on local calendar; must align with shared period-end rules. | **TZ-6B** |
@@ -46,7 +46,7 @@ Canonical contract: [timezone-contract.md](./timezone-contract.md)
 | `server/lib/restaurantHours.ts` | Re-export shim | Server re-export of shared hours/timezone utilities. | Maintain |
 | `client/src/pages/Dashboard.tsx` — order reports | Safe bucketing | Uses `convertUtcToRestaurantTime(...).ymd` and `todayYmd()` for order day/month grouping. | Pattern to replicate |
 | `server/db.ts` — `getExtendedAdminStats.userGrowth` | Safe bucketing | Uses `businessYearMonthMonthsAgo` + `isInBusinessYearMonth` in `APP_TIMEZONE`. | Pattern to replicate |
-| `server/db.ts` — `getRevenueByMonth` filter | Partial safe parse | Subscription `createdAt` filtered via `parseStoredUtcInstant` (bucket labels still host-local). | **TZ-6D** completes alignment |
+| ~~`server/db.ts` — `getRevenueByMonth`~~ | ~~Partial safe parse~~ | **TZ-6D done** — business-month bucketing via `isInBusinessYearMonth`. | — |
 | `server/routers.ts` — `holiday.listPublic` | Safe civil date | Uses `todayYmd()` for holiday `YYYY-MM-DD` comparison. | Maintain |
 | `client/src/lib/subscription/dates.ts` — `formatSubscriptionEndDate` | Safe display | Date-only values normalized to noon UTC + `formatRiyadhDate` for display. | Maintain |
 

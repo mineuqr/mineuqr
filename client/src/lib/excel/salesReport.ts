@@ -16,6 +16,7 @@ import {
   normalizeCurrencyCode,
   type CurrencyFormatInput,
 } from "../currencyLocale";
+import { formatInRestaurantTimezone } from "@/lib/datetime";
 import {
   REPORT_ROW_HEIGHTS,
   REPORT_THEME,
@@ -71,7 +72,7 @@ function resolveCurrency(config: SalesReportExportConfig): CurrencyFormatInput {
 
 function formatGeneratedMeta(language: ReportLanguage, date: Date): string {
   const locale = language === "ar" ? "ar-SA" : "en-GB";
-  const formatted = date.toLocaleString(locale, {
+  const formatted = formatInRestaurantTimezone(date, locale, {
     dateStyle: "medium",
     timeStyle: "short",
   });

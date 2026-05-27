@@ -18,7 +18,7 @@ import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { adminQueriesEnabled } from "@/lib/queryRuntime";
-import { formatRiyadhDate } from "@/lib/datetime";
+import { formatRiyadhDate, todayYmd } from "@/lib/datetime";
 
 const statDash = {
   shell: "min-h-screen bg-background",
@@ -122,7 +122,7 @@ export default function Statistics() {
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `subscriptions-${new Date().toISOString().split("T")[0]}.csv`;
+    link.download = `subscriptions-${todayYmd()}.csv`;
     link.click();
     toast.success(t("common.exported") || "Exported successfully");
   };
