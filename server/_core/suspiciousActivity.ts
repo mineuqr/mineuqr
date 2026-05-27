@@ -15,6 +15,7 @@ type TrackInput = {
   ip?: string;
   correlationId?: string;
   route?: string;
+  procedure?: string;
   action?: string;
   metadata?: Record<string, unknown>;
 };
@@ -143,6 +144,7 @@ export function trackSuspiciousActivity(input: TrackInput): void {
     actorId: input.actorId ?? null,
     role: input.role ?? null,
     route: input.route,
+    procedure: input.procedure,
     action: input.action,
     ip: input.ip,
     metadata: {

@@ -29,8 +29,8 @@ export async function assertRestaurantAccess(
       actorId: ctx.user?.id ?? null,
       role: ctx.user?.role ?? null,
       restaurantId,
+      procedure: action,
       action,
-      route: action,
       metadata: { restaurantId, action },
     });
     throw new TRPCError({ code: "FORBIDDEN", message: FORBIDDEN_MESSAGE });

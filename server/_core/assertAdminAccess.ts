@@ -17,7 +17,7 @@ export function assertAdminAccess(ctx: TrpcContext, procedure?: string): void {
       actorId: ctx.user?.id ?? null,
       role: ctx.user?.role ?? null,
       correlationId: ctx.correlationId,
-      route: procedure ?? "unknown",
+      procedure: procedure ?? "unknown",
       action: "admin_access",
       metadata: { procedure: procedure ?? "unknown" },
     });

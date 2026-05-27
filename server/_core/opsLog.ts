@@ -23,7 +23,13 @@ export interface OpsEvent {
   role?: string | null;
   restaurantId?: number | null;
 
+  /** HTTP route / Express path (e.g. `/api/auth/login`). */
   route?: string;
+
+  /** tRPC procedure path (e.g. `restaurant.update`). */
+  procedure?: string;
+
+  /** Semantic operation (e.g. `delete_table`, `update_offer`). */
   action?: string;
 
   ip?: string;

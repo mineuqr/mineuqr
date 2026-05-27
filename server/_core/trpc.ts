@@ -41,11 +41,11 @@ const runtimeDiagnostics = t.middleware(async (opts) => {
         correlationId,
         actorId,
         role,
-        route: procedure,
-        action: kind,
+        procedure,
+        // Keep action reserved for semantic operations; use metadata for query/mutation kind.
         metadata: {
           procedure,
-          type: kind,
+          procedureType: kind,
           code,
           // Keep message for debugging; do not include stack unless debug is enabled.
           message:
@@ -65,9 +65,8 @@ const runtimeDiagnostics = t.middleware(async (opts) => {
         actorId,
         role,
         correlationId,
-        route: procedure,
-        action: kind,
-        metadata: { procedure, type: kind, code },
+        procedure,
+        metadata: { procedure, procedureType: kind, code },
       });
     }
 
