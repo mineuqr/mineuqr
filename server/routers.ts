@@ -335,9 +335,7 @@ const categoryRouter = router({
       sortOrder: z.number().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
-      const restaurant = await getRestaurantById(input.restaurantId);
-      if (!restaurant) throw new Error("غير مصرح");
-      if (restaurant.userId !== ctx.user.id && ctx.user.role !== 'admin') throw new Error("غير مصرح");
+      await assertRestaurantAccess(ctx, input.restaurantId, "category.create");
       return createCategory(input);
     }),
 
@@ -355,9 +353,7 @@ const categoryRouter = router({
     .mutation(async ({ input, ctx }) => {
       const category = await getCategoryById(input.id);
       if (!category) throw new Error("الفئة غير موجودة");
-      const restaurant = await getRestaurantById(category.restaurantId);
-      if (!restaurant) throw new Error("غير مصرح");
-      if (restaurant.userId !== ctx.user.id && ctx.user.role !== 'admin') throw new Error("غير مصرح");
+      await assertRestaurantAccess(ctx, category.restaurantId, "category.update");
       const { id, ...data } = input;
       await updateCategory(id, data);
       return { success: true };
@@ -368,9 +364,7 @@ const categoryRouter = router({
     .mutation(async ({ input, ctx }) => {
       const category = await getCategoryById(input.id);
       if (!category) throw new Error("الفئة غير موجودة");
-      const restaurant = await getRestaurantById(category.restaurantId);
-      if (!restaurant) throw new Error("غير مصرح");
-      if (restaurant.userId !== ctx.user.id && ctx.user.role !== 'admin') throw new Error("غير مصرح");
+      await assertRestaurantAccess(ctx, category.restaurantId, "category.delete");
       await deleteCategory(input.id);
       return { success: true };
     }),
@@ -517,9 +511,7 @@ const offerRouter = router({
       endDate: z.string(),
     }))
     .mutation(async ({ input, ctx }) => {
-      const restaurant = await getRestaurantById(input.restaurantId);
-      if (!restaurant) throw new Error("\u063a\u064a\u0631 \u0645\u0635\u0631\u062d");
-      if (restaurant.userId !== ctx.user.id && ctx.user.role !== 'admin') throw new Error("\u063a\u064a\u0631 \u0645\u0635\u0631\u062d");
+      await assertRestaurantAccess(ctx, input.restaurantId, "offer.create");
       return createOffer({
         ...input,
         startDate: new Date(input.startDate).toISOString(),
@@ -545,9 +537,7 @@ const offerRouter = router({
     .mutation(async ({ input, ctx }) => {
       const offer = await getOfferById(input.id);
       if (!offer) throw new Error("\u0627\u0644\u0639\u0631\u0636 \u063a\u064a\u0631 \u0645\u0648\u062c\u0648\u062f");
-      const restaurant = await getRestaurantById(offer.restaurantId);
-      if (!restaurant) throw new Error("\u063a\u064a\u0631 \u0645\u0635\u0631\u062d");
-      if (restaurant.userId !== ctx.user.id && ctx.user.role !== 'admin') throw new Error("\u063a\u064a\u0631 \u0645\u0635\u0631\u062d");
+      await assertRestaurantAccess(ctx, offer.restaurantId, "offer.update");
       const { id, ...data } = input;
       const updateData: Record<string, unknown> = { ...data };
       if (data.startDate) updateData.startDate = new Date(data.startDate);
@@ -561,9 +551,7 @@ const offerRouter = router({
     .mutation(async ({ input, ctx }) => {
       const offer = await getOfferById(input.id);
       if (!offer) throw new Error("\u0627\u0644\u0639\u0631\u0636 \u063a\u064a\u0631 \u0645\u0648\u062c\u0648\u062f");
-      const restaurant = await getRestaurantById(offer.restaurantId);
-      if (!restaurant) throw new Error("\u063a\u064a\u0631 \u0645\u0635\u0631\u062d");
-      if (restaurant.userId !== ctx.user.id && ctx.user.role !== 'admin') throw new Error("\u063a\u064a\u0631 \u0645\u0635\u0631\u062d");
+      await assertRestaurantAccess(ctx, offer.restaurantId, "offer.delete");
       await deleteOffer(input.id);
       return { success: true };
     }),
