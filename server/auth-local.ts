@@ -138,6 +138,13 @@ router.post("/api/auth/change-password", async (req: Request, res: Response) => 
       return res.status(404).json({ error: "المستخدم غير موجود" });
     }
 
+    // Align with tRPC profile.changePassword: only local email/password accounts may set passwords.
+    if (!user.openId.startsWith("local_")) {
+      return res.status(403).json({
+        error: "تغيير كلمة المرور متاح فقط لحسابات البريد الإلكتروني",
+      });
+    }
+
     if (user.passwordHash) {
       if (!currentPassword) {
         return res.status(400).json({ error: "كلمة المرور الحالية مطلوبة" });
