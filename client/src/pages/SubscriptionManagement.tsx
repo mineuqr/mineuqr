@@ -7,15 +7,20 @@ import { AlertCircle, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { formatRiyadhDate } from "@/lib/datetime";
+import { useAuthGate } from "@/_core/hooks/useAuthGate";
+import { AuthGatePending, LoginRequiredCard, PageDataLoading } from "@/components/AuthGate";
 
 export default function SubscriptionManagement() {
   const { t } = useLanguage();
   const [, setLocation] = useLocation();
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const gate = useAuthGate();
 
   const { data: currentSub, isLoading: isLoadingSub } = 
-    trpc.subscription.getCurrentSubscription.useQuery();
+    trpc.subscription.getCurrentSubscription.useQuery(undefined, {
+      enabled: gate.authResolved && gate.isAuthenticated,
+    });
 
   const handleCancelSubscription = async () => {
     setIsLoading(true);
@@ -34,15 +39,16 @@ export default function SubscriptionManagement() {
     }
   };
 
+  if (gate.isPending) {
+    return <AuthGatePending minHeight="min-h-[60vh]" />;
+  }
+
+  if (gate.showLoginRequired) {
+    return <LoginRequiredCard />;
+  }
+
   if (isLoadingSub) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-400 mx-auto"></div>
-          <p className="text-white mt-4">{t("common.loading")}</p>
-        </div>
-      </div>
-    );
+    return <PageDataLoading minHeight="min-h-[60vh]" />;
   }
 
   if (!currentSub) {
