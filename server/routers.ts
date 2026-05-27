@@ -131,8 +131,7 @@ const restaurantRouter = router({
     .mutation(async ({ input, ctx }) => {
       const restaurant = await getRestaurantById(input.id);
       if (!restaurant) throw new Error("المطعم غير موجود");
-      // Allow admin to update any restaurant, regular users only their own
-      if (restaurant.userId !== ctx.user.id && ctx.user.role !== 'admin') throw new Error("غير مصرح");
+      await assertRestaurantAccess(ctx, input.id, "restaurant.update");
       const { id, ...data } = input;
       await updateRestaurant(id, data);
       return { success: true };
@@ -143,8 +142,7 @@ const restaurantRouter = router({
     .mutation(async ({ input, ctx }) => {
       const restaurant = await getRestaurantById(input.id);
       if (!restaurant) throw new Error("المطعم غير موجود");
-      // السماح للأدمن بحذف أي مطعم، والمستخدم العادي يحذف مطعمه فقط
-      if (ctx.user.role !== 'admin' && restaurant.userId !== ctx.user.id) throw new Error("غير مصرح");
+      await assertRestaurantAccess(ctx, input.id, "restaurant.delete");
       await deleteRestaurant(input.id);
       return { success: true };
     }),
@@ -274,9 +272,7 @@ const restaurantRouter = router({
       imageType: z.enum(["logo", "cover"]),
     }))
     .mutation(async ({ input, ctx }) => {
-      const restaurant = await getRestaurantById(input.restaurantId);
-      if (!restaurant) throw new TRPCError({ code: "FORBIDDEN", message: "غير مصرح بالوصول" });
-      if (restaurant.userId !== ctx.user.id && ctx.user.role !== 'admin') throw new TRPCError({ code: "FORBIDDEN", message: "غير مصرح بالوصول" });
+      await assertRestaurantAccess(ctx, input.restaurantId, "restaurant.uploadImage");
       const buffer = Buffer.from(input.imageData, "base64");
       const safeFileName = input.fileName.replace(/[^\w.\-]+/g, "_");
       const folder = input.imageType === "logo" ? "logos" : "covers";
@@ -296,9 +292,7 @@ const restaurantRouter = router({
       imageType: z.enum(["logo", "cover"]),
     }))
     .mutation(async ({ input, ctx }) => {
-      const restaurant = await getRestaurantById(input.restaurantId);
-      if (!restaurant) throw new TRPCError({ code: "FORBIDDEN", message: "\u063a\u064a\u0631 \u0645\u0635\u0631\u062d \u0628\u0627\u0644\u0648\u0635\u0648\u0644" });
-      if (restaurant.userId !== ctx.user.id && ctx.user.role !== 'admin') throw new TRPCError({ code: "FORBIDDEN", message: "\u063a\u064a\u0631 \u0645\u0635\u0631\u062d \u0628\u0627\u0644\u0648\u0635\u0648\u0644" });
+      await assertRestaurantAccess(ctx, input.restaurantId, "restaurant.deleteImage");
       if (input.imageType === "logo") {
         await updateRestaurant(input.restaurantId, { logoUrl: null });
       } else {
