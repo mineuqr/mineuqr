@@ -5,6 +5,7 @@ import { trpc } from "@/lib/trpc";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Download, Eye } from "lucide-react";
 import { toast } from "sonner";
+import { formatRiyadhDate } from "@/lib/datetime";
 
 interface Payment {
   id: number;
@@ -149,7 +150,7 @@ export default function PaymentHistory() {
                         className="border-b border-border hover:bg-muted/50 transition-colors"
                       >
                         <td className="py-3 px-4 text-foreground">
-                          {new Date(payment.date).toLocaleDateString()}
+                          {formatRiyadhDate(payment.date, "ar-SA")}
                         </td>
                         <td className="py-3 px-4 text-foreground">
                           {payment.planName}

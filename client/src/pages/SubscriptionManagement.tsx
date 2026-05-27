@@ -6,6 +6,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { AlertCircle, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
+import { formatRiyadhDate } from "@/lib/datetime";
 
 export default function SubscriptionManagement() {
   const { t } = useLanguage();
@@ -125,10 +126,7 @@ export default function SubscriptionManagement() {
                   {t("common.renewalDate")}
                 </p>
                 <p className="text-lg font-semibold text-foreground">
-                  {/* TODO(TZ-6C): Avoid browser-local rendering for subscription dates.
-                      Prefer `formatSubscriptionEndDate(...)` / `formatRiyadhDate(...)` so rendering
-                      matches the business timezone baseline (Asia/Riyadh). */}
-                  {new Date(currentSub.subscription?.currentPeriodEnd).toLocaleDateString()}
+                  {formatRiyadhDate(currentSub.subscription?.currentPeriodEnd, "ar-SA")}
                 </p>
               </div>
 

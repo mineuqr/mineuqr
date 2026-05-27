@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { adminQueriesEnabled } from "@/lib/queryRuntime";
+import { formatRiyadhDate } from "@/lib/datetime";
 
 const statDash = {
   shell: "min-h-screen bg-background",
@@ -113,8 +114,8 @@ export default function Statistics() {
       sub.billingCycle,
       sub.status,
       sub.monthlyPrice.toFixed(2),
-      new Date(sub.currentPeriodStart).toLocaleDateString(),
-      new Date(sub.currentPeriodEnd).toLocaleDateString(),
+      formatRiyadhDate(sub.currentPeriodStart, "en-US"),
+      formatRiyadhDate(sub.currentPeriodEnd, "en-US"),
     ]);
 
     const csv = [headers, ...rows].map((row: string[]) => row.map((cell: string) => `"${cell}"`).join(",")).join("\n");
@@ -424,7 +425,7 @@ export default function Statistics() {
                         </Badge>
                       </td>
                       <td className="py-2 px-2 text-xs">
-                        {new Date(sub.currentPeriodEnd).toLocaleDateString()}
+                        {formatRiyadhDate(sub.currentPeriodEnd, "ar-SA")}
                       </td>
                     </tr>
                   ))}

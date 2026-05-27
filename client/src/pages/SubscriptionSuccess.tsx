@@ -6,6 +6,7 @@ import { CheckCircle, Loader2, AlertCircle } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { formatRiyadhDate } from "@/lib/datetime";
 
 export default function SubscriptionSuccess() {
   const [, setLocation] = useLocation();
@@ -98,7 +99,7 @@ export default function SubscriptionSuccess() {
                 </p>
                 <p className="text-sm text-muted-foreground mt-2">
                   {t("common.renewalDate") || "تاريخ التجديد"}:{" "}
-                  {new Date(subscription.subscription?.currentPeriodEnd).toLocaleDateString("ar-SA")}
+                  {formatRiyadhDate(subscription.subscription?.currentPeriodEnd, "ar-SA")}
                 </p>
               </div>
             )}

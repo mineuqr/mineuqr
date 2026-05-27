@@ -3,6 +3,7 @@ import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
 import type { SelectInvoice } from "../drizzle/schema";
+import { formatInRestaurantTimezone } from "@shared/utils/timezone";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -235,7 +236,12 @@ export async function generateInvoicePDFBuffer(data: InvoiceData): Promise<Buffe
         .fillColor("#999999")
         .text("Thank you for choosing mineuqr!", 50, footerY + 15, { align: "center", width: pageWidth })
         .text("www.mineuqr.com", 50, footerY + 30, { align: "center", width: pageWidth })
-        .text(`Generated on ${new Date().toLocaleDateString("en-US")}`, 50, footerY + 45, { align: "center", width: pageWidth });
+        .text(
+          `Generated on ${formatInRestaurantTimezone(new Date(), "en-US", { year: "numeric", month: "long", day: "numeric" })}`,
+          50,
+          footerY + 45,
+          { align: "center", width: pageWidth }
+        );
 
       doc.end();
     } catch (error) {
@@ -268,10 +274,7 @@ export async function generateInvoicePDF(
 
 function formatDate(dateStr: string): string {
   try {
-    // TODO(TZ-6C): Avoid server-local date rendering for business documents.
-    // Prefer `formatInRestaurantTimezone(..., timeZone)` (Riyadh baseline) so PDFs are deterministic
-    // across environments and future multi-country support.
-    return new Date(dateStr).toLocaleDateString("en-US", {
+    return formatInRestaurantTimezone(dateStr, "en-US", {
       year: "numeric",
       month: "long",
       day: "numeric",
@@ -312,10 +315,14 @@ export function generateInvoiceHTML(
     refunded: "Refunded",
   };
   const statusText = statusMap[invoice.status] || invoice.status;
-  // TODO(TZ-6C): Use explicit timezone-aware formatting for invoice and due dates.
-  const invoiceDate = new Date(invoice.issuedAt).toLocaleDateString();
-  const dueDate = new Date(invoice.dueAt).toLocaleDateString();
+  const invoiceDate = formatInRestaurantTimezone(invoice.issuedAt, "en-US", { year: "numeric", month: "long", day: "numeric" });
+  const dueDate = formatInRestaurantTimezone(invoice.dueAt, "en-US", { year: "numeric", month: "long", day: "numeric" });
   const amount = parseFloat(invoice.amount).toFixed(2);
+  const paidOn =
+    invoice.status === "paid" && invoice.paidAt
+      ? formatInRestaurantTimezone(invoice.paidAt, "en-US", { year: "numeric", month: "long", day: "numeric" })
+      : "";
+  const generatedOn = formatInRestaurantTimezone(new Date(), "en-US", { year: "numeric", month: "long", day: "numeric" });
   return `
 <!DOCTYPE html>
 <html>
@@ -362,12 +369,12 @@ export function generateInvoiceHTML(
     ${invoice.status === "paid" && invoice.paidAt ? `
     <div class="section">
       <div class="section-title">Payment Information</div>
-      <div class="row"><div class="label">Paid On:</div><div class="value">${new Date(invoice.paidAt).toLocaleDateString()}</div></div>
+      <div class="row"><div class="label">Paid On:</div><div class="value">${paidOn}</div></div>
     </div>` : ""}
     <div class="footer">
       <p>Thank you for choosing mineuqr!</p>
       <p>www.mineuqr.com | ${companyEmail}</p>
-      <p>Generated on ${new Date().toLocaleDateString()}</p>
+      <p>Generated on ${generatedOn}</p>
     </div>
   </div>
 </body>

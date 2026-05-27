@@ -1,5 +1,6 @@
 import nodemailer from "nodemailer";
 import { ENV } from "./_core/env";
+import { formatInRestaurantTimezone } from "@shared/utils/timezone";
 
 // Create reusable transporter
 function createTransporter() {
@@ -75,15 +76,17 @@ async function sendOwnerEmail(subject: string, htmlBody: string): Promise<boolea
 
 // Format date for display
 function formatDate(date: Date = new Date()): string {
-  // TODO(TZ-6C): This uses server-local timezone by default. For deterministic timestamps
-  // (Riyadh-first baseline) use a shared formatter with explicit `timeZone`.
-  return date.toLocaleDateString("ar-SA", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatInRestaurantTimezone(
+    date,
+    "ar-SA",
+    {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }
+  );
 }
 
 // ─── 1. New User Registration ───────────────────────

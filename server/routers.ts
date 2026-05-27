@@ -31,7 +31,7 @@ import {
 import { assertRestaurantAccess } from "./restaurantAccess";
 import { assertAdminAccess, assertNotSelfAdminTarget } from "./_core/assertAdminAccess";
 import { isRestaurantOpen, parseTemporaryClosure } from "./lib/restaurantHours";
-import { todayYmd } from "@shared/utils/timezone";
+import { formatInRestaurantTimezone, todayYmd } from "@shared/utils/timezone";
 import { putUploadedFile } from "./local-uploads";
 import { notifyOwner } from "./_core/notification";
 import { notifyOwnerNewRestaurant, notifyOwnerNewSubscription, notifyOwnerSubscriptionCancelled } from "./owner-email-notifications";
@@ -1006,11 +1006,16 @@ const adminRouter = router({
       const planName = plan?.nameAr || "غير معروف";
       const statusLabel = input.status === "active" ? "فعال" : input.status === "trial" ? "تجريبي" : input.status || "فعال";
       try {
+        const periodEndLabel = formatInRestaurantTimezone(periodEnd, "ar-SA", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        });
         await createNotification({
           userId: input.userId,
           subscriptionId: result.id,
           notificationType: "subscription_created",
-          message: `تم إنشاء اشتراك جديد لك في باقة "${planName}" بحالة ${statusLabel}. ينتهي في ${periodEnd.toLocaleDateString("ar-SA")}.`,
+          message: `تم إنشاء اشتراك جديد لك في باقة "${planName}" بحالة ${statusLabel}. ينتهي في ${periodEndLabel}.`,
         });
       } catch (e) { /* notification failure is non-critical */ }
       // Auto-generate invoice PDF
@@ -1081,7 +1086,14 @@ const adminRouter = router({
         const statusMap: Record<string, string> = { active: "فعال", canceled: "ملغي", expired: "منتهي", trial: "تجريبي" };
         changes.push(`الحالة: ${statusMap[input.status] || input.status}`);
       }
-      if (input.subscriptionEndDate) changes.push(`تاريخ الانتهاء: ${new Date(input.subscriptionEndDate).toLocaleDateString("ar-SA")}`);
+      if (input.subscriptionEndDate) {
+        const endDateLabel = formatInRestaurantTimezone(input.subscriptionEndDate, "ar-SA", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        });
+        changes.push(`تاريخ الانتهاء: ${endDateLabel}`);
+      }
       try {
         await createNotification({
           userId: input.userId,

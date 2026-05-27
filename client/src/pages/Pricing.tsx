@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { QrCode } from "lucide-react";
+import { formatRiyadhDate } from "@/lib/datetime";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -336,7 +337,7 @@ export default function Pricing() {
                     ✨ {t("common.trialEndsIn")}
                     {trialStatus.trialEndDate && (
                       <span className="text-orange-400 mr-2">
-                        ({new Date(trialStatus.trialEndDate).toLocaleDateString()})
+                        ({formatRiyadhDate(trialStatus.trialEndDate, "ar-SA")})
                       </span>
                     )}
                   </>
