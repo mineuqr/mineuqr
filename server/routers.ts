@@ -408,6 +408,13 @@ const menuItemRouter = router({
       const restaurant = await getRestaurantById(input.restaurantId);
       if (!restaurant) throw new Error("غير مصرح");
       if (restaurant.userId !== ctx.user.id && ctx.user.role !== 'admin') throw new Error("غير مصرح");
+
+      // Relational tenant integrity: prevents cross-tenant category linkage on create.
+      const category = await getCategoryById(input.categoryId);
+      if (!category || category.restaurantId !== input.restaurantId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "غير مصرح بالوصول" });
+      }
+
       return createMenuItem(input);
     }),
 
