@@ -137,6 +137,8 @@ vi.mock("./db", () => ({
   createHoliday: vi.fn().mockResolvedValue(2),
   updateHoliday: vi.fn().mockResolvedValue(undefined),
   deleteHoliday: vi.fn().mockResolvedValue(undefined),
+
+  getOffersByRestaurant: vi.fn().mockResolvedValue([]),
 }));
 
 vi.mock("./storage", () => ({
@@ -203,6 +205,17 @@ describe("restaurant router", () => {
     const caller = appRouter.createCaller(createAuthContext(999));
     const result = await caller.restaurant.getById({ id: 1 });
     expect(result).toBeNull();
+  });
+
+  it("audits tenant violation on getById for non-owner (null preserved)", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const caller = appRouter.createCaller(createAuthContext(999));
+    const result = await caller.restaurant.getById({ id: 1 });
+    expect(result).toBeNull();
+    expect(
+      warn.mock.calls.some((c) => c[0] === "[AuthAudit] tenant_boundary_violation")
+    ).toBe(true);
+    warn.mockRestore();
   });
 
   it("returns null for non-existent restaurant", async () => {
@@ -279,6 +292,17 @@ describe("restaurant router", () => {
     const caller = appRouter.createCaller(createAuthContext(999));
     const result = await caller.restaurant.stats({ id: 1 });
     expect(result).toBeNull();
+  });
+
+  it("audits tenant violation on stats for non-owner (null preserved)", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const caller = appRouter.createCaller(createAuthContext(999));
+    const result = await caller.restaurant.stats({ id: 1 });
+    expect(result).toBeNull();
+    expect(
+      warn.mock.calls.some((c) => c[0] === "[AuthAudit] tenant_boundary_violation")
+    ).toBe(true);
+    warn.mockRestore();
   });
 });
 
@@ -387,6 +411,17 @@ describe("category router", () => {
     expect(result).toEqual([]);
   });
 
+  it("audits tenant violation on category.list for non-owner ([] preserved)", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const caller = appRouter.createCaller(createAuthContext(999));
+    const result = await caller.category.list({ restaurantId: 1 });
+    expect(result).toEqual([]);
+    expect(
+      warn.mock.calls.some((c) => c[0] === "[AuthAudit] tenant_boundary_violation")
+    ).toBe(true);
+    warn.mockRestore();
+  });
+
   it("lists categories publicly", async () => {
     const caller = appRouter.createCaller(createPublicContext());
     const result = await caller.category.listPublic({ restaurantId: 1 });
@@ -446,6 +481,21 @@ describe("category router", () => {
   it("rejects delete for non-owner", async () => {
     const caller = appRouter.createCaller(createAuthContext(999));
     await expect(caller.category.delete({ id: 1 })).rejects.toThrow();
+  });
+});
+
+// ─── Offer Tests (STAB-SEC-1B.4 S2) ──────────────────────────
+
+describe("offer router", () => {
+  it("audits tenant violation on offer.list for non-owner ([] preserved)", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const caller = appRouter.createCaller(createAuthContext(999));
+    const result = await caller.offer.list({ restaurantId: 1 });
+    expect(result).toEqual([]);
+    expect(
+      warn.mock.calls.some((c) => c[0] === "[AuthAudit] tenant_boundary_violation")
+    ).toBe(true);
+    warn.mockRestore();
   });
 });
 
@@ -586,8 +636,13 @@ describe("restaurant.updateTemplate", () => {
   });
 
   it("rejects template update for non-owner", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const caller = appRouter.createCaller(createAuthContext(999));
     await expect(caller.restaurant.updateTemplate({ id: 1, menuTemplate: "classic" })).rejects.toThrow();
+    expect(
+      warn.mock.calls.some((c) => c[0] === "[AuthAudit] tenant_boundary_violation")
+    ).toBe(true);
+    warn.mockRestore();
   });
 
   it("rejects template update for non-existent restaurant", async () => {
@@ -675,6 +730,7 @@ describe("restaurant.updateCustomColors", () => {
   });
 
   it("rejects custom colors for non-owner", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const caller = appRouter.createCaller(createAuthContext(999));
     await expect(
       caller.restaurant.updateCustomColors({
@@ -682,6 +738,10 @@ describe("restaurant.updateCustomColors", () => {
         customColors: { accent: "#ff0000" },
       })
     ).rejects.toThrow();
+    expect(
+      warn.mock.calls.some((c) => c[0] === "[AuthAudit] tenant_boundary_violation")
+    ).toBe(true);
+    warn.mockRestore();
   });
 
   it("rejects custom colors for non-existent restaurant", async () => {

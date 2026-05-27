@@ -53,8 +53,12 @@ const restaurantRouter = router({
     .query(async ({ input, ctx }) => {
       const restaurant = await getRestaurantById(input.id);
       if (!restaurant) return null;
-      // Allow admin to access any restaurant, regular users only their own
-      if (restaurant.userId !== ctx.user.id && ctx.user.role !== 'admin') return null;
+      // Preserve null-on-deny semantics while routing through tenant audit logging.
+      try {
+        await assertRestaurantAccess(ctx, input.id, "restaurant.getById");
+      } catch {
+        return null;
+      }
       return restaurant;
     }),
 
@@ -152,7 +156,12 @@ const restaurantRouter = router({
     .query(async ({ input, ctx }) => {
       const restaurant = await getRestaurantById(input.id);
       if (!restaurant) return null;
-      if (restaurant.userId !== ctx.user.id && ctx.user.role !== 'admin') return null;
+      // Preserve null-on-deny semantics while routing through tenant audit logging.
+      try {
+        await assertRestaurantAccess(ctx, input.id, "restaurant.stats");
+      } catch {
+        return null;
+      }
       return getRestaurantStats(input.id);
     }),
 
@@ -182,9 +191,8 @@ const restaurantRouter = router({
       menuTemplate: z.enum(["classic", "elegant", "modern", "dark", "warm", "ocean", "royal", "neon"]),
     }))
     .mutation(async ({ input, ctx }) => {
-      const restaurant = await getRestaurantById(input.id);
-      if (!restaurant) throw new TRPCError({ code: "FORBIDDEN", message: "غير مصرح بالوصول" });
-      if (restaurant.userId !== ctx.user.id && ctx.user.role !== 'admin') throw new TRPCError({ code: "FORBIDDEN", message: "غير مصرح بالوصول" });
+      // Keep FORBIDDEN behavior; route deny decisions through centralized tenant guard + audit log.
+      await assertRestaurantAccess(ctx, input.id, "restaurant.updateTemplate");
       // Check subscription for premium templates
       const premiumTemplates = ["elegant", "modern", "dark", "warm", "ocean", "royal", "neon"];
       if (premiumTemplates.includes(input.menuTemplate)) {
@@ -216,9 +224,8 @@ const restaurantRouter = router({
       }).nullable(),
     }))
     .mutation(async ({ input, ctx }) => {
-      const restaurant = await getRestaurantById(input.id);
-      if (!restaurant) throw new TRPCError({ code: "FORBIDDEN", message: "\u063a\u064a\u0631 \u0645\u0635\u0631\u062d \u0628\u0627\u0644\u0648\u0635\u0648\u0644" });
-      if (restaurant.userId !== ctx.user.id && ctx.user.role !== 'admin') throw new TRPCError({ code: "FORBIDDEN", message: "\u063a\u064a\u0631 \u0645\u0635\u0631\u062d \u0628\u0627\u0644\u0648\u0635\u0648\u0644" });
+      // Keep FORBIDDEN behavior; route deny decisions through centralized tenant guard + audit log.
+      await assertRestaurantAccess(ctx, input.id, "restaurant.updateCustomColors");
       // Allow admin/owner to customize colors without subscription
       if (ctx.user.role !== "admin") {
         const active = await isSubscriptionActive(ctx.user.id);
@@ -247,9 +254,8 @@ const restaurantRouter = router({
       }).nullable(),
     }))
     .mutation(async ({ input, ctx }) => {
-      const restaurant = await getRestaurantById(input.id);
-      if (!restaurant) throw new TRPCError({ code: "FORBIDDEN", message: "\u063a\u064a\u0631 \u0645\u0635\u0631\u062d \u0628\u0627\u0644\u0648\u0635\u0648\u0644" });
-      if (restaurant.userId !== ctx.user.id && ctx.user.role !== 'admin') throw new TRPCError({ code: "FORBIDDEN", message: "\u063a\u064a\u0631 \u0645\u0635\u0631\u062d \u0628\u0627\u0644\u0648\u0635\u0648\u0644" });
+      // Keep FORBIDDEN behavior; route deny decisions through centralized tenant guard + audit log.
+      await assertRestaurantAccess(ctx, input.id, "restaurant.updateCustomFonts");
       // Allow admin/owner to customize fonts without subscription
       if (ctx.user.role !== "admin") {
         const active = await isSubscriptionActive(ctx.user.id);
@@ -306,9 +312,12 @@ const categoryRouter = router({
   list: protectedProcedure
     .input(z.object({ restaurantId: z.number() }))
     .query(async ({ input, ctx }) => {
-      const restaurant = await getRestaurantById(input.restaurantId);
-      if (!restaurant) return [];
-      if (restaurant.userId !== ctx.user.id && ctx.user.role !== 'admin') return [];
+      // Preserve []-on-deny semantics while routing through tenant audit logging.
+      try {
+        await assertRestaurantAccess(ctx, input.restaurantId, "category.list");
+      } catch {
+        return [];
+      }
       return getCategoriesByRestaurant(input.restaurantId);
     }),
 
@@ -470,9 +479,12 @@ const offerRouter = router({
   list: protectedProcedure
     .input(z.object({ restaurantId: z.number() }))
     .query(async ({ input, ctx }) => {
-      const restaurant = await getRestaurantById(input.restaurantId);
-      if (!restaurant) return [];
-      if (restaurant.userId !== ctx.user.id && ctx.user.role !== 'admin') return [];
+      // Preserve []-on-deny semantics while routing through tenant audit logging.
+      try {
+        await assertRestaurantAccess(ctx, input.restaurantId, "offer.list");
+      } catch {
+        return [];
+      }
       return getOffersByRestaurant(input.restaurantId);
     }),
 
