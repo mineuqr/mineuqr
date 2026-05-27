@@ -468,9 +468,7 @@ const menuItemRouter = router({
     .mutation(async ({ input, ctx }) => {
       const item = await getMenuItemById(input.itemId);
       if (!item) throw new Error("الصنف غير موجود");
-      const restaurant = await getRestaurantById(item.restaurantId);
-      if (!restaurant) throw new Error("غير مصرح");
-      if (restaurant.userId !== ctx.user.id && ctx.user.role !== 'admin') throw new Error("غير مصرح");
+      await assertRestaurantAccess(ctx, item.restaurantId, "menuItem.uploadImage");
       const buffer = Buffer.from(input.imageData, "base64");
       const safeFileName = input.fileName.replace(/[^\w.\-]+/g, "_");
       const key = `items/${item.restaurantId}/${input.itemId}-${nanoid(8)}-${safeFileName}`;
@@ -566,9 +564,7 @@ const offerRouter = router({
     .mutation(async ({ input, ctx }) => {
       const offer = await getOfferById(input.offerId);
       if (!offer) throw new Error("\u0627\u0644\u0639\u0631\u0636 \u063a\u064a\u0631 \u0645\u0648\u062c\u0648\u062f");
-      const restaurant = await getRestaurantById(offer.restaurantId);
-      if (!restaurant) throw new Error("\u063a\u064a\u0631 \u0645\u0635\u0631\u062d");
-      if (restaurant.userId !== ctx.user.id && ctx.user.role !== 'admin') throw new Error("\u063a\u064a\u0631 \u0645\u0635\u0631\u062d");
+      await assertRestaurantAccess(ctx, offer.restaurantId, "offer.uploadImage");
       const buffer = Buffer.from(input.imageData, "base64");
       const safeFileName = input.fileName.replace(/[^\w.\-]+/g, "_");
       const key = `offers/${offer.restaurantId}/${input.offerId}-${nanoid(8)}-${safeFileName}`;
