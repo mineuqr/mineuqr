@@ -3,6 +3,7 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import type { TrpcContext } from "./context";
 import { opsLog } from "./opsLog";
+import { trackSuspiciousActivity } from "./suspiciousActivity";
 
 const t = initTRPC.context<TrpcContext>().create({
   transformer: superjson,
@@ -54,6 +55,19 @@ const runtimeDiagnostics = t.middleware(async (opts) => {
           name:
             OPS_TRPC_DEBUG && cause instanceof Error ? cause.name : undefined,
         },
+      });
+    }
+
+    if (isUnexpected) {
+      trackSuspiciousActivity({
+        signal: "trpc_runtime_failure",
+        category: "RUNTIME",
+        actorId,
+        role,
+        correlationId,
+        route: procedure,
+        action: kind,
+        metadata: { procedure, type: kind, code },
       });
     }
 

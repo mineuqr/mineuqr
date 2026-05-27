@@ -2,6 +2,7 @@ import type { Request } from "express";
 import type { SelectUser } from "../../drizzle/schema";
 import { opsLog } from "./opsLog";
 import { getCorrelationId } from "./requestContext";
+import { trackSuspiciousActivity } from "./suspiciousActivity";
 
 type AuditUser = Pick<SelectUser, "id" | "role" | "email"> | null | undefined;
 
@@ -33,12 +34,13 @@ export function logFailedLogin(
   reason: "invalid_credentials" | "no_password" | "user_not_found" | "rate_limited"
 ): void {
   const payload = basePayload(req, { email, reason });
+  const correlationId = getCorrelationId(req);
   opsLog({
     type: "failed_login",
     category: "AUTH",
     severity: "warn",
     ts: payload.ts,
-    correlationId: getCorrelationId(req),
+    correlationId,
     route: payload.route,
     ip: payload.ip,
     method: payload.method,
@@ -48,6 +50,16 @@ export function logFailedLogin(
       email,
       reason,
     },
+  });
+
+  trackSuspiciousActivity({
+    signal: "failed_login",
+    category: "AUTH",
+    ip: payload.ip,
+    correlationId,
+    route: payload.route,
+    action: "login",
+    metadata: { reason },
   });
 }
 
@@ -122,12 +134,13 @@ export function logTenantBoundaryViolation(
 /** Log rate-limit blocks on auth endpoints. */
 export function logRateLimitExceeded(req: Request, key: string): void {
   const payload = basePayload(req, { key });
+  const correlationId = getCorrelationId(req);
   opsLog({
     type: "rate_limit_exceeded",
     category: "AUTH",
     severity: "warn",
     ts: payload.ts,
-    correlationId: getCorrelationId(req),
+    correlationId,
     route: payload.route,
     ip: payload.ip,
     method: payload.method,
@@ -136,5 +149,15 @@ export function logRateLimitExceeded(req: Request, key: string): void {
       legacyType: "rate_limit_exceeded",
       key,
     },
+  });
+
+  trackSuspiciousActivity({
+    signal: "rate_limit_exceeded",
+    category: "AUTH",
+    ip: payload.ip,
+    correlationId,
+    route: payload.route,
+    action: "rate_limit",
+    metadata: { key },
   });
 }
