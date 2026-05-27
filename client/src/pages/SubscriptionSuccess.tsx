@@ -7,15 +7,31 @@ import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { formatRiyadhDate } from "@/lib/datetime";
+import { useAuthGate } from "@/_core/hooks/useAuthGate";
+import { AuthGatePending, LoginRequiredCard, PageDataLoading } from "@/components/AuthGate";
 
 export default function SubscriptionSuccess() {
   const [, setLocation] = useLocation();
   const search = useSearch();
   const { t } = useLanguage();
+  const gate = useAuthGate();
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [subscription, setSubscription] = useState<any>(null);
 
-  const { data: currentSub } = trpc.subscription.getCurrentSubscription.useQuery();
+  const {
+    data: currentSub,
+    isLoading: isLoadingSub,
+  } = trpc.subscription.getCurrentSubscription.useQuery(undefined, {
+    enabled: gate.authResolved && gate.isAuthenticated,
+  });
+
+  if (gate.isPending) {
+    return <AuthGatePending minHeight="min-h-[60vh]" />;
+  }
+
+  if (gate.showLoginRequired) {
+    return <LoginRequiredCard />;
+  }
 
   useEffect(() => {
     const params = new URLSearchParams(search);
@@ -25,6 +41,8 @@ export default function SubscriptionSuccess() {
       setStatus("error");
       return;
     }
+
+    if (isLoadingSub) return;
 
     // Simulate processing delay
     const timer = setTimeout(() => {
@@ -39,9 +57,12 @@ export default function SubscriptionSuccess() {
     }, 2000);
 
     return () => clearTimeout(timer);
-  }, [search, currentSub, t]);
+  }, [search, currentSub, t, isLoadingSub]);
 
   if (status === "loading") {
+    if (isLoadingSub) {
+      return <PageDataLoading minHeight="min-h-[60vh]" />;
+    }
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
         <Card className="max-w-md w-full bg-card border-border">
