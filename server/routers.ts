@@ -399,9 +399,7 @@ const menuItemRouter = router({
       sortOrder: z.number().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
-      const restaurant = await getRestaurantById(input.restaurantId);
-      if (!restaurant) throw new Error("غير مصرح");
-      if (restaurant.userId !== ctx.user.id && ctx.user.role !== 'admin') throw new Error("غير مصرح");
+      await assertRestaurantAccess(ctx, input.restaurantId, "menuItem.create");
 
       // Relational tenant integrity: prevents cross-tenant category linkage on create.
       const category = await getCategoryById(input.categoryId);
@@ -429,9 +427,7 @@ const menuItemRouter = router({
     .mutation(async ({ input, ctx }) => {
       const item = await getMenuItemById(input.id);
       if (!item) throw new Error("الصنف غير موجود");
-      const restaurant = await getRestaurantById(item.restaurantId);
-      if (!restaurant) throw new Error("غير مصرح");
-      if (restaurant.userId !== ctx.user.id && ctx.user.role !== 'admin') throw new Error("غير مصرح");
+      await assertRestaurantAccess(ctx, item.restaurantId, "menuItem.update");
 
       // Relational tenant integrity: prevents cross-tenant category reassignment on update.
       if (input.categoryId !== undefined) {
@@ -451,9 +447,7 @@ const menuItemRouter = router({
     .mutation(async ({ input, ctx }) => {
       const item = await getMenuItemById(input.id);
       if (!item) throw new Error("الصنف غير موجود");
-      const restaurant = await getRestaurantById(item.restaurantId);
-      if (!restaurant) throw new Error("غير مصرح");
-      if (restaurant.userId !== ctx.user.id && ctx.user.role !== 'admin') throw new Error("غير مصرح");
+      await assertRestaurantAccess(ctx, item.restaurantId, "menuItem.delete");
       await deleteMenuItem(input.id);
       return { success: true };
     }),
