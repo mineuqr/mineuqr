@@ -1469,9 +1469,13 @@ const tableRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       const table = await getTableById(input.id);
-      if (table) {
-        await assertRestaurantAccess(ctx, table.restaurantId);
+      if (!table) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "الطاولة غير موجودة",
+        });
       }
+      await assertRestaurantAccess(ctx, table.restaurantId);
       const { id, ...data } = input;
       await updateTable(id, data);
       return { success: true };
@@ -1480,9 +1484,13 @@ const tableRouter = router({
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input, ctx }) => {
       const table = await getTableById(input.id);
-      if (table) {
-        await assertRestaurantAccess(ctx, table.restaurantId);
+      if (!table) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "الطاولة غير موجودة",
+        });
       }
+      await assertRestaurantAccess(ctx, table.restaurantId);
       await deleteTable(input.id);
       return { success: true };
     }),

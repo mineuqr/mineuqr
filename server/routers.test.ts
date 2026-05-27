@@ -53,7 +53,18 @@ const mocks = vi.hoisted(() => {
     updatedAt: new Date(),
   };
 
-  return { mockRestaurant, mockCategory, mockMenuItem };
+  const mockTable = {
+    id: 1,
+    restaurantId: 1,
+    tableNumber: 1,
+    nameAr: "طاولة 1",
+    nameEn: "Table 1",
+    isActive: true,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  return { mockRestaurant, mockCategory, mockMenuItem, mockTable };
 });
 
 vi.mock("./db", () => ({
@@ -97,6 +108,13 @@ vi.mock("./db", () => ({
   updateUserSubscription: vi.fn().mockResolvedValue({ success: true }),
   isSubscriptionActive: vi.fn().mockResolvedValue(true),
   getTrialEndDate: vi.fn().mockResolvedValue(new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)),
+
+  getTableById: vi.fn().mockImplementation(async (id: number) => {
+    if (id === mocks.mockTable.id) return { ...mocks.mockTable };
+    return undefined;
+  }),
+  updateTable: vi.fn().mockResolvedValue(undefined),
+  deleteTable: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("./storage", () => ({
@@ -239,6 +257,50 @@ describe("restaurant router", () => {
     const caller = appRouter.createCaller(createAuthContext(999));
     const result = await caller.restaurant.stats({ id: 1 });
     expect(result).toBeNull();
+  });
+});
+
+// ─── Table Tests (STAB-SEC-1B.3D) ────────────────────────────
+
+describe("table router", () => {
+  it("allows owner to update own table", async () => {
+    const caller = appRouter.createCaller(createAuthContext(1));
+    const result = await caller.table.update({ id: 1, nameAr: "محدث" });
+    expect(result).toEqual({ success: true });
+  });
+
+  it("forbids non-owner from updating another tenant table", async () => {
+    const caller = appRouter.createCaller(createAuthContext(999));
+    await expect(caller.table.update({ id: 1, nameAr: "hack" })).rejects.toThrow(
+      /غير مصرح بالوصول/
+    );
+  });
+
+  it("returns NOT_FOUND when updating non-existent table", async () => {
+    const caller = appRouter.createCaller(createAuthContext(1));
+    await expect(caller.table.update({ id: 999, nameAr: "x" })).rejects.toThrow(
+      /الطاولة غير موجودة/
+    );
+  });
+
+  it("allows owner to delete own table", async () => {
+    const caller = appRouter.createCaller(createAuthContext(1));
+    const result = await caller.table.delete({ id: 1 });
+    expect(result).toEqual({ success: true });
+  });
+
+  it("forbids non-owner from deleting another tenant table", async () => {
+    const caller = appRouter.createCaller(createAuthContext(999));
+    await expect(caller.table.delete({ id: 1 })).rejects.toThrow(
+      /غير مصرح بالوصول/
+    );
+  });
+
+  it("returns NOT_FOUND when deleting non-existent table", async () => {
+    const caller = appRouter.createCaller(createAuthContext(1));
+    await expect(caller.table.delete({ id: 999 })).rejects.toThrow(
+      /الطاولة غير موجودة/
+    );
   });
 });
 
