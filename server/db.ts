@@ -289,6 +289,9 @@ export async function isSubscriptionActive(userId: number): Promise<boolean> {
   if (!subscription) return false;
   
   const now = new Date();
+  // TODO(TZ-6B): Do not parse stored timestamps with `new Date(dbString)` when the DB string
+  // may be a UTC DATETIME without timezone suffix. Use `parseStoredUtcInstant(...)` from
+  // `shared/utils/timezone.ts` and compare instants deterministically (Riyadh-first baseline).
   
   // Check if in trial period
   if (subscription.status === "trial" && subscription.trialEndsAt) {
@@ -306,6 +309,7 @@ export async function isSubscriptionActive(userId: number): Promise<boolean> {
 export async function getTrialEndDate(userId: number): Promise<Date | null> {
   const subscription = await getUserSubscription(userId);
   if (!subscription) return null;
+  // TODO(TZ-6B): Normalize trialEndsAt parsing via `parseStoredUtcInstant(...)` before returning.
   return subscription.trialEndsAt ? new Date(subscription.trialEndsAt) : null;
 }
 

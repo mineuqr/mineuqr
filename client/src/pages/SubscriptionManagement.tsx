@@ -125,6 +125,9 @@ export default function SubscriptionManagement() {
                   {t("common.renewalDate")}
                 </p>
                 <p className="text-lg font-semibold text-foreground">
+                  {/* TODO(TZ-6C): Avoid browser-local rendering for subscription dates.
+                      Prefer `formatSubscriptionEndDate(...)` / `formatRiyadhDate(...)` so rendering
+                      matches the business timezone baseline (Asia/Riyadh). */}
                   {new Date(currentSub.subscription?.currentPeriodEnd).toLocaleDateString()}
                 </p>
               </div>

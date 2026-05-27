@@ -13,6 +13,10 @@ export const scheduledTasksRouter = router({
     .mutation(async ({ input }) => {
       try {
         const now = new Date();
+        // TODO(TZ-6B): This job currently uses host-local `Date` math and `new Date(storedString)`
+        // for subscription timestamps. Stabilize by parsing with `parseStoredUtcInstant(...)` and
+        // defining "days until expiry" in an explicit business timezone (Riyadh baseline) to avoid
+        // off-by-one behavior around midnight and future DST zones.
         const expiryDate = new Date(now.getTime() + input.daysBeforeExpiry * 24 * 60 * 60 * 1000);
 
         // Get all subscriptions and filter active ones expiring soon

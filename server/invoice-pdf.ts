@@ -268,6 +268,9 @@ export async function generateInvoicePDF(
 
 function formatDate(dateStr: string): string {
   try {
+    // TODO(TZ-6C): Avoid server-local date rendering for business documents.
+    // Prefer `formatInRestaurantTimezone(..., timeZone)` (Riyadh baseline) so PDFs are deterministic
+    // across environments and future multi-country support.
     return new Date(dateStr).toLocaleDateString("en-US", {
       year: "numeric",
       month: "long",
@@ -309,6 +312,7 @@ export function generateInvoiceHTML(
     refunded: "Refunded",
   };
   const statusText = statusMap[invoice.status] || invoice.status;
+  // TODO(TZ-6C): Use explicit timezone-aware formatting for invoice and due dates.
   const invoiceDate = new Date(invoice.issuedAt).toLocaleDateString();
   const dueDate = new Date(invoice.dueAt).toLocaleDateString();
   const amount = parseFloat(invoice.amount).toFixed(2);

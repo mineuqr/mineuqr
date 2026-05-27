@@ -75,6 +75,8 @@ async function sendOwnerEmail(subject: string, htmlBody: string): Promise<boolea
 
 // Format date for display
 function formatDate(date: Date = new Date()): string {
+  // TODO(TZ-6C): This uses server-local timezone by default. For deterministic timestamps
+  // (Riyadh-first baseline) use a shared formatter with explicit `timeZone`.
   return date.toLocaleDateString("ar-SA", {
     year: "numeric",
     month: "long",
