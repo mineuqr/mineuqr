@@ -1,6 +1,7 @@
 import type { Request } from "express";
 import type { SelectUser } from "../../drizzle/schema";
 import { opsLog } from "./opsLog";
+import { getCorrelationId } from "./requestContext";
 
 type AuditUser = Pick<SelectUser, "id" | "role" | "email"> | null | undefined;
 
@@ -37,6 +38,7 @@ export function logFailedLogin(
     category: "AUTH",
     severity: "warn",
     ts: payload.ts,
+    correlationId: getCorrelationId(req),
     route: payload.route,
     ip: payload.ip,
     method: payload.method,
@@ -58,6 +60,7 @@ export function logSuccessfulLogin(req: Request, userId: number): void {
       category: "AUTH",
       severity: "info",
       ts: payload.ts,
+      correlationId: getCorrelationId(req),
       actorId: userId,
       route: payload.route,
       ip: payload.ip,
@@ -124,6 +127,7 @@ export function logRateLimitExceeded(req: Request, key: string): void {
     category: "AUTH",
     severity: "warn",
     ts: payload.ts,
+    correlationId: getCorrelationId(req),
     route: payload.route,
     ip: payload.ip,
     method: payload.method,

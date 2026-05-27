@@ -17,6 +17,8 @@ export interface OpsEvent {
   severity: OpsSeverity;
   ts: string;
 
+  correlationId?: string;
+
   actorId?: number | null;
   role?: string | null;
   restaurantId?: number | null;

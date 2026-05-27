@@ -11,6 +11,7 @@ import { handlePayPalWebhook } from "../paypal-webhook";
 import { handleTapWebhook } from "../tap-webhook";
 import { localAuthRouter } from "../auth-local";
 import { validateAuthSecurityConfig, shouldTrustProxy } from "./authSecurity";
+import { correlationMiddleware } from "./requestContext";
 import {
   ensureUploadsDir,
   UPLOADS_DIR,
@@ -45,6 +46,9 @@ async function startServer() {
   if (shouldTrustProxy()) {
     app.set("trust proxy", 1);
   }
+
+  // Request correlation foundation (MON-1E): attaches req.correlationId and echoes X-Correlation-Id.
+  app.use(correlationMiddleware);
   
   // Tap Payments webhook
   app.post("/api/tap/webhook", express.json(), handleTapWebhook);

@@ -1,11 +1,13 @@
 import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
 import type { SelectUser } from "../../drizzle/schema";
 import { sdk } from "./sdk";
+import { getCorrelationId } from "./requestContext";
 
 export type TrpcContext = {
   req: CreateExpressContextOptions["req"];
   res: CreateExpressContextOptions["res"];
   user: SelectUser | null;
+  correlationId?: string;
 };
 
 export async function createContext(
@@ -24,5 +26,6 @@ export async function createContext(
     req: opts.req,
     res: opts.res,
     user,
+    correlationId: getCorrelationId(opts.req),
   };
 }
