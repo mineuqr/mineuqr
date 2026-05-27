@@ -742,10 +742,7 @@ const adminRouter = router({
       name: z.string().min(1),
     }))
     .mutation(async ({ input, ctx }) => {
-      // Only admin can create subscriber accounts
-      if (ctx.user.role !== "admin") {
-        throw new TRPCError({ code: "FORBIDDEN", message: "غير مصرح" });
-      }
+      assertAdminAccess(ctx, "admin.createSubscriberAccount");
       // Check if email already exists
       const existing = await getUserByEmail(input.email);
       if (existing) {
@@ -773,9 +770,7 @@ const adminRouter = router({
       newPassword: z.string().min(6),
     }))
     .mutation(async ({ input, ctx }) => {
-      if (ctx.user.role !== "admin") {
-        throw new TRPCError({ code: "FORBIDDEN", message: "غير مصرح" });
-      }
+      assertAdminAccess(ctx, "admin.resetSubscriberPassword");
       const user = await getUserByEmail(input.email);
       if (!user) {
         throw new TRPCError({ code: "NOT_FOUND", message: "المستخدم غير موجود" });
@@ -789,9 +784,7 @@ const adminRouter = router({
 
   listAllRestaurantsWithSubscriptions: protectedProcedure
     .query(async ({ ctx }) => {
-      if (ctx.user.role !== "admin") {
-        throw new TRPCError({ code: "FORBIDDEN", message: "غير مصرح" });
-      }
+      assertAdminAccess(ctx, "admin.listAllRestaurantsWithSubscriptions");
       return getAllRestaurantsWithSubscriptions();
     }),
 
@@ -804,9 +797,7 @@ const adminRouter = router({
       subscriptionEndDate: z.string().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
-      if (ctx.user.role !== "admin") {
-        throw new TRPCError({ code: "FORBIDDEN", message: "غير مصرح" });
-      }
+      assertAdminAccess(ctx, "admin.createRestaurantSubscription");
       // Check if restaurant already has subscription
       const existing = await getSubscriptionByRestaurantId(input.restaurantId);
       if (existing) {
@@ -845,9 +836,7 @@ const adminRouter = router({
       subscriptionEndDate: z.string().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
-      if (ctx.user.role !== "admin") {
-        throw new TRPCError({ code: "FORBIDDEN", message: "غير مصرح" });
-      }
+      assertAdminAccess(ctx, "admin.updateRestaurantSubscription");
       const updateData: Record<string, any> = {};
       if (input.planId !== undefined) updateData.planId = input.planId;
       if (input.billingCycle !== undefined) updateData.billingCycle = input.billingCycle;
@@ -862,9 +851,7 @@ const adminRouter = router({
       subscriptionId: z.number(),
     }))
     .mutation(async ({ input, ctx }) => {
-      if (ctx.user.role !== "admin") {
-        throw new TRPCError({ code: "FORBIDDEN", message: "غير مصرح" });
-      }
+      assertAdminAccess(ctx, "admin.cancelRestaurantSubscription");
       await cancelSubscriptionById(input.subscriptionId);
       // Send email notification to owner about cancellation
       try {
@@ -883,9 +870,7 @@ const adminRouter = router({
       subscriptionId: z.number(),
     }))
     .mutation(async ({ input, ctx }) => {
-      if (ctx.user.role !== "admin") {
-        throw new TRPCError({ code: "FORBIDDEN", message: "غير مصرح" });
-      }
+      assertAdminAccess(ctx, "admin.deleteRestaurantSubscription");
       await deleteSubscriptionById(input.subscriptionId);
       return { success: true };
     }),
@@ -894,42 +879,32 @@ const adminRouter = router({
 
   getStatistics: protectedProcedure
     .query(async ({ ctx }) => {
-      if (ctx.user.role !== "admin") {
-        throw new TRPCError({ code: "FORBIDDEN", message: "غير مصرح" });
-      }
+      assertAdminAccess(ctx, "admin.getStatistics");
       return getAdminStatistics();
     }),
 
   getRevenueByMonth: protectedProcedure
     .query(async ({ ctx }) => {
-      if (ctx.user.role !== "admin") {
-        throw new TRPCError({ code: "FORBIDDEN", message: "غير مصرح" });
-      }
+      assertAdminAccess(ctx, "admin.getRevenueByMonth");
       return getRevenueByMonth();
     }),
 
   getSubscriptionDetails: protectedProcedure
     .query(async ({ ctx }) => {
-      if (ctx.user.role !== "admin") {
-        throw new TRPCError({ code: "FORBIDDEN", message: "غير مصرح" });
-      }
+      assertAdminAccess(ctx, "admin.getSubscriptionDetails");
       return getSubscriptionDetails();
     }),
 
   getExtendedStats: protectedProcedure
     .query(async ({ ctx }) => {
-      if (ctx.user.role !== "admin") {
-        throw new TRPCError({ code: "FORBIDDEN", message: "غير مصرح" });
-      }
+      assertAdminAccess(ctx, "admin.getExtendedStats");
       return getExtendedAdminStats();
     }),
 
   // ─── Users Management ───────────────────────
   listAllUsers: protectedProcedure
     .query(async ({ ctx }) => {
-      if (ctx.user.role !== "admin") {
-        throw new TRPCError({ code: "FORBIDDEN", message: "غير مصرح" });
-      }
+      assertAdminAccess(ctx, "admin.listAllUsers");
       return getAllUsers();
     }),
 
@@ -957,9 +932,7 @@ const adminRouter = router({
   // ─── Users Subscription Management by Admin ───
   listAllUsersWithSubscriptions: protectedProcedure
     .query(async ({ ctx }) => {
-      if (ctx.user.role !== "admin") {
-        throw new TRPCError({ code: "FORBIDDEN", message: "غير مصرح" });
-      }
+      assertAdminAccess(ctx, "admin.listAllUsersWithSubscriptions");
       return getAllUsersWithSubscriptions();
     }),
   createUserSubscriptionByAdmin: protectedProcedure
@@ -971,9 +944,7 @@ const adminRouter = router({
       status: z.enum(["active", "canceled", "expired", "trial"]).optional(),
     }))
     .mutation(async ({ input, ctx }) => {
-      if (ctx.user.role !== "admin") {
-        throw new TRPCError({ code: "FORBIDDEN", message: "غير مصرح" });
-      }
+      assertAdminAccess(ctx, "admin.createUserSubscriptionByAdmin");
       const existing = await getUserSubscription(input.userId);
       if (existing) {
         throw new TRPCError({ code: "CONFLICT", message: "المستخدم لديه اشتراك بالفعل. استخدم التعديل بدلاً من الإنشاء." });
@@ -1064,9 +1035,7 @@ const adminRouter = router({
       subscriptionEndDate: z.string().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
-      if (ctx.user.role !== "admin") {
-        throw new TRPCError({ code: "FORBIDDEN", message: "غير مصرح" });
-      }
+      assertAdminAccess(ctx, "admin.updateUserSubscriptionByAdmin");
       const existing = await getUserSubscription(input.userId);
       if (!existing) {
         throw new TRPCError({ code: "NOT_FOUND", message: "لا يوجد اشتراك لهذا المستخدم" });
@@ -1109,9 +1078,7 @@ const adminRouter = router({
       userId: z.number(),
     }))
     .mutation(async ({ input, ctx }) => {
-      if (ctx.user.role !== "admin") {
-        throw new TRPCError({ code: "FORBIDDEN", message: "غير مصرح" });
-      }
+      assertAdminAccess(ctx, "admin.deleteUserSubscriptionByAdmin");
       const existing = await getUserSubscription(input.userId);
       if (!existing) {
         throw new TRPCError({ code: "NOT_FOUND", message: "لا يوجد اشتراك لهذا المستخدم" });
@@ -1133,9 +1100,7 @@ const adminRouter = router({
       message: z.string().min(1).max(500),
     }))
     .mutation(async ({ input, ctx }) => {
-      if (ctx.user.role !== "admin") {
-        throw new TRPCError({ code: "FORBIDDEN", message: "غير مصرح" });
-      }
+      assertAdminAccess(ctx, "admin.sendCustomNotification");
       await createNotification({
         userId: input.userId,
         notificationType: "custom_message",
@@ -1148,9 +1113,7 @@ const adminRouter = router({
       message: z.string().min(1).max(500),
     }))
     .mutation(async ({ input, ctx }) => {
-      if (ctx.user.role !== "admin") {
-        throw new TRPCError({ code: "FORBIDDEN", message: "غير مصرح" });
-      }
+      assertAdminAccess(ctx, "admin.sendBulkNotification");
       const allUsers = await getAllUsers();
       let sentCount = 0;
       for (const user of allUsers) {
@@ -1173,9 +1136,7 @@ const adminRouter = router({
       subscriptionId: z.number(),
     }))
     .mutation(async ({ input, ctx }) => {
-      if (ctx.user.role !== "admin") {
-        throw new TRPCError({ code: "FORBIDDEN", message: "غير مصرح" });
-      }
+      assertAdminAccess(ctx, "admin.generateInvoicePDF");
       // Get user info
       const targetUser = await getUserById(input.userId);
       if (!targetUser) {
@@ -1235,9 +1196,7 @@ const adminRouter = router({
   getUserInvoices: protectedProcedure
     .input(z.object({ userId: z.number() }))
     .query(async ({ input, ctx }) => {
-      if (ctx.user.role !== "admin") {
-        throw new TRPCError({ code: "FORBIDDEN", message: "غير مصرح" });
-      }
+      assertAdminAccess(ctx, "admin.getUserInvoices");
       return getInvoicesByUser(input.userId);
     }),
 });
