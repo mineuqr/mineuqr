@@ -131,13 +131,17 @@ export function SubscriptionAdminFormFields({
 
       <div>
         <Label className="text-foreground">{endDateLabel}</Label>
-        <Input
-          type="date"
-          value={endDate}
-          onChange={(e) => onEndDateChange(e.target.value)}
-          className="mt-2 bg-background border-border text-foreground"
-          dir="ltr"
-        />
+        <div dir="ltr" className="mt-2">
+          <Input
+            type="date"
+            value={endDate}
+            onChange={(e) => onEndDateChange(e.target.value)}
+            placeholder="2026/06/16"
+            lang="en"
+            dir="ltr"
+            className="bg-background border-border text-foreground text-left unicode-bidi-plaintext tabular-nums"
+          />
+        </div>
         <p className="mt-1.5 text-xs text-muted-foreground">
           {isAr ? "اتركه فارغاً لاستخدام المدة الافتراضية عند الحفظ." : "Leave empty to use server default on save."}
         </p>
