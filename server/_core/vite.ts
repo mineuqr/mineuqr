@@ -52,11 +52,17 @@ export async function setupVite(app: Express, server: Server) {
   });
 }
 
+function resolveDistPublicPath(): string {
+  const fromCwd = path.resolve(process.cwd(), "dist", "public");
+  if (fs.existsSync(fromCwd)) {
+    return fromCwd;
+  }
+  // Bundled server entry (dist/index.js): static assets sit beside the bundle.
+  return path.resolve(import.meta.dirname, "public");
+}
+
 export function serveStatic(app: Express) {
-  const distPath =
-    process.env.NODE_ENV === "development"
-      ? path.resolve(import.meta.dirname, "../..", "dist", "public")
-      : path.resolve(import.meta.dirname, "public");
+  const distPath = resolveDistPublicPath();
   if (!fs.existsSync(distPath)) {
     console.error(
       `Could not find the build directory: ${distPath}, make sure to build the client first`
