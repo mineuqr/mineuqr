@@ -48,6 +48,12 @@ export const OPS_EVENT = {
   auth_verification_resend_burst: "auth_verification_resend_burst",
   auth_email_amplification_suspected: "auth_email_amplification_suspected",
 
+  // Deployment guardrails / CSRF posture (AUTH2-C Slice 4)
+  deployment_insecure_http_in_production: "deployment_insecure_http_in_production",
+  deployment_forwarded_proto_missing: "deployment_forwarded_proto_missing",
+  csrf_origin_mismatch: "csrf_origin_mismatch",
+  csrf_origin_missing: "csrf_origin_missing",
+
   // WEBHOOK / PAYMENT lifecycle
   webhook_received: "webhook_received",
   webhook_processing_started: "webhook_processing_started",

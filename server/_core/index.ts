@@ -12,6 +12,7 @@ import { handleTapWebhook } from "../tap-webhook";
 import { localAuthRouter } from "../auth-local";
 import { validateAuthSecurityConfig, shouldTrustProxy } from "./authSecurity";
 import { correlationMiddleware } from "./requestContext";
+import { deploymentGuardsMiddleware } from "./deploymentGuards";
 import {
   ensureUploadsDir,
   UPLOADS_DIR,
@@ -49,6 +50,10 @@ async function startServer() {
 
   // Request correlation foundation (MON-1E): attaches req.correlationId and echoes X-Correlation-Id.
   app.use(correlationMiddleware);
+
+  // Deployment guardrails (AUTH2-C Slice 4): low-noise diagnostics for proxy/TLS
+  // and optional Origin checks for sensitive auth POSTs. No behavior change by default.
+  app.use(deploymentGuardsMiddleware);
   
   // Tap Payments webhook
   app.post("/api/tap/webhook", express.json(), handleTapWebhook);
