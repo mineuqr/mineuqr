@@ -134,4 +134,5 @@ Cooldowned aggregates (10m window, 2m emit cooldown) — avoids cookie spam.
 ## Related docs
 
 - `server/auth-local/README.md` — contributor boundary notes
+- [deployment-auth-readiness.md](./deployment-auth-readiness.md) — staging/proxy/cookie checklist
 - `docs/AUTH2_DEEP_ENGINEERING_ASSESSMENT.md` — broader auth engineering context

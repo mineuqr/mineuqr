@@ -50,7 +50,10 @@ export function validateAuthSecurityConfig(): void {
   }
 }
 
-/** Whether Express should trust X-Forwarded-* headers for cookie secure detection. */
+/**
+ * Whether Express should trust X-Forwarded-* headers for cookie secure detection.
+ * Production defaults to enabled; set TRUST_PROXY=1 explicitly on reverse-proxy hosts.
+ */
 export function shouldTrustProxy(): boolean {
   if (process.env.TRUST_PROXY === "1" || process.env.TRUST_PROXY === "true") {
     return true;

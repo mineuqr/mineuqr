@@ -3,6 +3,7 @@ import { ENV } from "./env";
 import { opsLog } from "./opsLog";
 import { OPS_EVENT } from "./opsTaxonomy";
 import { getCorrelationId } from "./requestContext";
+import { headerFirstString, isSecureRequest } from "./secureRequest";
 
 type Counter = {
   lastSeenAt: number;
@@ -52,27 +53,6 @@ function noteAndMaybeEmit(
   if (now - lastEmitted < EMIT_COOLDOWN_MS) return;
   c.lastEmittedAt = now;
   emit(c.count);
-}
-
-function headerString(req: Request, name: string): string | undefined {
-  const raw = req.headers[name.toLowerCase()];
-  if (typeof raw === "string" && raw.length > 0) return raw;
-  if (Array.isArray(raw) && typeof raw[0] === "string" && raw[0].length > 0)
-    return raw[0];
-  return undefined;
-}
-
-function isForwardedHttps(req: Request): boolean {
-  const forwardedProto = headerString(req, "x-forwarded-proto");
-  if (!forwardedProto) return false;
-  return forwardedProto
-    .split(",")
-    .some((p) => p.trim().toLowerCase() === "https");
-}
-
-function isSecureRequest(req: Request): boolean {
-  if (req.protocol === "https") return true;
-  return isForwardedHttps(req);
 }
 
 function requestHost(req: Request): string | undefined {
@@ -133,7 +113,7 @@ export function deploymentGuardsMiddleware(
           host,
           countInWindow,
           windowMs: WINDOW_MS,
-          forwardedProto: headerString(req, "x-forwarded-proto") ?? null,
+          forwardedProto: headerFirstString(req, "x-forwarded-proto") ?? null,
           trustProxy: String((req.app as any)?.get?.("trust proxy") ?? "unknown"),
           note:
             "Production request not detected as HTTPS; secure cookies may not persist if TLS termination/proxy headers are misconfigured.",
@@ -142,7 +122,7 @@ export function deploymentGuardsMiddleware(
     });
 
     // If we are behind a proxy but x-forwarded-proto isn't present, highlight it.
-    if (!headerString(req, "x-forwarded-proto")) {
+    if (!headerFirstString(req, "x-forwarded-proto")) {
       noteAndMaybeEmit(
         `prod_missing_xfp|host:${host}|route:${req.path}`,
         (countInWindow) => {
@@ -169,7 +149,7 @@ export function deploymentGuardsMiddleware(
 
   // 2) Lightweight CSRF posture hardening for sensitive auth POST endpoints.
   if (isSensitiveAuthMutation(req)) {
-    const origin = headerString(req, "origin");
+    const origin = headerFirstString(req, "origin");
     const reqHost = requestHost(req);
     const originHost = origin ? parseOriginHost(origin) : null;
 

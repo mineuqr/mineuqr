@@ -1,6 +1,7 @@
 import { COOKIE_NAME } from "@shared/const";
 import type { CookieOptions, Request, Response } from "express";
 import { AUTH_SESSION_TTL_MS } from "./sessionConfig";
+import { describeSecureRequest, isSecureRequest } from "./secureRequest";
 
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
 
@@ -8,19 +9,6 @@ function isIpAddress(host: string) {
   // Basic IPv4 check and IPv6 presence detection.
   if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host)) return true;
   return host.includes(":");
-}
-
-function isSecureRequest(req: Request) {
-  if (req.protocol === "https") return true;
-
-  const forwardedProto = req.headers["x-forwarded-proto"];
-  if (!forwardedProto) return false;
-
-  const protoList = Array.isArray(forwardedProto)
-    ? forwardedProto
-    : forwardedProto.split(",");
-
-  return protoList.some(proto => proto.trim().toLowerCase() === "https");
 }
 
 /**
@@ -91,4 +79,16 @@ export function clearSessionCookie(res: Response, req: Request): void {
   for (const opts of variants) {
     res.clearCookie(COOKIE_NAME, opts);
   }
+}
+
+/** Deployment diagnostics (AUTH_DEPLOY_DEBUG=1); does not change cookie policy. */
+export function describeSessionCookiePolicy(req: Request) {
+  return {
+    cookie: getSetSessionCookieOptions(req),
+    secureRequest: describeSecureRequest(req),
+    host: (req.hostname || "").toLowerCase(),
+    isLocalHost:
+      LOCAL_HOSTS.has((req.hostname || "").toLowerCase()) ||
+      isIpAddress(req.hostname || ""),
+  };
 }

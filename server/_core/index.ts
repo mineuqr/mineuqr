@@ -11,6 +11,7 @@ import { handlePayPalWebhook } from "../paypal-webhook";
 import { handleTapWebhook } from "../tap-webhook";
 import { localAuthRouter } from "../auth-local";
 import { validateAuthSecurityConfig, shouldTrustProxy } from "./authSecurity";
+import { validateDeploymentAuthReadiness } from "./deploymentReadiness";
 import { correlationMiddleware } from "./requestContext";
 import { deploymentGuardsMiddleware } from "./deploymentGuards";
 import {
@@ -40,6 +41,7 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 
 async function startServer() {
   validateAuthSecurityConfig();
+  validateDeploymentAuthReadiness();
 
   const app = express();
   const server = createServer(app);

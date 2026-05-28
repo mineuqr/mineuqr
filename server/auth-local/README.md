@@ -28,6 +28,8 @@ Use `authOpsLog()` from `server/_core/authOpsMetadata.ts` for AUTH routes so `ip
 
 Operator reference: `docs/auth-ops-signals.md`.
 
+Deployment / staging: `docs/deployment-auth-readiness.md` (proxy, cookies, `PUBLIC_APP_URL`).
+
 ## Tests
 
 - `server/auth-local.change-password.test.ts` imports `localAuthRouter` from `../auth-local` (parent file).

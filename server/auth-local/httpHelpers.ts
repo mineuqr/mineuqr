@@ -1,5 +1,6 @@
 import { parse as parseCookieHeader } from "cookie";
 import type { Request, Response } from "express";
+import { effectiveRequestProtocol } from "../_core/secureRequest";
 
 export function parseCookies(cookieHeader: string | undefined): Map<string, string> {
   if (!cookieHeader) return new Map();
@@ -19,13 +20,20 @@ export function rateLimitedResponse(res: Response, retryAfterMs: number) {
   });
 }
 
-/** Origin → host → production default (password-reset / verify links). */
+/**
+ * Base URL for password-reset / verify-email links.
+ * Priority: PUBLIC_APP_URL → Origin → Host + effective protocol (proxy-aware) → production default.
+ */
 export function baseUrlForLinks(req: Request): string {
+  const configured = process.env.PUBLIC_APP_URL?.trim();
+  if (configured) return configured.replace(/\/$/, "");
+
   const origin = req.headers.origin;
   if (typeof origin === "string" && origin.length > 0) return origin;
+
   const host = req.get("host");
-  const proto = req.protocol;
-  if (host) return `${proto}://${host}`;
+  if (host) return `${effectiveRequestProtocol(req)}://${host}`;
+
   return "https://www.mineuqr.com";
 }
 
