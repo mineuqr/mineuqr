@@ -1,35 +1,30 @@
+/**
+ * Local email/password auth routes (login, reset, verify, change-password).
+ * Route orchestration lives here; pure helpers live under ./auth-local/.
+ */
 import { Router, Request, Response } from "express";
 import bcrypt from "bcryptjs";
-import { parse as parseCookieHeader } from "cookie";
 import * as db from "./db";
 import { sdk } from "./_core/sdk";
-import { COOKIE_NAME } from "@shared/const";
-import { setSessionCookie } from "./_core/cookies";
-import { ENV } from "./_core/env";
+import { setSessionCookie, clearSessionCookie } from "./_core/cookies";
 import {
   logFailedLogin,
   logRateLimitExceeded,
   logSuccessfulLogin,
 } from "./_core/authAudit";
 import {
-  AUTH_OPS_EMIT_COOLDOWN_MS,
-  AUTH_OPS_MAX_COUNTER_KEYS,
-  AUTH_OPS_ROLLING_WINDOW_MS,
   authDegradedMetadata,
-  authHttpContext,
   authOpsLog,
   authTokenFailureReason,
-  rollingWindowBurstMetadata,
 } from "./_core/authOpsMetadata";
 import { OPS_EVENT } from "./_core/opsTaxonomy";
-import { clearSessionCookie } from "./_core/cookies";
 import { sendEmail } from "./email";
 import {
   AUTH_BURST_LIMIT,
   checkRateLimit,
   clearRateLimit,
-  getClientIp,
   getAuthBurstKey,
+  getClientIp,
   getLoginRateLimitKey,
   LOGIN_RATE_LIMIT,
 } from "./_core/rateLimit";
@@ -49,190 +44,41 @@ import {
   respondResetLinkExpired,
   respondResetLinkInvalid,
 } from "./_core/authOneTimeTokenResponses";
-import { createCooldownCounterMap } from "./_core/cooldownCounterMap";
+import { noteInvalidTokenAttempt } from "./auth-local/invalidTokenBurst";
 import {
-  cleanupEmitCooldownStamps,
-  trimEmitCooldownStamps,
-  tryConsumeEmitCooldown,
-  type EmitCooldownStamp,
-} from "./_core/emitCooldown";
+  baseUrlForLinks,
+  genericAuthError,
+  isLocalPasswordAccount,
+  normalizeEmailFromBody,
+  rateLimitedResponse,
+} from "./auth-local/httpHelpers";
+import {
+  enforceAuthBurstLimit,
+  enforceForgotPasswordRateLimit,
+} from "./auth-local/rateLimitGuards";
+import { getVerifiedSessionFromRequest } from "./auth-local/session";
+import {
+  cleanupVerificationResendMaps,
+  isVerificationEmailAmplified,
+  maybeEmitResendCooldowned,
+  recordVerificationEmailSent,
+  touchVerificationEmailStamp,
+  verificationEmailStampKey,
+  verificationResendActorKey,
+  verificationResendIpKey,
+  VERIFICATION_EMAIL_MIN_INTERVAL_MS,
+  VERIFICATION_RESEND_MAX_ACTOR,
+  VERIFICATION_RESEND_MAX_IP,
+  VERIFICATION_RESEND_WINDOW_MS,
+} from "./auth-local/verificationResend";
 
 const router = Router();
 
-const PASSWORD_RESET_RATE_LIMIT = { windowMs: 10 * 60 * 1000, maxAttempts: 5 } as const;
+// ─── Login ───────────────────────────────────────────────────────────────────
 
-// --- In-memory burst counters (invalid token / resend ops visibility) ---
-const INVALID_TOKEN_WINDOW_MS = AUTH_OPS_ROLLING_WINDOW_MS;
-const INVALID_TOKEN_MAX_ATTEMPTS = 25;
-const INVALID_TOKEN_EMIT_COOLDOWN_MS = AUTH_OPS_EMIT_COOLDOWN_MS;
-
-const VERIFICATION_RESEND_WINDOW_MS = AUTH_OPS_ROLLING_WINDOW_MS;
-const VERIFICATION_RESEND_MAX_ACTOR = 5;
-const VERIFICATION_RESEND_MAX_IP = 15;
-const VERIFICATION_RESEND_EMIT_COOLDOWN_MS = AUTH_OPS_EMIT_COOLDOWN_MS;
-const VERIFICATION_EMAIL_MIN_INTERVAL_MS = 60 * 1000; // 60 seconds
-
-type InvalidTokenEndpoint = "reset-password" | "verify-email";
-
-const invalidTokenCounters = createCooldownCounterMap({
-  windowMs: INVALID_TOKEN_WINDOW_MS,
-  emitCooldownMs: INVALID_TOKEN_EMIT_COOLDOWN_MS,
-  maxKeys: AUTH_OPS_MAX_COUNTER_KEYS,
-});
-
-const resendEmitCooldown = new Map<string, EmitCooldownStamp>();
-
-type ResendStamp = { lastSentAt: number; lastSeenAt: number };
-const verificationResendLastSent = new Map<string, ResendStamp>();
-
-function invalidTokenCounterKey(input: {
-  ip: string;
-  endpoint: InvalidTokenEndpoint;
-}): string {
-  return `invalid_token:${input.endpoint}:ip:${input.ip}`;
-}
-
-function noteInvalidTokenAttempt(input: {
-  req: Request;
-  endpoint: InvalidTokenEndpoint;
-}): { throttled: boolean; count: number } {
-  const now = Date.now();
-  const http = authHttpContext(input.req);
-  const key = invalidTokenCounterKey({ ip: http.ip, endpoint: input.endpoint });
-  const entry = invalidTokenCounters.increment(key, now);
-  const count = entry.count;
-
-  if (process.env.AUTH_DEBUG === "1") {
-    console.info("[Auth] invalid token attempt", {
-      ip: http.ip,
-      endpoint: input.endpoint,
-      key,
-      count,
-      threshold: INVALID_TOKEN_MAX_ATTEMPTS,
-    });
-  }
-
-  const throttled = count >= INVALID_TOKEN_MAX_ATTEMPTS;
-
-  // Low-noise operational visibility for bursts (cooldowned).
-  if (count === INVALID_TOKEN_MAX_ATTEMPTS || throttled) {
-    if (invalidTokenCounters.canEmit(entry, now)) {
-      invalidTokenCounters.markEmitted(entry, now);
-      authOpsLog({
-        type: throttled
-          ? OPS_EVENT.auth_token_bruteforce_suspected
-          : OPS_EVENT.auth_invalid_token_burst,
-        severity: "warn",
-        req: input.req,
-        ts: new Date(now).toISOString(),
-        metadata: rollingWindowBurstMetadata({
-          countInWindow: count,
-          windowMs: INVALID_TOKEN_WINDOW_MS,
-          threshold: INVALID_TOKEN_MAX_ATTEMPTS,
-          key,
-          signal: throttled ? "auth_token_bruteforce" : "auth_invalid_token_burst",
-          extra: { endpoint: input.endpoint },
-        }),
-      });
-    }
-  }
-
-  return { throttled, count };
-}
-
-function maybeEmitResendCooldowned(input: {
-  key: string;
-  now: number;
-  req: Request;
-  actorId?: number | null;
-  type: (typeof OPS_EVENT)[keyof typeof OPS_EVENT];
-  metadata: Record<string, unknown>;
-}): void {
-  if (
-    !tryConsumeEmitCooldown({
-      stamps: resendEmitCooldown,
-      key: input.key,
-      now: input.now,
-      cooldownMs: VERIFICATION_RESEND_EMIT_COOLDOWN_MS,
-    })
-  ) {
-    return;
-  }
-
-  authOpsLog({
-    type: input.type,
-    severity: "warn",
-    req: input.req,
-    ts: new Date(input.now).toISOString(),
-    actorId: input.actorId ?? null,
-    metadata: input.metadata,
-  });
-}
-
-function cleanupVerificationResendMaps(now: number): void {
-  for (const [k, v] of Array.from(verificationResendLastSent.entries())) {
-    if (now - v.lastSeenAt > VERIFICATION_RESEND_WINDOW_MS * 2) {
-      verificationResendLastSent.delete(k);
-    }
-  }
-  cleanupEmitCooldownStamps(
-    resendEmitCooldown,
-    now,
-    VERIFICATION_RESEND_WINDOW_MS * 2
-  );
-
-  const MAX_KEYS = AUTH_OPS_MAX_COUNTER_KEYS;
-  if (verificationResendLastSent.size > MAX_KEYS) {
-    const entries = Array.from(verificationResendLastSent.entries()).sort(
-      (a, b) => a[1].lastSeenAt - b[1].lastSeenAt
-    );
-    const toRemove = verificationResendLastSent.size - MAX_KEYS;
-    for (let i = 0; i < toRemove; i++) {
-      verificationResendLastSent.delete(entries[i]![0]);
-    }
-  }
-  trimEmitCooldownStamps(resendEmitCooldown, MAX_KEYS);
-}
-
-// --- HTTP helpers (cookies, responses, link base URL) ---
-function parseCookies(cookieHeader: string | undefined): Map<string, string> {
-  if (!cookieHeader) return new Map();
-  return new Map(Object.entries(parseCookieHeader(cookieHeader)));
-}
-
-function genericAuthError(res: Response) {
-  return res.status(401).json({ error: "بيانات الدخول غير صحيحة" });
-}
-
-function rateLimitedResponse(res: Response, retryAfterMs: number) {
-  const retryAfterSec = Math.ceil(retryAfterMs / 1000);
-  res.setHeader("Retry-After", String(retryAfterSec));
-  return res.status(429).json({
-    error: "محاولات كثيرة. يرجى المحاولة لاحقاً",
-    retryAfterSec,
-  });
-}
-
-function baseUrlForLinks(req: Request): string {
-  const origin = req.headers.origin;
-  if (typeof origin === "string" && origin.length > 0) return origin;
-  const host = req.get("host");
-  const proto = req.protocol;
-  if (host) return `${proto}://${host}`;
-  return "https://www.mineuqr.com";
-}
-
-/**
- * POST /api/auth/login
- * Login with email + password (for subscribers created by admin)
- */
 router.post("/api/auth/login", async (req: Request, res: Response) => {
   try {
-    const burst = checkRateLimit(getAuthBurstKey(req), AUTH_BURST_LIMIT);
-    if (!burst.allowed) {
-      logRateLimitExceeded(req, getAuthBurstKey(req));
-      return rateLimitedResponse(res, burst.retryAfterMs ?? AUTH_BURST_LIMIT.windowMs);
-    }
+    if (enforceAuthBurstLimit(req, res)) return;
 
     const { email, password } = req.body;
 
@@ -292,30 +138,14 @@ router.post("/api/auth/login", async (req: Request, res: Response) => {
   }
 });
 
-// --- One-time token flows (password reset + email verification) ---
+// ─── Password reset (forgot + reset) ─────────────────────────────────────────
 
-/**
- * POST /api/auth/forgot-password
- *
- * Non-enumerating: always returns success if not rate-limited.
- */
 router.post("/api/auth/forgot-password", async (req: Request, res: Response) => {
   try {
-    const burst = checkRateLimit(getAuthBurstKey(req), AUTH_BURST_LIMIT);
-    if (!burst.allowed) {
-      logRateLimitExceeded(req, getAuthBurstKey(req));
-      return rateLimitedResponse(res, burst.retryAfterMs ?? AUTH_BURST_LIMIT.windowMs);
-    }
+    if (enforceAuthBurstLimit(req, res)) return;
 
-    const rawEmail = typeof req.body?.email === "string" ? req.body.email : "";
-    const email = rawEmail.trim().toLowerCase();
-
-    const key = `pwdreset:${getLoginRateLimitKey(req, email || "unknown")}`;
-    const limit = checkRateLimit(key, PASSWORD_RESET_RATE_LIMIT);
-    if (!limit.allowed) {
-      logRateLimitExceeded(req, key);
-      return rateLimitedResponse(res, limit.retryAfterMs ?? PASSWORD_RESET_RATE_LIMIT.windowMs);
-    }
+    const email = normalizeEmailFromBody(req.body);
+    if (enforceForgotPasswordRateLimit(req, res, email)) return;
 
     authOpsLog({
       type: OPS_EVENT.password_reset_requested,
@@ -326,9 +156,7 @@ router.post("/api/auth/forgot-password", async (req: Request, res: Response) => 
 
     if (email) {
       const user = await db.getUserByEmail(email);
-
-      // Only local email/password accounts are eligible for password reset.
-      if (user && user.openId.startsWith("local_") && user.email) {
+      if (user && isLocalPasswordAccount(user)) {
         const issued = issueAuthOneTimeToken(PASSWORD_RESET_TOKEN_TTL_MS);
 
         const created = await db.createAuthToken({
@@ -347,10 +175,9 @@ router.post("/api/auth/forgot-password", async (req: Request, res: Response) => 
             metadata: { purpose: "password_reset", issue: "db_insert_failed" },
           });
         } else {
-          const baseUrl = baseUrlForLinks(req);
-          const resetUrl = `${baseUrl}/reset-password?token=${encodeURIComponent(issued.plaintextToken)}`;
+          const resetUrl = `${baseUrlForLinks(req)}/reset-password?token=${encodeURIComponent(issued.plaintextToken)}`;
           await sendEmail({
-            to: user.email,
+            to: user.email!,
             subject: "إعادة تعيين كلمة المرور",
             html: `
               <div style="font-family: Arial, sans-serif; direction: rtl; text-align: right;">
@@ -374,10 +201,8 @@ router.post("/api/auth/forgot-password", async (req: Request, res: Response) => 
       }
     }
 
-    // Non-enumerating response
     return res.json({ success: true });
-  } catch (error) {
-    // Low-noise: do not leak account existence; still return success.
+  } catch {
     authOpsLog({
       type: OPS_EVENT.password_reset_requested,
       severity: "warn",
@@ -388,14 +213,10 @@ router.post("/api/auth/forgot-password", async (req: Request, res: Response) => 
   }
 });
 
-/**
- * POST /api/auth/reset-password
- */
 router.post("/api/auth/reset-password", async (req: Request, res: Response) => {
   try {
     const { token: rawToken, newPassword } = req.body ?? {};
     if (!isPlausibleOneTimeTokenFromBody(rawToken)) {
-      // Throttle high-rate invalid token attempts (visibility + soft-throttle only).
       noteInvalidTokenAttempt({ req, endpoint: "reset-password" });
       authOpsLog({
         type: OPS_EVENT.password_reset_token_invalid,
@@ -429,9 +250,7 @@ router.post("/api/auth/reset-password", async (req: Request, res: Response) => {
     }
     if (tokenStatus === "consumed") {
       const { throttled } = noteInvalidTokenAttempt({ req, endpoint: "reset-password" });
-      if (throttled) {
-        return respondResetLinkInvalid(res);
-      }
+      if (throttled) return respondResetLinkInvalid(res);
       authOpsLog({
         type: OPS_EVENT.password_reset_token_invalid,
         severity: "warn",
@@ -443,9 +262,7 @@ router.post("/api/auth/reset-password", async (req: Request, res: Response) => {
     }
     if (tokenStatus === "expired") {
       const { throttled } = noteInvalidTokenAttempt({ req, endpoint: "reset-password" });
-      if (throttled) {
-        return respondResetLinkExpired(res);
-      }
+      if (throttled) return respondResetLinkExpired(res);
       authOpsLog({
         type: OPS_EVENT.password_reset_token_expired,
         severity: "warn",
@@ -482,7 +299,7 @@ router.post("/api/auth/reset-password", async (req: Request, res: Response) => {
     });
 
     return res.json({ success: true });
-  } catch (error) {
+  } catch {
     authOpsLog({
       type: OPS_EVENT.password_reset_token_invalid,
       severity: "error",
@@ -493,17 +310,12 @@ router.post("/api/auth/reset-password", async (req: Request, res: Response) => {
   }
 });
 
-/**
- * POST /api/auth/request-email-verification
- *
- * Requires valid session cookie; sends a verification link.
- */
+// ─── Email verification (resend + confirm) ─────────────────────────────────
+
 router.post("/api/auth/request-email-verification", async (req: Request, res: Response) => {
   try {
-    const cookies = parseCookies(req.headers.cookie);
-    const sessionCookie = cookies.get(COOKIE_NAME);
-    const session = await sdk.verifySession(sessionCookie);
-    if (!session || (ENV.appId && session.appId !== ENV.appId)) {
+    const session = await getVerifiedSessionFromRequest(req);
+    if (!session) {
       return res.status(401).json({ error: "غير مصرح" });
     }
 
@@ -523,9 +335,8 @@ router.post("/api/auth/request-email-verification", async (req: Request, res: Re
     cleanupVerificationResendMaps(now);
     const ip = getClientIp(req);
 
-    // Rolling-window resend throttling (actor + ip). Preserve semantics: still return success.
-    const actorKey = `verify_resend:actor:${user.id}`;
-    const ipKey = `verify_resend:ip:${ip}`;
+    const actorKey = verificationResendActorKey(user.id);
+    const ipKey = verificationResendIpKey(ip);
     const actorLimit = checkRateLimit(actorKey, {
       windowMs: VERIFICATION_RESEND_WINDOW_MS,
       maxAttempts: VERIFICATION_RESEND_MAX_ACTOR,
@@ -563,11 +374,9 @@ router.post("/api/auth/request-email-verification", async (req: Request, res: Re
       return res.json({ success: true });
     }
 
-    // Email amplification suppression: avoid repeated token+send storms.
-    const stampKey = `verify_email_last_sent:actor:${user.id}`;
-    const existing = verificationResendLastSent.get(stampKey);
-    if (existing) existing.lastSeenAt = now;
-    if (existing && now - existing.lastSentAt < VERIFICATION_EMAIL_MIN_INTERVAL_MS) {
+    const stampKey = verificationEmailStampKey(user.id);
+    const existing = touchVerificationEmailStamp(stampKey, now);
+    if (isVerificationEmailAmplified(stampKey, now)) {
       maybeEmitResendCooldowned({
         key: `verify_email_amp:${stampKey}`,
         now,
@@ -578,7 +387,7 @@ router.post("/api/auth/request-email-verification", async (req: Request, res: Re
           signal: "email_amplification",
           suppressed: true,
           minIntervalMs: VERIFICATION_EMAIL_MIN_INTERVAL_MS,
-          sinceLastSendMs: now - existing.lastSentAt,
+          sinceLastSendMs: now - existing!.lastSentAt,
         },
       });
       return res.json({ success: true });
@@ -604,8 +413,7 @@ router.post("/api/auth/request-email-verification", async (req: Request, res: Re
       return res.json({ success: true });
     }
 
-    const baseUrl = baseUrlForLinks(req);
-    const verifyUrl = `${baseUrl}/api/auth/verify-email?token=${encodeURIComponent(issued.plaintextToken)}`;
+    const verifyUrl = `${baseUrlForLinks(req)}/api/auth/verify-email?token=${encodeURIComponent(issued.plaintextToken)}`;
 
     await sendEmail({
       to: user.email,
@@ -628,7 +436,7 @@ router.post("/api/auth/request-email-verification", async (req: Request, res: Re
       metadata: { purpose: "email_verify" },
     });
 
-    verificationResendLastSent.set(stampKey, { lastSentAt: now, lastSeenAt: now });
+    recordVerificationEmailSent(stampKey, now);
 
     return res.json({ success: true });
   } catch {
@@ -636,9 +444,6 @@ router.post("/api/auth/request-email-verification", async (req: Request, res: Re
   }
 });
 
-/**
- * GET /api/auth/verify-email?token=...
- */
 router.get("/api/auth/verify-email", async (req: Request, res: Response) => {
   try {
     const rawToken = typeof req.query.token === "string" ? req.query.token : "";
@@ -661,9 +466,7 @@ router.get("/api/auth/verify-email", async (req: Request, res: Response) => {
 
     if (tokenStatus === "missing" || tokenStatus === "consumed") {
       const { throttled } = noteInvalidTokenAttempt({ req, endpoint: "verify-email" });
-      if (throttled) {
-        return respondEmailVerificationInvalid(res);
-      }
+      if (throttled) return respondEmailVerificationInvalid(res);
       authOpsLog({
         type: OPS_EVENT.email_verification_token_invalid,
         severity: "warn",
@@ -677,9 +480,7 @@ router.get("/api/auth/verify-email", async (req: Request, res: Response) => {
     }
     if (tokenStatus === "expired") {
       const { throttled } = noteInvalidTokenAttempt({ req, endpoint: "verify-email" });
-      if (throttled) {
-        return respondEmailVerificationExpired(res);
-      }
+      if (throttled) return respondEmailVerificationExpired(res);
       authOpsLog({
         type: OPS_EVENT.email_verification_token_expired,
         severity: "warn",
@@ -700,7 +501,6 @@ router.get("/api/auth/verify-email", async (req: Request, res: Response) => {
       actorId: row!.userId,
     });
 
-    // UX can be refined later; keep it simple and safe.
     return res.redirect(302, "/");
   } catch (error) {
     authOpsLog({
@@ -713,21 +513,12 @@ router.get("/api/auth/verify-email", async (req: Request, res: Response) => {
   }
 });
 
-/**
- * POST /api/auth/change-password
- * Change password for logged-in user
- */
+// ─── Change password (session required) ────────────────────────────────────
+
 router.post("/api/auth/change-password", async (req: Request, res: Response) => {
   try {
-    const cookies = parseCookies(req.headers.cookie);
-    const sessionCookie = cookies.get(COOKIE_NAME);
-    const session = await sdk.verifySession(sessionCookie);
-
+    const session = await getVerifiedSessionFromRequest(req);
     if (!session) {
-      return res.status(401).json({ error: "غير مصرح" });
-    }
-
-    if (ENV.appId && session.appId !== ENV.appId) {
       return res.status(401).json({ error: "غير مصرح" });
     }
 
@@ -741,7 +532,6 @@ router.post("/api/auth/change-password", async (req: Request, res: Response) => 
       return res.status(404).json({ error: "المستخدم غير موجود" });
     }
 
-    // Align with tRPC profile.changePassword: only local email/password accounts may set passwords.
     if (!user.openId.startsWith("local_")) {
       return res.status(403).json({
         error: "تغيير كلمة المرور متاح فقط لحسابات البريد الإلكتروني",
