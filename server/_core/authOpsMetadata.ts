@@ -11,6 +11,9 @@
  * - signal: suspicious-activity or resend classifier
  *
  * HTTP identity is always top-level on auth ops: correlationId, route, method, ip.
+ *
+ * Operator cookbook: docs/auth-ops-signals.md
+ * Per-event descriptions: authOpsSignalGuide.ts (reference only).
  */
 
 import type { Request } from "express";

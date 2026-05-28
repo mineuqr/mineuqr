@@ -140,6 +140,8 @@ export function opsLog(event: OpsEvent): void {
   const providerEventId = safeIdToken(payload.metadata?.providerEventId, 64);
   if (providerEventId) tokens.push(`eventId=${providerEventId}`);
 
+  // Message-line "reason=" is degradedReason only (unexpected failures).
+  // Token/user classifiers use metadata.reason — expand the payload object.
   const degradedReason = safeIdToken(payload.metadata?.degradedReason, 48);
   if (degradedReason) tokens.push(`reason=${degradedReason}`);
 

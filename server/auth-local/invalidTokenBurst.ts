@@ -1,3 +1,11 @@
+/**
+ * Invalid one-time token burst tracking (reset-password + verify-email).
+ *
+ * Emits (cooldowned): auth_invalid_token_burst → auth_token_bruteforce_suspected.
+ * Does NOT block requests — route handlers use returned { throttled } to skip work only.
+ *
+ * Operator reference: docs/auth-ops-signals.md § Abuse visibility
+ */
 import type { Request } from "express";
 import {
   AUTH_OPS_MAX_COUNTER_KEYS,

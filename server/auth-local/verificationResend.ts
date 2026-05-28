@@ -1,3 +1,12 @@
+/**
+ * Email verification resend limits + amplification guard.
+ *
+ * - Rolling window: actor (5/10m) + IP (15/10m) — enforced via rateLimit.ts
+ * - Amplification: min 60s between sends per actor (still returns success to client)
+ * - Ops (cooldowned): auth_verification_resend_burst, auth_email_amplification_suspected
+ *
+ * Operator reference: docs/auth-ops-signals.md § Abuse visibility
+ */
 import type { Request } from "express";
 import {
   AUTH_OPS_MAX_COUNTER_KEYS,

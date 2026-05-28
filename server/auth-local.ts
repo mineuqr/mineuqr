@@ -1,6 +1,9 @@
 /**
  * Local email/password auth routes (login, reset, verify, change-password).
  * Route orchestration lives here; pure helpers live under ./auth-local/.
+ *
+ * Operator triage: docs/auth-ops-signals.md
+ * Contributor map: server/auth-local/README.md
  */
 import { Router, Request, Response } from "express";
 import bcrypt from "bcryptjs";
