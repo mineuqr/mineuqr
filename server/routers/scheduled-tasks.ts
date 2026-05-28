@@ -5,6 +5,8 @@ import { getAllSubscriptions, createNotification, markNotificationAsSent, getUns
 import { notifyOwner } from "../_core/notification";
 import { trackScheduledTaskRun } from "../_core/healthSignals";
 
+const OPS_HEALTH_DEBUG = process.env.OPS_HEALTH_DEBUG === "1";
+
 export const scheduledTasksRouter = router({
   sendRenewalNotifications: publicProcedure
     .input(
@@ -25,6 +27,9 @@ export const scheduledTasksRouter = router({
       let unsentNotificationScans = 0;
       let notificationsCreated = 0;
       let notificationsSent = 0;
+      let existingNotificationsSkipped = 0;
+      let notificationCreateFailures = 0;
+      let notificationSendFailures = 0;
 
       try {
         const now = new Date();
@@ -39,7 +44,11 @@ export const scheduledTasksRouter = router({
         });
 
         expiringSubscriptionsFound = expiringSubscriptions.length;
-        console.log(`[Scheduled Task] Found ${expiringSubscriptionsFound} expiring subscriptions`);
+        if (OPS_HEALTH_DEBUG) {
+          console.log(
+            `[Scheduled Task] Found ${expiringSubscriptionsFound} expiring subscriptions`
+          );
+        }
 
         for (const subscription of expiringSubscriptions) {
           // Check for existing unsent notifications
@@ -48,7 +57,12 @@ export const scheduledTasksRouter = router({
           const existingForSub = unsentNotifications.find(n => n.subscriptionId === subscription.id);
           
           if (existingForSub) {
-            console.log(`[Scheduled Task] Notification already exists for subscription ${subscription.id}`);
+            existingNotificationsSkipped += 1;
+            if (OPS_HEALTH_DEBUG) {
+              console.log(
+                `[Scheduled Task] Notification already exists for subscription ${subscription.id}`
+              );
+            }
             continue;
           }
 
@@ -80,13 +94,29 @@ export const scheduledTasksRouter = router({
               if (notifyResult && result?.id) {
                 await markNotificationAsSent(result.id);
                 notificationsSent++;
-                console.log(`[Scheduled Task] Notification sent for subscription ${subscription.id}`);
+                if (OPS_HEALTH_DEBUG) {
+                  console.log(
+                    `[Scheduled Task] Notification sent for subscription ${subscription.id}`
+                  );
+                }
               }
             } catch (error) {
-              console.error(`[Scheduled Task] Failed to send notification for subscription ${subscription.id}:`, error);
+              notificationSendFailures += 1;
+              if (OPS_HEALTH_DEBUG) {
+                console.error(
+                  `[Scheduled Task] Failed to send notification for subscription ${subscription.id}:`,
+                  error
+                );
+              }
             }
           } catch (error) {
-            console.error(`[Scheduled Task] Failed to create notification for subscription ${subscription.id}:`, error);
+            notificationCreateFailures += 1;
+            if (OPS_HEALTH_DEBUG) {
+              console.error(
+                `[Scheduled Task] Failed to create notification for subscription ${subscription.id}:`,
+                error
+              );
+            }
           }
         }
 
@@ -117,6 +147,25 @@ export const scheduledTasksRouter = router({
         const UNSENT_SCAN_WARN = 200;
         const DURATION_WARN_MS = 10_000;
 
+        // Coarse warning when errors occurred (no per-item spam).
+        if (notificationCreateFailures > 0 || notificationSendFailures > 0) {
+          trackScheduledTaskRun({
+            taskName,
+            phase: "warning",
+            durationMs,
+            metadata: {
+              degradedReason: "scheduled_task_item_failures",
+              expiringSubscriptionsFound,
+              existingNotificationsSkipped,
+              notificationsCreated,
+              notificationsSent,
+              notificationCreateFailures,
+              notificationSendFailures,
+              unsentNotificationScans,
+            },
+          });
+        }
+
         // Emit a coarse warning when runtime pressure is likely.
         // (Uses existing counters computed during successful runs.)
         if (
@@ -134,6 +183,9 @@ export const scheduledTasksRouter = router({
               unsentNotificationScans,
               notificationsCreated,
               notificationsSent,
+              existingNotificationsSkipped,
+              notificationCreateFailures,
+              notificationSendFailures,
             },
           });
         }
