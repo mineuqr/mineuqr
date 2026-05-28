@@ -24,6 +24,14 @@ export const OPS_EVENT = {
   session_appid_mismatch: "session_appid_mismatch",
   session_user_sync_failed: "session_user_sync_failed",
   session_user_not_found: "session_user_not_found",
+  oauth_runtime_initialized: "oauth_runtime_initialized",
+  oauth_callback_failed: "oauth_callback_failed",
+  oauth_callback_missing_params: "oauth_callback_missing_params",
+  oauth_userinfo_missing_openid: "oauth_userinfo_missing_openid",
+  oauth_trial_subscription_failed: "oauth_trial_subscription_failed",
+  oauth_owner_notification_failed: "oauth_owner_notification_failed",
+  auth_secret_weak: "auth_secret_weak",
+  oauth_provider_misconfigured: "oauth_provider_misconfigured",
 
   // WEBHOOK / PAYMENT lifecycle
   webhook_received: "webhook_received",

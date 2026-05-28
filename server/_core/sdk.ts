@@ -8,6 +8,8 @@ import type { SelectUser } from "../../drizzle/schema";
 import * as db from "../db";
 import { ENV } from "./env";
 import { logSessionAnomaly } from "./sessionAudit";
+import { opsLog } from "./opsLog";
+import { OPS_EVENT } from "./opsTaxonomy";
 import type {
   ExchangeTokenRequest,
   ExchangeTokenResponse,
@@ -43,11 +45,30 @@ const GET_USER_INFO_WITH_JWT_PATH = `/webdev.v1.WebDevAuthPublicService/GetUserI
 
 class OAuthService {
   constructor(private client: ReturnType<typeof axios.create>) {
-    console.log("[OAuth] Initialized with baseURL:", ENV.oAuthServerUrl);
+    if (process.env.AUTH_DEBUG === "1") {
+      opsLog({
+        type: OPS_EVENT.oauth_runtime_initialized,
+        category: "AUTH",
+        severity: "debug",
+        ts: new Date().toISOString(),
+        metadata: {
+          provider: "manus",
+          baseUrl: ENV.oAuthServerUrl || undefined,
+          isConfigured: Boolean(ENV.oAuthServerUrl),
+        },
+      });
+    }
     if (!ENV.oAuthServerUrl) {
-      console.error(
-        "[OAuth] ERROR: OAUTH_SERVER_URL is not configured! Set OAUTH_SERVER_URL environment variable."
-      );
+      opsLog({
+        type: OPS_EVENT.oauth_provider_misconfigured,
+        category: "AUTH",
+        severity: "warn",
+        ts: new Date().toISOString(),
+        metadata: {
+          issue: "oauth_server_url_missing",
+          provider: "manus",
+        },
+      });
     }
   }
 

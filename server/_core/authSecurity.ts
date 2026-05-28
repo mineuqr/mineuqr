@@ -1,4 +1,6 @@
 import { ENV } from "./env";
+import { opsLog } from "./opsLog";
+import { OPS_EVENT } from "./opsTaxonomy";
 
 /** Known weak defaults that must not be used in production. */
 const KNOWN_WEAK_JWT_SECRETS = new Set([
@@ -34,9 +36,17 @@ export function validateAuthSecurityConfig(): void {
   }
 
   if (isWeak) {
-    console.warn(
-      "[AuthSecurity] JWT_SECRET is missing or weak — acceptable for local dev only"
-    );
+    opsLog({
+      type: OPS_EVENT.auth_secret_weak,
+      category: "SYSTEM",
+      severity: "warn",
+      ts: new Date().toISOString(),
+      metadata: {
+        issue: "jwt_secret_weak_or_missing",
+        minLength: MIN_PRODUCTION_SECRET_LENGTH,
+        isProduction: ENV.isProduction,
+      },
+    });
   }
 }
 
