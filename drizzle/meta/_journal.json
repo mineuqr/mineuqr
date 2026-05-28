@@ -120,6 +120,20 @@
       "when": 1778755181410,
       "tag": "0016_empty_captain_universe",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "5",
+      "when": 1778756000000,
+      "tag": "0017_auth_tokens",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "5",
+      "when": 1778756100000,
+      "tag": "0018_session_valid_after",
+      "breakpoints": true
     }
   ]
 }

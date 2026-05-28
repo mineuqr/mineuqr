@@ -18,6 +18,13 @@ MineuQR authentication engineering (AUTH2) — **closed** as of D.7. Use this in
 | [server/auth-local/README.md](../server/auth-local/README.md) | Local auth module map |
 | `server/_core/authOpsMetadata.ts` | How to emit auth ops logs |
 
+## Database / migrations
+
+| Doc | Use when |
+|-----|----------|
+| [DB_MIGRATION_GOVERNANCE.md](./DB_MIGRATION_GOVERNANCE.md) | Official migrate workflow |
+| [MIGRATION_STAGING_CHECKLIST.md](./MIGRATION_STAGING_CHECKLIST.md) | Pre-staging gate |
+
 ## Assessment / history
 
 | Doc | Use when |
