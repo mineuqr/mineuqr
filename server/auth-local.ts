@@ -20,6 +20,7 @@ import {
   AUTH_BURST_LIMIT,
   checkRateLimit,
   clearRateLimit,
+  getClientIp,
   getAuthBurstKey,
   getLoginRateLimitKey,
   LOGIN_RATE_LIMIT,
@@ -32,6 +33,100 @@ const RESET_TOKEN_EXPIRES_MS = 30 * 60 * 1000; // 30 minutes
 const VERIFY_TOKEN_EXPIRES_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 const PASSWORD_RESET_RATE_LIMIT = { windowMs: 10 * 60 * 1000, maxAttempts: 5 } as const;
+
+const INVALID_TOKEN_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
+const INVALID_TOKEN_MAX_ATTEMPTS = 25;
+const INVALID_TOKEN_EMIT_COOLDOWN_MS = 2 * 60 * 1000;
+
+type InvalidTokenKey = {
+  ip: string;
+  endpoint: "reset-password" | "verify-email";
+};
+
+type InvalidTokenCounter = {
+  count: number;
+  windowStart: number;
+  lastSeenAt: number;
+  lastEmittedAt?: number;
+};
+
+const invalidTokenCounters = new Map<string, InvalidTokenCounter>();
+
+function invalidTokenKey(input: InvalidTokenKey): string {
+  return `invalid_token:${input.endpoint}:ip:${input.ip}`;
+}
+
+function cleanupInvalidTokenCounters(now: number): void {
+  for (const [k, c] of Array.from(invalidTokenCounters.entries())) {
+    if (now - c.lastSeenAt > INVALID_TOKEN_WINDOW_MS * 2) invalidTokenCounters.delete(k);
+  }
+  if (invalidTokenCounters.size <= 5000) return;
+  const entries = Array.from(invalidTokenCounters.entries()).sort(
+    (a, b) => a[1].lastSeenAt - b[1].lastSeenAt
+  );
+  const toRemove = invalidTokenCounters.size - 5000;
+  for (let i = 0; i < toRemove; i++) invalidTokenCounters.delete(entries[i]![0]);
+}
+
+function noteInvalidTokenAttempt(input: {
+  req: Request;
+  endpoint: InvalidTokenKey["endpoint"];
+  correlationId?: string;
+}): { throttled: boolean; count: number } {
+  const now = Date.now();
+  cleanupInvalidTokenCounters(now);
+
+  const ip = getClientIp(input.req);
+  const key = invalidTokenKey({ ip, endpoint: input.endpoint });
+
+  let c = invalidTokenCounters.get(key);
+  if (!c || now - c.windowStart >= INVALID_TOKEN_WINDOW_MS) {
+    c = { count: 0, windowStart: now, lastSeenAt: now };
+    invalidTokenCounters.set(key, c);
+  }
+  c.count += 1;
+  c.lastSeenAt = now;
+
+  const count = c.count;
+  console.log({
+    ip,
+    endpoint: input.endpoint,
+    key,
+    count,
+    threshold: INVALID_TOKEN_MAX_ATTEMPTS,
+  });
+
+  const throttled = count >= INVALID_TOKEN_MAX_ATTEMPTS;
+
+  // Low-noise operational visibility for bursts (cooldowned).
+  if (count === INVALID_TOKEN_MAX_ATTEMPTS || throttled) {
+    const lastEmitted = c.lastEmittedAt ?? 0;
+    if (now - lastEmitted >= INVALID_TOKEN_EMIT_COOLDOWN_MS) {
+      c.lastEmittedAt = now;
+      opsLog({
+        type: throttled
+          ? OPS_EVENT.auth_token_bruteforce_suspected
+          : OPS_EVENT.auth_invalid_token_burst,
+        category: "AUTH",
+        severity: "warn",
+        ts: new Date(now).toISOString(),
+        correlationId: input.correlationId,
+        route: input.req.path,
+        method: input.req.method,
+        ip,
+        metadata: {
+          endpoint: input.endpoint,
+          countInWindow: count,
+          windowMs: INVALID_TOKEN_WINDOW_MS,
+          threshold: INVALID_TOKEN_MAX_ATTEMPTS,
+          key,
+        },
+      });
+    }
+  }
+
+  return { throttled, count };
+}
 
 function parseCookies(cookieHeader: string | undefined): Map<string, string> {
   if (!cookieHeader) return new Map();
@@ -266,6 +361,8 @@ router.post("/api/auth/reset-password", async (req: Request, res: Response) => {
   try {
     const { token, newPassword } = req.body ?? {};
     if (typeof token !== "string" || token.trim().length < 20) {
+      // Throttle high-rate invalid token attempts (visibility + soft-throttle only).
+      noteInvalidTokenAttempt({ req, endpoint: "reset-password", correlationId });
       opsLog({
         type: OPS_EVENT.password_reset_token_invalid,
         category: "AUTH",
@@ -284,6 +381,11 @@ router.post("/api/auth/reset-password", async (req: Request, res: Response) => {
     const tokenHash = tokenToHash(token);
     const row = await db.getAuthTokenByHash(tokenHash, "password_reset");
     if (!row) {
+      const { throttled } = noteInvalidTokenAttempt({ req, endpoint: "reset-password", correlationId });
+      if (throttled) {
+        // Preserve semantics: still “invalid link”, but stop doing work.
+        return res.status(400).json({ error: "الرابط غير صالح" });
+      }
       opsLog({
         type: OPS_EVENT.password_reset_token_invalid,
         category: "AUTH",
@@ -296,6 +398,10 @@ router.post("/api/auth/reset-password", async (req: Request, res: Response) => {
       return res.status(400).json({ error: "الرابط غير صالح" });
     }
     if (row.usedAt) {
+      const { throttled } = noteInvalidTokenAttempt({ req, endpoint: "reset-password", correlationId });
+      if (throttled) {
+        return res.status(400).json({ error: "الرابط غير صالح" });
+      }
       opsLog({
         type: OPS_EVENT.password_reset_token_invalid,
         category: "AUTH",
@@ -310,6 +416,10 @@ router.post("/api/auth/reset-password", async (req: Request, res: Response) => {
       return res.status(400).json({ error: "الرابط غير صالح" });
     }
     if (new Date(row.expiresAt).getTime() <= Date.now()) {
+      const { throttled } = noteInvalidTokenAttempt({ req, endpoint: "reset-password", correlationId });
+      if (throttled) {
+        return res.status(400).json({ error: "انتهت صلاحية الرابط" });
+      }
       opsLog({
         type: OPS_EVENT.password_reset_token_expired,
         category: "AUTH",
@@ -477,6 +587,7 @@ router.get("/api/auth/verify-email", async (req: Request, res: Response) => {
   try {
     const token = typeof req.query.token === "string" ? req.query.token : "";
     if (!token || token.length < 20) {
+      noteInvalidTokenAttempt({ req, endpoint: "verify-email", correlationId });
       opsLog({
         type: OPS_EVENT.email_verification_token_invalid,
         category: "AUTH",
@@ -492,6 +603,10 @@ router.get("/api/auth/verify-email", async (req: Request, res: Response) => {
     const tokenHash = tokenToHash(token);
     const row = await db.getAuthTokenByHash(tokenHash, "email_verify");
     if (!row || row.usedAt) {
+      const { throttled } = noteInvalidTokenAttempt({ req, endpoint: "verify-email", correlationId });
+      if (throttled) {
+        return res.status(400).send("Invalid token");
+      }
       opsLog({
         type: OPS_EVENT.email_verification_token_invalid,
         category: "AUTH",
@@ -505,6 +620,10 @@ router.get("/api/auth/verify-email", async (req: Request, res: Response) => {
       return res.status(400).send("Invalid token");
     }
     if (new Date(row.expiresAt).getTime() <= Date.now()) {
+      const { throttled } = noteInvalidTokenAttempt({ req, endpoint: "verify-email", correlationId });
+      if (throttled) {
+        return res.status(400).send("Expired token");
+      }
       opsLog({
         type: OPS_EVENT.email_verification_token_expired,
         category: "AUTH",

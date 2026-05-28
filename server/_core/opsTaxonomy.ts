@@ -43,6 +43,8 @@ export const OPS_EVENT = {
   email_verification_token_expired: "email_verification_token_expired",
   email_verification_completed: "email_verification_completed",
   auth_token_create_failed: "auth_token_create_failed",
+  auth_invalid_token_burst: "auth_invalid_token_burst",
+  auth_token_bruteforce_suspected: "auth_token_bruteforce_suspected",
 
   // WEBHOOK / PAYMENT lifecycle
   webhook_received: "webhook_received",
