@@ -1,5 +1,6 @@
-import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
+import { COOKIE_NAME } from "@shared/const";
 import type { CookieOptions, Request, Response } from "express";
+import { AUTH_SESSION_TTL_MS } from "./sessionConfig";
 
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
 
@@ -62,7 +63,7 @@ export function setSessionCookie(
   res: Response,
   req: Request,
   token: string,
-  maxAgeMs: number = ONE_YEAR_MS
+  maxAgeMs: number = AUTH_SESSION_TTL_MS
 ): void {
   res.cookie(COOKIE_NAME, token, {
     ...getSetSessionCookieOptions(req),

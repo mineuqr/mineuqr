@@ -1,4 +1,4 @@
-import { AXIOS_TIMEOUT_MS, COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
+import { AXIOS_TIMEOUT_MS, COOKIE_NAME } from "@shared/const";
 import { ForbiddenError } from "@shared/_core/errors";
 import axios, { type AxiosInstance } from "axios";
 import { parse as parseCookieHeader } from "cookie";
@@ -10,6 +10,7 @@ import { ENV } from "./env";
 import { logSessionAnomaly } from "./sessionAudit";
 import { opsLog } from "./opsLog";
 import { OPS_EVENT } from "./opsTaxonomy";
+import { AUTH_SESSION_TTL_MS } from "./sessionConfig";
 import type {
   ExchangeTokenRequest,
   ExchangeTokenResponse,
@@ -217,7 +218,7 @@ class SDKServer {
     options: { expiresInMs?: number } = {}
   ): Promise<string> {
     const issuedAt = Date.now();
-    const expiresInMs = options.expiresInMs ?? ONE_YEAR_MS;
+    const expiresInMs = options.expiresInMs ?? AUTH_SESSION_TTL_MS;
     const expirationSeconds = Math.floor((issuedAt + expiresInMs) / 1000);
     const secretKey = this.getSessionSecret();
 

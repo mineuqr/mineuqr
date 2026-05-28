@@ -1,4 +1,3 @@
-import { ONE_YEAR_MS } from "@shared/const";
 import type { Express, Request, Response } from "express";
 import * as db from "../db";
 import { setSessionCookie } from "./cookies";
@@ -8,6 +7,7 @@ import { notifyOwnerNewUser } from "../owner-email-notifications";
 import { opsLog } from "./opsLog";
 import { OPS_EVENT } from "./opsTaxonomy";
 import { getCorrelationId } from "./requestContext";
+import { AUTH_SESSION_TTL_MS } from "./sessionConfig";
 
 function getQueryParam(req: Request, key: string): string | undefined {
   const value = req.query[key];
@@ -121,10 +121,10 @@ export function registerOAuthRoutes(app: Express) {
 
       const sessionToken = await sdk.createSessionToken(userInfo.openId, {
         name: userInfo.name || "",
-        expiresInMs: ONE_YEAR_MS,
+        expiresInMs: AUTH_SESSION_TTL_MS,
       });
 
-      setSessionCookie(res, req, sessionToken, ONE_YEAR_MS);
+      setSessionCookie(res, req, sessionToken, AUTH_SESSION_TTL_MS);
       if (process.env.AUTH_DEBUG === "1") {
         console.info("[Auth] OAuth callback: session cookie set");
       }
