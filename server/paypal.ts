@@ -1,10 +1,42 @@
 import { ENV } from "./_core/env";
+import { opsLog } from "./_core/opsLog";
+import { OPS_EVENT } from "./_core/opsTaxonomy";
 
 const PAYPAL_API_BASE = "https://api.sandbox.paypal.com";
 
 let cachedAccessToken: { token: string; expiresAt: number } | null = null;
 
 async function getAccessToken(): Promise<string> {
+  // Provider configuration diagnostics (MON-1R.1) — visibility only.
+  if (process.env.NODE_ENV === "production" && PAYPAL_API_BASE.includes("sandbox")) {
+    opsLog({
+      type: OPS_EVENT.payment_provider_misconfigured,
+      category: "PAYMENT",
+      severity: "warn",
+      ts: new Date().toISOString(),
+      metadata: {
+        provider: "paypal",
+        issue: "sandbox_base_url_in_production",
+        baseUrl: PAYPAL_API_BASE,
+      },
+    });
+  }
+
+  if (!process.env.PAYPAL_CLIENT_ID || !process.env.PAYPAL_SECRET) {
+    opsLog({
+      type: OPS_EVENT.payment_provider_misconfigured,
+      category: "PAYMENT",
+      severity: "warn",
+      ts: new Date().toISOString(),
+      metadata: {
+        provider: "paypal",
+        issue: "missing_credentials",
+        hasClientId: Boolean(process.env.PAYPAL_CLIENT_ID),
+        hasSecret: Boolean(process.env.PAYPAL_SECRET),
+      },
+    });
+  }
+
   const now = Date.now();
   if (cachedAccessToken && cachedAccessToken.expiresAt > now) {
     return cachedAccessToken.token;

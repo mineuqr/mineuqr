@@ -20,6 +20,16 @@ export const OPS_EVENT = {
   login_success: "login_success",
   rate_limit_exceeded: "rate_limit_exceeded",
 
+  // WEBHOOK / PAYMENT lifecycle
+  webhook_received: "webhook_received",
+  webhook_processing_started: "webhook_processing_started",
+  webhook_processing_completed: "webhook_processing_completed",
+  webhook_processing_failed: "webhook_processing_failed",
+  duplicate_webhook_detected: "duplicate_webhook_detected",
+  payment_subscription_activated: "payment_subscription_activated",
+  payment_provider_misconfigured: "payment_provider_misconfigured",
+  payment_runtime_anomaly: "payment_runtime_anomaly",
+
   // TENANT / ADMIN boundaries
   tenant_boundary_violation: "tenant_boundary_violation",
   unauthorized_admin_access: "unauthorized_admin_access",

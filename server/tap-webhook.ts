@@ -1,5 +1,9 @@
 import type { Request, Response } from "express";
 import { retrieveTapCharge } from "./tap-payments";
+import { getCorrelationId } from "./_core/requestContext";
+import { opsLog } from "./_core/opsLog";
+import { OPS_EVENT } from "./_core/opsTaxonomy";
+import { noteWebhookEvent } from "./_core/webhookDedup";
 import {
   updateSubscriptionById,
   updateUserSubscription,
@@ -9,20 +13,70 @@ import {
 import { notifyOwnerNewSubscription } from "./owner-email-notifications";
 
 export async function handleTapWebhook(req: Request, res: Response) {
+  const correlationId = getCorrelationId(req);
+  const provider = "tap" as const;
+  const method = req.method;
+  const route = req.path;
+
   try {
     const body = req.body;
-    console.log("[Tap Webhook] Received event:", JSON.stringify(body).substring(0, 200));
+    const chargeId = body?.id ? String(body.id) : "";
+
+    opsLog({
+      type: OPS_EVENT.webhook_received,
+      category: "WEBHOOK",
+      severity: "info",
+      ts: new Date().toISOString(),
+      correlationId,
+      route,
+      method,
+      metadata: {
+        provider,
+        providerEventId: chargeId || undefined,
+      },
+    });
 
     // Tap sends the charge ID in the webhook payload
-    const chargeId = body?.id;
     if (!chargeId) {
-      console.log("[Tap Webhook] No charge ID found in payload");
+      opsLog({
+        type: OPS_EVENT.webhook_processing_failed,
+        category: "WEBHOOK",
+        severity: "warn",
+        ts: new Date().toISOString(),
+        correlationId,
+        route,
+        method,
+        metadata: { provider, reason: "missing_charge_id" },
+      });
       return res.status(400).json({ error: "Missing charge ID" });
     }
 
+    noteWebhookEvent({
+      provider,
+      providerEventId: chargeId,
+      correlationId,
+      route,
+      method,
+      eventType: "tap.charge",
+    });
+
+    opsLog({
+      type: OPS_EVENT.webhook_processing_started,
+      category: "WEBHOOK",
+      severity: "info",
+      ts: new Date().toISOString(),
+      correlationId,
+      route,
+      method,
+      metadata: {
+        provider,
+        providerEventId: chargeId,
+      },
+    });
+
     // Retrieve the full charge details from Tap API
     const charge = await retrieveTapCharge(chargeId);
-    console.log("[Tap Webhook] Charge status:", charge.status, "ID:", charge.id);
+    const chargeStatus = charge?.status ? String(charge.status) : "unknown";
 
     if (charge.status === "CAPTURED") {
       // Payment successful
@@ -48,9 +102,23 @@ export async function handleTapWebhook(req: Request, res: Response) {
             currentPeriodEnd: endDate.toISOString(),
           });
 
-          console.log(
-            `[Tap Webhook] Subscription ${subscriptionId} activated for user ${userId}`
-          );
+          opsLog({
+            type: OPS_EVENT.payment_subscription_activated,
+            category: "PAYMENT",
+            severity: "info",
+            ts: new Date().toISOString(),
+            correlationId,
+            route,
+            method,
+            metadata: {
+              provider,
+              providerEventId: chargeId,
+              chargeStatus,
+              subscriptionId: subId,
+              userId: userId ? Number(userId) : undefined,
+              billingCycle: billingCycle || "monthly",
+            },
+          });
         }
       } else if (userId) {
         // Update by user ID if no subscription ID
@@ -70,9 +138,22 @@ export async function handleTapWebhook(req: Request, res: Response) {
             currentPeriodEnd: endDate.toISOString(),
           });
 
-          console.log(
-            `[Tap Webhook] Subscription activated for user ${userId}`
-          );
+          opsLog({
+            type: OPS_EVENT.payment_subscription_activated,
+            category: "PAYMENT",
+            severity: "info",
+            ts: new Date().toISOString(),
+            correlationId,
+            route,
+            method,
+            metadata: {
+              provider,
+              providerEventId: chargeId,
+              chargeStatus,
+              userId: uid,
+              billingCycle: billingCycle || "monthly",
+            },
+          });
         }
       }
 
@@ -102,19 +183,90 @@ export async function handleTapWebhook(req: Request, res: Response) {
           amount: charge.amount ? `${charge.amount} ${charge.currency || 'USD'}` : "غير محدد",
         });
       } catch (e) {
-        console.error("[Tap Webhook] Failed to send email notification:", e);
+        opsLog({
+          type: OPS_EVENT.payment_runtime_anomaly,
+          category: "PAYMENT",
+          severity: "warn",
+          ts: new Date().toISOString(),
+          correlationId,
+          route,
+          method,
+          metadata: {
+            provider,
+            providerEventId: chargeId,
+            anomaly: "owner_email_notification_failed",
+          },
+        });
       }
+
+      opsLog({
+        type: OPS_EVENT.webhook_processing_completed,
+        category: "WEBHOOK",
+        severity: "info",
+        ts: new Date().toISOString(),
+        correlationId,
+        route,
+        method,
+        metadata: {
+          provider,
+          providerEventId: chargeId,
+          outcome: "captured",
+          chargeStatus,
+        },
+      });
 
       return res.json({ received: true, status: "captured" });
     } else if (charge.status === "FAILED" || charge.status === "DECLINED") {
-      console.log(`[Tap Webhook] Payment failed/declined: ${charge.id}`);
+      opsLog({
+        type: OPS_EVENT.webhook_processing_completed,
+        category: "WEBHOOK",
+        severity: "info",
+        ts: new Date().toISOString(),
+        correlationId,
+        route,
+        method,
+        metadata: {
+          provider,
+          providerEventId: chargeId,
+          outcome: "payment_failed",
+          chargeStatus,
+        },
+      });
       return res.json({ received: true, status: charge.status.toLowerCase() });
     }
 
     // For other statuses (INITIATED, etc.)
+    opsLog({
+      type: OPS_EVENT.webhook_processing_completed,
+      category: "WEBHOOK",
+      severity: "info",
+      ts: new Date().toISOString(),
+      correlationId,
+      route,
+      method,
+      metadata: {
+        provider,
+        providerEventId: chargeId,
+        outcome: "other_status",
+        chargeStatus,
+      },
+    });
     return res.json({ received: true, status: charge.status?.toLowerCase() });
   } catch (error) {
-    console.error("[Tap Webhook] Error:", error);
+    opsLog({
+      type: OPS_EVENT.webhook_processing_failed,
+      category: "WEBHOOK",
+      severity: "error",
+      ts: new Date().toISOString(),
+      correlationId,
+      route,
+      method,
+      metadata: {
+        provider,
+        providerEventId: undefined,
+        error: error instanceof Error ? error.message : String(error),
+      },
+    });
     return res.status(500).json({ error: "Webhook processing failed" });
   }
 }

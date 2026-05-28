@@ -3,22 +3,78 @@ import { capturePayPalOrder } from "./paypal";
 import { getUserSubscription, updateUserSubscription, getSubscriptionPlanById, getUserByOpenId, getRestaurantsByUser } from "./db";
 import { notifyOwner } from "./_core/notification";
 import { sendWelcomeEmail } from "./email";
+import { getCorrelationId } from "./_core/requestContext";
+import { opsLog } from "./_core/opsLog";
+import { OPS_EVENT } from "./_core/opsTaxonomy";
+import { noteWebhookEvent } from "./_core/webhookDedup";
 
 export async function handlePayPalWebhook(req: Request, res: Response) {
+  const correlationId = getCorrelationId(req);
+  const provider = "paypal" as const;
+  const method = req.method;
+  const route = req.path;
+
   try {
     const event = req.body;
+    const eventType = event?.event_type ? String(event.event_type) : "unknown";
+    const orderId = event?.resource?.id ? String(event.resource.id) : "";
+
+    opsLog({
+      type: OPS_EVENT.webhook_received,
+      category: "WEBHOOK",
+      severity: "info",
+      ts: new Date().toISOString(),
+      correlationId,
+      route,
+      method,
+      metadata: {
+        provider,
+        providerEventId: orderId || undefined,
+        eventType,
+      },
+    });
 
     // Handle checkout.order.completed event
     if (event.event_type === "checkout.order.completed") {
-      const orderId = event.resource.id;
       const customData = event.resource.purchase_units?.[0]?.custom_id;
 
       if (!customData) {
-        console.error("[PayPal Webhook] Missing custom_id in order");
+        opsLog({
+          type: OPS_EVENT.webhook_processing_failed,
+          category: "WEBHOOK",
+          severity: "warn",
+          ts: new Date().toISOString(),
+          correlationId,
+          route,
+          method,
+          metadata: { provider, providerEventId: orderId || undefined, eventType, reason: "missing_custom_id" },
+        });
         return res.json({ status: "error", message: "Missing custom_id" });
       }
 
       const { userId, planId } = JSON.parse(customData);
+
+      if (orderId) {
+        noteWebhookEvent({
+          provider,
+          providerEventId: orderId,
+          correlationId,
+          route,
+          method,
+          eventType,
+        });
+      }
+
+      opsLog({
+        type: OPS_EVENT.webhook_processing_started,
+        category: "WEBHOOK",
+        severity: "info",
+        ts: new Date().toISOString(),
+        correlationId,
+        route,
+        method,
+        metadata: { provider, providerEventId: orderId || undefined, eventType, userId, planId },
+      });
 
       // Capture the order
       const capturedOrder = await capturePayPalOrder({ orderId });
@@ -27,7 +83,16 @@ export async function handlePayPalWebhook(req: Request, res: Response) {
         // Update user subscription
         const plan = await getSubscriptionPlanById(planId);
         if (!plan) {
-          console.error("[PayPal Webhook] Plan not found:", planId);
+          opsLog({
+            type: OPS_EVENT.webhook_processing_failed,
+            category: "WEBHOOK",
+            severity: "warn",
+            ts: new Date().toISOString(),
+            correlationId,
+            route,
+            method,
+            metadata: { provider, providerEventId: orderId, eventType, reason: "plan_not_found", planId },
+          });
           return res.json({ status: "error", message: "Plan not found" });
         }
 
@@ -44,11 +109,42 @@ export async function handlePayPalWebhook(req: Request, res: Response) {
           trialEndsAt: null,
         });
 
-        // Send notification to owner
-        await notifyOwner({
-          title: "✅ اشتراك جديد",
-          content: `المستخدم ${userId} اشترك في الخطة: ${plan.nameAr}`,
+        opsLog({
+          type: OPS_EVENT.payment_subscription_activated,
+          category: "PAYMENT",
+          severity: "info",
+          ts: new Date().toISOString(),
+          correlationId,
+          route,
+          method,
+          metadata: {
+            provider,
+            providerEventId: orderId,
+            eventType,
+            userId,
+            planId,
+            captureStatus: capturedOrder.status,
+          },
         });
+
+        // Send notification to owner
+        try {
+          await notifyOwner({
+            title: "✅ اشتراك جديد",
+            content: `المستخدم ${userId} اشترك في الخطة: ${plan.nameAr}`,
+          });
+        } catch (e) {
+          opsLog({
+            type: OPS_EVENT.payment_runtime_anomaly,
+            category: "PAYMENT",
+            severity: "warn",
+            ts: new Date().toISOString(),
+            correlationId,
+            route,
+            method,
+            metadata: { provider, providerEventId: orderId, anomaly: "owner_notification_failed" },
+          });
+        }
 
         // Send welcome email to user
         try {
@@ -57,19 +153,78 @@ export async function handlePayPalWebhook(req: Request, res: Response) {
 
           // Note: Email sending would require fetching user email from database
           // For now, we'll just log the action
-          console.log(`[PayPal Webhook] Welcome email would be sent for restaurant: ${restaurantName}`);
+          opsLog({
+            type: OPS_EVENT.payment_runtime_anomaly,
+            category: "PAYMENT",
+            severity: "info",
+            ts: new Date().toISOString(),
+            correlationId,
+            route,
+            method,
+            metadata: {
+              provider,
+              providerEventId: orderId,
+              note: "welcome_email_not_sent_missing_user_email",
+              restaurantName,
+            },
+          });
         } catch (emailError) {
-          console.warn("[PayPal Webhook] Failed to process welcome email:", emailError);
+          opsLog({
+            type: OPS_EVENT.payment_runtime_anomaly,
+            category: "PAYMENT",
+            severity: "warn",
+            ts: new Date().toISOString(),
+            correlationId,
+            route,
+            method,
+            metadata: {
+              provider,
+              providerEventId: orderId,
+              anomaly: "welcome_email_processing_failed",
+              error: emailError instanceof Error ? emailError.message : String(emailError),
+            },
+          });
         }
 
-        console.log("[PayPal Webhook] Subscription activated for user:", userId);
+        opsLog({
+          type: OPS_EVENT.webhook_processing_completed,
+          category: "WEBHOOK",
+          severity: "info",
+          ts: new Date().toISOString(),
+          correlationId,
+          route,
+          method,
+          metadata: { provider, providerEventId: orderId, eventType, outcome: "completed" },
+        });
         return res.json({ status: "success" });
       }
     }
 
+    opsLog({
+      type: OPS_EVENT.webhook_processing_completed,
+      category: "WEBHOOK",
+      severity: "info",
+      ts: new Date().toISOString(),
+      correlationId,
+      route,
+      method,
+      metadata: { provider, providerEventId: orderId || undefined, eventType, outcome: "ignored" },
+    });
     return res.json({ status: "received" });
   } catch (error) {
-    console.error("[PayPal Webhook] Error:", error);
+    opsLog({
+      type: OPS_EVENT.webhook_processing_failed,
+      category: "WEBHOOK",
+      severity: "error",
+      ts: new Date().toISOString(),
+      correlationId,
+      route,
+      method,
+      metadata: {
+        provider,
+        error: error instanceof Error ? error.message : String(error),
+      },
+    });
     return res.status(500).json({ status: "error", message: String(error) });
   }
 }
