@@ -25,7 +25,22 @@ import {
   getLoginRateLimitKey,
   LOGIN_RATE_LIMIT,
 } from "./_core/rateLimit";
-import { newToken, tokenToHash } from "./_core/authTokenUtils";
+import { tokenToHash } from "./_core/authTokenUtils";
+import {
+  AUTH_ONE_TIME_TOKEN_PURPOSE,
+  classifyAuthOneTimeToken,
+  EMAIL_VERIFICATION_TOKEN_TTL_MS,
+  issueAuthOneTimeToken,
+  isPlausibleOneTimeTokenFromBody,
+  isPlausibleOneTimeTokenFromQuery,
+  PASSWORD_RESET_TOKEN_TTL_MS,
+} from "./_core/authOneTimeToken";
+import {
+  respondEmailVerificationExpired,
+  respondEmailVerificationInvalid,
+  respondResetLinkExpired,
+  respondResetLinkInvalid,
+} from "./_core/authOneTimeTokenResponses";
 import { createCooldownCounterMap } from "./_core/cooldownCounterMap";
 import {
   cleanupEmitCooldownStamps,
@@ -35,10 +50,6 @@ import {
 } from "./_core/emitCooldown";
 
 const router = Router();
-
-// --- Token lifetimes (password reset / email verify) ---
-const RESET_TOKEN_EXPIRES_MS = 30 * 60 * 1000; // 30 minutes
-const VERIFY_TOKEN_EXPIRES_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 const PASSWORD_RESET_RATE_LIMIT = { windowMs: 10 * 60 * 1000, maxAttempts: 5 } as const;
 
@@ -283,6 +294,8 @@ router.post("/api/auth/login", async (req: Request, res: Response) => {
   }
 });
 
+// --- One-time token flows (password reset + email verification) ---
+
 /**
  * POST /api/auth/forgot-password
  *
@@ -326,15 +339,13 @@ router.post("/api/auth/forgot-password", async (req: Request, res: Response) => 
 
       // Only local email/password accounts are eligible for password reset.
       if (user && user.openId.startsWith("local_") && user.email) {
-        const token = newToken();
-        const tokenHash = tokenToHash(token);
-        const expiresAt = new Date(Date.now() + RESET_TOKEN_EXPIRES_MS).toISOString();
+        const issued = issueAuthOneTimeToken(PASSWORD_RESET_TOKEN_TTL_MS);
 
         const created = await db.createAuthToken({
           userId: user.id,
-          type: "password_reset",
-          tokenHash,
-          expiresAt,
+          type: AUTH_ONE_TIME_TOKEN_PURPOSE.passwordReset,
+          tokenHash: issued.tokenHash,
+          expiresAt: issued.expiresAt,
         });
 
         if (!created) {
@@ -351,7 +362,7 @@ router.post("/api/auth/forgot-password", async (req: Request, res: Response) => 
           });
         } else {
           const baseUrl = baseUrlForLinks(req);
-          const resetUrl = `${baseUrl}/reset-password?token=${encodeURIComponent(token)}`;
+          const resetUrl = `${baseUrl}/reset-password?token=${encodeURIComponent(issued.plaintextToken)}`;
           await sendEmail({
             to: user.email,
             subject: "إعادة تعيين كلمة المرور",
@@ -408,8 +419,8 @@ router.post("/api/auth/reset-password", async (req: Request, res: Response) => {
   const method = req.method;
 
   try {
-    const { token, newPassword } = req.body ?? {};
-    if (typeof token !== "string" || token.trim().length < 20) {
+    const { token: rawToken, newPassword } = req.body ?? {};
+    if (!isPlausibleOneTimeTokenFromBody(rawToken)) {
       // Throttle high-rate invalid token attempts (visibility + soft-throttle only).
       noteInvalidTokenAttempt({ req, endpoint: "reset-password", correlationId });
       opsLog({
@@ -421,35 +432,37 @@ router.post("/api/auth/reset-password", async (req: Request, res: Response) => {
         route,
         method,
       });
-      return res.status(400).json({ error: "الرابط غير صالح" });
+      return respondResetLinkInvalid(res);
     }
     if (typeof newPassword !== "string" || newPassword.length < 6) {
       return res.status(400).json({ error: "كلمة المرور الجديدة يجب أن تكون 6 أحرف على الأقل" });
     }
 
-    const tokenHash = tokenToHash(token);
-    const row = await db.getAuthTokenByHash(tokenHash, "password_reset");
-    if (!row) {
+    const row = await db.getAuthTokenByHash(
+      tokenToHash(rawToken),
+      AUTH_ONE_TIME_TOKEN_PURPOSE.passwordReset
+    );
+    const tokenStatus = classifyAuthOneTimeToken(row);
+
+    if (tokenStatus === "missing") {
       const { throttled } = noteInvalidTokenAttempt({ req, endpoint: "reset-password", correlationId });
-      if (throttled) {
-        // Preserve semantics: still “invalid link”, but stop doing work.
-        return res.status(400).json({ error: "الرابط غير صالح" });
+      if (!throttled) {
+        opsLog({
+          type: OPS_EVENT.password_reset_token_invalid,
+          category: "AUTH",
+          severity: "warn",
+          ts: new Date().toISOString(),
+          correlationId,
+          route,
+          method,
+        });
       }
-      opsLog({
-        type: OPS_EVENT.password_reset_token_invalid,
-        category: "AUTH",
-        severity: "warn",
-        ts: new Date().toISOString(),
-        correlationId,
-        route,
-        method,
-      });
-      return res.status(400).json({ error: "الرابط غير صالح" });
+      return respondResetLinkInvalid(res);
     }
-    if (row.usedAt) {
+    if (tokenStatus === "consumed") {
       const { throttled } = noteInvalidTokenAttempt({ req, endpoint: "reset-password", correlationId });
       if (throttled) {
-        return res.status(400).json({ error: "الرابط غير صالح" });
+        return respondResetLinkInvalid(res);
       }
       opsLog({
         type: OPS_EVENT.password_reset_token_invalid,
@@ -459,15 +472,15 @@ router.post("/api/auth/reset-password", async (req: Request, res: Response) => {
         correlationId,
         route,
         method,
-        actorId: row.userId,
+        actorId: row!.userId,
         metadata: { reason: "token_used" },
       });
-      return res.status(400).json({ error: "الرابط غير صالح" });
+      return respondResetLinkInvalid(res);
     }
-    if (new Date(row.expiresAt).getTime() <= Date.now()) {
+    if (tokenStatus === "expired") {
       const { throttled } = noteInvalidTokenAttempt({ req, endpoint: "reset-password", correlationId });
       if (throttled) {
-        return res.status(400).json({ error: "انتهت صلاحية الرابط" });
+        return respondResetLinkExpired(res);
       }
       opsLog({
         type: OPS_EVENT.password_reset_token_expired,
@@ -477,12 +490,12 @@ router.post("/api/auth/reset-password", async (req: Request, res: Response) => {
         correlationId,
         route,
         method,
-        actorId: row.userId,
+        actorId: row!.userId,
       });
-      return res.status(400).json({ error: "انتهت صلاحية الرابط" });
+      return respondResetLinkExpired(res);
     }
 
-    const user = await db.getUserById(row.userId);
+    const user = await db.getUserById(row!.userId);
     if (!user || !user.openId.startsWith("local_")) {
       opsLog({
         type: OPS_EVENT.password_reset_token_invalid,
@@ -492,15 +505,15 @@ router.post("/api/auth/reset-password", async (req: Request, res: Response) => {
         correlationId,
         route,
         method,
-        actorId: row.userId,
+        actorId: row!.userId,
         metadata: { reason: "user_missing_or_not_local" },
       });
-      return res.status(400).json({ error: "الرابط غير صالح" });
+      return respondResetLinkInvalid(res);
     }
 
     const passwordHash = await bcrypt.hash(newPassword, 12);
     await db.updateUserPassword(user.openId, passwordHash);
-    await db.markAuthTokenUsed(row.id);
+    await db.markAuthTokenUsed(row!.id);
     clearSessionCookie(res, req);
 
     opsLog({
@@ -631,15 +644,13 @@ router.post("/api/auth/request-email-verification", async (req: Request, res: Re
       return res.json({ success: true });
     }
 
-    const token = newToken();
-    const tokenHash = tokenToHash(token);
-    const expiresAt = new Date(Date.now() + VERIFY_TOKEN_EXPIRES_MS).toISOString();
+    const issued = issueAuthOneTimeToken(EMAIL_VERIFICATION_TOKEN_TTL_MS);
 
     const created = await db.createAuthToken({
       userId: user.id,
-      type: "email_verify",
-      tokenHash,
-      expiresAt,
+      type: AUTH_ONE_TIME_TOKEN_PURPOSE.emailVerification,
+      tokenHash: issued.tokenHash,
+      expiresAt: issued.expiresAt,
     });
 
     if (!created) {
@@ -658,7 +669,7 @@ router.post("/api/auth/request-email-verification", async (req: Request, res: Re
     }
 
     const baseUrl = baseUrlForLinks(req);
-    const verifyUrl = `${baseUrl}/api/auth/verify-email?token=${encodeURIComponent(token)}`;
+    const verifyUrl = `${baseUrl}/api/auth/verify-email?token=${encodeURIComponent(issued.plaintextToken)}`;
 
     await sendEmail({
       to: user.email,
@@ -702,8 +713,8 @@ router.get("/api/auth/verify-email", async (req: Request, res: Response) => {
   const method = req.method;
 
   try {
-    const token = typeof req.query.token === "string" ? req.query.token : "";
-    if (!token || token.length < 20) {
+    const rawToken = typeof req.query.token === "string" ? req.query.token : "";
+    if (!rawToken || !isPlausibleOneTimeTokenFromQuery(rawToken)) {
       noteInvalidTokenAttempt({ req, endpoint: "verify-email", correlationId });
       opsLog({
         type: OPS_EVENT.email_verification_token_invalid,
@@ -714,15 +725,19 @@ router.get("/api/auth/verify-email", async (req: Request, res: Response) => {
         route,
         method,
       });
-      return res.status(400).send("Invalid token");
+      return respondEmailVerificationInvalid(res);
     }
 
-    const tokenHash = tokenToHash(token);
-    const row = await db.getAuthTokenByHash(tokenHash, "email_verify");
-    if (!row || row.usedAt) {
+    const row = await db.getAuthTokenByHash(
+      tokenToHash(rawToken),
+      AUTH_ONE_TIME_TOKEN_PURPOSE.emailVerification
+    );
+    const tokenStatus = classifyAuthOneTimeToken(row);
+
+    if (tokenStatus === "missing" || tokenStatus === "consumed") {
       const { throttled } = noteInvalidTokenAttempt({ req, endpoint: "verify-email", correlationId });
       if (throttled) {
-        return res.status(400).send("Invalid token");
+        return respondEmailVerificationInvalid(res);
       }
       opsLog({
         type: OPS_EVENT.email_verification_token_invalid,
@@ -734,12 +749,12 @@ router.get("/api/auth/verify-email", async (req: Request, res: Response) => {
         method,
         actorId: row?.userId ?? null,
       });
-      return res.status(400).send("Invalid token");
+      return respondEmailVerificationInvalid(res);
     }
-    if (new Date(row.expiresAt).getTime() <= Date.now()) {
+    if (tokenStatus === "expired") {
       const { throttled } = noteInvalidTokenAttempt({ req, endpoint: "verify-email", correlationId });
       if (throttled) {
-        return res.status(400).send("Expired token");
+        return respondEmailVerificationExpired(res);
       }
       opsLog({
         type: OPS_EVENT.email_verification_token_expired,
@@ -749,13 +764,13 @@ router.get("/api/auth/verify-email", async (req: Request, res: Response) => {
         correlationId,
         route,
         method,
-        actorId: row.userId,
+        actorId: row!.userId,
       });
-      return res.status(400).send("Expired token");
+      return respondEmailVerificationExpired(res);
     }
 
-    await db.markUserEmailVerified(row.userId);
-    await db.markAuthTokenUsed(row.id);
+    await db.markUserEmailVerified(row!.userId);
+    await db.markAuthTokenUsed(row!.id);
 
     opsLog({
       type: OPS_EVENT.email_verification_completed,
@@ -765,7 +780,7 @@ router.get("/api/auth/verify-email", async (req: Request, res: Response) => {
       correlationId,
       route,
       method,
-      actorId: row.userId,
+      actorId: row!.userId,
     });
 
     // UX can be refined later; keep it simple and safe.
