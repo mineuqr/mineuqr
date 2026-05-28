@@ -1,8 +1,11 @@
 /**
- * AUTH2-D.6 — Shared TLS/proxy detection for cookies and deployment guards.
+ * Shared TLS/proxy detection for cookies, deployment guards, and email link bases.
  *
  * Single source of truth for "is this request HTTPS?" behind reverse proxies.
  * Requires Express `trust proxy` when terminated TLS sets X-Forwarded-* only.
+ *
+ * Consumers: cookies.ts, deploymentGuards.ts, auth-local/httpHelpers.ts
+ * Do not duplicate this logic elsewhere — see docs/AUTH2_CLOSURE.md
  */
 
 import type { Request } from "express";

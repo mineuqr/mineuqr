@@ -5,8 +5,8 @@
  * *not* a validation framework; emitters may still use custom strings when
  * needed, but should prefer these canonicals for stable querying.
  *
- * AUTH operator reference (meanings, triage, metadata): docs/auth-ops-signals.md
- * and server/_core/authOpsSignalGuide.ts (documentation-only).
+ * AUTH docs: docs/AUTH2_INDEX.md (index), auth-ops-signals.md (triage),
+ * authOpsSignalGuide.ts (per-event reference). Closure: docs/AUTH2_CLOSURE.md
  *
  * Naming convention: snake_case.
  * Categories: see OpsCategory in opsLog.ts

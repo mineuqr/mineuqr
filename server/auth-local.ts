@@ -3,6 +3,8 @@
  * Route orchestration lives here; pure helpers live under ./auth-local/.
  *
  * Operator triage: docs/auth-ops-signals.md
+ * Deployment: docs/deployment-auth-readiness.md
+ * Boundaries / closure: docs/AUTH2_CLOSURE.md
  * Contributor map: server/auth-local/README.md
  */
 import { Router, Request, Response } from "express";

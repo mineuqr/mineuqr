@@ -1,5 +1,7 @@
 # auth-local — contributor map
 
+AUTH2 is **closed** — see [docs/AUTH2_CLOSURE.md](../../docs/AUTH2_CLOSURE.md) before large changes.
+
 Local email/password routes registered as `localAuthRouter` from `server/auth-local.ts`.
 
 **This folder is not a service layer.** It holds stable helpers extracted in AUTH2-D.4. Route orchestration (DB, email, sequencing) stays in `auth-local.ts`.
