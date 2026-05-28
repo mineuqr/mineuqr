@@ -38,6 +38,12 @@ const INVALID_TOKEN_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
 const INVALID_TOKEN_MAX_ATTEMPTS = 25;
 const INVALID_TOKEN_EMIT_COOLDOWN_MS = 2 * 60 * 1000;
 
+const VERIFICATION_RESEND_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
+const VERIFICATION_RESEND_MAX_ACTOR = 5;
+const VERIFICATION_RESEND_MAX_IP = 15;
+const VERIFICATION_RESEND_EMIT_COOLDOWN_MS = 2 * 60 * 1000;
+const VERIFICATION_EMAIL_MIN_INTERVAL_MS = 60 * 1000; // 60 seconds
+
 type InvalidTokenKey = {
   ip: string;
   endpoint: "reset-password" | "verify-email";
@@ -51,6 +57,12 @@ type InvalidTokenCounter = {
 };
 
 const invalidTokenCounters = new Map<string, InvalidTokenCounter>();
+
+type EmitCooldownCounter = { lastEmittedAt?: number };
+const resendEmitCooldown = new Map<string, EmitCooldownCounter>();
+
+type ResendStamp = { lastSentAt: number; lastSeenAt: number };
+const verificationResendLastSent = new Map<string, ResendStamp>();
 
 function invalidTokenKey(input: InvalidTokenKey): string {
   return `invalid_token:${input.endpoint}:ip:${input.ip}`;
@@ -126,6 +138,63 @@ function noteInvalidTokenAttempt(input: {
   }
 
   return { throttled, count };
+}
+
+function maybeEmitResendCooldowned(input: {
+  key: string;
+  now: number;
+  correlationId?: string;
+  req: Request;
+  actorId?: number | null;
+  ip: string;
+  type: (typeof OPS_EVENT)[keyof typeof OPS_EVENT];
+  metadata: Record<string, unknown>;
+}): void {
+  const existing = resendEmitCooldown.get(input.key) ?? {};
+  const last = existing.lastEmittedAt ?? 0;
+  if (input.now - last < VERIFICATION_RESEND_EMIT_COOLDOWN_MS) return;
+  existing.lastEmittedAt = input.now;
+  resendEmitCooldown.set(input.key, existing);
+
+  opsLog({
+    type: input.type,
+    category: "AUTH",
+    severity: "warn",
+    ts: new Date(input.now).toISOString(),
+    correlationId: input.correlationId,
+    route: input.req.path,
+    method: input.req.method,
+    actorId: input.actorId ?? null,
+    ip: input.ip,
+    metadata: input.metadata,
+  });
+}
+
+function cleanupVerificationResendMaps(now: number): void {
+  // expire inactive keys
+  for (const [k, v] of Array.from(verificationResendLastSent.entries())) {
+    if (now - v.lastSeenAt > VERIFICATION_RESEND_WINDOW_MS * 2) verificationResendLastSent.delete(k);
+  }
+  for (const [k, v] of Array.from(resendEmitCooldown.entries())) {
+    const last = v.lastEmittedAt ?? 0;
+    if (now - last > VERIFICATION_RESEND_WINDOW_MS * 2) resendEmitCooldown.delete(k);
+  }
+
+  const MAX_KEYS = 5000;
+  if (verificationResendLastSent.size > MAX_KEYS) {
+    const entries = Array.from(verificationResendLastSent.entries()).sort(
+      (a, b) => a[1].lastSeenAt - b[1].lastSeenAt
+    );
+    const toRemove = verificationResendLastSent.size - MAX_KEYS;
+    for (let i = 0; i < toRemove; i++) verificationResendLastSent.delete(entries[i]![0]);
+  }
+  if (resendEmitCooldown.size > MAX_KEYS) {
+    const entries = Array.from(resendEmitCooldown.entries()).sort(
+      (a, b) => (a[1].lastEmittedAt ?? 0) - (b[1].lastEmittedAt ?? 0)
+    );
+    const toRemove = resendEmitCooldown.size - MAX_KEYS;
+    for (let i = 0; i < toRemove; i++) resendEmitCooldown.delete(entries[i]![0]);
+  }
 }
 
 function parseCookies(cookieHeader: string | undefined): Map<string, string> {
@@ -516,6 +585,72 @@ router.post("/api/auth/request-email-verification", async (req: Request, res: Re
       actorId: user.id,
     });
 
+    const now = Date.now();
+    cleanupVerificationResendMaps(now);
+    const ip = getClientIp(req);
+
+    // Rolling-window resend throttling (actor + ip). Preserve semantics: still return success.
+    const actorKey = `verify_resend:actor:${user.id}`;
+    const ipKey = `verify_resend:ip:${ip}`;
+    const actorLimit = checkRateLimit(actorKey, {
+      windowMs: VERIFICATION_RESEND_WINDOW_MS,
+      maxAttempts: VERIFICATION_RESEND_MAX_ACTOR,
+    });
+    const ipLimit = checkRateLimit(ipKey, {
+      windowMs: VERIFICATION_RESEND_WINDOW_MS,
+      maxAttempts: VERIFICATION_RESEND_MAX_IP,
+    });
+
+    if (!actorLimit.allowed || !ipLimit.allowed) {
+      maybeEmitResendCooldowned({
+        key: `verify_resend_emit:${!actorLimit.allowed ? actorKey : ipKey}`,
+        now,
+        correlationId,
+        req,
+        actorId: user.id,
+        ip,
+        type: OPS_EVENT.auth_verification_resend_burst,
+        metadata: {
+          actorKey,
+          ipKey,
+          actorAllowed: actorLimit.allowed,
+          ipAllowed: ipLimit.allowed,
+          actorRemaining: actorLimit.remaining,
+          ipRemaining: ipLimit.remaining,
+          retryAfterMs:
+            (actorLimit.retryAfterMs ?? 0) > (ipLimit.retryAfterMs ?? 0)
+              ? actorLimit.retryAfterMs
+              : ipLimit.retryAfterMs,
+          windowMs: VERIFICATION_RESEND_WINDOW_MS,
+          actorMax: VERIFICATION_RESEND_MAX_ACTOR,
+          ipMax: VERIFICATION_RESEND_MAX_IP,
+        },
+      });
+      return res.json({ success: true });
+    }
+
+    // Email amplification suppression: avoid repeated token+send storms.
+    const stampKey = `verify_email_last_sent:actor:${user.id}`;
+    const existing = verificationResendLastSent.get(stampKey);
+    if (existing) existing.lastSeenAt = now;
+    if (existing && now - existing.lastSentAt < VERIFICATION_EMAIL_MIN_INTERVAL_MS) {
+      maybeEmitResendCooldowned({
+        key: `verify_email_amp:${stampKey}`,
+        now,
+        correlationId,
+        req,
+        actorId: user.id,
+        ip,
+        type: OPS_EVENT.auth_email_amplification_suspected,
+        metadata: {
+          suppressed: true,
+          minIntervalMs: VERIFICATION_EMAIL_MIN_INTERVAL_MS,
+          sinceLastSendMs: now - existing.lastSentAt,
+        },
+      });
+      return res.json({ success: true });
+    }
+
     const token = newToken();
     const tokenHash = tokenToHash(token);
     const expiresAt = new Date(Date.now() + VERIFY_TOKEN_EXPIRES_MS).toISOString();
@@ -569,6 +704,8 @@ router.post("/api/auth/request-email-verification", async (req: Request, res: Re
       actorId: user.id,
       metadata: { purpose: "email_verify" },
     });
+
+    verificationResendLastSent.set(stampKey, { lastSentAt: now, lastSeenAt: now });
 
     return res.json({ success: true });
   } catch {
