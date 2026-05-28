@@ -25,15 +25,24 @@ import {
   getLoginRateLimitKey,
   LOGIN_RATE_LIMIT,
 } from "./_core/rateLimit";
-import { createHash, randomBytes } from "crypto";
+import { newToken, tokenToHash } from "./_core/authTokenUtils";
+import { createCooldownCounterMap } from "./_core/cooldownCounterMap";
+import {
+  cleanupEmitCooldownStamps,
+  trimEmitCooldownStamps,
+  tryConsumeEmitCooldown,
+  type EmitCooldownStamp,
+} from "./_core/emitCooldown";
 
 const router = Router();
 
+// --- Token lifetimes (password reset / email verify) ---
 const RESET_TOKEN_EXPIRES_MS = 30 * 60 * 1000; // 30 minutes
 const VERIFY_TOKEN_EXPIRES_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 const PASSWORD_RESET_RATE_LIMIT = { windowMs: 10 * 60 * 1000, maxAttempts: 5 } as const;
 
+// --- In-memory burst counters (invalid token / resend ops visibility) ---
 const INVALID_TOKEN_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
 const INVALID_TOKEN_MAX_ATTEMPTS = 25;
 const INVALID_TOKEN_EMIT_COOLDOWN_MS = 2 * 60 * 1000;
@@ -44,62 +53,37 @@ const VERIFICATION_RESEND_MAX_IP = 15;
 const VERIFICATION_RESEND_EMIT_COOLDOWN_MS = 2 * 60 * 1000;
 const VERIFICATION_EMAIL_MIN_INTERVAL_MS = 60 * 1000; // 60 seconds
 
-type InvalidTokenKey = {
-  ip: string;
-  endpoint: "reset-password" | "verify-email";
-};
+type InvalidTokenEndpoint = "reset-password" | "verify-email";
 
-type InvalidTokenCounter = {
-  count: number;
-  windowStart: number;
-  lastSeenAt: number;
-  lastEmittedAt?: number;
-};
+const invalidTokenCounters = createCooldownCounterMap({
+  windowMs: INVALID_TOKEN_WINDOW_MS,
+  emitCooldownMs: INVALID_TOKEN_EMIT_COOLDOWN_MS,
+  maxKeys: 5000,
+});
 
-const invalidTokenCounters = new Map<string, InvalidTokenCounter>();
-
-type EmitCooldownCounter = { lastEmittedAt?: number };
-const resendEmitCooldown = new Map<string, EmitCooldownCounter>();
+const resendEmitCooldown = new Map<string, EmitCooldownStamp>();
 
 type ResendStamp = { lastSentAt: number; lastSeenAt: number };
 const verificationResendLastSent = new Map<string, ResendStamp>();
 
-function invalidTokenKey(input: InvalidTokenKey): string {
+function invalidTokenCounterKey(input: {
+  ip: string;
+  endpoint: InvalidTokenEndpoint;
+}): string {
   return `invalid_token:${input.endpoint}:ip:${input.ip}`;
-}
-
-function cleanupInvalidTokenCounters(now: number): void {
-  for (const [k, c] of Array.from(invalidTokenCounters.entries())) {
-    if (now - c.lastSeenAt > INVALID_TOKEN_WINDOW_MS * 2) invalidTokenCounters.delete(k);
-  }
-  if (invalidTokenCounters.size <= 5000) return;
-  const entries = Array.from(invalidTokenCounters.entries()).sort(
-    (a, b) => a[1].lastSeenAt - b[1].lastSeenAt
-  );
-  const toRemove = invalidTokenCounters.size - 5000;
-  for (let i = 0; i < toRemove; i++) invalidTokenCounters.delete(entries[i]![0]);
 }
 
 function noteInvalidTokenAttempt(input: {
   req: Request;
-  endpoint: InvalidTokenKey["endpoint"];
+  endpoint: InvalidTokenEndpoint;
   correlationId?: string;
 }): { throttled: boolean; count: number } {
   const now = Date.now();
-  cleanupInvalidTokenCounters(now);
-
   const ip = getClientIp(input.req);
-  const key = invalidTokenKey({ ip, endpoint: input.endpoint });
+  const key = invalidTokenCounterKey({ ip, endpoint: input.endpoint });
+  const entry = invalidTokenCounters.increment(key, now);
+  const count = entry.count;
 
-  let c = invalidTokenCounters.get(key);
-  if (!c || now - c.windowStart >= INVALID_TOKEN_WINDOW_MS) {
-    c = { count: 0, windowStart: now, lastSeenAt: now };
-    invalidTokenCounters.set(key, c);
-  }
-  c.count += 1;
-  c.lastSeenAt = now;
-
-  const count = c.count;
   if (process.env.AUTH_DEBUG === "1") {
     console.info("[Auth] invalid token attempt", {
       ip,
@@ -114,9 +98,8 @@ function noteInvalidTokenAttempt(input: {
 
   // Low-noise operational visibility for bursts (cooldowned).
   if (count === INVALID_TOKEN_MAX_ATTEMPTS || throttled) {
-    const lastEmitted = c.lastEmittedAt ?? 0;
-    if (now - lastEmitted >= INVALID_TOKEN_EMIT_COOLDOWN_MS) {
-      c.lastEmittedAt = now;
+    if (invalidTokenCounters.canEmit(entry, now)) {
+      invalidTokenCounters.markEmitted(entry, now);
       opsLog({
         type: throttled
           ? OPS_EVENT.auth_token_bruteforce_suspected
@@ -152,11 +135,16 @@ function maybeEmitResendCooldowned(input: {
   type: (typeof OPS_EVENT)[keyof typeof OPS_EVENT];
   metadata: Record<string, unknown>;
 }): void {
-  const existing = resendEmitCooldown.get(input.key) ?? {};
-  const last = existing.lastEmittedAt ?? 0;
-  if (input.now - last < VERIFICATION_RESEND_EMIT_COOLDOWN_MS) return;
-  existing.lastEmittedAt = input.now;
-  resendEmitCooldown.set(input.key, existing);
+  if (
+    !tryConsumeEmitCooldown({
+      stamps: resendEmitCooldown,
+      key: input.key,
+      now: input.now,
+      cooldownMs: VERIFICATION_RESEND_EMIT_COOLDOWN_MS,
+    })
+  ) {
+    return;
+  }
 
   opsLog({
     type: input.type,
@@ -173,14 +161,16 @@ function maybeEmitResendCooldowned(input: {
 }
 
 function cleanupVerificationResendMaps(now: number): void {
-  // expire inactive keys
   for (const [k, v] of Array.from(verificationResendLastSent.entries())) {
-    if (now - v.lastSeenAt > VERIFICATION_RESEND_WINDOW_MS * 2) verificationResendLastSent.delete(k);
+    if (now - v.lastSeenAt > VERIFICATION_RESEND_WINDOW_MS * 2) {
+      verificationResendLastSent.delete(k);
+    }
   }
-  for (const [k, v] of Array.from(resendEmitCooldown.entries())) {
-    const last = v.lastEmittedAt ?? 0;
-    if (now - last > VERIFICATION_RESEND_WINDOW_MS * 2) resendEmitCooldown.delete(k);
-  }
+  cleanupEmitCooldownStamps(
+    resendEmitCooldown,
+    now,
+    VERIFICATION_RESEND_WINDOW_MS * 2
+  );
 
   const MAX_KEYS = 5000;
   if (verificationResendLastSent.size > MAX_KEYS) {
@@ -188,17 +178,14 @@ function cleanupVerificationResendMaps(now: number): void {
       (a, b) => a[1].lastSeenAt - b[1].lastSeenAt
     );
     const toRemove = verificationResendLastSent.size - MAX_KEYS;
-    for (let i = 0; i < toRemove; i++) verificationResendLastSent.delete(entries[i]![0]);
+    for (let i = 0; i < toRemove; i++) {
+      verificationResendLastSent.delete(entries[i]![0]);
+    }
   }
-  if (resendEmitCooldown.size > MAX_KEYS) {
-    const entries = Array.from(resendEmitCooldown.entries()).sort(
-      (a, b) => (a[1].lastEmittedAt ?? 0) - (b[1].lastEmittedAt ?? 0)
-    );
-    const toRemove = resendEmitCooldown.size - MAX_KEYS;
-    for (let i = 0; i < toRemove; i++) resendEmitCooldown.delete(entries[i]![0]);
-  }
+  trimEmitCooldownStamps(resendEmitCooldown, MAX_KEYS);
 }
 
+// --- HTTP helpers (cookies, responses, link base URL) ---
 function parseCookies(cookieHeader: string | undefined): Map<string, string> {
   if (!cookieHeader) return new Map();
   return new Map(Object.entries(parseCookieHeader(cookieHeader)));
@@ -224,15 +211,6 @@ function baseUrlForLinks(req: Request): string {
   const proto = req.protocol;
   if (host) return `${proto}://${host}`;
   return "https://www.mineuqr.com";
-}
-
-function tokenToHash(token: string): string {
-  return createHash("sha256").update(token).digest("hex");
-}
-
-function newToken(): string {
-  // 32 bytes → 43 chars base64url-ish when encoded; use hex for simplicity (64 chars).
-  return randomBytes(32).toString("hex");
 }
 
 /**

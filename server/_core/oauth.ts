@@ -8,6 +8,7 @@ import { opsLog } from "./opsLog";
 import { OPS_EVENT } from "./opsTaxonomy";
 import { getCorrelationId } from "./requestContext";
 import { AUTH_SESSION_TTL_MS } from "./sessionConfig";
+import { createCooldownCounterMap } from "./cooldownCounterMap";
 import {
   checkRateLimit,
   getClientIp,
@@ -28,32 +29,17 @@ const OAUTH_INVALID_BURST_WINDOW_MS = 10 * 60 * 1000;
 const OAUTH_INVALID_BURST_MAX = 25;
 const OAUTH_INVALID_EMIT_COOLDOWN_MS = 2 * 60 * 1000;
 
-type InvalidCounter = {
-  count: number;
-  windowStart: number;
-  lastSeenAt: number;
-  lastEmittedAt?: number;
-};
+const invalidCallbackCounters = createCooldownCounterMap({
+  windowMs: OAUTH_INVALID_BURST_WINDOW_MS,
+  emitCooldownMs: OAUTH_INVALID_EMIT_COOLDOWN_MS,
+  maxKeys: 5000,
+});
 
-const invalidCallbackCounters = new Map<string, InvalidCounter>();
-
-function invalidKey(req: Request, reason: "missing_params" | "malformed_state"): string {
+function invalidCallbackCounterKey(
+  req: Request,
+  reason: "missing_params" | "malformed_state"
+): string {
   return `oauth_invalid:${reason}:ip:${getClientIp(req)}`;
-}
-
-function cleanupInvalid(now: number): void {
-  for (const [k, c] of Array.from(invalidCallbackCounters.entries())) {
-    if (now - c.lastSeenAt > OAUTH_INVALID_BURST_WINDOW_MS * 2) {
-      invalidCallbackCounters.delete(k);
-    }
-  }
-  const MAX_KEYS = 5000;
-  if (invalidCallbackCounters.size <= MAX_KEYS) return;
-  const entries = Array.from(invalidCallbackCounters.entries()).sort(
-    (a, b) => a[1].lastSeenAt - b[1].lastSeenAt
-  );
-  const toRemove = invalidCallbackCounters.size - MAX_KEYS;
-  for (let i = 0; i < toRemove; i++) invalidCallbackCounters.delete(entries[i]![0]);
 }
 
 function noteInvalidCallbackAttempt(input: {
@@ -63,22 +49,12 @@ function noteInvalidCallbackAttempt(input: {
   metadata?: Record<string, unknown>;
 }): void {
   const now = Date.now();
-  cleanupInvalid(now);
-  const key = invalidKey(input.req, input.reason);
+  const key = invalidCallbackCounterKey(input.req, input.reason);
+  const entry = invalidCallbackCounters.increment(key, now);
 
-  let c = invalidCallbackCounters.get(key);
-  if (!c || now - c.windowStart >= OAUTH_INVALID_BURST_WINDOW_MS) {
-    c = { count: 0, windowStart: now, lastSeenAt: now };
-    invalidCallbackCounters.set(key, c);
-  }
-  c.count += 1;
-  c.lastSeenAt = now;
-
-  if (c.count < OAUTH_INVALID_BURST_MAX) return;
-
-  const last = c.lastEmittedAt ?? 0;
-  if (now - last < OAUTH_INVALID_EMIT_COOLDOWN_MS) return;
-  c.lastEmittedAt = now;
+  if (entry.count < OAUTH_INVALID_BURST_MAX) return;
+  if (!invalidCallbackCounters.canEmit(entry, now)) return;
+  invalidCallbackCounters.markEmitted(entry, now);
 
   opsLog({
     type: OPS_EVENT.oauth_callback_invalid_burst,
@@ -91,7 +67,7 @@ function noteInvalidCallbackAttempt(input: {
     ip: getClientIp(input.req),
     metadata: {
       reason: input.reason,
-      countInWindow: c.count,
+      countInWindow: entry.count,
       windowMs: OAUTH_INVALID_BURST_WINDOW_MS,
       threshold: OAUTH_INVALID_BURST_MAX,
       key,
