@@ -9,7 +9,6 @@ import { OPS_EVENT } from "./opsTaxonomy";
 import { getCorrelationId } from "./requestContext";
 import { AUTH_SESSION_TTL_MS } from "./sessionConfig";
 import {
-  AUTH_BURST_LIMIT,
   checkRateLimit,
   getClientIp,
 } from "./rateLimit";
