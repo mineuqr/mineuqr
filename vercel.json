@@ -4,9 +4,14 @@
   "installCommand": "pnpm install",
   "framework": null,
   "outputDirectory": "dist/public",
+  "functions": {
+    "api/index.ts": {
+      "includeFiles": "dist/vercel-api.mjs"
+    }
+  },
   "rewrites": [
-    { "source": "/api/:path*", "destination": "/api/server" },
-    { "source": "/uploads/:path*", "destination": "/api/server" },
+    { "source": "/api/:path*", "destination": "/api" },
+    { "source": "/uploads/:path*", "destination": "/api" },
     { "source": "/:path*", "destination": "/index.html" }
   ]
 }

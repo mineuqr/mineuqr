@@ -20,7 +20,7 @@ import {
 
 /**
  * Builds the Express application (routes + static/Vite).
- * Used by local `node dist/index.js` and Vercel `api/server.ts`.
+ * Used by local `node dist/index.js` and Vercel `api/index.ts` → dist/vercel-api.mjs.
  */
 export async function createApp(): Promise<Express> {
   validateAuthSecurityConfig();

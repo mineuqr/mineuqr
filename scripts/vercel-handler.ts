@@ -1,5 +1,5 @@
 /**
- * Vercel serverless entry (bundled to api/server.mjs at build time).
+ * Vercel serverless entry (bundled to dist/vercel-api.mjs at build time; loaded by api/index.ts).
  * Do not import from ../server/* here — use esbuild bundle so /var/task has one file.
  */
 import type { Express } from "express";
