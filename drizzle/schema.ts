@@ -140,6 +140,8 @@ export const users = mysqlTable("users", {
 	passwordHash: varchar({ length: 255 }),
 	emailVerifiedAt: timestamp({ mode: 'string' }),
 	passwordChangedAt: timestamp({ mode: 'string' }),
+	/** Stateless session revocation boundary (AUTH2-C Slice 3B.3). */
+	sessionValidAfter: timestamp({ mode: 'string' }),
 	role: mysqlEnum(['user','admin']).default('user').notNull(),
 	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
 	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),

@@ -80,6 +80,27 @@ export async function updateUserPassword(openId: string, passwordHash: string): 
   await db.update(users).set({ passwordHash, passwordChangedAt: new Date().toISOString() }).where(eq(users.openId, openId));
 }
 
+/**
+ * Stateless session revocation boundary (AUTH2-C Slice 3B.3).
+ * Any session issued (iat) before this timestamp should be treated as invalid.
+ */
+export async function updateUserSessionValidAfter(
+  openId: string,
+  sessionValidAfterIso: string = new Date().toISOString()
+): Promise<void> {
+  const db = await getDb();
+  if (!db) {
+    console.warn(
+      "[Database] Cannot update sessionValidAfter: database not available"
+    );
+    return;
+  }
+  await db
+    .update(users)
+    .set({ sessionValidAfter: sessionValidAfterIso })
+    .where(eq(users.openId, openId));
+}
+
 export async function markUserEmailVerified(userId: number): Promise<void> {
   const db = await getDb();
   if (!db) return;

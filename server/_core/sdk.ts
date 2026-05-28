@@ -381,6 +381,22 @@ class SDKServer {
       throw ForbiddenError("User not found");
     }
 
+    // Invalidate sessions issued before explicit revocation boundary (AUTH2-C Slice 3B.3).
+    if (user.sessionValidAfter && typeof session.iat === "number") {
+      const validAfterSec = Math.floor(
+        new Date(user.sessionValidAfter).getTime() / 1000
+      );
+      if (Number.isFinite(validAfterSec) && session.iat < validAfterSec) {
+        logSessionAnomaly(req, "session_invalid", {
+          severity: "warn",
+          actorId: user.id,
+          role: user.role,
+          metadata: { reason: "session_issued_before_session_valid_after" },
+        });
+        throw ForbiddenError("Invalid session cookie");
+      }
+    }
+
     // Invalidate sessions issued before password changes (AUTH2-B safety).
     if (user.passwordChangedAt && typeof session.iat === "number") {
       const changedAtSec = Math.floor(new Date(user.passwordChangedAt).getTime() / 1000);

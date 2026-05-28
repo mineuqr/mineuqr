@@ -23,6 +23,7 @@ import {
   getAllUsers, updateUserRole, deleteUser,
   getAllUsersWithSubscriptions,
   createInvoice, updateInvoice, getUserById,
+  updateUserSessionValidAfter,
   getHolidaysByRestaurant, createHoliday, updateHoliday, deleteHoliday, getHolidayById,
   getTablesByRestaurant, getTableById, getTableByRestaurantAndNumber, createTable, updateTable, deleteTable, createMultipleTables,
   getOrdersByRestaurant, getOrdersWithItemsByRestaurant, getOrderById, createOrder, updateOrderStatus, getOrderItemsByOrderId, createOrderItems, generateOrderNumber, getActiveOrdersCount,
@@ -1678,8 +1679,14 @@ export const appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
-    logout: publicProcedure.mutation(({ ctx }) => {
+    logout: publicProcedure.mutation(async ({ ctx }) => {
       clearSessionCookie(ctx.res, ctx.req);
+      // Stateless revocation boundary: invalidate any already-issued sessions for this user.
+      // This keeps architecture stateless (no per-session storage), but makes logout meaningful
+      // against replayed cookies.
+      if (ctx.user) {
+        await updateUserSessionValidAfter(ctx.user.openId);
+      }
       return { success: true } as const;
     }),
   }),

@@ -1,7 +1,17 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { appRouter } from "./routers";
 import { COOKIE_NAME } from "../shared/const";
 import type { TrpcContext } from "./_core/context";
+
+vi.mock("./db", async () => {
+  const actual = await vi.importActual<typeof import("./db")>("./db");
+  return {
+    ...actual,
+    updateUserSessionValidAfter: vi.fn(async () => {}),
+  };
+});
+
+import { updateUserSessionValidAfter } from "./db";
 
 type CookieCall = {
   name: string;
@@ -23,6 +33,10 @@ function createAuthContext(): { ctx: TrpcContext; clearedCookies: CookieCall[] }
     createdAt: new Date(),
     updatedAt: new Date(),
     lastSignedIn: new Date(),
+    passwordHash: null,
+    emailVerifiedAt: null,
+    passwordChangedAt: null,
+    sessionValidAfter: null,
   };
 
   const ctx: TrpcContext = {
@@ -49,6 +63,7 @@ describe("auth.logout", () => {
     const result = await caller.auth.logout();
 
     expect(result).toEqual({ success: true });
+    expect(updateUserSessionValidAfter).toHaveBeenCalledWith("sample-user");
     // One clear per login cookie variant (OAuth none + email lax, each secure true/false).
     expect(clearedCookies).toHaveLength(5);
     expect(clearedCookies.every((c) => c.name === COOKIE_NAME)).toBe(true);
