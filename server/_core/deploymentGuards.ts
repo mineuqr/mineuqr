@@ -176,12 +176,12 @@ export function deploymentGuardsMiddleware(
     const enforce = process.env.CSRF_ORIGIN_ENFORCE === "1";
 
     if (!origin) {
-      // Missing Origin is common for some clients; default to warning-only.
+      // Missing Origin is common for some clients; default to low-noise visibility.
       noteAndMaybeEmit(`csrf_origin_missing|host:${host}|path:${req.path}`, (countInWindow) => {
         opsLog({
           type: OPS_EVENT.csrf_origin_missing,
           category: "AUTH",
-          severity: "warn",
+          severity: enforce ? "warn" : "info",
           ts: new Date().toISOString(),
           correlationId,
           route: req.path,
@@ -207,7 +207,7 @@ export function deploymentGuardsMiddleware(
           opsLog({
             type: OPS_EVENT.csrf_origin_mismatch,
             category: "AUTH",
-            severity: "warn",
+            severity: enforce ? "warn" : "info",
             ts: new Date().toISOString(),
             correlationId,
             route: req.path,

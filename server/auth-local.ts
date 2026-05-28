@@ -100,13 +100,15 @@ function noteInvalidTokenAttempt(input: {
   c.lastSeenAt = now;
 
   const count = c.count;
-  console.log({
-    ip,
-    endpoint: input.endpoint,
-    key,
-    count,
-    threshold: INVALID_TOKEN_MAX_ATTEMPTS,
-  });
+  if (process.env.AUTH_DEBUG === "1") {
+    console.info("[Auth] invalid token attempt", {
+      ip,
+      endpoint: input.endpoint,
+      key,
+      count,
+      threshold: INVALID_TOKEN_MAX_ATTEMPTS,
+    });
+  }
 
   const throttled = count >= INVALID_TOKEN_MAX_ATTEMPTS;
 

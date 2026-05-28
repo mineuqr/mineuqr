@@ -13,7 +13,6 @@ import {
   checkRateLimit,
   getClientIp,
 } from "./rateLimit";
-import { logRateLimitExceeded } from "./authAudit";
 
 function getQueryParam(req: Request, key: string): string | undefined {
   const value = req.query[key];
@@ -128,7 +127,6 @@ export function registerOAuthRoutes(app: Express) {
     const rateKey = `oauth_callback:${getClientIp(req)}`;
     const burst = checkRateLimit(rateKey, OAUTH_CALLBACK_RATE_LIMIT);
     if (!burst.allowed) {
-      logRateLimitExceeded(req, rateKey);
       opsLog({
         type: OPS_EVENT.oauth_callback_rate_limited,
         category: "AUTH",
@@ -163,7 +161,7 @@ export function registerOAuthRoutes(app: Express) {
       opsLog({
         type: OPS_EVENT.oauth_callback_missing_params,
         category: "AUTH",
-        severity: "warn",
+        severity: "info",
         ts: new Date().toISOString(),
         correlationId,
         route,
@@ -185,7 +183,7 @@ export function registerOAuthRoutes(app: Express) {
       opsLog({
         type: OPS_EVENT.oauth_state_malformed,
         category: "AUTH",
-        severity: "warn",
+        severity: "info",
         ts: new Date().toISOString(),
         correlationId,
         route,
