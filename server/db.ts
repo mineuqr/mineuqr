@@ -2,6 +2,7 @@ import { eq, and, asc, desc, sql, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser, users,
+  authTokens, InsertAuthToken,
   restaurants, InsertRestaurant,
   categories, InsertCategory,
   menuItems, InsertMenuItem,
@@ -76,7 +77,49 @@ export async function getUserByOpenId(openId: string) {
 export async function updateUserPassword(openId: string, passwordHash: string): Promise<void> {
   const db = await getDb();
   if (!db) { console.warn("[Database] Cannot update password: database not available"); return; }
-  await db.update(users).set({ passwordHash }).where(eq(users.openId, openId));
+  await db.update(users).set({ passwordHash, passwordChangedAt: new Date().toISOString() }).where(eq(users.openId, openId));
+}
+
+export async function markUserEmailVerified(userId: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(users).set({ emailVerifiedAt: new Date().toISOString() }).where(eq(users.id, userId));
+}
+
+// ─── Auth token helpers (AUTH2-B) ───────────────────────────────────────────────
+
+export async function createAuthToken(input: {
+  userId: number;
+  type: InsertAuthToken["type"];
+  tokenHash: string;
+  expiresAt: string;
+}): Promise<{ id: number } | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(authTokens).values({
+    userId: input.userId,
+    type: input.type,
+    tokenHash: input.tokenHash,
+    expiresAt: input.expiresAt,
+  });
+  return { id: result[0].insertId };
+}
+
+export async function getAuthTokenByHash(tokenHash: string, type: InsertAuthToken["type"]) {
+  const db = await getDb();
+  if (!db) return null;
+  const [row] = await db
+    .select()
+    .from(authTokens)
+    .where(and(eq(authTokens.tokenHash, tokenHash), eq(authTokens.type, type)))
+    .limit(1);
+  return row ?? null;
+}
+
+export async function markAuthTokenUsed(tokenId: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(authTokens).set({ usedAt: new Date().toISOString() }).where(eq(authTokens.id, tokenId));
 }
 
 export async function getUserByEmail(email: string) {

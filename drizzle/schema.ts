@@ -138,6 +138,8 @@ export const users = mysqlTable("users", {
 	email: varchar({ length: 320 }),
 	loginMethod: varchar({ length: 64 }),
 	passwordHash: varchar({ length: 255 }),
+	emailVerifiedAt: timestamp({ mode: 'string' }),
+	passwordChangedAt: timestamp({ mode: 'string' }),
 	role: mysqlEnum(['user','admin']).default('user').notNull(),
 	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
 	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
@@ -146,6 +148,25 @@ export const users = mysqlTable("users", {
 (table) => [
 	index("users_openId_unique").on(table.openId),
 ]);
+
+// ─── Auth Tokens Table (Password reset / Email verification) ───────────────────
+export const authTokens = mysqlTable(
+  "auth_tokens",
+  {
+    id: int().autoincrement().notNull(),
+    userId: int().notNull(),
+    type: mysqlEnum(["password_reset", "email_verify"]).notNull(),
+    tokenHash: varchar({ length: 64 }).notNull(), // sha256 hex
+    expiresAt: timestamp({ mode: "string" }).notNull(),
+    usedAt: timestamp({ mode: "string" }),
+    createdAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+  },
+  (table) => [
+    index("auth_tokens_user_id").on(table.userId),
+    index("auth_tokens_token_hash").on(table.tokenHash),
+    index("auth_tokens_type").on(table.type),
+  ]
+);
 
 // ─── Invoices Table ────────────────────────────────────────
 export const invoices = mysqlTable("invoices", {
@@ -199,6 +220,8 @@ export const renewalNotifications = mysqlTable("renewal_notifications", {
 // ─── Type Exports ──────────────────────────────────────────
 export type InsertUser = typeof users.$inferInsert;
 export type SelectUser = typeof users.$inferSelect;
+export type InsertAuthToken = typeof authTokens.$inferInsert;
+export type SelectAuthToken = typeof authTokens.$inferSelect;
 
 export type InsertRestaurant = typeof restaurants.$inferInsert;
 export type SelectRestaurant = typeof restaurants.$inferSelect;

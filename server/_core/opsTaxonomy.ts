@@ -32,6 +32,17 @@ export const OPS_EVENT = {
   oauth_owner_notification_failed: "oauth_owner_notification_failed",
   auth_secret_weak: "auth_secret_weak",
   oauth_provider_misconfigured: "oauth_provider_misconfigured",
+  password_reset_requested: "password_reset_requested",
+  password_reset_email_sent: "password_reset_email_sent",
+  password_reset_token_invalid: "password_reset_token_invalid",
+  password_reset_token_expired: "password_reset_token_expired",
+  password_reset_completed: "password_reset_completed",
+  email_verification_requested: "email_verification_requested",
+  email_verification_email_sent: "email_verification_email_sent",
+  email_verification_token_invalid: "email_verification_token_invalid",
+  email_verification_token_expired: "email_verification_token_expired",
+  email_verification_completed: "email_verification_completed",
+  auth_token_create_failed: "auth_token_create_failed",
 
   // WEBHOOK / PAYMENT lifecycle
   webhook_received: "webhook_received",

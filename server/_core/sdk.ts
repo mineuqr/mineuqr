@@ -227,6 +227,7 @@ class SDKServer {
       name: payload.name,
     })
       .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+      .setIssuedAt(Math.floor(issuedAt / 1000))
       .setExpirationTime(expirationSeconds)
       .sign(secretKey);
   }
@@ -264,13 +265,36 @@ class SDKServer {
   private async verifySessionDetailed(
     cookieValue: string | undefined | null
   ): Promise<
-    | { session: { openId: string; appId: string; name: string } }
+    | { session: { openId: string; appId: string; name: string; iat?: number } }
     | { session: null; reason: "missing" | "invalid" }
   > {
     if (!cookieValue) return { session: null, reason: "missing" };
-    const session = await this.verifySession(cookieValue);
-    if (!session) return { session: null, reason: "invalid" };
-    return { session };
+    try {
+      const secretKey = this.getSessionSecret();
+      const { payload } = await jwtVerify(cookieValue, secretKey, {
+        algorithms: ["HS256"],
+      });
+      const { openId, appId, name, iat } = payload as Record<string, unknown>;
+
+      if (
+        !isNonEmptyString(openId) ||
+        !isNonEmptyString(appId) ||
+        !isNonEmptyString(name)
+      ) {
+        return { session: null, reason: "invalid" };
+      }
+
+      return {
+        session: {
+          openId,
+          appId,
+          name,
+          iat: typeof iat === "number" ? iat : undefined,
+        },
+      };
+    } catch {
+      return { session: null, reason: "invalid" };
+    }
   }
 
   async getUserInfoWithJwt(
@@ -354,6 +378,20 @@ class SDKServer {
         metadata: { openId: sessionUserId },
       });
       throw ForbiddenError("User not found");
+    }
+
+    // Invalidate sessions issued before password changes (AUTH2-B safety).
+    if (user.passwordChangedAt && typeof session.iat === "number") {
+      const changedAtSec = Math.floor(new Date(user.passwordChangedAt).getTime() / 1000);
+      if (Number.isFinite(changedAtSec) && session.iat < changedAtSec) {
+        logSessionAnomaly(req, "session_invalid", {
+          severity: "warn",
+          actorId: user.id,
+          role: user.role,
+          metadata: { reason: "session_issued_before_password_change" },
+        });
+        throw ForbiddenError("Invalid session cookie");
+      }
     }
 
     if (shouldRefreshLastSignedIn(user.lastSignedIn)) {
