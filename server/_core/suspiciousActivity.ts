@@ -13,6 +13,7 @@ type TrackInput = {
   category: OpsCategory;
   actorId?: number | null;
   role?: string | null;
+  restaurantId?: number | null;
   ip?: string;
   correlationId?: string;
   route?: string;
@@ -144,6 +145,7 @@ export function trackSuspiciousActivity(input: TrackInput): void {
     correlationId: input.correlationId,
     actorId: input.actorId ?? null,
     role: input.role ?? null,
+    restaurantId: input.restaurantId ?? null,
     route: input.route,
     procedure: input.procedure,
     action: input.action,

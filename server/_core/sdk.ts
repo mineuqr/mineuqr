@@ -337,7 +337,6 @@ class SDKServer {
         });
         user = await db.getUserByOpenId(userInfo.openId);
       } catch (error) {
-        console.error("[Auth] Failed to sync user from OAuth:", error);
         logSessionAnomaly(req, "session_user_sync_failed", {
           severity: "warn",
           metadata: {

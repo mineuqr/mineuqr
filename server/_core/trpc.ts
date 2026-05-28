@@ -41,8 +41,7 @@ const runtimeDiagnostics = t.middleware(async (opts) => {
 
     // Classify: unexpected/internal failures are always logged as errors.
     // Expected operational failures can be noisy; log them only when OPS_TRPC_DEBUG=1.
-    const isUnexpected =
-      !isTrpc || code === "INTERNAL_SERVER_ERROR" || code === "INTERNAL_ERROR";
+    const isUnexpected = !isTrpc || code === "INTERNAL_SERVER_ERROR";
 
     if (isUnexpected || OPS_TRPC_DEBUG) {
       opsLog({

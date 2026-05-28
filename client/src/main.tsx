@@ -8,6 +8,7 @@ import superjson from "superjson";
 import { LanguageProvider } from "./contexts/LanguageContext";
 import App from "./App";
 import { getLoginUrl, spaNavigate } from "./const";
+import { getClientCorrelationId } from "@/lib/correlation";
 import "./index.css";
 
 const queryClient = new QueryClient();
@@ -48,8 +49,13 @@ const trpcClient = trpc.createClient({
       url: "/api/trpc",
       transformer: superjson,
       fetch(input, init) {
+        const headers = new Headers((init as any)?.headers ?? undefined);
+        if (!headers.has("x-correlation-id")) {
+          headers.set("x-correlation-id", getClientCorrelationId());
+        }
         return globalThis.fetch(input, {
           ...(init ?? {}),
+          headers,
           credentials: "include",
         });
       },
