@@ -1,7 +1,13 @@
 import type { Request } from "express";
+import {
+  AUTH_OPS_EMIT_COOLDOWN_MS,
+  AUTH_OPS_MAX_COUNTER_KEYS,
+  AUTH_OPS_ROLLING_WINDOW_MS,
+  authHttpContext,
+  rollingWindowBurstMetadata,
+} from "./authOpsMetadata";
 import { opsLog } from "./opsLog";
 import { OPS_EVENT } from "./opsTaxonomy";
-import { getCorrelationId } from "./requestContext";
 import { getClientIp } from "./rateLimit";
 
 type SessionAnomaly =
@@ -13,10 +19,10 @@ type SessionAnomaly =
 
 type Counter = { lastSeenAt: number; lastEmittedAt?: number; count: number; windowStart: number };
 
-const WINDOW_MS = 10 * 60 * 1000;
+const WINDOW_MS = AUTH_OPS_ROLLING_WINDOW_MS;
 const CLEANUP_INTERVAL_MS = 60 * 1000;
-const EMIT_COOLDOWN_MS = 2 * 60 * 1000;
-const MAX_KEYS = 5000;
+const EMIT_COOLDOWN_MS = AUTH_OPS_EMIT_COOLDOWN_MS;
+const MAX_KEYS = AUTH_OPS_MAX_COUNTER_KEYS;
 
 let lastCleanup = Date.now();
 const counters = new Map<string, Counter>();
@@ -89,23 +95,25 @@ export function logSessionAnomaly(
   if (now - lastEmitted < EMIT_COOLDOWN_MS) return;
   c.lastEmittedAt = now;
 
+  const http = authHttpContext(req);
   opsLog({
     type: eventType(anomaly),
     category: "AUTH",
     severity: input.severity ?? "warn",
     ts: new Date(now).toISOString(),
-    correlationId: getCorrelationId(req),
-    route: req.path,
-    method: req.method,
-    ip: getClientIp(req),
+    correlationId: http.correlationId,
+    route: http.route,
+    method: http.method,
+    ip: http.ip,
     actorId: input.actorId ?? null,
     role: input.role ?? null,
-    metadata: {
-      anomaly,
+    metadata: rollingWindowBurstMetadata({
       countInWindow: c.count,
       windowMs: WINDOW_MS,
-      ...input.metadata,
-    },
+      key: k,
+      signal: anomaly,
+      extra: input.metadata,
+    }),
   });
 }
 

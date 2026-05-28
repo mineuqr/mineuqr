@@ -1,19 +1,20 @@
 import type { Request } from "express";
 import type { SelectUser } from "../../drizzle/schema";
+import { authHttpContext } from "./authOpsMetadata";
 import { opsLog } from "./opsLog";
-import { getCorrelationId } from "./requestContext";
 import { trackSuspiciousActivity } from "./suspiciousActivity";
 import { OPS_EVENT } from "./opsTaxonomy";
-import { getClientIp } from "./rateLimit";
 
 type AuditUser = Pick<SelectUser, "id" | "role" | "email"> | null | undefined;
 
 function basePayload(req: Request, extra?: Record<string, unknown>) {
+  const http = authHttpContext(req);
   return {
-    ts: new Date().toISOString(),
-    ip: getClientIp(req),
-    route: req.path,
-    method: req.method,
+    ts: http.ts,
+    ip: http.ip,
+    route: http.route,
+    method: http.method,
+    correlationId: http.correlationId,
     ...extra,
   };
 }
@@ -25,13 +26,12 @@ export function logFailedLogin(
   reason: "invalid_credentials" | "no_password" | "user_not_found" | "rate_limited"
 ): void {
   const payload = basePayload(req, { email, reason });
-  const correlationId = getCorrelationId(req);
   opsLog({
     type: OPS_EVENT.failed_login,
     category: "AUTH",
     severity: "warn",
     ts: payload.ts,
-    correlationId,
+    correlationId: payload.correlationId,
     route: payload.route,
     ip: payload.ip,
     method: payload.method,
@@ -47,7 +47,7 @@ export function logFailedLogin(
     signal: "failed_login",
     category: "AUTH",
     ip: payload.ip,
-    correlationId,
+    correlationId: payload.correlationId,
     route: payload.route,
     action: "login",
     metadata: { reason },
@@ -63,7 +63,7 @@ export function logSuccessfulLogin(req: Request, userId: number): void {
       category: "AUTH",
       severity: "info",
       ts: payload.ts,
-      correlationId: getCorrelationId(req),
+      correlationId: payload.correlationId,
       actorId: userId,
       route: payload.route,
       ip: payload.ip,
@@ -125,13 +125,12 @@ export function logTenantBoundaryViolation(
 /** Log rate-limit blocks on auth endpoints. */
 export function logRateLimitExceeded(req: Request, key: string): void {
   const payload = basePayload(req, { key });
-  const correlationId = getCorrelationId(req);
   opsLog({
     type: OPS_EVENT.rate_limit_exceeded,
     category: "AUTH",
     severity: "warn",
     ts: payload.ts,
-    correlationId,
+    correlationId: payload.correlationId,
     route: payload.route,
     ip: payload.ip,
     method: payload.method,
@@ -146,7 +145,7 @@ export function logRateLimitExceeded(req: Request, key: string): void {
     signal: "rate_limit_exceeded",
     category: "AUTH",
     ip: payload.ip,
-    correlationId,
+    correlationId: payload.correlationId,
     route: payload.route,
     action: "rate_limit",
     metadata: { key },

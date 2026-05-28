@@ -1,3 +1,9 @@
+import {
+  AUTH_OPS_EMIT_COOLDOWN_MS,
+  AUTH_OPS_MAX_COUNTER_KEYS,
+  AUTH_OPS_ROLLING_WINDOW_MS,
+  suspiciousActivityBurstMetadata,
+} from "./authOpsMetadata";
 import { opsLog, type OpsCategory } from "./opsLog";
 import { OPS_EVENT } from "./opsTaxonomy";
 
@@ -31,14 +37,14 @@ type Counter = {
 
 const OPS_SUSPICIOUS_DEBUG = process.env.OPS_SUSPICIOUS_DEBUG === "1";
 
-const DEFAULT_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
+const DEFAULT_WINDOW_MS = AUTH_OPS_ROLLING_WINDOW_MS;
 const DEFAULT_THRESHOLD = 5;
-const DEFAULT_EMIT_COOLDOWN_MS = 2 * 60 * 1000; // 2 minutes
+const DEFAULT_EMIT_COOLDOWN_MS = AUTH_OPS_EMIT_COOLDOWN_MS;
 
 const DEBUG_THRESHOLD = 3;
 const DEBUG_EMIT_COOLDOWN_MS = 30 * 1000;
 
-const MAX_KEYS = 5000;
+const MAX_KEYS = AUTH_OPS_MAX_COUNTER_KEYS;
 const CLEANUP_INTERVAL_MS = 60 * 1000;
 let lastCleanup = Date.now();
 
@@ -150,13 +156,14 @@ export function trackSuspiciousActivity(input: TrackInput): void {
     procedure: input.procedure,
     action: input.action,
     ip: input.ip,
-    metadata: {
+    metadata: suspiciousActivityBurstMetadata({
       signal: input.signal,
       count: counter.count,
-      timeWindowMs: windowMs,
+      windowMs,
+      threshold,
       key,
-      ...input.metadata,
-    },
+      extra: input.metadata,
+    }),
   });
 }
 

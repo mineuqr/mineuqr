@@ -4,9 +4,15 @@ import { setSessionCookie } from "./cookies";
 import { sdk } from "./sdk";
 import { createTrialSubscription } from "../create-trial-subscription";
 import { notifyOwnerNewUser } from "../owner-email-notifications";
-import { opsLog } from "./opsLog";
+import {
+  AUTH_OPS_EMIT_COOLDOWN_MS,
+  AUTH_OPS_MAX_COUNTER_KEYS,
+  AUTH_OPS_ROLLING_WINDOW_MS,
+  authHttpContext,
+  authOpsLog,
+  rollingWindowBurstMetadata,
+} from "./authOpsMetadata";
 import { OPS_EVENT } from "./opsTaxonomy";
-import { getCorrelationId } from "./requestContext";
 import { AUTH_SESSION_TTL_MS } from "./sessionConfig";
 import { createCooldownCounterMap } from "./cooldownCounterMap";
 import {
@@ -25,14 +31,14 @@ const OAUTH_CALLBACK_RATE_LIMIT = {
   maxAttempts: 60,
 } as const;
 
-const OAUTH_INVALID_BURST_WINDOW_MS = 10 * 60 * 1000;
+const OAUTH_INVALID_BURST_WINDOW_MS = AUTH_OPS_ROLLING_WINDOW_MS;
 const OAUTH_INVALID_BURST_MAX = 25;
-const OAUTH_INVALID_EMIT_COOLDOWN_MS = 2 * 60 * 1000;
+const OAUTH_INVALID_EMIT_COOLDOWN_MS = AUTH_OPS_EMIT_COOLDOWN_MS;
 
 const invalidCallbackCounters = createCooldownCounterMap({
   windowMs: OAUTH_INVALID_BURST_WINDOW_MS,
   emitCooldownMs: OAUTH_INVALID_EMIT_COOLDOWN_MS,
-  maxKeys: 5000,
+  maxKeys: AUTH_OPS_MAX_COUNTER_KEYS,
 });
 
 function invalidCallbackCounterKey(
@@ -56,23 +62,21 @@ function noteInvalidCallbackAttempt(input: {
   if (!invalidCallbackCounters.canEmit(entry, now)) return;
   invalidCallbackCounters.markEmitted(entry, now);
 
-  opsLog({
+  authOpsLog({
     type: OPS_EVENT.oauth_callback_invalid_burst,
-    category: "AUTH",
     severity: "warn",
-    ts: new Date(now).toISOString(),
+    req: input.req,
     correlationId: input.correlationId,
-    route: input.req.path,
-    method: input.req.method,
-    ip: getClientIp(input.req),
-    metadata: {
-      reason: input.reason,
+    ts: new Date(now).toISOString(),
+    metadata: rollingWindowBurstMetadata({
       countInWindow: entry.count,
       windowMs: OAUTH_INVALID_BURST_WINDOW_MS,
       threshold: OAUTH_INVALID_BURST_MAX,
       key,
-      ...input.metadata,
-    },
+      reason: input.reason,
+      signal: "oauth_callback_invalid_burst",
+      extra: input.metadata,
+    }),
   });
 }
 
@@ -94,28 +98,23 @@ export function registerOAuthRoutes(app: Express) {
   app.get("/api/oauth/callback", async (req: Request, res: Response) => {
     const code = getQueryParam(req, "code");
     const state = getQueryParam(req, "state");
-    const correlationId = getCorrelationId(req);
-    const route = req.path;
-    const method = req.method;
+    const http = authHttpContext(req);
 
     // Abuse protection: IP-only rolling window for callback hammering.
     const rateKey = `oauth_callback:${getClientIp(req)}`;
     const burst = checkRateLimit(rateKey, OAUTH_CALLBACK_RATE_LIMIT);
     if (!burst.allowed) {
-      opsLog({
+      authOpsLog({
         type: OPS_EVENT.oauth_callback_rate_limited,
-        category: "AUTH",
         severity: "warn",
-        ts: new Date().toISOString(),
-        correlationId,
-        route,
-        method,
-        ip: getClientIp(req),
+        req,
         metadata: {
           retryAfterMs: burst.retryAfterMs ?? OAUTH_CALLBACK_RATE_LIMIT.windowMs,
           windowMs: OAUTH_CALLBACK_RATE_LIMIT.windowMs,
+          threshold: OAUTH_CALLBACK_RATE_LIMIT.maxAttempts,
           maxAttempts: OAUTH_CALLBACK_RATE_LIMIT.maxAttempts,
           key: rateKey,
+          signal: "oauth_callback_rate_limited",
         },
       });
       const retryAfterSec = Math.ceil(
@@ -129,20 +128,16 @@ export function registerOAuthRoutes(app: Express) {
     if (!code || !state) {
       noteInvalidCallbackAttempt({
         req,
-        correlationId,
+        correlationId: http.correlationId,
         reason: "missing_params",
         metadata: { missingCode: !code, missingState: !state },
       });
-      opsLog({
+      authOpsLog({
         type: OPS_EVENT.oauth_callback_missing_params,
-        category: "AUTH",
         severity: "info",
-        ts: new Date().toISOString(),
-        correlationId,
-        route,
-        method,
-        ip: getClientIp(req),
+        req,
         metadata: {
+          reason: "missing_params",
           missingCode: !code,
           missingState: !state,
         },
@@ -154,17 +149,17 @@ export function registerOAuthRoutes(app: Express) {
     // Visibility: malformed OAuth state probes (do not leak details).
     const decoded = _safeDecodeOAuthState(state);
     if (!decoded.ok) {
-      noteInvalidCallbackAttempt({ req, correlationId, reason: "malformed_state" });
-      opsLog({
+      noteInvalidCallbackAttempt({
+        req,
+        correlationId: http.correlationId,
+        reason: "malformed_state",
+      });
+      authOpsLog({
         type: OPS_EVENT.oauth_state_malformed,
-        category: "AUTH",
         severity: "info",
-        ts: new Date().toISOString(),
-        correlationId,
-        route,
-        method,
-        ip: getClientIp(req),
+        req,
         metadata: {
+          reason: "malformed_state",
           issue: "state_base64_decode_failed",
         },
       });
@@ -177,16 +172,13 @@ export function registerOAuthRoutes(app: Express) {
       const userInfo = await sdk.getUserInfo(tokenResponse.accessToken);
 
       if (!userInfo.openId) {
-        opsLog({
+        authOpsLog({
           type: OPS_EVENT.oauth_userinfo_missing_openid,
-          category: "AUTH",
           severity: "warn",
-          ts: new Date().toISOString(),
-          correlationId,
-          route,
-          method,
+          req,
           metadata: {
             provider: "manus",
+            issue: "openid_missing",
           },
         });
         res.status(400).json({ error: "openId missing from user info" });
@@ -210,17 +202,14 @@ export function registerOAuthRoutes(app: Express) {
           try {
             await createTrialSubscription(user.id);
           } catch (error) {
-            opsLog({
+            authOpsLog({
               type: OPS_EVENT.oauth_trial_subscription_failed,
-              category: "AUTH",
               severity: "warn",
-              ts: new Date().toISOString(),
-              correlationId,
-              route,
-              method,
+              req,
               actorId: user.id,
               metadata: {
                 provider: "manus",
+                degradedReason: "trial_subscription_failed",
                 error: error instanceof Error ? error.message : String(error),
               },
             });
@@ -233,17 +222,14 @@ export function registerOAuthRoutes(app: Express) {
               loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
             });
           } catch (error) {
-            opsLog({
+            authOpsLog({
               type: OPS_EVENT.oauth_owner_notification_failed,
-              category: "AUTH",
               severity: "warn",
-              ts: new Date().toISOString(),
-              correlationId,
-              route,
-              method,
+              req,
               actorId: user.id,
               metadata: {
                 provider: "manus",
+                degradedReason: "owner_notification_failed",
                 error: error instanceof Error ? error.message : String(error),
               },
             });
@@ -263,17 +249,13 @@ export function registerOAuthRoutes(app: Express) {
 
       res.redirect(302, "/");
     } catch (error) {
-      opsLog({
+      authOpsLog({
         type: OPS_EVENT.oauth_callback_failed,
-        category: "AUTH",
         severity: "error",
-        ts: new Date().toISOString(),
-        correlationId,
-        route,
-        method,
-        ip: getClientIp(req),
+        req,
         metadata: {
           provider: "manus",
+          degradedReason: "oauth_callback_exception",
           error: error instanceof Error ? error.message : String(error),
         },
       });
