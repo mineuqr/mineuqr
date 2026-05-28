@@ -30,6 +30,12 @@ export const OPS_EVENT = {
   payment_provider_misconfigured: "payment_provider_misconfigured",
   payment_runtime_anomaly: "payment_runtime_anomaly",
 
+  // Operational health signals (MON-1R.2)
+  degraded_polling_pressure: "degraded_polling_pressure",
+  scheduled_task_started: "scheduled_task_started",
+  scheduled_task_completed: "scheduled_task_completed",
+  scheduled_task_runtime_warning: "scheduled_task_runtime_warning",
+
   // TENANT / ADMIN boundaries
   tenant_boundary_violation: "tenant_boundary_violation",
   unauthorized_admin_access: "unauthorized_admin_access",

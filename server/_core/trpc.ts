@@ -5,6 +5,7 @@ import type { TrpcContext } from "./context";
 import { opsLog } from "./opsLog";
 import { trackSuspiciousActivity } from "./suspiciousActivity";
 import { OPS_EVENT } from "./opsTaxonomy";
+import { trackTrpcProcedurePressure } from "./healthSignals";
 
 const t = initTRPC.context<TrpcContext>().create({
   transformer: superjson,
@@ -16,7 +17,17 @@ const OPS_TRPC_DEBUG = process.env.OPS_TRPC_DEBUG === "1";
 
 const runtimeDiagnostics = t.middleware(async (opts) => {
   try {
-    return await opts.next();
+    const result = await opts.next();
+
+    // Operational health visibility (MON-1R.2): aggregated polling pressure detection.
+    // This emits only when thresholds are crossed and is cooldowned.
+    trackTrpcProcedurePressure({
+      procedure: opts.path ?? "unknown",
+      procedureType: opts.type ?? "unknown",
+      correlationId: opts.ctx?.correlationId ?? undefined,
+    });
+
+    return result;
   } catch (cause) {
     const ctx = opts.ctx;
     const correlationId = ctx?.correlationId ?? undefined;
