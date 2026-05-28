@@ -7,6 +7,7 @@ import { SignJWT, jwtVerify } from "jose";
 import type { SelectUser } from "../../drizzle/schema";
 import * as db from "../db";
 import { ENV } from "./env";
+import { logSessionAnomaly } from "./sessionAudit";
 import type {
   ExchangeTokenRequest,
   ExchangeTokenResponse,
@@ -212,10 +213,7 @@ class SDKServer {
   async verifySession(
     cookieValue: string | undefined | null
   ): Promise<{ openId: string; appId: string; name: string } | null> {
-    if (!cookieValue) {
-      console.warn("[Auth] Missing session cookie");
-      return null;
-    }
+    if (!cookieValue) return null;
 
     try {
       const secretKey = this.getSessionSecret();
@@ -229,7 +227,6 @@ class SDKServer {
         !isNonEmptyString(appId) ||
         !isNonEmptyString(name)
       ) {
-        console.warn("[Auth] Session payload missing required fields");
         return null;
       }
 
@@ -239,9 +236,20 @@ class SDKServer {
         name,
       };
     } catch (error) {
-      console.warn("[Auth] Session verification failed", String(error));
       return null;
     }
+  }
+
+  private async verifySessionDetailed(
+    cookieValue: string | undefined | null
+  ): Promise<
+    | { session: { openId: string; appId: string; name: string } }
+    | { session: null; reason: "missing" | "invalid" }
+  > {
+    if (!cookieValue) return { session: null, reason: "missing" };
+    const session = await this.verifySession(cookieValue);
+    if (!session) return { session: null, reason: "invalid" };
+    return { session };
   }
 
   async getUserInfoWithJwt(
@@ -272,14 +280,22 @@ class SDKServer {
     // Regular authentication flow
     const cookies = this.parseCookies(req.headers.cookie);
     const sessionCookie = cookies.get(COOKIE_NAME);
-    const session = await this.verifySession(sessionCookie);
+    const verified = await this.verifySessionDetailed(sessionCookie);
 
-    if (!session) {
+    if (!verified.session) {
+      logSessionAnomaly(req, verified.reason === "missing" ? "session_cookie_missing" : "session_invalid", {
+        severity: verified.reason === "missing" ? "debug" : "warn",
+        metadata: { reason: verified.reason },
+      });
       throw ForbiddenError("Invalid session cookie");
     }
 
+    const session = verified.session;
     if (ENV.appId && session.appId !== ENV.appId) {
-      console.warn("[Auth] Session appId mismatch — rejecting token");
+      logSessionAnomaly(req, "session_appid_mismatch", {
+        severity: "warn",
+        metadata: { expectedAppId: ENV.appId, gotAppId: session.appId },
+      });
       throw ForbiddenError("Invalid session cookie");
     }
 
@@ -301,11 +317,22 @@ class SDKServer {
         user = await db.getUserByOpenId(userInfo.openId);
       } catch (error) {
         console.error("[Auth] Failed to sync user from OAuth:", error);
+        logSessionAnomaly(req, "session_user_sync_failed", {
+          severity: "warn",
+          metadata: {
+            reason: "oauth_sync_failed",
+            error: error instanceof Error ? error.message : String(error),
+          },
+        });
         throw ForbiddenError("Failed to sync user info");
       }
     }
 
     if (!user) {
+      logSessionAnomaly(req, "session_user_not_found", {
+        severity: "warn",
+        metadata: { openId: sessionUserId },
+      });
       throw ForbiddenError("User not found");
     }
 

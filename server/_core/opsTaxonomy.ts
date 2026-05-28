@@ -19,6 +19,11 @@ export const OPS_EVENT = {
   failed_login: "failed_login",
   login_success: "login_success",
   rate_limit_exceeded: "rate_limit_exceeded",
+  session_cookie_missing: "session_cookie_missing",
+  session_invalid: "session_invalid",
+  session_appid_mismatch: "session_appid_mismatch",
+  session_user_sync_failed: "session_user_sync_failed",
+  session_user_not_found: "session_user_not_found",
 
   // WEBHOOK / PAYMENT lifecycle
   webhook_received: "webhook_received",
