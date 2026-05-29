@@ -19,8 +19,24 @@ export const ENV = {
   oAuthServerUrl: process.env.OAUTH_SERVER_URL ?? "",
   ownerOpenId: process.env.OWNER_OPEN_ID ?? "",
   isProduction: process.env.NODE_ENV === "production",
+  /** `r2` (Cloudflare) or `forge` (legacy Manus proxy). */
+  storageProvider: process.env.STORAGE_PROVIDER ?? "forge",
   forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
+  r2AccountId: process.env.R2_ACCOUNT_ID ?? "",
+  r2AccessKeyId: process.env.R2_ACCESS_KEY_ID ?? "",
+  r2SecretAccessKey: process.env.R2_SECRET_ACCESS_KEY ?? "",
+  r2BucketName: process.env.R2_BUCKET_NAME ?? "",
+  r2PublicBaseUrl: process.env.R2_PUBLIC_BASE_URL ?? "",
+  r2Endpoint: (() => {
+    const explicit = process.env.R2_ENDPOINT?.trim();
+    if (explicit) return explicit.replace(/\/+$/, "");
+    const accountId = process.env.R2_ACCOUNT_ID?.trim();
+    if (accountId) {
+      return `https://${accountId}.r2.cloudflarestorage.com`;
+    }
+    return "";
+  })(),
   // Email configuration
   emailHost: process.env.EMAIL_HOST ?? "",
   emailPort: parseInt(process.env.EMAIL_PORT ?? "587"),
