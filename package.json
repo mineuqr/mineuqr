@@ -2,6 +2,12 @@
   "name": "qr_menu",
   "version": "1.0.0",
   "type": "module",
+  "imports": {
+    "#vercel-api": {
+      "types": "./scripts/vercel-handler.ts",
+      "default": "./dist/vercel-api.mjs"
+    }
+  },
   "license": "MIT",
   "scripts": {
     "dev": "cross-env NODE_ENV=development tsx watch server/_core/index.ts",
