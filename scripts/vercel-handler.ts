@@ -3,7 +3,7 @@
  * Do not import from ../server/* here — use esbuild bundle so /var/task has one file.
  */
 import type { Express } from "express";
-import { createApp } from "../server/_core/createApp";
+import { createApp } from "../server/_core/createApp.production";
 
 let appPromise: Promise<Express> | undefined;
 
