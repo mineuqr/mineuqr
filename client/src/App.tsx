@@ -23,6 +23,7 @@ import Contact from "./pages/Contact";
 import TemplateSelector from "./pages/TemplateSelector";
 import SubscriberLogin from "./pages/SubscriberLogin";
 import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import Profile from "./pages/Profile";
 import Notifications from "./pages/Notifications";
 import { useLanguage } from "./contexts/LanguageContext";
@@ -50,6 +51,7 @@ function Router() {
         <Route path="/subscription" component={SubscriptionManagement} />
         <Route path="/login" component={SubscriberLogin} />
         <Route path="/forgot-password" component={ForgotPassword} />
+        <Route path="/reset-password" component={ResetPassword} />
         <Route path="/profile" component={Profile} />
         <Route path="/notifications" component={Notifications} />
         <Route path="/admin" component={AdminManagement} />
