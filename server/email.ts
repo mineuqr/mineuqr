@@ -1,5 +1,8 @@
 import nodemailer from "nodemailer";
+import { Resend } from "resend";
 import { ENV } from "./_core/env";
+
+const DEFAULT_FROM = "MineuQR <info@mineuqr.com>";
 
 // إعداد البريد الإلكتروني باستخدام متغيرات البيئة المركزية
 const transporter = nodemailer.createTransport({
@@ -12,6 +15,24 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+let resendClient: Resend | null = null;
+
+function getResendClient(): Resend {
+  if (!resendClient) {
+    resendClient = new Resend(ENV.resendApiKey);
+  }
+  return resendClient;
+}
+
+/** Verified-domain From header (Resend + SMTP). */
+function getEmailFrom(): string {
+  const configured = ENV.emailFrom?.trim();
+  if (!configured) {
+    return DEFAULT_FROM;
+  }
+  return configured.includes("<") ? configured : `MineuQR <${configured}>`;
+}
+
 export interface EmailOptions {
   to: string;
   subject: string;
@@ -19,26 +40,53 @@ export interface EmailOptions {
   text?: string;
 }
 
+async function sendViaResend(options: EmailOptions): Promise<boolean> {
+  console.log("[Email] provider=resend");
+  const { error } = await getResendClient().emails.send({
+    from: getEmailFrom(),
+    to: options.to,
+    subject: options.subject,
+    html: options.html,
+    text: options.text,
+  });
+
+  if (error) {
+    console.error("[Email] Failed to send email:", error);
+    return false;
+  }
+
+  console.log(`[Email] Sent to ${options.to}: ${options.subject}`);
+  return true;
+}
+
+async function sendViaSmtp(options: EmailOptions): Promise<boolean> {
+  if (!ENV.emailUser || !ENV.emailPassword) {
+    console.warn("[Email] Email credentials not configured, skipping");
+    return false;
+  }
+
+  console.log("[Email] provider=smtp");
+  await transporter.sendMail({
+    from: getEmailFrom(),
+    to: options.to,
+    subject: options.subject,
+    html: options.html,
+    text: options.text,
+  });
+
+  console.log(`[Email] Sent to ${options.to}: ${options.subject}`);
+  return true;
+}
+
 /**
  * إرسال بريد إلكتروني
  */
 export async function sendEmail(options: EmailOptions): Promise<boolean> {
   try {
-    if (!ENV.emailUser || !ENV.emailPassword) {
-      console.warn("[Email] Email credentials not configured, skipping");
-      return false;
+    if (ENV.resendApiKey) {
+      return await sendViaResend(options);
     }
-
-    await transporter.sendMail({
-      from: ENV.emailFrom || ENV.emailUser,
-      to: options.to,
-      subject: options.subject,
-      html: options.html,
-      text: options.text,
-    });
-
-    console.log(`[Email] Sent to ${options.to}: ${options.subject}`);
-    return true;
+    return await sendViaSmtp(options);
   } catch (error) {
     console.error("[Email] Failed to send email:", error);
     return false;

@@ -38,6 +38,7 @@ export const ENV = {
     return "";
   })(),
   // Email configuration
+  resendApiKey: process.env.RESEND_API_KEY ?? "",
   emailHost: process.env.EMAIL_HOST ?? "",
   emailPort: parseInt(process.env.EMAIL_PORT ?? "587"),
   emailUser: process.env.EMAIL_USER ?? "",
