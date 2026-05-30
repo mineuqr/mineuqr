@@ -29,6 +29,7 @@ import {
   getOrdersByRestaurant, getOrdersWithItemsByRestaurant, getOrderById, createOrder, updateOrderStatus, getOrderItemsByOrderId, createOrderItems, generateOrderNumber, getActiveOrdersCount,
   restaurantAllowsTableOrdering,
 } from "./db";
+import { canChangeOwnPassword } from "./auth-local/httpHelpers";
 import { assertRestaurantAccess } from "./restaurantAccess";
 import { assertAdminAccess, assertNotSelfAdminTarget } from "./_core/assertAdminAccess";
 import { isRestaurantOpen, parseTemporaryClosure } from "./lib/restaurantHours";
@@ -1238,6 +1239,7 @@ const profileRouter = router({
       role: ctx.user.role,
       loginMethod: ctx.user.loginMethod,
       createdAt: ctx.user.createdAt,
+      canChangePassword: canChangeOwnPassword(ctx.user),
     };
   }),
   update: protectedProcedure
@@ -1265,16 +1267,16 @@ const profileRouter = router({
       newPassword: z.string().min(6),
     }))
     .mutation(async ({ input, ctx }) => {
-      // Only for local auth users
-      if (!ctx.user.openId.startsWith('local_')) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "تغيير كلمة المرور متاح فقط لحسابات البريد الإلكتروني" });
+      if (!canChangeOwnPassword(ctx.user)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "تغيير كلمة المرور غير متاح لهذا الحساب",
+        });
       }
-      // Verify current password
-      const user = await getUserByEmail(ctx.user.email || '');
-      if (!user || !user.passwordHash) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "لا يمكن التحقق من كلمة المرور" });
-      }
-      const valid = await bcrypt.compare(input.currentPassword, user.passwordHash);
+      const valid = await bcrypt.compare(
+        input.currentPassword,
+        ctx.user.passwordHash!
+      );
       if (!valid) {
         throw new TRPCError({ code: "UNAUTHORIZED", message: "كلمة المرور الحالية غير صحيحة" });
       }

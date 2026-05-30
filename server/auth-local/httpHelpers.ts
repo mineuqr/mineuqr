@@ -52,3 +52,11 @@ export function isLocalPasswordAccount(user: {
 }): boolean {
   return user.openId.startsWith("local_") && Boolean(user.email);
 }
+
+/** Self-service password change (must match login capability: email + stored hash). */
+export function canChangeOwnPassword(user: {
+  email: string | null;
+  passwordHash: string | null;
+}): boolean {
+  return Boolean(user.email?.trim()) && Boolean(user.passwordHash);
+}

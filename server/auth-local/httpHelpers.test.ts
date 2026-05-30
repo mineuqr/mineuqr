@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import type { Request } from "express";
-import { baseUrlForLinks } from "./httpHelpers";
+import { baseUrlForLinks, canChangeOwnPassword } from "./httpHelpers";
 
 function mockReq(input: {
   protocol?: string;
@@ -13,6 +13,35 @@ function mockReq(input: {
     get: (name: string) => (name.toLowerCase() === "host" ? input.host : undefined),
   } as Request;
 }
+
+describe("canChangeOwnPassword", () => {
+  it("returns true when email and passwordHash are present", () => {
+    expect(
+      canChangeOwnPassword({
+        email: "user@example.com",
+        passwordHash: "$2a$12$hash",
+      })
+    ).toBe(true);
+  });
+
+  it("returns false for Manus openId without passwordHash", () => {
+    expect(
+      canChangeOwnPassword({
+        email: "oauth@example.com",
+        passwordHash: null,
+      })
+    ).toBe(false);
+  });
+
+  it("returns false when email is missing", () => {
+    expect(
+      canChangeOwnPassword({
+        email: null,
+        passwordHash: "$2a$12$hash",
+      })
+    ).toBe(false);
+  });
+});
 
 describe("baseUrlForLinks", () => {
   const prevPublic = process.env.PUBLIC_APP_URL;

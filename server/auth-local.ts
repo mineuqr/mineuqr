@@ -54,6 +54,7 @@ import {
   baseUrlForLinks,
   genericAuthError,
   isLocalPasswordAccount,
+  canChangeOwnPassword,
   normalizeEmailFromBody,
   rateLimitedResponse,
 } from "./auth-local/httpHelpers";
@@ -537,9 +538,9 @@ router.post("/api/auth/change-password", async (req: Request, res: Response) => 
       return res.status(404).json({ error: "المستخدم غير موجود" });
     }
 
-    if (!user.openId.startsWith("local_")) {
+    if (!canChangeOwnPassword(user)) {
       return res.status(403).json({
-        error: "تغيير كلمة المرور متاح فقط لحسابات البريد الإلكتروني",
+        error: "تغيير كلمة المرور غير متاح لهذا الحساب",
       });
     }
 

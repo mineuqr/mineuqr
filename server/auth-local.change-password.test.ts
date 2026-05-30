@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import bcrypt from "bcryptjs";
 import express from "express";
 
 type Session = { openId: string; appId: string; name: string };
@@ -57,15 +58,17 @@ describe("POST /api/auth/change-password (STAB-SEC-1B.3D)", () => {
     await new Promise<void>((resolve) => server.close(() => resolve()));
   });
 
-  it("A) allows local_ user with valid session → success", async () => {
+  it("A) allows password-capable user (non-local openId) with valid session → success", async () => {
+    const passwordHash = await bcrypt.hash("oldpass123", 12);
     mocks.verifySession.mockResolvedValueOnce({
-      openId: "local_test@example.com",
+      openId: "j4Ztx2Wi3et3TD5zYNG5fy",
       appId: "test-app",
-      name: "Local User",
+      name: "Admin User",
     });
     mocks.getUserByOpenId.mockResolvedValueOnce({
-      openId: "local_test@example.com",
-      passwordHash: null,
+      openId: "j4Ztx2Wi3et3TD5zYNG5fy",
+      email: "admin@example.com",
+      passwordHash,
     });
     mocks.updateUserPassword.mockResolvedValueOnce(undefined);
 
@@ -75,7 +78,10 @@ describe("POST /api/auth/change-password (STAB-SEC-1B.3D)", () => {
         "content-type": "application/json",
         cookie: "app_session_id=test",
       },
-      body: JSON.stringify({ newPassword: "newpass123" }),
+      body: JSON.stringify({
+        currentPassword: "oldpass123",
+        newPassword: "newpass123",
+      }),
     });
 
     expect(res.status).toBe(200);
@@ -83,14 +89,15 @@ describe("POST /api/auth/change-password (STAB-SEC-1B.3D)", () => {
     expect(mocks.updateUserPassword).toHaveBeenCalledTimes(1);
   });
 
-  it("B) rejects OAuth/external user with valid session → forbidden", async () => {
+  it("B) rejects user without password hash → forbidden", async () => {
     mocks.verifySession.mockResolvedValueOnce({
       openId: "user-123",
       appId: "test-app",
-      name: "External User",
+      name: "OAuth User",
     });
     mocks.getUserByOpenId.mockResolvedValueOnce({
       openId: "user-123",
+      email: "oauth@example.com",
       passwordHash: null,
     });
 
@@ -105,7 +112,7 @@ describe("POST /api/auth/change-password (STAB-SEC-1B.3D)", () => {
 
     expect(res.status).toBe(403);
     const body = await res.json();
-    expect(body?.error).toMatch(/تغيير كلمة المرور متاح فقط/);
+    expect(body?.error).toMatch(/تغيير كلمة المرور غير متاح/);
     expect(mocks.updateUserPassword).toHaveBeenCalledTimes(0);
   });
 

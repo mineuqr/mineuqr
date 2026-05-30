@@ -95,7 +95,7 @@ export default function Profile() {
     });
   };
 
-  const isLocalAuth = profile?.loginMethod === "email";
+  const canChangePassword = profile?.canChangePassword === true;
 
   return (
     <div className="container max-w-2xl py-8" dir={isRtl ? "rtl" : "ltr"}>
@@ -156,8 +156,8 @@ export default function Profile() {
         </CardContent>
       </Card>
 
-      {/* Change Password Card - Only for local auth users */}
-      {isLocalAuth && (
+      {/* Change Password Card - email/password accounts only */}
+      {canChangePassword && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
