@@ -105,6 +105,15 @@ export default function SubscriberLogin() {
                     required
                   />
                 </div>
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setLocation("/forgot-password")}
+                    className="text-sm text-primary hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-sm px-1"
+                  >
+                    {t("auth.forgotPasswordLink")}
+                  </button>
+                </div>
               </div>
 
               <Button

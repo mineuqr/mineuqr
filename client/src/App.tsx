@@ -22,6 +22,7 @@ import About from "./pages/About";
 import Contact from "./pages/Contact";
 import TemplateSelector from "./pages/TemplateSelector";
 import SubscriberLogin from "./pages/SubscriberLogin";
+import ForgotPassword from "./pages/ForgotPassword";
 import Profile from "./pages/Profile";
 import Notifications from "./pages/Notifications";
 import { useLanguage } from "./contexts/LanguageContext";
@@ -48,6 +49,7 @@ function Router() {
         <Route path="/payments" component={PaymentHistory} />
         <Route path="/subscription" component={SubscriptionManagement} />
         <Route path="/login" component={SubscriberLogin} />
+        <Route path="/forgot-password" component={ForgotPassword} />
         <Route path="/profile" component={Profile} />
         <Route path="/notifications" component={Notifications} />
         <Route path="/admin" component={AdminManagement} />
