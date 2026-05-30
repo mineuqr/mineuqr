@@ -53,7 +53,6 @@ import { noteInvalidTokenAttempt } from "./auth-local/invalidTokenBurst";
 import {
   baseUrlForLinks,
   genericAuthError,
-  isLocalPasswordAccount,
   canChangeOwnPassword,
   normalizeEmailFromBody,
   rateLimitedResponse,
@@ -210,7 +209,7 @@ router.post("/api/auth/forgot-password", async (req: Request, res: Response) => 
 
     if (email) {
       const user = await db.getUserByEmail(email);
-      if (user && isLocalPasswordAccount(user)) {
+      if (user && canChangeOwnPassword(user)) {
         const issued = issueAuthOneTimeToken(PASSWORD_RESET_TOKEN_TTL_MS);
 
         const created = await db.createAuthToken({
@@ -230,8 +229,8 @@ router.post("/api/auth/forgot-password", async (req: Request, res: Response) => 
           });
         } else {
           const resetUrl = `${baseUrlForLinks(req)}/reset-password?token=${encodeURIComponent(issued.plaintextToken)}`;
-          await sendEmail({
-            to: user.email!,
+          const emailSent = await sendEmail({
+            to: user.email!.trim(),
             subject: "إعادة تعيين كلمة المرور",
             html: `
               <div style="font-family: Arial, sans-serif; direction: rtl; text-align: right;">
@@ -244,13 +243,15 @@ router.post("/api/auth/forgot-password", async (req: Request, res: Response) => 
             `,
           });
 
-          authOpsLog({
-            type: OPS_EVENT.password_reset_email_sent,
-            severity: "info",
-            req,
-            actorId: user.id,
-            metadata: { purpose: "password_reset" },
-          });
+          if (emailSent) {
+            authOpsLog({
+              type: OPS_EVENT.password_reset_email_sent,
+              severity: "info",
+              req,
+              actorId: user.id,
+              metadata: { purpose: "password_reset" },
+            });
+          }
         }
       }
     }
@@ -328,13 +329,13 @@ router.post("/api/auth/reset-password", async (req: Request, res: Response) => {
     }
 
     const user = await db.getUserById(row!.userId);
-    if (!user || !user.openId.startsWith("local_")) {
+    if (!user || !canChangeOwnPassword(user)) {
       authOpsLog({
         type: OPS_EVENT.password_reset_token_invalid,
         severity: "warn",
         req,
         actorId: row!.userId,
-        metadata: authTokenFailureReason("user_missing_or_not_local"),
+        metadata: authTokenFailureReason("user_missing_or_not_password_capable"),
       });
       return respondResetLinkInvalid(res);
     }

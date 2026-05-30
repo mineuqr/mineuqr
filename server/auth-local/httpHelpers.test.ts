@@ -24,6 +24,15 @@ describe("canChangeOwnPassword", () => {
     ).toBe(true);
   });
 
+  it("returns true for non-local openId when email and passwordHash exist (PASSWORD-2)", () => {
+    expect(
+      canChangeOwnPassword({
+        email: "admin@example.com",
+        passwordHash: "$2a$12$hash",
+      })
+    ).toBe(true);
+  });
+
   it("returns false for Manus openId without passwordHash", () => {
     expect(
       canChangeOwnPassword({

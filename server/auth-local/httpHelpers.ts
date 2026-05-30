@@ -45,15 +45,10 @@ export function normalizeEmailFromBody(body: unknown): string {
   return raw.trim().toLowerCase();
 }
 
-/** Local email/password accounts eligible for password reset. */
-export function isLocalPasswordAccount(user: {
-  openId: string;
-  email: string | null;
-}): boolean {
-  return user.openId.startsWith("local_") && Boolean(user.email);
-}
-
-/** Self-service password change (must match login capability: email + stored hash). */
+/**
+ * Self-service password change and forgot-password eligibility (PASSWORD-1 / PASSWORD-2).
+ * Requires stored email + passwordHash — not tied to openId prefix.
+ */
 export function canChangeOwnPassword(user: {
   email: string | null;
   passwordHash: string | null;
