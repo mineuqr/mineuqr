@@ -5,134 +5,354 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { toast } from "sonner";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { Mail, Lock, ArrowLeft, LogIn } from "lucide-react";
+import {
+  Mail,
+  Lock,
+  ArrowLeft,
+  LogIn,
+  AlertCircle,
+  Loader2,
+  Eye,
+  EyeOff,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const SERVER_INVALID_CREDENTIALS = "بيانات الدخول غير صحيحة";
+const SERVER_RATE_LIMITED = "محاولات كثيرة. يرجى المحاولة لاحقاً";
+
+function isValidEmail(value: string): boolean {
+  const trimmed = value.trim();
+  return trimmed.length > 0 && EMAIL_PATTERN.test(trimmed);
+}
+
+function mapLoginError(
+  status: number,
+  serverError: string | undefined,
+  retryAfterSec: number | undefined,
+  t: (key: string) => string
+): string {
+  if (status === 429) {
+    return retryAfterSec != null
+      ? t("auth.loginRateLimited").replace("{seconds}", String(retryAfterSec))
+      : t("auth.loginRateLimitedGeneric");
+  }
+  if (
+    status === 401 ||
+    serverError === SERVER_INVALID_CREDENTIALS
+  ) {
+    return t("auth.loginInvalidCredentials");
+  }
+  if (status === 400 && serverError?.trim()) {
+    return serverError.trim();
+  }
+  if (status >= 500) {
+    return t("auth.loginServerError");
+  }
+  if (serverError === SERVER_RATE_LIMITED) {
+    return t("auth.loginRateLimitedGeneric");
+  }
+  return t("auth.loginUnexpectedError");
+}
 
 export default function SubscriberLogin() {
   const { t, language } = useLanguage();
   const [, setLocation] = useLocation();
   const utils = trpc.useUtils();
+  const isRtl = language === "ar";
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<{
+    email?: string;
+    password?: string;
+  }>({});
+
+  const iconInset = isRtl ? "right" : "left";
+  const toggleInset = isRtl ? "left" : "right";
+  const inputPaddingStart = isRtl ? "paddingRight" : "paddingLeft";
+  const inputPaddingEnd = isRtl ? "paddingLeft" : "paddingRight";
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) return;
+    if (isLoading) return;
+
+    setFormError(null);
+    const nextFieldErrors: { email?: string; password?: string } = {};
+    const trimmedEmail = email.trim();
+
+    if (!trimmedEmail) {
+      nextFieldErrors.email = t("auth.loginEmailRequired");
+    } else if (!isValidEmail(trimmedEmail)) {
+      nextFieldErrors.email = t("auth.loginEmailInvalid");
+    }
+    if (!password) {
+      nextFieldErrors.password = t("auth.loginPasswordRequired");
+    }
+
+    if (Object.keys(nextFieldErrors).length > 0) {
+      setFieldErrors(nextFieldErrors);
+      return;
+    }
+    setFieldErrors({});
 
     setIsLoading(true);
+    let navigated = false;
+
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: trimmedEmail, password }),
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        toast.error(data.error || t("auth.loginError"));
-        return;
+      let data: { error?: string; retryAfterSec?: number } = {};
+      try {
+        data = await res.json();
+      } catch {
+        /* non-JSON body */
       }
 
-      toast.success(t("auth.loginSuccess"));
+      if (!res.ok) {
+        setFormError(
+          mapLoginError(res.status, data.error, data.retryAfterSec, t)
+        );
+        return;
+      }
 
       const user = await syncAuthAfterLogin(utils);
       if (!user) {
-        toast.error(t("auth.loginError"));
+        setFormError(t("auth.loginUnexpectedError"));
         return;
       }
 
+      navigated = true;
       setLocation("/dashboard");
-    } catch (error) {
-      toast.error(t("auth.loginError"));
+    } catch {
+      setFormError(t("auth.loginNetworkError"));
     } finally {
-      setIsLoading(false);
+      if (!navigated) {
+        setIsLoading(false);
+      }
     }
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4" dir={language === 'ar' ? 'rtl' : 'ltr'}>
+    <div
+      className="min-h-screen bg-background flex items-center justify-center p-4 sm:p-6"
+      dir={isRtl ? "rtl" : "ltr"}
+    >
       <div className="w-full max-w-md">
-        <Card className="border-border bg-card">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold text-foreground">
+        <Card className="border-border bg-card shadow-sm">
+          <CardHeader className="space-y-2 pb-2 text-center">
+            <CardTitle className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
               {t("auth.loginTitle")}
             </CardTitle>
-            <CardDescription className="text-muted-foreground">
+            <CardDescription className="text-base text-muted-foreground">
               {t("auth.loginSubtitle")}
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
+          <CardContent className="space-y-6 pt-2">
+            <form onSubmit={handleLogin} className="space-y-4" noValidate>
+              {formError && (
+                <Alert
+                  variant="destructive"
+                  className="border-destructive/50"
+                  role="alert"
+                  aria-live="assertive"
+                >
+                  <AlertCircle aria-hidden />
+                  <AlertTitle>{t("auth.loginErrorTitle")}</AlertTitle>
+                  <AlertDescription>{formError}</AlertDescription>
+                </Alert>
+              )}
+
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-foreground">
+                <Label htmlFor="login-email" className="text-foreground">
                   {t("auth.email")}
                 </Label>
                 <div className="relative">
-                  <Mail className="absolute top-3 text-muted-foreground h-4 w-4" style={{ [language === 'ar' ? 'right' : 'left']: '12px' }} />
+                  <Mail
+                    className="pointer-events-none absolute top-3 h-4 w-4 text-muted-foreground"
+                    style={{ [iconInset]: "12px" }}
+                    aria-hidden
+                  />
                   <Input
-                    id="email"
+                    id="login-email"
+                    name="email"
                     type="email"
+                    autoComplete="username"
+                    inputMode="email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (fieldErrors.email) {
+                        setFieldErrors((prev) => ({ ...prev, email: undefined }));
+                      }
+                      if (formError) setFormError(null);
+                    }}
                     placeholder={t("auth.emailPlaceholder")}
-                    className="bg-input border-border text-foreground"
-                    style={{ [language === 'ar' ? 'paddingRight' : 'paddingLeft']: '40px' }}
+                    className={cn(
+                      "min-h-11 bg-input border-border text-foreground",
+                      fieldErrors.email && "border-destructive"
+                    )}
+                    style={{ [inputPaddingStart]: "40px" }}
                     dir="ltr"
+                    aria-invalid={fieldErrors.email ? true : undefined}
+                    aria-describedby={
+                      fieldErrors.email ? "login-email-error" : undefined
+                    }
+                    disabled={isLoading}
                     required
                   />
                 </div>
+                {fieldErrors.email && (
+                  <p
+                    id="login-email-error"
+                    className="text-sm text-destructive"
+                    role="alert"
+                  >
+                    {fieldErrors.email}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-foreground">
-                  {t("auth.password")}
-                </Label>
-                <div className="relative">
-                  <Lock className="absolute top-3 text-muted-foreground h-4 w-4" style={{ [language === 'ar' ? 'right' : 'left']: '12px' }} />
-                  <Input
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder={t("auth.passwordPlaceholder")}
-                    className="bg-input border-border text-foreground"
-                    style={{ [language === 'ar' ? 'paddingRight' : 'paddingLeft']: '40px' }}
-                    dir="ltr"
-                    required
-                  />
-                </div>
-                <div className="flex justify-end">
+                <div className="flex items-center justify-between gap-2">
+                  <Label htmlFor="login-password" className="text-foreground">
+                    {t("auth.password")}
+                  </Label>
                   <button
                     type="button"
                     onClick={() => setLocation("/forgot-password")}
-                    className="text-sm text-primary hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-sm px-1"
+                    className="min-h-10 shrink-0 rounded-sm px-1 text-sm text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                    disabled={isLoading}
                   >
                     {t("auth.forgotPasswordLink")}
                   </button>
                 </div>
+                <div className="relative">
+                  <Lock
+                    className="pointer-events-none absolute top-3 h-4 w-4 text-muted-foreground"
+                    style={{ [iconInset]: "12px" }}
+                    aria-hidden
+                  />
+                  <Input
+                    id="login-password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      if (fieldErrors.password) {
+                        setFieldErrors((prev) => ({
+                          ...prev,
+                          password: undefined,
+                        }));
+                      }
+                      if (formError) setFormError(null);
+                    }}
+                    placeholder={t("auth.passwordPlaceholder")}
+                    className={cn(
+                      "min-h-11 bg-input border-border text-foreground",
+                      fieldErrors.password && "border-destructive"
+                    )}
+                    style={{
+                      [inputPaddingStart]: "40px",
+                      [inputPaddingEnd]: "44px",
+                    }}
+                    dir="ltr"
+                    aria-invalid={fieldErrors.password ? true : undefined}
+                    aria-describedby={
+                      fieldErrors.password ? "login-password-error" : undefined
+                    }
+                    disabled={isLoading}
+                    required
+                  />
+                  <button
+                    type="button"
+                    className={cn(
+                      "absolute top-1/2 flex min-h-10 min-w-10 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:text-foreground",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                    )}
+                    style={{ [toggleInset]: "4px" }}
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={
+                      showPassword
+                        ? t("auth.loginHidePassword")
+                        : t("auth.loginShowPassword")
+                    }
+                    aria-pressed={showPassword}
+                    aria-controls="login-password"
+                    disabled={isLoading}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" aria-hidden />
+                    ) : (
+                      <Eye className="h-4 w-4" aria-hidden />
+                    )}
+                  </button>
+                </div>
+                {fieldErrors.password && (
+                  <p
+                    id="login-password-error"
+                    className="text-sm text-destructive"
+                    role="alert"
+                  >
+                    {fieldErrors.password}
+                  </p>
+                )}
               </div>
 
               <Button
                 type="submit"
-                className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+                className="min-h-11 w-full bg-primary text-primary-foreground hover:bg-primary/90"
                 disabled={isLoading}
+                aria-busy={isLoading}
               >
-                <LogIn className="h-4 w-4 me-2" />
-                {isLoading ? t("auth.loggingIn") : t("auth.loginButton")}
+                {isLoading ? (
+                  <>
+                    <Loader2
+                      className="me-2 h-4 w-4 animate-spin"
+                      aria-hidden
+                    />
+                    {t("auth.loggingIn")}
+                  </>
+                ) : (
+                  <>
+                    <LogIn className="me-2 h-4 w-4" aria-hidden />
+                    {t("auth.loginButton")}
+                  </>
+                )}
               </Button>
             </form>
 
-            <div className="mt-4 text-center">
+            <div className="flex flex-col gap-2 text-center sm:flex-row sm:justify-center sm:gap-4">
               <Button
+                type="button"
                 variant="ghost"
-                className="text-muted-foreground hover:text-foreground"
+                className="min-h-11 text-muted-foreground hover:text-foreground"
                 onClick={() => setLocation("/")}
+                disabled={isLoading}
               >
-                <ArrowLeft className="h-4 w-4 me-1" />
+                <ArrowLeft
+                  className={cn("me-1 h-4 w-4", isRtl && "rotate-180")}
+                  aria-hidden
+                />
                 {t("auth.backToHome")}
               </Button>
             </div>
