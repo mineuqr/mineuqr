@@ -1,24 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// Mock nodemailer
-const mockSendMail = vi.fn().mockResolvedValue({ messageId: "test-id" });
-vi.mock("nodemailer", () => ({
-  default: {
-    createTransport: vi.fn(() => ({
-      sendMail: mockSendMail,
-    })),
-  },
+const mocks = vi.hoisted(() => ({
+  sendEmail: vi.fn<[], Promise<boolean>>(),
 }));
 
-// Mock ENV
+vi.mock("./email", () => ({
+  sendEmail: mocks.sendEmail,
+}));
+
 vi.mock("./_core/env", () => ({
   ENV: {
-    emailHost: "smtp.test.com",
-    emailPort: 587,
-    emailUser: "test@test.com",
-    emailPassword: "password123",
     emailFrom: "owner@mineuqr.com",
-    emailSecure: false,
+    emailUser: "",
+    emailPassword: "",
+    resendApiKey: "re_test_key",
   },
 }));
 
@@ -32,6 +27,7 @@ import {
 describe("Owner Email Notifications", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.sendEmail.mockResolvedValue(true);
   });
 
   describe("notifyOwnerNewUser", () => {
@@ -43,9 +39,9 @@ describe("Owner Email Notifications", () => {
       });
 
       expect(result).toBe(true);
-      expect(mockSendMail).toHaveBeenCalledTimes(1);
-      
-      const emailCall = mockSendMail.mock.calls[0][0];
+      expect(mocks.sendEmail).toHaveBeenCalledTimes(1);
+
+      const emailCall = mocks.sendEmail.mock.calls[0][0];
       expect(emailCall.subject).toContain("مستخدم جديد");
       expect(emailCall.to).toBe("owner@mineuqr.com");
       expect(emailCall.html).toContain("أحمد محمد");
@@ -61,9 +57,9 @@ describe("Owner Email Notifications", () => {
       });
 
       expect(result).toBe(true);
-      expect(mockSendMail).toHaveBeenCalledTimes(1);
-      
-      const emailCall = mockSendMail.mock.calls[0][0];
+      expect(mocks.sendEmail).toHaveBeenCalledTimes(1);
+
+      const emailCall = mocks.sendEmail.mock.calls[0][0];
       expect(emailCall.html).toContain("غير محدد");
     });
   });
@@ -79,9 +75,9 @@ describe("Owner Email Notifications", () => {
       });
 
       expect(result).toBe(true);
-      expect(mockSendMail).toHaveBeenCalledTimes(1);
-      
-      const emailCall = mockSendMail.mock.calls[0][0];
+      expect(mocks.sendEmail).toHaveBeenCalledTimes(1);
+
+      const emailCall = mocks.sendEmail.mock.calls[0][0];
       expect(emailCall.subject).toContain("اشتراك جديد");
       expect(emailCall.html).toContain("سارة أحمد");
       expect(emailCall.html).toContain("الخطة الاحترافية");
@@ -98,7 +94,7 @@ describe("Owner Email Notifications", () => {
       });
 
       expect(result).toBe(true);
-      const emailCall = mockSendMail.mock.calls[0][0];
+      const emailCall = mocks.sendEmail.mock.calls[0][0];
       expect(emailCall.html).toContain("سنوي");
     });
   });
@@ -113,9 +109,9 @@ describe("Owner Email Notifications", () => {
       });
 
       expect(result).toBe(true);
-      expect(mockSendMail).toHaveBeenCalledTimes(1);
-      
-      const emailCall = mockSendMail.mock.calls[0][0];
+      expect(mocks.sendEmail).toHaveBeenCalledTimes(1);
+
+      const emailCall = mocks.sendEmail.mock.calls[0][0];
       expect(emailCall.subject).toContain("مطعم جديد");
       expect(emailCall.html).toContain("مطعم الريان");
       expect(emailCall.html).toContain("Al Rayan Restaurant");
@@ -130,7 +126,7 @@ describe("Owner Email Notifications", () => {
       });
 
       expect(result).toBe(true);
-      const emailCall = mockSendMail.mock.calls[0][0];
+      const emailCall = mocks.sendEmail.mock.calls[0][0];
       expect(emailCall.html).toContain("مطعم النور");
       expect(emailCall.html).toContain("غير محدد");
     });
@@ -146,9 +142,9 @@ describe("Owner Email Notifications", () => {
       });
 
       expect(result).toBe(true);
-      expect(mockSendMail).toHaveBeenCalledTimes(1);
-      
-      const emailCall = mockSendMail.mock.calls[0][0];
+      expect(mocks.sendEmail).toHaveBeenCalledTimes(1);
+
+      const emailCall = mocks.sendEmail.mock.calls[0][0];
       expect(emailCall.subject).toContain("إلغاء اشتراك");
       expect(emailCall.html).toContain("فاطمة حسن");
       expect(emailCall.html).toContain("الخطة المؤسسية");
@@ -157,8 +153,8 @@ describe("Owner Email Notifications", () => {
   });
 
   describe("Email sending failure", () => {
-    it("should return false when sendMail fails", async () => {
-      mockSendMail.mockRejectedValueOnce(new Error("SMTP connection failed"));
+    it("should return false when sendEmail fails", async () => {
+      mocks.sendEmail.mockResolvedValueOnce(false);
 
       const result = await notifyOwnerNewUser({
         name: "test",

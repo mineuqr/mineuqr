@@ -1,28 +1,10 @@
-import nodemailer from "nodemailer";
 import { ENV } from "./_core/env";
+import { sendEmail } from "./email";
 import { formatInRestaurantTimezone } from "@shared/utils/timezone";
 
-// Create reusable transporter
-function createTransporter() {
-  if (!ENV.emailHost || !ENV.emailUser || !ENV.emailPassword) {
-    console.warn("[OwnerEmail] Email configuration is incomplete. Skipping email.");
-    return null;
-  }
-
-  return nodemailer.createTransport({
-    host: ENV.emailHost,
-    port: ENV.emailPort,
-    secure: ENV.emailSecure,
-    auth: {
-      user: ENV.emailUser,
-      pass: ENV.emailPassword,
-    },
-  });
-}
-
-// Owner email address (from EMAIL_FROM env)
+/** Owner inbox for platform notifications (Resend via sendEmail). */
 function getOwnerEmail(): string {
-  return ENV.emailFrom || ENV.emailUser;
+  return ENV.emailFrom || ENV.emailUser || "info@mineuqr.com";
 }
 
 // Common email styles
@@ -50,28 +32,22 @@ const emailStyles = `
 
 // Helper to send email
 async function sendOwnerEmail(subject: string, htmlBody: string): Promise<boolean> {
-  const transporter = createTransporter();
-  if (!transporter) return false;
+  const to = getOwnerEmail();
+  const html = `
+    <!DOCTYPE html>
+    <html dir="rtl" lang="ar">
+    <head><meta charset="UTF-8">${emailStyles}</head>
+    <body>${htmlBody}</body>
+    </html>
+  `;
 
-  try {
-    await transporter.sendMail({
-      from: `"منيو QR - إشعارات" <${getOwnerEmail()}>`,
-      to: getOwnerEmail(),
-      subject,
-      html: `
-        <!DOCTYPE html>
-        <html dir="rtl" lang="ar">
-        <head><meta charset="UTF-8">${emailStyles}</head>
-        <body>${htmlBody}</body>
-        </html>
-      `,
-    });
+  const sent = await sendEmail({ to, subject, html });
+  if (sent) {
     console.log(`[OwnerEmail] Email sent: ${subject}`);
-    return true;
-  } catch (error) {
-    console.error("[OwnerEmail] Failed to send email:", error);
-    return false;
+  } else {
+    console.error("[OwnerEmail] Failed to send email:", { subject, to });
   }
+  return sent;
 }
 
 // Format date for display
