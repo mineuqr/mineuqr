@@ -552,6 +552,19 @@ export default function Dashboard() {
   const gate = useAuthGate();
   const { user, authPending, authResolved, isAuthenticated, logout } = gate;
   const { t, language, dir } = useLanguage();
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    try {
+      if (sessionStorage.getItem("mineuqr_register_verify_hint")) {
+        sessionStorage.removeItem("mineuqr_register_verify_hint");
+        toast.info(t("auth.registerVerifyHint"), { duration: 10_000 });
+      }
+    } catch {
+      /* storage unavailable */
+    }
+  }, [isAuthenticated, t]);
+
   const [location] = useLocation();
   const [, routeParams] = useRoute("/dashboard/:section");
   const urlState = useMemo(

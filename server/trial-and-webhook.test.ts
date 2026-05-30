@@ -8,6 +8,16 @@ vi.mock("./db", () => ({
   createUserSubscription: vi.fn(async (subscription: any) => {
     return { id: 1, ...subscription };
   }),
+  getSubscriptionPlans: vi.fn(async () => [
+    {
+      id: 30002,
+      nameAr: "أساسي",
+      nameEn: "Basic",
+      priceMonthly: "29",
+      sortOrder: 1,
+      isActive: true,
+    },
+  ]),
   getSubscriptionPlanById: vi.fn(async (id: number) => {
     if (id === 1) {
       return {
@@ -50,7 +60,8 @@ describe("Trial Subscription", () => {
       expect(createUserSubscription).toHaveBeenCalledWith(
         expect.objectContaining({
           userId: 123,
-          planId: 1,
+          planId: 30002,
+          restaurantId: 0,
           status: "trial",
           billingCycle: "monthly",
         })

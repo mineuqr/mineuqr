@@ -18,17 +18,22 @@ import {
   Mail,
   Lock,
   ArrowLeft,
-  LogIn,
   AlertCircle,
   Loader2,
   Eye,
   EyeOff,
+  Store,
+  UserPlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+
+const VERIFY_HINT_STORAGE_KEY = "mineuqr_register_verify_hint";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MIN_PASSWORD_LENGTH = 8;
 
-const SERVER_INVALID_CREDENTIALS = "بيانات الدخول غير صحيحة";
+const SERVER_DUPLICATE_EMAIL = "البريد الإلكتروني مستخدم بالفعل";
 const SERVER_RATE_LIMITED = "محاولات كثيرة. يرجى المحاولة لاحقاً";
 
 function isValidEmail(value: string): boolean {
@@ -36,7 +41,7 @@ function isValidEmail(value: string): boolean {
   return trimmed.length > 0 && EMAIL_PATTERN.test(trimmed);
 }
 
-function mapLoginError(
+function mapRegisterError(
   status: number,
   serverError: string | undefined,
   retryAfterSec: number | undefined,
@@ -44,41 +49,43 @@ function mapLoginError(
 ): string {
   if (status === 429) {
     return retryAfterSec != null
-      ? t("auth.loginRateLimited").replace("{seconds}", String(retryAfterSec))
-      : t("auth.loginRateLimitedGeneric");
+      ? t("auth.registerRateLimited").replace("{seconds}", String(retryAfterSec))
+      : t("auth.registerRateLimitedGeneric");
   }
-  if (
-    status === 401 ||
-    serverError === SERVER_INVALID_CREDENTIALS
-  ) {
-    return t("auth.loginInvalidCredentials");
+  if (status === 409 || serverError === SERVER_DUPLICATE_EMAIL) {
+    return t("auth.registerDuplicateEmail");
   }
   if (status === 400 && serverError?.trim()) {
     return serverError.trim();
   }
   if (status >= 500) {
-    return t("auth.loginServerError");
+    return t("auth.registerServerError");
   }
   if (serverError === SERVER_RATE_LIMITED) {
-    return t("auth.loginRateLimitedGeneric");
+    return t("auth.registerRateLimitedGeneric");
   }
-  return t("auth.loginUnexpectedError");
+  return t("auth.registerUnexpectedError");
 }
 
-export default function SubscriberLogin() {
+export default function Register() {
   const { t, language } = useLanguage();
   const [, setLocation] = useLocation();
   const utils = trpc.useUtils();
   const isRtl = language === "ar";
 
+  const [restaurantName, setRestaurantName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<{
+    restaurantName?: string;
     email?: string;
     password?: string;
+    confirmPassword?: string;
   }>({});
 
   const iconInset = isRtl ? "right" : "left";
@@ -86,25 +93,37 @@ export default function SubscriberLogin() {
   const inputPaddingStart = isRtl ? "paddingRight" : "paddingLeft";
   const inputPaddingEnd = isRtl ? "paddingLeft" : "paddingRight";
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isLoading) return;
 
     setFormError(null);
-    const nextFieldErrors: { email?: string; password?: string } = {};
+
+    const next: typeof fieldErrors = {};
+    const trimmedRestaurant = restaurantName.trim();
     const trimmedEmail = email.trim();
 
+    if (!trimmedRestaurant) {
+      next.restaurantName = t("auth.registerRestaurantRequired");
+    }
     if (!trimmedEmail) {
-      nextFieldErrors.email = t("auth.loginEmailRequired");
+      next.email = t("auth.registerEmailRequired");
     } else if (!isValidEmail(trimmedEmail)) {
-      nextFieldErrors.email = t("auth.loginEmailInvalid");
+      next.email = t("auth.registerEmailInvalid");
     }
     if (!password) {
-      nextFieldErrors.password = t("auth.loginPasswordRequired");
+      next.password = t("auth.registerPasswordRequired");
+    } else if (password.length < MIN_PASSWORD_LENGTH) {
+      next.password = t("auth.registerPasswordMinLength");
+    }
+    if (!confirmPassword) {
+      next.confirmPassword = t("auth.registerConfirmRequired");
+    } else if (password !== confirmPassword) {
+      next.confirmPassword = t("auth.registerPasswordMismatch");
     }
 
-    if (Object.keys(nextFieldErrors).length > 0) {
-      setFieldErrors(nextFieldErrors);
+    if (Object.keys(next).length > 0) {
+      setFieldErrors(next);
       return;
     }
     setFieldErrors({});
@@ -113,36 +132,53 @@ export default function SubscriberLogin() {
     let navigated = false;
 
     try {
-      const res = await fetch("/api/auth/login", {
+      const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: trimmedEmail, password }),
+        credentials: "include",
+        body: JSON.stringify({
+          restaurantName: trimmedRestaurant,
+          email: trimmedEmail,
+          password,
+        }),
       });
 
-      let data: { error?: string; retryAfterSec?: number } = {};
+      let data: {
+        error?: string;
+        retryAfterSec?: number;
+        success?: boolean;
+        verificationEmailSent?: boolean;
+      } = {};
       try {
         data = await res.json();
       } catch {
-        /* non-JSON body */
+        /* non-JSON */
       }
 
       if (!res.ok) {
-        setFormError(
-          mapLoginError(res.status, data.error, data.retryAfterSec, t)
-        );
+        setFormError(mapRegisterError(res.status, data.error, data.retryAfterSec, t));
         return;
       }
 
       const user = await syncAuthAfterLogin(utils);
       if (!user) {
-        setFormError(t("auth.loginUnexpectedError"));
+        setFormError(t("auth.registerUnexpectedError"));
         return;
+      }
+
+      if (data.verificationEmailSent !== false) {
+        try {
+          sessionStorage.setItem(VERIFY_HINT_STORAGE_KEY, "1");
+        } catch {
+          /* private mode */
+        }
+        toast.info(t("auth.registerVerifyHint"), { duration: 8000 });
       }
 
       navigated = true;
       setLocation("/dashboard");
     } catch {
-      setFormError(t("auth.loginNetworkError"));
+      setFormError(t("auth.registerNetworkError"));
     } finally {
       if (!navigated) {
         setIsLoading(false);
@@ -159,14 +195,14 @@ export default function SubscriberLogin() {
         <Card className="border-border bg-card shadow-sm">
           <CardHeader className="space-y-2 pb-2 text-center">
             <CardTitle className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-              {t("auth.loginTitle")}
+              {t("auth.registerTitle")}
             </CardTitle>
             <CardDescription className="text-base text-muted-foreground">
-              {t("auth.loginSubtitle")}
+              {t("auth.registerSubtitle")}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6 pt-2">
-            <form onSubmit={handleLogin} className="space-y-4" noValidate>
+            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
               {formError && (
                 <Alert
                   variant="destructive"
@@ -175,13 +211,66 @@ export default function SubscriberLogin() {
                   aria-live="assertive"
                 >
                   <AlertCircle aria-hidden />
-                  <AlertTitle>{t("auth.loginErrorTitle")}</AlertTitle>
+                  <AlertTitle>{t("auth.registerErrorTitle")}</AlertTitle>
                   <AlertDescription>{formError}</AlertDescription>
                 </Alert>
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="login-email" className="text-foreground">
+                <Label htmlFor="register-restaurant" className="text-foreground">
+                  {t("auth.registerRestaurantName")}
+                </Label>
+                <div className="relative">
+                  <Store
+                    className="pointer-events-none absolute top-3 h-4 w-4 text-muted-foreground"
+                    style={{ [iconInset]: "12px" }}
+                    aria-hidden
+                  />
+                  <Input
+                    id="register-restaurant"
+                    name="restaurantName"
+                    type="text"
+                    autoComplete="organization"
+                    value={restaurantName}
+                    onChange={(e) => {
+                      setRestaurantName(e.target.value);
+                      if (fieldErrors.restaurantName) {
+                        setFieldErrors((p) => ({
+                          ...p,
+                          restaurantName: undefined,
+                        }));
+                      }
+                      if (formError) setFormError(null);
+                    }}
+                    placeholder={t("auth.registerRestaurantPlaceholder")}
+                    className={cn(
+                      "min-h-11 bg-input border-border text-foreground",
+                      fieldErrors.restaurantName && "border-destructive"
+                    )}
+                    style={{ [inputPaddingStart]: "40px" }}
+                    aria-invalid={fieldErrors.restaurantName ? true : undefined}
+                    aria-describedby={
+                      fieldErrors.restaurantName
+                        ? "register-restaurant-error"
+                        : undefined
+                    }
+                    disabled={isLoading}
+                    required
+                  />
+                </div>
+                {fieldErrors.restaurantName && (
+                  <p
+                    id="register-restaurant-error"
+                    className="text-sm text-destructive"
+                    role="alert"
+                  >
+                    {fieldErrors.restaurantName}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="register-email" className="text-foreground">
                   {t("auth.email")}
                 </Label>
                 <div className="relative">
@@ -191,16 +280,16 @@ export default function SubscriberLogin() {
                     aria-hidden
                   />
                   <Input
-                    id="login-email"
+                    id="register-email"
                     name="email"
                     type="email"
-                    autoComplete="username"
+                    autoComplete="email"
                     inputMode="email"
                     value={email}
                     onChange={(e) => {
                       setEmail(e.target.value);
                       if (fieldErrors.email) {
-                        setFieldErrors((prev) => ({ ...prev, email: undefined }));
+                        setFieldErrors((p) => ({ ...p, email: undefined }));
                       }
                       if (formError) setFormError(null);
                     }}
@@ -213,7 +302,7 @@ export default function SubscriberLogin() {
                     dir="ltr"
                     aria-invalid={fieldErrors.email ? true : undefined}
                     aria-describedby={
-                      fieldErrors.email ? "login-email-error" : undefined
+                      fieldErrors.email ? "register-email-error" : undefined
                     }
                     disabled={isLoading}
                     required
@@ -221,7 +310,7 @@ export default function SubscriberLogin() {
                 </div>
                 {fieldErrors.email && (
                   <p
-                    id="login-email-error"
+                    id="register-email-error"
                     className="text-sm text-destructive"
                     role="alert"
                   >
@@ -231,19 +320,9 @@ export default function SubscriberLogin() {
               </div>
 
               <div className="space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <Label htmlFor="login-password" className="text-foreground">
-                    {t("auth.password")}
-                  </Label>
-                  <button
-                    type="button"
-                    onClick={() => setLocation("/forgot-password")}
-                    className="min-h-10 shrink-0 rounded-sm px-1 text-sm text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                    disabled={isLoading}
-                  >
-                    {t("auth.forgotPasswordLink")}
-                  </button>
-                </div>
+                <Label htmlFor="register-password" className="text-foreground">
+                  {t("auth.password")}
+                </Label>
                 <div className="relative">
                   <Lock
                     className="pointer-events-none absolute top-3 h-4 w-4 text-muted-foreground"
@@ -251,18 +330,15 @@ export default function SubscriberLogin() {
                     aria-hidden
                   />
                   <Input
-                    id="login-password"
+                    id="register-password"
                     name="password"
                     type={showPassword ? "text" : "password"}
-                    autoComplete="current-password"
+                    autoComplete="new-password"
                     value={password}
                     onChange={(e) => {
                       setPassword(e.target.value);
                       if (fieldErrors.password) {
-                        setFieldErrors((prev) => ({
-                          ...prev,
-                          password: undefined,
-                        }));
+                        setFieldErrors((p) => ({ ...p, password: undefined }));
                       }
                       if (formError) setFormError(null);
                     }}
@@ -278,7 +354,7 @@ export default function SubscriberLogin() {
                     dir="ltr"
                     aria-invalid={fieldErrors.password ? true : undefined}
                     aria-describedby={
-                      fieldErrors.password ? "login-password-error" : undefined
+                      fieldErrors.password ? "register-password-error" : undefined
                     }
                     disabled={isLoading}
                     required
@@ -297,7 +373,7 @@ export default function SubscriberLogin() {
                         : t("auth.loginShowPassword")
                     }
                     aria-pressed={showPassword}
-                    aria-controls="login-password"
+                    aria-controls="register-password"
                     disabled={isLoading}
                   >
                     {showPassword ? (
@@ -309,11 +385,93 @@ export default function SubscriberLogin() {
                 </div>
                 {fieldErrors.password && (
                   <p
-                    id="login-password-error"
+                    id="register-password-error"
                     className="text-sm text-destructive"
                     role="alert"
                   >
                     {fieldErrors.password}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="register-confirm" className="text-foreground">
+                  {t("auth.confirmPassword")}
+                </Label>
+                <div className="relative">
+                  <Lock
+                    className="pointer-events-none absolute top-3 h-4 w-4 text-muted-foreground"
+                    style={{ [iconInset]: "12px" }}
+                    aria-hidden
+                  />
+                  <Input
+                    id="register-confirm"
+                    name="confirmPassword"
+                    type={showConfirmPassword ? "text" : "password"}
+                    autoComplete="new-password"
+                    value={confirmPassword}
+                    onChange={(e) => {
+                      setConfirmPassword(e.target.value);
+                      if (fieldErrors.confirmPassword) {
+                        setFieldErrors((p) => ({
+                          ...p,
+                          confirmPassword: undefined,
+                        }));
+                      }
+                      if (formError) setFormError(null);
+                    }}
+                    placeholder={t("auth.resetPasswordConfirmPlaceholder")}
+                    className={cn(
+                      "min-h-11 bg-input border-border text-foreground",
+                      fieldErrors.confirmPassword && "border-destructive"
+                    )}
+                    style={{
+                      [inputPaddingStart]: "40px",
+                      [inputPaddingEnd]: "44px",
+                    }}
+                    dir="ltr"
+                    aria-invalid={
+                      fieldErrors.confirmPassword ? true : undefined
+                    }
+                    aria-describedby={
+                      fieldErrors.confirmPassword
+                        ? "register-confirm-error"
+                        : undefined
+                    }
+                    disabled={isLoading}
+                    required
+                  />
+                  <button
+                    type="button"
+                    className={cn(
+                      "absolute top-1/2 flex min-h-10 min-w-10 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:text-foreground",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                    )}
+                    style={{ [toggleInset]: "4px" }}
+                    onClick={() => setShowConfirmPassword((v) => !v)}
+                    aria-label={
+                      showConfirmPassword
+                        ? t("auth.loginHidePassword")
+                        : t("auth.loginShowPassword")
+                    }
+                    aria-pressed={showConfirmPassword}
+                    aria-controls="register-confirm"
+                    disabled={isLoading}
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff className="h-4 w-4" aria-hidden />
+                    ) : (
+                      <Eye className="h-4 w-4" aria-hidden />
+                    )}
+                  </button>
+                </div>
+                {fieldErrors.confirmPassword && (
+                  <p
+                    id="register-confirm-error"
+                    className="text-sm text-destructive"
+                    role="alert"
+                  >
+                    {fieldErrors.confirmPassword}
                   </p>
                 )}
               </div>
@@ -330,12 +488,12 @@ export default function SubscriberLogin() {
                       className="me-2 h-4 w-4 animate-spin"
                       aria-hidden
                     />
-                    {t("auth.loggingIn")}
+                    {t("auth.registerSubmitting")}
                   </>
                 ) : (
                   <>
-                    <LogIn className="me-2 h-4 w-4" aria-hidden />
-                    {t("auth.loginButton")}
+                    <UserPlus className="me-2 h-4 w-4" aria-hidden />
+                    {t("auth.registerSubmit")}
                   </>
                 )}
               </Button>
@@ -346,10 +504,10 @@ export default function SubscriberLogin() {
                 type="button"
                 variant="ghost"
                 className="min-h-11 text-muted-foreground hover:text-foreground"
-                onClick={() => setLocation("/register")}
+                onClick={() => setLocation("/login")}
                 disabled={isLoading}
               >
-                {t("auth.registerCta")}
+                {t("auth.registerHasAccount")}
               </Button>
               <Button
                 type="button"

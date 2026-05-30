@@ -67,7 +67,6 @@ import {
   cleanupVerificationResendMaps,
   isVerificationEmailAmplified,
   maybeEmitResendCooldowned,
-  recordVerificationEmailSent,
   touchVerificationEmailStamp,
   verificationEmailStampKey,
   verificationResendActorKey,
@@ -77,6 +76,14 @@ import {
   VERIFICATION_RESEND_MAX_IP,
   VERIFICATION_RESEND_WINDOW_MS,
 } from "./auth-local/verificationResend";
+import { sendVerificationEmailForUser } from "./auth-local/sendVerificationEmail";
+import {
+  parseRegisterBody,
+  registerLocalOwner,
+  RegisterDuplicateEmailError,
+  RegisterOnboardingError,
+  RegisterValidationError,
+} from "./auth-local/registerOwner";
 
 const router = Router();
 
@@ -141,6 +148,47 @@ router.post("/api/auth/login", async (req: Request, res: Response) => {
   } catch (error) {
     console.error("[Auth Local] Login error:", error);
     return res.status(500).json({ error: "حدث خطأ في تسجيل الدخول" });
+  }
+});
+
+// ─── Self-service registration ───────────────────────────────────────────────
+
+router.post("/api/auth/register", async (req: Request, res: Response) => {
+  try {
+    if (enforceAuthBurstLimit(req, res)) return;
+
+    const input = parseRegisterBody(req.body);
+    const emailKey = getLoginRateLimitKey(req, input.email);
+    const registerLimit = checkRateLimit(`register:${emailKey}`, LOGIN_RATE_LIMIT);
+    if (!registerLimit.allowed) {
+      logRateLimitExceeded(req, `register:${emailKey}`);
+      return rateLimitedResponse(
+        res,
+        registerLimit.retryAfterMs ?? LOGIN_RATE_LIMIT.windowMs
+      );
+    }
+
+    const result = await registerLocalOwner(req, res, input);
+    clearRateLimit(emailKey);
+    clearRateLimit(getAuthBurstKey(req));
+
+    return res.json({
+      success: true,
+      user: result.user,
+      verificationEmailSent: result.verificationEmailSent,
+    });
+  } catch (error) {
+    if (error instanceof RegisterValidationError) {
+      return res.status(400).json({ error: error.messageAr });
+    }
+    if (error instanceof RegisterDuplicateEmailError) {
+      return res.status(409).json({ error: error.messageAr });
+    }
+    if (error instanceof RegisterOnboardingError) {
+      return res.status(500).json({ error: error.messageAr });
+    }
+    console.error("[Auth Local] Register error:", error);
+    return res.status(500).json({ error: "حدث خطأ أثناء التسجيل" });
   }
 });
 
@@ -399,50 +447,7 @@ router.post("/api/auth/request-email-verification", async (req: Request, res: Re
       return res.json({ success: true });
     }
 
-    const issued = issueAuthOneTimeToken(EMAIL_VERIFICATION_TOKEN_TTL_MS);
-
-    const created = await db.createAuthToken({
-      userId: user.id,
-      type: AUTH_ONE_TIME_TOKEN_PURPOSE.emailVerification,
-      tokenHash: issued.tokenHash,
-      expiresAt: issued.expiresAt,
-    });
-
-    if (!created) {
-      authOpsLog({
-        type: OPS_EVENT.auth_token_create_failed,
-        severity: "warn",
-        req,
-        actorId: user.id,
-        metadata: { purpose: "email_verify", issue: "db_insert_failed" },
-      });
-      return res.json({ success: true });
-    }
-
-    const verifyUrl = `${baseUrlForLinks(req)}/api/auth/verify-email?token=${encodeURIComponent(issued.plaintextToken)}`;
-
-    await sendEmail({
-      to: user.email,
-      subject: "تأكيد البريد الإلكتروني",
-      html: `
-        <div style="font-family: Arial, sans-serif; direction: rtl; text-align: right;">
-          <h2>تأكيد البريد الإلكتروني</h2>
-          <p>اضغط الرابط التالي لتأكيد بريدك الإلكتروني:</p>
-          <p><a href="${verifyUrl}">${verifyUrl}</a></p>
-          <p>ستنتهي صلاحية الرابط خلال 24 ساعة.</p>
-        </div>
-      `,
-    });
-
-    authOpsLog({
-      type: OPS_EVENT.email_verification_email_sent,
-      severity: "info",
-      req,
-      actorId: user.id,
-      metadata: { purpose: "email_verify" },
-    });
-
-    recordVerificationEmailSent(stampKey, now);
+    await sendVerificationEmailForUser(req, user);
 
     return res.json({ success: true });
   } catch {
