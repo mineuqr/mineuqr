@@ -1362,22 +1362,50 @@ const contactRouter = router({
           </div>
         `;
         
-        // إرسال الإيميل
-        await sendEmail({
+        // Primary delivery: SMTP email (success/failure drives user-facing result).
+        const emailSent = await sendEmail({
           to: "info@mineuqr.com",
           subject: `📩 رسالة جديدة: ${input.subject} - من ${input.name}`,
           html: emailContent,
         });
-        
-        // إشعار المالك عبر نظام الإشعارات
-        await notifyOwner({
-          title: `رسالة جديدة من ${input.name}`,
-          content: `الموضوع: ${input.subject}\n\n${input.message.substring(0, 200)}${input.message.length > 200 ? '...' : ''}`,
-        });
-        
+
+        if (!emailSent) {
+          console.error("[Contact] Primary email delivery failed", {
+            to: "info@mineuqr.com",
+            fromEmail: input.email,
+            subject: input.subject,
+          });
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "حدث خطأ في إرسال الرسالة. يرجى المحاولة لاحقاً",
+          });
+        }
+
+        // Secondary: Forge owner notification — must not fail the contact form.
+        try {
+          const forgeDelivered = await notifyOwner({
+            title: `رسالة جديدة من ${input.name}`,
+            content: `الموضوع: ${input.subject}\n\n${input.message.substring(0, 200)}${input.message.length > 200 ? '...' : ''}`,
+          });
+          if (!forgeDelivered) {
+            console.warn(
+              "[Contact] Forge owner notification not delivered (email succeeded)",
+              { subject: input.subject, fromEmail: input.email }
+            );
+          }
+        } catch (notifyError) {
+          console.warn(
+            "[Contact] Forge owner notification failed (email succeeded, non-fatal):",
+            notifyError
+          );
+        }
+
         return { success: true, message: "تم إرسال رسالتك بنجاح" };
       } catch (error) {
-        console.error("Error sending contact email:", error);
+        if (error instanceof TRPCError) {
+          throw error;
+        }
+        console.error("[Contact] Unexpected error sending contact message:", error);
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "حدث خطأ في إرسال الرسالة. يرجى المحاولة لاحقاً",
