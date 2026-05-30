@@ -195,18 +195,6 @@ export async function updateRestaurant(id: number, data: Partial<InsertRestauran
   await db.update(restaurants).set(data).where(eq(restaurants.id, id));
 }
 
-export async function deleteRestaurant(id: number) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-  
-  // Delete all items and categories first
-  await db.delete(menuItems).where(eq(menuItems.restaurantId, id));
-  await db.delete(categories).where(eq(categories.restaurantId, id));
-  
-  // Delete the restaurant
-  await db.delete(restaurants).where(eq(restaurants.id, id));
-}
-
 export async function incrementViewCount(restaurantId: number) {
   const db = await getDb();
   if (!db) return;
@@ -596,12 +584,6 @@ export async function cancelSubscriptionById(id: number) {
   }).where(eq(userSubscriptions.id, id));
 }
 
-export async function deleteSubscriptionById(id: number) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-  await db.delete(userSubscriptions).where(eq(userSubscriptions.id, id));
-}
-
 export async function getAllRestaurantsWithSubscriptions() {
   const db = await getDb();
   if (!db) return [];
@@ -816,14 +798,6 @@ export async function updateUserRole(userId: number, role: 'admin' | 'user') {
   if (!db) return null;
 
   const result = await db.update(users).set({ role }).where(eq(users.id, userId));
-  return result;
-}
-
-export async function deleteUser(userId: number) {
-  const db = await getDb();
-  if (!db) return null;
-
-  const result = await db.delete(users).where(eq(users.id, userId));
   return result;
 }
 

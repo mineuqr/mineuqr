@@ -6,7 +6,7 @@ import { z } from "zod";
 import { nanoid } from "nanoid";
 import {
   getRestaurantsByUser, getRestaurantById, getRestaurantBySlug,
-  createRestaurant, updateRestaurant, deleteRestaurant, incrementViewCount,
+  createRestaurant, updateRestaurant, incrementViewCount,
   getCategoriesByRestaurant, getCategoryById, createCategory, updateCategory, deleteCategory,
   getMenuItemsByCategory, getMenuItemsByRestaurant, getMenuItemById,
   createMenuItem, updateMenuItem, deleteMenuItem, getRestaurantStats,
@@ -17,10 +17,10 @@ import {
   getNotificationsByUser, getUnreadNotifications, markNotificationAsRead, createNotification,
   getCurrencyByCountryCode, getAllCountriesCurrencies,
   upsertUser, getUserByEmail, updateUserPassword, updateUserProfile,
-  getAllRestaurantsWithSubscriptions, createSubscriptionForRestaurant, updateSubscriptionById, cancelSubscriptionById, deleteSubscriptionById, getSubscriptionByRestaurantId,
+  getAllRestaurantsWithSubscriptions, createSubscriptionForRestaurant, updateSubscriptionById, cancelSubscriptionById, getSubscriptionByRestaurantId,
   getAdminStatistics, getRevenueByMonth, getSubscriptionDetails,
   getPublicStats, getExtendedAdminStats,
-  getAllUsers, updateUserRole, deleteUser,
+  getAllUsers, updateUserRole,
   getAllUsersWithSubscriptions,
   createInvoice, updateInvoice, getUserById,
   updateUserSessionValidAfter,
@@ -32,6 +32,13 @@ import {
 import { canChangeOwnPassword } from "./auth-local/httpHelpers";
 import { assertRestaurantAccess } from "./restaurantAccess";
 import { assertAdminAccess, assertNotSelfAdminTarget } from "./_core/assertAdminAccess";
+import {
+  deleteRestaurantCascade,
+  deleteSubscriptionCascade,
+  deleteUserCascade,
+  ProtectedUserDeleteError,
+} from "./db/cascadeDeletes";
+import { cascadeAuditFromTrpc } from "./db/cascadeAudit";
 import { isRestaurantOpen, parseTemporaryClosure } from "./lib/restaurantHours";
 import { formatInRestaurantTimezone, todayYmd } from "@shared/utils/timezone";
 import { putUploadedFile } from "./local-uploads";
@@ -153,7 +160,10 @@ const restaurantRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "المطعم غير موجود" });
       }
       await assertRestaurantAccess(ctx, input.id, "restaurant.delete");
-      await deleteRestaurant(input.id);
+      await deleteRestaurantCascade(
+        input.id,
+        cascadeAuditFromTrpc(ctx, "restaurant.delete", "delete_restaurant")
+      );
       return { success: true };
     }),
 
@@ -893,7 +903,10 @@ const adminRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       assertAdminAccess(ctx, "admin.deleteRestaurantSubscription");
-      await deleteSubscriptionById(input.subscriptionId);
+      await deleteSubscriptionCascade(
+        input.subscriptionId,
+        cascadeAuditFromTrpc(ctx, "admin.deleteRestaurantSubscription", "delete_subscription")
+      );
       return { success: true };
     }),
 
@@ -948,7 +961,21 @@ const adminRouter = router({
     .mutation(async ({ input, ctx }) => {
       assertAdminAccess(ctx, "admin.deleteUser");
       assertNotSelfAdminTarget(ctx, input.userId, "delete_user");
-      return deleteUser(input.userId);
+      try {
+        await deleteUserCascade(
+          input.userId,
+          cascadeAuditFromTrpc(ctx, "admin.deleteUser", "delete_user")
+        );
+      } catch (error) {
+        if (error instanceof ProtectedUserDeleteError) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "لا يمكن حذف هذا المستخدم المحمي",
+          });
+        }
+        throw error;
+      }
+      return { success: true };
     }),
 
   // ─── Users Subscription Management by Admin ───
@@ -1105,7 +1132,10 @@ const adminRouter = router({
       if (!existing) {
         throw new TRPCError({ code: "NOT_FOUND", message: "لا يوجد اشتراك لهذا المستخدم" });
       }
-      await deleteSubscriptionById(existing.id);
+      await deleteSubscriptionCascade(
+        existing.id,
+        cascadeAuditFromTrpc(ctx, "admin.deleteUserSubscriptionByAdmin", "delete_subscription")
+      );
       // Send notification to user
       try {
         await createNotification({
@@ -1310,7 +1340,21 @@ const profileRouter = router({
     .mutation(async ({ input, ctx }) => {
       assertAdminAccess(ctx, "profile.deleteUser");
       assertNotSelfAdminTarget(ctx, input.userId, "delete_user");
-      return deleteUser(input.userId);
+      try {
+        await deleteUserCascade(
+          input.userId,
+          cascadeAuditFromTrpc(ctx, "profile.deleteUser", "delete_user")
+        );
+      } catch (error) {
+        if (error instanceof ProtectedUserDeleteError) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "لا يمكن حذف هذا المستخدم المحمي",
+          });
+        }
+        throw error;
+      }
+      return { success: true };
     }),
 });
 

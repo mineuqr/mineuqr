@@ -19,7 +19,6 @@ vi.mock("./db", () => ({
   getRestaurantBySlug: vi.fn(),
   createRestaurant: vi.fn(),
   updateRestaurant: vi.fn(),
-  deleteRestaurant: vi.fn(),
   incrementViewCount: vi.fn(),
   getCategoriesByRestaurant: vi.fn(),
   getCategoryById: vi.fn(),

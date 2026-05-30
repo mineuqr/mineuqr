@@ -80,6 +80,21 @@ const mocks = vi.hoisted(() => {
   return { mockRestaurant, mockCategory, mockMenuItem, mockTable, mockHoliday };
 });
 
+vi.mock("./db/cascadeDeletes", () => ({
+  deleteRestaurantCascade: vi.fn().mockResolvedValue(undefined),
+  deleteSubscriptionCascade: vi.fn().mockResolvedValue(undefined),
+  deleteUserCascade: vi.fn().mockResolvedValue(undefined),
+  ProtectedUserDeleteError: class ProtectedUserDeleteError extends Error {
+    userId: number;
+    constructor(userId: number) {
+      super(`protected ${userId}`);
+      this.userId = userId;
+    }
+  },
+  PROTECTED_USER_IDS: [1],
+  assertUserDeletable: vi.fn(),
+}));
+
 vi.mock("./db", () => ({
   getRestaurantsByUser: vi.fn().mockResolvedValue([mocks.mockRestaurant]),
   getRestaurantById: vi.fn().mockImplementation(async (id: number) => {
@@ -92,7 +107,6 @@ vi.mock("./db", () => ({
   }),
   createRestaurant: vi.fn().mockResolvedValue({ id: 2 }),
   updateRestaurant: vi.fn().mockResolvedValue(undefined),
-  deleteRestaurant: vi.fn().mockResolvedValue(undefined),
   incrementViewCount: vi.fn().mockResolvedValue(undefined),
   getCategoriesByRestaurant: vi.fn().mockResolvedValue([mocks.mockCategory]),
   getCategoryById: vi.fn().mockImplementation(async (id: number) => {

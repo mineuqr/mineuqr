@@ -80,6 +80,9 @@ export const OPS_EVENT = {
   // TENANT / ADMIN boundaries
   tenant_boundary_violation: "tenant_boundary_violation",
   unauthorized_admin_access: "unauthorized_admin_access",
+  cascade_subscription_deleted: "cascade_subscription_deleted",
+  cascade_restaurant_deleted: "cascade_restaurant_deleted",
+  cascade_user_deleted: "cascade_user_deleted",
 
   // RUNTIME diagnostics
   trpc_error: "trpc_error",
