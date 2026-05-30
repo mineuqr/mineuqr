@@ -1269,6 +1269,7 @@ const profileRouter = router({
       role: ctx.user.role,
       loginMethod: ctx.user.loginMethod,
       createdAt: ctx.user.createdAt,
+      emailVerifiedAt: ctx.user.emailVerifiedAt,
       canChangePassword: canChangeOwnPassword(ctx.user),
     };
   }),

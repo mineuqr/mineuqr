@@ -25,6 +25,8 @@ import SubscriberLogin from "./pages/SubscriberLogin";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Register from "./pages/Register";
+import VerifyEmailSuccess from "./pages/VerifyEmailSuccess";
+import VerifyEmailFailed from "./pages/VerifyEmailFailed";
 import Profile from "./pages/Profile";
 import Notifications from "./pages/Notifications";
 import { useLanguage } from "./contexts/LanguageContext";
@@ -52,6 +54,8 @@ function Router() {
         <Route path="/subscription" component={SubscriptionManagement} />
         <Route path="/login" component={SubscriberLogin} />
         <Route path="/register" component={Register} />
+        <Route path="/verify-email/success" component={VerifyEmailSuccess} />
+        <Route path="/verify-email/failed" component={VerifyEmailFailed} />
         <Route path="/forgot-password" component={ForgotPassword} />
         <Route path="/reset-password" component={ResetPassword} />
         <Route path="/profile" component={Profile} />

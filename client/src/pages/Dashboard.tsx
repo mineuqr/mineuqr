@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
+import { EmailVerificationBanner } from "@/components/auth/EmailVerificationBanner";
 import { QRCodeSVG } from "qrcode.react";
 import { QRWithLogo } from "@/components/QRWithLogo";
 import {
@@ -553,18 +554,6 @@ export default function Dashboard() {
   const { user, authPending, authResolved, isAuthenticated, logout } = gate;
   const { t, language, dir } = useLanguage();
 
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    try {
-      if (sessionStorage.getItem("mineuqr_register_verify_hint")) {
-        sessionStorage.removeItem("mineuqr_register_verify_hint");
-        toast.info(t("auth.registerVerifyHint"), { duration: 10_000 });
-      }
-    } catch {
-      /* storage unavailable */
-    }
-  }, [isAuthenticated, t]);
-
   const [location] = useLocation();
   const [, routeParams] = useRoute("/dashboard/:section");
   const urlState = useMemo(
@@ -722,6 +711,9 @@ export default function Dashboard() {
           onOpenMobileMenu={() => setMobileSidebarOpen(true)}
         />
         <main className={dash.main}>
+          {isAuthenticated ? (
+            <EmailVerificationBanner className="mb-6" />
+          ) : null}
           {gate.isPending ? (
             <DashboardMainSkeleton />
           ) : activeSection === "restaurants" ? (

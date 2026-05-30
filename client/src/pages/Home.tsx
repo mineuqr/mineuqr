@@ -3,7 +3,7 @@ import { HeroPreview } from "@/components/landing/HeroPreview";
 import { LandingLogo } from "@/components/landing/LandingLogo";
 import { LandingNavbar } from "@/components/landing/LandingNavbar";
 import { Button } from "@/components/ui/button";
-import { getLoginUrl } from "@/const";
+import { getRegisterUrl } from "@/const";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
@@ -58,7 +58,7 @@ export default function Home() {
   const [, setLocation] = useLocation();
   const { t, dir } = useLanguage();
 
-  const startHref = () => (isAuthenticated ? "/dashboard" : getLoginUrl());
+  const startHref = () => (isAuthenticated ? "/dashboard" : getRegisterUrl());
 
   return (
     <div className="landing-page min-h-screen text-foreground">

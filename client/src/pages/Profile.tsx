@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuthGate } from "@/_core/hooks/useAuthGate";
 import { AuthGatePending, LoginRequiredCard, PageDataLoading } from "@/components/AuthGate";
+import { EmailVerificationBanner } from "@/components/auth/EmailVerificationBanner";
 import { trpc } from "@/lib/trpc";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
@@ -106,6 +107,8 @@ export default function Profile() {
         </h1>
         <p className="text-muted-foreground mt-2">{t('profile.subtitle')}</p>
       </div>
+
+      <EmailVerificationBanner className="mb-6" />
 
       {/* Profile Info Card */}
       <Card className="mb-6">

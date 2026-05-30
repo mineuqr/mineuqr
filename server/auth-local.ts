@@ -44,12 +44,14 @@ import {
   PASSWORD_RESET_TOKEN_TTL_MS,
 } from "./_core/authOneTimeToken";
 import {
-  respondEmailVerificationExpired,
-  respondEmailVerificationInvalid,
   respondResetLinkExpired,
   respondResetLinkInvalid,
 } from "./_core/authOneTimeTokenResponses";
 import { noteInvalidTokenAttempt } from "./auth-local/invalidTokenBurst";
+import {
+  verifyEmailFailurePath,
+  VERIFY_EMAIL_SUCCESS_PATH,
+} from "./auth-local/verifyEmailRedirects";
 import {
   baseUrlForLinks,
   genericAuthError,
@@ -467,7 +469,7 @@ router.get("/api/auth/verify-email", async (req: Request, res: Response) => {
         req,
         metadata: authTokenFailureReason("malformed_token"),
       });
-      return respondEmailVerificationInvalid(res);
+      return res.redirect(302, verifyEmailFailurePath("invalid"));
     }
 
     const row = await db.getAuthTokenByHash(
@@ -478,7 +480,7 @@ router.get("/api/auth/verify-email", async (req: Request, res: Response) => {
 
     if (tokenStatus === "missing" || tokenStatus === "consumed") {
       const { throttled } = noteInvalidTokenAttempt({ req, endpoint: "verify-email" });
-      if (throttled) return respondEmailVerificationInvalid(res);
+      if (throttled) return res.redirect(302, verifyEmailFailurePath("invalid"));
       authOpsLog({
         type: OPS_EVENT.email_verification_token_invalid,
         severity: "warn",
@@ -488,11 +490,11 @@ router.get("/api/auth/verify-email", async (req: Request, res: Response) => {
           tokenStatus === "consumed" ? "token_used" : "token_missing"
         ),
       });
-      return respondEmailVerificationInvalid(res);
+      return res.redirect(302, verifyEmailFailurePath("invalid"));
     }
     if (tokenStatus === "expired") {
       const { throttled } = noteInvalidTokenAttempt({ req, endpoint: "verify-email" });
-      if (throttled) return respondEmailVerificationExpired(res);
+      if (throttled) return res.redirect(302, verifyEmailFailurePath("expired"));
       authOpsLog({
         type: OPS_EVENT.email_verification_token_expired,
         severity: "warn",
@@ -500,7 +502,7 @@ router.get("/api/auth/verify-email", async (req: Request, res: Response) => {
         actorId: row!.userId,
         metadata: authTokenFailureReason("token_expired"),
       });
-      return respondEmailVerificationExpired(res);
+      return res.redirect(302, verifyEmailFailurePath("expired"));
     }
 
     await db.markUserEmailVerified(row!.userId);
@@ -513,7 +515,7 @@ router.get("/api/auth/verify-email", async (req: Request, res: Response) => {
       actorId: row!.userId,
     });
 
-    return res.redirect(302, "/");
+    return res.redirect(302, VERIFY_EMAIL_SUCCESS_PATH);
   } catch (error) {
     authOpsLog({
       type: OPS_EVENT.email_verification_token_invalid,
@@ -521,7 +523,7 @@ router.get("/api/auth/verify-email", async (req: Request, res: Response) => {
       req,
       metadata: authDegradedMetadata("verify_email_exception", { error: String(error) }),
     });
-    return res.status(500).send("Error");
+    return res.redirect(302, verifyEmailFailurePath("error"));
   }
 });
 
