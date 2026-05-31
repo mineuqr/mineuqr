@@ -30,6 +30,11 @@ import {
   restaurantAllowsTableOrdering,
 } from "./db";
 import { canChangeOwnPassword } from "./auth-local/httpHelpers";
+import { sendVerificationEmailForUser } from "./auth-local/sendVerificationEmail";
+import {
+  accountEmailChanged,
+  normalizeAccountEmailOrNull,
+} from "./_core/normalizeAccountEmail";
 import { assertRestaurantAccess } from "./restaurantAccess";
 import { assertAdminAccess, assertNotSelfAdminTarget } from "./_core/assertAdminAccess";
 import {
@@ -1279,17 +1284,40 @@ const profileRouter = router({
       email: z.string().email().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
-      // Check if email is already used by another user
-      if (input.email) {
-        const existing = await getUserByEmail(input.email);
+      const normalizedEmail = input.email
+        ? normalizeAccountEmailOrNull(input.email)
+        : undefined;
+      if (input.email && !normalizedEmail) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "يرجى إدخال بريد إلكتروني صالح",
+        });
+      }
+
+      const emailChanged =
+        normalizedEmail !== undefined &&
+        accountEmailChanged(ctx.user.email, normalizedEmail);
+
+      if (normalizedEmail) {
+        const existing = await getUserByEmail(normalizedEmail);
         if (existing && existing.id !== ctx.user.id) {
           throw new TRPCError({ code: "CONFLICT", message: "البريد الإلكتروني مستخدم بالفعل" });
         }
       }
+
       await updateUserProfile(ctx.user.id, {
         name: input.name,
-        email: input.email,
+        email: emailChanged ? normalizedEmail! : undefined,
+        clearEmailVerification: emailChanged,
       });
+
+      if (emailChanged && normalizedEmail) {
+        await sendVerificationEmailForUser(ctx.req, {
+          id: ctx.user.id,
+          email: normalizedEmail,
+        });
+      }
+
       return { success: true };
     }),
   changePassword: verifiedProcedure

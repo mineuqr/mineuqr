@@ -31,6 +31,7 @@ export async function sendVerificationEmailForUser(
   touchVerificationEmailStamp(stampKey, now);
 
   const issued = issueAuthOneTimeToken(EMAIL_VERIFICATION_TOKEN_TTL_MS);
+  await db.invalidateUnusedEmailVerificationTokens(user.id);
   const created = await db.createAuthToken({
     userId: user.id,
     type: AUTH_ONE_TIME_TOKEN_PURPOSE.emailVerification,

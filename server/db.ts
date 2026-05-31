@@ -1,4 +1,4 @@
-import { eq, and, asc, desc, sql, inArray } from "drizzle-orm";
+import { eq, and, asc, desc, sql, inArray, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser, users,
@@ -18,6 +18,10 @@ import {
   orderItems, InsertOrderItem,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
+import {
+  normalizeAccountEmail,
+  normalizeAccountEmailOrNull,
+} from "./_core/normalizeAccountEmail";
 import {
   parseStoredUtcInstant,
   isInBusinessYearMonth,
@@ -53,7 +57,10 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     const assignNullable = (field: TextField) => {
       const value = user[field];
       if (value === undefined) return;
-      const normalized = value ?? null;
+      let normalized = value ?? null;
+      if (field === "email" && typeof normalized === "string") {
+        normalized = normalizeAccountEmailOrNull(normalized);
+      }
       values[field] = normalized;
       updateSet[field] = normalized;
     };
@@ -143,19 +150,45 @@ export async function markAuthTokenUsed(tokenId: number): Promise<void> {
   await db.update(authTokens).set({ usedAt: new Date().toISOString() }).where(eq(authTokens.id, tokenId));
 }
 
+export async function invalidateUnusedEmailVerificationTokens(
+  userId: number
+): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db
+    .update(authTokens)
+    .set({ usedAt: new Date().toISOString() })
+    .where(
+      and(
+        eq(authTokens.userId, userId),
+        eq(authTokens.type, "email_verify"),
+        isNull(authTokens.usedAt)
+      )
+    );
+}
+
 export async function getUserByEmail(email: string) {
   const db = await getDb();
   if (!db) { console.warn("[Database] Cannot get user: database not available"); return undefined; }
-  const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
+  const normalized = normalizeAccountEmail(email);
+  const result = await db.select().from(users).where(eq(users.email, normalized)).limit(1);
   return result.length > 0 ? result[0] : undefined;
 }
 
-export async function updateUserProfile(userId: number, data: { name?: string; email?: string }) {
+export async function updateUserProfile(
+  userId: number,
+  data: { name?: string; email?: string; clearEmailVerification?: boolean }
+) {
   const db = await getDb();
   if (!db) { console.warn("[Database] Cannot update user: database not available"); return; }
   const updateSet: Record<string, unknown> = {};
   if (data.name !== undefined) updateSet.name = data.name;
-  if (data.email !== undefined) updateSet.email = data.email;
+  if (data.email !== undefined) {
+    updateSet.email = normalizeAccountEmailOrNull(data.email);
+  }
+  if (data.clearEmailVerification) {
+    updateSet.emailVerifiedAt = null;
+  }
   if (Object.keys(updateSet).length === 0) return;
   await db.update(users).set(updateSet).where(eq(users.id, userId));
 }

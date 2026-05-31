@@ -11,6 +11,7 @@ const mysql = require("mysql2/promise");
 
 const REQUIRED = {
   usersColumns: ["emailVerifiedAt", "passwordChangedAt", "sessionValidAfter"],
+  usersIndexes: ["users_email_unique"],
   tables: ["auth_tokens"],
 };
 
@@ -32,6 +33,15 @@ async function tableExists(conn, table) {
   return Array.isArray(rows) && rows.length > 0;
 }
 
+async function indexExists(conn, table, indexName) {
+  const [rows] = await conn.query(
+    `SELECT 1 AS ok FROM INFORMATION_SCHEMA.STATISTICS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND INDEX_NAME = ? LIMIT 1`,
+    [table, indexName]
+  );
+  return Array.isArray(rows) && rows.length > 0;
+}
+
 async function main() {
   const url = process.env.DATABASE_URL;
   if (!url) {
@@ -46,6 +56,11 @@ async function main() {
     for (const col of REQUIRED.usersColumns) {
       if (!(await columnExists(conn, "users", col))) {
         missing.push(`users.${col}`);
+      }
+    }
+    for (const idx of REQUIRED.usersIndexes) {
+      if (!(await indexExists(conn, "users", idx))) {
+        missing.push(`index:users.${idx}`);
       }
     }
     for (const table of REQUIRED.tables) {

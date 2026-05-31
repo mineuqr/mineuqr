@@ -1,4 +1,4 @@
-import { mysqlTable, mysqlSchema, AnyMySqlColumn, int, varchar, text, timestamp, decimal, mysqlEnum, index, boolean } from "drizzle-orm/mysql-core"
+import { mysqlTable, mysqlSchema, AnyMySqlColumn, int, varchar, text, timestamp, decimal, mysqlEnum, index, uniqueIndex, boolean } from "drizzle-orm/mysql-core"
 import { sql } from "drizzle-orm"
 
 // ─── Categories Table ──────────────────────────────────────
@@ -149,6 +149,7 @@ export const users = mysqlTable("users", {
 },
 (table) => [
 	index("users_openId_unique").on(table.openId),
+	uniqueIndex("users_email_unique").on(table.email),
 ]);
 
 // ─── Auth Tokens Table (Password reset / Email verification) ───────────────────

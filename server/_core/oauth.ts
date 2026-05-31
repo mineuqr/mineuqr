@@ -14,6 +14,11 @@ import {
 } from "./authOpsMetadata";
 import { OPS_EVENT } from "./opsTaxonomy";
 import { AUTH_SESSION_TTL_MS } from "./sessionConfig";
+import {
+  assertOAuthEmailIdentityAvailable,
+  OAUTH_EMAIL_COLLISION_LOGIN_PATH,
+} from "./oauthEmailIdentity";
+import { normalizeAccountEmailOrNull } from "./normalizeAccountEmail";
 import { createCooldownCounterMap } from "./cooldownCounterMap";
 import {
   checkRateLimit,
@@ -186,19 +191,43 @@ export function registerOAuthRoutes(app: Express) {
       }
 
       const existingUser = await db.getUserByOpenId(userInfo.openId);
-      
+
+      const oauthEmail = normalizeAccountEmailOrNull(userInfo.email ?? null);
+      const identityCheck = await assertOAuthEmailIdentityAvailable({
+        isNewUser: !existingUser,
+        openId: userInfo.openId,
+        email: oauthEmail,
+      });
+      if (!identityCheck.ok) {
+        authOpsLog({
+          type: OPS_EVENT.oauth_callback_failed,
+          severity: "warn",
+          req,
+          metadata: {
+            provider: "manus",
+            reason: "email_identity_collision",
+            issue: "oauth_email_owned_by_other_account",
+          },
+        });
+        res.redirect(302, OAUTH_EMAIL_COLLISION_LOGIN_PATH);
+        return;
+      }
+
       await db.upsertUser({
         openId: userInfo.openId,
         name: userInfo.name || null,
-        email: userInfo.email ?? null,
+        email: oauthEmail,
         loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
         lastSignedIn: new Date().toISOString(),
       });
-      
+
       // Create trial subscription for new users
       if (!existingUser) {
         const user = await db.getUserByOpenId(userInfo.openId);
         if (user) {
+          if (oauthEmail) {
+            await db.markUserEmailVerified(user.id);
+          }
           try {
             await createTrialSubscription(user.id);
           } catch (error) {

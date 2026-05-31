@@ -134,6 +134,13 @@
       "when": 1778756100000,
       "tag": "0018_session_valid_after",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "5",
+      "when": 1778756200000,
+      "tag": "0019_users_email_unique",
+      "breakpoints": true
     }
   ]
 }
