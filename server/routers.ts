@@ -1,6 +1,6 @@
 import { clearSessionCookie } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
+import { publicProcedure, protectedProcedure, verifiedProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { nanoid } from "nanoid";
@@ -611,14 +611,14 @@ const subscriptionRouter = router({
     return getSubscriptionPlans();
   }),
 
-  getCurrentSubscription: protectedProcedure.query(async ({ ctx }) => {
+  getCurrentSubscription: verifiedProcedure.query(async ({ ctx }) => {
     const subscription = await getUserSubscription(ctx.user.id);
     if (!subscription) return null;
     const plan = await getSubscriptionPlanById(subscription.planId);
     return { subscription, plan };
   }),
 
-  getByRestaurant: protectedProcedure
+  getByRestaurant: verifiedProcedure
     .input(z.object({ restaurantId: z.number() }))
     .query(async ({ input, ctx }) => {
       await assertRestaurantAccess(ctx, input.restaurantId);
@@ -628,13 +628,13 @@ const subscriptionRouter = router({
       return { subscription, plan };
     }),
 
-  checkTrialStatus: protectedProcedure.query(async ({ ctx }) => {
+  checkTrialStatus: verifiedProcedure.query(async ({ ctx }) => {
     const isActive = await isSubscriptionActive(ctx.user.id);
     const trialEndDate = await getTrialEndDate(ctx.user.id);
     return { isActive, trialEndDate };
   }),
 
-  createCheckoutSession: protectedProcedure
+  createCheckoutSession: verifiedProcedure
     .input(z.object({
       planId: z.number(),
       billingCycle: z.enum(["monthly", "yearly"]),
@@ -664,7 +664,7 @@ const subscriptionRouter = router({
       return { orderId };
     }),
 
-  createTapCheckout: protectedProcedure
+  createTapCheckout: verifiedProcedure
     .input(z.object({
       planId: z.number(),
       billingCycle: z.enum(["monthly", "yearly"]),
@@ -718,11 +718,11 @@ const subscriptionRouter = router({
 });
 
 const invoiceRouter = router({
-  list: protectedProcedure.query(async ({ ctx }) => {
+  list: verifiedProcedure.query(async ({ ctx }) => {
     return getInvoicesByUser(ctx.user.id);
   }),
 
-  getById: protectedProcedure
+  getById: verifiedProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ input, ctx }) => {
       const invoice = await getInvoiceById(input.id);
@@ -730,7 +730,7 @@ const invoiceRouter = router({
       return invoice;
     }),
 
-  getUnpaid: protectedProcedure.query(async ({ ctx }) => {
+  getUnpaid: verifiedProcedure.query(async ({ ctx }) => {
     return getUnpaidInvoices(ctx.user.id);
   }),
 });
