@@ -77,7 +77,7 @@ const restaurantRouter = router({
       return getRestaurantBySlug(input.slug);
     }),
 
-  create: protectedProcedure
+  create: verifiedProcedure
     .input(z.object({
       nameAr: z.string().min(1),
       nameEn: z.string().optional(),
@@ -116,7 +116,7 @@ const restaurantRouter = router({
       return { ...result, slug };
     }),
 
-  update: protectedProcedure
+  update: verifiedProcedure
     .input(z.object({
       id: z.number(),
       nameAr: z.string().min(1).optional(),
@@ -152,7 +152,7 @@ const restaurantRouter = router({
       return { success: true };
     }),
 
-  delete: protectedProcedure
+  delete: verifiedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input, ctx }) => {
       const restaurant = await getRestaurantById(input.id);
@@ -201,7 +201,7 @@ const restaurantRouter = router({
       return { success: true };
     }),
 
-  updateTemplate: protectedProcedure
+  updateTemplate: verifiedProcedure
     .input(z.object({
       id: z.number(),
       menuTemplate: z.enum(["classic", "elegant", "modern", "dark", "warm", "ocean", "royal", "neon"]),
@@ -227,7 +227,7 @@ const restaurantRouter = router({
       return { success: true };
     }),
 
-  updateCustomColors: protectedProcedure
+  updateCustomColors: verifiedProcedure
     .input(z.object({
       id: z.number(),
       customColors: z.object({
@@ -255,7 +255,7 @@ const restaurantRouter = router({
       return { success: true };
     }),
 
-  updateCustomFonts: protectedProcedure
+  updateCustomFonts: verifiedProcedure
     .input(z.object({
       id: z.number(),
       customFonts: z.object({
@@ -285,7 +285,7 @@ const restaurantRouter = router({
       return { success: true };
     }),
 
-  uploadImage: protectedProcedure
+  uploadImage: verifiedProcedure
     .input(z.object({
       restaurantId: z.number(),
       imageData: z.string(), // base64
@@ -308,7 +308,7 @@ const restaurantRouter = router({
       return { url };
     }),
 
-  deleteImage: protectedProcedure
+  deleteImage: verifiedProcedure
     .input(z.object({
       restaurantId: z.number(),
       imageType: z.enum(["logo", "cover"]),
@@ -1273,7 +1273,7 @@ const profileRouter = router({
       canChangePassword: canChangeOwnPassword(ctx.user),
     };
   }),
-  update: protectedProcedure
+  update: verifiedProcedure
     .input(z.object({
       name: z.string().min(1).optional(),
       email: z.string().email().optional(),
@@ -1292,7 +1292,7 @@ const profileRouter = router({
       });
       return { success: true };
     }),
-  changePassword: protectedProcedure
+  changePassword: verifiedProcedure
     .input(z.object({
       currentPassword: z.string().min(1),
       newPassword: z.string().min(6),
