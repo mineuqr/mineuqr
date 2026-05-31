@@ -2,6 +2,7 @@ import { NOT_ADMIN_ERR_MSG, UNAUTHED_ERR_MSG } from '@shared/const';
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import type { TrpcContext } from "./context";
+import { assertEmailVerificationSatisfied } from "./emailVerificationPolicy";
 import { opsLog } from "./opsLog";
 import { trackSuspiciousActivity } from "./suspiciousActivity";
 import { OPS_EVENT } from "./opsTaxonomy";
@@ -105,6 +106,20 @@ const requireUser = t.middleware(async opts => {
 });
 
 export const protectedProcedure = baseProcedure.use(requireUser);
+
+const requireVerifiedEmail = t.middleware(async opts => {
+  const { ctx, next } = opts;
+  assertEmailVerificationSatisfied(ctx.user!);
+  return next({
+    ctx: {
+      ...ctx,
+      user: ctx.user!,
+    },
+  });
+});
+
+/** Session + verified email (when AUTH_REQUIRE_VERIFIED_EMAIL=1). Not wired to routers until Slice 2. */
+export const verifiedProcedure = protectedProcedure.use(requireVerifiedEmail);
 
 export const adminProcedure = baseProcedure.use(
   t.middleware(async opts => {
