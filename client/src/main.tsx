@@ -1,4 +1,5 @@
 import { isAuthMeInitialLoadPending } from "@/lib/authSession";
+import { isEmailNotVerifiedError } from "@/lib/trpcErrors";
 import { trpc } from "@/lib/trpc";
 import { UNAUTHED_ERR_MSG } from '@shared/const';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -31,7 +32,9 @@ queryClient.getQueryCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {
     const error = event.query.state.error;
     redirectToLoginIfUnauthorized(error);
-    console.error("[API Query Error]", error);
+    if (!isEmailNotVerifiedError(error)) {
+      console.error("[API Query Error]", error);
+    }
   }
 });
 
@@ -39,7 +42,9 @@ queryClient.getMutationCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {
     const error = event.mutation.state.error;
     redirectToLoginIfUnauthorized(error);
-    console.error("[API Mutation Error]", error);
+    if (!isEmailNotVerifiedError(error)) {
+      console.error("[API Mutation Error]", error);
+    }
   }
 });
 

@@ -1059,7 +1059,21 @@
     "verifyBannerResend": "Resend verification email",
     "verifyBannerResending": "Sending...",
     "verifyBannerResendSuccess": "If your account is eligible, a verification email has been sent.",
-    "verifyBannerResendError": "Could not send verification email. Try again later."
+    "verifyBannerResendError": "Could not send verification email. Try again later.",
+    "verifyRequiredTitle": "Verified identity required",
+    "verifyRequiredMessage": "Verify your email to unlock operational features on your account.",
+    "verifyRequiredOrdersMessage": "Live order management and reports require a verified email address.",
+    "verifyRequiredOperationsMessage": "This action requires a verified email address before you can continue.",
+    "verifyStatusPending": "Pending verification",
+    "verifyRefreshStatus": "Refresh status",
+    "verifyRefreshing": "Checking...",
+    "verifyRefreshStillPending": "Email is still unverified. Check your inbox or resend the verification email.",
+    "verifyRefreshVerified": "Email verified — you now have full access.",
+    "verifyNextStep": "Open the link in your inbox, then refresh your status here.",
+    "trpcEmailNotVerified": "Verify your email to use this feature.",
+    "oauthConflictTitle": "Sign-in could not be completed",
+    "oauthConflictMessage": "This email is already registered with a password. Sign in with your email and password instead.",
+    "oauthConflictRecovery": "Use the login form below with the email you registered with, or reset your password if you forgot it."
   },
   "profile": {
     "title": "Profile",

@@ -7,7 +7,7 @@ import {
   requestEmailVerification,
 } from "@/lib/emailVerification";
 import { cn } from "@/lib/utils";
-import { Loader2, Mail, MailCheck } from "lucide-react";
+import { Loader2, Mail, MailCheck, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -19,6 +19,7 @@ export function EmailVerificationBanner({ className }: EmailVerificationBannerPr
   const { user, isAuthenticated, refresh } = useAuth();
   const { t } = useLanguage();
   const [resending, setResending] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   if (!isAuthenticated || !isEmailVerificationPending(user)) {
     return null;
@@ -42,6 +43,24 @@ export function EmailVerificationBanner({ className }: EmailVerificationBannerPr
     }
   };
 
+  const handleRefresh = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      const result = await refresh();
+      const updated = result.data;
+      if (updated && !isEmailVerificationPending(updated)) {
+        toast.success(t("auth.verifyRefreshVerified"));
+      } else {
+        toast.message(t("auth.verifyRefreshStillPending"));
+      }
+    } catch {
+      toast.error(t("auth.verifyBannerResendError"));
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   return (
     <Alert
       className={cn(
@@ -61,24 +80,44 @@ export function EmailVerificationBanner({ className }: EmailVerificationBannerPr
             {user.email}
           </p>
         ) : null}
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          className="border-amber-500/50 bg-background/80 hover:bg-background"
-          onClick={handleResend}
-          disabled={resending}
-          aria-busy={resending}
-        >
-          {resending ? (
-            <Loader2 className="me-2 h-4 w-4 animate-spin" aria-hidden />
-          ) : (
-            <MailCheck className="me-2 h-4 w-4" aria-hidden />
-          )}
-          {resending
-            ? t("auth.verifyBannerResending")
-            : t("auth.verifyBannerResend")}
-        </Button>
+        <div className="flex flex-wrap gap-2 pt-1">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="border-amber-500/50 bg-background/80 hover:bg-background"
+            onClick={handleResend}
+            disabled={resending || refreshing}
+            aria-busy={resending}
+          >
+            {resending ? (
+              <Loader2 className="me-2 h-4 w-4 animate-spin" aria-hidden />
+            ) : (
+              <MailCheck className="me-2 h-4 w-4" aria-hidden />
+            )}
+            {resending
+              ? t("auth.verifyBannerResending")
+              : t("auth.verifyBannerResend")}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="text-foreground hover:bg-background/80"
+            onClick={handleRefresh}
+            disabled={resending || refreshing}
+            aria-busy={refreshing}
+          >
+            {refreshing ? (
+              <Loader2 className="me-2 h-4 w-4 animate-spin" aria-hidden />
+            ) : (
+              <RefreshCw className="me-2 h-4 w-4" aria-hidden />
+            )}
+            {refreshing
+              ? t("auth.verifyRefreshing")
+              : t("auth.verifyRefreshStatus")}
+          </Button>
+        </div>
       </AlertDescription>
     </Alert>
   );

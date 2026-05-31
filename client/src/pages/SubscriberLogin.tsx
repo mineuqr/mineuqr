@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { syncAuthAfterLogin } from "@/lib/authSession";
 import { trpc } from "@/lib/trpc";
@@ -80,6 +80,18 @@ export default function SubscriberLogin() {
     email?: string;
     password?: string;
   }>({});
+  const [oauthConflict, setOauthConflict] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("error") !== "oauth_email_conflict") return;
+    setOauthConflict(true);
+    setFormError(t("auth.oauthConflictMessage"));
+    const url = new URL(window.location.href);
+    url.searchParams.delete("error");
+    const clean = url.pathname + (url.search || "");
+    window.history.replaceState({}, "", clean);
+  }, [t]);
 
   const iconInset = isRtl ? "right" : "left";
   const toggleInset = isRtl ? "left" : "right";
@@ -91,6 +103,7 @@ export default function SubscriberLogin() {
     if (isLoading) return;
 
     setFormError(null);
+    setOauthConflict(false);
     const nextFieldErrors: { email?: string; password?: string } = {};
     const trimmedEmail = email.trim();
 
@@ -167,7 +180,21 @@ export default function SubscriberLogin() {
           </CardHeader>
           <CardContent className="space-y-6 pt-2">
             <form onSubmit={handleLogin} className="space-y-4" noValidate>
-              {formError && (
+              {oauthConflict && (
+                <Alert
+                  className="border-amber-500/40 bg-amber-500/10"
+                  role="alert"
+                  aria-live="polite"
+                >
+                  <AlertCircle className="text-amber-600 dark:text-amber-400" aria-hidden />
+                  <AlertTitle>{t("auth.oauthConflictTitle")}</AlertTitle>
+                  <AlertDescription className="space-y-2 text-muted-foreground">
+                    <p>{t("auth.oauthConflictMessage")}</p>
+                    <p>{t("auth.oauthConflictRecovery")}</p>
+                  </AlertDescription>
+                </Alert>
+              )}
+              {formError && !oauthConflict && (
                 <Alert
                   variant="destructive"
                   className="border-destructive/50"
@@ -199,6 +226,7 @@ export default function SubscriberLogin() {
                     value={email}
                     onChange={(e) => {
                       setEmail(e.target.value);
+                      if (oauthConflict) setOauthConflict(false);
                       if (fieldErrors.email) {
                         setFieldErrors((prev) => ({ ...prev, email: undefined }));
                       }

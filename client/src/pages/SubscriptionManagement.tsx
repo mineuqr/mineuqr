@@ -9,6 +9,9 @@ import { useLocation } from "wouter";
 import { formatRiyadhDate } from "@/lib/datetime";
 import { useAuthGate } from "@/_core/hooks/useAuthGate";
 import { AuthGatePending, LoginRequiredCard, PageDataLoading } from "@/components/AuthGate";
+import { VerificationRequiredPanel } from "@/components/auth/VerificationRequiredPanel";
+import { EmailVerificationBanner } from "@/components/auth/EmailVerificationBanner";
+import { isEmailNotVerifiedError } from "@/lib/trpcErrors";
 
 export default function SubscriptionManagement() {
   const { t } = useLanguage();
@@ -17,7 +20,7 @@ export default function SubscriptionManagement() {
   const [isLoading, setIsLoading] = useState(false);
   const gate = useAuthGate();
 
-  const { data: currentSub, isLoading: isLoadingSub } = 
+  const { data: currentSub, isLoading: isLoadingSub, error: subError } = 
     trpc.subscription.getCurrentSubscription.useQuery(undefined, {
       enabled: gate.authResolved && gate.isAuthenticated,
     });
@@ -49,6 +52,17 @@ export default function SubscriptionManagement() {
 
   if (isLoadingSub) {
     return <PageDataLoading minHeight="min-h-[60vh]" />;
+  }
+
+  if (isEmailNotVerifiedError(subError)) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 py-12 px-4">
+        <div className="mx-auto max-w-lg space-y-6">
+          <EmailVerificationBanner />
+          <VerificationRequiredPanel variant="operations" />
+        </div>
+      </div>
+    );
   }
 
   if (!currentSub) {

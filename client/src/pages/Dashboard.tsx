@@ -41,6 +41,8 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { EmailVerificationBanner } from "@/components/auth/EmailVerificationBanner";
+import { VerificationRequiredPanel } from "@/components/auth/VerificationRequiredPanel";
+import { isEmailNotVerifiedError, toastTrpcError } from "@/lib/trpcErrors";
 import { QRCodeSVG } from "qrcode.react";
 import { QRWithLogo } from "@/components/QRWithLogo";
 import {
@@ -764,9 +766,8 @@ function RestaurantsList({
       setDeleteRestaurantId(null);
       refetch();
     },
-    onError: (error: any) => {
-      const errorMessage = error?.message || t('dashboard.deleteError') || 'حدث خطأ في حذف المطعم';
-      toast.error(errorMessage);
+    onError: (error: unknown) => {
+      toastTrpcError(error, t);
     },
   });
   
@@ -991,7 +992,7 @@ function CreateRestaurantDialog({ open, onClose }: { open: boolean; onClose: () 
       resetForm();
       onClose();
     },
-    onError: (err) => toast.error(err.message || t('dashboard.errorOccurred')),
+    onError: (err) => toastTrpcError(err, t),
   });
 
   const resetForm = () => {
@@ -1273,11 +1274,12 @@ function RestaurantHomePanel({
     isAuthenticated,
     pollMs: ordersEnabled ? DASHBOARD_ORDER_LIST_POLL_MS : undefined,
   });
-  const { data: recentOrders } = trpc.order.list.useQuery(
+  const { data: recentOrders, error: recentOrdersError } = trpc.order.list.useQuery(
     { restaurantId },
     orderListQueryOptions(ordersEnabled)
   );
   const recent = (recentOrders ?? []).slice(0, 5);
+  const ordersBlocked = isEmailNotVerifiedError(recentOrdersError);
 
   return (
     <div className="space-y-10 sm:space-y-12">
@@ -1294,7 +1296,9 @@ function RestaurantHomePanel({
             <ArrowRight className="h-5 w-5 rtl:rotate-180" />
           </Button>
         </div>
-        {recent.length === 0 ? (
+        {ordersBlocked ? (
+          <VerificationRequiredPanel variant="orders" compact />
+        ) : recent.length === 0 ? (
           <p className="py-8 text-center text-base text-muted-foreground">
             {language === "ar" ? "لا توجد طلبات حديثة" : "No recent orders"}
           </p>
@@ -1539,7 +1543,7 @@ function CategoriesTab({
       setDeleteCatId(null);
       if (selectedCategoryId === deleteCatId) onSelectCategory(null);
     },
-    onError: (err) => toast.error(err.message),
+    onError: (err) => toastTrpcError(err, t),
   });
 
   if (selectedCategoryId) {
@@ -1682,7 +1686,7 @@ function CategoryFormDialog({
       toast.success(t('dashboard.addCategorySuccess'));
       onClose();
     },
-    onError: (err) => toast.error(err.message),
+    onError: (err) => toastTrpcError(err, t),
   });
 
   const updateMutation = trpc.category.update.useMutation({
@@ -1691,7 +1695,7 @@ function CategoryFormDialog({
       toast.success(t('dashboard.updateCategorySuccess'));
       onClose();
     },
-    onError: (err) => toast.error(err.message),
+    onError: (err) => toastTrpcError(err, t),
   });
 
   const handleSubmit = () => {
@@ -1773,7 +1777,7 @@ function ItemsView({
       toast.success(t('dashboard.successDeleted'));
       setDeleteItemId(null);
     },
-    onError: (err) => toast.error(err.message),
+    onError: (err) => toastTrpcError(err, t),
   });
 
   const toggleAvailability = trpc.menuItem.update.useMutation({
@@ -2004,7 +2008,7 @@ function ItemFormDialog({
       utils.restaurant.stats.invalidate();
       onClose();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : String(err));
+      toastTrpcError(err, t);
     }
   };
 
@@ -3059,7 +3063,7 @@ function SettingsTab({ restaurant, onBack }: { restaurant: any; onBack: () => vo
       utils.restaurant.list.invalidate();
       toast.success(t('dashboard.updateRestaurantSuccess'));
     },
-    onError: (err) => toast.error(err.message),
+    onError: (err) => toastTrpcError(err, t),
   });
 
   const deleteMutation = trpc.restaurant.delete.useMutation({
@@ -3068,7 +3072,7 @@ function SettingsTab({ restaurant, onBack }: { restaurant: any; onBack: () => vo
       toast.success(t('dashboard.deleteRestaurantSuccess'));
       onBack();
     },
-    onError: (err) => toast.error(err.message),
+    onError: (err) => toastTrpcError(err, t),
   });
 
   const uploadImageMutation = trpc.restaurant.uploadImage.useMutation({
@@ -3077,7 +3081,7 @@ function SettingsTab({ restaurant, onBack }: { restaurant: any; onBack: () => vo
       utils.restaurant.list.invalidate();
       toast.success(t('dashboard.uploadSuccess'));
     },
-    onError: (err) => toast.error(err.message),
+    onError: (err) => toastTrpcError(err, t),
   });
 
   const deleteImageMutation = trpc.restaurant.deleteImage.useMutation({
@@ -3086,7 +3090,7 @@ function SettingsTab({ restaurant, onBack }: { restaurant: any; onBack: () => vo
       utils.restaurant.list.invalidate();
       toast.success(t('dashboard.deleteImageSuccess'));
     },
-    onError: (err: any) => toast.error(err.message),
+    onError: (err) => toastTrpcError(err, t),
   });
 
   const handleImageUpload = (file: File, imageType: "logo" | "cover") => {
@@ -3785,10 +3789,11 @@ function ReportsTab({
     isAuthenticated,
     pollMs: ordersEnabled ? DASHBOARD_ORDER_LIST_POLL_MS : undefined,
   });
-  const { data: allOrders } = trpc.order.list.useQuery(
+  const { data: allOrders, error: ordersError } = trpc.order.list.useQuery(
     { restaurantId },
     orderListQueryOptions(ordersEnabled)
   );
+  const ordersBlocked = isEmailNotVerifiedError(ordersError);
 
   const orderStats = useMemo(
     () => buildOrderStatistics((allOrders ?? []) as DashboardOrder[]),
@@ -3874,6 +3879,10 @@ function ReportsTab({
 
       <RestaurantStatisticsSection stats={stats} t={t} ariaLabel={statsAriaLabel} language={language} />
 
+      {ordersBlocked ? (
+        <VerificationRequiredPanel variant="orders" />
+      ) : (
+      <>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <div className={cn(dash.kpiCard)}>
           <p className="text-2xl font-bold tabular-nums sm:text-3xl">{orderStats.today.totalOrders}</p>
@@ -4006,13 +4015,15 @@ function ReportsTab({
           )}
         </CardContent>
       </Card>
+      </>
+      )}
     </div>
   );
 }
 
 // ─── Orders Tab ─────────────────────────────────────────────
 function OrdersTab({ restaurantId, currencySymbol, tableLabel }: { restaurantId: number; currencySymbol?: string; tableLabel?: string }) {
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const { isAuthenticated, authPending } = useAuth();
   const ordersEnabled = restaurantQueriesEnabled(authPending, isAuthenticated, restaurantId);
   const isRooms = tableLabel === "rooms";
@@ -4028,10 +4039,11 @@ function OrdersTab({ restaurantId, currencySymbol, tableLabel }: { restaurantId:
     isAuthenticated,
     pollMs: ordersEnabled ? DASHBOARD_ORDER_LIST_POLL_MS : undefined,
   });
-  const { data: allOrders, refetch } = trpc.order.list.useQuery(
+  const { data: allOrders, refetch, error: ordersError } = trpc.order.list.useQuery(
     { restaurantId },
     orderListQueryOptions(ordersEnabled)
   );
+  const ordersBlocked = isEmailNotVerifiedError(ordersError);
 
   const orders = useMemo(() => {
     const list = (allOrders ?? []) as DashboardOrder[];
@@ -4081,6 +4093,7 @@ function OrdersTab({ restaurantId, currencySymbol, tableLabel }: { restaurantId:
 
   const updateStatusMutation = trpc.order.updateStatus.useMutation({
     onSuccess: () => refetch(),
+    onError: (err) => toastTrpcError(err, t),
   });
 
   return (
@@ -4091,6 +4104,11 @@ function OrdersTab({ restaurantId, currencySymbol, tableLabel }: { restaurantId:
           {language === "ar" ? "إدارة الطلبات المباشرة" : "Manage live orders"}
         </p>
       </div>
+
+      {ordersBlocked ? (
+        <VerificationRequiredPanel variant="orders" />
+      ) : (
+      <>
       <div className="flex flex-wrap gap-2.5 rounded-2xl border border-border/40 bg-muted/10 p-2 sm:p-2.5">
             {["all", "pending", "preparing", "ready", "served", "cancelled"].map((status) => (
               <button
@@ -4243,6 +4261,8 @@ function OrdersTab({ restaurantId, currencySymbol, tableLabel }: { restaurantId:
             </Card>
           ))}
         </div>
+      )}
+      </>
       )}
     </div>
   );

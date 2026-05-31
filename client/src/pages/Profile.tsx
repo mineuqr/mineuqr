@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { toastTrpcError } from "@/lib/trpcErrors";
 import { toast } from "sonner";
 import { User, Mail, Lock, Save, Loader2, Shield } from "lucide-react";
 export default function Profile() {
@@ -41,7 +42,7 @@ export default function Profile() {
       utils.profile.get.invalidate();
       utils.auth.me.invalidate();
     },
-    onError: (err) => toast.error(err.message),
+    onError: (err) => toastTrpcError(err, t),
   });
 
   const changePasswordMutation = trpc.profile.changePassword.useMutation({
@@ -51,7 +52,7 @@ export default function Profile() {
       setNewPassword("");
       setConfirmPassword("");
     },
-    onError: (err) => toast.error(err.message),
+    onError: (err) => toastTrpcError(err, t),
   });
 
   if (gate.isPending) {

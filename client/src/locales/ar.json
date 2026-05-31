@@ -1059,7 +1059,21 @@
     "verifyBannerResend": "إعادة إرسال رسالة التحقق",
     "verifyBannerResending": "جاري الإرسال...",
     "verifyBannerResendSuccess": "إذا كان حسابك مؤهلاً، تم إرسال رسالة التحقق.",
-    "verifyBannerResendError": "تعذر إرسال رسالة التحقق. حاول لاحقاً."
+    "verifyBannerResendError": "تعذر إرسال رسالة التحقق. حاول لاحقاً.",
+    "verifyRequiredTitle": "التحقق من الهوية مطلوب",
+    "verifyRequiredMessage": "أكّد بريدك الإلكتروني لفتح الميزات التشغيلية في حسابك.",
+    "verifyRequiredOrdersMessage": "إدارة الطلبات المباشرة والتقارير تتطلب بريداً إلكترونياً مُؤكَّداً.",
+    "verifyRequiredOperationsMessage": "يتطلب هذا الإجراء بريداً إلكترونياً مُؤكَّداً قبل المتابعة.",
+    "verifyStatusPending": "بانتظار التحقق",
+    "verifyRefreshStatus": "تحديث الحالة",
+    "verifyRefreshing": "جاري التحقق...",
+    "verifyRefreshStillPending": "البريد ما زال غير مُؤكَّد. تحقق من صندوق الوارد أو أعد إرسال رسالة التحقق.",
+    "verifyRefreshVerified": "تم تأكيد البريد — أصبح لديك وصول كامل.",
+    "verifyNextStep": "افتح الرابط في بريدك، ثم حدّث حالتك من هنا.",
+    "trpcEmailNotVerified": "أكّد بريدك الإلكتروني لاستخدام هذه الميزة.",
+    "oauthConflictTitle": "تعذّر إكمال تسجيل الدخول",
+    "oauthConflictMessage": "هذا البريد مسجّل مسبقاً بكلمة مرور. سجّل الدخول بالبريد وكلمة المرور بدلاً من ذلك.",
+    "oauthConflictRecovery": "استخدم نموذج تسجيل الدخول أدناه بالبريد الذي سجّلت به، أو استعد كلمة المرور إن نسيتها."
   },
   "profile": {
     "title": "الملف الشخصي",
