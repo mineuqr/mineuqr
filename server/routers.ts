@@ -348,7 +348,7 @@ const categoryRouter = router({
       return getCategoriesByRestaurant(input.restaurantId);
     }),
 
-  create: protectedProcedure
+  create: verifiedProcedure
     .input(z.object({
       restaurantId: z.number(),
       nameAr: z.string().min(1),
@@ -363,7 +363,7 @@ const categoryRouter = router({
       return createCategory(input);
     }),
 
-  update: protectedProcedure
+  update: verifiedProcedure
     .input(z.object({
       id: z.number(),
       nameAr: z.string().min(1).optional(),
@@ -385,7 +385,7 @@ const categoryRouter = router({
       return { success: true };
     }),
 
-  delete: protectedProcedure
+  delete: verifiedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input, ctx }) => {
       const category = await getCategoryById(input.id);
@@ -414,7 +414,7 @@ const menuItemRouter = router({
       return getMenuItemsByRestaurant(input.restaurantId);
     }),
 
-  create: protectedProcedure
+  create: verifiedProcedure
     .input(z.object({
       categoryId: z.number(),
       restaurantId: z.number(),
@@ -438,7 +438,7 @@ const menuItemRouter = router({
       return createMenuItem(input);
     }),
 
-  update: protectedProcedure
+  update: verifiedProcedure
     .input(z.object({
       id: z.number(),
       categoryId: z.number().optional(),
@@ -472,7 +472,7 @@ const menuItemRouter = router({
       return { success: true };
     }),
 
-  delete: protectedProcedure
+  delete: verifiedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input, ctx }) => {
       const item = await getMenuItemById(input.id);
@@ -484,7 +484,7 @@ const menuItemRouter = router({
       return { success: true };
     }),
 
-  uploadImage: protectedProcedure
+  uploadImage: verifiedProcedure
     .input(z.object({
       itemId: z.number(),
       imageData: z.string(), // base64
@@ -525,7 +525,7 @@ const offerRouter = router({
       return getActiveOffersByRestaurant(input.restaurantId);
     }),
 
-  create: protectedProcedure
+  create: verifiedProcedure
     .input(z.object({
       restaurantId: z.number(),
       titleAr: z.string().min(1),
@@ -548,7 +548,7 @@ const offerRouter = router({
       });
     }),
 
-  update: protectedProcedure
+  update: verifiedProcedure
     .input(z.object({
       id: z.number(),
       titleAr: z.string().min(1).optional(),
@@ -577,7 +577,7 @@ const offerRouter = router({
       return { success: true };
     }),
 
-  delete: protectedProcedure
+  delete: verifiedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input, ctx }) => {
       const offer = await getOfferById(input.id);
@@ -589,7 +589,7 @@ const offerRouter = router({
       return { success: true };
     }),
 
-  uploadImage: protectedProcedure
+  uploadImage: verifiedProcedure
     .input(z.object({
       offerId: z.number(),
       imageData: z.string(),
@@ -1504,7 +1504,7 @@ const holidayRouter = router({
       return holidays.filter(h => h.date >= today);
     }),
 
-  create: protectedProcedure
+  create: verifiedProcedure
     .input(z.object({
       restaurantId: z.number(),
       titleAr: z.string().min(1),
@@ -1520,7 +1520,7 @@ const holidayRouter = router({
       return { success: true, id };
     }),
 
-  update: protectedProcedure
+  update: verifiedProcedure
     .input(z.object({
       id: z.number(),
       titleAr: z.string().min(1).optional(),
@@ -1539,7 +1539,7 @@ const holidayRouter = router({
       return { success: true };
     }),
 
-  delete: protectedProcedure
+  delete: verifiedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input, ctx }) => {
       const holiday = await getHolidayById(input.id);
@@ -1566,7 +1566,7 @@ const tableRouter = router({
       await assertRestaurantAccess(ctx, table.restaurantId);
       return table;
     }),
-  create: protectedProcedure
+  create: verifiedProcedure
     .input(z.object({
       restaurantId: z.number(),
       tableNumber: z.number(),
@@ -1577,7 +1577,7 @@ const tableRouter = router({
       await assertRestaurantAccess(ctx, input.restaurantId);
       return createTable(input);
     }),
-  createMultiple: protectedProcedure
+  createMultiple: verifiedProcedure
     .input(z.object({
       restaurantId: z.number(),
       count: z.number().min(1).max(500),
@@ -1587,7 +1587,7 @@ const tableRouter = router({
       await assertRestaurantAccess(ctx, input.restaurantId);
       return createMultipleTables(input.restaurantId, input.count, input.startFrom);
     }),
-  update: protectedProcedure
+  update: verifiedProcedure
     .input(z.object({
       id: z.number(),
       tableNumber: z.number().optional(),
@@ -1608,7 +1608,7 @@ const tableRouter = router({
       await updateTable(id, data);
       return { success: true };
     }),
-  delete: protectedProcedure
+  delete: verifiedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input, ctx }) => {
       const table = await getTableById(input.id);
@@ -1749,7 +1749,7 @@ const orderRouter = router({
       const items = await getOrderItemsByOrderId(input.id);
       return { ...order, items };
     }),
-  updateStatus: protectedProcedure
+  updateStatus: verifiedProcedure
     .input(z.object({
       id: z.number(),
       status: z.enum(['pending', 'preparing', 'ready', 'served', 'cancelled']),
