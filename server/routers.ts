@@ -1730,8 +1730,8 @@ const orderRouter = router({
       }
       return { orderId: result?.id, orderNumber };
     }),
-  // Protected: list orders for restaurant owner
-  list: protectedProcedure
+  // Verified: list orders for restaurant owner (live order operations)
+  list: verifiedProcedure
     .input(z.object({
       restaurantId: z.number(),
       status: z.string().optional(),
@@ -1740,7 +1740,7 @@ const orderRouter = router({
       await assertRestaurantAccess(ctx, input.restaurantId);
       return getOrdersWithItemsByRestaurant(input.restaurantId, input.status);
     }),
-  getById: protectedProcedure
+  getById: verifiedProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ input, ctx }) => {
       const order = await getOrderById(input.id);
@@ -1763,7 +1763,7 @@ const orderRouter = router({
       await updateOrderStatus(input.id, input.status);
       return { success: true };
     }),
-  activeCount: protectedProcedure
+  activeCount: verifiedProcedure
     .input(z.object({ restaurantId: z.number() }))
     .query(async ({ input, ctx }) => {
       await assertRestaurantAccess(ctx, input.restaurantId);

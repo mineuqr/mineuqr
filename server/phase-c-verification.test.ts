@@ -41,6 +41,16 @@ vi.mock("./db", () => ({
     id === 1 ? { id: 1, restaurantId: 1, status: "pending" } : null
   ),
   updateOrderStatus: vi.fn(async () => undefined),
+  getOrdersWithItemsByRestaurant: vi.fn(async () => [
+    { id: 1, restaurantId: 1, status: "pending", totalAmount: "10.00", items: [] },
+  ]),
+  getOrderItemsByOrderId: vi.fn(async () => []),
+  getActiveOrdersCount: vi.fn(async () => 2),
+  getRestaurantStats: vi.fn(async () => ({
+    totalCategories: 3,
+    totalItems: 12,
+    viewCount: 100,
+  })),
   getRestaurantById: vi.fn(async (id: number) =>
     id === 1
       ? {
@@ -129,6 +139,13 @@ describe("Phase C verifiedProcedure mutations (AUTH-POLICY-1C.1)", () => {
       ).resolves.toBeDefined();
     });
 
+    it("allows unverified local user on order.list", async () => {
+      const caller = appRouter.createCaller(createContext(baseUser()));
+      await expect(
+        caller.order.list({ restaurantId: 1 })
+      ).resolves.toHaveLength(1);
+    });
+
     it("allows unverified local user on order.updateStatus", async () => {
       const caller = appRouter.createCaller(createContext(baseUser()));
       await expect(
@@ -199,11 +216,67 @@ describe("Phase C verifiedProcedure mutations (AUTH-POLICY-1C.1)", () => {
       );
     });
 
+    it("blocks unverified local user on order.list", async () => {
+      const caller = appRouter.createCaller(createContext(baseUser()));
+      await expectForbiddenUnverified(() =>
+        caller.order.list({ restaurantId: 1 })
+      );
+    });
+
+    it("blocks unverified local user on order.getById", async () => {
+      const caller = appRouter.createCaller(createContext(baseUser()));
+      await expectForbiddenUnverified(() => caller.order.getById({ id: 1 }));
+    });
+
+    it("blocks unverified local user on order.activeCount", async () => {
+      const caller = appRouter.createCaller(createContext(baseUser()));
+      await expectForbiddenUnverified(() =>
+        caller.order.activeCount({ restaurantId: 1 })
+      );
+    });
+
     it("blocks unverified local user on order.updateStatus", async () => {
       const caller = appRouter.createCaller(createContext(baseUser()));
       await expectForbiddenUnverified(() =>
         caller.order.updateStatus({ id: 1, status: "ready" })
       );
+    });
+
+    it("allows verified local user on order.list", async () => {
+      const caller = appRouter.createCaller(
+        createContext(baseUser({ emailVerifiedAt: new Date().toISOString() }))
+      );
+      await expect(
+        caller.order.list({ restaurantId: 1 })
+      ).resolves.toHaveLength(1);
+    });
+
+    it("allows verified local user on order.activeCount", async () => {
+      const caller = appRouter.createCaller(
+        createContext(baseUser({ emailVerifiedAt: new Date().toISOString() }))
+      );
+      await expect(
+        caller.order.activeCount({ restaurantId: 1 })
+      ).resolves.toBe(2);
+    });
+
+    it("allows admin bypass on order.getById", async () => {
+      const caller = appRouter.createCaller(
+        createContext(baseUser({ role: "admin", emailVerifiedAt: null }))
+      );
+      await expect(caller.order.getById({ id: 1 })).resolves.toMatchObject({
+        id: 1,
+        items: [],
+      });
+    });
+
+    it("allows OAuth user on order.list", async () => {
+      const caller = appRouter.createCaller(
+        createContext(baseUser({ loginMethod: "manus", emailVerifiedAt: null }))
+      );
+      await expect(
+        caller.order.list({ restaurantId: 1 })
+      ).resolves.toHaveLength(1);
     });
 
     it("allows verified local user on table.create", async () => {
@@ -239,6 +312,11 @@ describe("Phase C verifiedProcedure mutations (AUTH-POLICY-1C.1)", () => {
           endDate: new Date(Date.now() + 86400000).toISOString(),
         })
       ).resolves.toBeDefined();
+    });
+
+    it("does not block restaurant.stats for unverified local user", async () => {
+      const caller = appRouter.createCaller(createContext(baseUser()));
+      await expect(caller.restaurant.stats({ id: 1 })).resolves.toBeDefined();
     });
 
     it("does not block category.list for unverified local user", async () => {
