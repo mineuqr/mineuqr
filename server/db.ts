@@ -1,5 +1,6 @@
 import { eq, and, asc, desc, sql, inArray, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
+import { createPool, type Pool, type PoolOptions } from "mysql2";
 import {
   InsertUser, users,
   authTokens, InsertAuthToken,
@@ -31,10 +32,51 @@ import {
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
+/** Parse DATABASE_URL; mirrors scripts/apply-session-valid-after-local-patch.cjs ssl handling. */
+function parseDatabaseUrl(databaseUrl: string): PoolOptions {
+  const url = new URL(databaseUrl);
+  const sslRaw = url.searchParams.get("ssl");
+  let ssl: PoolOptions["ssl"];
+  if (sslRaw) {
+    try {
+      ssl = JSON.parse(sslRaw) as PoolOptions["ssl"];
+    } catch {
+      ssl = sslRaw as PoolOptions["ssl"];
+    }
+  }
+  return {
+    host: url.hostname,
+    port: url.port ? Number(url.port) : 3306,
+    user: decodeURIComponent(url.username),
+    password: decodeURIComponent(url.password),
+    database: url.pathname.replace(/^\//, ""),
+    ssl,
+  };
+}
+
+/** TiDB Serverless requires TLS; mysql2 defaults to ssl:false when the URL omits ?ssl=... */
+function createRuntimeMysqlPool(databaseUrl: string): Pool {
+  const cfg = parseDatabaseUrl(databaseUrl);
+  const isTidbCloud = /\.tidbcloud\.com$/i.test(cfg.host ?? "");
+  const ssl =
+    cfg.ssl ??
+    (isTidbCloud
+      ? { minVersion: "TLSv1.2" as const, rejectUnauthorized: true }
+      : undefined);
+  return createPool({
+    host: cfg.host,
+    port: cfg.port,
+    user: cfg.user,
+    password: cfg.password,
+    database: cfg.database,
+    ...(ssl ? { ssl } : {}),
+  });
+}
+
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      _db = drizzle(createRuntimeMysqlPool(process.env.DATABASE_URL));
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
