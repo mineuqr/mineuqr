@@ -63,6 +63,13 @@ function createRuntimeMysqlPool(databaseUrl: string): Pool {
     (isTidbCloud
       ? { minVersion: "TLSv1.2" as const, rejectUnauthorized: true }
       : undefined);
+  console.log("[TLS DEBUG]", {
+    host: cfg.host,
+    port: cfg.port,
+    isTidbCloud,
+    cfgSsl: cfg.ssl,
+    finalSsl: ssl,
+  });
   return createPool({
     host: cfg.host,
     port: cfg.port,
