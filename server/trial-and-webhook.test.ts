@@ -33,6 +33,7 @@ vi.mock("./db", () => ({
   updateUserSubscription: vi.fn(async () => ({ success: true })),
   updateSubscriptionForActivation: vi.fn(async () => 42),
   getUserSubscription: vi.fn(async () => null),
+  getRestaurantsByUser: vi.fn(async () => [{ id: 1, nameAr: "مطعم تجريبي" }]),
 }));
 
 // Mock PayPal functions
