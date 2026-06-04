@@ -6,6 +6,7 @@ vi.mock("./db", () => ({
   createSubscriptionForRestaurant: vi.fn(),
   updateSubscriptionById: vi.fn(),
   cancelSubscriptionById: vi.fn(),
+  getSubscriptionForRestaurant: vi.fn(),
   getSubscriptionByRestaurantId: vi.fn(),
   getSubscriptionPlans: vi.fn(),
   getSubscriptionPlanById: vi.fn(),
@@ -78,7 +79,7 @@ import {
   createSubscriptionForRestaurant,
   updateSubscriptionById,
   cancelSubscriptionById,
-  getSubscriptionByRestaurantId,
+  getSubscriptionForRestaurant,
 } from "./db";
 
 const adminUser = { id: 1, openId: "admin_1", name: "Admin", email: "admin@test.com", role: "admin" as const, loginMethod: "email", createdAt: new Date(), updatedAt: new Date(), lastSignedIn: new Date(), passwordHash: null };
@@ -120,7 +121,7 @@ describe("Admin Subscription Management", () => {
 
   describe("createRestaurantSubscription", () => {
     it("should create subscription for restaurant", async () => {
-      (getSubscriptionByRestaurantId as any).mockResolvedValue(undefined);
+      (getSubscriptionForRestaurant as any).mockResolvedValue(undefined);
       (createSubscriptionForRestaurant as any).mockResolvedValue({ id: 1 });
 
       const caller = createCaller(adminUser);
@@ -143,7 +144,7 @@ describe("Admin Subscription Management", () => {
     });
 
     it("should reject if restaurant already has subscription", async () => {
-      (getSubscriptionByRestaurantId as any).mockResolvedValue({ id: 1, status: "active" });
+      (getSubscriptionForRestaurant as any).mockResolvedValue({ id: 1, status: "active" });
 
       const caller = createCaller(adminUser);
       await expect(
@@ -156,7 +157,7 @@ describe("Admin Subscription Management", () => {
     });
 
     it("should use custom end date if provided", async () => {
-      (getSubscriptionByRestaurantId as any).mockResolvedValue(undefined);
+      (getSubscriptionForRestaurant as any).mockResolvedValue(undefined);
       (createSubscriptionForRestaurant as any).mockResolvedValue({ id: 2 });
 
       const caller = createCaller(adminUser);

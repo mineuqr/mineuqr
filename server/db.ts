@@ -29,7 +29,11 @@ import {
   businessYearMonthMonthsAgo,
   formatBusinessYearMonthLabel,
 } from "@shared/utils/timezone";
-import { pickCanonicalSubscription } from "./subscriptionResolver";
+import {
+  pickCanonicalSubscription,
+  pickUserLevelSubscription,
+  resolveOrderingSubscriptionRow,
+} from "./subscriptionResolver";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -652,20 +656,21 @@ export async function getAllSubscriptions() {
   return db.select().from(userSubscriptions);
 }
 
+/**
+ * @deprecated Prefer getSubscriptionForRestaurant — uses canonical pick instead of limit(1).
+ */
 export async function getSubscriptionByRestaurantId(restaurantId: number) {
-  const db = await getDb();
-  if (!db) return undefined;
-  const result = await db.select().from(userSubscriptions).where(eq(userSubscriptions.restaurantId, restaurantId)).limit(1);
-  return result[0];
+  return getSubscriptionForRestaurant(restaurantId);
 }
 
-/** Per-restaurant subscription first; otherwise owner's user-level subscription row. */
+/**
+ * Subscription used for table ordering: canonical restaurant row, then user-level (restaurantId 0).
+ */
 export async function getOrderingSubscriptionForRestaurant(restaurantId: number) {
-  const byRestaurant = await getSubscriptionByRestaurantId(restaurantId);
-  if (byRestaurant) return byRestaurant;
   const restaurant = await getRestaurantById(restaurantId);
   if (!restaurant) return undefined;
-  return getUserSubscription(restaurant.userId);
+  const rows = await getSubscriptionsByUser(restaurant.userId);
+  return resolveOrderingSubscriptionRow(restaurantId, rows);
 }
 
 export async function restaurantAllowsTableOrdering(restaurantId: number): Promise<boolean> {
@@ -715,9 +720,14 @@ export async function getAllRestaurantsWithSubscriptions() {
   
   return allRestaurants.map(r => {
     const owner = allUsers.find(u => u.id === r.userId) || null;
+    const ownerSubs = allSubs.filter(s => s.userId === r.userId);
+    const subscription =
+      pickCanonicalSubscription(ownerSubs.filter(s => s.restaurantId === r.id)) ??
+      pickUserLevelSubscription(ownerSubs) ??
+      null;
     return {
       ...r,
-      subscription: allSubs.find(s => s.userId === r.userId) || null,
+      subscription,
       ownerName: owner?.name || null,
       ownerEmail: owner?.email || null,
     };

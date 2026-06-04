@@ -78,3 +78,30 @@ export function pickCanonicalSubscription(
   if (rows.length === 0) return undefined;
   return [...rows].sort((a, b) => compareSubscriptionsCanonical(a, b, now))[0];
 }
+
+/** OAuth / account-level rows (restaurantId = 0), canonical pick. */
+export function pickUserLevelSubscription(
+  rows: UserSubscriptionRow[],
+  now: Date = new Date()
+): UserSubscriptionRow | undefined {
+  return pickCanonicalSubscription(
+    rows.filter((r) => r.restaurantId === 0),
+    now
+  );
+}
+
+/**
+ * Ordering resolution: restaurant-scoped canonical row first, then user-level (restaurantId 0).
+ */
+export function resolveOrderingSubscriptionRow(
+  restaurantId: number,
+  userSubscriptions: UserSubscriptionRow[],
+  now: Date = new Date()
+): UserSubscriptionRow | undefined {
+  const scoped = pickCanonicalSubscription(
+    userSubscriptions.filter((s) => s.restaurantId === restaurantId),
+    now
+  );
+  if (scoped) return scoped;
+  return pickUserLevelSubscription(userSubscriptions, now);
+}

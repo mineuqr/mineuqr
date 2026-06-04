@@ -17,7 +17,7 @@ import {
   getNotificationsByUser, getUnreadNotifications, markNotificationAsRead, createNotification,
   getCurrencyByCountryCode, getAllCountriesCurrencies,
   upsertUser, getUserByEmail, updateUserPassword, updateUserProfile,
-  getAllRestaurantsWithSubscriptions, createSubscriptionForRestaurant, updateSubscriptionById, cancelSubscriptionById, getSubscriptionByRestaurantId,
+  getAllRestaurantsWithSubscriptions, createSubscriptionForRestaurant, updateSubscriptionById, cancelSubscriptionById, getSubscriptionForRestaurant,
   getAdminStatistics, getRevenueByMonth, getSubscriptionDetails,
   getPublicStats, getExtendedAdminStats,
   getAllUsers, updateUserRole,
@@ -628,7 +628,7 @@ const subscriptionRouter = router({
     .input(z.object({ restaurantId: z.number() }))
     .query(async ({ input, ctx }) => {
       await assertRestaurantAccess(ctx, input.restaurantId);
-      const subscription = await getSubscriptionByRestaurantId(input.restaurantId);
+      const subscription = await getSubscriptionForRestaurant(input.restaurantId);
       if (!subscription) return null;
       const plan = await getSubscriptionPlanById(subscription.planId);
       return { subscription, plan };
@@ -837,7 +837,7 @@ const adminRouter = router({
     .mutation(async ({ input, ctx }) => {
       assertAdminAccess(ctx, "admin.createRestaurantSubscription");
       // Check if restaurant already has subscription
-      const existing = await getSubscriptionByRestaurantId(input.restaurantId);
+      const existing = await getSubscriptionForRestaurant(input.restaurantId);
       if (existing) {
         throw new TRPCError({ code: "CONFLICT", message: "المطعم لديه اشتراك بالفعل" });
       }

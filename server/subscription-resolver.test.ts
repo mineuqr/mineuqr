@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
   pickCanonicalSubscription,
+  pickUserLevelSubscription,
+  resolveOrderingSubscriptionRow,
   subscriptionEntitledNow,
   compareSubscriptionsCanonical,
   type UserSubscriptionRow,
@@ -159,6 +161,58 @@ describe("subscriptionResolver", () => {
       const second = compareSubscriptionsCanonical(a, b, FIXED_NOW);
       expect(first).toBe(second);
       expect(pickCanonicalSubscription([a, b], FIXED_NOW)?.id).toBe(4);
+    });
+  });
+
+  describe("pickUserLevelSubscription", () => {
+    it("ignores restaurant-scoped rows and picks canonical user-level row", () => {
+      const scoped = subRow({ id: 1, userId: 2, restaurantId: 99, currentPeriodEnd: isoPlusDays(60) });
+      const userLevel = subRow({
+        id: 2,
+        userId: 2,
+        restaurantId: 0,
+        status: "trial",
+        trialEndsAt: isoPlusDays(10),
+        currentPeriodEnd: isoPlusDays(10),
+      });
+      expect(pickUserLevelSubscription([scoped, userLevel], FIXED_NOW)?.id).toBe(2);
+    });
+  });
+
+  describe("resolveOrderingSubscriptionRow", () => {
+    it("prefers entitled restaurant-scoped row over user-level trial", () => {
+      const userLevel = subRow({
+        id: 1,
+        userId: 5,
+        restaurantId: 0,
+        status: "trial",
+        trialEndsAt: isoPlusDays(30),
+        currentPeriodEnd: isoPlusDays(30),
+      });
+      const scoped = subRow({ id: 2, userId: 5, restaurantId: 40, currentPeriodEnd: isoPlusDays(20) });
+      const picked = resolveOrderingSubscriptionRow(40, [userLevel, scoped], FIXED_NOW);
+      expect(picked?.id).toBe(2);
+      expect(picked?.restaurantId).toBe(40);
+    });
+
+    it("falls back to user-level when restaurant has no scoped row", () => {
+      const userLevel = subRow({
+        id: 3,
+        userId: 5,
+        restaurantId: 0,
+        status: "trial",
+        trialEndsAt: isoPlusDays(14),
+        currentPeriodEnd: isoPlusDays(14),
+      });
+      const otherRestaurant = subRow({ id: 4, userId: 5, restaurantId: 99 });
+      const picked = resolveOrderingSubscriptionRow(40, [userLevel, otherRestaurant], FIXED_NOW);
+      expect(picked?.id).toBe(3);
+      expect(picked?.restaurantId).toBe(0);
+    });
+
+    it("does not use another restaurant scoped row for ordering", () => {
+      const otherOnly = subRow({ id: 5, userId: 7, restaurantId: 99, currentPeriodEnd: isoPlusDays(30) });
+      expect(resolveOrderingSubscriptionRow(40, [otherOnly], FIXED_NOW)).toBeUndefined();
     });
   });
 });
