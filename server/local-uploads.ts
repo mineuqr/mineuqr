@@ -15,7 +15,7 @@ export const UPLOADS_DIR = path.join(projectRoot, "uploads");
 /** @deprecated use UPLOADS_DIR */
 export const MENU_UPLOADS_DIR = UPLOADS_DIR;
 
-/** Local disk in development; R2/Forge via storagePut in production. */
+/** Local disk in development; R2 via storagePut in production. */
 export function useLocalUploads(): boolean {
   return process.env.NODE_ENV === "development";
 }
@@ -62,7 +62,7 @@ export async function putFileLocal(
 /** @deprecated use putFileLocal */
 export const putMenuItemImageLocal = putFileLocal;
 
-/** Local disk in dev; storagePut (R2 or Forge per STORAGE_PROVIDER) in production. */
+/** Local disk in dev; storagePut (R2) in production. */
 export async function putUploadedFile(
   relKey: string,
   data: Buffer,
