@@ -29,6 +29,7 @@ import {
   businessYearMonthMonthsAgo,
   formatBusinessYearMonthLabel,
 } from "@shared/utils/timezone";
+import { pickCanonicalSubscription } from "./subscriptionResolver";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -398,6 +399,37 @@ export async function createSubscriptionPlan(data: InsertSubscriptionPlan) {
 
 // ─── User Subscription helpers ──────────────────────────────
 
+/** All subscription rows for a user (newest id first). Prefer getSubscriptionForRestaurant for restaurant scope. */
+export async function getSubscriptionsByUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(userSubscriptions)
+    .where(eq(userSubscriptions.userId, userId))
+    .orderBy(desc(userSubscriptions.id));
+}
+
+/**
+ * Canonical restaurant-scoped subscription row.
+ * Prefers entitled trial/active, then inactive trial/active, then canceled/expired;
+ * breaks ties by latest period end, then highest id. Safe when duplicates exist.
+ */
+export async function getSubscriptionForRestaurant(restaurantId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const rows = await db
+    .select()
+    .from(userSubscriptions)
+    .where(eq(userSubscriptions.restaurantId, restaurantId));
+  return pickCanonicalSubscription(rows);
+}
+
+/**
+ * @deprecated Legacy user-scoped lookup — uses unordered limit(1). Unsafe when a user owns
+ * multiple restaurants. Scheduled for removal after LH-1B payment/UI migration.
+ * Prefer getSubscriptionsByUser + getSubscriptionForRestaurant.
+ */
 export async function getUserSubscription(userId: number) {
   const db = await getDb();
   if (!db) return undefined;
@@ -412,6 +444,10 @@ export async function createUserSubscription(data: InsertUserSubscription) {
   return { id: result[0].insertId };
 }
 
+/**
+ * @deprecated Legacy user-scoped update — mutates every row for userId (C1). Scheduled for removal
+ * after LH-1B webhook migration. Prefer updateSubscriptionById.
+ */
 export async function updateUserSubscription(userId: number, data: Partial<InsertUserSubscription>) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
