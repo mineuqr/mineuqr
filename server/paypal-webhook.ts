@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { capturePayPalOrder } from "./paypal";
-import { getUserSubscription, updateUserSubscription, getSubscriptionPlanById, getUserByOpenId, getRestaurantsByUser } from "./db";
+import { getSubscriptionPlanById, getRestaurantsByUser } from "./db";
+import { updateSubscriptionForActivation } from "./db";
 import { notifyOwner } from "./_core/notification";
 import { sendWelcomeEmail } from "./email";
 import { getCorrelationId } from "./_core/requestContext";
@@ -100,14 +101,39 @@ export async function handlePayPalWebhook(req: Request, res: Response) {
         const periodEnd = new Date();
         periodEnd.setMonth(periodEnd.getMonth() + 1);
 
-        await updateUserSubscription(userId, {
-          planId,
-          status: "active",
-          stripeSubscriptionId: orderId,
-          currentPeriodStart: now.toISOString(),
-          currentPeriodEnd: periodEnd.toISOString(),
-          trialEndsAt: null,
-        });
+        const activatedId = await updateSubscriptionForActivation(
+          userId,
+          {
+            planId,
+            status: "active",
+            stripeSubscriptionId: orderId,
+            currentPeriodStart: now.toISOString(),
+            currentPeriodEnd: periodEnd.toISOString(),
+            trialEndsAt: null,
+          },
+          { planId }
+        );
+
+        if (activatedId == null) {
+          opsLog({
+            type: OPS_EVENT.webhook_processing_failed,
+            category: "WEBHOOK",
+            severity: "warn",
+            ts: new Date().toISOString(),
+            correlationId,
+            route,
+            method,
+            metadata: {
+              provider,
+              providerEventId: orderId,
+              eventType,
+              reason: "no_subscription_row",
+              userId,
+              planId,
+            },
+          });
+          return res.json({ status: "error", message: "No subscription row to activate" });
+        }
 
         opsLog({
           type: OPS_EVENT.payment_subscription_activated,

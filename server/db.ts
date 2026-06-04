@@ -38,6 +38,10 @@ import {
   resolveTableOrderingEntitlement,
   userHasSubscriptionEntitlement,
 } from "./subscriptionEntitlement";
+import {
+  resolveSubscriptionForActivationFromRows,
+  type ActivationTargetOptions,
+} from "./subscriptionActivation";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -453,13 +457,47 @@ export async function createUserSubscription(data: InsertUserSubscription) {
 }
 
 /**
- * @deprecated Legacy user-scoped update — mutates every row for userId (C1). Scheduled for removal
- * after LH-1B webhook migration. Prefer updateSubscriptionById.
+ * @deprecated Prefer updateSubscriptionById or updateSubscriptionForActivation.
+ * Updates exactly one row (canonical target), not all rows for userId (C1 fixed in LH-1B-4).
  */
-export async function updateUserSubscription(userId: number, data: Partial<InsertUserSubscription>) {
+export async function updateUserSubscription(
+  userId: number,
+  data: Partial<InsertUserSubscription>,
+  options?: ActivationTargetOptions
+) {
+  const updatedId = await updateSubscriptionForActivation(userId, data, options);
+  if (updatedId == null) throw new Error("No subscription row found for user");
+}
+
+export async function getSubscriptionById(subscriptionId: number) {
   const db = await getDb();
-  if (!db) throw new Error("Database not available");
-  await db.update(userSubscriptions).set(data).where(eq(userSubscriptions.userId, userId));
+  if (!db) return undefined;
+  const result = await db
+    .select()
+    .from(userSubscriptions)
+    .where(eq(userSubscriptions.id, subscriptionId))
+    .limit(1);
+  return result[0];
+}
+
+export async function resolveSubscriptionForActivation(
+  userId: number,
+  options: ActivationTargetOptions = {}
+) {
+  const rows = await getSubscriptionsByUser(userId);
+  return resolveSubscriptionForActivationFromRows(rows, options);
+}
+
+/** Update a single subscription row for payment/activation (never all rows for userId). */
+export async function updateSubscriptionForActivation(
+  userId: number,
+  data: Partial<InsertUserSubscription>,
+  options: ActivationTargetOptions = {}
+): Promise<number | null> {
+  const target = await resolveSubscriptionForActivation(userId, options);
+  if (!target) return null;
+  await updateSubscriptionById(target.id, data);
+  return target.id;
 }
 
 /** Account-level entitlement: any period-valid trial/active row for the user. */

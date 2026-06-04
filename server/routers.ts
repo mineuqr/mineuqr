@@ -11,13 +11,14 @@ import {
   getMenuItemsByCategory, getMenuItemsByRestaurant, getMenuItemById,
   createMenuItem, updateMenuItem, deleteMenuItem, getRestaurantStats,
   getSubscriptionPlans, getSubscriptionPlanById, createUserSubscription, getUserSubscription,
-  updateUserSubscription, isSubscriptionActive, getTrialEndDate,
+  isSubscriptionActive, getTrialEndDate,
   getOffersByRestaurant, getActiveOffersByRestaurant, getOfferById, createOffer, updateOffer, deleteOffer,
   getInvoicesByUser, getInvoiceById, getUnpaidInvoices,
   getNotificationsByUser, getUnreadNotifications, markNotificationAsRead, createNotification,
   getCurrencyByCountryCode, getAllCountriesCurrencies,
   upsertUser, getUserByEmail, updateUserPassword, updateUserProfile,
   getAllRestaurantsWithSubscriptions, createSubscriptionForRestaurant, updateSubscriptionById, cancelSubscriptionById, getSubscriptionForRestaurant,
+  resolveSubscriptionForActivation,
   getAdminStatistics, getRevenueByMonth, getSubscriptionDetails,
   getPublicStats, getExtendedAdminStats,
   getAllUsers, updateUserRole,
@@ -1082,7 +1083,9 @@ const adminRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       assertAdminAccess(ctx, "admin.updateUserSubscriptionByAdmin");
-      const existing = await getUserSubscription(input.userId);
+      const existing = await resolveSubscriptionForActivation(input.userId, {
+        planId: input.planId,
+      });
       if (!existing) {
         throw new TRPCError({ code: "NOT_FOUND", message: "لا يوجد اشتراك لهذا المستخدم" });
       }

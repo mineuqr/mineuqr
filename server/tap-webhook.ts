@@ -6,10 +6,11 @@ import { OPS_EVENT } from "./_core/opsTaxonomy";
 import { noteWebhookEvent } from "./_core/webhookDedup";
 import {
   updateSubscriptionById,
-  updateUserSubscription,
+  getSubscriptionById,
   getUserById,
   getSubscriptionPlanById,
 } from "./db";
+import { updateSubscriptionForActivation } from "./db";
 import { notifyOwnerNewSubscription } from "./owner-email-notifications";
 
 export async function handleTapWebhook(req: Request, res: Response) {
@@ -85,76 +86,59 @@ export async function handleTapWebhook(req: Request, res: Response) {
       const subscriptionId = metadata.subscription_id;
       const billingCycle = metadata.billing_cycle;
 
-      if (subscriptionId) {
-        const subId = parseInt(subscriptionId);
-        if (!isNaN(subId)) {
-          const now = new Date();
-          const endDate = new Date(now);
-          if (billingCycle === "yearly") {
-            endDate.setFullYear(endDate.getFullYear() + 1);
-          } else {
-            endDate.setMonth(endDate.getMonth() + 1);
-          }
+      const now = new Date();
+      const endDate = new Date(now);
+      if (billingCycle === "yearly") {
+        endDate.setFullYear(endDate.getFullYear() + 1);
+      } else {
+        endDate.setMonth(endDate.getMonth() + 1);
+      }
+      const activationPayload = {
+        status: "active" as const,
+        currentPeriodStart: now.toISOString(),
+        currentPeriodEnd: endDate.toISOString(),
+      };
+      const planId = metadata.plan_id ? parseInt(String(metadata.plan_id), 10) : undefined;
+      const planIdOpt = planId != null && !isNaN(planId) ? planId : undefined;
 
-          await updateSubscriptionById(subId, {
-            status: "active",
-            currentPeriodStart: now.toISOString(),
-            currentPeriodEnd: endDate.toISOString(),
-          });
+      const subIdRaw = subscriptionId ? parseInt(String(subscriptionId), 10) : NaN;
+      const subId = !isNaN(subIdRaw) && subIdRaw > 0 ? subIdRaw : undefined;
+      const uidRaw = userId ? parseInt(String(userId), 10) : NaN;
+      const uid = !isNaN(uidRaw) ? uidRaw : undefined;
 
-          opsLog({
-            type: OPS_EVENT.payment_subscription_activated,
-            category: "PAYMENT",
-            severity: "info",
-            ts: new Date().toISOString(),
-            correlationId,
-            route,
-            method,
-            metadata: {
-              provider,
-              providerEventId: chargeId,
-              chargeStatus,
-              subscriptionId: subId,
-              userId: userId ? Number(userId) : undefined,
-              billingCycle: billingCycle || "monthly",
-            },
-          });
+      let activatedId: number | null = null;
+
+      if (subId != null) {
+        const row = await getSubscriptionById(subId);
+        if (row && (uid == null || row.userId === uid)) {
+          await updateSubscriptionById(subId, activationPayload);
+          activatedId = subId;
         }
-      } else if (userId) {
-        // Update by user ID if no subscription ID
-        const uid = parseInt(userId);
-        if (!isNaN(uid)) {
-          const now = new Date();
-          const endDate = new Date(now);
-          if (billingCycle === "yearly") {
-            endDate.setFullYear(endDate.getFullYear() + 1);
-          } else {
-            endDate.setMonth(endDate.getMonth() + 1);
-          }
+      } else if (uid != null) {
+        activatedId = await updateSubscriptionForActivation(uid, activationPayload, {
+          planId: planIdOpt,
+        });
+      }
 
-          await updateUserSubscription(uid, {
-            status: "active",
-            currentPeriodStart: now.toISOString(),
-            currentPeriodEnd: endDate.toISOString(),
-          });
-
-          opsLog({
-            type: OPS_EVENT.payment_subscription_activated,
-            category: "PAYMENT",
-            severity: "info",
-            ts: new Date().toISOString(),
-            correlationId,
-            route,
-            method,
-            metadata: {
-              provider,
-              providerEventId: chargeId,
-              chargeStatus,
-              userId: uid,
-              billingCycle: billingCycle || "monthly",
-            },
-          });
-        }
+      if (activatedId != null) {
+        opsLog({
+          type: OPS_EVENT.payment_subscription_activated,
+          category: "PAYMENT",
+          severity: "info",
+          ts: new Date().toISOString(),
+          correlationId,
+          route,
+          method,
+          metadata: {
+            provider,
+            providerEventId: chargeId,
+            chargeStatus,
+            subscriptionId: activatedId,
+            userId: uid,
+            billingCycle: billingCycle || "monthly",
+            planId: planIdOpt,
+          },
+        });
       }
 
       // Send email notification to owner about new subscription

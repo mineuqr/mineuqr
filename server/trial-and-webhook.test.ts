@@ -31,6 +31,7 @@ vi.mock("./db", () => ({
     return null;
   }),
   updateUserSubscription: vi.fn(async () => ({ success: true })),
+  updateSubscriptionForActivation: vi.fn(async () => 42),
   getUserSubscription: vi.fn(async () => null),
 }));
 
@@ -104,7 +105,7 @@ describe("PayPal Webhook", () => {
 
   describe("handlePayPalWebhook", () => {
     it("should handle checkout.order.completed event", async () => {
-      const { updateUserSubscription } = await import("./db");
+      const { updateSubscriptionForActivation } = await import("./db");
       const { notifyOwner } = await import("./_core/notification");
 
       const mockReq = {
@@ -135,13 +136,14 @@ describe("PayPal Webhook", () => {
 
       await handlePayPalWebhook(mockReq, mockRes);
 
-      expect(updateUserSubscription).toHaveBeenCalledWith(
+      expect(updateSubscriptionForActivation).toHaveBeenCalledWith(
         789,
         expect.objectContaining({
           planId: 1,
           status: "active",
           stripeSubscriptionId: "PAYPAL-ORDER-123",
-        })
+        }),
+        { planId: 1 }
       );
 
       expect(notifyOwner).toHaveBeenCalledWith(
