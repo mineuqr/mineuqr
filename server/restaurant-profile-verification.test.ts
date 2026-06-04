@@ -33,10 +33,6 @@ vi.mock("./local-uploads", () => ({
   putUploadedFile: vi.fn(async () => ({ url: "https://example.com/logo.png" })),
 }));
 
-vi.mock("./_core/notification", () => ({
-  notifyOwner: vi.fn(async () => true),
-}));
-
 vi.mock("./owner-email-notifications", () => ({
   notifyOwnerNewRestaurant: vi.fn(async () => true),
 }));

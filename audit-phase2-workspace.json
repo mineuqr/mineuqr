@@ -1,0 +1,604 @@
+﻿{
+  "generatedAt": "2026-06-04T20:14:27.944Z",
+  "auditTarget": "workspace-configured",
+  "databaseName": "fcy9GqTzfuy9H9eCsDbdLA",
+  "tableTotals": {
+    "users": 3,
+    "restaurants": 3,
+    "user_subscriptions": 3,
+    "subscription_plans": 3,
+    "invoices": 4,
+    "renewal_notifications": 85,
+    "orders": 89,
+    "order_items": 149,
+    "restaurant_tables": 13,
+    "menu_items": 20,
+    "categories": 5,
+    "offers": 0
+  },
+  "findingsWithIssues": [
+    {
+      "id": "O2",
+      "category": "order",
+      "severity": "high",
+      "title": "Orders with missing/invalid table linkage",
+      "count": 64,
+      "samples": [
+        {
+          "id": 1,
+          "restaurantId": 1,
+          "tableId": 1,
+          "tableNumber": 1
+        },
+        {
+          "id": 2,
+          "restaurantId": 1,
+          "tableId": 0,
+          "tableNumber": 1
+        },
+        {
+          "id": 3,
+          "restaurantId": 1,
+          "tableId": 1,
+          "tableNumber": 1
+        },
+        {
+          "id": 4,
+          "restaurantId": 1,
+          "tableId": 1,
+          "tableNumber": 1
+        },
+        {
+          "id": 5,
+          "restaurantId": 1,
+          "tableId": 1,
+          "tableNumber": 1
+        },
+        {
+          "id": 6,
+          "restaurantId": 1,
+          "tableId": 1,
+          "tableNumber": 1
+        },
+        {
+          "id": 30001,
+          "restaurantId": 1,
+          "tableId": 1,
+          "tableNumber": 1
+        },
+        {
+          "id": 60001,
+          "restaurantId": 1,
+          "tableId": 1,
+          "tableNumber": 1
+        },
+        {
+          "id": 60002,
+          "restaurantId": 1,
+          "tableId": 1,
+          "tableNumber": 1
+        },
+        {
+          "id": 60003,
+          "restaurantId": 1,
+          "tableId": 1,
+          "tableNumber": 1
+        },
+        {
+          "id": 60004,
+          "restaurantId": 1,
+          "tableId": 1,
+          "tableNumber": 1
+        },
+        {
+          "id": 60005,
+          "restaurantId": 1,
+          "tableId": 1,
+          "tableNumber": 1
+        },
+        {
+          "id": 60006,
+          "restaurantId": 1,
+          "tableId": 1,
+          "tableNumber": 3
+        },
+        {
+          "id": 60007,
+          "restaurantId": 1,
+          "tableId": 1,
+          "tableNumber": 5
+        },
+        {
+          "id": 60008,
+          "restaurantId": 1,
+          "tableId": 1,
+          "tableNumber": 7
+        }
+      ],
+      "impact": "Table QR flow inconsistent; kitchen display may show wrong table.",
+      "cleanup": "Fix tableId or delete invalid orders."
+    },
+    {
+      "id": "O3",
+      "category": "order",
+      "severity": "critical",
+      "title": "Order items orphan (order or menu item missing)",
+      "count": 15,
+      "samples": [
+        {
+          "id": 1,
+          "orderId": 5,
+          "menuItemId": 1
+        },
+        {
+          "id": 2,
+          "orderId": 6,
+          "menuItemId": 1
+        },
+        {
+          "id": 3,
+          "orderId": 6,
+          "menuItemId": 2
+        },
+        {
+          "id": 60022,
+          "orderId": 60016,
+          "menuItemId": 1
+        },
+        {
+          "id": 480001,
+          "orderId": 480001,
+          "menuItemId": 900001
+        },
+        {
+          "id": 480002,
+          "orderId": 480002,
+          "menuItemId": 1020002
+        },
+        {
+          "id": 480004,
+          "orderId": 480003,
+          "menuItemId": 1020002
+        },
+        {
+          "id": 480007,
+          "orderId": 480005,
+          "menuItemId": 1020002
+        },
+        {
+          "id": 510001,
+          "orderId": 510001,
+          "menuItemId": 1020002
+        },
+        {
+          "id": 510006,
+          "orderId": 510004,
+          "menuItemId": 1020002
+        },
+        {
+          "id": 540001,
+          "orderId": 540001,
+          "menuItemId": 1020002
+        },
+        {
+          "id": 570001,
+          "orderId": 570001,
+          "menuItemId": 1020002
+        },
+        {
+          "id": 600001,
+          "orderId": 600001,
+          "menuItemId": 1020002
+        },
+        {
+          "id": 600004,
+          "orderId": 600002,
+          "menuItemId": 1020002
+        },
+        {
+          "id": 600006,
+          "orderId": 600003,
+          "menuItemId": 1020002
+        }
+      ],
+      "impact": "Order totals and line items inconsistent.",
+      "cleanup": "Delete orphan order_items or restore parent order/menu item."
+    }
+  ],
+  "findingsAll": [
+    {
+      "id": "S4",
+      "category": "subscription",
+      "severity": "critical",
+      "title": "Orphan subscriptions (missing user or restaurant)",
+      "count": 0,
+      "samples": [],
+      "impact": "Subscription rows detached from owners or venues; billing and ordering resolution may fail.",
+      "cleanup": "Delete orphan subscription rows after confirming no payment history, or re-link to valid user/restaurant."
+    },
+    {
+      "id": "S5",
+      "category": "subscription",
+      "severity": "high",
+      "title": "Subscriptions with invalid planId",
+      "count": 0,
+      "samples": [],
+      "impact": "Plan features and pricing undefined; admin and ordering checks may deny access.",
+      "cleanup": "Update planId to valid plan or delete orphan subscription rows."
+    },
+    {
+      "id": "S6",
+      "category": "subscription",
+      "severity": "high",
+      "title": "Duplicate active/trial per (userId, restaurantId)",
+      "count": 0,
+      "samples": [],
+      "impact": "Canonical resolver must pick one row; historical bulk updates may have affected wrong row pre-LH-1B-4.",
+      "cleanup": "Merge or cancel duplicate rows; keep one entitled row per (userId, restaurantId); add unique index in later migration."
+    },
+    {
+      "id": "S7a",
+      "category": "subscription",
+      "severity": "high",
+      "title": "Expired active subscriptions (period end in past)",
+      "count": 0,
+      "samples": [],
+      "impact": "Post-LH-1B-3 entitlement denies features; row still shows active in DB and admin stats.",
+      "cleanup": "Set status to expired or extend period after payment verification."
+    },
+    {
+      "id": "S7b",
+      "category": "subscription",
+      "severity": "high",
+      "title": "Expired or missing trial end",
+      "count": 0,
+      "samples": [],
+      "impact": "Trial features blocked by entitlement layer while status remains trial.",
+      "cleanup": "Expire trial rows or set valid trialEndsAt."
+    },
+    {
+      "id": "S9",
+      "category": "subscription",
+      "severity": "high",
+      "title": "Subscription userId ظëب restaurant owner",
+      "count": 0,
+      "samples": [],
+      "impact": "Wrong owner billed or entitled for a venue.",
+      "cleanup": "Correct userId to restaurant owner or move subscription to correct restaurantId."
+    },
+    {
+      "id": "S10",
+      "category": "subscription",
+      "severity": "critical",
+      "title": "Orphan invoices (user or subscription missing)",
+      "count": 0,
+      "samples": [],
+      "impact": "Billing artifacts reference deleted entities; PDF and admin views may break.",
+      "cleanup": "Delete orphan invoices or restore parent user/subscription."
+    },
+    {
+      "id": "R1",
+      "category": "restaurant",
+      "severity": "critical",
+      "title": "Restaurants without owner user",
+      "count": 0,
+      "samples": [],
+      "impact": "Orphan venues cannot authenticate or manage menus.",
+      "cleanup": "Delete restaurant cascade or assign valid userId."
+    },
+    {
+      "id": "R3",
+      "category": "restaurant",
+      "severity": "high",
+      "title": "Duplicate restaurant slugs",
+      "count": 0,
+      "samples": [],
+      "impact": "Public menu URLs may resolve to wrong restaurant.",
+      "cleanup": "Rename duplicate slugs; enforce unique constraint if missing."
+    },
+    {
+      "id": "R2",
+      "category": "restaurant",
+      "severity": "medium",
+      "title": "Restaurants with no subscription row for owner",
+      "count": 0,
+      "samples": [],
+      "impact": "Venue may lack trial/paid access; ordering and premium features blocked.",
+      "cleanup": "Create scoped or user-level trial subscription for owner."
+    },
+    {
+      "id": "O1",
+      "category": "order",
+      "severity": "critical",
+      "title": "Orders without restaurant",
+      "count": 0,
+      "samples": [],
+      "impact": "Orphan orders invisible in restaurant dashboards.",
+      "cleanup": "Delete orphan orders and order_items."
+    },
+    {
+      "id": "O2",
+      "category": "order",
+      "severity": "high",
+      "title": "Orders with missing/invalid table linkage",
+      "count": 64,
+      "samples": [
+        {
+          "id": 1,
+          "restaurantId": 1,
+          "tableId": 1,
+          "tableNumber": 1
+        },
+        {
+          "id": 2,
+          "restaurantId": 1,
+          "tableId": 0,
+          "tableNumber": 1
+        },
+        {
+          "id": 3,
+          "restaurantId": 1,
+          "tableId": 1,
+          "tableNumber": 1
+        },
+        {
+          "id": 4,
+          "restaurantId": 1,
+          "tableId": 1,
+          "tableNumber": 1
+        },
+        {
+          "id": 5,
+          "restaurantId": 1,
+          "tableId": 1,
+          "tableNumber": 1
+        },
+        {
+          "id": 6,
+          "restaurantId": 1,
+          "tableId": 1,
+          "tableNumber": 1
+        },
+        {
+          "id": 30001,
+          "restaurantId": 1,
+          "tableId": 1,
+          "tableNumber": 1
+        },
+        {
+          "id": 60001,
+          "restaurantId": 1,
+          "tableId": 1,
+          "tableNumber": 1
+        },
+        {
+          "id": 60002,
+          "restaurantId": 1,
+          "tableId": 1,
+          "tableNumber": 1
+        },
+        {
+          "id": 60003,
+          "restaurantId": 1,
+          "tableId": 1,
+          "tableNumber": 1
+        },
+        {
+          "id": 60004,
+          "restaurantId": 1,
+          "tableId": 1,
+          "tableNumber": 1
+        },
+        {
+          "id": 60005,
+          "restaurantId": 1,
+          "tableId": 1,
+          "tableNumber": 1
+        },
+        {
+          "id": 60006,
+          "restaurantId": 1,
+          "tableId": 1,
+          "tableNumber": 3
+        },
+        {
+          "id": 60007,
+          "restaurantId": 1,
+          "tableId": 1,
+          "tableNumber": 5
+        },
+        {
+          "id": 60008,
+          "restaurantId": 1,
+          "tableId": 1,
+          "tableNumber": 7
+        }
+      ],
+      "impact": "Table QR flow inconsistent; kitchen display may show wrong table.",
+      "cleanup": "Fix tableId or delete invalid orders."
+    },
+    {
+      "id": "O3",
+      "category": "order",
+      "severity": "critical",
+      "title": "Order items orphan (order or menu item missing)",
+      "count": 15,
+      "samples": [
+        {
+          "id": 1,
+          "orderId": 5,
+          "menuItemId": 1
+        },
+        {
+          "id": 2,
+          "orderId": 6,
+          "menuItemId": 1
+        },
+        {
+          "id": 3,
+          "orderId": 6,
+          "menuItemId": 2
+        },
+        {
+          "id": 60022,
+          "orderId": 60016,
+          "menuItemId": 1
+        },
+        {
+          "id": 480001,
+          "orderId": 480001,
+          "menuItemId": 900001
+        },
+        {
+          "id": 480002,
+          "orderId": 480002,
+          "menuItemId": 1020002
+        },
+        {
+          "id": 480004,
+          "orderId": 480003,
+          "menuItemId": 1020002
+        },
+        {
+          "id": 480007,
+          "orderId": 480005,
+          "menuItemId": 1020002
+        },
+        {
+          "id": 510001,
+          "orderId": 510001,
+          "menuItemId": 1020002
+        },
+        {
+          "id": 510006,
+          "orderId": 510004,
+          "menuItemId": 1020002
+        },
+        {
+          "id": 540001,
+          "orderId": 540001,
+          "menuItemId": 1020002
+        },
+        {
+          "id": 570001,
+          "orderId": 570001,
+          "menuItemId": 1020002
+        },
+        {
+          "id": 600001,
+          "orderId": 600001,
+          "menuItemId": 1020002
+        },
+        {
+          "id": 600004,
+          "orderId": 600002,
+          "menuItemId": 1020002
+        },
+        {
+          "id": 600006,
+          "orderId": 600003,
+          "menuItemId": 1020002
+        }
+      ],
+      "impact": "Order totals and line items inconsistent.",
+      "cleanup": "Delete orphan order_items or restore parent order/menu item."
+    },
+    {
+      "id": "O4",
+      "category": "order",
+      "severity": "high",
+      "title": "Order totalAmount mismatch vs line items",
+      "count": 0,
+      "samples": [],
+      "impact": "Financial and ops reports wrong; possible pre-LH-1A client-priced orders.",
+      "cleanup": "Recalculate totalAmount from order_items for affected orders."
+    },
+    {
+      "id": "M1",
+      "category": "menu",
+      "severity": "high",
+      "title": "Categories without restaurant",
+      "count": 0,
+      "samples": [],
+      "impact": "Menu structure broken for public pages.",
+      "cleanup": "Delete orphan categories and dependent items."
+    },
+    {
+      "id": "M2",
+      "category": "menu",
+      "severity": "high",
+      "title": "Menu items without restaurant or category",
+      "count": 0,
+      "samples": [],
+      "impact": "Ordering and menu display fail for affected items.",
+      "cleanup": "Delete orphan menu items or restore parents."
+    },
+    {
+      "id": "M3",
+      "category": "menu",
+      "severity": "high",
+      "title": "Menu item restaurantId ظëب category restaurantId",
+      "count": 0,
+      "samples": [],
+      "impact": "Cross-venue menu leakage or order validation errors.",
+      "cleanup": "Align restaurantId on item or move to correct category."
+    },
+    {
+      "id": "U1",
+      "category": "user",
+      "severity": "critical",
+      "title": "Duplicate normalized emails",
+      "count": 0,
+      "samples": [],
+      "impact": "Migration 0019 unique email may fail; auth identity confusion.",
+      "cleanup": "Merge or reassign duplicate accounts before unique index enforcement."
+    },
+    {
+      "id": "U4",
+      "category": "user",
+      "severity": "critical",
+      "title": "Duplicate openId",
+      "count": 0,
+      "samples": [],
+      "impact": "OAuth/session may attach to wrong user.",
+      "cleanup": "Deduplicate users and fix openId values."
+    },
+    {
+      "id": "U3",
+      "category": "user",
+      "severity": "medium",
+      "title": "Legacy Manus login artifacts",
+      "count": 0,
+      "samples": [],
+      "impact": "Legacy provider users may need migration to email/OAuth policy.",
+      "cleanup": "Review accounts; migrate to supported loginMethod if still active."
+    },
+    {
+      "id": "U1b",
+      "category": "upload",
+      "severity": "critical",
+      "title": "Localhost upload URLs in production data",
+      "count": 0,
+      "samples": [],
+      "impact": "Broken images/PDFs in production menus and invoices.",
+      "cleanup": "Re-upload assets to R2; update URL columns."
+    },
+    {
+      "id": "G3",
+      "category": "governance",
+      "severity": "low",
+      "title": "Users missing createdAt or updatedAt",
+      "count": 0,
+      "samples": [],
+      "impact": "Audit trails incomplete.",
+      "cleanup": "Backfill timestamps from related records."
+    }
+  ],
+  "issueCountBySeverity": {
+    "critical": 1,
+    "high": 1,
+    "medium": 0,
+    "low": 0
+  },
+  "totalChecksWithIssues": 2
+}

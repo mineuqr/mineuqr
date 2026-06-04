@@ -49,7 +49,6 @@ import { cascadeAuditFromTrpc } from "./db/cascadeAudit";
 import { isRestaurantOpen, parseTemporaryClosure } from "./lib/restaurantHours";
 import { formatInRestaurantTimezone, todayYmd } from "@shared/utils/timezone";
 import { putUploadedFile } from "./local-uploads";
-import { notifyOwner } from "./_core/notification";
 import { notifyOwnerNewRestaurant, notifyOwnerNewSubscription, notifyOwnerSubscriptionCancelled } from "./owner-email-notifications";
 import { generateInvoicePDFBuffer } from "./invoice-pdf";
 import bcrypt from "bcryptjs";
@@ -187,16 +186,6 @@ const restaurantRouter = router({
       const restaurant = await getRestaurantBySlug(input.slug);
       if (restaurant) {
         await incrementViewCount(restaurant.id);
-        // Notify at milestones
-        const newCount = restaurant.viewCount + 1;
-        if (newCount === 100 || newCount === 500 || newCount === 1000 || newCount % 1000 === 0) {
-          try {
-            await notifyOwner({
-              title: `إنجاز جديد في الزيارات!`,
-              content: `مطعم "${restaurant.nameAr}" وصل إلى ${newCount} زيارة!`,
-            });
-          } catch (e) { /* non-critical */ }
-        }
       }
       return { success: true };
     }),

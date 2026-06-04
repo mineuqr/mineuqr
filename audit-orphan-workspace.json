@@ -1,0 +1,183 @@
+﻿{
+  "generatedAt": "2026-06-04T20:15:18.537Z",
+  "protected": {
+    "userId": 1,
+    "restaurantId": 1,
+    "subscriptionId": 30001
+  },
+  "tableTotals": {
+    "users": 3,
+    "restaurants": 3,
+    "user_subscriptions": 3,
+    "invoices": 4,
+    "renewal_notifications": 85,
+    "orders": 89,
+    "order_items": 149,
+    "restaurant_tables": 13,
+    "menu_items": 20,
+    "categories": 5
+  },
+  "orphanCounts": {
+    "orphan_invoices_user": 0,
+    "orphan_invoices_subscription": 0,
+    "orphan_invoices_either": 0,
+    "orphan_renewal_notifications_user": 0,
+    "orphan_renewal_notifications_subscription": 0,
+    "orphan_renewal_notifications_either": 0,
+    "orphan_subscriptions_user": 0,
+    "orphan_subscriptions_restaurant": 0,
+    "orphan_subscriptions_either": 0,
+    "orphan_restaurants": 0,
+    "orphan_orders": 0,
+    "orphan_restaurant_tables": 0,
+    "orphan_order_items_order": 0,
+    "orphan_order_items_menu": 15,
+    "orphan_order_items_either": 15
+  },
+  "cleanupCandidateCounts": {
+    "invoices": 0,
+    "renewal_notifications": 0,
+    "user_subscriptions": 0,
+    "restaurants": 0,
+    "orders": 0,
+    "restaurant_tables": 0,
+    "order_items": 0
+  },
+  "samples": {
+    "orphan_invoices": [],
+    "orphan_renewal_notifications": [],
+    "orphan_subscriptions": [],
+    "orphan_restaurants": [],
+    "orphan_orders": [],
+    "orphan_restaurant_tables": [],
+    "orphan_order_items": [
+      {
+        "id": 1,
+        "orderId": 5,
+        "menuItemId": 1
+      },
+      {
+        "id": 2,
+        "orderId": 6,
+        "menuItemId": 1
+      },
+      {
+        "id": 3,
+        "orderId": 6,
+        "menuItemId": 2
+      },
+      {
+        "id": 60022,
+        "orderId": 60016,
+        "menuItemId": 1
+      },
+      {
+        "id": 480001,
+        "orderId": 480001,
+        "menuItemId": 900001
+      },
+      {
+        "id": 480002,
+        "orderId": 480002,
+        "menuItemId": 1020002
+      },
+      {
+        "id": 480004,
+        "orderId": 480003,
+        "menuItemId": 1020002
+      },
+      {
+        "id": 480007,
+        "orderId": 480005,
+        "menuItemId": 1020002
+      },
+      {
+        "id": 510001,
+        "orderId": 510001,
+        "menuItemId": 1020002
+      },
+      {
+        "id": 510006,
+        "orderId": 510004,
+        "menuItemId": 1020002
+      },
+      {
+        "id": 540001,
+        "orderId": 540001,
+        "menuItemId": 1020002
+      },
+      {
+        "id": 570001,
+        "orderId": 570001,
+        "menuItemId": 1020002
+      },
+      {
+        "id": 600001,
+        "orderId": 600001,
+        "menuItemId": 1020002
+      },
+      {
+        "id": 600004,
+        "orderId": 600002,
+        "menuItemId": 1020002
+      },
+      {
+        "id": 600006,
+        "orderId": 600003,
+        "menuItemId": 1020002
+      }
+    ]
+  },
+  "protectedVerification": {
+    "user": [
+      {
+        "id": 1,
+        "email": "k.sh61@yahoo.com",
+        "role": "admin"
+      }
+    ],
+    "restaurant": [
+      {
+        "id": 1,
+        "userId": 1,
+        "slug": "┘à╪╖╪╣┘à-╪«╪د┘╪»-wjh_5l",
+        "nameAr": "┘à╪╖╪╣┘à ╪«╪د┘╪»"
+      }
+    ],
+    "subscription": [
+      {
+        "id": 30001,
+        "userId": 1,
+        "restaurantId": 1,
+        "status": "active"
+      }
+    ],
+    "wouldDelete": {
+      "user": [
+        {
+          "c": 0
+        }
+      ],
+      "restaurant_in_orphan_restaurants": [
+        {
+          "c": 0
+        }
+      ],
+      "subscription_in_orphan_subs": [
+        {
+          "c": 0
+        }
+      ],
+      "invoices_linked": [
+        {
+          "c": 4
+        }
+      ],
+      "orders_restaurant_1": [
+        {
+          "c": 89
+        }
+      ]
+    }
+  }
+}

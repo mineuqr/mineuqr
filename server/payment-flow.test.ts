@@ -27,11 +27,6 @@ vi.mock("./paypal", () => ({
   }),
 }));
 
-// Mock notification
-vi.mock("./_core/notification", () => ({
-  notifyOwner: vi.fn(async () => ({ success: true })),
-}));
-
 function createAuthContext(userId: number = 1): TrpcContext {
   return {
     user: {

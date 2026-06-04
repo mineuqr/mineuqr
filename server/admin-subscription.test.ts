@@ -61,10 +61,6 @@ vi.mock("./storage", () => ({
   storagePut: vi.fn(),
 }));
 
-vi.mock("./_core/notification", () => ({
-  notifyOwner: vi.fn(),
-}));
-
 vi.mock("bcryptjs", () => ({
   default: { hash: vi.fn().mockResolvedValue("hashed"), compare: vi.fn() },
 }));
