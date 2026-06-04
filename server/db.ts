@@ -34,6 +34,10 @@ import {
   pickUserLevelSubscription,
   resolveOrderingSubscriptionRow,
 } from "./subscriptionResolver";
+import {
+  resolveTableOrderingEntitlement,
+  userHasSubscriptionEntitlement,
+} from "./subscriptionEntitlement";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -458,29 +462,16 @@ export async function updateUserSubscription(userId: number, data: Partial<Inser
   await db.update(userSubscriptions).set(data).where(eq(userSubscriptions.userId, userId));
 }
 
+/** Account-level entitlement: any period-valid trial/active row for the user. */
 export async function isSubscriptionActive(userId: number): Promise<boolean> {
-  const subscription = await getUserSubscription(userId);
-  if (!subscription) return false;
-
-  const now = new Date();
-
-  if (subscription.status === "trial" && subscription.trialEndsAt) {
-    const trialEnd = parseStoredUtcInstant(subscription.trialEndsAt);
-    return trialEnd != null && now < trialEnd;
-  }
-
-  if (subscription.status === "active") {
-    const periodEnd = parseStoredUtcInstant(subscription.currentPeriodEnd);
-    return periodEnd != null && now < periodEnd;
-  }
-
-  return false;
+  const rows = await getSubscriptionsByUser(userId);
+  return userHasSubscriptionEntitlement(rows);
 }
 
 export async function getTrialEndDate(userId: number): Promise<Date | null> {
-  const subscription = await getUserSubscription(userId);
-  if (!subscription) return null;
-  return parseStoredUtcInstant(subscription.trialEndsAt);
+  const rows = await getSubscriptionsByUser(userId);
+  const trial = pickCanonicalSubscription(rows.filter((r) => r.status === "trial"));
+  return trial ? parseStoredUtcInstant(trial.trialEndsAt) : null;
 }
 
 // ─── Offer helpers ─────────────────────────────────────────
@@ -675,14 +666,10 @@ export async function getOrderingSubscriptionForRestaurant(restaurantId: number)
 
 export async function restaurantAllowsTableOrdering(restaurantId: number): Promise<boolean> {
   const subscription = await getOrderingSubscriptionForRestaurant(restaurantId);
-  if (!subscription || !["active", "trial"].includes(subscription.status)) {
-    return false;
-  }
-  const plan = await getSubscriptionPlanById(subscription.planId);
-  if (!plan || plan.id === 30001) {
-    return false;
-  }
-  return true;
+  const plan = subscription
+    ? await getSubscriptionPlanById(subscription.planId)
+    : null;
+  return resolveTableOrderingEntitlement(subscription, plan).isEntitled;
 }
 
 export async function createSubscriptionForRestaurant(data: InsertUserSubscription) {

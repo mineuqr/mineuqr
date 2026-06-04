@@ -220,14 +220,11 @@ const restaurantRouter = router({
       if (premiumTemplates.includes(input.menuTemplate)) {
         // Allow admin/owner to use premium templates without subscription
         if (ctx.user.role !== "admin") {
-        const active = await isSubscriptionActive(ctx.user.id);
-        const trialEnd = await getTrialEndDate(ctx.user.id);
-        const isTrialActive = trialEnd ? new Date(trialEnd) > new Date() : false;
-        if (!active && !isTrialActive) {
-          throw new TRPCError({ code: "FORBIDDEN", message: "هذا القالب متاح فقط للمشتركين في الخطة المدفوعة" });
+          if (!(await isSubscriptionActive(ctx.user.id))) {
+            throw new TRPCError({ code: "FORBIDDEN", message: "هذا القالب متاح فقط للمشتركين في الخطة المدفوعة" });
+          }
         }
       }
-        }
       // Clear custom colors when changing template to use new template's defaults
       await updateRestaurant(input.id, { menuTemplate: input.menuTemplate, customColors: null });
       return { success: true };
@@ -250,10 +247,7 @@ const restaurantRouter = router({
       await assertRestaurantAccess(ctx, input.id, "restaurant.updateCustomColors");
       // Allow admin/owner to customize colors without subscription
       if (ctx.user.role !== "admin") {
-        const active = await isSubscriptionActive(ctx.user.id);
-        const trialEnd = await getTrialEndDate(ctx.user.id);
-        const isTrialActive = trialEnd ? new Date(trialEnd) > new Date() : false;
-        if (!active && !isTrialActive) {
+        if (!(await isSubscriptionActive(ctx.user.id))) {
           throw new TRPCError({ code: "FORBIDDEN", message: "\u062a\u062e\u0635\u064a\u0635 \u0627\u0644\u0623\u0644\u0648\u0627\u0646 \u0645\u062a\u0627\u062d \u0641\u0642\u0637 \u0644\u0644\u0645\u0634\u062a\u0631\u0643\u064a\u0646 \u0641\u064a \u0627\u0644\u062e\u0637\u0629 \u0627\u0644\u0645\u062f\u0641\u0648\u0639\u0629" });
         }
       }
@@ -280,11 +274,8 @@ const restaurantRouter = router({
       await assertRestaurantAccess(ctx, input.id, "restaurant.updateCustomFonts");
       // Allow admin/owner to customize fonts without subscription
       if (ctx.user.role !== "admin") {
-        const active = await isSubscriptionActive(ctx.user.id);
-        const trialEnd = await getTrialEndDate(ctx.user.id);
-        const isTrialActive = trialEnd ? new Date(trialEnd) > new Date() : false;
-        if (!active && !isTrialActive) {
-          throw new TRPCError({ code: "FORBIDDEN", message: "\u062a\u062e\u0635\u064a\u0635 \u0627\u0644\u062e\u0637\u0648\u0637 \u0645\u062a\u0627\u062d \u0641\u0642\u0637 \u0644\u0644\u0645\u0634\u062a\u0631\u0643\u064a\u0646 \u0641\u064a \u0627\u0644\u062e\u0637\u0629 \u0627\u0644\u0645\u062f\u0641\u0648\u0639\u0629" });
+        if (!(await isSubscriptionActive(ctx.user.id))) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "\u062a\u062e\u0635\u0635 \u0627\u0644\u062e\u0637\u0648\u0637 \u0645\u062a\u0627\u062d \u0641\u0642\u0637 \u0644\u0644\u0645\u0634\u062a\u0631\u0643\u064a\u0646 \u0641\u064a \u0627\u0644\u062e\u0637\u0629 \u0627\u0644\u0645\u062f\u0641\u0648\u0639\u0629" });
         }
       }
       await updateRestaurant(input.id, { customFonts: input.customFonts ? JSON.stringify(input.customFonts) : null });

@@ -666,8 +666,7 @@ describe("restaurant.updateTemplate", () => {
 
   it("allows premium template during active trial", async () => {
     const db = await import("./db");
-    (db.isSubscriptionActive as any).mockResolvedValueOnce(false);
-    (db.getTrialEndDate as any).mockResolvedValueOnce(new Date(Date.now() + 24 * 60 * 60 * 1000));
+    (db.isSubscriptionActive as any).mockResolvedValueOnce(true);
 
     const caller = appRouter.createCaller(createAuthContext(1));
     const result = await caller.restaurant.updateTemplate({ id: 1, menuTemplate: "neon" });
@@ -732,8 +731,7 @@ describe("restaurant.updateCustomColors", () => {
 
   it("allows custom colors during active trial", async () => {
     const db = await import("./db");
-    (db.isSubscriptionActive as any).mockResolvedValueOnce(false);
-    (db.getTrialEndDate as any).mockResolvedValueOnce(new Date(Date.now() + 24 * 60 * 60 * 1000));
+    (db.isSubscriptionActive as any).mockResolvedValueOnce(true);
 
     const caller = appRouter.createCaller(createAuthContext(1));
     const result = await caller.restaurant.updateCustomColors({

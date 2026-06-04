@@ -1,22 +1,18 @@
 import type { userSubscriptions } from "../drizzle/schema";
 import { parseStoredUtcInstant } from "@shared/utils/timezone";
+import {
+  resolveSubscriptionEntitlement,
+  type UserSubscriptionRow,
+} from "./subscriptionEntitlement";
 
-export type UserSubscriptionRow = typeof userSubscriptions.$inferSelect;
+export type { UserSubscriptionRow };
 
-/** Whether the row is entitled right now (trial or active with a valid end instant). */
+/** Whether the row is entitled right now (delegates to resolveSubscriptionEntitlement). */
 export function subscriptionEntitledNow(
   sub: Pick<UserSubscriptionRow, "status" | "trialEndsAt" | "currentPeriodEnd">,
   now: Date = new Date()
 ): boolean {
-  if (sub.status === "trial") {
-    const trialEnd = parseStoredUtcInstant(sub.trialEndsAt);
-    return trialEnd != null && now < trialEnd;
-  }
-  if (sub.status === "active") {
-    const periodEnd = parseStoredUtcInstant(sub.currentPeriodEnd);
-    return periodEnd != null && now < periodEnd;
-  }
-  return false;
+  return resolveSubscriptionEntitlement(sub as UserSubscriptionRow, now).isEntitled;
 }
 
 /** Relevant period end for ranking active/trial rows (newest period wins ties). */
