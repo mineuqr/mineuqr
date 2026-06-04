@@ -1,0 +1,67 @@
+﻿{
+  "script": "scripts/clean-db-2-execute.mjs",
+  "mode": "dry-run",
+  "executedAt": "2026-06-04T20:49:34.917Z",
+  "keep": {
+    "userId": 1,
+    "email": "k.sh61@yahoo.com",
+    "referenceTables": [
+      "subscription_plans",
+      "countries_currencies"
+    ]
+  },
+  "safetyChecks": {
+    "allPassed": false,
+    "checks": [
+      {
+        "id": "admin_exists",
+        "pass": false,
+        "message": "users.id=1 not found"
+      },
+      {
+        "id": "no_deleteUserCascade",
+        "pass": true,
+        "message": "Executor uses SQL only ظ¤ deleteUserCascade(1) is never imported or called"
+      },
+      {
+        "id": "users_guard",
+        "pass": true,
+        "message": "users DELETE restricted to id != 1"
+      },
+      {
+        "id": "auth_tokens_scope",
+        "pass": true,
+        "message": "Admin auth tokens preserved",
+        "keep": 0,
+        "delete": 0
+      }
+    ]
+  },
+  "before": {
+    "tableTotals": {
+      "users": 3,
+      "restaurants": 3,
+      "user_subscriptions": 3,
+      "subscription_plans": 3,
+      "invoices": 4,
+      "renewal_notifications": 85,
+      "orders": 89,
+      "order_items": 149,
+      "restaurant_tables": 13,
+      "menu_items": 20,
+      "categories": 5,
+      "offers": 0,
+      "restaurant_holidays": 0,
+      "auth_tokens": 6,
+      "countries_currencies": 22
+    }
+  },
+  "plannedDeletes": {},
+  "deletedByTable": {},
+  "after": {},
+  "postVerification": null,
+  "totalDeleted": 0,
+  "committed": false,
+  "rolledBack": false,
+  "database": "fcy9GqTzfuy9H9eCsDbdLA"
+}
