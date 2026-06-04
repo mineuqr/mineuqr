@@ -104,13 +104,6 @@ const restaurantRouter = router({
         userId: ctx.user.id,
         slug,
       });
-      // Notify owner about new restaurant
-      try {
-        await notifyOwner({
-          title: "مطعم جديد تم إضافته",
-          content: `تم إضافة مطعم جديد: ${input.nameAr} بواسطة ${ctx.user.name || "مستخدم"}`,
-        });
-      } catch (e) { /* notification failure is non-critical */ }
       // Send email notification to owner
       try {
         await notifyOwnerNewRestaurant({
@@ -1394,7 +1387,6 @@ const contactRouter = router({
     .mutation(async ({ input }) => {
       try {
         const { sendEmail } = await import("./email");
-        const { notifyOwner } = await import("./_core/notification");
         const timestamp = new Date().toLocaleString('ar-SA', { timeZone: 'Asia/Damascus' });
         
         // إيميل احترافي للمسؤول
@@ -1447,25 +1439,6 @@ const contactRouter = router({
             code: "INTERNAL_SERVER_ERROR",
             message: "حدث خطأ في إرسال الرسالة. يرجى المحاولة لاحقاً",
           });
-        }
-
-        // Secondary: Forge owner notification — must not fail the contact form.
-        try {
-          const forgeDelivered = await notifyOwner({
-            title: `رسالة جديدة من ${input.name}`,
-            content: `الموضوع: ${input.subject}\n\n${input.message.substring(0, 200)}${input.message.length > 200 ? '...' : ''}`,
-          });
-          if (!forgeDelivered) {
-            console.warn(
-              "[Contact] Forge owner notification not delivered (email succeeded)",
-              { subject: input.subject, fromEmail: input.email }
-            );
-          }
-        } catch (notifyError) {
-          console.warn(
-            "[Contact] Forge owner notification failed (email succeeded, non-fatal):",
-            notifyError
-          );
         }
 
         return { success: true, message: "تم إرسال رسالتك بنجاح" };

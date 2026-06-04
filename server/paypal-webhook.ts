@@ -1,8 +1,12 @@
 import { Request, Response } from "express";
 import { capturePayPalOrder } from "./paypal";
-import { getSubscriptionPlanById, getRestaurantsByUser } from "./db";
-import { updateSubscriptionForActivation } from "./db";
-import { notifyOwner } from "./_core/notification";
+import {
+  getSubscriptionPlanById,
+  getRestaurantsByUser,
+  getUserById,
+  updateSubscriptionForActivation,
+} from "./db";
+import { notifyOwnerNewSubscription } from "./owner-email-notifications";
 import { sendWelcomeEmail } from "./email";
 import { getCorrelationId } from "./_core/requestContext";
 import { opsLog } from "./_core/opsLog";
@@ -153,11 +157,32 @@ export async function handlePayPalWebhook(req: Request, res: Response) {
           },
         });
 
-        // Send notification to owner
+        // Send email notification to owner about new subscription
         try {
-          await notifyOwner({
-            title: "✅ اشتراك جديد",
-            content: `المستخدم ${userId} اشترك في الخطة: ${plan.nameAr}`,
+          let userName: string | null = null;
+          let userEmail: string | null = null;
+          const user = await getUserById(userId);
+          if (user) {
+            userName = user.name;
+            userEmail = user.email;
+          }
+
+          const purchaseUnit = event.resource.purchase_units?.[0];
+          const amountValue = purchaseUnit?.amount?.value;
+          const currencyCode = purchaseUnit?.amount?.currency_code ?? "USD";
+          const amount =
+            amountValue != null
+              ? `${amountValue} ${currencyCode}`
+              : plan.priceMonthly != null
+                ? `${plan.priceMonthly} USD`
+                : "غير محدد";
+
+          await notifyOwnerNewSubscription({
+            userName,
+            userEmail,
+            planName: plan.nameAr,
+            billingCycle: "monthly",
+            amount,
           });
         } catch (e) {
           opsLog({
@@ -168,7 +193,11 @@ export async function handlePayPalWebhook(req: Request, res: Response) {
             correlationId,
             route,
             method,
-            metadata: { provider, providerEventId: orderId, anomaly: "owner_notification_failed" },
+            metadata: {
+              provider,
+              providerEventId: orderId,
+              anomaly: "owner_email_notification_failed",
+            },
           });
         }
 

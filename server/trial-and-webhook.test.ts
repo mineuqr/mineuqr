@@ -34,6 +34,11 @@ vi.mock("./db", () => ({
   updateSubscriptionForActivation: vi.fn(async () => 42),
   getUserSubscription: vi.fn(async () => null),
   getRestaurantsByUser: vi.fn(async () => [{ id: 1, nameAr: "مطعم تجريبي" }]),
+  getUserById: vi.fn(async (id: number) => ({
+    id,
+    name: "Test User",
+    email: "user@test.com",
+  })),
 }));
 
 // Mock PayPal functions
@@ -43,9 +48,8 @@ vi.mock("./paypal", () => ({
   }),
 }));
 
-// Mock notification
-vi.mock("./_core/notification", () => ({
-  notifyOwner: vi.fn(async () => ({ success: true })),
+vi.mock("./owner-email-notifications", () => ({
+  notifyOwnerNewSubscription: vi.fn(async () => true),
 }));
 
 describe("Trial Subscription", () => {
@@ -107,7 +111,9 @@ describe("PayPal Webhook", () => {
   describe("handlePayPalWebhook", () => {
     it("should handle checkout.order.completed event", async () => {
       const { updateSubscriptionForActivation } = await import("./db");
-      const { notifyOwner } = await import("./_core/notification");
+      const { notifyOwnerNewSubscription } = await import(
+        "./owner-email-notifications"
+      );
 
       const mockReq = {
         body: {
@@ -120,6 +126,7 @@ describe("PayPal Webhook", () => {
                   userId: 789,
                   planId: 1,
                 }),
+                amount: { currency_code: "USD", value: "29.00" },
               },
             ],
           },
@@ -147,9 +154,13 @@ describe("PayPal Webhook", () => {
         { planId: 1 }
       );
 
-      expect(notifyOwner).toHaveBeenCalledWith(
+      expect(notifyOwnerNewSubscription).toHaveBeenCalledWith(
         expect.objectContaining({
-          title: expect.stringContaining("اشتراك جديد"),
+          userName: "Test User",
+          userEmail: "user@test.com",
+          planName: "الخطة الأساسية",
+          billingCycle: "monthly",
+          amount: "29.00 USD",
         })
       );
     });
