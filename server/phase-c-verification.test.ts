@@ -13,7 +13,17 @@ vi.mock("./db", () => ({
   deleteCategory: vi.fn(async () => undefined),
   getCategoriesByRestaurant: vi.fn(async () => []),
   getMenuItemById: vi.fn(async (id: number) =>
-    id === 1 ? { id: 1, restaurantId: 1, categoryId: 1 } : null
+    id === 1
+      ? {
+          id: 1,
+          restaurantId: 1,
+          categoryId: 1,
+          nameAr: "حمص",
+          nameEn: null,
+          price: "10.00",
+          isAvailable: true,
+        }
+      : null
   ),
   createMenuItem: vi.fn(async (input: unknown) => input),
   updateMenuItem: vi.fn(async () => undefined),
@@ -160,14 +170,7 @@ describe("Phase C verifiedProcedure mutations (AUTH-POLICY-1C.1)", () => {
           restaurantId: 1,
           tableId: 1,
           tableNumber: 1,
-          items: [
-            {
-              menuItemId: 1,
-              nameAr: "حمص",
-              quantity: 1,
-              price: "10.00",
-            },
-          ],
+          items: [{ menuItemId: 1, quantity: 1 }],
         })
       ).resolves.toBeDefined();
     });
@@ -340,14 +343,7 @@ describe("Phase C verifiedProcedure mutations (AUTH-POLICY-1C.1)", () => {
           restaurantId: 1,
           tableId: 1,
           tableNumber: 1,
-          items: [
-            {
-              menuItemId: 1,
-              nameAr: "حمص",
-              quantity: 1,
-              price: "10.00",
-            },
-          ],
+          items: [{ menuItemId: 1, quantity: 1 }],
         })
       ).resolves.toBeDefined();
     });

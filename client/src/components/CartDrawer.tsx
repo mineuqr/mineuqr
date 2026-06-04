@@ -53,9 +53,6 @@ export default function CartDrawer({
         notes: orderNotes || undefined,
         items: items.map((item) => ({
           menuItemId: item.menuItemId,
-          nameAr: item.nameAr,
-          nameEn: item.nameEn,
-          price: item.price,
           quantity: item.quantity,
           notes: item.notes,
         })),

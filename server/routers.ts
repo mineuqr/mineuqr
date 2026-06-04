@@ -35,6 +35,7 @@ import {
   accountEmailChanged,
   normalizeAccountEmailOrNull,
 } from "./_core/normalizeAccountEmail";
+import { resolveAuthoritativeOrderLines } from "./orderPricing";
 import { assertRestaurantAccess } from "./restaurantAccess";
 import { assertAdminAccess, assertNotSelfAdminTarget } from "./_core/assertAdminAccess";
 import {
@@ -1650,11 +1651,12 @@ const orderRouter = router({
       notes: z.string().nullish(),
       items: z.array(z.object({
         menuItemId: z.number(),
-        nameAr: z.string(),
-        nameEn: z.string().nullish(),
-        price: z.string(),
         quantity: z.number().int().min(1).max(99),
         notes: z.string().nullish(),
+        /** Ignored if sent — server uses DB menu prices (LAUNCH-HARDENING-1A). */
+        nameAr: z.string().optional(),
+        nameEn: z.string().nullish().optional(),
+        price: z.string().optional(),
       })).min(1),
     }))
     .mutation(async ({ input }) => {
@@ -1692,8 +1694,14 @@ const orderRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "الطاولة غير موجودة" });
       }
 
-      const { items } = input;
-      const totalAmount = items.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0);
+      const { lines, totalAmount } = await resolveAuthoritativeOrderLines(
+        input.restaurantId,
+        input.items.map((item) => ({
+          menuItemId: item.menuItemId,
+          quantity: item.quantity,
+          notes: item.notes,
+        }))
+      );
       const orderNumber = await generateOrderNumber(input.restaurantId);
       const result = await createOrder({
         restaurantId: input.restaurantId,
@@ -1702,26 +1710,26 @@ const orderRouter = router({
         customerName: input.customerName,
         customerPhone: input.customerPhone,
         notes: input.notes,
-        totalAmount: totalAmount.toFixed(2),
+        totalAmount,
         orderNumber,
       }) as { id: number } | null;
       if (result) {
-        await createOrderItems(items.map(item => ({
+        await createOrderItems(lines.map((line) => ({
           orderId: result.id,
-          menuItemId: item.menuItemId,
-          nameAr: item.nameAr,
-          nameEn: item.nameEn,
-          price: item.price,
-          quantity: item.quantity,
-          notes: item.notes,
+          menuItemId: line.menuItemId,
+          nameAr: line.nameAr,
+          nameEn: line.nameEn,
+          price: line.price,
+          quantity: line.quantity,
+          notes: line.notes,
         })));
         // Send notification to restaurant owner
         try {
-          const itemsSummary = items.map(i => `${i.nameAr} x${i.quantity}`).join('، ');
+          const itemsSummary = lines.map((i) => `${i.nameAr} x${i.quantity}`).join('، ');
           await createNotification({
             userId: restaurant.userId,
             notificationType: 'new_order',
-            message: `طلب جديد #${orderNumber} - طاولة ${table.tableNumber} - ${itemsSummary} - المجموع: ${totalAmount.toFixed(2)} ${restaurant.currencySymbol || 'ر.س'}`,
+            message: `طلب جديد #${orderNumber} - طاولة ${table.tableNumber} - ${itemsSummary} - المجموع: ${totalAmount} ${restaurant.currencySymbol || 'ر.س'}`,
             isRead: false,
             isSent: true,
             sentAt: new Date().toISOString().slice(0, 19).replace('T', ' '),
