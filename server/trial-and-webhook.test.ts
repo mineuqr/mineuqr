@@ -10,11 +10,25 @@ vi.mock("./db", () => ({
   }),
   getSubscriptionPlans: vi.fn(async () => [
     {
-      id: 30002,
+      id: 30001,
+      nameEn: "Ordering Free",
+      sortOrder: 0,
+      isActive: true,
+    },
+    {
+      id: 101,
       nameAr: "أساسي",
-      nameEn: "Basic",
-      priceMonthly: "29",
+      nameEn: "Basic Plan",
+      priceMonthly: "19",
       sortOrder: 1,
+      isActive: true,
+    },
+    {
+      id: 102,
+      nameAr: "احترافي",
+      nameEn: "Professional Plan",
+      priceMonthly: "35",
+      sortOrder: 2,
       isActive: true,
     },
   ]),
@@ -66,7 +80,7 @@ describe("Trial Subscription", () => {
       expect(createUserSubscription).toHaveBeenCalledWith(
         expect.objectContaining({
           userId: 123,
-          planId: 30002,
+          planId: 102,
           restaurantId: 0,
           status: "trial",
           billingCycle: "monthly",

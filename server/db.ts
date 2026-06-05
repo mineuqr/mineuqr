@@ -46,6 +46,7 @@ import {
   computeAdminMrr,
   computeChurnRate,
   computeRenewalRate,
+  subscriptionContributesToCommercialRevenue,
 } from "./adminKpiCalculations";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -824,7 +825,7 @@ export async function getRevenueByMonth(months: number = 12) {
 
     const monthRevenue = allSubs
       .filter((s) => {
-        if (s.status !== "active") return false;
+        if (!subscriptionContributesToCommercialRevenue(s.status)) return false;
         return isInBusinessYearMonth(s.createdAt, bucket.year, bucket.month);
       })
       .reduce((sum, sub) => {

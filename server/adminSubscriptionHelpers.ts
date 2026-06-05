@@ -200,7 +200,7 @@ export async function assertRestaurantSubscriptionForUpdate(
   return { id: sub.id, userId: sub.userId, restaurantId: sub.restaurantId };
 }
 
-/** Trial subscriptions are not billable via admin invoice generation (ADMIN-AUDIT-FIX-1). */
+/** Trial subscriptions are not billable via admin invoice generation (ADMIN-AUDIT-FIX-1, LAUNCH-5B). */
 export function assertSubscriptionEligibleForAdminInvoice(
   status: SubscriptionStatus
 ): void {

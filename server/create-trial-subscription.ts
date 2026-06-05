@@ -4,14 +4,25 @@ import {
 } from "./db";
 import { InsertUserSubscription } from "../drizzle/schema";
 
-const TRIAL_DAYS = 14;
+export const TRIAL_DAYS = 14;
 
-/** Plan used for new trials: first active paid-tier plan, excluding ordering-only free tier. */
+/** Professional tier in seeded catalog (Basic=1, Professional=2, Enterprise=3). */
+export const TRIAL_PLAN_SORT_ORDER = 2;
+
+/** Free ordering-only tier — never used for self-service trials. */
+const ORDERING_FREE_PLAN_ID = 30001;
+
+/**
+ * Plan for new trials (LAUNCH-5B): Professional tier limits/features, 14-day lifecycle.
+ * Falls back to second paid catalog row if sortOrder 2 is absent.
+ */
 export async function resolveTrialPlanId(): Promise<number> {
   const plans = await getSubscriptionPlans();
-  const paid = plans.find((p) => p.id !== 30001);
-  if (paid) return paid.id;
-  if (plans[0]) return plans[0].id;
+  const paid = plans.filter((p) => p.id !== ORDERING_FREE_PLAN_ID);
+  const professional = paid.find((p) => p.sortOrder === TRIAL_PLAN_SORT_ORDER);
+  if (professional) return professional.id;
+  if (paid[1]) return paid[1].id;
+  if (paid[0]) return paid[0].id;
   return 1;
 }
 

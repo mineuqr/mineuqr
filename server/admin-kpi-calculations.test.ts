@@ -3,6 +3,7 @@ import {
   computeAdminMrr,
   computeChurnRate,
   computeRenewalRate,
+  subscriptionContributesToCommercialRevenue,
 } from "./adminKpiCalculations";
 
 const plans = [
@@ -10,7 +11,16 @@ const plans = [
   { id: 2, priceMonthly: "35", priceYearly: "299" },
 ];
 
-describe("admin KPI calculations (ADMIN-KPI-FIX-1)", () => {
+describe("admin KPI calculations (ADMIN-KPI-FIX-1, LAUNCH-5B)", () => {
+  describe("subscriptionContributesToCommercialRevenue", () => {
+    it("includes active only", () => {
+      expect(subscriptionContributesToCommercialRevenue("active")).toBe(true);
+      expect(subscriptionContributesToCommercialRevenue("trial")).toBe(false);
+      expect(subscriptionContributesToCommercialRevenue("expired")).toBe(false);
+      expect(subscriptionContributesToCommercialRevenue("canceled")).toBe(false);
+    });
+  });
+
   describe("computeAdminMrr", () => {
     it("returns 0 when only trial subscriptions exist", () => {
       const mrr = computeAdminMrr(

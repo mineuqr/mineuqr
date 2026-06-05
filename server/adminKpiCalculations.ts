@@ -1,4 +1,9 @@
-/** Pure helpers for admin KPI aggregation (ADMIN-KPI-FIX-1). */
+/** Pure helpers for admin KPI aggregation (ADMIN-KPI-FIX-1, LAUNCH-5B). */
+
+/** Paying subscribers only — trials/expired/canceled are excluded from commercial revenue. */
+export function subscriptionContributesToCommercialRevenue(status: string): boolean {
+  return status === "active";
+}
 
 export type AdminKpiSubscriptionRow = {
   status: string;
@@ -29,7 +34,7 @@ export function computeAdminMrr(
   subs: AdminKpiSubscriptionRow[],
   plans: AdminKpiPlanRow[]
 ): number {
-  const paying = subs.filter((s) => s.status === "active");
+  const paying = subs.filter((s) => subscriptionContributesToCommercialRevenue(s.status));
   const total = paying.reduce((sum, sub) => {
     const plan = plans.find((p) => p.id === sub.planId);
     return sum + monthlyEquivalentPlanPrice(sub, plan);
