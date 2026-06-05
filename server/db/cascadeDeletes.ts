@@ -20,10 +20,10 @@ import {
 } from "../../drizzle/schema";
 import { opsLog } from "../_core/opsLog";
 import { OPS_EVENT } from "../_core/opsTaxonomy";
+import { isProtectedUserId, PROTECTED_USER_IDS } from "@shared/const";
 import { getDb } from "../db";
 
-/** Primary admin account — must never be cascade-deleted. */
-export const PROTECTED_USER_IDS: readonly number[] = [1];
+export { PROTECTED_USER_IDS };
 
 export class ProtectedUserDeleteError extends Error {
   readonly userId: number;
@@ -32,6 +32,18 @@ export class ProtectedUserDeleteError extends Error {
     super(`User ${userId} is protected and cannot be deleted`);
     this.name = "ProtectedUserDeleteError";
     this.userId = userId;
+  }
+}
+
+export class ProtectedUserModifyError extends Error {
+  readonly userId: number;
+  readonly action: "role" | "password_reset";
+
+  constructor(userId: number, action: "role" | "password_reset") {
+    super(`User ${userId} is protected and cannot be modified (${action})`);
+    this.name = "ProtectedUserModifyError";
+    this.userId = userId;
+    this.action = action;
   }
 }
 
@@ -52,8 +64,20 @@ function assertDbAvailable(db: DbHandle | null): asserts db is DbHandle {
 }
 
 export function assertUserDeletable(userId: number): void {
-  if (PROTECTED_USER_IDS.includes(userId)) {
+  if (isProtectedUserId(userId)) {
     throw new ProtectedUserDeleteError(userId);
+  }
+}
+
+export function assertProtectedUserRoleModifiable(userId: number): void {
+  if (isProtectedUserId(userId)) {
+    throw new ProtectedUserModifyError(userId, "role");
+  }
+}
+
+export function assertProtectedUserPasswordResetAllowed(userId: number): void {
+  if (isProtectedUserId(userId)) {
+    throw new ProtectedUserModifyError(userId, "password_reset");
   }
 }
 

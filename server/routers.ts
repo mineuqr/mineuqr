@@ -45,10 +45,20 @@ import {
 } from "./subscriptionPlanLimits";
 import { assertAdminAccess, assertNotSelfAdminTarget } from "./_core/assertAdminAccess";
 import {
+  applyAdminTrialStatusUpdate,
+  buildAdminSubscriptionInsert,
+  computeAdminSubscriptionPeriodEnd,
+  resolveRestaurantOwnerUserId,
+  resolveSubscriptionRestaurantIdForUser,
+} from "./adminSubscriptionHelpers";
+import {
+  assertProtectedUserPasswordResetAllowed,
+  assertProtectedUserRoleModifiable,
   deleteRestaurantCascade,
   deleteSubscriptionCascade,
   deleteUserCascade,
   ProtectedUserDeleteError,
+  ProtectedUserModifyError,
 } from "./db/cascadeDeletes";
 import { cascadeAuditFromTrpc } from "./db/cascadeAudit";
 import { isRestaurantOpen, parseTemporaryClosure } from "./lib/restaurantHours";
@@ -802,6 +812,17 @@ const adminRouter = router({
       if (!user) {
         throw new TRPCError({ code: "NOT_FOUND", message: "المستخدم غير موجود" });
       }
+      try {
+        assertProtectedUserPasswordResetAllowed(user.id);
+      } catch (error) {
+        if (error instanceof ProtectedUserModifyError) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "لا يمكن إعادة تعيين كلمة مرور هذا المستخدم المحمي",
+          });
+        }
+        throw error;
+      }
       const passwordHash = await bcrypt.hash(input.newPassword, 12);
       await updateUserPassword(user.openId, passwordHash);
       return { success: true };
@@ -825,32 +846,24 @@ const adminRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       assertAdminAccess(ctx, "admin.createRestaurantSubscription");
-      // Check if restaurant already has subscription
+      const ownerUserId = await resolveRestaurantOwnerUserId(
+        input.restaurantId,
+        input.userId
+      );
       const existing = await getSubscriptionForRestaurant(input.restaurantId);
       if (existing) {
         throw new TRPCError({ code: "CONFLICT", message: "المطعم لديه اشتراك بالفعل" });
       }
-      const now = new Date();
-      let periodEnd: Date;
-      if (input.subscriptionEndDate) {
-        periodEnd = new Date(input.subscriptionEndDate);
-      } else {
-        periodEnd = new Date();
-        if (input.billingCycle === "yearly") {
-          periodEnd.setFullYear(periodEnd.getFullYear() + 1);
-        } else {
-          periodEnd.setMonth(periodEnd.getMonth() + 1);
-        }
-      }
-      const result = await createSubscriptionForRestaurant({
-        userId: input.userId || ctx.user.id,
-        restaurantId: input.restaurantId,
-        planId: input.planId,
-        status: "active",
-        billingCycle: input.billingCycle,
-        currentPeriodStart: now.toISOString(),
-        currentPeriodEnd: periodEnd.toISOString(),
-      });
+      const result = await createSubscriptionForRestaurant(
+        buildAdminSubscriptionInsert({
+          userId: ownerUserId,
+          restaurantId: input.restaurantId,
+          planId: input.planId,
+          status: "active",
+          billingCycle: input.billingCycle,
+          subscriptionEndDate: input.subscriptionEndDate,
+        })
+      );
       return { success: true, subscriptionId: result.id };
     }),
 
@@ -869,6 +882,7 @@ const adminRouter = router({
       if (input.billingCycle !== undefined) updateData.billingCycle = input.billingCycle;
       if (input.status !== undefined) updateData.status = input.status;
       if (input.subscriptionEndDate) updateData.currentPeriodEnd = new Date(input.subscriptionEndDate).toISOString();
+      applyAdminTrialStatusUpdate(updateData, input);
       await updateSubscriptionById(input.subscriptionId, updateData);
       return { success: true };
     }),
@@ -946,6 +960,17 @@ const adminRouter = router({
     .mutation(async ({ input, ctx }) => {
       assertAdminAccess(ctx, "admin.updateUserRole");
       assertNotSelfAdminTarget(ctx, input.userId, "update_role");
+      try {
+        assertProtectedUserRoleModifiable(input.userId);
+      } catch (error) {
+        if (error instanceof ProtectedUserModifyError) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "لا يمكن تعديل دور هذا المستخدم المحمي",
+          });
+        }
+        throw error;
+      }
       return updateUserRole(input.userId, input.role);
     }),
 
@@ -982,6 +1007,7 @@ const adminRouter = router({
   createUserSubscriptionByAdmin: protectedProcedure
     .input(z.object({
       userId: z.number(),
+      restaurantId: z.number().optional(),
       planId: z.number(),
       billingCycle: z.enum(["monthly", "yearly"]),
       subscriptionEndDate: z.string().optional(),
@@ -993,29 +1019,28 @@ const adminRouter = router({
       if (existing) {
         throw new TRPCError({ code: "CONFLICT", message: "المستخدم لديه اشتراك بالفعل. استخدم التعديل بدلاً من الإنشاء." });
       }
+      const restaurantId = await resolveSubscriptionRestaurantIdForUser(
+        input.userId,
+        input.restaurantId
+      );
+      const subscriptionStatus = input.status || "active";
       const now = new Date();
-      let periodEnd: Date;
-      if (input.subscriptionEndDate) {
-        periodEnd = new Date(input.subscriptionEndDate);
-      } else {
-        periodEnd = new Date();
-        if (input.billingCycle === "yearly") {
-          periodEnd.setFullYear(periodEnd.getFullYear() + 1);
-        } else {
-          periodEnd.setMonth(periodEnd.getMonth() + 1);
-        }
-      }
-      const userRestaurants = await getRestaurantsByUser(input.userId);
-      const restaurantId = userRestaurants[0]?.id || 0;
-      const result = await createSubscriptionForRestaurant({
-        userId: input.userId,
-        restaurantId,
-        planId: input.planId,
-        status: input.status || "active",
+      const periodEnd = computeAdminSubscriptionPeriodEnd({
         billingCycle: input.billingCycle,
-        currentPeriodStart: now.toISOString(),
-        currentPeriodEnd: periodEnd.toISOString(),
+        subscriptionEndDate: input.subscriptionEndDate,
+        status: subscriptionStatus,
       });
+      const result = await createSubscriptionForRestaurant(
+        buildAdminSubscriptionInsert({
+          userId: input.userId,
+          restaurantId,
+          planId: input.planId,
+          status: subscriptionStatus,
+          billingCycle: input.billingCycle,
+          subscriptionEndDate: input.subscriptionEndDate,
+        },
+        now)
+      );
       // Send notification to user
       const plan = await getSubscriptionPlanById(input.planId);
       const planName = plan?.nameAr || "غير معروف";
@@ -1091,6 +1116,7 @@ const adminRouter = router({
       if (input.billingCycle !== undefined) updateData.billingCycle = input.billingCycle;
       if (input.status !== undefined) updateData.status = input.status;
       if (input.subscriptionEndDate) updateData.currentPeriodEnd = new Date(input.subscriptionEndDate).toISOString();
+      applyAdminTrialStatusUpdate(updateData, input);
       await updateSubscriptionById(existing.id, updateData);
       // Send notification to user
       const updatedPlan = input.planId ? await getSubscriptionPlanById(input.planId) : null;
@@ -1351,6 +1377,17 @@ const profileRouter = router({
     .mutation(async ({ input, ctx }) => {
       assertAdminAccess(ctx, "profile.updateUserRole");
       assertNotSelfAdminTarget(ctx, input.userId, "update_role");
+      try {
+        assertProtectedUserRoleModifiable(input.userId);
+      } catch (error) {
+        if (error instanceof ProtectedUserModifyError) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "لا يمكن تعديل دور هذا المستخدم المحمي",
+          });
+        }
+        throw error;
+      }
       return updateUserRole(input.userId, input.role);
     }),
 

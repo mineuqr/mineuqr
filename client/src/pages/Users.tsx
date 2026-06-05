@@ -17,6 +17,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { isProtectedUserId } from "@shared/const";
 
 export default function Users() {
   const gate = useAuthGate();
@@ -211,7 +212,7 @@ export default function Users() {
                               </>
                             ) : (
                               <>
-                                {u.id !== user?.id && (
+                                {u.id !== user?.id && !isProtectedUserId(u.id) && (
                                   <>
                                     <Button
                                       size="sm"

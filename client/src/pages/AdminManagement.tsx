@@ -46,6 +46,7 @@ import { computeAdminKPIs } from "@/lib/admin/computeAdminKPIs";
 import { formatPlanPriceForCycle, formatSubscriptionEndDate } from "@/lib/subscription";
 import type { BillingCycle } from "@/lib/subscription";
 import { cn } from "@/lib/utils";
+import { isProtectedUserId } from "@shared/const";
 
 // ─── Users Section Component ───────────────────────────────────────
 function UsersSection() {
@@ -61,6 +62,7 @@ function UsersSection() {
   const [subBillingCycle, setSubBillingCycle] = useState<"monthly" | "yearly">("monthly");
   const [subStatus, setSubStatus] = useState<"active" | "canceled" | "expired" | "trial">("active");
   const [subEndDate, setSubEndDate] = useState("");
+  const [subRestaurantId, setSubRestaurantId] = useState<string>("");
   const [deleteSubUserId, setDeleteSubUserId] = useState<number | null>(null);
   const [notifyDialogOpen, setNotifyDialogOpen] = useState(false);
   const [notifyUserId, setNotifyUserId] = useState<number | null>(null);
@@ -182,6 +184,12 @@ function UsersSection() {
     setSubBillingCycle("monthly");
     setSubStatus("active");
     setSubEndDate("");
+    const restaurants = u.restaurants ?? [];
+    if (restaurants.length === 1) {
+      setSubRestaurantId(String(restaurants[0].id));
+    } else {
+      setSubRestaurantId("");
+    }
   };
 
   const openEditSubDialog = (u: any) => {
@@ -197,8 +205,14 @@ function UsersSection() {
     if (!subDialogUser) return;
     if (subDialogMode === "create") {
       if (!subPlanId) { toast.error('يرجى اختيار باقة'); return; }
+      const userRestaurants = subDialogUser.restaurants ?? [];
+      if (userRestaurants.length > 0 && !subRestaurantId) {
+        toast.error(language === "ar" ? "يرجى اختيار المطعم" : "Please select a restaurant");
+        return;
+      }
       createSubMutation.mutate({
         userId: subDialogUser.id,
+        restaurantId: subRestaurantId ? parseInt(subRestaurantId, 10) : undefined,
         planId: parseInt(subPlanId),
         billingCycle: subBillingCycle,
         status: subStatus,
@@ -259,7 +273,7 @@ function UsersSection() {
       <AdminActionGroup
         ariaLabel={t("admin.userActions")}
         primary={
-          u.id !== user?.id ? (
+          u.id !== user?.id && !isProtectedUserId(u.id) ? (
             <AdminIconButton
               label={language === "ar" ? "تعديل الدور" : "Edit role"}
               onClick={() => {
@@ -329,7 +343,7 @@ function UsersSection() {
           </AdminIconButton>
         }
         danger={
-          u.id !== user?.id ? (
+          u.id !== user?.id && !isProtectedUserId(u.id) ? (
             <AdminIconButton
               label={language === "ar" ? "حذف المستخدم" : "Delete user"}
               onClick={() => setDeleteUserId(u.id)}
@@ -535,6 +549,23 @@ function UsersSection() {
               {subDialogUser?.name || subDialogUser?.email || 'المستخدم'}
             </DialogDescription>
           </DialogHeader>
+          {subDialogMode === "create" && (subDialogUser?.restaurants?.length ?? 0) > 0 && (
+            <div className="space-y-2">
+              <Label>{language === "ar" ? "المطعم" : "Restaurant"}</Label>
+              <Select value={subRestaurantId} onValueChange={setSubRestaurantId}>
+                <SelectTrigger>
+                  <SelectValue placeholder={language === "ar" ? "اختر المطعم" : "Select restaurant"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {(subDialogUser?.restaurants ?? []).map((r: { id: number; nameAr?: string; nameEn?: string }) => (
+                    <SelectItem key={r.id} value={String(r.id)}>
+                      {r.nameAr || r.nameEn || `#${r.id}`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <SubscriptionAdminFormFields
             plans={plans}
             planId={subPlanId}

@@ -76,6 +76,7 @@ import {
   updateSubscriptionById,
   cancelSubscriptionById,
   getSubscriptionForRestaurant,
+  getRestaurantById,
 } from "./db";
 
 const adminUser = { id: 1, openId: "admin_1", name: "Admin", email: "admin@test.com", role: "admin" as const, loginMethod: "email", createdAt: new Date(), updatedAt: new Date(), lastSignedIn: new Date(), passwordHash: null };
@@ -116,7 +117,8 @@ describe("Admin Subscription Management", () => {
   });
 
   describe("createRestaurantSubscription", () => {
-    it("should create subscription for restaurant", async () => {
+    it("should create subscription for restaurant owner", async () => {
+      (getRestaurantById as any).mockResolvedValue({ id: 1, userId: 42 });
       (getSubscriptionForRestaurant as any).mockResolvedValue(undefined);
       (createSubscriptionForRestaurant as any).mockResolvedValue({ id: 1 });
 
@@ -131,6 +133,7 @@ describe("Admin Subscription Management", () => {
       expect(result.subscriptionId).toBe(1);
       expect(createSubscriptionForRestaurant).toHaveBeenCalledWith(
         expect.objectContaining({
+          userId: 42,
           restaurantId: 1,
           planId: 1,
           billingCycle: "monthly",
@@ -139,7 +142,22 @@ describe("Admin Subscription Management", () => {
       );
     });
 
+    it("should reject mismatched userId override", async () => {
+      (getRestaurantById as any).mockResolvedValue({ id: 1, userId: 42 });
+
+      const caller = createCaller(adminUser);
+      await expect(
+        caller.admin.createRestaurantSubscription({
+          restaurantId: 1,
+          userId: 99,
+          planId: 1,
+          billingCycle: "monthly",
+        })
+      ).rejects.toThrow();
+    });
+
     it("should reject if restaurant already has subscription", async () => {
+      (getRestaurantById as any).mockResolvedValue({ id: 1, userId: 42 });
       (getSubscriptionForRestaurant as any).mockResolvedValue({ id: 1, status: "active" });
 
       const caller = createCaller(adminUser);
@@ -153,6 +171,7 @@ describe("Admin Subscription Management", () => {
     });
 
     it("should use custom end date if provided", async () => {
+      (getRestaurantById as any).mockResolvedValue({ id: 2, userId: 55 });
       (getSubscriptionForRestaurant as any).mockResolvedValue(undefined);
       (createSubscriptionForRestaurant as any).mockResolvedValue({ id: 2 });
 
@@ -199,6 +218,25 @@ describe("Admin Subscription Management", () => {
         status: "active",
         billingCycle: "yearly",
       });
+    });
+
+    it("should set trialEndsAt when status changes to trial", async () => {
+      (updateSubscriptionById as any).mockResolvedValue(undefined);
+
+      const caller = createCaller(adminUser);
+      await caller.admin.updateRestaurantSubscription({
+        subscriptionId: 1,
+        status: "trial",
+        subscriptionEndDate: "2027-06-01",
+      });
+
+      expect(updateSubscriptionById).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({
+          status: "trial",
+          trialEndsAt: new Date("2027-06-01").toISOString(),
+        })
+      );
     });
 
     it("should reject non-admin users", async () => {

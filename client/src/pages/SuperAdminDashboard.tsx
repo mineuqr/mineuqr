@@ -2,6 +2,7 @@ import { useAuthGate } from "@/_core/hooks/useAuthGate";
 import { AuthGatePending, PageDataLoading, SuperAdminAccessDenied } from "@/components/AuthGate";
 import { trpc } from "@/lib/trpc";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { isProtectedUserId } from "@shared/const";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -181,14 +182,16 @@ export default function SuperAdminDashboard() {
                         </td>
                         <td className="py-3 px-4 text-muted-foreground">{u.loginMethod}</td>
                         <td className="py-3 px-4 text-center">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setDeleteUserId(u.id)}
-                            className="text-red-500 hover:bg-red-500/10"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                          {!isProtectedUserId(u.id) && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setDeleteUserId(u.id)}
+                              className="text-red-500 hover:bg-red-500/10"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
                         </td>
                       </tr>
                     ))}

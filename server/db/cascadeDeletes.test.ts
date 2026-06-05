@@ -23,9 +23,12 @@ vi.mock("../_core/opsLog", () => ({
 }));
 
 import {
+  assertProtectedUserPasswordResetAllowed,
+  assertProtectedUserRoleModifiable,
   assertUserDeletable,
   deleteSubscriptionCascade,
   ProtectedUserDeleteError,
+  ProtectedUserModifyError,
   PROTECTED_USER_IDS,
 } from "./cascadeDeletes";
 import { getDb } from "../db";
@@ -53,6 +56,14 @@ describe("cascadeDeletes", () => {
 
   it("assertUserDeletable throws for protected user", () => {
     expect(() => assertUserDeletable(1)).toThrow(ProtectedUserDeleteError);
+  });
+
+  it("assertProtectedUserRoleModifiable throws for protected user", () => {
+    expect(() => assertProtectedUserRoleModifiable(1)).toThrow(ProtectedUserModifyError);
+  });
+
+  it("assertProtectedUserPasswordResetAllowed throws for protected user", () => {
+    expect(() => assertProtectedUserPasswordResetAllowed(1)).toThrow(ProtectedUserModifyError);
   });
 
   it("deleteSubscriptionCascade runs inside a transaction", async () => {
