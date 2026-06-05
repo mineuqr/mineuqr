@@ -624,7 +624,7 @@ const subscriptionRouter = router({
       if (!plan) throw new TRPCError({ code: "NOT_FOUND", message: "الخطة غير موجودة" });
 
       const { createPayPalOrder } = await import("./paypal");
-      const origin = ctx.req.headers.origin || "https://qr-menu.manus.space";
+      const origin = ctx.req.headers.origin || "https://www.mineuqr.com";
       const returnUrl = `${origin}/subscription/success`;
       const cancelUrl = `${origin}/subscription/cancel`;
 
