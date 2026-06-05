@@ -7,6 +7,7 @@ import type { SelectUser } from "../drizzle/schema";
 vi.mock("./db", () => ({
   getSubscriptionPlans: vi.fn(async () => []),
   getUserSubscription: vi.fn(async () => null),
+  getCanonicalUserSubscription: vi.fn(async () => null),
   getSubscriptionPlanById: vi.fn(async () => null),
   getSubscriptionByRestaurantId: vi.fn(async () => null),
   isSubscriptionActive: vi.fn(async () => false),

@@ -27,6 +27,30 @@ vi.mock("./db", () => ({
   getUserByEmail: vi.fn(async () => undefined),
   isSubscriptionActive: vi.fn(async () => true),
   getTrialEndDate: vi.fn(async () => new Date(Date.now() + 86400000)),
+  getSubscriptionsByUser: vi.fn(async () => [
+    {
+      id: 1,
+      userId: 10,
+      restaurantId: 0,
+      planId: 2,
+      status: "active",
+      currentPeriodEnd: new Date(Date.now() + 86400000).toISOString(),
+      trialEndsAt: null,
+    },
+  ]),
+  getSubscriptionPlans: vi.fn(async () => [
+    { id: 1, maxRestaurants: 1, maxItemsPerRestaurant: 100, maxCategories: 10 },
+    { id: 2, maxRestaurants: 5, maxItemsPerRestaurant: 500, maxCategories: 25 },
+  ]),
+  getSubscriptionPlanById: vi.fn(async (id: number) => {
+    if (id === 2) {
+      return { id: 2, maxRestaurants: 5, maxItemsPerRestaurant: 500, maxCategories: 25 };
+    }
+    if (id === 1) {
+      return { id: 1, maxRestaurants: 1, maxItemsPerRestaurant: 100, maxCategories: 10 };
+    }
+    return null;
+  }),
 }));
 
 vi.mock("./local-uploads", () => ({

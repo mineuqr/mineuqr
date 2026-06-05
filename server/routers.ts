@@ -10,7 +10,7 @@ import {
   getCategoriesByRestaurant, getCategoryById, createCategory, updateCategory, deleteCategory,
   getMenuItemsByCategory, getMenuItemsByRestaurant, getMenuItemById,
   createMenuItem, updateMenuItem, deleteMenuItem, getRestaurantStats,
-  getSubscriptionPlans, getSubscriptionPlanById, createUserSubscription, getUserSubscription,
+  getSubscriptionPlans, getSubscriptionPlanById, createUserSubscription, getCanonicalUserSubscription,
   isSubscriptionActive, getTrialEndDate,
   getOffersByRestaurant, getActiveOffersByRestaurant, getOfferById, createOffer, updateOffer, deleteOffer,
   getInvoicesByUser, getInvoiceById, getUnpaidInvoices,
@@ -38,6 +38,11 @@ import {
 } from "./_core/normalizeAccountEmail";
 import { resolveAuthoritativeOrderLines } from "./orderPricing";
 import { assertRestaurantAccess } from "./restaurantAccess";
+import {
+  assertCategoryCreateAllowed,
+  assertMenuItemCreateAllowed,
+  assertRestaurantCreateAllowed,
+} from "./subscriptionPlanLimits";
 import { assertAdminAccess, assertNotSelfAdminTarget } from "./_core/assertAdminAccess";
 import {
   deleteRestaurantCascade,
@@ -97,6 +102,9 @@ const restaurantRouter = router({
       currencySymbol: z.string().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
+      if (ctx.user.role !== "admin") {
+        await assertRestaurantCreateAllowed(ctx.user.id);
+      }
       const slug = generateSlug(input.nameAr);
       const result = await createRestaurant({
         ...input,
@@ -335,6 +343,9 @@ const categoryRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       await assertRestaurantAccess(ctx, input.restaurantId, "category.create");
+      if (ctx.user.role !== "admin") {
+        await assertCategoryCreateAllowed(ctx.user.id, input.restaurantId);
+      }
       return createCategory(input);
     }),
 
@@ -408,6 +419,10 @@ const menuItemRouter = router({
       const category = await getCategoryById(input.categoryId);
       if (!category || category.restaurantId !== input.restaurantId) {
         throw new TRPCError({ code: "FORBIDDEN", message: "غير مصرح بالوصول" });
+      }
+
+      if (ctx.user.role !== "admin") {
+        await assertMenuItemCreateAllowed(ctx.user.id, input.restaurantId);
       }
 
       return createMenuItem(input);
@@ -592,7 +607,7 @@ const subscriptionRouter = router({
   }),
 
   getCurrentSubscription: verifiedProcedure.query(async ({ ctx }) => {
-    const subscription = await getUserSubscription(ctx.user.id);
+    const subscription = await getCanonicalUserSubscription(ctx.user.id);
     if (!subscription) return null;
     const plan = await getSubscriptionPlanById(subscription.planId);
     return { subscription, plan };
@@ -664,7 +679,7 @@ const subscriptionRouter = router({
       const amountNum = parseFloat(amount.toString());
 
       // Get user subscription to include in metadata
-      const userSub = await getUserSubscription(ctx.user.id);
+      const userSub = await getCanonicalUserSubscription(ctx.user.id);
 
       const charge = await createTapCharge({
         amount: amountNum,
@@ -974,7 +989,7 @@ const adminRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       assertAdminAccess(ctx, "admin.createUserSubscriptionByAdmin");
-      const existing = await getUserSubscription(input.userId);
+      const existing = await getCanonicalUserSubscription(input.userId);
       if (existing) {
         throw new TRPCError({ code: "CONFLICT", message: "المستخدم لديه اشتراك بالفعل. استخدم التعديل بدلاً من الإنشاء." });
       }
@@ -1110,7 +1125,7 @@ const adminRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       assertAdminAccess(ctx, "admin.deleteUserSubscriptionByAdmin");
-      const existing = await getUserSubscription(input.userId);
+      const existing = await getCanonicalUserSubscription(input.userId);
       if (!existing) {
         throw new TRPCError({ code: "NOT_FOUND", message: "لا يوجد اشتراك لهذا المستخدم" });
       }
@@ -1177,7 +1192,7 @@ const adminRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "المستخدم غير موجود" });
       }
       // Get subscription info
-      const sub = await getUserSubscription(input.userId);
+      const sub = await getCanonicalUserSubscription(input.userId);
       if (!sub) {
         throw new TRPCError({ code: "NOT_FOUND", message: "لا يوجد اشتراك لهذا المستخدم" });
       }

@@ -5,6 +5,7 @@ import type { TrpcContext } from "./_core/context";
 vi.mock("./db", () => ({
   getSubscriptionPlanById: vi.fn(),
   getUserSubscription: vi.fn(),
+  getCanonicalUserSubscription: vi.fn(),
   createUserSubscription: vi.fn(),
   updateUserSubscription: vi.fn(),
   getRestaurantsByUserId: vi.fn(),
@@ -76,6 +77,7 @@ describe("Payment Flow - End-to-End", () => {
     ]);
 
     (db.getUserSubscription as any).mockResolvedValue(null);
+    (db.getCanonicalUserSubscription as any).mockResolvedValue(null);
     (db.isSubscriptionActive as any).mockResolvedValue(false);
     (db.getTrialEndDate as any).mockResolvedValue(null);
     (db.getRestaurantsByUserId as any).mockResolvedValue([]);
@@ -187,6 +189,19 @@ describe("Payment Flow - End-to-End", () => {
       const ctx = createAuthContext(userId);
 
       (db.getUserSubscription as any).mockResolvedValueOnce({
+        id: 1,
+        userId,
+        planId: 1,
+        status: "trial",
+        billingCycle: "monthly",
+        currentPeriodStart: new Date(),
+        currentPeriodEnd: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        stripeSubscriptionId: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      (db.getCanonicalUserSubscription as any).mockResolvedValueOnce({
         id: 1,
         userId,
         planId: 1,

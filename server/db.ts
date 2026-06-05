@@ -438,15 +438,20 @@ export async function getSubscriptionForRestaurant(restaurantId: number) {
 }
 
 /**
+ * Canonical account-level subscription row (best entitled trial/active, deterministic ties).
+ * Prefer over getUserSubscription() for multi-location accounts.
+ */
+export async function getCanonicalUserSubscription(userId: number) {
+  const rows = await getSubscriptionsByUser(userId);
+  return pickCanonicalSubscription(rows);
+}
+
+/**
  * @deprecated Legacy user-scoped lookup — uses unordered limit(1). Unsafe when a user owns
- * multiple restaurants. Scheduled for removal after LH-1B payment/UI migration.
- * Prefer getSubscriptionsByUser + getSubscriptionForRestaurant.
+ * multiple restaurants. Prefer getCanonicalUserSubscription or getSubscriptionsByUser.
  */
 export async function getUserSubscription(userId: number) {
-  const db = await getDb();
-  if (!db) return undefined;
-  const result = await db.select().from(userSubscriptions).where(eq(userSubscriptions.userId, userId)).limit(1);
-  return result[0];
+  return getCanonicalUserSubscription(userId);
 }
 
 export async function createUserSubscription(data: InsertUserSubscription) {

@@ -128,9 +128,40 @@ vi.mock("./db", () => ({
   getRestaurantStats: vi.fn().mockResolvedValue({ totalCategories: 3, totalItems: 15, viewCount: 99 }),
   upsertUser: vi.fn(),
   getUserByOpenId: vi.fn(),
-  getSubscriptionPlans: vi.fn().mockResolvedValue([]),
-  getSubscriptionPlanById: vi.fn().mockResolvedValue(null),
+  getSubscriptionPlans: vi.fn().mockResolvedValue([
+    {
+      id: 2,
+      maxRestaurants: 5,
+      maxItemsPerRestaurant: 500,
+      maxCategories: 25,
+      isActive: true,
+      sortOrder: 2,
+    },
+  ]),
+  getSubscriptionPlanById: vi.fn().mockImplementation(async (id: number) => {
+    if (id === 2) {
+      return {
+        id: 2,
+        maxRestaurants: 5,
+        maxItemsPerRestaurant: 500,
+        maxCategories: 25,
+      };
+    }
+    return null;
+  }),
+  getSubscriptionsByUser: vi.fn().mockResolvedValue([
+    {
+      id: 1,
+      userId: 1,
+      restaurantId: 0,
+      planId: 2,
+      status: "active",
+      currentPeriodEnd: new Date(Date.now() + 86400000).toISOString(),
+      trialEndsAt: null,
+    },
+  ]),
   createUserSubscription: vi.fn().mockResolvedValue({ id: 1 }),
+  getCanonicalUserSubscription: vi.fn().mockResolvedValue(null),
   getUserSubscription: vi.fn().mockResolvedValue(null),
   updateUserSubscription: vi.fn().mockResolvedValue({ success: true }),
   isSubscriptionActive: vi.fn().mockResolvedValue(true),
