@@ -9,6 +9,7 @@ vi.mock("./db", () => ({
 import { getRestaurantById, getRestaurantsByUser } from "./db";
 import {
   applyAdminTrialStatusUpdate,
+  assertSubscriptionEligibleForAdminInvoice,
   buildAdminSubscriptionInsert,
   resolveRestaurantOwnerUserId,
   resolveSubscriptionRestaurantIdForUser,
@@ -69,6 +70,16 @@ describe("adminSubscriptionHelpers", () => {
       expect(row.status).toBe("trial");
       expect(row.trialEndsAt).toBeDefined();
       expect(row.currentPeriodEnd).toBe(row.trialEndsAt);
+    });
+  });
+
+  describe("assertSubscriptionEligibleForAdminInvoice", () => {
+    it("blocks trial subscriptions", () => {
+      expect(() => assertSubscriptionEligibleForAdminInvoice("trial")).toThrow(TRPCError);
+    });
+
+    it("allows active subscriptions", () => {
+      expect(() => assertSubscriptionEligibleForAdminInvoice("active")).not.toThrow();
     });
   });
 

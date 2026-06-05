@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
@@ -7,61 +7,41 @@ import { Download, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { formatRiyadhDate } from "@/lib/datetime";
 
-interface Payment {
+type InvoiceStatus = "paid" | "pending" | "failed" | "refunded";
+
+interface PaymentRow {
   id: number;
   amount: number;
   currency: string;
-  status: "paid" | "pending" | "failed";
+  status: InvoiceStatus;
   date: string;
   planName: string;
-  invoiceUrl?: string;
+  invoiceUrl?: string | null;
 }
 
 export default function PaymentHistory() {
-  const { t } = useLanguage();
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { t, language } = useLanguage();
 
-  useEffect(() => {
-    // Fetch payment history from backend
-    const fetchPayments = async () => {
-      try {
-        setIsLoading(true);
-        // TODO: Replace with actual API call
-        // const result = await trpc.subscription.getPaymentHistory.useQuery();
-        // setPayments(result.data);
-        
-        // Mock data for now
-        setPayments([
-          {
-            id: 1,
-            amount: 99.99,
-            currency: "USD",
-            status: "paid",
-            date: new Date().toISOString(),
-            planName: "Professional",
-            invoiceUrl: "#",
-          },
-          {
-            id: 2,
-            amount: 29.99,
-            currency: "USD",
-            status: "paid",
-            date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-            planName: "Basic",
-            invoiceUrl: "#",
-          },
-        ]);
-      } catch (error) {
-        console.error("Error fetching payments:", error);
-        toast.error(t("common.error"));
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const { data: invoices, isLoading: invoicesLoading } = trpc.invoice.list.useQuery();
+  const { data: subscriptionData } = trpc.subscription.getCurrentSubscription.useQuery();
 
-    fetchPayments();
-  }, [t]);
+  const planLabel =
+    subscriptionData?.plan?.nameEn ||
+    subscriptionData?.plan?.nameAr ||
+    t("invoices.invoice");
+
+  const payments = useMemo<PaymentRow[]>(() => {
+    if (!invoices?.length) return [];
+    return invoices.map((inv) => ({
+      id: inv.id,
+      amount: parseFloat(inv.amount) || 0,
+      currency: inv.currency,
+      status: inv.status as InvoiceStatus,
+      date: inv.issuedAt,
+      planName: planLabel,
+      invoiceUrl: inv.pdfUrl,
+    }));
+  }, [invoices, planLabel]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -70,6 +50,7 @@ export default function PaymentHistory() {
       case "pending":
         return "text-yellow-400 bg-yellow-500/10";
       case "failed":
+      case "refunded":
         return "text-red-400 bg-red-500/10";
       default:
         return "text-gray-400 bg-gray-500/10";
@@ -84,12 +65,24 @@ export default function PaymentHistory() {
         return t("common.pending");
       case "failed":
         return t("common.failed");
+      case "refunded":
+        return t("common.refunded") || "Refunded";
       default:
         return status;
     }
   };
 
-  if (isLoading) {
+  const openInvoice = (url: string | null | undefined) => {
+    if (!url) {
+      toast.error(t("common.error"));
+      return;
+    }
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
+  const downloadableInvoices = payments.filter((p) => p.invoiceUrl);
+
+  if (invoicesLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
         <div className="text-center">
@@ -103,7 +96,6 @@ export default function PaymentHistory() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 py-12 px-4">
       <div className="max-w-4xl mx-auto">
-        {/* Header */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-white mb-2">
             {t("common.paymentHistory")}
@@ -113,7 +105,6 @@ export default function PaymentHistory() {
           </p>
         </div>
 
-        {/* Payments Table */}
         <Card className="bg-card border-border">
           <CardHeader>
             <CardTitle className="text-foreground">
@@ -150,7 +141,7 @@ export default function PaymentHistory() {
                         className="border-b border-border hover:bg-muted/50 transition-colors"
                       >
                         <td className="py-3 px-4 text-foreground">
-                          {formatRiyadhDate(payment.date, "ar-SA")}
+                          {formatRiyadhDate(payment.date, language === "ar" ? "ar-SA" : "en-US")}
                         </td>
                         <td className="py-3 px-4 text-foreground">
                           {payment.planName}
@@ -169,9 +160,8 @@ export default function PaymentHistory() {
                               size="sm"
                               variant="outline"
                               className="gap-2"
-                              onClick={() => {
-                                toast.info("Opening invoice...");
-                              }}
+                              disabled={!payment.invoiceUrl}
+                              onClick={() => openInvoice(payment.invoiceUrl)}
                             >
                               <Eye className="w-4 h-4" />
                               {t("common.view")}
@@ -180,9 +170,8 @@ export default function PaymentHistory() {
                               size="sm"
                               variant="outline"
                               className="gap-2"
-                              onClick={() => {
-                                toast.info("Downloading invoice...");
-                              }}
+                              disabled={!payment.invoiceUrl}
+                              onClick={() => openInvoice(payment.invoiceUrl)}
                             >
                               <Download className="w-4 h-4" />
                               {t("common.download")}
@@ -197,19 +186,25 @@ export default function PaymentHistory() {
             ) : (
               <div className="text-center py-12">
                 <p className="text-muted-foreground">
-                  {t("common.noPayments") || "لا توجد عمليات دفع"}
+                  {t("common.noPayments") || t("invoices.noInvoices")}
                 </p>
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Download All Invoices */}
         <div className="mt-8 text-center">
           <Button
             className="bg-cyan-500 hover:bg-cyan-600"
+            disabled={downloadableInvoices.length === 0}
             onClick={() => {
-              toast.info("Preparing invoices...");
+              if (downloadableInvoices.length === 0) {
+                toast.info(t("invoices.noInvoices"));
+                return;
+              }
+              for (const inv of downloadableInvoices) {
+                openInvoice(inv.invoiceUrl);
+              }
             }}
           >
             <Download className="w-4 h-4 mr-2" />

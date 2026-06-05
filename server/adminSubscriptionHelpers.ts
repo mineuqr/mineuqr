@@ -137,3 +137,16 @@ export async function resolveRestaurantOwnerUserId(
   }
   return restaurant.userId;
 }
+
+/** Trial subscriptions are not billable via admin invoice generation (ADMIN-AUDIT-FIX-1). */
+export function assertSubscriptionEligibleForAdminInvoice(
+  status: SubscriptionStatus
+): void {
+  if (status === "trial") {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message:
+        "لا يمكن إنشاء فاتورة لاشتراك تجريبي. الاشتراكات التجريبية غير قابلة للفوترة.",
+    });
+  }
+}

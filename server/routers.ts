@@ -46,6 +46,7 @@ import {
 import { assertAdminAccess, assertNotSelfAdminTarget } from "./_core/assertAdminAccess";
 import {
   applyAdminTrialStatusUpdate,
+  assertSubscriptionEligibleForAdminInvoice,
   buildAdminSubscriptionInsert,
   computeAdminSubscriptionPeriodEnd,
   resolveRestaurantOwnerUserId,
@@ -1058,41 +1059,6 @@ const adminRouter = router({
           message: `تم إنشاء اشتراك جديد لك في باقة "${planName}" بحالة ${statusLabel}. ينتهي في ${periodEndLabel}.`,
         });
       } catch (e) { /* notification failure is non-critical */ }
-      // Auto-generate invoice PDF
-      try {
-        const amount = input.billingCycle === "yearly"
-          ? (plan?.priceYearly || plan?.priceMonthly || "0")
-          : (plan?.priceMonthly || "0");
-        const invoiceNumber = `INV-${Date.now()}-${input.userId}`;
-        const dueDate = new Date(now);
-        dueDate.setDate(dueDate.getDate() + 30);
-        const invoiceResult = await createInvoice({
-          userId: input.userId,
-          subscriptionId: result.id,
-          amount: amount.toString(),
-          currency: "USD",
-          status: "paid",
-          invoiceNumber,
-          issuedAt: now.toISOString(),
-          dueAt: dueDate.toISOString(),
-          paidAt: now.toISOString(),
-        });
-        const targetUser = await getUserById(input.userId);
-        const pdfBuffer = await generateInvoicePDFBuffer({
-          invoiceNumber,
-          customerName: targetUser?.name || targetUser?.email || "Customer",
-          planName: plan?.nameEn || plan?.nameAr || "Subscription",
-          amount: amount.toString(),
-          currency: "USD",
-          issuedAt: now.toISOString(),
-          status: "paid",
-          paidAt: now.toISOString(),
-          billingCycle: input.billingCycle,
-        });
-        const fileKey = `pdfs/${input.userId}/${invoiceNumber}.pdf`;
-        const { url: pdfUrl } = await putUploadedFile(fileKey, pdfBuffer, "application/pdf", ctx.req);
-        await updateInvoice(invoiceResult.id, { pdfUrl });
-      } catch (e) { /* invoice generation failure is non-critical */ }
       return { success: true, subscriptionId: result.id };
     }),
   updateUserSubscriptionByAdmin: protectedProcedure
@@ -1222,6 +1188,7 @@ const adminRouter = router({
       if (!sub) {
         throw new TRPCError({ code: "NOT_FOUND", message: "لا يوجد اشتراك لهذا المستخدم" });
       }
+      assertSubscriptionEligibleForAdminInvoice(sub.status);
       // Get plan info
       const plan = await getSubscriptionPlanById(sub.planId);
       if (!plan) {
