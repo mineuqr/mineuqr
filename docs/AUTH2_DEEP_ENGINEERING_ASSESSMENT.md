@@ -3,6 +3,8 @@ Post AUTH2-B + AUTH2-C Slice 1–2 Review
 Architecture philosophy: **Stabilize → Observe → Harden → Expand**  
 Constraints: **no auth rewrite**, **no Redis**, **no premature microservices**, **low-blast incremental engineering only**
 
+> **Historical snapshot:** Written when Manus OAuth was still in the auth path. OAuth routes and `server/_core/oauth.ts` were removed in a later exit; production auth is **local email/password + JWT session only**. OAuth-related findings below describe the pre-removal architecture.
+
 Scope baseline (as observed in repo):
 - **Session model**: stateless **HS256 JWT** stored in `app_session_id` cookie, validated on every request (no server-side session store).
 - **Session payload**: `{ openId, appId, name, iat, exp }` signed with `ENV.cookieSecret` (`JWT_SECRET`).

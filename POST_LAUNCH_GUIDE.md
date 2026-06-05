@@ -24,10 +24,10 @@
 
 ### 3. **تكوين النطاق المخصص (اختياري)**
 ```
-Settings → Domains
-- اشتر نطاق مخصص أو استخدم النطاق المجاني (xxx.manus.space)
+Settings → Domains (أو لوحة استضافة Vercel → Domains)
+- اشتر نطاقاً مخصصاً (مثل menu.example.com) أو استخدم نطاق الاستضافة الافتراضي
 - ربط النطاق بالموقع
-- تفعيل SSL/HTTPS
+- تفعيل SSL/HTTPS (عادةً تلقائي عبر الاستضافة)
 ```
 
 ---
@@ -45,12 +45,10 @@ Dashboard → Performance
 
 ### 2. **مراجعة السجلات**
 ```bash
-# تحقق من ملفات السجلات
-.manus-logs/
-├── devserver.log      # مشاكل الخادم
-├── browserConsole.log # أخطاء المتصفح
-├── networkRequests.log # طلبات HTTP
-└── sessionReplay.log  # تفاعلات المستخدمين
+# سجلات الإنتاج (Vercel أو مزود الاستضافة)
+- لوحة Vercel → Project → Logs (أخطاء الخادم وطلبات API)
+- متصفح المستخدم → أدوات المطور → Console / Network (أخطاء الواجهة)
+- إشعارات البريد من Resend (فشل إرسال التحقق أو إعادة التعيين)
 ```
 
 ### 3. **تحديث المحتوى**
@@ -64,7 +62,7 @@ Dashboard → Performance
 
 ### 1. **تحديث الحزم والمكتبات**
 ```bash
-cd /home/ubuntu/qr_menu
+cd <مسار-المستودع-المحلي>
 pnpm update
 pnpm test  # تأكد من عدم كسر أي شيء
 ```
@@ -94,7 +92,7 @@ Dashboard → Database → Backup
 ### المشكلة: أخطاء في الدفع
 **الحل:**
 1. تحقق من مفاتيح PayPal في Settings → Payment
-2. راجع سجلات الأخطاء في browserConsole.log
+2. راجع سجلات المتصفح (Console) وسجلات الخادم في لوحة الاستضافة
 3. اختبر الدفع بطريقة الاختبار (Test Mode)
 4. تأكد من تفعيل webhooks في PayPal
 
@@ -103,7 +101,6 @@ Dashboard → Database → Backup
 1. تحقق من ملفات الترجمة: `client/src/locales/`
 2. أضف النصوص المفقودة
 3. اختبر كلا اللغتين بعد التحديث
-4. احفظ نقطة تفتيش جديدة
 
 ---
 
@@ -144,13 +141,9 @@ Dashboard → Database → Backup
 ## 📞 الدعم والمساعدة
 
 **للمشاكل التقنية:**
-- راجع `.manus-logs/` للأخطاء
-- استخدم `webdev_check_status` للتشخيص
-- استخدم `webdev_debug` للمشاكل المعقدة
-
-**للأسئلة حول Manus:**
-- زيارة https://help.manus.im
-- راجع التوثيق الرسمية
+- راجع سجلات Vercel (أو مزود الاستضافة) وأحداث `[OPS][AUTH]` في السجلات
+- راجع [auth-ops-signals.md](docs/auth-ops-signals.md) و [deployment-auth-readiness.md](docs/deployment-auth-readiness.md)
+- شغّل `pnpm test` و `pnpm check` محلياً قبل النشر
 
 ---
 
@@ -167,4 +160,4 @@ Dashboard → Database → Backup
 
 ---
 
-**ملاحظة:** احفظ نقطة تفتيش جديدة بعد أي تحديث مهم باستخدام `webdev_save_checkpoint` لضمان إمكانية الرجوع إلى الحالة السابقة إذا لزم الأمر.
+**ملاحظة:** استخدم Git tags أو نشرات Vercel المحفوظة للرجوع إلى إصدار سابق بعد أي تحديث مهم.

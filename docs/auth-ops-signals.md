@@ -22,7 +22,7 @@ Every auth route event from `authOpsLog()` includes top-level: `correlationId`, 
 1. **Pick a correlation id** (`cid=` in message line) or **client IP** (`ip` field).
 2. **Classify the event** using the tables below: **abuse** vs **degraded** vs **lifecycle**.
 3. **Abuse / noise** — bursts, invalid tokens, rate limits: usually no deploy rollback; confirm thresholds if volume is extreme.
-4. **Degraded** — `degradedReason`, `auth_token_create_failed`, OAuth callback failures: check DB, email, provider, env.
+4. **Degraded** — `degradedReason`, `auth_token_create_failed`: check DB, email, env.
 5. **Burst metadata** — `countInWindow`, `windowMs`, `threshold`, `key` describe in-memory counters (not blocking enforcement).
 
 ---
@@ -53,15 +53,17 @@ Cooldowned aggregates (10m window, 2m emit cooldown) — avoids cookie spam.
 
 **Triage:** `metadata.signal` = anomaly type; `countInWindow` shows volume.
 
-### OAuth (`oauth_*`)
+### OAuth (`oauth_*`) — historical
+
+> **Removed:** Manus OAuth callback routes were deleted; local email/password is the only login path. The `oauth_*` event names remain in `opsTaxonomy.ts` for log compatibility — interpret only when reviewing **pre-removal** logs.
 
 | Event | Class | Notes |
 |-------|-------|-------|
-| `oauth_callback_missing_params` | abuse (info) | Scanner / broken callback |
-| `oauth_state_malformed` | abuse (info) | Invalid state encoding |
-| `oauth_callback_invalid_burst` | abuse (warn) | ≥25 invalid attempts / 10m per IP+reason |
-| `oauth_callback_rate_limited` | abuse | Hard 429 at 60/min per IP |
-| `oauth_callback_failed` | degraded | Handler exception — inspect `degradedReason` / `error` |
+| `oauth_callback_missing_params` | abuse (info) | Legacy: scanner / broken callback |
+| `oauth_state_malformed` | abuse (info) | Legacy: invalid state encoding |
+| `oauth_callback_invalid_burst` | abuse (warn) | Legacy: ≥25 invalid attempts / 10m per IP+reason |
+| `oauth_callback_rate_limited` | abuse | Legacy: hard 429 at 60/min per IP |
+| `oauth_callback_failed` | degraded | Legacy: handler exception |
 
 ### One-time tokens (`password_reset_*`, `email_verification_*`)
 

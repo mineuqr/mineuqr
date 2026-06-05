@@ -36,7 +36,6 @@ MineuQR authentication engineering (AUTH2) — **closed** as of D.7. Use this in
 | Path | Role |
 |------|------|
 | `server/auth-local.ts` | Local auth routes |
-| `server/_core/oauth.ts` | OAuth callback |
-| `server/_core/sdk.ts` | JWT session |
+| `server/_core/sdk.ts` | JWT session (`authenticateRequest`) |
 | `server/_core/cookies.ts` | Session cookie policy |
 | `server/_core/index.ts` | Server wiring |

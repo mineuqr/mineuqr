@@ -41,7 +41,6 @@ Set `AUTH_DEPLOY_DEBUG=1` for full JSON report and all notes.
 - [ ] TLS terminates at load balancer → app receives `x-forwarded-proto: https`
 - [ ] `Host` matches public site hostname
 - [ ] SPA `Origin` on auth POST matches `Host` (or set `CSRF_ORIGIN_ENFORCE=1` after verifying)
-- [ ] OAuth provider callback URL matches deployed host
 - [ ] `PUBLIC_APP_URL` set if forgot-password runs server-side without browser `Origin` (e.g. API-only triggers)
 
 ## Ops events to watch (staging)

@@ -29,7 +29,7 @@ Must exit **0**.
 
 ## App smoke (auth-critical)
 
-- [ ] Login (local or OAuth)
+- [ ] Login (local email/password)
 - [ ] `auth.me` / dashboard load
 - [ ] Logout
 - [ ] Forgot-password email link host correct (`PUBLIC_APP_URL` if needed)

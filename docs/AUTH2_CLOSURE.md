@@ -14,7 +14,6 @@ MineuQR authentication is **operationally mature** for a stateless JWT + cookie 
 |------------|--------|
 | Local login / change-password | Stable |
 | Password reset + email verification | Stable, non-enumerating |
-| OAuth (Manus) callback | Stable with abuse guards |
 | Session TTL + revocation (`sessionValidAfter`, `passwordChangedAt`) | Stable |
 | Rate limits + burst visibility | Stable (in-memory) |
 | Deployment proxy/TLS awareness | Validated (D.6) |
@@ -34,14 +33,14 @@ MineuQR authentication is **operationally mature** for a stateless JWT + cookie 
                             │
      ┌──────────────────────┼──────────────────────┐
      ▼                      ▼                      ▼
- auth-local.ts          oauth.ts              sdk.ts + cookies.ts
- (route orchestration)  (OAuth routes)        (JWT session cookie)
-     │                      │                      │
-     ▼                      │                      │
- auth-local/*               │                      │
- (helpers only)             │                      │
-     │                      └──────────┬───────────┘
-     ▼                                 ▼
+ auth-local.ts              sdk.ts + cookies.ts
+ (route orchestration)      (JWT session cookie)
+     │                      │
+     ▼                      │
+ auth-local/*               │
+ (helpers only)             │
+     │                      │
+     ▼                      ▼
  authOneTimeToken*              secureRequest.ts
  (reset/verify tokens)          (HTTPS / x-forwarded-proto)
      │                                 │
@@ -63,7 +62,7 @@ MineuQR authentication is **operationally mature** for a stateless JWT + cookie 
 | Module | Owns | Does **not** own |
 |--------|------|------------------|
 | `auth-local.ts` | Route sequencing, DB/email orchestration | Cookie flags, JWT signing |
-| `auth-local/*` | Pure/local helpers, in-memory resend + invalid-token maps | OAuth, tRPC auth |
+| `auth-local/*` | Pure/local helpers, in-memory resend + invalid-token maps | tRPC auth |
 | `authOneTimeToken.ts` | Token classify/issue/TTL constants | HTTP responses |
 | `authOneTimeTokenResponses.ts` | Stable user-facing error strings | Ops events |
 | `authTokenUtils.ts` | `newToken`, `tokenToHash` | Storage, expiry |
@@ -75,7 +74,6 @@ MineuQR authentication is **operationally mature** for a stateless JWT + cookie 
 | `deploymentReadiness.ts` | Startup deployment assessment | Per-request logic |
 | `sessionConfig.ts` | Session TTL constants | Revocation DB writes |
 | `sdk.ts` | JWT create/verify, `authenticateRequest` | Local password |
-| `oauth.ts` | OAuth callback + invalid burst | Local auth |
 | `authAudit.ts` | Login fail/success, rate-limit ops | Session anomalies |
 | `sessionAudit.ts` | Session anomaly cooldowned ops | Login |
 | `suspiciousActivity.ts` | Cross-signal threshold bursts | Enforcement |
@@ -97,13 +95,14 @@ MineuQR authentication is **operationally mature** for a stateless JWT + cookie 
 | `auth-local.ts` route orchestration | High regression risk; tests are partial | AUTH3: split by route **after** integration tests |
 | `authAudit` `legacyPrefix`/`legacyType` | Console format compatibility | MON: migrate dashboards off legacy lines |
 | Duplicate counter patterns (`sessionAudit`, `suspiciousActivity`, `deploymentGuards`) | Works; shared primitives exist for new code only | Unify only with characterization tests |
-| OAuth `state` decode (`_safeDecodeOAuthState` vs SDK) | Subtle redirect semantics | Dedicated OAuth hardening slice |
 | `local-uploads.getPublicBaseUrl` vs `secureRequest` | Non-auth domain; separate proto logic | Uploads refactor (not AUTH2) |
 | Drizzle migration history / `sessionValidAfter` patch scripts | Governance debt; DB-specific | Infra/migrations project |
 | tRPC `auth.me` / client redirect flows | Frontend coupling | Client auth slice |
 | Redis / external rate-limit store | Architectural change | Scale phase |
 | Refresh tokens / session store | Architectural change | AUTH3 |
 | `isSecureRequest` in multiple consumers | Centralized in `secureRequest.ts` — **do not re-inline** | — |
+
+> **Post-AUTH2 exit:** Manus OAuth (`oauth.ts`, `/api/oauth/callback`) was removed; local login is the sole authentication path.
 
 ---
 
@@ -116,7 +115,6 @@ MineuQR authentication is **operationally mature** for a stateless JWT + cookie 
 | `PUBLIC_APP_URL` in all link builders (uploads, etc.) | Scope creep | Auth email links covered |
 | CSRF enforce by default | May break legitimate clients | Opt-in `CSRF_ORIGIN_ENFORCE=1` |
 | Session rotation / refresh | Product + security design | Not required for current SaaS stage |
-| OAuth state unified with SDK | Redirect URI regressions | Documented duplicate |
 
 ---
 
@@ -172,7 +170,7 @@ None block **staging** or **closing AUTH2**.
 | D.6 | `secureRequest`, deployment readiness, `PUBLIC_APP_URL` |
 | D.7 | This closure audit |
 
-Prior AUTH2 (A–C): sessions, deployment guards, OAuth abuse, revocation, TTL, assessments.
+Prior AUTH2 (A–C): sessions, deployment guards, OAuth abuse (later removed), revocation, TTL, assessments.
 
 ---
 
