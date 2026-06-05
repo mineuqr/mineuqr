@@ -2,6 +2,7 @@ import type { Request } from "express";
 import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
+import { effectiveRequestProtocol } from "./_core/secureRequest";
 import { storagePut } from "./storage";
 
 const projectRoot = path.resolve(
@@ -27,22 +28,24 @@ function normalizeKey(relKey: string): string {
   return relKey.replace(/^\/+/, "");
 }
 
+/**
+ * Dev-only public origin for /uploads URLs persisted to the database.
+ * Priority: PUBLIC_APP_URL → Origin → Host + proxy-aware protocol.
+ * Fails explicitly when none are available (no silent localhost fallback).
+ */
 function getPublicBaseUrl(req: Request): string {
-  const forwardedProto = req.headers["x-forwarded-proto"];
-  const proto =
-    (typeof forwardedProto === "string"
-      ? forwardedProto.split(",")[0]?.trim()
-      : undefined) ||
-    req.protocol ||
-    "http";
-  const forwardedHost = req.headers["x-forwarded-host"];
-  const host =
-    (typeof forwardedHost === "string"
-      ? forwardedHost.split(",")[0]?.trim()
-      : undefined) ||
-    req.get("host") ||
-    "localhost:3000";
-  return `${proto}://${host}`;
+  const configured = process.env.PUBLIC_APP_URL?.trim();
+  if (configured) return configured.replace(/\/$/, "");
+
+  const origin = req.headers.origin;
+  if (typeof origin === "string" && origin.length > 0) return origin;
+
+  const host = req.get("host");
+  if (host) return `${effectiveRequestProtocol(req)}://${host}`;
+
+  throw new Error(
+    "[local-uploads] Cannot resolve public base URL for dev upload: set PUBLIC_APP_URL or ensure the request includes Origin or Host headers."
+  );
 }
 
 /** Write file under uploads/; returns absolute public URL. */
