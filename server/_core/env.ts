@@ -16,7 +16,6 @@ export const ENV = {
     return "mineuqr-dev-jwt-secret-v1-please-set-JWT_SECRET-32+chars";
   })(),
   databaseUrl: process.env.DATABASE_URL ?? "",
-  oAuthServerUrl: process.env.OAUTH_SERVER_URL ?? "",
   ownerOpenId: process.env.OWNER_OPEN_ID ?? "",
   isProduction: process.env.NODE_ENV === "production",
   r2AccountId: process.env.R2_ACCOUNT_ID ?? "",

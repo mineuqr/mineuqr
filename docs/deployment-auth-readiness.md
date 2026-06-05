@@ -7,7 +7,7 @@ Pre-staging checklist for MineuQR session cookies, proxy headers, and local auth
 On boot in **production**, one line is logged:
 
 ```text
-[AuthDeploy] readiness env=production trustProxy=… appId=… oauth=… publicAppUrl=…
+[AuthDeploy] readiness env=production trustProxy=… appId=… publicAppUrl=…
 ```
 
 Set `AUTH_DEPLOY_DEBUG=1` for full JSON report and all notes.
@@ -21,7 +21,6 @@ Set `AUTH_DEPLOY_DEBUG=1` for full JSON report and all notes.
 | `VITE_APP_ID` | JWT `appId` claim (required in production) |
 | `TRUST_PROXY=1` | Explicit reverse-proxy trust (production also enables by default) |
 | `PUBLIC_APP_URL` | Optional canonical origin for reset/verify email links (e.g. `https://staging.mineuqr.com`) |
-| `OAUTH_SERVER_URL` | Manus OAuth API base (empty = OAuth unavailable) |
 | `CSRF_ORIGIN_ENFORCE=1` | Block sensitive auth POST when Origin ≠ Host (default: log only) |
 | `AUTH_DEPLOY_DEBUG=1` | Verbose deployment diagnostics |
 | `AUTH_DEBUG=1` | Per-request auth debug (separate from deploy) |

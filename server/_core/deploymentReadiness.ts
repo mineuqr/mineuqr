@@ -10,7 +10,6 @@ export type DeploymentAuthReadinessReport = {
   environment: "production" | "development";
   trustProxy: boolean;
   appIdConfigured: boolean;
-  oauthConfigured: boolean;
   publicAppUrlConfigured: boolean;
   notes: string[];
 };
@@ -32,9 +31,6 @@ export function assessDeploymentAuthReadiness(): DeploymentAuthReadinessReport {
       notes.push(
         "Production enables trust proxy by default; ensure x-forwarded-proto=https reaches the app behind TLS termination."
       );
-    }
-    if (!ENV.oAuthServerUrl) {
-      notes.push("OAUTH_SERVER_URL is empty: Manus OAuth login will not work.");
     }
     if (!publicAppUrlConfigured) {
       notes.push(
@@ -59,7 +55,6 @@ export function assessDeploymentAuthReadiness(): DeploymentAuthReadinessReport {
     environment: ENV.isProduction ? "production" : "development",
     trustProxy,
     appIdConfigured: Boolean(ENV.appId),
-    oauthConfigured: Boolean(ENV.oAuthServerUrl),
     publicAppUrlConfigured,
     notes,
   };
@@ -73,7 +68,7 @@ export function validateDeploymentAuthReadiness(): void {
 
   if (ENV.isProduction) {
     console.info(
-      `[AuthDeploy] readiness env=production trustProxy=${report.trustProxy} appId=${report.appIdConfigured} oauth=${report.oauthConfigured} publicAppUrl=${report.publicAppUrlConfigured}`
+      `[AuthDeploy] readiness env=production trustProxy=${report.trustProxy} appId=${report.appIdConfigured} publicAppUrl=${report.publicAppUrlConfigured}`
     );
   }
 

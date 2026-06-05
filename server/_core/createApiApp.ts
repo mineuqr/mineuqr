@@ -1,6 +1,5 @@
 import express, { type Express } from "express";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { handlePayPalWebhook } from "../paypal-webhook";
@@ -40,7 +39,6 @@ export async function createApiApp(): Promise<Express> {
     app.use("/uploads", express.static(UPLOADS_DIR));
   }
 
-  registerOAuthRoutes(app);
   app.post("/api/paypal/webhook", handlePayPalWebhook);
   app.use(localAuthRouter);
   app.use(

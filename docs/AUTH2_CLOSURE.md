@@ -140,7 +140,6 @@ MineuQR authentication is **operationally mature** for a stateless JWT + cookie 
 | Trust proxy + `secureRequest` | Documented + startup log |
 | Cookie `SameSite`/`Secure` policy | Documented |
 | `PUBLIC_APP_URL` for email links | Optional env supported |
-| OAuth env (`OAUTH_SERVER_URL`) | Startup note if missing |
 | Staging ops events | `deployment_*`, `csrf_*` documented |
 
 **Staging confidence:** **High** for auth, assuming proxy sends `x-forwarded-proto: https` and env vars from [deployment-auth-readiness.md](./deployment-auth-readiness.md) are set.
