@@ -738,6 +738,7 @@ export default function AdminManagement() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingRestaurant, setEditingRestaurant] = useState<any>(null);
   const [deleteRestaurantId, setDeleteRestaurantId] = useState<number | null>(null);
+  const [deleteRestaurantSubId, setDeleteRestaurantSubId] = useState<number | null>(null);
   
   // Form state
   const [nameAr, setNameAr] = useState("");
@@ -887,13 +888,16 @@ export default function AdminManagement() {
 
     setIsCreating(true);
     try {
+      let subscriberUserId: number | undefined;
+
       // Create subscriber account if requested
       if (createAccount && ownerEmail && subscriberPassword) {
-        await createAccountMutation.mutateAsync({
+        const accountResult = await createAccountMutation.mutateAsync({
           email: ownerEmail,
           password: subscriberPassword,
           name: subscriberName || nameAr,
         });
+        subscriberUserId = accountResult.userId;
       }
 
       // Create restaurant
@@ -902,6 +906,7 @@ export default function AdminManagement() {
         nameEn: nameEn || undefined,
         descriptionAr: descriptionAr || undefined,
         ownerEmail: ownerEmail || undefined,
+        ownerUserId: subscriberUserId,
         phone: phone || undefined,
         address: address || undefined,
         countryCode: selectedCountry || undefined,
@@ -954,6 +959,7 @@ export default function AdminManagement() {
 
   const deleteSubscriptionMutation = trpc.admin.deleteRestaurantSubscription.useMutation({
     onSuccess: () => {
+      setDeleteRestaurantSubId(null);
       toast.success(t('admin.subscriptionDeleted'));
       refetchRestaurants();
       refetchSubs();
@@ -1281,9 +1287,7 @@ export default function AdminManagement() {
                                 size="sm"
                                 variant="outline"
                                 className={cn(adminDash.opBtn, adminActionBtn.danger)}
-                                onClick={() =>
-                                  deleteSubscriptionMutation.mutate({ subscriptionId: subscription.id })
-                                }
+                                onClick={() => setDeleteRestaurantSubId(subscription.id)}
                                 disabled={deleteSubscriptionMutation.isPending}
                               >
                                 {deleteSubscriptionMutation.isPending ? (
@@ -1546,6 +1550,40 @@ export default function AdminManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Restaurant Subscription Confirmation */}
+      <AlertDialog
+        open={deleteRestaurantSubId !== null}
+        onOpenChange={(open) => !open && setDeleteRestaurantSubId(null)}
+      >
+        <AlertDialogContent className="bg-card border-border">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-foreground">تأكيد حذف الاشتراك</AlertDialogTitle>
+            <AlertDialogDescription className="text-muted-foreground">
+              هل أنت متأكد من حذف اشتراك هذا المطعم؟ لا يمكن التراجع عن هذا الإجراء.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-background border-border text-foreground">إلغاء</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (deleteRestaurantSubId) {
+                  deleteSubscriptionMutation.mutate({ subscriptionId: deleteRestaurantSubId });
+                  setDeleteRestaurantSubId(null);
+                }
+              }}
+              className="bg-red-600 hover:bg-red-700"
+              disabled={deleteSubscriptionMutation.isPending}
+            >
+              {deleteSubscriptionMutation.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                t("admin.deleteSubscription")
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Delete Confirmation */}
       <AlertDialog open={deleteRestaurantId !== null} onOpenChange={() => setDeleteRestaurantId(null)}>

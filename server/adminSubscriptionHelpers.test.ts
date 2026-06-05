@@ -4,13 +4,24 @@ import { TRPCError } from "@trpc/server";
 vi.mock("./db", () => ({
   getRestaurantById: vi.fn(),
   getRestaurantsByUser: vi.fn(),
+  getSubscriptionById: vi.fn(),
+  getUserByEmail: vi.fn(),
+  getUserById: vi.fn(),
 }));
 
-import { getRestaurantById, getRestaurantsByUser } from "./db";
+import {
+  getRestaurantById,
+  getRestaurantsByUser,
+  getSubscriptionById,
+  getUserByEmail,
+  getUserById,
+} from "./db";
 import {
   applyAdminTrialStatusUpdate,
+  assertRestaurantSubscriptionForUpdate,
   assertSubscriptionEligibleForAdminInvoice,
   buildAdminSubscriptionInsert,
+  resolveAdminRestaurantOwnerUserId,
   resolveRestaurantOwnerUserId,
   resolveSubscriptionRestaurantIdForUser,
 } from "./adminSubscriptionHelpers";
@@ -70,6 +81,38 @@ describe("adminSubscriptionHelpers", () => {
       expect(row.status).toBe("trial");
       expect(row.trialEndsAt).toBeDefined();
       expect(row.currentPeriodEnd).toBe(row.trialEndsAt);
+    });
+  });
+
+  describe("resolveAdminRestaurantOwnerUserId", () => {
+    it("prefers explicit ownerUserId", async () => {
+      (getUserById as any).mockResolvedValue({ id: 42 });
+      await expect(
+        resolveAdminRestaurantOwnerUserId({ ownerUserId: 42, adminUserId: 1 })
+      ).resolves.toBe(42);
+    });
+
+    it("resolves owner from ownerEmail", async () => {
+      (getUserByEmail as any).mockResolvedValue({ id: 55, email: "sub@test.com" });
+      await expect(
+        resolveAdminRestaurantOwnerUserId({
+          ownerEmail: "sub@test.com",
+          adminUserId: 1,
+        })
+      ).resolves.toBe(55);
+    });
+
+    it("falls back to admin when no owner specified", async () => {
+      await expect(
+        resolveAdminRestaurantOwnerUserId({ adminUserId: 1 })
+      ).resolves.toBe(1);
+    });
+  });
+
+  describe("assertRestaurantSubscriptionForUpdate", () => {
+    it("throws NOT_FOUND when subscription missing", async () => {
+      (getSubscriptionById as any).mockResolvedValue(undefined);
+      await expect(assertRestaurantSubscriptionForUpdate(99)).rejects.toThrow(TRPCError);
     });
   });
 

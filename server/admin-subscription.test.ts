@@ -7,6 +7,7 @@ vi.mock("./db", () => ({
   updateSubscriptionById: vi.fn(),
   cancelSubscriptionById: vi.fn(),
   getSubscriptionForRestaurant: vi.fn(),
+  getSubscriptionById: vi.fn(),
   getSubscriptionByRestaurantId: vi.fn(),
   getSubscriptionPlans: vi.fn(),
   getSubscriptionPlanById: vi.fn(),
@@ -76,6 +77,7 @@ import {
   updateSubscriptionById,
   cancelSubscriptionById,
   getSubscriptionForRestaurant,
+  getSubscriptionById,
   getRestaurantById,
 } from "./db";
 
@@ -204,6 +206,12 @@ describe("Admin Subscription Management", () => {
 
   describe("updateRestaurantSubscription", () => {
     it("should update subscription", async () => {
+      (getSubscriptionById as any).mockResolvedValue({
+        id: 1,
+        userId: 42,
+        restaurantId: 10,
+      });
+      (getRestaurantById as any).mockResolvedValue({ id: 10, userId: 42 });
       (updateSubscriptionById as any).mockResolvedValue(undefined);
 
       const caller = createCaller(adminUser);
@@ -221,6 +229,12 @@ describe("Admin Subscription Management", () => {
     });
 
     it("should set trialEndsAt when status changes to trial", async () => {
+      (getSubscriptionById as any).mockResolvedValue({
+        id: 1,
+        userId: 42,
+        restaurantId: 10,
+      });
+      (getRestaurantById as any).mockResolvedValue({ id: 10, userId: 42 });
       (updateSubscriptionById as any).mockResolvedValue(undefined);
 
       const caller = createCaller(adminUser);

@@ -25,6 +25,7 @@ import {
   getUserById,
   getSubscriptionPlanById,
   createInvoice,
+  updateInvoice,
   createSubscriptionForRestaurant,
   getRestaurantById,
   createNotification,
@@ -58,6 +59,66 @@ describe("Admin invoice billing hardening (ADMIN-AUDIT-FIX-1)", () => {
   });
 
   describe("generateInvoicePDF", () => {
+    it("creates pending invoice by default (ADMIN-AUDIT-FIX-2)", async () => {
+      (getUserById as any).mockResolvedValue({ id: 5, name: "User", email: "user@test.com" });
+      (getCanonicalUserSubscription as any).mockResolvedValue({
+        id: 10,
+        userId: 5,
+        planId: 1,
+        status: "active",
+        billingCycle: "monthly",
+      });
+      (getSubscriptionPlanById as any).mockResolvedValue({
+        id: 1,
+        nameEn: "Plan",
+        priceMonthly: "39",
+      });
+      (createInvoice as any).mockResolvedValue({ id: 501 });
+      (updateInvoice as any).mockResolvedValue(undefined);
+
+      const caller = createCaller();
+      await caller.admin.generateInvoicePDF({ userId: 5, subscriptionId: 10 });
+
+      expect(createInvoice).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: "pending",
+          paidAt: undefined,
+        })
+      );
+    });
+
+    it("creates paid invoice only when markAsPaid is true", async () => {
+      (getUserById as any).mockResolvedValue({ id: 5, name: "User", email: "user@test.com" });
+      (getCanonicalUserSubscription as any).mockResolvedValue({
+        id: 10,
+        userId: 5,
+        planId: 1,
+        status: "active",
+        billingCycle: "monthly",
+      });
+      (getSubscriptionPlanById as any).mockResolvedValue({
+        id: 1,
+        nameEn: "Plan",
+        priceMonthly: "39",
+      });
+      (createInvoice as any).mockResolvedValue({ id: 502 });
+      (updateInvoice as any).mockResolvedValue(undefined);
+
+      const caller = createCaller();
+      await caller.admin.generateInvoicePDF({
+        userId: 5,
+        subscriptionId: 10,
+        markAsPaid: true,
+      });
+
+      expect(createInvoice).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: "paid",
+          paidAt: expect.any(String),
+        })
+      );
+    });
+
     it("rejects trial subscriptions with admin-facing error", async () => {
       (getUserById as any).mockResolvedValue({ id: 5, name: "Trial User", email: "trial@test.com" });
       (getCanonicalUserSubscription as any).mockResolvedValue({

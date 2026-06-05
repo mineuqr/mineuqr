@@ -936,6 +936,15 @@ export async function getExtendedAdminStats() {
 
 
 // ─── Users Management ───────────────────────
+
+/** Strip credential material before admin list API responses (ADMIN-AUDIT-FIX-2). */
+export function sanitizeUserForAdminResponse<U extends { passwordHash?: string | null }>(
+  user: U
+): Omit<U, "passwordHash"> {
+  const { passwordHash: _removed, ...safe } = user;
+  return safe;
+}
+
 export async function getAllUsers() {
   const db = await getDb();
   if (!db) return [];
@@ -972,7 +981,7 @@ export async function getAllUsersWithSubscriptions() {
     const plan = subscription ? allPlans.find(p => p.id === subscription.planId) || null : null;
     const userRestaurants = allRestaurants.filter(r => r.userId === u.id);
     return {
-      ...u,
+      ...sanitizeUserForAdminResponse(u),
       subscription,
       plan,
       restaurants: userRestaurants,

@@ -1,6 +1,12 @@
 import { TRPCError } from "@trpc/server";
 import type { InsertUserSubscription } from "../drizzle/schema";
-import { getRestaurantById, getRestaurantsByUser } from "./db";
+import {
+  getRestaurantById,
+  getRestaurantsByUser,
+  getSubscriptionById,
+  getUserByEmail,
+  getUserById,
+} from "./db";
 
 export const ADMIN_TRIAL_DAYS = 14;
 
@@ -136,6 +142,62 @@ export async function resolveRestaurantOwnerUserId(
     });
   }
   return restaurant.userId;
+}
+
+/**
+ * Resolve restaurant owner for admin-created restaurants (ADMIN-AUDIT-FIX-2).
+ * Prefers explicit ownerUserId, then ownerEmail lookup; falls back to admin caller.
+ */
+export async function resolveAdminRestaurantOwnerUserId(params: {
+  ownerUserId?: number;
+  ownerEmail?: string;
+  adminUserId: number;
+}): Promise<number> {
+  if (params.ownerUserId !== undefined) {
+    const user = await getUserById(params.ownerUserId);
+    if (!user) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "المستخدم المستهدف غير موجود" });
+    }
+    return params.ownerUserId;
+  }
+
+  if (params.ownerEmail) {
+    const user = await getUserByEmail(params.ownerEmail);
+    if (!user) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "لم يتم العثور على حساب المشترك لهذا البريد الإلكتروني",
+      });
+    }
+    return user.id;
+  }
+
+  return params.adminUserId;
+}
+
+/** Load and validate a restaurant-scoped subscription before admin update (ADMIN-AUDIT-FIX-2). */
+export async function assertRestaurantSubscriptionForUpdate(
+  subscriptionId: number
+): Promise<{ id: number; userId: number; restaurantId: number }> {
+  const sub = await getSubscriptionById(subscriptionId);
+  if (!sub) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "الاشتراك غير موجود" });
+  }
+
+  if (sub.restaurantId > 0) {
+    const restaurant = await getRestaurantById(sub.restaurantId);
+    if (!restaurant) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "المطعم المرتبط بالاشتراك غير موجود" });
+    }
+    if (restaurant.userId !== sub.userId) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "الاشتراك لا يتطابق مع مالك المطعم",
+      });
+    }
+  }
+
+  return { id: sub.id, userId: sub.userId, restaurantId: sub.restaurantId };
 }
 
 /** Trial subscriptions are not billable via admin invoice generation (ADMIN-AUDIT-FIX-1). */

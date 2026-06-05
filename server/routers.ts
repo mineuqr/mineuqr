@@ -22,7 +22,7 @@ import {
   getAdminStatistics, getRevenueByMonth, getSubscriptionDetails,
   getPublicStats, getExtendedAdminStats,
   getAllUsers, updateUserRole,
-  getAllUsersWithSubscriptions,
+  getAllUsersWithSubscriptions, sanitizeUserForAdminResponse,
   createInvoice, updateInvoice, getUserById,
   updateUserSessionValidAfter,
   getHolidaysByRestaurant, createHoliday, updateHoliday, deleteHoliday, getHolidayById,
@@ -49,6 +49,8 @@ import {
   assertSubscriptionEligibleForAdminInvoice,
   buildAdminSubscriptionInsert,
   computeAdminSubscriptionPeriodEnd,
+  assertRestaurantSubscriptionForUpdate,
+  resolveAdminRestaurantOwnerUserId,
   resolveRestaurantOwnerUserId,
   resolveSubscriptionRestaurantIdForUser,
 } from "./adminSubscriptionHelpers";
@@ -111,15 +113,27 @@ const restaurantRouter = router({
       countryCode: z.string().optional(),
       currencyCode: z.string().optional(),
       currencySymbol: z.string().optional(),
+      ownerUserId: z.number().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       if (ctx.user.role !== "admin") {
         await assertRestaurantCreateAllowed(ctx.user.id);
       }
+      const ownerUserId =
+        ctx.user.role === "admin"
+          ? await resolveAdminRestaurantOwnerUserId({
+              ownerUserId: input.ownerUserId,
+              ownerEmail: input.ownerEmail,
+              adminUserId: ctx.user.id,
+            })
+          : ctx.user.id;
+      const ownerUser =
+        ownerUserId === ctx.user.id ? ctx.user : await getUserById(ownerUserId);
       const slug = generateSlug(input.nameAr);
+      const { ownerUserId: _ownerUserId, ...restaurantInput } = input;
       const result = await createRestaurant({
-        ...input,
-        userId: ctx.user.id,
+        ...restaurantInput,
+        userId: ownerUserId,
         slug,
       });
       // Send email notification to owner
@@ -127,8 +141,8 @@ const restaurantRouter = router({
         await notifyOwnerNewRestaurant({
           restaurantNameAr: input.nameAr,
           restaurantNameEn: input.nameEn,
-          ownerName: ctx.user.name,
-          ownerEmail: ctx.user.email,
+          ownerName: ownerUser?.name ?? null,
+          ownerEmail: ownerUser?.email ?? input.ownerEmail ?? null,
         });
       } catch (e) { /* email notification failure is non-critical */ }
       return { ...result, slug };
@@ -799,7 +813,8 @@ const adminRouter = router({
       });
       // Set password
       await updateUserPassword(openId, passwordHash);
-      return { success: true, openId };
+      const created = await getUserByEmail(input.email);
+      return { success: true, openId, userId: created?.id };
     }),
 
   resetSubscriberPassword: protectedProcedure
@@ -878,6 +893,7 @@ const adminRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       assertAdminAccess(ctx, "admin.updateRestaurantSubscription");
+      await assertRestaurantSubscriptionForUpdate(input.subscriptionId);
       const updateData: Record<string, any> = {};
       if (input.planId !== undefined) updateData.planId = input.planId;
       if (input.billingCycle !== undefined) updateData.billingCycle = input.billingCycle;
@@ -950,7 +966,8 @@ const adminRouter = router({
   listAllUsers: protectedProcedure
     .query(async ({ ctx }) => {
       assertAdminAccess(ctx, "admin.listAllUsers");
-      return getAllUsers();
+      const users = await getAllUsers();
+      return users.map(sanitizeUserForAdminResponse);
     }),
 
   updateUserRole: protectedProcedure
@@ -1175,6 +1192,7 @@ const adminRouter = router({
     .input(z.object({
       userId: z.number(),
       subscriptionId: z.number(),
+      markAsPaid: z.boolean().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       assertAdminAccess(ctx, "admin.generateInvoicePDF");
@@ -1203,17 +1221,19 @@ const adminRouter = router({
       const now = new Date();
       const dueDate = new Date(now);
       dueDate.setDate(dueDate.getDate() + 30);
+      const invoiceStatus = input.markAsPaid ? "paid" : "pending";
+      const paidAt = input.markAsPaid ? now.toISOString() : undefined;
       // Create invoice record
       const invoiceResult = await createInvoice({
         userId: input.userId,
         subscriptionId: sub.id,
         amount: amount.toString(),
         currency: "USD",
-        status: "paid",
+        status: invoiceStatus,
         invoiceNumber,
         issuedAt: now.toISOString(),
         dueAt: dueDate.toISOString(),
-        paidAt: now.toISOString(),
+        paidAt,
       });
       // Generate PDF
       const pdfBuffer = await generateInvoicePDFBuffer({
@@ -1223,8 +1243,8 @@ const adminRouter = router({
         amount: amount.toString(),
         currency: "USD",
         issuedAt: now.toISOString(),
-        status: "paid",
-        paidAt: now.toISOString(),
+        status: invoiceStatus,
+        paidAt,
         billingCycle: sub.billingCycle || "monthly",
       });
       const fileKey = `pdfs/${input.userId}/${invoiceNumber}.pdf`;
@@ -1333,7 +1353,8 @@ const profileRouter = router({
   listAllUsers: protectedProcedure
     .query(async ({ ctx }) => {
       assertAdminAccess(ctx, "profile.listAllUsers");
-      return getAllUsers();
+      const users = await getAllUsers();
+      return users.map(sanitizeUserForAdminResponse);
     }),
 
   updateUserRole: protectedProcedure
