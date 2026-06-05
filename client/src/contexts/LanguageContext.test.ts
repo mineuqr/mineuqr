@@ -59,6 +59,14 @@ describe('Language System', () => {
       expect(arDashboard).toEqual(enDashboard);
     });
 
+    it('should resolve admin menu currency and dashboard currency keys', () => {
+      expect(ar.admin.menuCurrency).toBeTruthy();
+      expect(en.admin.menuCurrency).toBeTruthy();
+      expect(ar.dashboard.currency).toBeTruthy();
+      expect(en.dashboard.currency).toBeTruthy();
+      expect(ar.admin.menuCurrency).not.toBe('admin.menuCurrency');
+    });
+
     it('should have menu keys in both languages', () => {
       const arMenu = Object.keys(ar.menu || {});
       const enMenu = Object.keys(en.menu || {});

@@ -19,7 +19,7 @@ import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { adminQueriesEnabled } from "@/lib/queryRuntime";
 import { formatRiyadhDate, todayYmd } from "@/lib/datetime";
-import { formatCurrencyUSD } from "@/lib/subscription";
+import { formatAdminRevenueUSD } from "@/lib/admin/formatAdminCurrency";
 
 const statDash = {
   shell: "min-h-screen bg-background",
@@ -253,7 +253,7 @@ export default function Statistics() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold" dir="ltr">
-                {formatCurrencyUSD(stats?.totalRevenue ?? 0, language === "ar" ? "ar" : "en")}
+                {formatAdminRevenueUSD(stats?.totalRevenue ?? 0, language === "ar" ? "ar" : "en")}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 {t("admin.estimatedMrrHint") || "Estimated from active paid subscriptions (USD)"}
@@ -302,7 +302,7 @@ export default function Statistics() {
                   <YAxis stroke="rgba(255,255,255,0.5)" fontSize={12} />
                   <Tooltip contentStyle={{ backgroundColor: "rgba(0,0,0,0.8)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: "8px" }} />
                   <Legend />
-                  <Line type="monotone" dataKey="revenue" stroke="#00d4ff" strokeWidth={2} dot={{ fill: "#00d4ff" }} name={t("admin.totalRevenue") || "Revenue"} />
+                  <Line type="monotone" dataKey="revenue" stroke="#00d4ff" strokeWidth={2} dot={{ fill: "#00d4ff" }} name={t("admin.estimatedMrr") || "Estimated MRR (USD)"} />
                 </LineChart>
               </ResponsiveContainer>
             </CardContent>

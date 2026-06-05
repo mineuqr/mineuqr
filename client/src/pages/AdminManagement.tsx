@@ -43,7 +43,8 @@ import {
   ResponsiveOperationsBar,
 } from "@/components/admin/operations";
 import { computeAdminKPIs } from "@/lib/admin/computeAdminKPIs";
-import { formatPlanPriceForCycle, formatSubscriptionEndDate } from "@/lib/subscription";
+import { formatAdminSubscriptionPrice } from "@/lib/admin/formatAdminCurrency";
+import { formatSubscriptionEndDate } from "@/lib/subscription";
 import type { BillingCycle } from "@/lib/subscription";
 import { cn } from "@/lib/utils";
 import { isProtectedUserId } from "@shared/const";
@@ -1174,15 +1175,18 @@ export default function AdminManagement() {
                       ) : null}
                       {restaurant.countryCode ? (
                         <div>
-                          <dt className="text-muted-foreground">{t("dashboard.country")}</dt>
+                          <dt className="text-muted-foreground">{t("admin.country")}</dt>
                           <dd className="ms-0 mt-0.5 text-foreground">{restaurant.countryCode}</dd>
                         </div>
                       ) : null}
                       {restaurant.currencyCode ? (
                         <div>
-                          <dt className="text-muted-foreground">{t("dashboard.currency")}</dt>
+                          <dt className="text-muted-foreground">{t("admin.menuCurrency")}</dt>
                           <dd className="ms-0 mt-0.5 text-foreground" dir="ltr">
-                            {restaurant.currencySymbol} ({restaurant.currencyCode})
+                            {restaurant.currencyCode}
+                            <span className="ms-1 text-xs text-muted-foreground">
+                              ({language === "ar" ? "عرض المنيو" : "menu display"})
+                            </span>
                           </dd>
                         </div>
                       ) : null}
@@ -1210,11 +1214,9 @@ export default function AdminManagement() {
                             </dd>
                           </div>
                           <div className="sm:col-span-2">
-                            <dt className="text-muted-foreground">
-                              {language === "ar" ? "السعر" : "Price"}
-                            </dt>
+                            <dt className="text-muted-foreground">{t("admin.subscriptionPrice")}</dt>
                             <dd className="ms-0 mt-0.5" dir="ltr">
-                              {formatPlanPriceForCycle(
+                              {formatAdminSubscriptionPrice(
                                 plans?.find((p: any) => p.id === subscription.planId),
                                 subscription.billingCycle as BillingCycle,
                                 language === "ar" ? "ar" : "en"

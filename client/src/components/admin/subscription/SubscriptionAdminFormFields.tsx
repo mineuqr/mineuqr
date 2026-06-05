@@ -9,7 +9,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { BillingCycle, SubscriptionPlanLike, SubscriptionStatus } from "@/lib/subscription";
-import { formatPlanPriceForCycle, formatSubscriptionPlanName } from "@/lib/subscription";
+import { formatAdminSubscriptionPrice } from "@/lib/admin/formatAdminCurrency";
+import { formatSubscriptionPlanName } from "@/lib/subscription";
 import { useSubscriptionFormPreview } from "@/lib/subscription";
 import { SubscriptionCycleSelector } from "./SubscriptionCycleSelector";
 import { SubscriptionSummaryPreview } from "./SubscriptionSummaryPreview";
@@ -56,7 +57,7 @@ export function SubscriptionAdminFormFields({
       (plans ?? []).map((p) => ({
         id: p.id.toString(),
         name: formatSubscriptionPlanName(p, locale),
-        price: formatPlanPriceForCycle(p, billingCycle, locale),
+        price: formatAdminSubscriptionPrice(p, billingCycle, locale),
       })),
     [plans, billingCycle, locale]
   );

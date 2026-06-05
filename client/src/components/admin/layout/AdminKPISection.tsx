@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import type { AdminKPIValues } from "@/lib/admin/computeAdminKPIs";
 import { ADMIN_EXPIRING_SOON_DAYS } from "@/lib/admin/computeAdminKPIs";
-import { formatAdminKpiNumber, formatCurrencyUSD } from "@/lib/subscription";
+import { formatAdminKpiNumber, formatAdminRevenueUSD } from "@/lib/admin/formatAdminCurrency";
 import { AdminLoadingState } from "../operations/AdminLoadingState";
 import { AdminSection } from "./AdminSection";
 import { AdminStatCard } from "./AdminStatCard";
@@ -42,7 +42,7 @@ export function AdminKPISection({
   loadingLabel,
 }: AdminKPISectionProps) {
   const isAr = locale === "ar";
-  const mrrDisplay = formatCurrencyUSD(kpis.estimatedMrr, locale);
+  const mrrDisplay = formatAdminRevenueUSD(kpis.estimatedMrr, locale);
 
   return (
     <AdminSection title={title} description={description}>
@@ -86,14 +86,16 @@ export function AdminKPISection({
           }
         />
         <AdminStatCard
-          title={labels.estimatedMrr ?? (isAr ? "MRR تقديري" : "Estimated MRR")}
+          title={labels.estimatedMrr ?? (isAr ? "MRR تقديري (USD)" : "Estimated MRR (USD)")}
           value={mrrDisplay}
           icon={DollarSign}
           loading={loading}
           valueDir="ltr"
           hint={
             labels.estimatedMrrHint ??
-            (isAr ? "بناءً على أسعار الباقات النشطة" : "Based on active plan prices")
+            (isAr
+              ? "تقدير شهري من اشتراكات فعّالة مدفوعة فقط — ليس إيراداً محصلاً"
+              : "Projected monthly from paid active subs only — not collected revenue")
           }
         />
         <div className="col-span-2 lg:col-span-1">
