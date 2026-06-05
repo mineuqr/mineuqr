@@ -19,6 +19,7 @@ import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { adminQueriesEnabled } from "@/lib/queryRuntime";
 import { formatRiyadhDate, todayYmd } from "@/lib/datetime";
+import { formatCurrencyUSD } from "@/lib/subscription";
 
 const statDash = {
   shell: "min-h-screen bg-background",
@@ -247,13 +248,15 @@ export default function Statistics() {
 
           <Card className={statDash.kpiCard}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{t("admin.totalRevenue") || "Total Revenue"}</CardTitle>
+              <CardTitle className="text-sm font-medium">{t("admin.estimatedMrr") || "Estimated MRR (USD)"}</CardTitle>
               <DollarSign className="w-4 h-4 text-accent" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">${stats?.totalRevenue?.toFixed(2) || "0.00"}</div>
+              <div className="text-2xl font-bold" dir="ltr">
+                {formatCurrencyUSD(stats?.totalRevenue ?? 0, language === "ar" ? "ar" : "en")}
+              </div>
               <p className="text-xs text-muted-foreground mt-1">
-                {t("admin.monthlyRecurring") || "Monthly Recurring"}
+                {t("admin.estimatedMrrHint") || "Estimated from active paid subscriptions (USD)"}
               </p>
             </CardContent>
           </Card>

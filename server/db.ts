@@ -42,6 +42,11 @@ import {
   resolveSubscriptionForActivationFromRows,
   type ActivationTargetOptions,
 } from "./subscriptionActivation";
+import {
+  computeAdminMrr,
+  computeChurnRate,
+  computeRenewalRate,
+} from "./adminKpiCalculations";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -778,19 +783,13 @@ export async function getAdminStatistics() {
   const expiredSubscriptions = allSubs.filter(s => s.status === 'expired');
   const canceledSubscriptions = allSubs.filter(s => s.status === 'canceled');
 
-  // Calculate total revenue (from active subscriptions)
-  const totalRevenue = activeSubscriptions.reduce((sum, sub) => {
-    const plan = allPlans.find(p => p.id === sub.planId);
-    if (!plan) return sum;
-    const monthlyPrice = sub.billingCycle === 'yearly' ? (parseFloat(plan.priceYearly || '0') / 12) : parseFloat(plan.priceMonthly || '0');
-    return sum + monthlyPrice;
-  }, 0);
-
-  // Calculate renewal rate (active + trial / total)
-  const renewalRate = allSubs.length > 0 ? ((activeSubscriptions.length + trialSubscriptions.length) / allSubs.length) * 100 : 0;
-
-  // Calculate churn rate (canceled + expired / total)
-  const churnRate = allSubs.length > 0 ? ((canceledSubscriptions.length + expiredSubscriptions.length) / allSubs.length) * 100 : 0;
+  const totalRevenue = computeAdminMrr(allSubs, allPlans);
+  const renewalRate = computeRenewalRate(allSubs.length, activeSubscriptions.length);
+  const churnRate = computeChurnRate(
+    allSubs.length,
+    canceledSubscriptions.length,
+    expiredSubscriptions.length
+  );
 
   return {
     totalSubscribers: allSubs.length,
@@ -798,9 +797,9 @@ export async function getAdminStatistics() {
     trialSubscribers: trialSubscriptions.length,
     expiredSubscribers: expiredSubscriptions.length,
     canceledSubscribers: canceledSubscriptions.length,
-    totalRevenue: Math.round(totalRevenue * 100) / 100,
-    renewalRate: Math.round(renewalRate * 100) / 100,
-    churnRate: Math.round(churnRate * 100) / 100,
+    totalRevenue,
+    renewalRate,
+    churnRate,
     subscriptionsByPlan: allPlans.map(plan => ({
       planId: plan.id,
       planName: plan.nameAr,
@@ -825,7 +824,7 @@ export async function getRevenueByMonth(months: number = 12) {
 
     const monthRevenue = allSubs
       .filter((s) => {
-        if (s.status !== "active" && s.status !== "trial") return false;
+        if (s.status !== "active") return false;
         return isInBusinessYearMonth(s.createdAt, bucket.year, bucket.month);
       })
       .reduce((sum, sub) => {
