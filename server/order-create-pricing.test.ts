@@ -35,7 +35,6 @@ vi.mock("./db", () => ({
         }
       : null
   ),
-  restaurantAllowsTableOrdering: vi.fn(async () => true),
   getTableByRestaurantAndNumber: vi.fn(async () => ({ id: 1, tableNumber: 1 })),
   generateOrderNumber: vi.fn(async () => "ORD-TEST"),
   createOrder: vi.fn(async (data: { totalAmount: string }) => ({ id: 99, ...data })),
@@ -45,6 +44,10 @@ vi.mock("./db", () => ({
 
 vi.mock("./restaurantAccess", () => ({
   assertRestaurantAccess: vi.fn(async () => undefined),
+}));
+
+vi.mock("./commercial/guestOrderingAuthority", () => ({
+  resolveGuestOrderingAllowed: vi.fn(async () => ({ canOrder: true })),
 }));
 
 import { appRouter } from "./routers";

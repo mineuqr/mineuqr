@@ -12,6 +12,8 @@ vi.mock("./db", () => ({
   getSubscriptionPlans: vi.fn(),
   isSubscriptionActive: vi.fn(),
   getTrialEndDate: vi.fn(),
+  getUserById: vi.fn(async (userId: number) => ({ id: userId, role: "user" })),
+  getSubscriptionsByUser: vi.fn(async () => []),
 }));
 
 // Import AFTER mocking

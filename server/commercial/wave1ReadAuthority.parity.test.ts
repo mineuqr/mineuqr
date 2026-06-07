@@ -1,19 +1,10 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { parseStoredUtcInstant } from "@shared/utils/timezone";
-import {
-  resolveTableOrderingEntitlement,
-  userHasSubscriptionEntitlement,
-} from "../subscriptionEntitlement";
+import { userHasSubscriptionEntitlement } from "../subscriptionEntitlement";
 import {
   pickCanonicalSubscription,
-  resolveOrderingSubscriptionRow,
   type UserSubscriptionRow,
 } from "../subscriptionResolver";
-
-/**
- * PG-1C.4D — integration parity: Wave 1 read output must match pre-4C legacy
- * for register-path (restaurant-scoped) and account-level scenarios.
- */
 
 const subscriptionRowsByUser = new Map<number, UserSubscriptionRow[]>();
 const restaurantsById = new Map<number, { id: number; userId: number }>();
@@ -31,7 +22,6 @@ vi.mock("../db", () => ({
   getRestaurantById: vi.fn(async (restaurantId: number) => {
     return restaurantsById.get(restaurantId);
   }),
-  getSubscriptionPlanById: vi.fn(async (planId: number) => ({ id: planId })),
   isSubscriptionActive: vi.fn(async (userId: number) => {
     const rows = subscriptionRowsByUser.get(userId) ?? [];
     return userHasSubscriptionEntitlement(rows);
@@ -41,22 +31,11 @@ vi.mock("../db", () => ({
     const trial = pickCanonicalSubscription(rows.filter((r) => r.status === "trial"));
     return trial ? parseStoredUtcInstant(trial.trialEndsAt) : null;
   }),
-  restaurantAllowsTableOrdering: vi.fn(async (restaurantId: number) => {
-    const restaurant = restaurantsById.get(restaurantId);
-    if (!restaurant) return false;
-    const rows = subscriptionRowsByUser.get(restaurant.userId) ?? [];
-    const subscription = resolveOrderingSubscriptionRow(restaurantId, rows);
-    const plan = subscription ? { id: subscription.planId } : null;
-    return resolveTableOrderingEntitlement(subscription, plan).isEntitled;
-  }),
 }));
 
-import {
-  getTrialEndDate,
-  isSubscriptionActive,
-  restaurantAllowsTableOrdering,
-} from "../db";
-import { resolveCanOrderRead, resolveTrialStatusRead } from "./wave1ReadAuthority";
+import { getTrialEndDate, isSubscriptionActive } from "../db";
+import { resolveTrialStatusRead } from "./wave1ReadAuthority";
+import { resolveGuestOrderingAllowed } from "./guestOrderingAuthority";
 
 const FIXED_NOW = new Date("2026-06-01T12:00:00.000Z");
 
@@ -83,27 +62,11 @@ function subRow(
   };
 }
 
-describe("wave1ReadAuthority parity (PG-1C.4D)", () => {
+describe("ASN-5 authority integration", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     subscriptionRowsByUser.clear();
     restaurantsById.clear();
-  });
-
-  it("register-path trial: resolveTrialStatusRead matches legacy isActive + trialEnd", async () => {
-    const userId = 7;
-    const restaurantId = 50;
-    subscriptionRowsByUser.set(userId, [
-      subRow({ id: 1, userId, restaurantId, planId: 30002, status: "trial" }),
-    ]);
-
-    const wave1 = await resolveTrialStatusRead(userId, FIXED_NOW);
-    const legacyActive = await isSubscriptionActive(userId);
-    const legacyTrialEnd = await getTrialEndDate(userId);
-
-    expect(wave1.isActive).toBe(legacyActive);
-    expect(wave1.trialEndDate?.toISOString()).toBe(legacyTrialEnd?.toISOString());
-    expect(wave1.isActive).toBe(true);
   });
 
   it("account-level trial: resolveTrialStatusRead uses context trialEndsAt", async () => {
@@ -126,22 +89,20 @@ describe("wave1ReadAuthority parity (PG-1C.4D)", () => {
     expect(wave1.trialEndDate?.toISOString()).toBe(trialEnd);
   });
 
-  it("register-path ordering: resolveCanOrderRead matches legacy restaurantAllowsTableOrdering", async () => {
+  it("account-level trial: resolveGuestOrderingAllowed allows ordering", async () => {
     const userId = 7;
     const restaurantId = 50;
     subscriptionRowsByUser.set(userId, [
-      subRow({ id: 1, userId, restaurantId, planId: 30002, status: "trial" }),
+      subRow({ id: 1, userId, restaurantId: 0, planId: 30002, status: "trial" }),
     ]);
     restaurantsById.set(restaurantId, { id: restaurantId, userId });
 
-    const wave1 = await resolveCanOrderRead(restaurantId, FIXED_NOW);
-    const legacy = await restaurantAllowsTableOrdering(restaurantId);
-
-    expect(wave1.canOrder).toBe(legacy);
-    expect(wave1.canOrder).toBe(true);
+    expect((await resolveGuestOrderingAllowed(restaurantId, FIXED_NOW)).canOrder).toBe(
+      true
+    );
   });
 
-  it("account-level BASIC: resolveCanOrderRead matches legacy when no restaurant override", async () => {
+  it("account-level BASIC: resolveGuestOrderingAllowed denies ordering", async () => {
     const userId = 9;
     const restaurantId = 10;
     subscriptionRowsByUser.set(userId, [
@@ -156,11 +117,22 @@ describe("wave1ReadAuthority parity (PG-1C.4D)", () => {
     ]);
     restaurantsById.set(restaurantId, { id: restaurantId, userId });
 
-    const wave1 = await resolveCanOrderRead(restaurantId, FIXED_NOW);
-    const legacy = await restaurantAllowsTableOrdering(restaurantId);
+    expect((await resolveGuestOrderingAllowed(restaurantId, FIXED_NOW)).canOrder).toBe(
+      false
+    );
+  });
 
-    expect(wave1.canOrder).toBe(legacy);
-    expect(wave1.canOrder).toBe(false);
+  it("scoped-only row: ordering denied (canonical authority ignores scoped)", async () => {
+    const userId = 7;
+    const restaurantId = 50;
+    subscriptionRowsByUser.set(userId, [
+      subRow({ id: 1, userId, restaurantId, planId: 30002, status: "trial" }),
+    ]);
+    restaurantsById.set(restaurantId, { id: restaurantId, userId });
+
+    expect((await resolveGuestOrderingAllowed(restaurantId, FIXED_NOW)).canOrder).toBe(
+      false
+    );
   });
 
   it("expired trial: resolveTrialStatusRead inactive", async () => {
@@ -179,5 +151,20 @@ describe("wave1ReadAuthority parity (PG-1C.4D)", () => {
 
     const wave1 = await resolveTrialStatusRead(userId, FIXED_NOW);
     expect(wave1.isActive).toBe(false);
+  });
+
+  it("scoped-only trial: resolveTrialStatusRead still falls back to legacy isActive", async () => {
+    const userId = 7;
+    subscriptionRowsByUser.set(userId, [
+      subRow({ id: 1, userId, restaurantId: 50, planId: 30002, status: "trial" }),
+    ]);
+
+    const wave1 = await resolveTrialStatusRead(userId, FIXED_NOW);
+    const legacyActive = await isSubscriptionActive(userId);
+    const legacyTrialEnd = await getTrialEndDate(userId);
+
+    expect(wave1.isActive).toBe(legacyActive);
+    expect(wave1.trialEndDate?.toISOString()).toBe(legacyTrialEnd?.toISOString());
+    expect(wave1.isActive).toBe(true);
   });
 });

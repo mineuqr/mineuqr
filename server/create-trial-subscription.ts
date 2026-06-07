@@ -59,8 +59,8 @@ export async function buildTrialSubscriptionForUser(
 }
 
 /**
- * Create a 14-day trial subscription for a new user.
- * @param restaurantId — when set, trial is scoped to that restaurant (self-service register).
+ * Create a 14-day trial subscription for a new user (account-scoped by default).
+ * @param restaurantId — optional scope tag; self-service register uses 0 (ASN-5 R1).
  */
 export async function createTrialSubscription(
   userId: number,

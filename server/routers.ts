@@ -28,7 +28,6 @@ import {
   getHolidaysByRestaurant, createHoliday, updateHoliday, deleteHoliday, getHolidayById,
   getTablesByRestaurant, getTableById, getTableByRestaurantAndNumber, createTable, updateTable, deleteTable, createMultipleTables,
   getOrdersByRestaurant, getOrdersWithItemsByRestaurant, getOrderById, createOrder, updateOrderStatus, getOrderItemsByOrderId, createOrderItems, generateOrderNumber, getActiveOrdersCount,
-  restaurantAllowsTableOrdering,
 } from "./db";
 import { canChangeOwnPassword } from "./auth-local/httpHelpers";
 import { sendVerificationEmailForUser } from "./auth-local/sendVerificationEmail";
@@ -70,10 +69,8 @@ import { putUploadedFile } from "./local-uploads";
 import { notifyOwnerNewRestaurant, notifyOwnerNewSubscription, notifyOwnerSubscriptionCancelled } from "./owner-email-notifications";
 import { generateInvoicePDFBuffer } from "./invoice-pdf";
 import { commercialRouter } from "./commercial/router";
-import {
-  resolveCanOrderRead,
-  resolveTrialStatusRead,
-} from "./commercial/wave1ReadAuthority";
+import { resolveGuestOrderingAllowed } from "./commercial/guestOrderingAuthority";
+import { resolveTrialStatusRead } from "./commercial/wave1ReadAuthority";
 import bcrypt from "bcryptjs";
 
 function generateSlug(name: string): string {
@@ -1636,7 +1633,7 @@ const orderRouter = router({
   canOrder: publicProcedure
     .input(z.object({ restaurantId: z.number() }))
     .query(async ({ input }) => {
-      return resolveCanOrderRead(input.restaurantId);
+      return resolveGuestOrderingAllowed(input.restaurantId);
     }),
   // Public: create order (no auth needed)
   create: publicProcedure
@@ -1682,7 +1679,9 @@ const orderRouter = router({
         }
       }
 
-      const allowsOrdering = await restaurantAllowsTableOrdering(input.restaurantId);
+      const { canOrder: allowsOrdering } = await resolveGuestOrderingAllowed(
+        input.restaurantId
+      );
       if (!allowsOrdering) {
         throw new TRPCError({ code: 'FORBIDDEN', message: 'ميزة الطلب عبر المنيو متاحة فقط للمشتركين في الخطة الاحترافية أو المؤسسية' });
       }

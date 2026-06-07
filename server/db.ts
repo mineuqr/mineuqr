@@ -713,6 +713,10 @@ export async function getOrderingSubscriptionForRestaurant(restaurantId: number)
   return resolveOrderingSubscriptionRow(restaurantId, rows);
 }
 
+/**
+ * @deprecated ASN-5 Wave A — guest ordering uses resolveGuestOrderingAllowed.
+ * Retained for Wave E removal; no ordering router consumers.
+ */
 export async function restaurantAllowsTableOrdering(restaurantId: number): Promise<boolean> {
   const subscription = await getOrderingSubscriptionForRestaurant(restaurantId);
   const plan = subscription

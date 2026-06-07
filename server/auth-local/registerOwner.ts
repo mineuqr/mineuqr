@@ -146,10 +146,7 @@ async function registerOwnerTransactional(
         throw new RegisterOnboardingError("تعذر إنشاء المطعم");
       }
 
-      const trialPayload = await buildTrialSubscriptionForUser(
-        userId,
-        restaurantId
-      );
+      const trialPayload = await buildTrialSubscriptionForUser(userId, 0);
       await tx.insert(userSubscriptions).values(trialPayload);
 
       return { userId, openId, restaurantId };
