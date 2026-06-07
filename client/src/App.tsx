@@ -29,6 +29,7 @@ import VerifyEmailSuccess from "./pages/VerifyEmailSuccess";
 import VerifyEmailFailed from "./pages/VerifyEmailFailed";
 import Profile from "./pages/Profile";
 import Notifications from "./pages/Notifications";
+import CommercialDiagnostics from "./pages/CommercialDiagnostics";
 import { useLanguage } from "./contexts/LanguageContext";
 import { Suspense } from "react";
 
@@ -52,6 +53,7 @@ function Router() {
         <Route path="/subscription/cancel" component={SubscriptionCancel} />
         <Route path="/payments" component={PaymentHistory} />
         <Route path="/subscription" component={SubscriptionManagement} />
+        <Route path="/commercial/diagnostics" component={CommercialDiagnostics} />
         <Route path="/login" component={SubscriberLogin} />
         <Route path="/register" component={Register} />
         <Route path="/verify-email/success" component={VerifyEmailSuccess} />
