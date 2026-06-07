@@ -69,6 +69,7 @@ import { formatInRestaurantTimezone, todayYmd } from "@shared/utils/timezone";
 import { putUploadedFile } from "./local-uploads";
 import { notifyOwnerNewRestaurant, notifyOwnerNewSubscription, notifyOwnerSubscriptionCancelled } from "./owner-email-notifications";
 import { generateInvoicePDFBuffer } from "./invoice-pdf";
+import { commercialRouter } from "./commercial/router";
 import bcrypt from "bcryptjs";
 
 function generateSlug(name: string): string {
@@ -1802,6 +1803,7 @@ export const appRouter = router({
   menuItem: menuItemRouter,
   offer: offerRouter,
   subscription: subscriptionRouter,
+  commercial: commercialRouter,
   invoice: invoiceRouter,
   notification: notificationRouter,
   countryCurrency: countryCurrencyRouter,
