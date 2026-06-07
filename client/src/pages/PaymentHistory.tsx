@@ -6,6 +6,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { Download, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { formatRiyadhDate } from "@/lib/datetime";
+import { useCommercialFeatureVisibility } from "@/hooks/useCommercialFeatureVisibility";
 
 type InvoiceStatus = "paid" | "pending" | "failed" | "refunded";
 
@@ -24,8 +25,12 @@ export default function PaymentHistory() {
 
   const { data: invoices, isLoading: invoicesLoading } = trpc.invoice.list.useQuery();
   const { data: subscriptionData } = trpc.subscription.getCurrentSubscription.useQuery();
+  const { canonicalPlanLabel, isReady: entitlementsReady } =
+    useCommercialFeatureVisibility();
+  const uiLang = language === "ar" ? "ar" : "en";
 
   const planLabel =
+    (entitlementsReady && canonicalPlanLabel(uiLang)) ||
     subscriptionData?.plan?.nameEn ||
     subscriptionData?.plan?.nameAr ||
     t("invoices.invoice");

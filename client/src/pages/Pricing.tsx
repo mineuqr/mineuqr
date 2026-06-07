@@ -11,11 +11,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { QrCode } from "lucide-react";
 import { formatRiyadhDate } from "@/lib/datetime";
-import { useCommercialEntitlements } from "@/hooks/useCommercialEntitlements";
-import {
-  isTrialActiveForMessaging,
-  isTrialExpiredForMessaging,
-} from "@/lib/commercial/featureVisibility";
+import { useCommercialFeatureVisibility } from "@/hooks/useCommercialFeatureVisibility";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -247,10 +243,14 @@ export default function Pricing() {
   const [, setLocation] = useLocation();
   const { t, language } = useLanguage();
   const { data: plans, isLoading } = trpc.subscription.listPlans.useQuery();
-  const { data: currentSub } = trpc.subscription.getCurrentSubscription.useQuery(undefined, {
-    enabled: isAuthenticated,
-  });
-  const { context, entitlements, isReady: entitlementsReady } = useCommercialEntitlements({
+  const {
+    context,
+    entitlements,
+    isReady: entitlementsReady,
+    isTrialActive,
+    isTrialExpired,
+    isCurrentCatalogPlan,
+  } = useCommercialFeatureVisibility({
     enabled: isAuthenticated,
   });
 
@@ -337,11 +337,10 @@ export default function Pricing() {
           {isAuthenticated &&
             entitlementsReady &&
             entitlements &&
-            (isTrialActiveForMessaging(entitlements) ||
-              isTrialExpiredForMessaging(entitlements, context)) && (
+            (isTrialActive || isTrialExpired) && (
             <div className="inline-block bg-gradient-to-r from-cyan-500/20 to-orange-500/20 border border-cyan-500/50 rounded-lg px-6 py-3 mb-8">
               <p className="text-cyan-300">
-                {isTrialActiveForMessaging(entitlements) ? (
+                {isTrialActive ? (
                   <>
                     ✨ {t("common.trialEndsIn")}
                     {context?.subscription?.trialEndsAt && (
@@ -390,7 +389,8 @@ export default function Pricing() {
           {plans && plans.length > 0 ? plans.map((plan) => {
             const price =
               selectedCycle === "yearly" ? plan.priceYearly : plan.priceMonthly;
-            const isCurrentPlan = currentSub?.plan?.id === plan.id;
+            const isCurrentPlan =
+              isAuthenticated && entitlementsReady && isCurrentCatalogPlan(plan.id);
             const features = language === 'ar' && plan.featuresAr 
               ? JSON.parse(plan.featuresAr as string) 
               : plan.features ? JSON.parse(plan.features as string) : [];

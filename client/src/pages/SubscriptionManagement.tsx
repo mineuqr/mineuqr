@@ -12,8 +12,7 @@ import { AuthGatePending, LoginRequiredCard, PageDataLoading } from "@/component
 import { VerificationRequiredPanel } from "@/components/auth/VerificationRequiredPanel";
 import { EmailVerificationBanner } from "@/components/auth/EmailVerificationBanner";
 import { isEmailNotVerifiedError } from "@/lib/trpcErrors";
-import { useCommercialEntitlements } from "@/hooks/useCommercialEntitlements";
-import { CommercialPlanName } from "@/components/commercial";
+import { useCommercialFeatureVisibility } from "@/hooks/useCommercialFeatureVisibility";
 
 export default function SubscriptionManagement() {
   const { t } = useLanguage();
@@ -26,7 +25,8 @@ export default function SubscriptionManagement() {
     trpc.subscription.getCurrentSubscription.useQuery(undefined, {
       enabled: gate.authResolved && gate.isAuthenticated,
     });
-  const { entitlements, isReady: entitlementsReady } = useCommercialEntitlements();
+  const { canonicalPlanLabel, isReady: entitlementsReady } =
+    useCommercialFeatureVisibility();
 
   const handleCancelSubscription = async () => {
     setIsLoading(true);
@@ -120,12 +120,12 @@ export default function SubscriptionManagement() {
                   {t("common.planName")}
                 </p>
                 <p className="text-2xl font-bold text-foreground">
-                  {currentSub.plan?.nameAr}
+                  {(entitlementsReady && canonicalPlanLabel("ar")) ||
+                    currentSub.plan?.nameAr}
                 </p>
-                {entitlementsReady && entitlements && (
+                {entitlementsReady && canonicalPlanLabel("ar") && currentSub.plan?.nameAr && (
                   <p className="mt-2 text-xs text-muted-foreground">
-                    {t("common.canonicalPlan") || "Canonical plan"}:{" "}
-                    <CommercialPlanName entitlements={entitlements} language="ar" />
+                    {t("common.legacyPlanLabel") || "Legacy label"}: {currentSub.plan.nameAr}
                   </p>
                 )}
               </div>

@@ -60,9 +60,8 @@ export interface CustomFonts {
 interface FontCustomizerProps {
   restaurantId: number;
   currentCustomFonts: CustomFonts | null;
-  /** PG-1C.3B: visibility from entitlements.features.customFonts */
+  /** PG-1C.3C: visibility from useCommercialFeatureVisibility().showCustomFonts */
   customFontsEnabled: boolean;
-  isAdmin?: boolean;
   onFontsUpdated?: () => void;
   currencySymbol?: string;
 }
@@ -235,7 +234,6 @@ export default function FontCustomizer({
   restaurantId,
   currentCustomFonts,
   customFontsEnabled,
-  isAdmin = false,
   onFontsUpdated,
   currencySymbol,
 }: FontCustomizerProps) {
@@ -303,9 +301,7 @@ export default function FontCustomizer({
     });
   }, [restaurantId, fonts, updateFontsMutation]);
 
-  const canCustomizeFonts = customFontsEnabled || isAdmin;
-
-  if (!canCustomizeFonts) {
+  if (!customFontsEnabled) {
     return (
       <div className="mt-6 cinematic-card rounded-2xl p-6 border border-accent/20">
         <div className="flex items-center gap-3 mb-3">

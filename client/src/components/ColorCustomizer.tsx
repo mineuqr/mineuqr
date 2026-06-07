@@ -26,10 +26,9 @@ interface ColorCustomizerProps {
   restaurantId: number;
   currentTemplate: string;
   currentCustomColors: CustomColors | null;
-  /** PG-1C.3B: visibility from entitlements.features.customColors */
+  /** PG-1C.3C: visibility from useCommercialFeatureVisibility().showCustomColors */
   customColorsEnabled: boolean;
   restaurantName: string;
-  isAdmin?: boolean;
   onColorsUpdated?: () => void;
   currencySymbol?: string;
 }
@@ -192,7 +191,6 @@ export default function ColorCustomizer({
   currentCustomColors,
   customColorsEnabled,
   restaurantName,
-  isAdmin = false,
   onColorsUpdated,
   currencySymbol,
 }: ColorCustomizerProps) {
@@ -274,9 +272,7 @@ export default function ColorCustomizer({
     { key: "textColor", label: t("colors.textColor"), description: t("colors.textColorDesc") },
   ];
 
-  const canCustomizeColors = customColorsEnabled || isAdmin;
-
-  if (!canCustomizeColors) {
+  if (!customColorsEnabled) {
     return (
       <div className="mt-8 cinematic-card rounded-2xl p-6 border border-accent/20">
         <div className="flex items-center gap-3 mb-3">

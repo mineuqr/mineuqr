@@ -45,8 +45,7 @@ import { VerificationRequiredPanel } from "@/components/auth/VerificationRequire
 import { isEmailNotVerifiedError, toastTrpcError } from "@/lib/trpcErrors";
 import { QRCodeSVG } from "qrcode.react";
 import { QRWithLogo } from "@/components/QRWithLogo";
-import { useCommercialEntitlements } from "@/hooks/useCommercialEntitlements";
-import { hasCommercialFeature } from "@/lib/commercial/featureVisibility";
+import { useCommercialFeatureVisibility } from "@/hooks/useCommercialFeatureVisibility";
 import { CommercialUpgradeBanner } from "@/components/commercial";
 import {
   RestaurantBasicInfoSection,
@@ -1362,31 +1361,9 @@ function RestaurantDetail({
     { restaurantId },
     { enabled: queriesEnabled && loadCategories }
   );
-  const { context: commercialContext, isReady: entitlementsReady } =
-    useCommercialEntitlements();
+  const { subscriptionExpiryWarning: subscriptionWarning } =
+    useCommercialFeatureVisibility();
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
-
-  // Canonical expiry warning (PG-1C.3B — visibility messaging from CommercialContext)
-  const subscriptionWarning = useMemo(() => {
-    if (!entitlementsReady || !commercialContext?.subscription) return null;
-    const sub = commercialContext.subscription;
-    if (sub.subscriptionStatus !== "active" && sub.subscriptionStatus !== "trial") {
-      return null;
-    }
-    const endDateStr =
-      sub.subscriptionStatus === "trial"
-        ? sub.trialEndsAt || sub.currentPeriodEnd
-        : sub.currentPeriodEnd;
-    if (!endDateStr) return null;
-    const endDate = new Date(endDateStr);
-    const now = new Date();
-    const daysLeft = Math.ceil(
-      (endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-    );
-    if (daysLeft <= 0) return { type: "expired" as const, daysLeft: 0 };
-    if (daysLeft <= 7) return { type: "warning" as const, daysLeft };
-    return null;
-  }, [commercialContext, entitlementsReady]);
 
   if (isLoading) {
     return <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
@@ -3790,12 +3767,12 @@ function ReportsTab({
       : ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
   const { isAuthenticated, authPending } = useAuth();
-  const { entitlements, isReady: entitlementsReady } = useCommercialEntitlements();
+  const {
+    entitlements,
+    showReportsUpgrade,
+    showExcelUpgrade,
+  } = useCommercialFeatureVisibility();
   const uiLang = language === "ar" ? "ar" : "en";
-  const showReportsUpgrade =
-    entitlementsReady && !hasCommercialFeature(entitlements, "reports");
-  const showExcelUpgrade =
-    entitlementsReady && !hasCommercialFeature(entitlements, "excelExport");
   const ordersEnabled = restaurantQueriesEnabled(authPending, isAuthenticated, restaurantId);
   useDevQueryRuntimeLog("order.list", {
     enabled: ordersEnabled,

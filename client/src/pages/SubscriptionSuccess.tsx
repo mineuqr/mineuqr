@@ -9,12 +9,16 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { formatRiyadhDate } from "@/lib/datetime";
 import { useAuthGate } from "@/_core/hooks/useAuthGate";
 import { AuthGatePending, LoginRequiredCard, PageDataLoading } from "@/components/AuthGate";
+import { useCommercialFeatureVisibility } from "@/hooks/useCommercialFeatureVisibility";
 
 export default function SubscriptionSuccess() {
   const [, setLocation] = useLocation();
   const search = useSearch();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const gate = useAuthGate();
+  const { canonicalPlanLabel, isReady: entitlementsReady } =
+    useCommercialFeatureVisibility();
+  const uiLang = language === "ar" ? "ar" : "en";
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [subscription, setSubscription] = useState<any>(null);
 
@@ -116,7 +120,9 @@ export default function SubscriptionSuccess() {
             {subscription && (
               <div className="bg-muted p-4 rounded-lg mt-4">
                 <p className="text-sm text-muted-foreground">
-                  {t("common.planName") || "الخطة"}: {subscription.plan?.nameAr}
+                  {t("common.planName") || "الخطة"}:{" "}
+                  {(entitlementsReady && canonicalPlanLabel(uiLang)) ||
+                    subscription.plan?.nameAr}
                 </p>
                 <p className="text-sm text-muted-foreground mt-2">
                   {t("common.renewalDate") || "تاريخ التجديد"}:{" "}

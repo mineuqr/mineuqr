@@ -4,6 +4,7 @@ import type { CommercialContext } from "@commercial/commercialContext";
 import type { CommercialEntitlements } from "@commercial/types";
 import { CommercialFeaturesDisplay } from "./CommercialFeaturesDisplay";
 import { CommercialStatusPanel } from "./CommercialStatusPanel";
+import { CommercialGateConsolidationDiagnostics } from "./CommercialGateConsolidationDiagnostics";
 import { CommercialVisibilityDiagnostics } from "./CommercialVisibilityDiagnostics";
 
 type CommercialEntitlementsDiagnosticsProps = {
@@ -25,6 +26,8 @@ export function CommercialEntitlementsDiagnostics({
         entitlements={entitlements}
         language={language}
       />
+
+      <CommercialGateConsolidationDiagnostics language={language} />
 
       <CommercialVisibilityDiagnostics
         entitlements={entitlements}

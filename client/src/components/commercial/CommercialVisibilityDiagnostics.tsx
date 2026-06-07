@@ -24,7 +24,7 @@ export function CommercialVisibilityDiagnostics({
     <Card className="border-border bg-card">
       <CardHeader>
         <CardTitle className="text-lg">
-          {language === "ar" ? "قرارات الظهور (Wave 1)" : "Visibility decisions (Wave 1)"}
+          {language === "ar" ? "قرارات الظهور (موحّدة)" : "Visibility decisions (unified)"}
         </CardTitle>
         <p className="text-sm text-muted-foreground">
           {language === "ar"

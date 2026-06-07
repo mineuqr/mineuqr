@@ -1,6 +1,20 @@
 import type { FeatureKey } from "@commercial/featureKeys";
+import { mapPlanIdToCatalogPlan } from "@commercial/planIdMapping";
 import type { CommercialContext } from "@commercial/commercialContext";
 import type { CommercialEntitlements } from "@commercial/types";
+
+export type SubscriptionExpiryWarning = {
+  type: "expired" | "warning";
+  daysLeft: number;
+};
+
+/** Unified visibility check — single authority path for UI (PG-1C.3C). */
+export function isFeatureVisible(
+  entitlements: CommercialEntitlements | null | undefined,
+  key: FeatureKey
+): boolean {
+  return hasCommercialFeature(entitlements, key);
+}
 
 /** Admin accounts see all features in UI visibility (matches resolver). */
 export function hasCommercialFeature(
@@ -36,6 +50,70 @@ export function isTrialActiveForMessaging(
   return (
     entitlements?.commercial.isTrial === true || entitlements?.plan === "TRIAL"
   );
+}
+
+export function showCustomColorsPanel(
+  entitlements: CommercialEntitlements | null | undefined
+): boolean {
+  return hasCommercialFeature(entitlements, "customColors");
+}
+
+export function showCustomFontsPanel(
+  entitlements: CommercialEntitlements | null | undefined
+): boolean {
+  return hasCommercialFeature(entitlements, "customFonts");
+}
+
+export function showReportsUpgradeNotice(
+  entitlements: CommercialEntitlements | null | undefined
+): boolean {
+  if (!entitlements || entitlements.commercial.isAdmin) return false;
+  return !entitlements.features.reports;
+}
+
+export function showExcelUpgradeLabel(
+  entitlements: CommercialEntitlements | null | undefined
+): boolean {
+  if (!entitlements || entitlements.commercial.isAdmin) return false;
+  return !entitlements.features.excelExport;
+}
+
+/** Highlight current catalog plan on pricing grid without planId branching in UI. */
+export function isCanonicalCurrentPlan(
+  entitlements: CommercialEntitlements | null | undefined,
+  catalogPlanId: number
+): boolean {
+  if (!entitlements) return false;
+  const catalog = mapPlanIdToCatalogPlan(catalogPlanId);
+  if (!catalog) return false;
+  if (entitlements.plan === "TRIAL") {
+    return catalog === "PROFESSIONAL";
+  }
+  return entitlements.plan === catalog;
+}
+
+/** Canonical subscription expiry warning from CommercialContext. */
+export function getSubscriptionExpiryWarning(
+  context: CommercialContext | null | undefined
+): SubscriptionExpiryWarning | null {
+  if (!context?.subscription) return null;
+  const sub = context.subscription;
+  if (sub.subscriptionStatus !== "active" && sub.subscriptionStatus !== "trial") {
+    return null;
+  }
+  const endDateStr =
+    sub.subscriptionStatus === "trial"
+      ? sub.trialEndsAt || sub.currentPeriodEnd
+      : sub.currentPeriodEnd;
+  if (!endDateStr) return null;
+  const endDate = new Date(endDateStr);
+  const now = new Date();
+  const daysLeft = Math.ceil(
+    (endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+  );
+  if (daysLeft <= 0) return { type: "expired", daysLeft: 0 };
+  if (daysLeft <= 7) return { type: "warning", daysLeft };
+  return null;
 }
 
 export function isTrialExpiredForMessaging(
@@ -127,7 +205,28 @@ export const UI_VISIBILITY_INVENTORY: VisibilityInventoryEntry[] = [
     file: "client/src/pages/SubscriptionManagement.tsx",
     legacyLogic: "plan.nameAr from getCurrentSubscription",
     featureKey: "commercial.plan",
-    replacementStatus: "messaging-only",
+    replacementStatus: "replaced",
+  },
+  {
+    id: "pricing-current-plan",
+    file: "client/src/pages/Pricing.tsx",
+    legacyLogic: "currentSub?.plan?.id === plan.id",
+    featureKey: "commercial.plan",
+    replacementStatus: "replaced",
+  },
+  {
+    id: "payment-history-plan-label",
+    file: "client/src/pages/PaymentHistory.tsx",
+    legacyLogic: "getCurrentSubscription plan name",
+    featureKey: "commercial.plan",
+    replacementStatus: "replaced",
+  },
+  {
+    id: "subscription-success-display",
+    file: "client/src/pages/SubscriptionSuccess.tsx",
+    legacyLogic: "getCurrentSubscription display",
+    featureKey: "commercial.plan",
+    replacementStatus: "replaced",
   },
 ];
 
