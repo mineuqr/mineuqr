@@ -16,6 +16,13 @@ import FontCustomizer from "@/components/FontCustomizer";
 import { trpc } from "@/lib/trpc";
 import { resolveImageUrl } from "@/lib/utils";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useCommercialEntitlements } from "@/hooks/useCommercialEntitlements";
+import {
+  hasCommercialFeature,
+  isPremiumTemplateLocked,
+  shouldShowTemplatesUpgradeNotice,
+} from "@/lib/commercial/featureVisibility";
+import { CommercialPlanName } from "@/components/commercial";
 
 export default function TemplateSelector() {
   const gate = useAuthGate();
@@ -30,10 +37,7 @@ export default function TemplateSelector() {
     { enabled: authResolved && !!restaurantId && isAuthenticated }
   );
 
-  const { data: subscriptionData, error: subscriptionError } = trpc.subscription.checkTrialStatus.useQuery(
-    undefined,
-    { enabled: authResolved && isAuthenticated }
-  );
+  const { entitlements, isReady: entitlementsReady } = useCommercialEntitlements();
 
   const utils = trpc.useUtils();
   const updateTemplateMutation = trpc.restaurant.updateTemplate.useMutation({
@@ -65,7 +69,8 @@ export default function TemplateSelector() {
     }
   }, [restaurant]);
 
-  const isSubscribed = (subscriptionData?.isActive || false) || (user?.role === "admin");
+  const showTemplatesUpgrade =
+    entitlementsReady && shouldShowTemplatesUpgradeNotice(entitlements);
 
   const handleSelectTemplate = (templateId: string) => {
     setSelectedTemplate(templateId);
@@ -131,6 +136,13 @@ export default function TemplateSelector() {
             </div>
             <div>
               <h1 className="text-lg font-bold text-foreground">{t('template.chooseTemplate')}</h1>
+              {entitlementsReady && entitlements && (
+                <CommercialPlanName
+                  entitlements={entitlements}
+                  language={language === "ar" ? "ar" : "en"}
+                  className="mt-1"
+                />
+              )}
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -178,7 +190,7 @@ export default function TemplateSelector() {
         </div>
 
         {/* Subscription Notice */}
-        {!isSubscribed && (
+        {showTemplatesUpgrade && (
           <div className="mb-8 p-4 rounded-xl border border-accent/30 bg-accent/5">
             <div className="flex items-center gap-3">
               <Crown className="w-6 h-6 text-accent shrink-0" />
@@ -197,7 +209,9 @@ export default function TemplateSelector() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {TEMPLATES.map((template, index) => {
             const isSelected = selectedTemplate === template.id;
-            const isLocked = template.isPremium && !isSubscribed;
+            const isLocked =
+              entitlementsReady &&
+              isPremiumTemplateLocked(template.isPremium, entitlements);
             const isCurrent = ((restaurant as any).menuTemplate || "classic") === template.id;
 
             return (
@@ -331,7 +345,9 @@ export default function TemplateSelector() {
               ? (() => { try { return JSON.parse((restaurant as any).customFonts); } catch { return null; } })()
               : null
           }
-          isSubscribed={isSubscribed}
+          customFontsEnabled={
+            entitlementsReady && hasCommercialFeature(entitlements, "customFonts")
+          }
           isAdmin={user?.role === "admin"}
           onFontsUpdated={() => { refetchRestaurant(); }}
           currencySymbol={(restaurant as any)?.currencySymbol}
@@ -346,7 +362,9 @@ export default function TemplateSelector() {
               ? (() => { try { return JSON.parse((restaurant as any).customColors); } catch { return null; } })()
               : null
           }
-          isSubscribed={isSubscribed}
+          customColorsEnabled={
+            entitlementsReady && hasCommercialFeature(entitlements, "customColors")
+          }
           restaurantName={(restaurant as any).nameAr || ""}
           isAdmin={user?.role === "admin"}
           onColorsUpdated={() => { refetchRestaurant(); }}

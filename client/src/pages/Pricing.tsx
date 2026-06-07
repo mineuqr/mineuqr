@@ -11,6 +11,11 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { QrCode } from "lucide-react";
 import { formatRiyadhDate } from "@/lib/datetime";
+import { useCommercialEntitlements } from "@/hooks/useCommercialEntitlements";
+import {
+  isTrialActiveForMessaging,
+  isTrialExpiredForMessaging,
+} from "@/lib/commercial/featureVisibility";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -245,7 +250,7 @@ export default function Pricing() {
   const { data: currentSub } = trpc.subscription.getCurrentSubscription.useQuery(undefined, {
     enabled: isAuthenticated,
   });
-  const { data: trialStatus } = trpc.subscription.checkTrialStatus.useQuery(undefined, {
+  const { context, entitlements, isReady: entitlementsReady } = useCommercialEntitlements({
     enabled: isAuthenticated,
   });
 
@@ -329,15 +334,19 @@ export default function Pricing() {
           </p>
 
           {/* Trial Status */}
-          {isAuthenticated && trialStatus && (
+          {isAuthenticated &&
+            entitlementsReady &&
+            entitlements &&
+            (isTrialActiveForMessaging(entitlements) ||
+              isTrialExpiredForMessaging(entitlements, context)) && (
             <div className="inline-block bg-gradient-to-r from-cyan-500/20 to-orange-500/20 border border-cyan-500/50 rounded-lg px-6 py-3 mb-8">
               <p className="text-cyan-300">
-                {trialStatus.isActive ? (
+                {isTrialActiveForMessaging(entitlements) ? (
                   <>
                     ✨ {t("common.trialEndsIn")}
-                    {trialStatus.trialEndDate && (
+                    {context?.subscription?.trialEndsAt && (
                       <span className="text-orange-400 mr-2">
-                        ({formatRiyadhDate(trialStatus.trialEndDate, "ar-SA")})
+                        ({formatRiyadhDate(context.subscription.trialEndsAt, language === "ar" ? "ar-SA" : "en-US")})
                       </span>
                     )}
                   </>

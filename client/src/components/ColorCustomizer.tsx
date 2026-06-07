@@ -26,7 +26,8 @@ interface ColorCustomizerProps {
   restaurantId: number;
   currentTemplate: string;
   currentCustomColors: CustomColors | null;
-  isSubscribed: boolean;
+  /** PG-1C.3B: visibility from entitlements.features.customColors */
+  customColorsEnabled: boolean;
   restaurantName: string;
   isAdmin?: boolean;
   onColorsUpdated?: () => void;
@@ -189,7 +190,7 @@ export default function ColorCustomizer({
   restaurantId,
   currentTemplate,
   currentCustomColors,
-  isSubscribed,
+  customColorsEnabled,
   restaurantName,
   isAdmin = false,
   onColorsUpdated,
@@ -273,8 +274,7 @@ export default function ColorCustomizer({
     { key: "textColor", label: t("colors.textColor"), description: t("colors.textColorDesc") },
   ];
 
-  // Allow admin/owner to access color customization without subscription
-  const canCustomizeColors = isSubscribed || isAdmin;
+  const canCustomizeColors = customColorsEnabled || isAdmin;
 
   if (!canCustomizeColors) {
     return (

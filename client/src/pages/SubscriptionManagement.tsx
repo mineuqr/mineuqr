@@ -12,6 +12,8 @@ import { AuthGatePending, LoginRequiredCard, PageDataLoading } from "@/component
 import { VerificationRequiredPanel } from "@/components/auth/VerificationRequiredPanel";
 import { EmailVerificationBanner } from "@/components/auth/EmailVerificationBanner";
 import { isEmailNotVerifiedError } from "@/lib/trpcErrors";
+import { useCommercialEntitlements } from "@/hooks/useCommercialEntitlements";
+import { CommercialPlanName } from "@/components/commercial";
 
 export default function SubscriptionManagement() {
   const { t } = useLanguage();
@@ -24,6 +26,7 @@ export default function SubscriptionManagement() {
     trpc.subscription.getCurrentSubscription.useQuery(undefined, {
       enabled: gate.authResolved && gate.isAuthenticated,
     });
+  const { entitlements, isReady: entitlementsReady } = useCommercialEntitlements();
 
   const handleCancelSubscription = async () => {
     setIsLoading(true);
@@ -119,6 +122,12 @@ export default function SubscriptionManagement() {
                 <p className="text-2xl font-bold text-foreground">
                   {currentSub.plan?.nameAr}
                 </p>
+                {entitlementsReady && entitlements && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {t("common.canonicalPlan") || "Canonical plan"}:{" "}
+                    <CommercialPlanName entitlements={entitlements} language="ar" />
+                  </p>
+                )}
               </div>
               <div className="flex items-center gap-2 bg-green-500/10 px-3 py-1 rounded-full">
                 <CheckCircle className="w-4 h-4 text-green-400" />

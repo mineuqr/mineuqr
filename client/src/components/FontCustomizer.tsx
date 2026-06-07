@@ -60,7 +60,8 @@ export interface CustomFonts {
 interface FontCustomizerProps {
   restaurantId: number;
   currentCustomFonts: CustomFonts | null;
-  isSubscribed: boolean;
+  /** PG-1C.3B: visibility from entitlements.features.customFonts */
+  customFontsEnabled: boolean;
   isAdmin?: boolean;
   onFontsUpdated?: () => void;
   currencySymbol?: string;
@@ -233,7 +234,7 @@ function FontPreview({ fonts, currencySymbol }: { fonts: CustomFonts; currencySy
 export default function FontCustomizer({
   restaurantId,
   currentCustomFonts,
-  isSubscribed,
+  customFontsEnabled,
   isAdmin = false,
   onFontsUpdated,
   currencySymbol,
@@ -302,7 +303,7 @@ export default function FontCustomizer({
     });
   }, [restaurantId, fonts, updateFontsMutation]);
 
-  const canCustomizeFonts = isSubscribed || isAdmin;
+  const canCustomizeFonts = customFontsEnabled || isAdmin;
 
   if (!canCustomizeFonts) {
     return (

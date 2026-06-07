@@ -45,6 +45,9 @@ import { VerificationRequiredPanel } from "@/components/auth/VerificationRequire
 import { isEmailNotVerifiedError, toastTrpcError } from "@/lib/trpcErrors";
 import { QRCodeSVG } from "qrcode.react";
 import { QRWithLogo } from "@/components/QRWithLogo";
+import { useCommercialEntitlements } from "@/hooks/useCommercialEntitlements";
+import { hasCommercialFeature } from "@/lib/commercial/featureVisibility";
+import { CommercialUpgradeBanner } from "@/components/commercial";
 import {
   RestaurantBasicInfoSection,
   RestaurantContactLinksSection,
@@ -1359,26 +1362,31 @@ function RestaurantDetail({
     { restaurantId },
     { enabled: queriesEnabled && loadCategories }
   );
-  const { data: subscriptionData } = trpc.subscription.getByRestaurant.useQuery(
-    { restaurantId },
-    { enabled: queriesEnabled }
-  );
+  const { context: commercialContext, isReady: entitlementsReady } =
+    useCommercialEntitlements();
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
 
-  // Check subscription expiry warning
+  // Canonical expiry warning (PG-1C.3B — visibility messaging from CommercialContext)
   const subscriptionWarning = useMemo(() => {
-    if (!subscriptionData?.subscription) return null;
-    const sub = subscriptionData.subscription;
-    if (sub.status !== 'active' && sub.status !== 'trial') return null;
-    const endDateStr = sub.status === 'trial' ? (sub.trialEndsAt || sub.currentPeriodEnd) : sub.currentPeriodEnd;
+    if (!entitlementsReady || !commercialContext?.subscription) return null;
+    const sub = commercialContext.subscription;
+    if (sub.subscriptionStatus !== "active" && sub.subscriptionStatus !== "trial") {
+      return null;
+    }
+    const endDateStr =
+      sub.subscriptionStatus === "trial"
+        ? sub.trialEndsAt || sub.currentPeriodEnd
+        : sub.currentPeriodEnd;
     if (!endDateStr) return null;
     const endDate = new Date(endDateStr);
     const now = new Date();
-    const daysLeft = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    if (daysLeft <= 0) return { type: 'expired' as const, daysLeft: 0 };
-    if (daysLeft <= 7) return { type: 'warning' as const, daysLeft };
+    const daysLeft = Math.ceil(
+      (endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+    );
+    if (daysLeft <= 0) return { type: "expired" as const, daysLeft: 0 };
+    if (daysLeft <= 7) return { type: "warning" as const, daysLeft };
     return null;
-  }, [subscriptionData]);
+  }, [commercialContext, entitlementsReady]);
 
   if (isLoading) {
     return <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
@@ -3782,6 +3790,12 @@ function ReportsTab({
       : ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
   const { isAuthenticated, authPending } = useAuth();
+  const { entitlements, isReady: entitlementsReady } = useCommercialEntitlements();
+  const uiLang = language === "ar" ? "ar" : "en";
+  const showReportsUpgrade =
+    entitlementsReady && !hasCommercialFeature(entitlements, "reports");
+  const showExcelUpgrade =
+    entitlementsReady && !hasCommercialFeature(entitlements, "excelExport");
   const ordersEnabled = restaurantQueriesEnabled(authPending, isAuthenticated, restaurantId);
   useDevQueryRuntimeLog("order.list", {
     enabled: ordersEnabled,
@@ -3879,6 +3893,15 @@ function ReportsTab({
 
       <RestaurantStatisticsSection stats={stats} t={t} ariaLabel={statsAriaLabel} language={language} />
 
+      {showReportsUpgrade && (
+        <CommercialUpgradeBanner
+          entitlements={entitlements}
+          featureKey="reports"
+          language={uiLang}
+          className="border-yellow-500/30 bg-yellow-500/5"
+        />
+      )}
+
       {ordersBlocked ? (
         <VerificationRequiredPanel variant="orders" />
       ) : (
@@ -3932,6 +3955,11 @@ function ReportsTab({
                 className="rounded border border-green-500/30 bg-green-500/10 px-2 py-1 text-xs text-green-400 hover:bg-green-500/20"
               >
                 Excel
+                {showExcelUpgrade && (
+                  <span className="ml-1 text-[10px] text-yellow-500/90">
+                    ({uiLang === "ar" ? "ترقية" : "upgrade"})
+                  </span>
+                )}
               </button>
               <select
                 value={reportMonth}
@@ -3991,6 +4019,11 @@ function ReportsTab({
                 className="rounded border border-green-500/30 bg-green-500/10 px-2 py-1 text-xs text-green-400 hover:bg-green-500/20"
               >
                 Excel
+                {showExcelUpgrade && (
+                  <span className="ml-1 text-[10px] text-yellow-500/90">
+                    ({uiLang === "ar" ? "ترقية" : "upgrade"})
+                  </span>
+                )}
               </button>
               <span className="text-sm text-muted-foreground">{reportYear}</span>
             </div>

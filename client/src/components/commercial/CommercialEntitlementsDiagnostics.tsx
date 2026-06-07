@@ -4,6 +4,7 @@ import type { CommercialContext } from "@commercial/commercialContext";
 import type { CommercialEntitlements } from "@commercial/types";
 import { CommercialFeaturesDisplay } from "./CommercialFeaturesDisplay";
 import { CommercialStatusPanel } from "./CommercialStatusPanel";
+import { CommercialVisibilityDiagnostics } from "./CommercialVisibilityDiagnostics";
 
 type CommercialEntitlementsDiagnosticsProps = {
   context: CommercialContext | null;
@@ -21,6 +22,11 @@ export function CommercialEntitlementsDiagnostics({
     <div className="space-y-6">
       <CommercialStatusPanel
         context={context}
+        entitlements={entitlements}
+        language={language}
+      />
+
+      <CommercialVisibilityDiagnostics
         entitlements={entitlements}
         language={language}
       />
