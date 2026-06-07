@@ -11,7 +11,7 @@ import {
   getMenuItemsByCategory, getMenuItemsByRestaurant, getMenuItemById,
   createMenuItem, updateMenuItem, deleteMenuItem, getRestaurantStats,
   getSubscriptionPlans, getSubscriptionPlanById, createUserSubscription, getCanonicalUserSubscription,
-  isSubscriptionActive, getTrialEndDate,
+  isSubscriptionActive,
   getOffersByRestaurant, getActiveOffersByRestaurant, getOfferById, createOffer, updateOffer, deleteOffer,
   getInvoicesByUser, getInvoiceById, getUnpaidInvoices,
   getNotificationsByUser, getUnreadNotifications, markNotificationAsRead, createNotification,
@@ -70,6 +70,10 @@ import { putUploadedFile } from "./local-uploads";
 import { notifyOwnerNewRestaurant, notifyOwnerNewSubscription, notifyOwnerSubscriptionCancelled } from "./owner-email-notifications";
 import { generateInvoicePDFBuffer } from "./invoice-pdf";
 import { commercialRouter } from "./commercial/router";
+import {
+  resolveCanOrderRead,
+  resolveTrialStatusRead,
+} from "./commercial/wave1ReadAuthority";
 import bcrypt from "bcryptjs";
 
 function generateSlug(name: string): string {
@@ -650,9 +654,7 @@ const subscriptionRouter = router({
     }),
 
   checkTrialStatus: verifiedProcedure.query(async ({ ctx }) => {
-    const isActive = await isSubscriptionActive(ctx.user.id);
-    const trialEndDate = await getTrialEndDate(ctx.user.id);
-    return { isActive, trialEndDate };
+    return resolveTrialStatusRead(ctx.user.id);
   }),
 
   createCheckoutSession: verifiedProcedure
@@ -1634,8 +1636,7 @@ const orderRouter = router({
   canOrder: publicProcedure
     .input(z.object({ restaurantId: z.number() }))
     .query(async ({ input }) => {
-      const canOrder = await restaurantAllowsTableOrdering(input.restaurantId);
-      return { canOrder };
+      return resolveCanOrderRead(input.restaurantId);
     }),
   // Public: create order (no auth needed)
   create: publicProcedure

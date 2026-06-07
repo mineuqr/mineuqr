@@ -72,6 +72,33 @@ vi.mock("./db", () => ({
     }
     return null;
   }),
+  getUserById: vi.fn(async (userId: number) => {
+    if (userId === 1) return { id: 1, role: "user" };
+    return null;
+  }),
+  getSubscriptionsByUser: vi.fn(async (userId: number) => {
+    if (userId === 1) {
+      return [
+        {
+          id: 1,
+          userId: 1,
+          restaurantId: 0,
+          planId: 30002,
+          status: "trial",
+          billingCycle: "monthly",
+          currentPeriodStart: new Date().toISOString(),
+          currentPeriodEnd: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+          trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+          stripeSubscriptionId: null,
+          stripeCustomerId: null,
+          canceledAt: null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ];
+    }
+    return [];
+  }),
   isSubscriptionActive: vi.fn(async (userId: number) => {
     if (userId === 1) return true;
     return false;
