@@ -17,12 +17,12 @@ import {
   getNotificationsByUser, getUnreadNotifications, markNotificationAsRead, createNotification,
   getCurrencyByCountryCode, getAllCountriesCurrencies,
   upsertUser, getUserByEmail, updateUserPassword, updateUserProfile,
-  getAllRestaurantsWithSubscriptions, createSubscriptionForRestaurant, updateSubscriptionById, cancelSubscriptionById, getSubscriptionForRestaurant,
+  createSubscriptionForRestaurant, updateSubscriptionById, cancelSubscriptionById, getSubscriptionForRestaurant,
   resolveSubscriptionForActivation,
-  getAdminStatistics, getRevenueByMonth, getSubscriptionDetails,
+  getAdminStatistics, getRevenueByMonth,
   getPublicStats, getExtendedAdminStats,
   getAllUsers, updateUserRole,
-  getAllUsersWithSubscriptions, sanitizeUserForAdminResponse,
+  sanitizeUserForAdminResponse,
   createInvoice, updateInvoice, getUserById,
   updateUserSessionValidAfter,
   getHolidaysByRestaurant, createHoliday, updateHoliday, deleteHoliday, getHolidayById,
@@ -849,12 +849,6 @@ const adminCoreRouter = router({
 
   // ─── Admin Subscription Management ───────────────────────
 
-  listAllRestaurantsWithSubscriptions: protectedProcedure
-    .query(async ({ ctx }) => {
-      assertAdminAccess(ctx, "admin.listAllRestaurantsWithSubscriptions");
-      return getAllRestaurantsWithSubscriptions();
-    }),
-
   createRestaurantSubscription: protectedProcedure
     .input(z.object({
       restaurantId: z.number(),
@@ -941,22 +935,18 @@ const adminCoreRouter = router({
 
   // ─── Admin Statistics ───────────────────────
 
+  /** @deprecated EXEC-6 — Statistics.tsx dual-read only (renewal/churn/expired/canceled). Use analytics.* + getSubscriptionOverview. */
   getStatistics: protectedProcedure
     .query(async ({ ctx }) => {
       assertAdminAccess(ctx, "admin.getStatistics");
       return getAdminStatistics();
     }),
 
+  /** @deprecated EXEC-6 — Statistics.tsx dual-read only (revenue chart). Canonical analytics.getRevenueByMonth deferred. */
   getRevenueByMonth: protectedProcedure
     .query(async ({ ctx }) => {
       assertAdminAccess(ctx, "admin.getRevenueByMonth");
       return getRevenueByMonth();
-    }),
-
-  getSubscriptionDetails: protectedProcedure
-    .query(async ({ ctx }) => {
-      assertAdminAccess(ctx, "admin.getSubscriptionDetails");
-      return getSubscriptionDetails();
     }),
 
   getExtendedStats: protectedProcedure
@@ -1020,11 +1010,6 @@ const adminCoreRouter = router({
     }),
 
   // ─── Users Subscription Management by Admin ───
-  listAllUsersWithSubscriptions: protectedProcedure
-    .query(async ({ ctx }) => {
-      assertAdminAccess(ctx, "admin.listAllUsersWithSubscriptions");
-      return getAllUsersWithSubscriptions();
-    }),
   createUserSubscriptionByAdmin: protectedProcedure
     .input(z.object({
       userId: z.number(),

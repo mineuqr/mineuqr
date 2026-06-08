@@ -15,7 +15,6 @@ vi.mock("./db", () => ({
   getSubscriptionForRestaurant: vi.fn(),
   updateSubscriptionById: vi.fn(),
   getAllUsers: vi.fn(),
-  getAllUsersWithSubscriptions: vi.fn(),
   sanitizeUserForAdminResponse: vi.fn((user: { passwordHash?: string | null; id: number }) => {
     const { passwordHash: _removed, ...safe } = user;
     return safe;

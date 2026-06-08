@@ -29,15 +29,8 @@ import {
   businessYearMonthMonthsAgo,
   formatBusinessYearMonthLabel,
 } from "@shared/utils/timezone";
-import {
-  pickCanonicalSubscription,
-  pickUserLevelSubscription,
-  resolveOrderingSubscriptionRow,
-} from "./subscriptionResolver";
-import {
-  resolveTableOrderingEntitlement,
-  userHasSubscriptionEntitlement,
-} from "./subscriptionEntitlement";
+import { pickCanonicalSubscription } from "./subscriptionResolver";
+import { userHasSubscriptionEntitlement } from "./subscriptionEntitlement";
 import {
   resolveSubscriptionForActivationFromRows,
   type ActivationTargetOptions,
@@ -696,35 +689,6 @@ export async function getAllSubscriptions() {
   return db.select().from(userSubscriptions);
 }
 
-/**
- * @deprecated Prefer getSubscriptionForRestaurant — uses canonical pick instead of limit(1).
- */
-export async function getSubscriptionByRestaurantId(restaurantId: number) {
-  return getSubscriptionForRestaurant(restaurantId);
-}
-
-/**
- * Subscription used for table ordering: canonical restaurant row, then user-level (restaurantId 0).
- */
-export async function getOrderingSubscriptionForRestaurant(restaurantId: number) {
-  const restaurant = await getRestaurantById(restaurantId);
-  if (!restaurant) return undefined;
-  const rows = await getSubscriptionsByUser(restaurant.userId);
-  return resolveOrderingSubscriptionRow(restaurantId, rows);
-}
-
-/**
- * @deprecated ASN-5 Wave A — guest ordering uses resolveGuestOrderingAllowed.
- * Retained for Wave E removal; no ordering router consumers.
- */
-export async function restaurantAllowsTableOrdering(restaurantId: number): Promise<boolean> {
-  const subscription = await getOrderingSubscriptionForRestaurant(restaurantId);
-  const plan = subscription
-    ? await getSubscriptionPlanById(subscription.planId)
-    : null;
-  return resolveTableOrderingEntitlement(subscription, plan).isEntitled;
-}
-
 export async function createSubscriptionForRestaurant(data: InsertUserSubscription) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -747,35 +711,8 @@ export async function cancelSubscriptionById(id: number) {
   }).where(eq(userSubscriptions.id, id));
 }
 
-export async function getAllRestaurantsWithSubscriptions() {
-  const db = await getDb();
-  if (!db) return [];
-  const allRestaurants = await db.select().from(restaurants);
-  const allSubs = await db.select().from(userSubscriptions);
-  const allUsers = await db.select({
-    id: users.id,
-    name: users.name,
-    email: users.email,
-  }).from(users);
-  
-  return allRestaurants.map(r => {
-    const owner = allUsers.find(u => u.id === r.userId) || null;
-    const ownerSubs = allSubs.filter(s => s.userId === r.userId);
-    const subscription =
-      pickCanonicalSubscription(ownerSubs.filter(s => s.restaurantId === r.id)) ??
-      pickUserLevelSubscription(ownerSubs) ??
-      null;
-    return {
-      ...r,
-      subscription,
-      ownerName: owner?.name || null,
-      ownerEmail: owner?.email || null,
-    };
-  });
-}
-
-
 // Admin Statistics Functions
+/** @deprecated EXEC-6 — S6 legacy metrics. Statistics.tsx dual-read only; use analytics.* + getSubscriptionOverview. */
 export async function getAdminStatistics() {
   const db = await getDb();
   if (!db) return null;
@@ -813,6 +750,7 @@ export async function getAdminStatistics() {
   };
 }
 
+/** @deprecated EXEC-6 — S6 legacy revenue buckets. Statistics.tsx dual-read only; canonical analytics.getRevenueByMonth deferred. */
 export async function getRevenueByMonth(months: number = 12) {
   const db = await getDb();
   if (!db) return [];
@@ -846,37 +784,6 @@ export async function getRevenueByMonth(months: number = 12) {
   }
 
   return revenueData;
-}
-
-export async function getSubscriptionDetails() {
-  const db = await getDb();
-  if (!db) return [];
-
-  const allSubs = await db.select().from(userSubscriptions);
-  const allPlans = await db.select().from(subscriptionPlans);
-  const allRestaurants = await db.select().from(restaurants);
-  const allUsers = await db.select().from(users);
-
-  return allSubs.map(sub => {
-    const plan = allPlans.find(p => p.id === sub.planId);
-    const user = allUsers.find(u => u.id === sub.userId);
-    // Get the first restaurant for this user
-    const restaurant = allRestaurants.find(r => r.userId === sub.userId);
-    
-    return {
-      id: sub.id,
-      restaurantName: restaurant?.nameAr || 'Unknown',
-      ownerEmail: user?.email || 'Unknown',
-      planName: plan?.nameAr || 'Unknown',
-      billingCycle: sub.billingCycle,
-      status: sub.status,
-      currentPeriodStart: sub.currentPeriodStart,
-      currentPeriodEnd: sub.currentPeriodEnd,
-      trialEndsAt: sub.trialEndsAt,
-      createdAt: sub.createdAt,
-      monthlyPrice: sub.billingCycle === 'monthly' ? parseFloat(plan?.priceMonthly || '0') : (parseFloat(plan?.priceYearly || '0') / 12),
-    };
-  });
 }
 
 // ─── Public Statistics (for About page) ───────────────────────
@@ -971,28 +878,6 @@ export async function updateUserRole(userId: number, role: 'admin' | 'user') {
   const result = await db.update(users).set({ role }).where(eq(users.id, userId));
   return result;
 }
-
-// ─── Get All Users With Subscriptions ───────────────────────
-export async function getAllUsersWithSubscriptions() {
-  const db = await getDb();
-  if (!db) return [];
-  const allUsers = await db.select().from(users);
-  const allSubs = await db.select().from(userSubscriptions);
-  const allPlans = await db.select().from(subscriptionPlans);
-  const allRestaurants = await db.select().from(restaurants);
-  return allUsers.map(u => {
-    const subscription = allSubs.find(s => s.userId === u.id) || null;
-    const plan = subscription ? allPlans.find(p => p.id === subscription.planId) || null : null;
-    const userRestaurants = allRestaurants.filter(r => r.userId === u.id);
-    return {
-      ...sanitizeUserForAdminResponse(u),
-      subscription,
-      plan,
-      restaurants: userRestaurants,
-    };
-  });
-}
-
 
 // ─── Restaurant Holidays ──────────────────────────────────────────────────────
 export async function getHolidaysByRestaurant(restaurantId: number) {

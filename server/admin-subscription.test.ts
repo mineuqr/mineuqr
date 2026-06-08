@@ -2,13 +2,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock db module
 vi.mock("./db", () => ({
-  getAllRestaurantsWithSubscriptions: vi.fn(),
   createSubscriptionForRestaurant: vi.fn(),
   updateSubscriptionById: vi.fn(),
   cancelSubscriptionById: vi.fn(),
   getSubscriptionForRestaurant: vi.fn(),
   getSubscriptionById: vi.fn(),
-  getSubscriptionByRestaurantId: vi.fn(),
   getSubscriptionPlans: vi.fn(),
   getSubscriptionPlanById: vi.fn(),
   getUserSubscription: vi.fn(),
@@ -72,7 +70,6 @@ vi.mock("./paypal", () => ({
 
 import { appRouter } from "./routers";
 import {
-  getAllRestaurantsWithSubscriptions,
   createSubscriptionForRestaurant,
   updateSubscriptionById,
   cancelSubscriptionById,
@@ -95,27 +92,6 @@ function createCaller(user: any) {
 describe("Admin Subscription Management", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
-
-  describe("listAllRestaurantsWithSubscriptions", () => {
-    it("should return restaurants with subscriptions for admin", async () => {
-      const mockData = [
-        { id: 1, nameAr: "مطعم 1", subscription: { id: 1, status: "active" } },
-        { id: 2, nameAr: "مطعم 2", subscription: null },
-      ];
-      (getAllRestaurantsWithSubscriptions as any).mockResolvedValue(mockData);
-
-      const caller = createCaller(adminUser);
-      const result = await caller.admin.listAllRestaurantsWithSubscriptions();
-
-      expect(result).toEqual(mockData);
-      expect(getAllRestaurantsWithSubscriptions).toHaveBeenCalled();
-    });
-
-    it("should reject non-admin users", async () => {
-      const caller = createCaller(regularUser);
-      await expect(caller.admin.listAllRestaurantsWithSubscriptions()).rejects.toThrow();
-    });
   });
 
   describe("createRestaurantSubscription", () => {

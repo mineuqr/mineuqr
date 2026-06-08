@@ -9,7 +9,6 @@ vi.mock("./db", () => ({
   getUserSubscription: vi.fn(async () => null),
   getCanonicalUserSubscription: vi.fn(async () => null),
   getSubscriptionPlanById: vi.fn(async () => null),
-  getSubscriptionByRestaurantId: vi.fn(async () => null),
   getUserById: vi.fn(async (userId: number) => ({
     id: userId,
     role: "user",

@@ -22,19 +22,6 @@ vi.mock("./db", () => ({
     { month: "2026-02", revenue: 350 },
     { month: "2026-03", revenue: 400 },
   ]),
-  getSubscriptionDetails: vi.fn().mockResolvedValue([
-    {
-      id: 1,
-      restaurantName: "مطعم الريان",
-      ownerEmail: "owner@test.com",
-      planName: "الأساسية",
-      billingCycle: "monthly",
-      status: "active",
-      monthlyPrice: 19.00,
-      currentPeriodStart: "2026-04-01T00:00:00.000Z",
-      currentPeriodEnd: "2026-05-01T00:00:00.000Z",
-    },
-  ]),
 }));
 
 describe("Admin Statistics", () => {
@@ -87,46 +74,6 @@ describe("Admin Statistics", () => {
     }
   });
 
-  it("getSubscriptionDetails returns correct fields", async () => {
-    const { getSubscriptionDetails } = await import("./db");
-    const details = await getSubscriptionDetails();
-
-    expect(details).toBeDefined();
-    expect(Array.isArray(details)).toBe(true);
-    expect(details).toHaveLength(1);
-
-    const sub = details[0];
-    expect(sub).toHaveProperty("id");
-    expect(sub).toHaveProperty("restaurantName");
-    expect(sub).toHaveProperty("ownerEmail");
-    expect(sub).toHaveProperty("planName");
-    expect(sub).toHaveProperty("billingCycle");
-    expect(sub).toHaveProperty("status");
-    expect(sub).toHaveProperty("monthlyPrice");
-    expect(sub).toHaveProperty("currentPeriodStart");
-    expect(sub).toHaveProperty("currentPeriodEnd");
-  });
-
-  it("getSubscriptionDetails status is valid enum", async () => {
-    const { getSubscriptionDetails } = await import("./db");
-    const details = await getSubscriptionDetails();
-    const validStatuses = ["active", "canceled", "expired", "trial"];
-
-    details.forEach((sub: any) => {
-      expect(validStatuses).toContain(sub.status);
-    });
-  });
-
-  it("getSubscriptionDetails monthlyPrice is positive number", async () => {
-    const { getSubscriptionDetails } = await import("./db");
-    const details = await getSubscriptionDetails();
-
-    details.forEach((sub: any) => {
-      expect(typeof sub.monthlyPrice).toBe("number");
-      expect(sub.monthlyPrice).toBeGreaterThanOrEqual(0);
-    });
-  });
-
   it("subscriptionsByPlan plan names are non-empty", async () => {
     const { getAdminStatistics } = await import("./db");
     const stats = await getAdminStatistics();
@@ -136,36 +83,5 @@ describe("Admin Statistics", () => {
       expect(typeof plan.count).toBe("number");
       expect(plan.count).toBeGreaterThanOrEqual(0);
     });
-  });
-});
-
-describe("CSV Export", () => {
-  it("subscription details can be formatted as CSV", async () => {
-    const { getSubscriptionDetails } = await import("./db");
-    const details = await getSubscriptionDetails();
-
-    const headers = [
-      "Restaurant Name", "Owner Email", "Plan Name",
-      "Billing Cycle", "Status", "Monthly Price",
-      "Current Period Start", "Current Period End",
-    ];
-
-    const rows = details.map((sub: any) => [
-      sub.restaurantName,
-      sub.ownerEmail,
-      sub.planName,
-      sub.billingCycle,
-      sub.status,
-      sub.monthlyPrice.toFixed(2),
-      new Date(sub.currentPeriodStart).toLocaleDateString(),
-      new Date(sub.currentPeriodEnd).toLocaleDateString(),
-    ]);
-
-    const csv = [headers, ...rows].map((row: string[]) => row.map((cell: string) => `"${cell}"`).join(",")).join("\n");
-
-    expect(csv).toContain("Restaurant Name");
-    expect(csv).toContain("مطعم الريان");
-    expect(csv).toContain("19.00");
-    expect(csv.split("\n")).toHaveLength(2); // header + 1 row
   });
 });
