@@ -1,0 +1,157 @@
+{
+  "phase": "EXEC-4B_DRY_RUN",
+  "generatedAt": "2026-06-08T18:53:12.411Z",
+  "connectionTarget": {
+    "host": "gateway01.eu-central-1.prod.aws.tidbcloud.com",
+    "port": 4000,
+    "database": "mineuqr",
+    "tls": true
+  },
+  "discoveryCounts": {
+    "users": 2,
+    "subscriptions": 4,
+    "accountScopedRows": 0,
+    "restaurantScopedRows": 4,
+    "invoices": 1,
+    "orphanOwnerMismatch": 0
+  },
+  "invoices": [
+    {
+      "id": 900001,
+      "userId": 14760004,
+      "subscriptionId": 630002,
+      "restaurantId": 720005,
+      "planId": 30001,
+      "status": "active"
+    }
+  ],
+  "plan": {
+    "generatedAt": "2026-06-08T18:53:12.408Z",
+    "ownerCount": 2,
+    "summary": {
+      "toUpdate": 1,
+      "toInsertExpire": 1,
+      "skip": 0,
+      "review": 0
+    },
+    "plans": [
+      {
+        "ownerId": 1,
+        "role": "admin",
+        "cohort": "H-A",
+        "protected": true,
+        "action": "UPDATE_IN_PLACE",
+        "mechanism": "R3-A",
+        "skipReason": null,
+        "winner": {
+          "id": 600001,
+          "planId": 30001,
+          "plan": "BASIC",
+          "status": "active",
+          "restaurantId": 720007
+        },
+        "losers": [],
+        "before": {
+          "accountCount": 0,
+          "scopedCount": 1,
+          "rows": [
+            {
+              "id": 600001,
+              "restaurantId": 720007,
+              "planId": 30001,
+              "plan": "BASIC",
+              "status": "active"
+            }
+          ]
+        },
+        "after": {
+          "accountCount": 1,
+          "scopedCount": 0,
+          "canonicalAccountId": 600001,
+          "expectedPlan": "BASIC",
+          "expectedStatus": "active",
+          "expireIds": []
+        }
+      },
+      {
+        "ownerId": 14760004,
+        "role": "user",
+        "cohort": "H-C",
+        "protected": false,
+        "action": "INSERT_ACCOUNT_EXPIRE_SCOPED",
+        "mechanism": "R3-B",
+        "skipReason": null,
+        "winner": {
+          "id": 600002,
+          "planId": 30002,
+          "plan": "PROFESSIONAL",
+          "status": "active",
+          "restaurantId": 720006
+        },
+        "losers": [
+          {
+            "id": 630001,
+            "planId": 30001,
+            "plan": "BASIC",
+            "restaurantId": 720003
+          },
+          {
+            "id": 630002,
+            "planId": 30001,
+            "plan": "BASIC",
+            "restaurantId": 720005
+          }
+        ],
+        "before": {
+          "accountCount": 0,
+          "scopedCount": 3,
+          "rows": [
+            {
+              "id": 600002,
+              "restaurantId": 720006,
+              "planId": 30002,
+              "plan": "PROFESSIONAL",
+              "status": "active"
+            },
+            {
+              "id": 630001,
+              "restaurantId": 720003,
+              "planId": 30001,
+              "plan": "BASIC",
+              "status": "active"
+            },
+            {
+              "id": 630002,
+              "restaurantId": 720005,
+              "planId": 30001,
+              "plan": "BASIC",
+              "status": "active"
+            }
+          ]
+        },
+        "after": {
+          "accountCount": 1,
+          "scopedCount": 3,
+          "canonicalAccountId": "NEW",
+          "expectedPlan": "PROFESSIONAL",
+          "expectedStatus": "active",
+          "expireIds": [
+            600002,
+            630001,
+            630002
+          ]
+        }
+      }
+    ]
+  },
+  "validationDecision": {
+    "safeToExecute": true,
+    "decision": "SAFE TO EXECUTE",
+    "risks": [],
+    "rowsAffected": 4,
+    "rowsCreated": 1,
+    "rowsUpdated": 1,
+    "duplicateHandling": "H-C: INSERT new account row; expire all scoped (including winner copy)",
+    "rollbackStrategy": "Full TiDB backup restore (Gate A); no partial rollback"
+  }
+}

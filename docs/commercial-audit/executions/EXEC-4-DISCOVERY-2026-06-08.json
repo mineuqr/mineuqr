@@ -1,0 +1,155 @@
+{
+  "phase": "EXEC-4A_DISCOVERY",
+  "generatedAt": "2026-06-08T18:48:43.592Z",
+  "connectionTarget": {
+    "host": "gateway01.eu-central-1.prod.aws.tidbcloud.com",
+    "port": 4000,
+    "database": "mineuqr",
+    "tls": true
+  },
+  "counts": {
+    "users": 2,
+    "subscriptions": 4,
+    "accountScopedRows": 0,
+    "restaurantScopedRows": 4,
+    "invoices": 1,
+    "orphanOwnerMismatch": 0
+  },
+  "users": [
+    {
+      "id": 1,
+      "role": "admin",
+      "createdAt": "2026-04-01T19:12:37.000Z"
+    },
+    {
+      "id": 14760004,
+      "role": "user",
+      "createdAt": "2026-06-07T16:45:56.000Z"
+    }
+  ],
+  "subscriptions": [
+    {
+      "id": 600001,
+      "userId": 1,
+      "restaurantId": 720007,
+      "planId": 30001,
+      "status": "active",
+      "billingCycle": "monthly",
+      "currentPeriodStart": "2026-06-08T03:08:15.000Z",
+      "currentPeriodEnd": "2026-07-08T03:08:15.000Z",
+      "trialEndsAt": null,
+      "stripeSubscriptionId": null,
+      "stripeCustomerId": null,
+      "canceledAt": null,
+      "createdAt": "2026-06-08T03:08:15.000Z",
+      "updatedAt": "2026-06-08T03:08:15.000Z",
+      "plan": "BASIC"
+    },
+    {
+      "id": 600002,
+      "userId": 14760004,
+      "restaurantId": 720006,
+      "planId": 30002,
+      "status": "active",
+      "billingCycle": "monthly",
+      "currentPeriodStart": "2026-06-08T03:08:18.000Z",
+      "currentPeriodEnd": "2026-07-07T21:00:00.000Z",
+      "trialEndsAt": null,
+      "stripeSubscriptionId": null,
+      "stripeCustomerId": null,
+      "canceledAt": null,
+      "createdAt": "2026-06-08T03:08:18.000Z",
+      "updatedAt": "2026-06-08T09:23:31.000Z",
+      "plan": "PROFESSIONAL"
+    },
+    {
+      "id": 630001,
+      "userId": 14760004,
+      "restaurantId": 720003,
+      "planId": 30001,
+      "status": "active",
+      "billingCycle": "monthly",
+      "currentPeriodStart": "2026-06-08T09:20:28.000Z",
+      "currentPeriodEnd": "2026-07-08T03:08:18.000Z",
+      "trialEndsAt": null,
+      "stripeSubscriptionId": null,
+      "stripeCustomerId": null,
+      "canceledAt": null,
+      "createdAt": "2026-06-08T09:20:28.000Z",
+      "updatedAt": "2026-06-08T09:22:16.000Z",
+      "plan": "BASIC"
+    },
+    {
+      "id": 630002,
+      "userId": 14760004,
+      "restaurantId": 720005,
+      "planId": 30001,
+      "status": "active",
+      "billingCycle": "monthly",
+      "currentPeriodStart": "2026-06-08T09:23:39.000Z",
+      "currentPeriodEnd": "2026-07-08T09:23:39.000Z",
+      "trialEndsAt": null,
+      "stripeSubscriptionId": null,
+      "stripeCustomerId": null,
+      "canceledAt": null,
+      "createdAt": "2026-06-08T09:23:38.000Z",
+      "updatedAt": "2026-06-08T09:23:38.000Z",
+      "plan": "BASIC"
+    }
+  ],
+  "invoices": [
+    {
+      "id": 900001,
+      "userId": 14760004,
+      "subscriptionId": 630002,
+      "restaurantId": 720005,
+      "planId": 30001,
+      "status": "active"
+    }
+  ],
+  "renewalNotificationCounts": [
+    {
+      "subscriptionId": null,
+      "c": 88
+    },
+    {
+      "subscriptionId": 600002,
+      "c": 2
+    },
+    {
+      "subscriptionId": 630001,
+      "c": 1
+    }
+  ],
+  "orphanOwnerMismatch": [],
+  "planCatalog": [
+    {
+      "id": 30001,
+      "nameEn": "Basic Plan",
+      "priceMonthly": "19.00",
+      "priceYearly": "175.00"
+    },
+    {
+      "id": 30002,
+      "nameEn": "Professional Plan",
+      "priceMonthly": "39.00",
+      "priceYearly": "349.00"
+    },
+    {
+      "id": 30003,
+      "nameEn": "Enterprise Plan",
+      "priceMonthly": "99.00",
+      "priceYearly": "899.00"
+    }
+  ],
+  "restaurantsByUser": [
+    {
+      "userId": 1,
+      "cnt": 1
+    },
+    {
+      "userId": 14760004,
+      "cnt": 4
+    }
+  ]
+}

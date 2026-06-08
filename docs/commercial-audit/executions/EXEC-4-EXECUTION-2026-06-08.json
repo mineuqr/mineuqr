@@ -1,0 +1,64 @@
+{
+  "phase": "EXEC-4D_EXECUTION_COMPLETE",
+  "generatedAt": "2026-06-08T19:07:39.978Z",
+  "connectionTarget": {
+    "host": "gateway01.eu-central-1.prod.aws.tidbcloud.com",
+    "port": 4000,
+    "database": "mineuqr",
+    "tls": true
+  },
+  "preDiscovery": {
+    "users": 2,
+    "subscriptions": 4,
+    "accountScopedRows": 0,
+    "restaurantScopedRows": 4,
+    "invoices": 1,
+    "orphanOwnerMismatch": 0
+  },
+  "planSummary": {
+    "toUpdate": 1,
+    "toInsertExpire": 1,
+    "skip": 0,
+    "review": 0
+  },
+  "safety": {
+    "safeToExecute": true,
+    "decision": "SAFE TO EXECUTE",
+    "risks": [],
+    "rowsAffected": 4,
+    "rowsCreated": 1,
+    "rowsUpdated": 1,
+    "duplicateHandling": "H-C: INSERT new account row; expire all scoped (including winner copy)",
+    "rollbackStrategy": "Full TiDB backup restore (Gate A); no partial rollback"
+  },
+  "execution": {
+    "phase": "EXEC-4D_EXECUTION",
+    "generatedAt": "2026-06-08T19:07:39.978Z",
+    "protectedOwners": [
+      1
+    ],
+    "log": [
+      {
+        "ownerId": 1,
+        "mechanism": "R3-A",
+        "action": "UPDATE_IN_PLACE",
+        "subscriptionId": 600001,
+        "affectedRows": 1
+      },
+      {
+        "ownerId": 14760004,
+        "mechanism": "R3-B",
+        "action": "INSERT_ACCOUNT_EXPIRE_SCOPED",
+        "winnerSourceId": 600002,
+        "newAccountId": 660001,
+        "expireIds": [
+          600002,
+          630001,
+          630002
+        ],
+        "inserted": 1,
+        "expired": 3
+      }
+    ]
+  }
+}

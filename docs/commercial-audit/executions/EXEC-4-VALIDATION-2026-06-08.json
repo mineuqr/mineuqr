@@ -1,0 +1,31 @@
+{
+  "phase": "EXEC-4E_POST_VALIDATION",
+  "generatedAt": "2026-06-08T19:08:34.242Z",
+  "pass": true,
+  "metrics": {
+    "totalAccountRows": 2,
+    "entitledAccountRows": 2,
+    "activeScopedRowsRemaining": 0
+  },
+  "perOwner": [
+    {
+      "ownerId": 1,
+      "role": "admin",
+      "accountRowCount": 1,
+      "entitledAccountCount": 1,
+      "activeScopedCount": 0,
+      "canonicalPlan": "ADMIN (role bypass — CRS uses admin plan)",
+      "crsExpectation": "ADMIN via role bypass"
+    },
+    {
+      "ownerId": 14760004,
+      "role": "user",
+      "accountRowCount": 1,
+      "entitledAccountCount": 1,
+      "activeScopedCount": 0,
+      "canonicalPlan": "PROFESSIONAL",
+      "crsExpectation": "PROFESSIONAL"
+    }
+  ],
+  "remainingWork": []
+}
