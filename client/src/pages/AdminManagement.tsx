@@ -42,7 +42,12 @@ import {
   AdminLoadingState,
   ResponsiveOperationsBar,
 } from "@/components/admin/operations";
-import { computeAdminKPIs } from "@/lib/admin/computeAdminKPIs";
+import { mapDashboardSummaryToKPIs } from "@/lib/admin/dashboardSummaryKpis";
+import {
+  isOwnerEntitled,
+  ownerPlanLabel,
+  ownerSubscriptionStatus,
+} from "@/lib/admin/ownerCommercialDisplay";
 import { formatAdminSubscriptionPrice } from "@/lib/admin/formatAdminCurrency";
 import { formatSubscriptionEndDate } from "@/lib/subscription";
 import type { BillingCycle } from "@/lib/subscription";
@@ -72,8 +77,32 @@ function UsersSection() {
   const [bulkNotifyDialogOpen, setBulkNotifyDialogOpen] = useState(false);
   const [bulkNotifyMessage, setBulkNotifyMessage] = useState("");
 
-  const { data: allUsers, isLoading: usersLoading, refetch: refetchUsers } = trpc.admin.listAllUsersWithSubscriptions.useQuery();
+  const { data: overviewData, isLoading: overviewLoading, refetch: refetchOverview } =
+    trpc.admin.getOwnerOverviewList.useQuery();
+  const { data: restaurantListData, refetch: refetchRestaurantList } =
+    trpc.admin.listRestaurants.useQuery();
   const { data: plans } = trpc.subscription.listPlans.useQuery();
+
+  const allUsers = useMemo(() => {
+    const restaurantsByUser = new Map<number, { id: number }[]>();
+    for (const item of restaurantListData?.items ?? []) {
+      const uid = item.restaurant.userId;
+      if (!restaurantsByUser.has(uid)) restaurantsByUser.set(uid, []);
+      restaurantsByUser.get(uid)!.push({ id: item.restaurant.id });
+    }
+    return (overviewData?.items ?? []).map((item) => ({
+      ...item.owner,
+      commercial: item.commercial,
+      restaurants: restaurantsByUser.get(item.owner.id) ?? [],
+    }));
+  }, [overviewData, restaurantListData]);
+
+  const refetchUsers = () => {
+    void refetchOverview();
+    void refetchRestaurantList();
+  };
+
+  const usersLoading = overviewLoading;
 
   const updateRoleMutation = trpc.admin.updateUserRole.useMutation({
     onSuccess: () => {
@@ -196,10 +225,11 @@ function UsersSection() {
   const openEditSubDialog = (u: any) => {
     setSubDialogUser(u);
     setSubDialogMode("edit");
-    setSubPlanId(u.subscription?.planId?.toString() || "");
-    setSubBillingCycle(u.subscription?.billingCycle || "monthly");
-    setSubStatus(u.subscription?.status || "active");
-    setSubEndDate(u.subscription?.currentPeriodEnd ? u.subscription.currentPeriodEnd.split('T')[0] : "");
+    const c = u.commercial;
+    setSubPlanId(c?.planId?.toString() || "");
+    setSubBillingCycle(c?.billingCycle || "monthly");
+    setSubStatus(c?.subscriptionStatus || "active");
+    setSubEndDate(c?.currentPeriodEnd ? c.currentPeriodEnd.split("T")[0] : "");
   };
 
   const handleSubSubmit = () => {
@@ -287,7 +317,7 @@ function UsersSection() {
           ) : null
         }
         secondary={
-          u.subscription ? (
+          isOwnerEntitled(u.commercial) ? (
             <>
               <Button
                 size="sm"
@@ -309,7 +339,7 @@ function UsersSection() {
                 onClick={() =>
                   generateInvoiceMutation.mutate({
                     userId: u.id,
-                    subscriptionId: u.subscription?.id || 0,
+                    subscriptionId: u.commercial?.subscriptionId || 0,
                   })
                 }
                 disabled={generateInvoiceMutation.isPending}
@@ -423,7 +453,7 @@ function UsersSection() {
                         {u.role === "admin" ? "Admin" : "User"}
                       </Badge>
                       <span className="font-medium text-foreground">{u.name || (language === "ar" ? "بدون اسم" : "No name")}</span>
-                      {u.subscription ? getStatusBadge(u.subscription.status) : (
+                      {isOwnerEntitled(u.commercial) ? getStatusBadge(ownerSubscriptionStatus(u.commercial)) : (
                         <Badge variant="outline" className="text-xs text-muted-foreground">
                           {language === "ar" ? "بدون اشتراك" : "No subscription"}
                         </Badge>
@@ -437,14 +467,14 @@ function UsersSection() {
                       <div className="flex flex-wrap gap-x-2">
                         <dt className="text-muted-foreground">{language === "ar" ? "الباقة" : "Plan"}:</dt>
                         <dd className="text-muted-foreground">
-                          {u.plan ? (language === "ar" ? u.plan.nameAr : u.plan.nameEn) : "-"}
+                          {ownerPlanLabel(u.commercial)}
                         </dd>
                       </div>
                       <div className="flex flex-wrap gap-x-2">
                         <dt className="text-muted-foreground">{language === "ar" ? "تاريخ الانتهاء" : "End date"}:</dt>
                         <dd dir="ltr" className="tabular-nums text-muted-foreground">
-                          {u.subscription?.currentPeriodEnd
-                            ? formatSubscriptionEndDate(u.subscription.currentPeriodEnd, language === "ar" ? "ar" : "en")
+                          {u.commercial?.currentPeriodEnd
+                            ? formatSubscriptionEndDate(u.commercial.currentPeriodEnd, language === "ar" ? "ar" : "en")
                             : "-"}
                         </dd>
                       </div>
@@ -514,18 +544,18 @@ function UsersSection() {
                           )}
                         </td>
                         <td className="px-4 py-3 text-sm">
-                          {u.subscription ? getStatusBadge(u.subscription.status) : (
+                          {isOwnerEntitled(u.commercial) ? getStatusBadge(ownerSubscriptionStatus(u.commercial)) : (
                             <Badge variant="outline" className="text-xs text-muted-foreground">
                               {language === "ar" ? "بدون اشتراك" : "No subscription"}
                             </Badge>
                           )}
                         </td>
                         <td className="px-4 py-3 text-sm text-muted-foreground">
-                          {u.plan ? (language === "ar" ? u.plan.nameAr : u.plan.nameEn) : "-"}
+                          {ownerPlanLabel(u.commercial)}
                         </td>
                         <td className="px-4 py-3 text-sm text-muted-foreground" dir="ltr">
-                          {u.subscription?.currentPeriodEnd
-                            ? formatSubscriptionEndDate(u.subscription.currentPeriodEnd, language === "ar" ? "ar" : "en")
+                          {u.commercial?.currentPeriodEnd
+                            ? formatSubscriptionEndDate(u.commercial.currentPeriodEnd, language === "ar" ? "ar" : "en")
                             : "-"}
                         </td>
                         <td className="min-w-[220px] px-4 py-3 text-sm">{renderUserActions(u)}</td>
@@ -785,25 +815,31 @@ export default function AdminManagement() {
   const { data: plans } = trpc.subscription.listPlans.useQuery(undefined, {
     enabled: adminEnabled,
   });
-  const { data: restaurantsWithSubs, isLoading: restaurantsLoading, refetch: refetchSubs } =
-    trpc.admin.listAllRestaurantsWithSubscriptions.useQuery(undefined, { enabled: adminEnabled });
-  // Use restaurantsWithSubs as the main restaurants list for admin
-  const restaurants = restaurantsWithSubs;
-  const refetchRestaurants = refetchSubs;
+  const { data: restaurantListData, isLoading: restaurantsLoading, refetch: refetchRestaurants } =
+    trpc.admin.listRestaurants.useQuery(undefined, { enabled: adminEnabled });
+  const { data: dashboardSummary, isLoading: summaryLoading, refetch: refetchSummary } =
+    trpc.admin.getDashboardSummary.useQuery(undefined, { enabled: adminEnabled });
   const { data: countries } = trpc.countryCurrency.getAll.useQuery();
-  const { data: adminStats, isLoading: statsLoading } = trpc.admin.getStatistics.useQuery(
-    undefined,
-    { enabled: adminEnabled }
-  );
-  const { data: extendedStats, isLoading: extendedLoading } = trpc.admin.getExtendedStats.useQuery(
-    undefined,
-    { enabled: adminEnabled }
+
+  const restaurants = useMemo(
+    () =>
+      (restaurantListData?.items ?? []).map((item) => ({
+        ...item.restaurant,
+        ownerName: item.ownerName,
+        ownerCommercial: item.ownerCommercial,
+      })),
+    [restaurantListData]
   );
 
-  const kpiLoading = restaurantsLoading || statsLoading || extendedLoading;
+  const refetchCanonicalReads = () => {
+    void refetchRestaurants();
+    void refetchSummary();
+  };
+
+  const kpiLoading = summaryLoading;
   const kpis = useMemo(
-    () => computeAdminKPIs(restaurantsWithSubs, adminStats, extendedStats),
-    [restaurantsWithSubs, adminStats, extendedStats]
+    () => mapDashboardSummaryToKPIs(dashboardSummary),
+    [dashboardSummary]
   );
 
   const handleCountryChange = (countryCode: string) => {
@@ -846,8 +882,7 @@ export default function AdminManagement() {
     onSuccess: () => {
       toast.success(t('admin.restaurantDeleted'));
       setDeleteRestaurantId(null);
-      refetchRestaurants();
-      refetchSubs();
+      refetchCanonicalReads();
     },
     onError: (error: any) => {
       const errorMessage = error?.message || t('admin.deleteError') || 'حدث خطأ في حذف المطعم';
@@ -928,8 +963,7 @@ export default function AdminManagement() {
       toast.success(t('admin.restaurantCreated'));
       setShowCreateDialog(false);
       resetForm();
-      refetchRestaurants();
-      refetchSubs();
+      refetchCanonicalReads();
     } catch (err: any) {
       toast.error(err?.message || t('admin.createError'));
     } finally {
@@ -943,8 +977,7 @@ export default function AdminManagement() {
   const updateSubscriptionMutation = trpc.admin.updateRestaurantSubscription.useMutation({
     onSuccess: () => {
       toast.success(t('admin.subscriptionUpdated'));
-      refetchRestaurants();
-      refetchSubs();
+      refetchCanonicalReads();
     },
     onError: (err) => toast.error(err.message),
   });
@@ -952,8 +985,7 @@ export default function AdminManagement() {
   const cancelSubscriptionMutation = trpc.admin.cancelRestaurantSubscription.useMutation({
     onSuccess: () => {
       toast.success(t('admin.subscriptionCanceled'));
-      refetchRestaurants();
-      refetchSubs();
+      refetchCanonicalReads();
     },
     onError: (err) => toast.error(err.message),
   });
@@ -962,28 +994,18 @@ export default function AdminManagement() {
     onSuccess: () => {
       setDeleteRestaurantSubId(null);
       toast.success(t('admin.subscriptionDeleted'));
-      refetchRestaurants();
-      refetchSubs();
+      refetchCanonicalReads();
     },
     onError: (err) => toast.error(err.message),
   });
-
-    const getSubscriptionForRestaurant = (restaurantId: number) => {
-    if (!restaurantsWithSubs) return null;
-    const found = restaurantsWithSubs.find((r: any) => r.id === restaurantId);
-    return found?.subscription || null;
-  };
-  const getSubscriptionStatus = (subscription: any): string => {
-    if (!subscription) return "inactive";
-    return subscription.status;
-  };
 
   const filteredRestaurants = useMemo(() => {
     if (!restaurants) return [];
     const query = searchQuery.toLowerCase().trim();
     return restaurants.filter((restaurant: any) => {
-      const subscription = getSubscriptionForRestaurant(restaurant.id);
-      const status = getSubscriptionStatus(subscription);
+      const status = isOwnerEntitled(restaurant.ownerCommercial)
+        ? ownerSubscriptionStatus(restaurant.ownerCommercial)
+        : "inactive";
       const matchesSearch =
         !query ||
         (restaurant.nameAr || "").toLowerCase().includes(query) ||
@@ -994,7 +1016,7 @@ export default function AdminManagement() {
       const matchesStatus = statusFilter === "all" || status === statusFilter;
       return matchesSearch && matchesStatus;
     });
-  }, [restaurants, searchQuery, statusFilter, restaurantsWithSubs]);
+  }, [restaurants, searchQuery, statusFilter]);
 
   const hasRestaurants = (restaurants?.length ?? 0) > 0;
 
@@ -1039,8 +1061,10 @@ export default function AdminManagement() {
           expiringSoon: t("admin.expiringSoon"),
           estimatedMrr: t("admin.estimatedMrr"),
           totalUsers: t("admin.totalUsers"),
-          activeRestaurantsHint: t("admin.activeRestaurantsHint"),
-          activeSubscriptionsHint: t("admin.activeAndTrial"),
+          activeRestaurantsHint:
+            language === "ar" ? "مطاعم نشطة (تشغيلي)" : "Active venues (operational)",
+          activeSubscriptionsHint:
+            language === "ar" ? "مالكون — مصدر موحّد" : "Owner count — canonical",
           expiringSoonHint: t("admin.expiringSoonHint"),
           estimatedMrrHint: t("admin.estimatedMrrHint"),
         }}
@@ -1121,8 +1145,9 @@ export default function AdminManagement() {
         ) : (
           <div className="grid gap-4">
             {filteredRestaurants.map((restaurant: any) => {
-              const subscription = getSubscriptionForRestaurant(restaurant.id);
-              const status = getSubscriptionStatus(subscription);
+              const commercial = restaurant.ownerCommercial;
+              const entitled = isOwnerEntitled(commercial);
+              const status = entitled ? ownerSubscriptionStatus(commercial) : "inactive";
 
               return (
                 <Card
@@ -1190,35 +1215,39 @@ export default function AdminManagement() {
                           </dd>
                         </div>
                       ) : null}
-                      {subscription ? (
+                      {entitled ? (
                         <>
                           <div>
                             <dt className="text-muted-foreground">{t("admin.plan")}</dt>
                             <dd className="ms-0 mt-0.5 text-foreground">
-                              {plans?.find((p: any) => p.id === subscription.planId)?.nameAr || subscription.planId}
+                              {ownerPlanLabel(commercial)}
                             </dd>
                           </div>
                           <div>
                             <dt className="text-muted-foreground">{t("admin.billingCycle")}</dt>
                             <dd className="ms-0 mt-0.5 text-foreground">
-                              {t(`subscription.billingCycle.${subscription.billingCycle}`)}
+                              {commercial.billingCycle
+                                ? t(`subscription.billingCycle.${commercial.billingCycle}`)
+                                : "-"}
                             </dd>
                           </div>
                           <div>
                             <dt className="text-muted-foreground">{t("admin.periodEnd")}</dt>
                             <dd className="ms-0 mt-0.5 text-foreground" dir="ltr">
-                              {formatSubscriptionEndDate(
-                                subscription.currentPeriodEnd,
-                                language === "ar" ? "ar" : "en"
-                              )}
+                              {commercial.currentPeriodEnd
+                                ? formatSubscriptionEndDate(
+                                    commercial.currentPeriodEnd,
+                                    language === "ar" ? "ar" : "en"
+                                  )
+                                : "-"}
                             </dd>
                           </div>
                           <div className="sm:col-span-2">
                             <dt className="text-muted-foreground">{t("admin.subscriptionPrice")}</dt>
                             <dd className="ms-0 mt-0.5" dir="ltr">
                               {formatAdminSubscriptionPrice(
-                                plans?.find((p: any) => p.id === subscription.planId),
-                                subscription.billingCycle as BillingCycle,
+                                plans?.find((p: any) => p.id === commercial.planId),
+                                (commercial.billingCycle ?? "monthly") as BillingCycle,
                                 language === "ar" ? "ar" : "en"
                               )}
                             </dd>
@@ -1239,7 +1268,7 @@ export default function AdminManagement() {
                       }
                       secondary={
                         <>
-                          {!subscription ? (
+                          {!entitled ? (
                             <Button
                               size="sm"
                               variant="outline"
@@ -1263,22 +1292,22 @@ export default function AdminManagement() {
                               {t("admin.activateSubscription")}
                             </Button>
                           ) : null}
-                          {subscription && subscription.status === "active" ? (
+                          {entitled && commercial.subscriptionStatus === "active" && commercial.subscriptionId ? (
                             <>
                               <Button
                                 size="sm"
                                 variant="outline"
                                 className={cn(adminDash.opBtn, adminActionBtn.info)}
                                 onClick={() => {
-                                  setEditSubId(subscription.id);
-                                  setEditSubPlanId(subscription.planId?.toString() || "");
-                                  setEditSubBillingCycle(subscription.billingCycle || "monthly");
+                                  setEditSubId(commercial.subscriptionId);
+                                  setEditSubPlanId(commercial.planId?.toString() || "");
+                                  setEditSubBillingCycle(commercial.billingCycle || "monthly");
                                   setEditSubEndDate(
-                                    subscription.currentPeriodEnd
-                                      ? new Date(subscription.currentPeriodEnd).toISOString().split("T")[0]
+                                    commercial.currentPeriodEnd
+                                      ? new Date(commercial.currentPeriodEnd).toISOString().split("T")[0]
                                       : ""
                                   );
-                                  setEditSubStatus(subscription.status);
+                                  setEditSubStatus(commercial.subscriptionStatus || "active");
                                   setEditSubDialogOpen(true);
                                 }}
                               >
@@ -1289,7 +1318,7 @@ export default function AdminManagement() {
                                 size="sm"
                                 variant="outline"
                                 className={cn(adminDash.opBtn, adminActionBtn.danger)}
-                                onClick={() => setDeleteRestaurantSubId(subscription.id)}
+                                onClick={() => setDeleteRestaurantSubId(commercial.subscriptionId!)}
                                 disabled={deleteSubscriptionMutation.isPending}
                               >
                                 {deleteSubscriptionMutation.isPending ? (
@@ -1301,14 +1330,14 @@ export default function AdminManagement() {
                               </Button>
                             </>
                           ) : null}
-                          {subscription && subscription.status === "canceled" ? (
+                          {entitled && commercial.subscriptionStatus === "canceled" && commercial.subscriptionId ? (
                             <Button
                               size="sm"
                               variant="outline"
                               className={cn(adminDash.opBtn, adminActionBtn.success)}
                               onClick={() =>
                                 updateSubscriptionMutation.mutate({
-                                  subscriptionId: subscription.id,
+                                  subscriptionId: commercial.subscriptionId!,
                                   status: "active",
                                 })
                               }

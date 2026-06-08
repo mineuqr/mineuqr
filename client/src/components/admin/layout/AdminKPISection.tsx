@@ -5,8 +5,8 @@ import {
   Store,
   Users,
 } from "lucide-react";
-import type { AdminKPIValues } from "@/lib/admin/computeAdminKPIs";
-import { ADMIN_EXPIRING_SOON_DAYS } from "@/lib/admin/computeAdminKPIs";
+import type { AdminKPIValues } from "@/lib/admin/dashboardSummaryKpis";
+import { ADMIN_EXPIRING_SOON_DAYS } from "@/lib/admin/dashboardSummaryKpis";
 import { formatAdminKpiNumber, formatAdminRevenueUSD } from "@/lib/admin/formatAdminCurrency";
 import { AdminLoadingState } from "../operations/AdminLoadingState";
 import { AdminSection } from "./AdminSection";

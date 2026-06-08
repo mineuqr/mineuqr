@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuthGate } from "@/_core/hooks/useAuthGate";
@@ -11,7 +11,7 @@ import {
   UtensilsCrossed, LayoutGrid, Tag, FolderOpen
 } from "lucide-react";
 import {
-  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area
 } from "recharts";
 import { toast } from "sonner";
@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { adminQueriesEnabled } from "@/lib/queryRuntime";
 import { formatRiyadhDate, todayYmd } from "@/lib/datetime";
 import { formatAdminRevenueUSD } from "@/lib/admin/formatAdminCurrency";
+import { ownerPlanLabel, ownerSubscriptionStatus } from "@/lib/admin/ownerCommercialDisplay";
 
 const statDash = {
   shell: "min-h-screen bg-background",
@@ -33,47 +34,51 @@ const statDash = {
   kpiCard: "rounded-xl border border-border/50 bg-card/40 shadow-sm",
 };
 
-interface SubDetail {
-  id: number;
-  restaurantName: string;
-  ownerEmail: string;
-  planName: string;
-  billingCycle: string;
-  status: string;
-  monthlyPrice: number;
-  currentPeriodStart: string;
-  currentPeriodEnd: string;
-}
-
-interface PlanCount {
-  planName: string;
-  count: number;
-}
-
 export default function Statistics() {
   const { t, language } = useLanguage();
   const gate = useAuthGate();
   const { user, isAuthenticated, authPending } = gate;
   const [, setLocation] = useLocation();
-  const [months] = useState(12);
   const adminEnabled = adminQueriesEnabled(
     authPending,
     isAuthenticated,
     user?.role === "admin"
   );
-  const { data: stats, isLoading: statsLoading } = trpc.admin.getStatistics.useQuery(
-    undefined,
-    { enabled: adminEnabled }
+
+  const { data: dashboardSummary, isLoading: summaryLoading } =
+    trpc.admin.getDashboardSummary.useQuery(undefined, { enabled: adminEnabled });
+  const { data: mrrData, isLoading: mrrLoading } =
+    trpc.analytics.getMRR.useQuery(undefined, { enabled: adminEnabled });
+  const { data: arrData, isLoading: arrLoading } =
+    trpc.analytics.getARR.useQuery(undefined, { enabled: adminEnabled });
+  const { data: planDistribution, isLoading: planDistLoading } =
+    trpc.analytics.getPlanDistribution.useQuery(undefined, { enabled: adminEnabled });
+  const { data: subscriberCounts, isLoading: subscriberLoading } =
+    trpc.analytics.getSubscriberCounts.useQuery(undefined, { enabled: adminEnabled });
+  const { data: subscriptionOverview, isLoading: overviewLoading } =
+    trpc.admin.getSubscriptionOverview.useQuery(undefined, { enabled: adminEnabled });
+  const { data: extendedStats, isLoading: extendedLoading } =
+    trpc.admin.getExtendedStats.useQuery(undefined, { enabled: adminEnabled });
+
+  /** EXEC-5 dual-read: revenue chart — canonical analytics.getRevenueByMonth deferred in EXEC-3. */
+  const { data: revenueData, isLoading: revenueLoading } =
+    trpc.admin.getRevenueByMonth.useQuery(undefined, { enabled: adminEnabled });
+  /** EXEC-5 dual-read: renewal/churn rates — no canonical equivalent yet. */
+  const { data: legacyStats, isLoading: legacyStatsLoading } =
+    trpc.admin.getStatistics.useQuery(undefined, { enabled: adminEnabled });
+
+  const overviewRows = useMemo(
+    () => subscriptionOverview?.owners ?? [],
+    [subscriptionOverview]
   );
-  const { data: revenueData, isLoading: revenueLoading } = trpc.admin.getRevenueByMonth.useQuery(
-    undefined,
-    { enabled: adminEnabled }
-  );
-  const { data: subscriptionDetails, isLoading: detailsLoading } =
-    trpc.admin.getSubscriptionDetails.useQuery(undefined, { enabled: adminEnabled });
-  const { data: extendedStats, isLoading: extendedLoading } = trpc.admin.getExtendedStats.useQuery(
-    undefined,
-    { enabled: adminEnabled }
+
+  const planChartData = useMemo(
+    () =>
+      (planDistribution?.distribution ?? []).map((entry) => ({
+        planName: entry.planCode,
+        count: entry.ownerCount,
+      })),
+    [planDistribution]
   );
 
   if (gate.isPending) {
@@ -95,31 +100,31 @@ export default function Statistics() {
   }
 
   const exportToCSV = () => {
-    if (!subscriptionDetails) return;
+    if (overviewRows.length === 0) return;
 
     const headers = [
-      "Restaurant Name",
       "Owner Email",
-      "Plan Name",
-      "Billing Cycle",
+      "Owner Name",
+      "Plan",
       "Status",
-      "Monthly Price",
-      "Current Period Start",
-      "Current Period End",
+      "Billing Cycle",
+      "Period End",
     ];
 
-    const rows = (subscriptionDetails as SubDetail[]).map((sub: SubDetail) => [
-      sub.restaurantName,
-      sub.ownerEmail,
-      sub.planName,
-      sub.billingCycle,
-      sub.status,
-      sub.monthlyPrice.toFixed(2),
-      formatRiyadhDate(sub.currentPeriodStart, "en-US"),
-      formatRiyadhDate(sub.currentPeriodEnd, "en-US"),
+    const rows = overviewRows.map((entry) => [
+      entry.owner.email ?? "",
+      entry.owner.name ?? "",
+      ownerPlanLabel(entry.commercial),
+      ownerSubscriptionStatus(entry.commercial),
+      entry.commercial.billingCycle ?? "",
+      entry.commercial.currentPeriodEnd
+        ? formatRiyadhDate(entry.commercial.currentPeriodEnd, "en-US")
+        : "",
     ]);
 
-    const csv = [headers, ...rows].map((row: string[]) => row.map((cell: string) => `"${cell}"`).join(",")).join("\n");
+    const csv = [headers, ...rows]
+      .map((row: string[]) => row.map((cell: string) => `"${cell}"`).join(","))
+      .join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
@@ -130,7 +135,18 @@ export default function Statistics() {
 
   const COLORS = ["#00d4ff", "#ff8c42", "#4ade80", "#f87171", "#a78bfa"];
 
-  if (statsLoading || revenueLoading || detailsLoading || extendedLoading) {
+  const pageLoading =
+    summaryLoading ||
+    mrrLoading ||
+    arrLoading ||
+    planDistLoading ||
+    subscriberLoading ||
+    overviewLoading ||
+    extendedLoading ||
+    revenueLoading ||
+    legacyStatsLoading;
+
+  if (pageLoading) {
     return (
       <div className={statDash.shell}>
         <div className={statDash.shellGlow} aria-hidden />
@@ -138,6 +154,9 @@ export default function Statistics() {
       </div>
     );
   }
+
+  const mrr = mrrData?.mrr ?? dashboardSummary?.mrr ?? 0;
+  const arr = arrData?.arr ?? dashboardSummary?.arr ?? 0;
 
   return (
     <div className={statDash.shell}>
@@ -155,7 +174,7 @@ export default function Statistics() {
             <div>
               <h1 className={statDash.pageTitle}>{t("admin.statistics") || "Statistics"}</h1>
               <p className={statDash.sectionSub}>
-                {language === "ar" ? "تحليلات المنصة والاشتراكات" : "Platform and subscription analytics"}
+                {language === "ar" ? "تحليلات المنصة والاشتراكات (مصدر موحّد)" : "Platform analytics (canonical authority)"}
               </p>
             </div>
           </div>
@@ -189,7 +208,7 @@ export default function Statistics() {
                 <Users className="w-4 h-4 text-blue-400" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{extendedStats?.totalUsers || 0}</div>
+                <div className="text-2xl font-bold">{dashboardSummary?.totalUsers ?? extendedStats?.totalUsers ?? 0}</div>
               </CardContent>
             </Card>
 
@@ -229,19 +248,19 @@ export default function Statistics() {
           <div>
             <h2 className={statDash.sectionTitle}>{t("admin.totalSubscribers") || "Subscriptions"}</h2>
             <p className={statDash.sectionSub}>
-              {language === "ar" ? "أداء الاشتراكات والإيرادات" : "Subscription performance and revenue"}
+              {language === "ar" ? "أداء الاشتراكات والإيرادات (حسب المالك)" : "Owner-based subscription performance"}
             </p>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           <Card className={statDash.kpiCard}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{t("admin.totalSubscribers") || "Total Subscribers"}</CardTitle>
+              <CardTitle className="text-sm font-medium">{t("admin.totalSubscribers") || "Entitled Owners"}</CardTitle>
               <Users className="w-4 h-4 text-primary" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats?.totalSubscribers || 0}</div>
+              <div className="text-2xl font-bold">{subscriberCounts?.entitledOwners ?? 0}</div>
               <p className="text-xs text-muted-foreground mt-1">
-                {stats?.activeSubscribers || 0} {t("admin.active") || "Active"}
+                {subscriberCounts?.activeSubscriptions ?? 0} {t("admin.active") || "Active"}
               </p>
             </CardContent>
           </Card>
@@ -253,36 +272,36 @@ export default function Statistics() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold" dir="ltr">
-                {formatAdminRevenueUSD(stats?.totalRevenue ?? 0, language === "ar" ? "ar" : "en")}
+                {formatAdminRevenueUSD(mrr, language === "ar" ? "ar" : "en")}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                {t("admin.estimatedMrrHint") || "Estimated from active paid subscriptions (USD)"}
+                {t("admin.estimatedMrrHint") || "Canonical owner-based MRR"}
               </p>
+            </CardContent>
+          </Card>
+
+          <Card className={statDash.kpiCard}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">ARR (USD)</CardTitle>
+              <TrendingUp className="w-4 h-4 text-green-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold" dir="ltr">
+                {formatAdminRevenueUSD(arr, language === "ar" ? "ar" : "en")}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">MRR × 12</p>
             </CardContent>
           </Card>
 
           <Card className={statDash.kpiCard}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">{t("admin.renewalRate") || "Renewal Rate"}</CardTitle>
-              <TrendingUp className="w-4 h-4 text-green-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.renewalRate?.toFixed(1) || "0"}%</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {t("admin.activeAndTrial") || "Active & Trial"}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className={statDash.kpiCard}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{t("admin.churnRate") || "Churn Rate"}</CardTitle>
               <RotateCcw className="w-4 h-4 text-red-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats?.churnRate?.toFixed(1) || "0"}%</div>
+              <div className="text-2xl font-bold">{legacyStats?.renewalRate?.toFixed(1) || "0"}%</div>
               <p className="text-xs text-muted-foreground mt-1">
-                {t("admin.canceledAndExpired") || "Canceled & Expired"}
+                {language === "ar" ? "مصدر legacy (مؤقت)" : "Legacy source (temporary)"}
               </p>
             </CardContent>
           </Card>
@@ -293,6 +312,9 @@ export default function Statistics() {
           <Card className={statDash.card}>
             <CardHeader>
               <CardTitle>{t("admin.revenueByMonth") || "Revenue by Month"}</CardTitle>
+              <p className="text-xs text-muted-foreground">
+                {language === "ar" ? "مصدر legacy — لم يُنقل بعد" : "Legacy source — pending canonical API"}
+              </p>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
@@ -331,13 +353,13 @@ export default function Statistics() {
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-6">
           <Card className={statDash.card}>
             <CardHeader>
-              <CardTitle>{t("admin.subscriptionsByPlan") || "Subscriptions by Plan"}</CardTitle>
+              <CardTitle>{t("admin.subscriptionsByPlan") || "Owners by Plan"}</CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
                   <Pie
-                    data={stats?.subscriptionsByPlan || []}
+                    data={planChartData}
                     dataKey="count"
                     nameKey="planName"
                     cx="50%"
@@ -345,7 +367,7 @@ export default function Statistics() {
                     outerRadius={80}
                     label
                   >
-                    {(stats?.subscriptionsByPlan as PlanCount[] | undefined)?.map((_entry: PlanCount, index: number) => (
+                    {planChartData.map((_entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
@@ -363,20 +385,20 @@ export default function Statistics() {
             <CardContent>
               <div className="grid grid-cols-2 gap-4">
                 <div className="text-center p-4 rounded-lg bg-primary/10">
-                  <div className="text-2xl font-bold text-primary">{stats?.activeSubscribers || 0}</div>
+                  <div className="text-2xl font-bold text-primary">{subscriberCounts?.activeSubscriptions ?? 0}</div>
                   <div className="text-sm text-muted-foreground mt-1">{t("admin.active") || "Active"}</div>
                 </div>
                 <div className="text-center p-4 rounded-lg bg-blue-500/10">
-                  <div className="text-2xl font-bold text-blue-500">{stats?.trialSubscribers || 0}</div>
+                  <div className="text-2xl font-bold text-blue-500">{subscriberCounts?.activeTrials ?? 0}</div>
                   <div className="text-sm text-muted-foreground mt-1">{t("admin.trial") || "Trial"}</div>
                 </div>
                 <div className="text-center p-4 rounded-lg bg-yellow-500/10">
-                  <div className="text-2xl font-bold text-yellow-500">{stats?.expiredSubscribers || 0}</div>
-                  <div className="text-sm text-muted-foreground mt-1">{t("admin.expired") || "Expired"}</div>
+                  <div className="text-2xl font-bold text-yellow-500">{legacyStats?.expiredSubscribers ?? 0}</div>
+                  <div className="text-sm text-muted-foreground mt-1">{t("admin.expired") || "Expired"} (legacy)</div>
                 </div>
                 <div className="text-center p-4 rounded-lg bg-red-500/10">
-                  <div className="text-2xl font-bold text-red-500">{stats?.canceledSubscribers || 0}</div>
-                  <div className="text-sm text-muted-foreground mt-1">{t("admin.canceled") || "Canceled"}</div>
+                  <div className="text-2xl font-bold text-red-500">{legacyStats?.canceledSubscribers ?? 0}</div>
+                  <div className="text-sm text-muted-foreground mt-1">{t("admin.canceled") || "Canceled"} (legacy)</div>
                 </div>
               </div>
             </CardContent>
@@ -386,15 +408,17 @@ export default function Statistics() {
         <Card className={statDash.card}>
           <CardHeader className="border-b border-border/40 pb-4">
             <CardTitle className="text-base font-semibold">
-              {t("admin.subscriptionDetails") || "Subscription Details"}
+              {t("admin.subscriptionDetails") || "Subscription Overview"}
             </CardTitle>
+            <p className="text-xs text-muted-foreground">
+              {language === "ar" ? "صف واحد لكل مالك" : "One row per owner"}
+            </p>
           </CardHeader>
           <CardContent className="pt-4">
             <div className="overflow-x-auto rounded-lg border border-border/40">
               <table className="w-full text-sm">
                 <thead className="border-b border-border/40 bg-muted/20">
                   <tr>
-                    <th className="text-start py-2 px-2 font-semibold">{t("admin.restaurant") || "Restaurant"}</th>
                     <th className="text-start py-2 px-2 font-semibold">{t("admin.owner") || "Owner"}</th>
                     <th className="text-start py-2 px-2 font-semibold">{t("admin.plan") || "Plan"}</th>
                     <th className="text-start py-2 px-2 font-semibold">{t("admin.status") || "Status"}</th>
@@ -402,33 +426,37 @@ export default function Statistics() {
                   </tr>
                 </thead>
                 <tbody>
-                  {(subscriptionDetails as SubDetail[] | undefined)?.length === 0 && (
+                  {overviewRows.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="py-8 text-center text-muted-foreground">
+                      <td colSpan={4} className="py-8 text-center text-muted-foreground">
                         {t("common.noData") || "No data available"}
                       </td>
                     </tr>
                   )}
-                  {(subscriptionDetails as SubDetail[] | undefined)?.map((sub: SubDetail) => (
-                    <tr key={sub.id} className="border-b border-border/20 hover:bg-primary/5">
-                      <td className="py-2 px-2">{sub.restaurantName}</td>
-                      <td className="py-2 px-2 text-xs text-muted-foreground">{sub.ownerEmail}</td>
-                      <td className="py-2 px-2">{sub.planName}</td>
+                  {overviewRows.map((entry) => (
+                    <tr key={entry.owner.id} className="border-b border-border/20 hover:bg-primary/5">
+                      <td className="py-2 px-2">
+                        <div className="font-medium">{entry.owner.name ?? "-"}</div>
+                        <div className="text-xs text-muted-foreground">{entry.owner.email ?? "-"}</div>
+                      </td>
+                      <td className="py-2 px-2">{ownerPlanLabel(entry.commercial)}</td>
                       <td className="py-2 px-2">
                         <Badge
                           variant={
-                            sub.status === "active"
+                            entry.commercial.subscriptionStatus === "active"
                               ? "default"
-                              : sub.status === "trial"
+                              : entry.commercial.subscriptionStatus === "trial"
                               ? "secondary"
                               : "destructive"
                           }
                         >
-                          {sub.status}
+                          {ownerSubscriptionStatus(entry.commercial)}
                         </Badge>
                       </td>
                       <td className="py-2 px-2 text-xs">
-                        {formatRiyadhDate(sub.currentPeriodEnd, "ar-SA")}
+                        {entry.commercial.currentPeriodEnd
+                          ? formatRiyadhDate(entry.commercial.currentPeriodEnd, "ar-SA")
+                          : "-"}
                       </td>
                     </tr>
                   ))}

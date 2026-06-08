@@ -20,10 +20,24 @@ export type AdminOwnerOverview = {
     name: string | null;
     email: string | null;
     role: "user" | "admin";
-    createdAt: Date;
+    createdAt: Date | string;
   };
   commercial: OwnerCommercialState;
 };
+
+/** EXEC-5 — owner commercial slice for restaurant list display. */
+export type RestaurantOwnerCommercial = Pick<
+  OwnerCommercialState,
+  | "planCode"
+  | "planId"
+  | "planName"
+  | "subscriptionId"
+  | "subscriptionStatus"
+  | "billingCycle"
+  | "currentPeriodEnd"
+  | "commercialStatus"
+  | "trialStatus"
+>;
 
 export type AdminRestaurantListItem = {
   restaurant: {
@@ -32,14 +46,27 @@ export type AdminRestaurantListItem = {
     nameAr: string;
     nameEn: string | null;
     slug: string;
-    isActive: boolean;
+    descriptionAr: string | null;
+    ownerEmail: string | null;
     phone: string | null;
-    createdAt: Date;
+    address: string | null;
+    countryCode: string | null;
+    currencyCode: string | null;
+    isActive: boolean;
+    createdAt: Date | string;
   };
-  ownerCommercial: Pick<
-    OwnerCommercialState,
-    "planCode" | "subscriptionStatus" | "commercialStatus" | "trialStatus"
-  >;
+  ownerName: string | null;
+  ownerCommercial: RestaurantOwnerCommercial;
+};
+
+export type SubscriptionOverviewEntry = {
+  owner: {
+    id: number;
+    name: string | null;
+    email: string | null;
+    role: "user" | "admin";
+  };
+  commercial: OwnerCommercialState;
 };
 
 /**
@@ -131,7 +158,21 @@ export const adminDashboardReadRouter = router({
         owners = owners.filter((o) => o.planCode === input.planFilter);
       }
       owners.sort((a, b) => a.ownerId - b.ownerId);
-      return { owners };
+      const users = await getAllUsers();
+      const entries: SubscriptionOverviewEntry[] = owners.map((commercial) => {
+        const user = users.find((u) => u.id === commercial.ownerId);
+        const safe = user ? sanitizeUserForAdminResponse(user) : null;
+        return {
+          owner: {
+            id: commercial.ownerId,
+            name: safe?.name ?? null,
+            email: safe?.email ?? null,
+            role: safe?.role ?? "user",
+          },
+          commercial,
+        };
+      });
+      return { owners: entries };
     }),
 
   getDashboardSummary: protectedProcedure
@@ -166,36 +207,50 @@ export const adminDashboardReadRouter = router({
     if (!db) return { items: [] as AdminRestaurantListItem[] };
 
     const rows = await db.select().from(restaurants);
-    const ownerIds = [...new Set(rows.map((r) => r.userId))];
+    const users = await getAllUsers();
+    const ownerIds = Array.from(new Set(rows.map((r) => r.userId)));
     const commercials = await commercialReadService.getOwnerCommercialStates(ownerIds);
     const commercialByOwner = new Map(commercials.map((c) => [c.ownerId, c] as const));
 
+    const emptyCommercial = (): RestaurantOwnerCommercial => ({
+      planCode: "NONE",
+      planId: null,
+      planName: null,
+      subscriptionId: null,
+      subscriptionStatus: null,
+      billingCycle: null,
+      currentPeriodEnd: null,
+      commercialStatus: {
+        accountType: "NONE",
+        isPaid: false,
+        isEntitled: false,
+        countsInMrr: false,
+        countsInRevenue: false,
+        invoiceEligible: false,
+      },
+      trialStatus: {
+        isTrial: false,
+        trialEndsAt: null,
+        daysRemaining: null,
+      },
+    });
+
     const items: AdminRestaurantListItem[] = rows.map((restaurant) => {
       const commercial = commercialByOwner.get(restaurant.userId);
-      const ownerCommercial = commercial
+      const owner = users.find((u) => u.id === restaurant.userId);
+      const ownerCommercial: RestaurantOwnerCommercial = commercial
         ? {
             planCode: commercial.planCode,
+            planId: commercial.planId,
+            planName: commercial.planName,
+            subscriptionId: commercial.subscriptionId,
             subscriptionStatus: commercial.subscriptionStatus,
+            billingCycle: commercial.billingCycle,
+            currentPeriodEnd: commercial.currentPeriodEnd,
             commercialStatus: commercial.commercialStatus,
             trialStatus: commercial.trialStatus,
           }
-        : {
-            planCode: "NONE" as const,
-            subscriptionStatus: null,
-            commercialStatus: {
-              accountType: "NONE" as const,
-              isPaid: false,
-              isEntitled: false,
-              countsInMrr: false,
-              countsInRevenue: false,
-              invoiceEligible: false,
-            },
-            trialStatus: {
-              isTrial: false,
-              trialEndsAt: null,
-              daysRemaining: null,
-            },
-          };
+        : emptyCommercial();
 
       return {
         restaurant: {
@@ -204,10 +259,16 @@ export const adminDashboardReadRouter = router({
           nameAr: restaurant.nameAr,
           nameEn: restaurant.nameEn,
           slug: restaurant.slug,
-          isActive: restaurant.isActive,
+          descriptionAr: restaurant.descriptionAr,
+          ownerEmail: restaurant.ownerEmail,
           phone: restaurant.phone,
+          address: restaurant.address,
+          countryCode: restaurant.countryCode,
+          currencyCode: restaurant.currencyCode,
+          isActive: restaurant.isActive,
           createdAt: restaurant.createdAt,
         },
+        ownerName: owner?.name ?? null,
         ownerCommercial,
       };
     });
