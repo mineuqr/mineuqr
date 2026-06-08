@@ -13,6 +13,7 @@ const t = initTRPC.context<TrpcContext>().create({
 });
 
 export const router = t.router;
+export const mergeRouters = t.mergeRouters;
 
 const OPS_TRPC_DEBUG = process.env.OPS_TRPC_DEBUG === "1";
 

@@ -68,6 +68,9 @@ import { formatInRestaurantTimezone, todayYmd } from "@shared/utils/timezone";
 import { putUploadedFile } from "./local-uploads";
 import { notifyOwnerNewRestaurant, notifyOwnerNewSubscription, notifyOwnerSubscriptionCancelled } from "./owner-email-notifications";
 import { generateInvoicePDFBuffer } from "./invoice-pdf";
+import { mergeRouters } from "./_core/trpc";
+import { adminDashboardReadRouter } from "./commercial/adminDashboardRouter";
+import { analyticsRouter } from "./commercial/analyticsRouter";
 import { commercialRouter } from "./commercial/router";
 import { resolveGuestOrderingAllowed } from "./commercial/guestOrderingAuthority";
 import { resolveTrialStatusRead } from "./commercial/wave1ReadAuthority";
@@ -786,7 +789,7 @@ const notificationRouter = router({
      }),
 });
 
-const adminRouter = router({
+const adminCoreRouter = router({
   createSubscriberAccount: protectedProcedure
     .input(z.object({
       email: z.string().email(),
@@ -1262,6 +1265,8 @@ const adminRouter = router({
       return getInvoicesByUser(input.userId);
     }),
 });
+
+const adminRouter = mergeRouters(adminCoreRouter, adminDashboardReadRouter);
 
 // ─── Public Stats Router (no auth required) ───
 const publicStatsRouter = router({
@@ -1804,6 +1809,7 @@ export const appRouter = router({
   offer: offerRouter,
   subscription: subscriptionRouter,
   commercial: commercialRouter,
+  analytics: analyticsRouter,
   invoice: invoiceRouter,
   notification: notificationRouter,
   countryCurrency: countryCurrencyRouter,

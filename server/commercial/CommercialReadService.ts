@@ -1,6 +1,7 @@
-import { getSubscriptionPlanById, getSubscriptionsByUser } from "../db";
+import { getAllUsers, getSubscriptionPlanById, getSubscriptionsByUser } from "../db";
 import { pickUserLevelSubscription } from "../subscriptionResolver";
 import type { CommercialAuthority } from "./dto/commercialAuthority";
+import type { OwnerCommercialState } from "./commercialReadSlices";
 import { getCommercialEntitlements } from "./getCommercialEntitlements";
 import { mapToCommercialAuthority } from "./mapToCommercialAuthority";
 
@@ -20,6 +21,14 @@ export class CommercialReadService {
     ownerId: number,
     now: Date = new Date()
   ): Promise<CommercialAuthority> {
+    return this.getOwnerCommercialState(ownerId, now);
+  }
+
+  /** AR-4 Category A — canonical owner commercial state. */
+  async getOwnerCommercialState(
+    ownerId: number,
+    now: Date = new Date()
+  ): Promise<OwnerCommercialState> {
     const result = await getCommercialEntitlements(ownerId, now);
 
     const rows = await getSubscriptionsByUser(ownerId);
@@ -31,6 +40,25 @@ export class CommercialReadService {
         : null;
 
     return mapToCommercialAuthority(result, canonicalRow, catalogPlan, now);
+  }
+
+  /** AR-4 Category A — batch read (same semantics as single). */
+  async getOwnerCommercialStates(
+    ownerIds: number[],
+    now: Date = new Date()
+  ): Promise<OwnerCommercialState[]> {
+    return Promise.all(ownerIds.map((id) => this.getOwnerCommercialState(id, now)));
+  }
+
+  /** AR-4 Category A / metrics — all platform users. */
+  async getAllOwnerCommercialStates(
+    now: Date = new Date()
+  ): Promise<OwnerCommercialState[]> {
+    const users = await getAllUsers();
+    return this.getOwnerCommercialStates(
+      users.map((u) => u.id),
+      now
+    );
   }
 }
 
