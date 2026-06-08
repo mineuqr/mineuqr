@@ -30,7 +30,7 @@ import { SubscriptionAdminFormFields } from "@/components/admin/subscription/Sub
 import {
   AdminKPISection,
   AdminOperationsSection,
-  AdminPageShell,
+  AdminOperationsShell,
   AdminSection,
   adminActionBtn,
   adminDash,
@@ -1030,12 +1030,13 @@ export default function AdminManagement() {
 
   return (
     <TooltipProvider>
-    <AdminPageShell
+    <AdminOperationsShell
       title={t("admin.title")}
       subtitle={t("admin.subtitle")}
-      statsLabel={t("admin.statistics") || "Statistics"}
-      onNavigateHome={() => setLocation("/")}
-      onNavigateStats={() => setLocation("/statistics")}
+      breadcrumbs={[
+        { label: t("admin.nav.overview"), href: "/admin" },
+        { label: t("admin.nav.operations") },
+      ]}
       headerActions={
         <Button
           onClick={() => {
@@ -1685,7 +1686,7 @@ export default function AdminManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </AdminPageShell>
+    </AdminOperationsShell>
     </TooltipProvider>
   );
 }

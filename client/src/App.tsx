@@ -13,6 +13,17 @@ import SubscriptionCancel from "./pages/SubscriptionCancel";
 import PaymentHistory from "./pages/PaymentHistory";
 import SubscriptionManagement from "./pages/SubscriptionManagement";
 import AdminManagement from "./pages/AdminManagement";
+import AdminDashboardHome from "./pages/admin/AdminDashboardHome";
+import AdminAnalyticsPage from "./pages/admin/AdminAnalyticsPage";
+import {
+  AdminCommercialPage,
+  AdminCustomerSuccessPage,
+  AdminHealthPage,
+  AdminLaunchReadinessPage,
+  AdminReportsPage,
+  AdminSecurityPage,
+  AdminTenantsPage,
+} from "./pages/admin/placeholderPages";
 import SuperAdminDashboard from "./pages/SuperAdminDashboard";
 import Statistics from "./pages/Statistics";
 import Users from "./pages/Users";
@@ -62,7 +73,16 @@ function Router() {
         <Route path="/reset-password" component={ResetPassword} />
         <Route path="/profile" component={Profile} />
         <Route path="/notifications" component={Notifications} />
-        <Route path="/admin" component={AdminManagement} />
+        <Route path="/admin/operations" component={AdminManagement} />
+        <Route path="/admin/commercial" component={AdminCommercialPage} />
+        <Route path="/admin/analytics" component={AdminAnalyticsPage} />
+        <Route path="/admin/tenants" component={AdminTenantsPage} />
+        <Route path="/admin/customer-success" component={AdminCustomerSuccessPage} />
+        <Route path="/admin/health" component={AdminHealthPage} />
+        <Route path="/admin/security" component={AdminSecurityPage} />
+        <Route path="/admin/reports" component={AdminReportsPage} />
+        <Route path="/admin/launch-readiness" component={AdminLaunchReadinessPage} />
+        <Route path="/admin" component={AdminDashboardHome} />
         <Route path="/super-admin" component={SuperAdminDashboard} />
         <Route path="/statistics" component={Statistics} />
         <Route path="/users" component={Users} />
