@@ -937,3 +937,244 @@ Guest ordering:   resolveGuestOrderingAllowed → features.ordering === false (N
 ---
 
 *End of DATA-INTEGRITY-1 Phase E. Read-only legacy classification. No remediation.*
+
+---
+
+# DATA-INTEGRITY-1 — Phase E1 — User Legacy Audit
+
+**Program:** Data Integrity (DATA-INTEGRITY-1)  
+**Phase:** E1 — User-focused legacy audit (subset of Phase E)  
+**Date:** 2026-06-08  
+**Status:** Complete — read-only documentation  
+
+**Mode:** Documentation and classification only. No code, schema, database, migration, or cleanup execution.
+
+**Audit target:** MineuQR launch database — `gateway01.eu-central-1.prod.aws.tidbcloud.com` / `mineuqr`
+
+**Provenance:**
+
+| Source | Captured (UTC) | Fields exported |
+|--------|----------------|-----------------|
+| `scripts/data-integrity-1r-mineuqr-readonly.mjs` | `2026-06-08T15:37:15.849Z` | `id`, `role`, `loginMethod`, email presence, `emailVerifiedAt` presence, `createdAt` |
+| `scripts/data-integrity-audit-phase2-readonly.mjs` | Same session | U1/U3/U4, auth token expiry |
+| Cross-cluster identity correlation | User `1` | Same `id` + `createdAt` as `COMMERCIAL-DATA-SNAPSHOT.md` / ASN-5A admin listing |
+
+**Field gap note:** The 1R runner does not export `openId`, `name`, `email` (value), `updatedAt`, or `sessionValidAfter`. Values below mark **verified** (from 1R), **inferred** (schema + registration code), or **operator re-query** where exact strings are required.
+
+---
+
+## E1.0 Executive Summary
+
+MineuQR launch database contains **exactly 2 users** — one **primary admin** and one **legacy test owner**. Both use the **current supported auth model** (`loginMethod = email`, email verified). No Manus/OAuth legacy users (Phase 2 **U3 = 0**). No duplicate emails or openIds (U1/U4 = 0).
+
+| User | Primary classification | Launch relevance |
+|------|------------------------|------------------|
+| **1** | **PRIMARY_ADMIN** | Must retain — protected (`PROTECTED_USER_IDS`), owns sole substantive venue |
+| **14760004** | **LEGACY_TEST_USER** / **REMOVAL_CANDIDATE** | Non-production clutter; safe to remove after dependency review |
+
+**Launch classification: YELLOW** — legacy test account exists but is bounded and manageable. **No user-related launch blockers.**
+
+---
+
+## E1.1 User Inventory (E1.1)
+
+### E1.1.1 Full field inventory
+
+| Field | User 1 | User 14760004 |
+|-------|--------|---------------|
+| **id** | `1` ✓ | `14760004` ✓ |
+| **openId** | *not in 1R export* — inferred `local_*` or early admin pattern | *not in 1R export* — register path uses `local_{email}` |
+| **name** | *not in 1R export* | *not in 1R export* — optional at register |
+| **email** | `k.sh61@yahoo.com` *(inferred — same id + createdAt as operator snapshots)* | Present ✓ (`has_email = 1`) — exact value **operator re-query** |
+| **loginMethod** | `email` ✓ | `email` ✓ |
+| **role** | `admin` ✓ | `user` ✓ |
+| **emailVerifiedAt** | Set ✓ (`email_verified = 1`) | Set ✓ (`email_verified = 1`) |
+| **createdAt** | `2026-04-01T19:12:37.000Z` ✓ | `2026-06-07T16:45:56.000Z` ✓ |
+| **updatedAt** | *not in 1R export* | *not in 1R export* |
+| **sessionValidAfter** | *not in 1R export* | *not in 1R export* |
+| **passwordHash** | Present (schema) — not audited | Present (schema) — not audited |
+
+### E1.1.2 Summary table (deliverable format)
+
+| User | Email | Login Method | Role | Notes |
+|------|-------|--------------|------|-------|
+| **1** | `k.sh61@yahoo.com` *(cross-snapshot correlation)* | `email` | `admin` | Primary production operator; `PROTECTED_USER_IDS`; created pre-launch (`2026-04-01`) |
+| **14760004** | *present — exact address not in 1R export* | `email` | `user` | Test owner; 4 `sam*` restaurants; created `2026-06-07` during pre-launch QA window |
+
+---
+
+## E1.2 Ownership Audit (E1.2)
+
+### E1.2.1 Asset matrix
+
+| User | Restaurants | Subscriptions | Other Assets |
+|------|------------:|--------------:|--------------|
+| **1** | **1** (`720007` — خالد, full menu: 2 categories, 4 items) | **1** scoped active BASIC (`600001` → `720007`) | **1 invoice** (system total); orders/menu/notifications on demo venue; admin governance identity |
+| **14760004** | **4** (`720002`–`720006`, all empty shells) | **3** scoped active (`600002` PRO, `630001`/`630002` BASIC) | Share of **91** `renewal_notifications`; share of **4** `auth_tokens`; **0** invoices attributed; restaurant `720002` has **no** subscription (R2) |
+
+### E1.2.2 Ownership detail
+
+**User 1 (PRIMARY_ADMIN)**
+
+```text
+User 1
+├─ Restaurant 720007 (slug: خالد-Zx0OcD) — ONLY venue with menu content
+│   ├─ Categories: 480001, 510001
+│   ├─ Menu items: 540001, 570001–570003
+│   └─ Orders: probable QA traffic (3 system-wide)
+├─ Subscription 600001 (restaurantId=720007, active, planId=30001 BASIC)
+└─ Invoice 1 (system sole commercial document — preserve)
+```
+
+**User 14760004 (LEGACY_TEST_USER)**
+
+```text
+User 14760004
+├─ 720002 sam672-Y7Y0ac — 0 menu, NO subscription (R2 gap)
+├─ 720003 sam-1WloHC — 0 menu, sub 630001
+├─ 720005 sam12-Y6ldJq — 0 menu, sub 630002
+└─ 720006 saaa-Ei7D02 — 0 menu, sub 600002 (PROFESSIONAL)
+```
+
+### E1.2.3 Orphan / integrity (1R)
+
+| Check | Result |
+|-------|--------|
+| Restaurants without owner | 0 |
+| Subscriptions without user | 0 |
+| Subscription owner mismatch | 0 |
+| Invoice orphan / user mismatch | 0 |
+
+---
+
+## E1.3 Authentication Audit (E1.3)
+
+### E1.3.1 System-wide auth posture
+
+| Dimension | Finding |
+|-----------|---------|
+| Login methods in use | **`email` only** (2/2 users) |
+| Email/password users | **2** — both have email + `passwordHash` column (schema) |
+| OAuth users | **0** |
+| Manus / legacy provider (U3) | **0** |
+| Demo users (heuristic) | **1** — user `14760004` (`sam*` venue pattern) |
+| Unsupported auth patterns | **None detected** |
+| `auth_tokens` (system) | **4** total; **1** expired unused (Phase 2 / 1R quality check) |
+
+### E1.3.2 Per-user authentication table
+
+| User | Auth Model | Current Compatibility | Risk |
+|------|------------|----------------------|------|
+| **1** | Email + password; verified email; JWT session + `sessionValidAfter` revocation | **Fully compatible** with post-0017/0018/0019 auth policy | **Low** — protected admin; no legacy provider |
+| **14760004** | Email + password; verified email; same session model | **Fully compatible** | **Low** auth risk; **Medium** data hygiene (test account owns commercial rows) |
+
+### E1.3.3 Auth artifact notes
+
+| Artifact | Status | User attribution |
+|----------|--------|------------------|
+| Session table | **None** (cookie JWT) | N/A |
+| `auth_tokens` rows | 4 system-wide | Per-user split **not in 1R export** — 1 stale expired-unused token is housekeeping only |
+| Email unique index (0019) | Schema applied | 0 duplicate normalized emails |
+| `loginMethod = manus` | **0 users** | Legacy provider fully absent |
+
+---
+
+## E1.4 Legacy Classification (E1.4)
+
+| User ID | Classification | Justification |
+|---------|----------------|---------------|
+| **1** | **PRIMARY_ADMIN** | `role = admin`; `PROTECTED_USER_IDS`; oldest account (`2026-04-01`); owns launch demo venue `720007` with full menu; holds system invoice; operator-identified production identity (`k.sh61@yahoo.com` correlation) |
+| **14760004** | **LEGACY_TEST_USER** → **REMOVAL_CANDIDATE** | Created `2026-06-07` in pre-launch window; owns 4 empty `sam*`/`saaa` slug restaurants; 3 scoped legacy subscriptions on empty shells; not protected; no invoices; heuristic QA registration — not a customer account |
+
+**Not applicable classifications:**
+
+| Class | Users |
+|-------|-------|
+| **ACTIVE_OWNER** | 0 — no production customer owner distinct from admin |
+| **HISTORICAL_ACCOUNT** | 0 — no deactivated/orphan user without current role |
+
+---
+
+## E1.5 Dependency Assessment (E1.5)
+
+### User 14760004 (non-admin)
+
+| Question | Answer |
+|----------|--------|
+| Does anything depend on this account? | **Yes** — 4 restaurants, 3 subscriptions, portion of 91 notifications, possible auth tokens and test orders |
+| Would deleting affect launch readiness? | **No** — account is test clutter; launch depends on admin user `1` and venue `720007` |
+| Would deleting affect restaurants? | **Yes** — removes 4/5 restaurants (all empty shells); **does not** remove substantive venue `720007` |
+| Would deleting affect subscriptions? | **Yes** — removes 3/4 subscription rows (all scoped legacy on test venues) |
+
+### User 1 (admin)
+
+| Question | Answer |
+|----------|--------|
+| Does anything depend on this account? | **Yes** — critical: restaurant `720007`, menu, subscription `600001`, invoice, admin access |
+| Would deleting affect launch readiness? | **Yes — launch blocker if removed** |
+| Protected from cascade delete? | **Yes** — `PROTECTED_USER_IDS = [1]` |
+
+---
+
+## E1.6 Commercial Launch Assessment (E1.6)
+
+| # | Question | Answer |
+|---|----------|--------|
+| **1** | Which users must be retained? | **User `1` only** (PRIMARY_ADMIN) |
+| **2** | Which users require further review? | **User `14760004`** — confirm email identity, Stripe linkage on subs `600002`/`630001`/`630002`, notification subset before any delete |
+| **3** | Which users are removal candidates? | **User `14760004`** — after billing/ops sign-off |
+| **4** | Legacy auth concerns? | **None user-level** — both email-verified email users; 1 stale `auth_tokens` row (system hygiene, not user architecture) |
+| **5** | Any user represents a launch blocker? | **No** — test user is clutter, not a blocker; admin is required and healthy |
+
+### E1.6.1 Output classification
+
+## **YELLOW**
+
+Legacy test account exists but is **manageable**. No unsupported auth. No duplicate identity. Admin account is clean and protected.
+
+| Tier | Condition | This audit |
+|------|-----------|------------|
+| **GREEN** | No user-related launch blockers | Auth model clean ✓ |
+| **YELLOW** | Legacy accounts exist but manageable | **Selected** — 1 test user with bounded dependencies |
+| **RED** | User/auth architecture launch-impacting risks | **Not met** — no Manus users, no duplicate emails, no unverified production owners |
+
+---
+
+## E1.7 Removal Candidate Register
+
+| ID | User | Classification | Dependencies | Risk if removed | Recommendation |
+|----|------|----------------|--------------|-----------------|----------------|
+| **E1-RC-01** | `14760004` | LEGACY_TEST_USER | 4 restaurants, 3 subs, notifications, possible tokens/orders | **Medium** — cascade deletes commercial rows; verify no Stripe ids | **Investigate** → **Safe Later Removal** |
+| **E1-RC-02** | `1` | PRIMARY_ADMIN | Full launch venue, invoice, admin ops | **Critical** | **Preserve** — never remove |
+
+**No execution authorized.**
+
+---
+
+## E1.8 Deliverables checklist
+
+| # | Deliverable | Section |
+|---|-------------|---------|
+| 1 | Executive Summary | E1.0 |
+| 2 | User Inventory Table | E1.1.2 |
+| 3 | Ownership Analysis | E1.2 |
+| 4 | Authentication Analysis | E1.3 |
+| 5 | Legacy Classification Matrix | E1.4 |
+| 6 | Removal Candidate Register | E1.7 |
+| 7 | Commercial Launch Assessment | E1.6 |
+
+### E1.8.1 Operator follow-up (optional, read-only)
+
+To close the 1R field gap without code changes, run in TiDB console:
+
+```sql
+SELECT id, openId, name, email, loginMethod, role,
+       emailVerifiedAt, sessionValidAfter, createdAt, updatedAt
+FROM users ORDER BY id;
+
+SELECT userId, type, usedAt, expiresAt FROM auth_tokens ORDER BY id;
+```
+
+---
+
+*End of DATA-INTEGRITY-1 Phase E1. Read-only user legacy audit. No remediation.*
