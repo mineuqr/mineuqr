@@ -11,7 +11,6 @@ function createPlaceholderPage(navId: string) {
   };
 }
 
-export const AdminCommercialPage = createPlaceholderPage("commercial");
 export const AdminTenantsPage = createPlaceholderPage("tenants");
 export const AdminCustomerSuccessPage = createPlaceholderPage("customer-success");
 export const AdminHealthPage = createPlaceholderPage("health");

@@ -15,8 +15,8 @@ import SubscriptionManagement from "./pages/SubscriptionManagement";
 import AdminManagement from "./pages/AdminManagement";
 import AdminDashboardHome from "./pages/admin/AdminDashboardHome";
 import AdminAnalyticsPage from "./pages/admin/AdminAnalyticsPage";
+import AdminCommercialPage from "./pages/admin/AdminCommercialPage";
 import {
-  AdminCommercialPage,
   AdminCustomerSuccessPage,
   AdminHealthPage,
   AdminLaunchReadinessPage,
