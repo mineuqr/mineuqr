@@ -3,8 +3,13 @@
  * Usage:
  *   AUDIT_TARGET=production DATABASE_URL='...' node scripts/data-integrity-audit-phase2-readonly.mjs
  *   AUDIT_TARGET=staging DATABASE_URL='...' node scripts/data-integrity-audit-phase2-readonly.mjs
+ *
+ * AUDIT-TOOLING-1: uses scripts/lib/tidb-audit-connection.mjs for TiDB Cloud TLS.
  */
-import mysql from "mysql2/promise";
+import {
+  auditConnectionTarget,
+  createAuditReadonlyConnection,
+} from "./lib/tidb-audit-connection.mjs";
 
 const SAMPLE_LIMIT = 15;
 const target = process.env.AUDIT_TARGET || "unknown";
@@ -474,7 +479,7 @@ async function tableTotals(conn) {
 }
 
 async function main() {
-  const conn = await mysql.createConnection(url);
+  const conn = await createAuditReadonlyConnection(url);
   try {
     const [[{ db: currentDb }]] = await conn.query("SELECT DATABASE() AS db");
     const findings = [];
@@ -502,6 +507,7 @@ async function main() {
     const report = {
       generatedAt: new Date().toISOString(),
       auditTarget: target,
+      connectionTarget: auditConnectionTarget(url),
       databaseName: currentDb || dbNameFromUrl(url),
       tableTotals: await tableTotals(conn),
       findingsWithIssues: findings.filter((f) => f.count > 0),

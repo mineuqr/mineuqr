@@ -335,10 +335,10 @@ Planned checks (not run):
 
 ---
 
-# Part III — Execution Status Update
+# Part III — Execution Status Update (Superseded by Part IV)
 
 **Date:** 2026-06-08  
-**Classification:** **BLOCKED BY TOOLING**
+**Classification:** ~~**BLOCKED BY TOOLING**~~ → **Resolved in Part IV (AUDIT-TOOLING-1)**
 
 ## III.1 Summary
 
@@ -378,4 +378,75 @@ Readonly audit script (`scripts/data-integrity-audit-phase2-readonly.mjs`) passe
 
 ---
 
-*End of DATA-INTEGRITY-1R. Partially verified; blocked by readonly TLS tooling. Read-only. No remediation.*
+# Part IV — AUDIT-TOOLING-1 Resolution & Re-Run Readiness
+
+**Date:** 2026-06-08  
+**Program:** AUDIT-TOOLING-1 — TLS enablement for readonly audit scripts  
+**Status:** Tooling **resolved**; MineuQR automated inventory **ready to execute**
+
+## IV.1 Tooling fix summary
+
+| Item | Detail |
+|------|--------|
+| Root cause | `mysql.createConnection(url)` without TLS on `*.tidbcloud.com` |
+| Fix | `scripts/lib/tidb-audit-connection.mjs` — mirrors `server/db.ts` TiDB TLS injection |
+| Updated script | `scripts/data-integrity-audit-phase2-readonly.mjs` |
+| 1R runner | `scripts/data-integrity-1r-mineuqr-readonly.mjs` |
+| Documentation | `AUDIT-TOOLING-1-TLS-ENABLEMENT.md` |
+
+## IV.2 Validation results
+
+### Regression (Monu legacy — proves TLS path)
+
+| Field | Result |
+|-------|--------|
+| Host | `gateway05.us-east-1.prod.aws.tidbcloud.com` |
+| `connectionTarget.tls` | **true** |
+| Phase 2 script | **PASS** — 22 checks, 0 issues |
+| Exit code | **0** |
+
+### MineuQR launch (`gateway01` / `mineuqr`)
+
+| Check | Result |
+|-------|--------|
+| `Connections using insecure transport are prohibited` | **Resolved** — TLS auto-injection active |
+| Automated inventory in this session | **Not executed** — workspace lacks MineuQR cluster `DATABASE_URL` (Monu credential prefix on `gateway01` → access denied) |
+| Operator manual baseline | 2 users, 6 restaurants, 1 category, 1 menu item (TiDB console) |
+
+## IV.3 Commands to complete automated DATA-INTEGRITY-1R
+
+Use MineuQR connection string from TiDB Cloud console. **Do not** use workspace `.env` (Monu legacy).
+
+```powershell
+Remove-Item Env:DATABASE_URL -ErrorAction SilentlyContinue
+$env:DATABASE_URL='<mineuqr-url-from-tidb-console>'
+$env:AUDIT_TARGET='mineuqr-launch-rerun'
+node scripts/data-integrity-audit-phase2-readonly.mjs
+node scripts/data-integrity-1r-mineuqr-readonly.mjs
+```
+
+Append JSON output to this document as **Part V** when executed.
+
+## IV.4 Classification update
+
+| Prior (Part III) | Current (Part IV) |
+|------------------|-------------------|
+| **BLOCKED BY TOOLING** | **TOOLING RESOLVED** |
+| Partial verification only | Automated verification **unblocked** |
+
+**DATA-INTEGRITY-1R automated status:** Pending operator execution of §IV.3 with MineuQR credentials. Environment targeting and manual inventory remain **verified**.
+
+## IV.5 Success criteria (AUDIT-TOOLING-1)
+
+| # | Criterion | Status |
+|---|-----------|--------|
+| 1 | Audit script runs against TiDB Cloud with TLS | **PASS** (Monu regression; MineuQR TLS error eliminated) |
+| 2 | TLS requirement satisfied | **PASS** |
+| 3 | DATA-INTEGRITY-1R automated completion | **Pending** MineuQR `DATABASE_URL` execution |
+| 4 | No database modifications | **PASS** |
+| 5 | No production behavior changes | **PASS** |
+
+---
+
+*End of DATA-INTEGRITY-1R. Tooling resolved (AUDIT-TOOLING-1). Automated MineuQR inventory pending §IV.3 execution. Read-only. No remediation.*
+
