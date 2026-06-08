@@ -180,22 +180,30 @@ export const adminDashboardReadRouter = router({
     .query(async ({ ctx, input }) => {
       assertAdminAccess(ctx, "admin.getDashboardSummary");
       const now = input?.now ? new Date(input.now) : new Date();
-      const extended = await getExtendedAdminStats();
-      const db = await getDb();
-      const activeRestaurants = db
-        ? (
-            await db
-              .select({ id: restaurants.id })
-              .from(restaurants)
-              .where(eq(restaurants.isActive, true))
-          ).length
-        : 0;
+      const entityCounts = await resolveAdminDashboardEntityCounts();
 
       return canonicalMetricsService.getDashboardSummary(
         {
-          totalUsers: extended?.totalUsers ?? 0,
-          totalRestaurants: extended?.totalRestaurants ?? 0,
-          activeRestaurants,
+          totalUsers: entityCounts.totalUsers,
+          totalRestaurants: entityCounts.totalRestaurants,
+          activeRestaurants: entityCounts.activeRestaurants,
+        },
+        now
+      );
+    }),
+
+  /** EXEC-7C.2 — canonical commercial overview snapshot (single read for /admin/commercial). */
+  getCommercialOverview: protectedProcedure
+    .input(z.object({ now: z.string().datetime().optional() }).optional())
+    .query(async ({ ctx, input }) => {
+      assertAdminAccess(ctx, "admin.getCommercialOverview");
+      const now = input?.now ? new Date(input.now) : new Date();
+      const entityCounts = await resolveAdminDashboardEntityCounts();
+
+      return canonicalMetricsService.getCommercialOverviewSnapshot(
+        {
+          totalUsers: entityCounts.totalUsers,
+          activeRestaurants: entityCounts.activeRestaurants,
         },
         now
       );
@@ -276,3 +284,22 @@ export const adminDashboardReadRouter = router({
     return { items };
   }),
 });
+
+async function resolveAdminDashboardEntityCounts() {
+  const extended = await getExtendedAdminStats();
+  const db = await getDb();
+  const activeRestaurants = db
+    ? (
+        await db
+          .select({ id: restaurants.id })
+          .from(restaurants)
+          .where(eq(restaurants.isActive, true))
+      ).length
+    : 0;
+
+  return {
+    totalUsers: extended?.totalUsers ?? 0,
+    totalRestaurants: extended?.totalRestaurants ?? 0,
+    activeRestaurants,
+  };
+}

@@ -1,8 +1,15 @@
 import { monthlyEquivalentPlanPrice } from "../../adminKpiCalculations";
 import { getSubscriptionPlanById, getSubscriptionPlans } from "../../db";
 import { commercialReadService } from "../CommercialReadService";
+import { COMMERCIAL_AUTHORITY_SOURCE } from "../dto/commercialAuthority";
 import type { OwnerCommercialState } from "../commercialReadSlices";
 import type { CommercialPlan } from "@commercial/planTypes";
+import {
+  COMMERCIAL_OVERVIEW_ASSEMBLER,
+  COMMERCIAL_OVERVIEW_SCHEMA_VERSION,
+  type CommercialOverviewEntityCounts,
+  type CommercialOverviewSnapshot,
+} from "./CommercialOverviewSnapshot";
 
 export const CANONICAL_METRICS_SOURCE = "CANONICAL_OWNER" as const;
 
@@ -84,15 +91,73 @@ export class CanonicalMetricsService {
     now: Date = new Date()
   ): Promise<{ distribution: PlanDistributionEntry[]; metricsSource: typeof CANONICAL_METRICS_SOURCE }> {
     const states = await this.loadOwnerStates(now);
-    const counts = new Map<CommercialPlan, number>();
-    for (const state of states) {
-      const code = state.planCode;
-      counts.set(code, (counts.get(code) ?? 0) + 1);
-    }
-    const distribution = [...counts.entries()]
-      .map(([planCode, ownerCount]) => ({ planCode, ownerCount }))
-      .sort((a, b) => a.planCode.localeCompare(b.planCode));
-    return { distribution, metricsSource: CANONICAL_METRICS_SOURCE };
+    return {
+      distribution: this.planDistributionFromStates(states),
+      metricsSource: CANONICAL_METRICS_SOURCE,
+    };
+  }
+
+  /**
+   * EXEC-7C.2 — single canonical snapshot for /admin/commercial.
+   * One CRS load, one asOf; composes existing metric derivations only.
+   */
+  async getCommercialOverviewSnapshot(
+    entityCounts: CommercialOverviewEntityCounts,
+    now: Date = new Date()
+  ): Promise<CommercialOverviewSnapshot> {
+    const generatedAt = new Date().toISOString();
+    const asOf = now.toISOString();
+    const states = await this.loadOwnerStates(now);
+    const subscriberCounts = this.subscriberCountsFromStates(states);
+    const entitledOwners = states.filter((s) => s.commercialStatus.isEntitled).length;
+    const mrr = await this.computeMrrFromStates(states);
+    const arr = Math.round(mrr * 12 * 100) / 100;
+    const health = this.subscriptionHealthFromStates(states);
+    const expiringWithin30Days = this.expiringFromStates(states, now);
+
+    return {
+      generatedAt,
+      asOf,
+      metadata: {
+        generatedAt,
+        asOf,
+        schemaVersion: COMMERCIAL_OVERVIEW_SCHEMA_VERSION,
+        authorityVersion: COMMERCIAL_AUTHORITY_SOURCE,
+        commercialAuthoritySource: COMMERCIAL_AUTHORITY_SOURCE,
+        metricsSource: CANONICAL_METRICS_SOURCE,
+        assembledBy: COMMERCIAL_OVERVIEW_ASSEMBLER,
+      },
+      executive: {
+        commercialSubscribers: entitledOwners,
+        activeSubscriptions: subscriberCounts.activeSubscriptions,
+        activeTrials: subscriberCounts.activeTrials,
+        mrr,
+        arr,
+        activeRestaurants: entityCounts.activeRestaurants,
+        totalUsers: entityCounts.totalUsers,
+      },
+      subscriptionHealth: health,
+      planDistribution: {
+        entries: this.planDistributionFromStates(states),
+      },
+      needsAttention: {
+        expiringWithin30Days,
+        windowDays: EXPIRING_SOON_DAYS,
+        graceAccounts: null,
+        suspendedAccounts: null,
+        canceledAccounts: health.canceled,
+        expiredAccounts: health.expired,
+      },
+      recentActivity: {
+        available: false,
+        items: [],
+        reason: "NO_ADMIN_COMMERCIAL_EVENT_READ_API",
+      },
+      growth: {
+        available: false,
+        reason: "NO_CANONICAL_GROWTH_METRIC",
+      },
+    };
   }
 
   async getSubscriberCounts(now: Date = new Date()): Promise<SubscriberCountsResult> {
@@ -151,6 +216,31 @@ export class CanonicalMetricsService {
       totalRestaurants: entityCounts.totalRestaurants,
       activeRestaurants: entityCounts.activeRestaurants,
       metricsSource: CANONICAL_METRICS_SOURCE,
+    };
+  }
+
+  private planDistributionFromStates(
+    states: OwnerCommercialState[]
+  ): PlanDistributionEntry[] {
+    const counts = new Map<CommercialPlan, number>();
+    for (const state of states) {
+      const code = state.planCode;
+      counts.set(code, (counts.get(code) ?? 0) + 1);
+    }
+    return Array.from(counts.entries())
+      .map(([planCode, ownerCount]) => ({ planCode, ownerCount }))
+      .sort((a, b) => a.planCode.localeCompare(b.planCode));
+  }
+
+  private subscriptionHealthFromStates(states: OwnerCommercialState[]) {
+    return {
+      trial: states.filter((s) => s.subscriptionStatus === "trial").length,
+      active: states.filter((s) => s.subscriptionStatus === "active").length,
+      canceled: states.filter((s) => s.subscriptionStatus === "canceled").length,
+      expired: states.filter((s) => s.subscriptionStatus === "expired").length,
+      inactive: states.filter(
+        (s) => !s.commercialStatus.isEntitled && s.planCode === "NONE"
+      ).length,
     };
   }
 
