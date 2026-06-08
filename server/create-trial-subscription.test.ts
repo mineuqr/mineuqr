@@ -1,10 +1,13 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import {
   TRIAL_DAYS,
   TRIAL_PLAN_SORT_ORDER,
   buildTrialSubscriptionPayload,
   resolveTrialPlanId,
 } from "./create-trial-subscription";
+
+/** Frozen clock so separate `new Date()` calls in payload builder share one instant. */
+const FIXED_NOW = new Date("2026-06-08T12:00:00.000Z");
 
 vi.mock("./db", () => ({
   createUserSubscription: vi.fn(),
@@ -45,6 +48,10 @@ describe("create-trial-subscription (LAUNCH-5B)", () => {
     vi.clearAllMocks();
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   describe("resolveTrialPlanId", () => {
     it("assigns Professional plan (sortOrder 2), not Basic", async () => {
       await expect(resolveTrialPlanId()).resolves.toBe(102);
@@ -52,6 +59,11 @@ describe("create-trial-subscription (LAUNCH-5B)", () => {
   });
 
   describe("buildTrialSubscriptionPayload", () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(FIXED_NOW);
+    });
+
     it("creates 14-day trial with Professional plan id", () => {
       const payload = buildTrialSubscriptionPayload(9, 102, 55);
       expect(payload.planId).toBe(102);
@@ -61,13 +73,14 @@ describe("create-trial-subscription (LAUNCH-5B)", () => {
 
       const trialEnd = new Date(payload.trialEndsAt!);
       const periodEnd = new Date(payload.currentPeriodEnd);
-      const expected = new Date();
+      const expected = new Date(FIXED_NOW);
       expected.setDate(expected.getDate() + TRIAL_DAYS);
 
       expect(
         Math.abs(trialEnd.getTime() - expected.getTime()) / (1000 * 60 * 60 * 24)
       ).toBeLessThan(0.1);
-      expect(trialEnd.toISOString()).toBe(periodEnd.toISOString());
+      expect(trialEnd.getTime()).toBe(periodEnd.getTime());
+      expect(payload.currentPeriodStart).toBe(FIXED_NOW.toISOString());
     });
   });
 });
