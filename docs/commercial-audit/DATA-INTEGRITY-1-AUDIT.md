@@ -582,3 +582,358 @@ Recommended next step: execute readonly data audit (`data-integrity-audit-phase2
 ---
 
 *End of DATA-INTEGRITY-1 Phase A. Read-only schema inventory. No remediation.*
+
+---
+
+# DATA-INTEGRITY-1 — Phase E — Legacy Data Audit
+
+**Program:** Data Integrity (DATA-INTEGRITY-1)  
+**Phase:** E — Legacy footprint classification  
+**Date:** 2026-06-08  
+**Status:** Complete — read-only documentation  
+
+**Mode:** Documentation and classification only. No code, schema, database, migration, or cleanup execution.
+
+**Audit target:** MineuQR launch database — `gateway01.eu-central-1.prod.aws.tidbcloud.com` / `mineuqr` (ENV-DRIFT resolved; not workspace Monu legacy).
+
+**Inputs:**
+
+- DATA-INTEGRITY-1R automated run (`scripts/data-integrity-1r-mineuqr-readonly.mjs`, `2026-06-08T15:37:15.849Z`)
+- DATA-INTEGRITY Phase 2 readonly suite (`scripts/data-integrity-audit-phase2-readonly.mjs`, same session)
+- ASN-5 execution record (`ASN-5-AUTHORITY-NORMALIZATION-EXECUTION.md`)
+- ASN-4C legacy backfill planning (`ASN-4C-LEGACY-SUBSCRIPTION-BACKFILL-PLAN.md`)
+
+**Verified inventory baseline:**
+
+| Entity | Count |
+|--------|------:|
+| users | 2 |
+| restaurants | 5 |
+| user_subscriptions | 4 |
+| categories | 2 |
+| menu_items | 4 |
+| orders | 3 |
+| order_items | 3 |
+| invoices | 1 |
+| renewal_notifications | 91 |
+| auth_tokens | 4 |
+
+---
+
+## E.0 Executive summary
+
+The MineuQR launch dataset is **small and structurally intact** (zero orphan FK columns per 1R probes) but carries a **clear pre-ASN commercial data footprint**: all four subscription rows are **restaurant-scoped** (`restaurantId > 0`); **zero** account-scoped rows (`restaurantId = 0`) exist. Runtime code after ASN-5 expects account-scoped trials for `pickUserLevelSubscription` / `getCommercialEntitlements`, so **legacy scoped rows are invisible to the canonical commercial chain** even when `status = active`.
+
+Parallel legacy signals:
+
+| Signal | Severity (legacy) | Count / evidence |
+|--------|-------------------|------------------|
+| Restaurant-scoped subscriptions only | **High** — ASN data gap | 4 scoped, 0 account |
+| Test/demo restaurant shells | **Medium** | 4 of 5 restaurants empty (no categories/items) |
+| Test owner account | **Medium** | User `14760004` owns 4 `sam*` slug venues |
+| Restaurant without subscription (R2) | **Medium** | Restaurant `720002` — Phase 2 medium finding |
+| Stale auth token | **Low** | 1 expired unused token |
+| High notification volume | **Low–Medium** | 91 rows vs 3 orders — ops noise / dev activity |
+| Pre-ASN registration pattern | **Info** | Test user created `2026-06-07` with scoped subs (admin or pre-cutover paths) |
+
+**Phase E verdict:** Legacy artifacts **present** but **bounded**. They do **not** indicate data corruption; they indicate **pre-normalization commercial rows** and **development/test clutter**. Launch can proceed **without mandatory cleanup** if operators accept ASN backfill as a follow-on program item and treat test venues as non-production.
+
+---
+
+## E.1 Deliverable A — User Legacy Audit
+
+### A.1 User inventory
+
+| User ID | Role | Login method | Email verified | Created (UTC) | Classification | Commercial relevance |
+|---------|------|--------------|----------------|---------------|----------------|----------------------|
+| **1** | `admin` | `email` | Yes | `2026-04-01T19:12:37` | **active**, **admin** | Operator / seed owner; owns production-like demo venue `720007` |
+| **14760004** | `user` | `email` | Yes | `2026-06-07T16:45:56` | **test**, **legacy** (pre-ASN data pattern) | Multi-venue test owner; 4 empty restaurant shells; scoped subscriptions |
+
+*Emails omitted from this document (non-secret classification only).*
+
+### A.2 Per-user classification
+
+| User ID | active | admin | test | legacy | removable later |
+|---------|:------:|:-----:|:----:|:------:|:---------------:|
+| 1 | ✓ | ✓ | — | partial (scoped sub) | **No** — preserve |
+| 14760004 | ✓ | — | ✓ | ✓ (scoped subs) | **Yes** — after commercial sign-off |
+
+### A.3 User legacy notes
+
+| ID | Finding |
+|----|---------|
+| **1** | Oldest account; predates ASN-5. Uses supported `email` login (no Manus/U3 artifacts). Admin role is intentional governance identity. |
+| **14760004** | Created day before/during ASN-5 rollout window. Owns restaurants with `sam*` / `saaa` slug patterns — heuristic **test account**. Not `admin`; not protected by `PROTECTED_USER_IDS` cascade guard (verify before any future delete). |
+
+**Deliverable A conclusion:** One **preserve** admin, one **test/legacy** owner. No duplicate emails, no Manus login artifacts (Phase 2 U3 = 0).
+
+---
+
+## E.2 Deliverable B — Restaurant Legacy Audit
+
+### B.1 Restaurant inventory
+
+| Restaurant ID | Owner | Slug (public URL key) | isActive | Categories | Menu items | Scoped sub | Classification |
+|---------------|-------|----------------------|:--------:|:----------:|:----------:|:----------:|----------------|
+| **720002** | 14760004 | `sam672-Y7Y0ac` | 1 | 0 | 0 | **None** | **test**, empty, **investigate** (R2) |
+| **720003** | 14760004 | `sam-1WloHC` | 1 | 0 | 0 | 630001 | **test**, empty shell, **removable later** |
+| **720005** | 14760004 | `sam12-Y6ldJq` | 1 | 0 | 0 | 630002 | **test**, empty shell, **removable later** |
+| **720006** | 14760004 | `saaa-Ei7D02` | 1 | 0 | 0 | 600002 | **test**, empty shell, **removable later** |
+| **720007** | 1 | `خالد-Zx0OcD` | 1 | 2 | 4 | 600001 | **preserve** — seed/demo venue with live menu |
+
+### B.2 Legacy pattern matrix
+
+| Pattern | Restaurants | Notes |
+|---------|-------------|-------|
+| **Test restaurants** | 720002–720006 | Slug/name heuristics; owned by test user |
+| **Abandoned restaurants** | 720002–720006 | `isActive = 1` but zero menu content — configured shells only |
+| **Empty restaurants** | 720002–720006 | No categories, no menu_items |
+| **Restaurants without menus** | 720002–720006 | Public menu pages would be empty |
+| **Restaurants without subscriptions** | **720002 only** | Phase 2 **R2** medium finding (count = 1) |
+| **Historical artifacts** | — | None identified beyond scoped subscription pairing |
+
+### B.3 Ownership map
+
+```text
+User 1 (admin)
+└─ Restaurant 720007 (خالد) — full menu, scoped BASIC sub
+
+User 14760004 (test)
+├─ 720002 sam672 — NO subscription (R2 gap)
+├─ 720003 sam — scoped BASIC sub
+├─ 720005 sam12 — scoped BASIC sub
+└─ 720006 saaa — scoped PROFESSIONAL sub
+```
+
+**Deliverable B conclusion:** **4 of 5** restaurants are test shells — **removable later** after owner account review. **720007** is the only venue with commercial/menu substance — **preserve**.
+
+---
+
+## E.3 Deliverable C — Subscription Legacy Audit
+
+### C.1 Subscription inventory
+
+| Sub ID | User | restaurantId | Status | planId | Catalog plan | Scope class |
+|--------|------|-------------|--------|--------|--------------|-------------|
+| **600001** | 1 | 720007 | `active` | 30001 | BASIC | **Restaurant-scoped (legacy)** |
+| **600002** | 14760004 | 720006 | `active` | 30002 | PROFESSIONAL | **Restaurant-scoped (legacy)** |
+| **630001** | 14760004 | 720003 | `active` | 30001 | BASIC | **Restaurant-scoped (legacy)** |
+| **630002** | 14760004 | 720005 | `active` | 30001 | BASIC | **Restaurant-scoped (legacy)** |
+
+### C.2 Scope summary
+
+| Metric | Count |
+|--------|------:|
+| Total rows | 4 |
+| Account-scoped (`restaurantId = 0`) | **0** |
+| Restaurant-scoped (`restaurantId > 0`) | **4** |
+| `trial` status | 0 |
+| `active` status | 4 |
+| Owner mismatch (S9) | 0 |
+| Orphan (S4) | 0 |
+| Duplicate entitled per (user, restaurant) (S6) | 0 |
+
+### C.3 Legacy subscription findings
+
+| Finding | Classification | Detail |
+|---------|----------------|--------|
+| **100% scoped rows** | **legacy**, **investigate** | ASN canonical model expects account row per owner; ASN-4C backfill not executed on this DB |
+| **Test subscriptions** | **legacy**, **removable later** | 600002, 630001, 630002 on empty test venues |
+| **Admin scoped BASIC on 720007** | **legacy**, **preserve** | Pre-ASN admin onboarding pattern; entitlements not visible to `pickUserLevelSubscription` |
+| **Redundant subscriptions** | **investigate** | Test user holds **3 active scoped rows** for **3 empty venues** — redundant vs single account trial |
+| **Trial leftovers** | **None** | No `trial` status rows |
+| **Inactive commercial artifacts** | **None** | All four rows `active` |
+| **Ownership anomalies** | **None** | `subscription_owner_mismatch = 0` (1R) |
+| **Venue without sub** | **investigate** | Restaurant 720002 has no row — commercial gap, not orphan sub |
+
+**Deliverable C conclusion:** Subscription table is entirely **pre-ASN scoped footprint**. Not corrupt; **requires ASN-4C/5A-style backfill** before account-level entitlements match stored billing state. Test-user scoped rows are **removal candidates** after billing review.
+
+---
+
+## E.4 Deliverable D — Ordering Legacy Audit
+
+### D.1 Ordering inventory (counts)
+
+| Entity | Count | Notes |
+|--------|------:|-------|
+| orders | 3 | All structurally linked (O1–O4 = 0 in Phase 2) |
+| order_items | 3 | 1:1 with orders — no orphan line items |
+| restaurant_tables | *not in 1R script* | Implied by orders with `tableId`; column-level detail not captured in 1R export |
+
+### D.2 Structural integrity (Phase 2)
+
+| Check | Result |
+|-------|--------|
+| O1 — orders without restaurant | 0 |
+| O2 — orders with invalid table/restaurant pairing | 0 |
+| O3 — orphan order_items | 0 |
+| O4 — totalAmount mismatch vs lines | 0 |
+
+### D.3 Legacy ordering classification
+
+| Finding | Classification | Rationale |
+|---------|----------------|-----------|
+| **3 orders on small dataset** | **test** / **investigate** | Volume consistent with manual QA, not production traffic |
+| **Orders vs menu concentration** | **investigate** | All menu content on `720007`; orders likely tied to admin demo venue (ID-level join not in 1R export) |
+| **Abandoned orders** | **None confirmed** | No `pending` backlog classification without status export — defer to Phase F or extended readonly query |
+| **Invalid historical states** | **None detected** | Phase 2 ordering checks clean |
+| **Development-only records** | **probable** | Co-located with test user creation date and demo menu |
+
+**Deliverable D conclusion:** Ordering data is **minimal and structurally sound**. Treat as **development/test artifacts** unless order timestamps prove production guest traffic. **No launch-blocking ordering integrity defects.**
+
+---
+
+## E.5 Deliverable E — Authentication Legacy Audit
+
+### E.1 Auth token inventory
+
+| Metric | Count |
+|--------|------:|
+| Total `auth_tokens` | 4 |
+| Expired and unused | **1** (1R `qualityChecks.expired_unused_tokens`) |
+| Used tokens | *not exported* — remainder presumed consumed or valid |
+
+### E.2 Session model (non-table)
+
+| Artifact | Legacy status |
+|----------|---------------|
+| JWT cookie sessions | **Current** — no session table |
+| `users.sessionValidAfter` | **Current** — post-0018 auth policy |
+| Manus/OAuth legacy users (U3) | **0** — no Manus artifacts in user table |
+
+### E.3 Authentication legacy findings
+
+| Finding | Classification | Recommendation |
+|---------|----------------|----------------|
+| **1 stale unused token** | **legacy**, **Safe Later Removal** | Expired `auth_tokens` row with `usedAt IS NULL` — housekeeping only |
+| **No session table remnants** | **resolved** | N/A |
+| **No obsolete auth provider users** | **resolved** | Both users on `email` login |
+| **Pre-auth-policy leftovers** | **None identified** | Migrations 0017–0019 applied; users email-verified |
+
+**Deliverable E conclusion:** Auth surface is **clean** except **one expired token** — low-risk housekeeping candidate. No legacy provider accounts.
+
+---
+
+## E.6 Deliverable F — ASN Legacy Audit
+
+### F.1 Code vs data alignment
+
+| Dimension | Status | Evidence |
+|-----------|--------|----------|
+| **ASN ownership model in code** | **resolved** | `registerOwner.ts` inserts `buildTrialSubscriptionForUser(userId, 0)` (ASN-5) |
+| **Guest ordering authority** | **resolved** | `resolveGuestOrderingAllowed` → account entitlements only |
+| **Legacy ordering fallbacks F-W1-03/04** | **resolved** | Removed per ASN-5 |
+| **Legacy data on launch DB** | **investigate** | **0** account-scoped subs; **4** scoped subs |
+| **Legacy resolver remnants in code** | **future cleanup** | `getSubscriptionForRestaurant`, `restaurantAllowsTableOrdering` deprecated but present |
+| **Old subscription creation paths** | **future cleanup** | Admin `createRestaurantSubscription` still inserts scoped rows (ASN-4C C-05) |
+
+### F.2 Remaining legacy ownership assumptions
+
+| Assumption | Where it lives | Data impact on `mineuqr` |
+|------------|----------------|--------------------------|
+| Scoped row = venue authority | `getSubscriptionForRestaurant`, admin stats fallbacks | Admin UI may still **display** scoped sub for 720007 |
+| Account row = commercial authority | `pickUserLevelSubscription`, `getCommercialEntitlements` | **No row matches** → `plan: NONE` for **both** users |
+| `restaurantId` immutable after insert | Application code | Backfill must **create** account rows, not UPDATE scope |
+
+### F.3 Commercial correctness gap (legacy data + new code)
+
+```text
+Stored state:     4 × user_subscriptions.restaurantId > 0
+Canonical read:   pickUserLevelSubscription filters restaurantId === 0
+Result:           No entitled account subscription for either owner
+Guest ordering:   resolveGuestOrderingAllowed → features.ordering === false (NONE path)
+```
+
+**Important:** Three orders exist — consistent with orders placed **before ASN-5 guest gate** or via paths that did not enforce account entitlements. Orders are **historical evidence**, not proof that current entitlements match scoped rows.
+
+### F.4 ASN classification summary
+
+| Item | Classification |
+|------|----------------|
+| ASN-5 code execution | **resolved** |
+| ASN-4C data backfill on `mineuqr` | **investigate** — required for entitlement alignment |
+| Scoped subscription rows | **future cleanup** / backfill migrate |
+| Deprecated resolver functions | **future cleanup** (code-only, post-backfill) |
+| Test user multi-scoped subs | **removable later** after backfill or cascade delete |
+
+**Deliverable F conclusion:** ASN is **fully adopted in runtime code** but **not reflected in persisted subscriptions**. This is the **primary legacy footprint** on the launch database.
+
+---
+
+## E.7 Deliverable G — Removal Candidate Register
+
+| ID | Entity | Reason | Risk | Recommendation |
+|----|--------|--------|------|----------------|
+| **RC-01** | User `14760004` | Test owner; `sam*` restaurant pattern; created during dev window | **Medium** — cascades 4 restaurants, 3 subs, possible notifications | **Investigate** → **Safe Later Removal** after billing/ops sign-off |
+| **RC-02** | Restaurants `720002`–`720006` | Empty test shells; 4/5 total venues | **Low–Medium** — scoped subs on 720003/005/006; 720002 lacks sub (R2) | **Safe Later Removal** with test user (RC-01) |
+| **RC-03** | Subscriptions `600002`, `630001`, `630002` | Scoped legacy rows on test venues | **Medium** if Stripe-linked | **Investigate** billing linkage → **Safe Later Removal** |
+| **RC-04** | Subscription `600001` | Scoped legacy on admin demo venue | **High** if deleted without backfill | **Preserve** until account-scoped row created (ASN backfill) |
+| **RC-05** | Auth token (1 expired unused) | Stale `email_verify` or `password_reset` row | **Low** | **Safe Later Removal** |
+| **RC-06** | Orders (3) + order_items (3) | Probable QA / pre-gate test orders | **Low** | **Investigate** timestamps → **Safe Later Removal** if confirmed test-only |
+| **RC-07** | Notifications (91) | High volume vs tiny entity count; likely dev/order/billing noise | **Low** | **Investigate** by `notificationType` → **Safe Later Removal** for test user subset |
+| **RC-08** | Invoice (1) | Commercial artifact | **High** — billing record | **Preserve** |
+| **RC-09** | Restaurant `720007` + menu | Only substantive launch venue | **High** | **Preserve** |
+| **RC-10** | User `1` (admin) | Governance + seed owner | **Critical** | **Preserve** |
+
+**No execution authorized in Phase E.**
+
+---
+
+## E.8 Deliverable H — Commercial Readiness Impact
+
+| # | Question | Answer |
+|---|----------|--------|
+| **1** | Are legacy artifacts present? | **Yes** — scoped subscriptions (100%), test user + 4 empty venues, 1 stale auth token, probable test orders, notification noise |
+| **2** | Do they affect launch readiness? | **Partially** — clutter and ASN data gap affect **confidence**, not infrastructure. Environment and structural integrity are sound (1R orphans = 0). |
+| **3** | Do they affect commercial correctness? | **Yes** — account entitlements do not reflect stored scoped `active` rows; guest ordering gate reads **NONE** for both owners under current code |
+| **4** | Must anything be cleaned before launch? | **No mandatory delete** — **ASN account-scoped backfill** (or admin creation of `restaurantId = 0` rows) is **recommended** before relying on entitlements/ordering gates. Test data cleanup is **optional** hygiene. |
+| **5** | Can launch proceed without cleanup? | **Yes, with documented caveats** — launch can proceed if operators (a) accept demo/test rows as non-customer data, (b) execute ASN backfill before enforcing commercial gates in production, (c) preserve admin venue `720007` and invoice `RC-08` |
+
+### H.1 Launch readiness classification
+
+| Area | Verdict |
+|------|---------|
+| Structural integrity | **PASS** |
+| Legacy footprint bounded | **PASS** |
+| ASN data normalization | **INVESTIGATE** — backfill pending |
+| Test data isolation | **INVESTIGATE** |
+| Auth hygiene | **PASS WITH WARNINGS** (1 stale token) |
+
+**Phase E overall:** **PASS WITH WARNINGS** — legacy footprint documented; no cleanup executed.
+
+---
+
+## E.9 Phase E conclusion
+
+### E.9.1 Legacy footprint summary
+
+| Category | Volume | Disposition |
+|----------|--------|-------------|
+| Pre-ASN scoped subscriptions | 4 rows | Backfill → account scope; do not hard-delete with invoice |
+| Test/demo restaurants | 4 venues | Removable later |
+| Test owner account | 1 user | Removable later |
+| Demo/admin venue | 1 venue | Preserve |
+| Test/probable orders | 3 orders | Investigate → removable later |
+| Stale auth tokens | 1 row | Safe later removal |
+| Notification backlog | 91 rows | Investigate by type |
+
+### E.9.2 Handoff
+
+| Next step | Program |
+|-----------|---------|
+| Migration safety on launch DB | **Phase F — Migration Safety Audit** |
+| ASN scoped → account backfill execution | **ASN-4C / post-5A** (separate change request) |
+| Extended readonly probes (orders status, tables, notification types) | Optional 1R script extension — not required for Phase E classification |
+
+### E.9.3 Success criteria
+
+| Criterion | Status |
+|-----------|--------|
+| Complete legacy footprint inventory | **Met** |
+| All findings classified | **Met** |
+| No cleanup performed | **Met** |
+| No code or data modifications | **Met** |
+
+---
+
+*End of DATA-INTEGRITY-1 Phase E. Read-only legacy classification. No remediation.*
