@@ -2,9 +2,11 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { TRPCError } from "@trpc/server";
 
 vi.mock("./db", () => ({
-  getCanonicalUserSubscription: vi.fn(),
+  getSubscriptionsByUser: vi.fn(),
   getUserById: vi.fn(),
   getSubscriptionPlanById: vi.fn(),
+  getSubscriptionPlans: vi.fn(),
+  getRestaurantsByUser: vi.fn(async () => []),
   createInvoice: vi.fn(),
   updateInvoice: vi.fn(),
   createSubscriptionForRestaurant: vi.fn(),
@@ -21,13 +23,13 @@ vi.mock("./invoice-pdf", () => ({
 }));
 
 import {
-  getCanonicalUserSubscription,
+  getSubscriptionsByUser,
   getUserById,
   getSubscriptionPlanById,
+  getSubscriptionPlans,
   createInvoice,
   updateInvoice,
   createSubscriptionForRestaurant,
-  getRestaurantById,
   createNotification,
 } from "./db";
 import { appRouter } from "./routers";
@@ -45,6 +47,38 @@ const adminUser = {
   passwordHash: null,
 };
 
+function accountSub(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 10,
+    userId: 5,
+    restaurantId: 0,
+    planId: 30002,
+    status: "active",
+    billingCycle: "monthly",
+    currentPeriodStart: new Date().toISOString(),
+    currentPeriodEnd: new Date(Date.now() + 30 * 86400000).toISOString(),
+    trialEndsAt: null,
+    canceledAt: null,
+    stripeSubscriptionId: null,
+    stripeCustomerId: null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    ...overrides,
+  };
+}
+
+function setupDbForUser(userId: number, subs: ReturnType<typeof accountSub>[]) {
+  (getUserById as any).mockImplementation(async (id: number) => {
+    if (id === userId) return { id: userId, name: "User", email: "user@test.com", role: "user" };
+    if (id === 1) return { ...adminUser };
+    return { id, role: "user" };
+  });
+  (getSubscriptionsByUser as any).mockImplementation(async (uid: number) =>
+    uid === userId ? subs : []
+  );
+  (getSubscriptionPlans as any).mockResolvedValue([]);
+}
+
 function createCaller() {
   return appRouter.createCaller({
     user: adminUser,
@@ -60,16 +94,9 @@ describe("Admin invoice billing hardening (ADMIN-AUDIT-FIX-1)", () => {
 
   describe("generateInvoicePDF", () => {
     it("creates pending invoice by default (ADMIN-AUDIT-FIX-2)", async () => {
-      (getUserById as any).mockResolvedValue({ id: 5, name: "User", email: "user@test.com" });
-      (getCanonicalUserSubscription as any).mockResolvedValue({
-        id: 10,
-        userId: 5,
-        planId: 1,
-        status: "active",
-        billingCycle: "monthly",
-      });
+      setupDbForUser(5, [accountSub()]);
       (getSubscriptionPlanById as any).mockResolvedValue({
-        id: 1,
+        id: 30002,
         nameEn: "Plan",
         priceMonthly: "39",
       });
@@ -88,16 +115,9 @@ describe("Admin invoice billing hardening (ADMIN-AUDIT-FIX-1)", () => {
     });
 
     it("creates paid invoice only when markAsPaid is true", async () => {
-      (getUserById as any).mockResolvedValue({ id: 5, name: "User", email: "user@test.com" });
-      (getCanonicalUserSubscription as any).mockResolvedValue({
-        id: 10,
-        userId: 5,
-        planId: 1,
-        status: "active",
-        billingCycle: "monthly",
-      });
+      setupDbForUser(5, [accountSub()]);
       (getSubscriptionPlanById as any).mockResolvedValue({
-        id: 1,
+        id: 30002,
         nameEn: "Plan",
         priceMonthly: "39",
       });
@@ -120,13 +140,11 @@ describe("Admin invoice billing hardening (ADMIN-AUDIT-FIX-1)", () => {
     });
 
     it("rejects trial subscriptions with admin-facing error", async () => {
-      (getUserById as any).mockResolvedValue({ id: 5, name: "Trial User", email: "trial@test.com" });
-      (getCanonicalUserSubscription as any).mockResolvedValue({
-        id: 10,
-        userId: 5,
-        planId: 1,
-        status: "trial",
-        billingCycle: "monthly",
+      setupDbForUser(5, [accountSub({ status: "trial" })]);
+      (getSubscriptionPlanById as any).mockResolvedValue({
+        id: 30002,
+        nameEn: "Plan",
+        priceMonthly: "39",
       });
 
       const caller = createCaller();
@@ -139,15 +157,24 @@ describe("Admin invoice billing hardening (ADMIN-AUDIT-FIX-1)", () => {
 
       expect(createInvoice).not.toHaveBeenCalled();
     });
+
+    it("rejects when subscriptionId does not match account-level row", async () => {
+      setupDbForUser(5, [accountSub({ id: 10 })]);
+      const caller = createCaller();
+      await expect(
+        caller.admin.generateInvoicePDF({ userId: 5, subscriptionId: 99 })
+      ).rejects.toMatchObject({
+        code: "BAD_REQUEST",
+      } satisfies Partial<TRPCError>);
+    });
   });
 
   describe("createUserSubscriptionByAdmin", () => {
     it("does not auto-create invoices for trial subscriptions", async () => {
-      (getCanonicalUserSubscription as any).mockResolvedValue(null);
-      (getRestaurantById as any).mockResolvedValue({ id: 3, userId: 7 });
+      setupDbForUser(7, []);
       (createSubscriptionForRestaurant as any).mockResolvedValue({ id: 99 });
       (getSubscriptionPlanById as any).mockResolvedValue({
-        id: 1,
+        id: 30002,
         nameAr: "باقة",
         nameEn: "Plan",
         priceMonthly: "39",
@@ -157,14 +184,16 @@ describe("Admin invoice billing hardening (ADMIN-AUDIT-FIX-1)", () => {
       const caller = createCaller();
       const result = await caller.admin.createUserSubscriptionByAdmin({
         userId: 7,
-        restaurantId: 3,
-        planId: 1,
+        planId: 30002,
         billingCycle: "monthly",
         status: "trial",
       });
 
       expect(result).toEqual({ success: true, subscriptionId: 99 });
       expect(createInvoice).not.toHaveBeenCalled();
+      expect(createSubscriptionForRestaurant).toHaveBeenCalledWith(
+        expect.objectContaining({ restaurantId: 0, userId: 7 })
+      );
     });
   });
 });

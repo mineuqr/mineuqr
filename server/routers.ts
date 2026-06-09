@@ -18,7 +18,6 @@ import {
   getCurrencyByCountryCode, getAllCountriesCurrencies,
   upsertUser, getUserByEmail, updateUserPassword, updateUserProfile,
   createSubscriptionForRestaurant, updateSubscriptionById, cancelSubscriptionById, getSubscriptionForRestaurant,
-  resolveSubscriptionForActivation,
   getAdminStatistics, getRevenueByMonth,
   getPublicStats, getExtendedAdminStats,
   getAllUsers, updateUserRole,
@@ -48,11 +47,13 @@ import {
   assertSubscriptionEligibleForAdminInvoice,
   buildAdminSubscriptionInsert,
   computeAdminSubscriptionPeriodEnd,
-  assertRestaurantSubscriptionForUpdate,
   resolveAdminRestaurantOwnerUserId,
-  resolveRestaurantOwnerUserId,
-  resolveSubscriptionRestaurantIdForUser,
 } from "./adminSubscriptionHelpers";
+import {
+  getOwnerAccountSubscriptionRow,
+  ownerHasEntitledAccountSubscription,
+} from "./commercial/ownerAccountSubscriptionAuthority";
+import { assertRestaurantScopedSubscriptionRetired } from "./commercial/retiredRestaurantSubscriptionApi";
 import {
   assertProtectedUserPasswordResetAllowed,
   assertProtectedUserRoleModifiable,
@@ -849,6 +850,7 @@ const adminCoreRouter = router({
 
   // ─── Admin Subscription Management ───────────────────────
 
+  /** @deprecated AUTHORITY-CLEANUP-1 — use createUserSubscriptionByAdmin (account-level). */
   createRestaurantSubscription: protectedProcedure
     .input(z.object({
       restaurantId: z.number(),
@@ -857,29 +859,12 @@ const adminCoreRouter = router({
       billingCycle: z.enum(["monthly", "yearly"]),
       subscriptionEndDate: z.string().optional(),
     }))
-    .mutation(async ({ input, ctx }) => {
+    .mutation(async ({ ctx }) => {
       assertAdminAccess(ctx, "admin.createRestaurantSubscription");
-      const ownerUserId = await resolveRestaurantOwnerUserId(
-        input.restaurantId,
-        input.userId
-      );
-      const existing = await getSubscriptionForRestaurant(input.restaurantId);
-      if (existing) {
-        throw new TRPCError({ code: "CONFLICT", message: "المطعم لديه اشتراك بالفعل" });
-      }
-      const result = await createSubscriptionForRestaurant(
-        buildAdminSubscriptionInsert({
-          userId: ownerUserId,
-          restaurantId: input.restaurantId,
-          planId: input.planId,
-          status: "active",
-          billingCycle: input.billingCycle,
-          subscriptionEndDate: input.subscriptionEndDate,
-        })
-      );
-      return { success: true, subscriptionId: result.id };
+      assertRestaurantScopedSubscriptionRetired("admin.createRestaurantSubscription");
     }),
 
+  /** @deprecated AUTHORITY-CLEANUP-1 — use updateUserSubscriptionByAdmin. */
   updateRestaurantSubscription: protectedProcedure
     .input(z.object({
       subscriptionId: z.number(),
@@ -888,49 +873,29 @@ const adminCoreRouter = router({
       status: z.enum(["active", "canceled", "expired", "trial"]).optional(),
       subscriptionEndDate: z.string().optional(),
     }))
-    .mutation(async ({ input, ctx }) => {
+    .mutation(async ({ ctx }) => {
       assertAdminAccess(ctx, "admin.updateRestaurantSubscription");
-      await assertRestaurantSubscriptionForUpdate(input.subscriptionId);
-      const updateData: Record<string, any> = {};
-      if (input.planId !== undefined) updateData.planId = input.planId;
-      if (input.billingCycle !== undefined) updateData.billingCycle = input.billingCycle;
-      if (input.status !== undefined) updateData.status = input.status;
-      if (input.subscriptionEndDate) updateData.currentPeriodEnd = new Date(input.subscriptionEndDate).toISOString();
-      applyAdminTrialStatusUpdate(updateData, input);
-      await updateSubscriptionById(input.subscriptionId, updateData);
-      return { success: true };
+      assertRestaurantScopedSubscriptionRetired("admin.updateRestaurantSubscription");
     }),
 
+  /** @deprecated AUTHORITY-CLEANUP-1 — use updateUserSubscriptionByAdmin. */
   cancelRestaurantSubscription: protectedProcedure
     .input(z.object({
       subscriptionId: z.number(),
     }))
-    .mutation(async ({ input, ctx }) => {
+    .mutation(async ({ ctx }) => {
       assertAdminAccess(ctx, "admin.cancelRestaurantSubscription");
-      await cancelSubscriptionById(input.subscriptionId);
-      // Send email notification to owner about cancellation
-      try {
-        await notifyOwnerSubscriptionCancelled({
-          userName: ctx.user.name,
-          userEmail: ctx.user.email,
-          planName: "غير محدد",
-          subscriptionId: input.subscriptionId,
-        });
-      } catch (e) { /* email notification failure is non-critical */ }
-      return { success: true };
+      assertRestaurantScopedSubscriptionRetired("admin.cancelRestaurantSubscription");
     }),
 
+  /** @deprecated AUTHORITY-CLEANUP-1 — use deleteUserSubscriptionByAdmin. */
   deleteRestaurantSubscription: protectedProcedure
     .input(z.object({
       subscriptionId: z.number(),
     }))
-    .mutation(async ({ input, ctx }) => {
+    .mutation(async ({ ctx }) => {
       assertAdminAccess(ctx, "admin.deleteRestaurantSubscription");
-      await deleteSubscriptionCascade(
-        input.subscriptionId,
-        cascadeAuditFromTrpc(ctx, "admin.deleteRestaurantSubscription", "delete_subscription")
-      );
-      return { success: true };
+      assertRestaurantScopedSubscriptionRetired("admin.deleteRestaurantSubscription");
     }),
 
   // ─── Admin Statistics ───────────────────────
@@ -1021,14 +986,20 @@ const adminCoreRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       assertAdminAccess(ctx, "admin.createUserSubscriptionByAdmin");
-      const existing = await getCanonicalUserSubscription(input.userId);
-      if (existing) {
-        throw new TRPCError({ code: "CONFLICT", message: "المستخدم لديه اشتراك بالفعل. استخدم التعديل بدلاً من الإنشاء." });
+      if (input.restaurantId !== undefined && input.restaurantId !== 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "Account subscriptions must use restaurantId 0. Manage subscriptions at owner level only.",
+        });
       }
-      const restaurantId = await resolveSubscriptionRestaurantIdForUser(
-        input.userId,
-        input.restaurantId
-      );
+      if (await ownerHasEntitledAccountSubscription(input.userId)) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "المستخدم لديه اشتراك بالفعل. استخدم التعديل بدلاً من الإنشاء.",
+        });
+      }
+      const restaurantId = 0;
       const subscriptionStatus = input.status || "active";
       const now = new Date();
       const periodEnd = computeAdminSubscriptionPeriodEnd({
@@ -1076,11 +1047,9 @@ const adminCoreRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       assertAdminAccess(ctx, "admin.updateUserSubscriptionByAdmin");
-      const existing = await resolveSubscriptionForActivation(input.userId, {
-        planId: input.planId,
-      });
+      const existing = await getOwnerAccountSubscriptionRow(input.userId);
       if (!existing) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "لا يوجد اشتراك لهذا المستخدم" });
+        throw new TRPCError({ code: "NOT_FOUND", message: "لا يوجد اشتراك حساب لهذا المستخدم" });
       }
       const updateData: Record<string, any> = {};
       if (input.planId !== undefined) updateData.planId = input.planId;
@@ -1122,9 +1091,9 @@ const adminCoreRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       assertAdminAccess(ctx, "admin.deleteUserSubscriptionByAdmin");
-      const existing = await getCanonicalUserSubscription(input.userId);
+      const existing = await getOwnerAccountSubscriptionRow(input.userId);
       if (!existing) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "لا يوجد اشتراك لهذا المستخدم" });
+        throw new TRPCError({ code: "NOT_FOUND", message: "لا يوجد اشتراك حساب لهذا المستخدم" });
       }
       await deleteSubscriptionCascade(
         existing.id,
@@ -1190,9 +1159,15 @@ const adminCoreRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "المستخدم غير موجود" });
       }
       // Get subscription info
-      const sub = await getCanonicalUserSubscription(input.userId);
+      const sub = await getOwnerAccountSubscriptionRow(input.userId);
       if (!sub) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "لا يوجد اشتراك لهذا المستخدم" });
+        throw new TRPCError({ code: "NOT_FOUND", message: "لا يوجد اشتراك حساب لهذا المستخدم" });
+      }
+      if (sub.id !== input.subscriptionId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "subscriptionId must match the owner's account-level subscription",
+        });
       }
       assertSubscriptionEligibleForAdminInvoice(sub.status);
       // Get plan info

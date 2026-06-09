@@ -1,0 +1,258 @@
+/**
+ * AUTHORITY-CLEANUP-1 — subscription authority unification validation.
+ * Scenarios A/B/C from AUTHORITY-CLEANUP-1 spec.
+ */
+import { describe, expect, it, vi, beforeEach } from "vitest";
+import { TRPCError } from "@trpc/server";
+import type { UserSubscriptionRow } from "../subscriptionResolver";
+import {
+  getOwnerAccountSubscriptionRow,
+  ownerHasEntitledAccountSubscription,
+} from "./ownerAccountSubscriptionAuthority";
+import { commercialReadService } from "./CommercialReadService";
+import { appRouter } from "../routers";
+
+vi.mock("../db", () => ({
+  getSubscriptionsByUser: vi.fn(),
+  getUserById: vi.fn(),
+  getSubscriptionPlanById: vi.fn(),
+  getSubscriptionPlans: vi.fn(),
+  getRestaurantsByUser: vi.fn(async () => []),
+  createSubscriptionForRestaurant: vi.fn(),
+  createNotification: vi.fn(),
+  getRestaurantById: vi.fn(),
+  createInvoice: vi.fn(),
+  updateInvoice: vi.fn(),
+}));
+
+import {
+  getSubscriptionsByUser,
+  getUserById,
+  getSubscriptionPlanById,
+  getSubscriptionPlans,
+  createSubscriptionForRestaurant,
+  createNotification,
+} from "../db";
+
+const FIXED_NOW = new Date("2026-06-01T12:00:00.000Z");
+const USER_ID = 14760004;
+
+const PLAN_CATALOG = {
+  30002: {
+    id: 30002,
+    nameEn: "Professional",
+    nameAr: "احترافي",
+    maxRestaurants: 5,
+    maxItemsPerRestaurant: 500,
+    maxCategories: 25,
+    priceMonthly: "39.00",
+    priceYearly: "390.00",
+  },
+};
+
+function isoPlusDays(days: number): string {
+  return new Date(FIXED_NOW.getTime() + days * 24 * 60 * 60 * 1000).toISOString();
+}
+
+function subRow(
+  overrides: Partial<UserSubscriptionRow> & Pick<UserSubscriptionRow, "id" | "userId" | "restaurantId">
+): UserSubscriptionRow {
+  return {
+    planId: 30002,
+    status: "active",
+    billingCycle: "monthly",
+    stripeSubscriptionId: null,
+    stripeCustomerId: null,
+    currentPeriodStart: isoPlusDays(-10),
+    currentPeriodEnd: isoPlusDays(20),
+    trialEndsAt: null,
+    canceledAt: null,
+    createdAt: isoPlusDays(-30),
+    updatedAt: isoPlusDays(-1),
+    ...overrides,
+  };
+}
+
+function setupPlansMock() {
+  (getSubscriptionPlanById as ReturnType<typeof vi.fn>).mockImplementation(
+    async (id: number) => PLAN_CATALOG[id as keyof typeof PLAN_CATALOG]
+  );
+  (getSubscriptionPlans as ReturnType<typeof vi.fn>).mockResolvedValue(
+    Object.values(PLAN_CATALOG)
+  );
+}
+
+function setupUserSubs(rows: UserSubscriptionRow[]) {
+  (getUserById as ReturnType<typeof vi.fn>).mockImplementation(async (id: number) => {
+    if (id === USER_ID) return { id: USER_ID, role: "user" };
+    if (id === 1) return { id: 1, role: "admin" };
+    return { id, role: "user" };
+  });
+  (getSubscriptionsByUser as ReturnType<typeof vi.fn>).mockImplementation(
+    async (userId: number) => (userId === USER_ID ? rows : [])
+  );
+}
+
+const adminUser = {
+  id: 1,
+  openId: "admin_1",
+  name: "Admin",
+  email: "admin@test.com",
+  role: "admin" as const,
+  loginMethod: "email",
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  lastSignedIn: new Date(),
+  passwordHash: null,
+};
+
+function createCaller() {
+  return appRouter.createCaller({
+    user: adminUser,
+    req: { headers: { origin: "http://localhost:3000" } } as any,
+    res: { clearCookie: vi.fn() } as any,
+  });
+}
+
+describe("AUTHORITY-CLEANUP-1 — canonical owner account subscription authority", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setupPlansMock();
+  });
+
+  describe("Scenario A — active entitled account", () => {
+    const accountRow = subRow({
+      id: 660001,
+      userId: USER_ID,
+      restaurantId: 0,
+      planId: 30002,
+      status: "active",
+    });
+
+    beforeEach(() => {
+      setupUserSubs([accountRow]);
+    });
+
+    it("CRS reports entitled; create guard blocks", async () => {
+      const state = await commercialReadService.getOwnerCommercialState(USER_ID, FIXED_NOW);
+      expect(state.commercialStatus.isEntitled).toBe(true);
+      expect(await ownerHasEntitledAccountSubscription(USER_ID, FIXED_NOW)).toBe(true);
+
+      const caller = createCaller();
+      await expect(
+        caller.admin.createUserSubscriptionByAdmin({
+          userId: USER_ID,
+          planId: 30002,
+          billingCycle: "monthly",
+        })
+      ).rejects.toMatchObject({
+        code: "CONFLICT",
+      } satisfies Partial<TRPCError>);
+    });
+
+    it("account row resolved for update/delete target", async () => {
+      const row = await getOwnerAccountSubscriptionRow(USER_ID, FIXED_NOW);
+      expect(row?.id).toBe(660001);
+      expect(row?.restaurantId).toBe(0);
+    });
+  });
+
+  describe("Scenario B — no entitled account", () => {
+    beforeEach(() => {
+      setupUserSubs([]);
+      (createSubscriptionForRestaurant as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 700001 });
+      (createNotification as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+    });
+
+    it("CRS not entitled; create allowed at account level", async () => {
+      const state = await commercialReadService.getOwnerCommercialState(USER_ID, FIXED_NOW);
+      expect(state.commercialStatus.isEntitled).toBe(false);
+      expect(await ownerHasEntitledAccountSubscription(USER_ID, FIXED_NOW)).toBe(false);
+
+      const caller = createCaller();
+      const result = await caller.admin.createUserSubscriptionByAdmin({
+        userId: USER_ID,
+        planId: 30002,
+        billingCycle: "monthly",
+      });
+
+      expect(result).toEqual({ success: true, subscriptionId: 700001 });
+      expect(createSubscriptionForRestaurant).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: USER_ID,
+          restaurantId: 0,
+        })
+      );
+    });
+
+    it("rejects non-zero restaurantId on create", async () => {
+      const caller = createCaller();
+      await expect(
+        caller.admin.createUserSubscriptionByAdmin({
+          userId: USER_ID,
+          restaurantId: 720002,
+          planId: 30002,
+          billingCycle: "monthly",
+        })
+      ).rejects.toMatchObject({
+        code: "BAD_REQUEST",
+      } satisfies Partial<TRPCError>);
+    });
+  });
+
+  describe("Scenario C — expired / orphan legacy scoped rows only", () => {
+    const scopedActive = subRow({
+      id: 600002,
+      userId: USER_ID,
+      restaurantId: 720006,
+      planId: 30002,
+      status: "active",
+    });
+    const scopedExpired = subRow({
+      id: 630001,
+      userId: USER_ID,
+      restaurantId: 720003,
+      planId: 30002,
+      status: "expired",
+      currentPeriodEnd: isoPlusDays(-5),
+    });
+
+    beforeEach(() => {
+      setupUserSubs([scopedActive, scopedExpired]);
+      (createSubscriptionForRestaurant as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 700002 });
+      (createNotification as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+    });
+
+    it("CRS not entitled (no account row); create allowed — no split-brain", async () => {
+      const state = await commercialReadService.getOwnerCommercialState(USER_ID, FIXED_NOW);
+      expect(state.commercialStatus.isEntitled).toBe(false);
+      expect(state.subscriptionId).toBeNull();
+      expect(await ownerHasEntitledAccountSubscription(USER_ID, FIXED_NOW)).toBe(false);
+      expect(await getOwnerAccountSubscriptionRow(USER_ID, FIXED_NOW)).toBeUndefined();
+
+      const caller = createCaller();
+      const result = await caller.admin.createUserSubscriptionByAdmin({
+        userId: USER_ID,
+        planId: 30002,
+        billingCycle: "monthly",
+      });
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe("AUTH-1E — retired restaurant-scoped admin APIs", () => {
+    it("createRestaurantSubscription returns PRECONDITION_FAILED", async () => {
+      const caller = createCaller();
+      await expect(
+        caller.admin.createRestaurantSubscription({
+          restaurantId: 1,
+          planId: 30002,
+          billingCycle: "monthly",
+        })
+      ).rejects.toMatchObject({
+        code: "PRECONDITION_FAILED",
+        message: expect.stringContaining("AUTHORITY-CLEANUP-1"),
+      } satisfies Partial<TRPCError>);
+    });
+  });
+});
