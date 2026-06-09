@@ -50,7 +50,7 @@ import {
 } from "@/lib/admin/ownerCommercialDisplay";
 import { formatSubscriptionEndDate } from "@/lib/subscription";
 import { cn } from "@/lib/utils";
-import { isProtectedUserId } from "@shared/const";
+import { isProtectedPlatformAccountUser } from "@shared/platformAccount";
 import {
   ACCOUNT_CLASSIFICATIONS,
   INTERNAL_STAFF_CATEGORIES,
@@ -360,7 +360,7 @@ function UsersSection() {
       <AdminActionGroup
         ariaLabel={t("admin.userActions")}
         primary={
-          u.id !== user?.id && !isProtectedUserId(u.id) ? (
+          u.id !== user?.id && !isProtectedPlatformAccountUser(u) ? (
             <AdminIconButton
               label={language === "ar" ? "تعديل الدور" : "Edit role"}
               onClick={() => {
@@ -431,7 +431,7 @@ function UsersSection() {
           </AdminIconButton>
         }
         danger={
-          u.id !== user?.id && !isProtectedUserId(u.id) ? (
+          u.id !== user?.id && !isProtectedPlatformAccountUser(u) ? (
             <AdminIconButton
               label={language === "ar" ? "حذف المستخدم" : "Delete user"}
               onClick={() => setDeleteUserId(u.id)}

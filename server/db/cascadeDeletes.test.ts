@@ -12,30 +12,42 @@ const txMocks = vi.hoisted(() => {
   };
 });
 
-vi.mock("../db", () => ({
-  getDb: vi.fn(async () => ({
-    transaction: txMocks.transaction,
-  })),
-}));
-
 vi.mock("../_core/opsLog", () => ({
   opsLog: vi.fn(),
 }));
 
+const { PLATFORM_OPEN_ID } = vi.hoisted(() => ({
+  PLATFORM_OPEN_ID: "protected_platform_open_id",
+}));
+
+vi.mock("../_core/env", () => ({
+  ENV: { ownerOpenId: PLATFORM_OPEN_ID },
+}));
+
+vi.mock("../db", () => ({
+  getDb: vi.fn(async () => ({
+    transaction: txMocks.transaction,
+  })),
+  getUserById: vi.fn(),
+}));
+
 import {
+  assertProtectedUserClassificationModifiable,
   assertProtectedUserPasswordResetAllowed,
   assertProtectedUserRoleModifiable,
   assertUserDeletable,
   deleteSubscriptionCascade,
   ProtectedUserDeleteError,
   ProtectedUserModifyError,
-  PROTECTED_USER_IDS,
 } from "./cascadeDeletes";
-import { getDb } from "../db";
+import { getDb, getUserById } from "../db";
 
 describe("cascadeDeletes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    (getUserById as ReturnType<typeof vi.fn>).mockImplementation(async (id: number) =>
+      id === 1 ? { id: 1, openId: PLATFORM_OPEN_ID } : { id, openId: `user_${id}` }
+    );
     txMocks.transaction.mockImplementation(async (fn: (tx: unknown) => Promise<void>) => {
       const tx = {
         delete: txMocks.delete,
@@ -50,20 +62,27 @@ describe("cascadeDeletes", () => {
     });
   });
 
-  it("PROTECTED_USER_IDS includes admin id 1", () => {
-    expect(PROTECTED_USER_IDS).toContain(1);
+  it("assertUserDeletable throws for platform account", async () => {
+    await expect(assertUserDeletable(1)).rejects.toBeInstanceOf(ProtectedUserDeleteError);
+    await expect(assertUserDeletable(5)).resolves.toBeUndefined();
   });
 
-  it("assertUserDeletable throws for protected user", () => {
-    expect(() => assertUserDeletable(1)).toThrow(ProtectedUserDeleteError);
+  it("assertProtectedUserRoleModifiable throws for platform account", async () => {
+    await expect(assertProtectedUserRoleModifiable(1)).rejects.toBeInstanceOf(
+      ProtectedUserModifyError
+    );
   });
 
-  it("assertProtectedUserRoleModifiable throws for protected user", () => {
-    expect(() => assertProtectedUserRoleModifiable(1)).toThrow(ProtectedUserModifyError);
+  it("assertProtectedUserClassificationModifiable throws for platform account", async () => {
+    await expect(assertProtectedUserClassificationModifiable(1)).rejects.toBeInstanceOf(
+      ProtectedUserModifyError
+    );
   });
 
-  it("assertProtectedUserPasswordResetAllowed throws for protected user", () => {
-    expect(() => assertProtectedUserPasswordResetAllowed(1)).toThrow(ProtectedUserModifyError);
+  it("assertProtectedUserPasswordResetAllowed throws for platform account", async () => {
+    await expect(assertProtectedUserPasswordResetAllowed(1)).rejects.toBeInstanceOf(
+      ProtectedUserModifyError
+    );
   });
 
   it("deleteSubscriptionCascade runs inside a transaction", async () => {

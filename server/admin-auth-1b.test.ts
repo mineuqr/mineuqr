@@ -10,6 +10,10 @@ import {
   isForbiddenSystemAdminCombo,
 } from "@shared/accountClassification";
 
+vi.mock("./_core/env", () => ({
+  ENV: { ownerOpenId: "platform_owner_open_id" },
+}));
+
 vi.mock("./db", () => ({
   getDb: vi.fn(),
   getUserByEmail: vi.fn(),
@@ -191,8 +195,14 @@ describe("ADMIN-AUTH-1B admin procedures", () => {
     expect(users[0]?.accountClassification).toBe("INTERNAL");
   });
 
-  it("protected user classification cannot be modified", () => {
-    expect(() => assertProtectedUserClassificationModifiable(1)).toThrow();
+  it("protected user classification cannot be modified", async () => {
+    (getUserById as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 1,
+      openId: "platform_owner_open_id",
+      role: "admin",
+      accountClassification: "INTERNAL",
+    });
+    await expect(assertProtectedUserClassificationModifiable(1)).rejects.toThrow();
   });
 });
 

@@ -19,6 +19,7 @@ import {
   orderItems, InsertOrderItem,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
+import { isPlatformAccountOpenId, isPlatformAccountUser } from "./platformAccount";
 import {
   DEFAULT_ACCOUNT_CLASSIFICATION,
   type AccountClassification,
@@ -138,7 +139,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       values.accountClassification = DEFAULT_ACCOUNT_CLASSIFICATION;
     }
     if (user.role !== undefined) { values.role = user.role; updateSet.role = user.role; }
-    else if (user.openId === ENV.ownerOpenId) {
+    else if (isPlatformAccountOpenId(user.openId)) {
       values.role = 'admin';
       updateSet.role = 'admin';
       values.accountClassification = 'INTERNAL';
@@ -864,11 +865,18 @@ export async function getExtendedAdminStats() {
 // ─── Users Management ───────────────────────
 
 /** Strip credential material before admin list API responses (ADMIN-AUDIT-FIX-2). */
-export function sanitizeUserForAdminResponse<U extends { passwordHash?: string | null }>(
+export function sanitizeUserForAdminResponse<
+  U extends { passwordHash?: string | null; openId?: string },
+>(
   user: U
-): Omit<U, "passwordHash"> {
+): Omit<U, "passwordHash"> & { isProtectedPlatformAccount: boolean } {
   const { passwordHash: _removed, ...safe } = user;
-  return safe;
+  return {
+    ...safe,
+    isProtectedPlatformAccount: isPlatformAccountUser(
+      user.openId != null ? { openId: user.openId } : null
+    ),
+  };
 }
 
 export type GetAllUsersOptions = {

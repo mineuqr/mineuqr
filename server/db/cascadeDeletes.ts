@@ -20,10 +20,8 @@ import {
 } from "../../drizzle/schema";
 import { opsLog } from "../_core/opsLog";
 import { OPS_EVENT } from "../_core/opsTaxonomy";
-import { isProtectedUserId, PROTECTED_USER_IDS } from "@shared/const";
 import { getDb } from "../db";
-
-export { PROTECTED_USER_IDS };
+import { isPlatformAccountUserId } from "../platformAccount";
 
 export class ProtectedUserDeleteError extends Error {
   readonly userId: number;
@@ -63,26 +61,28 @@ function assertDbAvailable(db: DbHandle | null): asserts db is DbHandle {
   if (!db) throw new Error("Database not available");
 }
 
-export function assertUserDeletable(userId: number): void {
-  if (isProtectedUserId(userId)) {
+export async function assertUserDeletable(userId: number): Promise<void> {
+  if (await isPlatformAccountUserId(userId)) {
     throw new ProtectedUserDeleteError(userId);
   }
 }
 
-export function assertProtectedUserRoleModifiable(userId: number): void {
-  if (isProtectedUserId(userId)) {
+export async function assertProtectedUserRoleModifiable(userId: number): Promise<void> {
+  if (await isPlatformAccountUserId(userId)) {
     throw new ProtectedUserModifyError(userId, "role");
   }
 }
 
-export function assertProtectedUserPasswordResetAllowed(userId: number): void {
-  if (isProtectedUserId(userId)) {
+export async function assertProtectedUserPasswordResetAllowed(userId: number): Promise<void> {
+  if (await isPlatformAccountUserId(userId)) {
     throw new ProtectedUserModifyError(userId, "password_reset");
   }
 }
 
-export function assertProtectedUserClassificationModifiable(userId: number): void {
-  if (isProtectedUserId(userId)) {
+export async function assertProtectedUserClassificationModifiable(
+  userId: number
+): Promise<void> {
+  if (await isPlatformAccountUserId(userId)) {
     throw new ProtectedUserModifyError(userId, "classification");
   }
 }
@@ -249,7 +249,7 @@ export async function deleteUserCascade(
   userId: number,
   audit?: CascadeAuditContext
 ): Promise<void> {
-  assertUserDeletable(userId);
+  await assertUserDeletable(userId);
 
   const db = await getDb();
   assertDbAvailable(db);

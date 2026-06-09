@@ -29,6 +29,7 @@ export type AdminOwnerOverview = {
     role: "user" | "admin";
     accountClassification: (typeof ACCOUNT_CLASSIFICATIONS)[number];
     createdAt: Date | string;
+    isProtectedPlatformAccount: boolean;
   };
   commercial: OwnerCommercialState;
 };
@@ -102,6 +103,7 @@ export const adminDashboardReadRouter = router({
           role: safe.role,
           accountClassification: safe.accountClassification,
           createdAt: safe.createdAt,
+          isProtectedPlatformAccount: safe.isProtectedPlatformAccount,
         },
         commercial,
       } satisfies AdminOwnerOverview;
@@ -143,6 +145,7 @@ export const adminDashboardReadRouter = router({
             role: safe.role,
             accountClassification: safe.accountClassification,
             createdAt: safe.createdAt,
+            isProtectedPlatformAccount: safe.isProtectedPlatformAccount,
           },
           commercial: commercialByOwner.get(safe.id)!,
         };

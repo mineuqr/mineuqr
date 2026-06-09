@@ -844,7 +844,7 @@ const adminCoreRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "المستخدم غير موجود" });
       }
       try {
-        assertProtectedUserPasswordResetAllowed(user.id);
+        await assertProtectedUserPasswordResetAllowed(user.id);
       } catch (error) {
         if (error instanceof ProtectedUserModifyError) {
           throw new TRPCError({
@@ -989,7 +989,7 @@ const adminCoreRouter = router({
       assertAdminAccess(ctx, "admin.updateAccountClassification");
       assertNotSelfAdminTarget(ctx, input.userId, "update_role");
       try {
-        assertProtectedUserClassificationModifiable(input.userId);
+        await assertProtectedUserClassificationModifiable(input.userId);
       } catch (error) {
         if (error instanceof ProtectedUserModifyError) {
           throw new TRPCError({
@@ -1037,7 +1037,7 @@ const adminCoreRouter = router({
       assertAdminAccess(ctx, "admin.updateUserRole");
       assertNotSelfAdminTarget(ctx, input.userId, "update_role");
       try {
-        assertProtectedUserRoleModifiable(input.userId);
+        await assertProtectedUserRoleModifiable(input.userId);
       } catch (error) {
         if (error instanceof ProtectedUserModifyError) {
           throw new TRPCError({
@@ -1431,7 +1431,7 @@ const profileRouter = router({
       assertAdminAccess(ctx, "profile.updateUserRole");
       assertNotSelfAdminTarget(ctx, input.userId, "update_role");
       try {
-        assertProtectedUserRoleModifiable(input.userId);
+        await assertProtectedUserRoleModifiable(input.userId);
       } catch (error) {
         if (error instanceof ProtectedUserModifyError) {
           throw new TRPCError({

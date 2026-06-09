@@ -2,7 +2,7 @@ import { useAuthGate } from "@/_core/hooks/useAuthGate";
 import { AuthGatePending, PageDataLoading, SuperAdminAccessDenied } from "@/components/AuthGate";
 import { trpc } from "@/lib/trpc";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { isProtectedUserId } from "@shared/const";
+import { isProtectedPlatformAccountUser } from "@shared/platformAccount";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -182,7 +182,7 @@ export default function SuperAdminDashboard() {
                         </td>
                         <td className="py-3 px-4 text-muted-foreground">{u.loginMethod}</td>
                         <td className="py-3 px-4 text-center">
-                          {!isProtectedUserId(u.id) && (
+                          {!isProtectedPlatformAccountUser(u) && (
                             <Button
                               variant="ghost"
                               size="sm"
