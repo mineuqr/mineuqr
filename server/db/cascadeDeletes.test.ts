@@ -35,6 +35,7 @@ import {
   assertProtectedUserClassificationModifiable,
   assertProtectedUserPasswordResetAllowed,
   assertProtectedUserRoleModifiable,
+  assertProtectedUserSubscriptionModifiable,
   assertUserDeletable,
   deleteSubscriptionCascade,
   ProtectedUserDeleteError,
@@ -77,6 +78,13 @@ describe("cascadeDeletes", () => {
     await expect(assertProtectedUserClassificationModifiable(1)).rejects.toBeInstanceOf(
       ProtectedUserModifyError
     );
+  });
+
+  it("assertProtectedUserSubscriptionModifiable throws for platform account", async () => {
+    await expect(assertProtectedUserSubscriptionModifiable(1)).rejects.toBeInstanceOf(
+      ProtectedUserModifyError
+    );
+    await expect(assertProtectedUserSubscriptionModifiable(5)).resolves.toBeUndefined();
   });
 
   it("assertProtectedUserPasswordResetAllowed throws for platform account", async () => {

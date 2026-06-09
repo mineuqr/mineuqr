@@ -68,6 +68,7 @@ import {
   assertProtectedUserPasswordResetAllowed,
   assertProtectedUserRoleModifiable,
   assertProtectedUserClassificationModifiable,
+  assertProtectedUserSubscriptionModifiable,
   deleteRestaurantCascade,
   deleteSubscriptionCascade,
   deleteUserCascade,
@@ -1086,6 +1087,17 @@ const adminCoreRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       assertAdminAccess(ctx, "admin.createUserSubscriptionByAdmin");
+      try {
+        await assertProtectedUserSubscriptionModifiable(input.userId);
+      } catch (error) {
+        if (error instanceof ProtectedUserModifyError) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "لا يمكن إنشاء اشتراك لهذا المستخدم المحمي",
+          });
+        }
+        throw error;
+      }
       if (input.restaurantId !== undefined && input.restaurantId !== 0) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -1147,6 +1159,17 @@ const adminCoreRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       assertAdminAccess(ctx, "admin.updateUserSubscriptionByAdmin");
+      try {
+        await assertProtectedUserSubscriptionModifiable(input.userId);
+      } catch (error) {
+        if (error instanceof ProtectedUserModifyError) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "لا يمكن تعديل اشتراك هذا المستخدم المحمي",
+          });
+        }
+        throw error;
+      }
       const existing = await getOwnerAccountSubscriptionRow(input.userId);
       if (!existing) {
         throw new TRPCError({ code: "NOT_FOUND", message: "لا يوجد اشتراك حساب لهذا المستخدم" });
@@ -1191,6 +1214,17 @@ const adminCoreRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       assertAdminAccess(ctx, "admin.deleteUserSubscriptionByAdmin");
+      try {
+        await assertProtectedUserSubscriptionModifiable(input.userId);
+      } catch (error) {
+        if (error instanceof ProtectedUserModifyError) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "لا يمكن حذف اشتراك هذا المستخدم المحمي",
+          });
+        }
+        throw error;
+      }
       const existing = await getOwnerAccountSubscriptionRow(input.userId);
       if (!existing) {
         throw new TRPCError({ code: "NOT_FOUND", message: "لا يوجد اشتراك حساب لهذا المستخدم" });
@@ -1253,6 +1287,17 @@ const adminCoreRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       assertAdminAccess(ctx, "admin.generateInvoicePDF");
+      try {
+        await assertProtectedUserSubscriptionModifiable(input.userId);
+      } catch (error) {
+        if (error instanceof ProtectedUserModifyError) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "لا يمكن إنشاء فاتورة لهذا المستخدم المحمي",
+          });
+        }
+        throw error;
+      }
       // Get user info
       const targetUser = await getUserById(input.userId);
       if (!targetUser) {

@@ -35,9 +35,12 @@ export class ProtectedUserDeleteError extends Error {
 
 export class ProtectedUserModifyError extends Error {
   readonly userId: number;
-  readonly action: "role" | "password_reset" | "classification";
+  readonly action: "role" | "password_reset" | "classification" | "subscription";
 
-  constructor(userId: number, action: "role" | "password_reset" | "classification") {
+  constructor(
+    userId: number,
+    action: "role" | "password_reset" | "classification" | "subscription"
+  ) {
     super(`User ${userId} is protected and cannot be modified (${action})`);
     this.name = "ProtectedUserModifyError";
     this.userId = userId;
@@ -84,6 +87,14 @@ export async function assertProtectedUserClassificationModifiable(
 ): Promise<void> {
   if (await isPlatformAccountUserId(userId)) {
     throw new ProtectedUserModifyError(userId, "classification");
+  }
+}
+
+export async function assertProtectedUserSubscriptionModifiable(
+  userId: number
+): Promise<void> {
+  if (await isPlatformAccountUserId(userId)) {
+    throw new ProtectedUserModifyError(userId, "subscription");
   }
 }
 

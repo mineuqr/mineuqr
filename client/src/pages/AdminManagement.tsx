@@ -374,52 +374,54 @@ function UsersSection() {
           ) : null
         }
         secondary={
-          isOwnerEntitled(u.commercial) ? (
-            <>
+          !isProtectedPlatformAccountUser(u) ? (
+            isOwnerEntitled(u.commercial) ? (
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => openEditSubDialog(u)}
+                  className={cn(adminDash.opBtn, adminActionBtn.info)}
+                >
+                  {t("admin.editSubscription")}
+                </Button>
+                <AdminIconButton
+                  label={t("admin.deleteSubscription")}
+                  onClick={() => setDeleteSubUserId(u.id)}
+                  className={adminActionBtn.danger}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </AdminIconButton>
+                <AdminIconButton
+                  label={language === "ar" ? "إنشاء فاتورة PDF" : "Generate invoice PDF"}
+                  onClick={() =>
+                    generateInvoiceMutation.mutate({
+                      userId: u.id,
+                      subscriptionId: u.commercial?.subscriptionId || 0,
+                    })
+                  }
+                  disabled={generateInvoiceMutation.isPending}
+                  className={adminActionBtn.teal}
+                >
+                  {generateInvoiceMutation.isPending ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <FileText className="h-3.5 w-3.5" />
+                  )}
+                </AdminIconButton>
+              </>
+            ) : (
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => openEditSubDialog(u)}
-                className={cn(adminDash.opBtn, adminActionBtn.info)}
+                onClick={() => openCreateSubDialog(u)}
+                className={cn(adminDash.opBtn, adminActionBtn.success)}
               >
-                {t("admin.editSubscription")}
+                <Plus className="h-3 w-3 me-1" />
+                {t("admin.createAccountSubscription")}
               </Button>
-              <AdminIconButton
-                label={t("admin.deleteSubscription")}
-                onClick={() => setDeleteSubUserId(u.id)}
-                className={adminActionBtn.danger}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </AdminIconButton>
-              <AdminIconButton
-                label={language === "ar" ? "إنشاء فاتورة PDF" : "Generate invoice PDF"}
-                onClick={() =>
-                  generateInvoiceMutation.mutate({
-                    userId: u.id,
-                    subscriptionId: u.commercial?.subscriptionId || 0,
-                  })
-                }
-                disabled={generateInvoiceMutation.isPending}
-                className={adminActionBtn.teal}
-              >
-                {generateInvoiceMutation.isPending ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <FileText className="h-3.5 w-3.5" />
-                )}
-              </AdminIconButton>
-            </>
-          ) : (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => openCreateSubDialog(u)}
-              className={cn(adminDash.opBtn, adminActionBtn.success)}
-            >
-              <Plus className="h-3 w-3 me-1" />
-              {t("admin.createAccountSubscription")}
-            </Button>
-          )
+            )
+          ) : null
         }
         neutral={
           <AdminIconButton
