@@ -867,6 +867,16 @@
         "expiringWithin30Days": "Expiring Within 30 Days",
         "canceledAccounts": "Canceled Accounts",
         "expiredAccounts": "Expired Accounts"
+      },
+      "planDistributionTitle": "Plan Distribution",
+      "planDistributionDesc": "Owner accounts by canonical commercial plan",
+      "plans": {
+        "NONE": "No Entitlement",
+        "TRIAL": "Trial",
+        "BASIC": "Basic",
+        "PROFESSIONAL": "Professional",
+        "ENTERPRISE": "Enterprise",
+        "ADMIN": "Admin"
       }
     },
     "restaurantsSection": "Restaurants & Subscriptions",

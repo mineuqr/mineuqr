@@ -867,6 +867,16 @@
         "expiringWithin30Days": "تنتهي خلال 30 يوماً",
         "canceledAccounts": "حسابات ملغاة",
         "expiredAccounts": "حسابات منتهية"
+      },
+      "planDistributionTitle": "توزيع الباقات",
+      "planDistributionDesc": "حسابات المالكين حسب الباقة التجارية الموحدة",
+      "plans": {
+        "NONE": "بدون استحقاق",
+        "TRIAL": "تجريبي",
+        "BASIC": "أساسي",
+        "PROFESSIONAL": "احترافي",
+        "ENTERPRISE": "مؤسسي",
+        "ADMIN": "إداري"
       }
     },
     "restaurantsSection": "المطاعم والاشتراكات",

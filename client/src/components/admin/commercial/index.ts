@@ -6,3 +6,4 @@ export { CommercialOverviewExecutiveKpis } from "./CommercialOverviewExecutiveKp
 export { CommercialOverviewMetadataPanel } from "./CommercialOverviewMetadataPanel";
 export { CommercialOverviewSubscriptionHealth } from "./CommercialOverviewSubscriptionHealth";
 export { CommercialOverviewNeedsAttention } from "./CommercialOverviewNeedsAttention";
+export { CommercialOverviewPlanDistribution } from "./CommercialOverviewPlanDistribution";

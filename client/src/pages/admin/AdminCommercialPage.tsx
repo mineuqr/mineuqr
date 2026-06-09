@@ -5,8 +5,10 @@ import {
   CommercialOverviewExecutiveKpis,
   CommercialOverviewMetadataPanel,
   CommercialOverviewNeedsAttention,
+  CommercialOverviewPlanDistribution,
   CommercialOverviewSubscriptionHealth,
 } from "@/components/admin/commercial";
+import type { CommercialPlan } from "@commercial/planTypes";
 import { AdminEmptyState } from "@/components/admin/operations/AdminEmptyState";
 import { AdminOperationsShell } from "@/components/admin/layout/AdminOperationsShell";
 import { AdminSection } from "@/components/admin/layout/AdminSection";
@@ -73,6 +75,15 @@ export default function AdminCommercialPage() {
     expiringWithin30Days: t("admin.expiringSoonHint"),
   };
 
+  const planLabels = {
+    NONE: t("admin.commercial.plans.NONE"),
+    TRIAL: t("admin.commercial.plans.TRIAL"),
+    BASIC: t("admin.commercial.plans.BASIC"),
+    PROFESSIONAL: t("admin.commercial.plans.PROFESSIONAL"),
+    ENTERPRISE: t("admin.commercial.plans.ENTERPRISE"),
+    ADMIN: t("admin.commercial.plans.ADMIN"),
+  } satisfies Record<CommercialPlan, string>;
+
   return (
     <AdminOperationsShell
       title={t("admin.nav.commercial")}
@@ -128,6 +139,17 @@ export default function AdminCommercialPage() {
               loading={isLoading}
               labels={attentionLabels}
               hints={attentionHints}
+            />
+          </AdminSection>
+
+          <AdminSection
+            title={t("admin.commercial.planDistributionTitle")}
+            description={t("admin.commercial.planDistributionDesc")}
+          >
+            <CommercialOverviewPlanDistribution
+              entries={snapshot?.planDistribution.entries}
+              loading={isLoading}
+              planLabels={planLabels}
             />
           </AdminSection>
         </>
