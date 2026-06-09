@@ -4,6 +4,7 @@ import { AdminAccessDenied, AuthGatePending } from "@/components/AuthGate";
 import {
   CommercialOverviewExecutiveKpis,
   CommercialOverviewMetadataPanel,
+  CommercialOverviewSubscriptionHealth,
 } from "@/components/admin/commercial";
 import { AdminEmptyState } from "@/components/admin/operations/AdminEmptyState";
 import { AdminOperationsShell } from "@/components/admin/layout/AdminOperationsShell";
@@ -53,6 +54,14 @@ export default function AdminCommercialPage() {
     generatedAt: t("admin.commercial.generatedAt"),
   };
 
+  const healthLabels = {
+    active: t("subscription.status.active"),
+    trial: t("subscription.status.trial"),
+    canceled: t("admin.commercial.health.canceled"),
+    expired: t("subscription.status.expired"),
+    inactive: t("subscription.status.inactive"),
+  };
+
   return (
     <AdminOperationsShell
       title={t("admin.nav.commercial")}
@@ -85,6 +94,17 @@ export default function AdminCommercialPage() {
               loading={isLoading}
               locale={locale}
               labels={metadataLabels}
+            />
+          </AdminSection>
+
+          <AdminSection
+            title={t("admin.commercial.healthTitle")}
+            description={t("admin.commercial.healthDesc")}
+          >
+            <CommercialOverviewSubscriptionHealth
+              subscriptionHealth={snapshot?.subscriptionHealth}
+              loading={isLoading}
+              labels={healthLabels}
             />
           </AdminSection>
         </>

@@ -855,7 +855,12 @@
       "asOf": "As Of",
       "generatedAt": "Generated At",
       "loadError": "Unable to load commercial overview.",
-      "loadErrorDesc": "The canonical snapshot could not be retrieved. Try again later."
+      "loadErrorDesc": "The canonical snapshot could not be retrieved. Try again later.",
+      "healthTitle": "Subscription Health",
+      "healthDesc": "Owner subscription state distribution from canonical authority",
+      "health": {
+        "canceled": "Canceled"
+      }
     },
     "restaurantsSection": "Restaurants & Subscriptions",
     "restaurantsSectionDesc": "Manage restaurant accounts and their subscriptions",
