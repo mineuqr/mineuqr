@@ -82,14 +82,17 @@ export function AdminDashboardSidebar() {
           </SidebarGroup>
         ))}
 
-        <SidebarSeparator />
-
-        <SidebarGroup>
-          <SidebarGroupLabel>{t("admin.nav.legacyGroup")}</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <NavMenuItems items={ADMIN_LEGACY_NAV} />
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {ADMIN_LEGACY_NAV.length > 0 ? (
+          <>
+            <SidebarSeparator />
+            <SidebarGroup>
+              <SidebarGroupLabel>{t("admin.nav.operationsGroup")}</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <NavMenuItems items={ADMIN_LEGACY_NAV} />
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </>
+        ) : null}
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border p-2">

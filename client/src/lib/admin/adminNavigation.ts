@@ -98,20 +98,19 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         descriptionKey: "admin.nav.launchReadinessDesc",
         icon: Rocket,
       },
+      {
+        id: "operations",
+        path: "/admin/operations",
+        labelKey: "admin.nav.operations",
+        descriptionKey: "admin.nav.operationsDesc",
+        icon: Store,
+      },
     ],
   },
 ];
 
-/** Interim operations surface until EXEC-7D tenant directory ships. */
-export const ADMIN_LEGACY_NAV: AdminNavItem[] = [
-  {
-    id: "operations",
-    path: "/admin/operations",
-    labelKey: "admin.nav.operations",
-    descriptionKey: "admin.nav.operationsDesc",
-    icon: Store,
-  },
-];
+/** @deprecated REBUILD-3A — operations promoted to main nav; kept for import compatibility. */
+export const ADMIN_LEGACY_NAV: AdminNavItem[] = [];
 
 export type AdminLegacyRoute = {
   path: string;

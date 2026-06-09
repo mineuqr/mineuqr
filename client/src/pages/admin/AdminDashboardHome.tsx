@@ -2,7 +2,6 @@ import { Link } from "wouter";
 import {
   ArrowRight,
   BarChart3,
-  Building2,
   Clock,
   DollarSign,
   Store,
@@ -15,18 +14,13 @@ import { AdminAccessDenied, AuthGatePending, PageDataLoading } from "@/component
 import { AdminOperationsShell } from "@/components/admin/layout/AdminOperationsShell";
 import { AdminStatCard } from "@/components/admin/layout/AdminStatCard";
 import { CommercialStatusBadge } from "@/components/admin/commercial";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { adminQueriesEnabled } from "@/lib/queryRuntime";
 import { trpc } from "@/lib/trpc";
 import { mapDashboardSummaryToKPIs } from "@/lib/admin/dashboardSummaryKpis";
 import { formatAdminKpiNumber, formatAdminRevenueUSD } from "@/lib/admin/formatAdminCurrency";
-import {
-  ADMIN_LEGACY_NAV,
-  ADMIN_NAV_ITEMS,
-  type AdminNavItem,
-} from "@/lib/admin/adminNavigation";
+import { ADMIN_NAV_ITEMS, type AdminNavItem } from "@/lib/admin/adminNavigation";
+import { operationsTabHref } from "@/pages/admin/operations/operationsTab";
 import { adminDash } from "@/components/admin/layout/adminDashStyles";
 import { cn } from "@/lib/utils";
 
@@ -159,7 +153,7 @@ export default function AdminDashboardHome() {
           <NavShortcutCard
             item={{
               id: "operations-shortcut",
-              path: "/admin/operations",
+              path: operationsTabHref("accounts"),
               labelKey: "admin.nav.operations",
               descriptionKey: "admin.nav.operationsDesc",
               icon: Store,
@@ -186,21 +180,6 @@ export default function AdminDashboardHome() {
         </div>
       </section>
 
-      <Card className={adminDash.card}>
-        <CardHeader>
-          <CardTitle className="text-base">{t("admin.nav.legacyGroup")}</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
-          {ADMIN_LEGACY_NAV.map((item) => (
-            <Button key={item.id} variant="outline" size="sm" asChild>
-              <Link href={item.path}>
-                <Building2 className="me-2 h-4 w-4" />
-                {t(item.labelKey)}
-              </Link>
-            </Button>
-          ))}
-        </CardContent>
-      </Card>
     </AdminOperationsShell>
   );
 }

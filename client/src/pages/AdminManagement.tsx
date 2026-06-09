@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
+import { useLocation, useSearch } from "wouter";
 import { useAuthGate } from "@/_core/hooks/useAuthGate";
 import { AdminAccessDenied, AuthGatePending } from "@/components/AuthGate";
 import { adminQueriesEnabled } from "@/lib/queryRuntime";
@@ -21,20 +22,24 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { toast } from "sonner";
-import { Plus, Trash2, Edit, Loader2, Store, UserPlus, Key, Search, Filter, X, Bell, Send, Users, FileText, Download } from "lucide-react";
-import { Textarea } from "@/components/ui/textarea";
+import { Plus, Trash2, Edit, Loader2, Store, UserPlus, Search, Filter, X, Users, FileText } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { useLocation } from "wouter";
 import { SubscriptionAdminFormFields } from "@/components/admin/subscription/SubscriptionAdminFormFields";
 import {
-  AdminKPISection,
   AdminOperationsSection,
   AdminOperationsShell,
   AdminSection,
   adminActionBtn,
   adminDash,
 } from "@/components/admin/layout";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CommunicationsTab } from "@/pages/admin/operations/CommunicationsTab";
+import {
+  DEFAULT_OPERATIONS_TAB,
+  type OperationsTab,
+  parseOperationsTab,
+} from "@/pages/admin/operations/operationsTab";
 import {
   AdminActionGroup,
   AdminEmptyState,
@@ -42,7 +47,6 @@ import {
   AdminLoadingState,
   ResponsiveOperationsBar,
 } from "@/components/admin/operations";
-import { mapDashboardSummaryToKPIs } from "@/lib/admin/dashboardSummaryKpis";
 import {
   isOwnerEntitled,
   ownerPlanLabel,
@@ -59,8 +63,8 @@ import {
 } from "@shared/accountClassification";
 import { accountClassificationLabel } from "@/lib/admin/accountClassificationDisplay";
 
-// ─── Users Section Component ───────────────────────────────────────
-function UsersSection() {
+// ─── Accounts Tab (REBUILD-3A) ───────────────────────────────────────
+export function AccountsTab() {
   const { user } = useAuth();
   const { t, language } = useLanguage();
   const [searchQuery, setSearchQuery] = useState("");
@@ -84,12 +88,6 @@ function UsersSection() {
   const [subStatus, setSubStatus] = useState<"active" | "canceled" | "expired" | "trial">("active");
   const [subEndDate, setSubEndDate] = useState("");
   const [deleteSubUserId, setDeleteSubUserId] = useState<number | null>(null);
-  const [notifyDialogOpen, setNotifyDialogOpen] = useState(false);
-  const [notifyUserId, setNotifyUserId] = useState<number | null>(null);
-  const [notifyUserName, setNotifyUserName] = useState("");
-  const [notifyMessage, setNotifyMessage] = useState("");
-  const [bulkNotifyDialogOpen, setBulkNotifyDialogOpen] = useState(false);
-  const [bulkNotifyMessage, setBulkNotifyMessage] = useState("");
 
   const { data: overviewData, isLoading: overviewLoading, refetch: refetchOverview } =
     trpc.admin.getOwnerOverviewList.useQuery({
@@ -203,18 +201,6 @@ function UsersSection() {
     },
   });
 
-  const sendNotifyMutation = trpc.admin.sendCustomNotification.useMutation({
-    onSuccess: () => {
-      toast.success('تم إرسال الإشعار بنجاح');
-      setNotifyDialogOpen(false);
-      setNotifyMessage("");
-      setNotifyUserId(null);
-    },
-    onError: (error: any) => {
-      toast.error(error.message || 'حدث خطأ في إرسال الإشعار');
-    },
-  });
-
   const generateInvoiceMutation = trpc.admin.generateInvoicePDF.useMutation({
     onSuccess: (data: any) => {
       toast.success('تم إنشاء الفاتورة بنجاح');
@@ -227,24 +213,6 @@ function UsersSection() {
       toast.error(error.message || 'حدث خطأ في إنشاء الفاتورة');
     },
   });
-
-  const sendBulkNotifyMutation = trpc.admin.sendBulkNotification.useMutation({
-    onSuccess: (data: any) => {
-      toast.success(`تم إرسال الإشعار إلى ${data.sentCount} مستخدم`);
-      setBulkNotifyDialogOpen(false);
-      setBulkNotifyMessage("");
-    },
-    onError: (error: any) => {
-      toast.error(error.message || 'حدث خطأ في إرسال الإشعارات');
-    },
-  });
-
-  const openNotifyDialog = (userId: number, userName: string) => {
-    setNotifyUserId(userId);
-    setNotifyUserName(userName);
-    setNotifyMessage("");
-    setNotifyDialogOpen(true);
-  };
 
   const filteredUsers = allUsers?.filter((u: any) =>
     u.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -423,15 +391,6 @@ function UsersSection() {
             )
           ) : null
         }
-        neutral={
-          <AdminIconButton
-            label={language === "ar" ? "إرسال إشعار" : "Send notification"}
-            onClick={() => openNotifyDialog(u.id, u.name || u.email || "المستخدم")}
-            className={adminActionBtn.warning}
-          >
-            <Bell className="h-3.5 w-3.5" />
-          </AdminIconButton>
-        }
         danger={
           u.id !== user?.id && !isProtectedPlatformAccountUser(u) ? (
             <AdminIconButton
@@ -456,6 +415,11 @@ function UsersSection() {
 
   return (
     <TooltipProvider>
+      <AdminSection
+        title={t("users.title") || "Users Management"}
+        description={t("admin.usersSectionDesc")}
+        icon={Users}
+      >
       <Card className={adminDash.operationsCard}>
         <CardContent className="p-3 sm:p-4">
           <ResponsiveOperationsBar ariaLabel={t("users.searchPlaceholder")}>
@@ -493,15 +457,6 @@ function UsersSection() {
             >
               <UserPlus className="h-4 w-4 me-1" aria-hidden />
               {language === "ar" ? "حساب داخلي" : "Internal user"}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setBulkNotifyDialogOpen(true)}
-              className={cn(adminDash.opBtn, adminActionBtn.warning, "whitespace-nowrap")}
-            >
-              <Bell className="h-4 w-4 me-1" aria-hidden />
-              {language === "ar" ? "إشعار للجميع" : "Notify all"}
             </Button>
           </ResponsiveOperationsBar>
         </CardContent>
@@ -542,6 +497,11 @@ function UsersSection() {
                           language === "ar" ? "ar" : "en"
                         )}
                       </Badge>
+                      {isProtectedPlatformAccountUser(u) ? (
+                        <Badge variant="secondary" className="text-xs">
+                          {t("admin.operations.platformBadge")}
+                        </Badge>
+                      ) : null}
                       <span className="font-medium text-foreground">{u.name || (language === "ar" ? "بدون اسم" : "No name")}</span>
                       {isOwnerEntitled(u.commercial) ? getStatusBadge(ownerSubscriptionStatus(u.commercial)) : (
                         <Badge variant="outline" className="text-xs text-muted-foreground">
@@ -619,6 +579,11 @@ function UsersSection() {
                             <Badge variant={u.role === "admin" ? "default" : "secondary"} className="text-xs">
                               {u.role === "admin" ? "Admin" : "User"}
                             </Badge>
+                            {isProtectedPlatformAccountUser(u) ? (
+                              <Badge variant="secondary" className="text-xs">
+                                {t("admin.operations.platformBadge")}
+                              </Badge>
+                            ) : null}
                             {u.name || (language === "ar" ? "بدون اسم" : "No name")}
                           </div>
                         </td>
@@ -857,90 +822,6 @@ function UsersSection() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Send Custom Notification Dialog */}
-      <Dialog open={notifyDialogOpen} onOpenChange={(open) => !open && setNotifyDialogOpen(false)}>
-        <DialogContent className={adminDash.dialogContent}>
-          <DialogHeader>
-            <DialogTitle className="text-foreground flex items-center gap-2">
-              <Bell className="w-5 h-5 text-amber-500" />
-              إرسال إشعار
-            </DialogTitle>
-            <DialogDescription className="text-muted-foreground">
-              إرسال إشعار مخصص إلى: {notifyUserName}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div>
-              <Label className="text-foreground">نص الإشعار</Label>
-              <Textarea
-                value={notifyMessage}
-                onChange={(e) => setNotifyMessage(e.target.value)}
-                placeholder="اكتب نص الإشعار هنا..."
-                className="bg-background border-border mt-1 min-h-[100px] text-foreground"
-                maxLength={500}
-              />
-              <p className="text-xs text-muted-foreground mt-1 text-end">{notifyMessage.length}/500</p>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setNotifyDialogOpen(false)}>إلغاء</Button>
-            <Button
-              onClick={() => notifyUserId && notifyMessage.trim() && sendNotifyMutation.mutate({ userId: notifyUserId, message: notifyMessage.trim() })}
-              disabled={sendNotifyMutation.isPending || !notifyMessage.trim()}
-              className="bg-amber-600 hover:bg-amber-700 text-white"
-            >
-              {sendNotifyMutation.isPending ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <><Send className="w-4 h-4 ms-1" /> إرسال</>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Bulk Notification Dialog */}
-      <Dialog open={bulkNotifyDialogOpen} onOpenChange={(open) => !open && setBulkNotifyDialogOpen(false)}>
-        <DialogContent className={adminDash.dialogContent}>
-          <DialogHeader>
-            <DialogTitle className="text-foreground flex items-center gap-2">
-              <Users className="w-5 h-5 text-amber-500" />
-              إشعار لجميع المستخدمين
-            </DialogTitle>
-            <DialogDescription className="text-muted-foreground">
-              سيتم إرسال هذا الإشعار إلى جميع المستخدمين المسجلين ({allUsers?.length || 0} مستخدم)
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div>
-              <Label className="text-foreground">نص الإشعار</Label>
-              <Textarea
-                value={bulkNotifyMessage}
-                onChange={(e) => setBulkNotifyMessage(e.target.value)}
-                placeholder="اكتب نص الإشعار الذي سيُرسل لجميع المستخدمين..."
-                className="bg-background border-border mt-1 min-h-[100px] text-foreground"
-                maxLength={500}
-              />
-              <p className="text-xs text-muted-foreground mt-1 text-end">{bulkNotifyMessage.length}/500</p>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setBulkNotifyDialogOpen(false)}>إلغاء</Button>
-            <Button
-              onClick={() => bulkNotifyMessage.trim() && sendBulkNotifyMutation.mutate({ message: bulkNotifyMessage.trim() })}
-              disabled={sendBulkNotifyMutation.isPending || !bulkNotifyMessage.trim()}
-              className="bg-amber-600 hover:bg-amber-700 text-white"
-            >
-              {sendBulkNotifyMutation.isPending ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <><Send className="w-4 h-4 ms-1" /> إرسال للجميع</>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {/* Delete Subscription Confirmation Dialog */}
       <AlertDialog open={deleteSubUserId !== null} onOpenChange={(open) => !open && setDeleteSubUserId(null)}>
         <AlertDialogContent className="bg-card border-border">
@@ -962,11 +843,13 @@ function UsersSection() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      </AdminSection>
     </TooltipProvider>
   );
 }
 
-export default function AdminManagement() {
+// ─── Tenants Tab (REBUILD-3A) ────────────────────────────────────────
+export function TenantsTab() {
   const gate = useAuthGate();
   const { user, isAuthenticated, authPending } = gate;
   const [, setLocation] = useLocation();
@@ -1007,8 +890,6 @@ export default function AdminManagement() {
   // Queries
   const { data: restaurantListData, isLoading: restaurantsLoading, refetch: refetchRestaurants } =
     trpc.admin.listRestaurants.useQuery(undefined, { enabled: adminEnabled });
-  const { data: dashboardSummary, isLoading: summaryLoading, refetch: refetchSummary } =
-    trpc.admin.getDashboardSummary.useQuery(undefined, { enabled: adminEnabled });
   const { data: countries } = trpc.countryCurrency.getAll.useQuery();
 
   const restaurants = useMemo(
@@ -1019,17 +900,6 @@ export default function AdminManagement() {
         ownerCommercial: item.ownerCommercial,
       })),
     [restaurantListData]
-  );
-
-  const refetchCanonicalReads = () => {
-    void refetchRestaurants();
-    void refetchSummary();
-  };
-
-  const kpiLoading = summaryLoading;
-  const kpis = useMemo(
-    () => mapDashboardSummaryToKPIs(dashboardSummary),
-    [dashboardSummary]
   );
 
   const handleCountryChange = (countryCode: string) => {
@@ -1072,7 +942,7 @@ export default function AdminManagement() {
     onSuccess: () => {
       toast.success(t('admin.restaurantDeleted'));
       setDeleteRestaurantId(null);
-      refetchCanonicalReads();
+      void refetchRestaurants();
     },
     onError: (error: any) => {
       const errorMessage = error?.message || t('admin.deleteError') || 'حدث خطأ في حذف المطعم';
@@ -1137,7 +1007,7 @@ export default function AdminManagement() {
       toast.success(t('admin.restaurantCreated'));
       setShowCreateDialog(false);
       resetForm();
-      refetchCanonicalReads();
+      void refetchRestaurants();
     } catch (err: any) {
       toast.error(err?.message || t('admin.createError'));
     } finally {
@@ -1166,62 +1036,25 @@ export default function AdminManagement() {
 
   const hasRestaurants = (restaurants?.length ?? 0) > 0;
 
-  if (gate.isPending) {
-    return <AuthGatePending />;
-  }
-
-  if (gate.showAdminDenied) {
-    return <AdminAccessDenied />;
-  }
-
   return (
     <TooltipProvider>
-    <AdminOperationsShell
-      title={t("admin.title")}
-      subtitle={t("admin.subtitle")}
-      breadcrumbs={[
-        { label: t("admin.nav.overview"), href: "/admin" },
-        { label: t("admin.nav.operations") },
-      ]}
-      headerActions={
-        <Button
-          onClick={() => {
-            resetForm();
-            setShowCreateDialog(true);
-          }}
-          className="bg-primary text-primary-foreground hover:bg-primary/90"
-        >
-          <Plus className="h-4 w-4 me-2" />
-          {t("admin.addRestaurant")}
-        </Button>
-      }
-    >
-      <AdminKPISection
-        kpis={kpis}
-        loading={kpiLoading}
-        locale={language === "ar" ? "ar" : "en"}
-        title={t("admin.kpiOverview")}
-        description={t("admin.kpiOverviewDesc")}
-        labels={{
-          activeRestaurants: t("admin.activeRestaurants"),
-          activeSubscriptions: t("admin.activeSubscriptions"),
-          expiringSoon: t("admin.expiringSoon"),
-          estimatedMrr: t("admin.estimatedMrr"),
-          totalUsers: t("admin.totalUsers"),
-          activeRestaurantsHint:
-            language === "ar" ? "مطاعم نشطة (تشغيلي)" : "Active venues (operational)",
-          activeSubscriptionsHint:
-            language === "ar" ? "مالكون — مصدر موحّد" : "Owner count — canonical",
-          expiringSoonHint: t("admin.expiringSoonHint"),
-          estimatedMrrHint: t("admin.estimatedMrrHint"),
-        }}
-        loadingLabel={t("common.loading")}
-      />
-
       <AdminSection
         title={t("admin.restaurantsSection")}
         description={t("admin.restaurantsSectionDesc")}
         icon={Store}
+        actions={
+          <Button
+            onClick={() => {
+              resetForm();
+              setShowCreateDialog(true);
+            }}
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+            size="sm"
+          >
+            <Plus className="h-4 w-4 me-2" />
+            {t("admin.addRestaurant")}
+          </Button>
+        }
       >
         <AdminOperationsSection
           toolbar={
@@ -1413,14 +1246,6 @@ export default function AdminManagement() {
           </div>
         )}
         </AdminOperationsSection>
-      </AdminSection>
-
-      <AdminSection
-        title={t("users.title") || "Users Management"}
-        description={t("admin.usersSectionDesc")}
-        icon={Users}
-      >
-        <UsersSection />
       </AdminSection>
 
       {/* Create Restaurant Dialog */}
@@ -1638,8 +1463,68 @@ export default function AdminManagement() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-    </AdminOperationsShell>
     </TooltipProvider>
+  );
+}
+
+export default function AdminManagement() {
+  const gate = useAuthGate();
+  const search = useSearch();
+  const [, setLocation] = useLocation();
+  const { t } = useLanguage();
+
+  const activeTab = parseOperationsTab(search);
+
+  const setTab = useCallback(
+    (tab: OperationsTab) => {
+      const raw = search.startsWith("?") ? search.slice(1) : search;
+      const params = new URLSearchParams(raw);
+      if (tab === DEFAULT_OPERATIONS_TAB) {
+        params.delete("tab");
+      } else {
+        params.set("tab", tab);
+      }
+      const q = params.toString();
+      setLocation(q ? `/admin/operations?${q}` : "/admin/operations");
+    },
+    [search, setLocation]
+  );
+
+  if (gate.isPending) {
+    return <AuthGatePending />;
+  }
+
+  if (gate.showAdminDenied) {
+    return <AdminAccessDenied />;
+  }
+
+  return (
+    <AdminOperationsShell
+      title={t("admin.operations.workspaceTitle")}
+      subtitle={t("admin.operations.workspaceSubtitle")}
+      breadcrumbs={[
+        { label: t("admin.nav.overview"), href: "/admin" },
+        { label: t("admin.nav.operations") },
+      ]}
+    >
+      <Tabs value={activeTab} onValueChange={(v) => setTab(v as OperationsTab)}>
+        <TabsList className="mb-6 grid w-full max-w-md grid-cols-3">
+          <TabsTrigger value="accounts">{t("admin.operations.tabAccounts")}</TabsTrigger>
+          <TabsTrigger value="tenants">{t("admin.operations.tabTenants")}</TabsTrigger>
+          <TabsTrigger value="communications">
+            {t("admin.operations.tabCommunications")}
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="accounts" className="mt-0">
+          <AccountsTab />
+        </TabsContent>
+        <TabsContent value="tenants" className="mt-0">
+          <TenantsTab />
+        </TabsContent>
+        <TabsContent value="communications" className="mt-0">
+          <CommunicationsTab />
+        </TabsContent>
+      </Tabs>
+    </AdminOperationsShell>
   );
 }
