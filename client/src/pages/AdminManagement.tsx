@@ -48,9 +48,7 @@ import {
   ownerPlanLabel,
   ownerSubscriptionStatus,
 } from "@/lib/admin/ownerCommercialDisplay";
-import { formatAdminSubscriptionPrice } from "@/lib/admin/formatAdminCurrency";
 import { formatSubscriptionEndDate } from "@/lib/subscription";
-import type { BillingCycle } from "@/lib/subscription";
 import { cn } from "@/lib/utils";
 import { isProtectedUserId } from "@shared/const";
 
@@ -68,7 +66,6 @@ function UsersSection() {
   const [subBillingCycle, setSubBillingCycle] = useState<"monthly" | "yearly">("monthly");
   const [subStatus, setSubStatus] = useState<"active" | "canceled" | "expired" | "trial">("active");
   const [subEndDate, setSubEndDate] = useState("");
-  const [subRestaurantId, setSubRestaurantId] = useState<string>("");
   const [deleteSubUserId, setDeleteSubUserId] = useState<number | null>(null);
   const [notifyDialogOpen, setNotifyDialogOpen] = useState(false);
   const [notifyUserId, setNotifyUserId] = useState<number | null>(null);
@@ -214,12 +211,6 @@ function UsersSection() {
     setSubBillingCycle("monthly");
     setSubStatus("active");
     setSubEndDate("");
-    const restaurants = u.restaurants ?? [];
-    if (restaurants.length === 1) {
-      setSubRestaurantId(String(restaurants[0].id));
-    } else {
-      setSubRestaurantId("");
-    }
   };
 
   const openEditSubDialog = (u: any) => {
@@ -236,14 +227,8 @@ function UsersSection() {
     if (!subDialogUser) return;
     if (subDialogMode === "create") {
       if (!subPlanId) { toast.error('يرجى اختيار باقة'); return; }
-      const userRestaurants = subDialogUser.restaurants ?? [];
-      if (userRestaurants.length > 0 && !subRestaurantId) {
-        toast.error(language === "ar" ? "يرجى اختيار المطعم" : "Please select a restaurant");
-        return;
-      }
       createSubMutation.mutate({
         userId: subDialogUser.id,
-        restaurantId: subRestaurantId ? parseInt(subRestaurantId, 10) : undefined,
         planId: parseInt(subPlanId),
         billingCycle: subBillingCycle,
         status: subStatus,
@@ -360,7 +345,7 @@ function UsersSection() {
               className={cn(adminDash.opBtn, adminActionBtn.success)}
             >
               <Plus className="h-3 w-3 me-1" />
-              {language === "ar" ? "اشتراك" : "Subscribe"}
+              {t("admin.createAccountSubscription")}
             </Button>
           )
         }
@@ -455,9 +440,12 @@ function UsersSection() {
                       <span className="font-medium text-foreground">{u.name || (language === "ar" ? "بدون اسم" : "No name")}</span>
                       {isOwnerEntitled(u.commercial) ? getStatusBadge(ownerSubscriptionStatus(u.commercial)) : (
                         <Badge variant="outline" className="text-xs text-muted-foreground">
-                          {language === "ar" ? "بدون اشتراك" : "No subscription"}
+                          {t("admin.noAccountSubscription")}
                         </Badge>
                       )}
+                      <Badge variant="outline" className="text-xs tabular-nums" dir="ltr">
+                        {u.restaurants?.length ?? 0} {t("admin.restaurantCount")}
+                      </Badge>
                     </div>
                     <dl className="grid gap-2 text-sm">
                       <div className="flex flex-wrap gap-x-2">
@@ -499,7 +487,10 @@ function UsersSection() {
                         {t("users.role") || "الدور"}
                       </th>
                       <th scope="col" className="px-4 py-3 text-start text-sm font-semibold text-foreground">
-                        {language === "ar" ? "الاشتراك" : "Subscription"}
+                        {t("admin.ownerAccountSubscription")}
+                      </th>
+                      <th scope="col" className="px-4 py-3 text-start text-sm font-semibold text-foreground">
+                        {t("admin.restaurantCount")}
                       </th>
                       <th scope="col" className="px-4 py-3 text-start text-sm font-semibold text-foreground">
                         {language === "ar" ? "الباقة" : "Plan"}
@@ -546,9 +537,12 @@ function UsersSection() {
                         <td className="px-4 py-3 text-sm">
                           {isOwnerEntitled(u.commercial) ? getStatusBadge(ownerSubscriptionStatus(u.commercial)) : (
                             <Badge variant="outline" className="text-xs text-muted-foreground">
-                              {language === "ar" ? "بدون اشتراك" : "No subscription"}
+                              {t("admin.noAccountSubscription")}
                             </Badge>
                           )}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground tabular-nums" dir="ltr">
+                          {u.restaurants?.length ?? 0}
                         </td>
                         <td className="px-4 py-3 text-sm text-muted-foreground">
                           {ownerPlanLabel(u.commercial)}
@@ -574,29 +568,19 @@ function UsersSection() {
         <DialogContent className={adminDash.dialogContent}>
           <DialogHeader>
             <DialogTitle className="text-foreground">
-              {subDialogMode === 'create' ? 'إنشاء اشتراك جديد' : 'تعديل الاشتراك'}
+              {subDialogMode === "create"
+                ? t("admin.createAccountSubscriptionTitle")
+                : t("admin.editAccountSubscriptionTitle")}
             </DialogTitle>
             <DialogDescription className="text-muted-foreground">
               {subDialogUser?.name || subDialogUser?.email || 'المستخدم'}
+              {(subDialogUser?.restaurants?.length ?? 0) > 0 ? (
+                <span className="mt-1 block text-xs">
+                  {t("admin.restaurantCount")}: {subDialogUser.restaurants.length}
+                </span>
+              ) : null}
             </DialogDescription>
           </DialogHeader>
-          {subDialogMode === "create" && (subDialogUser?.restaurants?.length ?? 0) > 0 && (
-            <div className="space-y-2">
-              <Label>{language === "ar" ? "المطعم" : "Restaurant"}</Label>
-              <Select value={subRestaurantId} onValueChange={setSubRestaurantId}>
-                <SelectTrigger>
-                  <SelectValue placeholder={language === "ar" ? "اختر المطعم" : "Select restaurant"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {(subDialogUser?.restaurants ?? []).map((r: { id: number; nameAr?: string; nameEn?: string }) => (
-                    <SelectItem key={r.id} value={String(r.id)}>
-                      {r.nameAr || r.nameEn || `#${r.id}`}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
           <SubscriptionAdminFormFields
             plans={plans}
             planId={subPlanId}
@@ -741,7 +725,7 @@ function UsersSection() {
           <AlertDialogHeader>
             <AlertDialogTitle className="text-foreground">تأكيد حذف الاشتراك</AlertDialogTitle>
             <AlertDialogDescription className="text-muted-foreground">
-              هل أنت متأكد من حذف اشتراك هذا المستخدم؟ سيفقد الوصول إلى الميزات المدفوعة.
+              {t("admin.deleteAccountSubscriptionConfirm")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -767,9 +751,7 @@ export default function AdminManagement() {
   const { t, language } = useLanguage();
   
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [editingRestaurant, setEditingRestaurant] = useState<any>(null);
   const [deleteRestaurantId, setDeleteRestaurantId] = useState<number | null>(null);
-  const [deleteRestaurantSubId, setDeleteRestaurantSubId] = useState<number | null>(null);
   
   // Form state
   const [nameAr, setNameAr] = useState("");
@@ -781,9 +763,6 @@ export default function AdminManagement() {
   const [subscriberName, setSubscriberName] = useState("");
   const [createAccount, setCreateAccount] = useState(false);
   const [address, setAddress] = useState("");
-  const [planId, setPlanId] = useState<string>("");
-  const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
-  const [subscriptionEndDate, setSubscriptionEndDate] = useState("");
   const [selectedCountry, setSelectedCountry] = useState("");
   const [selectedCurrency, setSelectedCurrency] = useState("");
   const [currencySymbol, setCurrencySymbol] = useState("");
@@ -797,14 +776,6 @@ export default function AdminManagement() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  // Edit subscription state
-  const [editSubDialogOpen, setEditSubDialogOpen] = useState(false);
-  const [editSubId, setEditSubId] = useState<number | null>(null);
-  const [editSubPlanId, setEditSubPlanId] = useState<string>("");
-  const [editSubBillingCycle, setEditSubBillingCycle] = useState<"monthly" | "yearly">("monthly");
-  const [editSubEndDate, setEditSubEndDate] = useState("");
-  const [editSubStatus, setEditSubStatus] = useState<string>("active");
-
   const adminEnabled = adminQueriesEnabled(
     authPending,
     isAuthenticated,
@@ -812,9 +783,6 @@ export default function AdminManagement() {
   );
 
   // Queries
-  const { data: plans } = trpc.subscription.listPlans.useQuery(undefined, {
-    enabled: adminEnabled,
-  });
   const { data: restaurantListData, isLoading: restaurantsLoading, refetch: refetchRestaurants } =
     trpc.admin.listRestaurants.useQuery(undefined, { enabled: adminEnabled });
   const { data: dashboardSummary, isLoading: summaryLoading, refetch: refetchSummary } =
@@ -905,20 +873,16 @@ export default function AdminManagement() {
     setSubscriberName("");
     setCreateAccount(false);
     setAddress("");
-    setPlanId("");
-    setBillingCycle("monthly");
-    setSubscriptionEndDate("");
     setSelectedCountry("");
     setSelectedCurrency("");
     setCurrencySymbol("");
-    setEditingRestaurant(null);
   };
 
   const [isCreating, setIsCreating] = useState(false);
 
   const handleCreateRestaurant = async () => {
-    if (!nameAr || !planId) {
-      toast.error(t('admin.fillAllFields'));
+    if (!nameAr) {
+      toast.error(t("admin.fillRestaurantNameRequired"));
       return;
     }
 
@@ -926,7 +890,6 @@ export default function AdminManagement() {
     try {
       let subscriberUserId: number | undefined;
 
-      // Create subscriber account if requested
       if (createAccount && ownerEmail && subscriberPassword) {
         const accountResult = await createAccountMutation.mutateAsync({
           email: ownerEmail,
@@ -936,8 +899,7 @@ export default function AdminManagement() {
         subscriberUserId = accountResult.userId;
       }
 
-      // Create restaurant
-      const restaurantData = await createRestaurantMutation.mutateAsync({
+      await createRestaurantMutation.mutateAsync({
         nameAr,
         nameEn: nameEn || undefined,
         descriptionAr: descriptionAr || undefined,
@@ -950,16 +912,6 @@ export default function AdminManagement() {
         currencySymbol: currencySymbol || undefined,
       });
 
-      // Create subscription atomically after restaurant
-      if (planId && restaurantData?.id) {
-        await createSubscriptionMutation.mutateAsync({
-          restaurantId: restaurantData.id,
-          planId: parseInt(planId),
-          billingCycle,
-          subscriptionEndDate: subscriptionEndDate || undefined,
-        });
-      }
-
       toast.success(t('admin.restaurantCreated'));
       setShowCreateDialog(false);
       resetForm();
@@ -970,34 +922,6 @@ export default function AdminManagement() {
       setIsCreating(false);
     }
   };
-
-  // Create subscription after restaurant is created
-  const createSubscriptionMutation = trpc.admin.createRestaurantSubscription.useMutation();
-
-  const updateSubscriptionMutation = trpc.admin.updateRestaurantSubscription.useMutation({
-    onSuccess: () => {
-      toast.success(t('admin.subscriptionUpdated'));
-      refetchCanonicalReads();
-    },
-    onError: (err) => toast.error(err.message),
-  });
-
-  const cancelSubscriptionMutation = trpc.admin.cancelRestaurantSubscription.useMutation({
-    onSuccess: () => {
-      toast.success(t('admin.subscriptionCanceled'));
-      refetchCanonicalReads();
-    },
-    onError: (err) => toast.error(err.message),
-  });
-
-  const deleteSubscriptionMutation = trpc.admin.deleteRestaurantSubscription.useMutation({
-    onSuccess: () => {
-      setDeleteRestaurantSubId(null);
-      toast.success(t('admin.subscriptionDeleted'));
-      refetchCanonicalReads();
-    },
-    onError: (err) => toast.error(err.message),
-  });
 
   const filteredRestaurants = useMemo(() => {
     if (!restaurants) return [];
@@ -1216,45 +1140,28 @@ export default function AdminManagement() {
                           </dd>
                         </div>
                       ) : null}
-                      {entitled ? (
-                        <>
-                          <div>
-                            <dt className="text-muted-foreground">{t("admin.plan")}</dt>
-                            <dd className="ms-0 mt-0.5 text-foreground">
-                              {ownerPlanLabel(commercial)}
-                            </dd>
-                          </div>
-                          <div>
-                            <dt className="text-muted-foreground">{t("admin.billingCycle")}</dt>
-                            <dd className="ms-0 mt-0.5 text-foreground">
-                              {commercial.billingCycle
-                                ? t(`subscription.billingCycle.${commercial.billingCycle}`)
-                                : "-"}
-                            </dd>
-                          </div>
-                          <div>
-                            <dt className="text-muted-foreground">{t("admin.periodEnd")}</dt>
-                            <dd className="ms-0 mt-0.5 text-foreground" dir="ltr">
-                              {commercial.currentPeriodEnd
-                                ? formatSubscriptionEndDate(
-                                    commercial.currentPeriodEnd,
-                                    language === "ar" ? "ar" : "en"
-                                  )
-                                : "-"}
-                            </dd>
-                          </div>
-                          <div className="sm:col-span-2">
-                            <dt className="text-muted-foreground">{t("admin.subscriptionPrice")}</dt>
-                            <dd className="ms-0 mt-0.5" dir="ltr">
-                              {formatAdminSubscriptionPrice(
-                                plans?.find((p: any) => p.id === commercial.planId),
-                                (commercial.billingCycle ?? "monthly") as BillingCycle,
-                                language === "ar" ? "ar" : "en"
-                              )}
-                            </dd>
-                          </div>
-                        </>
-                      ) : null}
+                      <div className="sm:col-span-2 rounded-lg border border-border/50 bg-muted/20 p-3">
+                        <dt className="text-xs font-medium text-muted-foreground">
+                          {t("admin.inheritedEntitlements")}
+                        </dt>
+                        <dd className="mt-2 flex flex-wrap items-center gap-2">
+                          {entitled ? (
+                            <>
+                              <Badge variant={status === "active" ? "default" : "secondary"}>
+                                {t(`subscription.status.${status}`)}
+                              </Badge>
+                              <span className="text-sm text-foreground">{ownerPlanLabel(commercial)}</span>
+                            </>
+                          ) : (
+                            <Badge variant="outline" className="text-xs text-muted-foreground">
+                              {t("admin.noAccountSubscription")}
+                            </Badge>
+                          )}
+                        </dd>
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          {t("admin.inheritedEntitlementsHint")}
+                        </p>
+                      </div>
                     </dl>
 
                     <AdminActionGroup
@@ -1266,91 +1173,6 @@ export default function AdminManagement() {
                         >
                           <Edit className="h-3.5 w-3.5" />
                         </AdminIconButton>
-                      }
-                      secondary={
-                        <>
-                          {!entitled ? (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className={cn(adminDash.opBtn, adminActionBtn.primary)}
-                              onClick={() => {
-                                if (!plans || plans.length === 0) {
-                                  toast.error(t("admin.noPlansAvailable"));
-                                  return;
-                                }
-                                createSubscriptionMutation.mutate({
-                                  restaurantId: restaurant.id,
-                                  planId: plans[0].id,
-                                  billingCycle: "monthly",
-                                });
-                              }}
-                              disabled={createSubscriptionMutation.isPending}
-                            >
-                              {createSubscriptionMutation.isPending ? (
-                                <Loader2 className="h-3 w-3 animate-spin me-1" />
-                              ) : null}
-                              {t("admin.activateSubscription")}
-                            </Button>
-                          ) : null}
-                          {entitled && commercial.subscriptionStatus === "active" && commercial.subscriptionId ? (
-                            <>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className={cn(adminDash.opBtn, adminActionBtn.info)}
-                                onClick={() => {
-                                  setEditSubId(commercial.subscriptionId);
-                                  setEditSubPlanId(commercial.planId?.toString() || "");
-                                  setEditSubBillingCycle(commercial.billingCycle || "monthly");
-                                  setEditSubEndDate(
-                                    commercial.currentPeriodEnd
-                                      ? new Date(commercial.currentPeriodEnd).toISOString().split("T")[0]
-                                      : ""
-                                  );
-                                  setEditSubStatus(commercial.subscriptionStatus || "active");
-                                  setEditSubDialogOpen(true);
-                                }}
-                              >
-                                <Edit className="h-3 w-3 me-1" />
-                                {t("admin.editSubscription")}
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className={cn(adminDash.opBtn, adminActionBtn.danger)}
-                                onClick={() => setDeleteRestaurantSubId(commercial.subscriptionId!)}
-                                disabled={deleteSubscriptionMutation.isPending}
-                              >
-                                {deleteSubscriptionMutation.isPending ? (
-                                  <Loader2 className="h-3 w-3 animate-spin me-1" />
-                                ) : (
-                                  <Trash2 className="h-3 w-3 me-1" />
-                                )}
-                                {t("admin.deleteSubscription")}
-                              </Button>
-                            </>
-                          ) : null}
-                          {entitled && commercial.subscriptionStatus === "canceled" && commercial.subscriptionId ? (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className={cn(adminDash.opBtn, adminActionBtn.success)}
-                              onClick={() =>
-                                updateSubscriptionMutation.mutate({
-                                  subscriptionId: commercial.subscriptionId!,
-                                  status: "active",
-                                })
-                              }
-                              disabled={updateSubscriptionMutation.isPending}
-                            >
-                              {updateSubscriptionMutation.isPending ? (
-                                <Loader2 className="h-3 w-3 animate-spin me-1" />
-                              ) : null}
-                              {t("admin.reactivateSubscription")}
-                            </Button>
-                          ) : null}
-                        </>
                       }
                       danger={
                         <AdminIconButton
@@ -1552,20 +1374,9 @@ export default function AdminManagement() {
                 </div>
               </div>
             )}
-            <SubscriptionAdminFormFields
-              plans={plans}
-              planId={planId}
-              onPlanIdChange={setPlanId}
-              billingCycle={billingCycle}
-              onBillingCycleChange={(cycle: BillingCycle) => setBillingCycle(cycle)}
-              endDate={subscriptionEndDate}
-              onEndDateChange={setSubscriptionEndDate}
-              locale={language === "ar" ? "ar" : "en"}
-              planLabel={`${t("admin.plan")} *`}
-              billingCycleLabel={t("admin.billingCycle")}
-              endDateLabel={t("admin.subscriptionEndDate")}
-              showStatus={false}
-            />
+            <p className="rounded-lg border border-border/50 bg-muted/20 p-3 text-sm text-muted-foreground">
+              {t("admin.inheritedEntitlementsHint")}
+            </p>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => { setShowCreateDialog(false); resetForm(); }} className="border-border/50 text-foreground">
@@ -1582,40 +1393,6 @@ export default function AdminManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Delete Restaurant Subscription Confirmation */}
-      <AlertDialog
-        open={deleteRestaurantSubId !== null}
-        onOpenChange={(open) => !open && setDeleteRestaurantSubId(null)}
-      >
-        <AlertDialogContent className="bg-card border-border">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-foreground">تأكيد حذف الاشتراك</AlertDialogTitle>
-            <AlertDialogDescription className="text-muted-foreground">
-              هل أنت متأكد من حذف اشتراك هذا المطعم؟ لا يمكن التراجع عن هذا الإجراء.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="bg-background border-border text-foreground">إلغاء</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (deleteRestaurantSubId) {
-                  deleteSubscriptionMutation.mutate({ subscriptionId: deleteRestaurantSubId });
-                  setDeleteRestaurantSubId(null);
-                }
-              }}
-              className="bg-red-600 hover:bg-red-700"
-              disabled={deleteSubscriptionMutation.isPending}
-            >
-              {deleteSubscriptionMutation.isPending ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                t("admin.deleteSubscription")
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {/* Delete Confirmation */}
       <AlertDialog open={deleteRestaurantId !== null} onOpenChange={() => setDeleteRestaurantId(null)}>
@@ -1640,52 +1417,6 @@ export default function AdminManagement() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Edit Subscription Dialog */}
-      <Dialog open={editSubDialogOpen} onOpenChange={(open) => { if (!open) setEditSubDialogOpen(false); }}>
-        <DialogContent className={adminDash.dialogContent}>
-          <DialogHeader>
-            <DialogTitle className="text-foreground">{t('admin.editSubscription')}</DialogTitle>
-            <DialogDescription className="text-muted-foreground">{t('admin.editSubscriptionDesc')}</DialogDescription>
-          </DialogHeader>
-          <SubscriptionAdminFormFields
-            plans={plans}
-            planId={editSubPlanId}
-            onPlanIdChange={setEditSubPlanId}
-            billingCycle={editSubBillingCycle}
-            onBillingCycleChange={setEditSubBillingCycle}
-            endDate={editSubEndDate}
-            onEndDateChange={setEditSubEndDate}
-            locale={language === "ar" ? "ar" : "en"}
-            planLabel={t("admin.plan")}
-            billingCycleLabel={t("admin.billingCycle")}
-            endDateLabel={t("admin.periodEnd")}
-            showStatus={false}
-          />
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditSubDialogOpen(false)} className="border-border/50 text-foreground">
-              {t('admin.cancel')}
-            </Button>
-            <Button
-              onClick={() => {
-                if (editSubId) {
-                  updateSubscriptionMutation.mutate({
-                    subscriptionId: editSubId,
-                    planId: editSubPlanId ? parseInt(editSubPlanId) : undefined,
-                    billingCycle: editSubBillingCycle,
-                    subscriptionEndDate: editSubEndDate || undefined,
-                  });
-                  setEditSubDialogOpen(false);
-                }
-              }}
-              disabled={updateSubscriptionMutation.isPending}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground"
-            >
-              {updateSubscriptionMutation.isPending && <Loader2 className="w-4 h-4 me-2 animate-spin" />}
-              {t('admin.save')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </AdminOperationsShell>
     </TooltipProvider>
   );
