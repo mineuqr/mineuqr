@@ -860,6 +860,13 @@
       "healthDesc": "توزيع حالة اشتراك المالك من السلطة الموحدة",
       "health": {
         "canceled": "ملغى"
+      },
+      "attentionTitle": "يتطلب اهتماماً",
+      "attentionDesc": "حسابات تحتاج مراجعة المشغل من اللقطة الموحدة",
+      "attention": {
+        "expiringWithin30Days": "تنتهي خلال 30 يوماً",
+        "canceledAccounts": "حسابات ملغاة",
+        "expiredAccounts": "حسابات منتهية"
       }
     },
     "restaurantsSection": "المطاعم والاشتراكات",

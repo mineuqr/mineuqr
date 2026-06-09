@@ -860,6 +860,13 @@
       "healthDesc": "Owner subscription state distribution from canonical authority",
       "health": {
         "canceled": "Canceled"
+      },
+      "attentionTitle": "Needs Attention",
+      "attentionDesc": "Accounts requiring operator review from canonical snapshot",
+      "attention": {
+        "expiringWithin30Days": "Expiring Within 30 Days",
+        "canceledAccounts": "Canceled Accounts",
+        "expiredAccounts": "Expired Accounts"
       }
     },
     "restaurantsSection": "Restaurants & Subscriptions",

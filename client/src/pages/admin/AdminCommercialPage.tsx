@@ -4,6 +4,7 @@ import { AdminAccessDenied, AuthGatePending } from "@/components/AuthGate";
 import {
   CommercialOverviewExecutiveKpis,
   CommercialOverviewMetadataPanel,
+  CommercialOverviewNeedsAttention,
   CommercialOverviewSubscriptionHealth,
 } from "@/components/admin/commercial";
 import { AdminEmptyState } from "@/components/admin/operations/AdminEmptyState";
@@ -62,6 +63,16 @@ export default function AdminCommercialPage() {
     inactive: t("subscription.status.inactive"),
   };
 
+  const attentionLabels = {
+    expiringWithin30Days: t("admin.commercial.attention.expiringWithin30Days"),
+    canceledAccounts: t("admin.commercial.attention.canceledAccounts"),
+    expiredAccounts: t("admin.commercial.attention.expiredAccounts"),
+  };
+
+  const attentionHints = {
+    expiringWithin30Days: t("admin.expiringSoonHint"),
+  };
+
   return (
     <AdminOperationsShell
       title={t("admin.nav.commercial")}
@@ -105,6 +116,18 @@ export default function AdminCommercialPage() {
               subscriptionHealth={snapshot?.subscriptionHealth}
               loading={isLoading}
               labels={healthLabels}
+            />
+          </AdminSection>
+
+          <AdminSection
+            title={t("admin.commercial.attentionTitle")}
+            description={t("admin.commercial.attentionDesc")}
+          >
+            <CommercialOverviewNeedsAttention
+              needsAttention={snapshot?.needsAttention}
+              loading={isLoading}
+              labels={attentionLabels}
+              hints={attentionHints}
             />
           </AdminSection>
         </>
