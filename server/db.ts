@@ -20,6 +20,10 @@ import {
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 import {
+  DEFAULT_ACCOUNT_CLASSIFICATION,
+  type AccountClassification,
+} from "@shared/accountClassification";
+import {
   normalizeAccountEmail,
   normalizeAccountEmailOrNull,
 } from "./_core/normalizeAccountEmail";
@@ -127,8 +131,19 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     };
     textFields.forEach(assignNullable);
     if (user.lastSignedIn !== undefined) { values.lastSignedIn = user.lastSignedIn; updateSet.lastSignedIn = user.lastSignedIn; }
+    if (user.accountClassification !== undefined) {
+      values.accountClassification = user.accountClassification;
+      updateSet.accountClassification = user.accountClassification;
+    } else if (user.openId !== undefined) {
+      values.accountClassification = DEFAULT_ACCOUNT_CLASSIFICATION;
+    }
     if (user.role !== undefined) { values.role = user.role; updateSet.role = user.role; }
-    else if (user.openId === ENV.ownerOpenId) { values.role = 'admin'; updateSet.role = 'admin'; }
+    else if (user.openId === ENV.ownerOpenId) {
+      values.role = 'admin';
+      updateSet.role = 'admin';
+      values.accountClassification = 'INTERNAL';
+      updateSet.accountClassification = 'INTERNAL';
+    }
     if (!values.lastSignedIn) values.lastSignedIn = new Date().toISOString();
     if (Object.keys(updateSet).length === 0) updateSet.lastSignedIn = new Date().toISOString();
     await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
@@ -856,9 +871,20 @@ export function sanitizeUserForAdminResponse<U extends { passwordHash?: string |
   return safe;
 }
 
-export async function getAllUsers() {
+export type GetAllUsersOptions = {
+  classificationFilter?: AccountClassification;
+};
+
+export async function getAllUsers(options?: GetAllUsersOptions) {
   const db = await getDb();
   if (!db) return [];
+
+  if (options?.classificationFilter) {
+    return await db
+      .select()
+      .from(users)
+      .where(eq(users.accountClassification, options.classificationFilter));
+  }
 
   return await db.select().from(users);
 }
@@ -877,6 +903,19 @@ export async function updateUserRole(userId: number, role: 'admin' | 'user') {
 
   const result = await db.update(users).set({ role }).where(eq(users.id, userId));
   return result;
+}
+
+export async function updateAccountClassification(
+  userId: number,
+  accountClassification: AccountClassification
+) {
+  const db = await getDb();
+  if (!db) return null;
+
+  return db
+    .update(users)
+    .set({ accountClassification })
+    .where(eq(users.id, userId));
 }
 
 // ─── Restaurant Holidays ──────────────────────────────────────────────────────

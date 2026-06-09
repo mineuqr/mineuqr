@@ -142,6 +142,8 @@ export const users = mysqlTable("users", {
 	passwordChangedAt: timestamp({ mode: 'string' }),
 	/** Stateless session revocation boundary (AUTH2-C Slice 3B.3). */
 	sessionValidAfter: timestamp({ mode: 'string' }),
+	/** ADMIN-AUTH-1B — analytics population; independent from role. */
+	accountClassification: mysqlEnum(['COMMERCIAL','INTERNAL','SYSTEM']).default('COMMERCIAL').notNull(),
 	role: mysqlEnum(['user','admin']).default('user').notNull(),
 	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
 	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),

@@ -37,9 +37,9 @@ export class ProtectedUserDeleteError extends Error {
 
 export class ProtectedUserModifyError extends Error {
   readonly userId: number;
-  readonly action: "role" | "password_reset";
+  readonly action: "role" | "password_reset" | "classification";
 
-  constructor(userId: number, action: "role" | "password_reset") {
+  constructor(userId: number, action: "role" | "password_reset" | "classification") {
     super(`User ${userId} is protected and cannot be modified (${action})`);
     this.name = "ProtectedUserModifyError";
     this.userId = userId;
@@ -78,6 +78,12 @@ export function assertProtectedUserRoleModifiable(userId: number): void {
 export function assertProtectedUserPasswordResetAllowed(userId: number): void {
   if (isProtectedUserId(userId)) {
     throw new ProtectedUserModifyError(userId, "password_reset");
+  }
+}
+
+export function assertProtectedUserClassificationModifiable(userId: number): void {
+  if (isProtectedUserId(userId)) {
+    throw new ProtectedUserModifyError(userId, "classification");
   }
 }
 

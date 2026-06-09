@@ -141,6 +141,13 @@
       "when": 1778756200000,
       "tag": "0019_users_email_unique",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "5",
+      "when": 1778756300000,
+      "tag": "0020_account_classification",
+      "breakpoints": true
     }
   ]
 }

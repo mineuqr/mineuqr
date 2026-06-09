@@ -51,15 +51,32 @@ import {
 import { formatSubscriptionEndDate } from "@/lib/subscription";
 import { cn } from "@/lib/utils";
 import { isProtectedUserId } from "@shared/const";
+import {
+  ACCOUNT_CLASSIFICATIONS,
+  INTERNAL_STAFF_CATEGORIES,
+  type AccountClassification,
+  type InternalStaffCategory,
+} from "@shared/accountClassification";
+import { accountClassificationLabel } from "@/lib/admin/accountClassificationDisplay";
 
 // ─── Users Section Component ───────────────────────────────────────
 function UsersSection() {
   const { user } = useAuth();
   const { t, language } = useLanguage();
   const [searchQuery, setSearchQuery] = useState("");
+  const [classificationFilter, setClassificationFilter] = useState<AccountClassification | "all">("all");
   const [deleteUserId, setDeleteUserId] = useState<number | null>(null);
   const [editingUserId, setEditingUserId] = useState<number | null>(null);
   const [editingRole, setEditingRole] = useState<"admin" | "user">("user");
+  const [editingClassification, setEditingClassification] =
+    useState<AccountClassification>("COMMERCIAL");
+  const [internalUserDialogOpen, setInternalUserDialogOpen] = useState(false);
+  const [internalName, setInternalName] = useState("");
+  const [internalEmail, setInternalEmail] = useState("");
+  const [internalPassword, setInternalPassword] = useState("");
+  const [internalRole, setInternalRole] = useState<"admin" | "user">("user");
+  const [internalStaffCategory, setInternalStaffCategory] =
+    useState<InternalStaffCategory>("support");
   const [subDialogUser, setSubDialogUser] = useState<any>(null);
   const [subDialogMode, setSubDialogMode] = useState<"create" | "edit">("create");
   const [subPlanId, setSubPlanId] = useState<string>("");
@@ -75,7 +92,10 @@ function UsersSection() {
   const [bulkNotifyMessage, setBulkNotifyMessage] = useState("");
 
   const { data: overviewData, isLoading: overviewLoading, refetch: refetchOverview } =
-    trpc.admin.getOwnerOverviewList.useQuery();
+    trpc.admin.getOwnerOverviewList.useQuery({
+      limit: 500,
+      classificationFilter: classificationFilter === "all" ? undefined : classificationFilter,
+    });
   const { data: restaurantListData, refetch: refetchRestaurantList } =
     trpc.admin.listRestaurants.useQuery();
   const { data: plans } = trpc.subscription.listPlans.useQuery();
@@ -105,6 +125,33 @@ function UsersSection() {
     onSuccess: () => {
       toast.success(t('users.roleUpdated') || 'تم تحديث الدور');
       setEditingUserId(null);
+      refetchUsers();
+    },
+    onError: (error: any) => {
+      toast.error(error.message || t('common.error'));
+    },
+  });
+
+  const updateClassificationMutation = trpc.admin.updateAccountClassification.useMutation({
+    onSuccess: () => {
+      toast.success(language === "ar" ? "تم تحديث التصنيف" : "Classification updated");
+      setEditingUserId(null);
+      refetchUsers();
+    },
+    onError: (error: any) => {
+      toast.error(error.message || t('common.error'));
+    },
+  });
+
+  const createInternalUserMutation = trpc.admin.createInternalUser.useMutation({
+    onSuccess: () => {
+      toast.success(language === "ar" ? "تم إنشاء حساب داخلي" : "Internal user created");
+      setInternalUserDialogOpen(false);
+      setInternalName("");
+      setInternalEmail("");
+      setInternalPassword("");
+      setInternalRole("user");
+      setInternalStaffCategory("support");
       refetchUsers();
     },
     onError: (error: any) => {
@@ -265,11 +312,35 @@ function UsersSection() {
               <Button
                 size="sm"
                 variant="default"
-                onClick={() => updateRoleMutation.mutate({ userId: u.id, role: editingRole })}
-                disabled={updateRoleMutation.isPending}
+                onClick={() => {
+                  const tasks: Promise<unknown>[] = [];
+                  if (editingRole !== u.role) {
+                    tasks.push(
+                      updateRoleMutation.mutateAsync({ userId: u.id, role: editingRole })
+                    );
+                  }
+                  if (editingClassification !== u.accountClassification) {
+                    tasks.push(
+                      updateClassificationMutation.mutateAsync({
+                        userId: u.id,
+                        accountClassification: editingClassification,
+                      })
+                    );
+                  }
+                  if (tasks.length === 0) {
+                    setEditingUserId(null);
+                    return;
+                  }
+                  void Promise.all(tasks).then(() => setEditingUserId(null));
+                }}
+                disabled={updateRoleMutation.isPending || updateClassificationMutation.isPending}
                 className={adminDash.opBtn}
               >
-                {updateRoleMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : (t("admin.save") || "حفظ")}
+                {(updateRoleMutation.isPending || updateClassificationMutation.isPending) ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  t("admin.save") || "حفظ"
+                )}
               </Button>
               <Button
                 size="sm"
@@ -295,6 +366,7 @@ function UsersSection() {
               onClick={() => {
                 setEditingUserId(u.id);
                 setEditingRole(u.role);
+                setEditingClassification(u.accountClassification ?? "COMMERCIAL");
               }}
             >
               <Edit className="h-3.5 w-3.5" />
@@ -395,6 +467,31 @@ function UsersSection() {
                 aria-label={t("users.searchPlaceholder")}
               />
             </div>
+            <Select
+              value={classificationFilter}
+              onValueChange={(val) => setClassificationFilter(val as AccountClassification | "all")}
+            >
+              <SelectTrigger className="h-9 w-[160px] border-border bg-background">
+                <SelectValue placeholder={language === "ar" ? "التصنيف" : "Classification"} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{language === "ar" ? "كل التصنيفات" : "All classifications"}</SelectItem>
+                {ACCOUNT_CLASSIFICATIONS.map((c) => (
+                  <SelectItem key={c} value={c}>
+                    {accountClassificationLabel(c, language === "ar" ? "ar" : "en")}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setInternalUserDialogOpen(true)}
+              className={cn(adminDash.opBtn, adminActionBtn.success, "whitespace-nowrap")}
+            >
+              <UserPlus className="h-4 w-4 me-1" aria-hidden />
+              {language === "ar" ? "حساب داخلي" : "Internal user"}
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -436,6 +533,12 @@ function UsersSection() {
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge variant={u.role === "admin" ? "default" : "secondary"} className="text-xs">
                         {u.role === "admin" ? "Admin" : "User"}
+                      </Badge>
+                      <Badge variant="outline" className="text-xs">
+                        {accountClassificationLabel(
+                          u.accountClassification ?? "COMMERCIAL",
+                          language === "ar" ? "ar" : "en"
+                        )}
                       </Badge>
                       <span className="font-medium text-foreground">{u.name || (language === "ar" ? "بدون اسم" : "No name")}</span>
                       {isOwnerEntitled(u.commercial) ? getStatusBadge(ownerSubscriptionStatus(u.commercial)) : (
@@ -487,6 +590,9 @@ function UsersSection() {
                         {t("users.role") || "الدور"}
                       </th>
                       <th scope="col" className="px-4 py-3 text-start text-sm font-semibold text-foreground">
+                        {language === "ar" ? "التصنيف" : "Classification"}
+                      </th>
+                      <th scope="col" className="px-4 py-3 text-start text-sm font-semibold text-foreground">
                         {t("admin.ownerAccountSubscription")}
                       </th>
                       <th scope="col" className="px-4 py-3 text-start text-sm font-semibold text-foreground">
@@ -535,6 +641,32 @@ function UsersSection() {
                           )}
                         </td>
                         <td className="px-4 py-3 text-sm">
+                          {editingUserId === u.id ? (
+                            <Select
+                              value={editingClassification}
+                              onValueChange={(val: AccountClassification) => setEditingClassification(val)}
+                            >
+                              <SelectTrigger className="h-8 w-32 border-border bg-background">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {ACCOUNT_CLASSIFICATIONS.map((c) => (
+                                  <SelectItem key={c} value={c}>
+                                    {accountClassificationLabel(c, language === "ar" ? "ar" : "en")}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <Badge variant="outline">
+                              {accountClassificationLabel(
+                                u.accountClassification ?? "COMMERCIAL",
+                                language === "ar" ? "ar" : "en"
+                              )}
+                            </Badge>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-sm">
                           {isOwnerEntitled(u.commercial) ? getStatusBadge(ownerSubscriptionStatus(u.commercial)) : (
                             <Badge variant="outline" className="text-xs text-muted-foreground">
                               {t("admin.noAccountSubscription")}
@@ -562,6 +694,94 @@ function UsersSection() {
           )}
         </CardContent>
       </Card>
+
+      {/* Internal user creation (ADMIN-AUTH-1B) */}
+      <Dialog open={internalUserDialogOpen} onOpenChange={setInternalUserDialogOpen}>
+        <DialogContent className={adminDash.dialogContent}>
+          <DialogHeader>
+            <DialogTitle className="text-foreground">
+              {language === "ar" ? "إنشاء حساب داخلي" : "Create internal user"}
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              {language === "ar"
+                ? "حسابات الموظفين الداخليين — التصنيف INTERNAL ثابت"
+                : "Internal staff accounts — classification is always INTERNAL"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="grid gap-2">
+              <Label>{t("users.name") || "Name"}</Label>
+              <Input value={internalName} onChange={(e) => setInternalName(e.target.value)} />
+            </div>
+            <div className="grid gap-2">
+              <Label>{t("users.email") || "Email"}</Label>
+              <Input type="email" value={internalEmail} onChange={(e) => setInternalEmail(e.target.value)} dir="ltr" />
+            </div>
+            <div className="grid gap-2">
+              <Label>{language === "ar" ? "كلمة المرور" : "Password"}</Label>
+              <Input
+                type="password"
+                value={internalPassword}
+                onChange={(e) => setInternalPassword(e.target.value)}
+                dir="ltr"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>{language === "ar" ? "فئة الموظف" : "Staff category"}</Label>
+              <Select
+                value={internalStaffCategory}
+                onValueChange={(val: InternalStaffCategory) => setInternalStaffCategory(val)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {INTERNAL_STAFF_CATEGORIES.map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {c}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label>{t("users.role") || "Role"}</Label>
+              <Select value={internalRole} onValueChange={(val: "admin" | "user") => setInternalRole(val)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="user">{language === "ar" ? "مستخدم" : "User"}</SelectItem>
+                  <SelectItem value="admin">{language === "ar" ? "مسؤول" : "Admin"}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setInternalUserDialogOpen(false)}>
+              {t("admin.cancel") || "Cancel"}
+            </Button>
+            <Button
+              onClick={() =>
+                createInternalUserMutation.mutate({
+                  name: internalName,
+                  email: internalEmail,
+                  password: internalPassword,
+                  role: internalRole,
+                  staffCategory: internalStaffCategory,
+                })
+              }
+              disabled={createInternalUserMutation.isPending}
+            >
+              {createInternalUserMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                language === "ar" ? "إنشاء" : "Create"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Subscription Create/Edit Dialog */}
       <Dialog open={subDialogUser !== null} onOpenChange={(open) => !open && setSubDialogUser(null)}>

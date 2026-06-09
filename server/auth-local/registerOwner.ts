@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import { nanoid } from "nanoid";
 import type { Request, Response } from "express";
 import { restaurants, userSubscriptions, users } from "../../drizzle/schema";
+import { DEFAULT_ACCOUNT_CLASSIFICATION } from "@shared/accountClassification";
 import { buildTrialSubscriptionForUser } from "../create-trial-subscription";
 import { getDb, getUserByEmail, getUserByOpenId } from "../db";
 import { sdk } from "../_core/sdk";
@@ -125,6 +126,7 @@ async function registerOwnerTransactional(
         email: input.email,
         loginMethod: "email",
         role: "user",
+        accountClassification: DEFAULT_ACCOUNT_CLASSIFICATION,
         passwordHash,
         lastSignedIn: new Date().toISOString(),
       });

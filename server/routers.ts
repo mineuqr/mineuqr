@@ -20,7 +20,7 @@ import {
   createSubscriptionForRestaurant, updateSubscriptionById, cancelSubscriptionById, getSubscriptionForRestaurant,
   getAdminStatistics, getRevenueByMonth,
   getPublicStats, getExtendedAdminStats,
-  getAllUsers, updateUserRole,
+  getAllUsers, updateUserRole, updateAccountClassification,
   sanitizeUserForAdminResponse,
   createInvoice, updateInvoice, getUserById,
   updateUserSessionValidAfter,
@@ -55,8 +55,19 @@ import {
 } from "./commercial/ownerAccountSubscriptionAuthority";
 import { assertRestaurantScopedSubscriptionRetired } from "./commercial/retiredRestaurantSubscriptionApi";
 import {
+  ACCOUNT_CLASSIFICATIONS,
+  INTERNAL_STAFF_CATEGORIES,
+  isForbiddenSystemAdminCombo,
+} from "@shared/accountClassification";
+import { createInternalUser } from "./createInternalUser";
+import {
+  logAccountClassificationChanged,
+  logInternalUserCreated,
+} from "./accountClassificationAudit";
+import {
   assertProtectedUserPasswordResetAllowed,
   assertProtectedUserRoleModifiable,
+  assertProtectedUserClassificationModifiable,
   deleteRestaurantCascade,
   deleteSubscriptionCascade,
   deleteUserCascade,
@@ -922,10 +933,99 @@ const adminCoreRouter = router({
 
   // ─── Users Management ───────────────────────
   listAllUsers: protectedProcedure
-    .query(async ({ ctx }) => {
+    .input(
+      z
+        .object({
+          classificationFilter: z.enum(ACCOUNT_CLASSIFICATIONS).optional(),
+        })
+        .optional()
+    )
+    .query(async ({ ctx, input }) => {
       assertAdminAccess(ctx, "admin.listAllUsers");
-      const users = await getAllUsers();
+      const users = await getAllUsers({
+        classificationFilter: input?.classificationFilter,
+      });
       return users.map(sanitizeUserForAdminResponse);
+    }),
+
+  createInternalUser: protectedProcedure
+    .input(
+      z.object({
+        email: z.string().email(),
+        password: z.string().min(8),
+        name: z.string().min(1),
+        role: z.enum(["user", "admin"]).default("user"),
+        staffCategory: z.enum(INTERNAL_STAFF_CATEGORIES),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      assertAdminAccess(ctx, "admin.createInternalUser");
+      const result = await createInternalUser({
+        email: input.email,
+        password: input.password,
+        name: input.name,
+        role: input.role,
+        staffCategory: input.staffCategory,
+      });
+      logInternalUserCreated({
+        ctx,
+        procedure: "admin.createInternalUser",
+        userId: result.userId,
+        email: result.email,
+        role: result.role,
+        staffCategory: result.staffCategory,
+      });
+      return { success: true, ...result };
+    }),
+
+  updateAccountClassification: protectedProcedure
+    .input(
+      z.object({
+        userId: z.number(),
+        accountClassification: z.enum(ACCOUNT_CLASSIFICATIONS),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      assertAdminAccess(ctx, "admin.updateAccountClassification");
+      assertNotSelfAdminTarget(ctx, input.userId, "update_role");
+      try {
+        assertProtectedUserClassificationModifiable(input.userId);
+      } catch (error) {
+        if (error instanceof ProtectedUserModifyError) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "لا يمكن تعديل تصنيف هذا المستخدم المحمي",
+          });
+        }
+        throw error;
+      }
+
+      const target = await getUserById(input.userId);
+      if (!target) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+      }
+
+      if (isForbiddenSystemAdminCombo(target.role, input.accountClassification)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "SYSTEM accounts cannot have admin role",
+        });
+      }
+
+      const previous = target.accountClassification;
+      if (previous === input.accountClassification) {
+        return { success: true, accountClassification: input.accountClassification };
+      }
+
+      await updateAccountClassification(input.userId, input.accountClassification);
+      logAccountClassificationChanged({
+        ctx,
+        procedure: "admin.updateAccountClassification",
+        targetUserId: input.userId,
+        previousClassification: previous,
+        nextClassification: input.accountClassification,
+      });
+      return { success: true, accountClassification: input.accountClassification };
     }),
 
   updateUserRole: protectedProcedure

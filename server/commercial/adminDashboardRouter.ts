@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { ACCOUNT_CLASSIFICATIONS } from "@shared/accountClassification";
 import { assertAdminAccess } from "../_core/assertAdminAccess";
 import { protectedProcedure, router } from "../_core/trpc";
 import {
@@ -26,6 +27,7 @@ export type AdminOwnerOverview = {
     name: string | null;
     email: string | null;
     role: "user" | "admin";
+    accountClassification: (typeof ACCOUNT_CLASSIFICATIONS)[number];
     createdAt: Date | string;
   };
   commercial: OwnerCommercialState;
@@ -98,6 +100,7 @@ export const adminDashboardReadRouter = router({
           name: safe.name,
           email: safe.email,
           role: safe.role,
+          accountClassification: safe.accountClassification,
           createdAt: safe.createdAt,
         },
         commercial,
@@ -110,13 +113,16 @@ export const adminDashboardReadRouter = router({
         .object({
           limit: z.number().int().min(1).max(500).optional(),
           roleFilter: z.enum(["user", "admin"]).optional(),
+          classificationFilter: z.enum(ACCOUNT_CLASSIFICATIONS).optional(),
         })
         .optional()
     )
     .query(async ({ ctx, input }) => {
       assertAdminAccess(ctx, "admin.getOwnerOverviewList");
       const limit = input?.limit ?? 100;
-      let users = await getAllUsers();
+      let users = await getAllUsers({
+        classificationFilter: input?.classificationFilter,
+      });
       if (input?.roleFilter) {
         users = users.filter((u) => u.role === input.roleFilter);
       }
@@ -135,6 +141,7 @@ export const adminDashboardReadRouter = router({
             name: safe.name,
             email: safe.email,
             role: safe.role,
+            accountClassification: safe.accountClassification,
             createdAt: safe.createdAt,
           },
           commercial: commercialByOwner.get(safe.id)!,
