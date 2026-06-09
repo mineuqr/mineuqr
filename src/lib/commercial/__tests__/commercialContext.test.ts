@@ -16,7 +16,7 @@ function isoMinusDays(days: number): string {
 }
 
 describe("buildCommercialContext", () => {
-  it("builds admin context with null subscription", () => {
+  it("builds admin context from subscription row when present", () => {
     const context = buildCommercialContext({
       ownerId: 1,
       role: "admin",
@@ -29,12 +29,9 @@ describe("buildCommercialContext", () => {
       now: FIXED_NOW,
     });
 
-    expect(context).toEqual({
-      ownerId: 1,
-      role: "admin",
-      subscription: null,
-      now: FIXED_NOW,
-    });
+    expect(context.ownerId).toBe(1);
+    expect(context.role).toBe("admin");
+    expect(context.subscription?.catalogPlan).toBe("BASIC");
   });
 
   it("builds NONE context when subscription row is absent", () => {
@@ -137,7 +134,7 @@ describe("getCommercialEntitlementsFromContext", () => {
     expect(entitlements.limits.items).toBeNull();
   });
 
-  it("resolves admin account with full access outside commercial metrics", () => {
+  it("resolves admin without subscription as NONE (ADMIN-AUTH-1C)", () => {
     const context = buildCommercialContext({
       ownerId: 13,
       role: "admin",
@@ -147,11 +144,10 @@ describe("getCommercialEntitlementsFromContext", () => {
 
     const { entitlements } = getCommercialEntitlementsFromContext(context);
 
-    expect(entitlements.plan).toBe("ADMIN");
-    expect(entitlements.commercial.isAdmin).toBe(true);
+    expect(entitlements.plan).toBe("NONE");
+    expect(entitlements.commercial.isAdmin).toBe(false);
     expect(entitlements.commercial.countsInMrr).toBe(false);
-    expect(entitlements.limits.restaurants).toBeNull();
-    expect(entitlements.features.ordering).toBe(true);
+    expect(entitlements.commercial.isPaid).toBe(false);
   });
 
   it("resolves expired active subscription as NONE", () => {

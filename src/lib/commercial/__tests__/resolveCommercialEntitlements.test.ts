@@ -14,47 +14,20 @@ function isoMinusDays(days: number): string {
 }
 
 describe("resolveCommercialEntitlements", () => {
-  describe("ADMIN", () => {
-    const entitlements = resolveCommercialEntitlements({
-      ownerId: 1,
-      role: "admin",
-      now: FIXED_NOW,
-    });
-
-    it("resolves ADMIN plan and account type", () => {
-      expect(entitlements.plan).toBe("ADMIN");
-      expect(entitlements.accountType).toBe("ADMIN");
-      expect(entitlements.status).toBeNull();
-    });
-
-    it("sets admin commercial flags", () => {
-      expect(entitlements.commercial).toEqual({
-        isTrial: false,
-        isPaid: false,
-        isEnterprise: false,
-        isAdmin: true,
-        countsInMrr: false,
-        countsInRevenue: false,
-        invoiceEligible: false,
+  describe("ADMIN-AUTH-1C role independence", () => {
+    it("admin role without subscription resolves NONE", () => {
+      const entitlements = resolveCommercialEntitlements({
+        ownerId: 1,
+        role: "admin",
+        now: FIXED_NOW,
       });
+      expect(entitlements.plan).toBe("NONE");
+      expect(entitlements.accountType).toBe("NONE");
+      expect(entitlements.commercial.isAdmin).toBe(false);
     });
 
-    it("uses null unlimited limits", () => {
-      expect(entitlements.limits).toEqual({
-        restaurants: null,
-        categories: null,
-        items: null,
-      });
-    });
-
-    it("enables all features", () => {
-      for (const key of FEATURE_KEYS) {
-        expect(entitlements.features[key]).toBe(true);
-      }
-    });
-
-    it("ignores subscription when role is admin", () => {
-      const withSub = resolveCommercialEntitlements({
+    it("admin role resolves from subscription when present", () => {
+      const entitlements = resolveCommercialEntitlements({
         ownerId: 1,
         role: "admin",
         subscription: {
@@ -64,8 +37,9 @@ describe("resolveCommercialEntitlements", () => {
         },
         now: FIXED_NOW,
       });
-      expect(withSub.plan).toBe("ADMIN");
-      expect(withSub.commercial.isAdmin).toBe(true);
+      expect(entitlements.plan).toBe("BASIC");
+      expect(entitlements.commercial.isPaid).toBe(true);
+      expect(entitlements.commercial.isAdmin).toBe(false);
     });
   });
 

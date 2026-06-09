@@ -97,21 +97,18 @@ describe("CommercialReadService", () => {
     expect(getSubscriptionPlanById).not.toHaveBeenCalled();
   });
 
-  it("returns ADMIN plan for admin role without reading subscriptions", async () => {
+  it("returns NONE for admin role without subscription (ADMIN-AUTH-1C)", async () => {
     (getUserById as ReturnType<typeof vi.fn>).mockResolvedValue({
       id: 1,
       role: "admin",
     });
-    (getSubscriptionsByUser as ReturnType<typeof vi.fn>).mockResolvedValue([
-      subRow({ id: 600001, userId: 1, restaurantId: 720007, planId: 30001 }),
-    ]);
+    (getSubscriptionsByUser as ReturnType<typeof vi.fn>).mockResolvedValue([]);
 
     const authority = await commercialReadService.getAuthorityForOwner(1, FIXED_NOW);
 
     expect(authority.role).toBe("admin");
-    expect(authority.planCode).toBe("ADMIN");
-    expect(authority.subscriptionId).toBeNull();
-    expect(authority.commercialStatus.isEntitled).toBe(true);
+    expect(authority.planCode).toBe("NONE");
+    expect(authority.commercialStatus.isEntitled).toBe(false);
   });
 });
 

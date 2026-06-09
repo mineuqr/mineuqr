@@ -88,6 +88,24 @@ function adminContext() {
   };
 }
 
+function mockPopulationUsers(
+  users: Array<{ id: number; role: "user" | "admin"; accountClassification?: "COMMERCIAL" | "INTERNAL" | "SYSTEM" }>
+) {
+  const normalized = users.map((u) => ({
+    ...u,
+    accountClassification:
+      u.accountClassification ?? (u.role === "admin" ? "INTERNAL" : "COMMERCIAL"),
+  }));
+  (getAllUsers as ReturnType<typeof vi.fn>).mockImplementation(
+    async (opts?: { classificationFilter?: "COMMERCIAL" | "INTERNAL" | "SYSTEM" }) => {
+      if (opts?.classificationFilter) {
+        return normalized.filter((u) => u.accountClassification === opts.classificationFilter);
+      }
+      return normalized;
+    }
+  );
+}
+
 describe("ADMIN-UX-1E CommercialReportService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -105,9 +123,7 @@ describe("ADMIN-UX-1E CommercialReportService", () => {
       totalOffers: 1,
       userGrowth: [],
     });
-    (getAllUsers as ReturnType<typeof vi.fn>).mockResolvedValue([
-      { id: 5, name: "Owner", email: "owner@test.com", role: "user" },
-    ]);
+    mockPopulationUsers([{ id: 5, name: "Owner", email: "owner@test.com", role: "user" }]);
     (getUserById as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 5, role: "user" });
     (getSubscriptionsByUser as ReturnType<typeof vi.fn>).mockResolvedValue([
       subRow({ id: 10, userId: 5, restaurantId: 0, planId: 30002 }),

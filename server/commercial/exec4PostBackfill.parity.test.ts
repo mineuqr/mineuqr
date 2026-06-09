@@ -78,9 +78,9 @@ describe("EXEC-4E post-backfill CRS validation", () => {
     expect(state.commercialStatus.isEntitled).toBe(true);
   });
 
-  it("user 1 admin still resolves ADMIN via role bypass with account row present", async () => {
+  it("user 1 admin resolves BASIC from account row (no role bypass)", async () => {
     const state = await commercialReadService.getOwnerCommercialState(1);
-    expect(state.planCode).toBe("ADMIN");
+    expect(state.planCode).toBe("BASIC");
     expect(state.authoritySource).toBe("S1_CANONICAL");
   });
 

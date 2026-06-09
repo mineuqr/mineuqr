@@ -4,6 +4,10 @@ import type { CommercialAuthority } from "./dto/commercialAuthority";
 import type { OwnerCommercialState } from "./commercialReadSlices";
 import { getCommercialEntitlements } from "./getCommercialEntitlements";
 import { mapToCommercialAuthority } from "./mapToCommercialAuthority";
+import {
+  COMMERCIAL_POPULATION_CLASSIFICATION,
+  isCommercialPopulationMember,
+} from "./commercialPopulation";
 
 /**
  * EXEC-1 — read-only canonical commercial authority facade.
@@ -50,13 +54,18 @@ export class CommercialReadService {
     return Promise.all(ownerIds.map((id) => this.getOwnerCommercialState(id, now)));
   }
 
-  /** AR-4 Category A / metrics — all platform users. */
+  /**
+   * AR-4 Category A / metrics — COMMERCIAL population only (ADMIN-AUTH-1C).
+   * Sole boundary for certified commercial KPIs, reports, and analytics.
+   */
   async getAllOwnerCommercialStates(
     now: Date = new Date()
   ): Promise<OwnerCommercialState[]> {
-    const users = await getAllUsers();
+    const users = await getAllUsers({
+      classificationFilter: COMMERCIAL_POPULATION_CLASSIFICATION,
+    });
     return this.getOwnerCommercialStates(
-      users.map((u) => u.id),
+      users.filter(isCommercialPopulationMember).map((u) => u.id),
       now
     );
   }

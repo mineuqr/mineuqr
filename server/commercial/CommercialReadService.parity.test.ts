@@ -178,17 +178,15 @@ describe("EXEC-2 CommercialReadService parity — MATCH (S1-aligned consumers)",
     expect(authority.planCode).toBe("TRIAL");
   });
 
-  it("admin role: CommercialReadService returns ADMIN plan (role bypass)", async () => {
+  it("admin role without subscription resolves NONE (ADMIN-AUTH-1C)", async () => {
     (getUserById as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 1, role: "admin" });
-    (getSubscriptionsByUser as ReturnType<typeof vi.fn>).mockResolvedValue([
-      subRow({ id: 600001, userId: 1, restaurantId: 720007, planId: 30001 }),
-    ]);
+    (getSubscriptionsByUser as ReturnType<typeof vi.fn>).mockResolvedValue([]);
 
     const authority = await commercialReadService.getAuthorityForOwner(1, FIXED_NOW);
     const direct = await getCommercialEntitlements(1, FIXED_NOW);
 
-    expect(authority.planCode).toBe("ADMIN");
-    expect(direct.entitlements.plan).toBe("ADMIN");
+    expect(authority.planCode).toBe("NONE");
+    expect(direct.entitlements.plan).toBe("NONE");
     expect(authority.entitlements).toEqual(direct.entitlements);
   });
 });

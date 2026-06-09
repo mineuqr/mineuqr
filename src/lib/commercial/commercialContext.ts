@@ -38,19 +38,10 @@ export function buildCommercialContext(input: {
 }): CommercialContext {
   const now = input.now ?? new Date();
 
-  if (input.role === "admin") {
-    return {
-      ownerId: input.ownerId,
-      role: "admin",
-      subscription: null,
-      now,
-    };
-  }
-
   if (!input.subscriptionRow) {
     return {
       ownerId: input.ownerId,
-      role: "user",
+      role: input.role,
       subscription: null,
       now,
     };
@@ -60,7 +51,7 @@ export function buildCommercialContext(input: {
   if (!catalogPlan) {
     return {
       ownerId: input.ownerId,
-      role: "user",
+      role: input.role,
       subscription: null,
       now,
     };
@@ -68,7 +59,7 @@ export function buildCommercialContext(input: {
 
   return {
     ownerId: input.ownerId,
-    role: "user",
+    role: input.role,
     subscription: {
       catalogPlan,
       subscriptionStatus: input.subscriptionRow.status,

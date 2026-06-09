@@ -43,10 +43,6 @@ function resolveAccountType(plan: CommercialPlan): AccountType {
 function resolveCommercialPlan(
   input: ResolveCommercialEntitlementsInput
 ): { plan: CommercialPlan; status: CommercialEntitlements["status"] } {
-  if (input.role === "admin") {
-    return { plan: "ADMIN", status: null };
-  }
-
   const subscription = input.subscription;
   if (!subscription) {
     return { plan: "NONE", status: null };

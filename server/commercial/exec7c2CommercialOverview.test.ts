@@ -123,6 +123,24 @@ function userContext(): TrpcContext {
   };
 }
 
+function mockPopulationUsers(
+  users: Array<{ id: number; role: "user" | "admin"; accountClassification?: "COMMERCIAL" | "INTERNAL" | "SYSTEM" }>
+) {
+  const normalized = users.map((u) => ({
+    ...u,
+    accountClassification:
+      u.accountClassification ?? (u.role === "admin" ? "INTERNAL" : "COMMERCIAL"),
+  }));
+  (getAllUsers as ReturnType<typeof vi.fn>).mockImplementation(
+    async (opts?: { classificationFilter?: "COMMERCIAL" | "INTERNAL" | "SYSTEM" }) => {
+      if (opts?.classificationFilter) {
+        return normalized.filter((u) => u.accountClassification === opts.classificationFilter);
+      }
+      return normalized;
+    }
+  );
+}
+
 describe("EXEC-7C.2 admin.getCommercialOverview", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -150,7 +168,7 @@ describe("EXEC-7C.2 admin.getCommercialOverview", () => {
   });
 
   it("returns CommercialOverviewSnapshot with canonical metadata", async () => {
-    (getAllUsers as ReturnType<typeof vi.fn>).mockResolvedValue([
+    mockPopulationUsers([
       { id: 5, role: "user" },
       { id: 1, role: "admin" },
     ]);
@@ -178,7 +196,7 @@ describe("EXEC-7C.2 admin.getCommercialOverview", () => {
   });
 
   it("executive metrics parity with analytics and dashboard summary", async () => {
-    (getAllUsers as ReturnType<typeof vi.fn>).mockResolvedValue([{ id: 5, role: "user" }]);
+    mockPopulationUsers([{ id: 5, role: "user" }]);
     (getUserById as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 5, role: "user" });
     (getSubscriptionsByUser as ReturnType<typeof vi.fn>).mockResolvedValue([
       subRow({ id: 10, userId: 5, restaurantId: 0, planId: 30002 }),
@@ -202,7 +220,7 @@ describe("EXEC-7C.2 admin.getCommercialOverview", () => {
   });
 
   it("subscription health uses authority statuses only", async () => {
-    (getAllUsers as ReturnType<typeof vi.fn>).mockResolvedValue([
+    mockPopulationUsers([
       { id: 5, role: "user" },
       { id: 6, role: "user" },
       { id: 7, role: "user" },
@@ -256,7 +274,7 @@ describe("EXEC-7C.2 admin.getCommercialOverview", () => {
   });
 
   it("recentActivity and growth remain unavailable per EXEC-7C.1", async () => {
-    (getAllUsers as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    mockPopulationUsers([]);
     (getUserById as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
 
     const caller = appRouter.createCaller(adminContext());

@@ -100,7 +100,21 @@ describe("getCommercialEntitlements (server integration)", () => {
     expect(result.entitlements.plan).toBe("NONE");
   });
 
-  it("returns ADMIN entitlements for admin users without reading subscription", async () => {
+  it("returns NONE for INTERNAL admin without subscription (ADMIN-AUTH-1C)", async () => {
+    (getUserById as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: 1,
+      role: "admin",
+    });
+    (getSubscriptionsByUser as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+
+    const result = await getCommercialEntitlements(1, FIXED_NOW);
+
+    expect(result.context.subscription).toBeNull();
+    expect(result.entitlements.plan).toBe("NONE");
+    expect(result.entitlements.commercial.isPaid).toBe(false);
+  });
+
+  it("resolves admin from subscription row when present", async () => {
     (getUserById as ReturnType<typeof vi.fn>).mockResolvedValue({
       id: 1,
       role: "admin",
@@ -111,9 +125,8 @@ describe("getCommercialEntitlements (server integration)", () => {
 
     const result = await getCommercialEntitlements(1, FIXED_NOW);
 
-    expect(result.context.subscription).toBeNull();
-    expect(result.entitlements.plan).toBe("ADMIN");
-    expect(getSubscriptionsByUser).not.toHaveBeenCalled();
+    expect(result.entitlements.plan).toBe("BASIC");
+    expect(getSubscriptionsByUser).toHaveBeenCalledWith(1);
   });
 
   it("resolves trial from account-level row", async () => {

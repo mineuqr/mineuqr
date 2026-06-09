@@ -17,15 +17,11 @@ export async function buildCommercialContextFromDb(
   const user = await getUserById(ownerId);
   const role = user?.role ?? "user";
 
-  if (role === "admin") {
-    return buildCommercialContext({ ownerId, role: "admin", subscriptionRow: null, now });
-  }
-
   const rows = await getSubscriptionsByUser(ownerId);
   const canonicalRow = pickUserLevelSubscription(rows, now);
 
   if (!canonicalRow) {
-    return buildCommercialContext({ ownerId, role: "user", subscriptionRow: null, now });
+    return buildCommercialContext({ ownerId, role, subscriptionRow: null, now });
   }
 
   const catalogPlan = mapPlanIdToCatalogPlan(canonicalRow.planId);
@@ -33,12 +29,12 @@ export async function buildCommercialContextFromDb(
     console.warn(
       `[commercial] Unknown planId ${canonicalRow.planId} for owner ${ownerId}; treating as NONE`
     );
-    return buildCommercialContext({ ownerId, role: "user", subscriptionRow: null, now });
+    return buildCommercialContext({ ownerId, role, subscriptionRow: null, now });
   }
 
   return buildCommercialContext({
     ownerId,
-    role: "user",
+    role,
     subscriptionRow: {
       planId: canonicalRow.planId,
       status: canonicalRow.status,

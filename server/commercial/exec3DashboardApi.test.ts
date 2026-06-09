@@ -94,6 +94,24 @@ function userContext(): TrpcContext {
   } as TrpcContext;
 }
 
+function mockPopulationUsers(
+  users: Array<{ id: number; role: "user" | "admin"; accountClassification?: "COMMERCIAL" | "INTERNAL" | "SYSTEM" }>
+) {
+  const normalized = users.map((u) => ({
+    ...u,
+    accountClassification:
+      u.accountClassification ?? (u.role === "admin" ? "INTERNAL" : "COMMERCIAL"),
+  }));
+  (getAllUsers as ReturnType<typeof vi.fn>).mockImplementation(
+    async (opts?: { classificationFilter?: "COMMERCIAL" | "INTERNAL" | "SYSTEM" }) => {
+      if (opts?.classificationFilter) {
+        return normalized.filter((u) => u.accountClassification === opts.classificationFilter);
+      }
+      return normalized;
+    }
+  );
+}
+
 describe("EXEC-3 dashboard API layer", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -172,9 +190,7 @@ describe("EXEC-3 dashboard API layer", () => {
   });
 
   it("admin.getDashboardSummary uses canonical metrics source", async () => {
-    (getAllUsers as ReturnType<typeof vi.fn>).mockResolvedValue([
-      { id: 5, role: "user" },
-    ]);
+    mockPopulationUsers([{ id: 5, role: "user" }]);
     (getUserById as ReturnType<typeof vi.fn>).mockImplementation(async (id: number) => ({
       id,
       role: id === 1 ? "admin" : "user",
@@ -195,9 +211,7 @@ describe("EXEC-3 dashboard API layer", () => {
   });
 
   it("analytics.getMRR uses owner-based canonical accounting", async () => {
-    (getAllUsers as ReturnType<typeof vi.fn>).mockResolvedValue([
-      { id: 14760004, role: "user" },
-    ]);
+    mockPopulationUsers([{ id: 14760004, role: "user" }]);
     (getUserById as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 14760004, role: "user" });
     (getSubscriptionsByUser as ReturnType<typeof vi.fn>).mockResolvedValue([
       subRow({ id: 1, userId: 14760004, restaurantId: 720003, planId: 30001 }),
@@ -213,9 +227,7 @@ describe("EXEC-3 dashboard API layer", () => {
   });
 
   it("analytics.getSubscriberCounts counts owners not rows", async () => {
-    (getAllUsers as ReturnType<typeof vi.fn>).mockResolvedValue([
-      { id: 5, role: "user" },
-    ]);
+    mockPopulationUsers([{ id: 5, role: "user" }]);
     (getUserById as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 5, role: "user" });
     (getSubscriptionsByUser as ReturnType<typeof vi.fn>).mockResolvedValue([
       subRow({ id: 10, userId: 5, restaurantId: 0, planId: 30002 }),
