@@ -52,9 +52,12 @@ export default function AdminCommercialPage() {
 
   const metadataLabels = {
     title: t("admin.commercial.metadataTitle"),
-    authorityVersion: t("admin.commercial.authorityVersion"),
-    asOf: t("admin.commercial.asOf"),
-    generatedAt: t("admin.commercial.generatedAt"),
+    commercialAuthority: t("admin.commercial.commercialAuthority"),
+    reportGenerated: t("admin.commercial.reportGenerated"),
+    dataAsOf: t("admin.commercial.dataAsOf"),
+    schemaVersion: t("admin.commercial.schemaVersion"),
+    metricsSource: t("admin.commercial.metricsSource"),
+    unavailable: t("admin.commercial.metadataUnavailable"),
   };
 
   const healthLabels = {
