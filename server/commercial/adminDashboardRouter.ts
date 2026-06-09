@@ -13,6 +13,10 @@ import { commercialReadService } from "./CommercialReadService";
 import { canonicalMetricsService } from "./metrics/CanonicalMetricsService";
 import type { OwnerCommercialState } from "./commercialReadSlices";
 import { commercialReportService } from "./reporting/CommercialReportService";
+import {
+  projectCommercialAnalytics,
+  type CommercialAnalyticsProjection,
+} from "./reporting/analyticsProjection";
 import { resolveDashboardEntityCounts } from "./reporting/resolveOperationalCounts";
 import { renderCommercialExport } from "./reporting/renderCommercialExport";
 
@@ -209,6 +213,25 @@ export const adminDashboardReadRouter = router({
         },
         now
       );
+    }),
+
+  /**
+   * ANALYTICS-ALIGNMENT-1 — analytics UI projection from certified export package.
+   * Single authority path: CommercialReportService → CommercialExportPackage → projection.
+   */
+  getCommercialAnalytics: protectedProcedure
+    .input(z.object({ now: z.string().datetime().optional() }).optional())
+    .query(async ({ ctx, input }): Promise<CommercialAnalyticsProjection> => {
+      assertAdminAccess(ctx, "admin.getCommercialAnalytics");
+      const now = input?.now ? new Date(input.now) : new Date();
+      const [pkg, extended] = await Promise.all([
+        commercialReportService.buildCommercialExportPackage({
+          now,
+          generatedByUserId: ctx.user.id,
+        }),
+        getExtendedAdminStats(),
+      ]);
+      return projectCommercialAnalytics(pkg, extended?.userGrowth);
     }),
 
   /** ADMIN-UX-1E — canonical export package (format-agnostic). */

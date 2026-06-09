@@ -9,7 +9,7 @@ import {
   UtensilsCrossed, LayoutGrid, Tag, FolderOpen
 } from "lucide-react";
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area
 } from "recharts";
 import { adminQueriesEnabled } from "@/lib/queryRuntime";
@@ -39,58 +39,38 @@ export function StatisticsPanel({ showExport = true }: StatisticsPanelProps) {
     gate.user?.role === "admin"
   );
 
-  const { data: dashboardSummary, isLoading: summaryLoading } =
-    trpc.admin.getDashboardSummary.useQuery(undefined, { enabled: adminEnabled });
-  const { data: mrrData, isLoading: mrrLoading } =
-    trpc.analytics.getMRR.useQuery(undefined, { enabled: adminEnabled });
-  const { data: arrData, isLoading: arrLoading } =
-    trpc.analytics.getARR.useQuery(undefined, { enabled: adminEnabled });
-  const { data: planDistribution, isLoading: planDistLoading } =
-    trpc.analytics.getPlanDistribution.useQuery(undefined, { enabled: adminEnabled });
-  const { data: subscriberCounts, isLoading: subscriberLoading } =
-    trpc.analytics.getSubscriberCounts.useQuery(undefined, { enabled: adminEnabled });
-  const { data: subscriptionOverview, isLoading: overviewLoading } =
-    trpc.admin.getSubscriptionOverview.useQuery(undefined, { enabled: adminEnabled });
-  const { data: extendedStats, isLoading: extendedLoading } =
-    trpc.admin.getExtendedStats.useQuery(undefined, { enabled: adminEnabled });
-  const { data: revenueData, isLoading: revenueLoading } =
-    trpc.admin.getRevenueByMonth.useQuery(undefined, { enabled: adminEnabled });
-  const { data: legacyStats, isLoading: legacyStatsLoading } =
-    trpc.admin.getStatistics.useQuery(undefined, { enabled: adminEnabled });
-
-  const overviewRows = useMemo(
-    () => subscriptionOverview?.owners ?? [],
-    [subscriptionOverview]
+  const { data: analytics, isLoading } = trpc.admin.getCommercialAnalytics.useQuery(
+    undefined,
+    { enabled: adminEnabled }
   );
+
+  const overviewRows = useMemo(() => analytics?.subscribers ?? [], [analytics]);
 
   const planChartData = useMemo(
     () =>
-      (planDistribution?.distribution ?? []).map((entry) => ({
+      (analytics?.commercial.planDistribution.entries ?? []).map((entry) => ({
         planName: entry.planCode,
         count: entry.ownerCount,
       })),
-    [planDistribution]
+    [analytics]
   );
+
+  const userGrowthData = useMemo(() => {
+    const growth = analytics?.extensions.userGrowth;
+    return growth?.available ? growth.series : [];
+  }, [analytics]);
 
   const COLORS = ["#00d4ff", "#ff8c42", "#4ade80", "#f87171", "#a78bfa"];
 
-  const pageLoading =
-    summaryLoading ||
-    mrrLoading ||
-    arrLoading ||
-    planDistLoading ||
-    subscriberLoading ||
-    overviewLoading ||
-    extendedLoading ||
-    revenueLoading ||
-    legacyStatsLoading;
-
-  if (pageLoading) {
+  if (isLoading) {
     return <PageDataLoading minHeight="min-h-[320px]" />;
   }
 
-  const mrr = mrrData?.mrr ?? dashboardSummary?.mrr ?? 0;
-  const arr = arrData?.arr ?? dashboardSummary?.arr ?? 0;
+  const executive = analytics?.commercial.executive;
+  const health = analytics?.commercial.subscriptionHealth;
+  const platform = analytics?.platform;
+  const mrr = executive?.mrr ?? 0;
+  const arr = executive?.arr ?? 0;
 
   return (
     <div className="space-y-8">
@@ -98,7 +78,7 @@ export function StatisticsPanel({ showExport = true }: StatisticsPanelProps) {
         <div className="flex justify-end">
           <CommercialExportButtons
             locale={language === "ar" ? "ar" : "en"}
-            disabled={pageLoading}
+            disabled={isLoading}
           />
         </div>
       ) : null}
@@ -117,7 +97,7 @@ export function StatisticsPanel({ showExport = true }: StatisticsPanelProps) {
               <UtensilsCrossed className="w-4 h-4 text-primary" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{extendedStats?.totalRestaurants || 0}</div>
+              <div className="text-2xl font-bold">{platform?.totalRestaurants ?? 0}</div>
             </CardContent>
           </Card>
           <Card className={statDash.kpiCard}>
@@ -126,7 +106,7 @@ export function StatisticsPanel({ showExport = true }: StatisticsPanelProps) {
               <Users className="w-4 h-4 text-blue-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{dashboardSummary?.totalUsers ?? extendedStats?.totalUsers ?? 0}</div>
+              <div className="text-2xl font-bold">{platform?.totalUsers ?? executive?.totalUsers ?? 0}</div>
             </CardContent>
           </Card>
           <Card className={statDash.kpiCard}>
@@ -135,7 +115,7 @@ export function StatisticsPanel({ showExport = true }: StatisticsPanelProps) {
               <LayoutGrid className="w-4 h-4 text-accent" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{extendedStats?.totalMenuItems || 0}</div>
+              <div className="text-2xl font-bold">{platform?.totalMenuItems ?? 0}</div>
             </CardContent>
           </Card>
           <Card className={statDash.kpiCard}>
@@ -144,7 +124,7 @@ export function StatisticsPanel({ showExport = true }: StatisticsPanelProps) {
               <FolderOpen className="w-4 h-4 text-emerald-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{extendedStats?.totalCategories || 0}</div>
+              <div className="text-2xl font-bold">{platform?.totalCategories ?? 0}</div>
             </CardContent>
           </Card>
           <Card className={statDash.kpiCard}>
@@ -153,7 +133,7 @@ export function StatisticsPanel({ showExport = true }: StatisticsPanelProps) {
               <Tag className="w-4 h-4 text-yellow-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{extendedStats?.totalOffers || 0}</div>
+              <div className="text-2xl font-bold">{platform?.totalOffers ?? 0}</div>
             </CardContent>
           </Card>
         </div>
@@ -173,9 +153,9 @@ export function StatisticsPanel({ showExport = true }: StatisticsPanelProps) {
               <Users className="w-4 h-4 text-primary" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{subscriberCounts?.entitledOwners ?? 0}</div>
+              <div className="text-2xl font-bold">{executive?.commercialSubscribers ?? 0}</div>
               <p className="text-xs text-muted-foreground mt-1">
-                {subscriberCounts?.activeSubscriptions ?? 0} {t("admin.active") || "Active"}
+                {executive?.activeSubscriptions ?? 0} {t("admin.active") || "Active"}
               </p>
             </CardContent>
           </Card>
@@ -211,9 +191,11 @@ export function StatisticsPanel({ showExport = true }: StatisticsPanelProps) {
               <RotateCcw className="w-4 h-4 text-red-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{legacyStats?.renewalRate?.toFixed(1) || "0"}%</div>
+              <div className="text-2xl font-bold">—</div>
               <p className="text-xs text-muted-foreground mt-1">
-                {language === "ar" ? "مصدر legacy (مؤقت)" : "Legacy source (temporary)"}
+                {language === "ar"
+                  ? "غير متوفر — لا مقياس تجاري معتمد"
+                  : "Unavailable — no canonical renewal metric"}
               </p>
             </CardContent>
           </Card>
@@ -225,20 +207,17 @@ export function StatisticsPanel({ showExport = true }: StatisticsPanelProps) {
           <CardHeader>
             <CardTitle>{t("admin.revenueByMonth") || "Revenue by Month"}</CardTitle>
             <p className="text-xs text-muted-foreground">
-              {language === "ar" ? "مصدر legacy — لم يُنقل بعد" : "Legacy source — pending canonical API"}
+              {language === "ar"
+                ? "غير متوفر — لا اتجاه إيرادات معتمد"
+                : "Unavailable — no canonical revenue trend"}
             </p>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={revenueData || []}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                <XAxis dataKey="month" stroke="rgba(255,255,255,0.5)" fontSize={12} />
-                <YAxis stroke="rgba(255,255,255,0.5)" fontSize={12} />
-                <Tooltip contentStyle={{ backgroundColor: "rgba(0,0,0,0.8)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: "8px" }} />
-                <Legend />
-                <Line type="monotone" dataKey="revenue" stroke="#00d4ff" strokeWidth={2} dot={{ fill: "#00d4ff" }} name={t("admin.estimatedMrr") || "Estimated MRR (USD)"} />
-              </LineChart>
-            </ResponsiveContainer>
+            <div className="flex h-[300px] items-center justify-center text-sm text-muted-foreground">
+              {language === "ar"
+                ? "يتطلب مقياس اتجاه إيرادات معتمدًا"
+                : "Requires a certified revenue trend metric"}
+            </div>
           </CardContent>
         </Card>
 
@@ -247,17 +226,23 @@ export function StatisticsPanel({ showExport = true }: StatisticsPanelProps) {
             <CardTitle>{t("admin.userGrowth") || "User & Restaurant Growth"}</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={extendedStats?.userGrowth || []}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                <XAxis dataKey="month" stroke="rgba(255,255,255,0.5)" fontSize={12} />
-                <YAxis stroke="rgba(255,255,255,0.5)" fontSize={12} />
-                <Tooltip contentStyle={{ backgroundColor: "rgba(0,0,0,0.8)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: "8px" }} />
-                <Legend />
-                <Area type="monotone" dataKey="users" stroke="#4ade80" fill="#4ade8030" strokeWidth={2} name={t("admin.newUsers") || "New Users"} />
-                <Area type="monotone" dataKey="restaurants" stroke="#ff8c42" fill="#ff8c4230" strokeWidth={2} name={t("admin.newRestaurants") || "New Restaurants"} />
-              </AreaChart>
-            </ResponsiveContainer>
+            {userGrowthData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <AreaChart data={userGrowthData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                  <XAxis dataKey="month" stroke="rgba(255,255,255,0.5)" fontSize={12} />
+                  <YAxis stroke="rgba(255,255,255,0.5)" fontSize={12} />
+                  <Tooltip contentStyle={{ backgroundColor: "rgba(0,0,0,0.8)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: "8px" }} />
+                  <Legend />
+                  <Area type="monotone" dataKey="users" stroke="#4ade80" fill="#4ade8030" strokeWidth={2} name={t("admin.newUsers") || "New Users"} />
+                  <Area type="monotone" dataKey="restaurants" stroke="#ff8c42" fill="#ff8c4230" strokeWidth={2} name={t("admin.newRestaurants") || "New Restaurants"} />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-[300px] items-center justify-center text-sm text-muted-foreground">
+                {t("common.noData") || "No data available"}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -297,20 +282,20 @@ export function StatisticsPanel({ showExport = true }: StatisticsPanelProps) {
           <CardContent>
             <div className="grid grid-cols-2 gap-4">
               <div className="text-center p-4 rounded-lg bg-primary/10">
-                <div className="text-2xl font-bold text-primary">{subscriberCounts?.activeSubscriptions ?? 0}</div>
+                <div className="text-2xl font-bold text-primary">{health?.active ?? 0}</div>
                 <div className="text-sm text-muted-foreground mt-1">{t("admin.active") || "Active"}</div>
               </div>
               <div className="text-center p-4 rounded-lg bg-blue-500/10">
-                <div className="text-2xl font-bold text-blue-500">{subscriberCounts?.activeTrials ?? 0}</div>
+                <div className="text-2xl font-bold text-blue-500">{health?.trial ?? 0}</div>
                 <div className="text-sm text-muted-foreground mt-1">{t("admin.trial") || "Trial"}</div>
               </div>
               <div className="text-center p-4 rounded-lg bg-yellow-500/10">
-                <div className="text-2xl font-bold text-yellow-500">{legacyStats?.expiredSubscribers ?? 0}</div>
-                <div className="text-sm text-muted-foreground mt-1">{t("admin.expired") || "Expired"} (legacy)</div>
+                <div className="text-2xl font-bold text-yellow-500">{health?.expired ?? 0}</div>
+                <div className="text-sm text-muted-foreground mt-1">{t("admin.expired") || "Expired"}</div>
               </div>
               <div className="text-center p-4 rounded-lg bg-red-500/10">
-                <div className="text-2xl font-bold text-red-500">{legacyStats?.canceledSubscribers ?? 0}</div>
-                <div className="text-sm text-muted-foreground mt-1">{t("admin.canceled") || "Canceled"} (legacy)</div>
+                <div className="text-2xl font-bold text-red-500">{health?.canceled ?? 0}</div>
+                <div className="text-sm text-muted-foreground mt-1">{t("admin.canceled") || "Canceled"}</div>
               </div>
             </div>
           </CardContent>
