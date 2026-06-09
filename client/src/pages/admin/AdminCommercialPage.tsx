@@ -7,6 +7,7 @@ import {
   CommercialOverviewNeedsAttention,
   CommercialOverviewPlanDistribution,
   CommercialOverviewSubscriptionHealth,
+  CommercialExportButtons,
 } from "@/components/admin/commercial";
 import type { CommercialPlan } from "@commercial/planTypes";
 import { AdminEmptyState } from "@/components/admin/operations/AdminEmptyState";
@@ -95,6 +96,12 @@ export default function AdminCommercialPage() {
         { label: t("admin.nav.overview"), href: "/admin" },
         { label: t("admin.nav.commercial") },
       ]}
+      headerActions={
+        <CommercialExportButtons
+          locale={locale}
+          disabled={isLoading || isError}
+        />
+      }
     >
       {isError ? (
         <AdminEmptyState

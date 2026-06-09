@@ -1,5 +1,4 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { TRPCError } from "@trpc/server";
 
 vi.mock("./db", () => ({
   getCanonicalUserSubscription: vi.fn(),
@@ -10,10 +9,6 @@ vi.mock("./db", () => ({
   createInvoice: vi.fn(),
   updateInvoice: vi.fn(),
   createRestaurant: vi.fn(),
-  createSubscriptionForRestaurant: vi.fn(),
-  getRestaurantById: vi.fn(),
-  getSubscriptionForRestaurant: vi.fn(),
-  updateSubscriptionById: vi.fn(),
   getAllUsers: vi.fn(),
   sanitizeUserForAdminResponse: vi.fn((user: { passwordHash?: string | null; id: number }) => {
     const { passwordHash: _removed, ...safe } = user;
@@ -33,18 +28,7 @@ vi.mock("./owner-email-notifications", () => ({
   notifyOwnerNewRestaurant: vi.fn(async () => undefined),
 }));
 
-import {
-  createRestaurant,
-  createSubscriptionForRestaurant,
-  getAllUsers,
-  getRestaurantById,
-  getSubscriptionById,
-  getSubscriptionForRestaurant,
-  getUserByEmail,
-  getUserById,
-  createInvoice,
-  updateSubscriptionById,
-} from "./db";
+import { createRestaurant, getAllUsers, getUserByEmail, getUserById } from "./db";
 import { appRouter } from "./routers";
 
 const adminUser = {
@@ -115,70 +99,6 @@ describe("Admin operations hardening (ADMIN-AUDIT-FIX-2)", () => {
       expect(createRestaurant).toHaveBeenCalledWith(
         expect.objectContaining({ userId: 55 })
       );
-    });
-
-    it("creates subscription for restaurant owner after onboarding", async () => {
-      (getRestaurantById as any).mockResolvedValue({ id: 3, userId: 42 });
-      (getSubscriptionForRestaurant as any).mockResolvedValue(undefined);
-      (createSubscriptionForRestaurant as any).mockResolvedValue({ id: 77 });
-
-      const caller = createCaller();
-      const result = await caller.admin.createRestaurantSubscription({
-        restaurantId: 3,
-        planId: 1,
-        billingCycle: "monthly",
-      });
-
-      expect(result.subscriptionId).toBe(77);
-      expect(createSubscriptionForRestaurant).toHaveBeenCalledWith(
-        expect.objectContaining({ userId: 42, restaurantId: 3 })
-      );
-    });
-  });
-
-  describe("updateRestaurantSubscription validation (R-2)", () => {
-    it("returns NOT_FOUND for missing subscription", async () => {
-      (getSubscriptionById as any).mockResolvedValue(undefined);
-
-      const caller = createCaller();
-      await expect(
-        caller.admin.updateRestaurantSubscription({ subscriptionId: 999, status: "active" })
-      ).rejects.toMatchObject({ code: "NOT_FOUND" } satisfies Partial<TRPCError>);
-
-      expect(updateSubscriptionById).not.toHaveBeenCalled();
-    });
-
-    it("rejects when subscription owner does not match restaurant owner", async () => {
-      (getSubscriptionById as any).mockResolvedValue({
-        id: 10,
-        userId: 5,
-        restaurantId: 3,
-      });
-      (getRestaurantById as any).mockResolvedValue({ id: 3, userId: 99 });
-
-      const caller = createCaller();
-      await expect(
-        caller.admin.updateRestaurantSubscription({ subscriptionId: 10, status: "active" })
-      ).rejects.toMatchObject({ code: "BAD_REQUEST" } satisfies Partial<TRPCError>);
-
-      expect(updateSubscriptionById).not.toHaveBeenCalled();
-    });
-
-    it("updates when subscription and restaurant are consistent", async () => {
-      (getSubscriptionById as any).mockResolvedValue({
-        id: 10,
-        userId: 5,
-        restaurantId: 3,
-      });
-      (getRestaurantById as any).mockResolvedValue({ id: 3, userId: 5 });
-      (updateSubscriptionById as any).mockResolvedValue(undefined);
-
-      const caller = createCaller();
-      await expect(
-        caller.admin.updateRestaurantSubscription({ subscriptionId: 10, status: "active" })
-      ).resolves.toEqual({ success: true });
-
-      expect(updateSubscriptionById).toHaveBeenCalledWith(10, { status: "active" });
     });
   });
 

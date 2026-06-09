@@ -9,10 +9,12 @@ import {
   sanitizeUserForAdminResponse,
 } from "../db";
 import { restaurants } from "../../drizzle/schema";
-import { eq } from "drizzle-orm";
 import { commercialReadService } from "./CommercialReadService";
 import { canonicalMetricsService } from "./metrics/CanonicalMetricsService";
 import type { OwnerCommercialState } from "./commercialReadSlices";
+import { commercialReportService } from "./reporting/CommercialReportService";
+import { resolveDashboardEntityCounts } from "./reporting/resolveOperationalCounts";
+import { renderCommercialExport } from "./reporting/renderCommercialExport";
 
 export type AdminOwnerOverview = {
   owner: {
@@ -209,6 +211,38 @@ export const adminDashboardReadRouter = router({
       );
     }),
 
+  /** ADMIN-UX-1E — canonical export package (format-agnostic). */
+  getCommercialExportPackage: protectedProcedure
+    .input(z.object({ now: z.string().datetime().optional() }).optional())
+    .query(async ({ ctx, input }) => {
+      assertAdminAccess(ctx, "admin.getCommercialExportPackage");
+      const now = input?.now ? new Date(input.now) : new Date();
+      return commercialReportService.buildCommercialExportPackage({
+        now,
+        generatedByUserId: ctx.user.id,
+      });
+    }),
+
+  /** ADMIN-UX-1E — CSV / Excel / PDF from single CommercialExportPackage. */
+  exportCommercialReport: protectedProcedure
+    .input(
+      z.object({
+        format: z.enum(["csv", "xlsx", "pdf"]),
+        now: z.string().datetime().optional(),
+        locale: z.enum(["en", "ar"]).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      assertAdminAccess(ctx, "admin.exportCommercialReport");
+      const now = input.now ? new Date(input.now) : new Date();
+      const pkg = await commercialReportService.buildCommercialExportPackage({
+        now,
+        locale: input.locale,
+        generatedByUserId: ctx.user.id,
+      });
+      return renderCommercialExport(pkg, input.format, input.locale);
+    }),
+
   listRestaurants: protectedProcedure.query(async ({ ctx }) => {
     assertAdminAccess(ctx, "admin.listRestaurants");
     const db = await getDb();
@@ -286,20 +320,13 @@ export const adminDashboardReadRouter = router({
 });
 
 async function resolveAdminDashboardEntityCounts() {
-  const extended = await getExtendedAdminStats();
-  const db = await getDb();
-  const activeRestaurants = db
-    ? (
-        await db
-          .select({ id: restaurants.id })
-          .from(restaurants)
-          .where(eq(restaurants.isActive, true))
-      ).length
-    : 0;
-
+  const [dashboard, extended] = await Promise.all([
+    resolveDashboardEntityCounts(),
+    getExtendedAdminStats(),
+  ]);
   return {
-    totalUsers: extended?.totalUsers ?? 0,
+    totalUsers: dashboard.totalUsers,
     totalRestaurants: extended?.totalRestaurants ?? 0,
-    activeRestaurants,
+    activeRestaurants: dashboard.activeRestaurants,
   };
 }

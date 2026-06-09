@@ -2,20 +2,19 @@ import { useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { PageDataLoading } from "@/components/AuthGate";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
-  TrendingUp, Users, DollarSign, RotateCcw, Download,
+  TrendingUp, Users, DollarSign, RotateCcw,
   UtensilsCrossed, LayoutGrid, Tag, FolderOpen
 } from "lucide-react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area
 } from "recharts";
-import { toast } from "sonner";
 import { adminQueriesEnabled } from "@/lib/queryRuntime";
-import { formatRiyadhDate, todayYmd } from "@/lib/datetime";
+import { formatRiyadhDate } from "@/lib/datetime";
+import { CommercialExportButtons } from "@/components/admin/commercial/CommercialExportButtons";
 import { formatAdminRevenueUSD } from "@/lib/admin/formatAdminCurrency";
 import { ownerPlanLabel, ownerSubscriptionStatus } from "@/lib/admin/ownerCommercialDisplay";
 import { useAuthGate } from "@/_core/hooks/useAuthGate";
@@ -73,40 +72,6 @@ export function StatisticsPanel({ showExport = true }: StatisticsPanelProps) {
     [planDistribution]
   );
 
-  const exportToCSV = () => {
-    if (overviewRows.length === 0) return;
-
-    const headers = [
-      "Owner Email",
-      "Owner Name",
-      "Plan",
-      "Status",
-      "Billing Cycle",
-      "Period End",
-    ];
-
-    const rows = overviewRows.map((entry) => [
-      entry.owner.email ?? "",
-      entry.owner.name ?? "",
-      ownerPlanLabel(entry.commercial),
-      ownerSubscriptionStatus(entry.commercial),
-      entry.commercial.billingCycle ?? "",
-      entry.commercial.currentPeriodEnd
-        ? formatRiyadhDate(entry.commercial.currentPeriodEnd, "en-US")
-        : "",
-    ]);
-
-    const csv = [headers, ...rows]
-      .map((row: string[]) => row.map((cell: string) => `"${cell}"`).join(","))
-      .join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `subscriptions-${todayYmd()}.csv`;
-    link.click();
-    toast.success(t("common.exported") || "Exported successfully");
-  };
-
   const COLORS = ["#00d4ff", "#ff8c42", "#4ade80", "#f87171", "#a78bfa"];
 
   const pageLoading =
@@ -131,10 +96,10 @@ export function StatisticsPanel({ showExport = true }: StatisticsPanelProps) {
     <div className="space-y-8">
       {showExport ? (
         <div className="flex justify-end">
-          <Button onClick={exportToCSV} variant="outline" size="sm" className="shrink-0 shadow-sm">
-            <Download className="h-4 w-4" />
-            {t("common.export") || "Export CSV"}
-          </Button>
+          <CommercialExportButtons
+            locale={language === "ar" ? "ar" : "en"}
+            disabled={pageLoading}
+          />
         </div>
       ) : null}
 
