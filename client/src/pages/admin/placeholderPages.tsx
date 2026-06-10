@@ -1,15 +1,13 @@
-import { ADMIN_NAV_ITEMS } from "@/lib/admin/adminNavigation";
+import { getAdminRoute } from "@/lib/admin/routes/adminRouteRegistry";
+import type { AdminRouteId } from "@/lib/admin/routes/adminRouteTypes";
 import { AdminLegacyRedirect } from "@/pages/admin/AdminLegacyRedirect";
 import { operationsTabHref } from "@/pages/admin/operations/operationsTab";
 import { AdminSectionPlaceholder } from "./AdminSectionPlaceholder";
 
-function createPlaceholderPage(navId: string) {
+function createPlaceholderPage(routeId: AdminRouteId) {
   return function AdminPlaceholderPage() {
-    const item = ADMIN_NAV_ITEMS.find((entry) => entry.id === navId);
-    if (!item) {
-      throw new Error(`Unknown admin nav id: ${navId}`);
-    }
-    return <AdminSectionPlaceholder navItem={item} />;
+    getAdminRoute(routeId);
+    return <AdminSectionPlaceholder routeId={routeId} />;
   };
 }
 

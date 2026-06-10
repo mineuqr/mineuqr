@@ -14,6 +14,7 @@ import { AdminEmptyState } from "@/components/admin/operations/AdminEmptyState";
 import { AdminOperationsShell } from "@/components/admin/layout/AdminOperationsShell";
 import { AdminSection } from "@/components/admin/layout/AdminSection";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { resolveAdminPageShell } from "@/lib/admin/routes/adminRouteRegistry";
 import { adminQueriesEnabled } from "@/lib/queryRuntime";
 import { trpc } from "@/lib/trpc";
 
@@ -88,14 +89,13 @@ export default function AdminCommercialPage() {
     ADMIN: t("admin.commercial.plans.ADMIN"),
   } satisfies Record<CommercialPlan, string>;
 
+  const shell = resolveAdminPageShell("commercial", t);
+
   return (
     <AdminOperationsShell
-      title={t("admin.nav.commercial")}
-      subtitle={t("admin.commercial.pageSubtitle")}
-      breadcrumbs={[
-        { label: t("admin.nav.overview"), href: "/admin" },
-        { label: t("admin.nav.commercial") },
-      ]}
+      title={shell.title}
+      subtitle={shell.subtitle}
+      breadcrumbs={shell.breadcrumbs}
       headerActions={
         <CommercialExportButtons
           locale={locale}

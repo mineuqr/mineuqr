@@ -2,10 +2,11 @@ import { useAuthGate } from "@/_core/hooks/useAuthGate";
 import { AdminAccessDenied, AuthGatePending } from "@/components/AuthGate";
 import { AdminOperationsShell } from "@/components/admin/layout/AdminOperationsShell";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { resolveAdminPageShell } from "@/lib/admin/routes/adminRouteRegistry";
 import { StatisticsPanel } from "./StatisticsPanel";
 
 export default function AdminAnalyticsPage() {
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
   const gate = useAuthGate();
 
   if (gate.isPending) {
@@ -16,18 +17,13 @@ export default function AdminAnalyticsPage() {
     return <AdminAccessDenied />;
   }
 
+  const shell = resolveAdminPageShell("analytics", t);
+
   return (
     <AdminOperationsShell
-      title={t("admin.nav.analytics")}
-      subtitle={
-        language === "ar"
-          ? "تحليلات المنصة والاشتراكات (مصدر موحّد)"
-          : "Platform analytics (canonical authority)"
-      }
-      breadcrumbs={[
-        { label: t("admin.nav.overview"), href: "/admin" },
-        { label: t("admin.nav.analytics") },
-      ]}
+      title={shell.title}
+      subtitle={shell.subtitle}
+      breadcrumbs={shell.breadcrumbs}
     >
       <StatisticsPanel />
     </AdminOperationsShell>

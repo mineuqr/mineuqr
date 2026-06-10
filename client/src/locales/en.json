@@ -917,6 +917,7 @@
       "commercialDesc": "MRR, ARR, and revenue overview",
       "analytics": "Analytics",
       "analyticsDesc": "Platform and subscription analytics",
+      "analyticsPageSubtitle": "Platform analytics (canonical authority)",
       "tenants": "Tenants",
       "tenantsDesc": "Tenant directory and detail views",
       "customerSuccess": "Customer Success",

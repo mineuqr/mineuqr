@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useAuthGate } from "@/_core/hooks/useAuthGate";
 import { AdminAccessDenied, AuthGatePending } from "@/components/AuthGate";
+import { resolveAdminPageShell } from "@/lib/admin/routes/adminRouteRegistry";
 import { adminQueriesEnabled } from "@/lib/queryRuntime";
 import { trpc } from "@/lib/trpc";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -1556,16 +1557,15 @@ export default function AdminManagement() {
     return <AdminAccessDenied />;
   }
 
+  const shell = resolveAdminPageShell("operations", t);
+
   return (
     <Tabs value={activeTab} onValueChange={(v) => setTab(v as OperationsTab)} className="contents">
       <AdminOperationsShell
         compact
         narrowContent
-        title={t("admin.operations.workspaceTitle")}
-        breadcrumbs={[
-          { label: t("admin.nav.overview"), href: "/admin" },
-          { label: t("admin.nav.operations") },
-        ]}
+        title={shell.title}
+        breadcrumbs={shell.breadcrumbs}
         headerFooter={
           <TabsList className={adminDash.opsTabList}>
             <TabsTrigger value="accounts" className="text-xs">

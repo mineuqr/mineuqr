@@ -7,14 +7,18 @@ import { AdminOperationsShell } from "@/components/admin/layout/AdminOperationsS
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { adminDash } from "@/components/admin/layout/adminDashStyles";
-import type { AdminNavItem } from "@/lib/admin/adminNavigation";
+import {
+  getAdminRoute,
+  resolveAdminPageShell,
+} from "@/lib/admin/routes/adminRouteRegistry";
+import type { AdminRouteId } from "@/lib/admin/routes/adminRouteTypes";
 import { cn } from "@/lib/utils";
 
 type AdminSectionPlaceholderProps = {
-  navItem: AdminNavItem;
+  routeId: AdminRouteId;
 };
 
-export function AdminSectionPlaceholder({ navItem }: AdminSectionPlaceholderProps) {
+export function AdminSectionPlaceholder({ routeId }: AdminSectionPlaceholderProps) {
   const { t, language } = useLanguage();
   const gate = useAuthGate();
 
@@ -26,19 +30,18 @@ export function AdminSectionPlaceholder({ navItem }: AdminSectionPlaceholderProp
     return <AdminAccessDenied />;
   }
 
-  const title = t(navItem.labelKey);
-  const description = navItem.descriptionKey
-    ? t(navItem.descriptionKey)
+  const route = getAdminRoute(routeId);
+  const shell = resolveAdminPageShell(routeId, t);
+  const title = t(route.labelKey);
+  const description = route.descriptionKey
+    ? t(route.descriptionKey)
     : t("admin.nav.placeholderDesc");
 
   return (
     <AdminOperationsShell
-      title={title}
-      subtitle={description}
-      breadcrumbs={[
-        { label: t("admin.nav.overview"), href: "/admin" },
-        { label: title },
-      ]}
+      title={shell.title}
+      subtitle={shell.subtitle}
+      breadcrumbs={shell.breadcrumbs}
       statusIndicator={
         <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-300">
           <Construction className="h-4 w-4 shrink-0" />

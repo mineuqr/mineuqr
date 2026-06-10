@@ -5,8 +5,8 @@ import {
   ADMIN_LEGACY_NAV,
   ADMIN_NAV_GROUPS,
   isAdminNavItemActive,
-  type AdminNavItem,
-} from "@/lib/admin/adminNavigation";
+} from "@/lib/admin/routes/adminRouteRegistry";
+import type { AdminNavItem } from "@/lib/admin/routes/adminRouteTypes";
 import {
   Sidebar,
   SidebarContent,

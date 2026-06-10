@@ -19,12 +19,20 @@ import { adminQueriesEnabled } from "@/lib/queryRuntime";
 import { trpc } from "@/lib/trpc";
 import { mapDashboardSummaryToKPIs } from "@/lib/admin/dashboardSummaryKpis";
 import { formatAdminKpiNumber, formatAdminRevenueUSD } from "@/lib/admin/formatAdminCurrency";
-import { ADMIN_NAV_ITEMS, type AdminNavItem } from "@/lib/admin/adminNavigation";
+import {
+  ADMIN_NAV_ITEMS,
+  resolveAdminPageShell,
+} from "@/lib/admin/routes/adminRouteRegistry";
 import { operationsTabHref } from "@/pages/admin/operations/operationsTab";
 import { adminDash } from "@/components/admin/layout/adminDashStyles";
 import { cn } from "@/lib/utils";
 
-function NavShortcutCard({ item }: { item: AdminNavItem }) {
+type NavShortcutCardItem = Pick<
+  (typeof ADMIN_NAV_ITEMS)[number],
+  "path" | "labelKey" | "descriptionKey" | "icon"
+>;
+
+function NavShortcutCard({ item }: { item: NavShortcutCardItem }) {
   const { t, language } = useLanguage();
   const Icon = item.icon;
 
@@ -79,12 +87,13 @@ export default function AdminDashboardHome() {
 
   const kpis = mapDashboardSummaryToKPIs(summary);
   const shortcutItems = ADMIN_NAV_ITEMS.filter((item) => item.id !== "overview");
+  const shell = resolveAdminPageShell("overview", t);
 
   return (
     <AdminOperationsShell
-      title={t("admin.nav.homeTitle")}
-      subtitle={t("admin.nav.homeSubtitle")}
-      breadcrumbs={[{ label: t("admin.nav.overview") }]}
+      title={shell.title}
+      subtitle={shell.subtitle}
+      breadcrumbs={shell.breadcrumbs}
       statusIndicator={
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <span>{t("admin.nav.canonicalHint")}</span>
@@ -143,7 +152,6 @@ export default function AdminDashboardHome() {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <NavShortcutCard
             item={{
-              id: "analytics-shortcut",
               path: "/admin/analytics",
               labelKey: "admin.nav.analytics",
               descriptionKey: "admin.nav.analyticsDesc",
@@ -152,7 +160,6 @@ export default function AdminDashboardHome() {
           />
           <NavShortcutCard
             item={{
-              id: "operations-shortcut",
               path: operationsTabHref("accounts"),
               labelKey: "admin.nav.operations",
               descriptionKey: "admin.nav.operationsDesc",
@@ -161,7 +168,6 @@ export default function AdminDashboardHome() {
           />
           <NavShortcutCard
             item={{
-              id: "commercial-shortcut",
               path: "/admin/commercial",
               labelKey: "admin.nav.commercial",
               descriptionKey: "admin.nav.commercialDesc",
