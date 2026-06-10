@@ -1,9 +1,11 @@
 import { AuthGatePending, LoginRequiredCard, PageDataLoading } from "@/components/AuthGate";
-import { CommercialEntitlementsDiagnostics } from "@/components/commercial";
 import { EmailVerificationBanner } from "@/components/auth/EmailVerificationBanner";
 import { VerificationRequiredPanel } from "@/components/auth/VerificationRequiredPanel";
 import { useAuthGate } from "@/_core/hooks/useAuthGate";
-import { useCommercialEntitlements } from "@/hooks/useCommercialEntitlements";
+import {
+  HealthDiagnosticsSection,
+  useHealthCommercialDiagnosticsData,
+} from "@/components/admin/domains/health";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { isEmailNotVerifiedError } from "@/lib/trpcErrors";
 import { AlertCircle, Info } from "lucide-react";
@@ -17,7 +19,8 @@ export default function CommercialDiagnostics() {
   const { language } = useLanguage();
   const uiLang = language === "ar" ? "ar" : "en";
 
-  const { context, entitlements, isLoading, isError, error } = useCommercialEntitlements();
+  const { context, entitlements, isLoading, isError, error } =
+    useHealthCommercialDiagnosticsData();
 
   if (gate.isPending) {
     return <AuthGatePending />;
@@ -68,7 +71,7 @@ export default function CommercialDiagnostics() {
           </p>
         </header>
 
-        <CommercialEntitlementsDiagnostics
+        <HealthDiagnosticsSection
           context={context}
           entitlements={entitlements}
           language={uiLang}
