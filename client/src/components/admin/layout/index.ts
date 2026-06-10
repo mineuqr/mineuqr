@@ -1,4 +1,4 @@
-export { adminDash, adminActionBtn } from "./adminDashStyles";
+export { adminDash, adminActionBtn, adminSemantic } from "./adminDashStyles";
 export { AdminPageShell } from "./AdminPageShell";
 export { AdminOperationsShell } from "./AdminOperationsShell";
 export { AdminDashboardSidebar } from "./AdminDashboardSidebar";

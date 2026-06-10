@@ -18,13 +18,8 @@ import { CommercialExportButtons } from "@/components/admin/commercial/Commercia
 import { formatAdminRevenueUSD } from "@/lib/admin/formatAdminCurrency";
 import { ownerPlanLabel, ownerSubscriptionStatus } from "@/lib/admin/ownerCommercialDisplay";
 import { useAuthGate } from "@/_core/hooks/useAuthGate";
-
-const statDash = {
-  card: "rounded-xl border border-border/50 bg-card/40 shadow-sm backdrop-blur-sm",
-  sectionTitle: "text-sm font-semibold text-foreground",
-  sectionSub: "mt-1 text-xs text-muted-foreground",
-  kpiCard: "rounded-xl border border-border/50 bg-card/40 shadow-sm",
-};
+import { adminDash, adminSemantic } from "@/components/admin/layout/adminDashStyles";
+import { cn } from "@/lib/utils";
 
 type StatisticsPanelProps = {
   showExport?: boolean;
@@ -60,7 +55,7 @@ export function StatisticsPanel({ showExport = true }: StatisticsPanelProps) {
     return growth?.available ? growth.series : [];
   }, [analytics]);
 
-  const COLORS = ["#00d4ff", "#ff8c42", "#4ade80", "#f87171", "#a78bfa"];
+  const COLORS = ["#22d3ee", "#fb923c", "#4ade80", "#f87171", "#94a3b8"];
 
   if (isLoading) {
     return <PageDataLoading minHeight="min-h-[320px]" />;
@@ -85,52 +80,52 @@ export function StatisticsPanel({ showExport = true }: StatisticsPanelProps) {
 
       <div className="space-y-4">
         <div>
-          <h2 className={statDash.sectionTitle}>{t("admin.platformOverview") || "Platform Overview"}</h2>
-          <p className={statDash.sectionSub}>
+          <h2 className={adminDash.sectionTitle}>{t("admin.platformOverview") || "Platform Overview"}</h2>
+          <p className={adminDash.sectionSub}>
             {language === "ar" ? "مؤشرات النمو على مستوى المنصة" : "High-level platform growth metrics"}
           </p>
         </div>
         <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
-          <Card className={statDash.kpiCard}>
+          <Card className={adminDash.kpiCard}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">{t("admin.totalRestaurants") || "Total Restaurants"}</CardTitle>
-              <UtensilsCrossed className="w-4 h-4 text-primary" />
+              <UtensilsCrossed className="w-4 h-4 text-cyan-400" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{platform?.totalRestaurants ?? 0}</div>
             </CardContent>
           </Card>
-          <Card className={statDash.kpiCard}>
+          <Card className={adminDash.kpiCard}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">{t("admin.totalUsers") || "Total Users"}</CardTitle>
-              <Users className="w-4 h-4 text-blue-400" />
+              <Users className="w-4 h-4 text-cyan-400" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{platform?.totalUsers ?? executive?.totalUsers ?? 0}</div>
             </CardContent>
           </Card>
-          <Card className={statDash.kpiCard}>
+          <Card className={adminDash.kpiCard}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">{t("admin.totalMenuItems") || "Total Menu Items"}</CardTitle>
-              <LayoutGrid className="w-4 h-4 text-accent" />
+              <LayoutGrid className="w-4 h-4 text-cyan-400" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{platform?.totalMenuItems ?? 0}</div>
             </CardContent>
           </Card>
-          <Card className={statDash.kpiCard}>
+          <Card className={adminDash.kpiCard}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">{t("admin.totalCategories") || "Total Categories"}</CardTitle>
-              <FolderOpen className="w-4 h-4 text-emerald-400" />
+              <FolderOpen className="w-4 h-4 text-cyan-400" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{platform?.totalCategories ?? 0}</div>
             </CardContent>
           </Card>
-          <Card className={statDash.kpiCard}>
+          <Card className={adminDash.kpiCard}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">{t("admin.totalOffers") || "Total Offers"}</CardTitle>
-              <Tag className="w-4 h-4 text-yellow-400" />
+              <Tag className="w-4 h-4 text-cyan-400" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{platform?.totalOffers ?? 0}</div>
@@ -141,16 +136,16 @@ export function StatisticsPanel({ showExport = true }: StatisticsPanelProps) {
 
       <div className="space-y-4">
         <div>
-          <h2 className={statDash.sectionTitle}>{t("admin.totalSubscribers") || "Subscriptions"}</h2>
-          <p className={statDash.sectionSub}>
+          <h2 className={adminDash.sectionTitle}>{t("admin.totalSubscribers") || "Subscriptions"}</h2>
+          <p className={adminDash.sectionSub}>
             {language === "ar" ? "أداء الاشتراكات والإيرادات (حسب المالك)" : "Owner-based subscription performance"}
           </p>
         </div>
         <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-          <Card className={statDash.kpiCard}>
+          <Card className={adminDash.kpiCard}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">{t("admin.totalSubscribers") || "Entitled Owners"}</CardTitle>
-              <Users className="w-4 h-4 text-primary" />
+              <Users className="w-4 h-4 text-cyan-400" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{executive?.commercialSubscribers ?? 0}</div>
@@ -159,10 +154,10 @@ export function StatisticsPanel({ showExport = true }: StatisticsPanelProps) {
               </p>
             </CardContent>
           </Card>
-          <Card className={statDash.kpiCard}>
+          <Card className={adminDash.kpiCard}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">{t("admin.estimatedMrr") || "Estimated MRR (USD)"}</CardTitle>
-              <DollarSign className="w-4 h-4 text-accent" />
+              <DollarSign className="w-4 h-4 text-cyan-400" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold" dir="ltr">
@@ -173,10 +168,10 @@ export function StatisticsPanel({ showExport = true }: StatisticsPanelProps) {
               </p>
             </CardContent>
           </Card>
-          <Card className={statDash.kpiCard}>
+          <Card className={adminDash.kpiCard}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">ARR (USD)</CardTitle>
-              <TrendingUp className="w-4 h-4 text-green-500" />
+              <TrendingUp className={cn("w-4 h-4", adminSemantic.iconActive)} />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold" dir="ltr">
@@ -185,10 +180,10 @@ export function StatisticsPanel({ showExport = true }: StatisticsPanelProps) {
               <p className="text-xs text-muted-foreground mt-1">MRR × 12</p>
             </CardContent>
           </Card>
-          <Card className={statDash.kpiCard}>
+          <Card className={adminDash.kpiCard}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">{t("admin.renewalRate") || "Renewal Rate"}</CardTitle>
-              <RotateCcw className="w-4 h-4 text-red-500" />
+              <RotateCcw className={cn("w-4 h-4", adminSemantic.iconMuted)} />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">—</div>
@@ -203,7 +198,7 @@ export function StatisticsPanel({ showExport = true }: StatisticsPanelProps) {
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-6">
-        <Card className={statDash.card}>
+        <Card className={adminDash.card}>
           <CardHeader>
             <CardTitle>{t("admin.revenueByMonth") || "Revenue by Month"}</CardTitle>
             <p className="text-xs text-muted-foreground">
@@ -221,7 +216,7 @@ export function StatisticsPanel({ showExport = true }: StatisticsPanelProps) {
           </CardContent>
         </Card>
 
-        <Card className={statDash.card}>
+        <Card className={adminDash.card}>
           <CardHeader>
             <CardTitle>{t("admin.userGrowth") || "User & Restaurant Growth"}</CardTitle>
           </CardHeader>
@@ -248,7 +243,7 @@ export function StatisticsPanel({ showExport = true }: StatisticsPanelProps) {
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-6">
-        <Card className={statDash.card}>
+        <Card className={adminDash.card}>
           <CardHeader>
             <CardTitle>{t("admin.subscriptionsByPlan") || "Owners by Plan"}</CardTitle>
           </CardHeader>
@@ -275,35 +270,35 @@ export function StatisticsPanel({ showExport = true }: StatisticsPanelProps) {
           </CardContent>
         </Card>
 
-        <Card className={statDash.card}>
+        <Card className={adminDash.card}>
           <CardHeader>
             <CardTitle>{t("admin.subscriptionStatus") || "Subscription Status"}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-4">
-              <div className="text-center p-4 rounded-lg bg-primary/10">
-                <div className="text-2xl font-bold text-primary">{health?.active ?? 0}</div>
-                <div className="text-sm text-muted-foreground mt-1">{t("admin.active") || "Active"}</div>
+              <div className={cn("rounded-lg p-4 text-center", adminSemantic.cardAccentActive)}>
+                <div className={cn("text-2xl font-bold", adminSemantic.iconActive)}>{health?.active ?? 0}</div>
+                <div className="mt-1 text-sm text-slate-400">{t("admin.active") || "Active"}</div>
               </div>
-              <div className="text-center p-4 rounded-lg bg-blue-500/10">
-                <div className="text-2xl font-bold text-blue-500">{health?.trial ?? 0}</div>
-                <div className="text-sm text-muted-foreground mt-1">{t("admin.trial") || "Trial"}</div>
+              <div className={cn("rounded-lg p-4 text-center", adminSemantic.cardAccentTrial)}>
+                <div className={cn("text-2xl font-bold", adminSemantic.iconTrial)}>{health?.trial ?? 0}</div>
+                <div className="mt-1 text-sm text-slate-400">{t("admin.trial") || "Trial"}</div>
               </div>
-              <div className="text-center p-4 rounded-lg bg-yellow-500/10">
-                <div className="text-2xl font-bold text-yellow-500">{health?.expired ?? 0}</div>
-                <div className="text-sm text-muted-foreground mt-1">{t("admin.expired") || "Expired"}</div>
+              <div className={cn("rounded-lg p-4 text-center", adminSemantic.cardAccentDanger)}>
+                <div className={cn("text-2xl font-bold", adminSemantic.iconDanger)}>{health?.expired ?? 0}</div>
+                <div className="mt-1 text-sm text-slate-400">{t("admin.expired") || "Expired"}</div>
               </div>
-              <div className="text-center p-4 rounded-lg bg-red-500/10">
-                <div className="text-2xl font-bold text-red-500">{health?.canceled ?? 0}</div>
-                <div className="text-sm text-muted-foreground mt-1">{t("admin.canceled") || "Canceled"}</div>
+              <div className={cn("rounded-lg p-4 text-center", adminSemantic.cardAccentWarning)}>
+                <div className={cn("text-2xl font-bold", adminSemantic.iconWarning)}>{health?.canceled ?? 0}</div>
+                <div className="mt-1 text-sm text-slate-400">{t("admin.canceled") || "Canceled"}</div>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <Card className={statDash.card}>
-        <CardHeader className="border-b border-border/40 pb-4">
+      <Card className={adminDash.card}>
+        <CardHeader className="border-b border-cyan-500/20 pb-4">
           <CardTitle className="text-base font-semibold">
             {t("admin.subscriptionDetails") || "Subscription Overview"}
           </CardTitle>
@@ -331,7 +326,7 @@ export function StatisticsPanel({ showExport = true }: StatisticsPanelProps) {
                   </tr>
                 )}
                 {overviewRows.map((entry) => (
-                  <tr key={entry.owner.id} className="border-b border-border/20 hover:bg-primary/5">
+                  <tr key={entry.owner.id} className="border-b border-cyan-500/15 hover:bg-slate-800/30">
                     <td className="py-2 px-2">
                       <div className="font-medium">{entry.owner.name ?? "-"}</div>
                       <div className="text-xs text-muted-foreground">{entry.owner.email ?? "-"}</div>

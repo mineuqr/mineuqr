@@ -9,7 +9,7 @@ import {
 import { formatAdminKpiNumber } from "@/lib/admin/formatAdminCurrency";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { adminDash } from "@/components/admin/layout/adminDashStyles";
+import { adminDash, adminSemantic } from "@/components/admin/layout/adminDashStyles";
 import { cn } from "@/lib/utils";
 
 type SubscriptionHealthCounts = {
@@ -34,32 +34,32 @@ const HEALTH_STATUS_CONFIG: HealthStatusConfig[] = [
   {
     key: "active",
     icon: CheckCircle2,
-    cardClassName: "border-green-500/30 bg-green-500/5",
-    iconClassName: "text-green-600 dark:text-green-400",
+    cardClassName: adminSemantic.cardAccentActive,
+    iconClassName: adminSemantic.iconActive,
   },
   {
     key: "trial",
     icon: Clock,
-    cardClassName: "border-blue-500/30 bg-blue-500/5",
-    iconClassName: "text-blue-600 dark:text-blue-400",
+    cardClassName: adminSemantic.cardAccentTrial,
+    iconClassName: adminSemantic.iconTrial,
   },
   {
     key: "canceled",
     icon: Ban,
-    cardClassName: "border-amber-500/30 bg-amber-500/5",
-    iconClassName: "text-amber-600 dark:text-amber-400",
+    cardClassName: adminSemantic.cardAccentWarning,
+    iconClassName: adminSemantic.iconWarning,
   },
   {
     key: "expired",
     icon: AlertTriangle,
-    cardClassName: "border-red-500/30 bg-red-500/5",
-    iconClassName: "text-red-600 dark:text-red-400",
+    cardClassName: adminSemantic.cardAccentDanger,
+    iconClassName: adminSemantic.iconDanger,
   },
   {
     key: "inactive",
     icon: MinusCircle,
-    cardClassName: "border-border/50 bg-muted/20",
-    iconClassName: "text-muted-foreground",
+    cardClassName: adminSemantic.cardAccentNeutral,
+    iconClassName: adminSemantic.iconMuted,
   },
 ];
 
@@ -101,13 +101,13 @@ export function CommercialOverviewSubscriptionHealth({
       {HEALTH_STATUS_CONFIG.map(({ key, icon: Icon, cardClassName, iconClassName }) => (
         <Card key={key} className={cn(adminDash.kpiCard, cardClassName)}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground sm:text-sm">
+            <CardTitle className="text-xs font-medium text-slate-400 sm:text-sm">
               {labels[key]}
             </CardTitle>
             <Icon className={cn("h-4 w-4 shrink-0", iconClassName)} aria-hidden />
           </CardHeader>
           <CardContent>
-            <div dir="ltr" className="text-xl font-bold tabular-nums sm:text-2xl">
+            <div dir="ltr" className="text-xl font-bold tabular-nums text-white sm:text-2xl">
               {formatAdminKpiNumber(subscriptionHealth[key])}
             </div>
           </CardContent>

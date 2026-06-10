@@ -27,8 +27,6 @@ export function AdminPageShell({
 }: AdminPageShellProps) {
   return (
     <div className={cn(adminDash.shell, className)}>
-      <div className={adminDash.shellGlow} aria-hidden />
-
       <nav className={adminDash.nav}>
         <div className={adminDash.navInner}>
           <button
@@ -36,7 +34,7 @@ export function AdminPageShell({
             onClick={onNavigateHome}
             className="brand-mark flex items-center gap-2 rounded-md outline-none transition hover:opacity-80 select-none focus-visible:ring-2 focus-visible:ring-ring/50"
           >
-            <Store className="h-6 w-6 text-primary" />
+            <Store className="h-6 w-6 text-cyan-400" />
             <span className="font-bold text-foreground">{title}</span>
           </button>
           <div className="flex items-center gap-2">
@@ -50,7 +48,7 @@ export function AdminPageShell({
       </nav>
 
       <main className={adminDash.main}>
-        <header className="flex flex-col gap-4 border-b border-border/40 pb-6 sm:flex-row sm:items-center sm:justify-between">
+        <header className="flex flex-col gap-4 border-b border-cyan-500/20 pb-6 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className={adminDash.pageTitle}>{title}</h1>
             {subtitle ? <p className={adminDash.pageSubtitle}>{subtitle}</p> : null}

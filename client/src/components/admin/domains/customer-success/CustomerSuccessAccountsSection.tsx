@@ -18,7 +18,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { Plus, Trash2, Loader2, Search, Users, FileText, CreditCard } from "lucide-react";
 import { SubscriptionAdminFormFields } from "@/components/admin/subscription/SubscriptionAdminFormFields";
-import { adminActionBtn, adminDash } from "@/components/admin/layout";
+import { adminActionBtn, adminDash, adminSemantic } from "@/components/admin/layout";
 import {
   AdminActionGroup,
   AdminEmptyState,
@@ -187,7 +187,7 @@ export function CustomerSuccessAccountsSection() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'active': return <Badge className={cn(adminDash.opsBadge, "bg-green-600 text-white")}>فعال</Badge>;
-      case 'trial': return <Badge className={cn(adminDash.opsBadge, "bg-blue-600 text-white")}>تجريبي</Badge>;
+      case 'trial': return <Badge className={cn(adminDash.opsBadge, adminSemantic.statusTrial)}>تجريبي</Badge>;
       case 'expired': return <Badge className={cn(adminDash.opsBadge, "bg-red-600 text-white")}>منتهي</Badge>;
       case 'canceled': return <Badge className={cn(adminDash.opsBadge, "bg-gray-600 text-white")}>ملغي</Badge>;
       default: return <Badge variant="secondary" className={adminDash.opsBadge}>بدون اشتراك</Badge>;
@@ -210,7 +210,7 @@ export function CustomerSuccessAccountsSection() {
                   compact
                   label={t("admin.editSubscription")}
                   onClick={() => openEditSubDialog(u)}
-                  className={adminActionBtn.info}
+                  className={adminActionBtn.primary}
                 >
                   <CreditCard className="h-3 w-3" />
                 </AdminIconButton>
@@ -232,7 +232,7 @@ export function CustomerSuccessAccountsSection() {
                     })
                   }
                   disabled={generateInvoiceMutation.isPending}
-                  className={adminActionBtn.teal}
+                  className={adminActionBtn.primary}
                 >
                   {generateInvoiceMutation.isPending ? (
                     <Loader2 className="h-3 w-3 animate-spin" />

@@ -7,6 +7,7 @@ import {
   isAdminNavItemActive,
 } from "@/lib/admin/routes/adminRouteRegistry";
 import type { AdminNavItem } from "@/lib/admin/routes/adminRouteTypes";
+import { adminDash } from "./adminDashStyles";
 import {
   Sidebar,
   SidebarContent,
@@ -51,17 +52,17 @@ export function AdminDashboardSidebar() {
 
   return (
     <Sidebar collapsible="icon" variant="sidebar">
-      <SidebarHeader className="border-b border-sidebar-border">
+      <SidebarHeader className="border-b border-cyan-500/30">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <Link href="/admin">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                <div className={adminDash.brandIcon}>
                   <Store className="size-4" />
                 </div>
                 <div className="grid flex-1 text-start text-sm leading-tight">
-                  <span className="truncate font-semibold">{t("admin.nav.brand")}</span>
-                  <span className="truncate text-xs text-muted-foreground">
+                  <span className="truncate font-semibold text-white">{t("admin.nav.brand")}</span>
+                  <span className="truncate text-xs text-cyan-300/80">
                     {t("admin.nav.brandSubtitle")}
                   </span>
                 </div>
@@ -96,8 +97,8 @@ export function AdminDashboardSidebar() {
         ) : null}
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-sidebar-border p-2">
-        <p className="px-2 text-xs text-muted-foreground">{t("admin.nav.footerHint")}</p>
+      <SidebarFooter className="border-t border-cyan-500/20 p-2">
+        <p className="px-2 text-xs text-slate-400">{t("admin.nav.footerHint")}</p>
       </SidebarFooter>
     </Sidebar>
   );

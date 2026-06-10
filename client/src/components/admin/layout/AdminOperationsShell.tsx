@@ -55,10 +55,9 @@ export function AdminOperationsShell({
   return (
     <SidebarProvider defaultOpen>
       <div className={cn(adminDash.shell, "flex min-h-svh w-full")}>
-        <div className={adminDash.shellGlow} aria-hidden />
         <AdminDashboardSidebar />
-        <SidebarInset className="relative flex min-h-svh flex-col bg-background">
-          <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-2 border-b border-border/40 bg-background/80 px-4 backdrop-blur-xl">
+        <SidebarInset className="relative flex min-h-svh flex-col bg-transparent">
+          <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-2 border-b border-border/30 bg-background/60 px-4 backdrop-blur-xl">
             <SidebarTrigger className="-ms-1" />
             <Separator orientation="vertical" className="me-2 h-4" />
             <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
@@ -74,7 +73,7 @@ export function AdminOperationsShell({
           <div className="flex flex-1 flex-col">
             <div
               className={cn(
-                "border-b border-border/40 px-4 sm:px-6 lg:px-8",
+                "border-b border-cyan-500/20 px-4 sm:px-6 lg:px-8",
                 compact ? (headerFooter ? "pt-2 pb-2 sm:pt-2.5 sm:pb-2.5" : "py-2 sm:py-3") : "py-6"
               )}
             >

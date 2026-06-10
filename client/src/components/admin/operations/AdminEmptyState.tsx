@@ -27,12 +27,12 @@ export function AdminEmptyState({
       aria-label={ariaLabel ?? title}
       className={cn("p-6 sm:p-8 text-center", className)}
     >
-      <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-border/50 bg-muted/30">
-        <Icon className="h-5 w-5 text-muted-foreground" aria-hidden />
+      <div className={cn("mx-auto mb-3", adminDash.iconContainer)}>
+        <Icon className="h-5 w-5" aria-hidden />
       </div>
-      <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+      <h3 className="text-sm font-semibold text-white">{title}</h3>
       {description ? (
-        <p className="mx-auto mt-1.5 max-w-md text-xs text-muted-foreground">{description}</p>
+        <p className="mx-auto mt-1.5 max-w-md text-xs text-cyan-300/80">{description}</p>
       ) : null}
       {action ? <div className="mt-4 flex justify-center">{action}</div> : null}
     </div>

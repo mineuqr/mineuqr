@@ -25,8 +25,8 @@ export function AdminSection({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-3">
           {Icon ? (
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border/50 bg-muted/30">
-              <Icon className="h-5 w-5 text-primary" aria-hidden />
+            <div className={adminDash.iconContainer}>
+              <Icon className="h-5 w-5" aria-hidden />
             </div>
           ) : null}
           <div>

@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import { adminSemantic } from "@/components/admin/layout/adminDashStyles";
 import { cn } from "@/lib/utils";
 
 /**
@@ -26,7 +27,7 @@ const STATUS_STYLES: Record<
 > = {
   trial: {
     variant: "secondary",
-    className: "bg-blue-600/90 text-white border-transparent hover:bg-blue-600/90",
+    className: cn(adminSemantic.statusTrial, "hover:bg-cyan-500"),
   },
   active: {
     variant: "default",
@@ -34,7 +35,7 @@ const STATUS_STYLES: Record<
   },
   grace: {
     variant: "secondary",
-    className: "bg-amber-500/90 text-white border-transparent hover:bg-amber-500/90",
+    className: cn(adminSemantic.statusWarning, "hover:bg-orange-500/90"),
   },
   suspended: {
     variant: "destructive",
