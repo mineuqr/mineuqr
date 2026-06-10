@@ -6,7 +6,6 @@ import { adminQueriesEnabled } from "@/lib/queryRuntime";
 import { trpc } from "@/lib/trpc";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -27,9 +26,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { SubscriptionAdminFormFields } from "@/components/admin/subscription/SubscriptionAdminFormFields";
 import {
-  AdminOperationsSection,
   AdminOperationsShell,
-  AdminSection,
   adminActionBtn,
   adminDash,
 } from "@/components/admin/layout";
@@ -45,6 +42,7 @@ import {
   AdminEmptyState,
   AdminIconButton,
   AdminLoadingState,
+  OperationsTabFrame,
   ResponsiveOperationsBar,
 } from "@/components/admin/operations";
 import {
@@ -415,21 +413,23 @@ export function AccountsTab() {
 
   return (
     <TooltipProvider>
-      <AdminSection
-        title={t("users.title") || "Users Management"}
-        description={t("admin.usersSectionDesc")}
-        icon={Users}
-      >
-      <Card className={adminDash.operationsCard}>
-        <CardContent className="p-3 sm:p-4">
+      <OperationsTabFrame
+        listLabel={`${t("users.list") || "Users"} (${filteredUsers.length})`}
+        toolbar={
           <ResponsiveOperationsBar ariaLabel={t("users.searchPlaceholder")}>
             <div className="relative min-w-0 flex-1">
-              <Search className="absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+              <Search
+                className="absolute end-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
+                aria-hidden
+              />
               <Input
                 placeholder={t("users.searchPlaceholder") || "بحث بالاسم أو البريد..."}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="border-border bg-background pe-10 text-foreground"
+                className={cn(
+                  adminDash.opsInput,
+                  "border-border bg-background pe-9 text-foreground"
+                )}
                 aria-label={t("users.searchPlaceholder")}
               />
             </div>
@@ -437,11 +437,15 @@ export function AccountsTab() {
               value={classificationFilter}
               onValueChange={(val) => setClassificationFilter(val as AccountClassification | "all")}
             >
-              <SelectTrigger className="h-9 w-[160px] border-border bg-background">
+              <SelectTrigger
+                className={cn(adminDash.opsSelect, "w-full border-border bg-background sm:w-[148px]")}
+              >
                 <SelectValue placeholder={language === "ar" ? "التصنيف" : "Classification"} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">{language === "ar" ? "كل التصنيفات" : "All classifications"}</SelectItem>
+                <SelectItem value="all">
+                  {language === "ar" ? "كل التصنيفات" : "All classifications"}
+                </SelectItem>
                 {ACCOUNT_CLASSIFICATIONS.map((c) => (
                   <SelectItem key={c} value={c}>
                     {accountClassificationLabel(c, language === "ar" ? "ar" : "en")}
@@ -455,20 +459,12 @@ export function AccountsTab() {
               onClick={() => setInternalUserDialogOpen(true)}
               className={cn(adminDash.opBtn, adminActionBtn.success, "whitespace-nowrap")}
             >
-              <UserPlus className="h-4 w-4 me-1" aria-hidden />
+              <UserPlus className="h-3.5 w-3.5 me-1" aria-hidden />
               {language === "ar" ? "حساب داخلي" : "Internal user"}
             </Button>
           </ResponsiveOperationsBar>
-        </CardContent>
-      </Card>
-
-      <Card className={adminDash.operationsCard}>
-        <CardHeader className="border-b border-border bg-background/50 py-3">
-          <CardTitle className="text-base text-foreground sm:text-lg">
-            {t("users.list") || "قائمة المستخدمين"} ({filteredUsers.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
+        }
+      >
           {!hasUsers ? (
             <AdminEmptyState
               icon={Users}
@@ -486,7 +482,7 @@ export function AccountsTab() {
               {/* Mobile / tablet card layout */}
               <div className="divide-y divide-border/50 lg:hidden" role="list">
                 {filteredUsers.map((u: any) => (
-                  <article key={u.id} className="space-y-3 p-4" role="listitem">
+                  <article key={u.id} className={cn(adminDash.opsListRow, "flex-col items-stretch sm:flex-row sm:items-center")} role="listitem">
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge variant={u.role === "admin" ? "default" : "secondary"} className="text-xs">
                         {u.role === "admin" ? "Admin" : "User"}
@@ -540,41 +536,44 @@ export function AccountsTab() {
               {/* Desktop table */}
               <div className="hidden overflow-x-auto lg:block">
                 <table className="w-full min-w-[720px]">
-                  <thead className="border-b border-border bg-background/50">
+                  <thead className="border-b border-border/60 bg-muted/15">
                     <tr>
-                      <th scope="col" className="px-4 py-3 text-start text-sm font-semibold text-foreground">
+                      <th scope="col" className={adminDash.opsTableHead}>
                         {t("users.name") || "الاسم"}
                       </th>
-                      <th scope="col" className="px-4 py-3 text-start text-sm font-semibold text-foreground">
+                      <th scope="col" className={adminDash.opsTableHead}>
                         {t("users.email") || "البريد"}
                       </th>
-                      <th scope="col" className="px-4 py-3 text-start text-sm font-semibold text-foreground">
+                      <th scope="col" className={adminDash.opsTableHead}>
                         {t("users.role") || "الدور"}
                       </th>
-                      <th scope="col" className="px-4 py-3 text-start text-sm font-semibold text-foreground">
+                      <th scope="col" className={adminDash.opsTableHead}>
                         {language === "ar" ? "التصنيف" : "Classification"}
                       </th>
-                      <th scope="col" className="px-4 py-3 text-start text-sm font-semibold text-foreground">
+                      <th scope="col" className={adminDash.opsTableHead}>
                         {t("admin.ownerAccountSubscription")}
                       </th>
-                      <th scope="col" className="px-4 py-3 text-start text-sm font-semibold text-foreground">
+                      <th scope="col" className={adminDash.opsTableHead}>
                         {t("admin.restaurantCount")}
                       </th>
-                      <th scope="col" className="px-4 py-3 text-start text-sm font-semibold text-foreground">
+                      <th scope="col" className={adminDash.opsTableHead}>
                         {language === "ar" ? "الباقة" : "Plan"}
                       </th>
-                      <th scope="col" className="px-4 py-3 text-start text-sm font-semibold text-foreground">
+                      <th scope="col" className={adminDash.opsTableHead}>
                         {language === "ar" ? "تاريخ الانتهاء" : "End date"}
                       </th>
-                      <th scope="col" className="px-4 py-3 text-start text-sm font-semibold text-foreground">
+                      <th scope="col" className={adminDash.opsTableHead}>
                         {t("users.actions") || "الإجراءات"}
                       </th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredUsers.map((u: any, idx: number) => (
-                      <tr key={u.id} className={idx % 2 === 0 ? "bg-background/30" : "bg-card/30"}>
-                        <td className="px-4 py-3 text-sm text-foreground">
+                      <tr
+                        key={u.id}
+                        className={idx % 2 === 0 ? "bg-background/20" : "bg-transparent"}
+                      >
+                        <td className={cn(adminDash.opsTableCell, "text-foreground")}>
                           <div className="flex items-center gap-2">
                             <Badge variant={u.role === "admin" ? "default" : "secondary"} className="text-xs">
                               {u.role === "admin" ? "Admin" : "User"}
@@ -587,10 +586,10 @@ export function AccountsTab() {
                             {u.name || (language === "ar" ? "بدون اسم" : "No name")}
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-sm text-muted-foreground" dir="ltr">
+                        <td className={cn(adminDash.opsTableCell, "text-muted-foreground")} dir="ltr">
                           {u.email || "-"}
                         </td>
-                        <td className="px-4 py-3 text-sm">
+                        <td className={adminDash.opsTableCell}>
                           {editingUserId === u.id ? (
                             <Select value={editingRole} onValueChange={(val: "admin" | "user") => setEditingRole(val)}>
                               <SelectTrigger className="h-8 w-28 border-border bg-background">
@@ -607,13 +606,13 @@ export function AccountsTab() {
                             </Badge>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-sm">
+                        <td className={adminDash.opsTableCell}>
                           {editingUserId === u.id ? (
                             <Select
                               value={editingClassification}
                               onValueChange={(val: AccountClassification) => setEditingClassification(val)}
                             >
-                              <SelectTrigger className="h-8 w-32 border-border bg-background">
+                              <SelectTrigger className={cn(adminDash.opsSelect, "w-32 border-border bg-background")}>
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -633,25 +632,30 @@ export function AccountsTab() {
                             </Badge>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-sm">
+                        <td className={adminDash.opsTableCell}>
                           {isOwnerEntitled(u.commercial) ? getStatusBadge(ownerSubscriptionStatus(u.commercial)) : (
                             <Badge variant="outline" className="text-xs text-muted-foreground">
                               {t("admin.noAccountSubscription")}
                             </Badge>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-sm text-muted-foreground tabular-nums" dir="ltr">
+                        <td
+                          className={cn(adminDash.opsTableCell, "text-muted-foreground tabular-nums")}
+                          dir="ltr"
+                        >
                           {u.restaurants?.length ?? 0}
                         </td>
-                        <td className="px-4 py-3 text-sm text-muted-foreground">
+                        <td className={cn(adminDash.opsTableCell, "text-muted-foreground")}>
                           {ownerPlanLabel(u.commercial)}
                         </td>
-                        <td className="px-4 py-3 text-sm text-muted-foreground" dir="ltr">
+                        <td className={cn(adminDash.opsTableCell, "text-muted-foreground")} dir="ltr">
                           {u.commercial?.currentPeriodEnd
                             ? formatSubscriptionEndDate(u.commercial.currentPeriodEnd, language === "ar" ? "ar" : "en")
                             : "-"}
                         </td>
-                        <td className="min-w-[220px] px-4 py-3 text-sm">{renderUserActions(u)}</td>
+                        <td className={cn(adminDash.opsTableCell, "min-w-[200px]")}>
+                          {renderUserActions(u)}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -659,8 +663,7 @@ export function AccountsTab() {
               </div>
             </>
           )}
-        </CardContent>
-      </Card>
+      </OperationsTabFrame>
 
       {/* Internal user creation (ADMIN-AUTH-1B) */}
       <Dialog open={internalUserDialogOpen} onOpenChange={setInternalUserDialogOpen}>
@@ -843,7 +846,6 @@ export function AccountsTab() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      </AdminSection>
     </TooltipProvider>
   );
 }
@@ -1038,11 +1040,9 @@ export function TenantsTab() {
 
   return (
     <TooltipProvider>
-      <AdminSection
-        title={t("admin.restaurantsSection")}
-        description={t("admin.restaurantsSectionDesc")}
-        icon={Store}
-        actions={
+      <OperationsTabFrame
+        listLabel={`${t("admin.restaurantsSection")} (${filteredRestaurants.length})`}
+        toolbarActions={
           <Button
             onClick={() => {
               resetForm();
@@ -1051,51 +1051,55 @@ export function TenantsTab() {
             className="bg-primary text-primary-foreground hover:bg-primary/90"
             size="sm"
           >
-            <Plus className="h-4 w-4 me-2" />
+            <Plus className="h-3.5 w-3.5 me-1.5" />
             {t("admin.addRestaurant")}
           </Button>
         }
+        toolbar={
+          <ResponsiveOperationsBar ariaLabel={t("admin.searchPlaceholder")}>
+            <div className="relative min-w-0 flex-1">
+              <Search
+                className="absolute end-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
+                aria-hidden
+              />
+              <Input
+                placeholder={t("admin.searchPlaceholder")}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className={cn(adminDash.opsInput, "border-border bg-background pe-9 text-foreground")}
+                aria-label={t("admin.searchPlaceholder")}
+              />
+              {searchQuery ? (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute start-2.5 top-1/2 -translate-y-1/2 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  aria-label={language === "ar" ? "مسح البحث" : "Clear search"}
+                >
+                  <X className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+                </button>
+              ) : null}
+            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger
+                className={cn(adminDash.opsSelect, "w-full border-border bg-background sm:w-[180px]")}
+                aria-label={t("admin.filterByStatus")}
+              >
+                <Filter className="me-1.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
+                <SelectValue placeholder={t("admin.filterByStatus")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("admin.allStatuses")}</SelectItem>
+                <SelectItem value="active">{t("subscription.status.active")}</SelectItem>
+                <SelectItem value="trial">{t("subscription.status.trial")}</SelectItem>
+                <SelectItem value="expired">{t("subscription.status.expired")}</SelectItem>
+                <SelectItem value="canceled">{t("subscription.status.canceled")}</SelectItem>
+                <SelectItem value="inactive">{t("subscription.status.inactive")}</SelectItem>
+              </SelectContent>
+            </Select>
+          </ResponsiveOperationsBar>
+        }
       >
-        <AdminOperationsSection
-          toolbar={
-            <ResponsiveOperationsBar ariaLabel={t("admin.searchPlaceholder")}>
-              <div className="relative min-w-0 flex-1">
-                <Search className="absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-                <Input
-                  placeholder={t("admin.searchPlaceholder")}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="border-border bg-card pe-10 text-foreground"
-                  aria-label={t("admin.searchPlaceholder")}
-                />
-                {searchQuery ? (
-                  <button
-                    type="button"
-                    onClick={() => setSearchQuery("")}
-                    className="absolute start-3 top-1/2 -translate-y-1/2 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    aria-label={language === "ar" ? "مسح البحث" : "Clear search"}
-                  >
-                    <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-                  </button>
-                ) : null}
-              </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="h-9 w-full border-border bg-card sm:w-[200px]" aria-label={t("admin.filterByStatus")}>
-                  <Filter className="me-2 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-                  <SelectValue placeholder={t("admin.filterByStatus")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t("admin.allStatuses")}</SelectItem>
-                  <SelectItem value="active">{t("subscription.status.active")}</SelectItem>
-                  <SelectItem value="trial">{t("subscription.status.trial")}</SelectItem>
-                  <SelectItem value="expired">{t("subscription.status.expired")}</SelectItem>
-                  <SelectItem value="canceled">{t("subscription.status.canceled")}</SelectItem>
-                  <SelectItem value="inactive">{t("subscription.status.inactive")}</SelectItem>
-                </SelectContent>
-              </Select>
-            </ResponsiveOperationsBar>
-          }
-        >
         {restaurantsLoading ? (
           <AdminLoadingState variant="cardList" rows={3} label={t("common.loading")} />
         ) : !hasRestaurants ? (
@@ -1123,102 +1127,132 @@ export function TenantsTab() {
             description={t("admin.noRestaurantsFilteredDesc")}
           />
         ) : (
-          <div className="grid gap-4">
-            {filteredRestaurants.map((restaurant: any) => {
-              const commercial = restaurant.ownerCommercial;
-              const entitled = isOwnerEntitled(commercial);
-              const status = entitled ? ownerSubscriptionStatus(commercial) : "inactive";
+          <>
+            <div className="hidden overflow-x-auto lg:block">
+              <table className="w-full min-w-[640px]">
+                <thead className="border-b border-border/60 bg-muted/15">
+                  <tr>
+                    <th scope="col" className={adminDash.opsTableHead}>
+                      {t("admin.restaurantNameAr")}
+                    </th>
+                    <th scope="col" className={adminDash.opsTableHead}>
+                      {t("admin.ownerEmail")}
+                    </th>
+                    <th scope="col" className={adminDash.opsTableHead}>
+                      {t("admin.ownerAccountSubscription")}
+                    </th>
+                    <th scope="col" className={adminDash.opsTableHead}>
+                      {language === "ar" ? "الباقة" : "Plan"}
+                    </th>
+                    <th scope="col" className={adminDash.opsTableHead}>
+                      {t("users.actions")}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRestaurants.map((restaurant: any, idx: number) => {
+                    const commercial = restaurant.ownerCommercial;
+                    const entitled = isOwnerEntitled(commercial);
+                    const status = entitled ? ownerSubscriptionStatus(commercial) : "inactive";
 
-              return (
-                <Card
-                  key={restaurant.id}
-                  className={cn(adminDash.operationsCard, "transition hover:border-primary/40")}
-                >
-                  <CardContent className="space-y-4 p-4 sm:p-6">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-lg font-semibold text-foreground">{restaurant.nameAr}</h3>
-                      {restaurant.nameEn ? (
-                        <span className="text-sm text-muted-foreground" dir="ltr">
-                          ({restaurant.nameEn})
-                        </span>
-                      ) : null}
-                      <Badge variant={status === "active" ? "default" : "secondary"}>
-                        {t(`subscription.status.${status}`)}
-                      </Badge>
-                    </div>
-                    {restaurant.descriptionAr ? (
-                      <p className="text-sm text-muted-foreground">{restaurant.descriptionAr}</p>
-                    ) : null}
-                    <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
-                      {restaurant.ownerName ? (
-                        <div>
-                          <dt className="text-muted-foreground">{t("admin.ownerName")}</dt>
-                          <dd className="ms-0 mt-0.5 text-foreground">{restaurant.ownerName}</dd>
-                        </div>
-                      ) : null}
-                      {restaurant.ownerEmail ? (
-                        <div>
-                          <dt className="text-muted-foreground">{t("admin.ownerEmail")}</dt>
-                          <dd className="ms-0 mt-0.5 text-foreground" dir="ltr">
-                            {restaurant.ownerEmail}
-                          </dd>
-                        </div>
-                      ) : null}
-                      {restaurant.phone ? (
-                        <div>
-                          <dt className="text-muted-foreground">{t("admin.phone")}</dt>
-                          <dd className="ms-0 mt-0.5 text-foreground" dir="ltr">
-                            {restaurant.phone}
-                          </dd>
-                        </div>
-                      ) : null}
-                      {restaurant.address ? (
-                        <div>
-                          <dt className="text-muted-foreground">{t("admin.address")}</dt>
-                          <dd className="ms-0 mt-0.5 text-foreground">{restaurant.address}</dd>
-                        </div>
-                      ) : null}
-                      {restaurant.countryCode ? (
-                        <div>
-                          <dt className="text-muted-foreground">{t("admin.country")}</dt>
-                          <dd className="ms-0 mt-0.5 text-foreground">{restaurant.countryCode}</dd>
-                        </div>
-                      ) : null}
-                      {restaurant.currencyCode ? (
-                        <div>
-                          <dt className="text-muted-foreground">{t("admin.menuCurrency")}</dt>
-                          <dd className="ms-0 mt-0.5 text-foreground" dir="ltr">
-                            {restaurant.currencyCode}
-                            <span className="ms-1 text-xs text-muted-foreground">
-                              ({language === "ar" ? "عرض المنيو" : "menu display"})
-                            </span>
-                          </dd>
-                        </div>
-                      ) : null}
-                      <div className="sm:col-span-2 rounded-lg border border-border/50 bg-muted/20 p-3">
-                        <dt className="text-xs font-medium text-muted-foreground">
-                          {t("admin.inheritedEntitlements")}
-                        </dt>
-                        <dd className="mt-2 flex flex-wrap items-center gap-2">
+                    return (
+                      <tr
+                        key={restaurant.id}
+                        className={idx % 2 === 0 ? "bg-background/20" : "bg-transparent"}
+                      >
+                        <td className={cn(adminDash.opsTableCell, "text-foreground")}>
+                          <div className="font-medium">{restaurant.nameAr}</div>
+                          {restaurant.nameEn ? (
+                            <div className="text-xs text-muted-foreground" dir="ltr">
+                              {restaurant.nameEn}
+                            </div>
+                          ) : null}
+                        </td>
+                        <td className={cn(adminDash.opsTableCell, "text-muted-foreground")}>
+                          <div>{restaurant.ownerName || "—"}</div>
+                          {restaurant.ownerEmail ? (
+                            <div className="text-xs" dir="ltr">
+                              {restaurant.ownerEmail}
+                            </div>
+                          ) : null}
+                        </td>
+                        <td className={adminDash.opsTableCell}>
                           {entitled ? (
-                            <>
-                              <Badge variant={status === "active" ? "default" : "secondary"}>
-                                {t(`subscription.status.${status}`)}
-                              </Badge>
-                              <span className="text-sm text-foreground">{ownerPlanLabel(commercial)}</span>
-                            </>
+                            <Badge
+                              variant={status === "active" ? "default" : "secondary"}
+                              className="text-xs"
+                            >
+                              {t(`subscription.status.${status}`)}
+                            </Badge>
                           ) : (
                             <Badge variant="outline" className="text-xs text-muted-foreground">
                               {t("admin.noAccountSubscription")}
                             </Badge>
                           )}
-                        </dd>
-                        <p className="mt-2 text-xs text-muted-foreground">
-                          {t("admin.inheritedEntitlementsHint")}
-                        </p>
-                      </div>
-                    </dl>
+                        </td>
+                        <td className={cn(adminDash.opsTableCell, "text-muted-foreground")}>
+                          {entitled ? ownerPlanLabel(commercial) : "—"}
+                        </td>
+                        <td className={adminDash.opsTableCell}>
+                          <AdminActionGroup
+                            ariaLabel={t("admin.restaurantActions")}
+                            primary={
+                              <AdminIconButton
+                                label={t("admin.editRestaurant")}
+                                onClick={() =>
+                                  setLocation(`/dashboard?restaurant=${restaurant.id}`)
+                                }
+                              >
+                                <Edit className="h-3.5 w-3.5" />
+                              </AdminIconButton>
+                            }
+                            danger={
+                              <AdminIconButton
+                                label={t("admin.deleteRestaurantAction")}
+                                variant="destructive"
+                                onClick={() => setDeleteRestaurantId(restaurant.id)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </AdminIconButton>
+                            }
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
 
+            <div className="divide-y divide-border/50 lg:hidden" role="list">
+              {filteredRestaurants.map((restaurant: any) => {
+                const commercial = restaurant.ownerCommercial;
+                const entitled = isOwnerEntitled(commercial);
+                const status = entitled ? ownerSubscriptionStatus(commercial) : "inactive";
+
+                return (
+                  <article key={restaurant.id} className={adminDash.opsListRow} role="listitem">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="text-sm font-medium text-foreground">
+                          {restaurant.nameAr}
+                        </span>
+                        {entitled ? (
+                          <Badge
+                            variant={status === "active" ? "default" : "secondary"}
+                            className="text-[10px] px-1.5 py-0"
+                          >
+                            {t(`subscription.status.${status}`)}
+                          </Badge>
+                        ) : null}
+                      </div>
+                      <div className="mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+                        {restaurant.ownerEmail ? (
+                          <span dir="ltr">{restaurant.ownerEmail}</span>
+                        ) : null}
+                        {entitled ? <span>{ownerPlanLabel(commercial)}</span> : null}
+                      </div>
+                    </div>
                     <AdminActionGroup
                       ariaLabel={t("admin.restaurantActions")}
                       primary={
@@ -1239,14 +1273,13 @@ export function TenantsTab() {
                         </AdminIconButton>
                       }
                     />
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
+                  </article>
+                );
+              })}
+            </div>
+          </>
         )}
-        </AdminOperationsSection>
-      </AdminSection>
+      </OperationsTabFrame>
 
       {/* Create Restaurant Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={(open) => { if (!open) { setShowCreateDialog(false); resetForm(); } }}>
@@ -1500,15 +1533,15 @@ export default function AdminManagement() {
 
   return (
     <AdminOperationsShell
+      compact
       title={t("admin.operations.workspaceTitle")}
-      subtitle={t("admin.operations.workspaceSubtitle")}
       breadcrumbs={[
         { label: t("admin.nav.overview"), href: "/admin" },
         { label: t("admin.nav.operations") },
       ]}
     >
       <Tabs value={activeTab} onValueChange={(v) => setTab(v as OperationsTab)}>
-        <TabsList className="mb-6 grid w-full max-w-md grid-cols-3">
+        <TabsList className="mb-3 grid h-9 w-full max-w-md grid-cols-3">
           <TabsTrigger value="accounts">{t("admin.operations.tabAccounts")}</TabsTrigger>
           <TabsTrigger value="tenants">{t("admin.operations.tabTenants")}</TabsTrigger>
           <TabsTrigger value="communications">

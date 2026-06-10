@@ -24,6 +24,8 @@ export type AdminOperationsShellProps = {
   headerActions?: ReactNode;
   /** Optional status strip below header (alerts, readiness, etc.). */
   statusIndicator?: ReactNode;
+  /** UX-REFINE-1 — tighter header/main for operations-style pages. */
+  compact?: boolean;
   className?: string;
 };
 
@@ -34,6 +36,7 @@ export function AdminOperationsShell({
   breadcrumbs = [],
   headerActions,
   statusIndicator,
+  compact = false,
   className,
 }: AdminOperationsShellProps) {
   const crumbTrail: AdminBreadcrumbItem[] =
@@ -61,12 +64,27 @@ export function AdminOperationsShell({
           </header>
 
           <div className="flex flex-1 flex-col">
-            <div className="border-b border-border/40 px-4 py-6 sm:px-6 lg:px-8">
-              <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div
+              className={cn(
+                "border-b border-border/40 px-4 sm:px-6 lg:px-8",
+                compact ? "py-3 sm:py-4" : "py-6"
+              )}
+            >
+              <div className="mx-auto flex w-full max-w-7xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
-                  <h1 className={adminDash.pageTitle}>{title}</h1>
+                  <h1
+                    className={compact ? adminDash.pageTitleCompact : adminDash.pageTitle}
+                  >
+                    {title}
+                  </h1>
                   {subtitle ? (
-                    <p className={adminDash.pageSubtitle}>{subtitle}</p>
+                    <p
+                      className={
+                        compact ? adminDash.pageSubtitleCompact : adminDash.pageSubtitle
+                      }
+                    >
+                      {subtitle}
+                    </p>
                   ) : null}
                 </div>
                 {headerActions ? (
@@ -76,13 +94,16 @@ export function AdminOperationsShell({
                 ) : null}
               </div>
               {statusIndicator ? (
-                <div className="mx-auto mt-4 w-full max-w-7xl">{statusIndicator}</div>
+                <div className={cn("mx-auto w-full max-w-7xl", compact ? "mt-2" : "mt-4")}>
+                  {statusIndicator}
+                </div>
               ) : null}
             </div>
 
             <main
               className={cn(
-                "mx-auto w-full max-w-7xl flex-1 space-y-8 px-4 py-6 sm:px-6 sm:py-8 lg:px-8",
+                "mx-auto w-full max-w-7xl flex-1 px-4 sm:px-6 lg:px-8",
+                compact ? "space-y-3 py-4 sm:py-5" : "space-y-8 py-6 sm:py-8",
                 className
               )}
             >
