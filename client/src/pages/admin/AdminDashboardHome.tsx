@@ -1,10 +1,10 @@
 import { useAuthGate } from "@/_core/hooks/useAuthGate";
 import { AdminAccessDenied, AuthGatePending } from "@/components/AuthGate";
-import { AdminOperationsShell } from "@/components/admin/layout/AdminOperationsShell";
 import {
-  OverviewDashboardSections,
-  OverviewStatusIndicator,
-} from "@/components/admin/sections";
+  ReportsStatusIndicator,
+} from "@/components/admin/domains/reports";
+import { AdminOperationsShell } from "@/components/admin/layout/AdminOperationsShell";
+import { OverviewDashboardSections } from "@/components/admin/sections";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { resolveAdminPageShell } from "@/lib/admin/routes/adminRouteRegistry";
 
@@ -27,7 +27,7 @@ export default function AdminDashboardHome() {
       title={shell.title}
       subtitle={shell.subtitle}
       breadcrumbs={shell.breadcrumbs}
-      statusIndicator={<OverviewStatusIndicator />}
+      statusIndicator={<ReportsStatusIndicator />}
     >
       <OverviewDashboardSections />
     </AdminOperationsShell>

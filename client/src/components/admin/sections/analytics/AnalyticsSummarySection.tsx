@@ -1,6 +1,2 @@
-import { StatisticsPanel } from "@/pages/admin/StatisticsPanel";
-
-/** Analytics page body — owns analytics summary presentation. */
-export function AnalyticsSummarySection() {
-  return <StatisticsPanel />;
-}
+/** @deprecated Import from `@/components/admin/domains/reports` — re-exported for compatibility. */
+export { ReportsAnalyticsSection as AnalyticsSummarySection } from "@/components/admin/domains/reports";

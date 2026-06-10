@@ -1,7 +1,7 @@
 import { useAuthGate } from "@/_core/hooks/useAuthGate";
 import { AdminAccessDenied, AuthGatePending } from "@/components/AuthGate";
+import { ReportsAnalyticsSection } from "@/components/admin/domains/reports";
 import { AdminOperationsShell } from "@/components/admin/layout/AdminOperationsShell";
-import { AnalyticsSummarySection } from "@/components/admin/sections";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { resolveAdminPageShell } from "@/lib/admin/routes/adminRouteRegistry";
 
@@ -25,7 +25,7 @@ export default function AdminAnalyticsPage() {
       subtitle={shell.subtitle}
       breadcrumbs={shell.breadcrumbs}
     >
-      <AnalyticsSummarySection />
+      <ReportsAnalyticsSection />
     </AdminOperationsShell>
   );
 }

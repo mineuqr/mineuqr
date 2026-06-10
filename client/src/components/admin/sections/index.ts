@@ -8,6 +8,7 @@ export { AdminPageSection } from "./AdminPageSection";
 
 export { AnalyticsSummarySection } from "./analytics/AnalyticsSummarySection";
 
+export { CommercialCustomerSuccessSections } from "./commercial/CommercialCustomerSuccessSections";
 export { CommercialOverviewExportActions } from "./commercial/CommercialOverviewExportActions";
 export { CommercialOverviewSections } from "./commercial/CommercialOverviewSections";
 

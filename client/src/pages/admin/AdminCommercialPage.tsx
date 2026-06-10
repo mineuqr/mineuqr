@@ -1,10 +1,11 @@
 import { useAuthGate } from "@/_core/hooks/useAuthGate";
 import { AdminAccessDenied, AuthGatePending } from "@/components/AuthGate";
-import { AdminOperationsShell } from "@/components/admin/layout/AdminOperationsShell";
 import {
-  CommercialOverviewExportActions,
-  CommercialOverviewSections,
-} from "@/components/admin/sections";
+  ReportsCommercialBody,
+  ReportsExportActions,
+} from "@/components/admin/domains/reports";
+import { AdminOperationsShell } from "@/components/admin/layout/AdminOperationsShell";
+import { CommercialCustomerSuccessSections } from "@/components/admin/sections/commercial/CommercialCustomerSuccessSections";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { resolveAdminPageShell } from "@/lib/admin/routes/adminRouteRegistry";
 
@@ -27,9 +28,9 @@ export default function AdminCommercialPage() {
       title={shell.title}
       subtitle={shell.subtitle}
       breadcrumbs={shell.breadcrumbs}
-      headerActions={<CommercialOverviewExportActions />}
+      headerActions={<ReportsExportActions />}
     >
-      <CommercialOverviewSections />
+      <ReportsCommercialBody betweenMetadataAndPlan={<CommercialCustomerSuccessSections />} />
     </AdminOperationsShell>
   );
 }

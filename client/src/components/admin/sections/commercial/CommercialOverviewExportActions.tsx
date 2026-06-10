@@ -1,13 +1,2 @@
-import { CommercialExportButtons } from "@/components/admin/commercial";
-import { useCommercialOverviewData } from "./useCommercialOverviewData";
-
-export function CommercialOverviewExportActions() {
-  const { locale, query } = useCommercialOverviewData();
-
-  return (
-    <CommercialExportButtons
-      locale={locale}
-      disabled={query.isLoading || query.isError}
-    />
-  );
-}
+/** @deprecated Import from `@/components/admin/domains/reports` — re-exported for compatibility. */
+export { ReportsExportActions as CommercialOverviewExportActions } from "@/components/admin/domains/reports";
