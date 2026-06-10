@@ -11,6 +11,10 @@ import {
   TrendingUp,
   Users,
 } from "lucide-react";
+import {
+  parseOperationsTab,
+  operationsTabHref,
+} from "@/pages/admin/operations/operationsTab";
 
 /** EXEC-7B — single configuration source for admin dashboard navigation. */
 export type AdminNavItem = {
@@ -58,7 +62,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
       },
       {
         id: "tenants",
-        path: "/admin/tenants",
+        path: operationsTabHref("tenants"),
         labelKey: "admin.nav.tenants",
         descriptionKey: "admin.nav.tenantsDesc",
         icon: Building2,
@@ -117,9 +121,11 @@ export type AdminLegacyRoute = {
   canonicalPath: string;
   labelKey: string;
   noteKey: string;
+  /** PHASE-A — transitional until REBUILD-3B route extraction */
+  transitional?: boolean;
 };
 
-/** Legacy routes retained in EXEC-7B — documented, not removed. */
+/** Legacy routes retained for bookmarks — PHASE-A redirects implemented in App router. */
 export const ADMIN_LEGACY_ROUTES: AdminLegacyRoute[] = [
   {
     path: "/statistics",
@@ -129,7 +135,7 @@ export const ADMIN_LEGACY_ROUTES: AdminLegacyRoute[] = [
   },
   {
     path: "/users",
-    canonicalPath: "/admin/tenants",
+    canonicalPath: operationsTabHref("accounts"),
     labelKey: "admin.legacy.users",
     noteKey: "admin.legacy.usersNote",
   },
@@ -139,13 +145,32 @@ export const ADMIN_LEGACY_ROUTES: AdminLegacyRoute[] = [
     labelKey: "admin.legacy.superAdmin",
     noteKey: "admin.legacy.superAdminNote",
   },
+  {
+    path: "/admin/tenants",
+    canonicalPath: operationsTabHref("tenants"),
+    labelKey: "admin.legacy.tenants",
+    noteKey: "admin.legacy.tenantsNote",
+    transitional: true,
+  },
 ];
 
 export const ADMIN_NAV_ITEMS: AdminNavItem[] = ADMIN_NAV_GROUPS.flatMap(
   (group) => group.items
 );
 
-export function isAdminNavItemActive(item: AdminNavItem, pathname: string): boolean {
+export function isAdminNavItemActive(
+  item: AdminNavItem,
+  pathname: string,
+  search = ""
+): boolean {
+  if (item.id === "tenants") {
+    return pathname === "/admin/operations" && parseOperationsTab(search) === "tenants";
+  }
+  if (item.id === "operations") {
+    if (pathname !== "/admin/operations") return false;
+    const tab = parseOperationsTab(search);
+    return tab === "accounts" || tab === "communications";
+  }
   if (item.exact) {
     return pathname === item.path;
   }

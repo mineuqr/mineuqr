@@ -973,9 +973,11 @@
       "statistics": "/statistics",
       "statisticsNote": "يُوجّه إلى /admin/analytics — محفوظ للإشارات المرجعية",
       "users": "/users",
-      "usersNote": "مسار يتيم — يُدمج في /admin/tenants في EXEC-7D",
+      "usersNote": "إعادة توجيه إلى /admin/operations?tab=accounts",
       "superAdmin": "/super-admin",
-      "superAdminNote": "مسار يتيم — يُدمج في مركز العمليات"
+      "superAdminNote": "إعادة توجيه إلى الصفحة الرئيسية /admin",
+      "tenants": "/admin/tenants",
+      "tenantsNote": "إعادة توجيه مؤقتة إلى /admin/operations?tab=tenants حتى REBUILD-3B"
     }
   },
   "template": {

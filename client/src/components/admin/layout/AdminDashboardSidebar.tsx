@@ -1,4 +1,4 @@
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { Store } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
@@ -23,13 +23,14 @@ import {
 
 function NavMenuItems({ items }: { items: AdminNavItem[] }) {
   const [pathname] = useLocation();
+  const search = useSearch();
   const { t } = useLanguage();
 
   return (
     <SidebarMenu>
       {items.map((item) => {
         const Icon = item.icon;
-        const active = isAdminNavItemActive(item, pathname);
+        const active = isAdminNavItemActive(item, pathname, search);
         return (
           <SidebarMenuItem key={item.id}>
             <SidebarMenuButton asChild isActive={active} tooltip={t(item.labelKey)}>

@@ -973,9 +973,11 @@
       "statistics": "/statistics",
       "statisticsNote": "Redirects to /admin/analytics — retained for bookmarks",
       "users": "/users",
-      "usersNote": "Orphan route — merges into /admin/tenants in EXEC-7D",
+      "usersNote": "Redirects to /admin/operations?tab=accounts",
       "superAdmin": "/super-admin",
-      "superAdminNote": "Orphan route — merges into operations center"
+      "superAdminNote": "Redirects to /admin executive home",
+      "tenants": "/admin/tenants",
+      "tenantsNote": "Temporary redirect to /admin/operations?tab=tenants until REBUILD-3B"
     }
   },
   "template": {
