@@ -13,11 +13,15 @@ export const adminDash = {
   sectionTitle: "text-lg font-semibold text-foreground sm:text-xl",
   sectionTitleCompact: "text-sm font-semibold text-foreground",
   sectionSub: "mt-1 text-xs text-muted-foreground sm:text-sm",
+  /** UX-REFINE-1A — operations content width (SaaS console, not full-bleed) */
+  opsShellMax: "mx-auto w-full max-w-5xl",
   /** UX-REFINE-1 — operations workspace density */
-  opsWorkspace: "space-y-3",
-  opsToolbar: "p-2.5 sm:p-3",
-  opsTableHead: "px-3 py-2 text-start text-xs font-medium text-muted-foreground",
-  opsTableCell: "px-3 py-2 text-sm align-middle",
+  opsWorkspace: "space-y-2",
+  opsToolbar: "p-2 sm:p-2.5",
+  opsTabList: "mb-2 grid h-9 w-fit max-w-full grid-cols-3 self-start",
+  opsTableHead: "px-3 py-1.5 text-start text-xs font-medium text-muted-foreground",
+  opsTableCell: "px-3 py-1.5 text-sm align-middle",
+  opsTableActionsCell: "w-[1%] whitespace-nowrap px-2 py-1.5",
   opsListRow: "flex flex-wrap items-center justify-between gap-2 border-b border-border/40 px-3 py-2.5 last:border-b-0 hover:bg-muted/20",
   opsInput: "h-8 text-sm",
   opsSelect: "h-8 text-sm",
@@ -26,6 +30,7 @@ export const adminDash = {
   operationsCard: "rounded-xl border border-border/50 bg-card/40 shadow-sm overflow-hidden",
   /** Consistent operational button sizing */
   opBtn: "h-8 min-h-8 shrink-0 text-xs",
+  opIconBtn: "h-7 w-7 min-h-7 shrink-0 p-0 text-xs",
   actionPrimary: "",
   actionSecondary: "",
   /** Scroll-safe dialog content for mobile */

@@ -16,6 +16,8 @@ type AdminIconButtonProps = {
   className?: string;
   children: ReactNode;
   type?: "button" | "submit";
+  /** UX-REFINE-1A — tighter table action buttons */
+  compact?: boolean;
 };
 
 /** Accessible icon button with tooltip + aria-label (ADM-1C). */
@@ -27,18 +29,19 @@ export function AdminIconButton({
   className,
   children,
   type = "button",
+  compact = false,
 }: AdminIconButtonProps) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <Button
           type={type}
-          size="sm"
+          size={compact ? "icon" : "sm"}
           variant={variant}
           onClick={onClick}
           disabled={disabled}
           aria-label={label}
-          className={cn(adminDash.opBtn, "px-2.5", className)}
+          className={cn(compact ? adminDash.opIconBtn : adminDash.opBtn, !compact && "px-2.5", className)}
         >
           {children}
           <span className="sr-only">{label}</span>

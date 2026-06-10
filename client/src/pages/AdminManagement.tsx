@@ -272,6 +272,7 @@ export function AccountsTab() {
     if (editingUserId === u.id) {
       return (
         <AdminActionGroup
+          compact
           ariaLabel={t("admin.userActions")}
           primary={
             <>
@@ -324,10 +325,12 @@ export function AccountsTab() {
 
     return (
       <AdminActionGroup
+        compact
         ariaLabel={t("admin.userActions")}
         primary={
           u.id !== user?.id && !isProtectedPlatformAccountUser(u) ? (
             <AdminIconButton
+              compact
               label={language === "ar" ? "تعديل الدور" : "Edit role"}
               onClick={() => {
                 setEditingUserId(u.id);
@@ -352,6 +355,7 @@ export function AccountsTab() {
                   {t("admin.editSubscription")}
                 </Button>
                 <AdminIconButton
+                  compact
                   label={t("admin.deleteSubscription")}
                   onClick={() => setDeleteSubUserId(u.id)}
                   className={adminActionBtn.danger}
@@ -359,6 +363,7 @@ export function AccountsTab() {
                   <Trash2 className="h-3.5 w-3.5" />
                 </AdminIconButton>
                 <AdminIconButton
+                  compact
                   label={language === "ar" ? "إنشاء فاتورة PDF" : "Generate invoice PDF"}
                   onClick={() =>
                     generateInvoiceMutation.mutate({
@@ -392,6 +397,7 @@ export function AccountsTab() {
         danger={
           u.id !== user?.id && !isProtectedPlatformAccountUser(u) ? (
             <AdminIconButton
+              compact
               label={language === "ar" ? "حذف المستخدم" : "Delete user"}
               onClick={() => setDeleteUserId(u.id)}
               variant="destructive"
@@ -653,7 +659,7 @@ export function AccountsTab() {
                             ? formatSubscriptionEndDate(u.commercial.currentPeriodEnd, language === "ar" ? "ar" : "en")
                             : "-"}
                         </td>
-                        <td className={cn(adminDash.opsTableCell, "min-w-[200px]")}>
+                        <td className={adminDash.opsTableActionsCell}>
                           {renderUserActions(u)}
                         </td>
                       </tr>
@@ -1193,11 +1199,13 @@ export function TenantsTab() {
                         <td className={cn(adminDash.opsTableCell, "text-muted-foreground")}>
                           {entitled ? ownerPlanLabel(commercial) : "—"}
                         </td>
-                        <td className={adminDash.opsTableCell}>
+                        <td className={adminDash.opsTableActionsCell}>
                           <AdminActionGroup
+                            compact
                             ariaLabel={t("admin.restaurantActions")}
                             primary={
                               <AdminIconButton
+                                compact
                                 label={t("admin.editRestaurant")}
                                 onClick={() =>
                                   setLocation(`/dashboard?restaurant=${restaurant.id}`)
@@ -1208,6 +1216,7 @@ export function TenantsTab() {
                             }
                             danger={
                               <AdminIconButton
+                                compact
                                 label={t("admin.deleteRestaurantAction")}
                                 variant="destructive"
                                 onClick={() => setDeleteRestaurantId(restaurant.id)}
@@ -1254,9 +1263,11 @@ export function TenantsTab() {
                       </div>
                     </div>
                     <AdminActionGroup
+                      compact
                       ariaLabel={t("admin.restaurantActions")}
                       primary={
                         <AdminIconButton
+                          compact
                           label={t("admin.editRestaurant")}
                           onClick={() => setLocation(`/dashboard?restaurant=${restaurant.id}`)}
                         >
@@ -1265,6 +1276,7 @@ export function TenantsTab() {
                       }
                       danger={
                         <AdminIconButton
+                          compact
                           label={t("admin.deleteRestaurantAction")}
                           variant="destructive"
                           onClick={() => setDeleteRestaurantId(restaurant.id)}
@@ -1534,14 +1546,15 @@ export default function AdminManagement() {
   return (
     <AdminOperationsShell
       compact
+      narrowContent
       title={t("admin.operations.workspaceTitle")}
       breadcrumbs={[
         { label: t("admin.nav.overview"), href: "/admin" },
         { label: t("admin.nav.operations") },
       ]}
     >
-      <Tabs value={activeTab} onValueChange={(v) => setTab(v as OperationsTab)}>
-        <TabsList className="mb-3 grid h-9 w-full max-w-md grid-cols-3">
+      <Tabs value={activeTab} onValueChange={(v) => setTab(v as OperationsTab)} className="gap-1">
+        <TabsList className={adminDash.opsTabList}>
           <TabsTrigger value="accounts">{t("admin.operations.tabAccounts")}</TabsTrigger>
           <TabsTrigger value="tenants">{t("admin.operations.tabTenants")}</TabsTrigger>
           <TabsTrigger value="communications">

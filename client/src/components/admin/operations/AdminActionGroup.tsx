@@ -8,6 +8,8 @@ type AdminActionGroupProps = {
   neutral?: ReactNode;
   danger?: ReactNode;
   className?: string;
+  /** UX-REFINE-1A — inline icon row for table cells (no separators). */
+  compact?: boolean;
   /** Accessible label for the action toolbar */
   ariaLabel?: string;
 };
@@ -31,10 +33,26 @@ export function AdminActionGroup({
   neutral,
   danger,
   className,
+  compact = false,
   ariaLabel,
 }: AdminActionGroupProps) {
   const hasContent = primary || secondary || neutral || danger;
   if (!hasContent) return null;
+
+  if (compact) {
+    return (
+      <div
+        className={cn("inline-flex flex-wrap items-center gap-0.5", className)}
+        role="toolbar"
+        aria-label={ariaLabel}
+      >
+        {primary}
+        {secondary}
+        {neutral}
+        {danger}
+      </div>
+    );
+  }
 
   return (
     <div

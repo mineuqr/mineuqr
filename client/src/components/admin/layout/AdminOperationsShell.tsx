@@ -26,6 +26,8 @@ export type AdminOperationsShellProps = {
   statusIndicator?: ReactNode;
   /** UX-REFINE-1 — tighter header/main for operations-style pages. */
   compact?: boolean;
+  /** UX-REFINE-1A — narrower centered content (max-w-5xl) for operations console. */
+  narrowContent?: boolean;
   className?: string;
 };
 
@@ -37,12 +39,15 @@ export function AdminOperationsShell({
   headerActions,
   statusIndicator,
   compact = false,
+  narrowContent = false,
   className,
 }: AdminOperationsShellProps) {
   const crumbTrail: AdminBreadcrumbItem[] =
     breadcrumbs.length > 0
       ? breadcrumbs
       : [{ label: title }];
+
+  const contentMax = narrowContent ? adminDash.opsShellMax : "mx-auto w-full max-w-7xl";
 
   return (
     <SidebarProvider defaultOpen>
@@ -67,10 +72,10 @@ export function AdminOperationsShell({
             <div
               className={cn(
                 "border-b border-border/40 px-4 sm:px-6 lg:px-8",
-                compact ? "py-3 sm:py-4" : "py-6"
+                compact ? "py-2 sm:py-3" : "py-6"
               )}
             >
-              <div className="mx-auto flex w-full max-w-7xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className={cn(contentMax, "flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between")}>
                 <div className="min-w-0">
                   <h1
                     className={compact ? adminDash.pageTitleCompact : adminDash.pageTitle}
@@ -94,7 +99,7 @@ export function AdminOperationsShell({
                 ) : null}
               </div>
               {statusIndicator ? (
-                <div className={cn("mx-auto w-full max-w-7xl", compact ? "mt-2" : "mt-4")}>
+                <div className={cn(contentMax, compact ? "mt-1.5" : "mt-4")}>
                   {statusIndicator}
                 </div>
               ) : null}
@@ -102,8 +107,9 @@ export function AdminOperationsShell({
 
             <main
               className={cn(
-                "mx-auto w-full max-w-7xl flex-1 px-4 sm:px-6 lg:px-8",
-                compact ? "space-y-3 py-4 sm:py-5" : "space-y-8 py-6 sm:py-8",
+                contentMax,
+                "flex-1 px-4 sm:px-6 lg:px-8",
+                compact ? "space-y-2 py-3 sm:py-4" : "space-y-8 py-6 sm:py-8",
                 className
               )}
             >

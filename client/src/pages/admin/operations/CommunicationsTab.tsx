@@ -80,17 +80,19 @@ export function CommunicationsTab() {
     <OperationsTabFrame
       listLabel={t("admin.operations.tabCommunications")}
       toolbar={
-        <p className="text-xs text-muted-foreground">{recipientSummary}</p>
+        <p className="text-xs leading-snug text-muted-foreground">{recipientSummary}</p>
       }
     >
-      <div className="grid gap-3 p-3 lg:grid-cols-2">
-        <section className="space-y-3 rounded-lg border border-border/50 bg-muted/10 p-3">
-          <h3 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+      <div className="grid divide-y divide-border/50 lg:grid-cols-2 lg:divide-x lg:divide-y-0 rtl:lg:divide-x-reverse">
+        <section className="space-y-2 p-2.5 sm:p-3">
+          <h3 className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
             <Bell className="h-3.5 w-3.5 shrink-0 text-amber-500" aria-hidden />
             {t("admin.operations.notifyUserTitle")}
           </h3>
-          <div className="space-y-1.5">
-            <Label className="text-xs text-foreground">{t("admin.operations.selectUser")}</Label>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">
+              {t("admin.operations.selectUser")}
+            </Label>
             <Select value={selectedUserId} onValueChange={setSelectedUserId}>
               <SelectTrigger
                 className={cn(adminDash.opsSelect, "w-full border-border bg-background")}
@@ -106,16 +108,20 @@ export function CommunicationsTab() {
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs text-foreground">{t("admin.operations.messageLabel")}</Label>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">
+              {t("admin.operations.messageLabel")}
+            </Label>
             <Textarea
               value={userMessage}
               onChange={(e) => setUserMessage(e.target.value)}
               placeholder={t("admin.operations.messagePlaceholder")}
-              className="min-h-[80px] border-border bg-background text-sm"
+              className="min-h-[72px] resize-y border-border bg-background text-sm"
               maxLength={500}
             />
-            <p className="text-end text-[11px] text-muted-foreground">{userMessage.length}/500</p>
+            <p className="text-end text-[11px] tabular-nums text-muted-foreground">
+              {userMessage.length}/500
+            </p>
           </div>
           <Button
             size="sm"
@@ -127,35 +133,41 @@ export function CommunicationsTab() {
             disabled={
               sendNotifyMutation.isPending || !selectedUserId || !userMessage.trim()
             }
-            className="h-8 bg-amber-600 text-xs text-white hover:bg-amber-700"
+            className={cn(adminDash.opBtn, "bg-amber-600 text-white hover:bg-amber-700")}
           >
             {sendNotifyMutation.isPending ? (
               <Loader2 className="me-1.5 h-3.5 w-3.5 animate-spin" />
             ) : (
               <Send className="me-1.5 h-3.5 w-3.5" />
             )}
-            {t("admin.operations.sendNotification")}
-            {selectedUser?.name || selectedUser?.email
-              ? ` — ${selectedUser.name || selectedUser.email}`
-              : ""}
+            <span className="truncate">
+              {t("admin.operations.sendNotification")}
+              {selectedUser?.name || selectedUser?.email
+                ? ` — ${selectedUser.name || selectedUser.email}`
+                : ""}
+            </span>
           </Button>
         </section>
 
-        <section className="space-y-3 rounded-lg border border-border/50 bg-muted/10 p-3">
-          <h3 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+        <section className="space-y-2 p-2.5 sm:p-3">
+          <h3 className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
             <Users className="h-3.5 w-3.5 shrink-0 text-amber-500" aria-hidden />
             {t("admin.operations.announcementTitle")}
           </h3>
-          <div className="space-y-1.5">
-            <Label className="text-xs text-foreground">{t("admin.operations.messageLabel")}</Label>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">
+              {t("admin.operations.messageLabel")}
+            </Label>
             <Textarea
               value={bulkMessage}
               onChange={(e) => setBulkMessage(e.target.value)}
               placeholder={t("admin.operations.bulkMessagePlaceholder")}
-              className="min-h-[80px] border-border bg-background text-sm"
+              className="min-h-[72px] resize-y border-border bg-background text-sm"
               maxLength={500}
             />
-            <p className="text-end text-[11px] text-muted-foreground">{bulkMessage.length}/500</p>
+            <p className="text-end text-[11px] tabular-nums text-muted-foreground">
+              {bulkMessage.length}/500
+            </p>
           </div>
           <Button
             size="sm"
@@ -164,7 +176,7 @@ export function CommunicationsTab() {
               sendBulkNotifyMutation.mutate({ message: bulkMessage.trim() });
             }}
             disabled={sendBulkNotifyMutation.isPending || !bulkMessage.trim()}
-            className="h-8 bg-amber-600 text-xs text-white hover:bg-amber-700"
+            className={cn(adminDash.opBtn, "bg-amber-600 text-white hover:bg-amber-700")}
           >
             {sendBulkNotifyMutation.isPending ? (
               <Loader2 className="me-1.5 h-3.5 w-3.5 animate-spin" />
@@ -174,14 +186,16 @@ export function CommunicationsTab() {
             {t("admin.operations.sendToAll")}
           </Button>
         </section>
+      </div>
 
-        <section className="space-y-2 rounded-lg border border-dashed border-border/50 bg-muted/5 p-3 opacity-90 lg:col-span-2">
-          <h3 className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
-            <Mail className="h-3.5 w-3.5 shrink-0" aria-hidden />
-            {t("admin.operations.emailFutureTitle")}
-          </h3>
-          <p className="text-xs text-muted-foreground">{t("admin.operations.emailFutureDesc")}</p>
-        </section>
+      <div className="border-t border-dashed border-border/50 bg-muted/5 px-2.5 py-2 sm:px-3">
+        <h3 className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+          <Mail className="h-3.5 w-3.5 shrink-0" aria-hidden />
+          {t("admin.operations.emailFutureTitle")}
+        </h3>
+        <p className="mt-1 text-xs leading-snug text-muted-foreground">
+          {t("admin.operations.emailFutureDesc")}
+        </p>
       </div>
     </OperationsTabFrame>
   );
