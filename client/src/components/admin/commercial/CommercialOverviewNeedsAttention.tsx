@@ -1,4 +1,6 @@
+import type { ReactNode } from "react";
 import { AlertTriangle, Ban, Clock, type LucideIcon } from "lucide-react";
+import { Link } from "wouter";
 import { formatAdminKpiNumber } from "@/lib/admin/formatAdminCurrency";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -29,16 +31,16 @@ const ATTENTION_CONFIG: AttentionConfig[] = [
     iconClassName: "text-amber-600 dark:text-amber-400",
   },
   {
-    key: "canceledAccounts",
-    icon: Ban,
-    cardClassName: "border-amber-500/30 bg-amber-500/5",
-    iconClassName: "text-amber-600 dark:text-amber-400",
-  },
-  {
     key: "expiredAccounts",
     icon: AlertTriangle,
     cardClassName: "border-red-500/30 bg-red-500/5",
     iconClassName: "text-red-600 dark:text-red-400",
+  },
+  {
+    key: "canceledAccounts",
+    icon: Ban,
+    cardClassName: "border-amber-500/30 bg-amber-500/5",
+    iconClassName: "text-amber-600 dark:text-amber-400",
   },
 ];
 
@@ -47,6 +49,8 @@ type CommercialOverviewNeedsAttentionProps = {
   loading?: boolean;
   labels: Record<AttentionKey, string>;
   hints?: Partial<Record<AttentionKey, string>>;
+  /** Optional per-card drill links (e.g. command center → accounts workspace). */
+  drillHref?: Partial<Record<AttentionKey, string>>;
 };
 
 function NeedsAttentionSkeleton() {
@@ -68,11 +72,44 @@ function NeedsAttentionSkeleton() {
   );
 }
 
+function AttentionCard({
+  cardClassName,
+  children,
+  href,
+}: {
+  cardClassName: string;
+  children: ReactNode;
+  href?: string;
+}) {
+  const card = (
+    <Card
+      className={cn(
+        adminDash.kpiCard,
+        cardClassName,
+        href && "transition-all duration-300 hover:border-cyan-400/60"
+      )}
+    >
+      {children}
+    </Card>
+  );
+
+  if (!href) {
+    return card;
+  }
+
+  return (
+    <Link href={href} className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400">
+      {card}
+    </Link>
+  );
+}
+
 export function CommercialOverviewNeedsAttention({
   needsAttention,
   loading = false,
   labels,
   hints = {},
+  drillHref = {},
 }: CommercialOverviewNeedsAttentionProps) {
   if (loading || !needsAttention) {
     return <NeedsAttentionSkeleton />;
@@ -82,8 +119,9 @@ export function CommercialOverviewNeedsAttention({
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
       {ATTENTION_CONFIG.map(({ key, icon: Icon, cardClassName, iconClassName }) => {
         const hint = hints[key];
+        const href = drillHref[key];
         return (
-          <Card key={key} className={cn(adminDash.kpiCard, cardClassName)}>
+          <AttentionCard key={key} href={href} cardClassName={cardClassName}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-xs font-medium text-muted-foreground sm:text-sm">
                 {labels[key]}
@@ -96,7 +134,7 @@ export function CommercialOverviewNeedsAttention({
               </div>
               {hint ? <p className="mt-1 text-xs text-muted-foreground">{hint}</p> : null}
             </CardContent>
-          </Card>
+          </AttentionCard>
         );
       })}
     </div>

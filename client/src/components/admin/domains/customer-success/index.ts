@@ -6,3 +6,4 @@ export { CustomerSuccessCommunicationsSection } from "./CustomerSuccessCommunica
 export { CustomerSuccessHealthSection } from "./CustomerSuccessHealthSection";
 export { CustomerSuccessAttentionSection } from "./CustomerSuccessAttentionSection";
 export { CustomerSuccessCommercialSections } from "./CustomerSuccessCommercialSections";
+export { OverviewNeedsAttentionSection } from "./OverviewNeedsAttentionSection";

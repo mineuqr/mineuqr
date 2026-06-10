@@ -851,6 +851,22 @@
     "estimatedMrrHint": "تقدير شهري من اشتراكات فعّالة مدفوعة فقط — ليس إيراداً محصلاً",
     "expiringSoonHint": "خلال 30 يوماً",
     "activeRestaurantsHint": "اشتراك فعّال أو تجريبي",
+    "commandCenter": {
+      "activeTrials": "التجارب النشطة",
+      "activeTrialsHint": "المالكون على اشتراك تجريبي",
+      "attentionTitle": "يتطلب اهتماماً",
+      "attentionDesc": "حسابات المنصة التي تحتاج مراجعة المشغل",
+      "attentionEmpty": "لا توجد حسابات تتطلب اهتماماً",
+      "viewAccounts": "عرض الحسابات",
+      "viewCommercial": "عرض التجاري",
+      "quickActions": "إجراءات سريعة",
+      "quickActionsDesc": "مراجعة مساحات عمل المنصة واتخاذ إجراء",
+      "reviewAccounts": "مراجعة الحسابات",
+      "reviewTenants": "مراجعة المستأجرين",
+      "reviewCommunications": "مراجعة الاتصالات",
+      "reviewCommercialHealth": "مراجعة الصحة التجارية",
+      "openAnalytics": "فتح التحليلات"
+    },
     "commercial": {
       "pageSubtitle": "ملخص تجاري تنفيذي لمشغلي المنصة",
       "executiveTitle": "الملخص التنفيذي",

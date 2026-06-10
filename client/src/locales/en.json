@@ -851,6 +851,22 @@
     "estimatedMrrHint": "Projected monthly from paid active subs only — not collected revenue",
     "expiringSoonHint": "Within 30 days",
     "activeRestaurantsHint": "Active or trial subscription",
+    "commandCenter": {
+      "activeTrials": "Active Trials",
+      "activeTrialsHint": "Owners on trial subscription",
+      "attentionTitle": "Needs Attention",
+      "attentionDesc": "Platform accounts requiring operator review",
+      "attentionEmpty": "No accounts requiring attention",
+      "viewAccounts": "View Accounts",
+      "viewCommercial": "View Commercial",
+      "quickActions": "Quick Actions",
+      "quickActionsDesc": "Review platform workspaces and take action",
+      "reviewAccounts": "Review Accounts",
+      "reviewTenants": "Review Tenants",
+      "reviewCommunications": "Review Communications",
+      "reviewCommercialHealth": "Review Commercial Health",
+      "openAnalytics": "Open Analytics"
+    },
     "commercial": {
       "pageSubtitle": "Executive commercial summary for platform operators",
       "executiveTitle": "Executive Summary",

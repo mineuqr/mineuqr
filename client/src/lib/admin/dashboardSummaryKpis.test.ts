@@ -6,6 +6,7 @@ describe("mapDashboardSummaryToKPIs", () => {
     const kpis = mapDashboardSummaryToKPIs({
       activeRestaurants: 3,
       activeSubscriptions: 2,
+      activeTrials: 4,
       expiringAccounts: 1,
       mrr: 79,
       totalUsers: 5,
@@ -13,6 +14,7 @@ describe("mapDashboardSummaryToKPIs", () => {
     expect(kpis).toEqual({
       activeRestaurants: 3,
       activeSubscriptions: 2,
+      activeTrials: 4,
       expiringSoon: 1,
       estimatedMrr: 79,
       totalUsers: 5,
@@ -23,6 +25,7 @@ describe("mapDashboardSummaryToKPIs", () => {
     expect(mapDashboardSummaryToKPIs(undefined)).toEqual({
       activeRestaurants: 0,
       activeSubscriptions: 0,
+      activeTrials: 0,
       expiringSoon: 0,
       estimatedMrr: 0,
       totalUsers: 0,

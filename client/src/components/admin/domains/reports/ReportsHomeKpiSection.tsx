@@ -1,4 +1,4 @@
-import { Clock, DollarSign, Users, UtensilsCrossed } from "lucide-react";
+import { Clock, DollarSign, FlaskConical, Users } from "lucide-react";
 import { useAuthGate } from "@/_core/hooks/useAuthGate";
 import { PageDataLoading } from "@/components/AuthGate";
 import { AdminPageSection } from "@/components/admin/sections/AdminPageSection";
@@ -9,7 +9,7 @@ import { formatAdminKpiNumber, formatAdminRevenueUSD } from "@/lib/admin/formatA
 import { adminQueriesEnabled } from "@/lib/queryRuntime";
 import { trpc } from "@/lib/trpc";
 
-/** Reports domain — overview home executive KPI strip. */
+/** Reports domain — platform command center executive snapshot. */
 export function ReportsHomeKpiSection() {
   const { t, language } = useLanguage();
   const gate = useAuthGate();
@@ -32,13 +32,14 @@ export function ReportsHomeKpiSection() {
       {isLoading ? (
         <PageDataLoading minHeight="min-h-[96px]" />
       ) : (
-        <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-5">
+        <div className="grid grid-cols-1 gap-2 sm:gap-3 lg:grid-cols-5">
           <AdminStatCard
             compact
-            title={t("admin.activeRestaurants")}
-            icon={UtensilsCrossed}
-            value={formatAdminKpiNumber(kpis.activeRestaurants)}
-            hint={t("admin.nav.statOperational")}
+            title={t("admin.estimatedMrr")}
+            icon={DollarSign}
+            value={formatAdminRevenueUSD(kpis.estimatedMrr, locale)}
+            hint={t("admin.estimatedMrrHint")}
+            valueDir="ltr"
           />
           <AdminStatCard
             compact
@@ -49,17 +50,17 @@ export function ReportsHomeKpiSection() {
           />
           <AdminStatCard
             compact
-            title={t("admin.expiringSoon")}
-            icon={Clock}
-            value={formatAdminKpiNumber(kpis.expiringSoon)}
+            title={t("admin.commandCenter.activeTrials")}
+            icon={FlaskConical}
+            value={formatAdminKpiNumber(kpis.activeTrials)}
+            hint={t("admin.commandCenter.activeTrialsHint")}
           />
           <AdminStatCard
             compact
-            title={t("admin.estimatedMrr")}
-            icon={DollarSign}
-            value={formatAdminRevenueUSD(kpis.estimatedMrr, locale)}
-            hint={t("admin.estimatedMrrHint")}
-            valueDir="ltr"
+            title={t("admin.expiringSoon")}
+            icon={Clock}
+            value={formatAdminKpiNumber(kpis.expiringSoon)}
+            hint={t("admin.expiringSoonHint")}
           />
           <AdminStatCard
             compact

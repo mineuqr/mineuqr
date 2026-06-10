@@ -3,6 +3,7 @@ import { ADMIN_NAV_ITEMS } from "@/lib/admin/routes/adminRouteRegistry";
 import { AdminPageSection } from "../AdminPageSection";
 import { NavShortcutCard } from "./NavShortcutCard";
 
+/** @deprecated OCC-MVP — removed from hub; sidebar is canonical navigation. */
 export function OverviewAllSectionsSection() {
   const { t } = useLanguage();
   const shortcutItems = ADMIN_NAV_ITEMS.filter((item) => item.id !== "overview");

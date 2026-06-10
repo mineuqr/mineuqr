@@ -25,6 +25,7 @@ const FEATURED_SHORTCUTS: NavShortcutCardItem[] = [
   },
 ];
 
+/** @deprecated OCC-MVP — replaced by OverviewQuickActionsSection on /admin. */
 export function OverviewFeaturedShortcutsSection() {
   const { t } = useLanguage();
 

@@ -1,16 +1,16 @@
 import type { ReactNode } from "react";
+import { OverviewNeedsAttentionSection } from "@/components/admin/domains/customer-success/OverviewNeedsAttentionSection";
 import { adminDash } from "@/components/admin/layout/adminDashStyles";
-import { OverviewAllSectionsSection } from "@/components/admin/sections/overview/OverviewAllSectionsSection";
-import { OverviewFeaturedShortcutsSection } from "@/components/admin/sections/overview/OverviewFeaturedShortcutsSection";
+import { OverviewQuickActionsSection } from "@/components/admin/sections/overview/OverviewQuickActionsSection";
 
 type LaunchReadinessOverviewCompositionProps = {
-  /** Reports-owned KPI slot — display order preserved. */
+  /** Reports-owned executive snapshot slot. */
   kpiSlot: ReactNode;
 };
 
 /**
- * REBUILD-5G — overview page Launch Readiness composition.
- * UX-REFINE-1C — console density: KPIs first, no welcome hero block.
+ * REBUILD-5G — platform command center composition.
+ * OCC-MVP — Executive Snapshot → Needs Attention → Quick Actions.
  */
 export function LaunchReadinessOverviewComposition({
   kpiSlot,
@@ -18,8 +18,8 @@ export function LaunchReadinessOverviewComposition({
   return (
     <div className={adminDash.opsWorkspace}>
       {kpiSlot}
-      <OverviewFeaturedShortcutsSection />
-      <OverviewAllSectionsSection />
+      <OverviewNeedsAttentionSection />
+      <OverviewQuickActionsSection />
     </div>
   );
 }
