@@ -28,6 +28,8 @@ export type AdminOperationsShellProps = {
   compact?: boolean;
   /** UX-REFINE-1A — narrower centered content (max-w-5xl) for operations console. */
   narrowContent?: boolean;
+  /** UX-REFINE-1B — tabs / secondary nav directly under title */
+  headerFooter?: ReactNode;
   className?: string;
 };
 
@@ -40,6 +42,7 @@ export function AdminOperationsShell({
   statusIndicator,
   compact = false,
   narrowContent = false,
+  headerFooter,
   className,
 }: AdminOperationsShellProps) {
   const crumbTrail: AdminBreadcrumbItem[] =
@@ -72,7 +75,7 @@ export function AdminOperationsShell({
             <div
               className={cn(
                 "border-b border-border/40 px-4 sm:px-6 lg:px-8",
-                compact ? "py-2 sm:py-3" : "py-6"
+                compact ? (headerFooter ? "pt-2 pb-2 sm:pt-2.5 sm:pb-2.5" : "py-2 sm:py-3") : "py-6"
               )}
             >
               <div className={cn(contentMax, "flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between")}>
@@ -98,6 +101,9 @@ export function AdminOperationsShell({
                   </div>
                 ) : null}
               </div>
+              {headerFooter ? (
+                <div className={cn(contentMax, "mt-1.5")}>{headerFooter}</div>
+              ) : null}
               {statusIndicator ? (
                 <div className={cn(contentMax, compact ? "mt-1.5" : "mt-4")}>
                   {statusIndicator}
@@ -109,7 +115,11 @@ export function AdminOperationsShell({
               className={cn(
                 contentMax,
                 "flex-1 px-4 sm:px-6 lg:px-8",
-                compact ? "space-y-2 py-3 sm:py-4" : "space-y-8 py-6 sm:py-8",
+                compact
+                  ? headerFooter
+                    ? "space-y-1.5 py-2 sm:py-3"
+                    : "space-y-2 py-3 sm:py-4"
+                  : "space-y-8 py-6 sm:py-8",
                 className
               )}
             >

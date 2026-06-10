@@ -21,7 +21,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { toast } from "sonner";
-import { Plus, Trash2, Edit, Loader2, Store, UserPlus, Search, Filter, X, Users, FileText } from "lucide-react";
+import { Plus, Trash2, Edit, Loader2, Store, UserPlus, Search, Filter, X, Users, FileText, CreditCard } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { SubscriptionAdminFormFields } from "@/components/admin/subscription/SubscriptionAdminFormFields";
@@ -260,11 +260,11 @@ export function AccountsTab() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'active': return <Badge className="bg-green-600 text-white text-xs">فعال</Badge>;
-      case 'trial': return <Badge className="bg-blue-600 text-white text-xs">تجريبي</Badge>;
-      case 'expired': return <Badge className="bg-red-600 text-white text-xs">منتهي</Badge>;
-      case 'canceled': return <Badge className="bg-gray-600 text-white text-xs">ملغي</Badge>;
-      default: return <Badge variant="secondary" className="text-xs">بدون اشتراك</Badge>;
+      case 'active': return <Badge className={cn(adminDash.opsBadge, "bg-green-600 text-white")}>فعال</Badge>;
+      case 'trial': return <Badge className={cn(adminDash.opsBadge, "bg-blue-600 text-white")}>تجريبي</Badge>;
+      case 'expired': return <Badge className={cn(adminDash.opsBadge, "bg-red-600 text-white")}>منتهي</Badge>;
+      case 'canceled': return <Badge className={cn(adminDash.opsBadge, "bg-gray-600 text-white")}>ملغي</Badge>;
+      default: return <Badge variant="secondary" className={adminDash.opsBadge}>بدون اشتراك</Badge>;
     }
   };
 
@@ -346,21 +346,21 @@ export function AccountsTab() {
           !isProtectedPlatformAccountUser(u) ? (
             isOwnerEntitled(u.commercial) ? (
               <>
-                <Button
-                  size="sm"
-                  variant="outline"
+                <AdminIconButton
+                  compact
+                  label={t("admin.editSubscription")}
                   onClick={() => openEditSubDialog(u)}
-                  className={cn(adminDash.opBtn, adminActionBtn.info)}
+                  className={adminActionBtn.info}
                 >
-                  {t("admin.editSubscription")}
-                </Button>
+                  <CreditCard className="h-3 w-3" />
+                </AdminIconButton>
                 <AdminIconButton
                   compact
                   label={t("admin.deleteSubscription")}
                   onClick={() => setDeleteSubUserId(u.id)}
                   className={adminActionBtn.danger}
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
+                  <Trash2 className="h-3 w-3" />
                 </AdminIconButton>
                 <AdminIconButton
                   compact
@@ -375,22 +375,21 @@ export function AccountsTab() {
                   className={adminActionBtn.teal}
                 >
                   {generateInvoiceMutation.isPending ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <Loader2 className="h-3 w-3 animate-spin" />
                   ) : (
-                    <FileText className="h-3.5 w-3.5" />
+                    <FileText className="h-3 w-3" />
                   )}
                 </AdminIconButton>
               </>
             ) : (
-              <Button
-                size="sm"
-                variant="outline"
+              <AdminIconButton
+                compact
+                label={t("admin.createAccountSubscription")}
                 onClick={() => openCreateSubDialog(u)}
-                className={cn(adminDash.opBtn, adminActionBtn.success)}
+                className={adminActionBtn.success}
               >
-                <Plus className="h-3 w-3 me-1" />
-                {t("admin.createAccountSubscription")}
-              </Button>
+                <Plus className="h-3 w-3" />
+              </AdminIconButton>
             )
           ) : null
         }
@@ -539,36 +538,31 @@ export function AccountsTab() {
                 ))}
               </div>
 
-              {/* Desktop table */}
-              <div className="hidden overflow-x-auto lg:block">
-                <table className="w-full min-w-[720px]">
+              {/* Desktop table — UX-REFINE-1B: fixed layout, no horizontal scroll */}
+              <div className={adminDash.opsTableWrap}>
+                <table className={adminDash.opsTable}>
+                  <colgroup>
+                    <col className="w-[28%]" />
+                    <col className="w-[14%]" />
+                    <col className="w-[22%]" />
+                    <col className="w-[14%]" />
+                    <col className="w-[10%]" />
+                  </colgroup>
                   <thead className="border-b border-border/60 bg-muted/15">
                     <tr>
                       <th scope="col" className={adminDash.opsTableHead}>
                         {t("users.name") || "الاسم"}
                       </th>
                       <th scope="col" className={adminDash.opsTableHead}>
-                        {t("users.email") || "البريد"}
+                        {language === "ar" ? "الملف" : "Profile"}
                       </th>
                       <th scope="col" className={adminDash.opsTableHead}>
-                        {t("users.role") || "الدور"}
+                        {language === "ar" ? "الاشتراك" : "Subscription"}
                       </th>
                       <th scope="col" className={adminDash.opsTableHead}>
-                        {language === "ar" ? "التصنيف" : "Classification"}
+                        {language === "ar" ? "التفاصيل" : "Details"}
                       </th>
-                      <th scope="col" className={adminDash.opsTableHead}>
-                        {t("admin.ownerAccountSubscription")}
-                      </th>
-                      <th scope="col" className={adminDash.opsTableHead}>
-                        {t("admin.restaurantCount")}
-                      </th>
-                      <th scope="col" className={adminDash.opsTableHead}>
-                        {language === "ar" ? "الباقة" : "Plan"}
-                      </th>
-                      <th scope="col" className={adminDash.opsTableHead}>
-                        {language === "ar" ? "تاريخ الانتهاء" : "End date"}
-                      </th>
-                      <th scope="col" className={adminDash.opsTableHead}>
+                      <th scope="col" className={cn(adminDash.opsTableHead, "text-end")}>
                         {t("users.actions") || "الإجراءات"}
                       </th>
                     </tr>
@@ -577,89 +571,90 @@ export function AccountsTab() {
                     {filteredUsers.map((u: any, idx: number) => (
                       <tr
                         key={u.id}
-                        className={idx % 2 === 0 ? "bg-background/20" : "bg-transparent"}
+                        className={cn(
+                          "border-b border-border/30 last:border-b-0",
+                          idx % 2 === 0 ? "bg-background/20" : "bg-transparent"
+                        )}
                       >
-                        <td className={cn(adminDash.opsTableCell, "text-foreground")}>
-                          <div className="flex items-center gap-2">
-                            <Badge variant={u.role === "admin" ? "default" : "secondary"} className="text-xs">
-                              {u.role === "admin" ? "Admin" : "User"}
-                            </Badge>
-                            {isProtectedPlatformAccountUser(u) ? (
-                              <Badge variant="secondary" className="text-xs">
-                                {t("admin.operations.platformBadge")}
-                              </Badge>
-                            ) : null}
+                        <td className={cn(adminDash.opsTableCell, adminDash.opsTableTruncate, "text-foreground")}>
+                          <div className="truncate font-medium">
                             {u.name || (language === "ar" ? "بدون اسم" : "No name")}
                           </div>
-                        </td>
-                        <td className={cn(adminDash.opsTableCell, "text-muted-foreground")} dir="ltr">
-                          {u.email || "-"}
+                          <div className="truncate text-[11px] text-muted-foreground" dir="ltr" title={u.email || undefined}>
+                            {u.email || "-"}
+                          </div>
+                          {isProtectedPlatformAccountUser(u) ? (
+                            <Badge variant="secondary" className={cn(adminDash.opsBadge, "mt-0.5")}>
+                              {t("admin.operations.platformBadge")}
+                            </Badge>
+                          ) : null}
                         </td>
                         <td className={adminDash.opsTableCell}>
-                          {editingUserId === u.id ? (
-                            <Select value={editingRole} onValueChange={(val: "admin" | "user") => setEditingRole(val)}>
-                              <SelectTrigger className="h-8 w-28 border-border bg-background">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="user">{language === "ar" ? "مستخدم" : "User"}</SelectItem>
-                                <SelectItem value="admin">{language === "ar" ? "مسؤول" : "Admin"}</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            <Badge variant={u.role === "admin" ? "default" : "secondary"}>
-                              {u.role === "admin" ? (language === "ar" ? "مسؤول" : "Admin") : (language === "ar" ? "مستخدم" : "User")}
-                            </Badge>
-                          )}
+                          <div className="flex flex-col gap-1">
+                            {editingUserId === u.id ? (
+                              <Select value={editingRole} onValueChange={(val: "admin" | "user") => setEditingRole(val)}>
+                                <SelectTrigger className={cn(adminDash.opsSelect, "h-7 w-full border-border bg-background")}>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="user">{language === "ar" ? "مستخدم" : "User"}</SelectItem>
+                                  <SelectItem value="admin">{language === "ar" ? "مسؤول" : "Admin"}</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              <Badge variant={u.role === "admin" ? "default" : "secondary"} className={adminDash.opsBadge}>
+                                {u.role === "admin" ? (language === "ar" ? "مسؤول" : "Admin") : (language === "ar" ? "مستخدم" : "User")}
+                              </Badge>
+                            )}
+                            {editingUserId === u.id ? (
+                              <Select
+                                value={editingClassification}
+                                onValueChange={(val: AccountClassification) => setEditingClassification(val)}
+                              >
+                                <SelectTrigger className={cn(adminDash.opsSelect, "h-7 w-full border-border bg-background")}>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {ACCOUNT_CLASSIFICATIONS.map((c) => (
+                                    <SelectItem key={c} value={c}>
+                                      {accountClassificationLabel(c, language === "ar" ? "ar" : "en")}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              <Badge variant="outline" className={adminDash.opsBadge}>
+                                {accountClassificationLabel(
+                                  u.accountClassification ?? "COMMERCIAL",
+                                  language === "ar" ? "ar" : "en"
+                                )}
+                              </Badge>
+                            )}
+                          </div>
                         </td>
-                        <td className={adminDash.opsTableCell}>
-                          {editingUserId === u.id ? (
-                            <Select
-                              value={editingClassification}
-                              onValueChange={(val: AccountClassification) => setEditingClassification(val)}
-                            >
-                              <SelectTrigger className={cn(adminDash.opsSelect, "w-32 border-border bg-background")}>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {ACCOUNT_CLASSIFICATIONS.map((c) => (
-                                  <SelectItem key={c} value={c}>
-                                    {accountClassificationLabel(c, language === "ar" ? "ar" : "en")}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            <Badge variant="outline">
-                              {accountClassificationLabel(
-                                u.accountClassification ?? "COMMERCIAL",
-                                language === "ar" ? "ar" : "en"
-                              )}
-                            </Badge>
-                          )}
-                        </td>
-                        <td className={adminDash.opsTableCell}>
-                          {isOwnerEntitled(u.commercial) ? getStatusBadge(ownerSubscriptionStatus(u.commercial)) : (
-                            <Badge variant="outline" className="text-xs text-muted-foreground">
-                              {t("admin.noAccountSubscription")}
-                            </Badge>
-                          )}
-                        </td>
-                        <td
-                          className={cn(adminDash.opsTableCell, "text-muted-foreground tabular-nums")}
-                          dir="ltr"
-                        >
-                          {u.restaurants?.length ?? 0}
+                        <td className={cn(adminDash.opsTableCell, adminDash.opsTableTruncate)}>
+                          <div className="flex flex-wrap items-center gap-1">
+                            {isOwnerEntitled(u.commercial) ? getStatusBadge(ownerSubscriptionStatus(u.commercial)) : (
+                              <Badge variant="outline" className={cn(adminDash.opsBadge, "text-muted-foreground")}>
+                                {t("admin.noAccountSubscription")}
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                            {ownerPlanLabel(u.commercial)}
+                          </div>
                         </td>
                         <td className={cn(adminDash.opsTableCell, "text-muted-foreground")}>
-                          {ownerPlanLabel(u.commercial)}
+                          <div className="tabular-nums" dir="ltr">
+                            {u.restaurants?.length ?? 0} {t("admin.restaurantCount")}
+                          </div>
+                          <div className="text-[11px] tabular-nums" dir="ltr">
+                            {u.commercial?.currentPeriodEnd
+                              ? formatSubscriptionEndDate(u.commercial.currentPeriodEnd, language === "ar" ? "ar" : "en")
+                              : "—"}
+                          </div>
                         </td>
-                        <td className={cn(adminDash.opsTableCell, "text-muted-foreground")} dir="ltr">
-                          {u.commercial?.currentPeriodEnd
-                            ? formatSubscriptionEndDate(u.commercial.currentPeriodEnd, language === "ar" ? "ar" : "en")
-                            : "-"}
-                        </td>
-                        <td className={adminDash.opsTableActionsCell}>
+                        <td className={cn(adminDash.opsTableActionsCell, "text-end")}>
                           {renderUserActions(u)}
                         </td>
                       </tr>
@@ -1134,8 +1129,14 @@ export function TenantsTab() {
           />
         ) : (
           <>
-            <div className="hidden overflow-x-auto lg:block">
-              <table className="w-full min-w-[640px]">
+            <div className={adminDash.opsTableWrap}>
+              <table className={adminDash.opsTable}>
+                <colgroup>
+                  <col className="w-[28%]" />
+                  <col className="w-[28%]" />
+                  <col className="w-[24%]" />
+                  <col className="w-[12%]" />
+                </colgroup>
                 <thead className="border-b border-border/60 bg-muted/15">
                   <tr>
                     <th scope="col" className={adminDash.opsTableHead}>
@@ -1145,12 +1146,9 @@ export function TenantsTab() {
                       {t("admin.ownerEmail")}
                     </th>
                     <th scope="col" className={adminDash.opsTableHead}>
-                      {t("admin.ownerAccountSubscription")}
+                      {language === "ar" ? "الاشتراك" : "Subscription"}
                     </th>
-                    <th scope="col" className={adminDash.opsTableHead}>
-                      {language === "ar" ? "الباقة" : "Plan"}
-                    </th>
-                    <th scope="col" className={adminDash.opsTableHead}>
+                    <th scope="col" className={cn(adminDash.opsTableHead, "text-end")}>
                       {t("users.actions")}
                     </th>
                   </tr>
@@ -1164,42 +1162,45 @@ export function TenantsTab() {
                     return (
                       <tr
                         key={restaurant.id}
-                        className={idx % 2 === 0 ? "bg-background/20" : "bg-transparent"}
+                        className={cn(
+                          "border-b border-border/30 last:border-b-0",
+                          idx % 2 === 0 ? "bg-background/20" : "bg-transparent"
+                        )}
                       >
-                        <td className={cn(adminDash.opsTableCell, "text-foreground")}>
-                          <div className="font-medium">{restaurant.nameAr}</div>
+                        <td className={cn(adminDash.opsTableCell, adminDash.opsTableTruncate, "text-foreground")}>
+                          <div className="truncate font-medium">{restaurant.nameAr}</div>
                           {restaurant.nameEn ? (
-                            <div className="text-xs text-muted-foreground" dir="ltr">
+                            <div className="truncate text-[11px] text-muted-foreground" dir="ltr">
                               {restaurant.nameEn}
                             </div>
                           ) : null}
                         </td>
-                        <td className={cn(adminDash.opsTableCell, "text-muted-foreground")}>
-                          <div>{restaurant.ownerName || "—"}</div>
+                        <td className={cn(adminDash.opsTableCell, adminDash.opsTableTruncate, "text-muted-foreground")}>
+                          <div className="truncate">{restaurant.ownerName || "—"}</div>
                           {restaurant.ownerEmail ? (
-                            <div className="text-xs" dir="ltr">
+                            <div className="truncate text-[11px]" dir="ltr" title={restaurant.ownerEmail}>
                               {restaurant.ownerEmail}
                             </div>
                           ) : null}
                         </td>
-                        <td className={adminDash.opsTableCell}>
+                        <td className={cn(adminDash.opsTableCell, adminDash.opsTableTruncate)}>
                           {entitled ? (
                             <Badge
                               variant={status === "active" ? "default" : "secondary"}
-                              className="text-xs"
+                              className={adminDash.opsBadge}
                             >
                               {t(`subscription.status.${status}`)}
                             </Badge>
                           ) : (
-                            <Badge variant="outline" className="text-xs text-muted-foreground">
+                            <Badge variant="outline" className={cn(adminDash.opsBadge, "text-muted-foreground")}>
                               {t("admin.noAccountSubscription")}
                             </Badge>
                           )}
+                          <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                            {entitled ? ownerPlanLabel(commercial) : "—"}
+                          </div>
                         </td>
-                        <td className={cn(adminDash.opsTableCell, "text-muted-foreground")}>
-                          {entitled ? ownerPlanLabel(commercial) : "—"}
-                        </td>
-                        <td className={adminDash.opsTableActionsCell}>
+                        <td className={cn(adminDash.opsTableActionsCell, "text-end")}>
                           <AdminActionGroup
                             compact
                             ariaLabel={t("admin.restaurantActions")}
@@ -1211,7 +1212,7 @@ export function TenantsTab() {
                                   setLocation(`/dashboard?restaurant=${restaurant.id}`)
                                 }
                               >
-                                <Edit className="h-3.5 w-3.5" />
+                                <Edit className="h-3 w-3" />
                               </AdminIconButton>
                             }
                             danger={
@@ -1221,7 +1222,7 @@ export function TenantsTab() {
                                 variant="destructive"
                                 onClick={() => setDeleteRestaurantId(restaurant.id)}
                               >
-                                <Trash2 className="h-3.5 w-3.5" />
+                                <Trash2 className="h-3 w-3" />
                               </AdminIconButton>
                             }
                           />
@@ -1544,23 +1545,29 @@ export default function AdminManagement() {
   }
 
   return (
-    <AdminOperationsShell
-      compact
-      narrowContent
-      title={t("admin.operations.workspaceTitle")}
-      breadcrumbs={[
-        { label: t("admin.nav.overview"), href: "/admin" },
-        { label: t("admin.nav.operations") },
-      ]}
-    >
-      <Tabs value={activeTab} onValueChange={(v) => setTab(v as OperationsTab)} className="gap-1">
-        <TabsList className={adminDash.opsTabList}>
-          <TabsTrigger value="accounts">{t("admin.operations.tabAccounts")}</TabsTrigger>
-          <TabsTrigger value="tenants">{t("admin.operations.tabTenants")}</TabsTrigger>
-          <TabsTrigger value="communications">
-            {t("admin.operations.tabCommunications")}
-          </TabsTrigger>
-        </TabsList>
+    <Tabs value={activeTab} onValueChange={(v) => setTab(v as OperationsTab)} className="contents">
+      <AdminOperationsShell
+        compact
+        narrowContent
+        title={t("admin.operations.workspaceTitle")}
+        breadcrumbs={[
+          { label: t("admin.nav.overview"), href: "/admin" },
+          { label: t("admin.nav.operations") },
+        ]}
+        headerFooter={
+          <TabsList className={adminDash.opsTabList}>
+            <TabsTrigger value="accounts" className="text-xs">
+              {t("admin.operations.tabAccounts")}
+            </TabsTrigger>
+            <TabsTrigger value="tenants" className="text-xs">
+              {t("admin.operations.tabTenants")}
+            </TabsTrigger>
+            <TabsTrigger value="communications" className="text-xs">
+              {t("admin.operations.tabCommunications")}
+            </TabsTrigger>
+          </TabsList>
+        }
+      >
         <TabsContent value="accounts" className="mt-0">
           <AccountsTab />
         </TabsContent>
@@ -1570,7 +1577,7 @@ export default function AdminManagement() {
         <TabsContent value="communications" className="mt-0">
           <CommunicationsTab />
         </TabsContent>
-      </Tabs>
-    </AdminOperationsShell>
+      </AdminOperationsShell>
+    </Tabs>
   );
 }

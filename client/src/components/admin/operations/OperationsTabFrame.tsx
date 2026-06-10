@@ -34,8 +34,8 @@ export function OperationsTabFrame({
 
       <div className={adminDash.operationsCard}>
         {listLabel ? (
-          <div className="border-b border-border/60 bg-muted/20 px-3 py-2">
-            <p className="text-xs font-medium text-muted-foreground">{listLabel}</p>
+          <div className={adminDash.opsListStrip}>
+            <p className="text-[11px] font-medium text-muted-foreground">{listLabel}</p>
           </div>
         ) : null}
         {children}
