@@ -5,7 +5,7 @@ import {
   ReportsExportActions,
 } from "@/components/admin/domains/reports";
 import { AdminOperationsShell } from "@/components/admin/layout/AdminOperationsShell";
-import { CommercialCustomerSuccessSections } from "@/components/admin/sections/commercial/CommercialCustomerSuccessSections";
+import { CustomerSuccessCommercialSections } from "@/components/admin/domains/customer-success";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { resolveAdminPageShell } from "@/lib/admin/routes/adminRouteRegistry";
 
@@ -30,7 +30,7 @@ export default function AdminCommercialPage() {
       breadcrumbs={shell.breadcrumbs}
       headerActions={<ReportsExportActions />}
     >
-      <ReportsCommercialBody betweenMetadataAndPlan={<CommercialCustomerSuccessSections />} />
+      <ReportsCommercialBody betweenMetadataAndPlan={<CustomerSuccessCommercialSections />} />
     </AdminOperationsShell>
   );
 }

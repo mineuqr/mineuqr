@@ -1,6 +1,9 @@
-/** REBUILD-3A — operations tab modules (extracted in REBUILD-3B). */
-export { AccountsTab, TenantsTab } from "@/pages/AdminManagement";
-export { CommunicationsTab } from "./CommunicationsTab";
+/** REBUILD-5D — operations re-exports Customer Success domain sections. */
+export {
+  CustomerSuccessAccountsSection as AccountsTab,
+  CustomerSuccessTenantsSection as TenantsTab,
+  CustomerSuccessCommunicationsSection as CommunicationsTab,
+} from "@/components/admin/domains/customer-success";
 export {
   DEFAULT_OPERATIONS_TAB,
   OPERATIONS_TABS,
