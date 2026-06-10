@@ -8,6 +8,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { cn } from "@/lib/utils";
 import { adminDash } from "./adminDashStyles";
 import { AdminDashboardSidebar } from "./AdminDashboardSidebar";
@@ -15,6 +16,13 @@ import {
   AdminShellBreadcrumbs,
   type AdminBreadcrumbItem,
 } from "./AdminShellBreadcrumbs";
+
+/**
+ * ADMIN-RTL-WORKSPACE Phase 1 — operator console uses LTR workspace geometry.
+ * Document `html[dir]` may stay RTL for tenant surfaces; Arabic copy remains
+ * RTL via language strings inside this frame. Sidebar stays physical left.
+ */
+const ADMIN_WORKSPACE_DIR = "ltr" as const;
 
 export type AdminOperationsShellProps = {
   children: ReactNode;
@@ -45,6 +53,7 @@ export function AdminOperationsShell({
   headerFooter,
   className,
 }: AdminOperationsShellProps) {
+  const { language } = useLanguage();
   const crumbTrail: AdminBreadcrumbItem[] =
     breadcrumbs.length > 0
       ? breadcrumbs
@@ -54,9 +63,17 @@ export function AdminOperationsShell({
 
   return (
     <SidebarProvider defaultOpen>
-      <div className={cn(adminDash.shell, "flex min-h-svh w-full")}>
+      <div
+        className={cn(adminDash.shell, "flex min-h-svh w-full")}
+        dir={ADMIN_WORKSPACE_DIR}
+        lang={language}
+      >
         <AdminDashboardSidebar />
-        <SidebarInset className="relative flex min-h-svh flex-col bg-transparent">
+        <SidebarInset
+          dir={ADMIN_WORKSPACE_DIR}
+          lang={language}
+          className="relative flex min-h-svh flex-col bg-transparent"
+        >
           <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-2 border-b border-border/30 bg-background/60 px-4 backdrop-blur-xl">
             <SidebarTrigger className="-ms-1" />
             <Separator orientation="vertical" className="me-2 h-4" />
