@@ -1,4 +1,5 @@
-import type { CustomerSuccessAssetDefinition, SecurityHostedAssetId } from "./customerSuccessTypes";
+import { SECURITY_ACCOUNTS_HOSTED_ASSETS } from "../security/securityDomain";
+import type { CustomerSuccessAssetDefinition } from "./customerSuccessTypes";
 
 export const CUSTOMER_SUCCESS_DOMAIN_ID = "customer-success" as const;
 
@@ -143,13 +144,7 @@ export const CUSTOMER_SUCCESS_ASSET_DEFINITIONS: CustomerSuccessAssetDefinition[
 ];
 
 /** Security domain assets physically hosted in CS accounts workspace — not CS-owned. */
-export const SECURITY_HOSTED_IN_ACCOUNTS: SecurityHostedAssetId[] = [
-  "security-role-edit",
-  "security-classification-edit",
-  "security-create-internal-user",
-  "security-delete-user",
-  "security-platform-account-guards",
-];
+export const SECURITY_HOSTED_IN_ACCOUNTS = SECURITY_ACCOUNTS_HOSTED_ASSETS;
 
 export const CUSTOMER_SUCCESS_COMPOSITION_SECTIONS = [
   "CustomerSuccessAccountsSection",

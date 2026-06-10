@@ -3,7 +3,6 @@ import { trpc } from "@/lib/trpc";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
@@ -17,8 +16,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { toast } from "sonner";
-import { Plus, Trash2, Edit, Loader2, UserPlus, Search, Users, FileText, CreditCard } from "lucide-react";
-import { useAuth } from "@/_core/hooks/useAuth";
+import { Plus, Trash2, Loader2, Search, Users, FileText, CreditCard } from "lucide-react";
 import { SubscriptionAdminFormFields } from "@/components/admin/subscription/SubscriptionAdminFormFields";
 import { adminActionBtn, adminDash } from "@/components/admin/layout";
 import {
@@ -36,32 +34,25 @@ import {
 } from "@/lib/admin/ownerCommercialDisplay";
 import { formatSubscriptionEndDate } from "@/lib/subscription";
 import { cn } from "@/lib/utils";
-import { isProtectedPlatformAccountUser } from "@shared/platformAccount";
-import {
-  ACCOUNT_CLASSIFICATIONS,
-  INTERNAL_STAFF_CATEGORIES,
-  type AccountClassification,
-  type InternalStaffCategory,
-} from "@shared/accountClassification";
+import { ACCOUNT_CLASSIFICATIONS, type AccountClassification } from "@shared/accountClassification";
 import { accountClassificationLabel } from "@/lib/admin/accountClassificationDisplay";
+import {
+  canMutateAccountLifecycle,
+  SecurityAccountControlsSection,
+  SecurityClassificationCell,
+  SecurityDeleteUserAction,
+  SecurityInternalUserToolbarButton,
+  SecurityPlatformAccountBadge,
+  SecurityRoleBadge,
+  SecurityRoleCell,
+  SecurityRoleGovernanceActions,
+  useSecurityAccountGovernance,
+} from "@/components/admin/domains/security";
 
 export function CustomerSuccessAccountsSection() {
-  const { user } = useAuth();
   const { t, language } = useLanguage();
   const [searchQuery, setSearchQuery] = useState("");
   const [classificationFilter, setClassificationFilter] = useState<AccountClassification | "all">("all");
-  const [deleteUserId, setDeleteUserId] = useState<number | null>(null);
-  const [editingUserId, setEditingUserId] = useState<number | null>(null);
-  const [editingRole, setEditingRole] = useState<"admin" | "user">("user");
-  const [editingClassification, setEditingClassification] =
-    useState<AccountClassification>("COMMERCIAL");
-  const [internalUserDialogOpen, setInternalUserDialogOpen] = useState(false);
-  const [internalName, setInternalName] = useState("");
-  const [internalEmail, setInternalEmail] = useState("");
-  const [internalPassword, setInternalPassword] = useState("");
-  const [internalRole, setInternalRole] = useState<"admin" | "user">("user");
-  const [internalStaffCategory, setInternalStaffCategory] =
-    useState<InternalStaffCategory>("support");
   const [subDialogUser, setSubDialogUser] = useState<any>(null);
   const [subDialogMode, setSubDialogMode] = useState<"create" | "edit">("create");
   const [subPlanId, setSubPlanId] = useState<string>("");
@@ -99,55 +90,7 @@ export function CustomerSuccessAccountsSection() {
   };
 
   const usersLoading = overviewLoading;
-
-  const updateRoleMutation = trpc.admin.updateUserRole.useMutation({
-    onSuccess: () => {
-      toast.success(t('users.roleUpdated') || 'تم تحديث الدور');
-      setEditingUserId(null);
-      refetchUsers();
-    },
-    onError: (error: any) => {
-      toast.error(error.message || t('common.error'));
-    },
-  });
-
-  const updateClassificationMutation = trpc.admin.updateAccountClassification.useMutation({
-    onSuccess: () => {
-      toast.success(language === "ar" ? "تم تحديث التصنيف" : "Classification updated");
-      setEditingUserId(null);
-      refetchUsers();
-    },
-    onError: (error: any) => {
-      toast.error(error.message || t('common.error'));
-    },
-  });
-
-  const createInternalUserMutation = trpc.admin.createInternalUser.useMutation({
-    onSuccess: () => {
-      toast.success(language === "ar" ? "تم إنشاء حساب داخلي" : "Internal user created");
-      setInternalUserDialogOpen(false);
-      setInternalName("");
-      setInternalEmail("");
-      setInternalPassword("");
-      setInternalRole("user");
-      setInternalStaffCategory("support");
-      refetchUsers();
-    },
-    onError: (error: any) => {
-      toast.error(error.message || t('common.error'));
-    },
-  });
-
-  const deleteUserMutation = trpc.admin.deleteUser.useMutation({
-    onSuccess: () => {
-      toast.success(t('users.userDeleted') || 'تم حذف المستخدم');
-      setDeleteUserId(null);
-      refetchUsers();
-    },
-    onError: (error: any) => {
-      toast.error(error.message || t('common.error'));
-    },
-  });
+  const governance = useSecurityAccountGovernance(refetchUsers);
 
   const createSubMutation = trpc.admin.createUserSubscriptionByAdmin.useMutation({
     onSuccess: () => {
@@ -252,81 +195,15 @@ export function CustomerSuccessAccountsSection() {
   };
 
   const renderUserActions = (u: any) => {
-    if (editingUserId === u.id) {
-      return (
-        <AdminActionGroup
-          compact
-          ariaLabel={t("admin.userActions")}
-          primary={
-            <>
-              <Button
-                size="sm"
-                variant="default"
-                onClick={() => {
-                  const tasks: Promise<unknown>[] = [];
-                  if (editingRole !== u.role) {
-                    tasks.push(
-                      updateRoleMutation.mutateAsync({ userId: u.id, role: editingRole })
-                    );
-                  }
-                  if (editingClassification !== u.accountClassification) {
-                    tasks.push(
-                      updateClassificationMutation.mutateAsync({
-                        userId: u.id,
-                        accountClassification: editingClassification,
-                      })
-                    );
-                  }
-                  if (tasks.length === 0) {
-                    setEditingUserId(null);
-                    return;
-                  }
-                  void Promise.all(tasks).then(() => setEditingUserId(null));
-                }}
-                disabled={updateRoleMutation.isPending || updateClassificationMutation.isPending}
-                className={adminDash.opBtn}
-              >
-                {(updateRoleMutation.isPending || updateClassificationMutation.isPending) ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  t("admin.save") || "حفظ"
-                )}
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setEditingUserId(null)}
-                className={adminDash.opBtn}
-              >
-                {t("admin.cancel") || "إلغاء"}
-              </Button>
-            </>
-          }
-        />
-      );
-    }
+    const isEditing = governance.editingUserId === u.id;
 
     return (
       <AdminActionGroup
         compact
         ariaLabel={t("admin.userActions")}
-        primary={
-          u.id !== user?.id && !isProtectedPlatformAccountUser(u) ? (
-            <AdminIconButton
-              compact
-              label={language === "ar" ? "تعديل الدور" : "Edit role"}
-              onClick={() => {
-                setEditingUserId(u.id);
-                setEditingRole(u.role);
-                setEditingClassification(u.accountClassification ?? "COMMERCIAL");
-              }}
-            >
-              <Edit className="h-3.5 w-3.5" />
-            </AdminIconButton>
-          ) : null
-        }
+        primary={<SecurityRoleGovernanceActions user={u} governance={governance} />}
         secondary={
-          !isProtectedPlatformAccountUser(u) ? (
+          !isEditing && canMutateAccountLifecycle(u) ? (
             isOwnerEntitled(u.commercial) ? (
               <>
                 <AdminIconButton
@@ -376,18 +253,7 @@ export function CustomerSuccessAccountsSection() {
             )
           ) : null
         }
-        danger={
-          u.id !== user?.id && !isProtectedPlatformAccountUser(u) ? (
-            <AdminIconButton
-              compact
-              label={language === "ar" ? "حذف المستخدم" : "Delete user"}
-              onClick={() => setDeleteUserId(u.id)}
-              variant="destructive"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </AdminIconButton>
-          ) : null
-        }
+        danger={!isEditing ? <SecurityDeleteUserAction user={u} governance={governance} /> : null}
       />
     );
   };
@@ -441,15 +307,7 @@ export function CustomerSuccessAccountsSection() {
                 ))}
               </SelectContent>
             </Select>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setInternalUserDialogOpen(true)}
-              className={cn(adminDash.opBtn, adminActionBtn.success, "whitespace-nowrap")}
-            >
-              <UserPlus className="h-3.5 w-3.5 me-1" aria-hidden />
-              {language === "ar" ? "حساب داخلي" : "Internal user"}
-            </Button>
+            <SecurityInternalUserToolbarButton governance={governance} />
           </ResponsiveOperationsBar>
         }
       >
@@ -479,20 +337,20 @@ export function CustomerSuccessAccountsSection() {
                         {u.email || "—"}
                       </div>
                       <div className={cn(adminDash.opsIdentityRole, "border-t-0 pt-0")}>
-                        <Badge variant={u.role === "admin" ? "default" : "secondary"} className={adminDash.opsBadge}>
-                          {u.role === "admin" ? "Admin" : "User"}
-                        </Badge>
+                        <SecurityRoleBadge
+                          role={u.role}
+                          language={language === "ar" ? "ar" : "en"}
+                        />
                         <Badge variant="outline" className={adminDash.opsBadge}>
                           {accountClassificationLabel(
                             u.accountClassification ?? "COMMERCIAL",
                             language === "ar" ? "ar" : "en"
                           )}
                         </Badge>
-                        {isProtectedPlatformAccountUser(u) ? (
-                          <Badge variant="secondary" className={adminDash.opsBadge}>
-                            {t("admin.operations.platformBadge")}
-                          </Badge>
-                        ) : null}
+                        <SecurityPlatformAccountBadge
+                          user={u}
+                          label={t("admin.operations.platformBadge")}
+                        />
                       </div>
                     </div>
                     <dl className="grid gap-2 text-sm">
@@ -576,53 +434,15 @@ export function CustomerSuccessAccountsSection() {
                             {u.email || "—"}
                           </div>
                           <div className={adminDash.opsIdentityRole}>
-                            {editingUserId === u.id ? (
-                              <Select value={editingRole} onValueChange={(val: "admin" | "user") => setEditingRole(val)}>
-                                <SelectTrigger className={cn(adminDash.opsSelect, "h-7 w-full max-w-[7rem] border-border bg-background")}>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="user">{language === "ar" ? "مستخدم" : "User"}</SelectItem>
-                                  <SelectItem value="admin">{language === "ar" ? "مسؤول" : "Admin"}</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            ) : (
-                              <Badge variant={u.role === "admin" ? "default" : "secondary"} className={adminDash.opsBadge}>
-                                {u.role === "admin" ? (language === "ar" ? "مسؤول" : "Admin") : (language === "ar" ? "مستخدم" : "User")}
-                              </Badge>
-                            )}
-                            {isProtectedPlatformAccountUser(u) ? (
-                              <Badge variant="secondary" className={adminDash.opsBadge}>
-                                {t("admin.operations.platformBadge")}
-                              </Badge>
-                            ) : null}
+                            <SecurityRoleCell user={u} governance={governance} />
+                            <SecurityPlatformAccountBadge
+                              user={u}
+                              label={t("admin.operations.platformBadge")}
+                            />
                           </div>
                         </td>
                         <td className={adminDash.opsTableCell}>
-                          {editingUserId === u.id ? (
-                            <Select
-                              value={editingClassification}
-                              onValueChange={(val: AccountClassification) => setEditingClassification(val)}
-                            >
-                              <SelectTrigger className={cn(adminDash.opsSelect, "h-7 w-full border-border bg-background")}>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {ACCOUNT_CLASSIFICATIONS.map((c) => (
-                                  <SelectItem key={c} value={c}>
-                                    {accountClassificationLabel(c, language === "ar" ? "ar" : "en")}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            <Badge variant="outline" className={adminDash.opsBadge}>
-                              {accountClassificationLabel(
-                                u.accountClassification ?? "COMMERCIAL",
-                                language === "ar" ? "ar" : "en"
-                              )}
-                            </Badge>
-                          )}
+                          <SecurityClassificationCell user={u} governance={governance} />
                         </td>
                         <td className={cn(adminDash.opsTableCell, adminDash.opsTableTruncate)}>
                           <div className="flex flex-wrap items-center gap-1">
@@ -658,93 +478,7 @@ export function CustomerSuccessAccountsSection() {
           )}
       </OperationsTabFrame>
 
-      {/* Internal user creation (ADMIN-AUTH-1B) */}
-      <Dialog open={internalUserDialogOpen} onOpenChange={setInternalUserDialogOpen}>
-        <DialogContent className={adminDash.dialogContent}>
-          <DialogHeader>
-            <DialogTitle className="text-foreground">
-              {language === "ar" ? "إنشاء حساب داخلي" : "Create internal user"}
-            </DialogTitle>
-            <DialogDescription className="text-muted-foreground">
-              {language === "ar"
-                ? "حسابات الموظفين الداخليين — التصنيف INTERNAL ثابت"
-                : "Internal staff accounts — classification is always INTERNAL"}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-2">
-            <div className="grid gap-2">
-              <Label>{t("users.name") || "Name"}</Label>
-              <Input value={internalName} onChange={(e) => setInternalName(e.target.value)} />
-            </div>
-            <div className="grid gap-2">
-              <Label>{t("users.email") || "Email"}</Label>
-              <Input type="email" value={internalEmail} onChange={(e) => setInternalEmail(e.target.value)} dir="ltr" />
-            </div>
-            <div className="grid gap-2">
-              <Label>{language === "ar" ? "كلمة المرور" : "Password"}</Label>
-              <Input
-                type="password"
-                value={internalPassword}
-                onChange={(e) => setInternalPassword(e.target.value)}
-                dir="ltr"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>{language === "ar" ? "فئة الموظف" : "Staff category"}</Label>
-              <Select
-                value={internalStaffCategory}
-                onValueChange={(val: InternalStaffCategory) => setInternalStaffCategory(val)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {INTERNAL_STAFF_CATEGORIES.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {c}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label>{t("users.role") || "Role"}</Label>
-              <Select value={internalRole} onValueChange={(val: "admin" | "user") => setInternalRole(val)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="user">{language === "ar" ? "مستخدم" : "User"}</SelectItem>
-                  <SelectItem value="admin">{language === "ar" ? "مسؤول" : "Admin"}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setInternalUserDialogOpen(false)}>
-              {t("admin.cancel") || "Cancel"}
-            </Button>
-            <Button
-              onClick={() =>
-                createInternalUserMutation.mutate({
-                  name: internalName,
-                  email: internalEmail,
-                  password: internalPassword,
-                  role: internalRole,
-                  staffCategory: internalStaffCategory,
-                })
-              }
-              disabled={createInternalUserMutation.isPending}
-            >
-              {createInternalUserMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                language === "ar" ? "إنشاء" : "Create"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <SecurityAccountControlsSection governance={governance} />
 
       {/* Subscription Create/Edit Dialog */}
       <Dialog open={subDialogUser !== null} onOpenChange={(open) => !open && setSubDialogUser(null)}>
@@ -795,28 +529,6 @@ export function CustomerSuccessAccountsSection() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Delete User Confirmation Dialog */}
-      <AlertDialog open={deleteUserId !== null} onOpenChange={(open) => !open && setDeleteUserId(null)}>
-        <AlertDialogContent className="bg-card border-border">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-foreground">تأكيد حذف المستخدم</AlertDialogTitle>
-            <AlertDialogDescription className="text-muted-foreground">
-              هل أنت متأكد من حذف هذا المستخدم؟ لا يمكن التراجع عن هذا الإجراء.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="bg-background border-border text-foreground">إلغاء</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => deleteUserId && deleteUserMutation.mutate({ userId: deleteUserId })}
-              disabled={deleteUserMutation.isPending}
-              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
-            >
-              {deleteUserMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'حذف'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {/* Delete Subscription Confirmation Dialog */}
       <AlertDialog open={deleteSubUserId !== null} onOpenChange={(open) => !open && setDeleteSubUserId(null)}>

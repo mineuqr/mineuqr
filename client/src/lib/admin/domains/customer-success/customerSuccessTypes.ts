@@ -36,13 +36,8 @@ export type CustomerSuccessAssetId =
   | "helper-owner-commercial-display"
   | "helper-commercial-read-service";
 
-/** Security-owned controls hosted in accounts workspace (explicit boundary). */
-export type SecurityHostedAssetId =
-  | "security-role-edit"
-  | "security-classification-edit"
-  | "security-create-internal-user"
-  | "security-delete-user"
-  | "security-platform-account-guards";
+/** @deprecated Use SecurityAccountsHostedAssetId from security domain — CS is host only. */
+export type { SecurityAccountsHostedAssetId as SecurityHostedAssetId } from "../security/securityTypes";
 
 export type CustomerSuccessSurfaceId = "operations" | "commercial";
 
