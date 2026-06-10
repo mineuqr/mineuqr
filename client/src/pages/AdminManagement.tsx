@@ -488,35 +488,40 @@ export function AccountsTab() {
               <div className="divide-y divide-border/50 lg:hidden" role="list">
                 {filteredUsers.map((u: any) => (
                   <article key={u.id} className={cn(adminDash.opsListRow, "flex-col items-stretch sm:flex-row sm:items-center")} role="listitem">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant={u.role === "admin" ? "default" : "secondary"} className="text-xs">
-                        {u.role === "admin" ? "Admin" : "User"}
-                      </Badge>
-                      <Badge variant="outline" className="text-xs">
-                        {accountClassificationLabel(
-                          u.accountClassification ?? "COMMERCIAL",
-                          language === "ar" ? "ar" : "en"
-                        )}
-                      </Badge>
-                      {isProtectedPlatformAccountUser(u) ? (
-                        <Badge variant="secondary" className="text-xs">
-                          {t("admin.operations.platformBadge")}
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <div className={adminDash.opsIdentityName}>
+                        {u.name || (language === "ar" ? "بدون اسم" : "No name")}
+                      </div>
+                      <div className={cn(adminDash.opsIdentityEmail, "border-t-0 pt-0")} dir="ltr">
+                        {u.email || "—"}
+                      </div>
+                      <div className={cn(adminDash.opsIdentityRole, "border-t-0 pt-0")}>
+                        <Badge variant={u.role === "admin" ? "default" : "secondary"} className={adminDash.opsBadge}>
+                          {u.role === "admin" ? "Admin" : "User"}
                         </Badge>
-                      ) : null}
-                      <span className="font-medium text-foreground">{u.name || (language === "ar" ? "بدون اسم" : "No name")}</span>
-                      {isOwnerEntitled(u.commercial) ? getStatusBadge(ownerSubscriptionStatus(u.commercial)) : (
-                        <Badge variant="outline" className="text-xs text-muted-foreground">
-                          {t("admin.noAccountSubscription")}
+                        <Badge variant="outline" className={adminDash.opsBadge}>
+                          {accountClassificationLabel(
+                            u.accountClassification ?? "COMMERCIAL",
+                            language === "ar" ? "ar" : "en"
+                          )}
                         </Badge>
-                      )}
-                      <Badge variant="outline" className="text-xs tabular-nums" dir="ltr">
-                        {u.restaurants?.length ?? 0} {t("admin.restaurantCount")}
-                      </Badge>
+                        {isProtectedPlatformAccountUser(u) ? (
+                          <Badge variant="secondary" className={adminDash.opsBadge}>
+                            {t("admin.operations.platformBadge")}
+                          </Badge>
+                        ) : null}
+                      </div>
                     </div>
                     <dl className="grid gap-2 text-sm">
-                      <div className="flex flex-wrap gap-x-2">
-                        <dt className="text-muted-foreground">{t("users.email")}:</dt>
-                        <dd dir="ltr" className="text-foreground">{u.email || "-"}</dd>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {isOwnerEntitled(u.commercial) ? getStatusBadge(ownerSubscriptionStatus(u.commercial)) : (
+                          <Badge variant="outline" className={cn(adminDash.opsBadge, "text-muted-foreground")}>
+                            {t("admin.noAccountSubscription")}
+                          </Badge>
+                        )}
+                        <span className="text-xs tabular-nums text-muted-foreground" dir="ltr">
+                          {u.restaurants?.length ?? 0} {t("admin.restaurantCount")}
+                        </span>
                       </div>
                       <div className="flex flex-wrap gap-x-2">
                         <dt className="text-muted-foreground">{language === "ar" ? "الباقة" : "Plan"}:</dt>
@@ -551,10 +556,10 @@ export function AccountsTab() {
                   <thead className="border-b border-border/60 bg-muted/15">
                     <tr>
                       <th scope="col" className={adminDash.opsTableHead}>
-                        {t("users.name") || "الاسم"}
+                        {language === "ar" ? "الحساب" : "Account"}
                       </th>
                       <th scope="col" className={adminDash.opsTableHead}>
-                        {language === "ar" ? "الملف" : "Profile"}
+                        {language === "ar" ? "التصنيف" : "Classification"}
                       </th>
                       <th scope="col" className={adminDash.opsTableHead}>
                         {language === "ar" ? "الاشتراك" : "Subscription"}
@@ -577,23 +582,20 @@ export function AccountsTab() {
                         )}
                       >
                         <td className={cn(adminDash.opsTableCell, adminDash.opsTableTruncate, "text-foreground")}>
-                          <div className="truncate font-medium">
+                          <div className={adminDash.opsIdentityName}>
                             {u.name || (language === "ar" ? "بدون اسم" : "No name")}
                           </div>
-                          <div className="truncate text-[11px] text-muted-foreground" dir="ltr" title={u.email || undefined}>
-                            {u.email || "-"}
+                          <div
+                            className={adminDash.opsIdentityEmail}
+                            dir="ltr"
+                            title={u.email || undefined}
+                          >
+                            {u.email || "—"}
                           </div>
-                          {isProtectedPlatformAccountUser(u) ? (
-                            <Badge variant="secondary" className={cn(adminDash.opsBadge, "mt-0.5")}>
-                              {t("admin.operations.platformBadge")}
-                            </Badge>
-                          ) : null}
-                        </td>
-                        <td className={adminDash.opsTableCell}>
-                          <div className="flex flex-col gap-1">
+                          <div className={adminDash.opsIdentityRole}>
                             {editingUserId === u.id ? (
                               <Select value={editingRole} onValueChange={(val: "admin" | "user") => setEditingRole(val)}>
-                                <SelectTrigger className={cn(adminDash.opsSelect, "h-7 w-full border-border bg-background")}>
+                                <SelectTrigger className={cn(adminDash.opsSelect, "h-7 w-full max-w-[7rem] border-border bg-background")}>
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -606,31 +608,38 @@ export function AccountsTab() {
                                 {u.role === "admin" ? (language === "ar" ? "مسؤول" : "Admin") : (language === "ar" ? "مستخدم" : "User")}
                               </Badge>
                             )}
-                            {editingUserId === u.id ? (
-                              <Select
-                                value={editingClassification}
-                                onValueChange={(val: AccountClassification) => setEditingClassification(val)}
-                              >
-                                <SelectTrigger className={cn(adminDash.opsSelect, "h-7 w-full border-border bg-background")}>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {ACCOUNT_CLASSIFICATIONS.map((c) => (
-                                    <SelectItem key={c} value={c}>
-                                      {accountClassificationLabel(c, language === "ar" ? "ar" : "en")}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            ) : (
-                              <Badge variant="outline" className={adminDash.opsBadge}>
-                                {accountClassificationLabel(
-                                  u.accountClassification ?? "COMMERCIAL",
-                                  language === "ar" ? "ar" : "en"
-                                )}
+                            {isProtectedPlatformAccountUser(u) ? (
+                              <Badge variant="secondary" className={adminDash.opsBadge}>
+                                {t("admin.operations.platformBadge")}
                               </Badge>
-                            )}
+                            ) : null}
                           </div>
+                        </td>
+                        <td className={adminDash.opsTableCell}>
+                          {editingUserId === u.id ? (
+                            <Select
+                              value={editingClassification}
+                              onValueChange={(val: AccountClassification) => setEditingClassification(val)}
+                            >
+                              <SelectTrigger className={cn(adminDash.opsSelect, "h-7 w-full border-border bg-background")}>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {ACCOUNT_CLASSIFICATIONS.map((c) => (
+                                  <SelectItem key={c} value={c}>
+                                    {accountClassificationLabel(c, language === "ar" ? "ar" : "en")}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <Badge variant="outline" className={adminDash.opsBadge}>
+                              {accountClassificationLabel(
+                                u.accountClassification ?? "COMMERCIAL",
+                                language === "ar" ? "ar" : "en"
+                              )}
+                            </Badge>
+                          )}
                         </td>
                         <td className={cn(adminDash.opsTableCell, adminDash.opsTableTruncate)}>
                           <div className="flex flex-wrap items-center gap-1">
@@ -1042,19 +1051,10 @@ export function TenantsTab() {
   return (
     <TooltipProvider>
       <OperationsTabFrame
-        listLabel={`${t("admin.restaurantsSection")} (${filteredRestaurants.length})`}
-        toolbarActions={
-          <Button
-            onClick={() => {
-              resetForm();
-              setShowCreateDialog(true);
-            }}
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
-            size="sm"
-          >
-            <Plus className="h-3.5 w-3.5 me-1.5" />
-            {t("admin.addRestaurant")}
-          </Button>
+        listLabel={
+          language === "ar"
+            ? `دليل المستأجرين (${filteredRestaurants.length})`
+            : `Tenant directory (${filteredRestaurants.length})`
         }
         toolbar={
           <ResponsiveOperationsBar ariaLabel={t("admin.searchPlaceholder")}>
@@ -1098,6 +1098,18 @@ export function TenantsTab() {
                 <SelectItem value="inactive">{t("subscription.status.inactive")}</SelectItem>
               </SelectContent>
             </Select>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                resetForm();
+                setShowCreateDialog(true);
+              }}
+              className={cn(adminDash.opBtn, "shrink-0 text-muted-foreground")}
+            >
+              <Plus className="h-3.5 w-3.5 me-1" aria-hidden />
+              {t("admin.addRestaurant")}
+            </Button>
           </ResponsiveOperationsBar>
         }
       >
@@ -1140,10 +1152,10 @@ export function TenantsTab() {
                 <thead className="border-b border-border/60 bg-muted/15">
                   <tr>
                     <th scope="col" className={adminDash.opsTableHead}>
-                      {t("admin.restaurantNameAr")}
+                      {language === "ar" ? "المستأجر" : "Tenant"}
                     </th>
                     <th scope="col" className={adminDash.opsTableHead}>
-                      {t("admin.ownerEmail")}
+                      {language === "ar" ? "حساب المالك" : "Owner account"}
                     </th>
                     <th scope="col" className={adminDash.opsTableHead}>
                       {language === "ar" ? "الاشتراك" : "Subscription"}

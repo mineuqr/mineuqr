@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { adminDash } from "../layout/adminDashStyles";
 
 type OperationsTabFrameProps = {
-  toolbar: ReactNode;
+  toolbar?: ReactNode;
   toolbarActions?: ReactNode;
   /** Slim header inside content card (e.g. list count). */
   listLabel?: string;
@@ -21,16 +21,20 @@ export function OperationsTabFrame({
   children,
   className,
 }: OperationsTabFrameProps) {
+  const hasToolbar = toolbar || toolbarActions;
+
   return (
     <div className={cn(adminDash.opsWorkspace, className)}>
-      <div className={cn(adminDash.operationsCard, adminDash.opsToolbar)}>
-        <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0 flex-1 sm:max-w-xl">{toolbar}</div>
-          {toolbarActions ? (
-            <div className="flex shrink-0 flex-wrap items-center gap-1.5">{toolbarActions}</div>
-          ) : null}
+      {hasToolbar ? (
+        <div className={cn(adminDash.operationsCard, adminDash.opsToolbar)}>
+          <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
+            {toolbar ? <div className="min-w-0 flex-1 sm:max-w-xl">{toolbar}</div> : <div className="min-w-0 flex-1" />}
+            {toolbarActions ? (
+              <div className="flex shrink-0 flex-wrap items-center gap-1.5">{toolbarActions}</div>
+            ) : null}
+          </div>
         </div>
-      </div>
+      ) : null}
 
       <div className={adminDash.operationsCard}>
         {listLabel ? (

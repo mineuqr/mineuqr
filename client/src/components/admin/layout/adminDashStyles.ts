@@ -28,6 +28,13 @@ export const adminDash = {
   opsBadge: "text-[10px] px-1.5 py-0 font-medium leading-tight",
   opsListStrip: "border-b border-border/60 bg-muted/15 px-2.5 py-1.5",
   opsPanelHead: "border-b border-border/50 bg-muted/10 px-2.5 py-1.5 text-xs font-semibold text-foreground",
+  opsPanelHeadSecondary:
+    "border-b border-border/40 bg-muted/5 px-2.5 py-1 text-[11px] font-medium text-muted-foreground",
+  /** REBUILD-3B prep — account identity column hierarchy */
+  opsIdentityName: "truncate text-sm font-semibold leading-tight text-foreground",
+  opsIdentityEmail:
+    "truncate border-t border-border/30 pt-1 text-[11px] leading-tight text-muted-foreground",
+  opsIdentityRole: "flex flex-wrap items-center gap-1 border-t border-border/30 pt-1",
   opsListRow: "flex flex-wrap items-center justify-between gap-2 border-b border-border/40 px-3 py-2.5 last:border-b-0 hover:bg-muted/20",
   opsInput: "h-8 text-sm",
   opsSelect: "h-8 text-sm",
