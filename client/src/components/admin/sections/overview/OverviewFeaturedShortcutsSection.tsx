@@ -29,8 +29,12 @@ export function OverviewFeaturedShortcutsSection() {
   const { t } = useLanguage();
 
   return (
-    <AdminPageSection title={t("admin.nav.shortcuts")}>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <AdminPageSection
+      title={t("admin.nav.shortcuts")}
+      titleVariant="compact"
+      spacing="tight"
+    >
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {FEATURED_SHORTCUTS.map((item) => (
           <NavShortcutCard key={item.path} item={item} />
         ))}

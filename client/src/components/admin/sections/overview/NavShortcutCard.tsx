@@ -21,7 +21,7 @@ export function NavShortcutCard({ item }: NavShortcutCardProps) {
   return (
     <Link
       href={item.path}
-      className={cn(adminDash.card, "flex items-center gap-3 p-4")}
+      className={cn(adminDash.card, "flex items-center gap-2.5 p-3")}
     >
       <div className={adminDash.iconContainer}>
         <Icon className="h-5 w-5" />

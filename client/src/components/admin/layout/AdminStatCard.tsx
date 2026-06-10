@@ -13,6 +13,8 @@ type AdminStatCardProps = {
   valueClassName?: string;
   /** Isolate numbers/dates in LTR for RTL layouts. */
   valueDir?: "ltr" | "rtl" | "auto";
+  /** UX-REFINE-1C — denser KPI strip for overview console */
+  compact?: boolean;
 };
 
 export function AdminStatCard({
@@ -23,25 +25,46 @@ export function AdminStatCard({
   loading = false,
   valueClassName,
   valueDir = "auto",
+  compact = false,
 }: AdminStatCardProps) {
   return (
     <Card className={adminDash.kpiCard}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 px-4 pb-2 pt-4">
-        <CardTitle className="text-xs font-medium text-slate-400 sm:text-sm">{title}</CardTitle>
-        <Icon className="h-4 w-4 shrink-0 text-cyan-400" aria-hidden />
+      <CardHeader
+        className={cn(
+          "flex flex-row items-center justify-between space-y-0",
+          compact ? "px-3 pb-1 pt-3" : "px-4 pb-2 pt-4"
+        )}
+      >
+        <CardTitle
+          className={cn(
+            "font-medium text-slate-400",
+            compact ? "text-[11px] leading-tight" : "text-xs sm:text-sm"
+          )}
+        >
+          {title}
+        </CardTitle>
+        <Icon className={cn("shrink-0 text-cyan-400", compact ? "h-3.5 w-3.5" : "h-4 w-4")} aria-hidden />
       </CardHeader>
-      <CardContent className="px-4 pb-4">
+      <CardContent className={compact ? "px-3 pb-3" : "px-4 pb-4"}>
         {loading ? (
-          <Skeleton className="h-8 w-20" />
+          <Skeleton className={compact ? "h-7 w-16" : "h-8 w-20"} />
         ) : (
           <div
             dir={valueDir}
-            className={cn("text-xl font-bold tabular-nums text-white sm:text-2xl", valueClassName)}
+            className={cn(
+              "font-bold tabular-nums text-white",
+              compact ? "text-lg sm:text-xl" : "text-xl sm:text-2xl",
+              valueClassName
+            )}
           >
             {value}
           </div>
         )}
-        {hint ? <p className="mt-1 text-xs text-cyan-300/80">{hint}</p> : null}
+        {hint ? (
+          <p className={cn("text-cyan-300/80", compact ? "mt-0.5 text-[10px] leading-tight" : "mt-1 text-xs")}>
+            {hint}
+          </p>
+        ) : null}
       </CardContent>
     </Card>
   );

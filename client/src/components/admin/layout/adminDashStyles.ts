@@ -23,6 +23,9 @@ export const adminDash = {
   sectionTitle: "text-lg font-bold text-white sm:text-xl",
   sectionTitleCompact: "text-sm font-semibold text-white",
   sectionSub: "mt-1 text-xs text-cyan-300/80 sm:text-sm",
+  /** UX-REFINE-1C — overview console density */
+  overviewMain: "space-y-3 py-2 sm:py-3",
+  overviewWorkspace: "space-y-3",
   opsShellMax: "mx-auto w-full max-w-5xl",
   opsWorkspace: "space-y-1.5",
   opsToolbar: "p-2 sm:p-2.5",

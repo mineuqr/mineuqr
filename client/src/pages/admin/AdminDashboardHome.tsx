@@ -3,6 +3,7 @@ import { AdminAccessDenied, AuthGatePending } from "@/components/AuthGate";
 import {
   ReportsStatusIndicator,
 } from "@/components/admin/domains/reports";
+import { adminDash } from "@/components/admin/layout/adminDashStyles";
 import { AdminOperationsShell } from "@/components/admin/layout/AdminOperationsShell";
 import { OverviewDashboardSections } from "@/components/admin/sections";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -25,9 +26,10 @@ export default function AdminDashboardHome() {
   return (
     <AdminOperationsShell
       title={shell.title}
-      subtitle={shell.subtitle}
       breadcrumbs={shell.breadcrumbs}
-      statusIndicator={<ReportsStatusIndicator />}
+      compact
+      headerActions={<ReportsStatusIndicator compact />}
+      className={adminDash.overviewMain}
     >
       <OverviewDashboardSections />
     </AdminOperationsShell>

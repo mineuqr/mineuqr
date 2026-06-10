@@ -12,9 +12,13 @@ export type AdminSectionLoadingContract = {
   loadingMinHeight?: string;
 };
 
-export type AdminPageSectionProps = AdminSectionHeaderContract & {
+export type AdminPageSectionProps = Partial<AdminSectionHeaderContract> & {
   children?: ReactNode;
-  /** Preserves per-section spacing (`space-y-3` vs `space-y-4`). */
-  spacing?: "compact" | "default";
+  /** Screen-reader label when visual section title is omitted (UX-REFINE-1C). */
+  ariaLabel?: string;
+  /** Preserves per-section spacing. */
+  spacing?: "tight" | "compact" | "default";
+  /** Console sections use a smaller heading tier. */
+  titleVariant?: "default" | "compact";
   className?: string;
 };

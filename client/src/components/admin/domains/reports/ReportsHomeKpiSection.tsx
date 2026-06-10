@@ -28,29 +28,33 @@ export function ReportsHomeKpiSection() {
   const kpis = mapDashboardSummaryToKPIs(summary);
 
   return (
-    <AdminPageSection title={t("admin.kpiOverview")}>
+    <AdminPageSection ariaLabel={t("admin.kpiOverview")} spacing="tight">
       {isLoading ? (
-        <PageDataLoading minHeight="min-h-[120px]" />
+        <PageDataLoading minHeight="min-h-[96px]" />
       ) : (
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-5">
           <AdminStatCard
+            compact
             title={t("admin.activeRestaurants")}
             icon={UtensilsCrossed}
             value={formatAdminKpiNumber(kpis.activeRestaurants)}
             hint={t("admin.nav.statOperational")}
           />
           <AdminStatCard
+            compact
             title={t("admin.activeSubscriptions")}
             icon={Users}
             value={formatAdminKpiNumber(kpis.activeSubscriptions)}
             hint={t("admin.nav.statCanonical")}
           />
           <AdminStatCard
+            compact
             title={t("admin.expiringSoon")}
             icon={Clock}
             value={formatAdminKpiNumber(kpis.expiringSoon)}
           />
           <AdminStatCard
+            compact
             title={t("admin.estimatedMrr")}
             icon={DollarSign}
             value={formatAdminRevenueUSD(kpis.estimatedMrr, locale)}
@@ -58,6 +62,7 @@ export function ReportsHomeKpiSection() {
             valueDir="ltr"
           />
           <AdminStatCard
+            compact
             title={t("admin.totalUsers")}
             icon={Users}
             value={formatAdminKpiNumber(kpis.totalUsers)}
