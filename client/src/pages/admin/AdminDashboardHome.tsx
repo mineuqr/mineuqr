@@ -27,7 +27,6 @@ export default function AdminDashboardHome() {
       title={shell.title}
       breadcrumbs={shell.breadcrumbs}
       compact
-      narrowContent
       headerActions={<ReportsStatusIndicator compact />}
     >
       <OverviewDashboardSections />
