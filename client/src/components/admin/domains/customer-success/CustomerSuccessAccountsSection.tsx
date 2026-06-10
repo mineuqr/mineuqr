@@ -18,7 +18,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { Plus, Trash2, Loader2, Search, Users, FileText, CreditCard } from "lucide-react";
 import { SubscriptionAdminFormFields } from "@/components/admin/subscription/SubscriptionAdminFormFields";
-import { adminActionBtn, adminDash, adminSemantic } from "@/components/admin/layout";
+import { ADMIN_WORKSPACE_DIR, adminActionBtn, adminDash, adminSemantic } from "@/components/admin/layout";
 import {
   AdminActionGroup,
   AdminEmptyState,
@@ -482,7 +482,7 @@ export function CustomerSuccessAccountsSection() {
 
       {/* Subscription Create/Edit Dialog */}
       <Dialog open={subDialogUser !== null} onOpenChange={(open) => !open && setSubDialogUser(null)}>
-        <DialogContent className={adminDash.dialogContent}>
+        <DialogContent dir={ADMIN_WORKSPACE_DIR} className={adminDash.dialogContent}>
           <DialogHeader>
             <DialogTitle className="text-foreground">
               {subDialogMode === "create"
@@ -532,7 +532,7 @@ export function CustomerSuccessAccountsSection() {
 
       {/* Delete Subscription Confirmation Dialog */}
       <AlertDialog open={deleteSubUserId !== null} onOpenChange={(open) => !open && setDeleteSubUserId(null)}>
-        <AlertDialogContent className="bg-card border-border">
+        <AlertDialogContent dir={ADMIN_WORKSPACE_DIR} className="bg-card border-border">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-foreground">تأكيد حذف الاشتراك</AlertDialogTitle>
             <AlertDialogDescription className="text-muted-foreground">

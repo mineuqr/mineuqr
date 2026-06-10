@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/sidebar";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { cn } from "@/lib/utils";
-import { adminDash } from "./adminDashStyles";
+import { ADMIN_WORKSPACE_DIR, adminDash } from "./adminDashStyles";
 import { AdminDashboardSidebar } from "./AdminDashboardSidebar";
 import {
   AdminShellBreadcrumbs,
@@ -18,11 +18,10 @@ import {
 } from "./AdminShellBreadcrumbs";
 
 /**
- * ADMIN-RTL-WORKSPACE Phase 1 — operator console uses LTR workspace geometry.
+ * ADMIN-RTL-WORKSPACE — operator console uses LTR workspace geometry.
  * Document `html[dir]` may stay RTL for tenant surfaces; Arabic copy remains
  * RTL via language strings inside this frame. Sidebar stays physical left.
  */
-const ADMIN_WORKSPACE_DIR = "ltr" as const;
 
 export type AdminOperationsShellProps = {
   children: ReactNode;

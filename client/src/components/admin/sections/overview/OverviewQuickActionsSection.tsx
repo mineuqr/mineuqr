@@ -50,7 +50,7 @@ const QUICK_ACTIONS: QuickAction[] = [
 
 /** Platform command center — operator intent actions (not navigation tiles). */
 export function OverviewQuickActionsSection() {
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
 
   return (
     <AdminPageSection
@@ -77,7 +77,7 @@ export function OverviewQuickActionsSection() {
                   {t(labelKey)}
                 </span>
                 <ArrowRight
-                  className={cn("h-4 w-4 shrink-0 text-cyan-400/70", language === "en" && "rotate-180")}
+                  className="h-4 w-4 shrink-0 text-cyan-400/70"
                   aria-hidden
                 />
               </Link>

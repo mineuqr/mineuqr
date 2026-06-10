@@ -27,7 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Loader2, UserPlus } from "lucide-react";
-import { adminDash, adminActionBtn } from "@/components/admin/layout";
+import { ADMIN_WORKSPACE_DIR, adminDash, adminActionBtn } from "@/components/admin/layout";
 import { cn } from "@/lib/utils";
 import type { InternalStaffCategory } from "@shared/accountClassification";
 import type { SecurityAccountGovernance } from "./useSecurityAccountGovernance";
@@ -84,7 +84,7 @@ export function SecurityAccountControlsSection({ governance }: SecurityAccountCo
   return (
     <>
       <Dialog open={internalUserDialogOpen} onOpenChange={setInternalUserDialogOpen}>
-        <DialogContent className={adminDash.dialogContent}>
+        <DialogContent dir={ADMIN_WORKSPACE_DIR} className={adminDash.dialogContent}>
           <DialogHeader>
             <DialogTitle className="text-foreground">
               {language === "ar" ? "إنشاء حساب داخلي" : "Create internal user"}
@@ -170,7 +170,7 @@ export function SecurityAccountControlsSection({ governance }: SecurityAccountCo
       </Dialog>
 
       <AlertDialog open={deleteUserId !== null} onOpenChange={(open) => !open && setDeleteUserId(null)}>
-        <AlertDialogContent className="bg-card border-border">
+        <AlertDialogContent dir={ADMIN_WORKSPACE_DIR} className="bg-card border-border">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-foreground">تأكيد حذف المستخدم</AlertDialogTitle>
             <AlertDialogDescription className="text-muted-foreground">

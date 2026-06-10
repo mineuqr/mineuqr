@@ -4,6 +4,9 @@
  */
 import { cn } from "@/lib/utils";
 
+/** ADMIN-RTL-WORKSPACE — operator console LTR geometry (shell + portaled modals). */
+export const ADMIN_WORKSPACE_DIR = "ltr" as const;
+
 const pricingCardBase =
   "rounded-xl border border-cyan-500/30 bg-gradient-to-b from-slate-800/50 to-slate-900/50 shadow-none";
 

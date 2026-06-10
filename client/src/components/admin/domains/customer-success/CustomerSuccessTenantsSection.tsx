@@ -22,7 +22,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { Plus, Trash2, Edit, Loader2, Store, Search, Filter, X, UserPlus } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { adminActionBtn, adminDash } from "@/components/admin/layout";
+import { ADMIN_WORKSPACE_DIR, adminActionBtn, adminDash } from "@/components/admin/layout";
 import {
   AdminActionGroup,
   AdminEmptyState,
@@ -482,7 +482,7 @@ export function CustomerSuccessTenantsSection() {
 
       {/* Create Restaurant Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={(open) => { if (!open) { setShowCreateDialog(false); resetForm(); } }}>
-        <DialogContent className={adminDash.dialogContent}>
+        <DialogContent dir={ADMIN_WORKSPACE_DIR} className={adminDash.dialogContent}>
           <DialogHeader>
             <DialogTitle className="text-foreground">{t('admin.addRestaurant')}</DialogTitle>
             <DialogDescription className="text-muted-foreground">{t('admin.enterRestaurantData')}</DialogDescription>
@@ -675,7 +675,7 @@ export function CustomerSuccessTenantsSection() {
 
       {/* Delete Confirmation */}
       <AlertDialog open={deleteRestaurantId !== null} onOpenChange={() => setDeleteRestaurantId(null)}>
-        <AlertDialogContent className="bg-card border-border">
+        <AlertDialogContent dir={ADMIN_WORKSPACE_DIR} className="bg-card border-border">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-foreground">{t('admin.deleteRestaurant')}</AlertDialogTitle>
             <AlertDialogDescription className="text-muted-foreground">{t('admin.deleteConfirm')}</AlertDialogDescription>
