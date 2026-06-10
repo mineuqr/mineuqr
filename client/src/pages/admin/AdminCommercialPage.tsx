@@ -26,8 +26,9 @@ export default function AdminCommercialPage() {
   return (
     <AdminOperationsShell
       title={shell.title}
-      subtitle={shell.subtitle}
       breadcrumbs={shell.breadcrumbs}
+      compact
+      narrowContent
       headerActions={<ReportsExportActions />}
     >
       <ReportsCommercialBody betweenMetadataAndPlan={<CustomerSuccessCommercialSections />} />

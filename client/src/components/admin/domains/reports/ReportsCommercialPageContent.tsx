@@ -1,5 +1,6 @@
 import { AlertCircle } from "lucide-react";
 import type { ReactNode } from "react";
+import { adminDash } from "@/components/admin/layout/adminDashStyles";
 import { AdminEmptyState } from "@/components/admin/operations/AdminEmptyState";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { ReportsExecutiveSection } from "./ReportsExecutiveSection";
@@ -34,11 +35,11 @@ export function ReportsCommercialPageContent({
   }
 
   return (
-    <>
+    <div className={adminDash.opsWorkspace}>
       <ReportsExecutiveSection />
       <ReportsMetadataSection />
       {betweenMetadataAndPlan}
       <ReportsPlanDistributionSection />
-    </>
+    </div>
   );
 }

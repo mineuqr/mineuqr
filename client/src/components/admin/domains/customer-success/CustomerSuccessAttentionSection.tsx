@@ -11,6 +11,7 @@ export function CustomerSuccessAttentionSection() {
 
   return (
     <AdminSection
+      density="console"
       title={t("admin.commercial.attentionTitle")}
       description={t("admin.commercial.attentionDesc")}
     >

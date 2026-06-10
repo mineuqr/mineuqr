@@ -30,9 +30,10 @@ export function AdminSectionPlaceholder({ routeId }: AdminSectionPlaceholderProp
   return (
     <AdminOperationsShell
       title={shell.title}
-      subtitle={shell.subtitle}
       breadcrumbs={shell.breadcrumbs}
-      statusIndicator={<PlaceholderComingSoonIndicator />}
+      compact
+      narrowContent
+      headerActions={<PlaceholderComingSoonIndicator compact />}
     >
       <LaunchReadinessPlaceholderSection routeId={routeId} />
     </AdminOperationsShell>

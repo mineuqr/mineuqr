@@ -23,11 +23,11 @@ export const adminDash = {
   sectionTitle: "text-lg font-bold text-white sm:text-xl",
   sectionTitleCompact: "text-sm font-semibold text-white",
   sectionSub: "mt-1 text-xs text-cyan-300/80 sm:text-sm",
-  /** UX-REFINE-1C — overview console density */
-  overviewMain: "space-y-3 py-2 sm:py-3",
-  overviewWorkspace: "space-y-3",
+  /** UX-REFINE-1D — Operations-aligned console rhythm */
   opsShellMax: "mx-auto w-full max-w-5xl",
   opsWorkspace: "space-y-1.5",
+  /** Multi-section pages (commercial, analytics) — between ops and legacy dashboard */
+  consoleSections: "space-y-3",
   opsToolbar: "p-2 sm:p-2.5",
   opsTabList:
     "grid h-8 w-fit max-w-full grid-cols-3 self-start rounded-lg border border-cyan-500/30 bg-slate-800/50 p-0.5",

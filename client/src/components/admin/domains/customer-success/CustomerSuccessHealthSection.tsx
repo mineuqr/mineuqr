@@ -11,6 +11,7 @@ export function CustomerSuccessHealthSection() {
 
   return (
     <AdminSection
+      density="console"
       title={t("admin.commercial.healthTitle")}
       description={t("admin.commercial.healthDesc")}
     >

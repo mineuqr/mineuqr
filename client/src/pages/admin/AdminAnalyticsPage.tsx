@@ -22,8 +22,8 @@ export default function AdminAnalyticsPage() {
   return (
     <AdminOperationsShell
       title={shell.title}
-      subtitle={shell.subtitle}
       breadcrumbs={shell.breadcrumbs}
+      compact
     >
       <ReportsAnalyticsSection />
     </AdminOperationsShell>

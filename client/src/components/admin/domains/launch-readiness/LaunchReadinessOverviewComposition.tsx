@@ -16,7 +16,7 @@ export function LaunchReadinessOverviewComposition({
   kpiSlot,
 }: LaunchReadinessOverviewCompositionProps) {
   return (
-    <div className={adminDash.overviewWorkspace}>
+    <div className={adminDash.opsWorkspace}>
       {kpiSlot}
       <OverviewFeaturedShortcutsSection />
       <OverviewAllSectionsSection />

@@ -68,7 +68,7 @@ export function StatisticsPanel({ showExport = true }: StatisticsPanelProps) {
   const arr = executive?.arr ?? 0;
 
   return (
-    <div className="space-y-8">
+    <div className={adminDash.consoleSections}>
       {showExport ? (
         <div className="flex justify-end">
           <CommercialExportButtons
@@ -78,14 +78,11 @@ export function StatisticsPanel({ showExport = true }: StatisticsPanelProps) {
         </div>
       ) : null}
 
-      <div className="space-y-4">
-        <div>
-          <h2 className={adminDash.sectionTitle}>{t("admin.platformOverview") || "Platform Overview"}</h2>
-          <p className={adminDash.sectionSub}>
-            {language === "ar" ? "مؤشرات النمو على مستوى المنصة" : "High-level platform growth metrics"}
-          </p>
-        </div>
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
+      <div className="space-y-2">
+        <h2 className={adminDash.sectionTitleCompact}>
+          {t("admin.platformOverview") || "Platform Overview"}
+        </h2>
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-5">
           <Card className={adminDash.kpiCard}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">{t("admin.totalRestaurants") || "Total Restaurants"}</CardTitle>
@@ -134,14 +131,11 @@ export function StatisticsPanel({ showExport = true }: StatisticsPanelProps) {
         </div>
       </div>
 
-      <div className="space-y-4">
-        <div>
-          <h2 className={adminDash.sectionTitle}>{t("admin.totalSubscribers") || "Subscriptions"}</h2>
-          <p className={adminDash.sectionSub}>
-            {language === "ar" ? "أداء الاشتراكات والإيرادات (حسب المالك)" : "Owner-based subscription performance"}
-          </p>
-        </div>
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+      <div className="space-y-2">
+        <h2 className={adminDash.sectionTitleCompact}>
+          {t("admin.totalSubscribers") || "Subscriptions"}
+        </h2>
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
           <Card className={adminDash.kpiCard}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">{t("admin.totalSubscribers") || "Entitled Owners"}</CardTitle>
@@ -197,10 +191,10 @@ export function StatisticsPanel({ showExport = true }: StatisticsPanelProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-6">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <Card className={adminDash.card}>
           <CardHeader>
-            <CardTitle>{t("admin.revenueByMonth") || "Revenue by Month"}</CardTitle>
+            <CardTitle className="text-sm">{t("admin.revenueByMonth") || "Revenue by Month"}</CardTitle>
             <p className="text-xs text-muted-foreground">
               {language === "ar"
                 ? "غير متوفر — لا اتجاه إيرادات معتمد"
@@ -218,7 +212,7 @@ export function StatisticsPanel({ showExport = true }: StatisticsPanelProps) {
 
         <Card className={adminDash.card}>
           <CardHeader>
-            <CardTitle>{t("admin.userGrowth") || "User & Restaurant Growth"}</CardTitle>
+            <CardTitle className="text-sm">{t("admin.userGrowth") || "User & Restaurant Growth"}</CardTitle>
           </CardHeader>
           <CardContent>
             {userGrowthData.length > 0 ? (
@@ -242,10 +236,10 @@ export function StatisticsPanel({ showExport = true }: StatisticsPanelProps) {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-6">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <Card className={adminDash.card}>
           <CardHeader>
-            <CardTitle>{t("admin.subscriptionsByPlan") || "Owners by Plan"}</CardTitle>
+            <CardTitle className="text-sm">{t("admin.subscriptionsByPlan") || "Owners by Plan"}</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -272,7 +266,7 @@ export function StatisticsPanel({ showExport = true }: StatisticsPanelProps) {
 
         <Card className={adminDash.card}>
           <CardHeader>
-            <CardTitle>{t("admin.subscriptionStatus") || "Subscription Status"}</CardTitle>
+            <CardTitle className="text-sm">{t("admin.subscriptionStatus") || "Subscription Status"}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-4">

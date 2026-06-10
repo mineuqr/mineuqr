@@ -8,7 +8,7 @@ export function ReportsMetadataSection() {
   const { data: snapshot, isLoading } = query;
 
   return (
-    <AdminSection title={metadataLabels.title}>
+    <AdminSection density="console" title={metadataLabels.title}>
       <CommercialOverviewMetadataPanel
         metadata={snapshot?.metadata}
         loading={isLoading}

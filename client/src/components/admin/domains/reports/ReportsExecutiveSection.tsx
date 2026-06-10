@@ -10,7 +10,7 @@ export function ReportsExecutiveSection() {
   const { data: snapshot, isLoading } = query;
 
   return (
-    <AdminSection title={t("admin.commercial.executiveTitle")}>
+    <AdminSection density="console" title={t("admin.commercial.executiveTitle")}>
       <CommercialOverviewExecutiveKpis
         executive={snapshot?.executive}
         loading={isLoading}

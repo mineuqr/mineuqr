@@ -11,6 +11,7 @@ export function ReportsPlanDistributionSection() {
 
   return (
     <AdminSection
+      density="console"
       title={t("admin.commercial.planDistributionTitle")}
       description={t("admin.commercial.planDistributionDesc")}
     >
