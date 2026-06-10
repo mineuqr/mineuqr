@@ -2,9 +2,9 @@ import { useAuthGate } from "@/_core/hooks/useAuthGate";
 import { AdminAccessDenied, AuthGatePending } from "@/components/AuthGate";
 import { AdminOperationsShell } from "@/components/admin/layout/AdminOperationsShell";
 import {
-  AdminRoutePlaceholderSection,
+  LaunchReadinessPlaceholderSection,
   PlaceholderComingSoonIndicator,
-} from "@/components/admin/sections";
+} from "@/components/admin/domains/launch-readiness";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { resolveAdminPageShell } from "@/lib/admin/routes/adminRouteRegistry";
 import type { AdminRouteId } from "@/lib/admin/routes/adminRouteTypes";
@@ -34,7 +34,7 @@ export function AdminSectionPlaceholder({ routeId }: AdminSectionPlaceholderProp
       breadcrumbs={shell.breadcrumbs}
       statusIndicator={<PlaceholderComingSoonIndicator />}
     >
-      <AdminRoutePlaceholderSection routeId={routeId} />
+      <LaunchReadinessPlaceholderSection routeId={routeId} />
     </AdminOperationsShell>
   );
 }

@@ -1,16 +1,9 @@
+import { LaunchReadinessOverviewComposition } from "@/components/admin/domains/launch-readiness";
 import { ReportsHomeKpiSection } from "@/components/admin/domains/reports";
-import { OverviewAllSectionsSection } from "./OverviewAllSectionsSection";
-import { OverviewFeaturedShortcutsSection } from "./OverviewFeaturedShortcutsSection";
-import { OverviewWelcomeSection } from "./OverviewWelcomeSection";
 
-/** Overview page body — composes all dashboard home sections. */
+/** Overview page body — Launch Readiness composition host with Reports KPI evidence slot. */
 export function OverviewDashboardSections() {
   return (
-    <>
-      <OverviewWelcomeSection />
-      <ReportsHomeKpiSection />
-      <OverviewFeaturedShortcutsSection />
-      <OverviewAllSectionsSection />
-    </>
+    <LaunchReadinessOverviewComposition kpiSlot={<ReportsHomeKpiSection />} />
   );
 }
