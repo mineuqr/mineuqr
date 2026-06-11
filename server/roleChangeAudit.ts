@@ -62,7 +62,7 @@ export function logUserRoleChanged(params: {
 const PROTECTED_ROLE_MESSAGE = "لا يمكن تعديل دور هذا المستخدم المحمي";
 
 /**
- * Shared admin role update — used by admin.updateUserRole and profile.updateUserRole.
+ * Shared admin role update — used by admin.updateUserRole.
  * Emits user_role_changed only when role actually changes and update succeeds.
  */
 export async function applyAdminUserRoleUpdate(params: {

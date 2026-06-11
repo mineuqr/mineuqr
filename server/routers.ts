@@ -60,7 +60,6 @@ import {
   logAccountClassificationChanged,
   logInternalUserCreated,
 } from "./accountClassificationAudit";
-import { logDeprecatedApiUsed } from "./deprecatedApiAudit";
 import { applyAdminUserRoleUpdate } from "./roleChangeAudit";
 import { applyAdminPasswordReset } from "./passwordResetAudit";
 import {
@@ -1386,68 +1385,6 @@ const profileRouter = router({
       }
       const newHash = await bcrypt.hash(input.newPassword, 12);
       await updateUserPassword(ctx.user.openId, newHash);
-      return { success: true };
-    }),
-
-  // ─── Users Management (deprecated — PR-9) ───────────────────────
-  /**
-   * @deprecated ADMIN-SECURITY-CENTER PR-9 — use `admin.listAllUsers`.
-   * Replaced by Security Center / admin namespace governance APIs.
-   */
-  listAllUsers: protectedProcedure
-    .query(async ({ ctx }) => {
-      assertAdminAccess(ctx, "profile.listAllUsers");
-      logDeprecatedApiUsed(ctx, "profile.listAllUsers");
-      const users = await getAllUsers();
-      return users.map(sanitizeUserForAdminResponse);
-    }),
-
-  /**
-   * @deprecated ADMIN-SECURITY-CENTER PR-9 — use `admin.updateUserRole`.
-   * Replaced by Security Center governance APIs.
-   */
-  updateUserRole: protectedProcedure
-    .input(z.object({
-      userId: z.number(),
-      role: z.enum(["admin", "user"]),
-    }))
-    .mutation(async ({ input, ctx }) => {
-      assertAdminAccess(ctx, "profile.updateUserRole");
-      logDeprecatedApiUsed(ctx, "profile.updateUserRole");
-      return applyAdminUserRoleUpdate({
-        ctx,
-        procedure: "profile.updateUserRole",
-        userId: input.userId,
-        role: input.role,
-      });
-    }),
-
-  /**
-   * @deprecated ADMIN-SECURITY-CENTER PR-9 — use `admin.deleteUser`.
-   * Replaced by Security Center governance APIs.
-   */
-  deleteUser: protectedProcedure
-    .input(z.object({
-      userId: z.number(),
-    }))
-    .mutation(async ({ input, ctx }) => {
-      assertAdminAccess(ctx, "profile.deleteUser");
-      logDeprecatedApiUsed(ctx, "profile.deleteUser");
-      assertNotSelfAdminTarget(ctx, input.userId, "delete_user");
-      try {
-        await deleteUserCascade(
-          input.userId,
-          cascadeAuditFromTrpc(ctx, "profile.deleteUser", "delete_user")
-        );
-      } catch (error) {
-        if (error instanceof ProtectedUserDeleteError) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "لا يمكن حذف هذا المستخدم المحمي",
-          });
-        }
-        throw error;
-      }
       return { success: true };
     }),
 });

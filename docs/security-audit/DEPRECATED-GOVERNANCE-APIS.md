@@ -1,186 +1,127 @@
 # DEPRECATED-GOVERNANCE-APIS — Security Center API Deprecation Inventory
 
 **Program:** ADMIN-SECURITY-CENTER  
-**PR:** PR-9 (read-only deprecation phase)  
-**Date:** 2026-06-11  
-**Status:** Active — deprecation markers + `deprecated_api_used` observability  
+**Removal PR:** PR-10 (2026-06-11)  
+**Deprecation PR:** PR-9 (2026-06-11)  
+**Status:** **REMOVED** — duplicate `profile.*` governance procedures deleted; canonical `admin.*` only  
 
-**Scope:** Governance APIs made redundant by Security Center and canonical `admin.*` namespace.  
-**Not in scope:** PR-10 removals, DB migration governance, unrelated EXEC-6 / AUTHORITY-CLEANUP deprecations.
+**Scope:** Governance APIs made redundant by Security Center.  
+**Out of scope:** DB migration governance (DB-MIGRATION-GOVERNANCE-1), unrelated EXEC-6 / AUTHORITY-CLEANUP deprecations.
 
 ---
 
 ## Executive summary
 
-| Category | Count | PR-9 action |
+| Category | Count | Final state |
 |----------|------:|-------------|
-| Security Center removal candidates (`profile.*` governance) | 3 | `@deprecated` + `deprecated_api_used` |
+| Security Center removal candidates (`profile.*` governance) | 3 | **Removed** (PR-10) |
 | Legacy audit read APIs | 0 | N/A — net-new in PR-6 |
-| Superseded by Security Center read APIs (historical) | 0 tRPC | opsLog-only visibility pre-PR-5 |
-| Related deprecations (other programs) | 5+ | Documented; no PR-9 emitter |
+| PR-9 deprecation infrastructure | 3 files | **Removed** (`deprecatedApiAudit.ts`, tests) |
+| Canonical `admin.*` governance | Active | Unchanged |
 
 ---
 
-## PR-9 removal candidates (Security Center Phase D)
+## Removed procedures (PR-10)
 
-### `profile.listAllUsers`
+### `profile.listAllUsers` — REMOVED
 
 | Field | Value |
 |-------|-------|
-| **Router** | `profileRouter` (`server/routers.ts`) |
+| **Router** | ~~`profileRouter`~~ |
 | **Procedure** | `profile.listAllUsers` |
 | **Purpose** | Admin list of all platform users (duplicate of `admin.listAllUsers`) |
-| **Current callers** | **None** in `client/`; no server tests invoke tRPC path |
 | **Replacement API** | `admin.listAllUsers` |
-| **Deprecation Status** | **Deprecated** (PR-9) — emits `deprecated_api_used` |
-| **Removal Candidate** | **Yes** (PR-10) |
+| **Deprecation Status** | Deprecated PR-9 → **Removed PR-10** |
+| **Removal Candidate** | **Removed** |
 
-### `profile.updateUserRole`
+### `profile.updateUserRole` — REMOVED
 
 | Field | Value |
 |-------|-------|
-| **Router** | `profileRouter` (`server/routers.ts`) |
+| **Router** | ~~`profileRouter`~~ |
 | **Procedure** | `profile.updateUserRole` |
 | **Purpose** | Admin role mutation (duplicate escalation path) |
-| **Current callers** | **None** in `client/`; Security Center uses `admin.updateUserRole` via `useSecurityAccountGovernance.ts` |
 | **Replacement API** | `admin.updateUserRole` |
-| **Deprecation Status** | **Deprecated** (PR-9) — emits `deprecated_api_used` |
-| **Removal Candidate** | **Yes** (PR-10) |
+| **Deprecation Status** | Deprecated PR-9 → **Removed PR-10** |
+| **Removal Candidate** | **Removed** |
 
-### `profile.deleteUser`
+### `profile.deleteUser` — REMOVED
 
 | Field | Value |
 |-------|-------|
-| **Router** | `profileRouter` (`server/routers.ts`) |
+| **Router** | ~~`profileRouter`~~ |
 | **Procedure** | `profile.deleteUser` |
 | **Purpose** | Admin user cascade delete (duplicate path) |
-| **Current callers** | **None** in `client/`; Security Center uses `admin.deleteUser` |
 | **Replacement API** | `admin.deleteUser` |
-| **Deprecation Status** | **Deprecated** (PR-9) — emits `deprecated_api_used` |
-| **Removal Candidate** | **Yes** (PR-10) |
+| **Deprecation Status** | Deprecated PR-9 → **Removed PR-10** |
+| **Removal Candidate** | **Removed** |
 
 ---
 
-## Security Center canonical read APIs (replacements — not deprecated)
+## Security Center canonical APIs (active)
 
-These are the **target** APIs for audit visibility. No prior tRPC read layer existed.
-
-| Procedure | Router | Purpose | Client consumers |
-|-----------|--------|---------|------------------|
-| `admin.listAuditEvents` | `adminAuditRouter` | Paginated audit timeline + filtered governance views | `useAuditEventList`, Timeline / Role / Subscription sections |
-| `admin.getAuditEvent` | `adminAuditRouter` | Single event detail drawer | `AuditEventDetailDrawer` |
-| `admin.getAuditEventStats` | `adminAuditRouter` | Overview KPIs (7-day default) | `useSecurityCenterQueries` → `SecurityOverviewSection` |
-| `admin.getSecurityHealth` | `adminAuditRouter` | Platform protection + audit persistence posture | Health, Warnings, Protected Accounts, banner |
-
-**Historical note:** Pre-PR-5/PR-6, governance visibility relied on `opsLog` transport only. There were **no** legacy tRPC audit read procedures to deprecate.
-
----
-
-## Canonical `admin.*` governance mutations (active — not deprecated)
-
-| Procedure | Purpose | Client consumers | Security Center relation |
-|-----------|---------|------------------|--------------------------|
-| `admin.listAllUsers` | User list with optional classification filter | Registry metadata only; unwired in UI | Accounts governance metadata |
-| `admin.updateUserRole` | Role mutation + `user_role_changed` audit | `useSecurityAccountGovernance.ts` | Protected Accounts controls |
-| `admin.deleteUser` | User cascade delete | `useSecurityAccountGovernance.ts` | Protected Accounts controls |
-| `admin.updateAccountClassification` | Classification mutation | `useSecurityAccountGovernance.ts` | Protected Accounts controls |
-| `admin.createInternalUser` | Internal staff provisioning | `useSecurityAccountGovernance.ts` | Protected Accounts controls |
-| `admin.createUserSubscriptionByAdmin` | Subscription create | `CustomerSuccessAccountsSection` | Subscription Changes filter in Security Center |
-| `admin.updateUserSubscriptionByAdmin` | Subscription update | `CustomerSuccessAccountsSection` | Subscription Changes filter |
-| `admin.deleteUserSubscriptionByAdmin` | Subscription delete | `CustomerSuccessAccountsSection` | Subscription Changes filter |
-
-These remain canonical. Security Center **reads** their audit trail via `admin.listAuditEvents`; it does not replace mutation endpoints.
+| Procedure | Purpose |
+|-----------|---------|
+| `admin.listAuditEvents` | Paginated audit timeline + filtered governance views |
+| `admin.getAuditEvent` | Single event detail |
+| `admin.getAuditEventStats` | Overview KPIs |
+| `admin.getSecurityHealth` | Platform protection + audit persistence posture |
+| `admin.listAllUsers` | User list (canonical governance) |
+| `admin.updateUserRole` | Role mutation + `user_role_changed` audit |
+| `admin.deleteUser` | User cascade delete |
 
 ---
 
-## Legacy / removed governance APIs (reference)
+## PR-10 consumer verification (2026-06-11)
 
-| Procedure | Status | Notes |
-|-----------|--------|-------|
-| `admin.listAllUsersWithSubscriptions` | **Removed** (EXEC-6) | Replaced by `admin.getOwnerOverviewList` |
-| `admin.createRestaurantSubscription` | **Retired at runtime** | AUTHORITY-CLEANUP-1; throws retired guard |
-| `admin.updateRestaurantSubscription` | **Retired at runtime** | Same |
-| `admin.cancelRestaurantSubscription` | **Retired at runtime** | Same |
-| `admin.getStatistics` | **@deprecated EXEC-6** | Statistics dual-read only; not PR-9 |
-| `admin.getRevenueByMonth` | **@deprecated EXEC-6** | Statistics dual-read only; not PR-9 |
+Post-removal repository search for `profile.listAllUsers`, `profile.updateUserRole`, `profile.deleteUser`:
 
----
+| Area | References | Notes |
+|------|------------|-------|
+| `client/` | **0** | No tRPC consumers (unchanged from PR-9 audit) |
+| `server/` (runtime code) | **0** | Procedures and `deprecatedApiAudit` removed |
+| `server/` (tests) | **0** | `roleChangeAudit.test.ts` updated to `admin.updateUserRole` only |
+| `docs/security-audit/` | Historical mentions only | This document + implementation plan archive context |
 
-## Consumer verification (2026-06-11)
-
-### Active consumers (`admin.*` — keep)
-
-| Consumer | Procedures |
-|----------|------------|
-| `client/src/components/admin/domains/security/useSecurityAccountGovernance.ts` | `admin.updateUserRole`, `admin.updateAccountClassification`, `admin.createInternalUser`, `admin.deleteUser` |
-| `client/src/components/admin/domains/security/useSecurityCenterQueries.ts` | `admin.getSecurityHealth`, `admin.getAuditEventStats` |
-| `client/src/components/admin/domains/security/useAuditEventList.ts` | `admin.listAuditEvents` |
-| `client/src/components/admin/domains/security/AuditEventDetailDrawer.tsx` | `admin.getAuditEvent` |
-| `client/src/components/admin/domains/customer-success/CustomerSuccessAccountsSection.tsx` | Subscription admin mutations |
-
-### Dead consumers (`profile.*` governance — removal safe after PR-10 gate)
-
-| Procedure | `client/` refs | `server/` tRPC refs | External refs |
-|-----------|---------------|---------------------|---------------|
-| `profile.listAllUsers` | 0 | 0 (handler only) | Unknown — monitor `deprecated_api_used` |
-| `profile.updateUserRole` | 0 | 0 (handler + shared helper string in tests) | Unknown |
-| `profile.deleteUser` | 0 | 0 (handler only) | Unknown |
-
-### Active non-governance `profile.*` (unchanged by PR-9)
-
-| Procedure | Consumer |
-|-----------|----------|
-| `profile.get` | `Profile.tsx` |
-| `profile.update` | `Profile.tsx` |
-| `profile.changePassword` | `Profile.tsx` |
+**Historical docs** (`docs/commercial-audit/*`, design/audit snapshots) may still mention removed procedures for audit provenance — not live API surface.
 
 ---
 
-## `deprecated_api_used` event contract
+## Removed PR-9 infrastructure (PR-10)
 
-| Field | Value |
-|-------|-------|
-| **Event type** | `deprecated_api_used` |
-| **Category** | `SECURITY` |
-| **Severity** | `info` |
-| **Metadata** | `{ "api": "<procedure name>" }` |
-| **Transport** | Dual-write: `opsLog` + `audit_events` (via `emitAuditEvent`) |
-| **Failure mode** | Never throws; persistence failure logged as `audit_persist_failed` |
+| File | Action |
+|------|--------|
+| `server/deprecatedApiAudit.ts` | Deleted |
+| `server/deprecatedApiAudit.test.ts` | Deleted |
+| `server/deprecatedProfileApi.test.ts` | Deleted |
+| `OPS_EVENT.deprecated_api_used` | Removed from `opsTaxonomy.ts` (no emitters remain) |
 
-**Implementation:** `server/deprecatedApiAudit.ts` → `logDeprecatedApiUsed()`  
-**Wired in:** `profile.listAllUsers`, `profile.updateUserRole`, `profile.deleteUser` handlers only.
+**Retained:** `emitAuditEvent()`, audit repository, Security Center read APIs, all `admin.*` governance mutations.
 
 ---
 
-## PR-10 removal scope recommendation
+## Remaining `profile.*` procedures
 
-**Remove in PR-10 (after ≥30 days zero `deprecated_api_used` in production):**
+End-user profile only — not governance:
 
-1. `profile.listAllUsers` handler
-2. `profile.updateUserRole` handler
-3. `profile.deleteUser` handler
+| Procedure | Purpose | Consumer |
+|-----------|---------|----------|
+| `profile.get` | Current user profile | `Profile.tsx` |
+| `profile.update` | Update name/email | `Profile.tsx` |
+| `profile.changePassword` | Password change | `Profile.tsx` |
 
-**Keep unchanged:**
+---
 
-- All `admin.*` governance and Security Center read APIs
-- `profile.get`, `profile.update`, `profile.changePassword`
-- `applyAdminUserRoleUpdate` shared helper (admin path only after PR-10)
-- `roleChangeAudit.test.ts` scenarios using `profile.updateUserRole` procedure string → update to `admin.updateUserRole` in PR-10
+## Program closure
 
-**PR-10 gate query (production):**
+ADMIN-SECURITY-CENTER Phase D (API consolidation) is **complete**.
 
-```sql
-SELECT COUNT(*) FROM audit_events
-WHERE eventType = 'deprecated_api_used'
-  AND occurredAt >= NOW() - INTERVAL 30 DAY;
-```
-
-Must return `0` before hard removal.
+**Next roadmap phase:** CUSTOMER-UX-1
 
 ---
 
 ## Related documents
 
-- `ADMIN-SECURITY-CENTER-IMPLEMENTATION-PLAN.md` — Phase D rollout
+- `ADMIN-SECURITY-CENTER-IMPLEMENTATION-PLAN.md` — program status
 - `ADMIN-SECURITY-CENTER-DESIGN.md` — §6 API consolidation
-- `ADMIN-SECURITY-CENTER-AUDIT.md` — duplicate path finding R4
+- `ADMIN-SECURITY-CENTER-AUDIT.md` — duplicate path finding R4 (resolved)

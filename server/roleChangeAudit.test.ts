@@ -146,14 +146,14 @@ describe("roleChangeAudit PR-2", () => {
 
       await applyAdminUserRoleUpdate({
         ctx: adminContext as any,
-        procedure: "profile.updateUserRole",
+        procedure: "admin.updateUserRole",
         userId: otherUser.id,
         role: "user",
       });
 
       expect(updateUserRole).toHaveBeenCalledWith(otherUser.id, "user");
       expectRoleChangedEvent({
-        procedure: "profile.updateUserRole",
+        procedure: "admin.updateUserRole",
         targetUserId: otherUser.id,
         targetUserEmail: otherUser.email,
         previousRole: "admin",

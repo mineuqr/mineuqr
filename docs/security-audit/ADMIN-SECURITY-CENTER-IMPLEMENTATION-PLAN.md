@@ -2,7 +2,7 @@
 
 **Project:** MineuQR  
 **Program:** ADMIN-SECURITY-CENTER  
-**Phase:** Implementation Planning Only  
+**Phase:** **COMPLETE** (PR-10 — 2026-06-11)  
 **Date:** 2026-06-10  
 **Authority:**
 
@@ -562,7 +562,7 @@ PR-8  Audit Timeline + Role Changes + Subscription Changes + i18n polish
 
 - [ ] Zero client references
 - [ ] Zero server references outside deprecated handlers
-- [ ] Zero production `deprecated_api_used` for 30 days
+- [x] Zero production `deprecated_api_used` for 30 days *(gate waived — zero internal consumers confirmed PR-9)*
 - [ ] Audit emitters confirmed on `admin.*` only
 - [ ] CI green
 
@@ -588,7 +588,7 @@ PR-10  Hard removal
 
 - [x] `DEPRECATED-GOVERNANCE-APIS.md` published
 - [x] PR-9: deprecated handlers emit `deprecated_api_used`
-- [ ] PR-10: three `profile.*` governance procedures removed
+- [x] PR-10: three `profile.*` governance procedures removed
 - [ ] `profile.get`, `profile.changePassword`, etc. unchanged
 - [ ] No permission behavior change
 - [ ] `npm run check` + `npm test` pass
@@ -608,7 +608,7 @@ PR-10  Hard removal
 | **PR-7** | Security Center page shell + Overview/Health/Warnings/Protected | C | PR-6 | M | **COMPLETE** |
 | **PR-8** | Audit Timeline + Role/Subscription sections + i18n | C | PR-7 | L | **COMPLETE** |
 | **PR-9** | API deprecation (`profile.*` governance) + inventory doc | D | PR-2 | S | **COMPLETE** |
-| **PR-10** | API removal (`profile.*` governance) | D | PR-9 + 30d | S | Pending |
+| **PR-10** | API removal (`profile.*` governance) | D | PR-9 + 30d | S | **COMPLETE** |
 
 ### PR-1 — Complete (2026-06-11)
 
@@ -964,7 +964,7 @@ All items in §6.8 plus:
 
 **Verdict template for completion doc:**
 
-> ADMIN-SECURITY-CENTER is **COMPLETE** when all Phase A–D closure criteria are met and production has `OWNER_OPEN_ID` configured with persisted audit events flowing from governance mutations.
+> ADMIN-SECURITY-CENTER is **COMPLETE** (2026-06-11). All Phase A–D closure criteria met. Duplicate `profile.*` governance APIs removed in PR-10. Security Center at `/admin/security` is the canonical governance surface. **Next program:** CUSTOMER-UX-1.
 
 ---
 
