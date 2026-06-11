@@ -595,23 +595,47 @@ PR-10  Hard removal
 
 ## 7. PR Breakdown
 
-| PR | Title | Phase | Depends on | Est. size |
-|----|-------|-------|------------|-----------|
-| **PR-1** | OWNER_OPEN_ID fail-safe + platform protection health events | A | — | S |
-| **PR-2** | Role change audit + protected-user deny events | A | PR-1 | S |
-| **PR-3** | Subscription create/update audit emitters | A | PR-1 | M |
-| **PR-4** | Admin password reset audit + subscription delete snapshot | A | PR-3 | S |
-| **PR-5** | `audit_events` migration + dual-write emitter + emitter refactor | B | PR-2, PR-3, PR-4 | L |
-| **PR-6** | Audit read APIs + `getSecurityHealth` | B | PR-5 | M |
-| **PR-7** | Security Center page shell + Overview/Health/Warnings/Protected | C | PR-6 | M |
-| **PR-8** | Audit Timeline + Role/Subscription sections + i18n | C | PR-7 | L |
-| **PR-9** | API deprecation (`profile.*` governance) + inventory doc | D | PR-2 | S |
-| **PR-10** | API removal (`profile.*` governance) | D | PR-9 + 30d | S |
+| PR | Title | Phase | Depends on | Est. size | Status |
+|----|-------|-------|------------|-----------|--------|
+| **PR-1** | OWNER_OPEN_ID fail-safe + platform protection health events | A | — | S | **COMPLETE** |
+| **PR-2** | Role change audit + protected-user deny events | A | PR-1 | S | Pending |
+| **PR-3** | Subscription create/update audit emitters | A | PR-1 | M | Pending |
+| **PR-4** | Admin password reset audit + subscription delete snapshot | A | PR-3 | S | Pending |
+| **PR-5** | `audit_events` migration + dual-write emitter + emitter refactor | B | PR-2, PR-3, PR-4 | L | Pending |
+| **PR-6** | Audit read APIs + `getSecurityHealth` route | B | PR-5 | M | Pending |
+| **PR-7** | Security Center page shell + Overview/Health/Warnings/Protected | C | PR-6 | M | Pending |
+| **PR-8** | Audit Timeline + Role/Subscription sections + i18n | C | PR-7 | L | Pending |
+| **PR-9** | API deprecation (`profile.*` governance) + inventory doc | D | PR-2 | S | Pending |
+| **PR-10** | API removal (`profile.*` governance) | D | PR-9 + 30d | S | Pending |
+
+### PR-1 — Complete (2026-06-11)
+
+**Scope delivered:** OWNER_OPEN_ID fail-safe only.
+
+| Item | Detail |
+|------|--------|
+| **Files changed** | `server/platformProtectionHealth.ts` (new), `server/platformProtectionHealth.test.ts` (new), `server/_core/createApiApp.ts`, `server/_core/opsTaxonomy.ts`, `server/_core/opsLog.ts` |
+| **Behavior — production** | `validatePlatformProtectionAtStartup()` throws `PlatformProtectionStartupError` when `OWNER_OPEN_ID` missing/invalid; emits `platform_protection_misconfigured` |
+| **Behavior — development** | Startup continues; stderr banner + `platform_protection_degraded` opsLog event |
+| **Health probe** | `schedulePlatformProtectionHealthProbe()` after startup; emits `platform_protection_healthy` or `platform_protection_misconfigured` |
+| **Foundation** | `getSecurityHealth()` async function (no tRPC route — PR-6) |
+| **Events added** | `platform_protection_healthy`, `platform_protection_degraded`, `platform_protection_misconfigured` (category `SECURITY`) |
+| **Protected account guards** | Unchanged — `platformAccount.ts`, `cascadeDeletes.ts` not modified |
+| **Tests** | 5 new + existing `admin-auth-1d`, `admin-auth-1e`, `cascadeDeletes`, `platformAccount` — all pass |
+| **Validation** | `npm run check` PASS; `npm test` 644 passed |
+
+**Deployment requirements:**
+
+- **Production:** `OWNER_OPEN_ID` must be set to the platform owner's `users.openId` before deploy or the server will not start.
+- **Development:** Optional; missing value logs degraded warning but allows local runs.
+- **Health probe:** Orphan openId (user not yet in DB) emits `platform_protection_misconfigured` at warn/error but does not block startup when `OWNER_OPEN_ID` is syntactically valid.
+
+**Next:** PR-2 (role change audit).
 
 ### PR dependency graph
 
 ```
-PR-1 ──┬── PR-2 ──┬── PR-5 ── PR-6 ── PR-7 ── PR-8
+PR-1 ✓ ──┬── PR-2 ──┬── PR-5 ── PR-6 ── PR-7 ── PR-8
        │          │
        ├── PR-3 ──┤
        │    └── PR-4

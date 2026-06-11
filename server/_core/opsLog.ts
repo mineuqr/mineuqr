@@ -2,6 +2,7 @@ export type OpsCategory =
   | "AUTH"
   | "TENANT"
   | "ADMIN"
+  | "SECURITY"
   | "RUNTIME"
   | "SYSTEM"
   | "PAYMENT"

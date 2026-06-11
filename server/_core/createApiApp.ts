@@ -7,6 +7,10 @@ import { handleTapWebhook } from "../tap-webhook";
 import { localAuthRouter } from "../auth-local";
 import { validateAuthSecurityConfig, shouldTrustProxy } from "./authSecurity";
 import { validateDeploymentAuthReadiness } from "./deploymentReadiness";
+import {
+  schedulePlatformProtectionHealthProbe,
+  validatePlatformProtectionAtStartup,
+} from "../platformProtectionHealth";
 import { correlationMiddleware } from "./requestContext";
 import { deploymentGuardsMiddleware } from "./deploymentGuards";
 import {
@@ -19,6 +23,8 @@ import {
 export async function createApiApp(): Promise<Express> {
   validateAuthSecurityConfig();
   validateDeploymentAuthReadiness();
+  validatePlatformProtectionAtStartup();
+  schedulePlatformProtectionHealthProbe();
 
   const app = express();
 

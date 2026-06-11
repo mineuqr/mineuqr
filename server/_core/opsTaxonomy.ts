@@ -86,6 +86,11 @@ export const OPS_EVENT = {
   cascade_restaurant_deleted: "cascade_restaurant_deleted",
   cascade_user_deleted: "cascade_user_deleted",
 
+  // SECURITY — platform protection (ADMIN-SECURITY-CENTER PR-1)
+  platform_protection_healthy: "platform_protection_healthy",
+  platform_protection_degraded: "platform_protection_degraded",
+  platform_protection_misconfigured: "platform_protection_misconfigured",
+
   // RUNTIME diagnostics
   trpc_error: "trpc_error",
   trpc_runtime_failure: "trpc_runtime_failure",
