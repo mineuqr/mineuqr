@@ -12,8 +12,12 @@ const txMocks = vi.hoisted(() => {
   };
 });
 
+const { opsLogMock } = vi.hoisted(() => ({
+  opsLogMock: vi.fn(),
+}));
+
 vi.mock("../_core/opsLog", () => ({
-  opsLog: vi.fn(),
+  opsLog: (...args: unknown[]) => opsLogMock(...args),
 }));
 
 const { PLATFORM_OPEN_ID } = vi.hoisted(() => ({
@@ -31,6 +35,7 @@ vi.mock("../db", () => ({
   getUserById: vi.fn(),
 }));
 
+import { OPS_EVENT } from "../_core/opsTaxonomy";
 import {
   assertProtectedUserClassificationModifiable,
   assertProtectedUserPasswordResetAllowed,
@@ -98,5 +103,52 @@ describe("cascadeDeletes", () => {
     expect(getDb).toHaveBeenCalled();
     expect(txMocks.transaction).toHaveBeenCalledTimes(1);
     expect(txMocks.delete).toHaveBeenCalled();
+  });
+
+  it("deleteSubscriptionCascade includes before snapshot on completed event", async () => {
+    await deleteSubscriptionCascade(101, {
+      procedure: "admin.deleteUserSubscriptionByAdmin",
+      subscriptionBefore: {
+        plan: 30002,
+        status: "active",
+        expiration: "2026-07-01T00:00:00.000Z",
+      },
+    });
+
+    expect(opsLogMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: OPS_EVENT.cascade_subscription_deleted,
+        metadata: expect.objectContaining({
+          phase: "completed",
+          subscriptionId: 101,
+          before: {
+            plan: 30002,
+            status: "active",
+            expiration: "2026-07-01T00:00:00.000Z",
+          },
+        }),
+      })
+    );
+  });
+
+  it("deleteSubscriptionCascade does not emit completed event when transaction fails", async () => {
+    txMocks.transaction.mockRejectedValueOnce(new Error("tx failed"));
+
+    await expect(
+      deleteSubscriptionCascade(101, {
+        subscriptionBefore: {
+          plan: 30002,
+          status: "active",
+          expiration: "2026-07-01T00:00:00.000Z",
+        },
+      })
+    ).rejects.toThrow("tx failed");
+
+    const completedEvents = opsLogMock.mock.calls.filter(
+      ([entry]) =>
+        entry?.type === OPS_EVENT.cascade_subscription_deleted &&
+        entry?.metadata?.phase === "completed"
+    );
+    expect(completedEvents).toHaveLength(0);
   });
 });

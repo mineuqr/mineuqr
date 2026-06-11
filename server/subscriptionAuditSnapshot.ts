@@ -13,6 +13,23 @@ export type SubscriptionAuditSnapshot = {
   expiration: string;
 };
 
+/** Subscription Snapshot Format v1 — change/delete metadata subset (plan, status, expiration). */
+export type SubscriptionAuditChangeFields = {
+  plan: number;
+  status: SubscriptionAuditStatus;
+  expiration: string;
+};
+
+export function subscriptionAuditSnapshotToChangeFields(
+  snapshot: SubscriptionAuditSnapshot
+): SubscriptionAuditChangeFields {
+  return {
+    plan: snapshot.plan,
+    status: snapshot.status,
+    expiration: snapshot.expiration,
+  };
+}
+
 export type SubscriptionAuditSnapshotSource = {
   planId: number;
   status: SubscriptionAuditStatus;

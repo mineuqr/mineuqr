@@ -18,14 +18,17 @@ import {
   createSubscriptionForRestaurant,
   updateSubscriptionById,
 } from "./db";
+import { cascadeAuditFromTrpc } from "./db/cascadeAudit";
 import {
   assertProtectedUserSubscriptionModifiable,
+  deleteSubscriptionCascade,
   ProtectedUserModifyError,
 } from "./db/cascadeDeletes";
 import {
   projectSubscriptionAuditSnapshot,
   subscriptionAuditSnapshotFromInsert,
   subscriptionAuditSnapshotFromRow,
+  subscriptionAuditSnapshotToChangeFields,
   subscriptionAuditSnapshotsEqual,
   type SubscriptionAuditSnapshot,
   type SubscriptionAuditStatus,
@@ -88,16 +91,8 @@ export function logSubscriptionUpdatedByAdmin(params: {
       actorRole: params.ctx.user?.role ?? null,
       targetUserId: params.targetUserId,
       subscriptionId: params.subscriptionId,
-      before: {
-        plan: params.before.plan,
-        status: params.before.status,
-        expiration: params.before.expiration,
-      },
-      after: {
-        plan: params.after.plan,
-        status: params.after.status,
-        expiration: params.after.expiration,
-      },
+      before: subscriptionAuditSnapshotToChangeFields(params.before),
+      after: subscriptionAuditSnapshotToChangeFields(params.after),
       procedure: params.procedure,
     },
   });
@@ -248,4 +243,39 @@ export async function applyAdminUserSubscriptionUpdate(params: {
   });
 
   return { success: true as const, changed: true, subscriptionId: existing.id };
+}
+
+const PROTECTED_DELETE_MESSAGE = "لا يمكن حذف اشتراك هذا المستخدم المحمي";
+
+export async function applyAdminUserSubscriptionDelete(params: {
+  ctx: TrpcContext;
+  procedure: string;
+  userId: number;
+}) {
+  const { ctx, procedure, userId } = params;
+
+  try {
+    await assertProtectedUserSubscriptionModifiable(userId);
+  } catch (error) {
+    if (error instanceof ProtectedUserModifyError) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: PROTECTED_DELETE_MESSAGE });
+    }
+    throw error;
+  }
+
+  const existing = await getOwnerAccountSubscriptionRow(userId);
+  if (!existing) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "لا يوجد اشتراك حساب لهذا المستخدم" });
+  }
+
+  const before = subscriptionAuditSnapshotToChangeFields(
+    subscriptionAuditSnapshotFromRow(existing)
+  );
+
+  await deleteSubscriptionCascade(existing.id, {
+    ...cascadeAuditFromTrpc(ctx, procedure, "delete_subscription"),
+    subscriptionBefore: before,
+  });
+
+  return { success: true as const, subscriptionId: existing.id };
 }

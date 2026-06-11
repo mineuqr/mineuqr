@@ -22,6 +22,7 @@ import { opsLog } from "../_core/opsLog";
 import { OPS_EVENT } from "../_core/opsTaxonomy";
 import { getDb } from "../db";
 import { isPlatformAccountUserId } from "../platformAccount";
+import type { SubscriptionAuditChangeFields } from "../subscriptionAuditSnapshot";
 
 export class ProtectedUserDeleteError extends Error {
   readonly userId: number;
@@ -55,6 +56,8 @@ export type CascadeAuditContext = {
   procedure?: string;
   action?: string;
   ip?: string;
+  /** Subscription Snapshot Format v1 subset — admin delete audit (PR-4). */
+  subscriptionBefore?: SubscriptionAuditChangeFields;
 };
 
 type DbHandle = NonNullable<Awaited<ReturnType<typeof getDb>>>;
@@ -153,6 +156,7 @@ export async function deleteSubscriptionCascade(
   logCascade(OPS_EVENT.cascade_subscription_deleted, audit, {
     phase: "completed",
     subscriptionId,
+    ...(audit?.subscriptionBefore ? { before: audit.subscriptionBefore } : {}),
   });
 }
 

@@ -30,15 +30,29 @@ vi.mock("./commercial/ownerAccountSubscriptionAuthority", () => ({
   getOwnerAccountSubscriptionRow: vi.fn(),
 }));
 
+vi.mock("./db/cascadeDeletes", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./db/cascadeDeletes")>();
+  return {
+    ...actual,
+    deleteSubscriptionCascade: vi.fn(),
+  };
+});
+
 import { createSubscriptionForRestaurant, getUserById, updateSubscriptionById } from "./db";
 import {
   getOwnerAccountSubscriptionRow,
   ownerHasEntitledAccountSubscription,
 } from "./commercial/ownerAccountSubscriptionAuthority";
+import { deleteSubscriptionCascade } from "./db/cascadeDeletes";
 import {
   applyAdminUserSubscriptionCreate,
+  applyAdminUserSubscriptionDelete,
   applyAdminUserSubscriptionUpdate,
 } from "./subscriptionAudit";
+import {
+  subscriptionAuditSnapshotFromRow,
+  subscriptionAuditSnapshotToChangeFields,
+} from "./subscriptionAuditSnapshot";
 const TARGET_USER_ID = 5;
 const PLATFORM_USER_ID = 1;
 const SUBSCRIPTION_ID = 101;
@@ -90,6 +104,7 @@ describe("subscriptionAudit PR-3", () => {
       id: SUBSCRIPTION_ID,
     });
     (updateSubscriptionById as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+    (deleteSubscriptionCascade as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
     (getOwnerAccountSubscriptionRow as ReturnType<typeof vi.fn>).mockResolvedValue(
       accountSub({ id: SUBSCRIPTION_ID, userId: TARGET_USER_ID })
     );
@@ -234,6 +249,79 @@ describe("subscriptionAudit PR-3", () => {
 
       expect(updateSubscriptionById).not.toHaveBeenCalled();
       expect(opsLogMock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("PR-4 Scenario 4 — subscription deleted", () => {
+    it("passes before snapshot to deleteSubscriptionCascade audit context", async () => {
+      const existing = accountSub({ id: SUBSCRIPTION_ID, userId: TARGET_USER_ID });
+      (getOwnerAccountSubscriptionRow as ReturnType<typeof vi.fn>).mockResolvedValue(existing);
+
+      await applyAdminUserSubscriptionDelete({
+        ctx: adminContext as any,
+        procedure: "admin.deleteUserSubscriptionByAdmin",
+        userId: TARGET_USER_ID,
+      });
+
+      expect(deleteSubscriptionCascade).toHaveBeenCalledWith(
+        SUBSCRIPTION_ID,
+        expect.objectContaining({
+          procedure: "admin.deleteUserSubscriptionByAdmin",
+          subscriptionBefore: {
+            plan: 30002,
+            status: "active",
+            expiration: "2026-07-01T00:00:00.000Z",
+          },
+        })
+      );
+    });
+  });
+
+  describe("PR-4 Scenario 5 — delete fails", () => {
+    it("does not emit subscription audit when delete cascade fails", async () => {
+      (deleteSubscriptionCascade as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+        new Error("transaction failed")
+      );
+
+      await expect(
+        applyAdminUserSubscriptionDelete({
+          ctx: adminContext as any,
+          procedure: "admin.deleteUserSubscriptionByAdmin",
+          userId: TARGET_USER_ID,
+        })
+      ).rejects.toThrow("transaction failed");
+
+      expect(opsLogMock).not.toHaveBeenCalled();
+    });
+
+    it("does not call delete when subscription not found", async () => {
+      (getOwnerAccountSubscriptionRow as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+
+      await expect(
+        applyAdminUserSubscriptionDelete({
+          ctx: adminContext as any,
+          procedure: "admin.deleteUserSubscriptionByAdmin",
+          userId: TARGET_USER_ID,
+        })
+      ).rejects.toBeInstanceOf(TRPCError);
+
+      expect(deleteSubscriptionCascade).not.toHaveBeenCalled();
+      expect(opsLogMock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("PR-4 Scenario 6 — snapshot shape consistency", () => {
+    it("delete before fields match update audit serialization", () => {
+      const row = accountSub({ id: SUBSCRIPTION_ID, userId: TARGET_USER_ID });
+      const snapshot = subscriptionAuditSnapshotFromRow(row);
+      const changeFields = subscriptionAuditSnapshotToChangeFields(snapshot);
+
+      expect(changeFields).toEqual({
+        plan: 30002,
+        status: "active",
+        expiration: "2026-07-01T00:00:00.000Z",
+      });
+      expect(changeFields).not.toHaveProperty("startDate");
     });
   });
 

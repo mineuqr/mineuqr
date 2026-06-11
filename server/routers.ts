@@ -61,16 +61,16 @@ import {
   logInternalUserCreated,
 } from "./accountClassificationAudit";
 import { applyAdminUserRoleUpdate } from "./roleChangeAudit";
+import { applyAdminPasswordReset } from "./passwordResetAudit";
 import {
   applyAdminUserSubscriptionCreate,
+  applyAdminUserSubscriptionDelete,
   applyAdminUserSubscriptionUpdate,
 } from "./subscriptionAudit";
 import {
-  assertProtectedUserPasswordResetAllowed,
   assertProtectedUserClassificationModifiable,
   assertProtectedUserSubscriptionModifiable,
   deleteRestaurantCascade,
-  deleteSubscriptionCascade,
   deleteUserCascade,
   ProtectedUserDeleteError,
   ProtectedUserModifyError,
@@ -840,24 +840,12 @@ const adminCoreRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       assertAdminAccess(ctx, "admin.resetSubscriberPassword");
-      const user = await getUserByEmail(input.email);
-      if (!user) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "المستخدم غير موجود" });
-      }
-      try {
-        await assertProtectedUserPasswordResetAllowed(user.id);
-      } catch (error) {
-        if (error instanceof ProtectedUserModifyError) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "لا يمكن إعادة تعيين كلمة مرور هذا المستخدم المحمي",
-          });
-        }
-        throw error;
-      }
-      const passwordHash = await bcrypt.hash(input.newPassword, 12);
-      await updateUserPassword(user.openId, passwordHash);
-      return { success: true };
+      return applyAdminPasswordReset({
+        ctx,
+        procedure: "admin.resetSubscriberPassword",
+        email: input.email,
+        newPassword: input.newPassword,
+      });
     }),
 
   // ─── Admin Subscription Management ───────────────────────
@@ -1168,25 +1156,11 @@ const adminCoreRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       assertAdminAccess(ctx, "admin.deleteUserSubscriptionByAdmin");
-      try {
-        await assertProtectedUserSubscriptionModifiable(input.userId);
-      } catch (error) {
-        if (error instanceof ProtectedUserModifyError) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "لا يمكن حذف اشتراك هذا المستخدم المحمي",
-          });
-        }
-        throw error;
-      }
-      const existing = await getOwnerAccountSubscriptionRow(input.userId);
-      if (!existing) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "لا يوجد اشتراك حساب لهذا المستخدم" });
-      }
-      await deleteSubscriptionCascade(
-        existing.id,
-        cascadeAuditFromTrpc(ctx, "admin.deleteUserSubscriptionByAdmin", "delete_subscription")
-      );
+      await applyAdminUserSubscriptionDelete({
+        ctx,
+        procedure: "admin.deleteUserSubscriptionByAdmin",
+        userId: input.userId,
+      });
       // Send notification to user
       try {
         await createNotification({

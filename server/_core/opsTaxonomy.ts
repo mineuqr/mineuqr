@@ -84,6 +84,7 @@ export const OPS_EVENT = {
   user_role_changed: "user_role_changed",
   subscription_created_by_admin: "subscription_created_by_admin",
   subscription_updated_by_admin: "subscription_updated_by_admin",
+  admin_password_reset: "admin_password_reset",
   internal_user_created: "internal_user_created",
   cascade_subscription_deleted: "cascade_subscription_deleted",
   cascade_restaurant_deleted: "cascade_restaurant_deleted",

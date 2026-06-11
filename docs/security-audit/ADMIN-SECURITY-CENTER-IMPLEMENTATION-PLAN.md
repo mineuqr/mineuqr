@@ -184,7 +184,7 @@ Phase D does **not** block Phase B or Phase C. Program closure requires **both t
 | `server/roleChangeAudit.ts` | **New** — `logUserRoleChanged`, `applyAdminUserRoleUpdate` |
 | `server/subscriptionAuditSnapshot.ts` | **New** — shared snapshot builder (PR-3/PR-4) |
 | `server/subscriptionAudit.ts` | **New** — `logSubscriptionCreatedByAdmin`, `logSubscriptionUpdatedByAdmin`, apply helpers |
-| `server/audit/passwordResetAudit.ts` | **New** — `logAdminPasswordReset` |
+| `server/passwordResetAudit.ts` | **New** — `logAdminPasswordReset`, `applyAdminPasswordReset` |
 | `server/audit/protectedUserAudit.ts` | **New** — `logProtectedUserModifyDenied` (optional shared) |
 | `server/accountClassificationAudit.ts` | Reference pattern only; no change required |
 | `server/routers.ts` | Wire emitters in admin + profile handlers |
@@ -238,10 +238,10 @@ PR-4  Password reset audit (R8) + enhanced subscription delete snapshot
 - [x] `admin.updateUserRole` and `profile.updateUserRole` emit `user_role_changed` with `previousRole`/`nextRole` on success
 - [x] `admin.createUserSubscriptionByAdmin` emits `subscription_created_by_admin` with after snapshot
 - [x] `admin.updateUserSubscriptionByAdmin` emits `subscription_updated_by_admin` with before/after
-- [ ] `admin.resetSubscriberPassword` emits `admin_password_reset` (no password in payload)
-- [ ] `cascade_subscription_deleted` includes before snapshot in metadata
-- [ ] `npm run check` + `npm test` pass
-- [ ] No schema, permission, or routing changes
+- [x] `admin.resetSubscriberPassword` emits `admin_password_reset` (no password in payload)
+- [x] `cascade_subscription_deleted` includes before snapshot in metadata
+- [x] `npm run check` + `npm test` pass
+- [x] No schema, permission, or routing changes
 
 ---
 
@@ -601,7 +601,7 @@ PR-10  Hard removal
 | **PR-1** | OWNER_OPEN_ID fail-safe + platform protection health events | A | — | S | **COMPLETE** |
 | **PR-2** | Role change audit | A | PR-1 | S | **COMPLETE** |
 | **PR-3** | Subscription create/update audit emitters | A | PR-1 | M | **COMPLETE** |
-| **PR-4** | Admin password reset audit + subscription delete snapshot | A | PR-3 | S | Pending |
+| **PR-4** | Admin password reset audit + subscription delete snapshot | A | PR-3 | S | **COMPLETE** |
 | **PR-5** | `audit_events` migration + dual-write emitter + emitter refactor | B | PR-2, PR-3, PR-4 | L | Pending |
 | **PR-6** | Audit read APIs + `getSecurityHealth` route | B | PR-5 | M | Pending |
 | **PR-7** | Security Center page shell + Overview/Health/Warnings/Protected | C | PR-6 | M | Pending |
@@ -631,7 +631,29 @@ PR-10  Hard removal
 - **Development:** Optional; missing value logs degraded warning but allows local runs.
 - **Health probe:** Orphan openId (user not yet in DB) emits `platform_protection_misconfigured` at warn/error but does not block startup when `OWNER_OPEN_ID` is syntactically valid.
 
-**Next:** PR-4 (password reset audit + subscription delete snapshot).
+**Next:** PR-5 (`audit_events` migration + dual-write emitter).
+
+### PR-4 — Complete (2026-06-11)
+
+**Scope delivered:** Admin password reset audit + enhanced subscription delete snapshot (opsLog only).
+
+| Item | Detail |
+|------|--------|
+| **Files changed** | `server/passwordResetAudit.ts` (new), `server/passwordResetAudit.test.ts` (new), `server/subscriptionAudit.ts`, `server/subscriptionAuditSnapshot.ts`, `server/subscriptionAudit.test.ts`, `server/db/cascadeDeletes.ts`, `server/db/cascadeDeletes.test.ts`, `server/_core/opsTaxonomy.ts`, `server/routers.ts` |
+| **Events** | `admin_password_reset` (category `ADMIN`); enhanced `cascade_subscription_deleted` completed-phase metadata |
+| **Procedures covered** | `admin.resetSubscriberPassword`, `admin.deleteUserSubscriptionByAdmin` |
+| **Excluded paths — password** | `admin.createSubscriberAccount` (initial password on create), `admin.createInternalUser` (initial password on create), `profile.changePassword` (self-service), `POST /api/auth/change-password` (self-service), `auth-local` forgot-password token flow (self-service) |
+| **Password reset payload** | `actorUserId`, `actorRole`, `targetUserId`, `targetUserEmail`, `resetMethod` (`admin_direct`), `correlationId`, `procedure`, `timestamp` — no password or hash |
+| **Delete snapshot payload** | `subscriptionId`, `before`: `{ plan, status, expiration }` on `cascade_subscription_deleted` phase `completed` |
+| **Snapshot standardization** | `subscriptionAuditSnapshotToChangeFields()` — Subscription Snapshot Format v1 subset shared by create/update/delete audit paths |
+| **Emit rules — password** | Emit only after successful `updateUserPassword`; skip on validation failure, not-found, protected account block, or DB write failure |
+| **Emit rules — delete** | Before snapshot captured pre-delete; `before` included only on successful transaction completed event |
+| **Protected account guards** | Unchanged — `assertProtectedUserPasswordResetAllowed`, `assertProtectedUserSubscriptionModifiable` preserved in apply helpers |
+| **Tests** | 5 new in `passwordResetAudit.test.ts` (scenarios 1–3) + 4 new in `subscriptionAudit.test.ts` / `cascadeDeletes.test.ts` (scenarios 4–6) |
+| **Validation** | `npm run check` PASS; `npm test` 671 passed |
+| **Remaining gaps** | `audit_events` persistence (PR-5), Security Center UI (PR-7/8), `protected_user_modify_denied` (deferred) |
+
+**Phase A status:** **COMPLETE** (PR-1 through PR-4 closed).
 
 ### PR-2 — Complete (2026-06-07)
 
@@ -665,9 +687,7 @@ PR-10  Hard removal
 | **Emit rules** | Create on successful insert only; update only when effective field change; skip on validation/permission failure and no-op |
 | **Protected account guards** | Unchanged — `assertProtectedUserSubscriptionModifiable` preserved in apply helpers |
 | **Tests** | 9 new in `subscriptionAudit.test.ts` (scenarios 1–6) + existing `admin-auth-1e`, `authorityCleanup1`, `admin-invoice-billing` |
-| **Remaining gaps** | `cascade_subscription_deleted` before snapshot (PR-4), `admin_password_reset` (PR-4), `audit_events` persistence (PR-5) |
-
-**Next:** PR-4 (password reset audit + enhanced subscription delete snapshot).
+| **Remaining gaps** | Enhanced delete snapshot + password reset audit (closed in PR-4), `audit_events` persistence (PR-5) |
 
 ### PR dependency graph
 
@@ -675,7 +695,7 @@ PR-10  Hard removal
 PR-1 ✓ ──┬── PR-2 ✓ ──┬── PR-5 ── PR-6 ── PR-7 ── PR-8
        │          │
        ├── PR-3 ✓ ──┤
-       │    └── PR-4
+       │    └── PR-4 ✓
        │
        └── PR-9 ────────────── PR-10
             (after PR-2, parallel to B/C)
