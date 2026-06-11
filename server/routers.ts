@@ -17,7 +17,7 @@ import {
   getNotificationsByUser, getUnreadNotifications, markNotificationAsRead, createNotification,
   getCurrencyByCountryCode, getAllCountriesCurrencies,
   upsertUser, getUserByEmail, updateUserPassword, updateUserProfile,
-  createSubscriptionForRestaurant, updateSubscriptionById, cancelSubscriptionById, getSubscriptionForRestaurant,
+  cancelSubscriptionById, getSubscriptionForRestaurant,
   getAdminStatistics, getRevenueByMonth,
   getPublicStats, getExtendedAdminStats,
   getAllUsers, updateAccountClassification,
@@ -43,15 +43,11 @@ import {
 } from "./subscriptionPlanLimits";
 import { assertAdminAccess, assertNotSelfAdminTarget } from "./_core/assertAdminAccess";
 import {
-  applyAdminTrialStatusUpdate,
   assertSubscriptionEligibleForAdminInvoice,
-  buildAdminSubscriptionInsert,
-  computeAdminSubscriptionPeriodEnd,
   resolveAdminRestaurantOwnerUserId,
 } from "./adminSubscriptionHelpers";
 import {
   getOwnerAccountSubscriptionRow,
-  ownerHasEntitledAccountSubscription,
 } from "./commercial/ownerAccountSubscriptionAuthority";
 import { assertRestaurantScopedSubscriptionRetired } from "./commercial/retiredRestaurantSubscriptionApi";
 import {
@@ -65,6 +61,10 @@ import {
   logInternalUserCreated,
 } from "./accountClassificationAudit";
 import { applyAdminUserRoleUpdate } from "./roleChangeAudit";
+import {
+  applyAdminUserSubscriptionCreate,
+  applyAdminUserSubscriptionUpdate,
+} from "./subscriptionAudit";
 import {
   assertProtectedUserPasswordResetAllowed,
   assertProtectedUserClassificationModifiable,
@@ -1080,67 +1080,38 @@ const adminCoreRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       assertAdminAccess(ctx, "admin.createUserSubscriptionByAdmin");
-      try {
-        await assertProtectedUserSubscriptionModifiable(input.userId);
-      } catch (error) {
-        if (error instanceof ProtectedUserModifyError) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "لا يمكن إنشاء اشتراك لهذا المستخدم المحمي",
-          });
-        }
-        throw error;
-      }
-      if (input.restaurantId !== undefined && input.restaurantId !== 0) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message:
-            "Account subscriptions must use restaurantId 0. Manage subscriptions at owner level only.",
-        });
-      }
-      if (await ownerHasEntitledAccountSubscription(input.userId)) {
-        throw new TRPCError({
-          code: "CONFLICT",
-          message: "المستخدم لديه اشتراك بالفعل. استخدم التعديل بدلاً من الإنشاء.",
-        });
-      }
-      const restaurantId = 0;
-      const subscriptionStatus = input.status || "active";
-      const now = new Date();
-      const periodEnd = computeAdminSubscriptionPeriodEnd({
+      const result = await applyAdminUserSubscriptionCreate({
+        ctx,
+        procedure: "admin.createUserSubscriptionByAdmin",
+        userId: input.userId,
+        restaurantId: input.restaurantId,
+        planId: input.planId,
         billingCycle: input.billingCycle,
         subscriptionEndDate: input.subscriptionEndDate,
-        status: subscriptionStatus,
+        status: input.status,
       });
-      const result = await createSubscriptionForRestaurant(
-        buildAdminSubscriptionInsert({
-          userId: input.userId,
-          restaurantId,
-          planId: input.planId,
-          status: subscriptionStatus,
-          billingCycle: input.billingCycle,
-          subscriptionEndDate: input.subscriptionEndDate,
-        },
-        now)
-      );
-      // Send notification to user
       const plan = await getSubscriptionPlanById(input.planId);
       const planName = plan?.nameAr || "غير معروف";
-      const statusLabel = input.status === "active" ? "فعال" : input.status === "trial" ? "تجريبي" : input.status || "فعال";
+      const statusLabel =
+        result.subscriptionStatus === "active"
+          ? "فعال"
+          : result.subscriptionStatus === "trial"
+            ? "تجريبي"
+            : result.subscriptionStatus;
       try {
-        const periodEndLabel = formatInRestaurantTimezone(periodEnd, "ar-SA", {
+        const periodEndLabel = formatInRestaurantTimezone(result.periodEnd, "ar-SA", {
           year: "numeric",
           month: "2-digit",
           day: "2-digit",
         });
         await createNotification({
           userId: input.userId,
-          subscriptionId: result.id,
+          subscriptionId: result.subscriptionId,
           notificationType: "subscription_created",
           message: `تم إنشاء اشتراك جديد لك في باقة "${planName}" بحالة ${statusLabel}. ينتهي في ${periodEndLabel}.`,
         });
       } catch (e) { /* notification failure is non-critical */ }
-      return { success: true, subscriptionId: result.id };
+      return { success: true, subscriptionId: result.subscriptionId };
     }),
   updateUserSubscriptionByAdmin: protectedProcedure
     .input(z.object({
@@ -1152,29 +1123,19 @@ const adminCoreRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       assertAdminAccess(ctx, "admin.updateUserSubscriptionByAdmin");
-      try {
-        await assertProtectedUserSubscriptionModifiable(input.userId);
-      } catch (error) {
-        if (error instanceof ProtectedUserModifyError) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "لا يمكن تعديل اشتراك هذا المستخدم المحمي",
-          });
-        }
-        throw error;
+      const result = await applyAdminUserSubscriptionUpdate({
+        ctx,
+        procedure: "admin.updateUserSubscriptionByAdmin",
+        userId: input.userId,
+        planId: input.planId,
+        billingCycle: input.billingCycle,
+        status: input.status,
+        subscriptionEndDate: input.subscriptionEndDate,
+      });
+      if (!result.changed) {
+        return { success: true };
       }
-      const existing = await getOwnerAccountSubscriptionRow(input.userId);
-      if (!existing) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "لا يوجد اشتراك حساب لهذا المستخدم" });
-      }
-      const updateData: Record<string, any> = {};
-      if (input.planId !== undefined) updateData.planId = input.planId;
-      if (input.billingCycle !== undefined) updateData.billingCycle = input.billingCycle;
-      if (input.status !== undefined) updateData.status = input.status;
-      if (input.subscriptionEndDate) updateData.currentPeriodEnd = new Date(input.subscriptionEndDate).toISOString();
-      applyAdminTrialStatusUpdate(updateData, input);
-      await updateSubscriptionById(existing.id, updateData);
-      // Send notification to user
+      const subscriptionId = result.subscriptionId;
       const updatedPlan = input.planId ? await getSubscriptionPlanById(input.planId) : null;
       const changes: string[] = [];
       if (updatedPlan) changes.push(`الباقة: ${updatedPlan.nameAr}`);
@@ -1194,7 +1155,7 @@ const adminCoreRouter = router({
       try {
         await createNotification({
           userId: input.userId,
-          subscriptionId: existing.id,
+          subscriptionId,
           notificationType: "subscription_updated",
           message: `تم تعديل اشتراكك. التغييرات: ${changes.join("، ") || "تحديث عام"}.`,
         });

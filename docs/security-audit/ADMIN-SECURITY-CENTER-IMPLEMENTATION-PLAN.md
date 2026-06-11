@@ -182,7 +182,8 @@ Phase D does **not** block Phase B or Phase C. Program closure requires **both t
 | `server/_core/deploymentReadiness.ts` | Integrate platform protection assessment (or call from `createApiApp` boot) |
 | `server/_core/createApiApp.ts` (or server entry) | Invoke startup validation / fail-fast |
 | `server/roleChangeAudit.ts` | **New** — `logUserRoleChanged`, `applyAdminUserRoleUpdate` |
-| `server/audit/subscriptionAudit.ts` | **New** — `logSubscriptionCreatedByAdmin`, `logSubscriptionUpdatedByAdmin` |
+| `server/subscriptionAuditSnapshot.ts` | **New** — shared snapshot builder (PR-3/PR-4) |
+| `server/subscriptionAudit.ts` | **New** — `logSubscriptionCreatedByAdmin`, `logSubscriptionUpdatedByAdmin`, apply helpers |
 | `server/audit/passwordResetAudit.ts` | **New** — `logAdminPasswordReset` |
 | `server/audit/protectedUserAudit.ts` | **New** — `logProtectedUserModifyDenied` (optional shared) |
 | `server/accountClassificationAudit.ts` | Reference pattern only; no change required |
@@ -235,8 +236,8 @@ PR-4  Password reset audit (R8) + enhanced subscription delete snapshot
 - [ ] Production process exits non-zero when `OWNER_OPEN_ID` is unset or invalid
 - [ ] Development emits `platform_protection_degraded` + stderr banner when unset
 - [x] `admin.updateUserRole` and `profile.updateUserRole` emit `user_role_changed` with `previousRole`/`nextRole` on success
-- [ ] `admin.createUserSubscriptionByAdmin` emits `subscription_created_by_admin` with after snapshot
-- [ ] `admin.updateUserSubscriptionByAdmin` emits `subscription_updated_by_admin` with before/after
+- [x] `admin.createUserSubscriptionByAdmin` emits `subscription_created_by_admin` with after snapshot
+- [x] `admin.updateUserSubscriptionByAdmin` emits `subscription_updated_by_admin` with before/after
 - [ ] `admin.resetSubscriberPassword` emits `admin_password_reset` (no password in payload)
 - [ ] `cascade_subscription_deleted` includes before snapshot in metadata
 - [ ] `npm run check` + `npm test` pass
@@ -599,7 +600,7 @@ PR-10  Hard removal
 |----|-------|-------|------------|-----------|--------|
 | **PR-1** | OWNER_OPEN_ID fail-safe + platform protection health events | A | — | S | **COMPLETE** |
 | **PR-2** | Role change audit | A | PR-1 | S | **COMPLETE** |
-| **PR-3** | Subscription create/update audit emitters | A | PR-1 | M | Pending |
+| **PR-3** | Subscription create/update audit emitters | A | PR-1 | M | **COMPLETE** |
 | **PR-4** | Admin password reset audit + subscription delete snapshot | A | PR-3 | S | Pending |
 | **PR-5** | `audit_events` migration + dual-write emitter + emitter refactor | B | PR-2, PR-3, PR-4 | L | Pending |
 | **PR-6** | Audit read APIs + `getSecurityHealth` route | B | PR-5 | M | Pending |
@@ -630,7 +631,7 @@ PR-10  Hard removal
 - **Development:** Optional; missing value logs degraded warning but allows local runs.
 - **Health probe:** Orphan openId (user not yet in DB) emits `platform_protection_misconfigured` at warn/error but does not block startup when `OWNER_OPEN_ID` is syntactically valid.
 
-**Next:** PR-3 (subscription create/update audit).
+**Next:** PR-4 (password reset audit + subscription delete snapshot).
 
 ### PR-2 — Complete (2026-06-07)
 
@@ -648,12 +649,32 @@ PR-10  Hard removal
 | **Tests** | 7 new in `roleChangeAudit.test.ts` (scenarios 1–5) + existing `admin-auth-1d` protection tests |
 | **Remaining gaps** | `protected_user_modify_denied` (PR scope excluded), `audit_events` persistence (PR-5), Security Center UI (PR-7/8) |
 
+### PR-3 — Complete (2026-06-07)
+
+**Scope delivered:** Subscription create/update audit (opsLog only).
+
+| Item | Detail |
+|------|--------|
+| **Files changed** | `server/subscriptionAuditSnapshot.ts` (new), `server/subscriptionAudit.ts` (new), `server/subscriptionAudit.test.ts` (new), `server/_core/opsTaxonomy.ts`, `server/routers.ts` |
+| **Events** | `subscription_created_by_admin`, `subscription_updated_by_admin` (category `ADMIN` in opsLog; maps to `SUBSCRIPTION` in Phase B `audit_events`) |
+| **Procedures covered** | `admin.createUserSubscriptionByAdmin`, `admin.updateUserSubscriptionByAdmin` |
+| **Excluded paths** | `createRestaurantSubscription` / `updateRestaurantSubscription` / `cancelRestaurantSubscription` — retired (throw before mutation); `create-trial-subscription.ts` — owner self-registration, not admin; PayPal webhooks — system actor |
+| **Snapshot helper** | `subscriptionAuditSnapshot.ts` — `plan`, `status`, `startDate`, `expiration` (shared with PR-4 delete enhancement) |
+| **Create payload** | `actorUserId`, `actorRole`, `targetUserId`, `subscriptionId`, `plan`, `status`, `startDate`, `endDate`, `correlationId`, `procedure` |
+| **Update payload** | Same actor fields + `subscriptionId` + `before`/`after` snapshots (`plan`, `status`, `expiration`) |
+| **Emit rules** | Create on successful insert only; update only when effective field change; skip on validation/permission failure and no-op |
+| **Protected account guards** | Unchanged — `assertProtectedUserSubscriptionModifiable` preserved in apply helpers |
+| **Tests** | 9 new in `subscriptionAudit.test.ts` (scenarios 1–6) + existing `admin-auth-1e`, `authorityCleanup1`, `admin-invoice-billing` |
+| **Remaining gaps** | `cascade_subscription_deleted` before snapshot (PR-4), `admin_password_reset` (PR-4), `audit_events` persistence (PR-5) |
+
+**Next:** PR-4 (password reset audit + enhanced subscription delete snapshot).
+
 ### PR dependency graph
 
 ```
 PR-1 ✓ ──┬── PR-2 ✓ ──┬── PR-5 ── PR-6 ── PR-7 ── PR-8
        │          │
-       ├── PR-3 ──┤
+       ├── PR-3 ✓ ──┤
        │    └── PR-4
        │
        └── PR-9 ────────────── PR-10
