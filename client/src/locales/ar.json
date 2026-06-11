@@ -1013,6 +1013,46 @@
         "platformUserId": "معرّف مستخدم المنصة",
         "protectionActive": "الحماية نشطة",
         "ownerOpenId": "OWNER_OPEN_ID"
+      },
+      "timeline": {
+        "title": "الجدول الزمني للتدقيق",
+        "desc": "أحدث أحداث التدقيق المحفوظة (للقراءة فقط)",
+        "emptyTitle": "لا أحداث تدقيق بعد",
+        "emptyDesc": "تدقيق للأمام فقط — تظهر الأحداث بعد تحولات الإدارة.",
+        "colEventType": "نوع الحدث",
+        "colCategory": "الفئة",
+        "colSeverity": "الخطورة",
+        "colActor": "الفاعل",
+        "colTimestamp": "الوقت",
+        "loadMore": "تحميل المزيد",
+        "loadingMore": "جارٍ التحميل…",
+        "detailTitle": "حدث تدقيق",
+        "detailLoading": "جارٍ تحميل الحدث…",
+        "detailTarget": "الهدف",
+        "detailProcedure": "الإجراء",
+        "detailCorrelationId": "معرّف الارتباط",
+        "detailMetadata": "البيانات الوصفية",
+        "detailBefore": "قبل",
+        "detailAfter": "بعد",
+        "jsonCollapsedHint": "وسّع لعرض JSON كامل"
+      },
+      "roleChanges": {
+        "title": "تغييرات الأدوار",
+        "desc": "أحداث user_role_changed (للقراءة فقط)",
+        "emptyTitle": "لا تغييرات أدوار مسجّلة",
+        "emptyDesc": "ستظهر هنا تحولات حوكمة الأدوار.",
+        "colTarget": "المستخدم المستهدف",
+        "colPreviousRole": "الدور السابق",
+        "colNewRole": "الدور الجديد"
+      },
+      "subscriptionChanges": {
+        "title": "تغييرات الاشتراك",
+        "desc": "إنشاء وتحديث وحذف الاشتراك من الإدارة",
+        "emptyTitle": "لا تغييرات اشتراك مسجّلة",
+        "emptyDesc": "ستظهر هنا تحولات حوكمة الاشتراك.",
+        "colTarget": "الهدف",
+        "colAction": "الإجراء",
+        "colSummary": "قبل → بعد"
       }
     },
     "operations": {

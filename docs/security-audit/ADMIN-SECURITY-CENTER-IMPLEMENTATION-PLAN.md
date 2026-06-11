@@ -606,7 +606,7 @@ PR-10  Hard removal
 | **PR-5** | `audit_events` migration + dual-write emitter + emitter refactor | B | PR-2, PR-3, PR-4 | L | **COMPLETE** |
 | **PR-6** | Audit read APIs + `getSecurityHealth` route | B | PR-5 | M | **COMPLETE** |
 | **PR-7** | Security Center page shell + Overview/Health/Warnings/Protected | C | PR-6 | M | **COMPLETE** |
-| **PR-8** | Audit Timeline + Role/Subscription sections + i18n | C | PR-7 | L | Pending |
+| **PR-8** | Audit Timeline + Role/Subscription sections + i18n | C | PR-7 | L | **COMPLETE** |
 | **PR-9** | API deprecation (`profile.*` governance) + inventory doc | D | PR-2 | S | Pending |
 | **PR-10** | API removal (`profile.*` governance) | D | PR-9 + 30d | S | Pending |
 
@@ -632,7 +632,28 @@ PR-10  Hard removal
 - **Development:** Optional; missing value logs degraded warning but allows local runs.
 - **Health probe:** Orphan openId (user not yet in DB) emits `platform_protection_misconfigured` at warn/error but does not block startup when `OWNER_OPEN_ID` is syntactically valid.
 
-**Next:** PR-8 (Audit Timeline + Role/Subscription sections).
+**Next:** Phase D — PR-9 (API deprecation).
+
+### PR-8 — Complete (2026-06-11)
+
+**Scope delivered:** Audit Timeline, event detail drawer, Role Changes, and Subscription Changes sections (read-only).
+
+| Item | Detail |
+|------|--------|
+| **Timeline** | `SecurityAuditTimelineSection` — `admin.listAuditEvents` cursor pagination (25/page, PR-6 limits); newest first; row opens detail drawer |
+| **Event details** | `AuditEventDetailDrawer` (Sheet) — `admin.getAuditEvent`; metadata/actor/target/procedure/correlationId; `before`/`after`/`metadata` as collapsible JSON (`AuditEventJsonField`) |
+| **Role changes** | `SecurityRoleChangesSection` — `eventType=user_role_changed`; actor, target, previous/new role, timestamp |
+| **Subscription changes** | `SecuritySubscriptionChangesSection` — `category=SUBSCRIPTION` (create/update/cascade delete); before→after summary |
+| **Pagination** | `useAuditEventList` + `appendAuditEventPage` — server cursor via `utils.admin.listAuditEvents.fetch`; no full-history client cache |
+| **Composition** | PR-7 sections unchanged; visual separator then PR-8 sections in `SecurityCenterComposition` |
+| **i18n** | `admin.security.timeline.*`, `roleChanges.*`, `subscriptionChanges.*` in `en.json` + `ar.json` |
+| **Registry** | `security-audit-timeline`, `security-role-changes`, `security-subscription-changes`, `api-list-audit-events`, `api-get-audit-event` |
+| **Excluded** | Export, search, saved filters, advanced filtering, notifications, mutation controls |
+
+| **Tests** | 12+ new in `auditEventDisplay.test.ts`; updated `adminSecurityPage.test.ts` (sections, assets, i18n) |
+| **Validation** | `npm run check` PASS; `npm test` 722 passed |
+
+**Phase C status:** **COMPLETE** (PR-7 + PR-8 closed). Remaining program work: **Phase D** (PR-9 deprecation, PR-10 removal after 30d).
 
 ### PR-7 — Complete (2026-06-11)
 
@@ -654,7 +675,7 @@ PR-10  Hard removal
 | **Tests** | 18 new: `securityCenterDisplay.test.ts`, `securityCenterSections.test.ts`, `adminSecurityPage.test.ts` (route, assets, i18n parity, access gating) |
 | **Validation** | `npm run check` PASS; `npm test` 715 passed |
 
-**Phase C status:** PR-7 closed; PR-8 remains (timeline + filtered audit sections + i18n polish).
+**Phase C status:** **COMPLETE** — see PR-8 closure.
 
 ### PR-6 — Complete (2026-06-11)
 
@@ -789,7 +810,7 @@ PR-10  Hard removal
 ### PR dependency graph
 
 ```
-PR-1 ✓ ──┬── PR-2 ✓ ──┬── PR-5 ✓ ── PR-6 ✓ ── PR-7 ✓ ── PR-8
+PR-1 ✓ ──┬── PR-2 ✓ ──┬── PR-5 ✓ ── PR-6 ✓ ── PR-7 ✓ ── PR-8 ✓
        │          │
        ├── PR-3 ✓ ──┤
        │    └── PR-4 ✓

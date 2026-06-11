@@ -51,7 +51,12 @@ export type SecurityAssetId =
   | "security-warnings"
   | "security-protected-accounts"
   | "api-get-audit-event-stats"
-  | "api-get-security-health";
+  | "api-get-security-health"
+  | "security-audit-timeline"
+  | "security-role-changes"
+  | "security-subscription-changes"
+  | "api-list-audit-events"
+  | "api-get-audit-event";
 
 /** Security-owned controls physically hosted in CS accounts workspace. */
 export type SecurityAccountsHostedAssetId =

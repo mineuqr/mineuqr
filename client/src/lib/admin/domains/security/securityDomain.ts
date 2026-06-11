@@ -249,6 +249,43 @@ export const SECURITY_ASSET_DEFINITIONS: SecurityAssetDefinition[] = [
     queryKey: "admin.getSecurityHealth",
     surfaces: ["security"],
   },
+
+  // ── Security Center audit widgets (ADMIN-SECURITY-CENTER PR-8) ──
+  {
+    id: "security-audit-timeline",
+    category: "security-center",
+    ownerPath: "components/admin/domains/security/SecurityAuditTimelineSection",
+    queryKey: "admin.listAuditEvents",
+    surfaces: ["security"],
+  },
+  {
+    id: "security-role-changes",
+    category: "security-center",
+    ownerPath: "components/admin/domains/security/SecurityRoleChangesSection",
+    queryKey: "admin.listAuditEvents",
+    surfaces: ["security"],
+  },
+  {
+    id: "security-subscription-changes",
+    category: "security-center",
+    ownerPath: "components/admin/domains/security/SecuritySubscriptionChangesSection",
+    queryKey: "admin.listAuditEvents",
+    surfaces: ["security"],
+  },
+  {
+    id: "api-list-audit-events",
+    category: "api",
+    ownerPath: "server/audit/adminAuditRouter.ts",
+    queryKey: "admin.listAuditEvents",
+    surfaces: ["security"],
+  },
+  {
+    id: "api-get-audit-event",
+    category: "api",
+    ownerPath: "server/audit/adminAuditRouter.ts",
+    queryKey: "admin.getAuditEvent",
+    surfaces: ["security"],
+  },
 ];
 
 /** Security-owned assets physically hosted in Customer Success accounts workspace. */
@@ -276,4 +313,7 @@ export const SECURITY_CENTER_SECTIONS = [
   "SecurityHealthSection",
   "SecurityWarningsSection",
   "SecurityProtectedAccountsSection",
+  "SecurityAuditTimelineSection",
+  "SecurityRoleChangesSection",
+  "SecuritySubscriptionChangesSection",
 ] as const;

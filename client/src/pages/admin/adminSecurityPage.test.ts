@@ -31,22 +31,26 @@ describe("AdminSecurityPage route and shell", () => {
     expect(AdminSecurityPage.name).toBe("AdminSecurityPage");
   });
 
-  it("defines PR-7 Security Center sections only", () => {
+  it("defines Security Center sections through PR-8", () => {
     expect(SECURITY_CENTER_SECTIONS).toEqual([
       "SecurityOverviewSection",
       "SecurityHealthSection",
       "SecurityWarningsSection",
       "SecurityProtectedAccountsSection",
+      "SecurityAuditTimelineSection",
+      "SecurityRoleChangesSection",
+      "SecuritySubscriptionChangesSection",
     ]);
   });
 
-  it("registers PR-7 security center assets", () => {
+  it("registers security center assets through PR-8", () => {
     const ids = SECURITY_ASSET_DEFINITIONS.map((asset) => asset.id);
     expect(ids).toContain("security-center-composition");
-    expect(ids).toContain("security-overview");
-    expect(ids).toContain("security-health");
-    expect(ids).toContain("api-get-audit-event-stats");
-    expect(ids).toContain("api-get-security-health");
+    expect(ids).toContain("security-audit-timeline");
+    expect(ids).toContain("security-role-changes");
+    expect(ids).toContain("security-subscription-changes");
+    expect(ids).toContain("api-list-audit-events");
+    expect(ids).toContain("api-get-audit-event");
   });
 });
 
@@ -73,5 +77,8 @@ describe("AdminSecurityPage i18n", () => {
     expect(enKeys).toContain("health.status.healthy");
     expect(enKeys).toContain("warnings.emptyTitle");
     expect(enKeys).toContain("protected.platformUserId");
+    expect(enKeys).toContain("timeline.loadMore");
+    expect(enKeys).toContain("roleChanges.emptyTitle");
+    expect(enKeys).toContain("subscriptionChanges.colSummary");
   });
 });

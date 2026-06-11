@@ -46,3 +46,7 @@ export {
 } from "./SecurityWarningsSection";
 export { SecurityProtectedAccountsSection } from "./SecurityProtectedAccountsSection";
 export { useSecurityCenterQueries } from "./useSecurityCenterQueries";
+export { SecurityAuditTimelineSection } from "./SecurityAuditTimelineSection";
+export { SecurityRoleChangesSection } from "./SecurityRoleChangesSection";
+export { SecuritySubscriptionChangesSection } from "./SecuritySubscriptionChangesSection";
+export { AuditEventDetailDrawer } from "./AuditEventDetailDrawer";

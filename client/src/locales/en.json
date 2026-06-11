@@ -1013,6 +1013,46 @@
         "platformUserId": "Platform user ID",
         "protectionActive": "Protection active",
         "ownerOpenId": "OWNER_OPEN_ID"
+      },
+      "timeline": {
+        "title": "Audit Timeline",
+        "desc": "Newest persisted audit events (read-only)",
+        "emptyTitle": "No audit events yet",
+        "emptyDesc": "Forward-only audit — events appear after admin mutations.",
+        "colEventType": "Event type",
+        "colCategory": "Category",
+        "colSeverity": "Severity",
+        "colActor": "Actor",
+        "colTimestamp": "Timestamp",
+        "loadMore": "Load more",
+        "loadingMore": "Loading…",
+        "detailTitle": "Audit event",
+        "detailLoading": "Loading event…",
+        "detailTarget": "Target",
+        "detailProcedure": "Procedure",
+        "detailCorrelationId": "Correlation ID",
+        "detailMetadata": "Metadata",
+        "detailBefore": "Before",
+        "detailAfter": "After",
+        "jsonCollapsedHint": "Expand to inspect full JSON"
+      },
+      "roleChanges": {
+        "title": "Role Changes",
+        "desc": "user_role_changed events (read-only)",
+        "emptyTitle": "No role changes recorded",
+        "emptyDesc": "Role governance mutations will appear here.",
+        "colTarget": "Target user",
+        "colPreviousRole": "Previous role",
+        "colNewRole": "New role"
+      },
+      "subscriptionChanges": {
+        "title": "Subscription Changes",
+        "desc": "Admin subscription create, update, and delete events",
+        "emptyTitle": "No subscription changes recorded",
+        "emptyDesc": "Subscription governance mutations will appear here.",
+        "colTarget": "Target",
+        "colAction": "Action",
+        "colSummary": "Before → after"
       }
     },
     "operations": {
