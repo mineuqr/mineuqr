@@ -380,9 +380,9 @@ PR-6  Read APIs + getSecurityHealth
 - [x] `audit_events` migration DDL published (`drizzle/0021_audit_events.sql`)
 - [x] Phase A events persist on successful mutations (dual-write via `emitAuditEvent`)
 - [x] `audit_persist_failed` emitted on simulated insert failure; mutation still succeeds
-- [ ] `admin.listAuditEvents` returns paginated results for admin caller (PR-6)
-- [ ] `admin.getSecurityHealth` returns protection status matching runtime (PR-6)
-- [ ] `admin.getAuditEventStats` returns counts for Security Overview (PR-6)
+- [x] `admin.listAuditEvents` returns paginated results for admin caller (PR-6)
+- [x] `admin.getSecurityHealth` returns protection status matching runtime (PR-6)
+- [x] `admin.getAuditEventStats` returns counts for Security Overview (PR-6)
 - [x] Classification and cascade delete events also persist (refactored)
 - [x] `npm run check` + `npm test` pass
 
@@ -604,7 +604,7 @@ PR-10  Hard removal
 | **PR-3** | Subscription create/update audit emitters | A | PR-1 | M | **COMPLETE** |
 | **PR-4** | Admin password reset audit + subscription delete snapshot | A | PR-3 | S | **COMPLETE** |
 | **PR-5** | `audit_events` migration + dual-write emitter + emitter refactor | B | PR-2, PR-3, PR-4 | L | **COMPLETE** |
-| **PR-6** | Audit read APIs + `getSecurityHealth` route | B | PR-5 | M | Pending |
+| **PR-6** | Audit read APIs + `getSecurityHealth` route | B | PR-5 | M | **COMPLETE** |
 | **PR-7** | Security Center page shell + Overview/Health/Warnings/Protected | C | PR-6 | M | Pending |
 | **PR-8** | Audit Timeline + Role/Subscription sections + i18n | C | PR-7 | L | Pending |
 | **PR-9** | API deprecation (`profile.*` governance) + inventory doc | D | PR-2 | S | Pending |
@@ -632,7 +632,37 @@ PR-10  Hard removal
 - **Development:** Optional; missing value logs degraded warning but allows local runs.
 - **Health probe:** Orphan openId (user not yet in DB) emits `platform_protection_misconfigured` at warn/error but does not block startup when `OWNER_OPEN_ID` is syntactically valid.
 
-**Next:** PR-6 (audit read APIs).
+**Next:** PR-7 (Security Center UI shell).
+
+### PR-6 — Complete (2026-06-11)
+
+**Scope delivered:** Audit read APIs + security health API (read-only, no UI).
+
+| Item | Detail |
+|------|--------|
+| **Files changed** | `server/audit/auditQueryLimits.ts` (new), `server/audit/auditReadRepository.ts` (new), `server/audit/securityHealthApi.ts` (new), `server/audit/adminAuditRouter.ts` (new), `server/audit/adminAuditRouter.test.ts` (new), `server/audit/auditQueryLimits.test.ts` (new), `server/audit/securityHealthApi.test.ts` (new), `server/routers.ts` |
+| **Repository boundary** | `auditReadRepository.ts` — sole `SELECT`/aggregate on `audit_events`; `auditRepository.ts` remains write-only |
+| **Authorization** | All four procedures use `assertAdminAccess` — binary `admin` role, no new permissions |
+| **Query limits** | List: default limit 50, max 200; default window 90 days when no `from`/`to`; max range 90 days; cursor = `id` (newest first) |
+| **Failure behavior** | Empty results when DB unavailable (read APIs); health reports `auditPersistence` probe state |
+
+**API contracts:**
+
+| Procedure | Input | Output |
+|-----------|-------|--------|
+| `admin.listAuditEvents` | `cursor?`, `limit?`, `eventType?`, `category?`, `severity?`, `actorId?`, `targetType?`, `targetId?`, `correlationId?`, `from?`, `to?` | `{ items: SelectAuditEvent[], nextCursor: number \| null }` |
+| `admin.getAuditEvent` | `{ id }` | Full event row incl. `before`, `after`, `metadata`, `correlationId` |
+| `admin.getAuditEventStats` | `from?`, `to?` (default 7d) | `{ total, today, byCategory, bySeverity, range }` |
+| `admin.getSecurityHealth` | — | `{ status: healthy \| warning \| critical, ...platform fields, auditPersistence, warnings[] }` |
+
+**`getSecurityHealth` status derivation:** `critical` if any critical platform warning or audit table unreadable; `warning` if platform warnings or `protectionActive === false`; else `healthy`. Reuses `platformProtectionHealth.getSecurityHealth()` — no duplicated probe logic.
+
+**PR-7 dependencies:** `admin.listAuditEvents`, `admin.getAuditEvent`, `admin.getAuditEventStats`, `admin.getSecurityHealth` — all available for Security Center sections (Overview, Timeline, Role/Subscription filters, Health, Warnings, Protected Accounts).
+
+| **Tests** | 18 new across `adminAuditRouter`, `securityHealthApi`, `auditQueryLimits` |
+| **Validation** | `npm run check` PASS; `npm test` 697 passed |
+
+**Phase B status:** **COMPLETE** (PR-5 + PR-6 closed).
 
 ### PR-5 — Complete (2026-06-11)
 
@@ -737,7 +767,7 @@ PR-10  Hard removal
 ### PR dependency graph
 
 ```
-PR-1 ✓ ──┬── PR-2 ✓ ──┬── PR-5 ✓ ── PR-6 ── PR-7 ── PR-8
+PR-1 ✓ ──┬── PR-2 ✓ ──┬── PR-5 ✓ ── PR-6 ✓ ── PR-7 ── PR-8
        │          │
        ├── PR-3 ✓ ──┤
        │    └── PR-4 ✓

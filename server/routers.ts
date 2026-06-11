@@ -82,6 +82,7 @@ import { putUploadedFile } from "./local-uploads";
 import { notifyOwnerNewRestaurant, notifyOwnerNewSubscription, notifyOwnerSubscriptionCancelled } from "./owner-email-notifications";
 import { generateInvoicePDFBuffer } from "./invoice-pdf";
 import { mergeRouters } from "./_core/trpc";
+import { adminAuditRouter } from "./audit/adminAuditRouter";
 import { adminDashboardReadRouter } from "./commercial/adminDashboardRouter";
 import { analyticsRouter } from "./commercial/analyticsRouter";
 import { commercialRouter } from "./commercial/router";
@@ -1299,7 +1300,7 @@ const adminCoreRouter = router({
     }),
 });
 
-const adminRouter = mergeRouters(adminCoreRouter, adminDashboardReadRouter);
+const adminRouter = mergeRouters(adminCoreRouter, adminDashboardReadRouter, adminAuditRouter);
 
 // ─── Public Stats Router (no auth required) ───
 const publicStatsRouter = router({
