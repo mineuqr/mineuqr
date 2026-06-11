@@ -94,6 +94,7 @@ export const OPS_EVENT = {
   platform_protection_healthy: "platform_protection_healthy",
   platform_protection_degraded: "platform_protection_degraded",
   platform_protection_misconfigured: "platform_protection_misconfigured",
+  audit_persist_failed: "audit_persist_failed",
 
   // RUNTIME diagnostics
   trpc_error: "trpc_error",

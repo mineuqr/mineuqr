@@ -280,6 +280,7 @@ Table: `audit_events` per design §3.3.
 |--------|--------------|-------|
 | `id` | `bigint` PK autoincrement | |
 | `eventType` | `varchar(64)` | Matches `OPS_EVENT` |
+| `eventVersion` | `int` default `1` | Schema version for forward evolution (PR-5) |
 | `category` | `mysqlEnum` | `ACCESS`, `USER`, `SUBSCRIPTION`, `COMMERCIAL`, `SECURITY` |
 | `severity` | `mysqlEnum` | `info`, `warn`, `error` |
 | `occurredAt` | `timestamp` UTC | Default `CURRENT_TIMESTAMP` |
@@ -376,14 +377,14 @@ PR-6  Read APIs + getSecurityHealth
 
 ### 4.11 Phase B success criteria
 
-- [ ] `audit_events` migration applied successfully
-- [ ] Phase A events persist on successful mutations
-- [ ] `audit_persist_failed` emitted on simulated insert failure; mutation still succeeds
-- [ ] `admin.listAuditEvents` returns paginated results for admin caller
-- [ ] `admin.getSecurityHealth` returns protection status matching runtime
-- [ ] `admin.getAuditEventStats` returns counts for Security Overview
-- [ ] Classification and cascade delete events also persist (refactored)
-- [ ] `npm run check` + `npm test` pass
+- [x] `audit_events` migration DDL published (`drizzle/0021_audit_events.sql`)
+- [x] Phase A events persist on successful mutations (dual-write via `emitAuditEvent`)
+- [x] `audit_persist_failed` emitted on simulated insert failure; mutation still succeeds
+- [ ] `admin.listAuditEvents` returns paginated results for admin caller (PR-6)
+- [ ] `admin.getSecurityHealth` returns protection status matching runtime (PR-6)
+- [ ] `admin.getAuditEventStats` returns counts for Security Overview (PR-6)
+- [x] Classification and cascade delete events also persist (refactored)
+- [x] `npm run check` + `npm test` pass
 
 ---
 
@@ -602,7 +603,7 @@ PR-10  Hard removal
 | **PR-2** | Role change audit | A | PR-1 | S | **COMPLETE** |
 | **PR-3** | Subscription create/update audit emitters | A | PR-1 | M | **COMPLETE** |
 | **PR-4** | Admin password reset audit + subscription delete snapshot | A | PR-3 | S | **COMPLETE** |
-| **PR-5** | `audit_events` migration + dual-write emitter + emitter refactor | B | PR-2, PR-3, PR-4 | L | Pending |
+| **PR-5** | `audit_events` migration + dual-write emitter + emitter refactor | B | PR-2, PR-3, PR-4 | L | **COMPLETE** |
 | **PR-6** | Audit read APIs + `getSecurityHealth` route | B | PR-5 | M | Pending |
 | **PR-7** | Security Center page shell + Overview/Health/Warnings/Protected | C | PR-6 | M | Pending |
 | **PR-8** | Audit Timeline + Role/Subscription sections + i18n | C | PR-7 | L | Pending |
@@ -631,7 +632,51 @@ PR-10  Hard removal
 - **Development:** Optional; missing value logs degraded warning but allows local runs.
 - **Health probe:** Orphan openId (user not yet in DB) emits `platform_protection_misconfigured` at warn/error but does not block startup when `OWNER_OPEN_ID` is syntactically valid.
 
-**Next:** PR-5 (`audit_events` migration + dual-write emitter).
+**Next:** PR-6 (audit read APIs).
+
+### PR-5 — Complete (2026-06-11)
+
+**Scope delivered:** `audit_events` persistence foundation + dual-write (no read APIs).
+
+| Item | Detail |
+|------|--------|
+| **Files changed** | `drizzle/schema.ts`, `drizzle/0021_audit_events.sql` (new), `server/audit/auditTypes.ts` (new), `server/audit/auditSanitize.ts` (new), `server/audit/auditRepository.ts` (new), `server/audit/auditEmitter.ts` (new), `server/audit/auditEmitter.test.ts` (new), `server/audit/auditSanitize.test.ts` (new), `vitest.audit-setup.ts` (new), `vitest.config.ts`, `server/_core/opsTaxonomy.ts`, `server/roleChangeAudit.ts`, `server/subscriptionAudit.ts`, `server/passwordResetAudit.ts`, `server/accountClassificationAudit.ts`, `server/platformProtectionHealth.ts`, `server/db/cascadeDeletes.ts` |
+| **Schema** | `audit_events` table with indexes per design §3.3 + `eventVersion` (default 1) |
+| **Naming deviations (documented)** | PR spec `actorUserId` → column `actorId`; `beforeState`/`afterState` → `before`/`after`; `createdAt` → `occurredAt` (design §3.3). Retained `category`, `severity`, `procedure`, `ip` per approved design. |
+| **Repository boundary** | `auditRepository.ts` — sole `INSERT` into `audit_events`. Domain modules call `emitAuditEvent` / `emitCascadeAuditEvent` only. |
+| **Dual-write path** | `emitAuditEvent()` → sanitize → `opsLog` (sync) → `insertAuditEvent` (async, non-blocking) |
+| **Failure behavior** | Insert failure: business mutation unaffected; `audit_persist_failed` at `error` via opsLog only (not persisted); `console.error` with `eventType` + message. **No retry** in MVP. |
+| **Backfill** | **NONE** — forward-only from deploy date |
+| **Event versioning** | All persisted rows `eventVersion = 1` |
+| **Coverage matrix** | See table below |
+| **Excluded from persistence** | `audit_persist_failed` (opsLog only); AUTH/TENANT/RUNTIME ops events; `protected_user_modify_denied` (deferred) |
+| **Tests** | 8 new in `auditEmitter.test.ts` + `auditSanitize.test.ts` (scenarios 1–6) |
+| **Validation** | `npm run check` PASS; `npm test` 679 passed |
+| **Remaining gaps** | Read APIs (PR-6), Security Center UI (PR-7/8) |
+
+**Persistence coverage matrix (PR-5):**
+
+| eventType | Persisted | Audit category | Trigger module |
+|-----------|-----------|----------------|----------------|
+| `user_role_changed` | Yes | USER | `roleChangeAudit.ts` |
+| `subscription_created_by_admin` | Yes | SUBSCRIPTION | `subscriptionAudit.ts` |
+| `subscription_updated_by_admin` | Yes | SUBSCRIPTION | `subscriptionAudit.ts` |
+| `admin_password_reset` | Yes | USER | `passwordResetAudit.ts` |
+| `account_classification_changed` | Yes | USER | `accountClassificationAudit.ts` |
+| `internal_user_created` | Yes | USER | `accountClassificationAudit.ts` |
+| `platform_protection_healthy` | Yes | SECURITY | `platformProtectionHealth.ts` |
+| `platform_protection_degraded` | Yes | SECURITY | `platformProtectionHealth.ts` |
+| `platform_protection_misconfigured` | Yes | SECURITY | `platformProtectionHealth.ts` |
+| `cascade_subscription_deleted` | Yes | SUBSCRIPTION | `cascadeDeletes.ts` |
+| `cascade_restaurant_deleted` | Yes | COMMERCIAL | `cascadeDeletes.ts` |
+| `cascade_user_deleted` | Yes | USER | `cascadeDeletes.ts` |
+
+**Deployment requirements:**
+
+1. Apply migration **before** app deploy: `npm run db:migrate` (requires `DATABASE_URL`).
+2. Deploy app with dual-write enabled (automatic — no feature flag).
+3. Verify: run a governance mutation → row appears in `audit_events`.
+4. Rollback: revert app; table may remain (orphan harmless if empty). Drop `audit_events` only if no compliance need.
 
 ### PR-4 — Complete (2026-06-11)
 
@@ -651,7 +696,7 @@ PR-10  Hard removal
 | **Protected account guards** | Unchanged — `assertProtectedUserPasswordResetAllowed`, `assertProtectedUserSubscriptionModifiable` preserved in apply helpers |
 | **Tests** | 5 new in `passwordResetAudit.test.ts` (scenarios 1–3) + 4 new in `subscriptionAudit.test.ts` / `cascadeDeletes.test.ts` (scenarios 4–6) |
 | **Validation** | `npm run check` PASS; `npm test` 671 passed |
-| **Remaining gaps** | `audit_events` persistence (PR-5), Security Center UI (PR-7/8), `protected_user_modify_denied` (deferred) |
+| **Remaining gaps** | Security Center UI (PR-7/8), `protected_user_modify_denied` (deferred) |
 
 **Phase A status:** **COMPLETE** (PR-1 through PR-4 closed).
 
@@ -692,7 +737,7 @@ PR-10  Hard removal
 ### PR dependency graph
 
 ```
-PR-1 ✓ ──┬── PR-2 ✓ ──┬── PR-5 ── PR-6 ── PR-7 ── PR-8
+PR-1 ✓ ──┬── PR-2 ✓ ──┬── PR-5 ✓ ── PR-6 ── PR-7 ── PR-8
        │          │
        ├── PR-3 ✓ ──┤
        │    └── PR-4 ✓

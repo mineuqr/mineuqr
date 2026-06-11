@@ -18,7 +18,7 @@ import {
   userSubscriptions,
   users,
 } from "../../drizzle/schema";
-import { opsLog } from "../_core/opsLog";
+import { emitCascadeAuditEvent } from "../audit/auditEmitter";
 import { OPS_EVENT } from "../_core/opsTaxonomy";
 import { getDb } from "../db";
 import { isPlatformAccountUserId } from "../platformAccount";
@@ -106,22 +106,7 @@ function logCascade(
   audit: CascadeAuditContext | undefined,
   metadata: Record<string, unknown>
 ): void {
-  opsLog({
-    type,
-    category: "ADMIN",
-    severity: "info",
-    ts: new Date().toISOString(),
-    correlationId: audit?.correlationId,
-    actorId: audit?.actorId ?? null,
-    role: audit?.role ?? null,
-    procedure: audit?.procedure,
-    action: audit?.action,
-    ip: audit?.ip,
-    metadata: {
-      legacyPrefix: "CascadeDelete",
-      ...metadata,
-    },
-  });
+  emitCascadeAuditEvent(type, audit, metadata);
 }
 
 async function deleteSubscriptionCascadeTx(

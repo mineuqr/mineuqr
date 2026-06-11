@@ -1,4 +1,4 @@
-import { mysqlTable, mysqlSchema, AnyMySqlColumn, int, varchar, text, timestamp, decimal, mysqlEnum, index, uniqueIndex, boolean } from "drizzle-orm/mysql-core"
+import { mysqlTable, mysqlSchema, AnyMySqlColumn, bigint, int, varchar, text, timestamp, decimal, mysqlEnum, index, uniqueIndex, boolean, json } from "drizzle-orm/mysql-core"
 import { sql } from "drizzle-orm"
 
 // ─── Categories Table ──────────────────────────────────────
@@ -129,6 +129,43 @@ export const userSubscriptions = mysqlTable("user_subscriptions", {
 	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
 	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
 });
+
+// ─── Audit Events Table (ADMIN-SECURITY-CENTER PR-5) ───────
+export const auditEvents = mysqlTable(
+  "audit_events",
+  {
+    id: bigint({ mode: "number" }).autoincrement().primaryKey(),
+    eventType: varchar({ length: 64 }).notNull(),
+    eventVersion: int().default(1).notNull(),
+    category: mysqlEnum(["ACCESS", "USER", "SUBSCRIPTION", "COMMERCIAL", "SECURITY"]).notNull(),
+    severity: mysqlEnum(["info", "warn", "error"]).notNull(),
+    occurredAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+    actorId: int(),
+    actorRole: varchar({ length: 16 }),
+    targetType: varchar({ length: 32 }),
+    targetId: int(),
+    procedure: varchar({ length: 128 }),
+    correlationId: varchar({ length: 64 }),
+    ip: varchar({ length: 45 }),
+    before: json(),
+    after: json(),
+    metadata: json(),
+  },
+  (table) => [
+    index("audit_events_occurred_at_idx").on(table.occurredAt),
+    index("audit_events_event_type_occurred_at_idx").on(table.eventType, table.occurredAt),
+    index("audit_events_actor_id_occurred_at_idx").on(table.actorId, table.occurredAt),
+    index("audit_events_target_occurred_at_idx").on(
+      table.targetType,
+      table.targetId,
+      table.occurredAt
+    ),
+    index("audit_events_category_occurred_at_idx").on(table.category, table.occurredAt),
+  ]
+);
+
+export type InsertAuditEvent = typeof auditEvents.$inferInsert;
+export type SelectAuditEvent = typeof auditEvents.$inferSelect;
 
 // ─── Users Table ───────────────────────────────────────────
 export const users = mysqlTable("users", {

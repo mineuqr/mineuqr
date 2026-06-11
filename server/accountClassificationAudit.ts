@@ -1,5 +1,5 @@
 import type { TrpcContext } from "./_core/context";
-import { opsLog } from "./_core/opsLog";
+import { emitAuditEvent } from "./audit/auditEmitter";
 import { OPS_EVENT } from "./_core/opsTaxonomy";
 import type { AccountClassification, InternalStaffCategory } from "@shared/accountClassification";
 
@@ -10,15 +10,26 @@ export function logAccountClassificationChanged(params: {
   previousClassification: AccountClassification;
   nextClassification: AccountClassification;
 }): void {
-  opsLog({
-    type: OPS_EVENT.account_classification_changed,
-    category: "ADMIN",
+  emitAuditEvent({
+    eventType: OPS_EVENT.account_classification_changed,
+    category: "USER",
     severity: "info",
-    ts: new Date().toISOString(),
+    opsCategory: "ADMIN",
     correlationId: params.ctx.correlationId,
     actorId: params.ctx.user?.id ?? null,
-    role: params.ctx.user?.role ?? null,
-    route: params.procedure,
+    actorRole: params.ctx.user?.role ?? null,
+    targetType: "user",
+    targetId: params.targetUserId,
+    procedure: params.procedure,
+    opsRoute: params.procedure,
+    before: {
+      userId: params.targetUserId,
+      accountClassification: params.previousClassification,
+    },
+    after: {
+      userId: params.targetUserId,
+      accountClassification: params.nextClassification,
+    },
     metadata: {
       targetUserId: params.targetUserId,
       previousClassification: params.previousClassification,
@@ -36,15 +47,25 @@ export function logInternalUserCreated(params: {
   role: "user" | "admin";
   staffCategory: InternalStaffCategory;
 }): void {
-  opsLog({
-    type: OPS_EVENT.internal_user_created,
-    category: "ADMIN",
+  emitAuditEvent({
+    eventType: OPS_EVENT.internal_user_created,
+    category: "USER",
     severity: "info",
-    ts: new Date().toISOString(),
+    opsCategory: "ADMIN",
     correlationId: params.ctx.correlationId,
     actorId: params.ctx.user?.id ?? null,
-    role: params.ctx.user?.role ?? null,
-    route: params.procedure,
+    actorRole: params.ctx.user?.role ?? null,
+    targetType: "user",
+    targetId: params.userId,
+    procedure: params.procedure,
+    opsRoute: params.procedure,
+    after: {
+      userId: params.userId,
+      email: params.email,
+      role: params.role,
+      staffCategory: params.staffCategory,
+      accountClassification: "INTERNAL",
+    },
     metadata: {
       userId: params.userId,
       email: params.email,

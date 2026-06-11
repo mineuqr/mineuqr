@@ -15,6 +15,7 @@ export default defineConfig({
   },
   test: {
     environment: "node",
+    setupFiles: ["./vitest.audit-setup.ts"],
     include: [
       "server/**/*.test.ts",
       "server/**/*.spec.ts",

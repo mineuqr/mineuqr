@@ -3,7 +3,7 @@
  * Authoritative openId matching remains in platformAccount.ts; this module owns startup policy.
  */
 import { ENV } from "./_core/env";
-import { opsLog } from "./_core/opsLog";
+import { emitAuditEvent } from "./audit/auditEmitter";
 import { OPS_EVENT } from "./_core/opsTaxonomy";
 import { getUserByOpenId } from "./db";
 import { getPlatformOwnerOpenId, isPlatformAccountOpenId } from "./platformAccount";
@@ -92,11 +92,12 @@ function emitPlatformProtectionEvent(
   severity: "info" | "warn" | "error",
   metadata: Record<string, unknown>
 ): void {
-  opsLog({
-    type,
+  emitAuditEvent({
+    eventType: type,
     category: "SECURITY",
     severity,
-    ts: new Date().toISOString(),
+    opsCategory: "SECURITY",
+    targetType: "platform",
     metadata,
   });
 }

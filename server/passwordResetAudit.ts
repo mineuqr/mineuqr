@@ -4,7 +4,7 @@
 import { TRPCError } from "@trpc/server";
 import bcrypt from "bcryptjs";
 import type { TrpcContext } from "./_core/context";
-import { opsLog } from "./_core/opsLog";
+import { emitAuditEvent } from "./audit/auditEmitter";
 import { OPS_EVENT } from "./_core/opsTaxonomy";
 import { getUserByEmail, updateUserPassword } from "./db";
 import {
@@ -23,15 +23,18 @@ export function logAdminPasswordReset(params: {
   targetUserEmail: string | null;
   resetMethod: AdminPasswordResetMethod;
 }): void {
-  opsLog({
-    type: OPS_EVENT.admin_password_reset,
-    category: "ADMIN",
+  emitAuditEvent({
+    eventType: OPS_EVENT.admin_password_reset,
+    category: "USER",
     severity: "info",
-    ts: new Date().toISOString(),
+    opsCategory: "ADMIN",
     correlationId: params.ctx.correlationId,
     actorId: params.ctx.user?.id ?? null,
-    role: params.ctx.user?.role ?? null,
-    route: params.procedure,
+    actorRole: params.ctx.user?.role ?? null,
+    targetType: "user",
+    targetId: params.targetUserId,
+    procedure: params.procedure,
+    opsRoute: params.procedure,
     metadata: {
       actorUserId: params.ctx.user?.id ?? null,
       actorRole: params.ctx.user?.role ?? null,

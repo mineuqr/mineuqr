@@ -5,7 +5,7 @@ import { TRPCError } from "@trpc/server";
 import type { AccountClassification } from "@shared/accountClassification";
 import type { TrpcContext } from "./_core/context";
 import { assertNotSelfAdminTarget } from "./_core/assertAdminAccess";
-import { opsLog } from "./_core/opsLog";
+import { emitAuditEvent } from "./audit/auditEmitter";
 import { OPS_EVENT } from "./_core/opsTaxonomy";
 import { getUserById, updateUserRole } from "./db";
 import {
@@ -24,15 +24,28 @@ export function logUserRoleChanged(params: {
   newRole: UserRole;
   accountClassification?: AccountClassification;
 }): void {
-  opsLog({
-    type: OPS_EVENT.user_role_changed,
-    category: "ADMIN",
+  emitAuditEvent({
+    eventType: OPS_EVENT.user_role_changed,
+    category: "USER",
     severity: "info",
-    ts: new Date().toISOString(),
+    opsCategory: "ADMIN",
     correlationId: params.ctx.correlationId,
     actorId: params.ctx.user?.id ?? null,
-    role: params.ctx.user?.role ?? null,
-    route: params.procedure,
+    actorRole: params.ctx.user?.role ?? null,
+    targetType: "user",
+    targetId: params.targetUserId,
+    procedure: params.procedure,
+    opsRoute: params.procedure,
+    before: {
+      userId: params.targetUserId,
+      role: params.previousRole,
+      accountClassification: params.accountClassification,
+    },
+    after: {
+      userId: params.targetUserId,
+      role: params.newRole,
+      accountClassification: params.accountClassification,
+    },
     metadata: {
       actorUserId: params.ctx.user?.id ?? null,
       actorRole: params.ctx.user?.role ?? null,

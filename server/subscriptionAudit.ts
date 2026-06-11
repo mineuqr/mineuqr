@@ -3,7 +3,7 @@
  */
 import { TRPCError } from "@trpc/server";
 import type { TrpcContext } from "./_core/context";
-import { opsLog } from "./_core/opsLog";
+import { emitAuditEvent } from "./audit/auditEmitter";
 import { OPS_EVENT } from "./_core/opsTaxonomy";
 import {
   buildAdminSubscriptionInsert,
@@ -46,15 +46,24 @@ export function logSubscriptionCreatedByAdmin(params: {
   subscriptionId: number;
   snapshot: SubscriptionAuditSnapshot;
 }): void {
-  opsLog({
-    type: OPS_EVENT.subscription_created_by_admin,
-    category: "ADMIN",
+  emitAuditEvent({
+    eventType: OPS_EVENT.subscription_created_by_admin,
+    category: "SUBSCRIPTION",
     severity: "info",
-    ts: new Date().toISOString(),
+    opsCategory: "ADMIN",
     correlationId: params.ctx.correlationId,
     actorId: params.ctx.user?.id ?? null,
-    role: params.ctx.user?.role ?? null,
-    route: params.procedure,
+    actorRole: params.ctx.user?.role ?? null,
+    targetType: "subscription",
+    targetId: params.subscriptionId,
+    procedure: params.procedure,
+    opsRoute: params.procedure,
+    after: {
+      plan: params.snapshot.plan,
+      status: params.snapshot.status,
+      startDate: params.snapshot.startDate,
+      expiration: params.snapshot.expiration,
+    },
     metadata: {
       actorUserId: params.ctx.user?.id ?? null,
       actorRole: params.ctx.user?.role ?? null,
@@ -77,22 +86,30 @@ export function logSubscriptionUpdatedByAdmin(params: {
   before: SubscriptionAuditSnapshot;
   after: SubscriptionAuditSnapshot;
 }): void {
-  opsLog({
-    type: OPS_EVENT.subscription_updated_by_admin,
-    category: "ADMIN",
+  const beforeFields = subscriptionAuditSnapshotToChangeFields(params.before);
+  const afterFields = subscriptionAuditSnapshotToChangeFields(params.after);
+
+  emitAuditEvent({
+    eventType: OPS_EVENT.subscription_updated_by_admin,
+    category: "SUBSCRIPTION",
     severity: "info",
-    ts: new Date().toISOString(),
+    opsCategory: "ADMIN",
     correlationId: params.ctx.correlationId,
     actorId: params.ctx.user?.id ?? null,
-    role: params.ctx.user?.role ?? null,
-    route: params.procedure,
+    actorRole: params.ctx.user?.role ?? null,
+    targetType: "subscription",
+    targetId: params.subscriptionId,
+    procedure: params.procedure,
+    opsRoute: params.procedure,
+    before: beforeFields,
+    after: afterFields,
     metadata: {
       actorUserId: params.ctx.user?.id ?? null,
       actorRole: params.ctx.user?.role ?? null,
       targetUserId: params.targetUserId,
       subscriptionId: params.subscriptionId,
-      before: subscriptionAuditSnapshotToChangeFields(params.before),
-      after: subscriptionAuditSnapshotToChangeFields(params.after),
+      before: beforeFields,
+      after: afterFields,
       procedure: params.procedure,
     },
   });
