@@ -181,7 +181,7 @@ Phase D does **not** block Phase B or Phase C. Program closure requires **both t
 | `server/platformProtectionHealth.ts` | **New** — startup validation, health probe, emit platform events |
 | `server/_core/deploymentReadiness.ts` | Integrate platform protection assessment (or call from `createApiApp` boot) |
 | `server/_core/createApiApp.ts` (or server entry) | Invoke startup validation / fail-fast |
-| `server/audit/roleChangeAudit.ts` | **New** — `logUserRoleChanged` |
+| `server/roleChangeAudit.ts` | **New** — `logUserRoleChanged`, `applyAdminUserRoleUpdate` |
 | `server/audit/subscriptionAudit.ts` | **New** — `logSubscriptionCreatedByAdmin`, `logSubscriptionUpdatedByAdmin` |
 | `server/audit/passwordResetAudit.ts` | **New** — `logAdminPasswordReset` |
 | `server/audit/protectedUserAudit.ts` | **New** — `logProtectedUserModifyDenied` (optional shared) |
@@ -234,7 +234,7 @@ PR-4  Password reset audit (R8) + enhanced subscription delete snapshot
 
 - [ ] Production process exits non-zero when `OWNER_OPEN_ID` is unset or invalid
 - [ ] Development emits `platform_protection_degraded` + stderr banner when unset
-- [ ] `admin.updateUserRole` and `profile.updateUserRole` emit `user_role_changed` with `previousRole`/`nextRole` on success
+- [x] `admin.updateUserRole` and `profile.updateUserRole` emit `user_role_changed` with `previousRole`/`nextRole` on success
 - [ ] `admin.createUserSubscriptionByAdmin` emits `subscription_created_by_admin` with after snapshot
 - [ ] `admin.updateUserSubscriptionByAdmin` emits `subscription_updated_by_admin` with before/after
 - [ ] `admin.resetSubscriberPassword` emits `admin_password_reset` (no password in payload)
@@ -598,7 +598,7 @@ PR-10  Hard removal
 | PR | Title | Phase | Depends on | Est. size | Status |
 |----|-------|-------|------------|-----------|--------|
 | **PR-1** | OWNER_OPEN_ID fail-safe + platform protection health events | A | — | S | **COMPLETE** |
-| **PR-2** | Role change audit + protected-user deny events | A | PR-1 | S | Pending |
+| **PR-2** | Role change audit | A | PR-1 | S | **COMPLETE** |
 | **PR-3** | Subscription create/update audit emitters | A | PR-1 | M | Pending |
 | **PR-4** | Admin password reset audit + subscription delete snapshot | A | PR-3 | S | Pending |
 | **PR-5** | `audit_events` migration + dual-write emitter + emitter refactor | B | PR-2, PR-3, PR-4 | L | Pending |
@@ -630,12 +630,28 @@ PR-10  Hard removal
 - **Development:** Optional; missing value logs degraded warning but allows local runs.
 - **Health probe:** Orphan openId (user not yet in DB) emits `platform_protection_misconfigured` at warn/error but does not block startup when `OWNER_OPEN_ID` is syntactically valid.
 
-**Next:** PR-2 (role change audit).
+**Next:** PR-3 (subscription create/update audit).
+
+### PR-2 — Complete (2026-06-07)
+
+**Scope delivered:** Role change audit (opsLog only).
+
+| Item | Detail |
+|------|--------|
+| **Files changed** | `server/roleChangeAudit.ts` (new), `server/roleChangeAudit.test.ts` (new), `server/_core/opsTaxonomy.ts`, `server/routers.ts` |
+| **Event** | `user_role_changed` (category `ADMIN` in opsLog; maps to `USER` in Phase B `audit_events`) |
+| **Procedures covered** | `admin.updateUserRole`, `profile.updateUserRole` — both call shared `applyAdminUserRoleUpdate` |
+| **Payload** | `actorUserId`, `actorRole`, `targetUserId`, `targetUserEmail`, `previousRole`, `newRole`, `timestamp`, `correlationId`, `procedure`, optional `accountClassification` |
+| **Emit rules** | Only on successful role change when `previousRole !== newRole`; no emit on no-op, validation failure, permission failure, or transaction failure |
+| **Coverage review** | `createInternalUser` — user creation with initial role (`internal_user_created`); `upsertUser` OAuth bootstrap — not admin role change; no other `updateUserRole` callers |
+| **Protected account guards** | Unchanged — `assertProtectedUserRoleModifiable`, `assertNotSelfAdminTarget` preserved in shared helper |
+| **Tests** | 7 new in `roleChangeAudit.test.ts` (scenarios 1–5) + existing `admin-auth-1d` protection tests |
+| **Remaining gaps** | `protected_user_modify_denied` (PR scope excluded), `audit_events` persistence (PR-5), Security Center UI (PR-7/8) |
 
 ### PR dependency graph
 
 ```
-PR-1 ✓ ──┬── PR-2 ──┬── PR-5 ── PR-6 ── PR-7 ── PR-8
+PR-1 ✓ ──┬── PR-2 ✓ ──┬── PR-5 ── PR-6 ── PR-7 ── PR-8
        │          │
        ├── PR-3 ──┤
        │    └── PR-4

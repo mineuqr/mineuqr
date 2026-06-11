@@ -20,7 +20,7 @@ import {
   createSubscriptionForRestaurant, updateSubscriptionById, cancelSubscriptionById, getSubscriptionForRestaurant,
   getAdminStatistics, getRevenueByMonth,
   getPublicStats, getExtendedAdminStats,
-  getAllUsers, updateUserRole, updateAccountClassification,
+  getAllUsers, updateAccountClassification,
   sanitizeUserForAdminResponse,
   createInvoice, updateInvoice, getUserById,
   updateUserSessionValidAfter,
@@ -64,9 +64,9 @@ import {
   logAccountClassificationChanged,
   logInternalUserCreated,
 } from "./accountClassificationAudit";
+import { applyAdminUserRoleUpdate } from "./roleChangeAudit";
 import {
   assertProtectedUserPasswordResetAllowed,
-  assertProtectedUserRoleModifiable,
   assertProtectedUserClassificationModifiable,
   assertProtectedUserSubscriptionModifiable,
   deleteRestaurantCascade,
@@ -1036,19 +1036,12 @@ const adminCoreRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       assertAdminAccess(ctx, "admin.updateUserRole");
-      assertNotSelfAdminTarget(ctx, input.userId, "update_role");
-      try {
-        await assertProtectedUserRoleModifiable(input.userId);
-      } catch (error) {
-        if (error instanceof ProtectedUserModifyError) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "لا يمكن تعديل دور هذا المستخدم المحمي",
-          });
-        }
-        throw error;
-      }
-      return updateUserRole(input.userId, input.role);
+      return applyAdminUserRoleUpdate({
+        ctx,
+        procedure: "admin.updateUserRole",
+        userId: input.userId,
+        role: input.role,
+      });
     }),
 
   deleteUser: protectedProcedure
@@ -1474,19 +1467,12 @@ const profileRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       assertAdminAccess(ctx, "profile.updateUserRole");
-      assertNotSelfAdminTarget(ctx, input.userId, "update_role");
-      try {
-        await assertProtectedUserRoleModifiable(input.userId);
-      } catch (error) {
-        if (error instanceof ProtectedUserModifyError) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "لا يمكن تعديل دور هذا المستخدم المحمي",
-          });
-        }
-        throw error;
-      }
-      return updateUserRole(input.userId, input.role);
+      return applyAdminUserRoleUpdate({
+        ctx,
+        procedure: "profile.updateUserRole",
+        userId: input.userId,
+        role: input.role,
+      });
     }),
 
   deleteUser: protectedProcedure

@@ -81,6 +81,7 @@ export const OPS_EVENT = {
   tenant_boundary_violation: "tenant_boundary_violation",
   unauthorized_admin_access: "unauthorized_admin_access",
   account_classification_changed: "account_classification_changed",
+  user_role_changed: "user_role_changed",
   internal_user_created: "internal_user_created",
   cascade_subscription_deleted: "cascade_subscription_deleted",
   cascade_restaurant_deleted: "cascade_restaurant_deleted",
