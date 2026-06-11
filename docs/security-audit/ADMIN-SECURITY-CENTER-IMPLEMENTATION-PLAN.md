@@ -27,16 +27,41 @@ ADMIN-SECURITY-CENTER closes four governance gaps without changing the binary `a
 4. **Security Center UI** — `/admin/security` becomes a read-heavy governance console.
 5. **API consolidation** — remove duplicate `profile.*` admin governance endpoints.
 
-### Recommended execution order
+### Canonical execution model
+
+**Main track (strictly sequential):**
 
 ```
-Phase A (Audit Hardening)     → 4 PRs, no schema
-Phase B (Audit Persistence)   → 2 PRs, migration required
-Phase C (Security Center UI)  → 2 PRs, depends on Phase B read APIs
-Phase D (API Consolidation)   → 2 PRs, may start after Phase A PR-2
+Phase A  Audit Hardening
+    ↓
+Phase B  Audit Persistence
+    ↓
+Phase C  Security Center UI
 ```
 
-**Total:** 10 PRs across four phases. Estimated effort: **Medium–High** (schema + UI + test coverage).
+**Parallel track (independent of B → C gate):**
+
+```
+Phase D  API Consolidation  ── parallel to A / B / C after PR-2
+```
+
+| Track | Phases | Gate |
+|-------|--------|------|
+| **Main** | A → B → C | Each phase completes before the next starts |
+| **Parallel** | D | May start after **PR-2** (role audit shared helper); **PR-10** still requires PR-9 + 30-day window |
+
+Phase D does **not** block Phase B or Phase C. Program closure requires **both tracks** complete.
+
+**PR allocation:**
+
+| Phase | PRs | Schema |
+|-------|-----|--------|
+| A | PR-1 … PR-4 | No |
+| B | PR-5 … PR-6 | Yes |
+| C | PR-7 … PR-8 | No |
+| D | PR-9 … PR-10 | No |
+
+**Total:** 10 PRs. Estimated effort: **Medium–High** (schema + UI + test coverage).
 
 ### Program constraints (unchanged)
 
@@ -48,6 +73,32 @@ Phase D (API Consolidation)   → 2 PRs, may start after Phase A PR-2
 ---
 
 ## 2. Execution Strategy
+
+### 2.0 Phase sequencing rules
+
+| Rule | Detail |
+|------|--------|
+| **A before B** | Dual-write (B) wraps emitters defined in A |
+| **B before C** | Security Center UI (C) requires read APIs from B (PR-6) |
+| **D parallel** | PR-9 may land alongside A PR-3/4, B, or C — no dependency on B or C |
+| **D start gate** | PR-9 after PR-2 only (shared role-audit helper on both `admin.*` and `profile.*`) |
+| **D end gate** | PR-10 after PR-9 + 30 days zero `deprecated_api_used` in production |
+| **Program complete** | A + B + C + D all closed |
+
+```
+                    PR-1 ── PR-2 ── PR-3 ── PR-4
+                      │      │      │      │
+  MAIN (sequential)   └──────┴──────┴──────┘
+                              │
+                              ▼
+                         PR-5 ── PR-6
+                              │
+                              ▼
+                         PR-7 ── PR-8
+
+  PARALLEL            PR-2 ── PR-9 ── … ── PR-10
+                      (start)  (deprecate)  (remove, +30d)
+```
 
 ### 2.1 Work-package principles
 
@@ -574,39 +625,41 @@ PR-1 ──┬── PR-2 ──┬── PR-5 ── PR-6 ── PR-7 ── PR
 ## 8. Dependency Map
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│ Prerequisites (complete)                                        │
-│  ADMIN-RTL-WORKSPACE │ securityDomain.ts │ ADMIN-AUTH-1D        │
-└────────────────────────────┬────────────────────────────────────┘
-                             │
-         ┌───────────────────┼───────────────────┐
-         ▼                   │                   │
-    ┌─────────┐              │              ┌─────────┐
-    │ Phase A │              │              │ Phase D │
-    │ PR 1-4  │              │              │ PR 9-10 │
-    └────┬────┘              │              └────▲────┘
-         │                   │                   │
-         ▼                   │              (parallel after PR-2)
-    ┌─────────┐              │
-    │ Phase B │◄─────────────┘
-    │ PR 5-6  │   (emitters must exist before dual-write)
-    └────┬────┘
-         │
-         ▼
-    ┌─────────┐
-    │ Phase C │
-    │ PR 7-8  │
-    └─────────┘
+Prerequisites: ADMIN-RTL-WORKSPACE │ securityDomain.ts │ ADMIN-AUTH-1D
+                              │
+        ┌─────────────────────┴─────────────────────┐
+        │                                           │
+        ▼  MAIN TRACK (sequential)                 ▼  PARALLEL TRACK
+   ┌─────────┐                               ┌─────────┐
+   │ Phase A │                               │ Phase D │
+   │ PR 1-4  │                               │ PR 9-10 │
+   └────┬────┘                               └────▲────┘
+        │                                         │
+        ▼                                    starts after
+   ┌─────────┐                               PR-2 (Phase A)
+   │ Phase B │
+   │ PR 5-6  │
+   └────┬────┘
+        │
+        ▼
+   ┌─────────┐
+   │ Phase C │
+   │ PR 7-8  │
+   └─────────┘
+
+Phase D runs in parallel — does not block B or C.
 ```
 
-| Dependency | Type | Notes |
-|------------|------|-------|
-| Phase B → Phase A | Hard | Dual-write wraps existing event shapes |
-| Phase C → Phase B PR-6 | Hard | UI needs read APIs |
-| Phase C → ADMIN-RTL-WORKSPACE | Hard | Shell policy |
-| Phase D → Phase A PR-2 | Soft | Deprecation can start after role audit shared helper exists |
-| Phase D PR-10 → PR-9 + time | Hard | 30-day zero deprecated usage |
-| Migration → App deploy | Hard | PR-5 migration before app |
+| Dependency | Type | Track | Notes |
+|------------|------|-------|-------|
+| Phase B → Phase A | **Hard** | Main | Dual-write wraps existing event shapes |
+| Phase C → Phase B PR-6 | **Hard** | Main | UI needs read APIs |
+| Phase C → ADMIN-RTL-WORKSPACE | **Hard** | Main | Shell policy |
+| Phase D → Phase A PR-2 | **Soft** | Parallel | PR-9 after role audit shared helper |
+| Phase D ⊥ Phase B | **None** | — | D may run during B |
+| Phase D ⊥ Phase C | **None** | — | D may run during C |
+| Phase D PR-10 → PR-9 + 30d | **Hard** | Parallel | Removal gate |
+| Migration → App deploy | **Hard** | Main | PR-5 migration before app |
 
 ---
 
@@ -718,28 +771,30 @@ All items in §6.8 plus:
 
 ## 12. Recommended Execution Order
 
-### 12.1 Sequential timeline
+### 12.1 Canonical schedule
 
-| Week | PRs | Milestone |
-|------|-----|-----------|
-| 1 | PR-1, PR-2 | Platform protection fail-safe + role audit live |
-| 2 | PR-3, PR-4, PR-9 | Subscription + password audit; API deprecation announced |
-| 3 | PR-5 | Migration + dual-write (coordinate deploy) |
-| 4 | PR-6 | Read APIs ready |
-| 5 | PR-7 | Security Center posture visible |
-| 6 | PR-8 | Full audit UI |
-| 7+ | PR-10 | API removal after 30-day window |
+| Week | Main track (A → B → C) | Parallel track (D) |
+|------|------------------------|-------------------|
+| 1 | PR-1, PR-2 (Phase A) | — |
+| 2 | PR-3, PR-4 (Phase A complete) | **PR-9** (deprecation) — may start after PR-2 |
+| 3 | PR-5 (Phase B) | PR-9 (if not merged week 2) |
+| 4 | PR-6 (Phase B complete) | — |
+| 5 | PR-7 (Phase C) | — |
+| 6 | PR-8 (Phase C complete) | — |
+| 7+ | — | **PR-10** (removal) after PR-9 + 30 days |
 
-### 12.2 Parallelization options
+### 12.2 Staffing model
 
-| If staffed in parallel | Track 1 | Track 2 |
-|------------------------|---------|---------|
-| After PR-1 | PR-2 → PR-5 → PR-6 → PR-7 → PR-8 | PR-3 → PR-4 → PR-9 |
-| Constraint | PR-5 waits for PR-2, PR-3, PR-4 | PR-9 waits for PR-2 only |
+| Track | Owner focus | PR sequence |
+|-------|-------------|-------------|
+| **Main** | Audit + persistence + UI | PR-1 → PR-2 → PR-3 → PR-4 → PR-5 → PR-6 → PR-7 → PR-8 |
+| **Parallel** | API consolidation | PR-9 → (wait 30d) → PR-10 |
+
+Single developer: run main track sequentially; slot **PR-9** immediately after **PR-2** before continuing PR-3.
 
 ### 12.3 First action
 
-**Start PR-1 (OWNER_OPEN_ID fail-safe)** — unblocks safe production posture before any other work lands.
+**Start PR-1 (OWNER_OPEN_ID fail-safe)** on the main track. Schedule **PR-9** in parallel once **PR-2** merges.
 
 ### 12.4 Out of program scope (do not schedule)
 
