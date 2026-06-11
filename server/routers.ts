@@ -60,6 +60,7 @@ import {
   logAccountClassificationChanged,
   logInternalUserCreated,
 } from "./accountClassificationAudit";
+import { logDeprecatedApiUsed } from "./deprecatedApiAudit";
 import { applyAdminUserRoleUpdate } from "./roleChangeAudit";
 import { applyAdminPasswordReset } from "./passwordResetAudit";
 import {
@@ -1388,14 +1389,23 @@ const profileRouter = router({
       return { success: true };
     }),
 
-  // ─── Users Management ───────────────────────
+  // ─── Users Management (deprecated — PR-9) ───────────────────────
+  /**
+   * @deprecated ADMIN-SECURITY-CENTER PR-9 — use `admin.listAllUsers`.
+   * Replaced by Security Center / admin namespace governance APIs.
+   */
   listAllUsers: protectedProcedure
     .query(async ({ ctx }) => {
       assertAdminAccess(ctx, "profile.listAllUsers");
+      logDeprecatedApiUsed(ctx, "profile.listAllUsers");
       const users = await getAllUsers();
       return users.map(sanitizeUserForAdminResponse);
     }),
 
+  /**
+   * @deprecated ADMIN-SECURITY-CENTER PR-9 — use `admin.updateUserRole`.
+   * Replaced by Security Center governance APIs.
+   */
   updateUserRole: protectedProcedure
     .input(z.object({
       userId: z.number(),
@@ -1403,6 +1413,7 @@ const profileRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       assertAdminAccess(ctx, "profile.updateUserRole");
+      logDeprecatedApiUsed(ctx, "profile.updateUserRole");
       return applyAdminUserRoleUpdate({
         ctx,
         procedure: "profile.updateUserRole",
@@ -1411,12 +1422,17 @@ const profileRouter = router({
       });
     }),
 
+  /**
+   * @deprecated ADMIN-SECURITY-CENTER PR-9 — use `admin.deleteUser`.
+   * Replaced by Security Center governance APIs.
+   */
   deleteUser: protectedProcedure
     .input(z.object({
       userId: z.number(),
     }))
     .mutation(async ({ input, ctx }) => {
       assertAdminAccess(ctx, "profile.deleteUser");
+      logDeprecatedApiUsed(ctx, "profile.deleteUser");
       assertNotSelfAdminTarget(ctx, input.userId, "delete_user");
       try {
         await deleteUserCascade(

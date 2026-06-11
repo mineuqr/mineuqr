@@ -542,7 +542,7 @@ PR-8  Audit Timeline + Role Changes + Subscription Changes + i18n polish
 |------|--------|
 | D1.1 | Add `@deprecated` JSDoc on three handlers in `profileRouter` |
 | D1.2 | Wrap handlers with `logDeprecatedApiUsed(ctx, "profile.updateUserRole")` → opsLog + audit persist |
-| D1.3 | Create `docs/security-audit/ADMIN-SECURITY-CENTER-API-INVENTORY.md` |
+| D1.3 | Create `docs/security-audit/DEPRECATED-GOVERNANCE-APIS.md` |
 | D1.4 | Add CI grep check: warn on new `profile.(listAllUsers|updateUserRole|deleteUser)` in client |
 | D1.5 | Changelog entry |
 
@@ -586,8 +586,8 @@ PR-10  Hard removal
 
 ### 6.8 Phase D success criteria
 
-- [ ] `ADMIN-SECURITY-CENTER-API-INVENTORY.md` published
-- [ ] PR-9: deprecated handlers emit `deprecated_api_used`
+- [x] `DEPRECATED-GOVERNANCE-APIS.md` published
+- [x] PR-9: deprecated handlers emit `deprecated_api_used`
 - [ ] PR-10: three `profile.*` governance procedures removed
 - [ ] `profile.get`, `profile.changePassword`, etc. unchanged
 - [ ] No permission behavior change
@@ -607,7 +607,7 @@ PR-10  Hard removal
 | **PR-6** | Audit read APIs + `getSecurityHealth` route | B | PR-5 | M | **COMPLETE** |
 | **PR-7** | Security Center page shell + Overview/Health/Warnings/Protected | C | PR-6 | M | **COMPLETE** |
 | **PR-8** | Audit Timeline + Role/Subscription sections + i18n | C | PR-7 | L | **COMPLETE** |
-| **PR-9** | API deprecation (`profile.*` governance) + inventory doc | D | PR-2 | S | Pending |
+| **PR-9** | API deprecation (`profile.*` governance) + inventory doc | D | PR-2 | S | **COMPLETE** |
 | **PR-10** | API removal (`profile.*` governance) | D | PR-9 + 30d | S | Pending |
 
 ### PR-1 — Complete (2026-06-11)
