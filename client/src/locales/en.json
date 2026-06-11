@@ -965,6 +965,56 @@
       "statOperational": "Operational venue count",
       "statCanonical": "Canonical owner subscriptions"
     },
+    "security": {
+      "pageSubtitle": "Platform protection posture and audit visibility",
+      "loadError": "Unable to load security data",
+      "loadErrorDesc": "Check your connection and try refreshing the page.",
+      "common": {
+        "yes": "Yes",
+        "no": "No",
+        "configured": "Configured",
+        "notConfigured": "Not configured",
+        "notResolved": "Not resolved"
+      },
+      "overview": {
+        "title": "Security Overview",
+        "basedOnLast7Days": "Based on: Last 7 days",
+        "totalEvents": "Total events",
+        "eventsToday": "Events today",
+        "categories": "Categories",
+        "categoriesHint": "Distinct categories with events",
+        "severity": "Severity levels",
+        "severityHint": "Distinct severities with events",
+        "byCategory": "By category",
+        "bySeverity": "By severity",
+        "noBuckets": "No events in this range"
+      },
+      "health": {
+        "title": "Security Health",
+        "status": {
+          "healthy": "Healthy",
+          "warning": "Warning",
+          "critical": "Critical"
+        },
+        "protectionActive": "Protection active",
+        "auditPersistence": "Audit persistence",
+        "auditAvailable": "Available",
+        "auditUnavailable": "Unavailable",
+        "platformUserResolved": "Platform user resolved"
+      },
+      "warnings": {
+        "title": "Security Warnings",
+        "emptyTitle": "No active warnings",
+        "emptyDesc": "Platform protection and audit persistence look clear."
+      },
+      "protected": {
+        "title": "Protected Accounts",
+        "readOnly": "Read-only platform protection facts",
+        "platformUserId": "Platform user ID",
+        "protectionActive": "Protection active",
+        "ownerOpenId": "OWNER_OPEN_ID"
+      }
+    },
     "operations": {
       "workspaceTitle": "Operations",
       "workspaceSubtitle": "Manage accounts, tenants, and communications",

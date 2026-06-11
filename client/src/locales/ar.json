@@ -965,6 +965,56 @@
       "statOperational": "عدد المطاعم التشغيلي",
       "statCanonical": "اشتراكات المالك الموحدة"
     },
+    "security": {
+      "pageSubtitle": "وضع حماية المنصة ورؤية التدقيق",
+      "loadError": "تعذّر تحميل بيانات الأمان",
+      "loadErrorDesc": "تحقق من الاتصال وحاول تحديث الصفحة.",
+      "common": {
+        "yes": "نعم",
+        "no": "لا",
+        "configured": "مُعدّ",
+        "notConfigured": "غير مُعدّ",
+        "notResolved": "غير محلول"
+      },
+      "overview": {
+        "title": "نظرة عامة على الأمان",
+        "basedOnLast7Days": "استناداً إلى: آخر 7 أيام",
+        "totalEvents": "إجمالي الأحداث",
+        "eventsToday": "أحداث اليوم",
+        "categories": "الفئات",
+        "categoriesHint": "فئات مميزة بها أحداث",
+        "severity": "مستويات الخطورة",
+        "severityHint": "مستويات خطورة مميزة بها أحداث",
+        "byCategory": "حسب الفئة",
+        "bySeverity": "حسب الخطورة",
+        "noBuckets": "لا أحداث في هذا النطاق"
+      },
+      "health": {
+        "title": "صحة الأمان",
+        "status": {
+          "healthy": "سليم",
+          "warning": "تحذير",
+          "critical": "حرج"
+        },
+        "protectionActive": "الحماية نشطة",
+        "auditPersistence": "استمرارية التدقيق",
+        "auditAvailable": "متاح",
+        "auditUnavailable": "غير متاح",
+        "platformUserResolved": "مستخدم المنصة محلول"
+      },
+      "warnings": {
+        "title": "تحذيرات الأمان",
+        "emptyTitle": "لا تحذيرات نشطة",
+        "emptyDesc": "حماية المنصة واستمرارية التدقيق تبدو سليمة."
+      },
+      "protected": {
+        "title": "الحسابات المحمية",
+        "readOnly": "حقائق حماية المنصة للقراءة فقط",
+        "platformUserId": "معرّف مستخدم المنصة",
+        "protectionActive": "الحماية نشطة",
+        "ownerOpenId": "OWNER_OPEN_ID"
+      }
+    },
     "operations": {
       "workspaceTitle": "العمليات",
       "workspaceSubtitle": "إدارة الحسابات والمستأجرين والاتصالات",

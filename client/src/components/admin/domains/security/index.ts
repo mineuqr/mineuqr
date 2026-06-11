@@ -36,3 +36,13 @@ export {
 export {
   SecurityReadinessSection,
 } from "./SecurityReadinessSection";
+
+export { SecurityCenterComposition } from "./SecurityCenterComposition";
+export { SecurityOverviewSection } from "./SecurityOverviewSection";
+export { SecurityHealthSection } from "./SecurityHealthSection";
+export {
+  SecurityWarningsBanner,
+  SecurityWarningsSection,
+} from "./SecurityWarningsSection";
+export { SecurityProtectedAccountsSection } from "./SecurityProtectedAccountsSection";
+export { useSecurityCenterQueries } from "./useSecurityCenterQueries";

@@ -17,6 +17,5 @@ export function AdminTenantsPage() {
 }
 export const AdminCustomerSuccessPage = createPlaceholderPage("customer-success");
 export const AdminHealthPage = createPlaceholderPage("health");
-export const AdminSecurityPage = createPlaceholderPage("security");
 export const AdminReportsPage = createPlaceholderPage("reports");
 export const AdminLaunchReadinessPage = createPlaceholderPage("launch-readiness");

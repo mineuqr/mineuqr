@@ -199,6 +199,56 @@ export const SECURITY_ASSET_DEFINITIONS: SecurityAssetDefinition[] = [
     ownerPath: "components/admin/domains/security/SecurityReadinessSection",
     surfaces: ["auth"],
   },
+
+  // ── Security Center workspace (ADMIN-SECURITY-CENTER PR-7) ──
+  {
+    id: "security-center-composition",
+    category: "security-center",
+    ownerPath: "components/admin/domains/security/SecurityCenterComposition",
+    surfaces: ["security"],
+  },
+  {
+    id: "security-overview",
+    category: "security-center",
+    ownerPath: "components/admin/domains/security/SecurityOverviewSection",
+    queryKey: "admin.getAuditEventStats",
+    surfaces: ["security"],
+  },
+  {
+    id: "security-health",
+    category: "security-center",
+    ownerPath: "components/admin/domains/security/SecurityHealthSection",
+    queryKey: "admin.getSecurityHealth",
+    surfaces: ["security"],
+  },
+  {
+    id: "security-warnings",
+    category: "security-center",
+    ownerPath: "components/admin/domains/security/SecurityWarningsSection",
+    queryKey: "admin.getSecurityHealth",
+    surfaces: ["security"],
+  },
+  {
+    id: "security-protected-accounts",
+    category: "security-center",
+    ownerPath: "components/admin/domains/security/SecurityProtectedAccountsSection",
+    queryKey: "admin.getSecurityHealth",
+    surfaces: ["security"],
+  },
+  {
+    id: "api-get-audit-event-stats",
+    category: "api",
+    ownerPath: "server/audit/adminAuditRouter.ts",
+    queryKey: "admin.getAuditEventStats",
+    surfaces: ["security"],
+  },
+  {
+    id: "api-get-security-health",
+    category: "api",
+    ownerPath: "server/audit/adminAuditRouter.ts",
+    queryKey: "admin.getSecurityHealth",
+    surfaces: ["security"],
+  },
 ];
 
 /** Security-owned assets physically hosted in Customer Success accounts workspace. */
@@ -218,4 +268,12 @@ export const SECURITY_COMPOSITION_SECTIONS = [
   "SecurityAccountControlsSection",
   "SecurityDiagnosticsSection",
   "SecurityReadinessSection",
+] as const;
+
+/** ADMIN-SECURITY-CENTER PR-7 — Security Center page sections (read-only). */
+export const SECURITY_CENTER_SECTIONS = [
+  "SecurityOverviewSection",
+  "SecurityHealthSection",
+  "SecurityWarningsSection",
+  "SecurityProtectedAccountsSection",
 ] as const;

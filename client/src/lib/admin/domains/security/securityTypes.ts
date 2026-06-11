@@ -11,6 +11,7 @@ export type SecurityAssetCategory =
   | "session"
   | "diagnostics"
   | "readiness"
+  | "security-center"
   | "api"
   | "helper"
   | "server";
@@ -43,7 +44,14 @@ export type SecurityAssetId =
   | "server-suspicious-activity"
   | "server-assert-admin-access"
   | "security-diagnostics-readiness"
-  | "security-readiness-indicators";
+  | "security-readiness-indicators"
+  | "security-center-composition"
+  | "security-overview"
+  | "security-health"
+  | "security-warnings"
+  | "security-protected-accounts"
+  | "api-get-audit-event-stats"
+  | "api-get-security-health";
 
 /** Security-owned controls physically hosted in CS accounts workspace. */
 export type SecurityAccountsHostedAssetId =
@@ -54,7 +62,7 @@ export type SecurityAccountsHostedAssetId =
   | "security-platform-account-guards"
   | "security-self-guard";
 
-export type SecuritySurfaceId = "operations" | "auth" | "infrastructure";
+export type SecuritySurfaceId = "operations" | "auth" | "infrastructure" | "security";
 
 export type SecurityAssetDefinition = {
   id: SecurityAssetId;

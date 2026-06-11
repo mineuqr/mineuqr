@@ -21,9 +21,9 @@ import {
   AdminHealthPage,
   AdminLaunchReadinessPage,
   AdminReportsPage,
-  AdminSecurityPage,
   AdminTenantsPage,
 } from "./pages/admin/placeholderPages";
+import AdminSecurityPage from "./pages/admin/AdminSecurityPage";
 import SuperAdminDashboard from "./pages/SuperAdminDashboard";
 import Statistics from "./pages/Statistics";
 import Users from "./pages/Users";
