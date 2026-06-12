@@ -170,7 +170,7 @@ export function ClassicTemplate(props: TemplateProps) {
         bgStyle={`${c.bg1}d9`}
         textColor={c.textColor}
       />
-      <OffersSection offers={offers || []} accentColor={c.accent} textColor={c.textColor} cardBg={`${c.card}99`} currencySymbol={cs} fontStyles={fs} />
+      <OffersSection offers={offers || []} accentColor={c.accent} textColor={c.textColor} cardBg={`${c.card}99`} currencySymbol={cs} fontStyles={fs} tableNumber={tableNumber} />
       <main className="container py-6">
         <ItemsGrid items={filteredItems} searchQuery={searchQuery} accentColor={c.accent} cardStyle={`border border-white/10`} cardBg={`${c.card}99`} textColor={c.textColor} currencySymbol={cs} fontStyles={fs} tableNumber={tableNumber} />
       </main>
@@ -208,7 +208,7 @@ export function ElegantTemplate(props: TemplateProps) {
         textColor={c.textColor}
         pillStyle={`border border-[${c.accent}]/30`}
       />
-      <OffersSection offers={offers || []} accentColor={c.accent} textColor={c.textColor} cardBg={`${c.card}b3`} currencySymbol={cs} fontStyles={fs} />
+      <OffersSection offers={offers || []} accentColor={c.accent} textColor={c.textColor} cardBg={`${c.card}b3`} currencySymbol={cs} fontStyles={fs} tableNumber={tableNumber} />
       <main className="container py-6">
         <ItemsGrid items={filteredItems} searchQuery={searchQuery} accentColor={c.accent} cardStyle={`border border-white/10`} cardBg={`${c.card}b3`} textColor={c.textColor} pricePrefix="" currencySymbol={cs} fontStyles={fs} tableNumber={tableNumber} />
       </main>
@@ -245,7 +245,7 @@ export function ModernTemplate(props: TemplateProps) {
         bgStyle={`${c.bg1}d9`}
         textColor={c.textColor}
       />
-      <OffersSection offers={offers || []} accentColor={c.accent} textColor={c.textColor} cardBg={`${c.card}26`} currencySymbol={cs} fontStyles={fs} />
+      <OffersSection offers={offers || []} accentColor={c.accent} textColor={c.textColor} cardBg={`${c.card}26`} currencySymbol={cs} fontStyles={fs} tableNumber={tableNumber} />
       <main className="container py-6">
         <ItemsGrid items={filteredItems} searchQuery={searchQuery} accentColor={c.accent} cardStyle="backdrop-blur-md border border-white/20" cardBg={`${c.card}26`} textColor={c.textColor} currencySymbol={cs} fontStyles={fs} tableNumber={tableNumber} />
       </main>
@@ -278,7 +278,7 @@ export function DarkTemplate(props: TemplateProps) {
         bgStyle={`${c.bg1}f2`}
         textColor={c.textColor}
       />
-      <OffersSection offers={offers || []} accentColor={c.accent} textColor={c.textColor} cardBg={`${c.card}cc`} currencySymbol={cs} fontStyles={fs} />
+      <OffersSection offers={offers || []} accentColor={c.accent} textColor={c.textColor} cardBg={`${c.card}cc`} currencySymbol={cs} fontStyles={fs} tableNumber={tableNumber} />
       <main className="container py-6">
         <ItemsGrid items={filteredItems} searchQuery={searchQuery} accentColor={c.accent} cardStyle="border border-white/5 transition-colors" cardBg={`${c.card}cc`} textColor={c.textColor} currencySymbol={cs} fontStyles={fs} tableNumber={tableNumber} />
       </main>
@@ -314,7 +314,7 @@ export function WarmTemplate(props: TemplateProps) {
         bgStyle={`${c.bg1}e6`}
         textColor={c.textColor}
       />
-      <OffersSection offers={offers || []} accentColor={c.accent} textColor={c.textColor} cardBg={`${c.card}b3`} currencySymbol={cs} fontStyles={fs} />
+      <OffersSection offers={offers || []} accentColor={c.accent} textColor={c.textColor} cardBg={`${c.card}b3`} currencySymbol={cs} fontStyles={fs} tableNumber={tableNumber} />
       <main className="container py-6">
         <ItemsGrid items={filteredItems} searchQuery={searchQuery} accentColor={c.accent} cardStyle={`border border-white/10`} cardBg={`${c.card}b3`} textColor={c.textColor} currencySymbol={cs} fontStyles={fs} tableNumber={tableNumber} />
       </main>
@@ -351,7 +351,7 @@ export function OceanTemplate(props: TemplateProps) {
         bgStyle={`${c.bg1}e6`}
         textColor={c.textColor}
       />
-      <OffersSection offers={offers || []} accentColor={c.accent} textColor={c.textColor} cardBg={`${c.card}99`} currencySymbol={cs} fontStyles={fs} />
+      <OffersSection offers={offers || []} accentColor={c.accent} textColor={c.textColor} cardBg={`${c.card}99`} currencySymbol={cs} fontStyles={fs} tableNumber={tableNumber} />
       <main className="container py-6">
         <ItemsGrid items={filteredItems} searchQuery={searchQuery} accentColor={c.accent} cardStyle="border border-white/10 backdrop-blur-sm" cardBg={`${c.card}99`} textColor={c.textColor} currencySymbol={cs} fontStyles={fs} tableNumber={tableNumber} />
       </main>
@@ -388,7 +388,7 @@ export function RoyalTemplate(props: TemplateProps) {
         textColor={c.textColor}
         pillStyle={`border border-white/15`}
       />
-      <OffersSection offers={offers || []} accentColor={c.accent} textColor={c.textColor} cardBg={`${c.card}99`} currencySymbol={cs} fontStyles={fs} />
+      <OffersSection offers={offers || []} accentColor={c.accent} textColor={c.textColor} cardBg={`${c.card}99`} currencySymbol={cs} fontStyles={fs} tableNumber={tableNumber} />
       <main className="container py-6">
         <ItemsGrid items={filteredItems} searchQuery={searchQuery} accentColor={c.accent} cardStyle="border border-white/10" cardBg={`${c.card}99`} textColor={c.textColor} currencySymbol={cs} fontStyles={fs} tableNumber={tableNumber} />
       </main>
@@ -426,7 +426,7 @@ export function NeonTemplate(props: TemplateProps) {
         bgStyle={`${c.bg1}f2`}
         textColor={c.textColor}
       />
-      <OffersSection offers={offers || []} accentColor={c.accent} textColor={c.textColor} cardBg={`${c.card}e6`} currencySymbol={cs} fontStyles={fs} />
+      <OffersSection offers={offers || []} accentColor={c.accent} textColor={c.textColor} cardBg={`${c.card}e6`} currencySymbol={cs} fontStyles={fs} tableNumber={tableNumber} />
       <main className="container py-6">
         <ItemsGrid items={filteredItems} searchQuery={searchQuery} accentColor={c.accent} cardStyle="border border-white/10 transition-shadow" cardBg={`${c.card}e6`} textColor={c.textColor} currencySymbol={cs} fontStyles={fs} tableNumber={tableNumber} />
       </main>
@@ -966,13 +966,14 @@ function CountdownTimer({ endDate, accentColor, textColor }: { endDate: string |
   );
 }
 
-function OffersSection({ offers, accentColor, textColor, cardBg, currencySymbol, fontStyles }: {
+function OffersSection({ offers, accentColor, textColor, cardBg, currencySymbol, fontStyles, tableNumber }: {
   offers: any[];
   accentColor: string;
   textColor: string;
   cardBg?: string;
   currencySymbol?: string;
   fontStyles?: { arStyle: React.CSSProperties; enStyle: React.CSSProperties; headingColor?: string; bodyColor?: string; priceColor?: string; headingScale?: string; bodyScale?: string; priceScale?: string };
+  tableNumber?: number;
 }) {
   const [activeFilter, setActiveFilter] = useState<'all' | 'daily' | 'weekly' | 'monthly'>('all');
 
@@ -1099,8 +1100,18 @@ function OffersSection({ offers, accentColor, textColor, cardBg, currencySymbol,
                            {offer.originalPrice} {currencySymbol || 'ر.س'}
                          </span>
                        </div>
-                      {/* Countdown Timer */}
-                      <CountdownTimer endDate={offer.endDate} accentColor={accentColor} textColor={textColor} />
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <CountdownTimer endDate={offer.endDate} accentColor={accentColor} textColor={textColor} />
+                        {tableNumber != null && tableNumber > 0 && (
+                          <AddToCartButton
+                            offerId={offer.id}
+                            nameAr={offer.titleAr}
+                            nameEn={offer.titleEn}
+                            price={String(offer.offerPrice)}
+                            imageUrl={offer.imageUrl}
+                          />
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>

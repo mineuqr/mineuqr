@@ -1,6 +1,16 @@
 import { TRPCError } from "@trpc/server";
 import type { SelectMenuItem } from "../drizzle/schema";
-import { getMenuItemById } from "./db";
+import { getMenuItemById, getOfferById } from "./db";
+
+const OFFER_CART_MENU_ITEM_ID_BASE = 1_000_000_000;
+
+function isOfferCartMenuItemId(menuItemId: number): boolean {
+  return menuItemId >= OFFER_CART_MENU_ITEM_ID_BASE;
+}
+
+function cartMenuItemIdToOfferId(menuItemId: number): number {
+  return menuItemId - OFFER_CART_MENU_ITEM_ID_BASE;
+}
 
 /** Public order line input — pricing fields are not trusted. */
 export type OrderLineInput = {
@@ -78,6 +88,50 @@ export async function resolveAuthoritativeOrderLines(
       });
     }
     seen.add(item.menuItemId);
+
+    if (isOfferCartMenuItemId(item.menuItemId)) {
+      const offerId = cartMenuItemIdToOfferId(item.menuItemId);
+      const offer = await getOfferById(offerId);
+      if (!offer) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "العرض غير موجود",
+        });
+      }
+      if (offer.restaurantId !== restaurantId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "العرض لا يتبع هذا المطعم",
+        });
+      }
+      if (!offer.isActive) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "العرض غير متاح للطلب حالياً",
+        });
+      }
+      const now = new Date();
+      if (new Date(offer.startDate) > now || new Date(offer.endDate) < now) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "العرض غير متاح في هذا الوقت",
+        });
+      }
+
+      const unitPrice = parseUnitPrice(offer.offerPrice);
+      const lineTotal = unitPrice * item.quantity;
+
+      lines.push({
+        menuItemId: 0,
+        nameAr: offer.titleAr,
+        nameEn: offer.titleEn ?? null,
+        price: formatMoney(unitPrice),
+        quantity: item.quantity,
+        notes: item.notes ?? null,
+        lineTotal,
+      });
+      continue;
+    }
 
     const menuItem = await getMenuItemById(item.menuItemId);
     if (!menuItem) {

@@ -1,26 +1,41 @@
 import { useCart } from "@/contexts/CartContext";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { offerToCartMenuItemId } from "@/lib/offerCart";
 import { Plus, Check } from "lucide-react";
 import { useState } from "react";
 
 interface AddToCartButtonProps {
-  menuItemId: number;
+  menuItemId?: number;
+  /** Standalone special offer (PR-CUX-1B-POLISH-3). */
+  offerId?: number;
   nameAr: string;
   nameEn?: string;
   price: string;
   imageUrl?: string;
 }
 
-export default function AddToCartButton({ menuItemId, nameAr, nameEn, price, imageUrl }: AddToCartButtonProps) {
+export default function AddToCartButton({
+  menuItemId,
+  offerId,
+  nameAr,
+  nameEn,
+  price,
+  imageUrl,
+}: AddToCartButtonProps) {
   const { addItem, items } = useCart();
   const { language } = useLanguage();
   const [justAdded, setJustAdded] = useState(false);
 
-  const existingItem = items.find((i) => i.menuItemId === menuItemId);
+  const cartMenuItemId =
+    menuItemId ?? (offerId != null ? offerToCartMenuItemId(offerId) : 0);
+
+  if (!cartMenuItemId) return null;
+
+  const existingItem = items.find((i) => i.menuItemId === cartMenuItemId);
 
   const handleAdd = (e: React.MouseEvent) => {
     e.stopPropagation();
-    addItem({ menuItemId, nameAr, nameEn, price, imageUrl });
+    addItem({ menuItemId: cartMenuItemId, nameAr, nameEn, price, imageUrl });
     setJustAdded(true);
     setTimeout(() => setJustAdded(false), 1000);
   };
