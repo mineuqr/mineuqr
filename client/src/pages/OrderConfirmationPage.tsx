@@ -2,7 +2,7 @@ import { useRoute, useLocation } from "wouter";
 import { CheckCircle2, MessageCircle, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { formatRiyadhDateTime } from "@/lib/datetime";
+import { CustomerOrderDateTimeFields } from "@/components/customer/CustomerOrderDateTimeFields";
 import {
   loadOrderConfirmationSnapshot,
   type OrderConfirmationSnapshot,
@@ -87,17 +87,7 @@ export default function OrderConfirmationPage() {
     );
   }
 
-  const formattedWhen = formatRiyadhDateTime(
-    snapshot.createdAt,
-    language === "ar" ? "ar-SA" : "en-US",
-    {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    }
-  );
+  const uiLang = language === "ar" ? "ar" : "en";
 
   return (
     <div
@@ -125,14 +115,10 @@ export default function OrderConfirmationPage() {
               </dt>
               <dd className="font-mono font-bold text-primary">{snapshot.orderNumber}</dd>
             </div>
-            <div className="flex justify-between gap-4 border-b border-border/40 pb-2">
-              <dt className="text-muted-foreground">
-                {language === "ar" ? "التاريخ والوقت" : "Date & Time"}
-              </dt>
-              <dd className="text-end font-medium" dir="ltr">
-                {formattedWhen}
-              </dd>
-            </div>
+            <CustomerOrderDateTimeFields
+              createdAt={snapshot.createdAt}
+              language={uiLang}
+            />
             <div className="flex justify-between gap-4 border-b border-border/40 pb-2">
               <dt className="text-muted-foreground flex items-center gap-1">
                 <MapPin className="h-3.5 w-3.5" />

@@ -2,7 +2,7 @@ import { useRoute, useLocation } from "wouter";
 import { MapPin, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { formatRiyadhDateTime } from "@/lib/datetime";
+import { CustomerOrderDateTimeFields } from "@/components/customer/CustomerOrderDateTimeFields";
 import {
   formatOrderStatusHeadline,
   formatOrderStatusLabel,
@@ -81,13 +81,6 @@ export default function OrderStatusPage() {
       ? data.restaurantName
       : data.restaurantNameEn || data.restaurantName;
   const status = data.status as OrderLifecycleStatus;
-  const formattedWhen = formatRiyadhDateTime(data.createdAt, lang === "ar" ? "ar-SA" : "en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
   const activeStep = lifecycleStepIndex(status);
   const isCancelled = status === "cancelled";
 
@@ -157,14 +150,7 @@ export default function OrderStatusPage() {
               </dt>
               <dd className="font-mono font-bold text-primary">{data.orderNumber}</dd>
             </div>
-            <div className="flex justify-between gap-4 border-b border-border/40 pb-2">
-              <dt className="text-muted-foreground">
-                {language === "ar" ? "التاريخ والوقت" : "Date & Time"}
-              </dt>
-              <dd className="text-end font-medium" dir="ltr">
-                {formattedWhen}
-              </dd>
-            </div>
+            <CustomerOrderDateTimeFields createdAt={data.createdAt} language={lang} />
             <div className="flex justify-between gap-4 border-b border-border/40 pb-2">
               <dt className="text-muted-foreground flex items-center gap-1">
                 <MapPin className="h-3.5 w-3.5" />
