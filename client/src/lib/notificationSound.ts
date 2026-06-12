@@ -2,6 +2,22 @@
 
 export type AlertSoundIntensity = "high" | "medium";
 
+/** Documented pattern lengths for tests and tuning (AUDIO-TUNE-1). */
+export const CUSTOMER_ALERT_PATTERN = {
+  high: {
+    beep1Ms: 120,
+    pauseMs: 120,
+    beep2Ms: 220,
+    totalMs: 460,
+  },
+  medium: {
+    beep1Ms: 90,
+    pauseMs: 140,
+    beep2Ms: 160,
+    totalMs: 390,
+  },
+} as const;
+
 let sharedAudioContext: AudioContext | null = null;
 
 function getAudioContextClass(): typeof AudioContext | null {
@@ -39,32 +55,74 @@ export function unlockNotificationAudio(): void {
   void ensureNotificationAudioReady();
 }
 
+type BeepSpec = {
+  frequencyHz: number;
+  startSec: number;
+  durationSec: number;
+  peakGain: number;
+};
+
+function playBeep(audioCtx: AudioContext, spec: BeepSpec): void {
+  const osc = audioCtx.createOscillator();
+  const gainNode = audioCtx.createGain();
+  osc.connect(gainNode);
+  gainNode.connect(audioCtx.destination);
+  osc.frequency.value = spec.frequencyHz;
+  osc.type = "sine";
+
+  const start = audioCtx.currentTime + spec.startSec;
+  const attackSec = 0.01;
+  const releaseSec = Math.min(0.05, spec.durationSec * 0.18);
+  const sustainUntil = start + spec.durationSec - releaseSec;
+
+  gainNode.gain.setValueAtTime(0.001, start);
+  gainNode.gain.exponentialRampToValueAtTime(spec.peakGain, start + attackSec);
+  gainNode.gain.setValueAtTime(spec.peakGain, sustainUntil);
+  gainNode.gain.exponentialRampToValueAtTime(0.001, start + spec.durationSec);
+
+  osc.start(start);
+  osc.stop(start + spec.durationSec + 0.03);
+}
+
 function scheduleTones(audioCtx: AudioContext, intensity: AlertSoundIntensity): void {
-  const peakGain = intensity === "high" ? 0.55 : 0.32;
-  const toneDuration = intensity === "high" ? 0.45 : 0.32;
-
-  const playTone = (frequency: number, startOffset: number, gain: number) => {
-    const osc = audioCtx.createOscillator();
-    const gainNode = audioCtx.createGain();
-    osc.connect(gainNode);
-    gainNode.connect(audioCtx.destination);
-    osc.frequency.value = frequency;
-    osc.type = "sine";
-    const start = audioCtx.currentTime + startOffset;
-    gainNode.gain.setValueAtTime(gain, start);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, start + toneDuration);
-    osc.start(start);
-    osc.stop(start + toneDuration + 0.05);
-  };
-
   if (intensity === "high") {
-    playTone(880, 0, peakGain);
-    playTone(1100, 0.12, peakGain);
-    playTone(1320, 0.24, peakGain * 0.9);
-  } else {
-    playTone(980, 0, peakGain);
-    playTone(1180, 0.1, peakGain * 0.85);
+    const { beep1Ms, pauseMs, beep2Ms } = CUSTOMER_ALERT_PATTERN.high;
+    const beep1Sec = beep1Ms / 1000;
+    const pauseSec = pauseMs / 1000;
+    const beep2Sec = beep2Ms / 1000;
+
+    playBeep(audioCtx, {
+      frequencyHz: 880,
+      startSec: 0,
+      durationSec: beep1Sec,
+      peakGain: 0.46,
+    });
+    playBeep(audioCtx, {
+      frequencyHz: 1175,
+      startSec: beep1Sec + pauseSec,
+      durationSec: beep2Sec,
+      peakGain: 0.5,
+    });
+    return;
   }
+
+  const { beep1Ms, pauseMs, beep2Ms } = CUSTOMER_ALERT_PATTERN.medium;
+  const beep1Sec = beep1Ms / 1000;
+  const pauseSec = pauseMs / 1000;
+  const beep2Sec = beep2Ms / 1000;
+
+  playBeep(audioCtx, {
+    frequencyHz: 784,
+    startSec: 0,
+    durationSec: beep1Sec,
+    peakGain: 0.28,
+  });
+  playBeep(audioCtx, {
+    frequencyHz: 880,
+    startSec: beep1Sec + pauseSec,
+    durationSec: beep2Sec,
+    peakGain: 0.3,
+  });
 }
 
 /**
