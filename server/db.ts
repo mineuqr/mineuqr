@@ -1050,6 +1050,49 @@ export async function getOrderById(id: number) {
   return order || null;
 }
 
+/** PR-CUX-1B — read-only public lookup by tracking token + restaurant slug (tenant boundary). */
+export async function getOrderByTrackingToken(
+  trackingToken: string,
+  restaurantSlug: string
+) {
+  const db = await getDb();
+  if (!db) return null;
+
+  const [row] = await db
+    .select({
+      orderId: orders.id,
+      orderNumber: orders.orderNumber,
+      tableNumber: orders.tableNumber,
+      status: orders.status,
+      totalAmount: orders.totalAmount,
+      createdAt: orders.createdAt,
+      nameAr: restaurants.nameAr,
+      nameEn: restaurants.nameEn,
+      currencySymbol: restaurants.currencySymbol,
+      tableLabel: restaurants.tableLabel,
+    })
+    .from(orders)
+    .innerJoin(restaurants, eq(orders.restaurantId, restaurants.id))
+    .where(
+      and(eq(orders.trackingToken, trackingToken), eq(restaurants.slug, restaurantSlug))
+    )
+    .limit(1);
+
+  if (!row) return null;
+
+  const [countRow] = await db
+    .select({
+      itemCount: sql<number>`COALESCE(SUM(${orderItems.quantity}), 0)`,
+    })
+    .from(orderItems)
+    .where(eq(orderItems.orderId, row.orderId));
+
+  return {
+    ...row,
+    itemCount: Number(countRow?.itemCount ?? 0),
+  };
+}
+
 export async function createOrder(data: InsertOrder) {
   const db = await getDb();
   if (!db) return null;

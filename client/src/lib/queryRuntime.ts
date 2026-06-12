@@ -3,6 +3,21 @@ import { useEffect } from "react";
 /** Single dashboard order poll interval (was 5s / 10s / 15s). */
 export const DASHBOARD_ORDER_LIST_POLL_MS = 10_000;
 
+/** Customer order status page (PR-CUX-1B). */
+export const CUSTOMER_ORDER_STATUS_POLL_MS = 8_000;
+
+export function customerOrderStatusQueryOptions(
+  enabled: boolean,
+  status?: string | null
+) {
+  const terminal = status === "served" || status === "cancelled";
+  return {
+    enabled,
+    refetchInterval:
+      enabled && !terminal ? CUSTOMER_ORDER_STATUS_POLL_MS : false,
+  } as const;
+}
+
 /** Single notification poll on dashboard (OrderAlertSystem). */
 export const DASHBOARD_NOTIFICATION_POLL_MS = 10_000;
 

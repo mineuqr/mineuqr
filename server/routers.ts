@@ -26,7 +26,7 @@ import {
   updateUserSessionValidAfter,
   getHolidaysByRestaurant, createHoliday, updateHoliday, deleteHoliday, getHolidayById,
   getTablesByRestaurant, getTableById, getTableByRestaurantAndNumber, createTable, updateTable, deleteTable, createMultipleTables,
-  getOrdersByRestaurant, getOrdersWithItemsByRestaurant, getOrderById, createOrder, updateOrderStatus, getOrderItemsByOrderId, createOrderItems, generateOrderNumber, getActiveOrdersCount,
+  getOrdersByRestaurant, getOrdersWithItemsByRestaurant, getOrderById, getOrderByTrackingToken, createOrder, updateOrderStatus, getOrderItemsByOrderId, createOrderItems, generateOrderNumber, getActiveOrdersCount,
 } from "./db";
 import { canChangeOwnPassword } from "./auth-local/httpHelpers";
 import { sendVerificationEmailForUser } from "./auth-local/sendVerificationEmail";
@@ -83,6 +83,7 @@ import { notifyOwnerNewRestaurant, notifyOwnerNewSubscription, notifyOwnerSubscr
 import { generateInvoicePDFBuffer } from "./invoice-pdf";
 import { mergeRouters } from "./_core/trpc";
 import { generateOrderTrackingToken } from "./orderTrackingToken";
+import { toPublicOrderStatus } from "./orderPublicStatus";
 import { adminAuditRouter } from "./audit/adminAuditRouter";
 import { adminDashboardReadRouter } from "./commercial/adminDashboardRouter";
 import { analyticsRouter } from "./commercial/analyticsRouter";
@@ -1773,13 +1774,44 @@ const orderRouter = router({
       await assertRestaurantAccess(ctx, input.restaurantId);
       return getActiveOrdersCount(input.restaurantId);
     }),
-  // Public: get order status (for customer tracking)
+  // Public: customer order status (PR-CUX-1B — trackingToken authority only)
+  getPublicStatus: publicProcedure
+    .input(
+      z.object({
+        trackingToken: z
+          .string()
+          .min(16)
+          .max(64)
+          .regex(/^[A-Za-z0-9_-]+$/),
+        slug: z.string().min(1).max(128),
+      })
+    )
+    .query(async ({ input }) => {
+      const row = await getOrderByTrackingToken(input.trackingToken, input.slug);
+      if (!row) return null;
+      return toPublicOrderStatus({
+        orderId: row.orderId,
+        orderNumber: row.orderNumber,
+        tableNumber: row.tableNumber,
+        status: row.status as
+          | "pending"
+          | "preparing"
+          | "ready"
+          | "served"
+          | "cancelled",
+        totalAmount: String(row.totalAmount),
+        createdAt: row.createdAt,
+        nameAr: row.nameAr,
+        nameEn: row.nameEn,
+        currencySymbol: row.currencySymbol,
+        tableLabel: row.tableLabel,
+        itemCount: row.itemCount,
+      });
+    }),
+  /** @deprecated Use getPublicStatus — orderNumber lookup is not supported for customers. */
   trackOrder: publicProcedure
     .input(z.object({ orderNumber: z.string() }))
-    .query(async ({ input }) => {
-      // Simple tracking by order number
-      return null; // Will implement later if needed
-    }),
+    .query(async () => null),
 });
 
 export const appRouter = router({

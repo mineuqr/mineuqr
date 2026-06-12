@@ -8,7 +8,7 @@ import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import MenuView from "./pages/MenuView";
 import OrderConfirmationPage from "./pages/OrderConfirmationPage";
-import OrderStatusPlaceholderPage from "./pages/OrderStatusPlaceholderPage";
+import OrderStatusPage from "./pages/OrderStatusPage";
 import Pricing from "./pages/Pricing";
 import SubscriptionSuccess from "./pages/SubscriptionSuccess";
 import SubscriptionCancel from "./pages/SubscriptionCancel";
@@ -60,7 +60,7 @@ function Router() {
         <Route path="/dashboard/templates/:restaurantId" component={TemplateSelector} />
         <Route path="/dashboard/:section" component={Dashboard} />
         <Route path="/menu/:slug/order/:trackingToken/confirmed" component={OrderConfirmationPage} />
-        <Route path="/menu/:slug/order/:trackingToken" component={OrderStatusPlaceholderPage} />
+        <Route path="/menu/:slug/order/:trackingToken" component={OrderStatusPage} />
         <Route path="/menu/:slug/table/:tableNumber" component={MenuView} />
         <Route path="/menu/:slug" component={MenuView} />
         <Route path="/pricing" component={Pricing} />

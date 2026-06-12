@@ -24,3 +24,35 @@ export function formatOrderStatusLabel(
 ): string {
   return orderStatusLabels[status][language];
 }
+
+/** PR-CUX-1B — customer-friendly headline per lifecycle state. */
+export const orderStatusHeadlines: Record<
+  OrderLifecycleStatus,
+  { ar: string; en: string }
+> = {
+  pending: { ar: "تم استلام طلبك", en: "Your order has been received" },
+  preparing: { ar: "جاري تحضير طلبك", en: "Your order is being prepared" },
+  ready: { ar: "طلبك جاهز", en: "Your order is ready" },
+  served: { ar: "تم تقديم الطلب", en: "Your order has been served" },
+  cancelled: { ar: "تم إلغاء الطلب", en: "Your order was cancelled" },
+};
+
+export function formatOrderStatusHeadline(
+  status: OrderLifecycleStatus,
+  language: "ar" | "en"
+): string {
+  return orderStatusHeadlines[status][language];
+}
+
+export const orderLifecycleSteps: OrderLifecycleStatus[] = [
+  "pending",
+  "preparing",
+  "ready",
+  "served",
+];
+
+export function lifecycleStepIndex(status: OrderLifecycleStatus): number {
+  if (status === "cancelled") return -1;
+  const idx = orderLifecycleSteps.indexOf(status);
+  return idx >= 0 ? idx : 0;
+}
