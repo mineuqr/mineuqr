@@ -1,16 +1,20 @@
 /**
  * CUSTOMER-UX-1C — Ready notification infrastructure (client-only).
- * Uses sessionStorage per trackingToken; no server push.
+ * HOTFIX-1: gesture activation, per-channel delivery reporting.
  */
 
-import { playCustomerAlertSound, unlockNotificationAudio } from "@/lib/notificationSound";
+import { ensureNotificationAudioReady, playCustomerAlertSound } from "@/lib/notificationSound";
+import { logReadyAlertDelivery } from "@/lib/readyNotificationDiagnostics";
 import type { OrderLifecycleStatus } from "@/lib/orderStatusDisplay";
 
 export const READY_ALERT_FOLLOW_UP_MS = 30_000;
 
 export type ReadyAlertSessionState = {
+  alertsActivated: boolean;
   alert1Sent: boolean;
+  alert1NotificationDelivered: boolean;
   alert2Sent: boolean;
+  alert2NotificationDelivered: boolean;
   acknowledged: boolean;
   lastStatus?: OrderLifecycleStatus;
 };
@@ -21,24 +25,34 @@ const PREFIX = "mineuqr:ready-alerts:";
 
 const followUpTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
+function emptyReadyAlertState(): ReadyAlertSessionState {
+  return {
+    alertsActivated: false,
+    alert1Sent: false,
+    alert1NotificationDelivered: false,
+    alert2Sent: false,
+    alert2NotificationDelivered: false,
+    acknowledged: false,
+  };
+}
+
 export function readyAlertStorageKey(trackingToken: string): string {
   return `${PREFIX}${trackingToken}`;
 }
 
 export function loadReadyAlertState(trackingToken: string): ReadyAlertSessionState {
-  const empty: ReadyAlertSessionState = {
-    alert1Sent: false,
-    alert2Sent: false,
-    acknowledged: false,
-  };
+  const empty = emptyReadyAlertState();
   if (!trackingToken) return empty;
   try {
     const raw = sessionStorage.getItem(readyAlertStorageKey(trackingToken));
     if (!raw) return empty;
     const parsed = JSON.parse(raw) as Partial<ReadyAlertSessionState>;
     return {
+      alertsActivated: Boolean(parsed.alertsActivated),
       alert1Sent: Boolean(parsed.alert1Sent),
+      alert1NotificationDelivered: Boolean(parsed.alert1NotificationDelivered),
       alert2Sent: Boolean(parsed.alert2Sent),
+      alert2NotificationDelivered: Boolean(parsed.alert2NotificationDelivered),
       acknowledged: Boolean(parsed.acknowledged),
       lastStatus: parsed.lastStatus,
     };
@@ -69,7 +83,10 @@ export function isReadyTransition(
   return previousStatus === "pending" || previousStatus === "preparing";
 }
 
-export async function requestReadyNotificationPermission(): Promise<NotificationPermission | "unsupported"> {
+/** Request permission only when still default — must be called from user gesture. */
+export async function requestReadyNotificationPermissionFromGesture(): Promise<
+  NotificationPermission | "unsupported"
+> {
   if (typeof window === "undefined" || !("Notification" in window)) {
     return "unsupported";
   }
@@ -81,6 +98,16 @@ export async function requestReadyNotificationPermission(): Promise<Notification
   } catch {
     return Notification.permission;
   }
+}
+
+/** HOTFIX-1A: unlock audio + request permission from explicit user tap. */
+export async function activateReadyAlertsFromGesture(): Promise<{
+  audioReady: boolean;
+  permission: NotificationPermission | "unsupported";
+}> {
+  const audioReady = await ensureNotificationAudioReady();
+  const permission = await requestReadyNotificationPermissionFromGesture();
+  return { audioReady, permission };
 }
 
 export function vibrateForReady(durationMs: number): boolean {
@@ -142,17 +169,32 @@ export function deliverReadyAlertTier(options: {
   tier: ReadyAlertTier;
   orderNumber: string;
   language: "ar" | "en";
+  alertsActivated: boolean;
 }): ReadyAlertDelivery {
-  unlockNotificationAudio();
+  if (!options.alertsActivated) {
+    const skipped: ReadyAlertDelivery = { sound: false, notification: false, vibrate: false };
+    logReadyAlertDelivery(options.trackingToken, options.tier, skipped, {
+      alertsActivated: false,
+      skipped: true,
+    });
+    return skipped;
+  }
+
   const intensity = options.tier === 1 ? "high" : "medium";
   const vibrateMs = options.tier === 1 ? 2000 : 1000;
   const copy = buildReadyNotificationCopy(options.orderNumber, options.language);
 
-  return {
+  const delivery: ReadyAlertDelivery = {
     sound: playCustomerAlertSound(intensity),
     notification: showReadySystemNotification(options.trackingToken, options.tier, copy),
     vibrate: vibrateForReady(vibrateMs),
   };
+
+  logReadyAlertDelivery(options.trackingToken, options.tier, delivery, {
+    alertsActivated: true,
+  });
+
+  return delivery;
 }
 
 export function wasReadyAlertDelivered(delivery: ReadyAlertDelivery): boolean {

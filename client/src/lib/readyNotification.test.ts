@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildReadyNotificationCopy,
+  deliverReadyAlertTier,
   isReadyTransition,
   loadReadyAlertState,
   readyAlertStorageKey,
@@ -32,7 +33,7 @@ function createSessionStorageMock(): Storage {
   };
 }
 
-describe("readyNotification CUSTOMER-UX-1C", () => {
+describe("readyNotification CUSTOMER-UX-1C HOTFIX-1", () => {
   beforeEach(() => {
     vi.stubGlobal("sessionStorage", createSessionStorageMock());
   });
@@ -55,14 +56,19 @@ describe("readyNotification CUSTOMER-UX-1C", () => {
   it("persists alert session state per tracking token", () => {
     const token = "abc123";
     saveReadyAlertState(token, {
+      alertsActivated: true,
       alert1Sent: true,
+      alert1NotificationDelivered: true,
       alert2Sent: false,
+      alert2NotificationDelivered: false,
       acknowledged: false,
       lastStatus: "ready",
     });
     expect(sessionStorage.getItem(readyAlertStorageKey(token))).toBeTruthy();
     expect(loadReadyAlertState(token)).toMatchObject({
+      alertsActivated: true,
       alert1Sent: true,
+      alert1NotificationDelivered: true,
       alert2Sent: false,
       acknowledged: false,
       lastStatus: "ready",
@@ -78,5 +84,16 @@ describe("readyNotification CUSTOMER-UX-1C", () => {
   it("wasReadyAlertDelivered is true if any channel succeeded", () => {
     expect(wasReadyAlertDelivered({ sound: false, notification: false, vibrate: false })).toBe(false);
     expect(wasReadyAlertDelivered({ sound: true, notification: false, vibrate: false })).toBe(true);
+  });
+
+  it("deliverReadyAlertTier skips channels when alerts are not activated", () => {
+    const delivery = deliverReadyAlertTier({
+      trackingToken: "tok",
+      tier: 1,
+      orderNumber: "ORD-1",
+      language: "ar",
+      alertsActivated: false,
+    });
+    expect(delivery).toEqual({ sound: false, notification: false, vibrate: false });
   });
 });

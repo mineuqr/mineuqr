@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { CustomerOrderDateTimeFields } from "@/components/customer/CustomerOrderDateTimeFields";
 import { OrderStatusStepper } from "@/components/customer/OrderStatusStepper";
+import { ReadyAlertActivationBanner } from "@/components/customer/ReadyAlertActivationBanner";
+import { ReadyStatusAttention } from "@/components/customer/ReadyStatusAttention";
 import {
   formatOrderStatusHeadline,
   formatOrderStatusLabel,
@@ -35,7 +37,13 @@ export default function OrderStatusPage() {
       }
     );
 
-  const { notificationSentHint } = useReadyStatusAlerts({
+  const {
+    alertsActivated,
+    activating,
+    needsActivation,
+    activateAlerts,
+    notificationDeliveredHint,
+  } = useReadyStatusAlerts({
     trackingToken,
     status: data?.status as OrderLifecycleStatus | undefined,
     orderNumber: data?.orderNumber,
@@ -90,6 +98,7 @@ export default function OrderStatusPage() {
   const status = data.status as OrderLifecycleStatus;
   const isCancelled = status === "cancelled";
   const isServed = status === "served";
+  const isReady = status === "ready";
 
   return (
     <div
@@ -105,23 +114,35 @@ export default function OrderStatusPage() {
             <p className="text-sm text-muted-foreground">{restaurantName}</p>
           </div>
 
+          {!isCancelled && !isServed && (needsActivation || alertsActivated) && (
+            <ReadyAlertActivationBanner
+              language={lang}
+              activated={alertsActivated}
+              activating={activating}
+              onActivate={() => void activateAlerts()}
+            />
+          )}
+
           <div
             className={cn(
-              "rounded-xl p-4 text-center",
+              "rounded-xl p-4 text-center transition-shadow",
               isCancelled
                 ? "bg-red-50 dark:bg-red-950/30 border border-red-200/60"
                 : isServed
                   ? "bg-green-50 dark:bg-green-950/25 border border-green-200/60"
-                  : "bg-orange-50 dark:bg-orange-950/20 border border-orange-200/40"
+                  : isReady
+                    ? "bg-green-50 dark:bg-green-950/25 border-2 border-green-400/70 shadow-green-200/40 shadow-md ring-2 ring-green-400/30"
+                    : "bg-orange-50 dark:bg-orange-950/20 border border-orange-200/40"
             )}
           >
+            {isReady && <ReadyStatusAttention language={lang} className="mb-3" />}
             <p className="text-lg font-bold text-foreground">
               {formatOrderStatusHeadline(status, lang)}
             </p>
             <p className="text-sm text-muted-foreground mt-1">
               {formatOrderStatusLabel(status, lang)}
             </p>
-            {status === "ready" && notificationSentHint && (
+            {isReady && notificationDeliveredHint && (
               <p className="text-xs text-green-700 dark:text-green-400 mt-2">
                 {language === "ar" ? "تم إرسال تنبيه لك" : "We sent you an alert"}
               </p>

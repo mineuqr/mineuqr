@@ -1,16 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { OrderLifecycleStatus } from "@/lib/orderStatusDisplay";
-import { unlockNotificationAudio } from "@/lib/notificationSound";
+import { logReadyAlertActivation } from "@/lib/readyNotificationDiagnostics";
 import {
   acknowledgeReadyAlerts,
+  activateReadyAlertsFromGesture,
   clearReadyAlertFollowUpTimer,
   deliverReadyAlertTier,
   isReadyTransition,
   loadReadyAlertState,
-  requestReadyNotificationPermission,
   saveReadyAlertState,
   scheduleReadyAlertFollowUp,
-  wasReadyAlertDelivered,
 } from "@/lib/readyNotification";
 
 type UseReadyStatusAlertsOptions = {
@@ -28,25 +27,37 @@ export function useReadyStatusAlerts({
   language,
   enabled,
 }: UseReadyStatusAlertsOptions) {
-  const [notificationSentHint, setNotificationSentHint] = useState(false);
+  const [alertsActivated, setAlertsActivated] = useState(false);
+  const [activating, setActivating] = useState(false);
+  const [notificationDeliveredHint, setNotificationDeliveredHint] = useState(false);
   const prevStatusRef = useRef<OrderLifecycleStatus | null>(null);
   const initializedRef = useRef(false);
 
   useEffect(() => {
-    if (!enabled) return;
-    void requestReadyNotificationPermission();
-  }, [enabled]);
+    if (!trackingToken) return;
+    const session = loadReadyAlertState(trackingToken);
+    setAlertsActivated(session.alertsActivated);
+    if (session.alert1NotificationDelivered) {
+      setNotificationDeliveredHint(true);
+    }
+  }, [trackingToken]);
 
-  useEffect(() => {
-    if (!enabled) return;
-    const unlock = () => unlockNotificationAudio();
-    window.addEventListener("pointerdown", unlock, { once: true });
-    window.addEventListener("keydown", unlock, { once: true });
-    return () => {
-      window.removeEventListener("pointerdown", unlock);
-      window.removeEventListener("keydown", unlock);
-    };
-  }, [enabled]);
+  const activateAlerts = useCallback(async () => {
+    if (!trackingToken || activating) return;
+    setActivating(true);
+    try {
+      const result = await activateReadyAlertsFromGesture();
+      logReadyAlertActivation(trackingToken, result);
+      const session = loadReadyAlertState(trackingToken);
+      saveReadyAlertState(trackingToken, {
+        ...session,
+        alertsActivated: true,
+      });
+      setAlertsActivated(true);
+    } finally {
+      setActivating(false);
+    }
+  }, [trackingToken, activating]);
 
   const acknowledge = useCallback(() => {
     if (!trackingToken) return;
@@ -96,32 +107,38 @@ export function useReadyStatusAlerts({
       tier: 1,
       orderNumber,
       language,
+      alertsActivated: session.alertsActivated,
     });
 
-    if (wasReadyAlertDelivered(delivery1)) {
-      setNotificationSentHint(true);
+    if (delivery1.notification) {
+      setNotificationDeliveredHint(true);
     }
 
     saveReadyAlertState(trackingToken, {
       ...session,
       alert1Sent: true,
+      alert1NotificationDelivered: delivery1.notification,
       lastStatus: status,
     });
 
+    if (!session.alertsActivated) return;
+
     scheduleReadyAlertFollowUp(trackingToken, () => {
       const latest = loadReadyAlertState(trackingToken);
-      if (latest.acknowledged || latest.alert2Sent) return;
+      if (latest.acknowledged || latest.alert2Sent || !latest.alertsActivated) return;
 
-      deliverReadyAlertTier({
+      const delivery2 = deliverReadyAlertTier({
         trackingToken,
         tier: 2,
         orderNumber,
         language,
+        alertsActivated: true,
       });
 
       saveReadyAlertState(trackingToken, {
         ...latest,
         alert2Sent: true,
+        alert2NotificationDelivered: delivery2.notification,
         lastStatus: "ready",
       });
     });
@@ -133,19 +150,21 @@ export function useReadyStatusAlerts({
   }, [trackingToken]);
 
   useEffect(() => {
-    if (!trackingToken) return;
-    const session = loadReadyAlertState(trackingToken);
-    if (session.alert1Sent) {
-      setNotificationSentHint(true);
-    }
-  }, [trackingToken]);
-
-  useEffect(() => {
     if (!trackingToken || !status) return;
     if (status === "served" || status === "cancelled") {
       clearReadyAlertFollowUpTimer(trackingToken);
     }
   }, [trackingToken, status]);
 
-  return { notificationSentHint, acknowledgeReadyAlerts: acknowledge };
+  const isTerminal = status === "served" || status === "cancelled";
+  const needsActivation = enabled && !alertsActivated && !isTerminal;
+
+  return {
+    alertsActivated,
+    activating,
+    needsActivation,
+    activateAlerts,
+    notificationDeliveredHint,
+    acknowledgeReadyAlerts: acknowledge,
+  };
 }
