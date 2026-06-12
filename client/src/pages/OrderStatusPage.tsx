@@ -3,12 +3,10 @@ import { MapPin, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { CustomerOrderDateTimeFields } from "@/components/customer/CustomerOrderDateTimeFields";
+import { OrderStatusStepper } from "@/components/customer/OrderStatusStepper";
 import {
   formatOrderStatusHeadline,
   formatOrderStatusLabel,
-  lifecycleStepIndex,
-  orderLifecycleSteps,
-  orderStatusLabels,
   type OrderLifecycleStatus,
 } from "@/lib/orderStatusDisplay";
 import { CUSTOMER_ORDER_STATUS_POLL_MS } from "@/lib/queryRuntime";
@@ -81,8 +79,8 @@ export default function OrderStatusPage() {
       ? data.restaurantName
       : data.restaurantNameEn || data.restaurantName;
   const status = data.status as OrderLifecycleStatus;
-  const activeStep = lifecycleStepIndex(status);
   const isCancelled = status === "cancelled";
+  const isServed = status === "served";
 
   return (
     <div
@@ -103,7 +101,9 @@ export default function OrderStatusPage() {
               "rounded-xl p-4 text-center",
               isCancelled
                 ? "bg-red-50 dark:bg-red-950/30 border border-red-200/60"
-                : "bg-orange-50 dark:bg-orange-950/20 border border-orange-200/40"
+                : isServed
+                  ? "bg-green-50 dark:bg-green-950/25 border border-green-200/60"
+                  : "bg-orange-50 dark:bg-orange-950/20 border border-orange-200/40"
             )}
           >
             <p className="text-lg font-bold text-foreground">
@@ -114,34 +114,7 @@ export default function OrderStatusPage() {
             </p>
           </div>
 
-          {!isCancelled && (
-            <ol className="flex items-center justify-between gap-1 px-1" aria-label="Order progress">
-              {orderLifecycleSteps.map((step, index) => {
-                const done = activeStep > index;
-                const current = activeStep === index;
-                return (
-                  <li key={step} className="flex flex-1 flex-col items-center gap-1.5">
-                    <div
-                      className={cn(
-                        "h-3 w-3 rounded-full border-2 transition-colors",
-                        done || current
-                          ? "border-orange-500 bg-orange-500"
-                          : "border-muted-foreground/30 bg-transparent"
-                      )}
-                    />
-                    <span
-                      className={cn(
-                        "text-[10px] sm:text-xs text-center leading-tight",
-                        current ? "font-semibold text-orange-600" : "text-muted-foreground"
-                      )}
-                    >
-                      {orderStatusLabels[step][lang]}
-                    </span>
-                  </li>
-                );
-              })}
-            </ol>
-          )}
+          <OrderStatusStepper status={status} language={lang} dir={dir} />
 
           <dl className="space-y-3 text-sm">
             <div className="flex justify-between gap-4 border-b border-border/40 pb-2">

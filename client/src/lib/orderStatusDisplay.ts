@@ -56,3 +56,29 @@ export function lifecycleStepIndex(status: OrderLifecycleStatus): number {
   const idx = orderLifecycleSteps.indexOf(status);
   return idx >= 0 ? idx : 0;
 }
+
+export type OrderStepVisualState = "completed" | "current" | "future";
+
+/** PR-CUX-1B-POLISH-1 — stepper node state for customer tracking UI. */
+export function getOrderStepVisualState(
+  stepIndex: number,
+  activeStep: number,
+  status: OrderLifecycleStatus
+): OrderStepVisualState {
+  if (status === "cancelled") return "future";
+  if (status === "served") return "completed";
+  if (stepIndex < activeStep) return "completed";
+  if (stepIndex === activeStep) return "current";
+  return "future";
+}
+
+/** Connector after `stepIndex` is filled when that step is complete. */
+export function isOrderStepConnectorCompleted(
+  stepIndex: number,
+  activeStep: number,
+  status: OrderLifecycleStatus
+): boolean {
+  if (status === "cancelled") return false;
+  if (status === "served") return true;
+  return stepIndex < activeStep;
+}
