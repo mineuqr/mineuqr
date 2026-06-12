@@ -205,13 +205,13 @@ export default function MenuView() {
       />
       {canPlaceOrder && (
         <CartDrawer
+          slug={slug}
           restaurantId={restaurant.id}
           tableId={tableData?.id || 0}
           tableNumber={tableNumber}
-          whatsapp={(restaurant as any)?.whatsapp}
           currencySymbol={(restaurant as any)?.currencySymbol || "ر.س"}
           restaurantName={restaurant.nameAr}
-          tableLabel={(restaurant as any)?.tableLabel || 'tables'}
+          tableLabel={(restaurant as any)?.tableLabel || "tables"}
         />
       )}
     </CartProvider>

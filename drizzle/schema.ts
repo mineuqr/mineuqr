@@ -336,6 +336,7 @@ export const orders = mysqlTable("orders", {
 	notes: text(),
 	totalAmount: decimal({ precision: 10, scale: 2 }).notNull(),
 	orderNumber: varchar({ length: 32 }).notNull(),
+	trackingToken: varchar({ length: 64 }),
 	whatsappSent: boolean().default(false).notNull(),
 	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
 	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
@@ -344,6 +345,7 @@ export const orders = mysqlTable("orders", {
 	index("orders_restaurant_id").on(table.restaurantId),
 	index("orders_table_id").on(table.tableId),
 	index("orders_status").on(table.status),
+	uniqueIndex("orders_tracking_token_unique").on(table.trackingToken),
 ]);
 
 // ─── Order Items Table ────────────────────────────────────────────

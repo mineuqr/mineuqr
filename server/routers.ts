@@ -82,6 +82,7 @@ import { putUploadedFile } from "./local-uploads";
 import { notifyOwnerNewRestaurant, notifyOwnerNewSubscription, notifyOwnerSubscriptionCancelled } from "./owner-email-notifications";
 import { generateInvoicePDFBuffer } from "./invoice-pdf";
 import { mergeRouters } from "./_core/trpc";
+import { generateOrderTrackingToken } from "./orderTrackingToken";
 import { adminAuditRouter } from "./audit/adminAuditRouter";
 import { adminDashboardReadRouter } from "./commercial/adminDashboardRouter";
 import { analyticsRouter } from "./commercial/analyticsRouter";
@@ -1685,6 +1686,8 @@ const orderRouter = router({
         }))
       );
       const orderNumber = await generateOrderNumber(input.restaurantId);
+      const trackingToken = generateOrderTrackingToken();
+      const createdAt = new Date().toISOString();
       const result = await createOrder({
         restaurantId: input.restaurantId,
         tableId: table.id,
@@ -1694,6 +1697,7 @@ const orderRouter = router({
         notes: input.notes,
         totalAmount,
         orderNumber,
+        trackingToken,
       }) as { id: number } | null;
       if (result) {
         await createOrderItems(lines.map((line) => ({
@@ -1718,7 +1722,17 @@ const orderRouter = router({
           });
         } catch (e) { /* notification failure is non-critical */ }
       }
-      return { orderId: result?.id, orderNumber };
+      const itemCount = lines.reduce((sum, line) => sum + line.quantity, 0);
+      return {
+        orderId: result?.id,
+        orderNumber,
+        trackingToken,
+        tableNumber: table.tableNumber,
+        totalAmount,
+        itemCount,
+        createdAt,
+        status: "pending" as const,
+      };
     }),
   // Verified: list orders for restaurant owner (live order operations)
   list: verifiedProcedure
