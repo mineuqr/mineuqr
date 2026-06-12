@@ -10,6 +10,7 @@ import {
   type OrderLifecycleStatus,
 } from "@/lib/orderStatusDisplay";
 import { CUSTOMER_ORDER_STATUS_POLL_MS } from "@/lib/queryRuntime";
+import { useReadyStatusAlerts } from "@/hooks/useReadyStatusAlerts";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 
@@ -33,6 +34,14 @@ export default function OrderStatusPage() {
         },
       }
     );
+
+  const { notificationSentHint } = useReadyStatusAlerts({
+    trackingToken,
+    status: data?.status as OrderLifecycleStatus | undefined,
+    orderNumber: data?.orderNumber,
+    language: lang,
+    enabled: !!trackingToken && !!slug && !!data && !isLoading && !isError,
+  });
 
   if (!trackingToken || !slug) {
     return (
@@ -112,6 +121,11 @@ export default function OrderStatusPage() {
             <p className="text-sm text-muted-foreground mt-1">
               {formatOrderStatusLabel(status, lang)}
             </p>
+            {status === "ready" && notificationSentHint && (
+              <p className="text-xs text-green-700 dark:text-green-400 mt-2">
+                {language === "ar" ? "تم إرسال تنبيه لك" : "We sent you an alert"}
+              </p>
+            )}
           </div>
 
           <OrderStatusStepper status={status} language={lang} dir={dir} />
