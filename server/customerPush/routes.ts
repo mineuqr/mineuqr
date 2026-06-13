@@ -4,6 +4,7 @@
 
 import { Router, type Request, type Response } from "express";
 import { z } from "zod";
+import { opsLog } from "../_core/opsLog";
 import { getOrderByTrackingToken } from "../db";
 import { getVapidConfig, isCustomerPushConfigured } from "./vapid";
 import {
@@ -61,6 +62,19 @@ function clientIp(req: Request): string {
   return req.ip ?? "unknown";
 }
 
+function logPushSubscribe(
+  type: "customer_push_subscribe_ok" | "customer_push_subscribe_failed",
+  metadata: Record<string, unknown>
+): void {
+  opsLog({
+    type,
+    category: "ORDER",
+    severity: type === "customer_push_subscribe_ok" ? "info" : "warn",
+    ts: new Date().toISOString(),
+    metadata,
+  });
+}
+
 async function resolveActiveOrder(trackingToken: string, slug: string) {
   const row = await getOrderByTrackingToken(trackingToken, slug);
   if (!row) return { error: "not_found" as const };
@@ -87,12 +101,14 @@ customerPushRouter.get("/vapid-public-key", (_req: Request, res: Response) => {
 
 customerPushRouter.post("/subscribe", async (req: Request, res: Response) => {
   if (!isCustomerPushConfigured()) {
+    logPushSubscribe("customer_push_subscribe_failed", { reason: "push_not_configured" });
     res.status(503).json({ error: "PUSH_NOT_CONFIGURED" });
     return;
   }
 
   const parsed = subscribeBodySchema.safeParse(req.body);
   if (!parsed.success) {
+    logPushSubscribe("customer_push_subscribe_failed", { reason: "invalid_body" });
     res.status(400).json({ error: "INVALID_BODY" });
     return;
   }
@@ -101,10 +117,20 @@ customerPushRouter.post("/subscribe", async (req: Request, res: Response) => {
   const ip = clientIp(req);
 
   if (isRateLimited(`push-sub:ip:${ip}`, IP_LIMIT)) {
+    logPushSubscribe("customer_push_subscribe_failed", {
+      reason: "rate_limited",
+      scope: "ip",
+      orderId: null,
+    });
     res.status(429).json({ error: "RATE_LIMITED" });
     return;
   }
   if (isRateLimited(`push-sub:token:${trackingToken}`, TOKEN_LIMIT)) {
+    logPushSubscribe("customer_push_subscribe_failed", {
+      reason: "rate_limited",
+      scope: "token",
+      orderId: null,
+    });
     res.status(429).json({ error: "RATE_LIMITED" });
     return;
   }
@@ -112,9 +138,17 @@ customerPushRouter.post("/subscribe", async (req: Request, res: Response) => {
   const order = await resolveActiveOrder(trackingToken, slug);
   if ("error" in order) {
     if (order.error === "not_found") {
+      logPushSubscribe("customer_push_subscribe_failed", {
+        reason: "order_not_found",
+        slug,
+      });
       res.status(404).json({ error: "ORDER_NOT_FOUND" });
       return;
     }
+    logPushSubscribe("customer_push_subscribe_failed", {
+      reason: "order_terminal",
+      slug,
+    });
     res.status(409).json({ error: "ORDER_TERMINAL" });
     return;
   }
@@ -125,8 +159,17 @@ customerPushRouter.post("/subscribe", async (req: Request, res: Response) => {
       trackingToken,
       subscription,
     });
+    logPushSubscribe("customer_push_subscribe_ok", {
+      orderId: order.orderId,
+      subscriptionId: result.id,
+    });
     res.json({ success: true, subscriptionId: result.id });
-  } catch {
+  } catch (err) {
+    logPushSubscribe("customer_push_subscribe_failed", {
+      reason: "subscribe_failed",
+      orderId: order.orderId,
+      message: err instanceof Error ? err.message : String(err),
+    });
     res.status(500).json({ error: "SUBSCRIBE_FAILED" });
   }
 });

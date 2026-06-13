@@ -7,6 +7,7 @@ import {
   deletePushSubscriptionByEndpointHash,
   deletePushSubscriptionsForOrder,
   getActivePushSubscriptionsForOrder,
+  releaseReadyPushSend,
   touchCustomerPushSubscriptionLastUsed,
   upsertCustomerPushSubscription,
   type CustomerPushSubscriptionRow,
@@ -67,6 +68,10 @@ export async function removeAllPushSubscriptionsForOrder(orderId: number): Promi
 
 export async function claimReadyPushForOrder(orderId: number): Promise<boolean> {
   return claimReadyPushSend(orderId);
+}
+
+export async function releaseReadyPushForOrder(orderId: number): Promise<void> {
+  return releaseReadyPushSend(orderId);
 }
 
 export async function removeStalePushSubscription(

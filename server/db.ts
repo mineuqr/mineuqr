@@ -20,6 +20,7 @@ import {
   customerPushSubscriptions, InsertCustomerPushSubscription,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
+import { readMysqlAffectedRows } from "./db/mysqlAffectedRows";
 import { isPlatformAccountOpenId, isPlatformAccountUser } from "./platformAccount";
 import {
   DEFAULT_ACCOUNT_CLASSIFICATION,
@@ -1280,8 +1281,16 @@ export async function claimReadyPushSend(orderId: number): Promise<boolean> {
         isNull(orders.readyPushSentAt)
       )
     );
-  const affected = (result as unknown as [{ affectedRows?: number }])?.[0]?.affectedRows ?? 0;
-  return affected > 0;
+  return readMysqlAffectedRows(result) > 0;
+}
+
+export async function releaseReadyPushSend(orderId: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db
+    .update(orders)
+    .set({ readyPushSentAt: null })
+    .where(eq(orders.id, orderId));
 }
 
 export async function getOrderPushContext(orderId: number): Promise<{
