@@ -26,6 +26,7 @@ export const CUSTOMER_ALERT_PATTERN = {
 let sharedAudioContext: AudioContext | null = null;
 const assetAudioCache = new Map<string, HTMLAudioElement>();
 let customerReadyAudioPrimed = false;
+let ownerAlertAudioPrimed = false;
 
 function getCachedAudioElement(src: string): HTMLAudioElement | null {
   if (typeof window === "undefined" || typeof Audio === "undefined") {
@@ -54,6 +55,10 @@ function logAudioPlayRejection(audio: HTMLAudioElement, src: string, err: unknow
 
 export function isCustomerReadyAudioPrimed(): boolean {
   return customerReadyAudioPrimed;
+}
+
+export function isOwnerAlertAudioPrimed(): boolean {
+  return ownerAlertAudioPrimed;
 }
 
 function getAudioContextClass(): typeof AudioContext | null {
@@ -112,6 +117,38 @@ export async function primeCustomerReadyAudioAsset(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/**
+ * OWNER-GLOBAL-1A: prime OWNER_ALERT HTML Audio during dashboard user gesture.
+ */
+export async function primeOwnerAlertAudioAsset(): Promise<boolean> {
+  const audio = getCachedAudioElement(AUDIO_ASSETS.OWNER_ALERT);
+  if (!audio) return false;
+
+  try {
+    const restoredVolume = audio.volume > 0 ? audio.volume : 1;
+    audio.volume = 0.001;
+    audio.currentTime = 0;
+    await audio.play();
+    audio.pause();
+    audio.currentTime = 0;
+    audio.volume = restoredVolume;
+    ownerAlertAudioPrimed = true;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Unlock shared Web Audio + prime owner WAV from an explicit dashboard gesture. */
+export async function primeOwnerDashboardAudioFromGesture(): Promise<{
+  audioContextReady: boolean;
+  htmlAudioPrimed: boolean;
+}> {
+  const audioContextReady = await ensureNotificationAudioReady();
+  const htmlAudioPrimed = await primeOwnerAlertAudioAsset();
+  return { audioContextReady, htmlAudioPrimed };
 }
 
 /** Try HTML Audio asset playback (preferred). Invokes onPlayRejected when play() rejects. */
@@ -222,12 +259,13 @@ function scheduleCustomerFallbackTones(audioCtx: AudioContext, intensity: AlertS
   });
 }
 
-/** Web Audio fallback — owner triple-tone chime (OrderAlertSystem legacy). */
+/** Web Audio fallback — owner triple-tone chime using shared unlocked context. */
 function playOwnerAlertSoundWebAudioFallback(): boolean {
   try {
-    const Ctx = getAudioContextClass();
-    if (!Ctx) return false;
-    const ctx = new Ctx();
+    const audioCtx = sharedAudioContext;
+    if (!audioCtx || audioCtx.state !== "running") {
+      return false;
+    }
 
     const playTone = (
       frequency: number,
@@ -235,13 +273,13 @@ function playOwnerAlertSoundWebAudioFallback(): boolean {
       duration: number,
       peakGain: number
     ) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
       osc.connect(gain);
-      gain.connect(ctx.destination);
+      gain.connect(audioCtx.destination);
       osc.frequency.value = frequency;
       osc.type = "sine";
-      const start = ctx.currentTime + startOffset;
+      const start = audioCtx.currentTime + startOffset;
       gain.gain.setValueAtTime(peakGain, start);
       gain.gain.exponentialRampToValueAtTime(0.01, start + duration);
       osc.start(start);
@@ -251,7 +289,6 @@ function playOwnerAlertSoundWebAudioFallback(): boolean {
     playTone(880, 0, 0.4, 0.4);
     playTone(1100, 0.15, 0.45, 0.4);
     playTone(1320, 0.3, 0.5, 0.35);
-    setTimeout(() => void ctx.close(), 1500);
     return true;
   } catch {
     return false;
@@ -285,4 +322,5 @@ export function resetNotificationAudioForTests(): void {
   sharedAudioContext = null;
   assetAudioCache.clear();
   customerReadyAudioPrimed = false;
+  ownerAlertAudioPrimed = false;
 }

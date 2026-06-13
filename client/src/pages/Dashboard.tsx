@@ -4040,8 +4040,6 @@ function OrdersTab({ restaurantId, currencySymbol, tableLabel }: { restaurantId:
   const unitAr = isRooms ? "غرفة" : "طاولة";
   const unitEn = isRooms ? "Room" : "Table";
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [lastOrderCount, setLastOrderCount] = useState(0);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useDevQueryRuntimeLog("order.list", {
     enabled: ordersEnabled,
@@ -4060,30 +4058,6 @@ function OrdersTab({ restaurantId, currencySymbol, tableLabel }: { restaurantId:
     if (statusFilter === "all") return list;
     return list.filter((o) => o.status === statusFilter);
   }, [allOrders, statusFilter]);
-
-  useEffect(() => {
-    if (!audioRef.current) {
-      audioRef.current = { play: () => {} } as HTMLAudioElement;
-    }
-  }, []);
-
-  useEffect(() => {
-    if (orders && orders.length > lastOrderCount && lastOrderCount > 0) {
-      audioRef.current?.play?.();
-      if ("Notification" in window && Notification.permission === "granted") {
-        new Notification(language === "ar" ? "🍽️ طلب جديد!" : "🍽️ New Order!", {
-          body: language === "ar" ? "طلب جديد" : "New order received",
-        });
-      }
-    }
-    if (orders) setLastOrderCount(orders.length);
-  }, [orders?.length, language]);
-
-  useEffect(() => {
-    if ("Notification" in window && Notification.permission === "default") {
-      Notification.requestPermission();
-    }
-  }, []);
 
   const statusColors: Record<string, string> = {
     pending: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",

@@ -2,7 +2,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { useEffect, useRef, useState } from "react";
 import { spaNavigate } from "@/const";
 import { DASHBOARD_NOTIFICATION_POLL_MS, useDevQueryRuntimeLog } from "@/lib/queryRuntime";
-import { playOwnerNotificationSound } from "@/lib/notificationSound";
+import { playOwnerNotificationSound, primeOwnerDashboardAudioFromGesture } from "@/lib/notificationSound";
 import { trpc } from "@/lib/trpc";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { ShoppingCart, Volume2, VolumeX, X, ExternalLink } from "lucide-react";
@@ -39,6 +39,19 @@ export default function OrderAlertSystem() {
   useEffect(() => {
     soundEnabledRef.current = soundEnabled;
   }, [soundEnabled]);
+
+  useEffect(() => {
+    if (!notifyEnabled) return;
+    const prime = () => {
+      void primeOwnerDashboardAudioFromGesture();
+    };
+    window.addEventListener("pointerdown", prime, { once: true });
+    window.addEventListener("keydown", prime, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", prime);
+      window.removeEventListener("keydown", prime);
+    };
+  }, [notifyEnabled]);
 
   const { data: unreadNotifications } = trpc.notification.getUnread.useQuery(undefined, {
     enabled: notifyEnabled,
@@ -131,7 +144,10 @@ export default function OrderAlertSystem() {
         <Button
           variant="outline"
           size="icon"
-          onClick={() => setSoundEnabled(!soundEnabled)}
+          onClick={() => {
+            void primeOwnerDashboardAudioFromGesture();
+            setSoundEnabled(!soundEnabled);
+          }}
           className={`rounded-full w-10 h-10 shadow-lg border-border/50 backdrop-blur-sm ${
             soundEnabled 
               ? "bg-background/80 text-green-500 hover:text-green-400" 

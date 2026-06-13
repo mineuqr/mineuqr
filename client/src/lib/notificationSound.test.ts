@@ -5,9 +5,12 @@ import {
   ensureNotificationAudioReady,
   getNotificationAudioContextState,
   isCustomerReadyAudioPrimed,
+  isOwnerAlertAudioPrimed,
   playCustomerAlertSound,
   playOwnerNotificationSound,
   primeCustomerReadyAudioAsset,
+  primeOwnerAlertAudioAsset,
+  primeOwnerDashboardAudioFromGesture,
   resetNotificationAudioForTests,
 } from "./notificationSound";
 
@@ -258,6 +261,7 @@ describe("notificationSound NOTIFICATION-AUDIO-1-HOTFIX-1", () => {
       })
     );
 
+    await ensureNotificationAudioReady();
     playOwnerNotificationSound();
     await Promise.resolve();
 
@@ -350,5 +354,171 @@ describe("notificationSound NOTIFICATION-AUDIO-1-HOTFIX-2A", () => {
 
     expect(instanceCount).toBe(1);
     expect(play).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("notificationSound OWNER-GLOBAL-1", () => {
+  beforeEach(() => {
+    resetNotificationAudioForTests();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    resetNotificationAudioForTests();
+  });
+
+  it("primeOwnerAlertAudioAsset play/pause during dashboard gesture", async () => {
+    const play = vi.fn().mockResolvedValue(undefined);
+    const pause = vi.fn();
+    const AudioMock = vi.fn(function (this: {
+      preload: string;
+      volume: number;
+      currentTime: number;
+      play: typeof play;
+      pause: typeof pause;
+    }) {
+      this.preload = "";
+      this.volume = 1;
+      this.currentTime = 0;
+      this.play = play;
+      this.pause = pause;
+    });
+    vi.stubGlobal("window", {});
+    vi.stubGlobal("Audio", AudioMock);
+
+    const primed = await primeOwnerAlertAudioAsset();
+    expect(primed).toBe(true);
+    expect(AudioMock).toHaveBeenCalledWith(AUDIO_ASSETS.OWNER_ALERT);
+    expect(play).toHaveBeenCalled();
+    expect(pause).toHaveBeenCalled();
+    expect(isOwnerAlertAudioPrimed()).toBe(true);
+  });
+
+  it("owner playback reuses the same cached element after priming", async () => {
+    const play = vi.fn().mockResolvedValue(undefined);
+    const pause = vi.fn();
+    let instanceCount = 0;
+    const AudioMock = vi.fn(function (this: {
+      preload: string;
+      volume: number;
+      currentTime: number;
+      play: typeof play;
+      pause: typeof pause;
+    }) {
+      instanceCount += 1;
+      this.preload = "";
+      this.volume = 1;
+      this.currentTime = 0;
+      this.play = play;
+      this.pause = pause;
+    });
+    vi.stubGlobal("window", {});
+    vi.stubGlobal("Audio", AudioMock);
+
+    await primeOwnerAlertAudioAsset();
+    playOwnerNotificationSound();
+    await Promise.resolve();
+
+    expect(instanceCount).toBe(1);
+    expect(play).toHaveBeenCalledTimes(2);
+  });
+
+  it("primeOwnerDashboardAudioFromGesture unlocks shared context and primes owner WAV", async () => {
+    const play = vi.fn().mockResolvedValue(undefined);
+    const pause = vi.fn();
+    vi.stubGlobal(
+      "AudioContext",
+      vi.fn(function MockAudioContext(this: {
+        state: AudioContextState;
+        currentTime: number;
+        destination: object;
+        resume: ReturnType<typeof vi.fn>;
+        createOscillator: ReturnType<typeof vi.fn>;
+        createGain: ReturnType<typeof vi.fn>;
+        close: ReturnType<typeof vi.fn>;
+      }) {
+        this.state = "suspended";
+        this.currentTime = 0;
+        this.destination = {};
+        this.close = vi.fn();
+        this.resume = vi.fn(async () => {
+          this.state = "running";
+        });
+        this.createOscillator = vi.fn();
+        this.createGain = vi.fn();
+      })
+    );
+    vi.stubGlobal("window", { AudioContext: globalThis.AudioContext });
+    vi.stubGlobal(
+      "Audio",
+      vi.fn(function (this: {
+        preload: string;
+        volume: number;
+        currentTime: number;
+        play: typeof play;
+        pause: typeof pause;
+      }) {
+        this.preload = "";
+        this.volume = 1;
+        this.currentTime = 0;
+        this.play = play;
+        this.pause = pause;
+      })
+    );
+
+    const result = await primeOwnerDashboardAudioFromGesture();
+    expect(result.audioContextReady).toBe(true);
+    expect(result.htmlAudioPrimed).toBe(true);
+    expect(getNotificationAudioContextState()).toBe("running");
+    expect(isOwnerAlertAudioPrimed()).toBe(true);
+  });
+
+  it("owner Web Audio fallback uses shared context, not a fresh AudioContext", async () => {
+    let contextInstances = 0;
+    const createOscillator = vi.fn(() => ({
+      connect: vi.fn(),
+      frequency: { value: 0 },
+      type: "sine",
+      start: vi.fn(),
+      stop: vi.fn(),
+    }));
+    vi.stubGlobal(
+      "AudioContext",
+      vi.fn(function MockAudioContext(this: {
+        state: AudioContextState;
+        currentTime: number;
+        destination: object;
+        resume: ReturnType<typeof vi.fn>;
+        createOscillator: ReturnType<typeof vi.fn>;
+        createGain: ReturnType<typeof vi.fn>;
+        close: ReturnType<typeof vi.fn>;
+      }) {
+        contextInstances += 1;
+        this.state = "suspended";
+        this.currentTime = 0;
+        this.destination = {};
+        this.close = vi.fn();
+        this.resume = vi.fn(async () => {
+          this.state = "running";
+        });
+        this.createOscillator = createOscillator;
+        this.createGain = vi.fn(() => ({
+          connect: vi.fn(),
+          gain: {
+            setValueAtTime: vi.fn(),
+            exponentialRampToValueAtTime: vi.fn(),
+          },
+        }));
+      })
+    );
+    vi.stubGlobal("window", { AudioContext: globalThis.AudioContext });
+    vi.stubGlobal("Audio", undefined);
+
+    await ensureNotificationAudioReady();
+    expect(contextInstances).toBe(1);
+
+    playOwnerNotificationSound();
+    expect(contextInstances).toBe(1);
+    expect(createOscillator).toHaveBeenCalledTimes(3);
   });
 });
