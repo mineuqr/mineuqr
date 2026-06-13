@@ -4,8 +4,10 @@ import {
   CUSTOMER_ALERT_PATTERN,
   ensureNotificationAudioReady,
   getNotificationAudioContextState,
+  isCustomerReadyAudioPrimed,
   playCustomerAlertSound,
   playOwnerNotificationSound,
+  primeCustomerReadyAudioAsset,
   resetNotificationAudioForTests,
 } from "./notificationSound";
 
@@ -180,6 +182,7 @@ describe("notificationSound NOTIFICATION-AUDIO-1-HOTFIX-1", () => {
   let createOscillator: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
+    resetNotificationAudioForTests();
     createOscillator = vi.fn(() => ({
       connect: vi.fn(),
       frequency: { value: 0 },
@@ -280,5 +283,72 @@ describe("notificationSound NOTIFICATION-AUDIO-1-HOTFIX-1", () => {
 
     expect(play).toHaveBeenCalled();
     expect(createOscillator).not.toHaveBeenCalled();
+  });
+});
+
+describe("notificationSound NOTIFICATION-AUDIO-1-HOTFIX-2A", () => {
+  beforeEach(() => {
+    resetNotificationAudioForTests();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    resetNotificationAudioForTests();
+  });
+
+  it("primeCustomerReadyAudioAsset play/pause during activation gesture", async () => {
+    const play = vi.fn().mockResolvedValue(undefined);
+    const pause = vi.fn();
+    const AudioMock = vi.fn(function (this: {
+      preload: string;
+      volume: number;
+      currentTime: number;
+      play: typeof play;
+      pause: typeof pause;
+    }) {
+      this.preload = "";
+      this.volume = 1;
+      this.currentTime = 0;
+      this.play = play;
+      this.pause = pause;
+    });
+    vi.stubGlobal("window", {});
+    vi.stubGlobal("Audio", AudioMock);
+
+    const primed = await primeCustomerReadyAudioAsset();
+    expect(primed).toBe(true);
+    expect(AudioMock).toHaveBeenCalledWith(AUDIO_ASSETS.CUSTOMER_READY);
+    expect(play).toHaveBeenCalled();
+    expect(pause).toHaveBeenCalled();
+    expect(isCustomerReadyAudioPrimed()).toBe(true);
+  });
+
+  it("READY playback reuses the same cached element after priming", async () => {
+    const play = vi.fn().mockResolvedValue(undefined);
+    const pause = vi.fn();
+    let instanceCount = 0;
+    const AudioMock = vi.fn(function (this: {
+      preload: string;
+      volume: number;
+      currentTime: number;
+      play: typeof play;
+      pause: typeof pause;
+    }) {
+      instanceCount += 1;
+      this.preload = "";
+      this.volume = 1;
+      this.currentTime = 0;
+      this.play = play;
+      this.pause = pause;
+    });
+    vi.stubGlobal("window", {});
+    vi.stubGlobal("Audio", AudioMock);
+
+    await primeCustomerReadyAudioAsset();
+    playCustomerAlertSound("high");
+    await Promise.resolve();
+
+    expect(instanceCount).toBe(1);
+    expect(play).toHaveBeenCalledTimes(2);
   });
 });

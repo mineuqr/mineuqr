@@ -25,6 +25,36 @@ export const CUSTOMER_ALERT_PATTERN = {
 
 let sharedAudioContext: AudioContext | null = null;
 const assetAudioCache = new Map<string, HTMLAudioElement>();
+let customerReadyAudioPrimed = false;
+
+function getCachedAudioElement(src: string): HTMLAudioElement | null {
+  if (typeof window === "undefined" || typeof Audio === "undefined") {
+    return null;
+  }
+  let audio = assetAudioCache.get(src);
+  if (!audio) {
+    audio = new Audio(src);
+    audio.preload = "auto";
+    assetAudioCache.set(src, audio);
+  }
+  return audio;
+}
+
+function logAudioPlayRejection(audio: HTMLAudioElement, src: string, err: unknown): void {
+  if (!import.meta.env.DEV) return;
+  console.info("[mineuqr:audio] play rejected", {
+    name: err instanceof DOMException ? err.name : err instanceof Error ? err.name : "unknown",
+    message: err instanceof Error ? err.message : String(err),
+    src,
+    readyState: audio.readyState,
+    networkState: audio.networkState,
+    mediaError: audio.error?.code ?? null,
+  });
+}
+
+export function isCustomerReadyAudioPrimed(): boolean {
+  return customerReadyAudioPrimed;
+}
 
 function getAudioContextClass(): typeof AudioContext | null {
   if (typeof window === "undefined") return null;
@@ -61,27 +91,45 @@ export function unlockNotificationAudio(): void {
   void ensureNotificationAudioReady();
 }
 
+/**
+ * HOTFIX-2A: prime CUSTOMER_READY HTML Audio during user activation gesture (iOS WebKit).
+ * Play/pause at near-zero volume unlocks delayed poll playback on the same element.
+ */
+export async function primeCustomerReadyAudioAsset(): Promise<boolean> {
+  const audio = getCachedAudioElement(AUDIO_ASSETS.CUSTOMER_READY);
+  if (!audio) return false;
+
+  try {
+    const restoredVolume = audio.volume > 0 ? audio.volume : 1;
+    audio.volume = 0.001;
+    audio.currentTime = 0;
+    await audio.play();
+    audio.pause();
+    audio.currentTime = 0;
+    audio.volume = restoredVolume;
+    customerReadyAudioPrimed = true;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Try HTML Audio asset playback (preferred). Invokes onPlayRejected when play() rejects. */
 function tryPlayAudioAsset(
   src: string,
   volume: number,
   onPlayRejected: () => void
 ): boolean {
-  if (typeof window === "undefined" || typeof Audio === "undefined") {
-    return false;
-  }
+  const audio = getCachedAudioElement(src);
+  if (!audio) return false;
+
   try {
-    let audio = assetAudioCache.get(src);
-    if (!audio) {
-      audio = new Audio(src);
-      audio.preload = "auto";
-      assetAudioCache.set(src, audio);
-    }
     audio.volume = Math.min(1, Math.max(0, volume));
     audio.currentTime = 0;
     const playPromise = audio.play();
     if (playPromise !== undefined) {
-      void playPromise.catch(() => {
+      void playPromise.catch((err) => {
+        logAudioPlayRejection(audio, src, err);
         onPlayRejected();
       });
     }
@@ -236,4 +284,5 @@ export function playOwnerNotificationSound(): boolean {
 export function resetNotificationAudioForTests(): void {
   sharedAudioContext = null;
   assetAudioCache.clear();
+  customerReadyAudioPrimed = false;
 }

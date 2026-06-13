@@ -16,7 +16,11 @@ function getNotificationPermission(): NotificationPermission | "unsupported" {
 
 export function logReadyAlertActivation(
   trackingToken: string,
-  result: { audioReady: boolean; permission: NotificationPermission | "unsupported" }
+  result: {
+    audioReady: boolean;
+    htmlAudioPrimed: boolean;
+    permission: NotificationPermission | "unsupported";
+  }
 ): void {
   if (!DEV) return;
   console.info("[mineuqr:ready-alert] activation", {
@@ -24,6 +28,7 @@ export function logReadyAlertActivation(
     audioContextState: getNotificationAudioContextState(),
     permission: result.permission,
     audioReady: result.audioReady,
+    htmlAudioPrimed: result.htmlAudioPrimed,
   });
 }
 

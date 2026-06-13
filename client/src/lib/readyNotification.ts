@@ -3,7 +3,7 @@
  * HOTFIX-1: gesture activation, per-channel delivery reporting.
  */
 
-import { ensureNotificationAudioReady, playCustomerAlertSound } from "@/lib/notificationSound";
+import { ensureNotificationAudioReady, playCustomerAlertSound, primeCustomerReadyAudioAsset } from "@/lib/notificationSound";
 import { logReadyAlertDelivery } from "@/lib/readyNotificationDiagnostics";
 import type { OrderLifecycleStatus } from "@/lib/orderStatusDisplay";
 
@@ -103,11 +103,13 @@ export async function requestReadyNotificationPermissionFromGesture(): Promise<
 /** HOTFIX-1A: unlock audio + request permission from explicit user tap. */
 export async function activateReadyAlertsFromGesture(): Promise<{
   audioReady: boolean;
+  htmlAudioPrimed: boolean;
   permission: NotificationPermission | "unsupported";
 }> {
   const audioReady = await ensureNotificationAudioReady();
+  const htmlAudioPrimed = await primeCustomerReadyAudioAsset();
   const permission = await requestReadyNotificationPermissionFromGesture();
-  return { audioReady, permission };
+  return { audioReady, htmlAudioPrimed, permission };
 }
 
 export function vibrateForReady(durationMs: number): boolean {
