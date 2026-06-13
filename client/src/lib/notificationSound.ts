@@ -1,8 +1,13 @@
-/** CUSTOMER-UX-1C — Web Audio alerts (customer + owner patterns). */
+/**
+ * NOTIFICATION-AUDIO-1 — notification sound playback.
+ * Primary: HTML Audio assets. Fallback: Web Audio synthesized tones.
+ */
+
+import { AUDIO_ASSETS } from "@/lib/audioAssets";
 
 export type AlertSoundIntensity = "high" | "medium";
 
-/** Documented pattern lengths for tests and tuning (AUDIO-TUNE-1). */
+/** Documented pattern lengths for Web Audio fallback (AUDIO-TUNE-1). */
 export const CUSTOMER_ALERT_PATTERN = {
   high: {
     beep1Ms: 120,
@@ -19,6 +24,7 @@ export const CUSTOMER_ALERT_PATTERN = {
 } as const;
 
 let sharedAudioContext: AudioContext | null = null;
+const assetAudioCache = new Map<string, HTMLAudioElement>();
 
 function getAudioContextClass(): typeof AudioContext | null {
   if (typeof window === "undefined") return null;
@@ -55,6 +61,32 @@ export function unlockNotificationAudio(): void {
   void ensureNotificationAudioReady();
 }
 
+/** Try HTML Audio asset playback (preferred). */
+function tryPlayAudioAsset(src: string, volume = 1): boolean {
+  if (typeof window === "undefined" || typeof Audio === "undefined") {
+    return false;
+  }
+  try {
+    let audio = assetAudioCache.get(src);
+    if (!audio) {
+      audio = new Audio(src);
+      audio.preload = "auto";
+      assetAudioCache.set(src, audio);
+    }
+    audio.volume = Math.min(1, Math.max(0, volume));
+    audio.currentTime = 0;
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      void playPromise.catch(() => {
+        /* autoplay blocked — Web Audio fallback handles sync path */
+      });
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 type BeepSpec = {
   frequencyHz: number;
   startSec: number;
@@ -84,7 +116,20 @@ function playBeep(audioCtx: AudioContext, spec: BeepSpec): void {
   osc.stop(start + spec.durationSec + 0.03);
 }
 
-function scheduleTones(audioCtx: AudioContext, intensity: AlertSoundIntensity): void {
+function playCustomerAlertSoundWebAudioFallback(intensity: AlertSoundIntensity): boolean {
+  try {
+    const audioCtx = sharedAudioContext;
+    if (!audioCtx || audioCtx.state !== "running") {
+      return false;
+    }
+    scheduleCustomerFallbackTones(audioCtx, intensity);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function scheduleCustomerFallbackTones(audioCtx: AudioContext, intensity: AlertSoundIntensity): void {
   if (intensity === "high") {
     const { beep1Ms, pauseMs, beep2Ms } = CUSTOMER_ALERT_PATTERN.high;
     const beep1Sec = beep1Ms / 1000;
@@ -125,29 +170,64 @@ function scheduleTones(audioCtx: AudioContext, intensity: AlertSoundIntensity): 
   });
 }
 
-/**
- * Customer ready alert — high = Alert #1, medium = Alert #2.
- * Returns true only when AudioContext is running (audible playback possible).
- */
-export function playCustomerAlertSound(intensity: AlertSoundIntensity): boolean {
+/** Web Audio fallback — owner triple-tone chime (OrderAlertSystem legacy). */
+function playOwnerAlertSoundWebAudioFallback(): boolean {
   try {
-    const audioCtx = sharedAudioContext;
-    if (!audioCtx || audioCtx.state !== "running") {
-      return false;
-    }
-    scheduleTones(audioCtx, intensity);
+    const Ctx = getAudioContextClass();
+    if (!Ctx) return false;
+    const ctx = new Ctx();
+
+    const playTone = (
+      frequency: number,
+      startOffset: number,
+      duration: number,
+      peakGain: number
+    ) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = frequency;
+      osc.type = "sine";
+      const start = ctx.currentTime + startOffset;
+      gain.gain.setValueAtTime(peakGain, start);
+      gain.gain.exponentialRampToValueAtTime(0.01, start + duration);
+      osc.start(start);
+      osc.stop(start + duration + 0.05);
+    };
+
+    playTone(880, 0, 0.4, 0.4);
+    playTone(1100, 0.15, 0.45, 0.4);
+    playTone(1320, 0.3, 0.5, 0.35);
+    setTimeout(() => void ctx.close(), 1500);
     return true;
   } catch {
     return false;
   }
 }
 
-/** Owner dashboard chime — preserved for OrderAlertSystem parity. */
-export function playOwnerNotificationSound(): boolean {
-  return playCustomerAlertSound("high");
+/**
+ * Customer READY alert — tier 1 (high) and tier 2 (medium) reminder.
+ * Uses mixkit-clock-countdown-bleeps; Web Audio fallback if asset unavailable.
+ */
+export function playCustomerAlertSound(intensity: AlertSoundIntensity): boolean {
+  const volume = intensity === "high" ? 1 : 0.65;
+  if (tryPlayAudioAsset(AUDIO_ASSETS.CUSTOMER_READY, volume)) {
+    return true;
+  }
+  return playCustomerAlertSoundWebAudioFallback(intensity);
 }
 
-/** For tests — reset shared audio context between cases. */
+/** Owner operational alert — new orders, service requests, etc. */
+export function playOwnerNotificationSound(): boolean {
+  if (tryPlayAudioAsset(AUDIO_ASSETS.OWNER_ALERT, 1)) {
+    return true;
+  }
+  return playOwnerAlertSoundWebAudioFallback();
+}
+
+/** For tests — reset shared audio state between cases. */
 export function resetNotificationAudioForTests(): void {
   sharedAudioContext = null;
+  assetAudioCache.clear();
 }

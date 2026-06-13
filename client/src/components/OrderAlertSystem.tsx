@@ -2,60 +2,11 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { useEffect, useRef, useState } from "react";
 import { spaNavigate } from "@/const";
 import { DASHBOARD_NOTIFICATION_POLL_MS, useDevQueryRuntimeLog } from "@/lib/queryRuntime";
+import { playOwnerNotificationSound } from "@/lib/notificationSound";
 import { trpc } from "@/lib/trpc";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { ShoppingCart, Volume2, VolumeX, X, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
-// Plays a pleasant notification chime using Web Audio API
-function playNotificationSound() {
-  try {
-    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-    
-    // First tone (higher)
-    const osc1 = ctx.createOscillator();
-    const gain1 = ctx.createGain();
-    osc1.connect(gain1);
-    gain1.connect(ctx.destination);
-    osc1.frequency.value = 880;
-    osc1.type = "sine";
-    gain1.gain.setValueAtTime(0.4, ctx.currentTime);
-    gain1.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
-    osc1.start(ctx.currentTime);
-    osc1.stop(ctx.currentTime + 0.4);
-
-    // Second tone (lower, delayed)
-    const osc2 = ctx.createOscillator();
-    const gain2 = ctx.createGain();
-    osc2.connect(gain2);
-    gain2.connect(ctx.destination);
-    osc2.frequency.value = 1100;
-    osc2.type = "sine";
-    gain2.gain.setValueAtTime(0, ctx.currentTime + 0.15);
-    gain2.gain.setValueAtTime(0.4, ctx.currentTime + 0.15);
-    gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.6);
-    osc2.start(ctx.currentTime + 0.15);
-    osc2.stop(ctx.currentTime + 0.6);
-
-    // Third tone (highest, delayed more)
-    const osc3 = ctx.createOscillator();
-    const gain3 = ctx.createGain();
-    osc3.connect(gain3);
-    gain3.connect(ctx.destination);
-    osc3.frequency.value = 1320;
-    osc3.type = "sine";
-    gain3.gain.setValueAtTime(0, ctx.currentTime + 0.3);
-    gain3.gain.setValueAtTime(0.35, ctx.currentTime + 0.3);
-    gain3.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.8);
-    osc3.start(ctx.currentTime + 0.3);
-    osc3.stop(ctx.currentTime + 0.8);
-
-    // Cleanup
-    setTimeout(() => ctx.close(), 1500);
-  } catch (e) {
-    // Audio not available, silently fail
-  }
-}
 
 interface OrderAlert {
   id: number;
@@ -119,7 +70,7 @@ export default function OrderAlertSystem() {
     if (newOrders.length > 0) {
       // Play sound
       if (soundEnabledRef.current) {
-        playNotificationSound();
+        playOwnerNotificationSound();
       }
 
       // Show custom popup alerts
