@@ -337,6 +337,7 @@ export const orders = mysqlTable("orders", {
 	totalAmount: decimal({ precision: 10, scale: 2 }).notNull(),
 	orderNumber: varchar({ length: 32 }).notNull(),
 	trackingToken: varchar({ length: 64 }),
+	readyPushSentAt: timestamp({ mode: 'string' }),
 	whatsappSent: boolean().default(false).notNull(),
 	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
 	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
@@ -346,6 +347,26 @@ export const orders = mysqlTable("orders", {
 	index("orders_table_id").on(table.tableId),
 	index("orders_status").on(table.status),
 	uniqueIndex("orders_tracking_token_unique").on(table.trackingToken),
+]);
+
+// ─── Customer Push Subscriptions (BACKGROUND-NOTIFICATIONS-1A) ───
+export const customerPushSubscriptions = mysqlTable("customer_push_subscriptions", {
+	id: int().autoincrement().notNull(),
+	orderId: int().notNull(),
+	trackingToken: varchar({ length: 64 }).notNull(),
+	endpoint: varchar({ length: 512 }).notNull(),
+	endpointHash: varchar({ length: 64 }).notNull(),
+	p256dh: varchar({ length: 255 }).notNull(),
+	auth: varchar({ length: 255 }).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+	expiresAt: timestamp({ mode: 'string' }),
+	lastUsedAt: timestamp({ mode: 'string' }),
+},
+(table) => [
+	uniqueIndex("uq_push_endpoint_hash_order").on(table.orderId, table.endpointHash),
+	index("idx_push_tracking_token").on(table.trackingToken),
+	index("idx_push_expires_at").on(table.expiresAt),
 ]);
 
 // ─── Order Items Table ────────────────────────────────────────────
@@ -369,6 +390,9 @@ export type SelectRestaurantTable = typeof restaurantTables.$inferSelect;
 
 export type InsertOrder = typeof orders.$inferInsert;
 export type SelectOrder = typeof orders.$inferSelect;
+
+export type InsertCustomerPushSubscription = typeof customerPushSubscriptions.$inferInsert;
+export type SelectCustomerPushSubscription = typeof customerPushSubscriptions.$inferSelect;
 
 export type InsertOrderItem = typeof orderItems.$inferInsert;
 export type SelectOrderItem = typeof orderItems.$inferSelect;

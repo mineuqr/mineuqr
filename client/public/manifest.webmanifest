@@ -1,0 +1,26 @@
+{
+  "name": "MineuQR",
+  "short_name": "MineuQR",
+  "description": "Order tracking",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0b0e14",
+  "theme_color": "#0b0e14",
+  "lang": "ar",
+  "dir": "rtl",
+  "icons": [
+    {
+      "src": "/mineuqr-logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/mineuqr-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

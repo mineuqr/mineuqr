@@ -57,6 +57,7 @@ describe("readyNotification CUSTOMER-UX-1C HOTFIX-1", () => {
     const token = "abc123";
     saveReadyAlertState(token, {
       alertsActivated: true,
+      pushSubscriptionActive: false,
       alert1Sent: true,
       alert1NotificationDelivered: true,
       alert2Sent: false,
@@ -95,5 +96,36 @@ describe("readyNotification CUSTOMER-UX-1C HOTFIX-1", () => {
       alertsActivated: false,
     });
     expect(delivery).toEqual({ sound: false, notification: false, vibrate: false });
+  });
+
+  it("deliverReadyAlertTier skips page notification when push subscription active", () => {
+    saveReadyAlertState("tok", {
+      alertsActivated: true,
+      pushSubscriptionActive: true,
+      alert1Sent: false,
+      alert1NotificationDelivered: false,
+      alert2Sent: false,
+      alert2NotificationDelivered: false,
+      acknowledged: false,
+    });
+
+    vi.stubGlobal(
+      "Notification",
+      vi.fn(function (this: { onclick: () => void }, title: string) {
+        this.onclick = () => {};
+        return this;
+      })
+    );
+
+    const delivery = deliverReadyAlertTier({
+      trackingToken: "tok",
+      tier: 1,
+      orderNumber: "ORD-1",
+      language: "ar",
+      alertsActivated: true,
+    });
+
+    expect(delivery.notification).toBe(false);
+    expect(globalThis.Notification).not.toHaveBeenCalled();
   });
 });

@@ -45,6 +45,7 @@ export default function OrderStatusPage() {
     notificationDeliveredHint,
   } = useReadyStatusAlerts({
     trackingToken,
+    slug,
     status: data?.status as OrderLifecycleStatus | undefined,
     orderNumber: data?.orderNumber,
     language: lang,

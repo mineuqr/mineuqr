@@ -4,6 +4,7 @@
  */
 
 import { ensureNotificationAudioReady, playCustomerAlertSound, primeCustomerReadyAudioAsset } from "@/lib/notificationSound";
+import { subscribeCustomerPush } from "@/lib/customerPush";
 import { logReadyAlertDelivery } from "@/lib/readyNotificationDiagnostics";
 import type { OrderLifecycleStatus } from "@/lib/orderStatusDisplay";
 
@@ -11,6 +12,7 @@ export const READY_ALERT_FOLLOW_UP_MS = 30_000;
 
 export type ReadyAlertSessionState = {
   alertsActivated: boolean;
+  pushSubscriptionActive: boolean;
   alert1Sent: boolean;
   alert1NotificationDelivered: boolean;
   alert2Sent: boolean;
@@ -28,6 +30,7 @@ const followUpTimers = new Map<string, ReturnType<typeof setTimeout>>();
 function emptyReadyAlertState(): ReadyAlertSessionState {
   return {
     alertsActivated: false,
+    pushSubscriptionActive: false,
     alert1Sent: false,
     alert1NotificationDelivered: false,
     alert2Sent: false,
@@ -49,6 +52,7 @@ export function loadReadyAlertState(trackingToken: string): ReadyAlertSessionSta
     const parsed = JSON.parse(raw) as Partial<ReadyAlertSessionState>;
     return {
       alertsActivated: Boolean(parsed.alertsActivated),
+      pushSubscriptionActive: Boolean(parsed.pushSubscriptionActive),
       alert1Sent: Boolean(parsed.alert1Sent),
       alert1NotificationDelivered: Boolean(parsed.alert1NotificationDelivered),
       alert2Sent: Boolean(parsed.alert2Sent),
@@ -100,16 +104,30 @@ export async function requestReadyNotificationPermissionFromGesture(): Promise<
   }
 }
 
-/** HOTFIX-1A: unlock audio + request permission from explicit user tap. */
-export async function activateReadyAlertsFromGesture(): Promise<{
+/** HOTFIX-1A + BACKGROUND-NOTIFICATIONS-1A: unlock audio, permission, and push from user tap. */
+export async function activateReadyAlertsFromGesture(options: {
+  trackingToken: string;
+  slug: string;
+}): Promise<{
   audioReady: boolean;
   htmlAudioPrimed: boolean;
   permission: NotificationPermission | "unsupported";
+  pushSubscribed: boolean;
 }> {
   const audioReady = await ensureNotificationAudioReady();
   const htmlAudioPrimed = await primeCustomerReadyAudioAsset();
   const permission = await requestReadyNotificationPermissionFromGesture();
-  return { audioReady, htmlAudioPrimed, permission };
+
+  let pushSubscribed = false;
+  if (permission === "granted" && options.trackingToken && options.slug) {
+    const pushResult = await subscribeCustomerPush({
+      trackingToken: options.trackingToken,
+      slug: options.slug,
+    });
+    pushSubscribed = pushResult.subscribed;
+  }
+
+  return { audioReady, htmlAudioPrimed, permission, pushSubscribed };
 }
 
 export function vibrateForReady(durationMs: number): boolean {
@@ -185,10 +203,14 @@ export function deliverReadyAlertTier(options: {
   const intensity = options.tier === 1 ? "high" : "medium";
   const vibrateMs = options.tier === 1 ? 2000 : 1000;
   const copy = buildReadyNotificationCopy(options.orderNumber, options.language);
+  const session = loadReadyAlertState(options.trackingToken);
+  const skipPageNotification = session.pushSubscriptionActive;
 
   const delivery: ReadyAlertDelivery = {
     sound: playCustomerAlertSound(intensity),
-    notification: showReadySystemNotification(options.trackingToken, options.tier, copy),
+    notification: skipPageNotification
+      ? false
+      : showReadySystemNotification(options.trackingToken, options.tier, copy),
     vibrate: vibrateForReady(vibrateMs),
   };
 

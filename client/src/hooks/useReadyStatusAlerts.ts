@@ -14,6 +14,7 @@ import {
 
 type UseReadyStatusAlertsOptions = {
   trackingToken: string;
+  slug: string;
   status: OrderLifecycleStatus | undefined;
   orderNumber: string | undefined;
   language: "ar" | "en";
@@ -22,6 +23,7 @@ type UseReadyStatusAlertsOptions = {
 
 export function useReadyStatusAlerts({
   trackingToken,
+  slug,
   status,
   orderNumber,
   language,
@@ -43,21 +45,22 @@ export function useReadyStatusAlerts({
   }, [trackingToken]);
 
   const activateAlerts = useCallback(async () => {
-    if (!trackingToken || activating) return;
+    if (!trackingToken || !slug || activating) return;
     setActivating(true);
     try {
-      const result = await activateReadyAlertsFromGesture();
+      const result = await activateReadyAlertsFromGesture({ trackingToken, slug });
       logReadyAlertActivation(trackingToken, result);
       const session = loadReadyAlertState(trackingToken);
       saveReadyAlertState(trackingToken, {
         ...session,
         alertsActivated: true,
+        pushSubscriptionActive: result.pushSubscribed,
       });
       setAlertsActivated(true);
     } finally {
       setActivating(false);
     }
-  }, [trackingToken, activating]);
+  }, [trackingToken, slug, activating]);
 
   const acknowledge = useCallback(() => {
     if (!trackingToken) return;
@@ -110,7 +113,7 @@ export function useReadyStatusAlerts({
       alertsActivated: session.alertsActivated,
     });
 
-    if (delivery1.notification) {
+    if (delivery1.notification || session.pushSubscriptionActive) {
       setNotificationDeliveredHint(true);
     }
 

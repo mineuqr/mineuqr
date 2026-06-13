@@ -20,6 +20,7 @@ export function logReadyAlertActivation(
     audioReady: boolean;
     htmlAudioPrimed: boolean;
     permission: NotificationPermission | "unsupported";
+    pushSubscribed?: boolean;
   }
 ): void {
   if (!DEV) return;
@@ -29,6 +30,7 @@ export function logReadyAlertActivation(
     permission: result.permission,
     audioReady: result.audioReady,
     htmlAudioPrimed: result.htmlAudioPrimed,
+    pushSubscribed: result.pushSubscribed ?? false,
   });
 }
 

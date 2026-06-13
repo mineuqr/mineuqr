@@ -83,6 +83,8 @@ import { notifyOwnerNewRestaurant, notifyOwnerNewSubscription, notifyOwnerSubscr
 import { generateInvoicePDFBuffer } from "./invoice-pdf";
 import { mergeRouters } from "./_core/trpc";
 import { generateOrderTrackingToken } from "./orderTrackingToken";
+import { cleanupPushSubscriptionsForOrder } from "./customerPush/routes";
+import { sendReadyPushForOrder } from "./customerPush/sendReadyPush";
 import { toPublicOrderStatus } from "./orderPublicStatus";
 import { adminAuditRouter } from "./audit/adminAuditRouter";
 import { adminDashboardReadRouter } from "./commercial/adminDashboardRouter";
@@ -1765,7 +1767,29 @@ const orderRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "الطلب غير موجود" });
       }
       await assertRestaurantAccess(ctx, order.restaurantId, "order.updateStatus");
+      const previousStatus = order.status;
       await updateOrderStatus(input.id, input.status);
+
+      if (previousStatus !== "ready" && input.status === "ready") {
+        try {
+          await sendReadyPushForOrder({
+            orderId: order.id,
+            trackingToken: order.trackingToken,
+            orderNumber: order.orderNumber,
+          });
+        } catch {
+          /* push failure is non-critical */
+        }
+      }
+
+      if (input.status === "served" || input.status === "cancelled") {
+        try {
+          await cleanupPushSubscriptionsForOrder(order.id);
+        } catch {
+          /* cleanup failure is non-critical */
+        }
+      }
+
       return { success: true };
     }),
   activeCount: verifiedProcedure

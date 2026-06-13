@@ -7,6 +7,8 @@ import { handleTapWebhook } from "../tap-webhook";
 import { localAuthRouter } from "../auth-local";
 import { validateAuthSecurityConfig, shouldTrustProxy } from "./authSecurity";
 import { validateDeploymentAuthReadiness } from "./deploymentReadiness";
+import { customerPushRouter } from "../customerPush/routes";
+import { validateCustomerPushAtStartup } from "../customerPush/vapid";
 import {
   schedulePlatformProtectionHealthProbe,
   validatePlatformProtectionAtStartup,
@@ -24,6 +26,7 @@ export async function createApiApp(): Promise<Express> {
   validateAuthSecurityConfig();
   validateDeploymentAuthReadiness();
   validatePlatformProtectionAtStartup();
+  validateCustomerPushAtStartup();
   schedulePlatformProtectionHealthProbe();
 
   const app = express();
@@ -46,6 +49,7 @@ export async function createApiApp(): Promise<Express> {
   }
 
   app.post("/api/paypal/webhook", handlePayPalWebhook);
+  app.use("/api/push", customerPushRouter);
   app.use(localAuthRouter);
   app.use(
     "/api/trpc",

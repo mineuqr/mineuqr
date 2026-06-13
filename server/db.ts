@@ -17,6 +17,7 @@ import {
   restaurantTables, InsertRestaurantTable,
   orders, InsertOrder,
   orderItems, InsertOrderItem,
+  customerPushSubscriptions, InsertCustomerPushSubscription,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 import { isPlatformAccountOpenId, isPlatformAccountUser } from "./platformAccount";
@@ -1135,4 +1136,174 @@ export async function getActiveOrdersCount(restaurantId: number): Promise<number
       inArray(orders.status, ['pending', 'preparing', 'ready'])
     ));
   return result?.count || 0;
+}
+
+// ─── Customer Push Subscriptions (BACKGROUND-NOTIFICATIONS-1A) ───
+
+export type CustomerPushSubscriptionRow = {
+  id: number;
+  orderId: number;
+  trackingToken: string;
+  endpoint: string;
+  endpointHash: string;
+  p256dh: string;
+  auth: string;
+  expiresAt: string | null;
+};
+
+export async function upsertCustomerPushSubscription(
+  data: InsertCustomerPushSubscription & {
+    orderId: number;
+    trackingToken: string;
+    endpoint: string;
+    endpointHash: string;
+    p256dh: string;
+    auth: string;
+    expiresAt: string;
+  }
+): Promise<{ id: number }> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db
+    .insert(customerPushSubscriptions)
+    .values({
+      orderId: data.orderId,
+      trackingToken: data.trackingToken,
+      endpoint: data.endpoint,
+      endpointHash: data.endpointHash,
+      p256dh: data.p256dh,
+      auth: data.auth,
+      expiresAt: data.expiresAt,
+    })
+    .onDuplicateKeyUpdate({
+      set: {
+        trackingToken: data.trackingToken,
+        endpoint: data.endpoint,
+        p256dh: data.p256dh,
+        auth: data.auth,
+        expiresAt: data.expiresAt,
+        updatedAt: sql`CURRENT_TIMESTAMP`,
+      },
+    });
+
+  const [row] = await db
+    .select({ id: customerPushSubscriptions.id })
+    .from(customerPushSubscriptions)
+    .where(
+      and(
+        eq(customerPushSubscriptions.orderId, data.orderId),
+        eq(customerPushSubscriptions.endpointHash, data.endpointHash)
+      )
+    )
+    .limit(1);
+
+  if (!row) throw new Error("Failed to upsert push subscription");
+  return { id: row.id };
+}
+
+export async function deletePushSubscriptionByEndpointHash(
+  orderId: number,
+  endpointHash: string
+): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db
+    .delete(customerPushSubscriptions)
+    .where(
+      and(
+        eq(customerPushSubscriptions.orderId, orderId),
+        eq(customerPushSubscriptions.endpointHash, endpointHash)
+      )
+    );
+}
+
+export async function deletePushSubscriptionsForOrder(orderId: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db
+    .delete(customerPushSubscriptions)
+    .where(eq(customerPushSubscriptions.orderId, orderId));
+}
+
+export async function getActivePushSubscriptionsForOrder(
+  orderId: number
+): Promise<CustomerPushSubscriptionRow[]> {
+  const db = await getDb();
+  if (!db) return [];
+
+  const now = new Date().toISOString().slice(0, 19).replace("T", " ");
+
+  return db
+    .select({
+      id: customerPushSubscriptions.id,
+      orderId: customerPushSubscriptions.orderId,
+      trackingToken: customerPushSubscriptions.trackingToken,
+      endpoint: customerPushSubscriptions.endpoint,
+      endpointHash: customerPushSubscriptions.endpointHash,
+      p256dh: customerPushSubscriptions.p256dh,
+      auth: customerPushSubscriptions.auth,
+      expiresAt: customerPushSubscriptions.expiresAt,
+    })
+    .from(customerPushSubscriptions)
+    .where(
+      and(
+        eq(customerPushSubscriptions.orderId, orderId),
+        sql`(${customerPushSubscriptions.expiresAt} IS NULL OR ${customerPushSubscriptions.expiresAt} > ${now})`
+      )
+    );
+}
+
+export async function touchCustomerPushSubscriptionLastUsed(
+  subscriptionId: number
+): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  const now = new Date().toISOString().slice(0, 19).replace("T", " ");
+  await db
+    .update(customerPushSubscriptions)
+    .set({ lastUsedAt: now })
+    .where(eq(customerPushSubscriptions.id, subscriptionId));
+}
+
+export async function claimReadyPushSend(orderId: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  const now = new Date().toISOString().slice(0, 19).replace("T", " ");
+  const result = await db
+    .update(orders)
+    .set({ readyPushSentAt: now })
+    .where(
+      and(
+        eq(orders.id, orderId),
+        eq(orders.status, "ready"),
+        isNull(orders.readyPushSentAt)
+      )
+    );
+  const affected = (result as unknown as [{ affectedRows?: number }])?.[0]?.affectedRows ?? 0;
+  return affected > 0;
+}
+
+export async function getOrderPushContext(orderId: number): Promise<{
+  orderId: number;
+  orderNumber: string;
+  trackingToken: string | null;
+  slug: string;
+} | null> {
+  const db = await getDb();
+  if (!db) return null;
+
+  const [row] = await db
+    .select({
+      orderId: orders.id,
+      orderNumber: orders.orderNumber,
+      trackingToken: orders.trackingToken,
+      slug: restaurants.slug,
+    })
+    .from(orders)
+    .innerJoin(restaurants, eq(orders.restaurantId, restaurants.id))
+    .where(eq(orders.id, orderId))
+    .limit(1);
+
+  return row ?? null;
 }

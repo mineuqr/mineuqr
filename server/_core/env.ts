@@ -43,4 +43,7 @@ export const ENV = {
   // Tap Payments configuration
   tapSecretKey: process.env.TAP_SECRET_KEY ?? "",
   tapPublishableKey: process.env.VITE_TAP_PUBLISHABLE_KEY ?? "",
+  vapidPublicKey: process.env.VAPID_PUBLIC_KEY ?? "",
+  vapidPrivateKey: process.env.VAPID_PRIVATE_KEY ?? "",
+  vapidSubject: process.env.VAPID_SUBJECT ?? "mailto:info@mineuqr.com",
 };
