@@ -61,8 +61,12 @@ export function unlockNotificationAudio(): void {
   void ensureNotificationAudioReady();
 }
 
-/** Try HTML Audio asset playback (preferred). */
-function tryPlayAudioAsset(src: string, volume = 1): boolean {
+/** Try HTML Audio asset playback (preferred). Invokes onPlayRejected when play() rejects. */
+function tryPlayAudioAsset(
+  src: string,
+  volume: number,
+  onPlayRejected: () => void
+): boolean {
   if (typeof window === "undefined" || typeof Audio === "undefined") {
     return false;
   }
@@ -78,7 +82,7 @@ function tryPlayAudioAsset(src: string, volume = 1): boolean {
     const playPromise = audio.play();
     if (playPromise !== undefined) {
       void playPromise.catch(() => {
-        /* autoplay blocked — Web Audio fallback handles sync path */
+        onPlayRejected();
       });
     }
     return true;
@@ -212,18 +216,20 @@ function playOwnerAlertSoundWebAudioFallback(): boolean {
  */
 export function playCustomerAlertSound(intensity: AlertSoundIntensity): boolean {
   const volume = intensity === "high" ? 1 : 0.65;
-  if (tryPlayAudioAsset(AUDIO_ASSETS.CUSTOMER_READY, volume)) {
+  const fallback = () => playCustomerAlertSoundWebAudioFallback(intensity);
+  if (tryPlayAudioAsset(AUDIO_ASSETS.CUSTOMER_READY, volume, fallback)) {
     return true;
   }
-  return playCustomerAlertSoundWebAudioFallback(intensity);
+  return fallback();
 }
 
 /** Owner operational alert — new orders, service requests, etc. */
 export function playOwnerNotificationSound(): boolean {
-  if (tryPlayAudioAsset(AUDIO_ASSETS.OWNER_ALERT, 1)) {
+  const fallback = () => playOwnerAlertSoundWebAudioFallback();
+  if (tryPlayAudioAsset(AUDIO_ASSETS.OWNER_ALERT, 1, fallback)) {
     return true;
   }
-  return playOwnerAlertSoundWebAudioFallback();
+  return fallback();
 }
 
 /** For tests — reset shared audio state between cases. */

@@ -158,7 +158,7 @@ describe("notificationSound NOTIFICATION-AUDIO-1 assets", () => {
     expect(play).toHaveBeenCalled();
   });
 
-  it("playCustomerAlertSound prefers customer READY WAV asset", () => {
+  it("playCustomerAlertSound prefers customer READY WAV asset", async () => {
     const play = vi.fn().mockResolvedValue(undefined);
     const AudioMock = vi.fn(function (this: { preload: string; volume: number; currentTime: number; play: typeof play }) {
       this.preload = "";
@@ -172,5 +172,113 @@ describe("notificationSound NOTIFICATION-AUDIO-1 assets", () => {
 
     expect(playCustomerAlertSound("high")).toBe(true);
     expect(AudioMock).toHaveBeenCalledWith(AUDIO_ASSETS.CUSTOMER_READY);
+    await Promise.resolve();
+  });
+});
+
+describe("notificationSound NOTIFICATION-AUDIO-1-HOTFIX-1", () => {
+  let createOscillator: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    createOscillator = vi.fn(() => ({
+      connect: vi.fn(),
+      frequency: { value: 0 },
+      type: "sine",
+      start: vi.fn(),
+      stop: vi.fn(),
+    }));
+    vi.stubGlobal(
+      "AudioContext",
+      vi.fn(function MockAudioContext(this: {
+        state: AudioContextState;
+        currentTime: number;
+        destination: object;
+        resume: ReturnType<typeof vi.fn>;
+        createOscillator: ReturnType<typeof vi.fn>;
+        createGain: ReturnType<typeof vi.fn>;
+        close: ReturnType<typeof vi.fn>;
+      }) {
+        this.state = "suspended";
+        this.currentTime = 0;
+        this.destination = {};
+        this.close = vi.fn();
+        this.resume = vi.fn(async () => {
+          this.state = "running";
+        });
+        this.createOscillator = createOscillator;
+        this.createGain = vi.fn(() => ({
+          connect: vi.fn(),
+          gain: {
+            setValueAtTime: vi.fn(),
+            exponentialRampToValueAtTime: vi.fn(),
+          },
+        }));
+      })
+    );
+    vi.stubGlobal("window", { AudioContext: globalThis.AudioContext });
+    resetNotificationAudioForTests();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("rejected audio.play() triggers Web Audio fallback for customer READY", async () => {
+    const play = vi.fn().mockRejectedValue(new Error("NotAllowedError"));
+    vi.stubGlobal(
+      "Audio",
+      vi.fn(function (this: { preload: string; volume: number; currentTime: number; play: typeof play }) {
+        this.preload = "";
+        this.volume = 1;
+        this.currentTime = 0;
+        this.play = play;
+      })
+    );
+
+    await ensureNotificationAudioReady();
+    playCustomerAlertSound("high");
+    await Promise.resolve();
+
+    expect(play).toHaveBeenCalled();
+    expect(createOscillator).toHaveBeenCalledTimes(2);
+  });
+
+  it("rejected audio.play() triggers Web Audio fallback for owner alerts", async () => {
+    const play = vi.fn().mockRejectedValue(new Error("NotAllowedError"));
+    vi.stubGlobal(
+      "Audio",
+      vi.fn(function (this: { preload: string; volume: number; currentTime: number; play: typeof play }) {
+        this.preload = "";
+        this.volume = 1;
+        this.currentTime = 0;
+        this.play = play;
+      })
+    );
+
+    playOwnerNotificationSound();
+    await Promise.resolve();
+
+    expect(play).toHaveBeenCalled();
+    expect(createOscillator).toHaveBeenCalledTimes(3);
+  });
+
+  it("resolved audio.play() does not invoke Web Audio fallback", async () => {
+    const play = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal(
+      "Audio",
+      vi.fn(function (this: { preload: string; volume: number; currentTime: number; play: typeof play }) {
+        this.preload = "";
+        this.volume = 1;
+        this.currentTime = 0;
+        this.play = play;
+      })
+    );
+
+    await ensureNotificationAudioReady();
+    playCustomerAlertSound("high");
+    await Promise.resolve();
+
+    expect(play).toHaveBeenCalled();
+    expect(createOscillator).not.toHaveBeenCalled();
   });
 });
