@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { resetNotificationAudioForTests } from "./notificationSound";
 import {
+  activateReadyAlertsFromGesture,
   buildReadyNotificationCopy,
   deliverReadyAlertTier,
   isReadyTransition,
@@ -8,6 +10,10 @@ import {
   saveReadyAlertState,
   wasReadyAlertDelivered,
 } from "./readyNotification";
+
+vi.mock("./customerPush", () => ({
+  subscribeCustomerPush: vi.fn().mockResolvedValue({ subscribed: false, reason: "unsupported" }),
+}));
 
 function createSessionStorageMock(): Storage {
   const store = new Map<string, string>();
@@ -127,5 +133,56 @@ describe("readyNotification CUSTOMER-UX-1C HOTFIX-1", () => {
 
     expect(delivery.notification).toBe(false);
     expect(globalThis.Notification).not.toHaveBeenCalled();
+  });
+});
+
+describe("readyNotification AUDIO-HOTFIX-3", () => {
+  beforeEach(() => {
+    vi.stubGlobal("sessionStorage", createSessionStorageMock());
+    resetNotificationAudioForTests();
+    vi.stubGlobal(
+      "AudioContext",
+      vi.fn(function MockAudioContext(this: {
+        state: AudioContextState;
+        resume: ReturnType<typeof vi.fn>;
+      }) {
+        this.state = "suspended";
+        this.resume = vi.fn(async () => {
+          this.state = "running";
+        });
+      })
+    );
+    vi.stubGlobal("Notification", {
+      permission: "granted" as NotificationPermission,
+      requestPermission: vi.fn().mockResolvedValue("granted"),
+    });
+    vi.stubGlobal("window", {
+      AudioContext: globalThis.AudioContext,
+      Notification: globalThis.Notification,
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    resetNotificationAudioForTests();
+  });
+
+  it("activateReadyAlertsFromGesture unlocks audio without playing CUSTOMER_READY WAV", async () => {
+    const play = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal(
+      "Audio",
+      vi.fn(function (this: { play: typeof play }) {
+        this.play = play;
+      })
+    );
+
+    const result = await activateReadyAlertsFromGesture({
+      trackingToken: "tok123456789012345",
+      slug: "cafe",
+    });
+
+    expect(result.audioReady).toBe(true);
+    expect(result.permission).toBe("granted");
+    expect(play).not.toHaveBeenCalled();
   });
 });

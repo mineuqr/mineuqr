@@ -4,11 +4,9 @@ import {
   CUSTOMER_ALERT_PATTERN,
   ensureNotificationAudioReady,
   getNotificationAudioContextState,
-  isCustomerReadyAudioPrimed,
   isOwnerAlertAudioPrimed,
   playCustomerAlertSound,
   playOwnerNotificationSound,
-  primeCustomerReadyAudioAsset,
   primeOwnerAlertAudioAsset,
   primeOwnerDashboardAudioFromGesture,
   resetNotificationAudioForTests,
@@ -290,7 +288,7 @@ describe("notificationSound NOTIFICATION-AUDIO-1-HOTFIX-1", () => {
   });
 });
 
-describe("notificationSound NOTIFICATION-AUDIO-1-HOTFIX-2A", () => {
+describe("notificationSound AUDIO-HOTFIX-3", () => {
   beforeEach(() => {
     resetNotificationAudioForTests();
   });
@@ -300,60 +298,63 @@ describe("notificationSound NOTIFICATION-AUDIO-1-HOTFIX-2A", () => {
     resetNotificationAudioForTests();
   });
 
-  it("primeCustomerReadyAudioAsset play/pause during activation gesture", async () => {
-    const play = vi.fn().mockResolvedValue(undefined);
-    const pause = vi.fn();
-    const AudioMock = vi.fn(function (this: {
-      preload: string;
-      volume: number;
-      currentTime: number;
-      play: typeof play;
-      pause: typeof pause;
-    }) {
-      this.preload = "";
-      this.volume = 1;
-      this.currentTime = 0;
-      this.play = play;
-      this.pause = pause;
-    });
-    vi.stubGlobal("window", {});
-    vi.stubGlobal("Audio", AudioMock);
+  it("ensureNotificationAudioReady unlocks AudioContext without HTML Audio playback", async () => {
+    vi.stubGlobal(
+      "AudioContext",
+      vi.fn(function MockAudioContext(this: {
+        state: AudioContextState;
+        resume: ReturnType<typeof vi.fn>;
+      }) {
+        this.state = "suspended";
+        this.resume = vi.fn(async () => {
+          this.state = "running";
+        });
+      })
+    );
+    vi.stubGlobal("window", { AudioContext: globalThis.AudioContext });
+    vi.stubGlobal("Audio", vi.fn());
 
-    const primed = await primeCustomerReadyAudioAsset();
-    expect(primed).toBe(true);
-    expect(AudioMock).toHaveBeenCalledWith(AUDIO_ASSETS.CUSTOMER_READY);
-    expect(play).toHaveBeenCalled();
-    expect(pause).toHaveBeenCalled();
-    expect(isCustomerReadyAudioPrimed()).toBe(true);
+    const ready = await ensureNotificationAudioReady();
+
+    expect(ready).toBe(true);
+    expect(globalThis.Audio).not.toHaveBeenCalled();
+    expect(getNotificationAudioContextState()).toBe("running");
   });
 
-  it("READY playback reuses the same cached element after priming", async () => {
+  it("playCustomerAlertSound plays CUSTOMER_READY after AudioContext unlock only", async () => {
     const play = vi.fn().mockResolvedValue(undefined);
-    const pause = vi.fn();
-    let instanceCount = 0;
     const AudioMock = vi.fn(function (this: {
       preload: string;
       volume: number;
       currentTime: number;
       play: typeof play;
-      pause: typeof pause;
     }) {
-      instanceCount += 1;
       this.preload = "";
       this.volume = 1;
       this.currentTime = 0;
       this.play = play;
-      this.pause = pause;
     });
-    vi.stubGlobal("window", {});
+    vi.stubGlobal(
+      "AudioContext",
+      vi.fn(function MockAudioContext(this: {
+        state: AudioContextState;
+        resume: ReturnType<typeof vi.fn>;
+      }) {
+        this.state = "suspended";
+        this.resume = vi.fn(async () => {
+          this.state = "running";
+        });
+      })
+    );
+    vi.stubGlobal("window", { AudioContext: globalThis.AudioContext });
     vi.stubGlobal("Audio", AudioMock);
 
-    await primeCustomerReadyAudioAsset();
-    playCustomerAlertSound("high");
+    await ensureNotificationAudioReady();
+    expect(playCustomerAlertSound("high")).toBe(true);
     await Promise.resolve();
 
-    expect(instanceCount).toBe(1);
-    expect(play).toHaveBeenCalledTimes(2);
+    expect(AudioMock).toHaveBeenCalledWith(AUDIO_ASSETS.CUSTOMER_READY);
+    expect(play).toHaveBeenCalledTimes(1);
   });
 });
 

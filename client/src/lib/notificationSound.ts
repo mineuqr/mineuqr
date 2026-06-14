@@ -25,7 +25,6 @@ export const CUSTOMER_ALERT_PATTERN = {
 
 let sharedAudioContext: AudioContext | null = null;
 const assetAudioCache = new Map<string, HTMLAudioElement>();
-let customerReadyAudioPrimed = false;
 let ownerAlertAudioPrimed = false;
 
 function getCachedAudioElement(src: string): HTMLAudioElement | null {
@@ -51,10 +50,6 @@ function logAudioPlayRejection(audio: HTMLAudioElement, src: string, err: unknow
     networkState: audio.networkState,
     mediaError: audio.error?.code ?? null,
   });
-}
-
-export function isCustomerReadyAudioPrimed(): boolean {
-  return customerReadyAudioPrimed;
 }
 
 export function isOwnerAlertAudioPrimed(): boolean {
@@ -94,29 +89,6 @@ export async function ensureNotificationAudioReady(): Promise<boolean> {
 /** @deprecated Prefer ensureNotificationAudioReady from a user gesture. */
 export function unlockNotificationAudio(): void {
   void ensureNotificationAudioReady();
-}
-
-/**
- * HOTFIX-2A: prime CUSTOMER_READY HTML Audio during user activation gesture (iOS WebKit).
- * Play/pause at near-zero volume unlocks delayed poll playback on the same element.
- */
-export async function primeCustomerReadyAudioAsset(): Promise<boolean> {
-  const audio = getCachedAudioElement(AUDIO_ASSETS.CUSTOMER_READY);
-  if (!audio) return false;
-
-  try {
-    const restoredVolume = audio.volume > 0 ? audio.volume : 1;
-    audio.volume = 0.001;
-    audio.currentTime = 0;
-    await audio.play();
-    audio.pause();
-    audio.currentTime = 0;
-    audio.volume = restoredVolume;
-    customerReadyAudioPrimed = true;
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 /**
@@ -321,6 +293,5 @@ export function playOwnerNotificationSound(): boolean {
 export function resetNotificationAudioForTests(): void {
   sharedAudioContext = null;
   assetAudioCache.clear();
-  customerReadyAudioPrimed = false;
   ownerAlertAudioPrimed = false;
 }

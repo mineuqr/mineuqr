@@ -3,7 +3,7 @@
  * HOTFIX-1: gesture activation, per-channel delivery reporting.
  */
 
-import { ensureNotificationAudioReady, playCustomerAlertSound, primeCustomerReadyAudioAsset } from "@/lib/notificationSound";
+import { ensureNotificationAudioReady, playCustomerAlertSound } from "@/lib/notificationSound";
 import { subscribeCustomerPush } from "@/lib/customerPush";
 import { logReadyAlertDelivery } from "@/lib/readyNotificationDiagnostics";
 import type { OrderLifecycleStatus } from "@/lib/orderStatusDisplay";
@@ -104,18 +104,16 @@ export async function requestReadyNotificationPermissionFromGesture(): Promise<
   }
 }
 
-/** HOTFIX-1A + BACKGROUND-NOTIFICATIONS-1A: unlock audio, permission, and push from user tap. */
+/** HOTFIX-1A + BACKGROUND-NOTIFICATIONS-1A + AUDIO-HOTFIX-3: unlock audio, permission, and push from user tap. */
 export async function activateReadyAlertsFromGesture(options: {
   trackingToken: string;
   slug: string;
 }): Promise<{
   audioReady: boolean;
-  htmlAudioPrimed: boolean;
   permission: NotificationPermission | "unsupported";
   pushSubscribed: boolean;
 }> {
   const audioReady = await ensureNotificationAudioReady();
-  const htmlAudioPrimed = await primeCustomerReadyAudioAsset();
   const permission = await requestReadyNotificationPermissionFromGesture();
 
   let pushSubscribed = false;
@@ -127,7 +125,7 @@ export async function activateReadyAlertsFromGesture(options: {
     pushSubscribed = pushResult.subscribed;
   }
 
-  return { audioReady, htmlAudioPrimed, permission, pushSubscribed };
+  return { audioReady, permission, pushSubscribed };
 }
 
 export function vibrateForReady(durationMs: number): boolean {

@@ -18,7 +18,6 @@ export function logReadyAlertActivation(
   trackingToken: string,
   result: {
     audioReady: boolean;
-    htmlAudioPrimed: boolean;
     permission: NotificationPermission | "unsupported";
     pushSubscribed?: boolean;
   }
@@ -29,7 +28,6 @@ export function logReadyAlertActivation(
     audioContextState: getNotificationAudioContextState(),
     permission: result.permission,
     audioReady: result.audioReady,
-    htmlAudioPrimed: result.htmlAudioPrimed,
     pushSubscribed: result.pushSubscribed ?? false,
   });
 }
