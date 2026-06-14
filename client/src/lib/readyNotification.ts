@@ -4,6 +4,10 @@
  */
 
 import { playCustomerAlertSound, unlockCustomerReadyAudioFromGesture } from "@/lib/notificationSound";
+import {
+  isAudio4SpikeEnabled,
+  prepareCustomerReadyAudioFromGesture,
+} from "@/lib/customerReadyAudioSpike4";
 import { subscribeCustomerPush } from "@/lib/customerPush";
 import { logReadyAlertDelivery } from "@/lib/readyNotificationDiagnostics";
 import type { OrderLifecycleStatus } from "@/lib/orderStatusDisplay";
@@ -113,7 +117,13 @@ export async function activateReadyAlertsFromGesture(options: {
   permission: NotificationPermission | "unsupported";
   pushSubscribed: boolean;
 }> {
-  const audioReady = await unlockCustomerReadyAudioFromGesture();
+  let audioReady: boolean;
+  if (isAudio4SpikeEnabled()) {
+    const prepared = await prepareCustomerReadyAudioFromGesture();
+    audioReady = prepared.audioContextReady || prepared.bufferReady;
+  } else {
+    audioReady = await unlockCustomerReadyAudioFromGesture();
+  }
   const permission = await requestReadyNotificationPermissionFromGesture();
 
   let pushSubscribed = false;

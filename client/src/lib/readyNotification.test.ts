@@ -198,3 +198,86 @@ describe("readyNotification AUDIO-HOTFIX-3A", () => {
     expect(pause).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("readyNotification AUDIO-HOTFIX-4-SPIKE-1", () => {
+  beforeEach(() => {
+    vi.stubGlobal("sessionStorage", createSessionStorageMock());
+    resetNotificationAudioForTests();
+    const decodeAudioData = vi.fn(async () =>
+      ({
+        duration: 5.2,
+        sampleRate: 44100,
+        numberOfChannels: 2,
+      }) as AudioBuffer
+    );
+    vi.stubGlobal(
+      "AudioContext",
+      vi.fn(function MockAudioContext(this: {
+        state: AudioContextState;
+        currentTime: number;
+        destination: object;
+        resume: ReturnType<typeof vi.fn>;
+        decodeAudioData: ReturnType<typeof vi.fn>;
+        createOscillator: ReturnType<typeof vi.fn>;
+        createGain: ReturnType<typeof vi.fn>;
+      }) {
+        this.state = "suspended";
+        this.currentTime = 0;
+        this.destination = {};
+        this.resume = vi.fn(async () => {
+          this.state = "running";
+        });
+        this.decodeAudioData = decodeAudioData;
+        this.createOscillator = vi.fn(() => ({
+          frequency: { value: 0 },
+          connect: vi.fn(),
+          start: vi.fn(),
+          stop: vi.fn(),
+        }));
+        this.createGain = vi.fn(() => ({
+          gain: { value: 0 },
+          connect: vi.fn(),
+        }));
+      })
+    );
+    vi.stubGlobal("Notification", {
+      permission: "granted" as NotificationPermission,
+      requestPermission: vi.fn().mockResolvedValue("granted"),
+    });
+    vi.stubGlobal("window", {
+      location: { search: "?audio4=1" },
+      AudioContext: globalThis.AudioContext,
+      Notification: globalThis.Notification,
+      sessionStorage: globalThis.sessionStorage,
+    });
+    global.fetch = vi.fn(async () => ({
+      ok: true,
+      arrayBuffer: async () => new ArrayBuffer(16),
+    })) as typeof fetch;
+    vi.stubGlobal("Audio", vi.fn());
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    resetNotificationAudioForTests();
+  });
+
+  it("activateReadyAlertsFromGesture uses decode path without HTML play when spike enabled", async () => {
+    const htmlPlay = vi.fn();
+    vi.stubGlobal(
+      "Audio",
+      vi.fn(function (this: { play: typeof htmlPlay }) {
+        this.play = htmlPlay;
+      })
+    );
+
+    const result = await activateReadyAlertsFromGesture({
+      trackingToken: "tok123456789012345",
+      slug: "cafe",
+    });
+
+    expect(result.audioReady).toBe(true);
+    expect(fetch).toHaveBeenCalled();
+    expect(htmlPlay).not.toHaveBeenCalled();
+  });
+});

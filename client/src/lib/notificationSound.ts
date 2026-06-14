@@ -4,6 +4,11 @@
  */
 
 import { AUDIO_ASSETS } from "@/lib/audioAssets";
+import {
+  isAudio4SpikeEnabled,
+  playDecodedReadyBuffer,
+  resetCustomerReadyAudioSpike4ForTests,
+} from "@/lib/customerReadyAudioSpike4";
 
 export type AlertSoundIntensity = "high" | "medium";
 
@@ -110,6 +115,11 @@ function getAudioContextClass(): typeof AudioContext | null {
 
 export function getNotificationAudioContextState(): AudioContextState | null {
   return sharedAudioContext?.state ?? null;
+}
+
+/** SPIKE-4 only — read shared AudioContext after ensureNotificationAudioReady(). */
+export function getSharedNotificationAudioContext(): AudioContext | null {
+  return sharedAudioContext;
 }
 
 /** Unlock audio from a user gesture — awaits resume before reporting readiness. */
@@ -367,8 +377,16 @@ function playOwnerAlertSoundWebAudioFallback(): boolean {
 /**
  * Customer READY alert — tier 1 (high) and tier 2 (medium) reminder.
  * Uses mixkit-clock-countdown-bleeps; Web Audio fallback if asset unavailable.
+ * AUDIO-HOTFIX-4-SPIKE-1: when ?audio4=1, buffer playback replaces HTML path.
  */
 export function playCustomerAlertSound(intensity: AlertSoundIntensity): boolean {
+  if (isAudio4SpikeEnabled()) {
+    if (playDecodedReadyBuffer(intensity)) {
+      return true;
+    }
+    return playCustomerAlertSoundWebAudioFallback(intensity);
+  }
+
   logAudioTrace("ready playback start", {
     build: AUDIO_TRACE_BUILD,
     fn: "playCustomerAlertSound",
@@ -398,4 +416,5 @@ export function resetNotificationAudioForTests(): void {
   sharedAudioContext = null;
   assetAudioCache.clear();
   ownerAlertAudioPrimed = false;
+  resetCustomerReadyAudioSpike4ForTests();
 }
