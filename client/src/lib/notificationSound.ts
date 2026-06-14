@@ -6,7 +6,9 @@
 import { AUDIO_ASSETS } from "@/lib/audioAssets";
 import {
   isAudio4SpikeEnabled,
+  logAudio4,
   playDecodedReadyBuffer,
+  recordAudio4ReadyPlaybackPath,
   resetCustomerReadyAudioSpike4ForTests,
 } from "@/lib/customerReadyAudioSpike4";
 
@@ -120,6 +122,20 @@ export function getNotificationAudioContextState(): AudioContextState | null {
 /** SPIKE-4 only — read shared AudioContext after ensureNotificationAudioReady(). */
 export function getSharedNotificationAudioContext(): AudioContext | null {
   return sharedAudioContext;
+}
+
+/** SPIKE-2: log whether a cached CUSTOMER_READY HTML element exists or is playing during READY. */
+export function auditCustomerReadyHtmlAudioForSpike(): void {
+  if (!isAudio4SpikeEnabled()) return;
+  const audio = assetAudioCache.get(AUDIO_ASSETS.CUSTOMER_READY);
+  logAudio4("html audio audit", {
+    cachedElementExists: Boolean(audio),
+    paused: audio?.paused ?? null,
+    currentTime: audio?.currentTime ?? null,
+    muted: audio?.muted ?? null,
+    volume: audio?.volume ?? null,
+    readyState: audio?.readyState ?? null,
+  });
 }
 
 /** Unlock audio from a user gesture — awaits resume before reporting readiness. */
@@ -238,6 +254,10 @@ function tryPlayAudioAsset(
   const audio = getCachedAudioElement(src);
   if (!audio) return false;
 
+  if (isAudio4SpikeEnabled() && src === AUDIO_ASSETS.CUSTOMER_READY) {
+    recordAudio4ReadyPlaybackPath("tryPlayAudioAsset");
+  }
+
   try {
     audio.volume = Math.min(1, Math.max(0, volume));
     audio.currentTime = 0;
@@ -284,6 +304,9 @@ function playBeep(audioCtx: AudioContext, spec: BeepSpec): void {
 }
 
 function playCustomerAlertSoundWebAudioFallback(intensity: AlertSoundIntensity): boolean {
+  if (isAudio4SpikeEnabled()) {
+    recordAudio4ReadyPlaybackPath("playCustomerAlertSoundWebAudioFallback");
+  }
   try {
     const audioCtx = sharedAudioContext;
     if (!audioCtx || audioCtx.state !== "running") {
@@ -381,10 +404,13 @@ function playOwnerAlertSoundWebAudioFallback(): boolean {
  */
 export function playCustomerAlertSound(intensity: AlertSoundIntensity): boolean {
   if (isAudio4SpikeEnabled()) {
+    auditCustomerReadyHtmlAudioForSpike();
     if (playDecodedReadyBuffer(intensity)) {
       return true;
     }
-    return playCustomerAlertSoundWebAudioFallback(intensity);
+    const fallbackPlayed = playCustomerAlertSoundWebAudioFallback(intensity);
+    auditCustomerReadyHtmlAudioForSpike();
+    return fallbackPlayed;
   }
 
   logAudioTrace("ready playback start", {

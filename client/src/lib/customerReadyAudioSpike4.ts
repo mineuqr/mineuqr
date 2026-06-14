@@ -1,5 +1,6 @@
 /**
- * AUDIO-HOTFIX-4-SPIKE-1 — prototype only (decode + keep-alive + buffer playback).
+ * AUDIO-HOTFIX-4-SPIKE — prototype only (decode + keep-alive + buffer playback).
+ * SPIKE-1: activation decode path. SPIKE-2: READY path + Media Session diagnostics.
  * Enable: ?audio4=1 on tracking URL or sessionStorage mineuqr:audio4:spike=1
  * Default production path remains HOTFIX-3A until spike PASS.
  */
@@ -11,11 +12,20 @@ import {
   type AlertSoundIntensity,
 } from "@/lib/notificationSound";
 
-export const AUDIO4_SPIKE_BUILD = "AUDIO-HOTFIX-4-SPIKE-1";
+export const AUDIO4_SPIKE_BUILD = "AUDIO-HOTFIX-4-SPIKE-2";
+
+export type Audio4ReadyPlaybackPath =
+  | "playDecodedReadyBuffer"
+  | "playCustomerAlertSoundWebAudioFallback"
+  | "tryPlayAudioAsset"
+  | "none";
 
 let cachedReadyAudioBuffer: AudioBuffer | null = null;
 let keepAliveOscillator: OscillatorNode | null = null;
 let keepAliveGain: GainNode | null = null;
+let lastReadyPlaybackPath: Audio4ReadyPlaybackPath = "none";
+let activeBufferSource: AudioBufferSourceNode | null = null;
+let activeBufferGain: GainNode | null = null;
 
 export function isAudio4SpikeEnabled(): boolean {
   if (import.meta.env.DEV && import.meta.env.VITE_AUDIO4_SPIKE === "1") {
@@ -39,6 +49,10 @@ export function logAudio4(message: string, metadata?: Record<string, unknown>): 
   }
 }
 
+export function getLastAudio4ReadyPlaybackPath(): Audio4ReadyPlaybackPath {
+  return lastReadyPlaybackPath;
+}
+
 export function getCachedReadyAudioBufferForSpike(): AudioBuffer | null {
   return cachedReadyAudioBuffer;
 }
@@ -47,7 +61,12 @@ export function isCustomerReadyAudioSpikeKeepAliveActive(): boolean {
   return keepAliveOscillator !== null;
 }
 
+export function isCustomerReadyAudioSpikeBufferSourceActive(): boolean {
+  return activeBufferSource !== null;
+}
+
 export function stopCustomerReadyAudioSpikeKeepAlive(): void {
+  const wasActive = keepAliveOscillator !== null;
   try {
     keepAliveOscillator?.stop();
   } catch {
@@ -55,6 +74,76 @@ export function stopCustomerReadyAudioSpikeKeepAlive(): void {
   }
   keepAliveOscillator = null;
   keepAliveGain = null;
+  if (wasActive) {
+    logAudio4("keepalive stop", { reason: "explicit_stop" });
+  }
+}
+
+function tryClearMediaSession(label: string): void {
+  if (typeof navigator === "undefined" || !("mediaSession" in navigator)) return;
+  try {
+    navigator.mediaSession.playbackState = "none";
+    navigator.mediaSession.metadata = null;
+    logAudio4("media session clear attempted", { label });
+  } catch (err) {
+    logAudio4("media session clear failed", {
+      label,
+      message: err instanceof Error ? err.message : String(err),
+    });
+  }
+}
+
+function logMediaSessionState(label: string): void {
+  if (typeof navigator === "undefined" || !("mediaSession" in navigator)) {
+    logAudio4("media session state", { label, supported: false });
+    return;
+  }
+  const ms = navigator.mediaSession;
+  logAudio4("media session state", {
+    label,
+    supported: true,
+    playbackState: ms.playbackState,
+    metadataTitle: ms.metadata?.title ?? null,
+    metadataArtist: ms.metadata?.artist ?? null,
+  });
+}
+
+function cleanupBufferPlaybackNodes(
+  source: AudioBufferSourceNode,
+  gain: GainNode,
+  reason: string
+): void {
+  try {
+    source.disconnect();
+  } catch {
+    /* already disconnected */
+  }
+  try {
+    gain.disconnect();
+  } catch {
+    /* already disconnected */
+  }
+
+  const bufferSourceWasActive = activeBufferSource !== null;
+
+  if (activeBufferSource === source) {
+    activeBufferSource = null;
+    activeBufferGain = null;
+  }
+
+  logAudio4("buffer cleanup", {
+    reason,
+    keepAliveWasActive: isCustomerReadyAudioSpikeKeepAliveActive(),
+    bufferSourceWasActive,
+  });
+
+  stopCustomerReadyAudioSpikeKeepAlive();
+  logAudio4("keepalive stopped after buffer ended", {
+    keepAliveActive: isCustomerReadyAudioSpikeKeepAliveActive(),
+  });
+
+  tryClearMediaSession(reason);
+  logMediaSessionState(`after buffer cleanup (${reason})`);
 }
 
 function startCustomerReadyAudioContextKeepAlive(): void {
@@ -105,6 +194,7 @@ export async function prepareCustomerReadyAudioFromGesture(): Promise<{
   bufferReady: boolean;
 }> {
   logAudio4("prepare start");
+  lastReadyPlaybackPath = "none";
 
   const audioContextReady = await ensureNotificationAudioReady();
 
@@ -112,6 +202,7 @@ export async function prepareCustomerReadyAudioFromGesture(): Promise<{
     const buffer = await decodeCustomerReadyBuffer();
     cachedReadyAudioBuffer = buffer;
     startCustomerReadyAudioContextKeepAlive();
+    logMediaSessionState("after activation prepare");
     return { audioContextReady, bufferReady: buffer !== null };
   } catch (err) {
     logAudio4("decode failed", {
@@ -126,7 +217,10 @@ export async function prepareCustomerReadyAudioFromGesture(): Promise<{
  * SPIKE READY playback — Mixkit samples via AudioBufferSourceNode (not HTML media).
  */
 export function playDecodedReadyBuffer(intensity: AlertSoundIntensity): boolean {
-  logAudio4("buffer playback start", { intensity });
+  lastReadyPlaybackPath = "playDecodedReadyBuffer";
+  logAudio4("buffer playback start", { intensity, path: lastReadyPlaybackPath });
+
+  logMediaSessionState("before buffer playback");
 
   const ctx = getSharedNotificationAudioContext();
   const buffer = cachedReadyAudioBuffer;
@@ -135,6 +229,7 @@ export function playDecodedReadyBuffer(intensity: AlertSoundIntensity): boolean 
     logAudio4("buffer playback failed", {
       reason: !ctx ? "no_audio_context" : "no_cached_buffer",
     });
+    lastReadyPlaybackPath = "none";
     return false;
   }
 
@@ -147,6 +242,7 @@ export function playDecodedReadyBuffer(intensity: AlertSoundIntensity): boolean 
       reason: "audio_context_not_running",
       state: ctx.state,
     });
+    lastReadyPlaybackPath = "none";
     return false;
   }
 
@@ -157,19 +253,55 @@ export function playDecodedReadyBuffer(intensity: AlertSoundIntensity): boolean 
     gain.gain.value = intensity === "high" ? 1 : 0.65;
     source.connect(gain);
     gain.connect(ctx.destination);
+
+    activeBufferSource = source;
+    activeBufferGain = gain;
+
+    source.onended = () => {
+      logAudio4("buffer playback ended", {
+        intensity,
+        bufferDurationSec: buffer.duration,
+        onendedFired: true,
+      });
+      cleanupBufferPlaybackNodes(source, gain, "onended");
+    };
+
     source.start(0);
+    logMediaSessionState("after buffer playback start");
     return true;
   } catch (err) {
+    activeBufferSource = null;
+    activeBufferGain = null;
     logAudio4("buffer playback failed", {
       reason: "start_error",
       message: err instanceof Error ? err.message : String(err),
     });
+    lastReadyPlaybackPath = "none";
     return false;
+  }
+}
+
+/** SPIKE-2: record when non-buffer READY paths are used. */
+export function recordAudio4ReadyPlaybackPath(path: Audio4ReadyPlaybackPath): void {
+  lastReadyPlaybackPath = path;
+  if (path === "playCustomerAlertSoundWebAudioFallback") {
+    logAudio4("fallback playback used", { path });
+  } else if (path === "tryPlayAudioAsset") {
+    logAudio4("html audio playback used", { path });
   }
 }
 
 /** For tests and reset. */
 export function resetCustomerReadyAudioSpike4ForTests(): void {
   stopCustomerReadyAudioSpikeKeepAlive();
+  activeBufferSource = null;
+  activeBufferGain = null;
   cachedReadyAudioBuffer = null;
+  lastReadyPlaybackPath = "none";
+}
+
+/** SPIKE-2 test helper — invoke buffer onended handler manually. */
+export function fireActiveBufferSourceOnendedForTests(): void {
+  if (!activeBufferSource) return;
+  activeBufferSource.onended?.(new Event("ended"));
 }

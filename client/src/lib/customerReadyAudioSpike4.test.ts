@@ -6,6 +6,8 @@ import {
   resetNotificationAudioForTests,
 } from "./notificationSound";
 import {
+  fireActiveBufferSourceOnendedForTests,
+  getLastAudio4ReadyPlaybackPath,
   isAudio4SpikeEnabled,
   isCustomerReadyAudioSpikeKeepAliveActive,
   playDecodedReadyBuffer,
@@ -25,7 +27,9 @@ function stubSpikeAudioContext() {
   const createBufferSource = vi.fn(() => ({
     buffer: null as AudioBuffer | null,
     connect: vi.fn(),
+    disconnect: vi.fn(),
     start: bufferStart,
+    onended: null as ((event: Event) => void) | null,
   }));
 
   vi.stubGlobal(
@@ -122,8 +126,24 @@ describe("customerReadyAudioSpike4 AUDIO-HOTFIX-4-SPIKE-1", () => {
     await prepareCustomerReadyAudioFromGesture();
 
     expect(playDecodedReadyBuffer("high")).toBe(true);
+    expect(getLastAudio4ReadyPlaybackPath()).toBe("playDecodedReadyBuffer");
     expect(createBufferSource).toHaveBeenCalled();
     expect(bufferStart).toHaveBeenCalled();
+  });
+
+  it("buffer onended stops keep-alive and clears active source", async () => {
+    const { createBufferSource } = stubSpikeAudioContext();
+    stubAudio4Window();
+    resetNotificationAudioForTests();
+    await prepareCustomerReadyAudioFromGesture();
+    expect(isCustomerReadyAudioSpikeKeepAliveActive()).toBe(true);
+
+    playDecodedReadyBuffer("high");
+    expect(createBufferSource.mock.results[0]?.value.onended).toBeTypeOf("function");
+
+    fireActiveBufferSourceOnendedForTests();
+
+    expect(isCustomerReadyAudioSpikeKeepAliveActive()).toBe(false);
   });
 
   it("playCustomerAlertSound routes to buffer playback when spike enabled", async () => {
@@ -140,6 +160,7 @@ describe("customerReadyAudioSpike4 AUDIO-HOTFIX-4-SPIKE-1", () => {
     );
 
     expect(playCustomerAlertSound("high")).toBe(true);
+    expect(getLastAudio4ReadyPlaybackPath()).toBe("playDecodedReadyBuffer");
     expect(createBufferSource).toHaveBeenCalled();
     expect(htmlPlay).not.toHaveBeenCalled();
   });
@@ -177,6 +198,7 @@ describe("customerReadyAudioSpike4 AUDIO-HOTFIX-4-SPIKE-1", () => {
     await ensureNotificationAudioReady();
 
     expect(playCustomerAlertSound("high")).toBe(true);
+    expect(getLastAudio4ReadyPlaybackPath()).toBe("playCustomerAlertSoundWebAudioFallback");
     expect(createOscillator).toHaveBeenCalled();
   });
 });
