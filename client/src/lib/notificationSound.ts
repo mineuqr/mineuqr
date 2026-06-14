@@ -40,6 +40,27 @@ function getCachedAudioElement(src: string): HTMLAudioElement | null {
   return audio;
 }
 
+function logAudioUnlockSuccess(src: string): void {
+  if (!import.meta.env.DEV) return;
+  console.info("[mineuqr:audio] unlock success", { src });
+}
+
+function logAudioUnlockFailed(src: string, err: unknown): void {
+  if (!import.meta.env.DEV) return;
+  console.info("[mineuqr:audio] unlock failed", {
+    src,
+    name: err instanceof DOMException ? err.name : err instanceof Error ? err.name : "unknown",
+    message: err instanceof Error ? err.message : String(err),
+  });
+}
+
+function logAudioContextSuspended(): void {
+  if (!import.meta.env.DEV) return;
+  console.info("[mineuqr:audio] audio context suspended", {
+    state: sharedAudioContext?.state ?? null,
+  });
+}
+
 function logAudioPlayRejection(audio: HTMLAudioElement, src: string, err: unknown): void {
   if (!import.meta.env.DEV) return;
   console.info("[mineuqr:audio] play rejected", {
@@ -89,6 +110,46 @@ export async function ensureNotificationAudioReady(): Promise<boolean> {
 /** @deprecated Prefer ensureNotificationAudioReady from a user gesture. */
 export function unlockNotificationAudio(): void {
   void ensureNotificationAudioReady();
+}
+
+/**
+ * AUDIO-HOTFIX-3A — silent muted play/pause on the cached element (iOS delayed-play unlock).
+ * Does not change volume; does not play audibly; avoids HOTFIX-2A media session behavior.
+ */
+async function unlockHtmlAudioElementSilently(audio: HTMLAudioElement): Promise<boolean> {
+  const prevMuted = audio.muted;
+  const prevVolume = audio.volume;
+
+  try {
+    audio.muted = true;
+    audio.currentTime = 0;
+    await audio.play();
+    audio.pause();
+    audio.currentTime = 0;
+    logAudioUnlockSuccess(audio.src);
+    return true;
+  } catch (err) {
+    logAudioUnlockFailed(audio.src, err);
+    return false;
+  } finally {
+    audio.muted = prevMuted;
+    audio.volume = prevVolume;
+  }
+}
+
+/**
+ * AUDIO-HOTFIX-3A — gesture-time unlock for delayed customer READY HTML Audio + Web Audio.
+ */
+export async function unlockCustomerReadyAudioFromGesture(): Promise<boolean> {
+  const ctxReady = await ensureNotificationAudioReady();
+  const audio = getCachedAudioElement(AUDIO_ASSETS.CUSTOMER_READY);
+  const htmlReady = audio ? await unlockHtmlAudioElementSilently(audio) : false;
+
+  if (!ctxReady && sharedAudioContext?.state === "suspended") {
+    logAudioContextSuspended();
+  }
+
+  return ctxReady || htmlReady;
 }
 
 /**
@@ -181,6 +242,7 @@ function playCustomerAlertSoundWebAudioFallback(intensity: AlertSoundIntensity):
   try {
     const audioCtx = sharedAudioContext;
     if (!audioCtx || audioCtx.state !== "running") {
+      logAudioContextSuspended();
       return false;
     }
     scheduleCustomerFallbackTones(audioCtx, intensity);

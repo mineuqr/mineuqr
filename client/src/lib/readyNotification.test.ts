@@ -136,7 +136,7 @@ describe("readyNotification CUSTOMER-UX-1C HOTFIX-1", () => {
   });
 });
 
-describe("readyNotification AUDIO-HOTFIX-3", () => {
+describe("readyNotification AUDIO-HOTFIX-3A", () => {
   beforeEach(() => {
     vi.stubGlobal("sessionStorage", createSessionStorageMock());
     resetNotificationAudioForTests();
@@ -167,12 +167,23 @@ describe("readyNotification AUDIO-HOTFIX-3", () => {
     resetNotificationAudioForTests();
   });
 
-  it("activateReadyAlertsFromGesture unlocks audio without playing CUSTOMER_READY WAV", async () => {
+  it("activateReadyAlertsFromGesture silently unlocks CUSTOMER_READY via muted play/pause", async () => {
     const play = vi.fn().mockResolvedValue(undefined);
+    const pause = vi.fn();
     vi.stubGlobal(
       "Audio",
-      vi.fn(function (this: { play: typeof play }) {
+      vi.fn(function (this: {
+        muted: boolean;
+        volume: number;
+        currentTime: number;
+        play: typeof play;
+        pause: typeof pause;
+      }) {
+        this.muted = false;
+        this.volume = 1;
+        this.currentTime = 0;
         this.play = play;
+        this.pause = pause;
       })
     );
 
@@ -183,6 +194,7 @@ describe("readyNotification AUDIO-HOTFIX-3", () => {
 
     expect(result.audioReady).toBe(true);
     expect(result.permission).toBe("granted");
-    expect(play).not.toHaveBeenCalled();
+    expect(play).toHaveBeenCalledTimes(1);
+    expect(pause).toHaveBeenCalledTimes(1);
   });
 });

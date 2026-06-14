@@ -10,6 +10,7 @@ import {
   primeOwnerAlertAudioAsset,
   primeOwnerDashboardAudioFromGesture,
   resetNotificationAudioForTests,
+  unlockCustomerReadyAudioFromGesture,
 } from "./notificationSound";
 
 function stubWebAudio() {
@@ -288,7 +289,7 @@ describe("notificationSound NOTIFICATION-AUDIO-1-HOTFIX-1", () => {
   });
 });
 
-describe("notificationSound AUDIO-HOTFIX-3", () => {
+describe("notificationSound AUDIO-HOTFIX-3A", () => {
   beforeEach(() => {
     resetNotificationAudioForTests();
   });
@@ -298,7 +299,97 @@ describe("notificationSound AUDIO-HOTFIX-3", () => {
     resetNotificationAudioForTests();
   });
 
-  it("ensureNotificationAudioReady unlocks AudioContext without HTML Audio playback", async () => {
+  it("unlockCustomerReadyAudioFromGesture mutes play/pause without changing volume to 0.001", async () => {
+    const play = vi.fn().mockResolvedValue(undefined);
+    const pause = vi.fn();
+    const AudioMock = vi.fn(function (this: {
+      preload: string;
+      muted: boolean;
+      volume: number;
+      currentTime: number;
+      src: string;
+      play: typeof play;
+      pause: typeof pause;
+    }) {
+      this.preload = "";
+      this.muted = false;
+      this.volume = 0.8;
+      this.currentTime = 0;
+      this.src = AUDIO_ASSETS.CUSTOMER_READY;
+      this.play = play;
+      this.pause = pause;
+    });
+    vi.stubGlobal(
+      "AudioContext",
+      vi.fn(function MockAudioContext(this: {
+        state: AudioContextState;
+        resume: ReturnType<typeof vi.fn>;
+      }) {
+        this.state = "suspended";
+        this.resume = vi.fn(async () => {
+          this.state = "running";
+        });
+      })
+    );
+    vi.stubGlobal("window", { AudioContext: globalThis.AudioContext });
+    vi.stubGlobal("Audio", AudioMock);
+
+    const ready = await unlockCustomerReadyAudioFromGesture();
+
+    expect(ready).toBe(true);
+    expect(play).toHaveBeenCalledTimes(1);
+    expect(pause).toHaveBeenCalledTimes(1);
+    const instance = AudioMock.mock.instances[0] as { muted: boolean; volume: number };
+    expect(instance.muted).toBe(false);
+    expect(instance.volume).toBe(0.8);
+    expect(instance.volume).not.toBe(0.001);
+  });
+
+  it("playCustomerAlertSound plays CUSTOMER_READY after silent unlock (delayed READY path)", async () => {
+    const play = vi.fn().mockResolvedValue(undefined);
+    const pause = vi.fn();
+    const AudioMock = vi.fn(function (this: {
+      preload: string;
+      muted: boolean;
+      volume: number;
+      currentTime: number;
+      play: typeof play;
+      pause: typeof pause;
+    }) {
+      this.preload = "";
+      this.muted = false;
+      this.volume = 1;
+      this.currentTime = 0;
+      this.play = play;
+      this.pause = pause;
+    });
+    vi.stubGlobal(
+      "AudioContext",
+      vi.fn(function MockAudioContext(this: {
+        state: AudioContextState;
+        resume: ReturnType<typeof vi.fn>;
+      }) {
+        this.state = "suspended";
+        this.resume = vi.fn(async () => {
+          this.state = "running";
+        });
+      })
+    );
+    vi.stubGlobal("window", { AudioContext: globalThis.AudioContext });
+    vi.stubGlobal("Audio", AudioMock);
+
+    await unlockCustomerReadyAudioFromGesture();
+    play.mockClear();
+    pause.mockClear();
+
+    expect(playCustomerAlertSound("high")).toBe(true);
+    await Promise.resolve();
+
+    expect(play).toHaveBeenCalledTimes(1);
+    expect(pause).not.toHaveBeenCalled();
+  });
+
+  it("ensureNotificationAudioReady alone does not invoke HTML Audio", async () => {
     vi.stubGlobal(
       "AudioContext",
       vi.fn(function MockAudioContext(this: {
@@ -319,42 +410,6 @@ describe("notificationSound AUDIO-HOTFIX-3", () => {
     expect(ready).toBe(true);
     expect(globalThis.Audio).not.toHaveBeenCalled();
     expect(getNotificationAudioContextState()).toBe("running");
-  });
-
-  it("playCustomerAlertSound plays CUSTOMER_READY after AudioContext unlock only", async () => {
-    const play = vi.fn().mockResolvedValue(undefined);
-    const AudioMock = vi.fn(function (this: {
-      preload: string;
-      volume: number;
-      currentTime: number;
-      play: typeof play;
-    }) {
-      this.preload = "";
-      this.volume = 1;
-      this.currentTime = 0;
-      this.play = play;
-    });
-    vi.stubGlobal(
-      "AudioContext",
-      vi.fn(function MockAudioContext(this: {
-        state: AudioContextState;
-        resume: ReturnType<typeof vi.fn>;
-      }) {
-        this.state = "suspended";
-        this.resume = vi.fn(async () => {
-          this.state = "running";
-        });
-      })
-    );
-    vi.stubGlobal("window", { AudioContext: globalThis.AudioContext });
-    vi.stubGlobal("Audio", AudioMock);
-
-    await ensureNotificationAudioReady();
-    expect(playCustomerAlertSound("high")).toBe(true);
-    await Promise.resolve();
-
-    expect(AudioMock).toHaveBeenCalledWith(AUDIO_ASSETS.CUSTOMER_READY);
-    expect(play).toHaveBeenCalledTimes(1);
   });
 });
 
