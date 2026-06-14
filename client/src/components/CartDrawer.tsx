@@ -4,6 +4,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { trpc } from "@/lib/trpc";
 import { saveOrderConfirmationSnapshot } from "@/lib/orderConfirmationStorage";
+import { markOrderWelcomeReceived } from "@/lib/orderWelcomeStorage";
 import { ShoppingCart, X, Plus, Minus, Trash2, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -97,9 +98,10 @@ export default function CartDrawer({
         })),
       });
 
+      markOrderWelcomeReceived(result.trackingToken);
       clearCart();
       setIsOpen(false);
-      setLocation(`/menu/${slug}/order/${result.trackingToken}/confirmed`);
+      setLocation(`/menu/${slug}/order/${result.trackingToken}`);
     } catch {
       toast.error(
         language === "ar" ? "حدث خطأ أثناء إرسال الطلب" : "Error submitting order"

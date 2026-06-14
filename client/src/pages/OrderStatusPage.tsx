@@ -1,8 +1,10 @@
+import { useEffect, useState } from "react";
 import { useRoute, useLocation } from "wouter";
-import { MapPin, RefreshCw } from "lucide-react";
+import { MapPin, MessageCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { CustomerOrderDateTimeFields } from "@/components/customer/CustomerOrderDateTimeFields";
+import { OrderReceivedHero } from "@/components/customer/OrderReceivedHero";
 import { OrderStatusStepper } from "@/components/customer/OrderStatusStepper";
 import { ReadyAlertActivationBanner } from "@/components/customer/ReadyAlertActivationBanner";
 import { ReadyStatusAttention } from "@/components/customer/ReadyStatusAttention";
@@ -11,6 +13,12 @@ import {
   formatOrderStatusLabel,
   type OrderLifecycleStatus,
 } from "@/lib/orderStatusDisplay";
+import { loadOrderConfirmationSnapshot } from "@/lib/orderConfirmationStorage";
+import { consumeOrderWelcomeReceived } from "@/lib/orderWelcomeStorage";
+import {
+  buildWhatsAppOrderMessage,
+  openWhatsAppOrderMessage,
+} from "@/lib/orderWhatsApp";
 import { CUSTOMER_ORDER_STATUS_POLL_MS } from "@/lib/queryRuntime";
 import { useReadyStatusAlerts } from "@/hooks/useReadyStatusAlerts";
 import { trpc } from "@/lib/trpc";
@@ -23,6 +31,17 @@ export default function OrderStatusPage() {
   const slug = params?.slug ?? "";
   const trackingToken = params?.trackingToken ?? "";
   const lang = language === "ar" ? "ar" : "en";
+  const [showWelcomeHero, setShowWelcomeHero] = useState(false);
+
+  useEffect(() => {
+    if (!trackingToken) return;
+    setShowWelcomeHero(consumeOrderWelcomeReceived(trackingToken));
+  }, [trackingToken]);
+
+  const { data: restaurant } = trpc.restaurant.getBySlug.useQuery(
+    { slug },
+    { enabled: !!slug }
+  );
 
   const { data, isLoading, isError, isFetching, refetch } =
     trpc.order.getPublicStatus.useQuery(
@@ -52,6 +71,28 @@ export default function OrderStatusPage() {
     enabled: !!trackingToken && !!slug && !!data && !isLoading && !isError,
   });
 
+  const orderSnapshot = trackingToken ? loadOrderConfirmationSnapshot(trackingToken) : null;
+  const whatsapp = (restaurant as { whatsapp?: string | null } | undefined)?.whatsapp;
+
+  const handleWhatsApp = () => {
+    if (!whatsapp) return;
+    const snapshot = orderSnapshot;
+    const message = buildWhatsAppOrderMessage({
+      language: lang,
+      restaurantName: snapshot?.restaurantName ?? data?.restaurantName ?? "",
+      orderNumber: snapshot?.orderNumber ?? data?.orderNumber ?? "",
+      tableNumber: snapshot?.tableNumber ?? data?.tableNumber ?? 0,
+      tableLabel: snapshot?.tableLabel ?? data?.tableLabel ?? "tables",
+      currencySymbol: snapshot?.currencySymbol ?? data?.currencySymbol ?? "",
+      totalAmount: snapshot?.totalAmount ?? data?.totalAmount ?? "",
+      customerName: snapshot?.customerName,
+      customerPhone: snapshot?.customerPhone,
+      orderNotes: snapshot?.orderNotes,
+      items: snapshot?.items ?? [],
+    });
+    openWhatsAppOrderMessage(whatsapp, message);
+  };
+
   if (!trackingToken || !slug) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6" dir={dir}>
@@ -62,7 +103,7 @@ export default function OrderStatusPage() {
     );
   }
 
-  if (isLoading) {
+  if (isLoading && !(showWelcomeHero && orderSnapshot)) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6" dir={dir}>
         <p className="text-muted-foreground animate-pulse">
@@ -72,7 +113,7 @@ export default function OrderStatusPage() {
     );
   }
 
-  if (isError || !data) {
+  if ((isError || !data) && !orderSnapshot && !isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6" dir={dir}>
         <div className="max-w-md text-center space-y-4">
@@ -89,17 +130,26 @@ export default function OrderStatusPage() {
     );
   }
 
-  const isRooms = data.tableLabel === "rooms";
+  const status = (data?.status ?? orderSnapshot?.status ?? "pending") as OrderLifecycleStatus;
+  const isRooms = (data?.tableLabel ?? orderSnapshot?.tableLabel) === "rooms";
   const unitLabel =
     language === "ar" ? (isRooms ? "غرفة" : "طاولة") : isRooms ? "Room" : "Table";
   const restaurantName =
     lang === "ar"
-      ? data.restaurantName
-      : data.restaurantNameEn || data.restaurantName;
-  const status = data.status as OrderLifecycleStatus;
+      ? data?.restaurantName ?? orderSnapshot?.restaurantName ?? ""
+      : data?.restaurantNameEn || data?.restaurantName || orderSnapshot?.restaurantName || "";
   const isCancelled = status === "cancelled";
   const isServed = status === "served";
   const isReady = status === "ready";
+  const showAlertBanner =
+    !isCancelled && !isServed && (needsActivation || alertsActivated || isLoading);
+
+  const orderNumber = data?.orderNumber ?? orderSnapshot?.orderNumber ?? "";
+  const createdAt = data?.createdAt ?? orderSnapshot?.createdAt ?? "";
+  const tableNumber = data?.tableNumber ?? orderSnapshot?.tableNumber ?? 0;
+  const itemCount = data?.itemCount ?? orderSnapshot?.itemCount ?? 0;
+  const totalAmount = data?.totalAmount ?? orderSnapshot?.totalAmount ?? "";
+  const currencySymbol = data?.currencySymbol ?? orderSnapshot?.currencySymbol ?? "";
 
   return (
     <div
@@ -108,14 +158,25 @@ export default function OrderStatusPage() {
     >
       <div className="mx-auto max-w-lg">
         <div className="rounded-2xl border border-orange-200/60 bg-white dark:bg-gray-900 shadow-xl p-6 sm:p-8 space-y-6">
-          <div className="text-center space-y-2">
-            <h1 className="text-2xl font-bold">
-              {language === "ar" ? "تتبع الطلب" : "Order Tracking"}
-            </h1>
-            <p className="text-sm text-muted-foreground">{restaurantName}</p>
-          </div>
+          {showWelcomeHero ? (
+            <OrderReceivedHero
+              language={lang}
+              orderNumber={orderNumber}
+              restaurantName={restaurantName}
+              createdAt={createdAt}
+              tableNumber={tableNumber}
+              unitLabel={unitLabel}
+            />
+          ) : (
+            <div className="text-center space-y-2">
+              <h1 className="text-2xl font-bold">
+                {language === "ar" ? "تتبع الطلب" : "Order Tracking"}
+              </h1>
+              <p className="text-sm text-muted-foreground">{restaurantName}</p>
+            </div>
+          )}
 
-          {!isCancelled && !isServed && (needsActivation || alertsActivated) && (
+          {showAlertBanner && (
             <ReadyAlertActivationBanner
               language={lang}
               activated={alertsActivated}
@@ -148,59 +209,89 @@ export default function OrderStatusPage() {
                 {language === "ar" ? "تم إرسال تنبيه لك" : "We sent you an alert"}
               </p>
             )}
+            {isLoading && (
+              <p className="text-xs text-muted-foreground mt-2 animate-pulse">
+                {language === "ar" ? "جاري تحميل الحالة..." : "Loading status..."}
+              </p>
+            )}
           </div>
 
-          <OrderStatusStepper status={status} language={lang} dir={dir} />
+          {!isLoading && data && (
+            <OrderStatusStepper status={status} language={lang} dir={dir} />
+          )}
 
-          <dl className="space-y-3 text-sm">
-            <div className="flex justify-between gap-4 border-b border-border/40 pb-2">
-              <dt className="text-muted-foreground">
-                {language === "ar" ? "رقم الطلب" : "Order Number"}
-              </dt>
-              <dd className="font-mono font-bold text-primary">{data.orderNumber}</dd>
-            </div>
-            <CustomerOrderDateTimeFields createdAt={data.createdAt} language={lang} />
-            <div className="flex justify-between gap-4 border-b border-border/40 pb-2">
-              <dt className="text-muted-foreground flex items-center gap-1">
-                <MapPin className="h-3.5 w-3.5" />
-                {unitLabel}
-              </dt>
-              <dd className="font-semibold">{data.tableNumber}</dd>
-            </div>
-            <div className="flex justify-between gap-4 border-b border-border/40 pb-2">
-              <dt className="text-muted-foreground">
-                {language === "ar" ? "عدد الأصناف" : "Items"}
-              </dt>
-              <dd className="font-semibold">{data.itemCount}</dd>
-            </div>
-            <div className="flex justify-between gap-4">
-              <dt className="text-muted-foreground">
-                {language === "ar" ? "الإجمالي" : "Total"}
-              </dt>
-              <dd className="text-lg font-bold text-orange-600">
-                {data.totalAmount} {data.currencySymbol}
-              </dd>
-            </div>
-          </dl>
+          {!showWelcomeHero && (
+            <dl className="space-y-3 text-sm">
+              <div className="flex justify-between gap-4 border-b border-border/40 pb-2">
+                <dt className="text-muted-foreground">
+                  {language === "ar" ? "رقم الطلب" : "Order Number"}
+                </dt>
+                <dd className="font-mono font-bold text-primary">{orderNumber}</dd>
+              </div>
+              <CustomerOrderDateTimeFields createdAt={createdAt} language={lang} />
+              <div className="flex justify-between gap-4 border-b border-border/40 pb-2">
+                <dt className="text-muted-foreground flex items-center gap-1">
+                  <MapPin className="h-3.5 w-3.5" aria-hidden />
+                  {unitLabel}
+                </dt>
+                <dd className="font-semibold">{tableNumber}</dd>
+              </div>
+              <div className="flex justify-between gap-4 border-b border-border/40 pb-2">
+                <dt className="text-muted-foreground">
+                  {language === "ar" ? "عدد الأصناف" : "Items"}
+                </dt>
+                <dd className="font-semibold">{itemCount}</dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt className="text-muted-foreground">
+                  {language === "ar" ? "الإجمالي" : "Total"}
+                </dt>
+                <dd className="text-lg font-bold text-orange-600">
+                  {totalAmount} {currencySymbol}
+                </dd>
+              </div>
+            </dl>
+          )}
+
+          {showWelcomeHero && (
+            <dl className="space-y-3 text-sm">
+              <div className="flex justify-between gap-4 border-b border-border/40 pb-2">
+                <dt className="text-muted-foreground">
+                  {language === "ar" ? "عدد الأصناف" : "Items"}
+                </dt>
+                <dd className="font-semibold">{itemCount}</dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt className="text-muted-foreground">
+                  {language === "ar" ? "الإجمالي" : "Total"}
+                </dt>
+                <dd className="text-lg font-bold text-orange-600">
+                  {totalAmount} {currencySymbol}
+                </dd>
+              </div>
+            </dl>
+          )}
 
           <div className="flex flex-col gap-2 pt-2">
+            {whatsapp && (orderSnapshot || data) && (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full border-green-500 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 font-bold py-5"
+                onClick={handleWhatsApp}
+              >
+                <MessageCircle className="h-4 w-4 ml-2" aria-hidden />
+                {language === "ar" ? "إرسال نسخة عبر واتساب" : "Send Copy via WhatsApp"}
+              </Button>
+            )}
             {isFetching && !isLoading && (
               <p className="text-xs text-center text-muted-foreground flex items-center justify-center gap-1">
-                <RefreshCw className="h-3 w-3 animate-spin" />
+                <RefreshCw className="h-3 w-3 animate-spin" aria-hidden />
                 {language === "ar" ? "جاري التحديث..." : "Updating..."}
               </p>
             )}
             <Button variant="outline" className="w-full" onClick={() => refetch()}>
               {language === "ar" ? "تحديث الحالة" : "Refresh status"}
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full"
-              onClick={() =>
-                setLocation(`/menu/${slug}/order/${trackingToken}/confirmed`)
-              }
-            >
-              {language === "ar" ? "عرض تأكيد الطلب" : "View order confirmation"}
             </Button>
           </div>
         </div>
