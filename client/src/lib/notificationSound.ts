@@ -27,6 +27,29 @@ let sharedAudioContext: AudioContext | null = null;
 const assetAudioCache = new Map<string, HTMLAudioElement>();
 let ownerAlertAudioPrimed = false;
 
+/** Temporary verification fingerprint — search prod bundle for this string. */
+export const AUDIO_TRACE_BUILD = "AUDIO-HOTFIX-3A-TRACE-1";
+
+function isAudioTraceEnabled(): boolean {
+  if (import.meta.env.DEV) return true;
+  if (typeof window === "undefined") return false;
+  try {
+    if (new URLSearchParams(window.location.search).has("audioTrace")) return true;
+    return sessionStorage.getItem("mineuqr:audio:trace") === "1";
+  } catch {
+    return false;
+  }
+}
+
+function logAudioTrace(message: string, metadata?: Record<string, unknown>): void {
+  if (!isAudioTraceEnabled()) return;
+  if (metadata) {
+    console.info(`[mineuqr:audio] ${message}`, metadata);
+  } else {
+    console.info(`[mineuqr:audio] ${message}`);
+  }
+}
+
 function getCachedAudioElement(src: string): HTMLAudioElement | null {
   if (typeof window === "undefined" || typeof Audio === "undefined") {
     return null;
@@ -41,29 +64,28 @@ function getCachedAudioElement(src: string): HTMLAudioElement | null {
 }
 
 function logAudioUnlockSuccess(src: string): void {
-  if (!import.meta.env.DEV) return;
-  console.info("[mineuqr:audio] unlock success", { src });
+  logAudioTrace("unlock success", { src, build: AUDIO_TRACE_BUILD });
 }
 
 function logAudioUnlockFailed(src: string, err: unknown): void {
-  if (!import.meta.env.DEV) return;
-  console.info("[mineuqr:audio] unlock failed", {
+  logAudioTrace("unlock failed", {
     src,
+    build: AUDIO_TRACE_BUILD,
     name: err instanceof DOMException ? err.name : err instanceof Error ? err.name : "unknown",
     message: err instanceof Error ? err.message : String(err),
   });
 }
 
 function logAudioContextSuspended(): void {
-  if (!import.meta.env.DEV) return;
-  console.info("[mineuqr:audio] audio context suspended", {
+  logAudioTrace("audio context suspended", {
+    build: AUDIO_TRACE_BUILD,
     state: sharedAudioContext?.state ?? null,
   });
 }
 
 function logAudioPlayRejection(audio: HTMLAudioElement, src: string, err: unknown): void {
-  if (!import.meta.env.DEV) return;
-  console.info("[mineuqr:audio] play rejected", {
+  logAudioTrace("play rejected", {
+    build: AUDIO_TRACE_BUILD,
     name: err instanceof DOMException ? err.name : err instanceof Error ? err.name : "unknown",
     message: err instanceof Error ? err.message : String(err),
     src,
@@ -120,6 +142,14 @@ async function unlockHtmlAudioElementSilently(audio: HTMLAudioElement): Promise<
   const prevMuted = audio.muted;
   const prevVolume = audio.volume;
 
+  logAudioTrace("unlock start", {
+    build: AUDIO_TRACE_BUILD,
+    fn: "unlockHtmlAudioElementSilently",
+    src: audio.src || null,
+    prevMuted,
+    prevVolume,
+  });
+
   try {
     audio.muted = true;
     audio.currentTime = 0;
@@ -141,6 +171,11 @@ async function unlockHtmlAudioElementSilently(audio: HTMLAudioElement): Promise<
  * AUDIO-HOTFIX-3A — gesture-time unlock for delayed customer READY HTML Audio + Web Audio.
  */
 export async function unlockCustomerReadyAudioFromGesture(): Promise<boolean> {
+  logAudioTrace("unlock start", {
+    build: AUDIO_TRACE_BUILD,
+    fn: "unlockCustomerReadyAudioFromGesture",
+  });
+
   const ctxReady = await ensureNotificationAudioReady();
   const audio = getCachedAudioElement(AUDIO_ASSETS.CUSTOMER_READY);
   const htmlReady = audio ? await unlockHtmlAudioElementSilently(audio) : false;
@@ -334,6 +369,13 @@ function playOwnerAlertSoundWebAudioFallback(): boolean {
  * Uses mixkit-clock-countdown-bleeps; Web Audio fallback if asset unavailable.
  */
 export function playCustomerAlertSound(intensity: AlertSoundIntensity): boolean {
+  logAudioTrace("ready playback start", {
+    build: AUDIO_TRACE_BUILD,
+    fn: "playCustomerAlertSound",
+    intensity,
+    audioContextState: sharedAudioContext?.state ?? null,
+  });
+
   const volume = intensity === "high" ? 1 : 0.65;
   const fallback = () => playCustomerAlertSoundWebAudioFallback(intensity);
   if (tryPlayAudioAsset(AUDIO_ASSETS.CUSTOMER_READY, volume, fallback)) {
