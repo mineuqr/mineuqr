@@ -62,7 +62,6 @@ export default function OrderStatusPage() {
     activateAlerts,
     notificationDeliveredHint,
     pushSubscriptionState,
-    pushSubscribeReason,
     activationDiagnostics,
     showIosInstallSteps,
   } = useReadyStatusAlerts({
@@ -178,23 +177,6 @@ export default function OrderStatusPage() {
             </div>
           )}
 
-          {showAlertBanner && (
-            <div className="space-y-2">
-              <ReadyAlertActivationBanner
-                language={lang}
-                pushSubscriptionState={pushSubscriptionState}
-                pushSubscribeReason={pushSubscribeReason}
-                showIosInstallSteps={showIosInstallSteps}
-                activating={activating}
-                onActivate={() => void activateAlerts()}
-              />
-              <PushTraceDiagnosticsPanel
-                language={lang}
-                diagnostics={activationDiagnostics}
-              />
-            </div>
-          )}
-
           <div
             className={cn(
               "rounded-xl p-4 text-center transition-shadow",
@@ -228,6 +210,23 @@ export default function OrderStatusPage() {
 
           {!isLoading && data && (
             <OrderStatusStepper status={status} language={lang} dir={dir} />
+          )}
+
+          {showAlertBanner && (
+            <div className="space-y-2">
+              <ReadyAlertActivationBanner
+                language={lang}
+                pushSubscriptionState={pushSubscriptionState}
+                activationAttempted={activationDiagnostics !== null}
+                showIosInstallSteps={showIosInstallSteps}
+                activating={activating}
+                onActivate={() => void activateAlerts()}
+              />
+              <PushTraceDiagnosticsPanel
+                language={lang}
+                diagnostics={activationDiagnostics}
+              />
+            </div>
           )}
 
           {!showWelcomeHero && (
