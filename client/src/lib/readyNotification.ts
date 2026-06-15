@@ -3,11 +3,7 @@
  * HOTFIX-1: gesture activation, per-channel delivery reporting.
  */
 
-import { playCustomerAlertSound, unlockCustomerReadyAudioFromGesture } from "@/lib/notificationSound";
-import {
-  isAudio4SpikeEnabled,
-  prepareCustomerReadyAudioFromGesture,
-} from "@/lib/customerReadyAudioSpike4";
+import { playCustomerAlertSound } from "@/lib/notificationSound";
 import { isCustomerPushSupported, subscribeCustomerPush } from "@/lib/customerPush";
 import {
   getPushSubscribeTraceSnapshot,
@@ -166,13 +162,10 @@ export async function activateReadyAlertsFromGesture(options: {
 
   recordPushSubscribeStage("permission_before", { permission: permissionBefore });
 
-  let audioReady: boolean;
-  if (isAudio4SpikeEnabled()) {
-    const prepared = await prepareCustomerReadyAudioFromGesture();
-    audioReady = prepared.audioContextReady || prepared.bufferReady;
-  } else {
-    audioReady = await unlockCustomerReadyAudioFromGesture();
-  }
+  // NOTIFICATION-AUDIO-CLEANUP-1: activation is enrollment-only — no audio unlock,
+  // HTML warmup play(), buffer decode, or keep-alive (those register iOS Now Playing).
+  const audioReady = false;
+
   const permission = await requestReadyNotificationPermissionFromGesture();
 
   recordPushSubscribeStage("permission_after", { permission });

@@ -290,7 +290,9 @@ async function unlockHtmlAudioElementSilently(audio: HTMLAudioElement): Promise<
 }
 
 /**
- * AUDIO-HOTFIX-3A — gesture-time unlock for delayed customer READY HTML Audio + Web Audio.
+ * AUDIO-HOTFIX-3A — gesture-time Web Audio + HTML unlock helper.
+ * NOT used during notification enrollment (NOTIFICATION-AUDIO-CLEANUP-1).
+ * Reserved for explicit call sites that need iOS delayed-play priming outside activation.
  */
 export async function unlockCustomerReadyAudioFromGesture(): Promise<boolean> {
   logAudioTrace("unlock start", {

@@ -330,9 +330,10 @@ describe("readyNotification AUDIO-HOTFIX-3A", () => {
     expect(loadReadyAlertState("tok123456789012345").alert1Sent).toBe(false);
   });
 
-  it("activateReadyAlertsFromGesture silently unlocks CUSTOMER_READY via muted play/pause", async () => {
+  it("activateReadyAlertsFromGesture does not play HTML audio during enrollment", async () => {
     const play = vi.fn().mockResolvedValue(undefined);
     const pause = vi.fn();
+    const vibrate = vi.fn();
     vi.stubGlobal(
       "Audio",
       vi.fn(function (this: {
@@ -349,16 +350,22 @@ describe("readyNotification AUDIO-HOTFIX-3A", () => {
         this.pause = pause;
       })
     );
+    vi.stubGlobal("navigator", {
+      vibrate,
+      serviceWorker: undefined,
+      userAgent: "vitest",
+    });
 
     const result = await activateReadyAlertsFromGesture({
       trackingToken: "tok123456789012345",
       slug: "cafe",
     });
 
-    expect(result.audioReady).toBe(true);
+    expect(result.audioReady).toBe(false);
     expect(result.permission).toBe("granted");
-    expect(play).toHaveBeenCalledTimes(1);
-    expect(pause).toHaveBeenCalledTimes(1);
+    expect(play).not.toHaveBeenCalled();
+    expect(pause).not.toHaveBeenCalled();
+    expect(vibrate).not.toHaveBeenCalled();
   });
 });
 
@@ -430,7 +437,7 @@ describe("readyNotification AUDIO-HOTFIX-4-SPIKE-1", () => {
     resetNotificationAudioForTests();
   });
 
-  it("activateReadyAlertsFromGesture uses decode path without HTML play when spike enabled", async () => {
+  it("activateReadyAlertsFromGesture does not decode audio when spike enabled", async () => {
     const htmlPlay = vi.fn();
     vi.stubGlobal(
       "Audio",
@@ -444,8 +451,8 @@ describe("readyNotification AUDIO-HOTFIX-4-SPIKE-1", () => {
       slug: "cafe",
     });
 
-    expect(result.audioReady).toBe(true);
-    expect(fetch).toHaveBeenCalled();
+    expect(result.audioReady).toBe(false);
+    expect(fetch).not.toHaveBeenCalled();
     expect(htmlPlay).not.toHaveBeenCalled();
   });
 });
