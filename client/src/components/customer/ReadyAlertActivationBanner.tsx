@@ -6,6 +6,10 @@ import {
   getEnrollmentCtaLabel,
   getEnrollmentSuccessTitle,
 } from "@/lib/readyNotificationEnrollmentCopy";
+import {
+  isActivationTraceEnabled,
+  recordActivationTrace,
+} from "@/lib/activationTrace";
 import { cn } from "@/lib/utils";
 
 type ReadyAlertActivationBannerProps = {
@@ -27,7 +31,7 @@ export function ReadyAlertActivationBanner({
   onActivate,
   className,
 }: ReadyAlertActivationBannerProps) {
-  const isSubscribing = pushSubscriptionState === "SUBSCRIBING" || activating;
+  const isSubscribing = activating;
 
   if (pushSubscribed || enrollmentSucceeded) {
     return (
@@ -55,7 +59,12 @@ export function ReadyAlertActivationBanner({
         className
       )}
       disabled={isSubscribing}
-      onClick={onActivate}
+      onClick={() => {
+        if (isActivationTraceEnabled()) {
+          recordActivationTrace("onclick_fired");
+        }
+        onActivate();
+      }}
     >
       {isSubscribing ? (
         <>

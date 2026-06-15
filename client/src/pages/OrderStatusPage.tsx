@@ -65,6 +65,7 @@ export default function OrderStatusPage() {
     enrollmentSucceeded,
     pushSubscriptionState,
     activationDiagnostics,
+    activationTrace,
   } = useReadyStatusAlerts({
     trackingToken,
     slug,
@@ -226,6 +227,7 @@ export default function OrderStatusPage() {
               <PushTraceDiagnosticsPanel
                 language={lang}
                 diagnostics={activationDiagnostics}
+                activationTrace={activationTrace}
               />
             </div>
           )}

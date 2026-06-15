@@ -46,6 +46,25 @@ export function isCustomerPushSupported(): boolean {
   return snapshot.serviceWorker && snapshot.pushManager && snapshot.notification;
 }
 
+const SW_READY_TIMEOUT_MS = 15_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`${label}_timeout_${ms}ms`));
+    }, ms);
+    promise
+      .then((value) => {
+        clearTimeout(timer);
+        resolve(value);
+      })
+      .catch((err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
+  });
+}
+
 export async function registerCustomerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
   if (!("serviceWorker" in navigator)) {
     recordPushSubscribeStage("sw_registration_failed", { reason: "no_service_worker_api" });
@@ -55,7 +74,11 @@ export async function registerCustomerServiceWorker(): Promise<ServiceWorkerRegi
   try {
     recordPushSubscribeStage("sw_registration_started", { swUrl: SW_URL, scope: SW_SCOPE });
     await navigator.serviceWorker.register(SW_URL, { scope: SW_SCOPE });
-    const registration = await navigator.serviceWorker.ready;
+    const registration = await withTimeout(
+      navigator.serviceWorker.ready,
+      SW_READY_TIMEOUT_MS,
+      "service_worker_ready"
+    );
     recordPushSubscribeStage("sw_registration_success", {
       scope: registration.scope,
       active: Boolean(registration.active),

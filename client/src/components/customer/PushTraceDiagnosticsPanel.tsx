@@ -3,21 +3,29 @@
  */
 
 import type { PushActivationDiagnostics } from "@/lib/pushSubscriptionState";
+import {
+  getActivationTraceSnapshot,
+  isActivationTraceEnabled,
+  type ActivationTraceSnapshot,
+} from "@/lib/activationTrace";
 import { isPushTraceEnabled } from "@/lib/customerPushDiagnostics";
 
 type PushTraceDiagnosticsPanelProps = {
   diagnostics: PushActivationDiagnostics | null;
+  activationTrace?: ActivationTraceSnapshot | null;
   language: "ar" | "en";
 };
 
 export function PushTraceDiagnosticsPanel({
   diagnostics,
+  activationTrace,
   language,
 }: PushTraceDiagnosticsPanelProps) {
-  if (!isPushTraceEnabled()) return null;
+  if (!isPushTraceEnabled() && !isActivationTraceEnabled()) return null;
 
   const snap = diagnostics?.support;
   const trace = diagnostics?.enrollmentTrace;
+  const uiTrace = activationTrace ?? getActivationTraceSnapshot();
   const rows: Array<{ label: string; value: string }> = [
     { label: "permission (before)", value: diagnostics?.permissionBefore ?? "—" },
     { label: "permission (after)", value: diagnostics?.permissionAfter ?? "—" },
@@ -42,6 +50,11 @@ export function PushTraceDiagnosticsPanel({
       value: trace?.stages.length ? trace.stages.join(" → ") : "—",
     },
     { label: "isIosSafariTab", value: diagnostics ? String(diagnostics.isIosSafariTab) : "—" },
+    { label: "ui.enrollmentComplete", value: String(uiTrace.enrollmentComplete) },
+    { label: "ui.pushSubscribed", value: String(uiTrace.pushSubscribed) },
+    { label: "ui.lastStage", value: uiTrace.lastStage ?? "—" },
+    { label: "ui.stages", value: uiTrace.stages.length ? uiTrace.stages.join(" → ") : "—" },
+    { label: "ui.error", value: uiTrace.errorMessage ?? "—" },
   ];
 
   return (

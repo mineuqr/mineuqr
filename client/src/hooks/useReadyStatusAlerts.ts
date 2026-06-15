@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { OrderLifecycleStatus } from "@/lib/orderStatusDisplay";
+import {
+  getActivationTraceSnapshot,
+  recordActivationTrace,
+} from "@/lib/activationTrace";
 import { logReadyAlertActivation } from "@/lib/readyNotificationDiagnostics";
 import {
   detectInitialPushSubscriptionState,
@@ -54,6 +58,7 @@ export function useReadyStatusAlerts({
   enabled,
 }: UseReadyStatusAlertsOptions) {
   const [alertsActivated, setAlertsActivated] = useState(false);
+  const [enrollmentComplete, setEnrollmentComplete] = useState(false);
   const [pushSubscriptionState, setPushSubscriptionState] =
     useState<PushSubscriptionState>("PERMISSION_REQUIRED");
   const [pushSubscribeReason, setPushSubscribeReason] = useState<
@@ -70,30 +75,56 @@ export function useReadyStatusAlerts({
   useEffect(() => {
     if (!trackingToken) return;
     const session = loadReadyAlertState(trackingToken);
+    const sessionPushState = resolveSessionPushState(session);
     setAlertsActivated(session.alertsActivated);
-    setPushSubscriptionState(resolveSessionPushState(session));
+    setPushSubscriptionState(sessionPushState);
+    setEnrollmentComplete(session.alertsActivated || session.pushSubscriptionActive);
     if (session.alert1NotificationDelivered) {
       setNotificationDeliveredHint(true);
     }
   }, [trackingToken]);
 
   const activateAlerts = useCallback(async () => {
-    if (!trackingToken || !slug || activatingRef.current) return;
+    recordActivationTrace("activate_alerts_entered", {
+      trackingToken: trackingToken ? trackingToken.slice(0, 8) + "…" : null,
+      slug: slug || null,
+      activatingRef: activatingRef.current,
+    });
+
+    if (!trackingToken || !slug) {
+      recordActivationTrace("activate_alerts_early_return", {
+        reason: !trackingToken ? "missing_tracking_token" : "missing_slug",
+      });
+      return;
+    }
+
+    if (activatingRef.current) {
+      recordActivationTrace("activate_alerts_early_return", { reason: "already_activating" });
+      return;
+    }
+
     activatingRef.current = true;
     setActivating(true);
-    setPushSubscriptionState("SUBSCRIBING");
+    recordActivationTrace("activate_alerts_started");
 
     try {
       const result = await activateReadyAlertsFromGesture({ trackingToken, slug });
+      recordActivationTrace("activation_gesture_resolved", {
+        permission: result.permission,
+        pushSubscribed: result.pushSubscribed,
+        pushSubscriptionState: result.pushSubscriptionState,
+        pushSubscribeReason: result.pushSubscribeReason,
+      });
+
       logReadyAlertActivation(trackingToken, result);
       setPushSubscriptionState(result.pushSubscriptionState);
       setPushSubscribeReason(result.pushSubscribeReason);
       setActivationDiagnostics(result.diagnostics);
 
-      const session = loadReadyAlertState(trackingToken);
       const permissionGranted = result.permission === "granted";
-      const enrollmentSucceeded = permissionGranted;
+      const enrollmentSucceeded = permissionGranted || result.pushSubscribed;
 
+      const session = loadReadyAlertState(trackingToken);
       saveReadyAlertState(trackingToken, {
         ...session,
         alertsActivated: enrollmentSucceeded,
@@ -103,7 +134,30 @@ export function useReadyStatusAlerts({
           ? { readyEventHandled: true, lastStatus: status }
           : {}),
       });
+
       setAlertsActivated(enrollmentSucceeded);
+      setEnrollmentComplete(enrollmentSucceeded);
+
+      recordActivationTrace("activate_alerts_success", {
+        permission: result.permission,
+        pushSubscribed: result.pushSubscribed,
+        pushSubscriptionState: result.pushSubscriptionState,
+        enrollmentComplete: enrollmentSucceeded,
+      });
+      recordActivationTrace("ui_enrollment_complete", {
+        enrollmentComplete: enrollmentSucceeded,
+        pushSubscribed: result.pushSubscribed,
+        permission: result.permission,
+        pushSubscriptionState: result.pushSubscriptionState,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      recordActivationTrace("activate_alerts_error", { errorMessage: message });
+
+      const fallbackState = detectInitialPushSubscriptionState({
+        pushSubscriptionActive: false,
+      });
+      setPushSubscriptionState(fallbackState);
     } finally {
       activatingRef.current = false;
       setActivating(false);
@@ -202,25 +256,22 @@ export function useReadyStatusAlerts({
 
   const isTerminal = status === "served" || status === "cancelled";
   const pushSubscribed = pushSubscriptionState === "SUBSCRIBED";
-  const notificationPermissionGranted =
-    typeof window !== "undefined" &&
-    "Notification" in window &&
-    Notification.permission === "granted";
-  const enrollmentSucceeded =
-    alertsActivated && notificationPermissionGranted && !activating;
-  const needsActivation = enabled && !enrollmentSucceeded && !pushSubscribed && !isTerminal;
+  const enrollmentSucceeded = enrollmentComplete || pushSubscribed;
+  const needsActivation = enabled && !enrollmentSucceeded && !isTerminal;
 
   return {
     alertsActivated,
     pushSubscribed,
     enrollmentSucceeded,
+    enrollmentComplete,
     pushSubscriptionState,
     pushSubscribeReason,
     activationDiagnostics,
+    activationTrace: getActivationTraceSnapshot(),
     activating,
     needsActivation,
     activateAlerts,
     notificationDeliveredHint,
     acknowledgeReadyAlerts: acknowledge,
   };
-}
+};
