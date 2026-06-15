@@ -63,15 +63,23 @@ function clientIp(req: Request): string {
 }
 
 function logPushSubscribe(
-  type: "customer_push_subscribe_ok" | "customer_push_subscribe_failed",
+  type:
+    | "customer_push_subscribe_received"
+    | "customer_push_subscribe_ok"
+    | "customer_push_subscribe_failed",
   metadata: Record<string, unknown>
 ): void {
   opsLog({
     type,
     category: "ORDER",
-    severity: type === "customer_push_subscribe_ok" ? "info" : "warn",
+    severity:
+      type === "customer_push_subscribe_ok"
+        ? "info"
+        : type === "customer_push_subscribe_received"
+          ? "info"
+          : "warn",
     ts: new Date().toISOString(),
-    metadata,
+    metadata: { validationBuild: "TRUE-PUSH-VALIDATION-1", ...metadata },
   });
 }
 
@@ -100,6 +108,15 @@ customerPushRouter.get("/vapid-public-key", (_req: Request, res: Response) => {
 });
 
 customerPushRouter.post("/subscribe", async (req: Request, res: Response) => {
+  logPushSubscribe("customer_push_subscribe_received", {
+    slug: typeof req.body?.slug === "string" ? req.body.slug : null,
+    trackingTokenPrefix:
+      typeof req.body?.trackingToken === "string"
+        ? req.body.trackingToken.slice(0, 8)
+        : null,
+    hasSubscription: Boolean(req.body?.subscription),
+  });
+
   if (!isCustomerPushConfigured()) {
     logPushSubscribe("customer_push_subscribe_failed", { reason: "push_not_configured" });
     res.status(503).json({ error: "PUSH_NOT_CONFIGURED" });
@@ -108,13 +125,26 @@ customerPushRouter.post("/subscribe", async (req: Request, res: Response) => {
 
   const parsed = subscribeBodySchema.safeParse(req.body);
   if (!parsed.success) {
-    logPushSubscribe("customer_push_subscribe_failed", { reason: "invalid_body" });
+    logPushSubscribe("customer_push_subscribe_failed", {
+      reason: "invalid_body",
+      issues: parsed.error.issues.map((issue) => ({
+        path: issue.path.join("."),
+        code: issue.code,
+      })),
+    });
     res.status(400).json({ error: "INVALID_BODY" });
     return;
   }
 
   const { trackingToken, slug, subscription } = parsed.data;
   const ip = clientIp(req);
+
+  logPushSubscribe("customer_push_subscribe_received", {
+    stage: "payload_validated",
+    slug,
+    trackingTokenPrefix: trackingToken.slice(0, 8),
+    endpointPrefix: subscription.endpoint.slice(0, 48),
+  });
 
   if (isRateLimited(`push-sub:ip:${ip}`, IP_LIMIT)) {
     logPushSubscribe("customer_push_subscribe_failed", {
@@ -141,6 +171,7 @@ customerPushRouter.post("/subscribe", async (req: Request, res: Response) => {
       logPushSubscribe("customer_push_subscribe_failed", {
         reason: "order_not_found",
         slug,
+        trackingTokenPrefix: trackingToken.slice(0, 8),
       });
       res.status(404).json({ error: "ORDER_NOT_FOUND" });
       return;
@@ -148,10 +179,18 @@ customerPushRouter.post("/subscribe", async (req: Request, res: Response) => {
     logPushSubscribe("customer_push_subscribe_failed", {
       reason: "order_terminal",
       slug,
+      trackingTokenPrefix: trackingToken.slice(0, 8),
     });
     res.status(409).json({ error: "ORDER_TERMINAL" });
     return;
   }
+
+  logPushSubscribe("customer_push_subscribe_received", {
+    stage: "order_lookup_ok",
+    orderId: order.orderId,
+    orderStatus: order.status,
+    slug,
+  });
 
   try {
     const result = await upsertPushSubscription({
@@ -162,12 +201,16 @@ customerPushRouter.post("/subscribe", async (req: Request, res: Response) => {
     logPushSubscribe("customer_push_subscribe_ok", {
       orderId: order.orderId,
       subscriptionId: result.id,
+      slug,
+      insert: "success",
     });
     res.json({ success: true, subscriptionId: result.id });
   } catch (err) {
     logPushSubscribe("customer_push_subscribe_failed", {
       reason: "subscribe_failed",
       orderId: order.orderId,
+      slug,
+      insert: "failure",
       message: err instanceof Error ? err.message : String(err),
     });
     res.status(500).json({ error: "SUBSCRIBE_FAILED" });

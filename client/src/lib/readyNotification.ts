@@ -8,7 +8,8 @@ import {
   isAudio4SpikeEnabled,
   prepareCustomerReadyAudioFromGesture,
 } from "@/lib/customerReadyAudioSpike4";
-import { subscribeCustomerPush } from "@/lib/customerPush";
+import { subscribeCustomerPush, type PushSubscribeFailureReason } from "@/lib/customerPush";
+import { logPushTrace } from "@/lib/customerPushDiagnostics";
 import { logReadyAlertDelivery } from "@/lib/readyNotificationDiagnostics";
 import type { OrderLifecycleStatus } from "@/lib/orderStatusDisplay";
 
@@ -116,6 +117,7 @@ export async function activateReadyAlertsFromGesture(options: {
   audioReady: boolean;
   permission: NotificationPermission | "unsupported";
   pushSubscribed: boolean;
+  pushSubscribeReason?: PushSubscribeFailureReason | "success" | "skipped_permission";
 }> {
   let audioReady: boolean;
   if (isAudio4SpikeEnabled()) {
@@ -127,15 +129,32 @@ export async function activateReadyAlertsFromGesture(options: {
   const permission = await requestReadyNotificationPermissionFromGesture();
 
   let pushSubscribed = false;
+  let pushSubscribeReason: PushSubscribeFailureReason | "success" | "skipped_permission" =
+    "skipped_permission";
+
   if (permission === "granted" && options.trackingToken && options.slug) {
     const pushResult = await subscribeCustomerPush({
       trackingToken: options.trackingToken,
       slug: options.slug,
     });
     pushSubscribed = pushResult.subscribed;
+    pushSubscribeReason = pushResult.subscribed
+      ? "success"
+      : (pushResult.reason ?? "subscription_failed");
+    logPushTrace("activateReadyAlerts push result", {
+      pushSubscribed,
+      pushSubscribeReason,
+      httpStatus: pushResult.httpStatus ?? null,
+    });
+  } else {
+    logPushTrace("subscribeCustomerPush skipped", {
+      permission,
+      hasTrackingToken: Boolean(options.trackingToken),
+      hasSlug: Boolean(options.slug),
+    });
   }
 
-  return { audioReady, permission, pushSubscribed };
+  return { audioReady, permission, pushSubscribed, pushSubscribeReason };
 }
 
 export function vibrateForReady(durationMs: number): boolean {
