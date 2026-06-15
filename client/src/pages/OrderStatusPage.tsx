@@ -6,6 +6,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { CustomerOrderDateTimeFields } from "@/components/customer/CustomerOrderDateTimeFields";
 import { OrderReceivedHero } from "@/components/customer/OrderReceivedHero";
 import { OrderStatusStepper } from "@/components/customer/OrderStatusStepper";
+import { PushTraceDiagnosticsPanel } from "@/components/customer/PushTraceDiagnosticsPanel";
 import { ReadyAlertActivationBanner } from "@/components/customer/ReadyAlertActivationBanner";
 import { ReadyStatusAttention } from "@/components/customer/ReadyStatusAttention";
 import {
@@ -57,11 +58,13 @@ export default function OrderStatusPage() {
     );
 
   const {
-    alertsActivated,
     activating,
-    needsActivation,
     activateAlerts,
     notificationDeliveredHint,
+    pushSubscriptionState,
+    pushSubscribeReason,
+    activationDiagnostics,
+    showIosInstallSteps,
   } = useReadyStatusAlerts({
     trackingToken,
     slug,
@@ -141,8 +144,7 @@ export default function OrderStatusPage() {
   const isCancelled = status === "cancelled";
   const isServed = status === "served";
   const isReady = status === "ready";
-  const showAlertBanner =
-    !isCancelled && !isServed && (needsActivation || alertsActivated || isLoading);
+  const showAlertBanner = !isCancelled && !isServed;
 
   const orderNumber = data?.orderNumber ?? orderSnapshot?.orderNumber ?? "";
   const createdAt = data?.createdAt ?? orderSnapshot?.createdAt ?? "";
@@ -177,12 +179,20 @@ export default function OrderStatusPage() {
           )}
 
           {showAlertBanner && (
-            <ReadyAlertActivationBanner
-              language={lang}
-              activated={alertsActivated}
-              activating={activating}
-              onActivate={() => void activateAlerts()}
-            />
+            <div className="space-y-2">
+              <ReadyAlertActivationBanner
+                language={lang}
+                pushSubscriptionState={pushSubscriptionState}
+                pushSubscribeReason={pushSubscribeReason}
+                showIosInstallSteps={showIosInstallSteps}
+                activating={activating}
+                onActivate={() => void activateAlerts()}
+              />
+              <PushTraceDiagnosticsPanel
+                language={lang}
+                diagnostics={activationDiagnostics}
+              />
+            </div>
           )}
 
           <div

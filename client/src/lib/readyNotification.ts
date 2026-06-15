@@ -8,8 +8,15 @@ import {
   isAudio4SpikeEnabled,
   prepareCustomerReadyAudioFromGesture,
 } from "@/lib/customerReadyAudioSpike4";
-import { subscribeCustomerPush, type PushSubscribeFailureReason } from "@/lib/customerPush";
-import { logPushTrace } from "@/lib/customerPushDiagnostics";
+import { isCustomerPushSupported, subscribeCustomerPush } from "@/lib/customerPush";
+import { getPushSupportSnapshot, logPushTrace } from "@/lib/customerPushDiagnostics";
+import {
+  isIosWebKitTabWithoutPush,
+  resolvePushSubscriptionState,
+  type PushActivationDiagnostics,
+  type PushSubscribeOutcomeReason,
+  type PushSubscriptionState,
+} from "@/lib/pushSubscriptionState";
 import { logReadyAlertDelivery } from "@/lib/readyNotificationDiagnostics";
 import type { OrderLifecycleStatus } from "@/lib/orderStatusDisplay";
 
@@ -18,6 +25,7 @@ export const READY_ALERT_FOLLOW_UP_MS = 30_000;
 export type ReadyAlertSessionState = {
   alertsActivated: boolean;
   pushSubscriptionActive: boolean;
+  pushSubscriptionState?: PushSubscriptionState;
   alert1Sent: boolean;
   alert1NotificationDelivered: boolean;
   alert2Sent: boolean;
@@ -58,6 +66,7 @@ export function loadReadyAlertState(trackingToken: string): ReadyAlertSessionSta
     return {
       alertsActivated: Boolean(parsed.alertsActivated),
       pushSubscriptionActive: Boolean(parsed.pushSubscriptionActive),
+      pushSubscriptionState: parsed.pushSubscriptionState,
       alert1Sent: Boolean(parsed.alert1Sent),
       alert1NotificationDelivered: Boolean(parsed.alert1NotificationDelivered),
       alert2Sent: Boolean(parsed.alert2Sent),
@@ -109,16 +118,32 @@ export async function requestReadyNotificationPermissionFromGesture(): Promise<
   }
 }
 
-/** HOTFIX-1A + BACKGROUND-NOTIFICATIONS-1A + AUDIO-HOTFIX-3A: unlock audio, permission, and push from user tap. */
+function readNotificationPermission(): NotificationPermission | "unsupported" {
+  if (typeof window === "undefined" || !("Notification" in window)) {
+    return "unsupported";
+  }
+  return Notification.permission;
+}
+
+/** HOTFIX-1A + BACKGROUND-NOTIFICATIONS-1A + PUSH-SUBSCRIPTION-HARDENING-1 */
 export async function activateReadyAlertsFromGesture(options: {
   trackingToken: string;
   slug: string;
 }): Promise<{
   audioReady: boolean;
+  permissionBefore: NotificationPermission | "unsupported";
   permission: NotificationPermission | "unsupported";
   pushSubscribed: boolean;
-  pushSubscribeReason?: PushSubscribeFailureReason | "success" | "skipped_permission";
+  pushSubscribeReason: PushSubscribeOutcomeReason;
+  pushSubscriptionState: PushSubscriptionState;
+  diagnostics: PushActivationDiagnostics;
 }> {
+  const support = getPushSupportSnapshot();
+  const permissionBefore = readNotificationPermission();
+  const isIosSafariTab = isIosWebKitTabWithoutPush();
+
+  logPushTrace("activateReadyAlerts permission before", { permission: permissionBefore });
+
   let audioReady: boolean;
   if (isAudio4SpikeEnabled()) {
     const prepared = await prepareCustomerReadyAudioFromGesture();
@@ -128,11 +153,26 @@ export async function activateReadyAlertsFromGesture(options: {
   }
   const permission = await requestReadyNotificationPermissionFromGesture();
 
-  let pushSubscribed = false;
-  let pushSubscribeReason: PushSubscribeFailureReason | "success" | "skipped_permission" =
-    "skipped_permission";
+  logPushTrace("activateReadyAlerts permission after", { permission });
 
-  if (permission === "granted" && options.trackingToken && options.slug) {
+  let pushSubscribed = false;
+  let pushSubscribeReason: PushSubscribeOutcomeReason = "skipped_permission";
+
+  if (!isCustomerPushSupported()) {
+    pushSubscribeReason = "unsupported";
+    logPushTrace("subscribeCustomerPush skipped", {
+      reason: "unsupported",
+      support,
+    });
+  } else if (permission !== "granted" || !options.trackingToken || !options.slug) {
+    pushSubscribeReason = "skipped_permission";
+    logPushTrace("subscribeCustomerPush skipped", {
+      reason: "skipped_permission",
+      permission,
+      hasTrackingToken: Boolean(options.trackingToken),
+      hasSlug: Boolean(options.slug),
+    });
+  } else {
     const pushResult = await subscribeCustomerPush({
       trackingToken: options.trackingToken,
       slug: options.slug,
@@ -146,15 +186,41 @@ export async function activateReadyAlertsFromGesture(options: {
       pushSubscribeReason,
       httpStatus: pushResult.httpStatus ?? null,
     });
-  } else {
-    logPushTrace("subscribeCustomerPush skipped", {
-      permission,
-      hasTrackingToken: Boolean(options.trackingToken),
-      hasSlug: Boolean(options.slug),
-    });
   }
 
-  return { audioReady, permission, pushSubscribed, pushSubscribeReason };
+  const pushSubscriptionState = resolvePushSubscriptionState({
+    pushSubscribed,
+    permission,
+    pushSubscribeReason,
+    support,
+  });
+
+  const diagnostics: PushActivationDiagnostics = {
+    permissionBefore,
+    permissionAfter: permission,
+    support,
+    pushSubscribed,
+    pushSubscribeReason,
+    pushSubscriptionState,
+    isIosSafariTab,
+  };
+
+  logPushTrace("activateReadyAlerts outcome", {
+    pushSubscriptionState,
+    pushSubscribeReason,
+    pushSubscribed,
+    audioReady,
+  });
+
+  return {
+    audioReady,
+    permissionBefore,
+    permission,
+    pushSubscribed,
+    pushSubscribeReason,
+    pushSubscriptionState,
+    diagnostics,
+  };
 }
 
 export function vibrateForReady(durationMs: number): boolean {

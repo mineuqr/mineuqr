@@ -3,7 +3,7 @@
  * Enable: ?pushTrace=1 or sessionStorage mineuqr:push:trace=1
  */
 
-export const PUSH_TRACE_BUILD = "TRUE-PUSH-VALIDATION-1";
+export const PUSH_TRACE_BUILD = "PUSH-SUBSCRIPTION-HARDENING-1";
 
 export type PushSupportSnapshot = {
   serviceWorker: boolean;

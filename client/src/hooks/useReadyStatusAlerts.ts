@@ -2,6 +2,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { OrderLifecycleStatus } from "@/lib/orderStatusDisplay";
 import { logReadyAlertActivation } from "@/lib/readyNotificationDiagnostics";
 import {
+  detectInitialPushSubscriptionState,
+  isIosWebKitTabWithoutPush,
+  type PushActivationDiagnostics,
+  type PushSubscriptionState,
+} from "@/lib/pushSubscriptionState";
+import {
   acknowledgeReadyAlerts,
   activateReadyAlertsFromGesture,
   clearReadyAlertFollowUpTimer,
@@ -21,6 +27,14 @@ type UseReadyStatusAlertsOptions = {
   enabled: boolean;
 };
 
+function resolveSessionPushState(session: ReturnType<typeof loadReadyAlertState>): PushSubscriptionState {
+  if (session.pushSubscriptionActive) return "SUBSCRIBED";
+  if (session.pushSubscriptionState) return session.pushSubscriptionState;
+  return detectInitialPushSubscriptionState({
+    pushSubscriptionActive: session.pushSubscriptionActive,
+  });
+}
+
 export function useReadyStatusAlerts({
   trackingToken,
   slug,
@@ -30,6 +44,13 @@ export function useReadyStatusAlerts({
   enabled,
 }: UseReadyStatusAlertsOptions) {
   const [alertsActivated, setAlertsActivated] = useState(false);
+  const [pushSubscriptionState, setPushSubscriptionState] =
+    useState<PushSubscriptionState>("PERMISSION_REQUIRED");
+  const [pushSubscribeReason, setPushSubscribeReason] = useState<
+    PushActivationDiagnostics["pushSubscribeReason"] | null
+  >(null);
+  const [activationDiagnostics, setActivationDiagnostics] =
+    useState<PushActivationDiagnostics | null>(null);
   const [activating, setActivating] = useState(false);
   const [notificationDeliveredHint, setNotificationDeliveredHint] = useState(false);
   const prevStatusRef = useRef<OrderLifecycleStatus | null>(null);
@@ -39,6 +60,7 @@ export function useReadyStatusAlerts({
     if (!trackingToken) return;
     const session = loadReadyAlertState(trackingToken);
     setAlertsActivated(session.alertsActivated);
+    setPushSubscriptionState(resolveSessionPushState(session));
     if (session.alert1NotificationDelivered) {
       setNotificationDeliveredHint(true);
     }
@@ -47,16 +69,22 @@ export function useReadyStatusAlerts({
   const activateAlerts = useCallback(async () => {
     if (!trackingToken || !slug || activating) return;
     setActivating(true);
+    setPushSubscriptionState("SUBSCRIBING");
     try {
       const result = await activateReadyAlertsFromGesture({ trackingToken, slug });
       logReadyAlertActivation(trackingToken, result);
+      setPushSubscriptionState(result.pushSubscriptionState);
+      setPushSubscribeReason(result.pushSubscribeReason);
+      setActivationDiagnostics(result.diagnostics);
+
       const session = loadReadyAlertState(trackingToken);
       saveReadyAlertState(trackingToken, {
         ...session,
-        alertsActivated: true,
+        alertsActivated: result.audioReady,
         pushSubscriptionActive: result.pushSubscribed,
+        pushSubscriptionState: result.pushSubscriptionState,
       });
-      setAlertsActivated(true);
+      setAlertsActivated(result.audioReady);
     } finally {
       setActivating(false);
     }
@@ -160,14 +188,21 @@ export function useReadyStatusAlerts({
   }, [trackingToken, status]);
 
   const isTerminal = status === "served" || status === "cancelled";
-  const needsActivation = enabled && !alertsActivated && !isTerminal;
+  const pushSubscribed = pushSubscriptionState === "SUBSCRIBED";
+  const needsActivation = enabled && !pushSubscribed && !isTerminal;
+  const showIosInstallSteps = isIosWebKitTabWithoutPush();
 
   return {
     alertsActivated,
+    pushSubscribed,
+    pushSubscriptionState,
+    pushSubscribeReason,
+    activationDiagnostics,
     activating,
     needsActivation,
     activateAlerts,
     notificationDeliveredHint,
+    showIosInstallSteps,
     acknowledgeReadyAlerts: acknowledge,
   };
 }

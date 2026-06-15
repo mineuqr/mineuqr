@@ -12,6 +12,7 @@ import {
 } from "./readyNotification";
 
 vi.mock("./customerPush", () => ({
+  isCustomerPushSupported: vi.fn().mockReturnValue(false),
   subscribeCustomerPush: vi.fn().mockResolvedValue({ subscribed: false, reason: "unsupported" }),
 }));
 
@@ -156,9 +157,14 @@ describe("readyNotification AUDIO-HOTFIX-3A", () => {
       permission: "granted" as NotificationPermission,
       requestPermission: vi.fn().mockResolvedValue("granted"),
     });
+    vi.stubGlobal("navigator", {
+      serviceWorker: undefined,
+      userAgent: "vitest",
+    });
     vi.stubGlobal("window", {
       AudioContext: globalThis.AudioContext,
       Notification: globalThis.Notification,
+      matchMedia: () => ({ matches: false }),
     });
   });
 
@@ -244,11 +250,16 @@ describe("readyNotification AUDIO-HOTFIX-4-SPIKE-1", () => {
       permission: "granted" as NotificationPermission,
       requestPermission: vi.fn().mockResolvedValue("granted"),
     });
+    vi.stubGlobal("navigator", {
+      serviceWorker: undefined,
+      userAgent: "vitest",
+    });
     vi.stubGlobal("window", {
       location: { search: "?audio4=1" },
       AudioContext: globalThis.AudioContext,
       Notification: globalThis.Notification,
       sessionStorage: globalThis.sessionStorage,
+      matchMedia: () => ({ matches: false }),
     });
     global.fetch = vi.fn(async () => ({
       ok: true,
