@@ -65,6 +65,7 @@ export function useReadyStatusAlerts({
   const [notificationDeliveredHint, setNotificationDeliveredHint] = useState(false);
   const prevStatusRef = useRef<OrderLifecycleStatus | null>(null);
   const initializedRef = useRef(false);
+  const activatingRef = useRef(false);
 
   useEffect(() => {
     if (!trackingToken) return;
@@ -77,14 +78,10 @@ export function useReadyStatusAlerts({
   }, [trackingToken]);
 
   const activateAlerts = useCallback(async () => {
-    if (!trackingToken || !slug || activating) return;
+    if (!trackingToken || !slug || activatingRef.current) return;
+    activatingRef.current = true;
     setActivating(true);
     setPushSubscriptionState("SUBSCRIBING");
-
-    // RECOVERY-1A/1B: foreground opt-in is immediate (independent of audio/push).
-    const sessionBefore = loadReadyAlertState(trackingToken);
-    saveReadyAlertState(trackingToken, { ...sessionBefore, alertsActivated: true });
-    setAlertsActivated(true);
 
     try {
       const result = await activateReadyAlertsFromGesture({ trackingToken, slug });
@@ -94,17 +91,24 @@ export function useReadyStatusAlerts({
       setActivationDiagnostics(result.diagnostics);
 
       const session = loadReadyAlertState(trackingToken);
+      const permissionGranted = result.permission === "granted";
+      const enrollmentSucceeded = permissionGranted;
+
       saveReadyAlertState(trackingToken, {
         ...session,
-        alertsActivated: true,
+        alertsActivated: enrollmentSucceeded,
         pushSubscriptionActive: result.pushSubscribed,
         pushSubscriptionState: result.pushSubscriptionState,
+        ...(status === "ready"
+          ? { readyEventHandled: true, lastStatus: status }
+          : {}),
       });
-      setAlertsActivated(true);
+      setAlertsActivated(enrollmentSucceeded);
     } finally {
+      activatingRef.current = false;
       setActivating(false);
     }
-  }, [trackingToken, slug, activating]);
+  }, [trackingToken, slug, status]);
 
   const acknowledge = useCallback(() => {
     if (!trackingToken) return;
@@ -139,6 +143,14 @@ export function useReadyStatusAlerts({
     prevStatusRef.current = status;
 
     if (!isReadyTransition(previousStatus, status)) {
+      saveReadyAlertState(trackingToken, {
+        ...loadReadyAlertState(trackingToken),
+        lastStatus: status,
+      });
+      return;
+    }
+
+    if (activatingRef.current) {
       saveReadyAlertState(trackingToken, {
         ...loadReadyAlertState(trackingToken),
         lastStatus: status,
@@ -190,11 +202,18 @@ export function useReadyStatusAlerts({
 
   const isTerminal = status === "served" || status === "cancelled";
   const pushSubscribed = pushSubscriptionState === "SUBSCRIBED";
-  const needsActivation = enabled && !pushSubscribed && !isTerminal;
+  const notificationPermissionGranted =
+    typeof window !== "undefined" &&
+    "Notification" in window &&
+    Notification.permission === "granted";
+  const enrollmentSucceeded =
+    alertsActivated && notificationPermissionGranted && !activating;
+  const needsActivation = enabled && !enrollmentSucceeded && !pushSubscribed && !isTerminal;
 
   return {
     alertsActivated,
     pushSubscribed,
+    enrollmentSucceeded,
     pushSubscriptionState,
     pushSubscribeReason,
     activationDiagnostics,

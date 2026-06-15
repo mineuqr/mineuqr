@@ -62,6 +62,7 @@ export default function OrderStatusPage() {
     activateAlerts,
     notificationDeliveredHint,
     pushSubscribed,
+    enrollmentSucceeded,
     pushSubscriptionState,
     activationDiagnostics,
   } = useReadyStatusAlerts({
@@ -217,6 +218,7 @@ export default function OrderStatusPage() {
               <ReadyAlertActivationBanner
                 language={lang}
                 pushSubscribed={pushSubscribed}
+                enrollmentSucceeded={enrollmentSucceeded}
                 pushSubscriptionState={pushSubscriptionState}
                 activating={activating}
                 onActivate={() => void activateAlerts()}

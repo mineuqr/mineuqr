@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 type ReadyAlertActivationBannerProps = {
   language: "ar" | "en";
   pushSubscribed: boolean;
+  enrollmentSucceeded: boolean;
   pushSubscriptionState: PushSubscriptionState;
   activating: boolean;
   onActivate: () => void;
@@ -20,6 +21,7 @@ type ReadyAlertActivationBannerProps = {
 export function ReadyAlertActivationBanner({
   language,
   pushSubscribed,
+  enrollmentSucceeded,
   pushSubscriptionState,
   activating,
   onActivate,
@@ -27,7 +29,7 @@ export function ReadyAlertActivationBanner({
 }: ReadyAlertActivationBannerProps) {
   const isSubscribing = pushSubscriptionState === "SUBSCRIBING" || activating;
 
-  if (pushSubscribed) {
+  if (pushSubscribed || enrollmentSucceeded) {
     return (
       <div
         className={cn(
