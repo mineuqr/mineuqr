@@ -3,7 +3,9 @@ import { resetNotificationAudioForTests } from "./notificationSound";
 import {
   activateReadyAlertsFromGesture,
   buildReadyNotificationCopy,
+  deliverMissedReadyTier1IfNeeded,
   deliverReadyAlertTier,
+  handleReadyTier1Delivery,
   isReadyTransition,
   loadReadyAlertState,
   readyAlertStorageKey,
@@ -134,6 +136,115 @@ describe("readyNotification CUSTOMER-UX-1C HOTFIX-1", () => {
 
     expect(delivery.notification).toBe(false);
     expect(globalThis.Notification).not.toHaveBeenCalled();
+  });
+});
+
+describe("readyNotification FOREGROUND-READY-ALERT-RECOVERY-1", () => {
+  beforeEach(() => {
+    vi.stubGlobal("sessionStorage", createSessionStorageMock());
+    vi.stubGlobal("navigator", {
+      vibrate: vi.fn().mockReturnValue(true),
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("handleReadyTier1Delivery does not set alert1Sent when all channels fail", () => {
+    saveReadyAlertState("tok", {
+      alertsActivated: false,
+      pushSubscriptionActive: false,
+      alert1Sent: false,
+      alert1NotificationDelivered: false,
+      alert2Sent: false,
+      alert2NotificationDelivered: false,
+      acknowledged: false,
+      lastStatus: "preparing",
+    });
+
+    const result = handleReadyTier1Delivery({
+      trackingToken: "tok",
+      orderNumber: "ORD-1",
+      language: "en",
+      status: "ready",
+      source: "transition",
+      previousStatus: "preparing",
+    });
+
+    expect(result.delivered).toBe(false);
+    expect(loadReadyAlertState("tok").alert1Sent).toBe(false);
+    expect(loadReadyAlertState("tok").lastStatus).toBe("ready");
+  });
+
+  it("handleReadyTier1Delivery sets alert1Sent when vibrate succeeds", () => {
+    saveReadyAlertState("tok", {
+      alertsActivated: true,
+      pushSubscriptionActive: false,
+      alert1Sent: false,
+      alert1NotificationDelivered: false,
+      alert2Sent: false,
+      alert2NotificationDelivered: false,
+      acknowledged: false,
+      lastStatus: "preparing",
+    });
+
+    const result = handleReadyTier1Delivery({
+      trackingToken: "tok",
+      orderNumber: "ORD-1",
+      language: "en",
+      status: "ready",
+      source: "transition",
+      previousStatus: "preparing",
+    });
+
+    expect(result.delivered).toBe(true);
+    expect(loadReadyAlertState("tok").alert1Sent).toBe(true);
+  });
+
+  it("deliverMissedReadyTier1IfNeeded recovers after late opt-in on READY", () => {
+    saveReadyAlertState("tok", {
+      alertsActivated: true,
+      pushSubscriptionActive: false,
+      alert1Sent: false,
+      alert1NotificationDelivered: false,
+      alert2Sent: false,
+      alert2NotificationDelivered: false,
+      acknowledged: false,
+      lastStatus: "ready",
+    });
+
+    const result = deliverMissedReadyTier1IfNeeded({
+      trackingToken: "tok",
+      orderNumber: "ORD-1",
+      language: "en",
+      currentStatus: "ready",
+    });
+
+    expect(result?.delivered).toBe(true);
+    expect(loadReadyAlertState("tok").alert1Sent).toBe(true);
+  });
+
+  it("deliverMissedReadyTier1IfNeeded skips when alert1 already sent", () => {
+    saveReadyAlertState("tok", {
+      alertsActivated: true,
+      pushSubscriptionActive: false,
+      alert1Sent: true,
+      alert1NotificationDelivered: true,
+      alert2Sent: false,
+      alert2NotificationDelivered: false,
+      acknowledged: false,
+      lastStatus: "ready",
+    });
+
+    expect(
+      deliverMissedReadyTier1IfNeeded({
+        trackingToken: "tok",
+        orderNumber: "ORD-1",
+        language: "en",
+        currentStatus: "ready",
+      })
+    ).toBeNull();
   });
 });
 

@@ -11,7 +11,9 @@ import {
   acknowledgeReadyAlerts,
   activateReadyAlertsFromGesture,
   clearReadyAlertFollowUpTimer,
-  deliverReadyAlertTier,
+  deliverMissedReadyTier1IfNeeded,
+  handleReadyTier1Delivery,
+  handleReadyTier2Delivery,
   isReadyTransition,
   loadReadyAlertState,
   saveReadyAlertState,
@@ -35,6 +37,16 @@ function resolveSessionPushState(session: ReturnType<typeof loadReadyAlertState>
   });
 }
 
+function scheduleTier2IfNeeded(
+  trackingToken: string,
+  orderNumber: string,
+  language: "ar" | "en"
+): void {
+  scheduleReadyAlertFollowUp(trackingToken, () => {
+    handleReadyTier2Delivery({ trackingToken, orderNumber, language });
+  });
+}
+
 export function useReadyStatusAlerts({
   trackingToken,
   slug,
@@ -55,6 +67,13 @@ export function useReadyStatusAlerts({
   const [notificationDeliveredHint, setNotificationDeliveredHint] = useState(false);
   const prevStatusRef = useRef<OrderLifecycleStatus | null>(null);
   const initializedRef = useRef(false);
+  const statusRef = useRef(status);
+  const orderNumberRef = useRef(orderNumber);
+
+  useEffect(() => {
+    statusRef.current = status;
+    orderNumberRef.current = orderNumber;
+  }, [status, orderNumber]);
 
   useEffect(() => {
     if (!trackingToken) return;
@@ -66,10 +85,36 @@ export function useReadyStatusAlerts({
     }
   }, [trackingToken]);
 
+  const runRecoveryIfNeeded = useCallback(() => {
+    const currentStatus = statusRef.current;
+    const currentOrderNumber = orderNumberRef.current;
+    if (!trackingToken || !currentOrderNumber || currentStatus !== "ready") return;
+
+    const result = deliverMissedReadyTier1IfNeeded({
+      trackingToken,
+      orderNumber: currentOrderNumber,
+      language,
+      currentStatus,
+    });
+    if (!result?.delivered) return;
+
+    const session = loadReadyAlertState(trackingToken);
+    if (result.delivery.notification || session.pushSubscriptionActive) {
+      setNotificationDeliveredHint(true);
+    }
+    scheduleTier2IfNeeded(trackingToken, currentOrderNumber, language);
+  }, [trackingToken, language]);
+
   const activateAlerts = useCallback(async () => {
     if (!trackingToken || !slug || activating) return;
     setActivating(true);
     setPushSubscriptionState("SUBSCRIBING");
+
+    // RECOVERY-1A/1B: foreground opt-in is immediate (independent of audio/push).
+    const sessionBefore = loadReadyAlertState(trackingToken);
+    saveReadyAlertState(trackingToken, { ...sessionBefore, alertsActivated: true });
+    setAlertsActivated(true);
+
     try {
       const result = await activateReadyAlertsFromGesture({ trackingToken, slug });
       logReadyAlertActivation(trackingToken, result);
@@ -80,15 +125,16 @@ export function useReadyStatusAlerts({
       const session = loadReadyAlertState(trackingToken);
       saveReadyAlertState(trackingToken, {
         ...session,
-        alertsActivated: result.audioReady,
+        alertsActivated: true,
         pushSubscriptionActive: result.pushSubscribed,
         pushSubscriptionState: result.pushSubscriptionState,
       });
-      setAlertsActivated(result.audioReady);
+      setAlertsActivated(true);
+      runRecoveryIfNeeded();
     } finally {
       setActivating(false);
     }
-  }, [trackingToken, slug, activating]);
+  }, [trackingToken, slug, activating, runRecoveryIfNeeded]);
 
   const acknowledge = useCallback(() => {
     if (!trackingToken) return;
@@ -133,46 +179,24 @@ export function useReadyStatusAlerts({
     const session = loadReadyAlertState(trackingToken);
     if (session.alert1Sent) return;
 
-    const delivery1 = deliverReadyAlertTier({
+    const result = handleReadyTier1Delivery({
       trackingToken,
-      tier: 1,
       orderNumber,
       language,
-      alertsActivated: session.alertsActivated,
+      status,
+      source: "transition",
+      previousStatus,
     });
 
-    if (delivery1.notification || session.pushSubscriptionActive) {
+    if (!result.delivered) return;
+
+    if (result.delivery.notification || session.pushSubscriptionActive) {
       setNotificationDeliveredHint(true);
     }
 
-    saveReadyAlertState(trackingToken, {
-      ...session,
-      alert1Sent: true,
-      alert1NotificationDelivered: delivery1.notification,
-      lastStatus: status,
-    });
-
     if (!session.alertsActivated) return;
 
-    scheduleReadyAlertFollowUp(trackingToken, () => {
-      const latest = loadReadyAlertState(trackingToken);
-      if (latest.acknowledged || latest.alert2Sent || !latest.alertsActivated) return;
-
-      const delivery2 = deliverReadyAlertTier({
-        trackingToken,
-        tier: 2,
-        orderNumber,
-        language,
-        alertsActivated: true,
-      });
-
-      saveReadyAlertState(trackingToken, {
-        ...latest,
-        alert2Sent: true,
-        alert2NotificationDelivered: delivery2.notification,
-        lastStatus: "ready",
-      });
-    });
+    scheduleTier2IfNeeded(trackingToken, orderNumber, language);
   }, [enabled, trackingToken, status, orderNumber, language]);
 
   useEffect(() => {

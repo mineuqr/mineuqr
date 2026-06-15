@@ -17,7 +17,14 @@ import {
   type PushSubscribeOutcomeReason,
   type PushSubscriptionState,
 } from "@/lib/pushSubscriptionState";
-import { logReadyAlertDelivery } from "@/lib/readyNotificationDiagnostics";
+import {
+  logAlert1SentPersisted,
+  logReadyAlertDelivery,
+  logReadyAlertDeliverySkipped,
+  logReadyAlertDeliverySucceeded,
+  logReadyAlertRecoveryAttempt,
+  logReadyTransitionDetected,
+} from "@/lib/readyNotificationDiagnostics";
 import type { OrderLifecycleStatus } from "@/lib/orderStatusDisplay";
 
 export const READY_ALERT_FOLLOW_UP_MS = 30_000;
@@ -316,6 +323,146 @@ export function deliverReadyAlertTier(options: {
 
 export function wasReadyAlertDelivered(delivery: ReadyAlertDelivery): boolean {
   return delivery.sound || delivery.notification || delivery.vibrate;
+}
+
+export type ReadyTier1HandleResult = {
+  delivered: boolean;
+  delivery: ReadyAlertDelivery;
+  alert1Sent: boolean;
+};
+
+export function handleReadyTier1Delivery(options: {
+  trackingToken: string;
+  orderNumber: string;
+  language: "ar" | "en";
+  status: OrderLifecycleStatus;
+  source: "transition" | "recovery";
+  previousStatus?: OrderLifecycleStatus | null;
+}): ReadyTier1HandleResult {
+  const session = loadReadyAlertState(options.trackingToken);
+  const emptyDelivery: ReadyAlertDelivery = {
+    sound: false,
+    notification: false,
+    vibrate: false,
+  };
+
+  if (session.alert1Sent) {
+    return { delivered: false, delivery: emptyDelivery, alert1Sent: true };
+  }
+
+  if (options.source === "transition") {
+    logReadyTransitionDetected(
+      options.trackingToken,
+      options.previousStatus ?? null,
+      options.status
+    );
+  } else {
+    logReadyAlertRecoveryAttempt(options.trackingToken, {
+      lastStatus: session.lastStatus,
+      alertsActivated: session.alertsActivated,
+      alert1Sent: session.alert1Sent,
+    });
+  }
+
+  const delivery = deliverReadyAlertTier({
+    trackingToken: options.trackingToken,
+    tier: 1,
+    orderNumber: options.orderNumber,
+    language: options.language,
+    alertsActivated: session.alertsActivated,
+  });
+
+  if (!wasReadyAlertDelivered(delivery)) {
+    logReadyAlertDeliverySkipped(
+      options.trackingToken,
+      1,
+      session.alertsActivated ? "no_channel_delivered" : "alertsActivated_false",
+      delivery,
+      { alertsActivated: session.alertsActivated, source: options.source }
+    );
+    saveReadyAlertState(options.trackingToken, {
+      ...session,
+      lastStatus: options.status,
+    });
+    return { delivered: false, delivery, alert1Sent: false };
+  }
+
+  logReadyAlertDeliverySucceeded(options.trackingToken, 1, delivery, {
+    source: options.source,
+  });
+  saveReadyAlertState(options.trackingToken, {
+    ...session,
+    alert1Sent: true,
+    alert1NotificationDelivered: delivery.notification,
+    lastStatus: options.status,
+  });
+  logAlert1SentPersisted(options.trackingToken, {
+    source: options.source,
+    notificationDelivered: delivery.notification,
+  });
+
+  return { delivered: true, delivery, alert1Sent: true };
+}
+
+/** RECOVERY-1D — single recovery when user opts in after READY was missed. */
+export function deliverMissedReadyTier1IfNeeded(options: {
+  trackingToken: string;
+  orderNumber: string;
+  language: "ar" | "en";
+  currentStatus: OrderLifecycleStatus;
+}): ReadyTier1HandleResult | null {
+  if (options.currentStatus !== "ready") return null;
+
+  const session = loadReadyAlertState(options.trackingToken);
+  if (!session.alertsActivated || session.alert1Sent) return null;
+  if (session.lastStatus !== "ready") return null;
+
+  return handleReadyTier1Delivery({
+    trackingToken: options.trackingToken,
+    orderNumber: options.orderNumber,
+    language: options.language,
+    status: options.currentStatus,
+    source: "recovery",
+  });
+}
+
+export function handleReadyTier2Delivery(options: {
+  trackingToken: string;
+  orderNumber: string;
+  language: "ar" | "en";
+}): ReadyAlertDelivery {
+  const latest = loadReadyAlertState(options.trackingToken);
+  if (latest.acknowledged || latest.alert2Sent || !latest.alertsActivated) {
+    return { sound: false, notification: false, vibrate: false };
+  }
+
+  const delivery = deliverReadyAlertTier({
+    trackingToken: options.trackingToken,
+    tier: 2,
+    orderNumber: options.orderNumber,
+    language: options.language,
+    alertsActivated: true,
+  });
+
+  if (wasReadyAlertDelivered(delivery)) {
+    logReadyAlertDeliverySucceeded(options.trackingToken, 2, delivery);
+    saveReadyAlertState(options.trackingToken, {
+      ...latest,
+      alert2Sent: true,
+      alert2NotificationDelivered: delivery.notification,
+      lastStatus: "ready",
+    });
+  } else {
+    logReadyAlertDeliverySkipped(
+      options.trackingToken,
+      2,
+      "no_channel_delivered",
+      delivery,
+      { alertsActivated: true, source: "transition" }
+    );
+  }
+
+  return delivery;
 }
 
 export function acknowledgeReadyAlerts(trackingToken: string): void {
