@@ -5,6 +5,7 @@
 import type { PushSubscribeFailureReason } from "@/lib/customerPush";
 import {
   getPushSupportSnapshot,
+  type PushEnrollmentTrace,
   type PushSupportSnapshot,
 } from "@/lib/customerPushDiagnostics";
 
@@ -31,6 +32,8 @@ export type PushActivationDiagnostics = {
   pushSubscribeReason: PushSubscribeOutcomeReason | null;
   pushSubscriptionState: PushSubscriptionState;
   isIosSafariTab: boolean;
+  enrollmentTrace: PushEnrollmentTrace;
+  subscriptionId: number | null;
 };
 
 export function isIosWebKitTabWithoutPush(): boolean {

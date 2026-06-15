@@ -61,6 +61,7 @@ export default function OrderStatusPage() {
     activating,
     activateAlerts,
     notificationDeliveredHint,
+    pushSubscribed,
     pushSubscriptionState,
     activationDiagnostics,
     showIosInstallSteps,
@@ -216,6 +217,7 @@ export default function OrderStatusPage() {
             <div className="space-y-2">
               <ReadyAlertActivationBanner
                 language={lang}
+                pushSubscribed={pushSubscribed}
                 pushSubscriptionState={pushSubscriptionState}
                 activationAttempted={activationDiagnostics !== null}
                 showIosInstallSteps={showIosInstallSteps}

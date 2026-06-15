@@ -1,9 +1,9 @@
 /**
- * TRUE-PUSH-VALIDATION-1 — customer push subscription trace logging.
+ * SUBSCRIPTION-VALIDATION-1 — staged push enrollment trace.
  * Enable: ?pushTrace=1 or sessionStorage mineuqr:push:trace=1
  */
 
-export const PUSH_TRACE_BUILD = "PUSH-SUBSCRIPTION-HARDENING-1";
+export const PUSH_TRACE_BUILD = "SUBSCRIPTION-VALIDATION-1";
 
 export type PushSupportSnapshot = {
   serviceWorker: boolean;
@@ -13,6 +13,102 @@ export type PushSupportSnapshot = {
   iosStandalone: boolean;
   permission: NotificationPermission | "unsupported";
 };
+
+/** SV-1 — canonical enrollment stages */
+export type PushSubscribeTraceStage =
+  | "activation_started"
+  | "permission_before"
+  | "permission_after"
+  | "support_check"
+  | "vapid_fetch_started"
+  | "vapid_fetch_success"
+  | "vapid_fetch_failed"
+  | "sw_registration_started"
+  | "sw_registration_success"
+  | "sw_registration_failed"
+  | "push_subscribe_started"
+  | "push_subscribe_success"
+  | "push_subscribe_failed"
+  | "subscribe_api_started"
+  | "subscribe_api_success"
+  | "subscribe_api_failed"
+  | "enrollment_complete";
+
+/** SV-4 — terminal failure reasons */
+export type PushSubscribeFailureStage =
+  | "unsupported"
+  | "permission_denied"
+  | "skipped_permission"
+  | "not_configured"
+  | "service_worker_failed"
+  | "subscription_failed"
+  | "invalid_subscription"
+  | "subscribe_api_failed";
+
+export type PushEnrollmentTrace = {
+  stages: PushSubscribeTraceStage[];
+  lastStage: PushSubscribeTraceStage | null;
+  failureStage: PushSubscribeFailureStage | null;
+  pushSubscribed: boolean;
+  subscriptionId: number | null;
+  httpStatus: number | null;
+};
+
+const emptyTrace = (): PushEnrollmentTrace => ({
+  stages: [],
+  lastStage: null,
+  failureStage: null,
+  pushSubscribed: false,
+  subscriptionId: null,
+  httpStatus: null,
+});
+
+let enrollmentTrace: PushEnrollmentTrace = emptyTrace();
+
+export function resetPushSubscribeTrace(): void {
+  enrollmentTrace = emptyTrace();
+}
+
+export function getPushSubscribeTraceSnapshot(): PushEnrollmentTrace {
+  return { ...enrollmentTrace, stages: [...enrollmentTrace.stages] };
+}
+
+export function recordPushSubscribeStage(
+  stage: PushSubscribeTraceStage,
+  metadata?: Record<string, unknown>
+): void {
+  enrollmentTrace.stages.push(stage);
+  enrollmentTrace.lastStage = stage;
+  if (stage === "enrollment_complete") {
+    enrollmentTrace.pushSubscribed = true;
+  }
+  logPushTrace(stage, metadata);
+}
+
+export function recordPushSubscribeFailure(
+  failureStage: PushSubscribeFailureStage,
+  metadata?: Record<string, unknown>
+): void {
+  enrollmentTrace.failureStage = failureStage;
+  logPushTrace("enrollment_failed", { failureStage, ...metadata });
+}
+
+export function recordPushSubscribeSuccess(options: {
+  subscriptionId?: number;
+  httpStatus?: number;
+}): void {
+  enrollmentTrace.pushSubscribed = true;
+  enrollmentTrace.subscriptionId = options.subscriptionId ?? null;
+  enrollmentTrace.httpStatus = options.httpStatus ?? null;
+  enrollmentTrace.failureStage = null;
+  recordPushSubscribeStage("subscribe_api_success", {
+    subscriptionId: options.subscriptionId ?? null,
+    httpStatus: options.httpStatus ?? null,
+  });
+  recordPushSubscribeStage("enrollment_complete", {
+    subscriptionId: options.subscriptionId ?? null,
+  });
+}
 
 export function isPushTraceEnabled(): boolean {
   if (import.meta.env.DEV && import.meta.env.VITE_PUSH_TRACE === "1") {

@@ -1,6 +1,6 @@
 import { Bell, BellRing, CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { isBackgroundPushReady, type PushSubscriptionState } from "@/lib/pushSubscriptionState";
+import type { PushSubscriptionState } from "@/lib/pushSubscriptionState";
 import {
   getEnrollmentActivatingLabel,
   getEnrollmentBenefitBody,
@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 
 type ReadyAlertActivationBannerProps = {
   language: "ar" | "en";
+  pushSubscribed: boolean;
   pushSubscriptionState: PushSubscriptionState;
   activating: boolean;
   onActivate: () => void;
@@ -31,6 +32,7 @@ type ReadyAlertActivationBannerProps = {
 
 export function ReadyAlertActivationBanner({
   language,
+  pushSubscribed,
   pushSubscriptionState,
   activating,
   onActivate,
@@ -40,7 +42,8 @@ export function ReadyAlertActivationBanner({
 }: ReadyAlertActivationBannerProps) {
   const isSubscribing = pushSubscriptionState === "SUBSCRIBING" || activating;
 
-  if (isBackgroundPushReady(pushSubscriptionState)) {
+  // SV-3: success UI only after confirmed POST /api/push/subscribe
+  if (pushSubscribed) {
     return (
       <div
         className={cn(

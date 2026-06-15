@@ -1,5 +1,5 @@
 /**
- * PUSH-SUBSCRIPTION-HARDENING-1 — on-page push diagnostics (?pushTrace=1).
+ * SUBSCRIPTION-VALIDATION-1 — on-page push enrollment diagnostics (?pushTrace=1).
  */
 
 import type { PushActivationDiagnostics } from "@/lib/pushSubscriptionState";
@@ -17,14 +17,13 @@ export function PushTraceDiagnosticsPanel({
   if (!isPushTraceEnabled()) return null;
 
   const snap = diagnostics?.support;
+  const trace = diagnostics?.enrollmentTrace;
   const rows: Array<{ label: string; value: string }> = [
     { label: "permission (before)", value: diagnostics?.permissionBefore ?? "—" },
     { label: "permission (after)", value: diagnostics?.permissionAfter ?? "—" },
     { label: "pushManager", value: snap ? String(snap.pushManager) : "—" },
     { label: "serviceWorker", value: snap ? String(snap.serviceWorker) : "—" },
     { label: "notification", value: snap ? String(snap.notification) : "—" },
-    { label: "iosStandalone", value: snap ? String(snap.iosStandalone) : "—" },
-    { label: "displayModeStandalone", value: snap ? String(snap.displayModeStandalone) : "—" },
     { label: "pushSubscribed", value: diagnostics ? String(diagnostics.pushSubscribed) : "—" },
     {
       label: "pushSubscribeReason",
@@ -33,6 +32,14 @@ export function PushTraceDiagnosticsPanel({
     {
       label: "pushSubscriptionState",
       value: diagnostics?.pushSubscriptionState ?? "—",
+    },
+    { label: "failureStage", value: trace?.failureStage ?? "—" },
+    { label: "lastStage", value: trace?.lastStage ?? "—" },
+    { label: "subscriptionId", value: trace?.subscriptionId != null ? String(trace.subscriptionId) : "—" },
+    { label: "subscribeHttpStatus", value: trace?.httpStatus != null ? String(trace.httpStatus) : "—" },
+    {
+      label: "stages",
+      value: trace?.stages.length ? trace.stages.join(" → ") : "—",
     },
     { label: "isIosSafariTab", value: diagnostics ? String(diagnostics.isIosSafariTab) : "—" },
   ];
@@ -43,7 +50,7 @@ export function PushTraceDiagnosticsPanel({
       dir="ltr"
     >
       <p className="font-sans font-semibold text-slate-700 dark:text-slate-200">
-        {language === "ar" ? "تشخيص الدفع (pushTrace)" : "Push trace diagnostics"}
+        {language === "ar" ? "تشخيص الاشتراك (pushTrace)" : "Push enrollment trace"}
       </p>
       {rows.map((row) => (
         <div key={row.label} className="flex gap-2">
