@@ -1255,16 +1255,37 @@ export async function getActivePushSubscriptionsForOrder(
     );
 }
 
+export async function countExpiredPushSubscriptionsForOrder(orderId: number): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+
+  const now = new Date().toISOString().slice(0, 19).replace("T", " ");
+
+  const [row] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(customerPushSubscriptions)
+    .where(
+      and(
+        eq(customerPushSubscriptions.orderId, orderId),
+        sql`${customerPushSubscriptions.expiresAt} IS NOT NULL`,
+        sql`${customerPushSubscriptions.expiresAt} <= ${now}`
+      )
+    );
+
+  return Number(row?.count ?? 0);
+}
+
 export async function touchCustomerPushSubscriptionLastUsed(
   subscriptionId: number
-): Promise<void> {
+): Promise<string | null> {
   const db = await getDb();
-  if (!db) return;
+  if (!db) return null;
   const now = new Date().toISOString().slice(0, 19).replace("T", " ");
   await db
     .update(customerPushSubscriptions)
     .set({ lastUsedAt: now })
     .where(eq(customerPushSubscriptions.id, subscriptionId));
+  return now;
 }
 
 export async function claimReadyPushSend(orderId: number): Promise<boolean> {

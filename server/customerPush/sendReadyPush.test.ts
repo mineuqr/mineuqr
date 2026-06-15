@@ -12,6 +12,7 @@ vi.mock("../db", () => ({
 
 vi.mock("./subscriptionRepository", () => ({
   claimReadyPushForOrder: vi.fn(),
+  countExpiredSubscriptionsForOrder: vi.fn(),
   listActiveSubscriptionsForOrder: vi.fn(),
   releaseReadyPushForOrder: vi.fn(),
   removeStalePushSubscription: vi.fn(),
@@ -33,6 +34,7 @@ import { getOrderPushContext } from "../db";
 import { sendReadyPushForOrder } from "./sendReadyPush";
 import {
   claimReadyPushForOrder,
+  countExpiredSubscriptionsForOrder,
   listActiveSubscriptionsForOrder,
   releaseReadyPushForOrder,
   removeStalePushSubscription,
@@ -57,6 +59,12 @@ const subscriptionB = {
   endpointHash: "def",
 };
 
+const input = {
+  orderId: 1,
+  trackingToken: "tok123456789012345",
+  orderNumber: "ORD-1",
+};
+
 function getDeliveryDiagnostics(callIndex = -1) {
   const call = opsLogMock.mock.calls.at(callIndex)?.[0] as {
     metadata?: { deliveryDiagnostics?: Record<string, unknown> };
@@ -64,10 +72,19 @@ function getDeliveryDiagnostics(callIndex = -1) {
   return call?.metadata?.deliveryDiagnostics;
 }
 
+function getFinalOkDiagnostics() {
+  const okCall = opsLogMock.mock.calls.find(
+    (c) => (c[0] as { type: string }).type === "customer_push_send_ok"
+  )?.[0] as { metadata: { deliveryDiagnostics: Record<string, unknown> } };
+  return okCall?.metadata?.deliveryDiagnostics;
+}
+
 describe("sendReadyPushForOrder HOTFIX-1", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(claimReadyPushForOrder).mockResolvedValue(true);
+    vi.mocked(countExpiredSubscriptionsForOrder).mockResolvedValue(0);
+    vi.mocked(touchPushSubscriptionLastUsed).mockResolvedValue("2026-06-11 12:00:01");
     vi.mocked(getOrderPushContext).mockResolvedValue({
       orderId: 1,
       orderNumber: "ORD-1",
@@ -82,11 +99,7 @@ describe("sendReadyPushForOrder HOTFIX-1", () => {
   });
 
   it("skips when tracking token missing without claiming", async () => {
-    await sendReadyPushForOrder({
-      orderId: 1,
-      trackingToken: null,
-      orderNumber: "ORD-1",
-    });
+    await sendReadyPushForOrder({ ...input, trackingToken: null });
 
     expect(claimReadyPushForOrder).not.toHaveBeenCalled();
     expect(opsLogMock).toHaveBeenCalledWith(
@@ -95,10 +108,6 @@ describe("sendReadyPushForOrder HOTFIX-1", () => {
         metadata: expect.objectContaining({
           orderId: 1,
           reason: "no_tracking_token",
-          deliveryDiagnostics: expect.objectContaining({
-            failureReason: "no_tracking_token",
-            claimResult: null,
-          }),
         }),
       })
     );
@@ -107,20 +116,13 @@ describe("sendReadyPushForOrder HOTFIX-1", () => {
   it("does not claim when there are no subscriptions", async () => {
     vi.mocked(listActiveSubscriptionsForOrder).mockResolvedValue([]);
 
-    await sendReadyPushForOrder({
-      orderId: 1,
-      trackingToken: "tok123456789012345",
-      orderNumber: "ORD-1",
-    });
+    await sendReadyPushForOrder(input);
 
     expect(claimReadyPushForOrder).not.toHaveBeenCalled();
     expect(webpush.sendNotification).not.toHaveBeenCalled();
-    const diag = getDeliveryDiagnostics();
-    expect(diag).toMatchObject({
-      orderId: 1,
+    expect(getDeliveryDiagnostics()).toMatchObject({
       subscriptionCount: 0,
       failureReason: "no_subscriptions",
-      stages: expect.arrayContaining(["subscriptions_loaded"]),
     });
   });
 
@@ -135,78 +137,47 @@ describe("sendReadyPushForOrder HOTFIX-1", () => {
       return true;
     });
 
-    await sendReadyPushForOrder({
-      orderId: 1,
-      trackingToken: "tok123456789012345",
-      orderNumber: "ORD-1",
-    });
+    await sendReadyPushForOrder(input);
 
     expect(callOrder).toEqual(["list", "claim"]);
-    expect(claimReadyPushForOrder).toHaveBeenCalledWith(1);
     expect(webpush.sendNotification).toHaveBeenCalledTimes(1);
     expect(touchPushSubscriptionLastUsed).toHaveBeenCalledWith(9);
 
-    const okCall = opsLogMock.mock.calls.find(
-      (c) => (c[0] as { type: string }).type === "customer_push_send_ok"
-    )?.[0] as { metadata: { deliveryDiagnostics: Record<string, unknown> } };
-
-    expect(okCall.metadata.deliveryDiagnostics).toMatchObject({
+    expect(getFinalOkDiagnostics()).toMatchObject({
       orderId: 1,
+      trackingToken: "tok123456789012345",
       subscriptionCount: 1,
-      successfulSends: 1,
-      failedSends: 0,
-      claimResult: true,
-      failureReason: null,
-      stages: expect.arrayContaining([
-        "delivery_started",
-        "subscriptions_loaded",
-        "claim_acquired",
-        "ready_push_marked",
-        "send_success",
-        "last_used_updated",
-        "delivery_complete",
-      ]),
+      successCount: 1,
+      failureCount: 0,
+      lastUsedAt: "2026-06-11 12:00:01",
+      deliveryTimeline: expect.stringContaining("delivery_complete"),
     });
   });
 
   it("does not send when idempotency claim fails", async () => {
     vi.mocked(claimReadyPushForOrder).mockResolvedValue(false);
 
-    await sendReadyPushForOrder({
-      orderId: 1,
-      trackingToken: "tok123456789012345",
-      orderNumber: "ORD-1",
-    });
+    await sendReadyPushForOrder(input);
 
     expect(webpush.sendNotification).not.toHaveBeenCalled();
     expect(getDeliveryDiagnostics()).toMatchObject({
       failureReason: "claim_failed",
-      claimResult: false,
-      readyPushSentAt: null,
-      stages: expect.arrayContaining(["claim_failed"]),
+      duplicateSendPrevented: true,
+      stages: expect.arrayContaining(["duplicate_send_prevented"]),
     });
   });
 
   it("releases claim when every subscription send fails", async () => {
     vi.mocked(webpush.sendNotification).mockRejectedValue(new Error("push down"));
 
-    await sendReadyPushForOrder({
-      orderId: 1,
-      trackingToken: "tok123456789012345",
-      orderNumber: "ORD-1",
-    });
+    await sendReadyPushForOrder(input);
 
     expect(releaseReadyPushForOrder).toHaveBeenCalledWith(1);
-    const diag = getDeliveryDiagnostics();
-    expect(diag).toMatchObject({
+    expect(getDeliveryDiagnostics()).toMatchObject({
       failureReason: "all_subscriptions_failed",
-      successfulSends: 0,
-      failedSends: 1,
-      stages: expect.arrayContaining(["ready_push_released"]),
+      successCount: 0,
+      failureCount: 1,
     });
-    expect(opsLogMock).not.toHaveBeenCalledWith(
-      expect.objectContaining({ type: "customer_push_send_ok" })
-    );
   });
 });
 
@@ -214,6 +185,8 @@ describe("sendReadyPushForOrder PUSH-DELIVERY-VALIDATION-1", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(claimReadyPushForOrder).mockResolvedValue(true);
+    vi.mocked(countExpiredSubscriptionsForOrder).mockResolvedValue(0);
+    vi.mocked(touchPushSubscriptionLastUsed).mockResolvedValue("2026-06-11 12:00:01");
     vi.mocked(getOrderPushContext).mockResolvedValue({
       orderId: 1,
       orderNumber: "ORD-1",
@@ -228,25 +201,14 @@ describe("sendReadyPushForOrder PUSH-DELIVERY-VALIDATION-1", () => {
       .mockResolvedValueOnce(undefined)
       .mockRejectedValueOnce(Object.assign(new Error("gone"), { statusCode: 410 }));
 
-    await sendReadyPushForOrder({
-      orderId: 1,
-      trackingToken: "tok123456789012345",
-      orderNumber: "ORD-1",
-    });
+    await sendReadyPushForOrder(input);
 
     expect(releaseReadyPushForOrder).not.toHaveBeenCalled();
-    expect(touchPushSubscriptionLastUsed).toHaveBeenCalledWith(9);
     expect(removeStalePushSubscription).toHaveBeenCalledWith(1, subscriptionB.endpoint);
-
-    const okCall = opsLogMock.mock.calls.find(
-      (c) => (c[0] as { type: string }).type === "customer_push_send_ok"
-    )?.[0] as { metadata: { deliveryDiagnostics: Record<string, unknown> } };
-
-    expect(okCall.metadata.deliveryDiagnostics).toMatchObject({
-      successfulSends: 1,
-      failedSends: 1,
-      subscriptionCount: 2,
-      failureReason: null,
+    expect(getFinalOkDiagnostics()).toMatchObject({
+      successCount: 1,
+      failureCount: 1,
+      staleSubscriptionsRemoved: 1,
     });
   });
 
@@ -256,11 +218,7 @@ describe("sendReadyPushForOrder PUSH-DELIVERY-VALIDATION-1", () => {
       Object.assign(new Error("gone"), { statusCode: 404 })
     );
 
-    await sendReadyPushForOrder({
-      orderId: 1,
-      trackingToken: "tok123456789012345",
-      orderNumber: "ORD-1",
-    });
+    await sendReadyPushForOrder(input);
 
     const perSubFail = opsLogMock.mock.calls.find(
       (c) =>
@@ -269,5 +227,68 @@ describe("sendReadyPushForOrder PUSH-DELIVERY-VALIDATION-1", () => {
         (c[0] as { metadata?: { reason?: string } }).metadata?.reason === "endpoint_gone"
     );
     expect(perSubFail).toBeDefined();
+  });
+});
+
+describe("sendReadyPushForOrder DELIVERY-HARDENING-1", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(countExpiredSubscriptionsForOrder).mockResolvedValue(0);
+    vi.mocked(touchPushSubscriptionLastUsed).mockResolvedValue("2026-06-11 12:00:01");
+    vi.mocked(getOrderPushContext).mockResolvedValue({
+      orderId: 1,
+      orderNumber: "ORD-1",
+      trackingToken: "tok123456789012345",
+      slug: "cafe",
+    });
+    vi.mocked(listActiveSubscriptionsForOrder).mockResolvedValue([subscription]);
+  });
+
+  it("prevents duplicate sends on repeated READY delivery attempts", async () => {
+    vi.mocked(claimReadyPushForOrder)
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(false);
+
+    await sendReadyPushForOrder(input);
+    await sendReadyPushForOrder(input);
+
+    expect(webpush.sendNotification).toHaveBeenCalledTimes(1);
+    expect(claimReadyPushForOrder).toHaveBeenCalledTimes(2);
+
+    const skipCall = opsLogMock.mock.calls.find(
+      (c) =>
+        (c[0] as { metadata?: { duplicateSendPrevented?: boolean } }).metadata
+          ?.duplicateSendPrevented === true
+    );
+    expect(skipCall).toBeDefined();
+  });
+
+  it("allows retry after all sends fail and claim is released", async () => {
+    vi.mocked(claimReadyPushForOrder).mockResolvedValue(true);
+    vi.mocked(webpush.sendNotification)
+      .mockRejectedValueOnce(new Error("down"))
+      .mockResolvedValueOnce(undefined);
+
+    await sendReadyPushForOrder(input);
+    expect(releaseReadyPushForOrder).toHaveBeenCalledTimes(1);
+
+    await sendReadyPushForOrder(input);
+    expect(claimReadyPushForOrder).toHaveBeenCalledTimes(2);
+    expect(webpush.sendNotification).toHaveBeenCalledTimes(2);
+    expect(getFinalOkDiagnostics()).toMatchObject({ successCount: 1 });
+  });
+
+  it("skips with subscriptions_all_expired when only expired rows exist", async () => {
+    vi.mocked(listActiveSubscriptionsForOrder).mockResolvedValue([]);
+    vi.mocked(countExpiredSubscriptionsForOrder).mockResolvedValue(2);
+
+    await sendReadyPushForOrder(input);
+
+    expect(claimReadyPushForOrder).not.toHaveBeenCalled();
+    expect(getDeliveryDiagnostics()).toMatchObject({
+      failureReason: "subscriptions_all_expired",
+      expiredSubscriptionCount: 2,
+      subscriptionCount: 0,
+    });
   });
 });

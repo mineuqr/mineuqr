@@ -1,6 +1,6 @@
 /**
  * BACKGROUND-NOTIFICATIONS-1A — send READY Web Push to subscribed devices.
- * PUSH-DELIVERY-VALIDATION-1 — staged delivery tracing + diagnostics.
+ * DELIVERY-HARDENING-1 — observability + subscription lifecycle diagnostics.
  */
 
 import webpush from "web-push";
@@ -14,6 +14,7 @@ import {
 } from "./pushDeliveryDiagnostics";
 import {
   claimReadyPushForOrder,
+  countExpiredSubscriptionsForOrder,
   listActiveSubscriptionsForOrder,
   releaseReadyPushForOrder,
   removeStalePushSubscription,
@@ -43,8 +44,10 @@ function logPushDelivery(
     ts: new Date().toISOString(),
     metadata: {
       orderId: diagnostics.orderId,
+      trackingToken: diagnostics.trackingToken,
       reason: diagnostics.failureReason,
       deliveryStage: diagnostics.lastStage,
+      deliveryTimeline: diagnostics.deliveryTimeline,
       deliveryDiagnostics: diagnostics,
       ...extra,
     },
@@ -63,7 +66,7 @@ function isStaleSubscriptionError(statusCode: number | undefined): boolean {
 export async function sendReadyPushForOrder(
   input: SendReadyPushOrderInput
 ): Promise<void> {
-  const trace = new PushDeliveryTrace(input.orderId);
+  const trace = new PushDeliveryTrace(input.orderId, input.trackingToken);
 
   if (!input.trackingToken) {
     skipDelivery(trace, "no_tracking_token");
@@ -80,10 +83,21 @@ export async function sendReadyPushForOrder(
     return;
   }
 
+  trace.setTrackingToken(context.trackingToken);
+
   const subscriptions = await listActiveSubscriptionsForOrder(input.orderId);
-  trace.setSubscriptionsLoaded(subscriptions.length);
+  const expiredCount = await countExpiredSubscriptionsForOrder(input.orderId);
+  trace.setSubscriptionsLoaded(subscriptions.length, expiredCount);
 
   if (subscriptions.length === 0) {
+    if (expiredCount > 0) {
+      trace.setFailure("subscriptions_all_expired");
+      logPushDelivery("customer_push_send_skipped", trace, {
+        reason: "subscriptions_all_expired",
+        expiredSubscriptionCount: expiredCount,
+      });
+      return;
+    }
     skipDelivery(trace, "no_subscriptions");
     return;
   }
@@ -91,8 +105,11 @@ export async function sendReadyPushForOrder(
   trace.markClaimAttempt();
   const claimed = await claimReadyPushForOrder(input.orderId);
   if (!claimed) {
-    trace.markClaimFailed();
-    logPushDelivery("customer_push_send_skipped", trace, { reason: "claim_failed" });
+    trace.markClaimFailedDuplicate();
+    logPushDelivery("customer_push_send_skipped", trace, {
+      reason: "claim_failed",
+      duplicateSendPrevented: true,
+    });
     return;
   }
 
@@ -128,8 +145,8 @@ export async function sendReadyPushForOrder(
           },
           payload
         );
-        await touchPushSubscriptionLastUsed(sub.id);
-        trace.markSendSuccess();
+        const lastUsedAt = await touchPushSubscriptionLastUsed(sub.id);
+        trace.markSendSuccess(lastUsedAt ?? claimTimestamp);
       } catch (err) {
         const statusCode =
           err && typeof err === "object" && "statusCode" in err
@@ -141,6 +158,7 @@ export async function sendReadyPushForOrder(
 
         if (isStaleSubscriptionError(statusCode)) {
           await removeStalePushSubscription(sub.orderId, sub.endpoint);
+          trace.markStaleSubscriptionRemoved();
         }
 
         opsLog({
@@ -150,10 +168,12 @@ export async function sendReadyPushForOrder(
           ts: new Date().toISOString(),
           metadata: {
             orderId: input.orderId,
+            trackingToken: context.trackingToken,
             subscriptionId: sub.id,
             reason: sendFailure,
             statusCode: statusCode ?? null,
             message: err instanceof Error ? err.message : String(err),
+            deliveryTimeline: trace.getDiagnostics().deliveryTimeline,
             deliveryDiagnostics: trace.getDiagnostics(),
           },
         });
@@ -176,8 +196,8 @@ export async function sendReadyPushForOrder(
 
   trace.markDeliveryComplete();
   logPushDelivery("customer_push_send_ok", trace, {
-    successCount: diagnostics.successfulSends,
+    successCount: diagnostics.successCount,
+    failureCount: diagnostics.failureCount,
     subscriptionCount: diagnostics.subscriptionCount,
-    failedSends: diagnostics.failedSends,
   });
 }

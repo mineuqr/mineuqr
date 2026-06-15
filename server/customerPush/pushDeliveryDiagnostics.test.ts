@@ -1,33 +1,47 @@
 /**
- * PUSH-DELIVERY-VALIDATION-1 — delivery trace unit tests.
+ * DELIVERY-HARDENING-1 — delivery trace unit tests.
  */
 
 import { describe, expect, it } from "vitest";
 import {
   classifySendFailure,
+  formatDeliveryTimeline,
   PushDeliveryTrace,
 } from "./pushDeliveryDiagnostics";
 
-describe("pushDeliveryDiagnostics", () => {
-  it("records staged delivery trace", () => {
-    const trace = new PushDeliveryTrace(42);
-    trace.setSubscriptionsLoaded(2);
+describe("pushDeliveryDiagnostics DELIVERY-HARDENING-1", () => {
+  it("records staged delivery trace with timeline", () => {
+    const trace = new PushDeliveryTrace(42, "tok123456789012345");
+    trace.setSubscriptionsLoaded(2, 1);
     trace.markClaimAttempt();
     trace.markClaimAcquired("2026-06-11 12:00:00");
-    trace.markSendSuccess();
+    trace.markSendSuccess("2026-06-11 12:00:01");
     trace.markDeliveryComplete();
 
     const d = trace.getDiagnostics();
     expect(d.orderId).toBe(42);
+    expect(d.trackingToken).toBe("tok123456789012345");
     expect(d.subscriptionCount).toBe(2);
-    expect(d.successfulSends).toBe(1);
+    expect(d.expiredSubscriptionCount).toBe(1);
+    expect(d.successCount).toBe(1);
+    expect(d.failureCount).toBe(0);
+    expect(d.lastUsedAt).toBe("2026-06-11 12:00:01");
     expect(d.claimResult).toBe(true);
     expect(d.readyPushSentAt).toBe("2026-06-11 12:00:00");
-    expect(d.stages).toContain("delivery_started");
-    expect(d.stages).toContain("subscriptions_loaded");
-    expect(d.stages).toContain("claim_acquired");
-    expect(d.stages).toContain("ready_push_marked");
-    expect(d.lastStage).toBe("delivery_complete");
+    expect(d.deliveryTimeline).toContain("delivery_started");
+    expect(d.deliveryTimeline).toContain("delivery_complete");
+    expect(formatDeliveryTimeline(d.stages)).toBe(d.deliveryTimeline);
+  });
+
+  it("marks duplicate send prevention on claim failure", () => {
+    const trace = new PushDeliveryTrace(1);
+    trace.markClaimAttempt();
+    trace.markClaimFailedDuplicate();
+
+    const d = trace.getDiagnostics();
+    expect(d.duplicateSendPrevented).toBe(true);
+    expect(d.stages).toContain("duplicate_send_prevented");
+    expect(d.failureReason).toBe("claim_failed");
   });
 
   it("classifies endpoint_gone for 404/410", () => {

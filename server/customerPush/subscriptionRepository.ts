@@ -4,6 +4,7 @@
 
 import {
   claimReadyPushSend,
+  countExpiredPushSubscriptionsForOrder,
   deletePushSubscriptionByEndpointHash,
   deletePushSubscriptionsForOrder,
   getActivePushSubscriptionsForOrder,
@@ -62,6 +63,10 @@ export async function listActiveSubscriptionsForOrder(
   return getActivePushSubscriptionsForOrder(orderId);
 }
 
+export async function countExpiredSubscriptionsForOrder(orderId: number): Promise<number> {
+  return countExpiredPushSubscriptionsForOrder(orderId);
+}
+
 export async function removeAllPushSubscriptionsForOrder(orderId: number): Promise<void> {
   await deletePushSubscriptionsForOrder(orderId);
 }
@@ -81,6 +86,6 @@ export async function removeStalePushSubscription(
   await deletePushSubscriptionByEndpointHash(orderId, hashPushEndpoint(endpoint));
 }
 
-export async function touchPushSubscriptionLastUsed(subscriptionId: number): Promise<void> {
-  await touchCustomerPushSubscriptionLastUsed(subscriptionId);
+export async function touchPushSubscriptionLastUsed(subscriptionId: number): Promise<string | null> {
+  return touchCustomerPushSubscriptionLastUsed(subscriptionId);
 }
