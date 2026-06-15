@@ -1,12 +1,17 @@
 /**
  * BACKGROUND-NOTIFICATIONS-1A — send READY Web Push to subscribed devices.
- * HOTFIX-1: claim only after subscriptions exist; release claim if all sends fail.
+ * PUSH-DELIVERY-VALIDATION-1 — staged delivery tracing + diagnostics.
  */
 
 import webpush from "web-push";
 import { getOrderPushContext } from "../db";
 import { opsLog } from "../_core/opsLog";
 import { buildReadyPushCopy, buildReadyPushUrl } from "./copy";
+import {
+  classifySendFailure,
+  PushDeliveryTrace,
+  type PushDeliveryFailureReason,
+} from "./pushDeliveryDiagnostics";
 import {
   claimReadyPushForOrder,
   listActiveSubscriptionsForOrder,
@@ -22,21 +27,33 @@ export type SendReadyPushOrderInput = {
   orderNumber: string;
 };
 
-type PushSkipReason =
-  | "no_tracking_token"
-  | "no_vapid"
-  | "no_push_context"
-  | "no_subscriptions"
-  | "claim_failed";
+function logPushDelivery(
+  type: "customer_push_send_skipped" | "customer_push_send_failed" | "customer_push_send_ok",
+  trace: PushDeliveryTrace,
+  extra?: Record<string, unknown>
+): void {
+  const diagnostics = trace.getDiagnostics();
+  const severity =
+    type === "customer_push_send_ok" ? "info" : type === "customer_push_send_skipped" ? "info" : "warn";
 
-function logPushSendSkipped(orderId: number, reason: PushSkipReason): void {
   opsLog({
-    type: "customer_push_send_skipped",
+    type,
     category: "ORDER",
-    severity: "info",
+    severity,
     ts: new Date().toISOString(),
-    metadata: { orderId, reason },
+    metadata: {
+      orderId: diagnostics.orderId,
+      reason: diagnostics.failureReason,
+      deliveryStage: diagnostics.lastStage,
+      deliveryDiagnostics: diagnostics,
+      ...extra,
+    },
   });
+}
+
+function skipDelivery(trace: PushDeliveryTrace, reason: PushDeliveryFailureReason): void {
+  trace.setFailure(reason);
+  logPushDelivery("customer_push_send_skipped", trace, { reason });
 }
 
 function isStaleSubscriptionError(statusCode: number | undefined): boolean {
@@ -46,34 +63,41 @@ function isStaleSubscriptionError(statusCode: number | undefined): boolean {
 export async function sendReadyPushForOrder(
   input: SendReadyPushOrderInput
 ): Promise<void> {
-  const { orderId } = input;
+  const trace = new PushDeliveryTrace(input.orderId);
 
   if (!input.trackingToken) {
-    logPushSendSkipped(orderId, "no_tracking_token");
+    skipDelivery(trace, "no_tracking_token");
     return;
   }
   if (!ensureWebPushVapidConfigured()) {
-    logPushSendSkipped(orderId, "no_vapid");
+    skipDelivery(trace, "no_vapid");
     return;
   }
 
-  const context = await getOrderPushContext(orderId);
+  const context = await getOrderPushContext(input.orderId);
   if (!context?.trackingToken || !context.slug) {
-    logPushSendSkipped(orderId, "no_push_context");
+    skipDelivery(trace, "no_push_context");
     return;
   }
 
-  const subscriptions = await listActiveSubscriptionsForOrder(orderId);
+  const subscriptions = await listActiveSubscriptionsForOrder(input.orderId);
+  trace.setSubscriptionsLoaded(subscriptions.length);
+
   if (subscriptions.length === 0) {
-    logPushSendSkipped(orderId, "no_subscriptions");
+    skipDelivery(trace, "no_subscriptions");
     return;
   }
 
-  const claimed = await claimReadyPushForOrder(orderId);
+  trace.markClaimAttempt();
+  const claimed = await claimReadyPushForOrder(input.orderId);
   if (!claimed) {
-    logPushSendSkipped(orderId, "claim_failed");
+    trace.markClaimFailed();
+    logPushDelivery("customer_push_send_skipped", trace, { reason: "claim_failed" });
     return;
   }
+
+  const claimTimestamp = new Date().toISOString().slice(0, 19).replace("T", " ");
+  trace.markClaimAcquired(claimTimestamp);
 
   const copy = buildReadyPushCopy(context.orderNumber, "ar");
   const url = buildReadyPushUrl(context.slug, context.trackingToken);
@@ -90,10 +114,9 @@ export async function sendReadyPushForOrder(
     url,
   });
 
-  let successCount = 0;
-
   await Promise.all(
     subscriptions.map(async (sub) => {
+      trace.markSendStarted();
       try {
         await webpush.sendNotification(
           {
@@ -106,12 +129,15 @@ export async function sendReadyPushForOrder(
           payload
         );
         await touchPushSubscriptionLastUsed(sub.id);
-        successCount += 1;
+        trace.markSendSuccess();
       } catch (err) {
         const statusCode =
           err && typeof err === "object" && "statusCode" in err
             ? (err as { statusCode?: number }).statusCode
             : undefined;
+
+        const sendFailure = classifySendFailure(statusCode);
+        trace.markSendFailed(sendFailure);
 
         if (isStaleSubscriptionError(statusCode)) {
           await removeStalePushSubscription(sub.orderId, sub.endpoint);
@@ -123,41 +149,35 @@ export async function sendReadyPushForOrder(
           severity: "warn",
           ts: new Date().toISOString(),
           metadata: {
-            orderId,
+            orderId: input.orderId,
             subscriptionId: sub.id,
+            reason: sendFailure,
             statusCode: statusCode ?? null,
             message: err instanceof Error ? err.message : String(err),
+            deliveryDiagnostics: trace.getDiagnostics(),
           },
         });
       }
     })
   );
 
-  if (successCount === 0) {
-    await releaseReadyPushForOrder(orderId);
-    opsLog({
-      type: "customer_push_send_failed",
-      category: "ORDER",
-      severity: "warn",
-      ts: new Date().toISOString(),
-      metadata: {
-        orderId,
-        reason: "all_subscriptions_failed",
-        subscriptionCount: subscriptions.length,
-      },
+  const diagnostics = trace.getDiagnostics();
+
+  if (diagnostics.successfulSends === 0) {
+    await releaseReadyPushForOrder(input.orderId);
+    trace.markReadyPushReleased();
+    trace.setFailure("all_subscriptions_failed");
+    logPushDelivery("customer_push_send_failed", trace, {
+      reason: "all_subscriptions_failed",
+      subscriptionCount: diagnostics.subscriptionCount,
     });
     return;
   }
 
-  opsLog({
-    type: "customer_push_send_ok",
-    category: "ORDER",
-    severity: "info",
-    ts: new Date().toISOString(),
-    metadata: {
-      orderId,
-      successCount,
-      subscriptionCount: subscriptions.length,
-    },
+  trace.markDeliveryComplete();
+  logPushDelivery("customer_push_send_ok", trace, {
+    successCount: diagnostics.successfulSends,
+    subscriptionCount: diagnostics.subscriptionCount,
+    failedSends: diagnostics.failedSends,
   });
 }
