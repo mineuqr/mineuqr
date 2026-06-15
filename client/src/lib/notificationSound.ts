@@ -5,6 +5,10 @@
 
 import { AUDIO_ASSETS } from "@/lib/audioAssets";
 import {
+  clearNotificationMediaSession,
+  NOTIFICATION_MEDIA_SESSION_CLEANUP_BUILD,
+} from "@/lib/notificationMediaSession";
+import {
   isAudio4SpikeEnabled,
   logAudio4,
   playDecodedReadyBuffer,
@@ -33,9 +37,11 @@ export const CUSTOMER_ALERT_PATTERN = {
 let sharedAudioContext: AudioContext | null = null;
 const assetAudioCache = new Map<string, HTMLAudioElement>();
 let ownerAlertAudioPrimed = false;
+let customerReadyHtmlCleanupTimer: ReturnType<typeof setTimeout> | null = null;
+let customerReadyWebAudioCleanupTimer: ReturnType<typeof setTimeout> | null = null;
 
 /** Temporary verification fingerprint — search prod bundle for this string. */
-export const AUDIO_TRACE_BUILD = "AUDIO-HOTFIX-3A-TRACE-1";
+export const AUDIO_TRACE_BUILD = "NOTIFICATION-AUDIO-CLEANUP-1";
 
 function isAudioTraceEnabled(): boolean {
   if (import.meta.env.DEV) return true;
@@ -54,6 +60,95 @@ function logAudioTrace(message: string, metadata?: Record<string, unknown>): voi
     console.info(`[mineuqr:audio] ${message}`, metadata);
   } else {
     console.info(`[mineuqr:audio] ${message}`);
+  }
+}
+
+function clearCustomerReadyPlaybackTimers(): void {
+  if (customerReadyHtmlCleanupTimer !== null) {
+    clearTimeout(customerReadyHtmlCleanupTimer);
+    customerReadyHtmlCleanupTimer = null;
+  }
+  if (customerReadyWebAudioCleanupTimer !== null) {
+    clearTimeout(customerReadyWebAudioCleanupTimer);
+    customerReadyWebAudioCleanupTimer = null;
+  }
+}
+
+/**
+ * NOTIFICATION-AUDIO-CLEANUP-1 — release HTML media element + dismiss iOS Now Playing.
+ * Restores `src` on the cached element so the next READY alert can replay the asset.
+ */
+export function releaseCustomerReadyHtmlAudioElement(
+  audio: HTMLAudioElement,
+  assetSrc: string,
+  reason: string
+): void {
+  try {
+    audio.pause();
+    audio.currentTime = 0;
+    audio.removeAttribute("src");
+    audio.load();
+    audio.src = assetSrc;
+  } catch {
+    /* best-effort */
+  }
+  clearNotificationMediaSession(reason);
+  logAudioTrace("customer ready html released", {
+    build: NOTIFICATION_MEDIA_SESSION_CLEANUP_BUILD,
+    reason,
+    src: assetSrc,
+  });
+}
+
+function scheduleCustomerReadyHtmlPlaybackCleanup(
+  audio: HTMLAudioElement,
+  assetSrc: string,
+  durationSec: number
+): void {
+  clearCustomerReadyPlaybackTimers();
+
+  const onEnded = () => {
+    if (customerReadyHtmlCleanupTimer !== null) {
+      clearTimeout(customerReadyHtmlCleanupTimer);
+      customerReadyHtmlCleanupTimer = null;
+    }
+    releaseCustomerReadyHtmlAudioElement(audio, assetSrc, "html_ended");
+  };
+
+  if (typeof audio.addEventListener === "function") {
+    audio.addEventListener("ended", onEnded, { once: true });
+  }
+
+  // Fallback when `ended` does not fire (iOS edge cases, interrupted playback).
+  const fallbackMs = Math.max(500, Math.ceil(durationSec * 1000) + 250);
+  customerReadyHtmlCleanupTimer = setTimeout(() => {
+    customerReadyHtmlCleanupTimer = null;
+    if (!audio.paused && audio.currentTime > 0) {
+      releaseCustomerReadyHtmlAudioElement(audio, assetSrc, "html_timeout");
+    } else if (audio.ended || audio.currentTime >= durationSec - 0.05) {
+      releaseCustomerReadyHtmlAudioElement(audio, assetSrc, "html_timeout_ended");
+    }
+  }, fallbackMs);
+}
+
+function scheduleCustomerReadyWebAudioCleanup(intensity: AlertSoundIntensity): void {
+  if (customerReadyWebAudioCleanupTimer !== null) {
+    clearTimeout(customerReadyWebAudioCleanupTimer);
+  }
+  const cleanupMs = CUSTOMER_ALERT_PATTERN[intensity].totalMs + 200;
+  customerReadyWebAudioCleanupTimer = setTimeout(() => {
+    customerReadyWebAudioCleanupTimer = null;
+    clearNotificationMediaSession("web_audio_fallback");
+    logAudioTrace("customer ready web audio cleanup", {
+      build: NOTIFICATION_MEDIA_SESSION_CLEANUP_BUILD,
+      intensity,
+    });
+  }, cleanupMs);
+}
+
+function ensureHtmlAudioSrc(audio: HTMLAudioElement, src: string): void {
+  if (!audio.src || !audio.src.endsWith(src)) {
+    audio.src = src;
   }
 }
 
@@ -190,6 +285,7 @@ async function unlockHtmlAudioElementSilently(audio: HTMLAudioElement): Promise<
   } finally {
     audio.muted = prevMuted;
     audio.volume = prevVolume;
+    clearNotificationMediaSession("html_unlock");
   }
 }
 
@@ -259,8 +355,16 @@ function tryPlayAudioAsset(
   }
 
   try {
+    ensureHtmlAudioSrc(audio, src);
     audio.volume = Math.min(1, Math.max(0, volume));
     audio.currentTime = 0;
+
+    if (src === AUDIO_ASSETS.CUSTOMER_READY) {
+      const durationSec =
+        Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : 5.5;
+      scheduleCustomerReadyHtmlPlaybackCleanup(audio, src, durationSec);
+    }
+
     const playPromise = audio.play();
     if (playPromise !== undefined) {
       void playPromise.catch((err) => {
@@ -314,6 +418,7 @@ function playCustomerAlertSoundWebAudioFallback(intensity: AlertSoundIntensity):
       return false;
     }
     scheduleCustomerFallbackTones(audioCtx, intensity);
+    scheduleCustomerReadyWebAudioCleanup(intensity);
     return true;
   } catch {
     return false;
@@ -439,6 +544,7 @@ export function playOwnerNotificationSound(): boolean {
 
 /** For tests — reset shared audio state between cases. */
 export function resetNotificationAudioForTests(): void {
+  clearCustomerReadyPlaybackTimers();
   sharedAudioContext = null;
   assetAudioCache.clear();
   ownerAlertAudioPrimed = false;

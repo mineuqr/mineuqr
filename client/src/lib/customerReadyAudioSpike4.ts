@@ -6,6 +6,7 @@
  */
 
 import { AUDIO_ASSETS } from "@/lib/audioAssets";
+import { clearNotificationMediaSession } from "@/lib/notificationMediaSession";
 import {
   ensureNotificationAudioReady,
   getSharedNotificationAudioContext,
@@ -79,20 +80,6 @@ export function stopCustomerReadyAudioSpikeKeepAlive(): void {
   }
 }
 
-function tryClearMediaSession(label: string): void {
-  if (typeof navigator === "undefined" || !("mediaSession" in navigator)) return;
-  try {
-    navigator.mediaSession.playbackState = "none";
-    navigator.mediaSession.metadata = null;
-    logAudio4("media session clear attempted", { label });
-  } catch (err) {
-    logAudio4("media session clear failed", {
-      label,
-      message: err instanceof Error ? err.message : String(err),
-    });
-  }
-}
-
 function logMediaSessionState(label: string): void {
   if (typeof navigator === "undefined" || !("mediaSession" in navigator)) {
     logAudio4("media session state", { label, supported: false });
@@ -142,7 +129,7 @@ function cleanupBufferPlaybackNodes(
     keepAliveActive: isCustomerReadyAudioSpikeKeepAliveActive(),
   });
 
-  tryClearMediaSession(reason);
+  clearNotificationMediaSession(`buffer_cleanup_${reason}`);
   logMediaSessionState(`after buffer cleanup (${reason})`);
 }
 

@@ -578,3 +578,197 @@ describe("notificationSound OWNER-GLOBAL-1", () => {
     expect(createOscillator).toHaveBeenCalledTimes(3);
   });
 });
+
+describe("notificationSound NOTIFICATION-AUDIO-CLEANUP-1", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+    resetNotificationAudioForTests();
+  });
+
+  it("registers ended cleanup for customer READY HTML playback", async () => {
+    const pause = vi.fn();
+    const load = vi.fn();
+    const removeAttribute = vi.fn();
+    const addEventListener = vi.fn();
+    let playbackState = "playing";
+    let metadata: { title: string } | null = { title: "MineuQR" };
+
+    const play = vi.fn().mockResolvedValue(undefined);
+    const AudioMock = vi.fn(function (this: {
+      preload: string;
+      volume: number;
+      currentTime: number;
+      duration: number;
+      paused: boolean;
+      ended: boolean;
+      src: string;
+      play: typeof play;
+      pause: typeof pause;
+      load: typeof load;
+      removeAttribute: typeof removeAttribute;
+      addEventListener: typeof addEventListener;
+    }) {
+      this.preload = "";
+      this.volume = 1;
+      this.currentTime = 0;
+      this.duration = 1.2;
+      this.paused = false;
+      this.ended = false;
+      this.src = AUDIO_ASSETS.CUSTOMER_READY;
+      this.play = play;
+      this.pause = pause;
+      this.load = load;
+      this.removeAttribute = removeAttribute;
+      this.addEventListener = addEventListener;
+    });
+
+    vi.stubGlobal("window", {});
+    vi.stubGlobal("Audio", AudioMock);
+    vi.stubGlobal("navigator", {
+      mediaSession: {
+        get playbackState() {
+          return playbackState;
+        },
+        set playbackState(value: MediaSessionPlaybackState) {
+          playbackState = value;
+        },
+        get metadata() {
+          return metadata;
+        },
+        set metadata(value: { title: string } | null) {
+          metadata = value;
+        },
+        setActionHandler: vi.fn(),
+      },
+    });
+    resetNotificationAudioForTests();
+
+    expect(playCustomerAlertSound("high")).toBe(true);
+    expect(addEventListener).toHaveBeenCalledWith("ended", expect.any(Function), { once: true });
+
+    const onEnded = addEventListener.mock.calls[0]?.[1] as () => void;
+    onEnded();
+
+    expect(pause).toHaveBeenCalled();
+    expect(removeAttribute).toHaveBeenCalledWith("src");
+    expect(load).toHaveBeenCalled();
+    expect(playbackState).toBe("none");
+    expect(metadata).toBeNull();
+  });
+
+  it("clears media session after silent customer unlock", async () => {
+    let playbackState = "playing";
+    const setActionHandler = vi.fn();
+
+    const play = vi.fn().mockResolvedValue(undefined);
+    const pause = vi.fn();
+    const AudioMock = vi.fn(function (this: {
+      muted: boolean;
+      volume: number;
+      currentTime: number;
+      src: string;
+      play: typeof play;
+      pause: typeof pause;
+    }) {
+      this.muted = false;
+      this.volume = 0.8;
+      this.currentTime = 0;
+      this.src = AUDIO_ASSETS.CUSTOMER_READY;
+      this.play = play;
+      this.pause = pause;
+    });
+
+    vi.stubGlobal(
+      "AudioContext",
+      vi.fn(function MockAudioContext(this: {
+        state: AudioContextState;
+        resume: ReturnType<typeof vi.fn>;
+      }) {
+        this.state = "running";
+        this.resume = vi.fn(async () => undefined);
+      })
+    );
+    vi.stubGlobal("window", { AudioContext: globalThis.AudioContext });
+    vi.stubGlobal("Audio", AudioMock);
+    vi.stubGlobal("navigator", {
+      mediaSession: {
+        get playbackState() {
+          return playbackState;
+        },
+        set playbackState(value: MediaSessionPlaybackState) {
+          playbackState = value;
+        },
+        metadata: null,
+        setActionHandler,
+      },
+    });
+    resetNotificationAudioForTests();
+
+    await unlockCustomerReadyAudioFromGesture();
+    expect(playbackState).toBe("none");
+    expect(setActionHandler).toHaveBeenCalled();
+  });
+
+  it("schedules web audio media session cleanup after customer fallback", async () => {
+    vi.useFakeTimers();
+    let playbackState = "playing";
+
+    const createOscillator = vi.fn(() => ({
+      connect: vi.fn(),
+      frequency: { value: 0 },
+      type: "sine",
+      start: vi.fn(),
+      stop: vi.fn(),
+    }));
+
+    vi.stubGlobal(
+      "AudioContext",
+      vi.fn(function MockAudioContext(this: {
+        state: AudioContextState;
+        currentTime: number;
+        destination: object;
+        resume: ReturnType<typeof vi.fn>;
+        createOscillator: ReturnType<typeof vi.fn>;
+        createGain: ReturnType<typeof vi.fn>;
+      }) {
+        this.state = "suspended";
+        this.currentTime = 0;
+        this.destination = {};
+        this.resume = vi.fn(async () => {
+          this.state = "running";
+        });
+        this.createOscillator = createOscillator;
+        this.createGain = vi.fn(() => ({
+          connect: vi.fn(),
+          gain: {
+            setValueAtTime: vi.fn(),
+            exponentialRampToValueAtTime: vi.fn(),
+          },
+        }));
+      })
+    );
+    vi.stubGlobal("window", { AudioContext: globalThis.AudioContext });
+    vi.stubGlobal("Audio", undefined);
+    vi.stubGlobal("navigator", {
+      mediaSession: {
+        get playbackState() {
+          return playbackState;
+        },
+        set playbackState(value: MediaSessionPlaybackState) {
+          playbackState = value;
+        },
+        metadata: null,
+        setActionHandler: vi.fn(),
+      },
+    });
+    resetNotificationAudioForTests();
+
+    await ensureNotificationAudioReady();
+    playCustomerAlertSound("high");
+
+    expect(playbackState).toBe("playing");
+    vi.advanceTimersByTime(CUSTOMER_ALERT_PATTERN.high.totalMs + 200);
+    expect(playbackState).toBe("none");
+  });
+});
