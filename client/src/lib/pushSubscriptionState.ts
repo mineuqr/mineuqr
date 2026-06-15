@@ -167,32 +167,10 @@ export function getPushSubscriptionUserMessage(options: {
     return FAILURE_MESSAGES.skipped_permission[lang];
   }
   if (state === "NOT_SUPPORTED") {
-    if (isIosWebKitTabWithoutPush()) {
-      return lang === "ar"
-        ? "لتفعيل إشعارات الخلفية على iPhone، أضف التطبيق إلى الشاشة الرئيسية وافتحه من هناك."
-        : "To receive background notifications on iPhone, add the app to your Home Screen and open it from there.";
-    }
     return FAILURE_MESSAGES.unsupported[lang];
   }
   if (state === "SUBSCRIBE_FAILED" && reason && reason !== "success" && reason in FAILURE_MESSAGES) {
     return FAILURE_MESSAGES[reason as keyof typeof FAILURE_MESSAGES][lang];
   }
   return lang === "ar" ? "إشعارات الخلفية غير جاهزة" : "Background push not ready";
-}
-
-export function getIosPwaInstallSteps(language: "ar" | "en"): string[] {
-  if (language === "ar") {
-    return [
-      "اضغط مشاركة (Share)",
-      "اختر «إضافة إلى الشاشة الرئيسية»",
-      "افتح MineuQR من أيقونة الشاشة الرئيسية",
-      "فعّل الإشعارات من صفحة تتبع الطلب",
-    ];
-  }
-  return [
-    "Tap Share",
-    "Add to Home Screen",
-    "Open MineuQR from the Home Screen icon",
-    "Enable notifications on the order tracking page",
-  ];
 }

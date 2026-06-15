@@ -64,7 +64,6 @@ export default function OrderStatusPage() {
     pushSubscribed,
     pushSubscriptionState,
     activationDiagnostics,
-    showIosInstallSteps,
   } = useReadyStatusAlerts({
     trackingToken,
     slug,
@@ -219,8 +218,6 @@ export default function OrderStatusPage() {
                 language={lang}
                 pushSubscribed={pushSubscribed}
                 pushSubscriptionState={pushSubscriptionState}
-                activationAttempted={activationDiagnostics !== null}
-                showIosInstallSteps={showIosInstallSteps}
                 activating={activating}
                 onActivate={() => void activateAlerts()}
               />

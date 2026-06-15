@@ -3,7 +3,6 @@ import type { OrderLifecycleStatus } from "@/lib/orderStatusDisplay";
 import { logReadyAlertActivation } from "@/lib/readyNotificationDiagnostics";
 import {
   detectInitialPushSubscriptionState,
-  isIosWebKitTabWithoutPush,
   type PushActivationDiagnostics,
   type PushSubscriptionState,
 } from "@/lib/pushSubscriptionState";
@@ -214,7 +213,6 @@ export function useReadyStatusAlerts({
   const isTerminal = status === "served" || status === "cancelled";
   const pushSubscribed = pushSubscriptionState === "SUBSCRIBED";
   const needsActivation = enabled && !pushSubscribed && !isTerminal;
-  const showIosInstallSteps = isIosWebKitTabWithoutPush();
 
   return {
     alertsActivated,
@@ -226,7 +224,6 @@ export function useReadyStatusAlerts({
     needsActivation,
     activateAlerts,
     notificationDeliveredHint,
-    showIosInstallSteps,
     acknowledgeReadyAlerts: acknowledge,
   };
 }

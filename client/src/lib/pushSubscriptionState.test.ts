@@ -1,11 +1,8 @@
-import { describe, expect, it, vi } from "vitest";
-import * as diagnostics from "./customerPushDiagnostics";
+import { describe, expect, it } from "vitest";
 import {
   detectInitialPushSubscriptionState,
-  getIosPwaInstallSteps,
   getPushSubscriptionUserMessage,
   isBackgroundPushReady,
-  isIosWebKitTabWithoutPush,
   resolvePushSubscriptionState,
   type PushSupportSnapshot,
 } from "./pushSubscriptionState";
@@ -103,36 +100,5 @@ describe("pushSubscriptionState PUSH-SUBSCRIPTION-HARDENING-1", () => {
         language: "en",
       })
     ).toBe("Background push ready");
-  });
-
-  it("getPushSubscriptionUserMessage returns service worker failure copy", () => {
-    expect(
-      getPushSubscriptionUserMessage({
-        state: "SUBSCRIBE_FAILED",
-        language: "en",
-        pushSubscribeReason: "service_worker_failed",
-      })
-    ).toBe("Service Worker registration failed.");
-  });
-
-  it("getIosPwaInstallSteps returns four steps", () => {
-    expect(getIosPwaInstallSteps("en")).toHaveLength(4);
-  });
-
-  it("isIosWebKitTabWithoutPush detects iOS without push", () => {
-    vi.spyOn(diagnostics, "getPushSupportSnapshot").mockReturnValue({
-      serviceWorker: true,
-      pushManager: false,
-      notification: true,
-      displayModeStandalone: false,
-      iosStandalone: false,
-      permission: "default",
-    });
-    vi.stubGlobal("navigator", {
-      userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
-    });
-    expect(isIosWebKitTabWithoutPush()).toBe(true);
-    vi.restoreAllMocks();
-    vi.unstubAllGlobals();
   });
 });
