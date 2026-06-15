@@ -225,16 +225,42 @@ describe("readyNotification FOREGROUND-READY-ALERT-RECOVERY-1", () => {
     expect(loadReadyAlertState("tok").alert1Sent).toBe(true);
   });
 
-  it("deliverMissedReadyTier1IfNeeded skips when alert1 already sent", () => {
+  it("marks ready transition handled even when delivery channels fail", () => {
+    saveReadyAlertState("tok", {
+      alertsActivated: false,
+      pushSubscriptionActive: false,
+      alert1Sent: false,
+      alert1NotificationDelivered: false,
+      alert2Sent: false,
+      alert2NotificationDelivered: false,
+      acknowledged: false,
+      lastStatus: "preparing",
+    });
+
+    const result = handleReadyTier1Delivery({
+      trackingToken: "tok",
+      orderNumber: "ORD-1",
+      language: "en",
+      status: "ready",
+      source: "transition",
+      previousStatus: "preparing",
+    });
+
+    expect(result.delivered).toBe(false);
+    expect(loadReadyAlertState("tok").readyEventHandled).toBe(true);
+  });
+
+  it("deliverMissedReadyTier1IfNeeded skips when ready event already handled", () => {
     saveReadyAlertState("tok", {
       alertsActivated: true,
       pushSubscriptionActive: false,
-      alert1Sent: true,
-      alert1NotificationDelivered: true,
+      alert1Sent: false,
+      alert1NotificationDelivered: false,
       alert2Sent: false,
       alert2NotificationDelivered: false,
       acknowledged: false,
       lastStatus: "ready",
+      readyEventHandled: true,
     });
 
     expect(
@@ -282,6 +308,26 @@ describe("readyNotification AUDIO-HOTFIX-3A", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     resetNotificationAudioForTests();
+  });
+
+  it("activateReadyAlertsFromGesture does not deliver tier-1 ready alert", async () => {
+    saveReadyAlertState("tok123456789012345", {
+      alertsActivated: false,
+      pushSubscriptionActive: false,
+      alert1Sent: false,
+      alert1NotificationDelivered: false,
+      alert2Sent: false,
+      alert2NotificationDelivered: false,
+      acknowledged: false,
+      lastStatus: "ready",
+    });
+
+    await activateReadyAlertsFromGesture({
+      trackingToken: "tok123456789012345",
+      slug: "cafe",
+    });
+
+    expect(loadReadyAlertState("tok123456789012345").alert1Sent).toBe(false);
   });
 
   it("activateReadyAlertsFromGesture silently unlocks CUSTOMER_READY via muted play/pause", async () => {

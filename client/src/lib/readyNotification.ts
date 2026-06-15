@@ -45,6 +45,8 @@ export type ReadyAlertSessionState = {
   alert2NotificationDelivered: boolean;
   acknowledged: boolean;
   lastStatus?: OrderLifecycleStatus;
+  /** True after a preparing/pending → ready transition has been processed once. */
+  readyEventHandled?: boolean;
 };
 
 export type ReadyAlertTier = 1 | 2;
@@ -86,6 +88,7 @@ export function loadReadyAlertState(trackingToken: string): ReadyAlertSessionSta
       alert2NotificationDelivered: Boolean(parsed.alert2NotificationDelivered),
       acknowledged: Boolean(parsed.acknowledged),
       lastStatus: parsed.lastStatus,
+      readyEventHandled: Boolean(parsed.readyEventHandled),
     };
   } catch {
     return empty;
@@ -346,8 +349,8 @@ export function handleReadyTier1Delivery(options: {
     vibrate: false,
   };
 
-  if (session.alert1Sent) {
-    return { delivered: false, delivery: emptyDelivery, alert1Sent: true };
+  if (session.alert1Sent || session.readyEventHandled) {
+    return { delivered: false, delivery: emptyDelivery, alert1Sent: session.alert1Sent };
   }
 
   if (options.source === "transition") {
@@ -383,6 +386,7 @@ export function handleReadyTier1Delivery(options: {
     saveReadyAlertState(options.trackingToken, {
       ...session,
       lastStatus: options.status,
+      readyEventHandled: options.source === "transition" ? true : session.readyEventHandled,
     });
     return { delivered: false, delivery, alert1Sent: false };
   }
@@ -395,6 +399,7 @@ export function handleReadyTier1Delivery(options: {
     alert1Sent: true,
     alert1NotificationDelivered: delivery.notification,
     lastStatus: options.status,
+    readyEventHandled: true,
   });
   logAlert1SentPersisted(options.trackingToken, {
     source: options.source,
@@ -404,7 +409,7 @@ export function handleReadyTier1Delivery(options: {
   return { delivered: true, delivery, alert1Sent: true };
 }
 
-/** RECOVERY-1D — single recovery when user opts in after READY was missed. */
+/** Not invoked from customer activation — transition-only recovery helper. */
 export function deliverMissedReadyTier1IfNeeded(options: {
   trackingToken: string;
   orderNumber: string;
@@ -414,7 +419,7 @@ export function deliverMissedReadyTier1IfNeeded(options: {
   if (options.currentStatus !== "ready") return null;
 
   const session = loadReadyAlertState(options.trackingToken);
-  if (!session.alertsActivated || session.alert1Sent) return null;
+  if (!session.alertsActivated || session.alert1Sent || session.readyEventHandled) return null;
   if (session.lastStatus !== "ready") return null;
 
   return handleReadyTier1Delivery({

@@ -31,11 +31,11 @@ export function ReadyAlertActivationBanner({
     return (
       <div
         className={cn(
-          "flex items-center gap-2 rounded-lg border border-green-200/60 bg-green-50/70 dark:bg-green-950/15 dark:border-green-800/40 px-3 py-2 text-xs text-green-800 dark:text-green-300",
+          "flex items-center gap-2.5 rounded-lg border border-green-200/60 bg-green-50/70 dark:bg-green-950/15 dark:border-green-800/40 px-4 py-3 text-sm text-green-800 dark:text-green-300",
           className
         )}
       >
-        <CheckCircle2 className="h-3.5 w-3.5 shrink-0" aria-hidden />
+        <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden />
         <span className="font-medium">{getEnrollmentSuccessTitle(language)}</span>
       </div>
     );
@@ -44,20 +44,25 @@ export function ReadyAlertActivationBanner({
   return (
     <Button
       type="button"
-      size="sm"
       variant="secondary"
-      className={cn("w-full h-8 text-xs", className)}
+      className={cn(
+        "w-full min-h-11 h-11 px-4 text-sm font-medium",
+        "border border-orange-200/80 bg-orange-50/90 text-orange-950",
+        "hover:bg-orange-100/90 dark:bg-orange-950/30 dark:text-orange-100 dark:hover:bg-orange-950/45",
+        "shadow-sm",
+        className
+      )}
       disabled={isSubscribing}
       onClick={onActivate}
     >
       {isSubscribing ? (
         <>
-          <Loader2 className="h-3.5 w-3.5 animate-spin me-2" aria-hidden />
+          <Loader2 className="h-4 w-4 animate-spin me-2" aria-hidden />
           {getEnrollmentActivatingLabel(language)}
         </>
       ) : (
         <>
-          <Bell className="h-3.5 w-3.5 me-2" aria-hidden />
+          <Bell className="h-4 w-4 me-2" aria-hidden />
           {getEnrollmentCtaLabel(language)}
         </>
       )}

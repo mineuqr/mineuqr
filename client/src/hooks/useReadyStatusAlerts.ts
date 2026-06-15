@@ -10,7 +10,6 @@ import {
   acknowledgeReadyAlerts,
   activateReadyAlertsFromGesture,
   clearReadyAlertFollowUpTimer,
-  deliverMissedReadyTier1IfNeeded,
   handleReadyTier1Delivery,
   handleReadyTier2Delivery,
   isReadyTransition,
@@ -66,13 +65,6 @@ export function useReadyStatusAlerts({
   const [notificationDeliveredHint, setNotificationDeliveredHint] = useState(false);
   const prevStatusRef = useRef<OrderLifecycleStatus | null>(null);
   const initializedRef = useRef(false);
-  const statusRef = useRef(status);
-  const orderNumberRef = useRef(orderNumber);
-
-  useEffect(() => {
-    statusRef.current = status;
-    orderNumberRef.current = orderNumber;
-  }, [status, orderNumber]);
 
   useEffect(() => {
     if (!trackingToken) return;
@@ -83,26 +75,6 @@ export function useReadyStatusAlerts({
       setNotificationDeliveredHint(true);
     }
   }, [trackingToken]);
-
-  const runRecoveryIfNeeded = useCallback(() => {
-    const currentStatus = statusRef.current;
-    const currentOrderNumber = orderNumberRef.current;
-    if (!trackingToken || !currentOrderNumber || currentStatus !== "ready") return;
-
-    const result = deliverMissedReadyTier1IfNeeded({
-      trackingToken,
-      orderNumber: currentOrderNumber,
-      language,
-      currentStatus,
-    });
-    if (!result?.delivered) return;
-
-    const session = loadReadyAlertState(trackingToken);
-    if (result.delivery.notification || session.pushSubscriptionActive) {
-      setNotificationDeliveredHint(true);
-    }
-    scheduleTier2IfNeeded(trackingToken, currentOrderNumber, language);
-  }, [trackingToken, language]);
 
   const activateAlerts = useCallback(async () => {
     if (!trackingToken || !slug || activating) return;
@@ -129,11 +101,10 @@ export function useReadyStatusAlerts({
         pushSubscriptionState: result.pushSubscriptionState,
       });
       setAlertsActivated(true);
-      runRecoveryIfNeeded();
     } finally {
       setActivating(false);
     }
-  }, [trackingToken, slug, activating, runRecoveryIfNeeded]);
+  }, [trackingToken, slug, activating]);
 
   const acknowledge = useCallback(() => {
     if (!trackingToken) return;
@@ -176,7 +147,7 @@ export function useReadyStatusAlerts({
     }
 
     const session = loadReadyAlertState(trackingToken);
-    if (session.alert1Sent) return;
+    if (session.readyEventHandled || session.alert1Sent) return;
 
     const result = handleReadyTier1Delivery({
       trackingToken,
@@ -187,7 +158,14 @@ export function useReadyStatusAlerts({
       previousStatus,
     });
 
-    if (!result.delivered) return;
+    if (!result.delivered) {
+      saveReadyAlertState(trackingToken, {
+        ...loadReadyAlertState(trackingToken),
+        readyEventHandled: true,
+        lastStatus: status,
+      });
+      return;
+    }
 
     if (result.delivery.notification || session.pushSubscriptionActive) {
       setNotificationDeliveredHint(true);
