@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { OrderLifecycleStatus } from "@/lib/orderStatusDisplay";
+import { attachCustomerReadyAudioPrepareOnFirstGesture } from "@/lib/customerReadyAudioPrepare";
 import {
   acknowledgeReadyAlerts,
   clearReadyAlertFollowUpTimer,
@@ -52,6 +53,11 @@ export function useReadyStatusAlerts({
     }
   }, [trackingToken]);
 
+  useEffect(() => {
+    if (!enabled) return;
+    return attachCustomerReadyAudioPrepareOnFirstGesture();
+  }, [enabled]);
+
   const acknowledge = useCallback(() => {
     if (!trackingToken) return;
     acknowledgeReadyAlerts(trackingToken);
@@ -93,7 +99,7 @@ export function useReadyStatusAlerts({
     }
 
     const session = loadReadyAlertState(trackingToken);
-    if (session.readyEventHandled || session.alert1Sent) return;
+    if (session.alert1Sent) return;
 
     const result = handleReadyTier1Delivery({
       trackingToken,

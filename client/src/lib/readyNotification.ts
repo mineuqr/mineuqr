@@ -342,8 +342,8 @@ export function handleReadyTier1Delivery(options: {
     vibrate: false,
   };
 
-  if (session.alert1Sent || session.readyEventHandled) {
-    return { delivered: false, delivery: emptyDelivery, alert1Sent: session.alert1Sent };
+  if (session.alert1Sent) {
+    return { delivered: false, delivery: emptyDelivery, alert1Sent: true };
   }
 
   if (options.source === "transition") {
