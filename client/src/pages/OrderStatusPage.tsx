@@ -6,8 +6,6 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { CustomerOrderDateTimeFields } from "@/components/customer/CustomerOrderDateTimeFields";
 import { OrderReceivedHero } from "@/components/customer/OrderReceivedHero";
 import { OrderStatusStepper } from "@/components/customer/OrderStatusStepper";
-import { PushTraceDiagnosticsPanel } from "@/components/customer/PushTraceDiagnosticsPanel";
-import { ReadyAlertActivationBanner } from "@/components/customer/ReadyAlertActivationBanner";
 import { ReadyStatusAttention } from "@/components/customer/ReadyStatusAttention";
 import {
   formatOrderStatusHeadline,
@@ -57,18 +55,8 @@ export default function OrderStatusPage() {
       }
     );
 
-  const {
-    activating,
-    activateAlerts,
-    notificationDeliveredHint,
-    pushSubscribed,
-    enrollmentSucceeded,
-    pushSubscriptionState,
-    activationDiagnostics,
-    activationTrace,
-  } = useReadyStatusAlerts({
+  const { notificationDeliveredHint } = useReadyStatusAlerts({
     trackingToken,
-    slug,
     status: data?.status as OrderLifecycleStatus | undefined,
     orderNumber: data?.orderNumber,
     language: lang,
@@ -145,7 +133,6 @@ export default function OrderStatusPage() {
   const isCancelled = status === "cancelled";
   const isServed = status === "served";
   const isReady = status === "ready";
-  const showAlertBanner = !isCancelled && !isServed;
 
   const orderNumber = data?.orderNumber ?? orderSnapshot?.orderNumber ?? "";
   const createdAt = data?.createdAt ?? orderSnapshot?.createdAt ?? "";
@@ -212,24 +199,6 @@ export default function OrderStatusPage() {
 
           {!isLoading && data && (
             <OrderStatusStepper status={status} language={lang} dir={dir} />
-          )}
-
-          {showAlertBanner && (
-            <div className="space-y-2">
-              <ReadyAlertActivationBanner
-                language={lang}
-                pushSubscribed={pushSubscribed}
-                enrollmentSucceeded={enrollmentSucceeded}
-                pushSubscriptionState={pushSubscriptionState}
-                activating={activating}
-                onActivate={() => void activateAlerts()}
-              />
-              <PushTraceDiagnosticsPanel
-                language={lang}
-                diagnostics={activationDiagnostics}
-                activationTrace={activationTrace}
-              />
-            </div>
           )}
 
           {!showWelcomeHero && (

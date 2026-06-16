@@ -365,7 +365,8 @@ export function handleReadyTier1Delivery(options: {
     tier: 1,
     orderNumber: options.orderNumber,
     language: options.language,
-    alertsActivated: session.alertsActivated,
+    alertsActivated:
+      options.source === "transition" ? true : session.alertsActivated,
   });
 
   if (!wasReadyAlertDelivered(delivery)) {
@@ -430,7 +431,7 @@ export function handleReadyTier2Delivery(options: {
   language: "ar" | "en";
 }): ReadyAlertDelivery {
   const latest = loadReadyAlertState(options.trackingToken);
-  if (latest.acknowledged || latest.alert2Sent || !latest.alertsActivated) {
+  if (latest.acknowledged || latest.alert2Sent) {
     return { sound: false, notification: false, vibrate: false };
   }
 

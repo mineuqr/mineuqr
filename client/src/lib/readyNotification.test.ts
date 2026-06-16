@@ -151,7 +151,7 @@ describe("readyNotification FOREGROUND-READY-ALERT-RECOVERY-1", () => {
     vi.unstubAllGlobals();
   });
 
-  it("handleReadyTier1Delivery does not set alert1Sent when all channels fail", () => {
+  it("handleReadyTier1Delivery delivers on transition without session enrollment", () => {
     saveReadyAlertState("tok", {
       alertsActivated: false,
       pushSubscriptionActive: false,
@@ -172,8 +172,8 @@ describe("readyNotification FOREGROUND-READY-ALERT-RECOVERY-1", () => {
       previousStatus: "preparing",
     });
 
-    expect(result.delivered).toBe(false);
-    expect(loadReadyAlertState("tok").alert1Sent).toBe(false);
+    expect(result.delivered).toBe(true);
+    expect(loadReadyAlertState("tok").alert1Sent).toBe(true);
     expect(loadReadyAlertState("tok").lastStatus).toBe("ready");
   });
 
@@ -225,7 +225,11 @@ describe("readyNotification FOREGROUND-READY-ALERT-RECOVERY-1", () => {
     expect(loadReadyAlertState("tok").alert1Sent).toBe(true);
   });
 
-  it("marks ready transition handled even when delivery channels fail", () => {
+  it("marks ready transition handled when delivery channels fail", () => {
+    vi.stubGlobal("navigator", { vibrate: vi.fn().mockReturnValue(false) });
+    vi.stubGlobal("window", {});
+    vi.stubGlobal("Audio", undefined);
+
     saveReadyAlertState("tok", {
       alertsActivated: false,
       pushSubscriptionActive: false,
