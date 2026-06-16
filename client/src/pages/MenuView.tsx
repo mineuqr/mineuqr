@@ -3,11 +3,13 @@ import { useRoute } from "wouter";
 import { useState, useEffect, useMemo } from "react";
 import { Loader2, AlertCircle, Store } from "lucide-react";
 import { getTemplateComponent } from "@/components/MenuTemplates";
+import { OrderingSessionConsumedBanner } from "@/components/customer/OrderingSessionConsumedBanner";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { CartProvider } from "@/contexts/CartContext";
 import CartDrawer from "@/components/CartDrawer";
 import WelcomeOverlay from "@/components/WelcomeOverlay";
 import { isRestaurantOpen, parseTemporaryClosure } from "@/lib/restaurantHours";
+import { loadOrderingSession } from "@/lib/orderingSessionStorage";
 
 export default function MenuView() {
   const [, params] = useRoute("/menu/:slug/table/:tableNumber");
@@ -65,9 +67,16 @@ export default function MenuView() {
     });
   }, [restaurant]);
 
-  const canPlaceOrder = tableNumber > 0 && canOrder && orderingAllowed;
+  const lang = language === "ar" ? "ar" : "en";
+  const consumedSession =
+    tableNumber > 0 && slug ? loadOrderingSession(slug, tableNumber) : null;
+  const orderingSessionConsumed = consumedSession?.orderingSessionConsumed === true;
+
+  const canPlaceOrder =
+    tableNumber > 0 && canOrder && orderingAllowed && !orderingSessionConsumed;
   const orderingTableNumber = canPlaceOrder ? tableNumber : 0;
   const showClosedNotice = tableNumber > 0 && canOrder && !orderingAllowed;
+  const showConsumedBanner = tableNumber > 0 && orderingSessionConsumed;
 
   const trackViewMutation = trpc.restaurant.trackView.useMutation();
 
@@ -187,6 +196,14 @@ export default function MenuView() {
         >
           {language === "ar" ? "المطعم مغلق حالياً" : "The restaurant is closed right now"}
         </div>
+      )}
+      {showConsumedBanner && consumedSession?.trackingToken && (
+        <OrderingSessionConsumedBanner
+          language={lang}
+          slug={slug}
+          trackingToken={consumedSession.trackingToken}
+          className={showClosedNotice ? "top-10" : undefined}
+        />
       )}
       <TemplateComponent
         restaurant={{ ...restaurant, holidays: holidays || [] }}
