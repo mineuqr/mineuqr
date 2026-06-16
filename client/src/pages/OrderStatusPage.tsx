@@ -4,6 +4,7 @@ import { MapPin, MessageCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { CustomerOrderDateTimeFields } from "@/components/customer/CustomerOrderDateTimeFields";
+import { CustomerSoundAlertsEnable } from "@/components/customer/CustomerSoundAlertsEnable";
 import { OrderReceivedHero } from "@/components/customer/OrderReceivedHero";
 import { OrderStatusStepper } from "@/components/customer/OrderStatusStepper";
 import { ReadyStatusAttention } from "@/components/customer/ReadyStatusAttention";
@@ -196,6 +197,10 @@ export default function OrderStatusPage() {
               </p>
             )}
           </div>
+
+          {!isServed && !isCancelled && (
+            <CustomerSoundAlertsEnable language={lang} />
+          )}
 
           {!isLoading && data && (
             <OrderStatusStepper status={status} language={lang} dir={dir} />

@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { OrderLifecycleStatus } from "@/lib/orderStatusDisplay";
-import { attachCustomerReadyAudioPrepareOnFirstGesture } from "@/lib/customerReadyAudioPrepare";
 import {
   acknowledgeReadyAlerts,
   clearReadyAlertFollowUpTimer,
@@ -52,11 +51,6 @@ export function useReadyStatusAlerts({
       setNotificationDeliveredHint(true);
     }
   }, [trackingToken]);
-
-  useEffect(() => {
-    if (!enabled) return;
-    return attachCustomerReadyAudioPrepareOnFirstGesture();
-  }, [enabled]);
 
   const acknowledge = useCallback(() => {
     if (!trackingToken) return;

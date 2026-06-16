@@ -1,11 +1,11 @@
 /**
- * READY-AUDIO-RECOVERY-1 — silent one-time audio prep on first natural page interaction.
- * No UI, permission, or push enrollment.
+ * AUDIO-ENABLE-UX-1 — explicit user-gesture audio prep for later READY playback.
+ * No notification permission, push enrollment, or READY alert delivery.
  */
 
 import { unlockCustomerReadyAudioFromGesture } from "@/lib/notificationSound";
 
-export const CUSTOMER_READY_AUDIO_PREPARE_BUILD = "READY-AUDIO-RECOVERY-1";
+export const CUSTOMER_READY_AUDIO_PREPARE_BUILD = "AUDIO-ENABLE-UX-1";
 
 let prepared = false;
 let prepareInFlight = false;
@@ -20,34 +20,21 @@ export function resetCustomerReadyAudioPrepareForTests(): void {
 }
 
 /**
- * Attach listeners for the first user gesture on the tracking page.
- * Unlocks HTML Audio (muted) + Web Audio context for later poll-time READY playback.
+ * Prepare HTML Audio + Web Audio during an explicit button tap.
+ * Calls unlockCustomerReadyAudioFromGesture() only — no READY playback.
  */
-export function attachCustomerReadyAudioPrepareOnFirstGesture(): () => void {
-  if (typeof window === "undefined" || prepared || prepareInFlight) {
-    return () => undefined;
+export async function prepareCustomerReadyAudioFromUserGesture(): Promise<boolean> {
+  if (prepared) return true;
+  if (prepareInFlight) return false;
+
+  prepareInFlight = true;
+  try {
+    const ready = await unlockCustomerReadyAudioFromGesture();
+    if (ready) {
+      prepared = true;
+    }
+    return ready;
+  } finally {
+    prepareInFlight = false;
   }
-
-  const runPrepare = () => {
-    if (prepared || prepareInFlight) return;
-    prepareInFlight = true;
-    detach();
-
-    void unlockCustomerReadyAudioFromGesture().then((ready) => {
-      prepareInFlight = false;
-      if (ready) {
-        prepared = true;
-      }
-    });
-  };
-
-  const detach = () => {
-    window.removeEventListener("pointerdown", runPrepare, true);
-    window.removeEventListener("touchstart", runPrepare, true);
-  };
-
-  window.addEventListener("pointerdown", runPrepare, { capture: true, passive: true });
-  window.addEventListener("touchstart", runPrepare, { capture: true, passive: true });
-
-  return detach;
 }
