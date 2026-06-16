@@ -1068,6 +1068,7 @@ export async function getOrderByTrackingToken(
       status: orders.status,
       totalAmount: orders.totalAmount,
       createdAt: orders.createdAt,
+      readyAt: orders.readyAt,
       nameAr: restaurants.nameAr,
       nameEn: restaurants.nameEn,
       currencySymbol: restaurants.currencySymbol,
@@ -1106,6 +1107,22 @@ export async function updateOrderStatus(id: number, status: string) {
   const db = await getDb();
   if (!db) return;
   await db.update(orders).set({ status: status as any }).where(eq(orders.id, id));
+}
+
+/** TRACKING-EXPIRY-1 — set once when order first enters READY; never overwritten. */
+export async function markOrderReadyAtIfFirstTransition(
+  orderId: number,
+  previousStatus: string,
+  newStatus: string
+): Promise<void> {
+  if (previousStatus === "ready" || newStatus !== "ready") return;
+  const db = await getDb();
+  if (!db) return;
+  const now = new Date().toISOString().slice(0, 19).replace("T", " ");
+  await db
+    .update(orders)
+    .set({ readyAt: now })
+    .where(and(eq(orders.id, orderId), isNull(orders.readyAt)));
 }
 
 export async function getOrderItemsByOrderId(orderId: number) {

@@ -338,6 +338,7 @@ export const orders = mysqlTable("orders", {
 	orderNumber: varchar({ length: 32 }).notNull(),
 	trackingToken: varchar({ length: 64 }),
 	readyPushSentAt: timestamp({ mode: 'string' }),
+	readyAt: timestamp({ mode: 'string' }),
 	whatsappSent: boolean().default(false).notNull(),
 	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
 	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),

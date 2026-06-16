@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { CustomerOrderDateTimeFields } from "@/components/customer/CustomerOrderDateTimeFields";
 import { CustomerSoundAlertsEnable } from "@/components/customer/CustomerSoundAlertsEnable";
+import { OrderTrackingExpired } from "@/components/customer/OrderTrackingExpired";
 import { OrderReceivedHero } from "@/components/customer/OrderReceivedHero";
 import { OrderStatusStepper } from "@/components/customer/OrderStatusStepper";
 import { ReadyStatusAttention } from "@/components/customer/ReadyStatusAttention";
@@ -49,19 +50,29 @@ export default function OrderStatusPage() {
       {
         enabled: !!trackingToken && !!slug,
         refetchInterval: (query) => {
-          const status = query.state.data?.status;
+          const payload = query.state.data;
+          if (payload?.trackingExpired) return false;
+          const status = payload?.status;
           if (status === "served" || status === "cancelled") return false;
           return CUSTOMER_ORDER_STATUS_POLL_MS;
         },
       }
     );
 
+  const trackingExpired = data?.trackingExpired === true;
+
   const { notificationDeliveredHint } = useReadyStatusAlerts({
     trackingToken,
     status: data?.status as OrderLifecycleStatus | undefined,
     orderNumber: data?.orderNumber,
     language: lang,
-    enabled: !!trackingToken && !!slug && !!data && !isLoading && !isError,
+    enabled:
+      !!trackingToken &&
+      !!slug &&
+      !!data &&
+      !isLoading &&
+      !isError &&
+      !trackingExpired,
   });
 
   const orderSnapshot = trackingToken ? loadOrderConfirmationSnapshot(trackingToken) : null;
@@ -94,6 +105,10 @@ export default function OrderStatusPage() {
         </p>
       </div>
     );
+  }
+
+  if (trackingExpired) {
+    return <OrderTrackingExpired language={lang} />;
   }
 
   if (isLoading && !(showWelcomeHero && orderSnapshot)) {

@@ -1,4 +1,6 @@
 /** PR-CUX-1B — customer-safe order status (no internal ids or PII). */
+import { isTrackingExpired } from "./orderTrackingExpiry";
+
 export type OrderLifecycleStatus =
   | "pending"
   | "preparing"
@@ -17,6 +19,8 @@ export type PublicOrderStatus = {
   restaurantNameEn: string | null;
   currencySymbol: string;
   tableLabel: "tables" | "rooms";
+  readyAt: string | null;
+  trackingExpired: boolean;
 };
 
 export type OrderPublicStatusRow = {
@@ -26,6 +30,7 @@ export type OrderPublicStatusRow = {
   status: OrderLifecycleStatus;
   totalAmount: string;
   createdAt: string;
+  readyAt: string | null;
   nameAr: string;
   nameEn: string | null;
   currencySymbol: string | null;
@@ -33,7 +38,11 @@ export type OrderPublicStatusRow = {
   itemCount: number;
 };
 
-export function toPublicOrderStatus(row: OrderPublicStatusRow): PublicOrderStatus {
+export function toPublicOrderStatus(
+  row: OrderPublicStatusRow,
+  options?: { nowMs?: number }
+): PublicOrderStatus {
+  const trackingExpired = isTrackingExpired(row.readyAt, options?.nowMs);
   return {
     orderNumber: row.orderNumber,
     createdAt: row.createdAt,
@@ -45,5 +54,7 @@ export function toPublicOrderStatus(row: OrderPublicStatusRow): PublicOrderStatu
     restaurantNameEn: row.nameEn,
     currencySymbol: row.currencySymbol || "ر.س",
     tableLabel: row.tableLabel === "rooms" ? "rooms" : "tables",
+    readyAt: row.readyAt,
+    trackingExpired,
   };
 }

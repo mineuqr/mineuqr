@@ -51,6 +51,7 @@ vi.mock("./db", () => ({
     id === 1 ? { id: 1, restaurantId: 1, status: "pending" } : null
   ),
   updateOrderStatus: vi.fn(async () => undefined),
+  markOrderReadyAtIfFirstTransition: vi.fn(async () => undefined),
   getOrdersWithItemsByRestaurant: vi.fn(async () => [
     { id: 1, restaurantId: 1, status: "pending", totalAmount: "10.00", items: [] },
   ]),

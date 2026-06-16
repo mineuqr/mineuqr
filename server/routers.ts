@@ -26,7 +26,7 @@ import {
   updateUserSessionValidAfter,
   getHolidaysByRestaurant, createHoliday, updateHoliday, deleteHoliday, getHolidayById,
   getTablesByRestaurant, getTableById, getTableByRestaurantAndNumber, createTable, updateTable, deleteTable, createMultipleTables,
-  getOrdersByRestaurant, getOrdersWithItemsByRestaurant, getOrderById, getOrderByTrackingToken, createOrder, updateOrderStatus, getOrderItemsByOrderId, createOrderItems, generateOrderNumber, getActiveOrdersCount,
+  getOrdersByRestaurant, getOrdersWithItemsByRestaurant, getOrderById, getOrderByTrackingToken, createOrder, updateOrderStatus, markOrderReadyAtIfFirstTransition, getOrderItemsByOrderId, createOrderItems, generateOrderNumber, getActiveOrdersCount,
 } from "./db";
 import { canChangeOwnPassword } from "./auth-local/httpHelpers";
 import { sendVerificationEmailForUser } from "./auth-local/sendVerificationEmail";
@@ -1768,6 +1768,7 @@ const orderRouter = router({
       }
       await assertRestaurantAccess(ctx, order.restaurantId, "order.updateStatus");
       const previousStatus = order.status;
+      await markOrderReadyAtIfFirstTransition(input.id, previousStatus, input.status);
       await updateOrderStatus(input.id, input.status);
 
       if (previousStatus !== "ready" && input.status === "ready") {
@@ -1825,6 +1826,7 @@ const orderRouter = router({
           | "cancelled",
         totalAmount: String(row.totalAmount),
         createdAt: row.createdAt,
+        readyAt: row.readyAt ?? null,
         nameAr: row.nameAr,
         nameEn: row.nameEn,
         currencySymbol: row.currencySymbol,
