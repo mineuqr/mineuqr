@@ -505,7 +505,7 @@ function playOwnerAlertSoundWebAudioFallback(): boolean {
 }
 
 /**
- * Customer READY alert — tier 1 (high) and tier 2 (medium) reminder.
+ * Customer READY alert — single tier-1 (high) delivery.
  * Uses mixkit-clock-countdown-bleeps; Web Audio fallback if asset unavailable.
  * AUDIO-HOTFIX-4-SPIKE-1: when ?audio4=1, buffer playback replaces HTML path.
  */

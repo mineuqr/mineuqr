@@ -1,14 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { OrderLifecycleStatus } from "@/lib/orderStatusDisplay";
 import {
-  acknowledgeReadyAlerts,
-  clearReadyAlertFollowUpTimer,
   handleReadyTier1Delivery,
-  handleReadyTier2Delivery,
   isReadyTransition,
   loadReadyAlertState,
   saveReadyAlertState,
-  scheduleReadyAlertFollowUp,
 } from "@/lib/readyNotification";
 
 type UseReadyStatusAlertsOptions = {
@@ -19,19 +15,9 @@ type UseReadyStatusAlertsOptions = {
   enabled: boolean;
 };
 
-function scheduleTier2IfNeeded(
-  trackingToken: string,
-  orderNumber: string,
-  language: "ar" | "en"
-): void {
-  scheduleReadyAlertFollowUp(trackingToken, () => {
-    handleReadyTier2Delivery({ trackingToken, orderNumber, language });
-  });
-}
-
 /**
- * CUSTOMER-NOTIFICATIONS-SIMPLIFICATION-1 — foreground READY alerts only.
- * No enrollment, permission, or push subscription on the customer journey.
+ * CUSTOMER-NOTIFICATIONS-SIMPLIFICATION-1 — foreground tier-1 READY alerts only.
+ * READY-TIER2-REMOVAL-1 — no follow-up reminder scheduling.
  */
 export function useReadyStatusAlerts({
   trackingToken,
@@ -51,22 +37,6 @@ export function useReadyStatusAlerts({
       setNotificationDeliveredHint(true);
     }
   }, [trackingToken]);
-
-  const acknowledge = useCallback(() => {
-    if (!trackingToken) return;
-    acknowledgeReadyAlerts(trackingToken);
-  }, [trackingToken]);
-
-  useEffect(() => {
-    if (!enabled || status !== "ready") return;
-    const onInteract = () => acknowledge();
-    window.addEventListener("pointerdown", onInteract);
-    window.addEventListener("keydown", onInteract);
-    return () => {
-      window.removeEventListener("pointerdown", onInteract);
-      window.removeEventListener("keydown", onInteract);
-    };
-  }, [enabled, status, acknowledge]);
 
   useEffect(() => {
     if (!enabled || !trackingToken || !status || !orderNumber) return;
@@ -116,24 +86,9 @@ export function useReadyStatusAlerts({
     if (result.delivery.notification) {
       setNotificationDeliveredHint(true);
     }
-
-    scheduleTier2IfNeeded(trackingToken, orderNumber, language);
   }, [enabled, trackingToken, status, orderNumber, language]);
-
-  useEffect(() => {
-    if (!trackingToken) return;
-    return () => clearReadyAlertFollowUpTimer(trackingToken);
-  }, [trackingToken]);
-
-  useEffect(() => {
-    if (!trackingToken || !status) return;
-    if (status === "served" || status === "cancelled") {
-      clearReadyAlertFollowUpTimer(trackingToken);
-    }
-  }, [trackingToken, status]);
 
   return {
     notificationDeliveredHint,
-    acknowledgeReadyAlerts: acknowledge,
   };
 }

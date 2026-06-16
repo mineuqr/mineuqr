@@ -87,9 +87,9 @@ Each channel logged separately in DEV (`[mineuqr:ready-alert] delivery`).
 alertsActivated: boolean
 alert1Sent: boolean              // attempt dedup
 alert1NotificationDelivered: boolean  // hint restoration
-alert2Sent / alert2NotificationDelivered
-acknowledged: boolean
 ```
+
+> **READY-TIER2-REMOVAL-1:** `alert2Sent`, `alert2NotificationDelivered`, `acknowledged`, and follow-up timers were removed.
 
 Delivery skipped entirely when `!alertsActivated` (no false channel attempts before activation).
 

@@ -69,9 +69,6 @@ describe("readyNotification CUSTOMER-UX-1C HOTFIX-1", () => {
       pushSubscriptionActive: false,
       alert1Sent: true,
       alert1NotificationDelivered: true,
-      alert2Sent: false,
-      alert2NotificationDelivered: false,
-      acknowledged: false,
       lastStatus: "ready",
     });
     expect(sessionStorage.getItem(readyAlertStorageKey(token))).toBeTruthy();
@@ -79,8 +76,6 @@ describe("readyNotification CUSTOMER-UX-1C HOTFIX-1", () => {
       alertsActivated: true,
       alert1Sent: true,
       alert1NotificationDelivered: true,
-      alert2Sent: false,
-      acknowledged: false,
       lastStatus: "ready",
     });
   });
@@ -99,7 +94,6 @@ describe("readyNotification CUSTOMER-UX-1C HOTFIX-1", () => {
   it("deliverReadyAlertTier skips channels when alerts are not activated", () => {
     const delivery = deliverReadyAlertTier({
       trackingToken: "tok",
-      tier: 1,
       orderNumber: "ORD-1",
       language: "ar",
       alertsActivated: false,
@@ -113,9 +107,6 @@ describe("readyNotification CUSTOMER-UX-1C HOTFIX-1", () => {
       pushSubscriptionActive: true,
       alert1Sent: false,
       alert1NotificationDelivered: false,
-      alert2Sent: false,
-      alert2NotificationDelivered: false,
-      acknowledged: false,
     });
 
     vi.stubGlobal(
@@ -128,7 +119,6 @@ describe("readyNotification CUSTOMER-UX-1C HOTFIX-1", () => {
 
     const delivery = deliverReadyAlertTier({
       trackingToken: "tok",
-      tier: 1,
       orderNumber: "ORD-1",
       language: "ar",
       alertsActivated: true,
@@ -157,9 +147,6 @@ describe("readyNotification FOREGROUND-READY-ALERT-RECOVERY-1", () => {
       pushSubscriptionActive: false,
       alert1Sent: false,
       alert1NotificationDelivered: false,
-      alert2Sent: false,
-      alert2NotificationDelivered: false,
-      acknowledged: false,
       lastStatus: "preparing",
     });
 
@@ -183,9 +170,6 @@ describe("readyNotification FOREGROUND-READY-ALERT-RECOVERY-1", () => {
       pushSubscriptionActive: false,
       alert1Sent: false,
       alert1NotificationDelivered: false,
-      alert2Sent: false,
-      alert2NotificationDelivered: false,
-      acknowledged: false,
       lastStatus: "preparing",
     });
 
@@ -208,9 +192,6 @@ describe("readyNotification FOREGROUND-READY-ALERT-RECOVERY-1", () => {
       pushSubscriptionActive: false,
       alert1Sent: false,
       alert1NotificationDelivered: false,
-      alert2Sent: false,
-      alert2NotificationDelivered: false,
-      acknowledged: false,
       lastStatus: "ready",
     });
 
@@ -235,9 +216,6 @@ describe("readyNotification FOREGROUND-READY-ALERT-RECOVERY-1", () => {
       pushSubscriptionActive: false,
       alert1Sent: false,
       alert1NotificationDelivered: false,
-      alert2Sent: false,
-      alert2NotificationDelivered: false,
-      acknowledged: false,
       lastStatus: "preparing",
     });
 
@@ -260,9 +238,6 @@ describe("readyNotification FOREGROUND-READY-ALERT-RECOVERY-1", () => {
       pushSubscriptionActive: false,
       alert1Sent: false,
       alert1NotificationDelivered: false,
-      alert2Sent: false,
-      alert2NotificationDelivered: false,
-      acknowledged: false,
       lastStatus: "ready",
       readyEventHandled: true,
     });
@@ -320,9 +295,6 @@ describe("readyNotification AUDIO-HOTFIX-3A", () => {
       pushSubscriptionActive: false,
       alert1Sent: false,
       alert1NotificationDelivered: false,
-      alert2Sent: false,
-      alert2NotificationDelivered: false,
-      acknowledged: false,
       lastStatus: "ready",
     });
 

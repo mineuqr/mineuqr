@@ -29,27 +29,20 @@ import {
 } from "@/lib/readyNotificationDiagnostics";
 import type { OrderLifecycleStatus } from "@/lib/orderStatusDisplay";
 
-export const READY_ALERT_FOLLOW_UP_MS = 30_000;
-
 export type ReadyAlertSessionState = {
   alertsActivated: boolean;
   pushSubscriptionActive: boolean;
   pushSubscriptionState?: PushSubscriptionState;
   alert1Sent: boolean;
   alert1NotificationDelivered: boolean;
-  alert2Sent: boolean;
-  alert2NotificationDelivered: boolean;
-  acknowledged: boolean;
   lastStatus?: OrderLifecycleStatus;
   /** True after a preparing/pending → ready transition has been processed once. */
   readyEventHandled?: boolean;
 };
 
-export type ReadyAlertTier = 1 | 2;
+export type ReadyAlertTier = 1;
 
 const PREFIX = "mineuqr:ready-alerts:";
-
-const followUpTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 function emptyReadyAlertState(): ReadyAlertSessionState {
   return {
@@ -57,9 +50,6 @@ function emptyReadyAlertState(): ReadyAlertSessionState {
     pushSubscriptionActive: false,
     alert1Sent: false,
     alert1NotificationDelivered: false,
-    alert2Sent: false,
-    alert2NotificationDelivered: false,
-    acknowledged: false,
   };
 }
 
@@ -80,9 +70,6 @@ export function loadReadyAlertState(trackingToken: string): ReadyAlertSessionSta
       pushSubscriptionState: parsed.pushSubscriptionState,
       alert1Sent: Boolean(parsed.alert1Sent),
       alert1NotificationDelivered: Boolean(parsed.alert1NotificationDelivered),
-      alert2Sent: Boolean(parsed.alert2Sent),
-      alert2NotificationDelivered: Boolean(parsed.alert2NotificationDelivered),
-      acknowledged: Boolean(parsed.acknowledged),
       lastStatus: parsed.lastStatus,
       readyEventHandled: Boolean(parsed.readyEventHandled),
     };
@@ -254,7 +241,6 @@ export function buildReadyNotificationCopy(
 
 export function showReadySystemNotification(
   trackingToken: string,
-  tier: ReadyAlertTier,
   copy: ReadyNotificationCopy
 ): boolean {
   if (typeof window === "undefined" || !("Notification" in window)) return false;
@@ -262,10 +248,9 @@ export function showReadySystemNotification(
   try {
     const notification = new Notification(copy.title, {
       body: copy.body,
-      tag: `mineuqr-ready-${trackingToken}-${tier}`,
+      tag: `mineuqr-ready-${trackingToken}`,
     });
     notification.onclick = () => {
-      acknowledgeReadyAlerts(trackingToken);
       window.focus();
     };
     return true;
@@ -282,35 +267,33 @@ export type ReadyAlertDelivery = {
 
 export function deliverReadyAlertTier(options: {
   trackingToken: string;
-  tier: ReadyAlertTier;
   orderNumber: string;
   language: "ar" | "en";
   alertsActivated: boolean;
 }): ReadyAlertDelivery {
+  const tier: ReadyAlertTier = 1;
   if (!options.alertsActivated) {
     const skipped: ReadyAlertDelivery = { sound: false, notification: false, vibrate: false };
-    logReadyAlertDelivery(options.trackingToken, options.tier, skipped, {
+    logReadyAlertDelivery(options.trackingToken, tier, skipped, {
       alertsActivated: false,
       skipped: true,
     });
     return skipped;
   }
 
-  const intensity = options.tier === 1 ? "high" : "medium";
-  const vibrateMs = options.tier === 1 ? 2000 : 1000;
   const copy = buildReadyNotificationCopy(options.orderNumber, options.language);
   const session = loadReadyAlertState(options.trackingToken);
   const skipPageNotification = session.pushSubscriptionActive;
 
   const delivery: ReadyAlertDelivery = {
-    sound: playCustomerAlertSound(intensity),
+    sound: playCustomerAlertSound("high"),
     notification: skipPageNotification
       ? false
-      : showReadySystemNotification(options.trackingToken, options.tier, copy),
-    vibrate: vibrateForReady(vibrateMs),
+      : showReadySystemNotification(options.trackingToken, copy),
+    vibrate: vibrateForReady(2000),
   };
 
-  logReadyAlertDelivery(options.trackingToken, options.tier, delivery, {
+  logReadyAlertDelivery(options.trackingToken, tier, delivery, {
     alertsActivated: true,
   });
 
@@ -362,7 +345,6 @@ export function handleReadyTier1Delivery(options: {
 
   const delivery = deliverReadyAlertTier({
     trackingToken: options.trackingToken,
-    tier: 1,
     orderNumber: options.orderNumber,
     language: options.language,
     alertsActivated:
@@ -423,81 +405,4 @@ export function deliverMissedReadyTier1IfNeeded(options: {
     status: options.currentStatus,
     source: "recovery",
   });
-}
-
-export function handleReadyTier2Delivery(options: {
-  trackingToken: string;
-  orderNumber: string;
-  language: "ar" | "en";
-}): ReadyAlertDelivery {
-  const latest = loadReadyAlertState(options.trackingToken);
-  if (latest.acknowledged || latest.alert2Sent) {
-    return { sound: false, notification: false, vibrate: false };
-  }
-
-  const delivery = deliverReadyAlertTier({
-    trackingToken: options.trackingToken,
-    tier: 2,
-    orderNumber: options.orderNumber,
-    language: options.language,
-    alertsActivated: true,
-  });
-
-  if (wasReadyAlertDelivered(delivery)) {
-    logReadyAlertDeliverySucceeded(options.trackingToken, 2, delivery);
-    saveReadyAlertState(options.trackingToken, {
-      ...latest,
-      alert2Sent: true,
-      alert2NotificationDelivered: delivery.notification,
-      lastStatus: "ready",
-    });
-  } else {
-    logReadyAlertDeliverySkipped(
-      options.trackingToken,
-      2,
-      "no_channel_delivered",
-      delivery,
-      { alertsActivated: true, source: "transition" }
-    );
-  }
-
-  return delivery;
-}
-
-export function acknowledgeReadyAlerts(trackingToken: string): void {
-  if (!trackingToken) return;
-  const timer = followUpTimers.get(trackingToken);
-  if (timer) {
-    clearTimeout(timer);
-    followUpTimers.delete(trackingToken);
-  }
-  const state = loadReadyAlertState(trackingToken);
-  if (state.acknowledged) return;
-  saveReadyAlertState(trackingToken, { ...state, acknowledged: true });
-}
-
-export function clearReadyAlertFollowUpTimer(trackingToken: string): void {
-  const timer = followUpTimers.get(trackingToken);
-  if (timer) {
-    clearTimeout(timer);
-    followUpTimers.delete(trackingToken);
-  }
-}
-
-export function scheduleReadyAlertFollowUp(
-  trackingToken: string,
-  onFire: () => void
-): void {
-  clearReadyAlertFollowUpTimer(trackingToken);
-  const timer = setTimeout(() => {
-    followUpTimers.delete(trackingToken);
-    onFire();
-  }, READY_ALERT_FOLLOW_UP_MS);
-  followUpTimers.set(trackingToken, timer);
-}
-
-/** For tests — reset module timers. */
-export function resetReadyAlertFollowUpTimersForTests(): void {
-  followUpTimers.forEach((timer) => clearTimeout(timer));
-  followUpTimers.clear();
 }

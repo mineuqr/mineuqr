@@ -11,10 +11,11 @@
 OrderStatusPage poll (8s)
   → useReadyStatusAlerts
        → isReadyTransition(prev, ready)
-       → deliverReadyAlertTier(1) — sound + vibrate + Notification
-       → schedule 30s → deliverReadyAlertTier(2) unless acknowledged
-       → sessionStorage per trackingToken (alert1Sent, alert2Sent, acknowledged)
+       → deliverReadyAlertTier — sound + vibrate + Notification (tier-1 only)
+       → sessionStorage per trackingToken (alert1Sent, alert1NotificationDelivered)
 ```
+
+> **READY-TIER2-REMOVAL-1:** The 30s tier-2 follow-up reminder was removed. Customer journey is a single READY alert.
 
 No server, WebSocket, or push infrastructure added.
 
@@ -56,11 +57,10 @@ No server, WebSocket, or push infrastructure added.
 
 | Scenario | Expected | Implementation |
 |----------|----------|------------------|
-| pending → preparing → ready | Alert 1, +30s Alert 2 | `isReadyTransition` + scheduler |
-| pending → ready | Alert 1, +30s Alert 2 | Same |
+| pending → preparing → ready | Single READY alert | `isReadyTransition` + tier-1 delivery |
+| pending → ready | Single READY alert | Same |
 | ready → refresh | No duplicate | `initializedRef` + `alert1Sent` |
-| ready → user tap | Cancel Alert 2 | `acknowledgeReadyAlerts` |
-| ready → served | No new alerts | terminal timer clear |
+| ready → served | No new alerts | terminal status only |
 
 ---
 

@@ -13,8 +13,9 @@ User feedback: Alert #1 was too short, weak, and easy to miss.
 
 | Alert | Role | Pattern |
 |-------|------|---------|
-| **#1 (high)** | Primary attention | 120ms beep → 120ms pause → 220ms beep (~460ms total) |
-| **#2 (medium)** | Soft reminder | 90ms beep → 140ms pause → 160ms beep (~390ms total) |
+| **#1 (high)** | Primary READY alert | 120ms beep → 120ms pause → 220ms beep (~460ms total) |
+
+> **READY-TIER2-REMOVAL-1:** Alert #2 (30s tier-2 reminder) was removed from the customer journey. Web Audio `medium` intensity remains in code for fallback compatibility only.
 
 Architecture, polling, permissions, session logic, and visual fallback are unchanged.
 
@@ -35,40 +36,33 @@ t=460ms   end
 - **120ms + 120ms + 220ms:** matches product spec; total within 500ms–1000ms target (460ms core pattern)
 - **Sine wave:** smooth on phone speakers; avoids harsh harmonics on iPhone WebKit
 
-### Alert #2 (30s reminder — tier 2)
-
-```
-t=0ms     ──▶ 784 Hz sine, 90ms
-t=140ms   ── silence ──
-t=230ms   ──▶ 880 Hz sine, 160ms
-t=390ms   end
-```
-
-- Shorter beeps, longer pause ratio, lower frequencies
-- Clearly distinct from Alert #1 but same “double tap” family
-
 ---
 
 ## 3. Gain Decisions
 
-| Parameter | Alert #1 | Alert #2 |
-|-----------|----------|----------|
-| Beep 1 peak gain | 0.46 | 0.28 |
-| Beep 2 peak gain | 0.50 | 0.30 |
-| Attack | 10ms exponential | 10ms exponential |
-| Release | ~18% of beep duration | ~18% of beep duration |
-| Floor | 0.001 (avoid `setValueAtTime(0)`) | same |
+| Parameter | Alert #1 |
+|-----------|----------|
+| Beep 1 peak gain | 0.46 |
+| Beep 2 peak gain | 0.50 |
+| Attack | 10ms exponential |
+| Release | ~18% of beep duration |
+| Floor | 0.001 (avoid `setValueAtTime(0)`) |
 
 **Rationale:**
 
 - Previous pattern used 0.55 gain on **three overlapping** tones — perceived loudness was smeared and brief
 - New pattern uses **non-overlapping** beeps with slightly lower peak but **longer sustain** → clearer presence
 - Peak ≤ 0.50 prevents clipping on desktop; comfortable on mobile speakers
-- Alert #2 peaks ~40% lower than Alert #1 for reminder differentiation
 
 ---
 
-## 4. Files Changed
+## 4. Historical: Alert #2 (removed)
+
+The tier-2 reminder pattern (784 Hz / 880 Hz, lower gain) was retired in **READY-TIER2-REMOVAL-1**. See git history for the prior spec.
+
+---
+
+## 5. Files Changed (original tune)
 
 | File | Change |
 |------|--------|
@@ -79,7 +73,7 @@ No changes to `readyNotification.ts`, hooks, or UI.
 
 ---
 
-## 5. Verification Results
+## 6. Verification Results
 
 | Check | Result |
 |-------|--------|
