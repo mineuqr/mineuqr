@@ -89,6 +89,10 @@ import { OPS_EVENT } from "./_core/opsTaxonomy";
 import { getOrCreateSession, recordSessionEvent } from "./diningSession/sessionService";
 import { TABLE_EVENT_TYPES } from "./diningSession/sessionTypes";
 import { throwSessionServiceTrpcError } from "./diningSession/mapSessionErrorToTrpc";
+import {
+  getPublicActiveSessionByTable,
+  getPublicSessionByToken,
+} from "./diningSession/sessionRecoveryService";
 import { cleanupPushSubscriptionsForOrder } from "./customerPush/routes";
 import { sendReadyPushForOrder } from "./customerPush/sendReadyPush";
 import { toPublicOrderStatus } from "./orderPublicStatus";
@@ -1622,6 +1626,34 @@ const tableRouter = router({
     }),
 });
 
+// ─── Dining Session Router (TABLE-MANAGEMENT-1 D4) ─────────────
+const sessionRouter = router({
+  getActiveByTable: publicProcedure
+    .input(
+      z.object({
+        slug: z.string().min(1).max(128),
+        tableNumber: z.number().int().min(1),
+      })
+    )
+    .query(async ({ input }) => {
+      return getPublicActiveSessionByTable(input.slug, input.tableNumber);
+    }),
+  getByToken: publicProcedure
+    .input(
+      z.object({
+        slug: z.string().min(1).max(128),
+        sessionToken: z
+          .string()
+          .min(16)
+          .max(64)
+          .regex(/^[A-Za-z0-9_-]+$/),
+      })
+    )
+    .query(async ({ input }) => {
+      return getPublicSessionByToken(input.slug, input.sessionToken);
+    }),
+});
+
 // ─── Order Router ────────────────────────────────────────────
 const orderRouter = router({
   // Public: check if ordering is enabled for this restaurant
@@ -1687,6 +1719,7 @@ const orderRouter = router({
       }
 
       let sessionId: number | undefined;
+      let sessionToken: string | undefined;
       if (ENV.tableSessionDualWrite) {
         try {
           const sessionResult = await getOrCreateSession({
@@ -1695,6 +1728,7 @@ const orderRouter = router({
             tableNumber: table.tableNumber,
           });
           sessionId = sessionResult.session.id;
+          sessionToken = sessionResult.session.sessionToken;
           opsLog({
             type: sessionResult.created ? OPS_EVENT.session_created : OPS_EVENT.session_reused,
             category: "ORDER",
@@ -1800,6 +1834,9 @@ const orderRouter = router({
         itemCount,
         createdAt,
         status: "pending" as const,
+        ...(ENV.tableSessionDualWrite && sessionToken
+          ? { sessionToken }
+          : {}),
       };
     }),
   // Verified: list orders for restaurant owner (live order operations)
@@ -1936,6 +1973,7 @@ export const appRouter = router({
   contact: contactRouter,
   holiday: holidayRouter,
   table: tableRouter,
+  session: sessionRouter,
   order: orderRouter,
 });
 export type AppRouter = typeof appRouter;

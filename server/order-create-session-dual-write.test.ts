@@ -122,6 +122,18 @@ describe("order.create session dual-write TABLE-MANAGEMENT-1 D3", () => {
     expect(vi.mocked(createOrder).mock.calls[0]?.[0]).not.toHaveProperty("sessionId");
   });
 
+  it("flag OFF — response omits sessionToken", async () => {
+    const caller = createCaller();
+    const result = await caller.order.create({
+      restaurantId: 1,
+      tableId: 999,
+      tableNumber: 3,
+      items: [{ menuItemId: 1, quantity: 1 }],
+    });
+
+    expect(result).not.toHaveProperty("sessionToken");
+  });
+
   it("flag ON — new session attaches sessionId and records ORDER_CREATED", async () => {
     ENV.tableSessionDualWrite = true;
     vi.mocked(getOrCreateSession).mockResolvedValue({
@@ -161,6 +173,7 @@ describe("order.create session dual-write TABLE-MANAGEMENT-1 D3", () => {
       expect.objectContaining({ type: OPS_EVENT.session_created })
     );
     expect(result.orderId).toBe(55);
+    expect(result.sessionToken).toBe("sess-tok");
   });
 
   it("flag ON — reuses existing session and logs session_reused", async () => {

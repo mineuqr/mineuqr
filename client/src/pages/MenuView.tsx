@@ -3,13 +3,17 @@ import { useRoute } from "wouter";
 import { useState, useEffect, useMemo } from "react";
 import { Loader2, AlertCircle, Store } from "lucide-react";
 import { getTemplateComponent } from "@/components/MenuTemplates";
-import { OrderingSessionConsumedBanner } from "@/components/customer/OrderingSessionConsumedBanner";
+import { DiningSessionBanner } from "@/components/customer/DiningSessionBanner";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { CartProvider } from "@/contexts/CartContext";
 import CartDrawer from "@/components/CartDrawer";
 import WelcomeOverlay from "@/components/WelcomeOverlay";
 import { isRestaurantOpen, parseTemporaryClosure } from "@/lib/restaurantHours";
-import { loadOrderingSession } from "@/lib/orderingSessionStorage";
+import {
+  recoverDiningSession,
+  isDiningSessionOrderingEnabled,
+  type RecoveredDiningSession,
+} from "@/lib/diningSessionRecovery";
 
 export default function MenuView() {
   const [, params] = useRoute("/menu/:slug/table/:tableNumber");
@@ -17,6 +21,12 @@ export default function MenuView() {
   const slug = params?.slug || params2?.slug || "";
   const tableNumber = params?.tableNumber ? parseInt(params.tableNumber) : 0;
   const { t, dir, language } = useLanguage();
+  const utils = trpc.useUtils();
+
+  const [recoveredSession, setRecoveredSession] = useState<RecoveredDiningSession | null>(
+    null
+  );
+  const [recoveryDone, setRecoveryDone] = useState(tableNumber <= 0);
 
   const { data: restaurant, isLoading: restaurantLoading } = trpc.restaurant.getBySlug.useQuery(
     { slug },
@@ -53,6 +63,44 @@ export default function MenuView() {
   );
   const canOrder = orderCheck?.canOrder ?? false;
 
+  useEffect(() => {
+    if (!slug || tableNumber <= 0 || !restaurant?.id) {
+      setRecoveryDone(true);
+      return;
+    }
+
+    let cancelled = false;
+    setRecoveryDone(false);
+
+    void recoverDiningSession({
+      slug,
+      tableNumber,
+      client: {
+        getByToken: (input) => utils.client.session.getByToken.query(input),
+        getActiveByTable: (input) => utils.client.session.getActiveByTable.query(input),
+      },
+    })
+      .then((session) => {
+        if (!cancelled) {
+          setRecoveredSession(session);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setRecoveredSession(null);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setRecoveryDone(true);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [slug, tableNumber, restaurant?.id, utils.client]);
+
   const orderingAllowed = useMemo(() => {
     const r = restaurant as {
       workingHours?: unknown;
@@ -68,15 +116,18 @@ export default function MenuView() {
   }, [restaurant]);
 
   const lang = language === "ar" ? "ar" : "en";
-  const consumedSession =
-    tableNumber > 0 && slug ? loadOrderingSession(slug, tableNumber) : null;
-  const orderingSessionConsumed = consumedSession?.orderingSessionConsumed === true;
+  const sessionAllowsOrder = isDiningSessionOrderingEnabled(recoveredSession);
 
   const canPlaceOrder =
-    tableNumber > 0 && canOrder && orderingAllowed && !orderingSessionConsumed;
+    tableNumber > 0 &&
+    canOrder &&
+    orderingAllowed &&
+    sessionAllowsOrder &&
+    recoveryDone;
   const orderingTableNumber = canPlaceOrder ? tableNumber : 0;
   const showClosedNotice = tableNumber > 0 && canOrder && !orderingAllowed;
-  const showConsumedBanner = tableNumber > 0 && orderingSessionConsumed;
+  const showSessionBanner =
+    tableNumber > 0 && recoveryDone && recoveredSession != null;
 
   const trackViewMutation = trpc.restaurant.trackView.useMutation();
 
@@ -150,6 +201,8 @@ export default function MenuView() {
     return templates[tmpl] || '#14b8a6';
   }, [templateId, customColors]);
 
+  const bannerOffsetClass = showClosedNotice ? "top-10" : undefined;
+
   if (restaurantLoading) {
     return (
       <div className="min-h-screen bg-[#0a1628] flex items-center justify-center">
@@ -197,12 +250,11 @@ export default function MenuView() {
           {language === "ar" ? "المطعم مغلق حالياً" : "The restaurant is closed right now"}
         </div>
       )}
-      {showConsumedBanner && consumedSession?.trackingToken && (
-        <OrderingSessionConsumedBanner
+      {showSessionBanner && recoveredSession && (
+        <DiningSessionBanner
           language={lang}
-          slug={slug}
-          trackingToken={consumedSession.trackingToken}
-          className={showClosedNotice ? "top-10" : undefined}
+          status={recoveredSession.status}
+          className={bannerOffsetClass}
         />
       )}
       <TemplateComponent

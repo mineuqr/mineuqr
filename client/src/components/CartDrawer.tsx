@@ -5,7 +5,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { trpc } from "@/lib/trpc";
 import { saveOrderConfirmationSnapshot } from "@/lib/orderConfirmationStorage";
 import { markOrderWelcomeReceived } from "@/lib/orderWelcomeStorage";
-import { markOrderingSessionConsumed } from "@/lib/orderingSessionStorage";
+import { saveDiningSession } from "@/lib/diningSessionStorage";
 import { ShoppingCart, X, Plus, Minus, Trash2, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -76,10 +76,13 @@ export default function CartDrawer({
         throw new Error("Missing tracking token");
       }
 
-      markOrderingSessionConsumed(slug, tableNumber, {
-        trackingToken: result.trackingToken,
-        orderNumber: result.orderNumber ?? undefined,
-      });
+      if (result.sessionToken) {
+        saveDiningSession({
+          sessionToken: result.sessionToken,
+          slug,
+          tableNumber,
+        });
+      }
 
       saveOrderConfirmationSnapshot({
         orderId: result.orderId ?? 0,
