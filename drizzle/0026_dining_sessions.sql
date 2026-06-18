@@ -12,7 +12,7 @@ CREATE TABLE `dining_sessions` (
 	`closedAt` timestamp,
 	`totalAmount` decimal(10,2),
 	`totalOrders` int NOT NULL DEFAULT 0,
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `dining_sessions_session_token_unique` UNIQUE(`sessionToken`),
 	CONSTRAINT `dining_sessions_restaurant_id_table_id_open_guard` UNIQUE(`restaurantId`,`tableId`,`openGuard`)

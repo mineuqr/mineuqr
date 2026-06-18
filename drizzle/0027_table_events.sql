@@ -6,7 +6,7 @@ CREATE TABLE `table_events` (
 	`orderId` int,
 	`eventType` varchar(32) NOT NULL,
 	`metadata` json,
-	`createdAt` timestamp NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	CONSTRAINT `table_events_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
