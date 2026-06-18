@@ -171,6 +171,13 @@
       "breakpoints": true
     },
     {
+      "idx": 24,
+      "version": "5",
+      "when": 1778756500000,
+      "tag": "0024_orders_ready_push_sent_at",
+      "breakpoints": true
+    },
+    {
       "idx": 25,
       "version": "5",
       "when": 1778756600000,
