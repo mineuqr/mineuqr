@@ -83,6 +83,12 @@ import { notifyOwnerNewRestaurant, notifyOwnerNewSubscription, notifyOwnerSubscr
 import { generateInvoicePDFBuffer } from "./invoice-pdf";
 import { mergeRouters } from "./_core/trpc";
 import { generateOrderTrackingToken } from "./orderTrackingToken";
+import { ENV } from "./_core/env";
+import { opsLog } from "./_core/opsLog";
+import { OPS_EVENT } from "./_core/opsTaxonomy";
+import { getOrCreateSession, recordSessionEvent } from "./diningSession/sessionService";
+import { TABLE_EVENT_TYPES } from "./diningSession/sessionTypes";
+import { throwSessionServiceTrpcError } from "./diningSession/mapSessionErrorToTrpc";
 import { cleanupPushSubscriptionsForOrder } from "./customerPush/routes";
 import { sendReadyPushForOrder } from "./customerPush/sendReadyPush";
 import { toPublicOrderStatus } from "./orderPublicStatus";
@@ -1680,6 +1686,33 @@ const orderRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "الطاولة غير موجودة" });
       }
 
+      let sessionId: number | undefined;
+      if (ENV.tableSessionDualWrite) {
+        try {
+          const sessionResult = await getOrCreateSession({
+            restaurantId: input.restaurantId,
+            tableId: table.id,
+            tableNumber: table.tableNumber,
+          });
+          sessionId = sessionResult.session.id;
+          opsLog({
+            type: sessionResult.created ? OPS_EVENT.session_created : OPS_EVENT.session_reused,
+            category: "ORDER",
+            severity: "info",
+            ts: new Date().toISOString(),
+            restaurantId: input.restaurantId,
+            procedure: "order.create",
+            metadata: {
+              sessionId: sessionResult.session.id,
+              tableId: table.id,
+              tableNumber: table.tableNumber,
+            },
+          });
+        } catch (err) {
+          throwSessionServiceTrpcError(err);
+        }
+      }
+
       const { lines, totalAmount } = await resolveAuthoritativeOrderLines(
         input.restaurantId,
         input.items.map((item) => ({
@@ -1688,6 +1721,7 @@ const orderRouter = router({
           notes: item.notes,
         }))
       );
+      const itemCount = lines.reduce((sum, line) => sum + line.quantity, 0);
       const orderNumber = await generateOrderNumber(input.restaurantId);
       const trackingToken = generateOrderTrackingToken();
       const createdAt = new Date().toISOString();
@@ -1695,6 +1729,7 @@ const orderRouter = router({
         restaurantId: input.restaurantId,
         tableId: table.id,
         tableNumber: table.tableNumber,
+        ...(ENV.tableSessionDualWrite && sessionId != null ? { sessionId } : {}),
         customerName: input.customerName,
         customerPhone: input.customerPhone,
         notes: input.notes,
@@ -1712,6 +1747,37 @@ const orderRouter = router({
           quantity: line.quantity,
           notes: line.notes,
         })));
+        if (ENV.tableSessionDualWrite && sessionId != null) {
+          try {
+            await recordSessionEvent({
+              restaurantId: input.restaurantId,
+              tableId: table.id,
+              sessionId,
+              orderId: result.id,
+              eventType: TABLE_EVENT_TYPES.ORDER_CREATED,
+              metadata: {
+                orderNumber,
+                totalAmount,
+                itemCount,
+              },
+            });
+          } catch (e) {
+            opsLog({
+              type: OPS_EVENT.order_created_event_failed,
+              category: "ORDER",
+              severity: "warn",
+              ts: new Date().toISOString(),
+              restaurantId: input.restaurantId,
+              procedure: "order.create",
+              metadata: {
+                sessionId,
+                orderId: result.id,
+                orderNumber,
+                error: e instanceof Error ? e.message : String(e),
+              },
+            });
+          }
+        }
         // Send notification to restaurant owner
         try {
           const itemsSummary = lines.map((i) => `${i.nameAr} x${i.quantity}`).join('، ');
@@ -1725,7 +1791,6 @@ const orderRouter = router({
           });
         } catch (e) { /* notification failure is non-critical */ }
       }
-      const itemCount = lines.reduce((sum, line) => sum + line.quantity, 0);
       return {
         orderId: result?.id,
         orderNumber,

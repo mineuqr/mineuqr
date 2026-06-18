@@ -105,6 +105,11 @@ export const OPS_EVENT = {
   suspicious_tenant_activity: "suspicious_tenant_activity",
   suspicious_admin_activity: "suspicious_admin_activity",
   runtime_failure_burst: "runtime_failure_burst",
+
+  // ORDER / dining session (TABLE-MANAGEMENT-1 D3)
+  session_created: "session_created",
+  session_reused: "session_reused",
+  order_created_event_failed: "order_created_event_failed",
 } as const;
 
 export type OpsEventType = (typeof OPS_EVENT)[keyof typeof OPS_EVENT];

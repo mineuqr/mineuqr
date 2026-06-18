@@ -46,4 +46,6 @@ export const ENV = {
   vapidPublicKey: process.env.VAPID_PUBLIC_KEY ?? "",
   vapidPrivateKey: process.env.VAPID_PRIVATE_KEY ?? "",
   vapidSubject: process.env.VAPID_SUBJECT ?? "mailto:info@mineuqr.com",
+  /** TABLE-MANAGEMENT-1 D3 — dual-write orders.sessionId when true. */
+  tableSessionDualWrite: process.env.TABLE_SESSION_DUAL_WRITE === "true",
 };
