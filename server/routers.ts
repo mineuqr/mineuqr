@@ -93,6 +93,7 @@ import {
   getPublicActiveSessionByTable,
   getPublicSessionByToken,
 } from "./diningSession/sessionRecoveryService";
+import { getOwnerSessionTimeline } from "./diningSession/sessionOwnerTimeline";
 import { cleanupPushSubscriptionsForOrder } from "./customerPush/routes";
 import { sendReadyPushForOrder } from "./customerPush/sendReadyPush";
 import { toPublicOrderStatus } from "./orderPublicStatus";
@@ -1651,6 +1652,21 @@ const sessionRouter = router({
     )
     .query(async ({ input }) => {
       return getPublicSessionByToken(input.slug, input.sessionToken);
+    }),
+  getOwnerTimeline: verifiedProcedure
+    .input(
+      z.object({
+        restaurantId: z.number(),
+        sessionId: z.number().int().positive(),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      await assertRestaurantAccess(ctx, input.restaurantId);
+      try {
+        return await getOwnerSessionTimeline(input.restaurantId, input.sessionId);
+      } catch (err) {
+        throwSessionServiceTrpcError(err);
+      }
     }),
 });
 

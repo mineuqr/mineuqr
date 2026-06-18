@@ -2,6 +2,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { useAuthGate } from "@/_core/hooks/useAuthGate";
 import { Button } from "@/components/ui/button";
 import OrderAlertSystem from "@/components/OrderAlertSystem";
+import { DiningSessionTimelineSheet } from "@/components/dashboard/DiningSessionTimelineSheet";
 import { getLoginUrl, spaNavigate } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { cn, resolveImageUrl } from "@/lib/utils";
@@ -4047,6 +4048,7 @@ function OrdersTab({ restaurantId, currencySymbol, tableLabel }: { restaurantId:
   const unitAr = isRooms ? "غرفة" : "طاولة";
   const unitEn = isRooms ? "Room" : "Table";
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [timelineSessionId, setTimelineSessionId] = useState<number | null>(null);
 
   useDevQueryRuntimeLog("order.list", {
     enabled: ordersEnabled,
@@ -4157,7 +4159,16 @@ function OrdersTab({ restaurantId, currencySymbol, tableLabel }: { restaurantId:
                 </div>
 
                 {hasDashboardSession(order.sessionId) && (
-                  <p className="mb-3 text-sm text-muted-foreground">
+                  <button
+                    type="button"
+                    onClick={() => setTimelineSessionId(order.sessionId)}
+                    className="mb-3 block text-start text-sm text-muted-foreground transition-colors hover:text-foreground"
+                    aria-label={
+                      language === "ar"
+                        ? `عرض سجل جلسة #${order.sessionId}`
+                        : `View session #${order.sessionId} timeline`
+                    }
+                  >
                     {formatDashboardSessionLabel(
                       order.sessionId,
                       language === "ar" ? "ar" : "en"
@@ -4171,7 +4182,7 @@ function OrdersTab({ restaurantId, currencySymbol, tableLabel }: { restaurantId:
                         )}
                       </>
                     )}
-                  </p>
+                  </button>
                 )}
 
                 {order.customerName && (
@@ -4283,6 +4294,17 @@ function OrdersTab({ restaurantId, currencySymbol, tableLabel }: { restaurantId:
       )}
       </>
       )}
+
+      <DiningSessionTimelineSheet
+        open={timelineSessionId != null}
+        onOpenChange={(open) => {
+          if (!open) setTimelineSessionId(null);
+        }}
+        restaurantId={restaurantId}
+        sessionId={timelineSessionId}
+        currencySymbol={currencySymbol}
+        tableLabel={tableLabel}
+      />
     </div>
   );
 }

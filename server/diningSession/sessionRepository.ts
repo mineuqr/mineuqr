@@ -2,18 +2,20 @@
  * TABLE-MANAGEMENT-1 D2 — dining_sessions / table_events persistence boundary.
  * Only this module performs INSERT/SELECT on session tables.
  */
-import { and, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import {
   diningSessions,
   tableEvents,
   type InsertDiningSession,
   type InsertTableEvent,
   type SelectDiningSession,
+  type SelectTableEvent,
 } from "../../drizzle/schema";
 import { getDb } from "../db";
 import {
   DINING_SESSION_ACTIVE_OPEN_GUARD,
   DINING_SESSION_ACTIVE_STATUSES,
+  OWNER_TIMELINE_V1_EVENT_TYPES,
   DiningSessionUnavailableError,
 } from "./sessionTypes";
 
@@ -146,4 +148,26 @@ export async function insertSessionEvent(
     throw new DiningSessionUnavailableError("table_events insert did not return an id");
   }
   return insertId;
+}
+
+export async function findEventsBySessionId(
+  restaurantId: number,
+  sessionId: number,
+  options?: { eventTypes?: readonly string[] },
+  client?: SessionDbClient
+): Promise<SelectTableEvent[]> {
+  const db = await resolveDb(client);
+  const eventTypes = options?.eventTypes ?? OWNER_TIMELINE_V1_EVENT_TYPES;
+
+  return db
+    .select()
+    .from(tableEvents)
+    .where(
+      and(
+        eq(tableEvents.restaurantId, restaurantId),
+        eq(tableEvents.sessionId, sessionId),
+        inArray(tableEvents.eventType, [...eventTypes])
+      )
+    )
+    .orderBy(asc(tableEvents.createdAt));
 }
