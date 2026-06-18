@@ -8,6 +8,12 @@ import { cn, resolveImageUrl } from "@/lib/utils";
 import { formatRiyadhDateTime, todayYmd, convertUtcToRestaurantTime } from "@/lib/datetime";
 import { downloadSalesReportXlsx } from "@/lib/excel";
 import {
+  buildVisibleSessionOrderCounts,
+  formatDashboardSessionLabel,
+  formatDashboardSessionOrderCount,
+  hasDashboardSession,
+} from "@/lib/diningSessionDashboardCopy";
+import {
   DASHBOARD_ORDER_LIST_POLL_MS,
   orderListQueryOptions,
   restaurantQueriesEnabled,
@@ -3622,6 +3628,7 @@ type DashboardOrder = {
   createdAt: string;
   orderNumber?: string;
   tableNumber?: number;
+  sessionId?: number | null;
   customerName?: string;
   customerPhone?: string;
   notes?: string;
@@ -4059,6 +4066,11 @@ function OrdersTab({ restaurantId, currencySymbol, tableLabel }: { restaurantId:
     return list.filter((o) => o.status === statusFilter);
   }, [allOrders, statusFilter]);
 
+  const sessionOrderCounts = useMemo(
+    () => buildVisibleSessionOrderCounts(orders),
+    [orders]
+  );
+
   const statusColors: Record<string, string> = {
     pending: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
     preparing: "bg-blue-500/20 text-blue-400 border-blue-500/30",
@@ -4127,7 +4139,12 @@ function OrdersTab({ restaurantId, currencySymbol, tableLabel }: { restaurantId:
           {orders.map((order: any) => (
             <Card key={order.id} className={cn(dash.card, "border-border/40")}>
               <CardContent className="p-6 sm:p-7">
-                <div className="flex items-center justify-between mb-4">
+                <div
+                  className={cn(
+                    "flex items-center justify-between",
+                    hasDashboardSession(order.sessionId) ? "mb-1" : "mb-4"
+                  )}
+                >
                   <div className="flex items-center gap-3">
                     <span className="font-mono text-base font-bold text-primary">#{order.orderNumber}</span>
                     <Badge className={`${statusColors[order.status]} border px-2.5 py-0.5 text-sm`}>
@@ -4138,6 +4155,24 @@ function OrdersTab({ restaurantId, currencySymbol, tableLabel }: { restaurantId:
                     {language === "ar" ? `${unitAr} ${order.tableNumber}` : `${unitEn} ${order.tableNumber}`}
                   </span>
                 </div>
+
+                {hasDashboardSession(order.sessionId) && (
+                  <p className="mb-3 text-sm text-muted-foreground">
+                    {formatDashboardSessionLabel(
+                      order.sessionId,
+                      language === "ar" ? "ar" : "en"
+                    )}
+                    {(sessionOrderCounts.get(order.sessionId) ?? 0) > 1 && (
+                      <>
+                        {" · "}
+                        {formatDashboardSessionOrderCount(
+                          sessionOrderCounts.get(order.sessionId)!,
+                          language === "ar" ? "ar" : "en"
+                        )}
+                      </>
+                    )}
+                  </p>
+                )}
 
                 {order.customerName && (
                   <p className="text-sm text-muted-foreground mb-1">
