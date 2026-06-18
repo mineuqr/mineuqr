@@ -1,4 +1,4 @@
-import { mysqlTable, mysqlSchema, AnyMySqlColumn, bigint, int, varchar, text, timestamp, decimal, mysqlEnum, index, uniqueIndex, boolean, json } from "drizzle-orm/mysql-core"
+import { mysqlTable, mysqlSchema, AnyMySqlColumn, bigint, int, tinyint, varchar, text, timestamp, decimal, mysqlEnum, index, uniqueIndex, boolean, json } from "drizzle-orm/mysql-core"
 import { sql } from "drizzle-orm"
 
 // ─── Categories Table ──────────────────────────────────────
@@ -324,12 +324,64 @@ export const restaurantTables = mysqlTable("restaurant_tables", {
 	index("restaurant_tables_restaurant_id").on(table.restaurantId),
 ]);
 
+// ─── Dining Sessions (TABLE-MANAGEMENT-1 Phase C) ───────────────
+export const diningSessions = mysqlTable("dining_sessions", {
+	id: int().autoincrement().notNull(),
+	restaurantId: int().notNull(),
+	tableId: int().notNull(),
+	tableNumber: int().notNull(),
+	sessionToken: varchar({ length: 64 }).notNull(),
+	status: mysqlEnum(['open','bill_requested','payment_pending','closed']).default('open').notNull(),
+	/** 1 while active; NULL when closed — UNIQUE(restaurantId, tableId, openGuard) enforces one active session per table. */
+	openGuard: tinyint({ mode: 'number' }),
+	openedAt: timestamp({ mode: 'string' }).notNull(),
+	billRequestedAt: timestamp({ mode: 'string' }),
+	paymentPendingAt: timestamp({ mode: 'string' }),
+	closedAt: timestamp({ mode: 'string' }),
+	totalAmount: decimal({ precision: 10, scale: 2 }),
+	totalOrders: int().default(0).notNull(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	uniqueIndex("dining_sessions_session_token_unique").on(table.sessionToken),
+	index("dining_sessions_restaurant_id").on(table.restaurantId),
+	index("dining_sessions_table_id").on(table.tableId),
+	index("dining_sessions_status").on(table.status),
+	index("dining_sessions_restaurant_id_table_id").on(table.restaurantId, table.tableId),
+	index("dining_sessions_restaurant_id_status_opened_at").on(table.restaurantId, table.status, table.openedAt),
+	uniqueIndex("dining_sessions_restaurant_id_table_id_open_guard").on(table.restaurantId, table.tableId, table.openGuard),
+]);
+
+export type InsertDiningSession = typeof diningSessions.$inferInsert;
+export type SelectDiningSession = typeof diningSessions.$inferSelect;
+
+// ─── Table Events (TABLE-MANAGEMENT-1 Phase C) ──────────────────
+export const tableEvents = mysqlTable("table_events", {
+	id: bigint({ mode: "number" }).autoincrement().primaryKey(),
+	restaurantId: int().notNull(),
+	tableId: int().notNull(),
+	sessionId: int(),
+	orderId: int(),
+	eventType: varchar({ length: 32 }).notNull(),
+	metadata: json(),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("table_events_session_id_created_at").on(table.sessionId, table.createdAt),
+	index("table_events_restaurant_id_created_at").on(table.restaurantId, table.createdAt),
+]);
+
+export type InsertTableEvent = typeof tableEvents.$inferInsert;
+export type SelectTableEvent = typeof tableEvents.$inferSelect;
+
 // ─── Orders Table ─────────────────────────────────────────────────
 export const orders = mysqlTable("orders", {
 	id: int().autoincrement().notNull(),
 	restaurantId: int().notNull(),
 	tableId: int().notNull(),
 	tableNumber: int().notNull(),
+	sessionId: int(),
 	customerName: varchar({ length: 255 }),
 	customerPhone: varchar({ length: 32 }),
 	status: mysqlEnum(['pending','preparing','ready','served','cancelled']).default('pending').notNull(),
@@ -347,6 +399,7 @@ export const orders = mysqlTable("orders", {
 	index("orders_restaurant_id").on(table.restaurantId),
 	index("orders_table_id").on(table.tableId),
 	index("orders_status").on(table.status),
+	index("orders_session_id").on(table.sessionId),
 	uniqueIndex("orders_tracking_token_unique").on(table.trackingToken),
 ]);
 

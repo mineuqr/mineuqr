@@ -183,6 +183,27 @@
       "when": 1778756600000,
       "tag": "0025_orders_ready_at",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "5",
+      "when": 1781807003956,
+      "tag": "0026_dining_sessions",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "5",
+      "when": 1781807044927,
+      "tag": "0027_table_events",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "5",
+      "when": 1781807101673,
+      "tag": "0028_orders_session_id",
+      "breakpoints": true
     }
   ]
 }
