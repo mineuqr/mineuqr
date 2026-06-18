@@ -333,7 +333,7 @@ export const diningSessions = mysqlTable("dining_sessions", {
 	sessionToken: varchar({ length: 64 }).notNull(),
 	status: mysqlEnum(['open','bill_requested','payment_pending','closed']).default('open').notNull(),
 	/** 1 while active; NULL when closed — UNIQUE(restaurantId, tableId, openGuard) enforces one active session per table. */
-	openGuard: tinyint({ mode: 'number' }),
+	openGuard: tinyint(),
 	openedAt: timestamp({ mode: 'string' }).notNull(),
 	billRequestedAt: timestamp({ mode: 'string' }),
 	paymentPendingAt: timestamp({ mode: 'string' }),
