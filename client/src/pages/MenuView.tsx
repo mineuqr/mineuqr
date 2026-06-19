@@ -11,10 +11,9 @@ import CartDrawer from "@/components/CartDrawer";
 import WelcomeOverlay from "@/components/WelcomeOverlay";
 import { isRestaurantOpen, parseTemporaryClosure } from "@/lib/restaurantHours";
 import {
-  recoverDiningSession,
   isDiningSessionOrderingEnabled,
-  type RecoveredDiningSession,
 } from "@/lib/diningSessionRecovery";
+import { useDiningSessionRecovery } from "@/hooks/useDiningSessionRecovery";
 
 export default function MenuView() {
   const [, params] = useRoute("/menu/:slug/table/:tableNumber");
@@ -23,11 +22,6 @@ export default function MenuView() {
   const tableNumber = params?.tableNumber ? parseInt(params.tableNumber) : 0;
   const { t, dir, language } = useLanguage();
   const utils = trpc.useUtils();
-
-  const [recoveredSession, setRecoveredSession] = useState<RecoveredDiningSession | null>(
-    null
-  );
-  const [recoveryDone, setRecoveryDone] = useState(tableNumber <= 0);
 
   const { data: restaurant, isLoading: restaurantLoading } = trpc.restaurant.getBySlug.useQuery(
     { slug },
@@ -64,43 +58,15 @@ export default function MenuView() {
   );
   const canOrder = orderCheck?.canOrder ?? false;
 
-  useEffect(() => {
-    if (!slug || tableNumber <= 0 || !restaurant?.id) {
-      setRecoveryDone(true);
-      return;
-    }
-
-    let cancelled = false;
-    setRecoveryDone(false);
-
-    void recoverDiningSession({
-      slug,
-      tableNumber,
-      client: {
-        getByToken: (input) => utils.client.session.getByToken.query(input),
-        getActiveByTable: (input) => utils.client.session.getActiveByTable.query(input),
-      },
-    })
-      .then((session) => {
-        if (!cancelled) {
-          setRecoveredSession(session);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setRecoveredSession(null);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setRecoveryDone(true);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [slug, tableNumber, restaurant?.id, utils.client]);
+  const { recoveredSession, recoveryDone, setRecoveredSession } = useDiningSessionRecovery({
+    slug,
+    tableNumber,
+    restaurantId: restaurant?.id,
+    client: {
+      getByToken: (input) => utils.client.session.getByToken.query(input),
+      getActiveByTable: (input) => utils.client.session.getActiveByTable.query(input),
+    },
+  });
 
   const orderingAllowed = useMemo(() => {
     const r = restaurant as {
