@@ -32,10 +32,18 @@ export type DiningSessionRecoveryClient = {
   }) => Promise<RecoveredDiningSession | null>;
 };
 
+/** CUSTOMER-SESSION-LIFECYCLE-1A — closed sessions are terminal for customer recovery. */
+export function isRecoverableDiningSession(
+  session: RecoveredDiningSession | null
+): session is RecoveredDiningSession {
+  return session != null && session.status !== "closed";
+}
+
 /**
  * Tier 1: localStorage hint → getByToken.
  * Tier 2: getActiveByTable.
  * Server wins — persisted token always matches server response.
+ * Closed sessions from tier 1 are discarded and tier 2 runs.
  */
 export async function recoverDiningSession(options: {
   slug: string;
@@ -54,6 +62,11 @@ export async function recoverDiningSession(options: {
     } catch {
       /* non-fatal — fall through to table lookup */
     }
+
+    if (session?.status === "closed") {
+      clearDiningSession(slug, tableNumber);
+      session = null;
+    }
   }
 
   if (!session) {
@@ -64,7 +77,7 @@ export async function recoverDiningSession(options: {
     }
   }
 
-  if (session) {
+  if (isRecoverableDiningSession(session)) {
     saveDiningSession({
       sessionToken: session.sessionToken,
       slug,
