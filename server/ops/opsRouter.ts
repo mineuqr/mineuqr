@@ -6,6 +6,17 @@ import { getActiveTablesBoard } from "./activeTablesBoard";
 import { getActionCenter } from "./actionCenter";
 import { getActivityFeed } from "./activityFeed";
 import { ACTIVITY_FEED_DEFAULT_LIMIT, ACTIVITY_FEED_MAX_LIMIT } from "./operationalConstants";
+import {
+  getSettlementBreakdown,
+  getSettlementSummary,
+  getSettlementTrend,
+} from "../analytics/settlementMetrics";
+
+const settlementMetricsInput = z.object({
+  restaurantId: z.number().int().positive(),
+  from: z.string().optional(),
+  to: z.string().optional(),
+});
 
 /**
  * OPS-DASHBOARD-2 — owner restaurant operations read API.
@@ -57,5 +68,42 @@ export const opsRouter = router({
       return getActivityFeed(input.restaurantId, {
         limit: input.limit ?? ACTIVITY_FEED_DEFAULT_LIMIT,
       });
+    }),
+
+  getSettlementSummary: verifiedProcedure
+    .input(settlementMetricsInput)
+    .query(async ({ input, ctx }) => {
+      await assertRestaurantAccess(
+        ctx,
+        input.restaurantId,
+        "ops.getSettlementSummary"
+      );
+      return getSettlementSummary(input);
+    }),
+
+  getSettlementBreakdown: verifiedProcedure
+    .input(settlementMetricsInput)
+    .query(async ({ input, ctx }) => {
+      await assertRestaurantAccess(
+        ctx,
+        input.restaurantId,
+        "ops.getSettlementBreakdown"
+      );
+      return getSettlementBreakdown(input);
+    }),
+
+  getSettlementTrend: verifiedProcedure
+    .input(
+      settlementMetricsInput.extend({
+        grouping: z.enum(["day", "week", "month"]),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      await assertRestaurantAccess(
+        ctx,
+        input.restaurantId,
+        "ops.getSettlementTrend"
+      );
+      return getSettlementTrend(input);
     }),
 });
