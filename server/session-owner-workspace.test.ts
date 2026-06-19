@@ -110,10 +110,32 @@ describe("session.getOwnerWorkspace UX-1B", () => {
       closedAt: null,
       orderCount: 3,
       ordersTotalAmount: "165.00",
+      aggregateSource: "computed",
     });
     expect(result.orders).toHaveLength(3);
     expect(result.events).toHaveLength(1);
     expect(getOrdersBySessionId).toHaveBeenCalledWith(10, 1);
+  });
+
+  it("uses maintained aggregates when session rollups are populated", async () => {
+    vi.mocked(findSessionById).mockResolvedValue({
+      ...baseSession,
+      totalOrders: 2,
+      totalAmount: "165.00",
+    });
+
+    const caller = createVerifiedCaller();
+    const result = await caller.session.getOwnerWorkspace({
+      restaurantId: 10,
+      sessionId: 1,
+    });
+
+    expect(result).toMatchObject({
+      orderCount: 2,
+      ordersTotalAmount: "165.00",
+      aggregateSource: "maintained",
+    });
+    expect(result.orders).toHaveLength(3);
   });
 
   it("rejects cross-tenant session lookup", async () => {

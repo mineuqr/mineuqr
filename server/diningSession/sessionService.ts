@@ -31,7 +31,7 @@ import {
 } from "./sessionTypes";
 import type { SelectDiningSession } from "../../drizzle/schema";
 import { getDb } from "../db";
-import { computeOrdersTotalAmount } from "./sessionOwnerWorkspace";
+import { computeOrdersTotalAmount } from "./sessionOrderTotals";
 import {
   isValidSessionTokenFormat,
   toPublicDiningSession,

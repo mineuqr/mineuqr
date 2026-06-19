@@ -5,7 +5,7 @@
 import { getOrdersBySessionId, type SessionLinkedOrderRow } from "../db";
 import { OPS_EVENT } from "../_core/opsTaxonomy";
 import { opsLog } from "../_core/opsLog";
-import { computeOrdersTotalAmount } from "./sessionOwnerWorkspace";
+import { computeOrdersTotalAmount } from "./sessionOrderTotals";
 import { findSessionById, updateSessionAggregates } from "./sessionRepository";
 import { DiningSessionValidationError } from "./sessionTypes";
 

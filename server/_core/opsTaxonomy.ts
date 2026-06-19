@@ -114,6 +114,9 @@ export const OPS_EVENT = {
   // SESSION-AGGREGATES-1 Phase A
   session_aggregate_drift_detected: "session_aggregate_drift_detected",
   session_aggregate_update_failed: "session_aggregate_update_failed",
+
+  // SESSION-AGGREGATES-1 Phase B
+  session_aggregate_reader_fallback: "session_aggregate_reader_fallback",
 } as const;
 
 export type OpsEventType = (typeof OPS_EVENT)[keyof typeof OPS_EVENT];

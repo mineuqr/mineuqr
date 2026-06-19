@@ -5,10 +5,13 @@ import { getOrdersBySessionId, type SessionLinkedOrderRow } from "../db";
 import type { PublicDiningSessionStatus } from "./sessionPublicStatus";
 import { mapTableEventToOwnerTimeline, type OwnerTimelineEvent } from "./sessionOwnerTimeline";
 import { findEventsBySessionId, findSessionById } from "./sessionRepository";
+import { resolveSessionAggregates, type AggregateSource } from "./sessionAggregateReaders";
 import {
   DiningSessionNotFoundError,
   OWNER_TIMELINE_OPERATIONAL_EVENT_TYPES,
 } from "./sessionTypes";
+
+export { computeOrdersTotalAmount } from "./sessionOrderTotals";
 
 export type OwnerSessionOrder = {
   id: number;
@@ -26,20 +29,11 @@ export type OwnerSessionWorkspace = {
   closedAt: string | null;
   orderCount: number;
   ordersTotalAmount: string;
+  /** Operational observability — not displayed in UI. */
+  aggregateSource: AggregateSource;
   orders: OwnerSessionOrder[];
   events: OwnerTimelineEvent[];
 };
-
-export function computeOrdersTotalAmount(
-  orderRows: ReadonlyArray<Pick<SessionLinkedOrderRow, "status" | "totalAmount">>
-): string {
-  const sum = orderRows.reduce((acc, row) => {
-    if (row.status === "cancelled") return acc;
-    const amount = Number.parseFloat(String(row.totalAmount ?? "0"));
-    return acc + (Number.isFinite(amount) ? amount : 0);
-  }, 0);
-  return sum.toFixed(2);
-}
 
 export function computeSessionDurationMs(
   openedAt: string,
@@ -95,6 +89,12 @@ export async function getOwnerSessionWorkspace(
   ]);
 
   const orders = orderRows.map(mapOrderRow);
+  const aggregates = resolveSessionAggregates({
+    session,
+    orderRows,
+    restaurantId,
+    procedure: "session.getOwnerWorkspace",
+  });
 
   return {
     sessionId: session.id,
@@ -102,8 +102,9 @@ export async function getOwnerSessionWorkspace(
     status: session.status as PublicDiningSessionStatus,
     openedAt: session.openedAt,
     closedAt: session.closedAt ?? null,
-    orderCount: orders.length,
-    ordersTotalAmount: computeOrdersTotalAmount(orderRows),
+    orderCount: aggregates.orderCount,
+    ordersTotalAmount: aggregates.ordersTotalAmount,
+    aggregateSource: aggregates.aggregateSource,
     orders,
     events: eventRows.map(mapTableEventToOwnerTimeline),
   };
