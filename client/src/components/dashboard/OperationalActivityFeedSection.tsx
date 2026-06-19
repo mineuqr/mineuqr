@@ -13,6 +13,8 @@ import { cn } from "@/lib/utils";
 import {
   AlertTriangle,
   CheckCircle,
+  ChevronDown,
+  ChevronUp,
   Clock3,
   CreditCard,
   DoorOpen,
@@ -20,44 +22,48 @@ import {
   Receipt,
   RefreshCw,
 } from "lucide-react";
-import type { ComponentType } from "react";
+import { useState, type ComponentType } from "react";
+
+/** Home dashboard compact preview — full feed uses API default (25). */
+const HOME_ACTIVITY_FEED_LIMIT = 5;
+const FULL_ACTIVITY_FEED_LIMIT = 25;
 
 type ActivityFeedEvent = RouterOutputs["ops"]["getActivityFeed"]["events"][number];
 type ActivityFeedEventType = ActivityFeedEvent["eventType"];
 
 const EVENT_VISUALS: Record<
   ActivityFeedEventType,
-  { icon: ComponentType<{ className?: string }>; card: string; iconClass: string }
+  { icon: ComponentType<{ className?: string }>; iconClass: string; dotClass: string }
 > = {
   session_opened: {
     icon: DoorOpen,
-    card: "border-emerald-500/30 bg-emerald-500/5",
     iconClass: "text-emerald-400",
+    dotClass: "bg-emerald-500/20 border-emerald-500/35",
   },
   order_created: {
     icon: Receipt,
-    card: "border-primary/30 bg-primary/5",
     iconClass: "text-primary",
+    dotClass: "bg-primary/15 border-primary/35",
   },
   order_status_changed: {
     icon: RefreshCw,
-    card: "border-sky-500/30 bg-sky-500/5",
     iconClass: "text-sky-400",
+    dotClass: "bg-sky-500/15 border-sky-500/35",
   },
   bill_requested: {
     icon: CreditCard,
-    card: "border-amber-500/30 bg-amber-500/5",
     iconClass: "text-amber-400",
+    dotClass: "bg-amber-500/15 border-amber-500/35",
   },
   payment_pending: {
     icon: Clock3,
-    card: "border-violet-500/30 bg-violet-500/5",
     iconClass: "text-violet-400",
+    dotClass: "bg-violet-500/15 border-violet-500/35",
   },
   session_closed: {
     icon: CheckCircle,
-    card: "border-border/50 bg-[#12161f]/60",
     iconClass: "text-muted-foreground",
+    dotClass: "bg-muted/20 border-border/50",
   },
 };
 
@@ -107,71 +113,74 @@ function localizedEventTitle(eventType: ActivityFeedEventType, isAr: boolean): s
   return isAr ? titles[eventType].ar : titles[eventType].en;
 }
 
-function ActivityFeedItemSkeleton() {
+function ActivityFeedItemSkeleton({ isLast }: { isLast: boolean }) {
   return (
-    <div className="animate-pulse rounded-xl border border-border/40 bg-[#161b22]/80 px-4 py-4 sm:px-5 sm:py-5">
-      <div className="flex gap-3">
-        <div className="h-10 w-10 shrink-0 rounded-lg bg-muted/40" />
-        <div className="min-w-0 flex-1 space-y-2.5">
-          <div className="h-4 w-40 rounded bg-muted/40" />
-          <div className="h-3 w-28 rounded bg-muted/30" />
-          <div className="h-3 w-20 rounded bg-muted/30" />
-        </div>
+    <div className={cn("flex gap-2.5 px-3 py-2.5", !isLast && "border-b border-border/30")}>
+      <div className="h-7 w-7 shrink-0 animate-pulse rounded-md bg-muted/40" />
+      <div className="min-w-0 flex-1 space-y-1.5">
+        <div className="h-3.5 w-36 animate-pulse rounded bg-muted/40" />
+        <div className="h-3 w-24 animate-pulse rounded bg-muted/30" />
       </div>
-      <div className="mt-4 h-9 w-full rounded-lg bg-muted/30 sm:ml-[3.25rem] sm:w-32" />
     </div>
   );
 }
 
-function ActivityFeedItemRow({
+function ActivityFeedTimelineRow({
   event,
   isAr,
+  isLast,
   onOpenSession,
 }: {
   event: ActivityFeedEvent;
   isAr: boolean;
+  isLast: boolean;
   onOpenSession: (sessionId: number) => void;
 }) {
   const visuals = EVENT_VISUALS[event.eventType];
   const Icon = visuals.icon;
   const title = localizedEventTitle(event.eventType, isAr);
+  const timeLabel = formatRelativeEventTime(event.occurredAt, isAr);
 
   return (
     <article
       className={cn(
-        "flex flex-col gap-4 rounded-xl border px-4 py-4 sm:px-5 sm:py-5",
-        visuals.card
+        "flex gap-2.5 px-3 py-2.5 sm:items-start sm:justify-between sm:gap-3",
+        !isLast && "border-b border-border/30"
       )}
     >
-      <div className="flex gap-3">
+      <div className="flex min-w-0 flex-1 gap-2.5">
         <div
           className={cn(
-            "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border/30 bg-[#0b0e14]/40",
+            "flex h-7 w-7 shrink-0 items-center justify-center rounded-md border",
+            visuals.dotClass,
             visuals.iconClass
           )}
         >
-          <Icon className="h-5 w-5" aria-hidden />
+          <Icon className="h-3.5 w-3.5" aria-hidden />
         </div>
+
         <div className="min-w-0 flex-1">
-          <h3 className="text-base font-semibold text-foreground">{title}</h3>
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+            <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+            <span className="text-xs tabular-nums text-muted-foreground">{timeLabel}</span>
+          </div>
           {event.subtitle ? (
-            <p className="mt-1 text-sm text-muted-foreground">{event.subtitle}</p>
+            <p className="mt-0.5 truncate text-xs text-muted-foreground">{event.subtitle}</p>
           ) : null}
           {event.tableName ? (
-            <p className="mt-1 text-sm font-medium text-foreground">{event.tableName}</p>
+            <p className="mt-0.5 truncate text-xs font-medium text-foreground/90">
+              {event.tableName}
+            </p>
           ) : null}
-          <p className="mt-2 text-sm tabular-nums text-muted-foreground">
-            {formatRelativeEventTime(event.occurredAt, isAr)}
-          </p>
         </div>
       </div>
 
       {event.sessionId ? (
         <Button
           type="button"
-          variant="outline"
+          variant="ghost"
           size="sm"
-          className="w-full border-border/60 sm:ml-[3.25rem] sm:w-auto sm:self-start"
+          className="h-7 shrink-0 px-2 text-xs text-primary hover:text-primary"
           onClick={() => onOpenSession(Number.parseInt(event.sessionId!, 10))}
         >
           {isAr ? "فتح الجلسة" : "Open Session"}
@@ -193,12 +202,14 @@ export function OperationalActivityFeedSection({
   onOpenSession: (sessionId: number) => void;
 }) {
   const { isAuthenticated, authPending } = useAuth();
+  const [showFullFeed, setShowFullFeed] = useState(false);
   const isAr = language === "ar";
   const sectionTitle = isAr ? "سجل النشاط التشغيلي" : "Operational Activity Feed";
   const sectionSub = isAr
-    ? "آخر أحداث الجلسات والطلبات في مطعمك"
-    : "Recent session and order events across your restaurant";
+    ? "آخر أحداث الجلسات والطلبات"
+    : "Latest session and order events";
   const ariaLabel = sectionTitle;
+  const feedLimit = showFullFeed ? FULL_ACTIVITY_FEED_LIMIT : HOME_ACTIVITY_FEED_LIMIT;
 
   useDevQueryRuntimeLog("ops.getActivityFeed", {
     enabled: queriesEnabled,
@@ -215,18 +226,18 @@ export function OperationalActivityFeedSection({
     refetch,
     isFetching,
   } = trpc.ops.getActivityFeed.useQuery(
-    { restaurantId },
+    { restaurantId, limit: feedLimit },
     opsActivityFeedQueryOptions(queriesEnabled)
   );
 
   if (isEmailNotVerifiedError(error)) {
     return (
-      <section className="flex flex-col gap-6 sm:gap-8" aria-label={ariaLabel}>
-        <div className="space-y-2.5">
+      <section className="flex flex-col gap-4" aria-label={ariaLabel}>
+        <div className="space-y-1">
           <h2 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">
             {sectionTitle}
           </h2>
-          <p className="max-w-xl text-base leading-relaxed text-muted-foreground">{sectionSub}</p>
+          <p className="text-sm text-muted-foreground">{sectionSub}</p>
         </div>
         <VerificationRequiredPanel variant="orders" compact />
       </section>
@@ -234,26 +245,27 @@ export function OperationalActivityFeedSection({
   }
 
   const events = feed?.events ?? [];
+  const canExpand = !showFullFeed && events.length >= HOME_ACTIVITY_FEED_LIMIT;
 
   return (
-    <section className="flex flex-col gap-6 sm:gap-8" aria-label={ariaLabel}>
-      <div className="space-y-2.5">
+    <section className="flex flex-col gap-4" aria-label={ariaLabel}>
+      <div className="space-y-1">
         <h2 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">
           {sectionTitle}
         </h2>
-        <p className="max-w-xl text-base leading-relaxed text-muted-foreground">{sectionSub}</p>
+        <p className="text-sm text-muted-foreground">{sectionSub}</p>
       </div>
 
       {isLoading ? (
-        <div className="flex flex-col gap-3">
+        <div className="overflow-hidden rounded-lg border border-border/40 bg-[#161b22]/60">
           {[0, 1, 2, 3, 4].map((index) => (
-            <ActivityFeedItemSkeleton key={index} />
+            <ActivityFeedItemSkeleton key={index} isLast={index === 4} />
           ))}
         </div>
       ) : isError ? (
-        <div className="flex flex-col items-center gap-4 rounded-2xl border border-border/40 bg-[#161b22]/90 px-6 py-10 text-center sm:px-8">
-          <AlertTriangle className="h-8 w-8 text-amber-400" />
-          <p className="max-w-md text-base text-muted-foreground">
+        <div className="flex flex-col items-center gap-3 rounded-lg border border-border/40 bg-[#161b22]/90 px-4 py-8 text-center">
+          <AlertTriangle className="h-7 w-7 text-amber-400" />
+          <p className="max-w-md text-sm text-muted-foreground">
             {isAr
               ? "تعذر تحميل سجل النشاط. حاول مرة أخرى."
               : "Could not load the activity feed. Please try again."}
@@ -261,6 +273,7 @@ export function OperationalActivityFeedSection({
           <Button
             type="button"
             variant="outline"
+            size="sm"
             className="border-border/60"
             disabled={isFetching}
             onClick={() => void refetch()}
@@ -270,22 +283,57 @@ export function OperationalActivityFeedSection({
           </Button>
         </div>
       ) : events.length === 0 ? (
-        <div className="rounded-2xl border border-border/40 bg-[#161b22]/50 px-6 py-12 text-center">
-          <p className="text-base text-muted-foreground">
+        <div className="rounded-lg border border-border/40 bg-[#161b22]/50 px-4 py-8 text-center">
+          <p className="text-sm text-muted-foreground">
             {isAr ? "لا يوجد نشاط تشغيلي حديث" : "No recent operational activity"}
           </p>
         </div>
       ) : (
-        <div className="flex flex-col gap-3">
-          {events.map((event, index) => (
-            <ActivityFeedItemRow
-              key={`${event.eventType}-${event.occurredAt}-${event.sessionId ?? "none"}-${index}`}
-              event={event}
-              isAr={isAr}
-              onOpenSession={onOpenSession}
-            />
-          ))}
-        </div>
+        <>
+          <div className="overflow-hidden rounded-lg border border-border/40 bg-[#161b22]/60">
+            {events.map((event, index) => (
+              <ActivityFeedTimelineRow
+                key={`${event.eventType}-${event.occurredAt}-${event.sessionId ?? "none"}-${index}`}
+                event={event}
+                isAr={isAr}
+                isLast={index === events.length - 1}
+                onOpenSession={onOpenSession}
+              />
+            ))}
+          </div>
+
+          {canExpand ? (
+            <div className="flex justify-center border-t border-border/20 pt-1">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 text-sm text-primary hover:text-primary"
+                disabled={isFetching}
+                onClick={() => setShowFullFeed(true)}
+              >
+                {isFetching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                {isAr ? "عرض كل النشاط" : "View Full Activity"}
+                <ChevronDown className="h-4 w-4 rtl:rotate-180" />
+              </Button>
+            </div>
+          ) : null}
+
+          {showFullFeed ? (
+            <div className="flex justify-center border-t border-border/20 pt-1">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 text-sm text-muted-foreground"
+                onClick={() => setShowFullFeed(false)}
+              >
+                {isAr ? "عرض أقل" : "Show less"}
+                <ChevronUp className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : null}
+        </>
       )}
     </section>
   );
