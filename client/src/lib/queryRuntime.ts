@@ -56,6 +56,13 @@ export function opsSettlementSummaryQueryOptions(enabled: boolean) {
   } as const;
 }
 
+export function opsSettlementTrendQueryOptions(enabled: boolean) {
+  return {
+    enabled,
+    refetchInterval: enabled ? DASHBOARD_ORDER_LIST_POLL_MS : false,
+  } as const;
+}
+
 export function orderListQueryOptions(enabled: boolean) {
   return {
     enabled,

@@ -7,6 +7,7 @@ import { ActiveTablesBoardSection } from "@/components/dashboard/ActiveTablesBoa
 import { ActionCenterSection } from "@/components/dashboard/ActionCenterSection";
 import { OperationalActivityFeedSection } from "@/components/dashboard/OperationalActivityFeedSection";
 import { SettlementOverviewSection } from "@/components/dashboard/SettlementOverviewSection";
+import { SettlementTrendsSection } from "@/components/dashboard/SettlementTrendsSection";
 import { getLoginUrl, spaNavigate } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { cn, resolveImageUrl } from "@/lib/utils";
@@ -1422,6 +1423,12 @@ function RestaurantHomePanel({
         queriesEnabled={ordersEnabled}
       />
       <SettlementOverviewSection
+        restaurantId={restaurantId}
+        language={language}
+        queriesEnabled={ordersEnabled}
+        currencySymbol={currencySymbol}
+      />
+      <SettlementTrendsSection
         restaurantId={restaurantId}
         language={language}
         queriesEnabled={ordersEnabled}
