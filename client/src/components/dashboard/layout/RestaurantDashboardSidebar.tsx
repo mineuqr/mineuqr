@@ -1,8 +1,6 @@
-import { Button } from "@/components/ui/button";
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -12,15 +10,12 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { cn } from "@/lib/utils";
 import {
   BarChart3,
-  Bell,
   ClipboardList,
   Grid3X3,
   Home,
   LayoutGrid,
-  LogOut,
   Palette,
   QrCode,
   Settings,
@@ -65,37 +60,18 @@ export function RestaurantDashboardSidebar({
   activeSection,
   restaurantTab,
   onRestaurants,
-  onLogout,
   onRestaurantTabChange,
   tablesLabel,
 }: {
   activeSection: RestaurantDashboardSection;
   restaurantTab?: RestaurantTab;
   onRestaurants: () => void;
-  onLogout: () => void;
   onRestaurantTabChange?: (tab: RestaurantTab) => void;
   tablesLabel?: string;
 }) {
   const { t, language } = useLanguage();
   const [, setLocation] = useLocation();
   const inRestaurant = activeSection === "restaurant-detail" && !!onRestaurantTabChange;
-
-  const topNavItems: NavItem[] = [
-    {
-      id: "restaurants",
-      label: language === "ar" ? "مطاعمي" : "My Restaurants",
-      icon: Store,
-      active: activeSection === "restaurants",
-      onClick: onRestaurants,
-    },
-    {
-      id: "notifications",
-      label: t("common.notifications"),
-      icon: Bell,
-      active: false,
-      onClick: () => setLocation("/notifications"),
-    },
-  ];
 
   const restaurantWorkspaceNav: NavItem[] = inRestaurant
     ? [
@@ -197,13 +173,6 @@ export function RestaurantDashboardSidebar({
       </SidebarHeader>
 
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>{language === "ar" ? "عام" : "General"}</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <NavMenuItems items={topNavItems} />
-          </SidebarGroupContent>
-        </SidebarGroup>
-
         {inRestaurant ? (
           <>
             <SidebarGroup>
@@ -225,28 +194,6 @@ export function RestaurantDashboardSidebar({
           </>
         ) : null}
       </SidebarContent>
-
-      <SidebarFooter className="border-t border-cyan-500/20 p-2">
-        <p className="px-2 text-xs text-slate-400">
-          {language === "ar" ? "تحتاج مساعدة؟ تواصل مع الدعم" : "Need help? Contact support"}
-        </p>
-        <Button
-          variant="outline"
-          size="sm"
-          className={cn("mt-2 h-8 w-full text-xs", restaurantDash.toolbarBtn)}
-          onClick={() => setLocation("/contact")}
-        >
-          {language === "ar" ? "تواصل معنا" : "Contact us"}
-        </Button>
-        <SidebarMenu className="mt-2">
-          <SidebarMenuItem>
-            <SidebarMenuButton tooltip={t("dashboard.signOut")} onClick={onLogout}>
-              <LogOut />
-              <span>{t("dashboard.signOut")}</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
     </Sidebar>
   );
 }

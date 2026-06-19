@@ -59,7 +59,6 @@ export function RestaurantOperationsShell({
           activeSection={activeSection}
           restaurantTab={restaurantTab}
           onRestaurants={onRestaurants}
-          onLogout={onLogout}
           onRestaurantTabChange={onRestaurantTabChange}
           tablesLabel={tablesLabel}
         />
@@ -73,7 +72,11 @@ export function RestaurantOperationsShell({
             <Separator orientation="vertical" className="me-2 h-4" />
             <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
               <AdminShellBreadcrumbs items={crumbTrail} />
-              <RestaurantShellHeaderActions user={user} />
+              <RestaurantShellHeaderActions
+                user={user}
+                onRestaurants={onRestaurants}
+                onLogout={onLogout}
+              />
             </div>
           </header>
 

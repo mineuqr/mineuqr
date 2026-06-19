@@ -41,7 +41,7 @@ import {
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
   QrCode, Plus, Store, LayoutGrid, UtensilsCrossed,
-  BarChart3, Eye, Trash2, Pencil, ArrowRight, LogOut,
+  BarChart3, Eye, Trash2, Pencil, ArrowRight,
   ChevronLeft, Home, Settings, Image as ImageIcon, Loader2,
   Check, X, Upload, GripVertical, Palette, Tag, Calendar, Clock, User, Bell,
   AlertTriangle, CalendarPlus, ClipboardList, Grid3X3, Download, Copy,
