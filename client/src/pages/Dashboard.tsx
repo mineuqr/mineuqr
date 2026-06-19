@@ -16,6 +16,7 @@ import {
 } from "@/lib/diningSessionDashboardCopy";
 import {
   DASHBOARD_ORDER_LIST_POLL_MS,
+  opsOverviewQueryOptions,
   orderListQueryOptions,
   restaurantQueriesEnabled,
   useDevQueryRuntimeLog,
@@ -1258,6 +1259,139 @@ function RestaurantStatisticsSection({
   );
 }
 
+function LiveOverviewStatSkeleton() {
+  return (
+    <div className={cn(dash.kpiCard, "animate-pulse")}>
+      <div className="h-12 w-12 rounded-full bg-muted/40" />
+      <div className="mt-5 h-10 w-14 rounded-lg bg-muted/40" />
+      <div className="mt-2 h-4 w-32 rounded bg-muted/30" />
+    </div>
+  );
+}
+
+function LiveRestaurantOverviewSection({
+  restaurantId,
+  language,
+  queriesEnabled,
+}: {
+  restaurantId: number;
+  language: string;
+  queriesEnabled: boolean;
+}) {
+  const { isAuthenticated, authPending } = useAuth();
+  useDevQueryRuntimeLog("ops.getRestaurantOverview", {
+    enabled: queriesEnabled,
+    authPending,
+    isAuthenticated,
+    pollMs: queriesEnabled ? DASHBOARD_ORDER_LIST_POLL_MS : undefined,
+  });
+
+  const {
+    data: overview,
+    isLoading,
+    isError,
+    error,
+    refetch,
+    isFetching,
+  } = trpc.ops.getRestaurantOverview.useQuery(
+    { restaurantId },
+    opsOverviewQueryOptions(queriesEnabled)
+  );
+
+  const isAr = language === "ar";
+  const sectionTitle = isAr ? "نظرة تشغيلية مباشرة" : "Live Restaurant Overview";
+  const sectionSub = isAr
+    ? "مؤشرات الطاولات والجلسات والطلبات الآن"
+    : "Live tables, sessions, and order pipeline metrics";
+  const ariaLabel = sectionTitle;
+
+  if (isEmailNotVerifiedError(error)) {
+    return (
+      <section className="flex flex-col gap-6 sm:gap-8" aria-label={ariaLabel}>
+        <div className="space-y-2.5">
+          <h2 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">
+            {sectionTitle}
+          </h2>
+          <p className="max-w-xl text-base leading-relaxed text-muted-foreground">{sectionSub}</p>
+        </div>
+        <VerificationRequiredPanel variant="orders" compact />
+      </section>
+    );
+  }
+
+  return (
+    <section className="flex flex-col gap-6 sm:gap-8" aria-label={ariaLabel}>
+      <div className="space-y-2.5">
+        <h2 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">
+          {sectionTitle}
+        </h2>
+        <p className="max-w-xl text-base leading-relaxed text-muted-foreground">{sectionSub}</p>
+      </div>
+
+      {isLoading ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-5">
+          {[0, 1, 2, 3].map((i) => (
+            <LiveOverviewStatSkeleton key={i} />
+          ))}
+        </div>
+      ) : isError ? (
+        <div
+          className={cn(
+            dash.card,
+            "flex flex-col items-center gap-4 px-6 py-10 text-center sm:px-8"
+          )}
+        >
+          <AlertTriangle className="h-8 w-8 text-amber-400" />
+          <p className="max-w-md text-base text-muted-foreground">
+            {isAr
+              ? "تعذر تحميل المؤشرات التشغيلية. حاول مرة أخرى."
+              : "Could not load operational metrics. Please try again."}
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            className="border-border/60"
+            disabled={isFetching}
+            onClick={() => void refetch()}
+          >
+            {isFetching ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : null}
+            {isAr ? "إعادة المحاولة" : "Retry"}
+          </Button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-5">
+          <DashboardStatCard
+            label={isAr ? "جلسات نشطة" : "Active Sessions"}
+            value={overview?.activeSessions ?? 0}
+            icon={LayoutDashboard}
+            tone="primary"
+          />
+          <DashboardStatCard
+            label={isAr ? "طاولات مشغولة" : "Occupied Tables"}
+            value={overview?.occupiedTables ?? 0}
+            icon={Grid3X3}
+            tone="accent"
+          />
+          <DashboardStatCard
+            label={isAr ? "طلبات قيد التنفيذ" : "Pending Orders"}
+            value={overview?.pendingOrders ?? 0}
+            icon={Clock3}
+            tone="amber"
+          />
+          <DashboardStatCard
+            label={isAr ? "طلبات الفاتورة" : "Bill Requests"}
+            value={overview?.billRequests ?? 0}
+            icon={CreditCard}
+            tone="emerald"
+          />
+        </div>
+      )}
+    </section>
+  );
+}
+
 function RestaurantHomePanel({
   restaurant,
   stats,
@@ -1293,6 +1427,11 @@ function RestaurantHomePanel({
   return (
     <div className="space-y-10 sm:space-y-12">
       <RestaurantHeaderCard restaurant={restaurant} />
+      <LiveRestaurantOverviewSection
+        restaurantId={restaurantId}
+        language={language}
+        queriesEnabled={ordersEnabled}
+      />
       <RestaurantStatisticsSection stats={stats} t={t} ariaLabel={statsAriaLabel} language={language} />
 
       <section className="space-y-5">

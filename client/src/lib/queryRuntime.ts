@@ -21,6 +21,13 @@ export function customerOrderStatusQueryOptions(
 /** Single notification poll on dashboard (OrderAlertSystem). */
 export const DASHBOARD_NOTIFICATION_POLL_MS = 10_000;
 
+export function opsOverviewQueryOptions(enabled: boolean) {
+  return {
+    enabled,
+    refetchInterval: enabled ? DASHBOARD_ORDER_LIST_POLL_MS : false,
+  } as const;
+}
+
 export function orderListQueryOptions(enabled: boolean) {
   return {
     enabled,
