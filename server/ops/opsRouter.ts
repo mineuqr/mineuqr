@@ -3,6 +3,7 @@ import { verifiedProcedure, router } from "../_core/trpc";
 import { assertRestaurantAccess } from "../restaurantAccess";
 import { getRestaurantOverview } from "./restaurantOverview";
 import { getActiveTablesBoard } from "./activeTablesBoard";
+import { getActionCenter } from "./actionCenter";
 
 /**
  * OPS-DASHBOARD-2 — owner restaurant operations read API.
@@ -33,5 +34,12 @@ export const opsRouter = router({
         "ops.getActiveTablesBoard"
       );
       return getActiveTablesBoard(input.restaurantId);
+    }),
+
+  getActionCenter: verifiedProcedure
+    .input(z.object({ restaurantId: z.number().int().positive() }))
+    .query(async ({ input, ctx }) => {
+      await assertRestaurantAccess(ctx, input.restaurantId, "ops.getActionCenter");
+      return getActionCenter(input.restaurantId);
     }),
 });

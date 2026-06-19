@@ -13,10 +13,16 @@ vi.mock("./activeTablesBoard", () => ({
   getActiveTablesBoard: vi.fn(),
 }));
 
+vi.mock("./actionCenter", () => ({
+  getActionCenter: vi.fn(),
+}));
+
 import { assertRestaurantAccess } from "../restaurantAccess";
 import { appRouter } from "../routers";
 import { getRestaurantOverview } from "./restaurantOverview";
 import { getActiveTablesBoard } from "./activeTablesBoard";
+import { getActionCenter } from "./actionCenter";
+import { TRPCError } from "@trpc/server";
 
 function createVerifiedCaller() {
   return appRouter.createCaller({
@@ -105,5 +111,54 @@ describe("ops.getActiveTablesBoard OPS-DASHBOARD-2C.1", () => {
     expect(getActiveTablesBoard).toHaveBeenCalledWith(42);
     expect(result.tables).toHaveLength(1);
     expect(result.tables[0]?.sessionId).toBe("10");
+  });
+});
+
+describe("ops.getActionCenter OPS-DASHBOARD-2D.1", () => {
+  const actionCenterPayload = {
+    generatedAt: "2026-06-18T22:00:00.000Z",
+    billRequests: [
+      {
+        sessionId: "10",
+        tableId: 1,
+        tableName: "Table 1",
+        requestedAt: "2026-06-18 21:30:00",
+        waitMinutes: 30,
+      },
+    ],
+    paymentPending: [],
+    longRunningSessions: [],
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(assertRestaurantAccess).mockResolvedValue(undefined);
+    vi.mocked(getActionCenter).mockResolvedValue(actionCenterPayload);
+  });
+
+  it("returns action center for authorized restaurant", async () => {
+    const caller = createVerifiedCaller();
+    const result = await caller.ops.getActionCenter({ restaurantId: 42 });
+
+    expect(assertRestaurantAccess).toHaveBeenCalledWith(
+      expect.objectContaining({ user: expect.objectContaining({ id: 1 }) }),
+      42,
+      "ops.getActionCenter"
+    );
+    expect(getActionCenter).toHaveBeenCalledWith(42);
+    expect(result.billRequests).toHaveLength(1);
+  });
+
+  it("denies cross-tenant access before loading action center", async () => {
+    vi.mocked(assertRestaurantAccess).mockRejectedValue(
+      new TRPCError({ code: "FORBIDDEN", message: "غير مصرح بالوصول" })
+    );
+
+    const caller = createVerifiedCaller();
+
+    await expect(caller.ops.getActionCenter({ restaurantId: 999 })).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+    expect(getActionCenter).not.toHaveBeenCalled();
   });
 });
