@@ -2,7 +2,7 @@
  * TABLE-MANAGEMENT-1 D2 — dining_sessions / table_events persistence boundary.
  * Only this module performs INSERT/SELECT on session tables.
  */
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import {
   diningSessions,
   tableEvents,
@@ -183,6 +183,43 @@ export async function updateSessionStatus(
   await db
     .update(diningSessions)
     .set(patch)
+    .where(
+      and(
+        eq(diningSessions.id, data.sessionId),
+        eq(diningSessions.restaurantId, data.restaurantId)
+      )
+    );
+}
+
+export type UpdateSessionAggregatesInput = {
+  restaurantId: number;
+  sessionId: number;
+  totalOrdersDelta: number;
+  totalAmountDelta: string;
+};
+
+export async function updateSessionAggregates(
+  data: UpdateSessionAggregatesInput,
+  client?: SessionDbClient
+): Promise<void> {
+  const db = await resolveDb(client);
+
+  const ordersDelta = Number(data.totalOrdersDelta);
+  if (!Number.isFinite(ordersDelta)) {
+    throw new DiningSessionUnavailableError("Invalid totalOrdersDelta");
+  }
+
+  const amountDelta = Number.parseFloat(data.totalAmountDelta);
+  if (!Number.isFinite(amountDelta)) {
+    throw new DiningSessionUnavailableError("Invalid totalAmountDelta");
+  }
+
+  await db
+    .update(diningSessions)
+    .set({
+      totalOrders: sql`GREATEST(0, ${diningSessions.totalOrders} + ${ordersDelta})`,
+      totalAmount: sql`GREATEST(0, COALESCE(${diningSessions.totalAmount}, 0) + ${amountDelta})`,
+    })
     .where(
       and(
         eq(diningSessions.id, data.sessionId),

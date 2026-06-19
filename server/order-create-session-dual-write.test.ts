@@ -16,6 +16,10 @@ vi.mock("./diningSession/sessionService", () => ({
   recordSessionEvent: vi.fn(),
 }));
 
+vi.mock("./diningSession/sessionAggregateWriters", () => ({
+  incrementSessionAggregatesForOrder: vi.fn(),
+}));
+
 vi.mock("./_core/opsLog", () => ({
   opsLog: vi.fn(),
 }));
@@ -64,6 +68,7 @@ vi.mock("./commercial/guestOrderingAuthority", () => ({
 import { appRouter } from "./routers";
 import { createOrder } from "./db";
 import { getOrCreateSession, recordSessionEvent } from "./diningSession/sessionService";
+import { incrementSessionAggregatesForOrder } from "./diningSession/sessionAggregateWriters";
 import { opsLog } from "./_core/opsLog";
 
 const baseSession = {
@@ -101,6 +106,7 @@ describe("order.create session dual-write TABLE-MANAGEMENT-1 D3", () => {
       created: true,
     });
     vi.mocked(recordSessionEvent).mockResolvedValue({ eventId: 100 });
+    vi.mocked(incrementSessionAggregatesForOrder).mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -119,6 +125,7 @@ describe("order.create session dual-write TABLE-MANAGEMENT-1 D3", () => {
 
     expect(getOrCreateSession).not.toHaveBeenCalled();
     expect(recordSessionEvent).not.toHaveBeenCalled();
+    expect(incrementSessionAggregatesForOrder).not.toHaveBeenCalled();
     expect(vi.mocked(createOrder).mock.calls[0]?.[0]).not.toHaveProperty("sessionId");
   });
 
@@ -169,6 +176,14 @@ describe("order.create session dual-write TABLE-MANAGEMENT-1 D3", () => {
         itemCount: 2,
       },
     });
+    expect(incrementSessionAggregatesForOrder).toHaveBeenCalledWith(
+      {
+        restaurantId: 1,
+        sessionId: 10,
+        orderTotalAmount: "20.00",
+      },
+      { procedure: "order.create" }
+    );
     expect(opsLog).toHaveBeenCalledWith(
       expect.objectContaining({ type: OPS_EVENT.session_created })
     );
@@ -234,6 +249,26 @@ describe("order.create session dual-write TABLE-MANAGEMENT-1 D3", () => {
     );
   });
 
+  it("flag ON — aggregate update failure does not block order", async () => {
+    ENV.tableSessionDualWrite = true;
+    vi.mocked(incrementSessionAggregatesForOrder).mockRejectedValue(
+      new Error("aggregate update failed")
+    );
+
+    const caller = createCaller();
+    const result = await caller.order.create({
+      restaurantId: 1,
+      tableId: 1,
+      tableNumber: 3,
+      items: [{ menuItemId: 1, quantity: 1 }],
+    });
+
+    expect(result.orderId).toBe(55);
+    expect(opsLog).toHaveBeenCalledWith(
+      expect.objectContaining({ type: OPS_EVENT.session_aggregate_update_failed })
+    );
+  });
+
   it("flag ON — uses server-resolved table.id not client tableId", async () => {
     ENV.tableSessionDualWrite = true;
 
@@ -250,6 +285,10 @@ describe("order.create session dual-write TABLE-MANAGEMENT-1 D3", () => {
     );
     expect(recordSessionEvent).toHaveBeenCalledWith(
       expect.objectContaining({ tableId: 7 })
+    );
+    expect(incrementSessionAggregatesForOrder).toHaveBeenCalledWith(
+      expect.objectContaining({ sessionId: 10 }),
+      { procedure: "order.create" }
     );
   });
 });

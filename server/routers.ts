@@ -86,6 +86,7 @@ import { generateOrderTrackingToken } from "./orderTrackingToken";
 import { ENV } from "./_core/env";
 import { opsLog } from "./_core/opsLog";
 import { OPS_EVENT } from "./_core/opsTaxonomy";
+import { incrementSessionAggregatesForOrder } from "./diningSession/sessionAggregateWriters";
 import { getOrCreateSession, recordSessionEvent, requestBill, requestBillByCustomer, cancelBillRequest, markPaymentPending, closeSession } from "./diningSession/sessionService";
 import { TABLE_EVENT_TYPES } from "./diningSession/sessionTypes";
 import { throwSessionServiceTrpcError } from "./diningSession/mapSessionErrorToTrpc";
@@ -1928,6 +1929,31 @@ const orderRouter = router({
           } catch (e) {
             opsLog({
               type: OPS_EVENT.order_created_event_failed,
+              category: "ORDER",
+              severity: "warn",
+              ts: new Date().toISOString(),
+              restaurantId: input.restaurantId,
+              procedure: "order.create",
+              metadata: {
+                sessionId,
+                orderId: result.id,
+                orderNumber,
+                error: e instanceof Error ? e.message : String(e),
+              },
+            });
+          }
+          try {
+            await incrementSessionAggregatesForOrder(
+              {
+                restaurantId: input.restaurantId,
+                sessionId,
+                orderTotalAmount: totalAmount,
+              },
+              { procedure: "order.create" }
+            );
+          } catch (e) {
+            opsLog({
+              type: OPS_EVENT.session_aggregate_update_failed,
               category: "ORDER",
               severity: "warn",
               ts: new Date().toISOString(),
