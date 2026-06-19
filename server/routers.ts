@@ -96,6 +96,7 @@ import {
 } from "./diningSession/sessionRecoveryService";
 import { getOwnerSessionTimeline } from "./diningSession/sessionOwnerTimeline";
 import { getOwnerSessionWorkspace } from "./diningSession/sessionOwnerWorkspace";
+import { opsRouter } from "./ops/opsRouter";
 import { cleanupPushSubscriptionsForOrder } from "./customerPush/routes";
 import { sendReadyPushForOrder } from "./customerPush/sendReadyPush";
 import { toPublicOrderStatus } from "./orderPublicStatus";
@@ -2164,5 +2165,6 @@ export const appRouter = router({
   table: tableRouter,
   session: sessionRouter,
   order: orderRouter,
+  ops: opsRouter,
 });
 export type AppRouter = typeof appRouter;
