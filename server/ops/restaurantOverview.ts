@@ -1,13 +1,10 @@
 /**
  * OPS-DASHBOARD-2B.1 — restaurant operational overview metrics (read-only).
  */
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import { diningSessions } from "../../drizzle/schema";
 import { getActiveOrdersCount, getDb } from "../db";
-import {
-  DINING_SESSION_ACTIVE_OPEN_GUARD,
-  DINING_SESSION_ACTIVE_STATUSES,
-} from "../diningSession/sessionTypes";
+import { activeDiningSessionRestaurantConditions } from "./activeSessionQuery";
 
 export type RestaurantOverviewMetrics = {
   activeSessions: number;
@@ -37,13 +34,7 @@ export async function resolveActiveSessionOverviewMetrics(
       billRequests: sql<number>`COALESCE(SUM(CASE WHEN ${diningSessions.status} = 'bill_requested' THEN 1 ELSE 0 END), 0)`,
     })
     .from(diningSessions)
-    .where(
-      and(
-        eq(diningSessions.restaurantId, restaurantId),
-        eq(diningSessions.openGuard, DINING_SESSION_ACTIVE_OPEN_GUARD),
-        inArray(diningSessions.status, [...DINING_SESSION_ACTIVE_STATUSES])
-      )
-    );
+    .where(activeDiningSessionRestaurantConditions(restaurantId));
 
   return {
     activeSessions: toCount(row?.activeSessions),
