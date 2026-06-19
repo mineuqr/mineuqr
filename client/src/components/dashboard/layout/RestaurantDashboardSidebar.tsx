@@ -21,6 +21,7 @@ import {
   Settings,
   Store,
   Tag,
+  UsersRound,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { restaurantDash } from "../restaurantDashStyles";
@@ -81,6 +82,13 @@ export function RestaurantDashboardSidebar({
           icon: Home,
           active: restaurantTab === "home",
           onClick: () => onRestaurantTabChange!("home"),
+        },
+        {
+          id: "sessions",
+          label: language === "ar" ? "الجلسات" : "Sessions",
+          icon: UsersRound,
+          active: restaurantTab === "sessions",
+          onClick: () => onRestaurantTabChange!("sessions"),
         },
         {
           id: "orders",

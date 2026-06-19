@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import OrderAlertSystem from "@/components/OrderAlertSystem";
 import { DiningSessionWorkspaceSheet } from "@/components/dashboard/DiningSessionWorkspaceSheet";
 import { ActiveTablesBoardSection } from "@/components/dashboard/ActiveTablesBoardSection";
+import { SessionsWorkspacePanel } from "@/components/dashboard/SessionsWorkspacePanel";
 import { ActionCenterSection } from "@/components/dashboard/ActionCenterSection";
 import { OperationalActivityFeedSection } from "@/components/dashboard/OperationalActivityFeedSection";
 import { SettlementOverviewSection } from "@/components/dashboard/SettlementOverviewSection";
@@ -38,6 +39,12 @@ import {
   restaurantQueriesEnabled,
   useDevQueryRuntimeLog,
 } from "@/lib/queryRuntime";
+import {
+  parseDashboardRestaurantId,
+  readDashboardUrlState,
+  redirectLegacySessionsUrl,
+  syncDashboardUrl,
+} from "@/lib/dashboardUrl";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
   QrCode, Plus, Store, LayoutGrid, UtensilsCrossed,
@@ -101,6 +108,7 @@ type DashTab = { id: string; label: string; icon: ComponentType<{ className?: st
 function restaurantTabLabel(tab: RestaurantTab, language: string, t: (key: string) => string): string {
   const labels: Record<RestaurantTab, string> = {
     home: language === "ar" ? "لوحة التحكم" : "Dashboard",
+    sessions: language === "ar" ? "الجلسات" : "Sessions",
     orders: language === "ar" ? "الطلبات" : "Orders",
     reports: language === "ar" ? "التقارير والإحصائيات" : "Reports & Statistics",
     categories: t("dashboard.categoriesAndItems"),
@@ -111,22 +119,6 @@ function restaurantTabLabel(tab: RestaurantTab, language: string, t: (key: strin
     settings: t("dashboard.settings"),
   };
   return labels[tab];
-}
-
-function sectionToRestaurantTab(section: string | null | undefined): RestaurantTab | null {
-  if (!section) return null;
-  const map: Record<string, RestaurantTab> = {
-    home: "home",
-    orders: "orders",
-    reports: "reports",
-    categories: "categories",
-    offers: "offers",
-    tables: "tables",
-    qr: "qr",
-    templates: "templates",
-    settings: "settings",
-  };
-  return map[section] ?? null;
 }
 
 function DashboardStatCard({
@@ -177,45 +169,6 @@ function DashboardMainSkeleton() {
 
 const DASHBOARD_LAST_RESTAURANT_KEY = "dashboard:lastRestaurantId";
 
-function parseRestaurantId(raw: string | null | undefined): number | null {
-  if (!raw) return null;
-  const id = parseInt(raw, 10);
-  return Number.isFinite(id) && id > 0 ? id : null;
-}
-
-function readDashboardUrlState(pathSection: string | undefined) {
-  const urlParams = new URLSearchParams(window.location.search);
-  const sectionParam = urlParams.get("section");
-  const pathRestaurantId =
-    pathSection && /^\d+$/.test(pathSection) ? parseRestaurantId(pathSection) : null;
-  const restaurantIdFromUrl =
-    parseRestaurantId(urlParams.get("restaurant")) ?? pathRestaurantId;
-  const effectiveSection =
-    sectionParam || (pathSection && !pathRestaurantId ? pathSection : null);
-  const tabFromSection = sectionToRestaurantTab(effectiveSection);
-  const needsRestaurantResolve = Boolean(tabFromSection && !restaurantIdFromUrl);
-
-  return { restaurantIdFromUrl, tabFromSection, needsRestaurantResolve };
-}
-
-function buildDashboardPath(params: {
-  restaurantId?: number | null;
-  section?: RestaurantTab | null;
-}): string {
-  if (!params.restaurantId) return "/dashboard";
-  const search = new URLSearchParams();
-  search.set("restaurant", String(params.restaurantId));
-  if (params.section) search.set("section", params.section);
-  return `/dashboard?${search.toString()}`;
-}
-
-function syncDashboardUrl(
-  params: { restaurantId?: number | null; section?: RestaurantTab | null },
-  options?: { replace?: boolean }
-) {
-  spaNavigate(buildDashboardPath(params), options);
-}
-
 // ─── Dashboard Layout ───────────────────────────────────────
 
 export default function Dashboard() {
@@ -229,7 +182,8 @@ export default function Dashboard() {
     () => readDashboardUrlState(routeParams?.section),
     [location, routeParams?.section]
   );
-  const { restaurantIdFromUrl, tabFromSection, needsRestaurantResolve } = urlState;
+  const { restaurantIdFromUrl, tabFromSection, needsRestaurantResolve, legacySessionsSection } =
+    urlState;
 
   const [activeSection, setActiveSection] = useState<"restaurants" | "restaurant-detail">(
     restaurantIdFromUrl || tabFromSection ? "restaurant-detail" : "restaurants"
@@ -243,6 +197,15 @@ export default function Dashboard() {
   useEffect(() => {
     selectedRestaurantIdRef.current = selectedRestaurantId;
   }, [selectedRestaurantId]);
+
+  // Legacy ?section=sessions → canonical /dashboard/sessions?restaurant=
+  useEffect(() => {
+    redirectLegacySessionsUrl(
+      { legacySessionsSection, restaurantIdFromUrl },
+      parseDashboardRestaurantId(sessionStorage.getItem(DASHBOARD_LAST_RESTAURANT_KEY)),
+      { replace: true }
+    );
+  }, [legacySessionsSection, restaurantIdFromUrl, location]);
 
   const { data: sidebarRestaurant } = trpc.restaurant.getById.useQuery(
     { id: selectedRestaurantId! },
@@ -287,7 +250,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!needsRestaurantResolve || !restaurants?.length) return;
-    const storedId = parseRestaurantId(sessionStorage.getItem(DASHBOARD_LAST_RESTAURANT_KEY));
+    const storedId = parseDashboardRestaurantId(sessionStorage.getItem(DASHBOARD_LAST_RESTAURANT_KEY));
     const resolvedId =
       storedId && restaurants.some((r) => r.id === storedId) ? storedId : restaurants[0].id;
     const section = resolvingSectionRef.current ?? "home";
@@ -1124,7 +1087,7 @@ function RestaurantHomePanel({
         queriesEnabled={ordersEnabled}
         onOpenSession={setWorkspaceSessionId}
         homePreviewLimit={6}
-        onViewAllTables={() => onTabChange("tables")}
+        onViewAllSessions={() => onTabChange("sessions")}
       />
       <OperationalActivityFeedSection
         restaurantId={restaurantId}
@@ -1246,6 +1209,8 @@ function RestaurantDetail({
           onTabChange={onTabChange}
         />
       )}
+
+      {activeTab === "sessions" && <SessionsWorkspacePanel language={language} />}
 
       {activeTab === "orders" && (
         <OrdersTab

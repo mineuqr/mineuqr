@@ -140,30 +140,30 @@ export function ActiveTablesBoardSection({
   queriesEnabled,
   onOpenSession,
   homePreviewLimit,
-  onViewAllTables,
+  onViewAllSessions,
 }: {
   restaurantId: number;
   language: string;
   queriesEnabled: boolean;
   onOpenSession: (sessionId: number) => void;
-  /** When set (Home), show at most this many tables with optional CTA. */
+  /** When set (Home), show at most this many active sessions with optional CTA. */
   homePreviewLimit?: number;
-  onViewAllTables?: () => void;
+  onViewAllSessions?: () => void;
 }) {
   const { isAuthenticated, authPending } = useAuth();
   const isAr = language === "ar";
   const isHomePreview = homePreviewLimit != null;
   const sectionTitle = isHomePreview
     ? isAr
-      ? "الطاولات النشطة"
-      : "Active Tables"
+      ? "الجلسات النشطة"
+      : "Active Sessions"
     : isAr
       ? "لوحة الطاولات"
       : "Active Tables Board";
   const sectionSub = isHomePreview
     ? isAr
-      ? "نظرة سريعة على الطاولات المشغولة"
-      : "Quick view of occupied tables"
+      ? "نظرة سريعة على الجلسات النشطة"
+      : "Quick view of live dining sessions"
     : isAr
       ? "حالة كل طاولة والجلسة النشطة عليها"
       : "Live status for each table and its active session";
@@ -197,9 +197,14 @@ export function ActiveTablesBoardSection({
   }
 
   const allTables = board?.tables ?? [];
-  const previewLimit = homePreviewLimit ?? allTables.length;
-  const visibleTables = isHomePreview ? allTables.slice(0, previewLimit) : allTables;
-  const hasMoreTables = isHomePreview && allTables.length > previewLimit;
+  const activeSessionRows = isHomePreview
+    ? allTables.filter((table) => table.status === "occupied")
+    : allTables;
+  const previewLimit = homePreviewLimit ?? activeSessionRows.length;
+  const visibleTables = isHomePreview
+    ? activeSessionRows.slice(0, previewLimit)
+    : allTables;
+  const hasMoreSessions = isHomePreview && activeSessionRows.length > previewLimit;
 
   return (
     <RestaurantDashSection title={sectionTitle} description={sectionSub} ariaLabel={ariaLabel}>
@@ -220,9 +225,17 @@ export function ActiveTablesBoardSection({
           isFetching={isFetching}
           onRetry={() => void refetch()}
         />
-      ) : !allTables.length ? (
+      ) : !visibleTables.length ? (
         <RestaurantSectionEmpty
-          message={isAr ? "لا توجد طاولات نشطة لعرضها" : "No active tables to display"}
+          message={
+            isHomePreview
+              ? isAr
+                ? "لا توجد جلسات نشطة لعرضها"
+                : "No active sessions to display"
+              : isAr
+                ? "لا توجد طاولات نشطة لعرضها"
+                : "No active tables to display"
+          }
         />
       ) : (
         <>
@@ -237,16 +250,16 @@ export function ActiveTablesBoardSection({
             ))}
           </div>
 
-          {hasMoreTables && onViewAllTables ? (
+          {hasMoreSessions && onViewAllSessions ? (
             <div className="flex justify-center pt-1">
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
                 className={restaurantDash.linkBtn}
-                onClick={onViewAllTables}
+                onClick={onViewAllSessions}
               >
-                {isAr ? "عرض جميع الطاولات" : "View All Tables"}
+                {isAr ? "عرض جميع الجلسات" : "View All Sessions"}
                 <ArrowRight className="h-4 w-4 ms-1 rtl:rotate-180" />
               </Button>
             </div>

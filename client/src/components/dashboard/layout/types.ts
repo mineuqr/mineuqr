@@ -1,5 +1,6 @@
 export type RestaurantTab =
   | "home"
+  | "sessions"
   | "orders"
   | "reports"
   | "categories"
