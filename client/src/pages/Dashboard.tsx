@@ -1274,17 +1274,34 @@ function LiveOverviewStatSkeleton() {
   );
 }
 
-function LiveRestaurantOverviewSection({
+function statusCount(
+  breakdown: { status: string; count: number }[],
+  status: string
+): number {
+  return breakdown.find((row) => row.status === status)?.count ?? 0;
+}
+
+function OperationalSnapshotSection({
   restaurantId,
   language,
   queriesEnabled,
+  currencySymbol,
 }: {
   restaurantId: number;
   language: string;
   queriesEnabled: boolean;
+  currencySymbol?: string;
 }) {
   const { isAuthenticated, authPending } = useAuth();
+  const sym = currencySymbol || "ر.س";
+
   useDevQueryRuntimeLog("ops.getRestaurantOverview", {
+    enabled: queriesEnabled,
+    authPending,
+    isAuthenticated,
+    pollMs: queriesEnabled ? DASHBOARD_ORDER_LIST_POLL_MS : undefined,
+  });
+  useDevQueryRuntimeLog("order.list", {
     enabled: queriesEnabled,
     authPending,
     isAuthenticated,
@@ -1293,24 +1310,46 @@ function LiveRestaurantOverviewSection({
 
   const {
     data: overview,
-    isLoading,
-    isError,
-    error,
-    refetch,
-    isFetching,
+    isLoading: overviewLoading,
+    isError: overviewError,
+    error: overviewQueryError,
+    refetch: refetchOverview,
+    isFetching: overviewFetching,
   } = trpc.ops.getRestaurantOverview.useQuery(
     { restaurantId },
     opsOverviewQueryOptions(queriesEnabled)
   );
 
-  const isAr = language === "ar";
-  const sectionTitle = isAr ? "نظرة تشغيلية مباشرة" : "Live Restaurant Overview";
-  const sectionSub = isAr
-    ? "مؤشرات الطاولات والجلسات والطلبات الآن"
-    : "Live tables, sessions, and order pipeline metrics";
-  const ariaLabel = sectionTitle;
+  const {
+    data: allOrders,
+    isLoading: ordersLoading,
+    isError: ordersError,
+    error: ordersQueryError,
+    refetch: refetchOrders,
+    isFetching: ordersFetching,
+  } = trpc.order.list.useQuery({ restaurantId }, orderListQueryOptions(queriesEnabled));
 
-  if (isEmailNotVerifiedError(error)) {
+  const orderStats = useMemo(
+    () => buildOrderStatistics((allOrders ?? []) as DashboardOrder[]),
+    [allOrders]
+  );
+
+  const isAr = language === "ar";
+  const sectionTitle = isAr ? "لمحة تشغيلية" : "Operational Snapshot";
+  const sectionSub = isAr
+    ? "ما يحدث الآن في المطعم"
+    : "What is happening in your restaurant right now";
+  const ariaLabel = sectionTitle;
+  const isLoading = overviewLoading || ordersLoading;
+  const isFetching = overviewFetching || ordersFetching;
+  const isError = overviewError || ordersError;
+  const verificationError = isEmailNotVerifiedError(overviewQueryError)
+    ? overviewQueryError
+    : isEmailNotVerifiedError(ordersQueryError)
+      ? ordersQueryError
+      : null;
+
+  if (verificationError) {
     return (
       <section className="flex flex-col gap-6 sm:gap-8" aria-label={ariaLabel}>
         <div className="space-y-2.5">
@@ -1324,6 +1363,10 @@ function LiveRestaurantOverviewSection({
     );
   }
 
+  const newOrders = statusCount(orderStats.today.statusBreakdown, "pending");
+  const preparingOrders = statusCount(orderStats.today.statusBreakdown, "preparing");
+  const todayRevenue = Number(orderStats.today.completedSales).toFixed(2);
+
   return (
     <section className="flex flex-col gap-6 sm:gap-8" aria-label={ariaLabel}>
       <div className="space-y-2.5">
@@ -1334,8 +1377,8 @@ function LiveRestaurantOverviewSection({
       </div>
 
       {isLoading ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-5">
-          {[0, 1, 2, 3].map((i) => (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 lg:gap-5">
+          {[0, 1, 2, 3, 4].map((i) => (
             <LiveOverviewStatSkeleton key={i} />
           ))}
         </div>
@@ -1357,7 +1400,10 @@ function LiveRestaurantOverviewSection({
             variant="outline"
             className="border-border/60"
             disabled={isFetching}
-            onClick={() => void refetch()}
+            onClick={() => {
+              void refetchOverview();
+              void refetchOrders();
+            }}
           >
             {isFetching ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -1366,7 +1412,7 @@ function LiveRestaurantOverviewSection({
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-5">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 lg:gap-5">
           <DashboardStatCard
             label={isAr ? "جلسات نشطة" : "Active Sessions"}
             value={overview?.activeSessions ?? 0}
@@ -1380,10 +1426,22 @@ function LiveRestaurantOverviewSection({
             tone="accent"
           />
           <DashboardStatCard
-            label={isAr ? "طلبات قيد التنفيذ" : "Pending Orders"}
-            value={overview?.pendingOrders ?? 0}
-            icon={Clock3}
+            label={isAr ? "طلبات جديدة" : "New Orders"}
+            value={newOrders}
+            icon={ClipboardList}
             tone="amber"
+          />
+          <DashboardStatCard
+            label={isAr ? "قيد التحضير" : "Preparing Orders"}
+            value={preparingOrders}
+            icon={Clock3}
+            tone="default"
+          />
+          <DashboardStatCard
+            label={isAr ? "إيرادات اليوم" : "Today's Revenue"}
+            value={`${todayRevenue} ${sym}`}
+            icon={DollarSign}
+            tone="emerald"
           />
         </div>
       )}
@@ -1393,19 +1451,13 @@ function LiveRestaurantOverviewSection({
 
 function RestaurantHomePanel({
   restaurant,
-  stats,
-  t,
   language,
-  statsAriaLabel,
   restaurantId,
   currencySymbol,
   tableLabel,
 }: {
   restaurant: { nameAr: string; slug?: string | null };
-  stats: { totalCategories?: number; totalItems?: number; viewCount?: number };
-  t: (key: string) => string;
   language: string;
-  statsAriaLabel: string;
   restaurantId: number;
   currencySymbol?: string;
   tableLabel?: string;
@@ -1417,18 +1469,7 @@ function RestaurantHomePanel({
   return (
     <div className="space-y-10 sm:space-y-12">
       <RestaurantHeaderCard restaurant={restaurant} />
-      <LiveRestaurantOverviewSection
-        restaurantId={restaurantId}
-        language={language}
-        queriesEnabled={ordersEnabled}
-      />
-      <SettlementOverviewSection
-        restaurantId={restaurantId}
-        language={language}
-        queriesEnabled={ordersEnabled}
-        currencySymbol={currencySymbol}
-      />
-      <SettlementTrendsSection
+      <OperationalSnapshotSection
         restaurantId={restaurantId}
         language={language}
         queriesEnabled={ordersEnabled}
@@ -1452,7 +1493,6 @@ function RestaurantHomePanel({
         queriesEnabled={ordersEnabled}
         onOpenSession={setWorkspaceSessionId}
       />
-      <RestaurantStatisticsSection stats={stats} t={t} ariaLabel={statsAriaLabel} language={language} />
 
       <DiningSessionWorkspaceSheet
         open={workspaceSessionId != null}
@@ -1486,8 +1526,7 @@ function RestaurantDetail({
     isAuthenticated,
     restaurantId
   );
-  const loadStats =
-    activeTab === "home" || activeTab === "reports";
+  const loadStats = activeTab === "reports";
   const loadCategories = activeTab === "categories";
 
   const { data: restaurant, isLoading } = trpc.restaurant.getById.useQuery(
@@ -1561,10 +1600,7 @@ function RestaurantDetail({
       {activeTab === "home" && (
         <RestaurantHomePanel
           restaurant={restaurant}
-          stats={statsPayload}
-          t={t}
           language={language}
-          statsAriaLabel={statsAriaLabel}
           restaurantId={restaurantId}
           currencySymbol={(restaurant as { currencySymbol?: string })?.currencySymbol}
           tableLabel={(restaurant as { tableLabel?: string })?.tableLabel}
@@ -4026,6 +4062,32 @@ function ReportsTab({
         <VerificationRequiredPanel variant="orders" />
       ) : (
       <>
+      <div className="space-y-2 pb-2">
+        <h2 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">
+          {language === "ar" ? "تحليلات التسوية" : "Settlement Analytics"}
+        </h2>
+        <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+          {language === "ar"
+            ? "إيرادات الجلسات المسددة والاتجاهات التاريخية"
+            : "Settled session revenue and historical trends"}
+        </p>
+      </div>
+
+      <SettlementOverviewSection
+        restaurantId={restaurantId}
+        language={language}
+        queriesEnabled={ordersEnabled}
+        currencySymbol={sym}
+      />
+      <SettlementTrendsSection
+        restaurantId={restaurantId}
+        language={language}
+        queriesEnabled={ordersEnabled}
+        currencySymbol={sym}
+      />
+
+      <div className="border-t border-border/30 pt-2" />
+
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <div className={cn(dash.kpiCard)}>
           <p className="text-2xl font-bold tabular-nums sm:text-3xl">{orderStats.today.totalOrders}</p>

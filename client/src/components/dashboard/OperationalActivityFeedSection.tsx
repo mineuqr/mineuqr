@@ -204,7 +204,7 @@ export function OperationalActivityFeedSection({
   const { isAuthenticated, authPending } = useAuth();
   const [showFullFeed, setShowFullFeed] = useState(false);
   const isAr = language === "ar";
-  const sectionTitle = isAr ? "سجل النشاط التشغيلي" : "Operational Activity Feed";
+  const sectionTitle = isAr ? "النشاط الأخير" : "Recent Activity";
   const sectionSub = isAr
     ? "آخر أحداث الجلسات والطلبات"
     : "Latest session and order events";
@@ -313,7 +313,7 @@ export function OperationalActivityFeedSection({
                 onClick={() => setShowFullFeed(true)}
               >
                 {isFetching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-                {isAr ? "عرض كل النشاط" : "View Full Activity"}
+                {isAr ? "عرض كل النشاط" : "View All Activity"}
                 <ChevronDown className="h-4 w-4 rtl:rotate-180" />
               </Button>
             </div>
