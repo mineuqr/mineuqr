@@ -3,6 +3,7 @@ import { useAuthGate } from "@/_core/hooks/useAuthGate";
 import { Button } from "@/components/ui/button";
 import OrderAlertSystem from "@/components/OrderAlertSystem";
 import { DiningSessionWorkspaceSheet } from "@/components/dashboard/DiningSessionWorkspaceSheet";
+import { ActiveTablesBoardSection } from "@/components/dashboard/ActiveTablesBoardSection";
 import { getLoginUrl, spaNavigate } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { cn, resolveImageUrl } from "@/lib/utils";
@@ -1400,6 +1401,8 @@ function RestaurantHomePanel({
   statsAriaLabel,
   restaurantId,
   onTabChange,
+  currencySymbol,
+  tableLabel,
 }: {
   restaurant: { nameAr: string; slug?: string | null };
   stats: { totalCategories?: number; totalItems?: number; viewCount?: number };
@@ -1408,9 +1411,12 @@ function RestaurantHomePanel({
   statsAriaLabel: string;
   restaurantId: number;
   onTabChange: (tab: RestaurantTab) => void;
+  currencySymbol?: string;
+  tableLabel?: string;
 }) {
   const { isAuthenticated, authPending } = useAuth();
   const ordersEnabled = restaurantQueriesEnabled(authPending, isAuthenticated, restaurantId);
+  const [workspaceSessionId, setWorkspaceSessionId] = useState<number | null>(null);
   useDevQueryRuntimeLog("order.list", {
     enabled: ordersEnabled,
     authPending,
@@ -1431,6 +1437,12 @@ function RestaurantHomePanel({
         restaurantId={restaurantId}
         language={language}
         queriesEnabled={ordersEnabled}
+      />
+      <ActiveTablesBoardSection
+        restaurantId={restaurantId}
+        language={language}
+        queriesEnabled={ordersEnabled}
+        onOpenSession={setWorkspaceSessionId}
       />
       <RestaurantStatisticsSection stats={stats} t={t} ariaLabel={statsAriaLabel} language={language} />
 
@@ -1467,11 +1479,20 @@ function RestaurantHomePanel({
           </div>
         )}
       </section>
+
+      <DiningSessionWorkspaceSheet
+        open={workspaceSessionId != null}
+        onOpenChange={(open) => {
+          if (!open) setWorkspaceSessionId(null);
+        }}
+        restaurantId={restaurantId}
+        sessionId={workspaceSessionId}
+        currencySymbol={currencySymbol}
+        tableLabel={tableLabel}
+      />
     </div>
   );
 }
-
-// ─── Restaurant Detail ──────────────────────────────────────
 
 function RestaurantDetail({
   restaurantId,
@@ -1572,6 +1593,8 @@ function RestaurantDetail({
           statsAriaLabel={statsAriaLabel}
           restaurantId={restaurantId}
           onTabChange={onTabChange}
+          currencySymbol={(restaurant as { currencySymbol?: string })?.currencySymbol}
+          tableLabel={(restaurant as { tableLabel?: string })?.tableLabel}
         />
       )}
 
