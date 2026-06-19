@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import OrderAlertSystem from "@/components/OrderAlertSystem";
 import { DiningSessionWorkspaceSheet } from "@/components/dashboard/DiningSessionWorkspaceSheet";
 import { ActiveTablesBoardSection } from "@/components/dashboard/ActiveTablesBoardSection";
+import { ActionCenterSection } from "@/components/dashboard/ActionCenterSection";
 import { getLoginUrl, spaNavigate } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { cn, resolveImageUrl } from "@/lib/utils";
@@ -1437,6 +1438,12 @@ function RestaurantHomePanel({
         restaurantId={restaurantId}
         language={language}
         queriesEnabled={ordersEnabled}
+      />
+      <ActionCenterSection
+        restaurantId={restaurantId}
+        language={language}
+        queriesEnabled={ordersEnabled}
+        onOpenSession={setWorkspaceSessionId}
       />
       <ActiveTablesBoardSection
         restaurantId={restaurantId}
