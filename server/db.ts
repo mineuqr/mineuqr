@@ -1032,6 +1032,35 @@ export async function getOrdersByRestaurant(restaurantId: number, status?: strin
     .orderBy(desc(orders.createdAt));
 }
 
+export type SessionLinkedOrderRow = {
+  id: number;
+  orderNumber: string;
+  status: string;
+  totalAmount: string;
+  createdAt: string;
+};
+
+/** TABLE-MANAGEMENT-1 UX-1B — orders linked to a dining session (no items). */
+export async function getOrdersBySessionId(
+  restaurantId: number,
+  sessionId: number
+): Promise<SessionLinkedOrderRow[]> {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db
+    .select({
+      id: orders.id,
+      orderNumber: orders.orderNumber,
+      status: orders.status,
+      totalAmount: orders.totalAmount,
+      createdAt: orders.createdAt,
+    })
+    .from(orders)
+    .where(and(eq(orders.restaurantId, restaurantId), eq(orders.sessionId, sessionId)))
+    .orderBy(desc(orders.createdAt));
+}
+
 export async function getOrdersWithItemsByRestaurant(
   restaurantId: number,
   status?: string

@@ -2,7 +2,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { useAuthGate } from "@/_core/hooks/useAuthGate";
 import { Button } from "@/components/ui/button";
 import OrderAlertSystem from "@/components/OrderAlertSystem";
-import { DiningSessionTimelineSheet } from "@/components/dashboard/DiningSessionTimelineSheet";
+import { DiningSessionWorkspaceSheet } from "@/components/dashboard/DiningSessionWorkspaceSheet";
 import { getLoginUrl, spaNavigate } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { cn, resolveImageUrl } from "@/lib/utils";
@@ -4295,7 +4295,7 @@ function OrdersTab({ restaurantId, currencySymbol, tableLabel }: { restaurantId:
       </>
       )}
 
-      <DiningSessionTimelineSheet
+      <DiningSessionWorkspaceSheet
         open={timelineSessionId != null}
         onOpenChange={(open) => {
           if (!open) setTimelineSessionId(null);
