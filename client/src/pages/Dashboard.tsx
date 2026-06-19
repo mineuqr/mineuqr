@@ -27,6 +27,7 @@ import {
 } from "@/lib/diningSessionDashboardCopy";
 import {
   DASHBOARD_ORDER_LIST_POLL_MS,
+  homeSnapshotOrderQueryOptions,
   opsOverviewQueryOptions,
   orderListQueryOptions,
   restaurantQueriesEnabled,
@@ -75,29 +76,26 @@ import {
 // ─── Dashboard UI primitives (Stripe / Linear–style) ─────────
 
 const dash = {
-  shell: "min-h-screen bg-gradient-to-br from-slate-950 via-[#0b0e14] to-slate-900 text-[1rem] leading-relaxed text-foreground sm:text-[1.0625rem]",
+  shell: "min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-900 text-[1rem] leading-relaxed text-foreground sm:text-[1.0625rem]",
   shellGlow:
-    "pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(ellipse_80%_40%_at_50%_-15%,oklch(0.55_0.08_220/10%),transparent)]",
-  sidebar:
-    "fixed inset-y-0 end-0 z-40 flex w-[min(20rem,92vw)] flex-col border-s border-slate-800/60 bg-slate-950/95 backdrop-blur-xl shadow-2xl lg:w-[20rem]",
-  sidebarNavBtn:
-    "relative flex w-full min-h-[3rem] items-center gap-3 rounded-lg px-3 py-3 text-base font-medium leading-snug transition-all duration-150",
-  sidebarNavIcon:
-    "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-colors",
-  sidebarNavIconActive: "bg-slate-800 text-white ring-1 ring-slate-600/50",
-  sidebarNavIconIdle: "bg-slate-900/80 text-slate-400 group-hover:bg-slate-800/80 group-hover:text-slate-200",
-  sidebarSectionLabel:
-    "ui-chrome px-4 pb-2 pt-6 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 first:pt-4",
-  sidebarNavActive:
-    "bg-slate-800/90 font-semibold text-white ring-1 ring-inset ring-slate-600/40 before:absolute before:end-0 before:top-1/2 before:h-8 before:w-1 before:-translate-y-1/2 before:rounded-full before:bg-green-500/80 rtl:before:end-auto rtl:before:start-0",
-  sidebarNavIdle:
-    "group text-slate-400 hover:bg-slate-900/70 hover:text-slate-100",
-  mainColumn: "flex min-h-screen min-w-0 flex-1 flex-col lg:me-[20rem]",
-  topBar:
-    "sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-slate-800/60 bg-slate-950/85 px-4 backdrop-blur-xl sm:h-16 sm:px-6 lg:px-8",
+    "pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(ellipse_80%_40%_at_50%_-15%,oklch(0.55_0.08_220/8%),transparent)]",
+  sidebar: restaurantDash.sidebar,
+  sidebarBrand: restaurantDash.sidebarBrand,
+  sidebarNav: restaurantDash.sidebarNav,
+  sidebarSectionLabel: restaurantDash.sidebarSectionLabel,
+  sidebarNavBtn: restaurantDash.sidebarNavBtn,
+  sidebarNavIcon: restaurantDash.sidebarNavIcon,
+  sidebarNavIconActive: restaurantDash.sidebarNavIconActive,
+  sidebarNavIconIdle: restaurantDash.sidebarNavIconIdle,
+  sidebarNavActive: restaurantDash.sidebarNavActive,
+  sidebarNavIdle: restaurantDash.sidebarNavIdle,
+  sidebarFooter: restaurantDash.sidebarFooter,
+  sidebarFooterHint: restaurantDash.sidebarFooterHint,
+  mainColumn: restaurantDash.mainColumn,
+  topBar: restaurantDash.topBar,
   main: "mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8",
   card: restaurantDash.card,
-  cardHover: cn(restaurantDash.card, "transition-all duration-200 hover:border-slate-600/60 hover:bg-slate-800/40"),
+  cardHover: cn(restaurantDash.card, "transition-all duration-200 hover:border-cyan-500/25 hover:bg-slate-800/40"),
   hero: restaurantDash.hero,
   kpiCard: restaurantDash.kpiCard,
   pageTitle: "text-2xl font-bold tracking-tight text-white sm:text-3xl",
@@ -145,15 +143,24 @@ function DashboardStatCard({
   icon,
   tone = "default",
   hint,
+  valueVariant = "operational",
 }: {
   label: string;
   value: number | string;
   icon: ComponentType<{ className?: string }>;
-  tone?: "default" | "primary" | "accent" | "emerald" | "amber";
+  tone?: "default" | "primary" | "accent" | "emerald" | "amber" | "success" | "info" | "warning" | "neutral";
   hint?: string;
+  valueVariant?: "operational" | "revenue";
 }) {
   return (
-    <RestaurantKpiCard label={label} value={value} icon={icon} tone={tone} hint={hint} />
+    <RestaurantKpiCard
+      label={label}
+      value={value}
+      icon={icon}
+      tone={tone}
+      hint={hint}
+      valueVariant={valueVariant}
+    />
   );
 }
 
@@ -181,16 +188,6 @@ function DashboardSidebar({
   const inRestaurant = activeSection === "restaurant-detail" && !!onRestaurantTabChange;
 
   const topNavItems = [
-    {
-      id: "website",
-      label: language === "ar" ? "العودة للموقع" : "Back to Website",
-      icon: Globe,
-      active: false,
-      onClick: () => {
-        setLocation("/");
-        onMobileClose();
-      },
-    },
     {
       id: "restaurants",
       label: language === "ar" ? "مطاعمي" : "My Restaurants",
@@ -267,9 +264,9 @@ function DashboardSidebar({
             active ? dash.sidebarNavIconActive : dash.sidebarNavIconIdle
           )}
         >
-          <Icon className="h-[1.35rem] w-[1.35rem] shrink-0" />
+          <Icon className="shrink-0" />
         </span>
-        <span className="min-w-0 flex-1 text-start leading-snug break-words">{label}</span>
+        <span className="min-w-0 flex-1 text-start leading-snug">{label}</span>
       </button>
     );
   };
@@ -279,24 +276,27 @@ function DashboardSidebar({
       <button
         type="button"
         onClick={() => {
-          setLocation("/");
+          if (inRestaurant) onRestaurants();
+          else setLocation("/dashboard");
           onMobileClose();
         }}
-        className="brand-mark flex h-[5rem] w-full shrink-0 items-center gap-4 border-b border-border/30 px-6 text-start transition hover:bg-white/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-        aria-label={language === "ar" ? "الصفحة الرئيسية" : "Go to homepage"}
+        className={dash.sidebarBrand}
+        aria-label={language === "ar" ? "لوحة التحكم" : "Dashboard home"}
       >
-        <img
-          src="https://d2xsxph8kpxj0f.cloudfront.net/310519663504545475/fcy9GqTzfuy9H9eCsDbdLA/mineuqr-logo_150417d8.png"
-          alt=""
-          className="h-11 w-auto object-contain"
-          draggable={false}
-        />
-        <span className="text-xl font-semibold tracking-tight text-foreground">mineuqr</span>
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-r from-cyan-500 to-cyan-400 text-slate-900">
+          <Store className="h-4 w-4" />
+        </div>
+        <div className="grid min-w-0 flex-1 text-start text-sm leading-tight">
+          <span className="truncate font-semibold text-white">mineuqr</span>
+          <span className="truncate text-xs text-cyan-300/80">
+            {language === "ar" ? "لوحة المطعم" : "Restaurant console"}
+          </span>
+        </div>
       </button>
 
-      <nav className="flex-1 overflow-y-auto overscroll-contain px-5 py-6" aria-label="Dashboard">
+      <nav className={dash.sidebarNav} aria-label="Dashboard">
         <p className={dash.sidebarSectionLabel}>{language === "ar" ? "عام" : "General"}</p>
-        <div className="space-y-2.5">
+        <div className="space-y-1">
           {topNavItems.map((item) =>
             renderNavButton(item.id, item.label, item.icon, item.active, item.onClick)
           )}
@@ -304,8 +304,10 @@ function DashboardSidebar({
 
         {inRestaurant ? (
           <>
-            <p className={dash.sidebarSectionLabel}>{language === "ar" ? "لوحة التحكم" : "Workspace"}</p>
-            <div className="space-y-2.5">
+            <p className={dash.sidebarSectionLabel}>
+              {language === "ar" ? "مساحة العمل" : "Workspace"}
+            </p>
+            <div className="space-y-1">
               {restaurantWorkspaceNav.map((item) =>
                 renderNavButton(
                   item.id,
@@ -319,8 +321,10 @@ function DashboardSidebar({
                 )
               )}
             </div>
-            <p className={dash.sidebarSectionLabel}>{language === "ar" ? "إدارة المنيو" : "Menu management"}</p>
-            <div className="space-y-2.5">
+            <p className={dash.sidebarSectionLabel}>
+              {language === "ar" ? "إدارة المنيو" : "Menu management"}
+            </p>
+            <div className="space-y-1">
               {restaurantMenuNav.map((item) =>
                 renderNavButton(
                   item.id,
@@ -338,25 +342,21 @@ function DashboardSidebar({
         ) : null}
       </nav>
 
-      <div className="shrink-0 space-y-3 border-t border-border/30 px-5 py-5">
-        <div className="rounded-xl border border-border/35 bg-muted/10 p-5">
-          <p className="text-base font-semibold leading-snug text-foreground">
-            {language === "ar" ? "تحتاج مساعدة؟" : "Need help?"}
-          </p>
-          <p className="mt-2 text-[0.9375rem] leading-relaxed text-muted-foreground">
-            {language === "ar" ? "تواصل مع فريق الدعم" : "Contact our support team"}
-          </p>
-          <Button
-            variant="outline"
-            className="mt-4 h-11 w-full border-border/50 text-base font-medium"
-            onClick={() => {
-              setLocation("/contact");
-              onMobileClose();
-            }}
-          >
-            {language === "ar" ? "تواصل معنا" : "Contact us"}
-          </Button>
-        </div>
+      <div className={dash.sidebarFooter}>
+        <p className={dash.sidebarFooterHint}>
+          {language === "ar" ? "تحتاج مساعدة؟ تواصل مع الدعم" : "Need help? Contact support"}
+        </p>
+        <Button
+          variant="outline"
+          size="sm"
+          className={cn("h-8 w-full text-xs", restaurantDash.toolbarBtn)}
+          onClick={() => {
+            setLocation("/contact");
+            onMobileClose();
+          }}
+        >
+          {language === "ar" ? "تواصل معنا" : "Contact us"}
+        </Button>
         {renderNavButton("logout", t("dashboard.signOut"), LogOut, false, onLogout)}
       </div>
     </>
@@ -417,13 +417,13 @@ function DashboardTopBar({
           <button
             type="button"
             onClick={onBackToRestaurants}
-            className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-base text-muted-foreground transition hover:bg-muted/20 hover:text-foreground"
+            className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-slate-400 transition hover:bg-slate-900/60 hover:text-white"
           >
             <ChevronLeft className="h-5 w-5 rtl:rotate-180" />
             <span className="hidden sm:inline">{t("dashboard.backToRestaurants")}</span>
           </button>
         ) : (
-          <span className="hidden text-base font-medium text-muted-foreground sm:inline">
+          <span className="hidden text-sm font-medium text-slate-400 sm:inline">
             {language === "ar" ? "لوحة التحكم" : "Dashboard"}
           </span>
         )}
@@ -434,7 +434,7 @@ function DashboardTopBar({
           type="button"
           variant="outline"
           size="sm"
-          className="hidden border-border/50 text-muted-foreground hover:text-foreground sm:inline-flex"
+          className={cn("hidden sm:inline-flex", restaurantDash.toolbarBtn)}
           onClick={() => setLocation("/")}
         >
           <Globe className="h-4 w-4 me-1.5" />
@@ -444,7 +444,7 @@ function DashboardTopBar({
           variant="ghost"
           size="icon"
           onClick={() => setLocation("/notifications")}
-          className="relative h-9 w-9 text-muted-foreground hover:text-foreground"
+          className="relative h-9 w-9 text-slate-400 hover:text-white"
         >
           <Bell className="h-4 w-4" />
           <NotificationBadge />
@@ -452,14 +452,14 @@ function DashboardTopBar({
         <button
           type="button"
           onClick={() => setLocation("/profile")}
-          className="flex items-center gap-2.5 rounded-xl border border-border/40 bg-[#161b22]/80 px-2 py-1.5 transition hover:border-border/60 sm:px-3"
+          className="flex items-center gap-2 rounded-lg border border-cyan-500/20 bg-slate-900/60 px-2 py-1.5 transition hover:border-cyan-500/35 sm:px-2.5"
         >
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/20 text-base font-semibold text-primary">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cyan-500/15 text-xs font-semibold text-cyan-400">
             {initials}
           </div>
           <div className="hidden min-w-0 text-start sm:block">
-            <p className="truncate text-base font-medium text-foreground">{displayName}</p>
-            <p className="text-sm text-muted-foreground">
+            <p className="truncate text-sm font-medium text-white">{displayName}</p>
+            <p className="text-xs text-slate-500">
               {language === "ar" ? "مالك" : "Owner"}
             </p>
           </div>
@@ -1267,11 +1267,10 @@ function OperationalSnapshotSection({
     isAuthenticated,
     pollMs: queriesEnabled ? DASHBOARD_ORDER_LIST_POLL_MS : undefined,
   });
-  useDevQueryRuntimeLog("order.list", {
+  useDevQueryRuntimeLog("order.list (home snapshot)", {
     enabled: queriesEnabled,
     authPending,
     isAuthenticated,
-    pollMs: queriesEnabled ? DASHBOARD_ORDER_LIST_POLL_MS : undefined,
   });
 
   const {
@@ -1293,7 +1292,10 @@ function OperationalSnapshotSection({
     error: ordersQueryError,
     refetch: refetchOrders,
     isFetching: ordersFetching,
-  } = trpc.order.list.useQuery({ restaurantId }, orderListQueryOptions(queriesEnabled));
+  } = trpc.order.list.useQuery(
+    { restaurantId },
+    homeSnapshotOrderQueryOptions(queriesEnabled)
+  );
 
   const orderStats = useMemo(
     () => buildOrderStatistics((allOrders ?? []) as DashboardOrder[]),
@@ -1308,7 +1310,8 @@ function OperationalSnapshotSection({
   const ariaLabel = sectionTitle;
   const isLoading = overviewLoading || ordersLoading;
   const isFetching = overviewFetching || ordersFetching;
-  const isError = overviewError || ordersError;
+  const overviewFailed = overviewError && !overview;
+  const ordersFailed = ordersError && !allOrders;
   const verificationError = isEmailNotVerifiedError(overviewQueryError)
     ? overviewQueryError
     : isEmailNotVerifiedError(ordersQueryError)
@@ -1331,7 +1334,7 @@ function OperationalSnapshotSection({
     <RestaurantDashSection title={sectionTitle} description={sectionSub} ariaLabel={ariaLabel}>
       {isLoading ? (
         <RestaurantKpiGridSkeleton count={5} />
-      ) : isError ? (
+      ) : overviewFailed && ordersFailed ? (
         <RestaurantSectionError
           message={
             isAr
@@ -1346,38 +1349,48 @@ function OperationalSnapshotSection({
           }}
         />
       ) : (
-        <div className={restaurantDash.kpiGrid}>
-          <DashboardStatCard
-            label={isAr ? "جلسات نشطة" : "Active Sessions"}
-            value={overview?.activeSessions ?? 0}
-            icon={LayoutDashboard}
-            tone="primary"
-          />
-          <DashboardStatCard
-            label={isAr ? "طاولات مشغولة" : "Occupied Tables"}
-            value={overview?.occupiedTables ?? 0}
-            icon={Grid3X3}
-            tone="accent"
-          />
-          <DashboardStatCard
-            label={isAr ? "طلبات جديدة" : "New Orders"}
-            value={newOrders}
-            icon={ClipboardList}
-            tone="amber"
-          />
-          <DashboardStatCard
-            label={isAr ? "قيد التحضير" : "Preparing Orders"}
-            value={preparingOrders}
-            icon={Clock3}
-            tone="default"
-          />
-          <DashboardStatCard
-            label={isAr ? "إيرادات اليوم" : "Today's Revenue"}
-            value={`${todayRevenue} ${sym}`}
-            icon={DollarSign}
-            tone="emerald"
-          />
-        </div>
+        <>
+          {ordersFailed ? (
+            <p className="rounded-lg border border-orange-500/25 bg-orange-500/5 px-3 py-2 text-xs text-orange-300">
+              {isAr
+                ? "تعذر تحميل مؤشرات الطلبات. تم عرض مؤشرات الجلسات فقط."
+                : "Order metrics unavailable. Showing session metrics only."}
+            </p>
+          ) : null}
+          <div className={restaurantDash.kpiGrid}>
+            <DashboardStatCard
+              label={isAr ? "جلسات نشطة" : "Active Sessions"}
+              value={overview?.activeSessions ?? 0}
+              icon={LayoutDashboard}
+              tone="primary"
+            />
+            <DashboardStatCard
+              label={isAr ? "طاولات مشغولة" : "Occupied Tables"}
+              value={overview?.occupiedTables ?? 0}
+              icon={Grid3X3}
+              tone="accent"
+            />
+            <DashboardStatCard
+              label={isAr ? "طلبات جديدة اليوم" : "New Orders Today"}
+              value={ordersFailed ? "—" : newOrders}
+              icon={ClipboardList}
+              tone="amber"
+            />
+            <DashboardStatCard
+              label={isAr ? "قيد التحضير اليوم" : "Preparing Today"}
+              value={ordersFailed ? "—" : preparingOrders}
+              icon={Clock3}
+              tone="default"
+            />
+            <DashboardStatCard
+              label={isAr ? "مبيعات طلبات اليوم" : "Today's Order Sales"}
+              value={ordersFailed ? "—" : `${todayRevenue} ${sym}`}
+              icon={DollarSign}
+              tone="success"
+              valueVariant="revenue"
+            />
+          </div>
+        </>
       )}
     </RestaurantDashSection>
   );
@@ -1389,12 +1402,14 @@ function RestaurantHomePanel({
   restaurantId,
   currencySymbol,
   tableLabel,
+  onTabChange,
 }: {
   restaurant: { nameAr: string; slug?: string | null };
   language: string;
   restaurantId: number;
   currencySymbol?: string;
   tableLabel?: string;
+  onTabChange: (tab: RestaurantTab) => void;
 }) {
   const { isAuthenticated, authPending } = useAuth();
   const ordersEnabled = restaurantQueriesEnabled(authPending, isAuthenticated, restaurantId);
@@ -1420,6 +1435,8 @@ function RestaurantHomePanel({
         language={language}
         queriesEnabled={ordersEnabled}
         onOpenSession={setWorkspaceSessionId}
+        homePreviewLimit={6}
+        onViewAllTables={() => onTabChange("tables")}
       />
       <OperationalActivityFeedSection
         restaurantId={restaurantId}
@@ -1538,6 +1555,7 @@ function RestaurantDetail({
           restaurantId={restaurantId}
           currencySymbol={(restaurant as { currencySymbol?: string })?.currencySymbol}
           tableLabel={(restaurant as { tableLabel?: string })?.tableLabel}
+          onTabChange={onTabChange}
         />
       )}
 
@@ -3903,10 +3921,6 @@ function ReportsTab({
     () => buildOrderStatistics((allOrders ?? []) as DashboardOrder[]),
     [allOrders]
   );
-  const todayReport = useMemo(
-    () => buildTodayReport((allOrders ?? []) as DashboardOrder[]),
-    [allOrders]
-  );
   const monthlyReport = useMemo(
     () => buildMonthlyReport((allOrders ?? []) as DashboardOrder[], reportYear, reportMonth),
     [allOrders, reportYear, reportMonth]
@@ -3992,10 +4006,6 @@ function ReportsTab({
         />
       )}
 
-      {ordersBlocked ? (
-        <VerificationRequiredPanel variant="orders" />
-      ) : (
-      <>
       <div className="space-y-1 border-b border-slate-700/40 pb-4">
         <h2 className={restaurantDash.sectionTitle}>
           {language === "ar" ? "تحليلات التسوية" : "Settlement Analytics"}
@@ -4020,42 +4030,39 @@ function ReportsTab({
         currencySymbol={sym}
       />
 
+      {ordersBlocked ? (
+        <VerificationRequiredPanel variant="orders" />
+      ) : (
+      <>
       <div className="border-t border-slate-700/40 pt-4" />
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <div className={cn(dash.kpiCard)}>
-          <p className="text-2xl font-bold tabular-nums sm:text-3xl">{orderStats.today.totalOrders}</p>
-          <p className="mt-1.5 text-sm text-muted-foreground sm:text-base">{language === "ar" ? "طلبات اليوم" : "Today orders"}</p>
-        </div>
-        <div className={cn(dash.kpiCard)}>
-          <p className="text-2xl font-bold tabular-nums sm:text-3xl">{orderStats.month.totalOrders}</p>
-          <p className="mt-1.5 text-sm text-muted-foreground sm:text-base">{language === "ar" ? "طلبات الشهر" : "Month orders"}</p>
-        </div>
-        <div className={cn(dash.kpiCard)}>
-          <p className="text-2xl font-bold tabular-nums sm:text-3xl">{Number(orderStats.today.completedSales).toFixed(0)}</p>
-          <p className="mt-1.5 text-sm text-muted-foreground sm:text-base">{language === "ar" ? "مبيعات اليوم" : "Today sales"}</p>
-        </div>
-        <div className={cn(dash.kpiCard)}>
-          <p className="text-2xl font-bold tabular-nums sm:text-3xl">{Number(orderStats.month.totalSales).toFixed(0)}</p>
-          <p className="mt-1.5 text-sm text-muted-foreground sm:text-base">{language === "ar" ? "مبيعات الشهر" : "Month sales"}</p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div className={cn(dash.kpiCard)}>
-          <p className="text-2xl font-semibold tabular-nums">{todayReport.count}</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {language === "ar" ? "طلبات مكتملة اليوم" : "Today's Completed Orders"}
-          </p>
-        </div>
-        <div className={cn(dash.kpiCard)}>
-          <p className="text-2xl font-semibold tabular-nums">
-            {todayReport.totalSales.toFixed(2)} <span className="text-xs text-muted-foreground">{sym}</span>
-          </p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {language === "ar" ? "مبيعات اليوم" : "Today's Sales"}
-          </p>
-        </div>
+      <div className={restaurantDash.kpiGridWide}>
+        <RestaurantKpiCard
+          label={language === "ar" ? "طلبات اليوم" : "Today Orders"}
+          value={orderStats.today.totalOrders}
+          icon={ClipboardList}
+          tone="warning"
+        />
+        <RestaurantKpiCard
+          label={language === "ar" ? "طلبات الشهر" : "Month Orders"}
+          value={orderStats.month.totalOrders}
+          icon={Calendar}
+          tone="info"
+        />
+        <RestaurantKpiCard
+          label={language === "ar" ? "مبيعات طلبات اليوم" : "Today's Order Sales"}
+          value={`${Number(orderStats.today.completedSales).toFixed(2)} ${sym}`}
+          icon={DollarSign}
+          tone="success"
+          valueVariant="revenue"
+        />
+        <RestaurantKpiCard
+          label={language === "ar" ? "مبيعات الشهر" : "Month Sales"}
+          value={`${Number(orderStats.month.totalSales).toFixed(2)} ${sym}`}
+          icon={TrendingUp}
+          tone="success"
+          valueVariant="revenue"
+        />
       </div>
 
       <Card className={cn(dash.card)}>

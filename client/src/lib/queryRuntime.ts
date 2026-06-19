@@ -70,6 +70,15 @@ export function orderListQueryOptions(enabled: boolean) {
   } as const;
 }
 
+/** Home snapshot: fetch once per visit, no 10s poll — reduces load vs full order.list polling (H-03). */
+export function homeSnapshotOrderQueryOptions(enabled: boolean) {
+  return {
+    enabled,
+    refetchInterval: false,
+    staleTime: 120_000,
+  } as const;
+}
+
 export function adminQueriesEnabled(
   authPending: boolean,
   isAuthenticated: boolean,

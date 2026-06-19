@@ -6,7 +6,10 @@ import {
   legacyToneToSemantic,
   restaurantDash,
   restaurantKpiIconClass,
+  restaurantOperationalValueClass,
+  restaurantRevenueValueClass,
   type RestaurantKpiTone,
+  type RestaurantKpiValueVariant,
 } from "./restaurantDashStyles";
 
 type RestaurantKpiCardProps = {
@@ -14,6 +17,7 @@ type RestaurantKpiCardProps = {
   value: number | string;
   icon: ComponentType<{ className?: string }>;
   tone?: RestaurantKpiTone | "default" | "primary" | "accent" | "emerald" | "amber";
+  valueVariant?: RestaurantKpiValueVariant;
   hint?: string;
   loading?: boolean;
   className?: string;
@@ -34,11 +38,18 @@ function resolveTone(
   return tone;
 }
 
+function valueClassName(valueVariant: RestaurantKpiValueVariant): string {
+  return valueVariant === "revenue"
+    ? restaurantRevenueValueClass
+    : restaurantOperationalValueClass;
+}
+
 export function RestaurantKpiCard({
   label,
   value,
   icon: Icon,
   tone = "neutral",
+  valueVariant = "operational",
   hint,
   loading = false,
   className,
@@ -62,7 +73,10 @@ export function RestaurantKpiCard({
         ) : (
           <div
             dir="ltr"
-            className="text-end text-lg font-bold tabular-nums text-white sm:text-start sm:text-xl"
+            className={cn(
+              "text-end text-lg font-bold tabular-nums sm:text-start sm:text-xl",
+              valueClassName(valueVariant)
+            )}
           >
             {value}
           </div>

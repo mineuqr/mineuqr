@@ -93,51 +93,49 @@ export function SettlementOverviewSection({
           isFetching={isFetching}
           onRetry={() => void refetch()}
         />
+      ) : isFullyEmpty ? (
+        <RestaurantSectionEmpty
+          message={
+            isAr
+              ? "لا توجد جلسات مسددة بعد. ستظهر الإيرادات هنا بعد تسوية الجلسات."
+              : "No settled sessions yet. Revenue will appear here after sessions are settled."
+          }
+        />
       ) : (
-        <>
-          {isFullyEmpty ? (
-            <RestaurantSectionEmpty
-              message={
-                isAr
-                  ? "لا توجد جلسات مسددة بعد. ستظهر الإيرادات هنا بعد تسوية الجلسات."
-                  : "No settled sessions yet. Revenue will appear here after sessions are settled."
-              }
-            />
-          ) : null}
-
-          <div className={restaurantDash.kpiGrid}>
-            <RestaurantKpiCard
-              label={isAr ? "إيرادات مسددة" : "Settled Revenue"}
-              value={formatSettlementRevenue(summary?.paidRevenue ?? "0.00", sym)}
-              icon={DollarSign}
-              tone="success"
-            />
-            <RestaurantKpiCard
-              label={isAr ? "جلسات مدفوعة" : "Paid Sessions"}
-              value={summary?.paidSessionCount ?? 0}
-              icon={CheckCircle2}
-              tone="info"
-            />
-            <RestaurantKpiCard
-              label={isAr ? "جلسات مجانية" : "Complimentary Sessions"}
-              value={summary?.complimentarySessionCount ?? 0}
-              icon={Gift}
-              tone="accent"
-            />
-            <RestaurantKpiCard
-              label={isAr ? "نسبة المجانية" : "Complimentary Rate"}
-              value={summary ? formatComplimentaryRate(summary) : "—"}
-              icon={Percent}
-              tone="warning"
-            />
-            <RestaurantKpiCard
-              label={isAr ? "متوسط قيمة الجلسة" : "Average Session Value"}
-              value={averageSessionValue === "—" ? "—" : `${averageSessionValue} ${sym}`}
-              icon={TrendingUp}
-              tone="neutral"
-            />
-          </div>
-        </>
+        <div className={restaurantDash.kpiGrid}>
+          <RestaurantKpiCard
+            label={isAr ? "إيرادات مسددة" : "Settled Revenue"}
+            value={formatSettlementRevenue(summary?.paidRevenue ?? "0.00", sym)}
+            icon={DollarSign}
+            tone="success"
+            valueVariant="revenue"
+          />
+          <RestaurantKpiCard
+            label={isAr ? "جلسات مدفوعة" : "Paid Sessions"}
+            value={summary?.paidSessionCount ?? 0}
+            icon={CheckCircle2}
+            tone="info"
+          />
+          <RestaurantKpiCard
+            label={isAr ? "جلسات مجانية" : "Complimentary Sessions"}
+            value={summary?.complimentarySessionCount ?? 0}
+            icon={Gift}
+            tone="accent"
+          />
+          <RestaurantKpiCard
+            label={isAr ? "نسبة المجانية" : "Complimentary Rate"}
+            value={summary ? formatComplimentaryRate(summary) : "—"}
+            icon={Percent}
+            tone="warning"
+          />
+          <RestaurantKpiCard
+            label={isAr ? "متوسط قيمة الجلسة" : "Average Session Value"}
+            value={averageSessionValue === "—" ? "—" : `${averageSessionValue} ${sym}`}
+            icon={TrendingUp}
+            tone="neutral"
+            valueVariant="revenue"
+          />
+        </div>
       )}
     </RestaurantDashSection>
   );

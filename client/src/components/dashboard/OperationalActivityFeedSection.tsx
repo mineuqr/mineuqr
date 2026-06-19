@@ -1,5 +1,12 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { VerificationRequiredPanel } from "@/components/auth/VerificationRequiredPanel";
 import { formatRiyadhDateTime } from "@/lib/datetime";
 import {
@@ -12,8 +19,6 @@ import { trpc, type RouterOutputs } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import {
   CheckCircle,
-  ChevronDown,
-  ChevronUp,
   Clock3,
   CreditCard,
   DoorOpen,
@@ -195,6 +200,30 @@ function ActivityFeedTimelineRow({
   );
 }
 
+function ActivityFeedTimeline({
+  events,
+  isAr,
+  onOpenSession,
+}: {
+  events: ActivityFeedEvent[];
+  isAr: boolean;
+  onOpenSession: (sessionId: number) => void;
+}) {
+  return (
+    <div className={restaurantDash.listPanel}>
+      {events.map((event, index) => (
+        <ActivityFeedTimelineRow
+          key={`${event.eventType}-${event.occurredAt}-${event.sessionId ?? "none"}-${index}`}
+          event={event}
+          isAr={isAr}
+          isLast={index === events.length - 1}
+          onOpenSession={onOpenSession}
+        />
+      ))}
+    </div>
+  );
+}
+
 export function OperationalActivityFeedSection({
   restaurantId,
   language,
@@ -207,14 +236,13 @@ export function OperationalActivityFeedSection({
   onOpenSession: (sessionId: number) => void;
 }) {
   const { isAuthenticated, authPending } = useAuth();
-  const [showFullFeed, setShowFullFeed] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const isAr = language === "ar";
   const sectionTitle = isAr ? "النشاط الأخير" : "Recent Activity";
   const sectionSub = isAr
     ? "آخر أحداث الجلسات والطلبات"
     : "Latest session and order events";
   const ariaLabel = sectionTitle;
-  const feedLimit = showFullFeed ? FULL_ACTIVITY_FEED_LIMIT : HOME_ACTIVITY_FEED_LIMIT;
 
   useDevQueryRuntimeLog("ops.getActivityFeed", {
     enabled: queriesEnabled,
@@ -224,18 +252,32 @@ export function OperationalActivityFeedSection({
   });
 
   const {
-    data: feed,
-    isLoading,
-    isError,
-    error,
-    refetch,
-    isFetching,
+    data: previewFeed,
+    isLoading: previewLoading,
+    isError: previewError,
+    error: previewQueryError,
+    refetch: refetchPreview,
+    isFetching: previewFetching,
   } = trpc.ops.getActivityFeed.useQuery(
-    { restaurantId, limit: feedLimit },
+    { restaurantId, limit: HOME_ACTIVITY_FEED_LIMIT },
     opsActivityFeedQueryOptions(queriesEnabled)
   );
 
-  if (isEmailNotVerifiedError(error)) {
+  const {
+    data: fullFeed,
+    isLoading: fullLoading,
+    isError: fullError,
+    refetch: refetchFull,
+    isFetching: fullFetching,
+  } = trpc.ops.getActivityFeed.useQuery(
+    { restaurantId, limit: FULL_ACTIVITY_FEED_LIMIT },
+    {
+      ...opsActivityFeedQueryOptions(queriesEnabled && sheetOpen),
+      enabled: queriesEnabled && sheetOpen,
+    }
+  );
+
+  if (isEmailNotVerifiedError(previewQueryError)) {
     return (
       <RestaurantDashSection title={sectionTitle} description={sectionSub} ariaLabel={ariaLabel}>
         <VerificationRequiredPanel variant="orders" compact />
@@ -243,79 +285,117 @@ export function OperationalActivityFeedSection({
     );
   }
 
-  const events = feed?.events ?? [];
-  const canExpand = !showFullFeed && events.length >= HOME_ACTIVITY_FEED_LIMIT;
+  const previewEvents = previewFeed?.events ?? [];
+  const fullEvents = fullFeed?.events ?? [];
+  const canViewAll = previewEvents.length >= HOME_ACTIVITY_FEED_LIMIT;
 
   return (
-    <RestaurantDashSection title={sectionTitle} description={sectionSub} ariaLabel={ariaLabel}>
-      {isLoading ? (
-        <div className={restaurantDash.listPanel}>
-          {[0, 1, 2, 3, 4].map((index) => (
-            <ActivityFeedItemSkeleton key={index} isLast={index === 4} />
-          ))}
-        </div>
-      ) : isError ? (
-        <RestaurantSectionError
-          message={
-            isAr
-              ? "تعذر تحميل سجل النشاط. حاول مرة أخرى."
-              : "Could not load the activity feed. Please try again."
-          }
-          retryLabel={isAr ? "إعادة المحاولة" : "Retry"}
-          isFetching={isFetching}
-          onRetry={() => void refetch()}
-        />
-      ) : events.length === 0 ? (
-        <RestaurantSectionEmpty
-          message={isAr ? "لا يوجد نشاط تشغيلي حديث" : "No recent operational activity"}
-        />
-      ) : (
-        <>
+    <>
+      <RestaurantDashSection title={sectionTitle} description={sectionSub} ariaLabel={ariaLabel}>
+        {previewLoading ? (
           <div className={restaurantDash.listPanel}>
-            {events.map((event, index) => (
-              <ActivityFeedTimelineRow
-                key={`${event.eventType}-${event.occurredAt}-${event.sessionId ?? "none"}-${index}`}
-                event={event}
-                isAr={isAr}
-                isLast={index === events.length - 1}
-                onOpenSession={onOpenSession}
-              />
+            {[0, 1, 2, 3, 4].map((index) => (
+              <ActivityFeedItemSkeleton key={index} isLast={index === 4} />
             ))}
           </div>
+        ) : previewError ? (
+          <RestaurantSectionError
+            message={
+              isAr
+                ? "تعذر تحميل سجل النشاط. حاول مرة أخرى."
+                : "Could not load the activity feed. Please try again."
+            }
+            retryLabel={isAr ? "إعادة المحاولة" : "Retry"}
+            isFetching={previewFetching}
+            onRetry={() => void refetchPreview()}
+          />
+        ) : previewEvents.length === 0 ? (
+          <RestaurantSectionEmpty
+            message={isAr ? "لا يوجد نشاط تشغيلي حديث" : "No recent operational activity"}
+          />
+        ) : (
+          <>
+            <ActivityFeedTimeline
+              events={previewEvents}
+              isAr={isAr}
+              onOpenSession={onOpenSession}
+            />
 
-          {canExpand ? (
-            <div className="flex justify-center pt-1">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-8 text-sm text-green-400 hover:text-green-300"
-                disabled={isFetching}
-                onClick={() => setShowFullFeed(true)}
-              >
-                {isFetching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-                {isAr ? "عرض كل النشاط" : "View All Activity"}
-                <ChevronDown className="h-4 w-4 rtl:rotate-180" />
-              </Button>
+            {canViewAll ? (
+              <div className="flex justify-center pt-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 text-sm text-cyan-400 hover:text-cyan-300"
+                  onClick={() => setSheetOpen(true)}
+                >
+                  {isAr ? "عرض كل النشاط" : "View All Activity"}
+                </Button>
+              </div>
+            ) : null}
+          </>
+        )}
+      </RestaurantDashSection>
+
+      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+        <SheetContent
+          side={isAr ? "left" : "right"}
+          className="flex w-full flex-col border-slate-700/50 bg-slate-950 sm:max-w-md"
+        >
+          <SheetHeader className="border-b border-slate-700/40 pb-4 text-start">
+            <SheetTitle className="text-white">
+              {isAr ? "سجل النشاط" : "Activity Log"}
+            </SheetTitle>
+            <SheetDescription>
+              {isAr
+                ? "آخر أحداث الجلسات والطلبات في المطعم"
+                : "Recent session and order events for your restaurant"}
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="min-h-0 flex-1 overflow-y-auto py-4">
+            {fullLoading ? (
+              <div className={restaurantDash.listPanel}>
+                {Array.from({ length: 8 }, (_, index) => (
+                  <ActivityFeedItemSkeleton key={index} isLast={index === 7} />
+                ))}
+              </div>
+            ) : fullError ? (
+              <RestaurantSectionError
+                message={
+                  isAr
+                    ? "تعذر تحميل سجل النشاط. حاول مرة أخرى."
+                    : "Could not load the activity feed. Please try again."
+                }
+                retryLabel={isAr ? "إعادة المحاولة" : "Retry"}
+                isFetching={fullFetching}
+                onRetry={() => void refetchFull()}
+              />
+            ) : fullEvents.length === 0 ? (
+              <RestaurantSectionEmpty
+                message={isAr ? "لا يوجد نشاط تشغيلي حديث" : "No recent operational activity"}
+              />
+            ) : (
+              <ActivityFeedTimeline
+                events={fullEvents}
+                isAr={isAr}
+                onOpenSession={(sessionId) => {
+                  setSheetOpen(false);
+                  onOpenSession(sessionId);
+                }}
+              />
+            )}
+          </div>
+
+          {fullFetching && !fullLoading ? (
+            <div className="flex items-center justify-center gap-2 border-t border-slate-700/40 py-2 text-xs text-slate-500">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              {isAr ? "جاري التحديث…" : "Refreshing…"}
             </div>
           ) : null}
-
-          {showFullFeed ? (
-            <div className="flex justify-center pt-1">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-8 text-sm text-slate-400"
-                onClick={() => setShowFullFeed(false)}
-              >
-                {isAr ? "عرض أقل" : "Show less"}
-                <ChevronUp className="h-4 w-4" />
-              </Button>
-            </div>
-          ) : null}
-        </>
-      )}
-    </RestaurantDashSection>
+        </SheetContent>
+      </Sheet>
+    </>
   );
 }

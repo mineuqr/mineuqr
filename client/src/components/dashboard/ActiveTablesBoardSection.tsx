@@ -10,6 +10,7 @@ import { isEmailNotVerifiedError } from "@/lib/trpcErrors";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import type { RouterOutputs } from "@/lib/trpc";
+import { ArrowRight } from "lucide-react";
 import { RestaurantDashSection } from "./RestaurantDashSection";
 import {
   RestaurantSectionEmpty,
@@ -80,7 +81,7 @@ function ActiveTableBoardCard({
   return (
     <article className={cn("flex flex-col rounded-lg border p-4 transition-colors sm:p-5", styles.card)}>
       <div className="flex items-start justify-between gap-3">
-        <h3 className="text-lg font-semibold tracking-tight text-foreground">{table.tableName}</h3>
+        <h3 className="text-lg font-semibold tracking-tight text-white">{table.tableName}</h3>
         <span
           className={cn(
             "shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-medium",
@@ -93,20 +94,20 @@ function ActiveTableBoardCard({
 
       <dl className="mt-5 grid grid-cols-3 gap-3 text-sm">
         <div>
-          <dt className="text-muted-foreground">{isAr ? "المدة" : "Duration"}</dt>
-          <dd className="mt-1 text-base font-semibold tabular-nums text-foreground">
+          <dt className="text-slate-400">{isAr ? "المدة" : "Duration"}</dt>
+          <dd className="mt-1 text-base font-semibold tabular-nums text-slate-100">
             {formatDuration(table.durationMinutes, isAr)}
           </dd>
         </div>
         <div>
-          <dt className="text-muted-foreground">{isAr ? "الطلبات" : "Orders"}</dt>
-          <dd className="mt-1 text-base font-semibold tabular-nums text-foreground">
+          <dt className="text-slate-400">{isAr ? "الطلبات" : "Orders"}</dt>
+          <dd className="mt-1 text-base font-semibold tabular-nums text-slate-100">
             {table.totalOrders}
           </dd>
         </div>
         <div>
-          <dt className="text-muted-foreground">{isAr ? "قيد التنفيذ" : "Pending"}</dt>
-          <dd className="mt-1 text-base font-semibold tabular-nums text-foreground">
+          <dt className="text-slate-400">{isAr ? "قيد التنفيذ" : "Pending"}</dt>
+          <dd className="mt-1 text-base font-semibold tabular-nums text-slate-100">
             {table.pendingOrders}
           </dd>
         </div>
@@ -117,7 +118,7 @@ function ActiveTableBoardCard({
           type="button"
           variant="outline"
           size="sm"
-          className="mt-5 w-full border-border/60"
+          className={cn("mt-5 w-full", restaurantDash.toolbarBtn)}
           onClick={() => onOpenSession(Number.parseInt(table.sessionId!, 10))}
         >
           {isAr ? "فتح الجلسة" : "Open Session"}
@@ -132,18 +133,34 @@ export function ActiveTablesBoardSection({
   language,
   queriesEnabled,
   onOpenSession,
+  homePreviewLimit,
+  onViewAllTables,
 }: {
   restaurantId: number;
   language: string;
   queriesEnabled: boolean;
   onOpenSession: (sessionId: number) => void;
+  /** When set (Home), show at most this many tables with optional CTA. */
+  homePreviewLimit?: number;
+  onViewAllTables?: () => void;
 }) {
   const { isAuthenticated, authPending } = useAuth();
   const isAr = language === "ar";
-  const sectionTitle = isAr ? "لوحة الطاولات" : "Active Tables Board";
-  const sectionSub = isAr
-    ? "حالة كل طاولة والجلسة النشطة عليها"
-    : "Live status for each table and its active session";
+  const isHomePreview = homePreviewLimit != null;
+  const sectionTitle = isHomePreview
+    ? isAr
+      ? "الطاولات النشطة"
+      : "Active Tables"
+    : isAr
+      ? "لوحة الطاولات"
+      : "Active Tables Board";
+  const sectionSub = isHomePreview
+    ? isAr
+      ? "نظرة سريعة على الطاولات المشغولة"
+      : "Quick view of occupied tables"
+    : isAr
+      ? "حالة كل طاولة والجلسة النشطة عليها"
+      : "Live status for each table and its active session";
   const ariaLabel = sectionTitle;
 
   useDevQueryRuntimeLog("ops.getActiveTablesBoard", {
@@ -173,11 +190,16 @@ export function ActiveTablesBoardSection({
     );
   }
 
+  const allTables = board?.tables ?? [];
+  const previewLimit = homePreviewLimit ?? allTables.length;
+  const visibleTables = isHomePreview ? allTables.slice(0, previewLimit) : allTables;
+  const hasMoreTables = isHomePreview && allTables.length > previewLimit;
+
   return (
     <RestaurantDashSection title={sectionTitle} description={sectionSub} ariaLabel={ariaLabel}>
       {isLoading ? (
         <div className={restaurantDash.kpiGridWide}>
-          {[0, 1, 2, 3, 4, 5].map((i) => (
+          {Array.from({ length: isHomePreview ? Math.min(previewLimit, 6) : 6 }, (_, i) => (
             <TableBoardCardSkeleton key={i} />
           ))}
         </div>
@@ -192,21 +214,38 @@ export function ActiveTablesBoardSection({
           isFetching={isFetching}
           onRetry={() => void refetch()}
         />
-      ) : !board?.tables.length ? (
+      ) : !allTables.length ? (
         <RestaurantSectionEmpty
           message={isAr ? "لا توجد طاولات نشطة لعرضها" : "No active tables to display"}
         />
       ) : (
-        <div className={restaurantDash.kpiGridWide}>
-          {board.tables.map((table) => (
-            <ActiveTableBoardCard
-              key={table.tableId}
-              table={table}
-              isAr={isAr}
-              onOpenSession={onOpenSession}
-            />
-          ))}
-        </div>
+        <>
+          <div className={restaurantDash.kpiGridWide}>
+            {visibleTables.map((table) => (
+              <ActiveTableBoardCard
+                key={table.tableId}
+                table={table}
+                isAr={isAr}
+                onOpenSession={onOpenSession}
+              />
+            ))}
+          </div>
+
+          {hasMoreTables && onViewAllTables ? (
+            <div className="flex justify-center pt-1">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 text-sm text-cyan-400 hover:text-cyan-300"
+                onClick={onViewAllTables}
+              >
+                {isAr ? "عرض جميع الطاولات" : "View All Tables"}
+                <ArrowRight className="h-4 w-4 ms-1 rtl:rotate-180" />
+              </Button>
+            </div>
+          ) : null}
+        </>
       )}
     </RestaurantDashSection>
   );

@@ -39,7 +39,7 @@ import {
   RestaurantSectionEmpty,
   RestaurantSectionError,
 } from "./RestaurantSectionStates";
-import { restaurantDash, restaurantSemantic } from "./restaurantDashStyles";
+import { restaurantDash, restaurantRevenueValueClass, restaurantSemantic } from "./restaurantDashStyles";
 
 const PANEL_CLASS = cn(restaurantDash.panel, "p-4 sm:p-5");
 const GROUPING_OPTIONS: SettlementTrendGrouping[] = ["day", "week", "month"];
@@ -135,12 +135,14 @@ function TrendInsightCard({
   valueLabel,
   icon: Icon,
   emptyText,
+  revenueValue = false,
 }: {
   title: string;
   periodLabel: string | null;
   valueLabel: string | null;
   icon: typeof Wallet;
   emptyText: string;
+  revenueValue?: boolean;
 }) {
   return (
     <div className={PANEL_CLASS}>
@@ -153,7 +155,13 @@ function TrendInsightCard({
           {periodLabel && valueLabel ? (
             <>
               <p className="mt-1 truncate text-base font-semibold text-white">{periodLabel}</p>
-              <p dir="ltr" className="mt-1 text-end text-sm tabular-nums text-green-400 sm:text-start">
+              <p
+                dir="ltr"
+                className={cn(
+                  "mt-1 text-end text-sm tabular-nums sm:text-start",
+                  revenueValue ? restaurantRevenueValueClass : "text-slate-100"
+                )}
+              >
                 {valueLabel}
               </p>
             </>
@@ -371,6 +379,7 @@ export function SettlementTrendsSection({
                 valueLabel={revenueInsight?.valueLabel ?? null}
                 icon={Wallet}
                 emptyText={noInsightText}
+                revenueValue
               />
               <TrendInsightCard
                 title={isAr ? "أعلى فترة تسوية" : "Highest Settlement Period"}
