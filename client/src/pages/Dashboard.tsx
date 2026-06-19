@@ -3,7 +3,7 @@ import { useAuthGate } from "@/_core/hooks/useAuthGate";
 import { Button } from "@/components/ui/button";
 import OrderAlertSystem from "@/components/OrderAlertSystem";
 import { DiningSessionWorkspaceSheet } from "@/components/dashboard/DiningSessionWorkspaceSheet";
-import { ActiveTablesBoardSection } from "@/components/dashboard/ActiveTablesBoardSection";
+import { ActiveSessionsPreviewSection } from "@/components/dashboard/ActiveSessionsPreviewSection";
 import { SessionsWorkspacePanel } from "@/components/dashboard/SessionsWorkspacePanel";
 import { ActionCenterSection } from "@/components/dashboard/ActionCenterSection";
 import { OperationalActivityFeedSection } from "@/components/dashboard/OperationalActivityFeedSection";
@@ -1081,13 +1081,14 @@ function RestaurantHomePanel({
         queriesEnabled={ordersEnabled}
         onOpenSession={setWorkspaceSessionId}
       />
-      <ActiveTablesBoardSection
+      <ActiveSessionsPreviewSection
         restaurantId={restaurantId}
         language={language}
         queriesEnabled={ordersEnabled}
+        currencySymbol={currencySymbol}
         onOpenSession={setWorkspaceSessionId}
-        homePreviewLimit={6}
         onViewAllSessions={() => onTabChange("sessions")}
+        previewLimit={6}
       />
       <OperationalActivityFeedSection
         restaurantId={restaurantId}

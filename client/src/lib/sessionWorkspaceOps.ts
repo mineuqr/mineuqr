@@ -145,3 +145,25 @@ export function sessionStatusDisplayLabel(
   };
   return isAr ? labels[status].ar : labels[status].en;
 }
+
+export function parseOrderAmount(totalAmount: string | number | null | undefined): number {
+  return Number.parseFloat(String(totalAmount ?? "0")) || 0;
+}
+
+export function buildSessionOrderTotals(
+  orders: OrderRow[],
+  activeSessionIds: number[]
+): Map<number, number> {
+  const allowed = new Set(activeSessionIds);
+  const map = new Map<number, number>();
+  for (const order of orders) {
+    const sessionId = order.sessionId;
+    if (sessionId == null || !allowed.has(sessionId)) continue;
+    map.set(sessionId, (map.get(sessionId) ?? 0) + parseOrderAmount(order.totalAmount));
+  }
+  return map;
+}
+
+export function homeActiveSessionsEmptyMessage(isAr: boolean): string {
+  return isAr ? "لا توجد جلسات نشطة حالياً" : "No active sessions right now";
+}

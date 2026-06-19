@@ -10,6 +10,7 @@ import {
 } from "@/lib/queryRuntime";
 import {
   buildOperationalSessionRows,
+  buildSessionOrderTotals,
   buildSessionTableNumbers,
   computeSessionStatusMetrics,
   matchesSessionSearch,
@@ -20,7 +21,7 @@ import {
   type SessionStatusFilter,
 } from "@/lib/sessionWorkspaceOps";
 import { isEmailNotVerifiedError } from "@/lib/trpcErrors";
-import { trpc, type RouterOutputs } from "@/lib/trpc";
+import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { useMemo, useState } from "react";
 import { RestaurantDashSection } from "./RestaurantDashSection";
@@ -29,8 +30,6 @@ import {
   RestaurantSectionError,
 } from "./RestaurantSectionStates";
 import { restaurantDash, restaurantSemantic } from "./restaurantDashStyles";
-
-type OrderRow = RouterOutputs["order"]["list"][number];
 
 const SESSION_STATUS_BADGE: Record<
   OperationalSessionRow["sessionStatus"],
@@ -44,24 +43,6 @@ const SESSION_STATUS_BADGE: Record<
 function formatDuration(minutes: number, isAr: boolean): string {
   if (minutes <= 0) return isAr ? "—" : "—";
   return isAr ? `${minutes} د` : `${minutes}m`;
-}
-
-function parseOrderAmount(totalAmount: string | number | null | undefined): number {
-  return Number.parseFloat(String(totalAmount ?? "0")) || 0;
-}
-
-function buildSessionOrderTotals(
-  orders: OrderRow[],
-  activeSessionIds: number[]
-): Map<number, number> {
-  const allowed = new Set(activeSessionIds);
-  const map = new Map<number, number>();
-  for (const order of orders) {
-    const sessionId = order.sessionId;
-    if (sessionId == null || !allowed.has(sessionId)) continue;
-    map.set(sessionId, (map.get(sessionId) ?? 0) + parseOrderAmount(order.totalAmount));
-  }
-  return map;
 }
 
 function ActiveSessionRowSkeleton({ isLast }: { isLast: boolean }) {
