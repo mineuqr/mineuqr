@@ -39,9 +39,9 @@ import {
   RestaurantSectionEmpty,
   RestaurantSectionError,
 } from "./RestaurantSectionStates";
-import { restaurantDash, restaurantRevenueValueClass, restaurantSemantic } from "./restaurantDashStyles";
+import { restaurantDash, restaurantHoverGlow, restaurantRevenueValueClass, restaurantSemantic } from "./restaurantDashStyles";
 
-const PANEL_CLASS = cn(restaurantDash.panel, "p-4 sm:p-5");
+const PANEL_CLASS = cn(restaurantDash.panel, "p-4 sm:p-5", restaurantHoverGlow);
 const GROUPING_OPTIONS: SettlementTrendGrouping[] = ["day", "week", "month"];
 
 function groupingLabel(grouping: SettlementTrendGrouping, isAr: boolean): string {
@@ -147,8 +147,8 @@ function TrendInsightCard({
   return (
     <div className={PANEL_CLASS}>
       <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-700/50 bg-slate-900/50">
-          <Icon className={cn("h-5 w-5", restaurantSemantic.iconSuccess)} />
+        <div className={restaurantDash.iconContainerLg}>
+          <Icon aria-hidden />
         </div>
         <div className="min-w-0">
           <p className="text-sm font-medium text-slate-400">{title}</p>
@@ -271,9 +271,7 @@ export function SettlementTrendsSection({
           variant={grouping === option ? "default" : "outline"}
           className={cn(
             "min-w-[4.5rem]",
-            grouping === option
-              ? "bg-green-600 text-white hover:bg-green-600/90"
-              : restaurantDash.toolbarBtn
+            grouping === option ? restaurantDash.toolbarBtnActive : restaurantDash.toolbarBtn
           )}
           onClick={() => setGrouping(option)}
         >
@@ -367,7 +365,7 @@ export function SettlementTrendsSection({
 
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <TrendingUp className={cn("h-5 w-5", restaurantSemantic.iconNeutral)} />
+              <TrendingUp className={cn("h-5 w-5", restaurantSemantic.iconInfo)} aria-hidden />
               <h3 className="text-sm font-semibold text-white sm:text-base">
                 {isAr ? "رؤى تشغيلية" : "Settlement Insights"}
               </h3>

@@ -63,15 +63,16 @@ function ActionCenterItemRow({
   return (
     <div
       className={cn(
-        "flex flex-col gap-3 rounded-lg border px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4",
+        "flex flex-col gap-3 rounded-xl border px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4",
+        restaurantDash.itemRow,
         accentClass
       )}
     >
       <div className="min-w-0">
-        <p className="truncate text-base font-semibold text-foreground">{tableName}</p>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="truncate text-base font-semibold text-white">{tableName}</p>
+        <p className="mt-1 text-sm text-slate-400">
           {minutesLabel}:{" "}
-          <span className="font-medium tabular-nums text-foreground">
+          <span className="font-medium tabular-nums text-slate-100">
             {formatMinutes(minutes, isAr)}
           </span>
         </p>
@@ -80,7 +81,7 @@ function ActionCenterItemRow({
         type="button"
         variant="outline"
         size="sm"
-        className="w-full shrink-0 sm:w-auto"
+        className={cn("w-full shrink-0 sm:w-auto", restaurantDash.toolbarBtn)}
         onClick={() => onOpenSession(Number.parseInt(sessionId, 10))}
       >
         {isAr ? "فتح الجلسة" : "Open Session"}
@@ -106,10 +107,12 @@ function ActionCenterGroup<T extends { sessionId: string; tableName: string }>({
 }) {
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-center gap-2">
-        <Icon className="h-5 w-5 text-muted-foreground" />
-        <h3 className="text-base font-semibold text-foreground">{title}</h3>
-        <span className="text-sm tabular-nums text-muted-foreground">({items.length})</span>
+      <div className="flex items-center gap-2.5">
+        <div className={restaurantDash.iconContainer}>
+          <Icon aria-hidden />
+        </div>
+        <h3 className="text-base font-semibold text-white">{title}</h3>
+        <span className="text-sm tabular-nums text-slate-400">({items.length})</span>
       </div>
       {items.length === 0 ? (
         <p

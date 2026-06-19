@@ -16,7 +16,7 @@ import {
   RestaurantSectionEmpty,
   RestaurantSectionError,
 } from "./RestaurantSectionStates";
-import { restaurantDash, restaurantSemantic } from "./restaurantDashStyles";
+import { restaurantDash, restaurantHoverGlow, restaurantSemantic } from "./restaurantDashStyles";
 
 type ActiveTableRow = RouterOutputs["ops"]["getActiveTablesBoard"]["tables"][number];
 type BoardStatus = ActiveTableRow["status"];
@@ -79,7 +79,13 @@ function ActiveTableBoardCard({
   const styles = STATUS_STYLES[table.status];
 
   return (
-    <article className={cn("flex flex-col rounded-lg border p-4 transition-colors sm:p-5", styles.card)}>
+    <article
+      className={cn(
+        "flex flex-col rounded-xl border p-4 sm:p-5",
+        restaurantHoverGlow,
+        styles.card
+      )}
+    >
       <div className="flex items-start justify-between gap-3">
         <h3 className="text-lg font-semibold tracking-tight text-white">{table.tableName}</h3>
         <span
@@ -237,7 +243,7 @@ export function ActiveTablesBoardSection({
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-8 text-sm text-cyan-400 hover:text-cyan-300"
+                className={restaurantDash.linkBtn}
                 onClick={onViewAllTables}
               >
                 {isAr ? "عرض جميع الطاولات" : "View All Tables"}

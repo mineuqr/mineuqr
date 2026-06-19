@@ -13,7 +13,7 @@ import { RestaurantDashSection } from "@/components/dashboard/RestaurantDashSect
 import {
   RestaurantSectionError,
 } from "@/components/dashboard/RestaurantSectionStates";
-import { restaurantDash } from "@/components/dashboard/restaurantDashStyles";
+import { restaurantDash, restaurantHoverGlow, restaurantIconColor } from "@/components/dashboard/restaurantDashStyles";
 import { getLoginUrl, spaNavigate } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { cn, resolveImageUrl } from "@/lib/utils";
@@ -95,7 +95,7 @@ const dash = {
   topBar: restaurantDash.topBar,
   main: "mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8",
   card: restaurantDash.card,
-  cardHover: cn(restaurantDash.card, "transition-all duration-200 hover:border-cyan-500/25 hover:bg-slate-800/40"),
+  cardHover: cn(restaurantDash.card, restaurantHoverGlow),
   hero: restaurantDash.hero,
   kpiCard: restaurantDash.kpiCard,
   pageTitle: "text-2xl font-bold tracking-tight text-white sm:text-3xl",
@@ -264,9 +264,16 @@ function DashboardSidebar({
             active ? dash.sidebarNavIconActive : dash.sidebarNavIconIdle
           )}
         >
-          <Icon className="shrink-0" />
+          <Icon className="shrink-0" aria-hidden />
         </span>
-        <span className="min-w-0 flex-1 text-start leading-snug">{label}</span>
+        <span
+          className={cn(
+            "min-w-0 flex-1 text-start leading-snug",
+            active ? "text-white" : "text-slate-400 group-hover:text-cyan-400"
+          )}
+        >
+          {label}
+        </span>
       </button>
     );
   };
@@ -283,8 +290,8 @@ function DashboardSidebar({
         className={dash.sidebarBrand}
         aria-label={language === "ar" ? "لوحة التحكم" : "Dashboard home"}
       >
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-r from-cyan-500 to-cyan-400 text-slate-900">
-          <Store className="h-4 w-4" />
+        <div className={restaurantDash.brandIcon}>
+          <Store />
         </div>
         <div className="grid min-w-0 flex-1 text-start text-sm leading-tight">
           <span className="truncate font-semibold text-white">mineuqr</span>
@@ -408,7 +415,7 @@ function DashboardTopBar({
           type="button"
           variant="ghost"
           size="icon"
-          className="h-9 w-9 shrink-0 lg:hidden"
+          className={restaurantDash.topBarIconBtn}
           onClick={onOpenMobileMenu}
         >
           <Menu className="h-5 w-5" />
@@ -417,13 +424,13 @@ function DashboardTopBar({
           <button
             type="button"
             onClick={onBackToRestaurants}
-            className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-slate-400 transition hover:bg-slate-900/60 hover:text-white"
+            className={restaurantDash.topBarGhostBtn}
           >
             <ChevronLeft className="h-5 w-5 rtl:rotate-180" />
             <span className="hidden sm:inline">{t("dashboard.backToRestaurants")}</span>
           </button>
         ) : (
-          <span className="hidden text-sm font-medium text-slate-400 sm:inline">
+          <span className={cn("hidden text-sm font-medium sm:inline", restaurantIconColor.inactive)}>
             {language === "ar" ? "لوحة التحكم" : "Dashboard"}
           </span>
         )}
@@ -444,7 +451,7 @@ function DashboardTopBar({
           variant="ghost"
           size="icon"
           onClick={() => setLocation("/notifications")}
-          className="relative h-9 w-9 text-slate-400 hover:text-white"
+          className={cn("relative", restaurantDash.topBarIconBtn)}
         >
           <Bell className="h-4 w-4" />
           <NotificationBadge />
@@ -452,7 +459,7 @@ function DashboardTopBar({
         <button
           type="button"
           onClick={() => setLocation("/profile")}
-          className="flex items-center gap-2 rounded-lg border border-cyan-500/20 bg-slate-900/60 px-2 py-1.5 transition hover:border-cyan-500/35 sm:px-2.5"
+          className={restaurantDash.topBarProfileBtn}
         >
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cyan-500/15 text-xs font-semibold text-cyan-400">
             {initials}

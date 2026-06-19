@@ -32,7 +32,7 @@ import {
   RestaurantSectionEmpty,
   RestaurantSectionError,
 } from "./RestaurantSectionStates";
-import { restaurantDash, restaurantSemantic } from "./restaurantDashStyles";
+import { restaurantDash, restaurantActivityIconClass } from "./restaurantDashStyles";
 
 /** Home dashboard compact preview — full feed uses API default (25). */
 const HOME_ACTIVITY_FEED_LIMIT = 5;
@@ -43,37 +43,31 @@ type ActivityFeedEventType = ActivityFeedEvent["eventType"];
 
 const EVENT_VISUALS: Record<
   ActivityFeedEventType,
-  { icon: ComponentType<{ className?: string }>; iconClass: string; dotClass: string }
+  { icon: ComponentType<{ className?: string }>; variant: "success" | "info" | "neutral" | "accent" | "muted" }
 > = {
   session_opened: {
     icon: DoorOpen,
-    iconClass: restaurantSemantic.iconSuccess,
-    dotClass: "border-green-500/30 bg-green-500/10",
+    variant: "success",
   },
   order_created: {
     icon: Receipt,
-    iconClass: restaurantSemantic.iconInfo,
-    dotClass: "border-slate-600/40 bg-slate-800/50",
+    variant: "info",
   },
   order_status_changed: {
     icon: RefreshCw,
-    iconClass: "text-slate-300",
-    dotClass: "border-slate-600/40 bg-slate-800/50",
+    variant: "neutral",
   },
   session_paid: {
     icon: CreditCard,
-    iconClass: restaurantSemantic.iconSuccess,
-    dotClass: "border-green-500/30 bg-green-500/10",
+    variant: "success",
   },
   session_complimentary: {
     icon: Clock3,
-    iconClass: restaurantSemantic.iconAccent,
-    dotClass: "border-violet-500/30 bg-violet-500/10",
+    variant: "accent",
   },
   session_closed: {
     icon: CheckCircle,
-    iconClass: restaurantSemantic.iconMuted,
-    dotClass: "border-slate-700/40 bg-slate-900/40",
+    variant: "muted",
   },
 };
 
@@ -159,13 +153,7 @@ function ActivityFeedTimelineRow({
       )}
     >
       <div className="flex min-w-0 flex-1 gap-2.5">
-        <div
-          className={cn(
-            "flex h-7 w-7 shrink-0 items-center justify-center rounded-md border",
-            visuals.dotClass,
-            visuals.iconClass
-          )}
-        >
+        <div className={restaurantActivityIconClass(visuals.variant)}>
           <Icon className="h-3.5 w-3.5" aria-hidden />
         </div>
 
@@ -190,7 +178,7 @@ function ActivityFeedTimelineRow({
           type="button"
           variant="ghost"
           size="sm"
-          className="h-7 shrink-0 px-2 text-xs text-green-400 hover:text-green-300"
+          className={restaurantDash.actionGhostSuccess}
           onClick={() => onOpenSession(Number.parseInt(event.sessionId!, 10))}
         >
           {isAr ? "فتح الجلسة" : "Open Session"}
@@ -327,7 +315,7 @@ export function OperationalActivityFeedSection({
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="h-8 text-sm text-cyan-400 hover:text-cyan-300"
+                  className={restaurantDash.linkBtn}
                   onClick={() => setSheetOpen(true)}
                 >
                   {isAr ? "عرض كل النشاط" : "View All Activity"}
