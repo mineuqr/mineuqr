@@ -8,6 +8,12 @@ import { ActionCenterSection } from "@/components/dashboard/ActionCenterSection"
 import { OperationalActivityFeedSection } from "@/components/dashboard/OperationalActivityFeedSection";
 import { SettlementOverviewSection } from "@/components/dashboard/SettlementOverviewSection";
 import { SettlementTrendsSection } from "@/components/dashboard/SettlementTrendsSection";
+import { RestaurantKpiCard, RestaurantKpiGridSkeleton } from "@/components/dashboard/RestaurantKpiCard";
+import { RestaurantDashSection } from "@/components/dashboard/RestaurantDashSection";
+import {
+  RestaurantSectionError,
+} from "@/components/dashboard/RestaurantSectionStates";
+import { restaurantDash } from "@/components/dashboard/restaurantDashStyles";
 import { getLoginUrl, spaNavigate } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { cn, resolveImageUrl } from "@/lib/utils";
@@ -69,42 +75,39 @@ import {
 // ─── Dashboard UI primitives (Stripe / Linear–style) ─────────
 
 const dash = {
-  shell: "min-h-screen bg-[#0b0e14] text-[1.125rem] leading-relaxed text-foreground",
+  shell: "min-h-screen bg-gradient-to-br from-slate-950 via-[#0b0e14] to-slate-900 text-[1rem] leading-relaxed text-foreground sm:text-[1.0625rem]",
   shellGlow:
-    "pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(ellipse_80%_40%_at_50%_-15%,oklch(0.72_0.14_195/14%),transparent)]",
+    "pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(ellipse_80%_40%_at_50%_-15%,oklch(0.55_0.08_220/10%),transparent)]",
   sidebar:
-    "fixed inset-y-0 right-0 z-40 flex w-[min(22.5rem,94vw)] flex-col border-s border-border/30 bg-[#10141b]/98 backdrop-blur-xl shadow-2xl lg:w-[22.5rem]",
+    "fixed inset-y-0 end-0 z-40 flex w-[min(20rem,92vw)] flex-col border-s border-slate-800/60 bg-slate-950/95 backdrop-blur-xl shadow-2xl lg:w-[20rem]",
   sidebarNavBtn:
-    "relative flex w-full min-h-[3.5rem] items-center gap-4 rounded-xl px-4 py-3.5 text-[1.125rem] font-medium leading-snug transition-all duration-150",
+    "relative flex w-full min-h-[3rem] items-center gap-3 rounded-lg px-3 py-3 text-base font-medium leading-snug transition-all duration-150",
   sidebarNavIcon:
-    "flex h-11 w-11 shrink-0 items-center justify-center rounded-lg transition-colors",
-  sidebarNavIconActive: "bg-primary/25 text-primary",
-  sidebarNavIconIdle: "bg-white/[0.06] text-muted-foreground group-hover:bg-white/[0.1] group-hover:text-foreground",
+    "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-colors",
+  sidebarNavIconActive: "bg-slate-800 text-white ring-1 ring-slate-600/50",
+  sidebarNavIconIdle: "bg-slate-900/80 text-slate-400 group-hover:bg-slate-800/80 group-hover:text-slate-200",
   sidebarSectionLabel:
-    "ui-chrome px-5 pb-3 pt-8 text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground/90 first:pt-5",
+    "ui-chrome px-4 pb-2 pt-6 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 first:pt-4",
   sidebarNavActive:
-    "bg-primary/20 font-semibold text-primary ring-1 ring-inset ring-primary/35 before:absolute before:end-0 before:top-1/2 before:h-10 before:w-1 before:-translate-y-1/2 before:rounded-full before:bg-primary before:shadow-[0_0_14px] before:shadow-primary/60 rtl:before:end-auto rtl:before:start-0",
+    "bg-slate-800/90 font-semibold text-white ring-1 ring-inset ring-slate-600/40 before:absolute before:end-0 before:top-1/2 before:h-8 before:w-1 before:-translate-y-1/2 before:rounded-full before:bg-green-500/80 rtl:before:end-auto rtl:before:start-0",
   sidebarNavIdle:
-    "group text-muted-foreground/95 hover:bg-white/[0.05] hover:text-foreground",
-  mainColumn: "flex min-h-screen min-w-0 flex-1 flex-col lg:mr-[22.5rem]",
+    "group text-slate-400 hover:bg-slate-900/70 hover:text-slate-100",
+  mainColumn: "flex min-h-screen min-w-0 flex-1 flex-col lg:me-[20rem]",
   topBar:
-    "sticky top-0 z-30 flex h-[4.25rem] shrink-0 items-center justify-between gap-4 border-b border-border/40 bg-[#0b0e14]/85 px-5 backdrop-blur-xl sm:h-[4.5rem] sm:px-8 lg:px-10",
-  main: "mx-auto w-full max-w-[90rem] flex-1 px-5 py-8 sm:px-8 sm:py-10 lg:px-10 lg:py-12",
-  card: "rounded-2xl border border-border/40 bg-[#161b22]/90 shadow-sm",
-  cardHover:
-    "rounded-2xl border border-border/40 bg-[#161b22]/90 shadow-sm transition-all duration-200 hover:border-primary/25 hover:bg-[#1a2030] hover:shadow-md",
-  hero:
-    "relative overflow-hidden rounded-2xl border border-border/40 bg-gradient-to-br from-[#161b22] via-[#141a24] to-primary/10 p-7 sm:p-9",
-  kpiCard: "rounded-2xl border border-border/40 bg-[#161b22] p-6 sm:p-7",
-  pageTitle:
-    "page-heading text-3xl font-semibold tracking-tight text-foreground sm:text-4xl",
-  pageSub: "ui-chrome mt-2.5 max-w-2xl text-base leading-relaxed text-muted-foreground",
-  stack: "flex flex-col gap-10 sm:gap-12",
-  section: "flex flex-col gap-7 sm:gap-9",
-  label: "text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground/90 sm:text-sm",
-  group: "rounded-2xl border border-border/40 bg-[#12161f]/60 p-6 sm:p-8 lg:p-9",
-  groupDivider: "border-t border-border/35 pt-7 sm:pt-8",
-  contentPanel: "rounded-2xl border border-border/40 bg-[#161b22]/50 p-6 sm:p-8 lg:p-9",
+    "sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-slate-800/60 bg-slate-950/85 px-4 backdrop-blur-xl sm:h-16 sm:px-6 lg:px-8",
+  main: "mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8",
+  card: restaurantDash.card,
+  cardHover: cn(restaurantDash.card, "transition-all duration-200 hover:border-slate-600/60 hover:bg-slate-800/40"),
+  hero: restaurantDash.hero,
+  kpiCard: restaurantDash.kpiCard,
+  pageTitle: "text-2xl font-bold tracking-tight text-white sm:text-3xl",
+  pageSub: "mt-1 max-w-2xl text-sm leading-relaxed text-slate-400",
+  stack: restaurantDash.stack,
+  section: restaurantDash.section,
+  label: "text-xs font-semibold uppercase tracking-[0.1em] text-slate-500",
+  group: cn(restaurantDash.panel, "p-4 sm:p-6 lg:p-7"),
+  groupDivider: "border-t border-slate-700/40 pt-5 sm:pt-6",
+  contentPanel: cn(restaurantDash.panel, "p-4 sm:p-6 lg:p-7"),
 };
 
 type DashTab = { id: string; label: string; icon: ComponentType<{ className?: string }> };
@@ -139,7 +142,7 @@ function sectionToRestaurantTab(section: string | null | undefined): RestaurantT
 function DashboardStatCard({
   label,
   value,
-  icon: Icon,
+  icon,
   tone = "default",
   hint,
 }: {
@@ -149,30 +152,8 @@ function DashboardStatCard({
   tone?: "default" | "primary" | "accent" | "emerald" | "amber";
   hint?: string;
 }) {
-  const iconWrap =
-    tone === "primary"
-      ? "bg-primary/20 text-primary"
-      : tone === "accent"
-        ? "bg-violet-500/20 text-violet-400"
-        : tone === "emerald"
-          ? "bg-emerald-500/20 text-emerald-400"
-          : tone === "amber"
-            ? "bg-amber-500/20 text-amber-400"
-            : "bg-blue-500/20 text-blue-400";
-
   return (
-    <div className={dash.kpiCard}>
-      <div className={cn("flex h-12 w-12 items-center justify-center rounded-full", iconWrap)}>
-        <Icon className="h-6 w-6" />
-      </div>
-      <p className="mt-5 text-4xl font-bold tabular-nums tracking-tight text-foreground">
-        {value}
-      </p>
-      <p className="mt-2 text-base text-muted-foreground">{label}</p>
-      {hint ? (
-        <p className="mt-2.5 text-sm font-medium text-emerald-400/90">{hint}</p>
-      ) : null}
-    </div>
+    <RestaurantKpiCard label={label} value={value} icon={icon} tone={tone} hint={hint} />
   );
 }
 
@@ -1151,28 +1132,26 @@ function RestaurantHeaderCard({ restaurant }: { restaurant: any }) {
 
   return (
     <div className={cn(dash.hero)}>
-      <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-        <div className="min-w-0 flex-1 space-y-4">
-          <p className="ui-chrome text-base text-muted-foreground">
-            {language === "ar" ? "مرحباً بعودتك 👋" : "Welcome back 👋"}
-          </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-5">
+        <div className="min-w-0 flex-1 space-y-2">
           <div>
-            <h1 className="page-heading text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+            <h1 className="text-xl font-bold tracking-tight text-white sm:text-2xl">
               {restaurant.nameAr}
             </h1>
             {restaurant.nameEn ? (
-              <p className="mt-2 text-base text-muted-foreground">{restaurant.nameEn}</p>
+              <p className="mt-1 text-sm text-slate-400">{restaurant.nameEn}</p>
             ) : null}
           </div>
-          <p className="ui-chrome max-w-xl text-base leading-relaxed text-muted-foreground">
+          <p className="hidden max-w-xl text-sm leading-relaxed text-slate-400 sm:block">
             {restaurant.descriptionAr ||
               (language === "ar"
                 ? "أدر منيوك الرقمي والطلبات والتقارير من مكان واحد."
                 : "Manage your digital menu, orders, and reports in one place.")}
           </p>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-2 pt-1">
             <Button
-              className="bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
+              size="sm"
+              className="bg-green-600 text-white shadow-sm hover:bg-green-600/90"
               onClick={handlePreview}
               disabled={!menuUrl}
             >
@@ -1181,7 +1160,8 @@ function RestaurantHeaderCard({ restaurant }: { restaurant: any }) {
             </Button>
             <Button
               variant="outline"
-              className="border-border/60"
+              size="sm"
+              className={restaurantDash.toolbarBtn}
               onClick={handleShare}
               disabled={!menuUrl}
             >
@@ -1190,20 +1170,20 @@ function RestaurantHeaderCard({ restaurant }: { restaurant: any }) {
             </Button>
           </div>
         </div>
-        <div className="flex shrink-0 items-center justify-center">
+        <div className="flex shrink-0 items-center justify-center sm:justify-end">
           {resolveImageUrl(restaurant.logoUrl) ? (
             <img
               src={resolveImageUrl(restaurant.logoUrl)}
               alt=""
-              className="h-24 w-24 rounded-2xl border border-border/40 object-cover shadow-lg sm:h-28 sm:w-28"
+              className="h-16 w-16 rounded-xl border border-slate-700/50 object-cover shadow-md sm:h-20 sm:w-20"
             />
           ) : restaurant.slug ? (
-            <div className="rounded-2xl border border-border/40 bg-white p-3 shadow-lg">
-              <QRCodeSVG value={menuUrl || ""} size={112} level="M" />
+            <div className="rounded-xl border border-slate-700/50 bg-white p-2 shadow-md">
+              <QRCodeSVG value={menuUrl || ""} size={80} level="M" />
             </div>
           ) : (
-            <div className="flex h-24 w-24 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 sm:h-28 sm:w-28">
-              <Store className="h-10 w-10 text-primary" />
+            <div className="flex h-16 w-16 items-center justify-center rounded-xl border border-slate-700/50 bg-slate-800/60 sm:h-20 sm:w-20">
+              <Store className="h-8 w-8 text-slate-400" />
             </div>
           )}
         </div>
@@ -1224,16 +1204,12 @@ function RestaurantStatisticsSection({
   language: string;
 }) {
   const overviewTitle = language === "ar" ? "نظرة عامة" : "Overview";
+  const overviewDescription =
+    language === "ar" ? "مؤشرات الأداء الرئيسية لمطعمك" : "Key performance metrics for your restaurant";
 
   return (
-    <section className="flex flex-col gap-8 sm:gap-10" aria-label={ariaLabel}>
-      <div className="space-y-2.5">
-        <h2 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">{overviewTitle}</h2>
-        <p className="max-w-xl text-base leading-relaxed text-muted-foreground">
-          {language === "ar" ? "مؤشرات الأداء الرئيسية لمطعمك" : "Key performance metrics for your restaurant"}
-        </p>
-      </div>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-5">
+    <RestaurantDashSection title={overviewTitle} description={overviewDescription} ariaLabel={ariaLabel}>
+      <div className={restaurantDash.kpiGridWide}>
         <DashboardStatCard
           label={t("dashboard.category")}
           value={stats?.totalCategories ?? 0}
@@ -1260,17 +1236,7 @@ function RestaurantStatisticsSection({
           }
         />
       </div>
-    </section>
-  );
-}
-
-function LiveOverviewStatSkeleton() {
-  return (
-    <div className={cn(dash.kpiCard, "animate-pulse")}>
-      <div className="h-12 w-12 rounded-full bg-muted/40" />
-      <div className="mt-5 h-10 w-14 rounded-lg bg-muted/40" />
-      <div className="mt-2 h-4 w-32 rounded bg-muted/30" />
-    </div>
+    </RestaurantDashSection>
   );
 }
 
@@ -1351,15 +1317,9 @@ function OperationalSnapshotSection({
 
   if (verificationError) {
     return (
-      <section className="flex flex-col gap-6 sm:gap-8" aria-label={ariaLabel}>
-        <div className="space-y-2.5">
-          <h2 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">
-            {sectionTitle}
-          </h2>
-          <p className="max-w-xl text-base leading-relaxed text-muted-foreground">{sectionSub}</p>
-        </div>
+      <RestaurantDashSection title={sectionTitle} description={sectionSub} ariaLabel={ariaLabel}>
         <VerificationRequiredPanel variant="orders" compact />
-      </section>
+      </RestaurantDashSection>
     );
   }
 
@@ -1368,51 +1328,25 @@ function OperationalSnapshotSection({
   const todayRevenue = Number(orderStats.today.completedSales).toFixed(2);
 
   return (
-    <section className="flex flex-col gap-6 sm:gap-8" aria-label={ariaLabel}>
-      <div className="space-y-2.5">
-        <h2 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">
-          {sectionTitle}
-        </h2>
-        <p className="max-w-xl text-base leading-relaxed text-muted-foreground">{sectionSub}</p>
-      </div>
-
+    <RestaurantDashSection title={sectionTitle} description={sectionSub} ariaLabel={ariaLabel}>
       {isLoading ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 lg:gap-5">
-          {[0, 1, 2, 3, 4].map((i) => (
-            <LiveOverviewStatSkeleton key={i} />
-          ))}
-        </div>
+        <RestaurantKpiGridSkeleton count={5} />
       ) : isError ? (
-        <div
-          className={cn(
-            dash.card,
-            "flex flex-col items-center gap-4 px-6 py-10 text-center sm:px-8"
-          )}
-        >
-          <AlertTriangle className="h-8 w-8 text-amber-400" />
-          <p className="max-w-md text-base text-muted-foreground">
-            {isAr
+        <RestaurantSectionError
+          message={
+            isAr
               ? "تعذر تحميل المؤشرات التشغيلية. حاول مرة أخرى."
-              : "Could not load operational metrics. Please try again."}
-          </p>
-          <Button
-            type="button"
-            variant="outline"
-            className="border-border/60"
-            disabled={isFetching}
-            onClick={() => {
-              void refetchOverview();
-              void refetchOrders();
-            }}
-          >
-            {isFetching ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : null}
-            {isAr ? "إعادة المحاولة" : "Retry"}
-          </Button>
-        </div>
+              : "Could not load operational metrics. Please try again."
+          }
+          retryLabel={isAr ? "إعادة المحاولة" : "Retry"}
+          isFetching={isFetching}
+          onRetry={() => {
+            void refetchOverview();
+            void refetchOrders();
+          }}
+        />
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 lg:gap-5">
+        <div className={restaurantDash.kpiGrid}>
           <DashboardStatCard
             label={isAr ? "جلسات نشطة" : "Active Sessions"}
             value={overview?.activeSessions ?? 0}
@@ -1445,7 +1379,7 @@ function OperationalSnapshotSection({
           />
         </div>
       )}
-    </section>
+    </RestaurantDashSection>
   );
 }
 
@@ -1467,7 +1401,7 @@ function RestaurantHomePanel({
   const [workspaceSessionId, setWorkspaceSessionId] = useState<number | null>(null);
 
   return (
-    <div className="space-y-10 sm:space-y-12">
+    <div className={dash.stack}>
       <RestaurantHeaderCard restaurant={restaurant} />
       <OperationalSnapshotSection
         restaurantId={restaurantId}
@@ -4062,11 +3996,11 @@ function ReportsTab({
         <VerificationRequiredPanel variant="orders" />
       ) : (
       <>
-      <div className="space-y-2 pb-2">
-        <h2 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">
+      <div className="space-y-1 border-b border-slate-700/40 pb-4">
+        <h2 className={restaurantDash.sectionTitle}>
           {language === "ar" ? "تحليلات التسوية" : "Settlement Analytics"}
         </h2>
-        <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+        <p className={restaurantDash.sectionSub}>
           {language === "ar"
             ? "إيرادات الجلسات المسددة والاتجاهات التاريخية"
             : "Settled session revenue and historical trends"}
@@ -4086,7 +4020,7 @@ function ReportsTab({
         currencySymbol={sym}
       />
 
-      <div className="border-t border-border/30 pt-2" />
+      <div className="border-t border-slate-700/40 pt-4" />
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <div className={cn(dash.kpiCard)}>

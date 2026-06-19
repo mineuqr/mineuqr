@@ -11,7 +11,6 @@ import { isEmailNotVerifiedError } from "@/lib/trpcErrors";
 import { trpc, type RouterOutputs } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import {
-  AlertTriangle,
   CheckCircle,
   ChevronDown,
   ChevronUp,
@@ -23,6 +22,12 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { useState, type ComponentType } from "react";
+import { RestaurantDashSection } from "./RestaurantDashSection";
+import {
+  RestaurantSectionEmpty,
+  RestaurantSectionError,
+} from "./RestaurantSectionStates";
+import { restaurantDash, restaurantSemantic } from "./restaurantDashStyles";
 
 /** Home dashboard compact preview — full feed uses API default (25). */
 const HOME_ACTIVITY_FEED_LIMIT = 5;
@@ -37,33 +42,33 @@ const EVENT_VISUALS: Record<
 > = {
   session_opened: {
     icon: DoorOpen,
-    iconClass: "text-emerald-400",
-    dotClass: "bg-emerald-500/20 border-emerald-500/35",
+    iconClass: restaurantSemantic.iconSuccess,
+    dotClass: "border-green-500/30 bg-green-500/10",
   },
   order_created: {
     icon: Receipt,
-    iconClass: "text-primary",
-    dotClass: "bg-primary/15 border-primary/35",
+    iconClass: restaurantSemantic.iconInfo,
+    dotClass: "border-slate-600/40 bg-slate-800/50",
   },
   order_status_changed: {
     icon: RefreshCw,
-    iconClass: "text-sky-400",
-    dotClass: "bg-sky-500/15 border-sky-500/35",
+    iconClass: "text-slate-300",
+    dotClass: "border-slate-600/40 bg-slate-800/50",
   },
   session_paid: {
     icon: CreditCard,
-    iconClass: "text-emerald-400",
-    dotClass: "bg-emerald-500/15 border-emerald-500/35",
+    iconClass: restaurantSemantic.iconSuccess,
+    dotClass: "border-green-500/30 bg-green-500/10",
   },
   session_complimentary: {
     icon: Clock3,
-    iconClass: "text-violet-400",
-    dotClass: "bg-violet-500/15 border-violet-500/35",
+    iconClass: restaurantSemantic.iconAccent,
+    dotClass: "border-violet-500/30 bg-violet-500/10",
   },
   session_closed: {
     icon: CheckCircle,
-    iconClass: "text-muted-foreground",
-    dotClass: "bg-muted/20 border-border/50",
+    iconClass: restaurantSemantic.iconMuted,
+    dotClass: "border-slate-700/40 bg-slate-900/40",
   },
 };
 
@@ -115,11 +120,11 @@ function localizedEventTitle(eventType: ActivityFeedEventType, isAr: boolean): s
 
 function ActivityFeedItemSkeleton({ isLast }: { isLast: boolean }) {
   return (
-    <div className={cn("flex gap-2.5 px-3 py-2.5", !isLast && "border-b border-border/30")}>
-      <div className="h-7 w-7 shrink-0 animate-pulse rounded-md bg-muted/40" />
+    <div className={cn("flex gap-2.5 px-3 py-2.5", !isLast && "border-b border-slate-700/40")}>
+      <div className="h-7 w-7 shrink-0 animate-pulse rounded-md bg-slate-800/80" />
       <div className="min-w-0 flex-1 space-y-1.5">
-        <div className="h-3.5 w-36 animate-pulse rounded bg-muted/40" />
-        <div className="h-3 w-24 animate-pulse rounded bg-muted/30" />
+        <div className="h-3.5 w-36 animate-pulse rounded bg-slate-800/80" />
+        <div className="h-3 w-24 animate-pulse rounded bg-slate-800/60" />
       </div>
     </div>
   );
@@ -145,7 +150,7 @@ function ActivityFeedTimelineRow({
     <article
       className={cn(
         "flex gap-2.5 px-3 py-2.5 sm:items-start sm:justify-between sm:gap-3",
-        !isLast && "border-b border-border/30"
+        !isLast && "border-b border-slate-700/40"
       )}
     >
       <div className="flex min-w-0 flex-1 gap-2.5">
@@ -161,16 +166,16 @@ function ActivityFeedTimelineRow({
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-            <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-            <span className="text-xs tabular-nums text-muted-foreground">{timeLabel}</span>
+            <h3 className="text-sm font-semibold text-white">{title}</h3>
+            <span dir="ltr" className="text-xs tabular-nums text-slate-500">
+              {timeLabel}
+            </span>
           </div>
           {event.subtitle ? (
-            <p className="mt-0.5 truncate text-xs text-muted-foreground">{event.subtitle}</p>
+            <p className="mt-0.5 truncate text-xs text-slate-400">{event.subtitle}</p>
           ) : null}
           {event.tableName ? (
-            <p className="mt-0.5 truncate text-xs font-medium text-foreground/90">
-              {event.tableName}
-            </p>
+            <p className="mt-0.5 truncate text-xs font-medium text-slate-300">{event.tableName}</p>
           ) : null}
         </div>
       </div>
@@ -180,7 +185,7 @@ function ActivityFeedTimelineRow({
           type="button"
           variant="ghost"
           size="sm"
-          className="h-7 shrink-0 px-2 text-xs text-primary hover:text-primary"
+          className="h-7 shrink-0 px-2 text-xs text-green-400 hover:text-green-300"
           onClick={() => onOpenSession(Number.parseInt(event.sessionId!, 10))}
         >
           {isAr ? "فتح الجلسة" : "Open Session"}
@@ -232,15 +237,9 @@ export function OperationalActivityFeedSection({
 
   if (isEmailNotVerifiedError(error)) {
     return (
-      <section className="flex flex-col gap-4" aria-label={ariaLabel}>
-        <div className="space-y-1">
-          <h2 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">
-            {sectionTitle}
-          </h2>
-          <p className="text-sm text-muted-foreground">{sectionSub}</p>
-        </div>
+      <RestaurantDashSection title={sectionTitle} description={sectionSub} ariaLabel={ariaLabel}>
         <VerificationRequiredPanel variant="orders" compact />
-      </section>
+      </RestaurantDashSection>
     );
   }
 
@@ -248,49 +247,31 @@ export function OperationalActivityFeedSection({
   const canExpand = !showFullFeed && events.length >= HOME_ACTIVITY_FEED_LIMIT;
 
   return (
-    <section className="flex flex-col gap-4" aria-label={ariaLabel}>
-      <div className="space-y-1">
-        <h2 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">
-          {sectionTitle}
-        </h2>
-        <p className="text-sm text-muted-foreground">{sectionSub}</p>
-      </div>
-
+    <RestaurantDashSection title={sectionTitle} description={sectionSub} ariaLabel={ariaLabel}>
       {isLoading ? (
-        <div className="overflow-hidden rounded-lg border border-border/40 bg-[#161b22]/60">
+        <div className={restaurantDash.listPanel}>
           {[0, 1, 2, 3, 4].map((index) => (
             <ActivityFeedItemSkeleton key={index} isLast={index === 4} />
           ))}
         </div>
       ) : isError ? (
-        <div className="flex flex-col items-center gap-3 rounded-lg border border-border/40 bg-[#161b22]/90 px-4 py-8 text-center">
-          <AlertTriangle className="h-7 w-7 text-amber-400" />
-          <p className="max-w-md text-sm text-muted-foreground">
-            {isAr
+        <RestaurantSectionError
+          message={
+            isAr
               ? "تعذر تحميل سجل النشاط. حاول مرة أخرى."
-              : "Could not load the activity feed. Please try again."}
-          </p>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="border-border/60"
-            disabled={isFetching}
-            onClick={() => void refetch()}
-          >
-            {isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            {isAr ? "إعادة المحاولة" : "Retry"}
-          </Button>
-        </div>
+              : "Could not load the activity feed. Please try again."
+          }
+          retryLabel={isAr ? "إعادة المحاولة" : "Retry"}
+          isFetching={isFetching}
+          onRetry={() => void refetch()}
+        />
       ) : events.length === 0 ? (
-        <div className="rounded-lg border border-border/40 bg-[#161b22]/50 px-4 py-8 text-center">
-          <p className="text-sm text-muted-foreground">
-            {isAr ? "لا يوجد نشاط تشغيلي حديث" : "No recent operational activity"}
-          </p>
-        </div>
+        <RestaurantSectionEmpty
+          message={isAr ? "لا يوجد نشاط تشغيلي حديث" : "No recent operational activity"}
+        />
       ) : (
         <>
-          <div className="overflow-hidden rounded-lg border border-border/40 bg-[#161b22]/60">
+          <div className={restaurantDash.listPanel}>
             {events.map((event, index) => (
               <ActivityFeedTimelineRow
                 key={`${event.eventType}-${event.occurredAt}-${event.sessionId ?? "none"}-${index}`}
@@ -303,12 +284,12 @@ export function OperationalActivityFeedSection({
           </div>
 
           {canExpand ? (
-            <div className="flex justify-center border-t border-border/20 pt-1">
+            <div className="flex justify-center pt-1">
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-8 text-sm text-primary hover:text-primary"
+                className="h-8 text-sm text-green-400 hover:text-green-300"
                 disabled={isFetching}
                 onClick={() => setShowFullFeed(true)}
               >
@@ -320,12 +301,12 @@ export function OperationalActivityFeedSection({
           ) : null}
 
           {showFullFeed ? (
-            <div className="flex justify-center border-t border-border/20 pt-1">
+            <div className="flex justify-center pt-1">
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-8 text-sm text-muted-foreground"
+                className="h-8 text-sm text-slate-400"
                 onClick={() => setShowFullFeed(false)}
               >
                 {isAr ? "عرض أقل" : "Show less"}
@@ -335,6 +316,6 @@ export function OperationalActivityFeedSection({
           ) : null}
         </>
       )}
-    </section>
+    </RestaurantDashSection>
   );
 }

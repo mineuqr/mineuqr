@@ -9,8 +9,14 @@ import {
 import { isEmailNotVerifiedError } from "@/lib/trpcErrors";
 import { trpc, type RouterOutputs } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
-import { AlertTriangle, Loader2, Timer } from "lucide-react";
+import { Timer } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
+import { RestaurantDashSection } from "./RestaurantDashSection";
+import {
+  RestaurantSectionEmpty,
+  RestaurantSectionError,
+} from "./RestaurantSectionStates";
+import { restaurantDash, restaurantSemantic } from "./restaurantDashStyles";
 
 type ActionCenterData = RouterOutputs["ops"]["getActionCenter"];
 type LongRunningItem = ActionCenterData["longRunningSessions"][number];
@@ -22,7 +28,12 @@ function formatMinutes(minutes: number, isAr: boolean): string {
 
 function ActionCenterItemSkeleton() {
   return (
-    <div className="animate-pulse flex items-center justify-between gap-3 rounded-xl border border-border/40 bg-[#161b22]/80 px-4 py-3.5">
+    <div
+      className={cn(
+        "animate-pulse flex items-center justify-between gap-3 rounded-lg border px-3 py-3 sm:px-4",
+        restaurantDash.itemRow
+      )}
+    >
       <div className="space-y-2">
         <div className="h-4 w-28 rounded bg-muted/40" />
         <div className="h-3 w-16 rounded bg-muted/30" />
@@ -52,7 +63,7 @@ function ActionCenterItemRow({
   return (
     <div
       className={cn(
-        "flex flex-col gap-3 rounded-xl border px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between",
+        "flex flex-col gap-3 rounded-lg border px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4",
         accentClass
       )}
     >
@@ -69,7 +80,7 @@ function ActionCenterItemRow({
         type="button"
         variant="outline"
         size="sm"
-        className="w-full shrink-0 border-border/60 sm:w-auto"
+        className="w-full shrink-0 sm:w-auto"
         onClick={() => onOpenSession(Number.parseInt(sessionId, 10))}
       >
         {isAr ? "فتح الجلسة" : "Open Session"}
@@ -101,7 +112,12 @@ function ActionCenterGroup<T extends { sessionId: string; tableName: string }>({
         <span className="text-sm tabular-nums text-muted-foreground">({items.length})</span>
       </div>
       {items.length === 0 ? (
-        <p className="rounded-xl border border-border/30 bg-[#12161f]/40 px-4 py-3 text-sm text-muted-foreground">
+        <p
+          className={cn(
+            "rounded-lg border px-3 py-3 text-sm text-slate-400 sm:px-4",
+            restaurantDash.panelInset
+          )}
+        >
           {emptyText}
         </p>
       ) : (
@@ -151,15 +167,9 @@ export function ActionCenterSection({
 
   if (isEmailNotVerifiedError(error)) {
     return (
-      <section className="flex flex-col gap-6 sm:gap-8" aria-label={ariaLabel}>
-        <div className="space-y-2.5">
-          <h2 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">
-            {sectionTitle}
-          </h2>
-          <p className="max-w-xl text-base leading-relaxed text-muted-foreground">{sectionSub}</p>
-        </div>
+      <RestaurantDashSection title={sectionTitle} description={sectionSub} ariaLabel={ariaLabel}>
         <VerificationRequiredPanel variant="orders" compact />
-      </section>
+      </RestaurantDashSection>
     );
   }
 
@@ -170,49 +180,31 @@ export function ActionCenterSection({
     actionCenter.longRunningSessions.length === 0;
 
   return (
-    <section className="flex flex-col gap-6 sm:gap-8" aria-label={ariaLabel}>
-      <div className="space-y-2.5">
-        <h2 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">
-          {sectionTitle}
-        </h2>
-        <p className="max-w-xl text-base leading-relaxed text-muted-foreground">{sectionSub}</p>
-      </div>
-
+    <RestaurantDashSection title={sectionTitle} description={sectionSub} ariaLabel={ariaLabel}>
       {isLoading ? (
-        <div className="flex flex-col gap-6">
-          <div className="flex flex-col gap-3">
-            <div className="h-5 w-40 animate-pulse rounded bg-muted/40" />
-            <ActionCenterItemSkeleton />
-            <ActionCenterItemSkeleton />
-          </div>
+        <div className="flex flex-col gap-3">
+          <ActionCenterItemSkeleton />
+          <ActionCenterItemSkeleton />
         </div>
       ) : isError ? (
-        <div className="flex flex-col items-center gap-4 rounded-2xl border border-border/40 bg-[#161b22]/90 px-6 py-10 text-center sm:px-8">
-          <AlertTriangle className="h-8 w-8 text-amber-400" />
-          <p className="max-w-md text-base text-muted-foreground">
-            {isAr
+        <RestaurantSectionError
+          message={
+            isAr
               ? "تعذر تحميل مركز الإجراءات. حاول مرة أخرى."
-              : "Could not load the action center. Please try again."}
-          </p>
-          <Button
-            type="button"
-            variant="outline"
-            className="border-border/60"
-            disabled={isFetching}
-            onClick={() => void refetch()}
-          >
-            {isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            {isAr ? "إعادة المحاولة" : "Retry"}
-          </Button>
-        </div>
+              : "Could not load the action center. Please try again."
+          }
+          retryLabel={isAr ? "إعادة المحاولة" : "Retry"}
+          isFetching={isFetching}
+          onRetry={() => void refetch()}
+        />
       ) : isFullyEmpty ? (
-        <div className="rounded-2xl border border-border/40 bg-[#161b22]/50 px-6 py-12 text-center">
-          <p className="text-base text-muted-foreground">
-            {isAr ? "لا توجد جلسات تحتاج انتباه حالياً" : "No sessions need attention right now"}
-          </p>
-        </div>
+        <RestaurantSectionEmpty
+          message={
+            isAr ? "لا توجد جلسات تحتاج انتباه حالياً" : "No sessions need attention right now"
+          }
+        />
       ) : (
-        <div className="flex flex-col gap-8">
+        <div className="flex flex-col gap-4">
           <ActionCenterGroup<LongRunningItem>
             title={isAr ? "جلسات طويلة" : "Long Running Sessions"}
             icon={Timer}
@@ -228,12 +220,12 @@ export function ActionCenterSection({
                 isAr={isAr}
                 sessionId={item.sessionId}
                 onOpenSession={onOpenSession}
-                accentClass="border-orange-500/30 bg-orange-500/5"
+                accentClass={restaurantSemantic.rowWarning}
               />
             )}
           />
         </div>
       )}
-    </section>
+    </RestaurantDashSection>
   );
 }

@@ -9,8 +9,13 @@ import {
 import { isEmailNotVerifiedError } from "@/lib/trpcErrors";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
-import { AlertTriangle, Loader2 } from "lucide-react";
 import type { RouterOutputs } from "@/lib/trpc";
+import { RestaurantDashSection } from "./RestaurantDashSection";
+import {
+  RestaurantSectionEmpty,
+  RestaurantSectionError,
+} from "./RestaurantSectionStates";
+import { restaurantDash, restaurantSemantic } from "./restaurantDashStyles";
 
 type ActiveTableRow = RouterOutputs["ops"]["getActiveTablesBoard"]["tables"][number];
 type BoardStatus = ActiveTableRow["status"];
@@ -20,12 +25,12 @@ const STATUS_STYLES: Record<
   { card: string; badge: string }
 > = {
   available: {
-    card: "border-border/50 bg-[#12161f]/60",
-    badge: "bg-slate-500/15 text-slate-300 border-slate-500/25",
+    card: restaurantSemantic.rowNeutral,
+    badge: restaurantSemantic.badgeAvailable,
   },
   occupied: {
-    card: "border-primary/35 bg-primary/5",
-    badge: "bg-primary/20 text-primary border-primary/35",
+    card: restaurantSemantic.rowSuccess,
+    badge: restaurantSemantic.badgeOccupied,
   },
 };
 
@@ -44,7 +49,7 @@ function formatDuration(minutes: number, isAr: boolean): string {
 
 function TableBoardCardSkeleton() {
   return (
-    <div className="animate-pulse rounded-2xl border border-border/40 bg-[#161b22] p-5 sm:p-6">
+    <div className={cn("animate-pulse rounded-lg border p-4 sm:p-5", restaurantDash.panel)}>
       <div className="flex items-start justify-between gap-3">
         <div className="h-5 w-28 rounded bg-muted/40" />
         <div className="h-6 w-20 rounded-full bg-muted/30" />
@@ -73,12 +78,7 @@ function ActiveTableBoardCard({
   const styles = STATUS_STYLES[table.status];
 
   return (
-    <article
-      className={cn(
-        "flex flex-col rounded-2xl border p-5 shadow-sm transition-colors sm:p-6",
-        styles.card
-      )}
-    >
+    <article className={cn("flex flex-col rounded-lg border p-4 transition-colors sm:p-5", styles.card)}>
       <div className="flex items-start justify-between gap-3">
         <h3 className="text-lg font-semibold tracking-tight text-foreground">{table.tableName}</h3>
         <span
@@ -167,60 +167,37 @@ export function ActiveTablesBoardSection({
 
   if (isEmailNotVerifiedError(error)) {
     return (
-      <section className="flex flex-col gap-6 sm:gap-8" aria-label={ariaLabel}>
-        <div className="space-y-2.5">
-          <h2 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">
-            {sectionTitle}
-          </h2>
-          <p className="max-w-xl text-base leading-relaxed text-muted-foreground">{sectionSub}</p>
-        </div>
+      <RestaurantDashSection title={sectionTitle} description={sectionSub} ariaLabel={ariaLabel}>
         <VerificationRequiredPanel variant="orders" compact />
-      </section>
+      </RestaurantDashSection>
     );
   }
 
   return (
-    <section className="flex flex-col gap-6 sm:gap-8" aria-label={ariaLabel}>
-      <div className="space-y-2.5">
-        <h2 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">
-          {sectionTitle}
-        </h2>
-        <p className="max-w-xl text-base leading-relaxed text-muted-foreground">{sectionSub}</p>
-      </div>
-
+    <RestaurantDashSection title={sectionTitle} description={sectionSub} ariaLabel={ariaLabel}>
       {isLoading ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-5">
+        <div className={restaurantDash.kpiGridWide}>
           {[0, 1, 2, 3, 4, 5].map((i) => (
             <TableBoardCardSkeleton key={i} />
           ))}
         </div>
       ) : isError ? (
-        <div className="flex flex-col items-center gap-4 rounded-2xl border border-border/40 bg-[#161b22]/90 px-6 py-10 text-center sm:px-8">
-          <AlertTriangle className="h-8 w-8 text-amber-400" />
-          <p className="max-w-md text-base text-muted-foreground">
-            {isAr
+        <RestaurantSectionError
+          message={
+            isAr
               ? "تعذر تحميل لوحة الطاولات. حاول مرة أخرى."
-              : "Could not load the tables board. Please try again."}
-          </p>
-          <Button
-            type="button"
-            variant="outline"
-            className="border-border/60"
-            disabled={isFetching}
-            onClick={() => void refetch()}
-          >
-            {isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            {isAr ? "إعادة المحاولة" : "Retry"}
-          </Button>
-        </div>
+              : "Could not load the tables board. Please try again."
+          }
+          retryLabel={isAr ? "إعادة المحاولة" : "Retry"}
+          isFetching={isFetching}
+          onRetry={() => void refetch()}
+        />
       ) : !board?.tables.length ? (
-        <div className="rounded-2xl border border-border/40 bg-[#161b22]/50 px-6 py-12 text-center">
-          <p className="text-base text-muted-foreground">
-            {isAr ? "لا توجد طاولات نشطة لعرضها" : "No active tables to display"}
-          </p>
-        </div>
+        <RestaurantSectionEmpty
+          message={isAr ? "لا توجد طاولات نشطة لعرضها" : "No active tables to display"}
+        />
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-5">
+        <div className={restaurantDash.kpiGridWide}>
           {board.tables.map((table) => (
             <ActiveTableBoardCard
               key={table.tableId}
@@ -231,6 +208,6 @@ export function ActiveTablesBoardSection({
           ))}
         </div>
       )}
-    </section>
+    </RestaurantDashSection>
   );
 }

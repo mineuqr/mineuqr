@@ -19,10 +19,8 @@ import { isEmailNotVerifiedError } from "@/lib/trpcErrors";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import {
-  AlertTriangle,
   CalendarDays,
   Gift,
-  Loader2,
   TrendingUp,
   Wallet,
 } from "lucide-react";
@@ -36,8 +34,14 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { RestaurantDashSection } from "./RestaurantDashSection";
+import {
+  RestaurantSectionEmpty,
+  RestaurantSectionError,
+} from "./RestaurantSectionStates";
+import { restaurantDash, restaurantSemantic } from "./restaurantDashStyles";
 
-const PANEL_CLASS = "rounded-2xl border border-border/40 bg-[#161b22] p-5 sm:p-6";
+const PANEL_CLASS = cn(restaurantDash.panel, "p-4 sm:p-5");
 const GROUPING_OPTIONS: SettlementTrendGrouping[] = ["day", "week", "month"];
 
 function groupingLabel(grouping: SettlementTrendGrouping, isAr: boolean): string {
@@ -68,13 +72,13 @@ function SettlementTrendChart({
 }) {
   return (
     <div className={PANEL_CLASS}>
-      <h3 className="mb-4 text-sm font-semibold text-foreground sm:text-base">{title}</h3>
+      <h3 className="mb-3 text-sm font-semibold text-white sm:text-base">{title}</h3>
       {data.length === 0 ? (
-        <div className="flex h-[220px] items-center justify-center text-sm text-muted-foreground sm:h-[260px]">
+        <div className="flex h-[200px] items-center justify-center text-sm text-slate-400 sm:h-[240px]">
           {isAr ? "لا توجد بيانات للعرض" : "No data to display"}
         </div>
       ) : (
-        <div className="h-[220px] w-full sm:h-[260px]">
+        <div className="h-[200px] w-full sm:h-[240px]">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
@@ -141,18 +145,20 @@ function TrendInsightCard({
   return (
     <div className={PANEL_CLASS}>
       <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
-          <Icon className="h-5 w-5" />
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-700/50 bg-slate-900/50">
+          <Icon className={cn("h-5 w-5", restaurantSemantic.iconSuccess)} />
         </div>
         <div className="min-w-0">
-          <p className="text-sm font-medium text-muted-foreground">{title}</p>
+          <p className="text-sm font-medium text-slate-400">{title}</p>
           {periodLabel && valueLabel ? (
             <>
-              <p className="mt-1 truncate text-lg font-semibold text-foreground">{periodLabel}</p>
-              <p className="mt-1 text-base tabular-nums text-emerald-400">{valueLabel}</p>
+              <p className="mt-1 truncate text-base font-semibold text-white">{periodLabel}</p>
+              <p dir="ltr" className="mt-1 text-end text-sm tabular-nums text-green-400 sm:text-start">
+                {valueLabel}
+              </p>
             </>
           ) : (
-            <p className="mt-2 text-sm text-muted-foreground">{emptyText}</p>
+            <p className="mt-2 text-sm text-slate-500">{emptyText}</p>
           )}
         </div>
       </div>
@@ -234,105 +240,91 @@ export function SettlementTrendsSection({
 
   if (isEmailNotVerifiedError(error)) {
     return (
-      <section className="flex flex-col gap-6 sm:gap-8" aria-label={ariaLabel}>
-        <div className="space-y-2.5">
-          <h2 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">
-            {sectionTitle}
-          </h2>
-          <p className="max-w-xl text-base leading-relaxed text-muted-foreground">{sectionSub}</p>
-        </div>
+      <RestaurantDashSection title={sectionTitle} description={sectionSub} ariaLabel={ariaLabel}>
         <VerificationRequiredPanel variant="orders" compact />
-      </section>
+      </RestaurantDashSection>
     );
   }
 
   const isFullyEmpty = !isLoading && !isError && trend != null && isSettlementTrendEmpty(trend);
   const noInsightText = isAr ? "لا توجد فترة بارزة بعد" : "No standout period yet";
 
-  return (
-    <section className="flex flex-col gap-6 sm:gap-8" aria-label={ariaLabel}>
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div className="space-y-2.5">
-          <h2 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">
-            {sectionTitle}
-          </h2>
-          <p className="max-w-xl text-base leading-relaxed text-muted-foreground">{sectionSub}</p>
-        </div>
-
-        <div
-          className="flex flex-wrap gap-2"
-          role="group"
-          aria-label={isAr ? "تجميع الاتجاه" : "Trend grouping"}
+  const groupingControls = (
+    <div
+      className="flex flex-wrap gap-2"
+      role="group"
+      aria-label={isAr ? "تجميع الاتجاه" : "Trend grouping"}
+    >
+      {GROUPING_OPTIONS.map((option) => (
+        <Button
+          key={option}
+          type="button"
+          size="sm"
+          variant={grouping === option ? "default" : "outline"}
+          className={cn(
+            "min-w-[4.5rem]",
+            grouping === option
+              ? "bg-green-600 text-white hover:bg-green-600/90"
+              : restaurantDash.toolbarBtn
+          )}
+          onClick={() => setGrouping(option)}
         >
-          {GROUPING_OPTIONS.map((option) => (
-            <Button
-              key={option}
-              type="button"
-              size="sm"
-              variant={grouping === option ? "default" : "outline"}
-              className={cn(
-                "min-w-[4.5rem]",
-                grouping !== option && "border-border/60 bg-transparent"
-              )}
-              onClick={() => setGrouping(option)}
-            >
-              {groupingLabel(option, isAr)}
-            </Button>
-          ))}
-        </div>
-      </div>
+          {groupingLabel(option, isAr)}
+        </Button>
+      ))}
+    </div>
+  );
 
+  return (
+    <RestaurantDashSection
+      title={sectionTitle}
+      description={sectionSub}
+      ariaLabel={ariaLabel}
+      headerAside={groupingControls}
+    >
       {isLoading ? (
         <>
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-5">
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-4">
             {[0, 1, 2, 3].map((i) => (
               <TrendChartSkeleton key={i} />
             ))}
           </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:gap-5">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:gap-4">
             {[0, 1, 2].map((i) => (
               <TrendInsightSkeleton key={i} />
             ))}
           </div>
         </>
       ) : isError ? (
-        <div className="flex flex-col items-center gap-4 rounded-2xl border border-border/40 bg-[#161b22]/90 px-6 py-10 text-center sm:px-8">
-          <AlertTriangle className="h-8 w-8 text-amber-400" />
-          <p className="max-w-md text-base text-muted-foreground">
-            {isAr
+        <RestaurantSectionError
+          message={
+            isAr
               ? "تعذر تحميل اتجاهات التسوية. حاول مرة أخرى."
-              : "Could not load settlement trends. Please try again."}
-          </p>
-          <Button
-            type="button"
-            variant="outline"
-            className="border-border/60"
-            disabled={isFetching}
-            onClick={() => void refetch()}
-          >
-            {isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            {isAr ? "إعادة المحاولة" : "Retry"}
-          </Button>
-        </div>
+              : "Could not load settlement trends. Please try again."
+          }
+          retryLabel={isAr ? "إعادة المحاولة" : "Retry"}
+          isFetching={isFetching}
+          onRetry={() => void refetch()}
+        />
       ) : (
         <>
           {isFullyEmpty ? (
-            <div className="rounded-2xl border border-border/40 bg-[#161b22]/50 px-6 py-8 text-center sm:px-8">
-              <p className="text-base text-muted-foreground">
-                {isAr
+            <RestaurantSectionEmpty
+              message={
+                isAr
                   ? "لا توجد جلسات مسددة لعرض الاتجاهات بعد."
-                  : "No settled sessions yet to show trends."}
-              </p>
-            </div>
+                  : "No settled sessions yet to show trends."
+              }
+            />
           ) : null}
 
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-5">
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-4">
             <SettlementTrendChart
               title={isAr ? "اتجاه الإيرادات" : "Revenue Trend"}
               data={chartRows}
               dataKey="paidRevenue"
-              stroke="#34d399"
-              fill="#34d39930"
+              stroke="#4ade80"
+              fill="#4ade8030"
               valueFormatter={(value) => `${value.toFixed(2)} ${sym}`}
               isAr={isAr}
             />
@@ -340,8 +332,8 @@ export function SettlementTrendsSection({
               title={isAr ? "اتجاه الجلسات المدفوعة" : "Paid Sessions Trend"}
               data={chartRows}
               dataKey="paidSessionCount"
-              stroke="#22d3ee"
-              fill="#22d3ee30"
+              stroke="#94a3b8"
+              fill="#94a3b830"
               valueFormatter={(value) => String(Math.round(value))}
               isAr={isAr}
             />
@@ -358,8 +350,8 @@ export function SettlementTrendsSection({
               title={isAr ? "اتجاه نسبة المجانية" : "Complimentary Rate Trend"}
               data={chartRows}
               dataKey="complimentaryRate"
-              stroke="#fbbf24"
-              fill="#fbbf2430"
+              stroke="#fb923c"
+              fill="#fb923c30"
               valueFormatter={(value) => `${value.toFixed(1)}%`}
               isAr={isAr}
             />
@@ -367,12 +359,12 @@ export function SettlementTrendsSection({
 
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-muted-foreground" />
-              <h3 className="text-base font-semibold text-foreground">
-                {isAr ? "رؤى تشغيلية" : "Operational Insights"}
+              <TrendingUp className={cn("h-5 w-5", restaurantSemantic.iconNeutral)} />
+              <h3 className="text-sm font-semibold text-white sm:text-base">
+                {isAr ? "رؤى تشغيلية" : "Settlement Insights"}
               </h3>
             </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:gap-5">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:gap-4">
               <TrendInsightCard
                 title={isAr ? "أعلى فترة إيرادات" : "Highest Revenue Period"}
                 periodLabel={revenueInsight?.periodLabel ?? null}
@@ -410,6 +402,6 @@ export function SettlementTrendsSection({
           </div>
         </>
       )}
-    </section>
+    </RestaurantDashSection>
   );
 }

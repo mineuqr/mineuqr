@@ -1,5 +1,4 @@
 import { useAuth } from "@/_core/hooks/useAuth";
-import { Button } from "@/components/ui/button";
 import { VerificationRequiredPanel } from "@/components/auth/VerificationRequiredPanel";
 import {
   DASHBOARD_ORDER_LIST_POLL_MS,
@@ -14,65 +13,20 @@ import {
 } from "@/lib/settlementOverviewDisplay";
 import { isEmailNotVerifiedError } from "@/lib/trpcErrors";
 import { trpc } from "@/lib/trpc";
-import { cn } from "@/lib/utils";
 import {
-  AlertTriangle,
   CheckCircle2,
   DollarSign,
   Gift,
-  Loader2,
   Percent,
   TrendingUp,
 } from "lucide-react";
-import type { ComponentType } from "react";
-
-const KPI_CARD_CLASS =
-  "rounded-2xl border border-border/40 bg-[#161b22] p-6 sm:p-7";
-
-function SettlementStatCard({
-  label,
-  value,
-  icon: Icon,
-  tone = "default",
-}: {
-  label: string;
-  value: number | string;
-  icon: ComponentType<{ className?: string }>;
-  tone?: "default" | "primary" | "accent" | "emerald" | "amber";
-}) {
-  const iconWrap =
-    tone === "primary"
-      ? "bg-primary/20 text-primary"
-      : tone === "accent"
-        ? "bg-violet-500/20 text-violet-400"
-        : tone === "emerald"
-          ? "bg-emerald-500/20 text-emerald-400"
-          : tone === "amber"
-            ? "bg-amber-500/20 text-amber-400"
-            : "bg-blue-500/20 text-blue-400";
-
-  return (
-    <div className={KPI_CARD_CLASS}>
-      <div className={cn("flex h-12 w-12 items-center justify-center rounded-full", iconWrap)}>
-        <Icon className="h-6 w-6" />
-      </div>
-      <p className="mt-5 text-3xl font-bold tabular-nums tracking-tight text-foreground sm:text-4xl">
-        {value}
-      </p>
-      <p className="mt-2 text-base text-muted-foreground">{label}</p>
-    </div>
-  );
-}
-
-function SettlementStatSkeleton() {
-  return (
-    <div className={cn(KPI_CARD_CLASS, "animate-pulse")}>
-      <div className="h-12 w-12 rounded-full bg-muted/40" />
-      <div className="mt-5 h-10 w-24 rounded-lg bg-muted/40" />
-      <div className="mt-2 h-4 w-32 rounded bg-muted/30" />
-    </div>
-  );
-}
+import { RestaurantDashSection } from "./RestaurantDashSection";
+import { RestaurantKpiCard, RestaurantKpiGridSkeleton } from "./RestaurantKpiCard";
+import {
+  RestaurantSectionEmpty,
+  RestaurantSectionError,
+} from "./RestaurantSectionStates";
+import { restaurantDash } from "./restaurantDashStyles";
 
 export function SettlementOverviewSection({
   restaurantId,
@@ -115,15 +69,9 @@ export function SettlementOverviewSection({
 
   if (isEmailNotVerifiedError(error)) {
     return (
-      <section className="flex flex-col gap-6 sm:gap-8" aria-label={ariaLabel}>
-        <div className="space-y-2.5">
-          <h2 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">
-            {sectionTitle}
-          </h2>
-          <p className="max-w-xl text-base leading-relaxed text-muted-foreground">{sectionSub}</p>
-        </div>
+      <RestaurantDashSection title={sectionTitle} description={sectionSub} ariaLabel={ariaLabel}>
         <VerificationRequiredPanel variant="orders" compact />
-      </section>
+      </RestaurantDashSection>
     );
   }
 
@@ -131,87 +79,66 @@ export function SettlementOverviewSection({
   const averageSessionValue = summary ? formatAveragePaidSessionValue(summary) : "—";
 
   return (
-    <section className="flex flex-col gap-6 sm:gap-8" aria-label={ariaLabel}>
-      <div className="space-y-2.5">
-        <h2 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">
-          {sectionTitle}
-        </h2>
-        <p className="max-w-xl text-base leading-relaxed text-muted-foreground">{sectionSub}</p>
-      </div>
-
+    <RestaurantDashSection title={sectionTitle} description={sectionSub} ariaLabel={ariaLabel}>
       {isLoading ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 lg:gap-5">
-          {[0, 1, 2, 3, 4].map((i) => (
-            <SettlementStatSkeleton key={i} />
-          ))}
-        </div>
+        <RestaurantKpiGridSkeleton count={5} />
       ) : isError ? (
-        <div className="flex flex-col items-center gap-4 rounded-2xl border border-border/40 bg-[#161b22]/90 px-6 py-10 text-center sm:px-8">
-          <AlertTriangle className="h-8 w-8 text-amber-400" />
-          <p className="max-w-md text-base text-muted-foreground">
-            {isAr
+        <RestaurantSectionError
+          message={
+            isAr
               ? "تعذر تحميل مؤشرات التسوية. حاول مرة أخرى."
-              : "Could not load settlement metrics. Please try again."}
-          </p>
-          <Button
-            type="button"
-            variant="outline"
-            className="border-border/60"
-            disabled={isFetching}
-            onClick={() => void refetch()}
-          >
-            {isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            {isAr ? "إعادة المحاولة" : "Retry"}
-          </Button>
-        </div>
+              : "Could not load settlement metrics. Please try again."
+          }
+          retryLabel={isAr ? "إعادة المحاولة" : "Retry"}
+          isFetching={isFetching}
+          onRetry={() => void refetch()}
+        />
       ) : (
         <>
           {isFullyEmpty ? (
-            <div className="rounded-2xl border border-border/40 bg-[#161b22]/50 px-6 py-8 text-center sm:px-8">
-              <p className="text-base text-muted-foreground">
-                {isAr
+            <RestaurantSectionEmpty
+              message={
+                isAr
                   ? "لا توجد جلسات مسددة بعد. ستظهر الإيرادات هنا بعد تسوية الجلسات."
-                  : "No settled sessions yet. Revenue will appear here after sessions are settled."}
-              </p>
-            </div>
+                  : "No settled sessions yet. Revenue will appear here after sessions are settled."
+              }
+            />
           ) : null}
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 lg:gap-5">
-            <SettlementStatCard
+          <div className={restaurantDash.kpiGrid}>
+            <RestaurantKpiCard
               label={isAr ? "إيرادات مسددة" : "Settled Revenue"}
               value={formatSettlementRevenue(summary?.paidRevenue ?? "0.00", sym)}
               icon={DollarSign}
-              tone="emerald"
+              tone="success"
             />
-            <SettlementStatCard
+            <RestaurantKpiCard
               label={isAr ? "جلسات مدفوعة" : "Paid Sessions"}
               value={summary?.paidSessionCount ?? 0}
               icon={CheckCircle2}
-              tone="primary"
+              tone="info"
             />
-            <SettlementStatCard
+            <RestaurantKpiCard
               label={isAr ? "جلسات مجانية" : "Complimentary Sessions"}
               value={summary?.complimentarySessionCount ?? 0}
               icon={Gift}
               tone="accent"
             />
-            <SettlementStatCard
+            <RestaurantKpiCard
               label={isAr ? "نسبة المجانية" : "Complimentary Rate"}
               value={summary ? formatComplimentaryRate(summary) : "—"}
               icon={Percent}
-              tone="amber"
+              tone="warning"
             />
-            <SettlementStatCard
+            <RestaurantKpiCard
               label={isAr ? "متوسط قيمة الجلسة" : "Average Session Value"}
-              value={
-                averageSessionValue === "—" ? "—" : `${averageSessionValue} ${sym}`
-              }
+              value={averageSessionValue === "—" ? "—" : `${averageSessionValue} ${sym}`}
               icon={TrendingUp}
-              tone="default"
+              tone="neutral"
             />
           </div>
         </>
       )}
-    </section>
+    </RestaurantDashSection>
   );
 }
