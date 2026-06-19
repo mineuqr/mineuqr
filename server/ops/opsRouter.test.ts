@@ -17,11 +17,16 @@ vi.mock("./actionCenter", () => ({
   getActionCenter: vi.fn(),
 }));
 
+vi.mock("./activityFeed", () => ({
+  getActivityFeed: vi.fn(),
+}));
+
 import { assertRestaurantAccess } from "../restaurantAccess";
 import { appRouter } from "../routers";
 import { getRestaurantOverview } from "./restaurantOverview";
 import { getActiveTablesBoard } from "./activeTablesBoard";
 import { getActionCenter } from "./actionCenter";
+import { getActivityFeed } from "./activityFeed";
 import { TRPCError } from "@trpc/server";
 
 function createVerifiedCaller() {
@@ -160,5 +165,62 @@ describe("ops.getActionCenter OPS-DASHBOARD-2D.1", () => {
       code: "FORBIDDEN",
     });
     expect(getActionCenter).not.toHaveBeenCalled();
+  });
+});
+
+describe("ops.getActivityFeed OPS-DASHBOARD-2E.1", () => {
+  const feedPayload = {
+    generatedAt: "2026-06-18T22:00:00.000Z",
+    events: [
+      {
+        eventType: "order_status_changed" as const,
+        occurredAt: "2026-06-18 21:30:00",
+        sessionId: "10",
+        tableId: 1,
+        tableName: "Table 1",
+        title: "Order status updated",
+        subtitle: "#ORD-1 · ready · Table 1",
+      },
+    ],
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(assertRestaurantAccess).mockResolvedValue(undefined);
+    vi.mocked(getActivityFeed).mockResolvedValue(feedPayload);
+  });
+
+  it("returns activity feed for authorized restaurant with default limit", async () => {
+    const caller = createVerifiedCaller();
+    const result = await caller.ops.getActivityFeed({ restaurantId: 42 });
+
+    expect(assertRestaurantAccess).toHaveBeenCalledWith(
+      expect.objectContaining({ user: expect.objectContaining({ id: 1 }) }),
+      42,
+      "ops.getActivityFeed"
+    );
+    expect(getActivityFeed).toHaveBeenCalledWith(42, { limit: 25 });
+    expect(result.events).toHaveLength(1);
+    expect(result.events[0]?.eventType).toBe("order_status_changed");
+  });
+
+  it("passes custom limit to getActivityFeed", async () => {
+    const caller = createVerifiedCaller();
+    await caller.ops.getActivityFeed({ restaurantId: 42, limit: 10 });
+
+    expect(getActivityFeed).toHaveBeenCalledWith(42, { limit: 10 });
+  });
+
+  it("denies cross-tenant access before loading activity feed", async () => {
+    vi.mocked(assertRestaurantAccess).mockRejectedValue(
+      new TRPCError({ code: "FORBIDDEN", message: "غير مصرح بالوصول" })
+    );
+
+    const caller = createVerifiedCaller();
+
+    await expect(caller.ops.getActivityFeed({ restaurantId: 999 })).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+    expect(getActivityFeed).not.toHaveBeenCalled();
   });
 });
