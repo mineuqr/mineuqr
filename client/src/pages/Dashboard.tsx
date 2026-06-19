@@ -6,6 +6,7 @@ import { DiningSessionWorkspaceSheet } from "@/components/dashboard/DiningSessio
 import { ActiveTablesBoardSection } from "@/components/dashboard/ActiveTablesBoardSection";
 import { ActionCenterSection } from "@/components/dashboard/ActionCenterSection";
 import { OperationalActivityFeedSection } from "@/components/dashboard/OperationalActivityFeedSection";
+import { SettlementOverviewSection } from "@/components/dashboard/SettlementOverviewSection";
 import { getLoginUrl, spaNavigate } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { cn, resolveImageUrl } from "@/lib/utils";
@@ -1419,6 +1420,12 @@ function RestaurantHomePanel({
         restaurantId={restaurantId}
         language={language}
         queriesEnabled={ordersEnabled}
+      />
+      <SettlementOverviewSection
+        restaurantId={restaurantId}
+        language={language}
+        queriesEnabled={ordersEnabled}
+        currencySymbol={currencySymbol}
       />
       <ActionCenterSection
         restaurantId={restaurantId}
