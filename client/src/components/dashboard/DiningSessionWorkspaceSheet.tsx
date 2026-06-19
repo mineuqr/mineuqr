@@ -1,19 +1,30 @@
 import { useAuth } from "@/_core/hooks/useAuth";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
 import { DiningSessionActionBar } from "@/components/dashboard/DiningSessionActionBar";
-import { DiningSessionOrdersList } from "@/components/dashboard/DiningSessionOrdersList";
-import { DiningSessionSummaryCard } from "@/components/dashboard/DiningSessionSummaryCard";
+import { DiningSessionOverviewSection } from "@/components/dashboard/DiningSessionOverviewSection";
+import { DiningSessionOrdersSummarySection } from "@/components/dashboard/DiningSessionOrdersSummarySection";
+import { DiningSessionSettlementSummarySection } from "@/components/dashboard/DiningSessionSettlementSummarySection";
 import { DiningSessionTimelineList } from "@/components/dashboard/DiningSessionTimelineList";
+import {
+  DiningSessionWorkspaceRecovery,
+  DiningSessionWorkspaceSkeleton,
+} from "@/components/dashboard/DiningSessionWorkspaceRecovery";
 import { useLanguage } from "@/contexts/LanguageContext";
 import type { DiningSessionStatus } from "@/lib/diningSessionCopy";
 import { formatDashboardSessionLabel } from "@/lib/diningSessionDashboardCopy";
 import { sessionSummaryLabel } from "@/lib/diningSessionWorkspaceCopy";
+import {
+  countSessionItems,
+  deriveSettlementSummary,
+  isSessionNotFoundError,
+} from "@/lib/diningSessionWorkspaceView";
 import {
   DASHBOARD_ORDER_LIST_POLL_MS,
   orderListQueryOptions,
@@ -21,7 +32,8 @@ import {
   useDevQueryRuntimeLog,
 } from "@/lib/queryRuntime";
 import { trpc } from "@/lib/trpc";
-import { Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { restaurantDash } from "./restaurantDashStyles";
 
 type DiningSessionWorkspaceSheetProps = {
   open: boolean;
@@ -56,14 +68,49 @@ export function DiningSessionWorkspaceSheet({
     isAuthenticated,
     pollMs: workspaceEnabled ? DASHBOARD_ORDER_LIST_POLL_MS : undefined,
   });
+  useDevQueryRuntimeLog("order.list (session workspace items)", {
+    enabled: workspaceEnabled,
+    authPending,
+    isAuthenticated,
+  });
 
-  const { data, isLoading, error } = trpc.session.getOwnerWorkspace.useQuery(
+  const {
+    data,
+    isLoading,
+    error,
+    refetch,
+    isFetching,
+  } = trpc.session.getOwnerWorkspace.useQuery(
     { restaurantId, sessionId: sessionId ?? 0 },
     {
       ...orderListQueryOptions(workspaceEnabled),
       enabled: workspaceEnabled,
     }
   );
+
+  const { data: restaurantOrders } = trpc.order.list.useQuery(
+    { restaurantId },
+    {
+      enabled: workspaceEnabled,
+      staleTime: 30_000,
+    }
+  );
+
+  const itemsCount = useMemo(() => {
+    if (!sessionId || !restaurantOrders) return 0;
+    return countSessionItems(restaurantOrders, sessionId);
+  }, [restaurantOrders, sessionId]);
+
+  const settlementSummary = useMemo(() => {
+    if (!data) {
+      return { state: "pending" } as const;
+    }
+    return deriveSettlementSummary(
+      data.events,
+      data.ordersTotalAmount,
+      data.status as DiningSessionStatus
+    );
+  }, [data]);
 
   const [sheetSide, setSheetSide] = useState<"bottom" | "right">("right");
   useEffect(() => {
@@ -74,65 +121,84 @@ export function DiningSessionWorkspaceSheet({
     return () => mq.removeEventListener("change", update);
   }, []);
 
+  const sheetTitle =
+    sessionId != null
+      ? formatDashboardSessionLabel(sessionId, lang)
+      : language === "ar"
+        ? "الجلسة"
+        : "Session";
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side={sheetSide}
-        className={
+        className={cn(
+          "flex flex-col border-cyan-500/20 bg-slate-950 p-0",
           sheetSide === "bottom"
-            ? "max-h-[90vh] overflow-y-auto sm:max-w-full"
-            : "w-full overflow-y-auto sm:max-w-md"
-        }
+            ? "max-h-[92vh] sm:max-w-full"
+            : "w-full sm:max-w-lg"
+        )}
       >
-        <SheetHeader className="text-start border-b border-border/40 pb-4">
-          <SheetTitle className="text-lg">
-            {sessionId != null
-              ? formatDashboardSessionLabel(sessionId, lang)
-              : language === "ar"
-                ? "الجلسة"
-                : "Session"}
-          </SheetTitle>
+        <SheetHeader className="border-b border-cyan-500/15 px-4 pb-4 pt-6 text-start sm:px-6">
+          <SheetTitle className="text-lg text-white">{sheetTitle}</SheetTitle>
+          <SheetDescription className="text-slate-400">
+            {language === "ar"
+              ? "مساحة تفاصيل الجلسة التشغيلية"
+              : "Operational session detail workspace"}
+          </SheetDescription>
         </SheetHeader>
 
-        <div className="flex flex-1 flex-col gap-6 px-4 pb-6 pt-4">
-          {isLoading && (
-            <div className="flex justify-center py-10">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          )}
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-6 pt-4 sm:px-6">
+          {isLoading ? <DiningSessionWorkspaceSkeleton /> : null}
 
-          {error && (
-            <p className="py-6 text-center text-sm text-red-400">
-              {sessionSummaryLabel("loadError", lang)}
-            </p>
-          )}
+          {!isLoading && error ? (
+            <DiningSessionWorkspaceRecovery
+              kind={isSessionNotFoundError(error) ? "notFound" : "loadError"}
+              language={lang}
+              onRetry={() => void refetch()}
+              isFetching={isFetching}
+            />
+          ) : null}
 
-          {!isLoading && !error && data && (
+          {!isLoading && !error && data ? (
             <>
-              <DiningSessionSummaryCard
+              <DiningSessionOverviewSection
                 sessionId={data.sessionId}
                 tableNumber={data.tableNumber}
                 status={data.status as DiningSessionStatus}
                 openedAt={data.openedAt}
                 closedAt={data.closedAt}
-                orderCount={data.orderCount}
-                ordersTotalAmount={data.ordersTotalAmount}
                 language={lang}
-                currencySymbol={sym}
                 tableLabel={tableLabel}
               />
 
-              <DiningSessionActionBar
-                restaurantId={restaurantId}
-                sessionId={data.sessionId}
-                status={data.status as DiningSessionStatus}
-              />
-
-              <DiningSessionOrdersList
-                orders={data.orders}
+              <DiningSessionOrdersSummarySection
+                orderCount={data.orderCount}
+                itemsCount={itemsCount}
+                ordersTotalAmount={data.ordersTotalAmount}
                 language={lang}
                 currencySymbol={sym}
               />
+
+              <DiningSessionSettlementSummarySection
+                settlement={settlementSummary}
+                language={lang}
+                currencySymbol={sym}
+              />
+
+              <section
+                className={cn(restaurantDash.panelInset, "p-4")}
+                aria-label={sessionSummaryLabel("actions", lang)}
+              >
+                <h3 className="mb-3 text-sm font-semibold text-white">
+                  {sessionSummaryLabel("actions", lang)}
+                </h3>
+                <DiningSessionActionBar
+                  restaurantId={restaurantId}
+                  sessionId={data.sessionId}
+                  status={data.status as DiningSessionStatus}
+                />
+              </section>
 
               <DiningSessionTimelineList
                 events={data.events}
@@ -140,7 +206,7 @@ export function DiningSessionWorkspaceSheet({
                 currencySymbol={sym}
               />
             </>
-          )}
+          ) : null}
         </div>
       </SheetContent>
     </Sheet>

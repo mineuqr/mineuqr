@@ -64,13 +64,34 @@ export function formatSessionTotalAmount(
 
 export const sessionSummaryLabels = {
   openedAt: { ar: "بدأت", en: "Started" },
+  startedAt: { ar: "وقت البدء", en: "Started At" },
   duration: { ar: "المدة", en: "Duration" },
   orders: { ar: "الطلبات", en: "Orders" },
   sessionTotal: { ar: "إجمالي الجلسة", en: "Session total" },
   ordersInSession: { ar: "الطلبات في الجلسة", en: "Orders in session" },
   timeline: { ar: "سجل الجلسة", en: "Session timeline" },
   noOrders: { ar: "لا توجد طلبات مرتبطة بهذه الجلسة", en: "No orders linked to this session" },
-  loadError: { ar: "تعذر تحميل الجلسة", en: "Could not load session" },
+  loadError: { ar: "تعذر تحميل الجلسة", en: "Unable to load session" },
+  sessionNotFound: { ar: "الجلسة غير موجودة", en: "Session not found" },
+  overview: { ar: "نظرة عامة", en: "Session Overview" },
+  ordersSummary: { ar: "ملخص الطلبات", en: "Orders Summary" },
+  settlementSummary: { ar: "ملخص التسوية", en: "Settlement Summary" },
+  sessionId: { ar: "رقم الجلسة", en: "Session ID" },
+  table: { ar: "الطاولة", en: "Table" },
+  status: { ar: "الحالة", en: "Status" },
+  ordersCount: { ar: "عدد الطلبات", en: "Orders Count" },
+  itemsCount: { ar: "عدد الأصناف", en: "Items Count" },
+  orderValue: { ar: "قيمة الطلبات", en: "Order Value" },
+  settlementMethod: { ar: "طريقة التسوية", en: "Settlement Method" },
+  settlementAmount: { ar: "مبلغ التسوية", en: "Settlement Amount" },
+  settlementTime: { ar: "وقت التسوية", en: "Settlement Time" },
+  settlementPending: {
+    ar: "لم تُسوَّ الجلسة بعد",
+    en: "Settlement pending",
+  },
+  settlementPaid: { ar: "مدفوعة", en: "Paid" },
+  settlementComplimentary: { ar: "ضيافة", en: "Complimentary" },
+  actions: { ar: "إجراءات الجلسة", en: "Session Actions" },
 } as const;
 
 export function sessionSummaryLabel(

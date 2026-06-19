@@ -1,16 +1,13 @@
 import { formatTimelineEventDescription } from "@/lib/diningSessionTimelineCopy";
+import type { WorkspaceTimelineEvent } from "@/lib/diningSessionWorkspaceView";
 import { sessionSummaryLabel } from "@/lib/diningSessionWorkspaceCopy";
 import { formatRiyadhDateTime } from "@/lib/datetime";
+import { cn } from "@/lib/utils";
+import { restaurantDash } from "./restaurantDashStyles";
 
 type Lang = "ar" | "en";
 
-export type WorkspaceTimelineEvent = {
-  id: number;
-  eventType: string;
-  createdAt: string;
-  orderNumber?: string | null;
-  totalAmount?: string | null;
-};
+export type { WorkspaceTimelineEvent };
 
 type DiningSessionTimelineListProps = {
   events: WorkspaceTimelineEvent[];
@@ -30,30 +27,33 @@ export function DiningSessionTimelineList({
     });
 
   return (
-    <section className="space-y-3">
-      <h3 className="text-sm font-medium text-foreground">
+    <section
+      className={cn(restaurantDash.panelInset, "p-4")}
+      aria-label={sessionSummaryLabel("timeline", language)}
+    >
+      <h3 className="mb-3 text-sm font-semibold text-white">
         {sessionSummaryLabel("timeline", language)}
       </h3>
 
       {events.length === 0 ? (
-        <p className="py-4 text-center text-sm text-muted-foreground">
+        <p className="py-2 text-center text-sm text-slate-400">
           {language === "ar" ? "لا توجد أحداث بعد" : "No events yet"}
         </p>
       ) : (
-        <ol className="relative space-y-6 border-s border-border/50 ps-4">
+        <ol className="relative space-y-5 border-s border-cyan-500/20 ps-4">
           {events.map((event) => (
             <li key={event.id} className="relative">
               <span
-                className="absolute -start-[1.3125rem] top-1.5 h-2.5 w-2.5 rounded-full bg-primary/80 ring-4 ring-background"
+                className="absolute -start-[1.3125rem] top-1.5 h-2.5 w-2.5 rounded-full bg-cyan-400/80 ring-4 ring-slate-900"
                 aria-hidden
               />
               <time
                 dateTime={event.createdAt}
-                className="mb-1 block text-xs font-medium tabular-nums text-muted-foreground"
+                className="mb-1 block text-xs font-medium tabular-nums text-slate-500"
               >
                 {formatTime(event.createdAt)}
               </time>
-              <p className="text-sm text-foreground">
+              <p className="text-sm text-slate-200">
                 {formatTimelineEventDescription(event, language, currencySymbol)}
               </p>
             </li>
