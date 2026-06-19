@@ -30,6 +30,7 @@ vi.mock("../_core/opsLog", () => ({
 
 import { OPS_EVENT } from "../_core/opsTaxonomy";
 import {
+  decrementSessionAggregatesForCancelledOrder,
   incrementSessionAggregatesForOrder,
   logSessionAggregateDriftIfAny,
 } from "./sessionAggregateWriters";
@@ -204,6 +205,48 @@ describe("sessionAggregateWriters SESSION-AGGREGATES-1 Phase A", () => {
       await logSessionAggregateDriftIfAny({ restaurantId: 1, sessionId: 10 });
 
       expect(opsMocks.opsLog).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("decrementSessionAggregatesForCancelledOrder Phase A.1", () => {
+    it("decrements aggregates when order is cancelled", async () => {
+      await decrementSessionAggregatesForCancelledOrder(
+        {
+          restaurantId: 1,
+          sessionId: 10,
+          orderTotalAmount: "45.00",
+        },
+        { procedure: "order.updateStatus" }
+      );
+
+      expect(repoMocks.updateSessionAggregates).toHaveBeenCalledWith({
+        restaurantId: 1,
+        sessionId: 10,
+        totalOrdersDelta: -1,
+        totalAmountDelta: "-45.00",
+      });
+    });
+
+    it("runs drift monitor after decrement", async () => {
+      await decrementSessionAggregatesForCancelledOrder({
+        restaurantId: 1,
+        sessionId: 10,
+        orderTotalAmount: "20.00",
+      });
+
+      expect(dbMocks.getOrdersBySessionId).toHaveBeenCalledWith(1, 10);
+    });
+
+    it("propagates repository update failures", async () => {
+      repoMocks.updateSessionAggregates.mockRejectedValue(new Error("db unavailable"));
+
+      await expect(
+        decrementSessionAggregatesForCancelledOrder({
+          restaurantId: 1,
+          sessionId: 10,
+          orderTotalAmount: "10.00",
+        })
+      ).rejects.toThrow("db unavailable");
     });
   });
 });

@@ -86,7 +86,7 @@ import { generateOrderTrackingToken } from "./orderTrackingToken";
 import { ENV } from "./_core/env";
 import { opsLog } from "./_core/opsLog";
 import { OPS_EVENT } from "./_core/opsTaxonomy";
-import { incrementSessionAggregatesForOrder } from "./diningSession/sessionAggregateWriters";
+import { incrementSessionAggregatesForOrder, decrementSessionAggregatesForCancelledOrder } from "./diningSession/sessionAggregateWriters";
 import { getOrCreateSession, recordSessionEvent, requestBill, requestBillByCustomer, cancelBillRequest, markPaymentPending, closeSession } from "./diningSession/sessionService";
 import { TABLE_EVENT_TYPES } from "./diningSession/sessionTypes";
 import { throwSessionServiceTrpcError } from "./diningSession/mapSessionErrorToTrpc";
@@ -2046,6 +2046,39 @@ const orderRouter = router({
           await cleanupPushSubscriptionsForOrder(order.id);
         } catch {
           /* cleanup failure is non-critical */
+        }
+      }
+
+      if (
+        ENV.tableSessionDualWrite &&
+        order.sessionId != null &&
+        previousStatus !== "cancelled" &&
+        input.status === "cancelled"
+      ) {
+        try {
+          await decrementSessionAggregatesForCancelledOrder(
+            {
+              restaurantId: order.restaurantId,
+              sessionId: order.sessionId,
+              orderTotalAmount: String(order.totalAmount),
+            },
+            { procedure: "order.updateStatus" }
+          );
+        } catch (e) {
+          opsLog({
+            type: OPS_EVENT.session_aggregate_update_failed,
+            category: "ORDER",
+            severity: "warn",
+            ts: new Date().toISOString(),
+            restaurantId: order.restaurantId,
+            procedure: "order.updateStatus",
+            metadata: {
+              sessionId: order.sessionId,
+              orderId: order.id,
+              operation: "cancel",
+              error: e instanceof Error ? e.message : String(e),
+            },
+          });
         }
       }
 

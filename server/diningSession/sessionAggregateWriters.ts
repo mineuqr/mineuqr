@@ -15,6 +15,12 @@ export type IncrementSessionAggregatesForOrderInput = {
   orderTotalAmount: string;
 };
 
+export type DecrementSessionAggregatesForCancelledOrderInput = {
+  restaurantId: number;
+  sessionId: number;
+  orderTotalAmount: string;
+};
+
 function assertPositiveInteger(value: number, field: string): void {
   if (!Number.isInteger(value) || value <= 0) {
     throw new DiningSessionValidationError(`Invalid ${field}`);
@@ -103,6 +109,36 @@ export async function incrementSessionAggregatesForOrder(
     sessionId: input.sessionId,
     totalOrdersDelta: 1,
     totalAmountDelta: input.orderTotalAmount,
+  });
+
+  await logSessionAggregateDriftIfAny({
+    restaurantId: input.restaurantId,
+    sessionId: input.sessionId,
+    procedure: options?.procedure,
+  });
+}
+
+/**
+ * Phase A.1 — decrement session rollups when a linked order is cancelled.
+ * Call only when transitioning into cancelled from a non-cancelled status.
+ */
+export async function decrementSessionAggregatesForCancelledOrder(
+  input: DecrementSessionAggregatesForCancelledOrderInput,
+  options?: { procedure?: string }
+): Promise<void> {
+  assertPositiveInteger(input.restaurantId, "restaurantId");
+  assertPositiveInteger(input.sessionId, "sessionId");
+
+  const amount = Number.parseFloat(input.orderTotalAmount);
+  if (!Number.isFinite(amount) || amount < 0) {
+    throw new DiningSessionValidationError("Invalid orderTotalAmount");
+  }
+
+  await updateSessionAggregates({
+    restaurantId: input.restaurantId,
+    sessionId: input.sessionId,
+    totalOrdersDelta: -1,
+    totalAmountDelta: (-amount).toFixed(2),
   });
 
   await logSessionAggregateDriftIfAny({
