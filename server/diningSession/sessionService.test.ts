@@ -238,7 +238,7 @@ describe("sessionService TABLE-MANAGEMENT-1 D2", () => {
           restaurantId: 1,
           tableId: 5,
           sessionId: 10,
-          eventType: "BILL_REQUESTED" as "ORDER_CREATED",
+          eventType: "UNKNOWN_EVENT" as "ORDER_CREATED",
         })
       ).rejects.toBeInstanceOf(DiningSessionValidationError);
     });

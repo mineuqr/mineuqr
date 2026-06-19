@@ -31,9 +31,15 @@ describe("diningSessionTimelineCopy (UX-1C)", () => {
     ).toBe("Order ORD-0143 created");
   });
 
-  it("includes future BILL_REQUESTED copy", () => {
+  it("formats staff bill request in Arabic", () => {
     expect(
       formatTimelineEventDescription({ eventType: "BILL_REQUESTED" }, "ar")
     ).toBe("تم طلب الفاتورة");
+  });
+
+  it("formats SESSION_CLOSED", () => {
+    expect(formatTimelineEventDescription({ eventType: "SESSION_CLOSED" }, "en")).toBe(
+      "Session closed"
+    );
   });
 });

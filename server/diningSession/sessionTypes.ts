@@ -22,10 +22,13 @@ export const TABLE_EVENT_TYPES = {
 export type TableEventType =
   (typeof TABLE_EVENT_TYPES)[keyof typeof TABLE_EVENT_TYPES];
 
-/** Written by sessionService today. */
+/** Written by sessionService (lifecycle + order integration). */
 export const TABLE_EVENT_TYPE_VALUES: readonly TableEventType[] = [
   TABLE_EVENT_TYPES.SESSION_OPENED,
   TABLE_EVENT_TYPES.ORDER_CREATED,
+  TABLE_EVENT_TYPES.BILL_REQUESTED,
+  TABLE_EVENT_TYPES.PAYMENT_PENDING,
+  TABLE_EVENT_TYPES.SESSION_CLOSED,
 ];
 
 /** Owner timeline V1 — events rendered in dashboard session view. */
@@ -34,7 +37,20 @@ export const OWNER_TIMELINE_V1_EVENT_TYPES = [
   TABLE_EVENT_TYPES.ORDER_CREATED,
 ] as const;
 
+/** UX-1D — workspace timeline includes lifecycle events. */
+export const OWNER_TIMELINE_OPERATIONAL_EVENT_TYPES = [
+  ...OWNER_TIMELINE_V1_EVENT_TYPES,
+  TABLE_EVENT_TYPES.BILL_REQUESTED,
+  TABLE_EVENT_TYPES.PAYMENT_PENDING,
+  TABLE_EVENT_TYPES.SESSION_CLOSED,
+] as const;
+
 export type OwnerTimelineV1EventType = (typeof OWNER_TIMELINE_V1_EVENT_TYPES)[number];
+
+export type OwnerTimelineOperationalEventType =
+  (typeof OWNER_TIMELINE_OPERATIONAL_EVENT_TYPES)[number];
+
+export type DiningSessionStatus = "open" | "bill_requested" | "payment_pending" | "closed";
 
 /** All event types with owner timeline copy (V1 + future). */
 export const OWNER_TIMELINE_KNOWN_EVENT_TYPES = [
@@ -91,6 +107,13 @@ export class DiningSessionConflictError extends Error {
   constructor(message = "An active dining session already exists for this table") {
     super(message);
     this.name = "DiningSessionConflictError";
+  }
+}
+
+export class DiningSessionTransitionError extends Error {
+  constructor(message = "Invalid session status transition") {
+    super(message);
+    this.name = "DiningSessionTransitionError";
   }
 }
 

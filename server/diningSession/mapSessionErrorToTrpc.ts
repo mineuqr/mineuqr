@@ -4,11 +4,15 @@ import {
   DiningSessionNotFoundError,
   DiningSessionUnavailableError,
   DiningSessionValidationError,
+  DiningSessionTransitionError,
 } from "./sessionTypes";
 
 /** Map dining session domain errors to tRPC errors (TABLE-MANAGEMENT-1 D3). */
 export function throwSessionServiceTrpcError(err: unknown): never {
   if (err instanceof DiningSessionValidationError) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: err.message });
+  }
+  if (err instanceof DiningSessionTransitionError) {
     throw new TRPCError({ code: "BAD_REQUEST", message: err.message });
   }
   if (err instanceof DiningSessionNotFoundError) {

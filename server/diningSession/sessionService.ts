@@ -1,12 +1,13 @@
 /**
  * TABLE-MANAGEMENT-1 D2 — dining session service (no router / order integration).
  */
-import { getRestaurantById, getTableById } from "../db";
+import { getRestaurantById, getTableById, getOrdersBySessionId } from "../db";
 import {
   findActiveSession,
   findSessionById,
   insertSession,
   insertSessionEvent,
+  updateSessionStatus,
 } from "./sessionRepository";
 import { generateDiningSessionToken } from "./sessionToken";
 import {
@@ -14,6 +15,7 @@ import {
   DiningSessionNotFoundError,
   DiningSessionUnavailableError,
   DiningSessionValidationError,
+  DiningSessionTransitionError,
   TABLE_EVENT_TYPES,
   TABLE_EVENT_TYPE_VALUES,
   type GetActiveSessionInput,
@@ -22,11 +24,106 @@ import {
   type RecordSessionEventInput,
   type RecordSessionEventResult,
   type TableEventType,
+  type DiningSessionStatus,
   formatDiningSessionTimestamp,
   isMysqlDuplicateKeyError,
 } from "./sessionTypes";
 import type { SelectDiningSession } from "../../drizzle/schema";
 import { getDb } from "../db";
+import { computeOrdersTotalAmount } from "./sessionOwnerWorkspace";
+
+const ALLOWED_STATUS_TRANSITIONS: Record<DiningSessionStatus, DiningSessionStatus[]> = {
+  open: ["bill_requested", "closed"],
+  bill_requested: ["open", "payment_pending", "closed"],
+  payment_pending: ["closed"],
+  closed: [],
+};
+
+export type StaffSessionActionInput = {
+  restaurantId: number;
+  sessionId: number;
+  actorUserId: number;
+};
+
+function assertValidSessionActionInput(input: StaffSessionActionInput): void {
+  if (!Number.isInteger(input.restaurantId) || input.restaurantId <= 0) {
+    throw new DiningSessionValidationError("Invalid restaurantId");
+  }
+  if (!Number.isInteger(input.sessionId) || input.sessionId <= 0) {
+    throw new DiningSessionValidationError("Invalid sessionId");
+  }
+  if (!Number.isInteger(input.actorUserId) || input.actorUserId <= 0) {
+    throw new DiningSessionValidationError("Invalid actorUserId");
+  }
+}
+
+function assertStatusTransition(from: DiningSessionStatus, to: DiningSessionStatus): void {
+  if (!ALLOWED_STATUS_TRANSITIONS[from].includes(to)) {
+    throw new DiningSessionTransitionError(
+      `Cannot transition session from ${from} to ${to}`
+    );
+  }
+}
+
+async function loadSessionForStaffAction(
+  restaurantId: number,
+  sessionId: number
+): Promise<SelectDiningSession> {
+  const session = await findSessionById(sessionId);
+  if (!session || session.restaurantId !== restaurantId) {
+    throw new DiningSessionNotFoundError();
+  }
+  if (session.status === "closed") {
+    throw new DiningSessionTransitionError("Session is closed");
+  }
+  return session;
+}
+
+async function applySessionTransition(
+  session: SelectDiningSession,
+  toStatus: DiningSessionStatus,
+  eventType: TableEventType | null,
+  metadata: Record<string, unknown>,
+  patch: {
+    billRequestedAt?: string | null;
+    paymentPendingAt?: string | null;
+    closedAt?: string | null;
+    openGuard?: number | null;
+  }
+): Promise<void> {
+  const fromStatus = session.status as DiningSessionStatus;
+  assertStatusTransition(fromStatus, toStatus);
+
+  const db = await getDb();
+  if (!db) {
+    throw new DiningSessionUnavailableError();
+  }
+
+  await db.transaction(async (tx) => {
+    await updateSessionStatus(
+      {
+        restaurantId: session.restaurantId,
+        sessionId: session.id,
+        status: toStatus,
+        ...patch,
+      },
+      tx
+    );
+
+    if (eventType) {
+      await insertSessionEvent(
+        {
+          restaurantId: session.restaurantId,
+          tableId: session.tableId,
+          sessionId: session.id,
+          eventType,
+          metadata,
+        },
+        tx
+      );
+    }
+  });
+}
 
 async function validateTableContext(input: {
   restaurantId: number;
@@ -200,4 +297,78 @@ export async function recordSessionEvent(
   });
 
   return { eventId };
+}
+
+/** UX-1D — staff initiates bill request (open → bill_requested). */
+export async function requestBill(input: StaffSessionActionInput): Promise<void> {
+  assertValidSessionActionInput(input);
+  const session = await loadSessionForStaffAction(input.restaurantId, input.sessionId);
+  const now = formatDiningSessionTimestamp();
+
+  await applySessionTransition(
+    session,
+    "bill_requested",
+    TABLE_EVENT_TYPES.BILL_REQUESTED,
+    {
+      source: "staff",
+      actorUserId: input.actorUserId,
+      tableNumber: session.tableNumber,
+    },
+    { billRequestedAt: now }
+  );
+}
+
+/** UX-1D — staff cancels bill request (bill_requested → open). */
+export async function cancelBillRequest(input: StaffSessionActionInput): Promise<void> {
+  assertValidSessionActionInput(input);
+  const session = await loadSessionForStaffAction(input.restaurantId, input.sessionId);
+
+  await applySessionTransition(session, "open", null, {}, { billRequestedAt: null });
+}
+
+/** UX-1D — staff marks payment in progress (bill_requested → payment_pending). */
+export async function markPaymentPending(input: StaffSessionActionInput): Promise<void> {
+  assertValidSessionActionInput(input);
+  const session = await loadSessionForStaffAction(input.restaurantId, input.sessionId);
+  const now = formatDiningSessionTimestamp();
+
+  await applySessionTransition(
+    session,
+    "payment_pending",
+    TABLE_EVENT_TYPES.PAYMENT_PENDING,
+    {
+      actorUserId: input.actorUserId,
+      tableNumber: session.tableNumber,
+    },
+    { paymentPendingAt: now }
+  );
+}
+
+/** UX-1D — staff closes session (open | bill_requested | payment_pending → closed). */
+export async function closeSession(input: StaffSessionActionInput): Promise<void> {
+  assertValidSessionActionInput(input);
+  const session = await loadSessionForStaffAction(input.restaurantId, input.sessionId);
+  const now = formatDiningSessionTimestamp();
+  const orderRows = await getOrdersBySessionId(input.restaurantId, input.sessionId);
+
+  await applySessionTransition(
+    session,
+    "closed",
+    TABLE_EVENT_TYPES.SESSION_CLOSED,
+    {
+      actorUserId: input.actorUserId,
+      tableNumber: session.tableNumber,
+      orderCount: orderRows.length,
+      ordersTotalAmount: computeOrdersTotalAmount(orderRows),
+    },
+    { closedAt: now, openGuard: null }
+  );
+}
+
+/** Exported for unit tests. */
+export function isAllowedSessionStatusTransition(
+  from: DiningSessionStatus,
+  to: DiningSessionStatus
+): boolean {
+  return ALLOWED_STATUS_TRANSITIONS[from].includes(to);
 }

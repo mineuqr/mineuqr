@@ -7,12 +7,12 @@ import { findEventsBySessionId, findSessionById } from "./sessionRepository";
 import {
   DiningSessionNotFoundError,
   OWNER_TIMELINE_V1_EVENT_TYPES,
-  type OwnerTimelineV1EventType,
+  type OwnerTimelineOperationalEventType,
 } from "./sessionTypes";
 
 export type OwnerTimelineEvent = {
   id: number;
-  eventType: OwnerTimelineV1EventType;
+  eventType: OwnerTimelineOperationalEventType;
   createdAt: string;
   orderId: number | null;
   orderNumber: string | null;
@@ -45,7 +45,7 @@ export function mapTableEventToOwnerTimeline(row: SelectTableEvent): OwnerTimeli
 
   return {
     id: row.id,
-    eventType: row.eventType as OwnerTimelineV1EventType,
+    eventType: row.eventType as OwnerTimelineOperationalEventType,
     createdAt: row.createdAt,
     orderId: row.orderId ?? null,
     orderNumber,

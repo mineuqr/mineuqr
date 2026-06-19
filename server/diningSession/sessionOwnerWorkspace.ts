@@ -7,7 +7,7 @@ import { mapTableEventToOwnerTimeline, type OwnerTimelineEvent } from "./session
 import { findEventsBySessionId, findSessionById } from "./sessionRepository";
 import {
   DiningSessionNotFoundError,
-  OWNER_TIMELINE_V1_EVENT_TYPES,
+  OWNER_TIMELINE_OPERATIONAL_EVENT_TYPES,
 } from "./sessionTypes";
 
 export type OwnerSessionOrder = {
@@ -90,7 +90,7 @@ export async function getOwnerSessionWorkspace(
   const [orderRows, eventRows] = await Promise.all([
     getOrdersBySessionId(restaurantId, sessionId),
     findEventsBySessionId(restaurantId, sessionId, {
-      eventTypes: OWNER_TIMELINE_V1_EVENT_TYPES,
+      eventTypes: OWNER_TIMELINE_OPERATIONAL_EVENT_TYPES,
     }),
   ]);
 

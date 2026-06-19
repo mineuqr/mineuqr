@@ -15,7 +15,7 @@ import { getDb } from "../db";
 import {
   DINING_SESSION_ACTIVE_OPEN_GUARD,
   DINING_SESSION_ACTIVE_STATUSES,
-  OWNER_TIMELINE_V1_EVENT_TYPES,
+  OWNER_TIMELINE_OPERATIONAL_EVENT_TYPES,
   DiningSessionUnavailableError,
 } from "./sessionTypes";
 
@@ -150,6 +150,47 @@ export async function insertSessionEvent(
   return insertId;
 }
 
+export type UpdateSessionStatusInput = {
+  restaurantId: number;
+  sessionId: number;
+  status: "open" | "bill_requested" | "payment_pending" | "closed";
+  billRequestedAt?: string | null;
+  paymentPendingAt?: string | null;
+  closedAt?: string | null;
+  openGuard?: number | null;
+};
+
+export async function updateSessionStatus(
+  data: UpdateSessionStatusInput,
+  client?: SessionDbClient
+): Promise<void> {
+  const db = await resolveDb(client);
+  const patch: Partial<InsertDiningSession> = { status: data.status };
+
+  if (data.billRequestedAt !== undefined) {
+    patch.billRequestedAt = data.billRequestedAt;
+  }
+  if (data.paymentPendingAt !== undefined) {
+    patch.paymentPendingAt = data.paymentPendingAt;
+  }
+  if (data.closedAt !== undefined) {
+    patch.closedAt = data.closedAt;
+  }
+  if (data.openGuard !== undefined) {
+    patch.openGuard = data.openGuard;
+  }
+
+  await db
+    .update(diningSessions)
+    .set(patch)
+    .where(
+      and(
+        eq(diningSessions.id, data.sessionId),
+        eq(diningSessions.restaurantId, data.restaurantId)
+      )
+    );
+}
+
 export async function findEventsBySessionId(
   restaurantId: number,
   sessionId: number,
@@ -157,7 +198,7 @@ export async function findEventsBySessionId(
   client?: SessionDbClient
 ): Promise<SelectTableEvent[]> {
   const db = await resolveDb(client);
-  const eventTypes = options?.eventTypes ?? OWNER_TIMELINE_V1_EVENT_TYPES;
+  const eventTypes = options?.eventTypes ?? OWNER_TIMELINE_OPERATIONAL_EVENT_TYPES;
 
   return db
     .select()

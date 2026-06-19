@@ -6,6 +6,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { DiningSessionActionBar } from "@/components/dashboard/DiningSessionActionBar";
 import { DiningSessionOrdersList } from "@/components/dashboard/DiningSessionOrdersList";
 import { DiningSessionSummaryCard } from "@/components/dashboard/DiningSessionSummaryCard";
 import { DiningSessionTimelineList } from "@/components/dashboard/DiningSessionTimelineList";
@@ -119,6 +120,12 @@ export function DiningSessionWorkspaceSheet({
                 language={lang}
                 currencySymbol={sym}
                 tableLabel={tableLabel}
+              />
+
+              <DiningSessionActionBar
+                restaurantId={restaurantId}
+                sessionId={data.sessionId}
+                status={data.status as DiningSessionStatus}
               />
 
               <DiningSessionOrdersList

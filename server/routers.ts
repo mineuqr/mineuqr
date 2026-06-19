@@ -86,7 +86,7 @@ import { generateOrderTrackingToken } from "./orderTrackingToken";
 import { ENV } from "./_core/env";
 import { opsLog } from "./_core/opsLog";
 import { OPS_EVENT } from "./_core/opsTaxonomy";
-import { getOrCreateSession, recordSessionEvent } from "./diningSession/sessionService";
+import { getOrCreateSession, recordSessionEvent, requestBill, cancelBillRequest, markPaymentPending, closeSession } from "./diningSession/sessionService";
 import { TABLE_EVENT_TYPES } from "./diningSession/sessionTypes";
 import { throwSessionServiceTrpcError } from "./diningSession/mapSessionErrorToTrpc";
 import {
@@ -1679,6 +1679,86 @@ const sessionRouter = router({
     .query(async ({ input, ctx }) => {
       await assertRestaurantAccess(ctx, input.restaurantId);
       try {
+        return await getOwnerSessionWorkspace(input.restaurantId, input.sessionId);
+      } catch (err) {
+        throwSessionServiceTrpcError(err);
+      }
+    }),
+  staffRequestBill: verifiedProcedure
+    .input(
+      z.object({
+        restaurantId: z.number(),
+        sessionId: z.number().int().positive(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      await assertRestaurantAccess(ctx, input.restaurantId);
+      try {
+        await requestBill({
+          restaurantId: input.restaurantId,
+          sessionId: input.sessionId,
+          actorUserId: ctx.user.id,
+        });
+        return await getOwnerSessionWorkspace(input.restaurantId, input.sessionId);
+      } catch (err) {
+        throwSessionServiceTrpcError(err);
+      }
+    }),
+  cancelBillRequest: verifiedProcedure
+    .input(
+      z.object({
+        restaurantId: z.number(),
+        sessionId: z.number().int().positive(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      await assertRestaurantAccess(ctx, input.restaurantId);
+      try {
+        await cancelBillRequest({
+          restaurantId: input.restaurantId,
+          sessionId: input.sessionId,
+          actorUserId: ctx.user.id,
+        });
+        return await getOwnerSessionWorkspace(input.restaurantId, input.sessionId);
+      } catch (err) {
+        throwSessionServiceTrpcError(err);
+      }
+    }),
+  markPaymentPending: verifiedProcedure
+    .input(
+      z.object({
+        restaurantId: z.number(),
+        sessionId: z.number().int().positive(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      await assertRestaurantAccess(ctx, input.restaurantId);
+      try {
+        await markPaymentPending({
+          restaurantId: input.restaurantId,
+          sessionId: input.sessionId,
+          actorUserId: ctx.user.id,
+        });
+        return await getOwnerSessionWorkspace(input.restaurantId, input.sessionId);
+      } catch (err) {
+        throwSessionServiceTrpcError(err);
+      }
+    }),
+  close: verifiedProcedure
+    .input(
+      z.object({
+        restaurantId: z.number(),
+        sessionId: z.number().int().positive(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      await assertRestaurantAccess(ctx, input.restaurantId);
+      try {
+        await closeSession({
+          restaurantId: input.restaurantId,
+          sessionId: input.sessionId,
+          actorUserId: ctx.user.id,
+        });
         return await getOwnerSessionWorkspace(input.restaurantId, input.sessionId);
       } catch (err) {
         throwSessionServiceTrpcError(err);
