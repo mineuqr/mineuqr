@@ -206,6 +206,18 @@ describe("diningSessionRecovery TABLE-MANAGEMENT-1 D4", () => {
       expect(isDiningSessionOrderingEnabled(billRequestedSession)).toBe(false);
     });
 
+    it("blocks ordering after customer bill request state", () => {
+      expect(
+        isDiningSessionOrderingEnabled({
+          sessionToken: "tok",
+          status: "bill_requested",
+          tableNumber: 5,
+          openedAt: "2026-06-18T12:00:00.000Z",
+          billRequestedAt: "2026-06-18T12:30:00.000Z",
+        })
+      ).toBe(false);
+    });
+
     it("blocks ordering for PAYMENT_PENDING session", () => {
       expect(
         isDiningSessionOrderingEnabled({

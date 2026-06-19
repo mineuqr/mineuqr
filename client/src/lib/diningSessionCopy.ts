@@ -19,7 +19,7 @@ export function getDiningSessionBannerLines(
       case "open":
         return ["جلسة الطاولة نشطة.", "يمكنك إضافة طلبات جديدة."];
       case "bill_requested":
-        return ["تم طلب الفاتورة.", "يرجى انتظار الموظف لإتمام الدفع."];
+        return ["تم طلب الفاتورة.", "يرجى انتظار الموظف لإتمام عملية الدفع."];
       case "payment_pending":
         return ["الدفع قيد المعالجة.", "يرجى انتظار الموظف."];
       case "closed":
@@ -31,7 +31,7 @@ export function getDiningSessionBannerLines(
     case "open":
       return ["Your table session is active.", "You can place additional orders."];
     case "bill_requested":
-      return ["The bill has been requested.", "Please wait for staff to collect payment."];
+      return ["Bill requested.", "Please wait for a staff member to complete payment."];
     case "payment_pending":
       return ["Payment is being processed.", "Please wait for staff."];
     case "closed":

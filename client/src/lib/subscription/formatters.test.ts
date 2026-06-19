@@ -17,7 +17,7 @@ describe("subscription formatters (ADMIN-KPI-FIX-1)", () => {
 
   it("formatPlanPriceForCycle shows USD for subscription plans", () => {
     const line = formatPlanPriceForCycle(
-      { nameAr: "باقة", priceMonthly: "35", priceYearly: "299" },
+      { id: 1, nameAr: "باقة", priceMonthly: "35", priceYearly: "299" },
       "monthly",
       "ar"
     );

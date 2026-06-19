@@ -1,10 +1,11 @@
 /**
  * TABLE-MANAGEMENT-1 D2 — dining session service (no router / order integration).
  */
-import { getRestaurantById, getTableById, getOrdersBySessionId } from "../db";
+import { getRestaurantById, getRestaurantBySlug, getTableById, getOrdersBySessionId } from "../db";
 import {
   findActiveSession,
   findSessionById,
+  findSessionByToken,
   insertSession,
   insertSessionEvent,
   updateSessionStatus,
@@ -31,6 +32,11 @@ import {
 import type { SelectDiningSession } from "../../drizzle/schema";
 import { getDb } from "../db";
 import { computeOrdersTotalAmount } from "./sessionOwnerWorkspace";
+import {
+  isValidSessionTokenFormat,
+  toPublicDiningSession,
+  type PublicDiningSession,
+} from "./sessionPublicStatus";
 
 const ALLOWED_STATUS_TRANSITIONS: Record<DiningSessionStatus, DiningSessionStatus[]> = {
   open: ["bill_requested", "closed"],
@@ -43,6 +49,11 @@ export type StaffSessionActionInput = {
   restaurantId: number;
   sessionId: number;
   actorUserId: number;
+};
+
+export type CustomerRequestBillInput = {
+  slug: string;
+  sessionToken: string;
 };
 
 function assertValidSessionActionInput(input: StaffSessionActionInput): void {
@@ -123,6 +134,44 @@ async function applySessionTransition(
       );
     }
   });
+}
+
+async function transitionOpenToBillRequested(
+  session: SelectDiningSession,
+  metadata: Record<string, unknown>
+): Promise<void> {
+  const now = formatDiningSessionTimestamp();
+  await applySessionTransition(
+    session,
+    "bill_requested",
+    TABLE_EVENT_TYPES.BILL_REQUESTED,
+    metadata,
+    { billRequestedAt: now }
+  );
+}
+
+async function validateCustomerSessionContext(
+  input: CustomerRequestBillInput
+): Promise<SelectDiningSession> {
+  if (!isValidSessionTokenFormat(input.sessionToken)) {
+    throw new DiningSessionNotFoundError();
+  }
+
+  const restaurant = await getRestaurantBySlug(input.slug);
+  if (!restaurant?.isActive) {
+    throw new DiningSessionNotFoundError();
+  }
+
+  const session = await findSessionByToken(restaurant.id, input.sessionToken);
+  if (!session) {
+    throw new DiningSessionNotFoundError();
+  }
+
+  if (session.tableNumber <= 0) {
+    throw new DiningSessionNotFoundError();
+  }
+
+  return session;
 }
 
 async function validateTableContext(input: {
@@ -303,19 +352,41 @@ export async function recordSessionEvent(
 export async function requestBill(input: StaffSessionActionInput): Promise<void> {
   assertValidSessionActionInput(input);
   const session = await loadSessionForStaffAction(input.restaurantId, input.sessionId);
-  const now = formatDiningSessionTimestamp();
 
-  await applySessionTransition(
-    session,
-    "bill_requested",
-    TABLE_EVENT_TYPES.BILL_REQUESTED,
-    {
-      source: "staff",
-      actorUserId: input.actorUserId,
-      tableNumber: session.tableNumber,
-    },
-    { billRequestedAt: now }
-  );
+  await transitionOpenToBillRequested(session, {
+    source: "staff",
+    actorUserId: input.actorUserId,
+    tableNumber: session.tableNumber,
+  });
+}
+
+/** UX-1E — customer requests bill (open → bill_requested, idempotent when already requested). */
+export async function requestBillByCustomer(
+  input: CustomerRequestBillInput
+): Promise<PublicDiningSession> {
+  const session = await validateCustomerSessionContext(input);
+
+  if (session.status === "bill_requested") {
+    return toPublicDiningSession(session);
+  }
+
+  if (session.status !== "open") {
+    throw new DiningSessionTransitionError(
+      "Bill can only be requested for an open session"
+    );
+  }
+
+  await transitionOpenToBillRequested(session, {
+    source: "customer",
+    tableNumber: session.tableNumber,
+  });
+
+  const updated = await findSessionById(session.id);
+  if (!updated) {
+    throw new DiningSessionNotFoundError();
+  }
+
+  return toPublicDiningSession(updated);
 }
 
 /** UX-1D — staff cancels bill request (bill_requested → open). */

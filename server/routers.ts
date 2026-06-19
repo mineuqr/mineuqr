@@ -86,7 +86,7 @@ import { generateOrderTrackingToken } from "./orderTrackingToken";
 import { ENV } from "./_core/env";
 import { opsLog } from "./_core/opsLog";
 import { OPS_EVENT } from "./_core/opsTaxonomy";
-import { getOrCreateSession, recordSessionEvent, requestBill, cancelBillRequest, markPaymentPending, closeSession } from "./diningSession/sessionService";
+import { getOrCreateSession, recordSessionEvent, requestBill, requestBillByCustomer, cancelBillRequest, markPaymentPending, closeSession } from "./diningSession/sessionService";
 import { TABLE_EVENT_TYPES } from "./diningSession/sessionTypes";
 import { throwSessionServiceTrpcError } from "./diningSession/mapSessionErrorToTrpc";
 import {
@@ -1653,6 +1653,24 @@ const sessionRouter = router({
     )
     .query(async ({ input }) => {
       return getPublicSessionByToken(input.slug, input.sessionToken);
+    }),
+  requestBill: publicProcedure
+    .input(
+      z.object({
+        slug: z.string().min(1).max(128),
+        sessionToken: z
+          .string()
+          .min(16)
+          .max(64)
+          .regex(/^[A-Za-z0-9_-]+$/),
+      })
+    )
+    .mutation(async ({ input }) => {
+      try {
+        return await requestBillByCustomer(input);
+      } catch (err) {
+        throwSessionServiceTrpcError(err);
+      }
     }),
   getOwnerTimeline: verifiedProcedure
     .input(

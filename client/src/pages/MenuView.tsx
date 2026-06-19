@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Loader2, AlertCircle, Store } from "lucide-react";
 import { getTemplateComponent } from "@/components/MenuTemplates";
 import { DiningSessionBanner } from "@/components/customer/DiningSessionBanner";
+import { CustomerRequestBillButton } from "@/components/customer/CustomerRequestBillButton";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { CartProvider } from "@/contexts/CartContext";
 import CartDrawer from "@/components/CartDrawer";
@@ -128,6 +129,10 @@ export default function MenuView() {
   const showClosedNotice = tableNumber > 0 && canOrder && !orderingAllowed;
   const showSessionBanner =
     tableNumber > 0 && recoveryDone && recoveredSession != null;
+  const showRequestBill =
+    showSessionBanner &&
+    recoveredSession?.status === "open" &&
+    Boolean(recoveredSession.sessionToken);
 
   const trackViewMutation = trpc.restaurant.trackView.useMutation();
 
@@ -202,6 +207,13 @@ export default function MenuView() {
   }, [templateId, customColors]);
 
   const bannerOffsetClass = showClosedNotice ? "top-10" : undefined;
+  const requestBillOffsetClass = showClosedNotice
+    ? showSessionBanner
+      ? "top-[5.5rem]"
+      : "top-10"
+    : showSessionBanner
+      ? "top-14"
+      : undefined;
 
   if (restaurantLoading) {
     return (
@@ -255,6 +267,24 @@ export default function MenuView() {
           language={lang}
           status={recoveredSession.status}
           className={bannerOffsetClass}
+        />
+      )}
+      {showRequestBill && recoveredSession && (
+        <CustomerRequestBillButton
+          slug={slug}
+          sessionToken={recoveredSession.sessionToken}
+          language={lang}
+          className={requestBillOffsetClass}
+          onBillRequested={(updated) =>
+            setRecoveredSession((prev) =>
+              prev
+                ? {
+                    sessionToken: prev.sessionToken,
+                    ...updated,
+                  }
+                : null
+            )
+          }
         />
       )}
       <TemplateComponent

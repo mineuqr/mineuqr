@@ -12,7 +12,10 @@ describe("diningSessionCopy TABLE-MANAGEMENT-1 D4", () => {
 
   it("provides BILL_REQUESTED banner copy", () => {
     expect(getDiningSessionBannerTitle("bill_requested", "en")).toBe("Bill requested");
-    expect(getDiningSessionBannerLines("bill_requested", "en")[0]).toContain("bill");
+    expect(getDiningSessionBannerLines("bill_requested", "en")[0]).toBe("Bill requested.");
+    expect(getDiningSessionBannerLines("bill_requested", "en")[1]).toContain(
+      "staff member"
+    );
   });
 
   it("provides PAYMENT_PENDING banner copy", () => {
