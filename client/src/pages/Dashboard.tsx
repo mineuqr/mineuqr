@@ -5,6 +5,7 @@ import OrderAlertSystem from "@/components/OrderAlertSystem";
 import { DiningSessionWorkspaceSheet } from "@/components/dashboard/DiningSessionWorkspaceSheet";
 import { ActiveTablesBoardSection } from "@/components/dashboard/ActiveTablesBoardSection";
 import { ActionCenterSection } from "@/components/dashboard/ActionCenterSection";
+import { OperationalActivityFeedSection } from "@/components/dashboard/OperationalActivityFeedSection";
 import { getLoginUrl, spaNavigate } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { cn, resolveImageUrl } from "@/lib/utils";
@@ -1401,7 +1402,6 @@ function RestaurantHomePanel({
   language,
   statsAriaLabel,
   restaurantId,
-  onTabChange,
   currencySymbol,
   tableLabel,
 }: {
@@ -1411,25 +1411,12 @@ function RestaurantHomePanel({
   language: string;
   statsAriaLabel: string;
   restaurantId: number;
-  onTabChange: (tab: RestaurantTab) => void;
   currencySymbol?: string;
   tableLabel?: string;
 }) {
   const { isAuthenticated, authPending } = useAuth();
   const ordersEnabled = restaurantQueriesEnabled(authPending, isAuthenticated, restaurantId);
   const [workspaceSessionId, setWorkspaceSessionId] = useState<number | null>(null);
-  useDevQueryRuntimeLog("order.list", {
-    enabled: ordersEnabled,
-    authPending,
-    isAuthenticated,
-    pollMs: ordersEnabled ? DASHBOARD_ORDER_LIST_POLL_MS : undefined,
-  });
-  const { data: recentOrders, error: recentOrdersError } = trpc.order.list.useQuery(
-    { restaurantId },
-    orderListQueryOptions(ordersEnabled)
-  );
-  const recent = (recentOrders ?? []).slice(0, 5);
-  const ordersBlocked = isEmailNotVerifiedError(recentOrdersError);
 
   return (
     <div className="space-y-10 sm:space-y-12">
@@ -1451,41 +1438,13 @@ function RestaurantHomePanel({
         queriesEnabled={ordersEnabled}
         onOpenSession={setWorkspaceSessionId}
       />
+      <OperationalActivityFeedSection
+        restaurantId={restaurantId}
+        language={language}
+        queriesEnabled={ordersEnabled}
+        onOpenSession={setWorkspaceSessionId}
+      />
       <RestaurantStatisticsSection stats={stats} t={t} ariaLabel={statsAriaLabel} language={language} />
-
-      <section className="space-y-5">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold text-foreground sm:text-xl">
-            {language === "ar" ? "آخر النشاط" : "Recent activity"}
-          </h2>
-          <Button variant="ghost" className="h-10 text-base text-primary" onClick={() => onTabChange("orders")}>
-            {language === "ar" ? "عرض الكل" : "View all"}
-            <ArrowRight className="h-5 w-5 rtl:rotate-180" />
-          </Button>
-        </div>
-        {ordersBlocked ? (
-          <VerificationRequiredPanel variant="orders" compact />
-        ) : recent.length === 0 ? (
-          <p className="py-8 text-center text-base text-muted-foreground">
-            {language === "ar" ? "لا توجد طلبات حديثة" : "No recent orders"}
-          </p>
-        ) : (
-          <div className="space-y-3">
-            {recent.map((order: { id: number; orderNumber?: string; status: string; totalAmount: string; createdAt: string }) => (
-              <div
-                key={order.id}
-                className="flex items-center justify-between rounded-xl bg-[#161b22]/80 px-5 py-4"
-              >
-                <div className="flex min-w-0 items-center gap-3">
-                  <span className="font-mono text-base font-semibold text-primary">#{order.orderNumber}</span>
-                  <span className="truncate text-base text-muted-foreground">{order.status}</span>
-                </div>
-                <span className="shrink-0 text-base font-medium tabular-nums">{order.totalAmount}</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
 
       <DiningSessionWorkspaceSheet
         open={workspaceSessionId != null}
@@ -1599,7 +1558,6 @@ function RestaurantDetail({
           language={language}
           statsAriaLabel={statsAriaLabel}
           restaurantId={restaurantId}
-          onTabChange={onTabChange}
           currencySymbol={(restaurant as { currencySymbol?: string })?.currencySymbol}
           tableLabel={(restaurant as { tableLabel?: string })?.tableLabel}
         />
