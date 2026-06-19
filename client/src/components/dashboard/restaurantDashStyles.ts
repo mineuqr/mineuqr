@@ -1,9 +1,11 @@
 /**
- * UX-DASHBOARD-REFACTOR-1B/1C + UX-DASHBOARD-AUDIT-1A — restaurant dashboard visual tokens.
- * Admin palette: Deep Navy, Slate, Cyan Accent, Orange Warning, Red Danger, Green Success.
- * Interaction language aligned with Admin Console + Pricing page polish.
+ * UX-DASHBOARD-REFACTOR-1B/1C + UX-DASHBOARD-AUDIT-1A + UX-DASHBOARD-REFACTOR-1D
+ * Restaurant dashboard visual tokens — Admin Console shell inheritance.
  */
 import { cn } from "@/lib/utils";
+
+/** Restaurant workspace uses LTR shell geometry like Admin (sidebar physical left). */
+export const RESTAURANT_WORKSPACE_DIR = "ltr" as const;
 
 const pricingPanelBase =
   "rounded-xl border border-cyan-500/30 bg-gradient-to-b from-slate-800/50 to-slate-900/50 shadow-none";
@@ -35,6 +37,10 @@ export const restaurantRevenueValueClass =
 export const restaurantOperationalValueClass = "text-white";
 
 export const restaurantDash = {
+  /** Admin OperationsShell background */
+  shell: "min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900",
+  /** Admin-aligned main content container */
+  main: "mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8",
   stack: "flex flex-col gap-6 sm:gap-8",
   section: "flex flex-col gap-3 sm:gap-4",
   sectionTitle: "text-base font-semibold tracking-tight text-white sm:text-lg",
@@ -97,43 +103,6 @@ export const restaurantDash = {
     restaurantMotion,
     "hover:bg-green-500/10 hover:text-green-300"
   ),
-  /** Admin-aligned sidebar shell (I-07). */
-  sidebar:
-    "fixed inset-y-0 end-0 z-40 flex w-[min(18rem,92vw)] flex-col border-s border-cyan-500/20 bg-slate-950/98 backdrop-blur-xl shadow-2xl lg:w-[18rem]",
-  sidebarBrand: cn(
-    "flex h-14 w-full shrink-0 items-center gap-3 border-b border-cyan-500/30 px-4 text-start",
-    restaurantMotion,
-    "hover:bg-slate-900/50 hover:shadow-sm hover:shadow-cyan-500/5"
-  ),
-  sidebarNav: "flex-1 overflow-y-auto overscroll-contain px-3 py-4",
-  sidebarSectionLabel:
-    "px-2 pb-1.5 pt-5 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 first:pt-2",
-  sidebarNavBtn: cn(
-    "group relative flex h-10 w-full min-h-10 items-center gap-3 rounded-xl px-2.5 text-sm font-medium",
-    restaurantMotion
-  ),
-  sidebarNavIcon: cn(iconContainerBase, "h-9 w-9 [&_svg]:size-4"),
-  sidebarNavIconActive: cn(
-    "border-cyan-400/40 bg-cyan-500/15 text-white shadow-sm shadow-cyan-500/10"
-  ),
-  sidebarNavIconIdle: cn(
-    "border-slate-700/50 bg-slate-900/70 text-slate-400",
-    "group-hover:border-cyan-400/30 group-hover:bg-cyan-500/10 group-hover:text-cyan-400 group-hover:shadow-sm group-hover:shadow-cyan-500/10"
-  ),
-  sidebarNavActive: cn(
-    "bg-slate-800/80 font-semibold text-white shadow-sm shadow-cyan-500/10 ring-1 ring-inset ring-cyan-500/25",
-    "before:absolute before:end-0 before:top-1/2 before:h-7 before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-cyan-400 rtl:before:end-auto rtl:before:start-0"
-  ),
-  sidebarNavIdle: cn(
-    "text-slate-400",
-    "hover:bg-slate-800/40 hover:text-cyan-400 hover:shadow-sm hover:shadow-cyan-500/5"
-  ),
-  sidebarFooter: "shrink-0 space-y-2 border-t border-cyan-500/20 px-3 py-3",
-  sidebarFooterHint: "px-2 text-[11px] text-slate-500",
-  /** Admin-aligned top bar */
-  topBar:
-    "sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-cyan-500/20 bg-slate-950/90 px-4 backdrop-blur-xl sm:px-6",
-  mainColumn: "flex min-h-screen min-w-0 flex-1 flex-col lg:me-[18rem]",
 } as const;
 
 /** Semantic accents — admin palette. */

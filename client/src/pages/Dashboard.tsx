@@ -13,7 +13,12 @@ import { RestaurantDashSection } from "@/components/dashboard/RestaurantDashSect
 import {
   RestaurantSectionError,
 } from "@/components/dashboard/RestaurantSectionStates";
-import { restaurantDash, restaurantHoverGlow, restaurantIconColor } from "@/components/dashboard/restaurantDashStyles";
+import {
+  RestaurantOperationsShell,
+  type RestaurantTab,
+} from "@/components/dashboard/layout";
+import type { AdminBreadcrumbItem } from "@/components/admin/layout/AdminShellBreadcrumbs";
+import { restaurantDash, restaurantHoverGlow } from "@/components/dashboard/restaurantDashStyles";
 import { getLoginUrl, spaNavigate } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { cn, resolveImageUrl } from "@/lib/utils";
@@ -76,24 +81,7 @@ import {
 // ─── Dashboard UI primitives (Stripe / Linear–style) ─────────
 
 const dash = {
-  shell: "min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-900 text-[1rem] leading-relaxed text-foreground sm:text-[1.0625rem]",
-  shellGlow:
-    "pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(ellipse_80%_40%_at_50%_-15%,oklch(0.55_0.08_220/8%),transparent)]",
-  sidebar: restaurantDash.sidebar,
-  sidebarBrand: restaurantDash.sidebarBrand,
-  sidebarNav: restaurantDash.sidebarNav,
-  sidebarSectionLabel: restaurantDash.sidebarSectionLabel,
-  sidebarNavBtn: restaurantDash.sidebarNavBtn,
-  sidebarNavIcon: restaurantDash.sidebarNavIcon,
-  sidebarNavIconActive: restaurantDash.sidebarNavIconActive,
-  sidebarNavIconIdle: restaurantDash.sidebarNavIconIdle,
-  sidebarNavActive: restaurantDash.sidebarNavActive,
-  sidebarNavIdle: restaurantDash.sidebarNavIdle,
-  sidebarFooter: restaurantDash.sidebarFooter,
-  sidebarFooterHint: restaurantDash.sidebarFooterHint,
-  mainColumn: restaurantDash.mainColumn,
-  topBar: restaurantDash.topBar,
-  main: "mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8",
+  shell: restaurantDash.shell,
   card: restaurantDash.card,
   cardHover: cn(restaurantDash.card, restaurantHoverGlow),
   hero: restaurantDash.hero,
@@ -110,16 +98,20 @@ const dash = {
 
 type DashTab = { id: string; label: string; icon: ComponentType<{ className?: string }> };
 
-type RestaurantTab =
-  | "home"
-  | "orders"
-  | "reports"
-  | "categories"
-  | "offers"
-  | "tables"
-  | "qr"
-  | "templates"
-  | "settings";
+function restaurantTabLabel(tab: RestaurantTab, language: string, t: (key: string) => string): string {
+  const labels: Record<RestaurantTab, string> = {
+    home: language === "ar" ? "لوحة التحكم" : "Dashboard",
+    orders: language === "ar" ? "الطلبات" : "Orders",
+    reports: language === "ar" ? "التقارير والإحصائيات" : "Reports & Statistics",
+    categories: t("dashboard.categoriesAndItems"),
+    offers: t("dashboard.offers"),
+    tables: language === "ar" ? "الطاولات" : "Tables",
+    qr: language === "ar" ? "رموز QR" : "QR Codes",
+    templates: language === "ar" ? "قوالب المنيو" : "Menu Templates",
+    settings: t("dashboard.settings"),
+  };
+  return labels[tab];
+}
 
 function sectionToRestaurantTab(section: string | null | undefined): RestaurantTab | null {
   if (!section) return null;
@@ -161,334 +153,6 @@ function DashboardStatCard({
       hint={hint}
       valueVariant={valueVariant}
     />
-  );
-}
-
-function DashboardSidebar({
-  activeSection,
-  onRestaurants,
-  onLogout,
-  mobileOpen,
-  onMobileClose,
-  restaurantTab,
-  onRestaurantTabChange,
-  tablesLabel,
-}: {
-  activeSection: "restaurants" | "restaurant-detail";
-  onRestaurants: () => void;
-  onLogout: () => void;
-  mobileOpen: boolean;
-  onMobileClose: () => void;
-  restaurantTab?: RestaurantTab;
-  onRestaurantTabChange?: (tab: RestaurantTab) => void;
-  tablesLabel?: string;
-}) {
-  const { t, language } = useLanguage();
-  const [, setLocation] = useLocation();
-  const inRestaurant = activeSection === "restaurant-detail" && !!onRestaurantTabChange;
-
-  const topNavItems = [
-    {
-      id: "restaurants",
-      label: language === "ar" ? "مطاعمي" : "My Restaurants",
-      icon: Store,
-      active: activeSection === "restaurants",
-      onClick: () => {
-        onRestaurants();
-        onMobileClose();
-      },
-    },
-    {
-      id: "notifications",
-      label: t("common.notifications"),
-      icon: Bell,
-      active: false,
-      onClick: () => {
-        setLocation("/notifications");
-        onMobileClose();
-      },
-    },
-  ];
-
-  const restaurantWorkspaceNav: { id: RestaurantTab; label: string; icon: ComponentType<{ className?: string }> }[] =
-    inRestaurant
-      ? [
-          { id: "home", label: language === "ar" ? "لوحة التحكم" : "Dashboard", icon: Home },
-          { id: "orders", label: language === "ar" ? "الطلبات" : "Orders", icon: ClipboardList },
-          {
-            id: "reports",
-            label: language === "ar" ? "التقارير والإحصائيات" : "Reports & Statistics",
-            icon: BarChart3,
-          },
-        ]
-      : [];
-
-  const restaurantMenuNav: { id: RestaurantTab; label: string; icon: ComponentType<{ className?: string }> }[] =
-    inRestaurant
-      ? [
-          { id: "categories", label: t("dashboard.categoriesAndItems"), icon: LayoutGrid },
-          { id: "offers", label: t("dashboard.offers"), icon: Tag },
-          {
-            id: "tables",
-            label: tablesLabel ?? (language === "ar" ? "الطاولات" : "Tables"),
-            icon: Grid3X3,
-          },
-          { id: "qr", label: language === "ar" ? "رموز QR" : "QR Codes", icon: QrCode },
-          {
-            id: "templates",
-            label: language === "ar" ? "قوالب المنيو" : "Menu Templates",
-            icon: Palette,
-          },
-          { id: "settings", label: t("dashboard.settings"), icon: Settings },
-        ]
-      : [];
-
-  const renderNavButton = (
-    key: string,
-    label: string,
-    icon: ComponentType<{ className?: string }>,
-    active: boolean,
-    onClick: () => void
-  ) => {
-    const Icon = icon;
-    return (
-      <button
-        key={key}
-        type="button"
-        onClick={onClick}
-        className={cn(dash.sidebarNavBtn, active ? dash.sidebarNavActive : dash.sidebarNavIdle)}
-      >
-        <span
-          className={cn(
-            dash.sidebarNavIcon,
-            active ? dash.sidebarNavIconActive : dash.sidebarNavIconIdle
-          )}
-        >
-          <Icon className="shrink-0" aria-hidden />
-        </span>
-        <span
-          className={cn(
-            "min-w-0 flex-1 text-start leading-snug",
-            active ? "text-white" : "text-slate-400 group-hover:text-cyan-400"
-          )}
-        >
-          {label}
-        </span>
-      </button>
-    );
-  };
-
-  const sidebarBody = (
-    <>
-      <button
-        type="button"
-        onClick={() => {
-          if (inRestaurant) onRestaurants();
-          else setLocation("/dashboard");
-          onMobileClose();
-        }}
-        className={dash.sidebarBrand}
-        aria-label={language === "ar" ? "لوحة التحكم" : "Dashboard home"}
-      >
-        <div className={restaurantDash.brandIcon}>
-          <Store />
-        </div>
-        <div className="grid min-w-0 flex-1 text-start text-sm leading-tight">
-          <span className="truncate font-semibold text-white">mineuqr</span>
-          <span className="truncate text-xs text-cyan-300/80">
-            {language === "ar" ? "لوحة المطعم" : "Restaurant console"}
-          </span>
-        </div>
-      </button>
-
-      <nav className={dash.sidebarNav} aria-label="Dashboard">
-        <p className={dash.sidebarSectionLabel}>{language === "ar" ? "عام" : "General"}</p>
-        <div className="space-y-1">
-          {topNavItems.map((item) =>
-            renderNavButton(item.id, item.label, item.icon, item.active, item.onClick)
-          )}
-        </div>
-
-        {inRestaurant ? (
-          <>
-            <p className={dash.sidebarSectionLabel}>
-              {language === "ar" ? "مساحة العمل" : "Workspace"}
-            </p>
-            <div className="space-y-1">
-              {restaurantWorkspaceNav.map((item) =>
-                renderNavButton(
-                  item.id,
-                  item.label,
-                  item.icon,
-                  restaurantTab === item.id,
-                  () => {
-                    onRestaurantTabChange!(item.id);
-                    onMobileClose();
-                  }
-                )
-              )}
-            </div>
-            <p className={dash.sidebarSectionLabel}>
-              {language === "ar" ? "إدارة المنيو" : "Menu management"}
-            </p>
-            <div className="space-y-1">
-              {restaurantMenuNav.map((item) =>
-                renderNavButton(
-                  item.id,
-                  item.label,
-                  item.icon,
-                  restaurantTab === item.id,
-                  () => {
-                    onRestaurantTabChange!(item.id);
-                    onMobileClose();
-                  }
-                )
-              )}
-            </div>
-          </>
-        ) : null}
-      </nav>
-
-      <div className={dash.sidebarFooter}>
-        <p className={dash.sidebarFooterHint}>
-          {language === "ar" ? "تحتاج مساعدة؟ تواصل مع الدعم" : "Need help? Contact support"}
-        </p>
-        <Button
-          variant="outline"
-          size="sm"
-          className={cn("h-8 w-full text-xs", restaurantDash.toolbarBtn)}
-          onClick={() => {
-            setLocation("/contact");
-            onMobileClose();
-          }}
-        >
-          {language === "ar" ? "تواصل معنا" : "Contact us"}
-        </Button>
-        {renderNavButton("logout", t("dashboard.signOut"), LogOut, false, onLogout)}
-      </div>
-    </>
-  );
-
-  return (
-    <>
-      {mobileOpen ? (
-        <button
-          type="button"
-          className="fixed inset-0 z-30 bg-black/60 lg:hidden"
-          aria-label="Close menu"
-          onClick={onMobileClose}
-        />
-      ) : null}
-      <aside
-        className={cn(
-          dash.sidebar,
-          "transition-transform duration-200 lg:translate-x-0",
-          mobileOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"
-        )}
-      >
-        {sidebarBody}
-      </aside>
-    </>
-  );
-}
-
-function DashboardTopBar({
-  user,
-  activeSection,
-  onBackToRestaurants,
-  onOpenMobileMenu,
-}: {
-  user: { name?: string | null } | null | undefined;
-  activeSection: "restaurants" | "restaurant-detail";
-  onBackToRestaurants: () => void;
-  onOpenMobileMenu: () => void;
-}) {
-  const { t, language } = useLanguage();
-  const [, setLocation] = useLocation();
-  const displayName = user?.name || t("dashboard.user");
-  const initials = displayName.trim().slice(0, 2).toUpperCase();
-
-  return (
-    <header className={dash.topBar}>
-      <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className={restaurantDash.topBarIconBtn}
-          onClick={onOpenMobileMenu}
-        >
-          <Menu className="h-5 w-5" />
-        </Button>
-        {activeSection === "restaurant-detail" ? (
-          <button
-            type="button"
-            onClick={onBackToRestaurants}
-            className={restaurantDash.topBarGhostBtn}
-          >
-            <ChevronLeft className="h-5 w-5 rtl:rotate-180" />
-            <span className="hidden sm:inline">{t("dashboard.backToRestaurants")}</span>
-          </button>
-        ) : (
-          <span className={cn("hidden text-sm font-medium sm:inline", restaurantIconColor.inactive)}>
-            {language === "ar" ? "لوحة التحكم" : "Dashboard"}
-          </span>
-        )}
-      </div>
-
-      <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className={cn("hidden sm:inline-flex", restaurantDash.toolbarBtn)}
-          onClick={() => setLocation("/")}
-        >
-          <Globe className="h-4 w-4 me-1.5" />
-          {language === "ar" ? "العودة للموقع" : "Back to Website"}
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setLocation("/notifications")}
-          className={cn("relative", restaurantDash.topBarIconBtn)}
-        >
-          <Bell className="h-4 w-4" />
-          <NotificationBadge />
-        </Button>
-        <button
-          type="button"
-          onClick={() => setLocation("/profile")}
-          className={restaurantDash.topBarProfileBtn}
-        >
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cyan-500/15 text-xs font-semibold text-cyan-400">
-            {initials}
-          </div>
-          <div className="hidden min-w-0 text-start sm:block">
-            <p className="truncate text-sm font-medium text-white">{displayName}</p>
-            <p className="text-xs text-slate-500">
-              {language === "ar" ? "مالك" : "Owner"}
-            </p>
-          </div>
-        </button>
-      </div>
-    </header>
-  );
-}
-
-// ─── Notification Badge ─────────────────────────────────────
-function NotificationBadge() {
-  const { isAuthenticated, authPending } = useAuth();
-  const badgeEnabled = !authPending && isAuthenticated;
-  const { data: unreadNotifications } = trpc.notification.getUnread.useQuery(undefined, {
-    enabled: badgeEnabled,
-  });
-  const unreadCount = unreadNotifications?.length ?? 0;
-  if (unreadCount === 0) return null;
-  return (
-    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-      {unreadCount > 9 ? "9+" : unreadCount}
-    </span>
   );
 }
 
@@ -574,7 +238,6 @@ export default function Dashboard() {
     restaurantIdFromUrl
   );
   const [restaurantTab, setRestaurantTab] = useState<RestaurantTab>(tabFromSection ?? "home");
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const selectedRestaurantIdRef = useRef<number | null>(restaurantIdFromUrl);
 
   useEffect(() => {
@@ -663,10 +326,48 @@ export default function Dashboard() {
     }
   }, []);
 
+  const tablesLabel =
+    sidebarRestaurant?.tableLabel === "rooms"
+      ? language === "ar"
+        ? "الغرف"
+        : "Rooms"
+      : language === "ar"
+        ? "الطاولات"
+        : "Tables";
+
+  const shellBreadcrumbs = useMemo((): AdminBreadcrumbItem[] => {
+    const myRestaurantsLabel = language === "ar" ? "مطاعمي" : "My Restaurants";
+    if (activeSection === "restaurants") {
+      return [{ label: myRestaurantsLabel }];
+    }
+    const restaurantName =
+      language === "ar"
+        ? sidebarRestaurant?.nameAr
+        : (sidebarRestaurant as { nameEn?: string | null } | undefined)?.nameEn ||
+          sidebarRestaurant?.nameAr;
+    const crumbs: AdminBreadcrumbItem[] = [
+      { label: myRestaurantsLabel, href: "/dashboard" },
+    ];
+    if (selectedRestaurantId && restaurantName) {
+      crumbs.push({
+        label: restaurantName,
+        href: `/dashboard/${selectedRestaurantId}`,
+      });
+    }
+    crumbs.push({ label: restaurantTabLabel(restaurantTab, language, t) });
+    return crumbs;
+  }, [
+    activeSection,
+    language,
+    restaurantTab,
+    selectedRestaurantId,
+    sidebarRestaurant,
+    t,
+  ]);
+
   if (gate.showLoginRequired) {
     return (
       <div className={cn(dash.shell, "flex items-center justify-center p-4")} dir={dir}>
-        <div className={dash.shellGlow} aria-hidden />
         <Card className={cn(dash.card, "max-w-md w-full")}>
           <CardContent className="p-8 text-center">
             <QrCode className="w-16 h-16 text-primary mx-auto mb-4" />
@@ -685,62 +386,42 @@ export default function Dashboard() {
   }
 
   return (
-    <div className={dash.shell} dir={dir}>
-      <div className={dash.shellGlow} aria-hidden />
+    <>
       {isAuthenticated ? <OrderAlertSystem /> : null}
-      <DashboardSidebar
+      <RestaurantOperationsShell
+        user={user}
         activeSection={activeSection}
+        restaurantTab={activeSection === "restaurant-detail" ? restaurantTab : undefined}
         onRestaurants={handleBackToRestaurants}
         onLogout={isAuthenticated ? logout : () => {}}
-        mobileOpen={mobileSidebarOpen}
-        onMobileClose={() => setMobileSidebarOpen(false)}
-        restaurantTab={activeSection === "restaurant-detail" ? restaurantTab : undefined}
         onRestaurantTabChange={
           activeSection === "restaurant-detail" ? handleRestaurantTabChange : undefined
         }
-        tablesLabel={
-          sidebarRestaurant?.tableLabel === "rooms"
-            ? language === "ar"
-              ? "الغرف"
-              : "Rooms"
-            : language === "ar"
-              ? "الطاولات"
-              : "Tables"
-        }
-      />
-      <div className={dash.mainColumn}>
-        <DashboardTopBar
-          user={user}
-          activeSection={activeSection}
-          onBackToRestaurants={handleBackToRestaurants}
-          onOpenMobileMenu={() => setMobileSidebarOpen(true)}
-        />
-        <main className={dash.main}>
-          {isAuthenticated ? (
-            <EmailVerificationBanner className="mb-6" />
-          ) : null}
-          {gate.isPending ? (
-            <DashboardMainSkeleton />
-          ) : activeSection === "restaurants" ? (
-            <RestaurantsList onSelect={handleSelectRestaurant} userName={user?.name} />
-          ) : selectedRestaurantId ? (
-            <RestaurantDetail
-              key={selectedRestaurantId}
-              restaurantId={selectedRestaurantId}
-              activeTab={restaurantTab}
-              onTabChange={handleRestaurantTabChange}
-              onBack={handleBackToRestaurants}
-            />
-          ) : needsRestaurantResolve && restaurantsResolving ? (
-            <div className="flex justify-center py-20">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            </div>
-          ) : (
-            <RestaurantsList onSelect={handleSelectRestaurant} userName={user?.name} />
-          )}
-        </main>
-      </div>
-    </div>
+        tablesLabel={tablesLabel}
+        breadcrumbs={shellBreadcrumbs}
+      >
+        {isAuthenticated ? <EmailVerificationBanner className="mb-6" /> : null}
+        {gate.isPending ? (
+          <DashboardMainSkeleton />
+        ) : activeSection === "restaurants" ? (
+          <RestaurantsList onSelect={handleSelectRestaurant} userName={user?.name} />
+        ) : selectedRestaurantId ? (
+          <RestaurantDetail
+            key={selectedRestaurantId}
+            restaurantId={selectedRestaurantId}
+            activeTab={restaurantTab}
+            onTabChange={handleRestaurantTabChange}
+            onBack={handleBackToRestaurants}
+          />
+        ) : needsRestaurantResolve && restaurantsResolving ? (
+          <div className="flex justify-center py-20">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        ) : (
+          <RestaurantsList onSelect={handleSelectRestaurant} userName={user?.name} />
+        )}
+      </RestaurantOperationsShell>
+    </>
   );
 }
 
