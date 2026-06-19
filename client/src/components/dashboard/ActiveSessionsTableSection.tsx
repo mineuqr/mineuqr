@@ -1,16 +1,28 @@
 import { useAuth } from "@/_core/hooks/useAuth";
-import { Button } from "@/components/ui/button";
 import { VerificationRequiredPanel } from "@/components/auth/VerificationRequiredPanel";
+import { SessionOperationsToolbar } from "@/components/dashboard/SessionOperationsToolbar";
+import { SessionRowQuickActions } from "@/components/dashboard/SessionRowQuickActions";
 import {
   DASHBOARD_ORDER_LIST_POLL_MS,
   opsActiveTablesBoardQueryOptions,
   orderListQueryOptions,
   useDevQueryRuntimeLog,
 } from "@/lib/queryRuntime";
+import {
+  buildOperationalSessionRows,
+  buildSessionTableNumbers,
+  computeSessionStatusMetrics,
+  matchesSessionSearch,
+  matchesStatusFilter,
+  resolveSessionListEmptyMessage,
+  sessionStatusDisplayLabel,
+  type OperationalSessionRow,
+  type SessionStatusFilter,
+} from "@/lib/sessionWorkspaceOps";
 import { isEmailNotVerifiedError } from "@/lib/trpcErrors";
 import { trpc, type RouterOutputs } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { RestaurantDashSection } from "./RestaurantDashSection";
 import {
   RestaurantSectionEmpty,
@@ -18,8 +30,16 @@ import {
 } from "./RestaurantSectionStates";
 import { restaurantDash, restaurantSemantic } from "./restaurantDashStyles";
 
-type ActiveTableRow = RouterOutputs["ops"]["getActiveTablesBoard"]["tables"][number];
 type OrderRow = RouterOutputs["order"]["list"][number];
+
+const SESSION_STATUS_BADGE: Record<
+  OperationalSessionRow["sessionStatus"],
+  string
+> = {
+  open: restaurantSemantic.badgeOccupied,
+  paid: "border-cyan-500/30 bg-cyan-500/10 text-cyan-300",
+  complimentary: "border-violet-500/30 bg-violet-500/10 text-violet-300",
+};
 
 function formatDuration(minutes: number, isAr: boolean): string {
   if (minutes <= 0) return isAr ? "—" : "—";
@@ -67,13 +87,15 @@ function ActiveSessionTableRow({
   amount,
   currencySymbol,
   isAr,
+  restaurantId,
   onOpenSession,
   isLast,
 }: {
-  table: ActiveTableRow;
+  table: OperationalSessionRow;
   amount: number | undefined;
   currencySymbol: string;
   isAr: boolean;
+  restaurantId: number;
   onOpenSession: (sessionId: number) => void;
   isLast: boolean;
 }) {
@@ -115,10 +137,10 @@ function ActiveSessionTableRow({
         <span
           className={cn(
             "inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium",
-            restaurantSemantic.badgeOccupied
+            SESSION_STATUS_BADGE[table.sessionStatus]
           )}
         >
-          {isAr ? "مفتوحة" : "Open"}
+          {sessionStatusDisplayLabel(table.sessionStatus, isAr)}
         </span>
       </div>
 
@@ -145,7 +167,7 @@ function ActiveSessionTableRow({
         </p>
       </div>
 
-      <div className="flex items-center justify-between gap-3 sm:justify-end">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
         <div className="sm:text-end">
           <p className="text-xs font-medium uppercase tracking-wide text-slate-500 sm:hidden">
             {isAr ? "المبلغ" : "Amount"}
@@ -154,15 +176,13 @@ function ActiveSessionTableRow({
             {amountLabel}
           </p>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className={cn("shrink-0", restaurantDash.toolbarBtn)}
-          onClick={() => onOpenSession(sessionId)}
-        >
-          {isAr ? "فتح الجلسة" : "Open Session"}
-        </Button>
+        <SessionRowQuickActions
+          restaurantId={restaurantId}
+          sessionId={sessionId}
+          sessionStatus={table.sessionStatus}
+          isAr={isAr}
+          onOpenSession={onOpenSession}
+        />
       </div>
     </article>
   );
@@ -184,10 +204,12 @@ export function ActiveSessionsTableSection({
   const { isAuthenticated, authPending } = useAuth();
   const isAr = language === "ar";
   const sym = currencySymbol || "ر.س";
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<SessionStatusFilter>("all");
   const sectionTitle = isAr ? "الجلسات النشطة" : "Active Sessions";
   const sectionSub = isAr
-    ? "الجلسات المفتوحة التي تحتاج متابعة الآن"
-    : "Open sessions that need attention right now";
+    ? "ابحث عن الجلسات وصفّها وافتحها بسرعة"
+    : "Search, filter, and open sessions quickly";
   const ariaLabel = sectionTitle;
 
   useDevQueryRuntimeLog("ops.getActiveTablesBoard (sessions)", {
@@ -224,18 +246,36 @@ export function ActiveSessionsTableSection({
     isFetching: ordersFetching,
   } = trpc.order.list.useQuery({ restaurantId }, orderListQueryOptions(queriesEnabled));
 
-  const activeSessions = useMemo(() => {
-    return (board?.tables ?? []).filter(
-      (table) => table.status === "occupied" && table.sessionId
+  const operationalSessions = useMemo(() => {
+    const tableNumbersBySession = buildSessionTableNumbers(orders ?? []);
+    return buildOperationalSessionRows(board?.tables ?? [], tableNumbersBySession);
+  }, [board?.tables, orders]);
+
+  const statusMetrics = useMemo(
+    () => computeSessionStatusMetrics(operationalSessions),
+    [operationalSessions]
+  );
+
+  const visibleSessions = useMemo(() => {
+    return operationalSessions.filter(
+      (row) =>
+        matchesStatusFilter(row, statusFilter) && matchesSessionSearch(row, searchQuery)
     );
-  }, [board?.tables]);
+  }, [operationalSessions, searchQuery, statusFilter]);
 
   const sessionOrderTotals = useMemo(() => {
-    const sessionIds = activeSessions
+    const sessionIds = operationalSessions
       .map((table) => Number.parseInt(table.sessionId!, 10))
       .filter((id) => Number.isFinite(id));
     return buildSessionOrderTotals(orders ?? [], sessionIds);
-  }, [activeSessions, orders]);
+  }, [operationalSessions, orders]);
+
+  const emptyMessage = resolveSessionListEmptyMessage(isAr, {
+    hasAnySessions: operationalSessions.length > 0,
+    searchQuery,
+    statusFilter,
+    filteredCount: visibleSessions.length,
+  });
 
   const verificationError = isEmailNotVerifiedError(boardQueryError)
     ? boardQueryError
@@ -277,45 +317,58 @@ export function ActiveSessionsTableSection({
             void refetchOrders();
           }}
         />
-      ) : activeSessions.length === 0 ? (
-        <RestaurantSectionEmpty
-          message={isAr ? "لا توجد جلسات نشطة" : "No active sessions"}
-        />
       ) : (
         <>
+          <SessionOperationsToolbar
+            isAr={isAr}
+            searchQuery={searchQuery}
+            onSearchQueryChange={setSearchQuery}
+            statusFilter={statusFilter}
+            onStatusFilterChange={setStatusFilter}
+            metrics={statusMetrics}
+          />
+
           {ordersError ? (
-            <p className="mb-3 rounded-lg border border-orange-500/25 bg-orange-500/5 px-3 py-2 text-xs text-orange-300">
+            <p className="mt-3 rounded-lg border border-orange-500/25 bg-orange-500/5 px-3 py-2 text-xs text-orange-300">
               {isAr
                 ? "تعذر تحميل مبالغ الطلبات. تم عرض الجلسات بدون المبالغ."
                 : "Order amounts unavailable. Showing sessions without amounts."}
             </p>
           ) : null}
-          <div className={restaurantDash.listPanel}>
-            <div className="hidden border-b border-cyan-500/15 px-5 py-2.5 text-xs font-medium uppercase tracking-wide text-slate-500 sm:grid sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto_auto_auto] sm:gap-4">
-              <span>{isAr ? "الجلسة" : "Session"}</span>
-              <span>{isAr ? "الطاولة" : "Table"}</span>
-              <span>{isAr ? "الحالة" : "Status"}</span>
-              <span>{isAr ? "المدة" : "Started"}</span>
-              <span>{isAr ? "الطلبات" : "Orders"}</span>
-              <span className="text-end">{isAr ? "المبلغ / إجراء" : "Amount / Actions"}</span>
+
+          {emptyMessage ? (
+            <div className="mt-3">
+              <RestaurantSectionEmpty message={emptyMessage} />
             </div>
-            {activeSessions.map((table, index) => {
-              const sessionId = Number.parseInt(table.sessionId!, 10);
-              return (
-                <ActiveSessionTableRow
-                  key={`${table.tableId}-${sessionId}`}
-                  table={table}
-                  amount={
-                    ordersError ? undefined : sessionOrderTotals.get(sessionId)
-                  }
-                  currencySymbol={sym}
-                  isAr={isAr}
-                  onOpenSession={onOpenSession}
-                  isLast={index === activeSessions.length - 1}
-                />
-              );
-            })}
-          </div>
+          ) : (
+            <div className={cn("mt-3", restaurantDash.listPanel)}>
+              <div className="hidden border-b border-cyan-500/15 px-5 py-2.5 text-xs font-medium uppercase tracking-wide text-slate-500 sm:grid sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto_auto_auto] sm:gap-4">
+                <span>{isAr ? "الجلسة" : "Session"}</span>
+                <span>{isAr ? "الطاولة" : "Table"}</span>
+                <span>{isAr ? "الحالة" : "Status"}</span>
+                <span>{isAr ? "المدة" : "Started"}</span>
+                <span>{isAr ? "الطلبات" : "Orders"}</span>
+                <span className="text-end">{isAr ? "المبلغ / إجراء" : "Amount / Actions"}</span>
+              </div>
+              {visibleSessions.map((table, index) => {
+                const sessionId = Number.parseInt(table.sessionId!, 10);
+                return (
+                  <ActiveSessionTableRow
+                    key={`${table.tableId}-${sessionId}`}
+                    table={table}
+                    amount={
+                      ordersError ? undefined : sessionOrderTotals.get(sessionId)
+                    }
+                    currencySymbol={sym}
+                    isAr={isAr}
+                    restaurantId={restaurantId}
+                    onOpenSession={onOpenSession}
+                    isLast={index === visibleSessions.length - 1}
+                  />
+                );
+              })}
+            </div>
+          )}
         </>
       )}
     </RestaurantDashSection>
