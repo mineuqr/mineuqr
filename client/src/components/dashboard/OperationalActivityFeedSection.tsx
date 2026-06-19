@@ -217,19 +217,32 @@ export function OperationalActivityFeedSection({
   language,
   queriesEnabled,
   onOpenSession,
+  sectionTitle: sectionTitleOverride,
+  sectionDescription: sectionDescriptionOverride,
+  feedLimit,
+  enableExpandSheet = true,
 }: {
   restaurantId: number;
   language: string;
   queriesEnabled: boolean;
   onOpenSession: (sessionId: number) => void;
+  sectionTitle?: string;
+  sectionDescription?: string;
+  feedLimit?: number;
+  /** Home uses compact preview + sheet; Sessions workspace shows full inline feed. */
+  enableExpandSheet?: boolean;
 }) {
   const { isAuthenticated, authPending } = useAuth();
   const [sheetOpen, setSheetOpen] = useState(false);
   const isAr = language === "ar";
-  const sectionTitle = isAr ? "النشاط الأخير" : "Recent Activity";
-  const sectionSub = isAr
-    ? "آخر أحداث الجلسات والطلبات"
-    : "Latest session and order events";
+  const previewLimit = enableExpandSheet
+    ? (feedLimit ?? HOME_ACTIVITY_FEED_LIMIT)
+    : (feedLimit ?? FULL_ACTIVITY_FEED_LIMIT);
+  const sectionTitle =
+    sectionTitleOverride ?? (isAr ? "النشاط الأخير" : "Recent Activity");
+  const sectionSub =
+    sectionDescriptionOverride ??
+    (isAr ? "آخر أحداث الجلسات والطلبات" : "Latest session and order events");
   const ariaLabel = sectionTitle;
 
   useDevQueryRuntimeLog("ops.getActivityFeed", {
@@ -247,7 +260,7 @@ export function OperationalActivityFeedSection({
     refetch: refetchPreview,
     isFetching: previewFetching,
   } = trpc.ops.getActivityFeed.useQuery(
-    { restaurantId, limit: HOME_ACTIVITY_FEED_LIMIT },
+    { restaurantId, limit: previewLimit },
     opsActivityFeedQueryOptions(queriesEnabled)
   );
 
@@ -260,8 +273,8 @@ export function OperationalActivityFeedSection({
   } = trpc.ops.getActivityFeed.useQuery(
     { restaurantId, limit: FULL_ACTIVITY_FEED_LIMIT },
     {
-      ...opsActivityFeedQueryOptions(queriesEnabled && sheetOpen),
-      enabled: queriesEnabled && sheetOpen,
+      ...opsActivityFeedQueryOptions(queriesEnabled && enableExpandSheet && sheetOpen),
+      enabled: queriesEnabled && enableExpandSheet && sheetOpen,
     }
   );
 
@@ -275,7 +288,8 @@ export function OperationalActivityFeedSection({
 
   const previewEvents = previewFeed?.events ?? [];
   const fullEvents = fullFeed?.events ?? [];
-  const canViewAll = previewEvents.length >= HOME_ACTIVITY_FEED_LIMIT;
+  const canViewAll =
+    enableExpandSheet && previewEvents.length >= HOME_ACTIVITY_FEED_LIMIT;
 
   return (
     <>
@@ -326,6 +340,7 @@ export function OperationalActivityFeedSection({
         )}
       </RestaurantDashSection>
 
+      {enableExpandSheet ? (
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent
           side={isAr ? "left" : "right"}
@@ -384,6 +399,7 @@ export function OperationalActivityFeedSection({
           ) : null}
         </SheetContent>
       </Sheet>
+      ) : null}
     </>
   );
 }

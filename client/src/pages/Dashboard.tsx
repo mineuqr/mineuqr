@@ -1210,7 +1210,14 @@ function RestaurantDetail({
         />
       )}
 
-      {activeTab === "sessions" && <SessionsWorkspacePanel language={language} />}
+      {activeTab === "sessions" && (
+        <SessionsWorkspacePanel
+          restaurantId={restaurantId}
+          language={language}
+          currencySymbol={(restaurant as { currencySymbol?: string })?.currencySymbol}
+          tableLabel={(restaurant as { tableLabel?: string })?.tableLabel}
+        />
+      )}
 
       {activeTab === "orders" && (
         <OrdersTab
