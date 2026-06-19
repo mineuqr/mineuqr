@@ -7,9 +7,8 @@ vi.mock("./restaurantAccess", () => ({
 }));
 
 vi.mock("./diningSession/sessionService", () => ({
-  requestBill: vi.fn(),
-  cancelBillRequest: vi.fn(),
-  markPaymentPending: vi.fn(),
+  markPaid: vi.fn(),
+  markComplimentary: vi.fn(),
   closeSession: vi.fn(),
 }));
 
@@ -19,24 +18,20 @@ vi.mock("./diningSession/sessionOwnerWorkspace", () => ({
 
 import { appRouter } from "./routers";
 import { assertRestaurantAccess } from "./restaurantAccess";
-import {
-  requestBill,
-  cancelBillRequest,
-  markPaymentPending,
-  closeSession,
-} from "./diningSession/sessionService";
+import { markPaid, markComplimentary, closeSession } from "./diningSession/sessionService";
 import { getOwnerSessionWorkspace } from "./diningSession/sessionOwnerWorkspace";
 
 const workspacePayload = {
   sessionId: 1,
   tableNumber: 5,
-  status: "bill_requested" as const,
+  status: "open" as const,
   openedAt: "2026-06-18 21:42:00",
   closedAt: null,
   orderCount: 2,
   ordersTotalAmount: "165.00",
+  aggregateSource: "session_row" as const,
   orders: [],
-  events: [{ id: 1, eventType: TABLE_EVENT_TYPES.BILL_REQUESTED, createdAt: "x", orderId: null, orderNumber: null, totalAmount: null }],
+  events: [{ id: 1, eventType: TABLE_EVENT_TYPES.SESSION_OPENED, createdAt: "x", orderId: null, orderNumber: null, totalAmount: null }],
 };
 
 function createVerifiedCaller(userId = 7) {
@@ -53,26 +48,46 @@ function createVerifiedCaller(userId = 7) {
   });
 }
 
-describe("session action mutations UX-1D", () => {
+describe("session settlement mutations SETTLEMENT-ARCHITECTURE-1A", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(assertRestaurantAccess).mockResolvedValue(undefined);
     vi.mocked(getOwnerSessionWorkspace).mockResolvedValue(workspacePayload);
   });
 
-  it("staffRequestBill returns updated workspace", async () => {
+  it("markPaid returns updated workspace", async () => {
+    vi.mocked(getOwnerSessionWorkspace).mockResolvedValue({
+      ...workspacePayload,
+      status: "closed",
+      closedAt: "2026-06-18 22:00:00",
+    });
+
     const caller = createVerifiedCaller();
-    const result = await caller.session.staffRequestBill({
+    const result = await caller.session.markPaid({
       restaurantId: 10,
       sessionId: 1,
     });
 
-    expect(requestBill).toHaveBeenCalledWith({
+    expect(markPaid).toHaveBeenCalledWith({
       restaurantId: 10,
       sessionId: 1,
       actorUserId: 7,
     });
-    expect(result.status).toBe("bill_requested");
+    expect(result.status).toBe("closed");
+  });
+
+  it("markComplimentary returns updated workspace", async () => {
+    const caller = createVerifiedCaller();
+    await caller.session.markComplimentary({
+      restaurantId: 10,
+      sessionId: 1,
+    });
+
+    expect(markComplimentary).toHaveBeenCalledWith({
+      restaurantId: 10,
+      sessionId: 1,
+      actorUserId: 7,
+    });
   });
 
   it("close mutation returns updated workspace", async () => {
@@ -83,7 +98,10 @@ describe("session action mutations UX-1D", () => {
     });
 
     const caller = createVerifiedCaller();
-    const result = await caller.session.close({ restaurantId: 10, sessionId: 1 });
+    const result = await caller.session.close({
+      restaurantId: 10,
+      sessionId: 1,
+    });
 
     expect(closeSession).toHaveBeenCalledWith({
       restaurantId: 10,
@@ -91,18 +109,5 @@ describe("session action mutations UX-1D", () => {
       actorUserId: 7,
     });
     expect(result.status).toBe("closed");
-  });
-
-  it("cancelBillRequest and markPaymentPending wire actorUserId", async () => {
-    const caller = createVerifiedCaller(99);
-    await caller.session.cancelBillRequest({ restaurantId: 10, sessionId: 1 });
-    await caller.session.markPaymentPending({ restaurantId: 10, sessionId: 1 });
-
-    expect(cancelBillRequest).toHaveBeenCalledWith(
-      expect.objectContaining({ actorUserId: 99 })
-    );
-    expect(markPaymentPending).toHaveBeenCalledWith(
-      expect.objectContaining({ actorUserId: 99 })
-    );
   });
 });

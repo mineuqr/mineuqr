@@ -204,6 +204,13 @@
       "when": 1781807101673,
       "tag": "0028_orders_session_id",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "5",
+      "when": 1781900000000,
+      "tag": "0029_settlement_session_status",
+      "breakpoints": true
     }
   ]
 }

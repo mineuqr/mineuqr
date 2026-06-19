@@ -30,11 +30,11 @@ describe("activityFeed OPS-DASHBOARD-2E.1", () => {
       expect(mapTableEventTypeToFeedType(TABLE_EVENT_TYPES.ORDER_CREATED)).toBe(
         "order_created"
       );
-      expect(mapTableEventTypeToFeedType(TABLE_EVENT_TYPES.BILL_REQUESTED)).toBe(
-        "bill_requested"
+      expect(mapTableEventTypeToFeedType(TABLE_EVENT_TYPES.SESSION_PAID)).toBe(
+        "session_paid"
       );
-      expect(mapTableEventTypeToFeedType(TABLE_EVENT_TYPES.PAYMENT_PENDING)).toBe(
-        "payment_pending"
+      expect(mapTableEventTypeToFeedType(TABLE_EVENT_TYPES.SESSION_COMPLIMENTARY)).toBe(
+        "session_complimentary"
       );
       expect(mapTableEventTypeToFeedType(TABLE_EVENT_TYPES.SESSION_CLOSED)).toBe(
         "session_closed"
@@ -198,8 +198,8 @@ describe("activityFeed OPS-DASHBOARD-2E.1", () => {
 
   describe("buildTableEventFeedCopy", () => {
     it("uses table name for lifecycle events", () => {
-      expect(buildTableEventFeedCopy("bill_requested", "Table 3", {})).toEqual({
-        title: "Bill requested",
+      expect(buildTableEventFeedCopy("session_paid", "Table 3", {})).toEqual({
+        title: "Session paid",
         subtitle: "Table 3",
       });
     });

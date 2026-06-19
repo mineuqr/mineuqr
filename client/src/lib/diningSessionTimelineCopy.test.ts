@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { formatTimelineEventDescription } from "./diningSessionTimelineCopy";
 
-describe("diningSessionTimelineCopy (UX-1C)", () => {
+describe("diningSessionTimelineCopy SETTLEMENT-ARCHITECTURE-1A", () => {
   it("formats SESSION_OPENED in Arabic", () => {
     expect(
       formatTimelineEventDescription({ eventType: "SESSION_OPENED" }, "ar")
@@ -22,19 +22,16 @@ describe("diningSessionTimelineCopy (UX-1C)", () => {
     ).toBe("تم إنشاء الطلب ORD-0142 · 95.00 ر.س");
   });
 
-  it("formats ORDER_CREATED without total", () => {
+  it("formats SESSION_PAID in Arabic", () => {
     expect(
-      formatTimelineEventDescription(
-        { eventType: "ORDER_CREATED", orderNumber: "ORD-0143" },
-        "en"
-      )
-    ).toBe("Order ORD-0143 created");
+      formatTimelineEventDescription({ eventType: "SESSION_PAID" }, "ar")
+    ).toBe("تم تسجيل الدفع");
   });
 
-  it("formats staff bill request in Arabic", () => {
+  it("formats SESSION_COMPLIMENTARY", () => {
     expect(
-      formatTimelineEventDescription({ eventType: "BILL_REQUESTED" }, "ar")
-    ).toBe("تم طلب الفاتورة");
+      formatTimelineEventDescription({ eventType: "SESSION_COMPLIMENTARY" }, "en")
+    ).toBe("Session complimentary");
   });
 
   it("formats SESSION_CLOSED", () => {

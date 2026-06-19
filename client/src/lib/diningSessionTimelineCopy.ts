@@ -1,12 +1,13 @@
 /**
  * TABLE-MANAGEMENT-1 UX-1C — owner session timeline copy.
+ * SETTLEMENT-ARCHITECTURE-1A — settlement events.
  */
 
 const TIMELINE_EVENT = {
   SESSION_OPENED: "SESSION_OPENED",
   ORDER_CREATED: "ORDER_CREATED",
-  BILL_REQUESTED: "BILL_REQUESTED",
-  PAYMENT_PENDING: "PAYMENT_PENDING",
+  SESSION_PAID: "SESSION_PAID",
+  SESSION_COMPLIMENTARY: "SESSION_COMPLIMENTARY",
   SESSION_CLOSED: "SESSION_CLOSED",
 } as const;
 
@@ -18,7 +19,7 @@ export type TimelineEventLike = {
   totalAmount?: string | null;
 };
 
-/** V1 + future event labels — unknown types fall back to eventType. */
+/** V1 + settlement event labels — unknown types fall back to eventType. */
 export function formatTimelineEventDescription(
   event: TimelineEventLike,
   language: Lang,
@@ -44,12 +45,12 @@ export function formatTimelineEventDescription(
     return base;
   }
 
-  if (event.eventType === TIMELINE_EVENT.BILL_REQUESTED) {
-    return language === "ar" ? "تم طلب الفاتورة" : "Bill requested";
+  if (event.eventType === TIMELINE_EVENT.SESSION_PAID) {
+    return language === "ar" ? "تم تسجيل الدفع" : "Session paid";
   }
 
-  if (event.eventType === TIMELINE_EVENT.PAYMENT_PENDING) {
-    return language === "ar" ? "الدفع قيد المعالجة" : "Payment pending";
+  if (event.eventType === TIMELINE_EVENT.SESSION_COMPLIMENTARY) {
+    return language === "ar" ? "جلسة ضيافة" : "Session complimentary";
   }
 
   if (event.eventType === TIMELINE_EVENT.SESSION_CLOSED) {

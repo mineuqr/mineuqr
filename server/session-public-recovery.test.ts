@@ -25,8 +25,8 @@ const baseRow: SelectDiningSession = {
   status: "open",
   openGuard: 1,
   openedAt: "2026-06-18 12:00:00",
-  billRequestedAt: null,
-  paymentPendingAt: null,
+  settledAt: null,
+  settlementOutcome: null,
   closedAt: null,
   totalAmount: null,
   totalOrders: 1,
@@ -70,8 +70,8 @@ describe("session public recovery APIs TABLE-MANAGEMENT-1 D4", () => {
       status: "open",
       tableNumber: 3,
       openedAt: "2026-06-18 12:00:00",
-      billRequestedAt: null,
-      paymentPendingAt: null,
+      settledAt: null,
+      settlementOutcome: null,
     });
     expect(result).not.toHaveProperty("id");
     expect(result).not.toHaveProperty("restaurantId");
@@ -93,8 +93,8 @@ describe("session public recovery APIs TABLE-MANAGEMENT-1 D4", () => {
   it("getByToken returns customer-safe session", async () => {
     vi.mocked(findSessionByToken).mockResolvedValue({
       ...baseRow,
-      status: "bill_requested",
-      billRequestedAt: "2026-06-18 13:00:00",
+      status: "open",
+      settledAt: null,
     });
 
     const caller = createCaller();
@@ -105,9 +105,9 @@ describe("session public recovery APIs TABLE-MANAGEMENT-1 D4", () => {
 
     expect(result).toMatchObject({
       sessionToken: "public-session-token1234",
-      status: "bill_requested",
+      status: "open",
       tableNumber: 3,
-      billRequestedAt: "2026-06-18 13:00:00",
+      settledAt: null,
     });
     expect(result).not.toHaveProperty("id");
   });

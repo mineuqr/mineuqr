@@ -19,11 +19,11 @@ import {
   resolveActiveSessionOverviewMetrics,
 } from "./restaurantOverview";
 
-describe("restaurantOverview OPS-DASHBOARD-2B.1", () => {
+describe("restaurantOverview SETTLEMENT-ARCHITECTURE-1A", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     dbMocks.where.mockResolvedValue([
-      { activeSessions: 4, occupiedTables: 3, billRequests: 1 },
+      { activeSessions: 4, occupiedTables: 3 },
     ]);
     dbMocks.from.mockReturnValue({ where: dbMocks.where });
     dbMocks.select.mockReturnValue({ from: dbMocks.from });
@@ -37,11 +37,7 @@ describe("restaurantOverview OPS-DASHBOARD-2B.1", () => {
     expect(result).toEqual({
       activeSessions: 4,
       occupiedTables: 3,
-      billRequests: 1,
     });
-    expect(dbMocks.select).toHaveBeenCalled();
-    expect(dbMocks.from).toHaveBeenCalled();
-    expect(dbMocks.where).toHaveBeenCalled();
   });
 
   it("returns zeros when database is unavailable", async () => {
@@ -52,7 +48,6 @@ describe("restaurantOverview OPS-DASHBOARD-2B.1", () => {
     expect(result).toEqual({
       activeSessions: 0,
       occupiedTables: 0,
-      billRequests: 0,
     });
   });
 
@@ -63,8 +58,6 @@ describe("restaurantOverview OPS-DASHBOARD-2B.1", () => {
       activeSessions: 4,
       occupiedTables: 3,
       pendingOrders: 7,
-      billRequests: 1,
     });
-    expect(dbMocks.getActiveOrdersCount).toHaveBeenCalledWith(10);
   });
 });

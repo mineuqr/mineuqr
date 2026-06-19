@@ -38,7 +38,6 @@ describe("getActiveTablesBoard integration OPS-DASHBOARD-2C.1", () => {
         sessionStatus: "open",
         openedAt: "2026-06-18 21:00:00",
         totalOrders: 2,
-        billRequestedAt: null,
       },
       {
         tableId: 2,
@@ -49,7 +48,6 @@ describe("getActiveTablesBoard integration OPS-DASHBOARD-2C.1", () => {
         sessionStatus: null,
         openedAt: null,
         totalOrders: null,
-        billRequestedAt: null,
       },
     ]);
     dbMocks.tableWhere.mockReturnValue({ orderBy: dbMocks.tableOrderBy });

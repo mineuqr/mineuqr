@@ -4,23 +4,20 @@ import {
   getDiningSessionBannerTitle,
 } from "./diningSessionCopy";
 
-describe("diningSessionCopy TABLE-MANAGEMENT-1 D4", () => {
+describe("diningSessionCopy SETTLEMENT-ARCHITECTURE-1A", () => {
   it("provides OPEN banner copy", () => {
     expect(getDiningSessionBannerTitle("open", "en")).toBe("Active session");
     expect(getDiningSessionBannerLines("open", "en")[0]).toContain("active");
   });
 
-  it("provides BILL_REQUESTED banner copy", () => {
-    expect(getDiningSessionBannerTitle("bill_requested", "en")).toBe("Bill requested");
-    expect(getDiningSessionBannerLines("bill_requested", "en")[0]).toBe("Bill requested.");
-    expect(getDiningSessionBannerLines("bill_requested", "en")[1]).toContain(
-      "staff member"
-    );
+  it("provides paid banner copy", () => {
+    expect(getDiningSessionBannerTitle("paid", "en")).toBe("Settled");
+    expect(getDiningSessionBannerLines("paid", "en")[0]).toContain("settled");
   });
 
-  it("provides PAYMENT_PENDING banner copy", () => {
-    expect(getDiningSessionBannerTitle("payment_pending", "en")).toBe("Payment pending");
-    expect(getDiningSessionBannerLines("payment_pending", "en")[0]).toContain("Payment");
+  it("provides complimentary banner copy", () => {
+    expect(getDiningSessionBannerTitle("complimentary", "en")).toBe("Complimentary");
+    expect(getDiningSessionBannerLines("complimentary", "en")[0]).toContain("Complimentary");
   });
 
   it("provides CLOSED banner copy", () => {
@@ -30,6 +27,6 @@ describe("diningSessionCopy TABLE-MANAGEMENT-1 D4", () => {
 
   it("provides Arabic banner copy", () => {
     expect(getDiningSessionBannerTitle("open", "ar")).toBe("جلسة نشطة");
-    expect(getDiningSessionBannerLines("bill_requested", "ar")[0]).toContain("الفاتورة");
+    expect(getDiningSessionBannerLines("paid", "ar")[0]).toContain("تسوية");
   });
 });

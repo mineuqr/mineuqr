@@ -42,16 +42,14 @@ const openSession: RecoveredDiningSession = {
   openedAt: "2026-06-18T12:00:00.000Z",
 };
 
-const billRequestedSession: RecoveredDiningSession = {
+const paidSession: RecoveredDiningSession = {
   ...openSession,
-  status: "bill_requested",
-  billRequestedAt: "2026-06-18T13:00:00.000Z",
+  status: "paid",
 };
 
-const paymentPendingSession: RecoveredDiningSession = {
+const complimentarySession: RecoveredDiningSession = {
   ...openSession,
-  status: "payment_pending",
-  paymentPendingAt: "2026-06-18T14:00:00.000Z",
+  status: "complimentary",
 };
 
 const closedSession: RecoveredDiningSession = {
@@ -278,15 +276,15 @@ describe("diningSessionRecovery TABLE-MANAGEMENT-1 D4", () => {
       ).toBe(openSession.sessionToken);
     });
 
-    it("D: bill_requested session recovery unchanged (tier 1)", async () => {
+    it("D: paid session is not recoverable (tier 1 cleared)", async () => {
       saveDiningSession({
-        sessionToken: "bill-token12345678901",
+        sessionToken: "paid-token12345678901",
         slug: "cafe",
         tableNumber: 5,
       });
 
       const client: DiningSessionRecoveryClient = {
-        getByToken: vi.fn(async () => billRequestedSession),
+        getByToken: vi.fn(async () => paidSession),
         getActiveByTable: vi.fn(async () => null),
       };
 
@@ -296,19 +294,20 @@ describe("diningSessionRecovery TABLE-MANAGEMENT-1 D4", () => {
         client,
       });
 
-      expect(session).toEqual(billRequestedSession);
-      expect(client.getActiveByTable).not.toHaveBeenCalled();
+      expect(session).toBeNull();
+      expect(localStorage.getItem(diningSessionStorageKey("cafe", 5))).toBeNull();
+      expect(client.getActiveByTable).toHaveBeenCalled();
     });
 
-    it("E: payment_pending session recovery unchanged (tier 1)", async () => {
+    it("E: complimentary session is not recoverable (tier 1 cleared)", async () => {
       saveDiningSession({
-        sessionToken: "pay-token123456789012",
+        sessionToken: "comp-token12345678901",
         slug: "cafe",
         tableNumber: 5,
       });
 
       const client: DiningSessionRecoveryClient = {
-        getByToken: vi.fn(async () => paymentPendingSession),
+        getByToken: vi.fn(async () => complimentarySession),
         getActiveByTable: vi.fn(async () => null),
       };
 
@@ -318,8 +317,8 @@ describe("diningSessionRecovery TABLE-MANAGEMENT-1 D4", () => {
         client,
       });
 
-      expect(session).toEqual(paymentPendingSession);
-      expect(client.getActiveByTable).not.toHaveBeenCalled();
+      expect(session).toBeNull();
+      expect(client.getActiveByTable).toHaveBeenCalled();
     });
 
     it("closed token falls through to active session on table when present", async () => {
@@ -362,30 +361,12 @@ describe("diningSessionRecovery TABLE-MANAGEMENT-1 D4", () => {
       expect(isDiningSessionOrderingEnabled(openSession)).toBe(true);
     });
 
-    it("blocks ordering for BILL_REQUESTED session", () => {
-      expect(isDiningSessionOrderingEnabled(billRequestedSession)).toBe(false);
+    it("blocks ordering for paid session", () => {
+      expect(isDiningSessionOrderingEnabled(paidSession)).toBe(false);
     });
 
-    it("blocks ordering after customer bill request state", () => {
-      expect(
-        isDiningSessionOrderingEnabled({
-          sessionToken: "tok",
-          status: "bill_requested",
-          tableNumber: 5,
-          openedAt: "2026-06-18T12:00:00.000Z",
-          billRequestedAt: "2026-06-18T12:30:00.000Z",
-        })
-      ).toBe(false);
-    });
-
-    it("blocks ordering for PAYMENT_PENDING session", () => {
-      expect(
-        isDiningSessionOrderingEnabled({
-          ...openSession,
-          status: "payment_pending",
-          paymentPendingAt: "2026-06-18T14:00:00.000Z",
-        })
-      ).toBe(false);
+    it("blocks ordering for complimentary session", () => {
+      expect(isDiningSessionOrderingEnabled(complimentarySession)).toBe(false);
     });
 
     it("blocks ordering for CLOSED session", () => {

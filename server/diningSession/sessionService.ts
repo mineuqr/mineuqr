@@ -1,11 +1,11 @@
 /**
  * TABLE-MANAGEMENT-1 D2 — dining session service (no router / order integration).
+ * SETTLEMENT-ARCHITECTURE-1A — settlement foundation (markPaid / markComplimentary).
  */
-import { getRestaurantById, getRestaurantBySlug, getTableById, getOrdersBySessionId } from "../db";
+import { getRestaurantById, getTableById, getOrdersBySessionId } from "../db";
 import {
   findActiveSession,
   findSessionById,
-  findSessionByToken,
   insertSession,
   insertSessionEvent,
   updateSessionStatus,
@@ -19,6 +19,7 @@ import {
   DiningSessionTransitionError,
   TABLE_EVENT_TYPES,
   TABLE_EVENT_TYPE_VALUES,
+  type DiningSessionSettlementOutcome,
   type GetActiveSessionInput,
   type GetOrCreateSessionInput,
   type GetOrCreateSessionResult,
@@ -32,16 +33,11 @@ import {
 import type { SelectDiningSession } from "../../drizzle/schema";
 import { getDb } from "../db";
 import { computeOrdersTotalAmount } from "./sessionOrderTotals";
-import {
-  isValidSessionTokenFormat,
-  toPublicDiningSession,
-  type PublicDiningSession,
-} from "./sessionPublicStatus";
 
 const ALLOWED_STATUS_TRANSITIONS: Record<DiningSessionStatus, DiningSessionStatus[]> = {
-  open: ["bill_requested", "closed"],
-  bill_requested: ["open", "payment_pending", "closed"],
-  payment_pending: ["closed"],
+  open: ["paid", "complimentary", "closed"],
+  paid: ["closed"],
+  complimentary: ["closed"],
   closed: [],
 };
 
@@ -49,11 +45,6 @@ export type StaffSessionActionInput = {
   restaurantId: number;
   sessionId: number;
   actorUserId: number;
-};
-
-export type CustomerRequestBillInput = {
-  slug: string;
-  sessionToken: string;
 };
 
 function assertValidSessionActionInput(input: StaffSessionActionInput): void {
@@ -96,8 +87,8 @@ async function applySessionTransition(
   eventType: TableEventType | null,
   metadata: Record<string, unknown>,
   patch: {
-    billRequestedAt?: string | null;
-    paymentPendingAt?: string | null;
+    settledAt?: string | null;
+    settlementOutcome?: DiningSessionSettlementOutcome | null;
     closedAt?: string | null;
     openGuard?: number | null;
   }
@@ -136,42 +127,88 @@ async function applySessionTransition(
   });
 }
 
-async function transitionOpenToBillRequested(
+/** SETTLEMENT-ARCHITECTURE-1A — settlement records outcome then auto-closes session. */
+async function settleAndCloseSession(
   session: SelectDiningSession,
+  settlement: DiningSessionSettlementOutcome,
   metadata: Record<string, unknown>
 ): Promise<void> {
+  if (session.status !== "open") {
+    throw new DiningSessionTransitionError(
+      "Only open sessions can be settled"
+    );
+  }
+
   const now = formatDiningSessionTimestamp();
-  await applySessionTransition(
-    session,
-    "bill_requested",
-    TABLE_EVENT_TYPES.BILL_REQUESTED,
-    metadata,
-    { billRequestedAt: now }
-  );
-}
+  const orderRows = await getOrdersBySessionId(session.restaurantId, session.id);
+  const settlementEventType =
+    settlement === "paid"
+      ? TABLE_EVENT_TYPES.SESSION_PAID
+      : TABLE_EVENT_TYPES.SESSION_COMPLIMENTARY;
 
-async function validateCustomerSessionContext(
-  input: CustomerRequestBillInput
-): Promise<SelectDiningSession> {
-  if (!isValidSessionTokenFormat(input.sessionToken)) {
-    throw new DiningSessionNotFoundError();
+  const db = await getDb();
+  if (!db) {
+    throw new DiningSessionUnavailableError();
   }
 
-  const restaurant = await getRestaurantBySlug(input.slug);
-  if (!restaurant?.isActive) {
-    throw new DiningSessionNotFoundError();
-  }
+  const closureMetadata = {
+    ...metadata,
+    settlement,
+    tableNumber: session.tableNumber,
+    orderCount: orderRows.length,
+    ordersTotalAmount: computeOrdersTotalAmount(orderRows),
+  };
 
-  const session = await findSessionByToken(restaurant.id, input.sessionToken);
-  if (!session) {
-    throw new DiningSessionNotFoundError();
-  }
+  await db.transaction(async (tx) => {
+    await updateSessionStatus(
+      {
+        restaurantId: session.restaurantId,
+        sessionId: session.id,
+        status: settlement,
+        settledAt: now,
+        settlementOutcome: settlement,
+      },
+      tx
+    );
 
-  if (session.tableNumber <= 0) {
-    throw new DiningSessionNotFoundError();
-  }
+    await insertSessionEvent(
+      {
+        restaurantId: session.restaurantId,
+        tableId: session.tableId,
+        sessionId: session.id,
+        eventType: settlementEventType,
+        metadata: closureMetadata,
+      },
+      tx
+    );
 
-  return session;
+    await updateSessionStatus(
+      {
+        restaurantId: session.restaurantId,
+        sessionId: session.id,
+        status: "closed",
+        settledAt: now,
+        settlementOutcome: settlement,
+        closedAt: now,
+        openGuard: null,
+      },
+      tx
+    );
+
+    await insertSessionEvent(
+      {
+        restaurantId: session.restaurantId,
+        tableId: session.tableId,
+        sessionId: session.id,
+        eventType: TABLE_EVENT_TYPES.SESSION_CLOSED,
+        metadata: {
+          ...closureMetadata,
+          source: "settlement",
+        },
+      },
+      tx
+    );
+  });
 }
 
 async function validateTableContext(input: {
@@ -348,74 +385,29 @@ export async function recordSessionEvent(
   return { eventId };
 }
 
-/** UX-1D — staff initiates bill request (open → bill_requested). */
-export async function requestBill(input: StaffSessionActionInput): Promise<void> {
+/** SETTLEMENT-ARCHITECTURE-1A — staff marks session paid (open → paid → closed). */
+export async function markPaid(input: StaffSessionActionInput): Promise<void> {
   assertValidSessionActionInput(input);
   const session = await loadSessionForStaffAction(input.restaurantId, input.sessionId);
 
-  await transitionOpenToBillRequested(session, {
+  await settleAndCloseSession(session, "paid", {
     source: "staff",
     actorUserId: input.actorUserId,
-    tableNumber: session.tableNumber,
   });
 }
 
-/** UX-1E — customer requests bill (open → bill_requested, idempotent when already requested). */
-export async function requestBillByCustomer(
-  input: CustomerRequestBillInput
-): Promise<PublicDiningSession> {
-  const session = await validateCustomerSessionContext(input);
+/** SETTLEMENT-ARCHITECTURE-1A — staff marks session complimentary (open → complimentary → closed). */
+export async function markComplimentary(input: StaffSessionActionInput): Promise<void> {
+  assertValidSessionActionInput(input);
+  const session = await loadSessionForStaffAction(input.restaurantId, input.sessionId);
 
-  if (session.status === "bill_requested") {
-    return toPublicDiningSession(session);
-  }
-
-  if (session.status !== "open") {
-    throw new DiningSessionTransitionError(
-      "Bill can only be requested for an open session"
-    );
-  }
-
-  await transitionOpenToBillRequested(session, {
-    source: "customer",
-    tableNumber: session.tableNumber,
+  await settleAndCloseSession(session, "complimentary", {
+    source: "staff",
+    actorUserId: input.actorUserId,
   });
-
-  const updated = await findSessionById(session.id);
-  if (!updated) {
-    throw new DiningSessionNotFoundError();
-  }
-
-  return toPublicDiningSession(updated);
 }
 
-/** UX-1D — staff cancels bill request (bill_requested → open). */
-export async function cancelBillRequest(input: StaffSessionActionInput): Promise<void> {
-  assertValidSessionActionInput(input);
-  const session = await loadSessionForStaffAction(input.restaurantId, input.sessionId);
-
-  await applySessionTransition(session, "open", null, {}, { billRequestedAt: null });
-}
-
-/** UX-1D — staff marks payment in progress (bill_requested → payment_pending). */
-export async function markPaymentPending(input: StaffSessionActionInput): Promise<void> {
-  assertValidSessionActionInput(input);
-  const session = await loadSessionForStaffAction(input.restaurantId, input.sessionId);
-  const now = formatDiningSessionTimestamp();
-
-  await applySessionTransition(
-    session,
-    "payment_pending",
-    TABLE_EVENT_TYPES.PAYMENT_PENDING,
-    {
-      actorUserId: input.actorUserId,
-      tableNumber: session.tableNumber,
-    },
-    { paymentPendingAt: now }
-  );
-}
-
-/** UX-1D — staff closes session (open | bill_requested | payment_pending → closed). */
+/** Administrative override — close without settlement (open → closed). */
 export async function closeSession(input: StaffSessionActionInput): Promise<void> {
   assertValidSessionActionInput(input);
   const session = await loadSessionForStaffAction(input.restaurantId, input.sessionId);
@@ -429,10 +421,11 @@ export async function closeSession(input: StaffSessionActionInput): Promise<void
     {
       actorUserId: input.actorUserId,
       tableNumber: session.tableNumber,
+      source: "manual_close",
       orderCount: orderRows.length,
       ordersTotalAmount: computeOrdersTotalAmount(orderRows),
     },
-    { closedAt: now, openGuard: null }
+    { closedAt: now, openGuard: null, settledAt: null, settlementOutcome: null }
   );
 }
 

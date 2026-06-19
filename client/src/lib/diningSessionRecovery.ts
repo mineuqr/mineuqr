@@ -10,9 +10,10 @@ export type RecoveredDiningSession = {
   status: DiningSessionStatus;
   tableNumber: number;
   openedAt: string;
-  billRequestedAt?: string | null;
-  paymentPendingAt?: string | null;
 };
+
+/** Terminal session states — not recoverable for customer ordering. */
+const TERMINAL_SESSION_STATUSES: DiningSessionStatus[] = ["closed", "paid", "complimentary"];
 
 /** Only `open` sessions allow placing new orders (TABLE-MANAGEMENT-1 D4). */
 export function isDiningSessionOrderingEnabled(
@@ -32,11 +33,11 @@ export type DiningSessionRecoveryClient = {
   }) => Promise<RecoveredDiningSession | null>;
 };
 
-/** CUSTOMER-SESSION-LIFECYCLE-1A — closed sessions are terminal for customer recovery. */
+/** SETTLEMENT-ARCHITECTURE-1A — only open sessions are recoverable. */
 export function isRecoverableDiningSession(
   session: RecoveredDiningSession | null
 ): session is RecoveredDiningSession {
-  return session != null && session.status !== "closed";
+  return session != null && session.status === "open";
 }
 
 /**
@@ -63,7 +64,7 @@ export async function recoverDiningSession(options: {
       /* non-fatal — fall through to table lookup */
     }
 
-    if (session?.status === "closed") {
+    if (session && TERMINAL_SESSION_STATUSES.includes(session.status)) {
       clearDiningSession(slug, tableNumber);
       session = null;
     }

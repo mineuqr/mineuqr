@@ -331,12 +331,14 @@ export const diningSessions = mysqlTable("dining_sessions", {
 	tableId: int().notNull(),
 	tableNumber: int().notNull(),
 	sessionToken: varchar({ length: 64 }).notNull(),
-	status: mysqlEnum(['open','bill_requested','payment_pending','closed']).default('open').notNull(),
+	status: mysqlEnum(['open','paid','complimentary','closed']).default('open').notNull(),
 	/** 1 while active; NULL when closed — UNIQUE(restaurantId, tableId, openGuard) enforces one active session per table. */
 	openGuard: tinyint(),
 	openedAt: timestamp({ mode: 'string' }).notNull(),
-	billRequestedAt: timestamp({ mode: 'string' }),
-	paymentPendingAt: timestamp({ mode: 'string' }),
+	/** When settlement was recorded (paid or complimentary). */
+	settledAt: timestamp({ mode: 'string' }),
+	/** Persisted on closed rows for settlement reporting. Null for manual close override. */
+	settlementOutcome: mysqlEnum(['paid','complimentary']),
 	closedAt: timestamp({ mode: 'string' }),
 	totalAmount: decimal({ precision: 10, scale: 2 }),
 	totalOrders: int().default(0).notNull(),

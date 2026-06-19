@@ -24,16 +24,14 @@ const openSession: RecoveredDiningSession = {
   openedAt: "2026-06-18T12:00:00.000Z",
 };
 
-const billRequestedSession: RecoveredDiningSession = {
+const paidSession: RecoveredDiningSession = {
   ...openSession,
-  status: "bill_requested",
-  billRequestedAt: "2026-06-18T13:00:00.000Z",
+  status: "paid",
 };
 
-const paymentPendingSession: RecoveredDiningSession = {
+const complimentarySession: RecoveredDiningSession = {
   ...openSession,
-  status: "payment_pending",
-  paymentPendingAt: "2026-06-18T14:00:00.000Z",
+  status: "complimentary",
 };
 
 const recoveryInput = {
@@ -178,27 +176,27 @@ describe("revalidation session state transitions CUSTOMER-SESSION-LIFECYCLE-1C",
     expect(isDiningSessionOrderingEnabled(after)).toBe(true);
   });
 
-  it("C: bill_requested recovery disables ordering", async () => {
+  it("C: paid recovery disables ordering", async () => {
     vi.mocked(recoverDiningSession)
       .mockResolvedValueOnce(openSession)
-      .mockResolvedValueOnce(billRequestedSession);
+      .mockResolvedValueOnce(paidSession);
 
     await recoverDiningSession(recoveryInput);
     const after = await recoverDiningSession(recoveryInput);
 
-    expect(after?.status).toBe("bill_requested");
+    expect(after?.status).toBe("paid");
     expect(isDiningSessionOrderingEnabled(after)).toBe(false);
   });
 
-  it("D: payment_pending recovery disables ordering", async () => {
+  it("D: complimentary recovery disables ordering", async () => {
     vi.mocked(recoverDiningSession)
       .mockResolvedValueOnce(openSession)
-      .mockResolvedValueOnce(paymentPendingSession);
+      .mockResolvedValueOnce(complimentarySession);
 
     await recoverDiningSession(recoveryInput);
     const after = await recoverDiningSession(recoveryInput);
 
-    expect(after?.status).toBe("payment_pending");
+    expect(after?.status).toBe("complimentary");
     expect(isDiningSessionOrderingEnabled(after)).toBe(false);
   });
 });

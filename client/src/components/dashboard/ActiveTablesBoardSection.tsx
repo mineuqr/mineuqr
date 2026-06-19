@@ -27,22 +27,12 @@ const STATUS_STYLES: Record<
     card: "border-primary/35 bg-primary/5",
     badge: "bg-primary/20 text-primary border-primary/35",
   },
-  bill_requested: {
-    card: "border-amber-500/35 bg-amber-500/5",
-    badge: "bg-amber-500/20 text-amber-400 border-amber-500/35",
-  },
-  payment_pending: {
-    card: "border-violet-500/35 bg-violet-500/5",
-    badge: "bg-violet-500/20 text-violet-300 border-violet-500/35",
-  },
 };
 
 function statusLabel(status: BoardStatus, isAr: boolean): string {
   const labels: Record<BoardStatus, { ar: string; en: string }> = {
     available: { ar: "متاحة", en: "Available" },
     occupied: { ar: "مشغولة", en: "Occupied" },
-    bill_requested: { ar: "طلب فاتورة", en: "Bill requested" },
-    payment_pending: { ar: "بانتظار الدفع", en: "Payment pending" },
   };
   return isAr ? labels[status].ar : labels[status].en;
 }

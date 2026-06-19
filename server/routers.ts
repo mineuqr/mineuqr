@@ -87,7 +87,7 @@ import { ENV } from "./_core/env";
 import { opsLog } from "./_core/opsLog";
 import { OPS_EVENT } from "./_core/opsTaxonomy";
 import { incrementSessionAggregatesForOrder, decrementSessionAggregatesForCancelledOrder } from "./diningSession/sessionAggregateWriters";
-import { getOrCreateSession, recordSessionEvent, requestBill, requestBillByCustomer, cancelBillRequest, markPaymentPending, closeSession } from "./diningSession/sessionService";
+import { getOrCreateSession, recordSessionEvent, markPaid, markComplimentary, closeSession } from "./diningSession/sessionService";
 import { TABLE_EVENT_TYPES } from "./diningSession/sessionTypes";
 import { throwSessionServiceTrpcError } from "./diningSession/mapSessionErrorToTrpc";
 import {
@@ -1656,24 +1656,6 @@ const sessionRouter = router({
     .query(async ({ input }) => {
       return getPublicSessionByToken(input.slug, input.sessionToken);
     }),
-  requestBill: publicProcedure
-    .input(
-      z.object({
-        slug: z.string().min(1).max(128),
-        sessionToken: z
-          .string()
-          .min(16)
-          .max(64)
-          .regex(/^[A-Za-z0-9_-]+$/),
-      })
-    )
-    .mutation(async ({ input }) => {
-      try {
-        return await requestBillByCustomer(input);
-      } catch (err) {
-        throwSessionServiceTrpcError(err);
-      }
-    }),
   getOwnerTimeline: verifiedProcedure
     .input(
       z.object({
@@ -1704,7 +1686,7 @@ const sessionRouter = router({
         throwSessionServiceTrpcError(err);
       }
     }),
-  staffRequestBill: verifiedProcedure
+  markPaid: verifiedProcedure
     .input(
       z.object({
         restaurantId: z.number(),
@@ -1714,7 +1696,7 @@ const sessionRouter = router({
     .mutation(async ({ input, ctx }) => {
       await assertRestaurantAccess(ctx, input.restaurantId);
       try {
-        await requestBill({
+        await markPaid({
           restaurantId: input.restaurantId,
           sessionId: input.sessionId,
           actorUserId: ctx.user.id,
@@ -1724,7 +1706,7 @@ const sessionRouter = router({
         throwSessionServiceTrpcError(err);
       }
     }),
-  cancelBillRequest: verifiedProcedure
+  markComplimentary: verifiedProcedure
     .input(
       z.object({
         restaurantId: z.number(),
@@ -1734,27 +1716,7 @@ const sessionRouter = router({
     .mutation(async ({ input, ctx }) => {
       await assertRestaurantAccess(ctx, input.restaurantId);
       try {
-        await cancelBillRequest({
-          restaurantId: input.restaurantId,
-          sessionId: input.sessionId,
-          actorUserId: ctx.user.id,
-        });
-        return await getOwnerSessionWorkspace(input.restaurantId, input.sessionId);
-      } catch (err) {
-        throwSessionServiceTrpcError(err);
-      }
-    }),
-  markPaymentPending: verifiedProcedure
-    .input(
-      z.object({
-        restaurantId: z.number(),
-        sessionId: z.number().int().positive(),
-      })
-    )
-    .mutation(async ({ input, ctx }) => {
-      await assertRestaurantAccess(ctx, input.restaurantId);
-      try {
-        await markPaymentPending({
+        await markComplimentary({
           restaurantId: input.restaurantId,
           sessionId: input.sessionId,
           actorUserId: ctx.user.id,

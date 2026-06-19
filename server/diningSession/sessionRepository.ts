@@ -153,9 +153,9 @@ export async function insertSessionEvent(
 export type UpdateSessionStatusInput = {
   restaurantId: number;
   sessionId: number;
-  status: "open" | "bill_requested" | "payment_pending" | "closed";
-  billRequestedAt?: string | null;
-  paymentPendingAt?: string | null;
+  status: "open" | "paid" | "complimentary" | "closed";
+  settledAt?: string | null;
+  settlementOutcome?: "paid" | "complimentary" | null;
   closedAt?: string | null;
   openGuard?: number | null;
 };
@@ -167,11 +167,11 @@ export async function updateSessionStatus(
   const db = await resolveDb(client);
   const patch: Partial<InsertDiningSession> = { status: data.status };
 
-  if (data.billRequestedAt !== undefined) {
-    patch.billRequestedAt = data.billRequestedAt;
+  if (data.settledAt !== undefined) {
+    patch.settledAt = data.settledAt;
   }
-  if (data.paymentPendingAt !== undefined) {
-    patch.paymentPendingAt = data.paymentPendingAt;
+  if (data.settlementOutcome !== undefined) {
+    patch.settlementOutcome = data.settlementOutcome;
   }
   if (data.closedAt !== undefined) {
     patch.closedAt = data.closedAt;

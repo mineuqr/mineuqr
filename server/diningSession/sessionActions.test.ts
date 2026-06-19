@@ -24,16 +24,12 @@ vi.mock("../db", () => ({
 }));
 
 import {
-  cancelBillRequest,
   closeSession,
   isAllowedSessionStatusTransition,
-  markPaymentPending,
-  requestBill,
+  markComplimentary,
+  markPaid,
 } from "./sessionService";
-import {
-  DiningSessionTransitionError,
-  TABLE_EVENT_TYPES,
-} from "./sessionTypes";
+import { DiningSessionTransitionError, TABLE_EVENT_TYPES } from "./sessionTypes";
 
 const baseSession: SelectDiningSession = {
   id: 10,
@@ -44,8 +40,8 @@ const baseSession: SelectDiningSession = {
   status: "open",
   openGuard: 1,
   openedAt: "2026-06-18 12:00:00",
-  billRequestedAt: null,
-  paymentPendingAt: null,
+  settledAt: null,
+  settlementOutcome: null,
   closedAt: null,
   totalAmount: null,
   totalOrders: 0,
@@ -61,7 +57,7 @@ function mockTransaction() {
   });
 }
 
-describe("session lifecycle UX-1D", () => {
+describe("session lifecycle SETTLEMENT-ARCHITECTURE-1A", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockTransaction();
@@ -74,85 +70,71 @@ describe("session lifecycle UX-1D", () => {
 
   describe("isAllowedSessionStatusTransition", () => {
     it("allows approved transitions", () => {
-      expect(isAllowedSessionStatusTransition("open", "bill_requested")).toBe(true);
-      expect(isAllowedSessionStatusTransition("bill_requested", "open")).toBe(true);
-      expect(isAllowedSessionStatusTransition("bill_requested", "payment_pending")).toBe(true);
-      expect(isAllowedSessionStatusTransition("payment_pending", "closed")).toBe(true);
+      expect(isAllowedSessionStatusTransition("open", "paid")).toBe(true);
+      expect(isAllowedSessionStatusTransition("open", "complimentary")).toBe(true);
       expect(isAllowedSessionStatusTransition("open", "closed")).toBe(true);
+      expect(isAllowedSessionStatusTransition("paid", "closed")).toBe(true);
+      expect(isAllowedSessionStatusTransition("complimentary", "closed")).toBe(true);
     });
 
     it("rejects invalid transitions", () => {
-      expect(isAllowedSessionStatusTransition("open", "payment_pending")).toBe(false);
-      expect(isAllowedSessionStatusTransition("payment_pending", "open")).toBe(false);
+      expect(isAllowedSessionStatusTransition("open", "open")).toBe(false);
       expect(isAllowedSessionStatusTransition("closed", "open")).toBe(false);
+      expect(isAllowedSessionStatusTransition("paid", "open")).toBe(false);
     });
   });
 
-  it("requestBill transitions open → bill_requested and records event", async () => {
+  it("markPaid settles and auto-closes session", async () => {
     repoMocks.findSessionById.mockResolvedValue(baseSession);
 
-    await requestBill(actionInput);
+    await markPaid(actionInput);
 
     expect(repoMocks.updateSessionStatus).toHaveBeenCalledWith(
       expect.objectContaining({
-        status: "bill_requested",
-        billRequestedAt: expect.any(String),
+        status: "paid",
+        settlementOutcome: "paid",
+        settledAt: expect.any(String),
       }),
       expect.anything()
     );
     expect(repoMocks.insertSessionEvent).toHaveBeenCalledWith(
-      expect.objectContaining({
-        eventType: TABLE_EVENT_TYPES.BILL_REQUESTED,
-        metadata: expect.objectContaining({
-          source: "staff",
-          actorUserId: 42,
-          tableNumber: 5,
-        }),
-      }),
+      expect.objectContaining({ eventType: TABLE_EVENT_TYPES.SESSION_PAID }),
       expect.anything()
     );
-  });
-
-  it("cancelBillRequest transitions bill_requested → open without event", async () => {
-    repoMocks.findSessionById.mockResolvedValue({
-      ...baseSession,
-      status: "bill_requested",
-      billRequestedAt: "2026-06-18 12:30:00",
-    });
-
-    await cancelBillRequest(actionInput);
-
     expect(repoMocks.updateSessionStatus).toHaveBeenCalledWith(
       expect.objectContaining({
-        status: "open",
-        billRequestedAt: null,
+        status: "closed",
+        openGuard: null,
+        settlementOutcome: "paid",
       }),
       expect.anything()
     );
-    expect(repoMocks.insertSessionEvent).not.toHaveBeenCalled();
+    expect(repoMocks.insertSessionEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ eventType: TABLE_EVENT_TYPES.SESSION_CLOSED }),
+      expect.anything()
+    );
   });
 
-  it("markPaymentPending transitions bill_requested → payment_pending", async () => {
-    repoMocks.findSessionById.mockResolvedValue({
-      ...baseSession,
-      status: "bill_requested",
-    });
+  it("markComplimentary settles and auto-closes session", async () => {
+    repoMocks.findSessionById.mockResolvedValue(baseSession);
 
-    await markPaymentPending(actionInput);
+    await markComplimentary(actionInput);
 
     expect(repoMocks.insertSessionEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ eventType: TABLE_EVENT_TYPES.SESSION_COMPLIMENTARY }),
+      expect.anything()
+    );
+    expect(repoMocks.updateSessionStatus).toHaveBeenCalledWith(
       expect.objectContaining({
-        eventType: TABLE_EVENT_TYPES.PAYMENT_PENDING,
+        status: "closed",
+        settlementOutcome: "complimentary",
       }),
       expect.anything()
     );
   });
 
-  it("closeSession clears openGuard and records SESSION_CLOSED", async () => {
-    repoMocks.findSessionById.mockResolvedValue({
-      ...baseSession,
-      status: "payment_pending",
-    });
+  it("closeSession clears openGuard without settlement", async () => {
+    repoMocks.findSessionById.mockResolvedValue(baseSession);
 
     await closeSession(actionInput);
 
@@ -160,48 +142,27 @@ describe("session lifecycle UX-1D", () => {
       expect.objectContaining({
         status: "closed",
         openGuard: null,
-        closedAt: expect.any(String),
+        settlementOutcome: null,
+        settledAt: null,
       }),
       expect.anything()
     );
     expect(repoMocks.insertSessionEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         eventType: TABLE_EVENT_TYPES.SESSION_CLOSED,
-        metadata: expect.objectContaining({
-          orderCount: 1,
-          ordersTotalAmount: "50.00",
-        }),
+        metadata: expect.objectContaining({ source: "manual_close" }),
       }),
       expect.anything()
     );
   });
 
-  it("rejects actions on closed sessions", async () => {
+  it("rejects settlement on closed sessions", async () => {
     repoMocks.findSessionById.mockResolvedValue({
       ...baseSession,
       status: "closed",
       openGuard: null,
     });
 
-    await expect(requestBill(actionInput)).rejects.toBeInstanceOf(
-      DiningSessionTransitionError
-    );
-  });
-
-  it("rejects invalid transition open → payment_pending", async () => {
-    repoMocks.findSessionById.mockResolvedValue(baseSession);
-
-    await expect(markPaymentPending(actionInput)).rejects.toBeInstanceOf(
-      DiningSessionTransitionError
-    );
-  });
-
-  it("rejects cross-tenant session", async () => {
-    repoMocks.findSessionById.mockResolvedValue({
-      ...baseSession,
-      restaurantId: 999,
-    });
-
-    await expect(requestBill(actionInput)).rejects.toThrow(/not found/i);
+    await expect(markPaid(actionInput)).rejects.toBeInstanceOf(DiningSessionTransitionError);
   });
 });

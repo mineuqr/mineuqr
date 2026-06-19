@@ -1,23 +1,28 @@
 /**
  * TABLE-MANAGEMENT-1 UX-1D — session workspace action copy.
+ * SETTLEMENT-ARCHITECTURE-1A — settlement actions.
  */
 
 type Lang = "ar" | "en";
 
 export const sessionActionLabels = {
-  requestBill: { ar: "طلب الفاتورة", en: "Request Bill" },
-  cancelBillRequest: { ar: "إلغاء طلب الفاتورة", en: "Cancel Request" },
-  markPaymentPending: { ar: "الدفع قيد المعالجة", en: "Payment Pending" },
+  markPaid: { ar: "تسجيل الدفع", en: "Mark Paid" },
+  markComplimentary: { ar: "ضيافة", en: "Mark Complimentary" },
   closeSession: { ar: "إغلاق الجلسة", en: "Close Session" },
   closeConfirmTitle: { ar: "إغلاق الجلسة؟", en: "Close session?" },
   closeConfirmBody: {
     ar: "سيؤدي إغلاق الجلسة إلى تحرير الطاولة، وسيحتاج العملاء إلى بدء جلسة جديدة للطلب مجدداً.",
     en: "Closing the session will free the table and customers must start a new session to order again.",
   },
-  cancelConfirmTitle: { ar: "إلغاء طلب الفاتورة؟", en: "Cancel bill request?" },
-  cancelConfirmBody: {
-    ar: "سيتمكن العملاء من إضافة طلبات جديدة مرة أخرى.",
-    en: "Customers will be able to place new orders again.",
+  paidConfirmTitle: { ar: "تسجيل الدفع؟", en: "Mark session paid?" },
+  paidConfirmBody: {
+    ar: "سيتم تسوية الجلسة وإغلاقها تلقائياً وتحرير الطاولة.",
+    en: "The session will be settled and closed automatically, freeing the table.",
+  },
+  complimentaryConfirmTitle: { ar: "تسجيل ضيافة؟", en: "Mark complimentary?" },
+  complimentaryConfirmBody: {
+    ar: "سيتم تسوية الجلسة كضيافة وإغلاقها تلقائياً.",
+    en: "The session will be settled as complimentary and closed automatically.",
   },
   actionError: { ar: "تعذر تنفيذ الإجراء", en: "Could not complete action" },
 } as const;

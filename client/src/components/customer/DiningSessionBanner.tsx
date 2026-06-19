@@ -9,8 +9,8 @@ type DiningSessionBannerProps = {
 
 const STATUS_STYLES: Record<DiningSessionStatus, string> = {
   open: "bg-teal-500/95 text-teal-950",
-  bill_requested: "bg-amber-500/95 text-amber-950",
-  payment_pending: "bg-orange-500/95 text-orange-950",
+  paid: "bg-emerald-500/95 text-emerald-950",
+  complimentary: "bg-violet-500/95 text-violet-950",
   closed: "bg-slate-600/95 text-white",
 };
 

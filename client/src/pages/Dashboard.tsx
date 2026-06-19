@@ -1364,7 +1364,7 @@ function LiveRestaurantOverviewSection({
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-5">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-5">
           <DashboardStatCard
             label={isAr ? "جلسات نشطة" : "Active Sessions"}
             value={overview?.activeSessions ?? 0}
@@ -1382,12 +1382,6 @@ function LiveRestaurantOverviewSection({
             value={overview?.pendingOrders ?? 0}
             icon={Clock3}
             tone="amber"
-          />
-          <DashboardStatCard
-            label={isAr ? "طلبات الفاتورة" : "Bill Requests"}
-            value={overview?.billRequests ?? 0}
-            icon={CreditCard}
-            tone="emerald"
           />
         </div>
       )}

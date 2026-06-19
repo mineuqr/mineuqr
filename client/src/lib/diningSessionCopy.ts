@@ -1,11 +1,12 @@
 /**
  * TABLE-MANAGEMENT-1 D4 — dining session banner copy.
+ * SETTLEMENT-ARCHITECTURE-1A — settlement lifecycle statuses.
  */
 
 export type DiningSessionStatus =
   | "open"
-  | "bill_requested"
-  | "payment_pending"
+  | "paid"
+  | "complimentary"
   | "closed";
 
 type Lang = "ar" | "en";
@@ -18,10 +19,10 @@ export function getDiningSessionBannerLines(
     switch (status) {
       case "open":
         return ["جلسة الطاولة نشطة.", "يمكنك إضافة طلبات جديدة."];
-      case "bill_requested":
-        return ["تم طلب الفاتورة.", "يرجى انتظار الموظف لإتمام عملية الدفع."];
-      case "payment_pending":
-        return ["الدفع قيد المعالجة.", "يرجى انتظار الموظف."];
+      case "paid":
+        return ["تم تسوية الجلسة.", "انتهت جلسة الطاولة."];
+      case "complimentary":
+        return ["جلسة ضيافة.", "انتهت جلسة الطاولة."];
       case "closed":
         return ["انتهت جلسة الطاولة.", "للطلب مجدداً يرجى مسح رمز الطاولة عند بدء جلسة جديدة."];
     }
@@ -30,10 +31,10 @@ export function getDiningSessionBannerLines(
   switch (status) {
     case "open":
       return ["Your table session is active.", "You can place additional orders."];
-    case "bill_requested":
-      return ["Bill requested.", "Please wait for a staff member to complete payment."];
-    case "payment_pending":
-      return ["Payment is being processed.", "Please wait for staff."];
+    case "paid":
+      return ["Session settled.", "This table session has ended."];
+    case "complimentary":
+      return ["Complimentary session.", "This table session has ended."];
     case "closed":
       return [
         "This table session has ended.",
@@ -50,10 +51,10 @@ export function getDiningSessionBannerTitle(
     switch (status) {
       case "open":
         return "جلسة نشطة";
-      case "bill_requested":
-        return "طلب الفاتورة";
-      case "payment_pending":
-        return "انتظار الدفع";
+      case "paid":
+        return "تمت التسوية";
+      case "complimentary":
+        return "ضيافة";
       case "closed":
         return "انتهت الجلسة";
     }
@@ -62,10 +63,10 @@ export function getDiningSessionBannerTitle(
   switch (status) {
     case "open":
       return "Active session";
-    case "bill_requested":
-      return "Bill requested";
-    case "payment_pending":
-      return "Payment pending";
+    case "paid":
+      return "Settled";
+    case "complimentary":
+      return "Complimentary";
     case "closed":
       return "Session ended";
   }

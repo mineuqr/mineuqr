@@ -50,12 +50,12 @@ const EVENT_VISUALS: Record<
     iconClass: "text-sky-400",
     dotClass: "bg-sky-500/15 border-sky-500/35",
   },
-  bill_requested: {
+  session_paid: {
     icon: CreditCard,
-    iconClass: "text-amber-400",
-    dotClass: "bg-amber-500/15 border-amber-500/35",
+    iconClass: "text-emerald-400",
+    dotClass: "bg-emerald-500/15 border-emerald-500/35",
   },
-  payment_pending: {
+  session_complimentary: {
     icon: Clock3,
     iconClass: "text-violet-400",
     dotClass: "bg-violet-500/15 border-violet-500/35",
@@ -106,8 +106,8 @@ function localizedEventTitle(eventType: ActivityFeedEventType, isAr: boolean): s
     session_opened: { en: "Session opened", ar: "فتحت جلسة" },
     order_created: { en: "Order created", ar: "طلب جديد" },
     order_status_changed: { en: "Order status updated", ar: "تحديث حالة الطلب" },
-    bill_requested: { en: "Bill requested", ar: "طلب فاتورة" },
-    payment_pending: { en: "Payment pending", ar: "بانتظار الدفع" },
+    session_paid: { en: "Session paid", ar: "تسجيل الدفع" },
+    session_complimentary: { en: "Session complimentary", ar: "جلسة ضيافة" },
     session_closed: { en: "Session closed", ar: "أُغلقت الجلسة" },
   };
   return isAr ? titles[eventType].ar : titles[eventType].en;

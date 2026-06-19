@@ -50,7 +50,6 @@ describe("ops.getRestaurantOverview OPS-DASHBOARD-2B.1", () => {
       activeSessions: 2,
       occupiedTables: 2,
       pendingOrders: 5,
-      billRequests: 1,
     });
   });
 
@@ -68,7 +67,6 @@ describe("ops.getRestaurantOverview OPS-DASHBOARD-2B.1", () => {
       activeSessions: 2,
       occupiedTables: 2,
       pendingOrders: 5,
-      billRequests: 1,
     });
   });
 
@@ -98,7 +96,6 @@ describe("ops.getActiveTablesBoard OPS-DASHBOARD-2C.1", () => {
           durationMinutes: 45,
           totalOrders: 2,
           pendingOrders: 1,
-          billRequested: false,
         },
       ],
     });
@@ -122,17 +119,14 @@ describe("ops.getActiveTablesBoard OPS-DASHBOARD-2C.1", () => {
 describe("ops.getActionCenter OPS-DASHBOARD-2D.1", () => {
   const actionCenterPayload = {
     generatedAt: "2026-06-18T22:00:00.000Z",
-    billRequests: [
+    longRunningSessions: [
       {
         sessionId: "10",
         tableId: 1,
         tableName: "Table 1",
-        requestedAt: "2026-06-18 21:30:00",
-        waitMinutes: 30,
+        durationMinutes: 90,
       },
     ],
-    paymentPending: [],
-    longRunningSessions: [],
   };
 
   beforeEach(() => {
@@ -151,7 +145,7 @@ describe("ops.getActionCenter OPS-DASHBOARD-2D.1", () => {
       "ops.getActionCenter"
     );
     expect(getActionCenter).toHaveBeenCalledWith(42);
-    expect(result.billRequests).toHaveLength(1);
+    expect(result.longRunningSessions).toHaveLength(1);
   });
 
   it("denies cross-tenant access before loading action center", async () => {

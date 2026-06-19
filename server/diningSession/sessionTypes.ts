@@ -3,19 +3,18 @@ import type { SelectDiningSession } from "../../drizzle/schema";
 /** Active sessions use openGuard = 1; closed sessions set openGuard NULL. */
 export const DINING_SESSION_ACTIVE_OPEN_GUARD = 1 as const;
 
-export const DINING_SESSION_ACTIVE_STATUSES = [
-  "open",
-  "bill_requested",
-  "payment_pending",
-] as const;
+/** Only `open` sessions accept new orders and hold table occupancy. */
+export const DINING_SESSION_ACTIVE_STATUSES = ["open"] as const;
 
 export type DiningSessionActiveStatus = (typeof DINING_SESSION_ACTIVE_STATUSES)[number];
+
+export type DiningSessionSettlementOutcome = "paid" | "complimentary";
 
 export const TABLE_EVENT_TYPES = {
   SESSION_OPENED: "SESSION_OPENED",
   ORDER_CREATED: "ORDER_CREATED",
-  BILL_REQUESTED: "BILL_REQUESTED",
-  PAYMENT_PENDING: "PAYMENT_PENDING",
+  SESSION_PAID: "SESSION_PAID",
+  SESSION_COMPLIMENTARY: "SESSION_COMPLIMENTARY",
   SESSION_CLOSED: "SESSION_CLOSED",
 } as const;
 
@@ -26,8 +25,8 @@ export type TableEventType =
 export const TABLE_EVENT_TYPE_VALUES: readonly TableEventType[] = [
   TABLE_EVENT_TYPES.SESSION_OPENED,
   TABLE_EVENT_TYPES.ORDER_CREATED,
-  TABLE_EVENT_TYPES.BILL_REQUESTED,
-  TABLE_EVENT_TYPES.PAYMENT_PENDING,
+  TABLE_EVENT_TYPES.SESSION_PAID,
+  TABLE_EVENT_TYPES.SESSION_COMPLIMENTARY,
   TABLE_EVENT_TYPES.SESSION_CLOSED,
 ];
 
@@ -40,8 +39,8 @@ export const OWNER_TIMELINE_V1_EVENT_TYPES = [
 /** UX-1D — workspace timeline includes lifecycle events. */
 export const OWNER_TIMELINE_OPERATIONAL_EVENT_TYPES = [
   ...OWNER_TIMELINE_V1_EVENT_TYPES,
-  TABLE_EVENT_TYPES.BILL_REQUESTED,
-  TABLE_EVENT_TYPES.PAYMENT_PENDING,
+  TABLE_EVENT_TYPES.SESSION_PAID,
+  TABLE_EVENT_TYPES.SESSION_COMPLIMENTARY,
   TABLE_EVENT_TYPES.SESSION_CLOSED,
 ] as const;
 
@@ -50,13 +49,13 @@ export type OwnerTimelineV1EventType = (typeof OWNER_TIMELINE_V1_EVENT_TYPES)[nu
 export type OwnerTimelineOperationalEventType =
   (typeof OWNER_TIMELINE_OPERATIONAL_EVENT_TYPES)[number];
 
-export type DiningSessionStatus = "open" | "bill_requested" | "payment_pending" | "closed";
+export type DiningSessionStatus = "open" | "paid" | "complimentary" | "closed";
 
-/** All event types with owner timeline copy (V1 + future). */
+/** All event types with owner timeline copy (V1 + settlement). */
 export const OWNER_TIMELINE_KNOWN_EVENT_TYPES = [
   ...OWNER_TIMELINE_V1_EVENT_TYPES,
-  TABLE_EVENT_TYPES.BILL_REQUESTED,
-  TABLE_EVENT_TYPES.PAYMENT_PENDING,
+  TABLE_EVENT_TYPES.SESSION_PAID,
+  TABLE_EVENT_TYPES.SESSION_COMPLIMENTARY,
   TABLE_EVENT_TYPES.SESSION_CLOSED,
 ] as const;
 

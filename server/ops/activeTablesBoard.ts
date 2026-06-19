@@ -1,19 +1,15 @@
 /**
  * OPS-DASHBOARD-2C.1 — active tables board operational read model.
+ * SETTLEMENT-ARCHITECTURE-1A — board status simplified to available/occupied.
  */
 import { and, asc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { diningSessions, orders, restaurantTables } from "../../drizzle/schema";
 import { getDb } from "../db";
 import { computeSessionDurationMs } from "../diningSession/sessionOwnerWorkspace";
-import type { DiningSessionActiveStatus } from "../diningSession/sessionTypes";
 import { activeDiningSessionStateConditions } from "./activeSessionQuery";
 import { formatOpsTableName } from "./tableDisplayName";
 
-export type ActiveTableBoardStatus =
-  | "available"
-  | "occupied"
-  | "bill_requested"
-  | "payment_pending";
+export type ActiveTableBoardStatus = "available" | "occupied";
 
 export type ActiveTableBoardRow = {
   tableId: number;
@@ -24,7 +20,6 @@ export type ActiveTableBoardRow = {
   durationMinutes: number;
   totalOrders: number;
   pendingOrders: number;
-  billRequested: boolean;
 };
 
 export type ActiveTablesBoardResult = {
@@ -47,13 +42,8 @@ function formatTableName(row: {
   return formatOpsTableName(row);
 }
 
-function mapSessionToBoardStatus(
-  sessionStatus: DiningSessionActiveStatus | null
-): ActiveTableBoardStatus {
-  if (!sessionStatus) return "available";
-  if (sessionStatus === "open") return "occupied";
-  if (sessionStatus === "bill_requested") return "bill_requested";
-  return "payment_pending";
+function mapSessionToBoardStatus(hasSession: boolean): ActiveTableBoardStatus {
+  return hasSession ? "occupied" : "available";
 }
 
 function computeDurationMinutes(openedAt: string | null, now: Date): number {
@@ -85,9 +75,7 @@ async function resolvePendingOrdersBySessionId(
 
   const map = new Map<number, number>();
   for (const row of rows) {
-    if (row.sessionId != null) {
-      map.set(row.sessionId, toCount(row.pendingOrders));
-    }
+    map.set(row.sessionId!, toCount(row.pendingOrders));
   }
   return map;
 }
@@ -98,10 +86,9 @@ type TableSessionRow = {
   nameAr: string | null;
   nameEn: string | null;
   sessionId: number | null;
-  sessionStatus: DiningSessionActiveStatus | null;
+  sessionStatus: string | null;
   openedAt: string | null;
   totalOrders: number | null;
-  billRequestedAt: string | null;
 };
 
 async function resolveTableSessionRows(restaurantId: number): Promise<TableSessionRow[]> {
@@ -118,7 +105,6 @@ async function resolveTableSessionRows(restaurantId: number): Promise<TableSessi
       sessionStatus: diningSessions.status,
       openedAt: diningSessions.openedAt,
       totalOrders: diningSessions.totalOrders,
-      billRequestedAt: diningSessions.billRequestedAt,
     })
     .from(restaurantTables)
     .leftJoin(
@@ -142,9 +128,8 @@ export function mapTableSessionRowToBoardRow(
   pendingBySession: Map<number, number>,
   now: Date
 ): ActiveTableBoardRow {
-  const sessionStatus = row.sessionStatus as DiningSessionActiveStatus | null;
-  const hasSession = row.sessionId != null && sessionStatus != null;
-  const boardStatus = mapSessionToBoardStatus(sessionStatus);
+  const hasSession = row.sessionId != null && row.sessionStatus === "open";
+  const boardStatus = mapSessionToBoardStatus(hasSession);
 
   return {
     tableId: row.tableId,
@@ -155,11 +140,6 @@ export function mapTableSessionRowToBoardRow(
     durationMinutes: hasSession ? computeDurationMinutes(row.openedAt, now) : 0,
     totalOrders: hasSession ? toCount(row.totalOrders) : 0,
     pendingOrders: hasSession ? (pendingBySession.get(row.sessionId!) ?? 0) : 0,
-    billRequested:
-      hasSession &&
-      (boardStatus === "bill_requested" ||
-        boardStatus === "payment_pending" ||
-        row.billRequestedAt != null),
   };
 }
 

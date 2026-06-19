@@ -9,12 +9,10 @@ import {
 import { isEmailNotVerifiedError } from "@/lib/trpcErrors";
 import { trpc, type RouterOutputs } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
-import { AlertTriangle, Clock3, CreditCard, Loader2, Timer } from "lucide-react";
+import { AlertTriangle, Loader2, Timer } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
 
 type ActionCenterData = RouterOutputs["ops"]["getActionCenter"];
-type BillRequestItem = ActionCenterData["billRequests"][number];
-type PaymentPendingItem = ActionCenterData["paymentPending"][number];
 type LongRunningItem = ActionCenterData["longRunningSessions"][number];
 
 function formatMinutes(minutes: number, isAr: boolean): string {
@@ -169,8 +167,6 @@ export function ActionCenterSection({
     !isLoading &&
     !isError &&
     actionCenter != null &&
-    actionCenter.billRequests.length === 0 &&
-    actionCenter.paymentPending.length === 0 &&
     actionCenter.longRunningSessions.length === 0;
 
   return (
@@ -184,13 +180,11 @@ export function ActionCenterSection({
 
       {isLoading ? (
         <div className="flex flex-col gap-6">
-          {[0, 1, 2].map((group) => (
-            <div key={group} className="flex flex-col gap-3">
-              <div className="h-5 w-40 animate-pulse rounded bg-muted/40" />
-              <ActionCenterItemSkeleton />
-              <ActionCenterItemSkeleton />
-            </div>
-          ))}
+          <div className="flex flex-col gap-3">
+            <div className="h-5 w-40 animate-pulse rounded bg-muted/40" />
+            <ActionCenterItemSkeleton />
+            <ActionCenterItemSkeleton />
+          </div>
         </div>
       ) : isError ? (
         <div className="flex flex-col items-center gap-4 rounded-2xl border border-border/40 bg-[#161b22]/90 px-6 py-10 text-center sm:px-8">
@@ -219,46 +213,6 @@ export function ActionCenterSection({
         </div>
       ) : (
         <div className="flex flex-col gap-8">
-          <ActionCenterGroup<BillRequestItem>
-            title={isAr ? "طلبات الفاتورة" : "Bill Requests"}
-            icon={CreditCard}
-            items={actionCenter?.billRequests ?? []}
-            isAr={isAr}
-            emptyText={isAr ? "لا توجد طلبات فاتورة" : "No bill requests"}
-            renderItem={(item) => (
-              <ActionCenterItemRow
-                key={item.sessionId}
-                tableName={item.tableName}
-                minutes={item.waitMinutes}
-                minutesLabel={isAr ? "انتظار" : "Waiting"}
-                isAr={isAr}
-                sessionId={item.sessionId}
-                onOpenSession={onOpenSession}
-                accentClass="border-amber-500/30 bg-amber-500/5"
-              />
-            )}
-          />
-
-          <ActionCenterGroup<PaymentPendingItem>
-            title={isAr ? "بانتظار الدفع" : "Payment Pending"}
-            icon={Clock3}
-            items={actionCenter?.paymentPending ?? []}
-            isAr={isAr}
-            emptyText={isAr ? "لا توجد جلسات بانتظار الدفع" : "No payment-pending sessions"}
-            renderItem={(item) => (
-              <ActionCenterItemRow
-                key={item.sessionId}
-                tableName={item.tableName}
-                minutes={item.waitMinutes}
-                minutesLabel={isAr ? "انتظار" : "Waiting"}
-                isAr={isAr}
-                sessionId={item.sessionId}
-                onOpenSession={onOpenSession}
-                accentClass="border-violet-500/30 bg-violet-500/5"
-              />
-            )}
-          />
-
           <ActionCenterGroup<LongRunningItem>
             title={isAr ? "جلسات طويلة" : "Long Running Sessions"}
             icon={Timer}

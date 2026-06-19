@@ -17,7 +17,7 @@ import { toastTrpcError } from "@/lib/trpcErrors";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Loader2 } from "lucide-react";
 
-type ConfirmKind = "close" | "cancelBill" | null;
+type ConfirmKind = "close" | "paid" | "complimentary" | null;
 
 type DiningSessionActionBarProps = {
   restaurantId: number;
@@ -51,18 +51,16 @@ export function DiningSessionActionBar({
     onError: (err: unknown) => toastTrpcError(err, t),
   };
 
-  const requestBillMutation = trpc.session.staffRequestBill.useMutation(mutationOpts);
-  const cancelBillMutation = trpc.session.cancelBillRequest.useMutation(mutationOpts);
-  const paymentPendingMutation = trpc.session.markPaymentPending.useMutation(mutationOpts);
+  const markPaidMutation = trpc.session.markPaid.useMutation(mutationOpts);
+  const markComplimentaryMutation = trpc.session.markComplimentary.useMutation(mutationOpts);
   const closeMutation = trpc.session.close.useMutation(mutationOpts);
 
   const pending =
-    requestBillMutation.isPending ||
-    cancelBillMutation.isPending ||
-    paymentPendingMutation.isPending ||
+    markPaidMutation.isPending ||
+    markComplimentaryMutation.isPending ||
     closeMutation.isPending;
 
-  if (status === "closed") {
+  if (status === "closed" || status === "paid" || status === "complimentary") {
     return null;
   }
 
@@ -70,10 +68,30 @@ export function DiningSessionActionBar({
     const input = { restaurantId, sessionId };
     if (confirmKind === "close") {
       closeMutation.mutate(input);
-    } else if (confirmKind === "cancelBill") {
-      cancelBillMutation.mutate(input);
+    } else if (confirmKind === "paid") {
+      markPaidMutation.mutate(input);
+    } else if (confirmKind === "complimentary") {
+      markComplimentaryMutation.mutate(input);
     }
   };
+
+  const confirmTitle =
+    confirmKind === "close"
+      ? sessionActionLabel("closeConfirmTitle", lang)
+      : confirmKind === "paid"
+        ? sessionActionLabel("paidConfirmTitle", lang)
+        : confirmKind === "complimentary"
+          ? sessionActionLabel("complimentaryConfirmTitle", lang)
+          : "";
+
+  const confirmBody =
+    confirmKind === "close"
+      ? sessionActionLabel("closeConfirmBody", lang)
+      : confirmKind === "paid"
+        ? sessionActionLabel("paidConfirmBody", lang)
+        : confirmKind === "complimentary"
+          ? sessionActionLabel("complimentaryConfirmBody", lang)
+          : "";
 
   return (
     <>
@@ -82,46 +100,23 @@ export function DiningSessionActionBar({
           <>
             <Button
               type="button"
-              variant="secondary"
               className="w-full sm:w-auto"
               disabled={pending}
-              onClick={() => requestBillMutation.mutate({ restaurantId, sessionId })}
+              onClick={() => setConfirmKind("paid")}
             >
-              {pending && requestBillMutation.isPending ? (
+              {pending && markPaidMutation.isPending ? (
                 <Loader2 className="me-2 h-4 w-4 animate-spin" />
               ) : null}
-              {sessionActionLabel("requestBill", lang)}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full sm:w-auto border-red-500/40 text-red-400 hover:bg-red-500/10"
-              disabled={pending}
-              onClick={() => setConfirmKind("close")}
-            >
-              {sessionActionLabel("closeSession", lang)}
-            </Button>
-          </>
-        )}
-
-        {status === "bill_requested" && (
-          <>
-            <Button
-              type="button"
-              className="w-full sm:w-auto"
-              disabled={pending}
-              onClick={() => paymentPendingMutation.mutate({ restaurantId, sessionId })}
-            >
-              {sessionActionLabel("markPaymentPending", lang)}
+              {sessionActionLabel("markPaid", lang)}
             </Button>
             <Button
               type="button"
               variant="secondary"
               className="w-full sm:w-auto"
               disabled={pending}
-              onClick={() => setConfirmKind("cancelBill")}
+              onClick={() => setConfirmKind("complimentary")}
             >
-              {sessionActionLabel("cancelBillRequest", lang)}
+              {sessionActionLabel("markComplimentary", lang)}
             </Button>
             <Button
               type="button"
@@ -133,34 +128,14 @@ export function DiningSessionActionBar({
               {sessionActionLabel("closeSession", lang)}
             </Button>
           </>
-        )}
-
-        {status === "payment_pending" && (
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full sm:w-auto border-red-500/40 text-red-400 hover:bg-red-500/10"
-            disabled={pending}
-            onClick={() => setConfirmKind("close")}
-          >
-            {sessionActionLabel("closeSession", lang)}
-          </Button>
         )}
       </div>
 
       <AlertDialog open={confirmKind != null} onOpenChange={(open) => !open && setConfirmKind(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              {confirmKind === "close"
-                ? sessionActionLabel("closeConfirmTitle", lang)
-                : sessionActionLabel("cancelConfirmTitle", lang)}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {confirmKind === "close"
-                ? sessionActionLabel("closeConfirmBody", lang)
-                : sessionActionLabel("cancelConfirmBody", lang)}
-            </AlertDialogDescription>
+            <AlertDialogTitle>{confirmTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{confirmBody}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={pending}>

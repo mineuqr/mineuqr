@@ -2,8 +2,8 @@ import type { SelectDiningSession } from "../../drizzle/schema";
 
 export type PublicDiningSessionStatus =
   | "open"
-  | "bill_requested"
-  | "payment_pending"
+  | "paid"
+  | "complimentary"
   | "closed";
 
 export type PublicDiningSession = {
@@ -11,8 +11,8 @@ export type PublicDiningSession = {
   status: PublicDiningSessionStatus;
   tableNumber: number;
   openedAt: string;
-  billRequestedAt?: string | null;
-  paymentPendingAt?: string | null;
+  settledAt?: string | null;
+  settlementOutcome?: "paid" | "complimentary" | null;
 };
 
 export function toPublicDiningSession(row: SelectDiningSession): PublicDiningSession {
@@ -21,8 +21,8 @@ export function toPublicDiningSession(row: SelectDiningSession): PublicDiningSes
     status: row.status as PublicDiningSessionStatus,
     tableNumber: row.tableNumber,
     openedAt: row.openedAt,
-    billRequestedAt: row.billRequestedAt ?? null,
-    paymentPendingAt: row.paymentPendingAt ?? null,
+    settledAt: row.settledAt ?? null,
+    settlementOutcome: row.settlementOutcome ?? null,
   };
 }
 

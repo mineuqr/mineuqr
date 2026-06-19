@@ -7,9 +7,9 @@
  * |-------------------------|----------------------|---------------------------------------------|
  * | session_opened          | table_events         | sessionService.createSession (SESSION_OPENED) |
  * | order_created           | table_events         | order.create via recordSessionEvent         |
- * | bill_requested          | table_events         | sessionService bill-request transitions     |
- * | payment_pending         | table_events         | sessionService payment-pending transitions  |
- * | session_closed          | table_events         | sessionService closeSession                 |
+ * | session_paid            | table_events         | sessionService markPaid settlement          |
+ * | session_complimentary   | table_events         | sessionService markComplimentary settlement |
+ * | session_closed          | table_events         | sessionService closeSession / settlement    |
  * | order_status_changed    | orders               | order.updateStatus (updatedAt proxy)        |
  *
  * NOT used: audit_events, notifications, analytics, workspace/timeline readers.
@@ -37,8 +37,8 @@ export type ActivityFeedEventType =
   | "session_opened"
   | "order_created"
   | "order_status_changed"
-  | "bill_requested"
-  | "payment_pending"
+  | "session_paid"
+  | "session_complimentary"
   | "session_closed";
 
 export type ActivityFeedEvent = {
@@ -60,8 +60,8 @@ export type ActivityFeedResult = {
 export const ACTIVITY_FEED_TABLE_EVENT_TYPES = [
   TABLE_EVENT_TYPES.SESSION_OPENED,
   TABLE_EVENT_TYPES.ORDER_CREATED,
-  TABLE_EVENT_TYPES.BILL_REQUESTED,
-  TABLE_EVENT_TYPES.PAYMENT_PENDING,
+  TABLE_EVENT_TYPES.SESSION_PAID,
+  TABLE_EVENT_TYPES.SESSION_COMPLIMENTARY,
   TABLE_EVENT_TYPES.SESSION_CLOSED,
 ] as const satisfies readonly TableEventType[];
 
@@ -71,8 +71,8 @@ const TABLE_EVENT_TO_FEED_TYPE: Record<
 > = {
   [TABLE_EVENT_TYPES.SESSION_OPENED]: "session_opened",
   [TABLE_EVENT_TYPES.ORDER_CREATED]: "order_created",
-  [TABLE_EVENT_TYPES.BILL_REQUESTED]: "bill_requested",
-  [TABLE_EVENT_TYPES.PAYMENT_PENDING]: "payment_pending",
+  [TABLE_EVENT_TYPES.SESSION_PAID]: "session_paid",
+  [TABLE_EVENT_TYPES.SESSION_COMPLIMENTARY]: "session_complimentary",
   [TABLE_EVENT_TYPES.SESSION_CLOSED]: "session_closed",
 };
 
@@ -144,10 +144,10 @@ export function buildTableEventFeedCopy(
         subtitle: orderNumber ? `#${orderNumber} · ${tableName}` : tableName,
       };
     }
-    case "bill_requested":
-      return { title: "Bill requested", subtitle: tableName };
-    case "payment_pending":
-      return { title: "Payment pending", subtitle: tableName };
+    case "session_paid":
+      return { title: "Session paid", subtitle: tableName };
+    case "session_complimentary":
+      return { title: "Session complimentary", subtitle: tableName };
     case "session_closed":
       return { title: "Session closed", subtitle: tableName };
     default:
