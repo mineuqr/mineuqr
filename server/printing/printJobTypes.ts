@@ -116,3 +116,12 @@ export type PrintExecutionResult = {
   attemptId: number;
   attemptMetadata: PrintExecutionAttemptMetadata;
 };
+
+export type ProcessNextPrintJobInput = {
+  workerId: number;
+  printerId?: number;
+};
+
+export type ProcessNextPrintJobResult =
+  | { processed: false }
+  | { processed: true; jobId: number; result: "printed" | "failed" };

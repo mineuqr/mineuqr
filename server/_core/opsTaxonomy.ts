@@ -122,6 +122,12 @@ export const OPS_EVENT = {
   print_job_created: "print_job_created",
   print_job_idempotency_reused: "print_job_idempotency_reused",
   print_job_creation_failed: "print_job_creation_failed",
+
+  // THERMAL-PRINTING-3C.3
+  print_processor_job_claimed: "print_processor_job_claimed",
+  print_processor_execution_started: "print_processor_execution_started",
+  print_processor_execution_completed: "print_processor_execution_completed",
+  print_processor_execution_failed: "print_processor_execution_failed",
 } as const;
 
 export type OpsEventType = (typeof OPS_EVENT)[keyof typeof OPS_EVENT];
