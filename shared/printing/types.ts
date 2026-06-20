@@ -1,0 +1,57 @@
+/**
+ * THERMAL-PRINTING-3B.1 — shared print domain types and enums.
+ */
+
+export const PAPER_WIDTH_MM = {
+  W58: 58,
+  W80: 80,
+} as const;
+
+export const PAPER_WIDTH_MM_VALUES = [PAPER_WIDTH_MM.W58, PAPER_WIDTH_MM.W80] as const;
+
+export type PaperWidthMm = (typeof PAPER_WIDTH_MM_VALUES)[number];
+
+export const PRINT_TICKET_LOCALE = {
+  AR: "ar",
+  EN: "en",
+  BILINGUAL: "bilingual",
+} as const;
+
+export const PRINT_TICKET_LOCALE_VALUES = [
+  PRINT_TICKET_LOCALE.AR,
+  PRINT_TICKET_LOCALE.EN,
+  PRINT_TICKET_LOCALE.BILINGUAL,
+] as const;
+
+export type PrintTicketLocale = (typeof PRINT_TICKET_LOCALE_VALUES)[number];
+
+export const PRINT_JOB_STATUS = {
+  QUEUED: "queued",
+  CLAIMED: "claimed",
+  PRINTED: "printed",
+  FAILED: "failed",
+  CANCELLED: "cancelled",
+  EXPIRED: "expired",
+} as const;
+
+export const PRINT_JOB_STATUS_VALUES = [
+  PRINT_JOB_STATUS.QUEUED,
+  PRINT_JOB_STATUS.CLAIMED,
+  PRINT_JOB_STATUS.PRINTED,
+  PRINT_JOB_STATUS.FAILED,
+  PRINT_JOB_STATUS.CANCELLED,
+  PRINT_JOB_STATUS.EXPIRED,
+] as const;
+
+export type PrintJobStatus = (typeof PRINT_JOB_STATUS_VALUES)[number];
+
+/** Known attempt audit event types (extensible via varchar in DB). */
+export const PRINT_JOB_ATTEMPT_EVENT = {
+  STATUS_TRANSITION: "status_transition",
+  DELIVERY_FAILED: "delivery_failed",
+  LEASE_EXPIRED: "lease_expired",
+} as const;
+
+export type PrintJobAttemptEventType =
+  | (typeof PRINT_JOB_ATTEMPT_EVENT)[keyof typeof PRINT_JOB_ATTEMPT_EVENT]
+  | string;

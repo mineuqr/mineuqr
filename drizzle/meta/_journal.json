@@ -211,6 +211,13 @@
       "when": 1781900000000,
       "tag": "0029_settlement_session_status",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "5",
+      "when": 1782000000000,
+      "tag": "0030_print_infrastructure",
+      "breakpoints": true
     }
   ]
 }

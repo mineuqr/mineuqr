@@ -452,3 +452,94 @@ export type SelectCustomerPushSubscription = typeof customerPushSubscriptions.$i
 
 export type InsertOrderItem = typeof orderItems.$inferInsert;
 export type SelectOrderItem = typeof orderItems.$inferSelect;
+
+// ─── Printers (THERMAL-PRINTING-3B.1) ─────────────────────────────
+export const printers = mysqlTable(
+	"printers",
+	{
+		id: int().autoincrement().notNull(),
+		restaurantId: int().notNull(),
+		name: varchar({ length: 128 }).notNull(),
+		paperWidthMm: int().notNull(),
+		profileId: varchar({ length: 64 }).notNull(),
+		isDefault: boolean().default(false).notNull(),
+		createdAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+		updatedAt: timestamp({ mode: "string" }).defaultNow().onUpdateNow().notNull(),
+	},
+	(table) => [index("printers_restaurant_id").on(table.restaurantId)]
+);
+
+// ─── Restaurant Print Settings (THERMAL-PRINTING-3B.1) ────────────
+export const restaurantPrintSettings = mysqlTable("restaurant_print_settings", {
+	restaurantId: int().notNull().primaryKey(),
+	ticketLocale: mysqlEnum(["ar", "en", "bilingual"]).default("bilingual").notNull(),
+	autoPrintOnNewOrder: boolean().default(true).notNull(),
+	showTotalAmount: boolean().default(true).notNull(),
+	defaultPrinterId: int(),
+	createdAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+	updatedAt: timestamp({ mode: "string" }).defaultNow().onUpdateNow().notNull(),
+});
+
+// ─── Print Jobs (THERMAL-PRINTING-3B.1) ───────────────────────────
+export const printJobs = mysqlTable(
+	"print_jobs",
+	{
+		id: int().autoincrement().notNull(),
+		restaurantId: int().notNull(),
+		orderId: int().notNull(),
+		printerId: int(),
+		status: mysqlEnum([
+			"queued",
+			"claimed",
+			"printed",
+			"failed",
+			"cancelled",
+			"expired",
+		])
+			.default("queued")
+			.notNull(),
+		attemptCount: int().default(0).notNull(),
+		idempotencyKey: varchar({ length: 128 }).notNull(),
+		claimedBy: int(),
+		leaseExpiresAt: timestamp({ mode: "string" }),
+		createdAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+		updatedAt: timestamp({ mode: "string" }).defaultNow().onUpdateNow().notNull(),
+	},
+	(table) => [
+		index("print_jobs_restaurant_id").on(table.restaurantId),
+		index("print_jobs_order_id").on(table.orderId),
+		index("print_jobs_printer_id").on(table.printerId),
+		index("print_jobs_status").on(table.status),
+		index("print_jobs_idempotency_key").on(table.idempotencyKey),
+		index("print_jobs_restaurant_id_status_created_at").on(
+			table.restaurantId,
+			table.status,
+			table.createdAt
+		),
+	]
+);
+
+// ─── Print Job Attempts (THERMAL-PRINTING-3B.1) ───────────────────
+export const printJobAttempts = mysqlTable(
+	"print_job_attempts",
+	{
+		id: int().autoincrement().notNull(),
+		printJobId: int().notNull(),
+		eventType: varchar({ length: 64 }).notNull(),
+		metadataJson: json(),
+		createdAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+	},
+	(table) => [index("print_job_attempts_print_job_id").on(table.printJobId)]
+);
+
+export type InsertPrinter = typeof printers.$inferInsert;
+export type SelectPrinter = typeof printers.$inferSelect;
+
+export type InsertRestaurantPrintSettings = typeof restaurantPrintSettings.$inferInsert;
+export type SelectRestaurantPrintSettings = typeof restaurantPrintSettings.$inferSelect;
+
+export type InsertPrintJob = typeof printJobs.$inferInsert;
+export type SelectPrintJob = typeof printJobs.$inferSelect;
+
+export type InsertPrintJobAttempt = typeof printJobAttempts.$inferInsert;
+export type SelectPrintJobAttempt = typeof printJobAttempts.$inferSelect;
