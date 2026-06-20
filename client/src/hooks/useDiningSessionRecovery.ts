@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { DiningSessionStatus } from "@/lib/diningSessionCopy";
 import {
   recoverDiningSession,
   type DiningSessionRecoveryClient,
@@ -25,14 +26,23 @@ export function useDiningSessionRecovery({
     session: null,
     sessionEnded: false,
   });
+  const [visitSessionEnded, setVisitSessionEnded] = useState(false);
+  const [visitEndedStatus, setVisitEndedStatus] = useState<DiningSessionStatus | undefined>();
   const [recoveryDone, setRecoveryDone] = useState(tableNumber <= 0);
   const clientRef = useRef(client);
   clientRef.current = client;
+
+  useEffect(() => {
+    setVisitSessionEnded(false);
+    setVisitEndedStatus(undefined);
+  }, [slug, tableNumber]);
 
   const runRecovery = useCallback(
     async (mode: DiningSessionRecoveryMode) => {
       if (!isDiningSessionRecoveryContextReady(slug, tableNumber, restaurantId)) {
         setRecovery({ session: null, sessionEnded: false });
+        setVisitSessionEnded(false);
+        setVisitEndedStatus(undefined);
         setRecoveryDone(true);
         return;
       }
@@ -46,7 +56,19 @@ export function useDiningSessionRecovery({
           slug,
           tableNumber,
           client: clientRef.current,
+          mode,
         });
+
+        if (result.session?.status === "open") {
+          setVisitSessionEnded(false);
+          setVisitEndedStatus(undefined);
+        } else if (mode === "revalidate" && result.sessionEnded) {
+          setVisitSessionEnded(true);
+          if (result.endedStatus) {
+            setVisitEndedStatus(result.endedStatus);
+          }
+        }
+
         setRecovery(result);
       } catch {
         setRecovery({ session: null, sessionEnded: false });
@@ -74,5 +96,14 @@ export function useDiningSessionRecovery({
     });
   }, [slug, tableNumber, restaurantId]);
 
-  return { recovery, recoveryDone, setRecovery };
+  const effectiveRecovery = useMemo(
+    (): DiningSessionRecoveryResult => ({
+      ...recovery,
+      sessionEnded: recovery.sessionEnded || visitSessionEnded,
+      endedStatus: recovery.endedStatus ?? visitEndedStatus,
+    }),
+    [recovery, visitSessionEnded, visitEndedStatus]
+  );
+
+  return { recovery: effectiveRecovery, recoveryDone, setRecovery };
 }

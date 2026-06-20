@@ -56,6 +56,7 @@ describe("order.getPublicStatus PR-CUX-1B", () => {
       trackingExpired: false,
       diningSessionEnded: false,
       diningSessionStatus: null,
+      diningSessionToken: null,
     });
     expect(result).not.toHaveProperty("orderId");
     expect(result).not.toHaveProperty("restaurantId");

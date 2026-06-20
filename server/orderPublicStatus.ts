@@ -25,6 +25,7 @@ export type PublicOrderStatus = {
   trackingExpired: boolean;
   diningSessionEnded: boolean;
   diningSessionStatus: DiningSessionStatus | null;
+  diningSessionToken: string | null;
 };
 
 export type OrderPublicStatusRow = {
@@ -45,7 +46,11 @@ export type OrderPublicStatusRow = {
 
 export function toPublicOrderStatus(
   row: OrderPublicStatusRow,
-  options?: { nowMs?: number; diningSessionStatus?: DiningSessionStatus | null }
+  options?: {
+    nowMs?: number;
+    diningSessionStatus?: DiningSessionStatus | null;
+    diningSessionToken?: string | null;
+  }
 ): PublicOrderStatus {
   const trackingExpired = isTrackingExpired(row.readyAt, options?.nowMs);
   const diningSessionStatus = options?.diningSessionStatus ?? null;
@@ -67,5 +72,6 @@ export function toPublicOrderStatus(
     trackingExpired,
     diningSessionEnded,
     diningSessionStatus,
+    diningSessionToken: options?.diningSessionToken ?? null,
   };
 }

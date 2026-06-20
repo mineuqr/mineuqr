@@ -22,7 +22,7 @@ import {
   openWhatsAppOrderMessage,
 } from "@/lib/orderWhatsApp";
 import { CUSTOMER_ORDER_STATUS_POLL_MS } from "@/lib/queryRuntime";
-import { markDiningSessionOrderingBlocked } from "@/lib/diningSessionOrderingBlocked";
+import { markSessionTokenOrderingBlocked } from "@/lib/diningSessionOrderingBlocked";
 import { attachDiningSessionRevalidationListeners } from "@/lib/diningSessionRevalidation";
 import { useReadyStatusAlerts } from "@/hooks/useReadyStatusAlerts";
 import { trpc } from "@/lib/trpc";
@@ -68,21 +68,14 @@ export default function OrderStatusPage() {
   const orderSnapshot = trackingToken ? loadOrderConfirmationSnapshot(trackingToken) : null;
 
   useEffect(() => {
-    if (!diningSessionEnded || !slug) return;
-    const tableNum = data?.tableNumber ?? orderSnapshot?.tableNumber ?? 0;
-    if (tableNum <= 0 || !diningSessionStatus) return;
-    markDiningSessionOrderingBlocked({
-      slug,
-      tableNumber: tableNum,
+    if (!diningSessionEnded || !diningSessionStatus) return;
+    const sessionToken = data?.diningSessionToken;
+    if (!sessionToken) return;
+    markSessionTokenOrderingBlocked({
+      sessionToken,
       endedStatus: diningSessionStatus,
     });
-  }, [
-    diningSessionEnded,
-    diningSessionStatus,
-    slug,
-    data?.tableNumber,
-    orderSnapshot?.tableNumber,
-  ]);
+  }, [diningSessionEnded, diningSessionStatus, data?.diningSessionToken]);
 
   useEffect(() => {
     return attachDiningSessionRevalidationListeners(() => {

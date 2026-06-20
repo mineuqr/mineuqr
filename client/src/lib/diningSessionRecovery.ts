@@ -1,11 +1,11 @@
 /**
- * TABLE-MANAGEMENT-1 D4 + CUSTOMER-SESSION-LIFECYCLE-1F — dining session recovery.
+ * TABLE-MANAGEMENT-1 D4 + CUSTOMER-SESSION-LIFECYCLE-1F / 1F.1 — dining session recovery.
  */
 import type { DiningSessionStatus } from "@/lib/diningSessionCopy";
+import type { DiningSessionRecoveryMode } from "@/lib/diningSessionRevalidation";
 import {
-  clearDiningSessionOrderingBlocked,
-  loadDiningSessionOrderingBlocked,
-  markDiningSessionOrderingBlocked,
+  clearLegacyTableScopedOrderingBlocked,
+  markSessionTokenOrderingBlocked,
 } from "@/lib/diningSessionOrderingBlocked";
 import {
   clearDiningSession,
@@ -47,7 +47,7 @@ export function isRecoverableDiningSession(
   return session != null && session.status === "open";
 }
 
-/** Only active open sessions or fresh table visits allow placing new orders. */
+/** Active open session or fresh table visit (no ended session in this visit). */
 export function isDiningSessionOrderingEnabled(
   recovery: DiningSessionRecoveryResult
 ): boolean {
@@ -59,23 +59,27 @@ export function isDiningSessionOrderingEnabled(
 /**
  * Tier 1: localStorage hint → getByToken.
  * Tier 2: getActiveByTable.
- * Server wins — persisted token always matches server response.
- * Terminal sessions mark local ordering blocked and are not recoverable.
+ * Terminal tokens are marked session-scoped; ordering blocked only on revalidate (stale tab).
  */
 export async function recoverDiningSession(options: {
   slug: string;
   tableNumber: number;
   client: DiningSessionRecoveryClient;
+  mode?: DiningSessionRecoveryMode;
 }): Promise<DiningSessionRecoveryResult> {
-  const { slug, tableNumber, client } = options;
+  const { slug, tableNumber, client, mode = "initial" } = options;
   if (!slug || tableNumber <= 0) {
     return { session: null, sessionEnded: false };
   }
 
-  const blocked = loadDiningSessionOrderingBlocked(slug, tableNumber);
+  if (mode === "initial") {
+    clearLegacyTableScopedOrderingBlocked();
+  }
+
   const hint = loadDiningSession(slug, tableNumber);
   let session: RecoveredDiningSession | null = null;
-  let endedStatus: DiningSessionStatus | undefined = blocked?.endedStatus;
+  let terminalStatus: DiningSessionStatus | undefined;
+  let terminalToken: string | undefined;
 
   if (hint?.sessionToken) {
     try {
@@ -85,8 +89,12 @@ export async function recoverDiningSession(options: {
     }
 
     if (session && TERMINAL_SESSION_STATUSES.includes(session.status)) {
-      endedStatus = session.status;
-      markDiningSessionOrderingBlocked({ slug, tableNumber, endedStatus: session.status });
+      terminalToken = hint.sessionToken;
+      terminalStatus = session.status;
+      markSessionTokenOrderingBlocked({
+        sessionToken: hint.sessionToken,
+        endedStatus: session.status,
+      });
       clearDiningSession(slug, tableNumber);
       session = null;
     }
@@ -98,14 +106,13 @@ export async function recoverDiningSession(options: {
     } catch {
       return {
         session: null,
-        sessionEnded: blocked != null || endedStatus != null,
-        endedStatus,
+        sessionEnded: mode === "revalidate" && terminalStatus != null,
+        endedStatus: terminalStatus,
       };
     }
   }
 
   if (isRecoverableDiningSession(session)) {
-    clearDiningSessionOrderingBlocked(slug, tableNumber);
     saveDiningSession({
       sessionToken: session.sessionToken,
       slug,
@@ -114,14 +121,14 @@ export async function recoverDiningSession(options: {
     return { session, sessionEnded: false };
   }
 
-  if (hint) {
+  if (hint && !terminalToken) {
     clearDiningSession(slug, tableNumber);
   }
 
-  const sessionEnded = blocked != null || endedStatus != null;
+  const sessionEnded = mode === "revalidate" && terminalStatus != null;
   return {
     session: null,
     sessionEnded,
-    endedStatus,
+    endedStatus: sessionEnded ? terminalStatus : undefined,
   };
 }

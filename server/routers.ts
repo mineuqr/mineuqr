@@ -2080,9 +2080,11 @@ const orderRouter = router({
 
       let diningSessionStatus: import("./diningSession/sessionTypes").DiningSessionStatus | null =
         null;
+      let diningSessionToken: string | null = null;
       if (ENV.tableSessionDualWrite && row.sessionId != null) {
         const session = await findSessionById(row.sessionId);
         diningSessionStatus = session?.status ?? null;
+        diningSessionToken = session?.sessionToken ?? null;
       }
 
       return toPublicOrderStatus(
@@ -2106,7 +2108,7 @@ const orderRouter = router({
           tableLabel: row.tableLabel,
           itemCount: row.itemCount,
         },
-        { diningSessionStatus }
+        { diningSessionStatus, diningSessionToken }
       );
     }),
   /** @deprecated Use getPublicStatus — orderNumber lookup is not supported for customers. */

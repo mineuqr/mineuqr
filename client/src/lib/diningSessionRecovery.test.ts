@@ -6,8 +6,8 @@ import {
   type RecoveredDiningSession,
 } from "./diningSessionRecovery";
 import {
-  diningSessionOrderingBlockedKey,
-  resetDiningSessionOrderingBlockedForTests,
+  resetSessionTokenOrderingBlockedForTests,
+  sessionTokenOrderingBlockedKey,
 } from "./diningSessionOrderingBlocked";
 import {
   diningSessionStorageKey,
@@ -58,6 +58,7 @@ const complimentarySession: RecoveredDiningSession = {
 
 const closedSession: RecoveredDiningSession = {
   ...openSession,
+  sessionToken: "closed-token123456789",
   status: "closed",
 };
 
@@ -69,7 +70,7 @@ describe("diningSessionRecovery TABLE-MANAGEMENT-1 D4", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     resetDiningSessionsForTests();
-    resetDiningSessionOrderingBlockedForTests();
+    resetSessionTokenOrderingBlockedForTests();
   });
 
   it("recovers by token (tier 1)", async () => {
@@ -207,8 +208,29 @@ describe("diningSessionRecovery TABLE-MANAGEMENT-1 D4", () => {
     expect(localStorage.getItem(diningSessionStorageKey("cafe", 5))).toBeNull();
   });
 
+  it("removes legacy table-scoped blocked keys on initial recovery (1F.1)", async () => {
+    localStorage.setItem(
+      "mineuqr:dining-session-ended:cafe:5",
+      JSON.stringify({ slug: "cafe", tableNumber: 5, endedStatus: "closed" })
+    );
+
+    const client: DiningSessionRecoveryClient = {
+      getByToken: vi.fn(async () => null),
+      getActiveByTable: vi.fn(async () => null),
+    };
+
+    await recoverDiningSession({
+      slug: "cafe",
+      tableNumber: 5,
+      client,
+      mode: "initial",
+    });
+
+    expect(localStorage.getItem("mineuqr:dining-session-ended:cafe:5")).toBeNull();
+  });
+
   describe("CUSTOMER-SESSION-LIFECYCLE-1A closed session recovery", () => {
-    it("A: closed token clears storage and calls getActiveByTable", async () => {
+    it("A: closed token clears storage and marks session token blocked", async () => {
       saveDiningSession({
         sessionToken: "closed-token123456789",
         slug: "cafe",
@@ -232,11 +254,11 @@ describe("diningSessionRecovery TABLE-MANAGEMENT-1 D4", () => {
       });
       expect(localStorage.getItem(diningSessionStorageKey("cafe", 5))).toBeNull();
       expect(
-        localStorage.getItem(diningSessionOrderingBlockedKey("cafe", 5))
+        localStorage.getItem(sessionTokenOrderingBlockedKey("closed-token123456789"))
       ).not.toBeNull();
     });
 
-    it("B: closed token with no active session blocks ordering (1F)", async () => {
+    it("B: initial recovery after closed token allows new session (1F.1)", async () => {
       saveDiningSession({
         sessionToken: "closed-token123456789",
         slug: "cafe",
@@ -252,6 +274,30 @@ describe("diningSessionRecovery TABLE-MANAGEMENT-1 D4", () => {
         slug: "cafe",
         tableNumber: 5,
         client,
+        mode: "initial",
+      });
+
+      expect(result).toEqual({ session: null, sessionEnded: false });
+      expect(isDiningSessionOrderingEnabled(result)).toBe(true);
+    });
+
+    it("B2: revalidate after closed token blocks ordering (stale tab)", async () => {
+      saveDiningSession({
+        sessionToken: "closed-token123456789",
+        slug: "cafe",
+        tableNumber: 5,
+      });
+
+      const client: DiningSessionRecoveryClient = {
+        getByToken: vi.fn(async () => closedSession),
+        getActiveByTable: vi.fn(async () => null),
+      };
+
+      const result = await recoverDiningSession({
+        slug: "cafe",
+        tableNumber: 5,
+        client,
+        mode: "revalidate",
       });
 
       expect(result).toEqual({
@@ -304,6 +350,7 @@ describe("diningSessionRecovery TABLE-MANAGEMENT-1 D4", () => {
         slug: "cafe",
         tableNumber: 5,
         client,
+        mode: "revalidate",
       });
 
       expect(result.session).toBeNull();
@@ -329,6 +376,7 @@ describe("diningSessionRecovery TABLE-MANAGEMENT-1 D4", () => {
         slug: "cafe",
         tableNumber: 5,
         client,
+        mode: "revalidate",
       });
 
       expect(result.session).toBeNull();
@@ -364,13 +412,10 @@ describe("diningSessionRecovery TABLE-MANAGEMENT-1 D4", () => {
         JSON.parse(localStorage.getItem(diningSessionStorageKey("cafe", 5)) ?? "{}")
           .sessionToken
       ).toBe("fresh-open-token123456");
-      expect(
-        localStorage.getItem(diningSessionOrderingBlockedKey("cafe", 5))
-      ).toBeNull();
     });
   });
 
-  describe("isDiningSessionOrderingEnabled CUSTOMER-SESSION-LIFECYCLE-1F", () => {
+  describe("isDiningSessionOrderingEnabled CUSTOMER-SESSION-LIFECYCLE-1F.1", () => {
     it("allows ordering on fresh table visit", () => {
       expect(
         isDiningSessionOrderingEnabled({ session: null, sessionEnded: false })
@@ -383,7 +428,7 @@ describe("diningSessionRecovery TABLE-MANAGEMENT-1 D4", () => {
       ).toBe(true);
     });
 
-    it("blocks ordering after session ended", () => {
+    it("blocks ordering only when visit session ended (stale tab)", () => {
       expect(
         isDiningSessionOrderingEnabled({
           session: null,

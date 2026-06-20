@@ -1,37 +1,36 @@
 /**
- * CUSTOMER-SESSION-LIFECYCLE-1F — client hint that table ordering ended.
- * Server is authoritative; this prevents stale tabs from re-enabling ordering after closure.
+ * CUSTOMER-SESSION-LIFECYCLE-1F.1 — session-token-scoped expiry marker.
+ * Blocks reuse of a specific closed session only; never blocks table/device permanently.
  */
 import type { DiningSessionStatus } from "@/lib/diningSessionCopy";
 
-export type DiningSessionOrderingBlockedRecord = {
-  slug: string;
-  tableNumber: number;
+export type SessionTokenOrderingBlockedRecord = {
+  sessionToken: string;
   endedStatus: DiningSessionStatus;
   blockedAt: string;
 };
 
-const PREFIX = "mineuqr:dining-session-ended:";
+const TOKEN_PREFIX = "mineuqr:dining-session-ended-token:";
+/** 1F table-scoped keys — removed on recovery (regression fix). */
+const LEGACY_TABLE_PREFIX = "mineuqr:dining-session-ended:";
 
-export function diningSessionOrderingBlockedKey(slug: string, tableNumber: number): string {
-  return `${PREFIX}${slug}:${tableNumber}`;
+export function sessionTokenOrderingBlockedKey(sessionToken: string): string {
+  return `${TOKEN_PREFIX}${sessionToken}`;
 }
 
-export function markDiningSessionOrderingBlocked(record: {
-  slug: string;
-  tableNumber: number;
+export function markSessionTokenOrderingBlocked(record: {
+  sessionToken: string;
   endedStatus: DiningSessionStatus;
 }): void {
-  if (!record.slug || record.tableNumber <= 0) return;
-  const payload: DiningSessionOrderingBlockedRecord = {
-    slug: record.slug,
-    tableNumber: record.tableNumber,
+  if (!record.sessionToken) return;
+  const payload: SessionTokenOrderingBlockedRecord = {
+    sessionToken: record.sessionToken,
     endedStatus: record.endedStatus,
     blockedAt: new Date().toISOString(),
   };
   try {
     localStorage.setItem(
-      diningSessionOrderingBlockedKey(record.slug, record.tableNumber),
+      sessionTokenOrderingBlockedKey(record.sessionToken),
       JSON.stringify(payload)
     );
   } catch {
@@ -39,20 +38,18 @@ export function markDiningSessionOrderingBlocked(record: {
   }
 }
 
-export function loadDiningSessionOrderingBlocked(
-  slug: string,
-  tableNumber: number
-): DiningSessionOrderingBlockedRecord | null {
-  if (!slug || tableNumber <= 0 || typeof localStorage === "undefined") return null;
+export function loadSessionTokenOrderingBlocked(
+  sessionToken: string
+): SessionTokenOrderingBlockedRecord | null {
+  if (!sessionToken || typeof localStorage === "undefined") return null;
   try {
-    const raw = localStorage.getItem(diningSessionOrderingBlockedKey(slug, tableNumber));
+    const raw = localStorage.getItem(sessionTokenOrderingBlockedKey(sessionToken));
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<DiningSessionOrderingBlockedRecord>;
-    if (!parsed.slug || !parsed.tableNumber || !parsed.endedStatus) return null;
-    if (parsed.slug !== slug || parsed.tableNumber !== tableNumber) return null;
+    const parsed = JSON.parse(raw) as Partial<SessionTokenOrderingBlockedRecord>;
+    if (!parsed.sessionToken || !parsed.endedStatus) return null;
+    if (parsed.sessionToken !== sessionToken) return null;
     return {
-      slug: parsed.slug,
-      tableNumber: parsed.tableNumber,
+      sessionToken: parsed.sessionToken,
       endedStatus: parsed.endedStatus,
       blockedAt: parsed.blockedAt ?? "",
     };
@@ -61,26 +58,35 @@ export function loadDiningSessionOrderingBlocked(
   }
 }
 
-export function isDiningSessionOrderingBlocked(slug: string, tableNumber: number): boolean {
-  return loadDiningSessionOrderingBlocked(slug, tableNumber) != null;
+export function isSessionTokenOrderingBlocked(sessionToken: string): boolean {
+  return loadSessionTokenOrderingBlocked(sessionToken) != null;
 }
 
-export function clearDiningSessionOrderingBlocked(slug: string, tableNumber: number): void {
-  if (!slug || tableNumber <= 0 || typeof localStorage === "undefined") return;
-  try {
-    localStorage.removeItem(diningSessionOrderingBlockedKey(slug, tableNumber));
-  } catch {
-    /* ignore */
-  }
-}
-
-/** For tests. */
-export function resetDiningSessionOrderingBlockedForTests(): void {
+/** Remove 1F table-scoped markers that permanently blocked devices. */
+export function clearLegacyTableScopedOrderingBlocked(): void {
   if (typeof localStorage === "undefined") return;
   const keys: string[] = [];
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
-    if (key?.startsWith(PREFIX)) keys.push(key);
+    if (!key?.startsWith(LEGACY_TABLE_PREFIX)) continue;
+    if (key.startsWith(TOKEN_PREFIX)) continue;
+    keys.push(key);
+  }
+  keys.forEach((key) => localStorage.removeItem(key));
+}
+
+/** For tests. */
+export function resetSessionTokenOrderingBlockedForTests(): void {
+  if (typeof localStorage === "undefined") return;
+  const keys: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (
+      key?.startsWith(TOKEN_PREFIX) ||
+      (key?.startsWith(LEGACY_TABLE_PREFIX) && !key.startsWith(TOKEN_PREFIX))
+    ) {
+      keys.push(key);
+    }
   }
   keys.forEach((key) => localStorage.removeItem(key));
 }
