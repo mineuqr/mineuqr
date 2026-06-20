@@ -6,6 +6,7 @@ import { getRestaurantById, getTableById, getOrdersBySessionId } from "../db";
 import {
   findActiveSession,
   findSessionById,
+  findSessionByToken,
   insertSession,
   insertSessionEvent,
   updateSessionStatus,
@@ -13,10 +14,13 @@ import {
 import { generateDiningSessionToken } from "./sessionToken";
 import {
   DiningSessionConflictError,
+  DiningSessionExpiredError,
   DiningSessionNotFoundError,
   DiningSessionUnavailableError,
   DiningSessionValidationError,
   DiningSessionTransitionError,
+  DINING_SESSION_ACTIVE_OPEN_GUARD,
+  isTerminalDiningSessionStatus,
   TABLE_EVENT_TYPES,
   TABLE_EVENT_TYPE_VALUES,
   type DiningSessionSettlementOutcome,
@@ -344,6 +348,46 @@ export async function getOrCreateSession(
     }
     throw err;
   }
+}
+
+export type ResolveSessionForOrderInput = GetOrCreateSessionInput & {
+  sessionToken?: string;
+};
+
+/**
+ * CUSTOMER-SESSION-LIFECYCLE-1F — authoritative session resolution for order.create.
+ * Reuses active open sessions; rejects terminal hinted tokens; opens new sessions only when allowed.
+ */
+export async function resolveSessionForOrderCreate(
+  input: ResolveSessionForOrderInput
+): Promise<GetOrCreateSessionResult> {
+  if (!Number.isInteger(input.tableNumber) || input.tableNumber <= 0) {
+    throw new DiningSessionValidationError("Invalid tableNumber");
+  }
+
+  await validateTableContext(input);
+
+  const active = await findActiveSession(input.restaurantId, input.tableId);
+  if (active) {
+    return { session: active, created: false };
+  }
+
+  if (input.sessionToken) {
+    const hinted = await findSessionByToken(input.restaurantId, input.sessionToken);
+    if (hinted) {
+      if (hinted.tableId !== input.tableId) {
+        throw new DiningSessionValidationError("Session does not match table");
+      }
+      if (
+        isTerminalDiningSessionStatus(hinted.status) ||
+        hinted.openGuard !== DINING_SESSION_ACTIVE_OPEN_GUARD
+      ) {
+        throw new DiningSessionExpiredError();
+      }
+    }
+  }
+
+  return getOrCreateSession(input);
 }
 
 export async function recordSessionEvent(

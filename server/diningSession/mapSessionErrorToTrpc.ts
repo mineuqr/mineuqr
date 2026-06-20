@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import {
   DiningSessionConflictError,
+  DiningSessionExpiredError,
   DiningSessionNotFoundError,
   DiningSessionUnavailableError,
   DiningSessionValidationError,
@@ -14,6 +15,12 @@ export function throwSessionServiceTrpcError(err: unknown): never {
   }
   if (err instanceof DiningSessionTransitionError) {
     throw new TRPCError({ code: "BAD_REQUEST", message: err.message });
+  }
+  if (err instanceof DiningSessionExpiredError) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "انتهت جلسة الطاولة",
+    });
   }
   if (err instanceof DiningSessionNotFoundError) {
     throw new TRPCError({ code: "BAD_REQUEST", message: err.message });

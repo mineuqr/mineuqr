@@ -1,5 +1,7 @@
 /** PR-CUX-1B — customer-safe order status (no internal ids or PII). */
 import { isTrackingExpired } from "./orderTrackingExpiry";
+import { isTerminalDiningSessionStatus } from "./diningSession/sessionTypes";
+import type { DiningSessionStatus } from "./diningSession/sessionTypes";
 
 export type OrderLifecycleStatus =
   | "pending"
@@ -21,10 +23,13 @@ export type PublicOrderStatus = {
   tableLabel: "tables" | "rooms";
   readyAt: string | null;
   trackingExpired: boolean;
+  diningSessionEnded: boolean;
+  diningSessionStatus: DiningSessionStatus | null;
 };
 
 export type OrderPublicStatusRow = {
   orderId: number;
+  sessionId?: number | null;
   orderNumber: string;
   tableNumber: number;
   status: OrderLifecycleStatus;
@@ -40,9 +45,13 @@ export type OrderPublicStatusRow = {
 
 export function toPublicOrderStatus(
   row: OrderPublicStatusRow,
-  options?: { nowMs?: number }
+  options?: { nowMs?: number; diningSessionStatus?: DiningSessionStatus | null }
 ): PublicOrderStatus {
   const trackingExpired = isTrackingExpired(row.readyAt, options?.nowMs);
+  const diningSessionStatus = options?.diningSessionStatus ?? null;
+  const diningSessionEnded =
+    diningSessionStatus != null && isTerminalDiningSessionStatus(diningSessionStatus);
+
   return {
     orderNumber: row.orderNumber,
     createdAt: row.createdAt,
@@ -56,5 +65,7 @@ export function toPublicOrderStatus(
     tableLabel: row.tableLabel === "rooms" ? "rooms" : "tables",
     readyAt: row.readyAt,
     trackingExpired,
+    diningSessionEnded,
+    diningSessionStatus,
   };
 }

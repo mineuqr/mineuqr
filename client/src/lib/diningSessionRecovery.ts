@@ -1,4 +1,12 @@
+/**
+ * TABLE-MANAGEMENT-1 D4 + CUSTOMER-SESSION-LIFECYCLE-1F — dining session recovery.
+ */
 import type { DiningSessionStatus } from "@/lib/diningSessionCopy";
+import {
+  clearDiningSessionOrderingBlocked,
+  loadDiningSessionOrderingBlocked,
+  markDiningSessionOrderingBlocked,
+} from "@/lib/diningSessionOrderingBlocked";
 import {
   clearDiningSession,
   loadDiningSession,
@@ -12,15 +20,14 @@ export type RecoveredDiningSession = {
   openedAt: string;
 };
 
+export type DiningSessionRecoveryResult = {
+  session: RecoveredDiningSession | null;
+  sessionEnded: boolean;
+  endedStatus?: DiningSessionStatus;
+};
+
 /** Terminal session states — not recoverable for customer ordering. */
 const TERMINAL_SESSION_STATUSES: DiningSessionStatus[] = ["closed", "paid", "complimentary"];
-
-/** Only `open` sessions allow placing new orders (TABLE-MANAGEMENT-1 D4). */
-export function isDiningSessionOrderingEnabled(
-  recoveredSession: RecoveredDiningSession | null
-): boolean {
-  return recoveredSession == null || recoveredSession.status === "open";
-}
 
 export type DiningSessionRecoveryClient = {
   getByToken: (input: {
@@ -40,22 +47,35 @@ export function isRecoverableDiningSession(
   return session != null && session.status === "open";
 }
 
+/** Only active open sessions or fresh table visits allow placing new orders. */
+export function isDiningSessionOrderingEnabled(
+  recovery: DiningSessionRecoveryResult
+): boolean {
+  if (recovery.sessionEnded) return false;
+  if (recovery.session?.status === "open") return true;
+  return recovery.session == null;
+}
+
 /**
  * Tier 1: localStorage hint → getByToken.
  * Tier 2: getActiveByTable.
  * Server wins — persisted token always matches server response.
- * Closed sessions from tier 1 are discarded and tier 2 runs.
+ * Terminal sessions mark local ordering blocked and are not recoverable.
  */
 export async function recoverDiningSession(options: {
   slug: string;
   tableNumber: number;
   client: DiningSessionRecoveryClient;
-}): Promise<RecoveredDiningSession | null> {
+}): Promise<DiningSessionRecoveryResult> {
   const { slug, tableNumber, client } = options;
-  if (!slug || tableNumber <= 0) return null;
+  if (!slug || tableNumber <= 0) {
+    return { session: null, sessionEnded: false };
+  }
 
+  const blocked = loadDiningSessionOrderingBlocked(slug, tableNumber);
   const hint = loadDiningSession(slug, tableNumber);
   let session: RecoveredDiningSession | null = null;
+  let endedStatus: DiningSessionStatus | undefined = blocked?.endedStatus;
 
   if (hint?.sessionToken) {
     try {
@@ -65,6 +85,8 @@ export async function recoverDiningSession(options: {
     }
 
     if (session && TERMINAL_SESSION_STATUSES.includes(session.status)) {
+      endedStatus = session.status;
+      markDiningSessionOrderingBlocked({ slug, tableNumber, endedStatus: session.status });
       clearDiningSession(slug, tableNumber);
       session = null;
     }
@@ -74,22 +96,32 @@ export async function recoverDiningSession(options: {
     try {
       session = await client.getActiveByTable({ slug, tableNumber });
     } catch {
-      return null;
+      return {
+        session: null,
+        sessionEnded: blocked != null || endedStatus != null,
+        endedStatus,
+      };
     }
   }
 
   if (isRecoverableDiningSession(session)) {
+    clearDiningSessionOrderingBlocked(slug, tableNumber);
     saveDiningSession({
       sessionToken: session.sessionToken,
       slug,
       tableNumber,
     });
-    return session;
+    return { session, sessionEnded: false };
   }
 
   if (hint) {
     clearDiningSession(slug, tableNumber);
   }
 
-  return null;
+  const sessionEnded = blocked != null || endedStatus != null;
+  return {
+    session: null,
+    sessionEnded,
+    endedStatus,
+  };
 }

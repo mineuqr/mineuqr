@@ -152,51 +152,68 @@ describe("revalidation session state transitions CUSTOMER-SESSION-LIFECYCLE-1C",
   });
 
   it("A: successive recovery keeps open session and ordering enabled", async () => {
-    vi.mocked(recoverDiningSession).mockResolvedValue(openSession);
+    vi.mocked(recoverDiningSession).mockResolvedValue({
+      session: openSession,
+      sessionEnded: false,
+    });
 
     const first = await recoverDiningSession(recoveryInput);
     const second = await recoverDiningSession(recoveryInput);
 
-    expect(first).toEqual(openSession);
-    expect(second).toEqual(openSession);
+    expect(first.session).toEqual(openSession);
+    expect(second.session).toEqual(openSession);
     expect(isDiningSessionOrderingEnabled(second)).toBe(true);
     expect(recoverDiningSession).toHaveBeenCalledTimes(2);
   });
 
-  it("B: recovery returns null after closure — session cleared, ordering enabled", async () => {
+  it("B: recovery returns null after closure — ordering blocked (1F)", async () => {
     vi.mocked(recoverDiningSession)
-      .mockResolvedValueOnce(openSession)
-      .mockResolvedValueOnce(null);
+      .mockResolvedValueOnce({ session: openSession, sessionEnded: false })
+      .mockResolvedValueOnce({
+        session: null,
+        sessionEnded: true,
+        endedStatus: "closed",
+      });
 
     const before = await recoverDiningSession(recoveryInput);
     const after = await recoverDiningSession(recoveryInput);
 
-    expect(before).toEqual(openSession);
-    expect(after).toBeNull();
-    expect(isDiningSessionOrderingEnabled(after)).toBe(true);
+    expect(before.session).toEqual(openSession);
+    expect(after.session).toBeNull();
+    expect(isDiningSessionOrderingEnabled(after)).toBe(false);
   });
 
   it("C: paid recovery disables ordering", async () => {
     vi.mocked(recoverDiningSession)
-      .mockResolvedValueOnce(openSession)
-      .mockResolvedValueOnce(paidSession);
+      .mockResolvedValueOnce({ session: openSession, sessionEnded: false })
+      .mockResolvedValueOnce({
+        session: null,
+        sessionEnded: true,
+        endedStatus: "paid",
+      });
 
     await recoverDiningSession(recoveryInput);
     const after = await recoverDiningSession(recoveryInput);
 
-    expect(after?.status).toBe("paid");
+    expect(after.sessionEnded).toBe(true);
+    expect(after.endedStatus).toBe("paid");
     expect(isDiningSessionOrderingEnabled(after)).toBe(false);
   });
 
   it("D: complimentary recovery disables ordering", async () => {
     vi.mocked(recoverDiningSession)
-      .mockResolvedValueOnce(openSession)
-      .mockResolvedValueOnce(complimentarySession);
+      .mockResolvedValueOnce({ session: openSession, sessionEnded: false })
+      .mockResolvedValueOnce({
+        session: null,
+        sessionEnded: true,
+        endedStatus: "complimentary",
+      });
 
     await recoverDiningSession(recoveryInput);
     const after = await recoverDiningSession(recoveryInput);
 
-    expect(after?.status).toBe("complimentary");
+    expect(after.sessionEnded).toBe(true);
+    expect(after.endedStatus).toBe("complimentary");
     expect(isDiningSessionOrderingEnabled(after)).toBe(false);
   });
 });

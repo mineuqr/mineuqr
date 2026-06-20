@@ -57,7 +57,7 @@ export default function MenuView() {
   );
   const canOrder = orderCheck?.canOrder ?? false;
 
-  const { recoveredSession, recoveryDone } = useDiningSessionRecovery({
+  const { recovery, recoveryDone } = useDiningSessionRecovery({
     slug,
     tableNumber,
     restaurantId: restaurant?.id,
@@ -82,7 +82,7 @@ export default function MenuView() {
   }, [restaurant]);
 
   const lang = language === "ar" ? "ar" : "en";
-  const sessionAllowsOrder = isDiningSessionOrderingEnabled(recoveredSession);
+  const sessionAllowsOrder = isDiningSessionOrderingEnabled(recovery);
 
   const canPlaceOrder =
     tableNumber > 0 &&
@@ -92,8 +92,9 @@ export default function MenuView() {
     recoveryDone;
   const orderingTableNumber = canPlaceOrder ? tableNumber : 0;
   const showClosedNotice = tableNumber > 0 && canOrder && !orderingAllowed;
+  const bannerStatus = recovery.session?.status ?? recovery.endedStatus;
   const showSessionBanner =
-    tableNumber > 0 && recoveryDone && recoveredSession != null;
+    tableNumber > 0 && recoveryDone && bannerStatus != null;
 
   const trackViewMutation = trpc.restaurant.trackView.useMutation();
 
@@ -216,10 +217,10 @@ export default function MenuView() {
           {language === "ar" ? "المطعم مغلق حالياً" : "The restaurant is closed right now"}
         </div>
       )}
-      {showSessionBanner && recoveredSession && (
+      {showSessionBanner && bannerStatus && (
         <DiningSessionBanner
           language={lang}
-          status={recoveredSession.status}
+          status={bannerStatus}
           className={bannerOffsetClass}
         />
       )}
@@ -244,6 +245,7 @@ export default function MenuView() {
           restaurantId={restaurant.id}
           tableId={tableData?.id || 0}
           tableNumber={tableNumber}
+          sessionToken={recovery.session?.sessionToken}
           currencySymbol={(restaurant as any)?.currencySymbol || "ر.س"}
           restaurantName={restaurant.nameAr}
           tableLabel={(restaurant as any)?.tableLabel || "tables"}

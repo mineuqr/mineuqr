@@ -9,6 +9,7 @@ import { OrderTrackingExpired } from "@/components/customer/OrderTrackingExpired
 import { OrderReceivedHero } from "@/components/customer/OrderReceivedHero";
 import { OrderStatusStepper } from "@/components/customer/OrderStatusStepper";
 import { ReadyStatusAttention } from "@/components/customer/ReadyStatusAttention";
+import { DiningSessionBanner } from "@/components/customer/DiningSessionBanner";
 import {
   formatOrderStatusHeadline,
   formatOrderStatusLabel,
@@ -21,6 +22,8 @@ import {
   openWhatsAppOrderMessage,
 } from "@/lib/orderWhatsApp";
 import { CUSTOMER_ORDER_STATUS_POLL_MS } from "@/lib/queryRuntime";
+import { markDiningSessionOrderingBlocked } from "@/lib/diningSessionOrderingBlocked";
+import { attachDiningSessionRevalidationListeners } from "@/lib/diningSessionRevalidation";
 import { useReadyStatusAlerts } from "@/hooks/useReadyStatusAlerts";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
@@ -60,6 +63,32 @@ export default function OrderStatusPage() {
     );
 
   const trackingExpired = data?.trackingExpired === true;
+  const diningSessionEnded = data?.diningSessionEnded === true;
+  const diningSessionStatus = data?.diningSessionStatus ?? undefined;
+  const orderSnapshot = trackingToken ? loadOrderConfirmationSnapshot(trackingToken) : null;
+
+  useEffect(() => {
+    if (!diningSessionEnded || !slug) return;
+    const tableNum = data?.tableNumber ?? orderSnapshot?.tableNumber ?? 0;
+    if (tableNum <= 0 || !diningSessionStatus) return;
+    markDiningSessionOrderingBlocked({
+      slug,
+      tableNumber: tableNum,
+      endedStatus: diningSessionStatus,
+    });
+  }, [
+    diningSessionEnded,
+    diningSessionStatus,
+    slug,
+    data?.tableNumber,
+    orderSnapshot?.tableNumber,
+  ]);
+
+  useEffect(() => {
+    return attachDiningSessionRevalidationListeners(() => {
+      void refetch();
+    });
+  }, [refetch]);
 
   const { notificationDeliveredHint } = useReadyStatusAlerts({
     trackingToken,
@@ -75,7 +104,6 @@ export default function OrderStatusPage() {
       !trackingExpired,
   });
 
-  const orderSnapshot = trackingToken ? loadOrderConfirmationSnapshot(trackingToken) : null;
   const whatsapp = (restaurant as { whatsapp?: string | null } | undefined)?.whatsapp;
 
   const handleWhatsApp = () => {
@@ -162,6 +190,9 @@ export default function OrderStatusPage() {
       className="min-h-screen bg-gradient-to-b from-orange-50 to-white dark:from-gray-950 dark:to-gray-900 px-4 py-10"
       dir={dir}
     >
+      {diningSessionEnded && diningSessionStatus && (
+        <DiningSessionBanner language={lang} status={diningSessionStatus} />
+      )}
       <div className="mx-auto max-w-lg">
         <div className="rounded-2xl border border-orange-200/60 bg-white dark:bg-gray-900 shadow-xl p-6 sm:p-8 space-y-6">
           {showWelcomeHero ? (

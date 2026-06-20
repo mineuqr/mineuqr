@@ -6,6 +6,10 @@ import {
   type RecoveredDiningSession,
 } from "./diningSessionRecovery";
 import {
+  diningSessionOrderingBlockedKey,
+  resetDiningSessionOrderingBlockedForTests,
+} from "./diningSessionOrderingBlocked";
+import {
   diningSessionStorageKey,
   resetDiningSessionsForTests,
   saveDiningSession,
@@ -65,6 +69,7 @@ describe("diningSessionRecovery TABLE-MANAGEMENT-1 D4", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     resetDiningSessionsForTests();
+    resetDiningSessionOrderingBlockedForTests();
   });
 
   it("recovers by token (tier 1)", async () => {
@@ -79,7 +84,7 @@ describe("diningSessionRecovery TABLE-MANAGEMENT-1 D4", () => {
       getActiveByTable: vi.fn(async () => null),
     };
 
-    const session = await recoverDiningSession({
+    const result = await recoverDiningSession({
       slug: "cafe",
       tableNumber: 5,
       client,
@@ -90,7 +95,7 @@ describe("diningSessionRecovery TABLE-MANAGEMENT-1 D4", () => {
       sessionToken: "stale-hint-token123456",
     });
     expect(client.getActiveByTable).not.toHaveBeenCalled();
-    expect(session).toEqual(openSession);
+    expect(result).toEqual({ session: openSession, sessionEnded: false });
   });
 
   it("falls back to getActiveByTable when token lookup fails (tier 2)", async () => {
@@ -105,7 +110,7 @@ describe("diningSessionRecovery TABLE-MANAGEMENT-1 D4", () => {
       getActiveByTable: vi.fn(async () => openSession),
     };
 
-    const session = await recoverDiningSession({
+    const result = await recoverDiningSession({
       slug: "cafe",
       tableNumber: 5,
       client,
@@ -115,7 +120,7 @@ describe("diningSessionRecovery TABLE-MANAGEMENT-1 D4", () => {
       slug: "cafe",
       tableNumber: 5,
     });
-    expect(session).toEqual(openSession);
+    expect(result).toEqual({ session: openSession, sessionEnded: false });
   });
 
   it("overwrites client hint when server token differs (server wins)", async () => {
@@ -176,8 +181,8 @@ describe("diningSessionRecovery TABLE-MANAGEMENT-1 D4", () => {
       client: clientB,
     });
 
-    expect(tabA?.sessionToken).toBe(openSession.sessionToken);
-    expect(tabB?.sessionToken).toBe(openSession.sessionToken);
+    expect(tabA.session?.sessionToken).toBe(openSession.sessionToken);
+    expect(tabB.session?.sessionToken).toBe(openSession.sessionToken);
   });
 
   it("clears stale hint when no server session exists", async () => {
@@ -192,13 +197,13 @@ describe("diningSessionRecovery TABLE-MANAGEMENT-1 D4", () => {
       getActiveByTable: vi.fn(async () => null),
     };
 
-    const session = await recoverDiningSession({
+    const result = await recoverDiningSession({
       slug: "cafe",
       tableNumber: 5,
       client,
     });
 
-    expect(session).toBeNull();
+    expect(result).toEqual({ session: null, sessionEnded: false });
     expect(localStorage.getItem(diningSessionStorageKey("cafe", 5))).toBeNull();
   });
 
@@ -226,9 +231,12 @@ describe("diningSessionRecovery TABLE-MANAGEMENT-1 D4", () => {
         tableNumber: 5,
       });
       expect(localStorage.getItem(diningSessionStorageKey("cafe", 5))).toBeNull();
+      expect(
+        localStorage.getItem(diningSessionOrderingBlockedKey("cafe", 5))
+      ).not.toBeNull();
     });
 
-    it("B: closed token with no active session returns null", async () => {
+    it("B: closed token with no active session blocks ordering (1F)", async () => {
       saveDiningSession({
         sessionToken: "closed-token123456789",
         slug: "cafe",
@@ -240,14 +248,18 @@ describe("diningSessionRecovery TABLE-MANAGEMENT-1 D4", () => {
         getActiveByTable: vi.fn(async () => null),
       };
 
-      const session = await recoverDiningSession({
+      const result = await recoverDiningSession({
         slug: "cafe",
         tableNumber: 5,
         client,
       });
 
-      expect(session).toBeNull();
-      expect(isDiningSessionOrderingEnabled(session)).toBe(true);
+      expect(result).toEqual({
+        session: null,
+        sessionEnded: true,
+        endedStatus: "closed",
+      });
+      expect(isDiningSessionOrderingEnabled(result)).toBe(false);
     });
 
     it("C: open session recovery unchanged (tier 1, no tier 2)", async () => {
@@ -262,13 +274,13 @@ describe("diningSessionRecovery TABLE-MANAGEMENT-1 D4", () => {
         getActiveByTable: vi.fn(async () => null),
       };
 
-      const session = await recoverDiningSession({
+      const result = await recoverDiningSession({
         slug: "cafe",
         tableNumber: 5,
         client,
       });
 
-      expect(session).toEqual(openSession);
+      expect(result).toEqual({ session: openSession, sessionEnded: false });
       expect(client.getActiveByTable).not.toHaveBeenCalled();
       expect(
         JSON.parse(localStorage.getItem(diningSessionStorageKey("cafe", 5)) ?? "{}")
@@ -288,13 +300,15 @@ describe("diningSessionRecovery TABLE-MANAGEMENT-1 D4", () => {
         getActiveByTable: vi.fn(async () => null),
       };
 
-      const session = await recoverDiningSession({
+      const result = await recoverDiningSession({
         slug: "cafe",
         tableNumber: 5,
         client,
       });
 
-      expect(session).toBeNull();
+      expect(result.session).toBeNull();
+      expect(result.sessionEnded).toBe(true);
+      expect(result.endedStatus).toBe("paid");
       expect(localStorage.getItem(diningSessionStorageKey("cafe", 5))).toBeNull();
       expect(client.getActiveByTable).toHaveBeenCalled();
     });
@@ -311,13 +325,14 @@ describe("diningSessionRecovery TABLE-MANAGEMENT-1 D4", () => {
         getActiveByTable: vi.fn(async () => null),
       };
 
-      const session = await recoverDiningSession({
+      const result = await recoverDiningSession({
         slug: "cafe",
         tableNumber: 5,
         client,
       });
 
-      expect(session).toBeNull();
+      expect(result.session).toBeNull();
+      expect(result.sessionEnded).toBe(true);
       expect(client.getActiveByTable).toHaveBeenCalled();
     });
 
@@ -338,42 +353,42 @@ describe("diningSessionRecovery TABLE-MANAGEMENT-1 D4", () => {
         getActiveByTable: vi.fn(async () => newOpenSession),
       };
 
-      const session = await recoverDiningSession({
+      const result = await recoverDiningSession({
         slug: "cafe",
         tableNumber: 5,
         client,
       });
 
-      expect(session).toEqual(newOpenSession);
+      expect(result).toEqual({ session: newOpenSession, sessionEnded: false });
       expect(
         JSON.parse(localStorage.getItem(diningSessionStorageKey("cafe", 5)) ?? "{}")
           .sessionToken
       ).toBe("fresh-open-token123456");
+      expect(
+        localStorage.getItem(diningSessionOrderingBlockedKey("cafe", 5))
+      ).toBeNull();
     });
   });
 
-  describe("isDiningSessionOrderingEnabled", () => {
-    it("allows ordering when no session recovered", () => {
-      expect(isDiningSessionOrderingEnabled(null)).toBe(true);
+  describe("isDiningSessionOrderingEnabled CUSTOMER-SESSION-LIFECYCLE-1F", () => {
+    it("allows ordering on fresh table visit", () => {
+      expect(
+        isDiningSessionOrderingEnabled({ session: null, sessionEnded: false })
+      ).toBe(true);
     });
 
     it("allows ordering for OPEN session", () => {
-      expect(isDiningSessionOrderingEnabled(openSession)).toBe(true);
+      expect(
+        isDiningSessionOrderingEnabled({ session: openSession, sessionEnded: false })
+      ).toBe(true);
     });
 
-    it("blocks ordering for paid session", () => {
-      expect(isDiningSessionOrderingEnabled(paidSession)).toBe(false);
-    });
-
-    it("blocks ordering for complimentary session", () => {
-      expect(isDiningSessionOrderingEnabled(complimentarySession)).toBe(false);
-    });
-
-    it("blocks ordering for CLOSED session", () => {
+    it("blocks ordering after session ended", () => {
       expect(
         isDiningSessionOrderingEnabled({
-          ...openSession,
-          status: "closed",
+          session: null,
+          sessionEnded: true,
+          endedStatus: "closed",
         })
       ).toBe(false);
     });

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   recoverDiningSession,
   type DiningSessionRecoveryClient,
-  type RecoveredDiningSession,
+  type DiningSessionRecoveryResult,
 } from "@/lib/diningSessionRecovery";
 import {
   attachDiningSessionRevalidationListeners,
@@ -21,9 +21,10 @@ export function useDiningSessionRecovery({
   restaurantId?: number;
   client: DiningSessionRecoveryClient;
 }) {
-  const [recoveredSession, setRecoveredSession] = useState<RecoveredDiningSession | null>(
-    null
-  );
+  const [recovery, setRecovery] = useState<DiningSessionRecoveryResult>({
+    session: null,
+    sessionEnded: false,
+  });
   const [recoveryDone, setRecoveryDone] = useState(tableNumber <= 0);
   const clientRef = useRef(client);
   clientRef.current = client;
@@ -31,7 +32,7 @@ export function useDiningSessionRecovery({
   const runRecovery = useCallback(
     async (mode: DiningSessionRecoveryMode) => {
       if (!isDiningSessionRecoveryContextReady(slug, tableNumber, restaurantId)) {
-        setRecoveredSession(null);
+        setRecovery({ session: null, sessionEnded: false });
         setRecoveryDone(true);
         return;
       }
@@ -41,14 +42,14 @@ export function useDiningSessionRecovery({
       }
 
       try {
-        const session = await recoverDiningSession({
+        const result = await recoverDiningSession({
           slug,
           tableNumber,
           client: clientRef.current,
         });
-        setRecoveredSession(session);
+        setRecovery(result);
       } catch {
-        setRecoveredSession(null);
+        setRecovery({ session: null, sessionEnded: false });
       } finally {
         setRecoveryDone(true);
       }
@@ -73,5 +74,5 @@ export function useDiningSessionRecovery({
     });
   }, [slug, tableNumber, restaurantId]);
 
-  return { recoveredSession, recoveryDone, setRecoveredSession };
+  return { recovery, recoveryDone, setRecovery };
 }

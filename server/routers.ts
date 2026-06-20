@@ -87,7 +87,9 @@ import { ENV } from "./_core/env";
 import { opsLog } from "./_core/opsLog";
 import { OPS_EVENT } from "./_core/opsTaxonomy";
 import { incrementSessionAggregatesForOrder, decrementSessionAggregatesForCancelledOrder } from "./diningSession/sessionAggregateWriters";
-import { getOrCreateSession, recordSessionEvent, markPaid, markComplimentary, closeSession } from "./diningSession/sessionService";
+import { resolveSessionForOrderCreate, recordSessionEvent, markPaid, markComplimentary, closeSession } from "./diningSession/sessionService";
+import { findSessionById } from "./diningSession/sessionRepository";
+import { SESSION_TOKEN_PATTERN } from "./diningSession/sessionPublicStatus";
 import { TABLE_EVENT_TYPES } from "./diningSession/sessionTypes";
 import { throwSessionServiceTrpcError } from "./diningSession/mapSessionErrorToTrpc";
 import {
@@ -1774,6 +1776,12 @@ const orderRouter = router({
         nameEn: z.string().nullish().optional(),
         price: z.string().optional(),
       })).min(1),
+      sessionToken: z
+        .string()
+        .min(16)
+        .max(64)
+        .regex(SESSION_TOKEN_PATTERN)
+        .optional(),
     }))
     .mutation(async ({ input }) => {
       const restaurant = await getRestaurantById(input.restaurantId);
@@ -1816,10 +1824,11 @@ const orderRouter = router({
       let sessionToken: string | undefined;
       if (ENV.tableSessionDualWrite) {
         try {
-          const sessionResult = await getOrCreateSession({
+          const sessionResult = await resolveSessionForOrderCreate({
             restaurantId: input.restaurantId,
             tableId: table.id,
             tableNumber: table.tableNumber,
+            sessionToken: input.sessionToken,
           });
           sessionId = sessionResult.session.id;
           sessionToken = sessionResult.session.sessionToken;
@@ -2068,25 +2077,37 @@ const orderRouter = router({
     .query(async ({ input }) => {
       const row = await getOrderByTrackingToken(input.trackingToken, input.slug);
       if (!row) return null;
-      return toPublicOrderStatus({
-        orderId: row.orderId,
-        orderNumber: row.orderNumber,
-        tableNumber: row.tableNumber,
-        status: row.status as
-          | "pending"
-          | "preparing"
-          | "ready"
-          | "served"
-          | "cancelled",
-        totalAmount: String(row.totalAmount),
-        createdAt: row.createdAt,
-        readyAt: row.readyAt ?? null,
-        nameAr: row.nameAr,
-        nameEn: row.nameEn,
-        currencySymbol: row.currencySymbol,
-        tableLabel: row.tableLabel,
-        itemCount: row.itemCount,
-      });
+
+      let diningSessionStatus: import("./diningSession/sessionTypes").DiningSessionStatus | null =
+        null;
+      if (ENV.tableSessionDualWrite && row.sessionId != null) {
+        const session = await findSessionById(row.sessionId);
+        diningSessionStatus = session?.status ?? null;
+      }
+
+      return toPublicOrderStatus(
+        {
+          orderId: row.orderId,
+          sessionId: row.sessionId,
+          orderNumber: row.orderNumber,
+          tableNumber: row.tableNumber,
+          status: row.status as
+            | "pending"
+            | "preparing"
+            | "ready"
+            | "served"
+            | "cancelled",
+          totalAmount: String(row.totalAmount),
+          createdAt: row.createdAt,
+          readyAt: row.readyAt ?? null,
+          nameAr: row.nameAr,
+          nameEn: row.nameEn,
+          currencySymbol: row.currencySymbol,
+          tableLabel: row.tableLabel,
+          itemCount: row.itemCount,
+        },
+        { diningSessionStatus }
+      );
     }),
   /** @deprecated Use getPublicStatus — orderNumber lookup is not supported for customers. */
   trackOrder: publicProcedure

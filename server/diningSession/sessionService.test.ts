@@ -4,6 +4,7 @@ import type { SelectDiningSession } from "../../drizzle/schema";
 const repoMocks = vi.hoisted(() => ({
   findActiveSession: vi.fn(),
   findSessionById: vi.fn(),
+  findSessionByToken: vi.fn(),
   insertSession: vi.fn(),
   insertSessionEvent: vi.fn(),
 }));
@@ -18,6 +19,7 @@ const dbMocks = vi.hoisted(() => ({
 vi.mock("./sessionRepository", () => ({
   findActiveSession: (...args: unknown[]) => repoMocks.findActiveSession(...args),
   findSessionById: (...args: unknown[]) => repoMocks.findSessionById(...args),
+  findSessionByToken: (...args: unknown[]) => repoMocks.findSessionByToken(...args),
   insertSession: (...args: unknown[]) => repoMocks.insertSession(...args),
   insertSessionEvent: (...args: unknown[]) => repoMocks.insertSessionEvent(...args),
 }));
@@ -35,10 +37,12 @@ vi.mock("./sessionToken", () => ({
 import {
   getActiveSession,
   getOrCreateSession,
+  resolveSessionForOrderCreate,
   recordSessionEvent,
 } from "./sessionService";
 import {
   DiningSessionConflictError,
+  DiningSessionExpiredError,
   DiningSessionNotFoundError,
   DiningSessionValidationError,
   TABLE_EVENT_TYPES,
@@ -254,6 +258,58 @@ describe("sessionService TABLE-MANAGEMENT-1 D2", () => {
           eventType: TABLE_EVENT_TYPES.SESSION_OPENED,
         })
       ).rejects.toBeInstanceOf(DiningSessionNotFoundError);
+    });
+  });
+
+  describe("resolveSessionForOrderCreate CUSTOMER-SESSION-LIFECYCLE-1F", () => {
+    it("reuses active open session without creating", async () => {
+      repoMocks.findActiveSession.mockResolvedValue(baseSession);
+
+      const result = await resolveSessionForOrderCreate({
+        restaurantId: 1,
+        tableId: 5,
+        tableNumber: 5,
+        sessionToken: "closed-token123456789",
+      });
+
+      expect(result.created).toBe(false);
+      expect(result.session).toEqual(baseSession);
+      expect(repoMocks.insertSession).not.toHaveBeenCalled();
+    });
+
+    it("rejects terminal hinted session token", async () => {
+      repoMocks.findActiveSession.mockResolvedValueOnce(null);
+      repoMocks.findSessionByToken.mockResolvedValue({
+        ...baseSession,
+        status: "closed",
+        openGuard: null,
+      });
+
+      await expect(
+        resolveSessionForOrderCreate({
+          restaurantId: 1,
+          tableId: 5,
+          tableNumber: 5,
+          sessionToken: "closed-token123456789",
+        })
+      ).rejects.toBeInstanceOf(DiningSessionExpiredError);
+    });
+
+    it("creates session when no active session and no terminal hint", async () => {
+      repoMocks.findActiveSession
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null);
+      repoMocks.insertSession.mockResolvedValue(10);
+      repoMocks.findSessionById.mockResolvedValue(baseSession);
+
+      const result = await resolveSessionForOrderCreate({
+        restaurantId: 1,
+        tableId: 5,
+        tableNumber: 5,
+      });
+
+      expect(result.created).toBe(true);
+      expect(repoMocks.insertSession).toHaveBeenCalled();
     });
   });
 });

@@ -116,6 +116,23 @@ export class DiningSessionTransitionError extends Error {
   }
 }
 
+export class DiningSessionExpiredError extends Error {
+  constructor(message = "Dining session has ended") {
+    super(message);
+    this.name = "DiningSessionExpiredError";
+  }
+}
+
+export const DINING_SESSION_TERMINAL_STATUSES = [
+  "paid",
+  "complimentary",
+  "closed",
+] as const satisfies readonly DiningSessionStatus[];
+
+export function isTerminalDiningSessionStatus(status: string): boolean {
+  return (DINING_SESSION_TERMINAL_STATUSES as readonly string[]).includes(status);
+}
+
 export class DiningSessionUnavailableError extends Error {
   constructor(message = "Database not available") {
     super(message);

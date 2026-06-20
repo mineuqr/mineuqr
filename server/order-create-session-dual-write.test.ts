@@ -12,7 +12,7 @@ vi.mock("./orderTrackingToken", () => ({
 }));
 
 vi.mock("./diningSession/sessionService", () => ({
-  getOrCreateSession: vi.fn(),
+  resolveSessionForOrderCreate: vi.fn(),
   recordSessionEvent: vi.fn(),
 }));
 
@@ -67,7 +67,7 @@ vi.mock("./commercial/guestOrderingAuthority", () => ({
 
 import { appRouter } from "./routers";
 import { createOrder } from "./db";
-import { getOrCreateSession, recordSessionEvent } from "./diningSession/sessionService";
+import { resolveSessionForOrderCreate, recordSessionEvent } from "./diningSession/sessionService";
 import { incrementSessionAggregatesForOrder } from "./diningSession/sessionAggregateWriters";
 import { opsLog } from "./_core/opsLog";
 
@@ -101,7 +101,7 @@ describe("order.create session dual-write TABLE-MANAGEMENT-1 D3", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     ENV.tableSessionDualWrite = false;
-    vi.mocked(getOrCreateSession).mockResolvedValue({
+    vi.mocked(resolveSessionForOrderCreate).mockResolvedValue({
       session: baseSession,
       created: true,
     });
@@ -123,7 +123,7 @@ describe("order.create session dual-write TABLE-MANAGEMENT-1 D3", () => {
       items: [{ menuItemId: 1, quantity: 1 }],
     });
 
-    expect(getOrCreateSession).not.toHaveBeenCalled();
+    expect(resolveSessionForOrderCreate).not.toHaveBeenCalled();
     expect(recordSessionEvent).not.toHaveBeenCalled();
     expect(incrementSessionAggregatesForOrder).not.toHaveBeenCalled();
     expect(vi.mocked(createOrder).mock.calls[0]?.[0]).not.toHaveProperty("sessionId");
@@ -143,7 +143,7 @@ describe("order.create session dual-write TABLE-MANAGEMENT-1 D3", () => {
 
   it("flag ON — new session attaches sessionId and records ORDER_CREATED", async () => {
     ENV.tableSessionDualWrite = true;
-    vi.mocked(getOrCreateSession).mockResolvedValue({
+    vi.mocked(resolveSessionForOrderCreate).mockResolvedValue({
       session: baseSession,
       created: true,
     });
@@ -156,10 +156,11 @@ describe("order.create session dual-write TABLE-MANAGEMENT-1 D3", () => {
       items: [{ menuItemId: 1, quantity: 2 }],
     });
 
-    expect(getOrCreateSession).toHaveBeenCalledWith({
+    expect(resolveSessionForOrderCreate).toHaveBeenCalledWith({
       restaurantId: 1,
       tableId: 7,
       tableNumber: 3,
+      sessionToken: undefined,
     });
     expect(vi.mocked(createOrder).mock.calls[0]?.[0]).toMatchObject({
       sessionId: 10,
@@ -193,7 +194,7 @@ describe("order.create session dual-write TABLE-MANAGEMENT-1 D3", () => {
 
   it("flag ON — reuses existing session and logs session_reused", async () => {
     ENV.tableSessionDualWrite = true;
-    vi.mocked(getOrCreateSession).mockResolvedValue({
+    vi.mocked(resolveSessionForOrderCreate).mockResolvedValue({
       session: baseSession,
       created: false,
     });
@@ -213,7 +214,7 @@ describe("order.create session dual-write TABLE-MANAGEMENT-1 D3", () => {
 
   it("flag ON — session failure blocks order", async () => {
     ENV.tableSessionDualWrite = true;
-    vi.mocked(getOrCreateSession).mockRejectedValue(
+    vi.mocked(resolveSessionForOrderCreate).mockRejectedValue(
       new DiningSessionUnavailableError()
     );
 
@@ -280,7 +281,7 @@ describe("order.create session dual-write TABLE-MANAGEMENT-1 D3", () => {
       items: [{ menuItemId: 1, quantity: 1 }],
     });
 
-    expect(getOrCreateSession).toHaveBeenCalledWith(
+    expect(resolveSessionForOrderCreate).toHaveBeenCalledWith(
       expect.objectContaining({ tableId: 7 })
     );
     expect(recordSessionEvent).toHaveBeenCalledWith(

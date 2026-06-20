@@ -11,12 +11,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { TRPCClientError } from "@trpc/client";
 
 interface CartDrawerProps {
   slug: string;
   restaurantId: number;
   tableId: number;
   tableNumber: number;
+  sessionToken?: string;
   currencySymbol?: string;
   restaurantName?: string;
   tableLabel?: "tables" | "rooms";
@@ -27,6 +29,7 @@ export default function CartDrawer({
   restaurantId,
   tableId,
   tableNumber,
+  sessionToken,
   currencySymbol = "ر.س",
   restaurantName,
   tableLabel = "tables",
@@ -62,6 +65,7 @@ export default function CartDrawer({
         restaurantId,
         tableId,
         tableNumber,
+        sessionToken,
         customerName: customerName || undefined,
         customerPhone: customerPhone || undefined,
         notes: orderNotes || undefined,
@@ -111,9 +115,17 @@ export default function CartDrawer({
       clearCart();
       setIsOpen(false);
       setLocation(`/menu/${slug}/order/${result.trackingToken}`);
-    } catch {
+    } catch (error) {
+      const sessionEnded =
+        error instanceof TRPCClientError && error.message.includes("انتهت جلسة الطاولة");
       toast.error(
-        language === "ar" ? "حدث خطأ أثناء إرسال الطلب" : "Error submitting order"
+        sessionEnded
+          ? language === "ar"
+            ? "انتهت جلسة الطاولة. للطلب مجدداً امسح رمز الطاولة."
+            : "This table session has ended. Scan the table QR to start a new session."
+          : language === "ar"
+            ? "حدث خطأ أثناء إرسال الطلب"
+            : "Error submitting order"
       );
     } finally {
       setIsSubmitting(false);
