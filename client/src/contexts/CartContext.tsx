@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, useCallback, ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, ReactNode, useEffect } from "react";
+import { clearScopedCart, loadScopedCart, saveScopedCart } from "@/lib/cartStorage";
 
 export interface CartItem {
   menuItemId: number;
@@ -25,9 +26,22 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | null>(null);
 
-export function CartProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>([]);
+export function CartProvider({
+  children,
+  cartScope,
+}: {
+  children: ReactNode;
+  cartScope?: { slug: string; tableNumber: number };
+}) {
+  const [items, setItems] = useState<CartItem[]>(() =>
+    cartScope ? loadScopedCart(cartScope.slug, cartScope.tableNumber) : []
+  );
   const [isOpen, setIsOpen] = useState(false);
+
+  useEffect(() => {
+    if (!cartScope) return;
+    saveScopedCart(cartScope.slug, cartScope.tableNumber, items);
+  }, [cartScope, items]);
 
   const addItem = useCallback((item: Omit<CartItem, "quantity">) => {
     setItems((prev) => {
@@ -66,7 +80,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const clearCart = useCallback(() => {
     setItems([]);
     setIsOpen(false);
-  }, []);
+    if (cartScope) {
+      clearScopedCart(cartScope.slug, cartScope.tableNumber);
+    }
+  }, [cartScope]);
 
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
   const totalAmount = items.reduce(

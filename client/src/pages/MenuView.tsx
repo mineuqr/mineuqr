@@ -5,7 +5,6 @@ import { Loader2, AlertCircle, Store } from "lucide-react";
 import { getTemplateComponent } from "@/components/MenuTemplates";
 import { DiningSessionBanner } from "@/components/customer/DiningSessionBanner";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { CartProvider } from "@/contexts/CartContext";
 import CartDrawer from "@/components/CartDrawer";
 import WelcomeOverlay from "@/components/WelcomeOverlay";
 import { isRestaurantOpen, parseTemporaryClosure } from "@/lib/restaurantHours";
@@ -44,11 +43,6 @@ export default function MenuView() {
   const { data: holidays } = trpc.holiday.listPublic.useQuery(
     { restaurantId: restaurant?.id ?? 0 },
     { enabled: !!restaurant?.id, staleTime: 0, gcTime: 0, refetchOnMount: "always" }
-  );
-
-  const { data: tableData } = trpc.table.getByNumber.useQuery(
-    { restaurantId: restaurant?.id ?? 0, tableNumber },
-    { enabled: !!restaurant?.id && tableNumber > 0, staleTime: 0, gcTime: 0, refetchOnMount: "always" }
   );
 
   const { data: orderCheck } = trpc.order.canOrder.useQuery(
@@ -203,7 +197,7 @@ export default function MenuView() {
   }
 
   return (
-    <CartProvider>
+    <>
       <WelcomeOverlay
         restaurantName={restaurant.nameAr}
         logoUrl={(restaurant as any)?.logoUrl}
@@ -242,15 +236,11 @@ export default function MenuView() {
       {canPlaceOrder && (
         <CartDrawer
           slug={slug}
-          restaurantId={restaurant.id}
-          tableId={tableData?.id || 0}
           tableNumber={tableNumber}
-          sessionToken={recovery.session?.sessionToken}
           currencySymbol={(restaurant as any)?.currencySymbol || "ر.س"}
-          restaurantName={restaurant.nameAr}
           tableLabel={(restaurant as any)?.tableLabel || "tables"}
         />
       )}
-    </CartProvider>
+    </>
   );
 }

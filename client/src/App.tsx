@@ -7,6 +7,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import MenuView from "./pages/MenuView";
+import TableOrderingShell from "./pages/TableOrderingShell";
 import OrderConfirmationPage from "./pages/OrderConfirmationPage";
 import OrderStatusPage from "./pages/OrderStatusPage";
 import Pricing from "./pages/Pricing";
@@ -61,7 +62,8 @@ function Router() {
         <Route path="/dashboard/:section" component={Dashboard} />
         <Route path="/menu/:slug/order/:trackingToken/confirmed" component={OrderConfirmationPage} />
         <Route path="/menu/:slug/order/:trackingToken" component={OrderStatusPage} />
-        <Route path="/menu/:slug/table/:tableNumber" component={MenuView} />
+        <Route path="/menu/:slug/table/:tableNumber/checkout" component={TableOrderingShell} />
+        <Route path="/menu/:slug/table/:tableNumber" component={TableOrderingShell} />
         <Route path="/menu/:slug" component={MenuView} />
         <Route path="/pricing" component={Pricing} />
         <Route path="/subscription/success" component={SubscriptionSuccess} />
