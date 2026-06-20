@@ -45,3 +45,29 @@ export type InsertPrintJobData = {
   orderId: number;
   idempotencyKey: string;
 };
+
+export const PRINT_JOB_CLAIM_LEASE_MS = 5 * 60 * 1000;
+
+/** Naive datetime for MySQL timestamp columns (`YYYY-MM-DD HH:mm:ss`). */
+export function formatPrintJobTimestamp(date: Date = new Date()): string {
+  return date.toISOString().slice(0, 19).replace("T", " ");
+}
+
+export function computePrintJobLeaseExpiresAt(now = new Date()): string {
+  return formatPrintJobTimestamp(new Date(now.getTime() + PRINT_JOB_CLAIM_LEASE_MS));
+}
+
+export type FindNextQueuedJobFilter = {
+  printerId?: number;
+};
+
+export type ClaimJobData = {
+  jobId: number;
+  workerId: number;
+  leaseExpiresAt: string;
+};
+
+export type ClaimNextPrintJobInput = {
+  workerId: number;
+  printerId?: number;
+};
