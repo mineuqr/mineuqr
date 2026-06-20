@@ -117,6 +117,11 @@ export const OPS_EVENT = {
 
   // SESSION-AGGREGATES-1 Phase B
   session_aggregate_reader_fallback: "session_aggregate_reader_fallback",
+
+  // THERMAL-PRINTING-3B.3
+  print_job_created: "print_job_created",
+  print_job_idempotency_reused: "print_job_idempotency_reused",
+  print_job_creation_failed: "print_job_creation_failed",
 } as const;
 
 export type OpsEventType = (typeof OPS_EVENT)[keyof typeof OPS_EVENT];
