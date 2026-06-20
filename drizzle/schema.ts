@@ -510,7 +510,7 @@ export const printJobs = mysqlTable(
 		index("print_jobs_order_id").on(table.orderId),
 		index("print_jobs_printer_id").on(table.printerId),
 		index("print_jobs_status").on(table.status),
-		index("print_jobs_idempotency_key").on(table.idempotencyKey),
+		uniqueIndex("print_jobs_idempotency_key_unique").on(table.idempotencyKey),
 		index("print_jobs_restaurant_id_status_created_at").on(
 			table.restaurantId,
 			table.status,
