@@ -55,3 +55,24 @@ export const PRINT_JOB_ATTEMPT_EVENT = {
 export type PrintJobAttemptEventType =
   | (typeof PRINT_JOB_ATTEMPT_EVENT)[keyof typeof PRINT_JOB_ATTEMPT_EVENT]
   | string;
+
+export const PRINT_JOB_TRIGGER = {
+  AUTO: "auto",
+  REPRINT: "reprint",
+} as const;
+
+export type PrintJobTrigger =
+  (typeof PRINT_JOB_TRIGGER)[keyof typeof PRINT_JOB_TRIGGER];
+
+/** Auto print on order submission — one job per order. */
+export function autoPrintJobIdempotencyKey(orderId: number): string {
+  return `order:${orderId}:submitted`;
+}
+
+/** Staff reprint — each UUID creates a distinct job. */
+export function reprintPrintJobIdempotencyKey(
+  orderId: number,
+  reprintId: string
+): string {
+  return `order:${orderId}:reprint:${reprintId}`;
+}
