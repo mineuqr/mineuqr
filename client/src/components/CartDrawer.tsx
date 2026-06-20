@@ -128,7 +128,7 @@ export default function CartDrawer({
                   className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold py-3 rounded-xl text-base"
                 >
                   <span className="flex items-center gap-2 justify-center">
-                    {language === "ar" ? "متابعة إلى الدفع" : "Proceed To Checkout"}
+                    {language === "ar" ? "تأكيد الطلب" : "Confirm Order"}
                     <ChevronRight className="w-4 h-4" />
                   </span>
                 </Button>

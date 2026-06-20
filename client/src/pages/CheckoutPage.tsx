@@ -263,7 +263,7 @@ export default function CheckoutPage() {
           </Button>
           <div className="min-w-0 flex-1">
             <h1 className="font-bold text-lg truncate">
-              {language === "ar" ? "إتمام الطلب" : "Checkout"}
+              {language === "ar" ? "مراجعة الطلب" : "Review Order"}
             </h1>
             <p className="text-xs text-muted-foreground truncate">
               {restaurantName} · {unitLabel} {tableNumber}
