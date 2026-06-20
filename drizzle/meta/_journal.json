@@ -225,6 +225,13 @@
       "when": 1782100000000,
       "tag": "0031_print_jobs_idempotency_unique",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "5",
+      "when": 1782200000000,
+      "tag": "0032_print_jobs_printing_status",
+      "breakpoints": true
     }
   ]
 }

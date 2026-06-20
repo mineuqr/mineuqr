@@ -1,5 +1,8 @@
 import type { SelectPrintJob } from "../../drizzle/schema";
-import type { PrintJobTrigger } from "../../shared/printing/types";
+import type {
+  PrintExecutionAttemptMetadata,
+  PrintJobTrigger,
+} from "../../shared/printing/types";
 
 export class PrintJobUnavailableError extends Error {
   constructor(message = "Database not available") {
@@ -19,6 +22,27 @@ export class PrintJobOrderNotFoundError extends Error {
   constructor(message = "Order not found") {
     super(message);
     this.name = "PrintJobOrderNotFoundError";
+  }
+}
+
+export class PrintJobNotFoundError extends Error {
+  constructor(message = "Print job not found") {
+    super(message);
+    this.name = "PrintJobNotFoundError";
+  }
+}
+
+export class PrintJobTransitionError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "PrintJobTransitionError";
+  }
+}
+
+export class PrintJobExecutionError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "PrintJobExecutionError";
   }
 }
 
@@ -70,4 +94,25 @@ export type ClaimJobData = {
 export type ClaimNextPrintJobInput = {
   workerId: number;
   printerId?: number;
+};
+
+export type StartPrintExecutionInput = {
+  jobId: number;
+};
+
+export type CompletePrintExecutionInput = {
+  jobId: number;
+  attemptId: number;
+};
+
+export type FailPrintExecutionInput = {
+  jobId: number;
+  attemptId: number;
+  reason: string;
+};
+
+export type PrintExecutionResult = {
+  job: SelectPrintJob;
+  attemptId: number;
+  attemptMetadata: PrintExecutionAttemptMetadata;
 };

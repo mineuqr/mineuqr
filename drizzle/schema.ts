@@ -491,6 +491,7 @@ export const printJobs = mysqlTable(
 		status: mysqlEnum([
 			"queued",
 			"claimed",
+			"printing",
 			"printed",
 			"failed",
 			"cancelled",

@@ -28,6 +28,7 @@ export type PrintTicketLocale = (typeof PRINT_TICKET_LOCALE_VALUES)[number];
 export const PRINT_JOB_STATUS = {
   QUEUED: "queued",
   CLAIMED: "claimed",
+  PRINTING: "printing",
   PRINTED: "printed",
   FAILED: "failed",
   CANCELLED: "cancelled",
@@ -37,6 +38,7 @@ export const PRINT_JOB_STATUS = {
 export const PRINT_JOB_STATUS_VALUES = [
   PRINT_JOB_STATUS.QUEUED,
   PRINT_JOB_STATUS.CLAIMED,
+  PRINT_JOB_STATUS.PRINTING,
   PRINT_JOB_STATUS.PRINTED,
   PRINT_JOB_STATUS.FAILED,
   PRINT_JOB_STATUS.CANCELLED,
@@ -47,10 +49,21 @@ export type PrintJobStatus = (typeof PRINT_JOB_STATUS_VALUES)[number];
 
 /** Known attempt audit event types (extensible via varchar in DB). */
 export const PRINT_JOB_ATTEMPT_EVENT = {
+  EXECUTION_ATTEMPT: "execution_attempt",
   STATUS_TRANSITION: "status_transition",
   DELIVERY_FAILED: "delivery_failed",
   LEASE_EXPIRED: "lease_expired",
 } as const;
+
+export type PrintExecutionAttemptStatus = "printing" | "printed" | "failed";
+
+export type PrintExecutionAttemptMetadata = {
+  startedAt: string;
+  completedAt?: string;
+  status: PrintExecutionAttemptStatus;
+  attemptNumber: number;
+  error?: string;
+};
 
 export type PrintJobAttemptEventType =
   | (typeof PRINT_JOB_ATTEMPT_EVENT)[keyof typeof PRINT_JOB_ATTEMPT_EVENT]

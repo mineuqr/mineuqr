@@ -1,7 +1,7 @@
 /**
  * THERMAL-PRINTING-3B.2 / 3C.1 — print_jobs persistence boundary.
  */
-import { and, asc, eq, isNull, or } from "drizzle-orm";
+import { and, asc, eq, isNull, isNotNull, or, sql } from "drizzle-orm";
 import {
   printJobs,
   type InsertPrintJob,
@@ -94,8 +94,11 @@ export async function findPrintJobByIdempotencyKey(
   return row ?? null;
 }
 
-export async function findPrintJobById(id: number): Promise<SelectPrintJob | null> {
-  const db = await resolveDb();
+export async function findPrintJobById(
+  id: number,
+  client?: PrintJobDbClient
+): Promise<SelectPrintJob | null> {
+  const db = await resolveDb(client);
   const [row] = await db.select().from(printJobs).where(eq(printJobs.id, id)).limit(1);
   return row ?? null;
 }
@@ -116,4 +119,67 @@ export async function insertPrintJob(data: InsertPrintJobData): Promise<number> 
     throw new PrintJobUnavailableError("print_jobs insert did not return an id");
   }
   return insertId;
+}
+
+export async function markJobPrinting(
+  jobId: number,
+  client?: PrintJobDbClient
+): Promise<SelectPrintJob | null> {
+  const db = await resolveDb(client);
+  const result = await db
+    .update(printJobs)
+    .set({
+      status: PRINT_JOB_STATUS.PRINTING,
+      attemptCount: sql`${printJobs.attemptCount} + 1`,
+    })
+    .where(
+      and(
+        eq(printJobs.id, jobId),
+        eq(printJobs.status, PRINT_JOB_STATUS.CLAIMED),
+        isNotNull(printJobs.claimedBy)
+      )
+    );
+
+  if (readMysqlAffectedRows(result) === 0) {
+    return null;
+  }
+
+  const [row] = await db.select().from(printJobs).where(eq(printJobs.id, jobId)).limit(1);
+  return row ?? null;
+}
+
+export async function markJobPrinted(
+  jobId: number,
+  client?: PrintJobDbClient
+): Promise<SelectPrintJob | null> {
+  const db = await resolveDb(client);
+  const result = await db
+    .update(printJobs)
+    .set({ status: PRINT_JOB_STATUS.PRINTED })
+    .where(and(eq(printJobs.id, jobId), eq(printJobs.status, PRINT_JOB_STATUS.PRINTING)));
+
+  if (readMysqlAffectedRows(result) === 0) {
+    return null;
+  }
+
+  const [row] = await db.select().from(printJobs).where(eq(printJobs.id, jobId)).limit(1);
+  return row ?? null;
+}
+
+export async function markJobFailed(
+  jobId: number,
+  client?: PrintJobDbClient
+): Promise<SelectPrintJob | null> {
+  const db = await resolveDb(client);
+  const result = await db
+    .update(printJobs)
+    .set({ status: PRINT_JOB_STATUS.FAILED })
+    .where(and(eq(printJobs.id, jobId), eq(printJobs.status, PRINT_JOB_STATUS.PRINTING)));
+
+  if (readMysqlAffectedRows(result) === 0) {
+    return null;
+  }
+
+  const [row] = await db.select().from(printJobs).where(eq(printJobs.id, jobId)).limit(1);
+  return row ?? null;
 }
