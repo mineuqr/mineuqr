@@ -23,6 +23,10 @@ import {
 } from "@/lib/orderWhatsApp";
 import { CUSTOMER_ORDER_STATUS_POLL_MS } from "@/lib/queryRuntime";
 import { markSessionTokenOrderingBlocked } from "@/lib/diningSessionOrderingBlocked";
+import {
+  clearCustomerJourney,
+  markCustomerJourneyTracking,
+} from "@/lib/customerJourneyStorage";
 import { attachDiningSessionRevalidationListeners } from "@/lib/diningSessionRevalidation";
 import { useReadyStatusAlerts } from "@/hooks/useReadyStatusAlerts";
 import { trpc } from "@/lib/trpc";
@@ -76,6 +80,25 @@ export default function OrderStatusPage() {
       endedStatus: diningSessionStatus,
     });
   }, [diningSessionEnded, diningSessionStatus, data?.diningSessionToken]);
+
+  useEffect(() => {
+    if (!slug || !trackingToken || !data) return;
+    const tableNum = data.tableNumber ?? orderSnapshot?.tableNumber ?? 0;
+    if (tableNum <= 0) return;
+    markCustomerJourneyTracking({
+      slug,
+      tableNumber: tableNum,
+      trackingToken,
+      sessionToken: data.diningSessionToken ?? undefined,
+    });
+  }, [slug, trackingToken, data, orderSnapshot?.tableNumber, data?.diningSessionToken]);
+
+  useEffect(() => {
+    if (!diningSessionEnded || !slug) return;
+    const tableNum = data?.tableNumber ?? orderSnapshot?.tableNumber ?? 0;
+    if (tableNum <= 0) return;
+    clearCustomerJourney(slug, tableNum);
+  }, [diningSessionEnded, slug, data?.tableNumber, orderSnapshot?.tableNumber]);
 
   useEffect(() => {
     return attachDiningSessionRevalidationListeners(() => {

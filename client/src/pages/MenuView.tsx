@@ -1,5 +1,5 @@
 import { trpc } from "@/lib/trpc";
-import { useRoute } from "wouter";
+import { useRoute, useLocation } from "wouter";
 import { useState, useEffect, useMemo } from "react";
 import { Loader2, AlertCircle, Store } from "lucide-react";
 import { getTemplateComponent } from "@/components/MenuTemplates";
@@ -12,6 +12,8 @@ import {
   isDiningSessionOrderingEnabled,
 } from "@/lib/diningSessionRecovery";
 import { useDiningSessionRecovery } from "@/hooks/useDiningSessionRecovery";
+import { usePostSubmissionGuard } from "@/hooks/usePostSubmissionGuard";
+import { PostSubmissionLockedScreen } from "@/components/customer/PostSubmissionLockedScreen";
 
 export default function MenuView() {
   const [, params] = useRoute("/menu/:slug/table/:tableNumber");
@@ -19,6 +21,7 @@ export default function MenuView() {
   const slug = params?.slug || params2?.slug || "";
   const tableNumber = params?.tableNumber ? parseInt(params.tableNumber) : 0;
   const { t, dir, language } = useLanguage();
+  const [, setLocation] = useLocation();
   const utils = trpc.useUtils();
 
   const { data: restaurant, isLoading: restaurantLoading } = trpc.restaurant.getBySlug.useQuery(
@@ -77,13 +80,20 @@ export default function MenuView() {
 
   const lang = language === "ar" ? "ar" : "en";
   const sessionAllowsOrder = isDiningSessionOrderingEnabled(recovery);
+  const postSubmission = usePostSubmissionGuard({
+    slug,
+    tableNumber,
+    recovery,
+    recoveryDone,
+  });
 
   const canPlaceOrder =
     tableNumber > 0 &&
     canOrder &&
     orderingAllowed &&
     sessionAllowsOrder &&
-    recoveryDone;
+    recoveryDone &&
+    !postSubmission.blocked;
   const orderingTableNumber = canPlaceOrder ? tableNumber : 0;
   const showClosedNotice = tableNumber > 0 && canOrder && !orderingAllowed;
   const bannerStatus = recovery.session?.status ?? recovery.endedStatus;
@@ -193,6 +203,20 @@ export default function MenuView() {
           <p className="text-white/50">{t('menu.menuUnavailableDesc')}</p>
         </div>
       </div>
+    );
+  }
+
+  if (tableNumber > 0 && recoveryDone && postSubmission.blocked) {
+    return (
+      <PostSubmissionLockedScreen
+        language={lang}
+        trackingPath={postSubmission.trackingPath}
+        onOpenTracking={
+          postSubmission.trackingPath
+            ? () => setLocation(postSubmission.trackingPath!, { replace: true })
+            : undefined
+        }
+      />
     );
   }
 

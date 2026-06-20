@@ -15,7 +15,10 @@ import { isRestaurantOpen, parseTemporaryClosure } from "@/lib/restaurantHours";
 import { saveOrderConfirmationSnapshot } from "@/lib/orderConfirmationStorage";
 import { markOrderWelcomeReceived } from "@/lib/orderWelcomeStorage";
 import { saveDiningSession } from "@/lib/diningSessionStorage";
+import { markCustomerJourneyTracking } from "@/lib/customerJourneyStorage";
 import { trpc } from "@/lib/trpc";
+import { usePostSubmissionGuard } from "@/hooks/usePostSubmissionGuard";
+import { PostSubmissionLockedScreen } from "@/components/customer/PostSubmissionLockedScreen";
 
 export default function CheckoutPage() {
   const [, params] = useRoute("/menu/:slug/table/:tableNumber/checkout");
@@ -75,12 +78,20 @@ export default function CheckoutPage() {
   }, [restaurant]);
 
   const sessionAllowsOrder = isDiningSessionOrderingEnabled(recovery);
+  const postSubmission = usePostSubmissionGuard({
+    slug,
+    tableNumber,
+    recovery,
+    recoveryDone,
+  });
+
   const canPlaceOrder =
     tableNumber > 0 &&
     canOrder &&
     orderingAllowed &&
     sessionAllowsOrder &&
     recoveryDone &&
+    !postSubmission.blocked &&
     items.length > 0;
 
   const createOrderMutation = trpc.order.create.useMutation();
@@ -97,11 +108,16 @@ export default function CheckoutPage() {
   const showSessionBanner = recoveryDone && bannerStatus != null;
 
   useEffect(() => {
-    if (!recoveryDone) return;
+    if (!recoveryDone || !postSubmission.blocked || !postSubmission.trackingPath) return;
+    setLocation(postSubmission.trackingPath, { replace: true });
+  }, [recoveryDone, postSubmission.blocked, postSubmission.trackingPath, setLocation]);
+
+  useEffect(() => {
+    if (!recoveryDone || postSubmission.blocked) return;
     if (items.length === 0) {
       setLocation(menuPath);
     }
-  }, [items.length, recoveryDone, menuPath, setLocation]);
+  }, [items.length, recoveryDone, postSubmission.blocked, menuPath, setLocation]);
 
   useEffect(() => {
     if (!recoveryDone || restaurantLoading) return;
@@ -174,6 +190,12 @@ export default function CheckoutPage() {
       });
 
       markOrderWelcomeReceived(result.trackingToken);
+      markCustomerJourneyTracking({
+        slug,
+        tableNumber,
+        trackingToken: result.trackingToken,
+        sessionToken: result.sessionToken ?? recovery.session?.sessionToken,
+      });
       clearCart();
       setLocation(`/menu/${slug}/order/${result.trackingToken}`, { replace: true });
     } catch (error) {
@@ -198,6 +220,20 @@ export default function CheckoutPage() {
       <div className="min-h-screen flex items-center justify-center bg-orange-50 dark:bg-gray-950">
         <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
       </div>
+    );
+  }
+
+  if (postSubmission.blocked) {
+    return (
+      <PostSubmissionLockedScreen
+        language={lang}
+        trackingPath={postSubmission.trackingPath}
+        onOpenTracking={
+          postSubmission.trackingPath
+            ? () => setLocation(postSubmission.trackingPath!, { replace: true })
+            : undefined
+        }
+      />
     );
   }
 
