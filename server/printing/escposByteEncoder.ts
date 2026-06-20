@@ -1,0 +1,103 @@
+/**
+ * THERMAL-PRINTING-4C — ESC/POS semantic document → Uint8Array encoder.
+ */
+import {
+  DEFAULT_SEPARATOR_LENGTH,
+  ESC_POS_ALIGN_VALUE,
+  ESC_POS_BYTES,
+  ESC_POS_CUT_PARTIAL,
+} from "./escposConstants";
+import type { EscPosAlign, EscPosCommand, EscPosDocument } from "./escposTypes";
+
+const textEncoder = new TextEncoder();
+
+export class EscPosEncodingError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "EscPosEncodingError";
+  }
+}
+
+export class EscPosByteBuilder {
+  private readonly chunks: Uint8Array[] = [];
+  private totalLength = 0;
+
+  write(...bytes: number[]): void {
+    if (bytes.length === 0) return;
+    const chunk = Uint8Array.from(bytes);
+    this.chunks.push(chunk);
+    this.totalLength += chunk.length;
+  }
+
+  writeText(text: string): void {
+    const chunk = textEncoder.encode(text);
+    this.chunks.push(chunk);
+    this.totalLength += chunk.length;
+  }
+
+  writeLf(): void {
+    this.write(ESC_POS_BYTES.LF);
+  }
+
+  toUint8Array(): Uint8Array {
+    const output = new Uint8Array(this.totalLength);
+    let offset = 0;
+    for (const chunk of this.chunks) {
+      output.set(chunk, offset);
+      offset += chunk.length;
+    }
+    return output;
+  }
+}
+
+function assertValidFeedLines(lines: number): void {
+  if (!Number.isInteger(lines) || lines <= 0) {
+    throw new EscPosEncodingError(`Invalid feed lines: ${lines}`);
+  }
+}
+
+function encodeAlign(builder: EscPosByteBuilder, value: EscPosAlign): void {
+  builder.write(
+    ESC_POS_BYTES.ESC,
+    ESC_POS_BYTES.ALIGN,
+    ESC_POS_ALIGN_VALUE[value]
+  );
+}
+
+function encodeCommand(builder: EscPosByteBuilder, command: EscPosCommand): void {
+  switch (command.type) {
+    case "initialize":
+      builder.write(ESC_POS_BYTES.ESC, ESC_POS_BYTES.INIT);
+      return;
+    case "align":
+      encodeAlign(builder, command.value);
+      return;
+    case "text":
+      builder.writeText(command.value);
+      builder.writeLf();
+      return;
+    case "separator":
+      builder.writeText("-".repeat(DEFAULT_SEPARATOR_LENGTH));
+      builder.writeLf();
+      return;
+    case "feed":
+      assertValidFeedLines(command.lines);
+      builder.write(ESC_POS_BYTES.ESC, ESC_POS_BYTES.FEED, command.lines);
+      return;
+    case "cut":
+      builder.write(ESC_POS_BYTES.GS, ESC_POS_BYTES.CUT, ESC_POS_CUT_PARTIAL);
+      return;
+    default:
+      throw new EscPosEncodingError(
+        `Unsupported ESC/POS command type: ${(command as { type?: string }).type ?? "unknown"}`
+      );
+  }
+}
+
+export function encodeEscPosDocument(document: EscPosDocument): Uint8Array {
+  const builder = new EscPosByteBuilder();
+  for (const command of document.commands) {
+    encodeCommand(builder, command);
+  }
+  return builder.toUint8Array();
+}
