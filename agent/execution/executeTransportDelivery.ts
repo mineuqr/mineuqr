@@ -1,17 +1,19 @@
 /**
- * THERMAL-PRINTING-10B — agent transport delivery dispatch.
+ * THERMAL-PRINTING-10C — agent transport delivery dispatch.
  */
 import { executeTransportDelivery } from "../../shared/printing/transports/executeTransportDelivery";
 import type {
   TransportExecutionRequest,
   TransportExecutionResult,
 } from "../../shared/printing/transports/transportContracts";
-import { createAgentTransportRegistry } from "../transports/transportRegistry";
-import type { TcpSocketClient } from "../transports/tcpSocketClient";
+import {
+  createAgentTransportRegistry,
+  type AgentTransportClients,
+} from "../transports/transportRegistry";
 
 export async function executeAgentTransportDelivery(
   request: TransportExecutionRequest,
-  socketClient: TcpSocketClient
+  clients: AgentTransportClients
 ): Promise<TransportExecutionResult> {
-  return executeTransportDelivery(request, createAgentTransportRegistry(socketClient));
+  return executeTransportDelivery(request, createAgentTransportRegistry(clients));
 }

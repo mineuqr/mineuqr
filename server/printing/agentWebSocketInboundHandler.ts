@@ -35,6 +35,8 @@ import { recordAgentStatusReport } from "./agentStatusService";
 import { tryParseAgentJobInboundMessage } from "./agentJobWireCodec";
 import { recordDeliveryAcknowledgement } from "./deliveryAckService";
 import { processAgentDeliveryConfirmation } from "./deliveryConfirmationFlow";
+import { tryParseAgentExecutionOutcomeInboundMessage } from "./agentExecutionOutcomeWireCodec";
+import { recordExecutionOutcomeReport } from "./executionOutcomeService";
 import { recordJobStatusReport } from "./jobStatusService";
 import { processAgentPlatformCapabilitiesReport } from "./platformCapabilityNegotiationFlow";
 import { processAgentPrinterProfilesReport } from "./printerProfileNegotiationFlow";
@@ -76,6 +78,11 @@ export function handleAgentWebSocketInboundMessage(
       printers: printerProfileMessage.printers,
     });
     return;
+  }
+
+  const executionOutcomeMessage = tryParseAgentExecutionOutcomeInboundMessage(rawMessage);
+  if (executionOutcomeMessage) {
+    return handleAgentExecutionOutcomeInboundMessage(executionOutcomeMessage);
   }
 
   const statusMessage = tryParseAgentProtocolStatusInboundMessage(rawMessage);
@@ -170,6 +177,20 @@ async function handleAgentProtocolStatusInboundMessage(
     state: message.state,
   });
   await recordJobStatusReport(payload);
+}
+
+async function handleAgentExecutionOutcomeInboundMessage(
+  message: NonNullable<ReturnType<typeof tryParseAgentExecutionOutcomeInboundMessage>>
+): Promise<void> {
+  await recordExecutionOutcomeReport({
+    agentId: message.agentId,
+    jobId: Number(message.jobId),
+    outcomeStatus: message.outcomeStatus,
+    category: message.category,
+    transport: message.transport,
+    message: message.message,
+    timestamp: message.timestamp,
+  });
 }
 
 export function handleAgentWebSocketDisconnect(agentId: string): void {

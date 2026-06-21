@@ -1,11 +1,13 @@
 /**
- * THERMAL-PRINTING-6D — reference agent boot orchestration (Phase-1 / 10A consumption wiring).
+ * THERMAL-PRINTING-6D — reference agent boot orchestration (Phase-1 / 10A / 10C consumption wiring).
  */
-import { JobConsumptionService } from "../consumption/jobConsumptionService";
+import {
+  createProductionTransportClients,
+  JobConsumptionService,
+} from "../consumption/jobConsumptionService";
 import { HeartbeatManager } from "../heartbeat/heartbeatManager";
 import { loadIdentity } from "../identity/loadIdentity";
 import { WebSocketAgentJobClient, type AgentJobClient } from "../jobs/jobClient";
-import { NodeTcpSocketClient } from "../transports/nodeTcpSocketClient";
 import { registerAgentWithServer } from "../registration/registerAgent";
 import { ReconnectEngine } from "../reconnect/reconnectEngine";
 import {
@@ -45,14 +47,20 @@ export async function bootAgent(config: AgentBootConfig): Promise<AgentRuntime> 
       sender: client,
     });
 
-  const tcpSocketClient = config.tcpSocketClient ?? new NodeTcpSocketClient();
+  const transportClients =
+    config.transportClients ??
+    createProductionTransportClients(config.transportRetryPolicy);
 
   const jobConsumption = new JobConsumptionService({
     agentId: identity.agentId,
     jobClient,
     ackSender: client,
-    tcpSocketClient,
+    outcomeReportSender: client,
+    transportClients,
     networkTransportEndpoints: config.networkTransportEndpoints,
+    usbTransportEndpoints: config.usbTransportEndpoints,
+    bluetoothTransportEndpoints: config.bluetoothTransportEndpoints,
+    transportRetryPolicy: config.transportRetryPolicy,
   });
 
   const startupReporting = createAgentStartupReportingState();

@@ -1,8 +1,12 @@
 /**
- * THERMAL-PRINTING-10B — production TCP socket client (Node.js net).
+ * THERMAL-PRINTING-10C — production TCP socket client (Node.js net).
  */
 import net from "node:net";
-import type { TcpConnectOptions, TcpSocketClient } from "./tcpSocketClient";
+import type {
+  TcpConnectOptions,
+  TcpSocketClient,
+  TcpSocketClientFactory,
+} from "./tcpSocketClient";
 
 export class NodeTcpSocketClient implements TcpSocketClient {
   private socket: net.Socket | null = null;
@@ -55,5 +59,11 @@ export class NodeTcpSocketClient implements TcpSocketClient {
     }
     this.socket.destroy();
     this.socket = null;
+  }
+}
+
+export class NodeTcpSocketClientFactory implements TcpSocketClientFactory {
+  create(): TcpSocketClient {
+    return new NodeTcpSocketClient();
   }
 }

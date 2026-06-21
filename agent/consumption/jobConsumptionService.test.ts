@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { AGENT_JOB_MESSAGE_TYPES } from "../../shared/printing/agentJobMessages";
+import {
+  AGENT_EXECUTION_OUTCOME_MESSAGE_TYPES,
+} from "../../shared/printing/executionOutcomeMessages";
 import { AGENT_PLATFORM_CAPABILITY_MESSAGE_TYPES } from "../../shared/printing/platformCapabilities";
 import { AGENT_PRINTER_PROFILE_MESSAGE_TYPES } from "../../shared/printing/printerProfiles";
 import { DeliveryAckTracker } from "../ack/acknowledgeDelivery";
@@ -46,8 +49,12 @@ describe("jobConsumptionService THERMAL-PRINTING-6D Phase-2", () => {
     expect(result.localState).toBe("delivered");
     expect(result.acknowledged).toBe(true);
     expect(result.confirmed).toBe(true);
-    expect(JSON.parse(sent[0]!).type).toBe(AGENT_JOB_MESSAGE_TYPES.DELIVERY_ACK);
-    expect(JSON.parse(sent[1]!).type).toBe(AGENT_JOB_MESSAGE_TYPES.DELIVERY_CONFIRMED);
+    expect(result.outcomeReported).toBe(true);
+    expect(JSON.parse(sent[0]!).type).toBe(
+      AGENT_EXECUTION_OUTCOME_MESSAGE_TYPES.EXECUTION_OUTCOME_REPORT
+    );
+    expect(JSON.parse(sent[1]!).type).toBe(AGENT_JOB_MESSAGE_TYPES.DELIVERY_ACK);
+    expect(JSON.parse(sent[2]!).type).toBe(AGENT_JOB_MESSAGE_TYPES.DELIVERY_CONFIRMED);
   });
 
   it("processes transport notifications via authoritative fetch", async () => {
@@ -72,8 +79,8 @@ describe("jobConsumptionService THERMAL-PRINTING-6D Phase-2", () => {
 
     await new Promise((resolve) => setTimeout(resolve, 10));
 
-    expect(sent).toHaveLength(2);
-    expect(JSON.parse(sent[0]!).jobId).toBe(200);
+    expect(sent).toHaveLength(3);
+    expect(JSON.parse(sent[1]!).jobId).toBe(200);
   });
 
   it("prevents duplicate acknowledgements", async () => {
@@ -108,7 +115,7 @@ describe("jobConsumptionService THERMAL-PRINTING-6D Phase-2", () => {
 
     expect(second.acknowledged).toBe(false);
     expect(second.confirmed).toBe(false);
-    expect(sent).toHaveLength(2);
+    expect(sent).toHaveLength(3);
   });
 
   it("passes through runtime execution plans and executes payload generation", async () => {

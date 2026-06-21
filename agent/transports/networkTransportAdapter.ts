@@ -1,13 +1,14 @@
 /**
- * THERMAL-PRINTING-10B — network transport adapter (TCP delivery, no discovery).
+ * THERMAL-PRINTING-10C — network transport adapter (TCP ESC/POS delivery).
  */
-import { isEscPosPayload } from "../../shared/printing/executionExecutor";
+import type { TransportRetryPolicy } from "../../shared/printing/transports/transportRetryPolicy";
 import type {
   ExecutionTransportAdapter,
   TransportExecutionRequest,
   TransportExecutionResult,
 } from "../../shared/printing/transports/transportContracts";
-import type { TcpSocketClient } from "./tcpSocketClient";
+import { deliverEscPosArtifactWithRetry } from "./transportDeliveryHelper";
+import type { TcpSocketClientFactory } from "./tcpSocketClient";
 
 export const NETWORK_TRANSPORT = "network" as const;
 
@@ -15,56 +16,46 @@ export class NetworkTransportAdapter implements ExecutionTransportAdapter {
   readonly transport = NETWORK_TRANSPORT;
 
   constructor(
-    private readonly socketClient: TcpSocketClient,
+    private readonly socketFactory: TcpSocketClientFactory,
+    private readonly retryPolicy?: TransportRetryPolicy,
     private readonly defaultTimeoutMs = 5_000
   ) {}
 
   async deliver(request: TransportExecutionRequest): Promise<TransportExecutionResult> {
-    const artifact = request.executionResult.artifact;
-    if (!artifact || !isEscPosPayload(artifact)) {
-      return {
-        status: "rejected",
-        transport: this.transport,
-        message: "Network transport requires an ESC/POS execution artifact",
-      };
-    }
-
     const endpoint = request.networkEndpoint;
     if (!endpoint) {
       return {
         status: "failed",
         transport: this.transport,
+        failureCode: "endpoint-missing",
         message: "Network transport endpoint is required",
       };
     }
 
-    try {
-      await this.socketClient.connect({
-        host: endpoint.host,
-        port: endpoint.port,
-        timeoutMs: this.defaultTimeoutMs,
-      });
-      await this.socketClient.write(artifact.bytes);
-      await this.socketClient.close();
-
-      return {
-        status: "completed",
-        transport: this.transport,
-        bytesTransmitted: artifact.byteLength,
-      };
-    } catch (error) {
-      await this.socketClient.close().catch(() => undefined);
-      return {
-        status: "failed",
-        transport: this.transport,
-        message: error instanceof Error ? error.message : String(error),
-      };
-    }
+    return deliverEscPosArtifactWithRetry({
+      request,
+      transport: this.transport,
+      retryPolicy: this.retryPolicy,
+      deliverBytes: async (bytes) => {
+        const socket = this.socketFactory.create();
+        try {
+          await socket.connect({
+            host: endpoint.host,
+            port: endpoint.port,
+            timeoutMs: this.defaultTimeoutMs,
+          });
+          await socket.write(bytes);
+        } finally {
+          await socket.close().catch(() => undefined);
+        }
+      },
+    });
   }
 }
 
 export function createNetworkTransportAdapter(
-  socketClient: TcpSocketClient
+  socketFactory: TcpSocketClientFactory,
+  retryPolicy?: TransportRetryPolicy
 ): NetworkTransportAdapter {
-  return new NetworkTransportAdapter(socketClient);
+  return new NetworkTransportAdapter(socketFactory, retryPolicy);
 }

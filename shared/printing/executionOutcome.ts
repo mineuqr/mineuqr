@@ -1,5 +1,5 @@
 /**
- * THERMAL-PRINTING-10B — transport-aware execution outcome (separate from delivery confirmation).
+ * THERMAL-PRINTING-10C — enhanced execution outcome resolution.
  */
 import type { ExecutionResult } from "./executionExecutor";
 import type { TransportExecutionResult } from "./transports/transportContracts";
@@ -60,6 +60,15 @@ export function resolveExecutionOutcome(input: {
       status: "executed",
       executionResult: input.executionResult,
       transportResult: input.transportResult,
+    };
+  }
+
+  if (input.transportResult.failureCode === "retry-exhausted") {
+    return {
+      status: "failed",
+      executionResult: input.executionResult,
+      transportResult: input.transportResult,
+      message: input.transportResult.message ?? "Transport retry exhausted",
     };
   }
 

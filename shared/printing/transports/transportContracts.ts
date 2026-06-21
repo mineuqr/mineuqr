@@ -1,5 +1,5 @@
 /**
- * THERMAL-PRINTING-10B — transport layer contracts.
+ * THERMAL-PRINTING-10C — transport layer contracts (extended for physical execution).
  */
 import type { ExecutionTransport } from "../executionCapabilities";
 import type { ExecutionContext } from "../executionContext";
@@ -12,6 +12,14 @@ export type NetworkTransportEndpoint = {
   port: number;
 };
 
+export type UsbTransportEndpoint = {
+  devicePath: string;
+};
+
+export type BluetoothTransportEndpoint = {
+  devicePath: string;
+};
+
 export const TRANSPORT_EXECUTION_STATUSES = [
   "completed",
   "failed",
@@ -22,10 +30,23 @@ export const TRANSPORT_EXECUTION_STATUSES = [
 export type TransportExecutionStatus =
   (typeof TRANSPORT_EXECUTION_STATUSES)[number];
 
+export const TRANSPORT_FAILURE_CODES = [
+  "timeout",
+  "connection-failed",
+  "write-failed",
+  "endpoint-missing",
+  "retry-exhausted",
+  "unsupported-artifact",
+] as const;
+
+export type TransportFailureCode = (typeof TRANSPORT_FAILURE_CODES)[number];
+
 export type TransportExecutionResult = {
   status: TransportExecutionStatus;
   transport: ExecutionTransport;
   bytesTransmitted?: number;
+  attempts?: number;
+  failureCode?: TransportFailureCode;
   message?: string;
 };
 
@@ -35,6 +56,8 @@ export type TransportExecutionRequest = {
   executionContext: ExecutionContext;
   printerProfile: PrinterProfile;
   networkEndpoint?: NetworkTransportEndpoint;
+  usbEndpoint?: UsbTransportEndpoint;
+  bluetoothEndpoint?: BluetoothTransportEndpoint;
 };
 
 export interface ExecutionTransportAdapter {

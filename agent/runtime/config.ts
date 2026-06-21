@@ -1,12 +1,17 @@
 /**
- * THERMAL-PRINTING-6D / 10B — reference agent boot configuration.
+ * THERMAL-PRINTING-6D / 10B / 10C — reference agent boot configuration.
  */
 import type { AgentPlatform } from "../../shared/printing/agentTypes";
 import type { PrinterProfile } from "../../shared/printing/printerProfiles";
-import type { NetworkTransportEndpoint } from "../../shared/printing/transports/transportContracts";
+import type {
+  BluetoothTransportEndpoint,
+  NetworkTransportEndpoint,
+  UsbTransportEndpoint,
+} from "../../shared/printing/transports/transportContracts";
+import type { TransportRetryPolicy } from "../../shared/printing/transports/transportRetryPolicy";
 import type { IdentityStore } from "../identity/identityStore";
 import type { AgentJobClient } from "../jobs/jobClient";
-import type { TcpSocketClient } from "../transports/tcpSocketClient";
+import type { AgentTransportClients } from "../transports/transportRegistry";
 import type { AgentWebSocketClient } from "../transport/websocketClient";
 
 export type AgentBootConfig = {
@@ -16,8 +21,11 @@ export type AgentBootConfig = {
   identityStore: IdentityStore;
   client?: AgentWebSocketClient;
   jobClient?: AgentJobClient;
-  tcpSocketClient?: TcpSocketClient;
+  transportClients?: AgentTransportClients;
   networkTransportEndpoints?: Record<string, NetworkTransportEndpoint>;
+  usbTransportEndpoints?: Record<string, UsbTransportEndpoint>;
+  bluetoothTransportEndpoints?: Record<string, BluetoothTransportEndpoint>;
+  transportRetryPolicy?: TransportRetryPolicy;
   version?: string;
   heartbeatIntervalMs?: number;
   reconnectInitialDelayMs?: number;

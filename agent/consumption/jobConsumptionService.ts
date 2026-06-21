@@ -1,5 +1,5 @@
 /**
- * THERMAL-PRINTING-6D Phase-2 / 9D / 10A / 10B — job consumption orchestration.
+ * THERMAL-PRINTING-6D Phase-2 / 9D / 10A / 10B / 10C — job consumption orchestration.
  */
 import { acknowledgeDelivery, DeliveryAckTracker } from "../ack/acknowledgeDelivery";
 import {
@@ -13,7 +13,16 @@ import type { AgentJobClient } from "../jobs/jobClient";
 import { JobSubscription } from "../jobs/jobSubscription";
 import { retrieveAuthoritativePrintJob } from "../jobs/retrieveJob";
 import type { JobAssignedEvent } from "../jobs/subscriptionTypes";
-import type { NetworkTransportEndpoint } from "../../shared/printing/transports/transportContracts";
+import {
+  classifyExecutionOutcome,
+  executionOutcomeStatusForReport,
+} from "../../shared/printing/executionOutcomeReporting";
+import type {
+  BluetoothTransportEndpoint,
+  NetworkTransportEndpoint,
+  UsbTransportEndpoint,
+} from "../../shared/printing/transports/transportContracts";
+import type { TransportRetryPolicy } from "../../shared/printing/transports/transportRetryPolicy";
 import type { RuntimeExecutionPlanSummary } from "../../shared/printing/executionIntegration";
 import type { ExecutionResult } from "../../shared/printing/executionExecutor";
 import {
@@ -21,19 +30,33 @@ import {
   type ExecutionOutcome,
 } from "../../shared/printing/executionOutcome";
 import type { TransportExecutionResult } from "../../shared/printing/transports/transportContracts";
-import type { TcpSocketClient } from "../transports/tcpSocketClient";
-import { MemoryTcpSocketClient } from "../transports/tcpSocketClient";
+import {
+  ExecutionOutcomeReportTracker,
+  reportExecutionOutcome,
+} from "../reporting/reportExecutionOutcome";
+import type { AgentTransportClients } from "../transports/transportRegistry";
+import { MemoryBluetoothDeviceClient } from "../transports/bluetoothDeviceClient";
+import { MemoryTcpSocketClientFactory } from "../transports/tcpSocketClient";
+import { MemoryUsbDeviceClient } from "../transports/usbDeviceClient";
+import { NodeBluetoothDeviceClient } from "../transports/bluetoothDeviceClient";
+import { NodeTcpSocketClientFactory } from "../transports/nodeTcpSocketClient";
+import { NodeUsbDeviceClient } from "../transports/usbDeviceClient";
 
 export type JobConsumptionServiceOptions = {
   agentId: string;
   jobClient: AgentJobClient;
   ackSender: { send(data: string): void };
+  outcomeReportSender?: { send(data: string): void };
   confirmationSender?: { send(data: string): void };
   pipeline?: ExecutionPipeline;
   ackTracker?: DeliveryAckTracker;
   confirmationTracker?: DeliveryConfirmationTracker;
-  tcpSocketClient?: TcpSocketClient;
+  outcomeReportTracker?: ExecutionOutcomeReportTracker;
+  transportClients?: AgentTransportClients;
   networkTransportEndpoints?: Record<string, NetworkTransportEndpoint>;
+  usbTransportEndpoints?: Record<string, UsbTransportEndpoint>;
+  bluetoothTransportEndpoints?: Record<string, BluetoothTransportEndpoint>;
+  transportRetryPolicy?: TransportRetryPolicy;
   now?: () => Date;
 };
 
@@ -41,6 +64,7 @@ export type JobConsumptionResult = {
   jobId: number;
   acknowledged: boolean;
   confirmed: boolean;
+  outcomeReported: boolean;
   localState: "acknowledged" | "delivered";
   executionPlan?: RuntimeExecutionPlanSummary;
   executionResult?: ExecutionResult;
@@ -48,13 +72,41 @@ export type JobConsumptionResult = {
   executionOutcome?: ExecutionOutcome;
 };
 
+function createDefaultTransportClients(
+  options: JobConsumptionServiceOptions
+): AgentTransportClients {
+  return (
+    options.transportClients ?? {
+      tcpSocketFactory: new MemoryTcpSocketClientFactory(),
+      usbDeviceClient: new MemoryUsbDeviceClient(),
+      bluetoothDeviceClient: new MemoryBluetoothDeviceClient(),
+      retryPolicy: options.transportRetryPolicy,
+    }
+  );
+}
+
+export function createProductionTransportClients(
+  retryPolicy?: TransportRetryPolicy
+): AgentTransportClients {
+  return {
+    tcpSocketFactory: new NodeTcpSocketClientFactory(),
+    usbDeviceClient: new NodeUsbDeviceClient(),
+    bluetoothDeviceClient: new NodeBluetoothDeviceClient(),
+    retryPolicy,
+  };
+}
+
 export class JobConsumptionService {
   private readonly pipeline: ExecutionPipeline;
   private readonly ackTracker: DeliveryAckTracker;
   private readonly confirmationTracker: DeliveryConfirmationTracker;
+  private readonly outcomeReportTracker: ExecutionOutcomeReportTracker;
   private readonly confirmationSender: { send(data: string): void };
-  private readonly tcpSocketClient: TcpSocketClient;
+  private readonly outcomeReportSender: { send(data: string): void };
+  private readonly transportClients: AgentTransportClients;
   private readonly networkTransportEndpoints: Record<string, NetworkTransportEndpoint>;
+  private readonly usbTransportEndpoints: Record<string, UsbTransportEndpoint>;
+  private readonly bluetoothTransportEndpoints: Record<string, BluetoothTransportEndpoint>;
   private readonly now: () => Date;
   readonly subscription: JobSubscription;
 
@@ -62,9 +114,13 @@ export class JobConsumptionService {
     this.pipeline = options.pipeline ?? new ExecutionPipeline({ now: options.now });
     this.ackTracker = options.ackTracker ?? new DeliveryAckTracker();
     this.confirmationTracker = options.confirmationTracker ?? new DeliveryConfirmationTracker();
+    this.outcomeReportTracker = options.outcomeReportTracker ?? new ExecutionOutcomeReportTracker();
     this.confirmationSender = options.confirmationSender ?? options.ackSender;
-    this.tcpSocketClient = options.tcpSocketClient ?? new MemoryTcpSocketClient();
+    this.outcomeReportSender = options.outcomeReportSender ?? options.ackSender;
+    this.transportClients = createDefaultTransportClients(options);
     this.networkTransportEndpoints = options.networkTransportEndpoints ?? {};
+    this.usbTransportEndpoints = options.usbTransportEndpoints ?? {};
+    this.bluetoothTransportEndpoints = options.bluetoothTransportEndpoints ?? {};
     this.now = options.now ?? (() => new Date());
     this.subscription = new JobSubscription({
       agentId: options.agentId,
@@ -85,6 +141,7 @@ export class JobConsumptionService {
         jobId: event.jobId,
         acknowledged: false,
         confirmed: false,
+        outcomeReported: false,
         localState: "delivered",
       };
     }
@@ -93,6 +150,7 @@ export class JobConsumptionService {
         jobId: event.jobId,
         acknowledged: false,
         confirmed: false,
+        outcomeReported: false,
         localState: "acknowledged",
       };
     }
@@ -134,14 +192,31 @@ export class JobConsumptionService {
           executionContext: job.transportDeliveryContext.executionContext,
           printerProfile: job.transportDeliveryContext.printerProfile,
           networkEndpoint: this.networkTransportEndpoints[printerId],
+          usbEndpoint: this.usbTransportEndpoints[printerId],
+          bluetoothEndpoint: this.bluetoothTransportEndpoints[printerId],
         },
-        this.tcpSocketClient
+        this.transportClients
       );
     }
 
     const executionOutcome = resolveExecutionOutcome({
       executionResult,
       transportResult,
+    });
+    const classifiedOutcome = classifyExecutionOutcome(executionOutcome);
+
+    const outcomeReported = reportExecutionOutcome({
+      payload: {
+        agentId: event.agentId,
+        jobId: job.jobId,
+        timestamp: this.now().toISOString(),
+        outcomeStatus: executionOutcomeStatusForReport(classifiedOutcome),
+        category: classifiedOutcome.category,
+        transport: transportResult?.transport ?? job.transportDeliveryContext?.printerProfile.transport,
+        message: classifiedOutcome.message,
+      },
+      sender: this.outcomeReportSender,
+      tracker: this.outcomeReportTracker,
     });
 
     const acknowledged = acknowledgeDelivery({
@@ -173,11 +248,12 @@ export class JobConsumptionService {
       jobId: job.jobId,
       acknowledged,
       confirmed,
+      outcomeReported,
       localState: confirmed ? "delivered" : "acknowledged",
       executionPlan: job.executionPlan,
       executionResult,
       transportResult,
-      executionOutcome,
+      executionOutcome: classifiedOutcome,
     };
   }
 }

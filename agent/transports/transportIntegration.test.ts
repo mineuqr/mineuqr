@@ -3,11 +3,15 @@ import { createRawEscPosExecutor } from "../execution/executors/rawEscPosExecuto
 import { executeAgentTransportDelivery } from "../execution/executeTransportDelivery";
 import { JobConsumptionService } from "../consumption/jobConsumptionService";
 import { MemoryAgentJobClient } from "../jobs/jobClient";
-import { MemoryTcpSocketClient } from "../transports/tcpSocketClient";
+import {
+  MemoryTcpSocketClientFactory,
+} from "../transports/tcpSocketClient";
 import { createAgentTransportRegistry } from "../transports/transportRegistry";
-import { createBluetoothTransportAdapter } from "../transports/bluetoothTransportAdapter";
-import { createUsbTransportAdapter } from "../transports/usbTransportAdapter";
 import { createNetworkTransportAdapter } from "../transports/networkTransportAdapter";
+import { createUsbTransportAdapter } from "../transports/usbTransportAdapter";
+import { createBluetoothTransportAdapter } from "../transports/bluetoothTransportAdapter";
+import { MemoryUsbDeviceClient } from "../transports/usbDeviceClient";
+import { MemoryBluetoothDeviceClient } from "../transports/bluetoothDeviceClient";
 
 const transportContext = {
   executionContext: {
@@ -59,9 +63,9 @@ const transportContext = {
   },
 };
 
-describe("agent transport integration THERMAL-PRINTING-10B", () => {
+describe("agent transport integration THERMAL-PRINTING-10B / 10C", () => {
   it("K — agent runtime executes transport flow after executor completion", async () => {
-    const socket = new MemoryTcpSocketClient();
+    const factory = new MemoryTcpSocketClientFactory();
     const client = new MemoryAgentJobClient();
     client.seed({
       jobId: 100,
@@ -86,7 +90,11 @@ describe("agent transport integration THERMAL-PRINTING-10B", () => {
       agentId: "agent-123",
       jobClient: client,
       ackSender: { send: () => {} },
-      tcpSocketClient: socket,
+      transportClients: {
+        tcpSocketFactory: factory,
+        usbDeviceClient: new MemoryUsbDeviceClient(),
+        bluetoothDeviceClient: new MemoryBluetoothDeviceClient(),
+      },
       networkTransportEndpoints: {
         "kitchen-printer": { host: "192.168.1.50", port: 9100 },
       },
@@ -103,10 +111,10 @@ describe("agent transport integration THERMAL-PRINTING-10B", () => {
     expect(result.executionResult?.status).toBe("completed");
     expect(result.transportResult?.status).toBe("completed");
     expect(result.executionOutcome?.status).toBe("executed");
-    expect(socket.connections).toEqual([
+    expect(factory.clients[0]!.connections).toEqual([
       { host: "192.168.1.50", port: 9100, timeoutMs: 5_000 },
     ]);
-    expect(socket.writes[0]?.byteLength).toBeGreaterThan(0);
+    expect(factory.clients[0]!.writes[0]?.byteLength).toBeGreaterThan(0);
   });
 
   it("N — executor remains transport-agnostic", () => {
@@ -115,7 +123,7 @@ describe("agent transport integration THERMAL-PRINTING-10B", () => {
   });
 
   it("O — no direct socket access from raw-escpos executor module", async () => {
-    const socket = new MemoryTcpSocketClient();
+    const factory = new MemoryTcpSocketClientFactory();
     const executor = createRawEscPosExecutor();
     const executionResult = executor.execute({
       executionPlan: {
@@ -137,7 +145,7 @@ describe("agent transport integration THERMAL-PRINTING-10B", () => {
       },
     });
 
-    expect(socket.connections).toHaveLength(0);
+    expect(factory.clients).toHaveLength(0);
     expect(executionResult.artifact?.byteLength).toBeGreaterThan(0);
 
     const transportResult = await executeAgentTransportDelivery(
@@ -153,20 +161,28 @@ describe("agent transport integration THERMAL-PRINTING-10B", () => {
         printerProfile: transportContext.printerProfile,
         networkEndpoint: { host: "10.0.0.10", port: 9100 },
       },
-      socket
+      {
+        tcpSocketFactory: factory,
+        usbDeviceClient: new MemoryUsbDeviceClient(),
+        bluetoothDeviceClient: new MemoryBluetoothDeviceClient(),
+      }
     );
 
     expect(transportResult.status).toBe("completed");
-    expect(socket.writes).toHaveLength(1);
+    expect(factory.clients[0]!.writes).toHaveLength(1);
   });
 
-  it("registers usb and bluetooth adapters as not-implemented", async () => {
-    const socket = new MemoryTcpSocketClient();
-    const registry = createAgentTransportRegistry(socket);
+  it("registers usb and bluetooth adapters with endpoint-missing failures", async () => {
+    const factory = new MemoryTcpSocketClientFactory();
+    const registry = createAgentTransportRegistry({
+      tcpSocketFactory: factory,
+      usbDeviceClient: new MemoryUsbDeviceClient(),
+      bluetoothDeviceClient: new MemoryBluetoothDeviceClient(),
+    });
 
     expect(registry.listSupported()).toEqual(["network", "usb", "bluetooth"]);
     expect(
-      await createUsbTransportAdapter().deliver({
+      await createUsbTransportAdapter(new MemoryUsbDeviceClient()).deliver({
         executionResult: { status: "completed", method: "raw-escpos" },
         executionPlan: {
           platform: "windows",
@@ -177,9 +193,9 @@ describe("agent transport integration THERMAL-PRINTING-10B", () => {
         executionContext: transportContext.executionContext,
         printerProfile: { ...transportContext.printerProfile, transport: "usb" },
       })
-    ).toMatchObject({ status: "not-implemented", transport: "usb" });
+    ).toMatchObject({ status: "failed", transport: "usb", failureCode: "endpoint-missing" });
     expect(
-      await createBluetoothTransportAdapter().deliver({
+      await createBluetoothTransportAdapter(new MemoryBluetoothDeviceClient()).deliver({
         executionResult: { status: "completed", method: "raw-escpos" },
         executionPlan: {
           platform: "windows",
@@ -190,7 +206,11 @@ describe("agent transport integration THERMAL-PRINTING-10B", () => {
         executionContext: transportContext.executionContext,
         printerProfile: { ...transportContext.printerProfile, transport: "bluetooth" },
       })
-    ).toMatchObject({ status: "not-implemented", transport: "bluetooth" });
-    expect(createNetworkTransportAdapter(socket).transport).toBe("network");
+    ).toMatchObject({
+      status: "failed",
+      transport: "bluetooth",
+      failureCode: "endpoint-missing",
+    });
+    expect(createNetworkTransportAdapter(factory).transport).toBe("network");
   });
 });
