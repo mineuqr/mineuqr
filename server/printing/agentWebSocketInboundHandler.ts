@@ -28,6 +28,7 @@ import {
   type AgentJobStatusReportMessage,
   type AgentStatusReportMessage,
 } from "../../shared/printing/agentProtocolStatusMessages";
+import { tryParseAgentPlatformCapabilityInboundMessage } from "./agentPlatformCapabilityWireCodec";
 import { tryParseAgentProtocolStatusInboundMessage } from "./agentProtocolStatusWireCodec";
 import { tryParseAgentPrinterProfileInboundMessage } from "./agentPrinterProfileWireCodec";
 import { recordAgentStatusReport } from "./agentStatusService";
@@ -35,6 +36,7 @@ import { tryParseAgentJobInboundMessage } from "./agentJobWireCodec";
 import { recordDeliveryAcknowledgement } from "./deliveryAckService";
 import { processAgentDeliveryConfirmation } from "./deliveryConfirmationFlow";
 import { recordJobStatusReport } from "./jobStatusService";
+import { processAgentPlatformCapabilitiesReport } from "./platformCapabilityNegotiationFlow";
 import { processAgentPrinterProfilesReport } from "./printerProfileNegotiationFlow";
 import { handleAgentJobFetchRequest } from "./jobRetrievalRouter";
 import { parseAgentWebSocketMessage } from "./agentWebSocketMessageCodec";
@@ -54,6 +56,18 @@ export function handleAgentWebSocketInboundMessage(
   rawMessage: string,
   connection: AgentWebSocketConnection
 ): void | Promise<void> {
+  const platformCapabilityMessage =
+    tryParseAgentPlatformCapabilityInboundMessage(rawMessage);
+  if (platformCapabilityMessage) {
+    processAgentPlatformCapabilitiesReport({
+      agentId: platformCapabilityMessage.agentId,
+      timestamp: platformCapabilityMessage.timestamp,
+      platform: platformCapabilityMessage.platform,
+      capabilities: platformCapabilityMessage.capabilities,
+    });
+    return;
+  }
+
   const printerProfileMessage = tryParseAgentPrinterProfileInboundMessage(rawMessage);
   if (printerProfileMessage) {
     processAgentPrinterProfilesReport({

@@ -151,3 +151,17 @@ export type {
   PrinterProfilesReportPayload,
   PrinterProfilesReportSender,
 } from "./printers/reportPrinterProfiles";
+
+export {
+  reportPlatformCapabilities,
+  buildPlatformCapabilitiesReportMessage,
+  PlatformCapabilitiesReportTracker,
+  PlatformCapabilitiesReportError,
+  WINDOWS_PLATFORM_CAPABILITIES,
+  ANDROID_PLATFORM_CAPABILITIES,
+  IOS_PLATFORM_CAPABILITIES,
+} from "./platform/reportPlatformCapabilities";
+export type {
+  PlatformCapabilitiesReportPayload,
+  PlatformCapabilitiesReportSender,
+} from "./platform/reportPlatformCapabilities";
