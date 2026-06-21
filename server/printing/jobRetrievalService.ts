@@ -2,8 +2,10 @@
  * THERMAL-PRINTING-7A.3 — authoritative print job retrieval for assigned agents.
  */
 import type { AgentJobPayload } from "../../shared/printing/agentJobMessages";
+import type { RuntimeExecutionPlanSummary } from "../../shared/printing/executionIntegration";
 import { getAgent } from "./agentRegistry";
 import { getPrintJobAssignment } from "./assignmentService";
+import { resolveRuntimeExecutionPlan } from "./executionIntegrationFlow";
 import { findPrintJobById } from "./printJobRepository";
 import { renderKitchenTicket } from "./ticketRenderer";
 
@@ -20,7 +22,7 @@ export type FetchAuthoritativePrintJobInput = {
 };
 
 export type FetchAuthoritativePrintJobResult =
-  | { found: true; job: AgentJobPayload }
+  | { found: true; job: AgentJobPayload; executionPlan: RuntimeExecutionPlanSummary }
   | { found: false; error: string };
 
 function mapKitchenTicketToAgentPayload(input: {
@@ -77,6 +79,10 @@ export async function fetchAuthoritativePrintJob(
   }
 
   const ticket = await renderKitchenTicket({ orderId: job.orderId });
+  const executionPlan = resolveRuntimeExecutionPlan({
+    agentId: normalizedAgentId,
+    dbPrinterId: assignment.printerId,
+  }).summary;
 
   return {
     found: true,
@@ -87,5 +93,6 @@ export async function fetchAuthoritativePrintJob(
       orderId: job.orderId,
       ticket,
     }),
+    executionPlan,
   };
 }

@@ -1,5 +1,9 @@
 /**
- * THERMAL-PRINTING-3C.3 — end-to-end print processor worker orchestration.
+ * THERMAL-PRINTING-3C.3 — LEGACY/DORMANT server-side print processor worker.
+ *
+ * THERMAL-PRINTING-9D: Not the authoritative execution path. See executionAuthority.ts.
+ * Authoritative execution is agent-runtime (assignment → fetch → context/strategy → consumption).
+ * This worker remains for historical tests only and is not scheduled in production.
  */
 import { opsLog } from "../_core/opsLog";
 import { OPS_EVENT } from "../_core/opsTaxonomy";

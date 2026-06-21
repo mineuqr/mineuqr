@@ -2,6 +2,7 @@
  * THERMAL-PRINTING-6D Phase-2 — agent job wire message contracts (versioned).
  */
 import { SUPPORTED_PRINT_AGENT_PROTOCOL_VERSION } from "./printAgentProtocol";
+import type { RuntimeExecutionPlanSummary } from "./executionIntegration";
 
 export const AGENT_JOB_MESSAGE_TYPES = {
   JOB_ASSIGNED: "agent.job.assigned",
@@ -54,6 +55,7 @@ export interface AgentJobFetchResponseMessage {
   requestId: string;
   found: boolean;
   job?: AgentJobPayload;
+  executionPlan?: RuntimeExecutionPlanSummary;
   error?: string;
 }
 

@@ -5,6 +5,10 @@ import { HeartbeatManager } from "../heartbeat/heartbeatManager";
 import { loadIdentity } from "../identity/loadIdentity";
 import { registerAgentWithServer } from "../registration/registerAgent";
 import { ReconnectEngine } from "../reconnect/reconnectEngine";
+import {
+  createAgentStartupReportingState,
+  performAgentStartupReporting,
+} from "./startupReporting";
 import { MockAgentWebSocketClient, WsAgentWebSocketClient, type AgentWebSocketClient } from "../transport/websocketClient";
 import type { AgentBootConfig } from "./config";
 import { AgentLifecycle } from "./lifecycle";
@@ -32,6 +36,8 @@ export async function bootAgent(config: AgentBootConfig): Promise<AgentRuntime> 
 
   const client = config.client ?? new WsAgentWebSocketClient();
 
+  const startupReporting = createAgentStartupReportingState();
+
   const runtime: AgentRuntime = {
     lifecycle,
     identity,
@@ -39,6 +45,7 @@ export async function bootAgent(config: AgentBootConfig): Promise<AgentRuntime> 
     reconnect: null as unknown as ReconnectEngine,
     heartbeat: createHeartbeatManager(config, identity.agentId, client),
     config,
+    startupReporting,
   };
 
   const performRegistration = async () => {
@@ -51,6 +58,14 @@ export async function bootAgent(config: AgentBootConfig): Promise<AgentRuntime> 
       identity,
       platform: config.platform,
       version: config.version,
+    });
+
+    performAgentStartupReporting({
+      agentId: identity.agentId,
+      platform: config.platform,
+      sender: client,
+      reporting: startupReporting,
+      printers: config.startupPrinters,
     });
 
     lifecycle.transition("ready");

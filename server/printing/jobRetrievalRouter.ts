@@ -36,6 +36,7 @@ export async function handleAgentJobFetchRequest(
         requestId: message.requestId,
         found: true,
         job: result.job,
+        executionPlan: result.executionPlan,
       })
     );
     return;
