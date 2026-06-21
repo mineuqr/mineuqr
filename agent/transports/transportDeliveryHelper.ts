@@ -16,6 +16,16 @@ function mapErrorToFailureCode(error: unknown): TransportFailureCode {
   if (message.includes("timed out") || message.includes("timeout")) {
     return "timeout";
   }
+  if (message.includes("writeprinter") || message.includes("write failed") || message.includes("write-failed")) {
+    return "write-failed";
+  }
+  if (
+    message.includes("not found") ||
+    message.includes("openprinter failed") ||
+    message.includes("spooler unavailable")
+  ) {
+    return "connection-failed";
+  }
   if (message.includes("write")) {
     return "write-failed";
   }

@@ -12,6 +12,7 @@ import { createUsbTransportAdapter } from "../transports/usbTransportAdapter";
 import { createBluetoothTransportAdapter } from "../transports/bluetoothTransportAdapter";
 import { MemoryUsbDeviceClient } from "../transports/usbDeviceClient";
 import { MemoryBluetoothDeviceClient } from "../transports/bluetoothDeviceClient";
+import { MemoryWindowsSpoolerDeviceClient } from "../transports/windowsSpoolerDeviceClient";
 
 const transportContext = {
   executionContext: {
@@ -93,6 +94,7 @@ describe("agent transport integration THERMAL-PRINTING-10B / 10C", () => {
       transportClients: {
         tcpSocketFactory: factory,
         usbDeviceClient: new MemoryUsbDeviceClient(),
+        windowsSpoolerDeviceClient: new MemoryWindowsSpoolerDeviceClient(),
         bluetoothDeviceClient: new MemoryBluetoothDeviceClient(),
       },
       networkTransportEndpoints: {
@@ -164,6 +166,7 @@ describe("agent transport integration THERMAL-PRINTING-10B / 10C", () => {
       {
         tcpSocketFactory: factory,
         usbDeviceClient: new MemoryUsbDeviceClient(),
+        windowsSpoolerDeviceClient: new MemoryWindowsSpoolerDeviceClient(),
         bluetoothDeviceClient: new MemoryBluetoothDeviceClient(),
       }
     );
@@ -177,12 +180,16 @@ describe("agent transport integration THERMAL-PRINTING-10B / 10C", () => {
     const registry = createAgentTransportRegistry({
       tcpSocketFactory: factory,
       usbDeviceClient: new MemoryUsbDeviceClient(),
+      windowsSpoolerDeviceClient: new MemoryWindowsSpoolerDeviceClient(),
       bluetoothDeviceClient: new MemoryBluetoothDeviceClient(),
     });
 
     expect(registry.listSupported()).toEqual(["network", "usb", "bluetooth"]);
     expect(
-      await createUsbTransportAdapter(new MemoryUsbDeviceClient()).deliver({
+      await createUsbTransportAdapter(
+        new MemoryUsbDeviceClient(),
+        new MemoryWindowsSpoolerDeviceClient()
+      ).deliver({
         executionResult: { status: "completed", method: "raw-escpos" },
         executionPlan: {
           platform: "windows",

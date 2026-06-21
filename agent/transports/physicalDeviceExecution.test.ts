@@ -20,6 +20,7 @@ import { createUsbTransportAdapter } from "./usbTransportAdapter";
 import { createBluetoothTransportAdapter } from "./bluetoothTransportAdapter";
 import { MemoryUsbDeviceClient } from "./usbDeviceClient";
 import { MemoryBluetoothDeviceClient } from "./bluetoothDeviceClient";
+import { MemoryWindowsSpoolerDeviceClient } from "./windowsSpoolerDeviceClient";
 
 const transportContext = {
   executionContext: {
@@ -153,6 +154,7 @@ describe("physicalDeviceExecution THERMAL-PRINTING-10C", () => {
     const result = await executeAgentTransportDelivery(buildTransportRequest(), {
       tcpSocketFactory: factory,
       usbDeviceClient: new MemoryUsbDeviceClient(),
+      windowsSpoolerDeviceClient: new MemoryWindowsSpoolerDeviceClient(),
       bluetoothDeviceClient: new MemoryBluetoothDeviceClient(),
     });
 
@@ -174,7 +176,8 @@ describe("physicalDeviceExecution THERMAL-PRINTING-10C", () => {
       {
         tcpSocketFactory: factory,
         usbDeviceClient: new MemoryUsbDeviceClient(),
-        bluetoothDeviceClient: new MemoryBluetoothDeviceClient(),
+        windowsSpoolerDeviceClient: new MemoryWindowsSpoolerDeviceClient(),
+      bluetoothDeviceClient: new MemoryBluetoothDeviceClient(),
         retryPolicy: { maxAttempts: 1, delayMs: 0 },
       }
     );
@@ -191,7 +194,8 @@ describe("physicalDeviceExecution THERMAL-PRINTING-10C", () => {
       {
         tcpSocketFactory: factory,
         usbDeviceClient: new MemoryUsbDeviceClient(),
-        bluetoothDeviceClient: new MemoryBluetoothDeviceClient(),
+        windowsSpoolerDeviceClient: new MemoryWindowsSpoolerDeviceClient(),
+      bluetoothDeviceClient: new MemoryBluetoothDeviceClient(),
         retryPolicy: { maxAttempts: 1, delayMs: 0 },
       }
     );
@@ -218,7 +222,8 @@ describe("physicalDeviceExecution THERMAL-PRINTING-10C", () => {
       {
         tcpSocketFactory: new MemoryTcpSocketClientFactory(),
         usbDeviceClient: usbClient,
-        bluetoothDeviceClient: new MemoryBluetoothDeviceClient(),
+        windowsSpoolerDeviceClient: new MemoryWindowsSpoolerDeviceClient(),
+      bluetoothDeviceClient: new MemoryBluetoothDeviceClient(),
       }
     );
 
@@ -241,7 +246,8 @@ describe("physicalDeviceExecution THERMAL-PRINTING-10C", () => {
       {
         tcpSocketFactory: new MemoryTcpSocketClientFactory(),
         usbDeviceClient: new MemoryUsbDeviceClient(),
-        bluetoothDeviceClient: new MemoryBluetoothDeviceClient(),
+        windowsSpoolerDeviceClient: new MemoryWindowsSpoolerDeviceClient(),
+      bluetoothDeviceClient: new MemoryBluetoothDeviceClient(),
       }
     );
 
@@ -297,6 +303,7 @@ describe("physicalDeviceExecution THERMAL-PRINTING-10C", () => {
     const transportResult = await executeAgentTransportDelivery(buildTransportRequest(), {
       tcpSocketFactory: factory,
       usbDeviceClient: new MemoryUsbDeviceClient(),
+      windowsSpoolerDeviceClient: new MemoryWindowsSpoolerDeviceClient(),
       bluetoothDeviceClient: new MemoryBluetoothDeviceClient(),
     });
 
@@ -310,6 +317,7 @@ describe("physicalDeviceExecution THERMAL-PRINTING-10C", () => {
     const result = await executeAgentTransportDelivery(buildTransportRequest(), {
       tcpSocketFactory: factory,
       usbDeviceClient: new MemoryUsbDeviceClient(),
+      windowsSpoolerDeviceClient: new MemoryWindowsSpoolerDeviceClient(),
       bluetoothDeviceClient: new MemoryBluetoothDeviceClient(),
       retryPolicy: { maxAttempts: 3, delayMs: 0 },
     });
@@ -324,6 +332,7 @@ describe("physicalDeviceExecution THERMAL-PRINTING-10C", () => {
     const result = await executeAgentTransportDelivery(buildTransportRequest(), {
       tcpSocketFactory: factory,
       usbDeviceClient: new MemoryUsbDeviceClient(),
+      windowsSpoolerDeviceClient: new MemoryWindowsSpoolerDeviceClient(),
       bluetoothDeviceClient: new MemoryBluetoothDeviceClient(),
       retryPolicy: { maxAttempts: 2, delayMs: 0 },
     });
@@ -370,7 +379,8 @@ describe("physicalDeviceExecution THERMAL-PRINTING-10C", () => {
       transportClients: {
         tcpSocketFactory: factory,
         usbDeviceClient: new MemoryUsbDeviceClient(),
-        bluetoothDeviceClient: new MemoryBluetoothDeviceClient(),
+        windowsSpoolerDeviceClient: new MemoryWindowsSpoolerDeviceClient(),
+      bluetoothDeviceClient: new MemoryBluetoothDeviceClient(),
       },
       networkTransportEndpoints: {
         "kitchen-printer": { host: "192.168.1.50", port: 9100 },
@@ -397,12 +407,18 @@ describe("physicalDeviceExecution THERMAL-PRINTING-10C", () => {
     const registry = createAgentTransportRegistry({
       tcpSocketFactory: factory,
       usbDeviceClient: new MemoryUsbDeviceClient(),
+      windowsSpoolerDeviceClient: new MemoryWindowsSpoolerDeviceClient(),
       bluetoothDeviceClient: new MemoryBluetoothDeviceClient(),
     });
 
     expect(registry.listSupported()).toEqual(["network", "usb", "bluetooth"]);
     expect(createNetworkTransportAdapter(factory).transport).toBe("network");
-    expect(createUsbTransportAdapter(new MemoryUsbDeviceClient()).transport).toBe("usb");
+    expect(
+      createUsbTransportAdapter(
+        new MemoryUsbDeviceClient(),
+        new MemoryWindowsSpoolerDeviceClient()
+      ).transport
+    ).toBe("usb");
     expect(
       createBluetoothTransportAdapter(new MemoryBluetoothDeviceClient()).transport
     ).toBe("bluetooth");
@@ -418,6 +434,7 @@ describe("physicalDeviceExecution THERMAL-PRINTING-10C", () => {
     const clients = {
       tcpSocketFactory: factory,
       usbDeviceClient: new MemoryUsbDeviceClient(),
+      windowsSpoolerDeviceClient: new MemoryWindowsSpoolerDeviceClient(),
       bluetoothDeviceClient: new MemoryBluetoothDeviceClient(),
     };
     const request = buildTransportRequest();
@@ -435,6 +452,7 @@ describe("physicalDeviceExecution THERMAL-PRINTING-10C", () => {
     const result = await executeAgentTransportDelivery(buildTransportRequest(), {
       tcpSocketFactory: factory,
       usbDeviceClient: new MemoryUsbDeviceClient(),
+      windowsSpoolerDeviceClient: new MemoryWindowsSpoolerDeviceClient(),
       bluetoothDeviceClient: new MemoryBluetoothDeviceClient(),
       retryPolicy: { maxAttempts: 2, delayMs: 0 },
     });

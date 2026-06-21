@@ -37,10 +37,13 @@ import {
 import type { AgentTransportClients } from "../transports/transportRegistry";
 import { MemoryBluetoothDeviceClient } from "../transports/bluetoothDeviceClient";
 import { MemoryTcpSocketClientFactory } from "../transports/tcpSocketClient";
-import { MemoryUsbDeviceClient } from "../transports/usbDeviceClient";
+import { MemoryUsbDeviceClient, NodeUsbDeviceClient } from "../transports/usbDeviceClient";
 import { NodeBluetoothDeviceClient } from "../transports/bluetoothDeviceClient";
 import { NodeTcpSocketClientFactory } from "../transports/nodeTcpSocketClient";
-import { NodeUsbDeviceClient } from "../transports/usbDeviceClient";
+import {
+  MemoryWindowsSpoolerDeviceClient,
+  NodeWindowsSpoolerDeviceClient,
+} from "../transports/windowsSpoolerDeviceClient";
 
 export type JobConsumptionServiceOptions = {
   agentId: string;
@@ -79,6 +82,7 @@ function createDefaultTransportClients(
     options.transportClients ?? {
       tcpSocketFactory: new MemoryTcpSocketClientFactory(),
       usbDeviceClient: new MemoryUsbDeviceClient(),
+      windowsSpoolerDeviceClient: new MemoryWindowsSpoolerDeviceClient(),
       bluetoothDeviceClient: new MemoryBluetoothDeviceClient(),
       retryPolicy: options.transportRetryPolicy,
     }
@@ -91,6 +95,7 @@ export function createProductionTransportClients(
   return {
     tcpSocketFactory: new NodeTcpSocketClientFactory(),
     usbDeviceClient: new NodeUsbDeviceClient(),
+    windowsSpoolerDeviceClient: new NodeWindowsSpoolerDeviceClient(),
     bluetoothDeviceClient: new NodeBluetoothDeviceClient(),
     retryPolicy,
   };

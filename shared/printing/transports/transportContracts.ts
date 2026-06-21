@@ -6,14 +6,18 @@ import type { ExecutionContext } from "../executionContext";
 import type { ExecutionResult } from "../executionExecutor";
 import type { RuntimeExecutionPlanSummary } from "../executionIntegration";
 import type { PrinterProfile } from "../printerProfiles";
+import type { UsbTransportEndpoint } from "./usbTransportEndpoint";
+
+export type { UsbTransportEndpoint } from "./usbTransportEndpoint";
+export {
+  normalizeUsbTransportEndpoint,
+  isUsbDevicePathEndpoint,
+  isUsbWindowsSpoolerEndpoint,
+} from "./usbTransportEndpoint";
 
 export type NetworkTransportEndpoint = {
   host: string;
   port: number;
-};
-
-export type UsbTransportEndpoint = {
-  devicePath: string;
 };
 
 export type BluetoothTransportEndpoint = {
