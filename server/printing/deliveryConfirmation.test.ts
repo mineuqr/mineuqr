@@ -8,12 +8,15 @@ import {
   assignPrintJob,
   clearPrintJobAssignments,
 } from "./assignmentService";
-import { clearAgentRegistry, registerAgent } from "./agentRegistry";
-import {
-  clearPrinterProfileStore,
-  replaceAgentPrinterInventory,
-} from "./printerProfileStore";
+import { clearAgentRegistry } from "./agentRegistry";
+import { clearPrinterProfileStore } from "./printerProfileStore";
+import { clearPrinterResolutionRegistry } from "./printerResolutionRegistry";
 import { clearRoutingState } from "./routingEngine";
+import {
+  registerOnlineAgent as registerOnlineAgentWithResolution,
+  seedPrinterResolution,
+  TEST_DB_PRINTER_ID,
+} from "./printingTestHelpers";
 import {
   clearDeliveryAcks,
   recordDeliveryAcknowledgement,
@@ -45,7 +48,7 @@ const baseJob: SelectPrintJob = {
   id: 100,
   restaurantId: 7,
   orderId: 500,
-  printerId: 10,
+  printerId: TEST_DB_PRINTER_ID,
   status: PRINT_JOB_STATUS.QUEUED,
   attemptCount: 0,
   idempotencyKey: "order:500:submitted",
@@ -56,34 +59,8 @@ const baseJob: SelectPrintJob = {
 };
 
 function registerOnlineAgent(agentId: string): void {
-  const connectedAt = new Date().toISOString();
-  registerAgent({
-    identity: {
-      agentId,
-      platform: "windows",
-      protocolVersion: SUPPORTED_PRINT_AGENT_PROTOCOL_VERSION,
-    },
-    connectedAt,
-  });
-  replaceAgentPrinterInventory({
-    agentId,
-    timestamp: connectedAt,
-    profiles: [
-      {
-        printerId: "10",
-        printerName: "Kitchen",
-        transport: "usb",
-        capabilities: {
-          escpos: true,
-          cutter: false,
-          cashDrawer: false,
-          qrCode: true,
-          imagePrinting: false,
-        },
-        paperWidth: 80,
-      },
-    ],
-  });
+  registerOnlineAgentWithResolution(agentId);
+  seedPrinterResolution({ agentId });
 }
 
 async function acknowledgeJob(agentId: string, jobId = 100): Promise<void> {
@@ -102,6 +79,7 @@ describe("deliveryConfirmation THERMAL-PRINTING-7B", () => {
     clearDeliveryAcks();
     clearJobDeliveryStates();
     clearPrinterProfileStore();
+    clearPrinterResolutionRegistry();
     clearRoutingState();
     repoMocks.findPrintJobById.mockResolvedValue(baseJob);
     repoMocks.markJobPrinted.mockResolvedValue(null);

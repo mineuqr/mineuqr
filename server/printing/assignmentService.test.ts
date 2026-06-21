@@ -1,19 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SelectPrintJob } from "../../drizzle/schema";
-import { SUPPORTED_PRINT_AGENT_PROTOCOL_VERSION } from "../../shared/printing/printAgentProtocol";
 import { PRINT_JOB_STATUS } from "../../shared/printing/types";
-import { clearAgentRegistry, registerAgent } from "./agentRegistry";
 import {
   assignPrintJob,
   clearPrintJobAssignments,
   getPrintJobAssignment,
 } from "./assignmentService";
 import { NoEligibleAgentError, PrintJobAssignmentError } from "./assignmentTypes";
-import {
-  clearPrinterProfileStore,
-  replaceAgentPrinterInventory,
-} from "./printerProfileStore";
+import { clearAgentRegistry, registerAgent } from "./agentRegistry";
+import { SUPPORTED_PRINT_AGENT_PROTOCOL_VERSION } from "../../shared/printing/printAgentProtocol";
+import { clearPrinterProfileStore } from "./printerProfileStore";
+import { clearPrinterResolutionRegistry } from "./printerResolutionRegistry";
 import { clearRoutingState } from "./routingEngine";
+import {
+  registerOnlineAgent,
+  seedPrinterResolution,
+  TEST_DB_PRINTER_ID,
+} from "./printingTestHelpers";
 
 const repoMocks = vi.hoisted(() => ({
   findPrintJobById: vi.fn(),
@@ -27,7 +30,7 @@ const baseJob: SelectPrintJob = {
   id: 100,
   restaurantId: 7,
   orderId: 500,
-  printerId: 10,
+  printerId: TEST_DB_PRINTER_ID,
   status: PRINT_JOB_STATUS.QUEUED,
   attemptCount: 0,
   idempotencyKey: "order:500:submitted",
@@ -37,49 +40,21 @@ const baseJob: SelectPrintJob = {
   updatedAt: "2026-06-18 12:00:00",
 };
 
-const sampleProfile = {
-  printerId: "10",
-  printerName: "Kitchen",
-  transport: "usb" as const,
-  capabilities: {
-    escpos: true,
-    cutter: false,
-    cashDrawer: false,
-    qrCode: true,
-    imagePrinting: false,
-  },
-  paperWidth: 80 as const,
-};
-
-function seedOwner(agentId: string): void {
-  registerAgent({
-    identity: {
-      agentId,
-      platform: "windows",
-      protocolVersion: SUPPORTED_PRINT_AGENT_PROTOCOL_VERSION,
-    },
-    connectedAt: new Date().toISOString(),
-  });
-  replaceAgentPrinterInventory({
-    agentId,
-    timestamp: new Date().toISOString(),
-    profiles: [sampleProfile],
-  });
-}
-
-describe("assignmentService THERMAL-PRINTING-7A.1 / 8A.4", () => {
+describe("assignmentService THERMAL-PRINTING-7A.1 / 8A.4 / 8B.4", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     clearAgentRegistry();
     clearPrintJobAssignments();
     clearPrinterProfileStore();
+    clearPrinterResolutionRegistry();
     clearRoutingState();
     repoMocks.findPrintJobById.mockResolvedValue(baseJob);
   });
 
-  it("assigns queued jobs via routing to the printer owner", async () => {
-    seedOwner("agent-alpha");
-    seedOwner("agent-zulu");
+  it("assigns queued jobs via routing to the resolved printer owner", async () => {
+    registerOnlineAgent("agent-alpha");
+    registerOnlineAgent("agent-zulu");
+    seedPrinterResolution({ agentId: "agent-alpha" });
 
     const result = await assignPrintJob({ jobId: 100 });
 
@@ -89,7 +64,8 @@ describe("assignmentService THERMAL-PRINTING-7A.1 / 8A.4", () => {
   });
 
   it("reuses existing assignments idempotently", async () => {
-    seedOwner("agent-alpha");
+    registerOnlineAgent("agent-alpha");
+    seedPrinterResolution({ agentId: "agent-alpha" });
 
     const first = await assignPrintJob({ jobId: 100 });
     const second = await assignPrintJob({ jobId: 100 });
@@ -121,7 +97,8 @@ describe("assignmentService THERMAL-PRINTING-7A.1 / 8A.4", () => {
   });
 
   it("rejects jobs without printerId", async () => {
-    seedOwner("agent-alpha");
+    registerOnlineAgent("agent-alpha");
+    seedPrinterResolution({ agentId: "agent-alpha" });
     repoMocks.findPrintJobById.mockResolvedValue({ ...baseJob, printerId: null });
 
     await expect(assignPrintJob({ jobId: 100 })).rejects.toThrow(PrintJobAssignmentError);

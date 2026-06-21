@@ -17,13 +17,15 @@ import {
   getPrintJobAssignment,
 } from "./assignmentService";
 import { notifyAgentOfAssignment } from "./assignmentNotifier";
-import { clearAgentRegistry, registerAgent } from "./agentRegistry";
-import { createPrintAgentCapabilities } from "./printAgentProtocol";
-import {
-  clearPrinterProfileStore,
-  replaceAgentPrinterInventory,
-} from "./printerProfileStore";
+import { clearAgentRegistry } from "./agentRegistry";
+import { clearPrinterProfileStore } from "./printerProfileStore";
+import { clearPrinterResolutionRegistry } from "./printerResolutionRegistry";
 import { clearRoutingState } from "./routingEngine";
+import {
+  registerOnlineAgent as registerOnlineAgentWithResolution,
+  seedPrinterResolution,
+  TEST_DB_PRINTER_ID,
+} from "./printingTestHelpers";
 import {
   clearDeliveryAcks,
   getDeliveryAckRecord,
@@ -101,39 +103,8 @@ const baseJob: SelectPrintJob = {
 };
 
 function registerOnlineAgent(agentId: string): void {
-  const connectedAt = new Date().toISOString();
-  registerAgent({
-    identity: {
-      agentId,
-      platform: "windows",
-      protocolVersion: SUPPORTED_PRINT_AGENT_PROTOCOL_VERSION,
-    },
-    connectedAt,
-    capabilities: createPrintAgentCapabilities({
-      platform: "windows",
-      transports: ["websocket"],
-      printers: 1,
-    }),
-  });
-  replaceAgentPrinterInventory({
-    agentId,
-    timestamp: connectedAt,
-    profiles: [
-      {
-        printerId: "10",
-        printerName: "Kitchen",
-        transport: "usb",
-        capabilities: {
-          escpos: true,
-          cutter: false,
-          cashDrawer: false,
-          qrCode: true,
-          imagePrinting: false,
-        },
-        paperWidth: 80,
-      },
-    ],
-  });
+  registerOnlineAgentWithResolution(agentId);
+  seedPrinterResolution({ agentId });
 }
 
 function createMockConnection(): AgentWebSocketConnection & { sent: string[] } {
@@ -157,6 +128,7 @@ describe("endToEndPrintFlow THERMAL-PRINTING-7A", () => {
     clearDeliveryAcks();
     clearJobDeliveryStates();
     clearPrinterProfileStore();
+    clearPrinterResolutionRegistry();
     clearRoutingState();
 
     dbMocks.getOrderById.mockResolvedValue(baseOrder);

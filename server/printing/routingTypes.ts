@@ -22,6 +22,8 @@ export const ROUTING_FAILURE_CODES = {
   OFFLINE_OWNER: "offline-owner",
   MULTIPLE_CANDIDATES: "multiple-candidates",
   NO_CANDIDATES: "no-candidates",
+  RESOLUTION_CONFLICT: "resolution-conflict",
+  UNRESOLVED_PRINTER: "unresolved-printer",
 } as const;
 
 export type RoutingFailureCode =
