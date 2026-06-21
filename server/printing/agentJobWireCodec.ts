@@ -4,6 +4,7 @@
 import {
   AGENT_JOB_MESSAGE_TYPES,
   type AgentJobDeliveryAckMessage,
+  type AgentJobDeliveryConfirmedMessage,
   type AgentJobFetchRequestMessage,
   type AgentJobWireMessage,
 } from "../../shared/printing/agentJobMessages";
@@ -26,7 +27,7 @@ function validateProtocolVersion(protocolVersion: string): void {
 
 export function tryParseAgentJobInboundMessage(
   rawMessage: string
-): AgentJobFetchRequestMessage | AgentJobDeliveryAckMessage | null {
+): AgentJobFetchRequestMessage | AgentJobDeliveryAckMessage | AgentJobDeliveryConfirmedMessage | null {
   let parsed: unknown;
   try {
     parsed = JSON.parse(rawMessage);
@@ -42,14 +43,16 @@ export function tryParseAgentJobInboundMessage(
   const type = message.type;
   if (
     type !== AGENT_JOB_MESSAGE_TYPES.JOB_FETCH_REQUEST &&
-    type !== AGENT_JOB_MESSAGE_TYPES.DELIVERY_ACK
+    type !== AGENT_JOB_MESSAGE_TYPES.DELIVERY_ACK &&
+    type !== AGENT_JOB_MESSAGE_TYPES.DELIVERY_CONFIRMED
   ) {
     return null;
   }
 
   return parseAgentJobWireMessage(rawMessage) as
     | AgentJobFetchRequestMessage
-    | AgentJobDeliveryAckMessage;
+    | AgentJobDeliveryAckMessage
+    | AgentJobDeliveryConfirmedMessage;
 }
 
 export function parseAgentJobWireMessage(rawMessage: string): AgentJobWireMessage {
@@ -82,6 +85,8 @@ export function parseAgentJobWireMessage(rawMessage: string): AgentJobWireMessag
       return parseJobFetchRequest(message, protocolVersion);
     case AGENT_JOB_MESSAGE_TYPES.DELIVERY_ACK:
       return parseDeliveryAck(message, protocolVersion);
+    case AGENT_JOB_MESSAGE_TYPES.DELIVERY_CONFIRMED:
+      return parseDeliveryConfirmed(message, protocolVersion);
     default:
       throw new AgentJobWireMessageError(`Unsupported agent job message type: ${type}`);
   }
@@ -129,6 +134,29 @@ function parseDeliveryAck(
     protocolVersion,
     agentId: message.agentId,
     jobId: message.jobId as number,
+    timestamp: message.timestamp,
+  };
+}
+
+function parseDeliveryConfirmed(
+  message: Record<string, unknown>,
+  protocolVersion: string
+): AgentJobDeliveryConfirmedMessage {
+  if (typeof message.agentId !== "string" || !message.agentId.trim()) {
+    throw new AgentJobWireMessageError("Delivery confirmation requires agentId");
+  }
+  if (typeof message.timestamp !== "string" || !message.timestamp.trim()) {
+    throw new AgentJobWireMessageError("Delivery confirmation requires timestamp");
+  }
+  if (typeof message.jobId !== "string" || !message.jobId.trim()) {
+    throw new AgentJobWireMessageError("Delivery confirmation requires jobId");
+  }
+
+  return {
+    type: AGENT_JOB_MESSAGE_TYPES.DELIVERY_CONFIRMED,
+    protocolVersion,
+    agentId: message.agentId,
+    jobId: message.jobId,
     timestamp: message.timestamp,
   };
 }

@@ -107,3 +107,14 @@ export {
   type JobConsumptionResult,
   type JobConsumptionServiceOptions,
 } from "./consumption/jobConsumptionService";
+
+export {
+  confirmDelivery,
+  buildDeliveryConfirmedMessage,
+  DeliveryConfirmationTracker,
+  DeliveryConfirmationError,
+} from "./delivery/confirmDelivery";
+export type {
+  DeliveryConfirmationPayload,
+  DeliveryConfirmationSender,
+} from "./delivery/confirmDelivery";

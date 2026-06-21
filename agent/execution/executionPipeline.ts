@@ -75,6 +75,12 @@ export class ExecutionPipeline {
     return this.store.transition(jobId, "acknowledged", this.now().toISOString());
   }
 
+  markDelivered(jobId: number): LocalJobRecord {
+    const record = this.requireRecord(jobId);
+    assertLocalJobStateTransition(record.state, "delivered");
+    return this.store.transition(jobId, "delivered", this.now().toISOString());
+  }
+
   runThroughPrepare(job: AuthoritativePrintJob): LocalJobRecord {
     const received = this.receive(job);
     if (received.state === "acknowledged" || received.state === "prepared") {

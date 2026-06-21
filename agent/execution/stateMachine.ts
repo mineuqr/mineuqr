@@ -13,8 +13,9 @@ export class LocalJobStateError extends Error {
 const ALLOWED_LOCAL_JOB_TRANSITIONS: Record<LocalJobState, readonly LocalJobState[]> = {
   received: ["validated"],
   validated: ["prepared"],
-  prepared: ["acknowledged"],
-  acknowledged: [],
+  prepared: ["acknowledged", "delivered"],
+  acknowledged: ["delivered"],
+  delivered: [],
 };
 
 export function canTransitionLocalJobState(from: LocalJobState, to: LocalJobState): boolean {

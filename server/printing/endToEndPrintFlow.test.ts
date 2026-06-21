@@ -24,6 +24,7 @@ import {
   getDeliveryAckRecord,
   recordDeliveryAcknowledgement,
 } from "./deliveryAckService";
+import { clearJobDeliveryStates } from "./deliveryStateTracker";
 import { dispatchAssignedPrintJob, orchestratePrintJobFlow } from "./endToEndPrintFlowService";
 import { fetchAuthoritativePrintJob } from "./jobRetrievalService";
 import { serializeJobFetchResponse } from "./jobRetrievalRouter";
@@ -130,6 +131,7 @@ describe("endToEndPrintFlow THERMAL-PRINTING-7A", () => {
     clearAgentConnections();
     clearPrintJobAssignments();
     clearDeliveryAcks();
+    clearJobDeliveryStates();
 
     dbMocks.getOrderById.mockResolvedValue(baseOrder);
     dbMocks.getOrderItemsByOrderId.mockResolvedValue([

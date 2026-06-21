@@ -8,6 +8,7 @@ export const AGENT_JOB_MESSAGE_TYPES = {
   JOB_FETCH_REQUEST: "agent.job.fetch.request",
   JOB_FETCH_RESPONSE: "agent.job.fetch.response",
   DELIVERY_ACK: "agent.job.delivery.ack",
+  DELIVERY_CONFIRMED: "agent.job.delivery.confirmed",
 } as const;
 
 export type AgentJobMessageType =
@@ -64,10 +65,66 @@ export interface AgentJobDeliveryAckMessage {
   timestamp: string;
 }
 
+export interface AgentJobDeliveryConfirmedMessage {
+  type: typeof AGENT_JOB_MESSAGE_TYPES.DELIVERY_CONFIRMED;
+  protocolVersion: string;
+  agentId: string;
+  jobId: string;
+  timestamp: string;
+}
+
+export class AgentJobDeliveryConfirmationValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "AgentJobDeliveryConfirmationValidationError";
+  }
+}
+
+export type AgentJobDeliveryConfirmedPayload = {
+  agentId: string;
+  jobId: string;
+  timestamp: string;
+};
+
+export function parseAgentJobDeliveryConfirmedJobId(jobId: string): number {
+  const trimmed = jobId.trim();
+  if (!/^\d+$/.test(trimmed)) {
+    throw new AgentJobDeliveryConfirmationValidationError("Invalid jobId");
+  }
+
+  const parsed = Number(trimmed);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new AgentJobDeliveryConfirmationValidationError("Invalid jobId");
+  }
+
+  return parsed;
+}
+
+export function validateAgentJobDeliveryConfirmedPayload(
+  payload: AgentJobDeliveryConfirmedPayload
+): { agentId: string; jobId: number; timestamp: string } {
+  const agentId = payload.agentId.trim();
+  if (!agentId) {
+    throw new AgentJobDeliveryConfirmationValidationError("agentId is required");
+  }
+
+  const timestamp = payload.timestamp.trim();
+  if (!timestamp) {
+    throw new AgentJobDeliveryConfirmationValidationError("timestamp is required");
+  }
+
+  return {
+    agentId,
+    jobId: parseAgentJobDeliveryConfirmedJobId(payload.jobId),
+    timestamp,
+  };
+}
+
 export type AgentJobWireMessage =
   | AgentJobAssignedMessage
   | AgentJobFetchRequestMessage
   | AgentJobFetchResponseMessage
-  | AgentJobDeliveryAckMessage;
+  | AgentJobDeliveryAckMessage
+  | AgentJobDeliveryConfirmedMessage;
 
 export const DEFAULT_AGENT_JOB_PROTOCOL_VERSION = SUPPORTED_PRINT_AGENT_PROTOCOL_VERSION;

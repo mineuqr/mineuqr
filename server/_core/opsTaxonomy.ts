@@ -141,6 +141,8 @@ export const OPS_EVENT = {
   print_agent_job_notified: "print_agent_job_notified",
   print_agent_job_notification_skipped: "print_agent_job_notification_skipped",
   print_job_delivery_acknowledged: "print_job_delivery_acknowledged",
+  print_job_delivery_confirmed: "print_job_delivery_confirmed",
+  print_job_delivery_confirmation_reused: "print_job_delivery_confirmation_reused",
 } as const;
 
 export type OpsEventType = (typeof OPS_EVENT)[keyof typeof OPS_EVENT];

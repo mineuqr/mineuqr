@@ -16,11 +16,14 @@ import {
 } from "./agentConnectionManager";
 import {
   AGENT_JOB_MESSAGE_TYPES,
+  validateAgentJobDeliveryConfirmedPayload,
   type AgentJobDeliveryAckMessage,
+  type AgentJobDeliveryConfirmedMessage,
   type AgentJobFetchRequestMessage,
 } from "../../shared/printing/agentJobMessages";
 import { tryParseAgentJobInboundMessage } from "./agentJobWireCodec";
 import { recordDeliveryAcknowledgement } from "./deliveryAckService";
+import { processAgentDeliveryConfirmation } from "./deliveryConfirmationFlow";
 import { handleAgentJobFetchRequest } from "./jobRetrievalRouter";
 import { parseAgentWebSocketMessage } from "./agentWebSocketMessageCodec";
 import {
@@ -78,7 +81,10 @@ export function handleAgentWebSocketInboundMessage(
 }
 
 async function handleAgentJobInboundMessage(
-  message: AgentJobFetchRequestMessage | AgentJobDeliveryAckMessage,
+  message:
+    | AgentJobFetchRequestMessage
+    | AgentJobDeliveryAckMessage
+    | AgentJobDeliveryConfirmedMessage,
   connection: AgentWebSocketConnection
 ): Promise<void> {
   if (message.type === AGENT_JOB_MESSAGE_TYPES.JOB_FETCH_REQUEST) {
@@ -86,11 +92,21 @@ async function handleAgentJobInboundMessage(
     return;
   }
 
-  await recordDeliveryAcknowledgement({
+  if (message.type === AGENT_JOB_MESSAGE_TYPES.DELIVERY_ACK) {
+    await recordDeliveryAcknowledgement({
+      agentId: message.agentId,
+      jobId: message.jobId,
+      timestamp: message.timestamp,
+    });
+    return;
+  }
+
+  const payload = validateAgentJobDeliveryConfirmedPayload({
     agentId: message.agentId,
     jobId: message.jobId,
     timestamp: message.timestamp,
   });
+  await processAgentDeliveryConfirmation(payload);
 }
 
 export function handleAgentWebSocketDisconnect(agentId: string): void {

@@ -3,6 +3,7 @@
  */
 import { getAgent } from "./agentRegistry";
 import { getPrintJobAssignment } from "./assignmentService";
+import { markJobDeliveryAcknowledged } from "./deliveryStateTracker";
 import { findPrintJobById } from "./printJobRepository";
 
 export class DeliveryAckError extends Error {
@@ -89,6 +90,11 @@ export async function recordDeliveryAcknowledgement(
     recordedAt: new Date().toISOString(),
   };
   deliveryAcks.set(key, record);
+  markJobDeliveryAcknowledged({
+    jobId: input.jobId,
+    agentId: normalizedAgentId,
+    timestamp: input.timestamp,
+  });
 
   return { accepted: true, duplicate: false, record };
 }

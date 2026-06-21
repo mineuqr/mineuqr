@@ -2,7 +2,7 @@
  * THERMAL-PRINTING-6D Phase-2 — local execution types (runtime only, not persisted).
  */
 
-export type LocalJobState = "received" | "validated" | "prepared" | "acknowledged";
+export type LocalJobState = "received" | "validated" | "prepared" | "acknowledged" | "delivered";
 
 export type ExecutionContext = {
   jobId: number;
