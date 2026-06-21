@@ -98,6 +98,12 @@ export {
 export { LocalJobStore } from "./execution/localJobStore";
 export type { LocalJobState, LocalJobRecord, LocalJobPrepareContext } from "./execution/executionTypes";
 export { executeExecutionPlan } from "./execution/executeExecutionPlan";
+export type { ExecutionResult, ExecutionStatus, ExecutionArtifact, EscPosPayload } from "../../shared/printing/executionExecutor";
+export type { ExecutionOutcome, ExecutionOutcomeStatus } from "../../shared/printing/executionOutcome";
+export { executeAgentTransportDelivery } from "./execution/executeTransportDelivery";
+export { createAgentTransportRegistry } from "./transports/transportRegistry";
+export { MemoryTcpSocketClient, type TcpSocketClient } from "./transports/tcpSocketClient";
+export { NodeTcpSocketClient } from "./transports/nodeTcpSocketClient";
 export {
   createAgentExecutorRegistry,
   getAgentExecutorRegistry,

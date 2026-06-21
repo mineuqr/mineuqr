@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildEscPosPayloadFromAgentTicket } from "../../shared/printing/escposPayloadBuilder";
 import { executeExecutionPlan } from "../../shared/printing/executeExecutionPlan";
 import { createExecutionExecutorRegistry } from "../../shared/printing/executionExecutorRegistry";
-import type { ExecutionExecutorInput } from "../../shared/printing/executionExecutor";
+import type { ExecutionExecutionResult, ExecutionExecutorInput, ExecutionResult } from "../../shared/printing/executionExecutor";
 import { createRawEscPosExecutor } from "./executors/rawEscPosExecutor";
 import {
   createServerExecutorRegistry,
@@ -40,8 +40,17 @@ function buildInput(
   };
 }
 
-describe("executionExecutor THERMAL-PRINTING-10A", () => {
-  it("A — executor registry lookup returns raw-escpos and lists unsupported methods", () => {
+describe("executionExecutor THERMAL-PRINTING-10A / 10B", () => {
+  it("A — ExecutionResult is authoritative and legacy alias remains compatible", () => {
+    const current: ExecutionResult = {
+      status: "completed",
+      method: "raw-escpos",
+    };
+    const legacy: ExecutionExecutionResult = current;
+    expect(legacy.status).toBe("completed");
+  });
+
+  it("A2 — executor registry lookup returns raw-escpos and lists unsupported methods", () => {
     resetServerExecutorRegistryForTests();
     const registry = getServerExecutorRegistry();
 

@@ -5,6 +5,7 @@ import { JobConsumptionService } from "../consumption/jobConsumptionService";
 import { HeartbeatManager } from "../heartbeat/heartbeatManager";
 import { loadIdentity } from "../identity/loadIdentity";
 import { WebSocketAgentJobClient, type AgentJobClient } from "../jobs/jobClient";
+import { NodeTcpSocketClient } from "../transports/nodeTcpSocketClient";
 import { registerAgentWithServer } from "../registration/registerAgent";
 import { ReconnectEngine } from "../reconnect/reconnectEngine";
 import {
@@ -44,10 +45,14 @@ export async function bootAgent(config: AgentBootConfig): Promise<AgentRuntime> 
       sender: client,
     });
 
+  const tcpSocketClient = config.tcpSocketClient ?? new NodeTcpSocketClient();
+
   const jobConsumption = new JobConsumptionService({
     agentId: identity.agentId,
     jobClient,
     ackSender: client,
+    tcpSocketClient,
+    networkTransportEndpoints: config.networkTransportEndpoints,
   });
 
   const startupReporting = createAgentStartupReportingState();

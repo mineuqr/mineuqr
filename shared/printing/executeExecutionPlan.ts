@@ -4,14 +4,14 @@
 import { isExecutionMethod } from "./executionCapabilities";
 import type {
   ExecutionExecutorInput,
-  ExecutionExecutionResult,
+  ExecutionResult,
 } from "./executionExecutor";
 import type { ExecutionExecutorRegistry } from "./executionExecutorRegistry";
 
 export function executeExecutionPlan(
   input: ExecutionExecutorInput,
   registry: ExecutionExecutorRegistry
-): ExecutionExecutionResult {
+): ExecutionResult {
   const { executionPlan } = input;
 
   if (!executionPlan.strategyResolved) {

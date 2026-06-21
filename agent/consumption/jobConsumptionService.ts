@@ -1,5 +1,5 @@
 /**
- * THERMAL-PRINTING-6D Phase-2 / 9D / 10A — job consumption orchestration.
+ * THERMAL-PRINTING-6D Phase-2 / 9D / 10A / 10B — job consumption orchestration.
  */
 import { acknowledgeDelivery, DeliveryAckTracker } from "../ack/acknowledgeDelivery";
 import {
@@ -7,13 +7,22 @@ import {
   DeliveryConfirmationTracker,
 } from "../delivery/confirmDelivery";
 import { executeExecutionPlan } from "../execution/executeExecutionPlan";
+import { executeAgentTransportDelivery } from "../execution/executeTransportDelivery";
 import { ExecutionPipeline } from "../execution/executionPipeline";
 import type { AgentJobClient } from "../jobs/jobClient";
 import { JobSubscription } from "../jobs/jobSubscription";
 import { retrieveAuthoritativePrintJob } from "../jobs/retrieveJob";
 import type { JobAssignedEvent } from "../jobs/subscriptionTypes";
+import type { NetworkTransportEndpoint } from "../../shared/printing/transports/transportContracts";
 import type { RuntimeExecutionPlanSummary } from "../../shared/printing/executionIntegration";
-import type { ExecutionExecutionResult } from "../../shared/printing/executionExecutor";
+import type { ExecutionResult } from "../../shared/printing/executionExecutor";
+import {
+  resolveExecutionOutcome,
+  type ExecutionOutcome,
+} from "../../shared/printing/executionOutcome";
+import type { TransportExecutionResult } from "../../shared/printing/transports/transportContracts";
+import type { TcpSocketClient } from "../transports/tcpSocketClient";
+import { MemoryTcpSocketClient } from "../transports/tcpSocketClient";
 
 export type JobConsumptionServiceOptions = {
   agentId: string;
@@ -23,6 +32,8 @@ export type JobConsumptionServiceOptions = {
   pipeline?: ExecutionPipeline;
   ackTracker?: DeliveryAckTracker;
   confirmationTracker?: DeliveryConfirmationTracker;
+  tcpSocketClient?: TcpSocketClient;
+  networkTransportEndpoints?: Record<string, NetworkTransportEndpoint>;
   now?: () => Date;
 };
 
@@ -32,7 +43,9 @@ export type JobConsumptionResult = {
   confirmed: boolean;
   localState: "acknowledged" | "delivered";
   executionPlan?: RuntimeExecutionPlanSummary;
-  executionResult?: ExecutionExecutionResult;
+  executionResult?: ExecutionResult;
+  transportResult?: TransportExecutionResult;
+  executionOutcome?: ExecutionOutcome;
 };
 
 export class JobConsumptionService {
@@ -40,6 +53,8 @@ export class JobConsumptionService {
   private readonly ackTracker: DeliveryAckTracker;
   private readonly confirmationTracker: DeliveryConfirmationTracker;
   private readonly confirmationSender: { send(data: string): void };
+  private readonly tcpSocketClient: TcpSocketClient;
+  private readonly networkTransportEndpoints: Record<string, NetworkTransportEndpoint>;
   private readonly now: () => Date;
   readonly subscription: JobSubscription;
 
@@ -48,6 +63,8 @@ export class JobConsumptionService {
     this.ackTracker = options.ackTracker ?? new DeliveryAckTracker();
     this.confirmationTracker = options.confirmationTracker ?? new DeliveryConfirmationTracker();
     this.confirmationSender = options.confirmationSender ?? options.ackSender;
+    this.tcpSocketClient = options.tcpSocketClient ?? new MemoryTcpSocketClient();
+    this.networkTransportEndpoints = options.networkTransportEndpoints ?? {};
     this.now = options.now ?? (() => new Date());
     this.subscription = new JobSubscription({
       agentId: options.agentId,
@@ -69,8 +86,6 @@ export class JobConsumptionService {
         acknowledged: false,
         confirmed: false,
         localState: "delivered",
-        executionPlan: undefined,
-        executionResult: undefined,
       };
     }
     if (existing?.state === "acknowledged") {
@@ -79,8 +94,6 @@ export class JobConsumptionService {
         acknowledged: false,
         confirmed: false,
         localState: "acknowledged",
-        executionPlan: undefined,
-        executionResult: undefined,
       };
     }
 
@@ -93,7 +106,7 @@ export class JobConsumptionService {
     this.pipeline.validate(job.jobId);
     this.pipeline.prepare(job.jobId);
 
-    let executionResult: ExecutionExecutionResult | undefined;
+    let executionResult: ExecutionResult | undefined;
     if (job.executionPlan) {
       executionResult = executeExecutionPlan({
         executionPlan: job.executionPlan,
@@ -106,6 +119,30 @@ export class JobConsumptionService {
         },
       });
     }
+
+    let transportResult: TransportExecutionResult | undefined;
+    if (
+      executionResult?.status === "completed" &&
+      job.executionPlan &&
+      job.transportDeliveryContext
+    ) {
+      const printerId = job.transportDeliveryContext.printerProfile.printerId;
+      transportResult = await executeAgentTransportDelivery(
+        {
+          executionResult,
+          executionPlan: job.executionPlan,
+          executionContext: job.transportDeliveryContext.executionContext,
+          printerProfile: job.transportDeliveryContext.printerProfile,
+          networkEndpoint: this.networkTransportEndpoints[printerId],
+        },
+        this.tcpSocketClient
+      );
+    }
+
+    const executionOutcome = resolveExecutionOutcome({
+      executionResult,
+      transportResult,
+    });
 
     const acknowledged = acknowledgeDelivery({
       payload: {
@@ -139,6 +176,8 @@ export class JobConsumptionService {
       localState: confirmed ? "delivered" : "acknowledged",
       executionPlan: job.executionPlan,
       executionResult,
+      transportResult,
+      executionOutcome,
     };
   }
 }

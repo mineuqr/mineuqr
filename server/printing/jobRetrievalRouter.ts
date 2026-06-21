@@ -37,6 +37,7 @@ export async function handleAgentJobFetchRequest(
         found: true,
         job: result.job,
         executionPlan: result.executionPlan,
+        transportDeliveryContext: result.transportDeliveryContext,
       })
     );
     return;

@@ -4,12 +4,12 @@
 import { executeExecutionPlan as executeExecutionPlanShared } from "../../shared/printing/executeExecutionPlan";
 import type {
   ExecutionExecutorInput,
-  ExecutionExecutionResult,
+  ExecutionResult,
 } from "../../shared/printing/executionExecutor";
 import { getServerExecutorRegistry } from "./executors/executorRegistry";
 
 export function executeExecutionPlan(
   input: ExecutionExecutorInput
-): ExecutionExecutionResult {
+): ExecutionResult {
   return executeExecutionPlanShared(input, getServerExecutorRegistry());
 }

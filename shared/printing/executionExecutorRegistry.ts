@@ -2,7 +2,7 @@
  * THERMAL-PRINTING-10A — execution executor registry (method → executor).
  */
 import { EXECUTION_METHODS, type ExecutionMethod } from "./executionCapabilities";
-import type { ExecutionExecutor, ExecutionExecutorInput, ExecutionExecutionResult } from "./executionExecutor";
+import type { ExecutionExecutor, ExecutionExecutorInput, ExecutionResult } from "./executionExecutor";
 
 export type ExecutionExecutorRegistry = {
   get(method: ExecutionMethod): ExecutionExecutor | undefined;
@@ -17,7 +17,7 @@ class NotImplementedExecutor implements ExecutionExecutor {
     this.method = method;
   }
 
-  execute(input: ExecutionExecutorInput): ExecutionExecutionResult {
+  execute(input: ExecutionExecutorInput): ExecutionResult {
     return {
       status: "not-implemented",
       method: this.method,

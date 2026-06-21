@@ -8,6 +8,7 @@ import {
 } from "../../shared/printing/agentJobMessages";
 import { SUPPORTED_PRINT_AGENT_PROTOCOL_VERSION } from "../../shared/printing/printAgentProtocol";
 import type { RuntimeExecutionPlanSummary } from "../../shared/printing/executionIntegration";
+import type { TransportDeliveryContext } from "../../shared/printing/transports/transportDeliveryContext";
 import type { AuthoritativePrintJob } from "./jobTypes";
 
 export class AgentJobFetchResponseError extends Error {
@@ -82,6 +83,13 @@ export function parseAgentJobFetchResponse(rawMessage: string): AgentJobFetchRes
   response.job = parseAgentJobPayload(message.job);
   if (message.executionPlan && typeof message.executionPlan === "object") {
     response.executionPlan = message.executionPlan as RuntimeExecutionPlanSummary;
+  }
+  if (
+    message.transportDeliveryContext &&
+    typeof message.transportDeliveryContext === "object"
+  ) {
+    response.transportDeliveryContext =
+      message.transportDeliveryContext as TransportDeliveryContext;
   }
 
   return response;
@@ -163,5 +171,11 @@ export function mapFetchResponseToAuthoritativePrintJob(
     orderId: response.job.orderId,
     ticket: response.job.ticket,
     executionPlan: response.executionPlan ? { ...response.executionPlan } : undefined,
+    transportDeliveryContext: response.transportDeliveryContext
+      ? {
+          executionContext: response.transportDeliveryContext.executionContext,
+          printerProfile: { ...response.transportDeliveryContext.printerProfile },
+        }
+      : undefined,
   };
 }

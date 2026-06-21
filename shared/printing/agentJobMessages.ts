@@ -3,6 +3,7 @@
  */
 import { SUPPORTED_PRINT_AGENT_PROTOCOL_VERSION } from "./printAgentProtocol";
 import type { RuntimeExecutionPlanSummary } from "./executionIntegration";
+import type { TransportDeliveryContext } from "./transports/transportDeliveryContext";
 
 export const AGENT_JOB_MESSAGE_TYPES = {
   JOB_ASSIGNED: "agent.job.assigned",
@@ -56,6 +57,7 @@ export interface AgentJobFetchResponseMessage {
   found: boolean;
   job?: AgentJobPayload;
   executionPlan?: RuntimeExecutionPlanSummary;
+  transportDeliveryContext?: TransportDeliveryContext;
   error?: string;
 }
 

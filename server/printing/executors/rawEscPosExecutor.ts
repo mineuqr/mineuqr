@@ -5,7 +5,7 @@ import { buildEscPosPayloadFromAgentTicket } from "../../../shared/printing/escp
 import type {
   ExecutionExecutor,
   ExecutionExecutorInput,
-  ExecutionExecutionResult,
+  ExecutionResult,
 } from "../../../shared/printing/executionExecutor";
 
 export const RAW_ESC_POS_EXECUTOR_METHOD = "raw-escpos" as const;
@@ -13,7 +13,7 @@ export const RAW_ESC_POS_EXECUTOR_METHOD = "raw-escpos" as const;
 export class RawEscPosExecutor implements ExecutionExecutor {
   readonly method = RAW_ESC_POS_EXECUTOR_METHOD;
 
-  execute(input: ExecutionExecutorInput): ExecutionExecutionResult {
+  execute(input: ExecutionExecutorInput): ExecutionResult {
     try {
       const artifact = buildEscPosPayloadFromAgentTicket({
         ticket: input.job.ticket,

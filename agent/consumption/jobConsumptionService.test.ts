@@ -140,6 +140,6 @@ describe("jobConsumptionService THERMAL-PRINTING-6D Phase-2", () => {
     expect(result.executionPlan?.method).toBe("raw-escpos");
     expect(result.executionResult?.status).toBe("completed");
     expect(result.executionResult?.artifact?.kind).toBe("escpos-bytes");
-    expect(result.executionResult?.artifact?.byteLength).toBeGreaterThan(0);
+    expect(result.executionOutcome?.status).toBe("prepared");
   });
 });

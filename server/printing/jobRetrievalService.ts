@@ -1,13 +1,15 @@
 /**
- * THERMAL-PRINTING-7A.3 — authoritative print job retrieval for assigned agents.
+ * THERMAL-PRINTING-7A.3 / 10B — authoritative print job retrieval for assigned agents.
  */
 import type { AgentJobPayload } from "../../shared/printing/agentJobMessages";
 import type { RuntimeExecutionPlanSummary } from "../../shared/printing/executionIntegration";
+import type { TransportDeliveryContext } from "../../shared/printing/transports/transportDeliveryContext";
 import { getAgent } from "./agentRegistry";
 import { getPrintJobAssignment } from "./assignmentService";
 import { resolveRuntimeExecutionPlan } from "./executionIntegrationFlow";
 import { findPrintJobById } from "./printJobRepository";
 import { renderKitchenTicket } from "./ticketRenderer";
+import { buildTransportDeliveryContext } from "./transportDeliveryContextBuilder";
 
 export class JobRetrievalError extends Error {
   constructor(message: string) {
@@ -22,7 +24,12 @@ export type FetchAuthoritativePrintJobInput = {
 };
 
 export type FetchAuthoritativePrintJobResult =
-  | { found: true; job: AgentJobPayload; executionPlan: RuntimeExecutionPlanSummary }
+  | {
+      found: true;
+      job: AgentJobPayload;
+      executionPlan: RuntimeExecutionPlanSummary;
+      transportDeliveryContext?: TransportDeliveryContext;
+    }
   | { found: false; error: string };
 
 function mapKitchenTicketToAgentPayload(input: {
@@ -79,10 +86,15 @@ export async function fetchAuthoritativePrintJob(
   }
 
   const ticket = await renderKitchenTicket({ orderId: job.orderId });
-  const executionPlan = resolveRuntimeExecutionPlan({
+  const resolved = resolveRuntimeExecutionPlan({
     agentId: normalizedAgentId,
     dbPrinterId: assignment.printerId,
-  }).summary;
+  });
+  const transportDeliveryContext = buildTransportDeliveryContext({
+    agentId: normalizedAgentId,
+    dbPrinterId: assignment.printerId,
+    executionContext: resolved.context,
+  });
 
   return {
     found: true,
@@ -93,6 +105,7 @@ export async function fetchAuthoritativePrintJob(
       orderId: job.orderId,
       ticket,
     }),
-    executionPlan,
+    executionPlan: resolved.summary,
+    transportDeliveryContext,
   };
 }

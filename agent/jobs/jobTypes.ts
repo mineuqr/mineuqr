@@ -1,8 +1,9 @@
 /**
- * THERMAL-PRINTING-6D Phase-2 — authoritative print job types (agent consumption).
+ * THERMAL-PRINTING-6D Phase-2 / 10B — authoritative print job types (agent consumption).
  */
 import type { AgentJobTicketPayload } from "../../shared/printing/agentJobMessages";
 import type { RuntimeExecutionPlanSummary } from "../../shared/printing/executionIntegration";
+import type { TransportDeliveryContext } from "../../shared/printing/transports/transportDeliveryContext";
 
 export interface AgentJobTicket extends AgentJobTicketPayload {}
 
@@ -13,6 +14,7 @@ export interface AuthoritativePrintJob {
   orderId: number;
   ticket: AgentJobTicket;
   executionPlan?: RuntimeExecutionPlanSummary;
+  transportDeliveryContext?: TransportDeliveryContext;
 }
 
 export class AgentJobValidationError extends Error {
@@ -62,8 +64,12 @@ export function normalizeAuthoritativePrintJob(job: AuthoritativePrintJob): Auth
         notes: item.notes ?? null,
       })),
     },
-    executionPlan: job.executionPlan
-      ? { ...job.executionPlan }
+    executionPlan: job.executionPlan ? { ...job.executionPlan } : undefined,
+    transportDeliveryContext: job.transportDeliveryContext
+      ? {
+          executionContext: job.transportDeliveryContext.executionContext,
+          printerProfile: { ...job.transportDeliveryContext.printerProfile },
+        }
       : undefined,
   };
 }
