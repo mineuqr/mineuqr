@@ -29,6 +29,7 @@ describe("transportRegistry THERMAL-PRINTING-5A", () => {
     expect(getTransport("custom-test")).toBe(custom);
     expect(listRegisteredTransportIds()).toContain("custom-test");
     expect(listRegisteredTransportIds()).toContain(NULL_PRINT_TRANSPORT_ID);
+    expect(listRegisteredTransportIds()).toContain("browser-bridge");
   });
 
   it("returns undefined for unknown transport ids", () => {

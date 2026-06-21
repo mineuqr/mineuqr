@@ -1,6 +1,7 @@
 /**
  * THERMAL-PRINTING-5A — transport registration and resolution.
  */
+import { browserBridgeTransport } from "./browserBridgeTransport";
 import { nullPrintTransport } from "./nullTransport";
 import {
   NULL_PRINT_TRANSPORT_ID,
@@ -36,6 +37,7 @@ export function clearRegisteredTransports(): void {
 
 export function registerDefaultTransports(): void {
   registerTransport(nullPrintTransport);
+  registerTransport(browserBridgeTransport);
 }
 
 registerDefaultTransports();
