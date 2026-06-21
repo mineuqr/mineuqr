@@ -94,7 +94,19 @@ function bindPrintAgentWebSocketConnection(ws: WebSocket): BoundConnection {
 
     const rawMessage = data.toString();
     try {
-      handleAgentWebSocketInboundMessage(rawMessage, bound.connection);
+      const handled = handleAgentWebSocketInboundMessage(rawMessage, bound.connection);
+      if (handled instanceof Promise) {
+        void handled.catch((error) => {
+          logPrintAgentEvent({
+            type: OPS_EVENT.print_agent_message_rejected,
+            severity: "warn",
+            metadata: {
+              agentId: findAgentIdByConnection(bound.connection) ?? null,
+              reason: error instanceof Error ? error.message : String(error),
+            },
+          });
+        });
+      }
       const agentId = findAgentIdByConnection(bound.connection);
       logPrintAgentEvent({
         type: OPS_EVENT.print_agent_message_received,

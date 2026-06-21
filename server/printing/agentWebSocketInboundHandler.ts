@@ -14,6 +14,14 @@ import {
   type AgentWebSocketConnection,
   unregisterConnection,
 } from "./agentConnectionManager";
+import {
+  AGENT_JOB_MESSAGE_TYPES,
+  type AgentJobDeliveryAckMessage,
+  type AgentJobFetchRequestMessage,
+} from "../../shared/printing/agentJobMessages";
+import { tryParseAgentJobInboundMessage } from "./agentJobWireCodec";
+import { recordDeliveryAcknowledgement } from "./deliveryAckService";
+import { handleAgentJobFetchRequest } from "./jobRetrievalRouter";
 import { parseAgentWebSocketMessage } from "./agentWebSocketMessageCodec";
 import {
   clearPendingRequestsForAgent,
@@ -30,7 +38,12 @@ export class AgentWebSocketInboundError extends Error {
 export function handleAgentWebSocketInboundMessage(
   rawMessage: string,
   connection: AgentWebSocketConnection
-): void {
+): void | Promise<void> {
+  const jobMessage = tryParseAgentJobInboundMessage(rawMessage);
+  if (jobMessage) {
+    return handleAgentJobInboundMessage(jobMessage, connection);
+  }
+
   const message = parseAgentWebSocketMessage(rawMessage);
 
   switch (message.type) {
@@ -62,6 +75,22 @@ export function handleAgentWebSocketInboundMessage(
     default:
       throw new AgentWebSocketInboundError("Unsupported WebSocket message type");
   }
+}
+
+async function handleAgentJobInboundMessage(
+  message: AgentJobFetchRequestMessage | AgentJobDeliveryAckMessage,
+  connection: AgentWebSocketConnection
+): Promise<void> {
+  if (message.type === AGENT_JOB_MESSAGE_TYPES.JOB_FETCH_REQUEST) {
+    await handleAgentJobFetchRequest(message, connection);
+    return;
+  }
+
+  await recordDeliveryAcknowledgement({
+    agentId: message.agentId,
+    jobId: message.jobId,
+    timestamp: message.timestamp,
+  });
 }
 
 export function handleAgentWebSocketDisconnect(agentId: string): void {
