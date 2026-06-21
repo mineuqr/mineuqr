@@ -6,6 +6,8 @@ import {
   type PlatformCapabilities,
 } from "../../shared/printing/platformCapabilities";
 import { getAgent } from "./agentRegistry";
+import type { PlatformConsistencyValidationResult } from "./platformConsistencyTypes";
+import { validatePlatformConsistency } from "./platformConsistencyValidator";
 import {
   upsertAgentPlatformCapabilities,
   type AgentPlatformCapabilityRecord,
@@ -21,7 +23,11 @@ export type RecordPlatformCapabilitiesReportInput = {
 export type RecordPlatformCapabilitiesReportResult =
   | { accepted: true; duplicate: false; record: AgentPlatformCapabilityRecord }
   | { accepted: true; duplicate: true; record: AgentPlatformCapabilityRecord }
-  | { accepted: false; reason: string };
+  | {
+      accepted: false;
+      reason: string;
+      platformMismatch?: PlatformConsistencyValidationResult;
+    };
 
 export function recordPlatformCapabilitiesReport(
   input: RecordPlatformCapabilitiesReportInput
@@ -37,6 +43,19 @@ export function recordPlatformCapabilitiesReport(
     const agent = getAgent(payload.agentId);
     if (!agent) {
       return { accepted: false, reason: "Agent not registered" };
+    }
+
+    const consistency = validatePlatformConsistency({
+      agentId: payload.agentId,
+      helloPlatform: agent.registration.identity.platform,
+      capabilityPlatform: payload.capabilities.platform,
+    });
+    if (!consistency.consistent) {
+      return {
+        accepted: false,
+        reason: consistency.reason ?? "Platform identity mismatch",
+        platformMismatch: consistency,
+      };
     }
 
     return upsertAgentPlatformCapabilities({

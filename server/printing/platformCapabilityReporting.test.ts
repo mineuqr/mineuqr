@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import type { AgentPlatform } from "../../shared/printing/agentTypes";
 import {
   AGENT_PLATFORM_CAPABILITY_MESSAGE_TYPES,
   type PlatformCapabilities,
@@ -35,11 +36,11 @@ const iosCapabilities: PlatformCapabilities = {
   execution: { localPrinting: false },
 };
 
-function registerOnlineAgent(agentId: string): void {
+function registerOnlineAgent(agentId: string, platform: AgentPlatform = "windows"): void {
   registerAgent({
     identity: {
       agentId,
-      platform: "windows",
+      platform,
       protocolVersion: SUPPORTED_PRINT_AGENT_PROTOCOL_VERSION,
     },
     connectedAt: new Date().toISOString(),
@@ -85,7 +86,7 @@ describe("platformCapabilityReporting THERMAL-PRINTING-8C", () => {
 
   describe("Scenario B — Android capabilities", () => {
     it("accepts Android platform capability reports", () => {
-      registerOnlineAgent("agent-android");
+      registerOnlineAgent("agent-android", "android");
 
       const result = recordPlatformCapabilitiesReport(
         reportInput("agent-android", androidCapabilities, "2026-06-18T10:00:00.000Z")
@@ -100,7 +101,7 @@ describe("platformCapabilityReporting THERMAL-PRINTING-8C", () => {
 
   describe("Scenario C — iOS capabilities", () => {
     it("accepts iOS platform capability reports", () => {
-      registerOnlineAgent("agent-ios");
+      registerOnlineAgent("agent-ios", "ios");
 
       const result = recordPlatformCapabilitiesReport(
         reportInput("agent-ios", iosCapabilities, "2026-06-18T10:00:00.000Z")
@@ -140,27 +141,33 @@ describe("platformCapabilityReporting THERMAL-PRINTING-8C", () => {
   });
 
   describe("Scenario F — capability replacement", () => {
-    it("replaces stored capabilities when a newer report arrives", () => {
-      registerOnlineAgent("agent-alpha");
+    it("replaces stored capabilities when a newer matching report arrives", () => {
+      registerOnlineAgent("agent-alpha", "windows");
+
+      const updatedWindowsCapabilities: PlatformCapabilities = {
+        platform: "windows",
+        transports: { usb: true, network: true, bluetooth: true },
+        execution: { localPrinting: true },
+      };
 
       recordPlatformCapabilitiesReport(
         reportInput("agent-alpha", windowsCapabilities, "2026-06-18T10:00:00.000Z")
       );
       recordPlatformCapabilitiesReport(
-        reportInput("agent-alpha", androidCapabilities, "2026-06-18T10:00:02.000Z")
+        reportInput("agent-alpha", updatedWindowsCapabilities, "2026-06-18T10:00:02.000Z")
       );
 
       expect(getStoredAgentPlatformCapabilities("agent-alpha")).toMatchObject({
         timestamp: "2026-06-18T10:00:02.000Z",
-        capabilities: androidCapabilities,
+        capabilities: updatedWindowsCapabilities,
       });
     });
   });
 
   it("exposes platform capability summary via read-only queries", () => {
-    registerOnlineAgent("agent-windows");
-    registerOnlineAgent("agent-android");
-    registerOnlineAgent("agent-ios");
+    registerOnlineAgent("agent-windows", "windows");
+    registerOnlineAgent("agent-android", "android");
+    registerOnlineAgent("agent-ios", "ios");
 
     recordPlatformCapabilitiesReport(
       reportInput("agent-windows", windowsCapabilities, "2026-06-18T10:00:00.000Z")

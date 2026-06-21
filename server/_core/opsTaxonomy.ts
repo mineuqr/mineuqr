@@ -135,6 +135,10 @@ export const OPS_EVENT = {
   print_agent_message_received: "print_agent_message_received",
   print_agent_message_rejected: "print_agent_message_rejected",
 
+  // THERMAL-PRINTING-8D
+  print_agent_platform_match: "print_agent_platform_match",
+  print_agent_platform_mismatch: "print_agent_platform_mismatch",
+
   // THERMAL-PRINTING-7A
   print_job_assigned: "print_job_assigned",
   print_job_assignment_reused: "print_job_assignment_reused",
