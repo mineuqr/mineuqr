@@ -17,6 +17,10 @@ export const sampleProfile = {
     qrCode: true,
     imagePrinting: false,
   },
+  executionCapabilities: {
+    airprint: false,
+    vendorSdk: false,
+  },
   paperWidth: 80 as const,
 };
 

@@ -25,6 +25,10 @@ const usbProfile = {
     qrCode: true,
     imagePrinting: false,
   },
+  executionCapabilities: {
+    airprint: false,
+    vendorSdk: false,
+  },
   paperWidth: 80 as const,
 };
 
@@ -38,6 +42,10 @@ const networkProfile = {
     cashDrawer: true,
     qrCode: false,
     imagePrinting: true,
+  },
+  executionCapabilities: {
+    airprint: false,
+    vendorSdk: false,
   },
   paperWidth: 58 as const,
 };

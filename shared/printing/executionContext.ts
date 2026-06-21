@@ -40,6 +40,7 @@ export type ExecutionContextPrinter = {
   escposCapable: boolean;
   airprintCapable: boolean;
   vendorSdkCapable: boolean;
+  vendorSdkId?: string;
   paperWidth: PrinterProfilePaperWidth;
 };
 
@@ -62,10 +63,6 @@ export type ExecutionContext = {
 export type BuildExecutionContextInput = {
   agentId: string;
   printerId: string;
-  printerOptions?: {
-    airprintCapable?: boolean;
-    vendorSdkCapable?: boolean;
-  };
 };
 
 export type BuildExecutionContextSuccess = {
@@ -101,7 +98,6 @@ export function executionContextToStrategyInput(
     vendorSdkCapable: context.printer.vendorSdkCapable,
     transport: context.printer.transport,
   };
-
   return {
     platform: context.platform.identity,
     printer,

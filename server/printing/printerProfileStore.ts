@@ -94,6 +94,7 @@ export function replaceAgentPrinterInventory(
     profiles: input.profiles.map((profile) => ({
       ...profile,
       capabilities: { ...profile.capabilities },
+      executionCapabilities: { ...profile.executionCapabilities },
     })),
     timestamp: input.timestamp,
     updatedAt,

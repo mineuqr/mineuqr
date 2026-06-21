@@ -46,16 +46,12 @@ export type ResolveExecutionStrategyInput = {
 };
 
 export function buildExecutionStrategyPrinterCharacteristics(
-  profile: PrinterProfile,
-  options: {
-    airprintCapable?: boolean;
-    vendorSdkCapable?: boolean;
-  } = {}
+  profile: PrinterProfile
 ): ExecutionStrategyPrinterCharacteristics {
   return {
     escposCapable: profile.capabilities.escpos,
-    airprintCapable: options.airprintCapable ?? false,
-    vendorSdkCapable: options.vendorSdkCapable ?? false,
+    airprintCapable: profile.executionCapabilities.airprint,
+    vendorSdkCapable: profile.executionCapabilities.vendorSdk,
     transport: profile.transport,
   };
 }

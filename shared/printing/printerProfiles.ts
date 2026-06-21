@@ -32,11 +32,18 @@ export interface PrinterProfileCapabilities {
   imagePrinting: boolean;
 }
 
+export interface PrinterProfileExecutionCapabilities {
+  airprint: boolean;
+  vendorSdk: boolean;
+  vendorSdkId?: string;
+}
+
 export interface PrinterProfile {
   printerId: string;
   printerName: string;
   transport: PrinterProfileTransport;
   capabilities: PrinterProfileCapabilities;
+  executionCapabilities: PrinterProfileExecutionCapabilities;
   paperWidth: PrinterProfilePaperWidth;
 }
 
@@ -78,6 +85,48 @@ export function isPrinterProfileTransport(value: string): value is PrinterProfil
 
 export function isPrinterProfilePaperWidth(value: number): value is PrinterProfilePaperWidth {
   return value === PAPER_WIDTH_MM.W58 || value === PAPER_WIDTH_MM.W80;
+}
+
+export const DEFAULT_PRINTER_PROFILE_EXECUTION_CAPABILITIES: PrinterProfileExecutionCapabilities =
+  Object.freeze({
+    airprint: false,
+    vendorSdk: false,
+  });
+
+export function validatePrinterProfileExecutionCapabilities(
+  executionCapabilities: unknown
+): PrinterProfileExecutionCapabilities {
+  if (!executionCapabilities || typeof executionCapabilities !== "object") {
+    return { ...DEFAULT_PRINTER_PROFILE_EXECUTION_CAPABILITIES };
+  }
+
+  const value = executionCapabilities as Record<string, unknown>;
+  if (typeof value.airprint !== "boolean") {
+    throw new PrinterProfileValidationError("executionCapabilities.airprint must be boolean");
+  }
+  if (typeof value.vendorSdk !== "boolean") {
+    throw new PrinterProfileValidationError("executionCapabilities.vendorSdk must be boolean");
+  }
+
+  let vendorSdkId: string | undefined;
+  if (value.vendorSdkId !== undefined) {
+    if (typeof value.vendorSdkId !== "string" || !value.vendorSdkId.trim()) {
+      throw new PrinterProfileValidationError(
+        "executionCapabilities.vendorSdkId must be a non-empty string when provided"
+      );
+    }
+    vendorSdkId = value.vendorSdkId.trim();
+  }
+
+  if (vendorSdkId && !value.vendorSdk) {
+    throw new PrinterProfileValidationError(
+      "executionCapabilities.vendorSdkId requires vendorSdk capability"
+    );
+  }
+
+  return vendorSdkId
+    ? { airprint: value.airprint, vendorSdk: value.vendorSdk, vendorSdkId }
+    : { airprint: value.airprint, vendorSdk: value.vendorSdk };
 }
 
 export function validatePrinterProfileCapabilities(
@@ -123,6 +172,9 @@ export function validatePrinterProfile(profile: PrinterProfile): PrinterProfile 
     printerName,
     transport: profile.transport,
     capabilities: validatePrinterProfileCapabilities(profile.capabilities),
+    executionCapabilities: validatePrinterProfileExecutionCapabilities(
+      profile.executionCapabilities
+    ),
     paperWidth: profile.paperWidth,
   };
 }
@@ -169,6 +221,7 @@ export function fingerprintPrinterProfilesInventory(profiles: readonly PrinterPr
         printerName: profile.printerName,
         transport: profile.transport,
         capabilities: profile.capabilities,
+        executionCapabilities: profile.executionCapabilities,
         paperWidth: profile.paperWidth,
       }))
       .sort((left, right) => left.printerId.localeCompare(right.printerId))

@@ -74,16 +74,16 @@ function buildAvailability(input: {
 }
 
 function buildPrinter(
-  profile: NonNullable<ReturnType<typeof getPrinterProfile>>,
-  options: BuildExecutionContextInput["printerOptions"]
+  profile: NonNullable<ReturnType<typeof getPrinterProfile>>
 ): ExecutionContextPrinter {
   return {
     printerId: profile.printerId,
     printerName: profile.printerName,
     transport: profile.transport,
     escposCapable: profile.capabilities.escpos,
-    airprintCapable: options?.airprintCapable ?? false,
-    vendorSdkCapable: options?.vendorSdkCapable ?? false,
+    airprintCapable: profile.executionCapabilities.airprint,
+    vendorSdkCapable: profile.executionCapabilities.vendorSdk,
+    vendorSdkId: profile.executionCapabilities.vendorSdkId,
     paperWidth: profile.paperWidth,
   };
 }
@@ -130,7 +130,7 @@ export function buildExecutionContext(
       platformReport,
       printerTransport: profile.transport,
     }),
-    printer: buildPrinter(profile, input.printerOptions),
+    printer: buildPrinter(profile),
     agent,
   });
 

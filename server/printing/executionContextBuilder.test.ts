@@ -3,6 +3,7 @@ import type { AgentPlatform } from "../../shared/printing/agentTypes";
 import type { PlatformCapabilities } from "../../shared/printing/platformCapabilities";
 import { SUPPORTED_PRINT_AGENT_PROTOCOL_VERSION } from "../../shared/printing/printAgentProtocol";
 import { executionContextToStrategyInput } from "../../shared/printing/executionContext";
+import { buildExecutionStrategyPrinterCharacteristics } from "../../shared/printing/executionStrategy";
 import { clearAgentRegistry, registerAgent } from "./agentRegistry";
 import { buildExecutionContext } from "./executionContextBuilder";
 import {
@@ -122,13 +123,17 @@ describe("executionContextBuilder THERMAL-PRINTING-9C", () => {
         agentId: "agent-ios",
         platform: "ios",
         platformReport: iosPlatformReport,
-        profile: { ...sampleProfile, transport: "network", capabilities: { ...sampleProfile.capabilities, escpos: false } },
+        profile: {
+          ...sampleProfile,
+          transport: "network",
+          capabilities: { ...sampleProfile.capabilities, escpos: false },
+          executionCapabilities: { airprint: true, vendorSdk: false },
+        },
       });
 
       const result = buildExecutionContext({
         agentId: "agent-ios",
         printerId: TEST_PROFILE_PRINTER_ID,
-        printerOptions: { airprintCapable: true },
       });
 
       expect(result.built).toBe(true);
@@ -329,12 +334,10 @@ describe("executionContextBuilder THERMAL-PRINTING-9C", () => {
 
     const legacy = resolveExecutionStrategy({
       platform: "windows",
-      printer: {
-        escposCapable: true,
-        airprintCapable: false,
-        vendorSdkCapable: false,
-        transport: "usb",
-      },
+      printer: buildExecutionStrategyPrinterCharacteristics({
+        ...sampleProfile,
+        printerId: TEST_PROFILE_PRINTER_ID,
+      }),
     });
     const fromContext = resolveExecutionStrategyFromContext(built.context);
     const adapted = resolveExecutionStrategy(executionContextToStrategyInput(built.context));
