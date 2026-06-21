@@ -4,11 +4,14 @@
 import { opsLog } from "../_core/opsLog";
 import { OPS_EVENT } from "../_core/opsTaxonomy";
 import type { SelectPrintJob } from "../../drizzle/schema";
+import { getOrderById } from "../db";
+import { PRINT_JOB_TRIGGER } from "../../shared/printing/types";
 import { assignPrintJob } from "./assignmentService";
 import { notifyAgentOfAssignment } from "./assignmentNotifier";
 import type { PrintJobAssignment } from "./assignmentTypes";
 import { createPrintJob } from "./printJobService";
 import type { CreatePrintJobInput } from "./printJobTypes";
+import { resolvePrintTarget } from "./printTargetSelectionService";
 
 export type OrchestratePrintJobFlowInput = CreatePrintJobInput;
 
@@ -109,7 +112,28 @@ export async function dispatchAssignedPrintJob(
 export async function orchestratePrintJobFlow(
   input: OrchestratePrintJobFlowInput
 ): Promise<OrchestratePrintJobFlowResult> {
-  const createdJob = await createPrintJob(input);
+  let printerId = input.printerId;
+
+  if (
+    input.trigger === PRINT_JOB_TRIGGER.AUTO &&
+    (printerId == null || printerId <= 0)
+  ) {
+    const order = await getOrderById(input.orderId);
+    if (!order) {
+      throw new Error("Order not found");
+    }
+
+    const target = await resolvePrintTarget({
+      restaurantId: order.restaurantId,
+      explicitPrinterId: input.printerId,
+    });
+    printerId = target.dbPrinterId;
+  }
+
+  const createdJob = await createPrintJob({
+    ...input,
+    printerId,
+  });
   const dispatch = await dispatchAssignedPrintJob({ jobId: createdJob.job.id });
 
   return {

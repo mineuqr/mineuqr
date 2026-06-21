@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PRINT_JOB_STATUS } from "../../shared/printing/types";
+import { PRINT_TARGET_SELECTION_REASONS } from "./printTargetSelectionTypes";
+
+const selectionMocks = vi.hoisted(() => ({
+  isAutoPrintEnabledForRestaurant: vi.fn(),
+  resolvePrintTarget: vi.fn(),
+}));
 
 const serviceMocks = vi.hoisted(() => ({
   createPrintJob: vi.fn(),
@@ -8,6 +14,12 @@ const serviceMocks = vi.hoisted(() => ({
 
 const opsMocks = vi.hoisted(() => ({
   opsLog: vi.fn(),
+}));
+
+vi.mock("./printTargetSelectionService", () => ({
+  isAutoPrintEnabledForRestaurant: (...args: unknown[]) =>
+    selectionMocks.isAutoPrintEnabledForRestaurant(...args),
+  resolvePrintTarget: (...args: unknown[]) => selectionMocks.resolvePrintTarget(...args),
 }));
 
 vi.mock("./printJobService", () => ({
@@ -26,9 +38,23 @@ vi.mock("../_core/opsLog", () => ({
 import { OPS_EVENT } from "../_core/opsTaxonomy";
 import { enqueueAutoPrintJobForOrder } from "./autoPrintOnOrderCreate";
 
-describe("autoPrintOnOrderCreate THERMAL-PRINTING-3B.3 / 10A.8", () => {
+describe("autoPrintOnOrderCreate THERMAL-PRINTING-11A", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    selectionMocks.isAutoPrintEnabledForRestaurant.mockResolvedValue(true);
+    selectionMocks.resolvePrintTarget.mockResolvedValue({
+      dbPrinterId: 1,
+      reason: PRINT_TARGET_SELECTION_REASONS.SINGLE_PRINTER,
+    });
+    serviceMocks.createPrintJob.mockResolvedValue({
+      created: true,
+      job: {
+        id: 900,
+        printerId: 1,
+        idempotencyKey: "order:42:submitted",
+        status: PRINT_JOB_STATUS.QUEUED,
+      },
+    });
     serviceMocks.dispatchAssignedPrintJob.mockResolvedValue({
       assignment: { jobId: 900, agentId: "agent-1", printerId: 1, restaurantId: 7 },
       assignmentCreated: true,
@@ -36,15 +62,26 @@ describe("autoPrintOnOrderCreate THERMAL-PRINTING-3B.3 / 10A.8", () => {
     });
   });
 
-  it("logs print_job_created when a new job is inserted", async () => {
-    serviceMocks.createPrintJob.mockResolvedValue({
-      created: true,
-      job: {
-        id: 900,
-        idempotencyKey: "order:42:submitted",
-        status: PRINT_JOB_STATUS.QUEUED,
-      },
+  it("resolves printer target before creating the auto print job", async () => {
+    await enqueueAutoPrintJobForOrder({
+      orderId: 42,
+      restaurantId: 7,
+      procedure: "order.create",
     });
+
+    expect(selectionMocks.resolvePrintTarget).toHaveBeenCalledWith({
+      restaurantId: 7,
+    });
+    expect(serviceMocks.createPrintJob).toHaveBeenCalledWith({
+      orderId: 42,
+      trigger: "auto",
+      printerId: 1,
+    });
+    expect(serviceMocks.dispatchAssignedPrintJob).toHaveBeenCalledWith({ jobId: 900 });
+  });
+
+  it("skips auto print when disabled in restaurant settings", async () => {
+    selectionMocks.isAutoPrintEnabledForRestaurant.mockResolvedValue(false);
 
     await enqueueAutoPrintJobForOrder({
       orderId: 42,
@@ -52,23 +89,27 @@ describe("autoPrintOnOrderCreate THERMAL-PRINTING-3B.3 / 10A.8", () => {
       procedure: "order.create",
     });
 
-    expect(serviceMocks.createPrintJob).toHaveBeenCalledWith({
+    expect(selectionMocks.resolvePrintTarget).not.toHaveBeenCalled();
+    expect(serviceMocks.createPrintJob).not.toHaveBeenCalled();
+    expect(serviceMocks.dispatchAssignedPrintJob).not.toHaveBeenCalled();
+    expect(opsMocks.opsLog).not.toHaveBeenCalled();
+  });
+
+  it("logs print_job_created when a new job is inserted", async () => {
+    await enqueueAutoPrintJobForOrder({
       orderId: 42,
-      trigger: "auto",
+      restaurantId: 7,
+      procedure: "order.create",
     });
-    expect(serviceMocks.dispatchAssignedPrintJob).toHaveBeenCalledWith({ jobId: 900 });
+
     expect(opsMocks.opsLog).toHaveBeenCalledWith(
       expect.objectContaining({
         type: OPS_EVENT.print_job_created,
-        category: "ORDER",
-        severity: "info",
-        restaurantId: 7,
-        procedure: "order.create",
         metadata: expect.objectContaining({
           orderId: 42,
           printJobId: 900,
-          idempotencyKey: "order:42:submitted",
-          status: PRINT_JOB_STATUS.QUEUED,
+          printerId: 1,
+          selectionReason: PRINT_TARGET_SELECTION_REASONS.SINGLE_PRINTER,
         }),
       })
     );
@@ -79,6 +120,7 @@ describe("autoPrintOnOrderCreate THERMAL-PRINTING-3B.3 / 10A.8", () => {
       created: false,
       job: {
         id: 900,
+        printerId: 1,
         idempotencyKey: "order:42:submitted",
         status: PRINT_JOB_STATUS.QUEUED,
       },
@@ -97,7 +139,7 @@ describe("autoPrintOnOrderCreate THERMAL-PRINTING-3B.3 / 10A.8", () => {
     );
   });
 
-  it("logs print_job_creation_failed without throwing", async () => {
+  it("logs print_job_creation_failed when createPrintJob fails", async () => {
     serviceMocks.createPrintJob.mockRejectedValue(new Error("db unavailable"));
 
     await expect(
@@ -112,11 +154,31 @@ describe("autoPrintOnOrderCreate THERMAL-PRINTING-3B.3 / 10A.8", () => {
     expect(opsMocks.opsLog).toHaveBeenCalledWith(
       expect.objectContaining({
         type: OPS_EVENT.print_job_creation_failed,
-        category: "ORDER",
-        severity: "warn",
+        metadata: expect.objectContaining({
+          error: "db unavailable",
+        }),
+      })
+    );
+  });
+
+  it("logs print_job_creation_failed when target selection fails", async () => {
+    selectionMocks.resolvePrintTarget.mockRejectedValue(
+      new Error("No printers configured for this restaurant")
+    );
+
+    await enqueueAutoPrintJobForOrder({
+      orderId: 42,
+      restaurantId: 7,
+      procedure: "order.create",
+    });
+
+    expect(serviceMocks.createPrintJob).not.toHaveBeenCalled();
+    expect(opsMocks.opsLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: OPS_EVENT.print_job_creation_failed,
         metadata: expect.objectContaining({
           orderId: 42,
-          error: "db unavailable",
+          error: "No printers configured for this restaurant",
         }),
       })
     );

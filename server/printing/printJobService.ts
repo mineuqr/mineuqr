@@ -39,6 +39,20 @@ function assertValidCreatePrintJobInput(input: CreatePrintJobInput): void {
   } else if (input.reprintId !== undefined) {
     throw new PrintJobValidationError("reprintId is only valid for reprint jobs");
   }
+  if (
+    input.trigger === PRINT_JOB_TRIGGER.AUTO &&
+    (input.printerId == null ||
+      !Number.isInteger(input.printerId) ||
+      input.printerId <= 0)
+  ) {
+    throw new PrintJobValidationError("printerId is required for auto print jobs");
+  }
+  if (
+    input.printerId != null &&
+    (!Number.isInteger(input.printerId) || input.printerId <= 0)
+  ) {
+    throw new PrintJobValidationError("Invalid printerId");
+  }
 }
 
 function resolveIdempotencyKey(input: CreatePrintJobInput): string {
@@ -66,11 +80,22 @@ export async function createPrintJob(
   }
 
   try {
-    const jobId = await insertPrintJob({
+    const insertData: {
+      restaurantId: number;
+      orderId: number;
+      idempotencyKey: string;
+      printerId?: number;
+    } = {
       restaurantId: order.restaurantId,
       orderId: order.id,
       idempotencyKey,
-    });
+    };
+
+    if (input.printerId != null) {
+      insertData.printerId = input.printerId;
+    }
+
+    const jobId = await insertPrintJob(insertData);
 
     const job = await findPrintJobById(jobId);
     if (!job) {

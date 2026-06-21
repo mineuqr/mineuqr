@@ -1,10 +1,14 @@
 /**
- * THERMAL-PRINTING-3B.3 / 10A.8 — non-blocking auto print job enqueue + assignment dispatch.
+ * THERMAL-PRINTING-11A / 3B.3 / 10A.8 — non-blocking auto print job enqueue + assignment dispatch.
  */
 import { opsLog } from "../_core/opsLog";
 import { OPS_EVENT } from "../_core/opsTaxonomy";
 import { dispatchAssignedPrintJob } from "./endToEndPrintFlowService";
 import { createPrintJob } from "./printJobService";
+import {
+  isAutoPrintEnabledForRestaurant,
+  resolvePrintTarget,
+} from "./printTargetSelectionService";
 
 export type EnqueueAutoPrintJobForOrderInput = {
   orderId: number;
@@ -19,9 +23,19 @@ export async function enqueueAutoPrintJobForOrder(
   input: EnqueueAutoPrintJobForOrderInput
 ): Promise<void> {
   try {
+    const autoPrintEnabled = await isAutoPrintEnabledForRestaurant(input.restaurantId);
+    if (!autoPrintEnabled) {
+      return;
+    }
+
+    const target = await resolvePrintTarget({
+      restaurantId: input.restaurantId,
+    });
+
     const result = await createPrintJob({
       orderId: input.orderId,
       trigger: "auto",
+      printerId: target.dbPrinterId,
     });
 
     opsLog({
@@ -36,6 +50,8 @@ export async function enqueueAutoPrintJobForOrder(
       metadata: {
         orderId: input.orderId,
         printJobId: result.job.id,
+        printerId: result.job.printerId ?? target.dbPrinterId,
+        selectionReason: target.reason,
         idempotencyKey: result.job.idempotencyKey,
         status: result.job.status,
       },

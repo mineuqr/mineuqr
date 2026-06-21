@@ -113,6 +113,10 @@ export async function insertPrintJob(data: InsertPrintJobData): Promise<number> 
     attemptCount: 0,
   };
 
+  if (data.printerId != null) {
+    values.printerId = data.printerId;
+  }
+
   const result = await db.insert(printJobs).values(values);
   const insertId = Number(result[0].insertId);
   if (!Number.isFinite(insertId) || insertId <= 0) {

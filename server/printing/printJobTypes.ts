@@ -57,6 +57,8 @@ export type CreatePrintJobInput = {
   trigger: PrintJobTrigger;
   /** Required when trigger is `reprint`; must be a unique UUID per reprint attempt. */
   reprintId?: string;
+  /** Required when trigger is `auto`. Optional override for `reprint`. */
+  printerId?: number;
 };
 
 export type CreatePrintJobResult = {
@@ -68,6 +70,7 @@ export type InsertPrintJobData = {
   restaurantId: number;
   orderId: number;
   idempotencyKey: string;
+  printerId?: number;
 };
 
 export const PRINT_JOB_CLAIM_LEASE_MS = 5 * 60 * 1000;

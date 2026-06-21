@@ -53,7 +53,7 @@ const baseJob: SelectPrintJob = {
   id: 100,
   restaurantId: 7,
   orderId: 42,
-  printerId: null,
+  printerId: 10,
   status: PRINT_JOB_STATUS.QUEUED,
   attemptCount: 0,
   idempotencyKey: "order:42:submitted",
@@ -74,7 +74,7 @@ describe("printJobService THERMAL-PRINTING-3B.2B", () => {
 
   describe("createPrintJob auto", () => {
     it("creates a queued job with auto idempotency key", async () => {
-      const result = await createPrintJob({ orderId: 42, trigger: "auto" });
+      const result = await createPrintJob({ orderId: 42, trigger: "auto", printerId: 10 });
 
       expect(result.created).toBe(true);
       expect(result.job).toEqual(baseJob);
@@ -85,13 +85,14 @@ describe("printJobService THERMAL-PRINTING-3B.2B", () => {
         restaurantId: 7,
         orderId: 42,
         idempotencyKey: "order:42:submitted",
+        printerId: 10,
       });
     });
 
     it("returns existing job on idempotency hit", async () => {
       repoMocks.findPrintJobByIdempotencyKey.mockResolvedValue(baseJob);
 
-      const result = await createPrintJob({ orderId: 42, trigger: "auto" });
+      const result = await createPrintJob({ orderId: 42, trigger: "auto", printerId: 10 });
 
       expect(result).toEqual({ job: baseJob, created: false });
       expect(repoMocks.insertPrintJob).not.toHaveBeenCalled();
@@ -103,16 +104,22 @@ describe("printJobService THERMAL-PRINTING-3B.2B", () => {
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce(baseJob);
 
-      const result = await createPrintJob({ orderId: 42, trigger: "auto" });
+      const result = await createPrintJob({ orderId: 42, trigger: "auto", printerId: 10 });
 
       expect(result).toEqual({ job: baseJob, created: false });
+    });
+
+    it("requires printerId for auto jobs", async () => {
+      await expect(
+        createPrintJob({ orderId: 42, trigger: "auto" })
+      ).rejects.toBeInstanceOf(PrintJobValidationError);
     });
 
     it("throws when order is missing", async () => {
       dbMocks.getOrderById.mockResolvedValue(null);
 
       await expect(
-        createPrintJob({ orderId: 42, trigger: "auto" })
+        createPrintJob({ orderId: 42, trigger: "auto", printerId: 10 })
       ).rejects.toBeInstanceOf(PrintJobOrderNotFoundError);
     });
   });

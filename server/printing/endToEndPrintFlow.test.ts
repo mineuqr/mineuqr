@@ -157,7 +157,11 @@ describe("endToEndPrintFlow THERMAL-PRINTING-7A", () => {
       const connection = createMockConnection();
       registerConnection("agent-alpha", connection);
 
-      const flow = await orchestratePrintJobFlow({ orderId: 500, trigger: "auto" });
+      const flow = await orchestratePrintJobFlow({
+        orderId: 500,
+        trigger: "auto",
+        printerId: 10,
+      });
 
       expect(flow.jobCreated).toBe(true);
       expect(flow.assignment.agentId).toBe("agent-alpha");

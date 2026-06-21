@@ -4,17 +4,18 @@
 import "dotenv/config";
 import { randomUUID } from "node:crypto";
 import { createServer } from "node:http";
-import { desc, eq } from "drizzle-orm";
+import { desc } from "drizzle-orm";
 import { bootAgent } from "../agent/runtime/boot";
 import { shutdownAgent } from "../agent/runtime/shutdown";
 import { createIdentity } from "../agent/identity/createIdentity";
 import { MemoryIdentityStore } from "../agent/identity/identityStore";
 import { createProductionTransportClients } from "../agent/consumption/jobConsumptionService";
 import { createAgentTransportRegistry } from "../agent/transports/transportRegistry";
-import { orderItems, orders, printJobs, printers } from "../drizzle/schema";
+import { orderItems, orders, printers } from "../drizzle/schema";
 import { getDb } from "../server/db";
 import { attachPrintAgentWebSocketServer } from "../server/printing/printAgentWebSocketServer";
 import { registerDbPrinterProfileMapping } from "../server/printing/printerResolutionRegistry";
+import { resolvePrintTarget } from "../server/printing/printTargetSelectionService";
 import { createPrintJob } from "../server/printing/printJobService";
 import { dispatchAssignedPrintJob } from "../server/printing/endToEndPrintFlowService";
 import { getStoredJobExecutionOutcome } from "../server/printing/executionOutcomeStore";
@@ -235,26 +236,23 @@ async function main(): Promise<void> {
     `Printer profile mapping registered: dbPrinterId=${mapping.dbPrinterId} -> profilePrinterId=${mapping.profilePrinterId}`
   );
 
+  const target = await resolvePrintTarget({
+    restaurantId: order.restaurantId,
+  });
+  log.execution.push(
+    `Print target selected: dbPrinterId=${target.dbPrinterId} reason=${target.reason}`
+  );
+
   const reprintId = randomUUID();
   const created = await createPrintJob({
     orderId: order.id,
     trigger: PRINT_JOB_TRIGGER.REPRINT,
     reprintId,
+    printerId: target.dbPrinterId,
   });
   log.execution.push(
-    `Print job created: jobId=${created.job.id} created=${created.created} idempotencyKey=${created.job.idempotencyKey}`
+    `Print job created: jobId=${created.job.id} created=${created.created} printerId=${created.job.printerId ?? target.dbPrinterId} idempotencyKey=${created.job.idempotencyKey}`
   );
-
-  const db = await getDb();
-  if (!db) {
-    throw new Error("Database unavailable for printerId assignment");
-  }
-  await db
-    .update(printJobs)
-    .set({ printerId: dbPrinter.id })
-    .where(eq(printJobs.id, created.job.id));
-
-  log.execution.push(`Print job printerId assigned: ${dbPrinter.id}`);
 
   const dispatch = await dispatchAssignedPrintJob({ jobId: created.job.id });
   log.execution.push(
