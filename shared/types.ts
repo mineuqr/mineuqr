@@ -12,3 +12,4 @@ export * from "./printing/printAgentProtocol";
 export * from "./printing/agentTypes";
 export * from "./printing/agentHeartbeat";
 export * from "./printing/agentConnectivity";
+export * from "./printing/agentJobMessages";

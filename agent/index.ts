@@ -1,7 +1,8 @@
 /**
- * THERMAL-PRINTING-6D — MineuQR Reference Print Agent (Phase-1).
+ * THERMAL-PRINTING-6D — MineuQR Reference Print Agent.
  *
- * Phase-1 scope: lifecycle, identity, registration, heartbeats, reconnect, persistence.
+ * Phase-1: lifecycle, identity, registration, heartbeats, reconnect, persistence.
+ * Phase-2: job subscription, retrieval, local execution pipeline, delivery ack.
  * Does not create print jobs or modify MineuQR business state.
  */
 export { bootAgent, createMockAgentRuntime } from "./runtime/boot";
@@ -55,3 +56,54 @@ export {
 } from "./transport/websocketClient";
 
 export { detectReferenceAgentPlatform } from "./platform/detectPlatform";
+
+export {
+  JobSubscription,
+  parseJobAssignedNotification,
+  JobSubscriptionError,
+} from "./jobs/jobSubscription";
+export type { JobAssignedEvent, JobSubscriptionListener } from "./jobs/subscriptionTypes";
+export {
+  MemoryAgentJobClient,
+  type AgentJobClient,
+  type FetchPrintJobInput,
+} from "./jobs/jobClient";
+export {
+  retrieveAuthoritativePrintJob,
+  JobRetrievalError,
+} from "./jobs/retrieveJob";
+export {
+  validateAuthoritativePrintJob,
+  normalizeAuthoritativePrintJob,
+  AgentJobValidationError,
+  type AuthoritativePrintJob,
+  type AgentJobTicket,
+} from "./jobs/jobTypes";
+export { serializeJobAssignedNotification } from "./jobs/jobWire";
+
+export {
+  ExecutionPipeline,
+  ExecutionPipelineError,
+} from "./execution/executionPipeline";
+export {
+  assertLocalJobStateTransition,
+  canTransitionLocalJobState,
+  getNextLocalJobState,
+  LocalJobStateError,
+} from "./execution/stateMachine";
+export { LocalJobStore } from "./execution/localJobStore";
+export type { LocalJobState, LocalJobRecord, ExecutionContext } from "./execution/executionTypes";
+
+export {
+  acknowledgeDelivery,
+  buildDeliveryAckMessage,
+  DeliveryAckTracker,
+  DeliveryAckError,
+} from "./ack/acknowledgeDelivery";
+export type { DeliveryAckPayload, DeliveryAckSender } from "./ack/acknowledgeDelivery";
+
+export {
+  JobConsumptionService,
+  type JobConsumptionResult,
+  type JobConsumptionServiceOptions,
+} from "./consumption/jobConsumptionService";
