@@ -1,11 +1,11 @@
 /**
- * THERMAL-PRINTING-7A.1 — server-side print job assignment (queue + registry authoritative).
+ * THERMAL-PRINTING-7A.1 / 8A.4 — server-side print job assignment (queue + routing authoritative).
  */
 import { PRINT_JOB_STATUS } from "../../shared/printing/types";
-import { getAgentConnectivityState } from "./agentLifecycleService";
-import { listAgents } from "./agentRegistry";
 import { findPrintJobById } from "./printJobRepository";
 import { PrintJobNotFoundError } from "./printJobTypes";
+import { resolveRoutingDecision } from "./routingEngine";
+import { RoutingRejectedError } from "./routingTypes";
 import {
   NoEligibleAgentError,
   PrintJobAssignmentError,
@@ -37,21 +37,19 @@ function assertAssignablePrintJob(job: {
   }
 }
 
-export function selectAgentForAssignment(now?: Date): string {
-  const eligibleAgents = listAgents()
-    .map((agent) => ({
-      agentId: agent.registration.identity.agentId,
-      connectivity: getAgentConnectivityState(agent.registration.identity.agentId, { now }),
-    }))
-    .filter((entry) => entry.connectivity?.status === "online")
-    .sort((left, right) => left.agentId.localeCompare(right.agentId));
-
-  const selected = eligibleAgents[0];
-  if (!selected) {
-    throw new NoEligibleAgentError();
+function selectAgentForAssignmentViaRouting(input: {
+  jobId: number;
+  printerId: number;
+  evaluationNow?: Date;
+}): string {
+  try {
+    return resolveRoutingDecision(input).agentId;
+  } catch (error) {
+    if (error instanceof RoutingRejectedError) {
+      throw new NoEligibleAgentError(error.message);
+    }
+    throw error;
   }
-
-  return selected.agentId;
 }
 
 export function getPrintJobAssignment(jobId: number): PrintJobAssignment | undefined {
@@ -81,7 +79,11 @@ export async function assignPrintJob(
 
   assertAssignablePrintJob(job);
 
-  const agentId = selectAgentForAssignment(input.evaluationNow);
+  const agentId = selectAgentForAssignmentViaRouting({
+    jobId: job.id,
+    printerId: job.printerId!,
+    evaluationNow: input.evaluationNow,
+  });
   const assignment: PrintJobAssignment = {
     jobId: job.id,
     agentId,

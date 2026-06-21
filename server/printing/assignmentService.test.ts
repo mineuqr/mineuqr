@@ -7,9 +7,13 @@ import {
   assignPrintJob,
   clearPrintJobAssignments,
   getPrintJobAssignment,
-  selectAgentForAssignment,
 } from "./assignmentService";
 import { NoEligibleAgentError, PrintJobAssignmentError } from "./assignmentTypes";
+import {
+  clearPrinterProfileStore,
+  replaceAgentPrinterInventory,
+} from "./printerProfileStore";
+import { clearRoutingState } from "./routingEngine";
 
 const repoMocks = vi.hoisted(() => ({
   findPrintJobById: vi.fn(),
@@ -33,32 +37,49 @@ const baseJob: SelectPrintJob = {
   updatedAt: "2026-06-18 12:00:00",
 };
 
-describe("assignmentService THERMAL-PRINTING-7A.1", () => {
+const sampleProfile = {
+  printerId: "10",
+  printerName: "Kitchen",
+  transport: "usb" as const,
+  capabilities: {
+    escpos: true,
+    cutter: false,
+    cashDrawer: false,
+    qrCode: true,
+    imagePrinting: false,
+  },
+  paperWidth: 80 as const,
+};
+
+function seedOwner(agentId: string): void {
+  registerAgent({
+    identity: {
+      agentId,
+      platform: "windows",
+      protocolVersion: SUPPORTED_PRINT_AGENT_PROTOCOL_VERSION,
+    },
+    connectedAt: new Date().toISOString(),
+  });
+  replaceAgentPrinterInventory({
+    agentId,
+    timestamp: new Date().toISOString(),
+    profiles: [sampleProfile],
+  });
+}
+
+describe("assignmentService THERMAL-PRINTING-7A.1 / 8A.4", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     clearAgentRegistry();
     clearPrintJobAssignments();
+    clearPrinterProfileStore();
+    clearRoutingState();
     repoMocks.findPrintJobById.mockResolvedValue(baseJob);
   });
 
-  it("assigns queued jobs to the first online agent deterministically", async () => {
-    const connectedAt = new Date().toISOString();
-    registerAgent({
-      identity: {
-        agentId: "agent-zulu",
-        platform: "windows",
-        protocolVersion: SUPPORTED_PRINT_AGENT_PROTOCOL_VERSION,
-      },
-      connectedAt,
-    });
-    registerAgent({
-      identity: {
-        agentId: "agent-alpha",
-        platform: "android",
-        protocolVersion: SUPPORTED_PRINT_AGENT_PROTOCOL_VERSION,
-      },
-      connectedAt,
-    });
+  it("assigns queued jobs via routing to the printer owner", async () => {
+    seedOwner("agent-alpha");
+    seedOwner("agent-zulu");
 
     const result = await assignPrintJob({ jobId: 100 });
 
@@ -68,14 +89,7 @@ describe("assignmentService THERMAL-PRINTING-7A.1", () => {
   });
 
   it("reuses existing assignments idempotently", async () => {
-    registerAgent({
-      identity: {
-        agentId: "agent-alpha",
-        platform: "windows",
-        protocolVersion: SUPPORTED_PRINT_AGENT_PROTOCOL_VERSION,
-      },
-      connectedAt: new Date().toISOString(),
-    });
+    seedOwner("agent-alpha");
 
     const first = await assignPrintJob({ jobId: 100 });
     const second = await assignPrintJob({ jobId: 100 });
@@ -85,11 +99,7 @@ describe("assignmentService THERMAL-PRINTING-7A.1", () => {
     expect(repoMocks.findPrintJobById).toHaveBeenCalledTimes(1);
   });
 
-  it("throws when no eligible agents are registered", () => {
-    expect(() => selectAgentForAssignment()).toThrow(NoEligibleAgentError);
-  });
-
-  it("rejects jobs without printerId", async () => {
+  it("throws when routing cannot select an agent", async () => {
     registerAgent({
       identity: {
         agentId: "agent-alpha",
@@ -98,6 +108,20 @@ describe("assignmentService THERMAL-PRINTING-7A.1", () => {
       },
       connectedAt: new Date().toISOString(),
     });
+    registerAgent({
+      identity: {
+        agentId: "agent-beta",
+        platform: "android",
+        protocolVersion: SUPPORTED_PRINT_AGENT_PROTOCOL_VERSION,
+      },
+      connectedAt: new Date().toISOString(),
+    });
+
+    await expect(assignPrintJob({ jobId: 100 })).rejects.toThrow(NoEligibleAgentError);
+  });
+
+  it("rejects jobs without printerId", async () => {
+    seedOwner("agent-alpha");
     repoMocks.findPrintJobById.mockResolvedValue({ ...baseJob, printerId: null });
 
     await expect(assignPrintJob({ jobId: 100 })).rejects.toThrow(PrintJobAssignmentError);

@@ -10,6 +10,11 @@ import {
 } from "./assignmentService";
 import { clearAgentRegistry, registerAgent } from "./agentRegistry";
 import {
+  clearPrinterProfileStore,
+  replaceAgentPrinterInventory,
+} from "./printerProfileStore";
+import { clearRoutingState } from "./routingEngine";
+import {
   clearDeliveryAcks,
   recordDeliveryAcknowledgement,
 } from "./deliveryAckService";
@@ -51,13 +56,33 @@ const baseJob: SelectPrintJob = {
 };
 
 function registerOnlineAgent(agentId: string): void {
+  const connectedAt = new Date().toISOString();
   registerAgent({
     identity: {
       agentId,
       platform: "windows",
       protocolVersion: SUPPORTED_PRINT_AGENT_PROTOCOL_VERSION,
     },
-    connectedAt: new Date().toISOString(),
+    connectedAt,
+  });
+  replaceAgentPrinterInventory({
+    agentId,
+    timestamp: connectedAt,
+    profiles: [
+      {
+        printerId: "10",
+        printerName: "Kitchen",
+        transport: "usb",
+        capabilities: {
+          escpos: true,
+          cutter: false,
+          cashDrawer: false,
+          qrCode: true,
+          imagePrinting: false,
+        },
+        paperWidth: 80,
+      },
+    ],
   });
 }
 
@@ -76,6 +101,8 @@ describe("deliveryConfirmation THERMAL-PRINTING-7B", () => {
     clearPrintJobAssignments();
     clearDeliveryAcks();
     clearJobDeliveryStates();
+    clearPrinterProfileStore();
+    clearRoutingState();
     repoMocks.findPrintJobById.mockResolvedValue(baseJob);
     repoMocks.markJobPrinted.mockResolvedValue(null);
   });

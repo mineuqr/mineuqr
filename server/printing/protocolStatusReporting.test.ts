@@ -7,6 +7,11 @@ import { recordAgentStatusReport } from "./agentStatusService";
 import { handleAgentWebSocketInboundMessage } from "./agentWebSocketInboundHandler";
 import { assignPrintJob, clearPrintJobAssignments } from "./assignmentService";
 import { clearAgentRegistry, registerAgent } from "./agentRegistry";
+import {
+  clearPrinterProfileStore,
+  replaceAgentPrinterInventory,
+} from "./printerProfileStore";
+import { clearRoutingState } from "./routingEngine";
 import { recordJobStatusReport } from "./jobStatusService";
 import {
   clearProtocolStatusStore,
@@ -43,13 +48,33 @@ const baseJob: SelectPrintJob = {
 };
 
 function registerOnlineAgent(agentId: string): void {
+  const connectedAt = new Date().toISOString();
   registerAgent({
     identity: {
       agentId,
       platform: "windows",
       protocolVersion: SUPPORTED_PRINT_AGENT_PROTOCOL_VERSION,
     },
-    connectedAt: new Date().toISOString(),
+    connectedAt,
+  });
+  replaceAgentPrinterInventory({
+    agentId,
+    timestamp: connectedAt,
+    profiles: [
+      {
+        printerId: "10",
+        printerName: "Kitchen",
+        transport: "usb",
+        capabilities: {
+          escpos: true,
+          cutter: false,
+          cashDrawer: false,
+          qrCode: true,
+          imagePrinting: false,
+        },
+        paperWidth: 80,
+      },
+    ],
   });
 }
 
@@ -59,6 +84,8 @@ describe("protocolStatusReporting THERMAL-PRINTING-7E", () => {
     clearAgentRegistry();
     clearPrintJobAssignments();
     clearProtocolStatusStore();
+    clearPrinterProfileStore();
+    clearRoutingState();
     repoMocks.findPrintJobById.mockResolvedValue(baseJob);
     repoMocks.markJobPrinted.mockResolvedValue(null);
   });

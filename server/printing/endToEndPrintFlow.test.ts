@@ -20,6 +20,11 @@ import { notifyAgentOfAssignment } from "./assignmentNotifier";
 import { clearAgentRegistry, registerAgent } from "./agentRegistry";
 import { createPrintAgentCapabilities } from "./printAgentProtocol";
 import {
+  clearPrinterProfileStore,
+  replaceAgentPrinterInventory,
+} from "./printerProfileStore";
+import { clearRoutingState } from "./routingEngine";
+import {
   clearDeliveryAcks,
   getDeliveryAckRecord,
   recordDeliveryAcknowledgement,
@@ -110,6 +115,25 @@ function registerOnlineAgent(agentId: string): void {
       printers: 1,
     }),
   });
+  replaceAgentPrinterInventory({
+    agentId,
+    timestamp: connectedAt,
+    profiles: [
+      {
+        printerId: "10",
+        printerName: "Kitchen",
+        transport: "usb",
+        capabilities: {
+          escpos: true,
+          cutter: false,
+          cashDrawer: false,
+          qrCode: true,
+          imagePrinting: false,
+        },
+        paperWidth: 80,
+      },
+    ],
+  });
 }
 
 function createMockConnection(): AgentWebSocketConnection & { sent: string[] } {
@@ -132,6 +156,8 @@ describe("endToEndPrintFlow THERMAL-PRINTING-7A", () => {
     clearPrintJobAssignments();
     clearDeliveryAcks();
     clearJobDeliveryStates();
+    clearPrinterProfileStore();
+    clearRoutingState();
 
     dbMocks.getOrderById.mockResolvedValue(baseOrder);
     dbMocks.getOrderItemsByOrderId.mockResolvedValue([
