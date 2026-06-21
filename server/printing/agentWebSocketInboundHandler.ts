@@ -29,11 +29,13 @@ import {
   type AgentStatusReportMessage,
 } from "../../shared/printing/agentProtocolStatusMessages";
 import { tryParseAgentProtocolStatusInboundMessage } from "./agentProtocolStatusWireCodec";
+import { tryParseAgentPrinterProfileInboundMessage } from "./agentPrinterProfileWireCodec";
 import { recordAgentStatusReport } from "./agentStatusService";
 import { tryParseAgentJobInboundMessage } from "./agentJobWireCodec";
 import { recordDeliveryAcknowledgement } from "./deliveryAckService";
 import { processAgentDeliveryConfirmation } from "./deliveryConfirmationFlow";
 import { recordJobStatusReport } from "./jobStatusService";
+import { processAgentPrinterProfilesReport } from "./printerProfileNegotiationFlow";
 import { handleAgentJobFetchRequest } from "./jobRetrievalRouter";
 import { parseAgentWebSocketMessage } from "./agentWebSocketMessageCodec";
 import {
@@ -52,6 +54,16 @@ export function handleAgentWebSocketInboundMessage(
   rawMessage: string,
   connection: AgentWebSocketConnection
 ): void | Promise<void> {
+  const printerProfileMessage = tryParseAgentPrinterProfileInboundMessage(rawMessage);
+  if (printerProfileMessage) {
+    processAgentPrinterProfilesReport({
+      agentId: printerProfileMessage.agentId,
+      timestamp: printerProfileMessage.timestamp,
+      printers: printerProfileMessage.printers,
+    });
+    return;
+  }
+
   const statusMessage = tryParseAgentProtocolStatusInboundMessage(rawMessage);
   if (statusMessage) {
     return handleAgentProtocolStatusInboundMessage(statusMessage);

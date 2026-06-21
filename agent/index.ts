@@ -140,3 +140,14 @@ export type {
   JobStatusReportPayload,
   JobStatusReportSender,
 } from "./status/reportJobStatus";
+
+export {
+  reportPrinterProfiles,
+  buildPrinterProfilesReportMessage,
+  PrinterProfilesReportTracker,
+  PrinterProfilesReportError,
+} from "./printers/reportPrinterProfiles";
+export type {
+  PrinterProfilesReportPayload,
+  PrinterProfilesReportSender,
+} from "./printers/reportPrinterProfiles";
