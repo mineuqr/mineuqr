@@ -17,6 +17,7 @@ export type ReconnectEngineOptions = {
   onConnected?: () => void | Promise<void>;
   onDisconnected?: () => void;
   onReconnectScheduled?: (delayMs: number, attempt: number) => void;
+  onMessage?: (data: string) => void;
   sleep?: (delayMs: number) => Promise<void>;
 };
 
@@ -47,6 +48,9 @@ export class ReconnectEngine {
       },
       onError: () => {
         // close handler performs cleanup
+      },
+      onMessage: (data) => {
+        this.options.onMessage?.(data);
       },
     });
   }

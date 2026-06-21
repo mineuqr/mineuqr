@@ -4,6 +4,7 @@
 import type { AgentPlatform } from "../../shared/printing/agentTypes";
 import type { PrinterProfile } from "../../shared/printing/printerProfiles";
 import type { IdentityStore } from "../identity/identityStore";
+import type { AgentJobClient } from "../jobs/jobClient";
 import type { AgentWebSocketClient } from "../transport/websocketClient";
 
 export type AgentBootConfig = {
@@ -12,6 +13,7 @@ export type AgentBootConfig = {
   platform: AgentPlatform;
   identityStore: IdentityStore;
   client?: AgentWebSocketClient;
+  jobClient?: AgentJobClient;
   version?: string;
   heartbeatIntervalMs?: number;
   reconnectInitialDelayMs?: number;

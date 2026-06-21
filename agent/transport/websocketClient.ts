@@ -125,4 +125,8 @@ export class MockAgentWebSocketClient implements AgentWebSocketClient {
     this.open = false;
     this.handlers.onClose?.();
   }
+
+  simulateIncomingMessage(data: string): void {
+    this.handlers.onMessage?.(data);
+  }
 }

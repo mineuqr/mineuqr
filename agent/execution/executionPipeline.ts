@@ -8,7 +8,7 @@ import {
 } from "../jobs/jobTypes";
 import { LocalJobStore } from "./localJobStore";
 import { assertLocalJobStateTransition } from "./stateMachine";
-import type { ExecutionContext, LocalJobRecord } from "./executionTypes";
+import type { LocalJobPrepareContext, LocalJobRecord } from "./executionTypes";
 
 export class ExecutionPipelineError extends Error {
   constructor(message: string) {
@@ -57,7 +57,7 @@ export class ExecutionPipeline {
     assertLocalJobStateTransition(record.state, "prepared");
     const payload = this.requirePayload(jobId);
 
-    const context: ExecutionContext = {
+    const prepareContext: LocalJobPrepareContext = {
       jobId: payload.jobId,
       restaurantId: payload.restaurantId,
       printerId: payload.printerId,
@@ -66,7 +66,7 @@ export class ExecutionPipeline {
       normalizedAt: this.now().toISOString(),
     };
 
-    return this.store.transition(jobId, "prepared", context.normalizedAt, context);
+    return this.store.transition(jobId, "prepared", prepareContext.normalizedAt, prepareContext);
   }
 
   markAcknowledged(jobId: number): LocalJobRecord {

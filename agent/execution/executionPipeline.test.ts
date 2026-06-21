@@ -30,7 +30,7 @@ describe("executionPipeline THERMAL-PRINTING-6D Phase-2", () => {
 
     const prepared = pipeline.prepare(100);
     expect(prepared.state).toBe("prepared");
-    expect(prepared.context?.ticketItemCount).toBe(1);
+    expect(prepared.prepareContext?.ticketItemCount).toBe(1);
   });
 
   it("rejects invalid state transitions", () => {
@@ -44,7 +44,7 @@ describe("executionPipeline THERMAL-PRINTING-6D Phase-2", () => {
     const pipeline = new ExecutionPipeline();
     const prepared = pipeline.runThroughPrepare(sampleJob());
     expect(prepared.state).toBe("prepared");
-    expect(prepared.context?.printerId).toBe(10);
+    expect(prepared.prepareContext?.printerId).toBe(10);
   });
 
   it("tracks acknowledged state separately from preparation", () => {

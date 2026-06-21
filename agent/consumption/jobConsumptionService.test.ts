@@ -111,7 +111,7 @@ describe("jobConsumptionService THERMAL-PRINTING-6D Phase-2", () => {
     expect(sent).toHaveLength(2);
   });
 
-  it("passes through runtime execution plans from authoritative fetch", async () => {
+  it("passes through runtime execution plans and executes payload generation", async () => {
     const client = new MemoryAgentJobClient();
     client.seed({
       ...sampleJob(),
@@ -138,5 +138,8 @@ describe("jobConsumptionService THERMAL-PRINTING-6D Phase-2", () => {
     });
 
     expect(result.executionPlan?.method).toBe("raw-escpos");
+    expect(result.executionResult?.status).toBe("completed");
+    expect(result.executionResult?.artifact?.kind).toBe("escpos-bytes");
+    expect(result.executionResult?.artifact?.byteLength).toBeGreaterThan(0);
   });
 });

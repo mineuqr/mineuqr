@@ -65,8 +65,12 @@ export {
 export type { JobAssignedEvent, JobSubscriptionListener } from "./jobs/subscriptionTypes";
 export {
   MemoryAgentJobClient,
+  WebSocketAgentJobClient,
+  AgentJobFetchTimeoutError,
+  DEFAULT_JOB_FETCH_TIMEOUT_MS,
   type AgentJobClient,
   type FetchPrintJobInput,
+  type WebSocketAgentJobClientOptions,
 } from "./jobs/jobClient";
 export {
   retrieveAuthoritativePrintJob,
@@ -92,7 +96,14 @@ export {
   LocalJobStateError,
 } from "./execution/stateMachine";
 export { LocalJobStore } from "./execution/localJobStore";
-export type { LocalJobState, LocalJobRecord, ExecutionContext } from "./execution/executionTypes";
+export type { LocalJobState, LocalJobRecord, LocalJobPrepareContext } from "./execution/executionTypes";
+export { executeExecutionPlan } from "./execution/executeExecutionPlan";
+export {
+  createAgentExecutorRegistry,
+  getAgentExecutorRegistry,
+  resetAgentExecutorRegistryForTests,
+} from "./execution/executors/executorRegistry";
+export { RawEscPosExecutor, createRawEscPosExecutor } from "./execution/executors/rawEscPosExecutor";
 
 export {
   acknowledgeDelivery,

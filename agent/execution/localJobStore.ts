@@ -2,7 +2,7 @@
  * THERMAL-PRINTING-6D Phase-2 — in-memory local job runtime store (not persisted).
  */
 import type { AuthoritativePrintJob } from "../jobs/jobTypes";
-import type { ExecutionContext, LocalJobRecord, LocalJobState } from "./executionTypes";
+import type { LocalJobPrepareContext, LocalJobRecord, LocalJobState } from "./executionTypes";
 
 type StoredLocalJob = {
   record: LocalJobRecord;
@@ -28,7 +28,7 @@ export class LocalJobStore {
 
   get(jobId: number): LocalJobRecord | undefined {
     const stored = this.jobs.get(jobId);
-    return stored ? { ...stored.record, context: stored.record.context ? { ...stored.record.context } : undefined } : undefined;
+    return stored ? { ...stored.record, prepareContext: stored.record.prepareContext ? { ...stored.record.prepareContext } : undefined } : undefined;
   }
 
   getPayload(jobId: number): AuthoritativePrintJob | undefined {
@@ -42,7 +42,7 @@ export class LocalJobStore {
     };
   }
 
-  transition(jobId: number, state: LocalJobState, updatedAt: string, context?: ExecutionContext): LocalJobRecord {
+  transition(jobId: number, state: LocalJobState, updatedAt: string, prepareContext?: LocalJobPrepareContext): LocalJobRecord {
     const stored = this.jobs.get(jobId);
     if (!stored) {
       throw new Error(`Local job not found: ${jobId}`);
@@ -52,16 +52,16 @@ export class LocalJobStore {
       ...stored.record,
       state,
       updatedAt,
-      context: context ?? stored.record.context,
+      prepareContext: prepareContext ?? stored.record.prepareContext,
     };
     stored.record = next;
-    return { ...next, context: next.context ? { ...next.context } : undefined };
+    return { ...next, prepareContext: next.prepareContext ? { ...next.prepareContext } : undefined };
   }
 
   list(): LocalJobRecord[] {
     return Array.from(this.jobs.values()).map(({ record }) => ({
       ...record,
-      context: record.context ? { ...record.context } : undefined,
+      prepareContext: record.prepareContext ? { ...record.prepareContext } : undefined,
     }));
   }
 

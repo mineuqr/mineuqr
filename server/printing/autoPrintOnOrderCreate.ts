@@ -1,8 +1,9 @@
 /**
- * THERMAL-PRINTING-3B.3 — non-blocking auto print job enqueue on order.create.
+ * THERMAL-PRINTING-3B.3 / 10A.8 — non-blocking auto print job enqueue + assignment dispatch.
  */
 import { opsLog } from "../_core/opsLog";
 import { OPS_EVENT } from "../_core/opsTaxonomy";
+import { dispatchAssignedPrintJob } from "./endToEndPrintFlowService";
 import { createPrintJob } from "./printJobService";
 
 export type EnqueueAutoPrintJobForOrderInput = {
@@ -39,6 +40,8 @@ export async function enqueueAutoPrintJobForOrder(
         status: result.job.status,
       },
     });
+
+    await dispatchAssignedPrintJob({ jobId: result.job.id });
   } catch (error) {
     opsLog({
       type: OPS_EVENT.print_job_creation_failed,
