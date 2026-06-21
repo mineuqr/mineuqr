@@ -118,3 +118,25 @@ export type {
   DeliveryConfirmationPayload,
   DeliveryConfirmationSender,
 } from "./delivery/confirmDelivery";
+
+export {
+  reportAgentStatus,
+  buildAgentStatusReportMessage,
+  AgentStatusReportTracker,
+  AgentStatusReportError,
+} from "./status/reportAgentStatus";
+export type {
+  AgentStatusReportPayload,
+  AgentStatusReportSender,
+} from "./status/reportAgentStatus";
+
+export {
+  reportJobStatus,
+  buildJobStatusReportMessage,
+  JobStatusReportTracker,
+  JobStatusReportError,
+} from "./status/reportJobStatus";
+export type {
+  JobStatusReportPayload,
+  JobStatusReportSender,
+} from "./status/reportJobStatus";
