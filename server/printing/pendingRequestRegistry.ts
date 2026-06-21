@@ -5,6 +5,16 @@ import type { PrintAgentResponse } from "../../shared/printing/printAgentProtoco
 
 export const DEFAULT_PENDING_REQUEST_TIMEOUT_MS = 30_000;
 
+export class PendingRequestAbortedError extends Error {
+  readonly requestId: string;
+
+  constructor(requestId: string, message: string) {
+    super(message);
+    this.name = "PendingRequestAbortedError";
+    this.requestId = requestId;
+  }
+}
+
 export class PendingRequestTimeoutError extends Error {
   readonly requestId: string;
 
@@ -85,6 +95,29 @@ export function timeoutPending(requestId: string): boolean {
 
 export function hasPendingRequest(requestId: string): boolean {
   return pendingRequests.has(requestId.trim());
+}
+
+export function clearPendingRequestsForAgent(agentId: string): number {
+  const normalizedAgentId = agentId.trim();
+  let cleared = 0;
+
+  pendingRequests.forEach((entry, requestId) => {
+    if (entry.agentId !== normalizedAgentId) {
+      return;
+    }
+
+    clearTimeout(entry.timeoutHandle);
+    pendingRequests.delete(requestId);
+    entry.reject(
+      new PendingRequestAbortedError(
+        entry.requestId,
+        `Agent disconnected: ${normalizedAgentId}`
+      )
+    );
+    cleared += 1;
+  });
+
+  return cleared;
 }
 
 export function clearPendingRequests(): void {

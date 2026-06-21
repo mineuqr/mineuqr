@@ -11,6 +11,7 @@ import {
 } from "./agentWebSocketMessageCodec";
 import {
   DEFAULT_PENDING_REQUEST_TIMEOUT_MS,
+  PendingRequestAbortedError,
   PendingRequestTimeoutError,
   registerPending,
 } from "./pendingRequestRegistry";
@@ -48,7 +49,10 @@ export class WebSocketAgentTransportChannel implements AgentTransportChannel {
 
       return await responsePromise;
     } catch (error) {
-      if (error instanceof PendingRequestTimeoutError) {
+      if (
+        error instanceof PendingRequestTimeoutError ||
+        error instanceof PendingRequestAbortedError
+      ) {
         return createPrintAgentResponse({
           protocolVersion: request.protocolVersion,
           requestId: request.requestId,

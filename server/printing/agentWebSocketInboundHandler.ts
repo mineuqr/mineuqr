@@ -15,7 +15,10 @@ import {
   unregisterConnection,
 } from "./agentConnectionManager";
 import { parseAgentWebSocketMessage } from "./agentWebSocketMessageCodec";
-import { resolvePending } from "./pendingRequestRegistry";
+import {
+  clearPendingRequestsForAgent,
+  resolvePending,
+} from "./pendingRequestRegistry";
 
 export class AgentWebSocketInboundError extends Error {
   constructor(message: string) {
@@ -62,6 +65,7 @@ export function handleAgentWebSocketInboundMessage(
 }
 
 export function handleAgentWebSocketDisconnect(agentId: string): void {
+  clearPendingRequestsForAgent(agentId);
   unregisterConnection(agentId);
   unregisterPrintAgent(agentId);
 }

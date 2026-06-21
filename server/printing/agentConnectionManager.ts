@@ -67,6 +67,20 @@ export function listConnections(): RegisteredAgentConnection[] {
   );
 }
 
+export function findAgentIdByConnection(
+  connection: AgentWebSocketConnection
+): string | undefined {
+  let matchedAgentId: string | undefined;
+
+  connections.forEach((entry) => {
+    if (!matchedAgentId && entry.connection === connection) {
+      matchedAgentId = entry.agentId;
+    }
+  });
+
+  return matchedAgentId;
+}
+
 export function clearAgentConnections(): void {
   connections.clear();
 }

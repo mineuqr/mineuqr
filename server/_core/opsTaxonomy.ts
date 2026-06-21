@@ -128,6 +128,12 @@ export const OPS_EVENT = {
   print_processor_execution_started: "print_processor_execution_started",
   print_processor_execution_completed: "print_processor_execution_completed",
   print_processor_execution_failed: "print_processor_execution_failed",
+
+  // THERMAL-PRINTING-6C
+  print_agent_connected: "print_agent_connected",
+  print_agent_disconnected: "print_agent_disconnected",
+  print_agent_message_received: "print_agent_message_received",
+  print_agent_message_rejected: "print_agent_message_rejected",
 } as const;
 
 export type OpsEventType = (typeof OPS_EVENT)[keyof typeof OPS_EVENT];
