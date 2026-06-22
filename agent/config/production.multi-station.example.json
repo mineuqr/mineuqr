@@ -1,0 +1,76 @@
+{
+  "agentId": "mineuqr-agent-multi-station",
+  "agentName": "MineuQR Multi-Station Print Agent",
+  "serverUrl": "wss://your-mineuqr-host.example.com/ws/print-agent",
+  "platform": "windows",
+  "startupPrinters": [
+    {
+      "printerId": "kitchen-printer-usb001",
+      "printerName": "Kitchen",
+      "transport": "usb",
+      "paperWidth": 80,
+      "capabilities": {
+        "escpos": true,
+        "cutter": true,
+        "cashDrawer": false,
+        "qrCode": true,
+        "imagePrinting": false
+      },
+      "executionCapabilities": {
+        "airprint": false,
+        "vendorSdk": false
+      }
+    },
+    {
+      "printerId": "coffee-printer-usb002",
+      "printerName": "Coffee",
+      "transport": "usb",
+      "paperWidth": 80,
+      "capabilities": {
+        "escpos": true,
+        "cutter": false,
+        "cashDrawer": false,
+        "qrCode": true,
+        "imagePrinting": false
+      },
+      "executionCapabilities": {
+        "airprint": false,
+        "vendorSdk": false
+      }
+    },
+    {
+      "printerId": "dessert-printer-usb003",
+      "printerName": "Dessert",
+      "transport": "usb",
+      "paperWidth": 80,
+      "capabilities": {
+        "escpos": true,
+        "cutter": false,
+        "cashDrawer": false,
+        "qrCode": true,
+        "imagePrinting": false
+      },
+      "executionCapabilities": {
+        "airprint": false,
+        "vendorSdk": false
+      }
+    }
+  ],
+  "usbTransportEndpoints": {
+    "kitchen-printer-usb001": {
+      "kind": "windows-spooler",
+      "printerName": "Kitchen POS-80C",
+      "portName": "USB001"
+    },
+    "coffee-printer-usb002": {
+      "kind": "windows-spooler",
+      "printerName": "Coffee POS-80C",
+      "portName": "USB002"
+    },
+    "dessert-printer-usb003": {
+      "kind": "windows-spooler",
+      "printerName": "Dessert POS-80C",
+      "portName": "USB003"
+    }
+  }
+}

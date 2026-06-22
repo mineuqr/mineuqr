@@ -12,6 +12,7 @@ import {
   listPrintJobQueue,
   listPrinterOverview,
   listStationOverview,
+  listAgentOverview,
 } from "./printOperationsService";
 
 const restaurantInput = z.object({
@@ -37,6 +38,11 @@ export const printOperationsRouter = router({
   listStations: verifiedProcedure.input(restaurantInput).query(async ({ input, ctx }) => {
     await assertRestaurantAccess(ctx, input.restaurantId, "printOps.listStations");
     return listStationOverview(input.restaurantId);
+  }),
+
+  listAgents: verifiedProcedure.input(restaurantInput).query(async ({ input, ctx }) => {
+    await assertRestaurantAccess(ctx, input.restaurantId, "printOps.listAgents");
+    return listAgentOverview(input.restaurantId);
   }),
 
   getPrinter: verifiedProcedure

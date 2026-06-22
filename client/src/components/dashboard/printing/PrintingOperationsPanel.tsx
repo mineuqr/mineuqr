@@ -75,7 +75,7 @@ export function PrintingOperationsPanel({
   const [jobPage, setJobPage] = useState(0);
   const [selectedPrinterId, setSelectedPrinterId] = useState<number | null>(null);
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
-  const [activeTab, setActiveTab] = useState<"printers" | "stations" | "queue" | "failures">("printers");
+  const [activeTab, setActiveTab] = useState<"printers" | "agents" | "stations" | "queue" | "failures">("printers");
 
   const copy = useMemo(
     () => ({
@@ -84,11 +84,13 @@ export function PrintingOperationsPanel({
         ? "مراقبة الطابعات وقائمة انتظار الطباعة وحالات الفشل"
         : "Monitor printers, print queue, and failure visibility",
       printers: isAr ? "الطابعات" : "Printers",
+      agents: isAr ? "الوكلاء" : "Agents",
       stations: isAr ? "المحطات" : "Stations",
       queue: isAr ? "قائمة الطباعة" : "Print Queue",
       failures: isAr ? "الفشل" : "Failures",
       emptyStations: isAr ? "لا توجد محطات طباعة مهيأة" : "No print stations configured",
       emptyPrinters: isAr ? "لا توجد طابعات مهيأة" : "No printers configured",
+      emptyAgents: isAr ? "لا يوجد وكلاء طباعة متصلون" : "No connected print agents",
       emptyJobs: isAr ? "لا توجد مهام طباعة" : "No print jobs yet",
       emptyFailures: isAr ? "لا توجد حالات فشل حديثة" : "No recent failures",
       active: isAr ? "نشطة" : "Active",
@@ -100,6 +102,12 @@ export function PrintingOperationsPanel({
       jobDetails: isAr ? "تفاصيل مهمة الطباعة" : "Print Job Details",
       resolution: isAr ? "حالة الربط" : "Resolution",
       agent: isAr ? "الوكيل" : "Agent",
+      agentId: isAr ? "معرف الوكيل" : "Agent ID",
+      connectivity: isAr ? "الاتصال" : "Connectivity",
+      connectedAt: isAr ? "وقت الاتصال" : "Connected At",
+      lastHeartbeat: isAr ? "آخر نبضة" : "Last Heartbeat",
+      profileCount: isAr ? "الملفات المبلغ عنها" : "Reported Profiles",
+      platform: isAr ? "المنصة" : "Platform",
       transport: isAr ? "النقل" : "Transport",
       totalPrinters: isAr ? "إجمالي الطابعات" : "Total Printers",
       activePrinters: isAr ? "طابعات نشطة" : "Active Printers",
@@ -118,6 +126,10 @@ export function PrintingOperationsPanel({
   const printersQuery = trpc.printOps.listPrinters.useQuery(
     { restaurantId },
     { enabled: queriesEnabled }
+  );
+  const agentsQuery = trpc.printOps.listAgents.useQuery(
+    { restaurantId },
+    { enabled: queriesEnabled && activeTab === "agents" }
   );
   const stationsQuery = trpc.printOps.listStations.useQuery(
     { restaurantId },
@@ -143,6 +155,7 @@ export function PrintingOperationsPanel({
   const refetchAll = () => {
     void summaryQuery.refetch();
     void printersQuery.refetch();
+    void agentsQuery.refetch();
     void stationsQuery.refetch();
     void jobsQuery.refetch();
     void failuresQuery.refetch();
@@ -186,6 +199,7 @@ export function PrintingOperationsPanel({
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as typeof activeTab)}>
         <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1">
           <TabsTrigger value="printers">{copy.printers}</TabsTrigger>
+          <TabsTrigger value="agents">{copy.agents}</TabsTrigger>
           <TabsTrigger value="stations">{copy.stations}</TabsTrigger>
           <TabsTrigger value="queue">{copy.queue}</TabsTrigger>
           <TabsTrigger value="failures">{copy.failures}</TabsTrigger>
@@ -251,6 +265,71 @@ export function PrintingOperationsPanel({
                           </Badge>
                         </TableCell>
                         <TableCell dir="ltr">{formatTimestamp(printer.lastActivityAt, isAr)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </RestaurantDashSection>
+        </TabsContent>
+
+        <TabsContent value="agents" className="mt-4">
+          <RestaurantDashSection title={copy.agents}>
+            {agentsQuery.isLoading ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : agentsQuery.isError ? (
+              <RestaurantSectionError
+                message={agentsQuery.error.message}
+                retryLabel={copy.retry}
+                onRetry={() => agentsQuery.refetch()}
+              />
+            ) : (agentsQuery.data?.length ?? 0) === 0 ? (
+              <Card>
+                <CardContent className="py-10 text-center text-sm text-muted-foreground">
+                  {copy.emptyAgents}
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="overflow-x-auto rounded-xl border border-border/40">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{copy.agentId}</TableHead>
+                      <TableHead>{copy.connectivity}</TableHead>
+                      <TableHead>{copy.platform}</TableHead>
+                      <TableHead>{copy.profileCount}</TableHead>
+                      <TableHead>{copy.connectedAt}</TableHead>
+                      <TableHead>{copy.lastHeartbeat}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {agentsQuery.data?.map((agent) => (
+                      <TableRow key={agent.agentId}>
+                        <TableCell dir="ltr" className="font-medium">
+                          {agent.agentId}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              agent.status === "online"
+                                ? "default"
+                                : agent.status === "stale"
+                                  ? "outline"
+                                  : "secondary"
+                            }
+                          >
+                            {agent.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{agent.platform}</TableCell>
+                        <TableCell dir="ltr">{agent.reportedProfileCount}</TableCell>
+                        <TableCell dir="ltr">{formatTimestamp(agent.connectedAt, isAr)}</TableCell>
+                        <TableCell dir="ltr">
+                          {formatTimestamp(agent.lastHeartbeatAt, isAr)}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

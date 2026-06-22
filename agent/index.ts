@@ -7,6 +7,13 @@
  */
 export { bootAgent, createMockAgentRuntime } from "./runtime/boot";
 export type { AgentBootConfig } from "./runtime/config";
+export {
+  bootAgentFromDeploymentConfig,
+  loadDeploymentConfig,
+  validateDeploymentConfigFile,
+  AgentDeploymentConfigError,
+  type AgentDeploymentConfig,
+} from "./config";
 export { AgentLifecycle } from "./runtime/lifecycle";
 export { shutdownAgent } from "./runtime/shutdown";
 export type { AgentRuntime } from "./runtime/runtimeTypes";

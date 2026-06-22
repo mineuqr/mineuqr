@@ -143,12 +143,35 @@ describe("agent boot/shutdown THERMAL-PRINTING-6D", () => {
       platform: "windows",
       identityStore: store,
       reconnectInitialDelayMs: 1_000,
+      startupPrinters: [
+        {
+          printerId: "kitchen-printer",
+          printerName: "Kitchen",
+          transport: "usb",
+          capabilities: {
+            escpos: true,
+            cutter: false,
+            cashDrawer: false,
+            qrCode: true,
+            imagePrinting: false,
+          },
+          executionCapabilities: {
+            airprint: false,
+            vendorSdk: false,
+          },
+          paperWidth: 80,
+        },
+      ],
     });
 
     const runtime = await boot();
     const helloCountBefore = client.sent.filter((message) => {
       const parsed = JSON.parse(message) as { type?: string };
       return parsed.type === AGENT_WEBSOCKET_MESSAGE_TYPES.HELLO;
+    }).length;
+    const profileCountBefore = client.sent.filter((message) => {
+      const parsed = JSON.parse(message) as { type?: string };
+      return parsed.type === AGENT_PRINTER_PROFILE_MESSAGE_TYPES.PROFILES_REPORT;
     }).length;
 
     client.simulateDisconnect();
@@ -161,8 +184,13 @@ describe("agent boot/shutdown THERMAL-PRINTING-6D", () => {
       const parsed = JSON.parse(message) as { type?: string };
       return parsed.type === AGENT_WEBSOCKET_MESSAGE_TYPES.HELLO;
     }).length;
+    const profileCountAfter = client.sent.filter((message) => {
+      const parsed = JSON.parse(message) as { type?: string };
+      return parsed.type === AGENT_PRINTER_PROFILE_MESSAGE_TYPES.PROFILES_REPORT;
+    }).length;
 
     expect(helloCountAfter).toBeGreaterThan(helloCountBefore);
+    expect(profileCountAfter).toBeGreaterThan(profileCountBefore);
     expect(runtime.lifecycle.getState()).toBe("ready");
   });
 });

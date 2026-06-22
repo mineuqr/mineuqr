@@ -123,6 +123,8 @@ export async function bootAgent(config: AgentBootConfig): Promise<AgentRuntime> 
     onConnected: async () => {
       runtime.heartbeat.stop();
       runtime.heartbeat = createHeartbeatManager(config, identity.agentId, client);
+      startupReporting.printerProfilesTracker.clear();
+      startupReporting.platformCapabilitiesTracker.clear();
       await performRegistration();
     },
     onDisconnected: () => {

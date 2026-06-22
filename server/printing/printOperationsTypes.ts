@@ -109,3 +109,12 @@ export type StationOverviewItem = {
   printerName: string | null;
   jobCount: number;
 };
+
+export type AgentOverviewItem = {
+  agentId: string;
+  status: "offline" | "online" | "stale";
+  platform: "windows" | "android" | "ios";
+  connectedAt: string | null;
+  lastHeartbeatAt: string | null;
+  reportedProfileCount: number;
+};

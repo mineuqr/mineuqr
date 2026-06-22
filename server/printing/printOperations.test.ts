@@ -44,6 +44,7 @@ vi.mock("./printJobRepository", async (importOriginal) => {
 import {
   getPrintJobDetail,
   getPrintOperationsSummary,
+  listAgentOverview,
   listPrinterOverview,
 } from "./printOperationsService";
 import { assignPrintJob } from "./assignmentService";
@@ -133,6 +134,26 @@ describe("printOperationsService THERMAL-PRINTING-11C", () => {
         isDefault: true,
         lastActivityAt: "2026-06-21 12:30:00",
       }),
+    ]);
+  });
+
+  it("lists connected agents relevant to restaurant printer profiles", async () => {
+    registerOnlineAgent("agent-alpha");
+    seedPrinterProfile("agent-alpha", TEST_PROFILE_PRINTER_ID);
+    registerOnlineAgent("agent-other");
+    seedPrinterProfile("agent-other", "other-profile");
+
+    const agents = await listAgentOverview(restaurantId);
+
+    expect(agents).toEqual([
+      {
+        agentId: "agent-alpha",
+        status: "online",
+        platform: "windows",
+        connectedAt: expect.any(String),
+        lastHeartbeatAt: expect.any(String),
+        reportedProfileCount: 1,
+      },
     ]);
   });
 

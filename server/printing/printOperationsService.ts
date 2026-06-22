@@ -3,11 +3,12 @@
  */
 import { PRINT_JOB_STATUS } from "../../shared/printing/types";
 import type { ExecutionTransport } from "../../shared/printing/executionCapabilities";
-import { getAgentConnectivityState } from "./agentLifecycleService";
+import { getAgentConnectivityState, listAgentConnectivityStates } from "./agentLifecycleService";
+import { getAgent } from "./agentRegistry";
 import { listPrintJobAssignmentsForRestaurant } from "./assignmentService";
 import { getJobDeliveryState } from "./deliveryStateTracker";
 import { listStoredJobExecutionOutcomes } from "./executionOutcomeStore";
-import { getPrinterProfile } from "./printerProfileQueries";
+import { getPrinterProfile, getAgentPrinterProfiles } from "./printerProfileQueries";
 import {
   countPrintJobsByStatusForRestaurant,
   findLatestPrintJobForPrinter,
@@ -35,6 +36,7 @@ import type {
   PrinterOverviewItem,
   PrinterResolutionStatus,
   StationOverviewItem,
+  AgentOverviewItem,
 } from "./printOperationsTypes";
 
 function mapOperationalStatus(input: {
@@ -212,6 +214,41 @@ export async function listStationOverview(
     printerName: printerNameById.get(station.printerId) ?? null,
     jobCount: jobCounts.get(station.id) ?? 0,
   }));
+}
+
+export async function listAgentOverview(restaurantId: number): Promise<AgentOverviewItem[]> {
+  const printers = await listPrintersForRestaurant(restaurantId);
+  const restaurantProfileIds = new Set(
+    printers.map((printer) => printer.profileId.trim()).filter((profileId) => profileId.length > 0)
+  );
+
+  const agents: AgentOverviewItem[] = [];
+
+  for (const connectivity of listAgentConnectivityStates()) {
+    const agent = getAgent(connectivity.agentId);
+    const inventory = getAgentPrinterProfiles(connectivity.agentId);
+    const reportedProfiles = inventory?.profiles ?? [];
+
+    const isRelevant =
+      restaurantProfileIds.size === 0
+        ? false
+        : reportedProfiles.some((profile) => restaurantProfileIds.has(profile.printerId));
+
+    if (!isRelevant) {
+      continue;
+    }
+
+    agents.push({
+      agentId: connectivity.agentId,
+      status: connectivity.status,
+      platform: agent?.registration.identity.platform ?? "windows",
+      connectedAt: agent?.registration.connectedAt ?? null,
+      lastHeartbeatAt: connectivity.lastHeartbeatAt ?? null,
+      reportedProfileCount: reportedProfiles.length,
+    });
+  }
+
+  return agents.sort((left, right) => left.agentId.localeCompare(right.agentId));
 }
 
 export async function getPrinterDetail(
