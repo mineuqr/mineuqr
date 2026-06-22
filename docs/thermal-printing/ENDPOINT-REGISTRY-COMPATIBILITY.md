@@ -1,8 +1,8 @@
 # Endpoint Registry Compatibility Strategy
 
-**Task:** THERMAL-PRINTING-12E.2A  
-**Status:** Planning only — no production migration in this phase  
-**Follow-up:** THERMAL-PRINTING-12E.2B (registry migration and runtime integration)
+**Task:** THERMAL-PRINTING-12E.2A / 12E.2B  
+**Status:** 12E.2B runtime projection active — agent stores remain authoritative  
+**Follow-up:** THERMAL-PRINTING-12E.2C+ (endpoint-aware routing and cutover)
 
 ## Context
 
@@ -18,7 +18,7 @@ The platform is introducing a **Multi-Endpoint Printing Architecture** with a pl
 |---------------|------------|------------------|
 | `agentRegistry` | Authoritative agent registration and heartbeats | Remains authoritative until 12E.2B dual-write |
 | `printerProfileStore` | Latest-known printer inventory per agent | Remains authoritative for resolution reads |
-| `endpointRegistry` | New domain model (12E.2A) | Not consulted by routing, assignment, dispatch, or execution |
+| `endpointRegistry` | Projection read-model synchronized from agent lifecycle (12E.2B) | Not consulted by routing, assignment, dispatch, or execution |
 
 **Do not remove or replace** Agent Runtime services in 12E.2A.
 
@@ -78,7 +78,23 @@ Printer-specific capability (paper width, ESC/POS features) stays in `PrinterPro
 
 During observability unification (12E.2B+), inventory may be **referenced** from endpoint metadata (counts, timestamps, fingerprints) without duplicating full `PrinterProfile[]` on every heartbeat.
 
-## Proposed 12E.2B migration sequence
+## Runtime projection (12E.2B)
+
+Windows agents are projected into `endpointRegistry` through `endpointProjectionService.ts`:
+
+| Agent event | Projection hook |
+|-------------|-----------------|
+| HELLO / registration | `syncAgentEndpointOnRegistration` |
+| Heartbeat | `syncAgentEndpointOnHeartbeat` |
+| Disconnect / unregister | `syncAgentEndpointDisconnect` |
+| Printer profiles report | `syncAgentEndpointOnPrinterProfilesReport` |
+| Platform capabilities report | `syncAgentEndpointOnCapabilitiesReport` |
+
+`getEndpoint()` and `listEndpoints()` hydrate live connectivity and capabilities from authoritative stores on read.
+
+Restaurant ownership is resolved via agent id suffix (e.g. `mineuqr-agent-720007` → `720007`), an explicit projection cache (`rememberAgentRestaurantProjection`), or a previously stored endpoint record.
+
+## Proposed 12E.2C+ migration sequence
 
 1. **Dual-write on agent registration** — `registerAgent` also calls `endpointRegistry.registerEndpoint` via a compatibility adapter.
 2. **Dual-write on heartbeat** — `updateAgentHeartbeat` mirrors `updateEndpointHeartbeat`.
@@ -96,7 +112,8 @@ During observability unification (12E.2B+), inventory may be **referenced** from
 | `shared/printing/endpoints/endpointCapabilities.ts` | Platform-neutral capability model |
 | `shared/printing/endpoints/endpointRecord.ts` | `EndpointRecord` |
 | `shared/printing/endpoints/endpointRegistryContract.ts` | `EndpointRegistry` interface |
-| `server/printing/endpointRegistry.ts` | In-memory implementation (unwired) |
+| `server/printing/endpointRegistry.ts` | In-memory registry with live hydration on read |
+| `server/printing/endpointProjectionService.ts` | Runtime projection hooks |
 | `server/printing/endpointRegistryCompatibility.ts` | Projection and mapping helpers |
 
 ## Validation boundary

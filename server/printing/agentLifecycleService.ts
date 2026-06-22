@@ -14,6 +14,11 @@ import {
   unregisterAgent,
   updateAgentHeartbeat,
 } from "./agentRegistry";
+import {
+  syncAgentEndpointDisconnect,
+  syncAgentEndpointOnHeartbeat,
+  syncAgentEndpointOnRegistration,
+} from "./endpointProjectionService";
 
 export class AgentLifecycleError extends Error {
   constructor(message: string) {
@@ -30,10 +35,13 @@ export type AgentLifecycleEvaluationOptions = {
 export function registerPrintAgent(
   input: RegisterAgentInput
 ): PrintAgentRegistration {
-  return registerAgent(input);
+  const registration = registerAgent(input);
+  syncAgentEndpointOnRegistration(input.identity.agentId);
+  return registration;
 }
 
 export function unregisterPrintAgent(agentId: string): boolean {
+  syncAgentEndpointDisconnect(agentId);
   return unregisterAgent(agentId);
 }
 
@@ -47,6 +55,7 @@ export function recordAgentHeartbeat(heartbeat: AgentHeartbeat): void {
 
   try {
     updateAgentHeartbeat(heartbeat.agentId, heartbeat.timestamp);
+    syncAgentEndpointOnHeartbeat(heartbeat.agentId);
   } catch (error) {
     if (error instanceof AgentRegistryError) {
       throw new AgentLifecycleError(error.message);

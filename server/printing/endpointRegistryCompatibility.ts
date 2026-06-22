@@ -1,25 +1,27 @@
 /**
- * THERMAL-PRINTING-12E.2A — Windows Agent → Endpoint Registry compatibility planning.
+ * THERMAL-PRINTING-12E.2A / 12E.2B — Agent → Endpoint Registry compatibility layer.
  *
- * This module documents and prototypes (without wiring) how legacy agent-centric
- * stores map into the multi-endpoint registry introduced in 12E.2A.
- *
- * Full migration belongs to THERMAL-PRINTING-12E.2B and later. Until then:
- * - `agentRegistry` remains authoritative for routing, assignment, and dispatch.
- * - `printerProfileStore` remains authoritative for printer inventory reads.
- * - `endpointRegistry` is domain-only and must not be consulted by print flows.
+ * Integration boundary for projecting legacy agent-centric runtime state into the
+ * platform-neutral endpoint registry. `agentRegistry`, `printerProfileStore`, and
+ * `platformCapabilityStore` remain authoritative; endpoint records are read-model
+ * projections only.
  *
  * @see docs/thermal-printing/ENDPOINT-REGISTRY-COMPATIBILITY.md
  */
-import type { AgentPlatform } from "../../shared/printing/agentTypes";
+import { calculateAgentStatus } from "../../shared/printing/agentHeartbeat";
+import type { AgentPlatform, AgentStatus } from "../../shared/printing/agentTypes";
 import type { PlatformCapabilities } from "../../shared/printing/platformCapabilities";
 import type { PrinterProfile } from "../../shared/printing/printerProfiles";
 import type { EndpointCapabilities } from "../../shared/printing/endpoints/endpointCapabilities";
 import type { EndpointConnectivityState } from "../../shared/printing/endpoints/endpointConnectivity";
 import type { EndpointRecord } from "../../shared/printing/endpoints/endpointRecord";
 import type { EndpointType } from "../../shared/printing/endpoints/endpointTypes";
-import type { RegisteredAgent } from "./agentRegistry";
-import type { AgentPrinterInventoryRecord } from "./printerProfileStore";
+import { getAgent, type RegisteredAgent } from "./agentRegistry";
+import { getStoredAgentPlatformCapabilities } from "./platformCapabilityStore";
+import {
+  getStoredAgentPrinterInventory,
+  type AgentPrinterInventoryRecord,
+} from "./printerProfileStore";
 
 /**
  * Stable 1:1 identity bridge during migration: legacy `agentId` becomes
@@ -181,4 +183,266 @@ export function fingerprintPrinterInventoryProfiles(
       transport: profile.transport,
     }))
   );
+}
+
+const restaurantProjectionByAgentId = new Map<string, number>();
+
+export function rememberAgentRestaurantProjection(
+  agentId: string,
+  restaurantId: number
+): void {
+  if (!Number.isInteger(restaurantId) || restaurantId <= 0) {
+    return;
+  }
+  restaurantProjectionByAgentId.set(agentId.trim(), restaurantId);
+}
+
+export function clearAgentRestaurantProjectionCache(): void {
+  restaurantProjectionByAgentId.clear();
+}
+
+/**
+ * Derives restaurant ownership from agent id suffix (e.g. `mineuqr-agent-720007`).
+ */
+export function inferRestaurantIdFromAgentId(agentId: string): number | undefined {
+  const suffixMatch = agentId.trim().match(/-(\d+)$/);
+  if (!suffixMatch) {
+    return undefined;
+  }
+
+  const restaurantId = Number(suffixMatch[1]);
+  if (!Number.isInteger(restaurantId) || restaurantId <= 0) {
+    return undefined;
+  }
+
+  return restaurantId;
+}
+
+export function resolveRestaurantIdForAgent(
+  agentId: string,
+  options: { storedRestaurantId?: number } = {}
+): number | undefined {
+  const normalized = agentId.trim();
+  return (
+    restaurantProjectionByAgentId.get(normalized) ??
+    options.storedRestaurantId ??
+    inferRestaurantIdFromAgentId(normalized)
+  );
+}
+
+export function emptyEndpointCapabilities(): EndpointCapabilities {
+  return {
+    transports: {
+      usb: false,
+      bluetooth: false,
+      network: false,
+      airprint: false,
+      vendorConnector: false,
+    },
+    execution: {
+      localPrinting: false,
+      methods: [],
+    },
+  };
+}
+
+export function mapPrinterInventoryToEndpointCapabilities(
+  profiles: PrinterProfile[]
+): EndpointCapabilities {
+  const transports = {
+    usb: false,
+    bluetooth: false,
+    network: false,
+    airprint: false,
+    vendorConnector: false,
+  };
+
+  for (const profile of profiles) {
+    switch (profile.transport) {
+      case "usb":
+        transports.usb = true;
+        break;
+      case "bluetooth":
+        transports.bluetooth = true;
+        break;
+      case "network":
+        transports.network = true;
+        break;
+    }
+
+    if (profile.executionCapabilities.airprint) {
+      transports.airprint = true;
+    }
+    if (profile.executionCapabilities.vendorSdk) {
+      transports.vendorConnector = true;
+    }
+  }
+
+  const methods: EndpointCapabilities["execution"]["methods"] = [];
+  if (transports.usb) {
+    methods.push("raw-escpos", "spooler");
+  }
+  if (transports.bluetooth || transports.network) {
+    methods.push("raw-escpos");
+  }
+  if (transports.airprint) {
+    methods.push("airprint");
+  }
+  if (transports.vendorConnector) {
+    methods.push("vendor-sdk");
+  }
+
+  return {
+    transports,
+    execution: {
+      localPrinting: profiles.length > 0,
+      methods: Array.from(new Set(methods)),
+    },
+  };
+}
+
+export function mergeEndpointCapabilities(
+  platformCapabilities: EndpointCapabilities | undefined,
+  inventoryCapabilities: EndpointCapabilities | undefined
+): EndpointCapabilities {
+  if (!platformCapabilities && !inventoryCapabilities) {
+    return emptyEndpointCapabilities();
+  }
+  if (!platformCapabilities) {
+    return inventoryCapabilities!;
+  }
+  if (!inventoryCapabilities) {
+    return platformCapabilities;
+  }
+
+  return {
+    transports: {
+      usb: platformCapabilities.transports.usb || inventoryCapabilities.transports.usb,
+      bluetooth:
+        platformCapabilities.transports.bluetooth ||
+        inventoryCapabilities.transports.bluetooth,
+      network:
+        platformCapabilities.transports.network ||
+        inventoryCapabilities.transports.network,
+      airprint:
+        platformCapabilities.transports.airprint ||
+        inventoryCapabilities.transports.airprint,
+      vendorConnector:
+        platformCapabilities.transports.vendorConnector ||
+        inventoryCapabilities.transports.vendorConnector,
+    },
+    execution: platformCapabilities.execution,
+  };
+}
+
+/**
+ * Projects endpoint capabilities from authoritative stores (no duplication).
+ */
+export function resolveEndpointCapabilitiesFromStores(
+  agentId: string
+): EndpointCapabilities {
+  const platformRecord = getStoredAgentPlatformCapabilities(agentId);
+  const inventory = getStoredAgentPrinterInventory(agentId);
+
+  const platformCapabilities = platformRecord
+    ? mapPlatformCapabilitiesToEndpointCapabilities(platformRecord.capabilities)
+    : undefined;
+  const inventoryCapabilities = inventory
+    ? mapPrinterInventoryToEndpointCapabilities(inventory.profiles)
+    : undefined;
+
+  return mergeEndpointCapabilities(platformCapabilities, inventoryCapabilities);
+}
+
+export function resolveAgentStatusForProjection(
+  agentId: string,
+  options: { now?: Date; staleThresholdMs?: number } = {}
+): AgentStatus {
+  const agent = getAgent(agentId);
+  if (!agent) {
+    return "offline";
+  }
+
+  return calculateAgentStatus({
+    isRegistered: true,
+    lastHeartbeatAt: agent.lastHeartbeatAt,
+    now: options.now,
+    staleThresholdMs: options.staleThresholdMs,
+  });
+}
+
+export function resolveEndpointConnectivityForAgent(
+  agentId: string,
+  options: { now?: Date; staleThresholdMs?: number } = {}
+): EndpointConnectivityState {
+  const agent = getAgent(agentId);
+  if (!agent) {
+    return "OFFLINE";
+  }
+
+  if (!agent.lastHeartbeatAt) {
+    return "UNKNOWN";
+  }
+
+  return mapAgentConnectivityToEndpointState({
+    isRegistered: true,
+    agentStatus: resolveAgentStatusForProjection(agentId, options),
+  });
+}
+
+export function buildEndpointProjectionMetadata(
+  agentId: string,
+  existingMetadata?: Record<string, unknown>
+): Record<string, unknown> | undefined {
+  const agent = getAgent(agentId);
+  const inventory = getStoredAgentPrinterInventory(agentId);
+  const metadata: Record<string, unknown> = {
+    ...existingMetadata,
+  };
+
+  if (agent) {
+    metadata.legacyAgentId = agent.registration.identity.agentId;
+    metadata.protocolVersion = agent.registration.identity.protocolVersion;
+    metadata.connectedAt = agent.registration.connectedAt;
+  }
+
+  if (inventory) {
+    Object.assign(metadata, attachPrinterInventoryMetadata(inventory));
+    metadata.printerInventoryFingerprint = fingerprintPrinterInventoryProfiles(
+      inventory.profiles
+    );
+  }
+
+  return Object.keys(metadata).length > 0 ? metadata : undefined;
+}
+
+export function shouldProjectWindowsAgent(agent: RegisteredAgent): boolean {
+  return agent.registration.identity.platform === "windows";
+}
+
+export function hydrateStoredEndpointRecord(
+  stored: EndpointRecord,
+  options: { now?: Date; staleThresholdMs?: number } = {}
+): EndpointRecord {
+  const agentId = mapAgentIdToEndpointId(stored.endpointId);
+  const agent = getAgent(agentId);
+
+  if (!agent) {
+    return {
+      ...stored,
+      connectivityState: "OFFLINE",
+      capabilities: resolveEndpointCapabilitiesFromStores(agentId),
+      metadata: buildEndpointProjectionMetadata(agentId, stored.metadata),
+    };
+  }
+
+  return {
+    ...stored,
+    endpointType: mapAgentPlatformToEndpointType(agent.registration.identity.platform),
+    displayName: stored.displayName || `Agent ${agent.registration.identity.agentId}`,
+    connectivityState: resolveEndpointConnectivityForAgent(agentId, options),
+    lastSeenAt: agent.lastHeartbeatAt ? new Date(agent.lastHeartbeatAt) : null,
+    capabilities: resolveEndpointCapabilitiesFromStores(agentId),
+    metadata: buildEndpointProjectionMetadata(agentId, stored.metadata),
+  };
 }

@@ -1,5 +1,5 @@
 /**
- * THERMAL-PRINTING-8C.6 / 8D — platform capability negotiation orchestration.
+ * THERMAL-PRINTING-8C.6 / 8D / 12E.2B — platform capability negotiation orchestration.
  */
 import { opsLog } from "../_core/opsLog";
 import { OPS_EVENT } from "../_core/opsTaxonomy";
@@ -7,6 +7,7 @@ import {
   recordPlatformCapabilitiesReport,
   type RecordPlatformCapabilitiesReportInput,
 } from "./platformCapabilityService";
+import { syncAgentEndpointOnCapabilitiesReport } from "./endpointProjectionService";
 import type { AgentPlatformCapabilityRecord } from "./platformCapabilityStore";
 import type { PlatformConsistencyValidationResult } from "./platformConsistencyTypes";
 
@@ -53,6 +54,8 @@ export function processAgentPlatformCapabilitiesReport(
       },
     });
   }
+
+  syncAgentEndpointOnCapabilitiesReport(input.agentId);
 
   return result;
 }

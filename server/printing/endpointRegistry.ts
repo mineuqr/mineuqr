@@ -1,9 +1,9 @@
 /**
- * THERMAL-PRINTING-12E.2A — in-memory endpoint registry (not wired to production).
+ * THERMAL-PRINTING-12E.2A / 12E.2B — in-memory endpoint registry (projection read-model).
  *
- * Implements {@link EndpointRegistry} for domain validation and future migration
- * work. Existing agent registration and print flows continue to use
- * `agentRegistry` until THERMAL-PRINTING-12E.2B.
+ * Authoritative agent runtime stores remain `agentRegistry`, `printerProfileStore`,
+ * and `platformCapabilityStore`. Endpoint records are synchronized projections;
+ * `getEndpoint` / `listEndpoints` hydrate live connectivity and capabilities.
  */
 import {
   evaluateEndpointConnectivityState,
@@ -22,6 +22,7 @@ import type {
   UpdateEndpointHeartbeatInput,
 } from "../../shared/printing/endpoints/endpointRegistryContract";
 import { assertEndpointType } from "../../shared/printing/endpoints/endpointTypes";
+import { hydrateStoredEndpointRecord } from "./endpointRegistryCompatibility";
 
 export class EndpointRegistryError extends Error {
   constructor(message: string) {
@@ -173,16 +174,47 @@ export class InMemoryEndpointRegistry implements EndpointRegistry {
     return toPublicRecord(record);
   }
 
-  getEndpoint(endpointId: string): EndpointRecord | undefined {
+  upsertProjectedEndpoint(record: EndpointRecord): EndpointRecord {
+    const endpointId = normalizeEndpointId(record.endpointId);
+    const endpointType = assertEndpointType(record.endpointType);
+    const restaurantId = assertRestaurantId(record.restaurantId);
+    const displayName = normalizeDisplayName(record.displayName);
+    const capabilities = validateEndpointCapabilities(record.capabilities);
+    const existing = this.endpoints.get(endpointId);
+    const now = new Date();
+
+    const stored: StoredEndpointRecord = {
+      endpointId,
+      endpointType,
+      restaurantId,
+      displayName,
+      connectivityState: record.connectivityState,
+      lastSeenAt: record.lastSeenAt,
+      capabilities,
+      metadata: record.metadata ? { ...record.metadata } : undefined,
+      registeredAt: existing?.registeredAt ?? now,
+      capabilitiesUpdatedAt: now,
+    };
+
+    this.endpoints.set(endpointId, stored);
+    return toPublicRecord(stored);
+  }
+
+  getStoredEndpointRecord(endpointId: string): EndpointRecord | undefined {
     const record = this.endpoints.get(normalizeEndpointId(endpointId));
     return record ? toPublicRecord(record) : undefined;
+  }
+
+  getEndpoint(endpointId: string): EndpointRecord | undefined {
+    const record = this.endpoints.get(normalizeEndpointId(endpointId));
+    return record ? hydrateStoredEndpointRecord(toPublicRecord(record)) : undefined;
   }
 
   listEndpoints(filter?: ListEndpointsFilter): EndpointRecord[] {
     return Array.from(this.endpoints.values())
       .filter((record) => matchesFilter(record, filter))
       .sort((left, right) => left.endpointId.localeCompare(right.endpointId))
-      .map(toPublicRecord);
+      .map((record) => hydrateStoredEndpointRecord(toPublicRecord(record)));
   }
 
   clear(): void {
@@ -207,6 +239,14 @@ export function updateEndpointCapabilities(
   input: UpdateEndpointCapabilitiesInput
 ): EndpointRecord {
   return defaultRegistry.updateEndpointCapabilities(input);
+}
+
+export function upsertProjectedEndpoint(record: EndpointRecord): EndpointRecord {
+  return defaultRegistry.upsertProjectedEndpoint(record);
+}
+
+export function getStoredEndpointRecord(endpointId: string): EndpointRecord | undefined {
+  return defaultRegistry.getStoredEndpointRecord(endpointId);
 }
 
 export function getEndpoint(endpointId: string): EndpointRecord | undefined {

@@ -1,7 +1,8 @@
 /**
- * THERMAL-PRINTING-7F.6 — printer profile negotiation orchestration.
+ * THERMAL-PRINTING-7F.6 / 12E.2B — printer profile negotiation orchestration.
  */
 import { recordPrinterProfilesReport, type RecordPrinterProfilesReportInput } from "./printerProfileService";
+import { syncAgentEndpointOnPrinterProfilesReport } from "./endpointProjectionService";
 import type { AgentPrinterInventoryRecord } from "./printerProfileStore";
 
 export type ProcessAgentPrinterProfilesReportResult =
@@ -12,5 +13,9 @@ export type ProcessAgentPrinterProfilesReportResult =
 export function processAgentPrinterProfilesReport(
   input: RecordPrinterProfilesReportInput
 ): ProcessAgentPrinterProfilesReportResult {
-  return recordPrinterProfilesReport(input);
+  const result = recordPrinterProfilesReport(input);
+  if (result.accepted) {
+    syncAgentEndpointOnPrinterProfilesReport(input.agentId);
+  }
+  return result;
 }
