@@ -75,7 +75,7 @@ export function PrintingOperationsPanel({
   const [jobPage, setJobPage] = useState(0);
   const [selectedPrinterId, setSelectedPrinterId] = useState<number | null>(null);
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
-  const [activeTab, setActiveTab] = useState<"printers" | "queue" | "failures">("printers");
+  const [activeTab, setActiveTab] = useState<"printers" | "stations" | "queue" | "failures">("printers");
 
   const copy = useMemo(
     () => ({
@@ -84,8 +84,10 @@ export function PrintingOperationsPanel({
         ? "مراقبة الطابعات وقائمة انتظار الطباعة وحالات الفشل"
         : "Monitor printers, print queue, and failure visibility",
       printers: isAr ? "الطابعات" : "Printers",
+      stations: isAr ? "المحطات" : "Stations",
       queue: isAr ? "قائمة الطباعة" : "Print Queue",
       failures: isAr ? "الفشل" : "Failures",
+      emptyStations: isAr ? "لا توجد محطات طباعة مهيأة" : "No print stations configured",
       emptyPrinters: isAr ? "لا توجد طابعات مهيأة" : "No printers configured",
       emptyJobs: isAr ? "لا توجد مهام طباعة" : "No print jobs yet",
       emptyFailures: isAr ? "لا توجد حالات فشل حديثة" : "No recent failures",
@@ -117,6 +119,10 @@ export function PrintingOperationsPanel({
     { restaurantId },
     { enabled: queriesEnabled }
   );
+  const stationsQuery = trpc.printOps.listStations.useQuery(
+    { restaurantId },
+    { enabled: queriesEnabled && activeTab === "stations" }
+  );
   const jobsQuery = trpc.printOps.listPrintJobs.useQuery(
     { restaurantId, limit: PAGE_SIZE, offset: jobPage * PAGE_SIZE },
     { enabled: queriesEnabled && activeTab === "queue" }
@@ -137,6 +143,7 @@ export function PrintingOperationsPanel({
   const refetchAll = () => {
     void summaryQuery.refetch();
     void printersQuery.refetch();
+    void stationsQuery.refetch();
     void jobsQuery.refetch();
     void failuresQuery.refetch();
   };
@@ -179,6 +186,7 @@ export function PrintingOperationsPanel({
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as typeof activeTab)}>
         <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1">
           <TabsTrigger value="printers">{copy.printers}</TabsTrigger>
+          <TabsTrigger value="stations">{copy.stations}</TabsTrigger>
           <TabsTrigger value="queue">{copy.queue}</TabsTrigger>
           <TabsTrigger value="failures">{copy.failures}</TabsTrigger>
         </TabsList>
@@ -252,6 +260,51 @@ export function PrintingOperationsPanel({
           </RestaurantDashSection>
         </TabsContent>
 
+        <TabsContent value="stations" className="mt-4">
+          <RestaurantDashSection title={copy.stations}>
+            {stationsQuery.isLoading ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : stationsQuery.isError ? (
+              <RestaurantSectionError
+                message={stationsQuery.error.message}
+                retryLabel={copy.retry}
+                onRetry={() => stationsQuery.refetch()}
+              />
+            ) : (stationsQuery.data?.length ?? 0) === 0 ? (
+              <Card>
+                <CardContent className="py-10 text-center text-sm text-muted-foreground">
+                  {copy.emptyStations}
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="overflow-x-auto rounded-xl border border-border/40">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{isAr ? "المحطة" : "Station"}</TableHead>
+                      <TableHead>{isAr ? "الطابعة" : "Printer"}</TableHead>
+                      <TableHead>{isAr ? "عدد المهام" : "Job Count"}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {stationsQuery.data?.map((station) => (
+                      <TableRow key={station.id}>
+                        <TableCell className="font-medium">{station.name}</TableCell>
+                        <TableCell dir="ltr">
+                          {station.printerName ?? `#${station.printerId}`}
+                        </TableCell>
+                        <TableCell dir="ltr">{station.jobCount}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </RestaurantDashSection>
+        </TabsContent>
+
         <TabsContent value="queue" className="mt-4">
           <RestaurantDashSection title={copy.queue}>
             {jobsQuery.isLoading ? (
@@ -278,6 +331,7 @@ export function PrintingOperationsPanel({
                       <TableRow>
                         <TableHead>{isAr ? "المهمة" : "Job"}</TableHead>
                         <TableHead>{isAr ? "الطلب" : "Order"}</TableHead>
+                        <TableHead>{isAr ? "المحطة" : "Station"}</TableHead>
                         <TableHead>{isAr ? "الطابعة" : "Printer"}</TableHead>
                         <TableHead>{isAr ? "الحالة" : "Status"}</TableHead>
                         <TableHead>{isAr ? "أُنشئت" : "Created"}</TableHead>
@@ -293,6 +347,7 @@ export function PrintingOperationsPanel({
                         >
                           <TableCell dir="ltr">#{job.id}</TableCell>
                           <TableCell dir="ltr">#{job.orderId}</TableCell>
+                          <TableCell>{job.stationName ?? "—"}</TableCell>
                           <TableCell dir="ltr">{job.printerId ?? "—"}</TableCell>
                           <TableCell>
                             <Badge variant={statusBadgeVariant(job.operationalStatus)}>
@@ -449,6 +504,11 @@ export function PrintingOperationsPanel({
             <div className="mt-6 space-y-4 text-sm">
               <div className="grid gap-2">
                 <p dir="ltr">Order #{jobDetailQuery.data.job.orderId}</p>
+                {jobDetailQuery.data.job.stationName ? (
+                  <p>
+                    {isAr ? "المحطة" : "Station"}: {jobDetailQuery.data.job.stationName}
+                  </p>
+                ) : null}
                 <p dir="ltr">Printer #{jobDetailQuery.data.job.printerId ?? "—"}</p>
                 <Badge variant={statusBadgeVariant(jobDetailQuery.data.job.operationalStatus)}>
                   {jobDetailQuery.data.job.operationalStatus}

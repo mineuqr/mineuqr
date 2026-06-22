@@ -15,6 +15,10 @@ import {
   listPrintJobsForRestaurant,
 } from "./printJobRepository";
 import { listPrintersForRestaurant } from "./printerRepository";
+import {
+  countPrintJobsByStationForRestaurant,
+  listPrintStationsForRestaurant,
+} from "./stationRepository";
 import { getJobProtocolStatus } from "./protocolStatusQueries";
 import { getPrinterResolution } from "./resolutionQueries";
 import { getRoutingDecision } from "./routingQueries";
@@ -30,6 +34,7 @@ import type {
   PrinterDetailView,
   PrinterOverviewItem,
   PrinterResolutionStatus,
+  StationOverviewItem,
 } from "./printOperationsTypes";
 
 function mapOperationalStatus(input: {
@@ -111,14 +116,18 @@ function resolvePrinterResolutionStatus(dbPrinterId: number): PrinterResolutionS
   };
 }
 
-function buildPrintJobQueueItem(job: {
-  id: number;
-  orderId: number;
-  printerId: number | null;
-  status: string;
-  createdAt: string;
-  updatedAt: string;
-}): PrintJobQueueItem {
+function buildPrintJobQueueItem(
+  job: {
+    id: number;
+    orderId: number;
+    printerId: number | null;
+    stationId?: number | null;
+    status: string;
+    createdAt: string;
+    updatedAt: string;
+  },
+  stationNameById: Map<number, string>
+): PrintJobQueueItem {
   const assignment = getPrintJobAssignment(job.id);
   const outcome = getStoredJobExecutionOutcome(job.id);
   const delivery =
@@ -126,10 +135,14 @@ function buildPrintJobQueueItem(job: {
       ? getJobDeliveryState(assignment.agentId, job.id)
       : undefined;
 
+  const stationId = job.stationId ?? null;
+
   return {
     id: job.id,
     orderId: job.orderId,
     printerId: job.printerId,
+    stationId,
+    stationName: stationId != null ? stationNameById.get(stationId) ?? null : null,
     dbStatus: job.status,
     operationalStatus: mapOperationalStatus({
       dbStatus: job.status,
@@ -177,6 +190,30 @@ export async function listPrinterOverview(
   return Promise.all(printers.map((printer) => buildPrinterOverviewItem(printer)));
 }
 
+async function loadStationNameMap(restaurantId: number): Promise<Map<number, string>> {
+  const stations = await listPrintStationsForRestaurant(restaurantId);
+  return new Map(stations.map((station) => [station.id, station.name]));
+}
+
+export async function listStationOverview(
+  restaurantId: number
+): Promise<StationOverviewItem[]> {
+  const [stations, printers, jobCounts] = await Promise.all([
+    listPrintStationsForRestaurant(restaurantId),
+    listPrintersForRestaurant(restaurantId),
+    countPrintJobsByStationForRestaurant(restaurantId),
+  ]);
+  const printerNameById = new Map(printers.map((printer) => [printer.id, printer.name]));
+
+  return stations.map((station) => ({
+    id: station.id,
+    name: station.name,
+    printerId: station.printerId,
+    printerName: printerNameById.get(station.printerId) ?? null,
+    jobCount: jobCounts.get(station.id) ?? 0,
+  }));
+}
+
 export async function getPrinterDetail(
   restaurantId: number,
   printerId: number
@@ -188,6 +225,7 @@ export async function getPrinterDetail(
   }
 
   const overview = await buildPrinterOverviewItem(printer);
+  const stationNameById = await loadStationNameMap(restaurantId);
   const { jobs } = await listPrintJobsForRestaurant({
     restaurantId,
     printerId,
@@ -199,7 +237,7 @@ export async function getPrinterDetail(
     ...overview,
     paperWidthMm: printer.paperWidthMm,
     resolution: resolvePrinterResolutionStatus(printer.id),
-    recentJobs: jobs.map((job) => buildPrintJobQueueItem(job)),
+    recentJobs: jobs.map((job) => buildPrintJobQueueItem(job, stationNameById)),
   };
 }
 
@@ -207,14 +245,17 @@ export async function listPrintJobQueue(
   restaurantId: number,
   input: { limit: number; offset: number }
 ): Promise<PaginatedPrintJobs> {
-  const result = await listPrintJobsForRestaurant({
-    restaurantId,
-    limit: input.limit,
-    offset: input.offset,
-  });
+  const [result, stationNameById] = await Promise.all([
+    listPrintJobsForRestaurant({
+      restaurantId,
+      limit: input.limit,
+      offset: input.offset,
+    }),
+    loadStationNameMap(restaurantId),
+  ]);
 
   return {
-    jobs: result.jobs.map((job) => buildPrintJobQueueItem(job)),
+    jobs: result.jobs.map((job) => buildPrintJobQueueItem(job, stationNameById)),
     total: result.total,
     limit: input.limit,
     offset: input.offset,
@@ -236,7 +277,8 @@ export async function getPrintJobDetail(
   const delivery =
     assignment != null ? getJobDeliveryState(assignment.agentId, job.id) : undefined;
   const protocol = getJobProtocolStatus(job.id);
-  const queueItem = buildPrintJobQueueItem(job);
+  const stationNameById = await loadStationNameMap(restaurantId);
+  const queueItem = buildPrintJobQueueItem(job, stationNameById);
 
   return {
     ...queueItem,

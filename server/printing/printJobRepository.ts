@@ -191,6 +191,9 @@ export async function insertPrintJob(data: InsertPrintJobData): Promise<number> 
   if (data.printerId != null) {
     values.printerId = data.printerId;
   }
+  if (data.stationId !== undefined) {
+    values.stationId = data.stationId;
+  }
 
   const result = await db.insert(printJobs).values(values);
   const insertId = Number(result[0].insertId);

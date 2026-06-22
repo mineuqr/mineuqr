@@ -1,10 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PRINT_JOB_STATUS } from "../../shared/printing/types";
-import { PRINT_TARGET_SELECTION_REASONS } from "./printTargetSelectionTypes";
+import { STATION_ROUTING_REASONS } from "./stationRoutingTypes";
 
 const selectionMocks = vi.hoisted(() => ({
   isAutoPrintEnabledForRestaurant: vi.fn(),
-  resolvePrintTarget: vi.fn(),
+}));
+
+const routingMocks = vi.hoisted(() => ({
+  resolveStationPrintTargets: vi.fn(),
 }));
 
 const serviceMocks = vi.hoisted(() => ({
@@ -19,7 +22,11 @@ const opsMocks = vi.hoisted(() => ({
 vi.mock("./printTargetSelectionService", () => ({
   isAutoPrintEnabledForRestaurant: (...args: unknown[]) =>
     selectionMocks.isAutoPrintEnabledForRestaurant(...args),
-  resolvePrintTarget: (...args: unknown[]) => selectionMocks.resolvePrintTarget(...args),
+}));
+
+vi.mock("./stationRoutingService", () => ({
+  resolveStationPrintTargets: (...args: unknown[]) =>
+    routingMocks.resolveStationPrintTargets(...args),
 }));
 
 vi.mock("./printJobService", () => ({
@@ -38,13 +45,22 @@ vi.mock("../_core/opsLog", () => ({
 import { OPS_EVENT } from "../_core/opsTaxonomy";
 import { enqueueAutoPrintJobForOrder } from "./autoPrintOnOrderCreate";
 
-describe("autoPrintOnOrderCreate THERMAL-PRINTING-11A", () => {
+describe("autoPrintOnOrderCreate THERMAL-PRINTING-11A/12A", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     selectionMocks.isAutoPrintEnabledForRestaurant.mockResolvedValue(true);
-    selectionMocks.resolvePrintTarget.mockResolvedValue({
-      dbPrinterId: 1,
-      reason: PRINT_TARGET_SELECTION_REASONS.SINGLE_PRINTER,
+    routingMocks.resolveStationPrintTargets.mockResolvedValue({
+      targets: [
+        {
+          stationId: null,
+          stationName: null,
+          printerId: 1,
+          orderItemIds: [101],
+          idempotencyKey: "order:42:submitted",
+          selectionReason: STATION_ROUTING_REASONS.LEGACY_SINGLE_TARGET,
+        },
+      ],
+      skipped: [],
     });
     serviceMocks.createPrintJob.mockResolvedValue({
       created: true,
@@ -62,20 +78,23 @@ describe("autoPrintOnOrderCreate THERMAL-PRINTING-11A", () => {
     });
   });
 
-  it("resolves printer target before creating the auto print job", async () => {
+  it("resolves station targets before creating the auto print job", async () => {
     await enqueueAutoPrintJobForOrder({
       orderId: 42,
       restaurantId: 7,
       procedure: "order.create",
     });
 
-    expect(selectionMocks.resolvePrintTarget).toHaveBeenCalledWith({
+    expect(routingMocks.resolveStationPrintTargets).toHaveBeenCalledWith({
       restaurantId: 7,
+      orderId: 42,
     });
     expect(serviceMocks.createPrintJob).toHaveBeenCalledWith({
       orderId: 42,
       trigger: "auto",
       printerId: 1,
+      stationId: null,
+      idempotencyKey: "order:42:submitted",
     });
     expect(serviceMocks.dispatchAssignedPrintJob).toHaveBeenCalledWith({ jobId: 900 });
   });
@@ -89,7 +108,7 @@ describe("autoPrintOnOrderCreate THERMAL-PRINTING-11A", () => {
       procedure: "order.create",
     });
 
-    expect(selectionMocks.resolvePrintTarget).not.toHaveBeenCalled();
+    expect(routingMocks.resolveStationPrintTargets).not.toHaveBeenCalled();
     expect(serviceMocks.createPrintJob).not.toHaveBeenCalled();
     expect(serviceMocks.dispatchAssignedPrintJob).not.toHaveBeenCalled();
     expect(opsMocks.opsLog).not.toHaveBeenCalled();
@@ -109,7 +128,7 @@ describe("autoPrintOnOrderCreate THERMAL-PRINTING-11A", () => {
           orderId: 42,
           printJobId: 900,
           printerId: 1,
-          selectionReason: PRINT_TARGET_SELECTION_REASONS.SINGLE_PRINTER,
+          selectionReason: STATION_ROUTING_REASONS.LEGACY_SINGLE_TARGET,
         }),
       })
     );
@@ -161,8 +180,8 @@ describe("autoPrintOnOrderCreate THERMAL-PRINTING-11A", () => {
     );
   });
 
-  it("logs print_job_creation_failed when target selection fails", async () => {
-    selectionMocks.resolvePrintTarget.mockRejectedValue(
+  it("logs print_job_creation_failed when station routing fails", async () => {
+    routingMocks.resolveStationPrintTargets.mockRejectedValue(
       new Error("No printers configured for this restaurant")
     );
 
@@ -182,5 +201,44 @@ describe("autoPrintOnOrderCreate THERMAL-PRINTING-11A", () => {
         }),
       })
     );
+  });
+
+  it("creates and dispatches one job per station target", async () => {
+    routingMocks.resolveStationPrintTargets.mockResolvedValue({
+      targets: [
+        {
+          stationId: 1,
+          stationName: "Kitchen",
+          printerId: 10,
+          orderItemIds: [101],
+          idempotencyKey: "order:42:submitted:station:1",
+          selectionReason: STATION_ROUTING_REASONS.STATION_PRINTER,
+        },
+        {
+          stationId: 2,
+          stationName: "Coffee",
+          printerId: 20,
+          orderItemIds: [102],
+          idempotencyKey: "order:42:submitted:station:2",
+          selectionReason: STATION_ROUTING_REASONS.STATION_PRINTER,
+        },
+      ],
+      skipped: [],
+    });
+    serviceMocks.createPrintJob
+      .mockResolvedValueOnce({
+        created: true,
+        job: { id: 901, printerId: 10, status: PRINT_JOB_STATUS.QUEUED },
+      })
+      .mockResolvedValueOnce({
+        created: true,
+        job: { id: 902, printerId: 20, status: PRINT_JOB_STATUS.QUEUED },
+      });
+
+    await enqueueAutoPrintJobForOrder({ orderId: 42, restaurantId: 7 });
+
+    expect(serviceMocks.createPrintJob).toHaveBeenCalledTimes(2);
+    expect(serviceMocks.dispatchAssignedPrintJob).toHaveBeenCalledWith({ jobId: 901 });
+    expect(serviceMocks.dispatchAssignedPrintJob).toHaveBeenCalledWith({ jobId: 902 });
   });
 });

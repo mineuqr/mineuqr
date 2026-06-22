@@ -9,6 +9,7 @@ import { getPrintJobAssignment } from "./assignmentService";
 import { resolveRuntimeExecutionPlan } from "./executionIntegrationFlow";
 import { findPrintJobById } from "./printJobRepository";
 import { renderKitchenTicket } from "./ticketRenderer";
+import { resolveStationItemFilterFromJob } from "./stationRoutingService";
 import { buildTransportDeliveryContext } from "./transportDeliveryContextBuilder";
 
 export class JobRetrievalError extends Error {
@@ -85,7 +86,18 @@ export async function fetchAuthoritativePrintJob(
     return { found: false, error: "Print job not found" };
   }
 
-  const ticket = await renderKitchenTicket({ orderId: job.orderId });
+  const stationFilter = resolveStationItemFilterFromJob({
+    orderId: job.orderId,
+    stationId: job.stationId,
+    idempotencyKey: job.idempotencyKey,
+  });
+
+  const ticket = await renderKitchenTicket({
+    orderId: job.orderId,
+    restaurantId: job.restaurantId,
+    stationId: stationFilter.stationId,
+    stationFilterMode: stationFilter.filterMode,
+  });
   const resolved = resolveRuntimeExecutionPlan({
     agentId: normalizedAgentId,
     dbPrinterId: assignment.printerId,

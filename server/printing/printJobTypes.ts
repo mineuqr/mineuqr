@@ -59,6 +59,10 @@ export type CreatePrintJobInput = {
   reprintId?: string;
   /** Required when trigger is `auto`. Optional override for `reprint`. */
   printerId?: number;
+  /** THERMAL-PRINTING-12A — station scope for multi-target auto jobs. */
+  stationId?: number | null;
+  /** Optional explicit idempotency key (auto jobs with station routing). */
+  idempotencyKey?: string;
 };
 
 export type CreatePrintJobResult = {
@@ -71,6 +75,7 @@ export type InsertPrintJobData = {
   orderId: number;
   idempotencyKey: string;
   printerId?: number;
+  stationId?: number | null;
 };
 
 export const PRINT_JOB_CLAIM_LEASE_MS = 5 * 60 * 1000;

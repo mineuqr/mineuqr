@@ -12,6 +12,8 @@ export const categories = mysqlTable("categories", {
 	iconName: varchar({ length: 64 }),
 	sortOrder: int().default(0).notNull(),
 	isActive: boolean().default(true).notNull(),
+	/** THERMAL-PRINTING-12A — optional print station for category routing */
+	stationId: int(),
 	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
 	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
 });
@@ -469,6 +471,24 @@ export const printers = mysqlTable(
 	(table) => [index("printers_restaurant_id").on(table.restaurantId)]
 );
 
+// ─── Print Stations (THERMAL-PRINTING-12A) ─────────────────────────
+export const printStations = mysqlTable(
+	"print_stations",
+	{
+		id: int().autoincrement().notNull(),
+		restaurantId: int().notNull(),
+		name: varchar({ length: 128 }).notNull(),
+		printerId: int().notNull(),
+		sortOrder: int().default(0).notNull(),
+		createdAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+		updatedAt: timestamp({ mode: "string" }).defaultNow().onUpdateNow().notNull(),
+	},
+	(table) => [
+		index("print_stations_restaurant_id").on(table.restaurantId),
+		index("print_stations_printer_id").on(table.printerId),
+	]
+);
+
 // ─── Restaurant Print Settings (THERMAL-PRINTING-3B.1) ────────────
 export const restaurantPrintSettings = mysqlTable("restaurant_print_settings", {
 	restaurantId: int().notNull().primaryKey(),
@@ -488,6 +508,8 @@ export const printJobs = mysqlTable(
 		restaurantId: int().notNull(),
 		orderId: int().notNull(),
 		printerId: int(),
+		/** THERMAL-PRINTING-12A — station that owns this job's item subset */
+		stationId: int(),
 		status: mysqlEnum([
 			"queued",
 			"claimed",
@@ -510,6 +532,7 @@ export const printJobs = mysqlTable(
 		index("print_jobs_restaurant_id").on(table.restaurantId),
 		index("print_jobs_order_id").on(table.orderId),
 		index("print_jobs_printer_id").on(table.printerId),
+		index("print_jobs_station_id").on(table.stationId),
 		index("print_jobs_status").on(table.status),
 		uniqueIndex("print_jobs_idempotency_key_unique").on(table.idempotencyKey),
 		index("print_jobs_restaurant_id_status_created_at").on(
@@ -535,6 +558,9 @@ export const printJobAttempts = mysqlTable(
 
 export type InsertPrinter = typeof printers.$inferInsert;
 export type SelectPrinter = typeof printers.$inferSelect;
+
+export type InsertPrintStation = typeof printStations.$inferInsert;
+export type SelectPrintStation = typeof printStations.$inferSelect;
 
 export type InsertRestaurantPrintSettings = typeof restaurantPrintSettings.$inferInsert;
 export type SelectRestaurantPrintSettings = typeof restaurantPrintSettings.$inferSelect;

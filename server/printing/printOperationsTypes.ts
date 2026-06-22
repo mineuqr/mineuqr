@@ -46,6 +46,8 @@ export type PrintJobQueueItem = {
   id: number;
   orderId: number;
   printerId: number | null;
+  stationId: number | null;
+  stationName: string | null;
   dbStatus: string;
   operationalStatus: PrintJobOperationalStatus;
   createdAt: string;
@@ -98,4 +100,12 @@ export type PaginatedPrintJobs = {
   total: number;
   limit: number;
   offset: number;
+};
+
+export type StationOverviewItem = {
+  id: number;
+  name: string;
+  printerId: number;
+  printerName: string | null;
+  jobCount: number;
 };

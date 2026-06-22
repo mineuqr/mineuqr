@@ -77,9 +77,22 @@ export const PRINT_JOB_TRIGGER = {
 export type PrintJobTrigger =
   (typeof PRINT_JOB_TRIGGER)[keyof typeof PRINT_JOB_TRIGGER];
 
-/** Auto print on order submission — one job per order. */
+/** Auto print on order submission — one job per order (legacy single-target). */
 export function autoPrintJobIdempotencyKey(orderId: number): string {
   return `order:${orderId}:submitted`;
+}
+
+/** Auto print per station — one job per order per station (THERMAL-PRINTING-12A). */
+export function autoPrintStationJobIdempotencyKey(
+  orderId: number,
+  stationId: number
+): string {
+  return `order:${orderId}:submitted:station:${stationId}`;
+}
+
+/** Auto print for unmapped categories routed to the default printer. */
+export function autoPrintDefaultStationJobIdempotencyKey(orderId: number): string {
+  return `order:${orderId}:submitted:default`;
 }
 
 /** Staff reprint — each UUID creates a distinct job. */

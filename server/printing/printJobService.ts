@@ -56,6 +56,9 @@ function assertValidCreatePrintJobInput(input: CreatePrintJobInput): void {
 }
 
 function resolveIdempotencyKey(input: CreatePrintJobInput): string {
+  if (input.idempotencyKey) {
+    return input.idempotencyKey;
+  }
   if (input.trigger === PRINT_JOB_TRIGGER.REPRINT) {
     return reprintPrintJobIdempotencyKey(input.orderId, input.reprintId!.trim());
   }
@@ -85,6 +88,7 @@ export async function createPrintJob(
       orderId: number;
       idempotencyKey: string;
       printerId?: number;
+      stationId?: number | null;
     } = {
       restaurantId: order.restaurantId,
       orderId: order.id,
@@ -93,6 +97,9 @@ export async function createPrintJob(
 
     if (input.printerId != null) {
       insertData.printerId = input.printerId;
+    }
+    if (input.stationId !== undefined) {
+      insertData.stationId = input.stationId;
     }
 
     const jobId = await insertPrintJob(insertData);

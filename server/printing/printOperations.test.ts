@@ -15,6 +15,11 @@ const repoMocks = vi.hoisted(() => ({
   findPrintJobById: vi.fn(),
 }));
 
+vi.mock("./stationRepository", () => ({
+  listPrintStationsForRestaurant: vi.fn().mockResolvedValue([]),
+  countPrintJobsByStationForRestaurant: vi.fn().mockResolvedValue(new Map()),
+}));
+
 vi.mock("./printerRepository", () => ({
   listPrintersForRestaurant: (...args: unknown[]) => repoMocks.listPrintersForRestaurant(...args),
   findPrinterById: vi.fn(),

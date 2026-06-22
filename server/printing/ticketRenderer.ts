@@ -4,6 +4,10 @@
 import type { SelectOrderItem } from "../../drizzle/schema";
 import { getOrderById, getOrderItemsByOrderId } from "../db";
 import {
+  filterOrderItemsForStationJob,
+  type StationItemFilterMode,
+} from "./stationRoutingService";
+import {
   KITCHEN_TICKET_TYPE,
   KitchenTicketEmptyItemsError,
   KitchenTicketOrderNotFoundError,
@@ -60,7 +64,22 @@ export async function renderKitchenTicket(
     throw new KitchenTicketEmptyItemsError();
   }
 
-  const items = sortItemsDeterministically(orderItems).map(mapOrderItem);
+  const filterMode: StationItemFilterMode = input.stationFilterMode ?? "all";
+  const filteredItems =
+    filterMode === "all" || input.restaurantId == null
+      ? orderItems
+      : await filterOrderItemsForStationJob({
+          restaurantId: input.restaurantId,
+          orderItems,
+          stationId: input.stationId ?? null,
+          filterMode,
+        });
+
+  if (filteredItems.length === 0) {
+    throw new KitchenTicketEmptyItemsError("No items for this station job");
+  }
+
+  const items = sortItemsDeterministically(filteredItems).map(mapOrderItem);
 
   return {
     ticketType: KITCHEN_TICKET_TYPE.KITCHEN_ORDER,

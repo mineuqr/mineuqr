@@ -43,4 +43,7 @@ export class KitchenTicketEmptyItemsError extends Error {
 
 export type RenderKitchenTicketInput = {
   orderId: number;
+  restaurantId?: number;
+  stationId?: number | null;
+  stationFilterMode?: "all" | "station" | "default";
 };
