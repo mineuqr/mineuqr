@@ -18,6 +18,7 @@ export class RawEscPosExecutor implements ExecutionExecutor {
       const artifact = buildEscPosPayloadFromAgentTicket({
         ticket: input.job.ticket,
         paperWidthMm: input.job.paperWidthMm,
+        arabicRenderingMode: input.job.arabicRenderingMode,
       });
 
       return {

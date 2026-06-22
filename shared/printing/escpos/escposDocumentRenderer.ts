@@ -7,6 +7,7 @@ import {
   ESC_POS_BYTES,
   ESC_POS_CUT_PARTIAL,
 } from "./escposConstants";
+import { encodeMonochromeBitmapToGsV0 } from "./escposRasterEncoder";
 import type { EscPosAlign, EscPosCommand, EscPosDocument } from "./escposTypes";
 
 const textEncoder = new TextEncoder();
@@ -87,6 +88,12 @@ function encodeCommand(builder: EscPosByteBuilder, command: EscPosCommand): void
     case "cut":
       builder.write(ESC_POS_BYTES.GS, ESC_POS_BYTES.CUT, ESC_POS_CUT_PARTIAL);
       return;
+    case "raster": {
+      const rasterBytes = encodeMonochromeBitmapToGsV0(command.bitmap);
+      builder.write(...Array.from(rasterBytes));
+      builder.writeLf();
+      return;
+    }
     default:
       throw new EscPosEncodingError(
         `Unsupported ESC/POS command type: ${(command as { type?: string }).type ?? "unknown"}`

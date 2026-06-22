@@ -10,5 +10,6 @@ export function renderEscPosKitchenTicket(ticket: KitchenTicket): EscPosDocument
   const receipt = receiptFromKitchenTicket(ticket);
   return renderReceiptToEscPosDocument(receipt, {
     layoutProfileId: "legacy-v1",
+    arabicRenderingMode: "disabled",
   });
 }

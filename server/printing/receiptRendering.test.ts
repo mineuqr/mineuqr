@@ -92,7 +92,10 @@ describe("receipt rendering THERMAL-PRINTING-13B", () => {
       restaurantId: 7,
       items: [{ itemName: "برجر", quantity: 2, notes: null }],
     });
-    const document = renderReceiptToEscPosDocument(receipt, { layoutProfileId: "legacy-v1" });
+    const document = renderReceiptToEscPosDocument(receipt, {
+      layoutProfileId: "legacy-v1",
+      arabicRenderingMode: "disabled",
+    });
     const encoded = encodeEscPosDocument(document);
     const text = new TextDecoder().decode(encoded);
 

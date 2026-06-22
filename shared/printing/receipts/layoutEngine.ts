@@ -156,6 +156,48 @@ function appendOrderNotes(
   });
 }
 
+function appendTotals(
+  blocks: ReceiptRenderBlock[],
+  receipt: Receipt,
+  labels: ReturnType<typeof getReceiptLabels>,
+  profile: ReceiptLayoutProfile,
+  textDirection: TextDirection
+): void {
+  const totals = receipt.totals;
+  if (!totals?.subtotal && !totals?.total) {
+    return;
+  }
+
+  blocks.push({
+    kind: "separator",
+    line: buildSeparatorLine(profile),
+  });
+
+  const currencySuffix = totals.currency ? ` ${totals.currency}` : "";
+
+  if (totals.subtotal) {
+    blocks.push({
+      kind: "line",
+      line: {
+        text: `${labels.subtotal}: ${totals.subtotal}${currencySuffix}`,
+        alignment: "right",
+        textDirection,
+      },
+    });
+  }
+
+  if (totals.total) {
+    blocks.push({
+      kind: "line",
+      line: {
+        text: `${labels.total}: ${totals.total}${currencySuffix}`,
+        alignment: "right",
+        textDirection,
+      },
+    });
+  }
+}
+
 export function buildReceiptRenderPlan(
   receipt: Receipt,
   profile: ReceiptLayoutProfile
@@ -182,6 +224,7 @@ export function buildReceiptRenderPlan(
 
   appendItemBlocks(blocks, receipt, labels, textDirection);
   appendOrderNotes(blocks, receipt, labels, profile, textDirection);
+  appendTotals(blocks, receipt, labels, profile, textDirection);
 
   blocks.push({
     kind: "separator",

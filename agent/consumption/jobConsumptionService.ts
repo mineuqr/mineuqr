@@ -180,6 +180,7 @@ export class JobConsumptionService {
           orderId: job.orderId,
           ticket: job.ticket,
           paperWidthMm: job.transportDeliveryContext?.printerProfile.paperWidth,
+          arabicRenderingMode: job.transportDeliveryContext?.printerProfile.arabicRenderingMode,
         },
       });
     }

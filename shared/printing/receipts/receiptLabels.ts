@@ -14,6 +14,8 @@ export type ReceiptLabels = {
   createdTime: string;
   orderNotes: string;
   itemNotePrefix: string;
+  subtotal: string;
+  total: string;
 };
 
 const EN_LABELS: ReceiptLabels = {
@@ -24,6 +26,8 @@ const EN_LABELS: ReceiptLabels = {
   createdTime: "Created Time",
   orderNotes: "Order Notes:",
   itemNotePrefix: "*",
+  subtotal: "Subtotal",
+  total: "Total",
 };
 
 const AR_LABELS: ReceiptLabels = {
@@ -34,11 +38,15 @@ const AR_LABELS: ReceiptLabels = {
   createdTime: "وقت الإنشاء",
   orderNotes: "ملاحظات الطلب:",
   itemNotePrefix: "*",
+  subtotal: "المجموع الفرعي",
+  total: "الإجمالي",
 };
 
 const BILINGUAL_LABELS: ReceiptLabels = {
   ...EN_LABELS,
   kitchenOrderTitle: "Kitchen Order / طلب مطبخ",
+  subtotal: "Subtotal / المجموع الفرعي",
+  total: "Total / الإجمالي",
 };
 
 export function getReceiptLabels(locale: PrintTicketLocale): ReceiptLabels {

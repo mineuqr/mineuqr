@@ -2,6 +2,7 @@
  * THERMAL-PRINTING-10A / 10B — execution executor contracts (artifact generation, no device I/O).
  */
 import type { AgentJobTicketPayload } from "./agentJobMessages";
+import type { ArabicRenderingMode } from "./arabic/arabicRenderingMode";
 import type { ExecutionMethod } from "./executionCapabilities";
 import type { RuntimeExecutionPlanSummary } from "./executionIntegration";
 import type { PaperWidthMm } from "./types";
@@ -63,6 +64,8 @@ export type ExecutionExecutorJobPayload = {
   ticket: AgentJobTicketPayload;
   /** From agent-reported printer profile (`paperWidth`); omitted when unknown. */
   paperWidthMm?: PaperWidthMm;
+  /** From agent-reported printer profile; defaults to `auto` when omitted. */
+  arabicRenderingMode?: ArabicRenderingMode;
 };
 
 export type ExecutionExecutorInput = {
