@@ -179,6 +179,7 @@ export class JobConsumptionService {
           printerId: job.printerId,
           orderId: job.orderId,
           ticket: job.ticket,
+          paperWidthMm: job.transportDeliveryContext?.printerProfile.paperWidth,
         },
       });
     }

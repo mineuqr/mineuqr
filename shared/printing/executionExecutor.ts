@@ -4,6 +4,7 @@
 import type { AgentJobTicketPayload } from "./agentJobMessages";
 import type { ExecutionMethod } from "./executionCapabilities";
 import type { RuntimeExecutionPlanSummary } from "./executionIntegration";
+import type { PaperWidthMm } from "./types";
 
 export type ExecutionExecutorMethod = ExecutionMethod;
 
@@ -60,6 +61,8 @@ export type ExecutionExecutorJobPayload = {
   printerId: number;
   orderId: number;
   ticket: AgentJobTicketPayload;
+  /** From agent-reported printer profile (`paperWidth`); omitted when unknown. */
+  paperWidthMm?: PaperWidthMm;
 };
 
 export type ExecutionExecutorInput = {

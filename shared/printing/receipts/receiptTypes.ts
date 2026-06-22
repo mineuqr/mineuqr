@@ -53,7 +53,8 @@ export type ReceiptFooter = {
 export type Receipt = {
   kind: ReceiptKind;
   locale: ReceiptLocale;
-  paperWidthMm: PaperWidthMm;
+  /** Resolved from printer profile; omitted when unknown (legacy layout fallback). */
+  paperWidthMm?: PaperWidthMm;
   layoutDirection: LayoutDirection;
   defaultTextDirection: TextDirection;
   restaurantId: number;

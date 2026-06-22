@@ -1,7 +1,7 @@
 /**
  * THERMAL-PRINTING-13B — receipt adapters (domain → canonical Receipt).
  */
-import { PAPER_WIDTH_MM, PRINT_TICKET_LOCALE } from "../types";
+import { PRINT_TICKET_LOCALE } from "../types";
 import type { AgentJobTicketPayload } from "../agentJobMessages";
 import { resolveReceiptDirectionProfile } from "./receiptLocale";
 import {
@@ -51,7 +51,7 @@ export function receiptFromKitchenTicket(
   return {
     kind: RECEIPT_KIND.KITCHEN_ORDER,
     locale,
-    paperWidthMm: options.paperWidthMm ?? PAPER_WIDTH_MM.W80,
+    paperWidthMm: options.paperWidthMm,
     layoutDirection: directions.layoutDirection,
     defaultTextDirection: directions.defaultTextDirection,
     restaurantId: ticket.restaurantId,
@@ -80,7 +80,7 @@ export function receiptFromAgentJobTicket(
   return {
     kind: RECEIPT_KIND.KITCHEN_ORDER,
     locale,
-    paperWidthMm: options.paperWidthMm ?? PAPER_WIDTH_MM.W80,
+    paperWidthMm: options.paperWidthMm,
     layoutDirection: directions.layoutDirection,
     defaultTextDirection: directions.defaultTextDirection,
     restaurantId: ticket.restaurantId,

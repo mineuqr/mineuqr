@@ -52,24 +52,27 @@ describe("receipt rendering THERMAL-PRINTING-13B", () => {
   });
 
   it("builds a canonical receipt from kitchen ticket input", () => {
-    const receipt = receiptFromKitchenTicket({
-      ticketType: "kitchen-order",
-      restaurantId: 7,
-      orderId: 1001,
-      orderNumber: "ORD-01001",
-      tableNumber: "12",
-      sessionId: 55,
-      createdAt: new Date("2026-06-20T12:30:00.000Z"),
-      notes: "No onions",
-      items: [{ itemName: "برجر", quantity: 2, notes: null }],
-    });
+    const receipt = receiptFromKitchenTicket(
+      {
+        ticketType: "kitchen-order",
+        restaurantId: 7,
+        orderId: 1001,
+        orderNumber: "ORD-01001",
+        tableNumber: "12",
+        sessionId: 55,
+        createdAt: new Date("2026-06-20T12:30:00.000Z"),
+        notes: "No onions",
+        items: [{ itemName: "برجر", quantity: 2, notes: null }],
+      },
+      { paperWidthMm: PAPER_WIDTH_MM.W80 }
+    );
 
     expect(receipt.metadata.orderNumber).toBe("ORD-01001");
     expect(receipt.items[0]?.name).toBe("برجر");
     expect(receipt.paperWidthMm).toBe(PAPER_WIDTH_MM.W80);
   });
 
-  it("preserves production agent-ticket ESC/POS bytes via legacy profile", () => {
+  it("preserves legacy-v1 ESC/POS bytes when paper width is unknown", () => {
     const createdAt = new Date("2026-06-18T10:00:00.000Z");
     const unified = renderReceiptToEscPosPayload(
       receiptFromAgentJobTicket(sampleAgentTicket, { createdAt }),
@@ -97,7 +100,9 @@ describe("receipt rendering THERMAL-PRINTING-13B", () => {
   });
 
   it("uses width-aware separators when w80 profile is selected", () => {
-    const receipt = receiptFromAgentJobTicket(sampleAgentTicket);
+    const receipt = receiptFromAgentJobTicket(sampleAgentTicket, {
+      paperWidthMm: PAPER_WIDTH_MM.W80,
+    });
     const plan = buildReceiptRenderPlan(receipt, RECEIPT_LAYOUT_PROFILE_W80);
     const separator = plan.blocks.find((block) => block.kind === "separator");
 
