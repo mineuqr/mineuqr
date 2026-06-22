@@ -1,7 +1,7 @@
 /**
  * THERMAL-PRINTING-3B.2 / 3C.1 — print_jobs persistence boundary.
  */
-import { and, asc, eq, isNull, isNotNull, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, isNotNull, or, sql } from "drizzle-orm";
 import {
   printJobs,
   type InsertPrintJob,
@@ -100,6 +100,81 @@ export async function findPrintJobById(
 ): Promise<SelectPrintJob | null> {
   const db = await resolveDb(client);
   const [row] = await db.select().from(printJobs).where(eq(printJobs.id, id)).limit(1);
+  return row ?? null;
+}
+
+export type ListPrintJobsForRestaurantInput = {
+  restaurantId: number;
+  limit: number;
+  offset: number;
+  printerId?: number;
+};
+
+export type ListPrintJobsForRestaurantResult = {
+  jobs: SelectPrintJob[];
+  total: number;
+};
+
+export async function listPrintJobsForRestaurant(
+  input: ListPrintJobsForRestaurantInput,
+  client?: PrintJobDbClient
+): Promise<ListPrintJobsForRestaurantResult> {
+  const db = await resolveDb(client);
+  const conditions = [eq(printJobs.restaurantId, input.restaurantId)];
+  if (input.printerId != null) {
+    conditions.push(eq(printJobs.printerId, input.printerId));
+  }
+  const where = and(...conditions);
+
+  const [countRow] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(printJobs)
+    .where(where);
+  const total = Number(countRow?.count ?? 0);
+
+  const jobs = await db
+    .select()
+    .from(printJobs)
+    .where(where)
+    .orderBy(desc(printJobs.createdAt))
+    .limit(input.limit)
+    .offset(input.offset);
+
+  return { jobs, total };
+}
+
+export async function countPrintJobsByStatusForRestaurant(
+  restaurantId: number,
+  client?: PrintJobDbClient
+): Promise<Record<string, number>> {
+  const db = await resolveDb(client);
+  const rows = await db
+    .select({
+      status: printJobs.status,
+      count: sql<number>`count(*)`,
+    })
+    .from(printJobs)
+    .where(eq(printJobs.restaurantId, restaurantId))
+    .groupBy(printJobs.status);
+
+  const counts: Record<string, number> = {};
+  for (const row of rows) {
+    counts[row.status] = Number(row.count);
+  }
+  return counts;
+}
+
+export async function findLatestPrintJobForPrinter(
+  printerId: number,
+  client?: PrintJobDbClient
+): Promise<SelectPrintJob | null> {
+  const db = await resolveDb(client);
+  const [row] = await db
+    .select()
+    .from(printJobs)
+    .where(eq(printJobs.printerId, printerId))
+    .orderBy(desc(printJobs.updatedAt))
+    .limit(1);
   return row ?? null;
 }
 

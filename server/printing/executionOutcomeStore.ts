@@ -52,6 +52,12 @@ export function getStoredJobExecutionOutcome(
   return executionOutcomes.get(jobId);
 }
 
+export function listStoredJobExecutionOutcomes(): JobExecutionOutcomeRecord[] {
+  return Array.from(executionOutcomes.values()).sort((left, right) =>
+    right.timestamp.localeCompare(left.timestamp)
+  );
+}
+
 export function clearExecutionOutcomeStore(): void {
   executionOutcomes.clear();
 }

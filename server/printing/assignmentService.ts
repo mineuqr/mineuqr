@@ -56,6 +56,14 @@ export function getPrintJobAssignment(jobId: number): PrintJobAssignment | undef
   return assignments.get(jobId);
 }
 
+export function listPrintJobAssignmentsForRestaurant(
+  restaurantId: number
+): PrintJobAssignment[] {
+  return Array.from(assignments.values())
+    .filter((assignment) => assignment.restaurantId === restaurantId)
+    .sort((left, right) => right.assignedAt.localeCompare(left.assignedAt));
+}
+
 export function clearPrintJobAssignments(): void {
   assignments.clear();
 }
