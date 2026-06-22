@@ -211,10 +211,24 @@ export class InMemoryEndpointRegistry implements EndpointRegistry {
   }
 
   listEndpoints(filter?: ListEndpointsFilter): EndpointRecord[] {
+    const connectivityFilter = filter?.connectivityState;
+    const storageFilter =
+      connectivityFilter !== undefined
+        ? {
+            restaurantId: filter?.restaurantId,
+            endpointType: filter?.endpointType,
+          }
+        : filter;
+
     return Array.from(this.endpoints.values())
-      .filter((record) => matchesFilter(record, filter))
+      .filter((record) => matchesFilter(record, storageFilter))
       .sort((left, right) => left.endpointId.localeCompare(right.endpointId))
-      .map((record) => hydrateStoredEndpointRecord(toPublicRecord(record)));
+      .map((record) => hydrateStoredEndpointRecord(toPublicRecord(record)))
+      .filter(
+        (record) =>
+          connectivityFilter === undefined ||
+          record.connectivityState === connectivityFilter
+      );
   }
 
   clear(): void {
