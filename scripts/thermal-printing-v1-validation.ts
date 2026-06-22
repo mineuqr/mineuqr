@@ -14,7 +14,7 @@ import { createAgentTransportRegistry } from "../agent/transports/transportRegis
 import { orderItems, orders, printers } from "../drizzle/schema";
 import { getDb } from "../server/db";
 import { attachPrintAgentWebSocketServer } from "../server/printing/printAgentWebSocketServer";
-import { registerDbPrinterProfileMapping } from "../server/printing/printerResolutionRegistry";
+import { syncDbPrinterProfileMappingFromDb } from "../server/printing/printerResolutionPersistenceService";
 import { resolvePrintTarget } from "../server/printing/printTargetSelectionService";
 import { createPrintJob } from "../server/printing/printJobService";
 import { dispatchAssignedPrintJob } from "../server/printing/endToEndPrintFlowService";
@@ -228,12 +228,12 @@ async function main(): Promise<void> {
 
   await sleep(300);
 
-  const mapping = registerDbPrinterProfileMapping({
-    dbPrinterId: dbPrinter.id,
-    profilePrinterId: dbPrinter.profileId,
-  });
+  const mapping = await syncDbPrinterProfileMappingFromDb(dbPrinter.id);
+  if (!mapping) {
+    throw new Error(`Failed to sync printer resolution mapping for dbPrinterId=${dbPrinter.id}`);
+  }
   log.execution.push(
-    `Printer profile mapping registered: dbPrinterId=${mapping.dbPrinterId} -> profilePrinterId=${mapping.profilePrinterId}`
+    `Printer profile mapping synced from DB: dbPrinterId=${mapping.dbPrinterId} -> profilePrinterId=${mapping.profilePrinterId}`
   );
 
   const target = await resolvePrintTarget({

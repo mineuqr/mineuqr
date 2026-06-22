@@ -40,3 +40,8 @@ export async function findRestaurantPrintSettings(restaurantId: number) {
     .limit(1);
   return row ?? null;
 }
+
+export async function listAllPrinters(): Promise<SelectPrinter[]> {
+  const db = await resolveDb();
+  return db.select().from(printers).orderBy(printers.id);
+}
