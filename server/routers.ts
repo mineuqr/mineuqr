@@ -93,6 +93,7 @@ import { SESSION_TOKEN_PATTERN } from "./diningSession/sessionPublicStatus";
 import { TABLE_EVENT_TYPES } from "./diningSession/sessionTypes";
 import { enqueueAutoPrintJobForOrder } from "./printing/autoPrintOnOrderCreate";
 import { printOperationsRouter } from "./printing/printOperationsRouter";
+import { endpointOperationsRouter } from "./printing/endpointOperationsRouter";
 import { throwSessionServiceTrpcError } from "./diningSession/mapSessionErrorToTrpc";
 import {
   getPublicActiveSessionByTable,
@@ -2159,5 +2160,6 @@ export const appRouter = router({
   order: orderRouter,
   ops: opsRouter,
   printOps: printOperationsRouter,
+  endpointOps: endpointOperationsRouter,
 });
 export type AppRouter = typeof appRouter;

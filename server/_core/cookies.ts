@@ -17,10 +17,15 @@ function isIpAddress(host: string) {
  */
 export function getSetSessionCookieOptions(
   req: Request
-): Pick<CookieOptions, "httpOnly" | "path" | "sameSite" | "secure"> {
+): Pick<CookieOptions, "httpOnly" | "path" | "sameSite" | "secure" | "domain"> {
   const secure = isSecureRequest(req);
   const host = (req.hostname || "").toLowerCase();
   const isLocal = LOCAL_HOSTS.has(host) || isIpAddress(host);
+
+  const cookieDomain = process.env.SESSION_COOKIE_DOMAIN?.trim();
+
+  const sharedDomain =
+    cookieDomain && cookieDomain.length > 0 && !isLocal ? { domain: cookieDomain } : {};
 
   if (isLocal && !secure) {
     return {
@@ -28,6 +33,7 @@ export function getSetSessionCookieOptions(
       path: "/",
       sameSite: "lax",
       secure: false,
+      ...sharedDomain,
     };
   }
 
@@ -36,6 +42,7 @@ export function getSetSessionCookieOptions(
     path: "/",
     sameSite: "none",
     secure: true,
+    ...sharedDomain,
   };
 }
 

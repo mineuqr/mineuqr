@@ -1,15 +1,14 @@
 import { isAuthMeInitialLoadPending } from "@/lib/authSession";
 import { isEmailNotVerifiedError } from "@/lib/trpcErrors";
 import { trpc } from "@/lib/trpc";
-import { UNAUTHED_ERR_MSG } from '@shared/const';
+import { createTrpcLinks } from "@/lib/trpcLinks";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { httpBatchLink, TRPCClientError } from "@trpc/client";
+import { TRPCClientError } from "@trpc/client";
 import { createRoot } from "react-dom/client";
-import superjson from "superjson";
+import { UNAUTHED_ERR_MSG } from "@shared/const";
 import { LanguageProvider } from "./contexts/LanguageContext";
 import App from "./App";
 import { getLoginUrl, spaNavigate } from "./const";
-import { getClientCorrelationId } from "@/lib/correlation";
 import "./index.css";
 
 const queryClient = new QueryClient();
@@ -49,23 +48,7 @@ queryClient.getMutationCache().subscribe(event => {
 });
 
 const trpcClient = trpc.createClient({
-  links: [
-    httpBatchLink({
-      url: "/api/trpc",
-      transformer: superjson,
-      fetch(input, init) {
-        const headers = new Headers((init as any)?.headers ?? undefined);
-        if (!headers.has("x-correlation-id")) {
-          headers.set("x-correlation-id", getClientCorrelationId());
-        }
-        return globalThis.fetch(input, {
-          ...(init ?? {}),
-          headers,
-          credentials: "include",
-        });
-      },
-    }),
-  ],
+  links: createTrpcLinks(),
 });
 
 createRoot(document.getElementById("root")!).render(

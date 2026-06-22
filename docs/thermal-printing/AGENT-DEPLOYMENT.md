@@ -41,11 +41,25 @@ Print agents connect to:
 wss://<your-host>/ws/print-agent
 ```
 
-The WebSocket server is attached only on **long-running Node** hosts (`server/_core/index.ts`).
+The WebSocket server is attached only on **long-running Node** hosts (`server/_core/index.ts` for local full-stack dev, or the dedicated **print host** for production).
 
-### Vercel Limitation
+### Production print host (12E.1B)
 
-Vercel serverless (`createApp.production.ts`) exposes API routes only. **Print agent WebSockets are not available on Vercel.** Deploy agents against a persistent Node server (`pnpm build && pnpm start`) or another host that runs `attachPrintAgentWebSocketServer`.
+Deploy the dedicated Agent Host for production agents:
+
+```text
+pnpm build:print-host && pnpm start:print-host
+```
+
+See [AGENT-HOST-DEPLOYMENT-12E.1B.md](./AGENT-HOST-DEPLOYMENT-12E.1B.md) and `fly.toml`.
+
+Production agent URL:
+
+```text
+wss://print.mineuqr.com/ws/print-agent
+```
+
+Dashboard Printer Operations uses the connectivity bridge (`VITE_PRINT_OPS_API_URL`) to read agent state from the print host.
 
 ---
 
