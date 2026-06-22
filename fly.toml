@@ -1,36 +1,39 @@
-# THERMAL-PRINTING-12E.1B — Fly.io Agent Host deployment
-# Apply with: fly launch --no-deploy && fly secrets set ... && fly deploy
+# fly.toml app configuration file generated for mineuqr-print-host on 2026-06-22T19:40:51Z
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
 
-app = "mineuqr-print-host"
-primary_region = "fra"
+app = 'mineuqr-print-host'
+primary_region = 'fra'
 
 [build]
-  dockerfile = "Dockerfile.print-host"
+  dockerfile = 'Dockerfile.print-host'
 
 [env]
-  NODE_ENV = "production"
-  PORT = "8080"
-  TRUST_PROXY = "true"
-  PRINT_HOST_PUBLIC_URL = "https://print.mineuqr.com"
-  PRINT_HOST_CORS_ORIGINS = "https://mineuqr.com,https://www.mineuqr.com"
-  SESSION_COOKIE_DOMAIN = ".mineuqr.com"
+  NODE_ENV = 'production'
+  PORT = '8080'
+  PRINT_HOST_CORS_ORIGINS = 'https://mineuqr.com,https://www.mineuqr.com'
+  PRINT_HOST_PUBLIC_URL = 'https://print.mineuqr.com'
+  SESSION_COOKIE_DOMAIN = '.mineuqr.com'
+  TRUST_PROXY = 'true'
 
 [http_service]
   internal_port = 8080
   force_https = true
-  auto_stop_machines = false
+  auto_stop_machines = 'off'
   auto_start_machines = true
   min_machines_running = 1
-  processes = ["app"]
+  processes = ['app']
 
   [[http_service.checks]]
-    grace_period = "15s"
-    interval = "30s"
-    method = "GET"
-    path = "/health"
-    timeout = "5s"
+    interval = '30s'
+    timeout = '5s'
+    grace_period = '15s'
+    method = 'GET'
+    path = '/health'
 
 [[vm]]
-  memory = "512mb"
-  cpu_kind = "shared"
+  memory = '512mb'
+  cpu_kind = 'shared'
   cpus = 1
+  memory_mb = 256
