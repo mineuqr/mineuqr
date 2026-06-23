@@ -147,6 +147,16 @@ export const OPS_EVENT = {
   print_job_delivery_acknowledged: "print_job_delivery_acknowledged",
   print_job_delivery_confirmed: "print_job_delivery_confirmed",
   print_job_delivery_confirmation_reused: "print_job_delivery_confirmation_reused",
+
+  // THERMAL-PRINTING-13H
+  dispatch_requested: "dispatch_requested",
+  dispatch_received: "dispatch_received",
+  dispatch_assignment_started: "dispatch_assignment_started",
+  dispatch_assignment_completed: "dispatch_assignment_completed",
+  dispatch_notification_sent: "dispatch_notification_sent",
+  dispatch_notification_failed: "dispatch_notification_failed",
+  dispatch_auth_rejected: "dispatch_auth_rejected",
+  dispatch_bridge_failed: "dispatch_bridge_failed",
 } as const;
 
 export type OpsEventType = (typeof OPS_EVENT)[keyof typeof OPS_EVENT];

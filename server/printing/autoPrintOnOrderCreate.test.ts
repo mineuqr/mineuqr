@@ -12,7 +12,7 @@ const routingMocks = vi.hoisted(() => ({
 
 const serviceMocks = vi.hoisted(() => ({
   createPrintJob: vi.fn(),
-  dispatchAssignedPrintJob: vi.fn(),
+  requestPrintHostDispatch: vi.fn(),
 }));
 
 const opsMocks = vi.hoisted(() => ({
@@ -33,9 +33,9 @@ vi.mock("./printJobService", () => ({
   createPrintJob: (...args: unknown[]) => serviceMocks.createPrintJob(...args),
 }));
 
-vi.mock("./endToEndPrintFlowService", () => ({
-  dispatchAssignedPrintJob: (...args: unknown[]) =>
-    serviceMocks.dispatchAssignedPrintJob(...args),
+vi.mock("./printHostDispatchClient", () => ({
+  requestPrintHostDispatch: (...args: unknown[]) =>
+    serviceMocks.requestPrintHostDispatch(...args),
 }));
 
 vi.mock("../_core/opsLog", () => ({
@@ -45,7 +45,7 @@ vi.mock("../_core/opsLog", () => ({
 import { OPS_EVENT } from "../_core/opsTaxonomy";
 import { enqueueAutoPrintJobForOrder } from "./autoPrintOnOrderCreate";
 
-describe("autoPrintOnOrderCreate THERMAL-PRINTING-11A/12A", () => {
+describe("autoPrintOnOrderCreate THERMAL-PRINTING-11A/12A/13H", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     selectionMocks.isAutoPrintEnabledForRestaurant.mockResolvedValue(true);
@@ -71,10 +71,13 @@ describe("autoPrintOnOrderCreate THERMAL-PRINTING-11A/12A", () => {
         status: PRINT_JOB_STATUS.QUEUED,
       },
     });
-    serviceMocks.dispatchAssignedPrintJob.mockResolvedValue({
-      assignment: { jobId: 900, agentId: "agent-1", printerId: 1, restaurantId: 7 },
-      assignmentCreated: true,
-      notified: true,
+    serviceMocks.requestPrintHostDispatch.mockResolvedValue({
+      bridgeUsed: true,
+      result: {
+        status: "dispatched",
+        jobId: 900,
+        notified: true,
+      },
     });
   });
 
@@ -96,7 +99,12 @@ describe("autoPrintOnOrderCreate THERMAL-PRINTING-11A/12A", () => {
       stationId: null,
       idempotencyKey: "order:42:submitted",
     });
-    expect(serviceMocks.dispatchAssignedPrintJob).toHaveBeenCalledWith({ jobId: 900 });
+    expect(serviceMocks.requestPrintHostDispatch).toHaveBeenCalledWith({
+      jobId: 900,
+      restaurantId: 7,
+      printerId: 1,
+      procedure: "order.create",
+    });
   });
 
   it("skips auto print when disabled in restaurant settings", async () => {
@@ -110,7 +118,7 @@ describe("autoPrintOnOrderCreate THERMAL-PRINTING-11A/12A", () => {
 
     expect(routingMocks.resolveStationPrintTargets).not.toHaveBeenCalled();
     expect(serviceMocks.createPrintJob).not.toHaveBeenCalled();
-    expect(serviceMocks.dispatchAssignedPrintJob).not.toHaveBeenCalled();
+    expect(serviceMocks.requestPrintHostDispatch).not.toHaveBeenCalled();
     expect(opsMocks.opsLog).not.toHaveBeenCalled();
   });
 
@@ -134,7 +142,7 @@ describe("autoPrintOnOrderCreate THERMAL-PRINTING-11A/12A", () => {
     );
   });
 
-  it("dispatches assignment after idempotent job reuse", async () => {
+  it("requests Print Host dispatch after idempotent job reuse", async () => {
     serviceMocks.createPrintJob.mockResolvedValue({
       created: false,
       job: {
@@ -150,7 +158,12 @@ describe("autoPrintOnOrderCreate THERMAL-PRINTING-11A/12A", () => {
       restaurantId: 7,
     });
 
-    expect(serviceMocks.dispatchAssignedPrintJob).toHaveBeenCalledWith({ jobId: 900 });
+    expect(serviceMocks.requestPrintHostDispatch).toHaveBeenCalledWith({
+      jobId: 900,
+      restaurantId: 7,
+      printerId: 1,
+      procedure: undefined,
+    });
     expect(opsMocks.opsLog).toHaveBeenCalledWith(
       expect.objectContaining({
         type: OPS_EVENT.print_job_idempotency_reused,
@@ -169,7 +182,7 @@ describe("autoPrintOnOrderCreate THERMAL-PRINTING-11A/12A", () => {
       })
     ).resolves.toBeUndefined();
 
-    expect(serviceMocks.dispatchAssignedPrintJob).not.toHaveBeenCalled();
+    expect(serviceMocks.requestPrintHostDispatch).not.toHaveBeenCalled();
     expect(opsMocks.opsLog).toHaveBeenCalledWith(
       expect.objectContaining({
         type: OPS_EVENT.print_job_creation_failed,
@@ -238,7 +251,17 @@ describe("autoPrintOnOrderCreate THERMAL-PRINTING-11A/12A", () => {
     await enqueueAutoPrintJobForOrder({ orderId: 42, restaurantId: 7 });
 
     expect(serviceMocks.createPrintJob).toHaveBeenCalledTimes(2);
-    expect(serviceMocks.dispatchAssignedPrintJob).toHaveBeenCalledWith({ jobId: 901 });
-    expect(serviceMocks.dispatchAssignedPrintJob).toHaveBeenCalledWith({ jobId: 902 });
+    expect(serviceMocks.requestPrintHostDispatch).toHaveBeenCalledWith({
+      jobId: 901,
+      restaurantId: 7,
+      printerId: 10,
+      procedure: undefined,
+    });
+    expect(serviceMocks.requestPrintHostDispatch).toHaveBeenCalledWith({
+      jobId: 902,
+      restaurantId: 7,
+      printerId: 20,
+      procedure: undefined,
+    });
   });
 });

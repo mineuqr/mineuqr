@@ -35,7 +35,20 @@ export const PRINT_HOST_ENV = {
       : DEFAULT_DEV_CORS_ORIGINS;
   })(),
   publicUrl: process.env.PRINT_HOST_PUBLIC_URL?.trim() ?? "",
+  /** THERMAL-PRINTING-13H — shared secret for Vercel → Print Host dispatch bridge. */
+  apiKey: process.env.PRINT_HOST_API_KEY ?? "",
 } as const;
+
+export function validatePrintHostDispatchAuthReadiness(): void {
+  if (process.env.NODE_ENV !== "production") {
+    return;
+  }
+  if (!PRINT_HOST_ENV.apiKey) {
+    console.warn(
+      "[PrintHost] PRINT_HOST_API_KEY is unset: dispatch bridge requests will be rejected in production."
+    );
+  }
+}
 
 export function resolvePrintHostTrpcUrl(): string {
   const base = PRINT_HOST_ENV.publicUrl.replace(/\/$/, "");

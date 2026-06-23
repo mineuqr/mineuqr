@@ -3,11 +3,13 @@
  */
 import { router } from "../_core/trpc";
 import { endpointOperationsRouter } from "../printing/endpointOperationsRouter";
+import { dispatchBridgeRouter } from "../printing/dispatchBridgeRouter";
 import { printOperationsRouter } from "../printing/printOperationsRouter";
 
 export const printHostRouter = router({
   printOps: printOperationsRouter,
   endpointOps: endpointOperationsRouter,
+  dispatchBridge: dispatchBridgeRouter,
 });
 
 export type PrintHostRouter = typeof printHostRouter;

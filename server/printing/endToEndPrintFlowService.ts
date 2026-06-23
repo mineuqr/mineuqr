@@ -1,17 +1,14 @@
 /**
  * THERMAL-PRINTING-7A.5 — end-to-end print flow orchestration (integration only).
  */
-import { opsLog } from "../_core/opsLog";
-import { OPS_EVENT } from "../_core/opsTaxonomy";
 import type { SelectPrintJob } from "../../drizzle/schema";
 import { getOrderById } from "../db";
 import { PRINT_JOB_TRIGGER } from "../../shared/printing/types";
-import { assignPrintJob } from "./assignmentService";
-import { notifyAgentOfAssignment } from "./assignmentNotifier";
 import type { PrintJobAssignment } from "./assignmentTypes";
 import { createPrintJob } from "./printJobService";
 import type { CreatePrintJobInput } from "./printJobTypes";
 import { resolvePrintTarget } from "./printTargetSelectionService";
+import { executePrintHostDispatch } from "./dispatchBridgeService";
 
 export type OrchestratePrintJobFlowInput = CreatePrintJobInput;
 
@@ -28,6 +25,7 @@ export type DispatchAssignedPrintJobInput = {
   jobId: number;
   assignedAt?: string;
   notificationTimestamp?: string;
+  correlationId?: string;
 };
 
 export type DispatchAssignedPrintJobResult = {
@@ -37,75 +35,25 @@ export type DispatchAssignedPrintJobResult = {
   notificationSkippedReason?: "agent_disconnected";
 };
 
-function logPrintFlowEvent(input: {
-  type: (typeof OPS_EVENT)[keyof typeof OPS_EVENT];
-  severity: "info" | "warn";
-  restaurantId?: number;
-  metadata?: Record<string, unknown>;
-}): void {
-  opsLog({
-    type: input.type,
-    category: "ORDER",
-    severity: input.severity,
-    ts: new Date().toISOString(),
-    restaurantId: input.restaurantId,
-    metadata: input.metadata,
-  });
-}
-
 export async function dispatchAssignedPrintJob(
   input: DispatchAssignedPrintJobInput
 ): Promise<DispatchAssignedPrintJobResult> {
-  const assignmentResult = await assignPrintJob({
+  const dispatch = await executePrintHostDispatch({
     jobId: input.jobId,
     assignedAt: input.assignedAt,
+    notificationTimestamp: input.notificationTimestamp,
+    correlationId: input.correlationId,
   });
 
-  logPrintFlowEvent({
-    type: assignmentResult.created
-      ? OPS_EVENT.print_job_assigned
-      : OPS_EVENT.print_job_assignment_reused,
-    severity: "info",
-    restaurantId: assignmentResult.assignment.restaurantId,
-    metadata: {
-      printJobId: assignmentResult.assignment.jobId,
-      agentId: assignmentResult.assignment.agentId,
-    },
-  });
-
-  const notification = notifyAgentOfAssignment({
-    assignment: assignmentResult.assignment,
-    timestamp: input.notificationTimestamp,
-  });
-
-  if (notification.notified) {
-    logPrintFlowEvent({
-      type: OPS_EVENT.print_agent_job_notified,
-      severity: "info",
-      restaurantId: assignmentResult.assignment.restaurantId,
-      metadata: {
-        printJobId: assignmentResult.assignment.jobId,
-        agentId: assignmentResult.assignment.agentId,
-      },
-    });
-  } else {
-    logPrintFlowEvent({
-      type: OPS_EVENT.print_agent_job_notification_skipped,
-      severity: "info",
-      restaurantId: assignmentResult.assignment.restaurantId,
-      metadata: {
-        printJobId: assignmentResult.assignment.jobId,
-        agentId: assignmentResult.assignment.agentId,
-        reason: notification.reason ?? "agent_disconnected",
-      },
-    });
+  if (!dispatch.assignment) {
+    throw new Error(dispatch.failureReason ?? "Print job dispatch failed");
   }
 
   return {
-    assignment: assignmentResult.assignment,
-    assignmentCreated: assignmentResult.created,
-    notified: notification.notified,
-    notificationSkippedReason: notification.reason,
+    assignment: dispatch.assignment,
+    assignmentCreated: dispatch.assignmentCreated,
+    notified: dispatch.notified,
+    notificationSkippedReason: dispatch.notificationSkippedReason,
   };
 }
 

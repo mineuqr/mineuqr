@@ -3,7 +3,7 @@
  */
 import { opsLog } from "../_core/opsLog";
 import { OPS_EVENT } from "../_core/opsTaxonomy";
-import { dispatchAssignedPrintJob } from "./endToEndPrintFlowService";
+import { requestPrintHostDispatch } from "./printHostDispatchClient";
 import { createPrintJob } from "./printJobService";
 import { isAutoPrintEnabledForRestaurant } from "./printTargetSelectionService";
 import { resolveStationPrintTargets } from "./stationRoutingService";
@@ -80,7 +80,12 @@ export async function enqueueAutoPrintJobForOrder(
         },
       });
 
-      await dispatchAssignedPrintJob({ jobId: result.job.id });
+      await requestPrintHostDispatch({
+        jobId: result.job.id,
+        restaurantId: input.restaurantId,
+        printerId: result.job.printerId ?? target.printerId,
+        procedure: input.procedure,
+      });
     }
   } catch (error) {
     opsLog({

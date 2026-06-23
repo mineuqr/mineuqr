@@ -28,7 +28,7 @@ const dbMocks = vi.hoisted(() => ({
 }));
 
 const dispatchMocks = vi.hoisted(() => ({
-  dispatchAssignedPrintJob: vi.fn(),
+  requestPrintHostDispatch: vi.fn(),
 }));
 
 vi.mock("./printJobRepository", () => ({
@@ -59,14 +59,10 @@ vi.mock("../db", () => ({
   getOrderItemsByOrderId: (...args: unknown[]) => dbMocks.getOrderItemsByOrderId(...args),
 }));
 
-vi.mock("./endToEndPrintFlowService", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("./endToEndPrintFlowService")>();
-  return {
-    ...actual,
-    dispatchAssignedPrintJob: (...args: unknown[]) =>
-      dispatchMocks.dispatchAssignedPrintJob(...args),
-  };
-});
+vi.mock("./printHostDispatchClient", () => ({
+  requestPrintHostDispatch: (...args: unknown[]) =>
+    dispatchMocks.requestPrintHostDispatch(...args),
+}));
 
 vi.mock("../_core/opsLog", () => ({
   opsLog: vi.fn(),
@@ -216,17 +212,13 @@ describe("auto print order flow THERMAL-PRINTING-11A/12A", () => {
       return null;
     });
     mockDefaultUnmappedRouting();
-    dispatchMocks.dispatchAssignedPrintJob.mockResolvedValue({
-      assignment: {
+    dispatchMocks.requestPrintHostDispatch.mockResolvedValue({
+      bridgeUsed: true,
+      result: {
+        status: "dispatched",
         jobId: 150002,
-        agentId: "agent-alpha",
-        printerId: 1,
-        restaurantId,
-        orderId,
-        assignedAt: "2026-06-21T21:33:59.000Z",
+        notified: true,
       },
-      assignmentCreated: true,
-      notified: true,
     });
   });
 
@@ -246,8 +238,11 @@ describe("auto print order flow THERMAL-PRINTING-11A/12A", () => {
       printerId: 1,
       stationId: null,
     });
-    expect(dispatchMocks.dispatchAssignedPrintJob).toHaveBeenCalledWith({
+    expect(dispatchMocks.requestPrintHostDispatch).toHaveBeenCalledWith({
       jobId: 150002,
+      restaurantId,
+      printerId: 1,
+      procedure: "order.create",
     });
   });
 
@@ -325,9 +320,9 @@ describe("auto print order flow THERMAL-PRINTING-11A/12A", () => {
           idempotencyKey: autoPrintStationJobIdempotencyKey(orderId, 2),
         })
       );
-    dispatchMocks.dispatchAssignedPrintJob.mockResolvedValue({
-      assignmentCreated: true,
-      notified: true,
+    dispatchMocks.requestPrintHostDispatch.mockResolvedValue({
+      bridgeUsed: true,
+      result: { status: "dispatched", notified: true },
     });
 
     await enqueueAutoPrintJobForOrder({
@@ -351,8 +346,18 @@ describe("auto print order flow THERMAL-PRINTING-11A/12A", () => {
       printerId: 2,
       stationId: 2,
     });
-    expect(dispatchMocks.dispatchAssignedPrintJob).toHaveBeenCalledWith({ jobId: 150010 });
-    expect(dispatchMocks.dispatchAssignedPrintJob).toHaveBeenCalledWith({ jobId: 150011 });
+    expect(dispatchMocks.requestPrintHostDispatch).toHaveBeenCalledWith({
+      jobId: 150010,
+      restaurantId,
+      printerId: 1,
+      procedure: "order.create",
+    });
+    expect(dispatchMocks.requestPrintHostDispatch).toHaveBeenCalledWith({
+      jobId: 150011,
+      restaurantId,
+      printerId: 2,
+      procedure: "order.create",
+    });
   });
 
   it("routes mapped categories through station printers without calling default target selection", async () => {
@@ -393,6 +398,6 @@ describe("auto print order flow THERMAL-PRINTING-11A/12A", () => {
 
     expect(dbMocks.getOrderItemsByOrderId).not.toHaveBeenCalled();
     expect(repoMocks.insertPrintJob).not.toHaveBeenCalled();
-    expect(dispatchMocks.dispatchAssignedPrintJob).not.toHaveBeenCalled();
+    expect(dispatchMocks.requestPrintHostDispatch).not.toHaveBeenCalled();
   });
 });

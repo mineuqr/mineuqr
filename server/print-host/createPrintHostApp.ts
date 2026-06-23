@@ -14,12 +14,13 @@ import { initializePrintingRuntime } from "../printing/printingRuntimeBootstrap"
 import { listAgentConnectivityStates } from "../printing/agentLifecycleService";
 import { listAgents } from "../printing/agentRegistry";
 import { listEndpointOperations } from "../printing/endpointOperationsService";
-import { PRINT_HOST_ENV } from "./printHostEnv";
+import { PRINT_HOST_ENV, validatePrintHostDispatchAuthReadiness } from "./printHostEnv";
 import { printHostRouter } from "./printHostRouter";
 
 export async function createPrintHostApp(): Promise<Express> {
   validateAuthSecurityConfig();
   validateDeploymentAuthReadiness();
+  validatePrintHostDispatchAuthReadiness();
   await initializePrintingRuntime();
 
   const app = express();
@@ -40,7 +41,7 @@ export async function createPrintHostApp(): Promise<Express> {
       res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
       res.setHeader(
         "Access-Control-Allow-Headers",
-        "content-type,x-correlation-id,trpc-batch-mode"
+        "content-type,x-correlation-id,trpc-batch-mode,x-print-host-api-key"
       );
       res.status(204).end();
       return;

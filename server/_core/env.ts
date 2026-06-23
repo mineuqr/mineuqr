@@ -48,4 +48,14 @@ export const ENV = {
   vapidSubject: process.env.VAPID_SUBJECT ?? "mailto:info@mineuqr.com",
   /** TABLE-MANAGEMENT-1 D3 — dual-write orders.sessionId when true. */
   tableSessionDualWrite: process.env.TABLE_SESSION_DUAL_WRITE === "true",
+  /** THERMAL-PRINTING-13H — Print Host dispatch bridge (Vercel → print.mineuqr.com). */
+  printHostDispatchUrl: (() => {
+    const explicit = process.env.PRINT_HOST_DISPATCH_URL?.trim();
+    if (explicit) {
+      return explicit.replace(/\/$/, "");
+    }
+    const publicUrl = process.env.PRINT_HOST_PUBLIC_URL?.trim();
+    return publicUrl ? publicUrl.replace(/\/$/, "") : "";
+  })(),
+  printHostApiKey: process.env.PRINT_HOST_API_KEY ?? "",
 };

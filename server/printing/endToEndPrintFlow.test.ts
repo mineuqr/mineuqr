@@ -32,6 +32,7 @@ import {
   recordDeliveryAcknowledgement,
 } from "./deliveryAckService";
 import { clearJobDeliveryStates } from "./deliveryStateTracker";
+import { clearDispatchBridgeState } from "./dispatchBridgeState";
 import { dispatchAssignedPrintJob, orchestratePrintJobFlow } from "./endToEndPrintFlowService";
 import { fetchAuthoritativePrintJob } from "./jobRetrievalService";
 import { serializeJobFetchResponse } from "./jobRetrievalRouter";
@@ -56,6 +57,14 @@ vi.mock("./printJobRepository", () => ({
     repoMocks.findPrintJobByIdempotencyKey(...args),
   insertPrintJob: (...args: unknown[]) => repoMocks.insertPrintJob(...args),
   markJobPrinted: (...args: unknown[]) => repoMocks.markJobPrinted(...args),
+}));
+
+const printerRepoMocks = vi.hoisted(() => ({
+  findPrinterById: vi.fn(),
+}));
+
+vi.mock("./printerRepository", () => ({
+  findPrinterById: (...args: unknown[]) => printerRepoMocks.findPrinterById(...args),
 }));
 
 vi.mock("../db", () => ({
@@ -130,7 +139,15 @@ describe("endToEndPrintFlow THERMAL-PRINTING-7A", () => {
     clearPrinterProfileStore();
     clearPrinterResolutionRegistry();
     clearRoutingState();
+    clearDispatchBridgeState();
 
+    printerRepoMocks.findPrinterById.mockResolvedValue({
+      id: TEST_DB_PRINTER_ID,
+      profileId: "kitchen-printer-10",
+      name: "Kitchen",
+      restaurantId: 7,
+      isDefault: true,
+    });
     dbMocks.getOrderById.mockResolvedValue(baseOrder);
     dbMocks.getOrderItemsByOrderId.mockResolvedValue([
       {
