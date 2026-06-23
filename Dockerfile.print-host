@@ -18,8 +18,12 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=8080
 
-COPY --from=build /app/package.json /app/pnpm-lock.yaml ./
-COPY --from=build /app/node_modules ./node_modules
+RUN corepack enable && corepack prepare pnpm@10.4.1 --activate
+
+COPY package.json pnpm-lock.yaml ./
+COPY patches ./patches
+RUN pnpm install --frozen-lockfile --prod
+
 COPY --from=build /app/dist/print-host.mjs ./dist/print-host.mjs
 COPY --from=build /app/server/assets ./server/assets
 
