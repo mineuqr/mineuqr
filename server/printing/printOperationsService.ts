@@ -25,6 +25,9 @@ import { getPrinterResolution } from "./resolutionQueries";
 import { getRoutingDecision } from "./routingQueries";
 import { getStoredJobExecutionOutcome } from "./executionOutcomeStore";
 import { getPrintJobAssignment } from "./assignmentService";
+import { getPrintDiscoveryDiagnostics } from "./printOperationsDiscoveryService";
+import type { DiagnosticRunView } from "./printOperationsDiscoveryTypes";
+import { listPrintDiagnosticRunsForRestaurant } from "./diagnosticPrintRepository";
 import type {
   PaginatedPrintJobs,
   PrintFailureItem,
@@ -448,4 +451,26 @@ export async function listPrintFailures(
   return failures
     .sort((left, right) => right.timestamp.localeCompare(left.timestamp))
     .slice(0, limit);
+}
+
+export async function getPrinterDiscoveryDiagnostics(restaurantId: number) {
+  const printerOverviews = await listPrinterOverview(restaurantId);
+  return getPrintDiscoveryDiagnostics(restaurantId, printerOverviews);
+}
+
+export async function listDiagnosticRunHistory(
+  restaurantId: number,
+  limit: number
+): Promise<DiagnosticRunView[]> {
+  const rows = await listPrintDiagnosticRunsForRestaurant({ restaurantId, limit });
+  return rows.map((row) => ({
+    diagnosticId: row.diagnosticId,
+    printerId: row.printerId,
+    agentId: row.agentId,
+    status: row.status,
+    error: row.error,
+    triggeredByLabel: row.triggeredByLabel,
+    createdAt: row.createdAt,
+    completedAt: row.completedAt,
+  }));
 }

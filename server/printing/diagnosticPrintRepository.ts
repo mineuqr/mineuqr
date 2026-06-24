@@ -1,7 +1,7 @@
 /**
  * THERMAL-PRINTING-13I.6 — diagnostic print run persistence.
  */
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import {
   printDiagnosticRuns,
   type SelectPrintDiagnosticRun,
@@ -83,4 +83,17 @@ export async function updatePrintDiagnosticRun(input: {
       ...(input.completedAt !== undefined ? { completedAt: input.completedAt } : {}),
     })
     .where(eq(printDiagnosticRuns.id, input.id));
+}
+
+export async function listPrintDiagnosticRunsForRestaurant(input: {
+  restaurantId: number;
+  limit: number;
+}): Promise<SelectPrintDiagnosticRun[]> {
+  const db = await resolveDb();
+  return db
+    .select()
+    .from(printDiagnosticRuns)
+    .where(eq(printDiagnosticRuns.restaurantId, input.restaurantId))
+    .orderBy(desc(printDiagnosticRuns.createdAt))
+    .limit(input.limit);
 }

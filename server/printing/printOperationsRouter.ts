@@ -13,6 +13,8 @@ import {
   listPrinterOverview,
   listStationOverview,
   listAgentOverview,
+  getPrinterDiscoveryDiagnostics,
+  listDiagnosticRunHistory,
 } from "./printOperationsService";
 import { submitDiagnosticTestPrint } from "./diagnosticPrintService";
 
@@ -93,6 +95,22 @@ export const printOperationsRouter = router({
     .query(async ({ input, ctx }) => {
       await assertRestaurantAccess(ctx, input.restaurantId, "printOps.listFailures");
       return listPrintFailures(input.restaurantId, input.limit);
+    }),
+
+  getDiscoveryDiagnostics: verifiedProcedure.input(restaurantInput).query(async ({ input, ctx }) => {
+    await assertRestaurantAccess(ctx, input.restaurantId, "printOps.getDiscoveryDiagnostics");
+    return getPrinterDiscoveryDiagnostics(input.restaurantId);
+  }),
+
+  listDiagnosticRuns: verifiedProcedure
+    .input(
+      restaurantInput.extend({
+        limit: z.number().int().positive().max(50).default(20),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      await assertRestaurantAccess(ctx, input.restaurantId, "printOps.listDiagnosticRuns");
+      return listDiagnosticRunHistory(input.restaurantId, input.limit);
     }),
 
   testPrint: verifiedProcedure

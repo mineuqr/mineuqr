@@ -1,3 +1,5 @@
+import { DiagnosticHistoryPanel } from "@/components/dashboard/printing/DiagnosticHistoryPanel";
+import { PrinterDiscoveryDiagnosticsPanel } from "@/components/dashboard/printing/PrinterDiscoveryDiagnosticsPanel";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { RestaurantDashSection } from "@/components/dashboard/RestaurantDashSection";
 import {
@@ -77,7 +79,9 @@ export function PrintingOperationsPanel({
   const [jobPage, setJobPage] = useState(0);
   const [selectedPrinterId, setSelectedPrinterId] = useState<number | null>(null);
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
-  const [activeTab, setActiveTab] = useState<"printers" | "agents" | "stations" | "queue" | "failures">("printers");
+  const [activeTab, setActiveTab] = useState<
+    "printers" | "agents" | "stations" | "queue" | "failures" | "diagnostics"
+  >("printers");
 
   const copy = useMemo(
     () => ({
@@ -90,6 +94,7 @@ export function PrintingOperationsPanel({
       stations: isAr ? "المحطات" : "Stations",
       queue: isAr ? "قائمة الطباعة" : "Print Queue",
       failures: isAr ? "الفشل" : "Failures",
+      diagnostics: isAr ? "التشخيص" : "Diagnostics",
       emptyStations: isAr ? "لا توجد محطات طباعة مهيأة" : "No print stations configured",
       emptyPrinters: isAr ? "لا توجد طابعات مهيأة" : "No printers configured",
       emptyAgents: isAr ? "لا يوجد وكلاء طباعة متصلون" : "No connected print agents",
@@ -156,6 +161,14 @@ export function PrintingOperationsPanel({
     { restaurantId },
     { enabled: queriesEnabled }
   );
+  const discoveryQuery = trpc.printOps.getDiscoveryDiagnostics.useQuery(
+    { restaurantId },
+    { enabled: queriesEnabled }
+  );
+  const diagnosticRunsQuery = trpc.printOps.listDiagnosticRuns.useQuery(
+    { restaurantId, limit: 20 },
+    { enabled: queriesEnabled && activeTab === "diagnostics" }
+  );
   const printersQuery = trpc.printOps.listPrinters.useQuery(
     { restaurantId },
     { enabled: queriesEnabled }
@@ -192,6 +205,8 @@ export function PrintingOperationsPanel({
     void stationsQuery.refetch();
     void jobsQuery.refetch();
     void failuresQuery.refetch();
+    void discoveryQuery.refetch();
+    void diagnosticRunsQuery.refetch();
   };
 
   const jobTotal = jobsQuery.data?.total ?? 0;
@@ -236,6 +251,7 @@ export function PrintingOperationsPanel({
           <TabsTrigger value="stations">{copy.stations}</TabsTrigger>
           <TabsTrigger value="queue">{copy.queue}</TabsTrigger>
           <TabsTrigger value="failures">{copy.failures}</TabsTrigger>
+          <TabsTrigger value="diagnostics">{copy.diagnostics}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="printers" className="mt-4">
@@ -247,6 +263,13 @@ export function PrintingOperationsPanel({
                   : `${summaryQuery.data.totalPrinters} total · ${summaryQuery.data.activePrinters} active · ${summaryQuery.data.inactivePrinters} inactive`}
               </p>
             ) : null}
+            <div className="mb-4">
+              <PrinterDiscoveryDiagnosticsPanel
+                data={discoveryQuery.data}
+                isAr={isAr}
+                isLoading={discoveryQuery.isLoading}
+              />
+            </div>
             {printersQuery.isLoading ? (
               <div className="flex justify-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -258,11 +281,13 @@ export function PrintingOperationsPanel({
                 onRetry={() => printersQuery.refetch()}
               />
             ) : (printersQuery.data?.length ?? 0) === 0 ? (
-              <Card>
-                <CardContent className="py-10 text-center text-sm text-muted-foreground">
-                  {copy.emptyPrinters}
-                </CardContent>
-              </Card>
+              discoveryQuery.data?.emptyReason ? null : (
+                <Card>
+                  <CardContent className="py-10 text-center text-sm text-muted-foreground">
+                    {copy.emptyPrinters}
+                  </CardContent>
+                </Card>
+              )
             ) : (
               <div className="overflow-x-auto rounded-xl border border-border/40">
                 <Table>
@@ -558,6 +583,23 @@ export function PrintingOperationsPanel({
                 ))}
               </div>
             )}
+          </RestaurantDashSection>
+        </TabsContent>
+
+        <TabsContent value="diagnostics" className="mt-4">
+          <RestaurantDashSection title={copy.diagnostics}>
+            <div className="mb-4">
+              <PrinterDiscoveryDiagnosticsPanel
+                data={discoveryQuery.data}
+                isAr={isAr}
+                isLoading={discoveryQuery.isLoading}
+              />
+            </div>
+            <DiagnosticHistoryPanel
+              runs={diagnosticRunsQuery.data}
+              isAr={isAr}
+              isLoading={diagnosticRunsQuery.isLoading}
+            />
           </RestaurantDashSection>
         </TabsContent>
       </Tabs>
