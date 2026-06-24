@@ -16,3 +16,7 @@ Dashboard configs use bindingModel 13I.2E.1:
 - startupPrinters = logical printer identity
 - physicalBindings = pending Windows binding (completed by installer in a future step)
 - usbTransportEndpoints starts empty until physical binding is applied
+
+After running scripts\bind-printers.cmd:
+- config\printer-bindings.json stores the Windows printer mapping
+- config\binding-diagnostics.json shows BOUND / UNBOUND status

@@ -55,6 +55,20 @@ async function buildBundle() {
       js: "#!/usr/bin/env node",
     },
   });
+
+  await esbuild.build({
+    entryPoints: [join(rootDir, "scripts", "bind-printers.ts")],
+    outfile: join(outDir, "bind-printers.mjs"),
+    bundle: true,
+    platform: "node",
+    format: "esm",
+    target: "node20",
+    packages: "external",
+    logLevel: "info",
+    banner: {
+      js: "#!/usr/bin/env node",
+    },
+  });
 }
 
 async function writeAgentPackageJson(version) {
@@ -117,12 +131,17 @@ async function writeLaunchers() {
   const windowsLauncher = `@echo off\r\nsetlocal\r\nnode "%~dp0agent.mjs" %*\r\n`;
   await writeFile(join(outDir, "print-agent.cmd"), windowsLauncher);
 
+  const bindLauncher = `@echo off\r\nsetlocal\r\nnode "%~dp0bind-printers.mjs" %*\r\n`;
+  await writeFile(join(outDir, "bind-printers.cmd"), bindLauncher);
+
   const readme = [
     "MineuQR Print Agent artifact",
     "",
     "Run:",
     "  node agent.mjs --config <path-to-config.json>",
     "  print-agent.cmd --config <path-to-config.json>",
+    "  node bind-printers.mjs --config <path-to-config.json>",
+    "  bind-printers.cmd --config <path-to-config.json>",
     "",
     "Environment:",
     "  PRINT_AGENT_CONFIG_PATH",
@@ -138,6 +157,7 @@ async function writeLaunchers() {
 async function verifyArtifact({ fontCopied }) {
   const requiredPaths = [
     join(outDir, "agent.mjs"),
+    join(outDir, "bind-printers.mjs"),
     join(outDir, "package.json"),
     join(outDir, "version.json"),
     join(outDir, "scripts", "windowsSpoolerRawPrint.ps1"),

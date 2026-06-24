@@ -13,8 +13,17 @@
  */
 import "dotenv/config";
 import {
+  discoverWindowsPrinters,
+  evaluateBindingDiagnostics,
+  formatBindingDiagnosticLine,
+  loadPrinterBindingsFile,
+  resolvePrinterBindingsPath,
+  writeBindingDiagnosticsReport,
+} from "../agent/bindings";
+import {
   bootAgentFromDeploymentConfig,
   loadDeploymentConfig,
+  resolveDeploymentConfigPath,
 } from "../agent/config";
 import { shutdownAgent } from "../agent/runtime/shutdown";
 
@@ -32,8 +41,35 @@ function parseConfigArg(argv: string[]): string | undefined {
 }
 
 async function main(): Promise<void> {
-  const configPath = parseConfigArg(process.argv.slice(2));
+  const configPath = resolveDeploymentConfigPath({
+    configPath: parseConfigArg(process.argv.slice(2)),
+  });
   const config = await loadDeploymentConfig({ configPath });
+
+  try {
+    const bindingsPath = resolvePrinterBindingsPath(configPath);
+    const bindingsFile = await loadPrinterBindingsFile(bindingsPath);
+    const discovered = await discoverWindowsPrinters();
+    const report = evaluateBindingDiagnostics({
+      config,
+      bindingsFile,
+      discoveredPrinters: discovered,
+      configPath,
+      bindingsPath,
+    });
+    const diagnosticsPath = await writeBindingDiagnosticsReport(configPath, report);
+    console.log(`[PrintAgent] Binding diagnostics: ${diagnosticsPath}`);
+    for (const item of report.items) {
+      console.log(`[PrintAgent] ${formatBindingDiagnosticLine(item)}`);
+    }
+  } catch (error) {
+    console.warn(
+      `[PrintAgent] Binding diagnostics skipped: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    );
+  }
+
   const runtime = await bootAgentFromDeploymentConfig(config);
 
   console.log(

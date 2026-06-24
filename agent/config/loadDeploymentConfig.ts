@@ -3,6 +3,8 @@
  */
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { applyStoredPrinterBindings } from "../bindings/applyPrinterBindings";
+import { loadPrinterBindingsFile, resolvePrinterBindingsPath } from "../bindings/printerBindingStore";
 import type { AgentDeploymentConfig, AgentDeploymentConfigFile } from "./types";
 import { validateDeploymentConfigFile } from "./validateDeploymentConfig";
 
@@ -64,5 +66,13 @@ export async function loadDeploymentConfig(
   const raw = await readFile(configPath, "utf8");
   const parsed = JSON.parse(raw) as unknown;
   const withOverrides = applyEnvOverrides(parsed as AgentDeploymentConfigFile, env);
-  return validateDeploymentConfigFile(withOverrides);
+  let validated = validateDeploymentConfigFile(withOverrides);
+
+  const bindingsPath = resolvePrinterBindingsPath(configPath);
+  const bindingsFile = await loadPrinterBindingsFile(bindingsPath);
+  if (bindingsFile) {
+    validated = applyStoredPrinterBindings(validated, bindingsFile);
+  }
+
+  return validated;
 }

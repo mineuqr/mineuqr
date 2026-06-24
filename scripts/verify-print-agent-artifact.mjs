@@ -15,6 +15,7 @@ async function assertExists(path) {
 async function main() {
   const required = [
     "agent.mjs",
+    "bind-printers.mjs",
     "package.json",
     "version.json",
     "print-agent.cmd",

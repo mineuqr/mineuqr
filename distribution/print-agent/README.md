@@ -19,21 +19,28 @@ Thermal print agent package for Windows POS hosts.
    config\mineuqr-agent-config.json
    ```
 
-4. Test in a console window:
+4. Bind logical printers to Windows printers:
+
+   ```powershell
+   cd scripts
+   .\bind-printers.cmd
+   ```
+
+5. Test in a console window:
 
    ```powershell
    cd agent
    .\print-agent.cmd --config ..\config\mineuqr-agent-config.json
    ```
 
-5. Install as a Windows service (Administrator PowerShell):
+6. Install as a Windows service (Administrator PowerShell):
 
    ```powershell
    cd scripts
    .\install-agent.ps1
    ```
 
-6. Return to the dashboard and press **Refresh Connection Status**, then **Test Print**.
+7. Return to the dashboard and press **Refresh Connection Status**, then **Test Print**.
 
 ## Folder Layout
 
@@ -51,6 +58,8 @@ MineuQR-Print-Agent/
 | File | Purpose |
 |------|---------|
 | `config\mineuqr-agent-config.json` | **Active config** from dashboard download |
+| `config\printer-bindings.json` | **Physical bindings** created by bind-printers |
+| `config\binding-diagnostics.json` | Latest binding status report |
 | `config\mineuqr-agent-config.json.example` | Reference template only |
 
 The service installer defaults to `config\mineuqr-agent-config.json`.
@@ -69,7 +78,7 @@ The service installer defaults to `config\mineuqr-agent-config.json`.
 | `node.exe not found` | Install Node.js 20+ and reopen PowerShell |
 | `Config not found` | Place dashboard JSON at `config\mineuqr-agent-config.json` |
 | Agent offline in dashboard | Firewall, internet, config `serverUrl` |
-| Test print fails | Windows printer name in config must match spooler queue (support) |
+| Test print fails | Run `scripts\bind-printers.cmd` and verify `config\binding-diagnostics.json` |
 
 ## Support
 
