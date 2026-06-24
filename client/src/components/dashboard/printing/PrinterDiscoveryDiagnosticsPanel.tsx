@@ -74,14 +74,14 @@ function emptyStateCopy(
           : "No printer records exist for this restaurant in the database.",
         steps: isAr
           ? [
-              "أضف طابعة من إعدادات المطعم",
-              "عيّن profileId مطابقاً لملف الوكيل",
-              "أعد فتح عمليات الطباعة للتحقق",
+              "اضغط إضافة طابعة في أعلى الصفحة",
+              "ثم اربط جهاز نقطة البيع",
+              "أخيراً أرسل طباعة تجريبية",
             ]
           : [
-              "Add a printer from restaurant settings",
-              "Set profileId to match the agent config",
-              "Reopen Printer Operations to verify",
+              "Click Add Printer at the top of this page",
+              "Then connect your POS device",
+              "Finally send a test print",
             ],
       };
     case "printers_inactive":

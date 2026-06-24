@@ -1,5 +1,8 @@
+import { AddPrinterDialog } from "@/components/dashboard/printing/AddPrinterDialog";
+import { ConnectDeviceGuideSheet } from "@/components/dashboard/printing/ConnectDeviceGuideSheet";
 import { DiagnosticHistoryPanel } from "@/components/dashboard/printing/DiagnosticHistoryPanel";
 import { PrinterDiscoveryDiagnosticsPanel } from "@/components/dashboard/printing/PrinterDiscoveryDiagnosticsPanel";
+import { PrinterProvisioningPanel } from "@/components/dashboard/printing/PrinterProvisioningPanel";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { RestaurantDashSection } from "@/components/dashboard/RestaurantDashSection";
 import {
@@ -82,6 +85,8 @@ export function PrintingOperationsPanel({
   const [activeTab, setActiveTab] = useState<
     "printers" | "agents" | "stations" | "queue" | "failures" | "diagnostics"
   >("printers");
+  const [addPrinterOpen, setAddPrinterOpen] = useState(false);
+  const [connectDeviceOpen, setConnectDeviceOpen] = useState(false);
 
   const copy = useMemo(
     () => ({
@@ -211,6 +216,11 @@ export function PrintingOperationsPanel({
 
   const jobTotal = jobsQuery.data?.total ?? 0;
   const jobPageCount = Math.max(1, Math.ceil(jobTotal / PAGE_SIZE));
+  const provisioning = discoveryQuery.data?.provisioning;
+
+  const refetchProvisioning = () => {
+    refetchAll();
+  };
 
   return (
     <div className={restaurantDash.stack}>
@@ -243,6 +253,37 @@ export function PrintingOperationsPanel({
           <RestaurantKpiCard label={copy.failedJobs} value={summaryQuery.data?.failedJobs ?? 0} icon={AlertTriangle} tone="warning" />
         </div>
       )}
+
+      <PrinterProvisioningPanel
+        provisioning={provisioning}
+        isAr={isAr}
+        isLoading={discoveryQuery.isLoading}
+        testPrintPending={testPrintMutation.isPending}
+        onAddPrinter={() => setAddPrinterOpen(true)}
+        onConnectDevice={() => setConnectDeviceOpen(true)}
+        onTestPrint={() => {
+          if (provisioning?.primaryPrinterId != null) {
+            handleTestPrint(provisioning.primaryPrinterId);
+          }
+        }}
+      />
+
+      <AddPrinterDialog
+        open={addPrinterOpen}
+        onOpenChange={setAddPrinterOpen}
+        restaurantId={restaurantId}
+        isAr={isAr}
+        hasExistingPrinters={(printersQuery.data?.length ?? 0) > 0}
+        onCreated={refetchProvisioning}
+      />
+
+      <ConnectDeviceGuideSheet
+        open={connectDeviceOpen}
+        onOpenChange={setConnectDeviceOpen}
+        provisioning={provisioning}
+        isAr={isAr}
+        onRefresh={refetchProvisioning}
+      />
 
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as typeof activeTab)}>
         <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1">

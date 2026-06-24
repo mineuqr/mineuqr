@@ -1,7 +1,7 @@
 # THERMAL-PRINTING-13I.1 — Diagnostic History & Timeline UI
 
 **Status:** Implementation complete (observability only)  
-**Includes:** 13I.1A–13I.1H  
+**Includes:** 13I.1A–13I.1J  
 **Out of scope:** 12A, agent protocol changes, dispatch/routing/print execution
 
 ---
@@ -150,6 +150,42 @@ Refresh button refetches discovery and diagnostic history along with existing qu
 ### Rollback
 
 - Dashboard-only rollback reverts to generic empty message; Print Host rollback removes new endpoints (dashboard degrades gracefully — discovery panel hidden when query fails).
+
+---
+
+## THERMAL-PRINTING-13I.1J — Printer Provisioning Flow
+
+**Status:** Implemented  
+**Closes:** First-time operator provisioning gap (Decision C audit)
+
+### Flow
+
+```
+Add Printer (Vercel) → Connect Device (guide) → Test Print (existing)
+```
+
+### Server
+
+| Route | Host | Purpose |
+|-------|------|---------|
+| `printOps.createPrinter` | Vercel | Insert `printers` row; auto `profileId` |
+| `printOps.getDiscoveryDiagnostics` | Print Host | `provisioning.step` + `connectConfig` |
+
+`profileId` is system-managed (`r{restaurantId}-printer-{suffix}`). Operators enter name, paper width, and default toggle only.
+
+### UI
+
+- `PrinterProvisioningPanel` — stepper + primary CTA (never dead-end)
+- `AddPrinterDialog` — Step 1
+- `ConnectDeviceGuideSheet` — Step 2 (agent ID, JSON config, install steps)
+- Step 3 reuses `printOps.testPrint`
+
+### Production Validation
+
+| Restaurant | Steps |
+|------------|-------|
+| **720002** | Add Printer → Connect Device sheet → verify discovery advances |
+| **720007** | Test Print CTA visible; regression on existing print flow |
 
 ---
 

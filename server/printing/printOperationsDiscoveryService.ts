@@ -15,6 +15,9 @@ import type {
   PrinterInventoryEmptyReason,
 } from "./printOperationsDiscoveryTypes";
 import type { PrinterOverviewItem } from "./printOperationsTypes";
+import { buildPrintAgentConnectConfig } from "./printAgentConnectConfig";
+import { buildSuggestedPrintAgentId } from "./printerProfileId";
+import type { ProvisioningStep } from "./printOperationsProvisioningTypes";
 
 function buildDiscoveryAgentItem(input: {
   agentId: string;
@@ -110,6 +113,86 @@ function resolveEmptyReason(input: {
   return null;
 }
 
+function resolveProvisioningStep(input: {
+  assignedDbPrinters: number;
+  activePrinters: number;
+  ownershipConflicts: OwnershipConflictItem[];
+}): ProvisioningStep {
+  if (input.ownershipConflicts.length > 0) {
+    return "blocked";
+  }
+  if (input.assignedDbPrinters === 0) {
+    return "add_printer";
+  }
+  if (input.activePrinters === 0) {
+    return "connect_agent";
+  }
+  return "test_print";
+}
+
+function resolvePrimaryPrinter(
+  printers: Array<{ id: number; name: string; isDefault: boolean }>,
+  printerOverviews?: PrinterOverviewItem[]
+): { id: number; name: string } | null {
+  if (printers.length === 0) {
+    return null;
+  }
+
+  const defaultRow = printers.find((printer) => printer.isDefault);
+  if (defaultRow) {
+    return { id: defaultRow.id, name: defaultRow.name };
+  }
+
+  if (printerOverviews) {
+    const active = printerOverviews.find((printer) => printer.isActive);
+    if (active) {
+      return { id: active.id, name: active.name };
+    }
+  }
+
+  const first = printers[0]!;
+  return { id: first.id, name: first.name };
+}
+
+function buildProvisioningState(input: {
+  restaurantId: number;
+  printers: Array<{
+    id: number;
+    name: string;
+    profileId: string;
+    paperWidthMm: number;
+    isDefault: boolean;
+  }>;
+  assignedDbPrinters: number;
+  activePrinters: number;
+  ownershipConflicts: OwnershipConflictItem[];
+  printerOverviews?: PrinterOverviewItem[];
+}) {
+  const step = resolveProvisioningStep({
+    assignedDbPrinters: input.assignedDbPrinters,
+    activePrinters: input.activePrinters,
+    ownershipConflicts: input.ownershipConflicts,
+  });
+  const primary = resolvePrimaryPrinter(input.printers, input.printerOverviews);
+  const connectRows = input.printers.map((printer) => ({
+    id: printer.id,
+    name: printer.name,
+    profileId: printer.profileId,
+    paperWidthMm: printer.paperWidthMm,
+  }));
+
+  return {
+    step,
+    suggestedAgentId: buildSuggestedPrintAgentId(input.restaurantId),
+    primaryPrinterId: primary?.id ?? null,
+    primaryPrinterName: primary?.name ?? null,
+    connectConfig:
+      step === "connect_agent" || step === "test_print"
+        ? buildPrintAgentConnectConfig(input.restaurantId, connectRows)
+        : null,
+  };
+}
+
 export async function getPrintDiscoveryDiagnostics(
   restaurantId: number,
   printerOverviews?: PrinterOverviewItem[]
@@ -172,6 +255,15 @@ export async function getPrintDiscoveryDiagnostics(
 
   const isInventoryEmpty = printers.length === 0 || activePrinters === 0;
 
+  const provisioning = buildProvisioningState({
+    restaurantId,
+    printers,
+    assignedDbPrinters: printers.length,
+    activePrinters,
+    ownershipConflicts,
+    printerOverviews,
+  });
+
   return {
     restaurantId,
     isInventoryEmpty,
@@ -186,5 +278,6 @@ export async function getPrintDiscoveryDiagnostics(
     },
     agents: agents.sort((left, right) => left.agentId.localeCompare(right.agentId)),
     ownershipConflicts,
+    provisioning,
   };
 }

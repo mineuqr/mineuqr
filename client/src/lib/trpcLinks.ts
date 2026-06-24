@@ -26,7 +26,7 @@ function createFetchWithCredentials(): NonNullable<Parameters<typeof httpBatchLi
 }
 
 function isPrintHostProcedure(path: string): boolean {
-  if (path === "printOps.testPrint") {
+  if (path === "printOps.testPrint" || path === "printOps.createPrinter") {
     return false;
   }
   return path === "printOps" || path.startsWith("printOps.") || path === "endpointOps" || path.startsWith("endpointOps.");

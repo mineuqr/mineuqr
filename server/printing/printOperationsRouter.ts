@@ -16,6 +16,7 @@ import {
   getPrinterDiscoveryDiagnostics,
   listDiagnosticRunHistory,
 } from "./printOperationsService";
+import { createRestaurantPrinter } from "./printOperationsProvisioningService";
 import { submitDiagnosticTestPrint } from "./diagnosticPrintService";
 
 const restaurantInput = z.object({
@@ -111,6 +112,24 @@ export const printOperationsRouter = router({
     .query(async ({ input, ctx }) => {
       await assertRestaurantAccess(ctx, input.restaurantId, "printOps.listDiagnosticRuns");
       return listDiagnosticRunHistory(input.restaurantId, input.limit);
+    }),
+
+  createPrinter: verifiedProcedure
+    .input(
+      restaurantInput.extend({
+        name: z.string().trim().min(1).max(128),
+        paperWidthMm: z.union([z.literal(58), z.literal(80)]),
+        isDefault: z.boolean().default(true),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      await assertRestaurantAccess(ctx, input.restaurantId, "printOps.createPrinter");
+      return createRestaurantPrinter({
+        restaurantId: input.restaurantId,
+        name: input.name,
+        paperWidthMm: input.paperWidthMm,
+        isDefault: input.isDefault,
+      });
     }),
 
   testPrint: verifiedProcedure

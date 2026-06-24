@@ -2,6 +2,10 @@
  * THERMAL-PRINTING-13I.1H — printer discovery and ownership diagnostics (read-only).
  */
 
+import type { PrinterProvisioningState } from "./printOperationsProvisioningTypes";
+
+export type { ProvisioningStep, PrinterProvisioningState } from "./printOperationsProvisioningTypes";
+
 export type PrinterInventoryEmptyReason =
   | "no_db_printers"
   | "no_agent_connected"
@@ -41,6 +45,7 @@ export type PrintDiscoveryDiagnostics = {
   };
   agents: DiscoveryAgentItem[];
   ownershipConflicts: OwnershipConflictItem[];
+  provisioning: PrinterProvisioningState;
 };
 
 export type DiagnosticRunView = {

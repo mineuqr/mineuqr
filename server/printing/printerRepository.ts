@@ -1,7 +1,7 @@
 /**
  * THERMAL-PRINTING-11A — printer and print-settings persistence queries.
  */
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { printers, restaurantPrintSettings, type SelectPrinter } from "../../drizzle/schema";
 import { getDb } from "../db";
 import { PrintJobUnavailableError } from "./printJobTypes";
@@ -44,4 +44,41 @@ export async function findRestaurantPrintSettings(restaurantId: number) {
 export async function listAllPrinters(): Promise<SelectPrinter[]> {
   const db = await resolveDb();
   return db.select().from(printers).orderBy(printers.id);
+}
+
+export async function clearDefaultPrinterForRestaurant(restaurantId: number): Promise<void> {
+  const db = await resolveDb();
+  await db
+    .update(printers)
+    .set({ isDefault: false })
+    .where(and(eq(printers.restaurantId, restaurantId), eq(printers.isDefault, true)));
+}
+
+export async function insertPrinterForRestaurant(input: {
+  restaurantId: number;
+  name: string;
+  paperWidthMm: number;
+  profileId: string;
+  isDefault: boolean;
+}): Promise<SelectPrinter> {
+  const db = await resolveDb();
+
+  if (input.isDefault) {
+    await clearDefaultPrinterForRestaurant(input.restaurantId);
+  }
+
+  const [result] = await db.insert(printers).values({
+    restaurantId: input.restaurantId,
+    name: input.name.trim(),
+    paperWidthMm: input.paperWidthMm,
+    profileId: input.profileId,
+    isDefault: input.isDefault,
+  });
+
+  const id = Number(result.insertId);
+  const row = await findPrinterById(id);
+  if (!row) {
+    throw new PrintJobUnavailableError();
+  }
+  return row;
 }

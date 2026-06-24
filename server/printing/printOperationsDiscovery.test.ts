@@ -3,7 +3,7 @@ import { clearAgentRegistry } from "./agentRegistry";
 import { clearPrinterProfileStore } from "./printerProfileStore";
 import { clearPrinterResolutionRegistry } from "./printerResolutionRegistry";
 import { getPrintDiscoveryDiagnostics } from "./printOperationsDiscoveryService";
-import { registerOnlineAgent, seedPrinterProfile, TEST_PROFILE_PRINTER_ID } from "./printingTestHelpers";
+import { registerOnlineAgent, seedPrinterProfile, seedPrinterResolution, TEST_PROFILE_PRINTER_ID } from "./printingTestHelpers";
 import { resolveRestaurantIdForAgent } from "./endpointRegistryCompatibility";
 
 vi.mock("./printerRepository", () => ({
@@ -53,6 +53,8 @@ describe("printOperationsDiscoveryService THERMAL-PRINTING-13I.1H", () => {
     expect(diagnostics.emptyReason).toBe("no_agent_connected");
     expect(diagnostics.counts.connectedAgentsForRestaurant).toBe(0);
     expect(diagnostics.counts.assignedDbPrinters).toBe(1);
+    expect(diagnostics.provisioning.step).toBe("connect_agent");
+    expect(diagnostics.provisioning.suggestedAgentId).toBe("mineuqr-agent-720002");
   });
 
   it("reports agent_no_matching_profiles when agent is online without matching profiles", async () => {
@@ -104,6 +106,7 @@ describe("printOperationsDiscoveryService THERMAL-PRINTING-13I.1H", () => {
     expect(diagnostics.ownershipConflicts).toHaveLength(1);
     expect(diagnostics.ownershipConflicts[0]?.owningRestaurantId).toBe(restaurant720007);
     expect(diagnostics.ownershipConflicts[0]?.currentRestaurantId).toBe(restaurant720002);
+    expect(diagnostics.provisioning.step).toBe("blocked");
   });
 
   it("reports no_db_printers when restaurant has no configured printers", async () => {
@@ -113,5 +116,40 @@ describe("printOperationsDiscoveryService THERMAL-PRINTING-13I.1H", () => {
 
     expect(diagnostics.emptyReason).toBe("no_db_printers");
     expect(diagnostics.counts.assignedDbPrinters).toBe(0);
+    expect(diagnostics.provisioning.step).toBe("add_printer");
+  });
+
+  it("reports test_print provisioning when an active printer is available", async () => {
+    vi.mocked(listPrintersForRestaurant).mockResolvedValue([
+      {
+        id: 10,
+        restaurantId: restaurant720007,
+        name: "Kitchen",
+        paperWidthMm: 80,
+        profileId: TEST_PROFILE_PRINTER_ID,
+        isDefault: true,
+        createdAt: "2026-06-24 00:00:00",
+        updatedAt: "2026-06-24 00:00:00",
+      },
+    ]);
+
+    seedPrinterResolution({ agentId: "mineuqr-agent-720007", dbPrinterId: 10 });
+    registerOnlineAgent("mineuqr-agent-720007");
+
+    const diagnostics = await getPrintDiscoveryDiagnostics(restaurant720007, [
+      {
+        id: 10,
+        name: "Kitchen",
+        profileId: TEST_PROFILE_PRINTER_ID,
+        transport: "usb",
+        isActive: true,
+        isDefault: true,
+        lastActivityAt: null,
+      },
+    ]);
+
+    expect(diagnostics.provisioning.step).toBe("test_print");
+    expect(diagnostics.provisioning.primaryPrinterId).toBe(10);
+    expect(diagnostics.provisioning.connectConfig).not.toBeNull();
   });
 });
