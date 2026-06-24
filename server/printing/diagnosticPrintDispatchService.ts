@@ -151,6 +151,7 @@ export async function executePrintHostDiagnosticTestPrint(
     restaurantId: input.restaurantId,
     printerId: input.printerId,
     ticket: buildDiagnosticTicketPayload({
+      wireJobId: input.wireJobId,
       restaurantId: input.restaurantId,
       printerName: input.printerName,
       agentId,

@@ -21,6 +21,17 @@ export function diagnosticWireJobIdFromRunId(runId: number): number {
   return DIAGNOSTIC_WIRE_JOB_ID_BASE + runId;
 }
 
+/**
+ * Positive sentinel orderId for diagnostic agent payloads.
+ * Uses the diagnostic wire job id so customer orderId validation passes unchanged.
+ */
+export function diagnosticOrderIdForWireJob(wireJobId: number): number {
+  if (!isDiagnosticWireJobId(wireJobId)) {
+    throw new Error("Invalid diagnostic wire job id");
+  }
+  return wireJobId;
+}
+
 export const DIAGNOSTIC_PRINT_STATUS = {
   PENDING: "pending",
   ACCEPTED: "accepted",

@@ -2,7 +2,7 @@
  * THERMAL-PRINTING-7A.3 / 10B — authoritative print job retrieval for assigned agents.
  */
 import type { AgentJobPayload } from "../../shared/printing/agentJobMessages";
-import { isDiagnosticWireJobId } from "../../shared/printing/diagnosticPrint";
+import { isDiagnosticWireJobId, diagnosticOrderIdForWireJob } from "../../shared/printing/diagnosticPrint";
 import type { RuntimeExecutionPlanSummary } from "../../shared/printing/executionIntegration";
 import type { TransportDeliveryContext } from "../../shared/printing/transports/transportDeliveryContext";
 import { getAgent } from "./agentRegistry";
@@ -159,7 +159,7 @@ async function fetchAuthoritativeDiagnosticPrintJob(input: {
       jobId: assignment.wireJobId,
       restaurantId: assignment.restaurantId,
       printerId: assignment.printerId,
-      orderId: 0,
+      orderId: diagnosticOrderIdForWireJob(assignment.wireJobId),
       ticket: assignment.ticket,
     },
     executionPlan: resolved.summary,

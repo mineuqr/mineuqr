@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AGENT_JOB_MESSAGE_TYPES } from "../../shared/printing/agentJobMessages";
 import {
+  diagnosticOrderIdForWireJob,
   diagnosticWireJobIdFromRunId,
   isDiagnosticWireJobId,
 } from "../../shared/printing/diagnosticPrint";
@@ -75,10 +76,13 @@ describe("diagnosticPrint THERMAL-PRINTING-13I.6", () => {
     expect(diagnosticWireJobIdFromRunId(3)).toBe(9_000_000_003);
     expect(isDiagnosticWireJobId(9_000_000_003)).toBe(true);
     expect(isDiagnosticWireJobId(420003)).toBe(false);
+    expect(diagnosticOrderIdForWireJob(9_000_000_003)).toBe(9_000_000_003);
   });
 
   it("builds a visually distinct diagnostic ticket payload", () => {
+    const wireJobId = diagnosticWireJobIdFromRunId(1);
     const ticket = buildDiagnosticTicketPayload({
+      wireJobId,
       restaurantId: 720007,
       printerName: "POS-80C",
       agentId: "mineuqr-agent-720007",
@@ -87,7 +91,9 @@ describe("diagnosticPrint THERMAL-PRINTING-13I.6", () => {
       triggeredAt: "2026-06-24T10:00:00.000Z",
     });
 
-    expect(ticket.orderId).toBe(0);
+    expect(ticket.orderId).toBe(wireJobId);
+    expect(ticket.orderId).toBeGreaterThan(0);
+    expect(ticket.items.some((item) => item.itemName === "\u200B")).toBe(true);
     expect(ticket.items.some((item) => item.itemName.includes("DIAGNOSTIC TEST"))).toBe(true);
     expect(ticket.items.some((item) => item.itemName.includes("NOT A CUSTOMER ORDER"))).toBe(true);
   });
@@ -117,7 +123,8 @@ describe("diagnosticPrint THERMAL-PRINTING-13I.6", () => {
     const fetched = await fetchAuthoritativePrintJob({ agentId, jobId: wireJobId });
     expect(fetched.found).toBe(true);
     if (fetched.found) {
-      expect(fetched.job.orderId).toBe(0);
+      expect(fetched.job.orderId).toBe(wireJobId);
+      expect(fetched.job.ticket.orderId).toBe(wireJobId);
       expect(fetched.job.ticket.items.some((item) => item.itemName.includes("DIAGNOSTIC TEST"))).toBe(
         true
       );
