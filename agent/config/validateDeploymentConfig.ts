@@ -11,6 +11,10 @@ import {
   normalizeUsbTransportEndpoint,
   type UsbTransportEndpoint,
 } from "../../shared/printing/transports/transportContracts";
+import {
+  isPendingPhysicalBinding,
+  type PhysicalBindingEntry,
+} from "../../shared/printing/physicalBindings";
 import type {
   AgentDeploymentConfig,
   AgentDeploymentConfigFile,
@@ -106,6 +110,47 @@ function validateUsbEndpoint(
       }`
     );
   }
+}
+
+function validatePhysicalBindingPlaceholder(
+  profilePrinterId: string,
+  entry: PhysicalBindingEntry,
+  diagnostics: string[]
+): void {
+  if (entry.logicalPrinterId !== profilePrinterId) {
+    diagnostics.push(
+      `physicalBindings["${profilePrinterId}"]: logicalPrinterId must match profileId`
+    );
+  }
+  if (!entry.logicalPrinterName.trim()) {
+    diagnostics.push(
+      `physicalBindings["${profilePrinterId}"]: logicalPrinterName is required`
+    );
+  }
+  if (entry.transportKind !== "windows-spooler") {
+    diagnostics.push(
+      `physicalBindings["${profilePrinterId}"]: unsupported transportKind "${entry.transportKind}"`
+    );
+  }
+}
+
+function validateUsbTransportRequirement(
+  profilePrinterId: string,
+  usbEndpoint: UsbTransportEndpoint | undefined,
+  physicalBinding: PhysicalBindingEntry | undefined,
+  diagnostics: string[]
+): void {
+  if (usbEndpoint) {
+    validateUsbEndpoint(profilePrinterId, usbEndpoint, diagnostics);
+    return;
+  }
+
+  if (isPendingPhysicalBinding(physicalBinding)) {
+    validatePhysicalBindingPlaceholder(profilePrinterId, physicalBinding, diagnostics);
+    return;
+  }
+
+  validateUsbEndpoint(profilePrinterId, undefined, diagnostics);
 }
 
 function validateNetworkEndpoint(
@@ -207,6 +252,7 @@ export function validateDeploymentConfigFile(
   }
 
   const usbTransportEndpoints = file.usbTransportEndpoints ?? {};
+  const physicalBindings = file.physicalBindings ?? {};
   const networkTransportEndpoints = file.networkTransportEndpoints ?? {};
   const bluetoothTransportEndpoints = file.bluetoothTransportEndpoints ?? {};
 
@@ -218,7 +264,12 @@ export function validateDeploymentConfigFile(
 
     switch (profile.transport) {
       case "usb":
-        validateUsbEndpoint(profile.printerId, usbTransportEndpoints[profile.printerId], diagnostics);
+        validateUsbTransportRequirement(
+          profile.printerId,
+          usbTransportEndpoints[profile.printerId],
+          physicalBindings[profile.printerId],
+          diagnostics
+        );
         break;
       case "network":
         validateNetworkEndpoint(
@@ -247,6 +298,14 @@ export function validateDeploymentConfigFile(
     }
   }
 
+  for (const bindingProfileId of Object.keys(physicalBindings)) {
+    if (!startupPrinters.some((profile) => profile.printerId === bindingProfileId)) {
+      diagnostics.push(
+        `physicalBindings["${bindingProfileId}"] has no matching startupPrinters profile`
+      );
+    }
+  }
+
   if (diagnostics.length > 0) {
     throw new AgentDeploymentConfigError("Invalid agent deployment configuration", diagnostics);
   }
@@ -258,6 +317,8 @@ export function validateDeploymentConfigFile(
     platform: "windows",
     startupPrinters,
     usbTransportEndpoints,
+    physicalBindings:
+      Object.keys(physicalBindings).length > 0 ? physicalBindings : undefined,
     networkTransportEndpoints:
       Object.keys(networkTransportEndpoints).length > 0
         ? networkTransportEndpoints

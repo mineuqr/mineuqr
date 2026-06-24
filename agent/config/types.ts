@@ -8,6 +8,7 @@ import type {
   NetworkTransportEndpoint,
   UsbTransportEndpoint,
 } from "../../shared/printing/transports/transportContracts";
+import type { PhysicalBindingEntry } from "../../shared/printing/physicalBindings";
 
 export interface AgentDeploymentConfig {
   agentId: string;
@@ -16,6 +17,7 @@ export interface AgentDeploymentConfig {
   platform: "windows";
   startupPrinters: PrinterProfile[];
   usbTransportEndpoints: Record<string, UsbTransportEndpoint>;
+  physicalBindings?: Record<string, PhysicalBindingEntry>;
   networkTransportEndpoints?: Record<string, NetworkTransportEndpoint>;
   bluetoothTransportEndpoints?: Record<string, BluetoothTransportEndpoint>;
   identityStorePath?: string;
@@ -32,6 +34,7 @@ export type AgentDeploymentConfigFile = {
   platform?: AgentPlatform;
   startupPrinters: Array<PrinterProfile | DeploymentPrinterProfileRef>;
   usbTransportEndpoints?: Record<string, UsbTransportEndpoint>;
+  physicalBindings?: Record<string, PhysicalBindingEntry>;
   networkTransportEndpoints?: Record<string, NetworkTransportEndpoint>;
   bluetoothTransportEndpoints?: Record<string, BluetoothTransportEndpoint>;
   identityStorePath?: string;

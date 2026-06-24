@@ -89,6 +89,25 @@ describe("validateDeploymentConfig THERMAL-PRINTING-12B", () => {
     ).toThrow(/Missing usbTransportEndpoints entry/);
   });
 
+  it("accepts pending physical binding without usbTransportEndpoints (13I.2E.1)", () => {
+    const config = validateDeploymentConfigFile(
+      buildValidConfig({
+        usbTransportEndpoints: {},
+        physicalBindings: {
+          "pos-80c-copy-1-usb001": {
+            bindingStatus: "pending",
+            logicalPrinterId: "pos-80c-copy-1-usb001",
+            logicalPrinterName: "POS-80C (copy 1)",
+            transportKind: "windows-spooler",
+          },
+        },
+      })
+    );
+
+    expect(config.usbTransportEndpoints).toEqual({});
+    expect(config.physicalBindings?.["pos-80c-copy-1-usb001"]?.bindingStatus).toBe("pending");
+  });
+
   it("rejects orphan usb endpoint keys", () => {
     expect(() =>
       validateDeploymentConfigFile(

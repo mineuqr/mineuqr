@@ -1,4 +1,5 @@
 {
+  "bindingModel": "13I.2E.1",
   "agentId": "mineuqr-agent-REPLACE-RESTAURANT-ID",
   "agentName": "MineuQR Print Agent",
   "serverUrl": "wss://print.mineuqr.com/ws/print-agent",
@@ -22,13 +23,15 @@
       }
     }
   ],
-  "usbTransportEndpoints": {
+  "physicalBindings": {
     "rREPLACE-printer-EXAMPLE": {
-      "kind": "windows-spooler",
-      "printerName": "REPLACE-WITH-WINDOWS-SPOOLER-QUEUE-NAME",
-      "portName": "USB001"
+      "bindingStatus": "pending",
+      "logicalPrinterId": "rREPLACE-printer-EXAMPLE",
+      "logicalPrinterName": "Kitchen Printer",
+      "transportKind": "windows-spooler"
     }
   },
+  "usbTransportEndpoints": {},
   "heartbeatIntervalMs": 30000,
   "reconnectInitialDelayMs": 1000,
   "reconnectMaxDelayMs": 30000
