@@ -8,7 +8,7 @@ import type {
   NetworkTransportEndpoint,
   UsbTransportEndpoint,
 } from "../../shared/printing/transports/transportContracts";
-import type { TransportRetryPolicy } from "../../shared/printing/transports/transportRetryPolicy";
+import type { AgentPrinterBindingReportPayload } from "../../shared/printing/printerBindingReport";
 import type { IdentityStore } from "../identity/identityStore";
 import type { AgentJobClient } from "../jobs/jobClient";
 import type { AgentTransportClients } from "../transports/transportRegistry";
@@ -31,4 +31,5 @@ export type AgentBootConfig = {
   reconnectInitialDelayMs?: number;
   reconnectMaxDelayMs?: number;
   startupPrinters?: PrinterProfile[];
+  bindingStatusProvider?: () => Promise<AgentPrinterBindingReportPayload | null>;
 };

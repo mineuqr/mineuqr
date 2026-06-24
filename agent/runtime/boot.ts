@@ -96,12 +96,17 @@ export async function bootAgent(config: AgentBootConfig): Promise<AgentRuntime> 
       version: config.version,
     });
 
+    const bindingStatus = config.bindingStatusProvider
+      ? await config.bindingStatusProvider()
+      : null;
+
     performAgentStartupReporting({
       agentId: identity.agentId,
       platform: config.platform,
       sender: client,
       reporting: startupReporting,
       printers: config.startupPrinters,
+      ...(bindingStatus ? { bindingStatus } : {}),
     });
 
     lifecycle.transition("ready");
@@ -125,6 +130,7 @@ export async function bootAgent(config: AgentBootConfig): Promise<AgentRuntime> 
       runtime.heartbeat = createHeartbeatManager(config, identity.agentId, client);
       startupReporting.printerProfilesTracker.clear();
       startupReporting.platformCapabilitiesTracker.clear();
+      startupReporting.bindingStatusTracker.clear();
       await performRegistration();
     },
     onDisconnected: () => {

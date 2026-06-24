@@ -13,11 +13,13 @@
  */
 import "dotenv/config";
 import {
+  buildBindingStatusReportPayload,
   discoverWindowsPrinters,
   evaluateBindingDiagnostics,
   formatBindingDiagnosticLine,
   loadPrinterBindingsFile,
   resolvePrinterBindingsPath,
+  startBindingStatusMonitor,
   writeBindingDiagnosticsReport,
 } from "../agent/bindings";
 import {
@@ -70,7 +72,23 @@ async function main(): Promise<void> {
     );
   }
 
-  const runtime = await bootAgentFromDeploymentConfig(config);
+  const runtime = await bootAgentFromDeploymentConfig(config, {
+    bindingStatusProvider: () =>
+      buildBindingStatusReportPayload({
+        config,
+        configPath,
+      }),
+  });
+
+  startBindingStatusMonitor({
+    provider: () =>
+      buildBindingStatusReportPayload({
+        config,
+        configPath,
+      }),
+    sender: runtime.client,
+    tracker: runtime.startupReporting.bindingStatusTracker,
+  });
 
   console.log(
     `[PrintAgent] Ready agentId=${runtime.identity.agentId} lifecycle=${runtime.lifecycle.getState()} profiles=${config.startupPrinters.length}`

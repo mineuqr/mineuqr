@@ -1,7 +1,8 @@
 /**
- * THERMAL-PRINTING-13I.1H — printer discovery and ownership diagnostics (read-only).
+ * THERMAL-PRINTING-13I.1H / 13I.3A — printer discovery and ownership diagnostics (read-only).
  */
 
+import type { RuntimeBindingStatus } from "../../shared/printing/printerBinding";
 import type { PrinterProvisioningState } from "./printOperationsProvisioningTypes";
 
 export type { ProvisioningStep, PrinterProvisioningState } from "./printOperationsProvisioningTypes";
@@ -31,6 +32,18 @@ export type OwnershipConflictItem = {
   printerName: string | null;
 };
 
+export type PrinterBindingStatusItem = {
+  printerId: number;
+  profileId: string;
+  logicalPrinterName: string;
+  agentId: string | null;
+  bindingStatus: RuntimeBindingStatus | "UNKNOWN";
+  windowsPrinterName: string | null;
+  portName: string | null;
+  lastValidatedAt: string | null;
+  message: string | null;
+};
+
 export type PrintDiscoveryDiagnostics = {
   restaurantId: number;
   isInventoryEmpty: boolean;
@@ -46,6 +59,7 @@ export type PrintDiscoveryDiagnostics = {
   agents: DiscoveryAgentItem[];
   ownershipConflicts: OwnershipConflictItem[];
   provisioning: PrinterProvisioningState;
+  bindingStatus: PrinterBindingStatusItem[];
 };
 
 export type DiagnosticRunView = {

@@ -5,6 +5,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { createIdentity } from "../identity/createIdentity";
 import { FileIdentityStore, type IdentityStore } from "../identity/identityStore";
+import type { AgentPrinterBindingReportPayload } from "../../shared/printing/printerBindingReport";
 import { bootAgent } from "../runtime/boot";
 import type { AgentRuntime } from "../runtime/runtimeTypes";
 import type { AgentWebSocketClient } from "../transport/websocketClient";
@@ -54,6 +55,7 @@ export async function bootAgentFromDeploymentConfig(
   options: {
     client?: AgentWebSocketClient;
     identityStore?: IdentityStore;
+    bindingStatusProvider?: () => Promise<AgentPrinterBindingReportPayload | null>;
   } = {}
 ): Promise<AgentRuntime> {
   const identityStore =
@@ -73,5 +75,6 @@ export async function bootAgentFromDeploymentConfig(
     heartbeatIntervalMs: config.heartbeatIntervalMs,
     reconnectInitialDelayMs: config.reconnectInitialDelayMs,
     reconnectMaxDelayMs: config.reconnectMaxDelayMs,
+    bindingStatusProvider: options.bindingStatusProvider,
   });
 }

@@ -1,3 +1,10 @@
+export {
+  buildBindingStatusReportPayload,
+  bindingReportPayloadFromDiagnostics,
+  reportBindingStatus,
+  BindingStatusReportTracker,
+  startBindingStatusMonitor,
+} from "./reportBindingStatus";
 export { applyStoredPrinterBindings, upsertStoredPrinterBinding } from "./applyPrinterBindings";
 export { writeBindingDiagnosticsReport, resolveBindingDiagnosticsPath } from "./bindingDiagnosticsStore";
 export {

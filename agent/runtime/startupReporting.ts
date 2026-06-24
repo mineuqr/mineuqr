@@ -15,17 +15,24 @@ import {
   reportPrinterProfiles,
   PrinterProfilesReportTracker,
 } from "../printers/reportPrinterProfiles";
+import {
+  reportBindingStatus,
+  BindingStatusReportTracker,
+} from "../bindings/reportBindingStatus";
+import type { AgentPrinterBindingReportPayload } from "../../shared/printing/printerBindingReport";
 import type { AgentWireSender } from "../registration/registerAgent";
 
 export type AgentStartupReportingState = {
   printerProfilesTracker: PrinterProfilesReportTracker;
   platformCapabilitiesTracker: PlatformCapabilitiesReportTracker;
+  bindingStatusTracker: BindingStatusReportTracker;
 };
 
 export function createAgentStartupReportingState(): AgentStartupReportingState {
   return {
     printerProfilesTracker: new PrinterProfilesReportTracker(),
     platformCapabilitiesTracker: new PlatformCapabilitiesReportTracker(),
+    bindingStatusTracker: new BindingStatusReportTracker(),
   };
 }
 
@@ -50,7 +57,12 @@ export function performAgentStartupReporting(input: {
   reporting: AgentStartupReportingState;
   timestamp?: string;
   printers?: PrinterProfile[];
-}): { reportedProfiles: boolean; reportedCapabilities: boolean } {
+  bindingStatus?: AgentPrinterBindingReportPayload;
+}): {
+  reportedProfiles: boolean;
+  reportedCapabilities: boolean;
+  reportedBindingStatus: boolean;
+} {
   const timestamp = input.timestamp ?? new Date().toISOString();
   let reportedProfiles = false;
 
@@ -76,5 +88,15 @@ export function performAgentStartupReporting(input: {
     tracker: input.reporting.platformCapabilitiesTracker,
   });
 
-  return { reportedProfiles, reportedCapabilities };
+  let reportedBindingStatus = false;
+  if (input.bindingStatus) {
+    reportedBindingStatus = reportBindingStatus({
+      payload: input.bindingStatus,
+      sender: input.sender,
+      tracker: input.reporting.bindingStatusTracker,
+      force: true,
+    });
+  }
+
+  return { reportedProfiles, reportedCapabilities, reportedBindingStatus };
 }

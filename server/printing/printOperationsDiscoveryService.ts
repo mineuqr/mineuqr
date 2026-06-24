@@ -12,12 +12,70 @@ import type {
   DiscoveryAgentItem,
   OwnershipConflictItem,
   PrintDiscoveryDiagnostics,
+  PrinterBindingStatusItem,
   PrinterInventoryEmptyReason,
 } from "./printOperationsDiscoveryTypes";
 import type { PrinterOverviewItem } from "./printOperationsTypes";
 import { buildPrintAgentConnectConfig } from "./printAgentConnectConfig";
 import { buildSuggestedPrintAgentId } from "./printerProfileId";
 import type { ProvisioningStep } from "./printOperationsProvisioningTypes";
+import {
+  buildBindingStatusItemFromReport,
+  buildUnknownBindingStatusItem,
+  getPrinterBindingStatus,
+} from "./printerBindingStatusQueries";
+
+function buildRestaurantBindingStatus(
+  printers: Array<{
+    id: number;
+    name: string;
+    profileId: string;
+  }>
+): PrinterBindingStatusItem[] {
+  return printers.map((printer) => {
+    const profileId = printer.profileId.trim();
+    const resolution = getPrinterResolution(printer.id);
+    const agentId = resolution?.agentId ?? null;
+
+    if (!profileId) {
+      return buildUnknownBindingStatusItem({
+        printerId: printer.id,
+        profileId,
+        logicalPrinterName: printer.name,
+        agentId,
+        message: "Printer profileId is missing",
+      });
+    }
+
+    if (!agentId) {
+      return buildUnknownBindingStatusItem({
+        printerId: printer.id,
+        profileId,
+        logicalPrinterName: printer.name,
+        agentId: null,
+        message: "Printer is not resolved to an agent",
+      });
+    }
+
+    const reportItem = getPrinterBindingStatus(agentId, profileId);
+    if (!reportItem) {
+      return buildUnknownBindingStatusItem({
+        printerId: printer.id,
+        profileId,
+        logicalPrinterName: printer.name,
+        agentId,
+        message: "Agent has not reported binding status yet",
+      });
+    }
+
+    return buildBindingStatusItemFromReport({
+      printerId: printer.id,
+      logicalPrinterName: printer.name,
+      agentId,
+      reportItem,
+    });
+  });
+}
 
 function buildDiscoveryAgentItem(input: {
   agentId: string;
@@ -264,6 +322,8 @@ export async function getPrintDiscoveryDiagnostics(
     printerOverviews,
   });
 
+  const bindingStatus = buildRestaurantBindingStatus(printers);
+
   return {
     restaurantId,
     isInventoryEmpty,
@@ -279,5 +339,6 @@ export async function getPrintDiscoveryDiagnostics(
     agents: agents.sort((left, right) => left.agentId.localeCompare(right.agentId)),
     ownershipConflicts,
     provisioning,
+    bindingStatus,
   };
 }

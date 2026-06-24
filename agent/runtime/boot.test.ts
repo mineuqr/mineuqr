@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AGENT_WEBSOCKET_MESSAGE_TYPES } from "../../shared/printing/agentWebSocketMessages";
 import { AGENT_PRINTER_PROFILE_MESSAGE_TYPES } from "../../shared/printing/printerProfiles";
 import { AGENT_PLATFORM_CAPABILITY_MESSAGE_TYPES } from "../../shared/printing/platformCapabilities";
+import { AGENT_PRINTER_BINDING_MESSAGE_TYPES } from "../../shared/printing/printerBindingReport";
+import { createIdentity } from "../identity/createIdentity";
 import { MemoryIdentityStore } from "../identity/identityStore";
 import { MockAgentWebSocketClient } from "../transport/websocketClient";
 import { bootAgent, createMockAgentRuntime } from "./boot";
@@ -76,6 +78,57 @@ describe("agent boot/shutdown THERMAL-PRINTING-6D", () => {
     expect(
       types.indexOf(AGENT_PRINTER_PROFILE_MESSAGE_TYPES.PROFILES_REPORT)
     ).toBeLessThan(types.indexOf(AGENT_PLATFORM_CAPABILITY_MESSAGE_TYPES.CAPABILITIES_REPORT));
+  });
+
+  it("reports binding status after hello when provider is configured", async () => {
+    const store = new MemoryIdentityStore();
+    await store.save(
+      createIdentity({ agentId: "agent-alpha", agentName: "Kitchen Printer" })
+    );
+    const { client, boot } = createMockAgentRuntime({
+      serverUrl: "ws://localhost/ws/print-agent",
+      agentName: "Kitchen Printer",
+      platform: "windows",
+      identityStore: store,
+      startupPrinters: [
+        {
+          printerId: "kitchen-printer",
+          printerName: "Kitchen",
+          transport: "usb",
+          capabilities: {
+            escpos: true,
+            cutter: false,
+            cashDrawer: false,
+            qrCode: true,
+            imagePrinting: false,
+          },
+          executionCapabilities: {
+            airprint: false,
+            vendorSdk: false,
+          },
+          paperWidth: 80,
+        },
+      ],
+      bindingStatusProvider: async () => ({
+        agentId: "agent-alpha",
+        timestamp: "2026-06-24T12:34:56.000Z",
+        bindings: [
+          {
+            profileId: "kitchen-printer",
+            logicalPrinterName: "Kitchen",
+            bindingStatus: "UNBOUND",
+            windowsPrinterName: null,
+            portName: null,
+            lastValidatedAt: "2026-06-24T12:34:56.000Z",
+          },
+        ],
+      }),
+    });
+
+    await boot();
+
+    const types = client.sent.map((message) => JSON.parse(message).type);
+    expect(types).toContain(AGENT_PRINTER_BINDING_MESSAGE_TYPES.BINDING_REPORT);
   });
 
   it("reuses persisted identity across boots", async () => {

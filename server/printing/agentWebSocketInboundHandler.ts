@@ -29,6 +29,7 @@ import {
   type AgentStatusReportMessage,
 } from "../../shared/printing/agentProtocolStatusMessages";
 import { tryParseAgentPlatformCapabilityInboundMessage } from "./agentPlatformCapabilityWireCodec";
+import { tryParseAgentPrinterBindingInboundMessage } from "./agentPrinterBindingWireCodec";
 import { tryParseAgentProtocolStatusInboundMessage } from "./agentProtocolStatusWireCodec";
 import { tryParseAgentPrinterProfileInboundMessage } from "./agentPrinterProfileWireCodec";
 import { recordAgentStatusReport } from "./agentStatusService";
@@ -40,6 +41,7 @@ import { recordExecutionOutcomeReport } from "./executionOutcomeService";
 import { recordJobStatusReport } from "./jobStatusService";
 import { processAgentPlatformCapabilitiesReport } from "./platformCapabilityNegotiationFlow";
 import { processAgentPrinterProfilesReport } from "./printerProfileNegotiationFlow";
+import { processAgentPrinterBindingStatusReport } from "./printerBindingStatusNegotiationFlow";
 import { handleAgentJobFetchRequest } from "./jobRetrievalRouter";
 import { parseAgentWebSocketMessage } from "./agentWebSocketMessageCodec";
 import {
@@ -76,6 +78,16 @@ export function handleAgentWebSocketInboundMessage(
       agentId: printerProfileMessage.agentId,
       timestamp: printerProfileMessage.timestamp,
       printers: printerProfileMessage.printers,
+    });
+    return;
+  }
+
+  const printerBindingMessage = tryParseAgentPrinterBindingInboundMessage(rawMessage);
+  if (printerBindingMessage) {
+    processAgentPrinterBindingStatusReport({
+      agentId: printerBindingMessage.agentId,
+      timestamp: printerBindingMessage.timestamp,
+      bindings: printerBindingMessage.bindings,
     });
     return;
   }
