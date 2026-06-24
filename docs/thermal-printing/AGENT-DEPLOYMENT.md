@@ -151,16 +151,28 @@ Override with `identityStorePath` in config.
 
 ## Windows Service Deployment
 
-1. Install Node.js 20+ on the POS Windows host.
-2. Clone or deploy the MineuQR build to the host.
-3. Copy `agent/config/production.example.json` to a host-specific path (e.g. `C:\mineuqr\print-agent.json`).
-4. Set `PRINT_AGENT_CONFIG_PATH` and `PRINT_AGENT_SERVER_URL` as machine environment variables.
-5. Register a Windows service (NSSM or `sc.exe`) running:
+**Production standard (13I.6D):** NSSM-managed Windows service. See [AGENT-WINDOWS-SERVICE-13I.6D.md](./AGENT-WINDOWS-SERVICE-13I.6D.md).
 
-```text
-pnpm exec tsx scripts/print-agent.ts --config C:\mineuqr\print-agent.json
+Quick install (Administrator PowerShell):
+
+```powershell
+cd C:\mineuqr
+.\scripts\windows\install-print-agent-service.ps1
 ```
 
+Manual foreground (development / validation only):
+
+```powershell
+pnpm exec tsx scripts/print-agent.ts --config agent/config/production.print-host.example.json
+```
+
+Legacy checklist:
+
+1. Install Node.js 20+ on the POS Windows host.
+2. Clone or deploy the MineuQR build to the host.
+3. Copy `agent/config/production.print-host.example.json` to a host-specific path (e.g. `C:\mineuqr\agent\config\production.720007.json`).
+4. Place `nssm.exe` in `scripts\windows\tools\` (see 13I.6D doc).
+5. Run `install-print-agent-service.ps1` — do **not** rely on an open terminal.
 6. Ensure the Windows spooler printer name and USB port match `usbTransportEndpoints`.
 7. Verify Printer Operations → **Agents** tab shows the agent as `online`.
 
