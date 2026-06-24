@@ -1,0 +1,35 @@
+{
+  "agentId": "mineuqr-agent-REPLACE-RESTAURANT-ID",
+  "agentName": "MineuQR Print Agent",
+  "serverUrl": "wss://print.mineuqr.com/ws/print-agent",
+  "platform": "windows",
+  "startupPrinters": [
+    {
+      "printerId": "rREPLACE-printer-EXAMPLE",
+      "printerName": "Kitchen Printer",
+      "transport": "usb",
+      "paperWidth": 80,
+      "capabilities": {
+        "escpos": true,
+        "cutter": false,
+        "cashDrawer": false,
+        "qrCode": true,
+        "imagePrinting": false
+      },
+      "executionCapabilities": {
+        "airprint": false,
+        "vendorSdk": false
+      }
+    }
+  ],
+  "usbTransportEndpoints": {
+    "rREPLACE-printer-EXAMPLE": {
+      "kind": "windows-spooler",
+      "printerName": "REPLACE-WITH-WINDOWS-SPOOLER-QUEUE-NAME",
+      "portName": "USB001"
+    }
+  },
+  "heartbeatIntervalMs": 30000,
+  "reconnectInitialDelayMs": 1000,
+  "reconnectMaxDelayMs": 30000
+}

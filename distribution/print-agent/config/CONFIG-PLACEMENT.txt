@@ -1,0 +1,13 @@
+Place your dashboard-downloaded configuration file here:
+
+  config\mineuqr-agent-config.json
+
+Steps:
+
+1. Open MineuQR Dashboard -> Printing Setup -> Connect Device
+2. Click Download Configuration
+3. Save or move the downloaded file to this folder
+4. Rename only if needed — the expected service path is mineuqr-agent-config.json
+
+The example file mineuqr-agent-config.json.example is for reference only.
+Do not run the agent with the example file in production.
