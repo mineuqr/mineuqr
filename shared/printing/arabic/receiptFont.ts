@@ -12,7 +12,9 @@ let fontRegistered = false;
 function candidateFontPaths(): string[] {
   const moduleDir = dirname(fileURLToPath(import.meta.url));
   return [
+    join(process.cwd(), "assets/Cairo-Variable.ttf"),
     join(process.cwd(), "server/assets/Cairo-Variable.ttf"),
+    join(moduleDir, "assets/Cairo-Variable.ttf"),
     join(moduleDir, "../../../server/assets/Cairo-Variable.ttf"),
   ];
 }

@@ -2,6 +2,7 @@
  * THERMAL-PRINTING-WINDOWS-USB-2 — Windows RAW spooler device client.
  */
 import { execFile } from "node:child_process";
+import { existsSync } from "node:fs";
 import { mkdtemp, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -28,8 +29,28 @@ export interface WindowsSpoolerDeviceClient {
   write(options: WindowsSpoolerWriteOptions): Promise<void>;
 }
 
-const moduleDir = dirname(fileURLToPath(import.meta.url));
-const DEFAULT_SPOOLER_SCRIPT = join(moduleDir, "windowsSpoolerRawPrint.ps1");
+export function resolveWindowsSpoolerScriptPath(): string {
+  const configured = process.env.PRINT_AGENT_SPOOLER_SCRIPT_PATH?.trim();
+  if (configured) {
+    return configured;
+  }
+
+  const moduleDir = dirname(fileURLToPath(import.meta.url));
+  const candidates = [
+    join(moduleDir, "scripts", "windowsSpoolerRawPrint.ps1"),
+    join(moduleDir, "windowsSpoolerRawPrint.ps1"),
+  ];
+
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) {
+      return candidate;
+    }
+  }
+
+  return candidates[0]!;
+}
+
+const DEFAULT_SPOOLER_SCRIPT = resolveWindowsSpoolerScriptPath();
 
 async function writeTempBytes(bytes: Uint8Array): Promise<string> {
   const dir = await mkdtemp(join(tmpdir(), "mineuqr-spooler-"));
