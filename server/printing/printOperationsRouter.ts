@@ -14,6 +14,7 @@ import {
   listStationOverview,
   listAgentOverview,
 } from "./printOperationsService";
+import { submitDiagnosticTestPrint } from "./diagnosticPrintService";
 
 const restaurantInput = z.object({
   restaurantId: z.coerce.number().int().positive(),
@@ -92,5 +93,27 @@ export const printOperationsRouter = router({
     .query(async ({ input, ctx }) => {
       await assertRestaurantAccess(ctx, input.restaurantId, "printOps.listFailures");
       return listPrintFailures(input.restaurantId, input.limit);
+    }),
+
+  testPrint: verifiedProcedure
+    .input(
+      restaurantInput.extend({
+        printerId: z.number().int().positive(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      await assertRestaurantAccess(ctx, input.restaurantId, "printOps.testPrint");
+      const triggeredByLabel =
+        ctx.user.name?.trim() ||
+        ctx.user.email?.trim() ||
+        `user:${ctx.user.id}`;
+
+      return submitDiagnosticTestPrint({
+        restaurantId: input.restaurantId,
+        printerId: input.printerId,
+        triggeredByUserId: ctx.user.id,
+        triggeredByLabel,
+        correlationId: ctx.correlationId,
+      });
     }),
 });

@@ -157,6 +157,14 @@ export const OPS_EVENT = {
   dispatch_notification_failed: "dispatch_notification_failed",
   dispatch_auth_rejected: "dispatch_auth_rejected",
   dispatch_bridge_failed: "dispatch_bridge_failed",
+
+  // THERMAL-PRINTING-13I.6
+  diagnostic_print_requested: "diagnostic_print_requested",
+  diagnostic_print_received: "diagnostic_print_received",
+  diagnostic_print_assignment_completed: "diagnostic_print_assignment_completed",
+  diagnostic_print_notification_sent: "diagnostic_print_notification_sent",
+  diagnostic_print_notification_failed: "diagnostic_print_notification_failed",
+  diagnostic_print_failed: "diagnostic_print_failed",
 } as const;
 
 export type OpsEventType = (typeof OPS_EVENT)[keyof typeof OPS_EVENT];

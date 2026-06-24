@@ -556,6 +556,32 @@ export const printJobAttempts = mysqlTable(
 	(table) => [index("print_job_attempts_print_job_id").on(table.printJobId)]
 );
 
+// ─── Print Diagnostic Runs (THERMAL-PRINTING-13I.6) ───────────────
+export const printDiagnosticRuns = mysqlTable(
+	"print_diagnostic_runs",
+	{
+		id: int().autoincrement().notNull(),
+		diagnosticId: varchar({ length: 64 }).notNull(),
+		restaurantId: int().notNull(),
+		printerId: int().notNull(),
+		agentId: varchar({ length: 128 }),
+		triggeredByUserId: int().notNull(),
+		triggeredByLabel: varchar({ length: 256 }).notNull(),
+		status: mysqlEnum(["pending", "accepted", "completed", "failed"])
+			.default("pending")
+			.notNull(),
+		error: varchar({ length: 512 }),
+		createdAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+		completedAt: timestamp({ mode: "string" }),
+	},
+	(table) => [
+		uniqueIndex("print_diagnostic_runs_diagnostic_id_unique").on(table.diagnosticId),
+		index("print_diagnostic_runs_restaurant_id").on(table.restaurantId),
+		index("print_diagnostic_runs_printer_id").on(table.printerId),
+		index("print_diagnostic_runs_status_created_at").on(table.status, table.createdAt),
+	]
+);
+
 export type InsertPrinter = typeof printers.$inferInsert;
 export type SelectPrinter = typeof printers.$inferSelect;
 
@@ -570,3 +596,6 @@ export type SelectPrintJob = typeof printJobs.$inferSelect;
 
 export type InsertPrintJobAttempt = typeof printJobAttempts.$inferInsert;
 export type SelectPrintJobAttempt = typeof printJobAttempts.$inferSelect;
+
+export type InsertPrintDiagnosticRun = typeof printDiagnosticRuns.$inferInsert;
+export type SelectPrintDiagnosticRun = typeof printDiagnosticRuns.$inferSelect;

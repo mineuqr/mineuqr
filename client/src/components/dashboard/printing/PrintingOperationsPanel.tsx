@@ -34,8 +34,10 @@ import {
   Loader2,
   Printer,
   RefreshCw,
+  TestTube2,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 
 const PAGE_SIZE = 15;
 
@@ -115,9 +117,40 @@ export function PrintingOperationsPanel({
       queuedJobs: isAr ? "مهام بالانتظار" : "Queued Jobs",
       failedJobs: isAr ? "مهام فاشلة" : "Failed Jobs",
       successfulJobs: isAr ? "مهام ناجحة" : "Successful Jobs",
+      testPrint: isAr ? "طباعة تجريبية" : "Test Print",
+      testPrintSubmitting: isAr ? "جاري الإرسال..." : "Submitting...",
     }),
     [isAr]
   );
+
+  const testPrintMutation = trpc.printOps.testPrint.useMutation({
+    onSuccess: (result) => {
+      if (result.accepted) {
+        toast.success(isAr ? "تم إرسال الطباعة التجريبية" : "Test Print Submitted", {
+          description: [
+            `${isAr ? "معرف التشخيص" : "Diagnostic ID"}: ${result.diagnosticId}`,
+            `${isAr ? "الطابعة" : "Printer"}: ${result.printerName}`,
+            result.warning,
+          ]
+            .filter(Boolean)
+            .join("\n"),
+        });
+      } else {
+        toast.error(isAr ? "تعذر إرسال الطباعة التجريبية" : "Test Print Failed", {
+          description: result.reason,
+        });
+      }
+    },
+    onError: (error) => {
+      toast.error(isAr ? "تعذر إرسال الطباعة التجريبية" : "Test Print Failed", {
+        description: error.message,
+      });
+    },
+  });
+
+  function handleTestPrint(printerId: number) {
+    testPrintMutation.mutate({ restaurantId, printerId });
+  }
 
   const summaryQuery = trpc.printOps.getSummary.useQuery(
     { restaurantId },
@@ -240,6 +273,7 @@ export function PrintingOperationsPanel({
                       <TableHead>{copy.transport}</TableHead>
                       <TableHead>{isAr ? "الحالة" : "Status"}</TableHead>
                       <TableHead>{isAr ? "آخر نشاط" : "Last Activity"}</TableHead>
+                      <TableHead className="w-[140px]">{copy.testPrint}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -265,6 +299,25 @@ export function PrintingOperationsPanel({
                           </Badge>
                         </TableCell>
                         <TableCell dir="ltr">{formatTimestamp(printer.lastActivityAt, isAr)}</TableCell>
+                        <TableCell>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={testPrintMutation.isPending}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleTestPrint(printer.id);
+                            }}
+                          >
+                            {testPrintMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <TestTube2 className="h-4 w-4" />
+                            )}
+                            <span className="ms-2">{copy.testPrint}</span>
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -540,6 +593,21 @@ export function PrintingOperationsPanel({
                     : printerDetailQuery.data.printer.resolution.reason}
                 </p>
               </div>
+              {selectedPrinterId != null ? (
+                <Button
+                  type="button"
+                  className="w-full"
+                  disabled={testPrintMutation.isPending}
+                  onClick={() => handleTestPrint(selectedPrinterId)}
+                >
+                  {testPrintMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <TestTube2 className="h-4 w-4" />
+                  )}
+                  <span className="ms-2">{copy.testPrint}</span>
+                </Button>
+              ) : null}
               <div>
                 <p className="mb-2 font-medium">{isAr ? "مهام حديثة" : "Recent Jobs"}</p>
                 <div className="space-y-2">

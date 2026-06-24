@@ -239,6 +239,13 @@
       "when": 1782300000000,
       "tag": "0033_print_stations",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "5",
+      "when": 1782400000000,
+      "tag": "0034_print_diagnostic_runs",
+      "breakpoints": true
     }
   ]
 }

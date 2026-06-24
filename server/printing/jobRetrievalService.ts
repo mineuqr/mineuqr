@@ -2,10 +2,12 @@
  * THERMAL-PRINTING-7A.3 / 10B — authoritative print job retrieval for assigned agents.
  */
 import type { AgentJobPayload } from "../../shared/printing/agentJobMessages";
+import { isDiagnosticWireJobId } from "../../shared/printing/diagnosticPrint";
 import type { RuntimeExecutionPlanSummary } from "../../shared/printing/executionIntegration";
 import type { TransportDeliveryContext } from "../../shared/printing/transports/transportDeliveryContext";
 import { getAgent } from "./agentRegistry";
 import { getPrintJobAssignment } from "./assignmentService";
+import { getDiagnosticPrintAssignment } from "./diagnosticAssignmentService";
 import { resolveRuntimeExecutionPlan } from "./executionIntegrationFlow";
 import { findPrintJobById } from "./printJobRepository";
 import { renderKitchenTicket } from "./ticketRenderer";
@@ -73,6 +75,13 @@ export async function fetchAuthoritativePrintJob(
     return { found: false, error: "Agent not registered" };
   }
 
+  if (isDiagnosticWireJobId(input.jobId)) {
+    return fetchAuthoritativeDiagnosticPrintJob({
+      agentId: normalizedAgentId,
+      wireJobId: input.jobId,
+    });
+  }
+
   const assignment = getPrintJobAssignment(input.jobId);
   if (!assignment) {
     return { found: false, error: "Print job assignment not found" };
@@ -117,6 +126,42 @@ export async function fetchAuthoritativePrintJob(
       orderId: job.orderId,
       ticket,
     }),
+    executionPlan: resolved.summary,
+    transportDeliveryContext,
+  };
+}
+
+async function fetchAuthoritativeDiagnosticPrintJob(input: {
+  agentId: string;
+  wireJobId: number;
+}): Promise<FetchAuthoritativePrintJobResult> {
+  const assignment = getDiagnosticPrintAssignment(input.wireJobId);
+  if (!assignment) {
+    return { found: false, error: "Diagnostic print assignment not found" };
+  }
+  if (assignment.agentId !== input.agentId) {
+    return { found: false, error: "Diagnostic print is not assigned to this agent" };
+  }
+
+  const resolved = resolveRuntimeExecutionPlan({
+    agentId: input.agentId,
+    dbPrinterId: assignment.printerId,
+  });
+  const transportDeliveryContext = buildTransportDeliveryContext({
+    agentId: input.agentId,
+    dbPrinterId: assignment.printerId,
+    executionContext: resolved.context,
+  });
+
+  return {
+    found: true,
+    job: {
+      jobId: assignment.wireJobId,
+      restaurantId: assignment.restaurantId,
+      printerId: assignment.printerId,
+      orderId: 0,
+      ticket: assignment.ticket,
+    },
     executionPlan: resolved.summary,
     transportDeliveryContext,
   };

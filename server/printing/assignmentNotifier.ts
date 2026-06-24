@@ -22,6 +22,12 @@ export type NotifyAgentOfAssignmentResult = {
   reason?: "agent_disconnected";
 };
 
+export type NotifyAgentOfJobIdInput = {
+  agentId: string;
+  jobId: number;
+  timestamp?: string;
+};
+
 function serializeJobAssignedNotification(input: {
   agentId: string;
   jobId: number;
@@ -37,10 +43,10 @@ function serializeJobAssignedNotification(input: {
   return JSON.stringify(message);
 }
 
-export function notifyAgentOfAssignment(
-  input: NotifyAgentOfAssignmentInput
+export function notifyAgentOfJobId(
+  input: NotifyAgentOfJobIdInput
 ): NotifyAgentOfAssignmentResult {
-  const connection = getConnection(input.assignment.agentId);
+  const connection = getConnection(input.agentId);
   if (
     !connection ||
     connection.connection.readyState !== AgentWebSocketReadyState.OPEN
@@ -51,11 +57,21 @@ export function notifyAgentOfAssignment(
   const timestamp = input.timestamp ?? new Date().toISOString();
   connection.connection.send(
     serializeJobAssignedNotification({
-      agentId: input.assignment.agentId,
-      jobId: input.assignment.jobId,
+      agentId: input.agentId,
+      jobId: input.jobId,
       timestamp,
     })
   );
 
   return { notified: true };
+}
+
+export function notifyAgentOfAssignment(
+  input: NotifyAgentOfAssignmentInput
+): NotifyAgentOfAssignmentResult {
+  return notifyAgentOfJobId({
+    agentId: input.assignment.agentId,
+    jobId: input.assignment.jobId,
+    timestamp: input.timestamp,
+  });
 }
