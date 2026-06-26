@@ -6,8 +6,6 @@ import type { ExecutionTransport } from "../../shared/printing/executionCapabili
 import { getAgentConnectivityState, listAgentConnectivityStates } from "./agentLifecycleService";
 import { getAgent } from "./agentRegistry";
 import { listPrintJobAssignmentsForRestaurant } from "./assignmentService";
-import { getJobDeliveryState } from "./deliveryStateTracker";
-import { listStoredJobExecutionOutcomes } from "./executionOutcomeStore";
 import { getPrinterProfile, getAgentPrinterProfiles } from "./printerProfileQueries";
 import {
   countPrintJobsByStatusForRestaurant,
@@ -24,7 +22,7 @@ import { getJobProtocolStatus } from "./protocolStatusQueries";
 import { getPrinterResolution } from "./resolutionQueries";
 import { getRoutingDecision } from "./routingQueries";
 import { getStoredJobExecutionOutcome } from "./executionOutcomeStore";
-import { getPrintJobAssignment } from "./assignmentService";
+import { getJobDeliveryState } from "./deliveryStateTracker";
 import { getPrintDiscoveryDiagnostics } from "./printOperationsDiscoveryService";
 import type { DiagnosticRunView } from "./printOperationsDiscoveryTypes";
 import { listPrintDiagnosticRunsForRestaurant } from "./diagnosticPrintRepository";
@@ -45,35 +43,44 @@ import type {
   AgentOverviewItem,
 } from "./printOperationsTypes";
 
-function mapOperationalStatus(input: {
-  dbStatus: string;
-  assignmentAgentId: string | null;
-  deliveryState?: string;
-  outcomeStatus?: string;
-}): PrintJobOperationalStatus {
-  if (input.dbStatus === PRINT_JOB_STATUS.FAILED) {
-    return "failed";
+function mapOperationalStatusFromDb(dbStatus: string): PrintJobOperationalStatus {
+  switch (dbStatus) {
+    case PRINT_JOB_STATUS.QUEUED:
+      return "queued";
+    case PRINT_JOB_STATUS.ASSIGNED:
+    case PRINT_JOB_STATUS.CLAIMED:
+      return "assigned";
+    case PRINT_JOB_STATUS.PRINTING:
+      return "executing";
+    case PRINT_JOB_STATUS.PRINTED:
+      return "delivered";
+    case PRINT_JOB_STATUS.FAILED:
+      return "failed";
+    case PRINT_JOB_STATUS.CANCELLED:
+      return "cancelled";
+    case PRINT_JOB_STATUS.EXPIRED:
+      return "expired";
+    default:
+      return "queued";
   }
-  if (input.dbStatus === PRINT_JOB_STATUS.CANCELLED) {
-    return "cancelled";
-  }
-  if (input.dbStatus === PRINT_JOB_STATUS.EXPIRED) {
-    return "expired";
-  }
-  if (input.deliveryState === "delivered" || input.dbStatus === PRINT_JOB_STATUS.PRINTED) {
-    return "delivered";
+}
+
+function resolveAssignedAgentIdFromJob(job: {
+  assignedAgentId?: string | null;
+  status: string;
+}): string | null {
+  if (job.assignedAgentId?.trim()) {
+    return job.assignedAgentId.trim();
   }
   if (
-    input.dbStatus === PRINT_JOB_STATUS.PRINTING ||
-    input.outcomeStatus === "executed" ||
-    input.outcomeStatus === "prepared"
+    job.status === PRINT_JOB_STATUS.ASSIGNED ||
+    job.status === PRINT_JOB_STATUS.PRINTING ||
+    job.status === PRINT_JOB_STATUS.PRINTED ||
+    job.status === PRINT_JOB_STATUS.FAILED
   ) {
-    return "executing";
+    return null;
   }
-  if (input.assignmentAgentId) {
-    return "assigned";
-  }
-  return "queued";
+  return null;
 }
 
 async function buildPrinterOverviewItem(printer: {
@@ -131,18 +138,12 @@ function buildPrintJobQueueItem(
     printerId: number | null;
     stationId?: number | null;
     status: string;
+    assignedAgentId?: string | null;
     createdAt: string;
     updatedAt: string;
   },
   stationNameById: Map<number, string>
 ): PrintJobQueueItem {
-  const assignment = getPrintJobAssignment(job.id);
-  const outcome = getStoredJobExecutionOutcome(job.id);
-  const delivery =
-    assignment != null
-      ? getJobDeliveryState(assignment.agentId, job.id)
-      : undefined;
-
   const stationId = job.stationId ?? null;
 
   return {
@@ -152,15 +153,10 @@ function buildPrintJobQueueItem(
     stationId,
     stationName: stationId != null ? stationNameById.get(stationId) ?? null : null,
     dbStatus: job.status,
-    operationalStatus: mapOperationalStatus({
-      dbStatus: job.status,
-      assignmentAgentId: assignment?.agentId ?? null,
-      deliveryState: delivery?.state,
-      outcomeStatus: outcome?.outcomeStatus,
-    }),
+    operationalStatus: mapOperationalStatusFromDb(job.status),
     createdAt: job.createdAt,
     updatedAt: job.updatedAt,
-    assignedAgentId: assignment?.agentId ?? null,
+    assignedAgentId: resolveAssignedAgentIdFromJob(job),
   };
 }
 
@@ -314,11 +310,11 @@ export async function getPrintJobDetail(
     return null;
   }
 
-  const assignment = getPrintJobAssignment(job.id);
   const routing = getRoutingDecision(job.id);
   const outcome = getStoredJobExecutionOutcome(job.id);
+  const assignedAgentId = resolveAssignedAgentIdFromJob(job);
   const delivery =
-    assignment != null ? getJobDeliveryState(assignment.agentId, job.id) : undefined;
+    assignedAgentId != null ? getJobDeliveryState(assignedAgentId, job.id) : undefined;
   const protocol = getJobProtocolStatus(job.id);
   const stationNameById = await loadStationNameMap(restaurantId);
   const queueItem = buildPrintJobQueueItem(job, stationNameById);
@@ -327,13 +323,14 @@ export async function getPrintJobDetail(
     ...queueItem,
     idempotencyKey: job.idempotencyKey,
     attemptCount: job.attemptCount,
-    assignment: assignment
-      ? {
-          agentId: assignment.agentId,
-          assignedAt: assignment.assignedAt,
-          printerId: assignment.printerId,
-        }
-      : null,
+    assignment:
+      assignedAgentId != null && job.printerId != null
+        ? {
+            agentId: assignedAgentId,
+            assignedAt: job.assignedAt ?? job.updatedAt,
+            printerId: job.printerId,
+          }
+        : null,
     routing: routing
       ? {
           agentId: routing.agentId,
@@ -389,45 +386,6 @@ export async function listPrintFailures(
       failureCode: PRINT_JOB_STATUS.FAILED,
       failureMessage: "Print job marked as failed",
       timestamp: job.updatedAt,
-    });
-  }
-
-  const jobIdsForRestaurant = new Set(
-    (await listPrintJobsForRestaurant({ restaurantId, limit: 200, offset: 0 })).jobs.map(
-      (job) => job.id
-    )
-  );
-
-  for (const outcome of listStoredJobExecutionOutcomes()) {
-    if (!jobIdsForRestaurant.has(outcome.jobId)) {
-      continue;
-    }
-    if (outcome.outcomeStatus === "executed") {
-      continue;
-    }
-
-    const job = await findPrintJobById(outcome.jobId);
-    if (!job || job.restaurantId !== restaurantId) {
-      continue;
-    }
-
-    const failureLayer =
-      outcome.category === "execution-failure"
-        ? "execution"
-        : outcome.category === "transport-failure" ||
-            outcome.category === "retry-exhausted" ||
-            outcome.category === "printer-unreachable"
-          ? "transport"
-          : "execution";
-
-    failures.push({
-      jobId: outcome.jobId,
-      orderId: job.orderId,
-      printerId: job.printerId,
-      failureLayer,
-      failureCode: outcome.category,
-      failureMessage: outcome.message ?? outcome.category,
-      timestamp: outcome.timestamp,
     });
   }
 

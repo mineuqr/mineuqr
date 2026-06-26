@@ -27,6 +27,9 @@ export type PrintTicketLocale = (typeof PRINT_TICKET_LOCALE_VALUES)[number];
 
 export const PRINT_JOB_STATUS = {
   QUEUED: "queued",
+  /** THERMAL-PRINTING-13I.3C.1 — agent dispatch assignment (authoritative execution state). */
+  ASSIGNED: "assigned",
+  /** Legacy dormant worker claim lease — not used by agent-runtime path. */
   CLAIMED: "claimed",
   PRINTING: "printing",
   PRINTED: "printed",
@@ -37,6 +40,7 @@ export const PRINT_JOB_STATUS = {
 
 export const PRINT_JOB_STATUS_VALUES = [
   PRINT_JOB_STATUS.QUEUED,
+  PRINT_JOB_STATUS.ASSIGNED,
   PRINT_JOB_STATUS.CLAIMED,
   PRINT_JOB_STATUS.PRINTING,
   PRINT_JOB_STATUS.PRINTED,

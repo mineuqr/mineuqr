@@ -5,7 +5,7 @@ import { opsLog } from "../_core/opsLog";
 import { OPS_EVENT } from "../_core/opsTaxonomy";
 import { recordDeliveryConfirmation, type DeliveryConfirmationInput } from "./deliveryConfirmationService";
 import type { JobDeliveryStateRecord } from "./deliveryStateTracker";
-import { getPrintJobAssignment } from "./assignmentService";
+import { resolvePrintJobAssignment } from "./assignmentService";
 
 export type ProcessAgentDeliveryConfirmationResult =
   | { accepted: true; duplicate: false; record: JobDeliveryStateRecord }
@@ -20,7 +20,7 @@ export async function processAgentDeliveryConfirmation(
     return result;
   }
 
-  const assignment = getPrintJobAssignment(input.jobId);
+  const assignment = await resolvePrintJobAssignment(input.jobId);
   opsLog({
     type: result.duplicate
       ? OPS_EVENT.print_job_delivery_confirmation_reused

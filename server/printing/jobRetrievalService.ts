@@ -6,13 +6,17 @@ import { isDiagnosticWireJobId, diagnosticOrderIdForWireJob } from "../../shared
 import type { RuntimeExecutionPlanSummary } from "../../shared/printing/executionIntegration";
 import type { TransportDeliveryContext } from "../../shared/printing/transports/transportDeliveryContext";
 import { getAgent } from "./agentRegistry";
-import { getPrintJobAssignment } from "./assignmentService";
+import { resolvePrintJobAssignment } from "./assignmentService";
 import { getDiagnosticPrintAssignment } from "./diagnosticAssignmentService";
 import { resolveRuntimeExecutionPlan } from "./executionIntegrationFlow";
 import { findPrintJobById } from "./printJobRepository";
 import { renderKitchenTicket } from "./ticketRenderer";
 import { resolveStationItemFilterFromJob } from "./stationRoutingService";
 import { buildTransportDeliveryContext } from "./transportDeliveryContextBuilder";
+import {
+  PRINT_JOB_EXECUTION_TRANSITION,
+  transitionPrintJobExecutionState,
+} from "./printJobExecutionState";
 
 export class JobRetrievalError extends Error {
   constructor(message: string) {
@@ -82,7 +86,7 @@ export async function fetchAuthoritativePrintJob(
     });
   }
 
-  const assignment = getPrintJobAssignment(input.jobId);
+  const assignment = await resolvePrintJobAssignment(input.jobId);
   if (!assignment) {
     return { found: false, error: "Print job assignment not found" };
   }
@@ -93,6 +97,15 @@ export async function fetchAuthoritativePrintJob(
   const job = await findPrintJobById(input.jobId);
   if (!job) {
     return { found: false, error: "Print job not found" };
+  }
+
+  const executionStart = await transitionPrintJobExecutionState({
+    jobId: job.id,
+    transition: PRINT_JOB_EXECUTION_TRANSITION.START_EXECUTION,
+    agentId: normalizedAgentId,
+  });
+  if ("rejected" in executionStart) {
+    return { found: false, error: executionStart.reason };
   }
 
   const stationFilter = resolveStationItemFilterFromJob({

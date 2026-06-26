@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PRINT_JOB_STATUS } from "../../shared/printing/types";
 import { clearAgentRegistry } from "./agentRegistry";
-import { clearPrintJobAssignments, getPrintJobAssignment } from "./assignmentService";
+import { clearPrintJobAssignments } from "./assignmentService";
 import { clearExecutionOutcomeStore } from "./executionOutcomeStore";
 import { clearPrinterProfileStore } from "./printerProfileStore";
 import { clearPrinterResolutionRegistry, registerDbPrinterProfileMapping } from "./printerResolutionRegistry";
@@ -157,7 +157,7 @@ describe("printOperationsService THERMAL-PRINTING-11C", () => {
     ]);
   });
 
-  it("returns print job detail with assignment metadata", async () => {
+  it("returns print job detail with assignment metadata from database authority", async () => {
     registerOnlineAgent("agent-alpha");
     registerDbPrinterProfileMapping({
       dbPrinterId: TEST_DB_PRINTER_ID,
@@ -170,7 +170,10 @@ describe("printOperationsService THERMAL-PRINTING-11C", () => {
       restaurantId,
       orderId: 500,
       printerId: TEST_DB_PRINTER_ID,
-      status: PRINT_JOB_STATUS.QUEUED,
+      stationId: null,
+      assignedAgentId: "agent-alpha",
+      assignedAt: "2026-06-21 12:00:00",
+      status: PRINT_JOB_STATUS.ASSIGNED,
       attemptCount: 0,
       idempotencyKey: "order:500:submitted",
       claimedBy: null,
@@ -179,19 +182,18 @@ describe("printOperationsService THERMAL-PRINTING-11C", () => {
       updatedAt: "2026-06-21 12:00:00",
     });
 
-    await assignPrintJob({ jobId: 100 });
-
     const detail = await getPrintJobDetail(restaurantId, 100);
 
     expect(detail).toMatchObject({
       id: 100,
       orderId: 500,
       operationalStatus: "assigned",
+      dbStatus: PRINT_JOB_STATUS.ASSIGNED,
+      assignedAgentId: "agent-alpha",
       assignment: {
         agentId: "agent-alpha",
         printerId: TEST_DB_PRINTER_ID,
       },
     });
-    expect(getPrintJobAssignment(100)?.agentId).toBe("agent-alpha");
   });
 });

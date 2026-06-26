@@ -32,12 +32,30 @@ import {
 const repoMocks = vi.hoisted(() => ({
   findPrintJobById: vi.fn(),
   findPrinterById: vi.fn(),
+  markJobAssigned: vi.fn(),
+  markJobPrinting: vi.fn(),
+  markJobPrinted: vi.fn(),
+  markJobFailed: vi.fn(),
 }));
+
+const attemptMocks = vi.hoisted(() => ({
+  insertPrintAttempt: vi.fn(),
+}));
+
+let mutableJobState: SelectPrintJob;
 
 const opsLogMock = vi.hoisted(() => vi.fn());
 
 vi.mock("./printJobRepository", () => ({
   findPrintJobById: (...args: unknown[]) => repoMocks.findPrintJobById(...args),
+  markJobAssigned: (...args: unknown[]) => repoMocks.markJobAssigned(...args),
+  markJobPrinting: (...args: unknown[]) => repoMocks.markJobPrinting(...args),
+  markJobPrinted: (...args: unknown[]) => repoMocks.markJobPrinted(...args),
+  markJobFailed: (...args: unknown[]) => repoMocks.markJobFailed(...args),
+}));
+
+vi.mock("./printJobAttemptRepository", () => ({
+  insertPrintAttempt: (...args: unknown[]) => attemptMocks.insertPrintAttempt(...args),
 }));
 
 vi.mock("./printerRepository", () => ({
@@ -54,6 +72,8 @@ const baseJob: SelectPrintJob = {
   orderId: 4080001,
   printerId: TEST_DB_PRINTER_ID,
   stationId: null,
+  assignedAgentId: null,
+  assignedAt: null,
   status: PRINT_JOB_STATUS.QUEUED,
   attemptCount: 0,
   idempotencyKey: "order:4080001:submitted",
@@ -90,7 +110,21 @@ describe("dispatchBridge THERMAL-PRINTING-13H", () => {
     clearPrintJobAssignments();
     clearAgentConnections();
     clearDispatchBridgeState();
-    repoMocks.findPrintJobById.mockResolvedValue(baseJob);
+    repoMocks.findPrintJobById.mockImplementation(async () => mutableJobState);
+    repoMocks.markJobAssigned.mockImplementation(async (_jobId, agentId) => {
+      mutableJobState = {
+        ...mutableJobState,
+        status: PRINT_JOB_STATUS.ASSIGNED,
+        assignedAgentId: agentId,
+        assignedAt: "2026-06-18T12:01:00.000Z",
+      };
+      return mutableJobState;
+    });
+    repoMocks.markJobPrinting.mockResolvedValue(null);
+    repoMocks.markJobPrinted.mockResolvedValue(null);
+    repoMocks.markJobFailed.mockResolvedValue(null);
+    attemptMocks.insertPrintAttempt.mockResolvedValue(1);
+    mutableJobState = { ...baseJob };
     repoMocks.findPrinterById.mockResolvedValue({
       id: TEST_DB_PRINTER_ID,
       restaurantId: 720007,

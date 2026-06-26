@@ -2,7 +2,7 @@
  * THERMAL-PRINTING-7E.4 — job protocol status receiver (jobStatus ≠ printStatus).
  */
 import { getAgent } from "./agentRegistry";
-import { getPrintJobAssignment } from "./assignmentService";
+import { resolvePrintJobAssignment } from "./assignmentService";
 import { findPrintJobById } from "./printJobRepository";
 import {
   upsertJobProtocolStatus,
@@ -41,7 +41,7 @@ export async function recordJobStatusReport(
     return { accepted: false, reason: "Agent not registered" };
   }
 
-  const assignment = getPrintJobAssignment(input.jobId);
+  const assignment = await resolvePrintJobAssignment(input.jobId);
   if (!assignment) {
     return { accepted: false, reason: "Print job assignment not found" };
   }

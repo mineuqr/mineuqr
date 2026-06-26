@@ -31,13 +31,64 @@ import { processNextPrintJob } from "./printProcessorWorker";
 
 const repoMocks = vi.hoisted(() => ({
   findPrintJobById: vi.fn(),
+  markJobAssigned: vi.fn(),
+  markJobPrinting: vi.fn(),
+  markJobPrinted: vi.fn(),
+  markJobFailed: vi.fn(),
   getOrderById: vi.fn(),
   getOrderItemsByOrderId: vi.fn(),
 }));
 
+const attemptMocks = vi.hoisted(() => ({
+  insertPrintAttempt: vi.fn(),
+}));
+
+let mutableJobState: import("../../drizzle/schema").SelectPrintJob;
+
 vi.mock("./printJobRepository", () => ({
   findPrintJobById: (...args: unknown[]) => repoMocks.findPrintJobById(...args),
+  markJobAssigned: (...args: unknown[]) => repoMocks.markJobAssigned(...args),
+  markJobPrinting: (...args: unknown[]) => repoMocks.markJobPrinting(...args),
+  markJobPrinted: (...args: unknown[]) => repoMocks.markJobPrinted(...args),
+  markJobFailed: (...args: unknown[]) => repoMocks.markJobFailed(...args),
 }));
+
+vi.mock("./printJobAttemptRepository", () => ({
+  insertPrintAttempt: (...args: unknown[]) => attemptMocks.insertPrintAttempt(...args),
+}));
+
+function setupExecutionStateRepositoryMocks(
+  initialJob: import("../../drizzle/schema").SelectPrintJob
+): void {
+  mutableJobState = { ...initialJob };
+  repoMocks.findPrintJobById.mockImplementation(async () => mutableJobState);
+  repoMocks.markJobAssigned.mockImplementation(async (_jobId, agentId) => {
+    mutableJobState = {
+      ...mutableJobState,
+      status: "assigned",
+      assignedAgentId: agentId,
+      assignedAt: "2026-06-18T12:01:00.000Z",
+    };
+    return mutableJobState;
+  });
+  repoMocks.markJobPrinting.mockImplementation(async () => {
+    mutableJobState = {
+      ...mutableJobState,
+      status: "printing",
+      attemptCount: mutableJobState.attemptCount + 1,
+    };
+    return mutableJobState;
+  });
+  repoMocks.markJobPrinted.mockImplementation(async () => {
+    mutableJobState = { ...mutableJobState, status: "printed" };
+    return mutableJobState;
+  });
+  repoMocks.markJobFailed.mockImplementation(async () => {
+    mutableJobState = { ...mutableJobState, status: "failed" };
+    return mutableJobState;
+  });
+  attemptMocks.insertPrintAttempt.mockResolvedValue(1);
+}
 
 vi.mock("../db", () => ({
   getOrderById: (...args: unknown[]) => repoMocks.getOrderById(...args),
@@ -49,6 +100,9 @@ const baseJob = {
   restaurantId: 7,
   orderId: 500,
   printerId: TEST_DB_PRINTER_ID,
+  stationId: null,
+  assignedAgentId: null,
+  assignedAt: null,
   status: "queued",
   attemptCount: 0,
   idempotencyKey: "order:500:submitted",
@@ -81,7 +135,7 @@ describe("executionIntegration THERMAL-PRINTING-9D", () => {
     clearPrinterResolutionRegistry();
     clearRoutingState();
     clearPrintJobAssignments();
-    repoMocks.findPrintJobById.mockResolvedValue(baseJob);
+    setupExecutionStateRepositoryMocks(baseJob as import("../../drizzle/schema").SelectPrintJob);
     repoMocks.getOrderById.mockResolvedValue({
       id: 500,
       restaurantId: 7,

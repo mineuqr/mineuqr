@@ -22,8 +22,23 @@ const repoMocks = vi.hoisted(() => ({
   findPrintJobById: vi.fn(),
 }));
 
+const executionStateMocks = vi.hoisted(() => ({
+  transitionPrintJobExecutionState: vi.fn(),
+}));
+
 vi.mock("./printJobRepository", () => ({
   findPrintJobById: (...args: unknown[]) => repoMocks.findPrintJobById(...args),
+}));
+
+vi.mock("./printJobExecutionState", () => ({
+  PRINT_JOB_EXECUTION_TRANSITION: {
+    ASSIGN: "assign",
+    START_EXECUTION: "start_execution",
+    COMPLETE_SUCCESS: "complete_success",
+    COMPLETE_FAILURE: "complete_failure",
+  },
+  transitionPrintJobExecutionState: (...args: unknown[]) =>
+    executionStateMocks.transitionPrintJobExecutionState(...args),
 }));
 
 const baseJob: SelectPrintJob = {
@@ -31,6 +46,9 @@ const baseJob: SelectPrintJob = {
   restaurantId: 7,
   orderId: 500,
   printerId: TEST_DB_PRINTER_ID,
+  stationId: null,
+  assignedAgentId: null,
+  assignedAt: null,
   status: PRINT_JOB_STATUS.QUEUED,
   attemptCount: 0,
   idempotencyKey: "order:500:submitted",
@@ -49,6 +67,20 @@ describe("assignmentService THERMAL-PRINTING-7A.1 / 8A.4 / 8B.4", () => {
     clearPrinterResolutionRegistry();
     clearRoutingState();
     repoMocks.findPrintJobById.mockResolvedValue(baseJob);
+    executionStateMocks.transitionPrintJobExecutionState.mockImplementation(
+      async ({ jobId, agentId }: { jobId: number; agentId?: string }) => ({
+        applied: true,
+        duplicate: false,
+        job: {
+          ...baseJob,
+          status: PRINT_JOB_STATUS.ASSIGNED,
+          assignedAgentId: agentId ?? "agent-alpha",
+          assignedAt: "2026-06-18 12:01:00",
+        },
+        fromStatus: PRINT_JOB_STATUS.QUEUED,
+        toStatus: PRINT_JOB_STATUS.ASSIGNED,
+      })
+    );
   });
 
   it("assigns queued jobs via routing to the resolved printer owner", async () => {
@@ -73,6 +105,7 @@ describe("assignmentService THERMAL-PRINTING-7A.1 / 8A.4 / 8B.4", () => {
     expect(second.created).toBe(false);
     expect(second.assignment).toEqual(first.assignment);
     expect(repoMocks.findPrintJobById).toHaveBeenCalledTimes(1);
+    expect(executionStateMocks.transitionPrintJobExecutionState).toHaveBeenCalledTimes(1);
   });
 
   it("throws when routing cannot select an agent", async () => {

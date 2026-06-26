@@ -2,7 +2,7 @@
  * THERMAL-PRINTING-7A.4 — delivery acknowledgement handling (received only, not printed).
  */
 import { getAgent } from "./agentRegistry";
-import { getPrintJobAssignment } from "./assignmentService";
+import { resolvePrintJobAssignment } from "./assignmentService";
 import { getDiagnosticPrintAssignment } from "./diagnosticAssignmentService";
 import {
   diagnosticRunIdFromWireJobId,
@@ -78,7 +78,7 @@ export async function recordDeliveryAcknowledgement(
     });
   }
 
-  const assignment = getPrintJobAssignment(input.jobId);
+  const assignment = await resolvePrintJobAssignment(input.jobId);
   if (!assignment) {
     return { accepted: false, reason: "Print job assignment not found" };
   }

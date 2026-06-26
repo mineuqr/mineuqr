@@ -41,8 +41,17 @@ const repoMocks = vi.hoisted(() => ({
   findPrintJobById: vi.fn(),
   findPrintJobByIdempotencyKey: vi.fn(),
   insertPrintJob: vi.fn(),
+  markJobAssigned: vi.fn(),
+  markJobPrinting: vi.fn(),
   markJobPrinted: vi.fn(),
+  markJobFailed: vi.fn(),
 }));
+
+const attemptMocks = vi.hoisted(() => ({
+  insertPrintAttempt: vi.fn(),
+}));
+
+let mutableJobState: SelectPrintJob;
 
 const dbMocks = vi.hoisted(() => ({
   getOrderById: vi.fn(),
@@ -56,7 +65,14 @@ vi.mock("./printJobRepository", () => ({
   findPrintJobByIdempotencyKey: (...args: unknown[]) =>
     repoMocks.findPrintJobByIdempotencyKey(...args),
   insertPrintJob: (...args: unknown[]) => repoMocks.insertPrintJob(...args),
+  markJobAssigned: (...args: unknown[]) => repoMocks.markJobAssigned(...args),
+  markJobPrinting: (...args: unknown[]) => repoMocks.markJobPrinting(...args),
   markJobPrinted: (...args: unknown[]) => repoMocks.markJobPrinted(...args),
+  markJobFailed: (...args: unknown[]) => repoMocks.markJobFailed(...args),
+}));
+
+vi.mock("./printJobAttemptRepository", () => ({
+  insertPrintAttempt: (...args: unknown[]) => attemptMocks.insertPrintAttempt(...args),
 }));
 
 const printerRepoMocks = vi.hoisted(() => ({
@@ -102,6 +118,9 @@ const baseJob: SelectPrintJob = {
   restaurantId: 7,
   orderId: 500,
   printerId: 10,
+  stationId: null,
+  assignedAgentId: null,
+  assignedAt: null,
   status: PRINT_JOB_STATUS.QUEUED,
   attemptCount: 0,
   idempotencyKey: "order:500:submitted",
@@ -162,10 +181,36 @@ describe("endToEndPrintFlow THERMAL-PRINTING-7A", () => {
         createdAt: "2026-06-18 12:00:00",
       },
     ]);
-    repoMocks.findPrintJobById.mockResolvedValue(baseJob);
+    repoMocks.findPrintJobById.mockImplementation(async () => mutableJobState);
     repoMocks.findPrintJobByIdempotencyKey.mockResolvedValue(null);
     repoMocks.insertPrintJob.mockResolvedValue(100);
-    repoMocks.markJobPrinted.mockResolvedValue(null);
+    repoMocks.markJobAssigned.mockImplementation(async (_jobId, agentId) => {
+      mutableJobState = {
+        ...mutableJobState,
+        status: PRINT_JOB_STATUS.ASSIGNED,
+        assignedAgentId: agentId,
+        assignedAt: "2026-06-18T12:01:00.000Z",
+      };
+      return mutableJobState;
+    });
+    repoMocks.markJobPrinting.mockImplementation(async () => {
+      mutableJobState = {
+        ...mutableJobState,
+        status: PRINT_JOB_STATUS.PRINTING,
+        attemptCount: mutableJobState.attemptCount + 1,
+      };
+      return mutableJobState;
+    });
+    repoMocks.markJobPrinted.mockImplementation(async () => {
+      mutableJobState = { ...mutableJobState, status: PRINT_JOB_STATUS.PRINTED };
+      return mutableJobState;
+    });
+    repoMocks.markJobFailed.mockImplementation(async () => {
+      mutableJobState = { ...mutableJobState, status: PRINT_JOB_STATUS.FAILED };
+      return mutableJobState;
+    });
+    attemptMocks.insertPrintAttempt.mockResolvedValue(1);
+    mutableJobState = { ...baseJob };
   });
 
   describe("Scenario A — successful flow", () => {
@@ -223,7 +268,7 @@ describe("endToEndPrintFlow THERMAL-PRINTING-7A", () => {
       const ackRecord = getDeliveryAckRecord("agent-alpha", 100);
       expect(ackRecord?.timestamp).toBe("2026-06-18T10:00:01.000Z");
       expect(repoMocks.markJobPrinted).not.toHaveBeenCalled();
-      expect(baseJob.status).toBe(PRINT_JOB_STATUS.QUEUED);
+      expect(mutableJobState.status).toBe(PRINT_JOB_STATUS.PRINTING);
     });
   });
 

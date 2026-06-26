@@ -2,8 +2,12 @@
  * THERMAL-PRINTING-10C — execution outcome report receiver.
  */
 import { getAgent } from "./agentRegistry";
-import { getPrintJobAssignment } from "./assignmentService";
+import { resolvePrintJobAssignment } from "./assignmentService";
 import { findPrintJobById } from "./printJobRepository";
+import {
+  mapExecutionOutcomeToTransition,
+  transitionPrintJobExecutionState,
+} from "./printJobExecutionState";
 import {
   upsertJobExecutionOutcome,
   type JobExecutionOutcomeRecord,
@@ -48,7 +52,7 @@ export async function recordExecutionOutcomeReport(
     return { accepted: false, reason: "Agent not registered" };
   }
 
-  const assignment = getPrintJobAssignment(input.jobId);
+  const assignment = await resolvePrintJobAssignment(input.jobId);
   if (!assignment) {
     return { accepted: false, reason: "Print job assignment not found" };
   }
@@ -70,6 +74,19 @@ export async function recordExecutionOutcomeReport(
     message: input.message,
     timestamp: input.timestamp,
   });
+
+  if (!stored.duplicate) {
+    const transition = mapExecutionOutcomeToTransition(input.outcomeStatus);
+    const transitionResult = await transitionPrintJobExecutionState({
+      jobId: input.jobId,
+      transition,
+      agentId: normalizedAgentId,
+      failureMessage: input.message,
+    });
+    if ("rejected" in transitionResult) {
+      return { accepted: false, reason: transitionResult.reason };
+    }
+  }
 
   return stored;
 }

@@ -1,9 +1,14 @@
 /**
- * THERMAL-PRINTING-7A.1 / 8A.4 — server-side print job assignment (queue + routing authoritative).
+ * THERMAL-PRINTING-7A.1 / 8A.4 / 13I.3C.1 — server-side print job assignment.
  */
+import type { SelectPrintJob } from "../../drizzle/schema";
 import { PRINT_JOB_STATUS } from "../../shared/printing/types";
 import { findPrintJobById } from "./printJobRepository";
 import { PrintJobNotFoundError } from "./printJobTypes";
+import {
+  PRINT_JOB_EXECUTION_TRANSITION,
+  transitionPrintJobExecutionState,
+} from "./printJobExecutionState";
 import { resolveRoutingDecision } from "./routingEngine";
 import { RoutingRejectedError } from "./routingTypes";
 import {
@@ -20,11 +25,23 @@ function resolveAssignedAt(input: AssignPrintJobInput): string {
   return input.assignedAt ?? new Date().toISOString();
 }
 
-function assertAssignablePrintJob(job: {
-  id: number;
+function buildAssignmentFromJob(job: SelectPrintJob, agentId: string): PrintJobAssignment {
+  return {
+    jobId: job.id,
+    agentId,
+    restaurantId: job.restaurantId,
+    orderId: job.orderId,
+    printerId: job.printerId!,
+    assignedAt: job.assignedAt ?? resolveAssignedAt({ jobId: job.id }),
+  };
+}
+
+function cacheAssignment(assignment: PrintJobAssignment): void {
+  assignments.set(assignment.jobId, assignment);
+}
+
+function assertQueuedForInitialAssignment(job: {
   status: string;
-  restaurantId: number;
-  orderId: number;
   printerId: number | null;
 }): void {
   if (job.status !== PRINT_JOB_STATUS.QUEUED) {
@@ -56,6 +73,32 @@ export function getPrintJobAssignment(jobId: number): PrintJobAssignment | undef
   return assignments.get(jobId);
 }
 
+export async function resolvePrintJobAssignment(
+  jobId: number
+): Promise<PrintJobAssignment | undefined> {
+  const cached = assignments.get(jobId);
+  if (cached) {
+    return cached;
+  }
+
+  const job = await findPrintJobById(jobId);
+  if (!job?.assignedAgentId || job.printerId == null) {
+    return undefined;
+  }
+
+  if (
+    job.status === PRINT_JOB_STATUS.QUEUED ||
+    job.status === PRINT_JOB_STATUS.CANCELLED ||
+    job.status === PRINT_JOB_STATUS.EXPIRED
+  ) {
+    return undefined;
+  }
+
+  const assignment = buildAssignmentFromJob(job, job.assignedAgentId);
+  cacheAssignment(assignment);
+  return assignment;
+}
+
 export function listPrintJobAssignmentsForRestaurant(
   restaurantId: number
 ): PrintJobAssignment[] {
@@ -85,22 +128,36 @@ export async function assignPrintJob(
     throw new PrintJobNotFoundError();
   }
 
-  assertAssignablePrintJob(job);
+  if (job.status === PRINT_JOB_STATUS.ASSIGNED && job.assignedAgentId) {
+    const assignment = buildAssignmentFromJob(job, job.assignedAgentId);
+    cacheAssignment(assignment);
+    return { assignment, created: false };
+  }
+
+  assertQueuedForInitialAssignment(job);
 
   const agentId = selectAgentForAssignmentViaRouting({
     jobId: job.id,
     printerId: job.printerId!,
     evaluationNow: input.evaluationNow,
   });
-  const assignment: PrintJobAssignment = {
-    jobId: job.id,
-    agentId,
-    restaurantId: job.restaurantId,
-    orderId: job.orderId,
-    printerId: job.printerId!,
-    assignedAt: resolveAssignedAt(input),
-  };
 
-  assignments.set(job.id, assignment);
-  return { assignment, created: true };
+  const transition = await transitionPrintJobExecutionState({
+    jobId: job.id,
+    transition: PRINT_JOB_EXECUTION_TRANSITION.ASSIGN,
+    agentId,
+  });
+
+  if ("rejected" in transition) {
+    throw new PrintJobAssignmentError(transition.reason);
+  }
+
+  const updatedJob = transition.job;
+  const assignment = buildAssignmentFromJob(updatedJob, agentId);
+  cacheAssignment(assignment);
+
+  return {
+    assignment,
+    created: transition.applied && !transition.duplicate,
+  };
 }

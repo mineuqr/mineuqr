@@ -510,8 +510,12 @@ export const printJobs = mysqlTable(
 		printerId: int(),
 		/** THERMAL-PRINTING-12A — station that owns this job's item subset */
 		stationId: int(),
+		/** THERMAL-PRINTING-13I.3C.1 — agent assigned at dispatch */
+		assignedAgentId: varchar({ length: 128 }),
+		assignedAt: timestamp({ mode: "string" }),
 		status: mysqlEnum([
 			"queued",
+			"assigned",
 			"claimed",
 			"printing",
 			"printed",

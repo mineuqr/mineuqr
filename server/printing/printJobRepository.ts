@@ -203,6 +203,30 @@ export async function insertPrintJob(data: InsertPrintJobData): Promise<number> 
   return insertId;
 }
 
+export async function markJobAssigned(
+  jobId: number,
+  agentId: string,
+  client?: PrintJobDbClient
+): Promise<SelectPrintJob | null> {
+  const db = await resolveDb(client);
+  const assignedAt = new Date().toISOString();
+  const result = await db
+    .update(printJobs)
+    .set({
+      status: PRINT_JOB_STATUS.ASSIGNED,
+      assignedAgentId: agentId.trim(),
+      assignedAt,
+    })
+    .where(and(eq(printJobs.id, jobId), eq(printJobs.status, PRINT_JOB_STATUS.QUEUED)));
+
+  if (readMysqlAffectedRows(result) === 0) {
+    return null;
+  }
+
+  const [row] = await db.select().from(printJobs).where(eq(printJobs.id, jobId)).limit(1);
+  return row ?? null;
+}
+
 export async function markJobPrinting(
   jobId: number,
   client?: PrintJobDbClient
@@ -217,8 +241,13 @@ export async function markJobPrinting(
     .where(
       and(
         eq(printJobs.id, jobId),
-        eq(printJobs.status, PRINT_JOB_STATUS.CLAIMED),
-        isNotNull(printJobs.claimedBy)
+        or(
+          eq(printJobs.status, PRINT_JOB_STATUS.ASSIGNED),
+          and(
+            eq(printJobs.status, PRINT_JOB_STATUS.CLAIMED),
+            isNotNull(printJobs.claimedBy)
+          )
+        )
       )
     );
 

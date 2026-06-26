@@ -2,7 +2,7 @@
  * THERMAL-PRINTING-7B.3 — delivery confirmation handling (delivered ≠ printed).
  */
 import { getAgent } from "./agentRegistry";
-import { getPrintJobAssignment } from "./assignmentService";
+import { resolvePrintJobAssignment } from "./assignmentService";
 import {
   getJobDeliveryState,
   markJobDeliveryConfirmed,
@@ -40,7 +40,7 @@ export async function recordDeliveryConfirmation(
     return { accepted: false, reason: "Agent not registered" };
   }
 
-  const assignment = getPrintJobAssignment(input.jobId);
+  const assignment = await resolvePrintJobAssignment(input.jobId);
   if (!assignment) {
     return { accepted: false, reason: "Print job assignment not found" };
   }
