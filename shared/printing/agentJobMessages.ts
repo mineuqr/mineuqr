@@ -1,9 +1,18 @@
 /**
- * THERMAL-PRINTING-6D Phase-2 — agent job wire message contracts (versioned).
+ * THERMAL-PRINTING-6D Phase-2 / PRINTING-RENDERING-1A — agent job wire message contracts (versioned).
  */
 import { SUPPORTED_PRINT_AGENT_PROTOCOL_VERSION } from "./printAgentProtocol";
 import type { RuntimeExecutionPlanSummary } from "./executionIntegration";
 import type { TransportDeliveryContext } from "./transports/transportDeliveryContext";
+import type { TicketDocumentKind } from "./tickets/ticketTypes";
+
+export const AGENT_TICKET_PAYLOAD_VERSION = {
+  LEGACY: 1,
+  CANONICAL: 2,
+} as const;
+
+export type AgentTicketPayloadVersion =
+  (typeof AGENT_TICKET_PAYLOAD_VERSION)[keyof typeof AGENT_TICKET_PAYLOAD_VERSION];
 
 export const AGENT_JOB_MESSAGE_TYPES = {
   JOB_ASSIGNED: "agent.job.assigned",
@@ -33,6 +42,11 @@ export interface AgentJobFetchRequestMessage {
 }
 
 export interface AgentJobTicketPayload {
+  /**
+   * Wire payload version. Omitted or `1` = legacy minimal payload.
+   * `2` = canonical payload with full ticket metadata (PRINTING-RENDERING-1A).
+   */
+  payloadVersion?: (typeof AGENT_TICKET_PAYLOAD_VERSION)[keyof typeof AGENT_TICKET_PAYLOAD_VERSION];
   orderId: number;
   restaurantId: number;
   items: Array<{
@@ -40,6 +54,15 @@ export interface AgentJobTicketPayload {
     quantity: number;
     notes?: string | null;
   }>;
+  /** PRINTING-RENDERING-1A — canonical fields (payloadVersion 2). */
+  documentKind?: TicketDocumentKind;
+  orderNumber?: string;
+  tableNumber?: string | null;
+  sessionId?: number | null;
+  createdAt?: string;
+  orderNotes?: string | null;
+  stationId?: number | null;
+  stationName?: string | null;
 }
 
 export interface AgentJobPayload {

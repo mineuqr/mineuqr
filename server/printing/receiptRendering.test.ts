@@ -72,18 +72,20 @@ describe("receipt rendering THERMAL-PRINTING-13B", () => {
     expect(receipt.paperWidthMm).toBe(PAPER_WIDTH_MM.W80);
   });
 
-  it("preserves legacy-v1 ESC/POS bytes when paper width is unknown", () => {
+  it("uses order number identity in canonical pipeline for legacy v1 payloads", () => {
     const createdAt = new Date("2026-06-18T10:00:00.000Z");
-    const unified = renderReceiptToEscPosPayload(
+    const legacyReceipt = renderReceiptToEscPosPayload(
       receiptFromAgentJobTicket(sampleAgentTicket, { createdAt }),
       { layoutProfileId: "legacy-v1" }
     );
-    const legacy = buildEscPosPayloadFromAgentTicket({
+    const canonical = buildEscPosPayloadFromAgentTicket({
       ticket: sampleAgentTicket,
       createdAt,
     });
 
-    expect(Array.from(unified.bytes)).toEqual(Array.from(legacy.bytes));
+    expect(Array.from(legacyReceipt.bytes)).not.toEqual(Array.from(canonical.bytes));
+    expect(new TextDecoder().decode(legacyReceipt.bytes)).toContain("Kitchen Order");
+    expect(new TextDecoder().decode(canonical.bytes)).toContain("500");
   });
 
   it("renders Arabic item text through unified pipeline", () => {

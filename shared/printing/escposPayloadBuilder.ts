@@ -1,12 +1,13 @@
 /**
- * THERMAL-PRINTING-10A / 13B / 13C / 13D — ESC/POS payload generation (unified pipeline entry).
+ * THERMAL-PRINTING-10A / 13B / 13C / 13D / PRINTING-RENDERING-1A — ESC/POS payload generation.
+ *
+ * Routes through the canonical TicketDocument rendering pipeline and legacy adapter.
  */
 import type { AgentJobTicketPayload } from "./agentJobMessages";
 import type { EscPosPayload } from "./executionExecutor";
 import type { ArabicRenderingMode } from "./arabic/arabicRenderingMode";
 import type { PaperWidthMm, PrintTicketLocale } from "./types";
-import { receiptFromAgentJobTicket } from "./receipts/receiptAdapters";
-import { renderReceiptToEscPosPayload } from "./receiptPipeline";
+import { renderAgentTicketPayloadToEscPosPayload } from "./tickets/ticketRenderingPipeline";
 
 export function buildEscPosPayloadFromAgentTicket(input: {
   ticket: AgentJobTicketPayload;
@@ -15,13 +16,5 @@ export function buildEscPosPayloadFromAgentTicket(input: {
   arabicRenderingMode?: ArabicRenderingMode;
   locale?: PrintTicketLocale;
 }): EscPosPayload {
-  const receipt = receiptFromAgentJobTicket(input.ticket, {
-    createdAt: input.createdAt,
-    paperWidthMm: input.paperWidthMm,
-    locale: input.locale,
-  });
-
-  return renderReceiptToEscPosPayload(receipt, {
-    arabicRenderingMode: input.arabicRenderingMode,
-  });
+  return renderAgentTicketPayloadToEscPosPayload(input);
 }

@@ -12,6 +12,8 @@ import { resolveRuntimeExecutionPlan } from "./executionIntegrationFlow";
 import { findPrintJobById } from "./printJobRepository";
 import { findPrinterById } from "./printerRepository";
 import { renderKitchenTicket } from "./ticketRenderer";
+import { buildOrderAgentTicketPayload } from "./orderTicketBuilder";
+import { findPrintStationById } from "./stationRepository";
 import { rejectIfPrintJobOwnershipViolated } from "./tenantOwnershipAuthority";
 import { resolveStationItemFilterFromJob } from "./stationRoutingService";
 import { buildTransportDeliveryContext } from "./transportDeliveryContextBuilder";
@@ -49,22 +51,38 @@ function mapKitchenTicketToAgentPayload(input: {
   restaurantId: number;
   orderId: number;
   ticket: Awaited<ReturnType<typeof renderKitchenTicket>>;
+  stationId: number | null;
+  stationName: string | null;
 }): AgentJobPayload {
+  const ticket = buildOrderAgentTicketPayload({
+    kitchenTicket: input.ticket,
+    stationId: input.stationId,
+    stationName: input.stationName,
+  });
+
   return {
     jobId: input.jobId,
     restaurantId: input.restaurantId,
     printerId: input.printerId,
     orderId: input.orderId,
-    ticket: {
-      orderId: input.ticket.orderId,
-      restaurantId: input.ticket.restaurantId,
-      items: input.ticket.items.map((item) => ({
-        itemName: item.itemName,
-        quantity: item.quantity,
-        notes: item.notes,
-      })),
-    },
+    ticket,
   };
+}
+
+async function resolveStationName(input: {
+  restaurantId: number;
+  stationId: number | null;
+}): Promise<string | null> {
+  if (input.stationId == null) {
+    return null;
+  }
+
+  const station = await findPrintStationById(input.stationId);
+  if (!station || station.restaurantId !== input.restaurantId) {
+    return null;
+  }
+
+  return station.name;
 }
 
 export async function fetchAuthoritativePrintJob(
@@ -158,6 +176,10 @@ export async function fetchAuthoritativePrintJob(
     stationId: stationFilter.stationId,
     stationFilterMode: stationFilter.filterMode,
   });
+  const stationName = await resolveStationName({
+    restaurantId: job.restaurantId,
+    stationId: job.stationId,
+  });
   const resolved = resolveRuntimeExecutionPlan({
     agentId: normalizedAgentId,
     dbPrinterId: assignment.printerId,
@@ -176,6 +198,8 @@ export async function fetchAuthoritativePrintJob(
       restaurantId: job.restaurantId,
       orderId: job.orderId,
       ticket,
+      stationId: job.stationId,
+      stationName,
     }),
     executionPlan: resolved.summary,
     transportDeliveryContext,
