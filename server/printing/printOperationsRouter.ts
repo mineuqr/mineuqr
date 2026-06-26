@@ -15,6 +15,7 @@ import {
   listAgentOverview,
   getPrinterDiscoveryDiagnostics,
   listDiagnosticRunHistory,
+  getPrintingSetupStatus,
 } from "./printOperationsService";
 import { createRestaurantPrinter } from "./printOperationsProvisioningService";
 import { submitDiagnosticTestPrint } from "./diagnosticPrintService";
@@ -102,6 +103,19 @@ export const printOperationsRouter = router({
     await assertRestaurantAccess(ctx, input.restaurantId, "printOps.getDiscoveryDiagnostics");
     return getPrinterDiscoveryDiagnostics(input.restaurantId);
   }),
+
+  getPrintingSetupStatus: verifiedProcedure
+    .input(
+      restaurantInput.extend({
+        includeSupport: z.boolean().optional(),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      await assertRestaurantAccess(ctx, input.restaurantId, "printOps.getPrintingSetupStatus");
+      return getPrintingSetupStatus(input.restaurantId, {
+        includeSupport: input.includeSupport,
+      });
+    }),
 
   listDiagnosticRuns: verifiedProcedure
     .input(

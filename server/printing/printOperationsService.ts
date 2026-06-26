@@ -28,6 +28,8 @@ import { getPrintJobAssignment } from "./assignmentService";
 import { getPrintDiscoveryDiagnostics } from "./printOperationsDiscoveryService";
 import type { DiagnosticRunView } from "./printOperationsDiscoveryTypes";
 import { listPrintDiagnosticRunsForRestaurant } from "./diagnosticPrintRepository";
+import { resolvePrintingSetupState } from "./setupState";
+import type { PrintingSetupStatus } from "./setupState";
 import type {
   PaginatedPrintJobs,
   PrintFailureItem,
@@ -456,6 +458,13 @@ export async function listPrintFailures(
 export async function getPrinterDiscoveryDiagnostics(restaurantId: number) {
   const printerOverviews = await listPrinterOverview(restaurantId);
   return getPrintDiscoveryDiagnostics(restaurantId, printerOverviews);
+}
+
+export async function getPrintingSetupStatus(
+  restaurantId: number,
+  options?: { includeSupport?: boolean }
+): Promise<PrintingSetupStatus> {
+  return resolvePrintingSetupState(restaurantId, options);
 }
 
 export async function listDiagnosticRunHistory(
