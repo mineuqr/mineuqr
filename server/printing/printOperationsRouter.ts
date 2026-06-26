@@ -19,6 +19,7 @@ import {
 } from "./printOperationsService";
 import { createRestaurantPrinter } from "./printOperationsProvisioningService";
 import { submitDiagnosticTestPrint } from "./diagnosticPrintService";
+import { getPrintJobOperationalTelemetry } from "./printJobTelemetryService";
 
 const restaurantInput = z.object({
   restaurantId: z.coerce.number().int().positive(),
@@ -86,6 +87,24 @@ export const printOperationsRouter = router({
         return { found: false as const };
       }
       return { found: true as const, job: detail };
+    }),
+
+  getPrintJobTelemetry: verifiedProcedure
+    .input(
+      restaurantInput.extend({
+        jobId: z.number().int().positive(),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      await assertRestaurantAccess(ctx, input.restaurantId, "printOps.getPrintJobTelemetry");
+      const telemetry = await getPrintJobOperationalTelemetry(
+        input.restaurantId,
+        input.jobId
+      );
+      if (!telemetry) {
+        return { found: false as const };
+      }
+      return { found: true as const, telemetry };
     }),
 
   listFailures: verifiedProcedure

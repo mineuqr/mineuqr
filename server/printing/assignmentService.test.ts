@@ -41,6 +41,10 @@ vi.mock("./printJobExecutionState", () => ({
     executionStateMocks.transitionPrintJobExecutionState(...args),
 }));
 
+vi.mock("./printJobTelemetryService", () => ({
+  emitPrintJobTelemetryAsync: vi.fn(),
+}));
+
 const baseJob: SelectPrintJob = {
   id: 100,
   restaurantId: 7,

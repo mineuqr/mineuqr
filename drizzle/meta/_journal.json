@@ -260,6 +260,13 @@
       "when": 1782600000000,
       "tag": "0036_print_jobs_dispatch_notification",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "5",
+      "when": 1782700000000,
+      "tag": "0037_print_job_operational_telemetry",
+      "breakpoints": true
     }
   ]
 }

@@ -5,6 +5,8 @@ import { opsLog } from "../_core/opsLog";
 import { OPS_EVENT } from "../_core/opsTaxonomy";
 import { requestPrintHostDispatch } from "./printHostDispatchClient";
 import { createPrintJob } from "./printJobService";
+import { emitPrintJobTelemetryAsync } from "./printJobTelemetryService";
+import { PRINT_JOB_TELEMETRY_EVENT } from "../../shared/printing/telemetry";
 import { isAutoPrintEnabledForRestaurant } from "./printTargetSelectionService";
 import { resolveStationPrintTargets } from "./stationRoutingService";
 
@@ -58,6 +60,21 @@ export async function enqueueAutoPrintJobForOrder(
         stationId: target.stationId,
         idempotencyKey: target.idempotencyKey,
       });
+
+      if (result.created) {
+        emitPrintJobTelemetryAsync({
+          printJobId: result.job.id,
+          restaurantId: input.restaurantId,
+          printerId: result.job.printerId ?? target.printerId,
+          eventType: PRINT_JOB_TELEMETRY_EVENT.ROUTING_COMPLETED,
+          payload: {
+            orderId: input.orderId,
+            stationId: target.stationId,
+            stationName: target.stationName,
+            selectionReason: target.selectionReason,
+          },
+        });
+      }
 
       opsLog({
         type: result.created

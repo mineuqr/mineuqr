@@ -18,6 +18,8 @@ import {
   type AssignPrintJobResult,
   type PrintJobAssignment,
 } from "./assignmentTypes";
+import { emitPrintJobTelemetryAsync } from "./printJobTelemetryService";
+import { PRINT_JOB_TELEMETRY_EVENT } from "../../shared/printing/telemetry";
 
 const assignments = new Map<number, PrintJobAssignment>();
 
@@ -159,6 +161,17 @@ export async function assignPrintJob(
   const updatedJob = transition.job;
   const assignment = buildAssignmentFromJob(updatedJob, agentId);
   cacheAssignment(assignment);
+
+  emitPrintJobTelemetryAsync({
+    printJobId: assignment.jobId,
+    restaurantId: assignment.restaurantId,
+    agentId: assignment.agentId,
+    printerId: assignment.printerId,
+    eventType: PRINT_JOB_TELEMETRY_EVENT.ASSIGNMENT_COMPLETED,
+    payload: {
+      assignmentCreated: transition.applied && !transition.duplicate,
+    },
+  });
 
   return {
     assignment,

@@ -17,6 +17,8 @@ import type {
 } from "../../shared/printing/executionOutcomeMessages";
 import type { ExecutionOutcomeStatus } from "../../shared/printing/executionOutcome";
 import type { ExecutionTransport } from "../../shared/printing/executionCapabilities";
+import { emitPrintJobTelemetryAsync } from "./printJobTelemetryService";
+import { PRINT_JOB_TELEMETRY_EVENT } from "../../shared/printing/telemetry";
 
 export type RecordExecutionOutcomeReportInput = {
   agentId: string;
@@ -86,6 +88,37 @@ export async function recordExecutionOutcomeReport(
     if ("rejected" in transitionResult) {
       return { accepted: false, reason: transitionResult.reason };
     }
+
+    const succeeded = input.outcomeStatus === "executed";
+    emitPrintJobTelemetryAsync({
+      printJobId: input.jobId,
+      restaurantId: job.restaurantId,
+      agentId: normalizedAgentId,
+      printerId: job.printerId ?? undefined,
+      eventType: succeeded
+        ? PRINT_JOB_TELEMETRY_EVENT.EXECUTION_COMPLETED
+        : PRINT_JOB_TELEMETRY_EVENT.EXECUTION_FAILED,
+      severity: succeeded ? "info" : "error",
+      payload: {
+        outcomeStatus: input.outcomeStatus,
+        category: input.category,
+        transport: input.transport,
+        message: input.message,
+      },
+    });
+
+    emitPrintJobTelemetryAsync({
+      printJobId: input.jobId,
+      restaurantId: job.restaurantId,
+      agentId: normalizedAgentId,
+      printerId: job.printerId ?? undefined,
+      eventType: PRINT_JOB_TELEMETRY_EVENT.FINAL_OUTCOME,
+      severity: succeeded ? "info" : "error",
+      payload: {
+        outcomeStatus: input.outcomeStatus,
+        terminalStatus: succeeded ? "printed" : "failed",
+      },
+    });
   }
 
   return stored;

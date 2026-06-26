@@ -12,6 +12,9 @@ import {
   findPrintJobByIdempotencyKey,
   insertPrintJob,
 } from "./printJobRepository";
+import { generatePrintJobCorrelationId } from "./printJobCorrelationService";
+import { emitPrintJobTelemetryAsync } from "./printJobTelemetryService";
+import { PRINT_JOB_TELEMETRY_EVENT } from "../../shared/printing/telemetry";
 import {
   isMysqlDuplicateKeyError,
   PrintJobOrderNotFoundError,
@@ -83,16 +86,19 @@ export async function createPrintJob(
   }
 
   try {
+    const correlationId = generatePrintJobCorrelationId();
     const insertData: {
       restaurantId: number;
       orderId: number;
       idempotencyKey: string;
       printerId?: number;
       stationId?: number | null;
+      correlationId: string;
     } = {
       restaurantId: order.restaurantId,
       orderId: order.id,
       idempotencyKey,
+      correlationId,
     };
 
     if (input.printerId != null) {
@@ -108,6 +114,19 @@ export async function createPrintJob(
     if (!job) {
       throw new PrintJobUnavailableError("Print job not found after creation");
     }
+
+    emitPrintJobTelemetryAsync({
+      printJobId: job.id,
+      correlationId: job.correlationId ?? correlationId,
+      restaurantId: job.restaurantId,
+      printerId: job.printerId ?? undefined,
+      eventType: PRINT_JOB_TELEMETRY_EVENT.JOB_CREATED,
+      payload: {
+        orderId: job.orderId,
+        idempotencyKey: job.idempotencyKey,
+        status: job.status,
+      },
+    });
 
     return { job, created: true };
   } catch (err) {

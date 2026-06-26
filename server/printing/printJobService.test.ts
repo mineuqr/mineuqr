@@ -23,6 +23,10 @@ vi.mock("../db", () => ({
   getOrderById: (...args: unknown[]) => dbMocks.getOrderById(...args),
 }));
 
+vi.mock("./printJobTelemetryService", () => ({
+  emitPrintJobTelemetryAsync: vi.fn(),
+}));
+
 import { createPrintJob } from "./printJobService";
 import {
   PrintJobOrderNotFoundError,
@@ -81,12 +85,15 @@ describe("printJobService THERMAL-PRINTING-3B.2B", () => {
       expect(repoMocks.findPrintJobByIdempotencyKey).toHaveBeenCalledWith(
         "order:42:submitted"
       );
-      expect(repoMocks.insertPrintJob).toHaveBeenCalledWith({
-        restaurantId: 7,
-        orderId: 42,
-        idempotencyKey: "order:42:submitted",
-        printerId: 10,
-      });
+      expect(repoMocks.insertPrintJob).toHaveBeenCalledWith(
+        expect.objectContaining({
+          restaurantId: 7,
+          orderId: 42,
+          idempotencyKey: "order:42:submitted",
+          printerId: 10,
+          correlationId: expect.any(String),
+        })
+      );
     });
 
     it("returns existing job on idempotency hit", async () => {
@@ -141,11 +148,14 @@ describe("printJobService THERMAL-PRINTING-3B.2B", () => {
       });
 
       expect(result.created).toBe(true);
-      expect(repoMocks.insertPrintJob).toHaveBeenCalledWith({
-        restaurantId: 7,
-        orderId: 42,
-        idempotencyKey: `order:42:reprint:${reprintId}`,
-      });
+      expect(repoMocks.insertPrintJob).toHaveBeenCalledWith(
+        expect.objectContaining({
+          restaurantId: 7,
+          orderId: 42,
+          idempotencyKey: `order:42:reprint:${reprintId}`,
+          correlationId: expect.any(String),
+        })
+      );
     });
 
     it("requires reprintId", async () => {

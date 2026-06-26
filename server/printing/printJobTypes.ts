@@ -76,6 +76,7 @@ export type InsertPrintJobData = {
   idempotencyKey: string;
   printerId?: number;
   stationId?: number | null;
+  correlationId?: string;
 };
 
 export const PRINT_JOB_CLAIM_LEASE_MS = 5 * 60 * 1000;

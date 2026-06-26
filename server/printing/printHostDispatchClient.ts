@@ -9,6 +9,8 @@ import { ENV } from "../_core/env";
 import { OPS_EVENT } from "../_core/opsTaxonomy";
 import type { PrintHostRouter } from "../print-host/printHostRouter";
 import { dispatchAssignedPrintJob } from "./endToEndPrintFlowService";
+import { ensurePrintJobCorrelationId } from "./printJobCorrelationService";
+import { findPrintJobById } from "./printJobRepository";
 import type { ExecutePrintHostDispatchResult } from "./dispatchBridgeService";
 import type { ExecutePrintHostDiagnosticTestPrintResult } from "./diagnosticPrintDispatchService";
 import { executePrintHostDiagnosticTestPrint } from "./diagnosticPrintDispatchService";
@@ -57,7 +59,10 @@ function createDispatchBridgeClient(correlationId: string) {
 export async function requestPrintHostDispatch(
   input: RequestPrintHostDispatchInput
 ): Promise<RequestPrintHostDispatchResult> {
-  const correlationId = resolveCorrelationId(input.correlationId);
+  const job = await findPrintJobById(input.jobId);
+  const correlationId = job
+    ? await ensurePrintJobCorrelationId(job)
+    : resolveCorrelationId(input.correlationId);
 
   opsLog({
     type: OPS_EVENT.dispatch_requested,

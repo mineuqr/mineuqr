@@ -68,6 +68,10 @@ vi.mock("../_core/opsLog", () => ({
   opsLog: vi.fn(),
 }));
 
+vi.mock("./printJobTelemetryService", () => ({
+  emitPrintJobTelemetryAsync: vi.fn(),
+}));
+
 import { enqueueAutoPrintJobForOrder } from "./autoPrintOnOrderCreate";
 
 const restaurantId = 720007;
@@ -231,13 +235,16 @@ describe("auto print order flow THERMAL-PRINTING-11A/12A", () => {
 
     expect(dbMocks.getOrderItemsByOrderId).toHaveBeenCalledWith(orderId);
     expect(stationRepoMocks.listPrintStationsForRestaurant).toHaveBeenCalledWith(restaurantId);
-    expect(repoMocks.insertPrintJob).toHaveBeenCalledWith({
+    expect(repoMocks.insertPrintJob).toHaveBeenCalledWith(
+      expect.objectContaining({
       restaurantId,
       orderId,
       idempotencyKey: autoPrintJobIdempotencyKey(orderId),
       printerId: 1,
       stationId: null,
-    });
+      correlationId: expect.any(String),
+    })
+    );
     expect(dispatchMocks.requestPrintHostDispatch).toHaveBeenCalledWith({
       jobId: 150002,
       restaurantId,
@@ -271,13 +278,16 @@ describe("auto print order flow THERMAL-PRINTING-11A/12A", () => {
       restaurantId,
     });
 
-    expect(repoMocks.insertPrintJob).toHaveBeenCalledWith({
+    expect(repoMocks.insertPrintJob).toHaveBeenCalledWith(
+      expect.objectContaining({
       restaurantId,
       orderId,
       idempotencyKey: autoPrintJobIdempotencyKey(orderId),
       printerId: 2,
       stationId: null,
-    });
+      correlationId: expect.any(String),
+    })
+    );
   });
 
   it("creates independent station jobs for multi-station orders", async () => {
@@ -332,20 +342,28 @@ describe("auto print order flow THERMAL-PRINTING-11A/12A", () => {
     });
 
     expect(repoMocks.insertPrintJob).toHaveBeenCalledTimes(2);
-    expect(repoMocks.insertPrintJob).toHaveBeenNthCalledWith(1, {
+    expect(repoMocks.insertPrintJob).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
       restaurantId,
       orderId,
       idempotencyKey: autoPrintStationJobIdempotencyKey(orderId, 1),
       printerId: 1,
       stationId: 1,
-    });
-    expect(repoMocks.insertPrintJob).toHaveBeenNthCalledWith(2, {
+      correlationId: expect.any(String),
+    })
+    );
+    expect(repoMocks.insertPrintJob).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
       restaurantId,
       orderId,
       idempotencyKey: autoPrintStationJobIdempotencyKey(orderId, 2),
       printerId: 2,
       stationId: 2,
-    });
+      correlationId: expect.any(String),
+    })
+    );
     expect(dispatchMocks.requestPrintHostDispatch).toHaveBeenCalledWith({
       jobId: 150010,
       restaurantId,

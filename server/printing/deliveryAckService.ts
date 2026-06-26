@@ -11,6 +11,8 @@ import {
 import { updatePrintDiagnosticRun } from "./diagnosticPrintRepository";
 import { markJobDeliveryAcknowledged } from "./deliveryStateTracker";
 import { findPrintJobById } from "./printJobRepository";
+import { emitPrintJobTelemetryAsync } from "./printJobTelemetryService";
+import { PRINT_JOB_TELEMETRY_EVENT } from "../../shared/printing/telemetry";
 
 export class DeliveryAckError extends Error {
   constructor(message: string) {
@@ -109,6 +111,17 @@ export async function recordDeliveryAcknowledgement(
     agentId: normalizedAgentId,
     timestamp: input.timestamp,
   });
+
+  if (!existing) {
+    emitPrintJobTelemetryAsync({
+      printJobId: input.jobId,
+      restaurantId: job.restaurantId,
+      agentId: normalizedAgentId,
+      printerId: job.printerId ?? undefined,
+      eventType: PRINT_JOB_TELEMETRY_EVENT.DELIVERY_ACKNOWLEDGED,
+      payload: { timestamp: input.timestamp },
+    });
+  }
 
   return { accepted: true, duplicate: false, record };
 }

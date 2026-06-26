@@ -17,6 +17,8 @@ import {
   PRINT_JOB_EXECUTION_TRANSITION,
   transitionPrintJobExecutionState,
 } from "./printJobExecutionState";
+import { emitPrintJobTelemetryAsync } from "./printJobTelemetryService";
+import { PRINT_JOB_TELEMETRY_EVENT } from "../../shared/printing/telemetry";
 
 export class JobRetrievalError extends Error {
   constructor(message: string) {
@@ -106,6 +108,25 @@ export async function fetchAuthoritativePrintJob(
   });
   if ("rejected" in executionStart) {
     return { found: false, error: executionStart.reason };
+  }
+
+  emitPrintJobTelemetryAsync({
+    printJobId: job.id,
+    restaurantId: job.restaurantId,
+    agentId: normalizedAgentId,
+    printerId: assignment.printerId,
+    eventType: PRINT_JOB_TELEMETRY_EVENT.AGENT_FETCH,
+    payload: { duplicate: executionStart.duplicate },
+  });
+
+  if (executionStart.applied && !executionStart.duplicate) {
+    emitPrintJobTelemetryAsync({
+      printJobId: job.id,
+      restaurantId: job.restaurantId,
+      agentId: normalizedAgentId,
+      printerId: assignment.printerId,
+      eventType: PRINT_JOB_TELEMETRY_EVENT.EXECUTION_STARTED,
+    });
   }
 
   const stationFilter = resolveStationItemFilterFromJob({

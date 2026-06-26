@@ -6,6 +6,8 @@ import { OPS_EVENT } from "../_core/opsTaxonomy";
 import { recordDeliveryConfirmation, type DeliveryConfirmationInput } from "./deliveryConfirmationService";
 import type { JobDeliveryStateRecord } from "./deliveryStateTracker";
 import { resolvePrintJobAssignment } from "./assignmentService";
+import { emitPrintJobTelemetryAsync } from "./printJobTelemetryService";
+import { PRINT_JOB_TELEMETRY_EVENT } from "../../shared/printing/telemetry";
 
 export type ProcessAgentDeliveryConfirmationResult =
   | { accepted: true; duplicate: false; record: JobDeliveryStateRecord }
@@ -35,6 +37,16 @@ export async function processAgentDeliveryConfirmation(
       deliveryState: result.record.state,
     },
   });
+
+  if (!result.duplicate) {
+    emitPrintJobTelemetryAsync({
+      printJobId: input.jobId,
+      restaurantId: assignment?.restaurantId,
+      agentId: input.agentId,
+      eventType: PRINT_JOB_TELEMETRY_EVENT.DELIVERY_CONFIRMED,
+      payload: { deliveryState: result.record.state },
+    });
+  }
 
   return result;
 }

@@ -529,6 +529,8 @@ export const printJobs = mysqlTable(
 			.notNull(),
 		attemptCount: int().default(0).notNull(),
 		idempotencyKey: varchar({ length: 128 }).notNull(),
+		/** THERMAL-PRINTING-13I.3C.3 — immutable lifecycle correlation id */
+		correlationId: varchar({ length: 64 }),
 		claimedBy: int(),
 		leaseExpiresAt: timestamp({ mode: "string" }),
 		createdAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
@@ -546,6 +548,29 @@ export const printJobs = mysqlTable(
 			table.status,
 			table.createdAt
 		),
+		uniqueIndex("print_jobs_correlation_id_unique").on(table.correlationId),
+	]
+);
+
+// ─── Print Job Telemetry (THERMAL-PRINTING-13I.3C.3) ──────────────
+export const printJobTelemetryEvents = mysqlTable(
+	"print_job_telemetry_events",
+	{
+		id: int().autoincrement().notNull(),
+		printJobId: int().notNull(),
+		correlationId: varchar({ length: 64 }).notNull(),
+		eventType: varchar({ length: 64 }).notNull(),
+		restaurantId: int().notNull(),
+		agentId: varchar({ length: 128 }),
+		printerId: int(),
+		severity: mysqlEnum(["info", "warn", "error"]).default("info").notNull(),
+		payloadJson: json(),
+		createdAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+	},
+	(table) => [
+		index("print_job_telemetry_events_print_job_id").on(table.printJobId),
+		index("print_job_telemetry_events_correlation_id").on(table.correlationId),
+		index("print_job_telemetry_events_job_event").on(table.printJobId, table.eventType),
 	]
 );
 
@@ -599,6 +624,9 @@ export type SelectRestaurantPrintSettings = typeof restaurantPrintSettings.$infe
 
 export type InsertPrintJob = typeof printJobs.$inferInsert;
 export type SelectPrintJob = typeof printJobs.$inferSelect;
+
+export type InsertPrintJobTelemetryEvent = typeof printJobTelemetryEvents.$inferInsert;
+export type SelectPrintJobTelemetryEvent = typeof printJobTelemetryEvents.$inferSelect;
 
 export type InsertPrintJobAttempt = typeof printJobAttempts.$inferInsert;
 export type SelectPrintJobAttempt = typeof printJobAttempts.$inferSelect;

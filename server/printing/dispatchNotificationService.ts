@@ -5,6 +5,11 @@ import { opsLog } from "../_core/opsLog";
 import { OPS_EVENT } from "../_core/opsTaxonomy";
 import { notifyAgentOfJobId } from "./assignmentNotifier";
 import {
+  emitPrintJobTelemetryAsync,
+  mapDispatchReplayReasonToTelemetryEvent,
+} from "./printJobTelemetryService";
+import { PRINT_JOB_TELEMETRY_EVENT } from "../../shared/printing/telemetry";
+import {
   hasPersistedDispatchNotification,
   recordPersistedDispatchNotification,
   type PendingDispatchNotification,
@@ -50,6 +55,20 @@ export async function attemptDispatchNotification(
   }
 
   await recordPersistedDispatchNotification(input.jobId);
+
+  emitPrintJobTelemetryAsync({
+    printJobId: input.jobId,
+    correlationId: input.correlationId,
+    restaurantId: input.restaurantId,
+    agentId: input.agentId,
+    eventType: input.replayReason
+      ? mapDispatchReplayReasonToTelemetryEvent(input.replayReason)
+      : PRINT_JOB_TELEMETRY_EVENT.DISPATCH_NOTIFIED,
+    payload: {
+      replay: Boolean(input.replayReason),
+      replayReason: input.replayReason,
+    },
+  });
 
   opsLog({
     type: OPS_EVENT.dispatch_notification_sent,
@@ -98,6 +117,20 @@ export async function attemptPendingDispatchNotification(
   });
 
   if (!result.notified && result.reason) {
+    emitPrintJobTelemetryAsync({
+      printJobId: pending.jobId,
+      correlationId: input?.correlationId,
+      restaurantId: pending.restaurantId,
+      agentId: pending.agentId,
+      printerId: pending.printerId,
+      eventType: PRINT_JOB_TELEMETRY_EVENT.DISPATCH_FAILED,
+      severity: "warn",
+      payload: {
+        reason: result.reason,
+        replayReason: input?.replayReason,
+      },
+    });
+
     opsLog({
       type: OPS_EVENT.dispatch_notification_failed,
       category: "ORDER",

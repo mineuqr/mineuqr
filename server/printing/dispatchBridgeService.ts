@@ -10,6 +10,8 @@ import { assignPrintJob, getPrintJobAssignment } from "./assignmentService";
 import { attemptDispatchNotification } from "./dispatchNotificationService";
 import type { PrintJobAssignment } from "./assignmentTypes";
 import { hasDispatchNotificationBeenSent } from "./dispatchBridgeState";
+import { emitPrintJobTelemetryAsync } from "./printJobTelemetryService";
+import { PRINT_JOB_TELEMETRY_EVENT } from "../../shared/printing/telemetry";
 import { findPrintJobById } from "./printJobRepository";
 import { findPrinterById } from "./printerRepository";
 import { PrintJobNotFoundError } from "./printJobTypes";
@@ -89,6 +91,13 @@ export async function executePrintHostDispatch(
     severity: "info",
     correlationId: input.correlationId,
     metadata: { jobId: input.jobId },
+  });
+
+  emitPrintJobTelemetryAsync({
+    printJobId: input.jobId,
+    correlationId: input.correlationId,
+    eventType: PRINT_JOB_TELEMETRY_EVENT.DISPATCH_STARTED,
+    payload: { correlationId: input.correlationId },
   });
 
   const existingAssignment = getPrintJobAssignment(input.jobId);
@@ -178,6 +187,16 @@ export async function executePrintHostDispatch(
       },
     });
 
+    emitPrintJobTelemetryAsync({
+      printJobId: job.id,
+      correlationId: input.correlationId,
+      restaurantId: job.restaurantId,
+      printerId: job.printerId ?? undefined,
+      eventType: PRINT_JOB_TELEMETRY_EVENT.DISPATCH_FAILED,
+      severity: "warn",
+      payload: { reason: failureReason, phase: "assignment" },
+    });
+
     return {
       status: "failed",
       jobId: job.id,
@@ -239,6 +258,19 @@ export async function executePrintHostDispatch(
   });
 
   if (!notification.notified) {
+    emitPrintJobTelemetryAsync({
+      printJobId: assignment.jobId,
+      correlationId: input.correlationId,
+      restaurantId: assignment.restaurantId,
+      agentId: assignment.agentId,
+      printerId: assignment.printerId,
+      eventType: PRINT_JOB_TELEMETRY_EVENT.DISPATCH_FAILED,
+      severity: "warn",
+      payload: {
+        reason: notification.reason ?? "agent_disconnected",
+      },
+    });
+
     logDispatchEvent({
       type: OPS_EVENT.dispatch_notification_failed,
       severity: "info",
