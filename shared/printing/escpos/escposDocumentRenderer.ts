@@ -6,9 +6,11 @@ import {
   ESC_POS_ALIGN_VALUE,
   ESC_POS_BYTES,
   ESC_POS_CUT_PARTIAL,
+  ESC_POS_EMPHASIZE,
+  resolveEscPosCharacterSizeMask,
 } from "./escposConstants";
 import { encodeMonochromeBitmapToGsV0 } from "./escposRasterEncoder";
-import type { EscPosAlign, EscPosCommand, EscPosDocument } from "./escposTypes";
+import type { EscPosAlign, EscPosCommand, EscPosDocument, EscPosTextStyle } from "./escposTypes";
 
 const textEncoder = new TextEncoder();
 
@@ -65,6 +67,21 @@ function encodeAlign(builder: EscPosByteBuilder, value: EscPosAlign): void {
   );
 }
 
+function encodeTextStyle(builder: EscPosByteBuilder, style?: EscPosTextStyle): void {
+  const sizeMask = resolveEscPosCharacterSizeMask(style);
+  builder.write(ESC_POS_BYTES.GS, ESC_POS_BYTES.CHAR_SIZE, sizeMask);
+  if (style?.bold) {
+    builder.write(ESC_POS_BYTES.ESC, ESC_POS_BYTES.EMPHASIZE_ON, ESC_POS_EMPHASIZE.on);
+  } else {
+    builder.write(ESC_POS_BYTES.ESC, ESC_POS_BYTES.EMPHASIZE_ON, ESC_POS_EMPHASIZE.off);
+  }
+}
+
+function resetTextStyle(builder: EscPosByteBuilder): void {
+  builder.write(ESC_POS_BYTES.GS, ESC_POS_BYTES.CHAR_SIZE, 0x00);
+  builder.write(ESC_POS_BYTES.ESC, ESC_POS_BYTES.EMPHASIZE_ON, ESC_POS_EMPHASIZE.off);
+}
+
 function encodeCommand(builder: EscPosByteBuilder, command: EscPosCommand): void {
   switch (command.type) {
     case "initialize":
@@ -73,10 +90,21 @@ function encodeCommand(builder: EscPosByteBuilder, command: EscPosCommand): void
     case "align":
       encodeAlign(builder, command.value);
       return;
-    case "text":
-      builder.writeText(command.value);
-      builder.writeLf();
+    case "text": {
+      if (command.align) {
+        encodeAlign(builder, command.align);
+      }
+      if (command.style) {
+        encodeTextStyle(builder, command.style);
+        builder.writeText(command.value);
+        builder.writeLf();
+        resetTextStyle(builder);
+      } else {
+        builder.writeText(command.value);
+        builder.writeLf();
+      }
       return;
+    }
     case "separator":
       builder.writeText(command.line ?? "-".repeat(DEFAULT_SEPARATOR_LENGTH));
       builder.writeLf();
@@ -87,6 +115,9 @@ function encodeCommand(builder: EscPosByteBuilder, command: EscPosCommand): void
       return;
     case "cut":
       builder.write(ESC_POS_BYTES.GS, ESC_POS_BYTES.CUT, ESC_POS_CUT_PARTIAL);
+      return;
+    case "drawer-kick":
+      builder.write(ESC_POS_BYTES.ESC, 0x70, command.pin ?? 0x00, 0x19, 0xfa);
       return;
     case "raster": {
       const rasterBytes = encodeMonochromeBitmapToGsV0(command.bitmap);

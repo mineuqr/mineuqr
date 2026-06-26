@@ -85,7 +85,7 @@ describe("receipt rendering THERMAL-PRINTING-13B", () => {
 
     expect(Array.from(legacyReceipt.bytes)).not.toEqual(Array.from(canonical.bytes));
     expect(new TextDecoder().decode(legacyReceipt.bytes)).toContain("Kitchen Order");
-    expect(new TextDecoder().decode(canonical.bytes)).toContain("500");
+    expect(new TextDecoder().decode(canonical.bytes)).toContain("ORDER #500");
   });
 
   it("renders Arabic item text through unified pipeline", () => {

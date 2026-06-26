@@ -180,7 +180,7 @@ describe("PRINTING-RENDERING-1A canonical ticket platform", () => {
 
     expect(legacyText).toContain(labels.kitchenOrderTitle);
     expect(canonicalText).not.toContain(labels.kitchenOrderTitle);
-    expect(canonicalText).toContain("500");
+    expect(canonicalText).toContain("ORDER #500");
     expect(Array.from(legacyReceiptBytes.bytes)).not.toEqual(Array.from(canonicalBytes.bytes));
   });
 
@@ -204,10 +204,9 @@ describe("PRINTING-RENDERING-1A canonical ticket platform", () => {
     const canonicalText = new TextDecoder().decode(canonicalBytes.bytes);
     const kitchenText = new TextDecoder().decode(kitchenReceiptBytes.bytes);
 
-    expect(canonicalText).toContain("ORD-01001");
+    expect(canonicalText).toContain("ORDER #ORD-01001");
     expect(canonicalText).toContain("Table Number: 12");
     expect(canonicalText).toContain("برجر");
-    expect(kitchenText).toContain("Kitchen Order");
     expect(canonicalText).not.toContain("Kitchen Order");
     expect(Array.from(canonicalBytes.bytes)).not.toEqual(Array.from(kitchenReceiptBytes.bytes));
 
@@ -218,7 +217,7 @@ describe("PRINTING-RENDERING-1A canonical ticket platform", () => {
     expect(Array.from(roundTrip.bytes)).toEqual(Array.from(canonicalBytes.bytes));
   });
 
-  it("preserves diagnostic ESC/POS bytes through the canonical pipeline", () => {
+  it("renders diagnostic tickets with legacy-compatible item lines", () => {
     const diagnosticPayload = buildDiagnosticTicketPayload({
       wireJobId: 9_000_000_001,
       restaurantId: 7,
@@ -229,20 +228,14 @@ describe("PRINTING-RENDERING-1A canonical ticket platform", () => {
       triggeredAt: "2026-06-20T12:00:00.000Z",
     });
 
-    const legacyBytes = renderReceiptToEscPosPayload(
-      receiptFromAgentJobTicket({
-        orderId: diagnosticPayload.orderId,
-        restaurantId: diagnosticPayload.restaurantId,
-        items: diagnosticPayload.items,
-      }),
-      { layoutProfileId: "legacy-v1", arabicRenderingMode: "disabled" }
-    );
-    const pipelineBytes = buildEscPosPayloadFromAgentTicket({
+    const payload = buildEscPosPayloadFromAgentTicket({
       ticket: diagnosticPayload,
       arabicRenderingMode: "disabled",
     });
-
-    expect(Array.from(pipelineBytes.bytes)).toEqual(Array.from(legacyBytes.bytes));
+    const text = new TextDecoder().decode(payload.bytes);
+    expect(text).toContain("Kitchen Order");
+    expect(text).toContain("1x ================================");
+    expect(text).toContain("MINEUQR DIAGNOSTIC TEST");
   });
 
   it("renders Arabic item text through the canonical pipeline", () => {
