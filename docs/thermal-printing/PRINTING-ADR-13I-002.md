@@ -95,4 +95,5 @@ Authority ownership changed; APIs were not removed.
 
 - PRINTING-READINESS-AUTHORITY-001
 - THERMAL-PRINTING-13I.3B Phase A/B
+- THERMAL-PRINTING-13I.3B.6 Authority Enforcement
 - THERMAL-PRINTING-13I.3C (future — render authority output only)

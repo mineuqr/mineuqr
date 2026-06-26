@@ -4,113 +4,8 @@ import {
   shouldShowAuthorityOperatorAlert,
   type PrintingSetupStatus,
 } from "@/lib/printing/printingReadinessAuthority";
-import type { RouterOutputs } from "@/lib/trpc";
+import type { LegacyPrintingDiscoveryDiagnostics } from "@/lib/printing/legacyPrintingDiscovery";
 import { AlertTriangle, Info, Server, Wifi, WifiOff } from "lucide-react";
-
-type DiscoveryDiagnostics = RouterOutputs["printOps"]["getDiscoveryDiagnostics"];
-
-/** @deprecated Support diagnostics only — do not use for operator readiness (PRINTING-ADR-13I-002). */
-function legacyEmptyStateCopy(
-  reason: NonNullable<DiscoveryDiagnostics["emptyReason"]>,
-  isAr: boolean
-): { title: string; description: string; steps: string[] } {
-  switch (reason) {
-    case "no_agent_connected":
-      return {
-        title: isAr ? "لا يوجد وكيل طباعة متصل" : "No Print Agent Connected",
-        description: isAr
-          ? "لا يوجد وكيل طباعة متصل بخادم الطباعة لهذا المطعم."
-          : "No print agent is connected to the Print Host for this restaurant.",
-        steps: isAr
-          ? [
-              "ثبت خدمة Windows للوكيل على جهاز نقطة البيع",
-              "استخدم ملف الإعدادات: production.print-host.example.json",
-              "شغّل: scripts\\windows\\install-print-agent-service.ps1",
-              "تحقق من https://print.mineuqr.com/health",
-            ]
-          : [
-              "Install the Windows Print Agent service on the POS host",
-              "Use config: agent/config/production.print-host.example.json",
-              "Run: scripts\\windows\\install-print-agent-service.ps1",
-              "Verify https://print.mineuqr.com/health shows agents.online = 1",
-            ],
-      };
-    case "agent_no_matching_profiles":
-      return {
-        title: isAr ? "الوكيل متصل لكن بدون ملفات طابعات" : "Agent Connected but No Printer Profiles",
-        description: isAr
-          ? "يوجد وكيل متصل، لكنه لم يبلّغ عن ملفات طابعات تطابق إعدادات هذا المطعم."
-          : "A print agent is online, but it has not reported printer profiles matching this restaurant.",
-        steps: isAr
-          ? [
-              "تحقق من startupPrinters في ملف إعدادات الوكيل",
-              "تأكد أن profileId يطابق printers.profileId في لوحة التحكم",
-              "أعد تشغيل خدمة الوكيل بعد تعديل الإعدادات",
-            ]
-          : [
-              "Check startupPrinters in the agent config file",
-              "Ensure profileId matches printers.profileId in the dashboard",
-              "Restart the agent service after config changes",
-            ],
-      };
-    case "ownership_conflict":
-      return {
-        title: isAr ? "تعارض ملكية الطابعة" : "Printer Ownership Conflict",
-        description: isAr
-          ? "ملف الطابعة مُسجّل لوكيل يتبع مطعماً آخر."
-          : "A printer profile is registered to an agent owned by another restaurant.",
-        steps: isAr
-          ? [
-              "راجع تعارضات الملكية أدناه",
-              "صحّح agentId أو profileId ليطابق المطعم الصحيح",
-              "تأكد أن كل مطعم يستخدم وكيله الخاص",
-            ]
-          : [
-              "Review ownership conflicts below",
-              "Correct agentId or profileId for the intended restaurant",
-              "Ensure each restaurant uses its dedicated agent",
-            ],
-      };
-    case "no_db_printers":
-      return {
-        title: isAr ? "لا توجد طابعات مهيأة" : "No Printers Configured",
-        description: isAr
-          ? "لم يتم إعداد أي طابعة في قاعدة بيانات هذا المطعم."
-          : "No printer records exist for this restaurant in the database.",
-        steps: isAr
-          ? [
-              "اضغط إضافة طابعة في أعلى الصفحة",
-              "ثم اربط جهاز نقطة البيع",
-              "أخيراً أرسل طباعة تجريبية",
-            ]
-          : [
-              "Click Add Printer at the top of this page",
-              "Then connect your POS device",
-              "Finally send a test print",
-            ],
-      };
-    case "printers_inactive":
-      return {
-        title: isAr ? "الطابعات غير نشطة" : "Printers Not Active",
-        description: isAr
-          ? "الطابعات مهيأة لكنها غير مرتبطة بوكيل متصل حالياً."
-          : "Printers are configured but not linked to an online agent.",
-        steps: isAr
-          ? [
-              "تحقق من اتصال الوكيل بخادم الطباعة",
-              "تحقق من تطابق profileId بين قاعدة البيانات والوكيل",
-              "استخدم طباعة تجريبية بعد استعادة الاتصال",
-            ]
-          : [
-              "Verify agent connectivity to Print Host",
-              "Confirm profileId alignment between DB and agent",
-              "Run a Test Print after connectivity is restored",
-            ],
-      };
-    default:
-      return { title: "", description: "", steps: [] };
-  }
-}
 
 function authorityAlertTitle(status: PrintingSetupStatus, isAr: boolean): string {
   if (status.operationalState === "BLOCKED") {
@@ -128,8 +23,8 @@ export function PrinterDiscoveryDiagnosticsPanel({
   isAr,
   isLoading,
 }: {
-  data: DiscoveryDiagnostics | undefined;
-  setupStatus?: PrintingSetupStatus;
+  data: LegacyPrintingDiscoveryDiagnostics | undefined;
+  setupStatus: PrintingSetupStatus | undefined;
   isAr: boolean;
   isLoading: boolean;
 }) {
@@ -142,10 +37,6 @@ export function PrinterDiscoveryDiagnosticsPanel({
 
   const counts = data.counts;
   const showAuthorityAlert = shouldShowAuthorityOperatorAlert(setupStatus);
-  /** Legacy support diagnostics — not used for operator readiness when authority is present. */
-  const legacyEmptyCopy = data.emptyReason
-    ? legacyEmptyStateCopy(data.emptyReason, isAr)
-    : null;
 
   return (
     <div className="space-y-4">
@@ -175,51 +66,33 @@ export function PrinterDiscoveryDiagnosticsPanel({
           </CardContent>
         </Card>
       ) : null}
-      <Card className="border-border/40 bg-card/40">
+
+      <Card className="border-border/40 bg-card/40" data-support-diagnostics="printing-discovery">
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-base">
             <Server className="h-4 w-4" />
-            {isAr ? "تشخيص الاكتشاف" : "Discovery Diagnostics"}
+            {isAr ? "تشخيص الدعم · الهندسة" : "Support · Engineering Diagnostics"}
           </CardTitle>
+          <p className="text-xs text-muted-foreground">
+            {isAr
+              ? "للاستكشاف فقط — لا يحدد جاهزية الطباعة"
+              : "Troubleshooting only — does not determine printing readiness"}
+          </p>
         </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <Metric label={isAr ? "وكلاء متصلون" : "Connected Agents"} value={counts.connectedAgentsForRestaurant} />
           <Metric label={isAr ? "نقاط النهاية" : "Connected Endpoints"} value={counts.connectedEndpoints} />
           <Metric label={isAr ? "طابعات مكتشفة" : "Discovered Printers"} value={counts.discoveredPrinterProfiles} />
           <Metric label={isAr ? "طابعات مُعيَّنة" : "Assigned Printers"} value={counts.assignedDbPrinters} />
-          <Metric label={isAr ? "طابعات نشطة" : "Active Printers"} value={counts.activePrinters} tone="success" />
+          <Metric label={isAr ? "اتصال legacy" : "Legacy Active Count"} value={counts.activePrinters} />
         </CardContent>
       </Card>
 
-      {legacyEmptyCopy && !setupStatus ? (
-        <Card className="border-amber-500/30 bg-amber-500/5">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-base text-amber-200">
-              <AlertTriangle className="h-4 w-4" />
-              {legacyEmptyCopy.title}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm text-slate-300">
-            <p>{legacyEmptyCopy.description}</p>
-            <ul className="list-disc space-y-1 ps-5 text-slate-400">
-              {legacyEmptyCopy.steps.map((step) => (
-                <li key={step}>{step}</li>
-              ))}
-            </ul>
-            <p className="text-xs text-muted-foreground">
-              {isAr
-                ? `وكلاء عالميون متصلون: ${counts.connectedAgentsGlobal}`
-                : `Global connected agents: ${counts.connectedAgentsGlobal}`}
-            </p>
-          </CardContent>
-        </Card>
-      ) : null}
-
       {data.ownershipConflicts.length > 0 ? (
-        <Card className="border-destructive/30">
+        <Card className="border-destructive/30" data-support-diagnostics="ownership-conflicts">
           <CardHeader className="pb-2">
             <CardTitle className="text-base text-destructive">
-              {isAr ? "تعارضات الملكية" : "Ownership Conflicts"}
+              {isAr ? "تعارضات الملكية (دعم)" : "Ownership Conflicts (Support)"}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
@@ -241,11 +114,11 @@ export function PrinterDiscoveryDiagnosticsPanel({
       ) : null}
 
       {data.agents.length > 0 ? (
-        <Card className="border-border/40">
+        <Card className="border-border/40" data-support-diagnostics="agent-presence">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base">
               <Info className="h-4 w-4" />
-              {isAr ? "حضور الوكلاء" : "Agent Presence"}
+              {isAr ? "حضور الوكلاء (دعم)" : "Agent Presence (Support)"}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
@@ -280,19 +153,11 @@ export function PrinterDiscoveryDiagnosticsPanel({
   );
 }
 
-function Metric({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: number;
-  tone?: "success";
-}) {
+function Metric({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-lg border border-border/30 px-3 py-2">
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className={`text-2xl font-semibold ${tone === "success" ? "text-emerald-400" : "text-white"}`}>{value}</p>
+      <p className="text-2xl font-semibold text-white">{value}</p>
     </div>
   );
 }

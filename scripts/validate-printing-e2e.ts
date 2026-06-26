@@ -61,6 +61,7 @@ import {
   listAgentOverview,
   listPrinterOverview,
 } from "../server/printing/printOperationsService";
+import { getPrintingReadinessAuthority } from "../server/printing/printingReadinessAuthority";
 import { resolveRoutingDecision, clearRoutingState } from "../server/printing/routingEngine";
 import { createPrintJob } from "../server/printing/printJobService";
 import { dispatchAssignedPrintJob } from "../server/printing/endToEndPrintFlowService";
@@ -497,13 +498,14 @@ export async function runPrintingE2EValidation(
 
   const printerOverview = await listPrinterOverview(dbContext.restaurantId);
   const agentOverview = await listAgentOverview(dbContext.restaurantId);
-  const activePrinters = printerOverview.filter((printer) => printer.isActive).length;
-  const targetPrinter = printerOverview.find((printer) => printer.id === dbContext.dbPrinterId);
+  const readiness = await getPrintingReadinessAuthority(dbContext.restaurantId);
+  const targetPrinterReadiness = readiness.printers.find(
+    (printer) => printer.printerId === dbContext.dbPrinterId
+  );
 
-  const opsPassed =
-    activePrinters >= 1 &&
-    targetPrinter?.isActive === true &&
-    targetPrinter.transport === expectedTransport &&
+  const readinessPassed =
+    (readiness.setupState === "READY" || readiness.setupState === "READY_FOR_TEST") &&
+    targetPrinterReadiness?.bindingStatus === "BOUND" &&
     agentOverview.some(
       (agent) =>
         agent.agentId === config.agentId &&
@@ -512,14 +514,21 @@ export async function runPrintingE2EValidation(
     );
 
   const printerOperationsResult = {
-    activePrinters,
-    expectedActivePrinters: ">=1",
+    authority: {
+      setupState: readiness.setupState,
+      operationalState: readiness.operationalState,
+      nextAction: readiness.nextAction,
+      targetPrinter: targetPrinterReadiness ?? null,
+    },
+    legacyActivePrinters: printerOverview.filter((printer) => printer.isActive).length,
     printers: printerOverview,
     agents: agentOverview,
   };
-  stages.push(stage("printer-operations-visibility", opsPassed, printerOperationsResult));
-  if (!opsPassed) {
-    risksFound.push("Printer Operations metrics did not match expected active/transport/platform state");
+  stages.push(stage("printing-readiness-authority", readinessPassed, printerOperationsResult));
+  if (!readinessPassed) {
+    risksFound.push(
+      "Printing readiness authority did not report READY/READY_FOR_TEST with bound target printer"
+    );
   }
 
   clearRoutingState();

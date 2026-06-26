@@ -33,6 +33,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { restaurantQueriesEnabled } from "@/lib/queryRuntime";
 import {
   authorityTestPrintPrinterId,
+  canRunAuthorityTestPrintForPrinter,
+  getAuthorityPrinterStatusBadge,
   type PrintingSetupStatus,
 } from "@/lib/printing/printingReadinessAuthority";
 import { trpc } from "@/lib/trpc";
@@ -163,6 +165,9 @@ export function PrintingOperationsPanel({
   });
 
   function handleTestPrint(printerId: number) {
+    if (!canRunAuthorityTestPrintForPrinter(setupStatus, printerId)) {
+      return;
+    }
     testPrintMutation.mutate({ restaurantId, printerId });
   }
 
@@ -358,7 +363,18 @@ export function PrintingOperationsPanel({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {printersQuery.data?.map((printer) => (
+                    {printersQuery.data?.map((printer) => {
+                      const statusBadge = getAuthorityPrinterStatusBadge(
+                        setupStatus,
+                        printer.id,
+                        isAr
+                      );
+                      const testPrintAllowed = canRunAuthorityTestPrintForPrinter(
+                        setupStatus,
+                        printer.id
+                      );
+
+                      return (
                       <TableRow
                         key={printer.id}
                         className="cursor-pointer"
@@ -375,8 +391,8 @@ export function PrintingOperationsPanel({
                         <TableCell dir="ltr">{printer.profileId}</TableCell>
                         <TableCell>{printer.transport}</TableCell>
                         <TableCell>
-                          <Badge variant={printer.isActive ? "default" : "secondary"}>
-                            {printer.isActive ? copy.active : copy.inactive}
+                          <Badge variant={statusBadge.variant}>
+                            {statusBadge.label}
                           </Badge>
                         </TableCell>
                         <TableCell dir="ltr">{formatTimestamp(printer.lastActivityAt, isAr)}</TableCell>
@@ -385,7 +401,7 @@ export function PrintingOperationsPanel({
                             type="button"
                             size="sm"
                             variant="outline"
-                            disabled={testPrintMutation.isPending}
+                            disabled={testPrintMutation.isPending || !testPrintAllowed}
                             onClick={(event) => {
                               event.stopPropagation();
                               handleTestPrint(printer.id);
@@ -400,7 +416,8 @@ export function PrintingOperationsPanel({
                           </Button>
                         </TableCell>
                       </TableRow>
-                    ))}
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
@@ -696,7 +713,10 @@ export function PrintingOperationsPanel({
                 <Button
                   type="button"
                   className="w-full"
-                  disabled={testPrintMutation.isPending}
+                  disabled={
+                    testPrintMutation.isPending ||
+                    !canRunAuthorityTestPrintForPrinter(setupStatus, selectedPrinterId)
+                  }
                   onClick={() => handleTestPrint(selectedPrinterId)}
                 >
                   {testPrintMutation.isPending ? (

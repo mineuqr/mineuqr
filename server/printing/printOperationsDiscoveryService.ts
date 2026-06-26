@@ -171,6 +171,10 @@ function resolveEmptyReason(input: {
   return null;
 }
 
+/**
+ * @deprecated Legacy provisioning inference — support diagnostics only (PRINTING-ADR-13I-002).
+ * Operator readiness must use getPrintingSetupStatus / resolvePrintingSetupState.
+ */
 function resolveProvisioningStep(input: {
   assignedDbPrinters: number;
   activePrinters: number;

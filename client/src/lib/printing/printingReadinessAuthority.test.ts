@@ -3,6 +3,8 @@ import {
   authoritySetupWizardStep,
   authorityTestPrintPrinterId,
   canRunAuthorityTestPrint,
+  canRunAuthorityTestPrintForPrinter,
+  getAuthorityPrinterStatusBadge,
   isPrintingSetupReady,
   shouldOfferAddPrinterAction,
   shouldOfferConnectDeviceAction,
@@ -94,5 +96,65 @@ describe("printingReadinessAuthority client selectors THERMAL-PRINTING-13I.3B.5"
         status({ setupState: "READY", operationalState: "HEALTHY", severity: "info" })
       )
     ).toBe(false);
+  });
+
+  it("gates per-printer test print through authority only", () => {
+    const readyForTest = status({
+      setupState: "READY_FOR_TEST",
+      nextAction: "RUN_TEST_PRINT",
+      primaryPrinter: { printerId: 10, name: "Kitchen", profileId: "kitchen" },
+      printers: [
+        {
+          printerId: 10,
+          name: "Kitchen",
+          profileId: "kitchen",
+          setupState: "BOUND",
+          bindingStatus: "BOUND",
+          agentId: "agent-1",
+          agentStatus: "online",
+          lastValidatedAt: null,
+          lastDiagnosticStatus: null,
+          lastDiagnosticAt: null,
+        },
+        {
+          printerId: 11,
+          name: "Bar",
+          profileId: "bar",
+          setupState: "BINDING_REQUIRED",
+          bindingStatus: "UNBOUND",
+          agentId: "agent-1",
+          agentStatus: "online",
+          lastValidatedAt: null,
+          lastDiagnosticStatus: null,
+          lastDiagnosticAt: null,
+        },
+      ],
+    });
+
+    expect(canRunAuthorityTestPrintForPrinter(readyForTest, 10)).toBe(true);
+    expect(canRunAuthorityTestPrintForPrinter(readyForTest, 11)).toBe(false);
+  });
+
+  it("derives printer row status from authority printer states", () => {
+    const ready = status({
+      setupState: "READY",
+      nextAction: "NONE",
+      printers: [
+        {
+          printerId: 10,
+          name: "Kitchen",
+          profileId: "kitchen",
+          setupState: "TEST_PASSED",
+          bindingStatus: "BOUND",
+          agentId: "agent-1",
+          agentStatus: "online",
+          lastValidatedAt: null,
+          lastDiagnosticStatus: "completed",
+          lastDiagnosticAt: "2026-06-24T00:00:00.000Z",
+        },
+      ],
+    });
+
+    expect(getAuthorityPrinterStatusBadge(ready, 10, false).label).toBe("Ready");
   });
 });

@@ -38,6 +38,77 @@ export function canRunAuthorityTestPrint(status: PrintingSetupStatus | undefined
   );
 }
 
+/**
+ * Unified test-print gate for a specific printer. Uses only authority contract fields.
+ */
+export function canRunAuthorityTestPrintForPrinter(
+  status: PrintingSetupStatus | undefined,
+  printerId: number
+): boolean {
+  if (!status) {
+    return false;
+  }
+
+  const printerState = status.printers.find((printer) => printer.printerId === printerId);
+  if (!printerState) {
+    return false;
+  }
+
+  if (status.nextAction === "RUN_TEST_PRINT") {
+    return (
+      (status.setupState === "READY_FOR_TEST" || status.setupState === "READY") &&
+      status.primaryPrinter?.printerId === printerId
+    );
+  }
+
+  if (status.setupState === "READY" && status.nextAction === "NONE") {
+    return printerState.bindingStatus === "BOUND";
+  }
+
+  return false;
+}
+
+export type AuthorityPrinterStatusBadge = {
+  label: string;
+  variant: "default" | "secondary" | "destructive" | "outline";
+};
+
+/**
+ * Operator-facing printer row status from authority only (not listPrinters.isActive).
+ */
+export function getAuthorityPrinterStatusBadge(
+  status: PrintingSetupStatus | undefined,
+  printerId: number,
+  isAr: boolean
+): AuthorityPrinterStatusBadge {
+  const printerState = status?.printers.find((printer) => printer.printerId === printerId);
+  if (!printerState) {
+    return {
+      label: isAr ? "غير معروف" : "Unknown",
+      variant: "secondary",
+    };
+  }
+
+  switch (printerState.setupState) {
+    case "TEST_PASSED":
+      return { label: isAr ? "جاهز" : "Ready", variant: "default" };
+    case "BOUND":
+      return { label: isAr ? "مربوط" : "Bound", variant: "default" };
+    case "TEST_FAILED":
+      return { label: isAr ? "فشل الاختبار" : "Test Failed", variant: "destructive" };
+    case "BINDING_INVALID":
+      return { label: isAr ? "ربط غير صالح" : "Invalid Binding", variant: "destructive" };
+    case "BINDING_REQUIRED":
+    case "BINDING_UNKNOWN":
+      return { label: isAr ? "يلزم الربط" : "Binding Required", variant: "outline" };
+    case "AGENT_OFFLINE":
+      return { label: isAr ? "الوكيل غير متصل" : "Agent Offline", variant: "secondary" };
+    case "UNRESOLVED":
+    default:
+      return { label: isAr ? "غير مُعد" : "Not Ready", variant: "secondary" };
+  }
+}
+
 export function authorityTestPrintPrinterId(status: PrintingSetupStatus | undefined): number | null {
   if (!canRunAuthorityTestPrint(status)) {
     return null;
