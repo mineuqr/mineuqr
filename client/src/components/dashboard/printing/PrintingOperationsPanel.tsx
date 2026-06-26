@@ -31,6 +31,10 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { restaurantQueriesEnabled } from "@/lib/queryRuntime";
+import {
+  authorityTestPrintPrinterId,
+  type PrintingSetupStatus,
+} from "@/lib/printing/printingReadinessAuthority";
 import { trpc } from "@/lib/trpc";
 import {
   AlertTriangle,
@@ -170,6 +174,10 @@ export function PrintingOperationsPanel({
     { restaurantId },
     { enabled: queriesEnabled }
   );
+  const setupStatusQuery = trpc.printOps.getPrintingSetupStatus.useQuery(
+    { restaurantId },
+    { enabled: queriesEnabled }
+  );
   const diagnosticRunsQuery = trpc.printOps.listDiagnosticRuns.useQuery(
     { restaurantId, limit: 20 },
     { enabled: queriesEnabled && activeTab === "diagnostics" }
@@ -211,16 +219,25 @@ export function PrintingOperationsPanel({
     void jobsQuery.refetch();
     void failuresQuery.refetch();
     void discoveryQuery.refetch();
+    void setupStatusQuery.refetch();
     void diagnosticRunsQuery.refetch();
   };
 
   const jobTotal = jobsQuery.data?.total ?? 0;
   const jobPageCount = Math.max(1, Math.ceil(jobTotal / PAGE_SIZE));
   const provisioning = discoveryQuery.data?.provisioning;
+  const setupStatus: PrintingSetupStatus | undefined = setupStatusQuery.data;
 
   const refetchProvisioning = () => {
     refetchAll();
   };
+
+  function handleAuthorityTestPrint() {
+    const printerId = authorityTestPrintPrinterId(setupStatus);
+    if (printerId != null) {
+      handleTestPrint(printerId);
+    }
+  }
 
   return (
     <div className={restaurantDash.stack}>
@@ -255,17 +272,13 @@ export function PrintingOperationsPanel({
       )}
 
       <PrinterProvisioningPanel
-        provisioning={provisioning}
+        setupStatus={setupStatus}
         isAr={isAr}
-        isLoading={discoveryQuery.isLoading}
+        isLoading={setupStatusQuery.isLoading}
         testPrintPending={testPrintMutation.isPending}
         onAddPrinter={() => setAddPrinterOpen(true)}
         onConnectDevice={() => setConnectDeviceOpen(true)}
-        onTestPrint={() => {
-          if (provisioning?.primaryPrinterId != null) {
-            handleTestPrint(provisioning.primaryPrinterId);
-          }
-        }}
+        onTestPrint={handleAuthorityTestPrint}
       />
 
       <AddPrinterDialog
@@ -281,6 +294,7 @@ export function PrintingOperationsPanel({
         open={connectDeviceOpen}
         onOpenChange={setConnectDeviceOpen}
         provisioning={provisioning}
+        setupStatus={setupStatus}
         isAr={isAr}
         onRefresh={refetchProvisioning}
       />
@@ -307,8 +321,9 @@ export function PrintingOperationsPanel({
             <div className="mb-4">
               <PrinterDiscoveryDiagnosticsPanel
                 data={discoveryQuery.data}
+                setupStatus={setupStatus}
                 isAr={isAr}
-                isLoading={discoveryQuery.isLoading}
+                isLoading={discoveryQuery.isLoading || setupStatusQuery.isLoading}
               />
             </div>
             {printersQuery.isLoading ? (
@@ -322,7 +337,7 @@ export function PrintingOperationsPanel({
                 onRetry={() => printersQuery.refetch()}
               />
             ) : (printersQuery.data?.length ?? 0) === 0 ? (
-              discoveryQuery.data?.emptyReason ? null : (
+              setupStatus?.checklist.printerCreated ? null : (
                 <Card>
                   <CardContent className="py-10 text-center text-sm text-muted-foreground">
                     {copy.emptyPrinters}
@@ -632,8 +647,9 @@ export function PrintingOperationsPanel({
             <div className="mb-4">
               <PrinterDiscoveryDiagnosticsPanel
                 data={discoveryQuery.data}
+                setupStatus={setupStatus}
                 isAr={isAr}
-                isLoading={discoveryQuery.isLoading}
+                isLoading={discoveryQuery.isLoading || setupStatusQuery.isLoading}
               />
             </div>
             <DiagnosticHistoryPanel

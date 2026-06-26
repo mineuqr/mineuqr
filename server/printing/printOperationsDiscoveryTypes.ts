@@ -46,7 +46,9 @@ export type PrinterBindingStatusItem = {
 
 export type PrintDiscoveryDiagnostics = {
   restaurantId: number;
+  /** @legacy Support only — use getPrintingSetupStatus for readiness (PRINTING-ADR-13I-002). */
   isInventoryEmpty: boolean;
+  /** @legacy Support only — do not drive operator UX. */
   emptyReason: PrinterInventoryEmptyReason | null;
   counts: {
     connectedAgentsGlobal: number;
@@ -54,11 +56,14 @@ export type PrintDiscoveryDiagnostics = {
     connectedEndpoints: number;
     discoveredPrinterProfiles: number;
     assignedDbPrinters: number;
+    /** @legacy Connectivity metric — not printing readiness. */
     activePrinters: number;
   };
   agents: DiscoveryAgentItem[];
   ownershipConflicts: OwnershipConflictItem[];
+  /** @legacy provisioning.step is not authoritative for readiness. */
   provisioning: PrinterProvisioningState;
+  /** @legacy Raw binding data — authority aggregates via setup engine. */
   bindingStatus: PrinterBindingStatusItem[];
 };
 

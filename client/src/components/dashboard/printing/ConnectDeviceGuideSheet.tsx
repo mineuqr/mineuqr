@@ -12,13 +12,19 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { downloadAgentConfigFile } from "@/lib/printing/downloadAgentConfigFile";
-import type { RouterOutputs } from "@/lib/trpc";
+import {
+  shouldOfferConnectDeviceDownload,
+  type PrintingSetupStatus,
+} from "@/lib/printing/printingReadinessAuthority";
 import { cn } from "@/lib/utils";
 import { Check, ChevronDown, Copy, Download, RefreshCw } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
-type Provisioning = RouterOutputs["printOps"]["getDiscoveryDiagnostics"]["provisioning"];
+type Provisioning = {
+  suggestedAgentId: string;
+  connectConfig: Record<string, unknown> | null;
+};
 
 async function copyText(value: string, isAr: boolean) {
   try {
@@ -33,12 +39,14 @@ export function ConnectDeviceGuideSheet({
   open,
   onOpenChange,
   provisioning,
+  setupStatus,
   isAr,
   onRefresh,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   provisioning: Provisioning | undefined;
+  setupStatus: PrintingSetupStatus | undefined;
   isAr: boolean;
   onRefresh: () => void;
 }) {
@@ -46,7 +54,8 @@ export function ConnectDeviceGuideSheet({
   const [copiedConfig, setCopiedConfig] = useState(false);
 
   const connectConfig = provisioning?.connectConfig;
-  const hasConnectConfig = connectConfig != null;
+  const hasConnectConfig =
+    connectConfig != null && shouldOfferConnectDeviceDownload(setupStatus);
 
   const configText = useMemo(() => {
     if (!connectConfig) {

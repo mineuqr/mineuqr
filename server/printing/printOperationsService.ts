@@ -30,6 +30,7 @@ import type { DiagnosticRunView } from "./printOperationsDiscoveryTypes";
 import { listPrintDiagnosticRunsForRestaurant } from "./diagnosticPrintRepository";
 import { resolvePrintingSetupState } from "./setupState";
 import type { PrintingSetupStatus } from "./setupState";
+import { getPrintingReadinessAuthority } from "./printingReadinessAuthority";
 import type {
   PaginatedPrintJobs,
   PrintFailureItem,
@@ -464,7 +465,10 @@ export async function getPrintingSetupStatus(
   restaurantId: number,
   options?: { includeSupport?: boolean }
 ): Promise<PrintingSetupStatus> {
-  return resolvePrintingSetupState(restaurantId, options);
+  if (options?.includeSupport) {
+    return resolvePrintingSetupState(restaurantId, { includeSupport: true });
+  }
+  return getPrintingReadinessAuthority(restaurantId);
 }
 
 export async function listDiagnosticRunHistory(

@@ -1,11 +1,16 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  shouldShowAuthorityOperatorAlert,
+  type PrintingSetupStatus,
+} from "@/lib/printing/printingReadinessAuthority";
 import type { RouterOutputs } from "@/lib/trpc";
 import { AlertTriangle, Info, Server, Wifi, WifiOff } from "lucide-react";
 
 type DiscoveryDiagnostics = RouterOutputs["printOps"]["getDiscoveryDiagnostics"];
 
-function emptyStateCopy(
+/** @deprecated Support diagnostics only — do not use for operator readiness (PRINTING-ADR-13I-002). */
+function legacyEmptyStateCopy(
   reason: NonNullable<DiscoveryDiagnostics["emptyReason"]>,
   isAr: boolean
 ): { title: string; description: string; steps: string[] } {
@@ -107,12 +112,24 @@ function emptyStateCopy(
   }
 }
 
+function authorityAlertTitle(status: PrintingSetupStatus, isAr: boolean): string {
+  if (status.operationalState === "BLOCKED") {
+    return isAr ? "يتطلب تدخل الدعم" : "Support Action Required";
+  }
+  if (status.operationalState === "DEGRADED") {
+    return isAr ? "الطباعة تحتاج انتباه" : "Printing Needs Attention";
+  }
+  return isAr ? "إعداد الطباعة غير مكتمل" : "Printing Setup Incomplete";
+}
+
 export function PrinterDiscoveryDiagnosticsPanel({
   data,
+  setupStatus,
   isAr,
   isLoading,
 }: {
   data: DiscoveryDiagnostics | undefined;
+  setupStatus?: PrintingSetupStatus;
   isAr: boolean;
   isLoading: boolean;
 }) {
@@ -124,10 +141,40 @@ export function PrinterDiscoveryDiagnosticsPanel({
   }
 
   const counts = data.counts;
-  const emptyCopy = data.emptyReason ? emptyStateCopy(data.emptyReason, isAr) : null;
+  const showAuthorityAlert = shouldShowAuthorityOperatorAlert(setupStatus);
+  /** Legacy support diagnostics — not used for operator readiness when authority is present. */
+  const legacyEmptyCopy = data.emptyReason
+    ? legacyEmptyStateCopy(data.emptyReason, isAr)
+    : null;
 
   return (
     <div className="space-y-4">
+      {showAuthorityAlert && setupStatus ? (
+        <Card
+          className={
+            setupStatus.severity === "error"
+              ? "border-destructive/30 bg-destructive/5"
+              : "border-amber-500/30 bg-amber-500/5"
+          }
+        >
+          <CardHeader className="pb-2">
+            <CardTitle
+              className={`flex items-center gap-2 text-base ${
+                setupStatus.severity === "error" ? "text-destructive" : "text-amber-200"
+              }`}
+            >
+              <AlertTriangle className="h-4 w-4" />
+              {authorityAlertTitle(setupStatus, isAr)}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm text-slate-300">
+            <p>{setupStatus.reason}</p>
+            <p className="text-xs text-muted-foreground" dir="ltr">
+              setupState={setupStatus.setupState} · operationalState={setupStatus.operationalState}
+            </p>
+          </CardContent>
+        </Card>
+      ) : null}
       <Card className="border-border/40 bg-card/40">
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-base">
@@ -144,18 +191,18 @@ export function PrinterDiscoveryDiagnosticsPanel({
         </CardContent>
       </Card>
 
-      {emptyCopy ? (
+      {legacyEmptyCopy && !setupStatus ? (
         <Card className="border-amber-500/30 bg-amber-500/5">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base text-amber-200">
               <AlertTriangle className="h-4 w-4" />
-              {emptyCopy.title}
+              {legacyEmptyCopy.title}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-slate-300">
-            <p>{emptyCopy.description}</p>
+            <p>{legacyEmptyCopy.description}</p>
             <ul className="list-disc space-y-1 ps-5 text-slate-400">
-              {emptyCopy.steps.map((step) => (
+              {legacyEmptyCopy.steps.map((step) => (
                 <li key={step}>{step}</li>
               ))}
             </ul>
