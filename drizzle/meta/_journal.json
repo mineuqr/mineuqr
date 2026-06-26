@@ -267,6 +267,41 @@
       "when": 1782700000000,
       "tag": "0037_print_job_operational_telemetry",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "5",
+      "when": 1782800000000,
+      "tag": "0038_printers_restaurant_profile_unique",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "5",
+      "when": 1782900000000,
+      "tag": "0039_print_jobs_printer_fk",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "5",
+      "when": 1783000000000,
+      "tag": "0040_print_jobs_order_fk",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "5",
+      "when": 1783100000000,
+      "tag": "0041_print_job_attempts_fk",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "5",
+      "when": 1783200000000,
+      "tag": "0042_print_job_telemetry_fk",
+      "breakpoints": true
     }
   ]
 }

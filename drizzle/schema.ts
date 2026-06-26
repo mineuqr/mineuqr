@@ -1,4 +1,4 @@
-import { mysqlTable, mysqlSchema, AnyMySqlColumn, bigint, int, tinyint, varchar, text, timestamp, decimal, mysqlEnum, index, uniqueIndex, boolean, json } from "drizzle-orm/mysql-core"
+import { mysqlTable, mysqlSchema, AnyMySqlColumn, bigint, int, tinyint, varchar, text, timestamp, decimal, mysqlEnum, index, uniqueIndex, boolean, json, foreignKey } from "drizzle-orm/mysql-core"
 import { sql } from "drizzle-orm"
 
 // ─── Categories Table ──────────────────────────────────────
@@ -468,7 +468,13 @@ export const printers = mysqlTable(
 		createdAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
 		updatedAt: timestamp({ mode: "string" }).defaultNow().onUpdateNow().notNull(),
 	},
-	(table) => [index("printers_restaurant_id").on(table.restaurantId)]
+	(table) => [
+		index("printers_restaurant_id").on(table.restaurantId),
+		uniqueIndex("printers_restaurant_id_profile_id_unique").on(
+			table.restaurantId,
+			table.profileId
+		),
+	]
 );
 
 // ─── Print Stations (THERMAL-PRINTING-12A) ─────────────────────────
@@ -549,6 +555,20 @@ export const printJobs = mysqlTable(
 			table.createdAt
 		),
 		uniqueIndex("print_jobs_correlation_id_unique").on(table.correlationId),
+		foreignKey({
+			name: "print_jobs_printer_id_fk",
+			columns: [table.printerId],
+			foreignColumns: [printers.id],
+		})
+			.onDelete("restrict")
+			.onUpdate("restrict"),
+		foreignKey({
+			name: "print_jobs_order_id_fk",
+			columns: [table.orderId],
+			foreignColumns: [orders.id],
+		})
+			.onDelete("restrict")
+			.onUpdate("restrict"),
 	]
 );
 
@@ -571,6 +591,13 @@ export const printJobTelemetryEvents = mysqlTable(
 		index("print_job_telemetry_events_print_job_id").on(table.printJobId),
 		index("print_job_telemetry_events_correlation_id").on(table.correlationId),
 		index("print_job_telemetry_events_job_event").on(table.printJobId, table.eventType),
+		foreignKey({
+			name: "print_job_telemetry_events_print_job_id_fk",
+			columns: [table.printJobId],
+			foreignColumns: [printJobs.id],
+		})
+			.onDelete("restrict")
+			.onUpdate("restrict"),
 	]
 );
 
@@ -584,7 +611,16 @@ export const printJobAttempts = mysqlTable(
 		metadataJson: json(),
 		createdAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
 	},
-	(table) => [index("print_job_attempts_print_job_id").on(table.printJobId)]
+	(table) => [
+		index("print_job_attempts_print_job_id").on(table.printJobId),
+		foreignKey({
+			name: "print_job_attempts_print_job_id_fk",
+			columns: [table.printJobId],
+			foreignColumns: [printJobs.id],
+		})
+			.onDelete("restrict")
+			.onUpdate("restrict"),
+	]
 );
 
 // ─── Print Diagnostic Runs (THERMAL-PRINTING-13I.6) ───────────────
