@@ -32,7 +32,6 @@ import {
   recordDeliveryAcknowledgement,
 } from "./deliveryAckService";
 import { clearJobDeliveryStates } from "./deliveryStateTracker";
-import { clearDispatchBridgeState } from "./dispatchBridgeState";
 import { dispatchAssignedPrintJob, orchestratePrintJobFlow } from "./endToEndPrintFlowService";
 import { fetchAuthoritativePrintJob } from "./jobRetrievalService";
 import { serializeJobFetchResponse } from "./jobRetrievalRouter";
@@ -59,6 +58,26 @@ const dbMocks = vi.hoisted(() => ({
 }));
 
 const opsLogMock = vi.hoisted(() => vi.fn());
+
+const dispatchNotifyMocks = vi.hoisted(() => ({
+  records: new Map<number, { jobId: number; notified: boolean }>(),
+}));
+
+vi.mock("./dispatchNotificationRepository", () => ({
+  hasPersistedDispatchNotification: async (jobId: number) =>
+    dispatchNotifyMocks.records.get(jobId)?.notified ?? false,
+  recordPersistedDispatchNotification: async (jobId: number) => {
+    const record = dispatchNotifyMocks.records.get(jobId);
+    if (record) {
+      record.notified = true;
+    } else {
+      dispatchNotifyMocks.records.set(jobId, { jobId, notified: true });
+    }
+    return null;
+  },
+  listPendingDispatchNotifications: async () => [],
+  clearPersistedDispatchNotificationsForTests: async () => {},
+}));
 
 vi.mock("./printJobRepository", () => ({
   findPrintJobById: (...args: unknown[]) => repoMocks.findPrintJobById(...args),
@@ -121,6 +140,7 @@ const baseJob: SelectPrintJob = {
   stationId: null,
   assignedAgentId: null,
   assignedAt: null,
+  dispatchNotifiedAt: null,
   status: PRINT_JOB_STATUS.QUEUED,
   attemptCount: 0,
   idempotencyKey: "order:500:submitted",
@@ -158,7 +178,7 @@ describe("endToEndPrintFlow THERMAL-PRINTING-7A", () => {
     clearPrinterProfileStore();
     clearPrinterResolutionRegistry();
     clearRoutingState();
-    clearDispatchBridgeState();
+    dispatchNotifyMocks.records.clear();
 
     printerRepoMocks.findPrinterById.mockResolvedValue({
       id: TEST_DB_PRINTER_ID,

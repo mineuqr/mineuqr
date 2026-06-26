@@ -43,6 +43,7 @@ import { processAgentPlatformCapabilitiesReport } from "./platformCapabilityNego
 import { processAgentPrinterProfilesReport } from "./printerProfileNegotiationFlow";
 import { processAgentPrinterBindingStatusReport } from "./printerBindingStatusNegotiationFlow";
 import { handleAgentJobFetchRequest } from "./jobRetrievalRouter";
+import { replayPendingDispatchNotificationsForAgent } from "./dispatchReliabilityService";
 import { parseAgentWebSocketMessage } from "./agentWebSocketMessageCodec";
 import {
   clearPendingRequestsForAgent,
@@ -120,6 +121,14 @@ export function handleAgentWebSocketInboundMessage(
         capabilities: message.capabilities,
       });
       registerConnection(message.agentId, connection);
+      if (process.env.DATABASE_URL) {
+        void replayPendingDispatchNotificationsForAgent(message.agentId).catch((error) => {
+          console.warn(
+            `[Printing] Dispatch reconnect replay failed for ${message.agentId}:`,
+            error instanceof Error ? error.message : String(error)
+          );
+        });
+      }
       return;
     case AGENT_WEBSOCKET_MESSAGE_TYPES.HEARTBEAT:
       recordAgentHeartbeat({

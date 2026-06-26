@@ -111,6 +111,10 @@ export function clearPrintJobAssignments(): void {
   assignments.clear();
 }
 
+export function warmPrintJobAssignmentCache(assignment: PrintJobAssignment): void {
+  assignments.set(assignment.jobId, assignment);
+}
+
 export async function assignPrintJob(
   input: AssignPrintJobInput
 ): Promise<AssignPrintJobResult> {

@@ -2,17 +2,14 @@
  * THERMAL-PRINTING-13H — Print Host dispatch bridge execution.
  *
  * Assigns and notifies on the process that owns agentRegistry + WebSocket
- * connections. Safe for retries via assignment reuse + notification tracking.
+ * connections. Safe for retries via assignment reuse + DB notification tracking.
  */
 import { opsLog } from "../_core/opsLog";
 import { OPS_EVENT } from "../_core/opsTaxonomy";
 import { assignPrintJob, getPrintJobAssignment } from "./assignmentService";
-import { notifyAgentOfAssignment } from "./assignmentNotifier";
+import { attemptDispatchNotification } from "./dispatchNotificationService";
 import type { PrintJobAssignment } from "./assignmentTypes";
-import {
-  hasDispatchNotificationBeenSent,
-  recordDispatchNotificationSent,
-} from "./dispatchBridgeState";
+import { hasDispatchNotificationBeenSent } from "./dispatchBridgeState";
 import { findPrintJobById } from "./printJobRepository";
 import { findPrinterById } from "./printerRepository";
 import { PrintJobNotFoundError } from "./printJobTypes";
@@ -77,6 +74,13 @@ function buildAlreadyProcessedResult(input: {
   };
 }
 
+function resolveAssignedAtForNotification(
+  assignment: PrintJobAssignment,
+  input: ExecutePrintHostDispatchInput
+): string {
+  return input.notificationTimestamp ?? assignment.assignedAt;
+}
+
 export async function executePrintHostDispatch(
   input: ExecutePrintHostDispatchInput
 ): Promise<ExecutePrintHostDispatchResult> {
@@ -88,7 +92,7 @@ export async function executePrintHostDispatch(
   });
 
   const existingAssignment = getPrintJobAssignment(input.jobId);
-  if (existingAssignment && hasDispatchNotificationBeenSent(input.jobId)) {
+  if (existingAssignment && (await hasDispatchNotificationBeenSent(input.jobId))) {
     logDispatchEvent({
       type: OPS_EVENT.dispatch_assignment_completed,
       severity: "info",
@@ -219,45 +223,22 @@ export async function executePrintHostDispatch(
     },
   });
 
-  if (hasDispatchNotificationBeenSent(input.jobId)) {
+  if (await hasDispatchNotificationBeenSent(input.jobId)) {
     return buildAlreadyProcessedResult({
       jobId: input.jobId,
       assignment,
     });
   }
 
-  const notification = notifyAgentOfAssignment({
-    assignment,
-    timestamp: input.notificationTimestamp,
+  const notification = await attemptDispatchNotification({
+    jobId: assignment.jobId,
+    agentId: assignment.agentId,
+    assignedAt: resolveAssignedAtForNotification(assignment, input),
+    restaurantId: assignment.restaurantId,
+    correlationId: input.correlationId,
   });
 
-  if (notification.notified) {
-    recordDispatchNotificationSent(input.jobId);
-    logDispatchEvent({
-      type: OPS_EVENT.dispatch_notification_sent,
-      severity: "info",
-      correlationId: input.correlationId,
-      restaurantId: assignment.restaurantId,
-      metadata: {
-        jobId: assignment.jobId,
-        restaurantId: assignment.restaurantId,
-        printerId: assignment.printerId,
-        agentId: assignment.agentId,
-        correlationId: input.correlationId,
-      },
-    });
-    logDispatchEvent({
-      type: OPS_EVENT.print_agent_job_notified,
-      severity: "info",
-      correlationId: input.correlationId,
-      restaurantId: assignment.restaurantId,
-      metadata: {
-        printJobId: assignment.jobId,
-        agentId: assignment.agentId,
-        correlationId: input.correlationId,
-      },
-    });
-  } else {
+  if (!notification.notified) {
     logDispatchEvent({
       type: OPS_EVENT.dispatch_notification_failed,
       severity: "info",
@@ -296,6 +277,6 @@ export async function executePrintHostDispatch(
     assignment,
     assignmentCreated,
     notified: notification.notified,
-    notificationSkippedReason: notification.reason,
+    notificationSkippedReason: notification.notified ? undefined : notification.reason,
   };
 }

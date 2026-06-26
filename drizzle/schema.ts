@@ -513,6 +513,8 @@ export const printJobs = mysqlTable(
 		/** THERMAL-PRINTING-13I.3C.1 — agent assigned at dispatch */
 		assignedAgentId: varchar({ length: 128 }),
 		assignedAt: timestamp({ mode: "string" }),
+		/** THERMAL-PRINTING-13I.3C.2 — WebSocket JOB_ASSIGNED delivered to agent */
+		dispatchNotifiedAt: timestamp({ mode: "string" }),
 		status: mysqlEnum([
 			"queued",
 			"assigned",

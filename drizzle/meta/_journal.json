@@ -246,6 +246,20 @@
       "when": 1782400000000,
       "tag": "0034_print_diagnostic_runs",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "5",
+      "when": 1782500000000,
+      "tag": "0035_print_jobs_execution_state",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "5",
+      "when": 1782600000000,
+      "tag": "0036_print_jobs_dispatch_notification",
+      "breakpoints": true
     }
   ]
 }
