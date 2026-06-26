@@ -1,10 +1,15 @@
 import { SUPPORTED_PRINT_AGENT_PROTOCOL_VERSION } from "../../shared/printing/printAgentProtocol";
 import { registerAgent } from "./agentRegistry";
+import {
+  inferRestaurantIdFromAgentId,
+  rememberAgentRestaurantProjection,
+} from "./endpointRegistryCompatibility";
 import { replaceAgentPrinterInventory } from "./printerProfileStore";
 import { registerDbPrinterProfileMapping } from "./printerResolutionRegistry";
 
 export const TEST_DB_PRINTER_ID = 10;
 export const TEST_PROFILE_PRINTER_ID = "kitchen-printer-10";
+export const TEST_RESTAURANT_ID = 7;
 
 export const sampleProfile = {
   printerId: TEST_PROFILE_PRINTER_ID,
@@ -24,7 +29,7 @@ export const sampleProfile = {
   paperWidth: 80 as const,
 };
 
-export function registerOnlineAgent(agentId: string): void {
+export function registerOnlineAgent(agentId: string, restaurantId?: number): void {
   registerAgent({
     identity: {
       agentId,
@@ -33,9 +38,12 @@ export function registerOnlineAgent(agentId: string): void {
     },
     connectedAt: new Date().toISOString(),
   });
+  const resolvedRestaurantId =
+    restaurantId ?? inferRestaurantIdFromAgentId(agentId) ?? TEST_RESTAURANT_ID;
+  rememberAgentRestaurantProjection(agentId, resolvedRestaurantId);
 }
 
-export function registerOfflineAgent(agentId: string): void {
+export function registerOfflineAgent(agentId: string, restaurantId?: number): void {
   registerAgent({
     identity: {
       agentId,
@@ -44,6 +52,9 @@ export function registerOfflineAgent(agentId: string): void {
     },
     connectedAt: "2020-01-01T00:00:00.000Z",
   });
+  const resolvedRestaurantId =
+    restaurantId ?? inferRestaurantIdFromAgentId(agentId) ?? TEST_RESTAURANT_ID;
+  rememberAgentRestaurantProjection(agentId, resolvedRestaurantId);
 }
 
 export function seedPrinterProfile(

@@ -117,6 +117,7 @@ export async function executePrintHostDiagnosticTestPrint(
     agentId = resolveRoutingDecision({
       jobId: input.wireJobId,
       printerId: input.printerId,
+      restaurantId: input.restaurantId,
     }).agentId;
   } catch (error) {
     const failureReason = mapDiagnosticDispatchFailureReason(error);

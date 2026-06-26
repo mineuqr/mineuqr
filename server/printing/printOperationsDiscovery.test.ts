@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { clearAgentRegistry } from "./agentRegistry";
+import { clearAgentRestaurantProjectionCache } from "./endpointRegistryCompatibility";
 import { clearPrinterProfileStore } from "./printerProfileStore";
 import { clearPrinterResolutionRegistry } from "./printerResolutionRegistry";
 import { getPrintDiscoveryDiagnostics } from "./printOperationsDiscoveryService";
@@ -30,6 +31,7 @@ describe("printOperationsDiscoveryService THERMAL-PRINTING-13I.1H", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     clearAgentRegistry();
+    clearAgentRestaurantProjectionCache();
     clearPrinterProfileStore();
     clearPrinterResolutionRegistry();
   });
@@ -57,7 +59,7 @@ describe("printOperationsDiscoveryService THERMAL-PRINTING-13I.1H", () => {
     expect(diagnostics.provisioning.suggestedAgentId).toBe("mineuqr-agent-720002");
   });
 
-  it("reports agent_no_matching_profiles when agent is online without matching profiles", async () => {
+  it("reports agent connected but printers inactive when owned agent has no matching profiles", async () => {
     vi.mocked(listPrintersForRestaurant).mockResolvedValue([
       {
         id: 1,
@@ -76,8 +78,8 @@ describe("printOperationsDiscoveryService THERMAL-PRINTING-13I.1H", () => {
 
     const diagnostics = await getPrintDiscoveryDiagnostics(restaurant720007, []);
 
-    expect(diagnostics.emptyReason).toBe("agent_no_matching_profiles");
-    expect(diagnostics.counts.connectedAgentsForRestaurant).toBe(0);
+    expect(diagnostics.emptyReason).toBe("printers_inactive");
+    expect(diagnostics.counts.connectedAgentsForRestaurant).toBe(1);
     expect(diagnostics.counts.connectedAgentsGlobal).toBe(1);
   });
 

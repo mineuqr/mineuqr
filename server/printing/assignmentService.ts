@@ -4,7 +4,12 @@
 import type { SelectPrintJob } from "../../drizzle/schema";
 import { PRINT_JOB_STATUS } from "../../shared/printing/types";
 import { findPrintJobById } from "./printJobRepository";
+import { findPrinterById } from "./printerRepository";
 import { PrintJobNotFoundError } from "./printJobTypes";
+import {
+  assertJobPrinterRestaurantOwnership,
+  TenantOwnershipViolationError,
+} from "./tenantOwnershipAuthority";
 import {
   PRINT_JOB_EXECUTION_TRANSITION,
   transitionPrintJobExecutionState,
@@ -59,6 +64,7 @@ function assertQueuedForInitialAssignment(job: {
 function selectAgentForAssignmentViaRouting(input: {
   jobId: number;
   printerId: number;
+  restaurantId: number;
   evaluationNow?: Date;
 }): string {
   try {
@@ -142,9 +148,24 @@ export async function assignPrintJob(
 
   assertQueuedForInitialAssignment(job);
 
+  const printer = await findPrinterById(job.printerId!);
+  if (!printer) {
+    throw new PrintJobAssignmentError("Print job printer not found");
+  }
+
+  try {
+    assertJobPrinterRestaurantOwnership(job.restaurantId, printer.restaurantId);
+  } catch (error) {
+    if (error instanceof TenantOwnershipViolationError) {
+      throw new PrintJobAssignmentError(error.message);
+    }
+    throw error;
+  }
+
   const agentId = selectAgentForAssignmentViaRouting({
     jobId: job.id,
     printerId: job.printerId!,
+    restaurantId: job.restaurantId,
     evaluationNow: input.evaluationNow,
   });
 

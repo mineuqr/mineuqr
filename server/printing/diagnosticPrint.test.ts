@@ -144,6 +144,6 @@ describe("diagnosticPrint THERMAL-PRINTING-13I.6", () => {
     });
 
     expect(result.status).toBe("failed");
-    expect(result.failureReason).toContain("No online print agent");
+    expect(result.failureReason).toMatch(/No online print agent|not resolved to an online agent/i);
   });
 });

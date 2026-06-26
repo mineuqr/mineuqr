@@ -15,7 +15,9 @@ import {
   registerOnlineAgent as registerOnlineAgentWithResolution,
   seedPrinterResolution,
   TEST_DB_PRINTER_ID,
+  TEST_RESTAURANT_ID,
 } from "./printingTestHelpers";
+import { clearAgentRestaurantProjectionCache } from "./endpointRegistryCompatibility";
 import {
   clearExecutionOutcomeStore,
   getStoredJobExecutionOutcome,
@@ -24,6 +26,7 @@ import { recordExecutionOutcomeReport } from "./executionOutcomeService";
 
 const repoMocks = vi.hoisted(() => ({
   findPrintJobById: vi.fn(),
+  findPrinterById: vi.fn(),
   markJobAssigned: vi.fn(),
   markJobPrinting: vi.fn(),
   markJobPrinted: vi.fn(),
@@ -46,6 +49,10 @@ vi.mock("./printJobRepository", () => ({
 
 vi.mock("./printJobAttemptRepository", () => ({
   insertPrintAttempt: (...args: unknown[]) => attemptMocks.insertPrintAttempt(...args),
+}));
+
+vi.mock("./printerRepository", () => ({
+  findPrinterById: (...args: unknown[]) => repoMocks.findPrinterById(...args),
 }));
 
 const baseJob: SelectPrintJob = {
@@ -105,12 +112,23 @@ describe("executionOutcomeReporting THERMAL-PRINTING-10C / 13I.3C.1", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     clearAgentRegistry();
+    clearAgentRestaurantProjectionCache();
     clearPrintJobAssignments();
     clearPrinterProfileStore();
     clearPrinterResolutionRegistry();
     clearRoutingState();
     clearExecutionOutcomeStore();
     setupMutableJobRepository();
+    repoMocks.findPrinterById.mockResolvedValue({
+      id: TEST_DB_PRINTER_ID,
+      restaurantId: TEST_RESTAURANT_ID,
+      name: "Kitchen",
+      paperWidthMm: 80,
+      profileId: "kitchen-printer-10",
+      isDefault: true,
+      createdAt: "2026-06-18 12:00:00",
+      updatedAt: "2026-06-18 12:00:00",
+    });
   });
 
   it("K — server records execution success reports and marks job printed", async () => {

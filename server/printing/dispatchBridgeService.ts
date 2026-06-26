@@ -15,6 +15,10 @@ import { PRINT_JOB_TELEMETRY_EVENT } from "../../shared/printing/telemetry";
 import { findPrintJobById } from "./printJobRepository";
 import { findPrinterById } from "./printerRepository";
 import { PrintJobNotFoundError } from "./printJobTypes";
+import {
+  assertPrintJobOwnershipChain,
+  TenantOwnershipViolationError,
+} from "./tenantOwnershipAuthority";
 
 export type PrintHostDispatchStatus =
   | "dispatched"
@@ -247,6 +251,84 @@ export async function executePrintHostDispatch(
       jobId: input.jobId,
       assignment,
     });
+  }
+
+  const dispatchPrinter = await findPrinterById(assignment.printerId);
+  if (!dispatchPrinter) {
+    const failureReason = "print_job_printer_not_found";
+    logDispatchEvent({
+      type: OPS_EVENT.dispatch_bridge_failed,
+      severity: "warn",
+      correlationId: input.correlationId,
+      restaurantId: assignment.restaurantId,
+      metadata: {
+        jobId: assignment.jobId,
+        reason: failureReason,
+        correlationId: input.correlationId,
+      },
+    });
+    return {
+      status: "failed",
+      jobId: assignment.jobId,
+      restaurantId: assignment.restaurantId,
+      printerId: assignment.printerId,
+      agentId: assignment.agentId,
+      assignment,
+      assignmentCreated,
+      notified: false,
+      failureReason,
+    };
+  }
+
+  try {
+    assertPrintJobOwnershipChain({
+      jobRestaurantId: job.restaurantId,
+      printerRestaurantId: dispatchPrinter.restaurantId,
+      agentId: assignment.agentId,
+      assignmentRestaurantId: assignment.restaurantId,
+    });
+  } catch (error) {
+    const failureReason =
+      error instanceof TenantOwnershipViolationError
+        ? error.message
+        : error instanceof Error
+          ? error.message
+          : String(error);
+
+    logDispatchEvent({
+      type: OPS_EVENT.dispatch_bridge_failed,
+      severity: "warn",
+      correlationId: input.correlationId,
+      restaurantId: assignment.restaurantId,
+      metadata: {
+        jobId: assignment.jobId,
+        reason: failureReason,
+        correlationId: input.correlationId,
+      },
+    });
+
+    emitPrintJobTelemetryAsync({
+      printJobId: assignment.jobId,
+      correlationId: input.correlationId,
+      restaurantId: assignment.restaurantId,
+      agentId: assignment.agentId,
+      printerId: assignment.printerId,
+      eventType: PRINT_JOB_TELEMETRY_EVENT.DISPATCH_FAILED,
+      severity: "warn",
+      payload: { reason: failureReason, phase: "ownership_validation" },
+    });
+
+    return {
+      status: "failed",
+      jobId: assignment.jobId,
+      restaurantId: assignment.restaurantId,
+      printerId: assignment.printerId,
+      agentId: assignment.agentId,
+      assignment,
+      assignmentCreated,
+      notified: false,
+      failureReason,
+    };
   }
 
   const notification = await attemptDispatchNotification({

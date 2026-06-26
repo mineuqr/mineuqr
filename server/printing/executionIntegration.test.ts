@@ -26,11 +26,13 @@ import {
   sampleProfile,
   seedPrinterResolution,
   TEST_DB_PRINTER_ID,
+  TEST_RESTAURANT_ID,
 } from "./printingTestHelpers";
 import { processNextPrintJob } from "./printProcessorWorker";
 
 const repoMocks = vi.hoisted(() => ({
   findPrintJobById: vi.fn(),
+  findPrinterById: vi.fn(),
   markJobAssigned: vi.fn(),
   markJobPrinting: vi.fn(),
   markJobPrinted: vi.fn(),
@@ -55,6 +57,18 @@ vi.mock("./printJobRepository", () => ({
 
 vi.mock("./printJobAttemptRepository", () => ({
   insertPrintAttempt: (...args: unknown[]) => attemptMocks.insertPrintAttempt(...args),
+}));
+
+vi.mock("./printerRepository", () => ({
+  findPrinterById: (...args: unknown[]) => repoMocks.findPrinterById(...args),
+}));
+
+vi.mock("./ticketRenderer", () => ({
+  renderKitchenTicket: vi.fn().mockResolvedValue({
+    orderId: 500,
+    restaurantId: 7,
+    items: [{ itemName: "Burger", quantity: 1, notes: null }],
+  }),
 }));
 
 function setupExecutionStateRepositoryMocks(
@@ -136,6 +150,16 @@ describe("executionIntegration THERMAL-PRINTING-9D", () => {
     clearRoutingState();
     clearPrintJobAssignments();
     setupExecutionStateRepositoryMocks(baseJob as import("../../drizzle/schema").SelectPrintJob);
+    repoMocks.findPrinterById.mockResolvedValue({
+      id: TEST_DB_PRINTER_ID,
+      restaurantId: TEST_RESTAURANT_ID,
+      name: "Kitchen",
+      paperWidthMm: 80,
+      profileId: "kitchen-printer-10",
+      isDefault: true,
+      createdAt: "2026-06-18 12:00:00",
+      updatedAt: "2026-06-18 12:00:00",
+    });
     repoMocks.getOrderById.mockResolvedValue({
       id: 500,
       restaurantId: 7,

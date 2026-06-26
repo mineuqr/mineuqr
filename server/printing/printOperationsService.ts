@@ -29,6 +29,7 @@ import { listPrintDiagnosticRunsForRestaurant } from "./diagnosticPrintRepositor
 import { resolvePrintingSetupState } from "./setupState";
 import type { PrintingSetupStatus } from "./setupState";
 import { getPrintingReadinessAuthority } from "./printingReadinessAuthority";
+import { isAgentOwnedByRestaurant } from "./tenantOwnershipAuthority";
 import type {
   PaginatedPrintJobs,
   PrintFailureItem,
@@ -219,26 +220,16 @@ export async function listStationOverview(
 }
 
 export async function listAgentOverview(restaurantId: number): Promise<AgentOverviewItem[]> {
-  const printers = await listPrintersForRestaurant(restaurantId);
-  const restaurantProfileIds = new Set(
-    printers.map((printer) => printer.profileId.trim()).filter((profileId) => profileId.length > 0)
-  );
-
   const agents: AgentOverviewItem[] = [];
 
   for (const connectivity of listAgentConnectivityStates()) {
+    if (!isAgentOwnedByRestaurant(connectivity.agentId, restaurantId)) {
+      continue;
+    }
+
     const agent = getAgent(connectivity.agentId);
     const inventory = getAgentPrinterProfiles(connectivity.agentId);
     const reportedProfiles = inventory?.profiles ?? [];
-
-    const isRelevant =
-      restaurantProfileIds.size === 0
-        ? false
-        : reportedProfiles.some((profile) => restaurantProfileIds.has(profile.printerId));
-
-    if (!isRelevant) {
-      continue;
-    }
 
     agents.push({
       agentId: connectivity.agentId,

@@ -16,10 +16,13 @@ import {
   registerOnlineAgent,
   seedPrinterResolution,
   TEST_DB_PRINTER_ID,
+  TEST_RESTAURANT_ID,
 } from "./printingTestHelpers";
+import { clearAgentRestaurantProjectionCache } from "./endpointRegistryCompatibility";
 
 const repoMocks = vi.hoisted(() => ({
   findPrintJobById: vi.fn(),
+  findPrinterById: vi.fn(),
 }));
 
 const executionStateMocks = vi.hoisted(() => ({
@@ -28,6 +31,10 @@ const executionStateMocks = vi.hoisted(() => ({
 
 vi.mock("./printJobRepository", () => ({
   findPrintJobById: (...args: unknown[]) => repoMocks.findPrintJobById(...args),
+}));
+
+vi.mock("./printerRepository", () => ({
+  findPrinterById: (...args: unknown[]) => repoMocks.findPrinterById(...args),
 }));
 
 vi.mock("./printJobExecutionState", () => ({
@@ -66,11 +73,22 @@ describe("assignmentService THERMAL-PRINTING-7A.1 / 8A.4 / 8B.4", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     clearAgentRegistry();
+    clearAgentRestaurantProjectionCache();
     clearPrintJobAssignments();
     clearPrinterProfileStore();
     clearPrinterResolutionRegistry();
     clearRoutingState();
     repoMocks.findPrintJobById.mockResolvedValue(baseJob);
+    repoMocks.findPrinterById.mockResolvedValue({
+      id: TEST_DB_PRINTER_ID,
+      restaurantId: TEST_RESTAURANT_ID,
+      name: "Kitchen",
+      paperWidthMm: 80,
+      profileId: "kitchen-printer-10",
+      isDefault: true,
+      createdAt: "2026-06-18 12:00:00",
+      updatedAt: "2026-06-18 12:00:00",
+    });
     executionStateMocks.transitionPrintJobExecutionState.mockImplementation(
       async ({ jobId, agentId }: { jobId: number; agentId?: string }) => ({
         applied: true,

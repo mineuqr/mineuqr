@@ -1,13 +1,16 @@
 /**
- * THERMAL-PRINTING-8A.3 / 8B.4 — deterministic agent routing engine.
+ * THERMAL-PRINTING-8A.3 / 8B.4 / 13I.4A — deterministic agent routing engine.
  */
 import { getAgentConnectivityState } from "./agentLifecycleService";
-import { listAgents } from "./agentRegistry";
 import { resolvePrinter } from "./printerResolutionService";
 import {
   ResolutionRejectedError,
   RESOLUTION_FAILURE_CODES,
 } from "./resolutionTypes";
+import {
+  assertAgentAuthorizedForRestaurant,
+  TenantOwnershipViolationError,
+} from "./tenantOwnershipAuthority";
 import {
   ROUTING_FAILURE_CODES,
   ROUTING_REASONS,
@@ -19,19 +22,6 @@ import {
 
 const routingDecisions = new Map<number, RoutingDecision>();
 const manualRoutingAssignments = new Map<number, string>();
-
-function listOnlineAgentIds(now?: Date): string[] {
-  return listAgents()
-    .map((agent) => ({
-      agentId: agent.registration.identity.agentId,
-      connectivity: getAgentConnectivityState(agent.registration.identity.agentId, {
-        now,
-      }),
-    }))
-    .filter((entry) => entry.connectivity?.status === "online")
-    .sort((left, right) => left.agentId.localeCompare(right.agentId))
-    .map((entry) => entry.agentId);
-}
 
 function isAgentOnline(agentId: string, now?: Date): boolean {
   return getAgentConnectivityState(agentId, { now })?.status === "online";
@@ -55,27 +45,15 @@ function mapResolutionFailureToRouting(code: ResolutionRejectedError["code"]): R
   }
 }
 
-function routeViaSingleCandidate(input: ResolveRoutingDecisionInput): RoutingDecision {
-  const onlineAgents = listOnlineAgentIds(input.evaluationNow);
-  if (onlineAgents.length === 0) {
-    throw new RoutingRejectedError(
-      ROUTING_FAILURE_CODES.NO_CANDIDATES,
-      "No online print agents available"
-    );
+function assertAgentRestaurantForRouting(agentId: string, restaurantId: number): void {
+  try {
+    assertAgentAuthorizedForRestaurant(agentId, restaurantId);
+  } catch (error) {
+    if (error instanceof TenantOwnershipViolationError) {
+      throw new RoutingRejectedError(ROUTING_FAILURE_CODES.RESTAURANT_MISMATCH, error.message);
+    }
+    throw error;
   }
-  if (onlineAgents.length > 1) {
-    throw new RoutingRejectedError(
-      ROUTING_FAILURE_CODES.MULTIPLE_CANDIDATES,
-      "Multiple online print agents available without printer resolution"
-    );
-  }
-
-  return storeRoutingDecision({
-    jobId: input.jobId,
-    agentId: onlineAgents[0]!,
-    printerId: input.printerId,
-    reason: ROUTING_REASONS.SINGLE_CANDIDATE,
-  });
 }
 
 export function getRoutingDecision(jobId: number): RoutingDecision | undefined {
@@ -106,6 +84,12 @@ export function resolveRoutingDecision(
       "Invalid printerId"
     );
   }
+  if (!Number.isInteger(input.restaurantId) || input.restaurantId <= 0) {
+    throw new RoutingRejectedError(
+      ROUTING_FAILURE_CODES.RESTAURANT_MISMATCH,
+      "Invalid restaurantId"
+    );
+  }
 
   const existing = routingDecisions.get(input.jobId);
   if (existing) {
@@ -114,6 +98,8 @@ export function resolveRoutingDecision(
 
   const manualAgentId = manualRoutingAssignments.get(input.jobId);
   if (manualAgentId) {
+    assertAgentRestaurantForRouting(manualAgentId, input.restaurantId);
+
     if (!isAgentOnline(manualAgentId, input.evaluationNow)) {
       throw new RoutingRejectedError(
         ROUTING_FAILURE_CODES.OFFLINE_OWNER,
@@ -132,6 +118,8 @@ export function resolveRoutingDecision(
   try {
     const resolution = resolvePrinter(input.printerId);
 
+    assertAgentRestaurantForRouting(resolution.agentId, input.restaurantId);
+
     if (!isAgentOnline(resolution.agentId, input.evaluationNow)) {
       throw new RoutingRejectedError(
         ROUTING_FAILURE_CODES.OFFLINE_OWNER,
@@ -146,11 +134,10 @@ export function resolveRoutingDecision(
       reason: ROUTING_REASONS.PRINTER_OWNER,
     });
   } catch (error) {
+    if (error instanceof RoutingRejectedError) {
+      throw error;
+    }
     if (error instanceof ResolutionRejectedError) {
-      if (error.code === RESOLUTION_FAILURE_CODES.UNKNOWN_DB_PRINTER) {
-        return routeViaSingleCandidate(input);
-      }
-
       throw new RoutingRejectedError(
         mapResolutionFailureToRouting(error.code),
         error.message

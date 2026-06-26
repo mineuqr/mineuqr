@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_AGENT_STALE_THRESHOLD_MS } from "../../../shared/printing/agentHeartbeat";
 import { clearAgentRegistry } from "../agentRegistry";
+import { clearAgentRestaurantProjectionCache } from "../endpointRegistryCompatibility";
 import { recordAgentHeartbeat } from "../agentLifecycleService";
 import { clearPrinterBindingStatusStore } from "../printerBindingStatusStore";
 import { recordPrinterBindingStatusReport } from "../printerBindingStatusService";
@@ -101,6 +102,7 @@ describe("resolvePrintingSetupState THERMAL-PRINTING-13I.3B", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     clearAgentRegistry();
+    clearAgentRestaurantProjectionCache();
     clearPrinterProfileStore();
     clearPrinterResolutionRegistry();
     clearPrinterBindingStatusStore();

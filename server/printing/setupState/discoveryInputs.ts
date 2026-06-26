@@ -4,6 +4,7 @@
 import { getAgentConnectivityState, listAgentConnectivityStates } from "../agentLifecycleService";
 import { getAgent } from "../agentRegistry";
 import { resolveRestaurantIdForAgent } from "../endpointRegistryCompatibility";
+import { isAgentOwnedByRestaurant } from "../tenantOwnershipAuthority";
 import { getAgentPrinterProfiles } from "../printerProfileQueries";
 import { listPrintersForRestaurant } from "../printerRepository";
 import {
@@ -37,10 +38,7 @@ export function buildDiscoveryAgentItem(input: {
   const inventory = getAgentPrinterProfiles(input.agentId);
   const profileIds = (inventory?.profiles ?? []).map((profile) => profile.printerId);
   const inferredRestaurantId = resolveRestaurantIdForAgent(input.agentId) ?? null;
-  const relevantToRestaurant =
-    input.restaurantProfileIds.size === 0
-      ? inferredRestaurantId === input.restaurantId
-      : profileIds.some((profileId) => input.restaurantProfileIds.has(profileId));
+  const relevantToRestaurant = isAgentOwnedByRestaurant(input.agentId, input.restaurantId);
 
   return {
     agentId: input.agentId,

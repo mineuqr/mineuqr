@@ -539,6 +539,7 @@ export async function runPrintingE2EValidation(
     const decision = resolveRoutingDecision({
       jobId: routingJobId,
       printerId: dbContext.dbPrinterId,
+      restaurantId: dbContext.restaurantId,
     });
     routingPassed = decision.agentId === config.agentId;
     routing = {

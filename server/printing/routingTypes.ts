@@ -4,7 +4,6 @@
 
 export const ROUTING_REASONS = {
   PRINTER_OWNER: "printer-owner",
-  SINGLE_CANDIDATE: "single-candidate",
   MANUAL_ASSIGNMENT: "manual-assignment",
 } as const;
 
@@ -24,6 +23,7 @@ export const ROUTING_FAILURE_CODES = {
   NO_CANDIDATES: "no-candidates",
   RESOLUTION_CONFLICT: "resolution-conflict",
   UNRESOLVED_PRINTER: "unresolved-printer",
+  RESTAURANT_MISMATCH: "restaurant-mismatch",
 } as const;
 
 export type RoutingFailureCode =
@@ -49,5 +49,6 @@ export class RoutingRejectedError extends RoutingError {
 export type ResolveRoutingDecisionInput = {
   jobId: number;
   printerId: number;
+  restaurantId: number;
   evaluationNow?: Date;
 };

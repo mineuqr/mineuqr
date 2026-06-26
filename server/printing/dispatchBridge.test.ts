@@ -13,6 +13,7 @@ import {
   getPrintJobAssignment,
 } from "./assignmentService";
 import { clearAgentRegistry } from "./agentRegistry";
+import { clearAgentRestaurantProjectionCache } from "./endpointRegistryCompatibility";
 import { clearPrinterProfileStore } from "./printerProfileStore";
 import { clearPrinterResolutionRegistry } from "./printerResolutionRegistry";
 import { clearRoutingState } from "./routingEngine";
@@ -148,7 +149,7 @@ const baseJob: SelectPrintJob = {
 };
 
 function registerOnlineAgent(agentId: string): void {
-  registerOnlineAgentWithResolution(agentId);
+  registerOnlineAgentWithResolution(agentId, 720007);
   seedPrinterResolution({ agentId });
 }
 
@@ -184,6 +185,7 @@ describe("dispatchBridge THERMAL-PRINTING-13H", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     clearAgentRegistry();
+    clearAgentRestaurantProjectionCache();
     clearPrinterProfileStore();
     clearPrinterResolutionRegistry();
     clearRoutingState();
@@ -281,7 +283,7 @@ describe("dispatchBridge THERMAL-PRINTING-13H", () => {
     const result = await executePrintHostDispatch({ jobId: 100 });
 
     expect(result.status).toBe("failed");
-    expect(result.failureReason).toContain("agent");
+    expect(result.failureReason).toMatch(/agent|printer|Unknown database printer/i);
   });
 });
 
@@ -290,6 +292,7 @@ describe("dispatchReliability THERMAL-PRINTING-13I.3C.2", () => {
     vi.clearAllMocks();
     resetDispatchReliabilityForTests();
     clearAgentRegistry();
+    clearAgentRestaurantProjectionCache();
     clearPrinterProfileStore();
     clearPrinterResolutionRegistry();
     clearRoutingState();

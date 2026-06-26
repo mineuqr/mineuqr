@@ -8,16 +8,19 @@ import { clearPrinterResolutionRegistry } from "./printerResolutionRegistry";
 import { clearRoutingState, resolveRoutingDecision } from "./routingEngine";
 import { ROUTING_REASONS, ROUTING_FAILURE_CODES } from "./routingTypes";
 import { getRoutingDecision } from "./routingQueries";
+import { clearAgentRestaurantProjectionCache } from "./endpointRegistryCompatibility";
 import {
   registerOfflineAgent,
   registerOnlineAgent,
   seedConflictingPrinterOwnership,
   seedPrinterResolution,
   TEST_DB_PRINTER_ID,
+  TEST_RESTAURANT_ID,
 } from "./printingTestHelpers";
 
 const repoMocks = vi.hoisted(() => ({
   findPrintJobById: vi.fn(),
+  findPrinterById: vi.fn(),
   markJobAssigned: vi.fn(),
   markJobPrinting: vi.fn(),
   markJobPrinted: vi.fn(),
@@ -36,6 +39,10 @@ vi.mock("./printJobRepository", () => ({
   markJobPrinting: (...args: unknown[]) => repoMocks.markJobPrinting(...args),
   markJobPrinted: (...args: unknown[]) => repoMocks.markJobPrinted(...args),
   markJobFailed: (...args: unknown[]) => repoMocks.markJobFailed(...args),
+}));
+
+vi.mock("./printerRepository", () => ({
+  findPrinterById: (...args: unknown[]) => repoMocks.findPrinterById(...args),
 }));
 
 vi.mock("./printJobAttemptRepository", () => ({
@@ -94,11 +101,22 @@ describe("agentRouting THERMAL-PRINTING-8A / 8B", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     clearAgentRegistry();
+    clearAgentRestaurantProjectionCache();
     clearPrinterProfileStore();
     clearPrinterResolutionRegistry();
     clearRoutingState();
     clearPrintJobAssignments();
     setupExecutionStateRepositoryMocks(baseJob);
+    repoMocks.findPrinterById.mockResolvedValue({
+      id: TEST_DB_PRINTER_ID,
+      restaurantId: TEST_RESTAURANT_ID,
+      name: "Kitchen",
+      paperWidthMm: 80,
+      profileId: "kitchen-printer-10",
+      isDefault: true,
+      createdAt: "2026-06-18 12:00:00",
+      updatedAt: "2026-06-18 12:00:00",
+    });
   });
 
   describe("Scenario A — single owner", () => {
@@ -106,7 +124,11 @@ describe("agentRouting THERMAL-PRINTING-8A / 8B", () => {
       registerOnlineAgent("agent-alpha");
       seedPrinterResolution({ agentId: "agent-alpha" });
 
-      const decision = resolveRoutingDecision({ jobId: 100, printerId: TEST_DB_PRINTER_ID });
+      const decision = resolveRoutingDecision({
+        jobId: 100,
+        printerId: TEST_DB_PRINTER_ID,
+        restaurantId: TEST_RESTAURANT_ID,
+      });
 
       expect(decision).toMatchObject({
         agentId: "agent-alpha",
@@ -116,20 +138,29 @@ describe("agentRouting THERMAL-PRINTING-8A / 8B", () => {
   });
 
   describe("Scenario B — unknown printer", () => {
-    it("falls back to single candidate when db printer mapping is missing", () => {
+    it("rejects routing when db printer mapping is missing", () => {
       registerOnlineAgent("agent-solo");
 
-      const decision = resolveRoutingDecision({ jobId: 100, printerId: TEST_DB_PRINTER_ID });
-      expect(decision.reason).toBe(ROUTING_REASONS.SINGLE_CANDIDATE);
+      expect(() =>
+        resolveRoutingDecision({
+          jobId: 100,
+          printerId: TEST_DB_PRINTER_ID,
+          restaurantId: TEST_RESTAURANT_ID,
+        })
+      ).toThrow(expect.objectContaining({ code: ROUTING_FAILURE_CODES.UNRESOLVED_PRINTER }));
     });
 
     it("rejects routing when db printer mapping is missing and multiple agents are online", () => {
       registerOnlineAgent("agent-alpha");
       registerOnlineAgent("agent-beta");
 
-      expect(() => resolveRoutingDecision({ jobId: 100, printerId: TEST_DB_PRINTER_ID })).toThrow(
-        expect.objectContaining({ code: ROUTING_FAILURE_CODES.MULTIPLE_CANDIDATES })
-      );
+      expect(() =>
+        resolveRoutingDecision({
+          jobId: 100,
+          printerId: TEST_DB_PRINTER_ID,
+          restaurantId: TEST_RESTAURANT_ID,
+        })
+      ).toThrow(expect.objectContaining({ code: ROUTING_FAILURE_CODES.UNRESOLVED_PRINTER }));
     });
   });
 
@@ -138,22 +169,30 @@ describe("agentRouting THERMAL-PRINTING-8A / 8B", () => {
       registerOfflineAgent("agent-alpha");
       seedPrinterResolution({ agentId: "agent-alpha" });
 
-      expect(() => resolveRoutingDecision({ jobId: 100, printerId: TEST_DB_PRINTER_ID })).toThrow(
+      expect(() =>
+        resolveRoutingDecision({
+          jobId: 100,
+          printerId: TEST_DB_PRINTER_ID,
+          restaurantId: TEST_RESTAURANT_ID,
+        })
+      ).toThrow(
         expect.objectContaining({ code: ROUTING_FAILURE_CODES.OFFLINE_OWNER })
       );
     });
   });
 
-  describe("Scenario D — single candidate", () => {
-    it("routes to the only online agent when db printer mapping is missing", () => {
-      registerOnlineAgent("agent-solo");
+  describe("Scenario D — tenant-safe routing", () => {
+    it("rejects routing to an agent owned by a different restaurant", () => {
+      registerOnlineAgent("agent-foreign", 99);
+      seedPrinterResolution({ agentId: "agent-foreign" });
 
-      const decision = resolveRoutingDecision({ jobId: 100, printerId: TEST_DB_PRINTER_ID });
-
-      expect(decision).toMatchObject({
-        agentId: "agent-solo",
-        reason: ROUTING_REASONS.SINGLE_CANDIDATE,
-      });
+      expect(() =>
+        resolveRoutingDecision({
+          jobId: 100,
+          printerId: TEST_DB_PRINTER_ID,
+          restaurantId: TEST_RESTAURANT_ID,
+        })
+      ).toThrow(expect.objectContaining({ code: ROUTING_FAILURE_CODES.RESTAURANT_MISMATCH }));
     });
   });
 
@@ -163,7 +202,13 @@ describe("agentRouting THERMAL-PRINTING-8A / 8B", () => {
       registerOnlineAgent("agent-alpha");
       seedConflictingPrinterOwnership(["agent-zulu", "agent-alpha"]);
 
-      expect(() => resolveRoutingDecision({ jobId: 100, printerId: TEST_DB_PRINTER_ID })).toThrow(
+      expect(() =>
+        resolveRoutingDecision({
+          jobId: 100,
+          printerId: TEST_DB_PRINTER_ID,
+          restaurantId: TEST_RESTAURANT_ID,
+        })
+      ).toThrow(
         expect.objectContaining({ code: ROUTING_FAILURE_CODES.RESOLUTION_CONFLICT })
       );
     });

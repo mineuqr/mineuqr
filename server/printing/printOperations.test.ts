@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PRINT_JOB_STATUS } from "../../shared/printing/types";
 import { clearAgentRegistry } from "./agentRegistry";
+import { clearAgentRestaurantProjectionCache } from "./endpointRegistryCompatibility";
 import { clearPrintJobAssignments } from "./assignmentService";
 import { clearExecutionOutcomeStore } from "./executionOutcomeStore";
 import { clearPrinterProfileStore } from "./printerProfileStore";
@@ -55,6 +56,7 @@ describe("printOperationsService THERMAL-PRINTING-11C", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     clearAgentRegistry();
+    clearAgentRestaurantProjectionCache();
     clearPrinterProfileStore();
     clearPrinterResolutionRegistry();
     clearPrintJobAssignments();
@@ -95,7 +97,7 @@ describe("printOperationsService THERMAL-PRINTING-11C", () => {
   });
 
   it("returns operational summary metrics", async () => {
-    registerOnlineAgent("agent-alpha");
+    registerOnlineAgent("agent-alpha", restaurantId);
     registerDbPrinterProfileMapping({
       dbPrinterId: TEST_DB_PRINTER_ID,
       profilePrinterId: TEST_PROFILE_PRINTER_ID,
@@ -116,7 +118,7 @@ describe("printOperationsService THERMAL-PRINTING-11C", () => {
   });
 
   it("lists printer overview with profile and activity metadata", async () => {
-    registerOnlineAgent("agent-alpha");
+    registerOnlineAgent("agent-alpha", restaurantId);
     registerDbPrinterProfileMapping({
       dbPrinterId: TEST_DB_PRINTER_ID,
       profilePrinterId: TEST_PROFILE_PRINTER_ID,
@@ -137,11 +139,11 @@ describe("printOperationsService THERMAL-PRINTING-11C", () => {
     ]);
   });
 
-  it("lists connected agents relevant to restaurant printer profiles", async () => {
-    registerOnlineAgent("agent-alpha");
+  it("lists connected agents owned by the restaurant", async () => {
+    registerOnlineAgent("agent-alpha", restaurantId);
     seedPrinterProfile("agent-alpha", TEST_PROFILE_PRINTER_ID);
-    registerOnlineAgent("agent-other");
-    seedPrinterProfile("agent-other", "other-profile");
+    registerOnlineAgent("agent-other", 999);
+    seedPrinterProfile("agent-other", TEST_PROFILE_PRINTER_ID);
 
     const agents = await listAgentOverview(restaurantId);
 
@@ -158,7 +160,7 @@ describe("printOperationsService THERMAL-PRINTING-11C", () => {
   });
 
   it("returns print job detail with assignment metadata from database authority", async () => {
-    registerOnlineAgent("agent-alpha");
+    registerOnlineAgent("agent-alpha", restaurantId);
     registerDbPrinterProfileMapping({
       dbPrinterId: TEST_DB_PRINTER_ID,
       profilePrinterId: TEST_PROFILE_PRINTER_ID,

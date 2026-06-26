@@ -10,7 +10,9 @@ import { resolvePrintJobAssignment } from "./assignmentService";
 import { getDiagnosticPrintAssignment } from "./diagnosticAssignmentService";
 import { resolveRuntimeExecutionPlan } from "./executionIntegrationFlow";
 import { findPrintJobById } from "./printJobRepository";
+import { findPrinterById } from "./printerRepository";
 import { renderKitchenTicket } from "./ticketRenderer";
+import { rejectIfPrintJobOwnershipViolated } from "./tenantOwnershipAuthority";
 import { resolveStationItemFilterFromJob } from "./stationRoutingService";
 import { buildTransportDeliveryContext } from "./transportDeliveryContextBuilder";
 import {
@@ -99,6 +101,21 @@ export async function fetchAuthoritativePrintJob(
   const job = await findPrintJobById(input.jobId);
   if (!job) {
     return { found: false, error: "Print job not found" };
+  }
+
+  const printer = job.printerId != null ? await findPrinterById(job.printerId) : null;
+  if (!printer) {
+    return { found: false, error: "Print job printer not found" };
+  }
+
+  const ownershipViolation = rejectIfPrintJobOwnershipViolated({
+    agentId: normalizedAgentId,
+    jobRestaurantId: job.restaurantId,
+    printerRestaurantId: printer.restaurantId,
+    assignmentRestaurantId: assignment.restaurantId,
+  });
+  if (ownershipViolation) {
+    return { found: false, error: ownershipViolation };
   }
 
   const executionStart = await transitionPrintJobExecutionState({

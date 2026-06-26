@@ -14,6 +14,7 @@ import {
   registerOnlineAgent as registerOnlineAgentWithResolution,
   seedPrinterResolution,
   TEST_DB_PRINTER_ID,
+  TEST_RESTAURANT_ID,
 } from "./printingTestHelpers";
 import { recordJobStatusReport } from "./jobStatusService";
 import {
@@ -28,6 +29,7 @@ import {
 
 const repoMocks = vi.hoisted(() => ({
   findPrintJobById: vi.fn(),
+  findPrinterById: vi.fn(),
   markJobAssigned: vi.fn(),
   markJobPrinting: vi.fn(),
   markJobPrinted: vi.fn(),
@@ -50,6 +52,10 @@ vi.mock("./printJobRepository", () => ({
 
 vi.mock("./printJobAttemptRepository", () => ({
   insertPrintAttempt: (...args: unknown[]) => attemptMocks.insertPrintAttempt(...args),
+}));
+
+vi.mock("./printerRepository", () => ({
+  findPrinterById: (...args: unknown[]) => repoMocks.findPrinterById(...args),
 }));
 
 function setupExecutionStateRepositoryMocks(initialJob: SelectPrintJob): void {
@@ -115,6 +121,16 @@ describe("protocolStatusReporting THERMAL-PRINTING-7E", () => {
     clearPrinterResolutionRegistry();
     clearRoutingState();
     setupExecutionStateRepositoryMocks(baseJob);
+    repoMocks.findPrinterById.mockResolvedValue({
+      id: TEST_DB_PRINTER_ID,
+      restaurantId: TEST_RESTAURANT_ID,
+      name: "Kitchen",
+      paperWidthMm: 80,
+      profileId: "kitchen-printer-10",
+      isDefault: true,
+      createdAt: "2026-06-18 12:00:00",
+      updatedAt: "2026-06-18 12:00:00",
+    });
   });
 
   describe("Scenario A — agent ready", () => {

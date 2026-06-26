@@ -16,6 +16,7 @@ import {
   registerOnlineAgent as registerOnlineAgentWithResolution,
   seedPrinterResolution,
   TEST_DB_PRINTER_ID,
+  TEST_RESTAURANT_ID,
 } from "./printingTestHelpers";
 import {
   clearDeliveryAcks,
@@ -30,6 +31,7 @@ import {
 
 const repoMocks = vi.hoisted(() => ({
   findPrintJobById: vi.fn(),
+  findPrinterById: vi.fn(),
   markJobAssigned: vi.fn(),
   markJobPrinting: vi.fn(),
   markJobPrinted: vi.fn(),
@@ -58,6 +60,10 @@ vi.mock("./printJobAttemptRepository", () => ({
 
 vi.mock("../_core/opsLog", () => ({
   opsLog: (...args: unknown[]) => opsLogMock(...args),
+}));
+
+vi.mock("./printerRepository", () => ({
+  findPrinterById: (...args: unknown[]) => repoMocks.findPrinterById(...args),
 }));
 
 const baseJob: SelectPrintJob = {
@@ -115,6 +121,16 @@ describe("deliveryConfirmation THERMAL-PRINTING-7B", () => {
     repoMocks.markJobFailed.mockResolvedValue(null);
     attemptMocks.insertPrintAttempt.mockResolvedValue(1);
     mutableJobState = { ...baseJob };
+    repoMocks.findPrinterById.mockResolvedValue({
+      id: TEST_DB_PRINTER_ID,
+      restaurantId: TEST_RESTAURANT_ID,
+      name: "Kitchen",
+      paperWidthMm: 80,
+      profileId: "kitchen-printer-10",
+      isDefault: true,
+      createdAt: "2026-06-18 12:00:00",
+      updatedAt: "2026-06-18 12:00:00",
+    });
   });
 
   describe("Scenario A — prepared → confirmed → delivered", () => {

@@ -28,10 +28,13 @@ import {
   seedPrinterResolution,
   TEST_DB_PRINTER_ID,
   TEST_PROFILE_PRINTER_ID,
+  TEST_RESTAURANT_ID,
 } from "./printingTestHelpers";
+import { clearAgentRestaurantProjectionCache } from "./endpointRegistryCompatibility";
 
 const repoMocks = vi.hoisted(() => ({
   findPrintJobById: vi.fn(),
+  findPrinterById: vi.fn(),
   markJobAssigned: vi.fn(),
   markJobPrinting: vi.fn(),
   markJobPrinted: vi.fn(),
@@ -50,6 +53,10 @@ vi.mock("./printJobRepository", () => ({
   markJobPrinting: (...args: unknown[]) => repoMocks.markJobPrinting(...args),
   markJobPrinted: (...args: unknown[]) => repoMocks.markJobPrinted(...args),
   markJobFailed: (...args: unknown[]) => repoMocks.markJobFailed(...args),
+}));
+
+vi.mock("./printerRepository", () => ({
+  findPrinterById: (...args: unknown[]) => repoMocks.findPrinterById(...args),
 }));
 
 vi.mock("./printJobAttemptRepository", () => ({
@@ -107,11 +114,22 @@ const baseJob: SelectPrintJob = {
 describe("printerResolution THERMAL-PRINTING-8B", () => {
   beforeEach(() => {
     clearAgentRegistry();
+    clearAgentRestaurantProjectionCache();
     clearPrinterProfileStore();
     clearPrinterResolutionRegistry();
     clearRoutingState();
     clearPrintJobAssignments();
     setupExecutionStateRepositoryMocks(baseJob);
+    repoMocks.findPrinterById.mockResolvedValue({
+      id: TEST_DB_PRINTER_ID,
+      restaurantId: TEST_RESTAURANT_ID,
+      name: "Kitchen",
+      paperWidthMm: 80,
+      profileId: TEST_PROFILE_PRINTER_ID,
+      isDefault: true,
+      createdAt: "2026-06-18 12:00:00",
+      updatedAt: "2026-06-18 12:00:00",
+    });
   });
 
   describe("Scenario A — valid resolution", () => {
@@ -173,6 +191,7 @@ describe("printerResolution THERMAL-PRINTING-8B", () => {
       const decision = resolveRoutingDecision({
         jobId: 100,
         printerId: TEST_DB_PRINTER_ID,
+        restaurantId: TEST_RESTAURANT_ID,
       });
 
       expect(decision).toMatchObject({
@@ -196,7 +215,11 @@ describe("printerResolution THERMAL-PRINTING-8B", () => {
       seedConflictingPrinterOwnership(["agent-alpha", "agent-beta"]);
 
       expect(() =>
-        resolveRoutingDecision({ jobId: 100, printerId: TEST_DB_PRINTER_ID })
+        resolveRoutingDecision({
+          jobId: 100,
+          printerId: TEST_DB_PRINTER_ID,
+          restaurantId: TEST_RESTAURANT_ID,
+        })
       ).toThrow(expect.objectContaining({ code: ROUTING_FAILURE_CODES.RESOLUTION_CONFLICT }));
     });
   });
