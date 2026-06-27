@@ -7,6 +7,7 @@ import {
   splitFeaturesByAccess,
 } from "./entitlementsDisplay";
 import type { CommercialEntitlements } from "@commercial/types";
+import { FEATURE_KEYS } from "@commercial/featureKeys";
 
 function sampleEntitlements(
   overrides: Partial<CommercialEntitlements> = {}
@@ -27,9 +28,6 @@ function sampleEntitlements(
       requestBill: true,
       callWaiter: true,
       orderTracking: true,
-      thermalPrinting: true,
-      autoPrint: true,
-      reprint: true,
       reports: true,
       excelExport: true,
       hotelMode: true,
@@ -125,7 +123,7 @@ describe("splitFeaturesByAccess", () => {
     expect(enabled).toContain("templates");
     expect(disabled).toContain("ordering");
     expect(disabled).toContain("reports");
-    expect(enabled.length + disabled.length).toBe(21);
+    expect(enabled.length + disabled.length).toBe(FEATURE_KEYS.length);
   });
 });
 

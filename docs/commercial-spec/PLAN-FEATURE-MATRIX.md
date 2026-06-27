@@ -162,9 +162,6 @@ Each capability maps to `features.<key>` in `resolveCommercialEntitlements()` ou
 | `requestBill` | Guest request bill action |
 | `callWaiter` | Guest call waiter action |
 | `orderTracking` | Guest / staff order status tracking |
-| `thermalPrinting` | Kitchen thermal printer routing |
-| `autoPrint` | Automatic print on new order |
-| `reprint` | Manual order reprint |
 | `reports` | Owner sales / stats reports |
 | `excelExport` | Excel export of reports |
 | `hotelMode` | Hotel property mode (`tableLabel = rooms`) |
@@ -174,7 +171,7 @@ Each capability maps to `features.<key>` in `resolveCommercialEntitlements()` ou
 | `customColors` | Custom theme colors |
 | `customFonts` | Custom theme fonts |
 
-**Ordering stack rule:** `cart`, `checkout`, `orderTracking`, `thermalPrinting`, `autoPrint`, and `reprint` require `features.ordering === true`.
+**Ordering stack rule:** `cart`, `checkout`, and `orderTracking` require `features.ordering === true`.
 
 **Hotel stack rule:** `roomQr` requires `features.hotelMode === true`.
 
@@ -194,9 +191,6 @@ Legend: **Y** = enabled | **N** = disabled | **—** = not applicable
 | `requestBill` | Y | N | Y | Y | Y | N |
 | `callWaiter` | Y | N | Y | Y | Y | N |
 | `orderTracking` | Y | N | Y | Y | Y | N |
-| `thermalPrinting` | Y | N | Y | Y | Y | N |
-| `autoPrint` | Y | N | Y | Y | Y | N |
-| `reprint` | Y | N | Y | Y | Y | N |
 | `reports` | Y | N | Y | Y | Y | N |
 | `excelExport` | Y | N | Y | Y | Y | N |
 | `hotelMode` | Y | N | Y | Y | Y | N |
@@ -411,9 +405,6 @@ A new catalog plan (e.g. `STARTER`, `FRANCHISE`) MUST NOT ship unless all of the
     requestBill: boolean,
     callWaiter: boolean,
     orderTracking: boolean,
-    thermalPrinting: boolean,
-    autoPrint: boolean,
-    reprint: boolean,
     reports: boolean,
     excelExport: boolean,
     hotelMode: boolean,

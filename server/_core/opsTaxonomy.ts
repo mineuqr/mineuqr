@@ -117,54 +117,6 @@ export const OPS_EVENT = {
 
   // SESSION-AGGREGATES-1 Phase B
   session_aggregate_reader_fallback: "session_aggregate_reader_fallback",
-
-  // THERMAL-PRINTING-3B.3
-  print_job_created: "print_job_created",
-  print_job_idempotency_reused: "print_job_idempotency_reused",
-  print_job_creation_failed: "print_job_creation_failed",
-
-  // THERMAL-PRINTING-3C.3
-  print_processor_job_claimed: "print_processor_job_claimed",
-  print_processor_execution_started: "print_processor_execution_started",
-  print_processor_execution_completed: "print_processor_execution_completed",
-  print_processor_execution_failed: "print_processor_execution_failed",
-
-  // THERMAL-PRINTING-6C
-  print_agent_connected: "print_agent_connected",
-  print_agent_disconnected: "print_agent_disconnected",
-  print_agent_message_received: "print_agent_message_received",
-  print_agent_message_rejected: "print_agent_message_rejected",
-
-  // THERMAL-PRINTING-8D
-  print_agent_platform_match: "print_agent_platform_match",
-  print_agent_platform_mismatch: "print_agent_platform_mismatch",
-
-  // THERMAL-PRINTING-7A
-  print_job_assigned: "print_job_assigned",
-  print_job_assignment_reused: "print_job_assignment_reused",
-  print_agent_job_notified: "print_agent_job_notified",
-  print_agent_job_notification_skipped: "print_agent_job_notification_skipped",
-  print_job_delivery_acknowledged: "print_job_delivery_acknowledged",
-  print_job_delivery_confirmed: "print_job_delivery_confirmed",
-  print_job_delivery_confirmation_reused: "print_job_delivery_confirmation_reused",
-
-  // THERMAL-PRINTING-13H
-  dispatch_requested: "dispatch_requested",
-  dispatch_received: "dispatch_received",
-  dispatch_assignment_started: "dispatch_assignment_started",
-  dispatch_assignment_completed: "dispatch_assignment_completed",
-  dispatch_notification_sent: "dispatch_notification_sent",
-  dispatch_notification_failed: "dispatch_notification_failed",
-  dispatch_auth_rejected: "dispatch_auth_rejected",
-  dispatch_bridge_failed: "dispatch_bridge_failed",
-
-  // THERMAL-PRINTING-13I.6
-  diagnostic_print_requested: "diagnostic_print_requested",
-  diagnostic_print_received: "diagnostic_print_received",
-  diagnostic_print_assignment_completed: "diagnostic_print_assignment_completed",
-  diagnostic_print_notification_sent: "diagnostic_print_notification_sent",
-  diagnostic_print_notification_failed: "diagnostic_print_notification_failed",
-  diagnostic_print_failed: "diagnostic_print_failed",
 } as const;
 
 export type OpsEventType = (typeof OPS_EVENT)[keyof typeof OPS_EVENT];

@@ -215,7 +215,7 @@
   },
   "home": {
     "title": "Transform your restaurant into a smart digital operating system",
-    "subtitle": "MineuQR unifies QR menus, smart ordering, live operations, tables, service requests, printing, and analytics in one premium platform built for modern restaurants.",
+    "subtitle": "MineuQR unifies QR menus, smart ordering, live operations, tables, service requests, and analytics in one premium platform built for modern restaurants.",
     "features": "Features",
     "startFree": "Start Free",
     "viewMenu": "View Plans",
@@ -232,8 +232,6 @@
     "feature5Desc": "Let guests request assistance without leaving their table",
     "feature6Title": "Service Requests",
     "feature6Desc": "Handle napkins, water, bill requests, and custom guest needs",
-    "feature7Title": "Thermal Printing",
-    "feature7Desc": "Route orders to kitchen printers automatically",
     "feature8Title": "Smart Notifications",
     "feature8Desc": "Never miss a new order or operational alert",
     "feature9Title": "Reports & Analytics",

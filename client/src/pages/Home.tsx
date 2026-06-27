@@ -16,7 +16,6 @@ import {
   Globe,
   Grid3X3,
   Layers,
-  Printer,
   QrCode,
   Smartphone,
   UtensilsCrossed,
@@ -32,7 +31,6 @@ const platformFeatures: { icon: LucideIcon; titleKey: string; descKey: string }[
   { icon: Grid3X3, titleKey: "home.feature4Title", descKey: "home.feature4Desc" },
   { icon: UtensilsCrossed, titleKey: "home.feature5Title", descKey: "home.feature5Desc" },
   { icon: ConciergeBell, titleKey: "home.feature6Title", descKey: "home.feature6Desc" },
-  { icon: Printer, titleKey: "home.feature7Title", descKey: "home.feature7Desc" },
   { icon: BellRing, titleKey: "home.feature8Title", descKey: "home.feature8Desc" },
   { icon: BarChart3, titleKey: "home.feature9Title", descKey: "home.feature9Desc" },
   { icon: Smartphone, titleKey: "home.feature10Title", descKey: "home.feature10Desc" },
@@ -47,7 +45,7 @@ const steps = [
 ] as const;
 
 const stats = [
-  { value: "12+", labelKey: "home.statFeatures" },
+  { value: "11+", labelKey: "home.statFeatures" },
   { value: "2", labelKey: "home.statLanguages" },
   { value: "24/7", labelKey: "home.statUptime" },
   { value: "100%", labelKey: "home.statMobile" },
