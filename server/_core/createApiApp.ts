@@ -20,15 +20,12 @@ import {
   UPLOADS_DIR,
   useLocalUploads,
 } from "../local-uploads";
-import { initializePrintingRuntime } from "../printing/printingRuntimeBootstrap";
-
 /** Express app with API routes only (no Vite dev server, no static SPA). Used by Vercel serverless. */
 export async function createApiApp(): Promise<Express> {
   validateAuthSecurityConfig();
   validateDeploymentAuthReadiness();
   validatePlatformProtectionAtStartup();
   validateCustomerPushAtStartup();
-  await initializePrintingRuntime();
   schedulePlatformProtectionHealthProbe();
 
   const app = express();

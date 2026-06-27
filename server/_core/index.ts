@@ -26,9 +26,6 @@ async function startServer() {
   const app = await createApp();
   const server = createServer(app);
 
-  const { attachPrintAgentWebSocketServer } = await import("../printing/printAgentWebSocketServer");
-  attachPrintAgentWebSocketServer(server);
-
   const preferredPort = parseInt(process.env.PORT || "3000");
   const port = await findAvailablePort(preferredPort);
 
