@@ -4,7 +4,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { TRPCError } from "@trpc/server";
 import type { TrpcContext } from "../_core/context";
-import type { UserSubscriptionRow } from "../subscriptionResolver";
 
 vi.mock("../db", () => ({
   getUserById: vi.fn(),
@@ -27,53 +26,20 @@ import {
   getUserById,
 } from "../db";
 import { appRouter } from "../routers";
+import {
+  COMMERCIAL_PLAN_CATALOG,
+  COMMERCIAL_TEST_NOW,
+  commercialTestSubRow,
+  installCommercialTestClock,
+} from "./__tests__/commercialTestFixtures";
 
-const FIXED_NOW = new Date("2026-06-01T12:00:00.000Z");
-
-const PLAN_CATALOG = {
-  30001: {
-    id: 30001,
-    nameEn: "Basic",
-    nameAr: "أساسي",
-    maxRestaurants: 1,
-    maxItemsPerRestaurant: 100,
-    maxCategories: 10,
-    priceMonthly: "29.00",
-    priceYearly: "290.00",
-  },
-  30002: {
-    id: 30002,
-    nameEn: "Professional",
-    nameAr: "احترافي",
-    maxRestaurants: 5,
-    maxItemsPerRestaurant: 500,
-    maxCategories: 25,
-    priceMonthly: "79.00",
-    priceYearly: "790.00",
-  },
-};
-
-function isoPlusDays(days: number): string {
-  return new Date(FIXED_NOW.getTime() + days * 24 * 60 * 60 * 1000).toISOString();
-}
+const FIXED_NOW = COMMERCIAL_TEST_NOW;
+const PLAN_CATALOG = COMMERCIAL_PLAN_CATALOG;
 
 function subRow(
-  overrides: Partial<UserSubscriptionRow> & Pick<UserSubscriptionRow, "id" | "userId" | "restaurantId">
-): UserSubscriptionRow {
-  return {
-    planId: 30002,
-    status: "active",
-    billingCycle: "monthly",
-    stripeSubscriptionId: null,
-    stripeCustomerId: null,
-    currentPeriodStart: isoPlusDays(-10),
-    currentPeriodEnd: isoPlusDays(20),
-    trialEndsAt: null,
-    canceledAt: null,
-    createdAt: isoPlusDays(-30),
-    updatedAt: isoPlusDays(-1),
-    ...overrides,
-  };
+  overrides: Parameters<typeof commercialTestSubRow>[0]
+) {
+  return commercialTestSubRow(overrides);
 }
 
 function adminContext(): TrpcContext {
@@ -113,6 +79,8 @@ function mockPopulationUsers(
 }
 
 describe("EXEC-3 dashboard API layer", () => {
+  installCommercialTestClock();
+
   beforeEach(() => {
     vi.clearAllMocks();
     (getSubscriptionPlanById as ReturnType<typeof vi.fn>).mockImplementation(

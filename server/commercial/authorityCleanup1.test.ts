@@ -33,44 +33,23 @@ import {
   createSubscriptionForRestaurant,
   createNotification,
 } from "../db";
+import {
+  COMMERCIAL_PLAN_CATALOG,
+  COMMERCIAL_TEST_NOW,
+  commercialTestSubRow,
+  installCommercialTestClock,
+  isoPlusDaysFromCommercialTestNow,
+} from "./__tests__/commercialTestFixtures";
 
-const FIXED_NOW = new Date("2026-06-01T12:00:00.000Z");
+const FIXED_NOW = COMMERCIAL_TEST_NOW;
 const USER_ID = 14760004;
 
 const PLAN_CATALOG = {
-  30002: {
-    id: 30002,
-    nameEn: "Professional",
-    nameAr: "احترافي",
-    maxRestaurants: 5,
-    maxItemsPerRestaurant: 500,
-    maxCategories: 25,
-    priceMonthly: "39.00",
-    priceYearly: "390.00",
-  },
+  30002: COMMERCIAL_PLAN_CATALOG[30002],
 };
 
-function isoPlusDays(days: number): string {
-  return new Date(FIXED_NOW.getTime() + days * 24 * 60 * 60 * 1000).toISOString();
-}
-
-function subRow(
-  overrides: Partial<UserSubscriptionRow> & Pick<UserSubscriptionRow, "id" | "userId" | "restaurantId">
-): UserSubscriptionRow {
-  return {
-    planId: 30002,
-    status: "active",
-    billingCycle: "monthly",
-    stripeSubscriptionId: null,
-    stripeCustomerId: null,
-    currentPeriodStart: isoPlusDays(-10),
-    currentPeriodEnd: isoPlusDays(20),
-    trialEndsAt: null,
-    canceledAt: null,
-    createdAt: isoPlusDays(-30),
-    updatedAt: isoPlusDays(-1),
-    ...overrides,
-  };
+function subRow(overrides: Parameters<typeof commercialTestSubRow>[0]) {
+  return commercialTestSubRow(overrides);
 }
 
 function setupPlansMock() {
@@ -115,6 +94,8 @@ function createCaller() {
 }
 
 describe("AUTHORITY-CLEANUP-1 — canonical owner account subscription authority", () => {
+  installCommercialTestClock();
+
   beforeEach(() => {
     vi.clearAllMocks();
     setupPlansMock();
@@ -214,7 +195,7 @@ describe("AUTHORITY-CLEANUP-1 — canonical owner account subscription authority
       restaurantId: 720003,
       planId: 30002,
       status: "expired",
-      currentPeriodEnd: isoPlusDays(-5),
+      currentPeriodEnd: isoPlusDaysFromCommercialTestNow(-5),
     });
 
     beforeEach(() => {

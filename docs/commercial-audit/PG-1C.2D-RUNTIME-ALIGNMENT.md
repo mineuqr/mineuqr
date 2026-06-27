@@ -1,5 +1,7 @@
 # PG-1C.2D — Runtime Alignment
 
+> **Staleness note (RESET-1 / ARCH-1A):** Printing feature keys (`thermalPrinting`, `autoPrint`, `reprint`) were retired in RESET-1 Wave 6. The matrix now has **18** feature keys — see `docs/commercial-spec/PLAN-FEATURE-MATRIX.md`. Historical rows below mentioning printing are audit snapshots only.
+
 **Program:** Commercial Governance (PG-1C)  
 **Task:** PG-1C.2D — align runtime assumptions with the commercial contract before authority migration waves  
 **Date:** 2026-06-07  

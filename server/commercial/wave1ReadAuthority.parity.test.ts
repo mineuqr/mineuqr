@@ -36,33 +36,33 @@ vi.mock("../db", () => ({
 import { getTrialEndDate, isSubscriptionActive } from "../db";
 import { resolveTrialStatusRead } from "./wave1ReadAuthority";
 import { resolveGuestOrderingAllowed } from "./guestOrderingAuthority";
+import {
+  COMMERCIAL_TEST_NOW,
+  commercialTestSubRow,
+  installCommercialTestClock,
+  isoPlusDaysFromCommercialTestNow,
+} from "./__tests__/commercialTestFixtures";
 
-const FIXED_NOW = new Date("2026-06-01T12:00:00.000Z");
+const FIXED_NOW = COMMERCIAL_TEST_NOW;
 
 function isoPlusDays(days: number): string {
-  return new Date(FIXED_NOW.getTime() + days * 24 * 60 * 60 * 1000).toISOString();
+  return isoPlusDaysFromCommercialTestNow(days);
 }
 
-function subRow(
-  overrides: Partial<UserSubscriptionRow> & Pick<UserSubscriptionRow, "id" | "userId" | "restaurantId">
-): UserSubscriptionRow {
-  return {
-    planId: 30002,
+function subRow(overrides: Parameters<typeof commercialTestSubRow>[0]) {
+  return commercialTestSubRow({
     status: "trial",
-    billingCycle: "monthly",
-    stripeSubscriptionId: null,
-    stripeCustomerId: null,
     currentPeriodStart: isoPlusDays(-5),
     currentPeriodEnd: isoPlusDays(10),
     trialEndsAt: isoPlusDays(10),
-    canceledAt: null,
     createdAt: isoPlusDays(-5),
-    updatedAt: isoPlusDays(-1),
     ...overrides,
-  };
+  });
 }
 
 describe("ASN-5 authority integration", () => {
+  installCommercialTestClock();
+
   beforeEach(() => {
     vi.clearAllMocks();
     subscriptionRowsByUser.clear();

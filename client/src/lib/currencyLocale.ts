@@ -2,6 +2,7 @@
  * Locale-aware currency formatting for UI and Excel exports.
  * Uses Intl + ISO currency codes; avoids hardcoded per-country strings.
  */
+import { containsArabicScript } from "@shared/utils/textScript";
 
 export type AppLanguage = "ar" | "en";
 
@@ -55,10 +56,6 @@ function intlCurrencyUnit(
 
 function escapeExcelFormatLiteral(value: string): string {
   return value.replace(/"/g, '""');
-}
-
-function containsArabicScript(value: string): boolean {
-  return /[\u0600-\u06FF]/.test(value);
 }
 
 /**

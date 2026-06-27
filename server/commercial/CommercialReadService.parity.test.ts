@@ -31,55 +31,25 @@ import {
   getSubscriptionPlans,
   getUserById,
 } from "../db";
-import { userHasSubscriptionEntitlement } from "../subscriptionEntitlement";
 import { pickCanonicalSubscription } from "../subscriptionResolver";
+import {
+  COMMERCIAL_PLAN_CATALOG,
+  COMMERCIAL_TEST_NOW,
+  commercialTestSubRow,
+  installCommercialTestClock,
+  isoPlusDaysFromCommercialTestNow,
+  legacyEntitlementActive,
+} from "./__tests__/commercialTestFixtures";
 
-const FIXED_NOW = new Date("2026-06-01T12:00:00.000Z");
-
-const PLAN_CATALOG = {
-  30001: {
-    id: 30001,
-    nameEn: "Basic",
-    nameAr: "أساسي",
-    maxRestaurants: 1,
-    maxItemsPerRestaurant: 100,
-    maxCategories: 10,
-    priceMonthly: "29.00",
-    priceYearly: "290.00",
-  },
-  30002: {
-    id: 30002,
-    nameEn: "Professional",
-    nameAr: "احترافي",
-    maxRestaurants: 5,
-    maxItemsPerRestaurant: 500,
-    maxCategories: 25,
-    priceMonthly: "79.00",
-    priceYearly: "790.00",
-  },
-};
+const FIXED_NOW = COMMERCIAL_TEST_NOW;
+const PLAN_CATALOG = COMMERCIAL_PLAN_CATALOG;
 
 function isoPlusDays(days: number): string {
-  return new Date(FIXED_NOW.getTime() + days * 24 * 60 * 60 * 1000).toISOString();
+  return isoPlusDaysFromCommercialTestNow(days);
 }
 
-function subRow(
-  overrides: Partial<UserSubscriptionRow> & Pick<UserSubscriptionRow, "id" | "userId" | "restaurantId">
-): UserSubscriptionRow {
-  return {
-    planId: 30002,
-    status: "active",
-    billingCycle: "monthly",
-    stripeSubscriptionId: null,
-    stripeCustomerId: null,
-    currentPeriodStart: isoPlusDays(-10),
-    currentPeriodEnd: isoPlusDays(20),
-    trialEndsAt: null,
-    canceledAt: null,
-    createdAt: isoPlusDays(-30),
-    updatedAt: isoPlusDays(-1),
-    ...overrides,
-  };
+function subRow(overrides: Parameters<typeof commercialTestSubRow>[0]) {
+  return commercialTestSubRow(overrides);
 }
 
 function setupPlansMock() {
@@ -102,7 +72,7 @@ function setupUserSubs(userId: number, rows: UserSubscriptionRow[]) {
   );
   (isSubscriptionActive as ReturnType<typeof vi.fn>).mockImplementation(async (id: number) => {
     const userRows = id === userId ? rows : [];
-    return userHasSubscriptionEntitlement(userRows);
+    return legacyEntitlementActive(userRows);
   });
 }
 
@@ -115,6 +85,8 @@ function legacyUserListPick(
 }
 
 describe("EXEC-2 CommercialReadService parity — MATCH (S1-aligned consumers)", () => {
+  installCommercialTestClock();
+
   beforeEach(() => {
     vi.clearAllMocks();
     setupPlansMock();
@@ -192,6 +164,8 @@ describe("EXEC-2 CommercialReadService parity — MATCH (S1-aligned consumers)",
 });
 
 describe("EXEC-2 CommercialReadService parity — MISMATCH (legacy consumers)", () => {
+  installCommercialTestClock();
+
   beforeEach(() => {
     vi.clearAllMocks();
     setupPlansMock();

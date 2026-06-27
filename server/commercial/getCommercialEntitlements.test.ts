@@ -1,5 +1,4 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import type { UserSubscriptionRow } from "../subscriptionResolver";
 
 vi.mock("../db", () => ({
   getUserById: vi.fn(),
@@ -8,33 +7,26 @@ vi.mock("../db", () => ({
 
 import { getUserById, getSubscriptionsByUser } from "../db";
 import { getCommercialEntitlements } from "./getCommercialEntitlements";
+import {
+  COMMERCIAL_TEST_NOW,
+  commercialTestSubRow,
+  installCommercialTestClock,
+  isoPlusDaysFromCommercialTestNow,
+} from "./__tests__/commercialTestFixtures";
 
-const FIXED_NOW = new Date("2026-06-01T12:00:00.000Z");
+const FIXED_NOW = COMMERCIAL_TEST_NOW;
 
 function isoPlusDays(days: number): string {
-  return new Date(FIXED_NOW.getTime() + days * 24 * 60 * 60 * 1000).toISOString();
+  return isoPlusDaysFromCommercialTestNow(days);
 }
 
-function subRow(
-  overrides: Partial<UserSubscriptionRow> & Pick<UserSubscriptionRow, "id" | "userId" | "restaurantId">
-): UserSubscriptionRow {
-  return {
-    planId: 30002,
-    status: "active",
-    billingCycle: "monthly",
-    stripeSubscriptionId: null,
-    stripeCustomerId: null,
-    currentPeriodStart: isoPlusDays(-10),
-    currentPeriodEnd: isoPlusDays(20),
-    trialEndsAt: null,
-    canceledAt: null,
-    createdAt: isoPlusDays(-30),
-    updatedAt: isoPlusDays(-1),
-    ...overrides,
-  };
+function subRow(overrides: Parameters<typeof commercialTestSubRow>[0]) {
+  return commercialTestSubRow(overrides);
 }
 
 describe("getCommercialEntitlements (server integration)", () => {
+  installCommercialTestClock();
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
