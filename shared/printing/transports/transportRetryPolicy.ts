@@ -1,10 +1,14 @@
 /**
- * THERMAL-PRINTING-10C — controlled transport retry policy.
+ * Controlled async retry policy (generic transport-agnostic helper).
  */
-import type {
-  TransportExecutionResult,
-  TransportFailureCode,
-} from "./transportContracts";
+export type TransportExecutionResult = {
+  status: "completed" | "failed" | "rejected" | "not-implemented";
+  attempts?: number;
+  message?: string;
+  failureCode?: string;
+};
+
+export type TransportFailureCode = string;
 
 export type TransportRetryPolicy = {
   maxAttempts: number;

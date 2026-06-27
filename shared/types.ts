@@ -6,10 +6,3 @@
 export type * from "../drizzle/schema";
 export * from "./_core/errors";
 export * from "./accountClassification";
-export * from "./printing/types";
-export * from "./printing/browserBridgeTypes";
-export * from "./printing/printAgentProtocol";
-export * from "./printing/agentTypes";
-export * from "./printing/agentHeartbeat";
-export * from "./printing/agentConnectivity";
-export * from "./printing/agentJobMessages";
