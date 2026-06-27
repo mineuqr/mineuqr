@@ -1,0 +1,24 @@
+%% Constitution §20 — Package Architecture
+flowchart TB
+  subgraph server_order["server/order/"]
+    APP[application/]
+    DOM[domain/aggregate policies events]
+    REP[repositories/]
+    INF[infrastructure/]
+  end
+  subgraph integration["server/integration/"]
+    NOTIF[notifications/]
+    SES[session/]
+    ANA[analytics/]
+  end
+  CLIENT[client/ presentation]
+  SHARED[shared/ kernel]
+
+  CLIENT --> APP
+  APP --> DOM
+  APP --> REP
+  INF --> DOM
+  INF --> REP
+  integration --> DOM
+  APP --> SHARED
+  CLIENT --> SHARED

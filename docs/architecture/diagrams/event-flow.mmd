@@ -1,0 +1,19 @@
+%% Blueprint §8 / §15 — Event publication flow
+sequenceDiagram
+  participant REPO as OrderRepository
+  participant DB as Database
+  participant OUT as Outbox Table
+  participant REL as Relay
+  participant BUS as Event Dispatcher
+  participant SUB as Subscribers
+
+  REPO->>DB: BEGIN
+  REPO->>DB: save orders + items
+  REPO->>OUT: insert event rows
+  REPO->>DB: COMMIT
+  loop relay
+    REL->>OUT: poll unpublished
+    REL->>BUS: dispatch
+    REL->>OUT: mark published
+  end
+  BUS->>SUB: OrderCreated / StatusChanged / etc.

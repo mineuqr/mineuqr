@@ -1,0 +1,14 @@
+%% MineuQR 2.0 — Architecture Decision Hierarchy
+%% Source of truth for §18 hierarchy diagram
+%% Related: constitution/Architecture-Decision-Hierarchy.md
+
+flowchart TB
+  NS[Architecture Vision and North Star]
+  PR[Architecture Principles]
+  GOV[Architecture Governance §18-29 ADR-013]
+  ADR[ADRs 001-013]
+  BP[Architecture Blueprint §1-17]
+  PROG[Implementation Programs]
+  CODE[Code Repository]
+
+  NS --> PR --> GOV --> ADR --> BP --> PROG --> CODE

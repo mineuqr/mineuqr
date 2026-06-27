@@ -1,0 +1,20 @@
+%% Blueprint §3 — Order Aggregate structure
+classDiagram
+  class Order {
+    +OrderId id
+    +OrderNumber number
+    +TrackingToken token
+    +RestaurantId restaurantId
+    +OrderStatus status
+    +Money totalAmount
+    +place()
+    +advance()
+    +cancel()
+  }
+  class OrderLine {
+    +OrderLineId id
+    +MenuItemId menuItemId
+    +Quantity quantity
+    +Money unitPrice
+  }
+  Order "1" --> "*" OrderLine : lines

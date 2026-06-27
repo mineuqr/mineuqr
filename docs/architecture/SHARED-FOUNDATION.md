@@ -1,5 +1,7 @@
 # Shared Foundation Architecture
 
+> **Architecture:** [MineuQR Architecture Documentation](./README.md) · [Constitution](./constitution/Architecture-Constitution-v1.0.md)
+
 Post-RESET-1 canonical layout for cross-cutting utilities and types.
 
 ## Layer boundaries

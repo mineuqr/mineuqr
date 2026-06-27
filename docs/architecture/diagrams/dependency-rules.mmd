@@ -1,0 +1,17 @@
+%% Constitution §19 — Dependency Rules
+flowchart TB
+  P[Presentation]
+  A[Application]
+  D[Domain]
+  IP[Infrastructure Ports]
+  I[Infrastructure Impl]
+  ACL[Anti-Corruption Layers]
+  EXT[External Contexts]
+
+  P --> A
+  A --> D
+  A --> IP
+  IP --> I
+  I --> D
+  ACL --> A
+  EXT --> ACL

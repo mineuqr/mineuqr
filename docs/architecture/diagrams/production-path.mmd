@@ -1,0 +1,14 @@
+%% Blueprint §13 — Single Authoritative Production Path
+flowchart TB
+  REQ[Customer / Owner Request]
+  APP[Application Command Handler]
+  SPEC[Specifications + Policies]
+  AGG[Order Aggregate]
+  REPO[OrderRepository.save]
+  COMMIT[Commit]
+  EVT[Domain Events → Outbox]
+  SUB[Event Subscribers]
+  RM[Read Model Projectors]
+  UI[Presentation]
+
+  REQ --> APP --> SPEC --> AGG --> REPO --> COMMIT --> EVT --> SUB --> RM --> UI

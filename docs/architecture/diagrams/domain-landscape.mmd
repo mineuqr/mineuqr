@@ -1,0 +1,29 @@
+%% Blueprint §2 — Domain Landscape
+flowchart TB
+  subgraph Core["Core Domain"]
+    ORD[Order]
+  end
+  subgraph Supporting["Supporting Domains"]
+    COM[Commercial]
+    REST[Restaurant]
+    ID[Identity]
+  end
+  subgraph Generic["Generic / Integration Contexts"]
+    NOTIF[Notifications]
+    ANA[Analytics]
+    OPS[Operations Read Models]
+  end
+  subgraph Future["Future Integration Contexts"]
+    SES[Session]
+    KIT[Kitchen]
+    PRT[Printing]
+  end
+  REST -->|gates context| ORD
+  COM -->|authorizes ordering| ORD
+  ID -->|authorizes owner ops| ORD
+  ORD -->|OrderCreated etc.| NOTIF
+  ORD -->|facts| ANA
+  ORD -->|facts| OPS
+  ORD -.->|events| SES
+  ORD -.->|events| KIT
+  ORD -.->|events| PRT

@@ -1,5 +1,7 @@
 # RESET-1 Closure — Printing Architecture Retirement
 
+> **Architecture:** [MineuQR Architecture Documentation](./README.md) · [Constitution](./constitution/Architecture-Constitution-v1.0.md)
+
 **Status:** Complete (Waves 1–6 certified)  
 **Baseline:** Official clean architectural baseline for ARCH-1A onward
 

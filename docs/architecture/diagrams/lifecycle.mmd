@@ -1,0 +1,11 @@
+%% Blueprint §5 — Order Lifecycle
+stateDiagram-v2
+  [*] --> pending : PlaceOrder
+  pending --> preparing : Advance
+  pending --> cancelled : Cancel
+  preparing --> ready : Advance
+  preparing --> cancelled : Cancel
+  ready --> served : Complete
+  ready --> cancelled : Cancel
+  served --> [*]
+  cancelled --> [*]
