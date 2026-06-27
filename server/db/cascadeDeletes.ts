@@ -11,12 +11,8 @@ import {
   offers,
   orderItems,
   orders,
-  printJobAttempts,
-  printJobs,
-  printers,
   renewalNotifications,
   restaurantHolidays,
-  restaurantPrintSettings,
   restaurants,
   restaurantTables,
   userSubscriptions,
@@ -164,24 +160,6 @@ export async function deleteRestaurantCascadeTx(
   tx: Tx,
   restaurantId: number
 ): Promise<void> {
-  const printJobRows = await tx
-    .select({ id: printJobs.id })
-    .from(printJobs)
-    .where(eq(printJobs.restaurantId, restaurantId));
-  const printJobIds = printJobRows.map((r) => r.id);
-
-  if (printJobIds.length > 0) {
-    await tx
-      .delete(printJobAttempts)
-      .where(inArray(printJobAttempts.printJobId, printJobIds));
-  }
-
-  await tx.delete(printJobs).where(eq(printJobs.restaurantId, restaurantId));
-  await tx
-    .delete(restaurantPrintSettings)
-    .where(eq(restaurantPrintSettings.restaurantId, restaurantId));
-  await tx.delete(printers).where(eq(printers.restaurantId, restaurantId));
-
   const orderRows = await tx
     .select({ id: orders.id })
     .from(orders)
