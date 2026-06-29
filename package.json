@@ -20,6 +20,9 @@
     "db:migrate": "drizzle-kit migrate",
     "db:preflight": "node scripts/migration-preflight.cjs",
     "db:verify-schema": "node scripts/verify-schema-deployment.cjs",
+    "db:order-read:verify-schema": "node scripts/order-read-projection-staging.mjs --verify-schema",
+    "db:order-read:discover": "node scripts/order-read-projection-staging.mjs --discover",
+    "db:order-read:validate": "node scripts/order-read-projection-staging.mjs --validate",
     "db:push": "drizzle-kit generate && drizzle-kit migrate"
   },
   "dependencies": {

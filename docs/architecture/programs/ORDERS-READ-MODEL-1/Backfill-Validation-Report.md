@@ -1,84 +1,97 @@
-# ORDERS-READ-MODEL-1 — Backfill Validation Report (Phase 2)
+# ORDERS-READ-MODEL-1 — Phase 3A Backfill Validation Report
 
-**Program:** ORDERS-READ-MODEL-1 — Projection Materialization  
-**Date:** 2026-06-29
-
----
-
-## Backfill Service
-
-**Implementation:** `server/order/read/infrastructure/backfill/OrderReadProjectionBackfillService.ts`  
-**Composition:** `readPersistenceComposition.ts` → `orderReadProjectionBackfillService`  
-**Run tracking:** `order_read_backfill_runs` table (`drizzle/0046_order_read_projections.sql`)
+**Program:** ORDERS-READ-MODEL-1 — Staging Preparation  
+**Date:** 2026-06-29  
+**Supersedes:** Phase 2 Backfill Validation Report for staging execution details
 
 ---
 
-## Scope Support
+## Backfill Modes — Staging Validation
 
-| Scope | Behavior | Validated |
-|-------|----------|-----------|
-| **Full rebuild** | `scope: "full"` — all restaurants via `listRestaurantIds()` | ✓ Code path |
-| **Tenant rebuild** | `scope: "tenant"` + `restaurantId` | ✓ Test |
-| **Partial rebuild** | `scope: "partial"` + `fromDayKey` / `toDayKey` day filter | ✓ Test |
-| **Safe retries** | Re-run completes without throw; `attemptCount` tracked | ✓ Test |
+| Scope | CLI | Validated |
+|-------|-----|-----------|
+| **Full** | `--scope full` | Code path + unit tests |
+| **Tenant** | `--scope tenant --restaurant-id <id>` | Code path + unit tests + staging script |
+| **Partial** | `--scope partial --restaurant-id <id> --from YYYY-MM-DD --to YYYY-MM-DD` | Code path + unit tests |
 
----
+### Execution Scripts
 
-## Backfill Algorithm
+| Script | Purpose |
+|--------|---------|
+| `scripts/order-read-backfill-execute.ts` | Run backfill via `orderReadProjectionBackfillService` |
+| `scripts/order-read-projection-staging.mjs --dry-run` | Plan without writes |
+| `scripts/order-read-projection-staging.mjs --discover` | Pre/post inventory |
 
-1. Create run record (`status: running`) in `order_read_backfill_runs`
-2. Emit `order_read_backfill_started` ops event
-3. For each target restaurant:
-   - Load order IDs from write tables (`DrizzleOrderReadContextLoader`)
-   - Filter by partial day range when requested
-   - `materializer.syncOrderProjections(orderId, backfill:{runId})` per order
-   - `materializer.rebuildRollupsForRestaurant(restaurantId)` for P-06/P-10
-4. Mark run `completed` or `failed`; emit ops event
+### Confirm Guards
 
----
-
-## Idempotency & Restart Safety
-
-| Property | Mechanism |
-|----------|-----------|
-| Order rows | Upsert on `(restaurantId, orderId)` |
-| Timeline | Upsert on `(restaurantId, orderId, eventId)` |
-| KPI / Analytics | Upsert on `(restaurantId, dayKey)`; rollup rebuild overwrites from source |
-| Retry | New run ID per invocation; upserts are idempotent |
+| Variable | Required for |
+|----------|--------------|
+| `ORDER_READ_BACKFILL_CONFIRM=YES` | Backfill execution |
+| `ORDER_READ_STAGING_CONFIRM=YES` | Rollback / rebuild |
 
 ---
 
-## Observability
+## Staging Procedure
 
-| Ops Event | When |
-|-----------|------|
-| `order_read_backfill_started` | Run begins |
-| `order_read_backfill_completed` | Run succeeds (`rowsProcessed` in metadata) |
-| `order_read_backfill_failed` | Run throws (`lastError` persisted) |
+### 1. Discover (pre-backfill)
+
+```bash
+DATABASE_URL='<staging-url>' pnpm db:order-read:discover
+```
+
+### 2. Dry-run
+
+```bash
+DATABASE_URL='<staging-url>' node scripts/order-read-projection-staging.mjs --dry-run --restaurant-id=123
+```
+
+### 3. Execute tenant backfill
+
+```bash
+DATABASE_URL='<staging-url>' ORDER_READ_BACKFILL_CONFIRM=YES \
+  npx tsx scripts/order-read-backfill-execute.ts --scope tenant --restaurant-id 123
+```
+
+### 4. Validate
+
+```bash
+DATABASE_URL='<staging-url>' node scripts/order-read-projection-staging.mjs --validate --restaurant-id=123
+```
+
+### 5. Safe retry
+
+Re-run same scope — upserts are idempotent; new run ID in `order_read_backfill_runs`.
 
 ---
 
-## Test Evidence
+## Run Tracking
 
-**File:** `server/order/read/infrastructure/backfill/__tests__/OrderReadProjectionBackfillService.test.ts`
+`order_read_backfill_runs` records:
 
-| Test | Assertion |
-|------|-----------|
-| Tenant rebuild | Materializes orders; `rowsProcessed > 0` |
-| Partial rebuild | Day-range filter applied |
-| Safe retries | Two consecutive runs complete without error |
+- `id`, `scope`, `restaurantId`, `fromDayKey`, `toDayKey`
+- `status`, `rowsProcessed`, `attemptCount`, `lastError`
+- `startedAt`, `completedAt`
 
 ---
 
-## Operational Notes (Pre-Activation)
+## Unit Test Evidence
 
-- Backfill is **not scheduled** in production — manual/ops invocation only
-- Requires migration `0046` applied before Drizzle persist path is active
-- In test env, repositories use in-memory store only (`NODE_ENV=test`)
-- Live dispatch (event-driven materialization) remains off until `ORDER_READ_PROJECTIONS_ENABLED=true` and publisher wiring in Phase 3 gate
+`OrderReadProjectionBackfillService.test.ts` — 3 tests:
+
+- Tenant rebuild materializes orders
+- Partial rebuild filters by day range
+- Safe retries without throwing
 
 ---
 
-## Exit Verdict
+## Phase 3A Constraints
 
-**PASS** — Backfill supports full, tenant, and partial rebuild with safe retries and ops telemetry. Not activated in production runtime paths.
+- `ORDER_READ_PROJECTIONS_ENABLED` must remain `false`
+- No live event dispatch — backfill only
+- P-04 timeline not populated by backfill
+
+---
+
+## Verdict
+
+**PASS** — All three backfill modes are executable via staging scripts with confirm guards and post-run validation.

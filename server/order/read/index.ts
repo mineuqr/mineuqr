@@ -19,5 +19,7 @@ export * from "./readPersistenceComposition";
 export * from "./projections/materializers/OrderReadProjectionMaterializer";
 export * from "./projections/consumers/createOrderReadProjectionConsumers";
 export * from "./infrastructure/backfill/OrderReadProjectionBackfillService";
+export * from "./infrastructure/staging/OrderReadProjectionIntegrityChecker";
+export * from "./infrastructure/staging/orderReadProjectionStagingTables";
 export * from "./infrastructure/persistence/drizzle/DrizzleOrderReadProjectionStore";
 export * from "./infrastructure/persistence/inmemory/InMemoryOrderReadProjectionStore";

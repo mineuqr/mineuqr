@@ -3,113 +3,109 @@
 **Program:** ORDERS-READ-MODEL-1  
 **Reference:** READ-ARCHITECTURE-1 RA-08  
 **Date:** 2026-06-29  
-**Phase:** 2 complete — materialized, not activated
+**Phase:** 3A complete — staging tooling ready
 
 ---
 
 ## Current Production State (Unchanged)
 
 ```
-Dashboard / OrdersTab
-    → order.list (tRPC)
-    → getOrdersWithItemsByRestaurant (db.ts)
-    → orders + order_items (write tables)
-
-Client KPIs → buildOrderStatistics (ADR-ARCH-006 / ADR-ARCH-009 — unchanged)
+Dashboard / OrdersTab → order.list (tRPC) → db.ts → orders + order_items
+Write: Aggregate → Outbox → Relay → Publisher → Integration Consumers only
 ```
 
-Write path remains certified:
-
-```
-Order Aggregate → Application Services → Outbox → Relay → Publisher
-    → OrderEventConsumerRegistry → Integration Consumers only
-```
+`ORDER_READ_PROJECTIONS_ENABLED=false` (default)  
+Publisher: `orderEventConsumerRegistry` only
 
 ---
 
-## Phase 2 Deliverables (Complete)
+## Phase Completion Summary
 
-| Deliverable | Status | Notes |
-|-------------|--------|-------|
-| Projection store schema | ✓ | `drizzle/0046_order_read_projections.sql` |
-| Drizzle schema types | ✓ | `drizzle/schema.ts` — 7 tables + backfill runs |
-| In-memory repositories | ✓ | `InMemoryOrderReadProjectionStore` |
-| Drizzle persist layer | ✓ | `DrizzleOrderReadProjectionStore` + decorator |
-| Context loader | ✓ | `DrizzleOrderReadContextLoader` (write tables) |
-| Materializers | ✓ | `OrderReadProjectionMaterializer` |
-| Projection consumers (7) | ✓ | Registered on `orderProjectionConsumerRegistry` |
-| Backfill service | ✓ | Full / tenant / partial + retry |
-| Observability | ✓ | Backfill + consumer ops events |
-| Feature flag | ✓ | `ORDER_READ_PROJECTIONS_ENABLED=false` default |
-| Publisher wiring | ✗ Intentional | Still `orderEventConsumerRegistry` only |
+| Phase | Scope | Status |
+|-------|-------|--------|
+| Phase 1 | Read foundation | ✓ Certified |
+| Phase 2 | Projection materialization (inactive) | ✓ Complete |
+| **Phase 3A** | **Staging deployment tooling** | **✓ Complete** |
+| Phase 3B | Shadow read APIs + dispatch activation | Not started |
+| Phase 4 | UI cutover | Not started |
+
+---
+
+## Phase 3A Deliverables
+
+| Deliverable | Status |
+|-------------|--------|
+| Migration 0046 journalized | ✓ `drizzle/meta/_journal.json` |
+| Schema verify (order_read tables) | ✓ `verify-schema-deployment.cjs` + `--verify-schema` |
+| Backfill execution script | ✓ `scripts/order-read-backfill-execute.ts` |
+| Staging ops script | ✓ `scripts/order-read-projection-staging.mjs` |
+| Integrity checker + tests | ✓ `OrderReadProjectionIntegrityChecker.ts` |
+| Rollback / rebuild procedures | ✓ Documented + scripted |
+| npm scripts | ✓ `db:order-read:*` |
+| Staging reports (8) | ✓ |
+
+---
+
+## Staging Deployment Sequence
+
+1. `DATABASE_URL='<staging>' pnpm db:preflight`
+2. `DATABASE_URL='<staging>' pnpm db:migrate`
+3. `DATABASE_URL='<staging>' pnpm db:order-read:verify-schema`
+4. `DATABASE_URL='<staging>' pnpm db:order-read:discover`
+5. Per-tenant: `ORDER_READ_BACKFILL_CONFIRM=YES npx tsx scripts/order-read-backfill-execute.ts --scope tenant --restaurant-id <id>`
+6. `DATABASE_URL='<staging>' pnpm db:order-read:validate`
+7. If issues: `ORDER_READ_STAGING_CONFIRM=YES node scripts/order-read-projection-staging.mjs --rebuild-tenant --restaurant-id=<id>`
 
 ---
 
 ## Migration Gates
 
-### Gate 0 — Architecture Approval
-
-| Item | Status |
-|------|--------|
-| READ-ARCHITECTURE-1 design complete | ✓ |
-| Phase 1 foundation | ✓ |
-| Phase 2 materialization | ✓ |
-| ADR-ARCH-015 ratification | Pending Authority |
-
 ### Gate 1 — Phase 2 (Complete)
 
+Projection store, materializers, consumers (registered, inactive), backfill service.
+
+### Gate 2 — Phase 3A (Complete)
+
+Staging ops tooling, integrity validation, rollback/rebuild, migration journalized.
+
+### Gate 3 — Phase 3B (Next)
+
 | Item | Status |
 |------|--------|
-| Projection store schema | ✓ |
-| Materializing consumers registered | ✓ |
-| Backfill job | ✓ |
-| Drizzle persist implementations | ✓ (write path) |
-| Publisher wiring | Deferred — flag off |
-| Apply migration `0046` in staging | **Required before backfill in staging** |
+| Apply 0046 on staging DB | **Ops action** (tooling ready) |
+| Run staging backfill | **Ops action** (tooling ready) |
+| Enable `ORDER_READ_PROJECTIONS_ENABLED` in staging | Deferred |
+| Wire publisher to `createOrderEventDispatchDelegate()` | Deferred |
+| Shadow read APIs (Q-01, Q-03, Q-05, Q-08) | Not implemented |
+| Divergence telemetry | Not implemented |
 
-### Gate 2 — Shadow Read APIs (Next)
+### Gate 4 — UI Cutover
 
-- Implement Q-01, Q-03, Q-05, Q-08 read services behind new tRPC procedures
-- Drizzle **read** repositories for query handlers
-- Shadow comparison telemetry (legacy vs projection reads)
-- Enable `ORDER_READ_PROJECTIONS_ENABLED` in staging only
-- Switch publisher to `createOrderEventDispatchDelegate()` when flag enabled
-- Dashboard still on `order.list`
-
-**Readiness:** UNBLOCKED for Phase 3 planning — projection infrastructure ready; population via backfill + live dispatch pending gate approval.
-
-### Gate 3 — UI Cutover (ORDERS-WORKSPACE-1)
-
-- Replace `order.list` with Q-01
-- Remove `buildOrderStatistics`
-- Prerequisite: shadow divergence below threshold
-
-**Readiness:** BLOCKED on Gate 2.
+Blocked on Gate 3 shadow validation.
 
 ---
 
-## Deployment Checklist (When Activating — Not Phase 2)
-
-1. Apply `0046_order_read_projections.sql`
-2. Run tenant backfill per restaurant (or full rebuild)
-3. Set `ORDER_READ_PROJECTIONS_ENABLED=true` in staging
-4. Wire `orderEventPublisher` to `createOrderEventDispatchDelegate()`
-5. Monitor `order_projection_consumer_*` and `order_read_backfill_*` ops events
-6. Shadow read APIs before UI cutover
-
----
-
-## Risk Register (Phase 2)
+## Risk Register
 
 | Risk | Mitigation |
 |------|------------|
-| Accidental dispatch activation | Flag default false; publisher composition unchanged |
-| Empty projection store in prod | No read APIs exposed; legacy path active |
-| Backfill load on write DB | Scoped tenant/partial rebuild; ops telemetry |
-| KPI drift during dual-write | Shadow comparison planned Gate 2 |
+| Accidental production dispatch | Flag default false; scripts refuse when enabled |
+| Staging backfill on wrong DB | `ORDER_READ_BACKFILL_CONFIRM=YES` + explicit DATABASE_URL |
+| P-04 empty after backfill | Documented; timeline needs live dispatch |
+| Partial failed backfill | Idempotent re-run; tenant rebuild script |
+
+---
+
+## Repository Validation
+
+| Check | Result |
+|-------|--------|
+| `npm run check` | PASS |
+| Vitest | 193 files, 1140 tests PASS |
+| Production code changes | None (tooling + docs + journal only) |
 
 ---
 
 ## Exit Verdict
 
-**Phase 2 READY** — Infrastructure materialized and tested. Production behavior unchanged. Proceed to Gate 2 (shadow read APIs + controlled activation) when approved.
+**Phase 3A READY** — Staging operators have migration, backfill, validation, and rollback tooling. Proceed to staging DB execution, then Phase 3B planning when shadow APIs are approved.

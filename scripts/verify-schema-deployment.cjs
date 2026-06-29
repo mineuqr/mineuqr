@@ -13,6 +13,15 @@ const REQUIRED = {
   usersColumns: ["emailVerifiedAt", "passwordChangedAt", "sessionValidAfter"],
   usersIndexes: ["users_email_unique"],
   tables: ["auth_tokens"],
+  orderReadTables: [
+    "order_read_orders",
+    "order_read_order_line_items",
+    "order_read_order_timeline",
+    "order_read_operational_kpi_daily",
+    "order_read_analytics_daily",
+    "order_read_public_order_status",
+    "order_read_backfill_runs",
+  ],
 };
 
 async function columnExists(conn, table, column) {
@@ -64,6 +73,11 @@ async function main() {
       }
     }
     for (const table of REQUIRED.tables) {
+      if (!(await tableExists(conn, table))) {
+        missing.push(`table:${table}`);
+      }
+    }
+    for (const table of REQUIRED.orderReadTables) {
       if (!(await tableExists(conn, table))) {
         missing.push(`table:${table}`);
       }
