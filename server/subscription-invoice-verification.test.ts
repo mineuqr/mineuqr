@@ -5,6 +5,7 @@ import type { TrpcContext } from "./_core/context";
 import type { SelectUser } from "../drizzle/schema";
 
 vi.mock("./db", () => ({
+  generateOrderNumber: vi.fn(async () => "ORD-MOCK-001"),
   getSubscriptionPlans: vi.fn(async () => []),
   getUserSubscription: vi.fn(async () => null),
   getCanonicalUserSubscription: vi.fn(async () => null),

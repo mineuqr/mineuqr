@@ -96,6 +96,7 @@ vi.mock("./db/cascadeDeletes", () => ({
 }));
 
 vi.mock("./db", () => ({
+  generateOrderNumber: vi.fn(async () => "ORD-MOCK-001"),
   getRestaurantsByUser: vi.fn().mockResolvedValue([mocks.mockRestaurant]),
   getRestaurantById: vi.fn().mockImplementation(async (id: number) => {
     if (id === mocks.mockRestaurant.id) return { ...mocks.mockRestaurant };

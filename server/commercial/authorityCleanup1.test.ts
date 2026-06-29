@@ -13,6 +13,7 @@ import { commercialReadService } from "./CommercialReadService";
 import { appRouter } from "../routers";
 
 vi.mock("../db", () => ({
+  generateOrderNumber: vi.fn(async () => "ORD-MOCK-001"),
   getSubscriptionsByUser: vi.fn(),
   getUserById: vi.fn(),
   getSubscriptionPlanById: vi.fn(),

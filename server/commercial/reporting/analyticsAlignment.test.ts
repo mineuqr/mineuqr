@@ -8,6 +8,7 @@ import { projectCommercialAnalytics } from "./analyticsProjection";
 import { assertExportPackageReconciliation } from "./CommercialReportService";
 
 vi.mock("../../db", () => ({
+  generateOrderNumber: vi.fn(async () => "ORD-MOCK-001"),
   getUserById: vi.fn(),
   getSubscriptionsByUser: vi.fn(),
   getSubscriptionPlanById: vi.fn(),

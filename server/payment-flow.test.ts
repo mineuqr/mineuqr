@@ -3,6 +3,7 @@ import type { TrpcContext } from "./_core/context";
 
 // Mock all database functions BEFORE importing appRouter
 vi.mock("./db", () => ({
+  generateOrderNumber: vi.fn(async () => "ORD-MOCK-001"),
   getSubscriptionPlanById: vi.fn(),
   getUserSubscription: vi.fn(),
   getCanonicalUserSubscription: vi.fn(),

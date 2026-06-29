@@ -11,6 +11,7 @@ import { renderCommercialCsv } from "./adapters/CommercialCsvAdapter";
 import { renderCommercialExport } from "./renderCommercialExport";
 
 vi.mock("../../db", () => ({
+  generateOrderNumber: vi.fn(async () => "ORD-MOCK-001"),
   getUserById: vi.fn(),
   getSubscriptionsByUser: vi.fn(),
   getSubscriptionPlanById: vi.fn(),

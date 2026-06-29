@@ -48,4 +48,9 @@ export const ENV = {
   vapidSubject: process.env.VAPID_SUBJECT ?? "mailto:info@mineuqr.com",
   /** TABLE-MANAGEMENT-1 D3 — dual-write orders.sessionId when true. */
   tableSessionDualWrite: process.env.TABLE_SESSION_DUAL_WRITE === "true",
+  /**
+   * ORDERS-READ-MODEL-1 — when true, publisher delegates to integration + projection registries.
+   * Default false: certified ORDER-EVENTS-1B path unchanged.
+   */
+  orderReadProjectionsEnabled: process.env.ORDER_READ_PROJECTIONS_ENABLED === "true",
 };

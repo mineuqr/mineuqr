@@ -10,6 +10,7 @@ import { canonicalMetricsService } from "./metrics/CanonicalMetricsService";
 import { isCommercialPopulationMember } from "./commercialPopulation";
 
 vi.mock("../db", () => ({
+  generateOrderNumber: vi.fn(async () => "ORD-MOCK-001"),
   getUserById: vi.fn(),
   getSubscriptionsByUser: vi.fn(),
   getSubscriptionPlanById: vi.fn(),

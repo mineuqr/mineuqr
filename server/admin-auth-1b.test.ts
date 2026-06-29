@@ -15,6 +15,7 @@ vi.mock("./_core/env", () => ({
 }));
 
 vi.mock("./db", () => ({
+  generateOrderNumber: vi.fn(async () => "ORD-MOCK-001"),
   getDb: vi.fn(),
   getUserByEmail: vi.fn(),
   getUserByOpenId: vi.fn(),

@@ -126,6 +126,11 @@ export const OPS_EVENT = {
   order_kitchen_event_received: "order_kitchen_event_received",
   order_print_dispatch_requested: "order_print_dispatch_requested",
 
+  // ORDERS-READ-MODEL-1 — projection consumers
+  order_projection_consumer_executed: "order_projection_consumer_executed",
+  order_projection_consumer_failed: "order_projection_consumer_failed",
+  order_projection_consumer_skipped: "order_projection_consumer_skipped",
+
   // SESSION-AGGREGATES-1 Phase A
   session_aggregate_drift_detected: "session_aggregate_drift_detected",
   session_aggregate_update_failed: "session_aggregate_update_failed",

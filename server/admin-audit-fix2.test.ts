@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
 vi.mock("./db", () => ({
+  generateOrderNumber: vi.fn(async () => "ORD-MOCK-001"),
   getCanonicalUserSubscription: vi.fn(),
   getUserById: vi.fn(),
   getUserByEmail: vi.fn(),

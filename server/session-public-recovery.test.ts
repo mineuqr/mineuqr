@@ -3,6 +3,7 @@ import type { TrpcContext } from "./_core/context";
 import type { SelectDiningSession } from "../drizzle/schema";
 
 vi.mock("./db", () => ({
+  generateOrderNumber: vi.fn(async () => "ORD-MOCK-001"),
   getRestaurantBySlug: vi.fn(),
   getTableByRestaurantAndNumber: vi.fn(),
 }));

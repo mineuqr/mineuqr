@@ -13,6 +13,7 @@ vi.mock("./diningSession/sessionRepository", () => ({
 }));
 
 vi.mock("./db", () => ({
+  generateOrderNumber: vi.fn(async () => "ORD-MOCK-001"),
   getOrdersBySessionId: vi.fn(),
 }));
 

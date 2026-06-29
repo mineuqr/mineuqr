@@ -4,6 +4,7 @@ import type { TrpcContext } from "./_core/context";
 
 // Mock database functions
 vi.mock("./db", () => ({
+  generateOrderNumber: vi.fn(async () => "ORD-MOCK-001"),
   getSubscriptionPlans: vi.fn(async () => [
     {
       id: 1,

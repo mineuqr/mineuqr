@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { TRPCError } from "@trpc/server";
 
 vi.mock("./db", () => ({
+  generateOrderNumber: vi.fn(async () => "ORD-MOCK-001"),
   getSubscriptionsByUser: vi.fn(),
   getUserById: vi.fn(),
   getSubscriptionPlanById: vi.fn(),
