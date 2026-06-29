@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { EventEnvelope } from "../../../infrastructure/events/EventEnvelope";
+import type { EventEnvelope } from "../../../../infrastructure/events/EventEnvelope";
 import { OrderProjectionConsumerRegistry } from "../OrderProjectionConsumerRegistry";
 import { InMemoryProjectionConsumerIdempotencyStore } from "../../persistence/idempotency/ProjectionConsumerIdempotencyStore";
 import { NoOpProjectionConsumerMetrics } from "../../monitoring/OpsProjectionConsumerMetrics";
