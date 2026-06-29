@@ -2,7 +2,7 @@
  * CLEAN-DB-2 execution preview — read-only counts only.
  * Usage: node -r dotenv/config scripts/clean-db-2-execution-preview-readonly.mjs
  */
-import mysql from "mysql2/promise";
+import { createAuditReadonlyConnection } from "./lib/tidb-audit-connection.mjs";
 
 const KEEP_EMAIL = "k.sh61@yahoo.com";
 
@@ -18,7 +18,7 @@ async function main() {
     process.exit(1);
   }
 
-  const conn = await mysql.createConnection(url);
+  const conn = await createAuditReadonlyConnection(url);
   try {
     const [[{ db }]] = await conn.query("SELECT DATABASE() AS db");
     const [adminRows] = await conn.query(

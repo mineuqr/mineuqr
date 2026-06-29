@@ -3,8 +3,8 @@
  * Usage: node seed-dev-admin.mjs
  */
 import "dotenv/config";
-import mysql from "mysql2/promise";
 import bcrypt from "bcryptjs";
+import { createAuditReadonlyConnection } from "./scripts/lib/tidb-audit-connection.mjs";
 
 const EMAIL = "admin@mineuqr.local";
 const PASSWORD = "Admin123!";
@@ -17,7 +17,7 @@ async function main() {
   }
 
   const passwordHash = await bcrypt.hash(PASSWORD, 12);
-  const connection = await mysql.createConnection(process.env.DATABASE_URL);
+  const connection = await createAuditReadonlyConnection(process.env.DATABASE_URL);
 
   try {
     const [existing] = await connection.execute(

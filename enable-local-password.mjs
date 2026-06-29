@@ -4,8 +4,8 @@
  * Defaults: k.sh61@yahoo.com / Admin123!
  */
 import "dotenv/config";
-import mysql from "mysql2/promise";
 import bcrypt from "bcryptjs";
+import { createAuditReadonlyConnection } from "./scripts/lib/tidb-audit-connection.mjs";
 
 const EMAIL = process.argv[2] ?? "k.sh61@yahoo.com";
 const PASSWORD = process.argv[3] ?? "Admin123!";
@@ -16,7 +16,7 @@ async function main() {
     process.exit(1);
   }
 
-  const connection = await mysql.createConnection(process.env.DATABASE_URL);
+  const connection = await createAuditReadonlyConnection(process.env.DATABASE_URL);
 
   try {
     const [rows] = await connection.execute(

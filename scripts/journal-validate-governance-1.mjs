@@ -4,8 +4,7 @@
 import "dotenv/config";
 import fs from "node:fs";
 import crypto from "node:crypto";
-import mysql from "mysql2/promise";
-import { parseDatabaseUrl, resolveTlsForHost } from "./lib/tidb-audit-connection.mjs";
+import { createAuditConnection, parseDatabaseUrl } from "./lib/tidb-audit-connection.mjs";
 
 const VALIDATE_DB = "mineuqr_journal_validate_g1";
 const TARGET_TAGS = [
@@ -22,17 +21,8 @@ function hashFile(tag) {
 
 async function connectAdmin(baseUrl) {
   const cfg = parseDatabaseUrl(baseUrl);
-  const ssl = resolveTlsForHost(cfg);
-  return {
-    cfg,
-    conn: await mysql.createConnection({
-      host: cfg.host,
-      port: cfg.port,
-      user: cfg.user,
-      password: cfg.password,
-      ...(ssl ? { ssl } : {}),
-    }),
-  };
+  const conn = await createAuditConnection(baseUrl, { database: null });
+  return { cfg, conn };
 }
 
 async function main() {
@@ -43,20 +33,12 @@ async function main() {
   console.log("=== Captured baseline hashes (Drizzle sha256 of SQL file) ===");
   console.log(JSON.stringify(hashes, null, 2));
 
-  const { cfg, conn: admin } = await connectAdmin(baseUrl);
+  const { conn: admin } = await connectAdmin(baseUrl);
   await admin.query(`DROP DATABASE IF EXISTS \`${VALIDATE_DB}\``);
   await admin.query(`CREATE DATABASE \`${VALIDATE_DB}\``);
   await admin.end();
 
-  const ssl = resolveTlsForHost(cfg);
-  const conn = await mysql.createConnection({
-    host: cfg.host,
-    port: cfg.port,
-    user: cfg.user,
-    password: cfg.password,
-    database: VALIDATE_DB,
-    ...(ssl ? { ssl } : {}),
-  });
+  const conn = await createAuditConnection(baseUrl, { database: VALIDATE_DB });
 
   await conn.query(
     "CREATE TABLE orders (id int AUTO_INCREMENT PRIMARY KEY, status varchar(32) NOT NULL DEFAULT 'pending')"

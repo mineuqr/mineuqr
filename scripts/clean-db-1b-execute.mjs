@@ -2,8 +2,7 @@
  * CLEAN-DB-1B — Execute SAFE cleanup + before/after audit.
  * Usage: node scripts/clean-db-1b-execute.mjs
  */
-import mysql from "mysql2/promise";
-import { readFileSync } from "fs";
+import { createAuditReadonlyConnection } from "./lib/tidb-audit-connection.mjs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 
@@ -195,7 +194,7 @@ const DELETE_STEPS = [
 ];
 
 async function main() {
-  const conn = await mysql.createConnection(url);
+  const conn = await createAuditReadonlyConnection(url);
   const report = {
     executedAt: new Date().toISOString(),
     script: "scripts/clean-db-1b-cleanup.sql",

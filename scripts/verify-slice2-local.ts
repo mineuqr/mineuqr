@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { COOKIE_NAME } from "../shared/const";
 import { sdk } from "../server/_core/sdk";
-import { createConnection } from "mysql2/promise";
+import { createAuditReadonlyConnection } from "./lib/tidb-audit-connection.mjs";
 
 type RunResult = { status: number; bodyText: string; ok: boolean; ms: number };
 
@@ -10,7 +10,7 @@ const baseUrl = process.env.VITE_BASE_URL || "http://localhost:3000";
 async function pickUserOpenIdWithEmail(): Promise<{ openId: string; userId: number; email: string }> {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL missing (required for local verification script)");
-  const conn = await createConnection(url);
+  const conn = await createAuditReadonlyConnection(url);
   try {
     const [rows] = await conn.query(
       "SELECT id, openId, email FROM users WHERE email IS NOT NULL AND email <> '' ORDER BY id ASC LIMIT 1"

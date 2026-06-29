@@ -3,16 +3,16 @@
  * Usage: node scripts/audit-email-uniqueness-readonly.cjs
  */
 require("dotenv").config();
-const mysql = require("mysql2/promise");
 
 async function main() {
+  const { createAuditReadonlyConnection } = await import("./lib/tidb-audit-connection.mjs");
   const url = process.env.DATABASE_URL;
   if (!url) {
     console.error("[audit] DATABASE_URL is required");
     process.exit(1);
   }
 
-  const conn = await mysql.createConnection(url);
+  const conn = await createAuditReadonlyConnection(url);
   try {
     const [dupGroups] = await conn.query(`
       SELECT TRIM(LOWER(email)) AS normalized_email, COUNT(*) AS count

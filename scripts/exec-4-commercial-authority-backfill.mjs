@@ -19,9 +19,8 @@ import fs from "node:fs";
 import path from "node:path";
 import {
   auditConnectionTarget,
+  createAuditConnection,
   createAuditReadonlyConnection,
-  parseDatabaseUrl,
-  resolveTlsForHost,
 } from "./lib/tidb-audit-connection.mjs";
 import {
   buildBackfillPlan,
@@ -32,7 +31,6 @@ import {
   subscriptionEntitledNow,
   validateExecutionTarget,
 } from "./lib/exec4-backfill-logic.mjs";
-import mysql from "mysql2/promise";
 
 const MODES = ["discover", "dry-run", "execute", "validate", "fixture-dry-run"];
 
@@ -131,17 +129,7 @@ function parseArgs(argv) {
 }
 
 async function createConnection(databaseUrl, { writable = false } = {}) {
-  const cfg = parseDatabaseUrl(databaseUrl);
-  const ssl = resolveTlsForHost(cfg);
-  return mysql.createConnection({
-    host: cfg.host,
-    port: cfg.port,
-    user: cfg.user,
-    password: cfg.password,
-    database: cfg.database,
-    ...(ssl ? { ssl } : {}),
-    multipleStatements: writable,
-  });
+  return createAuditConnection(databaseUrl, { multipleStatements: writable });
 }
 
 async function query(conn, sql, params = []) {

@@ -7,7 +7,6 @@
  */
 
 require("dotenv").config();
-const mysql = require("mysql2/promise");
 
 const REQUIRED = {
   usersColumns: ["emailVerifiedAt", "passwordChangedAt", "sessionValidAfter"],
@@ -52,13 +51,14 @@ async function indexExists(conn, table, indexName) {
 }
 
 async function main() {
+  const { createAuditReadonlyConnection } = await import("./lib/tidb-audit-connection.mjs");
   const url = process.env.DATABASE_URL;
   if (!url) {
     console.error("[schema-verify] DATABASE_URL is required");
     process.exit(1);
   }
 
-  const conn = await mysql.createConnection(url);
+  const conn = await createAuditReadonlyConnection(url);
   const missing = [];
 
   try {

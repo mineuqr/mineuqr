@@ -2,7 +2,7 @@
  * CLEAN-DB-1B — read-only orphan audit. Does not modify data.
  * Usage: node scripts/clean-db-orphan-audit-readonly.mjs
  */
-import mysql from "mysql2/promise";
+import { createAuditReadonlyConnection } from "./lib/tidb-audit-connection.mjs";
 
 const PROTECTED = { userId: 1, restaurantId: 1, subscriptionId: 30001 };
 
@@ -324,7 +324,7 @@ async function tableTotals(conn) {
 }
 
 async function main() {
-  const conn = await mysql.createConnection(url);
+  const conn = await createAuditReadonlyConnection(url);
   try {
     const report = {
       generatedAt: new Date().toISOString(),

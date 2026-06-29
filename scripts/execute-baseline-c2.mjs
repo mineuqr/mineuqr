@@ -1,9 +1,7 @@
 import fs from "fs";
 import crypto from "crypto";
-import mysql from "mysql2/promise";
 import {
-  parseDatabaseUrl,
-  resolveTlsForHost,
+  createAuditReadonlyConnection,
   auditConnectionTarget,
 } from "./lib/tidb-audit-connection.mjs";
 
@@ -88,16 +86,7 @@ if (!/gateway01/i.test(target.host) || target.database !== "mineuqr") {
   throw new Error(`WRONG_TARGET: ${JSON.stringify(target)}`);
 }
 
-const cfg = parseDatabaseUrl(url);
-const ssl = resolveTlsForHost(cfg);
-const conn = await mysql.createConnection({
-  host: cfg.host,
-  port: cfg.port,
-  user: cfg.user,
-  password: cfg.password,
-  database: cfg.database,
-  ...(ssl ? { ssl } : {}),
-});
+const conn = await createAuditReadonlyConnection(url);
 
 const result = {
   executed_at: new Date().toISOString(),

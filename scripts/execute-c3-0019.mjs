@@ -1,9 +1,7 @@
 import crypto from "crypto";
 import fs from "fs";
-import mysql from "mysql2/promise";
 import {
-  parseDatabaseUrl,
-  resolveTlsForHost,
+  createAuditReadonlyConnection,
   auditConnectionTarget,
 } from "./lib/tidb-audit-connection.mjs";
 
@@ -33,16 +31,7 @@ if (repoHash !== HASH_0019) {
   throw new Error(`REPO_HASH_MISMATCH: ${repoHash} != ${HASH_0019}`);
 }
 
-const cfg = parseDatabaseUrl(url);
-const ssl = resolveTlsForHost(cfg);
-const conn = await mysql.createConnection({
-  host: cfg.host,
-  port: cfg.port,
-  user: cfg.user,
-  password: cfg.password,
-  database: cfg.database,
-  ...(ssl ? { ssl } : {}),
-});
+const conn = await createAuditReadonlyConnection(url);
 
 const report = {
   executed_at: new Date().toISOString(),

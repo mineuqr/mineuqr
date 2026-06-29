@@ -44,20 +44,37 @@ export function resolveTlsForHost(cfg) {
 }
 
 /**
- * Readonly audit connection with TiDB Cloud TLS compatibility.
+ * Canonical mysql2 connection for ops/audit scripts (TiDB Cloud TLS aware).
  * @param {string} databaseUrl
+ * @param {{ multipleStatements?: boolean; database?: string | null }} [options]
+ *   Pass `database: null` to omit the default database (admin DDL).
  */
-export async function createAuditReadonlyConnection(databaseUrl) {
+export async function createAuditConnection(databaseUrl, options = {}) {
+  const { multipleStatements = false, database } = options;
   const cfg = parseDatabaseUrl(databaseUrl);
   const ssl = resolveTlsForHost(cfg);
-  return mysql.createConnection({
+  const connOptions = {
     host: cfg.host,
     port: cfg.port,
     user: cfg.user,
     password: cfg.password,
-    database: cfg.database,
     ...(ssl ? { ssl } : {}),
-  });
+    ...(multipleStatements ? { multipleStatements: true } : {}),
+  };
+  if (database === null) {
+    // omit database — admin connections
+  } else {
+    connOptions.database = database ?? cfg.database;
+  }
+  return mysql.createConnection(connOptions);
+}
+
+/**
+ * Readonly audit connection with TiDB Cloud TLS compatibility.
+ * @param {string} databaseUrl
+ */
+export async function createAuditReadonlyConnection(databaseUrl) {
+  return createAuditConnection(databaseUrl);
 }
 
 /**

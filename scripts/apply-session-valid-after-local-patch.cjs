@@ -12,35 +12,10 @@
 
 require("dotenv").config();
 
-const mysql = require("mysql2/promise");
-
 function requiredEnv(name) {
   const v = process.env[name];
   if (!v) throw new Error(`Missing ${name} in environment`);
   return v;
-}
-
-function parseDatabaseUrl(databaseUrl) {
-  const url = new URL(databaseUrl);
-  const sslRaw = url.searchParams.get("ssl");
-  let ssl = undefined;
-  if (sslRaw) {
-    try {
-      ssl = JSON.parse(sslRaw);
-    } catch {
-      // If it's not JSON, pass it through as a string (mysql2 supports some ssl forms).
-      ssl = sslRaw;
-    }
-  }
-
-  return {
-    host: url.hostname,
-    port: url.port ? Number(url.port) : 3306,
-    user: decodeURIComponent(url.username),
-    password: decodeURIComponent(url.password),
-    database: url.pathname.replace(/^\//, ""),
-    ssl,
-  };
 }
 
 async function columnExists(conn, schema, table, column) {
@@ -60,16 +35,11 @@ async function columnExists(conn, schema, table, column) {
 
 async function main() {
   const databaseUrl = requiredEnv("DATABASE_URL");
+  const { createAuditReadonlyConnection, parseDatabaseUrl } = await import(
+    "./lib/tidb-audit-connection.mjs"
+  );
   const cfg = parseDatabaseUrl(databaseUrl);
-
-  const conn = await mysql.createConnection({
-    host: cfg.host,
-    port: cfg.port,
-    user: cfg.user,
-    password: cfg.password,
-    database: cfg.database,
-    ssl: cfg.ssl,
-  });
+  const conn = await createAuditReadonlyConnection(databaseUrl);
 
   try {
     const schema = cfg.database;
@@ -99,4 +69,3 @@ main().catch((err) => {
   console.error("[local-patch] Failed.", err);
   process.exitCode = 1;
 });
-

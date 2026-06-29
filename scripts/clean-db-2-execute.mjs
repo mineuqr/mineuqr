@@ -10,7 +10,7 @@
  * KEEP: users.id=1, auth_tokens for user 1, subscription_plans, countries_currencies
  * DELETE: all restaurants, subscriptions, orders, menus, notifications, trial users
  */
-import mysql from "mysql2/promise";
+import { createAuditReadonlyConnection } from "./lib/tidb-audit-connection.mjs";
 
 const KEEP_USER_ID = 1;
 const KEEP_EMAIL = "k.sh61@yahoo.com";
@@ -261,7 +261,7 @@ async function main() {
     process.exit(1);
   }
 
-  const conn = await mysql.createConnection(url);
+  const conn = await createAuditReadonlyConnection(url);
   const report = {
     script: "scripts/clean-db-2-execute.mjs",
     mode,

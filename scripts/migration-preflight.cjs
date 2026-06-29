@@ -8,7 +8,6 @@
 require("dotenv").config();
 const fs = require("fs");
 const path = require("path");
-const mysql = require("mysql2/promise");
 
 const DRIZZLE_DIR = path.join(process.cwd(), "drizzle");
 const JOURNAL_PATH = path.join(DRIZZLE_DIR, "meta", "_journal.json");
@@ -69,7 +68,8 @@ async function main() {
     return;
   }
 
-  const conn = await mysql.createConnection(url);
+  const { createAuditReadonlyConnection } = await import("./lib/tidb-audit-connection.mjs");
+  const conn = await createAuditReadonlyConnection(url);
   try {
     const applied = await loadAppliedTags(conn);
     if (!applied) {

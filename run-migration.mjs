@@ -1,5 +1,5 @@
-import { createConnection } from 'mysql2/promise';
 import { readFileSync } from 'fs';
+import { createAuditReadonlyConnection } from './scripts/lib/tidb-audit-connection.mjs';
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {
@@ -10,7 +10,7 @@ if (!databaseUrl) {
 const sql = readFileSync('drizzle/0010_flimsy_gateway.sql', 'utf8').trim();
 console.log('Executing:', sql);
 
-const conn = await createConnection(databaseUrl);
+const conn = await createAuditReadonlyConnection(databaseUrl);
 try {
   await conn.execute(sql);
   console.log('Migration applied successfully!');

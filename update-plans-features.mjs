@@ -1,9 +1,9 @@
-import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
+import { createAuditReadonlyConnection } from './scripts/lib/tidb-audit-connection.mjs';
 
 dotenv.config();
 
-const connection = await mysql.createConnection(process.env.DATABASE_URL);
+const connection = await createAuditReadonlyConnection(process.env.DATABASE_URL);
 
 // Add featuresAr column
 try {

@@ -1,9 +1,9 @@
-import mysql from 'mysql2/promise';
+import { createAuditReadonlyConnection } from './scripts/lib/tidb-audit-connection.mjs';
 
 const DATABASE_URL = process.env.DATABASE_URL;
 
 async function main() {
-  const connection = await mysql.createConnection(DATABASE_URL);
+  const connection = await createAuditReadonlyConnection(DATABASE_URL);
   
   // Create table if not exists
   await connection.execute(`

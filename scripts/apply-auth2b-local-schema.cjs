@@ -2,7 +2,6 @@
 // Applies only the missing columns/table needed by current server code.
 
 const path = require("path");
-const mysql = require("mysql2/promise");
 
 function loadEnv() {
   // Load root .env if present.
@@ -83,7 +82,8 @@ async function main() {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL is required (set it or add it to .env)");
 
-  const conn = await mysql.createConnection(url);
+  const { createAuditReadonlyConnection } = await import("./lib/tidb-audit-connection.mjs");
+  const conn = await createAuditReadonlyConnection(url);
   try {
     await ensureUserColumns(conn);
     await ensureAuthTokensTable(conn);

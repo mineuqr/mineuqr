@@ -25,7 +25,6 @@ import { spawn } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
-import mysql from "mysql2/promise";
 import {
   ORDER_READ_PROJECTION_TABLES,
   ORDER_READ_TENANT_ROLLBACK_TABLES,
@@ -38,6 +37,7 @@ import {
   compareOrderCounts,
   compareOrderRow,
 } from "./lib/order-read-staging-logic.mjs";
+import { createAuditReadonlyConnection } from "./lib/tidb-audit-connection.mjs";
 
 dotenv.config();
 
@@ -267,7 +267,7 @@ async function main() {
   }
 
   const url = requireDatabaseUrl();
-  const conn = await mysql.createConnection(url);
+  const conn = await createAuditReadonlyConnection(url);
   try {
     switch (mode) {
       case "verify-schema":
