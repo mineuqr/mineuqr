@@ -7,7 +7,7 @@
 | **Status** | Accepted — Ratified |
 | **Owner** | Architecture Authority |
 | **Program** | ORDER-EVENTS-1 |
-| **Implementation status** | Not implemented |
+| **Implementation status** | Implemented |
 | **Supersedes** | — |
 
 ## Context

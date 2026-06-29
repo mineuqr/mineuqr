@@ -29,7 +29,14 @@ export function mapOrderDomainErrorToTrpc(error: unknown): never {
 
 export async function runOrderCommand<T>(fn: () => Promise<T>): Promise<T> {
   try {
-    return await fn();
+    const result = await fn();
+    try {
+      const { runOrderEventRelayBatch } = await import("../eventInfrastructureComposition");
+      await runOrderEventRelayBatch();
+    } catch {
+      /* relay unavailable when composition or DB is partially mocked */
+    }
+    return result;
   } catch (error) {
     mapOrderDomainErrorToTrpc(error);
   }

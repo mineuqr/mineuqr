@@ -24,6 +24,19 @@ vi.mock("./_core/opsLog", () => ({
   opsLog: vi.fn(),
 }));
 
+vi.mock("./order/eventInfrastructureComposition", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./order/eventInfrastructureComposition")>();
+  return {
+    ...actual,
+    runOrderEventRelayBatch: vi.fn(async () => ({
+      processed: 0,
+      published: 0,
+      failed: 0,
+      skipped: 0,
+    })),
+  };
+});
+
 vi.mock("./db", () => ({
   getMenuItemById: vi.fn(async (id: number) =>
     id === 1
@@ -141,7 +154,7 @@ describe("order.create session dual-write TABLE-MANAGEMENT-1 D3", () => {
     expect(result).not.toHaveProperty("sessionToken");
   });
 
-  it("flag ON — new session attaches sessionId and records ORDER_CREATED", async () => {
+  it("flag ON — new session attaches sessionId (post-commit session via consumer)", async () => {
     ENV.tableSessionDualWrite = true;
     vi.mocked(resolveSessionForOrderCreate).mockResolvedValue({
       session: baseSession,
@@ -165,26 +178,8 @@ describe("order.create session dual-write TABLE-MANAGEMENT-1 D3", () => {
     expect(vi.mocked(createOrder).mock.calls[0]?.[0]).toMatchObject({
       sessionId: 10,
     });
-    expect(recordSessionEvent).toHaveBeenCalledWith({
-      restaurantId: 1,
-      tableId: 7,
-      sessionId: 10,
-      orderId: 55,
-      eventType: TABLE_EVENT_TYPES.ORDER_CREATED,
-      metadata: {
-        orderNumber: "ORD-D3-001",
-        totalAmount: "20.00",
-        itemCount: 2,
-      },
-    });
-    expect(incrementSessionAggregatesForOrder).toHaveBeenCalledWith(
-      {
-        restaurantId: 1,
-        sessionId: 10,
-        orderTotalAmount: "20.00",
-      },
-      { procedure: "order.create" }
-    );
+    expect(recordSessionEvent).not.toHaveBeenCalled();
+    expect(incrementSessionAggregatesForOrder).not.toHaveBeenCalled();
     expect(opsLog).toHaveBeenCalledWith(
       expect.objectContaining({ type: OPS_EVENT.session_created })
     );
@@ -232,44 +227,6 @@ describe("order.create session dual-write TABLE-MANAGEMENT-1 D3", () => {
     expect(createOrder).not.toHaveBeenCalled();
   });
 
-  it("flag ON — ORDER_CREATED event failure does not block order", async () => {
-    ENV.tableSessionDualWrite = true;
-    vi.mocked(recordSessionEvent).mockRejectedValue(new Error("event insert failed"));
-
-    const caller = createCaller();
-    const result = await caller.order.create({
-      restaurantId: 1,
-      tableId: 1,
-      tableNumber: 3,
-      items: [{ menuItemId: 1, quantity: 1 }],
-    });
-
-    expect(result.orderId).toBe(55);
-    expect(opsLog).toHaveBeenCalledWith(
-      expect.objectContaining({ type: OPS_EVENT.order_created_event_failed })
-    );
-  });
-
-  it("flag ON — aggregate update failure does not block order", async () => {
-    ENV.tableSessionDualWrite = true;
-    vi.mocked(incrementSessionAggregatesForOrder).mockRejectedValue(
-      new Error("aggregate update failed")
-    );
-
-    const caller = createCaller();
-    const result = await caller.order.create({
-      restaurantId: 1,
-      tableId: 1,
-      tableNumber: 3,
-      items: [{ menuItemId: 1, quantity: 1 }],
-    });
-
-    expect(result.orderId).toBe(55);
-    expect(opsLog).toHaveBeenCalledWith(
-      expect.objectContaining({ type: OPS_EVENT.session_aggregate_update_failed })
-    );
-  });
-
   it("flag ON — uses server-resolved table.id not client tableId", async () => {
     ENV.tableSessionDualWrite = true;
 
@@ -284,12 +241,7 @@ describe("order.create session dual-write TABLE-MANAGEMENT-1 D3", () => {
     expect(resolveSessionForOrderCreate).toHaveBeenCalledWith(
       expect.objectContaining({ tableId: 7 })
     );
-    expect(recordSessionEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ tableId: 7 })
-    );
-    expect(incrementSessionAggregatesForOrder).toHaveBeenCalledWith(
-      expect.objectContaining({ sessionId: 10 }),
-      { procedure: "order.create" }
-    );
+    expect(recordSessionEvent).not.toHaveBeenCalled();
+    expect(incrementSessionAggregatesForOrder).not.toHaveBeenCalled();
   });
 });

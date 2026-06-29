@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { InProcessEventPublisher } from "../publisher/InProcessEventPublisher";
-import type { EventInfrastructureMetrics } from "../monitoring/EventInfrastructureMetrics";
-import type { EventEnvelope } from "../EventEnvelope";
+import type { EventInfrastructureMetrics } from "../../monitoring/EventInfrastructureMetrics";
+import type { EventEnvelope } from "../../EventEnvelope";
+import type { ConsumerRegistryDispatchDelegate } from "../../registry/OrderEventConsumerRegistry";
 
 describe("InProcessEventPublisher", () => {
   const envelope: EventEnvelope = {
@@ -20,7 +21,7 @@ describe("InProcessEventPublisher", () => {
     payload: { type: "OrderCreated" },
   };
 
-  it("records publication success metrics without consumer dispatch", async () => {
+  it("delegates to registration layer and records publication metrics", async () => {
     const metrics: EventInfrastructureMetrics = {
       recordPublicationSuccess: vi.fn(),
       recordPublicationFailure: vi.fn(),
@@ -28,10 +29,18 @@ describe("InProcessEventPublisher", () => {
       recordQueueDepth: vi.fn(),
       recordRelayBatch: vi.fn(),
     };
+    const dispatchDelegate: ConsumerRegistryDispatchDelegate = {
+      dispatch: vi.fn(async () => ({
+        eventId: envelope.eventId,
+        eventType: envelope.eventType,
+        results: [],
+      })),
+    };
 
-    const publisher = new InProcessEventPublisher(metrics);
+    const publisher = new InProcessEventPublisher(metrics, dispatchDelegate);
     await publisher.publish(envelope);
 
+    expect(dispatchDelegate.dispatch).toHaveBeenCalledWith(envelope);
     expect(metrics.recordPublicationSuccess).toHaveBeenCalledWith(
       expect.objectContaining({
         eventType: "OrderCreated",

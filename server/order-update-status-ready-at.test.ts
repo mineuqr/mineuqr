@@ -14,6 +14,19 @@ vi.mock("./customerPush/sendReadyPush", () => ({
   sendReadyPushForOrder: vi.fn(async () => undefined),
 }));
 
+vi.mock("./order/eventInfrastructureComposition", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./order/eventInfrastructureComposition")>();
+  return {
+    ...actual,
+    runOrderEventRelayBatch: vi.fn(async () => ({
+      processed: 0,
+      published: 0,
+      failed: 0,
+      skipped: 0,
+    })),
+  };
+});
+
 import { appRouter } from "./routers";
 import {
   getOrderById,

@@ -470,6 +470,16 @@ export const orderDomainOutbox = mysqlTable("order_domain_outbox", {
 	index("order_domain_outbox_aggregate_seq").on(table.aggregateId, table.sequenceNumber),
 ]);
 
+export const orderDomainConsumerProcessed = mysqlTable("order_domain_consumer_processed", {
+	consumerName: varchar({ length: 64 }).notNull(),
+	eventId: varchar({ length: 36 }).notNull(),
+	processedAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+},
+(table) => [
+	primaryKey({ columns: [table.consumerName, table.eventId] }),
+	index("order_domain_consumer_processed_event").on(table.eventId),
+]);
+
 export type InsertOrderDomainOutbox = typeof orderDomainOutbox.$inferInsert;
 export type SelectOrderDomainOutbox = typeof orderDomainOutbox.$inferSelect;
 

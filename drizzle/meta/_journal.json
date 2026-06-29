@@ -316,6 +316,13 @@
       "when": 1783400000000,
       "tag": "0044_order_domain_outbox",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "5",
+      "when": 1783500000000,
+      "tag": "0045_order_domain_consumer_processed",
+      "breakpoints": true
     }
   ]
 }

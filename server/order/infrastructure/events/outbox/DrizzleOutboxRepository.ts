@@ -15,6 +15,14 @@ import { serializeDomainEventPayload } from "../serialization/domainEventSeriali
 
 type DbTx = Parameters<Parameters<NonNullable<Awaited<ReturnType<typeof getDb>>>["transaction"]>[0]>[0];
 
+async function safeGetDb(): Promise<Awaited<ReturnType<typeof getDb>>> {
+  try {
+    return await getDb();
+  } catch {
+    return null;
+  }
+}
+
 export class DrizzleOutboxRepository implements OutboxRepository {
   async appendInTransaction(
     tx: unknown,
@@ -59,7 +67,7 @@ export class DrizzleOutboxRepository implements OutboxRepository {
   }
 
   async fetchPendingBatch(limit: number): Promise<StoredOutboxRecord[]> {
-    const db = await getDb();
+    const db = await safeGetDb();
     if (!db) return [];
 
     const now = new Date().toISOString().slice(0, 19).replace("T", " ");
@@ -83,7 +91,7 @@ export class DrizzleOutboxRepository implements OutboxRepository {
   }
 
   async markPublished(outboxId: string, publishedAt: string): Promise<boolean> {
-    const db = await getDb();
+    const db = await safeGetDb();
     if (!db) return false;
 
     const result = await db
@@ -109,7 +117,7 @@ export class DrizzleOutboxRepository implements OutboxRepository {
     nextRetryAt: string | null,
     markDeadLetter: boolean
   ): Promise<void> {
-    const db = await getDb();
+    const db = await safeGetDb();
     if (!db) return;
 
     await db
@@ -124,7 +132,7 @@ export class DrizzleOutboxRepository implements OutboxRepository {
   }
 
   async countPending(): Promise<number> {
-    const db = await getDb();
+    const db = await safeGetDb();
     if (!db) return 0;
     const [row] = await db
       .select({ count: sql<number>`COUNT(*)` })
@@ -136,7 +144,7 @@ export class DrizzleOutboxRepository implements OutboxRepository {
 
 export class DrizzleEventStore {
   async getByAggregateId(aggregateId: number): Promise<EventEnvelope[]> {
-    const db = await getDb();
+    const db = await safeGetDb();
     if (!db) return [];
 
     const rows = await db

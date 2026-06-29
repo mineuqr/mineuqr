@@ -118,6 +118,14 @@ export const OPS_EVENT = {
   order_outbox_queue_depth: "order_outbox_queue_depth",
   order_outbox_relay_batch: "order_outbox_relay_batch",
 
+  // ORDER-EVENTS-1B — event consumers
+  order_consumer_executed: "order_consumer_executed",
+  order_consumer_failed: "order_consumer_failed",
+  order_consumer_skipped: "order_consumer_skipped",
+  order_consumer_retry: "order_consumer_retry",
+  order_kitchen_event_received: "order_kitchen_event_received",
+  order_print_dispatch_requested: "order_print_dispatch_requested",
+
   // SESSION-AGGREGATES-1 Phase A
   session_aggregate_drift_detected: "session_aggregate_drift_detected",
   session_aggregate_update_failed: "session_aggregate_update_failed",

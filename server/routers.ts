@@ -84,11 +84,9 @@ import { mergeRouters } from "./_core/trpc";
 import { ENV } from "./_core/env";
 import { opsLog } from "./_core/opsLog";
 import { OPS_EVENT } from "./_core/opsTaxonomy";
-import { incrementSessionAggregatesForOrder, decrementSessionAggregatesForCancelledOrder } from "./diningSession/sessionAggregateWriters";
-import { resolveSessionForOrderCreate, recordSessionEvent, markPaid, markComplimentary, closeSession } from "./diningSession/sessionService";
+import { resolveSessionForOrderCreate, markPaid, markComplimentary, closeSession } from "./diningSession/sessionService";
 import { findSessionById } from "./diningSession/sessionRepository";
 import { SESSION_TOKEN_PATTERN } from "./diningSession/sessionPublicStatus";
-import { TABLE_EVENT_TYPES } from "./diningSession/sessionTypes";
 import { throwSessionServiceTrpcError } from "./diningSession/mapSessionErrorToTrpc";
 import {
   getPublicActiveSessionByTable,
@@ -97,8 +95,6 @@ import {
 import { getOwnerSessionTimeline } from "./diningSession/sessionOwnerTimeline";
 import { getOwnerSessionWorkspace } from "./diningSession/sessionOwnerWorkspace";
 import { opsRouter } from "./ops/opsRouter";
-import { cleanupPushSubscriptionsForOrder } from "./customerPush/routes";
-import { sendReadyPushForOrder } from "./customerPush/sendReadyPush";
 import { toPublicOrderStatus } from "./orderPublicStatus";
 import { adminAuditRouter } from "./audit/adminAuditRouter";
 import { adminDashboardReadRouter } from "./commercial/adminDashboardRouter";
@@ -111,7 +107,6 @@ import {
 } from "./order/composition";
 import { placeOrderService } from "./order/placeOrderComposition";
 import { runOrderCommand } from "./order/application/mapOrderDomainError";
-import type { OrderStatus } from "./order/domain/value-objects/OrderStatus";
 import bcrypt from "bcryptjs";
 
 function generateSlug(name: string): string {
@@ -1873,95 +1868,14 @@ const orderRouter = router({
         })
       );
 
-      const {
-        orderNumber,
-        trackingToken,
-        totalAmount: persistedTotal,
-        itemCount: persistedItemCount,
-        createdAt,
-        order: persistedOrder,
-      } = placeResult;
-      const result = { id: persistedOrder.id };
-      if (result?.id) {
-        if (ENV.tableSessionDualWrite && sessionId != null) {
-          try {
-            await recordSessionEvent({
-              restaurantId: input.restaurantId,
-              tableId: table.id,
-              sessionId,
-              orderId: result.id,
-              eventType: TABLE_EVENT_TYPES.ORDER_CREATED,
-              metadata: {
-                orderNumber,
-                totalAmount: persistedTotal,
-                itemCount: persistedItemCount,
-              },
-            });
-          } catch (e) {
-            opsLog({
-              type: OPS_EVENT.order_created_event_failed,
-              category: "ORDER",
-              severity: "warn",
-              ts: new Date().toISOString(),
-              restaurantId: input.restaurantId,
-              procedure: "order.create",
-              metadata: {
-                sessionId,
-                orderId: result.id,
-                orderNumber,
-                error: e instanceof Error ? e.message : String(e),
-              },
-            });
-          }
-          try {
-            await incrementSessionAggregatesForOrder(
-              {
-                restaurantId: input.restaurantId,
-                sessionId,
-                orderTotalAmount: persistedTotal,
-              },
-              { procedure: "order.create" }
-            );
-          } catch (e) {
-            opsLog({
-              type: OPS_EVENT.session_aggregate_update_failed,
-              category: "ORDER",
-              severity: "warn",
-              ts: new Date().toISOString(),
-              restaurantId: input.restaurantId,
-              procedure: "order.create",
-              metadata: {
-                sessionId,
-                orderId: result.id,
-                orderNumber,
-                error: e instanceof Error ? e.message : String(e),
-              },
-            });
-          }
-        }
-        // Send notification to restaurant owner
-        try {
-          const itemsSummary = persistedOrder.lines
-            .map((line) => `${line.nameAr} x${line.quantity}`)
-            .join("، ");
-          await createNotification({
-            userId: restaurant.userId,
-            notificationType: 'new_order',
-            message: `طلب جديد #${orderNumber} - طاولة ${table.tableNumber} - ${itemsSummary} - المجموع: ${persistedTotal} ${restaurant.currencySymbol || 'ر.س'}`,
-            isRead: false,
-            isSent: true,
-            sentAt: new Date().toISOString().slice(0, 19).replace('T', ' '),
-          });
-        } catch (e) { /* notification failure is non-critical */ }
-      }
       return {
-        orderId: result?.id,
-        orderNumber,
-        trackingToken,
+        orderId: placeResult.order.id,
+        orderNumber: placeResult.orderNumber,
+        trackingToken: placeResult.trackingToken,
         tableNumber: table.tableNumber,
-        totalAmount: persistedTotal,
-        itemCount: persistedItemCount,
-        createdAt,
+        totalAmount: placeResult.totalAmount,
+        itemCount: placeResult.itemCount,
+        createdAt: placeResult.createdAt,
         status: "pending" as const,
         ...(ENV.tableSessionDualWrite && sessionToken
           ? { sessionToken }
@@ -1998,68 +1912,14 @@ const orderRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "الطلب غير موجود" });
       }
       await assertRestaurantAccess(ctx, order.restaurantId, "order.updateStatus");
-      const previousStatus = order.status as OrderStatus;
 
-      const { previousStatus: fromStatus } = await runOrderCommand(() =>
+      await runOrderCommand(() =>
         advanceOrderStatusService.execute({
           orderId: input.id,
           targetStatus: input.status,
           actor: { role: "owner" },
         })
       );
-
-      if (fromStatus !== "ready" && input.status === "ready") {
-        try {
-          await sendReadyPushForOrder({
-            orderId: order.id,
-            trackingToken: order.trackingToken,
-            orderNumber: order.orderNumber,
-          });
-        } catch {
-          /* push failure is non-critical */
-        }
-      }
-
-      if (input.status === "served" || input.status === "cancelled") {
-        try {
-          await cleanupPushSubscriptionsForOrder(order.id);
-        } catch {
-          /* cleanup failure is non-critical */
-        }
-      }
-
-      if (
-        ENV.tableSessionDualWrite &&
-        order.sessionId != null &&
-        previousStatus !== "cancelled" &&
-        input.status === "cancelled"
-      ) {
-        try {
-          await decrementSessionAggregatesForCancelledOrder(
-            {
-              restaurantId: order.restaurantId,
-              sessionId: order.sessionId,
-              orderTotalAmount: String(order.totalAmount),
-            },
-            { procedure: "order.updateStatus" }
-          );
-        } catch (e) {
-          opsLog({
-            type: OPS_EVENT.session_aggregate_update_failed,
-            category: "ORDER",
-            severity: "warn",
-            ts: new Date().toISOString(),
-            restaurantId: order.restaurantId,
-            procedure: "order.updateStatus",
-            metadata: {
-              sessionId: order.sessionId,
-              orderId: order.id,
-              operation: "cancel",
-              error: e instanceof Error ? e.message : String(e),
-            },
-          });
-        }
-      }
 
       return { success: true };
     }),

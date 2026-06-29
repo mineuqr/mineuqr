@@ -22,6 +22,7 @@
 | ADR-ARCH-011 | Optimistic Concurrency on Order Root | **Accepted — Ratified** | Architecture Authority | ORDER-1 | — | §10, §23 | Not implemented | Prevent lost updates on status |
 | ADR-ARCH-012 | Printing and Kitchen as Event Consumers | **Accepted — Ratified** | Architecture Authority | KITCHEN-DISPLAY-1, PRINTING-1 | — | §2, §12, §15 | N/A (future) | RESET-1 retired print; re-entry via events only |
 | ADR-ARCH-013 | **Architecture Constitution & Governance** | **Accepted — Ratified** | Architecture Authority | Constitution v1.0 | — | §18–29, entire Constitution | **Implemented (governance)** | This document; engineering compliance pending ORDER-1 |
+| ADR-ARCH-014 | Event Delivery Guarantees | **Accepted — Ratified** | Architecture Authority | ORDER-EVENTS-1B | — | §8, §12, §15, §22 | **Implemented** | Consumer idempotency + registration policy |
 
 **Registry maintenance:** Principal Engineer updates Implementation Status at program exit certification. Status changes require Architecture Authority approval per §26.
 
