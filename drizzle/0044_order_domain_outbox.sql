@@ -1,0 +1,26 @@
+-- ORDER-EVENTS-1A — transactional outbox for Order domain events
+CREATE TABLE `order_domain_outbox` (
+  `id` varchar(36) NOT NULL,
+  `eventId` varchar(36) NOT NULL,
+  `eventType` varchar(64) NOT NULL,
+  `aggregateType` varchar(32) NOT NULL DEFAULT 'Order',
+  `aggregateId` int NOT NULL,
+  `aggregateVersion` int NULL,
+  `restaurantId` int NOT NULL,
+  `sequenceNumber` int NOT NULL,
+  `occurredAt` timestamp NOT NULL,
+  `correlationId` varchar(64) NULL,
+  `causationId` varchar(64) NULL,
+  `payloadVersion` int NOT NULL DEFAULT 1,
+  `payload` text NOT NULL,
+  `status` enum('pending','published','failed') NOT NULL DEFAULT 'pending',
+  `publishAttempts` int NOT NULL DEFAULT 0,
+  `lastError` text NULL,
+  `publishedAt` timestamp NULL,
+  `nextRetryAt` timestamp NULL,
+  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `order_domain_outbox_event_id_unique` (`eventId`),
+  KEY `order_domain_outbox_status_retry` (`status`, `nextRetryAt`),
+  KEY `order_domain_outbox_aggregate_seq` (`aggregateId`, `sequenceNumber`)
+);

@@ -69,9 +69,14 @@ export class PlaceOrderService {
       })),
     });
 
-    const { order: persisted } = await this.repository.save(order);
-    persisted.recordCreated(persisted.id!);
-    const events = persisted.pullDomainEvents();
+    let events: OrderDomainEvent[] = [];
+    const { order: persisted } = await this.repository.save(order, {
+      onPersisted: (p) => {
+        p.recordCreated(p.id!);
+        events = p.pullDomainEvents();
+        return events;
+      },
+    });
     persisted.clearDomainEvents();
 
     const itemCount = lines.reduce((sum, line) => sum + line.quantity, 0);

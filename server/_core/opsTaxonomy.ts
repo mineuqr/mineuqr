@@ -111,6 +111,13 @@ export const OPS_EVENT = {
   session_reused: "session_reused",
   order_created_event_failed: "order_created_event_failed",
 
+  // ORDER-EVENTS-1A — domain outbox infrastructure
+  order_outbox_published: "order_outbox_published",
+  order_outbox_publish_failed: "order_outbox_publish_failed",
+  order_outbox_publish_retry: "order_outbox_publish_retry",
+  order_outbox_queue_depth: "order_outbox_queue_depth",
+  order_outbox_relay_batch: "order_outbox_relay_batch",
+
   // SESSION-AGGREGATES-1 Phase A
   session_aggregate_drift_detected: "session_aggregate_drift_detected",
   session_aggregate_update_failed: "session_aggregate_update_failed",

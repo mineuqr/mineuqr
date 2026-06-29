@@ -40,10 +40,12 @@ export class AdvanceOrderStatusService {
     const changedAt = new Date().toISOString().slice(0, 19).replace("T", " ");
 
     order.advanceStatus(command.targetStatus, command.actor, changedAt);
-
-    await this.repository.save(order, expectedUpdatedAt);
-
     const events = order.pullDomainEvents();
+
+    await this.repository.save(order, {
+      expectedUpdatedAt,
+      domainEvents: events,
+    });
     order.clearDomainEvents();
 
     return {

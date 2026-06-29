@@ -1,4 +1,4 @@
-import { mysqlTable, mysqlSchema, AnyMySqlColumn, bigint, int, tinyint, varchar, text, timestamp, decimal, mysqlEnum, index, uniqueIndex, boolean, json } from "drizzle-orm/mysql-core"
+import { mysqlTable, mysqlSchema, AnyMySqlColumn, bigint, int, tinyint, varchar, text, timestamp, decimal, mysqlEnum, index, uniqueIndex, boolean, json, primaryKey } from "drizzle-orm/mysql-core"
 import { sql } from "drizzle-orm"
 
 // ─── Categories Table ──────────────────────────────────────
@@ -440,6 +440,38 @@ export const orderItems = mysqlTable("order_items", {
 (table) => [
 	index("order_items_order_id").on(table.orderId),
 ]);
+
+// ─── Order Domain Outbox (ORDER-EVENTS-1A) ───────────────────────
+export const orderDomainOutbox = mysqlTable("order_domain_outbox", {
+	id: varchar({ length: 36 }).notNull(),
+	eventId: varchar({ length: 36 }).notNull(),
+	eventType: varchar({ length: 64 }).notNull(),
+	aggregateType: varchar({ length: 32 }).default("Order").notNull(),
+	aggregateId: int().notNull(),
+	aggregateVersion: int(),
+	restaurantId: int().notNull(),
+	sequenceNumber: int().notNull(),
+	occurredAt: timestamp({ mode: "string" }).notNull(),
+	correlationId: varchar({ length: 64 }),
+	causationId: varchar({ length: 64 }),
+	payloadVersion: int().default(1).notNull(),
+	payload: text().notNull(),
+	status: mysqlEnum(["pending", "published", "failed"]).default("pending").notNull(),
+	publishAttempts: int().default(0).notNull(),
+	lastError: text(),
+	publishedAt: timestamp({ mode: "string" }),
+	nextRetryAt: timestamp({ mode: "string" }),
+	createdAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+},
+(table) => [
+	primaryKey({ columns: [table.id] }),
+	uniqueIndex("order_domain_outbox_event_id_unique").on(table.eventId),
+	index("order_domain_outbox_status_retry").on(table.status, table.nextRetryAt),
+	index("order_domain_outbox_aggregate_seq").on(table.aggregateId, table.sequenceNumber),
+]);
+
+export type InsertOrderDomainOutbox = typeof orderDomainOutbox.$inferInsert;
+export type SelectOrderDomainOutbox = typeof orderDomainOutbox.$inferSelect;
 
 export type InsertRestaurantTable = typeof restaurantTables.$inferInsert;
 export type SelectRestaurantTable = typeof restaurantTables.$inferSelect;
