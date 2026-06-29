@@ -72,8 +72,8 @@ Staging ops tooling, integrity validation, rollback/rebuild, migration journaliz
 
 | Item | Status |
 |------|--------|
-| Apply 0046 on staging DB | **Ops action** (tooling ready) |
-| Run staging backfill | **Ops action** (tooling ready) |
+| Apply 0046 on staging DB | **Complete** (MIGRATION-COMPATIBILITY-2) |
+| Run staging backfill | **Ready** — ops action |
 | Enable `ORDER_READ_PROJECTIONS_ENABLED` in staging | Deferred |
 | Wire publisher to `createOrderEventDispatchDelegate()` | Deferred |
 | Shadow read APIs (Q-01, Q-03, Q-05, Q-08) | Not implemented |
@@ -108,4 +108,4 @@ Blocked on Gate 3 shadow validation.
 
 ## Exit Verdict
 
-**Phase 3A READY** — Staging operators have migration, backfill, validation, and rollback tooling. Proceed to staging DB execution, then Phase 3B planning when shadow APIs are approved.
+**Phase 3A READY** — Migration 0046 applied on TiDB Cloud. Proceed with staging backfill and validation; Phase 3B planning when shadow APIs are approved.

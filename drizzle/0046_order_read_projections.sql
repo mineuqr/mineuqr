@@ -25,7 +25,7 @@ CREATE TABLE `order_read_orders` (
   KEY `order_read_orders_restaurant_status` (`restaurantId`,`status`),
   KEY `order_read_orders_restaurant_created` (`restaurantId`,`createdAt`)
 );
-
+--> statement-breakpoint
 CREATE TABLE `order_read_order_line_items` (
   `restaurantId` int NOT NULL,
   `orderId` int NOT NULL,
@@ -38,7 +38,7 @@ CREATE TABLE `order_read_order_line_items` (
   PRIMARY KEY (`restaurantId`,`orderId`,`lineItemId`),
   KEY `order_read_line_items_order` (`restaurantId`,`orderId`)
 );
-
+--> statement-breakpoint
 CREATE TABLE `order_read_order_timeline` (
   `restaurantId` int NOT NULL,
   `orderId` int NOT NULL,
@@ -52,7 +52,7 @@ CREATE TABLE `order_read_order_timeline` (
   PRIMARY KEY (`restaurantId`,`orderId`,`eventId`),
   KEY `order_read_timeline_order` (`restaurantId`,`orderId`,`occurredAt`)
 );
-
+--> statement-breakpoint
 CREATE TABLE `order_read_operational_kpi_daily` (
   `restaurantId` int NOT NULL,
   `dayKey` varchar(10) NOT NULL,
@@ -65,7 +65,7 @@ CREATE TABLE `order_read_operational_kpi_daily` (
   `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`restaurantId`,`dayKey`)
 );
-
+--> statement-breakpoint
 CREATE TABLE `order_read_analytics_daily` (
   `restaurantId` int NOT NULL,
   `dayKey` varchar(10) NOT NULL,
@@ -77,7 +77,7 @@ CREATE TABLE `order_read_analytics_daily` (
   `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`restaurantId`,`dayKey`)
 );
-
+--> statement-breakpoint
 CREATE TABLE `order_read_public_order_status` (
   `trackingToken` varchar(64) NOT NULL,
   `restaurantSlug` varchar(128) NOT NULL,
@@ -95,7 +95,7 @@ CREATE TABLE `order_read_public_order_status` (
   PRIMARY KEY (`trackingToken`,`restaurantSlug`),
   KEY `order_read_public_restaurant` (`restaurantId`)
 );
-
+--> statement-breakpoint
 CREATE TABLE `order_read_backfill_runs` (
   `id` varchar(36) NOT NULL,
   `scope` enum('full','tenant','partial') NOT NULL,
