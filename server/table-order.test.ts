@@ -1,5 +1,7 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { getTableByRestaurantAndNumber } from "./db";
+import AddToCartButton from "../client/src/components/AddToCartButton";
+import * as MenuTemplates from "../client/src/components/MenuTemplates";
 
 describe("Table & Order System", () => {
   describe("getTableByRestaurantAndNumber", () => {
@@ -14,29 +16,23 @@ describe("Table & Order System", () => {
   });
 
   describe("AddToCartButton integration", () => {
-    it("should export AddToCartButton component", async () => {
-      const mod = await import("../client/src/components/AddToCartButton");
-      expect(mod.default).toBeDefined();
+    it("should export AddToCartButton component", () => {
+      expect(AddToCartButton).toBeDefined();
     });
   });
 
   describe("MenuTemplates integration", () => {
-    it("should export getTemplateComponent", async () => {
-      const mod = await import("../client/src/components/MenuTemplates");
-      expect(mod.getTemplateComponent).toBeDefined();
+    it("should export getTemplateComponent", () => {
+      expect(MenuTemplates.getTemplateComponent).toBeDefined();
     });
 
-    it("should return ClassicTemplate for 'classic' id", async () => {
-      const mod = await import("../client/src/components/MenuTemplates");
-      const component = mod.getTemplateComponent("classic");
-      expect(component).toBe(mod.ClassicTemplate);
+    it("should return ClassicTemplate for 'classic' id", () => {
+      const component = MenuTemplates.getTemplateComponent("classic");
+      expect(component).toBe(MenuTemplates.ClassicTemplate);
     });
 
-    it("TemplateProps should include tableNumber", async () => {
-      // Verify that the template interface accepts tableNumber
-      const mod = await import("../client/src/components/MenuTemplates");
-      // If ClassicTemplate exists and can be called with tableNumber prop, the type is correct
-      expect(mod.ClassicTemplate).toBeDefined();
+    it("TemplateProps should include tableNumber", () => {
+      expect(MenuTemplates.ClassicTemplate).toBeDefined();
     });
   });
 });
