@@ -3,6 +3,8 @@ import type { TrpcContext } from "./_core/context";
 
 vi.mock("./db", () => ({
   getOrderById: vi.fn(),
+  getOrderItemsByOrderId: vi.fn(async () => []),
+  generateOrderNumber: vi.fn(async () => "ORD-0001"),
   getRestaurantById: vi.fn(async () => ({ id: 1, userId: 1 })),
   updateOrderStatus: vi.fn(async () => undefined),
   markOrderReadyAtIfFirstTransition: vi.fn(async () => undefined),
@@ -35,9 +37,15 @@ describe("order.updateStatus TRACKING-EXPIRY-1", () => {
     vi.mocked(getOrderById).mockResolvedValue({
       id: 7,
       restaurantId: 1,
+      tableId: 1,
+      tableNumber: 1,
       status: "preparing",
       orderNumber: "ORD-1",
       trackingToken: "tok",
+      totalAmount: "10.00",
+      createdAt: "2026-01-01 00:00:00",
+      updatedAt: "2026-01-01 00:00:00",
+      readyAt: null,
     } as Awaited<ReturnType<typeof getOrderById>>);
 
     await caller.order.updateStatus({ id: 7, status: "ready" });
@@ -54,9 +62,15 @@ describe("order.updateStatus TRACKING-EXPIRY-1", () => {
     vi.mocked(getOrderById).mockResolvedValue({
       id: 7,
       restaurantId: 1,
+      tableId: 1,
+      tableNumber: 1,
       status: "ready",
       orderNumber: "ORD-1",
       trackingToken: "tok",
+      totalAmount: "10.00",
+      createdAt: "2026-01-01 00:00:00",
+      updatedAt: "2026-01-01 00:00:00",
+      readyAt: "2026-01-01 01:00:00",
     } as Awaited<ReturnType<typeof getOrderById>>);
 
     await caller.order.updateStatus({ id: 7, status: "served" });

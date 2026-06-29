@@ -5,6 +5,8 @@ import { OPS_EVENT } from "./_core/opsTaxonomy";
 
 vi.mock("./db", () => ({
   getOrderById: vi.fn(),
+  getOrderItemsByOrderId: vi.fn(async () => []),
+  generateOrderNumber: vi.fn(async () => "ORD-0001"),
   getRestaurantById: vi.fn(async () => ({ id: 1, userId: 1 })),
   updateOrderStatus: vi.fn(async () => undefined),
   markOrderReadyAtIfFirstTransition: vi.fn(async () => undefined),
@@ -35,11 +37,16 @@ import { opsLog } from "./_core/opsLog";
 const baseOrder = {
   id: 7,
   restaurantId: 1,
+  tableId: 1,
+  tableNumber: 2,
   sessionId: 10,
   status: "pending",
   orderNumber: "ORD-1",
   trackingToken: "tok",
   totalAmount: "45.00",
+  createdAt: "2026-01-01 00:00:00",
+  updatedAt: "2026-01-01 00:00:00",
+  readyAt: null,
 } as Awaited<ReturnType<typeof getOrderById>>;
 
 function createCaller() {

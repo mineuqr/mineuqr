@@ -26,7 +26,7 @@ import {
   updateUserSessionValidAfter,
   getHolidaysByRestaurant, createHoliday, updateHoliday, deleteHoliday, getHolidayById,
   getTablesByRestaurant, getTableById, getTableByRestaurantAndNumber, createTable, updateTable, deleteTable, createMultipleTables,
-  getOrdersByRestaurant, getOrdersWithItemsByRestaurant, getOrderById, getOrderByTrackingToken, createOrder, updateOrderStatus, markOrderReadyAtIfFirstTransition, getOrderItemsByOrderId, createOrderItems, generateOrderNumber, getActiveOrdersCount,
+  getOrdersByRestaurant, getOrdersWithItemsByRestaurant, getOrderById, getOrderByTrackingToken, getOrderItemsByOrderId, getActiveOrdersCount,
 } from "./db";
 import { canChangeOwnPassword } from "./auth-local/httpHelpers";
 import { sendVerificationEmailForUser } from "./auth-local/sendVerificationEmail";
@@ -34,7 +34,6 @@ import {
   accountEmailChanged,
   normalizeAccountEmailOrNull,
 } from "./_core/normalizeAccountEmail";
-import { resolveAuthoritativeOrderLines } from "./orderPricing";
 import { assertRestaurantAccess } from "./restaurantAccess";
 import {
   assertCategoryCreateAllowed,
@@ -82,7 +81,6 @@ import { putUploadedFile } from "./local-uploads";
 import { notifyOwnerNewRestaurant, notifyOwnerNewSubscription, notifyOwnerSubscriptionCancelled } from "./owner-email-notifications";
 import { generateInvoicePDFBuffer } from "./invoice-pdf";
 import { mergeRouters } from "./_core/trpc";
-import { generateOrderTrackingToken } from "./orderTrackingToken";
 import { ENV } from "./_core/env";
 import { opsLog } from "./_core/opsLog";
 import { OPS_EVENT } from "./_core/opsTaxonomy";
@@ -108,6 +106,12 @@ import { analyticsRouter } from "./commercial/analyticsRouter";
 import { commercialRouter } from "./commercial/router";
 import { resolveGuestOrderingAllowed } from "./commercial/guestOrderingAuthority";
 import { resolveTrialStatusRead } from "./commercial/wave1ReadAuthority";
+import {
+  advanceOrderStatusService,
+} from "./order/composition";
+import { placeOrderService } from "./order/placeOrderComposition";
+import { runOrderCommand } from "./order/application/mapOrderDomainError";
+import type { OrderStatus } from "./order/domain/value-objects/OrderStatus";
 import bcrypt from "bcryptjs";
 
 function generateSlug(name: string): string {
@@ -1850,40 +1854,35 @@ const orderRouter = router({
         }
       }
 
-      const { lines, totalAmount } = await resolveAuthoritativeOrderLines(
-        input.restaurantId,
-        input.items.map((item) => ({
-          menuItemId: item.menuItemId,
-          quantity: item.quantity,
-          notes: item.notes,
-        }))
+      const placeResult = await runOrderCommand(() =>
+        placeOrderService.execute({
+          restaurantId: input.restaurantId,
+          tableId: table.id,
+          tableNumber: table.tableNumber,
+          ...(ENV.tableSessionDualWrite && sessionId != null
+            ? { sessionId }
+            : {}),
+          customerName: input.customerName,
+          customerPhone: input.customerPhone,
+          notes: input.notes,
+          items: input.items.map((item) => ({
+            menuItemId: item.menuItemId,
+            quantity: item.quantity,
+            notes: item.notes,
+          })),
+        })
       );
-      const itemCount = lines.reduce((sum, line) => sum + line.quantity, 0);
-      const orderNumber = await generateOrderNumber(input.restaurantId);
-      const trackingToken = generateOrderTrackingToken();
-      const createdAt = new Date().toISOString();
-      const result = await createOrder({
-        restaurantId: input.restaurantId,
-        tableId: table.id,
-        tableNumber: table.tableNumber,
-        ...(ENV.tableSessionDualWrite && sessionId != null ? { sessionId } : {}),
-        customerName: input.customerName,
-        customerPhone: input.customerPhone,
-        notes: input.notes,
-        totalAmount,
+
+      const {
         orderNumber,
         trackingToken,
-      }) as { id: number } | null;
-      if (result) {
-        await createOrderItems(lines.map((line) => ({
-          orderId: result.id,
-          menuItemId: line.menuItemId,
-          nameAr: line.nameAr,
-          nameEn: line.nameEn,
-          price: line.price,
-          quantity: line.quantity,
-          notes: line.notes,
-        })));
+        totalAmount: persistedTotal,
+        itemCount: persistedItemCount,
+        createdAt,
+        order: persistedOrder,
+      } = placeResult;
+      const result = { id: persistedOrder.id };
+      if (result?.id) {
         if (ENV.tableSessionDualWrite && sessionId != null) {
           try {
             await recordSessionEvent({
@@ -1894,8 +1893,8 @@ const orderRouter = router({
               eventType: TABLE_EVENT_TYPES.ORDER_CREATED,
               metadata: {
                 orderNumber,
-                totalAmount,
-                itemCount,
+                totalAmount: persistedTotal,
+                itemCount: persistedItemCount,
               },
             });
           } catch (e) {
@@ -1919,7 +1918,7 @@ const orderRouter = router({
               {
                 restaurantId: input.restaurantId,
                 sessionId,
-                orderTotalAmount: totalAmount,
+                orderTotalAmount: persistedTotal,
               },
               { procedure: "order.create" }
             );
@@ -1942,11 +1941,13 @@ const orderRouter = router({
         }
         // Send notification to restaurant owner
         try {
-          const itemsSummary = lines.map((i) => `${i.nameAr} x${i.quantity}`).join('، ');
+          const itemsSummary = persistedOrder.lines
+            .map((line) => `${line.nameAr} x${line.quantity}`)
+            .join("، ");
           await createNotification({
             userId: restaurant.userId,
             notificationType: 'new_order',
-            message: `طلب جديد #${orderNumber} - طاولة ${table.tableNumber} - ${itemsSummary} - المجموع: ${totalAmount} ${restaurant.currencySymbol || 'ر.س'}`,
+            message: `طلب جديد #${orderNumber} - طاولة ${table.tableNumber} - ${itemsSummary} - المجموع: ${persistedTotal} ${restaurant.currencySymbol || 'ر.س'}`,
             isRead: false,
             isSent: true,
             sentAt: new Date().toISOString().slice(0, 19).replace('T', ' '),
@@ -1958,8 +1959,8 @@ const orderRouter = router({
         orderNumber,
         trackingToken,
         tableNumber: table.tableNumber,
-        totalAmount,
-        itemCount,
+        totalAmount: persistedTotal,
+        itemCount: persistedItemCount,
         createdAt,
         status: "pending" as const,
         ...(ENV.tableSessionDualWrite && sessionToken
@@ -1997,11 +1998,17 @@ const orderRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "الطلب غير موجود" });
       }
       await assertRestaurantAccess(ctx, order.restaurantId, "order.updateStatus");
-      const previousStatus = order.status;
-      await markOrderReadyAtIfFirstTransition(input.id, previousStatus, input.status);
-      await updateOrderStatus(input.id, input.status);
+      const previousStatus = order.status as OrderStatus;
 
-      if (previousStatus !== "ready" && input.status === "ready") {
+      const { previousStatus: fromStatus } = await runOrderCommand(() =>
+        advanceOrderStatusService.execute({
+          orderId: input.id,
+          targetStatus: input.status,
+          actor: { role: "owner" },
+        })
+      );
+
+      if (fromStatus !== "ready" && input.status === "ready") {
         try {
           await sendReadyPushForOrder({
             orderId: order.id,

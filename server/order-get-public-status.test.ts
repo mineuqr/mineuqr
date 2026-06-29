@@ -4,6 +4,7 @@ import { TRACKING_EXPIRY_AFTER_READY_MS } from "./orderTrackingExpiry";
 
 vi.mock("./db", () => ({
   getOrderByTrackingToken: vi.fn(),
+  generateOrderNumber: vi.fn(async () => "ORD-0001"),
 }));
 
 import { appRouter } from "./routers";
