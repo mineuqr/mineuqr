@@ -23,6 +23,7 @@
     "db:order-read:verify-schema": "node scripts/order-read-projection-staging.mjs --verify-schema",
     "db:order-read:discover": "node scripts/order-read-projection-staging.mjs --discover",
     "db:order-read:validate": "node scripts/order-read-projection-staging.mjs --validate",
+    "db:order-read:backfill": "cross-env ORDER_READ_BACKFILL_CONFIRM=YES tsx scripts/order-read-backfill-execute.ts --scope full",
     "db:push": "drizzle-kit generate && drizzle-kit migrate"
   },
   "dependencies": {

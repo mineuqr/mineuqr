@@ -71,7 +71,7 @@ export class OrderReadProjectionBackfillService {
           const source = await this.contextLoader.loadByOrderId(orderId);
           if (!source) continue;
           if (!this.matchesPartialRange(source.order.createdAt, request)) continue;
-        await this.materializer.syncOrderProjections(orderId, `backfill:${runId}`);
+        await this.materializer.syncOrderProjections(orderId, runId);
           run.rowsProcessed += 1;
         }
         await this.materializer.rebuildRollupsForRestaurant(restaurantId);

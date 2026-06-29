@@ -1,27 +1,30 @@
 /**
- * ORDERS-READ-MODEL-1 Phase 3A — execute projection backfill (staging only).
+ * ORDERS-READ-MODEL-1 — execute projection backfill.
  *
  * Usage:
  *   DATABASE_URL='...' npx tsx scripts/order-read-backfill-execute.ts --scope tenant --restaurant-id 123
  *   DATABASE_URL='...' npx tsx scripts/order-read-backfill-execute.ts --scope partial --restaurant-id 123 --from 2026-06-01 --to 2026-06-30
  *   DATABASE_URL='...' npx tsx scripts/order-read-backfill-execute.ts --scope full
  */
+import "dotenv/config";
 import { orderReadProjectionBackfillService } from "../server/order/read/readPersistenceComposition";
 import type { BackfillScope } from "../server/order/read/infrastructure/backfill/OrderReadProjectionBackfillService";
 
-function parseArgs(argv: string[]) {
-  const scope = (argv.find((a) => a.startsWith("--scope="))?.split("=")[1] ??
-    argv[argv.indexOf("--scope") + 1]) as BackfillScope | undefined;
+function parseFlag(argv: string[], flag: string): string | undefined {
+  const eq = argv.find((a) => a.startsWith(`${flag}=`));
+  if (eq) return eq.slice(flag.length + 1);
+  const idx = argv.indexOf(flag);
+  if (idx >= 0 && idx + 1 < argv.length && !argv[idx + 1].startsWith("--")) {
+    return argv[idx + 1];
+  }
+  return undefined;
+}
 
-  const restaurantIdRaw =
-    argv.find((a) => a.startsWith("--restaurant-id="))?.split("=")[1] ??
-    argv[argv.indexOf("--restaurant-id") + 1];
-  const fromDayKey =
-    argv.find((a) => a.startsWith("--from="))?.split("=")[1] ??
-    argv[argv.indexOf("--from") + 1];
-  const toDayKey =
-    argv.find((a) => a.startsWith("--to="))?.split("=")[1] ??
-    argv[argv.indexOf("--to") + 1];
+function parseArgs(argv: string[]) {
+  const scope = parseFlag(argv, "--scope") as BackfillScope | undefined;
+  const restaurantIdRaw = parseFlag(argv, "--restaurant-id");
+  const fromDayKey = parseFlag(argv, "--from");
+  const toDayKey = parseFlag(argv, "--to");
 
   if (!scope || !["full", "tenant", "partial"].includes(scope)) {
     throw new Error("--scope full|tenant|partial is required");
@@ -46,12 +49,6 @@ async function main() {
   if (process.env.ORDER_READ_BACKFILL_CONFIRM !== "YES") {
     console.error(
       "[order-read-backfill] Refusing to execute without ORDER_READ_BACKFILL_CONFIRM=YES"
-    );
-    process.exit(1);
-  }
-  if (process.env.ORDER_READ_PROJECTIONS_ENABLED === "true") {
-    console.error(
-      "[order-read-backfill] ORDER_READ_PROJECTIONS_ENABLED must remain false in Phase 3A"
     );
     process.exit(1);
   }

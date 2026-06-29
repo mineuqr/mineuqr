@@ -5,7 +5,7 @@ import { CompositeEventDispatchDelegate } from "../infrastructure/registry/Compo
 import { ENV } from "../../../_core/env";
 
 describe("readComposition", () => {
-  it("defaults to integration-only dispatch delegate", () => {
+  it("defaults to integration-only dispatch when projections disabled", () => {
     const previous = ENV.orderReadProjectionsEnabled;
     ENV.orderReadProjectionsEnabled = false;
     try {

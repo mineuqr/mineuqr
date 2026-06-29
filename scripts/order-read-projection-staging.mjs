@@ -33,7 +33,7 @@ import {
   parseCliFlag,
   requireDatabaseUrl,
   requireConfirm,
-  assertPhase3AGuards,
+  assertPhase3BBackfillGuards,
   compareOrderCounts,
   compareOrderRow,
 } from "./lib/order-read-staging-logic.mjs";
@@ -199,14 +199,14 @@ async function validateIntegrity(conn, restaurantId) {
 function verifyTelemetry() {
   console.log("[order-read-staging] required backfill ops events:");
   for (const e of ORDER_READ_BACKFILL_OPS_EVENTS) console.log(`  - ${e}`);
-  console.log("[order-read-staging] required projection consumer ops events (inactive in Phase 3A):");
+  console.log("[order-read-staging] required projection consumer ops events:");
   for (const e of ORDER_READ_PROJECTION_OPS_EVENTS) console.log(`  - ${e}`);
   console.log("[order-read-staging] telemetry taxonomy OK (see server/_core/opsTaxonomy.ts)");
 }
 
 async function rollbackTenant(conn, restaurantId) {
   requireConfirm("ORDER_READ_STAGING_CONFIRM");
-  assertPhase3AGuards();
+  assertPhase3BBackfillGuards();
   if (!restaurantId) throw new Error("--restaurant-id required for rollback-tenant");
 
   for (const table of ORDER_READ_TENANT_ROLLBACK_TABLES) {
@@ -241,7 +241,7 @@ function runBackfillExecute(args) {
 
 async function rebuildTenant(conn, restaurantId) {
   requireConfirm("ORDER_READ_STAGING_CONFIRM");
-  assertPhase3AGuards();
+  assertPhase3BBackfillGuards();
   if (!restaurantId) throw new Error("--restaurant-id required for rebuild-tenant");
 
   await rollbackTenant(conn, restaurantId);

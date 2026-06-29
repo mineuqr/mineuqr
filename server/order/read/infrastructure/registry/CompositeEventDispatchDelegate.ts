@@ -13,7 +13,7 @@ export type CompositeDispatchResult = RegistryDispatchResult & {
 
 /**
  * Chains integration + projection dispatch without coupling consumer implementations.
- * Phase 1: not wired to production publisher — available for Phase 2+ enablement.
+ * Wired via eventInfrastructureComposition when projections are enabled (Phase 3B).
  */
 export class CompositeEventDispatchDelegate implements ConsumerRegistryDispatchDelegate {
   constructor(

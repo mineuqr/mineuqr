@@ -26,8 +26,8 @@ export const orderProjectionConsumerRegistry = new OrderProjectionConsumerRegist
 );
 
 /**
- * Phase 2: materializing consumers registered on the projection registry.
- * NOT activated — publisher remains integration-only unless ORDER_READ_PROJECTIONS_ENABLED=true.
+ * Phase 3B: materializing consumers registered on the projection registry.
+ * Active when ENV.orderReadProjectionsEnabled is true (default on outside test).
  */
 export function registerOrderProjectionConsumers(): void {
   const consumers = createOrderReadProjectionConsumers(orderReadProjectionMaterializer);
@@ -46,8 +46,8 @@ export function registerOrderProjectionConsumers(): void {
 registerOrderProjectionConsumers();
 
 /**
- * Returns composite dispatch when ORDER_READ_PROJECTIONS_ENABLED=true.
- * Default false — production publisher unchanged (ORDER-EVENTS-1B certified path).
+ * Returns composite dispatch when projections are enabled (Phase 3B default on).
+ * Integration-only when ORDER_READ_PROJECTIONS_ENABLED=false or NODE_ENV=test.
  */
 export function createOrderEventDispatchDelegate(): ConsumerRegistryDispatchDelegate {
   if (!ENV.orderReadProjectionsEnabled) {

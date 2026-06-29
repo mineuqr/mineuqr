@@ -5,17 +5,19 @@ import {
   NoOpEventInfrastructureMetrics,
   OpsEventInfrastructureMetrics,
 } from "./infrastructure/events/monitoring/EventInfrastructureMetrics";
-import { orderEventConsumerRegistry } from "./consumerComposition";
+import { createOrderEventDispatchDelegate } from "./read/readComposition";
 
 const metrics =
   process.env.NODE_ENV === "test"
     ? new NoOpEventInfrastructureMetrics()
     : new OpsEventInfrastructureMetrics();
 
+export const orderEventDispatchDelegate = createOrderEventDispatchDelegate();
+
 export const orderOutboxRepository = new DrizzleOutboxRepository();
 export const orderEventPublisher = new InProcessEventPublisher(
   metrics,
-  orderEventConsumerRegistry
+  orderEventDispatchDelegate
 );
 export const orderEventRelay = new OrderEventRelay(
   orderOutboxRepository,

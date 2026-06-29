@@ -49,8 +49,13 @@ export const ENV = {
   /** TABLE-MANAGEMENT-1 D3 — dual-write orders.sessionId when true. */
   tableSessionDualWrite: process.env.TABLE_SESSION_DUAL_WRITE === "true",
   /**
-   * ORDERS-READ-MODEL-1 — when true, publisher delegates to integration + projection registries.
-   * Default false: certified ORDER-EVENTS-1B path unchanged.
+   * ORDERS-READ-MODEL-1 Phase 3B — when true, publisher delegates to integration + projection registries.
+   * Default on in non-test environments; set ORDER_READ_PROJECTIONS_ENABLED=false to disable.
    */
-  orderReadProjectionsEnabled: process.env.ORDER_READ_PROJECTIONS_ENABLED === "true",
+  orderReadProjectionsEnabled: (() => {
+    const raw = process.env.ORDER_READ_PROJECTIONS_ENABLED;
+    if (raw === "false") return false;
+    if (raw === "true") return true;
+    return process.env.NODE_ENV !== "test";
+  })(),
 };

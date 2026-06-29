@@ -14,12 +14,15 @@ describe("ProjectionLifecycleRegistry", () => {
     );
   });
 
-  it("lists infrastructure candidates for order read module", () => {
+  it("lists queryable order-read projections after Phase 3B activation", () => {
     const registry = new ProjectionLifecycleRegistry();
-    const candidates = registry.listMaterializingCandidates();
-    const orderReadOwned = candidates.filter((c) => c.ownerModule === "server/order/read");
-    expect(orderReadOwned.length).toBeGreaterThanOrEqual(6);
-    expect(orderReadOwned.every((c) => c.lifecycleState === "materializing")).toBe(true);
+    const orderReadQueryable = registry
+      .listByLifecycleState("queryable")
+      .filter((c) => c.ownerModule === "server/order/read");
+    expect(orderReadQueryable.length).toBeGreaterThanOrEqual(6);
+    expect(
+      orderReadQueryable.some((c) => c.id === "P-02-active-orders")
+    ).toBe(true);
   });
 
   it("marks kitchen and printing as defined only", () => {

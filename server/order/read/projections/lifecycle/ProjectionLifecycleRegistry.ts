@@ -14,14 +14,14 @@ const ORDER_DOMAIN_EVENT_TYPES = [
 
 /**
  * Canonical projection catalog (READ-ARCHITECTURE-1 RA-02).
- * Phase 2: order-read projections in `materializing` state — store + consumers, dispatch inactive.
+ * Phase 2: order-read projections in `queryable` state — store + consumers + dispatch active (Phase 3B).
  */
 export const ORDER_PROJECTION_DEFINITIONS: readonly ProjectionDefinition[] = [
   {
     id: "P-01-owner-orders",
     name: "Owner Orders",
     ownerModule: "server/order/read",
-    lifecycleState: "materializing",
+    lifecycleState: "queryable",
     schemaVersion: ORDER_READ_PROJECTION_SCHEMA_VERSION,
     subscribedEventTypes: ORDER_DOMAIN_EVENT_TYPES,
     consumerName: "OwnerOrdersProjectionConsumer",
@@ -30,7 +30,7 @@ export const ORDER_PROJECTION_DEFINITIONS: readonly ProjectionDefinition[] = [
     id: "P-02-active-orders",
     name: "Active Orders",
     ownerModule: "server/order/read",
-    lifecycleState: "materializing",
+    lifecycleState: "queryable",
     schemaVersion: ORDER_READ_PROJECTION_SCHEMA_VERSION,
     subscribedEventTypes: ORDER_DOMAIN_EVENT_TYPES,
     consumerName: "ActiveOrdersProjectionConsumer",
@@ -39,7 +39,7 @@ export const ORDER_PROJECTION_DEFINITIONS: readonly ProjectionDefinition[] = [
     id: "P-03-order-details",
     name: "Order Details",
     ownerModule: "server/order/read",
-    lifecycleState: "materializing",
+    lifecycleState: "queryable",
     schemaVersion: ORDER_READ_PROJECTION_SCHEMA_VERSION,
     subscribedEventTypes: ORDER_DOMAIN_EVENT_TYPES,
     consumerName: "OrderDetailsProjectionConsumer",
@@ -48,7 +48,7 @@ export const ORDER_PROJECTION_DEFINITIONS: readonly ProjectionDefinition[] = [
     id: "P-04-order-timeline",
     name: "Order Timeline",
     ownerModule: "server/order/read",
-    lifecycleState: "materializing",
+    lifecycleState: "queryable",
     schemaVersion: ORDER_READ_PROJECTION_SCHEMA_VERSION,
     subscribedEventTypes: ["OrderCreated", "OrderStatusChanged", "OrderReady", "OrderCompleted", "OrderCancelled"],
     consumerName: "OrderTimelineProjectionConsumer",
@@ -66,7 +66,7 @@ export const ORDER_PROJECTION_DEFINITIONS: readonly ProjectionDefinition[] = [
     id: "P-06-operational-kpi",
     name: "Operational KPI",
     ownerModule: "server/order/read",
-    lifecycleState: "materializing",
+    lifecycleState: "queryable",
     schemaVersion: ORDER_READ_PROJECTION_SCHEMA_VERSION,
     subscribedEventTypes: ORDER_DOMAIN_EVENT_TYPES,
     consumerName: "OperationalKpiProjectionConsumer",
@@ -102,7 +102,7 @@ export const ORDER_PROJECTION_DEFINITIONS: readonly ProjectionDefinition[] = [
     id: "P-10-analytics",
     name: "Order Analytics",
     ownerModule: "server/analytics/order",
-    lifecycleState: "materializing",
+    lifecycleState: "queryable",
     schemaVersion: ORDER_READ_PROJECTION_SCHEMA_VERSION,
     subscribedEventTypes: ["OrderCreated", "OrderCompleted"],
     consumerName: "OrderAnalyticsProjectionConsumer",
@@ -111,7 +111,7 @@ export const ORDER_PROJECTION_DEFINITIONS: readonly ProjectionDefinition[] = [
     id: "P-11-public-order-status",
     name: "Public Order Status",
     ownerModule: "server/order/read",
-    lifecycleState: "materializing",
+    lifecycleState: "queryable",
     schemaVersion: ORDER_READ_PROJECTION_SCHEMA_VERSION,
     subscribedEventTypes: ORDER_DOMAIN_EVENT_TYPES,
     consumerName: "PublicOrderStatusProjectionConsumer",

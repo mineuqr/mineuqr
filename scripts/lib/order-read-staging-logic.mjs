@@ -53,10 +53,8 @@ export function requireConfirm(envName) {
   }
 }
 
-export function assertPhase3AGuards() {
-  if (process.env.ORDER_READ_PROJECTIONS_ENABLED === "true") {
-    throw new Error("ORDER_READ_PROJECTIONS_ENABLED must remain false in Phase 3A");
-  }
+export function assertPhase3BBackfillGuards() {
+  // Backfill uses materializer directly; safe alongside live projection dispatch (idempotent).
 }
 
 export function compareOrderCounts(restaurantId, writeCount, projectionCount) {
