@@ -19,7 +19,7 @@ describe("ProjectionLifecycleRegistry", () => {
     const candidates = registry.listMaterializingCandidates();
     const orderReadOwned = candidates.filter((c) => c.ownerModule === "server/order/read");
     expect(orderReadOwned.length).toBeGreaterThanOrEqual(6);
-    expect(orderReadOwned.every((c) => c.lifecycleState === "infrastructure")).toBe(true);
+    expect(orderReadOwned.every((c) => c.lifecycleState === "materializing")).toBe(true);
   });
 
   it("marks kitchen and printing as defined only", () => {

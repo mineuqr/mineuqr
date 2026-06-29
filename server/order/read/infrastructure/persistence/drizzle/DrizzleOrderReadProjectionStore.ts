@@ -1,0 +1,223 @@
+import { and, eq, sql } from "drizzle-orm";
+import { getDb } from "../../../../../db";
+import {
+  orderReadAnalyticsDaily,
+  orderReadOperationalKpiDaily,
+  orderReadOrderLineItems,
+  orderReadOrders,
+  orderReadOrderTimeline,
+  orderReadPublicOrderStatus,
+} from "../../../../../../drizzle/schema";
+import { ORDER_READ_PROJECTION_SCHEMA_VERSION } from "../../../domain/contracts/projectionIds";
+import { clampActiveOrderLimit } from "../../../domain/contracts/queryContracts";
+import { isActiveOrderStatus } from "../../../projections/materializers/projectionStatus";
+import type {
+  ActiveOrderListQuery,
+  OrderDetailQuery,
+} from "../../../domain/contracts/queryContracts";
+import type {
+  OrderAnalyticsDayRecord,
+  OrderTimelineProjectionRecord,
+  OperationalKpiProjectionRecord,
+  OwnerOrderProjectionRecord,
+} from "../contracts/ProjectionRepositoryContracts";
+import { InMemoryOrderReadProjectionStore } from "../inmemory/InMemoryOrderReadProjectionStore";
+import type { OrderReadSourceContext } from "../OrderReadContextLoader";
+
+import type { OrderReadProjectionRepositories } from "../contracts/ProjectionRepositoryContracts";
+
+export class DrizzleOrderReadProjectionStore {
+  private readonly recordBuilder = new InMemoryOrderReadProjectionStore();
+
+  asRepositories(): OrderReadProjectionRepositories {
+    return this.recordBuilder.asRepositories();
+  }
+
+  async persistFromSource(
+    source: OrderReadSourceContext,
+    eventId: string | null
+  ): Promise<void> {
+    const db = await getDb();
+    if (!db) return;
+
+    const record = this.recordBuilder.buildOwnerRecordFromSource(source, eventId);
+    const isActive = isActiveOrderStatus(record.status);
+
+    await db
+      .insert(orderReadOrders)
+      .values({
+        restaurantId: record.restaurantId,
+        orderId: record.orderId,
+        orderNumber: record.orderNumber,
+        status: record.status as "pending" | "preparing" | "ready" | "served" | "cancelled",
+        tableId: source.order.tableId,
+        tableNumber: record.tableNumber,
+        sessionId: record.sessionId,
+        customerName: record.customerName,
+        customerPhone: record.customerPhone,
+        notes: record.notes,
+        totalAmount: record.totalAmount,
+        trackingToken: source.order.trackingToken,
+        createdAt: record.createdAt,
+        readyAt: record.readyAt,
+        servedAt: record.servedAt,
+        cancelledAt: record.cancelledAt,
+        isActive,
+        projectionSchemaVersion: ORDER_READ_PROJECTION_SCHEMA_VERSION,
+        lastEventId: record.lastEventId,
+        updatedAt: record.updatedAt,
+      })
+      .onDuplicateKeyUpdate({
+        set: {
+          orderNumber: record.orderNumber,
+          status: record.status as "pending" | "preparing" | "ready" | "served" | "cancelled",
+          tableNumber: record.tableNumber,
+          sessionId: record.sessionId,
+          customerName: record.customerName,
+          customerPhone: record.customerPhone,
+          notes: record.notes,
+          totalAmount: record.totalAmount,
+          trackingToken: source.order.trackingToken,
+          readyAt: record.readyAt,
+          servedAt: record.servedAt,
+          cancelledAt: record.cancelledAt,
+          isActive,
+          projectionSchemaVersion: ORDER_READ_PROJECTION_SCHEMA_VERSION,
+          lastEventId: record.lastEventId,
+          updatedAt: record.updatedAt,
+        },
+      });
+
+    await db
+      .delete(orderReadOrderLineItems)
+      .where(
+        and(
+          eq(orderReadOrderLineItems.restaurantId, record.restaurantId),
+          eq(orderReadOrderLineItems.orderId, record.orderId)
+        )
+      );
+
+    if (record.lineItems.length > 0) {
+      await db.insert(orderReadOrderLineItems).values(
+        record.lineItems.map((li) => ({
+          restaurantId: record.restaurantId,
+          orderId: record.orderId,
+          lineItemId: li.lineItemId,
+          menuItemId: li.menuItemId,
+          nameAr: li.nameAr,
+          nameEn: li.nameEn,
+          quantity: li.quantity,
+          price: li.price,
+        }))
+      );
+    }
+
+    if (source.order.trackingToken) {
+      const itemCount = source.lineItems.reduce((sum, li) => sum + li.quantity, 0);
+      await db
+        .insert(orderReadPublicOrderStatus)
+        .values({
+          trackingToken: source.order.trackingToken,
+          restaurantSlug: source.restaurantSlug,
+          restaurantId: record.restaurantId,
+          orderNumber: record.orderNumber,
+          status: record.status,
+          tableNumber: record.tableNumber,
+          itemCount,
+          totalAmount: record.totalAmount,
+          createdAt: record.createdAt,
+          readyAt: record.readyAt,
+          projectionSchemaVersion: ORDER_READ_PROJECTION_SCHEMA_VERSION,
+          lastEventId: eventId,
+          updatedAt: record.updatedAt,
+        })
+        .onDuplicateKeyUpdate({
+          set: {
+            status: record.status,
+            tableNumber: record.tableNumber,
+            itemCount,
+            totalAmount: record.totalAmount,
+            readyAt: record.readyAt,
+            projectionSchemaVersion: ORDER_READ_PROJECTION_SCHEMA_VERSION,
+            lastEventId: eventId,
+            updatedAt: record.updatedAt,
+          },
+        });
+    }
+  }
+
+  async upsertTimeline(record: OrderTimelineProjectionRecord): Promise<void> {
+    const db = await getDb();
+    if (!db) return;
+    await db
+      .insert(orderReadOrderTimeline)
+      .values({
+        restaurantId: record.restaurantId,
+        orderId: record.orderId,
+        eventId: record.event.eventId,
+        fromStatus: record.event.fromStatus,
+        toStatus: record.event.toStatus,
+        occurredAt: record.event.occurredAt,
+        projectionSchemaVersion: ORDER_READ_PROJECTION_SCHEMA_VERSION,
+        lastEventId: record.lastEventId,
+        updatedAt: record.updatedAt,
+      })
+      .onDuplicateKeyUpdate({ set: { updatedAt: record.updatedAt } });
+  }
+
+  async upsertKpi(record: OperationalKpiProjectionRecord): Promise<void> {
+    const db = await getDb();
+    if (!db) return;
+    await db
+      .insert(orderReadOperationalKpiDaily)
+      .values({
+        restaurantId: record.restaurantId,
+        dayKey: record.dayKey,
+        activeOrders: record.activeOrders,
+        pendingOrders: record.pendingOrders,
+        preparingOrders: record.preparingOrders,
+        readyOrders: record.readyOrders,
+        projectionSchemaVersion: ORDER_READ_PROJECTION_SCHEMA_VERSION,
+        lastEventId: record.lastEventId,
+        updatedAt: record.updatedAt,
+      })
+      .onDuplicateKeyUpdate({
+        set: {
+          activeOrders: record.activeOrders,
+          pendingOrders: record.pendingOrders,
+          preparingOrders: record.preparingOrders,
+          readyOrders: record.readyOrders,
+          projectionSchemaVersion: ORDER_READ_PROJECTION_SCHEMA_VERSION,
+          lastEventId: record.lastEventId,
+          updatedAt: record.updatedAt,
+        },
+      });
+  }
+
+  async upsertAnalytics(record: OrderAnalyticsDayRecord): Promise<void> {
+    const db = await getDb();
+    if (!db) return;
+    await db
+      .insert(orderReadAnalyticsDaily)
+      .values({
+        restaurantId: record.restaurantId,
+        dayKey: record.dayKey,
+        orderCount: record.orderCount,
+        completedOrderCount: record.completedOrderCount,
+        completedSales: record.completedSales,
+        projectionSchemaVersion: ORDER_READ_PROJECTION_SCHEMA_VERSION,
+        lastEventId: record.lastEventId,
+        updatedAt: record.updatedAt,
+      })
+      .onDuplicateKeyUpdate({
+        set: {
+          orderCount: record.orderCount,
+          completedOrderCount: record.completedOrderCount,
+          completedSales: record.completedSales,
+          projectionSchemaVersion: ORDER_READ_PROJECTION_SCHEMA_VERSION,
+          lastEventId: record.lastEventId,
+          updatedAt: record.updatedAt,
+        },
+      });
+  }
+}

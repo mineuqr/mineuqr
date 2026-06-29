@@ -9,6 +9,8 @@ import {
 } from "./infrastructure/monitoring/OpsProjectionConsumerMetrics";
 import type { ConsumerRegistryDispatchDelegate } from "../infrastructure/events/registry/OrderEventConsumerRegistry";
 import { orderProjectionLifecycleRegistry } from "./projections/lifecycle/ProjectionLifecycleRegistry";
+import { createOrderReadProjectionConsumers } from "./projections/consumers/createOrderReadProjectionConsumers";
+import { orderReadProjectionMaterializer } from "./readPersistenceComposition";
 
 const projectionMetrics =
   process.env.NODE_ENV === "test"
@@ -24,12 +26,21 @@ export const orderProjectionConsumerRegistry = new OrderProjectionConsumerRegist
 );
 
 /**
- * Phase 1: no projection consumers registered — registry is empty.
- * Materializing consumers register here in ORDERS-READ-MODEL-1 Phase 2+.
+ * Phase 2: materializing consumers registered on the projection registry.
+ * NOT activated — publisher remains integration-only unless ORDER_READ_PROJECTIONS_ENABLED=true.
  */
 export function registerOrderProjectionConsumers(): void {
-  const candidates = orderProjectionLifecycleRegistry.listMaterializingCandidates();
-  void candidates;
+  const consumers = createOrderReadProjectionConsumers(orderReadProjectionMaterializer);
+  let order = 10;
+  for (const consumer of consumers) {
+    orderProjectionConsumerRegistry.register({
+      consumer,
+      enabled: true,
+      registrationOrder: order,
+      executionPolicy: "parallel",
+    });
+    order += 10;
+  }
 }
 
 registerOrderProjectionConsumers();

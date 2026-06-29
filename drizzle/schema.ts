@@ -441,6 +441,136 @@ export const orderItems = mysqlTable("order_items", {
 	index("order_items_order_id").on(table.orderId),
 ]);
 
+// ─── Order Read Projections (ORDERS-READ-MODEL-1 Phase 2) ─────────
+export const orderReadOrders = mysqlTable("order_read_orders", {
+	restaurantId: int().notNull(),
+	orderId: int().notNull(),
+	orderNumber: varchar({ length: 32 }).notNull(),
+	status: mysqlEnum(["pending", "preparing", "ready", "served", "cancelled"]).notNull(),
+	tableId: int().notNull(),
+	tableNumber: int().notNull(),
+	sessionId: int(),
+	customerName: varchar({ length: 255 }),
+	customerPhone: varchar({ length: 32 }),
+	notes: text(),
+	totalAmount: decimal({ precision: 10, scale: 2 }).notNull(),
+	trackingToken: varchar({ length: 64 }),
+	createdAt: timestamp({ mode: "string" }).notNull(),
+	readyAt: timestamp({ mode: "string" }),
+	servedAt: timestamp({ mode: "string" }),
+	cancelledAt: timestamp({ mode: "string" }),
+	isActive: boolean().default(false).notNull(),
+	projectionSchemaVersion: int().default(1).notNull(),
+	lastEventId: varchar({ length: 36 }),
+	updatedAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+},
+(table) => [
+	primaryKey({ columns: [table.restaurantId, table.orderId] }),
+	index("order_read_orders_restaurant_active").on(table.restaurantId, table.isActive),
+	index("order_read_orders_restaurant_status").on(table.restaurantId, table.status),
+	index("order_read_orders_restaurant_created").on(table.restaurantId, table.createdAt),
+]);
+
+export const orderReadOrderLineItems = mysqlTable("order_read_order_line_items", {
+	restaurantId: int().notNull(),
+	orderId: int().notNull(),
+	lineItemId: int().notNull(),
+	menuItemId: int().notNull(),
+	nameAr: varchar({ length: 255 }).notNull(),
+	nameEn: varchar({ length: 255 }),
+	quantity: int().notNull(),
+	price: decimal({ precision: 10, scale: 2 }).notNull(),
+},
+(table) => [
+	primaryKey({ columns: [table.restaurantId, table.orderId, table.lineItemId] }),
+	index("order_read_line_items_order").on(table.restaurantId, table.orderId),
+]);
+
+export const orderReadOrderTimeline = mysqlTable("order_read_order_timeline", {
+	restaurantId: int().notNull(),
+	orderId: int().notNull(),
+	eventId: varchar({ length: 36 }).notNull(),
+	fromStatus: varchar({ length: 32 }),
+	toStatus: varchar({ length: 32 }).notNull(),
+	occurredAt: timestamp({ mode: "string" }).notNull(),
+	projectionSchemaVersion: int().default(1).notNull(),
+	lastEventId: varchar({ length: 36 }),
+	updatedAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+},
+(table) => [
+	primaryKey({ columns: [table.restaurantId, table.orderId, table.eventId] }),
+	index("order_read_timeline_order").on(table.restaurantId, table.orderId, table.occurredAt),
+]);
+
+export const orderReadOperationalKpiDaily = mysqlTable("order_read_operational_kpi_daily", {
+	restaurantId: int().notNull(),
+	dayKey: varchar({ length: 10 }).notNull(),
+	activeOrders: int().default(0).notNull(),
+	pendingOrders: int().default(0).notNull(),
+	preparingOrders: int().default(0).notNull(),
+	readyOrders: int().default(0).notNull(),
+	projectionSchemaVersion: int().default(1).notNull(),
+	lastEventId: varchar({ length: 36 }),
+	updatedAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+},
+(table) => [
+	primaryKey({ columns: [table.restaurantId, table.dayKey] }),
+]);
+
+export const orderReadAnalyticsDaily = mysqlTable("order_read_analytics_daily", {
+	restaurantId: int().notNull(),
+	dayKey: varchar({ length: 10 }).notNull(),
+	orderCount: int().default(0).notNull(),
+	completedOrderCount: int().default(0).notNull(),
+	completedSales: decimal({ precision: 12, scale: 2 }).default("0.00").notNull(),
+	projectionSchemaVersion: int().default(1).notNull(),
+	lastEventId: varchar({ length: 36 }),
+	updatedAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+},
+(table) => [
+	primaryKey({ columns: [table.restaurantId, table.dayKey] }),
+]);
+
+export const orderReadPublicOrderStatus = mysqlTable("order_read_public_order_status", {
+	trackingToken: varchar({ length: 64 }).notNull(),
+	restaurantSlug: varchar({ length: 128 }).notNull(),
+	restaurantId: int().notNull(),
+	orderNumber: varchar({ length: 32 }).notNull(),
+	status: varchar({ length: 32 }).notNull(),
+	tableNumber: int().notNull(),
+	itemCount: int().default(0).notNull(),
+	totalAmount: decimal({ precision: 10, scale: 2 }).notNull(),
+	createdAt: timestamp({ mode: "string" }).notNull(),
+	readyAt: timestamp({ mode: "string" }),
+	projectionSchemaVersion: int().default(1).notNull(),
+	lastEventId: varchar({ length: 36 }),
+	updatedAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+},
+(table) => [
+	primaryKey({ columns: [table.trackingToken, table.restaurantSlug] }),
+	index("order_read_public_restaurant").on(table.restaurantId),
+]);
+
+export const orderReadBackfillRuns = mysqlTable("order_read_backfill_runs", {
+	id: varchar({ length: 36 }).notNull(),
+	scope: mysqlEnum(["full", "tenant", "partial"]).notNull(),
+	restaurantId: int(),
+	fromDayKey: varchar({ length: 10 }),
+	toDayKey: varchar({ length: 10 }),
+	status: mysqlEnum(["pending", "running", "completed", "failed"]).default("pending").notNull(),
+	rowsProcessed: int().default(0).notNull(),
+	attemptCount: int().default(0).notNull(),
+	lastError: text(),
+	startedAt: timestamp({ mode: "string" }),
+	completedAt: timestamp({ mode: "string" }),
+	createdAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+},
+(table) => [
+	primaryKey({ columns: [table.id] }),
+	index("order_read_backfill_restaurant").on(table.restaurantId),
+	index("order_read_backfill_status").on(table.status),
+]);
+
 // ─── Order Domain Outbox (ORDER-EVENTS-1A) ───────────────────────
 export const orderDomainOutbox = mysqlTable("order_domain_outbox", {
 	id: varchar({ length: 36 }).notNull(),

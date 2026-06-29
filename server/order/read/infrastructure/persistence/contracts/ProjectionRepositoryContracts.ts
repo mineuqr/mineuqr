@@ -20,10 +20,15 @@ export type ActiveOrderProjectionKey = TenantScopedProjectionKey & {
   orderId: number;
 };
 
-export type ActiveOrderProjectionRecord = ActiveOrderItemDto &
+export type OrderProjectionOrderRow = ActiveOrderItemDto &
   ProjectionRecordMeta & {
-    projectionId: "P-02-active-orders";
+    servedAt: string | null;
+    cancelledAt: string | null;
   };
+
+export type ActiveOrderProjectionRecord = OrderProjectionOrderRow & {
+  projectionId: "P-02-active-orders";
+};
 
 export interface ActiveOrdersProjectionRepository
   extends ProjectionRepository<ActiveOrderProjectionRecord, ActiveOrderProjectionKey> {
@@ -33,10 +38,8 @@ export interface ActiveOrdersProjectionRepository
 
 export type OwnerOrderProjectionKey = ActiveOrderProjectionKey;
 
-export type OwnerOrderProjectionRecord = ActiveOrderProjectionRecord & {
+export type OwnerOrderProjectionRecord = OrderProjectionOrderRow & {
   projectionId: "P-01-owner-orders";
-  servedAt: string | null;
-  cancelledAt: string | null;
 };
 
 export interface OwnerOrdersProjectionRepository
@@ -46,7 +49,7 @@ export interface OwnerOrdersProjectionRepository
 
 export type OrderDetailProjectionKey = ActiveOrderProjectionKey;
 
-export type OrderDetailProjectionRecord = ActiveOrderProjectionRecord & {
+export type OrderDetailProjectionRecord = OrderProjectionOrderRow & {
   projectionId: "P-03-order-details";
 };
 

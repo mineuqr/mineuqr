@@ -1,123 +1,89 @@
-# ORDERS-READ-MODEL-1 — Phase 1 Architecture Compliance Report
+# ORDERS-READ-MODEL-1 — Phase 2 Architecture Compliance Report
 
-**Program:** ORDERS-READ-MODEL-1 — Read Foundation (Phase 1)  
-**Reference:** READ-ARCHITECTURE-1 (RA-01 through RA-08)  
+**Program:** ORDERS-READ-MODEL-1 — Projection Materialization (Phase 2)  
+**Reference:** READ-ARCHITECTURE-1 (RA-01 through RA-10)  
 **Date:** 2026-06-29  
-**Exit verdict:** PASS (Phase 1 scope)
+**Exit verdict:** PASS (Phase 2 scope — materialized, not activated)
 
 ---
 
 ## Scope Statement
 
-Phase 1 delivers the **read module foundation** only. No production read models, projection consumers, tRPC procedures, or UI changes were introduced. Legacy `order.list` and Dashboard behavior remain unchanged.
+Phase 2 delivers **projection store schema, repositories, materializers, consumers, and backfill infrastructure** without activating live dispatch or production read APIs. Legacy `order.list`, Dashboard, Orders Workspace, and React remain unchanged.
 
 ---
 
 ## RA-01 Module Topology
 
-| RA-01 Target | Implementation | Status |
-|--------------|----------------|--------|
-| `server/order/read/` root | `server/order/read/index.ts` | ✓ |
-| `application/` — Query application services | `QueryHandler.ts`, `ReadQueryContext.ts` (contracts) | ✓ |
-| `services/` — Read services | `ReadService.ts` (interface) | ✓ |
-| `projections/` — Consumer definitions | `OrderProjectionConsumer.ts`, `ProjectionLifecycleRegistry.ts` | ✓ |
-| `infrastructure/persistence/` | `ProjectionRepositoryContracts.ts`, idempotency stores | ✓ |
-| `infrastructure/registry/` | `OrderProjectionConsumerRegistry`, `CompositeEventDispatchDelegate` | ✓ |
-| `infrastructure/monitoring/` | `ProjectionConsumerMetrics`, `OpsProjectionConsumerMetrics` | ✓ |
-| Composition root | `readComposition.ts` | ✓ |
+| RA-01 Target | Phase 2 Implementation | Status |
+|--------------|--------------------------|--------|
+| `infrastructure/persistence/` — projection store | `DrizzleOrderReadProjectionStore`, `InMemoryOrderReadProjectionStore`, `PersistingOrderReadProjectionRepositories` | ✓ |
+| `projections/` — materializers | `OrderReadProjectionMaterializer`, `projectionStatus.ts` | ✓ |
+| `projections/` — consumers | `createOrderReadProjectionConsumers.ts` (7 consumers) | ✓ |
+| Context loader (write → read denorm) | `OrderReadContextLoader`, `DrizzleOrderReadContextLoader` | ✓ |
+| Backfill | `OrderReadProjectionBackfillService` | ✓ |
+| Composition | `readPersistenceComposition.ts`, `readComposition.ts` (consumers registered) | ✓ |
 
 ---
 
-## RA-02 Projection Catalog
+## RA-02 Projection Catalog — Materialization
 
-| Requirement | Implementation | Status |
-|-------------|----------------|--------|
-| P-01 through P-12 identifiers | `projectionIds.ts`, `ORDER_PROJECTION_DEFINITIONS` | ✓ |
-| Lifecycle states (`defined` → `queryable`) | `projectionContracts.ts`, `ProjectionLifecycleRegistry` | ✓ |
-| Owner module per projection | RA-06 alignment in lifecycle registry | ✓ |
-| Kitchen/printing as `defined` only | P-07, P-08 `lifecycleState: "defined"` | ✓ |
-| No materialization in Phase 1 | All order-read projections in `infrastructure` | ✓ |
-
----
-
-## RA-03 Query Catalog
-
-| Requirement | Implementation | Status |
-|-------------|----------------|--------|
-| Q-01 through Q-08 query IDs | `queryContracts.ts` | ✓ |
-| Query → projection bindings | `ORDER_READ_QUERY_BINDINGS` | ✓ |
-| Pagination limits (Q-01) | `clampActiveOrderLimit`, defaults 50 / max 100 | ✓ |
-| DTO contracts | `ActiveOrderItemDto`, `OperationalKpiDto`, analytics DTOs | ✓ |
-| `ReadResultMeta` observability | `buildReadResultMeta`, `queryCatalogVersion` | ✓ |
-| No tRPC exposure | No router changes | ✓ |
+| Projection | Lifecycle | Store Table(s) | Consumer | Phase 2 |
+|------------|-----------|----------------|----------|---------|
+| P-01 Owner Orders | `materializing` | `order_read_orders`, `order_read_order_line_items` | `OwnerOrdersProjectionConsumer` | ✓ |
+| P-02 Active Orders | `materializing` | `order_read_orders` (`isActive`) | `ActiveOrdersProjectionConsumer` | ✓ |
+| P-03 Order Details | `materializing` | `order_read_orders`, line items | `OrderDetailsProjectionConsumer` | ✓ |
+| P-04 Order Timeline | `materializing` | `order_read_order_timeline` | `OrderTimelineProjectionConsumer` | ✓ |
+| P-05 Dashboard | `queryable` (ops) | — | — | Out of scope |
+| P-06 Operational KPI | `materializing` | `order_read_operational_kpi_daily` | `OperationalKpiProjectionConsumer` | ✓ |
+| P-07 Kitchen Queue | `defined` | — | — | Deferred |
+| P-08 Print Jobs | `defined` | — | — | Deferred |
+| P-09 Session Orders | `defined` | — | — | Deferred |
+| P-10 Analytics | `materializing` | `order_read_analytics_daily` | `OrderAnalyticsProjectionConsumer` | ✓ |
+| P-11 Public Order Status | `materializing` | `order_read_public_order_status` | `PublicOrderStatusProjectionConsumer` | ✓ |
+| P-12 Order Search | `defined` | — | — | Deferred |
 
 ---
 
-## RA-04 / RA-05 / RA-06 Event & Boundary Compliance
+## RA-04 / RA-05 / RA-06 / RA-09 Compliance
 
 | Requirement | Implementation | Status |
 |-------------|----------------|--------|
-| Projection consumers separate from integration consumers | `OrderProjectionConsumerRegistry` distinct from `OrderEventConsumerRegistry` | ✓ |
-| No cross-calls between consumer types | Registry implementations isolated | ✓ |
-| Idempotency keyed `(consumerName, eventId)` | `ProjectionConsumerIdempotencyStore`, Drizzle adapter reuses `order_domain_consumer_processed` | ✓ |
-| Parallel dispatch with failure isolation | `OrderProjectionConsumerRegistry.dispatchProjections` | ✓ |
-| Composite dispatch without coupling | `CompositeEventDispatchDelegate` | ✓ |
-| Repository interfaces only (no Drizzle impl) | `ProjectionRepositoryContracts.ts` | ✓ |
-| Read service interface only | `ReadService<TInput, TResult>` | ✓ |
-| Query handler interface only | `QueryHandler<TInput, TResult>` | ✓ |
+| Tenant isolation (`restaurantId` on all keys) | PKs include `restaurantId`; loader scopes by restaurant | ✓ |
+| Idempotent consumer delivery | `OrderProjectionConsumerRegistry` + `DrizzleProjectionConsumerIdempotencyStore` (Phase 1) | ✓ |
+| Restart-safe materialization | Upsert semantics; backfill safe retry | ✓ |
+| Observable consumers | `OpsProjectionConsumerMetrics` + ops taxonomy | ✓ |
+| Observable backfill | `order_read_backfill_started/completed/failed` | ✓ |
+| No cross-calls integration ↔ projection | Separate registries; publisher unchanged | ✓ |
+| Consumers registered, dispatch inactive | `registerOrderProjectionConsumers()`; flag default `false` | ✓ |
+| No production read APIs | No tRPC/router changes | ✓ |
+
+---
+
+## Production Safety Checklist
+
+| Guard | Verified |
+|-------|----------|
+| `eventInfrastructureComposition.ts` — publisher uses `orderEventConsumerRegistry` only | ✓ Unchanged |
+| `ORDER_READ_PROJECTIONS_ENABLED` default `false` | ✓ |
+| `createOrderEventDispatchDelegate()` not used in publisher composition | ✓ |
+| No Dashboard / React / `order.list` changes | ✓ |
+| Migration `0046_order_read_projections.sql` additive only | ✓ |
 
 ---
 
 ## ADR Compliance
 
-| ADR | Phase 1 Response | Status |
-|-----|-------------------|--------|
-| ADR-ARCH-006 | No UI changes; contracts prepared for server-owned KPIs | Deferred to Phase 3 |
-| ADR-ARCH-008 | Projection consumer path designed for same outbox bus | Infrastructure ready |
-| ADR-ARCH-009 | P-06/P-10 repository contracts defined | Deferred to Phase 2 |
-| ADR-ARCH-014 | Idempotent parallel projection consumers with metrics | ✓ |
-| ADR-ARCH-015 (proposed) | Read module foundation per reference architecture | ✓ |
+| ADR | Phase 2 Response | Status |
+|-----|------------------|--------|
+| ADR-ARCH-006 | KPI materialized in P-06; UI still client-side | Deferred Phase 3 |
+| ADR-ARCH-008 | Consumers ready for same outbox bus | ✓ Infra |
+| ADR-ARCH-009 | P-06/P-10 Drizzle tables + materializers | ✓ |
+| ADR-ARCH-014 | Idempotent parallel consumers with metrics | ✓ |
+| ADR-ARCH-015 | Read module materialization per RA-08 Phase 2 | ✓ |
 
 ---
 
-## Production Safety Constraints
+## Exit Verdict
 
-| Constraint | Verification | Status |
-|------------|--------------|--------|
-| Do not modify Dashboard | No `client/` changes | ✓ |
-| Do not modify Orders Workspace | No `OrdersTab` / workspace changes | ✓ |
-| Do not replace `order.list` | No router/tRPC changes | ✓ |
-| Do not wire projection consumers to publisher | `eventInfrastructureComposition.ts` still uses `orderEventConsumerRegistry` only | ✓ |
-| Feature flag default off | `ORDER_READ_PROJECTIONS_ENABLED` defaults `false` in `env.ts` | ✓ |
-| No production behavior change | Publisher, relay, integration consumers unchanged | ✓ |
-
----
-
-## Observability
-
-| Artifact | Location | Status |
-|----------|----------|--------|
-| `order_projection_consumer_executed` | `opsTaxonomy.ts` | ✓ |
-| `order_projection_consumer_failed` | `opsTaxonomy.ts` | ✓ |
-| `order_projection_consumer_skipped` | `opsTaxonomy.ts` | ✓ |
-| Ops log integration | `OpsProjectionConsumerMetrics` | ✓ |
-| No-op metrics in test | `NoOpProjectionConsumerMetrics` | ✓ |
-
----
-
-## Deviations from RA-08 Phase 1 Wording
-
-RA-08 Phase 1 text references projection store schema, consumer registration, and backfill. Per explicit Phase 1 charter constraints, these are **deferred to Phase 2**:
-
-- Projection store Drizzle schema — not created
-- Materializing projection consumers — not registered
-- Backfill job — not implemented
-- `ORDER_READ_PROJECTIONS_ENABLED` composite dispatch — available but not wired to production publisher
-
-This is intentional: Phase 1 is **foundation only**; materialization is Phase 2 per program gate.
-
----
-
-## Verdict
-
-**PASS** — Phase 1 Read Foundation conforms to READ-ARCHITECTURE-1 design artifacts within authorized scope. Full backward compatibility maintained. Ready for Phase 2 (projection store + materializing consumers).
+**PASS** — Phase 2 deliverables complete. Projections are materializable via backfill and registered consumers; live dispatch and read APIs remain inactive pending Phase 3 gates.
