@@ -1,19 +1,20 @@
 import { execFile } from "node:child_process";
+import { randomUUID } from "node:crypto";
+import { unlink, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { promisify } from "node:util";
 import type { PrinterInfo } from "../../domain/PrinterInfo";
 import { BasePlatformAdapter } from "../BasePlatformAdapter";
-import { SimulatedPlatformAdapter } from "../SimulatedPlatformAdapter";
 import { shouldUseSimulatedConnector } from "../resolveHostPlatform";
+import { SimulatedPlatformAdapter } from "../SimulatedPlatformAdapter";
+import {
+  decodeWindowsPrinterId,
+  isSimulatedPrinterId,
+} from "./windowsPrinterId";
+import { DISCOVER_PRINTERS_SCRIPT, parseDiscoverStdout } from "./windowsPrinterDiscovery";
 
 const execFileAsync = promisify(execFile);
-
-function mapTransport(driverName: string): PrinterInfo["transport"] {
-  const lower = driverName.toLowerCase();
-  if (lower.includes("usb")) return "usb";
-  if (lower.includes("bluetooth")) return "bluetooth";
-  if (lower.includes("wifi") || lower.includes("wireless")) return "wifi";
-  return "ethernet";
-}
 
 export class WindowsPlatformAdapter extends BasePlatformAdapter {
   readonly platform = "windows" as const;
@@ -25,47 +26,46 @@ export class WindowsPlatformAdapter extends BasePlatformAdapter {
 
     try {
       const { stdout } = await execFileAsync(
-        "powershell",
-        [
-          "-NoProfile",
-          "-Command",
-          "Get-Printer | Select-Object Name, PrinterStatus, DriverName | ConvertTo-Json -Compress",
-        ],
-        { timeout: 10_000, windowsHide: true }
+        "powershell.exe",
+        ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", DISCOVER_PRINTERS_SCRIPT],
+        { timeout: 15_000, windowsHide: true }
       );
 
-      const parsed = JSON.parse(stdout || "[]") as
-        | Array<{ Name: string; PrinterStatus: number; DriverName?: string }>
-        | { Name: string; PrinterStatus: number; DriverName?: string };
-
-      const rows = Array.isArray(parsed) ? parsed : [parsed];
-
-      return rows.map((row, index) => ({
-        id: `win-${row.Name}`,
-        name: row.Name,
-        platform: "windows" as const,
-        transport: mapTransport(row.DriverName ?? row.Name),
-        isDefault: index === 0,
-        isOnline: row.PrinterStatus === 0,
-        location: null,
-        manufacturer: null,
-      }));
-    } catch {
-      return new SimulatedPlatformAdapter("windows").discoverPrinters();
+      return parseDiscoverStdout(stdout);
+    } catch (error) {
+      console.warn(
+        "[print-connector] Windows printer discovery failed:",
+        error instanceof Error ? error.message : String(error)
+      );
+      return [];
     }
   }
 
   protected async deliverTextToOsPrinter(printerId: string, text: string): Promise<void> {
-    const printerName = printerId.replace(/^win-/, "");
-    const escaped = text.replace(/'/g, "''");
-    await execFileAsync(
-      "powershell",
-      [
-        "-NoProfile",
-        "-Command",
-        `'${escaped}' | Out-Printer -Name '${printerName.replace(/'/g, "''")}'`,
-      ],
-      { timeout: 30_000, windowsHide: true }
-    );
+    if (isSimulatedPrinterId(printerId)) {
+      throw new Error("Simulated printer cannot be used in production mode");
+    }
+
+    const printerName = decodeWindowsPrinterId(printerId);
+    if (!printerName) {
+      throw new Error("Invalid Windows printer identifier");
+    }
+
+    const tempPath = join(tmpdir(), `mineuqr-print-${randomUUID()}.txt`);
+    await writeFile(tempPath, text, "utf8");
+
+    const escapedPath = tempPath.replace(/'/g, "''");
+    const escapedName = printerName.replace(/'/g, "''");
+    const command = `Get-Content -LiteralPath '${escapedPath}' -Raw | Out-Printer -Name '${escapedName}'`;
+
+    try {
+      await execFileAsync(
+        "powershell.exe",
+        ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", command],
+        { timeout: 60_000, windowsHide: true }
+      );
+    } finally {
+      await unlink(tempPath).catch(() => undefined);
+    }
   }
 }

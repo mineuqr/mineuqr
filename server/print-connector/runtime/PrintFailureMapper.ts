@@ -1,6 +1,9 @@
 import type { PrintFailureReason } from "../domain/PrintFailureReason";
 
 const PATTERNS: Array<{ pattern: RegExp; reason: PrintFailureReason }> = [
+  { pattern: /ENOENT|spawn lp|lpstat/i, reason: "os_failure" },
+  { pattern: /simulated printer cannot be used/i, reason: "unsupported_capability" },
+  { pattern: /invalid windows printer/i, reason: "printer_offline" },
   { pattern: /offline|not found|unavailable/i, reason: "printer_offline" },
   { pattern: /paper\s*out|out of paper/i, reason: "paper_out" },
   { pattern: /permission|access denied|unauthorized/i, reason: "permission_denied" },

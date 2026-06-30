@@ -98,12 +98,7 @@ export abstract class BasePlatformAdapter implements PlatformAdapter {
     completedAt: string,
     error?: unknown
   ): PrintExecutionResult {
-    const message =
-      error instanceof Error
-        ? error.message
-        : reason
-          ? failureResultMessage(reason)
-          : failureResultMessage("unknown");
+    const message = reason ? failureResultMessage(reason) : failureResultMessage("unknown");
 
     return {
       executionId: request.executionId,

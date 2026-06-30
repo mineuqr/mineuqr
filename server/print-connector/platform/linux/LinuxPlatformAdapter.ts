@@ -52,8 +52,12 @@ export class LinuxPlatformAdapter extends BasePlatformAdapter {
           manufacturer: null,
         };
       });
-    } catch {
-      return new SimulatedPlatformAdapter("linux").discoverPrinters();
+    } catch (error) {
+      console.warn(
+        "[print-connector] Linux printer discovery failed:",
+        error instanceof Error ? error.message : String(error)
+      );
+      return [];
     }
   }
 

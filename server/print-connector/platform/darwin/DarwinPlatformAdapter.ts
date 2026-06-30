@@ -52,8 +52,12 @@ export class DarwinPlatformAdapter extends BasePlatformAdapter {
           manufacturer: null,
         };
       });
-    } catch {
-      return new SimulatedPlatformAdapter("macos").discoverPrinters();
+    } catch (error) {
+      console.warn(
+        "[print-connector] macOS printer discovery failed:",
+        error instanceof Error ? error.message : String(error)
+      );
+      return [];
     }
   }
 
