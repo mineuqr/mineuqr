@@ -9,6 +9,7 @@ import { ConnectorResolver } from "./services/ConnectorResolver";
 import type { ConnectorExecutionPort } from "./contracts/ConnectorExecutionPort";
 import type { ConnectorRegistryRepository } from "./contracts/ConnectorRegistryRepository";
 import type { PrintResultPort } from "../printing/contracts/ports/PrintResultPort";
+import { connectorNetworkComposition } from "../connector-session/networkComposition";
 
 export type ConnectorGatewayComposition = {
   repository: ConnectorRegistryRepository;
@@ -50,6 +51,8 @@ export function composeConnectorGateway(
   };
 }
 
-export const connectorGatewayComposition = composeConnectorGateway();
+export const connectorGatewayComposition = connectorNetworkComposition.gateway;
 
 export const connectorGateway = connectorGatewayComposition.gateway;
+
+export { connectorNetworkComposition };
