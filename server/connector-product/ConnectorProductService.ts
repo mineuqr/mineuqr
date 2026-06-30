@@ -5,11 +5,7 @@ import {
   MINEUQR_CONNECTOR_VERSION,
   getWindowsInstallerFileName,
 } from "./productVersion";
-
-const DOWNLOAD_URL =
-  process.env.MINEUQR_CONNECTOR_DOWNLOAD_URL?.trim() ||
-  process.env.CONNECTOR_DOWNLOAD_URL?.trim() ||
-  null;
+import { releaseDistributionComposition } from "./release-distribution/releaseDistributionComposition";
 
 export type ConnectorDownloadInfo = {
   productName: string;
@@ -27,12 +23,21 @@ export type ConnectorPairingIssue = {
 };
 
 export class ConnectorProductService {
+  constructor(
+    private readonly distributionService = releaseDistributionComposition.distributionService
+  ) {}
+
   async getDownloadInfo(): Promise<ConnectorDownloadInfo> {
+    const published = await this.distributionService.getCurrentDownloadInfo();
+    if (published) {
+      return published;
+    }
+
     return {
       productName: MINEUQR_CONNECTOR_PRODUCT_NAME,
       version: MINEUQR_CONNECTOR_VERSION,
-      downloadUrl: DOWNLOAD_URL,
-      downloadReady: Boolean(DOWNLOAD_URL),
+      downloadUrl: null,
+      downloadReady: false,
       windowsInstallerName: getWindowsInstallerFileName(),
     };
   }

@@ -1,7 +1,8 @@
 # MineuQR Connector — production release build (Windows)
 param(
   [string]$RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path,
-  [switch]$SkipFinalize
+  [switch]$SkipFinalize,
+  [switch]$SkipPublish
 )
 
 $ErrorActionPreference = "Stop"
@@ -54,7 +55,13 @@ try {
     Write-Host "Release metadata finalized."
   }
 
-  Write-Host "Optional next step: connector-product/windows/sign-release.ps1 (then metadata will refresh again)."
+  if (-not $SkipPublish) {
+    npx tsx scripts/connector-release-publish.ts --version $manifest.version
+    if ($LASTEXITCODE -ne 0) { throw "connector-release-publish failed" }
+    Write-Host "Release published and activated."
+  }
+
+  Write-Host "Optional next step: connector-product/windows/sign-release.ps1 (then run publish again to refresh registry checksum if needed)."
 } finally {
   Pop-Location
 }

@@ -365,6 +365,13 @@
       "when": 1784100000000,
       "tag": "0051_connector_enrollment",
       "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "5",
+      "when": 1784200000000,
+      "tag": "0052_connector_release_distribution",
+      "breakpoints": true
     }
   ]
 }

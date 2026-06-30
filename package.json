@@ -29,7 +29,8 @@
     "connector:sync-version": "node scripts/sync-connector-release-constants.mjs",
     "build:connector": "node scripts/sync-connector-release-constants.mjs && npm run build:connector:bundle",
     "release:connector": "node scripts/connector-release-build.mjs",
-    "release:connector:finalize": "node scripts/connector-release-finalize.mjs"
+    "release:connector:finalize": "node scripts/connector-release-finalize.mjs",
+    "release:connector:publish": "tsx scripts/connector-release-publish.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1056.0",

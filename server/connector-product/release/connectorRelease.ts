@@ -53,6 +53,13 @@ export function getReleaseStagingDirectoryName(
   return `${manifest.installer.outputBaseName}-${manifest.version}`;
 }
 
+export function getReleaseStagingRoot(
+  repoRoot: string,
+  manifest: ConnectorReleaseManifest = readConnectorReleaseManifest()
+): string {
+  return join(repoRoot, "dist", "connector-release", manifest.version);
+}
+
 export function buildDistributionManifest(input: {
   manifest: ConnectorReleaseManifest;
   buildDate: string;

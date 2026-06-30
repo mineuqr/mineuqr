@@ -716,6 +716,25 @@ export const connectorEnrollments = mysqlTable("connector_enrollments", {
 	index("connector_enrollments_restaurant_status").on(table.restaurantId, table.status),
 ]);
 
+// ─── Connector release distribution (PRINT-RELEASE-DISTRIBUTION-1) ─
+export const connectorPublishedReleases = mysqlTable("connector_published_releases", {
+	version: varchar({ length: 32 }).notNull(),
+	productName: varchar({ length: 128 }).notNull(),
+	installerFileName: varchar({ length: 255 }).notNull(),
+	installerSha256: varchar({ length: 64 }).notNull(),
+	storageKey: varchar({ length: 512 }).notNull(),
+	releaseManifestJson: json().notNull(),
+	status: mysqlEnum(["published", "active", "superseded"]).default("published").notNull(),
+	publishedAt: timestamp({ mode: "string" }).notNull(),
+	activatedAt: timestamp({ mode: "string" }),
+	createdAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+	updatedAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+},
+(table) => [
+	primaryKey({ columns: [table.version] }),
+	index("connector_published_releases_status").on(table.status),
+]);
+
 // ─── Order Domain Outbox (ORDER-EVENTS-1A) ───────────────────────
 export const orderDomainOutbox = mysqlTable("order_domain_outbox", {
 	id: varchar({ length: 36 }).notNull(),
