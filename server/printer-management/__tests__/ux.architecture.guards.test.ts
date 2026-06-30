@@ -12,7 +12,10 @@ describe("PRINT-UX-1 client architecture guards", () => {
       "utf8"
     );
     expect(panel).not.toMatch(/WindowsPlatform|UsbTransport|createPlatformAdapter/);
+    expect(panel).toContain("LocalConnectorCard");
+    expect(panel).toContain("ConnectorSessionCard");
     expect(panel).toContain("CurrentPrinterCard");
+    expect(panel).not.toMatch(/JSON\.stringify/);
   });
 
   it("printer picker uses connector API contracts only", () => {
@@ -23,5 +26,20 @@ describe("PRINT-UX-1 client architecture guards", () => {
     expect(dialog).toContain("printConnector.discoverPrinters");
     expect(dialog).toContain("printerManagement.commands.provisionPrinter");
     expect(dialog).not.toMatch(/navigator\.usb|bluetooth|powershell/i);
+  });
+});
+
+describe("PRINT-UX-2 architecture guards", () => {
+  it("presence read service does not modify gateway services", () => {
+    const service = readFileSync(
+      join(
+        dirname(fileURLToPath(import.meta.url)),
+        "../../print-workspace/read/services/PrintWorkspacePresenceReadService.ts"
+      ),
+      "utf8"
+    );
+    expect(service).toContain("ConnectorDirectory");
+    expect(service).not.toContain("ConnectorGatewayService");
+    expect(service).not.toContain("PrintingService");
   });
 });

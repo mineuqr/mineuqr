@@ -84,7 +84,7 @@
 | **P2** | PRINT-CONNECTOR-NETWORK-1 | Session protocol + transport abstraction | **Complete** |
 | **P3** | PRINT-CONNECTOR-LOCAL-1 | RLC runtime (`local_desktop`) | **Complete** |
 | **P3b** | PRINT-CONNECTOR-WINDOWS-1 | Windows PlatformAdapterHost + RuntimeFacade | **Complete** |
-| **P4** | PRINT-UX-2 | Connector status in Workspace/Management | Planned |
+| **P4** | PRINT-UX-2 | Connector status in Workspace/Management | **Complete** |
 | **P5** | PRINT-CONNECTOR-ANDROID-1 | Android RLC | Planned |
 | **P6** | PRINT-PRODUCTION-VALIDATION-2 | End-to-end distributed certification | Planned |
 

@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { formatStatusLabel, toPrintWorkspaceOrderCard } from "../viewModels";
+import {
+  connectorReadyForPrint,
+  formatHealthLabel,
+  formatStatusLabel,
+  formatUptime,
+  toPrintWorkspaceOrderCard,
+} from "../viewModels";
 
 describe("print workspace view models", () => {
   it("maps order row to card model", () => {
@@ -40,5 +46,13 @@ describe("print workspace view models", () => {
 
   it("formats status labels in Arabic", () => {
     expect(formatStatusLabel("preparing", "ar")).toBe("قيد التحضير");
+  });
+
+  it("maps connector health labels and readiness", () => {
+    expect(formatHealthLabel("connected", "en")).toBe("Connected");
+    expect(formatHealthLabel("offline", "ar")).toBe("غير متصل");
+    expect(connectorReadyForPrint("connected")).toBe(true);
+    expect(connectorReadyForPrint("offline")).toBe(false);
+    expect(formatUptime(125 * 60 * 1000, "en")).toBe("2h 5m");
   });
 });

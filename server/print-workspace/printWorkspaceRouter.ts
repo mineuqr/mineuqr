@@ -4,6 +4,7 @@ import { assertRestaurantAccess } from "../restaurantAccess";
 import { printWorkspaceCommandService } from "./commands/PrintWorkspaceCommandService";
 import { printWorkspaceReadService } from "./read/services/PrintWorkspaceReadService";
 import { printerManagementService } from "../printer-management/printerManagementComposition";
+import { printWorkspacePresenceReadService } from "./printWorkspacePresenceComposition";
 
 const listOrdersInput = z.object({
   restaurantId: z.coerce.number().int().positive(),
@@ -70,6 +71,38 @@ export const printWorkspaceRouter = router({
     getCurrentPrinter: verifiedProcedure.input(restaurantInput).query(async ({ input, ctx }) => {
       await assertRestaurantAccess(ctx, input.restaurantId, "printWorkspace.read.getCurrentPrinter");
       return printerManagementService.getCurrentPrinter(input.restaurantId);
+    }),
+
+    getLocalConnectorStatus: verifiedProcedure.input(restaurantInput).query(async ({ input, ctx }) => {
+      await assertRestaurantAccess(
+        ctx,
+        input.restaurantId,
+        "printWorkspace.read.getLocalConnectorStatus"
+      );
+      return printWorkspacePresenceReadService.getLocalConnectorStatus(input.restaurantId);
+    }),
+
+    getConnectorSessionStatus: verifiedProcedure.input(restaurantInput).query(async ({ input, ctx }) => {
+      await assertRestaurantAccess(
+        ctx,
+        input.restaurantId,
+        "printWorkspace.read.getConnectorSessionStatus"
+      );
+      return printWorkspacePresenceReadService.getConnectorSessionStatus(input.restaurantId);
+    }),
+
+    getDiagnosticsSummary: verifiedProcedure.input(restaurantInput).query(async ({ input, ctx }) => {
+      await assertRestaurantAccess(
+        ctx,
+        input.restaurantId,
+        "printWorkspace.read.getDiagnosticsSummary"
+      );
+      return printWorkspacePresenceReadService.getDiagnosticsSummary(input.restaurantId);
+    }),
+
+    getTechnicalReport: verifiedProcedure.input(restaurantInput).query(async ({ input, ctx }) => {
+      await assertRestaurantAccess(ctx, input.restaurantId, "printWorkspace.read.getTechnicalReport");
+      return printWorkspacePresenceReadService.getTechnicalReport(input.restaurantId);
     }),
   }),
 

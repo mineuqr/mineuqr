@@ -245,7 +245,7 @@ No implementation program may override ADR-ARCH-016 by implementation alone. **A
 | PRINT-CONNECTOR-NETWORK-1 | Complete | Connector Session protocol |
 | PRINT-CONNECTOR-LOCAL-1 | Complete | RLC runtime |
 | PRINT-CONNECTOR-WINDOWS-1 | Complete | Windows platform in RLC |
-| PRINT-UX-2 | Planned | Connector presence UX |
+| PRINT-UX-2 | Complete | Connector presence UX |
 | PRINT-PRODUCTION-VALIDATION-2 | Planned | End-to-end certification |
 
 ## Related ADRs

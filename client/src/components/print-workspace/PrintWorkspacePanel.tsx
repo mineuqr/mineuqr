@@ -3,8 +3,11 @@ import { VerificationRequiredPanel } from "@/components/auth/VerificationRequire
 import { RestaurantDashSection } from "@/components/dashboard/RestaurantDashSection";
 import { restaurantDash } from "@/components/dashboard/restaurantDashStyles";
 import { RestaurantSectionError } from "@/components/dashboard/RestaurantSectionStates";
+import { ConnectorSessionCard } from "@/components/print-workspace/ConnectorSessionCard";
 import { CurrentPrinterCard } from "@/components/print-workspace/CurrentPrinterCard";
+import { LocalConnectorCard } from "@/components/print-workspace/LocalConnectorCard";
 import { PrinterSelectionDialog } from "@/components/print-workspace/PrinterSelectionDialog";
+import { WorkspaceDiagnosticsSection } from "@/components/print-workspace/WorkspaceDiagnosticsSection";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -13,6 +16,7 @@ import {
   useDevQueryRuntimeLog,
 } from "@/lib/queryRuntime";
 import { useCurrentPrinter } from "@/lib/print-workspace/useCurrentPrinter";
+import { useDistributedPrintingInfrastructure } from "@/lib/print-workspace/useDistributedPrintingInfrastructure";
 import { usePrintWorkspaceActionPort } from "@/lib/print-workspace/usePrintWorkspaceActions";
 import {
   formatStatusLabel,
@@ -47,11 +51,12 @@ export function PrintWorkspacePanel({
   const sym = currencySymbol || "ر.س";
   const { isAuthenticated, authPending } = useAuth();
   const queriesEnabled = restaurantQueriesEnabled(authPending, isAuthenticated, restaurantId);
-  const { state, setView, setSearch, setStatusFilter, selectOrder, queryInput } =
-    usePrintWorkspaceState();
+  const { state, setView, setSearch, selectOrder, queryInput } = usePrintWorkspaceState();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [testMessage, setTestMessage] = useState<string | null>(null);
+  const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
 
+  const infrastructure = useDistributedPrintingInfrastructure(restaurantId, queriesEnabled);
   const currentPrinter = useCurrentPrinter(restaurantId, queriesEnabled);
 
   useDevQueryRuntimeLog("printWorkspace.read.listOrders", {
@@ -83,7 +88,11 @@ export function PrintWorkspacePanel({
     [listQuery.data?.items, language]
   );
 
-  const printerReady = currentPrinter.current?.configured ?? false;
+  const printerReady =
+    infrastructure.connectorOnline &&
+    (currentPrinter.current?.configured ?? false) &&
+    (currentPrinter.current?.status?.isReady ?? false);
+
   const verificationError = isEmailNotVerifiedError(listQuery.error) ? listQuery.error : null;
 
   return (
@@ -93,7 +102,9 @@ export function PrintWorkspacePanel({
           {isAr ? "مساحة الطباعة" : "Print Workspace"}
         </h1>
         <p className="max-w-2xl text-sm leading-relaxed text-slate-400">
-          {isAr ? "تشغيل يومي — طباعة وإعادة طباعة الطلبات" : "Daily operations — print and reprint orders"}
+          {isAr
+            ? "طباعة موزعة — حالة الموصل والجلسة والطابعة"
+            : "Distributed printing — connector, session, and printer status"}
         </p>
       </div>
 
@@ -101,12 +112,32 @@ export function PrintWorkspacePanel({
         <VerificationRequiredPanel variant="orders" compact />
       ) : (
         <>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <RestaurantDashSection title={isAr ? "موصل المطعم المحلي" : "Restaurant Local Connector"}>
+              <LocalConnectorCard
+                language={language}
+                status={infrastructure.connector}
+                isLoading={infrastructure.isLoading}
+                onOpenDiagnostics={() => setDiagnosticsOpen(true)}
+              />
+            </RestaurantDashSection>
+
+            <RestaurantDashSection title={isAr ? "جلسة الموصل" : "Connector Session"}>
+              <ConnectorSessionCard
+                language={language}
+                status={infrastructure.session}
+                isLoading={infrastructure.isLoading}
+              />
+            </RestaurantDashSection>
+          </div>
+
           <RestaurantDashSection title={isAr ? "الطابعة الحالية" : "Current printer"}>
             <CurrentPrinterCard
               language={language}
               current={currentPrinter.current}
               isLoading={currentPrinter.isLoading}
               isTesting={currentPrinter.isTesting}
+              connectorOnline={infrastructure.connectorOnline}
               onChangePrinter={() => setPickerOpen(true)}
               onTestPrint={async () => {
                 try {
@@ -124,8 +155,41 @@ export function PrintWorkspacePanel({
               }}
               onOpenManagement={() => onOpenPrinterManagement?.()}
             />
-            {testMessage ? (
-              <p className="mt-2 text-xs text-slate-400">{testMessage}</p>
+            {testMessage ? <p className="mt-2 text-xs text-slate-400">{testMessage}</p> : null}
+          </RestaurantDashSection>
+
+          <RestaurantDashSection
+            title={isAr ? "التشخيص" : "Diagnostics"}
+            headerAside={
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => setDiagnosticsOpen((v) => !v)}
+              >
+                {diagnosticsOpen
+                  ? isAr
+                    ? "إخفاء"
+                    : "Hide"
+                  : isAr
+                    ? "عرض"
+                    : "Show"}
+              </Button>
+            }
+          >
+            <WorkspaceDiagnosticsSection
+              restaurantId={restaurantId}
+              language={language}
+              enabled={queriesEnabled}
+              expanded={diagnosticsOpen}
+              onExpandedChange={setDiagnosticsOpen}
+            />
+            {!diagnosticsOpen ? (
+              <p className="text-sm text-slate-400">
+                {isAr
+                  ? "بطاقات حالة بسيطة للمشغل — التقرير التقني متاح عند الطلب."
+                  : "Simple status cards for operators — technical report available on demand."}
+              </p>
             ) : null}
           </RestaurantDashSection>
 
@@ -211,7 +275,7 @@ export function PrintWorkspacePanel({
                         </div>
                       </button>
                     </li>
-                    ))}
+                  ))}
                 </ul>
               )}
             </RestaurantDashSection>
@@ -234,6 +298,13 @@ export function PrintWorkspacePanel({
                 />
               ) : (
                 <div className="space-y-4">
+                  {!infrastructure.connectorOnline ? (
+                    <p className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-sm text-amber-100/90">
+                      {isAr
+                        ? "موصل المطعم غير متصل — الطباعة متوقفة حتى يعود الاتصال."
+                        : "Restaurant connector offline — printing paused until connection is restored."}
+                    </p>
+                  ) : null}
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <h3 className="text-lg font-semibold text-white">
