@@ -1,39 +1,22 @@
 import { HealthStatusBadge } from "@/components/print-workspace/HealthStatusBadge";
 import { Button } from "@/components/ui/button";
-import { formatTimestamp, formatUptime } from "@/lib/print-workspace/viewModels";
+import { connectorOperatorCopy } from "@/lib/print-workspace/operationalViewModels";
 import type { RouterOutputs } from "@/lib/trpc";
 import { Activity, Loader2 } from "lucide-react";
 
 type LocalConnectorStatus = RouterOutputs["printWorkspace"]["read"]["getLocalConnectorStatus"];
 
-function Field({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="space-y-0.5">
-      <p className="text-xs text-slate-500">{label}</p>
-      <p className="text-sm text-slate-200">{value}</p>
-    </div>
-  );
-}
-
 export function LocalConnectorCard({
   language,
   status,
   isLoading,
-  onOpenDiagnostics,
+  onRefresh,
 }: {
   language: string;
   status: LocalConnectorStatus | undefined;
   isLoading: boolean;
-  onOpenDiagnostics: () => void;
+  onRefresh?: () => void;
 }) {
-  const isAr = language === "ar";
-
   if (isLoading) {
     return (
       <div className="flex justify-center rounded-xl border border-slate-800 bg-slate-900/40 py-10">
@@ -42,78 +25,36 @@ export function LocalConnectorCard({
     );
   }
 
-  const data = status ?? {
-    connectionStatus: "unregistered" as const,
-    healthLabel: "Unregistered" as const,
-    connectorVersion: null,
-    runtimePlatform: null,
-    runtimeUptimeMs: null,
-    lastHeartbeatAt: null,
-    connectorId: null,
-    hostLabel: null,
-  };
+  const connectionStatus = status?.connectionStatus ?? "unregistered";
+  const copy = connectorOperatorCopy(connectionStatus, language);
+  const online = connectionStatus === "healthy" || connectionStatus === "connected";
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+    <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 sm:p-5">
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <div className="rounded-lg bg-slate-800 p-2 text-slate-300">
+        <div className="flex items-center gap-3">
+          <div className="rounded-lg bg-slate-800 p-2.5 text-slate-300">
             <Activity className="h-5 w-5" />
           </div>
           <div>
-            <p className="font-semibold text-white">
-              {isAr ? "موصل المطعم المحلي" : "Restaurant Local Connector"}
+            <p className="text-base font-semibold text-white">
+              {language === "ar" ? "موصل MineuQR" : "MineuQR Connector"}
             </p>
-            <p className="text-xs text-slate-400">
-              {isAr ? "تنفيذ الطباعة في المطعم" : "On-premise print execution"}
-            </p>
+            <p className="mt-0.5 text-sm text-slate-300">{copy.title}</p>
           </div>
         </div>
-        <HealthStatusBadge state={data.connectionStatus} language={language} />
+        <HealthStatusBadge state={connectionStatus} language={language} />
       </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <Field
-          label={isAr ? "الحالة" : "Health"}
-          value={
-            isAr
-              ? data.healthLabel === "Healthy"
-                ? "سليم"
-                : data.healthLabel === "Degraded"
-                  ? "متدهور"
-                  : data.healthLabel === "Unregistered"
-                    ? "غير مسجل"
-                    : "غير متصل"
-              : data.healthLabel
-          }
-        />
-        <Field
-          label={isAr ? "الإصدار" : "Connector version"}
-          value={data.connectorVersion ?? (isAr ? "—" : "—")}
-        />
-        <Field
-          label={isAr ? "المنصة" : "Runtime platform"}
-          value={data.runtimePlatform ?? (isAr ? "—" : "—")}
-        />
-        <Field
-          label={isAr ? "مدة التشغيل" : "Runtime uptime"}
-          value={formatUptime(data.runtimeUptimeMs, language)}
-        />
-        <Field
-          label={isAr ? "آخر نبضة" : "Last heartbeat"}
-          value={formatTimestamp(data.lastHeartbeatAt, language)}
-        />
-        <Field
-          label={isAr ? "معرف الموصل" : "Connector ID"}
-          value={data.connectorId ?? (isAr ? "غير مسجل" : "Not registered")}
-        />
-      </div>
+      <p className="mt-3 text-sm leading-relaxed text-slate-400">{copy.detail}</p>
 
-      <div className="mt-4">
-        <Button type="button" size="sm" variant="outline" onClick={onOpenDiagnostics}>
-          {isAr ? "التشخيص" : "Diagnostics"}
-        </Button>
-      </div>
+      {!online ? (
+        <div className="mt-4">
+          <Button type="button" size="sm" variant="default" onClick={() => onRefresh?.()}>
+            {copy.action}
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }

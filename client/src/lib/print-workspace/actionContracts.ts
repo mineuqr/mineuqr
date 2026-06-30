@@ -1,5 +1,5 @@
 /**
- * PRINT-WORKSPACE-1 — client-side operator action contracts (no implementation).
+ * PRINT-WORKSPACE-1 — client-side operator action contracts.
  */
 
 export type PrintWorkspaceActionContext = {
@@ -21,22 +21,3 @@ export interface PrintWorkspaceActionPort {
   markPrinted(command: MarkPrintedCommand): Promise<void>;
   cancelPrint(command: CancelPrintCommand): Promise<void>;
 }
-
-/** Stub port — actions disabled until PRINTING-1 / PRINT-CONNECTOR-1. */
-export const disabledPrintWorkspaceActionPort: PrintWorkspaceActionPort = {
-  async printOrder() {
-    return undefined;
-  },
-  async reprint() {
-    return undefined;
-  },
-  async preview() {
-    return undefined;
-  },
-  async markPrinted() {
-    return undefined;
-  },
-  async cancelPrint() {
-    return undefined;
-  },
-};
