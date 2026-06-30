@@ -2,12 +2,12 @@
 /**
  * Sync TypeScript release constants from connector-product/release/connector-release.json
  */
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { buildInnoSetupDefines, readCanonicalManifest } from "./connector-release-lib.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const manifestPath = join(root, "connector-product", "release", "connector-release.json");
 const outputPath = join(
   root,
   "server",
@@ -16,7 +16,7 @@ const outputPath = join(
   "connectorReleaseConstants.generated.ts"
 );
 
-const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+const manifest = readCanonicalManifest(root);
 
 const lines = [
   "/** AUTO-GENERATED from connector-product/release/connector-release.json — run npm run connector:sync-version */",
@@ -32,24 +32,9 @@ const lines = [
 
 writeFileSync(outputPath, lines.join("\n"), "utf8");
 
-const innoDefines = [
-  `#define MyAppName "${manifest.productName}"`,
-  `#define MyAppVersion "${manifest.version}"`,
-  `#define MyAppPublisher "${manifest.publisher}"`,
-  `#define MyAppCopyright "${manifest.copyright}"`,
-  `#define MyAppSupportURL "${manifest.supportUrl}"`,
-  `#define MyAppId "{${manifest.appId}}"`,
-  `#define MyOutputBaseFilename "${manifest.installer.outputBaseName}-${manifest.version}-Setup"`,
-  "",
-].join("\n");
-
-const innoOutputDirs = [
-  join(root, "connector-product", "windows", "generated"),
-];
-
-for (const dir of innoOutputDirs) {
-  mkdirSync(dir, { recursive: true });
-  writeFileSync(join(dir, "connector-installer-metadata.iss.inc"), innoDefines, "utf8");
-}
+const innoDefines = buildInnoSetupDefines(manifest);
+const innoOutputDir = join(root, "connector-product", "windows", "generated");
+mkdirSync(innoOutputDir, { recursive: true });
+writeFileSync(join(innoOutputDir, "connector-installer-metadata.iss.inc"), innoDefines, "utf8");
 
 console.log(`Synced connector release constants → ${outputPath}`);

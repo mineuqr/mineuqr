@@ -48,9 +48,10 @@ if ([string]::IsNullOrWhiteSpace($timestampUrl)) {
 }
 
 if (-not $ArtifactPath) {
+  $installerName = node (Join-Path $RepoRoot "scripts\connector-release-installer-name.mjs")
+  if ($LASTEXITCODE -ne 0) { throw "Failed to resolve installer name from canonical manifest" }
   $manifestPath = Join-Path $RepoRoot "connector-product\release\connector-release.json"
   $manifest = Get-Content $manifestPath -Raw | ConvertFrom-Json
-  $installerName = "$($manifest.installer.outputBaseName)-$($manifest.version)-Setup$($manifest.installer.fileExtension)"
   $ArtifactPath = Join-Path $RepoRoot "dist\connector-release\$($manifest.version)\$installerName"
 }
 
@@ -79,3 +80,7 @@ Write-Host "Signing $ArtifactPath"
 & $signtool @signArgs
 if ($LASTEXITCODE -ne 0) { throw "signtool sign failed with exit code $LASTEXITCODE" }
 Write-Host "Signing complete."
+
+node (Join-Path $RepoRoot "scripts\connector-release-finalize.mjs")
+if ($LASTEXITCODE -ne 0) { throw "connector-release-finalize failed after signing" }
+Write-Host "Release metadata refreshed after signing."

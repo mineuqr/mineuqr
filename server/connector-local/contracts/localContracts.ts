@@ -64,4 +64,4 @@ export type LocalConnectorDiagnosticsSnapshot = {
   };
 };
 
-export const LOCAL_CONNECTOR_VERSION = "1.0.0" as const;
+export { MINEUQR_CONNECTOR_VERSION as LOCAL_CONNECTOR_VERSION } from "../../connector-product/release/connectorReleaseConstants.generated";

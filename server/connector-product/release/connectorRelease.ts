@@ -41,6 +41,12 @@ export function getWindowsInstallerFileName(
   return `${manifest.installer.outputBaseName}-${manifest.version}-Setup${manifest.installer.fileExtension}`;
 }
 
+export function getInnoOutputBaseFilename(
+  manifest: ConnectorReleaseManifest = readConnectorReleaseManifest()
+): string {
+  return `${manifest.installer.outputBaseName}-${manifest.version}-Setup`;
+}
+
 export function getReleaseStagingDirectoryName(
   manifest: ConnectorReleaseManifest = readConnectorReleaseManifest()
 ): string {
@@ -52,6 +58,7 @@ export function buildDistributionManifest(input: {
   buildDate: string;
   artifacts: ReleaseArtifactRecord[];
   installerSha256?: string | null;
+  installerRelativePath?: string;
 }): ConnectorDistributionManifest {
   return {
     schemaVersion: 1,
@@ -68,6 +75,7 @@ export function buildDistributionManifest(input: {
     artifacts: input.artifacts,
     installer: {
       fileName: getWindowsInstallerFileName(input.manifest),
+      relativePath: input.installerRelativePath ?? getWindowsInstallerFileName(input.manifest),
       sha256: input.installerSha256 ?? null,
     },
   };
@@ -81,7 +89,7 @@ export function buildInnoSetupDefines(manifest: ConnectorReleaseManifest): strin
     `#define MyAppCopyright "${manifest.copyright}"`,
     `#define MyAppSupportURL "${manifest.supportUrl}"`,
     `#define MyAppId "{${manifest.appId}}"`,
-    `#define MyOutputBaseFilename "${manifest.installer.outputBaseName}-${manifest.version}-Setup"`,
+    `#define MyOutputBaseFilename "${getInnoOutputBaseFilename(manifest)}"`,
     "",
   ].join("\n");
 }

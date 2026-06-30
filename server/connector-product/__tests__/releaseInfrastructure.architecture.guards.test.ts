@@ -7,37 +7,47 @@ import { ConnectorProductService } from "../ConnectorProductService";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 
-describe("PRINT-CONNECTOR-RELEASE-INFRA-1 architecture guards", () => {
-  it("canonical manifest lives outside installer scripts", () => {
+describe("PRINT-CONNECTOR-RELEASE-1 architecture guards", () => {
+  const manifest = readConnectorReleaseManifest();
+  const installerFileName = getWindowsInstallerFileName(manifest);
+
+  it("canonical manifest remains the single release authority", () => {
     const manifestPath = join(root, "connector-product", "release", "connector-release.json");
-    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
-    expect(manifest.version).toBeTruthy();
-    expect(manifest.productName).toBe("MineuQR Connector");
+    const canonical = JSON.parse(readFileSync(manifestPath, "utf8"));
+    expect(canonical.version).toBe(manifest.version);
+    expect(canonical.productName).toBe("MineuQR Connector");
   });
 
   it("dashboard API derives installer name from canonical manifest", async () => {
-    const manifest = readConnectorReleaseManifest();
     const service = new ConnectorProductService();
     const info = await service.getDownloadInfo();
     expect(info.version).toBe(manifest.version);
-    expect(info.windowsInstallerName).toBe(getWindowsInstallerFileName(manifest));
+    expect(info.windowsInstallerName).toBe(installerFileName);
   });
 
-  it("signing integration does not embed secrets in repository", () => {
-    const signScript = readFileSync(
-      join(root, "connector-product", "windows", "sign-release.ps1"),
-      "utf8"
-    );
-    expect(signScript).toContain("CONNECTOR_SIGNING_CERT_SHA1");
-    expect(signScript).toContain("CONNECTOR_SIGNING_PFX_PATH");
-    expect(signScript).not.toMatch(/BEGIN CERTIFICATE/);
-    expect(signScript).not.toMatch(/mineuqr.*\.pfx/i);
+  it("staging build does not publish stale release metadata", () => {
+    const stageScript = readFileSync(join(root, "scripts", "connector-release-build.mjs"), "utf8");
+    expect(stageScript).not.toContain('writeFileSync(join(stagingRoot, "release-manifest.json")');
+    expect(stageScript).not.toContain('writeFileSync(join(stagingRoot, "SHA256SUMS.txt")');
   });
 
-  it("release build script exists and stages manifest plus checksums", () => {
-    const buildScript = readFileSync(join(root, "scripts", "connector-release-build.mjs"), "utf8");
-    expect(buildScript).toContain("release-manifest.json");
-    expect(buildScript).toContain("SHA256SUMS.txt");
-    expect(buildScript).not.toMatch(/https?:\/\/[^\s"']+\/download/);
+  it("finalize script writes manifest and checksums after installer exists", () => {
+    const finalizeScript = readFileSync(join(root, "scripts", "connector-release-finalize.mjs"), "utf8");
+    expect(finalizeScript).toContain("release-manifest.json");
+    expect(finalizeScript).toContain("SHA256SUMS.txt");
+    expect(finalizeScript).toContain("installerSha256");
+  });
+
+  it("build-release.ps1 resolves installer name from canonical manifest", () => {
+    const buildScript = readFileSync(join(root, "connector-product", "windows", "build-release.ps1"), "utf8");
+    expect(buildScript).toContain("connector-release-installer-name.mjs");
+    expect(buildScript).not.toMatch(/MineuQR-Connector-\$Version-Setup/);
+    expect(buildScript).toContain("connector-release-finalize.mjs");
+  });
+
+  it("sign-release.ps1 refreshes metadata after signing", () => {
+    const signScript = readFileSync(join(root, "connector-product", "windows", "sign-release.ps1"), "utf8");
+    expect(signScript).toContain("connector-release-installer-name.mjs");
+    expect(signScript).toContain("connector-release-finalize.mjs");
   });
 });

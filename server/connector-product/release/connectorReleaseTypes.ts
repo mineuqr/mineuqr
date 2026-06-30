@@ -35,6 +35,7 @@ export type ConnectorDistributionManifest = {
   artifacts: ReleaseArtifactRecord[];
   installer: {
     fileName: string;
+    relativePath?: string;
     sha256: string | null;
   };
 };
