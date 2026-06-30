@@ -51,7 +51,7 @@ The [Order-Centric Architecture Blueprint](./blueprints/Order-Centric-Architectu
 
 ## ADRs
 
-Architecture Decision Records live in [adrs/](./adrs/). All thirteen ratified ADRs (ADR-ARCH-001 through ADR-ARCH-013) have individual documents. The [registry](./constitution/ADR-Registry.md) is the constitutional index.
+Architecture Decision Records live in [adrs/](./adrs/). Ratified ADRs (ADR-ARCH-001 through ADR-ARCH-014, ADR-ARCH-016, ADR-ARCH-017) have individual documents. The [registry](./constitution/ADR-Registry.md) is the constitutional index.
 
 ## Governance
 

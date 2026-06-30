@@ -252,6 +252,7 @@ No implementation program may override ADR-ARCH-016 by implementation alone. **A
 
 - ADR-ARCH-012 (event-driven print dispatch)
 - ADR-ARCH-001 (order sovereignty)
+- [ADR-ARCH-017](./ADR-ARCH-017-printer-catalog-ownership-and-lifecycle.md) (Printer Catalog ownership and lifecycle)
 
 ---
 
