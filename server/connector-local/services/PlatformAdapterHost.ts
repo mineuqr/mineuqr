@@ -1,18 +1,36 @@
+import type { PlatformAdapter } from "../../print-connector/contracts/PlatformAdapter";
+import type { PrintConnectorApi } from "../../print-connector/contracts/PrintConnectorApi";
+import { WindowsPlatformAdapter } from "../../print-connector/platform/windows/WindowsPlatformAdapter";
+import { isRlcWindowsHost } from "../windows/createRlcWindowsConnectorRuntime";
+
 /**
- * Future host for PlatformAdapter instances — no OS printing in PRINT-CONNECTOR-LOCAL-1.
+ * Hosts the native Windows PlatformAdapter inside RLC (ADR-ARCH-016 Rule 7/8).
  */
 export class PlatformAdapterHost {
-  private ready = false;
+  private adapter: PlatformAdapter | null = null;
 
   initialize(): void {
-    this.ready = true;
+    if (!isRlcWindowsHost()) {
+      this.adapter = null;
+      return;
+    }
+    this.adapter = new WindowsPlatformAdapter();
+  }
+
+  getAdapter(): PlatformAdapter | null {
+    return this.adapter;
   }
 
   isAvailable(): boolean {
-    return this.ready;
+    return this.adapter != null;
   }
 
   shutdown(): void {
-    this.ready = false;
+    this.adapter = null;
   }
 }
+
+export type PlatformRuntimeBundle = {
+  runtime: PrintConnectorApi;
+  platformAdapter: PlatformAdapter;
+};

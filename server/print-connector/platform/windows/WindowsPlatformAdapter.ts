@@ -20,7 +20,7 @@ export class WindowsPlatformAdapter extends BasePlatformAdapter {
   readonly platform = "windows" as const;
 
   async discoverPrinters(): Promise<PrinterInfo[]> {
-    if (shouldUseSimulatedConnector()) {
+    if (shouldUseSimulatedConnector() && process.env.RLC_RUNTIME !== "1") {
       return new SimulatedPlatformAdapter("windows").discoverPrinters();
     }
 

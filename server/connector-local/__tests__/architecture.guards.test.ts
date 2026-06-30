@@ -64,7 +64,18 @@ describe("PRINT-CONNECTOR-LOCAL-1 architecture guards", () => {
       "utf8"
     );
     expect(source).toContain("platform_execution_deferred");
-    expect(source).not.toMatch(/WindowsPlatformAdapter|PrintConnectorRuntime/);
+  });
+
+  it("runtime handler delegates to PrintConnectorRuntime not PrintingService", () => {
+    const source = readFileSync(join(root, "infrastructure", "RuntimeConnectorCommandHandler.ts"), "utf8");
+    expect(source).toContain("LocalConnectorRuntimeFacade");
+    expect(source).not.toContain("PrintingService");
+  });
+
+  it("Windows RLC hosts WindowsPlatformAdapter", () => {
+    const source = readFileSync(join(root, "services", "PlatformAdapterHost.ts"), "utf8");
+    expect(source).toContain("WindowsPlatformAdapter");
+    expect(source).not.toContain("LinuxPlatformAdapter");
   });
 
   it("PrintConnectorPort remains unchanged", () => {
