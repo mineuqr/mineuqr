@@ -14,6 +14,7 @@ describe("PRINT-UX-1 client architecture guards", () => {
     expect(panel).not.toMatch(/WindowsPlatform|UsbTransport|createPlatformAdapter/);
     expect(panel).toContain("PrintingStatusBanner");
     expect(panel).toContain("PrintingSetupZone");
+    expect(panel).toContain("PrintJobMonitor");
     expect(panel).toContain("CurrentPrinterCard");
     expect(panel).not.toMatch(/JSON\.stringify/);
     expect(panel).not.toMatch(/Restaurant Local Connector/);
@@ -31,6 +32,17 @@ describe("PRINT-UX-1 client architecture guards", () => {
     expect(panel).not.toMatch(/JSON\.stringify/);
     expect(panel).toContain("You have not configured printing yet");
     expect(panel).toContain("Start setup");
+  });
+
+  it("print job monitor avoids technical diagnostics", () => {
+    const monitor = readFileSync(
+      join(clientRoot, "components/print-workspace/PrintJobMonitor.tsx"),
+      "utf8"
+    );
+    expect(monitor).not.toMatch(/JSON\.stringify/);
+    expect(monitor).not.toMatch(/executionId|Gateway|Connector Session|Runtime/);
+    expect(monitor).toContain("Print history");
+    expect(monitor).toContain("Cancel print");
   });
 
   it("printer picker uses distributed read model and provisioning workflow", () => {
@@ -74,6 +86,16 @@ describe("PRINT-UX-2A architecture guards", () => {
     expect(models).toContain("deriveProvisioningWorkflowState");
     expect(models).toContain("deriveOnboardingStep");
     expect(models).toContain("derivePrintingReadinessLevel");
+  });
+
+  it("print job view models own operator print status copy", () => {
+    const models = readFileSync(
+      join(clientRoot, "lib/print-workspace/printJobViewModels.ts"),
+      "utf8"
+    );
+    expect(models).toContain("selectPrimaryPrintJob");
+    expect(models).toContain("operatorPrintErrorMessage");
+    expect(models).not.toMatch(/executionId|JSON\.stringify/);
   });
 
   it("main workspace cards hide infrastructure metadata", () => {

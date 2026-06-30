@@ -4,6 +4,7 @@ import { RestaurantDashSection } from "@/components/dashboard/RestaurantDashSect
 import { restaurantDash } from "@/components/dashboard/restaurantDashStyles";
 import { RestaurantSectionError } from "@/components/dashboard/RestaurantSectionStates";
 import { CurrentPrinterCard } from "@/components/print-workspace/CurrentPrinterCard";
+import { PrintJobMonitor } from "@/components/print-workspace/PrintJobMonitor";
 import { PrinterSelectionDialog } from "@/components/print-workspace/PrinterSelectionDialog";
 import { PrintingSetupZone } from "@/components/print-workspace/PrintingSetupZone";
 import { PrintingStatusBanner } from "@/components/print-workspace/PrintingStatusBanner";
@@ -22,6 +23,7 @@ import {
   derivePrintingReadinessLevel,
 } from "@/lib/print-workspace/operationalViewModels";
 import { usePrintWorkspaceActionPort } from "@/lib/print-workspace/usePrintWorkspaceActions";
+import { hasActivePrintJob } from "@/lib/print-workspace/printJobViewModels";
 import {
   formatStatusLabel,
   toPrintWorkspaceOrderCard,
@@ -31,7 +33,7 @@ import { usePrintWorkspaceState } from "@/lib/print-workspace/usePrintWorkspaceS
 import { isEmailNotVerifiedError } from "@/lib/trpcErrors";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
-import { Loader2, Printer, RefreshCw, RotateCcw, Settings2 } from "lucide-react";
+import { Loader2, RefreshCw, Settings2 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 
 const VIEW_TABS: { id: PrintWorkspaceViewFilter; en: string; ar: string }[] = [
@@ -102,7 +104,13 @@ export function PrintWorkspacePanel({
 
   const detailQuery = trpc.printWorkspace.read.getOrderDetail.useQuery(
     { restaurantId, orderId: state.selectedOrderId ?? 0 },
-    { enabled: queriesEnabled && state.selectedOrderId != null }
+    {
+      enabled: queriesEnabled && state.selectedOrderId != null,
+      refetchInterval: (query) => {
+        const jobs = query.state.data?.printJobs ?? [];
+        return jobs.length > 0 && hasActivePrintJob(jobs) ? 3_000 : false;
+      },
+    }
   );
 
   const printActions = usePrintWorkspaceActionPort(
@@ -322,54 +330,30 @@ export function PrintWorkspacePanel({
                   />
                 ) : (
                   (() => {
-                    const order = detailQuery.data.order;
+                    const order = detailQuery.data!.order;
+                    const printJobs = detailQuery.data!.printJobs;
                     return (
                   <div className="space-y-4">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <h3 className="text-lg font-semibold text-white">
-                          {order.orderNumber}
-                        </h3>
-                        <p className="text-sm text-slate-400">
-                          {formatStatusLabel(order.status, language)} ·{" "}
-                          {isAr ? "طاولة" : "Table"} {order.tableNumber}
-                        </p>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="default"
-                          disabled={!isPrintingReady || printActions.isBusy}
-                          onClick={() =>
-                            void printActions.printOrder({
-                              restaurantId,
-                              orderId: order.orderId,
-                              orderNumber: order.orderNumber,
-                            })
-                          }
-                        >
-                          <Printer className="h-4 w-4 me-1" />
-                          {isAr ? "طباعة" : "Print"}
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          disabled={!isPrintingReady || printActions.isBusy}
-                          onClick={() =>
-                            void printActions.reprint({
-                              restaurantId,
-                              orderId: order.orderId,
-                              orderNumber: order.orderNumber,
-                            })
-                          }
-                        >
-                          <RotateCcw className="h-4 w-4 me-1" />
-                          {isAr ? "إعادة طباعة" : "Reprint"}
-                        </Button>
-                      </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-white">
+                        {order.orderNumber}
+                      </h3>
+                      <p className="text-sm text-slate-400">
+                        {formatStatusLabel(order.status, language)} ·{" "}
+                        {isAr ? "طاولة" : "Table"} {order.tableNumber}
+                      </p>
                     </div>
+
+                    <PrintJobMonitor
+                      language={language}
+                      restaurantId={restaurantId}
+                      orderId={order.orderId}
+                      orderNumber={order.orderNumber}
+                      printJobs={printJobs}
+                      printingReady={isPrintingReady}
+                      actions={printActions}
+                      isRefreshing={detailQuery.isFetching}
+                    />
 
                     <ul className="divide-y divide-slate-800 rounded-lg border border-slate-800">
                       {order.lineItems.map((item) => (

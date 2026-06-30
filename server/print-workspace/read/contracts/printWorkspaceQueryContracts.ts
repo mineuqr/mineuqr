@@ -63,16 +63,26 @@ export type PrintWorkspaceOrderDetailResult = ReadResultMeta & {
   printJobs: PrintWorkspacePrintJobDto[];
 };
 
+export type PrintWorkspacePrintAttemptDto = {
+  attemptNumber: number;
+  status: string;
+  outcome: string;
+  errorMessage: string | null;
+  createdAt: string;
+};
+
 export type PrintWorkspacePrintJobDto = {
   id: number;
   status: string;
   source: string;
   attemptCount: number;
   lastError: string | null;
+  printerName: string | null;
   createdAt: string;
   dispatchedAt: string | null;
   printingAt: string | null;
   completedAt: string | null;
+  attempts: PrintWorkspacePrintAttemptDto[];
 };
 
 export type PrintWorkspacePreviewTicketResult = ReadResultMeta & {

@@ -67,19 +67,19 @@ export function usePrintWorkspaceActionPort(
       if (!orderId) return;
       await utils.printWorkspace.read.previewTicket.fetch({ restaurantId, orderId });
     },
-    async markPrinted(command) {
+    async markPrinted(command: MarkPrintedCommand) {
       await markPrintedMutation.mutateAsync({
-        restaurantId,
-        orderId,
-        orderNumber,
+        restaurantId: command.restaurantId,
+        orderId: command.orderId,
+        orderNumber: command.orderNumber,
         printedAt: command.printedAt,
       });
     },
-    async cancelPrint(command) {
+    async cancelPrint(command: CancelPrintCommand) {
       await cancelPrintMutation.mutateAsync({
-        restaurantId,
-        orderId,
-        orderNumber,
+        restaurantId: command.restaurantId,
+        orderId: command.orderId,
+        orderNumber: command.orderNumber,
         reason: command.reason,
       });
     },

@@ -12,6 +12,7 @@ import {
 import { DrizzlePrintWorkspaceReadStore } from "../infrastructure/DrizzlePrintWorkspaceReadStore";
 import { printingService } from "../../../printing/printingComposition";
 import { mapPrintJobToWorkspaceDto } from "../../../printing/read/PrintJobReadMapper";
+import { printerManagementService } from "../../../printer-management/printerManagementComposition";
 
 /**
  * Presentation-only read service for the Print Workspace.
@@ -46,12 +47,21 @@ export class PrintWorkspaceReadService {
     if (!detail) return null;
 
     const printJobs = await printingService.listJobsForOrder(query.restaurantId, query.orderId);
+    const currentPrinter = await printerManagementService.getCurrentPrinter(query.restaurantId);
+    const printerName = currentPrinter.printer?.displayName ?? null;
+
+    const printJobDtos = await Promise.all(
+      printJobs.map(async (job) => {
+        const attempts = await printingService.listAttemptsForJob(job.id);
+        return mapPrintJobToWorkspaceDto(job, { printerName, attempts });
+      })
+    );
 
     return {
       ...buildPrintWorkspaceMeta(),
       order: detail.order,
       timeline: detail.timeline,
-      printJobs: printJobs.map(mapPrintJobToWorkspaceDto),
+      printJobs: printJobDtos.sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     };
   }
 

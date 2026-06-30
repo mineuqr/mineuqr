@@ -233,6 +233,10 @@ export class PrintingService {
     return this.jobs.listByOrder(restaurantId, orderId);
   }
 
+  async listAttemptsForJob(printJobId: number) {
+    return this.attempts.listByJob(printJobId);
+  }
+
   async markPrinted(input: {
     restaurantId: number;
     orderId: number;
