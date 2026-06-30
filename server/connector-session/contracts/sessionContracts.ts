@@ -93,7 +93,8 @@ export type ConnectorHeartbeatResult = {
 export type ConnectorCommandType =
   | "execute_print"
   | "discover_printers"
-  | "get_printer_status";
+  | "get_printer_status"
+  | "cancel_print";
 
 export type ConnectorCommandEnvelope = {
   commandId: string;
@@ -118,6 +119,12 @@ export type ExecutePrintCommandPayload = {
   jobId: number;
   orderId: number;
   printPayload: PrintPayload;
+  printerId?: string;
+};
+
+export type CancelPrintCommandPayload = {
+  executionId: string;
+  printJobId: number;
 };
 
 export type PairingTokenIssue = {

@@ -94,4 +94,8 @@ export class LocalConnectorRuntimeFacade {
 
     return this.print(restaurantId, 0, 0, payload, printerId);
   }
+
+  cancel(restaurantId: number, executionId: string, printJobId: number): Promise<PrintExecutionResult> {
+    return this.runtime.cancel({ restaurantId, executionId, printJobId });
+  }
 }

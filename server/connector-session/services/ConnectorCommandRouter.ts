@@ -69,6 +69,77 @@ export class ConnectorCommandRouter {
     }
   }
 
+  async routeDiscoverPrinters(
+    connectorInstanceId: string,
+    session: LiveConnectorSession
+  ): Promise<ConnectorCommandResponse> {
+    return this.routeSessionCommand(connectorInstanceId, session, "discover_printers", {});
+  }
+
+  async routeSelectPrinter(
+    connectorInstanceId: string,
+    session: LiveConnectorSession,
+    payload: {
+      printerId: string;
+      printerName: string;
+      platform: string;
+      transport: string;
+    }
+  ): Promise<ConnectorCommandResponse> {
+    return this.routeSessionCommand(connectorInstanceId, session, "discover_printers", {
+      action: "select",
+      ...payload,
+    });
+  }
+
+  async routeGetPrinterStatus(
+    connectorInstanceId: string,
+    session: LiveConnectorSession,
+    printerId: string
+  ): Promise<ConnectorCommandResponse> {
+    return this.routeSessionCommand(connectorInstanceId, session, "get_printer_status", {
+      printerId,
+    });
+  }
+
+  async routeCancelPrint(
+    connectorInstanceId: string,
+    session: LiveConnectorSession,
+    payload: { executionId: string; printJobId: number }
+  ): Promise<ConnectorCommandResponse> {
+    return this.routeSessionCommand(connectorInstanceId, session, "cancel_print", payload);
+  }
+
+  private async routeSessionCommand(
+    connectorInstanceId: string,
+    session: LiveConnectorSession,
+    type: ConnectorCommandEnvelope["type"],
+    payload: unknown
+  ): Promise<ConnectorCommandResponse> {
+    const connection = this.transportRegistry.getByInstance(connectorInstanceId);
+    if (!connection) {
+      return {
+        commandId: "unrouted",
+        success: false,
+        failureCode: "transport_unavailable",
+        message: "No active transport connection",
+        payload: null,
+      };
+    }
+
+    if (session.lifecycle === "disconnected" || session.lifecycle === "connecting") {
+      return {
+        commandId: "unrouted",
+        success: false,
+        failureCode: "connector_unavailable",
+        message: "Connector session not ready",
+        payload: null,
+      };
+    }
+
+    return this.sendCommand(connection, session, type, payload, null);
+  }
+
   async sendCommand(
     connection: ConnectorTransportConnection,
     session: LiveConnectorSession,
@@ -111,6 +182,7 @@ export class ConnectorCommandRouter {
       jobId: request.jobId,
       orderId: request.orderId,
       printPayload: request.payload,
+      printerId: request.printerId,
     };
 
     return {

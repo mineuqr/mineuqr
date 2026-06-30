@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import type { ConnectorExecutionPort } from "../contracts/ConnectorExecutionPort";
 import { InMemoryConnectorRegistryRepository } from "../infrastructure/InMemoryConnectorRegistryRepository";
 import { ConnectorDirectory } from "../services/ConnectorDirectory";
 import { ConnectorGatewayService } from "../services/ConnectorGatewayService";
@@ -7,6 +6,8 @@ import { ConnectorHealthService } from "../services/ConnectorHealthService";
 import { ConnectorRegistry } from "../services/ConnectorRegistry";
 import { ConnectorResolver } from "../services/ConnectorResolver";
 import { samplePayload, sampleRegistration } from "./testFixtures";
+import { stubConnectorExecutionPort } from "./stubConnectorExecutionPort";
+import type { ConnectorExecutionPort } from "../contracts/ConnectorExecutionPort";
 
 function buildGateway(execution: ConnectorExecutionPort) {
   const repository = new InMemoryConnectorRegistryRepository();
@@ -20,9 +21,7 @@ function buildGateway(execution: ConnectorExecutionPort) {
 
 describe("ConnectorGatewayService", () => {
   it("routes print to registered connector when transport succeeds", async () => {
-    const execution: ConnectorExecutionPort = {
-      executePrint: async () => ({ success: true }),
-    };
+    const execution = stubConnectorExecutionPort();
     const { gateway, registry } = buildGateway(execution);
 
     await registry.register(sampleRegistration());
@@ -41,9 +40,7 @@ describe("ConnectorGatewayService", () => {
   });
 
   it("fails when connector is unregistered", async () => {
-    const execution: ConnectorExecutionPort = {
-      executePrint: async () => ({ success: true }),
-    };
+    const execution = stubConnectorExecutionPort();
     const { gateway } = buildGateway(execution);
 
     const result = await gateway.routePrint({
@@ -60,13 +57,13 @@ describe("ConnectorGatewayService", () => {
   });
 
   it("fails when transport is unavailable", async () => {
-    const execution: ConnectorExecutionPort = {
+    const execution = stubConnectorExecutionPort({
       executePrint: async () => ({
         success: false,
         failureReason: "transport_unavailable",
         message: "No session",
       }),
-    };
+    });
     const { gateway, registry } = buildGateway(execution);
 
     await registry.register(sampleRegistration());
@@ -87,9 +84,7 @@ describe("ConnectorGatewayService", () => {
 
 describe("ConnectorDirectory", () => {
   it("lists sessions and returns health snapshots", async () => {
-    const execution: ConnectorExecutionPort = {
-      executePrint: async () => ({ success: true }),
-    };
+    const execution = stubConnectorExecutionPort();
     const { gateway, directory, registry } = buildGateway(execution);
 
     await registry.register(sampleRegistration());

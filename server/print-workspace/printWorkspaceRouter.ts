@@ -5,6 +5,7 @@ import { printWorkspaceCommandService } from "./commands/PrintWorkspaceCommandSe
 import { printWorkspaceReadService } from "./read/services/PrintWorkspaceReadService";
 import { printerManagementService } from "../printer-management/printerManagementComposition";
 import { printWorkspacePresenceReadService } from "./printWorkspacePresenceComposition";
+import { printWorkspaceDiscoveryReadService } from "./printWorkspaceDiscoveryComposition";
 
 const listOrdersInput = z.object({
   restaurantId: z.coerce.number().int().positive(),
@@ -103,6 +104,11 @@ export const printWorkspaceRouter = router({
     getTechnicalReport: verifiedProcedure.input(restaurantInput).query(async ({ input, ctx }) => {
       await assertRestaurantAccess(ctx, input.restaurantId, "printWorkspace.read.getTechnicalReport");
       return printWorkspacePresenceReadService.getTechnicalReport(input.restaurantId);
+    }),
+
+    discoverPrinters: verifiedProcedure.input(restaurantInput).query(async ({ input, ctx }) => {
+      await assertRestaurantAccess(ctx, input.restaurantId, "printWorkspace.read.discoverPrinters");
+      return printWorkspaceDiscoveryReadService.discoverPrinters(input.restaurantId);
     }),
   }),
 

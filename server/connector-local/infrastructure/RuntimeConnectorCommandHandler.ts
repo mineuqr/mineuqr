@@ -1,6 +1,7 @@
 import type {
   ConnectorCommandEnvelope,
   ConnectorCommandResponse,
+  CancelPrintCommandPayload,
   ExecutePrintCommandPayload,
 } from "../../connector-session/contracts/sessionContracts";
 import type { ConnectorCommandHandler } from "../contracts/ConnectorCommandHandler";
@@ -39,6 +40,8 @@ export class RuntimeConnectorCommandHandler implements ConnectorCommandHandler {
           return this.handleStatus(command, config.restaurantId);
         case "execute_print":
           return this.handleExecutePrint(command, config.restaurantId);
+        case "cancel_print":
+          return this.handleCancelPrint(command, config.restaurantId);
         default:
           return {
             commandId: command.commandId,
@@ -119,8 +122,25 @@ export class RuntimeConnectorCommandHandler implements ConnectorCommandHandler {
       restaurantId,
       payload.jobId,
       payload.orderId,
-      payload.printPayload
+      payload.printPayload,
+      payload.printerId
     );
+
+    return {
+      commandId: command.commandId,
+      success: result.success,
+      failureCode: result.success ? null : mapPrintFailureToInfrastructure(result.failureReason),
+      message: result.message ?? null,
+      payload: { execution: result },
+    };
+  }
+
+  private async handleCancelPrint(
+    command: ConnectorCommandEnvelope,
+    restaurantId: number
+  ): Promise<ConnectorCommandResponse> {
+    const payload = command.payload as CancelPrintCommandPayload;
+    const result = await this.facade.cancel(restaurantId, payload.executionId, payload.printJobId);
 
     return {
       commandId: command.commandId,

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { ConnectorExecutionPort } from "../contracts/ConnectorExecutionPort";
+import { stubConnectorExecutionPort } from "./stubConnectorExecutionPort";
 import { RemotePrintConnectorPort } from "../adapters/RemotePrintConnectorPort";
 import { composeConnectorGateway } from "../gatewayComposition";
 import { InMemoryConnectorRegistryRepository } from "../infrastructure/InMemoryConnectorRegistryRepository";
@@ -7,9 +7,7 @@ import { samplePayload, sampleRegistration } from "./testFixtures";
 
 describe("RemotePrintConnectorPort", () => {
   it("reports success when gateway routes print", async () => {
-    const execution: ConnectorExecutionPort = {
-      executePrint: async () => ({ success: true }),
-    };
+    const execution = stubConnectorExecutionPort();
     const composition = composeConnectorGateway({ execution });
     await composition.registry.register(sampleRegistration());
 

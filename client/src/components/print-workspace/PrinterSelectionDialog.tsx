@@ -44,7 +44,7 @@ export function PrinterSelectionDialog({
 
   const connectorOnline = connectorReadyForPrint(connectorQuery.data?.connectionStatus);
 
-  const discoverQuery = trpc.printConnector.discoverPrinters.useQuery(
+  const discoverQuery = trpc.printWorkspace.read.discoverPrinters.useQuery(
     { restaurantId },
     { enabled: open && restaurantId > 0 && connectorOnline }
   );
@@ -73,8 +73,8 @@ export function PrinterSelectionDialog({
   }, [open]);
 
   const productionPrinters = useMemo(
-    () => filterProductionPrinters(discoverQuery.data ?? []),
-    [discoverQuery.data]
+    () => filterProductionPrinters(discoverQuery.data?.printers ?? []),
+    [discoverQuery.data?.printers]
   );
 
   const filtered = useMemo(() => {

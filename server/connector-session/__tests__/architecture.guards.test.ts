@@ -26,7 +26,7 @@ describe("PRINT-CONNECTOR-NETWORK-1 architecture guards", () => {
       const source = readFileSync(join(root, file), "utf8");
       expect(source).not.toContain("PrintingService");
       expect(source).not.toContain("OrderRepository");
-      expect(source).not.toMatch(/WindowsPlatformAdapter|PrintConnectorApi/);
+      expect(source).not.toMatch(/WindowsPlatformAdapter|PrintConnectorRuntime/);
     }
   });
 

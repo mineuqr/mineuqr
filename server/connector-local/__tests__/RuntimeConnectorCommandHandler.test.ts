@@ -160,6 +160,36 @@ describe("RuntimeConnectorCommandHandler", () => {
     expect(response.success).toBe(false);
     expect(response.failureCode).toBe(mapPrintFailureToInfrastructure("printer_offline"));
   });
+
+  it("handles cancel_print", async () => {
+    const runtime = mockRuntime({
+      cancel: vi.fn().mockResolvedValue({
+        executionId: "e-cancel",
+        printJobId: 9,
+        restaurantId: 1,
+        printerId: "win:Kitchen",
+        success: true,
+        completedAt: new Date().toISOString(),
+      }),
+    });
+    const handler = new RuntimeConnectorCommandHandler(runtime, configProvider);
+    const response = await handler.handle({
+      commandId: "c4",
+      type: "cancel_print",
+      restaurantId: 1,
+      connectorId: "rlc-1",
+      correlationId: null,
+      issuedAt: new Date().toISOString(),
+      nonce: "n4",
+      payload: {
+        executionId: "e-cancel",
+        printJobId: 9,
+      },
+    });
+
+    expect(response.success).toBe(true);
+    expect(runtime.cancel).toHaveBeenCalled();
+  });
 });
 
 describe("mapWindowsInfrastructureFailure", () => {

@@ -26,10 +26,12 @@ describe("PRINT-UX-1 client architecture guards", () => {
       "utf8"
     );
     expect(dialog).toContain("getLocalConnectorStatus");
+    expect(dialog).toContain("printWorkspace.read.discoverPrinters");
     expect(dialog).toContain("filterProductionPrinters");
     expect(dialog).toContain("printerManagement.commands.provisionPrinter");
     expect(dialog).not.toMatch(/navigator\.usb|bluetooth|powershell/i);
     expect(dialog).not.toMatch(/No printers found\./);
+    expect(dialog).not.toMatch(/printConnector\.discoverPrinters/);
   });
 });
 
