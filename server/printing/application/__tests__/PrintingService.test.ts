@@ -151,7 +151,8 @@ function createService(connector: PrintConnectorPort) {
     history,
     payloadBuilder,
     coordinator,
-    publisher
+    publisher,
+    connector
   );
 
   return { service, repo, attempts, history, publisher, connector };
@@ -168,8 +169,8 @@ describe("Print job lifecycle", () => {
 
 describe("PrintingService", () => {
   it("creates, dispatches, and records connector submission", async () => {
-    const submit = vi.fn(async () => undefined);
-    const { service } = createService({ submit });
+    const submit = vi.fn(async () => ({ executionId: "exec-1" }));
+    const { service } = createService({ submit, cancel: vi.fn(async () => undefined) });
 
     const params: RequestPrintParams = {
       restaurantId: 1,
@@ -196,8 +197,8 @@ describe("PrintingService", () => {
   });
 
   it("is idempotent for duplicate order-event keys", async () => {
-    const submit = vi.fn(async () => undefined);
-    const { service } = createService({ submit });
+    const submit = vi.fn(async () => ({ executionId: "exec-1" }));
+    const { service } = createService({ submit, cancel: vi.fn(async () => undefined) });
 
     const params: RequestPrintParams = {
       restaurantId: 1,
@@ -217,7 +218,10 @@ describe("PrintingService", () => {
   });
 
   it("marks active jobs printed from workspace command path", async () => {
-    const { service } = createService({ submit: vi.fn(async () => undefined) });
+    const { service } = createService({
+      submit: vi.fn(async () => ({ executionId: "exec-1" })),
+      cancel: vi.fn(async () => undefined),
+    });
     const job = await service.requestPrint({
       restaurantId: 1,
       orderId: 9,
@@ -236,5 +240,50 @@ describe("PrintingService", () => {
     });
 
     expect(updated?.status).toBe("printed");
+  });
+
+  it("routes cancel through connector before completing job", async () => {
+    const submit = vi.fn(async () => ({ executionId: "exec-cancel" }));
+    const cancel = vi.fn(async () => undefined);
+    const { service, attempts } = createService({ submit, cancel });
+
+    const job = await service.requestPrint({
+      restaurantId: 1,
+      orderId: 9,
+      orderNumber: "ORD-9",
+      source: "operator",
+      idempotencyKey: "operator:cancel",
+      payload: samplePayload,
+      dispatch: true,
+    });
+
+    vi.mocked(attempts.listByJob).mockResolvedValue([
+      {
+        id: 2,
+        printJobId: job.id,
+        restaurantId: 1,
+        attemptNumber: 1,
+        status: "printing",
+        outcome: "in_progress",
+        errorMessage: null,
+        metadata: { executionId: "exec-cancel" },
+        createdAt: new Date().toISOString(),
+      },
+    ]);
+
+    const updated = await service.cancelPrint({
+      restaurantId: 1,
+      orderId: 9,
+      jobId: job.id,
+      operatorUserId: 42,
+      reason: "operator_cancel",
+    });
+
+    expect(cancel).toHaveBeenCalledWith({
+      jobId: job.id,
+      restaurantId: 1,
+      executionId: "exec-cancel",
+    });
+    expect(updated?.status).toBe("cancelled");
   });
 });

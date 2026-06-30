@@ -83,6 +83,7 @@ describe("PRINT-CONNECTOR-LOCAL-1 architecture guards", () => {
       join(printingRoot, "contracts", "ports", "PrintConnectorPort.ts"),
       "utf8"
     );
-    expect(source).toContain("submit(submission: PrintConnectorSubmission): Promise<void>");
+    expect(source).toContain("submit(submission: PrintConnectorSubmission)");
+    expect(source).toContain("cancel(request: PrintConnectorCancelRequest)");
   });
 });

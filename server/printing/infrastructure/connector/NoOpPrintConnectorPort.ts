@@ -1,12 +1,17 @@
 import { opsLog } from "../../../_core/opsLog";
 import { OPS_EVENT } from "../../../_core/opsTaxonomy";
-import type { PrintConnectorPort, PrintConnectorSubmission } from "../../contracts/ports/PrintConnectorPort";
+import type {
+  PrintConnectorCancelRequest,
+  PrintConnectorPort,
+  PrintConnectorSubmission,
+  PrintConnectorSubmissionResult,
+} from "../../contracts/ports/PrintConnectorPort";
 
 /**
  * PRINTING-1 — transport stub until PRINT-CONNECTOR-1. Does not touch OS or printers.
  */
 export class NoOpPrintConnectorPort implements PrintConnectorPort {
-  async submit(submission: PrintConnectorSubmission): Promise<void> {
+  async submit(submission: PrintConnectorSubmission): Promise<PrintConnectorSubmissionResult> {
     opsLog({
       type: OPS_EVENT.print_connector_submission,
       category: "ORDER",
@@ -21,5 +26,10 @@ export class NoOpPrintConnectorPort implements PrintConnectorPort {
         lineItemCount: submission.payload.lineItems.length,
       },
     });
+    return { executionId: null };
+  }
+
+  async cancel(_request: PrintConnectorCancelRequest): Promise<void> {
+    return;
   }
 }

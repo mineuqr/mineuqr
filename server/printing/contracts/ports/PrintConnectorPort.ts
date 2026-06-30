@@ -8,9 +8,20 @@ export type PrintConnectorSubmission = {
   payload: PrintPayload;
 };
 
+export type PrintConnectorSubmissionResult = {
+  executionId: string | null;
+};
+
+export type PrintConnectorCancelRequest = {
+  jobId: number;
+  restaurantId: number;
+  executionId: string | null;
+};
+
 /**
  * PRINTING-1 — integration port only. No connector implementation in this program.
  */
 export interface PrintConnectorPort {
-  submit(submission: PrintConnectorSubmission): Promise<void>;
+  submit(submission: PrintConnectorSubmission): Promise<PrintConnectorSubmissionResult>;
+  cancel(request: PrintConnectorCancelRequest): Promise<void>;
 }

@@ -11,11 +11,7 @@ import {
   PrintingServicePrintConnectorAdapter,
 } from "../print-connector/printConnectorComposition";
 import { connectorGatewayComposition } from "../connector-gateway/gatewayComposition";
-
-function resolvePrintConnectorExecutionMode(): "embedded" | "remote" {
-  const configured = process.env.PRINT_CONNECTOR_EXECUTION_MODE?.trim().toLowerCase();
-  return configured === "remote" ? "remote" : "embedded";
-}
+import { resolvePrintConnectorExecutionMode } from "./resolvePrintConnectorExecutionMode";
 
 const printJobRepository = new DrizzlePrintJobRepository();
 const printJobAttemptRepository = new DrizzlePrintJobAttemptRepository();
@@ -56,7 +52,8 @@ printingService = new PrintingService(
   printJobHistoryRepository,
   printPayloadBuilder,
   printDispatchCoordinator,
-  printStatusPublisher
+  printStatusPublisher,
+  printConnectorPort
 );
 
 export { printingService };

@@ -1,6 +1,11 @@
 import { opsLog } from "../../../_core/opsLog";
 import { OPS_EVENT } from "../../../_core/opsTaxonomy";
-import type { PrintConnectorPort, PrintConnectorSubmission } from "../../../printing/contracts/ports/PrintConnectorPort";
+import type {
+  PrintConnectorCancelRequest,
+  PrintConnectorPort,
+  PrintConnectorSubmission,
+  PrintConnectorSubmissionResult,
+} from "../../../printing/contracts/ports/PrintConnectorPort";
 import type { PrintResultPort } from "../../../printing/contracts/ports/PrintResultPort";
 import type { ConnectorRuntime } from "../../contracts/deployment/ConnectorRuntime";
 
@@ -13,7 +18,7 @@ export class PrintingServicePrintConnectorAdapter implements PrintConnectorPort 
     private readonly printResultPort: PrintResultPort
   ) {}
 
-  async submit(submission: PrintConnectorSubmission): Promise<void> {
+  async submit(submission: PrintConnectorSubmission): Promise<PrintConnectorSubmissionResult> {
     opsLog({
       type: OPS_EVENT.print_connector_submission,
       category: "ORDER",
@@ -25,6 +30,7 @@ export class PrintingServicePrintConnectorAdapter implements PrintConnectorPort 
         orderId: submission.orderId,
         correlationId: submission.correlationId,
         payloadSchemaVersion: submission.payload.schemaVersion,
+        executionMode: "embedded",
       },
     });
 
@@ -40,13 +46,26 @@ export class PrintingServicePrintConnectorAdapter implements PrintConnectorPort 
         jobId: submission.jobId,
         restaurantId: submission.restaurantId,
       });
-      return;
+      return { executionId: result.executionId };
     }
 
     await this.printResultPort.reportPrintFailure({
       jobId: submission.jobId,
       restaurantId: submission.restaurantId,
       error: result.message ?? result.failureReason ?? "print_failed",
+    });
+    return { executionId: result.executionId };
+  }
+
+  async cancel(request: PrintConnectorCancelRequest): Promise<void> {
+    if (!request.executionId) {
+      return;
+    }
+
+    await this.runtime.cancel({
+      restaurantId: request.restaurantId,
+      executionId: request.executionId,
+      printJobId: request.jobId,
     });
   }
 }

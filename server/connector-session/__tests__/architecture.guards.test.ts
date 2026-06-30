@@ -49,7 +49,8 @@ describe("PRINT-CONNECTOR-NETWORK-1 architecture guards", () => {
       "utf8"
     );
     const serviceSource = readFileSync(join(printingRoot, "application", "PrintingService.ts"), "utf8");
-    expect(portSource).toContain("submit(submission: PrintConnectorSubmission): Promise<void>");
+    expect(portSource).toContain("submit(submission: PrintConnectorSubmission)");
+    expect(portSource).toContain("cancel(request: PrintConnectorCancelRequest)");
     expect(serviceSource).not.toMatch(/ConnectorSession|ConnectorTransport/);
   });
 

@@ -7,7 +7,19 @@ import { samplePayload, sampleRegistration } from "./testFixtures";
 
 describe("RemotePrintConnectorPort", () => {
   it("reports success when gateway routes print", async () => {
-    const execution = stubConnectorExecutionPort();
+    const execution = stubConnectorExecutionPort({
+      executePrint: async () => ({
+        success: true,
+        execution: {
+          executionId: "exec-42",
+          printJobId: 42,
+          restaurantId: 1,
+          printerId: "win:kitchen",
+          success: true,
+          completedAt: new Date().toISOString(),
+        },
+      }),
+    });
     const composition = composeConnectorGateway({ execution });
     await composition.registry.register(sampleRegistration());
 
@@ -19,7 +31,7 @@ describe("RemotePrintConnectorPort", () => {
       reportPrintFailure,
     });
 
-    await port.submit({
+    const result = await port.submit({
       jobId: 42,
       restaurantId: 1,
       orderId: 100,
@@ -29,6 +41,29 @@ describe("RemotePrintConnectorPort", () => {
 
     expect(reportPrintSuccess).toHaveBeenCalledWith({ jobId: 42, restaurantId: 1 });
     expect(reportPrintFailure).not.toHaveBeenCalled();
+    expect(result).toEqual({ executionId: "exec-42" });
+  });
+
+  it("routes cancel through gateway", async () => {
+    const executeCancelPrint = vi.fn(async () => ({ success: true }));
+    const composition = composeConnectorGateway({
+      execution: stubConnectorExecutionPort({ executeCancelPrint }),
+    });
+    await composition.registry.register(sampleRegistration());
+
+    const port = composition.createRemotePrintConnectorPort({
+      reportPrintingStarted: vi.fn(),
+      reportPrintSuccess: vi.fn(),
+      reportPrintFailure: vi.fn(),
+    });
+
+    await port.cancel({
+      jobId: 42,
+      restaurantId: 1,
+      executionId: "exec-42",
+    });
+
+    expect(executeCancelPrint).toHaveBeenCalled();
   });
 
   it("reports failure when connector is unregistered", async () => {

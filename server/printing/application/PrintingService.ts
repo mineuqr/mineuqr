@@ -32,13 +32,24 @@ export class PrintDispatchCoordinator {
     const printing = await this.transition(dispatched, "printing", "PrintStarted");
     if (!printing) return dispatched;
 
-    await this.connector.submit({
+    const submission = await this.connector.submit({
       jobId: printing.id,
       restaurantId: printing.restaurantId,
       orderId: printing.orderId,
       correlationId: printing.correlationId,
       payload: printing.payload,
     });
+
+    if (submission.executionId) {
+      await this.attempts.create({
+        printJobId: printing.id,
+        restaurantId: printing.restaurantId,
+        attemptNumber: printing.attemptCount,
+        status: "printing",
+        outcome: "in_progress",
+        metadata: { executionId: submission.executionId },
+      });
+    }
 
     return printing;
   }
@@ -128,7 +139,8 @@ export class PrintingService {
     private readonly history: PrintJobHistoryRepository,
     private readonly payloadBuilder: PrintPayloadBuilderPort,
     private readonly dispatchCoordinator: PrintDispatchCoordinator,
-    private readonly publisher: PrintStatusPublisher
+    private readonly publisher: PrintStatusPublisher,
+    private readonly connector: PrintConnectorPort
   ) {}
 
   async requestPrint(params: RequestPrintParams): Promise<PrintJobRecord> {
@@ -249,6 +261,20 @@ export class PrintingService {
     const job = await this.jobs.findById(input.jobId, input.restaurantId);
     if (!job || job.orderId !== input.orderId) return null;
     if (!["pending", "dispatched", "printing"].includes(job.status)) return null;
+
+    if (["dispatched", "printing"].includes(job.status)) {
+      const attempts = await this.attempts.listByJob(input.jobId);
+      const bound = [...attempts]
+        .reverse()
+        .find((attempt) => typeof attempt.metadata?.executionId === "string");
+      const executionId = (bound?.metadata?.executionId as string | undefined) ?? null;
+
+      await this.connector.cancel({
+        jobId: input.jobId,
+        restaurantId: input.restaurantId,
+        executionId,
+      });
+    }
 
     return this.completeJob(job, "cancelled", PRINT_OPERATIONAL_EVENTS.PrintCancelled, {
       operatorUserId: input.operatorUserId,

@@ -16,10 +16,11 @@ describe("PRINT-GATEWAY-1 architecture guards", () => {
     expect(composition.createRemotePrintConnectorPort).toBeTypeOf("function");
   });
 
-  it("remote port implements PrintConnectorPort submit only", () => {
+  it("remote port implements PrintConnectorPort submit and cancel", () => {
     const source = readFileSync(join(root, "adapters", "RemotePrintConnectorPort.ts"), "utf8");
     expect(source).toContain("implements PrintConnectorPort");
-    expect(source).toContain("routePrint");
+    expect(source).toContain("routeExecutePrint");
+    expect(source).toContain("routeCancelPrint");
     expect(source).not.toContain("WindowsPlatformAdapter");
     expect(source).not.toContain("ConnectorRuntime");
   });
@@ -41,12 +42,13 @@ describe("PRINT-GATEWAY-1 architecture guards", () => {
     }
   });
 
-  it("PrintConnectorPort interface is unchanged", () => {
+  it("PrintConnectorPort interface includes distributed execution contracts", () => {
     const source = readFileSync(
       join(printingRoot, "contracts", "ports", "PrintConnectorPort.ts"),
       "utf8"
     );
-    expect(source).toContain("submit(submission: PrintConnectorSubmission): Promise<void>");
+    expect(source).toContain("submit(submission: PrintConnectorSubmission)");
+    expect(source).toContain("cancel(request: PrintConnectorCancelRequest)");
     expect(source).not.toContain("routePrint");
   });
 
@@ -61,7 +63,7 @@ describe("PRINT-GATEWAY-1 architecture guards", () => {
       join(printingRoot, "printingComposition.ts"),
       "utf8"
     );
-    expect(printingComposition).toContain("PRINT_CONNECTOR_EXECUTION_MODE");
+    expect(printingComposition).toContain("resolvePrintConnectorExecutionMode");
     expect(printingComposition).toContain("createRemotePrintConnectorPort");
 
     const gatewayComposition = readFileSync(join(root, "gatewayComposition.ts"), "utf8");
@@ -87,5 +89,6 @@ describe("PRINT-GATEWAY-1 architecture guards", () => {
       reportPrintFailure: async () => {},
     });
     expect(port.submit).toBeTypeOf("function");
+    expect(port.cancel).toBeTypeOf("function");
   });
 });
