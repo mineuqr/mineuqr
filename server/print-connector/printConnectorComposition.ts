@@ -1,7 +1,7 @@
-import { DrizzlePrinterSelectionRepository } from "./infrastructure/persistence/DrizzlePrinterSelectionRepository";
+import { InMemoryPrinterSelectionRepository } from "./infrastructure/persistence/InMemoryPrinterSelectionRepository";
 import { bootstrapPrintConnector } from "./bootstrap/ConnectorBootstrap";
 
-const printerSelectionRepository = new DrizzlePrinterSelectionRepository();
+const printerSelectionRepository = new InMemoryPrinterSelectionRepository();
 
 const bootstrapped = bootstrapPrintConnector(printerSelectionRepository);
 

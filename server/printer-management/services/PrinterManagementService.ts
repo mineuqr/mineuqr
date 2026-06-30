@@ -27,7 +27,8 @@ function buildTestPayload(restaurantId: number) {
 }
 
 /**
- * PRINT-UX-1 — management orchestration via PrintConnectorApi only (not Printing Service).
+ * PRINT-UX-1 / PRINT-PRINTER-CATALOG-1 — catalog orchestration via PrintConnectorApi (ADR-ARCH-017).
+ * Printer Catalog SSOT: restaurant_printers only. Reads are side-effect free.
  */
 export class PrinterManagementService {
   constructor(
@@ -44,21 +45,7 @@ export class PrinterManagementService {
   }
 
   async getCurrentPrinter(restaurantId: number): Promise<CurrentPrinterDto> {
-    let printer = await this.printers.getDefault(restaurantId);
-
-    if (!printer) {
-      const legacy = await this.connector.getSelectedPrinter(restaurantId);
-      if (legacy) {
-        printer = await this.printers.save({
-          restaurantId,
-          printerId: legacy.printerId,
-          displayName: legacy.printerName,
-          platform: legacy.platform,
-          transport: legacy.transport,
-          isDefault: true,
-        });
-      }
-    }
+    const printer = await this.printers.getDefault(restaurantId);
 
     if (!printer) {
       return {
@@ -167,8 +154,27 @@ export class PrinterManagementService {
   }
 
   async testPrint(restaurantId: number, printerId?: string): Promise<TestPrintResult> {
-    const current = await this.getCurrentPrinter(restaurantId);
-    const targetId = printerId ?? current.printer?.printerId;
+    let targetId = printerId;
+    if (!targetId) {
+      const current = await this.printers.getDefault(restaurantId);
+      targetId = current?.printerId;
+    } else {
+      const registered = await this.printers.findByPrinterId(restaurantId, targetId);
+      if (!registered) {
+        return {
+          executionId: "test-unregistered",
+          printJobId: 0,
+          restaurantId,
+          printerId: targetId,
+          success: false,
+          failureReason: "no_printer_selected",
+          message: "Printer is not registered in the catalog",
+          completedAt: new Date().toISOString(),
+          validatedAt: new Date().toISOString(),
+        };
+      }
+    }
+
     if (!targetId) {
       return {
         executionId: "test-unconfigured",

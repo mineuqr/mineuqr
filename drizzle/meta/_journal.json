@@ -351,6 +351,13 @@
       "when": 1783900000000,
       "tag": "0049_restaurant_printers",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "5",
+      "when": 1784000000000,
+      "tag": "0050_migrate_legacy_printer_selections",
+      "breakpoints": true
     }
   ]
 }

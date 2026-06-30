@@ -24,6 +24,8 @@ describe("PRINT-CONNECTOR-DISCOVERY-1 architecture guards", () => {
     expect(adapter).toContain("routeSelectPrinter");
     expect(adapter).toContain("routeCancelPrint");
     expect(adapter).not.toContain("embeddedRuntime");
+    expect(adapter).not.toContain("PrinterSelectionRepository");
+    expect(adapter).not.toContain("selectionRepository");
   });
 
   it("printer management composition routes all connector ops through gateway adapter", () => {
@@ -32,6 +34,7 @@ describe("PRINT-CONNECTOR-DISCOVERY-1 architecture guards", () => {
       "utf8"
     );
     expect(composition).toContain("GatewayRoutedPrintConnectorApi");
+    expect(composition).not.toContain("DrizzlePrinterSelectionRepository");
     expect(composition).not.toContain("printConnectorRuntime");
   });
 

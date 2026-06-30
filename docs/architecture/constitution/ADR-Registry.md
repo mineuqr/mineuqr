@@ -24,7 +24,7 @@
 | ADR-ARCH-013 | **Architecture Constitution & Governance** | **Accepted — Ratified** | Architecture Authority | Constitution v1.0 | — | §18–29, entire Constitution | **Implemented (governance)** | This document; engineering compliance pending ORDER-1 |
 | ADR-ARCH-014 | Event Delivery Guarantees | **Accepted — Ratified** | Architecture Authority | ORDER-EVENTS-1B | — | §8, §12, §15, §22 | **Implemented** | Consumer idempotency + registration policy |
 | ADR-ARCH-016 | Distributed Printing Topology | **Accepted** (v1.2) | Architecture Authority | PRINT-ARCHITECTURE-2, PRINT-GATEWAY-1, PRINT-CONNECTOR-NETWORK-1, PRINT-CONNECTOR-LOCAL-1, PRINT-CONNECTOR-WINDOWS-1 | v1.1 | Printing Platform §Deployment | **Partial** | Gateway, Session, RLC, Windows RLC complete; production validation pending |
-| ADR-ARCH-017 | Printer Catalog Ownership and Lifecycle | **Accepted** (v1.0) | Architecture Authority | PRINT-CONNECTOR-ONBOARDING-1A | — | Printing Platform §Catalog | **Not implemented** | Extends ADR-ARCH-016; retires `print_connector_selections` as SSOT; mandates pure catalog reads |
+| ADR-ARCH-017 | Printer Catalog Ownership and Lifecycle | **Accepted** (v1.1) | Architecture Authority | PRINT-CONNECTOR-ONBOARDING-1A | PRINT-PRINTER-CATALOG-1 | Printing Platform §Catalog | **Implemented** | Extends ADR-ARCH-016; retires `print_connector_selections` as SSOT; mandates pure catalog reads |
 
 **Registry maintenance:** Principal Engineer updates Implementation Status at program exit certification. Status changes require Architecture Authority approval per §26.
 

@@ -164,6 +164,9 @@ export class DrizzleRestaurantPrinterRepository implements RestaurantPrinterRepo
     const db = await getDb();
     if (!db) return null;
 
+    const target = await this.findByPrinterId(restaurantId, printerId);
+    if (!target) return null;
+
     await db
       .update(restaurantPrinters)
       .set({ isDefault: false })

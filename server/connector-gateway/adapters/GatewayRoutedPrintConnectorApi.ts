@@ -1,5 +1,4 @@
 import { randomUUID } from "node:crypto";
-import type { PrinterSelectionRepository } from "../../print-connector/contracts/PrinterSelectionRepository";
 import type {
   ConnectorCancelCommand,
   ConnectorPrintCommand,
@@ -8,6 +7,7 @@ import type {
   GetPrinterStatusQuery,
   PrintConnectorApi,
   SelectPrinterCommand,
+  SelectedPrinterDto,
 } from "../../print-connector/contracts/PrintConnectorApi";
 import type { PrintExecutionResult } from "../../print-connector/domain/PrintExecutionResult";
 import { failureResultMessage } from "../../print-connector/runtime/PrintFailureMapper";
@@ -31,15 +31,23 @@ function buildFailedPrintResult(
   };
 }
 
+function toSelectedPrinterDto(command: SelectPrinterCommand): SelectedPrinterDto {
+  return {
+    restaurantId: command.restaurantId,
+    printerId: command.printerId,
+    printerName: command.printerName,
+    platform: command.platform,
+    transport: command.transport,
+    selectedAt: new Date().toISOString(),
+  };
+}
+
 /**
  * Routes all native connector operations through Connector Gateway → RLC.
- * Cloud printer selection persistence uses PrinterSelectionRepository only.
+ * Printer Catalog SSOT is restaurant_printers (ADR-ARCH-017). No cloud selection persistence.
  */
 export class GatewayRoutedPrintConnectorApi implements PrintConnectorApi {
-  constructor(
-    private readonly gateway: ConnectorGatewayService,
-    private readonly selectionRepository: PrinterSelectionRepository
-  ) {}
+  constructor(private readonly gateway: ConnectorGatewayService) {}
 
   async discoverPrinters(query: DiscoverPrintersQuery) {
     const result = await this.gateway.routeDiscoverPrinters({
@@ -83,14 +91,6 @@ export class GatewayRoutedPrintConnectorApi implements PrintConnectorApi {
   }
 
   async selectPrinter(command: SelectPrinterCommand) {
-    const saved = await this.selectionRepository.saveSelection({
-      restaurantId: command.restaurantId,
-      printerId: command.printerId,
-      printerName: command.printerName,
-      platform: command.platform,
-      transport: command.transport,
-    });
-
     const routed = await this.gateway.routeSelectPrinter({
       restaurantId: command.restaurantId,
       printerId: command.printerId,
@@ -104,11 +104,11 @@ export class GatewayRoutedPrintConnectorApi implements PrintConnectorApi {
       throw new Error(routed.message ?? routed.failureReason ?? "connector_select_failed");
     }
 
-    return routed.selected ?? saved;
+    return routed.selected ?? toSelectedPrinterDto(command);
   }
 
-  getSelectedPrinter(restaurantId: number) {
-    return this.selectionRepository.getSelected(restaurantId);
+  async getSelectedPrinter(_restaurantId: number): Promise<SelectedPrinterDto | null> {
+    return null;
   }
 
   async print(command: ConnectorPrintCommand): Promise<PrintExecutionResult> {
