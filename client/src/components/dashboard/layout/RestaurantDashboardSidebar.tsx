@@ -17,6 +17,7 @@ import {
   Home,
   LayoutGrid,
   Palette,
+  Printer,
   QrCode,
   Settings,
   Store,
@@ -96,6 +97,13 @@ export function RestaurantDashboardSidebar({
           icon: ClipboardList,
           active: restaurantTab === "orders",
           onClick: () => onRestaurantTabChange!("orders"),
+        },
+        {
+          id: "print",
+          label: language === "ar" ? "مساحة الطباعة" : "Print Workspace",
+          icon: Printer,
+          active: restaurantTab === "print",
+          onClick: () => onRestaurantTabChange!("print"),
         },
         {
           id: "reports",

@@ -1,0 +1,42 @@
+/**
+ * PRINT-WORKSPACE-1 — client-side operator action contracts (no implementation).
+ */
+
+export type PrintWorkspaceActionContext = {
+  restaurantId: number;
+  orderId: number;
+  orderNumber: string;
+};
+
+export type PrintOrderCommand = PrintWorkspaceActionContext;
+export type ReprintOrderCommand = PrintWorkspaceActionContext & { reason?: string };
+export type PreviewTicketCommand = PrintWorkspaceActionContext;
+export type MarkPrintedCommand = PrintWorkspaceActionContext & { printedAt?: string };
+export type CancelPrintCommand = PrintWorkspaceActionContext & { reason?: string };
+
+export interface PrintWorkspaceActionPort {
+  printOrder(command: PrintOrderCommand): Promise<void>;
+  reprint(command: ReprintOrderCommand): Promise<void>;
+  preview(command: PreviewTicketCommand): Promise<void>;
+  markPrinted(command: MarkPrintedCommand): Promise<void>;
+  cancelPrint(command: CancelPrintCommand): Promise<void>;
+}
+
+/** Stub port — actions disabled until PRINTING-1 / PRINT-CONNECTOR-1. */
+export const disabledPrintWorkspaceActionPort: PrintWorkspaceActionPort = {
+  async printOrder() {
+    return undefined;
+  },
+  async reprint() {
+    return undefined;
+  },
+  async preview() {
+    return undefined;
+  },
+  async markPrinted() {
+    return undefined;
+  },
+  async cancelPrint() {
+    return undefined;
+  },
+};

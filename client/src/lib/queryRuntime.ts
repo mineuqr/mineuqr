@@ -70,6 +70,13 @@ export function orderListQueryOptions(enabled: boolean) {
   } as const;
 }
 
+export function printWorkspaceListQueryOptions(enabled: boolean) {
+  return {
+    enabled,
+    refetchInterval: enabled ? DASHBOARD_ORDER_LIST_POLL_MS : false,
+  } as const;
+}
+
 /** Home snapshot: fetch once per visit, no 10s poll — reduces load vs full order.list polling (H-03). */
 export function homeSnapshotOrderQueryOptions(enabled: boolean) {
   return {

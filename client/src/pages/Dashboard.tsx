@@ -5,6 +5,7 @@ import OrderAlertSystem from "@/components/OrderAlertSystem";
 import { DiningSessionWorkspaceSheet } from "@/components/dashboard/DiningSessionWorkspaceSheet";
 import { ActiveSessionsPreviewSection } from "@/components/dashboard/ActiveSessionsPreviewSection";
 import { SessionsWorkspacePanel } from "@/components/dashboard/SessionsWorkspacePanel";
+import { PrintWorkspacePanel } from "@/components/print-workspace/PrintWorkspacePanel";
 import { ActionCenterSection } from "@/components/dashboard/ActionCenterSection";
 import { OperationalActivityFeedSection } from "@/components/dashboard/OperationalActivityFeedSection";
 import { SettlementOverviewSection } from "@/components/dashboard/SettlementOverviewSection";
@@ -110,6 +111,7 @@ function restaurantTabLabel(tab: RestaurantTab, language: string, t: (key: strin
     home: language === "ar" ? "لوحة التحكم" : "Dashboard",
     sessions: language === "ar" ? "الجلسات" : "Sessions",
     orders: language === "ar" ? "الطلبات" : "Orders",
+    print: language === "ar" ? "مساحة الطباعة" : "Print Workspace",
     reports: language === "ar" ? "التقارير والإحصائيات" : "Reports & Statistics",
     categories: t("dashboard.categoriesAndItems"),
     offers: t("dashboard.offers"),
@@ -1225,6 +1227,14 @@ function RestaurantDetail({
           restaurantId={restaurantId}
           currencySymbol={(restaurant as { currencySymbol?: string })?.currencySymbol}
           tableLabel={(restaurant as { tableLabel?: string })?.tableLabel}
+        />
+      )}
+
+      {activeTab === "print" && (
+        <PrintWorkspacePanel
+          restaurantId={restaurantId}
+          language={language}
+          currencySymbol={(restaurant as { currencySymbol?: string })?.currencySymbol}
         />
       )}
 

@@ -95,6 +95,7 @@ import {
 import { getOwnerSessionTimeline } from "./diningSession/sessionOwnerTimeline";
 import { getOwnerSessionWorkspace } from "./diningSession/sessionOwnerWorkspace";
 import { opsRouter } from "./ops/opsRouter";
+import { printWorkspaceRouter } from "./print-workspace/printWorkspaceRouter";
 import { toPublicOrderStatus } from "./orderPublicStatus";
 import { adminAuditRouter } from "./audit/adminAuditRouter";
 import { adminDashboardReadRouter } from "./commercial/adminDashboardRouter";
@@ -2018,5 +2019,6 @@ export const appRouter = router({
   session: sessionRouter,
   order: orderRouter,
   ops: opsRouter,
+  printWorkspace: printWorkspaceRouter,
 });
 export type AppRouter = typeof appRouter;
