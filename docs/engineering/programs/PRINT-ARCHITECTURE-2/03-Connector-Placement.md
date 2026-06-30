@@ -22,7 +22,7 @@
 
 1. **One logical connector domain per restaurant site** (may have hot-standby second instance — see Decision Matrix).
 2. RLC must share a network path to printers (USB directly attached, or LAN-visible queue).
-3. RLC must establish and maintain **outbound** Connector Session to cloud (NAT-friendly). **Cloud never initiates connections to restaurant infrastructure** (ADR-ARCH-016 v1.1 Rule 1–2).
+3. RLC must establish and maintain **outbound** Connector Session to cloud (NAT-friendly). **Cloud never initiates connections to restaurant infrastructure** (ADR-ARCH-016 v1.2 Rules 1–2).
 4. Cloud API process **must not** be required to access restaurant LAN printers.
 
 ---

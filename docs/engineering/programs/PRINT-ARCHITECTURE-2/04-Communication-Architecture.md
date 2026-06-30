@@ -1,7 +1,7 @@
 # PRINT-ARCHITECTURE-2 — Communication Architecture
 
 **Date:** 2026-06-30  
-**Authority:** ADR-ARCH-016 v1.1
+**Authority:** ADR-ARCH-016 v1.2
 
 ---
 
@@ -42,7 +42,7 @@ Logical message families (contract-level, not wire format):
 - `GetPrinterStatus` / `GetPrinterCapabilities`
 - `ConnectorOffline` (event)
 
-Cloud **never** initiates inbound connections to restaurant LAN. **MineuQR Cloud never opens outbound connections toward restaurant infrastructure** for connector communication (ADR-ARCH-016 v1.1).
+Cloud **never** initiates inbound connections to restaurant LAN. **MineuQR Cloud never opens outbound connections toward restaurant infrastructure** for connector communication (ADR-ARCH-016 v1.2 Rules 1–2).
 
 ---
 

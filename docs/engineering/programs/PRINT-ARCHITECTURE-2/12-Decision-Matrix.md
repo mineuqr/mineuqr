@@ -12,7 +12,7 @@
 | 2 | Who owns printer discovery? | **RLC executes**; cloud presents and provisions catalog |
 | 3 | Who owns printer selection? | **Cloud catalog SSOT**; RLC validates at execution |
 | 4 | Browser → Connector? | **Indirect** — Browser → Cloud → Gateway → RLC |
-| 5 | Cloud → Connector? | **RLC-initiated outbound Connector Session** (mandatory — ADR-ARCH-016 v1.1) |
+| 5 | Cloud → Connector? | **RLC-initiated outbound Connector Session** (mandatory — ADR-ARCH-016 v1.2 Rules 1–2) |
 | 6 | Multiple browsers same connector? | **Yes** — shared cloud routing to one RLC per site |
 | 7 | Concurrent print requests? | **Cloud queues**; RLC serializes per printer |
 | 8 | Authentication / trust? | **Session + pairing + scoped connector credential** |
@@ -32,7 +32,7 @@
 | Browser WebUSB / direct OS access | **Rejected** | Security, platform fragmentation, no server path |
 | Cloud VPN into restaurant LAN | **Rejected** | Operational complexity, security surface |
 | Cloud-initiated inbound to restaurant | **Rejected** | NAT/firewall; ADR-ARCH-016 Rule 2 |
-| Cloud-initiated outbound dial to restaurant | **Rejected** | ADR-ARCH-016 v1.1 — RLC owns session establishment |
+| Cloud-initiated outbound dial to restaurant | **Rejected** | ADR-ARCH-016 v1.2 Rules 1–2 — RLC owns session establishment |
 | Browser → localhost connector | **Rejected** | CORS, trust, multi-device inconsistency |
 | Embedded cloud connector for production | **Rejected** | Proven: cannot see local printers |
 | Per-browser connector install | **Rejected** | Ops burden; use one RLC per site |

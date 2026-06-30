@@ -4,7 +4,7 @@
 
 ---
 
-## Connection Direction (ADR-ARCH-016 v1.1)
+## Connection Direction (ADR-ARCH-016 v1.2 Rules 1–4)
 
 **Mandatory:** Restaurant Local Connector **always** initiates and maintains the outbound Connector Session. MineuQR Cloud **never** initiates inbound connections into restaurant infrastructure. This applies to every deployment model and every future transport (WebSocket, HTTP/2, gRPC, QUIC).
 

@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-30  
 **Program:** PRINT-CONNECTOR-WINDOWS-1 — Native Windows Platform Integration (RLC)  
-**Authority:** [ADR-ARCH-016 v1.1](../../../architecture/adrs/ADR-ARCH-016.md)
+**Authority:** [ADR-ARCH-016 v1.2](../../../architecture/adrs/ADR-ARCH-016.md)
 
 ---
 

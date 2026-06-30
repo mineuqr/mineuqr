@@ -2,7 +2,7 @@
 
 ---
 
-## Placement (ADR-ARCH-016 v1.1)
+## Placement (ADR-ARCH-016 v1.2 Rules 17–20)
 
 | Layer | Windows I/O |
 |-------|-------------|

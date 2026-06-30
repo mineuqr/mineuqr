@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-30  
 **Program:** PRINT-CONNECTOR-LOCAL-1  
-**Authority:** ADR-ARCH-016 v1.1
+**Authority:** ADR-ARCH-016 v1.2 (Rules 1–2, 6–11, 18)
 
 ---
 
@@ -18,7 +18,7 @@ RLC Process
 ├── ConnectorSessionClient (auth → register → heartbeat → commands)
 ├── LocalConnectorHost (lifecycle)
 ├── LocalConnectorDiagnostics
-└── PlatformAdapterHost (stub for future adapters)
+└── PlatformAdapterHost (Windows via PRINT-CONNECTOR-WINDOWS-1)
 ```
 
 ---
@@ -49,7 +49,7 @@ Full runtime snapshot for identity, config, gateway connection, session, health,
 
 ## Architecture Compliance
 
-- ✓ ADR-ARCH-016 v1.1 outbound session model
+- ✓ ADR-ARCH-016 v1.2 Rules 1–2, 6–11, 18
 - ✓ Gateway and connector-session **unchanged**
 - ✓ `PrintConnectorPort` and `PrintingService` **unchanged**
 - ✓ No platform printing implementation (deferred)

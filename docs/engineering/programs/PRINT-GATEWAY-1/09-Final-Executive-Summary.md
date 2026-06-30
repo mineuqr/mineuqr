@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-30  
 **Program:** PRINT-GATEWAY-1  
-**Authority:** ADR-ARCH-016
+**Authority:** ADR-ARCH-016 v1.2
 
 ---
 

@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-30  
 **Program:** PRINT-CONNECTOR-WINDOWS-1 (RLC resumption)  
-**Authority:** ADR-ARCH-016 v1.1
+**Authority:** ADR-ARCH-016 v1.2 (Rules 14–15, 19–21 ratified by this program)
 
 ---
 
@@ -47,7 +47,7 @@ Print, reprint, and test print flow through `LocalConnectorRuntimeFacade` → `P
 - ✓ Windows integration in RLC only
 - ✓ Gateway, session, PrintingService, PrintConnectorPort unchanged
 - ✓ No simulated production fallback
-- ✓ ADR-ARCH-016 v1.1 connection direction preserved
+- ✓ ADR-ARCH-016 v1.2 Rules 1–2, 19–21
 
 ---
 

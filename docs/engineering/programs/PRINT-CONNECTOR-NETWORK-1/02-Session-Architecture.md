@@ -1,6 +1,6 @@
 # PRINT-CONNECTOR-NETWORK-1 — Session Architecture
 
-**Authority:** ADR-ARCH-016 v1.1 — Connector Connection Direction (ratified)
+**Authority:** ADR-ARCH-016 v1.2 — Rules 1–4, 9, 13 (ratified)
 
 ---
 

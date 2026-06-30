@@ -1,21 +1,24 @@
 # PRINT-CONNECTOR-NETWORK-1 — Architecture Traceability
 
+**Authority:** [ADR-ARCH-016 v1.2](../../../architecture/adrs/ADR-ARCH-016.md)
+
 ---
 
-## ADR-ARCH-016 v1.1 Compliance
+## ADR-ARCH-016 v1.2 Compliance
 
-| ADR Requirement | Implementation |
-|-----------------|----------------|
-| **RLC outbound session (Rule 1–2)** | `acceptConnection`; no cloud dial to restaurant |
-| **Transport direction immutable (Rule 3–4)** | `ConnectorTransportConnection` abstraction |
+| ADR Rule | Implementation |
+|----------|----------------|
+| Rules 1–2 — RLC outbound session | `acceptConnection`; no cloud dial to restaurant |
+| Rules 3–4 — Transport direction immutable | `ConnectorTransportConnection` abstraction |
+| Rule 5 — Gateway never prints | Commands transported only; no OS I/O |
+| Rules 6–7 — RLC infrastructure only | Session layer has no business logic |
+| Rule 8 — No direct client commands | Browser uses cloud only |
+| Rule 9 — Connector Session SSOT | Lifecycle, heartbeat, availability from session |
+| Rule 13 — Session contracts only | Canonical session command/response envelopes |
+| Rule 18 — Canonical path (session slice) | `SessionConnectorExecutionPort` → gateway |
 | Scoped credentials | Pairing + `ConnectorAuthenticationService` |
 | Tenant isolation | Credential + command `restaurantId` validation |
-| Gateway routing | `SessionConnectorExecutionPort` |
-| No browser → RLC | Unchanged — browser uses cloud only |
-| **Gateway never prints (Rule 7)** | Commands transported only; no OS I/O |
-| **RLC infrastructure only (Rule 8)** | Session layer has no business logic |
-| **Connector Session SSOT (Rule 10)** | Lifecycle, heartbeat, availability from session |
-| Command trust (Domain C) | Command envelope with nonce, issuedAt, correlationId |
+| Command trust | Command envelope with nonce, issuedAt, correlationId |
 | Heartbeat availability | `ConnectorHeartbeatProtocol` → gateway |
 
 ---
@@ -45,4 +48,4 @@ Isolated gateway tests still use `composeConnectorGateway({ execution: mock })`.
 
 ## Program Sequence
 
-PRINT-GATEWAY-1 (done) → **PRINT-CONNECTOR-NETWORK-1** (done) → PRINT-CONNECTOR-LOCAL-1 (next)
+PRINT-GATEWAY-1 (done) → **PRINT-CONNECTOR-NETWORK-1** (done) → PRINT-CONNECTOR-LOCAL-1 (done) → PRINT-CONNECTOR-WINDOWS-1 (done)
