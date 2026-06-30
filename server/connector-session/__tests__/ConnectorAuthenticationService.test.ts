@@ -13,6 +13,17 @@ describe("ConnectorAuthenticationService", () => {
     expect(credential?.secret).toBeTruthy();
   });
 
+  it("rejects duplicate pairing for enrolled connector", async () => {
+    const network = composeConnectorNetwork();
+    const pairing = await network.session.authService.issuePairingToken(9);
+    const first = await network.session.authService.completePairing(pairing.token, "rlc-9");
+    expect(first).not.toBeNull();
+
+    const secondPairing = await network.session.authService.issuePairingToken(9);
+    const second = await network.session.authService.completePairing(secondPairing.token, "rlc-9");
+    expect(second).toBeNull();
+  });
+
   it("rejects invalid credential secret", async () => {
     const network = composeConnectorNetwork();
     const pairing = await network.session.authService.issuePairingToken(1);

@@ -683,6 +683,39 @@ export const restaurantPrinters = mysqlTable("restaurant_printers", {
 	index("restaurant_printers_restaurant_default").on(table.restaurantId, table.isDefault),
 ]);
 
+// ─── Connector enrollment (PRINT-CONNECTOR-PERSISTENCE-1) ─────────
+export const connectorPairingTokens = mysqlTable("connector_pairing_tokens", {
+	token: varchar({ length: 128 }).notNull(),
+	restaurantId: int().notNull(),
+	expiresAt: timestamp({ mode: "string" }).notNull(),
+	consumedAt: timestamp({ mode: "string" }),
+	createdAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+},
+(table) => [
+	primaryKey({ columns: [table.token] }),
+	index("connector_pairing_tokens_restaurant").on(table.restaurantId),
+]);
+
+export const connectorEnrollments = mysqlTable("connector_enrollments", {
+	credentialId: varchar({ length: 128 }).notNull(),
+	restaurantId: int().notNull(),
+	connectorInstanceId: varchar({ length: 128 }).notNull(),
+	secretHash: varchar({ length: 255 }).notNull(),
+	status: mysqlEnum(["active", "revoked"]).default("active").notNull(),
+	connectorVersion: varchar({ length: 32 }),
+	issuedAt: timestamp({ mode: "string" }).notNull(),
+	expiresAt: timestamp({ mode: "string" }),
+	revokedAt: timestamp({ mode: "string" }),
+	lastSeenAt: timestamp({ mode: "string" }),
+	createdAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+	updatedAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+},
+(table) => [
+	primaryKey({ columns: [table.credentialId] }),
+	uniqueIndex("connector_enrollments_instance_unique").on(table.connectorInstanceId),
+	index("connector_enrollments_restaurant_status").on(table.restaurantId, table.status),
+]);
+
 // ─── Order Domain Outbox (ORDER-EVENTS-1A) ───────────────────────
 export const orderDomainOutbox = mysqlTable("order_domain_outbox", {
 	id: varchar({ length: 36 }).notNull(),

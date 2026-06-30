@@ -6,7 +6,7 @@ import { pairAndConnectConnector } from "./sessionTestHarness";
 describe("duplicate session protection", () => {
   it("replaces existing session when same connector reconnects", async () => {
     const network = composeConnectorNetwork();
-    await pairAndConnectConnector(network, {
+    const first = await pairAndConnectConnector(network, {
       restaurantId: 40,
       connectorId: "rlc-dup",
     });
@@ -17,6 +17,7 @@ describe("duplicate session protection", () => {
     await pairAndConnectConnector(network, {
       restaurantId: 40,
       connectorId: "rlc-dup",
+      credentialSecret: first.secret,
     });
 
     const secondSession = await network.session.sessionManager.getByConnectorId("rlc-dup");

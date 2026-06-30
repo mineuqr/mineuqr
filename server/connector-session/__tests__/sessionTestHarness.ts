@@ -39,15 +39,20 @@ export async function pairAndConnectConnector(
     runtimeId?: string;
     version?: string;
     platform?: string;
+    credentialSecret?: string;
   }
 ): Promise<ConnectedConnector> {
-  const pairing = await network.session.authService.issuePairingToken(input.restaurantId);
-  const credential = await network.session.authService.completePairing(
-    pairing.token,
-    input.connectorId
-  );
-  if (!credential) {
-    throw new Error("pairing_failed");
+  let secret = input.credentialSecret;
+  if (!secret) {
+    const pairing = await network.session.authService.issuePairingToken(input.restaurantId);
+    const credential = await network.session.authService.completePairing(
+      pairing.token,
+      input.connectorId
+    );
+    if (!credential) {
+      throw new Error("pairing_failed");
+    }
+    secret = credential.secret;
   }
 
   const transport = createInProcessTransportPair();
@@ -59,7 +64,7 @@ export async function pairAndConnectConnector(
       restaurantId: input.restaurantId,
       connectorId: input.connectorId,
       runtimeId: input.runtimeId ?? "runtime-1",
-      credentialSecret: credential.secret,
+      credentialSecret: secret,
       version: input.version ?? "1.0.0",
       platform: input.platform ?? "windows",
     };
@@ -102,7 +107,7 @@ export async function pairAndConnectConnector(
   return {
     connectorId: input.connectorId,
     restaurantId: input.restaurantId,
-    secret: credential.secret,
+    secret: secret,
     sessionId: authResult.sessionId,
     connectorTransport: connector,
   };

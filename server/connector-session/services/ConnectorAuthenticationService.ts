@@ -45,6 +45,11 @@ export class ConnectorAuthenticationService {
     token: string,
     connectorInstanceId: string
   ): Promise<IssuedConnectorCredential | null> {
+    const existing = await this.credentialRepository.findByConnectorInstanceId(connectorInstanceId);
+    if (existing && existing.revokedAt == null && existing.status !== "revoked") {
+      return null;
+    }
+
     const pairing = await this.pairingRepository.findByToken(token);
     if (!pairing || pairing.consumedAt != null || Date.parse(pairing.expiresAt) <= this.now()) {
       return null;
@@ -65,6 +70,9 @@ export class ConnectorAuthenticationService {
       expiresAt: null,
       revokedAt: null,
       connectorInstanceId,
+      status: "active",
+      lastSeenAt: null,
+      connectorVersion: null,
     };
     await this.credentialRepository.save(record);
 
@@ -143,6 +151,11 @@ export class ConnectorAuthenticationService {
         message: "Invalid connector credential",
       };
     }
+
+    await this.credentialRepository.touchEnrollment(input.credentialId, {
+      lastSeenAt: new Date(this.now()).toISOString(),
+      connectorVersion: input.version,
+    });
 
     return { valid: true, credential };
   }

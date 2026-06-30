@@ -17,6 +17,8 @@ import type {
 } from "./contracts/ConnectorTransportPort";
 import { InMemoryConnectorCredentialRepository } from "./infrastructure/InMemoryConnectorCredentialRepository";
 import { InMemoryConnectorPairingRepository } from "./infrastructure/InMemoryConnectorPairingRepository";
+import { DrizzleConnectorCredentialRepository } from "./infrastructure/DrizzleConnectorCredentialRepository";
+import { DrizzleConnectorPairingRepository } from "./infrastructure/DrizzleConnectorPairingRepository";
 import { InMemoryConnectorSessionRepository } from "./infrastructure/InMemoryConnectorSessionRepository";
 import { InMemoryConnectorTransportRegistry } from "./infrastructure/InMemoryConnectorTransportRegistry";
 import { ConnectorAuthenticationService } from "./services/ConnectorAuthenticationService";
@@ -52,7 +54,37 @@ export type ConnectorNetworkComposition = {
 
 export type ComposeConnectorNetworkOptions = {
   registryRepository?: ConnectorRegistryRepository;
+  credentialRepository?: ConnectorCredentialRepository;
+  pairingRepository?: ConnectorPairingRepository;
 };
+
+function useInMemoryPersistence(): boolean {
+  return process.env.VITEST === "true" || process.env.CONNECTOR_PERSISTENCE_IN_MEMORY === "1";
+}
+
+function resolvePersistenceRepositories(options: ComposeConnectorNetworkOptions): {
+  credentialRepository: ConnectorCredentialRepository;
+  pairingRepository: ConnectorPairingRepository;
+} {
+  if (options.credentialRepository && options.pairingRepository) {
+    return {
+      credentialRepository: options.credentialRepository,
+      pairingRepository: options.pairingRepository,
+    };
+  }
+
+  if (useInMemoryPersistence()) {
+    return {
+      credentialRepository: options.credentialRepository ?? new InMemoryConnectorCredentialRepository(),
+      pairingRepository: options.pairingRepository ?? new InMemoryConnectorPairingRepository(),
+    };
+  }
+
+  return {
+    credentialRepository: options.credentialRepository ?? new DrizzleConnectorCredentialRepository(),
+    pairingRepository: options.pairingRepository ?? new DrizzleConnectorPairingRepository(),
+  };
+}
 
 function buildGatewayComposition(
   repository: ConnectorRegistryRepository,
@@ -81,9 +113,8 @@ export function composeConnectorNetwork(
   options: ComposeConnectorNetworkOptions = {}
 ): ConnectorNetworkComposition {
   const repository = options.registryRepository ?? new InMemoryConnectorRegistryRepository();
+  const { credentialRepository, pairingRepository } = resolvePersistenceRepositories(options);
   const sessionRepository = new InMemoryConnectorSessionRepository();
-  const credentialRepository = new InMemoryConnectorCredentialRepository();
-  const pairingRepository = new InMemoryConnectorPairingRepository();
   const transportRegistry = new InMemoryConnectorTransportRegistry();
 
   const sessionManager = new ConnectorSessionManager(sessionRepository, transportRegistry);

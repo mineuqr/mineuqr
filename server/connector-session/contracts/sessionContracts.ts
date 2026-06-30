@@ -133,6 +133,8 @@ export type PairingTokenIssue = {
   expiresAt: string;
 };
 
+export type ConnectorEnrollmentStatus = "active" | "revoked";
+
 export type ConnectorCredentialRecord = {
   credentialId: string;
   restaurantId: number;
@@ -141,4 +143,7 @@ export type ConnectorCredentialRecord = {
   expiresAt: string | null;
   revokedAt: string | null;
   connectorInstanceId: string | null;
+  status?: ConnectorEnrollmentStatus;
+  lastSeenAt?: string | null;
+  connectorVersion?: string | null;
 };
