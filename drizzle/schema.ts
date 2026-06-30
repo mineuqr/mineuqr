@@ -648,6 +648,20 @@ export const printJobHistory = mysqlTable("print_job_history", {
 export type InsertPrintJob = typeof printJobs.$inferInsert;
 export type SelectPrintJob = typeof printJobs.$inferSelect;
 
+// ─── Print Connector (PRINT-CONNECTOR-1) ─────────────────────────
+export const printConnectorSelections = mysqlTable("print_connector_selections", {
+	restaurantId: int().notNull(),
+	printerId: varchar({ length: 128 }).notNull(),
+	printerName: varchar({ length: 255 }).notNull(),
+	platform: varchar({ length: 32 }).notNull(),
+	transport: varchar({ length: 32 }).notNull(),
+	selectedAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+	updatedAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+},
+(table) => [
+	primaryKey({ columns: [table.restaurantId] }),
+]);
+
 // ─── Order Domain Outbox (ORDER-EVENTS-1A) ───────────────────────
 export const orderDomainOutbox = mysqlTable("order_domain_outbox", {
 	id: varchar({ length: 36 }).notNull(),

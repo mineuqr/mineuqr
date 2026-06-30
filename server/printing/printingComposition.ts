@@ -1,40 +1,25 @@
 import type { PrintResultPort } from "./contracts/ports/PrintResultPort";
 import { PrintDispatchCoordinator, PrintingService } from "./application/PrintingService";
 import { OrderReadPrintPayloadBuilder } from "./infrastructure/payload/OrderReadPrintPayloadBuilder";
-import { NoOpPrintConnectorPort } from "./infrastructure/connector/NoOpPrintConnectorPort";
 import { OpsPrintStatusPublisher } from "./infrastructure/events/OpsPrintStatusPublisher";
 import { DrizzlePrintJobAttemptRepository } from "./infrastructure/persistence/DrizzlePrintJobAttemptRepository";
 import { DrizzlePrintJobHistoryRepository } from "./infrastructure/persistence/DrizzlePrintJobHistoryRepository";
 import { DrizzlePrintJobRepository } from "./infrastructure/persistence/DrizzlePrintJobRepository";
 import { OrderPrintDispatchAdapter } from "./infrastructure/adapters/OrderPrintDispatchAdapter";
+import {
+  printConnectorRuntime,
+  PrintingServicePrintConnectorAdapter,
+} from "../print-connector/printConnectorComposition";
 
 const printJobRepository = new DrizzlePrintJobRepository();
 const printJobAttemptRepository = new DrizzlePrintJobAttemptRepository();
 const printJobHistoryRepository = new DrizzlePrintJobHistoryRepository();
 const printPayloadBuilder = new OrderReadPrintPayloadBuilder();
 const printStatusPublisher = new OpsPrintStatusPublisher();
-const printConnectorPort = new NoOpPrintConnectorPort();
 
-const printDispatchCoordinator = new PrintDispatchCoordinator(
-  printJobRepository,
-  printJobAttemptRepository,
-  printJobHistoryRepository,
-  printConnectorPort,
-  printStatusPublisher
-);
+let printingService: PrintingService;
 
-export const printingService = new PrintingService(
-  printJobRepository,
-  printJobAttemptRepository,
-  printJobHistoryRepository,
-  printPayloadBuilder,
-  printDispatchCoordinator,
-  printStatusPublisher
-);
-
-export const orderPrintDispatchAdapter = new OrderPrintDispatchAdapter(printingService);
-
-export const printResultPort: PrintResultPort = {
+const printResultPort: PrintResultPort = {
   reportPrintingStarted: async (input) => {
     await printingService.reportPrintingStarted(input);
   },
@@ -45,3 +30,29 @@ export const printResultPort: PrintResultPort = {
     await printingService.reportPrintFailure(input);
   },
 };
+
+const printConnectorPort = new PrintingServicePrintConnectorAdapter(
+  printConnectorRuntime,
+  printResultPort
+);
+
+const printDispatchCoordinator = new PrintDispatchCoordinator(
+  printJobRepository,
+  printJobAttemptRepository,
+  printJobHistoryRepository,
+  printConnectorPort,
+  printStatusPublisher
+);
+
+printingService = new PrintingService(
+  printJobRepository,
+  printJobAttemptRepository,
+  printJobHistoryRepository,
+  printPayloadBuilder,
+  printDispatchCoordinator,
+  printStatusPublisher
+);
+
+export { printingService };
+export const orderPrintDispatchAdapter = new OrderPrintDispatchAdapter(printingService);
+export { printResultPort };

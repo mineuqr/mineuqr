@@ -1,0 +1,36 @@
+import type { PrintPayload } from "../../printing/domain/PrintPayload";
+
+/**
+ * Renderer-independent text serialization for OS print APIs.
+ * Not ESC/POS, PDF, or raster — plain structured text only.
+ */
+export function serializePrintPayloadToText(payload: PrintPayload): string {
+  const lines: string[] = [
+    `Order: ${payload.orderNumber}`,
+    `Table: ${payload.tableNumber}`,
+    `Status: ${payload.orderStatus}`,
+    `Total: ${payload.totalAmount}`,
+    `Created: ${payload.createdAt}`,
+    "",
+    "Items:",
+  ];
+
+  for (const item of payload.lineItems) {
+    const name = item.nameEn || item.nameAr;
+    lines.push(`  ${item.quantity}x ${name} @ ${item.price}`);
+  }
+
+  if (payload.notes) {
+    lines.push("", `Notes: ${payload.notes}`);
+  }
+
+  if (payload.customerName || payload.customerPhone) {
+    lines.push(
+      "",
+      `Customer: ${payload.customerName ?? ""} ${payload.customerPhone ?? ""}`.trim()
+    );
+  }
+
+  lines.push("", `Requested: ${payload.requestedAt}`);
+  return lines.join("\n");
+}

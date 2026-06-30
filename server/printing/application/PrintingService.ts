@@ -29,16 +29,18 @@ export class PrintDispatchCoordinator {
     const dispatched = await this.transition(job, "dispatched", "PrintDispatched");
     if (!dispatched) return job;
 
+    const printing = await this.transition(dispatched, "printing", "PrintStarted");
+    if (!printing) return dispatched;
+
     await this.connector.submit({
-      jobId: dispatched.id,
-      restaurantId: dispatched.restaurantId,
-      orderId: dispatched.orderId,
-      correlationId: dispatched.correlationId,
-      payload: dispatched.payload,
+      jobId: printing.id,
+      restaurantId: printing.restaurantId,
+      orderId: printing.orderId,
+      correlationId: printing.correlationId,
+      payload: printing.payload,
     });
 
-    const printing = await this.transition(dispatched, "printing", "PrintStarted");
-    return printing ?? dispatched;
+    return printing;
   }
 
   private async transition(

@@ -11,6 +11,7 @@ import {
   useDevQueryRuntimeLog,
 } from "@/lib/queryRuntime";
 import { usePrintWorkspaceActionPort } from "@/lib/print-workspace/usePrintWorkspaceActions";
+import { usePrintConnector } from "@/lib/print-workspace/usePrintConnector";
 import {
   formatStatusLabel,
   toPrintWorkspaceOrderCard,
@@ -62,6 +63,8 @@ export function PrintWorkspacePanel({
     { restaurantId, orderId: state.selectedOrderId ?? 0 },
     { enabled: queriesEnabled && state.selectedOrderId != null }
   );
+
+  const printConnector = usePrintConnector(restaurantId, queriesEnabled);
 
   const printActions = usePrintWorkspaceActionPort(
     restaurantId,
@@ -145,6 +148,101 @@ export function PrintWorkspacePanel({
                 </select>
               </div>
             </div>
+          </RestaurantDashSection>
+
+          <RestaurantDashSection
+            title={isAr ? "الطابعة" : "Printer"}
+            headerAside={
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => printConnector.refetch()}
+                disabled={printConnector.isLoading}
+              >
+                <RefreshCw
+                  className={cn("h-4 w-4", printConnector.isLoading && "animate-spin")}
+                />
+              </Button>
+            }
+          >
+            {printConnector.isLoading ? (
+              <div className="flex justify-center py-6">
+                <Loader2 className="h-6 w-6 animate-spin text-slate-500" />
+              </div>
+            ) : printConnector.printers.length === 0 ? (
+              <p className="text-sm text-slate-400">
+                {isAr ? "لم يتم العثور على طابعات." : "No printers discovered."}
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {printConnector.selectedPrinter ? (
+                  <p className="text-sm text-emerald-300">
+                    {isAr ? "المحددة: " : "Selected: "}
+                    <span className="font-medium text-white">
+                      {printConnector.selectedPrinter.printerName}
+                    </span>
+                    <span className="text-slate-400">
+                      {" "}
+                      · {printConnector.selectedPrinter.transport}
+                    </span>
+                  </p>
+                ) : (
+                  <p className="text-sm text-amber-200/90">
+                    {isAr ? "اختر طابعة للطباعة." : "Select a printer to enable printing."}
+                  </p>
+                )}
+                <ul className="space-y-2">
+                  {printConnector.printers.map((printer) => {
+                    const isSelected =
+                      printConnector.selectedPrinter?.printerId === printer.id;
+                    return (
+                      <li key={printer.id}>
+                        <button
+                          type="button"
+                          disabled={printConnector.isSelecting}
+                          onClick={() =>
+                            void printConnector.selectPrinter({
+                              id: printer.id,
+                              name: printer.name,
+                              platform: printer.platform,
+                              transport: printer.transport,
+                            })
+                          }
+                          className={cn(
+                            "flex w-full items-center justify-between rounded-lg border px-3 py-2 text-sm transition",
+                            isSelected
+                              ? "border-primary/60 bg-primary/10 text-white"
+                              : "border-slate-800 bg-slate-900/40 text-slate-200 hover:border-slate-600"
+                          )}
+                        >
+                          <span>
+                            {printer.name}
+                            <span className="ms-2 text-xs text-slate-400">
+                              {printer.transport} · {printer.platform}
+                            </span>
+                          </span>
+                          <span
+                            className={cn(
+                              "text-xs",
+                              printer.isOnline ? "text-emerald-400" : "text-red-400"
+                            )}
+                          >
+                            {printer.isOnline
+                              ? isAr
+                                ? "متصل"
+                                : "Online"
+                              : isAr
+                                ? "غير متصل"
+                                : "Offline"}
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
           </RestaurantDashSection>
 
           <div className="grid gap-4 lg:grid-cols-5">
@@ -246,7 +344,11 @@ export function PrintWorkspacePanel({
                         type="button"
                         size="sm"
                         variant="outline"
-                        disabled={!detailQuery.data || printActions.isBusy}
+                        disabled={
+                          !detailQuery.data ||
+                          printActions.isBusy ||
+                          !printConnector.selectedPrinter
+                        }
                         onClick={() =>
                           void printActions.printOrder({
                             restaurantId,
@@ -262,7 +364,11 @@ export function PrintWorkspacePanel({
                         type="button"
                         size="sm"
                         variant="outline"
-                        disabled={!detailQuery.data || printActions.isBusy}
+                        disabled={
+                          !detailQuery.data ||
+                          printActions.isBusy ||
+                          !printConnector.selectedPrinter
+                        }
                         onClick={() =>
                           void printActions.reprint({
                             restaurantId,
