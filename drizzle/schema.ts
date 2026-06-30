@@ -571,6 +571,83 @@ export const orderReadBackfillRuns = mysqlTable("order_read_backfill_runs", {
 	index("order_read_backfill_status").on(table.status),
 ]);
 
+// ─── Printing Service (PRINTING-1) ───────────────────────────────
+export const printJobStatuses = [
+	"pending",
+	"dispatched",
+	"printing",
+	"printed",
+	"failed",
+	"cancelled",
+] as const;
+
+export const printJobSources = ["order_event", "operator", "reprint"] as const;
+
+export const printJobAttemptOutcomes = ["in_progress", "success", "failure", "cancelled"] as const;
+
+export const printJobs = mysqlTable("print_jobs", {
+	id: int().autoincrement().notNull(),
+	restaurantId: int().notNull(),
+	orderId: int().notNull(),
+	orderNumber: varchar({ length: 32 }).notNull(),
+	status: mysqlEnum(printJobStatuses).default("pending").notNull(),
+	source: mysqlEnum(printJobSources).notNull(),
+	idempotencyKey: varchar({ length: 128 }).notNull(),
+	triggerEventType: varchar({ length: 64 }),
+	triggerEventId: varchar({ length: 36 }),
+	correlationId: varchar({ length: 64 }),
+	payloadVersion: int().default(1).notNull(),
+	payloadJson: json().notNull(),
+	attemptCount: int().default(0).notNull(),
+	lastError: text(),
+	operatorUserId: int(),
+	createdAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+	updatedAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+	dispatchedAt: timestamp({ mode: "string" }),
+	printingAt: timestamp({ mode: "string" }),
+	completedAt: timestamp({ mode: "string" }),
+},
+(table) => [
+	primaryKey({ columns: [table.id] }),
+	uniqueIndex("print_jobs_idempotency_unique").on(table.restaurantId, table.idempotencyKey),
+	index("print_jobs_restaurant_status").on(table.restaurantId, table.status),
+	index("print_jobs_restaurant_order").on(table.restaurantId, table.orderId),
+]);
+
+export const printJobAttempts = mysqlTable("print_job_attempts", {
+	id: int().autoincrement().notNull(),
+	printJobId: int().notNull(),
+	restaurantId: int().notNull(),
+	attemptNumber: int().notNull(),
+	status: mysqlEnum(printJobStatuses).notNull(),
+	outcome: mysqlEnum(printJobAttemptOutcomes).notNull(),
+	errorMessage: text(),
+	metadataJson: json(),
+	createdAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+},
+(table) => [
+	primaryKey({ columns: [table.id] }),
+	index("print_job_attempts_job").on(table.printJobId),
+]);
+
+export const printJobHistory = mysqlTable("print_job_history", {
+	id: int().autoincrement().notNull(),
+	printJobId: int().notNull(),
+	restaurantId: int().notNull(),
+	eventType: varchar({ length: 64 }).notNull(),
+	fromStatus: varchar({ length: 32 }),
+	toStatus: varchar({ length: 32 }).notNull(),
+	metadataJson: json(),
+	occurredAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+},
+(table) => [
+	primaryKey({ columns: [table.id] }),
+	index("print_job_history_job").on(table.printJobId, table.occurredAt),
+]);
+
+export type InsertPrintJob = typeof printJobs.$inferInsert;
+export type SelectPrintJob = typeof printJobs.$inferSelect;
+
 // ─── Order Domain Outbox (ORDER-EVENTS-1A) ───────────────────────
 export const orderDomainOutbox = mysqlTable("order_domain_outbox", {
 	id: varchar({ length: 36 }).notNull(),

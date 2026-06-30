@@ -60,6 +60,23 @@ export type PrintWorkspaceOrderListResult = ReadResultMeta & {
 export type PrintWorkspaceOrderDetailResult = ReadResultMeta & {
   order: PrintWorkspaceOrderDto;
   timeline: PrintWorkspaceTimelineEventDto[];
+  printJobs: PrintWorkspacePrintJobDto[];
+};
+
+export type PrintWorkspacePrintJobDto = {
+  id: number;
+  status: string;
+  source: string;
+  attemptCount: number;
+  lastError: string | null;
+  createdAt: string;
+  dispatchedAt: string | null;
+  printingAt: string | null;
+  completedAt: string | null;
+};
+
+export type PrintWorkspacePreviewTicketResult = ReadResultMeta & {
+  payload: Record<string, unknown>;
 };
 
 export function clampPrintWorkspaceLimit(limit: number | undefined): number {

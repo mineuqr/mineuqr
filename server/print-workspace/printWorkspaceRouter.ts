@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { verifiedProcedure, router } from "../_core/trpc";
 import { assertRestaurantAccess } from "../restaurantAccess";
+import { printWorkspaceCommandService } from "./commands/PrintWorkspaceCommandService";
 import { printWorkspaceReadService } from "./read/services/PrintWorkspaceReadService";
 
 const listOrdersInput = z.object({
@@ -19,8 +20,26 @@ const orderDetailInput = z.object({
   orderId: z.coerce.number().int().positive(),
 });
 
+const actionContextInput = z.object({
+  restaurantId: z.coerce.number().int().positive(),
+  orderId: z.coerce.number().int().positive(),
+  orderNumber: z.string().min(1).max(32),
+});
+
+const reprintInput = actionContextInput.extend({
+  reason: z.string().max(256).optional(),
+});
+
+const markPrintedInput = actionContextInput.extend({
+  printedAt: z.string().optional(),
+});
+
+const cancelPrintInput = actionContextInput.extend({
+  reason: z.string().max(256).optional(),
+});
+
 /**
- * PRINT-WORKSPACE-1 — operational read API (projection-backed only).
+ * PRINT-WORKSPACE-1 read + PRINTING-1 command contracts.
  */
 export const printWorkspaceRouter = router({
   read: router({
@@ -32,6 +51,45 @@ export const printWorkspaceRouter = router({
     getOrderDetail: verifiedProcedure.input(orderDetailInput).query(async ({ input, ctx }) => {
       await assertRestaurantAccess(ctx, input.restaurantId, "printWorkspace.read.getOrderDetail");
       return printWorkspaceReadService.getOrderDetail(input);
+    }),
+
+    previewTicket: verifiedProcedure.input(orderDetailInput).query(async ({ input, ctx }) => {
+      await assertRestaurantAccess(ctx, input.restaurantId, "printWorkspace.read.previewTicket");
+      return printWorkspaceReadService.previewTicket(input);
+    }),
+  }),
+
+  commands: router({
+    printOrder: verifiedProcedure.input(actionContextInput).mutation(async ({ input, ctx }) => {
+      await assertRestaurantAccess(ctx, input.restaurantId, "printWorkspace.commands.printOrder");
+      await printWorkspaceCommandService.printOrder({
+        ...input,
+        operatorUserId: ctx.user.id,
+      });
+    }),
+
+    reprint: verifiedProcedure.input(reprintInput).mutation(async ({ input, ctx }) => {
+      await assertRestaurantAccess(ctx, input.restaurantId, "printWorkspace.commands.reprint");
+      await printWorkspaceCommandService.reprint({
+        ...input,
+        operatorUserId: ctx.user.id,
+      });
+    }),
+
+    markPrinted: verifiedProcedure.input(markPrintedInput).mutation(async ({ input, ctx }) => {
+      await assertRestaurantAccess(ctx, input.restaurantId, "printWorkspace.commands.markPrinted");
+      await printWorkspaceCommandService.markPrinted({
+        ...input,
+        operatorUserId: ctx.user.id,
+      });
+    }),
+
+    cancelPrint: verifiedProcedure.input(cancelPrintInput).mutation(async ({ input, ctx }) => {
+      await assertRestaurantAccess(ctx, input.restaurantId, "printWorkspace.commands.cancelPrint");
+      await printWorkspaceCommandService.cancelPrint({
+        ...input,
+        operatorUserId: ctx.user.id,
+      });
     }),
   }),
 });

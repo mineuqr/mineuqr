@@ -1,0 +1,47 @@
+import type { PrintResultPort } from "./contracts/ports/PrintResultPort";
+import { PrintDispatchCoordinator, PrintingService } from "./application/PrintingService";
+import { OrderReadPrintPayloadBuilder } from "./infrastructure/payload/OrderReadPrintPayloadBuilder";
+import { NoOpPrintConnectorPort } from "./infrastructure/connector/NoOpPrintConnectorPort";
+import { OpsPrintStatusPublisher } from "./infrastructure/events/OpsPrintStatusPublisher";
+import { DrizzlePrintJobAttemptRepository } from "./infrastructure/persistence/DrizzlePrintJobAttemptRepository";
+import { DrizzlePrintJobHistoryRepository } from "./infrastructure/persistence/DrizzlePrintJobHistoryRepository";
+import { DrizzlePrintJobRepository } from "./infrastructure/persistence/DrizzlePrintJobRepository";
+import { OrderPrintDispatchAdapter } from "./infrastructure/adapters/OrderPrintDispatchAdapter";
+
+const printJobRepository = new DrizzlePrintJobRepository();
+const printJobAttemptRepository = new DrizzlePrintJobAttemptRepository();
+const printJobHistoryRepository = new DrizzlePrintJobHistoryRepository();
+const printPayloadBuilder = new OrderReadPrintPayloadBuilder();
+const printStatusPublisher = new OpsPrintStatusPublisher();
+const printConnectorPort = new NoOpPrintConnectorPort();
+
+const printDispatchCoordinator = new PrintDispatchCoordinator(
+  printJobRepository,
+  printJobAttemptRepository,
+  printJobHistoryRepository,
+  printConnectorPort,
+  printStatusPublisher
+);
+
+export const printingService = new PrintingService(
+  printJobRepository,
+  printJobAttemptRepository,
+  printJobHistoryRepository,
+  printPayloadBuilder,
+  printDispatchCoordinator,
+  printStatusPublisher
+);
+
+export const orderPrintDispatchAdapter = new OrderPrintDispatchAdapter(printingService);
+
+export const printResultPort: PrintResultPort = {
+  reportPrintingStarted: async (input) => {
+    await printingService.reportPrintingStarted(input);
+  },
+  reportPrintSuccess: async (input) => {
+    await printingService.reportPrintSuccess(input);
+  },
+  reportPrintFailure: async (input) => {
+    await printingService.reportPrintFailure(input);
+  },
+};

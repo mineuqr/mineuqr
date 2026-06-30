@@ -4,9 +4,7 @@ import { OrderNotificationConsumer } from "./infrastructure/events/consumers/Ord
 import { OrderSessionConsumer } from "./infrastructure/events/consumers/OrderSessionConsumer";
 import { OrderKitchenConsumer } from "./infrastructure/events/consumers/OrderKitchenConsumer";
 import { OrderPrintingConsumer } from "./infrastructure/events/consumers/OrderPrintingConsumer";
-import {
-  LogOrderPrintDispatchPort,
-} from "./infrastructure/events/consumers/ports/OrderPrintDispatchPort";
+import { orderPrintDispatchAdapter } from "../printing/printingComposition";
 import {
   NoOpEventConsumerMetrics,
   OpsEventConsumerMetrics,
@@ -27,7 +25,7 @@ export const orderEventConsumerRegistry = new OrderEventConsumerRegistry(
 const notificationConsumer = new OrderNotificationConsumer();
 const sessionConsumer = new OrderSessionConsumer();
 const kitchenConsumer = new OrderKitchenConsumer();
-const printingConsumer = new OrderPrintingConsumer(new LogOrderPrintDispatchPort());
+const printingConsumer = new OrderPrintingConsumer(orderPrintDispatchAdapter);
 
 orderEventConsumerRegistry.register({
   consumer: notificationConsumer,

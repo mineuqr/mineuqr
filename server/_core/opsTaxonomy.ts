@@ -126,6 +126,15 @@ export const OPS_EVENT = {
   order_kitchen_event_received: "order_kitchen_event_received",
   order_print_dispatch_requested: "order_print_dispatch_requested",
 
+  // PRINTING-1 — operational print service events
+  print_requested: "print_requested",
+  print_dispatched: "print_dispatched",
+  print_started: "print_started",
+  print_completed: "print_completed",
+  print_failed: "print_failed",
+  print_cancelled: "print_cancelled",
+  print_connector_submission: "print_connector_submission",
+
   // ORDERS-READ-MODEL-1 — projection consumers
   order_projection_consumer_executed: "order_projection_consumer_executed",
   order_projection_consumer_failed: "order_projection_consumer_failed",

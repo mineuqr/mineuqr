@@ -10,7 +10,7 @@ import {
   restaurantQueriesEnabled,
   useDevQueryRuntimeLog,
 } from "@/lib/queryRuntime";
-import { disabledPrintWorkspaceActionPort } from "@/lib/print-workspace/actionContracts";
+import { usePrintWorkspaceActionPort } from "@/lib/print-workspace/usePrintWorkspaceActions";
 import {
   formatStatusLabel,
   toPrintWorkspaceOrderCard,
@@ -21,7 +21,7 @@ import { isEmailNotVerifiedError } from "@/lib/trpcErrors";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { Eye, Loader2, Printer, RefreshCw, RotateCcw, XCircle } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 const VIEW_TABS: { id: PrintWorkspaceViewFilter; en: string; ar: string }[] = [
   { id: "awaiting", en: "Awaiting print", ar: "بانتظار الطباعة" },
@@ -41,6 +41,7 @@ export function PrintWorkspacePanel({
   const isAr = language === "ar";
   const sym = currencySymbol || "ر.س";
   const { isAuthenticated, authPending } = useAuth();
+  const utils = trpc.useUtils();
   const queriesEnabled = restaurantQueriesEnabled(authPending, isAuthenticated, restaurantId);
   const { state, setView, setSearch, setStatusFilter, selectOrder, queryInput } =
     usePrintWorkspaceState();
@@ -60,6 +61,25 @@ export function PrintWorkspacePanel({
   const detailQuery = trpc.printWorkspace.read.getOrderDetail.useQuery(
     { restaurantId, orderId: state.selectedOrderId ?? 0 },
     { enabled: queriesEnabled && state.selectedOrderId != null }
+  );
+
+  const printActions = usePrintWorkspaceActionPort(
+    restaurantId,
+    detailQuery.data?.order.orderId ?? 0,
+    detailQuery.data?.order.orderNumber ?? "",
+    () => {
+      void detailQuery.refetch();
+    }
+  );
+
+  const [previewMessage, setPreviewMessage] = useState<string | null>(null);
+
+  const activePrintJob = useMemo(
+    () =>
+      detailQuery.data?.printJobs.find((job) =>
+        ["pending", "dispatched", "printing"].includes(job.status)
+      ) ?? null,
+    [detailQuery.data?.printJobs]
   );
 
   const cards = useMemo(
@@ -226,10 +246,9 @@ export function PrintWorkspacePanel({
                         type="button"
                         size="sm"
                         variant="outline"
-                        disabled
-                        title={isAr ? "قريباً — PRINTING-1" : "Coming soon — PRINTING-1"}
+                        disabled={!detailQuery.data || printActions.isBusy}
                         onClick={() =>
-                          disabledPrintWorkspaceActionPort.printOrder({
+                          void printActions.printOrder({
                             restaurantId,
                             orderId: detailQuery.data!.order.orderId,
                             orderNumber: detailQuery.data!.order.orderNumber,
@@ -239,20 +258,88 @@ export function PrintWorkspacePanel({
                         <Printer className="h-4 w-4 me-1" />
                         {isAr ? "طباعة" : "Print"}
                       </Button>
-                      <Button type="button" size="sm" variant="outline" disabled>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={!detailQuery.data || printActions.isBusy}
+                        onClick={() =>
+                          void printActions.reprint({
+                            restaurantId,
+                            orderId: detailQuery.data!.order.orderId,
+                            orderNumber: detailQuery.data!.order.orderNumber,
+                          })
+                        }
+                      >
                         <RotateCcw className="h-4 w-4 me-1" />
                         {isAr ? "إعادة طباعة" : "Reprint"}
                       </Button>
-                      <Button type="button" size="sm" variant="outline" disabled>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={!detailQuery.data || printActions.isBusy}
+                        onClick={async () => {
+                          if (!detailQuery.data) return;
+                          try {
+                            const preview = await utils.printWorkspace.read.previewTicket.fetch({
+                              restaurantId,
+                              orderId: detailQuery.data.order.orderId,
+                            });
+                            setPreviewMessage(
+                              preview?.payload
+                                ? JSON.stringify(preview.payload, null, 2)
+                                : isAr
+                                  ? "لا توجد بيانات معاينة"
+                                  : "No preview data"
+                            );
+                          } catch {
+                            setPreviewMessage(isAr ? "فشلت المعاينة" : "Preview failed");
+                          }
+                        }}
+                      >
                         <Eye className="h-4 w-4 me-1" />
                         {isAr ? "معاينة" : "Preview"}
                       </Button>
-                      <Button type="button" size="sm" variant="outline" disabled>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={!activePrintJob || printActions.isBusy}
+                        onClick={() =>
+                          void printActions.cancelPrint({
+                            restaurantId,
+                            orderId: detailQuery.data!.order.orderId,
+                            orderNumber: detailQuery.data!.order.orderNumber,
+                          })
+                        }
+                      >
                         <XCircle className="h-4 w-4 me-1" />
                         {isAr ? "إلغاء الطباعة" : "Cancel print"}
                       </Button>
                     </div>
                   </div>
+
+                  {previewMessage ? (
+                    <pre className="max-h-48 overflow-auto rounded-lg border border-slate-800 bg-slate-950/80 p-3 text-xs text-slate-300">
+                      {previewMessage}
+                    </pre>
+                  ) : null}
+
+                  {detailQuery.data.printJobs.length > 0 ? (
+                    <div>
+                      <h4 className="mb-2 text-sm font-medium text-slate-300">
+                        {isAr ? "مهام الطباعة" : "Print jobs"}
+                      </h4>
+                      <ul className="space-y-1 text-xs text-slate-400">
+                        {detailQuery.data.printJobs.map((job) => (
+                          <li key={job.id}>
+                            #{job.id} · {job.status} · {job.source} · {job.createdAt}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
 
                   {detailQuery.data.order.notes ? (
                     <p className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-sm text-amber-100/90">
