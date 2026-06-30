@@ -3,12 +3,10 @@ import { VerificationRequiredPanel } from "@/components/auth/VerificationRequire
 import { RestaurantDashSection } from "@/components/dashboard/RestaurantDashSection";
 import { restaurantDash } from "@/components/dashboard/restaurantDashStyles";
 import { RestaurantSectionError } from "@/components/dashboard/RestaurantSectionStates";
-import { ConnectorSessionCard } from "@/components/print-workspace/ConnectorSessionCard";
 import { CurrentPrinterCard } from "@/components/print-workspace/CurrentPrinterCard";
-import { LocalConnectorCard } from "@/components/print-workspace/LocalConnectorCard";
 import { PrinterSelectionDialog } from "@/components/print-workspace/PrinterSelectionDialog";
-import { SystemReadyBanner } from "@/components/print-workspace/SystemReadyBanner";
-import { WorkspaceDiagnosticsSection } from "@/components/print-workspace/WorkspaceDiagnosticsSection";
+import { PrintingSetupZone } from "@/components/print-workspace/PrintingSetupZone";
+import { PrintingStatusBanner } from "@/components/print-workspace/PrintingStatusBanner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -18,6 +16,11 @@ import {
 } from "@/lib/queryRuntime";
 import { useCurrentPrinter } from "@/lib/print-workspace/useCurrentPrinter";
 import { useOperationalPrintStatus } from "@/lib/print-workspace/useOperationalPrintStatus";
+import {
+  deriveOnboardingStep,
+  derivePrinterOperationalState,
+  derivePrintingReadinessLevel,
+} from "@/lib/print-workspace/operationalViewModels";
 import { usePrintWorkspaceActionPort } from "@/lib/print-workspace/usePrintWorkspaceActions";
 import {
   formatStatusLabel,
@@ -28,8 +31,8 @@ import { usePrintWorkspaceState } from "@/lib/print-workspace/usePrintWorkspaceS
 import { isEmailNotVerifiedError } from "@/lib/trpcErrors";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
-import { Loader2, Printer, RefreshCw, RotateCcw } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Loader2, Printer, RefreshCw, RotateCcw, Settings2 } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
 
 const VIEW_TABS: { id: PrintWorkspaceViewFilter; en: string; ar: string }[] = [
   { id: "awaiting", en: "Awaiting print", ar: "بانتظار الطباعة" },
@@ -53,12 +56,37 @@ export function PrintWorkspacePanel({
   const { isAuthenticated, authPending } = useAuth();
   const queriesEnabled = restaurantQueriesEnabled(authPending, isAuthenticated, restaurantId);
   const { state, setView, setSearch, selectOrder, queryInput } = usePrintWorkspaceState();
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [testMessage, setTestMessage] = useState<string | null>(null);
-  const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
+  const setupRef = useRef<HTMLDivElement>(null);
+  const [printerPickerOpen, setPrinterPickerOpen] = useState(false);
 
   const printStatus = useOperationalPrintStatus(restaurantId, queriesEnabled);
   const currentPrinter = useCurrentPrinter(restaurantId, queriesEnabled);
+
+  const printerState = derivePrinterOperationalState(
+    currentPrinter.current,
+    printStatus.connectorOnline
+  );
+  const readinessLevel = derivePrintingReadinessLevel({
+    operational: printStatus.operational,
+    printerState,
+    printerTested: Boolean(currentPrinter.current?.lastValidatedAt),
+  });
+
+  const onboardingStep = deriveOnboardingStep({
+    connectorOk: printStatus.connectorOnline,
+    sessionOk: printStatus.sessionRegistered,
+    printerConfigured: Boolean(
+      currentPrinter.current?.configured && currentPrinter.current.printer
+    ),
+    printerIsDefault: Boolean(currentPrinter.current?.isDefault),
+    printerTested: Boolean(currentPrinter.current?.lastValidatedAt),
+    printerReady: Boolean(
+      currentPrinter.current?.status?.isReady && currentPrinter.current.status.isOnline
+    ),
+    discoveredCount: 0,
+  });
+
+  const isPrintingReady = onboardingStep === "ready";
 
   useDevQueryRuntimeLog("printWorkspace.read.listOrders", {
     enabled: queriesEnabled,
@@ -91,66 +119,97 @@ export function PrintWorkspacePanel({
 
   const verificationError = isEmailNotVerifiedError(listQuery.error) ? listQuery.error : null;
 
+  const scrollToSetup = () => {
+    setupRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const handleStatusRefresh = () => {
+    printStatus.refetch();
+    void currentPrinter.refetch();
+  };
+
+  const handleBannerPrimaryAction = () => {
+    handleStatusRefresh();
+    const action = printStatus.operational.nextAction;
+    if (
+      action === "start_connector" ||
+      action === "setup_printer" ||
+      action === "fix_printer"
+    ) {
+      scrollToSetup();
+    }
+  };
+
   return (
     <div className={restaurantDash.stack}>
-      <div className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
-          {isAr ? "مساحة الطباعة" : "Print Workspace"}
-        </h1>
-        <p className="max-w-2xl text-sm leading-relaxed text-slate-400">
-          {isAr ? "طباعة الطلبات من المطعم" : "Print orders from your restaurant"}
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
+            {isAr ? "الطباعة" : "Printing"}
+          </h1>
+          <p className="max-w-2xl text-sm leading-relaxed text-slate-400">
+            {isAr ? "طباعة طلبات المطعم" : "Print orders for your restaurant"}
+          </p>
+        </div>
+        {onOpenPrinterManagement ? (
+          <Button type="button" size="sm" variant="outline" onClick={onOpenPrinterManagement}>
+            <Settings2 className="h-4 w-4 me-1" />
+            {isAr ? "إعدادات الطابعة" : "Printer settings"}
+          </Button>
+        ) : null}
       </div>
 
       {verificationError ? (
         <VerificationRequiredPanel variant="orders" compact />
       ) : (
         <>
-          <SystemReadyBanner language={language} status={printStatus.operational} />
-
-          <RestaurantDashSection title={isAr ? "موصل MineuQR" : "MineuQR Connector"}>
-            <LocalConnectorCard
-              language={language}
-              status={printStatus.connector}
-              isLoading={printStatus.isLoading}
-              onRefresh={() => printStatus.refetch()}
-            />
-          </RestaurantDashSection>
-
-          <RestaurantDashSection title={isAr ? "الطابعة" : "Printer"}>
-            <CurrentPrinterCard
-              language={language}
-              current={currentPrinter.current}
-              isLoading={currentPrinter.isLoading}
-              isTesting={currentPrinter.isTesting}
-              connectorOnline={printStatus.connectorOnline}
-              onChangePrinter={() => setPickerOpen(true)}
-              onTestPrint={async () => {
-                try {
-                  const result = await currentPrinter.testPrint();
-                  setTestMessage(
-                    result.success
-                      ? isAr
-                        ? "نجحت الطباعة التجريبية"
-                        : "Test print succeeded"
-                      : (result.message ?? result.failureReason ?? "Failed")
-                  );
-                } catch (e) {
-                  setTestMessage(e instanceof Error ? e.message : "Failed");
-                }
-              }}
-              onOpenManagement={() => onOpenPrinterManagement?.()}
-            />
-            {testMessage ? <p className="mt-2 text-xs text-slate-400">{testMessage}</p> : null}
-          </RestaurantDashSection>
-
-          <ConnectorSessionCard
+          <PrintingStatusBanner
             language={language}
-            status={printStatus.session}
-            isLoading={printStatus.isLoading}
+            status={printStatus.operational}
+            readinessLevel={readinessLevel}
+            onPrimaryAction={isPrintingReady ? undefined : handleBannerPrimaryAction}
           />
 
-          <RestaurantDashSection title={isAr ? "الطباعة" : "Printing"}>
+          {!isPrintingReady ? (
+            <div ref={setupRef}>
+              <PrintingSetupZone
+                restaurantId={restaurantId}
+                language={language}
+                connectorOk={printStatus.connectorOnline}
+                sessionOk={printStatus.sessionRegistered}
+                currentPrinter={currentPrinter.current}
+                onStatusChange={handleStatusRefresh}
+                onTestPrint={async () => {
+                  await currentPrinter.testPrint();
+                }}
+                isTesting={currentPrinter.isTesting}
+              />
+            </div>
+          ) : (
+            <RestaurantDashSection title={isAr ? "الطابعة" : "Printer"}>
+              <CurrentPrinterCard
+                language={language}
+                current={currentPrinter.current}
+                isLoading={currentPrinter.isLoading}
+                isTesting={currentPrinter.isTesting}
+                connectorOnline={printStatus.connectorOnline}
+                onChangePrinter={() => setPrinterPickerOpen(true)}
+                onTestPrint={async () => {
+                  await currentPrinter.testPrint();
+                }}
+                onOpenManagement={() => onOpenPrinterManagement?.()}
+              />
+            </RestaurantDashSection>
+          )}
+
+          <RestaurantDashSection title={isAr ? "الطلبات" : "Orders"}>
+            {!isPrintingReady ? (
+              <p className="mb-4 rounded-lg border border-slate-800 bg-slate-900/40 px-4 py-3 text-sm text-slate-400">
+                {isAr
+                  ? "أكمل إعداد الطباعة أعلاه لطباعة الطلبات."
+                  : "Complete printing setup above to print orders."}
+              </p>
+            ) : null}
             <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex flex-wrap gap-2">
                 {VIEW_TABS.map((tab) => (
@@ -202,7 +261,13 @@ export function PrintWorkspacePanel({
                   />
                 ) : cards.length === 0 ? (
                   <p className="text-sm text-slate-400">
-                    {isAr ? "لا توجد طلبات مطابقة." : "No matching orders."}
+                    {isPrintingReady
+                      ? isAr
+                        ? "لا توجد طلبات مطابقة."
+                        : "No matching orders."
+                      : isAr
+                        ? "ستظهر الطلبات هنا بعد إعداد الطباعة."
+                        : "Orders will appear here after printing setup is complete."}
                   </p>
                 ) : (
                   <ul className="space-y-2">
@@ -256,22 +321,18 @@ export function PrintWorkspacePanel({
                     onRetry={() => detailQuery.refetch()}
                   />
                 ) : (
+                  (() => {
+                    const order = detailQuery.data.order;
+                    return (
                   <div className="space-y-4">
-                    {!printStatus.operational.canPrint ? (
-                      <p className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-sm text-amber-100/90">
-                        {isAr
-                          ? printStatus.operational.subline.ar
-                          : printStatus.operational.subline.en}
-                      </p>
-                    ) : null}
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <h3 className="text-lg font-semibold text-white">
-                          {detailQuery.data.order.orderNumber}
+                          {order.orderNumber}
                         </h3>
                         <p className="text-sm text-slate-400">
-                          {formatStatusLabel(detailQuery.data.order.status, language)} ·{" "}
-                          {isAr ? "طاولة" : "Table"} {detailQuery.data.order.tableNumber}
+                          {formatStatusLabel(order.status, language)} ·{" "}
+                          {isAr ? "طاولة" : "Table"} {order.tableNumber}
                         </p>
                       </div>
                       <div className="flex flex-wrap gap-2">
@@ -279,12 +340,12 @@ export function PrintWorkspacePanel({
                           type="button"
                           size="sm"
                           variant="default"
-                          disabled={!printStatus.operational.canPrint || printActions.isBusy}
+                          disabled={!isPrintingReady || printActions.isBusy}
                           onClick={() =>
                             void printActions.printOrder({
                               restaurantId,
-                              orderId: detailQuery.data!.order.orderId,
-                              orderNumber: detailQuery.data!.order.orderNumber,
+                              orderId: order.orderId,
+                              orderNumber: order.orderNumber,
                             })
                           }
                         >
@@ -295,12 +356,12 @@ export function PrintWorkspacePanel({
                           type="button"
                           size="sm"
                           variant="outline"
-                          disabled={!printStatus.operational.canPrint || printActions.isBusy}
+                          disabled={!isPrintingReady || printActions.isBusy}
                           onClick={() =>
                             void printActions.reprint({
                               restaurantId,
-                              orderId: detailQuery.data!.order.orderId,
-                              orderNumber: detailQuery.data!.order.orderNumber,
+                              orderId: order.orderId,
+                              orderNumber: order.orderNumber,
                             })
                           }
                         >
@@ -311,7 +372,7 @@ export function PrintWorkspacePanel({
                     </div>
 
                     <ul className="divide-y divide-slate-800 rounded-lg border border-slate-800">
-                      {detailQuery.data.order.lineItems.map((item) => (
+                      {order.lineItems.map((item) => (
                         <li
                           key={item.lineItemId}
                           className="flex items-center justify-between px-3 py-2 text-sm"
@@ -326,36 +387,16 @@ export function PrintWorkspacePanel({
                       ))}
                     </ul>
                   </div>
+                    );
+                  })()
                 )}
               </div>
             </div>
           </RestaurantDashSection>
 
-          <RestaurantDashSection
-            title={isAr ? "التشخيص" : "Diagnostics"}
-            headerAside={
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                onClick={() => setDiagnosticsOpen((v) => !v)}
-              >
-                {diagnosticsOpen ? (isAr ? "إخفاء" : "Hide") : isAr ? "عرض" : "Show"}
-              </Button>
-            }
-          >
-            <WorkspaceDiagnosticsSection
-              restaurantId={restaurantId}
-              language={language}
-              enabled={queriesEnabled}
-              expanded={diagnosticsOpen}
-              onExpandedChange={setDiagnosticsOpen}
-            />
-          </RestaurantDashSection>
-
           <PrinterSelectionDialog
-            open={pickerOpen}
-            onOpenChange={setPickerOpen}
+            open={printerPickerOpen}
+            onOpenChange={setPrinterPickerOpen}
             restaurantId={restaurantId}
             language={language}
             onSelected={() => {

@@ -12,12 +12,25 @@ describe("PRINT-UX-1 client architecture guards", () => {
       "utf8"
     );
     expect(panel).not.toMatch(/WindowsPlatform|UsbTransport|createPlatformAdapter/);
-    expect(panel).toContain("SystemReadyBanner");
-    expect(panel).toContain("LocalConnectorCard");
+    expect(panel).toContain("PrintingStatusBanner");
+    expect(panel).toContain("PrintingSetupZone");
     expect(panel).toContain("CurrentPrinterCard");
     expect(panel).not.toMatch(/JSON\.stringify/);
     expect(panel).not.toMatch(/Restaurant Local Connector/);
     expect(panel).not.toMatch(/useDistributedPrintingInfrastructure/);
+    expect(panel).not.toMatch(/WorkspaceDiagnosticsSection/);
+    expect(panel).not.toMatch(/ConnectorSessionCard/);
+    expect(panel).not.toMatch(/LocalConnectorCard/);
+  });
+
+  it("printer management panel avoids raw diagnostics for operators", () => {
+    const panel = readFileSync(
+      join(clientRoot, "components/printer-management/PrinterManagementPanel.tsx"),
+      "utf8"
+    );
+    expect(panel).not.toMatch(/JSON\.stringify/);
+    expect(panel).toContain("You have not configured printing yet");
+    expect(panel).toContain("Start setup");
   });
 
   it("printer picker uses distributed read model and provisioning workflow", () => {
@@ -59,6 +72,8 @@ describe("PRINT-UX-2A architecture guards", () => {
     expect(models).toContain("deriveOperationalPrintStatus");
     expect(models).toContain("isSimulatedPrinterId");
     expect(models).toContain("deriveProvisioningWorkflowState");
+    expect(models).toContain("deriveOnboardingStep");
+    expect(models).toContain("derivePrintingReadinessLevel");
   });
 
   it("main workspace cards hide infrastructure metadata", () => {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  deriveOnboardingStep,
   deriveOperationalPrintStatus,
   deriveProvisioningWorkflowState,
   filterProductionPrinters,
@@ -90,7 +91,7 @@ describe("operational view models", () => {
     });
 
     expect(status.canPrint).toBe(false);
-    expect(status.subline.en).toContain("restaurant connector is offline");
+    expect(status.subline.en).toContain("MineuQR Connector");
   });
 
   it("treats simulated configured printer as not configured", () => {
@@ -146,6 +147,32 @@ describe("operational view models", () => {
       printerCount: 0,
     });
     expect(state).toBe("connector_offline");
+  });
+
+  it("derives onboarding step from setup progress", () => {
+    expect(
+      deriveOnboardingStep({
+        connectorOk: false,
+        sessionOk: false,
+        printerConfigured: false,
+        printerIsDefault: false,
+        printerTested: false,
+        printerReady: false,
+        discoveredCount: 0,
+      })
+    ).toBe(1);
+
+    expect(
+      deriveOnboardingStep({
+        connectorOk: true,
+        sessionOk: true,
+        printerConfigured: true,
+        printerIsDefault: true,
+        printerTested: true,
+        printerReady: true,
+        discoveredCount: 1,
+      })
+    ).toBe("ready");
   });
 
   it("labels printer paper out for operators", () => {

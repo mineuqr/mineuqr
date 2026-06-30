@@ -1242,7 +1242,11 @@ function RestaurantDetail({
       )}
 
       {activeTab === "printer-management" && (
-        <PrinterManagementPanel restaurantId={restaurantId} language={language} />
+        <PrinterManagementPanel
+          restaurantId={restaurantId}
+          language={language}
+          onOpenPrintSetup={() => onTabChange("print")}
+        />
       )}
 
       {activeTab === "reports" && (

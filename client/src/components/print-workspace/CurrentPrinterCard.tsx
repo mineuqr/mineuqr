@@ -78,37 +78,38 @@ export function CurrentPrinterCard({
         <Button
           type="button"
           size="sm"
-          variant="outline"
-          onClick={onChangePrinter}
-          disabled={!connectorOnline}
-        >
-          {printerState === "not_configured"
-            ? isAr
-              ? "إعداد الطابعة"
-              : "Set up printer"
-            : isAr
-              ? "تغيير الطابعة"
-              : "Change printer"}
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          disabled={isTesting || !canTest}
-          onClick={onTestPrint}
+          variant={printerState === "ready" ? "default" : "outline"}
+          onClick={printerState === "not_configured" ? onChangePrinter : onTestPrint}
+          disabled={
+            printerState === "not_configured"
+              ? !connectorOnline
+              : isTesting || !canTest
+          }
         >
           {isTesting ? (
             <Loader2 className="h-4 w-4 animate-spin" />
+          ) : printerState === "not_configured" ? (
+            isAr ? (
+              "إعداد الطابعة"
+            ) : (
+              "Setup printer"
+            )
           ) : isAr ? (
-            "طباعة تجريبية"
+            "طباعة صفحة اختبار"
           ) : (
-            "Test print"
+            "Print test page"
           )}
         </Button>
-        <Button type="button" size="sm" variant="ghost" onClick={onOpenManagement}>
-          <Settings2 className="h-4 w-4 me-1" />
-          {isAr ? "إعدادات الطابعة" : "Printer settings"}
-        </Button>
+        {printerState !== "not_configured" ? (
+          <Button type="button" size="sm" variant="ghost" onClick={onOpenManagement}>
+            <Settings2 className="h-4 w-4 me-1" />
+            {isAr ? "إعدادات الطابعة" : "Printer settings"}
+          </Button>
+        ) : (
+          <Button type="button" size="sm" variant="ghost" onClick={onChangePrinter}>
+            {isAr ? "اختيار طابعة" : "Choose printer"}
+          </Button>
+        )}
       </div>
     </div>
   );

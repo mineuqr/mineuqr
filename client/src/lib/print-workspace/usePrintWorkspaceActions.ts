@@ -1,6 +1,12 @@
 import { trpc } from "@/lib/trpc";
 import { useCallback } from "react";
-import type { PrintWorkspaceActionPort } from "./actionContracts";
+import type {
+  CancelPrintCommand,
+  MarkPrintedCommand,
+  PrintOrderCommand,
+  PrintWorkspaceActionPort,
+  ReprintOrderCommand,
+} from "./actionContracts";
 
 export type PrintWorkspaceActionHandle = PrintWorkspaceActionPort & {
   isBusy: boolean;
@@ -42,14 +48,18 @@ export function usePrintWorkspaceActionPort(
 
   return {
     isBusy,
-    async printOrder() {
-      await printOrderMutation.mutateAsync({ restaurantId, orderId, orderNumber });
+    async printOrder(command: PrintOrderCommand) {
+      await printOrderMutation.mutateAsync({
+        restaurantId: command.restaurantId,
+        orderId: command.orderId,
+        orderNumber: command.orderNumber,
+      });
     },
-    async reprint(command) {
+    async reprint(command: ReprintOrderCommand) {
       await reprintMutation.mutateAsync({
-        restaurantId,
-        orderId,
-        orderNumber,
+        restaurantId: command.restaurantId,
+        orderId: command.orderId,
+        orderNumber: command.orderNumber,
         reason: command.reason,
       });
     },

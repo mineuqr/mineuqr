@@ -10,6 +10,14 @@ type CurrentPrinter = RouterOutputs["printWorkspace"]["read"]["getCurrentPrinter
 
 export type SystemReadyState = "ready" | "blocked";
 
+export type PrintingReadinessLevel =
+  | "printing_ready"
+  | "setup_required"
+  | "attention_required"
+  | "printing_unavailable";
+
+export type OnboardingStep = 1 | 2 | 3 | 4 | 5 | "ready";
+
 export type OperatorNextAction =
   | "start_connector"
   | "reconnect_connector"
@@ -51,52 +59,52 @@ export type OperationalPrintStatus = {
 
 const COPY = {
   ready: {
-    headline: { en: "Ready to print", ar: "جاهز للطباعة" },
+    headline: { en: "Printing ready", ar: "الطباعة جاهزة" },
     subline: {
-      en: "Your restaurant connector and printer are online.",
-      ar: "موصل المطعم والطابعة متصلان.",
+      en: "Your restaurant can receive and print orders.",
+      ar: "يمكن لمطعمك استقبال الطلبات وطباعتها.",
     },
   },
-  connectorOffline: {
-    headline: { en: "Cannot print right now", ar: "لا يمكن الطباعة الآن" },
+  printingUnavailable: {
+    headline: { en: "Printing unavailable", ar: "الطباعة غير متاحة" },
     subline: {
-      en: "The restaurant connector is offline. Start the connector on the restaurant computer.",
-      ar: "موصل المطعم غير متصل. شغّل الموصل على جهاز المطعم.",
+      en: "Check that MineuQR Connector is running on your restaurant computer.",
+      ar: "تأكد أن موصل MineuQR يعمل على جهاز المطعم.",
     },
   },
-  notConnected: {
-    headline: { en: "Cannot print right now", ar: "لا يمكن الطباعة الآن" },
+  setupRequired: {
+    headline: { en: "Setup required", ar: "الإعداد مطلوب" },
     subline: {
-      en: "The restaurant has not yet connected to MineuQR.",
-      ar: "لم يتصل هذا المطعم بـ MineuQR بعد.",
+      en: "You have not configured printing yet. Follow the steps below to get started.",
+      ar: "لم تقم بإعداد الطباعة بعد. اتبع الخطوات أدناه للبدء.",
+    },
+  },
+  attentionRequired: {
+    headline: { en: "Attention required", ar: "يلزم الانتباه" },
+    subline: {
+      en: "Your printer needs attention before orders can print.",
+      ar: "تحتاج الطابعة إلى اهتمام قبل أن تتمكن من طباعة الطلبات.",
     },
   },
   sessionPending: {
-    headline: { en: "Cannot print right now", ar: "لا يمكن الطباعة الآن" },
+    headline: { en: "Printing unavailable", ar: "الطباعة غير متاحة" },
     subline: {
-      en: "Waiting for the restaurant to finish connecting to MineuQR.",
-      ar: "بانتظار اكتمال اتصال المطعم بـ MineuQR.",
+      en: "Waiting for MineuQR Connector to finish connecting.",
+      ar: "بانتظار اكتمال اتصال موصل MineuQR.",
     },
   },
   printerUnavailable: {
-    headline: { en: "Cannot print right now", ar: "لا يمكن الطباعة الآن" },
+    headline: { en: "Printing unavailable", ar: "الطباعة غير متاحة" },
     subline: {
-      en: "Printer information is unavailable because the connector is not connected.",
-      ar: "معلومات الطابعة غير متاحة لأن الموصل غير متصل.",
+      en: "Printer information is unavailable until MineuQR Connector is running.",
+      ar: "معلومات الطابعة غير متاحة حتى يعمل موصل MineuQR.",
     },
   },
   noPrinter: {
-    headline: { en: "Set up a printer", ar: "إعداد الطابعة" },
+    headline: { en: "Setup required", ar: "الإعداد مطلوب" },
     subline: {
-      en: "Choose a printer once the MineuQR Connector is running.",
+      en: "Choose a printer once MineuQR Connector is running.",
       ar: "اختر طابعة بعد تشغيل موصل MineuQR.",
-    },
-  },
-  printerNotReady: {
-    headline: { en: "Printer needs attention", ar: "الطابعة تحتاج انتباهاً" },
-    subline: {
-      en: "Check the printer on the restaurant computer, then try again.",
-      ar: "تحقق من الطابعة على جهاز المطعم ثم أعد المحاولة.",
     },
   },
 } as const;
@@ -132,7 +140,7 @@ export function derivePrinterOperationalState(
 export function printerStateLabel(state: PrinterOperationalState, language: string): string {
   const isAr = language === "ar";
   const map: Record<PrinterOperationalState, { en: string; ar: string }> = {
-    ready: { en: "Ready", ar: "جاهزة" },
+    ready: { en: "Printer ready", ar: "الطابعة جاهزة" },
     offline: { en: "Offline", ar: "غير متصلة" },
     busy: { en: "Busy", ar: "مشغولة" },
     paper_out: { en: "Paper out", ar: "نفد الورق" },
@@ -217,7 +225,7 @@ export function sessionOperatorCopy(
   if (session?.registration === "Registered") {
     return {
       title: isAr ? "متصل بـ MineuQR" : "Connected to MineuQR",
-      detail: isAr ? "جلسة المطعم نشطة." : "Restaurant session is active.",
+      detail: isAr ? "المطعم متصل وجاهز للإعداد." : "Your restaurant is connected and ready for setup.",
     };
   }
   return {
@@ -259,8 +267,8 @@ export function deriveOperationalPrintStatus(input: {
     return {
       canPrint: false,
       systemReady: "blocked",
-      headline: isNeverConnected ? COPY.notConnected.headline : COPY.connectorOffline.headline,
-      subline: isNeverConnected ? COPY.notConnected.subline : COPY.connectorOffline.subline,
+      headline: isNeverConnected ? COPY.setupRequired.headline : COPY.printingUnavailable.headline,
+      subline: isNeverConnected ? COPY.setupRequired.subline : COPY.printingUnavailable.subline,
       nextAction: isNeverConnected ? "start_connector" : "reconnect_connector",
       connectorOk,
       sessionOk,
@@ -310,13 +318,149 @@ export function deriveOperationalPrintStatus(input: {
   return {
     canPrint: false,
     systemReady: "blocked",
-    headline: COPY.printerNotReady.headline,
-    subline: COPY.printerNotReady.subline,
+    headline: COPY.attentionRequired.headline,
+    subline: COPY.attentionRequired.subline,
     nextAction: "fix_printer",
     connectorOk,
     sessionOk,
     printerOk,
   };
+}
+
+export function derivePrintingReadinessLevel(input: {
+  operational: OperationalPrintStatus;
+  printerState: PrinterOperationalState;
+  printerTested: boolean;
+}): PrintingReadinessLevel {
+  if (input.operational.canPrint) return "printing_ready";
+  if (!input.operational.connectorOk || !input.operational.sessionOk) {
+    return "printing_unavailable";
+  }
+  if (
+    input.printerState === "not_configured" ||
+    !input.printerTested
+  ) {
+    return "setup_required";
+  }
+  if (input.printerState !== "ready") return "attention_required";
+  return "setup_required";
+}
+
+export function readinessLevelLabel(level: PrintingReadinessLevel, language: string): string {
+  const isAr = language === "ar";
+  const map: Record<PrintingReadinessLevel, { en: string; ar: string }> = {
+    printing_ready: { en: "Printing ready", ar: "الطباعة جاهزة" },
+    setup_required: { en: "Setup required", ar: "الإعداد مطلوب" },
+    attention_required: { en: "Attention required", ar: "يلزم الانتباه" },
+    printing_unavailable: { en: "Printing unavailable", ar: "الطباعة غير متاحة" },
+  };
+  return isAr ? map[level].ar : map[level].en;
+}
+
+export function deriveOnboardingStep(input: {
+  connectorOk: boolean;
+  sessionOk: boolean;
+  printerConfigured: boolean;
+  printerIsDefault: boolean;
+  printerTested: boolean;
+  printerReady: boolean;
+  discoveredCount: number;
+}): OnboardingStep {
+  if (
+    input.connectorOk &&
+    input.sessionOk &&
+    input.printerConfigured &&
+    input.printerIsDefault &&
+    input.printerTested &&
+    input.printerReady
+  ) {
+    return "ready";
+  }
+  if (!input.connectorOk || !input.sessionOk) return 1;
+  if (!input.printerConfigured) {
+    return input.discoveredCount > 0 ? 3 : 2;
+  }
+  if (!input.printerIsDefault) return 4;
+  if (!input.printerTested || !input.printerReady) return 5;
+  return "ready";
+}
+
+export type OnboardingStepCopy = {
+  title: string;
+  detail: string;
+  primaryAction: string;
+};
+
+export function onboardingStepCopy(step: OnboardingStep, language: string): OnboardingStepCopy {
+  const isAr = language === "ar";
+  switch (step) {
+    case 1:
+      return {
+        title: isAr ? "تثبيت موصل MineuQR" : "Install MineuQR Connector",
+        detail: isAr
+          ? "ثبّت وشغّل موصل MineuQR على جهاز المطعم، ثم اضغط إعادة المحاولة."
+          : "Install and start MineuQR Connector on your restaurant computer, then tap Retry.",
+        primaryAction: isAr ? "إعادة المحاولة" : "Retry",
+      };
+    case 2:
+      return {
+        title: isAr ? "البحث عن الطابعات" : "Discover printers",
+        detail: isAr
+          ? "سنبحث عن الطابعات المتصلة بجهاز المطعم."
+          : "We will search for printers connected to your restaurant computer.",
+        primaryAction: isAr ? "البحث عن الطابعات" : "Discover printers",
+      };
+    case 3:
+      return {
+        title: isAr ? "تسجيل الطابعة" : "Register printer",
+        detail: isAr
+          ? "اختر الطابعة التي تريد استخدامها في المطعم."
+          : "Choose the printer you want to use in your restaurant.",
+        primaryAction: isAr ? "تسجيل الطابعة" : "Register printer",
+      };
+    case 4:
+      return {
+        title: isAr ? "اختيار الطابعة الافتراضية" : "Choose default printer",
+        detail: isAr
+          ? "حدد الطابعة التي ستُستخدم لطباعة الطلبات."
+          : "Select the printer that will be used for order printing.",
+        primaryAction: isAr ? "تعيين كافتراضية" : "Set as default",
+      };
+    case 5:
+      return {
+        title: isAr ? "طباعة صفحة اختبار" : "Print test page",
+        detail: isAr
+          ? "اطبع صفحة اختبار للتأكد من أن كل شيء يعمل."
+          : "Print a test page to confirm everything works.",
+        primaryAction: isAr ? "طباعة صفحة اختبار" : "Print test page",
+      };
+    case "ready":
+      return {
+        title: isAr ? "الطباعة جاهزة" : "Printing is ready",
+        detail: isAr
+          ? "يمكنك الآن استقبال الطلبات وطباعتها."
+          : "You can now receive and print orders.",
+        primaryAction: isAr ? "متابعة" : "Continue",
+      };
+  }
+}
+
+export function primaryActionLabel(action: OperatorNextAction, language: string): string | null {
+  const isAr = language === "ar";
+  switch (action) {
+    case "start_connector":
+      return isAr ? "بدء الإعداد" : "Start setup";
+    case "reconnect_connector":
+      return isAr ? "إعادة المحاولة" : "Retry";
+    case "setup_printer":
+      return isAr ? "إعداد الطابعة" : "Setup printer";
+    case "fix_printer":
+      return isAr ? "إصلاح الطابعة" : "Fix printer";
+    case "wait_for_connection":
+      return isAr ? "إعادة المحاولة" : "Retry";
+    case "none":
+      return null;
+  }
 }
 
 export function deriveProvisioningWorkflowState(input: {
@@ -346,19 +490,19 @@ export function provisioningStateCopy(
   switch (state) {
     case "no_connector":
       return {
-        title: isAr ? "الموصل غير مثبت" : "Connector not set up",
+        title: isAr ? "الإعداد مطلوب" : "Setup required",
         detail: isAr
-          ? "ثبّت وشغّل موصل MineuQR على جهاز المطعم أولاً."
-          : "Install and start the MineuQR Connector on the restaurant computer first.",
-        action: isAr ? "تشغيل الموصل" : "Start connector",
+          ? "لم تقم بإعداد الطباعة بعد. ثبّت موصل MineuQR على جهاز المطعم."
+          : "You have not configured printing yet. Install MineuQR Connector on your restaurant computer.",
+        action: isAr ? "بدء الإعداد" : "Start setup",
       };
     case "connector_offline":
       return {
-        title: isAr ? "الموصل متوقف" : "Connector is offline",
+        title: isAr ? "الطباعة غير متاحة" : "Printing unavailable",
         detail: isAr
-          ? "لا يمكن اكتشاف الطابعات لأن موصل المطعم المحلي غير متصل."
-          : "No printers can be discovered because the Restaurant Local Connector is offline.",
-        action: isAr ? "إعادة الاتصال" : "Reconnect connector",
+          ? "تأكد أن موصل MineuQR يعمل على جهاز المطعم."
+          : "Check that MineuQR Connector is running on your restaurant computer.",
+        action: isAr ? "إعادة المحاولة" : "Retry",
       };
     case "connector_connecting":
       return {
@@ -379,10 +523,10 @@ export function provisioningStateCopy(
       };
     case "no_printers_found":
       return {
-        title: isAr ? "لم يتم العثور على طابعات" : "No printers found",
+        title: isAr ? "لم يتم العثور على طابعات" : "No printers detected yet",
         detail: isAr
-          ? "تأكد أن الطابعة مشغّلة ومتصلة بجهاز المطعم، ثم أعد المحاولة."
-          : "Make sure a printer is on and connected to the restaurant computer, then try again.",
+          ? "تأكد أن الطابعة مشغّلة ومتصلة بجهاز المطعم، ثم أعد البحث."
+          : "Make sure your printer is on and connected to the restaurant computer, then search again.",
         action: isAr ? "إعادة البحث" : "Search again",
       };
     case "printers_found":

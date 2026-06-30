@@ -12,22 +12,19 @@ import { useState } from "react";
 export function PrinterManagementPanel({
   restaurantId,
   language,
+  onOpenPrintSetup,
 }: {
   restaurantId: number;
   language: string;
+  onOpenPrintSetup?: () => void;
 }) {
   const isAr = language === "ar";
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [diagnosticsId, setDiagnosticsId] = useState<string | null>(null);
   const [renameId, setRenameId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const utils = trpc.useUtils();
 
   const listQuery = trpc.printerManagement.read.listPrinters.useQuery({ restaurantId });
-  const diagnosticsQuery = trpc.printerManagement.read.getDiagnostics.useQuery(
-    { restaurantId, printerId: diagnosticsId ?? "" },
-    { enabled: !!diagnosticsId }
-  );
 
   const removeMutation = trpc.printerManagement.commands.removePrinter.useMutation({
     onSuccess: () => void utils.printerManagement.read.listPrinters.invalidate({ restaurantId }),
@@ -45,12 +42,9 @@ export function PrinterManagementPanel({
     },
   });
   const testMutation = trpc.printerManagement.commands.testPrint.useMutation();
-  const discoverMutation = trpc.printerManagement.read.discoverPrinters.useQuery(
-    { restaurantId },
-    { enabled: false }
-  );
 
   const printers = listQuery.data ?? [];
+  const isEmpty = !listQuery.isLoading && !listQuery.isError && printers.length === 0;
 
   return (
     <div className={restaurantDash.stack}>
@@ -60,183 +54,173 @@ export function PrinterManagementPanel({
         </h1>
         <p className="max-w-2xl text-sm text-slate-400">
           {isAr
-            ? "إعداد الطابعات والتشخيص — للمسؤولين فقط"
-            : "Printer provisioning and diagnostics — administrative workspace"}
+            ? "إدارة الطابعات المسجلة في مطعمك."
+            : "Manage printers registered for your restaurant."}
         </p>
       </div>
 
-      <RestaurantDashSection
-        title={isAr ? "الطابعات المسجلة" : "Registered printers"}
-        headerAside={
-          <div className="flex gap-2">
-            <Button type="button" size="sm" variant="outline" onClick={() => setPickerOpen(true)}>
-              <Plus className="h-4 w-4 me-1" />
-              {isAr ? "إضافة" : "Add"}
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                void listQuery.refetch();
-                void discoverMutation.refetch();
-              }}
-            >
-              <RefreshCw className="h-4 w-4" />
-            </Button>
-          </div>
-        }
-      >
-        {listQuery.isLoading ? (
-          <div className="flex justify-center py-10">
-            <Loader2 className="h-8 w-8 animate-spin text-slate-500" />
-          </div>
-        ) : listQuery.isError ? (
-          <RestaurantSectionError
-            message={listQuery.error.message}
-            retryLabel={isAr ? "إعادة" : "Retry"}
-            isFetching={listQuery.isFetching}
-            onRetry={() => listQuery.refetch()}
-          />
-        ) : printers.length === 0 ? (
-          <p className="text-sm text-slate-400">
-            {isAr ? "لا توجد طابعات مسجلة. أضف طابعة للبدء." : "No printers registered. Add a printer to begin."}
+      {isEmpty ? (
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 sm:p-8">
+          <p className="text-lg font-semibold text-white">
+            {isAr ? "لم تقم بإعداد الطباعة بعد." : "You have not configured printing yet."}
           </p>
-        ) : (
-          <ul className="space-y-3">
-            {printers.map((printer) => (
-              <li
-                key={printer.printerId}
-                className="rounded-xl border border-slate-800 bg-slate-900/40 p-4"
+          <p className="mt-2 max-w-xl text-sm leading-relaxed text-slate-400">
+            {isAr
+              ? "ابدأ الإعداد من مساحة الطباعة لتسجيل طابعة وطباعة الطلبات."
+              : "Start setup from Print Workspace to register a printer and print orders."}
+          </p>
+          {onOpenPrintSetup ? (
+            <Button type="button" className="mt-5" onClick={onOpenPrintSetup}>
+              {isAr ? "بدء الإعداد" : "Start setup"}
+            </Button>
+          ) : null}
+        </div>
+      ) : (
+        <RestaurantDashSection
+          title={isAr ? "الطابعات المسجلة" : "Registered printers"}
+          headerAside={
+            <div className="flex gap-2">
+              <Button type="button" size="sm" variant="outline" onClick={() => setPickerOpen(true)}>
+                <Plus className="h-4 w-4 me-1" />
+                {isAr ? "إضافة" : "Add"}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => void listQuery.refetch()}
+                disabled={listQuery.isFetching}
               >
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <p className="font-semibold text-white">
-                      {printer.displayName}
-                      {printer.isDefault ? (
-                        <span className="ms-2 text-xs text-amber-400">
-                          ({isAr ? "افتراضية" : "Default"})
-                        </span>
-                      ) : null}
-                    </p>
-                    <p className="text-xs text-slate-400">
-                      {printer.transport} · {printer.platform}
-                    </p>
-                    {printer.lastValidatedAt ? (
-                      <p className="mt-1 text-xs text-slate-500">
-                        {isAr ? "آخر تحقق: " : "Validated: "}
-                        {printer.lastValidatedAt}
+                <RefreshCw className={cn("h-4 w-4", listQuery.isFetching && "animate-spin")} />
+              </Button>
+            </div>
+          }
+        >
+          {listQuery.isLoading ? (
+            <div className="flex justify-center py-10">
+              <Loader2 className="h-8 w-8 animate-spin text-slate-500" />
+            </div>
+          ) : listQuery.isError ? (
+            <RestaurantSectionError
+              message={listQuery.error.message}
+              retryLabel={isAr ? "إعادة المحاولة" : "Retry"}
+              isFetching={listQuery.isFetching}
+              onRetry={() => listQuery.refetch()}
+            />
+          ) : (
+            <ul className="space-y-3">
+              {printers.map((printer) => (
+                <li
+                  key={printer.printerId}
+                  className="rounded-xl border border-slate-800 bg-slate-900/40 p-4"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="font-semibold text-white">
+                        {printer.displayName}
+                        {printer.isDefault ? (
+                          <span className="ms-2 text-xs text-amber-400">
+                            ({isAr ? "افتراضية" : "Default"})
+                          </span>
+                        ) : null}
                       </p>
-                    ) : null}
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {!printer.isDefault ? (
+                      {printer.lastValidatedAt ? (
+                        <p className="mt-1 text-xs text-emerald-400/90">
+                          {isAr ? "تم اختبار الطباعة" : "Print test completed"}
+                        </p>
+                      ) : (
+                        <p className="mt-1 text-xs text-amber-300/90">
+                          {isAr ? "لم يتم اختبار الطباعة بعد" : "Print test not completed yet"}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {!printer.isDefault ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={defaultMutation.isPending}
+                          onClick={() =>
+                            void defaultMutation.mutateAsync({
+                              restaurantId,
+                              printerId: printer.printerId,
+                            })
+                          }
+                        >
+                          <Star className="h-4 w-4" />
+                        </Button>
+                      ) : null}
                       <Button
                         type="button"
                         size="sm"
                         variant="outline"
-                        disabled={defaultMutation.isPending}
+                        disabled={testMutation.isPending}
                         onClick={() =>
-                          void defaultMutation.mutateAsync({
+                          void testMutation.mutateAsync({
                             restaurantId,
                             printerId: printer.printerId,
                           })
                         }
                       >
-                        <Star className="h-4 w-4" />
+                        {isAr ? "طباعة اختبار" : "Print test page"}
                       </Button>
-                    ) : null}
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      disabled={testMutation.isPending}
-                      onClick={() =>
-                        void testMutation.mutateAsync({
-                          restaurantId,
-                          printerId: printer.printerId,
-                        })
-                      }
-                    >
-                      {isAr ? "اختبار" : "Test"}
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        setDiagnosticsId(printer.printerId);
-                        setRenameId(null);
-                      }}
-                    >
-                      {isAr ? "تشخيص" : "Diagnostics"}
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        setRenameId(printer.printerId);
-                        setRenameValue(printer.displayName);
-                      }}
-                    >
-                      {isAr ? "إعادة تسمية" : "Rename"}
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      disabled={removeMutation.isPending}
-                      onClick={() =>
-                        void removeMutation.mutateAsync({
-                          restaurantId,
-                          printerId: printer.printerId,
-                        })
-                      }
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setRenameId(printer.printerId);
+                          setRenameValue(printer.displayName);
+                        }}
+                      >
+                        {isAr ? "إعادة تسمية" : "Rename"}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={removeMutation.isPending}
+                        onClick={() =>
+                          void removeMutation.mutateAsync({
+                            restaurantId,
+                            printerId: printer.printerId,
+                          })
+                        }
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
 
-                {renameId === printer.printerId ? (
-                  <div className="mt-3 flex gap-2">
-                    <Input
-                      value={renameValue}
-                      onChange={(e) => setRenameValue(e.target.value)}
-                      className="max-w-xs bg-slate-900/60"
-                    />
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={() =>
-                        void renameMutation.mutateAsync({
-                          restaurantId,
-                          printerId: printer.printerId,
-                          displayName: renameValue,
-                        })
-                      }
-                    >
-                      {isAr ? "حفظ" : "Save"}
-                    </Button>
-                  </div>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        )}
-      </RestaurantDashSection>
-
-      {diagnosticsId && diagnosticsQuery.data ? (
-        <RestaurantDashSection title={isAr ? "تشخيص الطابعة" : "Printer diagnostics"}>
-          <pre className="max-h-64 overflow-auto rounded-lg border border-slate-800 bg-slate-950/80 p-3 text-xs text-slate-300">
-            {JSON.stringify(diagnosticsQuery.data, null, 2)}
-          </pre>
-          <Button type="button" size="sm" variant="ghost" className="mt-2" onClick={() => setDiagnosticsId(null)}>
-            {isAr ? "إغلاق" : "Close"}
-          </Button>
+                  {renameId === printer.printerId ? (
+                    <div className="mt-3 flex gap-2">
+                      <Input
+                        value={renameValue}
+                        onChange={(e) => setRenameValue(e.target.value)}
+                        className="max-w-xs bg-slate-900/60"
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() =>
+                          void renameMutation.mutateAsync({
+                            restaurantId,
+                            printerId: printer.printerId,
+                            displayName: renameValue,
+                          })
+                        }
+                      >
+                        {isAr ? "حفظ" : "Save"}
+                      </Button>
+                    </div>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          )}
         </RestaurantDashSection>
-      ) : null}
+      )}
 
       <PrinterSelectionDialog
         open={pickerOpen}
