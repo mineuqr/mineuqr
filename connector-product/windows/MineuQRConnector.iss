@@ -1,17 +1,24 @@
-; MineuQR Connector — Inno Setup template (build on Windows release machine)
-#define MyAppName "MineuQR Connector"
-#define MyAppVersion "1.0.0"
-#define MyAppPublisher "MineuQR"
+; MineuQR Connector — Inno Setup (metadata generated from connector-product/release/connector-release.json)
+#include "generated\connector-installer-metadata.iss.inc"
+
 #define MyAppExeName "MineuQRConnectorTray.ps1"
 
 [Setup]
-AppId={{A4B8D6F2-9C3E-4F1A-B7D2-8E5F6A1C2D3E}
+AppId={#MyAppId}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
+AppCopyright={#MyAppCopyright}
+AppSupportURL={#MyAppSupportURL}
+AppUpdatesURL={#MyAppSupportURL}
+VersionInfoCompany={#MyAppPublisher}
+VersionInfoDescription={#MyAppName}
+VersionInfoProductName={#MyAppName}
+VersionInfoProductVersion={#MyAppVersion}
+VersionInfoCopyright={#MyAppCopyright}
 DefaultDirName={autopf}\MineuQR\Connector
 DisableProgramGroupPage=yes
-OutputBaseFilename=MineuQR-Connector-{#MyAppVersion}-Setup
+OutputBaseFilename={#MyOutputBaseFilename}
 Compression=lzma
 SolidCompression=yes
 PrivilegesRequired=admin
@@ -21,6 +28,7 @@ Source: "..\..\dist\connector\*"; DestDir: "{app}"; Flags: recursesubdirs
 Source: "install-service.ps1"; DestDir: "{app}\windows"; Flags: ignoreversion
 Source: "uninstall-service.ps1"; DestDir: "{app}\windows"; Flags: ignoreversion
 Source: "MineuQRConnectorTray.ps1"; DestDir: "{app}\windows"; Flags: ignoreversion
+Source: "..\..\connector-product\release\connector-release.json"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -File ""{app}\windows\{#MyAppExeName}"""; WorkingDir: "{app}"
@@ -37,4 +45,7 @@ Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -File ""{app}\w
 
 [Registry]
 Root: HKLM; Subkey: "Software\Microsoft\Windows\CurrentVersion\Uninstall\MineuQRConnector"; ValueType: string; ValueName: "DisplayName"; ValueData: "{#MyAppName}"; Flags: uninsdeletekey
+Root: HKLM; Subkey: "Software\Microsoft\Windows\CurrentVersion\Uninstall\MineuQRConnector"; ValueType: string; ValueName: "DisplayVersion"; ValueData: "{#MyAppVersion}"; Flags: uninsdeletekey
+Root: HKLM; Subkey: "Software\Microsoft\Windows\CurrentVersion\Uninstall\MineuQRConnector"; ValueType: string; ValueName: "Publisher"; ValueData: "{#MyAppPublisher}"; Flags: uninsdeletekey
+Root: HKLM; Subkey: "Software\Microsoft\Windows\CurrentVersion\Uninstall\MineuQRConnector"; ValueType: string; ValueName: "URLInfoAbout"; ValueData: "{#MyAppSupportURL}"; Flags: uninsdeletekey
 Root: HKLM; Subkey: "Software\Microsoft\Windows\CurrentVersion\Uninstall\MineuQRConnector"; ValueType: string; ValueName: "UninstallString"; ValueData: "{uninstallexe}"; Flags: uninsdeletekey

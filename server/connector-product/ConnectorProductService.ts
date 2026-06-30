@@ -3,6 +3,7 @@ import { connectorNetworkComposition } from "../connector-session/networkComposi
 import {
   MINEUQR_CONNECTOR_PRODUCT_NAME,
   MINEUQR_CONNECTOR_VERSION,
+  getWindowsInstallerFileName,
 } from "./productVersion";
 
 const DOWNLOAD_URL =
@@ -32,7 +33,7 @@ export class ConnectorProductService {
       version: MINEUQR_CONNECTOR_VERSION,
       downloadUrl: DOWNLOAD_URL,
       downloadReady: Boolean(DOWNLOAD_URL),
-      windowsInstallerName: `MineuQR-Connector-${MINEUQR_CONNECTOR_VERSION}-Setup.exe`,
+      windowsInstallerName: getWindowsInstallerFileName(),
     };
   }
 
