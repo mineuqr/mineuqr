@@ -3,6 +3,7 @@ import { verifiedProcedure, router } from "../_core/trpc";
 import { assertRestaurantAccess } from "../restaurantAccess";
 import { printWorkspaceCommandService } from "./commands/PrintWorkspaceCommandService";
 import { printWorkspaceReadService } from "./read/services/PrintWorkspaceReadService";
+import { printerManagementService } from "../printer-management/printerManagementComposition";
 
 const listOrdersInput = z.object({
   restaurantId: z.coerce.number().int().positive(),
@@ -18,6 +19,14 @@ const listOrdersInput = z.object({
 const orderDetailInput = z.object({
   restaurantId: z.coerce.number().int().positive(),
   orderId: z.coerce.number().int().positive(),
+});
+
+const restaurantInput = z.object({
+  restaurantId: z.coerce.number().int().positive(),
+});
+
+const testPrintInput = restaurantInput.extend({
+  printerId: z.string().min(1).max(128).optional(),
 });
 
 const actionContextInput = z.object({
@@ -57,6 +66,11 @@ export const printWorkspaceRouter = router({
       await assertRestaurantAccess(ctx, input.restaurantId, "printWorkspace.read.previewTicket");
       return printWorkspaceReadService.previewTicket(input);
     }),
+
+    getCurrentPrinter: verifiedProcedure.input(restaurantInput).query(async ({ input, ctx }) => {
+      await assertRestaurantAccess(ctx, input.restaurantId, "printWorkspace.read.getCurrentPrinter");
+      return printerManagementService.getCurrentPrinter(input.restaurantId);
+    }),
   }),
 
   commands: router({
@@ -90,6 +104,11 @@ export const printWorkspaceRouter = router({
         ...input,
         operatorUserId: ctx.user.id,
       });
+    }),
+
+    testPrint: verifiedProcedure.input(testPrintInput).mutation(async ({ input, ctx }) => {
+      await assertRestaurantAccess(ctx, input.restaurantId, "printWorkspace.commands.testPrint");
+      return printerManagementService.testPrint(input.restaurantId, input.printerId);
     }),
   }),
 });

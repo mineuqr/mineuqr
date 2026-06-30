@@ -97,6 +97,7 @@ import { getOwnerSessionWorkspace } from "./diningSession/sessionOwnerWorkspace"
 import { opsRouter } from "./ops/opsRouter";
 import { printWorkspaceRouter } from "./print-workspace/printWorkspaceRouter";
 import { printConnectorRouter } from "./print-connector/printConnectorRouter";
+import { printerManagementRouter } from "./printer-management/printerManagementRouter";
 import { toPublicOrderStatus } from "./orderPublicStatus";
 import { adminAuditRouter } from "./audit/adminAuditRouter";
 import { adminDashboardReadRouter } from "./commercial/adminDashboardRouter";
@@ -2022,5 +2023,6 @@ export const appRouter = router({
   ops: opsRouter,
   printWorkspace: printWorkspaceRouter,
   printConnector: printConnectorRouter,
+  printerManagement: printerManagementRouter,
 });
 export type AppRouter = typeof appRouter;

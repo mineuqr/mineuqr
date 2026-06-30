@@ -16,6 +16,7 @@ function sectionToRestaurantTab(section: string | null | undefined): RestaurantT
     home: "home",
     orders: "orders",
     print: "print",
+    "printer-management": "printer-management",
     reports: "reports",
     categories: "categories",
     offers: "offers",

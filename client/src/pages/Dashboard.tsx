@@ -6,6 +6,7 @@ import { DiningSessionWorkspaceSheet } from "@/components/dashboard/DiningSessio
 import { ActiveSessionsPreviewSection } from "@/components/dashboard/ActiveSessionsPreviewSection";
 import { SessionsWorkspacePanel } from "@/components/dashboard/SessionsWorkspacePanel";
 import { PrintWorkspacePanel } from "@/components/print-workspace/PrintWorkspacePanel";
+import { PrinterManagementPanel } from "@/components/printer-management/PrinterManagementPanel";
 import { ActionCenterSection } from "@/components/dashboard/ActionCenterSection";
 import { OperationalActivityFeedSection } from "@/components/dashboard/OperationalActivityFeedSection";
 import { SettlementOverviewSection } from "@/components/dashboard/SettlementOverviewSection";
@@ -112,6 +113,7 @@ function restaurantTabLabel(tab: RestaurantTab, language: string, t: (key: strin
     sessions: language === "ar" ? "الجلسات" : "Sessions",
     orders: language === "ar" ? "الطلبات" : "Orders",
     print: language === "ar" ? "مساحة الطباعة" : "Print Workspace",
+    "printer-management": language === "ar" ? "إدارة الطابعات" : "Printer Management",
     reports: language === "ar" ? "التقارير والإحصائيات" : "Reports & Statistics",
     categories: t("dashboard.categoriesAndItems"),
     offers: t("dashboard.offers"),
@@ -1235,7 +1237,12 @@ function RestaurantDetail({
           restaurantId={restaurantId}
           language={language}
           currencySymbol={(restaurant as { currencySymbol?: string })?.currencySymbol}
+          onOpenPrinterManagement={() => onTabChange("printer-management")}
         />
+      )}
+
+      {activeTab === "printer-management" && (
+        <PrinterManagementPanel restaurantId={restaurantId} language={language} />
       )}
 
       {activeTab === "reports" && (

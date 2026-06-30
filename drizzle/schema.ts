@@ -662,6 +662,27 @@ export const printConnectorSelections = mysqlTable("print_connector_selections",
 	primaryKey({ columns: [table.restaurantId] }),
 ]);
 
+// ─── Restaurant Printers (PRINT-UX-1) ────────────────────────────
+export const restaurantPrinters = mysqlTable("restaurant_printers", {
+	id: int().autoincrement().notNull(),
+	restaurantId: int().notNull(),
+	printerId: varchar({ length: 128 }).notNull(),
+	displayName: varchar({ length: 255 }).notNull(),
+	platform: varchar({ length: 32 }).notNull(),
+	transport: varchar({ length: 32 }).notNull(),
+	isDefault: boolean().default(false).notNull(),
+	isActive: boolean().default(true).notNull(),
+	lastValidatedAt: timestamp({ mode: "string" }),
+	capabilitiesJson: json(),
+	createdAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+	updatedAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+},
+(table) => [
+	primaryKey({ columns: [table.id] }),
+	uniqueIndex("restaurant_printers_unique").on(table.restaurantId, table.printerId),
+	index("restaurant_printers_restaurant_default").on(table.restaurantId, table.isDefault),
+]);
+
 // ─── Order Domain Outbox (ORDER-EVENTS-1A) ───────────────────────
 export const orderDomainOutbox = mysqlTable("order_domain_outbox", {
 	id: varchar({ length: 36 }).notNull(),

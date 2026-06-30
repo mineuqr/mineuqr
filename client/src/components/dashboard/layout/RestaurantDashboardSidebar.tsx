@@ -23,6 +23,7 @@ import {
   Store,
   Tag,
   UsersRound,
+  Wrench,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { restaurantDash } from "../restaurantDashStyles";
@@ -151,6 +152,13 @@ export function RestaurantDashboardSidebar({
           icon: Palette,
           active: restaurantTab === "templates",
           onClick: () => onRestaurantTabChange!("templates"),
+        },
+        {
+          id: "printer-management",
+          label: language === "ar" ? "إدارة الطابعات" : "Printer Management",
+          icon: Wrench,
+          active: restaurantTab === "printer-management",
+          onClick: () => onRestaurantTabChange!("printer-management"),
         },
         {
           id: "settings",

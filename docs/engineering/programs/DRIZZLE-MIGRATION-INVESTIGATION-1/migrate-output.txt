@@ -1,0 +1,7 @@
+﻿
+> qr_menu@1.0.0 db:migrate
+> drizzle-kit migrate
+
+No config path provided, using default 'drizzle.config.ts'
+Reading config file 'C:\mineuqr\drizzle.config.ts'
+[ظث╖] applying migrations...[2K[1G[ظث»] applying migrations...[2K[1G[ظثا] applying migrations...[2K[1G[ظة┐] applying migrations...[2K[1G[ظت┐] applying migrations...[2K[1G[ظث╗] applying migrations...[2K[1G[ظث╜] applying migrations...[2K[1G[ظث╖] applying migrations...[2K[1G[ظ£ô] migrations applied successfully!
