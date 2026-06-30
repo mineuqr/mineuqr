@@ -3,5 +3,5 @@
 #define MyAppPublisher "MineuQR"
 #define MyAppCopyright "Copyright © 2026 MineuQR. All rights reserved."
 #define MyAppSupportURL "https://mineuqr.com/support"
-#define MyAppId "{A4B8D6F2-9C3E-4F1A-B7D2-8E5F6A1C2D3E}"
+#define MyAppId "A4B8D6F2-9C3E-4F1A-B7D2-8E5F6A1C2D3E"
 #define MyOutputBaseFilename "MineuQR-Connector-1.0.0-Setup"

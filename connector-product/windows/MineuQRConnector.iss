@@ -4,7 +4,7 @@
 #define MyAppExeName "MineuQRConnectorTray.ps1"
 
 [Setup]
-AppId={#MyAppId}
+AppId={{{#MyAppId}}}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}

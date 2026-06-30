@@ -36,7 +36,7 @@ export function buildInnoSetupDefines(manifest) {
     `#define MyAppPublisher "${manifest.publisher}"`,
     `#define MyAppCopyright "${manifest.copyright}"`,
     `#define MyAppSupportURL "${manifest.supportUrl}"`,
-    `#define MyAppId "{${manifest.appId}}"`,
+    `#define MyAppId "${manifest.appId}"`,
     `#define MyOutputBaseFilename "${getInnoOutputBaseFilename(manifest)}"`,
     "",
   ].join("\n");

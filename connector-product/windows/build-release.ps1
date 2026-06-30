@@ -20,6 +20,19 @@ try {
   $issPath = Join-Path $RepoRoot "connector-product\windows\MineuQRConnector.iss"
   $iscc = Get-Command iscc.exe -ErrorAction SilentlyContinue
   if (-not $iscc) {
+    $candidatePaths = @(
+      (Join-Path ${env:ProgramFiles(x86)} "Inno Setup 6\ISCC.exe"),
+      (Join-Path $env:ProgramFiles "Inno Setup 6\ISCC.exe"),
+      (Join-Path $env:LocalAppData "Programs\Inno Setup 6\ISCC.exe")
+    )
+    foreach ($candidate in $candidatePaths) {
+      if (Test-Path $candidate) {
+        $iscc = [PSCustomObject]@{ Source = $candidate }
+        break
+      }
+    }
+  }
+  if (-not $iscc) {
     throw "Inno Setup (iscc.exe) not found. Install Inno Setup to produce the distributable installer."
   }
 
