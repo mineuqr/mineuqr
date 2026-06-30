@@ -10,6 +10,12 @@ import {
   printConnectorRuntime,
   PrintingServicePrintConnectorAdapter,
 } from "../print-connector/printConnectorComposition";
+import { connectorGatewayComposition } from "../connector-gateway/gatewayComposition";
+
+function resolvePrintConnectorExecutionMode(): "embedded" | "remote" {
+  const configured = process.env.PRINT_CONNECTOR_EXECUTION_MODE?.trim().toLowerCase();
+  return configured === "remote" ? "remote" : "embedded";
+}
 
 const printJobRepository = new DrizzlePrintJobRepository();
 const printJobAttemptRepository = new DrizzlePrintJobAttemptRepository();
@@ -31,10 +37,10 @@ const printResultPort: PrintResultPort = {
   },
 };
 
-const printConnectorPort = new PrintingServicePrintConnectorAdapter(
-  printConnectorRuntime,
-  printResultPort
-);
+const printConnectorPort =
+  resolvePrintConnectorExecutionMode() === "remote"
+    ? connectorGatewayComposition.createRemotePrintConnectorPort(printResultPort)
+    : new PrintingServicePrintConnectorAdapter(printConnectorRuntime, printResultPort);
 
 const printDispatchCoordinator = new PrintDispatchCoordinator(
   printJobRepository,
