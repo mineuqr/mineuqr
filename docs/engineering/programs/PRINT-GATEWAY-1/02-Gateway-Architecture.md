@@ -1,6 +1,10 @@
 # PRINT-GATEWAY-1 — Gateway Architecture
 
-**ADR:** ADR-ARCH-016
+**ADR:** [ADR-ARCH-016 v1.1](../../../architecture/adrs/ADR-ARCH-016.md)
+
+> **ADR Rule 7:** Gateway orchestrates only — routing, authentication, authorization, resolution, availability, health, session orchestration. **Gateway MUST NEVER execute physical printing.**
+
+> **ADR Rule 2:** Cloud never initiates inbound connections to restaurant infrastructure. Gateway receives RLC-initiated outbound Connector Sessions only.
 
 ---
 

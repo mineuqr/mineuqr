@@ -23,6 +23,7 @@
 | ADR-ARCH-012 | Printing and Kitchen as Event Consumers | **Accepted — Ratified** | Architecture Authority | KITCHEN-DISPLAY-1, PRINTING-1 | — | §2, §12, §15 | N/A (future) | RESET-1 retired print; re-entry via events only |
 | ADR-ARCH-013 | **Architecture Constitution & Governance** | **Accepted — Ratified** | Architecture Authority | Constitution v1.0 | — | §18–29, entire Constitution | **Implemented (governance)** | This document; engineering compliance pending ORDER-1 |
 | ADR-ARCH-014 | Event Delivery Guarantees | **Accepted — Ratified** | Architecture Authority | ORDER-EVENTS-1B | — | §8, §12, §15, §22 | **Implemented** | Consumer idempotency + registration policy |
+| ADR-ARCH-016 | Distributed Printing Topology | **Accepted** (v1.1) | Architecture Authority | PRINT-ARCHITECTURE-2, PRINT-CONNECTOR-NETWORK-1 | v1.0 | Printing Platform §Deployment | **Partial** | PRINT-GATEWAY-1 + PRINT-CONNECTOR-NETWORK-1 complete; RLC agent pending |
 
 **Registry maintenance:** Principal Engineer updates Implementation Status at program exit certification. Status changes require Architecture Authority approval per §26.
 
@@ -45,5 +46,7 @@
 | ADR-ARCH-011 | [ADR-ARCH-011.md](../adrs/ADR-ARCH-011.md) |
 | ADR-ARCH-012 | [ADR-ARCH-012.md](../adrs/ADR-ARCH-012.md) |
 | ADR-ARCH-013 | [ADR-ARCH-013.md](../adrs/ADR-ARCH-013.md) |
+| ADR-ARCH-014 | [ADR-ARCH-014.md](../adrs/ADR-ARCH-014.md) |
+| ADR-ARCH-016 | [ADR-ARCH-016.md](../adrs/ADR-ARCH-016.md) |
 
 **Related:** [Blueprint](../blueprints/Order-Centric-Architecture.md) · [ADR Lifecycle](../governance/ADR-Lifecycle.md)

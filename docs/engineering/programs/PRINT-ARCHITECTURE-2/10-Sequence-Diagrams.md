@@ -1,6 +1,9 @@
 # PRINT-ARCHITECTURE-2 — Sequence Diagrams
 
-**Date:** 2026-06-30
+**Date:** 2026-06-30  
+**Authority:** ADR-ARCH-016 v1.1
+
+> **Connection direction:** All sequences assume an **RLC-initiated outbound Connector Session** already established. Cloud commands traverse the existing session; cloud never dials restaurant infrastructure.
 
 ---
 

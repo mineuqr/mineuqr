@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-30  
 **Program:** PRINT-GATEWAY-1 — Connector Gateway & Remote PrintConnectorPort  
-**Authority:** ADR-ARCH-016 (Distributed Printing Topology)
+**Authority:** [ADR-ARCH-016 v1.1](../../../architecture/adrs/ADR-ARCH-016.md)
 
 ---
 

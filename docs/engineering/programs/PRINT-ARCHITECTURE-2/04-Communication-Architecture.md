@@ -1,6 +1,7 @@
 # PRINT-ARCHITECTURE-2 — Communication Architecture
 
-**Date:** 2026-06-30
+**Date:** 2026-06-30  
+**Authority:** ADR-ARCH-016 v1.1
 
 ---
 
@@ -23,14 +24,15 @@ The browser **never** opens a socket, localhost port, or native bridge to the Pr
 
 ## AD-5: How does the Cloud communicate with Print Connector?
 
-**Decision: Agent-initiated Connector Session from RLC to Cloud.**
+**Decision: Agent-initiated Connector Session from RLC to Cloud (mandatory).**
 
 | Property | Value |
 |----------|-------|
-| Initiator | RLC (outbound) — works behind NAT |
-| Direction | Duplex over persistent session |
+| Initiator | **RLC only** (outbound) — works behind NAT |
+| Direction | Duplex over persistent session; **cloud never dials restaurant** |
 | Scope | One session per `restaurantId` + `connectorInstanceId` |
-| Concrete protocol | **Deferred** to `PRINT-CONNECTOR-NETWORK-1` (not in this program) |
+| Concrete protocol | Implemented — PRINT-CONNECTOR-NETWORK-1 (`server/connector-session/`) |
+| Transport direction | Immutable — wire protocol may change; direction may not (ADR Rule 4) |
 
 Logical message families (contract-level, not wire format):
 
@@ -40,7 +42,7 @@ Logical message families (contract-level, not wire format):
 - `GetPrinterStatus` / `GetPrinterCapabilities`
 - `ConnectorOffline` (event)
 
-Cloud **never** initiates inbound connections to restaurant LAN.
+Cloud **never** initiates inbound connections to restaurant LAN. **MineuQR Cloud never opens outbound connections toward restaurant infrastructure** for connector communication (ADR-ARCH-016 v1.1).
 
 ---
 
@@ -68,9 +70,11 @@ Cloud **never** initiates inbound connections to restaurant LAN.
 
 ## Communication Prohibitions
 
-- Browser → RLC direct
-- Cloud → restaurant LAN inbound connection
-- Duplicated business logic on RLC (orchestration stays cloud)
+- Browser → RLC direct (ADR Rule 9)
+- Cloud → restaurant LAN inbound connection (ADR Rule 2)
+- Cloud → restaurant infrastructure outbound dial for connector (ADR Rule 2)
+- RLC accepting business commands from browsers or external clients (ADR Rule 9)
+- Duplicated business logic on RLC (ADR Rule 8 — orchestration stays cloud)
 
 ---
 

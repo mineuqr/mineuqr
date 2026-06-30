@@ -2,6 +2,7 @@
 
 **Date:** 2026-06-30  
 **Program:** PRINT-ARCHITECTURE-2 — Distributed Printing Topology  
+**Authority:** ADR-ARCH-016 v1.1 (amended by PRINT-CONNECTOR-NETWORK-1)  
 **Type:** Architecture only — no code changes
 
 ---
@@ -11,13 +12,15 @@
 1. **Restaurant Local Connector (RLC)** is the production execution host for all OS print I/O.
 2. **Cloud** retains Printing Service job authority and Printer Management catalog SSOT.
 3. **Browser → Cloud → Gateway → RLC** — no direct browser-to-connector path.
-4. **RLC outbound session** to cloud for NAT-friendly connectivity.
-5. **`PrintConnectorPort` interface unchanged** — cloud uses remote adapter; RLC uses in-process `PrintConnectorApi`.
-6. **`embedded` connector is non-production** for distributed restaurants.
-7. **No simulated fallback** when RLC offline — canonical failures and empty discovery.
+4. **RLC outbound session** to cloud for NAT-friendly connectivity — **mandatory for all deployments** (ADR-ARCH-016 v1.1).
+5. **Cloud never initiates inbound or outbound dial** to restaurant infrastructure for connector communication.
+6. **`PrintConnectorPort` interface unchanged** — cloud uses remote adapter; RLC uses in-process `PrintConnectorApi`.
+7. **`embedded` connector is non-production** for distributed restaurants.
+8. **No simulated fallback** when RLC offline — canonical failures and empty discovery.
+9. **Connector Session is SSOT** for connectivity, heartbeat, and availability (ADR Rule 10).
 
 Full decision table: `12-Decision-Matrix.md`  
-Formal ADR: `13-ADR-Distributed-Printing.md` (ADR-ARCH-016)
+Formal ADR: [`docs/architecture/adrs/ADR-ARCH-016.md`](../../../architecture/adrs/ADR-ARCH-016.md) (ADR-ARCH-016 v1.1)
 
 ---
 
@@ -27,7 +30,7 @@ Formal ADR: `13-ADR-Distributed-Printing.md` (ADR-ARCH-016)
 |-----------|--------|-----------|
 | Simplicity vs distribution | Distributed RLC | Cloud cannot access USB/LAN printers — non-negotiable |
 | Browser direct vs cloud relay | Cloud relay | Security, multi-device, single auth |
-| Inbound vs outbound connection | Outbound from RLC | Restaurant NAT |
+| Inbound vs outbound connection | **Outbound from RLC only** | ADR-ARCH-016 v1.1 — immutable direction |
 | Queue vs synchronous session | Session + job queue in cloud | Printing Service already persists jobs |
 | One vs many RLC per site | One active (optional standby) | Minimal ops complexity |
 
@@ -52,11 +55,11 @@ Formal ADR: `13-ADR-Distributed-Printing.md` (ADR-ARCH-016)
 Browsers (any OS) ──HTTPS──► MineuQR Cloud
                               ├── Printing Service (jobs)
                               ├── Printer Management (catalog)
-                              └── Connector Gateway
+                              └── Connector Gateway (orchestration only)
                                       ▲
-                           Connector Session (outbound)
+                           Connector Session (RLC-initiated outbound)
                                       │
-                              Restaurant Local Connector
+                              Restaurant Local Connector (infrastructure only)
                                       │
                               Platform → Transport → OS → Printer
 ```
@@ -65,8 +68,8 @@ Browsers (any OS) ──HTTPS──► MineuQR Cloud
 
 ## Recommended Implementation Sequence
 
-1. **PRINT-GATEWAY-1** — Gateway service + remote `PrintConnectorPort` adapter  
-2. **PRINT-CONNECTOR-NETWORK-1** — Session protocol and message contracts  
+1. **PRINT-GATEWAY-1** — Gateway service + remote `PrintConnectorPort` adapter — **Complete**  
+2. **PRINT-CONNECTOR-NETWORK-1** — Session protocol and outbound transport — **Complete**  
 3. **PRINT-CONNECTOR-LOCAL-1** — Windows `local_desktop` agent installer  
 4. **PRINT-UX-2** — Connector online/offline in Workspace and Management  
 5. **PRINT-PRODUCTION-VALIDATION-2** — Distributed end-to-end certification  

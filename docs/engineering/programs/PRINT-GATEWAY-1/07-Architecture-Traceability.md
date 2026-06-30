@@ -2,17 +2,19 @@
 
 ---
 
-## ADR-ARCH-016 Compliance
+## ADR-ARCH-016 v1.1 Compliance
 
 | ADR Requirement | PRINT-GATEWAY-1 Implementation |
 |-----------------|--------------------------------|
 | Connector Gateway routes to RLC | `ConnectorGatewayService.routePrint()` |
 | Browser → Cloud only | No browser/gateway coupling added |
+| **RLC initiates outbound session** | Gateway accepts sessions; never dials restaurant (Rule 1–2) |
+| **Gateway never prints** | No OS print I/O — delegates to `ConnectorExecutionPort` (Rule 7) |
 | `PrintConnectorPort` unchanged | Interface file untouched |
 | Remote port adapter in cloud | `RemotePrintConnectorPort` |
 | Printing Service unchanged | No edits to `PrintingService.ts` |
 | Gateway owns registration/routing/health | Registry, resolver, health, directory |
-| No print execution in gateway | `ConnectorExecutionPort` delegated |
+| **Connector Session SSOT** | Heartbeat/availability derived from session layer (Rule 10) |
 | `embedded` non-production for distributed | Default remains `embedded`; `remote` opt-in |
 
 ---

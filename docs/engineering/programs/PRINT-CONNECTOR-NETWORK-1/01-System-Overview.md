@@ -2,7 +2,9 @@
 
 **Date:** 2026-06-30  
 **Program:** PRINT-CONNECTOR-NETWORK-1 — Connector Session Protocol & Secure Remote Transport  
-**Authority:** ADR-ARCH-016
+**Authority:** [ADR-ARCH-016 v1.1](../../../architecture/adrs/ADR-ARCH-016.md)
+
+> **ADR Rule 1:** RLC MUST initiate and maintain outbound Connector Session. Cloud accepts via `acceptConnection()` — never dials restaurant infrastructure.
 
 ---
 

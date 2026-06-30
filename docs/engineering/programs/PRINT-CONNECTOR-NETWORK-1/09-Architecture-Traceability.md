@@ -2,18 +2,21 @@
 
 ---
 
-## ADR-ARCH-016 Compliance
+## ADR-ARCH-016 v1.1 Compliance
 
 | ADR Requirement | Implementation |
 |-----------------|----------------|
-| RLC outbound session | `acceptConnection` + transport abstraction |
+| **RLC outbound session (Rule 1–2)** | `acceptConnection`; no cloud dial to restaurant |
+| **Transport direction immutable (Rule 3–4)** | `ConnectorTransportConnection` abstraction |
 | Scoped credentials | Pairing + `ConnectorAuthenticationService` |
 | Tenant isolation | Credential + command `restaurantId` validation |
 | Gateway routing | `SessionConnectorExecutionPort` |
 | No browser → RLC | Unchanged — browser uses cloud only |
+| **Gateway never prints (Rule 7)** | Commands transported only; no OS I/O |
+| **RLC infrastructure only (Rule 8)** | Session layer has no business logic |
+| **Connector Session SSOT (Rule 10)** | Lifecycle, heartbeat, availability from session |
 | Command trust (Domain C) | Command envelope with nonce, issuedAt, correlationId |
 | Heartbeat availability | `ConnectorHeartbeatProtocol` → gateway |
-| No business logic on RLC path | Commands transported only |
 
 ---
 

@@ -4,13 +4,19 @@
 
 ---
 
+## Connection Direction (ADR-ARCH-016 v1.1)
+
+**Mandatory:** Restaurant Local Connector **always** initiates and maintains the outbound Connector Session. MineuQR Cloud **never** initiates inbound connections into restaurant infrastructure. This applies to every deployment model and every future transport (WebSocket, HTTP/2, gRPC, QUIC).
+
+---
+
 ## Approved Deployment Models
 
 ### D1 — Cloud API (always)
 
 - Multi-tenant SaaS
 - Printing Service, Printer Management, Workspace APIs
-- Connector Gateway (logical component — future implementation)
+- Connector Gateway (implemented — PRINT-GATEWAY-1)
 - **Does not** execute OS print I/O in production restaurants
 
 ### D2 — Restaurant Local Connector (RLC) (production default)
@@ -47,7 +53,8 @@
               │  MineuQR Cloud   │
               │  API + Gateway   │
               └────────┬─────────┘
-                       │ Connector Session (outbound from site)
+                       │ Connector Session (outbound from RLC — mandatory)
+                       │ Cloud NEVER initiates inbound to restaurant LAN
                        ▼
               ┌─────────────────┐
               │ Restaurant LAN   │

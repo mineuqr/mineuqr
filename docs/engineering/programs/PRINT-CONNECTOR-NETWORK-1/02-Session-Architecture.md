@@ -1,5 +1,20 @@
 # PRINT-CONNECTOR-NETWORK-1 — Session Architecture
 
+**Authority:** ADR-ARCH-016 v1.1 — Connector Connection Direction (ratified)
+
+---
+
+## Connection Direction (Mandatory)
+
+| Rule | Requirement |
+|------|-------------|
+| ADR Rule 1 | RLC **always** initiates communication |
+| ADR Rule 2 | Cloud **never** requires inbound connectivity into restaurant infrastructure |
+| ADR Rule 3–4 | Future transports (WebSocket, HTTP/2, gRPC, QUIC) **must** preserve outbound-from-RLC direction |
+| ADR Rule 10 | Connector Session is **SSOT** for connectivity, heartbeat, availability, registration |
+
+Cloud-side entry: `acceptConnection(connection)` when RLC opens outbound transport. **No cloud-initiated dial to restaurant.**
+
 ---
 
 ## Session Lifecycle (Authoritative)

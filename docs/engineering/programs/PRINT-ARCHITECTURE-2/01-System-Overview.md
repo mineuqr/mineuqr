@@ -2,6 +2,7 @@
 
 **Date:** 2026-06-30  
 **Program:** PRINT-ARCHITECTURE-2 — Distributed Printing Topology  
+**Authority:** [ADR-ARCH-016 v1.1](../../../architecture/adrs/ADR-ARCH-016.md)  
 **Type:** Architecture only — no implementation
 
 ---
@@ -35,7 +36,8 @@ MineuQR is cloud-native. The **embedded** Print Connector runs inside the API pr
 │  Connector Gateway                   (NEW — routing & presence) │
 │  Remote PrintConnectorPort Adapter   (NEW — cloud-side port)  │
 └───────────────────────────┬──────────────────────────────────┘
-                            │ Connector Session (restaurant-scoped)
+                            │ Connector Session (RLC-initiated outbound)
+                            │ ADR-ARCH-016 Rule 1: RLC always initiates
 ┌───────────────────────────▼──────────────────────────────────┐
 │ RESTAURANT PREMISES                                             │
 │  Local Connector Host (Windows / macOS / Linux / Android)       │
