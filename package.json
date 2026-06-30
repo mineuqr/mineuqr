@@ -24,7 +24,8 @@
     "db:order-read:discover": "node scripts/order-read-projection-staging.mjs --discover",
     "db:order-read:validate": "node scripts/order-read-projection-staging.mjs --validate",
     "db:order-read:backfill": "cross-env ORDER_READ_BACKFILL_CONFIRM=YES tsx scripts/order-read-backfill-execute.ts --scope full",
-    "db:push": "drizzle-kit generate && drizzle-kit migrate"
+    "db:push": "drizzle-kit generate && drizzle-kit migrate",
+    "build:connector": "esbuild server/connector-product/entry/rlcServiceMain.ts --platform=node --packages=external --bundle --format=esm --outfile=dist/connector/rlc-service.mjs && esbuild server/connector-product/entry/rlcEnrollMain.ts --platform=node --packages=external --bundle --format=esm --outfile=dist/connector/rlc-enroll.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1056.0",
@@ -99,6 +100,7 @@
     "vaul": "^1.1.2",
     "web-push": "^3.6.7",
     "wouter": "^3.3.5",
+    "ws": "^8.18.3",
     "zod": "^4.1.12"
   },
   "devDependencies": {
@@ -113,6 +115,7 @@
     "@types/react": "^19.2.1",
     "@types/react-dom": "^19.2.1",
     "@types/web-push": "^3.6.4",
+    "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^5.0.4",
     "autoprefixer": "^10.4.20",
     "drizzle-kit": "^0.31.4",

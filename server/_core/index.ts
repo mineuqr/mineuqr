@@ -2,6 +2,7 @@ import "dotenv/config";
 import { createServer } from "http";
 import net from "net";
 import { createApp } from "./createApp";
+import { attachConnectorWebSocketServer } from "./connectorWebSocketServer";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -25,6 +26,7 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   const app = await createApp();
   const server = createServer(app);
+  attachConnectorWebSocketServer(server);
 
   const preferredPort = parseInt(process.env.PORT || "3000");
   const port = await findAvailablePort(preferredPort);

@@ -1,3 +1,4 @@
+import { ConnectorDownloadPanel } from "@/components/print-workspace/ConnectorDownloadPanel";
 import { Button } from "@/components/ui/button";
 import {
   deriveOnboardingStep,
@@ -200,12 +201,21 @@ export function PrintingSetupZone({
         <p className="mt-2 text-sm leading-relaxed text-slate-400">{stepCopy.detail}</p>
 
         {activeStep === 1 ? (
-          <ul className="mt-4 list-inside list-decimal space-y-2 text-sm text-slate-300">
-            <li>{isAr ? "حمّل موصل MineuQR على جهاز المطعم." : "Download MineuQR Connector on your restaurant computer."}</li>
-            <li>{isAr ? "ثبّت التطبيق وافتحه." : "Install the app and open it."}</li>
-            <li>{isAr ? "سجّل الدخول أو اربط المطعم." : "Sign in or link your restaurant."}</li>
-            <li>{isAr ? "اضغط إعادة المحاولة أدناه." : "Tap Retry below."}</li>
-          </ul>
+          <>
+            <ul className="mt-4 list-inside list-decimal space-y-2 text-sm text-slate-300">
+              <li>{isAr ? "حمّل وثبّت موصل MineuQR على جهاز المطعم." : "Download and install MineuQR Connector on your restaurant computer."}</li>
+              <li>{isAr ? "أدخل رمز الربط عند فتح التطبيق." : "Enter the pairing code when the connector app opens."}</li>
+              <li>{isAr ? "سيبدأ الموصل تلقائياً بعد الربط." : "The connector starts automatically after pairing."}</li>
+            </ul>
+            <ConnectorDownloadPanel
+              restaurantId={restaurantId}
+              language={language}
+              onPaired={() => {
+                void connectorQuery.refetch();
+                onStatusChange();
+              }}
+            />
+          </>
         ) : null}
 
         {activeStep === 2 && discoverQuery.isFetching ? (

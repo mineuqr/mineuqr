@@ -398,8 +398,8 @@ export function onboardingStepCopy(step: OnboardingStep, language: string): Onbo
       return {
         title: isAr ? "تثبيت موصل MineuQR" : "Install MineuQR Connector",
         detail: isAr
-          ? "ثبّت وشغّل موصل MineuQR على جهاز المطعم، ثم اضغط إعادة المحاولة."
-          : "Install and start MineuQR Connector on your restaurant computer, then tap Retry.",
+          ? "ثبّت موصل MineuQR على جهاز المطعم. يبدأ تلقائياً بعد الربط."
+          : "Install MineuQR Connector on your restaurant computer. It starts automatically after pairing.",
         primaryAction: isAr ? "إعادة المحاولة" : "Retry",
       };
     case 2:

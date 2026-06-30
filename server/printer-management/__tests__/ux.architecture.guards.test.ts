@@ -34,6 +34,20 @@ describe("PRINT-UX-1 client architecture guards", () => {
     expect(panel).toContain("Start setup");
   });
 
+  it("printing setup includes connector download integration", () => {
+    const setup = readFileSync(
+      join(clientRoot, "components/print-workspace/PrintingSetupZone.tsx"),
+      "utf8"
+    );
+    const download = readFileSync(
+      join(clientRoot, "components/print-workspace/ConnectorDownloadPanel.tsx"),
+      "utf8"
+    );
+    expect(setup).toContain("ConnectorDownloadPanel");
+    expect(download).toContain("getConnectorDownload");
+    expect(download).toContain("getConnectorPairing");
+  });
+
   it("print job monitor avoids technical diagnostics", () => {
     const monitor = readFileSync(
       join(clientRoot, "components/print-workspace/PrintJobMonitor.tsx"),
