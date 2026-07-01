@@ -1,0 +1,114 @@
+name: Connector Release
+
+on:
+  push:
+    tags:
+      - "connector-v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Connector release version (must match connector-release.json)"
+        required: false
+        type: string
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+jobs:
+  release:
+    name: Build Publish Verify Smoke Promote Activate
+    runs-on: windows-latest
+    env:
+      RELEASE_GIT_TAG: ${{ github.ref_name }}
+      RELEASE_COMMIT_SHA: ${{ github.sha }}
+      RELEASE_WORKFLOW_RUN_ID: ${{ github.run_id }}
+      RELEASE_PUBLISHER: ${{ github.actor }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+      R2_PUBLIC_BASE_URL: ${{ secrets.R2_PUBLIC_BASE_URL }}
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Resolve release version
+        id: version
+        shell: pwsh
+        run: |
+          $manifest = Get-Content connector-product/release/connector-release.json -Raw | ConvertFrom-Json
+          $requested = "${{ inputs.version }}"
+          if ($requested) {
+            if ($requested -ne $manifest.version) {
+              throw "Requested version $requested does not match release authority $($manifest.version)"
+            }
+            $version = $requested
+          } elseif ("${{ github.ref_type }}" -eq "tag") {
+            $tag = "${{ github.ref_name }}"
+            if ($tag -notmatch '^connector-v(.+)$') { throw "Tag must match connector-v<version>" }
+            $version = $Matches[1]
+            if ($version -ne $manifest.version) {
+              throw "Tag version $version does not match release authority $($manifest.version)"
+            }
+          } else {
+            $version = $manifest.version
+          }
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y --no-progress
+
+      - name: Register release candidate
+        run: npx tsx scripts/connector-release-automation.ts candidate --version ${{ steps.version.outputs.version }}
+
+      - name: Build connector release
+        shell: pwsh
+        run: ./connector-product/windows/build-release.ps1 -SkipPublish
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            dist/connector-release/${{ steps.version.outputs.version }}/MineuQR-Connector-${{ steps.version.outputs.version }}-Setup.exe
+            dist/connector-release/${{ steps.version.outputs.version }}/release-manifest.json
+            dist/connector-release/${{ steps.version.outputs.version }}/SHA256SUMS.txt
+
+      - name: Publish release to R2
+        run: npx tsx scripts/connector-release-automation.ts publish --version ${{ steps.version.outputs.version }}
+
+      - name: Verify release integrity
+        run: npx tsx scripts/connector-release-automation.ts verify --version ${{ steps.version.outputs.version }}
+
+      - name: Smoke test installer
+        run: npx tsx scripts/connector-release-automation.ts smoke-test --version ${{ steps.version.outputs.version }}
+
+      - name: Promote release
+        run: npx tsx scripts/connector-release-automation.ts promote --version ${{ steps.version.outputs.version }}
+
+      - name: Activate release
+        run: npx tsx scripts/connector-release-automation.ts activate --version ${{ steps.version.outputs.version }}
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: connector-release-${{ steps.version.outputs.version }}
+          path: dist/connector-release/${{ steps.version.outputs.version }}/
+          if-no-files-found: error

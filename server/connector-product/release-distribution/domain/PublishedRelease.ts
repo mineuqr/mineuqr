@@ -1,6 +1,33 @@
 import type { ConnectorDistributionManifest } from "../../release/connectorReleaseTypes";
 
-export type PublishedReleaseStatus = "published" | "active" | "superseded";
+export type PublishedReleaseStatus =
+  | "candidate"
+  | "published"
+  | "verified"
+  | "smoke_test_passed"
+  | "promoted"
+  | "active"
+  | "superseded";
+
+export const RELEASE_STATE_TRANSITIONS: Record<
+  PublishedReleaseStatus,
+  readonly PublishedReleaseStatus[]
+> = {
+  candidate: ["published"],
+  published: ["verified"],
+  verified: ["smoke_test_passed"],
+  smoke_test_passed: ["promoted"],
+  promoted: ["active"],
+  active: ["superseded"],
+  superseded: [],
+};
+
+export type ReleaseAuditContext = {
+  gitTag: string | null;
+  commitSha: string | null;
+  workflowRunId: string | null;
+  publisher: string | null;
+};
 
 export type PublishedReleaseRecord = {
   version: string;
@@ -10,8 +37,20 @@ export type PublishedReleaseRecord = {
   storageKey: string;
   releaseManifest: ConnectorDistributionManifest;
   status: PublishedReleaseStatus;
-  publishedAt: string;
+  publishedAt: string | null;
+  verifiedAt: string | null;
+  smokeTestPassedAt: string | null;
+  promotedAt: string | null;
   activatedAt: string | null;
+  audit: ReleaseAuditContext;
+};
+
+export type RegisterCandidateInput = {
+  version: string;
+  productName: string;
+  installerFileName: string;
+  audit: ReleaseAuditContext;
+  registeredAt: string;
 };
 
 export type RegisterPublishedReleaseInput = {
@@ -32,3 +71,13 @@ export type PublishedReleaseDownload = {
   downloadUrl: string;
   releaseManifest: ConnectorDistributionManifest;
 };
+
+export function assertReleaseTransition(
+  from: PublishedReleaseStatus,
+  to: PublishedReleaseStatus
+): void {
+  const allowed = RELEASE_STATE_TRANSITIONS[from];
+  if (!allowed.includes(to)) {
+    throw new Error(`Invalid release state transition: ${from} → ${to}`);
+  }
+}

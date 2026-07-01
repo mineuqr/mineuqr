@@ -2,7 +2,7 @@
 param(
   [string]$RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path,
   [switch]$SkipFinalize,
-  [switch]$SkipPublish
+  [switch]$SkipPublish = $true
 )
 
 $ErrorActionPreference = "Stop"
@@ -56,12 +56,13 @@ try {
   }
 
   if (-not $SkipPublish) {
-    npx tsx scripts/connector-release-publish.ts --version $manifest.version
+    npx tsx scripts/connector-release-publish.ts --version $manifest.version --activate
     if ($LASTEXITCODE -ne 0) { throw "connector-release-publish failed" }
-    Write-Host "Release published and activated."
+    Write-Host "Release published and activated (legacy local path)."
   }
 
-  Write-Host "Optional next step: connector-product/windows/sign-release.ps1 (then run publish again to refresh registry checksum if needed)."
+  Write-Host "Official production releases must run through .github/workflows/connector-release.yml."
+  Write-Host "Optional next step: connector-product/windows/sign-release.ps1 (then re-run GitHub release workflow)."
 } finally {
   Pop-Location
 }

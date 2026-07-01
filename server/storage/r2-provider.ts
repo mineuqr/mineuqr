@@ -74,3 +74,39 @@ export async function r2StorageGet(relKey: string): Promise<StoredObject> {
     url: buildPublicUrl(ENV.r2PublicBaseUrl, key),
   };
 }
+
+export async function r2StorageHead(relKey: string): Promise<{ key: string; sizeBytes: number }> {
+  const { HeadObjectCommand } = await import("@aws-sdk/client-s3");
+  assertR2Config();
+  const key = normalizeKey(relKey);
+  const response = await getR2Client().send(
+    new HeadObjectCommand({
+      Bucket: ENV.r2BucketName,
+      Key: key,
+    })
+  );
+  return {
+    key,
+    sizeBytes: response.ContentLength ?? 0,
+  };
+}
+
+export async function r2StorageGetObject(relKey: string): Promise<{ key: string; body: Buffer }> {
+  const { GetObjectCommand } = await import("@aws-sdk/client-s3");
+  assertR2Config();
+  const key = normalizeKey(relKey);
+  const response = await getR2Client().send(
+    new GetObjectCommand({
+      Bucket: ENV.r2BucketName,
+      Key: key,
+    })
+  );
+  const bytes = await response.Body?.transformToByteArray();
+  if (!bytes) {
+    throw new Error(`R2 object body missing for key ${key}`);
+  }
+  return {
+    key,
+    body: Buffer.from(bytes),
+  };
+}

@@ -11,6 +11,11 @@ export type ConnectorReleaseManifest = {
     outputBaseName: string;
     fileExtension: string;
   };
+  releasePolicy?: {
+    rollbackTo?: string | null;
+    minSupportedVersion?: string | null;
+    forceUpdate?: boolean;
+  };
 };
 
 export type ReleaseArtifactRecord = {
@@ -21,7 +26,7 @@ export type ReleaseArtifactRecord = {
 };
 
 export type ConnectorDistributionManifest = {
-  schemaVersion: 1;
+  schemaVersion: 1 | 2;
   productName: string;
   version: string;
   buildDate: string;
@@ -37,5 +42,15 @@ export type ConnectorDistributionManifest = {
     fileName: string;
     relativePath?: string;
     sha256: string | null;
+  };
+  distribution?: {
+    installerStorageKey: string;
+    installerArtifactId: string;
+    manifestStorageKey: string;
+  };
+  policy?: {
+    rollbackTo?: string | null;
+    minSupportedVersion?: string | null;
+    forceUpdate?: boolean;
   };
 };

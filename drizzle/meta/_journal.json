@@ -372,6 +372,13 @@
       "when": 1784200000000,
       "tag": "0052_connector_release_distribution",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "5",
+      "when": 1784300000000,
+      "tag": "0053_connector_release_automation",
+      "breakpoints": true
     }
   ]
 }

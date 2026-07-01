@@ -5,6 +5,52 @@ import { describe, expect, it } from "vitest";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
 
+describe("PRINT-RELEASE-AUTOMATION-1 architecture guards", () => {
+  it("official release workflow exists with required stages", () => {
+    const workflow = readFileSync(join(root, ".github/workflows/connector-release.yml"), "utf8");
+    expect(workflow).toContain("concurrency:");
+    expect(workflow).toContain("cancel-in-progress: false");
+    expect(workflow).toContain("connector-release-automation.ts candidate");
+    expect(workflow).toContain("connector-release-automation.ts publish");
+    expect(workflow).toContain("connector-release-automation.ts verify");
+    expect(workflow).toContain("connector-release-automation.ts smoke-test");
+    expect(workflow).toContain("connector-release-automation.ts promote");
+    expect(workflow).toContain("connector-release-automation.ts activate");
+    expect(workflow).toContain("actions/attest-build-provenance@v2");
+  });
+
+  it("admin workflow does not include delete permissions", () => {
+    const workflow = readFileSync(join(root, ".github/workflows/connector-release-admin.yml"), "utf8");
+    expect(workflow).not.toContain("delete:");
+    expect(workflow).not.toContain("R2_SECRET_ACCESS_KEY");
+  });
+
+  it("local build script defaults to skip publish", () => {
+    const buildScript = readFileSync(join(root, "connector-product/windows/build-release.ps1"), "utf8");
+    expect(buildScript).toContain("$SkipPublish = $true");
+    expect(buildScript).toContain("connector-release.yml");
+  });
+
+  it("distribution manifest supports storage-independent identifiers", () => {
+    const types = readFileSync(
+      join(root, "server/connector-product/release/connectorReleaseTypes.ts"),
+      "utf8"
+    );
+    expect(types).toContain("installerStorageKey");
+    expect(types).toContain("installerArtifactId");
+    expect(types).toContain("rollbackTo");
+    expect(types).toContain("forceUpdate");
+  });
+
+  it("activation requires promoted state", () => {
+    const registry = readFileSync(
+      join(root, "server/connector-product/release-distribution/infrastructure/InMemoryReleaseRegistry.ts"),
+      "utf8"
+    );
+    expect(registry).toContain('target.status !== "promoted"');
+  });
+});
+
 describe("PRINT-RELEASE-DISTRIBUTION-1 architecture guards", () => {
   it("ConnectorProductService uses release distribution service not env download URL", () => {
     const service = readFileSync(join(root, "server/connector-product/ConnectorProductService.ts"), "utf8");
@@ -23,15 +69,10 @@ describe("PRINT-RELEASE-DISTRIBUTION-1 architecture guards", () => {
     expect(panel).toContain("downloadUrl");
   });
 
-  it("release publication is an official pipeline stage", () => {
-    const buildScript = readFileSync(join(root, "connector-product/windows/build-release.ps1"), "utf8");
-    expect(buildScript).toContain("connector-release-publish.ts");
-    expect(buildScript).toContain("connector-release-finalize.mjs");
-  });
-
   it("release registry schema exists", () => {
     const schema = readFileSync(join(root, "drizzle/schema.ts"), "utf8");
     expect(schema).toContain("connector_published_releases");
-    expect(schema).toContain("installerSha256");
+    expect(schema).toContain("smoke_test_passed");
+    expect(schema).toContain("workflowRunId");
   });
 });

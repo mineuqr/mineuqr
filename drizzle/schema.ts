@@ -716,7 +716,7 @@ export const connectorEnrollments = mysqlTable("connector_enrollments", {
 	index("connector_enrollments_restaurant_status").on(table.restaurantId, table.status),
 ]);
 
-// ─── Connector release distribution (PRINT-RELEASE-DISTRIBUTION-1) ─
+// ─── Connector release distribution (PRINT-RELEASE-DISTRIBUTION-1 / AUTOMATION-1) ─
 export const connectorPublishedReleases = mysqlTable("connector_published_releases", {
 	version: varchar({ length: 32 }).notNull(),
 	productName: varchar({ length: 128 }).notNull(),
@@ -724,9 +724,24 @@ export const connectorPublishedReleases = mysqlTable("connector_published_releas
 	installerSha256: varchar({ length: 64 }).notNull(),
 	storageKey: varchar({ length: 512 }).notNull(),
 	releaseManifestJson: json().notNull(),
-	status: mysqlEnum(["published", "active", "superseded"]).default("published").notNull(),
-	publishedAt: timestamp({ mode: "string" }).notNull(),
+	status: mysqlEnum([
+		"candidate",
+		"published",
+		"verified",
+		"smoke_test_passed",
+		"promoted",
+		"active",
+		"superseded",
+	]).default("candidate").notNull(),
+	publishedAt: timestamp({ mode: "string" }),
+	verifiedAt: timestamp({ mode: "string" }),
+	smokeTestPassedAt: timestamp({ mode: "string" }),
+	promotedAt: timestamp({ mode: "string" }),
 	activatedAt: timestamp({ mode: "string" }),
+	gitTag: varchar({ length: 128 }),
+	commitSha: varchar({ length: 64 }),
+	workflowRunId: varchar({ length: 64 }),
+	publisher: varchar({ length: 128 }),
 	createdAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
 	updatedAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
 },

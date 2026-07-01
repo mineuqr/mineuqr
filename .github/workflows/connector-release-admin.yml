@@ -1,0 +1,45 @@
+name: Connector Release Admin
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Connector release version to supersede or clean up"
+        required: true
+        type: string
+      action:
+        description: "Administrative action"
+        required: true
+        type: choice
+        options:
+          - supersede-only
+
+permissions:
+  contents: read
+
+concurrency:
+  group: connector-release-admin-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  admin:
+    name: Release administrative action
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Supersede active release
+        if: inputs.action == 'supersede-only'
+        run: npx tsx scripts/connector-release-admin.ts supersede --version ${{ inputs.version }}

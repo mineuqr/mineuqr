@@ -6,34 +6,69 @@ import { join } from "node:path";
 import { InMemoryReleaseRegistry } from "../infrastructure/InMemoryReleaseRegistry";
 import { ReleaseDistributionService } from "../services/ReleaseDistributionService";
 import { ConnectorReleasePublicationService } from "../services/ConnectorReleasePublicationService";
+import { ReleaseVerificationService } from "../services/ReleaseVerificationService";
+import { ReleasePromotionService } from "../services/ReleasePromotionService";
 import type { ReleaseStoragePort } from "../contracts/ReleaseStoragePort";
 import { ConnectorProductService } from "../../ConnectorProductService";
 import { readConnectorReleaseManifest } from "../../release/connectorRelease";
 
 class TestReleaseStorage implements ReleaseStoragePort {
-  readonly objects = new Map<string, string>();
+  readonly objects = new Map<string, Buffer>();
 
   async publishReleaseArtifacts(input: {
     version: string;
     installerFileName: string;
+    localInstallerPath: string;
+    localManifestPath: string;
   }) {
     const storageKey = `connector-releases/${input.version}/${input.installerFileName}`;
     const manifestKey = `connector-releases/${input.version}/release-manifest.json`;
-    const installerUrl = `https://cdn.example.com/${storageKey}`;
-    const manifestUrl = `https://cdn.example.com/${manifestKey}`;
-    this.objects.set(storageKey, installerUrl);
-    this.objects.set(manifestKey, manifestUrl);
+    this.objects.set(storageKey, readFileSync(input.localInstallerPath));
+    this.objects.set(manifestKey, readFileSync(input.localManifestPath));
     return {
       storageKey,
-      installerUrl,
+      installerUrl: `https://cdn.example.com/${storageKey}`,
       manifestStorageKey: manifestKey,
-      manifestUrl,
+      manifestUrl: `https://cdn.example.com/${manifestKey}`,
     };
   }
 
   async resolveDownloadUrl(storageKey: string): Promise<string> {
-    return this.objects.get(storageKey) ?? `https://cdn.example.com/${storageKey}`;
+    return `https://cdn.example.com/${storageKey}`;
   }
+
+  async verifyInstallerArtifact(storageKey: string, expectedSha256: string) {
+    const body = this.objects.get(storageKey);
+    if (!body) throw new Error(`Missing object ${storageKey}`);
+    const sha256 = createHash("sha256").update(body).digest("hex");
+    if (sha256 !== expectedSha256) throw new Error("Checksum mismatch");
+    return { storageKey, sha256, sizeBytes: body.length };
+  }
+
+  async verifyManifestArtifact(storageKey: string) {
+    return { storageKey, exists: this.objects.has(storageKey) };
+  }
+}
+
+function writeStagedRelease(tempDir: string, installerContent: Buffer, installerFileName: string, manifest: ReturnType<typeof readConnectorReleaseManifest>) {
+  const installerSha256 = createHash("sha256").update(installerContent).digest("hex");
+  writeFileSync(join(tempDir, installerFileName), installerContent);
+  writeFileSync(
+    join(tempDir, "release-manifest.json"),
+    JSON.stringify({
+      schemaVersion: 1,
+      productName: manifest.productName,
+      version: manifest.version,
+      buildDate: "2026-06-30T00:00:00.000Z",
+      publisher: manifest.publisher,
+      supportUrl: manifest.supportUrl,
+      copyright: manifest.copyright,
+      compatibility: { minDashboardVersion: manifest.minDashboardVersion, platforms: ["windows"] },
+      artifacts: [],
+      installer: { fileName: installerFileName, relativePath: installerFileName, sha256: installerSha256 },
+    })
+  );
+  return installerSha256;
 }
 
 describe("PRINT-RELEASE-DISTRIBUTION-1 release distribution", () => {
@@ -48,23 +83,7 @@ describe("PRINT-RELEASE-DISTRIBUTION-1 release distribution", () => {
     const tempDir = mkdtempSync(join(tmpdir(), "connector-publish-"));
     const installerFileName = `MineuQR-Connector-${manifest.version}-Setup.exe`;
     const installerContent = Buffer.from("fake-installer-binary");
-    const installerSha256 = createHash("sha256").update(installerContent).digest("hex");
-    writeFileSync(join(tempDir, installerFileName), installerContent);
-    writeFileSync(
-      join(tempDir, "release-manifest.json"),
-      JSON.stringify({
-        schemaVersion: 1,
-        productName: manifest.productName,
-        version: manifest.version,
-        buildDate: "2026-06-30T00:00:00.000Z",
-        publisher: manifest.publisher,
-        supportUrl: manifest.supportUrl,
-        copyright: manifest.copyright,
-        compatibility: { minDashboardVersion: manifest.minDashboardVersion, platforms: ["windows"] },
-        artifacts: [],
-        installer: { fileName: installerFileName, relativePath: installerFileName, sha256: installerSha256 },
-      })
-    );
+    writeStagedRelease(tempDir, installerContent, installerFileName, manifest);
 
     const published = await publication.publishAndActivate({
       version: manifest.version,
@@ -89,24 +108,8 @@ describe("PRINT-RELEASE-DISTRIBUTION-1 release distribution", () => {
     const tempDir = mkdtempSync(join(tmpdir(), "connector-product-"));
     const installerFileName = `MineuQR-Connector-${manifest.version}-Setup.exe`;
     const installerContent = Buffer.from("fake-installer");
-    const installerSha256 = createHash("sha256").update(installerContent).digest("hex");
     mkdirSync(tempDir, { recursive: true });
-    writeFileSync(join(tempDir, installerFileName), installerContent);
-    writeFileSync(
-      join(tempDir, "release-manifest.json"),
-      JSON.stringify({
-        schemaVersion: 1,
-        productName: manifest.productName,
-        version: manifest.version,
-        buildDate: "2026-06-30T00:00:00.000Z",
-        publisher: manifest.publisher,
-        supportUrl: manifest.supportUrl,
-        copyright: manifest.copyright,
-        compatibility: { minDashboardVersion: manifest.minDashboardVersion, platforms: ["windows"] },
-        artifacts: [],
-        installer: { fileName: installerFileName, relativePath: installerFileName, sha256: installerSha256 },
-      })
-    );
+    writeStagedRelease(tempDir, installerContent, installerFileName, manifest);
 
     await publication.publishAndActivate({
       version: manifest.version,
@@ -118,5 +121,58 @@ describe("PRINT-RELEASE-DISTRIBUTION-1 release distribution", () => {
     expect(info.downloadUrl).toBeTruthy();
     expect(info.downloadReady).toBe(true);
     expect(info.version).toBe(manifest.version);
+  });
+});
+
+describe("PRINT-RELEASE-AUTOMATION-1 release promotion", () => {
+  const manifest = readConnectorReleaseManifest();
+
+  it("enforces promotion state machine before activation", async () => {
+    const registry = new InMemoryReleaseRegistry();
+    const storage = new TestReleaseStorage();
+    const publication = new ConnectorReleasePublicationService(registry, storage);
+    const verification = new ReleaseVerificationService(registry, storage);
+    const promotion = new ReleasePromotionService(registry);
+    const distribution = new ReleaseDistributionService(registry, storage);
+
+    const tempDir = mkdtempSync(join(tmpdir(), "connector-automation-"));
+    const installerFileName = `MineuQR-Connector-${manifest.version}-Setup.exe`;
+    const installerContent = Buffer.from("automation-installer");
+    writeStagedRelease(tempDir, installerContent, installerFileName, manifest);
+
+    await publication.registerCandidate({
+      version: manifest.version,
+      productName: manifest.productName,
+      installerFileName,
+      audit: {
+        gitTag: "connector-v1.0.0",
+        commitSha: "abc123",
+        workflowRunId: "42",
+        publisher: "release-bot",
+      },
+    });
+
+    const published = await publication.publishRelease({
+      version: manifest.version,
+      releaseDirectory: tempDir,
+      installerFileName,
+      activate: false,
+    });
+    expect(published.published.status).toBe("published");
+    expect(published.published.releaseManifest.distribution?.installerStorageKey).toContain("connector-releases");
+
+    await verification.verifyPublishedRelease(manifest.version);
+    await promotion.markSmokeTestPassed(manifest.version);
+    await promotion.promote(manifest.version);
+    await promotion.activate(manifest.version);
+
+    const active = await registry.findByVersion(manifest.version);
+    expect(active?.status).toBe("active");
+    expect(active?.audit.gitTag).toBe("connector-v1.0.0");
+    expect(active?.promotedAt).toBeTruthy();
+    expect(active?.activatedAt).toBeTruthy();
+
+    const download = await distribution.getCurrentDownloadInfo();
+    expect(download?.downloadReady).toBe(true);
   });
 });

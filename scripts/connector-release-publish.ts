@@ -21,9 +21,9 @@ async function main(): Promise<void> {
   const releaseManifest = { ...manifest, version };
   const releaseDirectory = getReleaseStagingRoot(repoRoot, releaseManifest);
   const installerFileName = getWindowsInstallerFileName(releaseManifest);
-  const activate = !process.argv.includes("--no-activate");
+  const activate = process.argv.includes("--activate");
 
-  const result = await releaseDistributionComposition.publicationService.publishAndActivate({
+  const result = await releaseDistributionComposition.publicationService.publishRelease({
     version,
     releaseDirectory,
     installerFileName,
