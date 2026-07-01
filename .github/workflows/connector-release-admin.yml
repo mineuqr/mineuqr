@@ -43,6 +43,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Supersede active release
+      - name: Supersede release
         if: inputs.action == 'supersede-only'
         run: npx tsx scripts/connector-release-admin.ts supersede --version ${{ inputs.version }}

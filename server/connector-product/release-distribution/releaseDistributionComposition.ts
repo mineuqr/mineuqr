@@ -7,6 +7,7 @@ import { ReleaseDistributionService } from "./services/ReleaseDistributionServic
 import { ConnectorReleasePublicationService } from "./services/ConnectorReleasePublicationService";
 import { ReleaseVerificationService } from "./services/ReleaseVerificationService";
 import { ReleasePromotionService } from "./services/ReleasePromotionService";
+import { ReleaseAdminService } from "./services/ReleaseAdminService";
 
 export type ReleaseDistributionComposition = {
   registry: ReleaseRegistry;
@@ -15,6 +16,7 @@ export type ReleaseDistributionComposition = {
   publicationService: ConnectorReleasePublicationService;
   verificationService: ReleaseVerificationService;
   promotionService: ReleasePromotionService;
+  adminService: ReleaseAdminService;
 };
 
 function createRegistry(): ReleaseRegistry {
@@ -31,6 +33,7 @@ export function composeReleaseDistribution(): ReleaseDistributionComposition {
   const publicationService = new ConnectorReleasePublicationService(registry, storage);
   const verificationService = new ReleaseVerificationService(registry, storage);
   const promotionService = new ReleasePromotionService(registry);
+  const adminService = new ReleaseAdminService(registry);
 
   return {
     registry,
@@ -39,6 +42,7 @@ export function composeReleaseDistribution(): ReleaseDistributionComposition {
     publicationService,
     verificationService,
     promotionService,
+    adminService,
   };
 }
 

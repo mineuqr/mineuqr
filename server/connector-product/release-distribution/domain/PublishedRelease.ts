@@ -13,14 +13,24 @@ export const RELEASE_STATE_TRANSITIONS: Record<
   PublishedReleaseStatus,
   readonly PublishedReleaseStatus[]
 > = {
-  candidate: ["published"],
-  published: ["verified"],
-  verified: ["smoke_test_passed"],
-  smoke_test_passed: ["promoted"],
-  promoted: ["active"],
+  candidate: ["published", "superseded"],
+  published: ["verified", "superseded"],
+  verified: ["smoke_test_passed", "superseded"],
+  smoke_test_passed: ["promoted", "superseded"],
+  promoted: ["active", "superseded"],
   active: ["superseded"],
   superseded: [],
 };
+
+/** Pre-production and active releases that may be administratively superseded. */
+export const ADMINISTRATIVE_SUPERSEDE_SOURCE_STATUSES: readonly PublishedReleaseStatus[] = [
+  "candidate",
+  "published",
+  "verified",
+  "smoke_test_passed",
+  "promoted",
+  "active",
+];
 
 export type ReleaseAuditContext = {
   gitTag: string | null;
@@ -80,4 +90,8 @@ export function assertReleaseTransition(
   if (!allowed.includes(to)) {
     throw new Error(`Invalid release state transition: ${from} → ${to}`);
   }
+}
+
+export function canAdministrativelySupersede(status: PublishedReleaseStatus): boolean {
+  return ADMINISTRATIVE_SUPERSEDE_SOURCE_STATUSES.includes(status);
 }

@@ -10,16 +10,9 @@ async function main(): Promise<void> {
   }
 
   if (command === "supersede") {
-    const active = await releaseDistributionComposition.registry.getActiveRelease();
-    if (!active || active.version !== version) {
-      throw new Error(`Release ${version} is not the active release`);
-    }
-    await releaseDistributionComposition.registry.transitionRelease(
-      version,
-      "superseded",
-      new Date().toISOString()
-    );
-    console.log(`Superseded active release ${version}`);
+    const superseded =
+      await releaseDistributionComposition.adminService.administrativelySupersede(version);
+    console.log(`Administratively superseded release ${superseded.version} (${superseded.status})`);
     return;
   }
 

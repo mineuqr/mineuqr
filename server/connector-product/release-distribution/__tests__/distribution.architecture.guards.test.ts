@@ -49,6 +49,18 @@ describe("PRINT-RELEASE-AUTOMATION-1 architecture guards", () => {
     );
     expect(registry).toContain('target.status !== "promoted"');
   });
+
+  it("admin supersede uses ReleaseAdminService policy", () => {
+    const adminScript = readFileSync(join(root, "scripts/connector-release-admin.ts"), "utf8");
+    expect(adminScript).toContain("adminService.administrativelySupersede");
+    expect(adminScript).not.toContain("is not the active release");
+
+    const domain = readFileSync(
+      join(root, "server/connector-product/release-distribution/domain/PublishedRelease.ts"),
+      "utf8"
+    );
+    expect(domain).toContain('verified: ["smoke_test_passed", "superseded"]');
+  });
 });
 
 describe("PRINT-RELEASE-DISTRIBUTION-1 architecture guards", () => {
