@@ -14,10 +14,22 @@ ALTER TABLE `connector_published_releases`
   MODIFY `publishedAt` timestamp NULL;
 --> statement-breakpoint
 ALTER TABLE `connector_published_releases`
-  ADD `verifiedAt` timestamp NULL AFTER `publishedAt`,
-  ADD `smokeTestPassedAt` timestamp NULL AFTER `verifiedAt`,
-  ADD `promotedAt` timestamp NULL AFTER `smokeTestPassedAt`,
-  ADD `gitTag` varchar(128) NULL AFTER `activatedAt`,
-  ADD `commitSha` varchar(64) NULL AFTER `gitTag`,
-  ADD `workflowRunId` varchar(64) NULL AFTER `commitSha`,
+  ADD `verifiedAt` timestamp NULL AFTER `publishedAt`;
+--> statement-breakpoint
+ALTER TABLE `connector_published_releases`
+  ADD `smokeTestPassedAt` timestamp NULL AFTER `verifiedAt`;
+--> statement-breakpoint
+ALTER TABLE `connector_published_releases`
+  ADD `promotedAt` timestamp NULL AFTER `smokeTestPassedAt`;
+--> statement-breakpoint
+ALTER TABLE `connector_published_releases`
+  ADD `gitTag` varchar(128) NULL AFTER `activatedAt`;
+--> statement-breakpoint
+ALTER TABLE `connector_published_releases`
+  ADD `commitSha` varchar(64) NULL AFTER `gitTag`;
+--> statement-breakpoint
+ALTER TABLE `connector_published_releases`
+  ADD `workflowRunId` varchar(64) NULL AFTER `commitSha`;
+--> statement-breakpoint
+ALTER TABLE `connector_published_releases`
   ADD `publisher` varchar(128) NULL AFTER `workflowRunId`;
