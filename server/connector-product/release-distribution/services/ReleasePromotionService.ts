@@ -1,7 +1,11 @@
 import type { ReleaseRegistry } from "../contracts/ReleaseRegistry";
+import type { ReleaseArtifactLifecycleService } from "./ReleaseArtifactLifecycleService";
 
 export class ReleasePromotionService {
-  constructor(private readonly registry: ReleaseRegistry) {}
+  constructor(
+    private readonly registry: ReleaseRegistry,
+    private readonly artifactLifecycle: ReleaseArtifactLifecycleService
+  ) {}
 
   async markSmokeTestPassed(version: string): Promise<void> {
     const record = await this.registry.findByVersion(version);
@@ -33,9 +37,14 @@ export class ReleasePromotionService {
     if (record.status !== "promoted") {
       throw new Error(`Release ${version} must be promoted before activation`);
     }
-    const activated = await this.registry.activateRelease(version, new Date().toISOString());
+    const previousActive = await this.registry.getActiveRelease();
+    const activatedAt = new Date().toISOString();
+    const activated = await this.registry.activateRelease(version, activatedAt);
     if (!activated) {
       throw new Error(`Failed to activate release ${version}`);
+    }
+    if (previousActive && previousActive.version !== version) {
+      await this.artifactLifecycle.retireForSupersededRelease(previousActive, activatedAt);
     }
   }
 }

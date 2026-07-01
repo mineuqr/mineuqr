@@ -61,6 +61,21 @@ describe("PRINT-RELEASE-AUTOMATION-1 architecture guards", () => {
     );
     expect(domain).toContain('verified: ["smoke_test_passed", "superseded"]');
   });
+
+  it("candidate publication uses registry-derived artifact policy", () => {
+    const publication = readFileSync(
+      join(root, "server/connector-product/release-distribution/services/ConnectorReleasePublicationService.ts"),
+      "utf8"
+    );
+    expect(publication).toContain("resolveArtifactPublicationPolicy");
+    expect(publication).toContain("publicationPolicy");
+
+    const admin = readFileSync(
+      join(root, "server/connector-product/release-distribution/services/ReleaseAdminService.ts"),
+      "utf8"
+    );
+    expect(admin).toContain("retireForSupersededRelease");
+  });
 });
 
 describe("PRINT-RELEASE-DISTRIBUTION-1 architecture guards", () => {

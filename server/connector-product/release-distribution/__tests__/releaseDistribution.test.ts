@@ -8,21 +8,76 @@ import { ReleaseDistributionService } from "../services/ReleaseDistributionServi
 import { ConnectorReleasePublicationService } from "../services/ConnectorReleasePublicationService";
 import { ReleaseVerificationService } from "../services/ReleaseVerificationService";
 import { ReleasePromotionService } from "../services/ReleasePromotionService";
-import type { ReleaseStoragePort } from "../contracts/ReleaseStoragePort";
+import { ReleaseArtifactLifecycleService } from "../services/ReleaseArtifactLifecycleService";
+import type { ReleaseStoragePort, RetireCanonicalArtifactsInput } from "../contracts/ReleaseStoragePort";
+import {
+  buildArchivedInstallerKey,
+  buildArchivedManifestKey,
+} from "../domain/ReleaseArtifactLifecycle";
 import { ConnectorProductService } from "../../ConnectorProductService";
 import { readConnectorReleaseManifest } from "../../release/connectorRelease";
 
 class TestReleaseStorage implements ReleaseStoragePort {
   readonly objects = new Map<string, Buffer>();
 
+  async retireCanonicalArtifacts(input: RetireCanonicalArtifactsInput) {
+    const archivedInstallerKey = buildArchivedInstallerKey(
+      input.version,
+      input.installerFileName,
+      input.retiredAt,
+      input.workflowRunId,
+      input.reason
+    );
+    const archivedManifestKey = buildArchivedManifestKey(
+      input.version,
+      input.retiredAt,
+      input.workflowRunId,
+      input.reason
+    );
+
+    let moved = false;
+    const installerBody = this.objects.get(input.installerStorageKey);
+    if (installerBody) {
+      this.objects.set(archivedInstallerKey, installerBody);
+      this.objects.delete(input.installerStorageKey);
+      moved = true;
+    }
+    const manifestBody = this.objects.get(input.manifestStorageKey);
+    if (manifestBody) {
+      this.objects.set(archivedManifestKey, manifestBody);
+      this.objects.delete(input.manifestStorageKey);
+      moved = true;
+    }
+    return moved
+      ? { archivedInstallerKey, archivedManifestKey }
+      : null;
+  }
+
   async publishReleaseArtifacts(input: {
     version: string;
     installerFileName: string;
     localInstallerPath: string;
     localManifestPath: string;
+    publicationPolicy?: "immutable" | "reclaim-canonical";
   }) {
     const storageKey = `connector-releases/${input.version}/${input.installerFileName}`;
     const manifestKey = `connector-releases/${input.version}/release-manifest.json`;
+    const policy = input.publicationPolicy ?? "immutable";
+
+    if (policy === "reclaim-canonical") {
+      await this.retireCanonicalArtifacts({
+        version: input.version,
+        installerFileName: input.installerFileName,
+        installerStorageKey: storageKey,
+        manifestStorageKey: manifestKey,
+        retiredAt: new Date().toISOString(),
+        workflowRunId: null,
+        reason: "canonical-reclaim",
+      });
+    } else if (this.objects.has(storageKey) || this.objects.has(manifestKey)) {
+      throw new Error(`Immutable release installer already exists at ${storageKey}`);
+    }
+
     this.objects.set(storageKey, readFileSync(input.localInstallerPath));
     this.objects.set(manifestKey, readFileSync(input.localManifestPath));
     return {
@@ -132,7 +187,10 @@ describe("PRINT-RELEASE-AUTOMATION-1 release promotion", () => {
     const storage = new TestReleaseStorage();
     const publication = new ConnectorReleasePublicationService(registry, storage);
     const verification = new ReleaseVerificationService(registry, storage);
-    const promotion = new ReleasePromotionService(registry);
+    const promotion = new ReleasePromotionService(
+      registry,
+      new ReleaseArtifactLifecycleService(storage)
+    );
     const distribution = new ReleaseDistributionService(registry, storage);
 
     const tempDir = mkdtempSync(join(tmpdir(), "connector-automation-"));

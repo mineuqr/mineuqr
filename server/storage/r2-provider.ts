@@ -110,3 +110,15 @@ export async function r2StorageGetObject(relKey: string): Promise<{ key: string;
     body: Buffer.from(bytes),
   };
 }
+
+export async function r2StorageDelete(relKey: string): Promise<void> {
+  const { DeleteObjectCommand } = await import("@aws-sdk/client-s3");
+  assertR2Config();
+  const key = normalizeKey(relKey);
+  await getR2Client().send(
+    new DeleteObjectCommand({
+      Bucket: ENV.r2BucketName,
+      Key: key,
+    })
+  );
+}

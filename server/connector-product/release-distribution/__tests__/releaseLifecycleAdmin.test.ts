@@ -1,11 +1,35 @@
 import { describe, expect, it } from "vitest";
 import { InMemoryReleaseRegistry } from "../infrastructure/InMemoryReleaseRegistry";
 import { ReleaseAdminService } from "../services/ReleaseAdminService";
+import { ReleaseArtifactLifecycleService } from "../services/ReleaseArtifactLifecycleService";
+import type { ReleaseStoragePort } from "../contracts/ReleaseStoragePort";
 import {
   ADMINISTRATIVE_SUPERSEDE_SOURCE_STATUSES,
   RELEASE_STATE_TRANSITIONS,
   assertReleaseTransition,
 } from "../domain/PublishedRelease";
+
+class NoopArtifactStorage implements ReleaseStoragePort {
+  async publishReleaseArtifacts() {
+    throw new Error("not used");
+  }
+  async retireCanonicalArtifacts() {
+    return null;
+  }
+  async resolveDownloadUrl(storageKey: string) {
+    return storageKey;
+  }
+  async verifyInstallerArtifact(storageKey: string, expectedSha256: string) {
+    return { storageKey, sha256: expectedSha256, sizeBytes: 0 };
+  }
+  async verifyManifestArtifact(storageKey: string) {
+    return { storageKey, exists: false };
+  }
+}
+
+function createAdmin(registry: InMemoryReleaseRegistry) {
+  return new ReleaseAdminService(registry, new ReleaseArtifactLifecycleService(new NoopArtifactStorage()));
+}
 
 function seedVerifiedRelease(registry: InMemoryReleaseRegistry, version = "1.0.0") {
   return registry.registerCandidate({
@@ -26,7 +50,7 @@ describe("RELEASE-LIFECYCLE-ADMIN-1", () => {
     const registry = new InMemoryReleaseRegistry();
     await seedVerifiedRelease(registry);
 
-    const admin = new ReleaseAdminService(registry);
+    const admin = createAdmin(registry);
     const result = await admin.administrativelySupersede("1.0.0");
 
     expect(result.status).toBe("superseded");
@@ -37,7 +61,7 @@ describe("RELEASE-LIFECYCLE-ADMIN-1", () => {
     const registry = new InMemoryReleaseRegistry();
     await seedVerifiedRelease(registry);
 
-    const admin = new ReleaseAdminService(registry);
+    const admin = createAdmin(registry);
     await admin.administrativelySupersede("1.0.0");
 
     const record = await registry.findByVersion("1.0.0");
@@ -52,7 +76,7 @@ describe("RELEASE-LIFECYCLE-ADMIN-1", () => {
     const registry = new InMemoryReleaseRegistry();
     await seedVerifiedRelease(registry);
 
-    const admin = new ReleaseAdminService(registry);
+    const admin = createAdmin(registry);
     await admin.administrativelySupersede("1.0.0");
 
     const reregistered = await registry.registerCandidate({
@@ -86,7 +110,7 @@ describe("RELEASE-LIFECYCLE-ADMIN-1", () => {
     const active = await registry.getActiveRelease();
     expect(active?.status).toBe("active");
 
-    const admin = new ReleaseAdminService(registry);
+    const admin = createAdmin(registry);
     const superseded = await admin.administrativelySupersede("1.0.0");
     expect(superseded.status).toBe("superseded");
     expect(await registry.getActiveRelease()).toBeNull();
@@ -95,7 +119,7 @@ describe("RELEASE-LIFECYCLE-ADMIN-1", () => {
   it("rejects superseding an already superseded release", async () => {
     const registry = new InMemoryReleaseRegistry();
     await seedVerifiedRelease(registry);
-    const admin = new ReleaseAdminService(registry);
+    const admin = createAdmin(registry);
     await admin.administrativelySupersede("1.0.0");
 
     await expect(admin.administrativelySupersede("1.0.0")).rejects.toThrow(/already superseded/);

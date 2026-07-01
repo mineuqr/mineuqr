@@ -5,6 +5,7 @@ import type { ConnectorDistributionManifest } from "../../release/connectorRelea
 import type { ReleaseRegistry } from "../contracts/ReleaseRegistry";
 import type { ReleaseStoragePort } from "../contracts/ReleaseStoragePort";
 import type { PublishedReleaseRecord, ReleaseAuditContext } from "../domain/PublishedRelease";
+import { resolveArtifactPublicationPolicy } from "../domain/ReleaseArtifactLifecycle";
 import {
   buildInstallerStorageKey,
   buildManifestStorageKey,
@@ -88,15 +89,17 @@ export class ConnectorReleasePublicationService {
       manifestStorageKey,
     });
 
+    const publishedAt = input.publishedAt ?? new Date().toISOString();
+    const existing = await this.registry.findByVersion(input.version);
+
     const stored = await this.storage.publishReleaseArtifacts({
       version: input.version,
       installerFileName: input.installerFileName,
       localInstallerPath: installerPath,
       localManifestPath: manifestPath,
+      publicationPolicy: resolveArtifactPublicationPolicy(existing?.status),
     });
 
-    const publishedAt = input.publishedAt ?? new Date().toISOString();
-    const existing = await this.registry.findByVersion(input.version);
     const published =
       existing?.status === "candidate"
         ? await this.registry.completePublication({

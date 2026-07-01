@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { access, readFile } from "node:fs/promises";
+import { access, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { buildPublicUrl, normalizeKey } from "../../../storage/shared";
 import { ENV } from "../../../_core/env";
@@ -8,8 +8,18 @@ import type {
   PublishReleaseArtifactInput,
   PublishedStorageArtifact,
   ReleaseStoragePort,
+  RetireCanonicalArtifactsInput,
+  RetiredCanonicalArtifacts,
   VerifiedStorageArtifact,
 } from "../contracts/ReleaseStoragePort";
+import {
+  buildArchivedInstallerKey,
+  buildArchivedManifestKey,
+} from "../domain/ReleaseArtifactLifecycle";
+import {
+  buildInstallerStorageKey,
+  buildManifestStorageKey,
+} from "../services/ReleaseManifestEnrichment";
 
 function resolveLocalPublicBaseUrl(): string {
   const configured =
@@ -28,44 +38,92 @@ function sha256Buffer(buffer: Buffer): string {
   return createHash("sha256").update(buffer).digest("hex");
 }
 
-function installerStorageKey(version: string, installerFileName: string): string {
-  return normalizeKey(path.posix.join("connector-releases", version, installerFileName));
-}
-
-function manifestStorageKey(version: string): string {
-  return normalizeKey(path.posix.join("connector-releases", version, "release-manifest.json"));
-}
-
-async function assertArtifactNotExists(localPath: string): Promise<void> {
+async function fileExists(filePath: string): Promise<boolean> {
   try {
-    await access(localPath);
-    throw new Error(`Immutable release artifact already exists at ${localPath}`);
-  } catch (error) {
-    if (error instanceof Error && error.message.includes("Immutable release artifact")) {
-      throw error;
-    }
+    await access(filePath);
+    return true;
+  } catch {
+    return false;
   }
 }
 
+async function moveLocalArtifact(sourceKey: string, destKey: string): Promise<boolean> {
+  const sourcePath = path.join(UPLOADS_DIR, normalizeKey(sourceKey));
+  const destPath = path.join(UPLOADS_DIR, normalizeKey(destKey));
+  if (!(await fileExists(sourcePath))) {
+    return false;
+  }
+  await mkdir(path.dirname(destPath), { recursive: true });
+  await rename(sourcePath, destPath);
+  return true;
+}
+
+async function retireLocalCanonicalArtifacts(
+  input: RetireCanonicalArtifactsInput
+): Promise<RetiredCanonicalArtifacts | null> {
+  const archivedInstallerKey = buildArchivedInstallerKey(
+    input.version,
+    input.installerFileName,
+    input.retiredAt,
+    input.workflowRunId,
+    input.reason
+  );
+  const archivedManifestKey = buildArchivedManifestKey(
+    input.version,
+    input.retiredAt,
+    input.workflowRunId,
+    input.reason
+  );
+
+  const installerMoved = await moveLocalArtifact(input.installerStorageKey, archivedInstallerKey);
+  const manifestMoved = await moveLocalArtifact(input.manifestStorageKey, archivedManifestKey);
+  if (!installerMoved && !manifestMoved) {
+    return null;
+  }
+  return { archivedInstallerKey, archivedManifestKey };
+}
+
 export class LocalFilesystemReleaseStorage implements ReleaseStoragePort {
+  async retireCanonicalArtifacts(
+    input: RetireCanonicalArtifactsInput
+  ): Promise<RetiredCanonicalArtifacts | null> {
+    return retireLocalCanonicalArtifacts(input);
+  }
+
   async publishReleaseArtifacts(input: PublishReleaseArtifactInput): Promise<PublishedStorageArtifact> {
-    const installerKey = installerStorageKey(input.version, input.installerFileName);
-    const manifestKey = manifestStorageKey(input.version);
+    const installerKey = buildInstallerStorageKey(input.version, input.installerFileName);
+    const manifestKey = buildManifestStorageKey(input.version);
+    const policy = input.publicationPolicy ?? "immutable";
+
+    if (policy === "reclaim-canonical") {
+      await this.retireCanonicalArtifacts({
+        version: input.version,
+        installerFileName: input.installerFileName,
+        installerStorageKey: installerKey,
+        manifestStorageKey: manifestKey,
+        retiredAt: new Date().toISOString(),
+        workflowRunId: null,
+        reason: "canonical-reclaim",
+      });
+    } else {
+      const installerDest = path.join(UPLOADS_DIR, installerKey);
+      const manifestDest = path.join(UPLOADS_DIR, manifestKey);
+      if (await fileExists(installerDest)) {
+        throw new Error(`Immutable release installer already exists at ${installerKey}`);
+      }
+      if (await fileExists(manifestDest)) {
+        throw new Error(`Immutable release manifest already exists at ${manifestKey}`);
+      }
+    }
 
     const installerData = await readFile(input.localInstallerPath);
     const manifestData = await readFile(input.localManifestPath);
-
     const installerDest = path.join(UPLOADS_DIR, installerKey);
     const manifestDest = path.join(UPLOADS_DIR, manifestKey);
-    await assertArtifactNotExists(installerDest);
-    await assertArtifactNotExists(manifestDest);
-
-    await import("node:fs/promises").then(async (fs) => {
-      await fs.mkdir(path.dirname(installerDest), { recursive: true });
-      await fs.mkdir(path.dirname(manifestDest), { recursive: true });
-      await fs.writeFile(installerDest, installerData);
-      await fs.writeFile(manifestDest, manifestData);
-    });
+    await mkdir(path.dirname(installerDest), { recursive: true });
+    await mkdir(path.dirname(manifestDest), { recursive: true });
+    await writeFile(installerDest, installerData);
+    await writeFile(manifestDest, manifestData);
 
     const baseUrl = resolveLocalPublicBaseUrl();
     return {
@@ -96,42 +154,108 @@ export class LocalFilesystemReleaseStorage implements ReleaseStoragePort {
 
   async verifyManifestArtifact(storageKey: string): Promise<{ storageKey: string; exists: boolean }> {
     const filePath = path.join(UPLOADS_DIR, normalizeKey(storageKey));
-    try {
-      await access(filePath);
-      return { storageKey: normalizeKey(storageKey), exists: true };
-    } catch {
-      return { storageKey: normalizeKey(storageKey), exists: false };
-    }
+    return { storageKey: normalizeKey(storageKey), exists: await fileExists(filePath) };
   }
 }
 
+async function retireR2CanonicalArtifacts(
+  input: RetireCanonicalArtifactsInput
+): Promise<RetiredCanonicalArtifacts | null> {
+  const { r2StorageHead, r2StorageGetObject, r2StoragePut, r2StorageDelete } = await import(
+    "../../../storage/r2-provider"
+  );
+
+  const archivedInstallerKey = buildArchivedInstallerKey(
+    input.version,
+    input.installerFileName,
+    input.retiredAt,
+    input.workflowRunId,
+    input.reason
+  );
+  const archivedManifestKey = buildArchivedManifestKey(
+    input.version,
+    input.retiredAt,
+    input.workflowRunId,
+    input.reason
+  );
+
+  let installerArchived = false;
+  let manifestArchived = false;
+
+  try {
+    await r2StorageHead(input.installerStorageKey);
+    const installer = await r2StorageGetObject(input.installerStorageKey);
+    await r2StoragePut(
+      archivedInstallerKey,
+      installer.body,
+      "application/vnd.microsoft.portable-executable"
+    );
+    await r2StorageDelete(input.installerStorageKey);
+    installerArchived = true;
+  } catch {
+    // not at canonical key
+  }
+
+  try {
+    await r2StorageHead(input.manifestStorageKey);
+    const manifest = await r2StorageGetObject(input.manifestStorageKey);
+    await r2StoragePut(archivedManifestKey, manifest.body, "application/json");
+    await r2StorageDelete(input.manifestStorageKey);
+    manifestArchived = true;
+  } catch {
+    // not at canonical key
+  }
+
+  if (!installerArchived && !manifestArchived) {
+    return null;
+  }
+  return { archivedInstallerKey, archivedManifestKey };
+}
+
 export class R2ReleaseStorage implements ReleaseStoragePort {
+  async retireCanonicalArtifacts(
+    input: RetireCanonicalArtifactsInput
+  ): Promise<RetiredCanonicalArtifacts | null> {
+    return retireR2CanonicalArtifacts(input);
+  }
+
   async publishReleaseArtifacts(input: PublishReleaseArtifactInput): Promise<PublishedStorageArtifact> {
     const { r2StorageHead, r2StoragePut } = await import("../../../storage/r2-provider");
-    const installerKey = installerStorageKey(input.version, input.installerFileName);
-    const manifestKey = manifestStorageKey(input.version);
+    const installerKey = buildInstallerStorageKey(input.version, input.installerFileName);
+    const manifestKey = buildManifestStorageKey(input.version);
+    const policy = input.publicationPolicy ?? "immutable";
 
-    try {
-      await r2StorageHead(installerKey);
-      throw new Error(`Immutable release installer already exists at ${installerKey}`);
-    } catch (error) {
-      if (error instanceof Error && error.message.includes("Immutable release installer")) {
-        throw error;
+    if (policy === "reclaim-canonical") {
+      await this.retireCanonicalArtifacts({
+        version: input.version,
+        installerFileName: input.installerFileName,
+        installerStorageKey: installerKey,
+        manifestStorageKey: manifestKey,
+        retiredAt: new Date().toISOString(),
+        workflowRunId: null,
+        reason: "canonical-reclaim",
+      });
+    } else {
+      try {
+        await r2StorageHead(installerKey);
+        throw new Error(`Immutable release installer already exists at ${installerKey}`);
+      } catch (error) {
+        if (error instanceof Error && error.message.includes("Immutable release installer")) {
+          throw error;
+        }
       }
-    }
-
-    try {
-      await r2StorageHead(manifestKey);
-      throw new Error(`Immutable release manifest already exists at ${manifestKey}`);
-    } catch (error) {
-      if (error instanceof Error && error.message.includes("Immutable release manifest")) {
-        throw error;
+      try {
+        await r2StorageHead(manifestKey);
+        throw new Error(`Immutable release manifest already exists at ${manifestKey}`);
+      } catch (error) {
+        if (error instanceof Error && error.message.includes("Immutable release manifest")) {
+          throw error;
+        }
       }
     }
 
     const installerData = await readFile(input.localInstallerPath);
     const manifestData = await readFile(input.localManifestPath);
-
     const installer = await r2StoragePut(
       installerKey,
       installerData,

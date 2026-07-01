@@ -3,9 +3,13 @@ import {
   canAdministrativelySupersede,
   type PublishedReleaseRecord,
 } from "../domain/PublishedRelease";
+import type { ReleaseArtifactLifecycleService } from "./ReleaseArtifactLifecycleService";
 
 export class ReleaseAdminService {
-  constructor(private readonly registry: ReleaseRegistry) {}
+  constructor(
+    private readonly registry: ReleaseRegistry,
+    private readonly artifactLifecycle: ReleaseArtifactLifecycleService
+  ) {}
 
   async administrativelySupersede(version: string): Promise<PublishedReleaseRecord> {
     const record = await this.registry.findByVersion(version);
@@ -21,6 +25,8 @@ export class ReleaseAdminService {
       );
     }
 
-    return this.registry.transitionRelease(version, "superseded", new Date().toISOString());
+    const timestamp = new Date().toISOString();
+    await this.artifactLifecycle.retireForSupersededRelease(record, timestamp);
+    return this.registry.transitionRelease(version, "superseded", timestamp);
   }
 }
