@@ -50,6 +50,7 @@ import {
 } from "./adminKpiCalculations";
 
 let _db: ReturnType<typeof drizzle> | null = null;
+let _pool: Pool | null = null;
 
 /** Parse DATABASE_URL; mirrors scripts/apply-session-valid-after-local-patch.cjs ssl handling. */
 function parseDatabaseUrl(databaseUrl: string): PoolOptions {
@@ -102,13 +103,26 @@ function createRuntimeMysqlPool(databaseUrl: string): Pool {
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(createRuntimeMysqlPool(process.env.DATABASE_URL));
+      _pool = createRuntimeMysqlPool(process.env.DATABASE_URL);
+      _db = drizzle(_pool);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
+      _pool = null;
     }
   }
   return _db;
+}
+
+/** Idempotent CLI/server shutdown — releases mysql2 pool handles. */
+export async function closeDb(): Promise<void> {
+  if (!_pool) {
+    return;
+  }
+  const pool = _pool;
+  _pool = null;
+  _db = null;
+  await pool.end();
 }
 
 // ─── User helpers ───────────────────────────────────────────

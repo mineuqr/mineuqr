@@ -9,6 +9,8 @@ import { ReleaseVerificationService } from "./services/ReleaseVerificationServic
 import { ReleasePromotionService } from "./services/ReleasePromotionService";
 import { ReleaseAdminService } from "./services/ReleaseAdminService";
 import { ReleaseArtifactLifecycleService } from "./services/ReleaseArtifactLifecycleService";
+import { closeDb } from "../../db";
+import { destroyR2StorageClient } from "../../storage/r2-provider";
 
 export type ReleaseDistributionComposition = {
   registry: ReleaseRegistry;
@@ -49,3 +51,9 @@ export function composeReleaseDistribution(): ReleaseDistributionComposition {
 }
 
 export const releaseDistributionComposition = composeReleaseDistribution();
+
+/** Releases CLI-owned infrastructure opened via release distribution (DB pool, R2 client). */
+export async function shutdownReleaseDistributionResources(): Promise<void> {
+  destroyR2StorageClient();
+  await closeDb();
+}

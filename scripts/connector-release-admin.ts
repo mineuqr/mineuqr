@@ -1,5 +1,5 @@
 #!/usr/bin/env tsx
-import { releaseDistributionComposition } from "../server/connector-product/release-distribution/releaseDistributionComposition";
+import { releaseDistributionComposition, shutdownReleaseDistributionResources } from "../server/connector-product/release-distribution/releaseDistributionComposition";
 
 async function main(): Promise<void> {
   const command = process.argv[2];
@@ -19,7 +19,15 @@ async function main(): Promise<void> {
   throw new Error("Usage: connector-release-admin.ts supersede --version <version>");
 }
 
-void main().catch((error) => {
+async function runCli(): Promise<void> {
+  try {
+    await main();
+  } finally {
+    await shutdownReleaseDistributionResources();
+  }
+}
+
+void runCli().catch((error) => {
   console.error(error instanceof Error ? error.message : String(error));
   process.exit(1);
 });

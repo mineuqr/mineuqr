@@ -8,7 +8,7 @@ import {
   readConnectorReleaseManifest,
 } from "../server/connector-product/release/connectorRelease";
 import type { ReleaseAuditContext } from "../server/connector-product/release-distribution/domain/PublishedRelease";
-import { releaseDistributionComposition } from "../server/connector-product/release-distribution/releaseDistributionComposition";
+import { releaseDistributionComposition, shutdownReleaseDistributionResources } from "../server/connector-product/release-distribution/releaseDistributionComposition";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -149,7 +149,15 @@ async function main(): Promise<void> {
   }
 }
 
-void main().catch((error) => {
+async function runCli(): Promise<void> {
+  try {
+    await main();
+  } finally {
+    await shutdownReleaseDistributionResources();
+  }
+}
+
+void runCli().catch((error) => {
   console.error(error instanceof Error ? error.message : String(error));
   process.exit(1);
 });

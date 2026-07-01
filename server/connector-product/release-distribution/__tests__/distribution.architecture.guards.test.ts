@@ -76,6 +76,13 @@ describe("PRINT-RELEASE-AUTOMATION-1 architecture guards", () => {
     );
     expect(admin).toContain("retireForSupersededRelease");
   });
+
+  it("release automation CLI releases infrastructure resources before exit", () => {
+    const automation = readFileSync(join(root, "scripts/connector-release-automation.ts"), "utf8");
+    expect(automation).toContain("shutdownReleaseDistributionResources");
+    expect(automation).toContain("finally");
+    expect(automation).not.toMatch(/process\.exit\s*\(\s*0\s*\)/);
+  });
 });
 
 describe("PRINT-RELEASE-DISTRIBUTION-1 architecture guards", () => {

@@ -43,6 +43,16 @@ function getR2Client(): S3Client {
   return cachedClient;
 }
 
+/** Idempotent CLI shutdown — destroys singleton S3 client and HTTP connections. */
+export function destroyR2StorageClient(): void {
+  if (!cachedClient) {
+    return;
+  }
+  const client = cachedClient;
+  cachedClient = null;
+  client.destroy();
+}
+
 export async function r2StoragePut(
   relKey: string,
   data: Buffer | Uint8Array | string,
