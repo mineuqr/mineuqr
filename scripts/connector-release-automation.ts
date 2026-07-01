@@ -78,8 +78,9 @@ async function runVerify(version: string): Promise<void> {
 async function runSmokeTest(version: string): Promise<void> {
   const manifest = readConnectorReleaseManifest();
   const installerFileName = getWindowsInstallerFileName(manifest);
-  const installerPath = path.join(getReleaseStagingRoot(repoRoot, manifest), installerFileName);
-
+  const releaseDirectory = getReleaseStagingRoot(repoRoot, manifest);
+  const installerPath = path.join(releaseDirectory, installerFileName);
+  const diagnosticsDir = path.join(releaseDirectory, "smoke-diagnostics");
   const scriptPath = path.join(repoRoot, "connector-product", "windows", "smoke-test-installer.ps1");
   const result = spawnSync(
     "powershell.exe",
@@ -94,6 +95,8 @@ async function runSmokeTest(version: string): Promise<void> {
       version,
       "-ExpectedProductName",
       manifest.productName,
+      "-DiagnosticsDir",
+      diagnosticsDir,
     ],
     { stdio: "inherit", cwd: repoRoot }
   );
