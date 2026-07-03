@@ -31,6 +31,7 @@ function run(command, args) {
 
 run("node", ["scripts/sync-connector-release-constants.mjs"]);
 run("npm", ["run", "build:connector:bundle"]);
+run("node", ["scripts/stage-connector-service-host.mjs"]);
 
 mkdirSync(bundleDir, { recursive: true });
 mkdirSync(windowsDir, { recursive: true });

@@ -9,6 +9,9 @@ $ServiceName = "MineuQRConnector"
 $ServiceDisplay = "MineuQR Connector"
 $Entry = Join-Path $InstallDir "rlc-service.mjs"
 $LogDir = Join-Path $env:ProgramData "MineuQR\connector"
+$ServiceHostDir = Join-Path $InstallDir "windows\service-host"
+$ServiceHostExe = Join-Path $ServiceHostDir "MineuQRConnectorService.exe"
+$ServiceHostXml = Join-Path $ServiceHostDir "MineuQRConnectorService.xml"
 
 function Resolve-NodeExecutable([string]$PreferredPath) {
   if ($PreferredPath) {
@@ -80,16 +83,88 @@ function Assert-ServiceRegistered([string]$Name) {
   throw "Service registration verification failed for ${Name}: $($query.output)"
 }
 
-function Register-ConnectorService(
-  [string]$Name,
-  [string]$BinaryPathName,
-  [string]$DisplayName
-) {
-  try {
-    New-Service -Name $Name -BinaryPathName $BinaryPathName -DisplayName $DisplayName -StartupType Automatic -ErrorAction Stop | Out-Null
-  } catch {
-    throw "Service registration failed: $($_.Exception.Message)"
+function Escape-Xml([string]$Value) {
+  return [System.Security.SecurityElement]::Escape($Value)
+}
+
+function Invoke-ServiceHost([string]$Exe, [string]$Command) {
+  $output = & $Exe $Command 2>&1
+  $exitCode = $LASTEXITCODE
+  if ($exitCode -ne 0) {
+    throw "Service host ${Command} failed (exit ${exitCode}): $(($output | Out-String).Trim())"
   }
+  return ($output | Out-String).Trim()
+}
+
+function Wait-ConnectorServiceRunning([string]$Name, [int]$TimeoutSeconds = 60) {
+  $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+  while ((Get-Date) -lt $deadline) {
+    $service = Get-Service -Name $Name -ErrorAction SilentlyContinue
+    if ($service -and $service.Status -eq 'Running') {
+      return $service
+    }
+    Start-Sleep -Seconds 1
+  }
+
+  $final = Get-Service -Name $Name -ErrorAction SilentlyContinue
+  $lastStatus = if ($final) { $final.Status } else { "NotRegistered" }
+  throw "Timed out waiting for ${Name} to reach Running state (last status: ${lastStatus})"
+}
+
+function Remove-ExistingConnectorService {
+  $existing = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+  if (-not $existing) {
+    return
+  }
+
+  if ($existing.Status -eq 'Running') {
+    Stop-Service -Name $ServiceName -Force
+  }
+
+  if (Test-Path -LiteralPath $ServiceHostExe) {
+    try {
+      Invoke-ServiceHost -Exe $ServiceHostExe -Command "uninstall"
+    } catch {
+      $deleteResult = Invoke-ScExe @("delete", $ServiceName)
+      Assert-ScSuccess $deleteResult "sc.exe delete"
+    }
+  } else {
+    $deleteResult = Invoke-ScExe @("delete", $ServiceName)
+    Assert-ScSuccess $deleteResult "sc.exe delete"
+  }
+
+  Start-Sleep -Seconds 2
+}
+
+function Write-ConnectorServiceHostConfig(
+  [string]$NodeExe,
+  [string]$EntryPath,
+  [string]$InstallDirectory,
+  [string]$LogDirectory
+) {
+  $hostLogDir = Join-Path $LogDirectory "service-host"
+  New-Item -ItemType Directory -Force -Path $hostLogDir | Out-Null
+
+  $xml = @"
+<service>
+  <id>$ServiceName</id>
+  <name>$(Escape-Xml $ServiceDisplay)</name>
+  <description>MineuQR restaurant printing connector service</description>
+  <executable>$(Escape-Xml $NodeExe)</executable>
+  <arguments>"$(Escape-Xml $EntryPath)"</arguments>
+  <workingdirectory>$(Escape-Xml $InstallDirectory)</workingdirectory>
+  <logpath>$(Escape-Xml $hostLogDir)</logpath>
+  <log mode="roll-by-size">
+    <sizeThreshold>10240</sizeThreshold>
+    <keepFiles>8</keepFiles>
+  </log>
+  <onfailure action="restart" delay="60 sec"/>
+  <onfailure action="restart" delay="60 sec"/>
+  <onfailure action="none"/>
+</service>
+"@
+
+  Set-Content -Path $ServiceHostXml -Value $xml -Encoding UTF8
 }
 
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
@@ -99,38 +174,26 @@ if (-not (Test-Path -LiteralPath $Entry)) {
   throw "Missing service entry at $Entry"
 }
 
-$NodeExe = Resolve-NodeExecutable -PreferredPath $NodePath
-$binaryPathName = "`"$NodeExe`" `"$Entry`""
-
-$existing = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
-if ($existing) {
-  if ($existing.Status -eq 'Running') { Stop-Service -Name $ServiceName -Force }
-  $deleteResult = Invoke-ScExe @("delete", $ServiceName)
-  Assert-ScSuccess $deleteResult "sc.exe delete"
-  Start-Sleep -Seconds 2
+if (-not (Test-Path -LiteralPath $ServiceHostExe)) {
+  throw "Missing service host executable at $ServiceHostExe"
 }
 
-Register-ConnectorService -Name $ServiceName -BinaryPathName $binaryPathName -DisplayName $ServiceDisplay
+$NodeExe = Resolve-NodeExecutable -PreferredPath $NodePath
+Remove-ExistingConnectorService
+Write-ConnectorServiceHostConfig -NodeExe $NodeExe -EntryPath $Entry -InstallDirectory $InstallDir -LogDirectory $LogDir
+
+Invoke-ServiceHost -Exe $ServiceHostExe -Command "install"
 Assert-ServiceRegistered -Name $ServiceName | Out-Null
 
-$descriptionResult = Invoke-ScExe @(
-  "description", $ServiceName, "MineuQR restaurant printing connector service"
-)
-Assert-ScSuccess $descriptionResult "sc.exe description"
-
-$failureResult = Invoke-ScExe @(
-  "failure", $ServiceName,
-  "reset= 86400",
-  "actions= restart/60000/restart/60000/restart/60000"
-)
-Assert-ScSuccess $failureResult "sc.exe failure"
-
-try {
-  Start-Service -Name $ServiceName -ErrorAction Stop
-} catch {
-  throw "Start-Service failed for ${ServiceName}: $($_.Exception.Message)"
+$service = Get-Service -Name $ServiceName
+if ($service.Status -eq 'Stopped') {
+  Invoke-ServiceHost -Exe $ServiceHostExe -Command "start"
 }
 
+Wait-ConnectorServiceRunning -Name $ServiceName | Out-Null
+
 Write-Host "MineuQR Connector service installed and started."
+Write-Host "Service host: $ServiceHostExe"
 Write-Host "Node executable: $NodeExe"
-Write-Host "Service binary path: $binaryPathName"
+Write-Host "Connector entry: $Entry"
+exit 0

@@ -28,6 +28,8 @@ Source: "..\..\dist\connector\*"; DestDir: "{app}"; Flags: recursesubdirs
 Source: "install-service.ps1"; DestDir: "{app}\windows"; Flags: ignoreversion
 Source: "uninstall-service.ps1"; DestDir: "{app}\windows"; Flags: ignoreversion
 Source: "MineuQRConnectorTray.ps1"; DestDir: "{app}\windows"; Flags: ignoreversion
+Source: "service-host\MineuQRConnectorService.exe"; DestDir: "{app}\windows\service-host"; Flags: ignoreversion
+Source: "service-host\WINSW-NOTICE.txt"; DestDir: "{app}\windows\service-host"; Flags: ignoreversion
 Source: "..\..\connector-product\release\connector-release.json"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]

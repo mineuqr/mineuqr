@@ -97,6 +97,19 @@ describe("PRINT-RELEASE-AUTOMATION-1 architecture guards", () => {
     expect(installer).toContain("dist\\connector\\*");
     expect(installer).toContain("recursesubdirs");
   });
+
+  it("connector installer ships WinSW service host integration", () => {
+    const releaseBuild = readFileSync(join(root, "scripts/connector-release-build.mjs"), "utf8");
+    expect(releaseBuild).toContain("stage-connector-service-host.mjs");
+
+    const installService = readFileSync(join(root, "connector-product/windows/install-service.ps1"), "utf8");
+    expect(installService).toContain("MineuQRConnectorService.exe");
+    expect(installService).toContain("MineuQRConnectorService.xml");
+    expect(installService).toContain('Invoke-ServiceHost -Exe $ServiceHostExe -Command "install"');
+
+    const installer = readFileSync(join(root, "connector-product/windows/MineuQRConnector.iss"), "utf8");
+    expect(installer).toContain("service-host\\MineuQRConnectorService.exe");
+  });
 });
 
 describe("PRINT-RELEASE-DISTRIBUTION-1 architecture guards", () => {
