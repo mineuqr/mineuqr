@@ -33,8 +33,8 @@ Source: "service-host\WINSW-NOTICE.txt"; DestDir: "{app}\windows\service-host"; 
 Source: "..\..\connector-product\release\connector-release.json"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{autoprograms}\{#MyAppName}"; Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -File ""{app}\windows\{#MyAppExeName}"""; WorkingDir: "{app}"
-Name: "{userstartup}\{#MyAppName}"; Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -File ""{app}\windows\{#MyAppExeName}"""; Tasks: startupicon
+Name: "{autoprograms}\{#MyAppName}"; Filename: "powershell.exe"; Parameters: "-STA -ExecutionPolicy Bypass -File ""{app}\windows\{#MyAppExeName}"""; WorkingDir: "{app}"
+Name: "{userstartup}\{#MyAppName}"; Filename: "powershell.exe"; Parameters: "-STA -ExecutionPolicy Bypass -File ""{app}\windows\{#MyAppExeName}"""; Tasks: startupicon
 
 [Tasks]
 Name: "startupicon"; Description: "Start tray app when Windows starts"; GroupDescription: "Additional options:"
@@ -76,6 +76,22 @@ begin
     Log('Failed to launch install-service.ps1');
 end;
 
+procedure LaunchConnectorTray;
+var
+  ResultCode: Integer;
+  PowerShell: String;
+  Params: String;
+begin
+  if IsWin64 then
+    PowerShell := ExpandConstant('{win}\Sysnative\WindowsPowerShell\v1.0\powershell.exe')
+  else
+    PowerShell := ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe');
+  Params := '-STA -ExecutionPolicy Bypass -File "' + ExpandConstant('{app}\windows\{#MyAppExeName}') + '"';
+  Log('Launching MineuQR Connector tray for enrollment.');
+  if not Exec(PowerShell, Params, ExpandConstant('{app}'), SW_SHOWMINNOACTIVE, ewNoWait, ResultCode) then
+    Log('Failed to launch MineuQR Connector tray.');
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
   if CurStep = ssPostInstall then
@@ -85,5 +101,6 @@ begin
       Log('MineuQR Connector service registration failed; aborting installation.');
       ExitProcess(1);
     end;
+    LaunchConnectorTray;
   end;
 end;

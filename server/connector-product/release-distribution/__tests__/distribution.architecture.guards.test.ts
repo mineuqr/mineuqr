@@ -116,6 +116,21 @@ describe("PRINT-RELEASE-AUTOMATION-1 architecture guards", () => {
     const installer = readFileSync(join(root, "connector-product/windows/MineuQRConnector.iss"), "utf8");
     expect(installer).toContain("service-host\\MineuQRConnectorService.exe");
   });
+
+  it("connector installer launches STA tray enrollment surface", () => {
+    const installer = readFileSync(join(root, "connector-product/windows/MineuQRConnector.iss"), "utf8");
+    expect(installer).toContain("-STA -ExecutionPolicy Bypass -File");
+    expect(installer).toContain("LaunchConnectorTray");
+    expect(installer).toContain("LaunchConnectorTray");
+
+    const tray = readFileSync(join(root, "connector-product/windows/MineuQRConnectorTray.ps1"), "utf8");
+    expect(tray).toContain('$InstallDir = Split-Path $PSScriptRoot -Parent');
+    expect(tray).not.toContain("Split-Path (Split-Path $PSScriptRoot -Parent) -Parent");
+    expect(tray).toContain("Invoke-ConnectorEnrollment");
+    expect(tray).toContain('node $enrollScript --token');
+    expect(tray).toContain("Show-EnrollmentError");
+    expect(tray).toContain("Test-ApartmentState");
+  });
 });
 
 describe("PRINT-RELEASE-DISTRIBUTION-1 architecture guards", () => {
