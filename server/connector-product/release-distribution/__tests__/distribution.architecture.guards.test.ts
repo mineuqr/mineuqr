@@ -83,6 +83,20 @@ describe("PRINT-RELEASE-AUTOMATION-1 architecture guards", () => {
     expect(automation).toContain("finally");
     expect(automation).not.toMatch(/process\.exit\s*\(\s*0\s*\)/);
   });
+
+  it("connector bundle stages self-contained runtime dependencies", () => {
+    const packageJson = readFileSync(join(root, "package.json"), "utf8");
+    expect(packageJson).toContain("stage-connector-runtime-deps.mjs");
+    expect(packageJson).toContain("--packages=external");
+
+    const stageScript = readFileSync(join(root, "scripts/stage-connector-runtime-deps.mjs"), "utf8");
+    expect(stageScript).toContain('RUNTIME_PACKAGES = ["ws"]');
+    expect(stageScript).toContain("dist/connector/node_modules");
+
+    const installer = readFileSync(join(root, "connector-product/windows/MineuQRConnector.iss"), "utf8");
+    expect(installer).toContain("dist\\connector\\*");
+    expect(installer).toContain("recursesubdirs");
+  });
 });
 
 describe("PRINT-RELEASE-DISTRIBUTION-1 architecture guards", () => {

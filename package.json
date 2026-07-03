@@ -25,7 +25,7 @@
     "db:order-read:validate": "node scripts/order-read-projection-staging.mjs --validate",
     "db:order-read:backfill": "cross-env ORDER_READ_BACKFILL_CONFIRM=YES tsx scripts/order-read-backfill-execute.ts --scope full",
     "db:push": "drizzle-kit generate && drizzle-kit migrate",
-    "build:connector:bundle": "esbuild server/connector-product/entry/rlcServiceMain.ts --platform=node --packages=external --bundle --format=esm --outfile=dist/connector/rlc-service.mjs && esbuild server/connector-product/entry/rlcEnrollMain.ts --platform=node --packages=external --bundle --format=esm --outfile=dist/connector/rlc-enroll.mjs",
+    "build:connector:bundle": "esbuild server/connector-product/entry/rlcServiceMain.ts --platform=node --packages=external --bundle --format=esm --outfile=dist/connector/rlc-service.mjs && esbuild server/connector-product/entry/rlcEnrollMain.ts --platform=node --packages=external --bundle --format=esm --outfile=dist/connector/rlc-enroll.mjs && node scripts/stage-connector-runtime-deps.mjs",
     "connector:sync-version": "node scripts/sync-connector-release-constants.mjs",
     "build:connector": "node scripts/sync-connector-release-constants.mjs && npm run build:connector:bundle",
     "release:connector": "node scripts/connector-release-build.mjs",
