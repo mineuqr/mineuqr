@@ -36,7 +36,7 @@ function Add-TimelineEvent([string]$Phase, [string]$Detail = "") {
   }
   $script:Timeline.Add($entry)
   if ($Detail) {
-    Write-Step "timeline: $Phase — $Detail"
+    Write-Step "timeline: $Phase - $Detail"
   } else {
     Write-Step "timeline: $Phase"
   }
@@ -368,7 +368,7 @@ function Remove-ConnectorInstallation {
   if (Test-Path $script:UninstallKey) {
     $uninstallExe = (Get-ItemProperty $script:UninstallKey).UninstallString
     if ($uninstallExe) {
-      $exe = $uninstallExe -replace '"',''
+      $exe = $uninstallExe.Trim([char]34)
       if (Test-Path $exe) {
         & $exe /VERYSILENT /NORESTART | Out-Null
         Start-Sleep -Seconds 5
