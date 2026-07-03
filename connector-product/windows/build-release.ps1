@@ -62,7 +62,7 @@ try {
   }
 
   Write-Host "Official production releases must run through .github/workflows/connector-release.yml."
-  Write-Host "Optional next step: connector-product/windows/sign-release.ps1 (then re-run GitHub release workflow)."
+  Write-Host "Production CI signs via sign-release.ps1 after build (see prepare-connector-signing.ps1)."
 } finally {
   Pop-Location
 }

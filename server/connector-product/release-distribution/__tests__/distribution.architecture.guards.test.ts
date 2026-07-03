@@ -17,6 +17,12 @@ describe("PRINT-RELEASE-AUTOMATION-1 architecture guards", () => {
     expect(workflow).toContain("connector-release-automation.ts promote");
     expect(workflow).toContain("connector-release-automation.ts activate");
     expect(workflow).toContain("actions/attest-build-provenance@v2");
+    expect(workflow).toContain("prepare-connector-signing.ps1");
+    expect(workflow).toContain("sign-release.ps1");
+    expect(workflow).toContain("verify-release-signature.ps1");
+    expect(workflow).toContain("-SkipFinalize");
+    expect(workflow).toContain("CONNECTOR_SIGNING_PFX_BASE64");
+    expect(workflow).toContain("Locate signtool");
   });
 
   it("admin workflow does not include delete permissions", () => {

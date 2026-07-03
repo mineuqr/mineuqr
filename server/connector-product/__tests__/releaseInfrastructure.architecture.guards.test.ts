@@ -48,6 +48,17 @@ describe("PRINT-CONNECTOR-RELEASE-1 architecture guards", () => {
   it("sign-release.ps1 refreshes metadata after signing", () => {
     const signScript = readFileSync(join(root, "connector-product", "windows", "sign-release.ps1"), "utf8");
     expect(signScript).toContain("connector-release-installer-name.mjs");
+    expect(signScript).toContain("verify-release-signature.ps1");
     expect(signScript).toContain("connector-release-finalize.mjs");
+  });
+
+  it("verify-release-signature.ps1 enforces Authenticode and timestamp", () => {
+    const verifyScript = readFileSync(
+      join(root, "connector-product", "windows", "verify-release-signature.ps1"),
+      "utf8"
+    );
+    expect(verifyScript).toContain('signtool verify /pa /v /tw');
+    expect(verifyScript).toContain("TimeStamperCertificate");
+    expect(verifyScript).toContain('Status -ne "Valid"');
   });
 });

@@ -1,4 +1,4 @@
-# MineuQR Connector — EV code signing integration (release step; no secrets in repository)
+# MineuQR Connector — Authenticode code signing (release step; no secrets in repository)
 param(
   [string]$RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path,
   [string]$ArtifactPath = $null,
@@ -38,7 +38,17 @@ if (-not $signtool) {
   $found = Get-Command signtool.exe -ErrorAction SilentlyContinue
   if ($found) { $signtool = $found.Source }
 }
-if (-not $signtool -or -not (Test-Path $signtool)) {
+if (-not $signtool -or -not (Test-Path -LiteralPath $signtool)) {
+  $kitsRoot = Join-Path ${env:ProgramFiles(x86)} "Windows Kits\10\bin"
+  if (Test-Path -LiteralPath $kitsRoot) {
+    $kitsMatch = Get-ChildItem -Path $kitsRoot -Recurse -Filter "signtool.exe" -File -ErrorAction SilentlyContinue |
+      Where-Object { $_.FullName -match '\\x64\\signtool\.exe$' } |
+      Sort-Object FullName -Descending |
+      Select-Object -First 1
+    if ($kitsMatch) { $signtool = $kitsMatch.FullName }
+  }
+}
+if (-not $signtool -or -not (Test-Path -LiteralPath $signtool)) {
   throw "signtool.exe not found. Set CONNECTOR_SIGNTOOL_PATH or install Windows SDK."
 }
 
@@ -80,6 +90,10 @@ Write-Host "Signing $ArtifactPath"
 & $signtool @signArgs
 if ($LASTEXITCODE -ne 0) { throw "signtool sign failed with exit code $LASTEXITCODE" }
 Write-Host "Signing complete."
+
+$verifyScript = Join-Path $PSScriptRoot "verify-release-signature.ps1"
+& $verifyScript -RepoRoot $RepoRoot -ArtifactPath $ArtifactPath
+if ($LASTEXITCODE -ne 0) { throw "verify-release-signature failed after signing" }
 
 node (Join-Path $RepoRoot "scripts\connector-release-finalize.mjs")
 if ($LASTEXITCODE -ne 0) { throw "connector-release-finalize failed after signing" }

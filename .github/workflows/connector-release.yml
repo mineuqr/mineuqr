@@ -36,6 +36,9 @@ jobs:
       R2_PUBLIC_BASE_URL: ${{ secrets.R2_PUBLIC_BASE_URL }}
       R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
       R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+      CONNECTOR_SIGNING_PFX_BASE64: ${{ secrets.CONNECTOR_SIGNING_PFX_BASE64 }}
+      CONNECTOR_SIGNING_CERT_PASSWORD: ${{ secrets.CONNECTOR_SIGNING_CERT_PASSWORD }}
+      CONNECTOR_SIGNING_TIMESTAMP_URL: http://timestamp.digicert.com
 
     steps:
       - name: Checkout
@@ -79,12 +82,37 @@ jobs:
       - name: Install Inno Setup
         run: choco install innosetup -y --no-progress
 
+      - name: Locate signtool
+        shell: pwsh
+        run: |
+          $signtool = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Filter signtool.exe -File -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -match '\\x64\\signtool\.exe$' } |
+            Sort-Object FullName -Descending |
+            Select-Object -First 1
+          if (-not $signtool) {
+            throw "signtool.exe not found on runner. Install Windows SDK signing tools."
+          }
+          "CONNECTOR_SIGNTOOL_PATH=$($signtool.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append
+          Write-Host "Using signtool at $($signtool.FullName)"
+
       - name: Register release candidate
         run: npx tsx scripts/connector-release-automation.ts candidate --version ${{ steps.version.outputs.version }}
 
       - name: Build connector release
         shell: pwsh
-        run: ./connector-product/windows/build-release.ps1 -SkipPublish
+        run: ./connector-product/windows/build-release.ps1 -SkipPublish -SkipFinalize
+
+      - name: Prepare code signing credentials
+        shell: pwsh
+        run: ./connector-product/windows/prepare-connector-signing.ps1
+
+      - name: Sign connector installer
+        shell: pwsh
+        run: ./connector-product/windows/sign-release.ps1
+
+      - name: Verify Authenticode signature
+        shell: pwsh
+        run: ./connector-product/windows/verify-release-signature.ps1
 
       - name: Attest build provenance
         uses: actions/attest-build-provenance@v2
