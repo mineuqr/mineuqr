@@ -203,7 +203,7 @@ describe("PRINT-RELEASE-AUTOMATION-1 release promotion", () => {
       productName: manifest.productName,
       installerFileName,
       audit: {
-        gitTag: "connector-v1.0.0",
+        gitTag: `connector-v${manifest.version}`,
         commitSha: "abc123",
         workflowRunId: "42",
         publisher: "release-bot",
@@ -226,7 +226,7 @@ describe("PRINT-RELEASE-AUTOMATION-1 release promotion", () => {
 
     const active = await registry.findByVersion(manifest.version);
     expect(active?.status).toBe("active");
-    expect(active?.audit.gitTag).toBe("connector-v1.0.0");
+    expect(active?.audit.gitTag).toBe(`connector-v${manifest.version}`);
     expect(active?.promotedAt).toBeTruthy();
     expect(active?.activatedAt).toBeTruthy();
 

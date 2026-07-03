@@ -38,7 +38,7 @@ describe("PRINT-CONNECTOR-RELEASE-1 release infrastructure", () => {
     expect(installerFileName).toBe(
       `${manifest.installer.outputBaseName}-${manifest.version}-Setup${manifest.installer.fileExtension}`
     );
-    expect(installerFileName).toBe("MineuQR-Connector-1.0.0-Setup.exe");
+    expect(installerFileName).toBe("MineuQR-Connector-1.0.1-Setup.exe");
   });
 
   it("includes required installer metadata fields", () => {
