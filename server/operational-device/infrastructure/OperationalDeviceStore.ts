@@ -20,4 +20,8 @@ export type OperationalDeviceStore = {
   revokeToken(tokenId: string, revokedAt: string, status: "revoked" | "rotated"): Promise<boolean>;
   revokeAllActiveTokens(deviceId: string, revokedAt: string, status: "revoked" | "rotated"): Promise<number>;
   touchTokenUsage(tokenId: string, lastUsedAt: string): Promise<void>;
+  updateScreenPresentation(
+    deviceId: string,
+    input: { displayName?: string; screenConfig?: import("../domain/screenConfig").OperationalScreenConfig; now: string }
+  ): Promise<boolean>;
 };

@@ -124,4 +124,20 @@ TypeScript check                                                      clean
 
 The Operational Device Platform is production-ready: registry, identity, roles, token lifecycle, device authentication, heartbeat, health, role-scoped endpoints, QR provisioning, restaurant/branch isolation, and a unified management workspace — without conflating devices with dashboard users.
 
-**Note:** Run `drizzle/0054_operational_devices.sql` migration before deploying.
+**Note:** Run `drizzle/0054_operational_devices.sql` and `drizzle/0055_operational_device_screen_config.sql` migrations before deploying.
+
+---
+
+## Screen Management Refinement (Presentation Completion)
+
+**Date:** 2026-07-04  
+**Scope:** Product-facing rename Device Management → **Screen Management**; management-only `screenConfig` persistence; Screen Settings panel; extension points for KITCHEN-DISPLAY-DENSITY-1 and KITCHEN-CATEGORY-FILTER-1.
+
+| Area | Change |
+|------|--------|
+| Product UX | Screens (Kitchen Screen, Pickup Screen, etc.) over operational devices |
+| Management API | `operationalDevice.management.updateScreenSettings` (verified operator only) |
+| Persistence | `operational_devices.screenConfig` JSON — language, direction, density, category IDs |
+| Runtime | **Unchanged** — screen config not consumed by device runtime endpoints |
+| Security | **Unchanged** — device token auth, rotation, revocation untouched |
+

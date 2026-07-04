@@ -3,6 +3,7 @@ import type {
   OperationalDeviceRecord,
   OperationalDeviceTokenRecord,
 } from "../domain/deviceContracts";
+import { DEFAULT_SCREEN_CONFIG } from "../domain/screenConfig";
 import type { OperationalDeviceStore } from "./OperationalDeviceStore";
 
 function isActiveToken(token: OperationalDeviceTokenRecord, now: number): boolean {
@@ -25,6 +26,7 @@ export class InMemoryOperationalDeviceStore implements OperationalDeviceStore {
       branchId: input.branchId ?? null,
       role: input.role,
       displayName: input.displayName,
+      screenConfig: { ...DEFAULT_SCREEN_CONFIG },
       status: "active",
       reportedVersion: null,
       lastSeenAt: null,
@@ -120,5 +122,24 @@ export class InMemoryOperationalDeviceStore implements OperationalDeviceStore {
     const token = this.tokens.get(tokenId);
     if (!token) return;
     this.tokens.set(tokenId, { ...token, lastUsedAt });
+  }
+
+  async updateScreenPresentation(
+    deviceId: string,
+    input: {
+      displayName?: string;
+      screenConfig?: OperationalDeviceRecord["screenConfig"];
+      now: string;
+    }
+  ): Promise<boolean> {
+    const device = this.devices.get(deviceId);
+    if (!device) return false;
+    this.devices.set(deviceId, {
+      ...device,
+      displayName: input.displayName ?? device.displayName,
+      screenConfig: input.screenConfig ?? device.screenConfig,
+      updatedAt: input.now,
+    });
+    return true;
   }
 }

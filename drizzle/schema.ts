@@ -812,6 +812,7 @@ export const operationalDevices = mysqlTable("operational_devices", {
 		"self_ordering_kiosk",
 	]).notNull(),
 	displayName: varchar({ length: 128 }).notNull(),
+	screenConfig: json(),
 	status: mysqlEnum(["active", "disabled"]).default("active").notNull(),
 	reportedVersion: varchar({ length: 64 }),
 	lastSeenAt: timestamp({ mode: "string" }),

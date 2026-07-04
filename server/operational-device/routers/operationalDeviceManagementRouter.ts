@@ -2,7 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { verifiedProcedure, router } from "../../_core/trpc";
 import { assertRestaurantAccess } from "../../restaurantAccess";
-import { summarizeDeviceHealth } from "../domain/deviceHealth";
+import { summarizeDeviceHealth, deriveDevicePresence } from "../domain/deviceHealth";
 import { operationalDeviceComposition } from "../operationalDeviceComposition";
 
 const restaurantInput = z.object({
@@ -118,6 +118,47 @@ export const operationalDeviceManagementRouter = router({
     if (!ok) throw new TRPCError({ code: "NOT_FOUND", message: "No active token" });
     return { success: true as const };
   }),
+
+  updateScreenSettings: verifiedProcedure
+    .input(
+      deviceInput.extend({
+        displayName: z.string().min(2).max(128).optional(),
+        screenConfig: z
+          .object({
+            language: z.enum(["ar", "en"]).optional(),
+            displayDirection: z.enum(["rtl", "ltr"]).optional(),
+            displayDensity: z.enum(["large", "comfortable", "compact"]).optional(),
+            visibleCategoryIds: z.array(z.coerce.number().int().positive()).optional(),
+          })
+          .optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      await assertRestaurantAccess(
+        ctx,
+        input.restaurantId,
+        "operationalDevice.management.updateScreenSettings"
+      );
+      const updated = await operationalDeviceComposition.registryService.updateScreenSettings(
+        input.deviceId,
+        input.restaurantId,
+        {
+          displayName: input.displayName,
+          screenConfig: input.screenConfig,
+        }
+      );
+      if (!updated) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Screen not found" });
+      }
+      const activeToken = await operationalDeviceComposition.store.findActiveTokenForDevice(
+        input.deviceId
+      );
+      return {
+        ...updated,
+        presence: deriveDevicePresence(updated.lastSeenAt),
+        hasActiveToken: activeToken != null,
+      };
+    }),
 
   getHealthSummary: verifiedProcedure.input(restaurantInput).query(async ({ input, ctx }) => {
     await assertRestaurantAccess(

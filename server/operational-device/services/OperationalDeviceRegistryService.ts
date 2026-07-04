@@ -6,6 +6,8 @@ import type {
   OperationalDeviceRecord,
 } from "../domain/deviceContracts";
 import { deriveDevicePresence } from "../domain/deviceHealth";
+import type { UpdateScreenSettingsInput } from "../domain/screenConfig";
+import { mergeScreenConfig } from "../domain/screenConfig";
 import type { OperationalDeviceStore } from "../infrastructure/OperationalDeviceStore";
 import {
   generateDeviceId,
@@ -97,6 +99,26 @@ export class OperationalDeviceRegistryService {
     const nowIso = new Date(this.now()).toISOString();
     const count = await this.store.revokeAllActiveTokens(deviceId, nowIso, "revoked");
     return count > 0;
+  }
+
+  async updateScreenSettings(
+    deviceId: string,
+    restaurantId: number,
+    input: UpdateScreenSettingsInput
+  ): Promise<OperationalDeviceRecord | null> {
+    const device = await this.store.getDevice(deviceId);
+    if (!device || device.restaurantId !== restaurantId) return null;
+    const nowIso = new Date(this.now()).toISOString();
+    const screenConfig = input.screenConfig
+      ? mergeScreenConfig(device.screenConfig, input.screenConfig)
+      : device.screenConfig;
+    const ok = await this.store.updateScreenPresentation(deviceId, {
+      displayName: input.displayName?.trim() || undefined,
+      screenConfig,
+      now: nowIso,
+    });
+    if (!ok) return null;
+    return this.store.getDevice(deviceId);
   }
 
   buildQrPayload(device: OperationalDeviceRecord, token: string): DeviceQrPayload {

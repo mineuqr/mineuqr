@@ -7,6 +7,7 @@ import type {
   OperationalDeviceRecord,
   OperationalDeviceTokenRecord,
 } from "../domain/deviceContracts";
+import { DEFAULT_SCREEN_CONFIG, parseScreenConfig } from "../domain/screenConfig";
 import type { OperationalDeviceStore } from "./OperationalDeviceStore";
 
 function mapDevice(row: typeof operationalDevices.$inferSelect): OperationalDeviceRecord {
@@ -16,6 +17,7 @@ function mapDevice(row: typeof operationalDevices.$inferSelect): OperationalDevi
     branchId: row.branchId ?? null,
     role: row.role as OperationalDeviceRecord["role"],
     displayName: row.displayName,
+    screenConfig: parseScreenConfig(row.screenConfig),
     status: row.status as OperationalDeviceRecord["status"],
     reportedVersion: row.reportedVersion ?? null,
     lastSeenAt: row.lastSeenAt ?? null,
@@ -51,6 +53,7 @@ export class DrizzleOperationalDeviceStore implements OperationalDeviceStore {
       branchId: input.branchId ?? null,
       role: input.role,
       displayName: input.displayName,
+      screenConfig: DEFAULT_SCREEN_CONFIG,
       status: "active",
       createdAt: input.now,
       updatedAt: input.now,
@@ -231,5 +234,28 @@ export class DrizzleOperationalDeviceStore implements OperationalDeviceStore {
       .update(operationalDeviceTokens)
       .set({ lastUsedAt })
       .where(eq(operationalDeviceTokens.tokenId, tokenId));
+  }
+
+  async updateScreenPresentation(
+    deviceId: string,
+    input: {
+      displayName?: string;
+      screenConfig?: OperationalDeviceRecord["screenConfig"];
+      now: string;
+    }
+  ): Promise<boolean> {
+    const db = await getDb();
+    if (!db) return false;
+
+    const patch: Record<string, unknown> = { updatedAt: input.now };
+    if (input.displayName != null) patch.displayName = input.displayName;
+    if (input.screenConfig != null) patch.screenConfig = input.screenConfig;
+
+    const result = await db
+      .update(operationalDevices)
+      .set(patch)
+      .where(eq(operationalDevices.deviceId, deviceId));
+
+    return readMysqlAffectedRows(result) > 0;
   }
 }

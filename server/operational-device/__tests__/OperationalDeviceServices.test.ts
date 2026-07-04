@@ -100,4 +100,25 @@ describe("OperationalDeviceRegistryService", () => {
     expect(await registry.listDevices(1)).toHaveLength(1);
     expect(await registry.listDevices(2)).toHaveLength(1);
   });
+
+  it("updates screen settings without changing device identity", async () => {
+    const store = new InMemoryOperationalDeviceStore();
+    const registry = new OperationalDeviceRegistryService(store, () => 1_700_000_000_000);
+
+    const created = await registry.createDevice({
+      restaurantId: 5,
+      role: "kitchen_display",
+      displayName: "Kitchen 1",
+    });
+
+    const updated = await registry.updateScreenSettings(created.device.deviceId, 5, {
+      displayName: "Main Kitchen",
+      screenConfig: { language: "en", displayDirection: "ltr", visibleCategoryIds: [10] },
+    });
+
+    expect(updated?.displayName).toBe("Main Kitchen");
+    expect(updated?.screenConfig.language).toBe("en");
+    expect(updated?.screenConfig.visibleCategoryIds).toEqual([10]);
+    expect(updated?.deviceId).toBe(created.device.deviceId);
+  });
 });

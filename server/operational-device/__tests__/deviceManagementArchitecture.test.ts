@@ -14,6 +14,8 @@ describe("DEVICE-MANAGEMENT-1 architecture guards", () => {
     expect(runtime).toContain("deviceProcedure");
     expect(runtime).not.toContain("verifiedProcedure");
     expect(runtime).not.toMatch(/order\.updateStatus|orderRouter/);
+    expect(runtime).not.toContain("screenConfig");
+    expect(runtime).not.toContain("updateScreenSettings");
   });
 
   it("device management router uses operator verifiedProcedure", () => {
@@ -27,6 +29,11 @@ describe("DEVICE-MANAGEMENT-1 architecture guards", () => {
     expect(schema).toContain("operational_devices");
     expect(schema).toContain("operational_device_tokens");
     expect(schema).toContain("kitchen_display");
+  });
+
+  it("screen config migration is management-only presentation storage", () => {
+    const migration = read("drizzle/0055_operational_device_screen_config.sql");
+    expect(migration).toContain("screenConfig");
   });
 
   it("device auth header format is Device deviceId:tokenId:secret", () => {

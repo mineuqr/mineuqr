@@ -3,6 +3,8 @@ import type {
   OperationalDeviceStatus,
   OperationalDeviceTokenStatus,
 } from "./deviceRoles";
+import type { OperationalScreenConfig } from "./screenConfig";
+import { DEFAULT_SCREEN_CONFIG } from "./screenConfig";
 
 export type OperationalDeviceRecord = {
   deviceId: string;
@@ -10,6 +12,7 @@ export type OperationalDeviceRecord = {
   branchId: number | null;
   role: OperationalDeviceRole;
   displayName: string;
+  screenConfig: OperationalScreenConfig;
   status: OperationalDeviceStatus;
   reportedVersion: string | null;
   lastSeenAt: string | null;
@@ -66,6 +69,9 @@ export type DeviceQrPayload = {
   branchId: number | null;
   role: OperationalDeviceRole;
 };
+
+export { DEFAULT_SCREEN_CONFIG };
+export type { OperationalScreenConfig, UpdateScreenSettingsInput } from "./screenConfig";
 
 export type DeviceAuthenticateResult =
   | { ok: true; session: OperationalDeviceSession }
