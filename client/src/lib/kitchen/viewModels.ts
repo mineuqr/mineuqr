@@ -2,6 +2,8 @@ import type { KitchenTicketDto, KitchenUrgencyTier } from "@/lib/kitchen/types";
 
 export type KitchenColumnId = "pending" | "preparing" | "ready";
 
+export type KitchenTicketLine = KitchenTicketDto["lineItems"][number];
+
 export type KitchenTicketCardModel = {
   orderId: number;
   orderNumber: string;
@@ -10,6 +12,7 @@ export type KitchenTicketCardModel = {
   orderNotes: string | null;
   status: KitchenColumnId;
   linesSummary: string;
+  lineItems: KitchenTicketLine[];
   lineCount: number;
   elapsedMinutes: number;
   columnElapsedMinutes: number;
@@ -32,6 +35,7 @@ export function toKitchenTicketCard(ticket: KitchenTicketDto): KitchenTicketCard
     orderNotes: ticket.orderNotes,
     status: ticket.status,
     linesSummary: ticket.linesSummary,
+    lineItems: ticket.lineItems,
     lineCount: ticket.lineCount,
     elapsedMinutes: formatElapsedMinutes(ticket.elapsedSeconds),
     columnElapsedMinutes: formatElapsedMinutes(ticket.columnElapsedSeconds),

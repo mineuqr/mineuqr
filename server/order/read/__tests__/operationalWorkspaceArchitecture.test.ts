@@ -11,8 +11,14 @@ function read(rel: string) {
 describe("OPERATIONAL-WORKSPACE-1 architecture guards", () => {
   it("kitchen workspace is execution-only (no lifecycle actions in panel)", () => {
     const kitchenPanel = read("client/src/components/kitchen/KitchenWorkspacePanel.tsx");
-    expect(kitchenPanel).toContain("executionOnly");
+    expect(kitchenPanel).toContain("KitchenExecutionCard");
     expect(kitchenPanel).not.toMatch(/useKitchenActions|useOrderStatusActions|onAction=/);
+  });
+
+  it("kitchen execution card exposes no lifecycle action handlers", () => {
+    const card = read("client/src/components/kitchen/KitchenExecutionCard.tsx");
+    expect(card).not.toMatch(/onAction|onStartPreparing|onMarkReady|onMarkServed|updateStatus/);
+    expect(card).not.toContain("Button");
   });
 
   it("orders workspace owns lifecycle actions", () => {

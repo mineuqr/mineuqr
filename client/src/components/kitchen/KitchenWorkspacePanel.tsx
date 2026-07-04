@@ -1,6 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { VerificationRequiredPanel } from "@/components/auth/VerificationRequiredPanel";
-import { OperationalCard } from "@/components/operational-workspace/OperationalCard";
+import { KitchenExecutionCard } from "@/components/kitchen/KitchenExecutionCard";
 import { OperationalWorkspaceShell } from "@/components/operational-workspace/OperationalWorkspaceShell";
 import { OperationsBar } from "@/components/operational-workspace/OperationsBar";
 import { WorkspaceFilters } from "@/components/operational-workspace/WorkspaceFilters";
@@ -183,23 +183,16 @@ export function KitchenWorkspacePanel({
                   </p>
                 ) : (
                   columnTickets.map((ticket) => (
-                    <OperationalCard
+                    <KitchenExecutionCard
                       key={ticket.orderId}
-                      orderNumber={`#${ticket.orderNumber}`}
-                      tableLabel={isAr ? `طاولة ${ticket.tableNumber}` : `Table ${ticket.tableNumber}`}
-                      linesSummary={ticket.linesSummary}
-                      orderNotes={ticket.orderNotes}
-                      customerName={ticket.customerName}
-                      status={ticket.status}
+                      ticket={ticket}
                       sla={computeSlaSnapshot(
                         ticket.status,
                         ticket.columnElapsedMinutes * 60,
                         ticket.elapsedMinutes * 60
                       )}
                       language={language}
-                      executionOnly
                       fading={isFading(ticket)}
-                      className="min-h-[180px]"
                     />
                   ))
                 )}

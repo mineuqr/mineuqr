@@ -31,6 +31,17 @@ describe("kitchen viewModels", () => {
     expect(card.elapsedMinutes).toBe(15);
   });
 
+  it("passes line items through to the card presentation model", () => {
+    const withLines = toKitchenTicketCard({
+      ...sample,
+      lineItems: [
+        { lineItemId: 1, menuItemId: 9, nameAr: "تبولة", nameEn: "Tabbouleh", quantity: 1, price: "10.00" },
+      ],
+    });
+    expect(withLines.lineItems).toHaveLength(1);
+    expect(withLines.lineItems[0]?.nameAr).toBe("تبولة");
+  });
+
   it("maps workflow actions to order statuses", () => {
     expect(nextStatusForAction("start-preparing")).toBe("preparing");
     expect(nextStatusForAction("mark-ready")).toBe("ready");
