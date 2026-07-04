@@ -7,6 +7,8 @@ import { opsLog } from "./opsLog";
 import { trackSuspiciousActivity } from "./suspiciousActivity";
 import { OPS_EVENT } from "./opsTaxonomy";
 import { trackTrpcProcedurePressure } from "./healthSignals";
+import type { OperationalDeviceSession } from "../operational-device/domain/deviceContracts";
+import { resolveDeviceSessionFromRequest } from "../operational-device/middleware/resolveDeviceSession";
 
 const t = initTRPC.context<TrpcContext>().create({
   transformer: superjson,
@@ -138,3 +140,22 @@ export const adminProcedure = baseProcedure.use(
     });
   }),
 );
+
+const requireDeviceSession = t.middleware(async (opts) => {
+  const session = await resolveDeviceSessionFromRequest(opts.ctx.req);
+  if (!session) {
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+      message: "Valid operational device credentials required",
+    });
+  }
+  return opts.next({
+    ctx: {
+      ...opts.ctx,
+      deviceSession: session,
+    },
+  });
+});
+
+/** Operational device authentication — separate from user dashboard sessions. */
+export const deviceProcedure = baseProcedure.use(requireDeviceSession);

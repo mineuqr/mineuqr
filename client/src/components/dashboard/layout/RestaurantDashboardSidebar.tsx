@@ -17,6 +17,7 @@ import {
   Grid3X3,
   Home,
   LayoutGrid,
+  MonitorSmartphone,
   Palette,
   Printer,
   QrCode,
@@ -106,6 +107,13 @@ export function RestaurantDashboardSidebar({
           icon: ChefHat,
           active: restaurantTab === "kitchen",
           onClick: () => onRestaurantTabChange!("kitchen"),
+        },
+        {
+          id: "devices",
+          label: language === "ar" ? "إدارة الأجهزة" : "Devices",
+          icon: MonitorSmartphone,
+          active: restaurantTab === "devices",
+          onClick: () => onRestaurantTabChange!("devices"),
         },
         {
           id: "print",

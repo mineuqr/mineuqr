@@ -3,6 +3,7 @@ export type RestaurantTab =
   | "sessions"
   | "orders"
   | "kitchen"
+  | "devices"
   | "print"
   | "printer-management"
   | "reports"

@@ -98,6 +98,7 @@ import { opsRouter } from "./ops/opsRouter";
 import { kitchenRouter } from "./kitchen/read/kitchenRouter";
 import { orderReadRouter } from "./order/read/orderReadRouter";
 import { printWorkspaceRouter } from "./print-workspace/printWorkspaceRouter";
+import { operationalDeviceRouter } from "./operational-device/operationalDeviceRouter";
 import { printConnectorRouter } from "./print-connector/printConnectorRouter";
 import { printerManagementRouter } from "./printer-management/printerManagementRouter";
 import { toPublicOrderStatus } from "./orderPublicStatus";
@@ -2031,6 +2032,7 @@ export const appRouter = router({
   ops: opsRouter,
   kitchen: kitchenRouter,
   printWorkspace: printWorkspaceRouter,
+  operationalDevice: operationalDeviceRouter,
   printConnector: printConnectorRouter,
   printerManagement: printerManagementRouter,
 });

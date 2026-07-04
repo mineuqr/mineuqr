@@ -789,6 +789,57 @@ export const orderDomainConsumerProcessed = mysqlTable("order_domain_consumer_pr
 	index("order_domain_consumer_processed_event").on(table.eventId),
 ]);
 
+// ─── Operational devices (DEVICE-MANAGEMENT-1) ────────────────────
+export const operationalDeviceRoleEnum = mysqlEnum([
+	"kitchen_display",
+	"expo_display",
+	"pickup_display",
+	"customer_display",
+	"print_monitor",
+	"self_ordering_kiosk",
+]);
+
+export const operationalDevices = mysqlTable("operational_devices", {
+	deviceId: varchar({ length: 64 }).notNull(),
+	restaurantId: int().notNull(),
+	branchId: int(),
+	role: mysqlEnum([
+		"kitchen_display",
+		"expo_display",
+		"pickup_display",
+		"customer_display",
+		"print_monitor",
+		"self_ordering_kiosk",
+	]).notNull(),
+	displayName: varchar({ length: 128 }).notNull(),
+	status: mysqlEnum(["active", "disabled"]).default("active").notNull(),
+	reportedVersion: varchar({ length: 64 }),
+	lastSeenAt: timestamp({ mode: "string" }),
+	createdAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+	updatedAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+},
+(table) => [
+	primaryKey({ columns: [table.deviceId] }),
+	index("operational_devices_restaurant_status").on(table.restaurantId, table.status),
+	index("operational_devices_restaurant_branch").on(table.restaurantId, table.branchId),
+]);
+
+export const operationalDeviceTokens = mysqlTable("operational_device_tokens", {
+	tokenId: varchar({ length: 64 }).notNull(),
+	deviceId: varchar({ length: 64 }).notNull(),
+	secretHash: varchar({ length: 255 }).notNull(),
+	status: mysqlEnum(["active", "revoked", "rotated"]).default("active").notNull(),
+	issuedAt: timestamp({ mode: "string" }).notNull(),
+	expiresAt: timestamp({ mode: "string" }),
+	revokedAt: timestamp({ mode: "string" }),
+	lastUsedAt: timestamp({ mode: "string" }),
+	createdAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+},
+(table) => [
+	primaryKey({ columns: [table.tokenId] }),
+	index("operational_device_tokens_device_status").on(table.deviceId, table.status),
+]);
+
 export type InsertOrderDomainOutbox = typeof orderDomainOutbox.$inferInsert;
 export type SelectOrderDomainOutbox = typeof orderDomainOutbox.$inferSelect;
 

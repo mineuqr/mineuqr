@@ -1,5 +1,6 @@
 import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
 import type { SelectUser } from "../../drizzle/schema";
+import type { OperationalDeviceSession } from "../operational-device/domain/deviceContracts";
 import { sdk } from "./sdk";
 import { getCorrelationId } from "./requestContext";
 import { clearSessionCookie } from "./cookies";
@@ -10,6 +11,7 @@ export type TrpcContext = {
   res: CreateExpressContextOptions["res"];
   user: SelectUser | null;
   correlationId?: string;
+  deviceSession?: OperationalDeviceSession;
 };
 
 export async function createContext(
