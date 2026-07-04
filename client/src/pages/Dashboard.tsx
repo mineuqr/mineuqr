@@ -5,6 +5,7 @@ import OrderAlertSystem from "@/components/OrderAlertSystem";
 import { DiningSessionWorkspaceSheet } from "@/components/dashboard/DiningSessionWorkspaceSheet";
 import { ActiveSessionsPreviewSection } from "@/components/dashboard/ActiveSessionsPreviewSection";
 import { SessionsWorkspacePanel } from "@/components/dashboard/SessionsWorkspacePanel";
+import { OrdersWorkspacePanel } from "@/components/orders-workspace/OrdersWorkspacePanel";
 import { KitchenWorkspacePanel } from "@/components/kitchen/KitchenWorkspacePanel";
 import { PrintWorkspacePanel } from "@/components/print-workspace/PrintWorkspacePanel";
 import { PrinterManagementPanel } from "@/components/printer-management/PrinterManagementPanel";
@@ -1227,8 +1228,9 @@ function RestaurantDetail({
       )}
 
       {activeTab === "orders" && (
-        <OrdersTab
+        <OrdersWorkspacePanel
           restaurantId={restaurantId}
+          language={language}
           currencySymbol={(restaurant as { currencySymbol?: string })?.currencySymbol}
           tableLabel={(restaurant as { tableLabel?: string })?.tableLabel}
         />

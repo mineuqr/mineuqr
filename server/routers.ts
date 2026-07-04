@@ -96,6 +96,7 @@ import { getOwnerSessionTimeline } from "./diningSession/sessionOwnerTimeline";
 import { getOwnerSessionWorkspace } from "./diningSession/sessionOwnerWorkspace";
 import { opsRouter } from "./ops/opsRouter";
 import { kitchenRouter } from "./kitchen/read/kitchenRouter";
+import { orderReadRouter } from "./order/read/orderReadRouter";
 import { printWorkspaceRouter } from "./print-workspace/printWorkspaceRouter";
 import { printConnectorRouter } from "./print-connector/printConnectorRouter";
 import { printerManagementRouter } from "./printer-management/printerManagementRouter";
@@ -1991,6 +1992,7 @@ const orderRouter = router({
   trackOrder: publicProcedure
     .input(z.object({ orderNumber: z.string() }))
     .query(async () => null),
+  read: orderReadRouter,
 });
 
 export const appRouter = router({

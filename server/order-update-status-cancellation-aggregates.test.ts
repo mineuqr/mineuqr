@@ -81,6 +81,11 @@ describe("order.updateStatus cancellation router ORDER-EVENTS-1B", () => {
 
     expect(updateOrderStatus).toHaveBeenCalledWith(7, "cancelled");
     expect(decrementSessionAggregatesForCancelledOrder).not.toHaveBeenCalled();
-    expect(result).toEqual({ success: true });
+    expect(result).toEqual({
+      success: true,
+      orderId: 7,
+      previousStatus: "pending",
+      newStatus: "cancelled",
+    });
   });
 });

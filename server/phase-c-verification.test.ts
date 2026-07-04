@@ -188,7 +188,12 @@ describe("Phase C verifiedProcedure mutations (AUTH-POLICY-1C.1)", () => {
       const caller = appRouter.createCaller(createContext(baseUser()));
       await expect(
         caller.order.updateStatus({ id: 1, status: "preparing" })
-      ).resolves.toEqual({ success: true });
+      ).resolves.toEqual({
+        success: true,
+        orderId: 1,
+        previousStatus: "pending",
+        newStatus: "preparing",
+      });
     });
 
     it("allows public order.create without session", async () => {

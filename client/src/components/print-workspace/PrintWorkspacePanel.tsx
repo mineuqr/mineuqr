@@ -8,13 +8,14 @@ import { PrintJobMonitor } from "@/components/print-workspace/PrintJobMonitor";
 import { PrinterSelectionDialog } from "@/components/print-workspace/PrinterSelectionDialog";
 import { PrintingSetupZone } from "@/components/print-workspace/PrintingSetupZone";
 import { PrintingStatusBanner } from "@/components/print-workspace/PrintingStatusBanner";
+import { OperationsBar } from "@/components/operational-workspace/OperationsBar";
+import { WorkspaceFilters } from "@/components/operational-workspace/WorkspaceFilters";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  printWorkspaceListQueryOptions,
-  restaurantQueriesEnabled,
-  useDevQueryRuntimeLog,
-} from "@/lib/queryRuntime";
+  DEFAULT_PRINT_FILTERS,
+  useSavedFilters,
+} from "@/lib/operational-workspace/useSavedFilters";
 import { useCurrentPrinter } from "@/lib/print-workspace/useCurrentPrinter";
 import { useOperationalPrintStatus } from "@/lib/print-workspace/useOperationalPrintStatus";
 import {
@@ -30,17 +31,22 @@ import {
   type PrintWorkspaceViewFilter,
 } from "@/lib/print-workspace/viewModels";
 import { usePrintWorkspaceState } from "@/lib/print-workspace/usePrintWorkspaceState";
+import {
+  printWorkspaceListQueryOptions,
+  restaurantQueriesEnabled,
+  useDevQueryRuntimeLog,
+} from "@/lib/queryRuntime";
 import { isEmailNotVerifiedError } from "@/lib/trpcErrors";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { Loader2, RefreshCw, Settings2 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 
-const VIEW_TABS: { id: PrintWorkspaceViewFilter; en: string; ar: string }[] = [
-  { id: "awaiting", en: "Awaiting print", ar: "بانتظار الطباعة" },
-  { id: "completed", en: "Recently completed", ar: "مكتملة مؤخراً" },
-  { id: "all", en: "All orders", ar: "كل الطلبات" },
-];
+function mapPresetToView(presetId: string): PrintWorkspaceViewFilter {
+  if (presetId === "completed") return "completed";
+  if (presetId === "failures") return "awaiting";
+  return "awaiting";
+}
 
 export function PrintWorkspacePanel({
   restaurantId,
@@ -124,6 +130,39 @@ export function PrintWorkspacePanel({
     () => (listQuery.data?.items ?? []).map((o) => toPrintWorkspaceOrderCard(o, language)),
     [listQuery.data?.items, language]
   );
+
+  const { presets, activeId, select } = useSavedFilters(
+    "print",
+    restaurantId,
+    DEFAULT_PRINT_FILTERS
+  );
+
+  const printOpsBarItems = useMemo(() => {
+    const rows = listQuery.data?.items ?? [];
+    const awaiting = rows.filter((o) => o.isActive).length;
+    const completed = rows.filter((o) => !o.isActive).length;
+    const blocked = isPrintingReady && !printStatus.operational.canPrint ? 1 : 0;
+    return [
+      {
+        id: "awaiting",
+        label: isAr ? "بانتظار الطباعة" : "Awaiting print",
+        value: awaiting,
+        tone: awaiting > 0 ? ("warning" as const) : ("default" as const),
+      },
+      {
+        id: "failures",
+        label: isAr ? "فشل الطباعة" : "Print failures",
+        value: blocked,
+        tone: blocked > 0 ? ("danger" as const) : ("default" as const),
+      },
+      {
+        id: "completed",
+        label: isAr ? "مكتملة" : "Completed",
+        value: completed,
+        tone: "default" as const,
+      },
+    ];
+  }, [listQuery.data?.items, isAr, isPrintingReady, printStatus.operational.canPrint]);
 
   const verificationError = isEmailNotVerifiedError(listQuery.error) ? listQuery.error : null;
 
@@ -218,20 +257,18 @@ export function PrintWorkspacePanel({
                   : "Complete printing setup above to print orders."}
               </p>
             ) : null}
+            <OperationsBar items={printOpsBarItems} />
+
             <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex flex-wrap gap-2">
-                {VIEW_TABS.map((tab) => (
-                  <Button
-                    key={tab.id}
-                    type="button"
-                    size="sm"
-                    variant={state.view === tab.id ? "default" : "outline"}
-                    onClick={() => setView(tab.id)}
-                  >
-                    {isAr ? tab.ar : tab.en}
-                  </Button>
-                ))}
-              </div>
+              <WorkspaceFilters
+                presets={presets}
+                activeId={activeId}
+                onSelect={(id) => {
+                  select(id);
+                  setView(mapPresetToView(id));
+                }}
+                language={language}
+              />
               <Input
                 value={state.search}
                 onChange={(e) => setSearch(e.target.value)}

@@ -1,11 +1,17 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { VerificationRequiredPanel } from "@/components/auth/VerificationRequiredPanel";
-import { KitchenColumn } from "@/components/kitchen/KitchenColumn";
-import { KitchenColumnSkeleton } from "@/components/kitchen/KitchenTicketCard";
-import { RestaurantDashSection } from "@/components/dashboard/RestaurantDashSection";
+import { OperationalCard } from "@/components/operational-workspace/OperationalCard";
+import { OperationalWorkspaceShell } from "@/components/operational-workspace/OperationalWorkspaceShell";
+import { OperationsBar } from "@/components/operational-workspace/OperationsBar";
+import { WorkspaceFilters } from "@/components/operational-workspace/WorkspaceFilters";
 import { RestaurantSectionError } from "@/components/dashboard/RestaurantSectionStates";
 import { Button } from "@/components/ui/button";
-import { useKitchenActions } from "@/lib/kitchen/useKitchenActions";
+import { computeSlaSnapshot } from "@/lib/operational-workspace/slaEngine";
+import { useGracePeriod } from "@/lib/operational-workspace/useGracePeriod";
+import {
+  DEFAULT_KITCHEN_FILTERS,
+  useSavedFilters,
+} from "@/lib/operational-workspace/useSavedFilters";
 import { toKitchenTicketCard } from "@/lib/kitchen/viewModels";
 import {
   kitchenQueueQueryOptions,
@@ -15,7 +21,13 @@ import {
 import { isEmailNotVerifiedError } from "@/lib/trpcErrors";
 import { trpc } from "@/lib/trpc";
 import { Loader2, RefreshCw } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useCallback } from "react";
+
+const COLUMN_LABELS = {
+  pending: { en: "New", ar: "جديد" },
+  preparing: { en: "Preparing", ar: "قيد التحضير" },
+  ready: { en: "Ready", ar: "جاهز" },
+} as const;
 
 export function KitchenWorkspacePanel({
   restaurantId,
@@ -27,7 +39,11 @@ export function KitchenWorkspacePanel({
   const isAr = language === "ar";
   const { isAuthenticated, authPending } = useAuth();
   const queriesEnabled = restaurantQueriesEnabled(authPending, isAuthenticated, restaurantId);
-  const [actionPendingOrderId, setActionPendingOrderId] = useState<number | null>(null);
+  const { presets, activeId, active, select } = useSavedFilters(
+    "kitchen",
+    restaurantId,
+    DEFAULT_KITCHEN_FILTERS
+  );
 
   useDevQueryRuntimeLog("kitchen.read.getQueue", {
     enabled: queriesEnabled,
@@ -41,16 +57,11 @@ export function KitchenWorkspacePanel({
     kitchenQueueQueryOptions(queriesEnabled)
   );
 
-  const kitchenActions = useKitchenActions(restaurantId, () => {
-    setActionPendingOrderId(null);
-    void queueQuery.refetch();
-  });
+  const counts = queueQuery.data?.meta.counts ?? { pending: 0, preparing: 0, ready: 0 };
 
   const columns = useMemo(() => {
     const data = queueQuery.data;
-    if (!data) {
-      return { pending: [], preparing: [], ready: [] };
-    }
+    if (!data) return { pending: [], preparing: [], ready: [] };
     return {
       pending: data.columns.pending.map(toKitchenTicketCard),
       preparing: data.columns.preparing.map(toKitchenTicketCard),
@@ -58,31 +69,37 @@ export function KitchenWorkspacePanel({
     };
   }, [queueQuery.data]);
 
-  const counts = queueQuery.data?.meta.counts ?? { pending: 0, preparing: 0, ready: 0 };
+  const visibleColumn = active?.status as keyof typeof columns | undefined;
 
-  async function handleAdvance(
-    orderId: number,
-    action: "start-preparing" | "mark-ready" | "mark-served"
-  ) {
-    setActionPendingOrderId(orderId);
-    try {
-      await kitchenActions.advanceTicket(orderId, action);
-    } catch {
-      setActionPendingOrderId(null);
+  const allTickets = useMemo(() => {
+    if (visibleColumn && visibleColumn in columns) {
+      return columns[visibleColumn];
     }
-  }
+    return [...columns.pending, ...columns.preparing, ...columns.ready];
+  }, [columns, visibleColumn]);
+
+  const { displayItems: displayTickets, isFading } = useGracePeriod(
+    allTickets,
+    (t) => String(t.orderId)
+  );
+
+  const ticketsForColumn = useCallback(
+    (columnId: "pending" | "preparing" | "ready") =>
+      displayTickets.filter((ticket) => ticket.status === columnId),
+    [displayTickets]
+  );
 
   if (queueQuery.error && isEmailNotVerifiedError(queueQuery.error)) {
-    return <VerificationRequiredPanel language={language} />;
+    return <VerificationRequiredPanel variant="operations" />;
   }
 
   return (
-    <RestaurantDashSection
+    <OperationalWorkspaceShell
       title={isAr ? "شاشة المطبخ" : "Kitchen Display"}
       description={
         isAr
-          ? "تتبع الطلبات النشطة وتحديث حالة التحضير"
-          : "Track active orders and advance preparation status"
+          ? "مساحة تنفيذ — عرض العمل التشغيلي (إدارة الطلبات من مساحة الطلبات)"
+          : "Execution workspace — visualize operational work (manage orders in Orders Workspace)"
       }
       headerAside={
         <Button
@@ -99,46 +116,99 @@ export function KitchenWorkspacePanel({
           {isAr ? "تحديث" : "Refresh"}
         </Button>
       }
+      operationsBar={
+        <OperationsBar
+          items={[
+            {
+              id: "new",
+              label: isAr ? COLUMN_LABELS.pending.ar : COLUMN_LABELS.pending.en,
+              value: counts.pending,
+              tone: counts.pending > 0 ? "warning" : "default",
+            },
+            {
+              id: "prep",
+              label: isAr ? COLUMN_LABELS.preparing.ar : COLUMN_LABELS.preparing.en,
+              value: counts.preparing,
+            },
+            {
+              id: "ready",
+              label: isAr ? COLUMN_LABELS.ready.ar : COLUMN_LABELS.ready.en,
+              value: counts.ready,
+              tone: "success",
+            },
+            {
+              id: "backlog",
+              label: isAr ? "إجمالي الطابور" : "Kitchen backlog",
+              value: counts.pending + counts.preparing + counts.ready,
+            },
+          ]}
+        />
+      }
+      filters={<WorkspaceFilters presets={presets} activeId={activeId} onSelect={select} language={language} />}
     >
       {queueQuery.error ? (
         <RestaurantSectionError
           message={queueQuery.error.message}
+          retryLabel={isAr ? "إعادة المحاولة" : "Retry"}
           onRetry={() => void queueQuery.refetch()}
         />
       ) : queueQuery.isLoading ? (
-        <div className="grid gap-4 lg:grid-cols-3">
-          <KitchenColumnSkeleton />
-          <KitchenColumnSkeleton />
-          <KitchenColumnSkeleton />
+        <div className="flex justify-center py-16">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-3">
-          <KitchenColumn
-            columnId="pending"
-            tickets={columns.pending}
-            count={counts.pending}
-            language={language}
-            actionPendingOrderId={actionPendingOrderId}
-            onAdvance={handleAdvance}
-          />
-          <KitchenColumn
-            columnId="preparing"
-            tickets={columns.preparing}
-            count={counts.preparing}
-            language={language}
-            actionPendingOrderId={actionPendingOrderId}
-            onAdvance={handleAdvance}
-          />
-          <KitchenColumn
-            columnId="ready"
-            tickets={columns.ready}
-            count={counts.ready}
-            language={language}
-            actionPendingOrderId={actionPendingOrderId}
-            onAdvance={handleAdvance}
-          />
+        <div className="grid gap-6 lg:grid-cols-3">
+          {(visibleColumn && visibleColumn in columns
+            ? [visibleColumn]
+            : (["pending", "preparing", "ready"] as const)
+          ).map((columnId) => {
+            const columnTickets = ticketsForColumn(columnId);
+            return (
+            <section
+              key={columnId}
+              className="flex min-h-[480px] flex-col rounded-2xl border bg-muted/10 p-4"
+            >
+              <header className="mb-4 flex items-center justify-between border-b pb-3">
+                <h3 className="text-lg font-semibold">
+                  {isAr ? COLUMN_LABELS[columnId].ar : COLUMN_LABELS[columnId].en}
+                </h3>
+                <span className="rounded-full bg-background px-3 py-1 text-sm font-medium">
+                  {counts[columnId]}
+                </span>
+              </header>
+              <div className="flex flex-1 flex-col gap-4 overflow-y-auto">
+                {columnTickets.length === 0 ? (
+                  <p className="py-8 text-center text-muted-foreground">
+                    {isAr ? "لا توجد تذاكر" : "No tickets"}
+                  </p>
+                ) : (
+                  columnTickets.map((ticket) => (
+                    <OperationalCard
+                      key={ticket.orderId}
+                      orderNumber={`#${ticket.orderNumber}`}
+                      tableLabel={isAr ? `طاولة ${ticket.tableNumber}` : `Table ${ticket.tableNumber}`}
+                      linesSummary={ticket.linesSummary}
+                      orderNotes={ticket.orderNotes}
+                      customerName={ticket.customerName}
+                      status={ticket.status}
+                      sla={computeSlaSnapshot(
+                        ticket.status,
+                        ticket.columnElapsedMinutes * 60,
+                        ticket.elapsedMinutes * 60
+                      )}
+                      language={language}
+                      executionOnly
+                      fading={isFading(ticket)}
+                      className="min-h-[180px]"
+                    />
+                  ))
+                )}
+              </div>
+            </section>
+            );
+          })}
         </div>
       )}
-    </RestaurantDashSection>
+    </OperationalWorkspaceShell>
   );
 }
