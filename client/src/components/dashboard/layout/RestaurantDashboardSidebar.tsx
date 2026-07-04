@@ -12,6 +12,7 @@ import {
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
   BarChart3,
+  ChefHat,
   ClipboardList,
   Grid3X3,
   Home,
@@ -98,6 +99,13 @@ export function RestaurantDashboardSidebar({
           icon: ClipboardList,
           active: restaurantTab === "orders",
           onClick: () => onRestaurantTabChange!("orders"),
+        },
+        {
+          id: "kitchen",
+          label: language === "ar" ? "شاشة المطبخ" : "Kitchen Display",
+          icon: ChefHat,
+          active: restaurantTab === "kitchen",
+          onClick: () => onRestaurantTabChange!("kitchen"),
         },
         {
           id: "print",

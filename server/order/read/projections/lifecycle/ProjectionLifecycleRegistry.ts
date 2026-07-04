@@ -75,10 +75,10 @@ export const ORDER_PROJECTION_DEFINITIONS: readonly ProjectionDefinition[] = [
     id: "P-07-kitchen-queue",
     name: "Kitchen Queue",
     ownerModule: "server/kitchen/read",
-    lifecycleState: "defined",
+    lifecycleState: "queryable",
     schemaVersion: ORDER_READ_PROJECTION_SCHEMA_VERSION,
-    subscribedEventTypes: ["OrderCreated", "OrderStatusChanged", "OrderReady", "OrderCancelled"],
-    consumerName: "KitchenQueueProjectionConsumer",
+    subscribedEventTypes: [],
+    consumerName: null,
   },
   {
     id: "P-08-printing-queue",

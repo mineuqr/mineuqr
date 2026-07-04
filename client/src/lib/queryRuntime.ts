@@ -77,6 +77,14 @@ export function printWorkspaceListQueryOptions(enabled: boolean) {
   } as const;
 }
 
+export function kitchenQueueQueryOptions(enabled: boolean) {
+  return {
+    enabled,
+    refetchInterval: enabled ? DASHBOARD_ORDER_LIST_POLL_MS : false,
+    staleTime: 0,
+  } as const;
+}
+
 /** Home snapshot: fetch once per visit, no 10s poll — reduces load vs full order.list polling (H-03). */
 export function homeSnapshotOrderQueryOptions(enabled: boolean) {
   return {

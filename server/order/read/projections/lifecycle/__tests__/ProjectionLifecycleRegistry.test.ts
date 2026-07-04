@@ -25,9 +25,10 @@ describe("ProjectionLifecycleRegistry", () => {
     ).toBe(true);
   });
 
-  it("marks kitchen and printing as defined only", () => {
+  it("marks kitchen as queryable logical read context and printing as defined only", () => {
     const registry = new ProjectionLifecycleRegistry();
-    expect(registry.getDefinition("P-07-kitchen-queue")?.lifecycleState).toBe("defined");
+    expect(registry.getDefinition("P-07-kitchen-queue")?.lifecycleState).toBe("queryable");
+    expect(registry.getDefinition("P-07-kitchen-queue")?.consumerName).toBeNull();
     expect(registry.getDefinition("P-08-printing-queue")?.lifecycleState).toBe("defined");
   });
 

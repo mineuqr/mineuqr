@@ -95,6 +95,7 @@ import {
 import { getOwnerSessionTimeline } from "./diningSession/sessionOwnerTimeline";
 import { getOwnerSessionWorkspace } from "./diningSession/sessionOwnerWorkspace";
 import { opsRouter } from "./ops/opsRouter";
+import { kitchenRouter } from "./kitchen/read/kitchenRouter";
 import { printWorkspaceRouter } from "./print-workspace/printWorkspaceRouter";
 import { printConnectorRouter } from "./print-connector/printConnectorRouter";
 import { printerManagementRouter } from "./printer-management/printerManagementRouter";
@@ -1916,7 +1917,7 @@ const orderRouter = router({
       }
       await assertRestaurantAccess(ctx, order.restaurantId, "order.updateStatus");
 
-      await runOrderCommand(() =>
+      const result = await runOrderCommand(() =>
         advanceOrderStatusService.execute({
           orderId: input.id,
           targetStatus: input.status,
@@ -1924,7 +1925,12 @@ const orderRouter = router({
         })
       );
 
-      return { success: true };
+      return {
+        success: true,
+        orderId: input.id,
+        previousStatus: result.previousStatus,
+        newStatus: result.newStatus,
+      };
     }),
   activeCount: verifiedProcedure
     .input(z.object({ restaurantId: z.number() }))
@@ -2021,6 +2027,7 @@ export const appRouter = router({
   session: sessionRouter,
   order: orderRouter,
   ops: opsRouter,
+  kitchen: kitchenRouter,
   printWorkspace: printWorkspaceRouter,
   printConnector: printConnectorRouter,
   printerManagement: printerManagementRouter,
