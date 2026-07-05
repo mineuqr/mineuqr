@@ -33,6 +33,8 @@ import type { RouterOutputs } from "@/lib/trpc";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import {
+  Check,
+  Copy,
   Loader2,
   Monitor,
   Plus,
@@ -44,6 +46,52 @@ import {
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useMemo, useState } from "react";
+
+/** Provisioning-only credential field. Renders full tuple during the provisioning workflow (FF-PAIR-04). */
+function CredentialField({
+  label,
+  value,
+  copyLabel,
+  copiedLabel,
+  sensitive,
+}: {
+  label: string;
+  value: string;
+  copyLabel: string;
+  copiedLabel: string;
+  sensitive?: boolean;
+}) {
+  const [copied, setCopied] = useState(false);
+  const onCopy = () => {
+    void navigator.clipboard?.writeText(value).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
+  return (
+    <div className="w-full space-y-1">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium text-muted-foreground">{label}</span>
+        <button
+          type="button"
+          onClick={onCopy}
+          className="flex items-center gap-1 text-xs text-primary hover:underline"
+        >
+          {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+          {copied ? copiedLabel : copyLabel}
+        </button>
+      </div>
+      <p
+        className={cn(
+          "w-full break-all rounded-lg bg-muted p-2 font-mono text-xs",
+          sensitive && "text-destructive-foreground/90"
+        )}
+      >
+        {value}
+      </p>
+    </div>
+  );
+}
 
 type ScreenListItem = RouterOutputs["operationalDevice"]["management"]["list"][number];
 type CreateScreenResult = RouterOutputs["operationalDevice"]["management"]["create"];
@@ -347,10 +395,30 @@ export function ScreenManagementWorkspacePanel({
               </div>
               <p className="text-center text-sm text-muted-foreground">
                 {isAr
-                  ? "امسح الرمز على الشاشة لربط الجهاز. لن يُعرض الرمز السري مرة أخرى."
-                  : "Scan on the screen to link the device. The secret will not be shown again."}
+                  ? "امسح الرمز على الشاشة لربط الجهاز. لن تُعرض بيانات الاعتماد مرة أخرى."
+                  : "Scan on the screen to link the device. These credentials will not be shown again."}
               </p>
-              <p className="w-full break-all rounded-lg bg-muted p-3 font-mono text-xs">{createdQr.secret}</p>
+              <div className="w-full space-y-2">
+                <CredentialField
+                  label={isAr ? "معرّف الجهاز" : "Device ID"}
+                  value={createdQr.deviceId}
+                  copyLabel={isAr ? "نسخ" : "Copy"}
+                  copiedLabel={isAr ? "تم النسخ" : "Copied"}
+                />
+                <CredentialField
+                  label={isAr ? "معرّف الرمز" : "Token ID"}
+                  value={createdQr.tokenId}
+                  copyLabel={isAr ? "نسخ" : "Copy"}
+                  copiedLabel={isAr ? "تم النسخ" : "Copied"}
+                />
+                <CredentialField
+                  label={isAr ? "الرمز السري" : "Secret"}
+                  value={createdQr.secret}
+                  copyLabel={isAr ? "نسخ" : "Copy"}
+                  copiedLabel={isAr ? "تم النسخ" : "Copied"}
+                  sensitive
+                />
+              </div>
             </div>
           ) : null}
         </DialogContent>

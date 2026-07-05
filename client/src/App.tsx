@@ -44,6 +44,9 @@ import VerifyEmailFailed from "./pages/VerifyEmailFailed";
 import Profile from "./pages/Profile";
 import Notifications from "./pages/Notifications";
 import CommercialDiagnostics from "./pages/CommercialDiagnostics";
+import OperationalScreenEntry from "./pages/screen/OperationalScreenEntry";
+import OperationalScreenPair from "./pages/screen/OperationalScreenPair";
+import OperationalScreenRun from "./pages/screen/OperationalScreenRun";
 import { useLanguage } from "./contexts/LanguageContext";
 import { Suspense } from "react";
 
@@ -57,6 +60,9 @@ function Router() {
     <Suspense fallback={<RouteTransitionFallback />}>
       <Switch>
         <Route path="/" component={Home} />
+        <Route path="/screen/pair" component={OperationalScreenPair} />
+        <Route path="/screen/run" component={OperationalScreenRun} />
+        <Route path="/screen" component={OperationalScreenEntry} />
         <Route path="/dashboard" component={Dashboard} />
         <Route path="/dashboard/templates/:restaurantId" component={TemplateSelector} />
         <Route path="/dashboard/:section" component={Dashboard} />

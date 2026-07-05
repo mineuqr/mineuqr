@@ -61,6 +61,7 @@ export type OperationalDeviceListItem = OperationalDeviceRecord & {
   hasActiveToken: boolean;
 };
 
+/** @deprecated v1 — missing tokenId; clients MUST reject or require supplemental tokenId input. */
 export type DeviceQrPayload = {
   v: 1;
   deviceId: string;
@@ -68,6 +69,20 @@ export type DeviceQrPayload = {
   restaurantId: number;
   branchId: number | null;
   role: OperationalDeviceRole;
+};
+
+/** PAIRING-CONTRACT-1 v2 — canonical operational screen pairing payload. */
+export type OperationalScreenPairingPayload = {
+  mineuqr: "operational-screen-pairing";
+  v: 2;
+  deviceId: string;
+  tokenId: string;
+  secret: string;
+  restaurantId?: number;
+  branchId?: number | null;
+  role?: OperationalDeviceRole;
+  displayName?: string;
+  issuedAt?: string;
 };
 
 export { DEFAULT_SCREEN_CONFIG };

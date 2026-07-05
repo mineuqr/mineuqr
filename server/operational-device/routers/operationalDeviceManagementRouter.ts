@@ -105,7 +105,7 @@ export const operationalDeviceManagementRouter = router({
         secret: token.secret,
         issuedAt: token.issuedAt,
       },
-      qrPayload: operationalDeviceComposition.registryService.buildQrPayload(device, token.secret),
+      qrPayload: operationalDeviceComposition.registryService.buildQrPayload(device, token),
     };
   }),
 

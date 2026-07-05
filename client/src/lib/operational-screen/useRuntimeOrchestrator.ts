@@ -1,0 +1,275 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { TRPCClientError } from "@trpc/client";
+import {
+  clearOperationalScreenCredentials,
+  type OperationalScreenCredentials,
+} from "./credentialStore";
+import {
+  applyConfigHotReload,
+  buildRuntimeContext,
+  createBootstrapId,
+  HEARTBEAT_INTERVAL_MS,
+  HEARTBEAT_RETRY_MAX_MS,
+  HEARTBEAT_RETRY_MIN_MS,
+  isDeviceAuthError,
+  STATUS_POLL_INTERVAL_MS,
+} from "./bootstrapLogic";
+import {
+  INITIAL_PHASE,
+  transition,
+  type BootstrapEvent,
+} from "./bootstrapStateMachine";
+import { collectRuntimeFingerprint } from "./runtimeFingerprint";
+import { isBlockedRole } from "./runtimeCapabilities";
+import { screenTrpc } from "./screenTrpc";
+import type { BootstrapPhase, OperationalScreenRuntimeContext } from "./runtimeTypes";
+import { spaNavigate } from "@/const";
+
+export type RuntimeDiagnostics = {
+  phase: BootstrapPhase;
+  bootstrapId: string;
+  heartbeatFailures: number;
+  statusQueryState: string;
+  lastError: string | null;
+};
+
+export type RuntimeOrchestratorValue = {
+  phase: BootstrapPhase;
+  context: OperationalScreenRuntimeContext | null;
+  degraded: boolean;
+  lastError: string | null;
+  diagnostics: RuntimeDiagnostics;
+  unpair: () => void;
+  retry: () => void;
+};
+
+function nextHeartbeatDelay(failures: number): number {
+  const delay = HEARTBEAT_RETRY_MIN_MS * 2 ** failures;
+  return Math.min(delay, HEARTBEAT_RETRY_MAX_MS);
+}
+
+/**
+ * Canonical runtime orchestrator. Owns the single lifecycle `phase` (driven only
+ * by the approved state machine) and the single `context` snapshot. There is no
+ * parallel lifecycle state: `context.bootstrap.phase` is always derived from the
+ * authoritative `phase` before the context is exposed.
+ */
+export function useRuntimeOrchestrator(
+  credentials: OperationalScreenCredentials
+): RuntimeOrchestratorValue {
+  const [bootstrapId] = useState(createBootstrapId);
+  const [phase, setPhase] = useState<BootstrapPhase>(INITIAL_PHASE);
+  const [context, setContext] = useState<OperationalScreenRuntimeContext | null>(null);
+  const [lastError, setLastError] = useState<string | null>(null);
+  const [retryToken, setRetryToken] = useState(0);
+
+  const phaseRef = useRef<BootstrapPhase>(INITIAL_PHASE);
+  const heartbeatFailures = useRef(0);
+  const heartbeatTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const heartbeatStopped = useRef(false);
+
+  const degraded = phase === "degraded";
+
+  /** Single choke point for lifecycle changes — enforces the state machine. */
+  const dispatch = useCallback((event: BootstrapEvent): BootstrapPhase => {
+    const current = phaseRef.current;
+    const next = transition(current, event);
+    if (next !== current) {
+      phaseRef.current = next;
+      setPhase(next);
+    }
+    return next;
+  }, []);
+
+  const statusQuery = screenTrpc.operationalDevice.runtime.getStatus.useQuery(undefined, {
+    enabled: phase !== "pairing_redirect" && phase !== "revoked",
+    retry: (failureCount, error) => {
+      if (isDeviceAuthError(error)) return false;
+      return failureCount < 5;
+    },
+    refetchInterval:
+      phase === "running" || phase === "blocked" || phase === "degraded"
+        ? STATUS_POLL_INTERVAL_MS
+        : false,
+    refetchOnWindowFocus: true,
+  });
+
+  const heartbeatMutation = screenTrpc.operationalDevice.runtime.heartbeat.useMutation();
+
+  const stopHeartbeat = useCallback(() => {
+    heartbeatStopped.current = true;
+    if (heartbeatTimer.current) {
+      clearTimeout(heartbeatTimer.current);
+      heartbeatTimer.current = null;
+    }
+  }, []);
+
+  const handleRevoked = useCallback(() => {
+    stopHeartbeat();
+    clearOperationalScreenCredentials();
+    setContext(null);
+    dispatch({ type: "AUTH_REVOKED" });
+    dispatch({ type: "PAIRING_REDIRECTED" });
+    spaNavigate("/screen/pair", { replace: true });
+  }, [dispatch, stopHeartbeat]);
+
+  const scheduleHeartbeat = useCallback(
+    (delayMs: number) => {
+      if (heartbeatStopped.current) return;
+      if (heartbeatTimer.current) clearTimeout(heartbeatTimer.current);
+      heartbeatTimer.current = setTimeout(() => {
+        void heartbeatMutation
+          .mutateAsync({ reportedVersion: import.meta.env.VITE_APP_VERSION ?? "web" })
+          .then(() => {
+            heartbeatFailures.current = 0;
+            setLastError(null);
+            dispatch({ type: "NETWORK_RECOVERED" });
+            scheduleHeartbeat(HEARTBEAT_INTERVAL_MS);
+          })
+          .catch((error: unknown) => {
+            if (isDeviceAuthError(error)) {
+              handleRevoked();
+              return;
+            }
+            heartbeatFailures.current += 1;
+            setLastError(error instanceof Error ? error.message : "heartbeat_failed");
+            dispatch({ type: "NETWORK_FAILURE" });
+            scheduleHeartbeat(nextHeartbeatDelay(heartbeatFailures.current));
+          });
+      }, delayMs);
+    },
+    [dispatch, handleRevoked, heartbeatMutation]
+  );
+
+  // Loading → Validating | PairingRedirect (credentials are guaranteed present here).
+  useEffect(() => {
+    dispatch({ type: "CREDENTIALS_FOUND" });
+  }, [dispatch]);
+
+  // Validating/Degraded → ContextReady → HeartbeatActive → Running | Blocked
+  useEffect(() => {
+    if (!statusQuery.data) return;
+
+    if (statusQuery.error && isDeviceAuthError(statusQuery.error)) {
+      handleRevoked();
+      return;
+    }
+
+    const status = statusQuery.data;
+
+    // Terminal revoked conditions (disabled device / no active token).
+    if (status.device.status === "disabled" || !status.health.hasActiveToken) {
+      handleRevoked();
+      return;
+    }
+
+    if (!context) {
+      dispatch({ type: "STATUS_RECEIVED" }); // → context_ready
+      const fingerprint = collectRuntimeFingerprint(bootstrapId);
+      const assembledPhase = dispatch({ type: "CONTEXT_ASSEMBLED" }); // → heartbeat_active
+      const nextContext = buildRuntimeContext({
+        status,
+        credentials,
+        bootstrapId,
+        phase: assembledPhase,
+        fingerprint,
+      });
+      setContext(nextContext);
+      heartbeatStopped.current = false;
+      scheduleHeartbeat(0);
+      const runningPhase = dispatch({ type: "HEARTBEAT_STARTED" }); // → running
+      if (isBlockedRole(status.device.role)) {
+        dispatch({ type: "RUN_BLOCKED" }); // running → blocked
+      } else {
+        void runningPhase;
+      }
+      return;
+    }
+
+    // Already running: reconcile reloadable/dynamic fields only. No lifecycle jump.
+    if (context.configVersion !== status.configVersion) {
+      setContext((prev) => (prev ? applyConfigHotReload(prev, status) : prev));
+    } else {
+      setContext((prev) =>
+        prev
+          ? {
+              ...prev,
+              runtimeStatus: status.health,
+              identity: { ...prev.identity, displayName: status.device.displayName },
+            }
+          : prev
+      );
+    }
+
+    // Recover from degraded when a fresh status arrives.
+    dispatch({ type: "NETWORK_RECOVERED" });
+    if (isBlockedRole(status.device.role)) {
+      dispatch({ type: "RUN_BLOCKED" });
+    }
+  }, [
+    bootstrapId,
+    context,
+    credentials,
+    dispatch,
+    handleRevoked,
+    scheduleHeartbeat,
+    statusQuery.data,
+    statusQuery.error,
+    retryToken,
+  ]);
+
+  // Non-auth status errors → Degraded.
+  useEffect(() => {
+    if (!statusQuery.error || isDeviceAuthError(statusQuery.error)) return;
+    setLastError(
+      statusQuery.error instanceof TRPCClientError
+        ? statusQuery.error.message
+        : "status_unavailable"
+    );
+    dispatch({ type: "NETWORK_FAILURE" });
+  }, [dispatch, statusQuery.error]);
+
+  useEffect(() => () => stopHeartbeat(), [stopHeartbeat]);
+
+  const unpair = useCallback(() => {
+    stopHeartbeat();
+    clearOperationalScreenCredentials();
+    setContext(null);
+    dispatch({ type: "AUTH_REVOKED" });
+    dispatch({ type: "PAIRING_REDIRECTED" });
+    spaNavigate("/screen/pair", { replace: true });
+  }, [dispatch, stopHeartbeat]);
+
+  const retry = useCallback(() => {
+    setRetryToken((value) => value + 1);
+    void statusQuery.refetch();
+  }, [statusQuery]);
+
+  // The exposed context always carries the authoritative phase (no duplicate state).
+  const exposedContext = useMemo<OperationalScreenRuntimeContext | null>(() => {
+    if (!context) return null;
+    if (context.bootstrap.phase === phase) return context;
+    return { ...context, bootstrap: { ...context.bootstrap, phase } };
+  }, [context, phase]);
+
+  const diagnostics = useMemo<RuntimeDiagnostics>(
+    () => ({
+      phase,
+      bootstrapId,
+      heartbeatFailures: heartbeatFailures.current,
+      statusQueryState: statusQuery.status,
+      lastError,
+    }),
+    [phase, bootstrapId, statusQuery.status, lastError]
+  );
+
+  return {
+    phase,
+    context: exposedContext,
+    degraded,
+    lastError,
+    diagnostics,
+    unpair,
+    retry,
+  };
+}

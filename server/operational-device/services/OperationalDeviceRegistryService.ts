@@ -1,9 +1,9 @@
 import type {
   CreateOperationalDeviceInput,
-  DeviceQrPayload,
   IssuedOperationalDeviceToken,
   OperationalDeviceListItem,
   OperationalDeviceRecord,
+  OperationalScreenPairingPayload,
 } from "../domain/deviceContracts";
 import { deriveDevicePresence } from "../domain/deviceHealth";
 import type { UpdateScreenSettingsInput } from "../domain/screenConfig";
@@ -19,7 +19,7 @@ import {
 export type CreateDeviceResult = {
   device: OperationalDeviceRecord;
   token: IssuedOperationalDeviceToken;
-  qrPayload: DeviceQrPayload;
+  qrPayload: OperationalScreenPairingPayload;
 };
 
 export class OperationalDeviceRegistryService {
@@ -64,7 +64,7 @@ export class OperationalDeviceRegistryService {
     return {
       device,
       token,
-      qrPayload: this.buildQrPayload(device, token.secret),
+      qrPayload: this.buildQrPayload(device, token),
     };
   }
 
@@ -121,14 +121,21 @@ export class OperationalDeviceRegistryService {
     return this.store.getDevice(deviceId);
   }
 
-  buildQrPayload(device: OperationalDeviceRecord, token: string): DeviceQrPayload {
+  buildQrPayload(
+    device: OperationalDeviceRecord,
+    token: IssuedOperationalDeviceToken
+  ): OperationalScreenPairingPayload {
     return {
-      v: 1,
+      mineuqr: "operational-screen-pairing",
+      v: 2,
       deviceId: device.deviceId,
-      token,
+      tokenId: token.tokenId,
+      secret: token.secret,
       restaurantId: device.restaurantId,
       branchId: device.branchId,
       role: device.role,
+      displayName: device.displayName,
+      issuedAt: token.issuedAt,
     };
   }
 

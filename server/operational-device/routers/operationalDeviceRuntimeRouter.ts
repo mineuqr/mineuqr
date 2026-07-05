@@ -64,6 +64,8 @@ export const operationalDeviceRuntimeRouter = router({
         branchId: device.branchId,
         status: device.status,
       },
+      screenConfig: device.screenConfig,
+      configVersion: device.updatedAt,
       health: summarizeDeviceHealth({
         status: device.status,
         lastSeenAt: device.lastSeenAt,

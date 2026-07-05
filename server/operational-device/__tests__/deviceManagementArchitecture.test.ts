@@ -14,7 +14,8 @@ describe("DEVICE-MANAGEMENT-1 architecture guards", () => {
     expect(runtime).toContain("deviceProcedure");
     expect(runtime).not.toContain("verifiedProcedure");
     expect(runtime).not.toMatch(/order\.updateStatus|orderRouter/);
-    expect(runtime).not.toContain("screenConfig");
+    expect(runtime).toContain("screenConfig");
+    expect(runtime).toContain("configVersion");
     expect(runtime).not.toContain("updateScreenSettings");
   });
 
