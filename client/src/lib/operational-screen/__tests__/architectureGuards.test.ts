@@ -114,6 +114,18 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
     expect(main).toContain('startsWith("/screen")');
   });
 
+  it("SCREEN-CONFIG-RUNTIME-1: configuration flows through manager only", () => {
+    const manager = read("client/src/lib/operational-screen/configuration/runtimeConfigurationManager.ts");
+    const orchestrator = read("client/src/lib/operational-screen/useRuntimeOrchestrator.ts");
+    const kitchen = read("client/src/components/operational-screen/KitchenScreenPanel.tsx");
+    expect(manager).toContain("RuntimeConfigurationManager");
+    expect(orchestrator).toContain("RuntimeConfigurationManager");
+    expect(orchestrator).toContain("loadInitialConfiguration");
+    expect(orchestrator).toContain("reloadConfiguration");
+    expect(kitchen).not.toContain("screenConfig");
+    expect(kitchen).not.toContain("getStatus");
+  });
+
   it("FF-BOOT-07: unsupported roles reach Blocked Runtime after heartbeat is active", () => {
     expect(isBlockedRole("pickup_display")).toBe(true);
     expect(isBlockedRole("customer_display")).toBe(true);

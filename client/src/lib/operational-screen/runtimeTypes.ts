@@ -1,6 +1,11 @@
 import type { OperationalScreenConfig } from "../../../../server/operational-device/domain/screenConfig";
 import type { OperationalDeviceRole } from "../../../../server/operational-device/domain/deviceRoles";
 import type { OperationalScreenRuntimeFingerprint } from "./runtimeFingerprint";
+import type {
+  ConfigurationLifecycleState,
+  RuntimeConfiguration,
+} from "./configuration/runtimeConfigurationContract";
+import type { DisplayDirection, ScreenLanguage } from "../../../../server/operational-device/domain/screenConfig";
 
 export type BootstrapPhase =
   | "loading"
@@ -64,13 +69,20 @@ export type OperationalScreenRuntimeContext = {
     restaurantId: number;
     branchId: number | null;
   };
+  /** Normalized configuration — sole authority for runtime config consumption. */
+  runtimeConfiguration: RuntimeConfiguration;
+  configurationState: ConfigurationLifecycleState;
+  configurationVersion: string;
+  lastAppliedVersion: string | null;
+  /** @deprecated Use runtimeConfiguration — retained for diagnostics migration only. */
   configuration: OperationalScreenConfig;
+  /** @deprecated Use configurationVersion */
   configVersion: string;
   runtimeStatus: RuntimeGetStatusResponse["health"];
+  /** Active presentation values only (language/direction). Density is not exposed here. */
   presentation: {
-    language: OperationalScreenConfig["language"];
-    direction: OperationalScreenConfig["displayDirection"];
-    density: OperationalScreenConfig["displayDensity"];
+    language: ScreenLanguage;
+    direction: DisplayDirection;
   };
   capabilities: RuntimeCapabilitySet;
   fingerprint: OperationalScreenRuntimeFingerprint;

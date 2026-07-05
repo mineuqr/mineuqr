@@ -6,7 +6,10 @@ import type {
   RuntimeRoleDefinition,
 } from "./runtimeRoleContract";
 import { resolveRoleRuntimeStatus } from "./runtimeRoleState";
-import { blockedRoleLifecycle } from "./runtimeRoleLifecycle";
+import {
+  createBlockedRoleLifecycle,
+  createOperationalRoleLifecycle,
+} from "./roleConfigurationLifecycle";
 
 function kitchenCapabilities(): RoleCapabilityDeclaration {
   return {
@@ -26,6 +29,8 @@ function createOperationalRoleDefinition(
   role: OperationalDeviceRole,
   description: { en: string; ar: string }
 ): RuntimeRoleDefinition {
+  const lifecycle = createOperationalRoleLifecycle();
+
   return {
     metadata: {
       role,
@@ -34,23 +39,32 @@ function createOperationalRoleDefinition(
       operational: true,
       capabilities: kitchenCapabilities(),
       configurationSchemaVersion: "1",
-      futurePrograms: [
-        "SCREEN-CONFIG-RUNTIME-1",
-        "KITCHEN-CATEGORY-FILTER-1",
-        "KITCHEN-DISPLAY-DENSITY-1",
-      ],
+      futurePrograms: ["KITCHEN-CATEGORY-FILTER-1", "KITCHEN-DISPLAY-DENSITY-1"],
     },
-    lifecycle: blockedRoleLifecycle,
+    lifecycle,
     resolveRuntimeStatus(bootstrapPhase, _context, reconnecting) {
       return resolveRoleRuntimeStatus(bootstrapPhase, true, reconnecting);
     },
     collectDiagnostics(ctx: RoleLifecycleContext) {
+      const configState = lifecycle.getConfigurationState();
+      const config = configState.lastConfiguration;
       return {
         presentation: "kitchen_queue",
-        configAdvertised: {
-          supportsDensity: true,
-          supportsCategoryFilter: true,
-        },
+        configurationApplyCount: configState.configurationApplyCount,
+        activeConfiguration: config
+          ? {
+              language: config.active.language,
+              direction: config.active.direction,
+            }
+          : null,
+        trackedConfiguration: config
+          ? {
+              density: config.tracked.density,
+              densityActivated: config.tracked.densityActivated,
+              categoryIds: config.tracked.categoryIds,
+              categoriesActivated: config.tracked.categoriesActivated,
+            }
+          : null,
         heartbeatCount: ctx.heartbeatCount,
         reconnectCount: ctx.reconnectCount,
       };
@@ -66,6 +80,8 @@ function createBlockedRoleDefinition(
   futurePrograms: string[],
   blockedReason: { en: string; ar: string }
 ): RuntimeRoleDefinition {
+  const lifecycle = createBlockedRoleLifecycle();
+
   return {
     metadata: {
       role,
@@ -77,14 +93,25 @@ function createBlockedRoleDefinition(
       futurePrograms,
       blockedReason,
     },
-    lifecycle: blockedRoleLifecycle,
+    lifecycle,
     resolveRuntimeStatus(bootstrapPhase, _context, reconnecting) {
       return resolveRoleRuntimeStatus(bootstrapPhase, false, reconnecting);
     },
     collectDiagnostics(ctx: RoleLifecycleContext) {
+      const configState = lifecycle.getConfigurationState();
+      const config = configState.lastConfiguration;
       return {
         blockedReason,
         waitingForPrograms: futurePrograms,
+        configurationApplyCount: configState.configurationApplyCount,
+        configurationReceived: config != null,
+        configurationHealth: config
+          ? {
+              state: config.configurationState,
+              version: config.version,
+              validationErrors: config.validationErrors,
+            }
+          : null,
         heartbeatCount: ctx.heartbeatCount,
       };
     },

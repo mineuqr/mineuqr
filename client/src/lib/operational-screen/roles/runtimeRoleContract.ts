@@ -1,5 +1,5 @@
-import type { OperationalScreenConfig } from "../../../../../server/operational-device/domain/screenConfig";
 import type { OperationalDeviceRole } from "../../../../../server/operational-device/domain/deviceRoles";
+import type { RuntimeConfiguration } from "../configuration/runtimeConfigurationContract";
 import type { BootstrapPhase, OperationalScreenRuntimeContext } from "../runtimeTypes";
 
 /** Formal runtime state — identical lifecycle surface for every role. */
@@ -52,7 +52,7 @@ export type RoleLifecycleHandlers = {
   activate(ctx: RoleLifecycleContext): void;
   deactivate(ctx: RoleLifecycleContext): void;
   dispose(ctx: RoleLifecycleContext): void;
-  handleConfiguration(ctx: RoleLifecycleContext, configuration: OperationalScreenConfig): void;
+  handleConfiguration(ctx: RoleLifecycleContext, configuration: RuntimeConfiguration): void;
   handleHeartbeat(ctx: RoleLifecycleContext): void;
   handleReconnect(ctx: RoleLifecycleContext): void;
 };
@@ -76,6 +76,10 @@ export type RoleRuntimeHealth = {
   role: OperationalDeviceRole;
   version: string;
   configurationVersion: string;
+  appliedVersion: string | null;
+  configurationState: RuntimeConfiguration["configurationState"];
+  configurationErrors: string[];
+  configurationUsedFallback: boolean;
   capabilities: RoleCapabilityDeclaration;
   operational: boolean;
   blockedReason: { en: string; ar: string } | null;

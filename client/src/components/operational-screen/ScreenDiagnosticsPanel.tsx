@@ -2,8 +2,16 @@ import { useScreenRuntime } from "./OperationalScreenRuntimeProvider";
 import { getRoleCapabilities } from "@/lib/operational-screen/runtimeCapabilities";
 
 export function ScreenDiagnosticsPanel() {
-  const { phase, context, degraded, lastError, diagnostics, roleHealth, roleDiagnostics } =
-    useScreenRuntime();
+  const {
+    phase,
+    context,
+    degraded,
+    lastError,
+    diagnostics,
+    roleHealth,
+    roleDiagnostics,
+    configurationHealth,
+  } = useScreenRuntime();
 
   const roleCapabilities = context ? getRoleCapabilities(context.identity.role) : null;
 
@@ -17,11 +25,17 @@ export function ScreenDiagnosticsPanel() {
     },
     roleHealth,
     roleDiagnostics,
+    configurationHealth,
+    runtimeConfiguration: context?.runtimeConfiguration ?? null,
+    configurationState: context?.configurationState ?? null,
+    configurationVersion: context?.configurationVersion ?? null,
+    lastAppliedVersion: context?.lastAppliedVersion ?? null,
     heartbeat: { failures: diagnostics.heartbeatFailures, statusQueryState: diagnostics.statusQueryState },
     fingerprint: context?.fingerprint ?? null,
     configuration: {
       configVersion: context?.configVersion ?? null,
       presentation: context?.presentation ?? null,
+      tracked: context?.runtimeConfiguration?.tracked ?? null,
     },
     status: context?.runtimeStatus ?? null,
     capabilities: {

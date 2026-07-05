@@ -78,17 +78,17 @@ export function RuntimeRoleHost() {
 
   useEffect(() => {
     if (!context || !definition) return;
-    const version = context.configVersion;
-    if (prevConfigVersionRef.current && prevConfigVersionRef.current !== version) {
-      const ctx = buildLifecycleContext(definition, {
-        context,
-        bootstrapPhase: phase,
-        heartbeatCount: rolePlatform.heartbeatCount,
-        reconnectCount: rolePlatform.reconnectCount,
-        reconnecting: rolePlatform.reconnecting,
-      });
-      invokeLifecycle(definition.lifecycle, "handleConfiguration", ctx, context.configuration);
-    }
+    const version = context.configurationVersion;
+    if (prevConfigVersionRef.current === version) return;
+
+    const ctx = buildLifecycleContext(definition, {
+      context,
+      bootstrapPhase: phase,
+      heartbeatCount: rolePlatform.heartbeatCount,
+      reconnectCount: rolePlatform.reconnectCount,
+      reconnecting: rolePlatform.reconnecting,
+    });
+    invokeLifecycle(definition.lifecycle, "handleConfiguration", ctx, context.runtimeConfiguration);
     prevConfigVersionRef.current = version;
   }, [context, definition, phase, rolePlatform]);
 

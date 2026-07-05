@@ -5,6 +5,7 @@ import type {
 } from "./runtimeRoleContract";
 import type { OperationalScreenRuntimeContext } from "../runtimeTypes";
 import type { BootstrapPhase } from "../runtimeTypes";
+import type { ConfigurationHealth } from "../configuration/runtimeConfigurationContract";
 
 export function buildRoleRuntimeHealth(
   definition: RuntimeRoleDefinition,
@@ -14,7 +15,8 @@ export function buildRoleRuntimeHealth(
     heartbeatCount: number;
     reconnectCount: number;
     reconnecting: boolean;
-  }
+  },
+  configurationHealth: ConfigurationHealth | null
 ): RoleRuntimeHealth {
   const runtimeState = definition.resolveRuntimeStatus(
     bootstrapPhase,
@@ -22,23 +24,35 @@ export function buildRoleRuntimeHealth(
     platform.reconnecting
   );
   const { metadata } = definition;
+  const runtimeConfig = context.runtimeConfiguration;
 
   return {
     runtimeState,
     role: metadata.role,
     version: import.meta.env.VITE_APP_VERSION ?? "web",
-    configurationVersion: context.configVersion,
+    configurationVersion: context.configurationVersion,
+    appliedVersion: context.lastAppliedVersion,
+    configurationState: runtimeConfig.configurationState,
+    configurationErrors: runtimeConfig.validationErrors,
+    configurationUsedFallback: runtimeConfig.usedFallback,
     capabilities: metadata.capabilities,
     operational: metadata.operational,
     blockedReason: metadata.operational ? null : (metadata.blockedReason ?? null),
     heartbeatCount: platform.heartbeatCount,
     reconnectCount: platform.reconnectCount,
+    ...(configurationHealth
+      ? {
+          configurationVersion: configurationHealth.configurationVersion,
+          appliedVersion: configurationHealth.appliedVersion,
+        }
+      : {}),
   };
 }
 
 export function collectRoleDiagnostics(
   definition: RuntimeRoleDefinition,
-  ctx: RoleLifecycleContext
+  ctx: RoleLifecycleContext,
+  configurationHealth: ConfigurationHealth | null
 ): Record<string, unknown> {
   return {
     role: definition.metadata.role,
@@ -46,6 +60,14 @@ export function collectRoleDiagnostics(
     runtimeState: ctx.runtimeStatus,
     futurePrograms: definition.metadata.futurePrograms,
     configurationSchemaVersion: definition.metadata.configurationSchemaVersion,
+    configuration: configurationHealth,
+    runtimeConfiguration: {
+      version: ctx.context.runtimeConfiguration.version,
+      state: ctx.context.configurationState,
+      active: ctx.context.runtimeConfiguration.active,
+      tracked: ctx.context.runtimeConfiguration.tracked,
+      validationErrors: ctx.context.runtimeConfiguration.validationErrors,
+    },
     ...definition.collectDiagnostics(ctx),
   };
 }

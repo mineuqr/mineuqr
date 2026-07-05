@@ -2,7 +2,9 @@ import { TRPCClientError } from "@trpc/client";
 import type { OperationalScreenConfig } from "../../../../server/operational-device/domain/screenConfig";
 import { DEFAULT_SCREEN_CONFIG } from "../../../../server/operational-device/domain/screenConfig";
 import type { OperationalScreenCredentials } from "./credentialStore";
-import { buildRuntimeCapabilitySet } from "./runtimeCapabilities";
+import { RuntimeConfigurationManager } from "./configuration/runtimeConfigurationManager";
+import type { RuntimeConfiguration } from "./configuration/runtimeConfigurationContract";
+import { buildRuntimeCapabilitySet, getRoleCapabilities } from "./runtimeCapabilities";
 import { collectRuntimeFingerprint } from "./runtimeFingerprint";
 import type {
   BootstrapPhase,
@@ -35,17 +37,26 @@ export function createBootstrapId(): string {
   return `boot_${Date.now()}`;
 }
 
+function rawConfigFromRuntime(runtimeConfiguration: RuntimeConfiguration): OperationalScreenConfig {
+  return {
+    language: runtimeConfiguration.active.language,
+    displayDirection: runtimeConfiguration.active.direction,
+    displayDensity: runtimeConfiguration.tracked.density,
+    visibleCategoryIds: runtimeConfiguration.tracked.categoryIds,
+  };
+}
+
 export function buildRuntimeContext(input: {
   status: RuntimeGetStatusResponse;
   credentials: OperationalScreenCredentials;
   bootstrapId: string;
   phase: BootstrapPhase;
   fingerprint?: ReturnType<typeof collectRuntimeFingerprint>;
+  runtimeConfiguration: RuntimeConfiguration;
+  lastAppliedVersion: string | null;
 }): OperationalScreenRuntimeContext {
-  const screenConfig: OperationalScreenConfig = input.status.screenConfig ?? {
-    ...DEFAULT_SCREEN_CONFIG,
-  };
   const fingerprint = input.fingerprint ?? collectRuntimeFingerprint(input.bootstrapId);
+  const { runtimeConfiguration } = input;
 
   return {
     identity: {
@@ -55,13 +66,16 @@ export function buildRuntimeContext(input: {
       restaurantId: input.status.device.restaurantId,
       branchId: input.status.device.branchId,
     },
-    configuration: screenConfig,
-    configVersion: input.status.configVersion,
+    runtimeConfiguration,
+    configurationState: runtimeConfiguration.configurationState,
+    configurationVersion: runtimeConfiguration.version,
+    lastAppliedVersion: input.lastAppliedVersion,
+    configuration: rawConfigFromRuntime(runtimeConfiguration),
+    configVersion: runtimeConfiguration.version,
     runtimeStatus: input.status.health,
     presentation: {
-      language: screenConfig.language,
-      direction: screenConfig.displayDirection,
-      density: screenConfig.displayDensity,
+      language: runtimeConfiguration.active.language,
+      direction: runtimeConfiguration.active.direction,
     },
     capabilities: buildRuntimeCapabilitySet(input.status.device.role),
     fingerprint,
@@ -73,24 +87,52 @@ export function buildRuntimeContext(input: {
   };
 }
 
-export function applyConfigHotReload(
+export function applyConfigurationReload(
   current: OperationalScreenRuntimeContext,
-  status: RuntimeGetStatusResponse
+  status: RuntimeGetStatusResponse,
+  configManager: RuntimeConfigurationManager
 ): OperationalScreenRuntimeContext {
-  const screenConfig = status.screenConfig ?? current.configuration;
+  const capabilities = getRoleCapabilities(status.device.role);
+  const reloaded = configManager.reloadFromStatus(status, capabilities);
+  if (!reloaded) {
+    return {
+      ...current,
+      runtimeStatus: status.health,
+      identity: { ...current.identity, displayName: status.device.displayName },
+    };
+  }
+
+  const snapshot = configManager.getSnapshot();
   return {
     ...current,
-    identity: {
-      ...current.identity,
-      displayName: status.device.displayName,
-    },
-    configuration: screenConfig,
-    configVersion: status.configVersion,
+    identity: { ...current.identity, displayName: status.device.displayName },
+    runtimeConfiguration: reloaded,
+    configurationState: reloaded.configurationState,
+    configurationVersion: reloaded.version,
+    lastAppliedVersion: snapshot.lastAppliedVersion,
+    configuration: rawConfigFromRuntime(reloaded),
+    configVersion: reloaded.version,
     runtimeStatus: status.health,
     presentation: {
-      language: screenConfig.language,
-      direction: screenConfig.displayDirection,
-      density: screenConfig.displayDensity,
+      language: reloaded.active.language,
+      direction: reloaded.active.direction,
     },
   };
+}
+
+/** @deprecated Use applyConfigurationReload */
+export function applyConfigHotReload(
+  current: OperationalScreenRuntimeContext,
+  status: RuntimeGetStatusResponse,
+  configManager: RuntimeConfigurationManager
+): OperationalScreenRuntimeContext {
+  return applyConfigurationReload(current, status, configManager);
+}
+
+export function loadInitialConfiguration(
+  status: RuntimeGetStatusResponse,
+  configManager: RuntimeConfigurationManager
+): RuntimeConfiguration {
+  const capabilities = getRoleCapabilities(status.device.role);
+  return configManager.loadFromStatus(status, capabilities);
 }

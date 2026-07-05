@@ -5,15 +5,18 @@ import {
   type OperationalScreenCredentials,
 } from "./credentialStore";
 import {
-  applyConfigHotReload,
+  applyConfigurationReload,
   buildRuntimeContext,
   createBootstrapId,
   HEARTBEAT_INTERVAL_MS,
   HEARTBEAT_RETRY_MAX_MS,
   HEARTBEAT_RETRY_MIN_MS,
   isDeviceAuthError,
+  loadInitialConfiguration,
   STATUS_POLL_INTERVAL_MS,
 } from "./bootstrapLogic";
+import { RuntimeConfigurationManager } from "./configuration/runtimeConfigurationManager";
+import type { ConfigurationHealth } from "./configuration/runtimeConfigurationContract";
 import {
   INITIAL_PHASE,
   transition,
@@ -53,6 +56,10 @@ export type RuntimeOrchestratorValue = {
   rolePlatform: RolePlatformMetrics;
   roleHealth: RoleRuntimeHealth | null;
   roleDiagnostics: Record<string, unknown> | null;
+  configurationHealth: ConfigurationHealth | null;
+  reloadConfiguration: () => void;
+  /** Alias for reloadConfiguration — configuration hot-reload via existing polling. */
+  reload: () => void;
   unpair: () => void;
   retry: () => void;
 };
@@ -85,6 +92,7 @@ export function useRuntimeOrchestrator(
   const [reconnecting, setReconnecting] = useState(false);
   const heartbeatTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const heartbeatStopped = useRef(false);
+  const configManagerRef = useRef(new RuntimeConfigurationManager());
 
   const degraded = phase === "degraded";
 
@@ -186,12 +194,19 @@ export function useRuntimeOrchestrator(
       dispatch({ type: "STATUS_RECEIVED" }); // → context_ready
       const fingerprint = collectRuntimeFingerprint(bootstrapId);
       const assembledPhase = dispatch({ type: "CONTEXT_ASSEMBLED" }); // → heartbeat_active
+      const runtimeConfiguration = loadInitialConfiguration(
+        status,
+        configManagerRef.current
+      );
+      const snapshot = configManagerRef.current.getSnapshot();
       const nextContext = buildRuntimeContext({
         status,
         credentials,
         bootstrapId,
         phase: assembledPhase,
         fingerprint,
+        runtimeConfiguration,
+        lastAppliedVersion: snapshot.lastAppliedVersion,
       });
       setContext(nextContext);
       heartbeatStopped.current = false;
@@ -206,8 +221,10 @@ export function useRuntimeOrchestrator(
     }
 
     // Already running: reconcile reloadable/dynamic fields only. No lifecycle jump.
-    if (context.configVersion !== status.configVersion) {
-      setContext((prev) => (prev ? applyConfigHotReload(prev, status) : prev));
+    if (configManagerRef.current.detectVersionChange(status.configVersion)) {
+      setContext((prev) =>
+        prev ? applyConfigurationReload(prev, status, configManagerRef.current) : prev
+      );
     } else {
       setContext((prev) =>
         prev
@@ -259,6 +276,7 @@ export function useRuntimeOrchestrator(
 
   const unpair = useCallback(() => {
     stopHeartbeat();
+    configManagerRef.current.dispose();
     clearOperationalScreenCredentials();
     setContext(null);
     dispatch({ type: "AUTH_REVOKED" });
@@ -304,11 +322,26 @@ export function useRuntimeOrchestrator(
     [phase, reconnecting, statusQuery.status, lastError]
   );
 
+  const reloadConfiguration = useCallback(() => {
+    void statusQuery.refetch();
+  }, [statusQuery]);
+
+  const configurationHealth = useMemo<ConfigurationHealth | null>(() => {
+    const incoming = statusQuery.data?.configVersion;
+    return configManagerRef.current.buildHealth(incoming);
+  }, [context, statusQuery.data?.configVersion]);
+
   const roleHealth = useMemo<RoleRuntimeHealth | null>(() => {
     if (!exposedContext) return null;
     const definition = resolveRuntimeRole(exposedContext.identity.role);
-    return buildRoleRuntimeHealth(definition, exposedContext, phase, rolePlatform);
-  }, [exposedContext, phase, rolePlatform]);
+    return buildRoleRuntimeHealth(
+      definition,
+      exposedContext,
+      phase,
+      rolePlatform,
+      configurationHealth
+    );
+  }, [exposedContext, phase, rolePlatform, configurationHealth]);
 
   const roleDiagnostics = useMemo<Record<string, unknown> | null>(() => {
     if (!exposedContext || !roleHealth) return null;
@@ -320,8 +353,8 @@ export function useRuntimeOrchestrator(
       reconnectCount: rolePlatform.reconnectCount,
       reconnecting: rolePlatform.reconnecting,
     });
-    return collectRoleDiagnostics(definition, ctx);
-  }, [exposedContext, phase, roleHealth, rolePlatform]);
+    return collectRoleDiagnostics(definition, ctx, configurationHealth);
+  }, [exposedContext, phase, roleHealth, rolePlatform, configurationHealth]);
 
   return {
     phase,
@@ -332,6 +365,9 @@ export function useRuntimeOrchestrator(
     rolePlatform,
     roleHealth,
     roleDiagnostics,
+    configurationHealth,
+    reloadConfiguration,
+    reload: reloadConfiguration,
     unpair,
     retry,
   };
