@@ -50,12 +50,33 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
     }
   });
 
-  it("FF-OSC-03: screen data uses operationalDevice.runtime", () => {
+  it("FF-OSC-03: operational roles use operationalDevice.runtime kitchen queue", () => {
+    const kitchenPresentation = read("client/src/components/operational-screen/KitchenScreenPanel.tsx");
+    const roleHost = read("client/src/components/operational-screen/RuntimeRoleHost.tsx");
+    expect(kitchenPresentation).toContain("operationalDevice.runtime.getKitchenQueue");
+    expect(kitchenPresentation).not.toContain("kitchen.read.getQueue");
+    expect(roleHost).toContain("resolveRuntimeRole");
+    expect(roleHost).not.toMatch(/switch\s*\(/);
+    expect(roleHost).not.toMatch(/if\s*\(\s*role\s*===/);
+  });
+
+  it("ROLE-RUNTIME-1: single resolver via RuntimeRoleHost (no RoleRouter switch)", () => {
+    const entry = read("client/src/pages/screen/OperationalScreenEntry.tsx");
+    const roleHost = read("client/src/components/operational-screen/RuntimeRoleHost.tsx");
+    expect(entry).toContain("RuntimeRoleHost");
+    expect(roleHost).toContain("resolveRuntimeRole");
+    expect(roleHost).not.toContain("PrintMonitorScreenPanel");
+  });
+
+  it("HARDENING-04: role presentations consume the runtime provider (no prop-drilling)", () => {
     const kitchen = read("client/src/components/operational-screen/KitchenScreenPanel.tsx");
-    const print = read("client/src/components/operational-screen/PrintMonitorScreenPanel.tsx");
-    expect(kitchen).toContain("operationalDevice.runtime.getKitchenQueue");
-    expect(print).toContain("operationalDevice.runtime.getPrintMonitorSummary");
-    expect(kitchen).not.toContain("kitchen.read.getQueue");
+    const blocked = read("client/src/components/operational-screen/roles/BlockedRolePresentation.tsx");
+    const roleHost = read("client/src/components/operational-screen/RuntimeRoleHost.tsx");
+    expect(kitchen).toContain("useRuntimeContext");
+    expect(blocked).toContain("useResolvedRuntimeRole");
+    expect(kitchen).toContain("export function KitchenScreenPanel()");
+    expect(roleHost).toContain("useScreenRuntime");
+    expect(roleHost).toContain("<Presentation />");
   });
 
   it("FF-BOOT-01: bootstrap does not call authenticate on normal boot", () => {
@@ -63,20 +84,6 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
     expect(orchestrator).not.toContain("authenticate");
     const entry = read("client/src/pages/screen/OperationalScreenEntry.tsx");
     expect(entry).not.toContain("authenticate");
-  });
-
-  it("HARDENING-04: role panels consume the runtime provider (no prop-drilling)", () => {
-    const kitchen = read("client/src/components/operational-screen/KitchenScreenPanel.tsx");
-    const print = read("client/src/components/operational-screen/PrintMonitorScreenPanel.tsx");
-    const roleRouter = read("client/src/components/operational-screen/RoleRouter.tsx");
-    // Panels take no props and read context from the provider hook.
-    expect(kitchen).toContain("useRuntimeContext");
-    expect(print).toContain("useRuntimeContext");
-    expect(kitchen).toContain("export function KitchenScreenPanel()");
-    expect(print).toContain("export function PrintMonitorScreenPanel()");
-    expect(roleRouter).toContain("useRuntimeContext");
-    expect(roleRouter).toContain("<KitchenScreenPanel />");
-    expect(roleRouter).toContain("<PrintMonitorScreenPanel />");
   });
 
   it("HARDENING-03: single canonical runtime authority (no legacy bootstrap hook)", () => {
@@ -111,11 +118,10 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
     expect(isBlockedRole("pickup_display")).toBe(true);
     expect(isBlockedRole("customer_display")).toBe(true);
     expect(isBlockedRole("self_ordering_kiosk")).toBe(true);
+    expect(isBlockedRole("print_monitor")).toBe(true);
     expect(isBlockedRole("kitchen_display")).toBe(false);
     expect(isBlockedRole("expo_display")).toBe(false);
-    expect(isBlockedRole("print_monitor")).toBe(false);
 
-    // Running is only reachable after heartbeat is active; blocked follows running.
     const running = transition("heartbeat_active", { type: "HEARTBEAT_STARTED" });
     expect(running).toBe("running");
     const blocked = transition(running, { type: "RUN_BLOCKED" });

@@ -21,6 +21,11 @@ import {
 } from "./bootstrapStateMachine";
 import { collectRuntimeFingerprint } from "./runtimeFingerprint";
 import { isBlockedRole } from "./runtimeCapabilities";
+import "./roles/registerRoles";
+import { resolveRuntimeRole } from "./roles/runtimeRoleRegistry";
+import { buildRoleRuntimeHealth, collectRoleDiagnostics } from "./roles/runtimeRoleHealth";
+import { buildLifecycleContext } from "./roles/runtimeRoleLifecycle";
+import type { RoleRuntimeHealth } from "./roles/runtimeRoleContract";
 import { screenTrpc } from "./screenTrpc";
 import type { BootstrapPhase, OperationalScreenRuntimeContext } from "./runtimeTypes";
 import { spaNavigate } from "@/const";
@@ -33,12 +38,21 @@ export type RuntimeDiagnostics = {
   lastError: string | null;
 };
 
+export type RolePlatformMetrics = {
+  heartbeatCount: number;
+  reconnectCount: number;
+  reconnecting: boolean;
+};
+
 export type RuntimeOrchestratorValue = {
   phase: BootstrapPhase;
   context: OperationalScreenRuntimeContext | null;
   degraded: boolean;
   lastError: string | null;
   diagnostics: RuntimeDiagnostics;
+  rolePlatform: RolePlatformMetrics;
+  roleHealth: RoleRuntimeHealth | null;
+  roleDiagnostics: Record<string, unknown> | null;
   unpair: () => void;
   retry: () => void;
 };
@@ -65,6 +79,10 @@ export function useRuntimeOrchestrator(
 
   const phaseRef = useRef<BootstrapPhase>(INITIAL_PHASE);
   const heartbeatFailures = useRef(0);
+  const heartbeatCount = useRef(0);
+  const reconnectCount = useRef(0);
+  const wasDegradedRef = useRef(false);
+  const [reconnecting, setReconnecting] = useState(false);
   const heartbeatTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const heartbeatStopped = useRef(false);
 
@@ -122,6 +140,7 @@ export function useRuntimeOrchestrator(
           .mutateAsync({ reportedVersion: import.meta.env.VITE_APP_VERSION ?? "web" })
           .then(() => {
             heartbeatFailures.current = 0;
+            heartbeatCount.current += 1;
             setLastError(null);
             dispatch({ type: "NETWORK_RECOVERED" });
             scheduleHeartbeat(HEARTBEAT_INTERVAL_MS);
@@ -202,6 +221,11 @@ export function useRuntimeOrchestrator(
     }
 
     // Recover from degraded when a fresh status arrives.
+    if (wasDegradedRef.current && phaseRef.current !== "degraded") {
+      reconnectCount.current += 1;
+      setReconnecting(true);
+      wasDegradedRef.current = false;
+    }
     dispatch({ type: "NETWORK_RECOVERED" });
     if (isBlockedRole(status.device.role)) {
       dispatch({ type: "RUN_BLOCKED" });
@@ -221,6 +245,8 @@ export function useRuntimeOrchestrator(
   // Non-auth status errors → Degraded.
   useEffect(() => {
     if (!statusQuery.error || isDeviceAuthError(statusQuery.error)) return;
+    wasDegradedRef.current = true;
+    setReconnecting(false);
     setLastError(
       statusQuery.error instanceof TRPCClientError
         ? statusQuery.error.message
@@ -263,12 +289,49 @@ export function useRuntimeOrchestrator(
     [phase, bootstrapId, statusQuery.status, lastError]
   );
 
+  useEffect(() => {
+    if (phase === "running" || phase === "blocked") {
+      setReconnecting(false);
+    }
+  }, [phase]);
+
+  const rolePlatform = useMemo<RolePlatformMetrics>(
+    () => ({
+      heartbeatCount: heartbeatCount.current,
+      reconnectCount: reconnectCount.current,
+      reconnecting,
+    }),
+    [phase, reconnecting, statusQuery.status, lastError]
+  );
+
+  const roleHealth = useMemo<RoleRuntimeHealth | null>(() => {
+    if (!exposedContext) return null;
+    const definition = resolveRuntimeRole(exposedContext.identity.role);
+    return buildRoleRuntimeHealth(definition, exposedContext, phase, rolePlatform);
+  }, [exposedContext, phase, rolePlatform]);
+
+  const roleDiagnostics = useMemo<Record<string, unknown> | null>(() => {
+    if (!exposedContext || !roleHealth) return null;
+    const definition = resolveRuntimeRole(exposedContext.identity.role);
+    const ctx = buildLifecycleContext(definition, {
+      context: exposedContext,
+      bootstrapPhase: phase,
+      heartbeatCount: rolePlatform.heartbeatCount,
+      reconnectCount: rolePlatform.reconnectCount,
+      reconnecting: rolePlatform.reconnecting,
+    });
+    return collectRoleDiagnostics(definition, ctx);
+  }, [exposedContext, phase, roleHealth, rolePlatform]);
+
   return {
     phase,
     context: exposedContext,
     degraded,
     lastError,
     diagnostics,
+    rolePlatform,
+    roleHealth,
+    roleDiagnostics,
     unpair,
     retry,
   };

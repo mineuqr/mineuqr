@@ -6,7 +6,7 @@ import {
   useScreenRuntime,
 } from "@/components/operational-screen/OperationalScreenRuntimeProvider";
 import { OperationalScreenShell } from "@/components/operational-screen/OperationalScreenShell";
-import { RoleRouter } from "@/components/operational-screen/RoleRouter";
+import { RuntimeRoleHost } from "@/components/operational-screen/RuntimeRoleHost";
 import { ScreenDiagnosticsPanel } from "@/components/operational-screen/ScreenDiagnosticsPanel";
 import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
@@ -29,7 +29,7 @@ function OperationalScreenRuntime() {
 
   return (
     <OperationalScreenShell>
-      <RoleRouter />
+      <RuntimeRoleHost />
       {import.meta.env.DEV ? <ScreenDiagnosticsPanel /> : null}
       {degraded ? (
         <div className="mt-4 text-center">
