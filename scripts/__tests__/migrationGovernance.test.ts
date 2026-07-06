@@ -61,4 +61,13 @@ describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
     const vercel = readFileSync(join(repoRoot, "vercel.json"), "utf8");
     expect(vercel).toContain("migration-governance-guard");
   });
+
+  it("recovery execute delegates to phased orchestrator (no bulk migrate)", () => {
+    const execute = readFileSync(
+      join(repoRoot, "scripts/recovery/migration-0054-0057-execute.mjs"),
+      "utf8"
+    );
+    expect(execute).not.toMatch(/spawnSync\([^)]*drizzle-kit/);
+    expect(execute).toContain("phased-execute");
+  });
 });

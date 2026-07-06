@@ -51,7 +51,8 @@ Must exit **0**. Includes auth, order-read, and operational-device objects.
 ## Production promotion (after staging)
 
 1. `pnpm db:recovery:preflight` on gateway01
-2. TiDB backup
-3. `node scripts/recovery/migration-0054-0057-execute.mjs --execute --confirm-gateway01` (or `db:migrate`)
-4. `pnpm db:verify-schema`
-5. Deploy application (Vercel runs governance guard automatically)
+2. TiDB backup — set `TIDB_BACKUP_CONFIRMED=YES` or pass `--confirm-backup`
+3. `pnpm db:recovery:execute -- --execute --confirm-gateway01 --confirm-backup` (phased: 0054→0055→0057→0056)
+4. If stopped after phase-4: run ORDER-READ-BACKFILL-1, then `--resume-from verify`
+5. `pnpm db:verify-schema`
+6. Deploy application (Vercel runs governance guard automatically)

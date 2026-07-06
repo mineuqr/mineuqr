@@ -60,6 +60,7 @@ node scripts/verify-schema-deployment.cjs     # schema gate
 | `pnpm db:migrate` | Apply pending journal migrations |
 | `pnpm db:verify-schema` | Required objects present |
 | `pnpm db:recovery:preflight` | Production 0054–0057 readiness |
+| `pnpm db:recovery:execute` | Phased production recovery (dry-run default) |
 
 ---
 
@@ -79,11 +80,13 @@ pnpm db:verify-schema
 
 ```bash
 pnpm db:recovery:preflight
-# TiDB backup (mandatory)
-node scripts/recovery/migration-0054-0057-execute.mjs --execute --confirm-gateway01
+# TiDB backup (mandatory) — TIDB_BACKUP_CONFIRMED=YES or --confirm-backup
+pnpm db:recovery:execute -- --execute --confirm-gateway01 --confirm-backup
 ```
 
-Or after journal restoration: `pnpm db:migrate` with same verification.
+**Do not** use `pnpm db:migrate` on gateway01 for tail recovery — operational order is `0054→0055→0057→0056`, not journal idx order.
+
+Or after journal restoration on **staging**: `pnpm db:migrate` with same verification.
 
 ### C) New schema change
 
@@ -115,6 +118,7 @@ Or after journal restoration: `pnpm db:migrate` with same verification.
 | Running legacy orphan SQL | Table-exists / lineage corruption |
 | Deleting orphan bootstrap `__drizzle_migrations` rows | Breaks audit trail |
 | `db:push` on shared DB without review | Bypasses governance |
+| Bulk `db:migrate` on gateway01 tail recovery | Wrong order (0056 before 0057); skips verification gates |
 
 ---
 
@@ -122,10 +126,11 @@ Or after journal restoration: `pnpm db:migrate` with same verification.
 
 1. **Stop** — do not re-run migrate blindly
 2. **Preflight** — `pnpm db:recovery:preflight`
-3. **Backup** — TiDB snapshot
-4. **Execute** — `migration-0054-0057-execute.mjs` or `db:migrate`
-5. **Verify** — `db:verify-schema`
-6. **Smoke** — Screen Management, pairing, kitchen read
+3. **Backup** — TiDB snapshot (`TIDB_BACKUP_CONFIRMED=YES`)
+4. **Execute** — phased `db:recovery:execute` (not bulk `db:migrate` on production)
+5. **Backfill** — ORDER-READ-BACKFILL-1 if phase-4 stops
+6. **Verify** — `db:verify-schema` + backfill verify (phase-5)
+7. **Smoke** — Screen Management, pairing, kitchen read (phase-6)
 
 Rollback: forward-fix only (no down migrations). App rollback without schema rollback acceptable for additive DDL.
 
@@ -139,7 +144,8 @@ Rollback: forward-fix only (no down migrations). App rollback without schema rol
 | `scripts/migration-preflight.cjs` | Journal vs disk vs DB |
 | `scripts/verify-schema-deployment.cjs` | Schema object verification |
 | `scripts/recovery/migration-0054-0057-preflight.mjs` | Production recovery readiness |
-| `scripts/recovery/migration-0054-0057-execute.mjs` | Controlled migrate + verify |
+| `scripts/recovery/migration-0054-0057-phased-execute.mjs` | Phased recovery orchestrator |
+| `scripts/recovery/migration-0054-0057-execute.mjs` | Entry point (delegates to phased) |
 
 ---
 

@@ -117,7 +117,7 @@ async function main() {
       if (schemaPresent && !hashRecorded) {
         pending.push({ ...status, note: "schema present but hash missing — register hash after verify" });
       } else if (!schemaPresent && !hashRecorded) {
-        pending.push({ ...status, note: "execute via drizzle-kit migrate or recovery execute script" });
+        pending.push({ ...status, note: "execute via phased recovery (0054→0055→0057→0056)" });
       } else if (schemaPresent && hashRecorded) {
         alreadyApplied.push(status);
       } else {
