@@ -4,6 +4,11 @@ import { DrizzleOrderReadContextLoader } from "./infrastructure/persistence/Driz
 import { createPersistingProjectionRepositories } from "./infrastructure/persistence/PersistingOrderReadProjectionRepositories";
 import { OrderReadProjectionMaterializer } from "./projections/materializers/OrderReadProjectionMaterializer";
 import { OrderReadProjectionBackfillService } from "./infrastructure/backfill/OrderReadProjectionBackfillService";
+import { OrderCategoryProjectionBuilder } from "./projections/builders/OrderCategoryProjectionBuilder";
+import { drizzleCategoryResolutionPort } from "./infrastructure/persistence/DrizzleCategoryResolutionPort";
+import { OrderReadCategoryBackfillService } from "./infrastructure/backfill/OrderReadCategoryBackfillService";
+import { OrderReadCategoryBackfillVerifier } from "./infrastructure/backfill/OrderReadCategoryBackfillVerifier";
+import { drizzleCategoryBackfillLineItemStore } from "./infrastructure/backfill/DrizzleCategoryBackfillLineItemStore";
 
 const inMemoryStore = new InMemoryOrderReadProjectionStore();
 const drizzleStore = new DrizzleOrderReadProjectionStore();
@@ -30,6 +35,19 @@ export const orderReadProjectionBackfillService = new OrderReadProjectionBackfil
   contextLoader,
   drizzleStore,
   orderReadProjectionMaterializer
+);
+
+const categoryProjectionBuilder = new OrderCategoryProjectionBuilder(
+  drizzleCategoryResolutionPort
+);
+
+export const orderReadCategoryBackfillService = new OrderReadCategoryBackfillService(
+  drizzleCategoryBackfillLineItemStore,
+  categoryProjectionBuilder
+);
+
+export const orderReadCategoryBackfillVerifier = new OrderReadCategoryBackfillVerifier(
+  drizzleCategoryBackfillLineItemStore
 );
 
 export {

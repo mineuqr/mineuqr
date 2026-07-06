@@ -117,6 +117,34 @@ export class OrderCategoryProjectionBuilder {
     return this.buildLineItems(source.order.restaurantId, source.lineItems);
   }
 
+  /** Batch-build category projections for menu items — used by category backfill. */
+  async buildCategoryProjectionsForMenuItems(
+    restaurantId: number,
+    menuItemIds: readonly number[]
+  ): Promise<Map<number, OrderCategoryProjection>> {
+    const uniqueIds = Array.from(new Set(menuItemIds));
+    if (uniqueIds.length === 0) return new Map();
+
+    const started = Date.now();
+    const resolved = await this.resolver.batchResolveMenuItemCategories(
+      restaurantId,
+      uniqueIds
+    );
+    const projections = new Map<number, OrderCategoryProjection>();
+
+    for (const menuItemId of uniqueIds) {
+      const categorySource = resolved.get(menuItemId);
+      if (!categorySource) continue;
+      projections.set(
+        menuItemId,
+        this.buildCategoryProjection(restaurantId, menuItemId, categorySource)
+      );
+    }
+
+    this.metrics.recordProjectionBuilt(Date.now() - started);
+    return projections;
+  }
+
   buildReadMeta(lineItems: readonly ActiveOrderLineItemDto[]): CategoryProjectionReadMeta {
     const categories = lineItems.map((item) => item.category);
     return {

@@ -142,6 +142,9 @@ export const OPS_EVENT = {
   order_read_backfill_started: "order_read_backfill_started",
   order_read_backfill_completed: "order_read_backfill_completed",
   order_read_backfill_failed: "order_read_backfill_failed",
+  order_read_category_backfill_started: "order_read_category_backfill_started",
+  order_read_category_backfill_completed: "order_read_category_backfill_completed",
+  order_read_category_backfill_failed: "order_read_category_backfill_failed",
 
   // SESSION-AGGREGATES-1 Phase A
   session_aggregate_drift_detected: "session_aggregate_drift_detected",
