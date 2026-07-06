@@ -51,4 +51,27 @@ describe("SCREEN-PROVISIONING-WORKSPACE-1 architecture guards", () => {
     expect(status).toContain("ProvisioningHealth");
     expect(status).not.toContain("resolveProvisioning");
   });
+
+  it("BUGFIX-F003 — fleet status never maps to rotate fallback", () => {
+    const fleet = read("client/src/components/screen-management/ScreenManagementWorkspacePanel.tsx");
+    expect(fleet).toContain("resolveFleetProvisioningNavigation");
+    expect(fleet).toContain('navigateFleetProvisioning(id, "status")');
+    expect(fleet).not.toContain('openProvision(id, "resume")');
+    expect(fleet).not.toMatch(/mode:\s*"rotate"[\s\S]*resume/);
+  });
+
+  it("BUGFIX-F003 — provisioning workspace never auto-rotates on mount", () => {
+    const workspace = read("client/src/components/screen-provisioning/ProvisioningWorkspacePanel.tsx");
+    expect(workspace).not.toMatch(
+      /useEffect\([\s\S]*urlState\.mode !== "rotate"[\s\S]*rotateMutation\.mutate/
+    );
+    expect(workspace).toContain("RotateCredentialsConfirmation");
+    expect(workspace).toContain("DeviceOperationalStatusPanel");
+    expect(workspace).toContain('urlState.mode === "status"');
+  });
+
+  it("BUGFIX-F003 — status URL mode is supported", () => {
+    const url = read("client/src/lib/screen-provisioning/provisioningUrl.ts");
+    expect(url).toContain('"status"');
+  });
 });

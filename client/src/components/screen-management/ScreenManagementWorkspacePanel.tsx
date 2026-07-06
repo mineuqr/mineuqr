@@ -20,6 +20,7 @@ import {
 import { SCREEN_TYPE_OPTIONS } from "@/lib/operational-screen/screenLabels";
 import { navigateToProvisioning } from "@/lib/screen-provisioning/provisioningUrl";
 import { provisioningSessionManager } from "@/lib/screen-provisioning/ProvisioningSessionManager";
+import { resolveFleetProvisioningNavigation } from "@/lib/screen-provisioning/provisioningNavigation";
 import { useFleetQuery } from "@/lib/screen-fleet/useFleetQuery";
 import { restaurantQueriesEnabled } from "@/lib/queryRuntime";
 import { isEmailNotVerifiedError } from "@/lib/trpcErrors";
@@ -83,21 +84,17 @@ export function ScreenManagementWorkspacePanel({
     };
   }, [fleetQuery.kpis]);
 
-  const openProvision = (deviceId: string, mode: "rotate" | "resume") => {
-    const existing = provisioningSessionManager.findSessionByDevice(deviceId);
-    if (existing && mode === "resume") {
-      navigateToProvisioning({
-        restaurantId,
-        sessionId: existing.sessionId,
-        mode: "resume",
-      });
-      return;
-    }
-    navigateToProvisioning({
+  const navigateFleetProvisioning = (
+    deviceId: string,
+    action: "status" | "resume" | "rotate"
+  ) => {
+    const target = resolveFleetProvisioningNavigation({
+      action,
       restaurantId,
       deviceId,
-      mode: "rotate",
+      findSessionByDevice: (id) => provisioningSessionManager.findSessionByDevice(id),
     });
+    navigateToProvisioning(target);
   };
 
   if (fleetQuery.error && isEmailNotVerifiedError(fleetQuery.error)) {
@@ -246,8 +243,8 @@ export function ScreenManagementWorkspacePanel({
               screen={screen}
               language={language}
               onSettings={setSettingsScreenId}
-              onProvision={(id) => openProvision(id, "rotate")}
-              onViewStatus={(id) => openProvision(id, "resume")}
+              onProvision={(id) => navigateFleetProvisioning(id, "rotate")}
+              onViewStatus={(id) => navigateFleetProvisioning(id, "status")}
               onDisable={(id) => disableMutation.mutate({ restaurantId, deviceId: id })}
               disablePending={disableMutation.isPending}
             />

@@ -3,7 +3,7 @@ import { buildDashboardPath } from "@/lib/dashboardUrl";
 
 export type ProvisioningUrlState = {
   sessionId: string | null;
-  mode: "create" | "rotate" | "resume" | null;
+  mode: "create" | "rotate" | "resume" | "status" | null;
   deviceId: string | null;
 };
 
@@ -19,7 +19,7 @@ export function readProvisioningUrlState(): ProvisioningUrlState {
 export function buildProvisioningPath(params: {
   restaurantId: number;
   sessionId?: string | null;
-  mode?: "create" | "rotate" | "resume" | null;
+  mode?: "create" | "rotate" | "resume" | "status" | null;
   deviceId?: string | null;
 }): string {
   const base = buildDashboardPath({ restaurantId: params.restaurantId, section: "screen-provisioning" });
@@ -34,7 +34,7 @@ export function navigateToProvisioning(
   params: {
     restaurantId: number;
     sessionId?: string | null;
-    mode?: "create" | "rotate" | "resume" | null;
+    mode?: "create" | "rotate" | "resume" | "status" | null;
     deviceId?: string | null;
   },
   options?: { replace?: boolean }
