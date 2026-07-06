@@ -59,6 +59,19 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
     expect(kitchenPresentation).not.toContain(".filter(");
   });
 
+  it("KITCHEN-DISPLAY-DENSITY-1: density flows through runtime manager only", () => {
+    const manager = read("client/src/lib/operational-screen/density/runtimeDisplayDensityManager.ts");
+    const kitchen = read("client/src/components/operational-screen/KitchenScreenPanel.tsx");
+    const card = read("client/src/components/kitchen/KitchenExecutionCard.tsx");
+    expect(manager).toContain("RuntimeDisplayDensityManager");
+    expect(kitchen).toContain("resolvedDensityModel");
+    expect(kitchen).not.toContain("displayDensity");
+    expect(kitchen).not.toContain("screenConfig");
+    expect(card).toContain("densityModel");
+    expect(card).not.toContain("compact");
+    expect(card).not.toContain("comfortable");
+  });
+
   it("KITCHEN-CATEGORY-FILTER-1: filtering in runtime layer only", () => {
     const filterManager = read("client/src/lib/operational-screen/category-filter/runtimeCategoryFilterManager.ts");
     const applyFilter = read("client/src/lib/operational-screen/kitchen/applyKitchenCategoryFilter.ts");

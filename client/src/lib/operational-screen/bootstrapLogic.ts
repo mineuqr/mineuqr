@@ -5,6 +5,7 @@ import type { OperationalScreenCredentials } from "./credentialStore";
 import { RuntimeConfigurationManager } from "./configuration/runtimeConfigurationManager";
 import type { RuntimeConfiguration } from "./configuration/runtimeConfigurationContract";
 import { buildRuntimeCapabilitySet, getRoleCapabilities } from "./runtimeCapabilities";
+import { COMFORTABLE_DENSITY_MODEL } from "./density/presentationDensityModels";
 import { collectRuntimeFingerprint } from "./runtimeFingerprint";
 import type {
   BootstrapPhase,
@@ -77,6 +78,10 @@ export function buildRuntimeContext(input: {
       language: runtimeConfiguration.active.language,
       direction: runtimeConfiguration.active.direction,
     },
+    displayDensity: "comfortable",
+    densityState: "loading",
+    densityVersion: 0,
+    resolvedDensityModel: COMFORTABLE_DENSITY_MODEL,
     capabilities: buildRuntimeCapabilitySet(input.status.device.role),
     fingerprint,
     bootstrap: {

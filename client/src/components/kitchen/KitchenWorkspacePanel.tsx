@@ -1,6 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { VerificationRequiredPanel } from "@/components/auth/VerificationRequiredPanel";
 import { KitchenExecutionCard } from "@/components/kitchen/KitchenExecutionCard";
+import { COMFORTABLE_DENSITY_MODEL } from "@/lib/operational-screen/density/presentationDensityModels";
 import { OperationalWorkspaceShell } from "@/components/operational-workspace/OperationalWorkspaceShell";
 import { OperationsBar } from "@/components/operational-workspace/OperationsBar";
 import { WorkspaceFilters } from "@/components/operational-workspace/WorkspaceFilters";
@@ -192,6 +193,7 @@ export function KitchenWorkspacePanel({
                         ticket.elapsedMinutes * 60
                       )}
                       language={language}
+                      densityModel={COMFORTABLE_DENSITY_MODEL}
                       fading={isFading(ticket)}
                     />
                   ))

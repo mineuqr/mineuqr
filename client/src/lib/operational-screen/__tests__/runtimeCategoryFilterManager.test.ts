@@ -17,7 +17,7 @@ function mockConfiguration(
     active: { language: "en", direction: "ltr" },
     tracked: {
       density: "large",
-      densityActivated: false,
+      densityActivated: true,
       categoryIds,
       categoriesActivated: true,
     },

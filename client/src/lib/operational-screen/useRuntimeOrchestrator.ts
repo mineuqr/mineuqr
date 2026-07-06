@@ -23,6 +23,11 @@ import type {
   RuntimeCategoryFilter,
 } from "./category-filter/runtimeCategoryFilterContract";
 import type { CategoryFilterPredicate } from "./category-filter/runtimeCategoryFilterManager";
+import { RuntimeDisplayDensityManager } from "./density/runtimeDisplayDensityManager";
+import type {
+  DisplayDensityHealth,
+  RuntimeDisplayDensity,
+} from "./density/runtimeDisplayDensityContract";
 import { getRoleCapabilities } from "./runtimeCapabilities";
 import {
   INITIAL_PHASE,
@@ -67,9 +72,12 @@ export type RuntimeOrchestratorValue = {
   categoryFilter: RuntimeCategoryFilter | null;
   categoryFilterHealth: CategoryFilterHealth | null;
   categoryFilterPredicate: CategoryFilterPredicate;
+  displayDensity: RuntimeDisplayDensity | null;
+  displayDensityHealth: DisplayDensityHealth | null;
   reloadConfiguration: () => void;
-  /** Alias for reloadConfiguration — configuration hot-reload via existing polling. */
+  /** Alias for reloadConfiguration — reapplies configuration and density. */
   reload: () => void;
+  reloadDensity: () => void;
   unpair: () => void;
   retry: () => void;
 };
@@ -104,12 +112,20 @@ export function useRuntimeOrchestrator(
   const heartbeatStopped = useRef(false);
   const configManagerRef = useRef(new RuntimeConfigurationManager());
   const categoryFilterManagerRef = useRef(new RuntimeCategoryFilterManager());
+  const densityManagerRef = useRef(new RuntimeDisplayDensityManager());
   const [categoryFilterVersion, setCategoryFilterVersion] = useState(0);
+  const [densityVersion, setDensityVersion] = useState(0);
 
   const syncCategoryFilter = useCallback((runtimeConfiguration: NonNullable<ReturnType<RuntimeConfigurationManager["getConfiguration"]>>) => {
     const capabilities = getRoleCapabilities(runtimeConfiguration.role);
     categoryFilterManagerRef.current.syncFromConfiguration(runtimeConfiguration, capabilities);
     setCategoryFilterVersion((v) => v + 1);
+  }, []);
+
+  const syncDisplayDensity = useCallback((runtimeConfiguration: NonNullable<ReturnType<RuntimeConfigurationManager["getConfiguration"]>>) => {
+    const capabilities = getRoleCapabilities(runtimeConfiguration.role);
+    densityManagerRef.current.syncFromConfiguration(runtimeConfiguration, capabilities);
+    setDensityVersion((v) => v + 1);
   }, []);
 
   const degraded = phase === "degraded";
@@ -295,12 +311,14 @@ export function useRuntimeOrchestrator(
   useEffect(() => {
     if (!context?.runtimeConfiguration) return;
     syncCategoryFilter(context.runtimeConfiguration);
-  }, [context?.runtimeConfiguration.version, context?.runtimeConfiguration, syncCategoryFilter]);
+    syncDisplayDensity(context.runtimeConfiguration);
+  }, [context?.runtimeConfiguration.version, context?.runtimeConfiguration, syncCategoryFilter, syncDisplayDensity]);
 
   const unpair = useCallback(() => {
     stopHeartbeat();
     configManagerRef.current.dispose();
     categoryFilterManagerRef.current.dispose();
+    densityManagerRef.current.dispose();
     clearOperationalScreenCredentials();
     setContext(null);
     dispatch({ type: "AUTH_REVOKED" });
@@ -316,9 +334,19 @@ export function useRuntimeOrchestrator(
   // The exposed context always carries the authoritative phase (no duplicate state).
   const exposedContext = useMemo<OperationalScreenRuntimeContext | null>(() => {
     if (!context) return null;
-    if (context.bootstrap.phase === phase) return context;
-    return { ...context, bootstrap: { ...context.bootstrap, phase } };
-  }, [context, phase]);
+    const densitySnapshot = densityManagerRef.current.getSnapshot();
+    const withPhase =
+      context.bootstrap.phase === phase
+        ? context
+        : { ...context, bootstrap: { ...context.bootstrap, phase } };
+    return {
+      ...withPhase,
+      displayDensity: densitySnapshot.density?.density ?? withPhase.displayDensity,
+      densityState: densitySnapshot.density?.state ?? withPhase.densityState,
+      densityVersion: densitySnapshot.density?.version ?? withPhase.densityVersion,
+      resolvedDensityModel: densitySnapshot.model,
+    };
+  }, [context, phase, densityVersion]);
 
   const diagnostics = useMemo<RuntimeDiagnostics>(
     () => ({
@@ -350,6 +378,8 @@ export function useRuntimeOrchestrator(
     void statusQuery.refetch();
   }, [statusQuery]);
 
+  const reloadDensity = reloadConfiguration;
+
   const configurationHealth = useMemo<ConfigurationHealth | null>(() => {
     const incoming = statusQuery.data?.configVersion;
     return configManagerRef.current.buildHealth(incoming);
@@ -368,6 +398,18 @@ export function useRuntimeOrchestrator(
     return categoryFilterManagerRef.current.buildHealth();
   }, [categoryFilterVersion, context?.configurationVersion]);
 
+  const displayDensitySnapshot = useMemo(() => {
+    void densityVersion;
+    return densityManagerRef.current.getSnapshot();
+  }, [densityVersion, context?.configurationVersion]);
+
+  const displayDensity = displayDensitySnapshot.density;
+  const displayDensityHealth = useMemo<DisplayDensityHealth | null>(() => {
+    void densityVersion;
+    const incoming = statusQuery.data?.configVersion;
+    return densityManagerRef.current.buildHealth(incoming);
+  }, [densityVersion, context?.configurationVersion, statusQuery.data?.configVersion]);
+
   const roleHealth = useMemo<RoleRuntimeHealth | null>(() => {
     if (!exposedContext) return null;
     const definition = resolveRuntimeRole(exposedContext.identity.role);
@@ -377,9 +419,10 @@ export function useRuntimeOrchestrator(
       phase,
       rolePlatform,
       configurationHealth,
-      categoryFilterHealth
+      categoryFilterHealth,
+      displayDensityHealth
     );
-  }, [exposedContext, phase, rolePlatform, configurationHealth, categoryFilterHealth]);
+  }, [exposedContext, phase, rolePlatform, configurationHealth, categoryFilterHealth, displayDensityHealth]);
 
   const roleDiagnostics = useMemo<Record<string, unknown> | null>(() => {
     if (!exposedContext || !roleHealth) return null;
@@ -391,8 +434,14 @@ export function useRuntimeOrchestrator(
       reconnectCount: rolePlatform.reconnectCount,
       reconnecting: rolePlatform.reconnecting,
     });
-    return collectRoleDiagnostics(definition, ctx, configurationHealth, categoryFilterHealth);
-  }, [exposedContext, phase, roleHealth, rolePlatform, configurationHealth, categoryFilterHealth]);
+    return collectRoleDiagnostics(
+      definition,
+      ctx,
+      configurationHealth,
+      categoryFilterHealth,
+      displayDensityHealth
+    );
+  }, [exposedContext, phase, roleHealth, rolePlatform, configurationHealth, categoryFilterHealth, displayDensityHealth]);
 
   return {
     phase,
@@ -407,8 +456,11 @@ export function useRuntimeOrchestrator(
     categoryFilter,
     categoryFilterHealth,
     categoryFilterPredicate,
+    displayDensity,
+    displayDensityHealth,
     reloadConfiguration,
     reload: reloadConfiguration,
+    reloadDensity,
     unpair,
     retry,
   };

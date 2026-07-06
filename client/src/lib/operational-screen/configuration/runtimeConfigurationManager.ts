@@ -54,7 +54,7 @@ function negotiateTrackedFields(
 ): RuntimeConfiguration["tracked"] {
   return {
     density: capabilities.supportsDensity ? parsed.displayDensity : DEFAULT_SCREEN_CONFIG.displayDensity,
-    densityActivated: false,
+    densityActivated: capabilities.supportsDensity,
     categoryIds: capabilities.supportsCategoryFilter
       ? parsed.visibleCategoryIds
       : DEFAULT_SCREEN_CONFIG.visibleCategoryIds,

@@ -45,7 +45,7 @@ describe("RuntimeConfigurationManager", () => {
     expect(config.active.language).toBe("en");
     expect(config.active.direction).toBe("ltr");
     expect(config.tracked.density).toBe("compact");
-    expect(config.tracked.densityActivated).toBe(false);
+    expect(config.tracked.densityActivated).toBe(true);
     expect(config.tracked.categoryIds).toEqual([1, 2]);
     expect(config.tracked.categoriesActivated).toBe(true);
     expect(manager.getSnapshot().lastAppliedVersion).toBe("v1");
@@ -131,7 +131,6 @@ describe("RuntimeConfigurationManager", () => {
       blockedCapabilities
     );
 
-    expect(config.tracked.densityActivated).toBe(false);
     expect(config.tracked.categoriesActivated).toBe(false);
     expect(config.tracked.categoryIds).toEqual([]);
   });

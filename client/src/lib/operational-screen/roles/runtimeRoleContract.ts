@@ -82,6 +82,8 @@ export type RoleRuntimeHealth = {
   configurationUsedFallback: boolean;
   categoryFilterEnabled: boolean;
   categoryFilterVersion: number | null;
+  displayDensity: string | null;
+  displayDensityVersion: number | null;
   capabilities: RoleCapabilityDeclaration;
   operational: boolean;
   blockedReason: { en: string; ar: string } | null;

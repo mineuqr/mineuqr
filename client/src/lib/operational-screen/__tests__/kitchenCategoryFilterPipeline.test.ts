@@ -107,7 +107,7 @@ describe("kitchen category filter pipeline", () => {
         active: { language: "en", direction: "ltr" },
         tracked: {
           density: "large",
-          densityActivated: false,
+          densityActivated: true,
           categoryIds: [1],
           categoriesActivated: true,
         },
@@ -135,7 +135,7 @@ describe("kitchen category filter pipeline", () => {
         active: { language: "en", direction: "ltr" },
         tracked: {
           density: "large",
-          densityActivated: false,
+          densityActivated: true,
           categoryIds: [],
           categoriesActivated: true,
         },
@@ -172,7 +172,7 @@ describe("kitchen category filter pipeline", () => {
         active: { language: "en", direction: "ltr" },
         tracked: {
           density: "large",
-          densityActivated: false,
+          densityActivated: true,
           categoryIds: [99],
           categoriesActivated: true,
         },

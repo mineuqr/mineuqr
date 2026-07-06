@@ -5,6 +5,11 @@ import type {
   ConfigurationLifecycleState,
   RuntimeConfiguration,
 } from "./configuration/runtimeConfigurationContract";
+import type {
+  CanonicalDisplayDensity,
+  DensityLifecycleState,
+  PresentationDensityModel,
+} from "./density/runtimeDisplayDensityContract";
 import type { DisplayDirection, ScreenLanguage } from "../../../../server/operational-device/domain/screenConfig";
 
 export type BootstrapPhase =
@@ -79,11 +84,16 @@ export type OperationalScreenRuntimeContext = {
   /** @deprecated Use configurationVersion */
   configVersion: string;
   runtimeStatus: RuntimeGetStatusResponse["health"];
-  /** Active presentation values only (language/direction). Density is not exposed here. */
+  /** Active presentation values (language/direction). */
   presentation: {
     language: ScreenLanguage;
     direction: DisplayDirection;
   };
+  /** KITCHEN-DISPLAY-DENSITY-1 — resolved density from runtime manager. */
+  displayDensity: CanonicalDisplayDensity;
+  densityState: DensityLifecycleState;
+  densityVersion: number;
+  resolvedDensityModel: PresentationDensityModel;
   capabilities: RuntimeCapabilitySet;
   fingerprint: OperationalScreenRuntimeFingerprint;
   bootstrap: {
