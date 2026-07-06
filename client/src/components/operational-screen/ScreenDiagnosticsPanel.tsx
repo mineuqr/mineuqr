@@ -11,6 +11,8 @@ export function ScreenDiagnosticsPanel() {
     roleHealth,
     roleDiagnostics,
     configurationHealth,
+    categoryFilterHealth,
+    categoryFilter,
   } = useScreenRuntime();
 
   const roleCapabilities = context ? getRoleCapabilities(context.identity.role) : null;
@@ -26,6 +28,8 @@ export function ScreenDiagnosticsPanel() {
     roleHealth,
     roleDiagnostics,
     configurationHealth,
+    categoryFilter,
+    categoryFilterHealth,
     runtimeConfiguration: context?.runtimeConfiguration ?? null,
     configurationState: context?.configurationState ?? null,
     configurationVersion: context?.configurationVersion ?? null,

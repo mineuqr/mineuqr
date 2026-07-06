@@ -58,7 +58,7 @@ function negotiateTrackedFields(
     categoryIds: capabilities.supportsCategoryFilter
       ? parsed.visibleCategoryIds
       : DEFAULT_SCREEN_CONFIG.visibleCategoryIds,
-    categoriesActivated: false,
+    categoriesActivated: capabilities.supportsCategoryFilter,
   };
 }
 

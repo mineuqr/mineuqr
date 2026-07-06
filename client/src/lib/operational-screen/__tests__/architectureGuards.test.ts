@@ -50,14 +50,24 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
     }
   });
 
-  it("FF-OSC-03: operational roles use operationalDevice.runtime kitchen queue", () => {
+  it("FF-OSC-03: kitchen queue fetched in runtime stream, not presentation", () => {
     const kitchenPresentation = read("client/src/components/operational-screen/KitchenScreenPanel.tsx");
-    const roleHost = read("client/src/components/operational-screen/RuntimeRoleHost.tsx");
-    expect(kitchenPresentation).toContain("operationalDevice.runtime.getKitchenQueue");
-    expect(kitchenPresentation).not.toContain("kitchen.read.getQueue");
-    expect(roleHost).toContain("resolveRuntimeRole");
-    expect(roleHost).not.toMatch(/switch\s*\(/);
-    expect(roleHost).not.toMatch(/if\s*\(\s*role\s*===/);
+    const runtimeStream = read("client/src/lib/operational-screen/kitchen/useKitchenRuntimeStream.ts");
+    expect(runtimeStream).toContain("operationalDevice.runtime.getKitchenQueue");
+    expect(kitchenPresentation).toContain("useKitchenRuntimeStream");
+    expect(kitchenPresentation).not.toContain("operationalDevice.runtime.getKitchenQueue");
+    expect(kitchenPresentation).not.toContain(".filter(");
+  });
+
+  it("KITCHEN-CATEGORY-FILTER-1: filtering in runtime layer only", () => {
+    const filterManager = read("client/src/lib/operational-screen/category-filter/runtimeCategoryFilterManager.ts");
+    const applyFilter = read("client/src/lib/operational-screen/kitchen/applyKitchenCategoryFilter.ts");
+    const kitchen = read("client/src/components/operational-screen/KitchenScreenPanel.tsx");
+    expect(filterManager).toContain("RuntimeCategoryFilterManager");
+    expect(applyFilter).toContain("applyKitchenCategoryFilter");
+    expect(kitchen).not.toContain("visibleCategoryIds");
+    expect(kitchen).not.toContain("categoryIds");
+    expect(kitchen).not.toContain("screenConfig");
   });
 
   it("ROLE-RUNTIME-1: single resolver via RuntimeRoleHost (no RoleRouter switch)", () => {

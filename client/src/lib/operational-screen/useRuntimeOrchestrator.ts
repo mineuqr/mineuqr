@@ -17,6 +17,13 @@ import {
 } from "./bootstrapLogic";
 import { RuntimeConfigurationManager } from "./configuration/runtimeConfigurationManager";
 import type { ConfigurationHealth } from "./configuration/runtimeConfigurationContract";
+import { RuntimeCategoryFilterManager } from "./category-filter/runtimeCategoryFilterManager";
+import type {
+  CategoryFilterHealth,
+  RuntimeCategoryFilter,
+} from "./category-filter/runtimeCategoryFilterContract";
+import type { CategoryFilterPredicate } from "./category-filter/runtimeCategoryFilterManager";
+import { getRoleCapabilities } from "./runtimeCapabilities";
 import {
   INITIAL_PHASE,
   transition,
@@ -57,6 +64,9 @@ export type RuntimeOrchestratorValue = {
   roleHealth: RoleRuntimeHealth | null;
   roleDiagnostics: Record<string, unknown> | null;
   configurationHealth: ConfigurationHealth | null;
+  categoryFilter: RuntimeCategoryFilter | null;
+  categoryFilterHealth: CategoryFilterHealth | null;
+  categoryFilterPredicate: CategoryFilterPredicate;
   reloadConfiguration: () => void;
   /** Alias for reloadConfiguration — configuration hot-reload via existing polling. */
   reload: () => void;
@@ -93,6 +103,14 @@ export function useRuntimeOrchestrator(
   const heartbeatTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const heartbeatStopped = useRef(false);
   const configManagerRef = useRef(new RuntimeConfigurationManager());
+  const categoryFilterManagerRef = useRef(new RuntimeCategoryFilterManager());
+  const [categoryFilterVersion, setCategoryFilterVersion] = useState(0);
+
+  const syncCategoryFilter = useCallback((runtimeConfiguration: NonNullable<ReturnType<RuntimeConfigurationManager["getConfiguration"]>>) => {
+    const capabilities = getRoleCapabilities(runtimeConfiguration.role);
+    categoryFilterManagerRef.current.syncFromConfiguration(runtimeConfiguration, capabilities);
+    setCategoryFilterVersion((v) => v + 1);
+  }, []);
 
   const degraded = phase === "degraded";
 
@@ -274,9 +292,15 @@ export function useRuntimeOrchestrator(
 
   useEffect(() => () => stopHeartbeat(), [stopHeartbeat]);
 
+  useEffect(() => {
+    if (!context?.runtimeConfiguration) return;
+    syncCategoryFilter(context.runtimeConfiguration);
+  }, [context?.runtimeConfiguration.version, context?.runtimeConfiguration, syncCategoryFilter]);
+
   const unpair = useCallback(() => {
     stopHeartbeat();
     configManagerRef.current.dispose();
+    categoryFilterManagerRef.current.dispose();
     clearOperationalScreenCredentials();
     setContext(null);
     dispatch({ type: "AUTH_REVOKED" });
@@ -331,6 +355,19 @@ export function useRuntimeOrchestrator(
     return configManagerRef.current.buildHealth(incoming);
   }, [context, statusQuery.data?.configVersion]);
 
+  const categoryFilterSnapshot = useMemo(() => {
+    void categoryFilterVersion;
+    return categoryFilterManagerRef.current.getSnapshot();
+  }, [categoryFilterVersion, context?.configurationVersion]);
+
+  const categoryFilter = categoryFilterSnapshot.filter;
+  const categoryFilterPredicate = categoryFilterSnapshot.predicate;
+
+  const categoryFilterHealth = useMemo<CategoryFilterHealth | null>(() => {
+    void categoryFilterVersion;
+    return categoryFilterManagerRef.current.buildHealth();
+  }, [categoryFilterVersion, context?.configurationVersion]);
+
   const roleHealth = useMemo<RoleRuntimeHealth | null>(() => {
     if (!exposedContext) return null;
     const definition = resolveRuntimeRole(exposedContext.identity.role);
@@ -339,9 +376,10 @@ export function useRuntimeOrchestrator(
       exposedContext,
       phase,
       rolePlatform,
-      configurationHealth
+      configurationHealth,
+      categoryFilterHealth
     );
-  }, [exposedContext, phase, rolePlatform, configurationHealth]);
+  }, [exposedContext, phase, rolePlatform, configurationHealth, categoryFilterHealth]);
 
   const roleDiagnostics = useMemo<Record<string, unknown> | null>(() => {
     if (!exposedContext || !roleHealth) return null;
@@ -353,8 +391,8 @@ export function useRuntimeOrchestrator(
       reconnectCount: rolePlatform.reconnectCount,
       reconnecting: rolePlatform.reconnecting,
     });
-    return collectRoleDiagnostics(definition, ctx, configurationHealth);
-  }, [exposedContext, phase, roleHealth, rolePlatform, configurationHealth]);
+    return collectRoleDiagnostics(definition, ctx, configurationHealth, categoryFilterHealth);
+  }, [exposedContext, phase, roleHealth, rolePlatform, configurationHealth, categoryFilterHealth]);
 
   return {
     phase,
@@ -366,6 +404,9 @@ export function useRuntimeOrchestrator(
     roleHealth,
     roleDiagnostics,
     configurationHealth,
+    categoryFilter,
+    categoryFilterHealth,
+    categoryFilterPredicate,
     reloadConfiguration,
     reload: reloadConfiguration,
     unpair,

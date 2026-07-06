@@ -47,7 +47,7 @@ describe("RuntimeConfigurationManager", () => {
     expect(config.tracked.density).toBe("compact");
     expect(config.tracked.densityActivated).toBe(false);
     expect(config.tracked.categoryIds).toEqual([1, 2]);
-    expect(config.tracked.categoriesActivated).toBe(false);
+    expect(config.tracked.categoriesActivated).toBe(true);
     expect(manager.getSnapshot().lastAppliedVersion).toBe("v1");
   });
 

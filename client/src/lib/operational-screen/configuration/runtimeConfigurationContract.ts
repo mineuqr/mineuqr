@@ -22,12 +22,12 @@ export type RuntimeConfigurationActive = {
   direction: DisplayDirection;
 };
 
-/** Tracked but not activated — density/categories deferred to future programs. */
+/** Tracked configuration — density deferred; categories activated by KITCHEN-CATEGORY-FILTER-1. */
 export type RuntimeConfigurationTracked = {
   density: DisplayDensity;
-  densityActivated: false;
+  densityActivated: boolean;
   categoryIds: number[];
-  categoriesActivated: false;
+  categoriesActivated: boolean;
 };
 
 /**

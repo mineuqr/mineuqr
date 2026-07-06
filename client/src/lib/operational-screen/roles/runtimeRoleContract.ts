@@ -80,6 +80,8 @@ export type RoleRuntimeHealth = {
   configurationState: RuntimeConfiguration["configurationState"];
   configurationErrors: string[];
   configurationUsedFallback: boolean;
+  categoryFilterEnabled: boolean;
+  categoryFilterVersion: number | null;
   capabilities: RoleCapabilityDeclaration;
   operational: boolean;
   blockedReason: { en: string; ar: string } | null;

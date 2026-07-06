@@ -11,7 +11,7 @@ function createConfigurationState(): RoleConfigurationState {
   return { lastConfiguration: null, configurationApplyCount: 0 };
 }
 
-/** Kitchen/Expo — receives normalized configuration; only language/direction are active. */
+/** Kitchen/Expo — receives normalized configuration; language/direction + category filter active. */
 export function createOperationalRoleLifecycle(): RoleLifecycleHandlers & {
   getConfigurationState: () => RoleConfigurationState;
 } {

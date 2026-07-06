@@ -2,43 +2,24 @@ import { useMemo } from "react";
 import { KitchenExecutionCard } from "@/components/kitchen/KitchenExecutionCard";
 import { toKitchenTicketCard } from "@/lib/kitchen/viewModels";
 import { computeSlaSnapshot } from "@/lib/operational-workspace/slaEngine";
-import { DATA_POLL_INTERVAL_MS } from "@/lib/operational-screen/bootstrapLogic";
-import { screenTrpc } from "@/lib/operational-screen/screenTrpc";
+import { useKitchenRuntimeStream } from "@/lib/operational-screen/kitchen/useKitchenRuntimeStream";
 import { useRuntimeContext } from "./OperationalScreenRuntimeProvider";
 import { Loader2 } from "lucide-react";
-
-function useVisiblePollingEnabled(): boolean {
-  if (typeof document === "undefined") return true;
-  return document.visibilityState === "visible";
-}
 
 export function KitchenScreenPanel() {
   const context = useRuntimeContext();
   const language = context.presentation.language;
-  const visible = useVisiblePollingEnabled();
+  const { queue, isLoading } = useKitchenRuntimeStream();
 
-  const queueQuery = screenTrpc.operationalDevice.runtime.getKitchenQueue.useQuery(
-    { status: "all", limit: 200 },
-    {
-      refetchInterval: visible ? DATA_POLL_INTERVAL_MS : false,
-      refetchOnWindowFocus: true,
-      placeholderData: (prev) => prev,
-    }
-  );
-
-  const columns = useMemo(() => {
-    const data = queueQuery.data;
-    if (!data) return { pending: [], preparing: [], ready: [] };
-    return data.columns;
-  }, [queueQuery.data]);
-
-  if (queueQuery.isLoading && !queueQuery.data) {
+  if (isLoading && !queue) {
     return (
       <div className="flex items-center justify-center py-20">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
+
+  const columns = queue?.columns ?? { pending: [], preparing: [], ready: [] };
 
   const renderColumn = (title: string, tickets: typeof columns.pending) => (
     <section className="min-w-0 flex-1 space-y-3">

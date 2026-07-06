@@ -26,6 +26,8 @@ export type KitchenTicketDto = {
     nameEn: string | null;
     quantity: number;
     price: string;
+    /** Canonical category id — optional until read projection exposes it. */
+    categoryId?: number;
   }>;
   lastEventId: string | null;
 };

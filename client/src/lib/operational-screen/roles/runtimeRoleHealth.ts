@@ -6,6 +6,7 @@ import type {
 import type { OperationalScreenRuntimeContext } from "../runtimeTypes";
 import type { BootstrapPhase } from "../runtimeTypes";
 import type { ConfigurationHealth } from "../configuration/runtimeConfigurationContract";
+import type { CategoryFilterHealth } from "../category-filter/runtimeCategoryFilterContract";
 
 export function buildRoleRuntimeHealth(
   definition: RuntimeRoleDefinition,
@@ -16,7 +17,8 @@ export function buildRoleRuntimeHealth(
     reconnectCount: number;
     reconnecting: boolean;
   },
-  configurationHealth: ConfigurationHealth | null
+  configurationHealth: ConfigurationHealth | null,
+  categoryFilterHealth: CategoryFilterHealth | null
 ): RoleRuntimeHealth {
   const runtimeState = definition.resolveRuntimeStatus(
     bootstrapPhase,
@@ -35,6 +37,8 @@ export function buildRoleRuntimeHealth(
     configurationState: runtimeConfig.configurationState,
     configurationErrors: runtimeConfig.validationErrors,
     configurationUsedFallback: runtimeConfig.usedFallback,
+    categoryFilterEnabled: categoryFilterHealth?.filterEnabled ?? false,
+    categoryFilterVersion: categoryFilterHealth?.filterVersion ?? null,
     capabilities: metadata.capabilities,
     operational: metadata.operational,
     blockedReason: metadata.operational ? null : (metadata.blockedReason ?? null),
@@ -52,7 +56,8 @@ export function buildRoleRuntimeHealth(
 export function collectRoleDiagnostics(
   definition: RuntimeRoleDefinition,
   ctx: RoleLifecycleContext,
-  configurationHealth: ConfigurationHealth | null
+  configurationHealth: ConfigurationHealth | null,
+  categoryFilterHealth: CategoryFilterHealth | null
 ): Record<string, unknown> {
   return {
     role: definition.metadata.role,
@@ -61,6 +66,7 @@ export function collectRoleDiagnostics(
     futurePrograms: definition.metadata.futurePrograms,
     configurationSchemaVersion: definition.metadata.configurationSchemaVersion,
     configuration: configurationHealth,
+    categoryFilter: categoryFilterHealth,
     runtimeConfiguration: {
       version: ctx.context.runtimeConfiguration.version,
       state: ctx.context.configurationState,
