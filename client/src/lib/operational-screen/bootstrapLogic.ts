@@ -31,6 +31,7 @@ export function isDeviceAuthError(error: unknown): boolean {
   return (
     message.includes("invalid_credentials") ||
     message.includes("token_revoked") ||
+    message.includes("token_expired") ||
     message.includes("device_disabled") ||
     message.includes("valid operational device credentials")
   );

@@ -43,6 +43,13 @@ describe("OperationalDeviceAuthService", () => {
       secret: oldSecret,
     });
     expect(session).toBeNull();
+
+    const authResult = await auth.authenticate({
+      deviceId: created.device.deviceId,
+      tokenId: created.token.tokenId,
+      secret: oldSecret,
+    });
+    expect(authResult).toEqual({ ok: false, code: "token_revoked" });
   });
 
   it("enforces restaurant isolation via device record", async () => {

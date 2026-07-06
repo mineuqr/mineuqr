@@ -246,4 +246,36 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
     expect(adapter).toContain("KITCHEN_READ_DATABASE_UNAVAILABLE");
     expect(adapter).not.toMatch(/if \(!db\) return \[\]/);
   });
+
+  it("BUGFIX-F009 — screen settings messaging matches runtime behavior", () => {
+    const sheet = read("client/src/components/screen-management/ScreenSettingsSheet.tsx");
+    const messaging = read("client/src/lib/screen-management/screenSettingsRuntimeMessaging.ts");
+    const screenConfig = read("server/operational-device/domain/screenConfig.ts");
+
+    expect(sheet).toContain("screenSettingsRuntimeMessaging");
+    expect(sheet).not.toContain("KITCHEN-DISPLAY-DENSITY-1");
+    expect(sheet).not.toContain("KITCHEN-CATEGORY-FILTER-1");
+    expect(sheet).not.toMatch(/future programs activate/i);
+    expect(sheet).not.toMatch(/Activates later/i);
+    expect(messaging).toContain("Active at runtime");
+    expect(messaging).toContain("configuration reload");
+    expect(screenConfig).not.toContain("not applied at runtime yet");
+  });
+
+  it("BUGFIX-F010 — pairing uses auth taxonomy with operator-safe messages", () => {
+    const auth = read("server/operational-device/services/OperationalDeviceAuthService.ts");
+    const pairing = read("client/src/components/operational-screen/PairingShell.tsx");
+    const messages = read("client/src/lib/operational-screen/pairing/pairingAuthMessages.ts");
+    const bootstrap = read("client/src/lib/operational-screen/bootstrapLogic.ts");
+
+    expect(auth).toContain("resolveCredentialOutcome");
+    expect(auth).toContain('code: "device_disabled"');
+    expect(auth).toContain('code: "token_revoked"');
+    expect(auth).toContain('code: "token_expired"');
+    expect(pairing).toContain("resolvePairingAuthMessage");
+    expect(pairing).not.toMatch(/err\.message/);
+    expect(messages).toContain("device_disabled");
+    expect(messages).toContain("token_expired");
+    expect(bootstrap).toContain("token_expired");
+  });
 });

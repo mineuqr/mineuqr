@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { screenTrpc } from "@/lib/operational-screen/screenTrpc";
+import { resolvePairingAuthMessage } from "@/lib/operational-screen/pairing/pairingAuthMessages";
 import { parseManualCredentials, parsePairingPayload } from "@/lib/operational-screen/pairingPayload";
 import { writeOperationalScreenCredentials } from "@/lib/operational-screen/credentialStore";
 import { spaNavigate } from "@/const";
@@ -29,8 +30,7 @@ export function PairingShell() {
       writeOperationalScreenCredentials(creds);
       spaNavigate("/screen", { replace: true });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "pairing_failed";
-      setError(message);
+      setError(resolvePairingAuthMessage(err));
     }
   };
 

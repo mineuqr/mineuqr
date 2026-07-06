@@ -58,4 +58,22 @@ describe("DEVICE-MANAGEMENT-1 architecture guards", () => {
     expect(fleet).toContain("resolveScreenConfigVersion");
     expect(fleet).not.toContain("configurationVersion: row.updatedAt");
   });
+
+  it("BUGFIX-F010 — auth service classifies credential failures distinctly", () => {
+    const auth = read("server/operational-device/services/OperationalDeviceAuthService.ts");
+    expect(auth).toContain("resolveCredentialOutcome");
+    expect(auth).toContain("device_disabled");
+    expect(auth).toContain("token_revoked");
+    expect(auth).toContain("token_expired");
+    expect(auth).not.toMatch(
+      /if \(!session\) return \{ ok: false, code: "invalid_credentials" \}/
+    );
+  });
+
+  it("BUGFIX-F009 — screen config domain documents runtime application", () => {
+    const screenConfig = read("server/operational-device/domain/screenConfig.ts");
+    expect(screenConfig).toContain("configuration reload");
+    expect(screenConfig).not.toContain("Not consumed by runtime yet");
+    expect(screenConfig).not.toContain("not applied at runtime yet");
+  });
 });

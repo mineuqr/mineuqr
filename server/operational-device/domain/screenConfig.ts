@@ -1,4 +1,4 @@
-/** Management-only screen presentation config. Not consumed by runtime yet. */
+/** Screen presentation config — persisted on device; kitchen/expo runtime applies via configuration reload. */
 
 export type ScreenLanguage = "ar" | "en";
 
@@ -10,9 +10,9 @@ export type DisplayDensity = "large" | "comfortable" | "compact";
 export type OperationalScreenConfig = {
   language: ScreenLanguage;
   displayDirection: DisplayDirection;
-  /** Persisted for KITCHEN-DISPLAY-DENSITY-1 — not applied at runtime yet. */
+  /** Applied at runtime on kitchen/expo after configuration reload. */
   displayDensity: DisplayDensity;
-  /** Persisted for KITCHEN-CATEGORY-FILTER-1 — not applied at runtime yet. */
+  /** Applied at runtime on kitchen/expo after configuration reload; empty = show all orders. */
   visibleCategoryIds: number[];
 };
 

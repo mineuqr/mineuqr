@@ -23,6 +23,11 @@ import {
   screenStatusLabel,
   screenTypeLabel,
 } from "@/lib/operational-screen/screenLabels";
+import {
+  categorySectionHint,
+  densitySectionHint,
+  screenSettingsSheetDescription,
+} from "@/lib/screen-management/screenSettingsRuntimeMessaging";
 import { trpc } from "@/lib/trpc";
 import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -104,6 +109,9 @@ export function ScreenSettingsSheet({
 
   if (!screen) return null;
 
+  const densityHint = densitySectionHint(screen.role, isAr);
+  const categoryHint = categorySectionHint(screen.role, isAr);
+
   const toggleCategory = (categoryId: number, checked: boolean) => {
     setConfig((prev) => ({
       ...prev,
@@ -118,11 +126,7 @@ export function ScreenSettingsSheet({
       <SheetContent className="overflow-y-auto sm:max-w-lg">
         <SheetHeader>
           <SheetTitle>{isAr ? "إعدادات الشاشة" : "Screen Settings"}</SheetTitle>
-          <SheetDescription>
-            {isAr
-              ? "إعدادات العرض والتشغيل — لا تؤثر على سلوك الجهاز حتى تفعيل البرامج المستقبلية"
-              : "Display and operational settings — runtime behavior unchanged until future programs activate"}
-          </SheetDescription>
+          <SheetDescription>{screenSettingsSheetDescription(isAr)}</SheetDescription>
         </SheetHeader>
 
         <div className="mt-6 space-y-8">
@@ -218,14 +222,10 @@ export function ScreenSettingsSheet({
                 {isAr ? "كثافة العرض" : "Display density"}
               </h3>
               <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                {isAr ? "قريباً" : "Saved for later"}
+                {densityHint.badge}
               </span>
             </div>
-            <p className="text-xs text-muted-foreground">
-              {isAr
-                ? "يُفعّل لاحقاً عبر KITCHEN-DISPLAY-DENSITY-1"
-                : "Activates later via KITCHEN-DISPLAY-DENSITY-1"}
-            </p>
+            <p className="text-xs text-muted-foreground">{densityHint.detail}</p>
             <Select
               value={config.displayDensity}
               onValueChange={(value: ScreenConfigDraft["displayDensity"]) =>
@@ -252,14 +252,10 @@ export function ScreenSettingsSheet({
                 {isAr ? "الفئات الظاهرة" : "Visible categories"}
               </h3>
               <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                {isAr ? "محفوظ — بدون تصفية" : "Saved — no filtering yet"}
+                {categoryHint.badge}
               </span>
             </div>
-            <p className="text-xs text-muted-foreground">
-              {isAr
-                ? "التصفية تُفعّل لاحقاً عبر KITCHEN-CATEGORY-FILTER-1"
-                : "Filtering activates later via KITCHEN-CATEGORY-FILTER-1"}
-            </p>
+            <p className="text-xs text-muted-foreground">{categoryHint.detail}</p>
             {categoriesQuery.isLoading ? (
               <div className="flex justify-center py-4">
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
