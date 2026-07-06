@@ -6,6 +6,8 @@ import {
   orderReadOrderTimeline,
 } from "../../../../drizzle/schema";
 import type { KitchenPipelineStatus } from "../contracts/kitchenQueryContracts";
+import type { ActiveOrderLineItemDto } from "../../../order/read/domain/contracts/queryContracts";
+import { parseStoredCategoryProjection } from "../../../order/read/infrastructure/persistence/parseStoredCategoryProjection";
 
 export type OrderReadPipelineOrderRow = {
   restaurantId: number;
@@ -22,14 +24,7 @@ export type OrderReadPipelineOrderRow = {
   createdAt: string;
   readyAt: string | null;
   lastEventId: string | null;
-  lineItems: Array<{
-    lineItemId: number;
-    menuItemId: number;
-    nameAr: string;
-    nameEn: string | null;
-    quantity: number;
-    price: string;
-  }>;
+  lineItems: ActiveOrderLineItemDto[];
 };
 
 export type OrderReadTimelineRow = {
@@ -91,6 +86,7 @@ export class DrizzleOrderReadQueryAdapter implements OrderReadQueryPort {
         nameEn: li.nameEn,
         quantity: li.quantity,
         price: String(li.price),
+        category: parseStoredCategoryProjection(li.categoryProjection, li.lineItemId),
       });
       byOrder.set(li.orderId, list);
     }

@@ -47,6 +47,7 @@ export class KitchenReadService {
   ) {}
 
   async getQueue(query: KitchenQueueQuery): Promise<KitchenQueueResult> {
+    const started = Date.now();
     const now = new Date();
     const limit = clampKitchenQueueLimit(query.limit);
     const statusFilter = query.status ?? "all";
@@ -85,8 +86,13 @@ export class KitchenReadService {
       });
     }
 
+    const allLineItems = sortedFiltered.flatMap((ticket) => ticket.lineItems);
+
     return {
-      ...buildKitchenReadMeta(now),
+      ...buildKitchenReadMeta(now, {
+        buildDurationMs: Date.now() - started,
+        lineItems: allLineItems,
+      }),
       tickets: sortedFiltered,
       columns,
       meta: {

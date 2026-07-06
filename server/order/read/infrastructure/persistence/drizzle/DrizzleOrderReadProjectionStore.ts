@@ -23,11 +23,16 @@ import type {
 } from "../contracts/ProjectionRepositoryContracts";
 import { InMemoryOrderReadProjectionStore } from "../inmemory/InMemoryOrderReadProjectionStore";
 import type { OrderReadSourceContext } from "../OrderReadContextLoader";
+import { drizzleCategoryResolutionPort } from "../DrizzleCategoryResolutionPort";
+import { OrderCategoryProjectionBuilder } from "../../../projections/builders/OrderCategoryProjectionBuilder";
 
 import type { OrderReadProjectionRepositories } from "../contracts/ProjectionRepositoryContracts";
 
 export class DrizzleOrderReadProjectionStore {
   private readonly recordBuilder = new InMemoryOrderReadProjectionStore();
+  private readonly categoryBuilder = new OrderCategoryProjectionBuilder(
+    drizzleCategoryResolutionPort
+  );
 
   asRepositories(): OrderReadProjectionRepositories {
     return this.recordBuilder.asRepositories();
@@ -40,7 +45,8 @@ export class DrizzleOrderReadProjectionStore {
     const db = await getDb();
     if (!db) return;
 
-    const record = this.recordBuilder.buildOwnerRecordFromSource(source, eventId);
+    const lineItems = await this.categoryBuilder.buildLineItemsFromSource(source);
+    const record = this.recordBuilder.buildOwnerRecordFromSource(source, eventId, lineItems);
     const isActive = isActiveOrderStatus(record.status);
 
     await db
@@ -108,6 +114,7 @@ export class DrizzleOrderReadProjectionStore {
           nameEn: li.nameEn,
           quantity: li.quantity,
           price: li.price,
+          categoryProjection: li.category,
         }))
       );
     }

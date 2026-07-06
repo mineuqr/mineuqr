@@ -24,6 +24,5 @@ export type CategoryFilterHealth = {
   validationStatus: "valid" | "warning" | "inactive";
   validationErrors: string[];
   ignoredCategories: number[];
-  missingCategoryData: boolean;
   lastUpdatedAt: string | null;
 };

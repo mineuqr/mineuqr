@@ -2,7 +2,7 @@
  * Official projection identifiers (READ-ARCHITECTURE-1 RA-02).
  * Phase 1: catalog only — no materialized stores.
  */
-export const ORDER_READ_PROJECTION_SCHEMA_VERSION = 1 as const;
+export const ORDER_READ_PROJECTION_SCHEMA_VERSION = 2 as const;
 
 export type ProjectionId =
   | "P-01-owner-orders"

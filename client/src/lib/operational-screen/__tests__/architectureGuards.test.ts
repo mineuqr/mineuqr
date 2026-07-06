@@ -98,6 +98,18 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
     expect(kitchen).not.toContain("screenConfig");
   });
 
+  it("ORDER-READ-CATEGORY-PROJECTION-1: runtime consumes canonical category projections only", () => {
+    const readModel = read("client/src/lib/operational-screen/kitchen/kitchenRuntimeReadModel.ts");
+    const stream = read("client/src/lib/operational-screen/kitchen/useKitchenRuntimeStream.ts");
+    const apply = read("client/src/lib/operational-screen/kitchen/applyKitchenCategoryFilter.ts");
+    const manager = read("client/src/lib/operational-screen/category-filter/runtimeCategoryFilterManager.ts");
+    expect(readModel).toContain("category.categoryId");
+    expect(readModel).not.toContain("missingCategoryData");
+    expect(stream).toContain("projectionDiagnostics");
+    expect(apply).not.toContain("missingCategoryData");
+    expect(manager).not.toContain("missingCategoryData");
+  });
+
   it("ROLE-RUNTIME-1: single resolver via RuntimeRoleHost (no RoleRouter switch)", () => {
     const entry = read("client/src/pages/screen/OperationalScreenEntry.tsx");
     const roleHost = read("client/src/components/operational-screen/RuntimeRoleHost.tsx");

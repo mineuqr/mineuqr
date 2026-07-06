@@ -2,6 +2,7 @@
  * Shared read query contracts (READ-ARCHITECTURE-1 RA-03).
  * Phase 1: type definitions only — no tRPC exposure.
  */
+import type { CategoryProjectionReadMeta } from "./categoryProjectionContracts";
 import type { ProjectionId } from "./projectionIds";
 
 export const ORDER_READ_QUERY_CATALOG_VERSION = 1 as const;
@@ -42,7 +43,7 @@ export type PageInfo = {
   limit: number;
 };
 
-export type ReadResultMeta = {
+export type ReadResultMeta = CategoryProjectionReadMeta & {
   generatedAt: string;
   projectionSchemaVersion: number;
   queryCatalogVersion: typeof ORDER_READ_QUERY_CATALOG_VERSION;
@@ -98,6 +99,8 @@ export type PublicOrderStatusQuery = {
   slug: string;
 };
 
+import type { OrderCategoryProjection } from "./categoryProjectionContracts";
+
 export type ActiveOrderLineItemDto = {
   lineItemId: number;
   menuItemId: number;
@@ -105,6 +108,7 @@ export type ActiveOrderLineItemDto = {
   nameEn: string | null;
   quantity: number;
   price: string;
+  category: OrderCategoryProjection;
 };
 
 export type ActiveOrderItemDto = {
@@ -190,11 +194,15 @@ export function clampActiveOrderLimit(limit: number | undefined): number {
 
 export function buildReadResultMeta(
   projectionSchemaVersion: number,
-  now: Date = new Date()
+  now: Date = new Date(),
+  categoryMeta?: Partial<CategoryProjectionReadMeta>
 ): ReadResultMeta {
   return {
     generatedAt: now.toISOString(),
     projectionSchemaVersion,
     queryCatalogVersion: ORDER_READ_QUERY_CATALOG_VERSION,
+    categoryProjectionVersion: categoryMeta?.categoryProjectionVersion ?? 0,
+    projectionBuildDurationMs: categoryMeta?.projectionBuildDurationMs ?? 0,
+    projectionIntegrity: categoryMeta?.projectionIntegrity ?? "valid",
   };
 }

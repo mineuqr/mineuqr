@@ -141,12 +141,10 @@ export class RuntimeCategoryFilterManager {
     return this.filter != null && this.filter.configurationVersion !== configurationVersion;
   }
 
-  buildHealth(options?: { missingCategoryData?: boolean }): CategoryFilterHealth | null {
+  buildHealth(): CategoryFilterHealth | null {
     if (!this.filter) return null;
 
-    const missingCategoryData = options?.missingCategoryData ?? false;
-    const hasWarnings =
-      this.filter.validationErrors.length > 0 || missingCategoryData;
+    const hasWarnings = this.filter.validationErrors.length > 0;
 
     return {
       filterEnabled: this.filter.enabled,
@@ -160,7 +158,6 @@ export class RuntimeCategoryFilterManager {
           : "valid",
       validationErrors: this.filter.validationErrors,
       ignoredCategories: this.filter.ignoredCategories,
-      missingCategoryData,
       lastUpdatedAt: this.lastUpdatedAt,
     };
   }

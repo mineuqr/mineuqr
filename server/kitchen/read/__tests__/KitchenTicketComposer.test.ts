@@ -7,6 +7,19 @@ import {
   KitchenTicketComposer,
 } from "../services/KitchenTicketComposer";
 import type { OrderReadPipelineOrderRow } from "../infrastructure/OrderReadQueryAdapter";
+import type { OrderCategoryProjection } from "../../../order/read/domain/contracts/categoryProjectionContracts";
+
+function sampleCategory(): OrderCategoryProjection {
+  return Object.freeze({
+    categoryId: 1,
+    categoryCode: "cat-1",
+    categoryName: "Mains",
+    displayOrder: 0,
+    parentCategoryId: null,
+    version: 1,
+    updatedAt: "2026-07-04T10:00:00",
+  });
+}
 
 const baseOrder: OrderReadPipelineOrderRow = {
   restaurantId: 1,
@@ -31,6 +44,7 @@ const baseOrder: OrderReadPipelineOrderRow = {
       nameEn: "Burger",
       quantity: 2,
       price: "20.00",
+      category: sampleCategory(),
     },
   ],
 };

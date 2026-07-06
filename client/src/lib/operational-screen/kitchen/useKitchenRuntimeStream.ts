@@ -4,22 +4,23 @@ import { screenTrpc } from "../screenTrpc";
 import { useScreenRuntime } from "@/components/operational-screen/OperationalScreenRuntimeProvider";
 import { isCapabilitySupported } from "@/lib/operational-screen/capability/resolveCapabilityPresentation";
 import { applyKitchenCategoryFilter } from "./applyKitchenCategoryFilter";
-import {
-  normalizeKitchenReadModel,
-  queueHasCategoryData,
-  type KitchenRuntimeQueue,
-} from "./kitchenRuntimeReadModel";
+import { normalizeKitchenReadModel, type KitchenRuntimeQueue } from "./kitchenRuntimeReadModel";
+import type { CategoryProjectionReadMeta } from "@/lib/kitchen/categoryProjection";
 
 function useVisiblePollingEnabled(): boolean {
   if (typeof document === "undefined") return true;
   return document.visibilityState === "visible";
 }
 
+export type KitchenProjectionDiagnostics = CategoryProjectionReadMeta & {
+  projectionSchemaVersion: number;
+};
+
 export type KitchenRuntimeStream = {
   queue: KitchenRuntimeQueue | null;
   isLoading: boolean;
   isFiltered: boolean;
-  missingCategoryData: boolean;
+  projectionDiagnostics: KitchenProjectionDiagnostics | null;
 };
 
 /**
@@ -47,23 +48,18 @@ export function useKitchenRuntimeStream(): KitchenRuntimeStream {
         queue: null,
         isLoading: queueQuery.isLoading,
         isFiltered: false,
-        missingCategoryData: false,
+        projectionDiagnostics: null,
       };
     }
 
     const readModel = normalizeKitchenReadModel(queueQuery.data);
-    const missingCategoryData =
-      categoryFilter?.enabled === true && !queueHasCategoryData(readModel);
-
-    const filtered = applyKitchenCategoryFilter(readModel, categoryFilterPredicate, {
-      missingCategoryData,
-    });
+    const filtered = applyKitchenCategoryFilter(readModel, categoryFilterPredicate);
 
     return {
       queue: filtered,
       isLoading: queueQuery.isLoading,
-      isFiltered: categoryFilter?.enabled === true && !missingCategoryData,
-      missingCategoryData,
+      isFiltered: categoryFilter?.enabled === true,
+      projectionDiagnostics: readModel.projection,
     };
   }, [
     queueQuery.data,

@@ -480,6 +480,7 @@ export const orderReadOrderLineItems = mysqlTable("order_read_order_line_items",
 	nameEn: varchar({ length: 255 }),
 	quantity: int().notNull(),
 	price: decimal({ precision: 10, scale: 2 }).notNull(),
+	categoryProjection: json().notNull(),
 },
 (table) => [
 	primaryKey({ columns: [table.restaurantId, table.orderId, table.lineItemId] }),

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { nextStatusForAction, toKitchenTicketCard, urgencyClassName } from "../viewModels";
 import type { KitchenTicketDto } from "../types";
+import { mockCategoryProjection } from "@/lib/operational-screen/__tests__/fixtures/categoryProjectionFixtures";
 
 const sample: KitchenTicketDto = {
   orderId: 1,
@@ -35,7 +36,15 @@ describe("kitchen viewModels", () => {
     const withLines = toKitchenTicketCard({
       ...sample,
       lineItems: [
-        { lineItemId: 1, menuItemId: 9, nameAr: "تبولة", nameEn: "Tabbouleh", quantity: 1, price: "10.00" },
+        {
+          lineItemId: 1,
+          menuItemId: 9,
+          nameAr: "تبولة",
+          nameEn: "Tabbouleh",
+          quantity: 1,
+          price: "10.00",
+          category: mockCategoryProjection(),
+        },
       ],
     });
     expect(withLines.lineItems).toHaveLength(1);

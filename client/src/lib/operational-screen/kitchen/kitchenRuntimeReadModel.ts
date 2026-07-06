@@ -1,4 +1,5 @@
 import type { KitchenQueueResult, KitchenTicketDto } from "@/lib/kitchen/types";
+import type { CategoryProjectionReadMeta } from "@/lib/kitchen/categoryProjection";
 
 /** Runtime kitchen read model — normalized from API, never filtered here. */
 export type KitchenRuntimeTicket = KitchenTicketDto & {
@@ -15,32 +16,18 @@ export type KitchenRuntimeQueue = {
     ready: KitchenRuntimeTicket[];
   };
   meta: KitchenQueueResult["meta"];
+  projection: CategoryProjectionReadMeta & {
+    projectionSchemaVersion: number;
+  };
 };
 
-type LineItemWithCategory = KitchenTicketDto["lineItems"][number] & {
-  categoryId?: number;
-};
-
-/** Extract canonical category id from a line item — never uses names or labels. */
-export function extractLineItemCategoryId(
-  lineItem: KitchenTicketDto["lineItems"][number]
-): number | null {
-  const extended = lineItem as LineItemWithCategory;
-  const id = extended.categoryId;
-  if (typeof id === "number" && Number.isInteger(id) && id > 0) {
-    return id;
-  }
-  return null;
-}
-
-/** Collect unique canonical category ids for an order's line items. */
+/** Collect unique canonical category ids from projected line items. */
 export function collectOrderCategoryIds(
   lineItems: KitchenTicketDto["lineItems"]
 ): number[] {
   const ids = new Set<number>();
   for (const item of lineItems) {
-    const categoryId = extractLineItemCategoryId(item);
-    if (categoryId != null) ids.add(categoryId);
+    ids.add(item.category.categoryId);
   }
   return Array.from(ids);
 }
@@ -63,10 +50,11 @@ export function normalizeKitchenReadModel(result: KitchenQueueResult): KitchenRu
       ready: result.columns.ready.map(mapTicket),
     },
     meta: result.meta,
+    projection: {
+      projectionSchemaVersion: result.projectionSchemaVersion,
+      categoryProjectionVersion: result.categoryProjectionVersion,
+      projectionBuildDurationMs: result.projectionBuildDurationMs,
+      projectionIntegrity: result.projectionIntegrity,
+    },
   };
-}
-
-/** Whether any ticket in the queue has resolvable category identifiers. */
-export function queueHasCategoryData(queue: KitchenRuntimeQueue): boolean {
-  return queue.tickets.some((ticket) => ticket.orderCategoryIds.length > 0);
 }

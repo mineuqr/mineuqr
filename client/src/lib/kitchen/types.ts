@@ -1,3 +1,5 @@
+import type { OrderCategoryProjection, CategoryProjectionReadMeta } from "./categoryProjection";
+
 export type KitchenPipelineStatus = "pending" | "preparing" | "ready";
 
 export type KitchenUrgencyTier = "normal" | "elevated" | "critical";
@@ -26,8 +28,7 @@ export type KitchenTicketDto = {
     nameEn: string | null;
     quantity: number;
     price: string;
-    /** Canonical category id — optional until read projection exposes it. */
-    categoryId?: number;
+    category: OrderCategoryProjection;
   }>;
   lastEventId: string | null;
 };
@@ -38,7 +39,7 @@ export type KitchenQueueColumns = {
   ready: KitchenTicketDto[];
 };
 
-export type KitchenQueueResult = {
+export type KitchenQueueResult = CategoryProjectionReadMeta & {
   generatedAt: string;
   projectionSchemaVersion: number;
   queryCatalogVersion: number;

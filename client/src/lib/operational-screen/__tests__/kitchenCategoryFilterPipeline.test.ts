@@ -7,13 +7,17 @@ import {
 } from "../kitchen/kitchenRuntimeReadModel";
 import type { KitchenQueueResult } from "@/lib/kitchen/types";
 import { kitchenDisplayRole } from "../roles/roleDefinitions";
+import { mockCategoryProjection } from "./fixtures/categoryProjectionFixtures";
 
 function mockQueue(): KitchenQueueResult {
   return {
     generatedAt: new Date().toISOString(),
-    projectionSchemaVersion: 1,
+    projectionSchemaVersion: 2,
     queryCatalogVersion: 1,
     orderingPolicyId: "fifo-by-created-at",
+    categoryProjectionVersion: 1_700_000_000_000,
+    projectionBuildDurationMs: 5,
+    projectionIntegrity: "valid",
     tickets: [],
     columns: {
       pending: [
@@ -42,7 +46,7 @@ function mockQueue(): KitchenQueueResult {
               nameEn: "Burger",
               quantity: 1,
               price: "10",
-              categoryId: 1,
+              category: mockCategoryProjection({ categoryId: 1 }),
             },
           ],
           lastEventId: null,
@@ -72,7 +76,7 @@ function mockQueue(): KitchenQueueResult {
               nameEn: "Pizza",
               quantity: 1,
               price: "20",
-              categoryId: 2,
+              category: mockCategoryProjection({ categoryId: 2 }),
             },
           ],
           lastEventId: null,
@@ -156,8 +160,8 @@ describe("kitchen category filter pipeline", () => {
       nameEn: "Salad",
       quantity: 1,
       price: "5",
-      categoryId: 99,
-    } as (typeof queue.columns.pending)[0]["lineItems"][number] & { categoryId: number });
+      category: mockCategoryProjection({ categoryId: 99 }),
+    });
 
     const readModel = normalizeKitchenReadModel(queue);
     const manager = new RuntimeCategoryFilterManager();

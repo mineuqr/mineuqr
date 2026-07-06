@@ -57,7 +57,6 @@ function baseInput(overrides: Partial<StateAggregatorInput> = {}): StateAggregat
       validationStatus: "inactive",
       validationErrors: [],
       ignoredCategories: [],
-      missingCategoryData: false,
       lastUpdatedAt: null,
     },
     reconnecting: false,

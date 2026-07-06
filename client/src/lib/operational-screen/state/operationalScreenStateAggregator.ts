@@ -98,13 +98,6 @@ function resolveBusinessReadiness(input: StateAggregatorInput): BusinessReadines
 function collectWarnings(input: StateAggregatorInput): ScreenStateWarning[] {
   const warnings: ScreenStateWarning[] = [];
 
-  if (input.categoryFilterHealth?.validationStatus === "warning") {
-    warnings.push({
-      code: "missing_category_data",
-      message: "Category filter active but order category data unavailable",
-      severity: "medium",
-    });
-  }
   for (const ignored of input.categoryFilterHealth?.ignoredCategories ?? []) {
     warnings.push({
       code: "unknown_category",

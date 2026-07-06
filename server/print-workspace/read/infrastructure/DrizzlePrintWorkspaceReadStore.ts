@@ -12,6 +12,7 @@ import type {
   PrintWorkspaceTimelineEventDto,
 } from "../contracts/printWorkspaceQueryContracts";
 import { clampPrintWorkspaceLimit } from "../contracts/printWorkspaceQueryContracts";
+import { parseStoredCategoryProjection } from "../../../order/read/infrastructure/persistence/parseStoredCategoryProjection";
 
 type OrderRow = typeof orderReadOrders.$inferSelect;
 type LineItemRow = typeof orderReadOrderLineItems.$inferSelect;
@@ -24,6 +25,7 @@ function mapLineItem(row: LineItemRow) {
     nameEn: row.nameEn,
     quantity: row.quantity,
     price: String(row.price),
+    category: parseStoredCategoryProjection(row.categoryProjection, row.lineItemId),
   };
 }
 

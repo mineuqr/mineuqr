@@ -2,10 +2,7 @@ import type { KitchenTicketDto, KitchenUrgencyTier } from "@/lib/kitchen/types";
 
 export type KitchenColumnId = "pending" | "preparing" | "ready";
 
-export type KitchenTicketLine = KitchenTicketDto["lineItems"][number] & {
-  /** Canonical category id when present on read model — used by runtime filter only. */
-  categoryId?: number;
-};
+export type KitchenTicketLine = KitchenTicketDto["lineItems"][number];
 
 export type KitchenTicketCardModel = {
   orderId: number;

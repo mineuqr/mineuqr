@@ -4,6 +4,7 @@ import {
   type ActiveOrderLineItemDto,
   type ReadResultMeta,
 } from "../../../order/read/domain/contracts/queryContracts";
+import { maxCategoryProjectionVersion } from "../../../order/read/domain/contracts/categoryProjectionContracts";
 import { ORDER_READ_PROJECTION_SCHEMA_VERSION } from "../../../order/read/domain/contracts/projectionIds";
 
 export const KITCHEN_READ_QUERY_CATALOG_VERSION = 1 as const;
@@ -75,11 +76,20 @@ export function clampKitchenQueueLimit(limit: number | undefined): number {
   return Math.min(Math.floor(value), KITCHEN_QUEUE_MAX_LIMIT);
 }
 
-export function buildKitchenReadMeta(now: Date = new Date()): ReadResultMeta & {
+export function buildKitchenReadMeta(
+  now: Date = new Date(),
+  options?: { buildDurationMs?: number; lineItems?: readonly ActiveOrderLineItemDto[] }
+): ReadResultMeta & {
   orderingPolicyId: typeof KITCHEN_ORDERING_POLICY_FIFO;
 } {
+  const categories =
+    options?.lineItems?.map((item) => item.category) ?? [];
   return {
-    ...buildReadResultMeta(ORDER_READ_PROJECTION_SCHEMA_VERSION, now),
+    ...buildReadResultMeta(ORDER_READ_PROJECTION_SCHEMA_VERSION, now, {
+      categoryProjectionVersion: maxCategoryProjectionVersion(categories),
+      projectionBuildDurationMs: options?.buildDurationMs ?? 0,
+      projectionIntegrity: "valid",
+    }),
     queryCatalogVersion: ORDER_READ_QUERY_CATALOG_VERSION,
     orderingPolicyId: KITCHEN_ORDERING_POLICY_FIFO,
   };

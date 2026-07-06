@@ -6,6 +6,7 @@ import {
   toArabicDigits,
 } from "../kitchenPresentation";
 import type { KitchenTicketLine } from "../viewModels";
+import { mockCategoryProjection } from "@/lib/operational-screen/__tests__/fixtures/categoryProjectionFixtures";
 
 const line: KitchenTicketLine = {
   lineItemId: 1,
@@ -14,6 +15,7 @@ const line: KitchenTicketLine = {
   nameEn: "Tabbouleh",
   quantity: 2,
   price: "10.00",
+  category: mockCategoryProjection(),
 };
 
 describe("kitchenPresentation", () => {

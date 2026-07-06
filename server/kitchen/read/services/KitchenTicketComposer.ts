@@ -87,6 +87,7 @@ export class KitchenTicketComposer {
         nameEn: li.nameEn,
         quantity: li.quantity,
         price: li.price,
+        category: li.category,
       })),
       lastEventId: order.lastEventId,
     };

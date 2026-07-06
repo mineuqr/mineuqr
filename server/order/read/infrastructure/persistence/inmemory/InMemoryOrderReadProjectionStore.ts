@@ -1,5 +1,6 @@
 import { ORDER_READ_PROJECTION_SCHEMA_VERSION } from "../../../domain/contracts/projectionIds";
 import type {
+  ActiveOrderLineItemDto,
   ActiveOrderListQuery,
   OrderDetailQuery,
 } from "../../../domain/contracts/queryContracts";
@@ -285,10 +286,11 @@ export class InMemoryOrderReadProjectionStore {
   buildOwnerRecordFromSource(
     source: OrderReadSourceContext,
     eventId: string | null,
+    lineItems: ActiveOrderLineItemDto[],
     servedAt: string | null = null,
     cancelledAt: string | null = null
   ): OwnerOrderProjectionRecord {
-    const { order, lineItems } = source;
+    const { order } = source;
     const now = new Date().toISOString();
     return {
       projectionId: "P-01-owner-orders",
@@ -307,14 +309,7 @@ export class InMemoryOrderReadProjectionStore {
       servedAt: servedAt ?? (order.status === "served" ? order.updatedAt : null),
       cancelledAt:
         cancelledAt ?? (order.status === "cancelled" ? order.updatedAt : null),
-      lineItems: lineItems.map((item) => ({
-        lineItemId: item.id,
-        menuItemId: item.menuItemId,
-        nameAr: item.nameAr,
-        nameEn: item.nameEn ?? null,
-        quantity: item.quantity,
-        price: String(item.price),
-      })),
+      lineItems,
       schemaVersion: ORDER_READ_PROJECTION_SCHEMA_VERSION,
       lastEventId: eventId,
       updatedAt: now,

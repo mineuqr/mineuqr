@@ -7,6 +7,7 @@ import {
 } from "../../../../drizzle/schema";
 import type { ActiveOrderItemDto, OrderTimelineEventDto } from "../domain/contracts/queryContracts";
 import type { OrderDetailQuery } from "../domain/contracts/queryContracts";
+import { parseStoredCategoryProjection } from "./persistence/parseStoredCategoryProjection";
 
 type OrderRow = typeof orderReadOrders.$inferSelect;
 type LineItemRow = typeof orderReadOrderLineItems.$inferSelect;
@@ -19,6 +20,7 @@ function mapLineItem(row: LineItemRow) {
     nameEn: row.nameEn,
     quantity: row.quantity,
     price: String(row.price),
+    category: parseStoredCategoryProjection(row.categoryProjection, row.lineItemId),
   };
 }
 

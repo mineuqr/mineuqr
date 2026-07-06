@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { InMemoryOrderReadProjectionStore } from "../InMemoryOrderReadProjectionStore";
 import type { OrderReadSourceContext } from "../../OrderReadContextLoader";
+import { sampleActiveLineItem } from "../../../../__tests__/fixtures/categoryProjectionFixtures";
 
 function sampleSource(overrides: Partial<OrderReadSourceContext["order"]> = {}): OrderReadSourceContext {
   return {
@@ -45,7 +46,9 @@ describe("InMemoryOrderReadProjectionStore", () => {
   it("upserts owner order and retrieves by key", async () => {
     const store = new InMemoryOrderReadProjectionStore();
     const repos = store.asRepositories();
-    const record = store.buildOwnerRecordFromSource(sampleSource(), "evt-1");
+    const record = store.buildOwnerRecordFromSource(sampleSource(), "evt-1", [
+      sampleActiveLineItem(),
+    ]);
 
     await repos.ownerOrders.upsert(record);
     const found = await repos.ownerOrders.findByKey({
@@ -62,12 +65,15 @@ describe("InMemoryOrderReadProjectionStore", () => {
     const repos = store.asRepositories();
 
     await repos.ownerOrders.upsert(
-      store.buildOwnerRecordFromSource(sampleSource({ status: "pending" }), "e1")
+      store.buildOwnerRecordFromSource(sampleSource({ status: "pending" }), "e1", [
+        sampleActiveLineItem(),
+      ])
     );
     await repos.ownerOrders.upsert(
       store.buildOwnerRecordFromSource(
         sampleSource({ id: 43, status: "served", orderNumber: "ORD-0043" }),
-        "e2"
+        "e2",
+        [sampleActiveLineItem({ lineItemId: 2 })]
       )
     );
 

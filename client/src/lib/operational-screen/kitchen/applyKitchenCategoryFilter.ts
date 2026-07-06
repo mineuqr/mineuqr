@@ -7,13 +7,8 @@ import type { KitchenRuntimeQueue, KitchenRuntimeTicket } from "./kitchenRuntime
  */
 export function applyKitchenCategoryFilter(
   queue: KitchenRuntimeQueue,
-  predicate: CategoryFilterPredicate,
-  options?: { missingCategoryData?: boolean }
+  predicate: CategoryFilterPredicate
 ): KitchenRuntimeQueue {
-  if (options?.missingCategoryData) {
-    return queue;
-  }
-
   const filterTicket = (ticket: KitchenRuntimeTicket): boolean =>
     predicate(ticket.orderCategoryIds);
 

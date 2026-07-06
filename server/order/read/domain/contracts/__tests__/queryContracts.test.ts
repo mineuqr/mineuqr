@@ -23,9 +23,15 @@ describe("order read query contracts", () => {
   });
 
   it("builds read result metadata with catalog version", () => {
-    const meta = buildReadResultMeta(1, new Date("2026-06-27T10:00:00.000Z"));
-    expect(meta.projectionSchemaVersion).toBe(1);
+    const meta = buildReadResultMeta(2, new Date("2026-06-27T10:00:00.000Z"), {
+      categoryProjectionVersion: 42,
+      projectionBuildDurationMs: 7,
+      projectionIntegrity: "valid",
+    });
+    expect(meta.projectionSchemaVersion).toBe(2);
     expect(meta.queryCatalogVersion).toBe(1);
     expect(meta.generatedAt).toBe("2026-06-27T10:00:00.000Z");
+    expect(meta.categoryProjectionVersion).toBe(42);
+    expect(meta.projectionIntegrity).toBe("valid");
   });
 });

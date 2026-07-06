@@ -7,7 +7,9 @@ import type {
   OrderReadProjectionRepositories,
 } from "../../infrastructure/persistence/contracts/ProjectionRepositoryContracts";
 import type { OrderReadContextLoader } from "../../infrastructure/persistence/OrderReadContextLoader";
+import { drizzleCategoryResolutionPort } from "../../infrastructure/persistence/DrizzleCategoryResolutionPort";
 import { InMemoryOrderReadProjectionStore } from "../../infrastructure/persistence/inmemory/InMemoryOrderReadProjectionStore";
+import { OrderCategoryProjectionBuilder } from "../builders/OrderCategoryProjectionBuilder";
 import {
   dayKeyFromTimestamp,
   isActiveOrderStatus,
@@ -26,14 +28,22 @@ export class OrderReadProjectionMaterializer {
   constructor(
     private readonly repos: OrderReadProjectionRepositories,
     private readonly contextLoader: OrderReadContextLoader,
-    private readonly recordBuilder = new InMemoryOrderReadProjectionStore()
+    private readonly recordBuilder = new InMemoryOrderReadProjectionStore(),
+    private readonly categoryBuilder = new OrderCategoryProjectionBuilder(
+      drizzleCategoryResolutionPort
+    )
   ) {}
 
   async syncOrderProjections(orderId: number, eventId: string): Promise<void> {
     const source = await this.contextLoader.loadByOrderId(orderId);
     if (!source) return;
 
-    const ownerRecord = this.recordBuilder.buildOwnerRecordFromSource(source, eventId);
+    const lineItems = await this.categoryBuilder.buildLineItemsFromSource(source);
+    const ownerRecord = this.recordBuilder.buildOwnerRecordFromSource(
+      source,
+      eventId,
+      lineItems
+    );
     await this.repos.ownerOrders.upsert(ownerRecord);
     const activeRecord: ActiveOrderProjectionRecord = {
       ...ownerRecord,
