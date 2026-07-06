@@ -1,8 +1,6 @@
 import { useMemo } from "react";
 import { useScreenRuntime } from "@/components/operational-screen/OperationalScreenRuntimeProvider";
 import { resolveRuntimeRole } from "@/lib/operational-screen/roles/runtimeRoleRegistry";
-import { buildRoleRuntimeHealth, collectRoleDiagnostics } from "@/lib/operational-screen/roles/runtimeRoleHealth";
-import { buildLifecycleContext } from "@/lib/operational-screen/roles/runtimeRoleLifecycle";
 import type { RoleRuntimeHealth } from "@/lib/operational-screen/roles/runtimeRoleContract";
 
 export function useResolvedRuntimeRole() {
@@ -21,5 +19,3 @@ export function useRoleRuntimeHealth(): RoleRuntimeHealth | null {
   const { roleHealth } = useScreenRuntime();
   return roleHealth;
 }
-
-export { buildRoleRuntimeHealth, collectRoleDiagnostics };

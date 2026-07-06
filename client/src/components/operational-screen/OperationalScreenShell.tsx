@@ -4,7 +4,7 @@ import { useScreenRuntime } from "./OperationalScreenRuntimeProvider";
 import { cn } from "@/lib/utils";
 
 export function OperationalScreenShell({ children }: { children: React.ReactNode }) {
-  const { context, phase, degraded, unpair } = useScreenRuntime();
+  const { context, unpair } = useScreenRuntime();
 
   if (!context) return null;
 
@@ -14,7 +14,7 @@ export function OperationalScreenShell({ children }: { children: React.ReactNode
 
   return (
     <div className="flex min-h-screen flex-col bg-[#0b0e14] text-foreground" dir={dir}>
-      <ScreenConnectionBanner phase={phase} degraded={degraded} language={language} />
+      <ScreenConnectionBanner screenState={context.screenState} language={language} />
       <header className="flex items-center justify-between gap-4 border-b border-border/40 px-4 py-3">
         <div className="min-w-0">
           <h1 className="truncate text-lg font-semibold">{context.identity.displayName}</h1>

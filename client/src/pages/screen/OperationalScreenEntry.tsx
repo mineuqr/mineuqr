@@ -13,7 +13,7 @@ import { useEffect } from "react";
 import { spaNavigate } from "@/const";
 
 function OperationalScreenRuntime() {
-  const { phase, context, degraded, retry } = useScreenRuntime();
+  const { phase, context, retry } = useScreenRuntime();
 
   if (phase === "pairing_redirect" || phase === "revoked") {
     return null;
@@ -27,11 +27,17 @@ function OperationalScreenRuntime() {
     );
   }
 
+  const showRetry =
+    context.screenState.operationalState === "disconnected" ||
+    context.screenState.operationalState === "degraded" ||
+    context.screenState.connectivityState === "disconnected" ||
+    context.screenState.connectivityState === "reconnecting";
+
   return (
     <OperationalScreenShell>
       <RuntimeRoleHost />
       {import.meta.env.DEV ? <ScreenDiagnosticsPanel /> : null}
-      {degraded ? (
+      {showRetry ? (
         <div className="mt-4 text-center">
           <button type="button" className="text-sm text-primary underline" onClick={retry}>
             Retry connection

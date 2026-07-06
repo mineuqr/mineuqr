@@ -89,4 +89,11 @@ export type RoleRuntimeHealth = {
   blockedReason: { en: string; ar: string } | null;
   heartbeatCount: number;
   reconnectCount: number;
+  screenStateVersion?: number;
+  operationalState?: string;
+  connectivityState?: string;
+  businessReadiness?: string;
+  maintenanceState?: string;
+  warningCount?: number;
+  errorCount?: number;
 };

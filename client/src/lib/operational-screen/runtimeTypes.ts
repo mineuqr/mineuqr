@@ -1,4 +1,4 @@
-import type { OperationalScreenConfig } from "../../../../server/operational-device/domain/screenConfig";
+import type { OperationalScreenConfig, ScreenLanguage, DisplayDirection } from "../../../../server/operational-device/domain/screenConfig";
 import type { OperationalDeviceRole } from "../../../../server/operational-device/domain/deviceRoles";
 import type { OperationalScreenRuntimeFingerprint } from "./runtimeFingerprint";
 import type {
@@ -10,7 +10,15 @@ import type {
   DensityLifecycleState,
   PresentationDensityModel,
 } from "./density/runtimeDisplayDensityContract";
-import type { DisplayDirection, ScreenLanguage } from "../../../../server/operational-device/domain/screenConfig";
+import type {
+  BusinessReadiness,
+  ConnectivityState,
+  MaintenanceState,
+  OperationalScreenState,
+  OperationalState,
+  ScreenStateError,
+  ScreenStateWarning,
+} from "./state/operationalScreenStateContract";
 
 export type BootstrapPhase =
   | "loading"
@@ -101,4 +109,12 @@ export type OperationalScreenRuntimeContext = {
     bootstrapId: string;
     phase: BootstrapPhase;
   };
+  /** SCREEN-STATE-MODEL-1 — canonical screen state authority. */
+  screenState: OperationalScreenState;
+  operationalState: OperationalState;
+  connectivityState: ConnectivityState;
+  businessReadiness: BusinessReadiness;
+  maintenanceState: MaintenanceState;
+  warnings: ScreenStateWarning[];
+  errors: ScreenStateError[];
 };

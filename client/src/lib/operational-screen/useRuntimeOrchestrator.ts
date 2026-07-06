@@ -28,6 +28,13 @@ import type {
   DisplayDensityHealth,
   RuntimeDisplayDensity,
 } from "./density/runtimeDisplayDensityContract";
+import { projectHealthFromScreenState } from "./state/projectScreenHealth";
+import { projectDiagnosticsFromScreenState } from "./state/projectScreenDiagnostics";
+import {
+  OperationalScreenStateAggregator,
+  type StateAggregatorInput,
+} from "./state/operationalScreenStateAggregator";
+import type { OperationalScreenState } from "./state/operationalScreenStateContract";
 import { getRoleCapabilities } from "./runtimeCapabilities";
 import {
   INITIAL_PHASE,
@@ -38,7 +45,6 @@ import { collectRuntimeFingerprint } from "./runtimeFingerprint";
 import { isBlockedRole } from "./runtimeCapabilities";
 import "./roles/registerRoles";
 import { resolveRuntimeRole } from "./roles/runtimeRoleRegistry";
-import { buildRoleRuntimeHealth, collectRoleDiagnostics } from "./roles/runtimeRoleHealth";
 import { buildLifecycleContext } from "./roles/runtimeRoleLifecycle";
 import type { RoleRuntimeHealth } from "./roles/runtimeRoleContract";
 import { screenTrpc } from "./screenTrpc";
@@ -74,6 +80,7 @@ export type RuntimeOrchestratorValue = {
   categoryFilterPredicate: CategoryFilterPredicate;
   displayDensity: RuntimeDisplayDensity | null;
   displayDensityHealth: DisplayDensityHealth | null;
+  screenState: OperationalScreenState | null;
   reloadConfiguration: () => void;
   /** Alias for reloadConfiguration — reapplies configuration and density. */
   reload: () => void;
@@ -113,6 +120,7 @@ export function useRuntimeOrchestrator(
   const configManagerRef = useRef(new RuntimeConfigurationManager());
   const categoryFilterManagerRef = useRef(new RuntimeCategoryFilterManager());
   const densityManagerRef = useRef(new RuntimeDisplayDensityManager());
+  const stateAggregatorRef = useRef(new OperationalScreenStateAggregator());
   const [categoryFilterVersion, setCategoryFilterVersion] = useState(0);
   const [densityVersion, setDensityVersion] = useState(0);
 
@@ -319,6 +327,7 @@ export function useRuntimeOrchestrator(
     configManagerRef.current.dispose();
     categoryFilterManagerRef.current.dispose();
     densityManagerRef.current.dispose();
+    stateAggregatorRef.current.dispose();
     clearOperationalScreenCredentials();
     setContext(null);
     dispatch({ type: "AUTH_REVOKED" });
@@ -348,23 +357,6 @@ export function useRuntimeOrchestrator(
     };
   }, [context, phase, densityVersion]);
 
-  const diagnostics = useMemo<RuntimeDiagnostics>(
-    () => ({
-      phase,
-      bootstrapId,
-      heartbeatFailures: heartbeatFailures.current,
-      statusQueryState: statusQuery.status,
-      lastError,
-    }),
-    [phase, bootstrapId, statusQuery.status, lastError]
-  );
-
-  useEffect(() => {
-    if (phase === "running" || phase === "blocked") {
-      setReconnecting(false);
-    }
-  }, [phase]);
-
   const rolePlatform = useMemo<RolePlatformMetrics>(
     () => ({
       heartbeatCount: heartbeatCount.current,
@@ -373,12 +365,6 @@ export function useRuntimeOrchestrator(
     }),
     [phase, reconnecting, statusQuery.status, lastError]
   );
-
-  const reloadConfiguration = useCallback(() => {
-    void statusQuery.refetch();
-  }, [statusQuery]);
-
-  const reloadDensity = reloadConfiguration;
 
   const configurationHealth = useMemo<ConfigurationHealth | null>(() => {
     const incoming = statusQuery.data?.configVersion;
@@ -410,42 +396,113 @@ export function useRuntimeOrchestrator(
     return densityManagerRef.current.buildHealth(incoming);
   }, [densityVersion, context?.configurationVersion, statusQuery.data?.configVersion]);
 
-  const roleHealth = useMemo<RoleRuntimeHealth | null>(() => {
+  const screenState = useMemo<OperationalScreenState | null>(() => {
     if (!exposedContext) return null;
     const definition = resolveRuntimeRole(exposedContext.identity.role);
-    return buildRoleRuntimeHealth(
-      definition,
-      exposedContext,
+    const roleRuntimeState = definition.resolveRuntimeStatus(
       phase,
-      rolePlatform,
-      configurationHealth,
-      categoryFilterHealth,
-      displayDensityHealth
+      exposedContext,
+      reconnecting
     );
-  }, [exposedContext, phase, rolePlatform, configurationHealth, categoryFilterHealth, displayDensityHealth]);
+    const input: StateAggregatorInput = {
+      bootstrapPhase: phase,
+      roleRuntimeState,
+      roleOperational: definition.metadata.operational,
+      roleBlockedReason: definition.metadata.blockedReason ?? null,
+      runtimeConfiguration: exposedContext.runtimeConfiguration,
+      configurationHealth,
+      densityState: exposedContext.densityState,
+      displayDensity: exposedContext.displayDensity,
+      displayDensityHealth,
+      categoryFilterHealth,
+      reconnecting,
+      degraded,
+      lastError,
+      deviceStatus: exposedContext.runtimeStatus.status,
+      hasActiveToken: exposedContext.runtimeStatus.hasActiveToken,
+    };
+    return stateAggregatorRef.current.aggregate(input);
+  }, [
+    exposedContext,
+    phase,
+    reconnecting,
+    degraded,
+    lastError,
+    configurationHealth,
+    categoryFilterHealth,
+    displayDensityHealth,
+    categoryFilterVersion,
+    densityVersion,
+  ]);
+
+  const contextWithScreenState = useMemo<OperationalScreenRuntimeContext | null>(() => {
+    if (!exposedContext || !screenState) return null;
+    return {
+      ...exposedContext,
+      screenState,
+      operationalState: screenState.operationalState,
+      connectivityState: screenState.connectivityState,
+      businessReadiness: screenState.businessReadiness,
+      maintenanceState: screenState.maintenanceState,
+      warnings: screenState.warnings,
+      errors: screenState.errors,
+    };
+  }, [exposedContext, screenState]);
+
+  const roleHealth = useMemo<RoleRuntimeHealth | null>(() => {
+    if (!contextWithScreenState || !screenState) return null;
+    const definition = resolveRuntimeRole(contextWithScreenState.identity.role);
+    return projectHealthFromScreenState(screenState, contextWithScreenState.identity.role, definition.metadata.capabilities, {
+      heartbeatCount: rolePlatform.heartbeatCount,
+      reconnectCount: rolePlatform.reconnectCount,
+      appVersion: import.meta.env.VITE_APP_VERSION ?? "web",
+      configurationVersion: contextWithScreenState.configurationVersion,
+      appliedVersion: contextWithScreenState.lastAppliedVersion,
+    });
+  }, [contextWithScreenState, screenState, rolePlatform]);
 
   const roleDiagnostics = useMemo<Record<string, unknown> | null>(() => {
-    if (!exposedContext || !roleHealth) return null;
-    const definition = resolveRuntimeRole(exposedContext.identity.role);
+    if (!contextWithScreenState || !screenState) return null;
+    const definition = resolveRuntimeRole(contextWithScreenState.identity.role);
     const ctx = buildLifecycleContext(definition, {
-      context: exposedContext,
+      context: contextWithScreenState,
       bootstrapPhase: phase,
       heartbeatCount: rolePlatform.heartbeatCount,
       reconnectCount: rolePlatform.reconnectCount,
       reconnecting: rolePlatform.reconnecting,
     });
-    return collectRoleDiagnostics(
-      definition,
-      ctx,
-      configurationHealth,
-      categoryFilterHealth,
-      displayDensityHealth
-    );
-  }, [exposedContext, phase, roleHealth, rolePlatform, configurationHealth, categoryFilterHealth, displayDensityHealth]);
+    return projectDiagnosticsFromScreenState(screenState, contextWithScreenState, {
+      role: definition.metadata.role,
+      roleDiagnostics: definition.collectDiagnostics(ctx),
+    });
+  }, [contextWithScreenState, screenState, phase, rolePlatform]);
+
+  const diagnostics = useMemo<RuntimeDiagnostics>(
+    () => ({
+      phase,
+      bootstrapId,
+      heartbeatFailures: heartbeatFailures.current,
+      statusQueryState: statusQuery.status,
+      lastError,
+    }),
+    [phase, bootstrapId, statusQuery.status, lastError]
+  );
+
+  useEffect(() => {
+    if (phase === "running" || phase === "blocked") {
+      setReconnecting(false);
+    }
+  }, [phase]);
+
+  const reloadConfiguration = useCallback(() => {
+    void statusQuery.refetch();
+  }, [statusQuery]);
+
+  const reloadDensity = reloadConfiguration;
 
   return {
     phase,
-    context: exposedContext,
+    context: contextWithScreenState,
     degraded,
     lastError,
     diagnostics,
@@ -458,6 +515,7 @@ export function useRuntimeOrchestrator(
     categoryFilterPredicate,
     displayDensity,
     displayDensityHealth,
+    screenState,
     reloadConfiguration,
     reload: reloadConfiguration,
     reloadDensity,

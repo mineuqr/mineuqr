@@ -59,6 +59,21 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
     expect(kitchenPresentation).not.toContain(".filter(");
   });
 
+  it("SCREEN-STATE-MODEL-1: canonical state via aggregator only", () => {
+    const aggregator = read("client/src/lib/operational-screen/state/operationalScreenStateAggregator.ts");
+    const orchestrator = read("client/src/lib/operational-screen/useRuntimeOrchestrator.ts");
+    const banner = read("client/src/components/operational-screen/RoleRuntimeStatusBanner.tsx");
+    const shell = read("client/src/components/operational-screen/OperationalScreenShell.tsx");
+    expect(aggregator).toContain("OperationalScreenStateAggregator");
+    expect(orchestrator).toContain("stateAggregatorRef");
+    expect(orchestrator).toContain("projectHealthFromScreenState");
+    expect(orchestrator).toContain("projectDiagnosticsFromScreenState");
+    expect(banner).toContain("screenState");
+    expect(banner).not.toContain("useRoleRuntimeHealth");
+    expect(shell).not.toContain("degraded");
+    expect(shell).not.toContain("phase");
+  });
+
   it("KITCHEN-DISPLAY-DENSITY-1: density flows through runtime manager only", () => {
     const manager = read("client/src/lib/operational-screen/density/runtimeDisplayDensityManager.ts");
     const kitchen = read("client/src/components/operational-screen/KitchenScreenPanel.tsx");
@@ -96,7 +111,7 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
     const blocked = read("client/src/components/operational-screen/roles/BlockedRolePresentation.tsx");
     const roleHost = read("client/src/components/operational-screen/RuntimeRoleHost.tsx");
     expect(kitchen).toContain("useRuntimeContext");
-    expect(blocked).toContain("useResolvedRuntimeRole");
+    expect(blocked).toContain("useRuntimeContext");
     expect(kitchen).toContain("export function KitchenScreenPanel()");
     expect(roleHost).toContain("useScreenRuntime");
     expect(roleHost).toContain("<Presentation />");

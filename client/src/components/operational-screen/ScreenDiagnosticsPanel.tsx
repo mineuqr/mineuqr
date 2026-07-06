@@ -2,57 +2,41 @@ import { useScreenRuntime } from "./OperationalScreenRuntimeProvider";
 import { getRoleCapabilities } from "@/lib/operational-screen/runtimeCapabilities";
 
 export function ScreenDiagnosticsPanel() {
-  const {
-    phase,
-    context,
-    degraded,
-    lastError,
-    diagnostics,
-    roleHealth,
-    roleDiagnostics,
-    configurationHealth,
-    categoryFilterHealth,
-    categoryFilter,
-    displayDensity,
-    displayDensityHealth,
-  } = useScreenRuntime();
+  const { context, diagnostics, roleHealth, roleDiagnostics } = useScreenRuntime();
 
-  const roleCapabilities = context ? getRoleCapabilities(context.identity.role) : null;
+  if (!context) return null;
+
+  const roleCapabilities = getRoleCapabilities(context.identity.role);
+  const state = context.screenState;
 
   const snapshot = {
-    connection: { phase, degraded, lastError },
-    bootstrap: { phase, bootstrapId: diagnostics.bootstrapId, bootedAt: context?.bootstrap.bootedAt ?? null },
+    screenState: state,
+    operationalState: state.operationalState,
+    connectivityState: state.connectivityState,
+    businessReadiness: state.businessReadiness,
+    maintenanceState: state.maintenanceState,
+    warnings: state.warnings,
+    errors: state.errors,
+    connection: {
+      phase: diagnostics.phase,
+      lastError: diagnostics.lastError,
+    },
+    bootstrap: {
+      bootstrapId: diagnostics.bootstrapId,
+      bootedAt: context.bootstrap.bootedAt,
+    },
     runtime: {
-      deviceId: context?.identity.deviceId ?? null,
-      role: context?.identity.role ?? null,
-      restaurantId: context?.identity.restaurantId ?? null,
+      deviceId: context.identity.deviceId,
+      role: context.identity.role,
+      restaurantId: context.identity.restaurantId,
     },
-    roleHealth,
-    roleDiagnostics,
-    configurationHealth,
-    categoryFilter,
-    categoryFilterHealth,
-    displayDensity,
-    displayDensityHealth,
-    densityState: context?.densityState ?? null,
-    densityVersion: context?.densityVersion ?? null,
-    resolvedDensity: context?.displayDensity ?? null,
-    runtimeConfiguration: context?.runtimeConfiguration ?? null,
-    configurationState: context?.configurationState ?? null,
-    configurationVersion: context?.configurationVersion ?? null,
-    lastAppliedVersion: context?.lastAppliedVersion ?? null,
-    heartbeat: { failures: diagnostics.heartbeatFailures, statusQueryState: diagnostics.statusQueryState },
-    fingerprint: context?.fingerprint ?? null,
-    configuration: {
-      configVersion: context?.configVersion ?? null,
-      presentation: context?.presentation ?? null,
-      tracked: context?.runtimeConfiguration?.tracked ?? null,
-    },
-    status: context?.runtimeStatus ?? null,
+    health: roleHealth,
+    diagnostics: roleDiagnostics,
+    fingerprint: context.fingerprint,
     capabilities: {
       role: roleCapabilities,
-      server: context?.capabilities.server ?? null,
-      client: context?.capabilities.client ?? null,
+      server: context.capabilities.server,
+      client: context.capabilities.client,
     },
   };
 

@@ -6,6 +6,7 @@ import { RuntimeConfigurationManager } from "./configuration/runtimeConfiguratio
 import type { RuntimeConfiguration } from "./configuration/runtimeConfigurationContract";
 import { buildRuntimeCapabilitySet, getRoleCapabilities } from "./runtimeCapabilities";
 import { COMFORTABLE_DENSITY_MODEL } from "./density/presentationDensityModels";
+import { createInitialScreenState } from "./state/initialScreenState";
 import { collectRuntimeFingerprint } from "./runtimeFingerprint";
 import type {
   BootstrapPhase,
@@ -58,6 +59,7 @@ export function buildRuntimeContext(input: {
 }): OperationalScreenRuntimeContext {
   const fingerprint = input.fingerprint ?? collectRuntimeFingerprint(input.bootstrapId);
   const { runtimeConfiguration } = input;
+  const initialScreenState = createInitialScreenState();
 
   return {
     identity: {
@@ -82,6 +84,13 @@ export function buildRuntimeContext(input: {
     densityState: "loading",
     densityVersion: 0,
     resolvedDensityModel: COMFORTABLE_DENSITY_MODEL,
+    screenState: initialScreenState,
+    operationalState: initialScreenState.operationalState,
+    connectivityState: initialScreenState.connectivityState,
+    businessReadiness: initialScreenState.businessReadiness,
+    maintenanceState: initialScreenState.maintenanceState,
+    warnings: initialScreenState.warnings,
+    errors: initialScreenState.errors,
     capabilities: buildRuntimeCapabilitySet(input.status.device.role),
     fingerprint,
     bootstrap: {
