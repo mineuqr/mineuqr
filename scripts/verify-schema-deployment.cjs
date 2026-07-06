@@ -21,6 +21,12 @@ const REQUIRED = {
     "order_read_public_order_status",
     "order_read_backfill_runs",
   ],
+  operationalDeviceTables: ["operational_devices", "operational_device_tokens"],
+  operationalDeviceColumns: [
+    ["operational_devices", "screenConfig"],
+    ["operational_devices", "screenConfigRevision"],
+  ],
+  orderReadColumns: [["order_read_order_line_items", "categoryProjection"]],
 };
 
 async function columnExists(conn, table, column) {
@@ -82,16 +88,34 @@ async function main() {
         missing.push(`table:${table}`);
       }
     }
+    for (const table of REQUIRED.operationalDeviceTables) {
+      if (!(await tableExists(conn, table))) {
+        missing.push(`table:${table}`);
+      }
+    }
+    for (const [table, column] of REQUIRED.operationalDeviceColumns) {
+      if (!(await columnExists(conn, table, column))) {
+        missing.push(`${table}.${column}`);
+      }
+    }
+    for (const [table, column] of REQUIRED.orderReadColumns) {
+      if (!(await columnExists(conn, table, column))) {
+        missing.push(`${table}.${column}`);
+      }
+    }
 
     if (missing.length === 0) {
-      console.log("[schema-verify] OK — required auth/schema objects present.");
+      console.log("[schema-verify] OK — required schema objects present (auth, order-read, operational-device).");
       return;
     }
 
     console.error("[schema-verify] MISSING required objects:");
     for (const m of missing) console.error(`  - ${m}`);
     console.error(
-      "[schema-verify] Fix: run pending journal migrations on a fresh DB, or node scripts/apply-auth2b-local-schema.cjs && node scripts/apply-session-valid-after-local-patch.cjs on existing DB."
+      "[schema-verify] Fix: node scripts/migration-preflight.cjs && pnpm exec drizzle-kit migrate"
+    );
+    console.error(
+      "[schema-verify] Production: see scripts/recovery/migration-0054-0057-preflight.mjs"
     );
     process.exitCode = 1;
   } finally {

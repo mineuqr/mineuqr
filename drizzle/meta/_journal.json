@@ -379,6 +379,34 @@
       "when": 1784300000000,
       "tag": "0053_connector_release_automation",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "5",
+      "when": 1784400000000,
+      "tag": "0054_operational_devices",
+      "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "5",
+      "when": 1784410000000,
+      "tag": "0055_operational_device_screen_config",
+      "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "5",
+      "when": 1784420000000,
+      "tag": "0056_order_read_category_projection",
+      "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "5",
+      "when": 1784430000000,
+      "tag": "0057_operational_device_screen_config_revision",
+      "breakpoints": true
     }
   ]
 }

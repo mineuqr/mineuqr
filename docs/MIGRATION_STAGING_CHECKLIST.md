@@ -1,17 +1,25 @@
 # Staging migration checklist (one page)
 
-Run before first staging deploy and after any schema change.
+Run before staging deploy and after any schema change.
+
+## Governance gate (required)
+
+```bash
+pnpm db:governance-check
+```
+
+Must exit **0**. Blocks on non-legacy orphan SQL or journal violations.
 
 ## Preflight
 
 ```bash
-node scripts/migration-preflight.cjs
+pnpm db:preflight
 ```
 
-- No `Journal tags missing SQL files`
-- Understand any `SQL files NOT in journal` (ignore orphans)
+- No non-legacy `SQL files NOT in journal`
+- Review pending migrations list if DATABASE_URL is set
 
-## Apply migrations (fresh or pending DB)
+## Apply migrations
 
 ```bash
 pnpm exec drizzle-kit migrate
@@ -22,20 +30,28 @@ If this fails with "table already exists" on an **existing** DB, stop — use [D
 ## Verify schema
 
 ```bash
-node scripts/verify-schema-deployment.cjs
+pnpm db:verify-schema
 ```
 
-Must exit **0**.
+Must exit **0**. Includes auth, order-read, and operational-device objects.
 
-## App smoke (auth-critical)
+## App smoke
 
 - [ ] Login (local email/password)
-- [ ] `auth.me` / dashboard load
-- [ ] Logout
-- [ ] Forgot-password email link host correct (`PUBLIC_APP_URL` if needed)
+- [ ] Dashboard load
+- [ ] Screen Management list (operational devices)
+- [ ] Operational screen pairing (if applicable)
 
 ## Env
 
 - [ ] `DATABASE_URL` points to staging database only
-- [ ] `JWT_SECRET`, `VITE_APP_ID` set
 - [ ] Not pointing at production by mistake
+- [ ] Production recovery uses `db:recovery:preflight` + TiDB backup
+
+## Production promotion (after staging)
+
+1. `pnpm db:recovery:preflight` on gateway01
+2. TiDB backup
+3. `node scripts/recovery/migration-0054-0057-execute.mjs --execute --confirm-gateway01` (or `db:migrate`)
+4. `pnpm db:verify-schema`
+5. Deploy application (Vercel runs governance guard automatically)

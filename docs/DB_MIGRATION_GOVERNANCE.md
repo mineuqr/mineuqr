@@ -1,125 +1,133 @@
 # DB migration governance — MineuQR
 
-Official workflow for **deployment-safe** schema changes after DB-MIGRATION-STABILIZATION.
+Official workflow for **deployment-safe** schema changes.
 
 **Source of truth:** `drizzle/meta/_journal.json` — only tagged migrations run via `drizzle-kit migrate`.
 
+**Current canonical lineage:** `0000_shiny_blizzard` → `0057_operational_device_screen_config_revision` (58 journal entries).
+
 ---
 
-## 1. Current lineage (honest assessment)
+## 1. Current lineage
 
 | Fact | Status |
 |------|--------|
-| Journal defines order `0000` → `0018` | **Canonical** (post-stabilization) |
-| Duplicate `0000`–`0008` SQL files on disk | **Orphan** — not in journal; never run |
+| Journal defines order `0000` → `0057` | **Canonical** (post MIGRATION-GOVERNANCE-RESTORATION-1) |
+| Tail migrations `0054`–`0057` | **Journalized** — operational devices, screen config, category projection, config revision |
+| Duplicate `0000`–`0008` SQL files on disk | **Legacy orphan** — not in journal; never execute |
 | `schema.ts` | **Authoritative** for application code |
 | `pnpm db:push` | Runs `generate` + `migrate` — use deliberately |
 
-### Journal sequence (canonical)
+### Legacy orphan SQL (on disk, NOT in journal)
 
-`0000_shiny_blizzard` … `0016_empty_captain_universe` → `0017_auth_tokens` → `0018_session_valid_after`
+Historical parallel-branch duplicates. **Do not execute:**
 
-### Orphan SQL files (on disk, NOT in journal)
+- `0000_exotic_hellfire_club` … `0008_glamorous_phantom_reporter`
 
-Do **not** execute manually. Historical duplicates from parallel branches:
+### Production historical bootstrap rows
 
-- `0000_exotic_hellfire_club`, `0001_lumpy_naoko`, `0002_watery_ironclad`, `0003_square_krista_starr`
-- `0004_long_nekra`, `0005_living_molecule_man`, `0006_confused_bloodaxe`, `0007_loose_mandrill`, `0008_glamorous_phantom_reporter`
-
-Preflight lists these: `node scripts/migration-preflight.cjs`
+Four `__drizzle_migrations` rows from orphan bootstrap lineage may coexist with canonical hashes. **Do not delete** (see `migration-recovery-final-report.md`).
 
 ---
 
-## 2. Deployment scenarios
+## 2. Canonical deployment workflow
 
-### A) Fresh staging database (preferred bootstrap)
-
-```bash
-# 1. Empty database + DATABASE_URL set
-node scripts/migration-preflight.cjs
-pnpm exec drizzle-kit migrate
-node scripts/verify-schema-deployment.cjs
+```
+schema.ts change
+    → drizzle-kit generate (journal + SQL + snapshot)
+    → code review
+    → migration-preflight (strict)
+    → drizzle-kit migrate (staging)
+    → verify-schema-deployment
+    → application deploy
 ```
 
-Expected: all journal migrations apply once; verify script exits 0.
-
-### B) Existing database (dev/TiDB already live)
-
-**Do not assume `migrate` is idempotent** if patches were applied manually.
+### Required commands
 
 ```bash
-node scripts/migration-preflight.cjs
-node scripts/verify-schema-deployment.cjs
+node scripts/migration-governance-guard.cjs   # CI + Vercel build gate
+node scripts/migration-preflight.cjs          # journal vs disk vs DB
+pnpm exec drizzle-kit migrate                 # apply pending migrations
+node scripts/verify-schema-deployment.cjs     # schema gate
 ```
 
-If verify fails but app works, apply idempotent patches (last resort):
+### npm scripts
 
-```bash
-node scripts/apply-auth2b-local-schema.cjs
-node scripts/apply-session-valid-after-local-patch.cjs
-node scripts/verify-schema-deployment.cjs
-```
-
-Then align `__drizzle_migrations` with ops (see §5) before relying on migrate in CI.
-
-### C) Schema change going forward
-
-1. Edit `drizzle/schema.ts` only (no hand-edited SQL unless emergency).
-2. `pnpm exec drizzle-kit generate` — produces `0019_*` + journal entry + snapshot.
-3. Review generated SQL on a **copy** of staging data.
-4. `pnpm exec drizzle-kit migrate` on staging.
-5. `node scripts/verify-schema-deployment.cjs`
-6. Deploy app.
-
-**Never** run orphan SQL files. **Never** delete old journal entries.
+| Script | Purpose |
+|--------|---------|
+| `pnpm db:governance-check` | Fail on journal/SQL violations |
+| `pnpm db:preflight` | Read-only lineage + pending detection |
+| `pnpm db:migrate` | Apply pending journal migrations |
+| `pnpm db:verify-schema` | Required objects present |
+| `pnpm db:recovery:preflight` | Production 0054–0057 readiness |
 
 ---
 
-## 3. Anti-patterns (stop now)
+## 3. Deployment scenarios
+
+### A) Fresh database
+
+```bash
+pnpm db:governance-check
+pnpm db:migrate
+pnpm db:verify-schema
+```
+
+### B) Existing production (gateway01)
+
+**Never blind-migrate evolved production without preflight.**
+
+```bash
+pnpm db:recovery:preflight
+# TiDB backup (mandatory)
+node scripts/recovery/migration-0054-0057-execute.mjs --execute --confirm-gateway01
+```
+
+Or after journal restoration: `pnpm db:migrate` with same verification.
+
+### C) New schema change
+
+1. Edit `drizzle/schema.ts`
+2. `pnpm db:generate` — produces journal entry + SQL
+3. Review SQL on staging copy
+4. `pnpm db:migrate` on staging
+5. `pnpm db:verify-schema`
+6. Deploy app (Vercel runs governance guard in build)
+
+---
+
+## 4. Enforcement
+
+| Gate | When | Failure action |
+|------|------|----------------|
+| `migration-governance-guard.cjs` | CI PR, Vercel build | Block deploy |
+| `migration-preflight.cjs --strict` | Pre-migrate ops | Exit 1 |
+| `verify-schema-deployment.cjs` | Pre/post migrate | Exit 1 |
+
+---
+
+## 5. Anti-patterns
 
 | Anti-pattern | Why |
 |--------------|-----|
-| `db:push` in CI without review | May generate unexpected migrations |
-| Running random `0004_*.sql` duplicates | Table-already-exists failures |
-| Hand-patching production without journal | Drift vs fresh environments |
-| Assuming local DB = staging | Patches hide missing journal steps |
-| `drizzle-kit push` instead of migrate on shared DB | Bypasses migration history |
+| Hand-written `.sql` without journal entry | Invisible to `drizzle-kit migrate` |
+| App deploy before schema verify | HTTP 500 / runtime failures |
+| Running legacy orphan SQL | Table-exists / lineage corruption |
+| Deleting orphan bootstrap `__drizzle_migrations` rows | Breaks audit trail |
+| `db:push` on shared DB without review | Bypasses governance |
 
 ---
 
-## 4. What can remain imperfect
+## 6. Emergency recovery
 
-| Item | Acceptable until |
-|------|------------------|
-| Orphan SQL files on disk | INFRA cleanup phase (do not delete pre-staging without backup) |
-| Missing snapshots for hand-registered 0017/0018 | Next `drizzle-kit generate` may reconcile |
-| `db:push` npm script name | Rename later; document only |
-| No automated CI migrate | Staging manual gate first |
+1. **Stop** — do not re-run migrate blindly
+2. **Preflight** — `pnpm db:recovery:preflight`
+3. **Backup** — TiDB snapshot
+4. **Execute** — `migration-0054-0057-execute.mjs` or `db:migrate`
+5. **Verify** — `db:verify-schema`
+6. **Smoke** — Screen Management, pairing, kitchen read
 
----
-
-## 5. Emergency / recovery mindset
-
-1. **Stop** — do not re-run migrate blindly on partial failure.
-2. **Inspect** — `__drizzle_migrations`, error SQL, `information_schema`.
-3. **Verify** — `node scripts/verify-schema-deployment.cjs`
-4. **Patch idempotently** — only via `scripts/*` patches if migrate cannot proceed.
-5. **Record** — what was applied manually; plan journal reconciliation with DBA care.
-
-Rollback: MineuQR does not use down migrations. Rollback = restore DB snapshot or forward-fix migration.
-
----
-
-## 6. Auth-critical schema checklist
-
-Required for AUTH2 (verify script enforces):
-
-| Object | Introduced |
-|--------|------------|
-| `users.emailVerifiedAt` | `0017_auth_tokens` |
-| `users.passwordChangedAt` | `0017_auth_tokens` |
-| `users.sessionValidAfter` | `0018_session_valid_after` |
-| `auth_tokens` table | `0017_auth_tokens` |
+Rollback: forward-fix only (no down migrations). App rollback without schema rollback acceptable for additive DDL.
 
 ---
 
@@ -127,37 +135,25 @@ Required for AUTH2 (verify script enforces):
 
 | Script | Purpose |
 |--------|---------|
-| `scripts/migration-preflight.cjs` | Journal vs disk vs DB (read-only) |
-| `scripts/verify-schema-deployment.cjs` | Required tables/columns present |
-| `scripts/apply-auth2b-local-schema.cjs` | Idempotent AUTH2-B patch (existing DB) |
-| `scripts/apply-session-valid-after-local-patch.cjs` | Idempotent sessionValidAfter patch |
+| `scripts/migration-governance-guard.cjs` | Strict repository gate |
+| `scripts/migration-preflight.cjs` | Journal vs disk vs DB |
+| `scripts/verify-schema-deployment.cjs` | Schema object verification |
+| `scripts/recovery/migration-0054-0057-preflight.mjs` | Production recovery readiness |
+| `scripts/recovery/migration-0054-0057-execute.mjs` | Controlled migrate + verify |
 
 ---
 
-## 8. Staging gate (required once)
+## 8. Staging gate checklist
 
-- [ ] `migration-preflight` — no journal/file mismatches
-- [ ] `drizzle-kit migrate` on staging DB (or verified already at 0018)
-- [ ] `verify-schema-deployment` — exit 0
-- [ ] Smoke auth login + logout (sessionValidAfter path)
+See [MIGRATION_STAGING_CHECKLIST.md](./MIGRATION_STAGING_CHECKLIST.md).
 
 ---
 
-## 9. Do-not-touch zones
-
-- Orphan migration SQL files (leave in repo, ignore)
-- `__drizzle_migrations` rows on production without ops plan
-- Rewriting `0000`–`0016` history
-- `schema.ts` changes without generate + migrate discipline
-
----
-
-## 10. Stability verdict
+## 9. Stability verdict
 
 Migration governance is **deployment-ready** when:
 
-1. Journal includes **0017** and **0018** (done in stabilization).
-2. Staging runs **migrate + verify** once successfully.
-3. Team follows **generate → review → migrate → verify** for new changes.
-
-See [MIGRATION_STAGING_CHECKLIST.md](./MIGRATION_STAGING_CHECKLIST.md) for a one-page deploy runbook.
+1. Journal includes **0000**–**0057** (done — MIGRATION-GOVERNANCE-RESTORATION-1)
+2. `db:governance-check` passes in CI
+3. Staging/production run **migrate + verify** before app promote
+4. Team follows **generate → review → migrate → verify → deploy**
