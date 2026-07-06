@@ -7,6 +7,7 @@ import {
   invokeLifecycle,
 } from "@/lib/operational-screen/roles/runtimeRoleLifecycle";
 import { RoleRuntimeStatusBanner } from "./RoleRuntimeStatusBanner";
+import { RuntimeOperationalAlert } from "./RuntimeOperationalAlert";
 import { resolveCapabilityPresentation } from "@/lib/operational-screen/capability/resolveCapabilityPresentation";
 import { isCapabilitySupported } from "@/lib/operational-screen/capability/resolveCapabilityPresentation";
 
@@ -112,6 +113,7 @@ export function RuntimeRoleHost() {
   return (
     <>
       <RoleRuntimeStatusBanner />
+      <RuntimeOperationalAlert />
       <Presentation />
     </>
   );

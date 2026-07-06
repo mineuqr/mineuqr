@@ -3,34 +3,31 @@ import { DATA_POLL_INTERVAL_MS } from "../bootstrapLogic";
 import { screenTrpc } from "../screenTrpc";
 import { useScreenRuntime } from "@/components/operational-screen/OperationalScreenRuntimeProvider";
 import { isCapabilitySupported } from "@/lib/operational-screen/capability/resolveCapabilityPresentation";
-import { applyKitchenCategoryFilter } from "./applyKitchenCategoryFilter";
-import { normalizeKitchenReadModel, type KitchenRuntimeQueue } from "./kitchenRuntimeReadModel";
-import type { CategoryProjectionReadMeta } from "@/lib/kitchen/categoryProjection";
+import {
+  buildKitchenRuntimeStream,
+  type KitchenProjectionDiagnostics,
+  type KitchenRuntimeStream,
+} from "./buildKitchenRuntimeStream";
+
+export type { KitchenProjectionDiagnostics, KitchenRuntimeStream };
 
 function useVisiblePollingEnabled(): boolean {
   if (typeof document === "undefined") return true;
   return document.visibilityState === "visible";
 }
 
-export type KitchenProjectionDiagnostics = CategoryProjectionReadMeta & {
-  projectionSchemaVersion: number;
-};
-
-export type KitchenRuntimeStream = {
-  queue: KitchenRuntimeQueue | null;
-  isLoading: boolean;
-  isFiltered: boolean;
-  projectionDiagnostics: KitchenProjectionDiagnostics | null;
-};
-
 /**
  * Kitchen runtime stream — fetch read model, apply category filter in runtime layer.
  * Presentation consumes the filtered stream only.
  */
-export function useKitchenRuntimeStream(): KitchenRuntimeStream {
+export function useKitchenRuntimeStream(): KitchenRuntimeStream & {
+  retry: () => void;
+  isRefetching: boolean;
+} {
   const { categoryFilter, categoryFilterPredicate, context } = useScreenRuntime();
   const visible = useVisiblePollingEnabled();
   const kitchenQueueSupported = isCapabilitySupported(context?.runtimeCapabilities, "kitchen_queue");
+  const language = context?.presentation.language ?? "en";
 
   const queueQuery = screenTrpc.operationalDevice.runtime.getKitchenQueue.useQuery(
     { status: "all", limit: 200 },
@@ -42,32 +39,34 @@ export function useKitchenRuntimeStream(): KitchenRuntimeStream {
     }
   );
 
-  const stream = useMemo<KitchenRuntimeStream>(() => {
-    if (!queueQuery.data) {
-      return {
-        queue: null,
+  const stream = useMemo(
+    () =>
+      buildKitchenRuntimeStream({
+        data: queueQuery.data,
         isLoading: queueQuery.isLoading,
-        isFiltered: false,
-        projectionDiagnostics: null,
-      };
-    }
+        isError: queueQuery.isError,
+        error: queueQuery.error,
+        language,
+        categoryFilterEnabled: categoryFilter?.enabled === true,
+        categoryFilterPredicate,
+      }),
+    [
+      queueQuery.data,
+      queueQuery.isLoading,
+      queueQuery.isError,
+      queueQuery.error,
+      language,
+      categoryFilter?.enabled,
+      categoryFilter?.filterVersion,
+      categoryFilterPredicate,
+    ]
+  );
 
-    const readModel = normalizeKitchenReadModel(queueQuery.data);
-    const filtered = applyKitchenCategoryFilter(readModel, categoryFilterPredicate);
-
-    return {
-      queue: filtered,
-      isLoading: queueQuery.isLoading,
-      isFiltered: categoryFilter?.enabled === true,
-      projectionDiagnostics: readModel.projection,
-    };
-  }, [
-    queueQuery.data,
-    queueQuery.isLoading,
-    categoryFilter?.enabled,
-    categoryFilter?.filterVersion,
-    categoryFilterPredicate,
-  ]);
-
-  return stream;
+  return {
+    ...stream,
+    retry: () => {
+      void queueQuery.refetch();
+    },
+    isRefetching: queueQuery.isFetching && queueQuery.isError,
+  };
 }

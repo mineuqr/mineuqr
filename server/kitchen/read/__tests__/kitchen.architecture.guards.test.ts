@@ -46,4 +46,10 @@ describe("KITCHEN-DISPLAY-1 architecture guards", () => {
       "orderingPolicy"
     );
   });
+
+  it("BUGFIX-F008 — database unavailability is not silently returned as empty queue", () => {
+    const adapter = readFileSync(join(root, "infrastructure/OrderReadQueryAdapter.ts"), "utf8");
+    expect(adapter).toContain("KITCHEN_READ_DATABASE_UNAVAILABLE");
+    expect(adapter).not.toMatch(/if \(!db\) return \[\]/);
+  });
 });

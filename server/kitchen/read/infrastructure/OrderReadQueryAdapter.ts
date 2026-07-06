@@ -8,6 +8,7 @@ import {
 import type { KitchenPipelineStatus } from "../contracts/kitchenQueryContracts";
 import type { ActiveOrderLineItemDto } from "../../../order/read/domain/contracts/queryContracts";
 import { parseStoredCategoryProjection } from "../../../order/read/infrastructure/persistence/parseStoredCategoryProjection";
+import { KITCHEN_READ_DATABASE_UNAVAILABLE } from "../domain/kitchenReadErrorCodes";
 
 export type OrderReadPipelineOrderRow = {
   restaurantId: number;
@@ -49,7 +50,9 @@ export type OrderReadQueryPort = {
 export class DrizzleOrderReadQueryAdapter implements OrderReadQueryPort {
   async listPipelineOrders(restaurantId: number): Promise<OrderReadPipelineOrderRow[]> {
     const db = await getDb();
-    if (!db) return [];
+    if (!db) {
+      throw new Error(KITCHEN_READ_DATABASE_UNAVAILABLE);
+    }
 
     const rows = await db
       .select()

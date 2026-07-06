@@ -1,4 +1,8 @@
 import { KitchenExecutionCard } from "@/components/kitchen/KitchenExecutionCard";
+import {
+  KitchenQueueErrorPanel,
+  KitchenStaleDataBanner,
+} from "@/components/operational-screen/KitchenQueueOperationalBanner";
 import { toKitchenTicketCard } from "@/lib/kitchen/viewModels";
 import { computeSlaSnapshot } from "@/lib/operational-workspace/slaEngine";
 import { useKitchenRuntimeStream } from "@/lib/operational-screen/kitchen/useKitchenRuntimeStream";
@@ -9,14 +13,35 @@ import { Loader2 } from "lucide-react";
 export function KitchenScreenPanel() {
   const context = useRuntimeContext();
   const language = context.presentation.language;
+  const isAr = language === "ar";
   const densityModel = context.resolvedDensityModel;
-  const { queue, isLoading } = useKitchenRuntimeStream();
+  const {
+    queue,
+    isLoading,
+    isError,
+    isShowingStaleData,
+    operatorMessage,
+    retry,
+    isRefetching,
+  } = useKitchenRuntimeStream();
 
-  if (isLoading && !queue) {
+  if (isLoading && !queue && !isError) {
     return (
       <div className="flex items-center justify-center py-20">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
+    );
+  }
+
+  if (isError && !queue) {
+    return (
+      <KitchenQueueErrorPanel
+        message={operatorMessage ?? (isAr ? "تعذر تحميل الطابور" : "Queue unavailable")}
+        retryLabel={isAr ? "إعادة المحاولة" : "Retry"}
+        onRetry={retry}
+        isRetrying={isRefetching}
+        language={language}
+      />
     );
   }
 
@@ -43,9 +68,9 @@ export function KitchenScreenPanel() {
             />
           );
         })}
-        {tickets.length === 0 ? (
+        {!isError && tickets.length === 0 ? (
           <p className={densityModel.emptyStateClass}>
-            {language === "ar" ? "لا طلبات" : "No orders"}
+            {isAr ? "لا طلبات" : "No orders"}
           </p>
         ) : null}
       </div>
@@ -53,10 +78,13 @@ export function KitchenScreenPanel() {
   );
 
   return (
-    <div className={cn("grid lg:grid-cols-3", densityModel.columnGap)}>
-      {renderColumn(language === "ar" ? "قيد الانتظار" : "Pending", columns.pending)}
-      {renderColumn(language === "ar" ? "قيد التحضير" : "Preparing", columns.preparing)}
-      {renderColumn(language === "ar" ? "جاهز" : "Ready", columns.ready)}
+    <div>
+      {isShowingStaleData ? <KitchenStaleDataBanner language={language} /> : null}
+      <div className={cn("grid lg:grid-cols-3", densityModel.columnGap)}>
+        {renderColumn(isAr ? "قيد الانتظار" : "Pending", columns.pending)}
+        {renderColumn(isAr ? "قيد التحضير" : "Preparing", columns.preparing)}
+        {renderColumn(isAr ? "جاهز" : "Ready", columns.ready)}
+      </div>
     </div>
   );
 }

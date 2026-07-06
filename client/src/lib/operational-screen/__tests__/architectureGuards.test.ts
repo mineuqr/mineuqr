@@ -105,7 +105,10 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
     const manager = read("client/src/lib/operational-screen/category-filter/runtimeCategoryFilterManager.ts");
     expect(readModel).toContain("category.categoryId");
     expect(readModel).not.toContain("missingCategoryData");
-    expect(stream).toContain("projectionDiagnostics");
+    expect(stream).toContain("buildKitchenRuntimeStream");
+    expect(read("client/src/lib/operational-screen/kitchen/buildKitchenRuntimeStream.ts")).toContain(
+      "projectionDiagnostics"
+    );
     expect(apply).not.toContain("missingCategoryData");
     expect(manager).not.toContain("missingCategoryData");
   });
@@ -223,5 +226,24 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
     expect(orchestrator).toContain("detectVersionChange(status.configVersion)");
     expect(configManager).toContain("detectVersionChange(incomingVersion");
     expect(runtimeRouter).not.toMatch(/configVersion:\s*device\.updatedAt/);
+  });
+
+  it("BUGFIX-F005/F008/F017 — kitchen failures and runtime errors are visible in production UI", () => {
+    const stream = read("client/src/lib/operational-screen/kitchen/useKitchenRuntimeStream.ts");
+    const builder = read("client/src/lib/operational-screen/kitchen/buildKitchenRuntimeStream.ts");
+    const kitchen = read("client/src/components/operational-screen/KitchenScreenPanel.tsx");
+    const roleHost = read("client/src/components/operational-screen/RuntimeRoleHost.tsx");
+    const adapter = read("server/kitchen/read/infrastructure/OrderReadQueryAdapter.ts");
+
+    expect(builder).toContain("isShowingStaleData");
+    expect(builder).toContain("isError");
+    expect(stream).toContain("buildKitchenRuntimeStream");
+    expect(kitchen).toContain("KitchenQueueErrorPanel");
+    expect(kitchen).toContain("KitchenStaleDataBanner");
+    expect(kitchen).toContain("isError && !queue");
+    expect(kitchen).toContain("!isError && tickets.length === 0");
+    expect(roleHost).toContain("RuntimeOperationalAlert");
+    expect(adapter).toContain("KITCHEN_READ_DATABASE_UNAVAILABLE");
+    expect(adapter).not.toMatch(/if \(!db\) return \[\]/);
   });
 });
