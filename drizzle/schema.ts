@@ -817,6 +817,7 @@ export const operationalDevices = mysqlTable("operational_devices", {
 	status: mysqlEnum(["active", "disabled"]).default("active").notNull(),
 	reportedVersion: varchar({ length: 64 }),
 	lastSeenAt: timestamp({ mode: "string" }),
+	screenConfigRevision: int().default(1).notNull(),
 	createdAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
 	updatedAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
 },

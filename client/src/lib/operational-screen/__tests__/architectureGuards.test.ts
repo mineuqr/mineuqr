@@ -213,4 +213,15 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
     expect(orchestrator).toContain("runtimeCapabilities");
     expect(orchestrator).toContain("mergeCapabilityIntoHealth");
   });
+
+  it("BUGFIX-F004 — runtime reload keyed on configVersion not heartbeat timestamps", () => {
+    const runtimeRouter = read("server/operational-device/routers/operationalDeviceRuntimeRouter.ts");
+    const orchestrator = read("client/src/lib/operational-screen/useRuntimeOrchestrator.ts");
+    const configManager = read("client/src/lib/operational-screen/configuration/runtimeConfigurationManager.ts");
+
+    expect(runtimeRouter).toContain("resolveScreenConfigVersion");
+    expect(orchestrator).toContain("detectVersionChange(status.configVersion)");
+    expect(configManager).toContain("detectVersionChange(incomingVersion");
+    expect(runtimeRouter).not.toMatch(/configVersion:\s*device\.updatedAt/);
+  });
 });

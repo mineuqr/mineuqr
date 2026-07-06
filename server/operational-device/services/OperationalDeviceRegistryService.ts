@@ -109,12 +109,11 @@ export class OperationalDeviceRegistryService {
     const device = await this.store.getDevice(deviceId);
     if (!device || device.restaurantId !== restaurantId) return null;
     const nowIso = new Date(this.now()).toISOString();
-    const screenConfig = input.screenConfig
-      ? mergeScreenConfig(device.screenConfig, input.screenConfig)
-      : device.screenConfig;
     const ok = await this.store.updateScreenPresentation(deviceId, {
       displayName: input.displayName?.trim() || undefined,
-      screenConfig,
+      screenConfig: input.screenConfig
+        ? mergeScreenConfig(device.screenConfig, input.screenConfig)
+        : undefined,
       now: nowIso,
     });
     if (!ok) return null;

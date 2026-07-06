@@ -20,6 +20,7 @@ function mapRow(
     status: row.status as FleetDeviceRow["status"],
     reportedVersion: row.reportedVersion ?? null,
     lastSeenAt: row.lastSeenAt ?? null,
+    screenConfigRevision: row.screenConfigRevision ?? 1,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     hasActiveToken,

@@ -1,6 +1,6 @@
 /**
- * Runtime configuration version abstraction.
- * v1: device.updatedAt (ISO8601). Future: screenConfigRevision integer.
+ * Runtime configuration version abstraction (client contract mirror).
+ * Server resolves via screenConfigRevision — stable across heartbeat updates.
  */
 
 export type ConfigVersionSource = {
@@ -9,7 +9,7 @@ export type ConfigVersionSource = {
 };
 
 export function resolveConfigVersion(source: ConfigVersionSource): string {
-  if (source.screenConfigRevision != null) {
+  if (source.screenConfigRevision != null && source.screenConfigRevision > 0) {
     return String(source.screenConfigRevision);
   }
   return source.updatedAt;

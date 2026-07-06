@@ -144,4 +144,41 @@ describe("RuntimeConfigurationManager", () => {
     expect(health?.appliedVersion).toBe("v1");
     expect(health?.versionMismatch).toBe(false);
   });
+
+  it("BUGFIX-F004 — repeated heartbeat timestamps do not trigger reload when config version is stable", () => {
+    const manager = new RuntimeConfigurationManager();
+    manager.loadFromStatus(mockStatus({ configVersion: "1" }), capabilities);
+
+    const heartbeatPolls = [
+      mockStatus({ configVersion: "1", health: { ...mockStatus().health, lastSeenAt: "2026-07-06T10:00:01.000Z" } }),
+      mockStatus({ configVersion: "1", health: { ...mockStatus().health, lastSeenAt: "2026-07-06T10:00:31.000Z" } }),
+      mockStatus({ configVersion: "1", health: { ...mockStatus().health, lastSeenAt: "2026-07-06T10:01:01.000Z" } }),
+    ];
+
+    for (const poll of heartbeatPolls) {
+      expect(manager.detectVersionChange(poll.configVersion)).toBe(false);
+      expect(manager.reloadFromStatus(poll, capabilities)).toBeNull();
+    }
+  });
+
+  it("BUGFIX-F004 — reload occurs only when configuration revision changes", () => {
+    const manager = new RuntimeConfigurationManager();
+    manager.loadFromStatus(mockStatus({ configVersion: "1" }), capabilities);
+
+    expect(manager.detectVersionChange("2")).toBe(true);
+    const reloaded = manager.reloadFromStatus(
+      mockStatus({
+        configVersion: "2",
+        screenConfig: {
+          language: "ar",
+          displayDirection: "rtl",
+          displayDensity: "large",
+          visibleCategoryIds: [9],
+        },
+      }),
+      capabilities
+    );
+    expect(reloaded?.version).toBe("2");
+    expect(reloaded?.tracked.categoryIds).toEqual([9]);
+  });
 });

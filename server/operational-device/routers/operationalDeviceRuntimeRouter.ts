@@ -9,6 +9,7 @@ import {
 } from "../domain/deviceRoles";
 import { operationalDeviceComposition } from "../operationalDeviceComposition";
 import { summarizeDeviceHealth } from "../domain/deviceHealth";
+import { resolveScreenConfigVersion } from "../domain/screenConfigVersion";
 
 const authenticateInput = z.object({
   deviceId: z.string().min(8).max(64),
@@ -65,7 +66,7 @@ export const operationalDeviceRuntimeRouter = router({
         status: device.status,
       },
       screenConfig: device.screenConfig,
-      configVersion: device.updatedAt,
+      configVersion: resolveScreenConfigVersion(device),
       health: summarizeDeviceHealth({
         status: device.status,
         lastSeenAt: device.lastSeenAt,

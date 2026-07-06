@@ -10,6 +10,8 @@ import type {
 import { DEFAULT_SCREEN_CONFIG, parseScreenConfig } from "../domain/screenConfig";
 import type { OperationalDeviceStore } from "./OperationalDeviceStore";
 
+const INITIAL_SCREEN_CONFIG_REVISION = 1;
+
 function mapDevice(row: typeof operationalDevices.$inferSelect): OperationalDeviceRecord {
   return {
     deviceId: row.deviceId,
@@ -21,6 +23,7 @@ function mapDevice(row: typeof operationalDevices.$inferSelect): OperationalDevi
     status: row.status as OperationalDeviceRecord["status"],
     reportedVersion: row.reportedVersion ?? null,
     lastSeenAt: row.lastSeenAt ?? null,
+    screenConfigRevision: row.screenConfigRevision ?? INITIAL_SCREEN_CONFIG_REVISION,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -54,6 +57,7 @@ export class DrizzleOperationalDeviceStore implements OperationalDeviceStore {
       role: input.role,
       displayName: input.displayName,
       screenConfig: DEFAULT_SCREEN_CONFIG,
+      screenConfigRevision: INITIAL_SCREEN_CONFIG_REVISION,
       status: "active",
       createdAt: input.now,
       updatedAt: input.now,
@@ -118,7 +122,6 @@ export class DrizzleOperationalDeviceStore implements OperationalDeviceStore {
       .set({
         lastSeenAt: input.lastSeenAt,
         reportedVersion: input.reportedVersion ?? undefined,
-        updatedAt: input.lastSeenAt,
       })
       .where(eq(operationalDevices.deviceId, deviceId));
   }
@@ -247,9 +250,15 @@ export class DrizzleOperationalDeviceStore implements OperationalDeviceStore {
     const db = await getDb();
     if (!db) return false;
 
+    const existing = await this.getDevice(deviceId);
+    if (!existing) return false;
+
     const patch: Record<string, unknown> = { updatedAt: input.now };
     if (input.displayName != null) patch.displayName = input.displayName;
-    if (input.screenConfig != null) patch.screenConfig = input.screenConfig;
+    if (input.screenConfig != null) {
+      patch.screenConfig = input.screenConfig;
+      patch.screenConfigRevision = existing.screenConfigRevision + 1;
+    }
 
     const result = await db
       .update(operationalDevices)

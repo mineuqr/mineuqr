@@ -14,12 +14,6 @@ describe("runtimeFingerprint", () => {
 });
 
 describe("configVersion", () => {
-  it("uses device.updatedAt as v1 config version", () => {
-    expect(resolveConfigVersion({ updatedAt: "2026-07-05T12:00:00.000Z" })).toBe(
-      "2026-07-05T12:00:00.000Z"
-    );
-  });
-
   it("prefers screenConfigRevision when present", () => {
     expect(
       resolveConfigVersion({
@@ -27,5 +21,17 @@ describe("configVersion", () => {
         screenConfigRevision: 42,
       })
     ).toBe("42");
+  });
+
+  it("falls back to updatedAt only for legacy rows without revision", () => {
+    expect(resolveConfigVersion({ updatedAt: "2026-07-05T12:00:00.000Z" })).toBe(
+      "2026-07-05T12:00:00.000Z"
+    );
+    expect(
+      resolveConfigVersion({
+        updatedAt: "2026-07-05T12:00:00.000Z",
+        screenConfigRevision: 0,
+      })
+    ).toBe("2026-07-05T12:00:00.000Z");
   });
 });

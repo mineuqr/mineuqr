@@ -41,4 +41,21 @@ describe("DEVICE-MANAGEMENT-1 architecture guards", () => {
     const auth = read("server/operational-device/services/OperationalDeviceAuthService.ts");
     expect(auth).toContain('startsWith("device ")');
   });
+
+  it("BUGFIX-F004 — config version uses screenConfigRevision not heartbeat updatedAt", () => {
+    const runtime = read("server/operational-device/routers/operationalDeviceRuntimeRouter.ts");
+    expect(runtime).toContain("resolveScreenConfigVersion");
+    expect(runtime).not.toMatch(/configVersion:\s*device\.updatedAt/);
+
+    const drizzle = read("server/operational-device/infrastructure/DrizzleOperationalDeviceStore.ts");
+    const heartbeatBlock = drizzle.slice(
+      drizzle.indexOf("touchDeviceHeartbeat"),
+      drizzle.indexOf("async saveToken")
+    );
+    expect(heartbeatBlock).not.toContain("updatedAt: input.lastSeenAt");
+
+    const fleet = read("server/operational-device/fleet/services/projectFleetReadModel.ts");
+    expect(fleet).toContain("resolveScreenConfigVersion");
+    expect(fleet).not.toContain("configurationVersion: row.updatedAt");
+  });
 });

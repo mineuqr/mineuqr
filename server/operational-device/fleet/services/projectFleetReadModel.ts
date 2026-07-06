@@ -1,5 +1,6 @@
 import type { OperationalDeviceRecord } from "../../domain/deviceContracts";
 import { deriveDevicePresence } from "../../domain/deviceHealth";
+import { resolveScreenConfigVersion } from "../../domain/screenConfigVersion";
 import type { OperationalScreenFleetReadModel } from "../domain/fleetReadModelContracts";
 import { projectFleetCanonicalState } from "../domain/fleetCanonicalState";
 
@@ -35,7 +36,7 @@ export function projectFleetReadModel(
     },
     lastHeartbeat: row.lastSeenAt,
     reportedVersion: row.reportedVersion,
-    configurationVersion: row.updatedAt,
+    configurationVersion: resolveScreenConfigVersion(row),
     tenantId: row.restaurantId,
     updatedAt: row.updatedAt,
     createdAt: row.createdAt,

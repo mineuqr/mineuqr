@@ -13,6 +13,8 @@ function isActiveToken(token: OperationalDeviceTokenRecord, now: number): boolea
   return true;
 }
 
+const INITIAL_SCREEN_CONFIG_REVISION = 1;
+
 export class InMemoryOperationalDeviceStore implements OperationalDeviceStore {
   private readonly devices = new Map<string, OperationalDeviceRecord>();
   private readonly tokens = new Map<string, OperationalDeviceTokenRecord>();
@@ -30,6 +32,7 @@ export class InMemoryOperationalDeviceStore implements OperationalDeviceStore {
       status: "active",
       reportedVersion: null,
       lastSeenAt: null,
+      screenConfigRevision: INITIAL_SCREEN_CONFIG_REVISION,
       createdAt: input.now,
       updatedAt: input.now,
     };
@@ -66,7 +69,6 @@ export class InMemoryOperationalDeviceStore implements OperationalDeviceStore {
       ...device,
       lastSeenAt: input.lastSeenAt,
       reportedVersion: input.reportedVersion ?? device.reportedVersion,
-      updatedAt: input.lastSeenAt,
     });
   }
 
@@ -134,12 +136,16 @@ export class InMemoryOperationalDeviceStore implements OperationalDeviceStore {
   ): Promise<boolean> {
     const device = this.devices.get(deviceId);
     if (!device) return false;
-    this.devices.set(deviceId, {
+    const next: OperationalDeviceRecord = {
       ...device,
       displayName: input.displayName ?? device.displayName,
       screenConfig: input.screenConfig ?? device.screenConfig,
       updatedAt: input.now,
-    });
+    };
+    if (input.screenConfig != null) {
+      next.screenConfigRevision = device.screenConfigRevision + 1;
+    }
+    this.devices.set(deviceId, next);
     return true;
   }
 }

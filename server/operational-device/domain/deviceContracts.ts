@@ -16,6 +16,7 @@ export type OperationalDeviceRecord = {
   status: OperationalDeviceStatus;
   reportedVersion: string | null;
   lastSeenAt: string | null;
+  screenConfigRevision: number;
   createdAt: string;
   updatedAt: string;
 };
