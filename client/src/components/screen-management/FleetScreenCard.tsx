@@ -4,7 +4,7 @@ import {
   screenTypeLabel,
 } from "@/lib/operational-screen/screenLabels";
 import { cn } from "@/lib/utils";
-import { Settings2, RotateCw, ShieldOff } from "lucide-react";
+import { Settings2, ShieldOff, Link2, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const OPERATIONAL_LABELS: Record<string, { en: string; ar: string }> = {
@@ -19,28 +19,28 @@ const OPERATIONAL_LABELS: Record<string, { en: string; ar: string }> = {
 };
 
 /**
- * Lightweight fleet card — consumes fleet read model only.
- * No state calculation — canonical state comes from read model projection.
+ * Lightweight fleet card — no provisioning logic.
+ * Provision / status actions delegate to Provisioning Workspace.
  */
 export function FleetScreenCard({
   screen,
   language,
   onSettings,
-  onRotate,
+  onProvision,
+  onViewStatus,
   onDisable,
-  rotatePending,
   disablePending,
 }: {
   screen: FleetScreenReadModel;
   language: string;
   onSettings: (screenId: string) => void;
-  onRotate: (screenId: string) => void;
+  onProvision: (screenId: string) => void;
+  onViewStatus: (screenId: string) => void;
   onDisable: (screenId: string) => void;
-  rotatePending: boolean;
   disablePending: boolean;
 }) {
   const isAr = language === "ar";
-  const { canonicalState, healthSummary } = screen;
+  const { canonicalState, healthSummary, businessReadiness } = screen;
   const opLabel =
     OPERATIONAL_LABELS[canonicalState.operationalState] ?? {
       en: canonicalState.operationalState,
@@ -48,6 +48,8 @@ export function FleetScreenCard({
     };
 
   const isDisabled = canonicalState.maintenanceState === "maintenance";
+  const needsProvisioning =
+    businessReadiness === "pairing_required" || healthSummary.presence === "never_seen";
 
   return (
     <article
@@ -89,12 +91,6 @@ export function FleetScreenCard({
               : "—"}
           </dd>
         </div>
-        {screen.reportedVersion ? (
-          <div className="flex justify-between gap-2">
-            <dt className="text-muted-foreground">{isAr ? "الإصدار" : "Version"}</dt>
-            <dd>{screen.reportedVersion}</dd>
-          </div>
-        ) : null}
       </dl>
 
       <div className="flex flex-wrap gap-2">
@@ -107,16 +103,28 @@ export function FleetScreenCard({
           <Settings2 className="mr-1 h-4 w-4" />
           {isAr ? "الإعدادات" : "Settings"}
         </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          className="min-h-10"
-          disabled={isDisabled || rotatePending}
-          onClick={() => onRotate(screen.screenId)}
-        >
-          <RotateCw className="mr-1 h-4 w-4" />
-          {isAr ? "رمز جديد" : "New code"}
-        </Button>
+        {needsProvisioning ? (
+          <Button
+            size="sm"
+            variant="outline"
+            className="min-h-10"
+            disabled={isDisabled}
+            onClick={() => onProvision(screen.screenId)}
+          >
+            <Link2 className="mr-1 h-4 w-4" />
+            {isAr ? "تجهيز" : "Provision"}
+          </Button>
+        ) : (
+          <Button
+            size="sm"
+            variant="outline"
+            className="min-h-10"
+            onClick={() => onViewStatus(screen.screenId)}
+          >
+            <Activity className="mr-1 h-4 w-4" />
+            {isAr ? "الحالة" : "Status"}
+          </Button>
+        )}
         <Button
           size="sm"
           variant="destructive"

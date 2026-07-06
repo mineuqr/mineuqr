@@ -6,6 +6,7 @@ export type RestaurantTab =
   | "screens"
   /** @deprecated Use screens */
   | "devices"
+  | "screen-provisioning"
   | "print"
   | "printer-management"
   | "reports"

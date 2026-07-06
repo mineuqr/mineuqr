@@ -18,6 +18,7 @@ function sectionToRestaurantTab(section: string | null | undefined): RestaurantT
     kitchen: "kitchen",
     screens: "screens",
     devices: "screens",
+    "screen-provisioning": "screen-provisioning",
     print: "print",
     "printer-management": "printer-management",
     reports: "reports",

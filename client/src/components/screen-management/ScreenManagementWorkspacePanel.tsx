@@ -9,15 +9,7 @@ import { VirtualizedFleetGrid } from "@/components/screen-management/Virtualized
 import { RestaurantKpiCard, RestaurantKpiGridSkeleton } from "@/components/dashboard/RestaurantKpiCard";
 import { RestaurantSectionError } from "@/components/dashboard/RestaurantSectionStates";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -26,81 +18,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SCREEN_TYPE_OPTIONS } from "@/lib/operational-screen/screenLabels";
+import { navigateToProvisioning } from "@/lib/screen-provisioning/provisioningUrl";
+import { provisioningSessionManager } from "@/lib/screen-provisioning/ProvisioningSessionManager";
 import { useFleetQuery } from "@/lib/screen-fleet/useFleetQuery";
 import { restaurantQueriesEnabled } from "@/lib/queryRuntime";
 import { isEmailNotVerifiedError } from "@/lib/trpcErrors";
-import type { RouterOutputs } from "@/lib/trpc";
 import { trpc } from "@/lib/trpc";
-import { cn } from "@/lib/utils";
-import {
-  Check,
-  Copy,
-  LayoutGrid,
-  List,
-  Loader2,
-  Monitor,
-  Plus,
-  QrCode,
-  RefreshCw,
-  ShieldOff,
-} from "lucide-react";
-import { QRCodeSVG } from "qrcode.react";
+import { LayoutGrid, List, Loader2, Monitor, Plus, RefreshCw, ShieldOff } from "lucide-react";
 import { useMemo, useState } from "react";
-
-function CredentialField({
-  label,
-  value,
-  copyLabel,
-  copiedLabel,
-  sensitive,
-}: {
-  label: string;
-  value: string;
-  copyLabel: string;
-  copiedLabel: string;
-  sensitive?: boolean;
-}) {
-  const [copied, setCopied] = useState(false);
-  const onCopy = () => {
-    void navigator.clipboard?.writeText(value).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    });
-  };
-  return (
-    <div className="w-full space-y-1">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-muted-foreground">{label}</span>
-        <button
-          type="button"
-          onClick={onCopy}
-          className="flex items-center gap-1 text-xs text-primary hover:underline"
-        >
-          {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-          {copied ? copiedLabel : copyLabel}
-        </button>
-      </div>
-      <p
-        className={cn(
-          "w-full break-all rounded-lg bg-muted p-2 font-mono text-xs",
-          sensitive && "text-destructive-foreground/90"
-        )}
-      >
-        {value}
-      </p>
-    </div>
-  );
-}
-
-type CreateScreenResult = RouterOutputs["operationalDevice"]["management"]["create"];
-type RotateTokenResult = RouterOutputs["operationalDevice"]["management"]["rotateToken"];
-
-type QrPayload = {
-  deviceId: string;
-  tokenId: string;
-  secret: string;
-  qrPayload: Record<string, unknown>;
-};
 
 type ViewMode = "grid" | "table";
 
@@ -115,13 +40,7 @@ export function ScreenManagementWorkspacePanel({
   const { isAuthenticated, authPending } = useAuth();
   const enabled = restaurantQueriesEnabled(authPending, isAuthenticated, restaurantId);
 
-  const [createOpen, setCreateOpen] = useState(false);
-  const [qrOpen, setQrOpen] = useState(false);
   const [settingsScreenId, setSettingsScreenId] = useState<string | null>(null);
-  const [createdQr, setCreatedQr] = useState<QrPayload | null>(null);
-  const [screenName, setScreenName] = useState("");
-  const [role, setRole] = useState<string>("kitchen_display");
-  const [branchId, setBranchId] = useState("");
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [stateFilter, setStateFilter] = useState<string>("all");
@@ -150,37 +69,8 @@ export function ScreenManagementWorkspacePanel({
     void utils.operationalDevice.fleet.getKpis.invalidate({ restaurantId });
   };
 
-  const createMutation = trpc.operationalDevice.management.create.useMutation({
-    onSuccess: (result: CreateScreenResult) => {
-      setCreatedQr({
-        deviceId: result.device.deviceId,
-        tokenId: result.token.tokenId,
-        secret: result.token.secret,
-        qrPayload: result.qrPayload,
-      });
-      setCreateOpen(false);
-      setQrOpen(true);
-      setScreenName("");
-      setBranchId("");
-      invalidateFleet();
-    },
-  });
-
   const disableMutation = trpc.operationalDevice.management.disable.useMutation({
     onSuccess: () => invalidateFleet(),
-  });
-
-  const rotateMutation = trpc.operationalDevice.management.rotateToken.useMutation({
-    onSuccess: (result: RotateTokenResult) => {
-      setCreatedQr({
-        deviceId: result.qrPayload.deviceId as string,
-        tokenId: result.token.tokenId,
-        secret: result.token.secret,
-        qrPayload: result.qrPayload,
-      });
-      setQrOpen(true);
-      invalidateFleet();
-    },
   });
 
   const counts = useMemo(() => {
@@ -193,11 +83,26 @@ export function ScreenManagementWorkspacePanel({
     };
   }, [fleetQuery.kpis]);
 
+  const openProvision = (deviceId: string, mode: "rotate" | "resume") => {
+    const existing = provisioningSessionManager.findSessionByDevice(deviceId);
+    if (existing && mode === "resume") {
+      navigateToProvisioning({
+        restaurantId,
+        sessionId: existing.sessionId,
+        mode: "resume",
+      });
+      return;
+    }
+    navigateToProvisioning({
+      restaurantId,
+      deviceId,
+      mode: "rotate",
+    });
+  };
+
   if (fleetQuery.error && isEmailNotVerifiedError(fleetQuery.error)) {
     return <VerificationRequiredPanel variant="operations" />;
   }
-
-  const qrValue = createdQr ? JSON.stringify(createdQr.qrPayload) : "";
 
   const filterPresets = [
     { id: "all", labelEn: "All", labelAr: "الكل" },
@@ -231,9 +136,14 @@ export function ScreenManagementWorkspacePanel({
             )}
             {isAr ? "تحديث" : "Refresh"}
           </Button>
-          <Button size="sm" onClick={() => setCreateOpen(true)}>
+          <Button
+            size="sm"
+            onClick={() =>
+              navigateToProvisioning({ restaurantId, mode: "create" })
+            }
+          >
             <Plus className="mr-2 h-4 w-4" />
-            {isAr ? "شاشة جديدة" : "New screen"}
+            {isAr ? "تجهيز شاشة" : "Provision screen"}
           </Button>
         </div>
       }
@@ -336,9 +246,9 @@ export function ScreenManagementWorkspacePanel({
               screen={screen}
               language={language}
               onSettings={setSettingsScreenId}
-              onRotate={(id) => rotateMutation.mutate({ restaurantId, deviceId: id })}
+              onProvision={(id) => openProvision(id, "rotate")}
+              onViewStatus={(id) => openProvision(id, "resume")}
               onDisable={(id) => disableMutation.mutate({ restaurantId, deviceId: id })}
-              rotatePending={rotateMutation.isPending}
               disablePending={disableMutation.isPending}
             />
           )}
@@ -382,99 +292,6 @@ export function ScreenManagementWorkspacePanel({
         restaurantId={restaurantId}
         language={language}
       />
-
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{isAr ? "تسجيل شاشة جديدة" : "Register new screen"}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="screen-name">{isAr ? "اسم الشاشة" : "Screen name"}</Label>
-              <Input id="screen-name" value={screenName} onChange={(e) => setScreenName(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>{isAr ? "نوع الشاشة" : "Screen type"}</Label>
-              <Select value={role} onValueChange={setRole}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {SCREEN_TYPE_OPTIONS.map((option) => (
-                    <SelectItem key={option.id} value={option.id}>
-                      {isAr ? option.ar : option.en}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="branch-id">{isAr ? "معرف الفرع (اختياري)" : "Branch ID (optional)"}</Label>
-              <Input id="branch-id" value={branchId} onChange={(e) => setBranchId(e.target.value)} />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              onClick={() =>
-                createMutation.mutate({
-                  restaurantId,
-                  displayName: screenName.trim(),
-                  role: role as (typeof SCREEN_TYPE_OPTIONS)[number]["id"],
-                  branchId: branchId.trim() ? Number(branchId) : null,
-                })
-              }
-              disabled={!screenName.trim() || createMutation.isPending}
-            >
-              {createMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              {isAr ? "إنشاء" : "Create"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={qrOpen} onOpenChange={setQrOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <QrCode className="h-5 w-5" />
-              {isAr ? "رمز QR للشاشة" : "Screen QR code"}
-            </DialogTitle>
-          </DialogHeader>
-          {createdQr ? (
-            <div className="flex flex-col items-center gap-4">
-              <div className="rounded-xl border bg-white p-4">
-                <QRCodeSVG value={qrValue} size={220} level="M" />
-              </div>
-              <p className="text-center text-sm text-muted-foreground">
-                {isAr
-                  ? "امسح الرمز على الشاشة لربط الجهاز. لن تُعرض بيانات الاعتماد مرة أخرى."
-                  : "Scan on the screen to link the device. These credentials will not be shown again."}
-              </p>
-              <div className="w-full space-y-2">
-                <CredentialField
-                  label={isAr ? "معرّف الجهاز" : "Device ID"}
-                  value={createdQr.deviceId}
-                  copyLabel={isAr ? "نسخ" : "Copy"}
-                  copiedLabel={isAr ? "تم النسخ" : "Copied"}
-                />
-                <CredentialField
-                  label={isAr ? "معرّف الرمز" : "Token ID"}
-                  value={createdQr.tokenId}
-                  copyLabel={isAr ? "نسخ" : "Copy"}
-                  copiedLabel={isAr ? "تم النسخ" : "Copied"}
-                />
-                <CredentialField
-                  label={isAr ? "الرمز السري" : "Secret"}
-                  value={createdQr.secret}
-                  copyLabel={isAr ? "نسخ" : "Copy"}
-                  copiedLabel={isAr ? "تم النسخ" : "Copied"}
-                  sensitive
-                />
-              </div>
-            </div>
-          ) : null}
-        </DialogContent>
-      </Dialog>
     </OperationalWorkspaceShell>
   );
 }
