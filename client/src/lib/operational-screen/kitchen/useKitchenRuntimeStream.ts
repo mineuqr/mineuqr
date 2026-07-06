@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { DATA_POLL_INTERVAL_MS } from "../bootstrapLogic";
 import { screenTrpc } from "../screenTrpc";
 import { useScreenRuntime } from "@/components/operational-screen/OperationalScreenRuntimeProvider";
+import { isCapabilitySupported } from "@/lib/operational-screen/capability/resolveCapabilityPresentation";
 import { applyKitchenCategoryFilter } from "./applyKitchenCategoryFilter";
 import {
   normalizeKitchenReadModel,
@@ -26,13 +27,15 @@ export type KitchenRuntimeStream = {
  * Presentation consumes the filtered stream only.
  */
 export function useKitchenRuntimeStream(): KitchenRuntimeStream {
-  const { categoryFilter, categoryFilterPredicate } = useScreenRuntime();
+  const { categoryFilter, categoryFilterPredicate, context } = useScreenRuntime();
   const visible = useVisiblePollingEnabled();
+  const kitchenQueueSupported = isCapabilitySupported(context?.runtimeCapabilities, "kitchen_queue");
 
   const queueQuery = screenTrpc.operationalDevice.runtime.getKitchenQueue.useQuery(
     { status: "all", limit: 200 },
     {
-      refetchInterval: visible ? DATA_POLL_INTERVAL_MS : false,
+      enabled: kitchenQueueSupported,
+      refetchInterval: visible && kitchenQueueSupported ? DATA_POLL_INTERVAL_MS : false,
       refetchOnWindowFocus: true,
       placeholderData: (prev) => prev,
     }

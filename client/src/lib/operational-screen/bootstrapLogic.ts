@@ -6,6 +6,10 @@ import { RuntimeConfigurationManager } from "./configuration/runtimeConfiguratio
 import type { RuntimeConfiguration } from "./configuration/runtimeConfigurationContract";
 import { buildRuntimeCapabilitySet, getRoleCapabilities } from "./runtimeCapabilities";
 import { COMFORTABLE_DENSITY_MODEL } from "./density/presentationDensityModels";
+import {
+  negotiateRuntimeCapabilities,
+} from "./capability/negotiateRuntimeCapabilities";
+import { runtimeCapabilityNegotiator } from "./capability/runtimeCapabilityNegotiator";
 import { createInitialScreenState } from "./state/initialScreenState";
 import { collectRuntimeFingerprint } from "./runtimeFingerprint";
 import type {
@@ -60,6 +64,11 @@ export function buildRuntimeContext(input: {
   const fingerprint = input.fingerprint ?? collectRuntimeFingerprint(input.bootstrapId);
   const { runtimeConfiguration } = input;
   const initialScreenState = createInitialScreenState();
+  const capabilities = buildRuntimeCapabilitySet(input.status.device.role);
+  const runtimeCapabilities = negotiateRuntimeCapabilities(
+    input.status.device.role,
+    capabilities.server
+  );
 
   return {
     identity: {
@@ -91,7 +100,11 @@ export function buildRuntimeContext(input: {
     maintenanceState: initialScreenState.maintenanceState,
     warnings: initialScreenState.warnings,
     errors: initialScreenState.errors,
-    capabilities: buildRuntimeCapabilitySet(input.status.device.role),
+    capabilities,
+    runtimeCapabilities,
+    capabilityNegotiator: runtimeCapabilityNegotiator,
+    resolveCapability: (capabilityId) =>
+      runtimeCapabilityNegotiator.resolve(capabilityId, runtimeCapabilities),
     fingerprint,
     bootstrap: {
       bootedAt: new Date().toISOString(),

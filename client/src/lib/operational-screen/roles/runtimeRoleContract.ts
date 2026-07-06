@@ -96,4 +96,16 @@ export type RoleRuntimeHealth = {
   maintenanceState?: string;
   warningCount?: number;
   errorCount?: number;
+  capabilityContractVersion?: number;
+  negotiationSummary?: {
+    supported: string[];
+    unsupported: string[];
+    blocked: string[];
+    unavailable: string[];
+    deprecated: string[];
+    failures: Array<{ capabilityId: string; reason: string }>;
+  };
+  unavailableCapabilities?: string[];
+  blockedCapabilities?: string[];
+  negotiationFailures?: Array<{ capabilityId: string; reason: string }>;
 };

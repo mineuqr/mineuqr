@@ -19,6 +19,8 @@ import type {
   ScreenStateError,
   ScreenStateWarning,
 } from "./state/operationalScreenStateContract";
+import type { RuntimeCapabilityContract, CapabilityId, CapabilityAdapter } from "./capability/runtimeCapabilityContract";
+import type { RuntimeCapabilityNegotiator } from "./capability/runtimeCapabilityNegotiator";
 
 export type BootstrapPhase =
   | "loading"
@@ -117,4 +119,8 @@ export type OperationalScreenRuntimeContext = {
   maintenanceState: MaintenanceState;
   warnings: ScreenStateWarning[];
   errors: ScreenStateError[];
+  /** RUNTIME-CAPABILITY-NEGOTIATION-1 — negotiated capability contract. */
+  runtimeCapabilities: RuntimeCapabilityContract;
+  capabilityNegotiator: RuntimeCapabilityNegotiator;
+  resolveCapability: (capabilityId: CapabilityId) => CapabilityAdapter | null;
 };

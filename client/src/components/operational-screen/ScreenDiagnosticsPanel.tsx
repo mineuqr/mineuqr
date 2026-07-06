@@ -1,12 +1,11 @@
 import { useScreenRuntime } from "./OperationalScreenRuntimeProvider";
-import { getRoleCapabilities } from "@/lib/operational-screen/runtimeCapabilities";
 
 export function ScreenDiagnosticsPanel() {
   const { context, diagnostics, roleHealth, roleDiagnostics } = useScreenRuntime();
 
   if (!context) return null;
 
-  const roleCapabilities = getRoleCapabilities(context.identity.role);
+  const runtimeCapabilities = context.runtimeCapabilities;
   const state = context.screenState;
 
   const snapshot = {
@@ -27,14 +26,15 @@ export function ScreenDiagnosticsPanel() {
     },
     runtime: {
       deviceId: context.identity.deviceId,
-      role: context.identity.role,
       restaurantId: context.identity.restaurantId,
     },
     health: roleHealth,
     diagnostics: roleDiagnostics,
     fingerprint: context.fingerprint,
     capabilities: {
-      role: roleCapabilities,
+      negotiated: runtimeCapabilities,
+      supportedFeatures: runtimeCapabilities.supportedFeatures,
+      negotiationSummary: runtimeCapabilities.negotiationSummary,
       server: context.capabilities.server,
       client: context.capabilities.client,
     },

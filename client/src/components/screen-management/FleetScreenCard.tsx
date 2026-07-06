@@ -1,5 +1,9 @@
 import type { FleetScreenReadModel } from "@/lib/screen-fleet/fleetReadModel";
 import {
+  isManagementCapabilitySupported,
+  negotiateManagementCapabilities,
+} from "@/lib/operational-screen/capability/managementCapabilityNegotiator";
+import {
   presenceLabel,
   screenTypeLabel,
 } from "@/lib/operational-screen/screenLabels";
@@ -40,7 +44,7 @@ export function FleetScreenCard({
   disablePending: boolean;
 }) {
   const isAr = language === "ar";
-  const { canonicalState, healthSummary, businessReadiness } = screen;
+  const { canonicalState, healthSummary } = screen;
   const opLabel =
     OPERATIONAL_LABELS[canonicalState.operationalState] ?? {
       en: canonicalState.operationalState,
@@ -48,8 +52,11 @@ export function FleetScreenCard({
     };
 
   const isDisabled = canonicalState.maintenanceState === "maintenance";
-  const needsProvisioning =
-    businessReadiness === "pairing_required" || healthSummary.presence === "never_seen";
+  const managementCapabilities = negotiateManagementCapabilities(screen);
+  const needsProvisioning = isManagementCapabilitySupported(
+    managementCapabilities,
+    "provisioning"
+  );
 
   return (
     <article

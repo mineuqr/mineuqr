@@ -36,6 +36,12 @@ import {
 } from "./state/operationalScreenStateAggregator";
 import type { OperationalScreenState } from "./state/operationalScreenStateContract";
 import { getRoleCapabilities } from "./runtimeCapabilities";
+import { mergeCapabilityIntoHealth } from "./capability/projectCapabilityHealth";
+import { projectCapabilityDiagnostics } from "./capability/projectCapabilityDiagnostics";
+import {
+  runtimeCapabilityNegotiator,
+} from "./capability/runtimeCapabilityNegotiator";
+import { buildCapabilityNegotiationInput } from "./capability/negotiateRuntimeCapabilities";
 import {
   INITIAL_PHASE,
   transition,
@@ -81,6 +87,7 @@ export type RuntimeOrchestratorValue = {
   displayDensity: RuntimeDisplayDensity | null;
   displayDensityHealth: DisplayDensityHealth | null;
   screenState: OperationalScreenState | null;
+  runtimeCapabilities: import("./capability/runtimeCapabilityContract").RuntimeCapabilityContract | null;
   reloadConfiguration: () => void;
   /** Alias for reloadConfiguration — reapplies configuration and density. */
   reload: () => void;
@@ -437,6 +444,21 @@ export function useRuntimeOrchestrator(
 
   const contextWithScreenState = useMemo<OperationalScreenRuntimeContext | null>(() => {
     if (!exposedContext || !screenState) return null;
+
+    const runtimeCapabilities = runtimeCapabilityNegotiator.negotiate(
+      buildCapabilityNegotiationInput(exposedContext.identity.role, exposedContext.capabilities.server, {
+        configurationActivated:
+          exposedContext.runtimeConfiguration.configurationState === "applied" ||
+          exposedContext.runtimeConfiguration.configurationState === "valid",
+        densityActivated: exposedContext.runtimeConfiguration.tracked.densityActivated,
+        categoriesActivated: exposedContext.runtimeConfiguration.tracked.categoriesActivated,
+        operationalBlocked:
+          screenState.operationalState === "blocked" ||
+          screenState.businessReadiness === "role_unavailable",
+        deviceDisabled: screenState.maintenanceState === "maintenance",
+      })
+    );
+
     return {
       ...exposedContext,
       screenState,
@@ -446,19 +468,29 @@ export function useRuntimeOrchestrator(
       maintenanceState: screenState.maintenanceState,
       warnings: screenState.warnings,
       errors: screenState.errors,
+      runtimeCapabilities,
+      capabilityNegotiator: runtimeCapabilityNegotiator,
+      resolveCapability: (capabilityId) =>
+        runtimeCapabilityNegotiator.resolve(capabilityId, runtimeCapabilities),
     };
   }, [exposedContext, screenState]);
 
   const roleHealth = useMemo<RoleRuntimeHealth | null>(() => {
     if (!contextWithScreenState || !screenState) return null;
     const definition = resolveRuntimeRole(contextWithScreenState.identity.role);
-    return projectHealthFromScreenState(screenState, contextWithScreenState.identity.role, definition.metadata.capabilities, {
-      heartbeatCount: rolePlatform.heartbeatCount,
-      reconnectCount: rolePlatform.reconnectCount,
-      appVersion: import.meta.env.VITE_APP_VERSION ?? "web",
-      configurationVersion: contextWithScreenState.configurationVersion,
-      appliedVersion: contextWithScreenState.lastAppliedVersion,
-    });
+    const base = projectHealthFromScreenState(
+      screenState,
+      contextWithScreenState.identity.role,
+      definition.metadata.capabilities,
+      {
+        heartbeatCount: rolePlatform.heartbeatCount,
+        reconnectCount: rolePlatform.reconnectCount,
+        appVersion: import.meta.env.VITE_APP_VERSION ?? "web",
+        configurationVersion: contextWithScreenState.configurationVersion,
+        appliedVersion: contextWithScreenState.lastAppliedVersion,
+      }
+    );
+    return mergeCapabilityIntoHealth(base, contextWithScreenState.runtimeCapabilities);
   }, [contextWithScreenState, screenState, rolePlatform]);
 
   const roleDiagnostics = useMemo<Record<string, unknown> | null>(() => {
@@ -474,6 +506,10 @@ export function useRuntimeOrchestrator(
     return projectDiagnosticsFromScreenState(screenState, contextWithScreenState, {
       role: definition.metadata.role,
       roleDiagnostics: definition.collectDiagnostics(ctx),
+      capabilityDiagnostics: projectCapabilityDiagnostics(
+        contextWithScreenState.runtimeCapabilities,
+        runtimeCapabilityNegotiator.getTimeline()
+      ),
     });
   }, [contextWithScreenState, screenState, phase, rolePlatform]);
 
@@ -516,6 +552,7 @@ export function useRuntimeOrchestrator(
     displayDensity,
     displayDensityHealth,
     screenState,
+    runtimeCapabilities: contextWithScreenState?.runtimeCapabilities ?? null,
     reloadConfiguration,
     reload: reloadConfiguration,
     reloadDensity,

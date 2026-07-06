@@ -177,4 +177,28 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
     const blocked = transition(running, { type: "RUN_BLOCKED" });
     expect(blocked).toBe("blocked");
   });
+
+  it("RUNTIME-CAPABILITY-NEGOTIATION-1: capability-driven runtime", () => {
+    const negotiator = read("client/src/lib/operational-screen/capability/runtimeCapabilityNegotiator.ts");
+    const registry = read("client/src/lib/operational-screen/capability/runtimeCapabilityRegistry.ts");
+    const contract = read("client/src/lib/operational-screen/capability/runtimeCapabilityContract.ts");
+    const roleHost = read("client/src/components/operational-screen/RuntimeRoleHost.tsx");
+    const kitchenStream = read("client/src/lib/operational-screen/kitchen/useKitchenRuntimeStream.ts");
+    const diagnostics = read("client/src/components/operational-screen/ScreenDiagnosticsPanel.tsx");
+    const fleetCard = read("client/src/components/screen-management/FleetScreenCard.tsx");
+    const orchestrator = read("client/src/lib/operational-screen/useRuntimeOrchestrator.ts");
+
+    expect(contract).toContain("RuntimeCapabilityContract");
+    expect(registry).toContain("RuntimeCapabilityRegistry");
+    expect(negotiator).toContain("RuntimeCapabilityNegotiator");
+    expect(roleHost).toContain("resolveCapabilityPresentation");
+    expect(roleHost).not.toContain("resolveRolePresentation");
+    expect(kitchenStream).toContain("isCapabilitySupported");
+    expect(kitchenStream).not.toContain("kitchen_display");
+    expect(diagnostics).toContain("runtimeCapabilities");
+    expect(diagnostics).not.toContain("getRoleCapabilities");
+    expect(fleetCard).toContain("negotiateManagementCapabilities");
+    expect(orchestrator).toContain("runtimeCapabilities");
+    expect(orchestrator).toContain("mergeCapabilityIntoHealth");
+  });
 });

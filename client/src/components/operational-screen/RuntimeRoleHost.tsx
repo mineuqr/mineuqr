@@ -7,7 +7,8 @@ import {
   invokeLifecycle,
 } from "@/lib/operational-screen/roles/runtimeRoleLifecycle";
 import { RoleRuntimeStatusBanner } from "./RoleRuntimeStatusBanner";
-import { resolveRolePresentation } from "./runtimeRolePresentations";
+import { resolveCapabilityPresentation } from "@/lib/operational-screen/capability/resolveCapabilityPresentation";
+import { isCapabilitySupported } from "@/lib/operational-screen/capability/resolveCapabilityPresentation";
 
 /**
  * ROLE-RUNTIME-1 — single resolver entry point.
@@ -65,7 +66,7 @@ export function RuntimeRoleHost() {
       reconnecting: rolePlatform.reconnecting,
     });
 
-    if (phase === "running" && definition.metadata.operational) {
+    if (phase === "running" && context.runtimeCapabilities.presentationSupport === "supported") {
       invokeLifecycle(definition.lifecycle, "activate", ctx);
     }
     if (prev === "running" && phase !== "running") {
@@ -106,7 +107,7 @@ export function RuntimeRoleHost() {
 
   if (!context || !definition) return null;
 
-  const Presentation = resolveRolePresentation(definition);
+  const Presentation = resolveCapabilityPresentation(context.runtimeCapabilities);
 
   return (
     <>

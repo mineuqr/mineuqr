@@ -1,5 +1,6 @@
 import {
   rolePermitsKitchenQueue,
+  rolePermitsPrintMonitor,
   type OperationalDeviceRole,
 } from "../../../../server/operational-device/domain/deviceRoles";
 import type { ClientCapabilities, RuntimeCapabilitySet, ServerCapabilities } from "./runtimeTypes";
@@ -8,14 +9,16 @@ import { isRoleOperational, resolveRuntimeRole } from "./roles/runtimeRoleRegist
 
 export function deriveServerCapabilities(role: OperationalDeviceRole): ServerCapabilities {
   const definition = resolveRuntimeRole(role);
-  const operational = definition.metadata.operational;
-  const canAccessKitchenQueue = operational && rolePermitsKitchenQueue(role);
-  const canAccessPrintMonitor = false;
+  const declared = definition.metadata.capabilities;
+  const canAccessKitchenQueue =
+    declared.supportsTickets && rolePermitsKitchenQueue(role);
+  const canAccessPrintMonitor =
+    declared.supportsPrintMonitor && rolePermitsPrintMonitor(role);
   return {
     role,
     canAccessKitchenQueue,
     canAccessPrintMonitor,
-    runtimeApiReady: canAccessKitchenQueue,
+    runtimeApiReady: canAccessKitchenQueue || canAccessPrintMonitor,
   };
 }
 
@@ -47,7 +50,7 @@ export function isBlockedRole(role: OperationalDeviceRole): boolean {
   return !isRoleOperational(role);
 }
 
-/** Role-declared capabilities from registry — not hardcoded in UI. */
+/** @deprecated Use context.runtimeCapabilities — role declarations via negotiator only. */
 export function getRoleCapabilities(role: OperationalDeviceRole) {
   return resolveRuntimeRole(role).metadata.capabilities;
 }
