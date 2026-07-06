@@ -23,12 +23,9 @@ import {
   screenStatusLabel,
   screenTypeLabel,
 } from "@/lib/operational-screen/screenLabels";
-import type { RouterOutputs } from "@/lib/trpc";
 import { trpc } from "@/lib/trpc";
 import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
-
-type ScreenListItem = RouterOutputs["operationalDevice"]["management"]["list"][number];
 
 type ScreenConfigDraft = {
   language: "ar" | "en";
@@ -40,13 +37,13 @@ type ScreenConfigDraft = {
 export function ScreenSettingsSheet({
   open,
   onOpenChange,
-  screen,
+  screenId,
   restaurantId,
   language,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  screen: ScreenListItem | null;
+  screenId: string | null;
   restaurantId: number;
   language: string;
 }) {
@@ -59,6 +56,12 @@ export function ScreenSettingsSheet({
     visibleCategoryIds: [],
   });
 
+  const screenQuery = trpc.operationalDevice.management.get.useQuery(
+    { restaurantId, deviceId: screenId ?? "" },
+    { enabled: open && screenId != null }
+  );
+  const screen = screenQuery.data ?? null;
+
   const categoriesQuery = trpc.category.list.useQuery(
     { restaurantId },
     { enabled: open && restaurantId > 0 }
@@ -70,6 +73,8 @@ export function ScreenSettingsSheet({
     onSuccess: () => {
       void utils.operationalDevice.management.list.invalidate({ restaurantId });
       void utils.operationalDevice.management.getHealthSummary.invalidate({ restaurantId });
+      void utils.operationalDevice.fleet.getKpis.invalidate({ restaurantId });
+      void utils.operationalDevice.fleet.queryScreens.invalidate();
       onOpenChange(false);
     },
   });
@@ -84,6 +89,18 @@ export function ScreenSettingsSheet({
       visibleCategoryIds: screen.screenConfig?.visibleCategoryIds ?? [],
     });
   }, [screen]);
+
+  if (!screenId) return null;
+
+  if (screenQuery.isLoading) {
+    return (
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent className="flex items-center justify-center sm:max-w-lg">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </SheetContent>
+      </Sheet>
+    );
+  }
 
   if (!screen) return null;
 

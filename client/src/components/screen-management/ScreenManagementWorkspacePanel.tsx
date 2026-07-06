@@ -2,7 +2,10 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { VerificationRequiredPanel } from "@/components/auth/VerificationRequiredPanel";
 import { OperationalWorkspaceShell } from "@/components/operational-workspace/OperationalWorkspaceShell";
 import { OperationsBar } from "@/components/operational-workspace/OperationsBar";
+import { WorkspaceFilters } from "@/components/operational-workspace/WorkspaceFilters";
+import { FleetScreenCard } from "@/components/screen-management/FleetScreenCard";
 import { ScreenSettingsSheet } from "@/components/screen-management/ScreenSettingsSheet";
+import { VirtualizedFleetGrid } from "@/components/screen-management/VirtualizedFleetGrid";
 import { RestaurantKpiCard, RestaurantKpiGridSkeleton } from "@/components/dashboard/RestaurantKpiCard";
 import { RestaurantSectionError } from "@/components/dashboard/RestaurantSectionStates";
 import { Button } from "@/components/ui/button";
@@ -22,11 +25,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  SCREEN_TYPE_OPTIONS,
-  presenceLabel,
-  screenTypeLabel,
-} from "@/lib/operational-screen/screenLabels";
+import { SCREEN_TYPE_OPTIONS } from "@/lib/operational-screen/screenLabels";
+import { useFleetQuery } from "@/lib/screen-fleet/useFleetQuery";
 import { restaurantQueriesEnabled } from "@/lib/queryRuntime";
 import { isEmailNotVerifiedError } from "@/lib/trpcErrors";
 import type { RouterOutputs } from "@/lib/trpc";
@@ -35,19 +35,18 @@ import { cn } from "@/lib/utils";
 import {
   Check,
   Copy,
+  LayoutGrid,
+  List,
   Loader2,
   Monitor,
   Plus,
   QrCode,
   RefreshCw,
-  RotateCw,
-  Settings2,
   ShieldOff,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useMemo, useState } from "react";
 
-/** Provisioning-only credential field. Renders full tuple during the provisioning workflow (FF-PAIR-04). */
 function CredentialField({
   label,
   value,
@@ -93,7 +92,6 @@ function CredentialField({
   );
 }
 
-type ScreenListItem = RouterOutputs["operationalDevice"]["management"]["list"][number];
 type CreateScreenResult = RouterOutputs["operationalDevice"]["management"]["create"];
 type RotateTokenResult = RouterOutputs["operationalDevice"]["management"]["rotateToken"];
 
@@ -103,6 +101,8 @@ type QrPayload = {
   secret: string;
   qrPayload: Record<string, unknown>;
 };
+
+type ViewMode = "grid" | "table";
 
 export function ScreenManagementWorkspacePanel({
   restaurantId,
@@ -114,25 +114,41 @@ export function ScreenManagementWorkspacePanel({
   const isAr = language === "ar";
   const { isAuthenticated, authPending } = useAuth();
   const enabled = restaurantQueriesEnabled(authPending, isAuthenticated, restaurantId);
+
   const [createOpen, setCreateOpen] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
-  const [settingsScreen, setSettingsScreen] = useState<ScreenListItem | null>(null);
+  const [settingsScreenId, setSettingsScreenId] = useState<string | null>(null);
   const [createdQr, setCreatedQr] = useState<QrPayload | null>(null);
   const [screenName, setScreenName] = useState("");
   const [role, setRole] = useState<string>("kitchen_display");
   const [branchId, setBranchId] = useState("");
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [stateFilter, setStateFilter] = useState<string>("all");
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
 
-  const listQuery = trpc.operationalDevice.management.list.useQuery(
-    { restaurantId },
-    { enabled, refetchInterval: enabled ? 30_000 : false }
-  );
-
-  const healthQuery = trpc.operationalDevice.management.getHealthSummary.useQuery(
-    { restaurantId },
-    { enabled, refetchInterval: enabled ? 30_000 : false }
-  );
+  const fleetQuery = useFleetQuery({
+    restaurantId,
+    enabled,
+    query: {
+      search: search.trim() || undefined,
+      role: roleFilter === "all" ? undefined : (roleFilter as (typeof SCREEN_TYPE_OPTIONS)[number]["id"]),
+      operationalState:
+        stateFilter === "all"
+          ? undefined
+          : (stateFilter as "operational" | "blocked" | "degraded" | "maintenance" | "disconnected"),
+      sortBy: "updated",
+      sortOrder: "desc",
+      limit: 50,
+    },
+  });
 
   const utils = trpc.useUtils();
+
+  const invalidateFleet = () => {
+    void utils.operationalDevice.fleet.queryScreens.invalidate();
+    void utils.operationalDevice.fleet.getKpis.invalidate({ restaurantId });
+  };
 
   const createMutation = trpc.operationalDevice.management.create.useMutation({
     onSuccess: (result: CreateScreenResult) => {
@@ -146,16 +162,12 @@ export function ScreenManagementWorkspacePanel({
       setQrOpen(true);
       setScreenName("");
       setBranchId("");
-      void utils.operationalDevice.management.list.invalidate({ restaurantId });
-      void utils.operationalDevice.management.getHealthSummary.invalidate({ restaurantId });
+      invalidateFleet();
     },
   });
 
   const disableMutation = trpc.operationalDevice.management.disable.useMutation({
-    onSuccess: () => {
-      void utils.operationalDevice.management.list.invalidate({ restaurantId });
-      void utils.operationalDevice.management.getHealthSummary.invalidate({ restaurantId });
-    },
+    onSuccess: () => invalidateFleet(),
   });
 
   const rotateMutation = trpc.operationalDevice.management.rotateToken.useMutation({
@@ -167,25 +179,34 @@ export function ScreenManagementWorkspacePanel({
         qrPayload: result.qrPayload,
       });
       setQrOpen(true);
-      void utils.operationalDevice.management.list.invalidate({ restaurantId });
+      invalidateFleet();
     },
   });
 
   const counts = useMemo(() => {
-    const summary = healthQuery.data;
+    const kpis = fleetQuery.kpis;
     return {
-      total: summary?.total ?? 0,
-      online: summary?.online ?? 0,
-      offline: summary?.offline ?? 0,
-      disabled: summary?.disabled ?? 0,
+      total: kpis?.total ?? 0,
+      online: kpis?.online ?? 0,
+      offline: kpis?.offline ?? 0,
+      disabled: kpis?.disabled ?? 0,
     };
-  }, [healthQuery.data]);
+  }, [fleetQuery.kpis]);
 
-  if (listQuery.error && isEmailNotVerifiedError(listQuery.error)) {
+  if (fleetQuery.error && isEmailNotVerifiedError(fleetQuery.error)) {
     return <VerificationRequiredPanel variant="operations" />;
   }
 
   const qrValue = createdQr ? JSON.stringify(createdQr.qrPayload) : "";
+
+  const filterPresets = [
+    { id: "all", labelEn: "All", labelAr: "الكل" },
+    { id: "operational", labelEn: "Operational", labelAr: "تشغيلي" },
+    { id: "blocked", labelEn: "Blocked", labelAr: "محجوب" },
+    { id: "degraded", labelEn: "Degraded", labelAr: "متدهور" },
+    { id: "maintenance", labelEn: "Maintenance", labelAr: "صيانة" },
+    { id: "disconnected", labelEn: "Disconnected", labelAr: "غير متصل" },
+  ];
 
   return (
     <OperationalWorkspaceShell
@@ -197,8 +218,17 @@ export function ScreenManagementWorkspacePanel({
       }
       headerAside={
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => void listQuery.refetch()} disabled={listQuery.isFetching}>
-            {listQuery.isFetching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void fleetQuery.refetch()}
+            disabled={fleetQuery.isFetching}
+          >
+            {fleetQuery.isFetching ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="mr-2 h-4 w-4" />
+            )}
             {isAr ? "تحديث" : "Refresh"}
           </Button>
           <Button size="sm" onClick={() => setCreateOpen(true)}>
@@ -208,7 +238,7 @@ export function ScreenManagementWorkspacePanel({
         </div>
       }
       kpis={
-        healthQuery.isLoading ? (
+        fleetQuery.isLoading ? (
           <RestaurantKpiGridSkeleton count={4} />
         ) : (
           <>
@@ -229,104 +259,126 @@ export function ScreenManagementWorkspacePanel({
           ]}
         />
       }
+      filters={
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              placeholder={isAr ? "بحث بالاسم أو الدور أو الإصدار..." : "Search name, role, version..."}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="max-w-xs"
+            />
+            <Select value={roleFilter} onValueChange={setRoleFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder={isAr ? "الدور" : "Role"} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{isAr ? "كل الأدوار" : "All roles"}</SelectItem>
+                {SCREEN_TYPE_OPTIONS.map((option) => (
+                  <SelectItem key={option.id} value={option.id}>
+                    {isAr ? option.ar : option.en}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="flex gap-1">
+              <Button
+                variant={viewMode === "grid" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setViewMode("grid")}
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={viewMode === "table" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setViewMode("table")}
+              >
+                <List className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+          <WorkspaceFilters
+            presets={filterPresets}
+            activeId={stateFilter}
+            onSelect={setStateFilter}
+            language={language}
+          />
+        </div>
+      }
     >
-      {listQuery.error ? (
+      {fleetQuery.error ? (
         <RestaurantSectionError
-          message={listQuery.error.message}
+          message={fleetQuery.error.message}
           retryLabel={isAr ? "إعادة المحاولة" : "Retry"}
-          onRetry={() => void listQuery.refetch()}
+          onRetry={() => void fleetQuery.refetch()}
         />
-      ) : listQuery.isLoading ? (
+      ) : fleetQuery.isLoading ? (
         <div className="flex justify-center py-16">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
-      ) : (listQuery.data ?? []).length === 0 ? (
+      ) : fleetQuery.items.length === 0 ? (
         <p className="py-16 text-center text-muted-foreground">
-          {isAr ? "لا توجد شاشات مسجلة بعد." : "No screens registered yet."}
+          {isAr ? "لا توجد شاشات مطابقة." : "No matching screens."}
         </p>
+      ) : viewMode === "grid" ? (
+        <VirtualizedFleetGrid
+          items={fleetQuery.items}
+          columns={3}
+          estimateRowHeight={220}
+          className="w-full"
+          getKey={(s) => s.screenId}
+          onEndReached={() => {
+            if (fleetQuery.hasMore && !fleetQuery.isLoadingMore) void fleetQuery.loadMore();
+          }}
+          renderItem={(screen) => (
+            <FleetScreenCard
+              screen={screen}
+              language={language}
+              onSettings={setSettingsScreenId}
+              onRotate={(id) => rotateMutation.mutate({ restaurantId, deviceId: id })}
+              onDisable={(id) => disableMutation.mutate({ restaurantId, deviceId: id })}
+              rotatePending={rotateMutation.isPending}
+              disablePending={disableMutation.isPending}
+            />
+          )}
+        />
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {(listQuery.data ?? []).map((screen: ScreenListItem) => (
-            <article
-              key={screen.deviceId}
-              className={cn(
-                "flex w-full flex-col rounded-2xl border p-5 shadow-sm min-h-[200px]",
-                screen.presence === "online" && "border-emerald-500/40 bg-emerald-500/5",
-                screen.status === "disabled" && "opacity-70"
-              )}
-            >
-              <div className="mb-4 flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate text-lg font-semibold">{screen.displayName}</p>
-                  <p className="text-sm text-muted-foreground">{screenTypeLabel(screen.role, language)}</p>
+        <div className="rounded-lg border" data-virtualized="fleet-table-wrapper">
+          <VirtualizedFleetGrid
+            items={fleetQuery.items}
+            columns={1}
+            estimateRowHeight={72}
+            className="w-full"
+            getKey={(s) => s.screenId}
+            onEndReached={() => {
+              if (fleetQuery.hasMore && !fleetQuery.isLoadingMore) void fleetQuery.loadMore();
+            }}
+            renderItem={(screen) => (
+              <div className="flex items-center justify-between border-b px-4 py-3 text-sm">
+                <div>
+                  <p className="font-medium">{screen.displayName}</p>
+                  <p className="text-xs text-muted-foreground">{screen.role}</p>
                 </div>
-                <span
-                  className={cn(
-                    "shrink-0 rounded-full px-3 py-1 text-xs font-medium",
-                    screen.presence === "online" && "bg-emerald-500/15 text-emerald-700",
-                    screen.presence === "offline" && "bg-amber-500/15 text-amber-800",
-                    screen.presence === "never_seen" && "bg-muted text-muted-foreground"
-                  )}
-                >
-                  {presenceLabel(screen.presence, language)}
+                <span className="text-xs text-muted-foreground">
+                  {screen.canonicalState.operationalState}
                 </span>
               </div>
-
-              <dl className="mb-4 flex-1 space-y-2 text-sm">
-                <div className="flex justify-between gap-2">
-                  <dt className="text-muted-foreground">{isAr ? "آخر نبض" : "Last heartbeat"}</dt>
-                  <dd>
-                    {screen.lastSeenAt
-                      ? new Date(screen.lastSeenAt).toLocaleString(isAr ? "ar-SA" : "en-US")
-                      : "—"}
-                  </dd>
-                </div>
-                <div className="flex justify-between gap-2">
-                  <dt className="text-muted-foreground">{isAr ? "اللغة" : "Language"}</dt>
-                  <dd>{screen.screenConfig?.language === "en" ? "English" : isAr ? "العربية" : "Arabic"}</dd>
-                </div>
-              </dl>
-
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  size="sm"
-                  variant="default"
-                  className="min-h-10 flex-1"
-                  onClick={() => setSettingsScreen(screen)}
-                >
-                  <Settings2 className="mr-1 h-4 w-4" />
-                  {isAr ? "الإعدادات" : "Settings"}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="min-h-10"
-                  disabled={screen.status === "disabled" || rotateMutation.isPending}
-                  onClick={() => rotateMutation.mutate({ restaurantId, deviceId: screen.deviceId })}
-                >
-                  <RotateCw className="mr-1 h-4 w-4" />
-                  {isAr ? "رمز جديد" : "New code"}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  className="min-h-10"
-                  disabled={screen.status === "disabled" || disableMutation.isPending}
-                  onClick={() => disableMutation.mutate({ restaurantId, deviceId: screen.deviceId })}
-                >
-                  <ShieldOff className="mr-1 h-4 w-4" />
-                  {isAr ? "تعطيل" : "Disable"}
-                </Button>
-              </div>
-            </article>
-          ))}
+            )}
+          />
         </div>
       )}
 
+      {fleetQuery.isLoadingMore ? (
+        <div className="flex justify-center py-4">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </div>
+      ) : null}
+
       <ScreenSettingsSheet
-        open={settingsScreen != null}
-        onOpenChange={(open) => !open && setSettingsScreen(null)}
-        screen={settingsScreen}
+        open={settingsScreenId != null}
+        onOpenChange={(open) => !open && setSettingsScreenId(null)}
+        screenId={settingsScreenId}
         restaurantId={restaurantId}
         language={language}
       />
