@@ -52,12 +52,7 @@ import {
   restaurantQueriesEnabled,
   useDevQueryRuntimeLog,
 } from "@/lib/queryRuntime";
-import {
-  parseDashboardRestaurantId,
-  readDashboardUrlState,
-  redirectLegacySessionsUrl,
-  syncDashboardUrl,
-} from "@/lib/dashboardUrl";
+import { useDashboardNavigation } from "@/lib/useDashboardNavigation";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
   QrCode, Plus, Store, LayoutGrid, UtensilsCrossed,
@@ -69,7 +64,6 @@ import {
   Menu, CreditCard, Sparkles, Globe
 } from "lucide-react";
 import { useState, useRef, useCallback, useEffect, useMemo, type ComponentType } from "react";
-import { useLocation, useRoute } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -184,10 +178,6 @@ function DashboardMainSkeleton() {
   );
 }
 
-// ─── Dashboard URL helpers ───────────────────────────────────
-
-const DASHBOARD_LAST_RESTAURANT_KEY = "dashboard:lastRestaurantId";
-
 // ─── Dashboard Layout ───────────────────────────────────────
 
 export default function Dashboard() {
@@ -195,36 +185,16 @@ export default function Dashboard() {
   const { user, authPending, authResolved, isAuthenticated, logout } = gate;
   const { t, language, dir } = useLanguage();
 
-  const [location] = useLocation();
-  const [, routeParams] = useRoute("/dashboard/:section");
-  const urlState = useMemo(
-    () => readDashboardUrlState(routeParams?.section),
-    [location, routeParams?.section]
-  );
-  const { restaurantIdFromUrl, tabFromSection, needsRestaurantResolve, legacySessionsSection } =
-    urlState;
-
-  const [activeSection, setActiveSection] = useState<"restaurants" | "restaurant-detail">(
-    restaurantIdFromUrl || tabFromSection ? "restaurant-detail" : "restaurants"
-  );
-  const [selectedRestaurantId, setSelectedRestaurantId] = useState<number | null>(
-    restaurantIdFromUrl
-  );
-  const [restaurantTab, setRestaurantTab] = useState<RestaurantTab>(tabFromSection ?? "home");
-  const selectedRestaurantIdRef = useRef<number | null>(restaurantIdFromUrl);
-
-  useEffect(() => {
-    selectedRestaurantIdRef.current = selectedRestaurantId;
-  }, [selectedRestaurantId]);
-
-  // Legacy ?section=sessions → canonical /dashboard/sessions?restaurant=
-  useEffect(() => {
-    redirectLegacySessionsUrl(
-      { legacySessionsSection, restaurantIdFromUrl },
-      parseDashboardRestaurantId(sessionStorage.getItem(DASHBOARD_LAST_RESTAURANT_KEY)),
-      { replace: true }
-    );
-  }, [legacySessionsSection, restaurantIdFromUrl, location]);
+  const {
+    activeSection,
+    selectedRestaurantId,
+    restaurantTab,
+    needsRestaurantResolve,
+    restaurantsResolving,
+    navigateToRestaurant,
+    navigateToRestaurantsList,
+    navigateToTab,
+  } = useDashboardNavigation(authResolved, isAuthenticated);
 
   const { data: sidebarRestaurant } = trpc.restaurant.getById.useQuery(
     { id: selectedRestaurantId! },
@@ -237,76 +207,9 @@ export default function Dashboard() {
     }
   );
 
-  // Restore restaurant + tab from URL (refresh, deep links, browser back/forward).
-  useEffect(() => {
-    if (restaurantIdFromUrl) {
-      setSelectedRestaurantId(restaurantIdFromUrl);
-      setActiveSection("restaurant-detail");
-      if (tabFromSection) setRestaurantTab(tabFromSection);
-      else setRestaurantTab("home");
-      return;
-    }
-    if (tabFromSection) {
-      setActiveSection("restaurant-detail");
-      setRestaurantTab(tabFromSection);
-      return;
-    }
-    setActiveSection("restaurants");
-    setSelectedRestaurantId(null);
-    setRestaurantTab("home");
-  }, [restaurantIdFromUrl, tabFromSection]);
-
-  const { data: restaurants, isLoading: restaurantsResolving } = trpc.restaurant.list.useQuery(
-    undefined,
-    { enabled: authResolved && isAuthenticated && needsRestaurantResolve }
-  );
-
-  const resolvingSectionRef = useRef(tabFromSection);
-
-  useEffect(() => {
-    resolvingSectionRef.current = tabFromSection;
-  }, [tabFromSection]);
-
-  useEffect(() => {
-    if (!needsRestaurantResolve || !restaurants?.length) return;
-    const storedId = parseDashboardRestaurantId(sessionStorage.getItem(DASHBOARD_LAST_RESTAURANT_KEY));
-    const resolvedId =
-      storedId && restaurants.some((r) => r.id === storedId) ? storedId : restaurants[0].id;
-    const section = resolvingSectionRef.current ?? "home";
-    setSelectedRestaurantId(resolvedId);
-    setActiveSection("restaurant-detail");
-    setRestaurantTab(section);
-    syncDashboardUrl({ restaurantId: resolvedId, section }, { replace: true });
-  }, [needsRestaurantResolve, restaurants]);
-
-  useEffect(() => {
-    if (selectedRestaurantId) {
-      sessionStorage.setItem(DASHBOARD_LAST_RESTAURANT_KEY, String(selectedRestaurantId));
-    }
-  }, [selectedRestaurantId]);
-
-  const handleSelectRestaurant = useCallback((id: number) => {
-    setSelectedRestaurantId(id);
-    setActiveSection("restaurant-detail");
-    setRestaurantTab("home");
-    sessionStorage.setItem(DASHBOARD_LAST_RESTAURANT_KEY, String(id));
-    syncDashboardUrl({ restaurantId: id, section: "home" });
-  }, []);
-
-  const handleBackToRestaurants = useCallback(() => {
-    setActiveSection("restaurants");
-    setSelectedRestaurantId(null);
-    setRestaurantTab("home");
-    syncDashboardUrl({});
-  }, []);
-
-  const handleRestaurantTabChange = useCallback((tab: RestaurantTab) => {
-    setRestaurantTab(tab);
-    const id = selectedRestaurantIdRef.current;
-    if (id) {
-      syncDashboardUrl({ restaurantId: id, section: tab }, { replace: true });
-    }
-  }, []);
+  const handleSelectRestaurant = navigateToRestaurant;
+  const handleBackToRestaurants = navigateToRestaurantsList;
+  const handleRestaurantTabChange = navigateToTab;
 
   const tablesLabel =
     sidebarRestaurant?.tableLabel === "rooms"

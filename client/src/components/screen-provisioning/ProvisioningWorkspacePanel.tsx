@@ -21,8 +21,8 @@ import { provisioningSessionManager } from "@/lib/screen-provisioning/Provisioni
 import {
   navigateToFleet,
   navigateToProvisioning,
-  readProvisioningUrlState,
 } from "@/lib/screen-provisioning/provisioningUrl";
+import { useProvisioningUrlState } from "@/lib/screen-provisioning/useProvisioningUrlState";
 import { requiresRotateConfirmation } from "@/lib/screen-provisioning/provisioningNavigation";
 import { useProvisioningWorkspace } from "@/lib/screen-provisioning/useProvisioningWorkspace";
 import { restaurantQueriesEnabled } from "@/lib/queryRuntime";
@@ -83,7 +83,7 @@ export function ProvisioningWorkspacePanel({
   const isAr = language === "ar";
   const { isAuthenticated, authPending } = useAuth();
   const enabled = restaurantQueriesEnabled(authPending, isAuthenticated, restaurantId);
-  const urlState = readProvisioningUrlState();
+  const urlState = useProvisioningUrlState();
 
   const workspace = useProvisioningWorkspace(restaurantId, enabled);
   const {

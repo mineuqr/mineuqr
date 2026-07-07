@@ -4,7 +4,7 @@ import { provisioningSessionManager } from "./ProvisioningSessionManager";
 import type { ProvisioningHealth, ProvisioningSession } from "./provisioningSessionContract";
 import type { FleetScreenReadModel } from "@/lib/screen-fleet/fleetReadModel";
 import { projectFleetDeviceStatus } from "./projectFleetDeviceStatus";
-import { readProvisioningUrlState } from "./provisioningUrl";
+import { useProvisioningUrlState } from "./useProvisioningUrlState";
 import type { OperationalDeviceListItem } from "../../../../server/operational-device/domain/deviceContracts";
 
 const POLL_INTERVAL_MS = 5_000;
@@ -23,7 +23,7 @@ export type DeviceStatusView = {
  * Timers live here, not in presentation components.
  */
 export function useProvisioningWorkspace(restaurantId: number, enabled: boolean) {
-  const urlState = useMemo(() => readProvisioningUrlState(), []);
+  const urlState = useProvisioningUrlState();
   const [session, setSession] = useState<ProvisioningSession | null>(null);
   const [sessionLoadAttempted, setSessionLoadAttempted] = useState(false);
   const managerRef = useRef(provisioningSessionManager);
