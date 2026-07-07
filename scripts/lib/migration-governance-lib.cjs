@@ -29,6 +29,10 @@ const CANONICAL_TAIL_TAGS = [
   "0057_operational_device_screen_config_revision",
 ];
 
+/** MIGRATION-GOVERNANCE-TAIL-0060-1 — certified production journal terminus. */
+const CANONICAL_MIGRATION_TAIL_TAG = "0060_device_activation_code";
+const CANONICAL_JOURNAL_ENTRY_COUNT = 61;
+
 function loadJournal() {
   return JSON.parse(fs.readFileSync(JOURNAL_PATH, "utf8"));
 }
@@ -103,6 +107,8 @@ function findGovernanceViolations() {
 
 module.exports = {
   CANONICAL_TAIL_TAGS,
+  CANONICAL_MIGRATION_TAIL_TAG,
+  CANONICAL_JOURNAL_ENTRY_COUNT,
   DRIZZLE_DIR,
   JOURNAL_PATH,
   LEGACY_ORPHAN_SQL_TAGS,

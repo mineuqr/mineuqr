@@ -4,7 +4,7 @@ Official workflow for **deployment-safe** schema changes.
 
 **Source of truth:** `drizzle/meta/_journal.json` — only tagged migrations run via `drizzle-kit migrate`.
 
-**Current canonical lineage:** `0000_shiny_blizzard` → `0057_operational_device_screen_config_revision` (58 journal entries).
+**Current canonical lineage:** `0000_shiny_blizzard` → `0060_device_activation_code` (61 journal entries).
 
 ---
 
@@ -12,8 +12,9 @@ Official workflow for **deployment-safe** schema changes.
 
 | Fact | Status |
 |------|--------|
-| Journal defines order `0000` → `0057` | **Canonical** (post MIGRATION-GOVERNANCE-RESTORATION-1) |
+| Journal defines order `0000` → `0060` | **Canonical** (post MIGRATION-GOVERNANCE-TAIL-0060-1) |
 | Tail migrations `0054`–`0057` | **Journalized** — operational devices, screen config, category projection, config revision |
+| Migrations `0058`–`0060` | **Journalized** — offer image metadata, offer projection, device activation code |
 | Duplicate `0000`–`0008` SQL files on disk | **Legacy orphan** — not in journal; never execute |
 | `schema.ts` | **Authoritative** for application code |
 | `pnpm db:push` | Runs `generate` + `migrate` — use deliberately |

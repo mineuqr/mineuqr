@@ -3,6 +3,8 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   CANONICAL_TAIL_TAGS,
+  CANONICAL_MIGRATION_TAIL_TAG,
+  CANONICAL_JOURNAL_ENTRY_COUNT,
   LEGACY_ORPHAN_SQL_TAGS,
   findGovernanceViolations,
   hashMigrationSql,
@@ -13,12 +15,20 @@ import {
 const repoRoot = join(__dirname, "../..");
 
 describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
-  it("journal contains canonical migrations 0000–0057 contiguously", () => {
+  it("journal contains canonical migrations 0000–0060 contiguously", () => {
     const journal = loadJournal();
-    expect(journal.entries).toHaveLength(60);
+    expect(journal.entries).toHaveLength(CANONICAL_JOURNAL_ENTRY_COUNT);
     expect(journal.entries[0]?.tag).toBe("0000_shiny_blizzard");
     expect(journal.entries[59]?.tag).toBe("0059_order_read_offer_projection");
+    expect(journal.entries[60]?.tag).toBe(CANONICAL_MIGRATION_TAIL_TAG);
     expect(validateJournalOrdering()).toEqual([]);
+  });
+
+  it("exports certified migration tail constant", () => {
+    expect(CANONICAL_MIGRATION_TAIL_TAG).toBe("0060_device_activation_code");
+    expect(CANONICAL_JOURNAL_ENTRY_COUNT).toBe(61);
+    const tags = loadJournal().entries.map((e) => e.tag);
+    expect(tags[tags.length - 1]).toBe(CANONICAL_MIGRATION_TAIL_TAG);
   });
 
   it("registers restored tail migrations 0054–0057", () => {
@@ -46,7 +56,8 @@ describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
 
   it("governance guard script enforces deploy gate", () => {
     const guard = readFileSync(join(repoRoot, "scripts/migration-governance-guard.cjs"), "utf8");
-    expect(guard).toContain("0059_order_read_offer_projection");
+    expect(guard).toContain("CANONICAL_MIGRATION_TAIL_TAG");
+    expect(guard).toContain("CANONICAL_JOURNAL_ENTRY_COUNT");
     expect(guard).toContain("process.exit(1)");
   });
 
