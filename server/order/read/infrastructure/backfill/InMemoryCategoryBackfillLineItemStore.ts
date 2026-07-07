@@ -37,7 +37,9 @@ export class InMemoryCategoryBackfillLineItemStore implements CategoryBackfillLi
         ? this.rows.filter((row) => row.restaurantId === restaurantId)
         : this.rows;
     const legacyRows = scoped.filter(
-      (row) => !isUpgradedCategoryProjection(row.categoryProjection, row.lineItemId)
+      (row) =>
+        row.menuItemId > 0 &&
+        !isUpgradedCategoryProjection(row.categoryProjection, row.lineItemId)
     ).length;
     return { totalRows: scoped.length, legacyRows };
   }
@@ -49,6 +51,7 @@ export class InMemoryCategoryBackfillLineItemStore implements CategoryBackfillLi
   }): Promise<CategoryBackfillLineItemRow[]> {
     let legacy = this.rows.filter(
       (row) =>
+        row.menuItemId > 0 &&
         (input.restaurantId == null || row.restaurantId === input.restaurantId) &&
         !isUpgradedCategoryProjection(row.categoryProjection, row.lineItemId)
     );

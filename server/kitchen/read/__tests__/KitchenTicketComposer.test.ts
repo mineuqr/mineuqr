@@ -8,6 +8,7 @@ import {
 } from "../services/KitchenTicketComposer";
 import type { OrderReadPipelineOrderRow } from "../infrastructure/OrderReadQueryAdapter";
 import type { OrderCategoryProjection } from "../../../order/read/domain/contracts/categoryProjectionContracts";
+import { ORDER_LINE_PROJECTION_TYPE_MENU_ITEM } from "../../../order/read/domain/contracts/lineProjectionContracts";
 
 function sampleCategory(): OrderCategoryProjection {
   return Object.freeze({
@@ -38,6 +39,7 @@ const baseOrder: OrderReadPipelineOrderRow = {
   lastEventId: "evt-1",
   lineItems: [
     {
+      projectionType: ORDER_LINE_PROJECTION_TYPE_MENU_ITEM,
       lineItemId: 1,
       menuItemId: 10,
       nameAr: "برجر",

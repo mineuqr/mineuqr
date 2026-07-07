@@ -53,16 +53,16 @@ function main() {
   }
 
   const lastTag = v.journalTags[v.journalTags.length - 1];
-  if (lastTag !== "0058_offer_image_metadata") {
+  if (lastTag !== "0059_order_read_offer_projection") {
     failed = true;
     console.error(
-      `\n✗ FAIL — journal must end at 0058_offer_image_metadata (got ${lastTag})`
+      `\n✗ FAIL — journal must end at 0059_order_read_offer_projection (got ${lastTag})`
     );
   }
 
-  if (journal.entries.length !== 59) {
+  if (journal.entries.length !== 60) {
     failed = true;
-    console.error(`\n✗ FAIL — expected 59 journal entries (0000–0058), got ${journal.entries.length}`);
+    console.error(`\n✗ FAIL — expected 60 journal entries (0000–0059), got ${journal.entries.length}`);
   }
 
   if (failed) {
@@ -70,7 +70,7 @@ function main() {
     process.exit(1);
   }
 
-  console.log("\n✓ Journal ↔ SQL lineage consistent (canonical migrations 0000–0058).");
+  console.log("\n✓ Journal ↔ SQL lineage consistent (canonical migrations 0000–0059).");
   console.log("✓ No non-legacy orphan SQL files.");
   console.log("✓ Journal ordering valid.");
   console.log("\n[governance-guard] OK");

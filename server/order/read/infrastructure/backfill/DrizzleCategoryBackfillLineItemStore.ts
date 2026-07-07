@@ -9,11 +9,16 @@ import type {
   CategoryBackfillLineItemStore,
 } from "./CategoryBackfillLineItemStore";
 
+const menuItemLineCondition = sql`${orderReadOrderLineItems.menuItemId} > 0`;
+
 const legacyProjectionCondition = sql`(
+  ${menuItemLineCondition}
+  AND (
   ${orderReadOrderLineItems.categoryProjection} IS NULL
   OR JSON_TYPE(${orderReadOrderLineItems.categoryProjection}) = 'NULL'
   OR JSON_EXTRACT(${orderReadOrderLineItems.categoryProjection}, '$.categoryId') IS NULL
   OR CAST(JSON_EXTRACT(${orderReadOrderLineItems.categoryProjection}, '$.categoryId') AS SIGNED) < 1
+  )
 )`;
 
 function cursorCondition(cursor: CategoryBackfillLineItemCursor) {

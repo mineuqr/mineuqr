@@ -1,5 +1,6 @@
 import type { KitchenQueueResult, KitchenTicketDto } from "@/lib/kitchen/types";
 import type { CategoryProjectionReadMeta } from "@/lib/kitchen/categoryProjection";
+import { isMenuItemKitchenLine } from "@/lib/kitchen/lineProjection";
 
 /** Runtime kitchen read model — normalized from API, never filtered here. */
 export type KitchenRuntimeTicket = KitchenTicketDto & {
@@ -27,6 +28,7 @@ export function collectOrderCategoryIds(
 ): number[] {
   const ids = new Set<number>();
   for (const item of lineItems) {
+    if (!isMenuItemKitchenLine(item)) continue;
     ids.add(item.category.categoryId);
   }
   return Array.from(ids);

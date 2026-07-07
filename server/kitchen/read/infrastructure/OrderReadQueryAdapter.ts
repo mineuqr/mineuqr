@@ -7,7 +7,7 @@ import {
 } from "../../../../drizzle/schema";
 import type { KitchenPipelineStatus } from "../contracts/kitchenQueryContracts";
 import type { ActiveOrderLineItemDto } from "../../../order/read/domain/contracts/queryContracts";
-import { parseStoredCategoryProjection } from "../../../order/read/infrastructure/persistence/parseStoredCategoryProjection";
+import { mapStoredOrderReadLineItem } from "../../../order/read/infrastructure/persistence/mapStoredOrderReadLineItem";
 import { KITCHEN_READ_DATABASE_UNAVAILABLE } from "../domain/kitchenReadErrorCodes";
 
 export type OrderReadPipelineOrderRow = {
@@ -82,15 +82,7 @@ export class DrizzleOrderReadQueryAdapter implements OrderReadQueryPort {
     const byOrder = new Map<number, OrderReadPipelineOrderRow["lineItems"]>();
     for (const li of lineItems) {
       const list = byOrder.get(li.orderId) ?? [];
-      list.push({
-        lineItemId: li.lineItemId,
-        menuItemId: li.menuItemId,
-        nameAr: li.nameAr,
-        nameEn: li.nameEn,
-        quantity: li.quantity,
-        price: String(li.price),
-        category: parseStoredCategoryProjection(li.categoryProjection, li.lineItemId),
-      });
+      list.push(mapStoredOrderReadLineItem(li));
       byOrder.set(li.orderId, list);
     }
 

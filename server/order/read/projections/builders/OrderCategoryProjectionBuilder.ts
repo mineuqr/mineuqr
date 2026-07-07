@@ -4,7 +4,8 @@ import type {
   CategoryProjectionReadMeta,
 } from "../../domain/contracts/categoryProjectionContracts";
 import { maxCategoryProjectionVersion as maxVersion } from "../../domain/contracts/categoryProjectionContracts";
-import type { ActiveOrderLineItemDto } from "../../domain/contracts/queryContracts";
+import type { ActiveOrderLineItemDto, MenuItemOrderLineItemDto } from "../../domain/contracts/queryContracts";
+import { ORDER_LINE_PROJECTION_TYPE_MENU_ITEM } from "../../domain/contracts/lineProjectionContracts";
 import type { OrderReadSourceContext } from "../../infrastructure/persistence/OrderReadContextLoader";
 import {
   orderCategoryProjectionMetrics,
@@ -79,7 +80,7 @@ export class OrderCategoryProjectionBuilder {
   async buildLineItems(
     restaurantId: number,
     lineItems: readonly SelectOrderItem[]
-  ): Promise<ActiveOrderLineItemDto[]> {
+  ): Promise<MenuItemOrderLineItemDto[]> {
     const started = Date.now();
     const menuItemIds = lineItems.map((item) => item.menuItemId);
     const resolved = await this.resolver.batchResolveMenuItemCategories(
@@ -87,7 +88,7 @@ export class OrderCategoryProjectionBuilder {
       menuItemIds
     );
 
-    const projected: ActiveOrderLineItemDto[] = [];
+    const projected: MenuItemOrderLineItemDto[] = [];
 
     for (const item of lineItems) {
       const categorySource = resolved.get(item.menuItemId);
@@ -97,6 +98,7 @@ export class OrderCategoryProjectionBuilder {
       }
 
       projected.push({
+        projectionType: ORDER_LINE_PROJECTION_TYPE_MENU_ITEM,
         lineItemId: item.id,
         menuItemId: item.menuItemId,
         nameAr: item.nameAr,
@@ -145,7 +147,7 @@ export class OrderCategoryProjectionBuilder {
     return projections;
   }
 
-  buildReadMeta(lineItems: readonly ActiveOrderLineItemDto[]): CategoryProjectionReadMeta {
+  buildReadMeta(lineItems: readonly MenuItemOrderLineItemDto[]): CategoryProjectionReadMeta {
     const categories = lineItems.map((item) => item.category);
     return {
       categoryProjectionVersion: maxVersion(categories),
@@ -156,7 +158,7 @@ export class OrderCategoryProjectionBuilder {
 }
 
 export function buildCategoryProjectionReadMeta(
-  lineItems: readonly ActiveOrderLineItemDto[],
+  lineItems: readonly MenuItemOrderLineItemDto[],
   buildDurationMs: number
 ): CategoryProjectionReadMeta {
   const categories = lineItems.map((item) => item.category);

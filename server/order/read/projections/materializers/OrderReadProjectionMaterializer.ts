@@ -10,6 +10,7 @@ import type { OrderReadContextLoader } from "../../infrastructure/persistence/Or
 import { drizzleCategoryResolutionPort } from "../../infrastructure/persistence/DrizzleCategoryResolutionPort";
 import { InMemoryOrderReadProjectionStore } from "../../infrastructure/persistence/inmemory/InMemoryOrderReadProjectionStore";
 import { OrderCategoryProjectionBuilder } from "../builders/OrderCategoryProjectionBuilder";
+import { OrderReadLineItemProjectionBuilder } from "../builders/OrderReadLineItemProjectionBuilder";
 import {
   dayKeyFromTimestamp,
   isActiveOrderStatus,
@@ -29,8 +30,8 @@ export class OrderReadProjectionMaterializer {
     private readonly repos: OrderReadProjectionRepositories,
     private readonly contextLoader: OrderReadContextLoader,
     private readonly recordBuilder = new InMemoryOrderReadProjectionStore(),
-    private readonly categoryBuilder = new OrderCategoryProjectionBuilder(
-      drizzleCategoryResolutionPort
+    private readonly lineItemBuilder = new OrderReadLineItemProjectionBuilder(
+      new OrderCategoryProjectionBuilder(drizzleCategoryResolutionPort)
     )
   ) {}
 
@@ -38,7 +39,7 @@ export class OrderReadProjectionMaterializer {
     const source = await this.contextLoader.loadByOrderId(orderId);
     if (!source) return;
 
-    const lineItems = await this.categoryBuilder.buildLineItemsFromSource(source);
+    const lineItems = await this.lineItemBuilder.buildLineItemsFromSource(source);
     const ownerRecord = this.recordBuilder.buildOwnerRecordFromSource(
       source,
       eventId,

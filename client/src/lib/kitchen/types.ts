@@ -1,4 +1,5 @@
-import type { OrderCategoryProjection, CategoryProjectionReadMeta } from "./categoryProjection";
+import type { CategoryProjectionReadMeta } from "./categoryProjection";
+import type { KitchenLineItemDto } from "./lineProjection";
 
 export type KitchenPipelineStatus = "pending" | "preparing" | "ready";
 
@@ -21,15 +22,7 @@ export type KitchenTicketDto = {
   urgencyTier: KitchenUrgencyTier;
   lineCount: number;
   linesSummary: string;
-  lineItems: Array<{
-    lineItemId: number;
-    menuItemId: number;
-    nameAr: string;
-    nameEn: string | null;
-    quantity: number;
-    price: string;
-    category: OrderCategoryProjection;
-  }>;
+  lineItems: KitchenLineItemDto[];
   lastEventId: string | null;
 };
 

@@ -100,8 +100,15 @@ export type PublicOrderStatusQuery = {
 };
 
 import type { OrderCategoryProjection } from "./categoryProjectionContracts";
+import type { OrderOfferProjection } from "./offerProjectionContracts";
+import {
+  ORDER_LINE_PROJECTION_TYPE_MENU_ITEM,
+  ORDER_LINE_PROJECTION_TYPE_OFFER,
+  type OrderLineProjectionType,
+} from "./lineProjectionContracts";
 
-export type ActiveOrderLineItemDto = {
+export type MenuItemOrderLineItemDto = {
+  projectionType: typeof ORDER_LINE_PROJECTION_TYPE_MENU_ITEM;
   lineItemId: number;
   menuItemId: number;
   nameAr: string;
@@ -110,6 +117,33 @@ export type ActiveOrderLineItemDto = {
   price: string;
   category: OrderCategoryProjection;
 };
+
+export type OfferOrderLineItemDto = {
+  projectionType: typeof ORDER_LINE_PROJECTION_TYPE_OFFER;
+  lineItemId: number;
+  menuItemId: 0;
+  nameAr: string;
+  nameEn: string | null;
+  quantity: number;
+  price: string;
+  offer: OrderOfferProjection;
+};
+
+export type ActiveOrderLineItemDto = MenuItemOrderLineItemDto | OfferOrderLineItemDto;
+
+export function isMenuItemOrderLine(
+  item: ActiveOrderLineItemDto
+): item is MenuItemOrderLineItemDto {
+  return item.projectionType === ORDER_LINE_PROJECTION_TYPE_MENU_ITEM;
+}
+
+export function isOfferOrderLine(item: ActiveOrderLineItemDto): item is OfferOrderLineItemDto {
+  return item.projectionType === ORDER_LINE_PROJECTION_TYPE_OFFER;
+}
+
+export function orderLineProjectionType(item: ActiveOrderLineItemDto): OrderLineProjectionType {
+  return item.projectionType;
+}
 
 export type ActiveOrderItemDto = {
   orderId: number;

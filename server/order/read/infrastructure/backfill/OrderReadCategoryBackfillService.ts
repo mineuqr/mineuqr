@@ -11,6 +11,7 @@ import {
   assertCanonicalCategoryProjection,
   isUpgradedCategoryProjection,
 } from "../persistence/categoryProjectionValidation";
+import { isOfferOrderLineMenuItemId } from "../../domain/contracts/lineProjectionContracts";
 import type {
   CategoryBackfillLineItemCursor,
   CategoryBackfillLineItemRow,
@@ -215,6 +216,10 @@ export class OrderReadCategoryBackfillService {
     let skipped = 0;
 
     for (const row of batch) {
+      if (isOfferOrderLineMenuItemId(row.menuItemId)) {
+        skipped += 1;
+        continue;
+      }
       if (isUpgradedCategoryProjection(row.categoryProjection, row.lineItemId)) {
         skipped += 1;
         continue;

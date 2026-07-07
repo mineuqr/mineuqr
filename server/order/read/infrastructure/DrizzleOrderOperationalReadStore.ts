@@ -7,21 +7,13 @@ import {
 } from "../../../../drizzle/schema";
 import type { ActiveOrderItemDto, OrderTimelineEventDto } from "../domain/contracts/queryContracts";
 import type { OrderDetailQuery } from "../domain/contracts/queryContracts";
-import { parseStoredCategoryProjection } from "./persistence/parseStoredCategoryProjection";
+import { mapStoredOrderReadLineItem } from "./persistence/mapStoredOrderReadLineItem";
 
 type OrderRow = typeof orderReadOrders.$inferSelect;
 type LineItemRow = typeof orderReadOrderLineItems.$inferSelect;
 
 function mapLineItem(row: LineItemRow) {
-  return {
-    lineItemId: row.lineItemId,
-    menuItemId: row.menuItemId,
-    nameAr: row.nameAr,
-    nameEn: row.nameEn,
-    quantity: row.quantity,
-    price: String(row.price),
-    category: parseStoredCategoryProjection(row.categoryProjection, row.lineItemId),
-  };
+  return mapStoredOrderReadLineItem(row);
 }
 
 function mapOrder(row: OrderRow, lineItems: LineItemRow[]): ActiveOrderItemDto {

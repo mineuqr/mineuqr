@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { ORDER_LINE_PROJECTION_TYPE_MENU_ITEM } from "@/lib/kitchen/lineProjection";
+import { mockCategoryProjection } from "@/lib/operational-screen/__tests__/fixtures/categoryProjectionFixtures";
 import {
   connectorReadyForPrint,
   formatHealthLabel,
@@ -26,12 +28,14 @@ describe("print workspace view models", () => {
         isActive: true,
         lineItems: [
           {
+            projectionType: ORDER_LINE_PROJECTION_TYPE_MENU_ITEM,
             lineItemId: 1,
             menuItemId: 10,
             nameAr: "برجر",
             nameEn: "Burger",
             quantity: 2,
             price: "15.25",
+            category: mockCategoryProjection(),
           },
         ],
       },

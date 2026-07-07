@@ -6,9 +6,11 @@ import {
   toArabicDigits,
 } from "../kitchenPresentation";
 import type { KitchenTicketLine } from "../viewModels";
+import { ORDER_LINE_PROJECTION_TYPE_MENU_ITEM } from "@/lib/kitchen/lineProjection";
 import { mockCategoryProjection } from "@/lib/operational-screen/__tests__/fixtures/categoryProjectionFixtures";
 
 const line: KitchenTicketLine = {
+  projectionType: ORDER_LINE_PROJECTION_TYPE_MENU_ITEM,
   lineItemId: 1,
   menuItemId: 5,
   nameAr: "تبولة",

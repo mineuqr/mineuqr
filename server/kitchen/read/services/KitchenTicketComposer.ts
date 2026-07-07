@@ -80,15 +80,7 @@ export class KitchenTicketComposer {
       urgencyTier: computeUrgencyTier(columnElapsedSeconds),
       lineCount: buildLineCount(order.lineItems),
       linesSummary: buildLinesSummary(order.lineItems),
-      lineItems: order.lineItems.map((li) => ({
-        lineItemId: li.lineItemId,
-        menuItemId: li.menuItemId,
-        nameAr: li.nameAr,
-        nameEn: li.nameEn,
-        quantity: li.quantity,
-        price: li.price,
-        category: li.category,
-      })),
+      lineItems: order.lineItems.map((li) => ({ ...li })),
       lastEventId: order.lastEventId,
     };
   }

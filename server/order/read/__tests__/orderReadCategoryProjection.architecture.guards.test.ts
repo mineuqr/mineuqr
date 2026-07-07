@@ -41,6 +41,6 @@ describe("ORDER-READ-CATEGORY-PROJECTION-1 architecture guards", () => {
     expect(kitchenComposer).not.toContain("CategoryResolution");
     expect(kitchenComposer).not.toContain("getCategory");
     const adapter = read("server/kitchen/read/infrastructure/OrderReadQueryAdapter.ts");
-    expect(adapter).toContain("parseStoredCategoryProjection");
+    expect(adapter).toContain("mapStoredOrderReadLineItem");
   });
 });

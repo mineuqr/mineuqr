@@ -7,6 +7,7 @@ import {
 } from "../kitchen/kitchenRuntimeReadModel";
 import type { KitchenQueueResult } from "@/lib/kitchen/types";
 import { kitchenDisplayRole } from "../roles/roleDefinitions";
+import { ORDER_LINE_PROJECTION_TYPE_MENU_ITEM } from "@/lib/kitchen/lineProjection";
 import { mockCategoryProjection } from "./fixtures/categoryProjectionFixtures";
 
 function mockQueue(): KitchenQueueResult {
@@ -40,6 +41,7 @@ function mockQueue(): KitchenQueueResult {
           linesSummary: "1× Burger",
           lineItems: [
             {
+              projectionType: ORDER_LINE_PROJECTION_TYPE_MENU_ITEM,
               lineItemId: 1,
               menuItemId: 10,
               nameAr: "برجر",
@@ -70,6 +72,7 @@ function mockQueue(): KitchenQueueResult {
           linesSummary: "1× Pizza",
           lineItems: [
             {
+              projectionType: ORDER_LINE_PROJECTION_TYPE_MENU_ITEM,
               lineItemId: 2,
               menuItemId: 20,
               nameAr: "بيتزا",
@@ -154,6 +157,7 @@ describe("kitchen category filter pipeline", () => {
   it("order visible when at least one line item matches selected category", () => {
     const queue = mockQueue();
     queue.columns.pending[0].lineItems.push({
+      projectionType: ORDER_LINE_PROJECTION_TYPE_MENU_ITEM,
       lineItemId: 3,
       menuItemId: 30,
       nameAr: "سلطة",

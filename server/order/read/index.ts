@@ -22,6 +22,7 @@ export * from "./infrastructure/backfill/OrderReadProjectionBackfillService";
 export * from "./infrastructure/backfill/OrderReadCategoryBackfillService";
 export * from "./infrastructure/backfill/OrderReadCategoryBackfillVerifier";
 export * from "./infrastructure/backfill/OrderReadCategoryBackfillMetrics";
+export * from "./infrastructure/backfill/OrderReadOfferBackfillService";
 export * from "./infrastructure/staging/OrderReadProjectionIntegrityChecker";
 export * from "./infrastructure/staging/orderReadProjectionStagingTables";
 export * from "./infrastructure/persistence/drizzle/DrizzleOrderReadProjectionStore";

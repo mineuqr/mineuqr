@@ -1,5 +1,6 @@
 import type { OrderCategoryProjection } from "../../domain/contracts/categoryProjectionContracts";
-import type { ActiveOrderLineItemDto } from "../../domain/contracts/queryContracts";
+import type { MenuItemOrderLineItemDto } from "../../domain/contracts/queryContracts";
+import { ORDER_LINE_PROJECTION_TYPE_MENU_ITEM } from "../../domain/contracts/lineProjectionContracts";
 
 export function sampleCategoryProjection(
   overrides: Partial<OrderCategoryProjection> = {}
@@ -18,9 +19,10 @@ export function sampleCategoryProjection(
 }
 
 export function sampleActiveLineItem(
-  overrides: Partial<ActiveOrderLineItemDto> = {}
-): ActiveOrderLineItemDto {
+  overrides: Partial<MenuItemOrderLineItemDto> = {}
+): MenuItemOrderLineItemDto {
   return {
+    projectionType: ORDER_LINE_PROJECTION_TYPE_MENU_ITEM,
     lineItemId: 1,
     menuItemId: 9,
     nameAr: "حمص",

@@ -1,6 +1,7 @@
 import {
   ORDER_READ_QUERY_CATALOG_VERSION,
   buildReadResultMeta,
+  isMenuItemOrderLine,
   type ActiveOrderLineItemDto,
   type ReadResultMeta,
 } from "../../../order/read/domain/contracts/queryContracts";
@@ -83,7 +84,7 @@ export function buildKitchenReadMeta(
   orderingPolicyId: typeof KITCHEN_ORDERING_POLICY_FIFO;
 } {
   const categories =
-    options?.lineItems?.map((item) => item.category) ?? [];
+    options?.lineItems?.filter(isMenuItemOrderLine).map((item) => item.category) ?? [];
   return {
     ...buildReadResultMeta(ORDER_READ_PROJECTION_SCHEMA_VERSION, now, {
       categoryProjectionVersion: maxCategoryProjectionVersion(categories),

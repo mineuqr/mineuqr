@@ -25,13 +25,15 @@ import { InMemoryOrderReadProjectionStore } from "../inmemory/InMemoryOrderReadP
 import type { OrderReadSourceContext } from "../OrderReadContextLoader";
 import { drizzleCategoryResolutionPort } from "../DrizzleCategoryResolutionPort";
 import { OrderCategoryProjectionBuilder } from "../../../projections/builders/OrderCategoryProjectionBuilder";
+import { OrderReadLineItemProjectionBuilder } from "../../../projections/builders/OrderReadLineItemProjectionBuilder";
+import { toPersistedLineItemColumns } from "../mapStoredOrderReadLineItem";
 
 import type { OrderReadProjectionRepositories } from "../contracts/ProjectionRepositoryContracts";
 
 export class DrizzleOrderReadProjectionStore {
   private readonly recordBuilder = new InMemoryOrderReadProjectionStore();
-  private readonly categoryBuilder = new OrderCategoryProjectionBuilder(
-    drizzleCategoryResolutionPort
+  private readonly lineItemBuilder = new OrderReadLineItemProjectionBuilder(
+    new OrderCategoryProjectionBuilder(drizzleCategoryResolutionPort)
   );
 
   asRepositories(): OrderReadProjectionRepositories {
@@ -45,7 +47,7 @@ export class DrizzleOrderReadProjectionStore {
     const db = await getDb();
     if (!db) return;
 
-    const lineItems = await this.categoryBuilder.buildLineItemsFromSource(source);
+    const lineItems = await this.lineItemBuilder.buildLineItemsFromSource(source);
     const record = this.recordBuilder.buildOwnerRecordFromSource(source, eventId, lineItems);
     const isActive = isActiveOrderStatus(record.status);
 
@@ -105,17 +107,22 @@ export class DrizzleOrderReadProjectionStore {
 
     if (record.lineItems.length > 0) {
       await db.insert(orderReadOrderLineItems).values(
-        record.lineItems.map((li) => ({
-          restaurantId: record.restaurantId,
-          orderId: record.orderId,
-          lineItemId: li.lineItemId,
-          menuItemId: li.menuItemId,
-          nameAr: li.nameAr,
-          nameEn: li.nameEn,
-          quantity: li.quantity,
-          price: li.price,
-          categoryProjection: li.category,
-        }))
+        record.lineItems.map((li) => {
+          const persisted = toPersistedLineItemColumns(li);
+          return {
+            restaurantId: record.restaurantId,
+            orderId: record.orderId,
+            lineItemId: li.lineItemId,
+            menuItemId: persisted.menuItemId,
+            nameAr: persisted.nameAr,
+            nameEn: persisted.nameEn,
+            quantity: persisted.quantity,
+            price: persisted.price,
+            lineProjectionType: persisted.lineProjectionType,
+            categoryProjection: persisted.categoryProjection,
+            offerProjection: persisted.offerProjection,
+          };
+        })
       );
     }
 

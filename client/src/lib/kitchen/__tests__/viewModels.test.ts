@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { nextStatusForAction, toKitchenTicketCard, urgencyClassName } from "../viewModels";
 import type { KitchenTicketDto } from "../types";
+import { ORDER_LINE_PROJECTION_TYPE_MENU_ITEM } from "@/lib/kitchen/lineProjection";
 import { mockCategoryProjection } from "@/lib/operational-screen/__tests__/fixtures/categoryProjectionFixtures";
 
 const sample: KitchenTicketDto = {
@@ -37,6 +38,7 @@ describe("kitchen viewModels", () => {
       ...sample,
       lineItems: [
         {
+          projectionType: ORDER_LINE_PROJECTION_TYPE_MENU_ITEM,
           lineItemId: 1,
           menuItemId: 9,
           nameAr: "تبولة",
