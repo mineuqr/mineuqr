@@ -78,6 +78,10 @@ import { cascadeAuditFromTrpc } from "./db/cascadeAudit";
 import { isRestaurantOpen, parseTemporaryClosure } from "./lib/restaurantHours";
 import { formatInRestaurantTimezone, todayYmd } from "@shared/utils/timezone";
 import { putUploadedFile } from "./local-uploads";
+import {
+  buildEntityImageMetadata,
+  validateEntityImageUpload,
+} from "./media/entityImage";
 import { notifyOwnerNewRestaurant, notifyOwnerNewSubscription, notifyOwnerSubscriptionCancelled } from "./owner-email-notifications";
 import { generateInvoicePDFBuffer } from "./invoice-pdf";
 import { mergeRouters } from "./_core/trpc";
@@ -662,11 +666,35 @@ const offerRouter = router({
       }
       await assertRestaurantAccess(ctx, offer.restaurantId, "offer.uploadImage");
       const buffer = Buffer.from(input.imageData, "base64");
+      const { mimeType, fileSize } = validateEntityImageUpload({
+        buffer,
+        contentType: input.contentType,
+        fileName: input.fileName,
+      });
       const safeFileName = input.fileName.replace(/[^\w.\-]+/g, "_");
       const key = `offers/${offer.restaurantId}/${input.offerId}-${nanoid(8)}-${safeFileName}`;
-      const { url } = await putUploadedFile(key, buffer, input.contentType, ctx.req);
-      await updateOffer(input.offerId, { imageUrl: url });
-      return { url };
+      const { url, key: storageKey } = await putUploadedFile(key, buffer, mimeType, ctx.req);
+      const image = buildEntityImageMetadata({
+        storageKey,
+        publicUrl: url,
+        mimeType,
+        fileSize,
+        buffer,
+      });
+      await updateOffer(input.offerId, { imageUrl: url, image });
+      return { url, image };
+    }),
+
+  deleteImage: verifiedProcedure
+    .input(z.object({ offerId: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      const offer = await getOfferById(input.offerId);
+      if (!offer) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "العرض غير موجود" });
+      }
+      await assertRestaurantAccess(ctx, offer.restaurantId, "offer.deleteImage");
+      await updateOffer(input.offerId, { imageUrl: null, image: null });
+      return { success: true };
     }),
 });
 

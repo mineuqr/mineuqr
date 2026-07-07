@@ -46,6 +46,7 @@ export const offers = mysqlTable("offers", {
 	originalPrice: decimal({ precision: 10, scale: 2 }).notNull(),
 	offerPrice: decimal({ precision: 10, scale: 2 }).notNull(),
 	imageUrl: text(),
+	image: json(),
 	startDate: timestamp({ mode: 'string' }).notNull(),
 	endDate: timestamp({ mode: 'string' }).notNull(),
 	isActive: boolean().default(true).notNull(),

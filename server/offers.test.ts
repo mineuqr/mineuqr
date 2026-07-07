@@ -247,6 +247,76 @@ describe("offer.delete", () => {
   });
 });
 
+vi.mock("./local-uploads", () => ({
+  putUploadedFile: vi.fn(async () => ({
+    key: "offers/1/1-abc-test.png",
+    url: "https://cdn.example/offers/1/1-abc-test.png",
+  })),
+}));
+
+describe("offer.uploadImage", () => {
+  it("uploads image with tenant guard and stores metadata", async () => {
+    mockGetOfferById.mockResolvedValue(mockOffer);
+    mockGetRestaurantById.mockResolvedValue(mockRestaurant);
+    mockUpdateOffer.mockResolvedValue(undefined);
+
+    const caller = appRouter.createCaller(createAuthContext(1));
+    const png = Buffer.alloc(24);
+    png[0] = 0x89;
+    png[1] = 0x50;
+    png[2] = 0x4e;
+    png[3] = 0x47;
+    png.writeUInt32BE(320, 16);
+    png.writeUInt32BE(240, 20);
+
+    const result = await caller.offer.uploadImage({
+      offerId: 1,
+      imageData: png.toString("base64"),
+      fileName: "promo.png",
+      contentType: "image/png",
+    });
+
+    expect(result.url).toContain("https://");
+    expect(result.image.storageKey).toContain("offers/1/");
+    expect(mockUpdateOffer).toHaveBeenCalledWith(
+      1,
+      expect.objectContaining({
+        imageUrl: result.url,
+        image: expect.objectContaining({ mimeType: "image/png", width: 320, height: 240 }),
+      })
+    );
+  });
+
+  it("rejects cross-tenant upload", async () => {
+    mockGetOfferById.mockResolvedValue(mockOffer);
+    mockGetRestaurantById.mockResolvedValue({ ...mockRestaurant, userId: 999 });
+
+    const caller = appRouter.createCaller(createAuthContext(1));
+    await expect(
+      caller.offer.uploadImage({
+        offerId: 1,
+        imageData: Buffer.from("x").toString("base64"),
+        fileName: "x.png",
+        contentType: "image/png",
+      })
+    ).rejects.toThrow();
+  });
+});
+
+describe("offer.deleteImage", () => {
+  it("clears image metadata for owned offer", async () => {
+    mockGetOfferById.mockResolvedValue({ ...mockOffer, imageUrl: "https://x/y.png" });
+    mockGetRestaurantById.mockResolvedValue(mockRestaurant);
+    mockUpdateOffer.mockResolvedValue(undefined);
+
+    const caller = appRouter.createCaller(createAuthContext(1));
+    const result = await caller.offer.deleteImage({ offerId: 1 });
+
+    expect(result).toEqual({ success: true });
+    expect(mockUpdateOffer).toHaveBeenCalledWith(1, { imageUrl: null, image: null });
+  });
+});
+
 describe("offer types validation", () => {
   it("accepts daily offer type", async () => {
     mockGetRestaurantById.mockResolvedValue(mockRestaurant);

@@ -407,6 +407,13 @@
       "when": 1784430000000,
       "tag": "0057_operational_device_screen_config_revision",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "5",
+      "when": 1784440000000,
+      "tag": "0058_offer_image_metadata",
+      "breakpoints": true
     }
   ]
 }

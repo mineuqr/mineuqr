@@ -53,16 +53,16 @@ function main() {
   }
 
   const lastTag = v.journalTags[v.journalTags.length - 1];
-  if (lastTag !== "0057_operational_device_screen_config_revision") {
+  if (lastTag !== "0058_offer_image_metadata") {
     failed = true;
     console.error(
-      `\n✗ FAIL — journal must end at 0057_operational_device_screen_config_revision (got ${lastTag})`
+      `\n✗ FAIL — journal must end at 0058_offer_image_metadata (got ${lastTag})`
     );
   }
 
-  if (journal.entries.length !== 58) {
+  if (journal.entries.length !== 59) {
     failed = true;
-    console.error(`\n✗ FAIL — expected 58 journal entries (0000–0057), got ${journal.entries.length}`);
+    console.error(`\n✗ FAIL — expected 59 journal entries (0000–0058), got ${journal.entries.length}`);
   }
 
   if (failed) {
@@ -70,7 +70,7 @@ function main() {
     process.exit(1);
   }
 
-  console.log("\n✓ Journal ↔ SQL lineage consistent (canonical migrations 0000–0057).");
+  console.log("\n✓ Journal ↔ SQL lineage consistent (canonical migrations 0000–0058).");
   console.log("✓ No non-legacy orphan SQL files.");
   console.log("✓ Journal ordering valid.");
   console.log("\n[governance-guard] OK");

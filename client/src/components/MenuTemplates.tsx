@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import AddToCartButton from "@/components/AddToCartButton";
 import { resolveImageUrl } from "@/lib/utils";
+import { resolveOfferImageUrl } from "@/lib/offers/offerImage";
+import { OfferImagePlaceholder } from "@/components/offers/OfferImagePlaceholder";
 import { getOpenStatusFromRestaurant, todayYmd } from "@/lib/restaurantHours";
 
 // Template configuration
@@ -1051,6 +1053,8 @@ function OffersSection({ offers, accentColor, textColor, cardBg, currencySymbol,
               : 0;
             const typeInfo = OFFER_TYPE_MAP[offer.offerType] || OFFER_TYPE_MAP.daily;
             const TypeIcon = typeInfo.icon;
+            const coverUrl = resolveOfferImageUrl(offer);
+            const validityLabel = `${new Date(offer.startDate).toLocaleDateString("ar-SA")} — ${new Date(offer.endDate).toLocaleDateString("ar-SA")}`;
             return (
               <motion.div
                 key={offer.id}
@@ -1058,60 +1062,64 @@ function OffersSection({ offers, accentColor, textColor, cardBg, currencySymbol,
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.3, delay: index * 0.05 }}
-                className="rounded-xl overflow-hidden border relative"
+                className="rounded-xl overflow-hidden border relative flex flex-col"
                 style={{
                   background: cardBg || `${accentColor}10`,
                   borderColor: `${accentColor}30`,
                 }}
               >
-                {/* Discount Badge */}
                 {discount > 0 && (
                   <div className="absolute top-3 left-3 z-10 px-2.5 py-1 rounded-full text-xs font-bold text-white" style={{ background: '#ef4444' }}>
                     -{discount}%
                   </div>
                 )}
-                <div className="flex">
-                   {resolveImageUrl(offer.imageUrl) ? (
-                    <img src={resolveImageUrl(offer.imageUrl)} alt={offer.titleAr} className="w-40 h-40 sm:w-48 sm:h-48 object-cover shrink-0" />
-                  ) : (
-                    <div className="w-40 h-40 sm:w-48 sm:h-48 flex items-center justify-center shrink-0" style={{ background: `${accentColor}15` }}>
-                      <Tag className="w-12 h-12 opacity-30" style={{ color: accentColor }} />
+                {coverUrl ? (
+                  <img
+                    src={coverUrl}
+                    alt={offer.titleAr}
+                    loading="lazy"
+                    decoding="async"
+                    className="w-full aspect-[16/10] object-cover"
+                  />
+                ) : (
+                  <OfferImagePlaceholder size="lg" accentColor={accentColor} className="rounded-none" />
+                )}
+                <div className="p-5 flex flex-col flex-1 min-w-0">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-bold text-base sm:text-lg truncate" style={{ color: fontStyles?.headingColor || textColor, ...fontStyles?.arStyle }}>{offer.titleAr}</h3>
                     </div>
-                  )}
-                  <div className="flex-1 p-6 flex flex-col justify-between min-w-0">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-bold text-base sm:text-lg truncate" style={{ color: fontStyles?.headingColor || textColor, ...fontStyles?.arStyle }}>{offer.titleAr}</h3>
-                      </div>
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <TypeIcon className="w-4 h-4" style={{ color: accentColor }} />
-                        <span className="text-sm" style={{ color: `${textColor}99` }}>{typeInfo.label}</span>
-                      </div>
-                      {offer.descriptionAr && (
-                        <p className="text-sm line-clamp-2 opacity-60" style={{ color: fontStyles?.bodyColor || textColor, ...fontStyles?.arStyle }}>{offer.descriptionAr}</p>
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <TypeIcon className="w-4 h-4" style={{ color: accentColor }} />
+                      <span className="text-sm" style={{ color: `${textColor}99` }}>{typeInfo.label}</span>
+                    </div>
+                    {offer.descriptionAr && (
+                      <p className="text-sm line-clamp-3 opacity-70 mb-3" style={{ color: fontStyles?.bodyColor || textColor, ...fontStyles?.arStyle }}>{offer.descriptionAr}</p>
+                    )}
+                    <p className="text-xs opacity-60 mb-3" style={{ color: textColor }}>
+                      {validityLabel}
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xl font-bold" style={{ color: fontStyles?.priceColor || accentColor, ...fontStyles?.enStyle, fontSize: fontStyles?.priceScale ? `calc(1.25rem * ${fontStyles.priceScale})` : undefined }}>
+                        {offer.offerPrice} <span className="text-sm font-normal opacity-60" style={{ color: textColor }}>{currencySymbol || 'ر.س'}</span>
+                      </span>
+                      <span className="text-base line-through opacity-40" style={{ color: textColor }}>
+                        {offer.originalPrice} {currencySymbol || 'ر.س'}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <CountdownTimer endDate={offer.endDate} accentColor={accentColor} textColor={textColor} />
+                      {tableNumber != null && tableNumber > 0 && (
+                        <AddToCartButton
+                          offerId={offer.id}
+                          nameAr={offer.titleAr}
+                          nameEn={offer.titleEn}
+                          price={String(offer.offerPrice)}
+                          imageUrl={coverUrl ?? offer.imageUrl}
+                        />
                       )}
-                    </div>
-                       <div className="mt-3 space-y-2">
-                       <div className="flex items-center gap-2">
-                         <span className="text-xl font-bold" style={{ color: fontStyles?.priceColor || accentColor, ...fontStyles?.enStyle, fontSize: fontStyles?.priceScale ? `calc(1.25rem * ${fontStyles.priceScale})` : undefined }}>
-                           {offer.offerPrice} <span className="text-sm font-normal opacity-60" style={{ color: textColor }}>{currencySymbol || 'ر.س'}</span>
-                         </span>
-                         <span className="text-base line-through opacity-40" style={{ color: textColor }}>
-                           {offer.originalPrice} {currencySymbol || 'ر.س'}
-                         </span>
-                       </div>
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <CountdownTimer endDate={offer.endDate} accentColor={accentColor} textColor={textColor} />
-                        {tableNumber != null && tableNumber > 0 && (
-                          <AddToCartButton
-                            offerId={offer.id}
-                            nameAr={offer.titleAr}
-                            nameEn={offer.titleEn}
-                            price={String(offer.offerPrice)}
-                            imageUrl={offer.imageUrl}
-                          />
-                        )}
-                      </div>
                     </div>
                   </div>
                 </div>

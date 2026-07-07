@@ -15,9 +15,9 @@ const repoRoot = join(__dirname, "../..");
 describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
   it("journal contains canonical migrations 0000–0057 contiguously", () => {
     const journal = loadJournal();
-    expect(journal.entries).toHaveLength(58);
+    expect(journal.entries).toHaveLength(59);
     expect(journal.entries[0]?.tag).toBe("0000_shiny_blizzard");
-    expect(journal.entries[57]?.tag).toBe("0057_operational_device_screen_config_revision");
+    expect(journal.entries[58]?.tag).toBe("0058_offer_image_metadata");
     expect(validateJournalOrdering()).toEqual([]);
   });
 
@@ -46,7 +46,7 @@ describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
 
   it("governance guard script enforces deploy gate", () => {
     const guard = readFileSync(join(repoRoot, "scripts/migration-governance-guard.cjs"), "utf8");
-    expect(guard).toContain("0057_operational_device_screen_config_revision");
+    expect(guard).toContain("0058_offer_image_metadata");
     expect(guard).toContain("process.exit(1)");
   });
 

@@ -29,6 +29,13 @@ import { restaurantDash, restaurantHoverGlow } from "@/components/dashboard/rest
 import { getLoginUrl, spaNavigate } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { cn, resolveImageUrl } from "@/lib/utils";
+import { resolveOfferImageUrl } from "@/lib/offers/offerImage";
+import type { OfferImageSource } from "@/lib/offers/offerImage";
+import {
+  OfferImageUpload,
+  uploadPendingOfferImage,
+} from "@/components/offers/OfferImageUpload";
+import { OfferImagePlaceholder } from "@/components/offers/OfferImagePlaceholder";
 import { formatRiyadhDateTime, todayYmd, convertUtcToRestaurantTime } from "@/lib/datetime";
 import { downloadSalesReportXlsx } from "@/lib/excel";
 import {
@@ -2419,8 +2426,15 @@ function OffersTab({ restaurantId, currencySymbol }: { restaurantId: number; cur
               <Card key={offer.id} className={`overflow-hidden ${isExpired ? 'opacity-60' : ''}`}>
                 <CardContent className="p-4">
                   <div className="flex items-start gap-4">
-                    {resolveImageUrl(offer.imageUrl) && (
-                      <img src={resolveImageUrl(offer.imageUrl)} alt="" className="w-20 h-20 rounded-lg object-cover shrink-0" />
+                    {resolveOfferImageUrl(offer) ? (
+                      <img
+                        src={resolveOfferImageUrl(offer)}
+                        alt=""
+                        loading="lazy"
+                        className="w-20 h-20 rounded-lg object-cover shrink-0"
+                      />
+                    ) : (
+                      <OfferImagePlaceholder size="sm" className="rounded-lg" />
                     )}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
@@ -2525,9 +2539,11 @@ function OfferFormDialog({
   const [endDate, setEndDate] = useState(
     offer?.endDate ? new Date(offer.endDate).toISOString().slice(0, 16) : ""
   );
-  const [imageUrl, setImageUrl] = useState(offer?.imageUrl || "");
-  const [uploading, setUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [imageSource, setImageSource] = useState<OfferImageSource>({
+    imageUrl: offer?.imageUrl ?? null,
+    image: offer?.image ?? null,
+  });
+  const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
   const utils = trpc.useUtils();
 
   const OFFER_TYPE_LABELS: Record<string, string> = {
@@ -2542,96 +2558,71 @@ function OfferFormDialog({
     monthly: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
   };
 
-  const createMutation = trpc.offer.create.useMutation({
-    onSuccess: () => {
-      utils.offer.list.invalidate({ restaurantId });
-      toast.success(t('dashboard.addOfferSuccess'));
-      onClose();
-    },
-    onError: () => toast.error(t('dashboard.addOfferError')),
-  });
+  const uploadImageMutation = trpc.offer.uploadImage.useMutation();
+  const createMutation = trpc.offer.create.useMutation();
+  const updateMutation = trpc.offer.update.useMutation();
 
-  const updateMutation = trpc.offer.update.useMutation({
-    onSuccess: () => {
-      utils.offer.list.invalidate({ restaurantId });
-      toast.success(t('dashboard.updateOfferSuccess'));
-      onClose();
-    },
-    onError: () => toast.error(t('dashboard.updateOfferError')),
-  });
+  useEffect(() => {
+    if (!offer) return;
+    setImageSource({ imageUrl: offer.imageUrl ?? null, image: offer.image ?? null });
+    setPendingImageFile(null);
+  }, [offer?.id, offer?.imageUrl, offer?.image]);
 
-  const uploadMutation = trpc.offer.uploadImage.useMutation({
-    onSuccess: (data) => {
-      setImageUrl(data.url);
-      setUploading(false);
-      toast.success(t('dashboard.uploadSuccess'));
-    },
-    onError: () => {
-      setUploading(false);
-      toast.error(t('dashboard.uploadError'));
-    },
-  });
-
-  const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !offer?.id) return;
-    setUploading(true);
-    const reader = new FileReader();
-    reader.onload = () => {
-      const base64 = (reader.result as string).split(",")[1];
-      uploadMutation.mutate({
-        offerId: offer.id,
-        imageData: base64,
-        fileName: file.name,
-        contentType: file.type,
-      });
-    };
-    reader.readAsDataURL(file);
-  }, [offer?.id]);
-
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!titleAr || !originalPrice || !offerPrice || !startDate || !endDate) {
       toast.error(t('dashboard.fillAllFields'));
       return;
     }
-    if (offer) {
-      updateMutation.mutate({
-        id: offer.id,
-        titleAr,
-        titleEn: titleEn || undefined,
-        descriptionAr: descriptionAr || undefined,
-        descriptionEn: descriptionEn || undefined,
-        offerType,
-        originalPrice,
-        offerPrice,
-        startDate: new Date(startDate).toISOString(),
-        endDate: new Date(endDate).toISOString(),
-        imageUrl: imageUrl || undefined,
-      });
-    } else {
-      createMutation.mutate({
-        restaurantId,
-        titleAr,
-        titleEn: titleEn || undefined,
-        descriptionAr: descriptionAr || undefined,
-        descriptionEn: descriptionEn || undefined,
-        offerType,
-        originalPrice,
-        offerPrice,
-        startDate: new Date(startDate).toISOString(),
-        endDate: new Date(endDate).toISOString(),
-        imageUrl: imageUrl || undefined,
-      });
+    try {
+      if (offer) {
+        await updateMutation.mutateAsync({
+          id: offer.id,
+          titleAr,
+          titleEn: titleEn || undefined,
+          descriptionAr: descriptionAr || undefined,
+          descriptionEn: descriptionEn || undefined,
+          offerType,
+          originalPrice,
+          offerPrice,
+          startDate: new Date(startDate).toISOString(),
+          endDate: new Date(endDate).toISOString(),
+          imageUrl: imageSource.imageUrl || undefined,
+        });
+        toast.success(t('dashboard.updateOfferSuccess'));
+      } else {
+        const created = await createMutation.mutateAsync({
+          restaurantId,
+          titleAr,
+          titleEn: titleEn || undefined,
+          descriptionAr: descriptionAr || undefined,
+          descriptionEn: descriptionEn || undefined,
+          offerType,
+          originalPrice,
+          offerPrice,
+          startDate: new Date(startDate).toISOString(),
+          endDate: new Date(endDate).toISOString(),
+        });
+        if (pendingImageFile && created.id) {
+          await uploadPendingOfferImage(created.id, pendingImageFile, (input) =>
+            uploadImageMutation.mutateAsync(input)
+          );
+        }
+        toast.success(t('dashboard.addOfferSuccess'));
+      }
+      await utils.offer.list.invalidate({ restaurantId });
+      onClose();
+    } catch {
+      toast.error(offer ? t('dashboard.updateOfferError') : t('dashboard.addOfferError'));
     }
   };
 
-  const isSubmitting = createMutation.isPending || updateMutation.isPending;
+  const isSubmitting =
+    createMutation.isPending || updateMutation.isPending || uploadImageMutation.isPending;
 
-  // Auto-set end date based on offer type
   useEffect(() => {
     if (!offer && startDate && offerType) {
       const start = new Date(startDate);
-      let end = new Date(start);
+      const end = new Date(start);
       if (offerType === "daily") end.setDate(end.getDate() + 1);
       else if (offerType === "weekly") end.setDate(end.getDate() + 7);
       else if (offerType === "monthly") end.setMonth(end.getMonth() + 1);
@@ -2648,13 +2639,21 @@ function OfferFormDialog({
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Offer Type */}
+          <OfferImageUpload
+            offerId={offer?.id}
+            value={imageSource}
+            onChange={setImageSource}
+            onPendingFile={setPendingImageFile}
+            disabled={isSubmitting}
+          />
+
           <div>
             <Label>{t('dashboard.offerType')}</Label>
             <div className="flex gap-2 mt-1">
               {(["daily", "weekly", "monthly"] as const).map((type) => (
                 <button
                   key={type}
+                  type="button"
                   onClick={() => setOfferType(type)}
                   className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium border transition-all ${
                     offerType === type
@@ -2668,7 +2667,6 @@ function OfferFormDialog({
             </div>
           </div>
 
-          {/* Title */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label>{t('dashboard.offerTitleAr')}</Label>
@@ -2680,13 +2678,11 @@ function OfferFormDialog({
             </div>
           </div>
 
-          {/* Description */}
           <div>
             <Label>{t('dashboard.offerDescriptionAr')}</Label>
             <Textarea value={descriptionAr} onChange={(e) => setDescriptionAr(e.target.value)} placeholder={t('dashboard.exampleDescription')} className="mt-1" rows={2} />
           </div>
 
-          {/* Prices */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label>{t('dashboard.originalPrice')}</Label>
@@ -2704,7 +2700,6 @@ function OfferFormDialog({
             </div>
           )}
 
-          {/* Dates */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label>{t('dashboard.startDate')}</Label>
@@ -2715,34 +2710,11 @@ function OfferFormDialog({
               <Input type="datetime-local" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="mt-1" />
             </div>
           </div>
-
-          {/* Image Upload (only for existing offers) */}
-          {offer && (
-            <div>
-              <Label>{t('dashboard.uploadOfferImage')}</Label>
-              <div className="mt-1 flex items-center gap-3">
-                {resolveImageUrl(imageUrl) ? (
-                  <img src={resolveImageUrl(imageUrl)} alt="" className="w-20 h-20 rounded-lg object-cover" />
-                ) : (
-                  <div className="w-20 h-20 rounded-lg bg-secondary flex items-center justify-center">
-                    <ImageIcon className="w-8 h-8 text-muted-foreground" />
-                  </div>
-                )}
-                <div>
-                  <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-                  <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-                    {uploading ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : <Upload className="w-4 h-4 ml-2" />}
-                    {uploading ? t('dashboard.uploading') : t('dashboard.uploadImage')}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>{t('dashboard.cancel')}</Button>
-          <Button onClick={handleSubmit} disabled={isSubmitting}>
+          <Button onClick={() => void handleSubmit()} disabled={isSubmitting}>
             {isSubmitting && <Loader2 className="w-4 h-4 animate-spin ml-2" />}
             {offer ? t('dashboard.updateOffer') : t('dashboard.addOffer')}
           </Button>
