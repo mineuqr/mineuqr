@@ -126,6 +126,28 @@ export class InMemoryOperationalDeviceStore implements OperationalDeviceStore {
     this.tokens.set(tokenId, { ...token, lastUsedAt });
   }
 
+  async findTokenByActivationCodeHash(hash: string): Promise<OperationalDeviceTokenRecord | null> {
+    return (
+      Array.from(this.tokens.values()).find((token) => token.activationCodeHash === hash) ?? null
+    );
+  }
+
+  async consumeActivationCode(tokenId: string): Promise<void> {
+    const token = this.tokens.get(tokenId);
+    if (!token) return;
+    this.tokens.set(tokenId, {
+      ...token,
+      activationCodeHash: null,
+      activationCodeExpiresAt: null,
+    });
+  }
+
+  async updateTokenSecret(tokenId: string, secretHash: string, now: string): Promise<void> {
+    const token = this.tokens.get(tokenId);
+    if (!token) return;
+    this.tokens.set(tokenId, { ...token, secretHash, lastUsedAt: now });
+  }
+
   async updateScreenPresentation(
     deviceId: string,
     input: {

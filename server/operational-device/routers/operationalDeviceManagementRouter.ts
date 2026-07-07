@@ -62,6 +62,7 @@ export const operationalDeviceManagementRouter = router({
         secret: result.token.secret,
         issuedAt: result.token.issuedAt,
       },
+      activationCode: result.token.activationCode,
       qrPayload: result.qrPayload,
     };
   }),
@@ -105,6 +106,7 @@ export const operationalDeviceManagementRouter = router({
         secret: token.secret,
         issuedAt: token.issuedAt,
       },
+      activationCode: token.activationCode,
       qrPayload: operationalDeviceComposition.registryService.buildQrPayload(device, token),
     };
   }),

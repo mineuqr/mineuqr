@@ -40,6 +40,8 @@ function mapToken(row: typeof operationalDeviceTokens.$inferSelect): Operational
     revokedAt: row.revokedAt ?? null,
     lastUsedAt: row.lastUsedAt ?? null,
     createdAt: row.createdAt,
+    activationCodeHash: row.activationCodeHash ?? null,
+    activationCodeExpiresAt: row.activationCodeExpiresAt ?? null,
   };
 }
 
@@ -140,6 +142,8 @@ export class DrizzleOperationalDeviceStore implements OperationalDeviceStore {
       revokedAt: record.revokedAt,
       lastUsedAt: record.lastUsedAt,
       createdAt: record.createdAt,
+      activationCodeHash: record.activationCodeHash,
+      activationCodeExpiresAt: record.activationCodeExpiresAt,
     });
   }
 
@@ -236,6 +240,39 @@ export class DrizzleOperationalDeviceStore implements OperationalDeviceStore {
     await db
       .update(operationalDeviceTokens)
       .set({ lastUsedAt })
+      .where(eq(operationalDeviceTokens.tokenId, tokenId));
+  }
+
+  async findTokenByActivationCodeHash(hash: string): Promise<OperationalDeviceTokenRecord | null> {
+    const db = await getDb();
+    if (!db) return null;
+
+    const [row] = await db
+      .select()
+      .from(operationalDeviceTokens)
+      .where(eq(operationalDeviceTokens.activationCodeHash, hash))
+      .limit(1);
+
+    return row ? mapToken(row) : null;
+  }
+
+  async consumeActivationCode(tokenId: string): Promise<void> {
+    const db = await getDb();
+    if (!db) return;
+
+    await db
+      .update(operationalDeviceTokens)
+      .set({ activationCodeHash: null, activationCodeExpiresAt: null })
+      .where(eq(operationalDeviceTokens.tokenId, tokenId));
+  }
+
+  async updateTokenSecret(tokenId: string, secretHash: string, now: string): Promise<void> {
+    const db = await getDb();
+    if (!db) return;
+
+    await db
+      .update(operationalDeviceTokens)
+      .set({ secretHash, lastUsedAt: now })
       .where(eq(operationalDeviceTokens.tokenId, tokenId));
   }
 

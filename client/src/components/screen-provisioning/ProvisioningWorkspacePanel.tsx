@@ -2,7 +2,8 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { VerificationRequiredPanel } from "@/components/auth/VerificationRequiredPanel";
 import { OperationalWorkspaceShell } from "@/components/operational-workspace/OperationalWorkspaceShell";
 import { OperationsBar } from "@/components/operational-workspace/OperationsBar";
-import { ProvisioningCredentialsPanel } from "@/components/screen-provisioning/ProvisioningCredentialsPanel";
+import { ProvisioningActivationPanel } from "@/components/screen-provisioning/ProvisioningActivationPanel";
+import { ProvisioningPendingDevicePanel } from "@/components/screen-provisioning/ProvisioningPendingDevicePanel";
 import { ProvisioningStatusPanel } from "@/components/screen-provisioning/ProvisioningStatusPanel";
 import { DeviceOperationalStatusPanel } from "@/components/screen-provisioning/DeviceOperationalStatusPanel";
 import { RestaurantSectionError } from "@/components/dashboard/RestaurantSectionStates";
@@ -102,8 +103,16 @@ export function ProvisioningWorkspacePanel({
   const [role, setRole] = useState("kitchen_display");
   const [branchId, setBranchId] = useState("");
   const [rotateConfirmationDeviceId, setRotateConfirmationDeviceId] = useState<string | null>(null);
+  const [operatorApproved, setOperatorApproved] = useState(false);
 
   const utils = trpc.useUtils();
+
+  const disableMutation = trpc.operationalDevice.management.disable.useMutation({
+    onSuccess: () => {
+      void utils.operationalDevice.fleet.queryScreens.invalidate();
+      cancel();
+    },
+  });
 
   const createMutation = trpc.operationalDevice.management.create.useMutation({
     onSuccess: (result) => {
@@ -111,6 +120,7 @@ export function ProvisioningWorkspacePanel({
         deviceId: result.device.deviceId,
         tokenId: result.token.tokenId,
         secret: result.token.secret,
+        activationCode: result.activationCode,
         qrPayload: result.qrPayload as Record<string, unknown>,
       };
       const next = provisioningSessionManager.createSession({
@@ -136,6 +146,7 @@ export function ProvisioningWorkspacePanel({
         deviceId: result.qrPayload.deviceId as string,
         tokenId: result.token.tokenId,
         secret: result.token.secret,
+        activationCode: result.activationCode,
         qrPayload: result.qrPayload as Record<string, unknown>,
       };
       const existing = session ?? provisioningSessionManager.loadSession(urlState.sessionId ?? "");
@@ -147,6 +158,7 @@ export function ProvisioningWorkspacePanel({
         credentials,
       });
       setSessionState(next);
+      setOperatorApproved(false);
       setRotateConfirmationDeviceId(null);
       navigateToProvisioning(
         { restaurantId, sessionId: next.sessionId, mode: "rotate" },
@@ -168,6 +180,7 @@ export function ProvisioningWorkspacePanel({
 
   useEffect(() => {
     setRotateConfirmationDeviceId(null);
+    setOperatorApproved(false);
   }, [urlState.deviceId, urlState.mode]);
 
   useEffect(() => {
@@ -203,6 +216,18 @@ export function ProvisioningWorkspacePanel({
   const isOperational = health?.status === "operational";
   const isStatusMode = urlState.mode === "status";
 
+  const showPendingApproval =
+    !isStatusMode &&
+    session != null &&
+    session.credentials != null &&
+    !operatorApproved &&
+    (health?.status === "pairing" || health?.status === "connected");
+
+  const showActivationPanel =
+    !isStatusMode &&
+    Boolean(session?.credentials?.activationCode) &&
+    !showPendingApproval;
+
   return (
     <OperationalWorkspaceShell
       title={
@@ -220,8 +245,8 @@ export function ProvisioningWorkspacePanel({
             ? "عرض حالة الجهاز من الخادم — للقراءة فقط"
             : "Server-sourced device status — read only"
           : isAr
-            ? "دورة حياة التجهيز — الاعتماد، الربط، التفعيل"
-            : "Provisioning lifecycle — credentials, pairing, activation"
+            ? "دورة حياة التجهيز — الرابط، رمز التفعيل، الربط"
+            : "Provisioning lifecycle — device URL, activation code, pairing"
       }
       headerAside={
         <div className="flex gap-2">
@@ -394,10 +419,27 @@ export function ProvisioningWorkspacePanel({
         </div>
       ) : null}
 
-      {!isStatusMode && session?.credentials ? (
-        <div className="mt-6">
-          <ProvisioningCredentialsPanel credentials={session.credentials} language={language} />
-        </div>
+      {!isStatusMode && showPendingApproval && session ? (
+        <ProvisioningPendingDevicePanel
+          session={session}
+          language={language}
+          pending={disableMutation.isPending}
+          onApprove={() => setOperatorApproved(true)}
+          onReject={() => {
+            if (session.deviceId) {
+              disableMutation.mutate({ restaurantId, deviceId: session.deviceId });
+            }
+          }}
+        />
+      ) : null}
+
+      {!isStatusMode && showActivationPanel && session?.credentials && health ? (
+        <ProvisioningActivationPanel
+          activationCode={session.credentials.activationCode}
+          credentials={session.credentials}
+          health={health}
+          language={language}
+        />
       ) : null}
 
       {!isStatusMode && createMutation.error ? (

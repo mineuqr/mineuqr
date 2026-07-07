@@ -36,6 +36,7 @@ export type ProvisioningQrPayload = {
   deviceId: string;
   tokenId: string;
   secret: string;
+  activationCode: string;
   qrPayload: Record<string, unknown>;
 };
 

@@ -17,6 +17,10 @@ const authenticateInput = z.object({
   secret: z.string().min(16).max(256),
 });
 
+const authenticateByActivationCodeInput = z.object({
+  activationCode: z.string().min(8).max(16),
+});
+
 const heartbeatInput = z.object({
   reportedVersion: z.string().max(64).optional(),
 });
@@ -39,6 +43,21 @@ export const operationalDeviceRuntimeRouter = router({
       session: result.session,
     };
   }),
+
+  authenticateByActivationCode: publicProcedure
+    .input(authenticateByActivationCodeInput)
+    .mutation(async ({ input }) => {
+      const result = await operationalDeviceComposition.authService.authenticateByActivationCode(
+        input.activationCode
+      );
+      if (!result.ok) {
+        throw new TRPCError({ code: "UNAUTHORIZED", message: result.code });
+      }
+      return {
+        session: result.session,
+        bootstrapCredentials: result.bootstrapCredentials ?? null,
+      };
+    }),
 
   heartbeat: deviceProcedure.input(heartbeatInput).mutation(async ({ input, ctx }) => {
     const health = await operationalDeviceComposition.heartbeatService.recordHeartbeat({

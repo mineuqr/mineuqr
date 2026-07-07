@@ -65,7 +65,7 @@ export function PairingShell() {
           <QrCode className="mx-auto mb-4 h-12 w-12 text-primary" />
           <h1 className="text-2xl font-semibold">Pair Operational Screen</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Scan or paste the provisioning code from Screen Management
+            Enter the activation code from Screen Management, or optionally paste a QR JSON payload.
           </p>
         </div>
 

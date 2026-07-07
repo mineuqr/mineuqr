@@ -45,6 +45,7 @@ import Profile from "./pages/Profile";
 import Notifications from "./pages/Notifications";
 import CommercialDiagnostics from "./pages/CommercialDiagnostics";
 import OperationalScreenEntry from "./pages/screen/OperationalScreenEntry";
+import DeviceActivationPage from "./pages/device/DeviceActivationPage";
 import OperationalScreenPair from "./pages/screen/OperationalScreenPair";
 import OperationalScreenRun from "./pages/screen/OperationalScreenRun";
 import { useLanguage } from "./contexts/LanguageContext";
@@ -60,6 +61,7 @@ function Router() {
     <Suspense fallback={<RouteTransitionFallback />}>
       <Switch>
         <Route path="/" component={Home} />
+        <Route path="/device" component={DeviceActivationPage} />
         <Route path="/screen/pair" component={OperationalScreenPair} />
         <Route path="/screen/run" component={OperationalScreenRun} />
         <Route path="/screen" component={OperationalScreenEntry} />

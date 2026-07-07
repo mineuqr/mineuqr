@@ -22,3 +22,27 @@ export function generateDeviceId(): string {
 export function generateDeviceTokenId(): string {
   return `tok_${randomBytes(12).toString("base64url")}`;
 }
+
+/** DEVICE-PROVISIONING-UX-2 — short human-enterable activation code (XXXX-XXXX). */
+export function generateActivationCode(): string {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let raw = "";
+  const bytes = randomBytes(8);
+  for (let i = 0; i < 8; i++) {
+    raw += alphabet[bytes[i]! % alphabet.length];
+  }
+  return `${raw.slice(0, 4)}-${raw.slice(4, 8)}`;
+}
+
+export function normalizeActivationCode(code: string): string {
+  return code.replace(/[\s-]/g, "").trim().toUpperCase();
+}
+
+export function hashActivationCode(code: string): string {
+  return createHash("sha256").update(normalizeActivationCode(code)).digest("hex");
+}
+
+export function isValidActivationCodeFormat(code: string): boolean {
+  const normalized = normalizeActivationCode(code);
+  return /^[A-Z2-9]{8}$/.test(normalized);
+}

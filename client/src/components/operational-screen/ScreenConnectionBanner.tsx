@@ -10,7 +10,7 @@ const OPERATIONAL_LABELS: Record<string, { en: string; ar: string }> = {
   degraded: { en: "Connection degraded — showing last known data", ar: "اتصال ضعيف — يتم استخدام آخر بيانات متاحة" },
   maintenance: { en: "Maintenance mode", ar: "وضع الصيانة" },
   disconnected: { en: "Connection degraded — showing last known data", ar: "اتصال ضعيف — يتم استخدام آخر بيانات متاحة" },
-  disposed: { en: "Screen unlinked — scan a new QR code", ar: "تم إلغاء ربط الشاشة — امسح رمز QR جديد" },
+  disposed: { en: "Screen unlinked — enter a new activation code from Screen Management", ar: "تم إلغاء ربط الشاشة — أدخل رمز تفعيل جديد من إدارة الشاشات" },
 };
 
 /** Connection banner — consumes canonical screen state only. */

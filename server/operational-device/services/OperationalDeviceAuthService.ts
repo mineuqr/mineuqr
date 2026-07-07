@@ -1,16 +1,17 @@
 import type {
   DeviceAuthenticateResult,
+  DeviceCredentialInput,
   OperationalDeviceSession,
 } from "../domain/deviceContracts";
 import type { DeviceAuthFailureCode } from "../domain/deviceAuthCodes";
 import type { OperationalDeviceStore } from "../infrastructure/OperationalDeviceStore";
-import { verifyDeviceSecret } from "../infrastructure/deviceCrypto";
-
-export type DeviceCredentialInput = {
-  deviceId: string;
-  tokenId: string;
-  secret: string;
-};
+import {
+  generateDeviceSecret,
+  hashActivationCode,
+  hashDeviceSecret,
+  isValidActivationCodeFormat,
+  verifyDeviceSecret,
+} from "../infrastructure/deviceCrypto";
 
 type CredentialOutcome =
   | { ok: true; session: OperationalDeviceSession }
@@ -47,6 +48,63 @@ export class OperationalDeviceAuthService {
     return outcome.ok ? outcome.session : null;
   }
 
+  async authenticateByActivationCode(
+    activationCode: string
+  ): Promise<DeviceAuthenticateResult> {
+    if (!isValidActivationCodeFormat(activationCode)) {
+      return { ok: false, code: "activation_code_invalid" };
+    }
+
+    const hash = hashActivationCode(activationCode);
+    const token = await this.store.findTokenByActivationCodeHash(hash);
+    if (!token) {
+      return { ok: false, code: "activation_code_invalid" };
+    }
+    if (token.activationCodeHash == null) {
+      return { ok: false, code: "activation_code_used" };
+    }
+    if (
+      token.activationCodeExpiresAt != null &&
+      Date.parse(token.activationCodeExpiresAt) <= this.now()
+    ) {
+      return { ok: false, code: "activation_code_expired" };
+    }
+    if (token.status !== "active" || token.revokedAt != null) {
+      return { ok: false, code: "token_revoked" };
+    }
+
+    const device = await this.store.getDevice(token.deviceId);
+    if (!device) {
+      return { ok: false, code: "activation_code_invalid" };
+    }
+    if (device.status !== "active") {
+      return { ok: false, code: "device_disabled" };
+    }
+
+    const bootstrapSecret = generateDeviceSecret();
+    const nowIso = new Date(this.now()).toISOString();
+    await this.store.updateTokenSecret(token.tokenId, hashDeviceSecret(bootstrapSecret), nowIso);
+    await this.store.consumeActivationCode(token.tokenId);
+    await this.store.touchTokenUsage(token.tokenId, nowIso);
+
+    return {
+      ok: true,
+      session: {
+        deviceId: device.deviceId,
+        tokenId: token.tokenId,
+        restaurantId: device.restaurantId,
+        branchId: device.branchId,
+        role: device.role,
+        displayName: device.displayName,
+      },
+      bootstrapCredentials: {
+        deviceId: device.deviceId,
+        tokenId: token.tokenId,
+        secret: bootstrapSecret,
+      },
+    };
+  }
+
   async resolveCredentialOutcome(input: DeviceCredentialInput): Promise<CredentialOutcome> {
     const device = await this.store.getDevice(input.deviceId);
     if (!device) {
@@ -72,6 +130,7 @@ export class OperationalDeviceAuthService {
 
     const nowIso = new Date(this.now()).toISOString();
     await this.store.touchTokenUsage(token.tokenId, nowIso);
+    await this.store.consumeActivationCode(token.tokenId);
 
     return {
       ok: true,

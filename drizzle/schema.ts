@@ -840,10 +840,13 @@ export const operationalDeviceTokens = mysqlTable("operational_device_tokens", {
 	revokedAt: timestamp({ mode: "string" }),
 	lastUsedAt: timestamp({ mode: "string" }),
 	createdAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+	activationCodeHash: varchar({ length: 64 }),
+	activationCodeExpiresAt: timestamp({ mode: "string" }),
 },
 (table) => [
 	primaryKey({ columns: [table.tokenId] }),
 	index("operational_device_tokens_device_status").on(table.deviceId, table.status),
+	index("operational_device_tokens_activation_code_hash").on(table.activationCodeHash),
 ]);
 
 export type InsertOrderDomainOutbox = typeof orderDomainOutbox.$inferInsert;

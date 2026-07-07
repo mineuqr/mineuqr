@@ -10,11 +10,16 @@ import type { UpdateScreenSettingsInput } from "../domain/screenConfig";
 import { mergeScreenConfig } from "../domain/screenConfig";
 import type { OperationalDeviceStore } from "../infrastructure/OperationalDeviceStore";
 import {
+  generateActivationCode,
   generateDeviceId,
   generateDeviceSecret,
   generateDeviceTokenId,
+  hashActivationCode,
   hashDeviceSecret,
 } from "../infrastructure/deviceCrypto";
+
+/** Provisioning session timeout — activation codes expire with the operator session window. */
+export const PROVISIONING_ACTIVATION_CODE_TTL_MS = 30 * 60 * 1000;
 
 export type CreateDeviceResult = {
   device: OperationalDeviceRecord;
@@ -142,6 +147,10 @@ export class OperationalDeviceRegistryService {
     const secret = generateDeviceSecret();
     const tokenId = generateDeviceTokenId();
     const issuedAt = new Date(this.now()).toISOString();
+    const activationCode = generateActivationCode();
+    const activationCodeExpiresAt = new Date(
+      this.now() + PROVISIONING_ACTIVATION_CODE_TTL_MS
+    ).toISOString();
     await this.store.saveToken({
       tokenId,
       deviceId,
@@ -152,7 +161,9 @@ export class OperationalDeviceRegistryService {
       revokedAt: null,
       lastUsedAt: null,
       createdAt: issuedAt,
+      activationCodeHash: hashActivationCode(activationCode),
+      activationCodeExpiresAt,
     });
-    return { tokenId, secret, deviceId, issuedAt, expiresAt: null };
+    return { tokenId, secret, deviceId, issuedAt, expiresAt: null, activationCode };
   }
 }

@@ -40,6 +40,7 @@ function baseSession(overrides: Partial<ProvisioningSession> = {}): Provisioning
       deviceId: "device-1",
       tokenId: "token-1",
       secret: "secret",
+      activationCode: "ABCD-EFGH",
       qrPayload: { mineuqr: "operational-screen-pairing", v: 2 },
     },
     warnings: [],
@@ -126,6 +127,7 @@ describe("ProvisioningSessionManager", () => {
         deviceId: "d1",
         tokenId: "t1",
         secret: "s",
+        activationCode: "WXYZ-1234",
         qrPayload: {},
       },
     });

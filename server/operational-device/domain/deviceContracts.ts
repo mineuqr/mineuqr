@@ -31,6 +31,8 @@ export type OperationalDeviceTokenRecord = {
   revokedAt: string | null;
   lastUsedAt: string | null;
   createdAt: string;
+  activationCodeHash: string | null;
+  activationCodeExpiresAt: string | null;
 };
 
 export type OperationalDeviceSession = {
@@ -55,6 +57,8 @@ export type IssuedOperationalDeviceToken = {
   deviceId: string;
   issuedAt: string;
   expiresAt: string | null;
+  /** Plaintext activation code — shown once to operator. */
+  activationCode: string;
 };
 
 export type OperationalDeviceListItem = OperationalDeviceRecord & {
@@ -89,6 +93,22 @@ export type OperationalScreenPairingPayload = {
 export { DEFAULT_SCREEN_CONFIG };
 export type { OperationalScreenConfig, UpdateScreenSettingsInput } from "./screenConfig";
 
+export type DeviceCredentialInput = {
+  deviceId: string;
+  tokenId: string;
+  secret: string;
+};
+
 export type DeviceAuthenticateResult =
-  | { ok: true; session: OperationalDeviceSession }
-  | { ok: false; code: "invalid_credentials" | "device_disabled" | "token_revoked" | "token_expired" };
+  | { ok: true; session: OperationalDeviceSession; bootstrapCredentials?: DeviceCredentialInput }
+  | {
+      ok: false;
+      code:
+        | "invalid_credentials"
+        | "device_disabled"
+        | "token_revoked"
+        | "token_expired"
+        | "activation_code_invalid"
+        | "activation_code_expired"
+        | "activation_code_used";
+    };

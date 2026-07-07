@@ -24,6 +24,29 @@ describe("OperationalDeviceAuthService", () => {
     expect(session?.role).toBe("kitchen_display");
   });
 
+  it("authenticates by activation code and issues bootstrap credentials", async () => {
+    const store = new InMemoryOperationalDeviceStore();
+    const registry = new OperationalDeviceRegistryService(store, () => 1_700_000_000_000);
+    const auth = new OperationalDeviceAuthService(store, () => 1_700_000_000_000);
+
+    const created = await registry.createDevice({
+      restaurantId: 10,
+      role: "kitchen_display",
+      displayName: "Kitchen 1",
+    });
+
+    const result = await auth.authenticateByActivationCode(created.token.activationCode);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.bootstrapCredentials?.deviceId).toBe(created.device.deviceId);
+
+    const reused = await auth.authenticateByActivationCode(created.token.activationCode);
+    expect(reused.ok).toBe(false);
+    if (!reused.ok) {
+      expect(["activation_code_used", "activation_code_invalid"]).toContain(reused.code);
+    }
+  });
+
   it("rejects revoked token after rotation", async () => {
     const store = new InMemoryOperationalDeviceStore();
     const registry = new OperationalDeviceRegistryService(store, () => 1_700_000_000_000);
