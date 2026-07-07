@@ -636,6 +636,7 @@
     "title": "منيو",
     "tabMenu": "القائمة",
     "tabOffers": "العروض",
+    "offersTabAria": "العروض، {count} عروض نشطة",
     "browseTabs": "تصفح القائمة والعروض",
     "allCategories": "جميع الفئات",
     "offers": "العروض",

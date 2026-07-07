@@ -1013,6 +1013,7 @@ function MenuBrowseArea({
         onTabChange={setMenuTab}
         accentColor={accentColor}
         textColor={textColor}
+        offerCount={offers.length}
       />
       {showOffers ? (
         <OffersTabPanel
