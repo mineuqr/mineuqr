@@ -2,15 +2,16 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Store, Phone, MapPin, Search, X, ChevronUp, ChevronDown,
-  UtensilsCrossed, AlertCircle, Sparkles, Crown, Star, Tag, Calendar, Clock, Flame, MessageCircle, AlertTriangle, Info, LayoutGrid, List
+  UtensilsCrossed, AlertCircle, Sparkles, Crown, Star, Tag, Calendar, Clock, MessageCircle, AlertTriangle, Info, LayoutGrid, List
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import AddToCartButton from "@/components/AddToCartButton";
 import { resolveImageUrl } from "@/lib/utils";
-import { resolveOfferImageUrl } from "@/lib/offers/offerImage";
-import { OfferImagePlaceholder } from "@/components/offers/OfferImagePlaceholder";
 import { getOpenStatusFromRestaurant, todayYmd } from "@/lib/restaurantHours";
+import { MenuOffersTabBar } from "@/components/menu/MenuOffersTabBar";
+import { OffersTabPanel } from "@/components/menu/OffersTabPanel";
+import type { MenuBrowseTab } from "@/components/menu/types";
 
 // Template configuration
 export const TEMPLATES = [
@@ -101,7 +102,11 @@ interface TemplateProps {
   customFonts?: CustomFonts | null;
   offers?: any[];
   tableNumber?: number;
+  menuTab: MenuBrowseTab;
+  setMenuTab: (tab: MenuBrowseTab) => void;
 }
+
+export type { MenuBrowseTab };
 
 /** Merge custom colors with template defaults */
 function useColors(templateDefaults: { bg1: string; bg2: string; accent: string; card: string; textColor: string }, custom?: CustomColors | null) {
@@ -153,7 +158,7 @@ function useFontStyles(customFonts?: CustomFonts | null) {
 // 1. CLASSIC TEMPLATE (Default - Free)
 // ============================================
 export function ClassicTemplate(props: TemplateProps) {
-  const { restaurant, categories, filteredItems, activeCategoryId, setActiveCategoryId, searchQuery, setSearchQuery, showScrollTop, customColors, customFonts, offers, tableNumber } = props;
+  const { restaurant, categories, filteredItems, activeCategoryId, setActiveCategoryId, searchQuery, setSearchQuery, showScrollTop, customColors, customFonts, offers, tableNumber, menuTab, setMenuTab } = props;
   const c = useColors({ bg1: "#0a1628", bg2: "#0d2137", accent: "#14b8a6", card: "#142840", textColor: "#ffffff" }, customColors);
   const fs = useFontStyles(customFonts);
   const cs = restaurant?.currencySymbol || 'ر.س';
@@ -162,20 +167,25 @@ export function ClassicTemplate(props: TemplateProps) {
     <div className="min-h-screen relative" style={{ background: `linear-gradient(135deg, ${c.bg1} 0%, ${c.bg2} 100%)` }}>
       {c.backgroundPattern !== "none" && <PatternOverlay patternId={c.backgroundPattern} accentColor={c.accent} />}
       <TemplateHeader restaurant={restaurant} accentColor={c.accent} textColor={c.textColor} />
-      <SearchAndCategories
+      <MenuBrowseArea
+        menuTab={menuTab}
+        setMenuTab={setMenuTab}
+        offers={offers || []}
         categories={categories}
         activeCategoryId={activeCategoryId}
         setActiveCategoryId={setActiveCategoryId}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
+        filteredItems={filteredItems}
         accentColor={c.accent}
-        bgStyle={`${c.bg1}d9`}
         textColor={c.textColor}
+        searchBgStyle={`${c.bg1}d9`}
+        cardBg={`${c.card}99`}
+        cardStyle="border border-white/10"
+        currencySymbol={cs}
+        fontStyles={fs}
+        tableNumber={tableNumber}
       />
-      <OffersSection offers={offers || []} accentColor={c.accent} textColor={c.textColor} cardBg={`${c.card}99`} currencySymbol={cs} fontStyles={fs} tableNumber={tableNumber} />
-      <main className="container py-6">
-        <ItemsGrid items={filteredItems} searchQuery={searchQuery} accentColor={c.accent} cardStyle={`border border-white/10`} cardBg={`${c.card}99`} textColor={c.textColor} currencySymbol={cs} fontStyles={fs} tableNumber={tableNumber} />
-      </main>
       <TemplateFooter accentColor={c.accent} textColor={c.textColor} />
       <ScrollTopButton show={showScrollTop} accentColor={c.accent} />
     </div>
@@ -186,7 +196,7 @@ export function ClassicTemplate(props: TemplateProps) {
 // 2. ELEGANT TEMPLATE (Premium)
 // ============================================
 export function ElegantTemplate(props: TemplateProps) {
-  const { restaurant, categories, filteredItems, activeCategoryId, setActiveCategoryId, searchQuery, setSearchQuery, showScrollTop, customColors, customFonts, offers, tableNumber } = props;
+  const { restaurant, categories, filteredItems, activeCategoryId, setActiveCategoryId, searchQuery, setSearchQuery, showScrollTop, customColors, customFonts, offers, tableNumber, menuTab, setMenuTab } = props;
   const c = useColors({ bg1: "#1a1a2e", bg2: "#16213e", accent: "#d4a853", card: "#1e1e32", textColor: "#ffffff" }, customColors);
   const fs = useFontStyles(customFonts);
   const cs = restaurant?.currencySymbol || 'ر.س';
@@ -199,21 +209,27 @@ export function ElegantTemplate(props: TemplateProps) {
         <div className="absolute bottom-0 left-0 w-full h-px" style={{ background: `linear-gradient(to right, transparent, ${c.accent}4d, transparent)` }} />
       </div>
       <TemplateHeader restaurant={restaurant} accentColor={c.accent} textColor={c.textColor} titleExtra={<Crown className="w-5 h-5 inline-block mr-2" style={{ color: c.accent }} />} />
-      <SearchAndCategories
+      <MenuBrowseArea
+        menuTab={menuTab}
+        setMenuTab={setMenuTab}
+        offers={offers || []}
         categories={categories}
         activeCategoryId={activeCategoryId}
         setActiveCategoryId={setActiveCategoryId}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
+        filteredItems={filteredItems}
         accentColor={c.accent}
-        bgStyle={`${c.bg1}e6`}
         textColor={c.textColor}
+        searchBgStyle={`${c.bg1}e6`}
+        cardBg={`${c.card}b3`}
+        cardStyle="border border-white/10"
+        currencySymbol={cs}
+        fontStyles={fs}
+        tableNumber={tableNumber}
         pillStyle={`border border-[${c.accent}]/30`}
+        pricePrefix=""
       />
-      <OffersSection offers={offers || []} accentColor={c.accent} textColor={c.textColor} cardBg={`${c.card}b3`} currencySymbol={cs} fontStyles={fs} tableNumber={tableNumber} />
-      <main className="container py-6">
-        <ItemsGrid items={filteredItems} searchQuery={searchQuery} accentColor={c.accent} cardStyle={`border border-white/10`} cardBg={`${c.card}b3`} textColor={c.textColor} pricePrefix="" currencySymbol={cs} fontStyles={fs} tableNumber={tableNumber} />
-      </main>
       <TemplateFooter accentColor={c.accent} textColor={c.textColor} />
       <ScrollTopButton show={showScrollTop} accentColor={c.accent} />
     </div>
@@ -224,7 +240,7 @@ export function ElegantTemplate(props: TemplateProps) {
 // 3. MODERN TEMPLATE (Premium)
 // ============================================
 export function ModernTemplate(props: TemplateProps) {
-  const { restaurant, categories, filteredItems, activeCategoryId, setActiveCategoryId, searchQuery, setSearchQuery, showScrollTop, customColors, customFonts, offers, tableNumber } = props;
+  const { restaurant, categories, filteredItems, activeCategoryId, setActiveCategoryId, searchQuery, setSearchQuery, showScrollTop, customColors, customFonts, offers, tableNumber, menuTab, setMenuTab } = props;
   const c = useColors({ bg1: "#667eea", bg2: "#764ba2", accent: "#f093fb", card: "#ffffff", textColor: "#ffffff" }, customColors);
   const fs = useFontStyles(customFonts);
   const cs = restaurant?.currencySymbol || 'ر.س';
@@ -237,20 +253,25 @@ export function ModernTemplate(props: TemplateProps) {
         <div className="absolute bottom-20 left-20 w-96 h-96 rounded-full blur-3xl" style={{ background: `${c.bg1}1a` }} />
       </div>
       <TemplateHeader restaurant={restaurant} accentColor={c.accent} textColor={c.textColor} />
-      <SearchAndCategories
+      <MenuBrowseArea
+        menuTab={menuTab}
+        setMenuTab={setMenuTab}
+        offers={offers || []}
         categories={categories}
         activeCategoryId={activeCategoryId}
         setActiveCategoryId={setActiveCategoryId}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
+        filteredItems={filteredItems}
         accentColor={c.accent}
-        bgStyle={`${c.bg1}d9`}
         textColor={c.textColor}
+        searchBgStyle={`${c.bg1}d9`}
+        cardBg={`${c.card}26`}
+        cardStyle="backdrop-blur-md border border-white/20"
+        currencySymbol={cs}
+        fontStyles={fs}
+        tableNumber={tableNumber}
       />
-      <OffersSection offers={offers || []} accentColor={c.accent} textColor={c.textColor} cardBg={`${c.card}26`} currencySymbol={cs} fontStyles={fs} tableNumber={tableNumber} />
-      <main className="container py-6">
-        <ItemsGrid items={filteredItems} searchQuery={searchQuery} accentColor={c.accent} cardStyle="backdrop-blur-md border border-white/20" cardBg={`${c.card}26`} textColor={c.textColor} currencySymbol={cs} fontStyles={fs} tableNumber={tableNumber} />
-      </main>
       <TemplateFooter accentColor={c.accent} textColor={c.textColor} />
       <ScrollTopButton show={showScrollTop} accentColor={c.accent} />
     </div>
@@ -261,7 +282,7 @@ export function ModernTemplate(props: TemplateProps) {
 // 4. DARK TEMPLATE (Premium)
 // ============================================
 export function DarkTemplate(props: TemplateProps) {
-  const { restaurant, categories, filteredItems, activeCategoryId, setActiveCategoryId, searchQuery, setSearchQuery, showScrollTop, customColors, customFonts, offers, tableNumber } = props;
+  const { restaurant, categories, filteredItems, activeCategoryId, setActiveCategoryId, searchQuery, setSearchQuery, showScrollTop, customColors, customFonts, offers, tableNumber, menuTab, setMenuTab } = props;
   const c = useColors({ bg1: "#0f0f0f", bg2: "#1a1a1a", accent: "#ef4444", card: "#282828", textColor: "#ffffff" }, customColors);
   const fs = useFontStyles(customFonts);
   const cs = restaurant?.currencySymbol || 'ر.س';
@@ -270,20 +291,25 @@ export function DarkTemplate(props: TemplateProps) {
     <div className="min-h-screen relative" style={{ background: `linear-gradient(135deg, ${c.bg1} 0%, ${c.bg2} 100%)` }}>
       {c.backgroundPattern !== "none" && <PatternOverlay patternId={c.backgroundPattern} accentColor={c.accent} />}
       <TemplateHeader restaurant={restaurant} accentColor={c.accent} textColor={c.textColor} />
-      <SearchAndCategories
+      <MenuBrowseArea
+        menuTab={menuTab}
+        setMenuTab={setMenuTab}
+        offers={offers || []}
         categories={categories}
         activeCategoryId={activeCategoryId}
         setActiveCategoryId={setActiveCategoryId}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
+        filteredItems={filteredItems}
         accentColor={c.accent}
-        bgStyle={`${c.bg1}f2`}
         textColor={c.textColor}
+        searchBgStyle={`${c.bg1}f2`}
+        cardBg={`${c.card}cc`}
+        cardStyle="border border-white/5 transition-colors"
+        currencySymbol={cs}
+        fontStyles={fs}
+        tableNumber={tableNumber}
       />
-      <OffersSection offers={offers || []} accentColor={c.accent} textColor={c.textColor} cardBg={`${c.card}cc`} currencySymbol={cs} fontStyles={fs} tableNumber={tableNumber} />
-      <main className="container py-6">
-        <ItemsGrid items={filteredItems} searchQuery={searchQuery} accentColor={c.accent} cardStyle="border border-white/5 transition-colors" cardBg={`${c.card}cc`} textColor={c.textColor} currencySymbol={cs} fontStyles={fs} tableNumber={tableNumber} />
-      </main>
       <TemplateFooter accentColor={c.accent} textColor={c.textColor} />
       <ScrollTopButton show={showScrollTop} accentColor={c.accent} />
     </div>
@@ -294,7 +320,7 @@ export function DarkTemplate(props: TemplateProps) {
 // 5. WARM TEMPLATE (Premium)
 // ============================================
 export function WarmTemplate(props: TemplateProps) {
-  const { restaurant, categories, filteredItems, activeCategoryId, setActiveCategoryId, searchQuery, setSearchQuery, showScrollTop, customColors, customFonts, offers, tableNumber } = props;
+  const { restaurant, categories, filteredItems, activeCategoryId, setActiveCategoryId, searchQuery, setSearchQuery, showScrollTop, customColors, customFonts, offers, tableNumber, menuTab, setMenuTab } = props;
   const c = useColors({ bg1: "#2d1810", bg2: "#3d2418", accent: "#f97316", card: "#3c1e0f", textColor: "#ffffff" }, customColors);
   const fs = useFontStyles(customFonts);
   const cs = restaurant?.currencySymbol || 'ر.س';
@@ -306,20 +332,25 @@ export function WarmTemplate(props: TemplateProps) {
         <div className="absolute top-0 left-0 w-full h-64" style={{ background: `linear-gradient(to bottom, ${c.accent}0d, transparent)` }} />
       </div>
       <TemplateHeader restaurant={restaurant} accentColor={c.accent} textColor={c.textColor} />
-      <SearchAndCategories
+      <MenuBrowseArea
+        menuTab={menuTab}
+        setMenuTab={setMenuTab}
+        offers={offers || []}
         categories={categories}
         activeCategoryId={activeCategoryId}
         setActiveCategoryId={setActiveCategoryId}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
+        filteredItems={filteredItems}
         accentColor={c.accent}
-        bgStyle={`${c.bg1}e6`}
         textColor={c.textColor}
+        searchBgStyle={`${c.bg1}e6`}
+        cardBg={`${c.card}b3`}
+        cardStyle="border border-white/10"
+        currencySymbol={cs}
+        fontStyles={fs}
+        tableNumber={tableNumber}
       />
-      <OffersSection offers={offers || []} accentColor={c.accent} textColor={c.textColor} cardBg={`${c.card}b3`} currencySymbol={cs} fontStyles={fs} tableNumber={tableNumber} />
-      <main className="container py-6">
-        <ItemsGrid items={filteredItems} searchQuery={searchQuery} accentColor={c.accent} cardStyle={`border border-white/10`} cardBg={`${c.card}b3`} textColor={c.textColor} currencySymbol={cs} fontStyles={fs} tableNumber={tableNumber} />
-      </main>
       <TemplateFooter accentColor={c.accent} textColor={c.textColor} />
       <ScrollTopButton show={showScrollTop} accentColor={c.accent} />
     </div>
@@ -330,7 +361,7 @@ export function WarmTemplate(props: TemplateProps) {
 // 6. OCEAN TEMPLATE (Premium)
 // ============================================
 export function OceanTemplate(props: TemplateProps) {
-  const { restaurant, categories, filteredItems, activeCategoryId, setActiveCategoryId, searchQuery, setSearchQuery, showScrollTop, customColors, customFonts, offers, tableNumber } = props;
+  const { restaurant, categories, filteredItems, activeCategoryId, setActiveCategoryId, searchQuery, setSearchQuery, showScrollTop, customColors, customFonts, offers, tableNumber, menuTab, setMenuTab } = props;
   const c = useColors({ bg1: "#0c2340", bg2: "#0a3d62", accent: "#00d2ff", card: "#0a3250", textColor: "#ffffff" }, customColors);
   const fs = useFontStyles(customFonts);
   const cs = restaurant?.currencySymbol || 'ر.س';
@@ -343,20 +374,25 @@ export function OceanTemplate(props: TemplateProps) {
         <div className="absolute bottom-20 right-10 w-60 h-60 rounded-full blur-3xl" style={{ background: `${c.accent}0d` }} />
       </div>
       <TemplateHeader restaurant={restaurant} accentColor={c.accent} textColor={c.textColor} />
-      <SearchAndCategories
+      <MenuBrowseArea
+        menuTab={menuTab}
+        setMenuTab={setMenuTab}
+        offers={offers || []}
         categories={categories}
         activeCategoryId={activeCategoryId}
         setActiveCategoryId={setActiveCategoryId}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
+        filteredItems={filteredItems}
         accentColor={c.accent}
-        bgStyle={`${c.bg1}e6`}
         textColor={c.textColor}
+        searchBgStyle={`${c.bg1}e6`}
+        cardBg={`${c.card}99`}
+        cardStyle="border border-white/10 backdrop-blur-sm"
+        currencySymbol={cs}
+        fontStyles={fs}
+        tableNumber={tableNumber}
       />
-      <OffersSection offers={offers || []} accentColor={c.accent} textColor={c.textColor} cardBg={`${c.card}99`} currencySymbol={cs} fontStyles={fs} tableNumber={tableNumber} />
-      <main className="container py-6">
-        <ItemsGrid items={filteredItems} searchQuery={searchQuery} accentColor={c.accent} cardStyle="border border-white/10 backdrop-blur-sm" cardBg={`${c.card}99`} textColor={c.textColor} currencySymbol={cs} fontStyles={fs} tableNumber={tableNumber} />
-      </main>
       <TemplateFooter accentColor={c.accent} textColor={c.textColor} />
       <ScrollTopButton show={showScrollTop} accentColor={c.accent} />
     </div>
@@ -367,7 +403,7 @@ export function OceanTemplate(props: TemplateProps) {
 // 7. ROYAL TEMPLATE (Premium)
 // ============================================
 export function RoyalTemplate(props: TemplateProps) {
-  const { restaurant, categories, filteredItems, activeCategoryId, setActiveCategoryId, searchQuery, setSearchQuery, showScrollTop, customColors, customFonts, offers, tableNumber } = props;
+  const { restaurant, categories, filteredItems, activeCategoryId, setActiveCategoryId, searchQuery, setSearchQuery, showScrollTop, customColors, customFonts, offers, tableNumber, menuTab, setMenuTab } = props;
   const c = useColors({ bg1: "#2d1b69", bg2: "#1a0a3e", accent: "#fbbf24", card: "#321e64", textColor: "#ffffff" }, customColors);
   const fs = useFontStyles(customFonts);
   const cs = restaurant?.currencySymbol || 'ر.س';
@@ -379,21 +415,26 @@ export function RoyalTemplate(props: TemplateProps) {
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-96 rounded-full blur-3xl" style={{ background: `${c.accent}0d` }} />
       </div>
       <TemplateHeader restaurant={restaurant} accentColor={c.accent} textColor={c.textColor} titleExtra={<Star className="w-4 h-4 inline-block mr-1" style={{ color: c.accent, fill: c.accent }} />} />
-      <SearchAndCategories
+      <MenuBrowseArea
+        menuTab={menuTab}
+        setMenuTab={setMenuTab}
+        offers={offers || []}
         categories={categories}
         activeCategoryId={activeCategoryId}
         setActiveCategoryId={setActiveCategoryId}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
+        filteredItems={filteredItems}
         accentColor={c.accent}
-        bgStyle={`${c.bg1}e6`}
         textColor={c.textColor}
-        pillStyle={`border border-white/15`}
+        searchBgStyle={`${c.bg1}e6`}
+        cardBg={`${c.card}99`}
+        cardStyle="border border-white/10"
+        currencySymbol={cs}
+        fontStyles={fs}
+        tableNumber={tableNumber}
+        pillStyle="border border-white/15"
       />
-      <OffersSection offers={offers || []} accentColor={c.accent} textColor={c.textColor} cardBg={`${c.card}99`} currencySymbol={cs} fontStyles={fs} tableNumber={tableNumber} />
-      <main className="container py-6">
-        <ItemsGrid items={filteredItems} searchQuery={searchQuery} accentColor={c.accent} cardStyle="border border-white/10" cardBg={`${c.card}99`} textColor={c.textColor} currencySymbol={cs} fontStyles={fs} tableNumber={tableNumber} />
-      </main>
       <TemplateFooter accentColor={c.accent} textColor={c.textColor} />
       <ScrollTopButton show={showScrollTop} accentColor={c.accent} />
     </div>
@@ -404,7 +445,7 @@ export function RoyalTemplate(props: TemplateProps) {
 // 8. NEON TEMPLATE (Premium)
 // ============================================
 export function NeonTemplate(props: TemplateProps) {
-  const { restaurant, categories, filteredItems, activeCategoryId, setActiveCategoryId, searchQuery, setSearchQuery, showScrollTop, customColors, customFonts, offers, tableNumber } = props;
+  const { restaurant, categories, filteredItems, activeCategoryId, setActiveCategoryId, searchQuery, setSearchQuery, showScrollTop, customColors, customFonts, offers, tableNumber, menuTab, setMenuTab } = props;
   const c = useColors({ bg1: "#0a0a0a", bg2: "#111111", accent: "#39ff14", card: "#141414", textColor: "#ffffff" }, customColors);
   const fs = useFontStyles(customFonts);
   const cs = restaurant?.currencySymbol || 'ر.س';
@@ -418,20 +459,25 @@ export function NeonTemplate(props: TemplateProps) {
         <div className="absolute bottom-40 left-20 w-60 h-60 bg-[#ff00ff]/5 rounded-full blur-3xl" />
       </div>
       <TemplateHeader restaurant={restaurant} accentColor={c.accent} textColor={c.textColor} />
-      <SearchAndCategories
+      <MenuBrowseArea
+        menuTab={menuTab}
+        setMenuTab={setMenuTab}
+        offers={offers || []}
         categories={categories}
         activeCategoryId={activeCategoryId}
         setActiveCategoryId={setActiveCategoryId}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
+        filteredItems={filteredItems}
         accentColor={c.accent}
-        bgStyle={`${c.bg1}f2`}
         textColor={c.textColor}
+        searchBgStyle={`${c.bg1}f2`}
+        cardBg={`${c.card}e6`}
+        cardStyle="border border-white/10 transition-shadow"
+        currencySymbol={cs}
+        fontStyles={fs}
+        tableNumber={tableNumber}
       />
-      <OffersSection offers={offers || []} accentColor={c.accent} textColor={c.textColor} cardBg={`${c.card}e6`} currencySymbol={cs} fontStyles={fs} tableNumber={tableNumber} />
-      <main className="container py-6">
-        <ItemsGrid items={filteredItems} searchQuery={searchQuery} accentColor={c.accent} cardStyle="border border-white/10 transition-shadow" cardBg={`${c.card}e6`} textColor={c.textColor} currencySymbol={cs} fontStyles={fs} tableNumber={tableNumber} />
-      </main>
       <TemplateFooter accentColor={c.accent} textColor={c.textColor} />
       <ScrollTopButton show={showScrollTop} accentColor={c.accent} />
     </div>
@@ -915,220 +961,99 @@ function ListView({ items, accentColor, cardStyle, cardBg, textColor, pricePrefi
   );
 }
 
-// ─── Offers Section (Public Menu) ─────────────────────────────
-
-const OFFER_TYPE_MAP: Record<string, { label: string; icon: typeof Tag }> = {
-  daily: { label: "عرض يومي", icon: Clock },
-  weekly: { label: "عرض أسبوعي", icon: Calendar },
-  monthly: { label: "عرض شهري", icon: Tag },
-};
-
-function CountdownTimer({ endDate, accentColor, textColor }: { endDate: string | Date; accentColor: string; textColor: string }) {
-  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
-  const [expired, setExpired] = useState(false);
-
-  useEffect(() => {
-    const end = new Date(endDate).getTime();
-    const update = () => {
-      const now = Date.now();
-      const diff = end - now;
-      if (diff <= 0) { setExpired(true); return; }
-      setTimeLeft({
-        days: Math.floor(diff / 86400000),
-        hours: Math.floor((diff % 86400000) / 3600000),
-        minutes: Math.floor((diff % 3600000) / 60000),
-        seconds: Math.floor((diff % 60000) / 1000),
-      });
-    };
-    update();
-    const interval = setInterval(update, 1000);
-    return () => clearInterval(interval);
-  }, [endDate]);
-
-  if (expired) return <span className="text-xs font-medium" style={{ color: '#ef4444' }}>انتهى العرض</span>;
-
-  const parts = [
-    { value: timeLeft.days, label: 'يوم' },
-    { value: timeLeft.hours, label: 'ساعة' },
-    { value: timeLeft.minutes, label: 'دقيقة' },
-    { value: timeLeft.seconds, label: 'ثانية' },
-  ];
-
-  return (
-    <div className="flex items-center gap-1.5">
-      <Clock className="w-3 h-3" style={{ color: accentColor }} />
-      <div className="flex gap-1">
-        {parts.map((p, i) => (
-          <span key={i} className="text-[10px] font-mono font-bold px-1 py-0.5 rounded" style={{ background: `${accentColor}20`, color: textColor }}>
-            {String(p.value).padStart(2, '0')}<span className="text-[8px] opacity-50 mr-0.5">{p.label}</span>
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function OffersSection({ offers, accentColor, textColor, cardBg, currencySymbol, fontStyles, tableNumber }: {
-  offers: any[];
+function MenuBrowseArea({
+  menuTab,
+  setMenuTab,
+  offers = [],
+  categories,
+  activeCategoryId,
+  setActiveCategoryId,
+  searchQuery,
+  setSearchQuery,
+  filteredItems,
+  accentColor,
+  textColor,
+  searchBgStyle,
+  cardBg,
+  cardStyle,
+  currencySymbol,
+  fontStyles,
+  tableNumber,
+  pillStyle,
+  pricePrefix,
+}: {
+  menuTab: MenuBrowseTab;
+  setMenuTab: (tab: MenuBrowseTab) => void;
+  offers?: any[];
+  categories: any[];
+  activeCategoryId: number | null;
+  setActiveCategoryId: (id: number | null) => void;
+  searchQuery: string;
+  setSearchQuery: (q: string) => void;
+  filteredItems: any[];
   accentColor: string;
   textColor: string;
-  cardBg?: string;
-  currencySymbol?: string;
-  fontStyles?: { arStyle: React.CSSProperties; enStyle: React.CSSProperties; headingColor?: string; bodyColor?: string; priceColor?: string; headingScale?: string; bodyScale?: string; priceScale?: string };
+  searchBgStyle: string;
+  cardBg: string;
+  cardStyle: string;
+  currencySymbol: string;
+  fontStyles: ReturnType<typeof useFontStyles>;
   tableNumber?: number;
+  pillStyle?: string;
+  pricePrefix?: string;
 }) {
-  const [activeFilter, setActiveFilter] = useState<'all' | 'daily' | 'weekly' | 'monthly'>('all');
-
-  if (!offers || offers.length === 0) return null;
-
-  const filteredOffers = activeFilter === 'all' ? offers : offers.filter((o: any) => o.offerType === activeFilter);
-  const offerTypes = Array.from(new Set(offers.map((o: any) => o.offerType)));
+  const hasOffers = offers.length > 0;
+  const showOffers = hasOffers && menuTab === "offers";
 
   return (
-    <div className="container py-6">
-      <div className="flex items-center gap-3 mb-4">
-        <div className="p-2 rounded-lg" style={{ background: `${accentColor}20` }}>
-          <Flame className="w-5 h-5" style={{ color: accentColor }} />
-        </div>
-        <h2 className="text-xl font-bold" style={{ color: fontStyles?.headingColor || textColor, ...fontStyles?.arStyle }}>العروض الخاصة</h2>
-      </div>
-
-      {/* Filter Tabs */}
-      {offerTypes.length > 1 && (
-        <div className="flex gap-2 mb-4 flex-wrap">
-          <button
-            onClick={() => setActiveFilter('all')}
-            className="px-3 py-1.5 rounded-full text-xs font-medium transition-all"
-            style={{
-              background: activeFilter === 'all' ? accentColor : `${accentColor}15`,
-              color: activeFilter === 'all' ? '#fff' : textColor,
-            }}
-          >
-            الكل ({offers.length})
-          </button>
-          {offerTypes.includes('daily') && (
-            <button
-              onClick={() => setActiveFilter('daily')}
-              className="px-3 py-1.5 rounded-full text-xs font-medium transition-all"
-              style={{
-                background: activeFilter === 'daily' ? accentColor : `${accentColor}15`,
-                color: activeFilter === 'daily' ? '#fff' : textColor,
-              }}
-            >
-              يومي ({offers.filter((o: any) => o.offerType === 'daily').length})
-            </button>
-          )}
-          {offerTypes.includes('weekly') && (
-            <button
-              onClick={() => setActiveFilter('weekly')}
-              className="px-3 py-1.5 rounded-full text-xs font-medium transition-all"
-              style={{
-                background: activeFilter === 'weekly' ? accentColor : `${accentColor}15`,
-                color: activeFilter === 'weekly' ? '#fff' : textColor,
-              }}
-            >
-              أسبوعي ({offers.filter((o: any) => o.offerType === 'weekly').length})
-            </button>
-          )}
-          {offerTypes.includes('monthly') && (
-            <button
-              onClick={() => setActiveFilter('monthly')}
-              className="px-3 py-1.5 rounded-full text-xs font-medium transition-all"
-              style={{
-                background: activeFilter === 'monthly' ? accentColor : `${accentColor}15`,
-                color: activeFilter === 'monthly' ? '#fff' : textColor,
-              }}
-            >
-              شهري ({offers.filter((o: any) => o.offerType === 'monthly').length})
-            </button>
-          )}
-        </div>
+    <>
+      <MenuOffersTabBar
+        visible={hasOffers}
+        activeTab={menuTab}
+        onTabChange={setMenuTab}
+        accentColor={accentColor}
+        textColor={textColor}
+      />
+      {showOffers ? (
+        <OffersTabPanel
+          offers={offers}
+          accentColor={accentColor}
+          textColor={textColor}
+          cardBg={cardBg}
+          currencySymbol={currencySymbol}
+          fontStyles={fontStyles}
+          tableNumber={tableNumber}
+        />
+      ) : (
+        <>
+          <SearchAndCategories
+            categories={categories}
+            activeCategoryId={activeCategoryId}
+            setActiveCategoryId={setActiveCategoryId}
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            accentColor={accentColor}
+            bgStyle={searchBgStyle}
+            textColor={textColor}
+            pillStyle={pillStyle}
+          />
+          <main className="container py-6">
+            <ItemsGrid
+              items={filteredItems}
+              searchQuery={searchQuery}
+              accentColor={accentColor}
+              cardStyle={cardStyle}
+              cardBg={cardBg}
+              textColor={textColor}
+              pricePrefix={pricePrefix}
+              currencySymbol={currencySymbol}
+              fontStyles={fontStyles}
+              tableNumber={tableNumber}
+            />
+          </main>
+        </>
       )}
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <AnimatePresence mode="popLayout">
-          {filteredOffers.map((offer: any, index: number) => {
-            const discount = offer.originalPrice && offer.offerPrice
-              ? Math.round((1 - parseFloat(offer.offerPrice) / parseFloat(offer.originalPrice)) * 100)
-              : 0;
-            const typeInfo = OFFER_TYPE_MAP[offer.offerType] || OFFER_TYPE_MAP.daily;
-            const TypeIcon = typeInfo.icon;
-            const coverUrl = resolveOfferImageUrl(offer);
-            const validityLabel = `${new Date(offer.startDate).toLocaleDateString("ar-SA")} — ${new Date(offer.endDate).toLocaleDateString("ar-SA")}`;
-            return (
-              <motion.div
-                key={offer.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.3, delay: index * 0.05 }}
-                className="rounded-xl overflow-hidden border relative flex flex-col"
-                style={{
-                  background: cardBg || `${accentColor}10`,
-                  borderColor: `${accentColor}30`,
-                }}
-              >
-                {discount > 0 && (
-                  <div className="absolute top-3 left-3 z-10 px-2.5 py-1 rounded-full text-xs font-bold text-white" style={{ background: '#ef4444' }}>
-                    -{discount}%
-                  </div>
-                )}
-                {coverUrl ? (
-                  <img
-                    src={coverUrl}
-                    alt={offer.titleAr}
-                    loading="lazy"
-                    decoding="async"
-                    className="w-full aspect-[16/10] object-cover"
-                  />
-                ) : (
-                  <OfferImagePlaceholder size="lg" accentColor={accentColor} className="rounded-none" />
-                )}
-                <div className="p-5 flex flex-col flex-1 min-w-0">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-bold text-base sm:text-lg truncate" style={{ color: fontStyles?.headingColor || textColor, ...fontStyles?.arStyle }}>{offer.titleAr}</h3>
-                    </div>
-                    <div className="flex items-center gap-1.5 mb-2">
-                      <TypeIcon className="w-4 h-4" style={{ color: accentColor }} />
-                      <span className="text-sm" style={{ color: `${textColor}99` }}>{typeInfo.label}</span>
-                    </div>
-                    {offer.descriptionAr && (
-                      <p className="text-sm line-clamp-3 opacity-70 mb-3" style={{ color: fontStyles?.bodyColor || textColor, ...fontStyles?.arStyle }}>{offer.descriptionAr}</p>
-                    )}
-                    <p className="text-xs opacity-60 mb-3" style={{ color: textColor }}>
-                      {validityLabel}
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xl font-bold" style={{ color: fontStyles?.priceColor || accentColor, ...fontStyles?.enStyle, fontSize: fontStyles?.priceScale ? `calc(1.25rem * ${fontStyles.priceScale})` : undefined }}>
-                        {offer.offerPrice} <span className="text-sm font-normal opacity-60" style={{ color: textColor }}>{currencySymbol || 'ر.س'}</span>
-                      </span>
-                      <span className="text-base line-through opacity-40" style={{ color: textColor }}>
-                        {offer.originalPrice} {currencySymbol || 'ر.س'}
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <CountdownTimer endDate={offer.endDate} accentColor={accentColor} textColor={textColor} />
-                      {tableNumber != null && tableNumber > 0 && (
-                        <AddToCartButton
-                          offerId={offer.id}
-                          nameAr={offer.titleAr}
-                          nameEn={offer.titleEn}
-                          price={String(offer.offerPrice)}
-                          imageUrl={coverUrl ?? offer.imageUrl}
-                        />
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            );
-          })}
-        </AnimatePresence>
-      </div>
-    </div>
+    </>
   );
 }
 

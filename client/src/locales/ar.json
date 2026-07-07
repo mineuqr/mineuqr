@@ -634,6 +634,9 @@
   },
   "menu": {
     "title": "منيو",
+    "tabMenu": "القائمة",
+    "tabOffers": "العروض",
+    "browseTabs": "تصفح القائمة والعروض",
     "allCategories": "جميع الفئات",
     "offers": "العروض",
     "allOffers": "جميع العروض",

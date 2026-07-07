@@ -634,6 +634,9 @@
   },
   "menu": {
     "title": "Menu",
+    "tabMenu": "Menu",
+    "tabOffers": "Offers",
+    "browseTabs": "Browse menu and offers",
     "allCategories": "All Categories",
     "offers": "Offers",
     "allOffers": "All Offers",

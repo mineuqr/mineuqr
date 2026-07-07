@@ -2,7 +2,7 @@ import { trpc } from "@/lib/trpc";
 import { useRoute, useLocation } from "wouter";
 import { useState, useEffect, useMemo } from "react";
 import { Loader2, AlertCircle, Store } from "lucide-react";
-import { getTemplateComponent } from "@/components/MenuTemplates";
+import { getTemplateComponent, type MenuBrowseTab } from "@/components/MenuTemplates";
 import { DiningSessionBanner } from "@/components/customer/DiningSessionBanner";
 import { useLanguage } from "@/contexts/LanguageContext";
 import CartDrawer from "@/components/CartDrawer";
@@ -111,12 +111,19 @@ export default function MenuView() {
   const [activeCategoryId, setActiveCategoryId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [menuTab, setMenuTab] = useState<MenuBrowseTab>("menu");
 
   useEffect(() => {
     if (categoriesList?.length && !activeCategoryId) {
       setActiveCategoryId(categoriesList[0].id);
     }
   }, [categoriesList]);
+
+  useEffect(() => {
+    if (!activeOffers?.length && menuTab === "offers") {
+      setMenuTab("menu");
+    }
+  }, [activeOffers?.length, menuTab]);
 
   useEffect(() => {
     const handleScroll = () => setShowScrollTop(window.scrollY > 400);
@@ -256,6 +263,8 @@ export default function MenuView() {
         customFonts={customFonts}
         offers={activeOffers || []}
         tableNumber={orderingTableNumber}
+        menuTab={menuTab}
+        setMenuTab={setMenuTab}
       />
       {canPlaceOrder && (
         <CartDrawer
