@@ -1,3 +1,5 @@
+import type { OrderActor } from "../value-objects/OrderActor";
+
 export const ORDER_DOMAIN_EVENT_SCHEMA_VERSION = 1;
 
 export type OrderCreatedEvent = {
@@ -23,6 +25,7 @@ export type OrderStatusChangedEvent = {
   readonly fromStatus: string;
   readonly toStatus: string;
   readonly changedAt: string;
+  readonly actor?: OrderActor;
 };
 
 export type OrderReadyEvent = {
@@ -45,6 +48,7 @@ export type OrderCancelledEvent = {
   readonly schemaVersion: typeof ORDER_DOMAIN_EVENT_SCHEMA_VERSION;
   readonly orderId: number;
   readonly cancelledAt: string;
+  readonly actor?: OrderActor;
 };
 
 export type OrderDomainEvent =

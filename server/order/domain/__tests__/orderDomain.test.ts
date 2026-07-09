@@ -5,6 +5,15 @@ import {
   InvalidTransitionError,
   OrderAlreadyCompletedError,
 } from "../errors/OrderDomainErrors";
+import type { UserActor } from "../value-objects/OrderActor";
+
+const ownerActor: UserActor = {
+  kind: "user",
+  userId: 1,
+  dashboardRole: "owner",
+  displayName: "Owner",
+  restaurantId: 1,
+};
 
 const baseLine = {
   menuItemId: 1,
@@ -93,7 +102,7 @@ describe("Order aggregate", () => {
       lines: [baseLine],
     });
     expect(() =>
-      order.advanceStatus("cancelled", { role: "owner" }, "2026-06-27T12:10:00.000Z")
+      order.advanceStatus("cancelled", ownerActor, "2026-06-27T12:10:00.000Z")
     ).toThrow(OrderAlreadyCompletedError);
   });
 
@@ -117,7 +126,7 @@ describe("Order aggregate", () => {
       lines: [baseLine],
     });
     expect(() =>
-      order.advanceStatus("ready", { role: "owner" }, "2026-06-27T12:10:00.000Z")
+      order.advanceStatus("ready", ownerActor, "2026-06-27T12:10:00.000Z")
     ).toThrow(InvalidTransitionError);
   });
 
@@ -140,9 +149,46 @@ describe("Order aggregate", () => {
       readyAt: null,
       lines: [baseLine],
     });
-    order.advanceStatus("ready", { role: "owner" }, "2026-06-27 12:05:00");
-    const types = order.pullDomainEvents().map((e) => e.type);
+    order.advanceStatus("ready", ownerActor, "2026-06-27 12:05:00");
+    const events = order.pullDomainEvents();
+    const types = events.map((e) => e.type);
     expect(types).toContain("OrderStatusChanged");
     expect(types).toContain("OrderReady");
+    const statusChanged = events.find((e) => e.type === "OrderStatusChanged");
+    expect(statusChanged?.actor).toEqual(ownerActor);
+  });
+
+  it("allows device actors to advance but not cancel", () => {
+    const order = Order.reconstitute({
+      id: 1,
+      restaurantId: 1,
+      tableId: 1,
+      tableNumber: 1,
+      sessionId: null,
+      customerName: null,
+      customerPhone: null,
+      notes: null,
+      totalAmount: "20.00",
+      orderNumber: "ORD-1",
+      trackingToken: "t",
+      createdAt: "2026-06-27T12:00:00.000Z",
+      updatedAt: "2026-06-27T12:00:00.000Z",
+      status: "preparing",
+      readyAt: null,
+      lines: [baseLine],
+    });
+    const deviceActor = {
+      kind: "device" as const,
+      deviceId: "dev-1",
+      tokenId: "tok-1",
+      deviceRole: "kitchen_display",
+      displayName: "Kitchen",
+      restaurantId: 1,
+    };
+    order.advanceStatus("ready", deviceActor, "2026-06-27 12:05:00");
+    expect(order.status).toBe("ready");
+    expect(() =>
+      order.advanceStatus("cancelled", deviceActor, "2026-06-27 12:10:00")
+    ).toThrow(InvalidTransitionError);
   });
 });

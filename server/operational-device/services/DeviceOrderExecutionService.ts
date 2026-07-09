@@ -3,6 +3,10 @@ import { opsLog } from "../../_core/opsLog";
 import { getOrderById } from "../../db";
 import { runOrderCommand } from "../../order/application/mapOrderDomainError";
 import { advanceOrderStatusService } from "../../order/composition";
+import {
+  orderActorAuditMetadata,
+  resolveOrderActorFromDeviceSession,
+} from "../../order/application/resolveOrderActor";
 import type { OperationalDeviceSession } from "../domain/deviceContracts";
 import {
   targetStatusForDeviceAction,
@@ -52,12 +56,13 @@ export async function executeDeviceOrderAction(
   }
 
   const targetStatus = targetStatusForDeviceAction(action);
+  const actor = resolveOrderActorFromDeviceSession(session);
 
   const result = await runOrderCommand(() =>
     advanceOrderStatusService.execute({
       orderId,
       targetStatus,
-      actor: { role: "staff" },
+      actor,
     })
   );
 
@@ -72,9 +77,7 @@ export async function executeDeviceOrderAction(
     procedure: "operationalDevice.runtime.executeOrderAction",
     action,
     metadata: {
-      deviceId: session.deviceId,
-      tokenId: session.tokenId,
-      displayName: session.displayName,
+      ...orderActorAuditMetadata(actor),
       orderId,
       previousStatus: result.previousStatus,
       newStatus: result.newStatus,

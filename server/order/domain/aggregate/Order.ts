@@ -159,7 +159,7 @@ export class Order {
       throw new InvalidTransitionError(this._status, targetStatus);
     }
 
-    OrderCancellationPolicy.assertCanCancel(this._status, actor);
+    OrderCancellationPolicy.assertCanAdvance(actor);
 
     const fromStatus = this._status;
     this._status = targetStatus;
@@ -180,6 +180,7 @@ export class Order {
       fromStatus,
       toStatus: targetStatus,
       changedAt,
+      actor,
     });
 
     if (targetStatus === "ready") {
@@ -228,6 +229,7 @@ export class Order {
       fromStatus,
       toStatus: "cancelled",
       changedAt: cancelledAt,
+      actor,
     });
 
     this._events.push({
@@ -235,6 +237,7 @@ export class Order {
       schemaVersion: ORDER_DOMAIN_EVENT_SCHEMA_VERSION,
       orderId: this.id,
       cancelledAt,
+      actor,
     });
   }
 

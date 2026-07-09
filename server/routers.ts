@@ -117,6 +117,7 @@ import {
 } from "./order/composition";
 import { placeOrderService } from "./order/placeOrderComposition";
 import { runOrderCommand } from "./order/application/mapOrderDomainError";
+import { resolveOrderActorFromUser } from "./order/application/resolveOrderActor";
 import bcrypt from "bcryptjs";
 
 function generateSlug(name: string): string {
@@ -1947,11 +1948,18 @@ const orderRouter = router({
       }
       await assertRestaurantAccess(ctx, order.restaurantId, "order.updateStatus");
 
+      const restaurant = await getRestaurantById(order.restaurantId);
+      const actor = resolveOrderActorFromUser(
+        ctx.user,
+        order.restaurantId,
+        restaurant?.userId ?? ctx.user.id
+      );
+
       const result = await runOrderCommand(() =>
         advanceOrderStatusService.execute({
           orderId: input.id,
           targetStatus: input.status,
-          actor: { role: "owner" },
+          actor,
         })
       );
 
