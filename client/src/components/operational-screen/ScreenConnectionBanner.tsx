@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import type { OperationalScreenState } from "@/lib/operational-screen/state/operationalScreenStateContract";
-import { Loader2, Wifi, WifiOff, ShieldAlert } from "lucide-react";
+import { Loader2, ShieldAlert, WifiOff } from "lucide-react";
 
 const OPERATIONAL_LABELS: Record<string, { en: string; ar: string }> = {
   initializing: { en: "Starting screen runtime...", ar: "جاري تشغيل الشاشة..." },
@@ -30,12 +30,17 @@ export function ScreenConnectionBanner({
     return (
       <div
         className={cn(
-          "flex items-center gap-2 border-b border-destructive/40 bg-destructive/10 px-4 py-2 text-sm text-destructive",
+          "flex items-center gap-2 border-b border-destructive/40 bg-destructive/10 px-4 py-2.5 text-sm font-semibold text-destructive",
           className
         )}
+        role="alert"
       >
         <ShieldAlert className="h-4 w-4 shrink-0" />
-        {OPERATIONAL_LABELS.disposed[isAr ? "ar" : "en"]}
+        {operationalState === "disposed"
+          ? OPERATIONAL_LABELS.disposed[isAr ? "ar" : "en"]
+          : isAr
+            ? "انقطع الاتصال — تحقق من الشبكة"
+            : "Connection lost — check network"}
       </div>
     );
   }
@@ -77,9 +82,10 @@ export function ScreenConnectionBanner({
     return (
       <div
         className={cn(
-          "flex items-center gap-2 border-b border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm text-amber-200",
+          "flex items-center gap-2 border-b border-amber-500/40 bg-amber-500/10 px-4 py-2.5 text-sm font-semibold text-amber-200",
           className
         )}
+        role="alert"
       >
         <ShieldAlert className="h-4 w-4 shrink-0" />
         {OPERATIONAL_LABELS.maintenance[isAr ? "ar" : "en"]}
@@ -87,15 +93,5 @@ export function ScreenConnectionBanner({
     );
   }
 
-  return (
-    <div
-      className={cn(
-        "flex items-center gap-2 border-b border-emerald-500/30 bg-emerald-500/5 px-4 py-2 text-xs text-emerald-300",
-        className
-      )}
-    >
-      <Wifi className="h-3.5 w-3.5 shrink-0" />
-      {OPERATIONAL_LABELS.operational[isAr ? "ar" : "en"]}
-    </div>
-  );
+  return null;
 }

@@ -3,15 +3,18 @@ import {
   KitchenQueueErrorPanel,
   KitchenStaleDataBanner,
 } from "@/components/operational-screen/KitchenQueueOperationalBanner";
+import {
+  KITCHEN_GRID_CLASS,
+  KitchenOperationalIdleState,
+  KitchenOperationalLoadingState,
+} from "@/components/operational-screen/KitchenOperationalStates";
+import { KitchenQueueSummaryBar } from "@/components/operational-screen/KitchenQueueSummaryBar";
+import { sortKitchenTicketsForDisplay } from "@/lib/operational-screen/operationalScreenPresentation";
 import { toKitchenTicketCard } from "@/lib/kitchen/viewModels";
 import { computeSlaSnapshot } from "@/lib/operational-workspace/slaEngine";
 import { useKitchenRuntimeStream } from "@/lib/operational-screen/kitchen/useKitchenRuntimeStream";
 import { useRuntimeContext } from "./OperationalScreenRuntimeProvider";
 import { cn } from "@/lib/utils";
-import { Loader2 } from "lucide-react";
-
-const KITCHEN_GRID_CLASS =
-  "grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5";
 
 export function KitchenScreenPanel() {
   const context = useRuntimeContext();
@@ -29,11 +32,7 @@ export function KitchenScreenPanel() {
   } = useKitchenRuntimeStream();
 
   if (isLoading && !queue && !isError) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <KitchenOperationalLoadingState language={language} />;
   }
 
   if (isError && !queue) {
@@ -49,17 +48,27 @@ export function KitchenScreenPanel() {
   }
 
   const columns = queue?.columns ?? { pending: [], preparing: [], ready: [] };
-  const tickets = [...columns.pending, ...columns.preparing, ...columns.ready];
+  const tickets = sortKitchenTicketsForDisplay([
+    ...columns.pending,
+    ...columns.preparing,
+    ...columns.ready,
+  ]);
+  const counts = queue?.meta.counts ?? { pending: 0, preparing: 0, ready: 0 };
+  const total = queue?.meta.totalVisible ?? tickets.length;
 
   return (
-    <div>
+    <div className="flex min-h-0 flex-1 flex-col gap-3 sm:gap-4">
+      <KitchenQueueSummaryBar counts={counts} total={total} language={language} />
+
       {isShowingStaleData ? <KitchenStaleDataBanner language={language} /> : null}
+
       {!isError && tickets.length === 0 ? (
-        <p className={densityModel.emptyStateClass}>
-          {isAr ? "لا طلبات" : "No orders"}
-        </p>
+        <KitchenOperationalIdleState language={language} />
       ) : (
-        <div className={cn(KITCHEN_GRID_CLASS, densityModel.columnGap)}>
+        <div
+          className={cn(KITCHEN_GRID_CLASS, densityModel.columnGap)}
+          aria-label={isAr ? "طابور المطبخ" : "Kitchen queue"}
+        >
           {tickets.map((ticket) => {
             const model = toKitchenTicketCard(ticket);
             const sla = computeSlaSnapshot(

@@ -112,7 +112,7 @@ export function RuntimeRoleHost() {
 
   return (
     <>
-      <RoleRuntimeStatusBanner />
+      {import.meta.env.DEV ? <RoleRuntimeStatusBanner /> : null}
       <RuntimeOperationalAlert />
       <Presentation />
     </>
