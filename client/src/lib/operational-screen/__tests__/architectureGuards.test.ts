@@ -59,6 +59,15 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
     expect(hook).not.toContain("trpc.order.updateStatus");
   });
 
+  it("OPERATIONAL-CARD-POLISH-1: operational cards use English numerals", () => {
+    const typography = read("client/src/lib/operational-screen/operationalCardTypography.ts");
+    const card = read("client/src/components/kitchen/KitchenExecutionCard.tsx");
+    expect(typography).toContain("formatOperationalElapsedCompact");
+    expect(card).toContain("formatOperationalElapsedCompact");
+    expect(card).toContain("formatOperationalQuantity");
+    expect(card).not.toContain("toArabicDigits");
+  });
+
   it("OPERATIONAL-CARD-POLISH-1: operational screen excludes order acceptance", () => {
     const capabilities = read(
       "client/src/lib/operational-screen/interaction/deviceOrderExecutionCapabilities.ts"

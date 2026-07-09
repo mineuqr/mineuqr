@@ -3,16 +3,19 @@ import { cn } from "@/lib/utils";
 import type { KitchenTicketCardModel, KitchenTicketLine } from "@/lib/kitchen/viewModels";
 import { urgencyClassName } from "@/lib/kitchen/viewModels";
 import {
-  formatKitchenElapsedCompact,
-  formatKitchenFulfillmentLabel,
-  formatKitchenItemOverflow,
   formatKitchenStatusLabel,
-  kitchenCardElapsedClass,
   kitchenStatusPresentation,
   productDisplayName,
-  toArabicDigits,
 } from "@/lib/kitchen/kitchenPresentation";
 import type { PresentationDensityModel } from "@/lib/operational-screen/density/runtimeDisplayDensityContract";
+import {
+  formatOperationalElapsedCompact,
+  formatOperationalFulfillmentLabel,
+  formatOperationalItemOverflow,
+  formatOperationalQuantity,
+  operationalCardElapsedClass,
+  operationalStatusLabelClass,
+} from "@/lib/operational-screen/operationalCardTypography";
 import type { OperationalAction } from "@/lib/operational-workspace/operationalActions";
 import type { SlaSnapshot } from "@/lib/operational-workspace/slaEngine";
 import { explainDelay } from "@/lib/operational-workspace/delayIntelligence";
@@ -30,14 +33,14 @@ function KitchenStatusIndicator({
 
   return (
     <div
-      className={cn("inline-flex items-center gap-1.5", presentation.labelClass)}
+      className={cn("inline-flex items-center gap-2", presentation.labelClass)}
       aria-label={formatKitchenStatusLabel(status, isAr)}
     >
       <span
-        className={cn("h-2.5 w-2.5 shrink-0 rounded-full", presentation.dotClass)}
+        className={cn("h-3 w-3 shrink-0 rounded-full", presentation.dotClass)}
         aria-hidden
       />
-      <span className="text-xs font-semibold uppercase tracking-wide">
+      <span className={operationalStatusLabelClass(status)}>
         {formatKitchenStatusLabel(status, isAr)}
       </span>
     </div>
@@ -66,11 +69,11 @@ function KitchenItemList({
   return (
     <>
       {visible.map((line) => {
-        const qty = isAr ? toArabicDigits(line.quantity) : String(line.quantity);
+        const qty = formatOperationalQuantity(line.quantity);
         const name = productDisplayName(line, isAr);
         return (
-          <li key={line.lineItemId} className="flex min-w-0 items-baseline gap-1.5">
-            <span className="shrink-0 font-mono text-base font-black tabular-nums leading-none text-foreground">
+          <li key={line.lineItemId} className="flex min-w-0 items-baseline gap-1">
+            <span className={cn("shrink-0 font-mono", densityModel.quantityClass)}>
               ×{qty}
             </span>
             <span className={cn(densityModel.lineItemClass, "min-w-0 truncate")}>{name}</span>
@@ -79,8 +82,8 @@ function KitchenItemList({
       })}
       {overflow > 0 ? (
         <li className="list-none pt-0.5">
-          <span className="text-xs font-semibold text-muted-foreground">
-            {formatKitchenItemOverflow(overflow, isAr)}
+          <span className="text-xs font-semibold tabular-nums text-muted-foreground">
+            {formatOperationalItemOverflow(overflow, isAr)}
           </span>
         </li>
       ) : null}
@@ -124,11 +127,11 @@ export function KitchenExecutionCard({
   const showWarning =
     sla.status === "late" || sla.status === "critical" || sla.status === "at-risk";
   const statusPresentation = kitchenStatusPresentation(ticket.status);
-  const fulfillmentLabel = formatKitchenFulfillmentLabel(ticket.tableNumber, isAr);
+  const fulfillmentLabel = formatOperationalFulfillmentLabel(ticket.tableNumber, isAr);
   const actionLabel = action ? (isAr ? action.labelAr : action.labelEn) : null;
   const hasFooter = Boolean(action && onAction);
-  const elapsed = formatKitchenElapsedCompact(ticket.columnElapsedMinutes, isAr);
-  const elapsedClass = kitchenCardElapsedClass(sla, densityModel.timingClass);
+  const elapsed = formatOperationalElapsedCompact(ticket.columnElapsedMinutes, isAr);
+  const elapsedClass = operationalCardElapsedClass(sla, densityModel.timingClass);
   const isInteractive = Boolean(onOpenDetails);
 
   function handleTicketKeyDown(event: KeyboardEvent<HTMLDivElement>) {
@@ -185,9 +188,9 @@ export function KitchenExecutionCard({
             "focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2"
         )}
       >
-        <header className="mb-2 shrink-0 space-y-1">
-          <p className={cn(densityModel.orderNumberClass, "whitespace-nowrap")}>
-            {`#${ticket.orderNumber}`}
+        <header className="mb-1.5 shrink-0 space-y-0.5">
+          <p className={cn(densityModel.orderNumberClass, "whitespace-nowrap tabular-nums")}>
+            {ticket.orderNumber}
           </p>
 
           <KitchenStatusIndicator status={ticket.status} isAr={isAr} />
@@ -195,8 +198,6 @@ export function KitchenExecutionCard({
           <p className={elapsedClass} aria-label={isAr ? "الوقت المنقضي" : "Elapsed time"}>
             {elapsed}
           </p>
-
-          <p className={densityModel.tableLabelClass}>{fulfillmentLabel}</p>
         </header>
 
         <div className="flex min-h-0 flex-1 flex-col gap-1.5">
@@ -208,6 +209,8 @@ export function KitchenExecutionCard({
               densityModel={densityModel}
             />
           </ul>
+
+          <p className={densityModel.tableLabelClass}>{fulfillmentLabel}</p>
 
           {ticket.orderNotes ? (
             <p className={cn("flex items-start gap-1.5", densityModel.notesClass)}>
