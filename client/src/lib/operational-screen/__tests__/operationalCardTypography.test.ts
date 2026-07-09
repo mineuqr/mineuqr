@@ -5,6 +5,7 @@ import {
   formatOperationalItemOverflow,
   formatOperationalQuantity,
   operationalCardElapsedClass,
+  operationalFooterStatusLabel,
 } from "../operationalCardTypography";
 
 describe("operationalCardTypography", () => {
@@ -25,11 +26,15 @@ describe("operationalCardTypography", () => {
   });
 
   it("balances elapsed urgency typography for compact cards", () => {
-    const base = "text-lg font-extrabold";
+    const base = "text-base font-extrabold";
     expect(operationalCardElapsedClass({ status: "on-time" } as never, base)).toBe(base);
-    expect(operationalCardElapsedClass({ status: "critical" } as never, base)).toContain("text-lg");
-    expect(operationalCardElapsedClass({ status: "critical" } as never, base)).not.toContain(
-      "text-2xl"
-    );
+    const critical = operationalCardElapsedClass({ status: "critical" } as never, base);
+    expect(critical).toContain("text-base");
+    expect(critical).not.toContain("text-xl");
+    expect(critical).not.toContain("text-2xl");
+  });
+
+  it("formats footer status labels in sentence case", () => {
+    expect(operationalFooterStatusLabel("preparing", false)).toMatch(/prepar/i);
   });
 });

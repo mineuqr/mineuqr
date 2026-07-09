@@ -3,7 +3,9 @@ import {
   deriveKitchenOrderType,
   formatKitchenOrderType,
   formatKitchenStatusLabel,
+  kitchenStatusPresentation,
 } from "@/lib/kitchen/kitchenPresentation";
+import { cn } from "@/lib/utils";
 import type { SlaSnapshot } from "@/lib/operational-workspace/slaEngine";
 
 /**
@@ -41,17 +43,22 @@ export function formatOperationalQuantity(quantity: number): string {
   return String(quantity);
 }
 
-/** Elapsed-time emphasis tuned for compact operational cards at 1–3m viewing distance. */
+/** Elapsed-time emphasis in the footer row — strong weight, compact size for execution flow. */
 export function operationalCardElapsedClass(sla: SlaSnapshot, baseClass: string): string {
   if (sla.status === "critical") {
-    return `${baseClass} text-lg text-destructive underline decoration-destructive/50 underline-offset-[3px] xl:text-xl`;
+    return `${baseClass} text-base text-destructive underline decoration-destructive/50 underline-offset-[3px] xl:text-lg`;
   }
   if (sla.status === "late" || sla.status === "at-risk") {
-    return `${baseClass} text-base text-amber-100 ring-1 ring-amber-500/45 xl:text-lg`;
+    return `${baseClass} text-sm text-amber-100 ring-1 ring-amber-500/45 xl:text-base`;
   }
   return baseClass;
 }
 
-export function operationalStatusLabelClass(status: KitchenColumnId): string {
-  return "text-sm font-bold uppercase tracking-wide";
+export function operationalFooterStatusClass(status: KitchenColumnId): string {
+  const presentation = kitchenStatusPresentation(status);
+  return cn("text-sm font-bold leading-none", presentation.labelClass);
+}
+
+export function operationalFooterStatusLabel(status: KitchenColumnId, isAr: boolean): string {
+  return formatKitchenStatusLabel(status, isAr);
 }

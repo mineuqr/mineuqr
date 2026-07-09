@@ -2,11 +2,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { KitchenTicketCardModel, KitchenTicketLine } from "@/lib/kitchen/viewModels";
 import { urgencyClassName } from "@/lib/kitchen/viewModels";
-import {
-  formatKitchenStatusLabel,
-  kitchenStatusPresentation,
-  productDisplayName,
-} from "@/lib/kitchen/kitchenPresentation";
+import { formatKitchenStatusLabel, kitchenStatusPresentation, productDisplayName } from "@/lib/kitchen/kitchenPresentation";
 import type { PresentationDensityModel } from "@/lib/operational-screen/density/runtimeDisplayDensityContract";
 import {
   formatOperationalElapsedCompact,
@@ -14,38 +10,14 @@ import {
   formatOperationalItemOverflow,
   formatOperationalQuantity,
   operationalCardElapsedClass,
-  operationalStatusLabelClass,
+  operationalFooterStatusClass,
+  operationalFooterStatusLabel,
 } from "@/lib/operational-screen/operationalCardTypography";
 import type { OperationalAction } from "@/lib/operational-workspace/operationalActions";
 import type { SlaSnapshot } from "@/lib/operational-workspace/slaEngine";
 import { explainDelay } from "@/lib/operational-workspace/delayIntelligence";
 import { AlertTriangle, Check, Loader2, StickyNote } from "lucide-react";
 import type { KeyboardEvent } from "react";
-
-function KitchenStatusIndicator({
-  status,
-  isAr,
-}: {
-  status: KitchenTicketCardModel["status"];
-  isAr: boolean;
-}) {
-  const presentation = kitchenStatusPresentation(status);
-
-  return (
-    <div
-      className={cn("inline-flex items-center gap-2", presentation.labelClass)}
-      aria-label={formatKitchenStatusLabel(status, isAr)}
-    >
-      <span
-        className={cn("h-3 w-3 shrink-0 rounded-full", presentation.dotClass)}
-        aria-hidden
-      />
-      <span className={operationalStatusLabelClass(status)}>
-        {formatKitchenStatusLabel(status, isAr)}
-      </span>
-    </div>
-  );
-}
 
 function KitchenItemList({
   lineItems,
@@ -91,6 +63,39 @@ function KitchenItemList({
   );
 }
 
+function OperationalExecutionFooter({
+  elapsed,
+  elapsedClass,
+  status,
+  isAr,
+}: {
+  elapsed: string;
+  elapsedClass: string;
+  status: KitchenTicketCardModel["status"];
+  isAr: boolean;
+}) {
+  return (
+    <div
+      className="grid grid-cols-[1fr_auto_1fr] items-center gap-x-3"
+      aria-label={
+        isAr
+          ? `${elapsed}، ${operationalFooterStatusLabel(status, true)}`
+          : `${elapsed}, ${operationalFooterStatusLabel(status, false)}`
+      }
+    >
+      <p className={cn(elapsedClass, "text-start")} aria-label={isAr ? "الوقت المنقضي" : "Elapsed time"}>
+        {elapsed}
+      </p>
+      <span className="text-sm font-light text-muted-foreground/45" aria-hidden>
+        |
+      </span>
+      <p className={cn(operationalFooterStatusClass(status), "text-end")}>
+        {operationalFooterStatusLabel(status, isAr)}
+      </p>
+    </div>
+  );
+}
+
 /**
  * Kitchen execution card — operational ticket surface (header / body / footer).
  * Presentation only; functionality unchanged.
@@ -129,7 +134,7 @@ export function KitchenExecutionCard({
   const statusPresentation = kitchenStatusPresentation(ticket.status);
   const fulfillmentLabel = formatOperationalFulfillmentLabel(ticket.tableNumber, isAr);
   const actionLabel = action ? (isAr ? action.labelAr : action.labelEn) : null;
-  const hasFooter = Boolean(action && onAction);
+  const hasAction = Boolean(action && onAction);
   const elapsed = formatOperationalElapsedCompact(ticket.columnElapsedMinutes, isAr);
   const elapsedClass = operationalCardElapsedClass(sla, densityModel.timingClass);
   const isInteractive = Boolean(onOpenDetails);
@@ -188,15 +193,9 @@ export function KitchenExecutionCard({
             "focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2"
         )}
       >
-        <header className="mb-1.5 shrink-0 space-y-0.5">
+        <header className="mb-1.5 shrink-0">
           <p className={cn(densityModel.orderNumberClass, "whitespace-nowrap tabular-nums")}>
             {ticket.orderNumber}
-          </p>
-
-          <KitchenStatusIndicator status={ticket.status} isAr={isAr} />
-
-          <p className={elapsedClass} aria-label={isAr ? "الوقت المنقضي" : "Elapsed time"}>
-            {elapsed}
           </p>
         </header>
 
@@ -240,8 +239,15 @@ export function KitchenExecutionCard({
         </div>
       </div>
 
-      {hasFooter ? (
-        <footer className="mt-1 shrink-0 border-t border-border/20 pt-2">
+      <footer className="mt-1 shrink-0 space-y-2 border-t border-border/20 pt-2">
+        <OperationalExecutionFooter
+          elapsed={elapsed}
+          elapsedClass={elapsedClass}
+          status={ticket.status}
+          isAr={isAr}
+        />
+
+        {hasAction ? (
           <Button
             type="button"
             size="lg"
@@ -272,8 +278,8 @@ export function KitchenExecutionCard({
               actionLabel
             )}
           </Button>
-        </footer>
-      ) : null}
+        ) : null}
+      </footer>
     </article>
   );
 }

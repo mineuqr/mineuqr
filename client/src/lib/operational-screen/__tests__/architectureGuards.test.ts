@@ -68,6 +68,13 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
     expect(card).not.toContain("toArabicDigits");
   });
 
+  it("OPERATIONAL-CARD-POLISH-1: execution footer groups elapsed time and status", () => {
+    const card = read("client/src/components/kitchen/KitchenExecutionCard.tsx");
+    expect(card).toContain("OperationalExecutionFooter");
+    expect(card).toContain("operationalFooterStatusLabel");
+    expect(card).not.toContain("KitchenStatusIndicator");
+  });
+
   it("OPERATIONAL-CARD-POLISH-1: operational screen excludes order acceptance", () => {
     const capabilities = read(
       "client/src/lib/operational-screen/interaction/deviceOrderExecutionCapabilities.ts"
