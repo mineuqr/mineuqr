@@ -8,7 +8,6 @@ import { SessionsWorkspacePanel } from "@/components/dashboard/SessionsWorkspace
 import { OrdersWorkspacePanel } from "@/components/orders-workspace/OrdersWorkspacePanel";
 import { ScreenManagementWorkspacePanel } from "@/components/screen-management/ScreenManagementWorkspacePanel";
 import { ProvisioningWorkspacePanel } from "@/components/screen-provisioning/ProvisioningWorkspacePanel";
-import { KitchenWorkspacePanel } from "@/components/kitchen/KitchenWorkspacePanel";
 import { PrintWorkspacePanel } from "@/components/print-workspace/PrintWorkspacePanel";
 import { PrinterManagementPanel } from "@/components/printer-management/PrinterManagementPanel";
 import { ActionCenterSection } from "@/components/dashboard/ActionCenterSection";
@@ -117,7 +116,6 @@ function restaurantTabLabel(tab: RestaurantTab, language: string, t: (key: strin
     home: language === "ar" ? "لوحة التحكم" : "Dashboard",
     sessions: language === "ar" ? "الجلسات" : "Sessions",
     orders: language === "ar" ? "الطلبات" : "Orders",
-    kitchen: language === "ar" ? "شاشة المطبخ" : "Kitchen Display",
     screens: language === "ar" ? "إدارة الشاشات" : "Screen Management",
     devices: language === "ar" ? "إدارة الشاشات" : "Screen Management",
     "screen-provisioning": language === "ar" ? "تجهيز الشاشة" : "Screen Provisioning",
@@ -1149,10 +1147,6 @@ function RestaurantDetail({
           currencySymbol={(restaurant as { currencySymbol?: string })?.currencySymbol}
           tableLabel={(restaurant as { tableLabel?: string })?.tableLabel}
         />
-      )}
-
-      {activeTab === "kitchen" && (
-        <KitchenWorkspacePanel restaurantId={restaurantId} language={language} />
       )}
 
       {(activeTab === "screens" || activeTab === "devices") && (

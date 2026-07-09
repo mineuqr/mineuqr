@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  getKitchenWorkspaceActions,
-  getOrderWorkspaceActions,
-} from "../operationalActions";
+import { getOrderWorkspaceActions } from "../operationalActions";
 
 describe("operationalActions", () => {
   it("exposes action-first labels for pending orders", () => {
@@ -27,14 +24,5 @@ describe("operationalActions", () => {
     expect(served).toEqual([]);
     expect(cancelled).toEqual([]);
     expect(served.some((a) => a.id === "restore-order")).toBe(false);
-  });
-
-  it("kitchen workspace exposes single advance action per status (no cancel)", () => {
-    expect(getKitchenWorkspaceActions("pending").map((a) => a.id)).toEqual(["start-preparing"]);
-    expect(getKitchenWorkspaceActions("preparing").map((a) => a.id)).toEqual(["mark-ready"]);
-    expect(getKitchenWorkspaceActions("ready").map((a) => a.id)).toEqual(["serve-order"]);
-    expect(getKitchenWorkspaceActions("pending").some((a) => a.id === "cancel-order")).toBe(false);
-    expect(getKitchenWorkspaceActions("preparing").some((a) => a.id === "cancel-order")).toBe(false);
-    expect(getKitchenWorkspaceActions("ready").some((a) => a.id === "cancel-order")).toBe(false);
   });
 });

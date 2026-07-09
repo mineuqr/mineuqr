@@ -9,12 +9,16 @@ function read(rel: string) {
 }
 
 describe("OPERATIONAL-WORKSPACE-1 architecture guards", () => {
-  it("kitchen workspace advances orders with a single action (no cancel)", () => {
-    const kitchenPanel = read("client/src/components/kitchen/KitchenWorkspacePanel.tsx");
-    expect(kitchenPanel).toContain("KitchenExecutionCard");
-    expect(kitchenPanel).toContain("getKitchenWorkspaceActions");
-    expect(kitchenPanel).toContain("useOrderStatusActions");
-    expect(kitchenPanel).not.toContain("cancel-order");
+  it("dashboard no longer hosts a kitchen execution workspace", () => {
+    const dashboard = read("client/src/pages/Dashboard.tsx");
+    expect(dashboard).not.toContain("KitchenWorkspacePanel");
+    expect(dashboard).not.toContain('activeTab === "kitchen"');
+  });
+
+  it("operational kitchen screen remains the execution presentation", () => {
+    const kitchenScreen = read("client/src/components/operational-screen/KitchenScreenPanel.tsx");
+    expect(kitchenScreen).toContain("KitchenExecutionCard");
+    expect(kitchenScreen).toContain("useKitchenRuntimeStream");
   });
 
   it("kitchen execution card exposes advance action only (no cancel)", () => {

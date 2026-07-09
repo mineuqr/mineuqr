@@ -77,14 +77,6 @@ export function printWorkspaceListQueryOptions(enabled: boolean) {
   } as const;
 }
 
-export function kitchenQueueQueryOptions(enabled: boolean) {
-  return {
-    enabled,
-    refetchInterval: enabled ? DASHBOARD_ORDER_LIST_POLL_MS : false,
-    staleTime: 0,
-  } as const;
-}
-
 export function orderReadListQueryOptions(enabled: boolean) {
   return {
     enabled,

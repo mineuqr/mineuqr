@@ -12,10 +12,10 @@ export function parseDashboardRestaurantId(raw: string | null | undefined): numb
 
 function sectionToRestaurantTab(section: string | null | undefined): RestaurantTab | null {
   if (!section || section === "sessions") return null;
+  if (section === "kitchen") return "screens";
   const map: Record<string, RestaurantTab> = {
     home: "home",
     orders: "orders",
-    kitchen: "kitchen",
     screens: "screens",
     devices: "screens",
     "screen-provisioning": "screen-provisioning",

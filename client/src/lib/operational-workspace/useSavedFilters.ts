@@ -17,13 +17,6 @@ export const DEFAULT_ORDER_FILTERS: SavedFilterPreset[] = [
   { id: "late", labelEn: "Late Orders", labelAr: "طلبات متأخرة", status: "late" },
 ];
 
-export const DEFAULT_KITCHEN_FILTERS: SavedFilterPreset[] = [
-  { id: "all", labelEn: "Kitchen Queue", labelAr: "طابور المطبخ" },
-  { id: "pending", labelEn: "New", labelAr: "جديد", status: "pending" },
-  { id: "preparing", labelEn: "Preparing", labelAr: "تحضير", status: "preparing" },
-  { id: "ready", labelEn: "Ready", labelAr: "جاهز", status: "ready" },
-];
-
 export const DEFAULT_PRINT_FILTERS: SavedFilterPreset[] = [
   { id: "awaiting", labelEn: "Awaiting Print", labelAr: "بانتظار الطباعة", view: "awaiting" },
   { id: "completed", labelEn: "Recently Completed", labelAr: "مكتملة مؤخراً", view: "completed" },
