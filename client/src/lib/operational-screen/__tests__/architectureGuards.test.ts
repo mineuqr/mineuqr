@@ -81,7 +81,14 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
     expect(card).toContain("OperationalItemTable");
     expect(card).toContain("quantityColumnClass");
     expect(card).not.toMatch(/×\{qty\}|×\$\{/);
-    expect(density).toContain("quantityColumnClass");
+    expect(density).toContain("w-[40px]");
+  });
+
+  it("OPERATIONAL-CARD-POLISH-2B: item rows use ultra-light separators", () => {
+    const card = read("client/src/components/kitchen/KitchenExecutionCard.tsx");
+    const typography = read("client/src/lib/operational-screen/operationalCardTypography.ts");
+    expect(card).toContain("OPERATIONAL_ITEM_ROW_DIVIDER_CLASS");
+    expect(typography).toContain("border-border/[0.08]");
   });
 
   it("OPERATIONAL-CARD-POLISH-1: operational screen excludes order acceptance", () => {

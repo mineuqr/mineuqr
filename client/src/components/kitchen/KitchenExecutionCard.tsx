@@ -9,6 +9,7 @@ import {
   formatOperationalFulfillmentLabel,
   formatOperationalItemOverflow,
   formatOperationalQuantity,
+  OPERATIONAL_ITEM_ROW_DIVIDER_CLASS,
   OPERATIONAL_META_SEPARATOR_CLASS,
   operationalCardElapsedClass,
   operationalFooterStatusClass,
@@ -41,12 +42,19 @@ function OperationalItemTable({
 
   return (
     <>
-      <ul className="space-y-1" aria-label={isAr ? "عناصر الطلب" : "Order items"}>
-        {visible.map((line) => {
+      <ul className="space-y-0" aria-label={isAr ? "عناصر الطلب" : "Order items"}>
+        {visible.map((line, index) => {
           const qty = formatOperationalQuantity(line.quantity);
           const name = productDisplayName(line, isAr);
+          const isLast = index === visible.length - 1;
           return (
-            <li key={line.lineItemId} className="flex min-w-0 items-baseline gap-3">
+            <li
+              key={line.lineItemId}
+              className={cn(
+                "flex min-w-0 items-baseline gap-[10px] py-1 first:pt-0",
+                !isLast && OPERATIONAL_ITEM_ROW_DIVIDER_CLASS
+              )}
+            >
               <span
                 className={cn(
                   densityModel.quantityColumnClass,
@@ -85,7 +93,7 @@ function OperationalExecutionFooter({
 }) {
   return (
     <div
-      className="grid grid-cols-[1fr_auto_1fr] items-center gap-x-5"
+      className="grid grid-cols-[1fr_auto_1fr] items-baseline gap-x-6"
       aria-label={
         isAr
           ? `${elapsed}، ${operationalFooterStatusLabel(status, true)}`
@@ -98,7 +106,7 @@ function OperationalExecutionFooter({
       >
         {elapsed}
       </p>
-      <span className={OPERATIONAL_META_SEPARATOR_CLASS} aria-hidden>
+      <span className={cn(OPERATIONAL_META_SEPARATOR_CLASS, "self-center")} aria-hidden>
         │
       </span>
       <p className={cn(operationalFooterStatusClass(status), "text-end")}>

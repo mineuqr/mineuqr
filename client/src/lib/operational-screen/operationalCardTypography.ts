@@ -43,9 +43,12 @@ export function formatOperationalQuantity(quantity: number): string {
   return String(quantity);
 }
 
+/** Extremely light row guide — visible only to the eye, not as table chrome. */
+export const OPERATIONAL_ITEM_ROW_DIVIDER_CLASS = "border-b border-border/[0.08]";
+
 /** Shared subtle separator weight for footer meta elements. */
 export const OPERATIONAL_META_SEPARATOR_CLASS =
-  "select-none text-xs font-light leading-none text-muted-foreground/45";
+  "select-none px-2 text-xs font-light leading-none text-muted-foreground/45";
 
 /** Elapsed-time emphasis in the footer row — strong weight, compact size for execution flow. */
 export function operationalCardElapsedClass(sla: SlaSnapshot, baseClass: string): string {
