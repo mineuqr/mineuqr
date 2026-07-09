@@ -1,14 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { resolveDeviceOperationalAction } from "../deviceOrderExecutionCapabilities";
+import { resolveOperationalScreenAction } from "../deviceOrderExecutionCapabilities";
 
 describe("deviceOrderExecutionCapabilities", () => {
-  it("resolves kitchen primary actions for presentation", () => {
-    expect(resolveDeviceOperationalAction("kitchen_display", "pending")?.id).toBe("accept-order");
-    expect(resolveDeviceOperationalAction("kitchen_display", "preparing")?.id).toBe("mark-ready");
-    expect(resolveDeviceOperationalAction("expo_display", "ready")?.id).toBe("serve-order");
+  it("never exposes accept-order on the operational screen", () => {
+    expect(resolveOperationalScreenAction("kitchen_display", "pending")).toBeNull();
+  });
+
+  it("resolves execution actions after acceptance", () => {
+    expect(resolveOperationalScreenAction("kitchen_display", "preparing")?.id).toBe("mark-ready");
+    expect(resolveOperationalScreenAction("expo_display", "ready")?.id).toBe("serve-order");
   });
 
   it("returns null when role cannot act on status", () => {
-    expect(resolveDeviceOperationalAction("kitchen_display", "ready")).toBeNull();
+    expect(resolveOperationalScreenAction("kitchen_display", "ready")).toBeNull();
   });
 });

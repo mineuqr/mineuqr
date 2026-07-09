@@ -59,6 +59,17 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
     expect(hook).not.toContain("trpc.order.updateStatus");
   });
 
+  it("OPERATIONAL-CARD-POLISH-1: operational screen excludes order acceptance", () => {
+    const capabilities = read(
+      "client/src/lib/operational-screen/interaction/deviceOrderExecutionCapabilities.ts"
+    );
+    const kitchenScreen = read("client/src/components/operational-screen/KitchenScreenPanel.tsx");
+    expect(capabilities).toContain("OPERATIONAL_SCREEN_EXCLUDED_ACTIONS");
+    expect(capabilities).toContain('"accept-order"');
+    expect(kitchenScreen).toContain("resolveOperationalScreenAction");
+    expect(kitchenScreen).not.toContain("accept-order");
+  });
+
   it("FF-OSC-03: kitchen queue fetched in runtime stream, not presentation", () => {
     const kitchenPresentation = read("client/src/components/operational-screen/KitchenScreenPanel.tsx");
     const runtimeStream = read("client/src/lib/operational-screen/kitchen/useKitchenRuntimeStream.ts");

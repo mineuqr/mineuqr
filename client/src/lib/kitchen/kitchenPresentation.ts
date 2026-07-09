@@ -128,10 +128,10 @@ export function formatKitchenItemOverflow(count: number, isAr: boolean): string 
  */
 export function kitchenCardElapsedClass(sla: SlaSnapshot, baseClass: string): string {
   if (sla.status === "critical") {
-    return `${baseClass} text-xl text-destructive underline decoration-destructive/50 underline-offset-4 xl:text-2xl`;
+    return `${baseClass} text-2xl text-destructive decoration-destructive/40 underline underline-offset-[3px] xl:text-3xl`;
   }
   if (sla.status === "late" || sla.status === "at-risk") {
-    return `${baseClass} text-lg ring-1 ring-amber-500/35 xl:text-xl`;
+    return `${baseClass} text-xl text-amber-100 ring-1 ring-amber-500/40 xl:text-2xl`;
   }
   return baseClass;
 }

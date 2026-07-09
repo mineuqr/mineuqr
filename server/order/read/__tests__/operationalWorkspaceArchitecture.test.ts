@@ -20,7 +20,8 @@ describe("OPERATIONAL-WORKSPACE-1 architecture guards", () => {
     expect(kitchenScreen).toContain("KitchenExecutionCard");
     expect(kitchenScreen).toContain("useKitchenRuntimeStream");
     expect(kitchenScreen).toContain("useOperationalDeviceOrderActions");
-    expect(kitchenScreen).toContain("resolveDeviceOperationalAction");
+    expect(kitchenScreen).toContain("resolveOperationalScreenAction");
+    expect(kitchenScreen).not.toContain("accept-order");
     expect(kitchenScreen).not.toContain("useOrderStatusActions");
     expect(kitchenScreen).not.toContain("order.updateStatus");
   });

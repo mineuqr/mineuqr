@@ -30,14 +30,14 @@ function KitchenStatusIndicator({
 
   return (
     <div
-      className={cn("flex items-center gap-2.5", presentation.labelClass)}
+      className={cn("inline-flex items-center gap-1.5", presentation.labelClass)}
       aria-label={formatKitchenStatusLabel(status, isAr)}
     >
       <span
-        className={cn("h-3.5 w-3.5 shrink-0 rounded-full", presentation.dotClass)}
+        className={cn("h-2.5 w-2.5 shrink-0 rounded-full", presentation.dotClass)}
         aria-hidden
       />
-      <span className="text-sm font-semibold tracking-tight">
+      <span className="text-xs font-semibold uppercase tracking-wide">
         {formatKitchenStatusLabel(status, isAr)}
       </span>
     </div>
@@ -56,7 +56,7 @@ function KitchenItemList({
   densityModel: PresentationDensityModel;
 }) {
   if (lineItems.length === 0) {
-    return <li className={cn(densityModel.lineItemClass, "col-span-2")}>{linesSummary}</li>;
+    return <li className={cn(densityModel.lineItemClass, "list-none")}>{linesSummary}</li>;
   }
 
   const maxVisible = densityModel.maxVisibleLineItems;
@@ -69,19 +69,17 @@ function KitchenItemList({
         const qty = isAr ? toArabicDigits(line.quantity) : String(line.quantity);
         const name = productDisplayName(line, isAr);
         return (
-          <li key={line.lineItemId} className="contents">
-            <span className="self-start pt-0.5 text-end font-mono text-base font-black tabular-nums leading-none text-foreground/90">
-              {qty}×
+          <li key={line.lineItemId} className="flex min-w-0 items-baseline gap-1.5">
+            <span className="shrink-0 font-mono text-base font-black tabular-nums leading-none text-foreground">
+              ×{qty}
             </span>
-            <span className={cn(densityModel.lineItemClass, "min-w-0 break-words pb-0.5")}>
-              {name}
-            </span>
+            <span className={cn(densityModel.lineItemClass, "min-w-0 truncate")}>{name}</span>
           </li>
         );
       })}
       {overflow > 0 ? (
-        <li className="col-span-2 pt-0.5">
-          <span className="text-sm font-semibold text-muted-foreground">
+        <li className="list-none pt-0.5">
+          <span className="text-xs font-semibold text-muted-foreground">
             {formatKitchenItemOverflow(overflow, isAr)}
           </span>
         </li>
@@ -145,13 +143,13 @@ export function KitchenExecutionCard({
     <article
       className={cn(
         "group relative flex h-full w-full flex-col overflow-hidden bg-card",
-        "rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.05),0_6px_20px_rgba(0,0,0,0.07)]",
+        "rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.05),0_4px_14px_rgba(0,0,0,0.06)]",
         "ring-1 ring-border/40 transition-[box-shadow,ring-color] duration-150 touch-manipulation",
         densityModel.cardRadius,
         densityModel.cardPadding,
         densityModel.cardMinHeight,
         urgencyClassName(ticket.urgencyTier),
-        selected && "ring-2 ring-primary/55 shadow-[0_8px_28px_rgba(0,0,0,0.1)]",
+        selected && "ring-2 ring-primary/55 shadow-[0_6px_22px_rgba(0,0,0,0.1)]",
         fading && "opacity-60",
         className
       )}
@@ -163,7 +161,7 @@ export function KitchenExecutionCard({
       }
     >
       <div
-        className={cn("absolute inset-x-0 top-0 h-1", statusPresentation.accentClass)}
+        className={cn("absolute inset-x-0 top-0 h-0.5", statusPresentation.accentClass)}
         aria-hidden
       />
 
@@ -187,7 +185,7 @@ export function KitchenExecutionCard({
             "focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2"
         )}
       >
-        <header className="mb-3 shrink-0 space-y-1.5 pt-0.5">
+        <header className="mb-2 shrink-0 space-y-1">
           <p className={cn(densityModel.orderNumberClass, "whitespace-nowrap")}>
             {`#${ticket.orderNumber}`}
           </p>
@@ -197,15 +195,12 @@ export function KitchenExecutionCard({
           <p className={elapsedClass} aria-label={isAr ? "الوقت المنقضي" : "Elapsed time"}>
             {elapsed}
           </p>
+
+          <p className={densityModel.tableLabelClass}>{fulfillmentLabel}</p>
         </header>
 
-        <div className="flex min-h-0 flex-1 flex-col gap-2.5">
-          <p className={densityModel.tableLabelClass}>{fulfillmentLabel}</p>
-
-          <ul
-            className="grid min-h-0 grid-cols-[2.75rem_minmax(0,1fr)] gap-x-2.5 gap-y-2"
-            aria-label={isAr ? "عناصر الطلب" : "Order items"}
-          >
+        <div className="flex min-h-0 flex-1 flex-col gap-1.5">
+          <ul className="space-y-1" aria-label={isAr ? "عناصر الطلب" : "Order items"}>
             <KitchenItemList
               lineItems={ticket.lineItems}
               linesSummary={ticket.linesSummary}
@@ -215,9 +210,9 @@ export function KitchenExecutionCard({
           </ul>
 
           {ticket.orderNotes ? (
-            <p className={cn("flex items-start gap-2", densityModel.notesClass)}>
+            <p className={cn("flex items-start gap-1.5", densityModel.notesClass)}>
               <StickyNote
-                className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground/80"
+                className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/70"
                 aria-hidden
               />
               <span className="line-clamp-2 break-words">{ticket.orderNotes}</span>
@@ -227,7 +222,7 @@ export function KitchenExecutionCard({
           {showWarning ? (
             <p
               className={cn(
-                "flex items-start gap-2 rounded-md px-2 py-1.5",
+                "flex items-start gap-1.5 rounded px-1.5 py-1",
                 densityModel.warningClass,
                 sla.status === "critical"
                   ? "bg-destructive/10 text-destructive"
@@ -235,7 +230,7 @@ export function KitchenExecutionCard({
               )}
               role="status"
             >
-              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+              <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" aria-hidden />
               <span>{delay.message}</span>
             </p>
           ) : null}
@@ -243,15 +238,15 @@ export function KitchenExecutionCard({
       </div>
 
       {hasFooter ? (
-        <footer className="mt-auto shrink-0 pt-3">
+        <footer className="mt-1 shrink-0 border-t border-border/20 pt-2">
           <Button
             type="button"
             size="lg"
             variant={action!.variant === "destructive" ? "destructive" : "default"}
             className={cn(
-              "h-12 w-full rounded-lg border-0 text-base font-bold text-white shadow-sm",
+              "h-11 w-full rounded-lg border-0 text-sm font-bold text-white shadow-sm",
               "transition-[box-shadow,transform,background-color] duration-150",
-              "hover:shadow-md active:scale-[0.98]",
+              "active:scale-[0.98]",
               "focus-visible:ring-2 focus-visible:ring-offset-2",
               statusPresentation.actionButtonClass
             )}

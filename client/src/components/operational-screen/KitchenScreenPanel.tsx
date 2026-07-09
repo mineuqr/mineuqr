@@ -16,7 +16,7 @@ import {
 import { toKitchenTicketCard } from "@/lib/kitchen/viewModels";
 import { computeSlaSnapshot } from "@/lib/operational-workspace/slaEngine";
 import { useOperationalDeviceOrderActions } from "@/lib/operational-screen/interaction/useOperationalDeviceOrderActions";
-import { resolveDeviceOperationalAction } from "@/lib/operational-screen/interaction/deviceOrderExecutionCapabilities";
+import { resolveOperationalScreenAction } from "@/lib/operational-screen/interaction/deviceOrderExecutionCapabilities";
 import { useKitchenRuntimeStream } from "@/lib/operational-screen/kitchen/useKitchenRuntimeStream";
 import { useRuntimeContext } from "./OperationalScreenRuntimeProvider";
 import { cn } from "@/lib/utils";
@@ -82,7 +82,7 @@ export function KitchenScreenPanel() {
               ticket.columnElapsedSeconds,
               ticket.elapsedSeconds
             );
-            const primaryAction = resolveDeviceOperationalAction(
+            const primaryAction = resolveOperationalScreenAction(
               context.identity.role,
               ticket.status
             );

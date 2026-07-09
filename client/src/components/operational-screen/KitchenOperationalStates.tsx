@@ -21,7 +21,7 @@ export function KitchenOperationalLoadingState({ language }: { language: string 
         {Array.from({ length: 6 }).map((_, index) => (
           <div
             key={index}
-            className="min-h-[11rem] animate-pulse rounded-xl border border-border/20 bg-[#12161f]/70"
+            className="min-h-[9rem] animate-pulse rounded-xl border border-border/20 bg-[#12161f]/70"
           />
         ))}
       </div>
