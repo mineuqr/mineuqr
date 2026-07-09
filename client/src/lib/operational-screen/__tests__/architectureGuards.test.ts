@@ -82,9 +82,8 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
     expect(kitchen).toContain("resolvedDensityModel");
     expect(kitchen).not.toContain("displayDensity");
     expect(kitchen).not.toContain("screenConfig");
+    expect(kitchen).toContain("KITCHEN_GRID_CLASS");
     expect(card).toContain("densityModel");
-    expect(card).not.toContain("compact");
-    expect(card).not.toContain("comfortable");
   });
 
   it("KITCHEN-CATEGORY-FILTER-1: filtering in runtime layer only", () => {

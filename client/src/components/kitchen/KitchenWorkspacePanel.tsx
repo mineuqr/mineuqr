@@ -1,10 +1,12 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { VerificationRequiredPanel } from "@/components/auth/VerificationRequiredPanel";
 import { KitchenExecutionCard } from "@/components/kitchen/KitchenExecutionCard";
-import { COMFORTABLE_DENSITY_MODEL } from "@/lib/operational-screen/density/presentationDensityModels";
+import { KITCHEN_OPERATIONAL_DENSITY_MODEL } from "@/lib/operational-screen/density/presentationDensityModels";
 import { OperationalWorkspaceShell } from "@/components/operational-workspace/OperationalWorkspaceShell";
 import { OperationsBar } from "@/components/operational-workspace/OperationsBar";
 import { WorkspaceFilters } from "@/components/operational-workspace/WorkspaceFilters";
+import { getKitchenWorkspaceActions } from "@/lib/operational-workspace/operationalActions";
+import { useOrderStatusActions } from "@/lib/operational-workspace/useOrderStatusActions";
 import { RestaurantSectionError } from "@/components/dashboard/RestaurantSectionStates";
 import { Button } from "@/components/ui/button";
 import { computeSlaSnapshot } from "@/lib/operational-workspace/slaEngine";
@@ -21,14 +23,18 @@ import {
 } from "@/lib/queryRuntime";
 import { isEmailNotVerifiedError } from "@/lib/trpcErrors";
 import { trpc } from "@/lib/trpc";
+import { cn } from "@/lib/utils";
 import { Loader2, RefreshCw } from "lucide-react";
-import { useMemo, useCallback } from "react";
+import { useMemo, useState } from "react";
 
 const COLUMN_LABELS = {
   pending: { en: "New", ar: "جديد" },
   preparing: { en: "Preparing", ar: "قيد التحضير" },
   ready: { en: "Ready", ar: "جاهز" },
 } as const;
+
+const KITCHEN_GRID_CLASS =
+  "grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5";
 
 export function KitchenWorkspacePanel({
   restaurantId,
@@ -45,6 +51,8 @@ export function KitchenWorkspacePanel({
     restaurantId,
     DEFAULT_KITCHEN_FILTERS
   );
+  const [pendingActionOrderId, setPendingActionOrderId] = useState<number | null>(null);
+  const { executeAction, isPending: actionPending } = useOrderStatusActions(restaurantId);
 
   useDevQueryRuntimeLog("kitchen.read.getQueue", {
     enabled: queriesEnabled,
@@ -84,11 +92,14 @@ export function KitchenWorkspacePanel({
     (t) => String(t.orderId)
   );
 
-  const ticketsForColumn = useCallback(
-    (columnId: "pending" | "preparing" | "ready") =>
-      displayTickets.filter((ticket) => ticket.status === columnId),
-    [displayTickets]
-  );
+  async function handleAction(orderId: number, actionId: Parameters<typeof executeAction>[1]) {
+    setPendingActionOrderId(orderId);
+    try {
+      await executeAction(orderId, actionId);
+    } finally {
+      setPendingActionOrderId(null);
+    }
+  }
 
   if (queueQuery.error && isEmailNotVerifiedError(queueQuery.error)) {
     return <VerificationRequiredPanel variant="operations" />;
@@ -99,8 +110,8 @@ export function KitchenWorkspacePanel({
       title={isAr ? "شاشة المطبخ" : "Kitchen Display"}
       description={
         isAr
-          ? "مساحة تنفيذ — عرض العمل التشغيلي (إدارة الطلبات من مساحة الطلبات)"
-          : "Execution workspace — visualize operational work (manage orders in Orders Workspace)"
+          ? "مساحة تنفيذ — تحضير الطلبات (إدارة الطلبات من مساحة الطلبات)"
+          : "Execution workspace — prepare orders (manage orders in Orders Workspace)"
       }
       headerAside={
         <Button
@@ -157,49 +168,31 @@ export function KitchenWorkspacePanel({
         <div className="flex justify-center py-16">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
+      ) : displayTickets.length === 0 ? (
+        <p className="py-8 text-center text-sm text-muted-foreground">
+          {isAr ? "لا توجد تذاكر" : "No tickets"}
+        </p>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-3">
-          {(visibleColumn && visibleColumn in columns
-            ? [visibleColumn]
-            : (["pending", "preparing", "ready"] as const)
-          ).map((columnId) => {
-            const columnTickets = ticketsForColumn(columnId);
+        <div className={cn(KITCHEN_GRID_CLASS, KITCHEN_OPERATIONAL_DENSITY_MODEL.columnGap)}>
+          {displayTickets.map((ticket) => {
+            const actions = getKitchenWorkspaceActions(ticket.status);
+            const action = actions[0] ?? null;
             return (
-            <section
-              key={columnId}
-              className="flex min-h-[480px] flex-col rounded-2xl border bg-muted/10 p-4"
-            >
-              <header className="mb-4 flex items-center justify-between border-b pb-3">
-                <h3 className="text-lg font-semibold">
-                  {isAr ? COLUMN_LABELS[columnId].ar : COLUMN_LABELS[columnId].en}
-                </h3>
-                <span className="rounded-full bg-background px-3 py-1 text-sm font-medium">
-                  {counts[columnId]}
-                </span>
-              </header>
-              <div className="flex flex-1 flex-col gap-4 overflow-y-auto">
-                {columnTickets.length === 0 ? (
-                  <p className="py-8 text-center text-muted-foreground">
-                    {isAr ? "لا توجد تذاكر" : "No tickets"}
-                  </p>
-                ) : (
-                  columnTickets.map((ticket) => (
-                    <KitchenExecutionCard
-                      key={ticket.orderId}
-                      ticket={ticket}
-                      sla={computeSlaSnapshot(
-                        ticket.status,
-                        ticket.columnElapsedMinutes * 60,
-                        ticket.elapsedMinutes * 60
-                      )}
-                      language={language}
-                      densityModel={COMFORTABLE_DENSITY_MODEL}
-                      fading={isFading(ticket)}
-                    />
-                  ))
+              <KitchenExecutionCard
+                key={ticket.orderId}
+                ticket={ticket}
+                sla={computeSlaSnapshot(
+                  ticket.status,
+                  ticket.columnElapsedMinutes * 60,
+                  ticket.elapsedMinutes * 60
                 )}
-              </div>
-            </section>
+                language={language}
+                densityModel={KITCHEN_OPERATIONAL_DENSITY_MODEL}
+                fading={isFading(ticket)}
+                action={action}
+                onAction={(actionId) => void handleAction(ticket.orderId, actionId)}
+                actionPending={actionPending && pendingActionOrderId === ticket.orderId}
+              />
             );
           })}
         </div>

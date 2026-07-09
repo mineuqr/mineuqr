@@ -25,6 +25,28 @@ export const COMFORTABLE_DENSITY_MODEL: PresentationDensityModel = {
   emptyStateClass: "text-sm text-muted-foreground",
 };
 
+/** Operational — kitchen workspace grid density (maximum visible tickets). */
+export const KITCHEN_OPERATIONAL_DENSITY_MODEL: PresentationDensityModel = {
+  cardPadding: "p-3",
+  cardGap: "gap-2",
+  cardMinHeight: "",
+  cardRadius: "rounded-lg",
+  columnGap: "gap-2",
+  columnSectionGap: "space-y-1.5",
+  ticketListGap: "space-y-0.5",
+  sectionTitleClass: "text-xs font-semibold uppercase tracking-wide text-muted-foreground",
+  orderNumberClass: "whitespace-nowrap font-mono text-lg font-bold leading-none tracking-tight",
+  tableLabelClass: "text-xs font-medium text-muted-foreground",
+  customerNameClass: "max-w-[40%] truncate text-xs font-medium text-muted-foreground",
+  lineItemClass: "text-sm font-semibold leading-tight",
+  notesClass: "text-xs font-medium leading-snug",
+  notesPadding: "rounded-md bg-muted/50 px-2 py-1",
+  timingClass: "text-sm font-bold tabular-nums",
+  timingIconClass: "h-3.5 w-3.5 shrink-0",
+  warningClass: "text-xs font-medium",
+  emptyStateClass: "text-xs text-muted-foreground",
+};
+
 /** Compact — higher information density. */
 export const COMPACT_DENSITY_MODEL: PresentationDensityModel = {
   cardPadding: "p-4",

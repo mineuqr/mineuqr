@@ -10,6 +10,9 @@ import { useRuntimeContext } from "./OperationalScreenRuntimeProvider";
 import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 
+const KITCHEN_GRID_CLASS =
+  "grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5";
+
 export function KitchenScreenPanel() {
   const context = useRuntimeContext();
   const language = context.presentation.language;
@@ -46,45 +49,36 @@ export function KitchenScreenPanel() {
   }
 
   const columns = queue?.columns ?? { pending: [], preparing: [], ready: [] };
-
-  const renderColumn = (title: string, tickets: typeof columns.pending) => (
-    <section className={cn("min-w-0 flex-1", densityModel.columnSectionGap)}>
-      <h2 className={densityModel.sectionTitleClass}>{title}</h2>
-      <div className={densityModel.ticketListGap}>
-        {tickets.map((ticket) => {
-          const model = toKitchenTicketCard(ticket);
-          const sla = computeSlaSnapshot(
-            ticket.status,
-            ticket.columnElapsedSeconds,
-            ticket.elapsedSeconds
-          );
-          return (
-            <KitchenExecutionCard
-              key={ticket.orderId}
-              ticket={model}
-              sla={sla}
-              language={language}
-              densityModel={densityModel}
-            />
-          );
-        })}
-        {!isError && tickets.length === 0 ? (
-          <p className={densityModel.emptyStateClass}>
-            {isAr ? "لا طلبات" : "No orders"}
-          </p>
-        ) : null}
-      </div>
-    </section>
-  );
+  const tickets = [...columns.pending, ...columns.preparing, ...columns.ready];
 
   return (
     <div>
       {isShowingStaleData ? <KitchenStaleDataBanner language={language} /> : null}
-      <div className={cn("grid lg:grid-cols-3", densityModel.columnGap)}>
-        {renderColumn(isAr ? "قيد الانتظار" : "Pending", columns.pending)}
-        {renderColumn(isAr ? "قيد التحضير" : "Preparing", columns.preparing)}
-        {renderColumn(isAr ? "جاهز" : "Ready", columns.ready)}
-      </div>
+      {!isError && tickets.length === 0 ? (
+        <p className={densityModel.emptyStateClass}>
+          {isAr ? "لا طلبات" : "No orders"}
+        </p>
+      ) : (
+        <div className={cn(KITCHEN_GRID_CLASS, densityModel.columnGap)}>
+          {tickets.map((ticket) => {
+            const model = toKitchenTicketCard(ticket);
+            const sla = computeSlaSnapshot(
+              ticket.status,
+              ticket.columnElapsedSeconds,
+              ticket.elapsedSeconds
+            );
+            return (
+              <KitchenExecutionCard
+                key={ticket.orderId}
+                ticket={model}
+                sla={sla}
+                language={language}
+                densityModel={densityModel}
+              />
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

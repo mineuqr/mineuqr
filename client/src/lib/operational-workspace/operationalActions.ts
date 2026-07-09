@@ -81,7 +81,16 @@ export function getOrderWorkspaceActions(status: OrderLifecycleStatus): Operatio
   }
 }
 
-/** Kitchen execution workspace — no lifecycle actions. */
-export function getKitchenWorkspaceActions(_status: OrderLifecycleStatus): OperationalAction[] {
-  return [];
+/** Kitchen execution workspace — single advance action per status; never cancel. */
+export function getKitchenWorkspaceActions(status: OrderLifecycleStatus): OperationalAction[] {
+  switch (status) {
+    case "pending":
+      return [{ id: "start-preparing", ...ACTIONS["start-preparing"] }];
+    case "preparing":
+      return [{ id: "mark-ready", ...ACTIONS["mark-ready"] }];
+    case "ready":
+      return [{ id: "serve-order", ...ACTIONS["serve-order"] }];
+    default:
+      return [];
+  }
 }

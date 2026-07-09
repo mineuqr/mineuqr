@@ -1,4 +1,28 @@
 import type { KitchenTicketLine } from "@/lib/kitchen/viewModels";
+import type { KitchenColumnId } from "@/lib/kitchen/viewModels";
+import { formatOrderStatusLabel } from "@/lib/orderStatusDisplay";
+
+export type KitchenOrderType = "table" | "takeaway" | "delivery";
+
+/** Presentation-only fulfillment label from existing ticket fields. */
+export function deriveKitchenOrderType(tableNumber: number): KitchenOrderType {
+  if (tableNumber > 0) return "table";
+  return "takeaway";
+}
+
+const ORDER_TYPE_LABELS: Record<KitchenOrderType, { en: string; ar: string }> = {
+  table: { en: "Table", ar: "طاولة" },
+  takeaway: { en: "Take Away", ar: "سفري" },
+  delivery: { en: "Delivery", ar: "توصيل" },
+};
+
+export function formatKitchenOrderType(type: KitchenOrderType, isAr: boolean): string {
+  return isAr ? ORDER_TYPE_LABELS[type].ar : ORDER_TYPE_LABELS[type].en;
+}
+
+export function formatKitchenStatusLabel(status: KitchenColumnId, isAr: boolean): string {
+  return formatOrderStatusLabel(status, isAr ? "ar" : "en");
+}
 
 const ARABIC_DIGITS = ["٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩"];
 

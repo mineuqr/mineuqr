@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  deriveKitchenOrderType,
   formatKitchenElapsed,
+  formatKitchenOrderType,
   formatQuantityLine,
   productDisplayName,
   toArabicDigits,
@@ -43,5 +45,12 @@ describe("kitchenPresentation", () => {
     expect(formatKitchenElapsed(5, true)).toBe("منذ ٥ دقيقة");
     expect(formatKitchenElapsed(90, false)).toBe("1h 30m ago");
     expect(formatKitchenElapsed(60, true)).toBe("منذ ١ ساعة");
+  });
+
+  it("derives order type from table number for presentation", () => {
+    expect(deriveKitchenOrderType(4)).toBe("table");
+    expect(deriveKitchenOrderType(0)).toBe("takeaway");
+    expect(formatKitchenOrderType("table", false)).toBe("Table");
+    expect(formatKitchenOrderType("takeaway", true)).toBe("سفري");
   });
 });
