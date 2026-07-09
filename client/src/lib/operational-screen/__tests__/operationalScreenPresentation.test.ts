@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  countDelayedKitchenTickets,
   headerConnectionLabel,
   kitchenIdleCopy,
   resolveHeaderConnectionTone,
@@ -45,6 +46,16 @@ describe("operationalScreenPresentation", () => {
   it("provides kitchen idle copy", () => {
     expect(kitchenIdleCopy(false).title).toBe("Kitchen Ready");
     expect(kitchenIdleCopy(true).subtitle).toContain("طلبات");
+  });
+
+  it("counts delayed tickets from urgency tier", () => {
+    expect(
+      countDelayedKitchenTickets([
+        ticket({ orderId: 1, urgencyTier: "normal", columnElapsedSeconds: 100 }),
+        ticket({ orderId: 2, urgencyTier: "critical", columnElapsedSeconds: 50 }),
+        ticket({ orderId: 3, urgencyTier: "elevated", columnElapsedSeconds: 200 }),
+      ])
+    ).toBe(2);
   });
 
   it("maps header connection tone labels", () => {

@@ -16,12 +16,9 @@ export function sortKitchenTicketsForDisplay(tickets: KitchenTicketDto[]): Kitch
   });
 }
 
-export function formatOperationalClock(date: Date, isAr: boolean): string {
-  return new Intl.DateTimeFormat(isAr ? "ar" : "en", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: !isAr,
-  }).format(date);
+/** Count tickets flagged as elevated or critical by the read model. */
+export function countDelayedKitchenTickets(tickets: KitchenTicketDto[]): number {
+  return tickets.filter((ticket) => ticket.urgencyTier !== "normal").length;
 }
 
 export type HeaderConnectionTone = "live" | "connecting" | "degraded" | "offline" | "maintenance";

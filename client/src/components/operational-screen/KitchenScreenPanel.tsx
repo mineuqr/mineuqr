@@ -9,7 +9,10 @@ import {
   KitchenOperationalLoadingState,
 } from "@/components/operational-screen/KitchenOperationalStates";
 import { KitchenQueueSummaryBar } from "@/components/operational-screen/KitchenQueueSummaryBar";
-import { sortKitchenTicketsForDisplay } from "@/lib/operational-screen/operationalScreenPresentation";
+import {
+  countDelayedKitchenTickets,
+  sortKitchenTicketsForDisplay,
+} from "@/lib/operational-screen/operationalScreenPresentation";
 import { toKitchenTicketCard } from "@/lib/kitchen/viewModels";
 import { computeSlaSnapshot } from "@/lib/operational-workspace/slaEngine";
 import { useKitchenRuntimeStream } from "@/lib/operational-screen/kitchen/useKitchenRuntimeStream";
@@ -54,11 +57,11 @@ export function KitchenScreenPanel() {
     ...columns.ready,
   ]);
   const counts = queue?.meta.counts ?? { pending: 0, preparing: 0, ready: 0 };
-  const total = queue?.meta.totalVisible ?? tickets.length;
+  const delayed = countDelayedKitchenTickets(tickets);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3 sm:gap-4">
-      <KitchenQueueSummaryBar counts={counts} total={total} language={language} />
+    <div className="flex min-h-0 flex-1 flex-col gap-2.5 sm:gap-3">
+      <KitchenQueueSummaryBar counts={counts} delayed={delayed} language={language} />
 
       {isShowingStaleData ? <KitchenStaleDataBanner language={language} /> : null}
 

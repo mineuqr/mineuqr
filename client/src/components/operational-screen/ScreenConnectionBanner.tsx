@@ -54,9 +54,10 @@ export function ScreenConnectionBanner({
     return (
       <div
         className={cn(
-          "flex items-center gap-2 border-b border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm text-amber-200",
+          "flex items-center gap-2 border-b border-amber-500/40 bg-amber-500/10 px-4 py-2.5 text-sm font-semibold text-amber-200",
           className
         )}
+        role="alert"
       >
         <WifiOff className="h-4 w-4 shrink-0" />
         {OPERATIONAL_LABELS.degraded[isAr ? "ar" : "en"]}

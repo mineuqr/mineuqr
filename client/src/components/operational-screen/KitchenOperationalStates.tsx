@@ -1,6 +1,6 @@
 import { ChefHat, Loader2 } from "lucide-react";
+import { KitchenQueueSummaryBarSkeleton } from "@/components/operational-screen/KitchenQueueSummaryBar";
 import { kitchenIdleCopy } from "@/lib/operational-screen/operationalScreenPresentation";
-import { cn } from "@/lib/utils";
 
 const KITCHEN_GRID_CLASS =
   "grid auto-rows-fr grid-cols-[repeat(auto-fill,minmax(min(100%,17.5rem),1fr))] gap-3 sm:gap-3.5 lg:gap-4";
@@ -9,9 +9,10 @@ export function KitchenOperationalLoadingState({ language }: { language: string 
   const isAr = language === "ar";
 
   return (
-    <div className="space-y-4" aria-busy="true" aria-label={isAr ? "جاري تحميل الطابور" : "Loading queue"}>
-      <div className="flex items-center gap-3 rounded-xl border border-border/30 bg-[#12161f]/60 px-4 py-3">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" aria-hidden />
+    <div className="space-y-2.5 sm:space-y-3" aria-busy="true" aria-label={isAr ? "جاري تحميل الطابور" : "Loading queue"}>
+      <KitchenQueueSummaryBarSkeleton />
+      <div className="flex items-center gap-3 rounded-xl border border-border/25 bg-[#12161f]/50 px-4 py-2.5">
+        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" aria-hidden />
         <p className="text-sm font-medium text-muted-foreground">
           {isAr ? "جاري تحميل الطابور..." : "Loading kitchen queue..."}
         </p>
