@@ -2,10 +2,13 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { VerificationRequiredPanel } from "@/components/auth/VerificationRequiredPanel";
 import { KitchenExecutionCard } from "@/components/kitchen/KitchenExecutionCard";
 import { KITCHEN_OPERATIONAL_DENSITY_MODEL } from "@/lib/operational-screen/density/presentationDensityModels";
+import { OperationalCard } from "@/components/operational-workspace/OperationalCard";
+import { OperationalDetailsDrawer } from "@/components/operational-workspace/OperationalDetailsDrawer";
 import { OperationalWorkspaceShell } from "@/components/operational-workspace/OperationalWorkspaceShell";
 import { OperationsBar } from "@/components/operational-workspace/OperationsBar";
 import { WorkspaceFilters } from "@/components/operational-workspace/WorkspaceFilters";
 import { getKitchenWorkspaceActions } from "@/lib/operational-workspace/operationalActions";
+import { buildLinesSummaryFromItems, computeOrderCardSla } from "@/lib/operational-workspace/orderViewModels";
 import { useOrderStatusActions } from "@/lib/operational-workspace/useOrderStatusActions";
 import { RestaurantSectionError } from "@/components/dashboard/RestaurantSectionStates";
 import { Button } from "@/components/ui/button";
@@ -51,6 +54,7 @@ export function KitchenWorkspacePanel({
     restaurantId,
     DEFAULT_KITCHEN_FILTERS
   );
+  const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [pendingActionOrderId, setPendingActionOrderId] = useState<number | null>(null);
   const { executeAction, isPending: actionPending } = useOrderStatusActions(restaurantId);
 
@@ -64,6 +68,11 @@ export function KitchenWorkspacePanel({
   const queueQuery = trpc.kitchen.read.getQueue.useQuery(
     { restaurantId, status: "all", limit: 200 },
     kitchenQueueQueryOptions(queriesEnabled)
+  );
+
+  const detailQuery = trpc.order.read.getDetail.useQuery(
+    { restaurantId, orderId: selectedOrderId ?? 0 },
+    { enabled: queriesEnabled && selectedOrderId != null }
   );
 
   const counts = queueQuery.data?.meta.counts ?? { pending: 0, preparing: 0, ready: 0 };
@@ -91,6 +100,8 @@ export function KitchenWorkspacePanel({
     allTickets,
     (t) => String(t.orderId)
   );
+
+  const selected = detailQuery.data?.order;
 
   async function handleAction(orderId: number, actionId: Parameters<typeof executeAction>[1]) {
     setPendingActionOrderId(orderId);
@@ -157,6 +168,32 @@ export function KitchenWorkspacePanel({
         />
       }
       filters={<WorkspaceFilters presets={presets} activeId={activeId} onSelect={select} language={language} />}
+      drawer={
+        <OperationalDetailsDrawer
+          open={selectedOrderId != null}
+          onOpenChange={(open) => !open && setSelectedOrderId(null)}
+          title={selected ? `#${selected.orderNumber}` : ""}
+          language={language}
+          timeline={detailQuery.data?.timeline}
+        >
+          {selected ? (
+            <OperationalCard
+              orderNumber={`#${selected.orderNumber}`}
+              tableLabel={
+                isAr ? `طاولة ${selected.tableNumber}` : `Table ${selected.tableNumber}`
+              }
+              linesSummary={buildLinesSummaryFromItems(selected.lineItems)}
+              orderNotes={selected.notes}
+              customerName={selected.customerName}
+              totalAmount={selected.totalAmount}
+              status={selected.status}
+              sla={computeOrderCardSla(selected.status, selected.createdAt)}
+              language={language}
+              executionOnly
+            />
+          ) : null}
+        </OperationalDetailsDrawer>
+      }
     >
       {queueQuery.error ? (
         <RestaurantSectionError
@@ -192,6 +229,8 @@ export function KitchenWorkspacePanel({
                 action={action}
                 onAction={(actionId) => void handleAction(ticket.orderId, actionId)}
                 actionPending={actionPending && pendingActionOrderId === ticket.orderId}
+                onOpenDetails={() => setSelectedOrderId(ticket.orderId)}
+                selected={selectedOrderId === ticket.orderId}
               />
             );
           })}

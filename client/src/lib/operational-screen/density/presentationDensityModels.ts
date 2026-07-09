@@ -23,28 +23,32 @@ export const COMFORTABLE_DENSITY_MODEL: PresentationDensityModel = {
   timingIconClass: "h-5 w-5 shrink-0",
   warningClass: "text-base font-semibold",
   emptyStateClass: "text-sm text-muted-foreground",
+  maxVisibleLineItems: 6,
 };
 
 /** Operational — kitchen workspace grid density (maximum visible tickets). */
 export const KITCHEN_OPERATIONAL_DENSITY_MODEL: PresentationDensityModel = {
-  cardPadding: "p-3",
-  cardGap: "gap-2",
-  cardMinHeight: "",
-  cardRadius: "rounded-lg",
-  columnGap: "gap-2",
+  cardPadding: "p-4",
+  cardGap: "gap-0",
+  cardMinHeight: "min-h-[11rem]",
+  cardRadius: "rounded-xl",
+  columnGap: "gap-2.5",
   columnSectionGap: "space-y-1.5",
-  ticketListGap: "space-y-0.5",
-  sectionTitleClass: "text-xs font-semibold uppercase tracking-wide text-muted-foreground",
-  orderNumberClass: "whitespace-nowrap font-mono text-lg font-bold leading-none tracking-tight",
-  tableLabelClass: "text-xs font-medium text-muted-foreground",
-  customerNameClass: "max-w-[40%] truncate text-xs font-medium text-muted-foreground",
-  lineItemClass: "text-sm font-semibold leading-tight",
-  notesClass: "text-xs font-medium leading-snug",
-  notesPadding: "rounded-md bg-muted/50 px-2 py-1",
-  timingClass: "text-sm font-bold tabular-nums",
-  timingIconClass: "h-3.5 w-3.5 shrink-0",
-  warningClass: "text-xs font-medium",
+  ticketListGap: "gap-y-2",
+  sectionTitleClass: "text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground",
+  orderNumberClass:
+    "font-mono text-2xl font-black leading-none tracking-tight text-foreground xl:text-3xl",
+  tableLabelClass:
+    "text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground",
+  customerNameClass: "max-w-full truncate text-xs font-medium text-muted-foreground",
+  lineItemClass: "text-[15px] font-semibold leading-snug text-foreground",
+  notesClass: "text-sm font-medium leading-snug text-muted-foreground",
+  notesPadding: "",
+  timingClass: "text-lg font-black tabular-nums tracking-tight text-foreground xl:text-xl",
+  timingIconClass: "h-4 w-4 shrink-0 text-muted-foreground/70",
+  warningClass: "text-xs font-semibold leading-snug",
   emptyStateClass: "text-xs text-muted-foreground",
+  maxVisibleLineItems: 4,
 };
 
 /** Compact — higher information density. */
@@ -67,6 +71,7 @@ export const COMPACT_DENSITY_MODEL: PresentationDensityModel = {
   timingIconClass: "h-4 w-4 shrink-0",
   warningClass: "text-sm font-semibold",
   emptyStateClass: "text-xs text-muted-foreground",
+  maxVisibleLineItems: 4,
 };
 
 const DENSITY_MODELS: Record<"comfortable" | "compact", PresentationDensityModel> = {

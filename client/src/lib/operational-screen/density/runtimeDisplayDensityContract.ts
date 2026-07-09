@@ -31,6 +31,8 @@ export type PresentationDensityModel = {
   readonly timingIconClass: string;
   readonly warningClass: string;
   readonly emptyStateClass: string;
+  /** Line items shown before overflow indicator — tied to density tier. */
+  readonly maxVisibleLineItems: number;
 };
 
 /**
