@@ -15,10 +15,14 @@ describe("OPERATIONAL-WORKSPACE-1 architecture guards", () => {
     expect(dashboard).not.toContain('activeTab === "kitchen"');
   });
 
-  it("operational kitchen screen remains the execution presentation", () => {
+  it("operational kitchen screen executes via device runtime", () => {
     const kitchenScreen = read("client/src/components/operational-screen/KitchenScreenPanel.tsx");
     expect(kitchenScreen).toContain("KitchenExecutionCard");
     expect(kitchenScreen).toContain("useKitchenRuntimeStream");
+    expect(kitchenScreen).toContain("useOperationalDeviceOrderActions");
+    expect(kitchenScreen).toContain("resolveDeviceOperationalAction");
+    expect(kitchenScreen).not.toContain("useOrderStatusActions");
+    expect(kitchenScreen).not.toContain("order.updateStatus");
   });
 
   it("kitchen execution card exposes advance action only (no cancel)", () => {

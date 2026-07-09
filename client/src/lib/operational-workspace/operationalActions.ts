@@ -55,6 +55,10 @@ const ACTIONS: Record<OperationalActionId, Omit<OperationalAction, "id">> = {
   },
 };
 
+export function getOperationalActionById(id: OperationalActionId): OperationalAction {
+  return { id, ...ACTIONS[id] };
+}
+
 /** Order lifecycle actions — Orders Workspace is sole owner. */
 export function getOrderWorkspaceActions(status: OrderLifecycleStatus): OperationalAction[] {
   switch (status) {

@@ -50,6 +50,15 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
     }
   });
 
+  it("DEVICE-AUTHENTICATED-OPERATIONS-1: screen executes via device runtime only", () => {
+    const kitchen = read("client/src/components/operational-screen/KitchenScreenPanel.tsx");
+    const hook = read("client/src/lib/operational-screen/interaction/useOperationalDeviceOrderActions.ts");
+    expect(kitchen).toContain("useOperationalDeviceOrderActions");
+    expect(kitchen).not.toContain("useOrderStatusActions");
+    expect(hook).toContain("screenTrpc.operationalDevice.runtime.executeOrderAction");
+    expect(hook).not.toContain("trpc.order.updateStatus");
+  });
+
   it("FF-OSC-03: kitchen queue fetched in runtime stream, not presentation", () => {
     const kitchenPresentation = read("client/src/components/operational-screen/KitchenScreenPanel.tsx");
     const runtimeStream = read("client/src/lib/operational-screen/kitchen/useKitchenRuntimeStream.ts");

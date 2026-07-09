@@ -15,6 +15,8 @@ import {
 } from "@/lib/operational-screen/operationalScreenPresentation";
 import { toKitchenTicketCard } from "@/lib/kitchen/viewModels";
 import { computeSlaSnapshot } from "@/lib/operational-workspace/slaEngine";
+import { useOperationalDeviceOrderActions } from "@/lib/operational-screen/interaction/useOperationalDeviceOrderActions";
+import { resolveDeviceOperationalAction } from "@/lib/operational-screen/interaction/deviceOrderExecutionCapabilities";
 import { useKitchenRuntimeStream } from "@/lib/operational-screen/kitchen/useKitchenRuntimeStream";
 import { useRuntimeContext } from "./OperationalScreenRuntimeProvider";
 import { cn } from "@/lib/utils";
@@ -33,6 +35,7 @@ export function KitchenScreenPanel() {
     retry,
     isRefetching,
   } = useKitchenRuntimeStream();
+  const { bindTicket } = useOperationalDeviceOrderActions();
 
   if (isLoading && !queue && !isError) {
     return <KitchenOperationalLoadingState language={language} />;
@@ -79,6 +82,11 @@ export function KitchenScreenPanel() {
               ticket.columnElapsedSeconds,
               ticket.elapsedSeconds
             );
+            const primaryAction = resolveDeviceOperationalAction(
+              context.identity.role,
+              ticket.status
+            );
+            const interaction = bindTicket(ticket.orderId);
             return (
               <KitchenExecutionCard
                 key={ticket.orderId}
@@ -86,6 +94,10 @@ export function KitchenScreenPanel() {
                 sla={sla}
                 language={language}
                 densityModel={densityModel}
+                action={primaryAction}
+                onAction={interaction.onPrimaryAction}
+                actionPending={interaction.actionPending}
+                actionSucceeded={interaction.actionSucceeded}
               />
             );
           })}

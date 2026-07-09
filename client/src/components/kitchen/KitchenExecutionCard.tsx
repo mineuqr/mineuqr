@@ -16,7 +16,7 @@ import type { PresentationDensityModel } from "@/lib/operational-screen/density/
 import type { OperationalAction } from "@/lib/operational-workspace/operationalActions";
 import type { SlaSnapshot } from "@/lib/operational-workspace/slaEngine";
 import { explainDelay } from "@/lib/operational-workspace/delayIntelligence";
-import { AlertTriangle, Loader2, StickyNote } from "lucide-react";
+import { AlertTriangle, Check, Loader2, StickyNote } from "lucide-react";
 import type { KeyboardEvent } from "react";
 
 function KitchenStatusIndicator({
@@ -104,6 +104,7 @@ export function KitchenExecutionCard({
   action,
   onAction,
   actionPending,
+  actionSucceeded,
   onOpenDetails,
   selected,
 }: {
@@ -116,6 +117,7 @@ export function KitchenExecutionCard({
   action?: OperationalAction | null;
   onAction?: (actionId: OperationalAction["id"]) => void;
   actionPending?: boolean;
+  actionSucceeded?: boolean;
   onOpenDetails?: () => void;
   selected?: boolean;
 }) {
@@ -254,6 +256,7 @@ export function KitchenExecutionCard({
               statusPresentation.actionButtonClass
             )}
             disabled={actionPending}
+            aria-busy={actionPending ? true : undefined}
             onClick={(event) => {
               event.stopPropagation();
               onAction!(action!.id);
@@ -262,6 +265,11 @@ export function KitchenExecutionCard({
           >
             {actionPending ? (
               <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+            ) : actionSucceeded ? (
+              <span className="inline-flex items-center gap-2">
+                <Check className="h-5 w-5" aria-hidden />
+                {actionLabel}
+              </span>
             ) : (
               actionLabel
             )}

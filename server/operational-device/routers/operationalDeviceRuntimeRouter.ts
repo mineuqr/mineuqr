@@ -7,6 +7,8 @@ import {
   rolePermitsKitchenQueue,
   rolePermitsPrintMonitor,
 } from "../domain/deviceRoles";
+import { DEVICE_ORDER_ACTION_IDS } from "../domain/deviceOrderExecution";
+import { executeDeviceOrderAction } from "../services/DeviceOrderExecutionService";
 import { operationalDeviceComposition } from "../operationalDeviceComposition";
 import { summarizeDeviceHealth } from "../domain/deviceHealth";
 import { resolveScreenConfigVersion } from "../domain/screenConfigVersion";
@@ -28,6 +30,11 @@ const heartbeatInput = z.object({
 const kitchenQueueInput = z.object({
   status: z.enum(["pending", "preparing", "ready", "all"]).optional(),
   limit: z.number().int().positive().max(200).optional(),
+});
+
+const executeOrderActionInput = z.object({
+  orderId: z.number().int().positive(),
+  action: z.enum(DEVICE_ORDER_ACTION_IDS),
 });
 
 /**
@@ -122,4 +129,15 @@ export const operationalDeviceRuntimeRouter = router({
       items: list.items.slice(0, 20),
     };
   }),
+
+  executeOrderAction: deviceProcedure
+    .input(executeOrderActionInput)
+    .mutation(async ({ input, ctx }) => {
+      return executeDeviceOrderAction({
+        session: ctx.deviceSession!,
+        orderId: input.orderId,
+        action: input.action,
+        correlationId: ctx.correlationId,
+      });
+    }),
 });
