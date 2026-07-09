@@ -9,6 +9,7 @@ import {
   formatOperationalFulfillmentLabel,
   formatOperationalItemOverflow,
   formatOperationalQuantity,
+  OPERATIONAL_META_SEPARATOR_CLASS,
   operationalCardElapsedClass,
   operationalFooterStatusClass,
   operationalFooterStatusLabel,
@@ -19,7 +20,7 @@ import { explainDelay } from "@/lib/operational-workspace/delayIntelligence";
 import { AlertTriangle, Check, Loader2, StickyNote } from "lucide-react";
 import type { KeyboardEvent } from "react";
 
-function KitchenItemList({
+function OperationalItemTable({
   lineItems,
   linesSummary,
   isAr,
@@ -31,7 +32,7 @@ function KitchenItemList({
   densityModel: PresentationDensityModel;
 }) {
   if (lineItems.length === 0) {
-    return <li className={cn(densityModel.lineItemClass, "list-none")}>{linesSummary}</li>;
+    return <p className={cn(densityModel.lineItemClass, "list-none")}>{linesSummary}</p>;
   }
 
   const maxVisible = densityModel.maxVisibleLineItems;
@@ -40,24 +41,32 @@ function KitchenItemList({
 
   return (
     <>
-      {visible.map((line) => {
-        const qty = formatOperationalQuantity(line.quantity);
-        const name = productDisplayName(line, isAr);
-        return (
-          <li key={line.lineItemId} className="flex min-w-0 items-baseline gap-1">
-            <span className={cn("shrink-0 font-mono", densityModel.quantityClass)}>
-              ×{qty}
-            </span>
-            <span className={cn(densityModel.lineItemClass, "min-w-0 truncate")}>{name}</span>
-          </li>
-        );
-      })}
+      <ul className="space-y-1" aria-label={isAr ? "عناصر الطلب" : "Order items"}>
+        {visible.map((line) => {
+          const qty = formatOperationalQuantity(line.quantity);
+          const name = productDisplayName(line, isAr);
+          return (
+            <li key={line.lineItemId} className="flex min-w-0 items-baseline gap-3">
+              <span
+                className={cn(
+                  densityModel.quantityColumnClass,
+                  densityModel.quantityClass,
+                  densityModel.lineItemClass
+                )}
+              >
+                {qty}
+              </span>
+              <span className={cn(densityModel.lineItemClass, "min-w-0 flex-1 truncate")}>
+                {name}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
       {overflow > 0 ? (
-        <li className="list-none pt-0.5">
-          <span className="text-xs font-semibold tabular-nums text-muted-foreground">
-            {formatOperationalItemOverflow(overflow, isAr)}
-          </span>
-        </li>
+        <p className="pt-1 text-xs font-semibold tabular-nums text-muted-foreground">
+          {formatOperationalItemOverflow(overflow, isAr)}
+        </p>
       ) : null}
     </>
   );
@@ -76,18 +85,21 @@ function OperationalExecutionFooter({
 }) {
   return (
     <div
-      className="grid grid-cols-[1fr_auto_1fr] items-center gap-x-3"
+      className="grid grid-cols-[1fr_auto_1fr] items-center gap-x-5"
       aria-label={
         isAr
           ? `${elapsed}، ${operationalFooterStatusLabel(status, true)}`
           : `${elapsed}, ${operationalFooterStatusLabel(status, false)}`
       }
     >
-      <p className={cn(elapsedClass, "text-start")} aria-label={isAr ? "الوقت المنقضي" : "Elapsed time"}>
+      <p
+        className={cn(elapsedClass, "text-start whitespace-nowrap")}
+        aria-label={isAr ? "الوقت المنقضي" : "Elapsed time"}
+      >
         {elapsed}
       </p>
-      <span className="text-sm font-light text-muted-foreground/45" aria-hidden>
-        |
+      <span className={OPERATIONAL_META_SEPARATOR_CLASS} aria-hidden>
+        │
       </span>
       <p className={cn(operationalFooterStatusClass(status), "text-end")}>
         {operationalFooterStatusLabel(status, isAr)}
@@ -193,26 +205,24 @@ export function KitchenExecutionCard({
             "focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2"
         )}
       >
-        <header className="mb-1.5 shrink-0">
+        <header className="mb-1.5 shrink-0 border-b border-border/15 pb-1.5">
           <p className={cn(densityModel.orderNumberClass, "whitespace-nowrap tabular-nums")}>
             {ticket.orderNumber}
           </p>
         </header>
 
-        <div className="flex min-h-0 flex-1 flex-col gap-1.5">
-          <ul className="space-y-1" aria-label={isAr ? "عناصر الطلب" : "Order items"}>
-            <KitchenItemList
-              lineItems={ticket.lineItems}
-              linesSummary={ticket.linesSummary}
-              isAr={isAr}
-              densityModel={densityModel}
-            />
-          </ul>
+        <div className="flex min-h-0 flex-1 flex-col pt-1.5">
+          <OperationalItemTable
+            lineItems={ticket.lineItems}
+            linesSummary={ticket.linesSummary}
+            isAr={isAr}
+            densityModel={densityModel}
+          />
 
-          <p className={densityModel.tableLabelClass}>{fulfillmentLabel}</p>
+          <p className={cn(densityModel.tableLabelClass, "mt-1")}>{fulfillmentLabel}</p>
 
           {ticket.orderNotes ? (
-            <p className={cn("flex items-start gap-1.5", densityModel.notesClass)}>
+            <p className={cn("mt-1.5 flex items-start gap-1.5", densityModel.notesClass)}>
               <StickyNote
                 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/70"
                 aria-hidden
@@ -224,7 +234,7 @@ export function KitchenExecutionCard({
           {showWarning ? (
             <p
               className={cn(
-                "flex items-start gap-1.5 rounded px-1.5 py-1",
+                "mt-1.5 flex items-start gap-1.5 rounded px-1.5 py-1",
                 densityModel.warningClass,
                 sla.status === "critical"
                   ? "bg-destructive/10 text-destructive"
@@ -239,7 +249,7 @@ export function KitchenExecutionCard({
         </div>
       </div>
 
-      <footer className="mt-1 shrink-0 space-y-2 border-t border-border/20 pt-2">
+      <footer className="mt-1 shrink-0 space-y-2 border-t border-border/15 pt-2">
         <OperationalExecutionFooter
           elapsed={elapsed}
           elapsedClass={elapsedClass}

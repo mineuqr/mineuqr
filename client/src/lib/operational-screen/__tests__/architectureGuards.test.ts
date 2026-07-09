@@ -75,6 +75,15 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
     expect(card).not.toContain("KitchenStatusIndicator");
   });
 
+  it("OPERATIONAL-CARD-POLISH-2: operational item table uses fixed quantity column", () => {
+    const card = read("client/src/components/kitchen/KitchenExecutionCard.tsx");
+    const density = read("client/src/lib/operational-screen/density/presentationDensityModels.ts");
+    expect(card).toContain("OperationalItemTable");
+    expect(card).toContain("quantityColumnClass");
+    expect(card).not.toMatch(/×\{qty\}|×\$\{/);
+    expect(density).toContain("quantityColumnClass");
+  });
+
   it("OPERATIONAL-CARD-POLISH-1: operational screen excludes order acceptance", () => {
     const capabilities = read(
       "client/src/lib/operational-screen/interaction/deviceOrderExecutionCapabilities.ts"

@@ -43,20 +43,24 @@ export function formatOperationalQuantity(quantity: number): string {
   return String(quantity);
 }
 
+/** Shared subtle separator weight for footer meta elements. */
+export const OPERATIONAL_META_SEPARATOR_CLASS =
+  "select-none text-xs font-light leading-none text-muted-foreground/45";
+
 /** Elapsed-time emphasis in the footer row — strong weight, compact size for execution flow. */
 export function operationalCardElapsedClass(sla: SlaSnapshot, baseClass: string): string {
   if (sla.status === "critical") {
-    return `${baseClass} text-base text-destructive underline decoration-destructive/50 underline-offset-[3px] xl:text-lg`;
+    return `${baseClass} text-sm text-destructive underline decoration-destructive/50 underline-offset-[3px] xl:text-base`;
   }
   if (sla.status === "late" || sla.status === "at-risk") {
-    return `${baseClass} text-sm text-amber-100 ring-1 ring-amber-500/45 xl:text-base`;
+    return `${baseClass} text-xs text-amber-100 ring-1 ring-amber-500/45 xl:text-sm`;
   }
   return baseClass;
 }
 
 export function operationalFooterStatusClass(status: KitchenColumnId): string {
   const presentation = kitchenStatusPresentation(status);
-  return cn("text-sm font-bold leading-none", presentation.labelClass);
+  return cn("text-sm font-bold leading-none whitespace-nowrap", presentation.labelClass);
 }
 
 export function operationalFooterStatusLabel(status: KitchenColumnId, isAr: boolean): string {

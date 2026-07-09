@@ -26,6 +26,7 @@ export type PresentationDensityModel = {
   readonly customerNameClass: string;
   readonly lineItemClass: string;
   readonly quantityClass: string;
+  readonly quantityColumnClass: string;
   readonly notesClass: string;
   readonly notesPadding: string;
   readonly timingClass: string;

@@ -26,12 +26,12 @@ describe("operationalCardTypography", () => {
   });
 
   it("balances elapsed urgency typography for compact cards", () => {
-    const base = "text-base font-extrabold";
+    const base = "text-sm font-extrabold whitespace-nowrap";
     expect(operationalCardElapsedClass({ status: "on-time" } as never, base)).toBe(base);
     const critical = operationalCardElapsedClass({ status: "critical" } as never, base);
-    expect(critical).toContain("text-base");
-    expect(critical).not.toContain("text-xl");
-    expect(critical).not.toContain("text-2xl");
+    expect(critical).toMatch(/\btext-sm\b/);
+    expect(critical).not.toMatch(/\btext-lg\b/);
+    expect(critical).not.toMatch(/\btext-xl\b/);
   });
 
   it("formats footer status labels in sentence case", () => {
