@@ -51,7 +51,7 @@ export class DrizzleBusinessIdentityAllocator {
 
     await tx.execute(sql`
       INSERT INTO order_business_day_sequences (restaurant_id, business_day, last_number)
-      VALUES (${input.restaurantId}, ${businessDay}, 1)
+      VALUES (${input.restaurantId}, ${businessDay}, LAST_INSERT_ID(1))
       ON DUPLICATE KEY UPDATE last_number = LAST_INSERT_ID(last_number + 1)
     `);
 

@@ -42,14 +42,18 @@ describe("ORDER-BUSINESS-IDENTITY-HARDENING-1 architecture guards", () => {
     expect(allocator).toMatch(/INSERT INTO order_business_day_sequences[\s\S]*FOR UPDATE/);
   });
 
-  it("preserves hot path LAST_INSERT_ID allocation unchanged", () => {
+  it("uses LAST_INSERT_ID(1) on hot-path first business-day insert", () => {
     const allocator = read(
       "server/order/business-identity/infrastructure/DrizzleBusinessIdentityAllocator.ts"
     );
     expect(allocator).toContain(
       "ON DUPLICATE KEY UPDATE last_number = LAST_INSERT_ID(last_number + 1)"
     );
+    expect(allocator).toContain("VALUES (${input.restaurantId}, ${businessDay}, LAST_INSERT_ID(1))");
     expect(allocator).toContain("SELECT LAST_INSERT_ID() AS n");
+    expect(allocator).not.toMatch(
+      /VALUES \(\$\{input\.restaurantId\}, \$\{businessDay\}, 1\)\s*\n\s*ON DUPLICATE KEY UPDATE/
+    );
   });
 
   it("registers structured observability events in ops taxonomy", () => {
