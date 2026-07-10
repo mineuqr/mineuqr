@@ -22,6 +22,9 @@ export type PrintPayload = {
   restaurantId: number;
   orderId: number;
   orderNumber: string;
+  displayOrderNumber?: string | null;
+  displayReference?: string | null;
+  businessDay?: string | null;
   orderStatus: string;
   tableNumber: number;
   customerName?: string | null;

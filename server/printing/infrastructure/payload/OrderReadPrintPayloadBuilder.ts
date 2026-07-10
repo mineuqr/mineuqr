@@ -9,6 +9,8 @@ import {
   PRINT_PAYLOAD_SCHEMA_VERSION,
   type PrintPayload,
 } from "../../domain/PrintPayload";
+import { mapActiveOrderItemDto } from "../../../order/read/presentation/mapActiveOrderItemDto";
+import { mapStoredOrderReadLineItem } from "../../../order/read/infrastructure/persistence/mapStoredOrderReadLineItem";
 
 /**
  * Builds canonical print payloads from order read projections only.
@@ -42,12 +44,31 @@ export class OrderReadPrintPayloadBuilder implements PrintPayloadBuilderPort {
       );
 
     const requestedAt = input.requestedAt ?? new Date().toISOString();
+    const identity = mapActiveOrderItemDto({
+      orderId: order.orderId,
+      orderNumber: order.orderNumber,
+      businessDay: order.businessDay ?? null,
+      dailyDisplayNumber: order.dailyDisplayNumber ?? null,
+      status: order.status,
+      tableNumber: order.tableNumber,
+      sessionId: order.sessionId ?? null,
+      customerName: order.customerName,
+      customerPhone: order.customerPhone,
+      notes: order.notes,
+      totalAmount: String(order.totalAmount),
+      createdAt: order.createdAt,
+      readyAt: order.readyAt ?? null,
+      lineItems: lineItemRows.map(mapStoredOrderReadLineItem),
+    });
 
     return {
       schemaVersion: PRINT_PAYLOAD_SCHEMA_VERSION,
       restaurantId: order.restaurantId,
       orderId: order.orderId,
       orderNumber: order.orderNumber,
+      displayOrderNumber: identity.displayOrderNumber,
+      displayReference: identity.displayReference,
+      businessDay: identity.businessDay,
       orderStatus: order.status,
       tableNumber: order.tableNumber,
       customerName: order.customerName ?? null,

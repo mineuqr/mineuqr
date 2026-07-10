@@ -6,8 +6,12 @@ import {
 } from "./infrastructure/adapters/OrderInfrastructureAdapters";
 import { PlaceOrderService } from "./application/PlaceOrderService";
 import { orderOutboxRepository } from "./eventInfrastructureComposition";
+import { businessIdentityAllocator } from "./business-identity/composition";
 
-const orderRepository = new DrizzleOrderRepository(orderOutboxRepository);
+const orderRepository = new DrizzleOrderRepository(
+  orderOutboxRepository,
+  businessIdentityAllocator
+);
 
 export const placeOrderService = new PlaceOrderService(
   orderRepository,
@@ -15,3 +19,5 @@ export const placeOrderService = new PlaceOrderService(
   orderNumberAdapter,
   trackingTokenAdapter
 );
+
+export { businessIdentityAllocator } from "./business-identity/composition";

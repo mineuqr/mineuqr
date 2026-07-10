@@ -19,9 +19,13 @@ import {
 } from "../../../db";
 import { DrizzleOutboxRepository } from "../events/outbox/DrizzleOutboxRepository";
 import { domainEventsToOutboxInputs } from "../events/outbox/domainEventsToOutbox";
+import type { DrizzleBusinessIdentityAllocator } from "../../business-identity/infrastructure/DrizzleBusinessIdentityAllocator";
 
 export class DrizzleOrderRepository implements OrderRepository {
-  constructor(private readonly outbox = new DrizzleOutboxRepository()) {}
+  constructor(
+    private readonly outbox = new DrizzleOutboxRepository(),
+    private readonly businessIdentityAllocator?: DrizzleBusinessIdentityAllocator
+  ) {}
 
   async findById(id: number): Promise<Order | null> {
     const row = await getOrderById(id);
@@ -90,6 +94,14 @@ export class DrizzleOrderRepository implements OrderRepository {
         notes: line.notes,
       }))
     );
+
+    if (this.businessIdentityAllocator) {
+      await this.businessIdentityAllocator.allocateForNewOrder(tx, {
+        orderId,
+        restaurantId: snapshot.restaurantId,
+        createdAt: order.createdAt,
+      });
+    }
 
     const persisted = Order.reconstitute({
       id: orderId,

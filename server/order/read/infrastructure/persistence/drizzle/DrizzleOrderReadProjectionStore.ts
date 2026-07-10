@@ -57,6 +57,8 @@ export class DrizzleOrderReadProjectionStore {
         restaurantId: record.restaurantId,
         orderId: record.orderId,
         orderNumber: record.orderNumber,
+        businessDay: record.businessDay,
+        dailyDisplayNumber: record.dailyDisplayNumber,
         status: record.status as "pending" | "preparing" | "ready" | "served" | "cancelled",
         tableId: source.order.tableId,
         tableNumber: record.tableNumber,
@@ -78,6 +80,8 @@ export class DrizzleOrderReadProjectionStore {
       .onDuplicateKeyUpdate({
         set: {
           orderNumber: record.orderNumber,
+          businessDay: record.businessDay,
+          dailyDisplayNumber: record.dailyDisplayNumber,
           status: record.status as "pending" | "preparing" | "ready" | "served" | "cancelled",
           tableNumber: record.tableNumber,
           sessionId: record.sessionId,
@@ -135,6 +139,8 @@ export class DrizzleOrderReadProjectionStore {
           restaurantSlug: source.restaurantSlug,
           restaurantId: record.restaurantId,
           orderNumber: record.orderNumber,
+          businessDay: record.businessDay,
+          dailyDisplayNumber: record.dailyDisplayNumber,
           status: record.status,
           tableNumber: record.tableNumber,
           itemCount,

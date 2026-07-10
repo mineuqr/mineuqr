@@ -29,7 +29,7 @@ export function formatElapsedMinutes(seconds: number): number {
 export function toKitchenTicketCard(ticket: KitchenTicketDto): KitchenTicketCardModel {
   return {
     orderId: ticket.orderId,
-    orderNumber: ticket.orderNumber,
+    orderNumber: ticket.displayReference || ticket.orderNumber,
     tableNumber: ticket.tableNumber,
     customerName: ticket.customerName,
     orderNotes: ticket.orderNotes,

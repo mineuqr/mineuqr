@@ -7,6 +7,7 @@ import {
 } from "../../../../drizzle/schema";
 import type { KitchenPipelineStatus } from "../contracts/kitchenQueryContracts";
 import type { ActiveOrderLineItemDto } from "../../../order/read/domain/contracts/queryContracts";
+import { mapActiveOrderItemDto } from "../../../order/read/presentation/mapActiveOrderItemDto";
 import { mapStoredOrderReadLineItem } from "../../../order/read/infrastructure/persistence/mapStoredOrderReadLineItem";
 import { KITCHEN_READ_DATABASE_UNAVAILABLE } from "../domain/kitchenReadErrorCodes";
 
@@ -14,6 +15,10 @@ export type OrderReadPipelineOrderRow = {
   restaurantId: number;
   orderId: number;
   orderNumber: string;
+  businessDay: string | null;
+  dailyDisplayNumber: number | null;
+  displayOrderNumber: string;
+  displayReference: string;
   status: KitchenPipelineStatus;
   tableId: number;
   tableNumber: number;
@@ -86,23 +91,47 @@ export class DrizzleOrderReadQueryAdapter implements OrderReadQueryPort {
       byOrder.set(li.orderId, list);
     }
 
-    return pipeline.map((row) => ({
-      restaurantId: row.restaurantId,
-      orderId: row.orderId,
-      orderNumber: row.orderNumber,
-      status: row.status as KitchenPipelineStatus,
-      tableId: row.tableId,
-      tableNumber: row.tableNumber,
-      sessionId: row.sessionId ?? null,
-      customerName: row.customerName,
-      customerPhone: row.customerPhone,
-      notes: row.notes,
-      totalAmount: String(row.totalAmount),
-      createdAt: row.createdAt,
-      readyAt: row.readyAt ?? null,
-      lastEventId: row.lastEventId ?? null,
-      lineItems: byOrder.get(row.orderId) ?? [],
-    }));
+    return pipeline.map((row) => {
+      const lineItems = byOrder.get(row.orderId) ?? [];
+      const mapped = mapActiveOrderItemDto({
+        orderId: row.orderId,
+        orderNumber: row.orderNumber,
+        businessDay: row.businessDay ?? null,
+        dailyDisplayNumber: row.dailyDisplayNumber ?? null,
+        status: row.status,
+        tableNumber: row.tableNumber,
+        sessionId: row.sessionId ?? null,
+        customerName: row.customerName,
+        customerPhone: row.customerPhone,
+        notes: row.notes,
+        totalAmount: String(row.totalAmount),
+        createdAt: row.createdAt,
+        readyAt: row.readyAt ?? null,
+        lineItems,
+      });
+
+      return {
+        restaurantId: row.restaurantId,
+        orderId: row.orderId,
+        orderNumber: mapped.orderNumber,
+        businessDay: mapped.businessDay,
+        dailyDisplayNumber: mapped.dailyDisplayNumber,
+        displayOrderNumber: mapped.displayOrderNumber,
+        displayReference: mapped.displayReference,
+        status: row.status as KitchenPipelineStatus,
+        tableId: row.tableId,
+        tableNumber: row.tableNumber,
+        sessionId: row.sessionId ?? null,
+        customerName: row.customerName,
+        customerPhone: row.customerPhone,
+        notes: row.notes,
+        totalAmount: String(row.totalAmount),
+        createdAt: row.createdAt,
+        readyAt: row.readyAt ?? null,
+        lastEventId: row.lastEventId ?? null,
+        lineItems,
+      };
+    });
   }
 
   async listTimelinesForOrders(

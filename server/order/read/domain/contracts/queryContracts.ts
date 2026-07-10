@@ -148,6 +148,10 @@ export function orderLineProjectionType(item: ActiveOrderLineItemDto): OrderLine
 export type ActiveOrderItemDto = {
   orderId: number;
   orderNumber: string;
+  businessDay: string | null;
+  dailyDisplayNumber: number | null;
+  displayOrderNumber: string;
+  displayReference: string;
   status: string;
   tableNumber: number;
   sessionId: number | null;

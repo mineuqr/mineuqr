@@ -7,6 +7,7 @@ import {
 } from "../../../../drizzle/schema";
 import type { ActiveOrderItemDto, OrderTimelineEventDto } from "../domain/contracts/queryContracts";
 import type { OrderDetailQuery } from "../domain/contracts/queryContracts";
+import { mapActiveOrderItemDto } from "../presentation/mapActiveOrderItemDto";
 import { mapStoredOrderReadLineItem } from "./persistence/mapStoredOrderReadLineItem";
 
 type OrderRow = typeof orderReadOrders.$inferSelect;
@@ -17,9 +18,11 @@ function mapLineItem(row: LineItemRow) {
 }
 
 function mapOrder(row: OrderRow, lineItems: LineItemRow[]): ActiveOrderItemDto {
-  return {
+  return mapActiveOrderItemDto({
     orderId: row.orderId,
     orderNumber: row.orderNumber,
+    businessDay: row.businessDay ?? null,
+    dailyDisplayNumber: row.dailyDisplayNumber ?? null,
     status: row.status,
     tableNumber: row.tableNumber,
     sessionId: row.sessionId ?? null,
@@ -30,7 +33,7 @@ function mapOrder(row: OrderRow, lineItems: LineItemRow[]): ActiveOrderItemDto {
     createdAt: row.createdAt,
     readyAt: row.readyAt ?? null,
     lineItems: lineItems.map(mapLineItem),
-  };
+  });
 }
 
 /**

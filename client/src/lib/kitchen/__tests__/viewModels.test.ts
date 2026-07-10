@@ -7,6 +7,10 @@ import { mockCategoryProjection } from "@/lib/operational-screen/__tests__/fixtu
 const sample: KitchenTicketDto = {
   orderId: 1,
   orderNumber: "ORD-1",
+  businessDay: "2026-07-04",
+  dailyDisplayNumber: 1,
+  displayOrderNumber: "001",
+  displayReference: "001",
   tableNumber: 4,
   sessionId: null,
   customerName: "Ali",
@@ -28,6 +32,7 @@ const sample: KitchenTicketDto = {
 describe("kitchen viewModels", () => {
   it("maps ticket to card actions by status", () => {
     const card = toKitchenTicketCard(sample);
+    expect(card.orderNumber).toBe("001");
     expect(card.canMarkReady).toBe(true);
     expect(card.canStartPreparing).toBe(false);
     expect(card.elapsedMinutes).toBe(15);

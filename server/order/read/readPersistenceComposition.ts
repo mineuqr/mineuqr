@@ -12,10 +12,19 @@ import { drizzleCategoryBackfillLineItemStore } from "./infrastructure/backfill/
 import { OrderReadOfferBackfillService } from "./infrastructure/backfill/OrderReadOfferBackfillService";
 import { drizzleOfferBackfillLineItemStore } from "./infrastructure/backfill/DrizzleOfferBackfillLineItemStore";
 import { OrderReadLineItemProjectionBuilder } from "./projections/builders/OrderReadLineItemProjectionBuilder";
+import { businessIdentityAllocator } from "../business-identity/composition";
 
 const inMemoryStore = new InMemoryOrderReadProjectionStore();
 const drizzleStore = new DrizzleOrderReadProjectionStore();
 const contextLoader = new DrizzleOrderReadContextLoader();
+
+const categoryProjectionBuilder = new OrderCategoryProjectionBuilder(
+  drizzleCategoryResolutionPort
+);
+
+const lineItemProjectionBuilder = new OrderReadLineItemProjectionBuilder(
+  categoryProjectionBuilder
+);
 
 const innerRepos =
   process.env.NODE_ENV === "test"
@@ -31,21 +40,15 @@ export const orderReadProjectionRepositories = innerRepos;
 export const orderReadProjectionMaterializer = new OrderReadProjectionMaterializer(
   orderReadProjectionRepositories,
   contextLoader,
-  inMemoryStore
+  inMemoryStore,
+  lineItemProjectionBuilder,
+  businessIdentityAllocator
 );
 
 export const orderReadProjectionBackfillService = new OrderReadProjectionBackfillService(
   contextLoader,
   drizzleStore,
   orderReadProjectionMaterializer
-);
-
-const categoryProjectionBuilder = new OrderCategoryProjectionBuilder(
-  drizzleCategoryResolutionPort
-);
-
-const lineItemProjectionBuilder = new OrderReadLineItemProjectionBuilder(
-  categoryProjectionBuilder
 );
 
 export const orderReadCategoryBackfillService = new OrderReadCategoryBackfillService(

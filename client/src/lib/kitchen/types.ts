@@ -8,6 +8,10 @@ export type KitchenUrgencyTier = "normal" | "elevated" | "critical";
 export type KitchenTicketDto = {
   orderId: number;
   orderNumber: string;
+  businessDay: string | null;
+  dailyDisplayNumber: number | null;
+  displayOrderNumber: string;
+  displayReference: string;
   tableNumber: number;
   sessionId: number | null;
   customerName: string | null;

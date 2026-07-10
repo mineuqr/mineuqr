@@ -16,6 +16,7 @@ import {
   isActiveOrderStatus,
   statusBucket,
 } from "./projectionStatus";
+import type { DrizzleBusinessIdentityAllocator } from "../../../business-identity/infrastructure/DrizzleBusinessIdentityAllocator";
 
 function parsePayload(envelope: EventEnvelope): OrderDomainEvent {
   return envelope.payload as OrderDomainEvent;
@@ -29,13 +30,25 @@ export class OrderReadProjectionMaterializer {
   constructor(
     private readonly repos: OrderReadProjectionRepositories,
     private readonly contextLoader: OrderReadContextLoader,
-    private readonly recordBuilder = new InMemoryOrderReadProjectionStore(),
-    private readonly lineItemBuilder = new OrderReadLineItemProjectionBuilder(
+    private readonly recordBuilder: InMemoryOrderReadProjectionStore = new InMemoryOrderReadProjectionStore(),
+    private readonly lineItemBuilder: OrderReadLineItemProjectionBuilder = new OrderReadLineItemProjectionBuilder(
       new OrderCategoryProjectionBuilder(drizzleCategoryResolutionPort)
-    )
+    ),
+    private readonly businessIdentityAllocator?: DrizzleBusinessIdentityAllocator
   ) {}
 
   async syncOrderProjections(orderId: number, eventId: string): Promise<void> {
+    if (this.businessIdentityAllocator) {
+      const preview = await this.contextLoader.loadByOrderId(orderId);
+      if (preview) {
+        await this.businessIdentityAllocator.ensureAssigned(
+          orderId,
+          preview.order.restaurantId,
+          preview.order.createdAt
+        );
+      }
+    }
+
     const source = await this.contextLoader.loadByOrderId(orderId);
     if (!source) return;
 
@@ -66,6 +79,8 @@ export class OrderReadProjectionMaterializer {
       trackingToken: source.order.trackingToken,
       restaurantSlug: source.restaurantSlug,
       orderNumber: source.order.orderNumber,
+      businessDay: source.order.businessDay ?? null,
+      dailyDisplayNumber: source.order.dailyDisplayNumber ?? null,
       status: source.order.status,
       tableNumber: source.order.tableNumber,
       itemCount,

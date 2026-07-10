@@ -5,6 +5,7 @@ import type {
   OrderDetailQuery,
 } from "../../../domain/contracts/queryContracts";
 import { clampActiveOrderLimit } from "../../../domain/contracts/queryContracts";
+import { resolveOrderDisplayIdentity } from "../../../../business-identity/application/OrderDisplayIdentityResolver";
 import { isActiveOrderStatus } from "../../../projections/materializers/projectionStatus";
 import type {
   ActiveOrderProjectionKey,
@@ -292,11 +293,20 @@ export class InMemoryOrderReadProjectionStore {
   ): OwnerOrderProjectionRecord {
     const { order } = source;
     const now = new Date().toISOString();
+    const identity = resolveOrderDisplayIdentity({
+      orderNumber: order.orderNumber,
+      businessDay: order.businessDay ?? null,
+      dailyDisplayNumber: order.dailyDisplayNumber ?? null,
+    });
     return {
       projectionId: "P-01-owner-orders",
       restaurantId: order.restaurantId,
       orderId: order.id,
       orderNumber: order.orderNumber,
+      businessDay: order.businessDay ?? null,
+      dailyDisplayNumber: order.dailyDisplayNumber ?? null,
+      displayOrderNumber: identity.displayOrderNumber,
+      displayReference: identity.displayReference,
       status: order.status,
       tableNumber: order.tableNumber,
       sessionId: order.sessionId ?? null,

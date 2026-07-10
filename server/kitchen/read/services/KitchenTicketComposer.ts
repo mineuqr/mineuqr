@@ -66,6 +66,10 @@ export class KitchenTicketComposer {
     return {
       orderId: order.orderId,
       orderNumber: order.orderNumber,
+      businessDay: order.businessDay,
+      dailyDisplayNumber: order.dailyDisplayNumber,
+      displayOrderNumber: order.displayOrderNumber,
+      displayReference: order.displayReference,
       tableNumber: order.tableNumber,
       sessionId: order.sessionId,
       customerName: order.customerName,

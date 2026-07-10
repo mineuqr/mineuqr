@@ -5,8 +5,9 @@ import type { PrintPayload } from "../../printing/domain/PrintPayload";
  * Not ESC/POS, PDF, or raster — plain structured text only.
  */
 export function serializePrintPayloadToText(payload: PrintPayload): string {
+  const staffOrderLabel = payload.displayReference ?? payload.displayOrderNumber ?? payload.orderNumber;
   const lines: string[] = [
-    `Order: ${payload.orderNumber}`,
+    `Order: ${staffOrderLabel}`,
     `Table: ${payload.tableNumber}`,
     `Status: ${payload.orderStatus}`,
     `Total: ${payload.totalAmount}`,
