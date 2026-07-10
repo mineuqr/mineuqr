@@ -30,7 +30,7 @@ export type DayHours = {
 
 export type NormalizedWorkingHours = Record<WeekdayKey, DayHours>;
 
-const DEFAULT_DAY_HOURS: DayHours = {
+export const DEFAULT_DAY_HOURS: DayHours = {
   open: "09:00",
   close: "23:00",
   closed: false,
