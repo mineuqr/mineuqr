@@ -345,7 +345,7 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
     expect(orchestrator).toContain("runtimeContextFactory.buildRuntimeContext");
     expect(provider).toContain("useRuntimeInstanceContext");
     expect(runtimeTypes).toContain("instance: FrozenRuntimeInstanceContext");
-    expect(orderActions).toContain("context.instance.role.permissions");
+    expect(orderActions).toContain("useRuntimeInstanceContext");
   });
 
   it("RUNTIME-CONTEXT-SUBSCRIPTIONS-1: instance snapshots published via RuntimeContextStore", () => {
@@ -357,9 +357,28 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
     expect(store).toContain("replaceSnapshot");
     expect(store).toContain("RuntimeContextChanged");
     expect(store).not.toMatch(/from "\.\/RuntimeContextFactory"/);
-    expect(orchestrator).toContain("runtimeContextStore.replaceSnapshot");
-    expect(orchestrator).toContain("useSyncExternalStore");
-    expect(provider).toContain("subscribeToRuntimeContextStore");
+    expect(orchestrator).toContain("store.replaceSnapshot");
+    expect(provider).toContain("subscribeRuntimeContextStore");
     expect(provider).not.toMatch(/new EventEmitter|from \"zustand\"|from \"redux\"/);
+  });
+
+  it("RUNTIME-CONTEXT-CONSOLIDATION-1: single store owner and canonical read path", () => {
+    const storeModule = read("client/src/lib/operational-screen/runtimeContextStore.ts");
+    const orchestrator = read("client/src/lib/operational-screen/useRuntimeOrchestrator.ts");
+    const provider = read("client/src/components/operational-screen/OperationalScreenRuntimeProvider.tsx");
+    const orderActions = read(
+      "client/src/lib/operational-screen/interaction/useOperationalDeviceOrderActions.ts"
+    );
+
+    expect(storeModule).not.toContain("export const runtimeContextStore");
+    expect(storeModule).toContain("createRuntimeContextStore");
+    expect(orchestrator).toContain("store: RuntimeContextStore");
+    expect(orchestrator).not.toContain("useSyncExternalStore");
+    expect(orchestrator).not.toContain("instanceContext");
+    expect(provider).toContain("createRuntimeContextStore()");
+    expect(provider).toContain("RuntimeInstanceSnapshotProvider");
+    expect(provider).toContain("useRuntimeInstanceContext");
+    expect(provider).toContain("instanceContext");
+    expect(orderActions).toContain("useRuntimeInstanceContext");
   });
 });

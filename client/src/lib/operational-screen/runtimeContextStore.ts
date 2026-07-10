@@ -22,7 +22,7 @@ export type RuntimeContextSubscription = {
 };
 
 /**
- * RUNTIME-CONTEXT-SUBSCRIPTIONS-1 — owns the current RuntimeInstanceContext snapshot.
+ * RUNTIME-CONTEXT-CONSOLIDATION-1 — instance-scoped owner of RuntimeInstanceContext.
  * Never resolves or constructs context; RuntimeContextFactory remains sole creator.
  */
 export class RuntimeContextStore {
@@ -71,16 +71,18 @@ export function createRuntimeContextStore(): RuntimeContextStore {
   return new RuntimeContextStore();
 }
 
-/** Shared runtime store — one operational screen instance per browser tab. */
-export const runtimeContextStore = createRuntimeContextStore();
-
-/** React useSyncExternalStore subscription adapter. */
-export function subscribeToRuntimeContextStore(onStoreChange: () => void): () => void {
-  return runtimeContextStore.subscribe(() => onStoreChange()).unsubscribe;
+/** React useSyncExternalStore adapter for an instance-scoped store. */
+export function subscribeRuntimeContextStore(
+  store: RuntimeContextStore,
+  onStoreChange: () => void
+): () => void {
+  return store.subscribe(() => onStoreChange()).unsubscribe;
 }
 
-export function getRuntimeContextStoreSnapshot(): FrozenRuntimeInstanceContext | null {
-  return runtimeContextStore.getCurrentSnapshot();
+export function getRuntimeContextStoreSnapshot(
+  store: RuntimeContextStore
+): FrozenRuntimeInstanceContext | null {
+  return store.getCurrentSnapshot();
 }
 
 export function getRuntimeContextStoreServerSnapshot(): FrozenRuntimeInstanceContext | null {

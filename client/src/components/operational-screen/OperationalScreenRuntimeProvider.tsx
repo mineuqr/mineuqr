@@ -1,26 +1,52 @@
-import { createContext, useContext, useSyncExternalStore, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useMemo,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 import type { OperationalScreenCredentials } from "@/lib/operational-screen/credentialStore";
 import type { OperationalScreenRuntimeContext } from "@/lib/operational-screen/runtimeTypes";
 import type { FrozenRuntimeInstanceContext } from "@/lib/operational-screen/runtimeInstanceContext";
 import {
+  createRuntimeContextStore,
   getRuntimeContextStoreServerSnapshot,
   getRuntimeContextStoreSnapshot,
-  subscribeToRuntimeContextStore,
+  subscribeRuntimeContextStore,
+  type RuntimeContextStore,
 } from "@/lib/operational-screen/runtimeContextStore";
 import {
   useRuntimeOrchestrator,
-  type RuntimeOrchestratorValue,
+  type RuntimeOrchestratorCoreValue,
 } from "@/lib/operational-screen/useRuntimeOrchestrator";
 
 /**
  * RUNTIME-BOOTSTRAP-CONTRACT-1 — canonical runtime authority.
- * RUNTIME-CONTEXT-SUBSCRIPTIONS-1 — instance snapshots published via RuntimeContextStore.
- *
- * Single owner of the Runtime Context, bootstrap phase, configuration,
- * capabilities, fingerprint, runtime status, and role. Role panels consume
- * this provider via hooks (no prop-drilling, no duplicated ownership).
+ * RUNTIME-CONTEXT-CONSOLIDATION-1 — one instance-scoped store, one snapshot subscription.
  */
-const RuntimeContext = createContext<RuntimeOrchestratorValue | null>(null);
+const RuntimeOrchestratorContext = createContext<RuntimeOrchestratorCoreValue | null>(null);
+const RuntimeContextStoreContext = createContext<RuntimeContextStore | null>(null);
+const RuntimeInstanceSnapshotContext = createContext<FrozenRuntimeInstanceContext | null>(null);
+
+function RuntimeInstanceSnapshotProvider({
+  store,
+  children,
+}: {
+  store: RuntimeContextStore;
+  children: ReactNode;
+}) {
+  const snapshot = useSyncExternalStore(
+    (onStoreChange) => subscribeRuntimeContextStore(store, onStoreChange),
+    () => getRuntimeContextStoreSnapshot(store),
+    getRuntimeContextStoreServerSnapshot
+  );
+
+  return (
+    <RuntimeInstanceSnapshotContext.Provider value={snapshot}>
+      {children}
+    </RuntimeInstanceSnapshotContext.Provider>
+  );
+}
 
 export function OperationalScreenRuntimeProvider({
   credentials,
@@ -29,37 +55,59 @@ export function OperationalScreenRuntimeProvider({
   credentials: OperationalScreenCredentials;
   children: ReactNode;
 }) {
-  const value = useRuntimeOrchestrator(credentials);
-  return <RuntimeContext.Provider value={value}>{children}</RuntimeContext.Provider>;
+  const store = useMemo(() => createRuntimeContextStore(), []);
+  const orchestrator = useRuntimeOrchestrator(credentials, store);
+
+  return (
+    <RuntimeContextStoreContext.Provider value={store}>
+      <RuntimeInstanceSnapshotProvider store={store}>
+        <RuntimeOrchestratorContext.Provider value={orchestrator}>
+          {children}
+        </RuntimeOrchestratorContext.Provider>
+      </RuntimeInstanceSnapshotProvider>
+    </RuntimeContextStoreContext.Provider>
+  );
 }
+
+export type RuntimeOrchestratorValue = RuntimeOrchestratorCoreValue & {
+  /** @deprecated Use useRuntimeInstanceContext() — compatibility wrapper only. */
+  instanceContext: FrozenRuntimeInstanceContext | null;
+};
 
 /** Access the full runtime authority (phase, context, lifecycle actions, diagnostics). */
 export function useScreenRuntime(): RuntimeOrchestratorValue {
-  const value = useContext(RuntimeContext);
-  if (!value) {
+  const orchestrator = useContext(RuntimeOrchestratorContext);
+  const instanceContext = useContext(RuntimeInstanceSnapshotContext);
+  if (!orchestrator) {
     throw new Error("useScreenRuntime must be used within OperationalScreenRuntimeProvider");
   }
-  return value;
+  return { ...orchestrator, instanceContext };
 }
 
-/** Access the assembled Runtime Context. Throws when context is not yet ready. */
-export function useRuntimeContext(): OperationalScreenRuntimeContext {
-  const { context } = useScreenRuntime();
-  if (!context) {
-    throw new Error("Runtime context is not ready");
-  }
-  return context;
-}
-
-/** RUNTIME-INSTANCE-CONTEXT-1 — immutable instance snapshot via RuntimeContextStore. */
+/** Canonical read path for RuntimeInstanceContext. */
 export function useRuntimeInstanceContext(): FrozenRuntimeInstanceContext {
-  const snapshot = useSyncExternalStore(
-    subscribeToRuntimeContextStore,
-    getRuntimeContextStoreSnapshot,
-    getRuntimeContextStoreServerSnapshot
-  );
+  const snapshot = useContext(RuntimeInstanceSnapshotContext);
   if (!snapshot) {
     throw new Error("Runtime instance context is not ready");
   }
   return snapshot;
+}
+
+/** Access the assembled runtime context with store-owned instance snapshot. */
+export function useRuntimeContext(): OperationalScreenRuntimeContext {
+  const { context } = useScreenRuntime();
+  const instance = useRuntimeInstanceContext();
+  if (!context) {
+    throw new Error("Runtime context is not ready");
+  }
+  return context.instance === instance ? context : { ...context, instance };
+}
+
+/** @internal Test and diagnostics access to the scoped store. */
+export function useRuntimeContextStore(): RuntimeContextStore {
+  const store = useContext(RuntimeContextStoreContext);
+  if (!store) {
+    throw new Error("useRuntimeContextStore must be used within OperationalScreenRuntimeProvider");
+  }
+  return store;
 }
