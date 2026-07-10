@@ -1,7 +1,12 @@
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, useSyncExternalStore, type ReactNode } from "react";
 import type { OperationalScreenCredentials } from "@/lib/operational-screen/credentialStore";
 import type { OperationalScreenRuntimeContext } from "@/lib/operational-screen/runtimeTypes";
 import type { FrozenRuntimeInstanceContext } from "@/lib/operational-screen/runtimeInstanceContext";
+import {
+  getRuntimeContextStoreServerSnapshot,
+  getRuntimeContextStoreSnapshot,
+  subscribeToRuntimeContextStore,
+} from "@/lib/operational-screen/runtimeContextStore";
 import {
   useRuntimeOrchestrator,
   type RuntimeOrchestratorValue,
@@ -9,6 +14,7 @@ import {
 
 /**
  * RUNTIME-BOOTSTRAP-CONTRACT-1 — canonical runtime authority.
+ * RUNTIME-CONTEXT-SUBSCRIPTIONS-1 — instance snapshots published via RuntimeContextStore.
  *
  * Single owner of the Runtime Context, bootstrap phase, configuration,
  * capabilities, fingerprint, runtime status, and role. Role panels consume
@@ -45,11 +51,15 @@ export function useRuntimeContext(): OperationalScreenRuntimeContext {
   return context;
 }
 
-/** RUNTIME-INSTANCE-CONTEXT-1 — immutable bootstrap instance snapshot. */
+/** RUNTIME-INSTANCE-CONTEXT-1 — immutable instance snapshot via RuntimeContextStore. */
 export function useRuntimeInstanceContext(): FrozenRuntimeInstanceContext {
-  const { instanceContext } = useScreenRuntime();
-  if (!instanceContext) {
+  const snapshot = useSyncExternalStore(
+    subscribeToRuntimeContextStore,
+    getRuntimeContextStoreSnapshot,
+    getRuntimeContextStoreServerSnapshot
+  );
+  if (!snapshot) {
     throw new Error("Runtime instance context is not ready");
   }
-  return instanceContext;
+  return snapshot;
 }

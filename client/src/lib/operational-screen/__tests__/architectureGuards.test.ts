@@ -347,4 +347,19 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
     expect(runtimeTypes).toContain("instance: FrozenRuntimeInstanceContext");
     expect(orderActions).toContain("context.instance.role.permissions");
   });
+
+  it("RUNTIME-CONTEXT-SUBSCRIPTIONS-1: instance snapshots published via RuntimeContextStore", () => {
+    const store = read("client/src/lib/operational-screen/runtimeContextStore.ts");
+    const orchestrator = read("client/src/lib/operational-screen/useRuntimeOrchestrator.ts");
+    const provider = read("client/src/components/operational-screen/OperationalScreenRuntimeProvider.tsx");
+
+    expect(store).toContain("class RuntimeContextStore");
+    expect(store).toContain("replaceSnapshot");
+    expect(store).toContain("RuntimeContextChanged");
+    expect(store).not.toMatch(/from "\.\/RuntimeContextFactory"/);
+    expect(orchestrator).toContain("runtimeContextStore.replaceSnapshot");
+    expect(orchestrator).toContain("useSyncExternalStore");
+    expect(provider).toContain("subscribeToRuntimeContextStore");
+    expect(provider).not.toMatch(/new EventEmitter|from \"zustand\"|from \"redux\"/);
+  });
 });

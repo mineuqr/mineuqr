@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { TRPCClientError } from "@trpc/client";
 import {
   clearOperationalScreenCredentials,
@@ -15,6 +15,12 @@ import {
 import { runtimeContextFactory } from "./RuntimeContextFactory";
 import type { FrozenRuntimeInstanceContext } from "./runtimeInstanceContext";
 import { RuntimeContextValidationError } from "./runtimeInstanceContext";
+import {
+  getRuntimeContextStoreServerSnapshot,
+  getRuntimeContextStoreSnapshot,
+  runtimeContextStore,
+  subscribeToRuntimeContextStore,
+} from "./runtimeContextStore";
 import { RuntimeConfigurationManager } from "./configuration/runtimeConfigurationManager";
 import type { ConfigurationHealth } from "./configuration/runtimeConfigurationContract";
 import { RuntimeCategoryFilterManager } from "./category-filter/runtimeCategoryFilterManager";
@@ -114,7 +120,11 @@ export function useRuntimeOrchestrator(
   const [bootstrapId] = useState(createBootstrapId);
   const [phase, setPhase] = useState<BootstrapPhase>(INITIAL_PHASE);
   const [context, setContext] = useState<OperationalScreenRuntimeContext | null>(null);
-  const [instanceContext, setInstanceContext] = useState<FrozenRuntimeInstanceContext | null>(null);
+  const instanceContext = useSyncExternalStore(
+    subscribeToRuntimeContextStore,
+    getRuntimeContextStoreSnapshot,
+    getRuntimeContextStoreServerSnapshot
+  );
   const [lastError, setLastError] = useState<string | null>(null);
   const [retryToken, setRetryToken] = useState(0);
 
@@ -185,7 +195,7 @@ export function useRuntimeOrchestrator(
     stopHeartbeat();
     clearOperationalScreenCredentials();
     setContext(null);
-    setInstanceContext(null);
+    runtimeContextStore.replaceSnapshot(null, "repairing");
     dispatch({ type: "AUTH_REVOKED" });
     dispatch({ type: "PAIRING_REDIRECTED" });
     spaNavigate("/screen/pair", { replace: true });
@@ -209,7 +219,7 @@ export function useRuntimeOrchestrator(
                 prev.instance,
                 new Date().toISOString()
               );
-              setInstanceContext(withHeartbeat);
+              runtimeContextStore.replaceSnapshot(withHeartbeat, "heartbeat_refresh");
               return { ...prev, instance: withHeartbeat };
             });
             scheduleHeartbeat(HEARTBEAT_INTERVAL_MS);
@@ -275,7 +285,7 @@ export function useRuntimeOrchestrator(
           runtimeConfiguration,
           lastAppliedVersion: snapshot.lastAppliedVersion,
         });
-        setInstanceContext(instance);
+        runtimeContextStore.replaceSnapshot(instance, "bootstrap");
         setContext(nextContext);
       } catch (error) {
         if (error instanceof RuntimeContextValidationError) {
@@ -305,7 +315,7 @@ export function useRuntimeOrchestrator(
           credentials,
           configManagerRef.current
         );
-        setInstanceContext(reloaded.instance);
+        runtimeContextStore.replaceSnapshot(reloaded.instance, "configuration_reload");
         return reloaded;
       });
     } else {
@@ -315,7 +325,7 @@ export function useRuntimeOrchestrator(
           { credentials, status, bootstrapId: prev.bootstrap.bootstrapId },
           prev.instance
         );
-        setInstanceContext(refreshed);
+        runtimeContextStore.replaceSnapshot(refreshed, "manual_refresh");
         return {
           ...prev,
           instance: refreshed,
@@ -376,7 +386,7 @@ export function useRuntimeOrchestrator(
     stateAggregatorRef.current.dispose();
     clearOperationalScreenCredentials();
     setContext(null);
-    setInstanceContext(null);
+    runtimeContextStore.replaceSnapshot(null, "repairing");
     dispatch({ type: "AUTH_REVOKED" });
     dispatch({ type: "PAIRING_REDIRECTED" });
     spaNavigate("/screen/pair", { replace: true });
