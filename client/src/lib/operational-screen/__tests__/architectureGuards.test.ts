@@ -224,7 +224,7 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
     const kitchen = read("client/src/components/operational-screen/KitchenScreenPanel.tsx");
     expect(manager).toContain("RuntimeConfigurationManager");
     expect(orchestrator).toContain("RuntimeConfigurationManager");
-    expect(orchestrator).toContain("loadInitialConfiguration");
+    expect(orchestrator).toContain("runtimeContextFactory.loadConfiguration");
     expect(orchestrator).toContain("reloadConfiguration");
     expect(kitchen).not.toContain("screenConfig");
     expect(kitchen).not.toContain("getStatus");
@@ -328,5 +328,23 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
     expect(messages).toContain("device_disabled");
     expect(messages).toContain("token_expired");
     expect(bootstrap).toContain("token_expired");
+  });
+
+  it("RUNTIME-INSTANCE-CONTEXT-1: runtime context resolved only by RuntimeContextFactory", () => {
+    const factory = read("client/src/lib/operational-screen/RuntimeContextFactory.ts");
+    const orchestrator = read("client/src/lib/operational-screen/useRuntimeOrchestrator.ts");
+    const provider = read("client/src/components/operational-screen/OperationalScreenRuntimeProvider.tsx");
+    const runtimeTypes = read("client/src/lib/operational-screen/runtimeTypes.ts");
+    const orderActions = read(
+      "client/src/lib/operational-screen/interaction/useOperationalDeviceOrderActions.ts"
+    );
+
+    expect(factory).toContain("class RuntimeContextFactory");
+    expect(factory).toContain("freezeRuntimeInstanceContext");
+    expect(orchestrator).toContain("runtimeContextFactory.resolve");
+    expect(orchestrator).toContain("runtimeContextFactory.buildRuntimeContext");
+    expect(provider).toContain("useRuntimeInstanceContext");
+    expect(runtimeTypes).toContain("instance: FrozenRuntimeInstanceContext");
+    expect(orderActions).toContain("context.instance.role.permissions");
   });
 });

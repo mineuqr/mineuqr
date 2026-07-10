@@ -1,6 +1,7 @@
 import { createContext, useContext, type ReactNode } from "react";
 import type { OperationalScreenCredentials } from "@/lib/operational-screen/credentialStore";
 import type { OperationalScreenRuntimeContext } from "@/lib/operational-screen/runtimeTypes";
+import type { FrozenRuntimeInstanceContext } from "@/lib/operational-screen/runtimeInstanceContext";
 import {
   useRuntimeOrchestrator,
   type RuntimeOrchestratorValue,
@@ -42,4 +43,13 @@ export function useRuntimeContext(): OperationalScreenRuntimeContext {
     throw new Error("Runtime context is not ready");
   }
   return context;
+}
+
+/** RUNTIME-INSTANCE-CONTEXT-1 — immutable bootstrap instance snapshot. */
+export function useRuntimeInstanceContext(): FrozenRuntimeInstanceContext {
+  const { instanceContext } = useScreenRuntime();
+  if (!instanceContext) {
+    throw new Error("Runtime instance context is not ready");
+  }
+  return instanceContext;
 }

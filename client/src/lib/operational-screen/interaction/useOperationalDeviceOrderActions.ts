@@ -3,12 +3,10 @@ import { screenTrpc } from "@/lib/operational-screen/screenTrpc";
 import type { DeviceOrderActionId } from "../../../../../server/operational-device/domain/deviceOrderExecution";
 import type { OperationalActionId } from "@/lib/operational-workspace/operationalActions";
 import { useRuntimeContext } from "@/components/operational-screen/OperationalScreenRuntimeProvider";
-import { canExecuteOperationalTicketActions } from "./deviceOrderExecutionCapabilities";
 
 export function useOperationalDeviceOrderActions() {
   const context = useRuntimeContext();
-  const role = context.identity.role;
-  const canExecute = canExecuteOperationalTicketActions(role);
+  const canExecute = context.instance.role.permissions.canExecuteOrderActions;
   const [pendingOrderId, setPendingOrderId] = useState<number | null>(null);
   const [successOrderId, setSuccessOrderId] = useState<number | null>(null);
   const successTimerRef = useRef<number | null>(null);

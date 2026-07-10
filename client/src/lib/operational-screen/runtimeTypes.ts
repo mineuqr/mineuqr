@@ -21,6 +21,7 @@ import type {
 } from "./state/operationalScreenStateContract";
 import type { RuntimeCapabilityContract, CapabilityId, CapabilityAdapter } from "./capability/runtimeCapabilityContract";
 import type { RuntimeCapabilityNegotiator } from "./capability/runtimeCapabilityNegotiator";
+import type { FrozenRuntimeInstanceContext } from "./runtimeInstanceContext";
 
 export type BootstrapPhase =
   | "loading"
@@ -77,6 +78,8 @@ export type RuntimeCapabilitySet = {
 };
 
 export type OperationalScreenRuntimeContext = {
+  /** RUNTIME-INSTANCE-CONTEXT-1 — immutable bootstrap snapshot. */
+  instance: FrozenRuntimeInstanceContext;
   identity: {
     deviceId: string;
     displayName: string;

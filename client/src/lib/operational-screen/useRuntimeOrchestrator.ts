@@ -5,16 +5,16 @@ import {
   type OperationalScreenCredentials,
 } from "./credentialStore";
 import {
-  applyConfigurationReload,
-  buildRuntimeContext,
   createBootstrapId,
   HEARTBEAT_INTERVAL_MS,
   HEARTBEAT_RETRY_MAX_MS,
   HEARTBEAT_RETRY_MIN_MS,
   isDeviceAuthError,
-  loadInitialConfiguration,
   STATUS_POLL_INTERVAL_MS,
 } from "./bootstrapLogic";
+import { runtimeContextFactory } from "./RuntimeContextFactory";
+import type { FrozenRuntimeInstanceContext } from "./runtimeInstanceContext";
+import { RuntimeContextValidationError } from "./runtimeInstanceContext";
 import { RuntimeConfigurationManager } from "./configuration/runtimeConfigurationManager";
 import type { ConfigurationHealth } from "./configuration/runtimeConfigurationContract";
 import { RuntimeCategoryFilterManager } from "./category-filter/runtimeCategoryFilterManager";
@@ -73,6 +73,7 @@ export type RolePlatformMetrics = {
 
 export type RuntimeOrchestratorValue = {
   phase: BootstrapPhase;
+  instanceContext: FrozenRuntimeInstanceContext | null;
   context: OperationalScreenRuntimeContext | null;
   degraded: boolean;
   lastError: string | null;
@@ -113,6 +114,7 @@ export function useRuntimeOrchestrator(
   const [bootstrapId] = useState(createBootstrapId);
   const [phase, setPhase] = useState<BootstrapPhase>(INITIAL_PHASE);
   const [context, setContext] = useState<OperationalScreenRuntimeContext | null>(null);
+  const [instanceContext, setInstanceContext] = useState<FrozenRuntimeInstanceContext | null>(null);
   const [lastError, setLastError] = useState<string | null>(null);
   const [retryToken, setRetryToken] = useState(0);
 
@@ -183,6 +185,7 @@ export function useRuntimeOrchestrator(
     stopHeartbeat();
     clearOperationalScreenCredentials();
     setContext(null);
+    setInstanceContext(null);
     dispatch({ type: "AUTH_REVOKED" });
     dispatch({ type: "PAIRING_REDIRECTED" });
     spaNavigate("/screen/pair", { replace: true });
@@ -200,6 +203,15 @@ export function useRuntimeOrchestrator(
             heartbeatCount.current += 1;
             setLastError(null);
             dispatch({ type: "NETWORK_RECOVERED" });
+            setContext((prev) => {
+              if (!prev) return prev;
+              const withHeartbeat = runtimeContextFactory.withHeartbeat(
+                prev.instance,
+                new Date().toISOString()
+              );
+              setInstanceContext(withHeartbeat);
+              return { ...prev, instance: withHeartbeat };
+            });
             scheduleHeartbeat(HEARTBEAT_INTERVAL_MS);
           })
           .catch((error: unknown) => {
@@ -243,21 +255,35 @@ export function useRuntimeOrchestrator(
       dispatch({ type: "STATUS_RECEIVED" }); // → context_ready
       const fingerprint = collectRuntimeFingerprint(bootstrapId);
       const assembledPhase = dispatch({ type: "CONTEXT_ASSEMBLED" }); // → heartbeat_active
-      const runtimeConfiguration = loadInitialConfiguration(
-        status,
-        configManagerRef.current
-      );
-      const snapshot = configManagerRef.current.getSnapshot();
-      const nextContext = buildRuntimeContext({
-        status,
-        credentials,
-        bootstrapId,
-        phase: assembledPhase,
-        fingerprint,
-        runtimeConfiguration,
-        lastAppliedVersion: snapshot.lastAppliedVersion,
-      });
-      setContext(nextContext);
+      try {
+        const instance = runtimeContextFactory.resolve({
+          credentials,
+          status,
+          bootstrapId,
+        });
+        const runtimeConfiguration = runtimeContextFactory.loadConfiguration(
+          status,
+          configManagerRef.current
+        );
+        const snapshot = configManagerRef.current.getSnapshot();
+        const nextContext = runtimeContextFactory.buildRuntimeContext({
+          instance,
+          bootstrapId,
+          phase: assembledPhase,
+          runtimeHealth: status.health,
+          fingerprint,
+          runtimeConfiguration,
+          lastAppliedVersion: snapshot.lastAppliedVersion,
+        });
+        setInstanceContext(instance);
+        setContext(nextContext);
+      } catch (error) {
+        if (error instanceof RuntimeContextValidationError) {
+          handleRevoked();
+          return;
+        }
+        throw error;
+      }
       heartbeatStopped.current = false;
       scheduleHeartbeat(0);
       const runningPhase = dispatch({ type: "HEARTBEAT_STARTED" }); // → running
@@ -271,19 +297,32 @@ export function useRuntimeOrchestrator(
 
     // Already running: reconcile reloadable/dynamic fields only. No lifecycle jump.
     if (configManagerRef.current.detectVersionChange(status.configVersion)) {
-      setContext((prev) =>
-        prev ? applyConfigurationReload(prev, status, configManagerRef.current) : prev
-      );
+      setContext((prev) => {
+        if (!prev) return prev;
+        const reloaded = runtimeContextFactory.applyConfigurationReload(
+          prev,
+          status,
+          credentials,
+          configManagerRef.current
+        );
+        setInstanceContext(reloaded.instance);
+        return reloaded;
+      });
     } else {
-      setContext((prev) =>
-        prev
-          ? {
-              ...prev,
-              runtimeStatus: status.health,
-              identity: { ...prev.identity, displayName: status.device.displayName },
-            }
-          : prev
-      );
+      setContext((prev) => {
+        if (!prev) return prev;
+        const refreshed = runtimeContextFactory.refresh(
+          { credentials, status, bootstrapId: prev.bootstrap.bootstrapId },
+          prev.instance
+        );
+        setInstanceContext(refreshed);
+        return {
+          ...prev,
+          instance: refreshed,
+          runtimeStatus: status.health,
+          identity: { ...prev.identity, displayName: refreshed.identity.displayIdentity },
+        };
+      });
     }
 
     // Recover from degraded when a fresh status arrives.
@@ -337,6 +376,7 @@ export function useRuntimeOrchestrator(
     stateAggregatorRef.current.dispose();
     clearOperationalScreenCredentials();
     setContext(null);
+    setInstanceContext(null);
     dispatch({ type: "AUTH_REVOKED" });
     dispatch({ type: "PAIRING_REDIRECTED" });
     spaNavigate("/screen/pair", { replace: true });
@@ -538,6 +578,7 @@ export function useRuntimeOrchestrator(
 
   return {
     phase,
+    instanceContext,
     context: contextWithScreenState,
     degraded,
     lastError,
