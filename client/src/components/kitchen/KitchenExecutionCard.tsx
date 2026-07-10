@@ -184,8 +184,8 @@ export function KitchenExecutionCard({
       dir={isAr ? "rtl" : "ltr"}
       aria-label={
         isAr
-          ? `طلب ${ticket.orderNumber}، ${formatKitchenStatusLabel(ticket.status, true)}`
-          : `Order ${ticket.orderNumber}, ${formatKitchenStatusLabel(ticket.status, false)}`
+          ? `طلب ${ticket.displayReference}، ${formatKitchenStatusLabel(ticket.status, true)}`
+          : `Order ${ticket.displayReference}, ${formatKitchenStatusLabel(ticket.status, false)}`
       }
     >
       <div
@@ -199,8 +199,8 @@ export function KitchenExecutionCard({
         aria-label={
           isInteractive
             ? isAr
-              ? `عرض تفاصيل الطلب ${ticket.orderNumber}`
-              : `View order ${ticket.orderNumber} details`
+              ? `عرض تفاصيل الطلب ${ticket.displayReference}`
+              : `View order ${ticket.displayReference} details`
             : undefined
         }
         onClick={onOpenDetails}
@@ -215,7 +215,7 @@ export function KitchenExecutionCard({
       >
         <header className="mb-1.5 shrink-0 border-b border-border/15 pb-1.5">
           <p className={cn(densityModel.orderNumberClass, "whitespace-nowrap tabular-nums")}>
-            {ticket.orderNumber}
+            {ticket.displayReference}
           </p>
         </header>
 

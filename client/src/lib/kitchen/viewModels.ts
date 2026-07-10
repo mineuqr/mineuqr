@@ -1,4 +1,5 @@
 import type { KitchenTicketDto, KitchenUrgencyTier } from "@/lib/kitchen/types";
+import { operationalDisplayReference } from "@/lib/operational-workspace/orderDisplayIdentity";
 
 export type KitchenColumnId = "pending" | "preparing" | "ready";
 
@@ -6,7 +7,7 @@ export type KitchenTicketLine = KitchenTicketDto["lineItems"][number];
 
 export type KitchenTicketCardModel = {
   orderId: number;
-  orderNumber: string;
+  displayReference: string;
   tableNumber: number;
   customerName: string | null;
   orderNotes: string | null;
@@ -29,7 +30,7 @@ export function formatElapsedMinutes(seconds: number): number {
 export function toKitchenTicketCard(ticket: KitchenTicketDto): KitchenTicketCardModel {
   return {
     orderId: ticket.orderId,
-    orderNumber: ticket.displayReference || ticket.orderNumber,
+    displayReference: operationalDisplayReference(ticket),
     tableNumber: ticket.tableNumber,
     customerName: ticket.customerName,
     orderNotes: ticket.orderNotes,

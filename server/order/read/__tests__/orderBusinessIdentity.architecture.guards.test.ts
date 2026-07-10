@@ -50,7 +50,7 @@ describe("ORDER-IDENTITY-AND-BUSINESS-DAY-1 architecture guards", () => {
     const kitchen = read("server/kitchen/read/services/KitchenTicketComposer.ts");
     const viewModels = read("client/src/lib/kitchen/viewModels.ts");
     expect(kitchen).toContain("displayReference");
-    expect(viewModels).toContain("displayReference");
+    expect(viewModels).toContain("operationalDisplayReference");
   });
 
   it("preserves legacy orderNumber for printing compatibility", () => {

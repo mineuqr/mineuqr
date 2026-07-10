@@ -10,6 +10,7 @@ import { RestaurantSectionError } from "@/components/dashboard/RestaurantSection
 import { Button } from "@/components/ui/button";
 import { getOrderWorkspaceActions } from "@/lib/operational-workspace/operationalActions";
 import { buildLinesSummaryFromItems, computeOrderCardSla, isLateOrder } from "@/lib/operational-workspace/orderViewModels";
+import { formatOperationalOrderHeading } from "@/lib/operational-workspace/orderDisplayIdentity";
 import { useOrderStatusActions } from "@/lib/operational-workspace/useOrderStatusActions";
 import {
   DEFAULT_ORDER_FILTERS,
@@ -142,7 +143,7 @@ export function OrdersWorkspacePanel({
         <OperationalDetailsDrawer
           open={selectedOrderId != null}
           onOpenChange={(open) => !open && setSelectedOrderId(null)}
-          title={selected ? `#${selected.orderNumber}` : ""}
+          title={selected ? formatOperationalOrderHeading(selected) : ""}
           language={language}
           timeline={detailQuery.data?.timeline}
           actions={selectedActions}
@@ -155,7 +156,7 @@ export function OrdersWorkspacePanel({
         >
           {selected ? (
             <OperationalCard
-              orderNumber={`#${selected.orderNumber}`}
+              displayReference={formatOperationalOrderHeading(selected)}
               tableLabel={`${unit} ${selected.tableNumber}`}
               linesSummary={buildLinesSummaryFromItems(selected.lineItems)}
               orderNotes={selected.notes}
@@ -191,7 +192,7 @@ export function OrdersWorkspacePanel({
           {displayItems.map((order) => (
             <OperationalCard
               key={order.orderId}
-              orderNumber={`#${order.orderNumber}`}
+              displayReference={formatOperationalOrderHeading(order)}
               tableLabel={`${unit} ${order.tableNumber}`}
               linesSummary={buildLinesSummaryFromItems(order.lineItems)}
               orderNotes={order.notes}

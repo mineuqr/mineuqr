@@ -7,7 +7,7 @@ import type { SlaSnapshot } from "@/lib/operational-workspace/slaEngine";
 import { cn } from "@/lib/utils";
 
 export function OperationalCard({
-  orderNumber,
+  displayReference,
   tableLabel,
   linesSummary,
   orderNotes,
@@ -25,7 +25,7 @@ export function OperationalCard({
   className,
   fading,
 }: {
-  orderNumber: string;
+  displayReference: string;
   tableLabel: string;
   linesSummary: string;
   orderNotes?: string | null;
@@ -65,7 +65,7 @@ export function OperationalCard({
       >
         <div className="mb-3 flex items-start justify-between gap-3">
           <div>
-            <p className="font-mono text-xl font-bold tracking-tight">{orderNumber}</p>
+            <p className="font-mono text-xl font-bold tracking-tight">{displayReference}</p>
             <p className="text-base text-muted-foreground">{tableLabel}</p>
           </div>
           <SlaIndicator sla={sla} isAr={isAr} />

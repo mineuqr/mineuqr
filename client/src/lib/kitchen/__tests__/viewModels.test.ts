@@ -32,7 +32,7 @@ const sample: KitchenTicketDto = {
 describe("kitchen viewModels", () => {
   it("maps ticket to card actions by status", () => {
     const card = toKitchenTicketCard(sample);
-    expect(card.orderNumber).toBe("001");
+    expect(card.displayReference).toBe("001");
     expect(card.canMarkReady).toBe(true);
     expect(card.canStartPreparing).toBe(false);
     expect(card.elapsedMinutes).toBe(15);
