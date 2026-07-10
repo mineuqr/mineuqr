@@ -7,40 +7,62 @@ type GraceEntry<T> = {
   removedAt: number;
 };
 
+function graceMapsEqual<T>(a: Map<string, GraceEntry<T>>, b: Map<string, GraceEntry<T>>): boolean {
+  if (a === b) return true;
+  if (a.size !== b.size) return false;
+  for (const [key, entry] of Array.from(a.entries())) {
+    const other = b.get(key);
+    if (!other || other.item !== entry.item || other.removedAt !== entry.removedAt) {
+      return false;
+    }
+  }
+  return true;
+}
+
 export function useGracePeriod<T>(items: T[], keyFn: (item: T) => string) {
   const [grace, setGrace] = useState<Map<string, GraceEntry<T>>>(new Map());
   const prevItemsRef = useRef<T[]>([]);
+  const keyFnRef = useRef(keyFn);
+  keyFnRef.current = keyFn;
 
   useEffect(() => {
-    const currentKeys = new Set(items.map(keyFn));
+    const resolveKey = (item: T) => keyFnRef.current(item);
+    const currentKeys = new Set(items.map(resolveKey));
     const prevItems = prevItemsRef.current;
 
     setGrace((prev) => {
       const now = Date.now();
-      const next = new Map(prev);
+      let next: Map<string, GraceEntry<T>> | null = null;
 
-      for (const [key, entry] of Array.from(next.entries())) {
+      const ensureNext = () => {
+        if (!next) next = new Map(prev);
+        return next;
+      };
+
+      for (const [key, entry] of Array.from(prev.entries())) {
         if (now - entry.removedAt >= GRACE_PERIOD_MS) {
-          next.delete(key);
+          ensureNext().delete(key);
         }
       }
 
       for (const item of prevItems) {
-        const key = keyFn(item);
+        const key = resolveKey(item);
         if (!currentKeys.has(key)) {
-          next.set(key, { item, removedAt: now });
+          ensureNext().set(key, { item, removedAt: now });
         }
       }
 
-      return next;
+      if (!next) return prev;
+      return graceMapsEqual(prev, next) ? prev : next;
     });
 
     prevItemsRef.current = items;
-  }, [items, keyFn]);
+  }, [items]);
 
   const displayItems = useMemo(() => {
+    const resolveKey = (item: T) => keyFnRef.current(item);
     const merged = [...items];
-    const seen = new Set(items.map(keyFn));
+    const seen = new Set(items.map(resolveKey));
     const now = Date.now();
 
     for (const [key, entry] of Array.from(grace.entries())) {
@@ -50,14 +72,14 @@ export function useGracePeriod<T>(items: T[], keyFn: (item: T) => string) {
     }
 
     return merged;
-  }, [items, grace, keyFn]);
+  }, [items, grace]);
 
   const isFading = useCallback(
     (item: T) => {
-      const key = keyFn(item);
-      return grace.has(key) && !items.some((row) => keyFn(row) === key);
+      const key = keyFnRef.current(item);
+      return grace.has(key) && !items.some((row) => keyFnRef.current(row) === key);
     },
-    [items, grace, keyFn]
+    [items, grace]
   );
 
   return { displayItems, isFading, gracePeriodMs: GRACE_PERIOD_MS };
