@@ -16,6 +16,7 @@ type Lang = "ar" | "en";
 export type TimelineEventLike = {
   eventType: string;
   orderNumber?: string | null;
+  displayReference?: string | null;
   totalAmount?: string | null;
 };
 
@@ -30,7 +31,7 @@ export function formatTimelineEventDescription(
   }
 
   if (event.eventType === TIMELINE_EVENT.ORDER_CREATED) {
-    const orderRef = event.orderNumber?.trim() ?? "";
+    const orderRef = (event.displayReference ?? event.orderNumber)?.trim() ?? "";
     const base =
       language === "ar"
         ? orderRef

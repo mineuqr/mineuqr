@@ -6,6 +6,7 @@ export type WorkspaceTimelineEvent = {
   eventType: string;
   createdAt: string;
   orderNumber?: string | null;
+  displayReference?: string | null;
   totalAmount?: string | null;
 };
 

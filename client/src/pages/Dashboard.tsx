@@ -6,6 +6,7 @@ import { DiningSessionWorkspaceSheet } from "@/components/dashboard/DiningSessio
 import { ActiveSessionsPreviewSection } from "@/components/dashboard/ActiveSessionsPreviewSection";
 import { SessionsWorkspacePanel } from "@/components/dashboard/SessionsWorkspacePanel";
 import { OrdersWorkspacePanel } from "@/components/orders-workspace/OrdersWorkspacePanel";
+import { formatOperationalOrderHeading } from "@/lib/operational-workspace/orderDisplayIdentity";
 import { ScreenManagementWorkspacePanel } from "@/components/screen-management/ScreenManagementWorkspacePanel";
 import { ProvisioningWorkspacePanel } from "@/components/screen-provisioning/ProvisioningWorkspacePanel";
 import { PrintWorkspacePanel } from "@/components/print-workspace/PrintWorkspacePanel";
@@ -3323,6 +3324,10 @@ type DashboardOrder = {
   totalAmount: string;
   createdAt: string;
   orderNumber?: string;
+  businessDay?: string | null;
+  dailyDisplayNumber?: number | null;
+  displayReference?: string;
+  displayOrderNumber?: string;
   tableNumber?: number;
   sessionId?: number | null;
   customerName?: string;
@@ -3858,7 +3863,14 @@ function OrdersTab({ restaurantId, currencySymbol, tableLabel }: { restaurantId:
                   )}
                 >
                   <div className="flex items-center gap-3">
-                    <span className="font-mono text-base font-bold text-primary">#{order.orderNumber}</span>
+                    <span className="font-mono text-base font-bold text-primary">
+                      {formatOperationalOrderHeading({
+                        orderNumber: order.orderNumber ?? "",
+                        businessDay: order.businessDay ?? null,
+                        dailyDisplayNumber: order.dailyDisplayNumber ?? null,
+                        displayReference: order.displayReference,
+                      })}
+                    </span>
                     <Badge className={`${statusColors[order.status]} border px-2.5 py-0.5 text-sm`}>
                       {language === "ar" ? statusLabels[order.status]?.ar : statusLabels[order.status]?.en}
                     </Badge>

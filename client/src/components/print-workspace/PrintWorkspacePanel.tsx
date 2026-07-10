@@ -16,6 +16,7 @@ import {
   DEFAULT_PRINT_FILTERS,
   useSavedFilters,
 } from "@/lib/operational-workspace/useSavedFilters";
+import { operationalDisplayReference } from "@/lib/operational-workspace/orderDisplayIdentity";
 import { useCurrentPrinter } from "@/lib/print-workspace/useCurrentPrinter";
 import { useOperationalPrintStatus } from "@/lib/print-workspace/useOperationalPrintStatus";
 import {
@@ -330,7 +331,7 @@ export function PrintWorkspacePanel({
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div>
-                              <p className="font-semibold text-white">{card.orderNumber}</p>
+                              <p className="font-semibold text-white">{card.displayReference}</p>
                               <p className="text-xs text-slate-400">
                                 {card.tableLabel} · {card.statusLabel}
                               </p>
@@ -373,7 +374,7 @@ export function PrintWorkspacePanel({
                   <div className="space-y-4">
                     <div>
                       <h3 className="text-lg font-semibold text-white">
-                        {order.orderNumber}
+                        {operationalDisplayReference(order)}
                       </h3>
                       <p className="text-sm text-slate-400">
                         {formatStatusLabel(order.status, language)} ·{" "}

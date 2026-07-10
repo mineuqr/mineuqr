@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { formatOrderStatusLabel, type OrderLifecycleStatus } from "@/lib/orderStatusDisplay";
+import { formatOperationalOrderHeading } from "@/lib/operational-workspace/orderDisplayIdentity";
 import { sessionSummaryLabel } from "@/lib/diningSessionWorkspaceCopy";
 import { formatRiyadhDateTime } from "@/lib/datetime";
 
@@ -8,6 +9,9 @@ type Lang = "ar" | "en";
 export type WorkspaceOrderRow = {
   id: number;
   orderNumber: string;
+  displayReference?: string;
+  businessDay?: string | null;
+  dailyDisplayNumber?: number | null;
   status: string;
   totalAmount: string;
   createdAt: string;
@@ -63,7 +67,7 @@ export function DiningSessionOrdersList({
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-mono text-sm font-semibold text-primary">
-                      #{order.orderNumber}
+                      {formatOperationalOrderHeading(order)}
                     </span>
                     <Badge className={`${colorClass} border px-2 py-0 text-xs`}>
                       {statusLabel}

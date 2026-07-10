@@ -13,6 +13,7 @@ import type {
 } from "../contracts/printWorkspaceQueryContracts";
 import { clampPrintWorkspaceLimit } from "../contracts/printWorkspaceQueryContracts";
 import { mapStoredOrderReadLineItem } from "../../../order/read/infrastructure/persistence/mapStoredOrderReadLineItem";
+import { mapPrintWorkspaceOrderDto } from "../presentation/mapPrintWorkspaceOrderDto";
 
 type OrderRow = typeof orderReadOrders.$inferSelect;
 type LineItemRow = typeof orderReadOrderLineItems.$inferSelect;
@@ -22,22 +23,7 @@ function mapLineItem(row: LineItemRow) {
 }
 
 function mapOrder(row: OrderRow, lineItems: LineItemRow[]): PrintWorkspaceOrderDto {
-  return {
-    orderId: row.orderId,
-    orderNumber: row.orderNumber,
-    status: row.status,
-    tableNumber: row.tableNumber,
-    sessionId: row.sessionId ?? null,
-    customerName: row.customerName,
-    customerPhone: row.customerPhone,
-    notes: row.notes,
-    totalAmount: String(row.totalAmount),
-    createdAt: row.createdAt,
-    readyAt: row.readyAt ?? null,
-    servedAt: row.servedAt ?? null,
-    isActive: row.isActive,
-    lineItems: lineItems.map(mapLineItem),
-  };
+  return mapPrintWorkspaceOrderDto(row, lineItems.map(mapLineItem));
 }
 
 /**

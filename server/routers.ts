@@ -101,6 +101,7 @@ import { getOwnerSessionWorkspace } from "./diningSession/sessionOwnerWorkspace"
 import { opsRouter } from "./ops/opsRouter";
 import { kitchenRouter } from "./kitchen/read/kitchenRouter";
 import { orderReadRouter } from "./order/read/orderReadRouter";
+import { mapOrderDisplayIdentityFields } from "./order/read/presentation/mapOrderDisplayIdentity";
 import { printWorkspaceRouter } from "./print-workspace/printWorkspaceRouter";
 import { operationalDeviceRouter } from "./operational-device/operationalDeviceRouter";
 import { printConnectorRouter } from "./print-connector/printConnectorRouter";
@@ -1925,7 +1926,15 @@ const orderRouter = router({
     }))
     .query(async ({ input, ctx }) => {
       await assertRestaurantAccess(ctx, input.restaurantId);
-      return getOrdersWithItemsByRestaurant(input.restaurantId, input.status);
+      const rows = await getOrdersWithItemsByRestaurant(input.restaurantId, input.status);
+      return rows.map((order) => {
+        const identity = mapOrderDisplayIdentityFields({
+          orderNumber: order.orderNumber,
+          businessDay: order.businessDay ?? null,
+          dailyDisplayNumber: order.dailyDisplayNumber ?? null,
+        });
+        return { ...order, ...identity };
+      });
     }),
   getById: verifiedProcedure
     .input(z.object({ id: z.number() }))

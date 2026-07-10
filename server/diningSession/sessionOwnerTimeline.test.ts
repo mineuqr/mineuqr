@@ -22,6 +22,7 @@ describe("sessionOwnerTimeline (UX-1C)", () => {
       createdAt: "2026-06-18 21:42:00",
       orderId: null,
       orderNumber: null,
+      displayReference: null,
       totalAmount: null,
     });
   });
@@ -48,6 +49,7 @@ describe("sessionOwnerTimeline (UX-1C)", () => {
       createdAt: "2026-06-18 21:43:00",
       orderId: 500,
       orderNumber: "ORD-0142",
+      displayReference: null,
       totalAmount: "95.00",
     });
   });

@@ -43,6 +43,7 @@ describe("print workspace view models", () => {
     );
 
     expect(card.orderId).toBe(42);
+    expect(card.displayReference).toBe("ORD-0042");
     expect(card.itemCount).toBe(2);
     expect(card.isAwaitingPrint).toBe(true);
     expect(card.statusLabel).toBe("Ready");

@@ -5,6 +5,10 @@ import type { PrintWorkspaceOrderDto } from "../contracts/printWorkspaceQueryCon
 const sampleOrder: PrintWorkspaceOrderDto = {
   orderId: 1,
   orderNumber: "ORD-0001",
+  businessDay: "2026-07-10",
+  dailyDisplayNumber: 1,
+  displayOrderNumber: "001",
+  displayReference: "001",
   status: "ready",
   tableNumber: 3,
   sessionId: null,
@@ -33,6 +37,7 @@ describe("PrintWorkspaceReadService", () => {
     );
     expect(result.items).toHaveLength(1);
     expect(result.items[0]?.orderNumber).toBe("ORD-0001");
+    expect(result.items[0]?.displayReference).toBe("001");
     expect(result.pageInfo.hasMore).toBe(false);
   });
 

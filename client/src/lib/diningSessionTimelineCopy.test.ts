@@ -8,6 +8,21 @@ describe("diningSessionTimelineCopy SETTLEMENT-ARCHITECTURE-1A", () => {
     ).toBe("تم فتح الجلسة");
   });
 
+  it("formats ORDER_CREATED with displayReference when available", () => {
+    expect(
+      formatTimelineEventDescription(
+        {
+          eventType: "ORDER_CREATED",
+          displayReference: "002",
+          orderNumber: "ORD-0142",
+          totalAmount: "95.00",
+        },
+        "ar",
+        "ر.س"
+      )
+    ).toBe("تم إنشاء الطلب 002 · 95.00 ر.س");
+  });
+
   it("formats ORDER_CREATED with order number and total", () => {
     expect(
       formatTimelineEventDescription(

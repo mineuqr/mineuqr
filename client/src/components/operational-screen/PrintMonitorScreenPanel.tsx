@@ -1,4 +1,5 @@
 import { DATA_POLL_INTERVAL_MS } from "@/lib/operational-screen/bootstrapLogic";
+import { formatOperationalOrderHeading } from "@/lib/operational-workspace/orderDisplayIdentity";
 import { screenTrpc } from "@/lib/operational-screen/screenTrpc";
 import { useRuntimeContext } from "./OperationalScreenRuntimeProvider";
 import { Loader2, Printer } from "lucide-react";
@@ -46,7 +47,9 @@ export function PrintMonitorScreenPanel() {
             key={item.orderId}
             className="flex items-center justify-between rounded-lg border border-border/40 px-4 py-3"
           >
-            <span className="font-mono font-medium">#{item.orderNumber}</span>
+            <span className="font-mono font-medium">
+              {formatOperationalOrderHeading(item)}
+            </span>
             <span className="text-sm text-muted-foreground">
               {item.isActive ? (isAr ? "نشط" : "Active") : isAr ? "غير نشط" : "Inactive"}
             </span>

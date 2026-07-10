@@ -31,6 +31,10 @@ export type PrintWorkspaceOrderDetailQuery = {
 export type PrintWorkspaceOrderDto = {
   orderId: number;
   orderNumber: string;
+  businessDay: string | null;
+  dailyDisplayNumber: number | null;
+  displayOrderNumber: string;
+  displayReference: string;
   status: string;
   tableNumber: number;
   sessionId: number | null;

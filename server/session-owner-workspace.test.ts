@@ -63,6 +63,8 @@ describe("session.getOwnerWorkspace UX-1B", () => {
       {
         id: 142,
         orderNumber: "ORD-0142",
+        businessDay: "2026-06-18",
+        dailyDisplayNumber: 2,
         status: "served",
         totalAmount: "70.00",
         createdAt: "2026-06-18 21:43:00",
@@ -70,6 +72,8 @@ describe("session.getOwnerWorkspace UX-1B", () => {
       {
         id: 143,
         orderNumber: "ORD-0143",
+        businessDay: null,
+        dailyDisplayNumber: null,
         status: "cancelled",
         totalAmount: "99.00",
         createdAt: "2026-06-18 21:44:00",
@@ -77,6 +81,8 @@ describe("session.getOwnerWorkspace UX-1B", () => {
       {
         id: 144,
         orderNumber: "ORD-0144",
+        businessDay: "2026-06-18",
+        dailyDisplayNumber: 3,
         status: "pending",
         totalAmount: "95.00",
         createdAt: "2026-06-18 21:48:00",
@@ -114,6 +120,8 @@ describe("session.getOwnerWorkspace UX-1B", () => {
       aggregateSource: "computed",
     });
     expect(result.orders).toHaveLength(3);
+    expect(result.orders[0]?.displayReference).toBe("002");
+    expect(result.orders[1]?.displayReference).toBe("ORD-0143");
     expect(result.events).toHaveLength(1);
     expect(getOrdersBySessionId).toHaveBeenCalledWith(10, 1);
   });

@@ -1049,6 +1049,8 @@ export async function getOrdersByRestaurant(restaurantId: number, status?: strin
 export type SessionLinkedOrderRow = {
   id: number;
   orderNumber: string;
+  businessDay: string | null;
+  dailyDisplayNumber: number | null;
   status: string;
   totalAmount: string;
   createdAt: string;
@@ -1066,6 +1068,8 @@ export async function getOrdersBySessionId(
     .select({
       id: orders.id,
       orderNumber: orders.orderNumber,
+      businessDay: orders.businessDay,
+      dailyDisplayNumber: orders.dailyDisplayNumber,
       status: orders.status,
       totalAmount: orders.totalAmount,
       createdAt: orders.createdAt,

@@ -37,3 +37,43 @@ describe("DISPLAY-IDENTITY-ROLLOUT-1 operational UI guards", () => {
     expect(helper).toContain("operationalDisplayReference");
   });
 });
+
+describe("DISPLAY-IDENTITY-ROLLOUT-2 operational read surfaces", () => {
+  it("exposes display identity on print workspace read DTOs", () => {
+    const contracts = read("server/print-workspace/read/contracts/printWorkspaceQueryContracts.ts");
+    const mapper = read("server/print-workspace/read/presentation/mapPrintWorkspaceOrderDto.ts");
+    expect(contracts).toContain("displayReference");
+    expect(mapper).toContain("mapOrderDisplayIdentityFields");
+  });
+
+  it("exposes display identity on dining session owner workspace", () => {
+    const workspace = read("server/diningSession/sessionOwnerWorkspace.ts");
+    expect(workspace).toContain("displayReference");
+    expect(workspace).toContain("mapOrderDisplayIdentityFields");
+  });
+
+  it("resolves display identity for dashboard order.list", () => {
+    const routers = read("server/routers.ts");
+    expect(routers).toContain("mapOrderDisplayIdentityFields");
+  });
+
+  it("renders displayReference on migrated operational surfaces", () => {
+    const printPanel = read("client/src/components/print-workspace/PrintWorkspacePanel.tsx");
+    const printMonitor = read("client/src/components/operational-screen/PrintMonitorScreenPanel.tsx");
+    const sessionOrders = read("client/src/components/dashboard/DiningSessionOrdersList.tsx");
+    const dashboard = read("client/src/pages/Dashboard.tsx");
+
+    expect(printPanel).toContain("card.displayReference");
+    expect(printPanel).toContain("operationalDisplayReference");
+    expect(printMonitor).toContain("formatOperationalOrderHeading");
+    expect(sessionOrders).toContain("formatOperationalOrderHeading");
+    expect(dashboard).toContain("formatOperationalOrderHeading");
+    expect(dashboard).not.toMatch(/#\$\{order\.orderNumber\}/);
+  });
+
+  it("uses shared mapOrderDisplayIdentityFields on server read paths", () => {
+    const shared = read("server/order/read/presentation/mapOrderDisplayIdentity.ts");
+    expect(shared).toContain("resolveOrderDisplayIdentity");
+    expect(shared).not.toContain("formatDisplayReference");
+  });
+});

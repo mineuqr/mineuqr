@@ -16,6 +16,7 @@ export type OwnerTimelineEvent = {
   createdAt: string;
   orderId: number | null;
   orderNumber: string | null;
+  displayReference: string | null;
   totalAmount: string | null;
 };
 
@@ -49,6 +50,7 @@ export function mapTableEventToOwnerTimeline(row: SelectTableEvent): OwnerTimeli
     createdAt: row.createdAt,
     orderId: row.orderId ?? null,
     orderNumber,
+    displayReference: null,
     totalAmount,
   };
 }

@@ -6,6 +6,7 @@ import type { PublicDiningSessionStatus } from "./sessionPublicStatus";
 import { mapTableEventToOwnerTimeline, type OwnerTimelineEvent } from "./sessionOwnerTimeline";
 import { findEventsBySessionId, findSessionById } from "./sessionRepository";
 import { resolveSessionAggregates, type AggregateSource } from "./sessionAggregateReaders";
+import { mapOrderDisplayIdentityFields } from "../order/read/presentation/mapOrderDisplayIdentity";
 import {
   DiningSessionNotFoundError,
   OWNER_TIMELINE_OPERATIONAL_EVENT_TYPES,
@@ -16,6 +17,10 @@ export { computeOrdersTotalAmount } from "./sessionOrderTotals";
 export type OwnerSessionOrder = {
   id: number;
   orderNumber: string;
+  businessDay: string | null;
+  dailyDisplayNumber: number | null;
+  displayOrderNumber: string;
+  displayReference: string;
   status: string;
   totalAmount: string;
   createdAt: string;
@@ -56,9 +61,19 @@ export function computeSessionDurationMs(
 }
 
 function mapOrderRow(row: SessionLinkedOrderRow): OwnerSessionOrder {
+  const identity = mapOrderDisplayIdentityFields({
+    orderNumber: row.orderNumber,
+    businessDay: row.businessDay,
+    dailyDisplayNumber: row.dailyDisplayNumber,
+  });
+
   return {
     id: row.id,
     orderNumber: row.orderNumber,
+    businessDay: identity.businessDay,
+    dailyDisplayNumber: identity.dailyDisplayNumber,
+    displayOrderNumber: identity.displayOrderNumber,
+    displayReference: identity.displayReference,
     status: row.status,
     totalAmount: String(row.totalAmount),
     createdAt: row.createdAt,
@@ -89,6 +104,9 @@ export async function getOwnerSessionWorkspace(
   ]);
 
   const orders = orderRows.map(mapOrderRow);
+  const displayReferenceByOrderId = new Map(
+    orders.map((order) => [order.id, order.displayReference] as const)
+  );
   const aggregates = resolveSessionAggregates({
     session,
     orderRows,
@@ -106,6 +124,11 @@ export async function getOwnerSessionWorkspace(
     ordersTotalAmount: aggregates.ordersTotalAmount,
     aggregateSource: aggregates.aggregateSource,
     orders,
-    events: eventRows.map(mapTableEventToOwnerTimeline),
+    events: eventRows.map((row) => {
+      const event = mapTableEventToOwnerTimeline(row);
+      if (event.orderId == null) return event;
+      const displayReference = displayReferenceByOrderId.get(event.orderId);
+      return displayReference != null ? { ...event, displayReference } : event;
+    }),
   };
 }

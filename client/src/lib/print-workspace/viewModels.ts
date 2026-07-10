@@ -1,4 +1,5 @@
 import type { RouterOutputs } from "@/lib/trpc";
+import { operationalDisplayReference } from "@/lib/operational-workspace/orderDisplayIdentity";
 
 export type PrintWorkspaceListResult = RouterOutputs["printWorkspace"]["read"]["listOrders"];
 export type PrintWorkspaceOrderRow = PrintWorkspaceListResult["items"][number];
@@ -9,6 +10,7 @@ export type PrintWorkspaceViewFilter = "awaiting" | "completed" | "all";
 export type PrintWorkspaceOrderCardModel = {
   orderId: number;
   orderNumber: string;
+  displayReference: string;
   status: string;
   statusLabel: string;
   tableLabel: string;
@@ -34,6 +36,7 @@ export function toPrintWorkspaceOrderCard(
   return {
     orderId: order.orderId,
     orderNumber: order.orderNumber,
+    displayReference: operationalDisplayReference(order),
     status: order.status,
     statusLabel: formatStatusLabel(order.status, language),
     tableLabel: isAr ? `طاولة ${order.tableNumber}` : `Table ${order.tableNumber}`,
