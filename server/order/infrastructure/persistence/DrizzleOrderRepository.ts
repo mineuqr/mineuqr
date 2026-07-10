@@ -20,6 +20,21 @@ import {
 import { DrizzleOutboxRepository } from "../events/outbox/DrizzleOutboxRepository";
 import { domainEventsToOutboxInputs } from "../events/outbox/domainEventsToOutbox";
 import type { DrizzleBusinessIdentityAllocator } from "../../business-identity/infrastructure/DrizzleBusinessIdentityAllocator";
+import {
+  BUSINESS_IDENTITY_RETRY_POLICY,
+  computeBusinessIdentityRetryDelayMs,
+  sleepMs,
+} from "../../business-identity/config/businessIdentityRetryPolicy";
+import {
+  classifyBusinessIdentityInfrastructureError,
+  isRetryableBusinessIdentityInfrastructureError,
+} from "../../business-identity/infrastructure/mysqlInfrastructureErrors";
+import {
+  logBusinessIdentityAssignmentRetry,
+  logBusinessIdentityDeadlock,
+  logBusinessIdentityUniqueConstraintRetry,
+} from "../../business-identity/observability/businessIdentityObservability";
+import { businessIdentityMetrics } from "../../business-identity/observability/BusinessIdentityMetrics";
 
 export class DrizzleOrderRepository implements OrderRepository {
   constructor(
@@ -43,14 +58,56 @@ export class DrizzleOrderRepository implements OrderRepository {
     }
 
     if (db) {
-      try {
-        return await db.transaction(async (tx) =>
-          order.isNew()
-            ? this.insertTransactional(tx, order, options)
-            : this.updateTransactional(tx, order, options)
-        );
-      } catch (error) {
-        console.warn("[OrderRepository] Transactional save failed, falling back:", error);
+      const { maxAttempts } = BUSINESS_IDENTITY_RETRY_POLICY;
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          return await db.transaction(async (tx) =>
+            order.isNew()
+              ? this.insertTransactional(tx, order, options)
+              : this.updateTransactional(tx, order, options)
+          );
+        } catch (error) {
+          const retryable =
+            isRetryableBusinessIdentityInfrastructureError(error) && attempt < maxAttempts;
+          if (retryable) {
+            const kind = classifyBusinessIdentityInfrastructureError(error);
+            businessIdentityMetrics.recordRetry();
+            if (kind === "deadlock") {
+              businessIdentityMetrics.recordDeadlock();
+              logBusinessIdentityDeadlock({
+                orderId: order.id ?? undefined,
+                restaurantId: order.restaurantId,
+                attempt,
+                path: "hot",
+                correlationId: options?.correlationId,
+                error: error instanceof Error ? error.message : String(error),
+              });
+            } else if (kind === "unique_violation") {
+              businessIdentityMetrics.recordUniqueConstraintRetry();
+              logBusinessIdentityUniqueConstraintRetry({
+                orderId: order.id ?? undefined,
+                restaurantId: order.restaurantId,
+                attempt,
+                path: "hot",
+                correlationId: options?.correlationId,
+                error: error instanceof Error ? error.message : String(error),
+              });
+            }
+            logBusinessIdentityAssignmentRetry({
+              orderId: order.id ?? undefined,
+              restaurantId: order.restaurantId,
+              attempt,
+              path: "hot",
+              correlationId: options?.correlationId,
+              errorKind: kind,
+              error: error instanceof Error ? error.message : String(error),
+            });
+            await sleepMs(computeBusinessIdentityRetryDelayMs(attempt));
+            continue;
+          }
+          console.warn("[OrderRepository] Transactional save failed, falling back:", error);
+          break;
+        }
       }
     }
     return order.isNew()

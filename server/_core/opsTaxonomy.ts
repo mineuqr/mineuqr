@@ -146,6 +146,14 @@ export const OPS_EVENT = {
   order_read_category_backfill_completed: "order_read_category_backfill_completed",
   order_read_category_backfill_failed: "order_read_category_backfill_failed",
 
+  // ORDER-BUSINESS-IDENTITY-HARDENING-1
+  business_identity_assignment_started: "business_identity_assignment_started",
+  business_identity_assignment_completed: "business_identity_assignment_completed",
+  business_identity_assignment_retry: "business_identity_assignment_retry",
+  business_identity_deadlock: "business_identity_deadlock",
+  business_identity_unique_constraint_retry: "business_identity_unique_constraint_retry",
+  business_identity_failed: "business_identity_failed",
+
   // SESSION-AGGREGATES-1 Phase A
   session_aggregate_drift_detected: "session_aggregate_drift_detected",
   session_aggregate_update_failed: "session_aggregate_update_failed",

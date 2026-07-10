@@ -29,9 +29,9 @@ const CANONICAL_TAIL_TAGS = [
   "0057_operational_device_screen_config_revision",
 ];
 
-/** MIGRATION-GOVERNANCE-TAIL-0060-1 — certified production journal terminus. */
-const CANONICAL_MIGRATION_TAIL_TAG = "0060_device_activation_code";
-const CANONICAL_JOURNAL_ENTRY_COUNT = 61;
+/** MIGRATION-GOVERNANCE-TAIL-0061-1 — certified production journal terminus. */
+const CANONICAL_MIGRATION_TAIL_TAG = "0061_order_business_identity";
+const CANONICAL_JOURNAL_ENTRY_COUNT = 62;
 
 function loadJournal() {
   return JSON.parse(fs.readFileSync(JOURNAL_PATH, "utf8"));

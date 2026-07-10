@@ -44,7 +44,11 @@ export class OrderReadProjectionMaterializer {
         await this.businessIdentityAllocator.ensureAssigned(
           orderId,
           preview.order.restaurantId,
-          preview.order.createdAt
+          preview.order.createdAt,
+          {
+            correlationId: eventId,
+            workerId: process.env.BUSINESS_IDENTITY_WORKER_ID ?? "projection",
+          }
         );
       }
     }

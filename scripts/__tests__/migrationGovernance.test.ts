@@ -15,18 +15,19 @@ import {
 const repoRoot = join(__dirname, "../..");
 
 describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
-  it("journal contains canonical migrations 0000–0060 contiguously", () => {
+  it("journal contains canonical migrations 0000–0061 contiguously", () => {
     const journal = loadJournal();
     expect(journal.entries).toHaveLength(CANONICAL_JOURNAL_ENTRY_COUNT);
     expect(journal.entries[0]?.tag).toBe("0000_shiny_blizzard");
     expect(journal.entries[59]?.tag).toBe("0059_order_read_offer_projection");
-    expect(journal.entries[60]?.tag).toBe(CANONICAL_MIGRATION_TAIL_TAG);
+    expect(journal.entries[60]?.tag).toBe("0060_device_activation_code");
+    expect(journal.entries[61]?.tag).toBe(CANONICAL_MIGRATION_TAIL_TAG);
     expect(validateJournalOrdering()).toEqual([]);
   });
 
   it("exports certified migration tail constant", () => {
-    expect(CANONICAL_MIGRATION_TAIL_TAG).toBe("0060_device_activation_code");
-    expect(CANONICAL_JOURNAL_ENTRY_COUNT).toBe(61);
+    expect(CANONICAL_MIGRATION_TAIL_TAG).toBe("0061_order_business_identity");
+    expect(CANONICAL_JOURNAL_ENTRY_COUNT).toBe(62);
     const tags = loadJournal().entries.map((e) => e.tag);
     expect(tags[tags.length - 1]).toBe(CANONICAL_MIGRATION_TAIL_TAG);
   });
