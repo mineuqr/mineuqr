@@ -1,22 +1,50 @@
 import { Button } from "@/components/ui/button";
 import { DelayExplanation } from "@/components/operational-workspace/DelayExplanation";
-import { SlaIndicator } from "@/components/operational-workspace/SlaIndicator";
 import type { OperationalAction } from "@/lib/operational-workspace/operationalActions";
-import { explainDelay } from "@/lib/operational-workspace/delayIntelligence";
-import type { SlaSnapshot } from "@/lib/operational-workspace/slaEngine";
+import {
+  pickLocalizedLabel,
+  type OrderPresentationModel,
+} from "@/lib/order-presentation";
 import { cn } from "@/lib/utils";
 
+function PresentationSlaIndicator({
+  presentation,
+  isAr,
+}: {
+  presentation: OrderPresentationModel;
+  isAr: boolean;
+}) {
+  const { timing } = presentation;
+  const tone =
+    timing.indicatorTone === "danger"
+      ? "text-destructive"
+      : timing.indicatorTone === "warning"
+        ? timing.slaStatus === "late"
+          ? "text-amber-600"
+          : "text-amber-500"
+        : "text-muted-foreground";
+
+  return (
+    <div className={cn("flex flex-wrap items-center gap-2 text-sm", tone)}>
+      <span className="text-base font-semibold tabular-nums">
+        {pickLocalizedLabel(timing.elapsedLabel, isAr)}
+      </span>
+      <span className="text-xs text-muted-foreground">
+        / {pickLocalizedLabel(timing.targetLabel, isAr)} {isAr ? "هدف" : "target"}
+      </span>
+      {timing.lateLabel ? (
+        <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
+          +{pickLocalizedLabel(timing.lateLabel, isAr)} {isAr ? "تأخير" : "late"}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 export function OperationalCard({
-  displayReference,
-  tableLabel,
-  linesSummary,
-  orderNotes,
-  customerName,
-  totalAmount,
-  currencySymbol,
-  status,
-  sla,
+  presentation,
   language,
+  currencySymbol,
   actions,
   onAction,
   onOpenDetails,
@@ -25,16 +53,9 @@ export function OperationalCard({
   className,
   fading,
 }: {
-  displayReference: string;
-  tableLabel: string;
-  linesSummary: string;
-  orderNotes?: string | null;
-  customerName?: string | null;
-  totalAmount?: string;
-  currencySymbol?: string;
-  status: string;
-  sla: SlaSnapshot;
+  presentation: OrderPresentationModel;
   language: string;
+  currencySymbol?: string;
   actions?: OperationalAction[];
   onAction?: (actionId: OperationalAction["id"]) => void;
   onOpenDetails?: () => void;
@@ -44,15 +65,12 @@ export function OperationalCard({
   fading?: boolean;
 }) {
   const isAr = language === "ar";
-  const delay = explainDelay({ status, sla, isAr });
 
   return (
     <article
       className={cn(
         "rounded-2xl border p-5 shadow-sm transition-all touch-manipulation min-h-[140px]",
-        sla.urgencyTier === "critical" && "border-destructive/50 bg-destructive/5",
-        sla.urgencyTier === "elevated" && "border-amber-500/40 bg-amber-500/5",
-        sla.urgencyTier === "normal" && "border-border bg-card",
+        presentation.emphasis.cardBorderClass,
         fading && "opacity-60",
         className
       )}
@@ -65,26 +83,39 @@ export function OperationalCard({
       >
         <div className="mb-3 flex items-start justify-between gap-3">
           <div>
-            <p className="font-mono text-xl font-bold tracking-tight">{displayReference}</p>
-            <p className="text-base text-muted-foreground">{tableLabel}</p>
+            <p className="font-mono text-xl font-bold tracking-tight">
+              {presentation.identity.displayReference}
+            </p>
+            <p className="text-base text-muted-foreground">
+              {pickLocalizedLabel(presentation.fulfillment.label, isAr)}
+            </p>
           </div>
-          <SlaIndicator sla={sla} isAr={isAr} />
+          <PresentationSlaIndicator presentation={presentation} isAr={isAr} />
         </div>
 
-        {customerName ? <p className="mb-1 text-base font-medium">{customerName}</p> : null}
-        <p className="mb-2 line-clamp-3 text-base leading-relaxed">{linesSummary}</p>
-        {orderNotes ? (
-          <p className="mb-2 rounded-lg bg-muted/60 px-3 py-2 text-sm font-medium">{orderNotes}</p>
+        {presentation.customer.name ? (
+          <p className="mb-1 text-base font-medium">{presentation.customer.name}</p>
         ) : null}
-        {totalAmount ? (
+        <p className="mb-2 line-clamp-3 text-base leading-relaxed">
+          {pickLocalizedLabel(presentation.items.summary, isAr)}
+        </p>
+        {presentation.notes ? (
+          <p className="mb-2 rounded-lg bg-muted/60 px-3 py-2 text-sm font-medium">
+            {presentation.notes}
+          </p>
+        ) : null}
+        {presentation.totalAmount ? (
           <p className="text-lg font-semibold">
-            {totalAmount} {currencySymbol ?? ""}
+            {presentation.totalAmount} {currencySymbol ?? ""}
           </p>
         ) : null}
       </button>
 
       <div className="mt-3 space-y-2">
-        <DelayExplanation reason={delay.reason} message={delay.message} />
+        <DelayExplanation
+          reason={presentation.delay.reason}
+          message={pickLocalizedLabel(presentation.delay.message, isAr)}
+        />
         {!executionOnly && actions && actions.length > 0 && onAction ? (
           <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:flex-wrap">
             {actions.map((action) => (

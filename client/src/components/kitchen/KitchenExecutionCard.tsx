@@ -1,37 +1,32 @@
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { KitchenTicketCardModel, KitchenTicketLine } from "@/lib/kitchen/viewModels";
-import { urgencyClassName } from "@/lib/kitchen/viewModels";
-import { formatKitchenStatusLabel, kitchenStatusPresentation, productDisplayName } from "@/lib/kitchen/kitchenPresentation";
 import type { PresentationDensityModel } from "@/lib/operational-screen/density/runtimeDisplayDensityContract";
 import {
-  formatOperationalElapsedCompact,
-  formatOperationalFulfillmentLabel,
   formatOperationalItemOverflow,
   formatOperationalQuantity,
   OPERATIONAL_ITEM_ROW_DIVIDER_CLASS,
   OPERATIONAL_META_SEPARATOR_CLASS,
-  operationalCardElapsedClass,
-  operationalFooterStatusClass,
-  operationalFooterStatusLabel,
 } from "@/lib/operational-screen/operationalCardTypography";
 import type { OperationalAction } from "@/lib/operational-workspace/operationalActions";
-import type { SlaSnapshot } from "@/lib/operational-workspace/slaEngine";
-import { explainDelay } from "@/lib/operational-workspace/delayIntelligence";
+import {
+  pickLocalizedLabel,
+  type OrderPresentationModel,
+} from "@/lib/order-presentation";
 import { AlertTriangle, Check, Loader2, StickyNote } from "lucide-react";
 import type { KeyboardEvent } from "react";
 
 function OperationalItemTable({
-  lineItems,
-  linesSummary,
+  presentation,
   isAr,
   densityModel,
 }: {
-  lineItems: KitchenTicketLine[];
-  linesSummary: string;
+  presentation: OrderPresentationModel;
   isAr: boolean;
   densityModel: PresentationDensityModel;
 }) {
+  const lineItems = presentation.items.lines;
+  const linesSummary = pickLocalizedLabel(presentation.items.summary, isAr);
+
   if (lineItems.length === 0) {
     return <p className={cn(densityModel.lineItemClass, "list-none")}>{linesSummary}</p>;
   }
@@ -44,8 +39,8 @@ function OperationalItemTable({
     <>
       <ul className="space-y-0" aria-label={isAr ? "عناصر الطلب" : "Order items"}>
         {visible.map((line, index) => {
-          const qty = formatOperationalQuantity(line.quantity);
-          const name = productDisplayName(line, isAr);
+          const qty = formatOperationalQuantity(Number(line.quantityLabel));
+          const name = isAr ? line.nameAr : line.nameEn;
           const isLast = index === visible.length - 1;
           return (
             <li
@@ -81,27 +76,25 @@ function OperationalItemTable({
 }
 
 function OperationalExecutionFooter({
-  elapsed,
-  elapsedClass,
-  status,
+  presentation,
   isAr,
 }: {
-  elapsed: string;
-  elapsedClass: string;
-  status: KitchenTicketCardModel["status"];
+  presentation: OrderPresentationModel;
   isAr: boolean;
 }) {
+  const elapsed = pickLocalizedLabel(presentation.timing.elapsedCompactLabel, isAr);
+  const statusLabel = pickLocalizedLabel(presentation.statusLabel, isAr);
+
   return (
     <div
       className="grid grid-cols-[1fr_auto_1fr] items-baseline gap-x-6"
-      aria-label={
-        isAr
-          ? `${elapsed}، ${operationalFooterStatusLabel(status, true)}`
-          : `${elapsed}, ${operationalFooterStatusLabel(status, false)}`
-      }
+      aria-label={isAr ? `${elapsed}، ${statusLabel}` : `${elapsed}, ${statusLabel}`}
     >
       <p
-        className={cn(elapsedClass, "text-start whitespace-nowrap")}
+        className={cn(
+          presentation.timing.elapsedClassName,
+          "text-start whitespace-nowrap"
+        )}
         aria-label={isAr ? "الوقت المنقضي" : "Elapsed time"}
       >
         {elapsed}
@@ -109,8 +102,8 @@ function OperationalExecutionFooter({
       <span className={cn(OPERATIONAL_META_SEPARATOR_CLASS, "self-center")} aria-hidden>
         │
       </span>
-      <p className={cn(operationalFooterStatusClass(status), "text-end")}>
-        {operationalFooterStatusLabel(status, isAr)}
+      <p className={cn(presentation.emphasis.statusLabelClass, "text-end text-sm font-bold leading-none whitespace-nowrap")}>
+        {statusLabel}
       </p>
     </div>
   );
@@ -118,11 +111,10 @@ function OperationalExecutionFooter({
 
 /**
  * Kitchen execution card — operational ticket surface (header / body / footer).
- * Presentation only; functionality unchanged.
+ * Renders OrderPresentationModel only; presentation formatting lives in the mapper.
  */
 export function KitchenExecutionCard({
-  ticket,
-  sla,
+  presentation,
   language,
   densityModel,
   fading,
@@ -134,8 +126,7 @@ export function KitchenExecutionCard({
   onOpenDetails,
   selected,
 }: {
-  ticket: KitchenTicketCardModel;
-  sla: SlaSnapshot;
+  presentation: OrderPresentationModel;
   language: string;
   densityModel: PresentationDensityModel;
   fading?: boolean;
@@ -148,16 +139,12 @@ export function KitchenExecutionCard({
   selected?: boolean;
 }) {
   const isAr = language === "ar";
-  const delay = explainDelay({ status: ticket.status, sla, isAr });
-  const showWarning =
-    sla.status === "late" || sla.status === "critical" || sla.status === "at-risk";
-  const statusPresentation = kitchenStatusPresentation(ticket.status);
-  const fulfillmentLabel = formatOperationalFulfillmentLabel(ticket.tableNumber, isAr);
   const actionLabel = action ? (isAr ? action.labelAr : action.labelEn) : null;
   const hasAction = Boolean(action && onAction);
-  const elapsed = formatOperationalElapsedCompact(ticket.columnElapsedMinutes, isAr);
-  const elapsedClass = operationalCardElapsedClass(sla, densityModel.timingClass);
   const isInteractive = Boolean(onOpenDetails);
+  const statusLabel = pickLocalizedLabel(presentation.statusLabel, isAr);
+  const delayMessage = pickLocalizedLabel(presentation.delay.message, isAr);
+  const fulfillmentLabel = pickLocalizedLabel(presentation.fulfillment.label, isAr);
 
   function handleTicketKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     if (!onOpenDetails) return;
@@ -176,7 +163,7 @@ export function KitchenExecutionCard({
         densityModel.cardRadius,
         densityModel.cardPadding,
         densityModel.cardMinHeight,
-        urgencyClassName(ticket.urgencyTier),
+        presentation.emphasis.cardBorderClass,
         selected && "ring-2 ring-primary/55 shadow-[0_6px_22px_rgba(0,0,0,0.1)]",
         fading && "opacity-60",
         className
@@ -184,12 +171,12 @@ export function KitchenExecutionCard({
       dir={isAr ? "rtl" : "ltr"}
       aria-label={
         isAr
-          ? `طلب ${ticket.displayReference}، ${formatKitchenStatusLabel(ticket.status, true)}`
-          : `Order ${ticket.displayReference}, ${formatKitchenStatusLabel(ticket.status, false)}`
+          ? `طلب ${presentation.identity.displayReference}، ${statusLabel}`
+          : `Order ${presentation.identity.displayReference}, ${statusLabel}`
       }
     >
       <div
-        className={cn("absolute inset-x-0 top-0 h-0.5", statusPresentation.accentClass)}
+        className={cn("absolute inset-x-0 top-0 h-0.5", presentation.emphasis.statusAccentClass)}
         aria-hidden
       />
 
@@ -199,8 +186,8 @@ export function KitchenExecutionCard({
         aria-label={
           isInteractive
             ? isAr
-              ? `عرض تفاصيل الطلب ${ticket.displayReference}`
-              : `View order ${ticket.displayReference} details`
+              ? `عرض تفاصيل الطلب ${presentation.identity.displayReference}`
+              : `View order ${presentation.identity.displayReference} details`
             : undefined
         }
         onClick={onOpenDetails}
@@ -215,55 +202,49 @@ export function KitchenExecutionCard({
       >
         <header className="mb-1.5 shrink-0 border-b border-border/15 pb-1.5">
           <p className={cn(densityModel.orderNumberClass, "whitespace-nowrap tabular-nums")}>
-            {ticket.displayReference}
+            {presentation.identity.displayReference}
           </p>
         </header>
 
         <div className="flex min-h-0 flex-1 flex-col pt-1.5">
           <OperationalItemTable
-            lineItems={ticket.lineItems}
-            linesSummary={ticket.linesSummary}
+            presentation={presentation}
             isAr={isAr}
             densityModel={densityModel}
           />
 
           <p className={cn(densityModel.tableLabelClass, "mt-1")}>{fulfillmentLabel}</p>
 
-          {ticket.orderNotes ? (
+          {presentation.notes ? (
             <p className={cn("mt-1.5 flex items-start gap-1.5", densityModel.notesClass)}>
               <StickyNote
                 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/70"
                 aria-hidden
               />
-              <span className="line-clamp-2 break-words">{ticket.orderNotes}</span>
+              <span className="line-clamp-2 break-words">{presentation.notes}</span>
             </p>
           ) : null}
 
-          {showWarning ? (
+          {presentation.delay.showWarning ? (
             <p
               className={cn(
                 "mt-1.5 flex items-start gap-1.5 rounded px-1.5 py-1",
                 densityModel.warningClass,
-                sla.status === "critical"
+                presentation.delay.warningTone === "destructive"
                   ? "bg-destructive/10 text-destructive"
                   : "bg-amber-500/10 text-amber-800 dark:text-amber-300"
               )}
               role="status"
             >
               <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" aria-hidden />
-              <span>{delay.message}</span>
+              <span>{delayMessage}</span>
             </p>
           ) : null}
         </div>
       </div>
 
       <footer className="mt-1 shrink-0 space-y-2 border-t border-border/15 pt-2">
-        <OperationalExecutionFooter
-          elapsed={elapsed}
-          elapsedClass={elapsedClass}
-          status={ticket.status}
-          isAr={isAr}
-        />
+        <OperationalExecutionFooter presentation={presentation} isAr={isAr} />
 
         {hasAction ? (
           <Button
@@ -275,7 +256,7 @@ export function KitchenExecutionCard({
               "transition-[box-shadow,transform,background-color] duration-150",
               "active:scale-[0.98]",
               "focus-visible:ring-2 focus-visible:ring-offset-2",
-              statusPresentation.actionButtonClass
+              presentation.emphasis.actionButtonClass
             )}
             disabled={actionPending}
             aria-busy={actionPending ? true : undefined}

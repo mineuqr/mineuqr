@@ -10,14 +10,11 @@ function read(rel: string) {
 
 describe("DISPLAY-IDENTITY-ROLLOUT-1 operational UI guards", () => {
   it("routes operational display through orderDisplayIdentity helper", () => {
-    const ordersWorkspace = read("client/src/components/orders-workspace/OrdersWorkspacePanel.tsx");
+    const mapper = read("client/src/lib/order-presentation/mapOrderPresentation.ts");
     const kitchenViewModels = read("client/src/lib/kitchen/viewModels.ts");
 
-    expect(ordersWorkspace).toContain("formatOperationalOrderHeading");
-    expect(ordersWorkspace).toContain("orderDisplayIdentity");
-    expect(ordersWorkspace).not.toMatch(/#\$\{selected\.orderNumber\}/);
-    expect(ordersWorkspace).not.toMatch(/#\$\{order\.orderNumber\}/);
-
+    expect(mapper).toContain("formatOperationalOrderHeading");
+    expect(mapper).toContain("operationalDisplayReference");
     expect(kitchenViewModels).toContain("operationalDisplayReference");
     expect(kitchenViewModels).not.toContain("ticket.displayReference || ticket.orderNumber");
   });
@@ -26,9 +23,9 @@ describe("DISPLAY-IDENTITY-ROLLOUT-1 operational UI guards", () => {
     const card = read("client/src/components/operational-workspace/OperationalCard.tsx");
     const kitchenCard = read("client/src/components/kitchen/KitchenExecutionCard.tsx");
 
-    expect(card).toContain("displayReference");
+    expect(card).toContain("presentation.identity.displayReference");
     expect(card).not.toContain("orderNumber:");
-    expect(kitchenCard).toContain("ticket.displayReference");
+    expect(kitchenCard).toContain("presentation.identity.displayReference");
   });
 
   it("delegates client resolution to OrderDisplayIdentityResolver", () => {

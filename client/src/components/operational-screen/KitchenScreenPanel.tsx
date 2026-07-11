@@ -13,8 +13,7 @@ import {
   countDelayedKitchenTickets,
   sortKitchenTicketsForDisplay,
 } from "@/lib/operational-screen/operationalScreenPresentation";
-import { toKitchenTicketCard } from "@/lib/kitchen/viewModels";
-import { computeSlaSnapshot } from "@/lib/operational-workspace/slaEngine";
+import { mapKitchenTicketPresentation } from "@/lib/order-presentation";
 import { useOperationalDeviceOrderActions } from "@/lib/operational-screen/interaction/useOperationalDeviceOrderActions";
 import { resolveOperationalScreenAction } from "@/lib/operational-screen/interaction/deviceOrderExecutionCapabilities";
 import { useKitchenRuntimeStream } from "@/lib/operational-screen/kitchen/useKitchenRuntimeStream";
@@ -76,12 +75,7 @@ export function KitchenScreenPanel() {
           aria-label={isAr ? "طابور المطبخ" : "Kitchen queue"}
         >
           {tickets.map((ticket) => {
-            const model = toKitchenTicketCard(ticket);
-            const sla = computeSlaSnapshot(
-              ticket.status,
-              ticket.columnElapsedSeconds,
-              ticket.elapsedSeconds
-            );
+            const presentation = mapKitchenTicketPresentation(ticket);
             const primaryAction = resolveOperationalScreenAction(
               context.identity.role,
               ticket.status
@@ -90,8 +84,7 @@ export function KitchenScreenPanel() {
             return (
               <KitchenExecutionCard
                 key={ticket.orderId}
-                ticket={model}
-                sla={sla}
+                presentation={presentation}
                 language={language}
                 densityModel={densityModel}
                 action={primaryAction}

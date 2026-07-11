@@ -61,9 +61,10 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
 
   it("OPERATIONAL-CARD-POLISH-1: operational cards use English numerals", () => {
     const typography = read("client/src/lib/operational-screen/operationalCardTypography.ts");
+    const mapper = read("client/src/lib/order-presentation/mapOrderPresentation.ts");
     const card = read("client/src/components/kitchen/KitchenExecutionCard.tsx");
     expect(typography).toContain("formatOperationalElapsedCompact");
-    expect(card).toContain("formatOperationalElapsedCompact");
+    expect(mapper).toContain("formatOperationalElapsedCompact");
     expect(card).toContain("formatOperationalQuantity");
     expect(card).not.toContain("toArabicDigits");
   });
@@ -71,7 +72,7 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
   it("OPERATIONAL-CARD-POLISH-1: execution footer groups elapsed time and status", () => {
     const card = read("client/src/components/kitchen/KitchenExecutionCard.tsx");
     expect(card).toContain("OperationalExecutionFooter");
-    expect(card).toContain("operationalFooterStatusLabel");
+    expect(card).toContain("presentation.statusLabel");
     expect(card).not.toContain("KitchenStatusIndicator");
   });
 

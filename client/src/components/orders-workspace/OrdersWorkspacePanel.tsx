@@ -9,8 +9,8 @@ import { RestaurantKpiCard, RestaurantKpiGridSkeleton } from "@/components/dashb
 import { RestaurantSectionError } from "@/components/dashboard/RestaurantSectionStates";
 import { Button } from "@/components/ui/button";
 import { getOrderWorkspaceActions } from "@/lib/operational-workspace/operationalActions";
-import { buildLinesSummaryFromItems, computeOrderCardSla, isLateOrder } from "@/lib/operational-workspace/orderViewModels";
-import { formatOperationalOrderHeading } from "@/lib/operational-workspace/orderDisplayIdentity";
+import { isLateOrder } from "@/lib/operational-workspace/orderViewModels";
+import { mapActiveOrderPresentation } from "@/lib/order-presentation";
 import { useOrderStatusActions } from "@/lib/operational-workspace/useOrderStatusActions";
 import {
   DEFAULT_ORDER_FILTERS,
@@ -40,7 +40,7 @@ export function OrdersWorkspacePanel({
   tableLabel?: string;
 }) {
   const isAr = language === "ar";
-  const unit = tableLabel === "rooms" ? (isAr ? "غرفة" : "Room") : isAr ? "طاولة" : "Table";
+  const tableUnit = tableLabel === "rooms" ? "room" : "table";
   const { isAuthenticated, authPending } = useAuth();
   const enabled = restaurantQueriesEnabled(authPending, isAuthenticated, restaurantId);
   const { presets, activeId, active, select } = useSavedFilters("orders", restaurantId, DEFAULT_ORDER_FILTERS);
@@ -87,6 +87,15 @@ export function OrdersWorkspacePanel({
 
   const { displayItems, isFading } = useGracePeriod(items, (o) => String(o.orderId));
 
+  const presentationItems = useMemo(
+    () =>
+      displayItems.map((order) => ({
+        order,
+        presentation: mapActiveOrderPresentation(order, { tableUnit }),
+      })),
+    [displayItems, tableUnit]
+  );
+
   const counts = useMemo(() => {
     const all = listQuery.data?.items ?? [];
     return {
@@ -98,6 +107,9 @@ export function OrdersWorkspacePanel({
   }, [listQuery.data]);
 
   const selected = detailQuery.data?.order;
+  const selectedPresentation = selected
+    ? mapActiveOrderPresentation(selected, { tableUnit })
+    : null;
   const selectedActions = selected
     ? getOrderWorkspaceActions(selected.status as OrderLifecycleStatus)
     : [];
@@ -143,7 +155,7 @@ export function OrdersWorkspacePanel({
         <OperationalDetailsDrawer
           open={selectedOrderId != null}
           onOpenChange={(open) => !open && setSelectedOrderId(null)}
-          title={selected ? formatOperationalOrderHeading(selected) : ""}
+          title={selectedPresentation?.identity.displayReference ?? ""}
           language={language}
           timeline={detailQuery.data?.timeline}
           actions={selectedActions}
@@ -154,17 +166,10 @@ export function OrdersWorkspacePanel({
             await orderActions.executeAction(selectedOrderId, actionId);
           }}
         >
-          {selected ? (
+          {selectedPresentation ? (
             <OperationalCard
-              displayReference={formatOperationalOrderHeading(selected)}
-              tableLabel={`${unit} ${selected.tableNumber}`}
-              linesSummary={buildLinesSummaryFromItems(selected.lineItems)}
-              orderNotes={selected.notes}
-              customerName={selected.customerName}
-              totalAmount={selected.totalAmount}
+              presentation={selectedPresentation}
               currencySymbol={currencySymbol}
-              status={selected.status}
-              sla={computeOrderCardSla(selected.status, selected.createdAt)}
               language={language}
               executionOnly
             />
@@ -182,25 +187,18 @@ export function OrdersWorkspacePanel({
         <div className="flex justify-center py-16">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
-      ) : displayItems.length === 0 ? (
+      ) : presentationItems.length === 0 ? (
         <div className="py-16 text-center">
           <ClipboardList className="mx-auto mb-4 h-10 w-10 text-muted-foreground/60" />
           <p className="text-muted-foreground">{isAr ? "لا توجد طلبات" : "No orders"}</p>
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {displayItems.map((order) => (
+          {presentationItems.map(({ order, presentation }) => (
             <OperationalCard
               key={order.orderId}
-              displayReference={formatOperationalOrderHeading(order)}
-              tableLabel={`${unit} ${order.tableNumber}`}
-              linesSummary={buildLinesSummaryFromItems(order.lineItems)}
-              orderNotes={order.notes}
-              customerName={order.customerName}
-              totalAmount={order.totalAmount}
+              presentation={presentation}
               currencySymbol={currencySymbol}
-              status={order.status}
-              sla={computeOrderCardSla(order.status, order.createdAt)}
               language={language}
               fading={isFading(order)}
               actions={
