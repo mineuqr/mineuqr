@@ -16,6 +16,16 @@ import {
   type RuntimeContextStore,
 } from "@/lib/operational-screen/runtimeContextStore";
 import {
+  selectRuntimeBusiness,
+  selectRuntimeCapabilities,
+  selectRuntimeConfiguration,
+  selectRuntimeDevice,
+  selectRuntimeIdentity,
+  selectRuntimeMetadata,
+  selectRuntimeRole,
+  selectRuntimeSession,
+} from "@/lib/operational-screen/runtimeContextSelectors";
+import {
   useRuntimeOrchestrator,
   type RuntimeOrchestratorCoreValue,
 } from "@/lib/operational-screen/useRuntimeOrchestrator";
@@ -84,13 +94,53 @@ export function useScreenRuntime(): RuntimeOrchestratorValue {
   return { ...orchestrator, instanceContext };
 }
 
-/** Canonical read path for RuntimeInstanceContext. */
+/** Canonical read path for RuntimeInstanceContext (advanced API). */
 export function useRuntimeInstanceContext(): FrozenRuntimeInstanceContext {
   const snapshot = useContext(RuntimeInstanceSnapshotContext);
   if (!snapshot) {
     throw new Error("Runtime instance context is not ready");
   }
   return snapshot;
+}
+
+/** Preferred runtime context API — identity slice. */
+export function useRuntimeIdentity() {
+  return selectRuntimeIdentity(useRuntimeInstanceContext());
+}
+
+/** Preferred runtime context API — business slice. */
+export function useRuntimeBusiness() {
+  return selectRuntimeBusiness(useRuntimeInstanceContext());
+}
+
+/** Preferred runtime context API — device slice. */
+export function useRuntimeDevice() {
+  return selectRuntimeDevice(useRuntimeInstanceContext());
+}
+
+/** Preferred runtime context API — role slice. */
+export function useRuntimeRole() {
+  return selectRuntimeRole(useRuntimeInstanceContext());
+}
+
+/** Preferred runtime context API — configuration slice. */
+export function useRuntimeConfiguration() {
+  return selectRuntimeConfiguration(useRuntimeInstanceContext());
+}
+
+/** Preferred runtime context API — capabilities slice. */
+export function useRuntimeCapabilities() {
+  return selectRuntimeCapabilities(useRuntimeInstanceContext());
+}
+
+/** Preferred runtime context API — session slice. */
+export function useRuntimeSession() {
+  return selectRuntimeSession(useRuntimeInstanceContext());
+}
+
+/** Preferred runtime context API — metadata slice. */
+export function useRuntimeMetadata() {
+  return selectRuntimeMetadata(useRuntimeInstanceContext());
 }
 
 /** Access the assembled runtime context with store-owned instance snapshot. */

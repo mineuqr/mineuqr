@@ -345,7 +345,7 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
     expect(orchestrator).toContain("runtimeContextFactory.buildRuntimeContext");
     expect(provider).toContain("useRuntimeInstanceContext");
     expect(runtimeTypes).toContain("instance: FrozenRuntimeInstanceContext");
-    expect(orderActions).toContain("useRuntimeInstanceContext");
+    expect(orderActions).toContain("useRuntimeRole");
   });
 
   it("RUNTIME-CONTEXT-SUBSCRIPTIONS-1: instance snapshots published via RuntimeContextStore", () => {
@@ -379,6 +379,33 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
     expect(provider).toContain("RuntimeInstanceSnapshotProvider");
     expect(provider).toContain("useRuntimeInstanceContext");
     expect(provider).toContain("instanceContext");
-    expect(orderActions).toContain("useRuntimeInstanceContext");
+    expect(orderActions).toContain("useRuntimeRole");
+  });
+
+  it("RUNTIME-CONTEXT-SELECTORS-1: stable selectors are thin read facades", () => {
+    const provider = read("client/src/components/operational-screen/OperationalScreenRuntimeProvider.tsx");
+    const selectors = read("client/src/lib/operational-screen/runtimeContextSelectors.ts");
+    const orderActions = read(
+      "client/src/lib/operational-screen/interaction/useOperationalDeviceOrderActions.ts"
+    );
+
+    for (const hook of [
+      "useRuntimeIdentity",
+      "useRuntimeBusiness",
+      "useRuntimeDevice",
+      "useRuntimeRole",
+      "useRuntimeConfiguration",
+      "useRuntimeCapabilities",
+      "useRuntimeSession",
+      "useRuntimeMetadata",
+    ]) {
+      expect(provider).toContain(`export function ${hook}()`);
+    }
+
+    expect(selectors).toContain("selectRuntimeIdentity");
+    expect(selectors).toContain("selectRuntimeMetadata");
+    expect(selectors).not.toMatch(/useState|useEffect|useSyncExternalStore|RuntimeContextFactory/);
+    expect(orderActions).toContain("useRuntimeRole");
+    expect(orderActions).not.toContain("useRuntimeInstanceContext");
   });
 });

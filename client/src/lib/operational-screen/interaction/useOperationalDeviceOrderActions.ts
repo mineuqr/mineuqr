@@ -2,11 +2,11 @@ import { useCallback, useRef, useState } from "react";
 import { screenTrpc } from "@/lib/operational-screen/screenTrpc";
 import type { DeviceOrderActionId } from "../../../../../server/operational-device/domain/deviceOrderExecution";
 import type { OperationalActionId } from "@/lib/operational-workspace/operationalActions";
-import { useRuntimeInstanceContext } from "@/components/operational-screen/OperationalScreenRuntimeProvider";
+import { useRuntimeRole } from "@/components/operational-screen/OperationalScreenRuntimeProvider";
 
 export function useOperationalDeviceOrderActions() {
-  const instance = useRuntimeInstanceContext();
-  const canExecute = instance.role.permissions.canExecuteOrderActions;
+  const role = useRuntimeRole();
+  const canExecute = role.permissions.canExecuteOrderActions;
   const [pendingOrderId, setPendingOrderId] = useState<number | null>(null);
   const [successOrderId, setSuccessOrderId] = useState<number | null>(null);
   const successTimerRef = useRef<number | null>(null);
