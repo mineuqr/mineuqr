@@ -4,11 +4,18 @@ import {
   assertOrderStatus,
   isTerminalOrderStatus,
 } from "../value-objects/OrderStatus";
+import {
+  assertOrderLifecycleStage,
+  DEFAULT_ORDER_LIFECYCLE_STAGE,
+  type OrderLifecycleStage,
+} from "../value-objects/OrderLifecycleStage";
 import type { OrderActor } from "../value-objects/OrderActor";
 import { OrderLifecyclePolicy } from "../policies/OrderLifecyclePolicy";
+import { OrderLifecycleStagePolicy } from "../policies/OrderLifecycleStagePolicy";
 import { OrderCancellationPolicy } from "../policies/OrderCancellationPolicy";
 import {
   EmptyOrderError,
+  InvalidLifecycleTransitionError,
   InvalidTransitionError,
   OrderAlreadyCancelledError,
   OrderAlreadyCompletedError,
@@ -34,6 +41,7 @@ export type NewOrderProps = {
 export type PersistedOrderProps = NewOrderProps & {
   id: number;
   status: OrderStatus;
+  lifecycleStage: OrderLifecycleStage;
   readyAt: string | null;
   updatedAt: string;
 };
@@ -56,6 +64,7 @@ export class Order {
   readonly updatedAt: string;
 
   private _status: OrderStatus;
+  private _lifecycleStage: OrderLifecycleStage;
   private _readyAt: string | null;
   private readonly _lines: OrderLine[];
 
@@ -74,12 +83,17 @@ export class Order {
     this.createdAt = props.createdAt;
     this.updatedAt = props.updatedAt;
     this._status = props.status;
+    this._lifecycleStage = props.lifecycleStage;
     this._readyAt = props.readyAt;
     this._lines = props.lines.map((line) => OrderLine.create(line));
   }
 
   get status(): OrderStatus {
     return this._status;
+  }
+
+  get lifecycleStage(): OrderLifecycleStage {
+    return this._lifecycleStage;
   }
 
   get readyAt(): string | null {
@@ -108,6 +122,7 @@ export class Order {
       ...props,
       id: 0,
       status: "pending",
+      lifecycleStage: DEFAULT_ORDER_LIFECYCLE_STAGE,
       readyAt: null,
       updatedAt: props.createdAt,
       sessionId: props.sessionId ?? null,
@@ -121,6 +136,7 @@ export class Order {
     return new Order({
       ...props,
       status: assertOrderStatus(props.status),
+      lifecycleStage: assertOrderLifecycleStage(props.lifecycleStage),
     });
   }
 
@@ -203,6 +219,29 @@ export class Order {
     }
   }
 
+  advanceLifecycleStage(targetStage: OrderLifecycleStage, changedAt: string): void {
+    if (!OrderLifecycleStagePolicy.canTransition(this._lifecycleStage, targetStage)) {
+      throw new InvalidLifecycleTransitionError(this._lifecycleStage, targetStage);
+    }
+
+    if (this.id == null) {
+      throw new Error("Cannot advance lifecycle on unpersisted order");
+    }
+
+    const fromStage = this._lifecycleStage;
+    this._lifecycleStage = targetStage;
+
+    this._events.push({
+      type: "OrderLifecycleStageChanged",
+      schemaVersion: ORDER_DOMAIN_EVENT_SCHEMA_VERSION,
+      orderId: this.id,
+      restaurantId: this.restaurantId,
+      fromStage,
+      toStage: targetStage,
+      changedAt,
+    });
+  }
+
   cancel(actor: OrderActor, cancelledAt: string): void {
     if (this._status === "served") {
       throw new OrderAlreadyCompletedError();
@@ -266,6 +305,7 @@ export class Order {
       orderNumber: this.orderNumber,
       trackingToken: this.trackingToken,
       status: this._status,
+      lifecycleStage: this._lifecycleStage,
       lines: this._lines.map((line) => line.toProps()),
     };
   }
@@ -293,6 +333,7 @@ export class Order {
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
       status: this._status,
+      lifecycleStage: this._lifecycleStage,
       readyAt: this._readyAt,
       lines: this._lines.map((line) => line.toProps()),
     };

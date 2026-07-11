@@ -16,6 +16,8 @@ import {
   isActiveOrderStatus,
   statusBucket,
 } from "./projectionStatus";
+import { isOrderInOperationalLifecycle } from "./projectionLifecycle";
+import { assertOrderLifecycleStage } from "../../../domain/value-objects/OrderLifecycleStage";
 import type { DrizzleBusinessIdentityAllocator } from "../../../business-identity/infrastructure/DrizzleBusinessIdentityAllocator";
 
 function parsePayload(envelope: EventEnvelope): OrderDomainEvent {
@@ -298,7 +300,10 @@ export class OrderReadProjectionMaterializer {
           lastEventId: null,
           updatedAt: new Date().toISOString(),
         };
-      if (isActiveOrderStatus(order.status)) {
+      if (
+        isOrderInOperationalLifecycle(assertOrderLifecycleStage(order.lifecycle)) &&
+        isActiveOrderStatus(order.status)
+      ) {
         const bucket = statusBucket(order.status);
         if (bucket) this.incrementKpiBucket(kpi, bucket);
       }

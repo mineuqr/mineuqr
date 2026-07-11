@@ -97,6 +97,8 @@ export function extractOccurredAtFromEvent(event: OrderDomainEvent): string {
       return event.servedAt;
     case "OrderCancelled":
       return event.cancelledAt;
+    case "OrderLifecycleStageChanged":
+      return event.changedAt;
     default:
       return new Date().toISOString();
   }

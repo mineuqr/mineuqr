@@ -69,6 +69,7 @@ describe("Order aggregate", () => {
       ...order.snapshotForCreate(),
       id: 99,
       status: "pending",
+      lifecycleStage: "active",
       readyAt: null,
       updatedAt: "2026-06-27T12:00:00.000Z",
       sessionId: null,
@@ -98,6 +99,7 @@ describe("Order aggregate", () => {
       createdAt: "2026-06-27T12:00:00.000Z",
       updatedAt: "2026-06-27T12:00:00.000Z",
       status: "served",
+      lifecycleStage: "completed",
       readyAt: "2026-06-27T12:05:00.000Z",
       lines: [baseLine],
     });
@@ -122,6 +124,7 @@ describe("Order aggregate", () => {
       createdAt: "2026-06-27T12:00:00.000Z",
       updatedAt: "2026-06-27T12:00:00.000Z",
       status: "pending",
+      lifecycleStage: "active",
       readyAt: null,
       lines: [baseLine],
     });
@@ -146,6 +149,7 @@ describe("Order aggregate", () => {
       createdAt: "2026-06-27T12:00:00.000Z",
       updatedAt: "2026-06-27T12:00:00.000Z",
       status: "preparing",
+      lifecycleStage: "active",
       readyAt: null,
       lines: [baseLine],
     });
@@ -174,6 +178,7 @@ describe("Order aggregate", () => {
       createdAt: "2026-06-27T12:00:00.000Z",
       updatedAt: "2026-06-27T12:00:00.000Z",
       status: "preparing",
+      lifecycleStage: "active",
       readyAt: null,
       lines: [baseLine],
     });
@@ -190,5 +195,100 @@ describe("Order aggregate", () => {
     expect(() =>
       order.advanceStatus("cancelled", deviceActor, "2026-06-27 12:10:00")
     ).toThrow(InvalidTransitionError);
+  });
+});
+
+describe("ORDER-LIFECYCLE-ARCHIVE-1 lifecycle stage", () => {
+  it("defaults new orders to active lifecycle", () => {
+    const order = newOrder();
+    expect(order.lifecycleStage).toBe("active");
+  });
+
+  it("allows active → completed → archived transitions", () => {
+    const order = Order.reconstitute({
+      id: 1,
+      restaurantId: 1,
+      tableId: 1,
+      tableNumber: 1,
+      sessionId: null,
+      customerName: null,
+      customerPhone: null,
+      notes: null,
+      totalAmount: "20.00",
+      orderNumber: "ORD-1",
+      trackingToken: "t",
+      createdAt: "2026-06-27T12:00:00.000Z",
+      updatedAt: "2026-06-27T12:00:00.000Z",
+      status: "served",
+      lifecycleStage: "active",
+      readyAt: "2026-06-27T12:05:00.000Z",
+      lines: [baseLine],
+    });
+
+    order.advanceLifecycleStage("completed", "2026-06-27 12:10:00");
+    expect(order.lifecycleStage).toBe("completed");
+
+    order.advanceLifecycleStage("archived", "2026-06-27 13:00:00");
+    expect(order.lifecycleStage).toBe("archived");
+  });
+
+  it("rejects invalid lifecycle transitions", () => {
+    const order = Order.reconstitute({
+      id: 1,
+      restaurantId: 1,
+      tableId: 1,
+      tableNumber: 1,
+      sessionId: null,
+      customerName: null,
+      customerPhone: null,
+      notes: null,
+      totalAmount: "20.00",
+      orderNumber: "ORD-1",
+      trackingToken: "t",
+      createdAt: "2026-06-27T12:00:00.000Z",
+      updatedAt: "2026-06-27T12:00:00.000Z",
+      status: "served",
+      lifecycleStage: "archived",
+      readyAt: null,
+      lines: [baseLine],
+    });
+
+    expect(() =>
+      order.advanceLifecycleStage("active", "2026-06-27 14:00:00")
+    ).toThrow();
+    expect(() =>
+      order.advanceLifecycleStage("completed", "2026-06-27 14:00:00")
+    ).toThrow();
+  });
+
+  it("emits OrderLifecycleStageChanged on transition", () => {
+    const order = Order.reconstitute({
+      id: 1,
+      restaurantId: 1,
+      tableId: 1,
+      tableNumber: 1,
+      sessionId: null,
+      customerName: null,
+      customerPhone: null,
+      notes: null,
+      totalAmount: "20.00",
+      orderNumber: "ORD-1",
+      trackingToken: "t",
+      createdAt: "2026-06-27T12:00:00.000Z",
+      updatedAt: "2026-06-27T12:00:00.000Z",
+      status: "ready",
+      lifecycleStage: "active",
+      readyAt: "2026-06-27T12:05:00.000Z",
+      lines: [baseLine],
+    });
+
+    order.advanceLifecycleStage("completed", "2026-06-27 12:10:00");
+    const events = order.pullDomainEvents();
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      type: "OrderLifecycleStageChanged",
+      fromStage: "active",
+      toStage: "completed",
+    });
   });
 });

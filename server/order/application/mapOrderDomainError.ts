@@ -14,6 +14,7 @@ export function mapOrderDomainErrorToTrpc(error: unknown): never {
       case "ConcurrencyConflict":
         throw new TRPCError({ code: "CONFLICT", message: error.message });
       case "InvalidTransition":
+      case "InvalidLifecycleTransition":
       case "OrderAlreadyCompleted":
       case "OrderAlreadyCancelled":
       case "OrderImmutable":

@@ -133,6 +133,7 @@ export class DrizzleOrderRepository implements OrderRepository {
       orderNumber: snapshot.orderNumber,
       trackingToken: snapshot.trackingToken,
       status: snapshot.status,
+      lifecycleStage: snapshot.lifecycleStage,
     });
 
     const orderId = Number(insertResult[0].insertId);
@@ -175,6 +176,7 @@ export class DrizzleOrderRepository implements OrderRepository {
       createdAt: order.createdAt,
       updatedAt: order.createdAt,
       status: snapshot.status,
+      lifecycleStage: snapshot.lifecycleStage,
       readyAt: null,
       lines: snapshot.lines,
     });
@@ -229,7 +231,10 @@ export class DrizzleOrderRepository implements OrderRepository {
         .where(and(eq(orders.id, id), eq(orders.readyAt, null as unknown as string)));
     }
 
-    await tx.update(orders).set({ status: newStatus }).where(eq(orders.id, id));
+    await tx.update(orders).set({
+      status: newStatus,
+      lifecycleStage: order.lifecycleStage,
+    }).where(eq(orders.id, id));
 
     const events = options?.domainEvents ?? [];
     const outboxInputs = domainEventsToOutboxInputs(events, {
@@ -298,6 +303,7 @@ export class DrizzleOrderRepository implements OrderRepository {
       createdAt: order.createdAt,
       updatedAt: order.createdAt,
       status: snapshot.status,
+      lifecycleStage: snapshot.lifecycleStage,
       readyAt: null,
       lines: snapshot.lines,
     });

@@ -7,6 +7,11 @@ import type {
 import { clampActiveOrderLimit } from "../../../domain/contracts/queryContracts";
 import { resolveOrderDisplayIdentity } from "../../../../business-identity/application/OrderDisplayIdentityResolver";
 import { isActiveOrderStatus } from "../../../projections/materializers/projectionStatus";
+import { isOrderInOperationalLifecycle } from "../../../projections/materializers/projectionLifecycle";
+import {
+  assertOrderLifecycleStage,
+  DEFAULT_ORDER_LIFECYCLE_STAGE,
+} from "../../../../domain/value-objects/OrderLifecycleStage";
 import type {
   ActiveOrderProjectionKey,
   ActiveOrderProjectionRecord,
@@ -144,7 +149,9 @@ export class InMemoryOrderReadProjectionStore {
     const limit = clampActiveOrderLimit(query.limit);
     const rows = Array.from(this.orders.values())
       .filter(
-        (r) => r.restaurantId === query.restaurantId && isActiveOrderStatus(r.status)
+        (r) =>
+          r.restaurantId === query.restaurantId &&
+          isOrderInOperationalLifecycle(assertOrderLifecycleStage(r.lifecycle))
       )
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
       .slice(0, limit);
@@ -161,7 +168,9 @@ export class InMemoryOrderReadProjectionStore {
 
   async countActive(restaurantId: number): Promise<number> {
     return Array.from(this.orders.values()).filter(
-      (r) => r.restaurantId === restaurantId && isActiveOrderStatus(r.status)
+      (r) =>
+        r.restaurantId === restaurantId &&
+        isOrderInOperationalLifecycle(assertOrderLifecycleStage(r.lifecycle))
     ).length;
   }
 
@@ -308,6 +317,9 @@ export class InMemoryOrderReadProjectionStore {
       displayOrderNumber: identity.displayOrderNumber,
       displayReference: identity.displayReference,
       status: order.status,
+      lifecycle: assertOrderLifecycleStage(
+        order.lifecycleStage ?? DEFAULT_ORDER_LIFECYCLE_STAGE
+      ),
       tableNumber: order.tableNumber,
       sessionId: order.sessionId ?? null,
       customerName: order.customerName ?? null,

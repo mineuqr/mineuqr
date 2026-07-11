@@ -5,6 +5,7 @@ const sampleOrder = {
   orderId: 1,
   orderNumber: "1001",
   status: "pending",
+  lifecycle: "active",
   tableNumber: 5,
   sessionId: null,
   customerName: "Guest",

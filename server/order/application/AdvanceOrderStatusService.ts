@@ -42,6 +42,14 @@ export class AdvanceOrderStatusService {
     order.advanceStatus(command.targetStatus, command.actor, changedAt);
     const events = order.pullDomainEvents();
 
+    if (
+      order.lifecycleStage === "active" &&
+      (command.targetStatus === "served" || command.targetStatus === "cancelled")
+    ) {
+      order.advanceLifecycleStage("completed", changedAt);
+      events.push(...order.pullDomainEvents());
+    }
+
     await this.repository.save(order, {
       expectedUpdatedAt,
       domainEvents: events,

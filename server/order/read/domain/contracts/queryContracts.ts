@@ -153,6 +153,7 @@ export type ActiveOrderItemDto = {
   displayOrderNumber: string;
   displayReference: string;
   status: string;
+  lifecycle: string;
   tableNumber: number;
   sessionId: number | null;
   customerName: string | null;

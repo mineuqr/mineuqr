@@ -1,4 +1,5 @@
 import type { OrderActor } from "../value-objects/OrderActor";
+import type { OrderLifecycleStage } from "../value-objects/OrderLifecycleStage";
 
 export const ORDER_DOMAIN_EVENT_SCHEMA_VERSION = 1;
 
@@ -51,9 +52,20 @@ export type OrderCancelledEvent = {
   readonly actor?: OrderActor;
 };
 
+export type OrderLifecycleStageChangedEvent = {
+  readonly type: "OrderLifecycleStageChanged";
+  readonly schemaVersion: typeof ORDER_DOMAIN_EVENT_SCHEMA_VERSION;
+  readonly orderId: number;
+  readonly restaurantId: number;
+  readonly fromStage: OrderLifecycleStage;
+  readonly toStage: OrderLifecycleStage;
+  readonly changedAt: string;
+};
+
 export type OrderDomainEvent =
   | OrderCreatedEvent
   | OrderStatusChangedEvent
   | OrderReadyEvent
   | OrderCompletedEvent
-  | OrderCancelledEvent;
+  | OrderCancelledEvent
+  | OrderLifecycleStageChangedEvent;

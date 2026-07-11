@@ -1,6 +1,10 @@
 import type { SelectOrder, SelectOrderItem } from "../../../../drizzle/schema";
 import { Order } from "../../domain/aggregate/Order";
 import { assertOrderStatus } from "../../domain/value-objects/OrderStatus";
+import {
+  assertOrderLifecycleStage,
+  DEFAULT_ORDER_LIFECYCLE_STAGE,
+} from "../../domain/value-objects/OrderLifecycleStage";
 
 export function mapOrderRowToAggregate(
   order: SelectOrder,
@@ -21,6 +25,9 @@ export function mapOrderRowToAggregate(
     createdAt: order.createdAt,
     updatedAt: order.updatedAt,
     status: assertOrderStatus(order.status),
+    lifecycleStage: assertOrderLifecycleStage(
+      order.lifecycleStage ?? DEFAULT_ORDER_LIFECYCLE_STAGE
+    ),
     readyAt: order.readyAt ?? null,
     lines: items.map((item) => ({
       id: item.id,

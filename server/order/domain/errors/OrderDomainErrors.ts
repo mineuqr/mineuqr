@@ -29,6 +29,15 @@ export class InvalidTransitionError extends OrderDomainError {
   }
 }
 
+export class InvalidLifecycleTransitionError extends OrderDomainError {
+  constructor(from: string, to: string) {
+    super(
+      "InvalidLifecycleTransition",
+      `انتقال دورة حياة غير مسموح من ${from} إلى ${to}`
+    );
+  }
+}
+
 export class OrderImmutableError extends OrderDomainError {
   constructor() {
     super("OrderImmutable", "لا يمكن تعديل الطلب بعد الإنشاء");

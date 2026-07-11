@@ -10,7 +10,11 @@ import {
 } from "../../../../../../drizzle/schema";
 import { ORDER_READ_PROJECTION_SCHEMA_VERSION } from "../../../domain/contracts/projectionIds";
 import { clampActiveOrderLimit } from "../../../domain/contracts/queryContracts";
-import { isActiveOrderStatus } from "../../../projections/materializers/projectionStatus";
+import {
+  assertOrderLifecycleStage,
+  DEFAULT_ORDER_LIFECYCLE_STAGE,
+  isOperationalLifecycleStage,
+} from "../../../../domain/value-objects/OrderLifecycleStage";
 import type {
   ActiveOrderListQuery,
   OrderDetailQuery,
@@ -49,7 +53,10 @@ export class DrizzleOrderReadProjectionStore {
 
     const lineItems = await this.lineItemBuilder.buildLineItemsFromSource(source);
     const record = this.recordBuilder.buildOwnerRecordFromSource(source, eventId, lineItems);
-    const isActive = isActiveOrderStatus(record.status);
+    const lifecycleStage = assertOrderLifecycleStage(
+      source.order.lifecycleStage ?? DEFAULT_ORDER_LIFECYCLE_STAGE
+    );
+    const isActive = isOperationalLifecycleStage(lifecycleStage);
 
     await db
       .insert(orderReadOrders)
@@ -60,6 +67,7 @@ export class DrizzleOrderReadProjectionStore {
         businessDay: record.businessDay,
         dailyDisplayNumber: record.dailyDisplayNumber,
         status: record.status as "pending" | "preparing" | "ready" | "served" | "cancelled",
+        lifecycleStage,
         tableId: source.order.tableId,
         tableNumber: record.tableNumber,
         sessionId: record.sessionId,
@@ -83,6 +91,7 @@ export class DrizzleOrderReadProjectionStore {
           businessDay: record.businessDay,
           dailyDisplayNumber: record.dailyDisplayNumber,
           status: record.status as "pending" | "preparing" | "ready" | "served" | "cancelled",
+          lifecycleStage,
           tableNumber: record.tableNumber,
           sessionId: record.sessionId,
           customerName: record.customerName,

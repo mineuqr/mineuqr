@@ -15,6 +15,7 @@ function source(): OrderReadSourceContext {
       customerName: null,
       customerPhone: null,
       status: "pending",
+      lifecycleStage: "active",
       notes: null,
       totalAmount: "30.00",
       orderNumber: "ORD-0010",

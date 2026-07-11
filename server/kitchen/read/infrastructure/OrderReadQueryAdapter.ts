@@ -10,6 +10,7 @@ import type { ActiveOrderLineItemDto } from "../../../order/read/domain/contract
 import { mapActiveOrderItemDto } from "../../../order/read/presentation/mapActiveOrderItemDto";
 import { mapStoredOrderReadLineItem } from "../../../order/read/infrastructure/persistence/mapStoredOrderReadLineItem";
 import { KITCHEN_READ_DATABASE_UNAVAILABLE } from "../domain/kitchenReadErrorCodes";
+import { operationalLifecycleFilter } from "../../../order/read/projections/materializers/projectionLifecycle";
 
 export type OrderReadPipelineOrderRow = {
   restaurantId: number;
@@ -63,7 +64,10 @@ export class DrizzleOrderReadQueryAdapter implements OrderReadQueryPort {
       .select()
       .from(orderReadOrders)
       .where(
-        and(eq(orderReadOrders.restaurantId, restaurantId), eq(orderReadOrders.isActive, true))
+        and(
+          eq(orderReadOrders.restaurantId, restaurantId),
+          eq(orderReadOrders.lifecycleStage, operationalLifecycleFilter())
+        )
       )
       .orderBy(asc(orderReadOrders.createdAt));
 
@@ -99,6 +103,7 @@ export class DrizzleOrderReadQueryAdapter implements OrderReadQueryPort {
         businessDay: row.businessDay ?? null,
         dailyDisplayNumber: row.dailyDisplayNumber ?? null,
         status: row.status,
+        lifecycle: row.lifecycleStage,
         tableNumber: row.tableNumber,
         sessionId: row.sessionId ?? null,
         customerName: row.customerName,

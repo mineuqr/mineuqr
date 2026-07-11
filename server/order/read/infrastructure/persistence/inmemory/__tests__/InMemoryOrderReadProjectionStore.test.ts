@@ -14,6 +14,7 @@ function sampleSource(overrides: Partial<OrderReadSourceContext["order"]> = {}):
       customerName: "Guest",
       customerPhone: null,
       status: "pending",
+      lifecycleStage: "active",
       notes: null,
       totalAmount: "25.50",
       orderNumber: "ORD-0042",
@@ -57,6 +58,7 @@ describe("InMemoryOrderReadProjectionStore", () => {
     });
 
     expect(found?.orderNumber).toBe("ORD-0042");
+    expect(found?.lifecycle).toBe("active");
     expect(found?.lineItems).toHaveLength(1);
   });
 
@@ -71,7 +73,7 @@ describe("InMemoryOrderReadProjectionStore", () => {
     );
     await repos.ownerOrders.upsert(
       store.buildOwnerRecordFromSource(
-        sampleSource({ id: 43, status: "served", orderNumber: "ORD-0043" }),
+        sampleSource({ id: 43, status: "served", lifecycleStage: "completed", orderNumber: "ORD-0043" }),
         "e2",
         [sampleActiveLineItem({ lineItemId: 2 })]
       )

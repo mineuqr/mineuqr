@@ -13,6 +13,8 @@ type ConsumerSpec = {
   handle: (materializer: OrderReadProjectionMaterializer, envelope: EventEnvelope) => Promise<void>;
 };
 
+const LIFECYCLE_STAGE_EVENT = "OrderLifecycleStageChanged" as const;
+
 const CONSUMER_SPECS: ConsumerSpec[] = [
   {
     name: "OwnerOrdersProjectionConsumer",
@@ -23,6 +25,7 @@ const CONSUMER_SPECS: ConsumerSpec[] = [
       "OrderReady",
       "OrderCompleted",
       "OrderCancelled",
+      LIFECYCLE_STAGE_EVENT,
     ],
     handle: async (m, e) => {
       await m.syncOrderProjections(resolveOrderId(e), e.eventId);
@@ -37,6 +40,7 @@ const CONSUMER_SPECS: ConsumerSpec[] = [
       "OrderReady",
       "OrderCompleted",
       "OrderCancelled",
+      LIFECYCLE_STAGE_EVENT,
     ],
     handle: async (m, e) => {
       await m.syncOrderProjections(resolveOrderId(e), e.eventId);
@@ -51,6 +55,7 @@ const CONSUMER_SPECS: ConsumerSpec[] = [
       "OrderReady",
       "OrderCompleted",
       "OrderCancelled",
+      LIFECYCLE_STAGE_EVENT,
     ],
     handle: async (m, e) => {
       await m.syncOrderProjections(resolveOrderId(e), e.eventId);
@@ -73,7 +78,7 @@ const CONSUMER_SPECS: ConsumerSpec[] = [
   {
     name: "OperationalKpiProjectionConsumer",
     projectionId: "P-06-operational-kpi",
-    eventTypes: ["OrderCreated", "OrderStatusChanged", "OrderCompleted", "OrderCancelled"],
+    eventTypes: ["OrderCreated", "OrderStatusChanged", "OrderCompleted", "OrderCancelled", LIFECYCLE_STAGE_EVENT],
     handle: async (m, e) => {
       await m.adjustOperationalKpi(e);
     },
@@ -95,6 +100,7 @@ const CONSUMER_SPECS: ConsumerSpec[] = [
       "OrderReady",
       "OrderCompleted",
       "OrderCancelled",
+      LIFECYCLE_STAGE_EVENT,
     ],
     handle: async (m, e) => {
       await m.syncOrderProjections(resolveOrderId(e), e.eventId);

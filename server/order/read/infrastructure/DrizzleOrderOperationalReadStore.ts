@@ -9,6 +9,7 @@ import type { ActiveOrderItemDto, OrderTimelineEventDto } from "../domain/contra
 import type { OrderDetailQuery } from "../domain/contracts/queryContracts";
 import { mapActiveOrderItemDto } from "../presentation/mapActiveOrderItemDto";
 import { mapStoredOrderReadLineItem } from "./persistence/mapStoredOrderReadLineItem";
+import { operationalLifecycleFilter } from "../projections/materializers/projectionLifecycle";
 
 type OrderRow = typeof orderReadOrders.$inferSelect;
 type LineItemRow = typeof orderReadOrderLineItems.$inferSelect;
@@ -24,6 +25,7 @@ function mapOrder(row: OrderRow, lineItems: LineItemRow[]): ActiveOrderItemDto {
     businessDay: row.businessDay ?? null,
     dailyDisplayNumber: row.dailyDisplayNumber ?? null,
     status: row.status,
+    lifecycle: row.lifecycleStage,
     tableNumber: row.tableNumber,
     sessionId: row.sessionId ?? null,
     customerName: row.customerName,
@@ -50,7 +52,7 @@ export class DrizzleOrderOperationalReadStore {
 
     const conditions = [
       eq(orderReadOrders.restaurantId, input.restaurantId),
-      eq(orderReadOrders.isActive, true),
+      eq(orderReadOrders.lifecycleStage, operationalLifecycleFilter()),
     ];
     if (input.status) {
       conditions.push(eq(orderReadOrders.status, input.status));

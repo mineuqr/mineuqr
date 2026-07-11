@@ -388,6 +388,7 @@ export const orders = mysqlTable("orders", {
 	customerName: varchar({ length: 255 }),
 	customerPhone: varchar({ length: 32 }),
 	status: mysqlEnum(['pending','preparing','ready','served','cancelled']).default('pending').notNull(),
+	lifecycleStage: mysqlEnum(["active", "completed", "archived"]).default("active").notNull(),
 	notes: text(),
 	totalAmount: decimal({ precision: 10, scale: 2 }).notNull(),
 	orderNumber: varchar({ length: 32 }).notNull(),
@@ -404,6 +405,7 @@ export const orders = mysqlTable("orders", {
 	index("orders_restaurant_id").on(table.restaurantId),
 	index("orders_table_id").on(table.tableId),
 	index("orders_status").on(table.status),
+	index("orders_lifecycle_stage").on(table.lifecycleStage),
 	index("orders_session_id").on(table.sessionId),
 	uniqueIndex("orders_tracking_token_unique").on(table.trackingToken),
 ]);
@@ -463,6 +465,7 @@ export const orderReadOrders = mysqlTable("order_read_orders", {
 	businessDay: varchar({ length: 10 }),
 	dailyDisplayNumber: int("daily_display_number"),
 	status: mysqlEnum(["pending", "preparing", "ready", "served", "cancelled"]).notNull(),
+	lifecycleStage: mysqlEnum(["active", "completed", "archived"]).default("active").notNull(),
 	tableId: int().notNull(),
 	tableNumber: int().notNull(),
 	sessionId: int(),
@@ -483,6 +486,7 @@ export const orderReadOrders = mysqlTable("order_read_orders", {
 (table) => [
 	primaryKey({ columns: [table.restaurantId, table.orderId] }),
 	index("order_read_orders_restaurant_active").on(table.restaurantId, table.isActive),
+	index("order_read_orders_restaurant_lifecycle").on(table.restaurantId, table.lifecycleStage),
 	index("order_read_orders_restaurant_status").on(table.restaurantId, table.status),
 	index("order_read_orders_restaurant_created").on(table.restaurantId, table.createdAt),
 ]);

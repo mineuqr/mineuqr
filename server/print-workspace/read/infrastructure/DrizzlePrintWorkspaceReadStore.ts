@@ -14,6 +14,7 @@ import type {
 import { clampPrintWorkspaceLimit } from "../contracts/printWorkspaceQueryContracts";
 import { mapStoredOrderReadLineItem } from "../../../order/read/infrastructure/persistence/mapStoredOrderReadLineItem";
 import { mapPrintWorkspaceOrderDto } from "../presentation/mapPrintWorkspaceOrderDto";
+import { operationalLifecycleFilter } from "../../../order/read/projections/materializers/projectionLifecycle";
 
 type OrderRow = typeof orderReadOrders.$inferSelect;
 type LineItemRow = typeof orderReadOrderLineItems.$inferSelect;
@@ -39,7 +40,7 @@ export class DrizzlePrintWorkspaceReadStore {
 
     const view = query.view ?? "awaiting";
     if (view === "awaiting") {
-      conditions.push(eq(orderReadOrders.isActive, true));
+      conditions.push(eq(orderReadOrders.lifecycleStage, operationalLifecycleFilter()));
     } else if (view === "completed") {
       conditions.push(eq(orderReadOrders.status, "served"));
     }
