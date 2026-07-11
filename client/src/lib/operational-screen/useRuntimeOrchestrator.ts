@@ -88,12 +88,13 @@ export type RuntimeOrchestratorCoreValue = {
   displayDensityHealth: DisplayDensityHealth | null;
   screenState: OperationalScreenState | null;
   runtimeCapabilities: import("./capability/runtimeCapabilityContract").RuntimeCapabilityContract | null;
-  reloadConfiguration: () => void;
+  refresh: () => Promise<void>;
+  reloadConfiguration: () => Promise<void>;
   /** Alias for reloadConfiguration — reapplies configuration and density. */
-  reload: () => void;
-  reloadDensity: () => void;
+  reload: () => Promise<void>;
+  reloadDensity: () => Promise<void>;
   unpair: () => void;
-  retry: () => void;
+  retry: () => Promise<void>;
 };
 
 function nextHeartbeatDelay(failures: number): number {
@@ -394,11 +395,6 @@ export function useRuntimeOrchestrator(
     spaNavigate("/screen/pair", { replace: true });
   }, [dispatch, stopHeartbeat]);
 
-  const retry = useCallback(() => {
-    setRetryToken((value) => value + 1);
-    void statusQuery.refetch();
-  }, [statusQuery]);
-
   // The exposed context always carries the authoritative phase (no duplicate state).
   const exposedContext = useMemo<OperationalScreenRuntimeContext | null>(() => {
     if (!context) return null;
@@ -582,11 +578,18 @@ export function useRuntimeOrchestrator(
     }
   }, [phase]);
 
-  const reloadConfiguration = useCallback(() => {
-    void statusQuery.refetch();
+  const refetchRuntimeStatus = useCallback(async () => {
+    await statusQuery.refetch();
   }, [statusQuery]);
 
+  const refresh = refetchRuntimeStatus;
+  const reloadConfiguration = refetchRuntimeStatus;
   const reloadDensity = reloadConfiguration;
+
+  const retry = useCallback(async () => {
+    setRetryToken((value) => value + 1);
+    await statusQuery.refetch();
+  }, [statusQuery]);
 
   return {
     phase,
@@ -605,6 +608,7 @@ export function useRuntimeOrchestrator(
     displayDensityHealth,
     screenState,
     runtimeCapabilities: contextWithScreenState?.runtimeCapabilities ?? null,
+    refresh,
     reloadConfiguration,
     reload: reloadConfiguration,
     reloadDensity,

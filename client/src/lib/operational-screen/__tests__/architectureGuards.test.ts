@@ -408,4 +408,26 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
     expect(orderActions).toContain("useRuntimeRole");
     expect(orderActions).not.toContain("useRuntimeInstanceContext");
   });
+
+  it("RUNTIME-CONTEXT-ACTIONS-1: stable actions are thin execution facades", () => {
+    const provider = read("client/src/components/operational-screen/OperationalScreenRuntimeProvider.tsx");
+    const actions = read("client/src/lib/operational-screen/runtimeContextActions.ts");
+    const orchestrator = read("client/src/lib/operational-screen/useRuntimeOrchestrator.ts");
+    const shell = read("client/src/components/operational-screen/OperationalScreenShell.tsx");
+    const entry = read("client/src/pages/screen/OperationalScreenEntry.tsx");
+
+    expect(provider).toContain("export function useRuntimeActions()");
+    expect(actions).toContain("createRuntimeActions");
+    expect(actions).toContain("refresh:");
+    expect(actions).toContain("reloadConfiguration:");
+    expect(actions).toContain("unpair:");
+    expect(actions).toContain("retry:");
+    expect(actions).not.toMatch(/useState|useEffect|useSyncExternalStore|RuntimeContextFactory/);
+    expect(actions).not.toContain("RuntimeContextStore");
+    expect(orchestrator).toContain("refresh:");
+    expect(orchestrator).not.toContain("export function useRuntimeActions");
+    expect(shell).toContain("useRuntimeActions");
+    expect(entry).toContain("useRuntimeActions");
+    expect(shell).not.toMatch(/\bunpair\b[\s\S]*useScreenRuntime/);
+  });
 });

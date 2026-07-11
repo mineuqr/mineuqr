@@ -3,6 +3,7 @@ import { ScreenErrorBoundary } from "@/components/operational-screen/ScreenError
 import { ScreenRuntimeProvider } from "@/components/operational-screen/ScreenRuntimeProvider";
 import {
   OperationalScreenRuntimeProvider,
+  useRuntimeActions,
   useScreenRuntime,
 } from "@/components/operational-screen/OperationalScreenRuntimeProvider";
 import { OperationalScreenShell } from "@/components/operational-screen/OperationalScreenShell";
@@ -13,7 +14,8 @@ import { useEffect } from "react";
 import { spaNavigate } from "@/const";
 
 function OperationalScreenRuntime() {
-  const { phase, context, retry } = useScreenRuntime();
+  const { phase, context } = useScreenRuntime();
+  const { retry } = useRuntimeActions();
 
   if (phase === "pairing_redirect" || phase === "revoked") {
     return null;

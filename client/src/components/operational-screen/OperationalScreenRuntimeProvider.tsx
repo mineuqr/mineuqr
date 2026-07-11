@@ -26,6 +26,10 @@ import {
   selectRuntimeSession,
 } from "@/lib/operational-screen/runtimeContextSelectors";
 import {
+  createRuntimeActions,
+  type RuntimeActions,
+} from "@/lib/operational-screen/runtimeContextActions";
+import {
   useRuntimeOrchestrator,
   type RuntimeOrchestratorCoreValue,
 } from "@/lib/operational-screen/useRuntimeOrchestrator";
@@ -141,6 +145,15 @@ export function useRuntimeSession() {
 /** Preferred runtime context API — metadata slice. */
 export function useRuntimeMetadata() {
   return selectRuntimeMetadata(useRuntimeInstanceContext());
+}
+
+/** Preferred runtime execution API — orchestrates existing runtime operations. */
+export function useRuntimeActions(): RuntimeActions {
+  const { refresh, reloadConfiguration, unpair, retry } = useScreenRuntime();
+  return useMemo(
+    () => createRuntimeActions({ refresh, reloadConfiguration, unpair, retry }),
+    [refresh, reloadConfiguration, unpair, retry]
+  );
 }
 
 /** Access the assembled runtime context with store-owned instance snapshot. */

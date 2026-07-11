@@ -6,7 +6,7 @@ import {
 } from "@/lib/operational-screen/operationalScreenPresentation";
 import { OperationalScreenOverflowMenu } from "./OperationalScreenOverflowMenu";
 import { ScreenConnectionBanner } from "./ScreenConnectionBanner";
-import { useScreenRuntime } from "./OperationalScreenRuntimeProvider";
+import { useRuntimeActions, useRuntimeContext } from "./OperationalScreenRuntimeProvider";
 import { cn } from "@/lib/utils";
 
 function HeaderConnectionStatus({
@@ -33,7 +33,8 @@ function HeaderConnectionStatus({
 }
 
 export function OperationalScreenShell({ children }: { children: React.ReactNode }) {
-  const { context, unpair } = useScreenRuntime();
+  const context = useRuntimeContext();
+  const { unpair } = useRuntimeActions();
 
   if (!context) return null;
 
