@@ -32,7 +32,7 @@ export type RuntimeSessionSelector = RuntimeInstanceSession;
 
 export type RuntimeMetadataSelector = RuntimeInstanceMetadata;
 
-/** RUNTIME-CONTEXT-SELECTORS-1 — pure read facades over RuntimeInstanceContext. */
+/** RUNTIME-CONTEXT-SELECTORS-1 — pure read facades over RuntimeInstanceContext. @internal */
 export function selectRuntimeIdentity(
   context: FrozenRuntimeInstanceContext
 ): RuntimeIdentitySelector {

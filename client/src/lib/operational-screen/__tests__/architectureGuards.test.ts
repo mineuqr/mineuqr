@@ -430,4 +430,48 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
     expect(entry).toContain("useRuntimeActions");
     expect(shell).not.toMatch(/\bunpair\b[\s\S]*useScreenRuntime/);
   });
+
+  it("RUNTIME-PUBLIC-API-CONSOLIDATION-1: governed public API boundary", () => {
+    const governance = read("client/src/lib/operational-screen/runtime/runtimeApiGovernance.ts");
+    const publicBarrel = read("client/src/lib/operational-screen/runtime/index.ts");
+    const provider = read("client/src/components/operational-screen/OperationalScreenRuntimeProvider.tsx");
+    const factory = read("client/src/lib/operational-screen/RuntimeContextFactory.ts");
+    const store = read("client/src/lib/operational-screen/runtimeContextStore.ts");
+    const orchestrator = read("client/src/lib/operational-screen/useRuntimeOrchestrator.ts");
+    const shell = read("client/src/components/operational-screen/OperationalScreenShell.tsx");
+    const entry = read("client/src/pages/screen/OperationalScreenEntry.tsx");
+
+    expect(governance).toContain("RUNTIME-PUBLIC-API-CONSOLIDATION-1");
+    expect(governance).toContain("RUNTIME_PUBLIC_READ_API");
+    expect(governance).toContain("RUNTIME_PUBLIC_EXECUTE_API");
+    expect(governance).toContain("RUNTIME_TRANSITIONAL_COMPATIBILITY_API");
+    expect(governance).toContain("RUNTIME_INTERNAL_MODULES");
+
+    for (const hook of [
+      "useRuntimeIdentity",
+      "useRuntimeBusiness",
+      "useRuntimeDevice",
+      "useRuntimeRole",
+      "useRuntimeConfiguration",
+      "useRuntimeCapabilities",
+      "useRuntimeSession",
+      "useRuntimeMetadata",
+      "useRuntimeInstanceContext",
+      "useRuntimeActions",
+    ]) {
+      expect(publicBarrel).toContain(hook);
+      expect(provider).toContain(`@classification Public Runtime API`);
+    }
+
+    expect(provider).toContain("@classification Transitional Compatibility API");
+    expect(provider).toContain("@classification Internal Runtime API");
+    expect(factory).toContain("@internal Runtime Platform");
+    expect(store).toContain("@internal Runtime Platform");
+    expect(orchestrator).toContain("@internal Runtime Platform");
+    expect(orchestrator).toContain("Distinct public contracts");
+    expect(publicBarrel).not.toContain("useRuntimeContextStore");
+    expect(shell).toContain("useRuntimeActions");
+    expect(entry).toContain("useRuntimeActions");
+    expect(shell).not.toContain("useScreenRuntime");
+  });
 });

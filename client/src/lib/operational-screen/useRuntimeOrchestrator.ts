@@ -115,6 +115,8 @@ function withStoreInstance(
  * by the approved state machine) and the single `context` snapshot. There is no
  * parallel lifecycle state: `context.bootstrap.phase` is always derived from the
  * authoritative `phase` before the context is exposed.
+ *
+ * @internal Runtime Platform — consumed only by OperationalScreenRuntimeProvider.
  */
 export function useRuntimeOrchestrator(
   credentials: OperationalScreenCredentials,
@@ -582,6 +584,11 @@ export function useRuntimeOrchestrator(
     await statusQuery.refetch();
   }, [statusQuery]);
 
+  /**
+   * Shared status refetch transport. Post-refetch semantics diverge in the status
+   * effect: config version change → applyConfigurationReload; otherwise → refresh.
+   * Distinct public contracts (RuntimeActions) are preserved intentionally.
+   */
   const refresh = refetchRuntimeStatus;
   const reloadConfiguration = refetchRuntimeStatus;
   const reloadDensity = reloadConfiguration;

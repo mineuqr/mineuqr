@@ -37,6 +37,12 @@ import {
 /**
  * RUNTIME-BOOTSTRAP-CONTRACT-1 — canonical runtime authority.
  * RUNTIME-CONTEXT-CONSOLIDATION-1 — one instance-scoped store, one snapshot subscription.
+ * RUNTIME-PUBLIC-API-CONSOLIDATION-1 — Runtime Public API provider boundary.
+ *
+ * Export tiers:
+ * - Public Runtime API: useRuntimeIdentity … useRuntimeMetadata, useRuntimeInstanceContext, useRuntimeActions
+ * - Transitional Compatibility API: useScreenRuntime, useRuntimeContext, OperationalScreenRuntimeProvider
+ * - Internal Runtime API: useRuntimeContextStore (tests/diagnostics only)
  */
 const RuntimeOrchestratorContext = createContext<RuntimeOrchestratorCoreValue | null>(null);
 const RuntimeContextStoreContext = createContext<RuntimeContextStore | null>(null);
@@ -62,6 +68,7 @@ function RuntimeInstanceSnapshotProvider({
   );
 }
 
+/** @classification Transitional Compatibility API — root provider; required at boot. */
 export function OperationalScreenRuntimeProvider({
   credentials,
   children,
@@ -88,7 +95,17 @@ export type RuntimeOrchestratorValue = RuntimeOrchestratorCoreValue & {
   instanceContext: FrozenRuntimeInstanceContext | null;
 };
 
-/** Access the full runtime authority (phase, context, lifecycle actions, diagnostics). */
+/**
+ * @classification Transitional Compatibility API — advanced orchestrator access.
+ *
+ * Intended for lifecycle coordination, diagnostics, and internal runtime subsystems.
+ * - Lifecycle: phase, context, degraded, lastError
+ * - Diagnostics: diagnostics, roleHealth, roleDiagnostics, rolePlatform, *Health, screenState
+ * - Internal coordination: categoryFilter, categoryFilterPredicate, displayDensity
+ *
+ * Execution (refresh, reloadConfiguration, unpair, retry) is duplicated here for
+ * orchestrator wiring only. Application code must use useRuntimeActions() instead.
+ */
 export function useScreenRuntime(): RuntimeOrchestratorValue {
   const orchestrator = useContext(RuntimeOrchestratorContext);
   const instanceContext = useContext(RuntimeInstanceSnapshotContext);
@@ -98,7 +115,7 @@ export function useScreenRuntime(): RuntimeOrchestratorValue {
   return { ...orchestrator, instanceContext };
 }
 
-/** Canonical read path for RuntimeInstanceContext (advanced API). */
+/** @classification Public Runtime API — advanced read (full RuntimeInstanceContext snapshot). */
 export function useRuntimeInstanceContext(): FrozenRuntimeInstanceContext {
   const snapshot = useContext(RuntimeInstanceSnapshotContext);
   if (!snapshot) {
@@ -107,47 +124,47 @@ export function useRuntimeInstanceContext(): FrozenRuntimeInstanceContext {
   return snapshot;
 }
 
-/** Preferred runtime context API — identity slice. */
+/** @classification Public Runtime API — read (identity slice). */
 export function useRuntimeIdentity() {
   return selectRuntimeIdentity(useRuntimeInstanceContext());
 }
 
-/** Preferred runtime context API — business slice. */
+/** @classification Public Runtime API — read (business slice). */
 export function useRuntimeBusiness() {
   return selectRuntimeBusiness(useRuntimeInstanceContext());
 }
 
-/** Preferred runtime context API — device slice. */
+/** @classification Public Runtime API — read (device slice). */
 export function useRuntimeDevice() {
   return selectRuntimeDevice(useRuntimeInstanceContext());
 }
 
-/** Preferred runtime context API — role slice. */
+/** @classification Public Runtime API — read (role slice). */
 export function useRuntimeRole() {
   return selectRuntimeRole(useRuntimeInstanceContext());
 }
 
-/** Preferred runtime context API — configuration slice. */
+/** @classification Public Runtime API — read (configuration slice). */
 export function useRuntimeConfiguration() {
   return selectRuntimeConfiguration(useRuntimeInstanceContext());
 }
 
-/** Preferred runtime context API — capabilities slice. */
+/** @classification Public Runtime API — read (capabilities slice). */
 export function useRuntimeCapabilities() {
   return selectRuntimeCapabilities(useRuntimeInstanceContext());
 }
 
-/** Preferred runtime context API — session slice. */
+/** @classification Public Runtime API — read (session slice). */
 export function useRuntimeSession() {
   return selectRuntimeSession(useRuntimeInstanceContext());
 }
 
-/** Preferred runtime context API — metadata slice. */
+/** @classification Public Runtime API — read (metadata slice). */
 export function useRuntimeMetadata() {
   return selectRuntimeMetadata(useRuntimeInstanceContext());
 }
 
-/** Preferred runtime execution API — orchestrates existing runtime operations. */
+/** @classification Public Runtime API — execute (sole public mutation surface). */
 export function useRuntimeActions(): RuntimeActions {
   const { refresh, reloadConfiguration, unpair, retry } = useScreenRuntime();
   return useMemo(
@@ -156,7 +173,10 @@ export function useRuntimeActions(): RuntimeActions {
   );
 }
 
-/** Access the assembled runtime context with store-owned instance snapshot. */
+/**
+ * @classification Transitional Compatibility API — assembled OperationalScreenRuntimeContext.
+ * Prefer slice selectors (useRuntimeIdentity … useRuntimeMetadata) for new code.
+ */
 export function useRuntimeContext(): OperationalScreenRuntimeContext {
   const { context } = useScreenRuntime();
   const instance = useRuntimeInstanceContext();
@@ -166,7 +186,7 @@ export function useRuntimeContext(): OperationalScreenRuntimeContext {
   return context.instance === instance ? context : { ...context, instance };
 }
 
-/** @internal Test and diagnostics access to the scoped store. */
+/** @classification Internal Runtime API — test and diagnostics store access only. */
 export function useRuntimeContextStore(): RuntimeContextStore {
   const store = useContext(RuntimeContextStoreContext);
   if (!store) {

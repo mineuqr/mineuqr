@@ -24,6 +24,9 @@ export type RuntimeContextSubscription = {
 /**
  * RUNTIME-CONTEXT-CONSOLIDATION-1 — instance-scoped owner of RuntimeInstanceContext.
  * Never resolves or constructs context; RuntimeContextFactory remains sole creator.
+ *
+ * @internal Runtime Platform — consumed only by OperationalScreenRuntimeProvider
+ * and useRuntimeOrchestrator.
  */
 export class RuntimeContextStore {
   private current: FrozenRuntimeInstanceContext | null = null;

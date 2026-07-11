@@ -103,6 +103,8 @@ export type RuntimeContextBuildInput = {
 /**
  * RUNTIME-INSTANCE-CONTEXT-1 — sole authority for resolving operational runtime context.
  * No other runtime service may assemble identity, screen, role, business, or device slices.
+ *
+ * @internal Runtime Platform — consumed only by useRuntimeOrchestrator and bootstrapLogic.
  */
 export class RuntimeContextFactory {
   resolve(input: RuntimeContextResolveInput): FrozenRuntimeInstanceContext {
