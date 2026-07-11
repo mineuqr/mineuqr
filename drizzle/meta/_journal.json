@@ -435,6 +435,13 @@
       "when": 1784470000000,
       "tag": "0061_order_business_identity",
       "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "5",
+      "when": 1784480000000,
+      "tag": "0062_order_lifecycle_stage",
+      "breakpoints": true
     }
   ]
 }
