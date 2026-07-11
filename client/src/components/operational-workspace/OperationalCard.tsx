@@ -1,8 +1,10 @@
+import { memo } from "react";
 import { Button } from "@/components/ui/button";
 import { DelayExplanation } from "@/components/operational-workspace/DelayExplanation";
-import type { OperationalAction } from "@/lib/operational-workspace/operationalActions";
+import type { OperationalActionId } from "@/lib/operational-workspace/operationalActions";
 import {
   pickLocalizedLabel,
+  recordOrderPerfEvent,
   type OrderPresentationModel,
 } from "@/lib/order-presentation";
 import { cn } from "@/lib/utils";
@@ -41,30 +43,32 @@ function PresentationSlaIndicator({
   );
 }
 
-export function OperationalCard({
+export type OperationalCardProps = {
+  presentation: OrderPresentationModel;
+  language: string;
+  currencySymbol?: string;
+  onAction?: (orderId: number, actionId: OperationalActionId) => void;
+  onOpenDetails?: (orderId: number) => void;
+  actionPending?: boolean;
+  executionOnly?: boolean;
+  className?: string;
+  fading?: boolean;
+};
+
+function OperationalCardImpl({
   presentation,
   language,
   currencySymbol,
-  actions,
   onAction,
   onOpenDetails,
   actionPending,
   executionOnly,
   className,
   fading,
-}: {
-  presentation: OrderPresentationModel;
-  language: string;
-  currencySymbol?: string;
-  actions?: OperationalAction[];
-  onAction?: (actionId: OperationalAction["id"]) => void;
-  onOpenDetails?: () => void;
-  actionPending?: boolean;
-  executionOnly?: boolean;
-  className?: string;
-  fading?: boolean;
-}) {
+}: OperationalCardProps) {
+  recordOrderPerfEvent("card:rendered");
   const isAr = language === "ar";
+  const actions = executionOnly || fading ? [] : presentation.availableActions;
 
   return (
     <article
@@ -78,7 +82,7 @@ export function OperationalCard({
       <button
         type="button"
         className="w-full text-start"
-        onClick={onOpenDetails}
+        onClick={onOpenDetails ? () => onOpenDetails(presentation.orderId) : undefined}
         disabled={!onOpenDetails}
       >
         <div className="mb-3 flex items-start justify-between gap-3">
@@ -116,7 +120,7 @@ export function OperationalCard({
           reason={presentation.delay.reason}
           message={pickLocalizedLabel(presentation.delay.message, isAr)}
         />
-        {!executionOnly && actions && actions.length > 0 && onAction ? (
+        {!executionOnly && actions.length > 0 && onAction ? (
           <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:flex-wrap">
             {actions.map((action) => (
               <Button
@@ -131,9 +135,9 @@ export function OperationalCard({
                 }
                 className="min-h-11 flex-1 touch-manipulation"
                 disabled={actionPending}
-                onClick={() => onAction(action.id)}
+                onClick={() => onAction(presentation.orderId, action.id)}
               >
-                {isAr ? action.labelAr : action.labelEn}
+                {pickLocalizedLabel(action.label, isAr)}
               </Button>
             ))}
           </div>
@@ -146,3 +150,9 @@ export function OperationalCard({
     </article>
   );
 }
+
+/**
+ * ORDER-INTERACTION-PERFORMANCE-1 — memoized so a card re-renders only when its
+ * presentation, runtime-driven props, or pending state actually change.
+ */
+export const OperationalCard = memo(OperationalCardImpl);

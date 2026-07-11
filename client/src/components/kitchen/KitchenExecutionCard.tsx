@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { PresentationDensityModel } from "@/lib/operational-screen/density/runtimeDisplayDensityContract";
@@ -10,6 +11,7 @@ import {
 import type { OperationalAction } from "@/lib/operational-workspace/operationalActions";
 import {
   pickLocalizedLabel,
+  recordOrderPerfEvent,
   type OrderPresentationModel,
 } from "@/lib/order-presentation";
 import { AlertTriangle, Check, Loader2, StickyNote } from "lucide-react";
@@ -109,11 +111,25 @@ function OperationalExecutionFooter({
   );
 }
 
+export type KitchenExecutionCardProps = {
+  presentation: OrderPresentationModel;
+  language: string;
+  densityModel: PresentationDensityModel;
+  fading?: boolean;
+  className?: string;
+  action?: OperationalAction | null;
+  onAction?: (orderId: number, actionId: OperationalAction["id"]) => void;
+  actionPending?: boolean;
+  actionSucceeded?: boolean;
+  onOpenDetails?: (orderId: number) => void;
+  selected?: boolean;
+};
+
 /**
  * Kitchen execution card — operational ticket surface (header / body / footer).
  * Renders OrderPresentationModel only; presentation formatting lives in the mapper.
  */
-export function KitchenExecutionCard({
+function KitchenExecutionCardImpl({
   presentation,
   language,
   densityModel,
@@ -125,19 +141,8 @@ export function KitchenExecutionCard({
   actionSucceeded,
   onOpenDetails,
   selected,
-}: {
-  presentation: OrderPresentationModel;
-  language: string;
-  densityModel: PresentationDensityModel;
-  fading?: boolean;
-  className?: string;
-  action?: OperationalAction | null;
-  onAction?: (actionId: OperationalAction["id"]) => void;
-  actionPending?: boolean;
-  actionSucceeded?: boolean;
-  onOpenDetails?: () => void;
-  selected?: boolean;
-}) {
+}: KitchenExecutionCardProps) {
+  recordOrderPerfEvent("card:rendered");
   const isAr = language === "ar";
   const actionLabel = action ? (isAr ? action.labelAr : action.labelEn) : null;
   const hasAction = Boolean(action && onAction);
@@ -150,7 +155,7 @@ export function KitchenExecutionCard({
     if (!onOpenDetails) return;
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
-      onOpenDetails();
+      onOpenDetails(presentation.orderId);
     }
   }
 
@@ -190,7 +195,7 @@ export function KitchenExecutionCard({
               : `View order ${presentation.identity.displayReference} details`
             : undefined
         }
-        onClick={onOpenDetails}
+        onClick={onOpenDetails ? () => onOpenDetails(presentation.orderId) : undefined}
         onKeyDown={handleTicketKeyDown}
         className={cn(
           "flex min-h-0 flex-1 flex-col outline-none",
@@ -262,7 +267,7 @@ export function KitchenExecutionCard({
             aria-busy={actionPending ? true : undefined}
             onClick={(event) => {
               event.stopPropagation();
-              onAction!(action!.id);
+              onAction!(presentation.orderId, action!.id);
             }}
             aria-label={actionLabel ?? undefined}
           >
@@ -282,3 +287,9 @@ export function KitchenExecutionCard({
     </article>
   );
 }
+
+/**
+ * ORDER-INTERACTION-PERFORMANCE-1 — memoized so a ticket re-renders only when
+ * its presentation, density, runtime action, or pending state change.
+ */
+export const KitchenExecutionCard = memo(KitchenExecutionCardImpl);

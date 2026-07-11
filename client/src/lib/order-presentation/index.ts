@@ -19,3 +19,19 @@ export {
   type MapActiveOrderPresentationOptions,
   type MapKitchenTicketPresentationOptions,
 } from "./mapOrderPresentation";
+export { structuralShare } from "./structuralShare";
+export {
+  reconcileOrderPresentation,
+  reconcileOrderPresentationList,
+  type PresentationReconcileResult,
+} from "./reconcileOrderPresentation";
+export { useOrderPresentations } from "./useOrderPresentations";
+export {
+  recordOrderPerfEvent,
+  readOrderPerfCounters,
+  resetOrderPerfCounters,
+  setOrderPerfInstrumentationEnabled,
+  isOrderPerfInstrumentationEnabled,
+  type OrderPerfEvent,
+  type OrderPerfCounters,
+} from "./orderPresentationInstrumentation";

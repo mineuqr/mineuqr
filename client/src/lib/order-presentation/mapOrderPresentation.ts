@@ -36,6 +36,8 @@ import { urgencyClassName } from "@/lib/kitchen/viewModels";
 import type {
   LocalizedLabel,
   OrderPresentationAction,
+  OrderPresentationBadge,
+  OrderPresentationIndicator,
   OrderPresentationLifecycle,
   OrderPresentationLineItem,
   OrderPresentationModel,
@@ -218,7 +220,7 @@ function buildPresentationCore(input: {
     : null;
 
   const delay = mapDelay(input.status, input.sla);
-  const badges: OrderPresentationModel["badges"] = [];
+  const badges: OrderPresentationBadge[] = [];
   if (input.sla.status === "late" || input.sla.status === "critical") {
     badges.push({
       id: "sla-overdue",
@@ -227,7 +229,7 @@ function buildPresentationCore(input: {
     });
   }
 
-  const indicators: OrderPresentationModel["indicators"] = [];
+  const indicators: OrderPresentationIndicator[] = [];
   if (delay.showWarning) {
     indicators.push({
       id: "delay-warning",

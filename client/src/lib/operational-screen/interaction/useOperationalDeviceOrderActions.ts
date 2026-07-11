@@ -4,6 +4,14 @@ import type { DeviceOrderActionId } from "../../../../../server/operational-devi
 import type { OperationalActionId } from "@/lib/operational-workspace/operationalActions";
 import { useRuntimeRole } from "@/components/operational-screen/OperationalScreenRuntimeProvider";
 
+/**
+ * ORDER-INTERACTION-PERFORMANCE-1 — device order execution.
+ *
+ * `executeAction` keeps a stable identity across renders (it reads the latest
+ * mutation and permission via refs), so memoized cards are not invalidated by
+ * unrelated runtime re-renders. Pending/success state is exposed as order ids
+ * so callers derive per-card booleans without recreating callbacks.
+ */
 export function useOperationalDeviceOrderActions() {
   const role = useRuntimeRole();
   const canExecute = role.permissions.canExecuteOrderActions;
@@ -18,6 +26,11 @@ export function useOperationalDeviceOrderActions() {
     },
   });
 
+  const canExecuteRef = useRef(canExecute);
+  canExecuteRef.current = canExecute;
+  const mutateAsyncRef = useRef(mutation.mutateAsync);
+  mutateAsyncRef.current = mutation.mutateAsync;
+
   const clearSuccessTimer = useCallback(() => {
     if (successTimerRef.current != null) {
       window.clearTimeout(successTimerRef.current);
@@ -27,12 +40,12 @@ export function useOperationalDeviceOrderActions() {
 
   const executeAction = useCallback(
     async (orderId: number, actionId: OperationalActionId) => {
-      if (!canExecute) return;
+      if (!canExecuteRef.current) return;
       clearSuccessTimer();
       setSuccessOrderId(null);
       setPendingOrderId(orderId);
       try {
-        await mutation.mutateAsync({
+        await mutateAsyncRef.current({
           orderId,
           action: actionId as DeviceOrderActionId,
         });
@@ -45,24 +58,13 @@ export function useOperationalDeviceOrderActions() {
         setPendingOrderId((current) => (current === orderId ? null : current));
       }
     },
-    [canExecute, clearSuccessTimer, mutation]
+    [clearSuccessTimer]
   );
-
-  function bindTicket(orderId: number) {
-    return {
-      isInteractive: canExecute,
-      actionPending: pendingOrderId === orderId,
-      actionSucceeded: successOrderId === orderId,
-      onPrimaryAction: canExecute
-        ? (actionId: OperationalActionId) => {
-            void executeAction(orderId, actionId);
-          }
-        : undefined,
-    };
-  }
 
   return {
     canExecute,
-    bindTicket,
+    executeAction,
+    pendingOrderId,
+    successOrderId,
   };
 }

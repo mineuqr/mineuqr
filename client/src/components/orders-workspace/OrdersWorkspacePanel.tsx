@@ -8,9 +8,13 @@ import { WorkspaceFilters } from "@/components/operational-workspace/WorkspaceFi
 import { RestaurantKpiCard, RestaurantKpiGridSkeleton } from "@/components/dashboard/RestaurantKpiCard";
 import { RestaurantSectionError } from "@/components/dashboard/RestaurantSectionStates";
 import { Button } from "@/components/ui/button";
+import type { OperationalActionId } from "@/lib/operational-workspace/operationalActions";
 import { getOrderWorkspaceActions } from "@/lib/operational-workspace/operationalActions";
 import { isLateOrder } from "@/lib/operational-workspace/orderViewModels";
-import { mapActiveOrderPresentation } from "@/lib/order-presentation";
+import {
+  mapActiveOrderPresentation,
+  useOrderPresentations,
+} from "@/lib/order-presentation";
 import { useOrderStatusActions } from "@/lib/operational-workspace/useOrderStatusActions";
 import {
   DEFAULT_ORDER_FILTERS,
@@ -26,7 +30,7 @@ import {
 import { isEmailNotVerifiedError } from "@/lib/trpcErrors";
 import { trpc } from "@/lib/trpc";
 import { Loader2, RefreshCw, ClipboardList, ChefHat, CheckCircle, AlertTriangle } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 export function OrdersWorkspacePanel({
   restaurantId,
@@ -76,6 +80,8 @@ export function OrdersWorkspacePanel({
     void listQuery.refetch();
     if (selectedOrderId) void detailQuery.refetch();
   });
+  const orderActionsRef = useRef(orderActions);
+  orderActionsRef.current = orderActions;
 
   const items = useMemo(() => {
     let rows = listQuery.data?.items ?? [];
@@ -87,14 +93,37 @@ export function OrdersWorkspacePanel({
 
   const { displayItems, isFading } = useGracePeriod(items, (o) => String(o.orderId));
 
-  const presentationItems = useMemo(
-    () =>
-      displayItems.map((order) => ({
-        order,
-        presentation: mapActiveOrderPresentation(order, { tableUnit }),
-      })),
-    [displayItems, tableUnit]
+  const mapOrder = useCallback(
+    (order: (typeof displayItems)[number]) =>
+      mapActiveOrderPresentation(order, { tableUnit }),
+    [tableUnit]
   );
+  const getOrderKey = useCallback(
+    (order: (typeof displayItems)[number]) => String(order.orderId),
+    []
+  );
+  const presentations = useOrderPresentations(displayItems, mapOrder, getOrderKey);
+
+  const cards = useMemo(
+    () =>
+      displayItems.map((order, index) => ({
+        order,
+        presentation: presentations[index]!,
+        fading: isFading(order),
+      })),
+    [displayItems, presentations, isFading]
+  );
+
+  const handleAction = useCallback(
+    async (orderId: number, actionId: OperationalActionId) => {
+      setPendingActionOrderId(orderId);
+      await orderActionsRef.current.executeAction(orderId, actionId);
+    },
+    []
+  );
+  const handleOpenDetails = useCallback((orderId: number) => {
+    setSelectedOrderId(orderId);
+  }, []);
 
   const counts = useMemo(() => {
     const all = listQuery.data?.items ?? [];
@@ -107,9 +136,10 @@ export function OrdersWorkspacePanel({
   }, [listQuery.data]);
 
   const selected = detailQuery.data?.order;
-  const selectedPresentation = selected
-    ? mapActiveOrderPresentation(selected, { tableUnit })
-    : null;
+  const selectedPresentation = useMemo(
+    () => (selected ? mapActiveOrderPresentation(selected, { tableUnit }) : null),
+    [selected, tableUnit]
+  );
   const selectedActions = selected
     ? getOrderWorkspaceActions(selected.status as OrderLifecycleStatus)
     : [];
@@ -187,31 +217,23 @@ export function OrdersWorkspacePanel({
         <div className="flex justify-center py-16">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
-      ) : presentationItems.length === 0 ? (
+      ) : cards.length === 0 ? (
         <div className="py-16 text-center">
           <ClipboardList className="mx-auto mb-4 h-10 w-10 text-muted-foreground/60" />
           <p className="text-muted-foreground">{isAr ? "لا توجد طلبات" : "No orders"}</p>
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {presentationItems.map(({ order, presentation }) => (
+          {cards.map(({ order, presentation, fading }) => (
             <OperationalCard
               key={order.orderId}
               presentation={presentation}
               currencySymbol={currencySymbol}
               language={language}
-              fading={isFading(order)}
-              actions={
-                isFading(order)
-                  ? []
-                  : getOrderWorkspaceActions(order.status as OrderLifecycleStatus)
-              }
+              fading={fading}
               actionPending={pendingActionOrderId === order.orderId && orderActions.isPending}
-              onAction={async (actionId) => {
-                setPendingActionOrderId(order.orderId);
-                await orderActions.executeAction(order.orderId, actionId);
-              }}
-              onOpenDetails={() => setSelectedOrderId(order.orderId)}
+              onAction={handleAction}
+              onOpenDetails={handleOpenDetails}
             />
           ))}
         </div>

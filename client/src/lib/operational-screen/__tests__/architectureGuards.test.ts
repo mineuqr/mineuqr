@@ -293,7 +293,7 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
     expect(kitchen).toContain("KitchenQueueErrorPanel");
     expect(kitchen).toContain("KitchenStaleDataBanner");
     expect(kitchen).toContain("isError && !queue");
-    expect(kitchen).toContain("!isError && tickets.length === 0");
+    expect(kitchen).toContain("!isError && presentations.length === 0");
     expect(roleHost).toContain("RuntimeOperationalAlert");
     expect(adapter).toContain("KITCHEN_READ_DATABASE_UNAVAILABLE");
     expect(adapter).not.toMatch(/if \(!db\) return \[\]/);
