@@ -25,6 +25,8 @@ export type OperationalDeviceTokenRecord = {
   tokenId: string;
   deviceId: string;
   secretHash: string;
+  /** Recovery material — operator QR only; never used for authentication. */
+  secretCiphertext: string | null;
   status: OperationalDeviceTokenStatus;
   issuedAt: string;
   expiresAt: string | null;
@@ -57,8 +59,8 @@ export type IssuedOperationalDeviceToken = {
   deviceId: string;
   issuedAt: string;
   expiresAt: string | null;
-  /** Plaintext activation code — shown once to operator. */
-  activationCode: string;
+  /** @deprecated Legacy activation codes — new screens use permanent credentials only. */
+  activationCode?: string | null;
 };
 
 export type OperationalDeviceListItem = OperationalDeviceRecord & {

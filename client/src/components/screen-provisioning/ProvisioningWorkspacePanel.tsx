@@ -119,9 +119,7 @@ export function ProvisioningWorkspacePanel({
       const credentials = {
         deviceId: result.device.deviceId,
         tokenId: result.token.tokenId,
-        secret: result.token.secret,
-        activationCode: result.activationCode,
-        qrPayload: result.qrPayload as Record<string, unknown>,
+        recoveryQrSvg: result.recoveryQrSvg,
       };
       const next = provisioningSessionManager.createSession({
         restaurantId,
@@ -143,17 +141,15 @@ export function ProvisioningWorkspacePanel({
   const rotateMutation = trpc.operationalDevice.management.rotateToken.useMutation({
     onSuccess: (result, variables) => {
       const credentials = {
-        deviceId: result.qrPayload.deviceId as string,
+        deviceId: variables.deviceId,
         tokenId: result.token.tokenId,
-        secret: result.token.secret,
-        activationCode: result.activationCode,
-        qrPayload: result.qrPayload as Record<string, unknown>,
+        recoveryQrSvg: result.recoveryQrSvg,
       };
       const existing = session ?? provisioningSessionManager.loadSession(urlState.sessionId ?? "");
       const next = provisioningSessionManager.beginRotateSession({
         restaurantId,
-        displayName: existing?.displayName ?? result.qrPayload.displayName ?? "",
-        role: existing?.role ?? (result.qrPayload.role as string) ?? "kitchen_display",
+        displayName: existing?.displayName ?? result.device.displayName ?? "",
+        role: existing?.role ?? result.device.role ?? "kitchen_display",
         deviceId: variables.deviceId,
         credentials,
       });
@@ -225,7 +221,7 @@ export function ProvisioningWorkspacePanel({
 
   const showActivationPanel =
     !isStatusMode &&
-    Boolean(session?.credentials?.activationCode) &&
+    Boolean(session?.credentials?.recoveryQrSvg) &&
     !showPendingApproval;
 
   return (
@@ -245,8 +241,8 @@ export function ProvisioningWorkspacePanel({
             ? "عرض حالة الجهاز من الخادم — للقراءة فقط"
             : "Server-sourced device status — read only"
           : isAr
-            ? "دورة حياة التجهيز — الرابط، رمز التفعيل، الربط"
-            : "Provisioning lifecycle — device URL, activation code, pairing"
+            ? "دورة حياة التجهيز — الرابط، الاعتماد الدائم، QR"
+            : "Provisioning lifecycle — screen URL, permanent credential, QR"
       }
       headerAside={
         <div className="flex gap-2">
@@ -435,7 +431,6 @@ export function ProvisioningWorkspacePanel({
 
       {!isStatusMode && showActivationPanel && session?.credentials && health ? (
         <ProvisioningActivationPanel
-          activationCode={session.credentials.activationCode}
           credentials={session.credentials}
           health={health}
           language={language}

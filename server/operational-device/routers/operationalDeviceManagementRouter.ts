@@ -28,6 +28,21 @@ const deviceInput = restaurantInput.extend({
   deviceId: z.string().min(8).max(64),
 });
 
+async function presentRecoveryResponse(
+  device: Awaited<ReturnType<typeof operationalDeviceComposition.registryService.createDevice>>["device"],
+  token: Awaited<ReturnType<typeof operationalDeviceComposition.registryService.createDevice>>["token"]
+) {
+  const recovery = await operationalDeviceComposition.recoveryService.presentIssuanceRecovery(
+    device,
+    token
+  );
+  return {
+    device,
+    token: recovery.token,
+    recoveryQrSvg: recovery.recoveryQrSvg,
+  };
+}
+
 /** Operator device management — verified user session, not device tokens. */
 export const operationalDeviceManagementRouter = router({
   list: verifiedProcedure.input(restaurantInput).query(async ({ input, ctx }) => {
@@ -55,16 +70,7 @@ export const operationalDeviceManagementRouter = router({
       role: input.role,
       displayName: input.displayName,
     });
-    return {
-      device: result.device,
-      token: {
-        tokenId: result.token.tokenId,
-        secret: result.token.secret,
-        issuedAt: result.token.issuedAt,
-      },
-      activationCode: result.token.activationCode,
-      qrPayload: result.qrPayload,
-    };
+    return presentRecoveryResponse(result.device, result.token);
   }),
 
   disable: verifiedProcedure.input(deviceInput).mutation(async ({ input, ctx }) => {
@@ -100,15 +106,59 @@ export const operationalDeviceManagementRouter = router({
     if (!device) {
       throw new TRPCError({ code: "NOT_FOUND", message: "Device not found" });
     }
+    return presentRecoveryResponse(device, token);
+  }),
+
+  regenerateCredential: verifiedProcedure.input(deviceInput).mutation(async ({ input, ctx }) => {
+    await assertRestaurantAccess(
+      ctx,
+      input.restaurantId,
+      "operationalDevice.management.regenerateCredential"
+    );
+    const token = await operationalDeviceComposition.registryService.regenerateCredential(
+      input.deviceId,
+      input.restaurantId
+    );
+    if (!token) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "Device not found or disabled" });
+    }
+    const device = await operationalDeviceComposition.store.getDevice(input.deviceId);
+    if (!device) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "Device not found" });
+    }
+    return presentRecoveryResponse(device, token);
+  }),
+
+  getScreenCredential: verifiedProcedure.input(deviceInput).query(async ({ input, ctx }) => {
+    await assertRestaurantAccess(
+      ctx,
+      input.restaurantId,
+      "operationalDevice.management.getScreenCredential"
+    );
+    const result = await operationalDeviceComposition.recoveryService.getScreenRecovery(
+      input.deviceId,
+      input.restaurantId
+    );
+    if (result == null) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "Screen not found" });
+    }
+    if ("retrievable" in result && result.retrievable === false) {
+      return result;
+    }
     return {
-      token: {
-        tokenId: token.tokenId,
-        secret: token.secret,
-        issuedAt: token.issuedAt,
-      },
-      activationCode: token.activationCode,
-      qrPayload: operationalDeviceComposition.registryService.buildQrPayload(device, token),
+      retrievable: true as const,
+      ...result,
     };
+  }),
+
+  deleteScreen: verifiedProcedure.input(deviceInput).mutation(async ({ input, ctx }) => {
+    await assertRestaurantAccess(ctx, input.restaurantId, "operationalDevice.management.deleteScreen");
+    const ok = await operationalDeviceComposition.registryService.deleteDevice(
+      input.deviceId,
+      input.restaurantId
+    );
+    if (!ok) throw new TRPCError({ code: "NOT_FOUND", message: "Screen not found" });
+    return { success: true as const };
   }),
 
   revokeToken: verifiedProcedure.input(deviceInput).mutation(async ({ input, ctx }) => {

@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
-import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
 
-/** Optional QR — hidden by default (DEVICE-PROVISIONING-UX-2). */
+/** Optional server-rendered recovery QR. */
 export function ProvisioningOptionalQrPanel({
   credentials,
   language,
@@ -11,14 +10,12 @@ export function ProvisioningOptionalQrPanel({
   credentials: {
     deviceId: string;
     tokenId: string;
-    secret: string;
-    qrPayload: Record<string, unknown>;
+    recoveryQrSvg: string;
   };
   language: string;
 }) {
   const isAr = language === "ar";
   const [open, setOpen] = useState(false);
-  const qrValue = JSON.stringify(credentials.qrPayload);
 
   return (
     <div className="rounded-xl border border-border/30">
@@ -35,13 +32,14 @@ export function ProvisioningOptionalQrPanel({
       </Button>
       {open ? (
         <div className="flex flex-col items-center gap-3 border-t border-border/30 px-4 pb-5 pt-4">
-          <div className="rounded-xl border bg-white p-4">
-            <QRCodeSVG value={qrValue} size={200} level="M" />
-          </div>
+          <div
+            className="rounded-xl border bg-white p-4 [&>svg]:block"
+            dangerouslySetInnerHTML={{ __html: credentials.recoveryQrSvg }}
+          />
           <p className="max-w-sm text-center text-xs text-muted-foreground">
             {isAr
-              ? "يمكنك مسح الرمز اختيارياً إذا كان الجهاز يدعم ذلك. الرابط ورمز التفعيل هما الطريقة الأساسية."
-              : "You may optionally scan this QR if the device supports it. URL and activation code are the primary method."}
+              ? "رمز QR يُولَّد على الخادم — لا يُعرض الاعتماد كنص في المتصفح."
+              : "QR is server-rendered — credentials are not exposed as plaintext in the browser."}
           </p>
         </div>
       ) : null}

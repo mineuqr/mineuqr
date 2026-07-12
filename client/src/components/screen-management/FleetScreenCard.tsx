@@ -1,14 +1,10 @@
 import type { FleetScreenReadModel } from "@/lib/screen-fleet/fleetReadModel";
 import {
-  isManagementCapabilitySupported,
-  negotiateManagementCapabilities,
-} from "@/lib/operational-screen/capability/managementCapabilityNegotiator";
-import {
   presenceLabel,
   screenTypeLabel,
 } from "@/lib/operational-screen/screenLabels";
 import { cn } from "@/lib/utils";
-import { Settings2, ShieldOff, Link2, Activity } from "lucide-react";
+import { KeyRound, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const OPERATIONAL_LABELS: Record<string, { en: string; ar: string }> = {
@@ -23,25 +19,18 @@ const OPERATIONAL_LABELS: Record<string, { en: string; ar: string }> = {
 };
 
 /**
- * Lightweight fleet card — no provisioning logic.
- * Provision / status actions delegate to Provisioning Workspace.
+ * Fleet card — lifecycle actions via ScreenCredentialLifecycleSheet.
  */
 export function FleetScreenCard({
   screen,
   language,
   onSettings,
-  onProvision,
-  onViewStatus,
-  onDisable,
-  disablePending,
+  onLifecycle,
 }: {
   screen: FleetScreenReadModel;
   language: string;
   onSettings: (screenId: string) => void;
-  onProvision: (screenId: string) => void;
-  onViewStatus: (screenId: string) => void;
-  onDisable: (screenId: string) => void;
-  disablePending: boolean;
+  onLifecycle: (screenId: string) => void;
 }) {
   const isAr = language === "ar";
   const { canonicalState, healthSummary } = screen;
@@ -52,11 +41,6 @@ export function FleetScreenCard({
     };
 
   const isDisabled = canonicalState.maintenanceState === "maintenance";
-  const managementCapabilities = negotiateManagementCapabilities(screen);
-  const needsProvisioning = isManagementCapabilitySupported(
-    managementCapabilities,
-    "provisioning"
-  );
 
   return (
     <article
@@ -110,39 +94,17 @@ export function FleetScreenCard({
           <Settings2 className="mr-1 h-4 w-4" />
           {isAr ? "الإعدادات" : "Settings"}
         </Button>
-        {needsProvisioning ? (
-          <Button
-            size="sm"
-            variant="outline"
-            className="min-h-10"
-            disabled={isDisabled}
-            onClick={() => onProvision(screen.screenId)}
-          >
-            <Link2 className="mr-1 h-4 w-4" />
-            {isAr ? "تجهيز" : "Provision"}
-          </Button>
-        ) : (
-          <Button
-            size="sm"
-            variant="outline"
-            className="min-h-10"
-            onClick={() => onViewStatus(screen.screenId)}
-          >
-            <Activity className="mr-1 h-4 w-4" />
-            {isAr ? "الحالة" : "Status"}
-          </Button>
-        )}
         <Button
           size="sm"
-          variant="destructive"
-          className="min-h-10"
-          disabled={isDisabled || disablePending}
-          onClick={() => onDisable(screen.screenId)}
+          variant="outline"
+          className="min-h-10 flex-1"
+          disabled={isDisabled}
+          onClick={() => onLifecycle(screen.screenId)}
         >
-          <ShieldOff className="mr-1 h-4 w-4" />
-          {isAr ? "تعطيل" : "Disable"}
+          <KeyRound className="mr-1 h-4 w-4" />
+          {isAr ? "الاعتماد" : "Credential"}
         </Button>
       </div>
-    </article>
+    </div>
   );
 }

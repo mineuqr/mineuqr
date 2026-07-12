@@ -1,21 +1,17 @@
 import { Check, Copy } from "lucide-react";
 import { useState } from "react";
 import type { ProvisioningQrPayload } from "@/lib/screen-provisioning/provisioningSessionContract";
-import { cn } from "@/lib/utils";
-import { QRCodeSVG } from "qrcode.react";
 
 function CredentialField({
   label,
   value,
   copyLabel,
   copiedLabel,
-  sensitive,
 }: {
   label: string;
   value: string;
   copyLabel: string;
   copiedLabel: string;
-  sensitive?: boolean;
 }) {
   const [copied, setCopied] = useState(false);
   const onCopy = () => {
@@ -37,19 +33,12 @@ function CredentialField({
           {copied ? copiedLabel : copyLabel}
         </button>
       </div>
-      <p
-        className={cn(
-          "w-full break-all rounded-lg bg-muted p-2 font-mono text-xs",
-          sensitive && "text-destructive-foreground/90"
-        )}
-      >
-        {value}
-      </p>
+      <p className="w-full break-all rounded-lg bg-muted p-2 font-mono text-xs">{value}</p>
     </div>
   );
 }
 
-/** QR and credential display — no business logic. */
+/** Server-rendered recovery QR — no plaintext authentication material. */
 export function ProvisioningCredentialsPanel({
   credentials,
   language,
@@ -58,17 +47,17 @@ export function ProvisioningCredentialsPanel({
   language: string;
 }) {
   const isAr = language === "ar";
-  const qrValue = JSON.stringify(credentials.qrPayload);
 
   return (
     <div className="flex flex-col items-center gap-4 rounded-2xl border border-border/40 bg-muted/10 p-6">
-      <div className="rounded-xl border bg-white p-4">
-        <QRCodeSVG value={qrValue} size={220} level="M" />
-      </div>
+      <div
+        className="rounded-xl border bg-white p-4 [&>svg]:block"
+        dangerouslySetInnerHTML={{ __html: credentials.recoveryQrSvg }}
+      />
       <p className="text-center text-sm text-muted-foreground">
         {isAr
-          ? "امسح الرمز على الشاشة لربط الجهاز. لن تُعرض بيانات الاعتماد مرة أخرى بعد مغادرة الجلسة."
-          : "Scan on the screen to link the device. Credentials will not be shown again after leaving this session."}
+          ? "امسح الرمز على الشاشة لربط الجهاز. الاعتماد لا يُعرض كنص في المتصفح."
+          : "Scan on the screen to link the device. Credentials are not exposed as plaintext in the browser."}
       </p>
       <div className="w-full max-w-md space-y-2">
         <CredentialField
@@ -82,13 +71,6 @@ export function ProvisioningCredentialsPanel({
           value={credentials.tokenId}
           copyLabel={isAr ? "نسخ" : "Copy"}
           copiedLabel={isAr ? "تم النسخ" : "Copied"}
-        />
-        <CredentialField
-          label={isAr ? "الرمز السري" : "Secret"}
-          value={credentials.secret}
-          copyLabel={isAr ? "نسخ" : "Copy"}
-          copiedLabel={isAr ? "تم النسخ" : "Copied"}
-          sensitive
         />
       </div>
     </div>

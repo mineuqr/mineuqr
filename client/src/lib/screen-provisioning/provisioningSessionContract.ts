@@ -35,9 +35,8 @@ export type ProvisioningError = {
 export type ProvisioningQrPayload = {
   deviceId: string;
   tokenId: string;
-  secret: string;
-  activationCode: string;
-  qrPayload: Record<string, unknown>;
+  /** Server-rendered QR — recovery material never exposed as plaintext to operator JS. */
+  recoveryQrSvg: string;
 };
 
 /**

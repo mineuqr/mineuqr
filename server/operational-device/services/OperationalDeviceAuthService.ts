@@ -6,9 +6,7 @@ import type {
 import type { DeviceAuthFailureCode } from "../domain/deviceAuthCodes";
 import type { OperationalDeviceStore } from "../infrastructure/OperationalDeviceStore";
 import {
-  generateDeviceSecret,
   hashActivationCode,
-  hashDeviceSecret,
   isValidActivationCodeFormat,
   verifyDeviceSecret,
 } from "../infrastructure/deviceCrypto";
@@ -17,6 +15,10 @@ type CredentialOutcome =
   | { ok: true; session: OperationalDeviceSession }
   | { ok: false; code: DeviceAuthFailureCode };
 
+/**
+ * Runtime authentication — validates Authentication Material (secretHash) only.
+ * MUST NOT read recovery material. See credentialGovernance.ts.
+ */
 export class OperationalDeviceAuthService {
   constructor(
     private readonly store: OperationalDeviceStore,
@@ -48,6 +50,10 @@ export class OperationalDeviceAuthService {
     return outcome.ok ? outcome.session : null;
   }
 
+  /**
+   * Legacy activation-code bootstrap — deprecated.
+   * Governance: cannot decrypt recovery material; returns invalid for bootstrap paths.
+   */
   async authenticateByActivationCode(
     activationCode: string
   ): Promise<DeviceAuthenticateResult> {
@@ -74,35 +80,12 @@ export class OperationalDeviceAuthService {
     }
 
     const device = await this.store.getDevice(token.deviceId);
-    if (!device) {
+    if (!device || device.status !== "active") {
       return { ok: false, code: "activation_code_invalid" };
     }
-    if (device.status !== "active") {
-      return { ok: false, code: "device_disabled" };
-    }
 
-    const bootstrapSecret = generateDeviceSecret();
-    const nowIso = new Date(this.now()).toISOString();
-    await this.store.updateTokenSecret(token.tokenId, hashDeviceSecret(bootstrapSecret), nowIso);
-    await this.store.consumeActivationCode(token.tokenId);
-    await this.store.touchTokenUsage(token.tokenId, nowIso);
-
-    return {
-      ok: true,
-      session: {
-        deviceId: device.deviceId,
-        tokenId: token.tokenId,
-        restaurantId: device.restaurantId,
-        branchId: device.branchId,
-        role: device.role,
-        displayName: device.displayName,
-      },
-      bootstrapCredentials: {
-        deviceId: device.deviceId,
-        tokenId: token.tokenId,
-        secret: bootstrapSecret,
-      },
-    };
+    // Recovery material cannot authenticate — use /screen/pair with device credential.
+    return { ok: false, code: "activation_code_invalid" };
   }
 
   async resolveCredentialOutcome(input: DeviceCredentialInput): Promise<CredentialOutcome> {
@@ -130,7 +113,6 @@ export class OperationalDeviceAuthService {
 
     const nowIso = new Date(this.now()).toISOString();
     await this.store.touchTokenUsage(token.tokenId, nowIso);
-    await this.store.consumeActivationCode(token.tokenId);
 
     return {
       ok: true,

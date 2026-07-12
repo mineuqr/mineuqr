@@ -17,11 +17,17 @@ describe("SCREEN-PROVISIONING-WORKSPACE-1 architecture guards", () => {
     expect(panel).toContain("navigateToProvisioning");
   });
 
-  it("fleet cards delegate provisioning to workspace", () => {
+  it("fleet cards expose credential lifecycle sheet", () => {
     const card = read("client/src/components/screen-management/FleetScreenCard.tsx");
-    expect(card).toContain("onProvision");
-    expect(card).not.toContain("rotateToken");
-    expect(card).not.toContain("RotateCw");
+    expect(card).toContain("onLifecycle");
+    expect(card).toContain("KeyRound");
+    expect(card).not.toContain("onProvision");
+  });
+
+  it("screen management hosts credential lifecycle actions", () => {
+    const panel = read("client/src/components/screen-management/ScreenManagementWorkspacePanel.tsx");
+    expect(panel).toContain("ScreenCredentialLifecycleSheet");
+    expect(panel).not.toContain("navigateFleetProvisioning");
   });
 
   it("provisioning workspace uses session manager", () => {
@@ -52,12 +58,10 @@ describe("SCREEN-PROVISIONING-WORKSPACE-1 architecture guards", () => {
     expect(status).not.toContain("resolveProvisioning");
   });
 
-  it("BUGFIX-F003 — fleet status never maps to rotate fallback", () => {
+  it("BUGFIX-F003 — fleet status uses lifecycle sheet not provisioning rotate", () => {
     const fleet = read("client/src/components/screen-management/ScreenManagementWorkspacePanel.tsx");
-    expect(fleet).toContain("resolveFleetProvisioningNavigation");
-    expect(fleet).toContain('navigateFleetProvisioning(id, "status")');
-    expect(fleet).not.toContain('openProvision(id, "resume")');
-    expect(fleet).not.toMatch(/mode:\s*"rotate"[\s\S]*resume/);
+    expect(fleet).toContain("ScreenCredentialLifecycleSheet");
+    expect(fleet).not.toContain('navigateFleetProvisioning(id, "status")');
   });
 
   it("BUGFIX-F003 — provisioning workspace never auto-rotates on mount", () => {

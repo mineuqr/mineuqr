@@ -34,6 +34,7 @@ function mapToken(row: typeof operationalDeviceTokens.$inferSelect): Operational
     tokenId: row.tokenId,
     deviceId: row.deviceId,
     secretHash: row.secretHash,
+    secretCiphertext: row.secretCiphertext ?? null,
     status: row.status as OperationalDeviceTokenRecord["status"],
     issuedAt: row.issuedAt,
     expiresAt: row.expiresAt ?? null,
@@ -136,6 +137,7 @@ export class DrizzleOperationalDeviceStore implements OperationalDeviceStore {
       tokenId: record.tokenId,
       deviceId: record.deviceId,
       secretHash: record.secretHash,
+      secretCiphertext: record.secretCiphertext,
       status: record.status,
       issuedAt: record.issuedAt,
       expiresAt: record.expiresAt,
@@ -300,6 +302,17 @@ export class DrizzleOperationalDeviceStore implements OperationalDeviceStore {
     const result = await db
       .update(operationalDevices)
       .set(patch)
+      .where(eq(operationalDevices.deviceId, deviceId));
+
+    return readMysqlAffectedRows(result) > 0;
+  }
+
+  async deleteDevice(deviceId: string): Promise<boolean> {
+    const db = await getDb();
+    if (!db) return false;
+
+    const result = await db
+      .delete(operationalDevices)
       .where(eq(operationalDevices.deviceId, deviceId));
 
     return readMysqlAffectedRows(result) > 0;

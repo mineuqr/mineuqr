@@ -1,22 +1,19 @@
 import { Check, Copy } from "lucide-react";
 import { useState } from "react";
 import type { ProvisioningHealth } from "@/lib/screen-provisioning/provisioningSessionContract";
-import { getDeviceActivationUrl } from "@/lib/device-activation/deviceActivationUrl";
+import { getScreenEntryUrl, getScreenLoginUrl } from "@/lib/screen-credential-lifecycle/screenEntryUrl";
 import { Button } from "@/components/ui/button";
-import { ProvisioningOptionalQrPanel } from "./ProvisioningOptionalQrPanel";
 
 function CopyField({
   label,
   value,
   copyLabel,
   copiedLabel,
-  prominent,
 }: {
   label: string;
   value: string;
   copyLabel: string;
   copiedLabel: string;
-  prominent?: boolean;
 }) {
   const [copied, setCopied] = useState(false);
   const onCopy = () => {
@@ -39,38 +36,28 @@ function CopyField({
           {copied ? copiedLabel : copyLabel}
         </button>
       </div>
-      <p
-        className={
-          prominent
-            ? "rounded-xl border border-primary/30 bg-primary/5 p-4 text-center font-mono text-2xl font-semibold tracking-[0.2em]"
-            : "w-full break-all rounded-lg bg-muted p-3 font-mono text-sm"
-        }
-      >
-        {value}
-      </p>
+      <p className="w-full break-all rounded-lg bg-muted p-3 font-mono text-sm">{value}</p>
     </div>
   );
 }
 
-/** Primary provisioning onboarding — URL + activation code; QR optional. */
+/** Primary provisioning onboarding — server-rendered recovery QR. */
 export function ProvisioningActivationPanel({
-  activationCode,
   credentials,
   health,
   language,
 }: {
-  activationCode: string;
   credentials: {
     deviceId: string;
     tokenId: string;
-    secret: string;
-    qrPayload: Record<string, unknown>;
+    recoveryQrSvg: string;
   };
   health: ProvisioningHealth | null;
   language: string;
 }) {
   const isAr = language === "ar";
-  const deviceUrl = getDeviceActivationUrl();
+  const screenUrl = getScreenEntryUrl();
+  const loginUrl = getScreenLoginUrl();
   const copyLabel = isAr ? "نسخ" : "Copy";
   const copiedLabel = isAr ? "تم النسخ" : "Copied";
   const minutesRemaining = health ? Math.max(0, Math.ceil(health.secondsRemaining / 60)) : null;
@@ -83,35 +70,44 @@ export function ProvisioningActivationPanel({
         </h3>
         <p className="text-sm text-muted-foreground">
           {isAr
-            ? "افتح الرابط التالي على الجهاز وأدخل رمز التفعيل. لا حاجة لكاميرا."
-            : "Open the following link on the device and enter the activation code. No camera required."}
+            ? "افتح الرابط على الجهاز. إذا لم يكن الاعتماد مخزّناً، استخدم رابط الدخول أو امسح QR."
+            : "Open the screen URL on the device. If no credential is stored, use the login link or scan the QR code."}
         </p>
       </div>
 
       <CopyField
-        label={isAr ? "رابط الجهاز" : "Device URL"}
-        value={deviceUrl}
+        label={isAr ? "رابط الشاشة" : "Screen URL"}
+        value={screenUrl}
         copyLabel={copyLabel}
         copiedLabel={copiedLabel}
       />
 
       <CopyField
-        label={isAr ? "رمز التفعيل" : "Activation code"}
-        value={activationCode}
+        label={isAr ? "رابط الدخول (بدون اعتماد مخزّن)" : "Login URL (no stored credential)"}
+        value={loginUrl}
         copyLabel={copyLabel}
         copiedLabel={copiedLabel}
-        prominent
       />
+
+      <div className="flex flex-col items-center gap-3">
+        <div
+          className="rounded-xl border bg-white p-4 [&>svg]:block"
+          dangerouslySetInnerHTML={{ __html: credentials.recoveryQrSvg }}
+        />
+        <p className="max-w-sm text-center text-xs text-muted-foreground">
+          {isAr
+            ? "رمز QR يُولَّد على الخادم — الاعتماد لا يُعرض كنص في المتصفح."
+            : "QR is server-rendered — credentials are not exposed as plaintext in the browser."}
+        </p>
+      </div>
 
       {minutesRemaining != null ? (
         <p className="text-center text-xs text-muted-foreground sm:text-start">
           {isAr
-            ? `الوقت المتبقي للجلسة: ${minutesRemaining} دقيقة`
-            : `Session time remaining: ${minutesRemaining} min`}
+            ? `الوقت المتبقي لجلسة المشغّل: ${minutesRemaining} دقيقة`
+            : `Operator session time remaining: ${minutesRemaining} min`}
         </p>
       ) : null}
-
-      <ProvisioningOptionalQrPanel credentials={credentials} language={language} />
     </div>
   );
 }

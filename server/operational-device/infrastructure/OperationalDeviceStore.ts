@@ -23,6 +23,7 @@ export type OperationalDeviceStore = {
   findTokenByActivationCodeHash(hash: string): Promise<OperationalDeviceTokenRecord | null>;
   consumeActivationCode(tokenId: string): Promise<void>;
   updateTokenSecret(tokenId: string, secretHash: string, now: string): Promise<void>;
+  deleteDevice(deviceId: string): Promise<boolean>;
   updateScreenPresentation(
     deviceId: string,
     input: { displayName?: string; screenConfig?: import("../domain/screenConfig").OperationalScreenConfig; now: string }

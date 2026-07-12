@@ -3,28 +3,22 @@ import type {
   IssuedOperationalDeviceToken,
   OperationalDeviceListItem,
   OperationalDeviceRecord,
-  OperationalScreenPairingPayload,
 } from "../domain/deviceContracts";
 import { deriveDevicePresence } from "../domain/deviceHealth";
 import type { UpdateScreenSettingsInput } from "../domain/screenConfig";
 import { mergeScreenConfig } from "../domain/screenConfig";
 import type { OperationalDeviceStore } from "../infrastructure/OperationalDeviceStore";
+import { encryptDeviceSecret } from "../infrastructure/deviceCredentialStorage";
 import {
-  generateActivationCode,
   generateDeviceId,
   generateDeviceSecret,
   generateDeviceTokenId,
-  hashActivationCode,
   hashDeviceSecret,
 } from "../infrastructure/deviceCrypto";
-
-/** Provisioning session timeout — activation codes expire with the operator session window. */
-export const PROVISIONING_ACTIVATION_CODE_TTL_MS = 30 * 60 * 1000;
 
 export type CreateDeviceResult = {
   device: OperationalDeviceRecord;
   token: IssuedOperationalDeviceToken;
-  qrPayload: OperationalScreenPairingPayload;
 };
 
 export class OperationalDeviceRegistryService {
@@ -69,7 +63,6 @@ export class OperationalDeviceRegistryService {
     return {
       device,
       token,
-      qrPayload: this.buildQrPayload(device, token),
     };
   }
 
@@ -88,6 +81,7 @@ export class OperationalDeviceRegistryService {
     return this.store.updateDeviceStatus(deviceId, "active", nowIso);
   }
 
+  /** Regenerates the permanent screen credential — revokes the previous active token. */
   async rotateToken(deviceId: string, restaurantId: number): Promise<IssuedOperationalDeviceToken | null> {
     const device = await this.store.getDevice(deviceId);
     if (!device || device.restaurantId !== restaurantId || device.status !== "active") {
@@ -98,12 +92,31 @@ export class OperationalDeviceRegistryService {
     return this.issueToken(deviceId);
   }
 
+  async regenerateCredential(
+    deviceId: string,
+    restaurantId: number
+  ): Promise<IssuedOperationalDeviceToken | null> {
+    return this.rotateToken(deviceId, restaurantId);
+  }
+
   async revokeToken(deviceId: string, restaurantId: number): Promise<boolean> {
     const device = await this.store.getDevice(deviceId);
     if (!device || device.restaurantId !== restaurantId) return false;
     const nowIso = new Date(this.now()).toISOString();
     const count = await this.store.revokeAllActiveTokens(deviceId, nowIso, "revoked");
     return count > 0;
+  }
+
+  /**
+   * Deletes an operational screen from the fleet.
+   * Revokes credentials and removes the device record; token rows remain for audit.
+   */
+  async deleteDevice(deviceId: string, restaurantId: number): Promise<boolean> {
+    const device = await this.store.getDevice(deviceId);
+    if (!device || device.restaurantId !== restaurantId) return false;
+    const nowIso = new Date(this.now()).toISOString();
+    await this.store.revokeAllActiveTokens(deviceId, nowIso, "revoked");
+    return this.store.deleteDevice(deviceId);
   }
 
   async updateScreenSettings(
@@ -125,45 +138,24 @@ export class OperationalDeviceRegistryService {
     return this.store.getDevice(deviceId);
   }
 
-  buildQrPayload(
-    device: OperationalDeviceRecord,
-    token: IssuedOperationalDeviceToken
-  ): OperationalScreenPairingPayload {
-    return {
-      mineuqr: "operational-screen-pairing",
-      v: 2,
-      deviceId: device.deviceId,
-      tokenId: token.tokenId,
-      secret: token.secret,
-      restaurantId: device.restaurantId,
-      branchId: device.branchId,
-      role: device.role,
-      displayName: device.displayName,
-      issuedAt: token.issuedAt,
-    };
-  }
-
   private async issueToken(deviceId: string): Promise<IssuedOperationalDeviceToken> {
     const secret = generateDeviceSecret();
     const tokenId = generateDeviceTokenId();
     const issuedAt = new Date(this.now()).toISOString();
-    const activationCode = generateActivationCode();
-    const activationCodeExpiresAt = new Date(
-      this.now() + PROVISIONING_ACTIVATION_CODE_TTL_MS
-    ).toISOString();
     await this.store.saveToken({
       tokenId,
       deviceId,
       secretHash: hashDeviceSecret(secret),
+      secretCiphertext: encryptDeviceSecret(secret),
       status: "active",
       issuedAt,
       expiresAt: null,
       revokedAt: null,
       lastUsedAt: null,
       createdAt: issuedAt,
-      activationCodeHash: hashActivationCode(activationCode),
-      activationCodeExpiresAt,
+      activationCodeHash: null,
+      activationCodeExpiresAt: null,
     });
-    return { tokenId, secret, deviceId, issuedAt, expiresAt: null, activationCode };
+    return { tokenId, secret, deviceId, issuedAt, expiresAt: null };
   }
 }

@@ -4,6 +4,7 @@ import { OperationalWorkspaceShell } from "@/components/operational-workspace/Op
 import { OperationsBar } from "@/components/operational-workspace/OperationsBar";
 import { WorkspaceFilters } from "@/components/operational-workspace/WorkspaceFilters";
 import { FleetScreenCard } from "@/components/screen-management/FleetScreenCard";
+import { ScreenCredentialLifecycleSheet } from "@/components/screen-management/ScreenCredentialLifecycleSheet";
 import { ScreenSettingsSheet } from "@/components/screen-management/ScreenSettingsSheet";
 import { VirtualizedFleetGrid } from "@/components/screen-management/VirtualizedFleetGrid";
 import { RestaurantKpiCard, RestaurantKpiGridSkeleton } from "@/components/dashboard/RestaurantKpiCard";
@@ -19,12 +20,9 @@ import {
 } from "@/components/ui/select";
 import { SCREEN_TYPE_OPTIONS } from "@/lib/operational-screen/screenLabels";
 import { navigateToProvisioning } from "@/lib/screen-provisioning/provisioningUrl";
-import { provisioningSessionManager } from "@/lib/screen-provisioning/ProvisioningSessionManager";
-import { resolveFleetProvisioningNavigation } from "@/lib/screen-provisioning/provisioningNavigation";
 import { useFleetQuery } from "@/lib/screen-fleet/useFleetQuery";
 import { restaurantQueriesEnabled } from "@/lib/queryRuntime";
 import { isEmailNotVerifiedError } from "@/lib/trpcErrors";
-import { trpc } from "@/lib/trpc";
 import { LayoutGrid, List, Loader2, Monitor, Plus, RefreshCw, ShieldOff } from "lucide-react";
 import { useMemo, useState } from "react";
 
@@ -42,6 +40,7 @@ export function ScreenManagementWorkspacePanel({
   const enabled = restaurantQueriesEnabled(authPending, isAuthenticated, restaurantId);
 
   const [settingsScreenId, setSettingsScreenId] = useState<string | null>(null);
+  const [lifecycleScreenId, setLifecycleScreenId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [stateFilter, setStateFilter] = useState<string>("all");
@@ -63,16 +62,7 @@ export function ScreenManagementWorkspacePanel({
     },
   });
 
-  const utils = trpc.useUtils();
-
-  const invalidateFleet = () => {
-    void utils.operationalDevice.fleet.queryScreens.invalidate();
-    void utils.operationalDevice.fleet.getKpis.invalidate({ restaurantId });
-  };
-
-  const disableMutation = trpc.operationalDevice.management.disable.useMutation({
-    onSuccess: () => invalidateFleet(),
-  });
+  const lifecycleScreen = fleetQuery.items.find((s) => s.screenId === lifecycleScreenId);
 
   const counts = useMemo(() => {
     const kpis = fleetQuery.kpis;
@@ -83,19 +73,6 @@ export function ScreenManagementWorkspacePanel({
       disabled: kpis?.disabled ?? 0,
     };
   }, [fleetQuery.kpis]);
-
-  const navigateFleetProvisioning = (
-    deviceId: string,
-    action: "status" | "resume" | "rotate"
-  ) => {
-    const target = resolveFleetProvisioningNavigation({
-      action,
-      restaurantId,
-      deviceId,
-      findSessionByDevice: (id) => provisioningSessionManager.findSessionByDevice(id),
-    });
-    navigateToProvisioning(target);
-  };
 
   if (fleetQuery.error && isEmailNotVerifiedError(fleetQuery.error)) {
     return <VerificationRequiredPanel variant="operations" />;
@@ -243,10 +220,7 @@ export function ScreenManagementWorkspacePanel({
               screen={screen}
               language={language}
               onSettings={setSettingsScreenId}
-              onProvision={(id) => navigateFleetProvisioning(id, "rotate")}
-              onViewStatus={(id) => navigateFleetProvisioning(id, "status")}
-              onDisable={(id) => disableMutation.mutate({ restaurantId, deviceId: id })}
-              disablePending={disableMutation.isPending}
+              onLifecycle={setLifecycleScreenId}
             />
           )}
         />
@@ -288,6 +262,16 @@ export function ScreenManagementWorkspacePanel({
         screenId={settingsScreenId}
         restaurantId={restaurantId}
         language={language}
+      />
+
+      <ScreenCredentialLifecycleSheet
+        open={lifecycleScreenId != null}
+        onOpenChange={(open) => !open && setLifecycleScreenId(null)}
+        screenId={lifecycleScreenId}
+        displayName={lifecycleScreen?.displayName ?? ""}
+        restaurantId={restaurantId}
+        language={language}
+        onDeleted={() => setLifecycleScreenId(null)}
       />
     </OperationalWorkspaceShell>
   );

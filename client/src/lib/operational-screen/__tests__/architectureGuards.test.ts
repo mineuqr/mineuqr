@@ -265,7 +265,10 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
     expect(kitchenStream).not.toContain("kitchen_display");
     expect(diagnostics).toContain("runtimeCapabilities");
     expect(diagnostics).not.toContain("getRoleCapabilities");
-    expect(fleetCard).toContain("negotiateManagementCapabilities");
+    expect(fleetCard).toContain("onLifecycle");
+    expect(read("client/src/components/screen-management/ScreenManagementWorkspacePanel.tsx")).toContain(
+      "ScreenCredentialLifecycleSheet"
+    );
     expect(orchestrator).toContain("runtimeCapabilities");
     expect(orchestrator).toContain("mergeCapabilityIntoHealth");
   });

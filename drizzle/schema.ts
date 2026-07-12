@@ -855,6 +855,7 @@ export const operationalDeviceTokens = mysqlTable("operational_device_tokens", {
 	tokenId: varchar({ length: 64 }).notNull(),
 	deviceId: varchar({ length: 64 }).notNull(),
 	secretHash: varchar({ length: 255 }).notNull(),
+	secretCiphertext: varchar({ length: 512 }),
 	status: mysqlEnum(["active", "revoked", "rotated"]).default("active").notNull(),
 	issuedAt: timestamp({ mode: "string" }).notNull(),
 	expiresAt: timestamp({ mode: "string" }),

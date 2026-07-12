@@ -148,6 +148,10 @@ export class InMemoryOperationalDeviceStore implements OperationalDeviceStore {
     this.tokens.set(tokenId, { ...token, secretHash, lastUsedAt: now });
   }
 
+  async deleteDevice(deviceId: string): Promise<boolean> {
+    return this.devices.delete(deviceId);
+  }
+
   async updateScreenPresentation(
     deviceId: string,
     input: {

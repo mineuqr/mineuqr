@@ -39,9 +39,7 @@ function baseSession(overrides: Partial<ProvisioningSession> = {}): Provisioning
     credentials: {
       deviceId: "device-1",
       tokenId: "token-1",
-      secret: "secret",
-      activationCode: "ABCD-EFGH",
-      qrPayload: { mineuqr: "operational-screen-pairing", v: 2 },
+      recoveryQrSvg: "<svg></svg>",
     },
     warnings: [],
     errors: [],
@@ -126,9 +124,7 @@ describe("ProvisioningSessionManager", () => {
       credentials: {
         deviceId: "d1",
         tokenId: "t1",
-        secret: "s",
-        activationCode: "WXYZ-1234",
-        qrPayload: {},
+        recoveryQrSvg: "<svg></svg>",
       },
     });
     expect(session.status).toBe("credentials_ready");
