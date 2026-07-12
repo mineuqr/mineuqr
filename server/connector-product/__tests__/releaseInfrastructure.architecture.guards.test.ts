@@ -25,6 +25,15 @@ describe("PRINT-CONNECTOR-RELEASE-1 architecture guards", () => {
     expect(info.windowsInstallerName).toBe(installerFileName);
   });
 
+  it("CONNECTOR-VERSION-SYNC-1 — generated constants match canonical manifest", () => {
+    const generated = readFileSync(
+      join(root, "server", "connector-product", "release", "connectorReleaseConstants.generated.ts"),
+      "utf8"
+    );
+    expect(generated).toContain(`MINEUQR_CONNECTOR_VERSION = ${JSON.stringify(manifest.version)}`);
+    expect(generated).toContain(`MINEUQR_CONNECTOR_PRODUCT_NAME = ${JSON.stringify(manifest.productName)}`);
+  });
+
   it("staging build does not publish stale release metadata", () => {
     const stageScript = readFileSync(join(root, "scripts", "connector-release-build.mjs"), "utf8");
     expect(stageScript).not.toContain('writeFileSync(join(stagingRoot, "release-manifest.json")');
