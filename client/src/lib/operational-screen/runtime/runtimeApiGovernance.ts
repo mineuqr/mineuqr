@@ -50,11 +50,14 @@ export const RUNTIME_INTERNAL_MODULES = [
   "runtimeContextActions",
 ] as const;
 
-/** Provider is the sole bridge from internal modules to React consumers. */
+/** Provider and orchestration layer — sole bridges from internal modules to React. */
 export const RUNTIME_INTERNAL_MODULE_CONSUMERS = [
   "client/src/components/operational-screen/OperationalScreenRuntimeProvider.tsx",
   "client/src/lib/operational-screen/useRuntimeOrchestrator.ts",
   "client/src/lib/operational-screen/bootstrapLogic.ts",
+  "client/src/lib/operational-screen/orchestration/runtimeBootstrapExecutor.ts",
+  "client/src/lib/operational-screen/orchestration/runtimeReconciliationExecutor.ts",
+  "client/src/lib/operational-screen/orchestration/runtimePublicationPolicy.ts",
 ] as const;
 
 export type RuntimePublicReadApi = (typeof RUNTIME_PUBLIC_READ_API)[number];

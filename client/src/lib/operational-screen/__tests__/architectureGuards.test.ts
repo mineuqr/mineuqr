@@ -225,7 +225,8 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
     const kitchen = read("client/src/components/operational-screen/KitchenScreenPanel.tsx");
     expect(manager).toContain("RuntimeConfigurationManager");
     expect(orchestrator).toContain("RuntimeConfigurationManager");
-    expect(orchestrator).toContain("runtimeContextFactory.loadConfiguration");
+    expect(orchestrator).toContain("executeRuntimeBootstrap");
+    expect(orchestrator).toContain("executeRuntimeReconciliation");
     expect(orchestrator).toContain("reloadConfiguration");
     expect(kitchen).not.toContain("screenConfig");
     expect(kitchen).not.toContain("getStatus");
@@ -275,7 +276,7 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
     const configManager = read("client/src/lib/operational-screen/configuration/runtimeConfigurationManager.ts");
 
     expect(runtimeRouter).toContain("resolveScreenConfigVersion");
-    expect(orchestrator).toContain("detectVersionChange(status.configVersion)");
+    expect(orchestrator).toContain("executeRuntimeReconciliation");
     expect(configManager).toContain("detectVersionChange(incomingVersion");
     expect(runtimeRouter).not.toMatch(/configVersion:\s*device\.updatedAt/);
   });
@@ -342,8 +343,12 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
 
     expect(factory).toContain("class RuntimeContextFactory");
     expect(factory).toContain("freezeRuntimeInstanceContext");
-    expect(orchestrator).toContain("runtimeContextFactory.resolve");
-    expect(orchestrator).toContain("runtimeContextFactory.buildRuntimeContext");
+    const reconcileExecutor = read(
+      "client/src/lib/operational-screen/orchestration/runtimeReconciliationExecutor.ts"
+    );
+    expect(orchestrator).toContain("executeRuntimeBootstrap");
+    expect(reconcileExecutor).toContain("runtimeContextFactory.refresh");
+    expect(reconcileExecutor).toContain("runtimeContextFactory.applyConfigurationReload");
     expect(provider).toContain("useRuntimeInstanceContext");
     expect(runtimeTypes).toContain("instance: FrozenRuntimeInstanceContext");
     expect(orderActions).toContain("useRuntimeRole");

@@ -160,13 +160,17 @@ describe("RUNTIME-PUBLIC-API-CONSOLIDATION-1", () => {
     const actions = read("client/src/lib/operational-screen/runtimeContextActions.ts");
     const orchestrator = read("client/src/lib/operational-screen/useRuntimeOrchestrator.ts");
 
+    const reconcileExecutor = read(
+      "client/src/lib/operational-screen/orchestration/runtimeReconciliationExecutor.ts"
+    );
+
     for (const action of RUNTIME_DISTINCT_ACTION_INTENTIONS) {
       expect(actions).toContain(`${action}:`);
       expect(orchestrator).toContain(`${action}:`);
     }
-    expect(orchestrator).toContain("applyConfigurationReload");
-    expect(orchestrator).toContain('store.replaceSnapshot(reloaded.instance, "configuration_reload")');
-    expect(orchestrator).toContain('store.replaceSnapshot(refreshed, "manual_refresh")');
+    expect(orchestrator).toContain("executeRuntimeReconciliation");
+    expect(reconcileExecutor).toContain("applyConfigurationReload");
+    expect(reconcileExecutor).toContain("publishSnapshotIfChanged");
     expect(orchestrator).toContain("Distinct public contracts");
   });
 

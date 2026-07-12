@@ -12,7 +12,6 @@ import {
   isDeviceAuthError,
   STATUS_POLL_INTERVAL_MS,
 } from "./bootstrapLogic";
-import { runtimeContextFactory } from "./RuntimeContextFactory";
 import { RuntimeContextValidationError } from "./runtimeInstanceContext";
 import type { RuntimeContextStore } from "./runtimeContextStore";
 import { RuntimeConfigurationManager } from "./configuration/runtimeConfigurationManager";
@@ -47,7 +46,6 @@ import {
   transition,
   type BootstrapEvent,
 } from "./bootstrapStateMachine";
-import { collectRuntimeFingerprint } from "./runtimeFingerprint";
 import { isBlockedRole } from "./runtimeCapabilities";
 import "./roles/registerRoles";
 import { resolveRuntimeRole } from "./roles/runtimeRoleRegistry";
@@ -56,6 +54,16 @@ import type { RoleRuntimeHealth } from "./roles/runtimeRoleContract";
 import { screenTrpc } from "./screenTrpc";
 import type { BootstrapPhase, OperationalScreenRuntimeContext } from "./runtimeTypes";
 import { spaNavigate } from "@/const";
+import { executeRuntimeBootstrap } from "./orchestration/runtimeBootstrapExecutor";
+import {
+  executeHeartbeatReconciliation,
+  executeRuntimeReconciliation,
+} from "./orchestration/runtimeReconciliationExecutor";
+import {
+  bootstrapMayExecute,
+  reconciliationMayExecute,
+} from "./orchestration/runtimeOrchestrationPhase";
+import { RuntimeOrchestrationSession } from "./orchestration/runtimeOrchestrationSession";
 
 export type RuntimeDiagnostics = {
   phase: BootstrapPhase;
@@ -102,12 +110,15 @@ function nextHeartbeatDelay(failures: number): number {
   return Math.min(delay, HEARTBEAT_RETRY_MAX_MS);
 }
 
-function withStoreInstance(
-  runtimeContext: OperationalScreenRuntimeContext,
-  store: RuntimeContextStore
-): OperationalScreenRuntimeContext {
-  const snapshot = store.getCurrentSnapshot();
-  return snapshot ? { ...runtimeContext, instance: snapshot } : runtimeContext;
+function assertStatusAllowed(
+  status: import("./runtimeTypes").RuntimeGetStatusResponse,
+  handleRevoked: () => void
+): boolean {
+  if (status.device.status === "disabled" || !status.health.hasActiveToken) {
+    handleRevoked();
+    return false;
+  }
+  return true;
 }
 
 /**
@@ -140,6 +151,9 @@ export function useRuntimeOrchestrator(
   const categoryFilterManagerRef = useRef(new RuntimeCategoryFilterManager());
   const densityManagerRef = useRef(new RuntimeDisplayDensityManager());
   const stateAggregatorRef = useRef(new OperationalScreenStateAggregator());
+  const orchestrationSessionRef = useRef(new RuntimeOrchestrationSession());
+  const contextRef = useRef<OperationalScreenRuntimeContext | null>(null);
+  contextRef.current = context;
   const [categoryFilterVersion, setCategoryFilterVersion] = useState(0);
   const [densityVersion, setDensityVersion] = useState(0);
 
@@ -193,13 +207,14 @@ export function useRuntimeOrchestrator(
 
   const handleRevoked = useCallback(() => {
     stopHeartbeat();
+    orchestrationSessionRef.current.reset();
     clearOperationalScreenCredentials();
     setContext(null);
     store.replaceSnapshot(null, "repairing");
     dispatch({ type: "AUTH_REVOKED" });
     dispatch({ type: "PAIRING_REDIRECTED" });
     spaNavigate("/screen/pair", { replace: true });
-  }, [dispatch, stopHeartbeat]);
+  }, [dispatch, stopHeartbeat, store]);
 
   const scheduleHeartbeat = useCallback(
     (delayMs: number) => {
@@ -213,16 +228,17 @@ export function useRuntimeOrchestrator(
             heartbeatCount.current += 1;
             setLastError(null);
             dispatch({ type: "NETWORK_RECOVERED" });
-            setContext((prev) => {
-              if (!prev) return prev;
-              const current = store.getCurrentSnapshot() ?? prev.instance;
-              const withHeartbeat = runtimeContextFactory.withHeartbeat(
-                current,
-                new Date().toISOString()
-              );
-              store.replaceSnapshot(withHeartbeat, "heartbeat_refresh");
-              return withStoreInstance({ ...prev }, store);
-            });
+            const currentContext = contextRef.current;
+            if (currentContext) {
+              const heartbeatResult = executeHeartbeatReconciliation({
+                currentContext,
+                heartbeatAt: new Date().toISOString(),
+                store,
+              });
+              if (heartbeatResult.kind === "published") {
+                setContext(heartbeatResult.context);
+              }
+            }
             scheduleHeartbeat(HEARTBEAT_INTERVAL_MS);
           })
           .catch((error: unknown) => {
@@ -237,16 +253,17 @@ export function useRuntimeOrchestrator(
           });
       }, delayMs);
     },
-    [dispatch, handleRevoked, heartbeatMutation]
+    [dispatch, handleRevoked, heartbeatMutation, store]
   );
 
-  // Loading → Validating | PairingRedirect (credentials are guaranteed present here).
+  // Loading → Validating (credentials are guaranteed present here).
   useEffect(() => {
     dispatch({ type: "CREDENTIALS_FOUND" });
   }, [dispatch]);
 
-  // Validating/Degraded → ContextReady → HeartbeatActive → Running | Blocked
+  // RUNTIME-RECONCILIATION-ARCHITECTURE-1 — Bootstrap executes once when validating.
   useEffect(() => {
+    if (!bootstrapMayExecute(phase)) return;
     if (!statusQuery.data) return;
 
     if (statusQuery.error && isDeviceAuthError(statusQuery.error)) {
@@ -255,91 +272,77 @@ export function useRuntimeOrchestrator(
     }
 
     const status = statusQuery.data;
+    if (!assertStatusAllowed(status, handleRevoked)) return;
 
-    // Terminal revoked conditions (disabled device / no active token).
-    if (status.device.status === "disabled" || !status.health.hasActiveToken) {
+    dispatch({ type: "STATUS_RECEIVED" });
+    const assembledPhase = dispatch({ type: "CONTEXT_ASSEMBLED" });
+    try {
+      const bootstrapResult = executeRuntimeBootstrap({
+        credentials,
+        status,
+        bootstrapId,
+        assembledPhase,
+        configManager: configManagerRef.current,
+        store,
+      });
+      orchestrationSessionRef.current.recordStatusKey(bootstrapResult.statusKey);
+      setContext(bootstrapResult.context);
+    } catch (error) {
+      if (error instanceof RuntimeContextValidationError) {
+        handleRevoked();
+        return;
+      }
+      throw error;
+    }
+    heartbeatStopped.current = false;
+    scheduleHeartbeat(0);
+    dispatch({ type: "HEARTBEAT_STARTED" });
+    if (isBlockedRole(status.device.role)) {
+      dispatch({ type: "RUN_BLOCKED" });
+    }
+  }, [
+    bootstrapId,
+    credentials,
+    dispatch,
+    handleRevoked,
+    phase,
+    scheduleHeartbeat,
+    statusQuery.data,
+    statusQuery.error,
+    store,
+  ]);
+
+  // RUNTIME-RECONCILIATION-ARCHITECTURE-1 — Reconciliation is event-driven (status change only).
+  useEffect(() => {
+    if (!reconciliationMayExecute(phase)) return;
+    if (!statusQuery.data) return;
+
+    if (statusQuery.error && isDeviceAuthError(statusQuery.error)) {
       handleRevoked();
       return;
     }
 
-    if (!context) {
-      dispatch({ type: "STATUS_RECEIVED" }); // → context_ready
-      const fingerprint = collectRuntimeFingerprint(bootstrapId);
-      const assembledPhase = dispatch({ type: "CONTEXT_ASSEMBLED" }); // → heartbeat_active
-      try {
-        const instance = runtimeContextFactory.resolve({
-          credentials,
-          status,
-          bootstrapId,
-        });
-        const runtimeConfiguration = runtimeContextFactory.loadConfiguration(
-          status,
-          configManagerRef.current
-        );
-        const snapshot = configManagerRef.current.getSnapshot();
-        const nextContext = runtimeContextFactory.buildRuntimeContext({
-          instance,
-          bootstrapId,
-          phase: assembledPhase,
-          runtimeHealth: status.health,
-          fingerprint,
-          runtimeConfiguration,
-          lastAppliedVersion: snapshot.lastAppliedVersion,
-        });
-        store.replaceSnapshot(instance, "bootstrap");
-        setContext(withStoreInstance(nextContext, store));
-      } catch (error) {
-        if (error instanceof RuntimeContextValidationError) {
-          handleRevoked();
-          return;
-        }
-        throw error;
-      }
-      heartbeatStopped.current = false;
-      scheduleHeartbeat(0);
-      const runningPhase = dispatch({ type: "HEARTBEAT_STARTED" }); // → running
-      if (isBlockedRole(status.device.role)) {
-        dispatch({ type: "RUN_BLOCKED" }); // running → blocked
-      } else {
-        void runningPhase;
-      }
-      return;
+    const status = statusQuery.data;
+    if (!assertStatusAllowed(status, handleRevoked)) return;
+
+    const currentContext = contextRef.current;
+    if (!currentContext) return;
+
+    const reconcileResult = executeRuntimeReconciliation({
+      credentials,
+      status,
+      currentContext,
+      lastStatusKey: orchestrationSessionRef.current.getLastStatusKey(),
+      configManager: configManagerRef.current,
+      store,
+    });
+
+    orchestrationSessionRef.current.recordStatusKey(reconcileResult.statusKey);
+
+    if (reconcileResult.kind === "published") {
+      setContext(reconcileResult.context);
     }
 
-    // Already running: reconcile reloadable/dynamic fields only. No lifecycle jump.
-    if (configManagerRef.current.detectVersionChange(status.configVersion)) {
-      setContext((prev) => {
-        if (!prev) return prev;
-        const reloaded = runtimeContextFactory.applyConfigurationReload(
-          prev,
-          status,
-          credentials,
-          configManagerRef.current
-        );
-        store.replaceSnapshot(reloaded.instance, "configuration_reload");
-        return withStoreInstance(reloaded, store);
-      });
-    } else {
-      setContext((prev) => {
-        if (!prev) return prev;
-        const currentInstance = store.getCurrentSnapshot() ?? prev.instance;
-        const refreshed = runtimeContextFactory.refresh(
-          { credentials, status, bootstrapId: prev.bootstrap.bootstrapId },
-          currentInstance
-        );
-        store.replaceSnapshot(refreshed, "manual_refresh");
-        return withStoreInstance(
-          {
-            ...prev,
-            runtimeStatus: status.health,
-            identity: { ...prev.identity, displayName: refreshed.identity.displayIdentity },
-          },
-          store
-        );
-      });
-    }
-
-    // Recover from degraded when a fresh status arrives.
     if (wasDegradedRef.current && phaseRef.current !== "degraded") {
       reconnectCount.current += 1;
       setReconnecting(true);
@@ -350,15 +353,13 @@ export function useRuntimeOrchestrator(
       dispatch({ type: "RUN_BLOCKED" });
     }
   }, [
-    bootstrapId,
-    context,
     credentials,
     dispatch,
     handleRevoked,
-    scheduleHeartbeat,
+    phase,
+    retryToken,
     statusQuery.data,
     statusQuery.error,
-    retryToken,
     store,
   ]);
 
@@ -385,6 +386,7 @@ export function useRuntimeOrchestrator(
 
   const unpair = useCallback(() => {
     stopHeartbeat();
+    orchestrationSessionRef.current.reset();
     configManagerRef.current.dispose();
     categoryFilterManagerRef.current.dispose();
     densityManagerRef.current.dispose();
@@ -395,7 +397,7 @@ export function useRuntimeOrchestrator(
     dispatch({ type: "AUTH_REVOKED" });
     dispatch({ type: "PAIRING_REDIRECTED" });
     spaNavigate("/screen/pair", { replace: true });
-  }, [dispatch, stopHeartbeat]);
+  }, [dispatch, stopHeartbeat, store]);
 
   // The exposed context always carries the authoritative phase (no duplicate state).
   const exposedContext = useMemo<OperationalScreenRuntimeContext | null>(() => {
@@ -585,8 +587,9 @@ export function useRuntimeOrchestrator(
   }, [statusQuery]);
 
   /**
-   * Shared status refetch transport. Post-refetch semantics diverge in the status
-   * effect: config version change → applyConfigurationReload; otherwise → refresh.
+   * Shared status refetch transport. Post-refetch semantics diverge in the
+   * reconciliation effect: config version change → applyConfigurationReload;
+   * otherwise → refresh only when status reconciliation key changed.
    * Distinct public contracts (RuntimeActions) are preserved intentionally.
    */
   const refresh = refetchRuntimeStatus;
