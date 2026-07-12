@@ -105,6 +105,6 @@ export function FleetScreenCard({
           {isAr ? "الاعتماد" : "Credential"}
         </Button>
       </div>
-    </div>
+    </article>
   );
 }
