@@ -11,8 +11,12 @@ import {
   FleetScreenTableHeader,
   FleetScreenTableRow,
 } from "@/components/screen-management/FleetScreenTableRow";
-import { ScreenCredentialLifecycleSheet } from "@/components/screen-management/ScreenCredentialLifecycleSheet";
-import { ScreenSettingsSheet } from "@/components/screen-management/ScreenSettingsSheet";
+import { ScreenDetailsSheet } from "@/components/screen-management/ScreenDetailsSheet";
+import {
+  resolveAccessFocusFromManageAction,
+  resolveDetailsTabFromManageAction,
+  type ScreenDetailsTab,
+} from "@/lib/screen-management/screenDetailsPresentation";
 import { VirtualizedFleetGrid } from "@/components/screen-management/VirtualizedFleetGrid";
 import { VirtualizedFleetTable } from "@/components/screen-management/VirtualizedFleetTable";
 import { RestaurantKpiCard, RestaurantKpiGridSkeleton } from "@/components/dashboard/RestaurantKpiCard";
@@ -115,9 +119,9 @@ export function ScreenManagementWorkspacePanel({
   const { isAuthenticated, authPending } = useAuth();
   const enabled = restaurantQueriesEnabled(authPending, isAuthenticated, restaurantId);
 
-  const [settingsScreenId, setSettingsScreenId] = useState<string | null>(null);
-  const [lifecycleScreenId, setLifecycleScreenId] = useState<string | null>(null);
-  const [lifecycleFocus, setLifecycleFocus] = useState<FleetScreenManageAction | null>(null);
+  const [detailsScreenId, setDetailsScreenId] = useState<string | null>(null);
+  const [detailsTab, setDetailsTab] = useState<ScreenDetailsTab>("display");
+  const [accessFocus, setAccessFocus] = useState<FleetScreenManageAction | null>(null);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [stateFilter, setStateFilter] = useState<OperatorFleetFilter>("all");
@@ -154,7 +158,7 @@ export function ScreenManagementWorkspacePanel({
     [fleetQuery.items, stateFilter]
   );
 
-  const lifecycleScreen = fleetQuery.items.find((s) => s.screenId === lifecycleScreenId);
+  const detailsScreen = fleetQuery.items.find((s) => s.screenId === detailsScreenId);
 
   const counts = useMemo(() => {
     const kpis = fleetQuery.kpis;
@@ -176,9 +180,22 @@ export function ScreenManagementWorkspacePanel({
     roleFilter === "all" &&
     search.trim() === "";
 
+  const openDetails = (
+    screenId: string,
+    tab: ScreenDetailsTab,
+    focus: FleetScreenManageAction | null = null
+  ) => {
+    setDetailsScreenId(screenId);
+    setDetailsTab(tab);
+    setAccessFocus(focus);
+  };
+
   const openManage = (screenId: string, action: FleetScreenManageAction) => {
-    setLifecycleFocus(action);
-    setLifecycleScreenId(screenId);
+    openDetails(
+      screenId,
+      resolveDetailsTabFromManageAction(action),
+      resolveAccessFocusFromManageAction(action)
+    );
   };
 
   const clearFilters = () => {
@@ -343,7 +360,7 @@ export function ScreenManagementWorkspacePanel({
               screen={screen}
               language={language}
               categorySummary={categorySummaryFor(screen.screenId, screen.role)}
-              onSettings={setSettingsScreenId}
+              onSettings={(id) => openDetails(id, "display")}
               onManage={openManage}
             />
           )}
@@ -364,7 +381,7 @@ export function ScreenManagementWorkspacePanel({
                 screen={screen}
                 language={language}
                 categorySummary={categorySummaryFor(screen.screenId, screen.role)}
-                onSettings={setSettingsScreenId}
+                onSettings={(id) => openDetails(id, "display")}
                 onManage={openManage}
               />
             )}
@@ -378,31 +395,28 @@ export function ScreenManagementWorkspacePanel({
         </div>
       ) : null}
 
-      <ScreenSettingsSheet
-        open={settingsScreenId != null}
-        onOpenChange={(open) => !open && setSettingsScreenId(null)}
-        screenId={settingsScreenId}
-        restaurantId={restaurantId}
-        language={language}
-      />
-
-      <ScreenCredentialLifecycleSheet
-        open={lifecycleScreenId != null}
+      <ScreenDetailsSheet
+        open={detailsScreenId != null}
         onOpenChange={(open) => {
           if (!open) {
-            setLifecycleScreenId(null);
-            setLifecycleFocus(null);
+            setDetailsScreenId(null);
+            setAccessFocus(null);
           }
         }}
-        screenId={lifecycleScreenId}
-        screen={lifecycleScreen ?? null}
-        displayName={lifecycleScreen?.displayName ?? ""}
+        screenId={detailsScreenId}
+        screen={detailsScreen ?? null}
         restaurantId={restaurantId}
         language={language}
-        initialFocus={lifecycleFocus}
+        initialTab={detailsTab}
+        accessFocus={accessFocus}
+        categorySummary={
+          detailsScreen
+            ? categorySummaryFor(detailsScreen.screenId, detailsScreen.role)
+            : null
+        }
         onDeleted={() => {
-          setLifecycleScreenId(null);
-          setLifecycleFocus(null);
+          setDetailsScreenId(null);
+          setAccessFocus(null);
         }}
       />
     </OperationalWorkspaceShell>

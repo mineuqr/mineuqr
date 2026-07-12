@@ -10,12 +10,14 @@ function read(rel: string): string {
 
 describe("SCREEN-CREDENTIAL-GOVERNANCE-1 client guards", () => {
   it("lifecycle sheet uses server-rendered QR without client secret handling", () => {
-    const sheet = read("client/src/components/screen-management/ScreenCredentialLifecycleSheet.tsx");
-    expect(sheet).toContain("recoveryQrSvg");
-    expect(sheet).toContain("dangerouslySetInnerHTML");
-    expect(sheet).not.toContain("QRCodeSVG");
-    expect(sheet).not.toContain(".secret");
-    expect(sheet).not.toContain("qrPayload");
+    const panel = read("client/src/components/screen-management/ScreenAccessTabPanel.tsx");
+    const qrPresentation = read("client/src/components/screen-management/screenAccessPresentation.tsx");
+    expect(panel).toContain("recoveryQrSvg");
+    expect(qrPresentation).toContain("dangerouslySetInnerHTML");
+    expect(panel).not.toContain("QRCodeSVG");
+    expect(panel).not.toContain(".secret");
+    expect(panel).not.toContain("qrPayload");
+    expect(qrPresentation).not.toContain("QRCodeSVG");
   });
 
   it("provisioning panel uses server-rendered recovery QR", () => {

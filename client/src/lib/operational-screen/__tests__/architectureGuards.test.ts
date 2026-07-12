@@ -267,7 +267,7 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
     expect(diagnostics).not.toContain("getRoleCapabilities");
     expect(fleetCard).toContain("onManage");
     expect(read("client/src/components/screen-management/ScreenManagementWorkspacePanel.tsx")).toContain(
-      "ScreenCredentialLifecycleSheet"
+      "ScreenDetailsSheet"
     );
     expect(orchestrator).toContain("runtimeCapabilities");
     expect(orchestrator).toContain("mergeCapabilityIntoHealth");
@@ -304,7 +304,7 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
   });
 
   it("BUGFIX-F009 — screen settings messaging matches runtime behavior", () => {
-    const sheet = read("client/src/components/screen-management/ScreenSettingsSheet.tsx");
+    const sheet = read("client/src/components/screen-management/ScreenDisplayTabPanel.tsx");
     const messaging = read("client/src/lib/screen-management/screenSettingsRuntimeMessaging.ts");
     const screenConfig = read("server/operational-device/domain/screenConfig.ts");
 

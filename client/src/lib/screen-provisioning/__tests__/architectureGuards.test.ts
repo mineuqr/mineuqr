@@ -28,7 +28,7 @@ describe("SCREEN-PROVISIONING-WORKSPACE-1 architecture guards", () => {
 
   it("screen management hosts credential lifecycle actions", () => {
     const panel = read("client/src/components/screen-management/ScreenManagementWorkspacePanel.tsx");
-    expect(panel).toContain("ScreenCredentialLifecycleSheet");
+    expect(panel).toContain("ScreenDetailsSheet");
     expect(panel).not.toContain("navigateFleetProvisioning");
   });
 
@@ -60,9 +60,9 @@ describe("SCREEN-PROVISIONING-WORKSPACE-1 architecture guards", () => {
     expect(status).not.toContain("resolveProvisioning");
   });
 
-  it("BUGFIX-F003 — fleet status uses lifecycle sheet not provisioning rotate", () => {
+  it("BUGFIX-F003 — fleet status uses details sheet not provisioning rotate", () => {
     const fleet = read("client/src/components/screen-management/ScreenManagementWorkspacePanel.tsx");
-    expect(fleet).toContain("ScreenCredentialLifecycleSheet");
+    expect(fleet).toContain("ScreenDetailsSheet");
     expect(fleet).not.toContain('navigateFleetProvisioning(id, "status")');
   });
 
