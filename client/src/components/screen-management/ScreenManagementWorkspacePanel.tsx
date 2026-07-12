@@ -1,7 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { VerificationRequiredPanel } from "@/components/auth/VerificationRequiredPanel";
 import { OperationalWorkspaceShell } from "@/components/operational-workspace/OperationalWorkspaceShell";
-import { OperationsBar } from "@/components/operational-workspace/OperationsBar";
 import { WorkspaceFilters } from "@/components/operational-workspace/WorkspaceFilters";
 import {
   FleetScreenCard,
@@ -264,21 +263,6 @@ export function ScreenManagementWorkspacePanel({
             />
           </>
         )
-      }
-      operationsBar={
-        <OperationsBar
-          items={[
-            { id: "total", label: isAr ? "إجمالي الشاشات" : "Total screens", value: counts.total },
-            { id: "online", label: isAr ? "متصل الآن" : "Online now", value: counts.online, tone: "success" },
-            { id: "offline", label: isAr ? "غير متصل" : "Offline", value: counts.offline, tone: counts.offline > 0 ? "warning" : "default" },
-            {
-              id: "needs_attention",
-              label: isAr ? "يحتاج انتباه" : "Needs attention",
-              value: counts.needsAttention,
-              tone: counts.needsAttention > 0 ? "warning" : "default",
-            },
-          ]}
-        />
       }
       filters={
         <div className="flex flex-col gap-2.5">

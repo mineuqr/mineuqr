@@ -18,6 +18,13 @@ describe("SCREEN-FLEET-SCALE-1 client architecture guards", () => {
     expect(configs).toContain("management.list.useQuery");
   });
 
+  it("SCREEN-MANAGEMENT-INFORMATION-HIERARCHY-1 — workspace has one KPI section", () => {
+    const panel = read("client/src/components/screen-management/ScreenManagementWorkspacePanel.tsx");
+    expect(panel).toContain("RestaurantKpiCard");
+    expect(panel).not.toContain("OperationsBar");
+    expect(panel).not.toContain("operationsBar=");
+  });
+
   it("fleet cards consume read model only", () => {
     const card = read("client/src/components/screen-management/FleetScreenCard.tsx");
     expect(card).toContain("FleetScreenReadModel");
