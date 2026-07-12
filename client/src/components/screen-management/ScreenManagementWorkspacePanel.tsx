@@ -7,9 +7,14 @@ import {
   FleetScreenCard,
   type FleetScreenManageAction,
 } from "@/components/screen-management/FleetScreenCard";
+import {
+  FleetScreenTableHeader,
+  FleetScreenTableRow,
+} from "@/components/screen-management/FleetScreenTableRow";
 import { ScreenCredentialLifecycleSheet } from "@/components/screen-management/ScreenCredentialLifecycleSheet";
 import { ScreenSettingsSheet } from "@/components/screen-management/ScreenSettingsSheet";
 import { VirtualizedFleetGrid } from "@/components/screen-management/VirtualizedFleetGrid";
+import { VirtualizedFleetTable } from "@/components/screen-management/VirtualizedFleetTable";
 import { RestaurantKpiCard, RestaurantKpiGridSkeleton } from "@/components/dashboard/RestaurantKpiCard";
 import { RestaurantSectionError } from "@/components/dashboard/RestaurantSectionStates";
 import { Button } from "@/components/ui/button";
@@ -21,7 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { SCREEN_TYPE_OPTIONS, presenceLabel } from "@/lib/operational-screen/screenLabels";
+import { SCREEN_TYPE_OPTIONS } from "@/lib/operational-screen/screenLabels";
 import {
   countNeedsAttention,
   formatCategorySummary,
@@ -39,6 +44,65 @@ import { LayoutGrid, List, Loader2, Monitor, Plus, RefreshCw } from "lucide-reac
 import { useMemo, useState } from "react";
 
 type ViewMode = "grid" | "table";
+
+function FleetEmptyState({
+  isAr,
+  restaurantId,
+}: {
+  isAr: boolean;
+  restaurantId: number;
+}) {
+  return (
+    <div
+      className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed py-14 text-center"
+      data-fleet-state="empty"
+    >
+      <Monitor className="h-10 w-10 text-muted-foreground" />
+      <div className="max-w-md space-y-1.5">
+        <p className="text-base font-medium">{isAr ? "لا توجد شاشات بعد" : "No screens yet"}</p>
+        <p className="text-sm text-muted-foreground">
+          {isAr
+            ? "أنشئ شاشة لربط شاشة مطبخ أو استلام على جهازك."
+            : "Create a screen to connect a kitchen or service display on your device."}
+        </p>
+      </div>
+      <Button onClick={() => navigateToProvisioning({ restaurantId, mode: "create" })}>
+        <Plus className="mr-2 h-4 w-4" />
+        {isAr ? "إنشاء شاشة" : "Create screen"}
+      </Button>
+    </div>
+  );
+}
+
+function FleetFilterEmptyState({
+  isAr,
+  onClear,
+}: {
+  isAr: boolean;
+  onClear: () => void;
+}) {
+  return (
+    <div
+      className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed py-14 text-center"
+      data-fleet-state="filter-empty"
+    >
+      <p className="text-sm text-muted-foreground">
+        {isAr ? "لا توجد شاشات مطابقة للفلاتر." : "No screens match these filters."}
+      </p>
+      <Button variant="outline" size="sm" onClick={onClear}>
+        {isAr ? "مسح الفلاتر" : "Clear filters"}
+      </Button>
+    </div>
+  );
+}
+
+function FleetLoadingState() {
+  return (
+    <div className="flex justify-center py-14" data-fleet-state="loading">
+      <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" aria-label="Loading" />
+    </div>
+  );
+}
 
 export function ScreenManagementWorkspacePanel({
   restaurantId,
@@ -117,6 +181,20 @@ export function ScreenManagementWorkspacePanel({
     setLifecycleScreenId(screenId);
   };
 
+  const clearFilters = () => {
+    setStateFilter("all");
+    setRoleFilter("all");
+    setSearch("");
+  };
+
+  const categorySummaryFor = (screenId: string, role: (typeof filteredItems)[number]["role"]) =>
+    formatCategorySummary(
+      role,
+      visibleCategoryIdsByScreenId.get(screenId),
+      categoryNameById,
+      isAr
+    );
+
   if (fleetQuery.error && isEmailNotVerifiedError(fleetQuery.error)) {
     return <VerificationRequiredPanel variant="operations" />;
   }
@@ -186,7 +264,7 @@ export function ScreenManagementWorkspacePanel({
         />
       }
       filters={
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2.5">
           <div className="flex flex-wrap items-center gap-2">
             <Input
               placeholder={isAr ? "بحث بالاسم أو الدور..." : "Search name or role..."}
@@ -207,11 +285,13 @@ export function ScreenManagementWorkspacePanel({
                 ))}
               </SelectContent>
             </Select>
-            <div className="flex gap-1">
+            <div className="flex gap-1" role="group" aria-label={isAr ? "عرض الأسطول" : "Fleet view"}>
               <Button
                 variant={viewMode === "grid" ? "default" : "outline"}
                 size="sm"
                 onClick={() => setViewMode("grid")}
+                aria-pressed={viewMode === "grid"}
+                aria-label={isAr ? "عرض البطاقات" : "Card view"}
               >
                 <LayoutGrid className="h-4 w-4" />
               </Button>
@@ -219,6 +299,8 @@ export function ScreenManagementWorkspacePanel({
                 variant={viewMode === "table" ? "default" : "outline"}
                 size="sm"
                 onClick={() => setViewMode("table")}
+                aria-pressed={viewMode === "table"}
+                aria-label={isAr ? "عرض الجدول" : "Table view"}
               >
                 <List className="h-4 w-4" />
               </Button>
@@ -240,34 +322,17 @@ export function ScreenManagementWorkspacePanel({
           onRetry={() => void fleetQuery.refetch()}
         />
       ) : fleetQuery.isLoading ? (
-        <div className="flex justify-center py-16">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
+        <FleetLoadingState />
       ) : isEmptyFleet ? (
-        <div className="flex flex-col items-center justify-center gap-4 py-20 text-center">
-          <Monitor className="h-12 w-12 text-muted-foreground" />
-          <div className="max-w-md space-y-2">
-            <p className="text-lg font-medium">{isAr ? "لا توجد شاشات بعد" : "No screens yet"}</p>
-            <p className="text-sm text-muted-foreground">
-              {isAr
-                ? "أنشئ شاشة لربط شاشة مطبخ أو استلام على جهازك."
-                : "Create a screen to connect a kitchen or service display on your device."}
-            </p>
-          </div>
-          <Button onClick={() => navigateToProvisioning({ restaurantId, mode: "create" })}>
-            <Plus className="mr-2 h-4 w-4" />
-            {isAr ? "إنشاء شاشة" : "Create screen"}
-          </Button>
-        </div>
+        <FleetEmptyState isAr={isAr} restaurantId={restaurantId} />
       ) : filteredItems.length === 0 ? (
-        <p className="py-16 text-center text-muted-foreground">
-          {isAr ? "لا توجد شاشات مطابقة للفلاتر." : "No screens match these filters."}
-        </p>
+        <FleetFilterEmptyState isAr={isAr} onClear={clearFilters} />
       ) : viewMode === "grid" ? (
         <VirtualizedFleetGrid
           items={filteredItems}
           columns={3}
-          estimateRowHeight={240}
+          estimateRowHeight={200}
+          gap={12}
           className="w-full"
           getKey={(s) => s.screenId}
           onEndReached={() => {
@@ -277,47 +342,38 @@ export function ScreenManagementWorkspacePanel({
             <FleetScreenCard
               screen={screen}
               language={language}
-              categorySummary={formatCategorySummary(
-                screen.role,
-                visibleCategoryIdsByScreenId.get(screen.screenId),
-                categoryNameById,
-                isAr
-              )}
+              categorySummary={categorySummaryFor(screen.screenId, screen.role)}
               onSettings={setSettingsScreenId}
               onManage={openManage}
             />
           )}
         />
       ) : (
-        <div className="rounded-lg border" data-virtualized="fleet-table-wrapper">
-          <VirtualizedFleetGrid
+        <div className="overflow-x-auto rounded-xl border" data-virtualized="fleet-table-wrapper">
+          <VirtualizedFleetTable
             items={filteredItems}
-            columns={1}
-            estimateRowHeight={72}
-            className="w-full"
+            rowHeight={56}
+            className="min-w-[720px] w-full"
             getKey={(s) => s.screenId}
+            header={<FleetScreenTableHeader language={language} />}
             onEndReached={() => {
               if (fleetQuery.hasMore && !fleetQuery.isLoadingMore) void fleetQuery.loadMore();
             }}
-            renderItem={(screen) => (
-              <div className="flex items-center justify-between border-b px-4 py-3 text-sm">
-                <div>
-                  <p className="font-medium">{screen.displayName}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {presenceLabel(screen.healthSummary.presence, language)}
-                  </p>
-                </div>
-                <Button size="sm" variant="ghost" onClick={() => setSettingsScreenId(screen.screenId)}>
-                  {isAr ? "الإعدادات" : "Settings"}
-                </Button>
-              </div>
+            renderRow={(screen) => (
+              <FleetScreenTableRow
+                screen={screen}
+                language={language}
+                categorySummary={categorySummaryFor(screen.screenId, screen.role)}
+                onSettings={setSettingsScreenId}
+                onManage={openManage}
+              />
             )}
           />
         </div>
       )}
 
       {fleetQuery.isLoadingMore ? (
-        <div className="flex justify-center py-4">
+        <div className="flex justify-center py-3" data-fleet-state="loading-more">
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
         </div>
       ) : null}

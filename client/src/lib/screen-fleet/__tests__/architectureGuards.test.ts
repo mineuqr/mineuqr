@@ -32,6 +32,19 @@ describe("SCREEN-FLEET-SCALE-1 client architecture guards", () => {
     expect(grid).toContain('data-virtualized="fleet-grid"');
   });
 
+  it("UX-1B — fleet table view uses VirtualizedFleetTable with shared status model", () => {
+    const panel = read("client/src/components/screen-management/ScreenManagementWorkspacePanel.tsx");
+    const table = read("client/src/components/screen-management/VirtualizedFleetTable.tsx");
+    const row = read("client/src/components/screen-management/FleetScreenTableRow.tsx");
+    const presentation = read("client/src/lib/screen-management/operatorFleetPresentation.ts");
+    expect(panel).toContain("VirtualizedFleetTable");
+    expect(panel).toContain("FleetScreenTableRow");
+    expect(table).toContain('data-virtualized="fleet-table"');
+    expect(row).toContain("FleetScreenManageMenu");
+    expect(presentation).toContain("resolveOperatorFleetStatus");
+    expect(presentation).toContain("operatorFleetStatusPillClass");
+  });
+
   it("client FleetQueryEngine delegates to server", () => {
     const engine = read("client/src/lib/screen-fleet/FleetQueryEngine.ts");
     expect(engine).toContain("class FleetQueryEngine");

@@ -3,7 +3,10 @@ import type { FleetScreenReadModel } from "@/lib/screen-fleet/fleetReadModel";
 import {
   countNeedsAttention,
   formatCategorySummary,
+  formatLastSeen,
   matchesOperatorFleetFilter,
+  operatorFleetStatusLabel,
+  resolveOperatorFleetStatus,
   screenNeedsAttention,
 } from "../operatorFleetPresentation";
 
@@ -81,5 +84,26 @@ describe("operatorFleetPresentation", () => {
       }),
     ];
     expect(countNeedsAttention(screens)).toBe(1);
+  });
+
+  it("resolves a single operator status kind for cards and table", () => {
+    expect(resolveOperatorFleetStatus(baseScreen())).toBe("online");
+    expect(
+      resolveOperatorFleetStatus(
+        baseScreen({
+          healthSummary: { ...baseScreen().healthSummary, presence: "offline" },
+        })
+      )
+    ).toBe("offline");
+    expect(
+      resolveOperatorFleetStatus(
+        baseScreen({
+          healthSummary: { ...baseScreen().healthSummary, hasActiveToken: false },
+          businessReadiness: "pairing_required",
+        })
+      )
+    ).toBe("needs_attention");
+    expect(operatorFleetStatusLabel("needs_attention", "en")).toBe("Needs attention");
+    expect(formatLastSeen(null, "en")).toBe("Not yet connected");
   });
 });

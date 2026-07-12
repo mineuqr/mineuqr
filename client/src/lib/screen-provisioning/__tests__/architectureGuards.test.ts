@@ -19,8 +19,10 @@ describe("SCREEN-PROVISIONING-WORKSPACE-1 architecture guards", () => {
 
   it("fleet cards expose screen access lifecycle via manage menu", () => {
     const card = read("client/src/components/screen-management/FleetScreenCard.tsx");
+    const menu = read("client/src/components/screen-management/FleetScreenManageMenu.tsx");
     expect(card).toContain("onManage");
-    expect(card).toContain("Regenerate Credential");
+    expect(card).toContain("FleetScreenManageMenu");
+    expect(menu).toContain("Regenerate Credential");
     expect(card).not.toContain("onProvision");
   });
 
