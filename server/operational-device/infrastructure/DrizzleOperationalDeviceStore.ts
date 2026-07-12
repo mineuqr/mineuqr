@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNotNull } from "drizzle-orm";
 import { getDb } from "../../db";
 import { readMysqlAffectedRows } from "../../db/mysqlAffectedRows";
 import { operationalDevices, operationalDeviceTokens } from "../../../drizzle/schema";
@@ -258,14 +258,21 @@ export class DrizzleOperationalDeviceStore implements OperationalDeviceStore {
     return row ? mapToken(row) : null;
   }
 
-  async consumeActivationCode(tokenId: string): Promise<void> {
+  async consumeActivationCode(tokenId: string): Promise<boolean> {
     const db = await getDb();
-    if (!db) return;
+    if (!db) return false;
 
-    await db
+    const result = await db
       .update(operationalDeviceTokens)
       .set({ activationCodeHash: null, activationCodeExpiresAt: null })
-      .where(eq(operationalDeviceTokens.tokenId, tokenId));
+      .where(
+        and(
+          eq(operationalDeviceTokens.tokenId, tokenId),
+          isNotNull(operationalDeviceTokens.activationCodeHash)
+        )
+      );
+
+    return readMysqlAffectedRows(result) > 0;
   }
 
   async updateTokenSecret(tokenId: string, secretHash: string, now: string): Promise<void> {

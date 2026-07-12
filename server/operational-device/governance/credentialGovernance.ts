@@ -33,4 +33,12 @@ export const CREDENTIAL_GOVERNANCE = {
     authenticates: false,
     validatesSessions: false,
   },
+  pairingMaterial: {
+    field: "activationCodeHash",
+    owner: "ScreenPairingService",
+    purpose: "one-time bootstrap into permanent credentials only",
+    authenticates: false,
+    runtimeCredential: false,
+    postRedeemExposure: false,
+  },
 } as const;

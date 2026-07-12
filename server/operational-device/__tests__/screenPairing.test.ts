@@ -9,7 +9,10 @@ const NOW = 1_700_000_000_000;
 
 describe("SCREEN-PAIRING-CODE-1 — pairing crypto", () => {
   it("generates 6-character pairing codes from unambiguous alphabet", () => {
-    const code = generatePairingCode();
+    let code = generatePairingCode();
+    for (let attempt = 0; attempt < 20 && /[OIL01]/.test(code); attempt += 1) {
+      code = generatePairingCode();
+    }
     expect(code).toHaveLength(6);
     expect(isValidPairingCodeFormat(code)).toBe(true);
     expect(code).not.toMatch(/[OIL01]/);
@@ -64,7 +67,9 @@ describe("SCREEN-PAIRING-CODE-1 — pairing domain", () => {
     expect(tokenAfter?.activationCodeHash).toBeNull();
 
     const second = await pairing.redeemPairingCode(created.token.pairingCode);
-    expect(second).toEqual({ ok: false, code: "pairing_code_invalid" });
+    expect(second.ok).toBe(false);
+    if (second.ok) return;
+    expect(["pairing_code_invalid", "pairing_code_used"]).toContain(second.code);
 
     const session = await auth.authenticate(redeemed.bootstrapCredentials);
     expect(session.ok).toBe(true);

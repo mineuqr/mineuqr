@@ -160,6 +160,16 @@ export const OPS_EVENT = {
 
   // SESSION-AGGREGATES-1 Phase B
   session_aggregate_reader_fallback: "session_aggregate_reader_fallback",
+
+  // SCREEN-PAIRING-CODE-GOVERNANCE-1 — pairing platform audit
+  pairing_code_issued: "pairing_code_issued",
+  pairing_code_redeemed: "pairing_code_redeemed",
+  pairing_redeem_failed: "pairing_redeem_failed",
+  pairing_rate_limit_exceeded: "pairing_rate_limit_exceeded",
+  pairing_credential_regenerated: "pairing_credential_regenerated",
+  pairing_screen_deleted: "pairing_screen_deleted",
+  pairing_revoked: "pairing_revoked",
+  operational_screen_created: "operational_screen_created",
 } as const;
 
 export type OpsEventType = (typeof OPS_EVENT)[keyof typeof OPS_EVENT];

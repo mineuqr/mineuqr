@@ -132,14 +132,15 @@ export class InMemoryOperationalDeviceStore implements OperationalDeviceStore {
     );
   }
 
-  async consumeActivationCode(tokenId: string): Promise<void> {
+  async consumeActivationCode(tokenId: string): Promise<boolean> {
     const token = this.tokens.get(tokenId);
-    if (!token) return;
+    if (!token || token.activationCodeHash == null) return false;
     this.tokens.set(tokenId, {
       ...token,
       activationCodeHash: null,
       activationCodeExpiresAt: null,
     });
+    return true;
   }
 
   async updateTokenSecret(tokenId: string, secretHash: string, now: string): Promise<void> {

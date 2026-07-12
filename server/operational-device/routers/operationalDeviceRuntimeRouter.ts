@@ -12,6 +12,8 @@ import { executeDeviceOrderAction } from "../services/DeviceOrderExecutionServic
 import { operationalDeviceComposition } from "../operationalDeviceComposition";
 import { summarizeDeviceHealth } from "../domain/deviceHealth";
 import { resolveScreenConfigVersion } from "../domain/screenConfigVersion";
+import { enforcePairingRedeemRateLimit } from "../governance/pairingRateLimits";
+import { getClientIp } from "../../_core/rateLimit";
 
 const authenticateInput = z.object({
   deviceId: z.string().min(8).max(64),
@@ -70,9 +72,18 @@ export const operationalDeviceRuntimeRouter = router({
       };
     }),
 
-  redeemPairingCode: publicProcedure.input(redeemPairingCodeInput).mutation(async ({ input }) => {
+  redeemPairingCode: publicProcedure.input(redeemPairingCodeInput).mutation(async ({ input, ctx }) => {
+    enforcePairingRedeemRateLimit(ctx);
+
     const result = await operationalDeviceComposition.pairingService.redeemPairingCode(
-      input.pairingCode
+      input.pairingCode,
+      {
+        audit: {
+          correlationId: ctx.correlationId,
+          ip: getClientIp(ctx.req),
+          procedure: "operationalDevice.runtime.redeemPairingCode",
+        },
+      }
     );
     if (!result.ok) {
       throw new TRPCError({ code: "UNAUTHORIZED", message: result.code });

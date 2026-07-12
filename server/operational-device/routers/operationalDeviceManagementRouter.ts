@@ -4,6 +4,13 @@ import { verifiedProcedure, router } from "../../_core/trpc";
 import { assertRestaurantAccess } from "../../restaurantAccess";
 import { summarizeDeviceHealth, deriveDevicePresence } from "../domain/deviceHealth";
 import { operationalDeviceComposition } from "../operationalDeviceComposition";
+import {
+  logOperationalScreenCreated,
+  logPairingCodeIssued,
+  logPairingCredentialRegenerated,
+  logPairingRevoked,
+  logPairingScreenDeleted,
+} from "../governance/pairingAudit";
 
 const restaurantInput = z.object({
   restaurantId: z.coerce.number().int().positive(),
@@ -71,6 +78,20 @@ export const operationalDeviceManagementRouter = router({
       role: input.role,
       displayName: input.displayName,
     });
+    logOperationalScreenCreated({
+      correlationId: ctx.correlationId,
+      actorId: ctx.user?.id ?? null,
+      restaurantId: input.restaurantId,
+      deviceId: result.device.deviceId,
+      tokenId: result.token.tokenId,
+    });
+    logPairingCodeIssued({
+      correlationId: ctx.correlationId,
+      actorId: ctx.user?.id ?? null,
+      restaurantId: input.restaurantId,
+      deviceId: result.device.deviceId,
+      tokenId: result.token.tokenId,
+    });
     return presentIssuanceResponse(result.device, result.token);
   }),
 
@@ -81,6 +102,12 @@ export const operationalDeviceManagementRouter = router({
       input.restaurantId
     );
     if (!ok) throw new TRPCError({ code: "NOT_FOUND", message: "Device not found" });
+    logPairingRevoked({
+      correlationId: ctx.correlationId,
+      actorId: ctx.user?.id ?? null,
+      restaurantId: input.restaurantId,
+      deviceId: input.deviceId,
+    });
     return { success: true as const };
   }),
 
@@ -107,6 +134,20 @@ export const operationalDeviceManagementRouter = router({
     if (!device) {
       throw new TRPCError({ code: "NOT_FOUND", message: "Device not found" });
     }
+    logPairingCredentialRegenerated({
+      correlationId: ctx.correlationId,
+      actorId: ctx.user?.id ?? null,
+      restaurantId: input.restaurantId,
+      deviceId: input.deviceId,
+      tokenId: token.tokenId,
+    });
+    logPairingCodeIssued({
+      correlationId: ctx.correlationId,
+      actorId: ctx.user?.id ?? null,
+      restaurantId: input.restaurantId,
+      deviceId: input.deviceId,
+      tokenId: token.tokenId,
+    });
     return presentIssuanceResponse(device, token);
   }),
 
@@ -127,6 +168,20 @@ export const operationalDeviceManagementRouter = router({
     if (!device) {
       throw new TRPCError({ code: "NOT_FOUND", message: "Device not found" });
     }
+    logPairingCredentialRegenerated({
+      correlationId: ctx.correlationId,
+      actorId: ctx.user?.id ?? null,
+      restaurantId: input.restaurantId,
+      deviceId: input.deviceId,
+      tokenId: token.tokenId,
+    });
+    logPairingCodeIssued({
+      correlationId: ctx.correlationId,
+      actorId: ctx.user?.id ?? null,
+      restaurantId: input.restaurantId,
+      deviceId: input.deviceId,
+      tokenId: token.tokenId,
+    });
     return presentIssuanceResponse(device, token);
   }),
 
@@ -165,6 +220,12 @@ export const operationalDeviceManagementRouter = router({
       input.restaurantId
     );
     if (!ok) throw new TRPCError({ code: "NOT_FOUND", message: "Screen not found" });
+    logPairingScreenDeleted({
+      correlationId: ctx.correlationId,
+      actorId: ctx.user?.id ?? null,
+      restaurantId: input.restaurantId,
+      deviceId: input.deviceId,
+    });
     return { success: true as const };
   }),
 
@@ -175,6 +236,12 @@ export const operationalDeviceManagementRouter = router({
       input.restaurantId
     );
     if (!ok) throw new TRPCError({ code: "NOT_FOUND", message: "No active token" });
+    logPairingRevoked({
+      correlationId: ctx.correlationId,
+      actorId: ctx.user?.id ?? null,
+      restaurantId: input.restaurantId,
+      deviceId: input.deviceId,
+    });
     return { success: true as const };
   }),
 

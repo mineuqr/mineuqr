@@ -21,7 +21,7 @@ export type OperationalDeviceStore = {
   revokeAllActiveTokens(deviceId: string, revokedAt: string, status: "revoked" | "rotated"): Promise<number>;
   touchTokenUsage(tokenId: string, lastUsedAt: string): Promise<void>;
   findTokenByActivationCodeHash(hash: string): Promise<OperationalDeviceTokenRecord | null>;
-  consumeActivationCode(tokenId: string): Promise<void>;
+  consumeActivationCode(tokenId: string): Promise<boolean>;
   updateTokenSecret(tokenId: string, secretHash: string, now: string): Promise<void>;
   deleteDevice(deviceId: string): Promise<boolean>;
   updateScreenPresentation(

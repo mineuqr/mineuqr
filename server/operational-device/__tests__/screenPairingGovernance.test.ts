@@ -52,11 +52,13 @@ describe("SCREEN-PAIRING-CODE-1 — architecture guards", () => {
     const entry = read("client/src/pages/screen/OperationalScreenEntry.tsx");
     const orchestrator = read("client/src/lib/operational-screen/useRuntimeOrchestrator.ts");
     const screenEntryUrl = read("client/src/lib/screen-credential-lifecycle/screenEntryUrl.ts");
+    const runtimeRouter = read("server/operational-device/routers/operationalDeviceRuntimeRouter.ts");
 
     expect(entry).toContain("PairingShell");
     expect(entry).not.toContain("/screen/pair");
     expect(orchestrator).toContain('spaNavigate("/screen"');
     expect(orchestrator).not.toContain('/screen/pair"');
     expect(screenEntryUrl).toContain('SCREEN_ENTRY_PATH = "/screen"');
+    expect(runtimeRouter).toContain("enforcePairingRedeemRateLimit");
   });
 });
