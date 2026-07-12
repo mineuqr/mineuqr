@@ -59,8 +59,8 @@ export type IssuedOperationalDeviceToken = {
   deviceId: string;
   issuedAt: string;
   expiresAt: string | null;
-  /** @deprecated Legacy activation codes — new screens use permanent credentials only. */
-  activationCode?: string | null;
+  /** One-time bootstrap voucher — operator-facing; not an authentication credential. */
+  pairingCode: string;
 };
 
 export type OperationalDeviceListItem = OperationalDeviceRecord & {

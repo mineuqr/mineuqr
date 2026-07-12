@@ -213,7 +213,7 @@ export function useRuntimeOrchestrator(
     store.replaceSnapshot(null, "repairing");
     dispatch({ type: "AUTH_REVOKED" });
     dispatch({ type: "PAIRING_REDIRECTED" });
-    spaNavigate("/screen/pair", { replace: true });
+    spaNavigate("/screen", { replace: true });
   }, [dispatch, stopHeartbeat, store]);
 
   const scheduleHeartbeat = useCallback(
@@ -395,7 +395,7 @@ export function useRuntimeOrchestrator(
     store.replaceSnapshot(null, "repairing");
     dispatch({ type: "AUTH_REVOKED" });
     dispatch({ type: "PAIRING_REDIRECTED" });
-    spaNavigate("/screen/pair", { replace: true });
+    spaNavigate("/screen", { replace: true });
   }, [dispatch, stopHeartbeat, store]);
 
   // The exposed context always carries the authoritative phase (no duplicate state).

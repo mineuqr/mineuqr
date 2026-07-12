@@ -1,4 +1,4 @@
-import { readOperationalScreenCredentials } from "@/lib/operational-screen/credentialStore";
+import { useOperationalScreenCredentials } from "@/lib/operational-screen/useOperationalScreenCredentials";
 import { ScreenErrorBoundary } from "@/components/operational-screen/ScreenErrorBoundary";
 import { ScreenRuntimeProvider } from "@/components/operational-screen/ScreenRuntimeProvider";
 import {
@@ -9,9 +9,9 @@ import {
 import { OperationalScreenShell } from "@/components/operational-screen/OperationalScreenShell";
 import { RuntimeRoleHost } from "@/components/operational-screen/RuntimeRoleHost";
 import { ScreenDiagnosticsPanel } from "@/components/operational-screen/ScreenDiagnosticsPanel";
+import { PairingShell } from "@/components/operational-screen/PairingShell";
+import { ScreenPairingProvider } from "@/components/operational-screen/ScreenPairingProvider";
 import { Loader2 } from "lucide-react";
-import { useEffect } from "react";
-import { spaNavigate } from "@/const";
 
 function OperationalScreenRuntime() {
   const { phase, context } = useScreenRuntime();
@@ -51,19 +51,15 @@ function OperationalScreenRuntime() {
 }
 
 export default function OperationalScreenEntry() {
-  const credentials = readOperationalScreenCredentials();
-
-  useEffect(() => {
-    if (!credentials) {
-      spaNavigate("/screen/pair", { replace: true });
-    }
-  }, [credentials]);
+  const credentials = useOperationalScreenCredentials();
 
   if (!credentials) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0b0e14]">
-        <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
-      </div>
+      <ScreenErrorBoundary>
+        <ScreenPairingProvider>
+          <PairingShell />
+        </ScreenPairingProvider>
+      </ScreenErrorBoundary>
     );
   }
 

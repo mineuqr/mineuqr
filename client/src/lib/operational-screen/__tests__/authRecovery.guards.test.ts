@@ -35,7 +35,8 @@ describe("SCREEN-AUTH-RECOVERY-1 architecture guards", () => {
   it("reuses existing credential cleanup and pairing redirect", () => {
     const orchestrator = read("client/src/lib/operational-screen/useRuntimeOrchestrator.ts");
     expect(orchestrator).toContain("clearOperationalScreenCredentials");
-    expect(orchestrator).toContain('spaNavigate("/screen/pair"');
+    expect(orchestrator).toContain('spaNavigate("/screen"');
+    expect(orchestrator).not.toContain('/screen/pair"');
     expect(orchestrator).not.toContain("refreshToken");
     expect(orchestrator).not.toContain("retryCredential");
   });

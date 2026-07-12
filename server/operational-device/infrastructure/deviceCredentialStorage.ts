@@ -21,7 +21,8 @@ export function encryptDeviceSecret(secret: string): string {
 
 /**
  * Decrypts recovery material — SCREEN-CREDENTIAL-GOVERNANCE-1.
- * ONLY ScreenCredentialRecoveryService may call this. Never used for authentication.
+ * ONLY ScreenCredentialRecoveryService and ScreenPairingService may call this.
+ * Never used for runtime authentication.
  */
 export function decryptRecoveryMaterial(ciphertext: string | null | undefined): string | null {
   if (!ciphertext) return null;

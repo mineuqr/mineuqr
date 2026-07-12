@@ -2,6 +2,14 @@
 
 export const OPERATIONAL_SCREEN_CREDENTIAL_KEY = "mineuqr:operational-screen:credentials:v1";
 
+export const OPERATIONAL_SCREEN_CREDENTIALS_CHANGED = "mineuqr:operational-screen:credentials-changed";
+
+function notifyCredentialChange(): void {
+  if (typeof window === "undefined") return;
+  if (typeof window.dispatchEvent !== "function") return;
+  window.dispatchEvent(new Event(OPERATIONAL_SCREEN_CREDENTIALS_CHANGED));
+}
+
 export type OperationalScreenCredentials = {
   deviceId: string;
   tokenId: string;
@@ -50,6 +58,7 @@ export function writeOperationalScreenCredentials(
   };
   if (typeof window !== "undefined") {
     window.localStorage.setItem(OPERATIONAL_SCREEN_CREDENTIAL_KEY, JSON.stringify(record));
+    notifyCredentialChange();
   }
   return record;
 }
@@ -57,5 +66,6 @@ export function writeOperationalScreenCredentials(
 export function clearOperationalScreenCredentials(): void {
   if (typeof window !== "undefined") {
     window.localStorage.removeItem(OPERATIONAL_SCREEN_CREDENTIAL_KEY);
+    notifyCredentialChange();
   }
 }

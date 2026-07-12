@@ -84,7 +84,7 @@ export class OperationalDeviceAuthService {
       return { ok: false, code: "activation_code_invalid" };
     }
 
-    // Recovery material cannot authenticate — use /screen/pair with device credential.
+    // Recovery material cannot authenticate — use pairing code redeem at /screen.
     return { ok: false, code: "activation_code_invalid" };
   }
 

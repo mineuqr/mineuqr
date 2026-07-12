@@ -1,8 +1,7 @@
 import { Check, Copy } from "lucide-react";
 import { useState } from "react";
 import type { ProvisioningHealth } from "@/lib/screen-provisioning/provisioningSessionContract";
-import { getScreenEntryUrl, getScreenLoginUrl } from "@/lib/screen-credential-lifecycle/screenEntryUrl";
-import { Button } from "@/components/ui/button";
+import { getScreenEntryUrl } from "@/lib/screen-credential-lifecycle/screenEntryUrl";
 
 function CopyField({
   label,
@@ -41,15 +40,14 @@ function CopyField({
   );
 }
 
-/** Primary provisioning onboarding — server-rendered recovery QR. */
+/** Primary provisioning onboarding — screen link + pairing code. */
 export function ProvisioningActivationPanel({
   credentials,
   health,
   language,
 }: {
   credentials: {
-    deviceId: string;
-    tokenId: string;
+    pairingCode: string;
     recoveryQrSvg: string;
   };
   health: ProvisioningHealth | null;
@@ -57,7 +55,6 @@ export function ProvisioningActivationPanel({
 }) {
   const isAr = language === "ar";
   const screenUrl = getScreenEntryUrl();
-  const setupUrl = getScreenLoginUrl();
   const copyLabel = isAr ? "نسخ" : "Copy";
   const copiedLabel = isAr ? "تم النسخ" : "Copied";
   const minutesRemaining = health ? Math.max(0, Math.ceil(health.secondsRemaining / 60)) : null;
@@ -68,8 +65,8 @@ export function ProvisioningActivationPanel({
         <h3 className="text-lg font-semibold">{isAr ? "افتح الشاشة على الجهاز" : "Open screen on device"}</h3>
         <p className="text-sm text-muted-foreground">
           {isAr
-            ? "افتح رابط الشاشة على الجهاز. للإعداد الأول، استخدم رابط الإعداد أو امسح رمز QR."
-            : "Open the screen link on your device. For first-time setup, use the setup link or scan the QR code."}
+            ? "افتح رابط الشاشة على الجهاز وأدخل رمز الربط."
+            : "Open the screen link on your device and enter the pairing code."}
         </p>
       </div>
 
@@ -81,23 +78,28 @@ export function ProvisioningActivationPanel({
       />
 
       <CopyField
-        label={isAr ? "رابط الإعداد" : "Setup link"}
-        value={setupUrl}
+        label={isAr ? "رمز الربط" : "Pairing code"}
+        value={credentials.pairingCode}
         copyLabel={copyLabel}
         copiedLabel={copiedLabel}
       />
 
-      <div className="flex flex-col items-center gap-3">
-        <div
-          className="rounded-xl border bg-white p-4 [&>svg]:block"
-          dangerouslySetInnerHTML={{ __html: credentials.recoveryQrSvg }}
-        />
-        <p className="max-w-sm text-center text-xs text-muted-foreground">
-          {isAr
-            ? "امسح رمز QR على الجهاز لربط الشاشة."
-            : "Scan the QR code on your device to connect this screen."}
-        </p>
-      </div>
+      <details className="rounded-lg border border-border/30 bg-muted/5 p-4">
+        <summary className="cursor-pointer text-sm font-medium text-muted-foreground">
+          {isAr ? "رمز QR (اختياري)" : "QR code (optional)"}
+        </summary>
+        <div className="mt-4 flex flex-col items-center gap-3">
+          <div
+            className="rounded-xl border bg-white p-4 [&>svg]:block"
+            dangerouslySetInnerHTML={{ __html: credentials.recoveryQrSvg }}
+          />
+          <p className="max-w-sm text-center text-xs text-muted-foreground">
+            {isAr
+              ? "رمز QR للتوافق — الطريقة الأساسية هي رمز الربط."
+              : "QR for compatibility — pairing code is the primary method."}
+          </p>
+        </div>
+      </details>
 
       {minutesRemaining != null ? (
         <p className="text-center text-xs text-muted-foreground sm:text-start">

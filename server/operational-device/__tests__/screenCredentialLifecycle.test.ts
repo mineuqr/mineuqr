@@ -33,7 +33,7 @@ describe("SCREEN-CREDENTIAL-LIFECYCLE-1", () => {
 
     const token = await store.getToken(created.token.tokenId);
     expect(token?.status).toBe("active");
-    expect(token?.activationCodeHash).toBeNull();
+    expect(token?.activationCodeHash).not.toBeNull();
   });
 
   it("regenerating credential revokes only the previous token", async () => {

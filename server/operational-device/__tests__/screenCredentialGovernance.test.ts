@@ -30,9 +30,11 @@ describe("SCREEN-CREDENTIAL-GOVERNANCE-1", () => {
     expect(source).not.toContain("decryptDeviceSecret");
   });
 
-  it("only ScreenCredentialRecoveryService decrypts recovery material", () => {
+  it("only ScreenCredentialRecoveryService and ScreenPairingService decrypt recovery material", () => {
     const recoverySource = read("server/operational-device/recovery/ScreenCredentialRecoveryService.ts");
+    const pairingSource = read("server/operational-device/pairing/ScreenPairingService.ts");
     expect(recoverySource).toContain("decryptRecoveryMaterial");
+    expect(pairingSource).toContain("decryptRecoveryMaterial");
 
     for (const rel of [
       "server/operational-device/services/OperationalDeviceAuthService.ts",

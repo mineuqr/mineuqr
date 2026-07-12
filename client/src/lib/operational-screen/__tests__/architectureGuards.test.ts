@@ -318,21 +318,15 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
     expect(screenConfig).not.toContain("not applied at runtime yet");
   });
 
-  it("BUGFIX-F010 — pairing uses auth taxonomy with operator-safe messages", () => {
-    const auth = read("server/operational-device/services/OperationalDeviceAuthService.ts");
+  it("BUGFIX-F010 — pairing uses redeem taxonomy with operator-safe messages", () => {
     const pairing = read("client/src/components/operational-screen/PairingShell.tsx");
-    const messages = read("client/src/lib/operational-screen/pairing/pairingAuthMessages.ts");
-    const bootstrap = read("client/src/lib/operational-screen/bootstrapLogic.ts");
+    const messages = read("client/src/lib/operational-screen/pairing/pairingRedeemMessages.ts");
 
-    expect(auth).toContain("resolveCredentialOutcome");
-    expect(auth).toContain('code: "device_disabled"');
-    expect(auth).toContain('code: "token_revoked"');
-    expect(auth).toContain('code: "token_expired"');
-    expect(pairing).toContain("resolvePairingAuthMessage");
+    expect(pairing).toContain("resolvePairingRedeemMessage");
+    expect(pairing).toContain("redeemPairingCode");
     expect(pairing).not.toMatch(/err\.message/);
-    expect(messages).toContain("device_disabled");
-    expect(messages).toContain("token_expired");
-    expect(bootstrap).toContain("token_expired");
+    expect(messages).toContain("pairing_code_invalid");
+    expect(messages).toContain("pairing_code_used");
   });
 
   it("RUNTIME-INSTANCE-CONTEXT-1: runtime context resolved only by RuntimeContextFactory", () => {

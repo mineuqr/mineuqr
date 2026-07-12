@@ -39,6 +39,7 @@ function baseSession(overrides: Partial<ProvisioningSession> = {}): Provisioning
     credentials: {
       deviceId: "device-1",
       tokenId: "token-1",
+      pairingCode: "A7KD92",
       recoveryQrSvg: "<svg></svg>",
     },
     warnings: [],

@@ -119,6 +119,7 @@ export function ProvisioningWorkspacePanel({
       const credentials = {
         deviceId: result.device.deviceId,
         tokenId: result.token.tokenId,
+        pairingCode: result.pairingCode,
         recoveryQrSvg: result.recoveryQrSvg,
       };
       const next = provisioningSessionManager.createSession({
@@ -143,6 +144,7 @@ export function ProvisioningWorkspacePanel({
       const credentials = {
         deviceId: variables.deviceId,
         tokenId: result.token.tokenId,
+        pairingCode: result.pairingCode,
         recoveryQrSvg: result.recoveryQrSvg,
       };
       const existing = session ?? provisioningSessionManager.loadSession(urlState.sessionId ?? "");
@@ -221,7 +223,7 @@ export function ProvisioningWorkspacePanel({
 
   const showActivationPanel =
     !isStatusMode &&
-    Boolean(session?.credentials?.recoveryQrSvg) &&
+    Boolean(session?.credentials?.pairingCode) &&
     !showPendingApproval;
 
   return (
@@ -242,7 +244,7 @@ export function ProvisioningWorkspacePanel({
             : "View this screen's status — read only"
           : isAr
             ? "أنشئ شاشة وافتحها على جهازك باستخدام الرابط أو رمز QR"
-            : "Create a screen and open it on your device using the link or QR code"
+            : "Create a screen and open it on your device using the screen link and pairing code"
       }
       headerAside={
         <div className="flex gap-2">

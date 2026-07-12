@@ -15,6 +15,7 @@ import {
   generateDeviceTokenId,
   hashDeviceSecret,
 } from "../infrastructure/deviceCrypto";
+import { generatePairingCode, hashPairingCode } from "../pairing/pairingCrypto";
 
 export type CreateDeviceResult = {
   device: OperationalDeviceRecord;
@@ -141,6 +142,7 @@ export class OperationalDeviceRegistryService {
   private async issueToken(deviceId: string): Promise<IssuedOperationalDeviceToken> {
     const secret = generateDeviceSecret();
     const tokenId = generateDeviceTokenId();
+    const pairingCode = generatePairingCode();
     const issuedAt = new Date(this.now()).toISOString();
     await this.store.saveToken({
       tokenId,
@@ -153,9 +155,9 @@ export class OperationalDeviceRegistryService {
       revokedAt: null,
       lastUsedAt: null,
       createdAt: issuedAt,
-      activationCodeHash: null,
+      activationCodeHash: hashPairingCode(pairingCode),
       activationCodeExpiresAt: null,
     });
-    return { tokenId, secret, deviceId, issuedAt, expiresAt: null };
+    return { tokenId, secret, deviceId, issuedAt, expiresAt: null, pairingCode };
   }
 }

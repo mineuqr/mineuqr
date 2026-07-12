@@ -3,7 +3,7 @@ export const SCREEN_ENTRY_PATH = "/screen";
 
 const PRODUCTION_SCREEN_ENTRY_URL = "https://www.mineuqr.com/screen";
 
-/** Device-facing screen entry URL — credentials are stored locally after login. */
+/** Device-facing screen entry URL — runtime decides pairing vs active session. */
 export function getScreenEntryUrl(): string {
   if (typeof window !== "undefined") {
     return `${window.location.origin}${SCREEN_ENTRY_PATH}`;
@@ -11,10 +11,7 @@ export function getScreenEntryUrl(): string {
   return PRODUCTION_SCREEN_ENTRY_URL;
 }
 
-/** Screen login path when no stored credential exists. */
+/** @deprecated Use getScreenEntryUrl — /screen is the sole public entry point (SCREEN-PAIRING-CODE-1). */
 export function getScreenLoginUrl(): string {
-  if (typeof window !== "undefined") {
-    return `${window.location.origin}/screen/pair`;
-  }
-  return "https://www.mineuqr.com/screen/pair";
+  return getScreenEntryUrl();
 }

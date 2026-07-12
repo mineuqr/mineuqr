@@ -24,7 +24,7 @@ describe("OperationalDeviceAuthService", () => {
     expect(session?.role).toBe("kitchen_display");
   });
 
-  it("issues permanent credentials without activation codes", async () => {
+  it("issues permanent credentials with pairing codes", async () => {
     const store = new InMemoryOperationalDeviceStore();
     const registry = new OperationalDeviceRegistryService(store, () => 1_700_000_000_000);
 
@@ -34,9 +34,9 @@ describe("OperationalDeviceAuthService", () => {
       displayName: "Kitchen 1",
     });
 
-    expect(created.token.activationCode).toBeUndefined();
+    expect(created.token.pairingCode).toMatch(/^[A-Z2-9]{6}$/);
     const token = await store.getToken(created.token.tokenId);
-    expect(token?.activationCodeHash).toBeNull();
+    expect(token?.activationCodeHash).not.toBeNull();
     expect(token?.secretCiphertext).not.toBeNull();
   });
 

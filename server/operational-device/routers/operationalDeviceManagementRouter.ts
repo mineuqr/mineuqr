@@ -28,7 +28,7 @@ const deviceInput = restaurantInput.extend({
   deviceId: z.string().min(8).max(64),
 });
 
-async function presentRecoveryResponse(
+async function presentIssuanceResponse(
   device: Awaited<ReturnType<typeof operationalDeviceComposition.registryService.createDevice>>["device"],
   token: Awaited<ReturnType<typeof operationalDeviceComposition.registryService.createDevice>>["token"]
 ) {
@@ -39,6 +39,7 @@ async function presentRecoveryResponse(
   return {
     device,
     token: recovery.token,
+    pairingCode: token.pairingCode,
     recoveryQrSvg: recovery.recoveryQrSvg,
   };
 }
@@ -70,7 +71,7 @@ export const operationalDeviceManagementRouter = router({
       role: input.role,
       displayName: input.displayName,
     });
-    return presentRecoveryResponse(result.device, result.token);
+    return presentIssuanceResponse(result.device, result.token);
   }),
 
   disable: verifiedProcedure.input(deviceInput).mutation(async ({ input, ctx }) => {
@@ -106,7 +107,7 @@ export const operationalDeviceManagementRouter = router({
     if (!device) {
       throw new TRPCError({ code: "NOT_FOUND", message: "Device not found" });
     }
-    return presentRecoveryResponse(device, token);
+    return presentIssuanceResponse(device, token);
   }),
 
   regenerateCredential: verifiedProcedure.input(deviceInput).mutation(async ({ input, ctx }) => {
@@ -126,7 +127,7 @@ export const operationalDeviceManagementRouter = router({
     if (!device) {
       throw new TRPCError({ code: "NOT_FOUND", message: "Device not found" });
     }
-    return presentRecoveryResponse(device, token);
+    return presentIssuanceResponse(device, token);
   }),
 
   getScreenCredential: verifiedProcedure.input(deviceInput).query(async ({ input, ctx }) => {
@@ -145,9 +146,15 @@ export const operationalDeviceManagementRouter = router({
     if ("retrievable" in result && result.retrievable === false) {
       return result;
     }
+    const activeToken = await operationalDeviceComposition.store.findActiveTokenForDevice(
+      input.deviceId
+    );
     return {
       retrievable: true as const,
       ...result,
+      pairing: {
+        hasUnredeemedPairingCode: activeToken?.activationCodeHash != null,
+      },
     };
   }),
 
