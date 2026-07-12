@@ -32,7 +32,8 @@ describe("RuntimeCategoryFilterManager", () => {
     const filter = manager.syncFromConfiguration(mockConfiguration([]), capabilities);
     expect(filter.enabled).toBe(false);
     expect(filter.mode).toBe("all");
-    expect(manager.getPredicate()([1, 2])).toBe(true);
+    expect(manager.getPredicate()(1)).toBe(true);
+    expect(manager.getPredicate()(2)).toBe(true);
   });
 
   it("selected categories compile predicate once", () => {
@@ -41,9 +42,10 @@ describe("RuntimeCategoryFilterManager", () => {
     expect(filter.enabled).toBe(true);
     expect(filter.selectedCategories).toEqual([1, 3]);
     const predicate = manager.getPredicate();
-    expect(predicate([1])).toBe(true);
-    expect(predicate([2])).toBe(false);
-    expect(predicate([3, 99])).toBe(true);
+    expect(predicate(1)).toBe(true);
+    expect(predicate(2)).toBe(false);
+    expect(predicate(3)).toBe(true);
+    expect(predicate(99)).toBe(false);
   });
 
   it("ignores invalid category ids safely", () => {

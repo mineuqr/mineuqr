@@ -54,7 +54,11 @@ export function buildKitchenRuntimeStream(input: {
 
   const data = input.data;
   const readModel = normalizeKitchenReadModel(data);
-  const filtered = applyKitchenCategoryFilter(readModel, input.categoryFilterPredicate);
+  const filtered = applyKitchenCategoryFilter(
+    readModel,
+    input.categoryFilterPredicate,
+    input.categoryFilterEnabled
+  );
 
   return {
     queue: filtered,

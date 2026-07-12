@@ -150,6 +150,19 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
     expect(kitchen).not.toContain("screenConfig");
   });
 
+  it("KITCHEN-ITEM-FILTERING-1: item-level projection in runtime read layer", () => {
+    const applyFilter = read("client/src/lib/operational-screen/kitchen/applyKitchenCategoryFilter.ts");
+    const readModel = read("client/src/lib/operational-screen/kitchen/kitchenRuntimeReadModel.ts");
+    const stream = read("client/src/lib/operational-screen/kitchen/buildKitchenRuntimeStream.ts");
+    const kitchen = read("client/src/components/operational-screen/KitchenScreenPanel.tsx");
+    expect(applyFilter).toContain("filterTicketLineItems");
+    expect(applyFilter).toContain("projectKitchenTicketWithLineItems");
+    expect(readModel).toContain("projectKitchenTicketWithLineItems");
+    expect(stream).toContain("categoryFilterEnabled");
+    expect(kitchen).not.toContain("filterTicketLineItems");
+    expect(kitchen).not.toContain("applyKitchenCategoryFilter");
+  });
+
   it("ORDER-READ-CATEGORY-PROJECTION-1: runtime consumes canonical category projections only", () => {
     const readModel = read("client/src/lib/operational-screen/kitchen/kitchenRuntimeReadModel.ts");
     const stream = read("client/src/lib/operational-screen/kitchen/useKitchenRuntimeStream.ts");

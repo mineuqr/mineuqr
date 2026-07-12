@@ -6,7 +6,8 @@ import type {
   RuntimeCategoryFilter,
 } from "./runtimeCategoryFilterContract";
 
-export type CategoryFilterPredicate = (orderCategoryIds: readonly number[]) => boolean;
+/** Per canonical category id — used for line-item runtime projection (KITCHEN-ITEM-FILTERING-1). */
+export type CategoryFilterPredicate = (categoryId: number) => boolean;
 
 export type CategoryFilterManagerSnapshot = {
   filter: RuntimeCategoryFilter | null;
@@ -43,8 +44,7 @@ function compilePredicate(filter: RuntimeCategoryFilter): CategoryFilterPredicat
     return () => true;
   }
   const selected = new Set(filter.selectedCategories);
-  return (orderCategoryIds: readonly number[]) =>
-    orderCategoryIds.some((id) => selected.has(id));
+  return (categoryId: number) => selected.has(categoryId);
 }
 
 /**

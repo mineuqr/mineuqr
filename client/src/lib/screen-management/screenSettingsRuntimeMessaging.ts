@@ -45,8 +45,8 @@ export function categorySectionHint(role: OperationalDeviceRole, isAr: boolean):
     return {
       badge: isAr ? "نشط في وقت التشغيل" : "Active at runtime",
       detail: isAr
-        ? "تصفية الطابور حسب الفئات المحددة — بدون تحديد تُعرض كل الطلبات."
-        : "Filters the kitchen queue by selected categories — leave empty to show all orders.",
+        ? "تصفية عناصر الطابور حسب الفئات المحددة — بدون تحديد تُعرض كل العناصر."
+        : "Filters kitchen queue items by selected categories — leave empty to show all items.",
     };
   }
   return {

@@ -1,6 +1,7 @@
 import type { KitchenQueueResult, KitchenTicketDto } from "@/lib/kitchen/types";
 import type { CategoryProjectionReadMeta } from "@/lib/kitchen/categoryProjection";
 import { isMenuItemKitchenLine } from "@/lib/kitchen/lineProjection";
+import { buildLinesSummaryFromItems } from "@/lib/operational-workspace/orderViewModels";
 
 /** Runtime kitchen read model — normalized from API, never filtered here. */
 export type KitchenRuntimeTicket = KitchenTicketDto & {
@@ -32,6 +33,27 @@ export function collectOrderCategoryIds(
     ids.add(item.category.categoryId);
   }
   return Array.from(ids);
+}
+
+function buildLineCount(lineItems: KitchenTicketDto["lineItems"]): number {
+  return lineItems.reduce((sum, item) => sum + item.quantity, 0);
+}
+
+/**
+ * Rebuild ticket line metadata after item-level category projection.
+ * Order identity (orderId, status, timeline fields) is preserved unchanged.
+ */
+export function projectKitchenTicketWithLineItems(
+  ticket: KitchenRuntimeTicket,
+  lineItems: KitchenTicketDto["lineItems"]
+): KitchenRuntimeTicket {
+  return {
+    ...ticket,
+    lineItems,
+    lineCount: buildLineCount(lineItems),
+    linesSummary: buildLinesSummaryFromItems(lineItems),
+    orderCategoryIds: collectOrderCategoryIds(lineItems),
+  };
 }
 
 /** Normalize API kitchen queue into runtime read model (unfiltered). */

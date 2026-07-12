@@ -1,14 +1,36 @@
 import { describe, expect, it } from "vitest";
 import { RuntimeCategoryFilterManager } from "../category-filter/runtimeCategoryFilterManager";
 import { applyKitchenCategoryFilter } from "../kitchen/applyKitchenCategoryFilter";
+import { buildKitchenRuntimeStream } from "../kitchen/buildKitchenRuntimeStream";
 import {
   collectOrderCategoryIds,
   normalizeKitchenReadModel,
 } from "../kitchen/kitchenRuntimeReadModel";
 import type { KitchenQueueResult } from "@/lib/kitchen/types";
 import { kitchenDisplayRole } from "../roles/roleDefinitions";
-import { ORDER_LINE_PROJECTION_TYPE_MENU_ITEM } from "@/lib/kitchen/lineProjection";
+import {
+  ORDER_LINE_PROJECTION_TYPE_MENU_ITEM,
+  ORDER_LINE_PROJECTION_TYPE_OFFER,
+} from "@/lib/kitchen/lineProjection";
 import { mockCategoryProjection } from "./fixtures/categoryProjectionFixtures";
+
+function mockConfiguration(categoryIds: number[]) {
+  return {
+    version: "v1",
+    role: "kitchen_display" as const,
+    updatedAt: "v1",
+    configurationState: "applied" as const,
+    validationErrors: [],
+    usedFallback: false,
+    active: { language: "en" as const, direction: "ltr" as const },
+    tracked: {
+      density: "large" as const,
+      densityActivated: true,
+      categoryIds,
+      categoriesActivated: true,
+    },
+  };
+}
 
 function mockQueue(): KitchenQueueResult {
   return {
@@ -103,26 +125,9 @@ describe("kitchen category filter pipeline", () => {
   it("filters orders before presentation — O(n) single pass", () => {
     const readModel = normalizeKitchenReadModel(mockQueue());
     const manager = new RuntimeCategoryFilterManager();
-    manager.syncFromConfiguration(
-      {
-        version: "v1",
-        role: "kitchen_display",
-        updatedAt: "v1",
-        configurationState: "applied",
-        validationErrors: [],
-        usedFallback: false,
-        active: { language: "en", direction: "ltr" },
-        tracked: {
-          density: "large",
-          densityActivated: true,
-          categoryIds: [1],
-          categoriesActivated: true,
-        },
-      },
-      capabilities
-    );
+    manager.syncFromConfiguration(mockConfiguration([1]), capabilities);
 
-    const filtered = applyKitchenCategoryFilter(readModel, manager.getPredicate());
+    const filtered = applyKitchenCategoryFilter(readModel, manager.getPredicate(), true);
     expect(filtered.columns.pending).toHaveLength(1);
     expect(filtered.columns.pending[0].orderId).toBe(1);
     expect(filtered.meta.counts.pending).toBe(1);
@@ -131,30 +136,85 @@ describe("kitchen category filter pipeline", () => {
   it("shows all orders when filter disabled", () => {
     const readModel = normalizeKitchenReadModel(mockQueue());
     const manager = new RuntimeCategoryFilterManager();
-    manager.syncFromConfiguration(
-      {
-        version: "v1",
-        role: "kitchen_display",
-        updatedAt: "v1",
-        configurationState: "applied",
-        validationErrors: [],
-        usedFallback: false,
-        active: { language: "en", direction: "ltr" },
-        tracked: {
-          density: "large",
-          densityActivated: true,
-          categoryIds: [],
-          categoriesActivated: true,
-        },
-      },
-      capabilities
-    );
+    manager.syncFromConfiguration(mockConfiguration([]), capabilities);
 
-    const filtered = applyKitchenCategoryFilter(readModel, manager.getPredicate());
+    const filtered = applyKitchenCategoryFilter(readModel, manager.getPredicate(), false);
     expect(filtered.columns.pending).toHaveLength(2);
   });
 
-  it("order visible when at least one line item matches selected category", () => {
+  it("projects only matching line items when order spans multiple categories", () => {
+    const queue = mockQueue();
+    queue.columns.pending[0].lineItems.push({
+      projectionType: ORDER_LINE_PROJECTION_TYPE_MENU_ITEM,
+      lineItemId: 3,
+      menuItemId: 30,
+      nameAr: "سلطة",
+      nameEn: "Salad",
+      quantity: 1,
+      price: "5",
+      category: mockCategoryProjection({ categoryId: 99 }),
+    });
+    queue.columns.pending[0].lineCount = 2;
+    queue.columns.pending[0].linesSummary = "1× Burger, 1× Salad";
+
+    const readModel = normalizeKitchenReadModel(queue);
+    const manager = new RuntimeCategoryFilterManager();
+    manager.syncFromConfiguration(mockConfiguration([99]), capabilities);
+
+    const filtered = applyKitchenCategoryFilter(readModel, manager.getPredicate(), true);
+    const ticket = filtered.columns.pending.find((t) => t.orderId === 1);
+    expect(ticket).toBeDefined();
+    expect(ticket!.lineItems).toHaveLength(1);
+    expect(ticket!.lineItems[0].nameEn).toBe("Salad");
+    expect(ticket!.lineCount).toBe(1);
+    expect(ticket!.linesSummary).toBe("1× Salad");
+    expect(ticket!.orderCategoryIds).toEqual([99]);
+    expect(ticket!.orderNumber).toBe("1001");
+    expect(ticket!.status).toBe("pending");
+  });
+
+  it("hides orders with zero matching line items", () => {
+    const readModel = normalizeKitchenReadModel(mockQueue());
+    const manager = new RuntimeCategoryFilterManager();
+    manager.syncFromConfiguration(mockConfiguration([99]), capabilities);
+
+    const filtered = applyKitchenCategoryFilter(readModel, manager.getPredicate(), true);
+    expect(filtered.columns.pending).toHaveLength(0);
+    expect(filtered.meta.counts.pending).toBe(0);
+  });
+
+  it("excludes offer lines when category filter is active", () => {
+    const queue = mockQueue();
+    queue.columns.pending[0].lineItems.push({
+      projectionType: ORDER_LINE_PROJECTION_TYPE_OFFER,
+      lineItemId: 4,
+      menuItemId: 0,
+      nameAr: "عرض",
+      nameEn: "Combo Offer",
+      quantity: 1,
+      price: "15",
+      offer: {
+        lineKind: "offer",
+        offerId: 7,
+        titleAr: "عرض",
+        titleEn: "Combo Offer",
+        source: "order_line_snapshot",
+        version: 1,
+        updatedAt: "2026-07-06T10:00:00.000Z",
+      },
+    });
+
+    const readModel = normalizeKitchenReadModel(queue);
+    const manager = new RuntimeCategoryFilterManager();
+    manager.syncFromConfiguration(mockConfiguration([1]), capabilities);
+
+    const filtered = applyKitchenCategoryFilter(readModel, manager.getPredicate(), true);
+    const ticket = filtered.columns.pending.find((t) => t.orderId === 1);
+    expect(ticket!.lineItems).toHaveLength(1);
+    expect(ticket!.lineItems[0].nameEn).toBe("Burger");
+  });
+
+  it("buildKitchenRuntimeStream applies item projection when filter enabled", () => {
     const queue = mockQueue();
     queue.columns.pending[0].lineItems.push({
       projectionType: ORDER_LINE_PROJECTION_TYPE_MENU_ITEM,
@@ -167,28 +227,22 @@ describe("kitchen category filter pipeline", () => {
       category: mockCategoryProjection({ categoryId: 99 }),
     });
 
-    const readModel = normalizeKitchenReadModel(queue);
     const manager = new RuntimeCategoryFilterManager();
-    manager.syncFromConfiguration(
-      {
-        version: "v1",
-        role: "kitchen_display",
-        updatedAt: "v1",
-        configurationState: "applied",
-        validationErrors: [],
-        usedFallback: false,
-        active: { language: "en", direction: "ltr" },
-        tracked: {
-          density: "large",
-          densityActivated: true,
-          categoryIds: [99],
-          categoriesActivated: true,
-        },
-      },
-      capabilities
-    );
+    manager.syncFromConfiguration(mockConfiguration([1]), capabilities);
 
-    const filtered = applyKitchenCategoryFilter(readModel, manager.getPredicate());
-    expect(filtered.columns.pending.some((t) => t.orderId === 1)).toBe(true);
+    const stream = buildKitchenRuntimeStream({
+      data: queue,
+      isLoading: false,
+      isError: false,
+      error: null,
+      language: "en",
+      categoryFilterEnabled: true,
+      categoryFilterPredicate: manager.getPredicate(),
+    });
+
+    const ticket = stream.queue!.columns.pending.find((t) => t.orderId === 1);
+    expect(ticket!.lineItems).toHaveLength(1);
+    expect(ticket!.lineItems[0].nameEn).toBe("Burger");
+    expect(stream.isFiltered).toBe(true);
   });
 });
