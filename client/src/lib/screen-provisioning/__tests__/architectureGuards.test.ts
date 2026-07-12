@@ -17,10 +17,10 @@ describe("SCREEN-PROVISIONING-WORKSPACE-1 architecture guards", () => {
     expect(panel).toContain("navigateToProvisioning");
   });
 
-  it("fleet cards expose credential lifecycle sheet", () => {
+  it("fleet cards expose screen access lifecycle via manage menu", () => {
     const card = read("client/src/components/screen-management/FleetScreenCard.tsx");
-    expect(card).toContain("onLifecycle");
-    expect(card).toContain("KeyRound");
+    expect(card).toContain("onManage");
+    expect(card).toContain("Regenerate Credential");
     expect(card).not.toContain("onProvision");
   });
 

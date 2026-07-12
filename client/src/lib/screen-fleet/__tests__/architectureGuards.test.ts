@@ -9,12 +9,13 @@ function read(rel: string) {
 }
 
 describe("SCREEN-FLEET-SCALE-1 client architecture guards", () => {
-  it("workspace uses fleet query — not management.list", () => {
+  it("workspace uses fleet query — not management.list as primary", () => {
     const panel = read("client/src/components/screen-management/ScreenManagementWorkspacePanel.tsx");
+    const configs = read("client/src/lib/screen-management/useFleetScreenConfigs.ts");
     expect(panel).toContain("useFleetQuery");
-    expect(panel).toContain("operationalDevice.fleet");
     expect(panel).not.toContain("management.list.useQuery");
     expect(panel).not.toContain("getHealthSummary.useQuery");
+    expect(configs).toContain("management.list.useQuery");
   });
 
   it("fleet cards consume read model only", () => {

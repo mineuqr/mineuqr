@@ -1,5 +1,7 @@
+import type { FleetScreenReadModel } from "@/lib/screen-fleet/fleetReadModel";
+import type { FleetScreenManageAction } from "@/components/screen-management/FleetScreenCard";
 import { Check, Copy, Download, ExternalLink, Loader2, QrCode, RefreshCw, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -25,7 +27,7 @@ function CopyButton({ value, label }: { value: string; label: string }) {
   return (
     <Button type="button" variant="outline" size="sm" onClick={onCopy}>
       {copied ? <Check className="mr-1 h-4 w-4" /> : <Copy className="mr-1 h-4 w-4" />}
-      {copied ? "Copied" : label}
+      {copied ? (label.startsWith("Copy") ? "Copied" : label) : label}
     </Button>
   );
 }
@@ -61,26 +63,71 @@ function ServerRecoveryQr({
   );
 }
 
+function ScreenAccessDiagnostics({
+  screen,
+  language,
+}: {
+  screen: FleetScreenReadModel;
+  language: string;
+}) {
+  const isAr = language === "ar";
+  return (
+    <div className="space-y-3 rounded-xl border bg-muted/30 p-4 text-sm">
+      <p className="font-medium">{isAr ? "التشخيص" : "Diagnostics"}</p>
+      <p className="text-xs text-muted-foreground">
+        {isAr ? "للدعم الفني — لا يلزم للتشغيل اليومي." : "For support — not needed for daily operation."}
+      </p>
+      <dl className="space-y-2 text-xs">
+        <div className="flex justify-between gap-2">
+          <dt className="text-muted-foreground">{isAr ? "معرّف الشاشة" : "Screen ID"}</dt>
+          <dd className="font-mono">{screen.screenId}</dd>
+        </div>
+        <div className="flex justify-between gap-2">
+          <dt className="text-muted-foreground">{isAr ? "الحالة الداخلية" : "Internal state"}</dt>
+          <dd className="font-mono">{screen.canonicalState.operationalState}</dd>
+        </div>
+        <div className="flex justify-between gap-2">
+          <dt className="text-muted-foreground">{isAr ? "الجاهزية" : "Readiness"}</dt>
+          <dd className="font-mono">{screen.businessReadiness}</dd>
+        </div>
+        <div className="flex justify-between gap-2">
+          <dt className="text-muted-foreground">{isAr ? "اتصال نشط" : "Active access"}</dt>
+          <dd>{screen.healthSummary.hasActiveToken ? (isAr ? "نعم" : "Yes") : isAr ? "لا" : "No"}</dd>
+        </div>
+        <div className="flex justify-between gap-2">
+          <dt className="text-muted-foreground">{isAr ? "إصدار الإعداد" : "Config version"}</dt>
+          <dd className="font-mono">{screen.configurationVersion}</dd>
+        </div>
+      </dl>
+    </div>
+  );
+}
+
 export function ScreenCredentialLifecycleSheet({
   open,
   onOpenChange,
   screenId,
+  screen,
   displayName,
   restaurantId,
   language,
+  initialFocus = null,
   onDeleted,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   screenId: string | null;
+  screen?: FleetScreenReadModel | null;
   displayName: string;
   restaurantId: number;
   language: string;
+  initialFocus?: FleetScreenManageAction | null;
   onDeleted?: () => void;
 }) {
   const isAr = language === "ar";
   const enabled = open && screenId != null;
   const [showQr, setShowQr] = useState(false);
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmRegenerate, setConfirmRegenerate] = useState(false);
 
@@ -109,8 +156,23 @@ export function ScreenCredentialLifecycleSheet({
     },
   });
 
+  useEffect(() => {
+    if (!open) {
+      setShowQr(false);
+      setShowDiagnostics(false);
+      setConfirmDelete(false);
+      setConfirmRegenerate(false);
+      return;
+    }
+    if (!initialFocus) return;
+    setShowQr(initialFocus === "show_qr");
+    setShowDiagnostics(initialFocus === "diagnostics");
+    setConfirmRegenerate(initialFocus === "regenerate");
+    setConfirmDelete(initialFocus === "delete");
+  }, [open, initialFocus]);
+
   const screenEntryUrl = getScreenEntryUrl();
-  const screenLoginUrl = getScreenLoginUrl();
+  const screenSetupUrl = getScreenLoginUrl();
   const recovery = recoveryQuery.data;
   const retrievable = recovery && "retrievable" in recovery && recovery.retrievable === true;
 
@@ -118,7 +180,7 @@ export function ScreenCredentialLifecycleSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="overflow-y-auto sm:max-w-md">
         <SheetHeader>
-          <SheetTitle>{isAr ? "دورة حياة الشاشة" : "Screen lifecycle"}</SheetTitle>
+          <SheetTitle>{isAr ? "الوصول للشاشة" : "Screen Access"}</SheetTitle>
           <SheetDescription>{displayName}</SheetDescription>
         </SheetHeader>
 
@@ -127,18 +189,18 @@ export function ScreenCredentialLifecycleSheet({
             <p className="text-sm font-medium">{isAr ? "فتح الشاشة" : "Open screen"}</p>
             <p className="text-xs text-muted-foreground">
               {isAr
-                ? "افتح رابط الشاشة على الجهاز التشغيلي. الاعتماد المخزّن محلياً يُعيد التشغيل تلقائياً."
-                : "Open the screen URL on the operational device. Stored credentials resume automatically."}
+                ? "افتح الشاشة على الجهاز. بعد الإعداد الأول، يعود الجهاز تلقائياً عند فتح الرابط."
+                : "Open the screen on your device. After the first setup, the device resumes automatically when you open the link."}
             </p>
             <div className="flex flex-wrap gap-2">
               <Button size="sm" asChild>
                 <a href={screenEntryUrl} target="_blank" rel="noopener noreferrer">
                   <ExternalLink className="mr-1 h-4 w-4" />
-                  {isAr ? "فتح /screen" : "Open /screen"}
+                  {isAr ? "فتح الشاشة" : "Open screen"}
                 </a>
               </Button>
               <CopyButton value={screenEntryUrl} label={isAr ? "نسخ الرابط" : "Copy link"} />
-              <CopyButton value={screenLoginUrl} label={isAr ? "نسخ رابط الدخول" : "Copy login link"} />
+              <CopyButton value={screenSetupUrl} label={isAr ? "نسخ رابط الإعداد" : "Copy setup link"} />
             </div>
           </div>
 
@@ -150,25 +212,18 @@ export function ScreenCredentialLifecycleSheet({
 
           {recovery && "retrievable" in recovery && recovery.retrievable === false ? (
             <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-4 text-sm">
-              <p className="font-medium">
-                {isAr ? "اعتماد قديم" : "Legacy credential"}
-              </p>
+              <p className="font-medium">{isAr ? "وصول قديم" : "Legacy access"}</p>
               <p className="mt-1 text-muted-foreground">
                 {isAr
-                  ? "لا يمكن عرض QR لهذه الشاشة حتى إعادة توليد الاعتماد. الأجهزة المربوطة مسبقاً تستمر بالعمل."
-                  : "QR cannot be shown until you regenerate the credential. Already-paired devices keep working."}
+                  ? "لا يمكن عرض QR حتى إعادة توليد الاعتماد. الأجهزة المربوطة مسبقاً تستمر بالعمل."
+                  : "QR cannot be shown until you Regenerate Credential. Already-paired devices keep working."}
               </p>
             </div>
           ) : null}
 
           {retrievable ? (
             <div className="space-y-3">
-              <p className="text-sm font-medium">{isAr ? "استرداد QR" : "QR recovery"}</p>
-              <p className="text-xs text-muted-foreground">
-                {isAr
-                  ? "يُولَّد QR على الخادم — لا يُعرض الاعتماد كنص في JavaScript."
-                  : "QR is server-rendered — credentials are not exposed as plaintext to JavaScript."}
-              </p>
+              <p className="text-sm font-medium">{isAr ? "QR للشاشة" : "Screen QR"}</p>
               <div className="flex flex-wrap gap-2">
                 <Button size="sm" variant="outline" onClick={() => setShowQr((v) => !v)}>
                   <QrCode className="mr-1 h-4 w-4" />
@@ -190,14 +245,14 @@ export function ScreenCredentialLifecycleSheet({
                 onClick={() => setConfirmRegenerate(true)}
               >
                 <RefreshCw className="mr-2 h-4 w-4" />
-                {isAr ? "إعادة توليد الاعتماد" : "Regenerate credential"}
+                {isAr ? "إعادة توليد الاعتماد" : "Regenerate Credential"}
               </Button>
             ) : (
               <div className="space-y-2 rounded-xl border border-amber-500/40 bg-amber-500/5 p-4">
                 <p className="text-sm">
                   {isAr
-                    ? "سيتم إلغاء الاعتماد الحالي. يجب إدخال الاعتماد الجديد على الجهاز."
-                    : "The current credential will be revoked. Enter the new credential on the device."}
+                    ? "سيُلغى الوصول الحالي على أي جهاز فتح هذه الشاشة. افتح الشاشة من جديد على كل جهاز باستخدام QR أو رابط الإعداد الجديد."
+                    : "Current access will be cancelled on any device that already opened this screen. Open the screen again on each device using the new QR code or setup link."}
                 </p>
                 <div className="flex gap-2">
                   <Button
@@ -225,14 +280,14 @@ export function ScreenCredentialLifecycleSheet({
                 onClick={() => setConfirmDelete(true)}
               >
                 <Trash2 className="mr-2 h-4 w-4" />
-                {isAr ? "حذف الشاشة" : "Delete screen"}
+                {isAr ? "حذف الشاشة" : "Delete Screen"}
               </Button>
             ) : (
               <div className="space-y-2 rounded-xl border border-destructive/40 bg-destructive/5 p-4">
                 <p className="text-sm">
                   {isAr
-                    ? "سيتم إلغاء الاعتماد وإنهاء الجلسات النشطة وإزالة الشاشة من الأسطول."
-                    : "Credentials will be revoked, active sessions terminated, and the screen removed from the fleet."}
+                    ? "ستُزال هذه الشاشة من الأسطول ويُلغى كل الوصول. أي جهاز يستخدمها سيتوقف ويجب إعداد شاشة من جديد."
+                    : "This screen will be removed from your fleet and all access cancelled. Any device using it will stop working and must set up again."}
                 </p>
                 <div className="flex gap-2">
                   <Button
@@ -253,6 +308,10 @@ export function ScreenCredentialLifecycleSheet({
               </div>
             )}
           </div>
+
+          {showDiagnostics && screen ? (
+            <ScreenAccessDiagnostics screen={screen} language={language} />
+          ) : null}
         </div>
       </SheetContent>
     </Sheet>
