@@ -261,15 +261,18 @@ export function useRuntimeOrchestrator(
     dispatch({ type: "CREDENTIALS_FOUND" });
   }, [dispatch]);
 
+  // SCREEN-AUTH-RECOVERY-1 — single path: device auth failure → existing handleRevoked flow.
+  useEffect(() => {
+    if (phase === "pairing_redirect" || phase === "revoked") return;
+    if (!statusQuery.error || !isDeviceAuthError(statusQuery.error)) return;
+    handleRevoked();
+  }, [phase, statusQuery.error, handleRevoked]);
+
   // RUNTIME-RECONCILIATION-ARCHITECTURE-1 — Bootstrap executes once when validating.
   useEffect(() => {
     if (!bootstrapMayExecute(phase)) return;
+    if (statusQuery.error) return;
     if (!statusQuery.data) return;
-
-    if (statusQuery.error && isDeviceAuthError(statusQuery.error)) {
-      handleRevoked();
-      return;
-    }
 
     const status = statusQuery.data;
     if (!assertStatusAllowed(status, handleRevoked)) return;
@@ -315,12 +318,8 @@ export function useRuntimeOrchestrator(
   // RUNTIME-RECONCILIATION-ARCHITECTURE-1 — Reconciliation is event-driven (status change only).
   useEffect(() => {
     if (!reconciliationMayExecute(phase)) return;
+    if (statusQuery.error) return;
     if (!statusQuery.data) return;
-
-    if (statusQuery.error && isDeviceAuthError(statusQuery.error)) {
-      handleRevoked();
-      return;
-    }
 
     const status = statusQuery.data;
     if (!assertStatusAllowed(status, handleRevoked)) return;
