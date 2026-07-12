@@ -337,6 +337,35 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
     expect(messages).toContain("pairing_code_used");
   });
 
+  it("SCREEN-PAIRING-CODE-UX-1: unified /screen entry with embedded pairing", () => {
+    const entry = read("client/src/pages/screen/OperationalScreenEntry.tsx");
+    const pairing = read("client/src/components/operational-screen/PairingShell.tsx");
+    const panel = read("client/src/components/operational-screen/pairing/PairingScreenPanel.tsx");
+
+    expect(entry).toContain("PairingShell");
+    expect(entry).toContain("ScreenBootLoadingPanel");
+    expect(entry).not.toContain("/screen/pair");
+    expect(pairing).toContain("PairingScreenPanel");
+    expect(pairing).not.toContain("spaNavigate");
+    expect(panel).toContain("autoFocus");
+    expect(panel).toContain('e.key === "Enter"');
+    expect(panel).not.toContain("deviceId");
+    expect(panel).not.toContain("tokenId");
+    expect(panel).not.toContain("secret");
+  });
+
+  it("SCREEN-PAIRING-CODE-UX-1: screen management shows link + pairing code first", () => {
+    const access = read("client/src/components/screen-management/ScreenAccessTabPanel.tsx");
+    const provisioning = read("client/src/components/screen-provisioning/ProvisioningActivationPanel.tsx");
+    const fields = read("client/src/components/screen-management/ScreenOnboardingFields.tsx");
+
+    expect(access).toContain("ScreenOnboardingFields");
+    expect(access).toContain("ScreenOnboardingOptionalQr");
+    expect(provisioning).toContain("ScreenOnboardingFields");
+    expect(fields).toContain("screenLinkLabel");
+    expect(fields).toContain("<details");
+  });
+
   it("RUNTIME-INSTANCE-CONTEXT-1: runtime context resolved only by RuntimeContextFactory", () => {
     const factory = read("client/src/lib/operational-screen/RuntimeContextFactory.ts");
     const orchestrator = read("client/src/lib/operational-screen/useRuntimeOrchestrator.ts");

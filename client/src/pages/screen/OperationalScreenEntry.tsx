@@ -11,22 +11,20 @@ import { RuntimeRoleHost } from "@/components/operational-screen/RuntimeRoleHost
 import { ScreenDiagnosticsPanel } from "@/components/operational-screen/ScreenDiagnosticsPanel";
 import { PairingShell } from "@/components/operational-screen/PairingShell";
 import { ScreenPairingProvider } from "@/components/operational-screen/ScreenPairingProvider";
-import { Loader2 } from "lucide-react";
+import { ScreenBootLoadingPanel } from "@/components/operational-screen/pairing/ScreenBootLoadingPanel";
+import { resolveScreenBootLoadingMessage } from "@/lib/operational-screen/pairing/screenBootPresentation";
 
 function OperationalScreenRuntime() {
-  const { phase, context } = useScreenRuntime();
+  const { phase, context, instanceContext } = useScreenRuntime();
   const { retry } = useRuntimeActions();
 
   if (phase === "pairing_redirect" || phase === "revoked") {
-    return null;
+    return <ScreenBootLoadingPanel message={resolveScreenBootLoadingMessage("loading", null)} />;
   }
 
   if (!context) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0b0e14]">
-        <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
-      </div>
-    );
+    const role = instanceContext?.role.role ?? null;
+    return <ScreenBootLoadingPanel message={resolveScreenBootLoadingMessage(phase, role)} />;
   }
 
   const showRetry =

@@ -1,20 +1,18 @@
 import type { FleetScreenManageAction } from "@/components/screen-management/FleetScreenCard";
 import {
-  CopyButton,
-  ServerRecoveryQr,
-} from "@/components/screen-management/screenAccessPresentation";
+  ScreenOnboardingFields,
+  ScreenOnboardingOptionalQr,
+} from "@/components/screen-management/ScreenOnboardingFields";
 import { Button } from "@/components/ui/button";
-import {
-  getScreenEntryUrl,
-  getScreenLoginUrl,
-} from "@/lib/screen-credential-lifecycle/screenEntryUrl";
+import { getScreenEntryUrl } from "@/lib/screen-credential-lifecycle/screenEntryUrl";
+import { screenOnboardingCopy } from "@/lib/operational-screen/pairing/pairingPresentation";
 import { trpc } from "@/lib/trpc";
-import { ExternalLink, Loader2, QrCode, RefreshCw, Trash2 } from "lucide-react";
+import { ExternalLink, Loader2, RefreshCw, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
 export function ScreenAccessTabPanel({
   screenId,
-  displayName,
+  displayName: _displayName,
   restaurantId,
   language,
   enabled,
@@ -30,7 +28,8 @@ export function ScreenAccessTabPanel({
   onDeleted?: () => void;
 }) {
   const isAr = language === "ar";
-  const [showQr, setShowQr] = useState(false);
+  const copy = screenOnboardingCopy(language);
+  const [knownPairingCode, setKnownPairingCode] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmRegenerate, setConfirmRegenerate] = useState(false);
 
@@ -41,9 +40,9 @@ export function ScreenAccessTabPanel({
   );
 
   const regenerateMutation = trpc.operationalDevice.management.regenerateCredential.useMutation({
-    onSuccess: () => {
+    onSuccess: (result) => {
       setConfirmRegenerate(false);
-      setShowQr(true);
+      setKnownPairingCode(result.pairingCode);
       void recoveryQuery.refetch();
       void utils.operationalDevice.fleet.queryScreens.invalidate();
     },
@@ -52,6 +51,7 @@ export function ScreenAccessTabPanel({
   const deleteMutation = trpc.operationalDevice.management.deleteScreen.useMutation({
     onSuccess: () => {
       setConfirmDelete(false);
+      setKnownPairingCode(null);
       void utils.operationalDevice.fleet.queryScreens.invalidate();
       void utils.operationalDevice.fleet.getKpis.invalidate({ restaurantId });
       onDeleted?.();
@@ -60,96 +60,66 @@ export function ScreenAccessTabPanel({
 
   useEffect(() => {
     if (!enabled) {
-      setShowQr(false);
+      setKnownPairingCode(null);
       setConfirmDelete(false);
       setConfirmRegenerate(false);
       return;
     }
     if (!initialFocus) return;
-    setShowQr(initialFocus === "show_qr");
     setConfirmRegenerate(initialFocus === "regenerate");
     setConfirmDelete(initialFocus === "delete");
   }, [enabled, initialFocus]);
 
   const screenEntryUrl = getScreenEntryUrl();
-  const screenSetupUrl = getScreenLoginUrl();
   const recovery = recoveryQuery.data;
   const retrievable = recovery && "retrievable" in recovery && recovery.retrievable === true;
+  const hasUnredeemedPairingCode =
+    recovery && "pairing" in recovery && recovery.pairing?.hasUnredeemedPairingCode === true;
 
   return (
     <div className="space-y-6 pb-4">
       <div className="space-y-3">
         <p className="text-sm font-medium">{isAr ? "فتح الشاشة" : "Open screen"}</p>
-        <p className="text-xs text-muted-foreground">
-          {isAr
-            ? "افتح الشاشة على الجهاز. بعد الإعداد الأول، يعود الجهاز تلقائياً عند فتح الرابط."
-            : "Open the screen on your device. After the first setup, the device resumes automatically when you open the link."}
-        </p>
-        <div className="flex flex-wrap gap-2">
-          <Button size="sm" asChild>
-            <a href={screenEntryUrl} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="mr-1 h-4 w-4" />
-              {isAr ? "فتح الشاشة" : "Open screen"}
-            </a>
-          </Button>
-          <CopyButton value={screenEntryUrl} label={isAr ? "نسخ الرابط" : "Copy link"} />
-          <CopyButton value={screenSetupUrl} label={isAr ? "نسخ رابط الإعداد" : "Copy setup link"} />
-        </div>
+        <p className="text-sm text-muted-foreground">{copy.openScreenHelper}</p>
+        <Button size="sm" asChild>
+          <a href={screenEntryUrl} target="_blank" rel="noopener noreferrer">
+            <ExternalLink className="mr-1 h-4 w-4" />
+            {isAr ? "فتح الشاشة" : "Open screen"}
+          </a>
+        </Button>
       </div>
 
       {recoveryQuery.isLoading ? (
-        <div className="flex justify-center py-8">
+        <div className="flex justify-center py-8" role="status" aria-live="polite">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       ) : null}
 
       {recovery && "retrievable" in recovery && recovery.retrievable === false ? (
         <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-4 text-sm">
-          <p className="font-medium">{isAr ? "وصول قديم" : "Legacy access"}</p>
+          <p className="font-medium">{isAr ? "إعداد قديم" : "Legacy setup"}</p>
           <p className="mt-1 text-muted-foreground">
             {isAr
-              ? "لا يمكن عرض QR حتى إعادة توليد الاعتماد. الأجهزة المربوطة مسبقاً تستمر بالعمل."
-              : "QR cannot be shown until you Regenerate Credential. Already-paired devices keep working."}
+              ? "أعد توليد الاعتماد للحصول على رمز ربط جديد. الأجهزة المربوطة مسبقاً تستمر بالعمل."
+              : "Regenerate credential to get a new pairing code. Already-paired devices keep working."}
           </p>
         </div>
       ) : null}
 
-      {retrievable ? (
-        <div className="space-y-3">
-          <p className="text-sm font-medium">{isAr ? "QR للشاشة" : "Screen QR"}</p>
-          <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant="outline" onClick={() => setShowQr((v) => !v)}>
-              <QrCode className="mr-1 h-4 w-4" />
-              {showQr ? (isAr ? "إخفاء QR" : "Hide QR") : isAr ? "عرض QR" : "Show QR"}
-            </Button>
-          </div>
-          {showQr ? (
-            <ServerRecoveryQr recoveryQrSvg={recovery.recoveryQrSvg} displayName={displayName} />
-          ) : null}
-        </div>
-      ) : null}
+      <ScreenOnboardingFields
+        screenLink={screenEntryUrl}
+        pairingCode={knownPairingCode}
+        language={language}
+        pairingCodeHelper={
+          hasUnredeemedPairingCode && !knownPairingCode
+            ? copy.pairingCodePending
+            : null
+        }
+      />
 
-      <div className="space-y-3 rounded-xl border bg-muted/20 p-4 text-sm">
-        <p className="font-medium">{isAr ? "ملخص الاعتماد" : "Credential summary"}</p>
-        <dl className="space-y-2 text-xs">
-          <div className="flex justify-between gap-2">
-            <dt className="text-muted-foreground">{isAr ? "حالة الوصول" : "Access status"}</dt>
-            <dd>
-              {retrievable
-                ? isAr
-                  ? "QR متاح"
-                  : "QR available"
-                : isAr
-                  ? "QR غير متاح"
-                  : "QR unavailable"}
-            </dd>
-          </div>
-          <div className="flex justify-between gap-2">
-            <dt className="text-muted-foreground">{isAr ? "رابط الشاشة" : "Screen link"}</dt>
-            <dd className="max-w-[55%] truncate font-mono">{screenEntryUrl}</dd>
-          </div>
-        </dl>
-      </div>
+      {retrievable && recovery.recoveryQrSvg ? (
+        <ScreenOnboardingOptionalQr recoveryQrSvg={recovery.recoveryQrSvg} language={language} />
+      ) : null}
 
       <div className="space-y-3 border-t pt-4">
         {!confirmRegenerate ? (
@@ -166,8 +136,8 @@ export function ScreenAccessTabPanel({
           <div className="space-y-2 rounded-xl border border-amber-500/40 bg-amber-500/5 p-4">
             <p className="text-sm">
               {isAr
-                ? "سيُلغى الوصول الحالي على أي جهاز فتح هذه الشاشة. افتح الشاشة من جديد على كل جهاز باستخدام QR أو رابط الإعداد الجديد."
-                : "Current access will be cancelled on any device that already opened this screen. Open the screen again on each device using the new QR code or setup link."}
+                ? "سيُلغى الوصول الحالي على أي جهاز فتح هذه الشاشة. افتح الرابط على الجهاز وأدخل رمز الربط الجديد."
+                : "Current access will stop on any device using this screen. Open the screen link on each device and enter the new pairing code."}
             </p>
             <div className="flex gap-2">
               <Button
@@ -201,8 +171,8 @@ export function ScreenAccessTabPanel({
           <div className="space-y-2 rounded-xl border border-destructive/40 bg-destructive/5 p-4">
             <p className="text-sm">
               {isAr
-                ? "ستُزال هذه الشاشة من الأسطول ويُلغى كل الوصول. أي جهاز يستخدمها سيتوقف ويجب إعداد شاشة من جديد."
-                : "This screen will be removed from your fleet and all access cancelled. Any device using it will stop working and must set up again."}
+                ? "ستُزال هذه الشاشة من الأسطول. أي جهاز يستخدمها سيتوقف ويجب إعداد شاشة من جديد."
+                : "This screen will be removed from your fleet. Any device using it will stop and must set up again."}
             </p>
             <div className="flex gap-2">
               <Button

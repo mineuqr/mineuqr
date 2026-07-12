@@ -35,9 +35,12 @@ describe("SCREEN-PAIRING-CODE-1 — architecture guards", () => {
   });
 
   it("pairing domain uses Pairing terminology in public contracts", () => {
+    const pairingPanel = read("client/src/components/operational-screen/pairing/PairingScreenPanel.tsx");
+    const pairingPresentation = read("client/src/lib/operational-screen/pairing/pairingPresentation.ts");
     const pairingShell = read("client/src/components/operational-screen/PairingShell.tsx");
     const pairingService = read("server/operational-device/pairing/ScreenPairingService.ts");
-    expect(pairingShell).toContain("Pairing Code");
+    expect(pairingPresentation).toContain("Enter Pairing Code");
+    expect(pairingPanel).toContain("PairingScreenPanel");
     expect(pairingShell).toContain("redeemPairingCode");
     expect(pairingShell).not.toContain("Activation Code");
     expect(pairingShell).not.toContain("Token ID");
