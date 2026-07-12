@@ -26,7 +26,7 @@ export function ProvisioningOptionalQrPanel({
         onClick={() => setOpen((v) => !v)}
       >
         <span className="text-sm font-medium">
-          {isAr ? "عرض رمز QR (اختياري)" : "Show QR code (optional)"}
+          {isAr ? "عرض QR (اختياري)" : "Show QR (optional)"}
         </span>
         {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
       </Button>
@@ -38,8 +38,8 @@ export function ProvisioningOptionalQrPanel({
           />
           <p className="max-w-sm text-center text-xs text-muted-foreground">
             {isAr
-              ? "رمز QR يُولَّد على الخادم — لا يُعرض الاعتماد كنص في المتصفح."
-              : "QR is server-rendered — credentials are not exposed as plaintext in the browser."}
+              ? "امسح رمز QR على الجهاز لربط الشاشة."
+              : "Scan the QR code on your device to connect this screen."}
           </p>
         </div>
       ) : null}

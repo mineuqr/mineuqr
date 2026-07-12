@@ -18,6 +18,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SCREEN_TYPE_OPTIONS } from "@/lib/operational-screen/screenLabels";
+import {
+  provisioningActivationStateLabel,
+  provisioningPairingStateLabel,
+  provisioningStatusLabel,
+  regenerateCredentialConfirmationCopy,
+} from "@/lib/screen-management/provisioningOperatorCopy";
 import { provisioningSessionManager } from "@/lib/screen-provisioning/ProvisioningSessionManager";
 import {
   navigateToFleet,
@@ -45,25 +51,19 @@ function RotateCredentialsConfirmation({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
-  const isAr = language === "ar";
+  const copy = regenerateCredentialConfirmationCopy(language);
   return (
     <div className="mt-6 max-w-lg space-y-4 rounded-2xl border border-amber-500/40 bg-amber-500/5 p-6">
-      <h3 className="font-semibold">
-        {isAr ? "تأكيد تدوير الاعتماد" : "Confirm credential rotation"}
-      </h3>
-      <p className="text-sm text-muted-foreground">
-        {isAr
-          ? "سيتم إلغاء بيانات الاعتماد الحالية على هذا الجهاز. يجب إعادة ربط الشاشة باستخدام الرمز الجديد."
-          : "Current device credentials will be invalidated. The screen must be re-paired using the new code."}
-      </p>
+      <h3 className="font-semibold">{copy.title}</h3>
+      <p className="text-sm text-muted-foreground">{copy.body}</p>
       <p className="font-mono text-xs text-muted-foreground">{deviceId}</p>
       <div className="flex gap-2">
         <Button disabled={pending} onClick={onConfirm}>
           {pending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-          {isAr ? "تدوير الاعتماد" : "Rotate credentials"}
+          {copy.confirm}
         </Button>
         <Button variant="outline" disabled={pending} onClick={onCancel}>
-          {isAr ? "إلغاء" : "Cancel"}
+          {copy.cancel}
         </Button>
       </div>
     </div>
@@ -232,23 +232,23 @@ export function ProvisioningWorkspacePanel({
             ? "حالة الشاشة"
             : "Screen status"
           : isAr
-            ? "مساحة تجهيز الشاشة"
-            : "Screen Provisioning"
+            ? "إنشاء شاشة"
+            : "Create screen"
       }
       description={
         isStatusMode
           ? isAr
-            ? "عرض حالة الجهاز من الخادم — للقراءة فقط"
-            : "Server-sourced device status — read only"
+            ? "عرض حالة الشاشة من الخادم — للقراءة فقط"
+            : "View this screen's status — read only"
           : isAr
-            ? "دورة حياة التجهيز — الرابط، الاعتماد الدائم، QR"
-            : "Provisioning lifecycle — screen URL, permanent credential, QR"
+            ? "أنشئ شاشة وافتحها على جهازك باستخدام الرابط أو رمز QR"
+            : "Create a screen and open it on your device using the link or QR code"
       }
       headerAside={
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => navigateToFleet(restaurantId)}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            {isAr ? "الأسطول" : "Fleet"}
+            {isAr ? "الشاشات" : "Screens"}
           </Button>
           {session?.credentials && health && !health.expired && !isStatusMode ? (
             <Button
@@ -262,7 +262,7 @@ export function ProvisioningWorkspacePanel({
               ) : (
                 <RotateCw className="mr-2 h-4 w-4" />
               )}
-              {isAr ? "تدوير الاعتماد" : "Rotate credentials"}
+              {isAr ? "إعادة توليد الاعتماد" : "Regenerate Credential"}
             </Button>
           ) : null}
         </div>
@@ -273,18 +273,18 @@ export function ProvisioningWorkspacePanel({
             items={[
               {
                 id: "status",
-                label: isAr ? "الحالة" : "Status",
-                value: health.status,
+                label: isAr ? "التقدم" : "Progress",
+                value: provisioningStatusLabel(health.status, language),
               },
               {
                 id: "pairing",
-                label: isAr ? "الربط" : "Pairing",
-                value: health.pairingState,
+                label: isAr ? "الاتصال" : "Connection",
+                value: provisioningPairingStateLabel(health.pairingState, language),
               },
               {
                 id: "activation",
-                label: isAr ? "التفعيل" : "Activation",
-                value: health.activationState,
+                label: isAr ? "التشغيل" : "Startup",
+                value: provisioningActivationStateLabel(health.activationState, language),
               },
               {
                 id: "retries",
@@ -305,7 +305,7 @@ export function ProvisioningWorkspacePanel({
           <DeviceOperationalStatusPanel statusView={statusView} language={language} />
         ) : (
           <p className="py-16 text-center text-muted-foreground">
-            {isAr ? "تعذر تحميل حالة الجهاز." : "Unable to load device status."}
+            {isAr ? "تعذر تحميل حالة الشاشة." : "Unable to load screen status."}
           </p>
         )
       ) : null}
@@ -313,12 +313,12 @@ export function ProvisioningWorkspacePanel({
       {resumeSessionMissing ? (
         <div className="mt-6 max-w-lg space-y-3 rounded-2xl border border-border/40 bg-muted/10 p-6 text-sm">
           <p className="font-medium">
-            {isAr ? "جلسة التجهيز غير موجودة" : "Provisioning session not found"}
+            {isAr ? "انتهت جلسة الإعداد" : "Setup session expired"}
           </p>
           <p className="text-muted-foreground">
             {isAr
-              ? "انتهت صلاحية الجلسة المحلية أو تم مسحها. استخدم «الحالة» لعرض حالة الجهاز، أو «تجهيز» لإصدار اعتماد جديد بعد التأكيد."
-              : "The local provisioning session expired or was cleared. Use Status to view the device, or Provision to issue new credentials after confirmation."}
+              ? "انتهت صلاحية جلسة الإعداد المحلية أو تم مسحها. ارجع إلى الشاشات لعرض حالة الشاشة، أو أنشئ شاشة جديدة."
+              : "Your local setup session expired or was cleared. Return to Screens to view status, or create a new screen."}
           </p>
           {urlState.deviceId ? (
             <Button
@@ -332,7 +332,7 @@ export function ProvisioningWorkspacePanel({
                 })
               }
             >
-              {isAr ? "عرض الحالة" : "View status"}
+              {isAr ? "عرض حالة الشاشة" : "View screen status"}
             </Button>
           ) : null}
         </div>
@@ -371,6 +371,11 @@ export function ProvisioningWorkspacePanel({
 
       {!isStatusMode && showCreateForm ? (
         <div className="mt-6 max-w-lg space-y-4 rounded-2xl border border-border/40 p-6">
+          <p className="text-sm text-muted-foreground">
+            {isAr
+              ? "اختر اسماً ونوعاً للشاشة، ثم افتحها على جهازك."
+              : "Choose a name and screen type, then open it on your device."}
+          </p>
           <div className="space-y-2">
             <Label htmlFor="prov-screen-name">{isAr ? "اسم الشاشة" : "Screen name"}</Label>
             <Input
@@ -395,7 +400,7 @@ export function ProvisioningWorkspacePanel({
             </Select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="prov-branch">{isAr ? "معرف الفرع (اختياري)" : "Branch ID (optional)"}</Label>
+            <Label htmlFor="prov-branch">{isAr ? "الفرع (اختياري)" : "Branch (optional)"}</Label>
             <Input id="prov-branch" value={branchId} onChange={(e) => setBranchId(e.target.value)} />
           </div>
           <Button
@@ -410,7 +415,7 @@ export function ProvisioningWorkspacePanel({
             disabled={!screenName.trim() || createMutation.isPending}
           >
             {createMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            {isAr ? "إنشاء وجلسة تجهيز" : "Create & start provisioning"}
+            {isAr ? "إنشاء شاشة" : "Create screen"}
           </Button>
         </div>
       ) : null}
@@ -447,7 +452,7 @@ export function ProvisioningWorkspacePanel({
 
       {!isStatusMode && health?.expired ? (
         <div className="mt-4 flex gap-2">
-          <Button onClick={retry}>{isAr ? "تمديد الجلسة" : "Extend session"}</Button>
+          <Button onClick={retry}>{isAr ? "متابعة الإعداد" : "Continue setup"}</Button>
           <Button variant="outline" onClick={cancel}>
             {isAr ? "إلغاء" : "Cancel"}
           </Button>
@@ -457,11 +462,16 @@ export function ProvisioningWorkspacePanel({
       {!isStatusMode && isOperational ? (
         <div className="mt-6 flex flex-col items-center gap-3 rounded-2xl border border-emerald-500/40 bg-emerald-500/5 p-6">
           <CheckCircle2 className="h-12 w-12 text-emerald-500" />
+          <p className="text-center font-medium">
+            {isAr ? "الشاشة متصلة وجاهزة" : "Screen is online and ready"}
+          </p>
           <p className="text-center text-sm text-muted-foreground">
-            {isAr ? "الشاشة تشغيلية — يمكنك العودة إلى الأسطول" : "Screen is operational — return to fleet"}
+            {isAr
+              ? "يمكنك العودة إلى الشاشات لإدارة أسطولك."
+              : "Return to Screens to manage your fleet."}
           </p>
           <Button onClick={() => navigateToFleet(restaurantId)}>
-            {isAr ? "العودة إلى الأسطول" : "Back to fleet"}
+            {isAr ? "العودة إلى الشاشات" : "Back to Screens"}
           </Button>
         </div>
       ) : null}

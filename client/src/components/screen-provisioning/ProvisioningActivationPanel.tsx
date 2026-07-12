@@ -57,7 +57,7 @@ export function ProvisioningActivationPanel({
 }) {
   const isAr = language === "ar";
   const screenUrl = getScreenEntryUrl();
-  const loginUrl = getScreenLoginUrl();
+  const setupUrl = getScreenLoginUrl();
   const copyLabel = isAr ? "نسخ" : "Copy";
   const copiedLabel = isAr ? "تم النسخ" : "Copied";
   const minutesRemaining = health ? Math.max(0, Math.ceil(health.secondsRemaining / 60)) : null;
@@ -65,26 +65,24 @@ export function ProvisioningActivationPanel({
   return (
     <div className="mt-6 space-y-6 rounded-2xl border border-border/40 bg-muted/10 p-6">
       <div className="space-y-1 text-center sm:text-start">
-        <h3 className="text-lg font-semibold">
-          {isAr ? "تجهيز الشاشة" : "Provision screen"}
-        </h3>
+        <h3 className="text-lg font-semibold">{isAr ? "افتح الشاشة على الجهاز" : "Open screen on device"}</h3>
         <p className="text-sm text-muted-foreground">
           {isAr
-            ? "افتح الرابط على الجهاز. إذا لم يكن الاعتماد مخزّناً، استخدم رابط الدخول أو امسح QR."
-            : "Open the screen URL on the device. If no credential is stored, use the login link or scan the QR code."}
+            ? "افتح رابط الشاشة على الجهاز. للإعداد الأول، استخدم رابط الإعداد أو امسح رمز QR."
+            : "Open the screen link on your device. For first-time setup, use the setup link or scan the QR code."}
         </p>
       </div>
 
       <CopyField
-        label={isAr ? "رابط الشاشة" : "Screen URL"}
+        label={isAr ? "رابط الشاشة" : "Screen link"}
         value={screenUrl}
         copyLabel={copyLabel}
         copiedLabel={copiedLabel}
       />
 
       <CopyField
-        label={isAr ? "رابط الدخول (بدون اعتماد مخزّن)" : "Login URL (no stored credential)"}
-        value={loginUrl}
+        label={isAr ? "رابط الإعداد" : "Setup link"}
+        value={setupUrl}
         copyLabel={copyLabel}
         copiedLabel={copiedLabel}
       />
@@ -96,16 +94,16 @@ export function ProvisioningActivationPanel({
         />
         <p className="max-w-sm text-center text-xs text-muted-foreground">
           {isAr
-            ? "رمز QR يُولَّد على الخادم — الاعتماد لا يُعرض كنص في المتصفح."
-            : "QR is server-rendered — credentials are not exposed as plaintext in the browser."}
+            ? "امسح رمز QR على الجهاز لربط الشاشة."
+            : "Scan the QR code on your device to connect this screen."}
         </p>
       </div>
 
       {minutesRemaining != null ? (
         <p className="text-center text-xs text-muted-foreground sm:text-start">
           {isAr
-            ? `الوقت المتبقي لجلسة المشغّل: ${minutesRemaining} دقيقة`
-            : `Operator session time remaining: ${minutesRemaining} min`}
+            ? `الوقت المتبقي لإكمال الإعداد: ${minutesRemaining} دقيقة`
+            : `Time remaining to finish setup: ${minutesRemaining} min`}
         </p>
       ) : null}
     </div>

@@ -1,8 +1,10 @@
 import type { DeviceStatusView } from "@/lib/screen-provisioning/useProvisioningWorkspace";
+import { FleetOperatorStatusPill } from "@/components/screen-management/FleetOperatorStatusPill";
+import { resolveOperatorFleetStatus } from "@/lib/screen-management/operatorFleetPresentation";
 import { presenceLabel, screenStatusLabel, screenTypeLabel } from "@/lib/operational-screen/screenLabels";
 import { ProvisioningStatusPanel } from "./ProvisioningStatusPanel";
 
-/** Read-only device status — server-sourced fleet projection, no credentials. */
+/** Read-only screen status — server-sourced fleet projection, no credentials. */
 export function DeviceOperationalStatusPanel({
   statusView,
   language,
@@ -12,6 +14,7 @@ export function DeviceOperationalStatusPanel({
 }) {
   const isAr = language === "ar";
   const { fleetScreen, device, health } = statusView;
+  const operatorStatus = resolveOperatorFleetStatus(fleetScreen);
 
   return (
     <div className="space-y-4">
@@ -26,34 +29,32 @@ export function DeviceOperationalStatusPanel({
           <dd className="font-medium">{screenTypeLabel(fleetScreen.role, language)}</dd>
         </div>
         <div>
-          <dt className="text-muted-foreground">{isAr ? "الاتصال" : "Presence"}</dt>
+          <dt className="text-muted-foreground">{isAr ? "الاتصال" : "Connection"}</dt>
           <dd className="font-medium">
             {presenceLabel(fleetScreen.healthSummary.presence, language)}
           </dd>
         </div>
         <div>
-          <dt className="text-muted-foreground">{isAr ? "حالة الجهاز" : "Device status"}</dt>
+          <dt className="text-muted-foreground">{isAr ? "الحالة" : "Status"}</dt>
+          <dd>
+            <FleetOperatorStatusPill kind={operatorStatus} language={language} />
+          </dd>
+        </div>
+        <div>
+          <dt className="text-muted-foreground">{isAr ? "تفعيل الشاشة" : "Screen enabled"}</dt>
           <dd className="font-medium">
             {device ? screenStatusLabel(device.status, language) : "—"}
           </dd>
         </div>
-        <div>
-          <dt className="text-muted-foreground">{isAr ? "الحالة التشغيلية" : "Operational state"}</dt>
-          <dd className="font-medium">{fleetScreen.canonicalState.operationalState}</dd>
-        </div>
-        <div>
-          <dt className="text-muted-foreground">{isAr ? "جاهزية العمل" : "Business readiness"}</dt>
-          <dd className="font-medium">{fleetScreen.businessReadiness}</dd>
-        </div>
-        <div>
-          <dt className="text-muted-foreground">{isAr ? "رمز الجهاز" : "Device ID"}</dt>
+        <div className="sm:col-span-2">
+          <dt className="text-muted-foreground">{isAr ? "معرّف الشاشة" : "Screen ID"}</dt>
           <dd className="font-mono text-xs">{statusView.deviceId}</dd>
         </div>
       </dl>
       <p className="text-xs text-muted-foreground">
         {isAr
-          ? "عرض للقراءة فقط — لا يغيّر بيانات الاعتماد ولا حالة التجهيز."
-          : "Read-only view — does not change credentials or provisioning state."}
+          ? "عرض للقراءة فقط — لا يغيّر الوصول أو إعدادات الشاشة."
+          : "Read-only view — does not change access or screen settings."}
       </p>
     </div>
   );

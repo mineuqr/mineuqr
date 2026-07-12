@@ -18,7 +18,7 @@ describe("DEVICE-PROVISIONING-UX-2 architecture guards", () => {
   it("optional QR is collapsed by default", () => {
     const qr = read("client/src/components/screen-provisioning/ProvisioningOptionalQrPanel.tsx");
     expect(qr).toContain('useState(false)');
-    expect(qr).toContain("Show QR code (optional)");
+    expect(qr).toContain("Show QR (optional)");
   });
 
   it("device activation route exists", () => {

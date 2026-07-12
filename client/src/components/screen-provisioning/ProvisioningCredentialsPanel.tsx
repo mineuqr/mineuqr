@@ -56,19 +56,13 @@ export function ProvisioningCredentialsPanel({
       />
       <p className="text-center text-sm text-muted-foreground">
         {isAr
-          ? "امسح الرمز على الشاشة لربط الجهاز. الاعتماد لا يُعرض كنص في المتصفح."
-          : "Scan on the screen to link the device. Credentials are not exposed as plaintext in the browser."}
+          ? "امسح رمز QR على الجهاز لربط الشاشة."
+          : "Scan the QR code on your device to connect this screen."}
       </p>
       <div className="w-full max-w-md space-y-2">
         <CredentialField
-          label={isAr ? "معرّف الجهاز" : "Device ID"}
+          label={isAr ? "معرّف الشاشة" : "Screen ID"}
           value={credentials.deviceId}
-          copyLabel={isAr ? "نسخ" : "Copy"}
-          copiedLabel={isAr ? "تم النسخ" : "Copied"}
-        />
-        <CredentialField
-          label={isAr ? "معرّف الرمز" : "Token ID"}
-          value={credentials.tokenId}
           copyLabel={isAr ? "نسخ" : "Copy"}
           copiedLabel={isAr ? "تم النسخ" : "Copied"}
         />
