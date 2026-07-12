@@ -1,26 +1,21 @@
 import type { FleetScreenReadModel } from "@/lib/screen-fleet/fleetReadModel";
-import {
-  getScreenEntryUrl,
-  getScreenLoginUrl,
-} from "@/lib/screen-credential-lifecycle/screenEntryUrl";
+import { FleetOperatorStatusPill } from "@/components/screen-management/FleetOperatorStatusPill";
+import { FleetScreenActions } from "@/components/screen-management/FleetScreenActions";
+import type { FleetScreenManageAction } from "@/components/screen-management/FleetScreenManageMenu";
 import { screenTypeLabel } from "@/lib/operational-screen/screenLabels";
 import { cn } from "@/lib/utils";
+import { AlertTriangle } from "lucide-react";
 import {
   formatLastSeen,
-  operatorFleetStatusLabel,
-  operatorFleetStatusPillClass,
   resolveOperatorFleetStatus,
   screenNeedsAttention,
 } from "@/lib/screen-management/operatorFleetPresentation";
-import {
-  FleetScreenManageMenu,
-  type FleetScreenManageAction,
-} from "@/components/screen-management/FleetScreenManageMenu";
-import { Button } from "@/components/ui/button";
-import { ExternalLink, Settings2 } from "lucide-react";
+
+const TABLE_GRID =
+  "grid grid-cols-[minmax(9rem,1.4fr)_minmax(6.5rem,0.85fr)_minmax(6rem,0.75fr)_minmax(5.5rem,0.7fr)_minmax(14rem,auto)] items-center gap-3 border-b px-3 py-2.5 text-sm";
 
 /**
- * SCREEN-MANAGEMENT-UX-1B — dense fleet table row.
+ * SCREEN-MANAGEMENT-UX-1B/1E — dense fleet table row with shared card actions.
  */
 export function FleetScreenTableRow({
   screen,
@@ -39,13 +34,11 @@ export function FleetScreenTableRow({
   const statusKind = resolveOperatorFleetStatus(screen);
   const needsAttention = screenNeedsAttention(screen);
   const isDisabled = screen.canonicalState.maintenanceState === "maintenance";
-  const screenEntryUrl = getScreenEntryUrl();
-  const screenSetupUrl = getScreenLoginUrl();
 
   return (
     <div
       className={cn(
-        "grid grid-cols-[minmax(9rem,1.5fr)_minmax(6.5rem,0.85fr)_minmax(6rem,0.75fr)_minmax(5.5rem,0.7fr)_auto] items-center gap-3 border-b px-3 py-2.5 text-sm",
+        TABLE_GRID,
         "hover:bg-muted/40 focus-within:bg-muted/40",
         needsAttention && "bg-amber-500/5"
       )}
@@ -54,24 +47,31 @@ export function FleetScreenTableRow({
       role="row"
     >
       <div className="min-w-0" role="cell">
-        <p className="truncate font-medium leading-tight">{screen.displayName}</p>
-        <p className="truncate text-xs text-muted-foreground">
-          {screenTypeLabel(screen.role, language)}
-        </p>
+        <div className="flex min-w-0 items-start gap-1.5">
+          {needsAttention ? (
+            <AlertTriangle
+              className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400"
+              aria-label={isAr ? "يحتاج انتباه" : "Needs attention"}
+            />
+          ) : null}
+          <div className="min-w-0">
+            <p className="truncate font-medium leading-tight">{screen.displayName}</p>
+            <p className="truncate text-xs text-muted-foreground">
+              {screenTypeLabel(screen.role, language)}
+            </p>
+          </div>
+        </div>
       </div>
 
       <div role="cell">
-        <span
-          className={cn(
-            "inline-flex max-w-full truncate rounded-full px-2.5 py-0.5 text-xs font-medium",
-            operatorFleetStatusPillClass(statusKind)
-          )}
-        >
-          {operatorFleetStatusLabel(statusKind, language)}
-        </span>
+        <FleetOperatorStatusPill kind={statusKind} language={language} />
       </div>
 
-      <div className="truncate text-xs text-muted-foreground" role="cell" title={formatLastSeen(screen.lastHeartbeat, language)}>
+      <div
+        className="truncate text-xs text-muted-foreground"
+        role="cell"
+        title={formatLastSeen(screen.lastHeartbeat, language)}
+      >
         {formatLastSeen(screen.lastHeartbeat, language)}
       </div>
 
@@ -79,37 +79,15 @@ export function FleetScreenTableRow({
         {categorySummary ?? "—"}
       </div>
 
-      <div className="flex items-center justify-end gap-1" role="cell">
-        {needsAttention ? (
-          <Button size="sm" variant="default" className="h-8 px-2.5" disabled={isDisabled} asChild>
-            <a href={screenSetupUrl} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="mr-1 h-3.5 w-3.5" />
-              {isAr ? "إعداد" : "Set up"}
-            </a>
-          </Button>
-        ) : (
-          <Button size="sm" variant="default" className="h-8 px-2.5" disabled={isDisabled} asChild>
-            <a href={screenEntryUrl} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="mr-1 h-3.5 w-3.5" />
-              {isAr ? "فتح" : "Open"}
-            </a>
-          </Button>
-        )}
-        <Button
-          size="sm"
-          variant="ghost"
-          className="h-8 w-8 p-0"
-          onClick={() => onSettings(screen.screenId)}
-          aria-label={isAr ? "الإعدادات" : "Settings"}
-        >
-          <Settings2 className="h-4 w-4" />
-        </Button>
-        <FleetScreenManageMenu
+      <div role="cell">
+        <FleetScreenActions
           screenId={screen.screenId}
           language={language}
+          needsAttention={needsAttention}
           disabled={isDisabled}
+          density="table"
+          onSettings={onSettings}
           onManage={onManage}
-          compact
         />
       </div>
     </div>
@@ -120,7 +98,10 @@ export function FleetScreenTableHeader({ language }: { language: string }) {
   const isAr = language === "ar";
   return (
     <div
-      className="grid grid-cols-[minmax(9rem,1.5fr)_minmax(6.5rem,0.85fr)_minmax(6rem,0.75fr)_minmax(5.5rem,0.7fr)_auto] items-center gap-3 border-b bg-muted/50 px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground"
+      className={cn(
+        TABLE_GRID,
+        "border-b bg-muted/50 px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground"
+      )}
       role="row"
     >
       <div role="columnheader">{isAr ? "الشاشة" : "Screen"}</div>

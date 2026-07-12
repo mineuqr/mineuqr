@@ -369,8 +369,8 @@ export function ScreenManagementWorkspacePanel({
         <div className="overflow-x-auto rounded-xl border" data-virtualized="fleet-table-wrapper">
           <VirtualizedFleetTable
             items={filteredItems}
-            rowHeight={56}
-            className="min-w-[720px] w-full"
+            rowHeight={60}
+            className="min-w-[880px] w-full"
             getKey={(s) => s.screenId}
             header={<FleetScreenTableHeader language={language} />}
             onEndReached={() => {

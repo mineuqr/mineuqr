@@ -1,17 +1,10 @@
 import type { FleetScreenReadModel } from "@/lib/screen-fleet/fleetReadModel";
-import {
-  getScreenEntryUrl,
-  getScreenLoginUrl,
-} from "@/lib/screen-credential-lifecycle/screenEntryUrl";
+import { FleetOperatorStatusPill } from "@/components/screen-management/FleetOperatorStatusPill";
+import { FleetScreenActions } from "@/components/screen-management/FleetScreenActions";
+import { type FleetScreenManageAction } from "@/components/screen-management/FleetScreenManageMenu";
 import { screenTypeLabel } from "@/lib/operational-screen/screenLabels";
 import { cn } from "@/lib/utils";
-import { AlertTriangle, ExternalLink, Settings2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { FleetOperatorStatusPill } from "@/components/screen-management/FleetOperatorStatusPill";
-import {
-  FleetScreenManageMenu,
-  type FleetScreenManageAction,
-} from "@/components/screen-management/FleetScreenManageMenu";
+import { AlertTriangle } from "lucide-react";
 import {
   formatLastSeen,
   resolveOperatorFleetStatus,
@@ -21,7 +14,7 @@ import {
 export type { FleetScreenManageAction };
 
 /**
- * Fleet card — operator-first presentation (SCREEN-MANAGEMENT-UX-1A/1B).
+ * Fleet card — operator-first presentation (SCREEN-MANAGEMENT-UX-1A/1B/1E).
  */
 export function FleetScreenCard({
   screen,
@@ -40,8 +33,6 @@ export function FleetScreenCard({
   const needsAttention = screenNeedsAttention(screen);
   const statusKind = resolveOperatorFleetStatus(screen);
   const isDisabled = screen.canonicalState.maintenanceState === "maintenance";
-  const screenEntryUrl = getScreenEntryUrl();
-  const screenSetupUrl = getScreenLoginUrl();
 
   return (
     <article
@@ -66,7 +57,7 @@ export function FleetScreenCard({
 
       {needsAttention ? (
         <div className="mb-2 flex items-start gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/5 px-2.5 py-1.5 text-xs text-amber-900 dark:text-amber-100">
-          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
           <span>
             {isAr ? "يحتاج انتباه — أكمل الإعداد على الجهاز" : "Needs attention — finish setup on the device"}
           </span>
@@ -86,38 +77,15 @@ export function FleetScreenCard({
         ) : null}
       </dl>
 
-      <div className="flex flex-wrap gap-1.5">
-        {needsAttention ? (
-          <Button size="sm" variant="default" className="min-h-9 flex-1" disabled={isDisabled} asChild>
-            <a href={screenSetupUrl} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="mr-1 h-3.5 w-3.5" />
-              {isAr ? "إعداد الشاشة" : "Set up screen"}
-            </a>
-          </Button>
-        ) : (
-          <Button size="sm" variant="default" className="min-h-9 flex-1" disabled={isDisabled} asChild>
-            <a href={screenEntryUrl} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="mr-1 h-3.5 w-3.5" />
-              {isAr ? "فتح الشاشة" : "Open screen"}
-            </a>
-          </Button>
-        )}
-        <Button
-          size="sm"
-          variant="outline"
-          className="min-h-9"
-          onClick={() => onSettings(screen.screenId)}
-        >
-          <Settings2 className="mr-1 h-3.5 w-3.5" />
-          {isAr ? "الإعدادات" : "Settings"}
-        </Button>
-        <FleetScreenManageMenu
-          screenId={screen.screenId}
-          language={language}
-          disabled={isDisabled}
-          onManage={onManage}
-        />
-      </div>
+      <FleetScreenActions
+        screenId={screen.screenId}
+        language={language}
+        needsAttention={needsAttention}
+        disabled={isDisabled}
+        density="card"
+        onSettings={onSettings}
+        onManage={onManage}
+      />
     </article>
   );
 }

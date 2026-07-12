@@ -40,9 +40,21 @@ describe("SCREEN-FLEET-SCALE-1 client architecture guards", () => {
     expect(panel).toContain("VirtualizedFleetTable");
     expect(panel).toContain("FleetScreenTableRow");
     expect(table).toContain('data-virtualized="fleet-table"');
-    expect(row).toContain("FleetScreenManageMenu");
+    expect(row).toContain("FleetScreenActions");
     expect(presentation).toContain("resolveOperatorFleetStatus");
     expect(presentation).toContain("operatorFleetStatusPillClass");
+  });
+
+  it("UX-1E — fleet table shares action hierarchy with cards", () => {
+    const row = read("client/src/components/screen-management/FleetScreenTableRow.tsx");
+    const card = read("client/src/components/screen-management/FleetScreenCard.tsx");
+    const actions = read("client/src/components/screen-management/FleetScreenActions.tsx");
+    expect(row).toContain("FleetScreenActions");
+    expect(card).toContain("FleetScreenActions");
+    expect(actions).toContain("FleetScreenManageMenu");
+    expect(actions).toContain("fleetScreenActionLabels");
+    expect(read("client/src/lib/screen-management/fleetScreenActionsPresentation.ts")).toContain("Open screen");
+    expect(row).toContain("FleetOperatorStatusPill");
   });
 
   it("client FleetQueryEngine delegates to server", () => {
