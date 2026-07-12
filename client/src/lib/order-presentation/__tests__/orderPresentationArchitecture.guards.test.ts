@@ -113,6 +113,55 @@ describe("ORDER-WORKSPACE-CARD-ARCHITECTURE-1 presentation mapper", () => {
     expect(presentation.emphasis.statusAccentClass).toContain("bg-sky-500");
     expect(presentation.availableActions[0]?.id).toBe("start-preparing");
   });
+
+  it("KITCHEN-LIFECYCLE-OWNERSHIP-1: kitchen ticket presentation excludes mark-ready", () => {
+    const presentation = mapKitchenTicketPresentation({
+      orderId: 8,
+      orderNumber: "ORD-0008",
+      businessDay: "2026-07-11",
+      dailyDisplayNumber: 8,
+      displayOrderNumber: "008",
+      displayReference: "008",
+      tableNumber: 2,
+      sessionId: null,
+      customerName: null,
+      orderNotes: null,
+      status: "preparing",
+      totalAmount: "12.00",
+      createdAt: "2026-07-11 10:00:00",
+      readyAt: null,
+      statusEnteredAt: "2026-07-11 10:05:00",
+      elapsedSeconds: 300,
+      columnElapsedSeconds: 300,
+      urgencyTier: "normal",
+      lineCount: 1,
+      linesSummary: "1× Burger",
+      lineItems: [
+        {
+          projectionType: "MenuItem" as const,
+          lineItemId: 10,
+          menuItemId: 2,
+          quantity: 1,
+          nameAr: "برجر",
+          nameEn: "Burger",
+          price: "12.00",
+          category: {
+            categoryId: 1,
+            categoryCode: "mains",
+            categoryName: "Mains",
+            displayOrder: 1,
+            parentCategoryId: null,
+            version: 1,
+            updatedAt: "2026-07-11 10:00:00",
+          },
+        },
+      ],
+      lastEventId: null,
+    });
+
+    expect(presentation.availableActions.some((action) => action.id === "mark-ready")).toBe(false);
+    expect(presentation.availableActions).toHaveLength(0);
+  });
 });
 
 describe("ORDER-WORKSPACE-CARD-ARCHITECTURE-1 architecture guards", () => {

@@ -103,6 +103,18 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
     expect(kitchenScreen).not.toContain("accept-order");
   });
 
+  it("KITCHEN-LIFECYCLE-OWNERSHIP-1: kitchen runtime excludes order completion", () => {
+    const capabilities = read(
+      "client/src/lib/operational-screen/interaction/deviceOrderExecutionCapabilities.ts"
+    );
+    const kitchenScreen = read("client/src/components/operational-screen/KitchenScreenPanel.tsx");
+    const mapper = read("client/src/lib/order-presentation/mapOrderPresentation.ts");
+    expect(capabilities).toContain("KITCHEN_RUNTIME_FORBIDDEN_LIFECYCLE_ACTIONS");
+    expect(capabilities).toContain('"mark-ready"');
+    expect(kitchenScreen).not.toContain("mark-ready");
+    expect(mapper).not.toContain('id: "mark-ready"');
+  });
+
   it("FF-OSC-03: kitchen queue fetched in runtime stream, not presentation", () => {
     const kitchenPresentation = read("client/src/components/operational-screen/KitchenScreenPanel.tsx");
     const runtimeStream = read("client/src/lib/operational-screen/kitchen/useKitchenRuntimeStream.ts");

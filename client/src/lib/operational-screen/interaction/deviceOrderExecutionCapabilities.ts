@@ -13,6 +13,12 @@ import {
 /** Acceptance belongs to Orders Workspace — never on the operational screen. */
 const OPERATIONAL_SCREEN_EXCLUDED_ACTIONS: OperationalActionId[] = ["accept-order"];
 
+/**
+ * KITCHEN-LIFECYCLE-OWNERSHIP-1 — kitchen runtime is not the owner of order completion.
+ * Partial category projections cannot truthfully complete the full order lifecycle.
+ */
+const KITCHEN_RUNTIME_FORBIDDEN_LIFECYCLE_ACTIONS: OperationalActionId[] = ["mark-ready"];
+
 export function canExecuteOperationalTicketActions(role: OperationalDeviceRole): boolean {
   return rolePermitsOrderExecution(role);
 }
@@ -23,6 +29,12 @@ export function resolveOperationalScreenAction(
 ): OperationalAction | null {
   const actionId = resolvePrimaryDeviceOrderAction(role, orderStatus);
   if (!actionId || OPERATIONAL_SCREEN_EXCLUDED_ACTIONS.includes(actionId)) {
+    return null;
+  }
+  if (
+    role === "kitchen_display" &&
+    KITCHEN_RUNTIME_FORBIDDEN_LIFECYCLE_ACTIONS.includes(actionId)
+  ) {
     return null;
   }
   return getOperationalActionById(actionId);

@@ -352,14 +352,6 @@ export function mapKitchenTicketPresentation(
       labelAr: "بدء التحضير",
       variant: "primary",
     });
-  } else if (ticket.status === "preparing") {
-    kitchenActions.push({
-      id: "mark-ready",
-      targetStatus: "ready",
-      labelEn: "Mark Ready",
-      labelAr: "جاهز للتقديم",
-      variant: "primary",
-    });
   } else if (ticket.status === "ready") {
     kitchenActions.push({
       id: "serve-order",

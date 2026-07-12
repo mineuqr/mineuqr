@@ -7,7 +7,8 @@ describe("deviceOrderExecutionCapabilities", () => {
   });
 
   it("resolves execution actions after acceptance", () => {
-    expect(resolveOperationalScreenAction("kitchen_display", "preparing")?.id).toBe("mark-ready");
+    expect(resolveOperationalScreenAction("kitchen_display", "preparing")).toBeNull();
+    expect(resolveOperationalScreenAction("expo_display", "preparing")?.id).toBe("mark-ready");
     expect(resolveOperationalScreenAction("expo_display", "ready")?.id).toBe("serve-order");
   });
 
