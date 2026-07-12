@@ -163,6 +163,22 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
     expect(kitchen).not.toContain("applyKitchenCategoryFilter");
   });
 
+  it("KITCHEN-NOTIFICATION-ARCHITECTURE-1: arrival notification owned by runtime layer", () => {
+    const manager = read("client/src/lib/operational-screen/kitchen/kitchenArrivalNotification.ts");
+    const hook = read("client/src/lib/operational-screen/kitchen/useKitchenArrivalNotifications.ts");
+    const streamHook = read("client/src/lib/operational-screen/kitchen/useKitchenRuntimeStream.ts");
+    const kitchen = read("client/src/components/operational-screen/KitchenScreenPanel.tsx");
+    const card = read("client/src/components/kitchen/KitchenExecutionCard.tsx");
+    expect(manager).toContain("KitchenArrivalNotificationManager");
+    expect(manager).toContain("processKitchenOrderArrivals");
+    expect(hook).toContain("useKitchenArrivalNotifications");
+    expect(streamHook).toContain("useKitchenArrivalNotifications");
+    expect(kitchen).not.toContain("playKitchenOrderArrivalSound");
+    expect(kitchen).not.toContain("KitchenArrivalNotificationManager");
+    expect(kitchen).not.toContain("playOwnerNotificationSound");
+    expect(card).not.toContain("playKitchenOrderArrivalSound");
+  });
+
   it("ORDER-READ-CATEGORY-PROJECTION-1: runtime consumes canonical category projections only", () => {
     const readModel = read("client/src/lib/operational-screen/kitchen/kitchenRuntimeReadModel.ts");
     const stream = read("client/src/lib/operational-screen/kitchen/useKitchenRuntimeStream.ts");

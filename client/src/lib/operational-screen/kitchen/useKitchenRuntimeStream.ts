@@ -8,6 +8,7 @@ import {
   type KitchenProjectionDiagnostics,
   type KitchenRuntimeStream,
 } from "./buildKitchenRuntimeStream";
+import { useKitchenArrivalNotifications } from "./useKitchenArrivalNotifications";
 
 export type { KitchenProjectionDiagnostics, KitchenRuntimeStream };
 
@@ -24,7 +25,8 @@ export function useKitchenRuntimeStream(): KitchenRuntimeStream & {
   retry: () => void;
   isRefetching: boolean;
 } {
-  const { categoryFilter, categoryFilterPredicate, context } = useScreenRuntime();
+  const { categoryFilter, categoryFilterPredicate, context, configurationHealth, rolePlatform, screenState } =
+    useScreenRuntime();
   const visible = useVisiblePollingEnabled();
   const kitchenQueueSupported = isCapabilitySupported(context?.runtimeCapabilities, "kitchen_queue");
   const language = context?.presentation.language ?? "en";
@@ -61,6 +63,18 @@ export function useKitchenRuntimeStream(): KitchenRuntimeStream & {
       categoryFilterPredicate,
     ]
   );
+
+  useKitchenArrivalNotifications({
+    enabled: kitchenQueueSupported,
+    queue: stream.queue,
+    isLoading: stream.isLoading,
+    isError: stream.isError,
+    isShowingStaleData: stream.isShowingStaleData,
+    categoryFilterVersion: categoryFilter?.filterVersion ?? 0,
+    configurationVersion: configurationHealth?.configurationVersion ?? null,
+    reconnectCount: rolePlatform.reconnectCount,
+    connectivityState: screenState?.connectivityState ?? "connecting",
+  });
 
   return {
     ...stream,

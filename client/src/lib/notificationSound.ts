@@ -544,6 +544,11 @@ export function playOwnerNotificationSound(): boolean {
   return fallback();
 }
 
+/** KITCHEN-NOTIFICATION-ARCHITECTURE-1 — single kitchen operational alert (new pending order). */
+export function playKitchenOrderArrivalSound(): boolean {
+  return playOwnerNotificationSound();
+}
+
 /** For tests — reset shared audio state between cases. */
 export function resetNotificationAudioForTests(): void {
   clearCustomerReadyPlaybackTimers();
