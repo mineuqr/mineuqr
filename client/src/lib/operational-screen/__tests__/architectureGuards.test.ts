@@ -214,6 +214,14 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
     expect(pairing).not.toContain("getKitchenQueue");
   });
 
+  it("SCREEN-PAIRING-STORE-STABILITY-1: credential store caches snapshot references", () => {
+    const store = read("client/src/lib/operational-screen/credentialStore.ts");
+    expect(store).toContain("cachedRaw");
+    expect(store).toContain("cachedSnapshot");
+    expect(store).toContain("replaceSnapshotCache");
+    expect(store).toMatch(/if \(raw === cachedRaw\)/);
+  });
+
   it("FF-BOOT-05: main.tsx skips login redirect on /screen routes", () => {
     const main = read("client/src/main.tsx");
     expect(main).toContain('startsWith("/screen")');

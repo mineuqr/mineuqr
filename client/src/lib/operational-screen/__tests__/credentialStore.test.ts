@@ -62,4 +62,15 @@ describe("credentialStore", () => {
     clearOperationalScreenCredentials();
     expect(readOperationalScreenCredentials()).toBeNull();
   });
+
+  it("returns referentially stable snapshots across repeated reads", () => {
+    writeOperationalScreenCredentials({
+      deviceId: "dev_stable",
+      tokenId: "tok_stable",
+      secret: "d".repeat(32),
+    });
+    const first = readOperationalScreenCredentials();
+    const second = readOperationalScreenCredentials();
+    expect(first).toBe(second);
+  });
 });
