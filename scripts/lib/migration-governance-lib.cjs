@@ -29,9 +29,9 @@ const CANONICAL_TAIL_TAGS = [
   "0057_operational_device_screen_config_revision",
 ];
 
-/** PRODUCTION-MIGRATION-GOVERNANCE-RECOVERY-1 — certified production journal terminus. */
-const CANONICAL_MIGRATION_TAIL_TAG = "0062_order_lifecycle_stage";
-const CANONICAL_JOURNAL_ENTRY_COUNT = 63;
+/** PRODUCTION-MIGRATION-GOVERNANCE-RECOVERY-0063-1 — certified production journal terminus. */
+const CANONICAL_MIGRATION_TAIL_TAG = "0063_screen_credential_ciphertext";
+const CANONICAL_JOURNAL_ENTRY_COUNT = 64;
 
 function loadJournal() {
   return JSON.parse(fs.readFileSync(JOURNAL_PATH, "utf8"));
