@@ -544,9 +544,13 @@ export function playOwnerNotificationSound(): boolean {
   return fallback();
 }
 
-/** KITCHEN-NOTIFICATION-ARCHITECTURE-1 — single kitchen operational alert (new pending order). */
+/** KITCHEN-NOTIFICATION-ARCHITECTURE-1 — single kitchen operational alert (new order arrival). */
 export function playKitchenOrderArrivalSound(): boolean {
-  return playOwnerNotificationSound();
+  const fallback = () => playOwnerAlertSoundWebAudioFallback();
+  if (tryPlayAudioAsset(AUDIO_ASSETS.KITCHEN_ARRIVAL, 1, fallback)) {
+    return true;
+  }
+  return fallback();
 }
 
 /** For tests — reset shared audio state between cases. */

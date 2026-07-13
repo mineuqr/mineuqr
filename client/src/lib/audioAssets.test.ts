@@ -9,5 +9,8 @@ describe("audioAssets NOTIFICATION-AUDIO-1", () => {
     expect(AUDIO_ASSETS.CUSTOMER_READY).toBe(
       "/audio/mixkit-clock-countdown-bleeps-916.wav"
     );
+    expect(AUDIO_ASSETS.KITCHEN_ARRIVAL).toBe(
+      "/audio/mixkit-street-public-alarm-997.wav"
+    );
   });
 });
