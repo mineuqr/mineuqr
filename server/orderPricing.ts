@@ -1,16 +1,10 @@
 import { TRPCError } from "@trpc/server";
 import type { SelectMenuItem } from "../drizzle/schema";
 import { getMenuItemById, getOfferById } from "./db";
-
-const OFFER_CART_MENU_ITEM_ID_BASE = 1_000_000_000;
-
-function isOfferCartMenuItemId(menuItemId: number): boolean {
-  return menuItemId >= OFFER_CART_MENU_ITEM_ID_BASE;
-}
-
-function cartMenuItemIdToOfferId(menuItemId: number): number {
-  return menuItemId - OFFER_CART_MENU_ITEM_ID_BASE;
-}
+import {
+  cartMenuItemIdToOfferId,
+  isOfferCartMenuItemId,
+} from "@shared/ordering-platform/offerCartIdentity";
 
 /** Public order line input — pricing fields are not trusted. */
 export type OrderLineInput = {
