@@ -191,6 +191,15 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
     expect(card).not.toContain("playKitchenOrderArrivalSound");
   });
 
+  it("KITCHEN-AUDIO-PRIMING-ALIGNMENT-1: kitchen uses dashboard audio priming pathway", () => {
+    const kitchenHook = read("client/src/lib/operational-screen/kitchen/useKitchenArrivalNotifications.ts");
+    const dashboard = read("client/src/components/OrderAlertSystem.tsx");
+    expect(kitchenHook).toContain("primeOwnerDashboardAudioFromGesture");
+    expect(kitchenHook).not.toContain("primeOwnerAlertAudioAsset");
+    expect(dashboard).toContain("primeOwnerDashboardAudioFromGesture");
+    expect(dashboard).not.toContain("primeOwnerAlertAudioAsset");
+  });
+
   it("ORDER-READ-CATEGORY-PROJECTION-1: runtime consumes canonical category projections only", () => {
     const readModel = read("client/src/lib/operational-screen/kitchen/kitchenRuntimeReadModel.ts");
     const stream = read("client/src/lib/operational-screen/kitchen/useKitchenRuntimeStream.ts");

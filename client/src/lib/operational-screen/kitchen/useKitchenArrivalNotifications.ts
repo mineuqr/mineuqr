@@ -1,5 +1,8 @@
 import { useEffect, useRef } from "react";
-import { playKitchenOrderArrivalSound, primeOwnerAlertAudioAsset } from "@/lib/notificationSound";
+import {
+  playKitchenOrderArrivalSound,
+  primeOwnerDashboardAudioFromGesture,
+} from "@/lib/notificationSound";
 import type { KitchenRuntimeQueue } from "./kitchenRuntimeReadModel";
 import {
   buildKitchenArrivalBaselineToken,
@@ -32,7 +35,7 @@ export function useKitchenArrivalNotifications(input: KitchenArrivalNotification
   useEffect(() => {
     if (!input.enabled) return;
     const prime = () => {
-      void primeOwnerAlertAudioAsset();
+      void primeOwnerDashboardAudioFromGesture();
     };
     window.addEventListener("pointerdown", prime, { once: true });
     window.addEventListener("keydown", prime, { once: true });
