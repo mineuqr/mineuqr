@@ -24,7 +24,7 @@ Kitchen screens remain open for long periods. Staff may not constantly watch the
 
 **Decision:** Add a runtime arrival notification manager wired from `useKitchenRuntimeStream` (after filtered queue is available). The UI consumes the filtered stream only; it does not decide or trigger notifications.
 
-**Single notification type:** New Kitchen Order Arrival (pending column, first visibility on filtered projection).
+**Single notification type:** New Kitchen Order Arrival (first visibility on filtered projection — amended by KITCHEN-ARRIVAL-SEMANTICS-1; was pending-column-only at initial certification).
 
 **Audio:** One sound (`playKitchenOrderArrivalSound` → existing owner alert asset, volume 1). No settings.
 

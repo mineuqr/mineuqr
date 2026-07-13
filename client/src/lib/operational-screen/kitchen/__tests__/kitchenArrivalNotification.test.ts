@@ -2,20 +2,24 @@ import { describe, expect, it, vi } from "vitest";
 import type { KitchenRuntimeQueue } from "../kitchenRuntimeReadModel";
 import {
   buildKitchenArrivalBaselineToken,
+  collectFilteredVisibleOrderIds,
   KitchenArrivalNotificationManager,
   processKitchenOrderArrivals,
   resolveKitchenArrivalProcessMode,
 } from "../kitchenArrivalNotification";
 
-function mockQueue(pendingOrderIds: number[]): KitchenRuntimeQueue {
-  const pending = pendingOrderIds.map((orderId) => ({
+function mockTicket(
+  orderId: number,
+  status: "pending" | "preparing" | "ready"
+) {
+  return {
     orderId,
     orderNumber: String(orderId),
     tableNumber: 1,
     sessionId: null,
     customerName: null,
     orderNotes: null,
-    status: "pending" as const,
+    status,
     totalAmount: "10",
     createdAt: "2026-07-06T10:00:00.000Z",
     readyAt: null,
@@ -28,15 +32,30 @@ function mockQueue(pendingOrderIds: number[]): KitchenRuntimeQueue {
     lineItems: [],
     lastEventId: null,
     orderCategoryIds: [1],
-  }));
+  };
+}
+
+function mockQueue(input: {
+  pending?: number[];
+  preparing?: number[];
+  ready?: number[];
+}): KitchenRuntimeQueue {
+  const pending = (input.pending ?? []).map((id) => mockTicket(id, "pending"));
+  const preparing = (input.preparing ?? []).map((id) => mockTicket(id, "preparing"));
+  const ready = (input.ready ?? []).map((id) => mockTicket(id, "ready"));
+  const tickets = [...pending, ...preparing, ...ready];
 
   return {
     generatedAt: "2026-07-06T10:00:00.000Z",
-    tickets: pending,
-    columns: { pending, preparing: [], ready: [] },
+    tickets,
+    columns: { pending, preparing, ready },
     meta: {
-      totalVisible: pending.length,
-      counts: { pending: pending.length, preparing: 0, ready: 0 },
+      totalVisible: tickets.length,
+      counts: {
+        pending: pending.length,
+        preparing: preparing.length,
+        ready: ready.length,
+      },
     },
     projection: {
       projectionSchemaVersion: 2,
@@ -47,39 +66,48 @@ function mockQueue(pendingOrderIds: number[]): KitchenRuntimeQueue {
   };
 }
 
+describe("collectFilteredVisibleOrderIds", () => {
+  it("collects order ids from all filtered runtime columns", () => {
+    const ids = collectFilteredVisibleOrderIds(
+      mockQueue({ pending: [1], preparing: [2], ready: [3] })
+    );
+    expect(ids.sort((a, b) => a - b)).toEqual([1, 2, 3]);
+  });
+});
+
 describe("processKitchenOrderArrivals", () => {
-  it("baseline seeds pending order ids without reporting arrivals", () => {
+  it("baseline seeds visible order ids without reporting arrivals", () => {
     const result = processKitchenOrderArrivals(
-      { announcedPendingOrderIds: new Set(), baselineEstablished: false, lastBaselineToken: null },
-      { pendingOrderIds: [1, 2], mode: "baseline" }
+      { announcedVisibleOrderIds: new Set(), baselineEstablished: false, lastBaselineToken: null },
+      { visibleOrderIds: [1, 2], mode: "baseline" }
     );
     expect(result.newArrivals).toEqual([]);
-    expect(result.nextState.announcedPendingOrderIds).toEqual(new Set([1, 2]));
+    expect(result.nextState.announcedVisibleOrderIds).toEqual(new Set([1, 2]));
   });
 
-  it("observe reports only unseen pending order ids", () => {
+  it("observe reports only unseen visible order ids", () => {
     const seeded = processKitchenOrderArrivals(
-      { announcedPendingOrderIds: new Set(), baselineEstablished: false, lastBaselineToken: null },
-      { pendingOrderIds: [1, 2], mode: "baseline" }
+      { announcedVisibleOrderIds: new Set(), baselineEstablished: false, lastBaselineToken: null },
+      { visibleOrderIds: [1, 2], mode: "baseline" }
     );
 
     const result = processKitchenOrderArrivals(seeded.nextState, {
-      pendingOrderIds: [1, 2, 3],
+      visibleOrderIds: [1, 2, 3],
       mode: "observe",
     });
     expect(result.newArrivals).toEqual([3]);
-    expect(result.nextState.announcedPendingOrderIds).toEqual(new Set([1, 2, 3]));
+    expect(result.nextState.announcedVisibleOrderIds).toEqual(new Set([1, 2, 3]));
   });
 
   it("does not re-notify the same order on polling refresh", () => {
     let state = processKitchenOrderArrivals(
-      { announcedPendingOrderIds: new Set(), baselineEstablished: false, lastBaselineToken: null },
-      { pendingOrderIds: [1], mode: "baseline" }
+      { announcedVisibleOrderIds: new Set(), baselineEstablished: false, lastBaselineToken: null },
+      { visibleOrderIds: [1], mode: "baseline" }
     ).nextState;
 
     for (let poll = 0; poll < 5; poll += 1) {
       const result = processKitchenOrderArrivals(state, {
-        pendingOrderIds: [1],
+        visibleOrderIds: [1],
         mode: "observe",
       });
       expect(result.newArrivals).toEqual([]);
@@ -87,23 +115,24 @@ describe("processKitchenOrderArrivals", () => {
     }
   });
 
-  it("does not notify when order leaves pending (status change)", () => {
+  it("does not re-notify when order moves between pipeline columns", () => {
     let state = processKitchenOrderArrivals(
-      { announcedPendingOrderIds: new Set(), baselineEstablished: false, lastBaselineToken: null },
-      { pendingOrderIds: [1], mode: "baseline" }
+      { announcedVisibleOrderIds: new Set(), baselineEstablished: false, lastBaselineToken: null },
+      { visibleOrderIds: [1], mode: "baseline" }
     ).nextState;
 
-    const moved = processKitchenOrderArrivals(state, {
-      pendingOrderIds: [],
+    const preparing = processKitchenOrderArrivals(state, {
+      visibleOrderIds: [1],
       mode: "observe",
     });
-    expect(moved.newArrivals).toEqual([]);
+    expect(preparing.newArrivals).toEqual([]);
+    state = preparing.nextState;
 
-    const returned = processKitchenOrderArrivals(moved.nextState, {
-      pendingOrderIds: [1],
+    const ready = processKitchenOrderArrivals(state, {
+      visibleOrderIds: [1],
       mode: "observe",
     });
-    expect(returned.newArrivals).toEqual([]);
+    expect(ready.newArrivals).toEqual([]);
   });
 });
 
@@ -154,25 +183,39 @@ describe("resolveKitchenArrivalProcessMode", () => {
 });
 
 describe("KitchenArrivalNotificationManager", () => {
+  const token = buildKitchenArrivalBaselineToken({
+    categoryFilterVersion: 1,
+    configurationVersion: "v1",
+    reconnectCount: 0,
+  });
+
   it("plays sound once for a genuinely new pending order", () => {
     const playSound = vi.fn(() => true);
     const manager = new KitchenArrivalNotificationManager(playSound);
-    const queue = mockQueue([1]);
-    const token = buildKitchenArrivalBaselineToken({
-      categoryFilterVersion: 1,
-      configurationVersion: "v1",
-      reconnectCount: 0,
-    });
 
-    manager.processFilteredQueue(queue, { mode: "baseline", baselineToken: token });
+    manager.processFilteredQueue(mockQueue({ pending: [1] }), { mode: "baseline", baselineToken: token });
     expect(playSound).not.toHaveBeenCalled();
 
-    const queueWithNew = mockQueue([1, 2]);
-    const event = manager.processFilteredQueue(queueWithNew, {
+    const event = manager.processFilteredQueue(mockQueue({ pending: [1, 2] }), {
       mode: "observe",
       baselineToken: token,
     });
     expect(event.newArrivals).toEqual([2]);
+    expect(event.played).toBe(true);
+    expect(playSound).toHaveBeenCalledTimes(1);
+  });
+
+  it("plays sound when order first appears in preparing column", () => {
+    const playSound = vi.fn(() => true);
+    const manager = new KitchenArrivalNotificationManager(playSound);
+
+    manager.processFilteredQueue(mockQueue({}), { mode: "baseline", baselineToken: token });
+
+    const event = manager.processFilteredQueue(mockQueue({ preparing: [42] }), {
+      mode: "observe",
+      baselineToken: token,
+    });
+    expect(event.newArrivals).toEqual([42]);
     expect(event.played).toBe(true);
     expect(playSound).toHaveBeenCalledTimes(1);
   });
@@ -185,14 +228,17 @@ describe("KitchenArrivalNotificationManager", () => {
       configurationVersion: "v1",
       reconnectCount: 0,
     });
-    manager.processFilteredQueue(mockQueue([1]), { mode: "baseline", baselineToken: tokenV1 });
+    manager.processFilteredQueue(mockQueue({ pending: [1] }), { mode: "baseline", baselineToken: tokenV1 });
 
     const tokenV2 = buildKitchenArrivalBaselineToken({
       categoryFilterVersion: 1,
       configurationVersion: "v1",
       reconnectCount: 1,
     });
-    manager.processFilteredQueue(mockQueue([1, 2]), { mode: "baseline", baselineToken: tokenV2 });
+    manager.processFilteredQueue(mockQueue({ pending: [1], preparing: [2] }), {
+      mode: "baseline",
+      baselineToken: tokenV2,
+    });
     expect(playSound).not.toHaveBeenCalled();
   });
 
@@ -200,7 +246,7 @@ describe("KitchenArrivalNotificationManager", () => {
     const playSound = vi.fn(() => true);
     const manager = new KitchenArrivalNotificationManager(playSound);
 
-    manager.processFilteredQueue(mockQueue([1]), {
+    manager.processFilteredQueue(mockQueue({ pending: [1] }), {
       mode: "baseline",
       baselineToken: buildKitchenArrivalBaselineToken({
         categoryFilterVersion: 1,
@@ -209,7 +255,7 @@ describe("KitchenArrivalNotificationManager", () => {
       }),
     });
 
-    manager.processFilteredQueue(mockQueue([1, 2]), {
+    manager.processFilteredQueue(mockQueue({ pending: [1], preparing: [2] }), {
       mode: "baseline",
       baselineToken: buildKitchenArrivalBaselineToken({
         categoryFilterVersion: 2,

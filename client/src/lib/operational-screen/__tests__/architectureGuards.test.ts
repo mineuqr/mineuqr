@@ -200,6 +200,14 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
     expect(dashboard).not.toContain("primeOwnerAlertAudioAsset");
   });
 
+  it("KITCHEN-ARRIVAL-SEMANTICS-1: arrival uses filtered runtime visibility not pending column", () => {
+    const manager = read("client/src/lib/operational-screen/kitchen/kitchenArrivalNotification.ts");
+    expect(manager).toContain("collectFilteredVisibleOrderIds");
+    expect(manager).not.toContain("collectFilteredPendingOrderIds");
+    expect(manager).toContain("announcedVisibleOrderIds");
+    expect(manager).not.toContain("announcedPendingOrderIds");
+  });
+
   it("ORDER-READ-CATEGORY-PROJECTION-1: runtime consumes canonical category projections only", () => {
     const readModel = read("client/src/lib/operational-screen/kitchen/kitchenRuntimeReadModel.ts");
     const stream = read("client/src/lib/operational-screen/kitchen/useKitchenRuntimeStream.ts");

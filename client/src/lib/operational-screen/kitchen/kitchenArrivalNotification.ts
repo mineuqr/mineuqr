@@ -1,13 +1,13 @@
-import type { KitchenRuntimeQueue } from "./kitchenRuntimeReadModel";
+import type { KitchenRuntimeQueue, KitchenRuntimeTicket } from "./kitchenRuntimeReadModel";
 
-/** Runtime notification event — one type only: new pending order first visibility. */
+/** Runtime notification event — one type only: first filtered-runtime visibility. */
 export type KitchenArrivalNotificationEvent = Readonly<{
   newArrivals: readonly number[];
   played: boolean;
 }>;
 
 export type KitchenArrivalNotificationState = Readonly<{
-  announcedPendingOrderIds: ReadonlySet<number>;
+  announcedVisibleOrderIds: ReadonlySet<number>;
   baselineEstablished: boolean;
   lastBaselineToken: string | null;
 }>;
@@ -15,7 +15,7 @@ export type KitchenArrivalNotificationState = Readonly<{
 export type KitchenArrivalProcessMode = "skip" | "baseline" | "observe";
 
 export type KitchenArrivalProcessInput = Readonly<{
-  pendingOrderIds: readonly number[];
+  visibleOrderIds: readonly number[];
   mode: Exclude<KitchenArrivalProcessMode, "skip">;
 }>;
 
@@ -31,7 +31,7 @@ export type KitchenArrivalBaselineContext = Readonly<{
 }>;
 
 export const EMPTY_KITCHEN_ARRIVAL_STATE: KitchenArrivalNotificationState = {
-  announcedPendingOrderIds: new Set(),
+  announcedVisibleOrderIds: new Set(),
   baselineEstablished: false,
   lastBaselineToken: null,
 };
@@ -44,12 +44,26 @@ export function buildKitchenArrivalBaselineToken(input: {
   return `${input.configurationVersion ?? "none"}:${input.categoryFilterVersion}:${input.reconnectCount}`;
 }
 
-export function collectFilteredPendingOrderIds(queue: KitchenRuntimeQueue): number[] {
-  return queue.columns.pending.map((ticket) => ticket.orderId);
+/**
+ * KITCHEN-ARRIVAL-SEMANTICS-1 — collect order ids visible on this kitchen screen
+ * after runtime projection and item filtering (all pipeline columns).
+ */
+export function collectFilteredVisibleOrderIds(queue: KitchenRuntimeQueue): number[] {
+  const ids = new Set<number>();
+  for (const ticket of queue.columns.pending) {
+    ids.add(ticket.orderId);
+  }
+  for (const ticket of queue.columns.preparing) {
+    ids.add(ticket.orderId);
+  }
+  for (const ticket of queue.columns.ready) {
+    ids.add(ticket.orderId);
+  }
+  return Array.from(ids);
 }
 
 /**
- * Resolve whether the runtime should skip, baseline, or observe pending arrivals.
+ * Resolve whether the runtime should skip, baseline, or observe arrivals.
  * Baseline suppresses notifications for existing tickets (refresh, reconnect, config reload).
  */
 export function resolveKitchenArrivalProcessMode(
@@ -80,16 +94,16 @@ export function processKitchenOrderArrivals(
   state: KitchenArrivalNotificationState,
   input: KitchenArrivalProcessInput
 ): { newArrivals: number[]; nextState: KitchenArrivalNotificationState } {
-  const announced = new Set(state.announcedPendingOrderIds);
+  const announced = new Set(state.announcedVisibleOrderIds);
 
   if (input.mode === "baseline") {
-    for (const orderId of input.pendingOrderIds) {
+    for (const orderId of input.visibleOrderIds) {
       announced.add(orderId);
     }
     return {
       newArrivals: [],
       nextState: {
-        announcedPendingOrderIds: announced,
+        announcedVisibleOrderIds: announced,
         baselineEstablished: true,
         lastBaselineToken: state.lastBaselineToken,
       },
@@ -97,7 +111,7 @@ export function processKitchenOrderArrivals(
   }
 
   const newArrivals: number[] = [];
-  for (const orderId of input.pendingOrderIds) {
+  for (const orderId of input.visibleOrderIds) {
     if (announced.has(orderId)) continue;
     newArrivals.push(orderId);
     announced.add(orderId);
@@ -106,7 +120,7 @@ export function processKitchenOrderArrivals(
   return {
     newArrivals,
     nextState: {
-      announcedPendingOrderIds: announced,
+      announcedVisibleOrderIds: announced,
       baselineEstablished: true,
       lastBaselineToken: state.lastBaselineToken,
     },
@@ -117,7 +131,7 @@ export type KitchenArrivalSoundPlayer = () => boolean;
 
 /**
  * KITCHEN-NOTIFICATION-ARCHITECTURE-1 — runtime arrival notification authority.
- * Detects first visibility of pending orders after kitchen item filtering.
+ * KITCHEN-ARRIVAL-SEMANTICS-1 — first visibility in filtered kitchen runtime projection.
  */
 export class KitchenArrivalNotificationManager {
   private state: KitchenArrivalNotificationState = EMPTY_KITCHEN_ARRIVAL_STATE;
@@ -143,7 +157,7 @@ export class KitchenArrivalNotificationManager {
       return { newArrivals: [], played: false };
     }
 
-    const pendingOrderIds = collectFilteredPendingOrderIds(queue);
+    const visibleOrderIds = collectFilteredVisibleOrderIds(queue);
     const stateForProcess: KitchenArrivalNotificationState = {
       ...this.state,
       lastBaselineToken:
@@ -151,7 +165,7 @@ export class KitchenArrivalNotificationManager {
     };
 
     const result = processKitchenOrderArrivals(stateForProcess, {
-      pendingOrderIds,
+      visibleOrderIds,
       mode: input.mode,
     });
 
