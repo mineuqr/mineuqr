@@ -208,6 +208,20 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
     expect(manager).not.toContain("announcedPendingOrderIds");
   });
 
+  it("EXPO-WORKSPACE-ARCHITECTURE-1: Expo owns mark-ready on operational screen", () => {
+    const capabilities = read(
+      "client/src/lib/operational-screen/interaction/deviceOrderExecutionCapabilities.ts"
+    );
+    const contract = read("client/src/lib/operational-screen/expo/expoWorkspaceContract.ts");
+    const kitchenPanel = read("client/src/components/operational-screen/KitchenScreenPanel.tsx");
+    expect(capabilities).toContain("KITCHEN_RUNTIME_FORBIDDEN_LIFECYCLE_ACTIONS");
+    expect(capabilities).toContain('"mark-ready"');
+    expect(contract).toContain("EXPO_EXCLUSIVE_OPERATIONAL_LIFECYCLE_ACTIONS");
+    expect(contract).toContain("operationalScreenExposesMarkReady");
+    expect(kitchenPanel).toContain("resolveOperationalScreenAction");
+    expect(kitchenPanel).not.toContain("mark-ready");
+  });
+
   it("ORDER-READ-CATEGORY-PROJECTION-1: runtime consumes canonical category projections only", () => {
     const readModel = read("client/src/lib/operational-screen/kitchen/kitchenRuntimeReadModel.ts");
     const stream = read("client/src/lib/operational-screen/kitchen/useKitchenRuntimeStream.ts");
