@@ -335,6 +335,11 @@ export function PrintWorkspacePanel({
                               <p className="text-xs text-slate-400">
                                 {card.tableLabel} · {card.statusLabel}
                               </p>
+                              {card.notesPreview ? (
+                                <p className="mt-1 line-clamp-2 break-words text-xs text-slate-400">
+                                  {card.notesPreview}
+                                </p>
+                              ) : null}
                             </div>
                             <span className="text-sm font-medium text-emerald-400">
                               {card.totalAmount} {sym}
@@ -397,17 +402,30 @@ export function PrintWorkspacePanel({
                       {order.lineItems.map((item) => (
                         <li
                           key={item.lineItemId}
-                          className="flex items-center justify-between px-3 py-2 text-sm"
+                          className="flex flex-col gap-1 px-3 py-2 text-sm"
                         >
-                          <span className="text-slate-200">
-                            {isAr ? item.nameAr : item.nameEn || item.nameAr} × {item.quantity}
-                          </span>
-                          <span className="text-slate-400">
-                            {item.price} {sym}
-                          </span>
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-slate-200">
+                              {isAr ? item.nameAr : item.nameEn || item.nameAr} ×{" "}
+                              {item.quantity}
+                            </span>
+                            <span className="shrink-0 text-slate-400">
+                              {item.price} {sym}
+                            </span>
+                          </div>
+                          {item.itemNotes?.trim() ? (
+                            <p className="break-words whitespace-pre-wrap text-xs text-slate-400">
+                              {item.itemNotes.trim()}
+                            </p>
+                          ) : null}
                         </li>
                       ))}
                     </ul>
+                    {order.notes?.trim() ? (
+                      <p className="rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2 text-sm text-slate-200 break-words whitespace-pre-wrap">
+                        {order.notes.trim()}
+                      </p>
+                    ) : null}
                   </div>
                     );
                   })()

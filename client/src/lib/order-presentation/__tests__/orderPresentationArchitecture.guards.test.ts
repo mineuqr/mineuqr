@@ -98,6 +98,7 @@ describe("ORDER-WORKSPACE-CARD-ARCHITECTURE-1 presentation mapper", () => {
             categoryCode: "soups",
             categoryName: "Soups",
             displayOrder: 1,
+
             parentCategoryId: null,
             version: 1,
             updatedAt: "2026-07-11 10:00:00",
@@ -217,5 +218,27 @@ describe("ORDER-WORKSPACE-CARD-ARCHITECTURE-1 architecture guards", () => {
       expect(source).not.toContain("buildLinesSummaryFromItems");
       expect(source).not.toContain("kitchenStatusPresentation");
     }
+  });
+
+  it("ORDERING-OPERATIONAL-NOTES-PRESENTATION-1: projected notes flow through presentation only", () => {
+    const model = read("client/src/lib/order-presentation/orderPresentationModel.ts");
+    const mapper = read("client/src/lib/order-presentation/mapOrderPresentation.ts");
+    const kitchenCard = read("client/src/components/kitchen/KitchenExecutionCard.tsx");
+    const operationalCard = read("client/src/components/operational-workspace/OperationalCard.tsx");
+    const printSerializer = read(
+      "server/print-connector/runtime/PrintPayloadTextSerializer.ts"
+    );
+
+    expect(model).toContain("itemNotes: string | null");
+    expect(mapper).toContain("presentationalNote");
+    expect(mapper).toContain("itemNotes: presentationalNote");
+    expect(kitchenCard).toContain("line.itemNotes");
+    expect(kitchenCard).toContain("presentation.notes");
+    expect(operationalCard).toContain("line.itemNotes");
+    expect(operationalCard).toContain("presentation.notes");
+    expect(printSerializer).toContain("item.itemNotes");
+    expect(printSerializer).toContain("Notes:");
+    expect(kitchenCard).not.toContain("getDb");
+    expect(operationalCard).not.toContain("PlaceOrderService");
   });
 });

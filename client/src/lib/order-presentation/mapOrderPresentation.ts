@@ -42,12 +42,14 @@ import type {
   OrderPresentationLineItem,
   OrderPresentationModel,
 } from "./orderPresentationModel";
+import { presentationalNote } from "./presentationalNote";
 
 type ActiveOrderLineItem = {
   lineItemId: number;
   quantity: number;
   nameAr: string;
   nameEn?: string | null;
+  itemNotes?: string | null;
 };
 
 export type ActiveOrderPresentationSource = OperationalOrderIdentitySource & {
@@ -192,6 +194,7 @@ function mapLineItems(items: ActiveOrderLineItem[]): OrderPresentationLineItem[]
     quantityLabel: String(line.quantity),
     nameEn: line.nameEn?.trim() || line.nameAr?.trim() || "",
     nameAr: line.nameAr?.trim() || line.nameEn?.trim() || "",
+    itemNotes: presentationalNote(line.itemNotes),
   }));
 }
 
@@ -275,7 +278,7 @@ function buildPresentationCore(input: {
       count: input.lineItems.length,
       lines: mapLineItems(input.lineItems),
     },
-    notes: input.notes,
+    notes: presentationalNote(input.notes),
     totalAmount: input.totalAmount,
     badges,
     indicators,
@@ -367,6 +370,7 @@ export function mapKitchenTicketPresentation(
     quantity: line.quantity,
     nameAr: line.nameAr,
     nameEn: line.nameEn,
+    itemNotes: line.itemNotes,
   }));
 
   const presentation = buildPresentationCore({
@@ -403,6 +407,7 @@ export function mapKitchenTicketPresentation(
         quantityLabel: String(line.quantity),
         nameEn: productDisplayName(line, false),
         nameAr: productDisplayName(line, true),
+        itemNotes: presentationalNote(line.itemNotes),
       })),
     },
     emphasis: {

@@ -12,6 +12,7 @@ export type {
   OrderPresentationTiming,
 } from "./orderPresentationModel";
 export { pickLocalizedLabel } from "./orderPresentationModel";
+export { presentationalNote } from "./presentationalNote";
 export {
   mapActiveOrderPresentation,
   mapKitchenTicketPresentation,

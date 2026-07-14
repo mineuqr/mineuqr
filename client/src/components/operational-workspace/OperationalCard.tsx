@@ -100,11 +100,33 @@ function OperationalCardImpl({
         {presentation.customer.name ? (
           <p className="mb-1 text-base font-medium">{presentation.customer.name}</p>
         ) : null}
-        <p className="mb-2 line-clamp-3 text-base leading-relaxed">
-          {pickLocalizedLabel(presentation.items.summary, isAr)}
-        </p>
+        {executionOnly && presentation.items.lines.length > 0 ? (
+          <ul className="mb-2 space-y-2" aria-label={isAr ? "عناصر الطلب" : "Order items"}>
+            {presentation.items.lines.map((line) => {
+              const name = isAr ? line.nameAr : line.nameEn;
+              return (
+                <li key={line.lineItemId} className="text-base leading-relaxed">
+                  <p>
+                    <span className="font-semibold tabular-nums">{line.quantityLabel}</span>
+                    {" × "}
+                    {name}
+                  </p>
+                  {line.itemNotes ? (
+                    <p className="mt-0.5 break-words whitespace-pre-wrap text-sm text-muted-foreground">
+                      {line.itemNotes}
+                    </p>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className="mb-2 line-clamp-3 text-base leading-relaxed">
+            {pickLocalizedLabel(presentation.items.summary, isAr)}
+          </p>
+        )}
         {presentation.notes ? (
-          <p className="mb-2 rounded-lg bg-muted/60 px-3 py-2 text-sm font-medium">
+          <p className="mb-2 rounded-lg bg-muted/60 px-3 py-2 text-sm font-medium break-words whitespace-pre-wrap">
             {presentation.notes}
           </p>
         ) : null}

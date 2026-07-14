@@ -48,7 +48,7 @@ function OperationalItemTable({
             <li
               key={line.lineItemId}
               className={cn(
-                "flex min-w-0 items-baseline gap-[10px] py-1 first:pt-0",
+                "flex min-w-0 items-start gap-[10px] py-1 first:pt-0",
                 !isLast && OPERATIONAL_ITEM_ROW_DIVIDER_CLASS
               )}
             >
@@ -56,14 +56,25 @@ function OperationalItemTable({
                 className={cn(
                   densityModel.quantityColumnClass,
                   densityModel.quantityClass,
-                  densityModel.lineItemClass
+                  densityModel.lineItemClass,
+                  "pt-0"
                 )}
               >
                 {qty}
               </span>
-              <span className={cn(densityModel.lineItemClass, "min-w-0 flex-1 truncate")}>
-                {name}
-              </span>
+              <div className="min-w-0 flex-1">
+                <span className={cn(densityModel.lineItemClass, "block truncate")}>{name}</span>
+                {line.itemNotes ? (
+                  <p
+                    className={cn(
+                      densityModel.notesClass,
+                      "mt-0.5 break-words whitespace-pre-wrap"
+                    )}
+                  >
+                    {line.itemNotes}
+                  </p>
+                ) : null}
+              </div>
             </li>
           );
         })}
@@ -226,7 +237,7 @@ function KitchenExecutionCardImpl({
                 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/70"
                 aria-hidden
               />
-              <span className="line-clamp-2 break-words">{presentation.notes}</span>
+              <span className="line-clamp-3 break-words whitespace-pre-wrap">{presentation.notes}</span>
             </p>
           ) : null}
 

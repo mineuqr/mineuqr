@@ -76,14 +76,18 @@ export class OrderReadPrintPayloadBuilder implements PrintPayloadBuilderPort {
       notes: order.notes ?? null,
       totalAmount: String(order.totalAmount),
       createdAt: order.createdAt,
-      lineItems: lineItemRows.map((item) => ({
-        lineItemId: item.lineItemId,
-        menuItemId: item.menuItemId,
-        nameAr: item.nameAr,
-        nameEn: item.nameEn ?? null,
-        quantity: item.quantity,
-        price: String(item.price),
-      })),
+      lineItems: lineItemRows.map((item) => {
+        const mapped = mapStoredOrderReadLineItem(item);
+        return {
+          lineItemId: item.lineItemId,
+          menuItemId: item.menuItemId,
+          nameAr: item.nameAr,
+          nameEn: item.nameEn ?? null,
+          quantity: item.quantity,
+          price: String(item.price),
+          itemNotes: mapped.itemNotes,
+        };
+      }),
       requestedAt,
       trigger: input.trigger,
     };

@@ -22,6 +22,7 @@ export type MenuItemKitchenLineItem = {
   nameEn: string | null;
   quantity: number;
   price: string;
+  itemNotes: string | null;
   category: import("./categoryProjection").OrderCategoryProjection;
 };
 
@@ -33,6 +34,7 @@ export type OfferKitchenLineItem = {
   nameEn: string | null;
   quantity: number;
   price: string;
+  itemNotes: string | null;
   offer: OrderOfferProjection;
 };
 

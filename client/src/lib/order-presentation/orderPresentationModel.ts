@@ -36,6 +36,8 @@ export type OrderPresentationLineItem = Readonly<{
   quantityLabel: string;
   nameEn: string;
   nameAr: string;
+  /** Projected item note — null/blank means render nothing. */
+  itemNotes: string | null;
 }>;
 
 export type OrderPresentationTiming = Readonly<{

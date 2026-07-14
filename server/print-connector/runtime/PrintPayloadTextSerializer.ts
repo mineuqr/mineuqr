@@ -19,10 +19,14 @@ export function serializePrintPayloadToText(payload: PrintPayload): string {
   for (const item of payload.lineItems) {
     const name = item.nameEn || item.nameAr;
     lines.push(`  ${item.quantity}x ${name} @ ${item.price}`);
+    const itemNotes = item.itemNotes?.trim();
+    if (itemNotes) {
+      lines.push(`    Note: ${itemNotes}`);
+    }
   }
 
-  if (payload.notes) {
-    lines.push("", `Notes: ${payload.notes}`);
+  if (payload.notes?.trim()) {
+    lines.push("", `Notes: ${payload.notes.trim()}`);
   }
 
   if (payload.customerName || payload.customerPhone) {

@@ -7,6 +7,8 @@ export type PrintPayloadLineItem = {
   nameEn?: string | null;
   quantity: number;
   price: string;
+  /** Projected line note from Ordering Read Model — omit/null if absent. */
+  itemNotes?: string | null;
 };
 
 export type PrintPayloadTrigger = {
