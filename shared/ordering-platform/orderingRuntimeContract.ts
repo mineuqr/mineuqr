@@ -124,8 +124,10 @@ export type OrderingRuntimeContext = Readonly<{
 }>;
 
 /**
- * Mutable construction input for OrderingRuntimeContextFactory.
- * Only the factory may convert this into OrderingRuntimeContext.
+ * Fully normalized construction input for OrderingRuntimeContextFactory.
+ *
+ * ORDERING-RUNTIME-MATERIALIZATION-1 — produced ONLY by OrderingRuntimeMaterializer.
+ * Factory must not apply business defaults or compose sources; it constructs + freezes.
  */
 export type OrderingRuntimeContextInput = {
   channel: OrderingChannelId;
@@ -137,50 +139,50 @@ export type OrderingRuntimeContextInput = {
     timezone: string;
   };
   business: {
-    businessId?: string | null;
+    businessId: string | null;
     businessDay: string;
     orderingAvailable: boolean;
     closureActive: boolean;
     hours: {
-      schedule?: unknown[];
+      schedule: unknown[];
       isOpenNow: boolean;
-      nextOpenAt?: string | null;
-      nextCloseAt?: string | null;
+      nextOpenAt: string | null;
+      nextCloseAt: string | null;
     };
   };
   availability: {
     canBrowse: boolean;
     canPlaceOrder: boolean;
-    reasons?: string[];
+    reasons: string[];
   };
   locale: {
     language: string;
     direction: "ltr" | "rtl";
-    theme?: string | null;
+    theme: string | null;
   };
   menu: {
     projectionVersion: string;
-    categories?: unknown[];
-    products?: unknown[];
-    modifiers?: unknown[];
-    offers?: unknown[];
-    availability?: unknown[];
+    categories: unknown[];
+    products: unknown[];
+    modifiers: unknown[];
+    offers: unknown[];
+    availability: unknown[];
   };
   policies: {
-    cartConstraints?: Record<string, unknown>;
-    checkoutRules?: Record<string, unknown>;
+    cartConstraints: Record<string, unknown>;
+    checkoutRules: Record<string, unknown>;
     guest: {
       guestOrderingEnabled: boolean;
-      requireCustomerName?: boolean;
-      requireCustomerPhone?: boolean;
-      allowSpecialInstructions?: boolean;
+      requireCustomerName: boolean;
+      requireCustomerPhone: boolean;
+      allowSpecialInstructions: boolean;
     };
   };
   pricing: {
     currency: string;
-    taxes?: unknown[];
-    serviceCharge?: unknown | null;
-    discountPipeline?: unknown[];
+    taxes: unknown[];
+    serviceCharge: unknown | null;
+    discountPipeline: unknown[];
   };
   capabilities: {
     canBrowseMenu: boolean;
@@ -189,10 +191,10 @@ export type OrderingRuntimeContextInput = {
     canPlaceOrder: boolean;
     supportedChannels: OrderingChannelId[];
   };
-  featureFlags?: Record<string, boolean>;
-  metadata?: {
-    createdAt?: string;
-    runtimeId?: string;
+  featureFlags: Record<string, boolean>;
+  metadata: {
+    createdAt: string;
+    runtimeId: string;
   };
 };
 

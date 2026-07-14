@@ -4,6 +4,8 @@ export {
   ORDERING_PLATFORM_ORDER_AGGREGATE,
   ORDERING_PLATFORM_GUEST_ENTITLEMENT,
   ORDERING_PLATFORM_PLACE_ORDER_ROUTER_ENTRY,
+  ORDERING_PLATFORM_RUNTIME_MATERIALIZER,
+  ORDERING_PLATFORM_RUNTIME_MATERIALIZATION_CONTRACT,
   ORDERING_PLATFORM_RUNTIME_CONTEXT_FACTORY,
   ORDERING_PLATFORM_RUNTIME_CONTEXT_CONTRACT,
   ORDERING_PLATFORM_ACTIVE_CHANNELS,
@@ -15,3 +17,9 @@ export {
   OrderingRuntimeContextError,
   orderingRuntimeContextFactory,
 } from "./OrderingRuntimeContextFactory";
+
+export {
+  OrderingRuntimeMaterializer,
+  OrderingRuntimeMaterializationError,
+  orderingRuntimeMaterializer,
+} from "./OrderingRuntimeMaterializer";

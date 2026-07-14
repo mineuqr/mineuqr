@@ -26,6 +26,7 @@ export const ORDERING_PLATFORM_OWNED_CONCERNS = [
   "restaurant_ordering_context",
   "ordering_runtime_context",
   "ordering_runtime_context_factory",
+  "ordering_runtime_materialization",
   "business_availability",
   "business_day_awareness",
   "working_hours",

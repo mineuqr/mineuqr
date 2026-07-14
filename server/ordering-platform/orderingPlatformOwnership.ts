@@ -1,6 +1,6 @@
 /**
- * ORDERING-PLATFORM-ARCHITECTURE-1 / ORDERING-RUNTIME-CONTEXT-1 —
- * server-side platform boundary registry.
+ * ORDERING-PLATFORM-ARCHITECTURE-1 / ORDERING-RUNTIME-CONTEXT-1 /
+ * ORDERING-RUNTIME-MATERIALIZATION-1 — server-side platform boundary registry.
  * Documents authoritative owners; does not duplicate order domain logic.
  */
 
@@ -23,8 +23,20 @@ export const ORDERING_PLATFORM_PLACE_ORDER_ROUTER_ENTRY =
   "server/routers.ts:order.create" as const;
 
 /**
+ * ORDERING-RUNTIME-MATERIALIZATION-1 — sole runtime composition layer.
+ * Collects / validates / normalizes / composes sources → factory input.
+ */
+export const ORDERING_PLATFORM_RUNTIME_MATERIALIZER =
+  "server/ordering-platform/OrderingRuntimeMaterializer" as const;
+
+/** Shared materialization source-bag contract. */
+export const ORDERING_PLATFORM_RUNTIME_MATERIALIZATION_CONTRACT =
+  "shared/ordering-platform/orderingRuntimeMaterializationContract.ts" as const;
+
+/**
  * ORDERING-RUNTIME-CONTEXT-1 — sole constructor for OrderingRuntimeContext.
  * Clients must never construct runtime context independently.
+ * Construction only — no business composition.
  */
 export const ORDERING_PLATFORM_RUNTIME_CONTEXT_FACTORY =
   "server/ordering-platform/OrderingRuntimeContextFactory" as const;

@@ -39,4 +39,17 @@ export {
   type OrderingPlaceOrderCommand,
 } from "./orderingRuntimeContract";
 
+export type {
+  OrderingRuntimeMaterializationRequest,
+  OrderingRuntimeRestaurantSource,
+  OrderingRuntimeBusinessSource,
+  OrderingRuntimeHoursSource,
+  OrderingRuntimeAvailabilitySource,
+  OrderingRuntimeLocaleSource,
+  OrderingRuntimeMenuSource,
+  OrderingRuntimePoliciesSource,
+  OrderingRuntimePricingSource,
+  OrderingRuntimeCapabilitiesSource,
+} from "./orderingRuntimeMaterializationContract";
+
 // freezeOrderingRuntimeContext is factory-internal — import via dedicated module only.
