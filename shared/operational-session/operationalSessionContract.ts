@@ -141,13 +141,26 @@ export type ResolveOperationalSessionRequest = Readonly<{
 }>;
 
 export type ResolveOperationalSessionResult = Readonly<{
-  session: OperationalSession;
+  /**
+   * Persistent table specialization returns a Dining Session projection.
+   * Non-table uniqueness policies return null (ephemeral / order-scoped).
+   */
+  session: OperationalSession | null;
   created: boolean;
+  /**
+   * persistent — dining_sessions row (table specialization, production).
+   * ephemeral — no dining_sessions row; order may attach with sessionId null.
+   */
+  persistence: "persistent" | "ephemeral";
 }>;
 
-/** Anchor types activated for PlaceOrder session resolution in this program. */
+/**
+ * NON-TABLE-PLACE-ORDER-1 — all Session Anchor types are resolution-capable.
+ * Only `table` uses persistent Dining Session specialization.
+ * Other types resolve ephemerally (no fake tables / no dining_sessions rows).
+ */
 export const OPERATIONAL_SESSION_ACTIVATED_ANCHOR_TYPES = Object.freeze([
-  "table",
+  ...OPERATIONAL_SESSION_ANCHOR_TYPES,
 ] as const satisfies readonly OperationalSessionAnchorType[]);
 
 export function isOperationalSessionAnchorActivated(

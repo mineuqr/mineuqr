@@ -18,11 +18,17 @@ describe("OPERATIONAL-SESSION-PLATFORM-1 contracts", () => {
     ]);
   });
 
-  it("activates only table for PlaceOrder resolution", () => {
-    expect([...OPERATIONAL_SESSION_ACTIVATED_ANCHOR_TYPES]).toEqual(["table"]);
+  it("activates all Session Anchor types for resolution capability", () => {
+    expect([...OPERATIONAL_SESSION_ACTIVATED_ANCHOR_TYPES]).toEqual([
+      "table",
+      "station",
+      "pickup_point",
+      "queue",
+      "drive_lane",
+    ]);
     expect(isOperationalSessionAnchorActivated("table")).toBe(true);
-    expect(isOperationalSessionAnchorActivated("station")).toBe(false);
-    expect(isOperationalSessionAnchorActivated("pickup_point")).toBe(false);
+    expect(isOperationalSessionAnchorActivated("station")).toBe(true);
+    expect(isOperationalSessionAnchorActivated("pickup_point")).toBe(true);
   });
 
   it("preserves one-open-per-anchor uniqueness for table", () => {

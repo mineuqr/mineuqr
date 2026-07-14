@@ -1,7 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { createTableSessionAnchor } from "@shared/operational-session";
 import { resolveOperationalSession } from "../resolveOperationalSession";
-import { OperationalSessionAnchorNotActivatedError } from "../operationalSessionErrors";
 import * as diningSessionService from "../../diningSession/sessionService";
 
 vi.mock("../../diningSession/sessionService", () => ({
@@ -49,25 +48,49 @@ describe("OPERATIONAL-SESSION-PLATFORM-1 resolveOperationalSession", () => {
       sessionToken: "hint",
     });
     expect(result.created).toBe(true);
-    expect(result.session.id).toBe(10);
-    expect(result.session.anchor.anchorType).toBe("table");
-    if (result.session.anchor.anchorType === "table") {
+    expect(result.persistence).toBe("persistent");
+    expect(result.session?.id).toBe(10);
+    expect(result.session?.anchor.anchorType).toBe("table");
+    if (result.session?.anchor.anchorType === "table") {
       expect(result.session.anchor.tableId).toBe(7);
     }
   });
 
-  it("rejects non-activated anchors without calling Dining Session", async () => {
-    await expect(
-      resolveOperationalSession({
-        restaurantId: 1,
-        anchor: {
-          anchorType: "station",
-          identity: "station-1",
-          stationId: "station-1",
-        },
-      })
-    ).rejects.toBeInstanceOf(OperationalSessionAnchorNotActivatedError);
+  it("resolves non-table anchors ephemerally without Dining Session", async () => {
+    const result = await resolveOperationalSession({
+      restaurantId: 1,
+      anchor: {
+        anchorType: "station",
+        identity: "station-1",
+        stationId: "station-1",
+      },
+    });
 
+    expect(result).toEqual({
+      session: null,
+      created: false,
+      persistence: "ephemeral",
+    });
+    expect(diningSessionService.resolveSessionForOrderCreate).not.toHaveBeenCalled();
+  });
+
+  it("resolves pickup_point / queue / drive_lane ephemerally", async () => {
+    for (const anchor of [
+      {
+        anchorType: "pickup_point" as const,
+        identity: "p1",
+        pickupPointId: "p1",
+      },
+      { anchorType: "queue" as const, identity: "q1", queueId: "q1" },
+      { anchorType: "drive_lane" as const, identity: "L1", laneId: "L1" },
+    ]) {
+      const result = await resolveOperationalSession({
+        restaurantId: 1,
+        anchor,
+      });
+      expect(result.persistence).toBe("ephemeral");
+      expect(result.session).toBeNull();
+    }
     expect(diningSessionService.resolveSessionForOrderCreate).not.toHaveBeenCalled();
   });
 });

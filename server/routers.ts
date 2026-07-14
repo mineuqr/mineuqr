@@ -1873,6 +1873,10 @@ const orderRouter = router({
             }),
             sessionToken: input.sessionToken,
           });
+          // Table specialization always returns a persistent session when successful.
+          if (!sessionResult.session) {
+            throw new Error("Table Operational Session resolution returned no session");
+          }
           sessionId = sessionResult.session.id;
           sessionToken = sessionResult.session.sessionToken;
           opsLog({

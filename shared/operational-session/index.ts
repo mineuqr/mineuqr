@@ -24,3 +24,5 @@ export {
   type ResolveOperationalSessionRequest,
   type ResolveOperationalSessionResult,
 } from "./operationalSessionContract";
+
+export { sessionAnchorFromFulfilmentAnchor } from "./sessionAnchorFromFulfilment";

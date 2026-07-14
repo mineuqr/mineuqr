@@ -29,7 +29,7 @@ describe("ORDER-IDENTITY-RUNTIME-1 architecture guards", () => {
   it("PlaceOrder pipeline consumes identity and dual-writes table fields", () => {
     const service = read("server/order/application/PlaceOrderService.ts");
     const router = read("server/routers.ts");
-    expect(service).toContain("resolvePlaceOrderTableFields");
+    expect(service).toContain("resolvePlaceOrderPersistFields");
     expect(service).toContain("identity?");
     expect(router).toContain("createTableOrderIdentity");
     expect(router).toContain("identity: orderIdentity");

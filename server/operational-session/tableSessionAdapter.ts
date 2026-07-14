@@ -39,5 +39,6 @@ export async function resolveTableOperationalSession(input: {
   return {
     session: mapDiningSessionToOperational(result.session),
     created: result.created,
+    persistence: "persistent",
   };
 }

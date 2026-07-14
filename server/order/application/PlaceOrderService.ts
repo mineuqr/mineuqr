@@ -15,20 +15,25 @@ import {
 } from "@shared/ordering-platform/orderingNotesContract";
 import type { OrderingOrderIdentity } from "@shared/ordering-platform/orderingIdentityContract";
 import {
+  assertPlatformOrderIdentity,
+  resolvePlaceOrderPersistFields,
   resolvePlaceOrderSessionId,
-  resolvePlaceOrderTableFields,
 } from "@shared/ordering-platform/orderingIdentityContract";
 
 export type PlaceOrderCommand = {
   restaurantId: number;
   /**
-   * ORDER-IDENTITY-RUNTIME-1 — canonical Order Identity.
-   * Table ordering is represented as Fulfilment Anchor type `table`.
+   * NON-TABLE-PLACE-ORDER-1 — canonical Order Identity when present.
+   * Table ordering = Fulfilment Anchor type `table`.
+   * Non-table anchors dual-write LEGACY_NON_TABLE sentinels to NOT NULL columns.
    */
   identity?: OrderingOrderIdentity;
-  /** Dual-compat with table Fulfilment Anchor — required for Order Domain persist. */
-  tableId: number;
-  tableNumber: number;
+  /**
+   * Dual-compat with table Fulfilment Anchor / QR bridge.
+   * Optional when `identity` is provided (derived via resolvePlaceOrderPersistFields).
+   */
+  tableId?: number;
+  tableNumber?: number;
   sessionId?: number | null;
   customerName?: string | null;
   customerPhone?: string | null;
@@ -109,8 +114,11 @@ export class PlaceOrderService {
     const trackingToken = this.trackingTokens.issue();
     const createdAt = new Date().toISOString();
 
-    // ORDER-IDENTITY-RUNTIME-1 — resolve table dual-write from identity when present.
-    const tableFields = resolvePlaceOrderTableFields({
+    // NON-TABLE-PLACE-ORDER-1 — identity-driven persist dual-write.
+    if (command.identity) {
+      assertPlatformOrderIdentity(command.identity);
+    }
+    const tableFields = resolvePlaceOrderPersistFields({
       identity: command.identity,
       tableId: command.tableId,
       tableNumber: command.tableNumber,

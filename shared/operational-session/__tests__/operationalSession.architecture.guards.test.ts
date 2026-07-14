@@ -35,14 +35,15 @@ describe("OPERATIONAL-SESSION-PLATFORM-1 architecture guards", () => {
     expect(adapter).toContain("mapDiningSessionToOperational");
   });
 
-  it("does not activate non-table PlaceOrder session resolution", () => {
+  it("routes non-table anchors to ephemeral adapter (no channel forks)", () => {
     const resolve = read(
       "server/operational-session/resolveOperationalSession.ts"
     );
-    expect(resolve).toContain("OperationalSessionAnchorNotActivatedError");
     expect(resolve).toContain('case "table"');
-    expect(resolve).not.toContain("resolveStation");
-    expect(resolve).not.toContain("resolvePickup");
+    expect(resolve).toContain("resolveEphemeralOperationalSession");
+    expect(resolve).toContain('case "station"');
+    expect(resolve).not.toContain("if (channel");
+    expect(resolve).not.toContain("ORDERING_CHANNEL_KIOSK");
   });
 
   it("does not rename DiningSession persistence away", () => {

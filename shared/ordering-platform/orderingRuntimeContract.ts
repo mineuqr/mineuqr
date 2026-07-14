@@ -239,10 +239,12 @@ export type OrderingPlaceOrderCommand = Readonly<{
   identity: OrderingOrderIdentity;
   /**
    * @deprecated Prefer identity.fulfilmentAnchor (table variant).
-   * Retained for dual-write / QR bridge — must match table anchor when present.
+   * Optional when identity is present — dual-write derived from identity.
    */
-  tableId: number;
-  sessionId: number | null;
+  tableId?: number;
+  /** @deprecated Prefer identity — dual-compat for table anchors / QR bridge. */
+  tableNumber?: number;
+  sessionId?: number | null;
   items: readonly OrderingCartLineInput[];
   customerName?: string | null;
   customerPhone?: string | null;

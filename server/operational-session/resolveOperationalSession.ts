@@ -7,15 +7,17 @@ import {
   OperationalSessionAnchorNotActivatedError,
   OperationalSessionValidationError,
 } from "./operationalSessionErrors";
+import { resolveEphemeralOperationalSession } from "./ephemeralSessionAdapter";
 import { resolveTableOperationalSession } from "./tableSessionAdapter";
 
 /**
- * OPERATIONAL-SESSION-PLATFORM-1 — canonical session resolution for Order attach.
+ * Canonical session resolution for Order attach (OPERATIONAL-SESSION-PLATFORM-1 /
+ * NON-TABLE-PLACE-ORDER-1).
  *
- * Target entry: resolveOperationalSession(anchor).
- * Table resolution is one adapter; other anchors are contract-ready but inactive.
+ * TABLE → Dining Session specialization (persistent, production QR path).
+ * Other anchors → ephemeral resolution (capability active; no dining_sessions).
  *
- * Channel-independent — QR / Kiosk / Waiter must not own this function.
+ * Channel-independent — no channel-specific branching.
  */
 export async function resolveOperationalSession(
   request: ResolveOperationalSessionRequest
@@ -40,9 +42,17 @@ export async function resolveOperationalSession(
         anchor: request.anchor,
         sessionToken: request.sessionToken,
       });
+    case "station":
+    case "pickup_point":
+    case "queue":
+    case "drive_lane":
+      return resolveEphemeralOperationalSession({
+        restaurantId: request.restaurantId,
+        anchor: request.anchor,
+      });
     default:
       throw new OperationalSessionAnchorNotActivatedError(
-        request.anchor.anchorType
+        (request.anchor as { anchorType: string }).anchorType
       );
   }
 }

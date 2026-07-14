@@ -1,5 +1,6 @@
 export { resolveOperationalSession } from "./resolveOperationalSession";
 export { resolveTableOperationalSession } from "./tableSessionAdapter";
+export { resolveEphemeralOperationalSession } from "./ephemeralSessionAdapter";
 export { mapDiningSessionToOperational } from "./mapDiningSessionToOperational";
 export {
   closeOperationalSession,
