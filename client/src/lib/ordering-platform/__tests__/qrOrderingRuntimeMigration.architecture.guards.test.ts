@@ -9,11 +9,15 @@ function read(rel: string): string {
 }
 
 describe("QR-ORDERING-RUNTIME-MIGRATION-1 client architecture guards", () => {
-  it("QR pages consume ordering.getRuntimeBySlug via useQrOrderingRuntime", () => {
+  it("QR pages consume runtime via useQrOrderingRuntime (Client Platform entry)", () => {
     const menuView = read("client/src/pages/MenuView.tsx");
     const checkout = read("client/src/pages/CheckoutPage.tsx");
     const hook = read("client/src/hooks/useQrOrderingRuntime.ts");
-    expect(hook).toContain("ordering.getRuntimeBySlug");
+    const platformRuntime = read(
+      "client/src/lib/ordering-client/runtime/useOrderingRuntime.ts"
+    );
+    expect(platformRuntime).toContain("ordering.getRuntimeBySlug");
+    expect(hook).toContain("useOrderingRuntime");
     expect(menuView).toContain("useQrOrderingRuntime");
     expect(checkout).toContain("useQrOrderingRuntime");
   });

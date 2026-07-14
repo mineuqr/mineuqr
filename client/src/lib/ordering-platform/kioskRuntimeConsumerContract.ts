@@ -1,53 +1,27 @@
 import { ORDERING_CHANNEL_KIOSK } from "@shared/ordering-platform/orderingPlatformContracts";
 import type { OrderingRuntimeContext } from "@shared/ordering-platform/orderingRuntimeContract";
-import type { OrderingNotesCapabilities } from "@shared/ordering-platform/orderingNotesContract";
-import { DEFAULT_ORDERING_NOTES_CAPABILITIES } from "@shared/ordering-platform/orderingNotesContract";
+import {
+  deriveOrderingRuntimeGates,
+  type OrderingClientRuntimeGates,
+} from "@/lib/ordering-client";
 import {
   KIOSK_FORBIDDEN_RUNTIME_CONSTRUCTION,
   KIOSK_RUNTIME_CONSUMPTION_ENTRY,
 } from "./kioskOrderingChannelContract";
 
 /**
- * SELF-ORDERING-KIOSK-ARCHITECTURE-1 / ORDERING-NOTES-ARCHITECTURE-1 —
- * runtime consumption model for Kiosk (same note contracts as QR).
+ * SELF-ORDERING-KIOSK-ARCHITECTURE-1 / ORDERING-CLIENT-RUNTIME-1 —
+ * Kiosk-named gates delegate to Ordering Client Platform (no duplicated mapping).
  */
 
 export const KIOSK_RUNTIME_CHANNEL_ID = ORDERING_CHANNEL_KIOSK;
 
-export type KioskOrderingRuntimeGates = {
-  guestOrderingEnabled: boolean;
-  orderingAllowed: boolean;
-  platformCanPlaceOrder: boolean;
-  canBrowse: boolean;
-  notes: OrderingNotesCapabilities;
-};
+export type KioskOrderingRuntimeGates = OrderingClientRuntimeGates;
 
 export function deriveKioskOrderingRuntimeGates(
   runtime: OrderingRuntimeContext | null | undefined
 ): KioskOrderingRuntimeGates {
-  if (!runtime) {
-    return {
-      guestOrderingEnabled: false,
-      orderingAllowed: false,
-      platformCanPlaceOrder: false,
-      canBrowse: false,
-      notes: {
-        ...DEFAULT_ORDERING_NOTES_CAPABILITIES,
-        supportsOrderNotes: false,
-        supportsItemNotes: false,
-        allowedPolicies: [...DEFAULT_ORDERING_NOTES_CAPABILITIES.allowedPolicies],
-      },
-    };
-  }
-
-  return {
-    guestOrderingEnabled: runtime.policies.guest.guestOrderingEnabled,
-    orderingAllowed:
-      runtime.business.hours.isOpenNow && !runtime.business.closureActive,
-    platformCanPlaceOrder: runtime.availability.canPlaceOrder,
-    canBrowse: runtime.availability.canBrowse,
-    notes: runtime.capabilities.notes,
-  };
+  return deriveOrderingRuntimeGates(runtime);
 }
 
 export function assertKioskRuntimeChannel(
@@ -64,6 +38,7 @@ export const KIOSK_RUNTIME_CONSUMPTION_RULES = [
   "never_query_repositories_for_runtime_construction",
   "use_platform_delivery_entry",
   "use_shared_ordering_notes_contracts",
+  "consume_via_ordering_client_platform",
 ] as const;
 
 export const KIOSK_RUNTIME_FORBIDDEN_SYMBOLS = KIOSK_FORBIDDEN_RUNTIME_CONSTRUCTION;

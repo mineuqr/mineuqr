@@ -19,13 +19,14 @@ import { trpc } from "@/lib/trpc";
 import { usePostSubmissionGuard } from "@/hooks/usePostSubmissionGuard";
 import { PostSubmissionLockedScreen } from "@/components/customer/PostSubmissionLockedScreen";
 import { useQrOrderingRuntime } from "@/hooks/useQrOrderingRuntime";
+import { useOptionalOrderingClientRuntime } from "@/lib/ordering-client";
 import {
   validateItemNote,
   validateOrderNote,
 } from "@shared/ordering-platform/orderingNotesContract";
 
 /**
- * QR-ORDERING-RUNTIME-MIGRATION-1 — Checkout consumes OrderingRuntimeContext.
+ * ORDERING-CLIENT-RUNTIME-1 — Checkout hosted by Ordering Client Platform on table shell.
  * Place-order mutation authority unchanged (order.create).
  */
 export default function CheckoutPage() {
@@ -36,6 +37,8 @@ export default function CheckoutPage() {
   const [, setLocation] = useLocation();
   const lang = language === "ar" ? "ar" : "en";
   const utils = trpc.useUtils();
+  const orderingClient = useOptionalOrderingClientRuntime();
+  const navigator = orderingClient?.navigator ?? null;
 
   const { items, totalAmount, clearCart } = useCart();
   const [customerName, setCustomerName] = useState("");
@@ -44,6 +47,14 @@ export default function CheckoutPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const menuPath = `/menu/${slug}/table/${tableNumber}`;
+
+  const goToBrowse = () => {
+    if (navigator) {
+      navigator.goToBrowse();
+      return;
+    }
+    setLocation(menuPath);
+  };
 
   const {
     restaurant,
@@ -103,16 +114,16 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (!recoveryDone || postSubmission.blocked) return;
     if (items.length === 0) {
-      setLocation(menuPath);
+      goToBrowse();
     }
-  }, [items.length, recoveryDone, postSubmission.blocked, menuPath, setLocation]);
+  }, [items.length, recoveryDone, postSubmission.blocked, menuPath, setLocation, navigator]);
 
   useEffect(() => {
     if (!recoveryDone || restaurantLoading) return;
     if (!canPlaceOrder && items.length > 0) {
-      setLocation(menuPath);
+      goToBrowse();
     }
-  }, [canPlaceOrder, recoveryDone, restaurantLoading, items.length, menuPath, setLocation]);
+  }, [canPlaceOrder, recoveryDone, restaurantLoading, items.length, menuPath, setLocation, navigator]);
 
   const handleSubmitOrder = async () => {
     if (!restaurant?.id || !tableData?.id || items.length === 0 || !canPlaceOrder) return;
@@ -199,7 +210,11 @@ export default function CheckoutPage() {
         sessionToken: result.sessionToken ?? recovery.session?.sessionToken,
       });
       clearCart();
-      setLocation(`/menu/${slug}/order/${result.trackingToken}`, { replace: true });
+      if (navigator) {
+        navigator.goToTracking(result.trackingToken);
+      } else {
+        setLocation(`/menu/${slug}/order/${result.trackingToken}`, { replace: true });
+      }
     } catch (error) {
       const sessionEnded =
         error instanceof TRPCClientError && error.message.includes("انتهت جلسة الطاولة");
@@ -258,7 +273,7 @@ export default function CheckoutPage() {
             type="button"
             variant="ghost"
             size="icon"
-            onClick={() => setLocation(menuPath)}
+            onClick={goToBrowse}
             aria-label={language === "ar" ? "العودة للمنيو" : "Back to menu"}
           >
             <ArrowLeft className="h-5 w-5" />

@@ -16,7 +16,8 @@ import { PostSubmissionLockedScreen } from "@/components/customer/PostSubmission
 import { useQrOrderingRuntime } from "@/hooks/useQrOrderingRuntime";
 
 /**
- * QR-ORDERING-RUNTIME-MIGRATION-1 — Menu consumes OrderingRuntimeContext.
+ * ORDERING-CLIENT-RUNTIME-1 — Menu consumes Ordering Runtime via Client Platform
+ * (`useQrOrderingRuntime` → hosted context or shared `useOrderingRuntime`).
  * Session recovery + post-submission remain channel experience concerns.
  */
 export default function MenuView() {

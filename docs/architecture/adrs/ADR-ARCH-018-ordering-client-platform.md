@@ -10,7 +10,7 @@
 | **Date** | 2026-07-14 |
 | **Supersedes** | — |
 | **Refines** | ORDERING-PLATFORM-ARCHITECTURE-1 channel experience split; SELF-ORDERING-KIOSK-ARCHITECTURE-1 browse/cart/checkout ownership |
-| **Implementation status** | Not implemented (architecture only) |
+| **Implementation status** | Partial — ORDERING-CLIENT-RUNTIME-1 delivered runtime foundation; cart/browse/checkout extraction pending |
 
 ---
 

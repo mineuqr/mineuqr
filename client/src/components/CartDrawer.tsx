@@ -1,6 +1,7 @@
 import { useLocation } from "wouter";
 import { useCart } from "@/contexts/CartContext";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useOptionalOrderingClientRuntime } from "@/lib/ordering-client";
 import { ShoppingCart, X, Plus, Minus, Trash2, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -24,10 +25,15 @@ export default function CartDrawer({
     useCart();
   const { dir, language } = useLanguage();
   const [, setLocation] = useLocation();
+  const orderingClient = useOptionalOrderingClientRuntime();
 
   const handleProceedToCheckout = () => {
     if (items.length === 0) return;
     setIsOpen(false);
+    if (orderingClient?.navigator) {
+      orderingClient.navigator.goToCheckout();
+      return;
+    }
     setLocation(`/menu/${slug}/table/${tableNumber}/checkout`);
   };
 

@@ -1,31 +1,46 @@
-import { trpc } from "@/lib/trpc";
-import {
-  asQrMenuList,
-  deriveQrOrderingRuntimeGates,
-} from "@/lib/ordering-platform/qrOrderingRuntimeConsumer";
-
 /**
- * QR-ORDERING-RUNTIME-MIGRATION-1 — QR consumes OrderingRuntimeContext via platform API.
- * No local hours/guest assembly; session/journey remain channel concerns.
+ * QR-ORDERING-RUNTIME-MIGRATION-1 / ORDERING-CLIENT-RUNTIME-1 —
+ * QR channel thin wrapper over Ordering Client Platform runtime.
+ * Channels must not invoke the platform delivery query here.
  */
+import {
+  useOptionalOrderingClientRuntime,
+  useOrderingRuntime,
+  type OrderingClientRuntimeGates,
+} from "@/lib/ordering-client";
+
+export type QrOrderingRuntimeGates = OrderingClientRuntimeGates;
+
 export function useQrOrderingRuntime(slug: string) {
-  const query = trpc.ordering.getRuntimeBySlug.useQuery(
-    { slug },
-    { enabled: !!slug, staleTime: 0, gcTime: 0, refetchOnMount: "always" }
-  );
+  const hosted = useOptionalOrderingClientRuntime();
+  const useHosted = Boolean(hosted && hosted.slug === slug);
+  const standalone = useOrderingRuntime(useHosted ? "" : slug);
 
-  const runtime = query.data?.runtime ?? null;
-  const restaurant = query.data?.restaurantPresentation ?? null;
-  const gates = deriveQrOrderingRuntimeGates(runtime);
+  if (useHosted && hosted) {
+    return {
+      data: hosted.runtime
+        ? {
+            runtime: hosted.runtime,
+            restaurantPresentation: hosted.restaurant,
+          }
+        : undefined,
+      runtime: hosted.runtime,
+      restaurant: hosted.restaurant,
+      gates: hosted.gates,
+      categories: hosted.categories,
+      items: hosted.items,
+      offers: hosted.offers,
+      holidays: hosted.holidays,
+      isLoading: hosted.isLoading,
+      isError: hosted.isError,
+      error: hosted.error,
+      status: hosted.status,
+      refetch: hosted.refetch,
+      isFetching: hosted.isLoading,
+      isSuccess: hosted.status === "ready",
+      isPending: hosted.isLoading,
+    };
+  }
 
-  return {
-    ...query,
-    runtime,
-    restaurant,
-    gates,
-    categories: asQrMenuList<any>(runtime?.menu.categories),
-    items: asQrMenuList<any>(runtime?.menu.products),
-    offers: asQrMenuList<any>(runtime?.menu.offers),
-    holidays: asQrMenuList<any>(runtime?.menu.availability),
-  };
+  return standalone;
 }

@@ -1,9 +1,12 @@
 import { useRoute } from "wouter";
-import { CartProvider } from "@/contexts/CartContext";
 import MenuView from "@/pages/MenuView";
 import CheckoutPage from "@/pages/CheckoutPage";
+import { QrOrderingClientHost } from "@/lib/ordering-client";
 
-/** CUSTOMER-CHECKOUT-UX-1B — shared cart scope for menu ↔ checkout navigation. */
+/**
+ * ORDERING-CLIENT-RUNTIME-1 — QR table shell.
+ * Owns QR bootstrap (slug/table from route) only; hosts Ordering Client Platform.
+ */
 export default function TableOrderingShell() {
   const [, checkoutParams] = useRoute("/menu/:slug/table/:tableNumber/checkout");
   const [, menuParams] = useRoute("/menu/:slug/table/:tableNumber");
@@ -15,8 +18,12 @@ export default function TableOrderingShell() {
   if (!slug || tableNumber <= 0) return null;
 
   return (
-    <CartProvider cartScope={{ slug, tableNumber }}>
+    <QrOrderingClientHost
+      slug={slug}
+      tableNumber={tableNumber}
+      isCheckout={Boolean(checkoutParams)}
+    >
       {checkoutParams ? <CheckoutPage /> : <MenuView />}
-    </CartProvider>
+    </QrOrderingClientHost>
   );
 }
