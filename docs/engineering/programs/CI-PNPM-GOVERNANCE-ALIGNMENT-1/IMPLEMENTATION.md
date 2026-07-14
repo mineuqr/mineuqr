@@ -34,7 +34,7 @@ Connector workflows already omitted `version` and were not affected.
 
 | File | Change |
 |------|--------|
-| `.github/workflows/migration-governance.yml` | Removed `with.version` from `pnpm/action-setup@v4`; rely on `package.json#packageManager` |
+| `.github/workflows/migration-governance.yml` | Removed `with.version` from `pnpm/action-setup@v4`; rely on `package.json#packageManager`; added `workflow_dispatch` + path filters for this workflow/`package.json` so CI config changes can re-run |
 | `docs/engineering/programs/CI-PNPM-GOVERNANCE-ALIGNMENT-1/IMPLEMENTATION.md` | This report |
 
 **Unchanged:** pnpm version `10.4.1`, `packageManager` field, Node 20, install/governance/test steps, connector workflows.
@@ -54,12 +54,13 @@ CI installs that exact Corepack-pinned pnpm via `pnpm/action-setup@v4` without a
 | Check | Result |
 |-------|--------|
 | Dual pnpm declaration removed | **PASS** |
-| Migration governance workflow steps preserved | **PASS** (`pnpm install --frozen-lockfile`, governance guard, vitest) |
-| Local `pnpm db:governance-check` | Run in close-out |
-| Re-run GitHub Actions Migration Governance | Run after push |
+| Local `pnpm db:governance-check` | **PASS** |
+| Local migration governance vitest | **10/10 PASS** |
+| GitHub Actions Migration Governance | **SUCCESS** — run [`29375046284`](https://github.com/mineuqr/mineuqr/actions/runs/29375046284) |
+| Local `vite build` | **PASS** |
 
 ---
 
 ## 5. Certification
 
-**CERTIFIED** — CI declares pnpm once via `packageManager`. Migration Governance workflow can proceed past dependency setup without changing the pnpm version or CI behavior beyond version-source alignment.
+**CERTIFIED** — CI declares pnpm once via `packageManager`. Migration Governance passes on GitHub Actions after dependency install; pnpm version unchanged.
