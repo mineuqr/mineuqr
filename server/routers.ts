@@ -112,6 +112,7 @@ import { adminDashboardReadRouter } from "./commercial/adminDashboardRouter";
 import { analyticsRouter } from "./commercial/analyticsRouter";
 import { commercialRouter } from "./commercial/router";
 import { resolveGuestOrderingAllowed } from "./commercial/guestOrderingAuthority";
+import { orderingRouter } from "./orderingRouter";
 import { resolveTrialStatusRead } from "./commercial/wave1ReadAuthority";
 import {
   advanceOrderStatusService,
@@ -2074,6 +2075,7 @@ export const appRouter = router({
   table: tableRouter,
   session: sessionRouter,
   order: orderRouter,
+  ordering: orderingRouter,
   ops: opsRouter,
   kitchen: kitchenRouter,
   printWorkspace: printWorkspaceRouter,

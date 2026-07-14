@@ -34,6 +34,16 @@ export const ORDERING_PLATFORM_RUNTIME_MATERIALIZATION_CONTRACT =
   "shared/ordering-platform/orderingRuntimeMaterializationContract.ts" as const;
 
 /**
+ * QR-ORDERING-RUNTIME-MIGRATION-1 — QR source loader (repos only; no composition).
+ */
+export const ORDERING_PLATFORM_QR_RUNTIME_LOADER =
+  "server/ordering-platform/loadQrOrderingRuntimeSources" as const;
+
+/** Additive public QR runtime delivery entry. */
+export const ORDERING_PLATFORM_QR_RUNTIME_ROUTER_ENTRY =
+  "server/orderingRouter.ts:ordering.getRuntimeBySlug" as const;
+
+/**
  * ORDERING-RUNTIME-CONTEXT-1 — sole constructor for OrderingRuntimeContext.
  * Clients must never construct runtime context independently.
  * Construction only — no business composition.

@@ -40,7 +40,14 @@ export const QR_FORBIDDEN_RUNTIME_CONSTRUCTION = [
   "freezeOrderingRuntimeContext",
   "orderingRuntimeMaterializer",
   "composeInput",
+  "loadQrOrderingRuntimeSources",
 ] as const;
+
+/**
+ * QR-ORDERING-RUNTIME-MIGRATION-1 — QR is a runtime consumer.
+ * Platform API: ordering.getRuntimeBySlug
+ */
+export const QR_RUNTIME_CONSUMPTION_ENTRY = "ordering.getRuntimeBySlug" as const;
 
 /** Concerns QR may own — presentation and interaction only. */
 export const QR_CHANNEL_CONCERNS = [

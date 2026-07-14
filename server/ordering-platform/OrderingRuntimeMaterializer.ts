@@ -148,10 +148,12 @@ export class OrderingRuntimeMaterializer {
     }
 
     const canBrowse = Boolean(request.availability.canBrowse);
+    const hoursOpen = Boolean(request.hours.isOpenNow);
     const canPlaceOrder =
       Boolean(request.availability.canPlaceOrder) &&
       Boolean(request.business.orderingAvailable) &&
-      !request.business.closureActive;
+      !request.business.closureActive &&
+      hoursOpen;
 
     const cartConstraints = {
       ...(request.policies.cartConstraints ?? {}),

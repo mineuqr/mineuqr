@@ -4,5 +4,11 @@ export {
   QR_SUPPORTED_FORM_FACTORS,
   QR_FORBIDDEN_PLATFORM_CONCERNS,
   QR_FORBIDDEN_RUNTIME_CONSTRUCTION,
+  QR_RUNTIME_CONSUMPTION_ENTRY,
   QR_CHANNEL_CONCERNS,
 } from "./qrOrderingChannelContract";
+export {
+  deriveQrOrderingRuntimeGates,
+  asQrMenuList,
+  type QrOrderingRuntimeGates,
+} from "./qrOrderingRuntimeConsumer";

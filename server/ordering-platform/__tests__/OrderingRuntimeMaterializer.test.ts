@@ -87,6 +87,17 @@ describe("ORDERING-RUNTIME-MATERIALIZATION-1 OrderingRuntimeMaterializer", () =>
     expect(input.availability.reasons).toContain("closure_active");
   });
 
+  it("gates place-order when outside business hours", () => {
+    const input = materializer.composeInput(
+      validRequest({
+        hours: { isOpenNow: false, schedule: [] },
+        availability: { canBrowse: true, canPlaceOrder: true },
+      })
+    );
+    expect(input.availability.canPlaceOrder).toBe(false);
+    expect(input.availability.reasons).toContain("outside_business_hours");
+  });
+
   it("merges channel policy overlays", () => {
     const input = materializer.composeInput(
       validRequest({

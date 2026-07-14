@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRoute, useLocation } from "wouter";
 import { ArrowLeft, Loader2, Send } from "lucide-react";
 import { TRPCClientError } from "@trpc/client";
@@ -11,7 +11,6 @@ import { useCart } from "@/contexts/CartContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useDiningSessionRecovery } from "@/hooks/useDiningSessionRecovery";
 import { isDiningSessionOrderingEnabled } from "@/lib/diningSessionRecovery";
-import { isRestaurantOpen, parseTemporaryClosure } from "@/lib/restaurantHours";
 import { saveOrderConfirmationSnapshot } from "@/lib/orderConfirmationStorage";
 import { markOrderWelcomeReceived } from "@/lib/orderWelcomeStorage";
 import { saveDiningSession } from "@/lib/diningSessionStorage";
@@ -19,7 +18,12 @@ import { markCustomerJourneyTracking } from "@/lib/customerJourneyStorage";
 import { trpc } from "@/lib/trpc";
 import { usePostSubmissionGuard } from "@/hooks/usePostSubmissionGuard";
 import { PostSubmissionLockedScreen } from "@/components/customer/PostSubmissionLockedScreen";
+import { useQrOrderingRuntime } from "@/hooks/useQrOrderingRuntime";
 
+/**
+ * QR-ORDERING-RUNTIME-MIGRATION-1 — Checkout consumes OrderingRuntimeContext.
+ * Place-order mutation authority unchanged (order.create).
+ */
 export default function CheckoutPage() {
   const [, params] = useRoute("/menu/:slug/table/:tableNumber/checkout");
   const slug = params?.slug ?? "";
@@ -37,21 +41,16 @@ export default function CheckoutPage() {
 
   const menuPath = `/menu/${slug}/table/${tableNumber}`;
 
-  const { data: restaurant, isLoading: restaurantLoading } = trpc.restaurant.getBySlug.useQuery(
-    { slug },
-    { enabled: !!slug, staleTime: 0, gcTime: 0, refetchOnMount: "always" }
-  );
+  const {
+    restaurant,
+    isLoading: restaurantLoading,
+    gates,
+  } = useQrOrderingRuntime(slug);
 
   const { data: tableData } = trpc.table.getByNumber.useQuery(
     { restaurantId: restaurant?.id ?? 0, tableNumber },
     { enabled: !!restaurant?.id && tableNumber > 0, staleTime: 0, gcTime: 0, refetchOnMount: "always" }
   );
-
-  const { data: orderCheck } = trpc.order.canOrder.useQuery(
-    { restaurantId: restaurant?.id ?? 0 },
-    { enabled: !!restaurant?.id && tableNumber > 0, staleTime: 0, gcTime: 0, refetchOnMount: "always" }
-  );
-  const canOrder = orderCheck?.canOrder ?? false;
 
   const { recovery, recoveryDone } = useDiningSessionRecovery({
     slug,
@@ -63,20 +62,6 @@ export default function CheckoutPage() {
     },
   });
 
-  const orderingAllowed = useMemo(() => {
-    const r = restaurant as {
-      workingHours?: unknown;
-      temporaryClosure?: unknown;
-    };
-    if (parseTemporaryClosure(r?.temporaryClosure)?.active) return false;
-    if (!r?.workingHours) return true;
-    return isRestaurantOpen({
-      workingHours: r.workingHours,
-      temporaryClosure: r.temporaryClosure,
-      applyTemporaryClosure: true,
-    });
-  }, [restaurant]);
-
   const sessionAllowsOrder = isDiningSessionOrderingEnabled(recovery);
   const postSubmission = usePostSubmissionGuard({
     slug,
@@ -87,8 +72,7 @@ export default function CheckoutPage() {
 
   const canPlaceOrder =
     tableNumber > 0 &&
-    canOrder &&
-    orderingAllowed &&
+    gates.platformCanPlaceOrder &&
     sessionAllowsOrder &&
     recoveryDone &&
     !postSubmission.blocked &&

@@ -6,6 +6,8 @@ export {
   ORDERING_PLATFORM_PLACE_ORDER_ROUTER_ENTRY,
   ORDERING_PLATFORM_RUNTIME_MATERIALIZER,
   ORDERING_PLATFORM_RUNTIME_MATERIALIZATION_CONTRACT,
+  ORDERING_PLATFORM_QR_RUNTIME_LOADER,
+  ORDERING_PLATFORM_QR_RUNTIME_ROUTER_ENTRY,
   ORDERING_PLATFORM_RUNTIME_CONTEXT_FACTORY,
   ORDERING_PLATFORM_RUNTIME_CONTEXT_CONTRACT,
   ORDERING_PLATFORM_ACTIVE_CHANNELS,
@@ -23,3 +25,12 @@ export {
   OrderingRuntimeMaterializationError,
   orderingRuntimeMaterializer,
 } from "./OrderingRuntimeMaterializer";
+
+export {
+  loadQrOrderingRuntimeSources,
+  QrOrderingRuntimeLoadError,
+} from "./loadQrOrderingRuntimeSources";
+
+export {
+  getQrOrderingRuntimeBySlug,
+} from "./getQrOrderingRuntime";

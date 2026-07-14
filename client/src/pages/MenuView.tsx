@@ -7,14 +7,18 @@ import { DiningSessionBanner } from "@/components/customer/DiningSessionBanner";
 import { useLanguage } from "@/contexts/LanguageContext";
 import CartDrawer from "@/components/CartDrawer";
 import WelcomeOverlay from "@/components/WelcomeOverlay";
-import { isRestaurantOpen, parseTemporaryClosure } from "@/lib/restaurantHours";
 import {
   isDiningSessionOrderingEnabled,
 } from "@/lib/diningSessionRecovery";
 import { useDiningSessionRecovery } from "@/hooks/useDiningSessionRecovery";
 import { usePostSubmissionGuard } from "@/hooks/usePostSubmissionGuard";
 import { PostSubmissionLockedScreen } from "@/components/customer/PostSubmissionLockedScreen";
+import { useQrOrderingRuntime } from "@/hooks/useQrOrderingRuntime";
 
+/**
+ * QR-ORDERING-RUNTIME-MIGRATION-1 — Menu consumes OrderingRuntimeContext.
+ * Session recovery + post-submission remain channel experience concerns.
+ */
 export default function MenuView() {
   const [, params] = useRoute("/menu/:slug/table/:tableNumber");
   const [, params2] = useRoute("/menu/:slug");
@@ -24,35 +28,18 @@ export default function MenuView() {
   const [, setLocation] = useLocation();
   const utils = trpc.useUtils();
 
-  const { data: restaurant, isLoading: restaurantLoading } = trpc.restaurant.getBySlug.useQuery(
-    { slug },
-    { enabled: !!slug, staleTime: 0, gcTime: 0, refetchOnMount: "always" }
-  );
+  const {
+    restaurant,
+    isLoading: restaurantLoading,
+    categories: categoriesList,
+    items: allItems,
+    offers: activeOffers,
+    holidays,
+    gates,
+  } = useQrOrderingRuntime(slug);
 
-  const { data: categoriesList } = trpc.category.listPublic.useQuery(
-    { restaurantId: restaurant?.id ?? 0 },
-    { enabled: !!restaurant?.id, staleTime: 0, gcTime: 0, refetchOnMount: "always" }
-  );
-
-  const { data: allItems } = trpc.menuItem.listByRestaurant.useQuery(
-    { restaurantId: restaurant?.id ?? 0 },
-    { enabled: !!restaurant?.id, staleTime: 0, gcTime: 0, refetchOnMount: "always" }
-  );
-
-  const { data: activeOffers } = trpc.offer.listActive.useQuery(
-    { restaurantId: restaurant?.id ?? 0 },
-    { enabled: !!restaurant?.id, staleTime: 0, gcTime: 0, refetchOnMount: "always" }
-  );
-  const { data: holidays } = trpc.holiday.listPublic.useQuery(
-    { restaurantId: restaurant?.id ?? 0 },
-    { enabled: !!restaurant?.id, staleTime: 0, gcTime: 0, refetchOnMount: "always" }
-  );
-
-  const { data: orderCheck } = trpc.order.canOrder.useQuery(
-    { restaurantId: restaurant?.id ?? 0 },
-    { enabled: !!restaurant?.id && tableNumber > 0, staleTime: 0, gcTime: 0, refetchOnMount: "always" }
-  );
-  const canOrder = orderCheck?.canOrder ?? false;
+  const canOrder = gates.guestOrderingEnabled;
+  const orderingAllowed = gates.orderingAllowed;
 
   const { recovery, recoveryDone } = useDiningSessionRecovery({
     slug,
@@ -63,20 +50,6 @@ export default function MenuView() {
       getActiveByTable: (input) => utils.client.session.getActiveByTable.query(input),
     },
   });
-
-  const orderingAllowed = useMemo(() => {
-    const r = restaurant as {
-      workingHours?: unknown;
-      temporaryClosure?: unknown;
-    };
-    if (parseTemporaryClosure(r?.temporaryClosure)?.active) return false;
-    if (!r?.workingHours) return true;
-    return isRestaurantOpen({
-      workingHours: r.workingHours,
-      temporaryClosure: r.temporaryClosure,
-      applyTemporaryClosure: true,
-    });
-  }, [restaurant]);
 
   const lang = language === "ar" ? "ar" : "en";
   const sessionAllowsOrder = isDiningSessionOrderingEnabled(recovery);
@@ -89,8 +62,7 @@ export default function MenuView() {
 
   const canPlaceOrder =
     tableNumber > 0 &&
-    canOrder &&
-    orderingAllowed &&
+    gates.platformCanPlaceOrder &&
     sessionAllowsOrder &&
     recoveryDone &&
     !postSubmission.blocked;
