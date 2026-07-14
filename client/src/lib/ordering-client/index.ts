@@ -1,5 +1,5 @@
 /**
- * ORDERING-CLIENT-RUNTIME-1 / ORDERING-CLIENT-CART-1 — Ordering Client Platform API.
+ * ORDERING-CLIENT-RUNTIME-1 / CART-1 / BROWSE-1 — Ordering Client Platform API.
  */
 
 export type { CartScopeAdapter, CartScopeDescription } from "./contracts/CartScopeAdapter";
@@ -28,6 +28,26 @@ export {
   type OrderingClientProviderProps,
 } from "./context/OrderingClientProvider";
 
+export type {
+  OrderingBrowseTab,
+  BrowsePresentationStatus,
+  OrderingBrowseCatalogItem,
+  OrderingBrowseCategory,
+} from "./browse/browseTypes";
+export {
+  filterBrowseItems,
+  resolveDefaultCategoryId,
+  resolveBrowseMenuTab,
+  resolveBrowsePresentationStatus,
+} from "./browse/browseCatalog";
+export {
+  OrderingBrowseProvider,
+  useOrderingBrowse,
+  useOptionalOrderingBrowse,
+  type OrderingBrowseContextValue,
+  type OrderingBrowseProviderProps,
+} from "./browse/OrderingBrowseProvider";
+
 export type { OrderingCartItem, CartItem } from "./cart/cartTypes";
 export {
   ORDERING_CART_PERSISTENCE_NAMESPACE,
@@ -55,3 +75,7 @@ export {
   QrOrderingClientHost,
   type QrOrderingClientHostProps,
 } from "./qr/QrOrderingClientHost";
+export {
+  QrBrowseOnlyHost,
+  type QrBrowseOnlyHostProps,
+} from "./qr/QrBrowseOnlyHost";

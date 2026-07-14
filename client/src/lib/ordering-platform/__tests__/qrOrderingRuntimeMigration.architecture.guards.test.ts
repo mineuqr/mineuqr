@@ -9,7 +9,7 @@ function read(rel: string): string {
 }
 
 describe("QR-ORDERING-RUNTIME-MIGRATION-1 client architecture guards", () => {
-  it("QR pages consume runtime via useQrOrderingRuntime (Client Platform entry)", () => {
+  it("QR pages consume runtime via Client Platform (browse host or QR runtime hook)", () => {
     const menuView = read("client/src/pages/MenuView.tsx");
     const checkout = read("client/src/pages/CheckoutPage.tsx");
     const hook = read("client/src/hooks/useQrOrderingRuntime.ts");
@@ -18,7 +18,10 @@ describe("QR-ORDERING-RUNTIME-MIGRATION-1 client architecture guards", () => {
     );
     expect(platformRuntime).toContain("ordering.getRuntimeBySlug");
     expect(hook).toContain("useOrderingRuntime");
-    expect(menuView).toContain("useQrOrderingRuntime");
+    // ORDERING-CLIENT-BROWSE-1 — MenuView consumes via browse/runtime hosts, not parallel queries
+    expect(menuView).toContain("useOrderingBrowse");
+    expect(menuView).toContain("QrBrowseOnlyHost");
+    expect(menuView).not.toContain("getRuntimeBySlug");
     expect(checkout).toContain("useQrOrderingRuntime");
   });
 

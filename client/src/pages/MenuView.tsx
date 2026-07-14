@@ -1,8 +1,8 @@
 import { trpc } from "@/lib/trpc";
 import { useRoute, useLocation } from "wouter";
-import { useState, useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { Loader2, AlertCircle, Store } from "lucide-react";
-import { getTemplateComponent, type MenuBrowseTab } from "@/components/MenuTemplates";
+import { getTemplateComponent } from "@/components/MenuTemplates";
 import { DiningSessionBanner } from "@/components/customer/DiningSessionBanner";
 import { useLanguage } from "@/contexts/LanguageContext";
 import CartDrawer from "@/components/CartDrawer";
@@ -13,14 +13,38 @@ import {
 import { useDiningSessionRecovery } from "@/hooks/useDiningSessionRecovery";
 import { usePostSubmissionGuard } from "@/hooks/usePostSubmissionGuard";
 import { PostSubmissionLockedScreen } from "@/components/customer/PostSubmissionLockedScreen";
-import { useQrOrderingRuntime } from "@/hooks/useQrOrderingRuntime";
+import {
+  QrBrowseOnlyHost,
+  useOrderingBrowse,
+  useOrderingClientRuntime,
+  useOptionalOrderingBrowse,
+  useOptionalOrderingClientRuntime,
+} from "@/lib/ordering-client";
 
 /**
- * ORDERING-CLIENT-RUNTIME-1 — Menu consumes Ordering Runtime via Client Platform
- * (`useQrOrderingRuntime` → hosted context or shared `useOrderingRuntime`).
- * Session recovery + post-submission remain channel experience concerns.
+ * ORDERING-CLIENT-BROWSE-1 — QR menu shell.
+ * Channel owns: bootstrap routes, dining session, post-submission, tracking, view tracking.
+ * Browse orchestration (category/search/tabs/filter/loading) is Ordering Client Platform.
  */
 export default function MenuView() {
+  const [, params] = useRoute("/menu/:slug/table/:tableNumber");
+  const [, params2] = useRoute("/menu/:slug");
+  const slug = params?.slug || params2?.slug || "";
+  const hosted = useOptionalOrderingClientRuntime();
+  const hostedBrowse = useOptionalOrderingBrowse();
+
+  if (hosted && hosted.slug === slug && hostedBrowse) {
+    return <QrMenuChannelShell />;
+  }
+
+  return (
+    <QrBrowseOnlyHost slug={slug}>
+      <QrMenuChannelShell />
+    </QrBrowseOnlyHost>
+  );
+}
+
+function QrMenuChannelShell() {
   const [, params] = useRoute("/menu/:slug/table/:tableNumber");
   const [, params2] = useRoute("/menu/:slug");
   const slug = params?.slug || params2?.slug || "";
@@ -28,19 +52,23 @@ export default function MenuView() {
   const { t, dir, language } = useLanguage();
   const [, setLocation] = useLocation();
   const utils = trpc.useUtils();
+  const browse = useOrderingBrowse();
+  const runtime = useOrderingClientRuntime();
 
-  const {
-    restaurant,
-    isLoading: restaurantLoading,
-    categories: categoriesList,
-    items: allItems,
-    offers: activeOffers,
-    holidays,
-    gates,
-  } = useQrOrderingRuntime(slug);
+  const restaurant = browse.restaurant as {
+    id?: number;
+    nameAr?: string;
+    logoUrl?: string;
+    isActive?: boolean;
+    customColors?: unknown;
+    customFonts?: unknown;
+    menuTemplate?: string;
+    currencySymbol?: string;
+    tableLabel?: string;
+  } | null;
 
-  const canOrder = gates.guestOrderingEnabled;
-  const orderingAllowed = gates.orderingAllowed;
+  const canOrder = browse.gates.guestOrderingEnabled;
+  const orderingAllowed = browse.gates.orderingAllowed;
 
   const { recovery, recoveryDone } = useDiningSessionRecovery({
     slug,
@@ -63,7 +91,7 @@ export default function MenuView() {
 
   const canPlaceOrder =
     tableNumber > 0 &&
-    gates.platformCanPlaceOrder &&
+    browse.gates.platformCanPlaceOrder &&
     sessionAllowsOrder &&
     recoveryDone &&
     !postSubmission.blocked;
@@ -81,80 +109,48 @@ export default function MenuView() {
     }
   }, [slug]);
 
-  const [activeCategoryId, setActiveCategoryId] = useState<number | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [showScrollTop, setShowScrollTop] = useState(false);
-  const [menuTab, setMenuTab] = useState<MenuBrowseTab>("menu");
-
-  useEffect(() => {
-    if (categoriesList?.length && !activeCategoryId) {
-      setActiveCategoryId(categoriesList[0].id);
-    }
-  }, [categoriesList]);
-
-  useEffect(() => {
-    if (!activeOffers?.length && menuTab === "offers") {
-      setMenuTab("menu");
-    }
-  }, [activeOffers?.length, menuTab]);
-
-  useEffect(() => {
-    const handleScroll = () => setShowScrollTop(window.scrollY > 400);
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  const filteredItems = useMemo(() => {
-    if (!allItems) return [];
-    let items = allItems;
-    if (activeCategoryId) {
-      items = items.filter((item: any) => item.categoryId === activeCategoryId);
-    }
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      items = items.filter(
-        (item: any) =>
-          item.nameAr.toLowerCase().includes(q) ||
-          (item.nameEn && item.nameEn.toLowerCase().includes(q)) ||
-          (item.descriptionAr && item.descriptionAr.toLowerCase().includes(q))
-      );
-    }
-    return items;
-  }, [allItems, activeCategoryId, searchQuery]);
-
   const customColors = useMemo(() => {
-    const raw = (restaurant as any)?.customColors;
+    const raw = restaurant?.customColors;
     if (!raw) return null;
     try {
       return typeof raw === "string" ? JSON.parse(raw) : raw;
     } catch {
       return null;
     }
-  }, [(restaurant as any)?.customColors]);
+  }, [restaurant?.customColors]);
 
   const customFonts = useMemo(() => {
-    const raw = (restaurant as any)?.customFonts;
+    const raw = restaurant?.customFonts;
     if (!raw) return null;
     try {
       return typeof raw === "string" ? JSON.parse(raw) : raw;
     } catch {
       return null;
     }
-  }, [(restaurant as any)?.customFonts]);
+  }, [restaurant?.customFonts]);
 
-  const templateId = (restaurant as any)?.menuTemplate || "classic";
+  const templateId = restaurant?.menuTemplate || "classic";
   const TemplateComponent = useMemo(() => getTemplateComponent(templateId), [templateId]);
 
   const welcomeAccentColor = useMemo(() => {
     if (customColors?.accent) return customColors.accent;
     const tmpl = templateId as string;
-    const templates: Record<string, string> = { classic: '#14b8a6', elegant: '#d4a853', modern: '#f093fb', dark: '#ef4444', warm: '#f97316', ocean: '#00d2ff', royal: '#fbbf24', neon: '#39ff14' };
-    return templates[tmpl] || '#14b8a6';
+    const templates: Record<string, string> = {
+      classic: "#14b8a6",
+      elegant: "#d4a853",
+      modern: "#f093fb",
+      dark: "#ef4444",
+      warm: "#f97316",
+      ocean: "#00d2ff",
+      royal: "#fbbf24",
+      neon: "#39ff14",
+    };
+    return templates[tmpl] || "#14b8a6";
   }, [templateId, customColors]);
 
   const bannerOffsetClass = showClosedNotice ? "top-10" : undefined;
 
-  if (restaurantLoading) {
+  if (browse.presentationStatus === "loading") {
     return (
       <div className="min-h-screen bg-[#0a1628] flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-[#14b8a6]" />
@@ -162,25 +158,25 @@ export default function MenuView() {
     );
   }
 
-  if (!restaurant) {
+  if (browse.presentationStatus === "not_found" || !restaurant) {
     return (
       <div className="min-h-screen bg-[#0a1628] flex items-center justify-center p-4" dir={dir}>
         <div className="text-center">
           <AlertCircle className="w-16 h-16 text-white/30 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-white mb-2">{t('menu.menuNotFound')}</h2>
-          <p className="text-white/50">{t('menu.menuNotFoundDesc')}</p>
+          <h2 className="text-2xl font-bold text-white mb-2">{t("menu.menuNotFound")}</h2>
+          <p className="text-white/50">{t("menu.menuNotFoundDesc")}</p>
         </div>
       </div>
     );
   }
 
-  if (!restaurant.isActive) {
+  if (browse.presentationStatus === "unavailable") {
     return (
       <div className="min-h-screen bg-[#0a1628] flex items-center justify-center p-4" dir={dir}>
         <div className="text-center">
           <Store className="w-16 h-16 text-white/30 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-white mb-2">{t('menu.menuUnavailable')}</h2>
-          <p className="text-white/50">{t('menu.menuUnavailableDesc')}</p>
+          <h2 className="text-2xl font-bold text-white mb-2">{t("menu.menuUnavailable")}</h2>
+          <p className="text-white/50">{t("menu.menuUnavailableDesc")}</p>
         </div>
       </div>
     );
@@ -203,8 +199,8 @@ export default function MenuView() {
   return (
     <>
       <WelcomeOverlay
-        restaurantName={restaurant.nameAr}
-        logoUrl={(restaurant as any)?.logoUrl}
+        restaurantName={restaurant.nameAr ?? ""}
+        logoUrl={restaurant.logoUrl}
         accentColor={welcomeAccentColor}
       />
       {showClosedNotice && (
@@ -223,28 +219,28 @@ export default function MenuView() {
         />
       )}
       <TemplateComponent
-        restaurant={{ ...restaurant, holidays: holidays || [] }}
-        categories={categoriesList || []}
-        items={allItems || []}
-        activeCategoryId={activeCategoryId}
-        setActiveCategoryId={setActiveCategoryId}
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        filteredItems={filteredItems}
-        showScrollTop={showScrollTop}
+        restaurant={{ ...restaurant, holidays: runtime.holidays || [] }}
+        categories={browse.categories}
+        items={browse.items}
+        activeCategoryId={browse.activeCategoryId}
+        setActiveCategoryId={browse.setActiveCategoryId}
+        searchQuery={browse.searchQuery}
+        setSearchQuery={browse.setSearchQuery}
+        filteredItems={browse.filteredItems}
+        showScrollTop={browse.showScrollTop}
         customColors={customColors}
         customFonts={customFonts}
-        offers={activeOffers || []}
+        offers={browse.offers || []}
         tableNumber={orderingTableNumber}
-        menuTab={menuTab}
-        setMenuTab={setMenuTab}
+        menuTab={browse.menuTab}
+        setMenuTab={browse.setMenuTab}
       />
       {canPlaceOrder && (
         <CartDrawer
           slug={slug}
           tableNumber={tableNumber}
-          currencySymbol={(restaurant as any)?.currencySymbol || "ر.س"}
-          tableLabel={(restaurant as any)?.tableLabel || "tables"}
+          currencySymbol={restaurant.currencySymbol || "ر.س"}
+          tableLabel={restaurant.tableLabel || "tables"}
         />
       )}
     </>

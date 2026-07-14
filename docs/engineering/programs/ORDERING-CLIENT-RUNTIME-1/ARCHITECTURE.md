@@ -30,7 +30,7 @@ CartProvider + MenuView / CheckoutPage
 OrderingRuntimeContext → Ordering Platform
 ```
 
-Browse-only `/menu/:slug` is still QR channel; it uses `useQrOrderingRuntime` → standalone `useOrderingRuntime` (same Client Platform module; no parallel delivery).
+Browse-only `/menu/:slug` uses `QrBrowseOnlyHost` (ORDERING-CLIENT-BROWSE-1) → `OrderingClientProvider` + `OrderingBrowseProvider` (same Client Platform runtime module; no parallel delivery).
 
 ---
 
@@ -76,4 +76,6 @@ Does **not** call `getRuntimeBySlug` directly.
 
 ## 5. Out of scope (deferred)
 
-Browse refactor · Checkout redesign · Shared component extraction · Kiosk/Waiter UI · Domain/Read Model/Operational
+Checkout redesign · Shared component extraction · Kiosk/Waiter UI · Domain/Read Model/Operational  
+
+*(Browse ownership: delivered by ORDERING-CLIENT-BROWSE-1.)*

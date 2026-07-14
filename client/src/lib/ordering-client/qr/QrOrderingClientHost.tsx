@@ -1,6 +1,7 @@
 import { useMemo, type ReactNode } from "react";
 import { useLocation } from "wouter";
 import { ORDERING_CHANNEL_QR } from "@shared/ordering-platform/orderingPlatformContracts";
+import { OrderingBrowseProvider } from "../browse/OrderingBrowseProvider";
 import { OrderingCartProvider } from "../cart/OrderingCartProvider";
 import { OrderingClientProvider } from "../context/OrderingClientProvider";
 import { OrderingClientErrorBoundary } from "../runtime/OrderingClientErrorBoundary";
@@ -19,8 +20,8 @@ export type QrOrderingClientHostProps = {
 };
 
 /**
- * ORDERING-CLIENT-CART-1 — QR shell host.
- * QR supplies CartScopeAdapter (+ navigator); Client Platform owns cart orchestration.
+ * ORDERING-CLIENT-BROWSE-1 / CART-1 — QR shell host.
+ * QR supplies CartScopeAdapter (+ navigator); Client Platform owns browse + cart.
  */
 export function QrOrderingClientHost({
   slug,
@@ -55,7 +56,9 @@ export function QrOrderingClientHost({
         cartScope={cartScope}
         navigator={navigator}
       >
-        <OrderingCartProvider scope={cartScope}>{children}</OrderingCartProvider>
+        <OrderingBrowseProvider>
+          <OrderingCartProvider scope={cartScope}>{children}</OrderingCartProvider>
+        </OrderingBrowseProvider>
       </OrderingClientProvider>
     </OrderingClientErrorBoundary>
   );
