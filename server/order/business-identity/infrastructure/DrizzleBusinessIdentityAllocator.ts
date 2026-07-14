@@ -4,7 +4,10 @@ import {
   resolveBusinessDayKey,
   resolveBusinessDayWindow,
 } from "../../../../shared/utils/businessDay";
-import type { BusinessIdentityAssignment } from "../types";
+import type { BusinessIdentityAssignment, BusinessIdentityScope } from "../types";
+import {
+  resolveBusinessIdentityScope,
+} from "../application/resolveBusinessIdentityScope";
 import type { RestaurantOpeningTimeResolver } from "./RestaurantOpeningTimeResolver";
 import type { BusinessIdentityMetrics } from "../observability/BusinessIdentityMetrics";
 import { businessIdentityMetrics } from "../observability/BusinessIdentityMetrics";
@@ -24,6 +27,15 @@ export type BusinessIdentityAssignmentContext = {
   workerId?: string;
 };
 
+export type AllocateForNewOrderInput = {
+  orderId: number;
+  restaurantId: number;
+  createdAt: string;
+  identityScope?: BusinessIdentityScope;
+  fulfilmentAnchorType?: string | null;
+  serviceMode?: string | null;
+};
+
 export class DrizzleBusinessIdentityAllocator {
   constructor(
     private readonly openingTimeResolver: RestaurantOpeningTimeResolver,
@@ -32,10 +44,11 @@ export class DrizzleBusinessIdentityAllocator {
 
   async allocateForNewOrder(
     tx: DbTx,
-    input: { orderId: number; restaurantId: number; createdAt: string },
+    input: AllocateForNewOrderInput,
     context?: BusinessIdentityAssignmentContext
   ): Promise<BusinessIdentityAssignment> {
     const startedAt = Date.now();
+    const identityScope = resolveBusinessIdentityScope(input);
     const logCtx: BusinessIdentityLogContext = {
       restaurantId: input.restaurantId,
       orderId: input.orderId,
@@ -50,8 +63,8 @@ export class DrizzleBusinessIdentityAllocator {
     const businessDay = resolveBusinessDayKey(input.createdAt, workingHours);
 
     await tx.execute(sql`
-      INSERT INTO order_business_day_sequences (restaurant_id, business_day, last_number)
-      VALUES (${input.restaurantId}, ${businessDay}, LAST_INSERT_ID(1))
+      INSERT INTO order_business_day_sequences (restaurant_id, business_day, identity_scope, last_number)
+      VALUES (${input.restaurantId}, ${businessDay}, ${identityScope}, LAST_INSERT_ID(1))
       ON DUPLICATE KEY UPDATE last_number = LAST_INSERT_ID(last_number + 1)
     `);
 
@@ -63,6 +76,7 @@ export class DrizzleBusinessIdentityAllocator {
       .set({
         businessDay,
         dailyDisplayNumber,
+        identityScope,
       })
       .where(eq(orders.id, input.orderId));
 
@@ -75,23 +89,26 @@ export class DrizzleBusinessIdentityAllocator {
       durationMs,
     });
 
-    return { businessDay, dailyDisplayNumber };
+    return { businessDay, dailyDisplayNumber, identityScope };
   }
 
   /**
    * Idempotent assignment for historic orders and projection replay.
-   * Uses chronological rank within the business-day window.
-   * Concurrency-safe via consistent lock ordering, row locks, and bounded retry.
+   * Uses chronological rank within the business-day + identity-scope window.
    */
   async ensureAssigned(
     orderId: number,
     restaurantId: number,
     createdAt: string,
-    context?: BusinessIdentityAssignmentContext
+    context?: BusinessIdentityAssignmentContext & {
+      fulfilmentAnchorType?: string | null;
+      serviceMode?: string | null;
+      identityScope?: string | null;
+    }
   ): Promise<BusinessIdentityAssignment> {
     const db = await import("../../../db").then((m) => m.getDb());
     if (!db) {
-      return { businessDay: "", dailyDisplayNumber: 0 };
+      return { businessDay: "", dailyDisplayNumber: 0, identityScope: "TABLE" };
     }
 
     const logCtx: BusinessIdentityLogContext = {
@@ -108,7 +125,7 @@ export class DrizzleBusinessIdentityAllocator {
         const startedAt = Date.now();
 
         const result = await db.transaction(async (tx) =>
-          this.ensureAssignedInTransaction(tx, orderId, restaurantId, createdAt)
+          this.ensureAssignedInTransaction(tx, orderId, restaurantId, createdAt, context)
         );
 
         const durationMs = Date.now() - startedAt;
@@ -132,15 +149,52 @@ export class DrizzleBusinessIdentityAllocator {
     tx: DbTx,
     orderId: number,
     restaurantId: number,
-    createdAt: string
+    createdAt: string,
+    context?: {
+      fulfilmentAnchorType?: string | null;
+      serviceMode?: string | null;
+      identityScope?: string | null;
+    }
   ): Promise<BusinessIdentityAssignment> {
     const workingHours = await this.openingTimeResolver.getWorkingHours(restaurantId);
     const businessDay = resolveBusinessDayKey(createdAt, workingHours);
     const window = resolveBusinessDayWindow(businessDay, workingHours);
 
+    const [order] = await tx
+      .select({
+        id: orders.id,
+        businessDay: orders.businessDay,
+        dailyDisplayNumber: orders.dailyDisplayNumber,
+        identityScope: orders.identityScope,
+        fulfilmentAnchorType: orders.fulfilmentAnchorType,
+        serviceMode: orders.serviceMode,
+      })
+      .from(orders)
+      .where(eq(orders.id, orderId))
+      .limit(1)
+      .for("update");
+
+    if (!order) {
+      return { businessDay: "", dailyDisplayNumber: 0, identityScope: "TABLE" };
+    }
+
+    const identityScope = resolveBusinessIdentityScope({
+      identityScope: order.identityScope ?? context?.identityScope,
+      fulfilmentAnchorType: order.fulfilmentAnchorType ?? context?.fulfilmentAnchorType,
+      serviceMode: order.serviceMode ?? context?.serviceMode,
+    });
+
+    if (order.businessDay && order.dailyDisplayNumber != null && order.identityScope) {
+      return {
+        businessDay: order.businessDay,
+        dailyDisplayNumber: order.dailyDisplayNumber,
+        identityScope: resolveBusinessIdentityScope({ identityScope: order.identityScope }),
+      };
+    }
+
     await tx.execute(sql`
-      INSERT INTO order_business_day_sequences (restaurant_id, business_day, last_number)
-      VALUES (${restaurantId}, ${businessDay}, 0)
+      INSERT INTO order_business_day_sequences (restaurant_id, business_day, identity_scope, last_number)
+      VALUES (${restaurantId}, ${businessDay}, ${identityScope}, 0)
       ON DUPLICATE KEY UPDATE last_number = last_number
     `);
 
@@ -149,30 +203,9 @@ export class DrizzleBusinessIdentityAllocator {
       FROM order_business_day_sequences
       WHERE restaurant_id = ${restaurantId}
         AND business_day = ${businessDay}
+        AND identity_scope = ${identityScope}
       FOR UPDATE
     `);
-
-    const [order] = await tx
-      .select({
-        id: orders.id,
-        businessDay: orders.businessDay,
-        dailyDisplayNumber: orders.dailyDisplayNumber,
-      })
-      .from(orders)
-      .where(eq(orders.id, orderId))
-      .limit(1)
-      .for("update");
-
-    if (!order) {
-      return { businessDay: "", dailyDisplayNumber: 0 };
-    }
-
-    if (order.businessDay && order.dailyDisplayNumber != null) {
-      return {
-        businessDay: order.businessDay,
-        dailyDisplayNumber: order.dailyDisplayNumber,
-      };
-    }
 
     const [prior] = await tx
       .select({ count: sql<number>`COUNT(*)` })
@@ -182,6 +215,7 @@ export class DrizzleBusinessIdentityAllocator {
           eq(orders.restaurantId, restaurantId),
           sql`${orders.createdAt} >= ${window.startIso}`,
           sql`${orders.createdAt} < ${window.endIso}`,
+          sql`COALESCE(${orders.identityScope}, 'TABLE') = ${identityScope}`,
           or(
             sql`${orders.createdAt} < ${createdAt}`,
             and(eq(orders.createdAt, createdAt), sql`${orders.id} < ${orderId}`)
@@ -192,16 +226,16 @@ export class DrizzleBusinessIdentityAllocator {
     const dailyDisplayNumber = Number(prior?.count ?? 0) + 1;
 
     await tx.execute(sql`
-      INSERT INTO order_business_day_sequences (restaurant_id, business_day, last_number)
-      VALUES (${restaurantId}, ${businessDay}, ${dailyDisplayNumber})
+      INSERT INTO order_business_day_sequences (restaurant_id, business_day, identity_scope, last_number)
+      VALUES (${restaurantId}, ${businessDay}, ${identityScope}, ${dailyDisplayNumber})
       ON DUPLICATE KEY UPDATE last_number = GREATEST(last_number, ${dailyDisplayNumber})
     `);
 
     await tx
       .update(orders)
-      .set({ businessDay, dailyDisplayNumber })
+      .set({ businessDay, dailyDisplayNumber, identityScope })
       .where(eq(orders.id, orderId));
 
-    return { businessDay, dailyDisplayNumber };
+    return { businessDay, dailyDisplayNumber, identityScope };
   }
 }

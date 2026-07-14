@@ -19,7 +19,7 @@ describe("ORDER-WORKSPACE-CARD-ARCHITECTURE-1 presentation mapper", () => {
     businessDay: "2026-07-11",
     dailyDisplayNumber: 6,
     displayOrderNumber: "006",
-    displayReference: "006",
+    displayReference: "T #006",
     status: "preparing",
     lifecycle: "active",
     tableNumber: 3,
@@ -42,8 +42,8 @@ describe("ORDER-WORKSPACE-CARD-ARCHITECTURE-1 presentation mapper", () => {
     const presentation = mapActiveOrderPresentation(baseOrder, { tableUnit: "table" });
 
     expect(presentation.orderId).toBe(42);
-    expect(presentation.identity.displayReference).toBe("#006");
-    expect(presentation.identity.displayNumber).toBe("006");
+    expect(presentation.identity.displayReference).toBe("T #006");
+    expect(presentation.identity.displayNumber).toBe("T #006");
     expect(presentation.lifecycle).toBe("active");
     expect(presentation.status).toBe("preparing");
     expect(presentation.statusLabel.en).toBe("Preparing");
@@ -74,7 +74,7 @@ describe("ORDER-WORKSPACE-CARD-ARCHITECTURE-1 presentation mapper", () => {
       businessDay: "2026-07-11",
       dailyDisplayNumber: 7,
       displayOrderNumber: "007",
-      displayReference: "007",
+      displayReference: "T #007",
       tableNumber: 5,
       sessionId: null,
       serviceMode: "table_service",
@@ -117,7 +117,7 @@ describe("ORDER-WORKSPACE-CARD-ARCHITECTURE-1 presentation mapper", () => {
       lastEventId: null,
     });
 
-    expect(presentation.identity.displayReference).toBe("#007");
+    expect(presentation.identity.displayReference).toBe("T #007");
     expect(presentation.lifecycle).toBe("active");
     expect(presentation.statusLabel.en).toBe("Pending");
     expect(presentation.timing.elapsedCompactLabel.en).toMatch(/min|h/);
@@ -133,7 +133,7 @@ describe("ORDER-WORKSPACE-CARD-ARCHITECTURE-1 presentation mapper", () => {
       businessDay: "2026-07-11",
       dailyDisplayNumber: 8,
       displayOrderNumber: "008",
-      displayReference: "008",
+      displayReference: "T #008",
       tableNumber: 2,
       sessionId: null,
       serviceMode: "table_service",

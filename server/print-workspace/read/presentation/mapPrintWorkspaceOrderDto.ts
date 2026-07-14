@@ -14,6 +14,9 @@ export function mapPrintWorkspaceOrderDto(
     orderNumber: row.orderNumber,
     businessDay: row.businessDay ?? null,
     dailyDisplayNumber: row.dailyDisplayNumber ?? null,
+    identityScope: row.identityScope ?? null,
+    fulfilmentAnchorType: row.fulfilmentAnchorType,
+    serviceMode: row.serviceMode,
   });
   const fulfilment = resolveFulfilmentProjection({
     serviceMode: row.serviceMode,

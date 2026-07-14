@@ -7,6 +7,9 @@ export type OperationalOrderIdentitySource = OrderIdentitySource & {
   /** Pre-resolved by read APIs via OrderDisplayIdentityResolver. */
   displayReference?: string;
   displayOrderNumber?: string;
+  identityScope?: string | null;
+  fulfilmentAnchorType?: string | null;
+  serviceMode?: string | null;
 };
 
 /**
@@ -21,14 +24,19 @@ export function operationalDisplayReference(source: OperationalOrderIdentitySour
     orderNumber: source.orderNumber,
     businessDay: source.businessDay ?? null,
     dailyDisplayNumber: source.dailyDisplayNumber ?? null,
+    identityScope: source.identityScope ?? null,
+    fulfilmentAnchorType: source.fulfilmentAnchorType ?? null,
+    serviceMode: source.serviceMode ?? null,
   }).displayReference;
 }
 
-/** Staff-facing heading, e.g. "#006". */
+/**
+ * Staff-facing heading — Business Identity owns the full string (e.g. "T #001").
+ * Do not assemble T/K/# locally in presentation.
+ */
 export function formatOperationalOrderHeading(
   source: OperationalOrderIdentitySource,
-  options?: { prefix?: string }
+  _options?: { prefix?: string }
 ): string {
-  const prefix = options?.prefix ?? "#";
-  return `${prefix}${operationalDisplayReference(source)}`;
+  return operationalDisplayReference(source);
 }

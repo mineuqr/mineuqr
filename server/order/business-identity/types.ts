@@ -1,14 +1,19 @@
 /** Operational display identity — outside the Order aggregate. */
 
+import type { BusinessIdentityScope } from "./application/resolveBusinessIdentityScope";
+
+export type { BusinessIdentityScope };
+
 export type BusinessIdentityAssignment = {
   businessDay: string;
   dailyDisplayNumber: number;
+  identityScope: BusinessIdentityScope;
 };
 
 export type OrderDisplayIdentity = BusinessIdentityAssignment & {
   /** Padded daily number, e.g. "001". */
   displayOrderNumber: string;
-  /** Formatted staff-facing reference, e.g. "001" or "2026-07-10-001". */
+  /** Staff-facing reference, e.g. "T #001" / "K #001". */
   displayReference: string;
 };
 

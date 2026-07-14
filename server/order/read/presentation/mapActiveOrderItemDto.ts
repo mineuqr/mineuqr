@@ -7,6 +7,7 @@ export type OrderRowIdentitySource = {
   orderNumber: string;
   businessDay: string | null;
   dailyDisplayNumber: number | null;
+  identityScope?: string | null;
   status: string;
   lifecycle: string;
   tableNumber: number;
@@ -28,6 +29,9 @@ export function mapActiveOrderItemDto(row: OrderRowIdentitySource): ActiveOrderI
     orderNumber: row.orderNumber,
     businessDay: row.businessDay,
     dailyDisplayNumber: row.dailyDisplayNumber,
+    identityScope: row.identityScope,
+    fulfilmentAnchorType: row.fulfilmentAnchorType,
+    serviceMode: row.serviceMode,
   });
   const fulfilment = resolveFulfilmentProjection({
     serviceMode: row.serviceMode,
@@ -42,6 +46,7 @@ export function mapActiveOrderItemDto(row: OrderRowIdentitySource): ActiveOrderI
     orderNumber: row.orderNumber,
     businessDay: row.businessDay,
     dailyDisplayNumber: row.dailyDisplayNumber,
+    identityScope: identity.identityScope,
     displayOrderNumber: identity.displayOrderNumber,
     displayReference: identity.displayReference,
     status: row.status,

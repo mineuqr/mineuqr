@@ -32,11 +32,21 @@ const REQUIRED = {
     ["order_read_orders", "serviceMode"],
     ["order_read_orders", "fulfilmentAnchorType"],
     ["order_read_orders", "fulfilmentLabel"],
+    ["order_read_orders", "identityScope"],
+    ["order_read_public_order_status", "identityScope"],
   ],
   orderWriteColumns: [
     ["orders", "serviceMode"],
     ["orders", "fulfilmentAnchorType"],
     ["orders", "fulfilmentLabel"],
+    ["orders", "identityScope"],
+  ],
+  businessIdentityTables: ["order_business_day_sequences"],
+  businessIdentityColumns: [
+    ["order_business_day_sequences", "identity_scope"],
+  ],
+  businessIdentityIndexes: [
+    ["orders", "uq_orders_restaurant_business_day_scope_display"],
   ],
 };
 
@@ -119,9 +129,26 @@ async function main() {
         missing.push(`${table}.${column}`);
       }
     }
+    for (const table of REQUIRED.businessIdentityTables) {
+      if (!(await tableExists(conn, table))) {
+        missing.push(`table:${table}`);
+      }
+    }
+    for (const [table, column] of REQUIRED.businessIdentityColumns) {
+      if (!(await columnExists(conn, table, column))) {
+        missing.push(`${table}.${column}`);
+      }
+    }
+    for (const [table, indexName] of REQUIRED.businessIdentityIndexes) {
+      if (!(await indexExists(conn, table, indexName))) {
+        missing.push(`index:${table}.${indexName}`);
+      }
+    }
 
     if (missing.length === 0) {
-      console.log("[schema-verify] OK — required schema objects present (auth, order-read, operational-device, fulfilment).");
+      console.log(
+        "[schema-verify] OK — required schema objects present (auth, order-read, operational-device, fulfilment, business-identity-scope)."
+      );
       return;
     }
 

@@ -105,6 +105,7 @@ export class DrizzleOrderReadQueryAdapter implements OrderReadQueryPort {
         orderNumber: row.orderNumber,
         businessDay: row.businessDay ?? null,
         dailyDisplayNumber: row.dailyDisplayNumber ?? null,
+        identityScope: row.identityScope ?? null,
         status: row.status,
         lifecycle: row.lifecycleStage,
         tableNumber: row.tableNumber,

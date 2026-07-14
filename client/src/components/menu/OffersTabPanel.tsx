@@ -91,6 +91,11 @@ export type OffersTabPanelProps = {
     priceScale?: string;
   };
   tableNumber?: number;
+  /**
+   * KIOSK-PRESENTATION-ADOPTION-1 — when set, controls Add to Cart without
+   * requiring a table number (kiosk / non-table channels).
+   */
+  canAddToCart?: boolean;
 };
 
 export function OffersTabPanel({
@@ -101,6 +106,7 @@ export function OffersTabPanel({
   currencySymbol,
   fontStyles,
   tableNumber,
+  canAddToCart,
 }: OffersTabPanelProps) {
   const { language } = useLanguage();
   const [activeFilter, setActiveFilter] = useState<"all" | "daily" | "weekly" | "monthly">("all");
@@ -272,7 +278,7 @@ export function OffersTabPanel({
                         textColor={textColor}
                       />
                     </div>
-                    {tableNumber != null && tableNumber > 0 && (
+                    {(canAddToCart ?? (tableNumber != null && tableNumber > 0)) && (
                       <AddToCartButton
                         offerId={offer.id}
                         nameAr={offer.titleAr}

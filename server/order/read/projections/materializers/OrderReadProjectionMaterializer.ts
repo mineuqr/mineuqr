@@ -50,6 +50,9 @@ export class OrderReadProjectionMaterializer {
           {
             correlationId: eventId,
             workerId: process.env.BUSINESS_IDENTITY_WORKER_ID ?? "projection",
+            fulfilmentAnchorType: preview.order.fulfilmentAnchorType,
+            serviceMode: preview.order.serviceMode,
+            identityScope: preview.order.identityScope,
           }
         );
       }
@@ -87,6 +90,7 @@ export class OrderReadProjectionMaterializer {
       orderNumber: source.order.orderNumber,
       businessDay: source.order.businessDay ?? null,
       dailyDisplayNumber: source.order.dailyDisplayNumber ?? null,
+      identityScope: source.order.identityScope ?? null,
       status: source.order.status,
       tableNumber: source.order.tableNumber,
       itemCount,

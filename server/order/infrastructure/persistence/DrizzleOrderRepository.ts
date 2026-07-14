@@ -161,6 +161,8 @@ export class DrizzleOrderRepository implements OrderRepository {
         orderId,
         restaurantId: snapshot.restaurantId,
         createdAt: order.createdAt,
+        fulfilmentAnchorType: snapshot.fulfilmentAnchorType,
+        serviceMode: snapshot.serviceMode,
       });
     }
 

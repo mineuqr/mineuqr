@@ -463,6 +463,13 @@
       "when": 1784510000000,
       "tag": "0065_order_fulfilment_projection",
       "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "5",
+      "when": 1784520000000,
+      "tag": "0066_order_business_identity_scope",
+      "breakpoints": true
     }
   ]
 }

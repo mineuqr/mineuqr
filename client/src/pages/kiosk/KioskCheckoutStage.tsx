@@ -7,6 +7,7 @@ import {
   useOrderingCheckout,
   useOrderingClientRuntime,
 } from "@/lib/ordering-client";
+import { kioskCustomerFacingLabel } from "@/lib/ordering-client/kiosk/kioskPresentationLabels";
 
 type Props = {
   slug: string;
@@ -90,7 +91,7 @@ export function KioskCheckoutStage({
 
       <main className="px-4 py-6 space-y-4">
         <p className="text-sm text-white/60 px-1">
-          {language === "ar" ? `المحطة: ${stationId}` : `Station: ${stationId}`}
+          {kioskCustomerFacingLabel(language === "ar")}
         </p>
         <ul className="rounded-2xl border border-white/10 divide-y divide-white/10 overflow-hidden">
           {checkout.summaryLines.map((line) => (

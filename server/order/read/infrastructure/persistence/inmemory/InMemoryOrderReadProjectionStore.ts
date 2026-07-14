@@ -307,6 +307,9 @@ export class InMemoryOrderReadProjectionStore {
       orderNumber: order.orderNumber,
       businessDay: order.businessDay ?? null,
       dailyDisplayNumber: order.dailyDisplayNumber ?? null,
+      identityScope: order.identityScope ?? null,
+      fulfilmentAnchorType: order.fulfilmentAnchorType,
+      serviceMode: order.serviceMode,
     });
     const fulfilment = resolveFulfilmentProjection({
       serviceMode: order.serviceMode,
@@ -322,6 +325,7 @@ export class InMemoryOrderReadProjectionStore {
       orderNumber: order.orderNumber,
       businessDay: order.businessDay ?? null,
       dailyDisplayNumber: order.dailyDisplayNumber ?? null,
+      identityScope: identity.identityScope,
       displayOrderNumber: identity.displayOrderNumber,
       displayReference: identity.displayReference,
       status: order.status,

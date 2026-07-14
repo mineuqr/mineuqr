@@ -154,6 +154,7 @@ export type ActiveOrderItemDto = {
   orderNumber: string;
   businessDay: string | null;
   dailyDisplayNumber: number | null;
+  identityScope: string;
   displayOrderNumber: string;
   displayReference: string;
   status: string;

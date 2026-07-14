@@ -398,6 +398,8 @@ export const orders = mysqlTable("orders", {
 	orderNumber: varchar({ length: 32 }).notNull(),
 	businessDay: varchar({ length: 10 }),
 	dailyDisplayNumber: int("daily_display_number"),
+	/** KIOSK-PRESENTATION-ADOPTION-1 — TABLE | KIOSK sequence partition. */
+	identityScope: varchar({ length: 16 }),
 	trackingToken: varchar({ length: 64 }),
 	readyPushSentAt: timestamp({ mode: 'string' }),
 	readyAt: timestamp({ mode: 'string' }),
@@ -454,11 +456,12 @@ export const orderItems = mysqlTable("order_items", {
 export const orderBusinessDaySequences = mysqlTable("order_business_day_sequences", {
 	restaurantId: int("restaurant_id").notNull(),
 	businessDay: varchar("business_day", { length: 10 }).notNull(),
+	identityScope: varchar("identity_scope", { length: 16 }).notNull(),
 	lastNumber: int("last_number").default(0).notNull(),
 	updatedAt: timestamp("updated_at", { mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
 },
 (table) => [
-	primaryKey({ columns: [table.restaurantId, table.businessDay] }),
+	primaryKey({ columns: [table.restaurantId, table.businessDay, table.identityScope] }),
 ]);
 
 // ─── Order Read Projections (ORDERS-READ-MODEL-1 Phase 2) ─────────
@@ -468,6 +471,7 @@ export const orderReadOrders = mysqlTable("order_read_orders", {
 	orderNumber: varchar({ length: 32 }).notNull(),
 	businessDay: varchar({ length: 10 }),
 	dailyDisplayNumber: int("daily_display_number"),
+	identityScope: varchar({ length: 16 }),
 	status: mysqlEnum(["pending", "preparing", "ready", "served", "cancelled"]).notNull(),
 	lifecycleStage: mysqlEnum(["active", "completed", "archived"]).default("active").notNull(),
 	tableId: int().notNull(),
@@ -570,6 +574,7 @@ export const orderReadPublicOrderStatus = mysqlTable("order_read_public_order_st
 	orderNumber: varchar({ length: 32 }).notNull(),
 	businessDay: varchar({ length: 10 }),
 	dailyDisplayNumber: int("daily_display_number"),
+	identityScope: varchar({ length: 16 }),
 	status: varchar({ length: 32 }).notNull(),
 	tableNumber: int().notNull(),
 	itemCount: int().default(0).notNull(),

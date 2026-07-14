@@ -9,8 +9,9 @@ describe("mapOrderDisplayIdentityFields", () => {
       dailyDisplayNumber: 6,
     });
 
-    expect(result.displayReference).toBe("006");
+    expect(result.displayReference).toBe("T #006");
     expect(result.displayOrderNumber).toBe("006");
+    expect(result.identityScope).toBe("TABLE");
     expect(result.businessDay).toBe("2026-07-10");
     expect(result.dailyDisplayNumber).toBe(6);
   });

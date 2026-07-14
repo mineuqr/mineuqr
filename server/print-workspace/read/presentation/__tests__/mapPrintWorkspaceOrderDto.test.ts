@@ -31,7 +31,7 @@ describe("mapPrintWorkspaceOrderDto", () => {
     );
 
     expect(dto.orderNumber).toBe("ORD-0242");
-    expect(dto.displayReference).toBe("003");
+    expect(dto.displayReference).toBe("T #003");
     expect(dto.displayOrderNumber).toBe("003");
     expect(dto.fulfilmentLabel).toBe("5");
     expect(dto.serviceMode).toBe("table_service");

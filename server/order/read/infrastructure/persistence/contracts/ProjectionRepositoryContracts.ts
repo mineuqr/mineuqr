@@ -102,6 +102,9 @@ export type PublicOrderStatusProjectionRecord = ProjectionRecordMeta & {
   trackingToken: string;
   restaurantSlug: string;
   orderNumber: string;
+  businessDay?: string | null;
+  dailyDisplayNumber?: number | null;
+  identityScope?: string | null;
   status: string;
   tableNumber: number;
   itemCount: number;
