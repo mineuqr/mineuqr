@@ -1,5 +1,6 @@
 /**
- * ORDERING-CLIENT-RUNTIME-1 / CART-1 / BROWSE-1 / CHECKOUT-1 — Ordering Client Platform API.
+ * ORDERING-CLIENT-RUNTIME-1 / CART-1 / BROWSE-1 / CHECKOUT-1 / GOVERNANCE-1 —
+ * Ordering Client Platform API.
  */
 
 export type { CartScopeAdapter, CartScopeDescription } from "./contracts/CartScopeAdapter";
@@ -8,6 +9,21 @@ export type {
   OrderingNavigator,
 } from "./contracts/OrderingNavigator";
 export { ORDERING_CLIENT_STAGES } from "./contracts/OrderingNavigator";
+export {
+  createKioskDeviceCartScopeAdapter,
+  createWaiterStationCartScopeAdapter,
+} from "./contracts/createChannelCartScopeAdapters";
+
+export {
+  ORDERING_CLIENT_LAYER_STACK,
+  ORDERING_CLIENT_PLATFORM_OWNED_CONCERNS,
+  ORDERING_CHANNEL_SHELL_OWNED_CONCERNS,
+  ORDERING_CLIENT_REQUIRED_ADAPTERS,
+  ORDERING_CLIENT_DEPENDENCY_RULES,
+  type OrderingClientLayer,
+  type OrderingClientPlatformOwnedConcern,
+  type OrderingChannelShellOwnedConcern,
+} from "./governance/orderingClientGovernance";
 
 export {
   deriveOrderingRuntimeGates,

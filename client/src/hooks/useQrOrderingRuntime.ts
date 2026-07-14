@@ -1,7 +1,8 @@
 /**
- * QR-ORDERING-RUNTIME-MIGRATION-1 / ORDERING-CLIENT-RUNTIME-1 —
- * QR channel thin wrapper over Ordering Client Platform runtime.
- * Channels must not invoke the platform delivery query here.
+ * @deprecated ORDERING-CLIENT-GOVERNANCE-1 — prefer Client Platform hosts:
+ * `QrOrderingClientHost` (table) or `QrBrowseOnlyHost` (browse-only).
+ * Thin QR façade over Ordering Client Platform runtime. Do not add new call sites.
+ * Channels must not invoke ordering.getRuntimeBySlug outside Client Platform.
  */
 import {
   useOptionalOrderingClientRuntime,

@@ -1,5 +1,5 @@
 /**
- * ORDERING-CLIENT-RUNTIME-1 — QR OrderingNavigator backed by wouter paths.
+ * ORDERING-CLIENT-RUNTIME-1 / GOVERNANCE-1 — QR OrderingNavigator backed by wouter paths.
  */
 import type {
   OrderingClientStage,
@@ -23,7 +23,13 @@ export function createQrOrderingNavigator(
   return {
     stage,
     goToBrowse: () => setLocation(browsePath),
+    // QR cart is an overlay on browse — stage method kept for multi-channel parity.
+    goToCart: () => setLocation(browsePath),
     goToCheckout: () => setLocation(checkoutPath),
+    goToConfirmation: (trackingToken: string) =>
+      setLocation(`/menu/${slug}/order/${trackingToken}/confirmed`, {
+        replace: true,
+      }),
     goToTracking: (trackingToken: string) =>
       setLocation(`/menu/${slug}/order/${trackingToken}`, { replace: true }),
   };

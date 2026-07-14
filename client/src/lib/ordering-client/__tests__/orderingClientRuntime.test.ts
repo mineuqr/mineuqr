@@ -116,12 +116,16 @@ describe("ORDERING-CLIENT-RUNTIME-1", () => {
       },
     });
     expect(nav.stage).toBe("browse");
+    nav.goToCart();
     nav.goToCheckout();
     nav.goToBrowse();
+    nav.goToConfirmation("tok");
     nav.goToTracking("tok");
     expect(paths).toEqual([
+      "/menu/cafe/table/2",
       "/menu/cafe/table/2/checkout",
       "/menu/cafe/table/2",
+      "/menu/cafe/order/tok/confirmed",
       "/menu/cafe/order/tok",
     ]);
   });

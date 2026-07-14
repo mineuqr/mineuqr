@@ -4,29 +4,19 @@
 
 | Field | Value |
 |---|---|
-| **Status** | Proposed |
+| **Status** | Accepted |
 | **Owner** | Architecture Authority |
 | **Program** | ORDERING-CLIENT-PLATFORM-ARCHITECTURE-1 |
 | **Date** | 2026-07-14 |
 | **Supersedes** | — |
 | **Refines** | ORDERING-PLATFORM-ARCHITECTURE-1 channel experience split; SELF-ORDERING-KIOSK-ARCHITECTURE-1 browse/cart/checkout ownership |
-| **Implementation status** | Implemented foundation — RUNTIME-1 + CART-1 + BROWSE-1 + CHECKOUT-1 delivered |
+| **Implementation status** | Implemented — RUNTIME-1 + CART-1 + BROWSE-1 + CHECKOUT-1 + GOVERNANCE-1 |
 
 ---
 
 ## Context
 
-ORDERING-PLATFORM-ARCHITECTURE-1 established that channels must not own business logic and must consume Ordering Runtime. QR Ordering is the only live client; cart, browse, checkout, and notes presentation are embedded in QR pages and QR-scoped cart storage.
-
-SELF-ORDERING-KIOSK-ARCHITECTURE-1 and Waiter Tablet channel IDs imply additional clients. Without a shared **client experience layer**, each channel would reimplement:
-
-- Runtime gate derivation  
-- Cart orchestration  
-- Catalog browse controllers  
-- Checkout presentation  
-- Notes entry UX  
-
-That would violate Single Source of Truth, Platform Before Channels, and Composition over Duplication at the **client** tier (even while server Ordering Platform remains correct).
+ORDERING-PLATFORM-ARCHITECTURE-1 established that channels must not own business logic and must consume Ordering Runtime. QR Ordering is the only live client; without a shared **client experience layer**, each channel would reimplement cart, browse, checkout, notes presentation, and gate derivation.
 
 ADR-ARCH-006 (UI as Presentation Only) forbids UI-owned business rules but does not define a shared ordering experience platform between Runtime and channel shells.
 
@@ -48,9 +38,22 @@ Ordering Platform → OrderingRuntimeContext → Ordering Client Platform → Ch
 
 4. Ordering Client Platform SHALL NOT construct or mutate `OrderingRuntimeContext`, SHALL NOT own Domain/PlaceOrder business rules, and SHALL NOT own Operational Platform concerns.
 
-5. Migration SHALL be phased with QR behavioral compatibility; Kiosk/Waiter UI programs SHALL not start until shared platform extraction programs are certified.
+5. Migration SHALL be phased with QR behavioral compatibility; Kiosk/Waiter UI programs SHALL not start until shared platform extraction **and governance** programs are certified.
 
-Normative detail: `docs/engineering/programs/ORDERING-CLIENT-PLATFORM-ARCHITECTURE-1/ARCHITECTURE.md`.
+### Governance rules (ORDERING-CLIENT-GOVERNANCE-1)
+
+Normative detail: `docs/engineering/programs/ORDERING-CLIENT-GOVERNANCE-1/ARCHITECTURE.md`.
+
+| Rule | Requirement |
+|------|-------------|
+| Execution path | Channel → Client Platform → Runtime → Ordering Platform only |
+| Runtime query | Sole `getRuntimeBySlug` consumer is `useOrderingRuntime` |
+| Cart / browse / checkout | Client Platform providers only |
+| Adapters | Every channel supplies `CartScopeAdapter` + `OrderingNavigator` |
+| CartScope extension | QR table; Kiosk `deviceSessionId`; Waiter `stationId` (+ optional table/session) |
+| Navigator stages | `goToBrowse`, `goToCart`, `goToCheckout`, `goToConfirmation`, `goToTracking` |
+| Dependencies | Channel pages MUST NOT import `@shared/ordering-platform` business modules or call runtime delivery directly |
+| Guards | Permanent architecture tests under `ordering-client/__tests__/*governance*` |
 
 ---
 
@@ -62,11 +65,11 @@ Normative detail: `docs/engineering/programs/ORDERING-CLIENT-PLATFORM-ARCHITECTU
 - Clear separation from Operational Platform and Ordering Domain  
 - Enforced reuse of notes capabilities and runtime gates  
 - Scalable attachment of Waiter / Mobile / future channels  
+- Permanent guards block regression before Kiosk/Waiter UI  
 
 ### Negative / costs
 
-- Requires phased extraction from QR before Kiosk UI  
-- Temporary wrappers during migration  
+- Adapter factories required per channel  
 - Kiosk architecture ownership phrasing for browse/cart/checkout must be read as **refined** by this ADR  
 
 ---
@@ -80,11 +83,15 @@ Ordering Platform multi-channel vision; Presentation vs Domain boundaries (Const
 ## Related Programs
 
 - ORDERING-CLIENT-PLATFORM-ARCHITECTURE-1  
+- ORDERING-CLIENT-RUNTIME-1  
+- ORDERING-CLIENT-CART-1  
+- ORDERING-CLIENT-BROWSE-1  
+- ORDERING-CLIENT-CHECKOUT-1  
+- ORDERING-CLIENT-GOVERNANCE-1  
 - ORDERING-PLATFORM-ARCHITECTURE-1  
 - QR-ORDERING-RUNTIME-MIGRATION-1  
 - SELF-ORDERING-KIOSK-ARCHITECTURE-1  
 - ORDERING-NOTES-ARCHITECTURE-1  
-- Follow-ons: ORDERING-CLIENT-RUNTIME-1, ORDERING-CLIENT-CART-1, ORDERING-CLIENT-BROWSE-1, ORDERING-CLIENT-CHECKOUT-1  
 
 ---
 
@@ -109,11 +116,12 @@ Ordering Platform multi-channel vision; Presentation vs Domain boundaries (Const
 
 ---
 
-## Acceptance criteria (when Implemented)
+## Acceptance criteria
 
 - [x] Shared `ordering-client` module exists and owns cart orchestration + runtime consumer  
 - [x] Shared browse orchestration owned by Client Platform (ORDERING-CLIENT-BROWSE-1)  
 - [x] Shared checkout orchestration owned by Client Platform (ORDERING-CLIENT-CHECKOUT-1)  
 - [x] QR is a thin shell composing the platform (browse + cart + checkout)  
 - [x] No second cart/validation implementation in channel code  
-- [x] Architecture guards enforce Client Platform boundaries  
+- [x] Architecture guards enforce Client Platform boundaries (ORDERING-CLIENT-GOVERNANCE-1)  
+- [x] CartScopeAdapter + OrderingNavigator hardened for QR / Kiosk / Waiter  

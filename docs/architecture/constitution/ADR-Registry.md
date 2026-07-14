@@ -25,7 +25,7 @@
 | ADR-ARCH-014 | Event Delivery Guarantees | **Accepted — Ratified** | Architecture Authority | ORDER-EVENTS-1B | — | §8, §12, §15, §22 | **Implemented** | Consumer idempotency + registration policy |
 | ADR-ARCH-016 | Distributed Printing Topology | **Accepted** (v1.2) | Architecture Authority | PRINT-ARCHITECTURE-2, PRINT-GATEWAY-1, PRINT-CONNECTOR-NETWORK-1, PRINT-CONNECTOR-LOCAL-1, PRINT-CONNECTOR-WINDOWS-1 | v1.1 | Printing Platform §Deployment | **Partial** | Gateway, Session, RLC, Windows RLC complete; production validation pending |
 | ADR-ARCH-017 | Printer Catalog Ownership and Lifecycle | **Accepted** (v1.1) | Architecture Authority | PRINT-CONNECTOR-ONBOARDING-1A | PRINT-PRINTER-CATALOG-1 | Printing Platform §Catalog | **Implemented** | Extends ADR-ARCH-016; retires `print_connector_selections` as SSOT; mandates pure catalog reads |
-| ADR-ARCH-018 | Ordering Client Platform as Shared Channel Experience Layer | **Proposed** | Architecture Authority | ORDERING-CLIENT-PLATFORM-ARCHITECTURE-1 | — | Ordering multi-channel client tier | Partial (RUNTIME+CART+BROWSE+CHECKOUT) | Inserts Client Platform between Runtime and channel shells; refines Kiosk browse/cart/checkout ownership |
+| ADR-ARCH-018 | Ordering Client Platform as Shared Channel Experience Layer | **Accepted** | Architecture Authority | ORDERING-CLIENT-PLATFORM-ARCHITECTURE-1 | ORDERING-CLIENT-GOVERNANCE-1 | Ordering multi-channel client tier | Implemented + governed | Inserts Client Platform between Runtime and channel shells; refines Kiosk browse/cart/checkout ownership |
 
 **Registry maintenance:** Principal Engineer updates Implementation Status at program exit certification. Status changes require Architecture Authority approval per §26.
 

@@ -1,16 +1,30 @@
 /**
- * ORDERING-CLIENT-CART-1 — channel-independent cart scope contract (ADR-ARCH-018).
+ * ORDERING-CLIENT-CART-1 / GOVERNANCE-1 — channel-independent cart scope contract (ADR-ARCH-018).
  * Channels supply identity + namespace; Client Platform owns persistence and orchestration.
+ *
+ * Extension points (additive, non-breaking) for future channels:
+ * - QR: slug + tableNumber
+ * - Kiosk: slug + deviceSessionId (session isolation / auto-reset)
+ * - Waiter: slug + stationId + optional tableNumber / sessionId
  */
 import type { OrderingChannelId } from "@shared/ordering-platform/orderingPlatformContracts";
 
 export type CartScopeDescription = Readonly<{
-  /** Restaurant public slug (QR table carts). */
+  /** Restaurant public slug (all channels). */
   slug: string;
-  /** Table number when ordering is table-scoped. */
+  /** Table number when ordering is table-scoped (QR / waiter table workspace). */
   tableNumber?: number;
-  /** Optional dining/session token for future channels. */
+  /** Dining / guest session token when cart is session-scoped. */
   sessionId?: string;
+  /** Kiosk device customer-session isolation key (cleared on kiosk reset). */
+  deviceSessionId?: string;
+  /** Waiter station / workspace identity. */
+  stationId?: string;
+  /**
+   * Optional extra opaque segments appended by channel factories via
+   * `buildCartPersistenceKey` — never assembled ad-hoc outside Client Platform.
+   */
+  extraKeySegments?: readonly string[];
 }>;
 
 export type CartScopeAdapter = Readonly<{
