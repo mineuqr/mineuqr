@@ -4,11 +4,23 @@ import type { PrintPayload } from "../../printing/domain/PrintPayload";
  * Renderer-independent text serialization for OS print APIs.
  * Not ESC/POS, PDF, or raster — plain structured text only.
  */
+function formatPrintFulfilmentLine(payload: PrintPayload): string {
+  const label = payload.fulfilmentLabel?.trim();
+  const anchor = payload.fulfilmentAnchorType?.trim();
+  if (label) {
+    if (anchor === "table") {
+      return `Table: ${label}`;
+    }
+    return label;
+  }
+  return `Table: ${payload.tableNumber}`;
+}
+
 export function serializePrintPayloadToText(payload: PrintPayload): string {
   const staffOrderLabel = payload.displayReference ?? payload.displayOrderNumber ?? payload.orderNumber;
   const lines: string[] = [
     `Order: ${staffOrderLabel}`,
-    `Table: ${payload.tableNumber}`,
+    formatPrintFulfilmentLine(payload),
     `Status: ${payload.orderStatus}`,
     `Total: ${payload.totalAmount}`,
     `Created: ${payload.createdAt}`,

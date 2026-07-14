@@ -16,6 +16,7 @@ import {
   DEFAULT_PRINT_FILTERS,
   useSavedFilters,
 } from "@/lib/operational-workspace/useSavedFilters";
+import { formatProjectedFulfilmentLabel } from "@/lib/order-presentation/formatProjectedFulfilment";
 import { operationalDisplayReference } from "@/lib/operational-workspace/orderDisplayIdentity";
 import { useCurrentPrinter } from "@/lib/print-workspace/useCurrentPrinter";
 import { useOperationalPrintStatus } from "@/lib/print-workspace/useOperationalPrintStatus";
@@ -383,7 +384,14 @@ export function PrintWorkspacePanel({
                       </h3>
                       <p className="text-sm text-slate-400">
                         {formatStatusLabel(order.status, language)} ·{" "}
-                        {isAr ? "طاولة" : "Table"} {order.tableNumber}
+                        {formatProjectedFulfilmentLabel(
+                          {
+                            serviceMode: order.serviceMode,
+                            fulfilmentAnchorType: order.fulfilmentAnchorType,
+                            fulfilmentLabel: order.fulfilmentLabel,
+                          },
+                          { isAr, tableUnit: "table" }
+                        )}
                       </p>
                     </div>
 

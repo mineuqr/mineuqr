@@ -94,7 +94,11 @@ export type OrderPresentationModel = Readonly<{
     summary: string | null;
   }>;
   fulfillment: Readonly<{
+    /** Legacy compatibility field from Operational DTO — not used for label derivation. */
     tableNumber: number;
+    serviceMode: string;
+    fulfilmentAnchorType: string;
+    fulfilmentLabel: string;
     label: LocalizedLabel;
   }>;
   items: Readonly<{

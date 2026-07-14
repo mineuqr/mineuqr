@@ -15,9 +15,24 @@ describe("operationalCardTypography", () => {
     expect(formatOperationalElapsedCompact(12, false)).toBe("12 min");
   });
 
-  it("uses English numerals for table labels in Arabic mode", () => {
-    expect(formatOperationalFulfillmentLabel(4, true)).toBe("طاولة 4");
-    expect(formatOperationalFulfillmentLabel(4, false)).toBe("Table 4");
+  it("formats projected fulfilment with English numerals in Arabic mode", () => {
+    const table = {
+      serviceMode: "table_service",
+      fulfilmentAnchorType: "table",
+      fulfilmentLabel: "4",
+    };
+    expect(formatOperationalFulfillmentLabel(table, true)).toBe("طاولة 4");
+    expect(formatOperationalFulfillmentLabel(table, false)).toBe("Table 4");
+    expect(
+      formatOperationalFulfillmentLabel(
+        {
+          serviceMode: "counter",
+          fulfilmentAnchorType: "station",
+          fulfilmentLabel: "Station A",
+        },
+        false
+      )
+    ).toBe("Station A");
   });
 
   it("uses English numerals for quantities and overflow", () => {

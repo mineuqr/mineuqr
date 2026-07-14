@@ -9,6 +9,9 @@ export type KitchenTicketCardModel = {
   orderId: number;
   displayReference: string;
   tableNumber: number;
+  serviceMode: string;
+  fulfilmentAnchorType: string;
+  fulfilmentLabel: string;
   customerName: string | null;
   orderNotes: string | null;
   status: KitchenColumnId;
@@ -32,6 +35,9 @@ export function toKitchenTicketCard(ticket: KitchenTicketDto): KitchenTicketCard
     orderId: ticket.orderId,
     displayReference: operationalDisplayReference(ticket),
     tableNumber: ticket.tableNumber,
+    serviceMode: ticket.serviceMode,
+    fulfilmentAnchorType: ticket.fulfilmentAnchorType,
+    fulfilmentLabel: ticket.fulfilmentLabel,
     customerName: ticket.customerName,
     orderNotes: ticket.orderNotes,
     status: ticket.status,

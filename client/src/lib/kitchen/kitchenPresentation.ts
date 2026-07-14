@@ -3,11 +3,25 @@ import type { KitchenColumnId } from "@/lib/kitchen/viewModels";
 import { formatOrderStatusLabel } from "@/lib/orderStatusDisplay";
 import type { SlaSnapshot } from "@/lib/operational-workspace/slaEngine";
 
+import {
+  formatProjectedFulfilmentLabel,
+  type ProjectedFulfilmentPresentationSource,
+} from "@/lib/order-presentation/formatProjectedFulfilment";
+
 export type KitchenOrderType = "table" | "takeaway" | "delivery";
 
-/** Presentation-only fulfillment label from existing ticket fields. */
-export function deriveKitchenOrderType(tableNumber: number): KitchenOrderType {
-  if (tableNumber > 0) return "table";
+/**
+ * Presentation-only order type from projected Operational DTO fields.
+ * Does not inspect tableNumber.
+ */
+export function deriveKitchenOrderType(
+  source: Pick<ProjectedFulfilmentPresentationSource, "serviceMode" | "fulfilmentAnchorType">
+): KitchenOrderType {
+  if (source.serviceMode === "delivery") return "delivery";
+  if (source.serviceMode === "take_away") return "takeaway";
+  if (source.fulfilmentAnchorType === "table" || source.serviceMode === "table_service") {
+    return "table";
+  }
   return "takeaway";
 }
 
@@ -60,17 +74,18 @@ export function kitchenStatusPresentation(status: KitchenColumnId): {
   }
 }
 
+/** Kitchen fulfillment line from projected DTO fields (Arabic-Indic digits for table labels). */
 export function formatKitchenFulfillmentLabel(
-  tableNumber: number,
-  isAr: boolean
+  source: ProjectedFulfilmentPresentationSource,
+  isAr: boolean,
+  tableUnit: "table" | "room" = "table"
 ): string {
-  const orderType = deriveKitchenOrderType(tableNumber);
-  const typeLabel = formatKitchenOrderType(orderType, isAr);
-  if (orderType === "table") {
-    const tableValue = isAr ? toArabicDigits(tableNumber) : String(tableNumber);
-    return isAr ? `${typeLabel} ${tableValue}` : `${typeLabel} ${tableNumber}`;
+  const formatted = formatProjectedFulfilmentLabel(source, { isAr, tableUnit });
+  if (!isAr) return formatted;
+  if (source.fulfilmentAnchorType === "table") {
+    return formatted.replace(/[0-9]/g, (d) => toArabicDigits(d));
   }
-  return typeLabel;
+  return formatted;
 }
 
 const ARABIC_DIGITS = ["٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩"];

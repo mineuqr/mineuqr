@@ -14,6 +14,13 @@ export type {
 export { pickLocalizedLabel } from "./orderPresentationModel";
 export { presentationalNote } from "./presentationalNote";
 export {
+  formatProjectedFulfilmentLabel,
+  hasProjectedFulfilment,
+  localizedProjectedFulfilmentLabel,
+  type FormatProjectedFulfilmentOptions,
+  type ProjectedFulfilmentPresentationSource,
+} from "./formatProjectedFulfilment";
+export {
   mapActiveOrderPresentation,
   mapKitchenTicketPresentation,
   type ActiveOrderPresentationSource,

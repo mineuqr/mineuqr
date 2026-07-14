@@ -15,9 +15,16 @@ describe("print workspace view models", () => {
       {
         orderId: 42,
         orderNumber: "ORD-0042",
+        businessDay: null,
+        dailyDisplayNumber: null,
+        displayOrderNumber: "ORD-0042",
+        displayReference: "ORD-0042",
         status: "ready",
         tableNumber: 5,
         sessionId: null,
+        serviceMode: "table_service",
+        fulfilmentAnchorType: "table",
+        fulfilmentLabel: "5",
         customerName: "Ali",
         customerPhone: null,
         notes: "No onions",
@@ -48,6 +55,7 @@ describe("print workspace view models", () => {
     expect(card.itemCount).toBe(2);
     expect(card.isAwaitingPrint).toBe(true);
     expect(card.statusLabel).toBe("Ready");
+    expect(card.tableLabel).toBe("Table 5");
   });
 
   it("formats status labels in Arabic", () => {

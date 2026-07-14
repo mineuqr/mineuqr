@@ -20,7 +20,6 @@ import {
 } from "@/lib/operational-workspace/orderViewModels";
 import {
   formatOperationalElapsedCompact,
-  formatOperationalFulfillmentLabel,
   operationalCardElapsedClass,
 } from "@/lib/operational-screen/operationalCardTypography";
 import {
@@ -33,6 +32,7 @@ import {
   type SlaSnapshot,
 } from "@/lib/operational-workspace/slaEngine";
 import { urgencyClassName } from "@/lib/kitchen/viewModels";
+import { localizedProjectedFulfilmentLabel } from "./formatProjectedFulfilment";
 import type {
   LocalizedLabel,
   OrderPresentationAction,
@@ -57,6 +57,9 @@ export type ActiveOrderPresentationSource = OperationalOrderIdentitySource & {
   status: string;
   lifecycle: string;
   tableNumber: number;
+  serviceMode: string;
+  fulfilmentAnchorType: string;
+  fulfilmentLabel: string;
   customerName: string | null;
   customerPhone?: string | null;
   notes: string | null;
@@ -101,15 +104,6 @@ function buildItemSummary(
       return `${li.quantity}× ${name}`;
     })
     .join(", ");
-}
-
-function buildFulfillmentLabel(
-  tableNumber: number,
-  tableUnit: "table" | "room"
-): LocalizedLabel {
-  const enUnit = tableUnit === "room" ? "Room" : "Table";
-  const arUnit = tableUnit === "room" ? "غرفة" : "طاولة";
-  return localized(`${enUnit} ${tableNumber}`, `${arUnit} ${tableNumber}`);
 }
 
 function mapActions(actions: OperationalAction[]): OrderPresentationAction[] {
@@ -204,6 +198,9 @@ function buildPresentationCore(input: {
   lifecycle: string;
   status: string;
   tableNumber: number;
+  serviceMode: string;
+  fulfilmentAnchorType: string;
+  fulfilmentLabel: string;
   fulfillmentLabel: LocalizedLabel;
   customerName: string | null;
   customerPhone: string | null;
@@ -268,6 +265,9 @@ function buildPresentationCore(input: {
     },
     fulfillment: {
       tableNumber: input.tableNumber,
+      serviceMode: input.serviceMode,
+      fulfilmentAnchorType: input.fulfilmentAnchorType,
+      fulfilmentLabel: input.fulfilmentLabel,
       label: input.fulfillmentLabel,
     },
     items: {
@@ -314,13 +314,22 @@ export function mapActiveOrderPresentation(
   const sla = computeOrderCardSla(source.status, source.createdAt, options.now);
   const columnElapsedMinutes = Math.floor(sla.elapsedSeconds / 60);
 
+  const fulfilmentSource = {
+    serviceMode: source.serviceMode,
+    fulfilmentAnchorType: source.fulfilmentAnchorType,
+    fulfilmentLabel: source.fulfilmentLabel,
+  };
+
   return buildPresentationCore({
     orderId: source.orderId,
     identitySource: source,
     lifecycle: source.lifecycle,
     status: source.status,
     tableNumber: source.tableNumber,
-    fulfillmentLabel: buildFulfillmentLabel(source.tableNumber, tableUnit),
+    serviceMode: source.serviceMode,
+    fulfilmentAnchorType: source.fulfilmentAnchorType,
+    fulfilmentLabel: source.fulfilmentLabel,
+    fulfillmentLabel: localizedProjectedFulfilmentLabel(fulfilmentSource, tableUnit),
     customerName: source.customerName,
     customerPhone: source.customerPhone ?? null,
     notes: source.notes,
@@ -373,16 +382,22 @@ export function mapKitchenTicketPresentation(
     itemNotes: line.itemNotes,
   }));
 
+  const fulfilmentSource = {
+    serviceMode: ticket.serviceMode,
+    fulfilmentAnchorType: ticket.fulfilmentAnchorType,
+    fulfilmentLabel: ticket.fulfilmentLabel,
+  };
+
   const presentation = buildPresentationCore({
     orderId: ticket.orderId,
     identitySource: ticket,
     lifecycle: "active",
     status: ticket.status,
     tableNumber: ticket.tableNumber,
-    fulfillmentLabel: localized(
-      formatOperationalFulfillmentLabel(ticket.tableNumber, false),
-      formatOperationalFulfillmentLabel(ticket.tableNumber, true)
-    ),
+    serviceMode: ticket.serviceMode,
+    fulfilmentAnchorType: ticket.fulfilmentAnchorType,
+    fulfilmentLabel: ticket.fulfilmentLabel,
+    fulfillmentLabel: localizedProjectedFulfilmentLabel(fulfilmentSource, "table"),
     customerName: ticket.customerName,
     customerPhone: null,
     notes: ticket.orderNotes,

@@ -24,6 +24,9 @@ describe("ORDER-WORKSPACE-CARD-ARCHITECTURE-1 presentation mapper", () => {
     lifecycle: "active",
     tableNumber: 3,
     sessionId: null,
+    serviceMode: "table_service",
+    fulfilmentAnchorType: "table",
+    fulfilmentLabel: "3",
     customerName: "Sam",
     customerPhone: "+966500000000",
     notes: "No onions",
@@ -48,6 +51,9 @@ describe("ORDER-WORKSPACE-CARD-ARCHITECTURE-1 presentation mapper", () => {
     expect(presentation.items.summary.en).toContain("Tabbouleh");
     expect(presentation.timing.elapsedLabel.en).toMatch(/\d/);
     expect(presentation.availableActions.some((a) => a.id === "mark-ready")).toBe(true);
+    expect(presentation.fulfillment.label.en).toBe("Table 3");
+    expect(presentation.fulfillment.fulfilmentLabel).toBe("3");
+    expect(presentation.fulfillment.serviceMode).toBe("table_service");
   });
 
   it("exposes lifecycle explicitly without inferring from status", () => {
@@ -71,6 +77,9 @@ describe("ORDER-WORKSPACE-CARD-ARCHITECTURE-1 presentation mapper", () => {
       displayReference: "007",
       tableNumber: 5,
       sessionId: null,
+      serviceMode: "table_service",
+      fulfilmentAnchorType: "table",
+      fulfilmentLabel: "5",
       customerName: null,
       orderNotes: null,
       status: "pending",
@@ -114,6 +123,7 @@ describe("ORDER-WORKSPACE-CARD-ARCHITECTURE-1 presentation mapper", () => {
     expect(presentation.timing.elapsedCompactLabel.en).toMatch(/min|h/);
     expect(presentation.emphasis.statusAccentClass).toContain("bg-sky-500");
     expect(presentation.availableActions[0]?.id).toBe("start-preparing");
+    expect(presentation.fulfillment.label.en).toBe("Table 5");
   });
 
   it("KITCHEN-LIFECYCLE-OWNERSHIP-1: kitchen ticket presentation excludes mark-ready", () => {
@@ -126,6 +136,9 @@ describe("ORDER-WORKSPACE-CARD-ARCHITECTURE-1 presentation mapper", () => {
       displayReference: "008",
       tableNumber: 2,
       sessionId: null,
+      serviceMode: "table_service",
+      fulfilmentAnchorType: "table",
+      fulfilmentLabel: "2",
       customerName: null,
       orderNotes: null,
       status: "preparing",
@@ -218,6 +231,28 @@ describe("ORDER-WORKSPACE-CARD-ARCHITECTURE-1 architecture guards", () => {
       expect(source).not.toContain("buildLinesSummaryFromItems");
       expect(source).not.toContain("kitchenStatusPresentation");
     }
+  });
+
+  it("OPERATIONAL-FULFILMENT-PRESENTATION-1: ops presentation consumes projected fulfilment only", () => {
+    const formatter = read("client/src/lib/order-presentation/formatProjectedFulfilment.ts");
+    const mapper = read("client/src/lib/order-presentation/mapOrderPresentation.ts");
+    const typography = read("client/src/lib/operational-screen/operationalCardTypography.ts");
+    const kitchenPresentation = read("client/src/lib/kitchen/kitchenPresentation.ts");
+    const printVm = read("client/src/lib/print-workspace/viewModels.ts");
+    const printSerializer = read(
+      "server/print-connector/runtime/PrintPayloadTextSerializer.ts"
+    );
+
+    expect(formatter).toContain("formatProjectedFulfilmentLabel");
+    expect(formatter).not.toContain("resolveFulfilmentProjection");
+    expect(formatter).not.toContain("tableNumber");
+    expect(mapper).toContain("localizedProjectedFulfilmentLabel");
+    expect(mapper).not.toContain("buildFulfillmentLabel");
+    expect(typography).toContain("formatProjectedFulfilmentLabel");
+    expect(kitchenPresentation).toContain("ProjectedFulfilmentPresentationSource");
+    expect(printVm).toContain("formatProjectedFulfilmentLabel");
+    expect(printSerializer).toContain("fulfilmentLabel");
+    expect(printSerializer).toContain("formatPrintFulfilmentLine");
   });
 
   it("ORDERING-OPERATIONAL-NOTES-PRESENTATION-1: projected notes flow through presentation only", () => {

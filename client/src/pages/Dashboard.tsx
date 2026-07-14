@@ -6,6 +6,7 @@ import { DiningSessionWorkspaceSheet } from "@/components/dashboard/DiningSessio
 import { ActiveSessionsPreviewSection } from "@/components/dashboard/ActiveSessionsPreviewSection";
 import { SessionsWorkspacePanel } from "@/components/dashboard/SessionsWorkspacePanel";
 import { OrdersWorkspacePanel } from "@/components/orders-workspace/OrdersWorkspacePanel";
+import { formatProjectedFulfilmentLabel } from "@/lib/order-presentation/formatProjectedFulfilment";
 import { formatOperationalOrderHeading } from "@/lib/operational-workspace/orderDisplayIdentity";
 import { ScreenManagementWorkspacePanel } from "@/components/screen-management/ScreenManagementWorkspacePanel";
 import { ProvisioningWorkspacePanel } from "@/components/screen-provisioning/ProvisioningWorkspacePanel";
@@ -3330,6 +3331,9 @@ type DashboardOrder = {
   displayOrderNumber?: string;
   tableNumber?: number;
   sessionId?: number | null;
+  serviceMode?: string | null;
+  fulfilmentAnchorType?: string | null;
+  fulfilmentLabel?: string | null;
   customerName?: string;
   customerPhone?: string;
   notes?: string;
@@ -3876,7 +3880,23 @@ function OrdersTab({ restaurantId, currencySymbol, tableLabel }: { restaurantId:
                     </Badge>
                   </div>
                   <span className="text-sm text-muted-foreground">
-                    {language === "ar" ? `${unitAr} ${order.tableNumber}` : `${unitEn} ${order.tableNumber}`}
+                    {order.fulfilmentLabel &&
+                    order.fulfilmentAnchorType &&
+                    order.serviceMode
+                      ? formatProjectedFulfilmentLabel(
+                          {
+                            serviceMode: order.serviceMode,
+                            fulfilmentAnchorType: order.fulfilmentAnchorType,
+                            fulfilmentLabel: order.fulfilmentLabel,
+                          },
+                          {
+                            isAr: language === "ar",
+                            tableUnit: isRooms ? "room" : "table",
+                          }
+                        )
+                      : language === "ar"
+                        ? `${unitAr} ${order.tableNumber}`
+                        : `${unitEn} ${order.tableNumber}`}
                   </span>
                 </div>
 

@@ -1,10 +1,12 @@
 import type { KitchenColumnId } from "@/lib/kitchen/viewModels";
 import {
-  deriveKitchenOrderType,
-  formatKitchenOrderType,
   formatKitchenStatusLabel,
   kitchenStatusPresentation,
 } from "@/lib/kitchen/kitchenPresentation";
+import {
+  formatProjectedFulfilmentLabel,
+  type ProjectedFulfilmentPresentationSource,
+} from "@/lib/order-presentation/formatProjectedFulfilment";
 import { cn } from "@/lib/utils";
 import type { SlaSnapshot } from "@/lib/operational-workspace/slaEngine";
 
@@ -26,13 +28,13 @@ export function formatOperationalElapsedCompact(minutes: number, isAr: boolean):
   return isAr ? `${hours} ساعة ${rem} دقيقة` : `${hours}h ${rem}m`;
 }
 
-export function formatOperationalFulfillmentLabel(tableNumber: number, isAr: boolean): string {
-  const orderType = deriveKitchenOrderType(tableNumber);
-  const typeLabel = formatKitchenOrderType(orderType, isAr);
-  if (orderType === "table") {
-    return isAr ? `${typeLabel} ${tableNumber}` : `${typeLabel} ${tableNumber}`;
-  }
-  return typeLabel;
+/** Formats projected fulfilment from an Operational DTO — no tableNumber heuristics. */
+export function formatOperationalFulfillmentLabel(
+  source: ProjectedFulfilmentPresentationSource,
+  isAr: boolean,
+  tableUnit: "table" | "room" = "table"
+): string {
+  return formatProjectedFulfilmentLabel(source, { isAr, tableUnit });
 }
 
 export function formatOperationalItemOverflow(count: number, isAr: boolean): string {

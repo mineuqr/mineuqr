@@ -1,4 +1,5 @@
 import type { RouterOutputs } from "@/lib/trpc";
+import { formatProjectedFulfilmentLabel } from "@/lib/order-presentation/formatProjectedFulfilment";
 import { operationalDisplayReference } from "@/lib/operational-workspace/orderDisplayIdentity";
 
 export type PrintWorkspaceListResult = RouterOutputs["printWorkspace"]["read"]["listOrders"];
@@ -39,7 +40,14 @@ export function toPrintWorkspaceOrderCard(
     displayReference: operationalDisplayReference(order),
     status: order.status,
     statusLabel: formatStatusLabel(order.status, language),
-    tableLabel: isAr ? `طاولة ${order.tableNumber}` : `Table ${order.tableNumber}`,
+    tableLabel: formatProjectedFulfilmentLabel(
+      {
+        serviceMode: order.serviceMode,
+        fulfilmentAnchorType: order.fulfilmentAnchorType,
+        fulfilmentLabel: order.fulfilmentLabel,
+      },
+      { isAr, tableUnit: "table" }
+    ),
     customerLabel: customer,
     totalAmount: order.totalAmount,
     createdAt: order.createdAt,

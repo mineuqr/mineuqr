@@ -14,6 +14,10 @@ export type KitchenTicketDto = {
   displayReference: string;
   tableNumber: number;
   sessionId: number | null;
+  /** OPERATIONAL-FULFILMENT-PROJECTION-1 — ops presentation consumes these. */
+  serviceMode: string;
+  fulfilmentAnchorType: string;
+  fulfilmentLabel: string;
   customerName: string | null;
   orderNotes: string | null;
   status: KitchenPipelineStatus;

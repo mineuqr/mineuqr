@@ -114,6 +114,6 @@ PlaceOrder: `docs/engineering/programs/NON-TABLE-PLACE-ORDER-1/ARCHITECTURE.md`.
 - [x] Table service path behaviourally compatible with today’s QR  
 - [x] PlaceOrder accepts non-table anchors without channel forks (NON-TABLE-PLACE-ORDER-1)  
 - [x] Order Read Model / Operational DTOs project fulfilment label + mode + anchor (OPERATIONAL-FULFILMENT-PROJECTION-1)  
-- [ ] Ops UI layouts prefer `fulfilmentLabel` over tableNumber heuristics  
+- [x] Ops UI layouts prefer `fulfilmentLabel` over tableNumber heuristics (OPERATIONAL-FULFILMENT-PRESENTATION-1)  
 - [x] Kiosk no longer requires `?table=` workaround (KIOSK-IDENTITY-ADOPTION-1)  
 - [x] Architecture guards forbid channel-invented PlaceOrder forks  

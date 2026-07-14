@@ -53,13 +53,51 @@ describe("kitchenPresentation", () => {
     expect(formatKitchenElapsed(60, true)).toBe("منذ ١ ساعة");
   });
 
-  it("derives order type from table number for presentation", () => {
-    expect(deriveKitchenOrderType(4)).toBe("table");
-    expect(deriveKitchenOrderType(0)).toBe("takeaway");
+  it("derives order type and fulfillment label from projected DTO fields", () => {
+    expect(
+      deriveKitchenOrderType({
+        serviceMode: "table_service",
+        fulfilmentAnchorType: "table",
+      })
+    ).toBe("table");
+    expect(
+      deriveKitchenOrderType({
+        serviceMode: "take_away",
+        fulfilmentAnchorType: "station",
+      })
+    ).toBe("takeaway");
     expect(formatKitchenOrderType("table", false)).toBe("Table");
     expect(formatKitchenOrderType("takeaway", true)).toBe("سفري");
-    expect(formatKitchenFulfillmentLabel(4, false)).toBe("Table 4");
-    expect(formatKitchenFulfillmentLabel(0, true)).toBe("سفري");
+    expect(
+      formatKitchenFulfillmentLabel(
+        {
+          serviceMode: "table_service",
+          fulfilmentAnchorType: "table",
+          fulfilmentLabel: "4",
+        },
+        false
+      )
+    ).toBe("Table 4");
+    expect(
+      formatKitchenFulfillmentLabel(
+        {
+          serviceMode: "take_away",
+          fulfilmentAnchorType: "station",
+          fulfilmentLabel: "Take Away",
+        },
+        true
+      )
+    ).toBe("سفري");
+    expect(
+      formatKitchenFulfillmentLabel(
+        {
+          serviceMode: "counter",
+          fulfilmentAnchorType: "station",
+          fulfilmentLabel: "Station A",
+        },
+        false
+      )
+    ).toBe("Station A");
   });
 
   it("formats compact elapsed time for kitchen headers", () => {
