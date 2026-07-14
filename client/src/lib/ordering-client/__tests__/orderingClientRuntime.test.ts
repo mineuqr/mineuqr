@@ -4,10 +4,10 @@ import {
   createQrTableCartScopeAdapter,
   createQrOrderingNavigator,
   resolveQrOrderingStage,
+  ORDERING_CART_PERSISTENCE_NAMESPACE,
 } from "../index";
 import type { OrderingRuntimeContext } from "@shared/ordering-platform/orderingRuntimeContract";
 import { ORDERING_CHANNEL_QR } from "@shared/ordering-platform/orderingPlatformContracts";
-import { cartStorageKey } from "@/lib/cartStorage";
 
 function sampleRuntime(
   overrides: Partial<OrderingRuntimeContext> = {}
@@ -100,7 +100,8 @@ describe("ORDERING-CLIENT-RUNTIME-1", () => {
   it("QR cart scope adapter uses table storage key", () => {
     const adapter = createQrTableCartScopeAdapter("cafe", 4);
     expect(adapter.channel).toBe(ORDERING_CHANNEL_QR);
-    expect(adapter.resolveScopeKey()).toBe(cartStorageKey("cafe", 4));
+    expect(adapter.persistenceNamespace).toBe(ORDERING_CART_PERSISTENCE_NAMESPACE);
+    expect(adapter.resolveScopeKey()).toBe("mineuqr:cart:cafe:4");
     expect(adapter.description).toEqual({ slug: "cafe", tableNumber: 4 });
   });
 

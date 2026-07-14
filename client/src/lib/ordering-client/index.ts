@@ -1,5 +1,5 @@
 /**
- * ORDERING-CLIENT-RUNTIME-1 — Ordering Client Platform public API.
+ * ORDERING-CLIENT-RUNTIME-1 / ORDERING-CLIENT-CART-1 — Ordering Client Platform API.
  */
 
 export type { CartScopeAdapter, CartScopeDescription } from "./contracts/CartScopeAdapter";
@@ -27,6 +27,24 @@ export {
   type OrderingClientContextValue,
   type OrderingClientProviderProps,
 } from "./context/OrderingClientProvider";
+
+export type { OrderingCartItem, CartItem } from "./cart/cartTypes";
+export {
+  ORDERING_CART_PERSISTENCE_NAMESPACE,
+  ORDERING_CART_STORAGE_VERSION,
+  buildCartPersistenceKey,
+  loadCartByScopeKey,
+  saveCartByScopeKey,
+  clearCartByScopeKey,
+} from "./cart/cartPersistence";
+export {
+  OrderingCartProvider,
+  useOrderingCart,
+  useCart,
+  type OrderingCartContextValue,
+  type OrderingCartCapabilities,
+  type OrderingCartProviderProps,
+} from "./cart/OrderingCartProvider";
 
 export { createQrTableCartScopeAdapter } from "./qr/createQrCartScopeAdapter";
 export {
