@@ -4,6 +4,14 @@ export {
   ORDERING_PLATFORM_ORDER_AGGREGATE,
   ORDERING_PLATFORM_GUEST_ENTITLEMENT,
   ORDERING_PLATFORM_PLACE_ORDER_ROUTER_ENTRY,
+  ORDERING_PLATFORM_RUNTIME_CONTEXT_FACTORY,
+  ORDERING_PLATFORM_RUNTIME_CONTEXT_CONTRACT,
   ORDERING_PLATFORM_ACTIVE_CHANNELS,
   ORDERING_PLATFORM_FUTURE_CHANNELS,
 } from "./orderingPlatformOwnership";
+
+export {
+  OrderingRuntimeContextFactory,
+  OrderingRuntimeContextError,
+  orderingRuntimeContextFactory,
+} from "./OrderingRuntimeContextFactory";

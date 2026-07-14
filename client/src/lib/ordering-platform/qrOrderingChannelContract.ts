@@ -6,8 +6,10 @@ import {
 } from "@shared/ordering-platform/orderingPlatformContracts";
 
 /**
- * ORDERING-PLATFORM-ARCHITECTURE-1 — QR ordering channel contract.
+ * ORDERING-PLATFORM-ARCHITECTURE-1 / ORDERING-RUNTIME-CONTEXT-1 —
+ * QR ordering channel contract.
  * QR is a client of the Ordering Platform; it owns mobile/table presentation only.
+ * QR must not construct OrderingRuntimeContext — platform factory owns that.
  */
 export const QR_ORDERING_CHANNEL = ORDERING_CHANNEL_QR;
 
@@ -25,6 +27,16 @@ export const QR_SUPPORTED_FORM_FACTORS = ORDERING_FORM_FACTORS;
 
 /** Concerns QR must NOT implement — platform owns these. */
 export const QR_FORBIDDEN_PLATFORM_CONCERNS = ORDERING_PLATFORM_OWNED_CONCERNS;
+
+/**
+ * ORDERING-RUNTIME-CONTEXT-1 — QR must consume runtime, never construct it.
+ * Construction authority: server/ordering-platform/OrderingRuntimeContextFactory.
+ */
+export const QR_FORBIDDEN_RUNTIME_CONSTRUCTION = [
+  "OrderingRuntimeContextFactory",
+  "createOrderingRuntimeContext",
+  "freezeOrderingRuntimeContext",
+] as const;
 
 /** Concerns QR may own — presentation and interaction only. */
 export const QR_CHANNEL_CONCERNS = [

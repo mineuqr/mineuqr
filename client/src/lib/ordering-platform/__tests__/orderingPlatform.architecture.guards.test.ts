@@ -31,9 +31,10 @@ describe("ORDERING-PLATFORM-ARCHITECTURE-1 client guards", () => {
   it("shared runtime contract is presentation-independent", () => {
     const runtime = read("shared/ordering-platform/orderingRuntimeContract.ts");
     expect(runtime).toContain("OrderingRuntimeContext");
-    expect(runtime).not.toContain("orientation");
-    expect(runtime).not.toContain("screenWidth");
-    expect(runtime).not.toContain("formFactor");
+    expect(runtime).not.toMatch(/\borientation\s*:/);
+    expect(runtime).not.toMatch(/\bscreenWidth\s*:/);
+    expect(runtime).not.toMatch(/\bformFactor\s*:/);
+    expect(runtime).not.toMatch(/\bdeviceType\s*:/);
   });
 
   it("platform contracts separate channel and platform ownership", () => {

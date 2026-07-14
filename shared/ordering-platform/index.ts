@@ -20,8 +20,23 @@ export {
   type OrderingFormFactor,
 } from "./orderingPlatformContracts";
 
-export type {
-  OrderingRuntimeContext,
-  OrderingCartLineInput,
-  OrderingPlaceOrderCommand,
+export {
+  ORDERING_RUNTIME_CONTEXT_SCHEMA_VERSION,
+  type OrderingRuntimeContext,
+  type OrderingRuntimeContextInput,
+  type OrderingRuntimeRestaurant,
+  type OrderingRuntimeBusiness,
+  type OrderingRuntimeAvailability,
+  type OrderingRuntimeLocale,
+  type OrderingRuntimeMenuProjection,
+  type OrderingRuntimeGuestPolicies,
+  type OrderingRuntimeOrderingPolicies,
+  type OrderingRuntimePricingContext,
+  type OrderingRuntimeCapabilities,
+  type OrderingRuntimeFeatureFlags,
+  type OrderingRuntimeMetadata,
+  type OrderingCartLineInput,
+  type OrderingPlaceOrderCommand,
 } from "./orderingRuntimeContract";
+
+// freezeOrderingRuntimeContext is factory-internal — import via dedicated module only.
