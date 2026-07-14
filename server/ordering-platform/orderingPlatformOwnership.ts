@@ -1,6 +1,7 @@
 /**
  * ORDERING-PLATFORM-ARCHITECTURE-1 / ORDERING-RUNTIME-CONTEXT-1 /
- * ORDERING-RUNTIME-MATERIALIZATION-1 — server-side platform boundary registry.
+ * ORDERING-RUNTIME-MATERIALIZATION-1 / QR-ORDERING-RUNTIME-MIGRATION-1 /
+ * SELF-ORDERING-KIOSK-ARCHITECTURE-1 — server-side platform boundary registry.
  * Documents authoritative owners; does not duplicate order domain logic.
  */
 
@@ -55,8 +56,30 @@ export const ORDERING_PLATFORM_RUNTIME_CONTEXT_FACTORY =
 export const ORDERING_PLATFORM_RUNTIME_CONTEXT_CONTRACT =
   "shared/ordering-platform/orderingRuntimeContract.ts" as const;
 
-/** Channels that consume the platform today. */
+/**
+ * SELF-ORDERING-KIOSK-ARCHITECTURE-1 — kiosk channel architecture contracts.
+ * Experience-only; UI deferred.
+ */
+export const ORDERING_PLATFORM_KIOSK_CHANNEL_CONTRACT =
+  "client/src/lib/ordering-platform/kioskOrderingChannelContract.ts" as const;
+
+export const ORDERING_PLATFORM_KIOSK_EXPERIENCE_LIFECYCLE =
+  "client/src/lib/ordering-platform/kioskExperienceLifecycle.ts" as const;
+
+export const ORDERING_PLATFORM_KIOSK_SESSION_LIFECYCLE =
+  "client/src/lib/ordering-platform/kioskSessionLifecycle.ts" as const;
+
+export const ORDERING_PLATFORM_KIOSK_RUNTIME_CONSUMER =
+  "client/src/lib/ordering-platform/kioskRuntimeConsumerContract.ts" as const;
+
+/** Channels with production runtime consumption today. */
 export const ORDERING_PLATFORM_ACTIVE_CHANNELS = ["qr"] as const;
 
-/** Channels registered for future consumption — not implemented in this program. */
-export const ORDERING_PLATFORM_FUTURE_CHANNELS = ["kiosk", "mobile", "waiter_tablet"] as const;
+/**
+ * Channels with certified Ordering Platform client architecture.
+ * Kiosk is established (second client); UI not shipped in this program.
+ */
+export const ORDERING_PLATFORM_ESTABLISHED_CHANNELS = ["qr", "kiosk"] as const;
+
+/** Channels registered for future architecture/adoption — not established yet. */
+export const ORDERING_PLATFORM_FUTURE_CHANNELS = ["mobile", "waiter_tablet"] as const;

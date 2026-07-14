@@ -74,3 +74,14 @@ export const ORDERING_FORM_FACTORS = [
 ] as const;
 
 export type OrderingFormFactor = (typeof ORDERING_FORM_FACTORS)[number];
+
+/**
+ * SELF-ORDERING-KIOSK-ARCHITECTURE-1 — primary interaction model for kiosk channel.
+ * Experience-layer only; never encoded in OrderingRuntimeContext business fields.
+ */
+export const ORDERING_KIOSK_PRIMARY_INPUT = "touch" as const;
+export const ORDERING_KIOSK_COMPATIBILITY_INPUTS = [
+  "mouse",
+  "keyboard",
+  "accessibility_device",
+] as const;

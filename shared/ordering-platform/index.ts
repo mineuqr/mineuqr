@@ -14,6 +14,8 @@ export {
   ORDERING_PLATFORM_OWNED_CONCERNS,
   ORDERING_CHANNEL_OWNED_CONCERNS,
   ORDERING_FORM_FACTORS,
+  ORDERING_KIOSK_PRIMARY_INPUT,
+  ORDERING_KIOSK_COMPATIBILITY_INPUTS,
   type OrderingChannelId,
   type OrderingPlatformOwnedConcern,
   type OrderingChannelOwnedConcern,

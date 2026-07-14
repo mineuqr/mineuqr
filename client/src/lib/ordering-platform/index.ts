@@ -7,8 +7,48 @@ export {
   QR_RUNTIME_CONSUMPTION_ENTRY,
   QR_CHANNEL_CONCERNS,
 } from "./qrOrderingChannelContract";
+
 export {
   deriveQrOrderingRuntimeGates,
   asQrMenuList,
   type QrOrderingRuntimeGates,
 } from "./qrOrderingRuntimeConsumer";
+
+export {
+  KIOSK_ORDERING_CHANNEL,
+  KIOSK_ORDERING_ROUTES,
+  KIOSK_SUPPORTED_FORM_FACTORS,
+  KIOSK_FORBIDDEN_PLATFORM_CONCERNS,
+  KIOSK_FORBIDDEN_RUNTIME_CONSTRUCTION,
+  KIOSK_RUNTIME_CONSUMPTION_ENTRY,
+  KIOSK_OPERATIONAL_DEVICE_ROLE,
+  KIOSK_CHANNEL_CONCERNS,
+} from "./kioskOrderingChannelContract";
+
+export {
+  KIOSK_EXPERIENCE_LIFECYCLE_STAGES,
+  KIOSK_EXPERIENCE_LIFECYCLE_FLOW,
+  KIOSK_EXPERIENCE_PRESENTATION_ONLY_STAGES,
+  type KioskExperienceLifecycleStage,
+} from "./kioskExperienceLifecycle";
+
+export {
+  KIOSK_SESSION_RESET_TRIGGERS,
+  KIOSK_SESSION_LIFECYCLE_STATES,
+  KIOSK_SESSION_ISOLATION_RULES,
+  KIOSK_SESSION_IDLE_TIMEOUT_POLICY_KEY,
+  KIOSK_SESSION_RESET_REQUIRES_ALL_ISOLATION_RULES,
+  type KioskSessionResetTrigger,
+  type KioskSessionLifecycleState,
+  type KioskSessionIsolationRule,
+} from "./kioskSessionLifecycle";
+
+export {
+  KIOSK_RUNTIME_CHANNEL_ID,
+  deriveKioskOrderingRuntimeGates,
+  assertKioskRuntimeChannel,
+  KIOSK_RUNTIME_CONSUMPTION_RULES,
+  KIOSK_RUNTIME_FORBIDDEN_SYMBOLS,
+  KIOSK_RUNTIME_DELIVERY,
+  type KioskOrderingRuntimeGates,
+} from "./kioskRuntimeConsumerContract";
