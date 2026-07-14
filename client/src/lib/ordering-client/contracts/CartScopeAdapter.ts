@@ -20,6 +20,10 @@ export type CartScopeDescription = Readonly<{
   deviceSessionId?: string;
   /** Waiter station / workspace identity. */
   stationId?: string;
+  /** Optional restaurant numeric id (channel metadata; not required for key). */
+  restaurantId?: number;
+  /** Optional physical kiosk device identifier. */
+  kioskId?: string;
   /**
    * Optional extra opaque segments appended by channel factories via
    * `buildCartPersistenceKey` — never assembled ad-hoc outside Client Platform.

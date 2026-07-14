@@ -16,8 +16,8 @@ import {
 export const KIOSK_ORDERING_CHANNEL = ORDERING_CHANNEL_KIOSK;
 
 /**
- * Planned experience routes (not mounted in this program).
- * Reserved path vocabulary for future Kiosk UI — not production routes yet.
+ * Kiosk experience routes — mounted by SELF-ORDERING-KIOSK-PLATFORM-1.
+ * Query: ?station=&kiosk=&table= (table binds place-order to existing table API).
  */
 export const KIOSK_ORDERING_ROUTES = {
   idle: "/kiosk/:slug",

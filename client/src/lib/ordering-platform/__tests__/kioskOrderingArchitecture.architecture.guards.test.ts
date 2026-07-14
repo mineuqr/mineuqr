@@ -25,9 +25,14 @@ describe("SELF-ORDERING-KIOSK-ARCHITECTURE-1 client architecture guards", () => 
     expect(consumer).toContain("never_compose_runtime");
   });
 
-  it("does not ship kiosk UI pages in this architecture program", () => {
-    expect(existsSync(join(repoRoot, "client/src/pages/KioskView.tsx"))).toBe(false);
-    expect(existsSync(join(repoRoot, "client/src/pages/kiosk"))).toBe(false);
+  it("architecture contracts remain free of UI page ownership (UI lives in PLATFORM-1)", () => {
+    const channel = read("client/src/lib/ordering-platform/kioskOrderingChannelContract.ts");
+    expect(channel).not.toContain("from \"react\"");
+    expect(channel).not.toContain("jsx");
+    // SELF-ORDERING-KIOSK-PLATFORM-1 mounts pages under client/src/pages/kiosk
+    expect(existsSync(join(repoRoot, "client/src/pages/kiosk/KioskShell.tsx"))).toBe(
+      true
+    );
   });
 
   it("experience and session lifecycles do not embed runtime construction", () => {

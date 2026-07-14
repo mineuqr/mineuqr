@@ -19,7 +19,7 @@ describe("SELF-ORDERING-KIOSK-ARCHITECTURE-1 server architecture guards", () => 
     expect(ownership).toContain("ORDERING_PLATFORM_KIOSK_RUNTIME_CONSUMER");
   });
 
-  it("keeps production active channels QR-only until kiosk UI ships", () => {
+  it("keeps production active channels QR-only (kiosk established; platform activation separate)", () => {
     const ownership = read("server/ordering-platform/orderingPlatformOwnership.ts");
     expect(ownership).toMatch(
       /ORDERING_PLATFORM_ACTIVE_CHANNELS\s*=\s*\[["']qr["']\]/

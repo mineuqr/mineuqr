@@ -119,3 +119,26 @@ export {
   QrBrowseOnlyHost,
   type QrBrowseOnlyHostProps,
 } from "./qr/QrBrowseOnlyHost";
+
+export {
+  createKioskCartScopeAdapter,
+  type CreateKioskCartScopeAdapterInput,
+} from "./kiosk/createKioskCartScopeAdapter";
+export {
+  createKioskOrderingNavigator,
+  resolveKioskOrderingStage,
+  type KioskOrderingNavigator,
+  type KioskShellStage,
+  type CreateKioskOrderingNavigatorInput,
+} from "./kiosk/createKioskOrderingNavigator";
+export {
+  KioskOrderingClientHost,
+  type KioskOrderingClientHostProps,
+} from "./kiosk/KioskOrderingClientHost";
+export {
+  createKioskDeviceSessionId,
+  KIOSK_DEFAULT_IDLE_TIMEOUT_MS,
+  KIOSK_CONFIRMATION_RESET_MS,
+  kioskIsolationRulesOnReset,
+  isKioskSessionResetTrigger,
+} from "./kiosk/kioskSession";
