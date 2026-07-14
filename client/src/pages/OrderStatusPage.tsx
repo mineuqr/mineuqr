@@ -128,7 +128,12 @@ export default function OrderStatusPage() {
     const message = buildWhatsAppOrderMessage({
       language: lang,
       restaurantName: snapshot?.restaurantName ?? data?.restaurantName ?? "",
-      orderNumber: snapshot?.orderNumber ?? data?.orderNumber ?? "",
+      orderNumber:
+        snapshot?.displayReference ??
+        data?.displayReference ??
+        snapshot?.orderNumber ??
+        data?.orderNumber ??
+        "",
       tableNumber: snapshot?.tableNumber ?? data?.tableNumber ?? 0,
       tableLabel: snapshot?.tableLabel ?? data?.tableLabel ?? "tables",
       currencySymbol: snapshot?.currencySymbol ?? data?.currencySymbol ?? "",
@@ -195,6 +200,10 @@ export default function OrderStatusPage() {
   const isReady = status === "ready";
 
   const orderNumber = data?.orderNumber ?? orderSnapshot?.orderNumber ?? "";
+  const displayReference =
+    data?.displayReference ??
+    orderSnapshot?.displayReference ??
+    orderNumber;
   const createdAt = data?.createdAt ?? orderSnapshot?.createdAt ?? "";
   const tableNumber = data?.tableNumber ?? orderSnapshot?.tableNumber ?? 0;
   const itemCount = data?.itemCount ?? orderSnapshot?.itemCount ?? 0;
@@ -214,7 +223,7 @@ export default function OrderStatusPage() {
           {showWelcomeHero ? (
             <OrderReceivedHero
               language={lang}
-              orderNumber={orderNumber}
+              displayReference={displayReference}
               restaurantName={restaurantName}
               createdAt={createdAt}
               tableNumber={tableNumber}
@@ -274,7 +283,7 @@ export default function OrderStatusPage() {
                 <dt className="text-muted-foreground">
                   {language === "ar" ? "رقم الطلب" : "Order Number"}
                 </dt>
-                <dd className="font-mono font-bold text-primary">{orderNumber}</dd>
+                <dd className="font-mono font-bold text-primary">{displayReference}</dd>
               </div>
               <CustomerOrderDateTimeFields createdAt={createdAt} language={lang} />
               <div className="flex justify-between gap-4 border-b border-border/40 pb-2">

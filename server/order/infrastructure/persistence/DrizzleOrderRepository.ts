@@ -156,14 +156,23 @@ export class DrizzleOrderRepository implements OrderRepository {
       }))
     );
 
+    let businessIdentity: SaveOrderResult["businessIdentity"];
     if (this.businessIdentityAllocator) {
-      await this.businessIdentityAllocator.allocateForNewOrder(tx, {
-        orderId,
-        restaurantId: snapshot.restaurantId,
-        createdAt: order.createdAt,
-        fulfilmentAnchorType: snapshot.fulfilmentAnchorType,
-        serviceMode: snapshot.serviceMode,
-      });
+      const assignment = await this.businessIdentityAllocator.allocateForNewOrder(
+        tx,
+        {
+          orderId,
+          restaurantId: snapshot.restaurantId,
+          createdAt: order.createdAt,
+          fulfilmentAnchorType: snapshot.fulfilmentAnchorType,
+          serviceMode: snapshot.serviceMode,
+        }
+      );
+      businessIdentity = {
+        businessDay: assignment.businessDay,
+        dailyDisplayNumber: assignment.dailyDisplayNumber,
+        identityScope: assignment.identityScope,
+      };
     }
 
     const persisted = Order.reconstitute({
@@ -203,6 +212,7 @@ export class DrizzleOrderRepository implements OrderRepository {
     return {
       order: persisted,
       outboxEventIds: outboxInputs.map((m) => m.envelope.eventId),
+      businessIdentity,
     };
   }
 

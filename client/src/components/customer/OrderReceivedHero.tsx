@@ -3,7 +3,8 @@ import { CustomerOrderDateTimeFields } from "@/components/customer/CustomerOrder
 
 type OrderReceivedHeroProps = {
   language: "ar" | "en";
-  orderNumber: string;
+  /** Server-resolved Business Display Identity (e.g. "T #001" / "K #001"). */
+  displayReference: string;
   restaurantName: string;
   createdAt: string;
   tableNumber: number;
@@ -12,7 +13,7 @@ type OrderReceivedHeroProps = {
 
 export function OrderReceivedHero({
   language,
-  orderNumber,
+  displayReference,
   restaurantName,
   createdAt,
   tableNumber,
@@ -31,7 +32,7 @@ export function OrderReceivedHero({
           <h1 className="text-xl sm:text-2xl font-bold">
             {language === "ar" ? "تم استلام طلبك" : "Order Received"}
           </h1>
-          <p className="text-sm font-mono font-bold text-primary">{orderNumber}</p>
+          <p className="text-sm font-mono font-bold text-primary">{displayReference}</p>
           {restaurantName ? (
             <p className="text-sm text-muted-foreground">{restaurantName}</p>
           ) : null}

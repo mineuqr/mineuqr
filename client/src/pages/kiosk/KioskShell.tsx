@@ -229,7 +229,7 @@ function KioskOrderingSurface(props: {
   onReset: (trigger: KioskSessionResetTrigger) => void;
   bumpActivity: () => void;
 }) {
-  const { stage, slug, stationId, qs, onReset, bumpActivity } = props;
+  const { stage, slug, stationId, qs, trackingToken, onReset, bumpActivity } = props;
   const cart = useOrderingCart();
 
   useEffect(() => {
@@ -274,6 +274,7 @@ function KioskOrderingSurface(props: {
   return (
     <KioskConfirmationStage
       slug={slug}
+      trackingToken={trackingToken}
       onDone={() => {
         cart.clearCart();
         onReset("successful_order");

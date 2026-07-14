@@ -26,6 +26,7 @@ describe("NON-TABLE-PLACE-ORDER-1 IdentityPlaceOrderService", () => {
       events: [],
       orderNumber: "ORD-1",
       trackingToken: "tok",
+      displayReference: "K #001",
       totalAmount: "10.00",
       itemCount: 1,
       createdAt: "2026-07-14T12:00:00.000Z",

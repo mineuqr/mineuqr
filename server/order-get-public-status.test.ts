@@ -44,6 +44,7 @@ describe("order.getPublicStatus PR-CUX-1B", () => {
     );
     expect(result).toEqual({
       orderNumber: "ORD-0003",
+      displayReference: "ORD-0003",
       createdAt: "2026-06-12 10:00:00",
       tableNumber: 2,
       itemCount: 2,
@@ -61,6 +62,36 @@ describe("order.getPublicStatus PR-CUX-1B", () => {
     });
     expect(result).not.toHaveProperty("orderId");
     expect(result).not.toHaveProperty("restaurantId");
+  });
+
+  it("returns server-resolved Business Display Identity when BI fields are present", async () => {
+    vi.mocked(getOrderByTrackingToken).mockResolvedValue({
+      orderId: 99,
+      orderNumber: "ORD-0003",
+      businessDay: "2026-07-14",
+      dailyDisplayNumber: 1,
+      identityScope: "KIOSK",
+      serviceMode: "counter",
+      fulfilmentAnchorType: "station",
+      tableNumber: 0,
+      status: "pending",
+      totalAmount: "25.00",
+      createdAt: "2026-07-14 10:00:00",
+      readyAt: null,
+      nameAr: "مطعم",
+      nameEn: "Restaurant",
+      currencySymbol: "ر.س",
+      tableLabel: "tables",
+      itemCount: 2,
+    });
+
+    const result = await caller.order.getPublicStatus({
+      trackingToken: "abc123token456789012",
+      slug: "test-slug",
+    });
+
+    expect(result?.displayReference).toBe("K #001");
+    expect(result?.orderNumber).toBe("ORD-0003");
   });
 
   it("returns null when token does not match slug (no enumeration)", async () => {

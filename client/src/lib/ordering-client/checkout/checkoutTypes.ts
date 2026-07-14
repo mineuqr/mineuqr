@@ -44,6 +44,8 @@ export type CheckoutPlaceOrderResult = Readonly<{
   orderId?: number;
   orderNumber?: string;
   trackingToken: string;
+  /** Server-resolved Business Display Identity (e.g. "T #001" / "K #001"). */
+  displayReference?: string;
   sessionToken?: string;
   tableNumber?: number;
   fulfilmentLabel?: string;

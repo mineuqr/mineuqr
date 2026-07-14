@@ -1969,6 +1969,7 @@ const orderRouter = router({
           orderId: placeResult.order.id,
           orderNumber: placeResult.orderNumber,
           trackingToken: placeResult.trackingToken,
+          displayReference: placeResult.displayReference,
           fulfilmentLabel: deriveFulfilmentLabel(fulfilmentAnchor),
           tableNumber:
             fulfilmentAnchor.anchorType === "table"
@@ -2085,6 +2086,7 @@ const orderRouter = router({
         orderId: placeResult.order.id,
         orderNumber: placeResult.orderNumber,
         trackingToken: placeResult.trackingToken,
+        displayReference: placeResult.displayReference,
         tableNumber: table.tableNumber,
         totalAmount: placeResult.totalAmount,
         itemCount: placeResult.itemCount,
@@ -2192,6 +2194,11 @@ const orderRouter = router({
           orderId: row.orderId,
           sessionId: row.sessionId,
           orderNumber: row.orderNumber,
+          businessDay: row.businessDay ?? null,
+          dailyDisplayNumber: row.dailyDisplayNumber ?? null,
+          identityScope: row.identityScope ?? null,
+          serviceMode: row.serviceMode ?? null,
+          fulfilmentAnchorType: row.fulfilmentAnchorType ?? null,
           tableNumber: row.tableNumber,
           status: row.status as
             | "pending"

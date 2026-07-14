@@ -14,6 +14,15 @@ export type SaveOrderResult = {
   order: import("../domain/aggregate/Order").Order;
   /** Event IDs written to outbox (empty when legacy path / no DB). */
   outboxEventIds: string[];
+  /**
+   * ORDER-CONFIRMATION-PRESENTATION-ADOPTION-1 — BI assignment from allocate
+   * (when present). Confirmation APIs resolve displayReference from this.
+   */
+  businessIdentity?: {
+    businessDay: string;
+    dailyDisplayNumber: number;
+    identityScope: string;
+  };
 };
 
 export interface OrderRepository {

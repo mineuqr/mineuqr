@@ -152,6 +152,7 @@ export default function CheckoutPage() {
         saveOrderConfirmationSnapshot({
           orderId: result.orderId ?? 0,
           orderNumber: result.orderNumber ?? "",
+          displayReference: result.displayReference,
           trackingToken: result.trackingToken,
           tableNumber: result.tableNumber ?? tableNumber,
           totalAmount: result.totalAmount ?? draft.totalAmount.toFixed(2),

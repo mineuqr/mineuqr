@@ -14,6 +14,7 @@ import {
   type ReactNode,
 } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { saveConfirmationDisplayIdentity } from "@/lib/orderConfirmationStorage";
 import { trpc } from "@/lib/trpc";
 import { useOrderingCart } from "../cart/OrderingCartProvider";
 import { useOptionalOrderingClientRuntime } from "../context/OrderingClientProvider";
@@ -200,10 +201,16 @@ export function OrderingCheckoutProvider({
           return { ok: false, error };
         }
 
+        const displayReference =
+          "displayReference" in result && typeof result.displayReference === "string"
+            ? result.displayReference
+            : undefined;
+
         const placed = {
           orderId: result.orderId,
           orderNumber: result.orderNumber,
           trackingToken: result.trackingToken,
+          displayReference,
           sessionToken: result.sessionToken,
           tableNumber: result.tableNumber,
           fulfilmentLabel:
@@ -214,6 +221,13 @@ export function OrderingCheckoutProvider({
           itemCount: result.itemCount,
           createdAt: result.createdAt,
         };
+
+        if (displayReference) {
+          saveConfirmationDisplayIdentity(result.trackingToken, {
+            displayReference,
+            orderNumber: result.orderNumber,
+          });
+        }
 
         request.onSuccess?.(placed, draft);
         cart.clearCart();

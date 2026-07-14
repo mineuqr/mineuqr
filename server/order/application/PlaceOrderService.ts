@@ -23,6 +23,7 @@ import {
   fulfilmentProjectionFromIdentity,
   fulfilmentProjectionFromLegacyTable,
 } from "@shared/ordering-platform/orderFulfilmentProjection";
+import { resolveOrderDisplayIdentity } from "../business-identity/application/OrderDisplayIdentityResolver";
 
 export type PlaceOrderCommand = {
   restaurantId: number;
@@ -56,6 +57,8 @@ export type PlaceOrderResult = {
   events: OrderDomainEvent[];
   orderNumber: string;
   trackingToken: string;
+  /** Server-resolved Business Display Identity (e.g. "T #001" / "K #001"). */
+  displayReference: string;
   totalAmount: string;
   itemCount: number;
   createdAt: string;
@@ -167,7 +170,7 @@ export class PlaceOrderService {
     });
 
     let events: OrderDomainEvent[] = [];
-    const { order: persisted } = await this.repository.save(order, {
+    const { order: persisted, businessIdentity } = await this.repository.save(order, {
       onPersisted: (p) => {
         p.recordCreated(p.id!);
         events = p.pullDomainEvents();
@@ -177,12 +180,21 @@ export class PlaceOrderService {
     persisted.clearDomainEvents();
 
     const itemCount = lines.reduce((sum, line) => sum + line.quantity, 0);
+    const displayReference = resolveOrderDisplayIdentity({
+      orderNumber,
+      businessDay: businessIdentity?.businessDay ?? null,
+      dailyDisplayNumber: businessIdentity?.dailyDisplayNumber ?? null,
+      identityScope: businessIdentity?.identityScope ?? null,
+      fulfilmentAnchorType: fulfilment.fulfilmentAnchorType,
+      serviceMode: fulfilment.serviceMode,
+    }).displayReference;
 
     return {
       order: persisted,
       events,
       orderNumber,
       trackingToken,
+      displayReference,
       totalAmount,
       itemCount,
       createdAt,
