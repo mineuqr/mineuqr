@@ -1,6 +1,7 @@
 name: Migration Governance
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - "drizzle/**"
@@ -10,6 +11,7 @@ on:
       - "scripts/recovery/**"
       - "package.json"
       - "vercel.json"
+      - ".github/workflows/migration-governance.yml"
   push:
     branches: [main, master]
     paths:
@@ -17,6 +19,8 @@ on:
       - "scripts/migration-*.cjs"
       - "scripts/lib/migration-governance-lib.cjs"
       - "scripts/verify-schema-deployment.cjs"
+      - "package.json"
+      - ".github/workflows/migration-governance.yml"
 
 jobs:
   governance:
