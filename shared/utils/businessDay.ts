@@ -109,29 +109,52 @@ export function resolveBusinessDayWindow(
   return { businessDay, startIso: startUtc, endIso: endUtc };
 }
 
+/**
+ * Convert a restaurant-local wall clock (`YYYY-MM-DDTHH:mm:ss`) to a UTC ISO instant.
+ *
+ * Must be host-timezone independent. Never parse the wall string with `new Date(localIso)`
+ * (ES treats timezone-less ISO as *host* local, which double-applies the offset when the
+ * host TZ equals `timeZone` and truncates business-day windows).
+ */
 function localWallToUtcIso(localIso: string, timeZone: string): string {
-  const guess = new Date(localIso.includes("T") ? localIso : localIso.replace(" ", "T"));
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  }).formatToParts(guess);
+  const normalized = localIso.includes("T") ? localIso : localIso.replace(" ", "T");
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/.exec(normalized);
+  if (!match) {
+    throw new Error(`Invalid local wall clock: ${localIso}`);
+  }
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  const second = Number(match[6]);
+  const desiredAsUtcMs = Date.UTC(year, month - 1, day, hour, minute, second);
 
-  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "00";
-  const localAsUtc = Date.UTC(
-    parseInt(get("year"), 10),
-    parseInt(get("month"), 10) - 1,
-    parseInt(get("day"), 10),
-    parseInt(get("hour"), 10),
-    parseInt(get("minute"), 10),
-    parseInt(get("second"), 10)
-  );
+  // Treat wall components as UTC for the initial guess, then refine using target TZ.
+  let utcMs = desiredAsUtcMs;
+  for (let i = 0; i < 3; i++) {
+    const parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    }).formatToParts(new Date(utcMs));
 
-  const offset = localAsUtc - guess.getTime();
-  return new Date(guess.getTime() - offset).toISOString();
+    const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "00";
+    const shownAsUtcMs = Date.UTC(
+      parseInt(get("year"), 10),
+      parseInt(get("month"), 10) - 1,
+      parseInt(get("day"), 10),
+      parseInt(get("hour"), 10),
+      parseInt(get("minute"), 10),
+      parseInt(get("second"), 10)
+    );
+    utcMs -= shownAsUtcMs - desiredAsUtcMs;
+  }
+
+  return new Date(utcMs).toISOString();
 }

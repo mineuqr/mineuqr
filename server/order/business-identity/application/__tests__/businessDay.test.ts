@@ -29,7 +29,33 @@ describe("businessDay", () => {
   it("builds a business-day window from opening to next opening", () => {
     const window = resolveBusinessDayWindow("2026-07-10", hours06, "Asia/Riyadh");
     expect(window.businessDay).toBe("2026-07-10");
-    expect(window.startIso < window.endIso).toBe(true);
+    // Thu 2026-07-10 06:00 Asia/Riyadh → 03:00Z; Fri open 06:00 → 03:00Z next day
+    expect(window.startIso).toBe("2026-07-10T03:00:00.000Z");
+    expect(window.endIso).toBe("2026-07-11T03:00:00.000Z");
+  });
+
+  it("keeps late next-day open windows host-timezone independent (prod Friday 23:45)", () => {
+    // Mirrors restaurant 720007: Friday opens 23:45 → long Thu business day.
+    const prodLike = resolveNormalizedOpeningHours({
+      sunday: { open: "09:00", close: "08:59", closed: false },
+      monday: { open: "09:00", close: "08:00", closed: false },
+      tuesday: { open: "09:00", close: "08:00", closed: false },
+      wednesday: { open: "09:00", close: "08:59", closed: false },
+      thursday: { open: "09:00", close: "08:00", closed: false },
+      friday: { open: "23:45", close: "08:00", closed: false },
+      saturday: { open: "09:00", close: "08:59", closed: false },
+    });
+
+    const key = resolveBusinessDayKey("2026-06-12T16:07:09.000Z", prodLike, "Asia/Riyadh");
+    expect(key).toBe("2026-06-11");
+
+    const window = resolveBusinessDayWindow("2026-06-11", prodLike, "Asia/Riyadh");
+    expect(window.startIso).toBe("2026-06-11T06:00:00.000Z");
+    expect(window.endIso).toBe("2026-06-12T20:45:00.000Z");
+
+    // Collision cohort must remain inside the window for historic rank.
+    expect("2026-06-12T16:07:09.000Z" < window.endIso).toBe(true);
+    expect("2026-06-12T16:09:47.000Z" < window.endIso).toBe(true);
   });
 
   it("isolates business days per restaurant opening configuration", () => {
