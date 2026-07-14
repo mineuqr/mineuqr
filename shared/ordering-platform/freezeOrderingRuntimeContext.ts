@@ -52,6 +52,16 @@ export function freezeOrderingRuntimeContext(
         allowedPolicies: Object.freeze([...context.capabilities.notes.allowedPolicies]),
       }),
     }),
+    // ORDER-IDENTITY-RUNTIME-1 — preserve identity policy projection through freeze.
+    orderIdentity: freezeSection({
+      ...context.orderIdentity,
+      supportedServiceModes: Object.freeze([
+        ...context.orderIdentity.supportedServiceModes,
+      ]),
+      supportedFulfilmentAnchorTypes: Object.freeze([
+        ...context.orderIdentity.supportedFulfilmentAnchorTypes,
+      ]),
+    }),
     featureFlags: freezeSection({ ...context.featureFlags }),
     metadata: freezeSection({ ...context.metadata }),
   });

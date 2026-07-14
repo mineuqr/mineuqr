@@ -39,7 +39,30 @@ export {
   type OrderingRuntimeMetadata,
   type OrderingCartLineInput,
   type OrderingPlaceOrderCommand,
+  DEFAULT_ORDERING_RUNTIME_ORDER_IDENTITY_POLICIES,
 } from "./orderingRuntimeContract";
+
+export {
+  ORDERING_SERVICE_MODES,
+  ORDERING_FULFILMENT_ANCHOR_TYPES,
+  createTableFulfilmentAnchor,
+  createTableOrderIdentity,
+  deriveFulfilmentLabel,
+  legacyTableFieldsFromIdentity,
+  resolvePlaceOrderTableFields,
+  resolvePlaceOrderSessionId,
+  type OrderingServiceMode,
+  type OrderingFulfilmentAnchorType,
+  type OrderingFulfilmentAnchor,
+  type OrderingTableFulfilmentAnchor,
+  type OrderingStationFulfilmentAnchor,
+  type OrderingPickupPointFulfilmentAnchor,
+  type OrderingQueueFulfilmentAnchor,
+  type OrderingDriveLaneFulfilmentAnchor,
+  type OrderingOperationalSessionIdentity,
+  type OrderingOrderIdentity,
+  type OrderingRuntimeOrderIdentityPolicies,
+} from "./orderingIdentityContract";
 
 export {
   ORDERING_ORDER_NOTE_MAX_LENGTH,

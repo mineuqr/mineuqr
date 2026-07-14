@@ -4,6 +4,7 @@ import {
   type OrderingRuntimeContext,
   type OrderingRuntimeContextInput,
 } from "@shared/ordering-platform/orderingRuntimeContract";
+import { DEFAULT_ORDERING_RUNTIME_ORDER_IDENTITY_POLICIES } from "@shared/ordering-platform/orderingIdentityContract";
 import { freezeOrderingRuntimeContext } from "@shared/ordering-platform/freezeOrderingRuntimeContext";
 
 /**
@@ -138,6 +139,20 @@ export class OrderingRuntimeContextFactory {
           allowedPolicies: Object.freeze([...input.capabilities.notes.allowedPolicies]),
         },
       },
+      orderIdentity: Object.freeze({
+        supportedServiceModes: Object.freeze([
+          ...(input.orderIdentity?.supportedServiceModes ??
+            DEFAULT_ORDERING_RUNTIME_ORDER_IDENTITY_POLICIES.supportedServiceModes),
+        ]),
+        supportedFulfilmentAnchorTypes: Object.freeze([
+          ...(input.orderIdentity?.supportedFulfilmentAnchorTypes ??
+            DEFAULT_ORDERING_RUNTIME_ORDER_IDENTITY_POLICIES
+              .supportedFulfilmentAnchorTypes),
+        ]),
+        defaultServiceMode:
+          input.orderIdentity?.defaultServiceMode ??
+          DEFAULT_ORDERING_RUNTIME_ORDER_IDENTITY_POLICIES.defaultServiceMode,
+      }),
       featureFlags: Object.freeze({ ...input.featureFlags }),
       metadata: {
         schemaVersion: ORDERING_RUNTIME_CONTEXT_SCHEMA_VERSION,

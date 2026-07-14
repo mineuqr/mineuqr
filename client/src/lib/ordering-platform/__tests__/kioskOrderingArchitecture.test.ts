@@ -23,6 +23,7 @@ import {
 } from "../kioskRuntimeConsumerContract";
 import { ORDERING_CHANNEL_KIOSK } from "@shared/ordering-platform/orderingPlatformContracts";
 import type { OrderingRuntimeContext } from "@shared/ordering-platform/orderingRuntimeContract";
+import { DEFAULT_ORDERING_RUNTIME_ORDER_IDENTITY_POLICIES } from "@shared/ordering-platform/orderingIdentityContract";
 
 function sampleKioskRuntime(
   overrides: Partial<OrderingRuntimeContext> = {}
@@ -92,6 +93,7 @@ function sampleKioskRuntime(
         allowedPolicies: ["plain_text"],
       },
     },
+    orderIdentity: DEFAULT_ORDERING_RUNTIME_ORDER_IDENTITY_POLICIES,
     featureFlags: {},
     metadata: {
       schemaVersion: 1,

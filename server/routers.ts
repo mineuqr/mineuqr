@@ -120,6 +120,7 @@ import {
 import { placeOrderService } from "./order/placeOrderComposition";
 import { runOrderCommand } from "./order/application/mapOrderDomainError";
 import { resolveOrderActorFromUser } from "./order/application/resolveOrderActor";
+import { createTableOrderIdentity } from "@shared/ordering-platform/orderingIdentityContract";
 import bcrypt from "bcryptjs";
 
 function generateSlug(name: string): string {
@@ -1886,9 +1887,19 @@ const orderRouter = router({
         }
       }
 
+      // ORDER-IDENTITY-RUNTIME-1 — table ordering as Fulfilment Anchor type `table`.
+      const orderIdentity = createTableOrderIdentity({
+        tableId: table.id,
+        tableNumber: table.tableNumber,
+        sessionId: ENV.tableSessionDualWrite && sessionId != null ? sessionId : null,
+        sessionToken:
+          ENV.tableSessionDualWrite && sessionToken != null ? sessionToken : null,
+      });
+
       const placeResult = await runOrderCommand(() =>
         placeOrderService.execute({
           restaurantId: input.restaurantId,
+          identity: orderIdentity,
           tableId: table.id,
           tableNumber: table.tableNumber,
           ...(ENV.tableSessionDualWrite && sessionId != null

@@ -4,6 +4,7 @@ import type { OrderingRuntimeContextInput } from "@shared/ordering-platform/orde
 import type { OrderingRuntimeMaterializationRequest } from "@shared/ordering-platform/orderingRuntimeMaterializationContract";
 import type { OrderingRuntimeContext } from "@shared/ordering-platform/orderingRuntimeContract";
 import { DEFAULT_ORDERING_NOTES_CAPABILITIES } from "@shared/ordering-platform/orderingNotesContract";
+import { DEFAULT_ORDERING_RUNTIME_ORDER_IDENTITY_POLICIES } from "@shared/ordering-platform/orderingIdentityContract";
 import {
   OrderingRuntimeContextFactory,
   orderingRuntimeContextFactory,
@@ -251,6 +252,17 @@ export class OrderingRuntimeMaterializer {
         canPlaceOrder: request.capabilities?.canPlaceOrder ?? canPlaceOrder,
         supportedChannels,
         notes: notesCapabilities,
+      },
+      // ORDER-IDENTITY-RUNTIME-1 — foundation defaults (table_service + table only).
+      orderIdentity: {
+        supportedServiceModes: [
+          ...DEFAULT_ORDERING_RUNTIME_ORDER_IDENTITY_POLICIES.supportedServiceModes,
+        ],
+        supportedFulfilmentAnchorTypes: [
+          ...DEFAULT_ORDERING_RUNTIME_ORDER_IDENTITY_POLICIES.supportedFulfilmentAnchorTypes,
+        ],
+        defaultServiceMode:
+          DEFAULT_ORDERING_RUNTIME_ORDER_IDENTITY_POLICIES.defaultServiceMode,
       },
       featureFlags: { ...(request.featureFlags ?? {}) },
       metadata: {

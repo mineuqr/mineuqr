@@ -4,13 +4,13 @@
 
 | Field | Value |
 |---|---|
-| **Status** | Proposed |
+| **Status** | Accepted |
 | **Owner** | Architecture Authority |
 | **Program** | KIOSK-ORDER-IDENTITY-ARCHITECTURE-1 |
 | **Date** | 2026-07-14 |
 | **Supersedes** | — |
 | **Refines** | Order-Centric `TableReference` exclusivity; PlaceOrder table-only command shape |
-| **Implementation status** | Not implemented — design certified |
+| **Implementation status** | Partial — ORDER-IDENTITY-RUNTIME-1 (runtime foundation) delivered; schema/session/ops adoption pending |
 
 ---
 
@@ -40,7 +40,8 @@ Encoding every channel as a fake `restaurant_tables` row would corrupt occupancy
 
 6. Migration SHALL be additive with dual-write of legacy `tableId` / `tableNumber` for table anchors so QR and historical rows remain valid.
 
-Normative detail: `docs/engineering/programs/KIOSK-ORDER-IDENTITY-ARCHITECTURE-1/ARCHITECTURE.md`.
+Normative detail: `docs/engineering/programs/KIOSK-ORDER-IDENTITY-ARCHITECTURE-1/ARCHITECTURE.md`.  
+Runtime foundation: `docs/engineering/programs/ORDER-IDENTITY-RUNTIME-1/ARCHITECTURE.md`.
 
 ---
 
@@ -64,9 +65,10 @@ Normative detail: `docs/engineering/programs/KIOSK-ORDER-IDENTITY-ARCHITECTURE-1
 ## Related Programs
 
 - KIOSK-ORDER-IDENTITY-ARCHITECTURE-1  
+- **ORDER-IDENTITY-RUNTIME-1** (runtime foundation — delivered)  
 - SELF-ORDERING-KIOSK-PLATFORM-1  
 - ORDERING-PLATFORM-ARCHITECTURE-1  
-- Suggested follow-ons: ORDER-IDENTITY-CONTRACT-1, PLACE-ORDER-IDENTITY-1, SESSION-ANCHOR-1, OPS-FULFILMENT-LABEL-1, KIOSK-IDENTITY-ADOPTION-1  
+- Suggested follow-ons: PLACE-ORDER-IDENTITY-1 (non-table activation), SESSION-ANCHOR-1, OPS-FULFILMENT-LABEL-1, KIOSK-IDENTITY-ADOPTION-1  
 
 ---
 
@@ -95,9 +97,10 @@ Normative detail: `docs/engineering/programs/KIOSK-ORDER-IDENTITY-ARCHITECTURE-1
 
 ## Acceptance criteria (when Implemented)
 
-- [ ] Shared Service Mode + Fulfilment Anchor contracts exist  
+- [x] Shared Service Mode + Fulfilment Anchor contracts exist (ORDER-IDENTITY-RUNTIME-1)  
+- [x] Runtime projects identity policies; PlaceOrder consumes table identity (ORDER-IDENTITY-RUNTIME-1)  
+- [x] Table service path behaviourally compatible with today’s QR  
 - [ ] PlaceOrder accepts non-table anchors without channel forks  
-- [ ] Table service path behaviourally compatible with today’s QR  
 - [ ] Ops surfaces render fulfilment label  
 - [ ] Kiosk no longer requires `?table=` workaround  
-- [ ] Architecture guards forbid channel-invented identity types  
+- [x] Architecture guards forbid channel-invented PlaceOrder forks  

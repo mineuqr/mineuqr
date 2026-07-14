@@ -1,6 +1,11 @@
 import type { OrderingChannelId } from "./orderingPlatformContracts";
 import type { OrderingNotesCapabilities } from "./orderingNotesContract";
 import { DEFAULT_ORDERING_NOTES_CAPABILITIES } from "./orderingNotesContract";
+import type {
+  OrderingOrderIdentity,
+  OrderingRuntimeOrderIdentityPolicies,
+} from "./orderingIdentityContract";
+import { DEFAULT_ORDERING_RUNTIME_ORDER_IDENTITY_POLICIES } from "./orderingIdentityContract";
 
 /**
  * ORDERING-RUNTIME-CONTEXT-1 — immutable Ordering Runtime Context contract.
@@ -123,6 +128,11 @@ export type OrderingRuntimeContext = Readonly<{
   policies: OrderingRuntimeOrderingPolicies;
   pricing: OrderingRuntimePricingContext;
   capabilities: OrderingRuntimeCapabilities;
+  /**
+   * ORDER-IDENTITY-RUNTIME-1 — identity policy projection (modes/anchors allowed).
+   * Does not replace PlaceOrder identity; guides channels. Default: table_service + table.
+   */
+  orderIdentity: OrderingRuntimeOrderIdentityPolicies;
   featureFlags: OrderingRuntimeFeatureFlags;
   metadata: OrderingRuntimeMetadata;
 }>;
@@ -196,6 +206,8 @@ export type OrderingRuntimeContextInput = {
     supportedChannels: OrderingChannelId[];
     notes: OrderingNotesCapabilities;
   };
+  /** Optional — materializer supplies DEFAULT table_service/table when omitted. */
+  orderIdentity?: OrderingRuntimeOrderIdentityPolicies;
   featureFlags: Record<string, boolean>;
   metadata: {
     createdAt: string;
@@ -216,10 +228,19 @@ export type OrderingCartLineInput = Readonly<{
   notes?: string | null;
 }>;
 
-/** Place order command — all channels converge here. */
+/**
+ * Place order command — all channels converge here.
+ * ORDER-IDENTITY-RUNTIME-1: `identity` is canonical; tableId/sessionId retained for dual-compat.
+ */
 export type OrderingPlaceOrderCommand = Readonly<{
   channel: OrderingChannelId;
   restaurantId: number;
+  /** Canonical Order Identity (Service Mode + Fulfilment Anchor + Session Identity). */
+  identity: OrderingOrderIdentity;
+  /**
+   * @deprecated Prefer identity.fulfilmentAnchor (table variant).
+   * Retained for dual-write / QR bridge — must match table anchor when present.
+   */
   tableId: number;
   sessionId: number | null;
   items: readonly OrderingCartLineInput[];
@@ -234,4 +255,7 @@ export type OrderingPlaceOrderCommand = Readonly<{
   notes?: string | null;
 }>;
 
-export { DEFAULT_ORDERING_NOTES_CAPABILITIES };
+export {
+  DEFAULT_ORDERING_NOTES_CAPABILITIES,
+  DEFAULT_ORDERING_RUNTIME_ORDER_IDENTITY_POLICIES,
+};

@@ -7,6 +7,7 @@ import {
   ORDERING_CART_PERSISTENCE_NAMESPACE,
 } from "../index";
 import type { OrderingRuntimeContext } from "@shared/ordering-platform/orderingRuntimeContract";
+import { DEFAULT_ORDERING_RUNTIME_ORDER_IDENTITY_POLICIES } from "@shared/ordering-platform/orderingIdentityContract";
 import { ORDERING_CHANNEL_QR } from "@shared/ordering-platform/orderingPlatformContracts";
 
 function sampleRuntime(
@@ -77,6 +78,7 @@ function sampleRuntime(
         allowedPolicies: ["plain_text"],
       },
     },
+    orderIdentity: DEFAULT_ORDERING_RUNTIME_ORDER_IDENTITY_POLICIES,
     featureFlags: {},
     metadata: {
       schemaVersion: 1,

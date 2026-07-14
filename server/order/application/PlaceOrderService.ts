@@ -13,9 +13,20 @@ import {
   validateItemNote,
   validateOrderNote,
 } from "@shared/ordering-platform/orderingNotesContract";
+import type { OrderingOrderIdentity } from "@shared/ordering-platform/orderingIdentityContract";
+import {
+  resolvePlaceOrderSessionId,
+  resolvePlaceOrderTableFields,
+} from "@shared/ordering-platform/orderingIdentityContract";
 
 export type PlaceOrderCommand = {
   restaurantId: number;
+  /**
+   * ORDER-IDENTITY-RUNTIME-1 — canonical Order Identity.
+   * Table ordering is represented as Fulfilment Anchor type `table`.
+   */
+  identity?: OrderingOrderIdentity;
+  /** Dual-compat with table Fulfilment Anchor — required for Order Domain persist. */
   tableId: number;
   tableNumber: number;
   sessionId?: number | null;
@@ -98,11 +109,22 @@ export class PlaceOrderService {
     const trackingToken = this.trackingTokens.issue();
     const createdAt = new Date().toISOString();
 
-    const order = Order.placeNew({
-      restaurantId: command.restaurantId,
+    // ORDER-IDENTITY-RUNTIME-1 — resolve table dual-write from identity when present.
+    const tableFields = resolvePlaceOrderTableFields({
+      identity: command.identity,
       tableId: command.tableId,
       tableNumber: command.tableNumber,
-      sessionId: command.sessionId ?? null,
+    });
+    const sessionId = resolvePlaceOrderSessionId({
+      identity: command.identity,
+      sessionId: command.sessionId,
+    });
+
+    const order = Order.placeNew({
+      restaurantId: command.restaurantId,
+      tableId: tableFields.tableId,
+      tableNumber: tableFields.tableNumber,
+      sessionId,
       customerName: command.customerName ?? null,
       customerPhone: command.customerPhone ?? null,
       notes: orderNoteResult.value,

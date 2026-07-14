@@ -62,6 +62,8 @@ describe("ORDERING-RUNTIME-MATERIALIZATION-1 OrderingRuntimeMaterializer", () =>
     expect(input.metadata.runtimeId).toBe("mat-runtime-1");
     expect(input.metadata.createdAt).toBe("2026-07-14T12:00:00.000Z");
     expect(input.capabilities.supportedChannels).toEqual([ORDERING_CHANNEL_QR]);
+    expect(input.orderIdentity?.defaultServiceMode).toBe("table_service");
+    expect(input.orderIdentity?.supportedFulfilmentAnchorTypes).toEqual(["table"]);
   });
 
   it("materializes immutable OrderingRuntimeContext via factory", () => {
@@ -70,6 +72,8 @@ describe("ORDERING-RUNTIME-MATERIALIZATION-1 OrderingRuntimeMaterializer", () =>
     expect(ctx.restaurant.name).toBe("Demo Restaurant");
     expect(ctx.menu.products).toHaveLength(1);
     expect(ctx.featureFlags.offers_enabled).toBe(true);
+    expect(ctx.orderIdentity.defaultServiceMode).toBe("table_service");
+    expect(ctx.orderIdentity.supportedServiceModes).toContain("table_service");
   });
 
   it("derives availability reasons and gates place-order on closure", () => {
