@@ -41,6 +41,7 @@ describe("ORDER-IDENTITY-RUNTIME-1 identity contracts", () => {
     expect(identity.fulfilmentAnchor.anchorType).toBe("table");
     expect(identity.operationalSession.sessionId).toBe(55);
     expect(identity.operationalSession.sessionToken).toBe("tok-abc");
+    expect(identity.operationalSession.anchorType).toBe("table");
   });
 
   it("bridges identity to legacy table fields for Order Domain dual-write", () => {

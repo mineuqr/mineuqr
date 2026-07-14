@@ -10,7 +10,7 @@
 | **Date** | 2026-07-14 |
 | **Supersedes** | — |
 | **Refines** | Order-Centric `TableReference` exclusivity; PlaceOrder table-only command shape |
-| **Implementation status** | Partial — ORDER-IDENTITY-RUNTIME-1 (runtime foundation) delivered; schema/session/ops adoption pending |
+| **Implementation status** | Partial — ORDER-IDENTITY-RUNTIME-1 + OPERATIONAL-SESSION-PLATFORM-1 delivered; non-table PlaceOrder / ops label / kiosk adoption pending |
 
 ---
 
@@ -32,16 +32,19 @@ Encoding every channel as a fake `restaurant_tables` row would corrupt occupancy
    - **Service Mode** — closed platform enum (`table_service`, `counter`, `take_away`, `pickup`, `delivery`, `drive_thru`, …)
    - **Fulfilment Anchor** — discriminated platform union (`table`, `station`, `pickup_point`, `queue`, `drive_lane`, …) with a derived **fulfilment label** for ops
 
-3. **Operational Session** SHALL be generalized from table-only DiningSession: keyed by anchor type with type-specific uniqueness. Table occupancy rules (`one open session per table`) are preserved for `anchorType = table`.
+3. **Operational Session** SHALL be generalized from table-only DiningSession: keyed by **Session Anchor** type with type-specific uniqueness. Table occupancy rules (`one open session per table`) are preserved for `anchorType = table`.
 
-4. **Channel** (qr, kiosk, waiter_tablet, …) is provenance / experience only. Channels MUST NOT own Service Mode definitions or invent Fulfilment Anchor types.
+4. **Ownership refinement (OPERATIONAL-SESSION-PLATFORM-1):** Operational Session owns Session Identity, Session Anchor, status, and lifecycle. **Fulfilment Anchor remains Order Identity** — not the parent aggregate of Operational Session. On the table path the anchors correlate; ownership must not collapse (Option B). See `docs/engineering/programs/OPERATIONAL-SESSION-PLATFORM-1/ARCHITECTURE.md` §3.
 
-5. **Business Identity** remains orthogonal (day/display sequence) and MUST NOT absorb location.
+5. **Channel** (qr, kiosk, waiter_tablet, …) is provenance / experience only. Channels MUST NOT own Service Mode definitions or invent Fulfilment / Session Anchor types.
 
-6. Migration SHALL be additive with dual-write of legacy `tableId` / `tableNumber` for table anchors so QR and historical rows remain valid.
+6. **Business Identity** remains orthogonal (day/display sequence) and MUST NOT absorb location.
+
+7. Migration SHALL be additive with dual-write of legacy `tableId` / `tableNumber` for table anchors so QR and historical rows remain valid. Dining Session remains the table specialization — not a global rename.
 
 Normative detail: `docs/engineering/programs/KIOSK-ORDER-IDENTITY-ARCHITECTURE-1/ARCHITECTURE.md`.  
-Runtime foundation: `docs/engineering/programs/ORDER-IDENTITY-RUNTIME-1/ARCHITECTURE.md`.
+Runtime foundation: `docs/engineering/programs/ORDER-IDENTITY-RUNTIME-1/ARCHITECTURE.md`.  
+Session platform: `docs/engineering/programs/OPERATIONAL-SESSION-PLATFORM-1/ARCHITECTURE.md`.
 
 ---
 
@@ -53,10 +56,11 @@ Runtime foundation: `docs/engineering/programs/ORDER-IDENTITY-RUNTIME-1/ARCHITEC
 - Removes need for fake tables / `?table=` workarounds  
 - Preserves table occupancy where it is operationally real  
 - Aligns Kitchen/Expo/Print on fulfilment label  
+- Clear split: Fulfilment Anchor (Order) vs Session Anchor (Session)
 
 ### Negative / costs
 
-- PlaceOrder, Session, and Read Model implementation programs required  
+- PlaceOrder non-table activation and ops label programs still required  
 - Temporary dual fields during migration  
 - Ops UI must stop assuming “table” is the only label  
 
@@ -66,9 +70,10 @@ Runtime foundation: `docs/engineering/programs/ORDER-IDENTITY-RUNTIME-1/ARCHITEC
 
 - KIOSK-ORDER-IDENTITY-ARCHITECTURE-1  
 - **ORDER-IDENTITY-RUNTIME-1** (runtime foundation — delivered)  
+- **OPERATIONAL-SESSION-PLATFORM-1** (session platform — delivered)  
 - SELF-ORDERING-KIOSK-PLATFORM-1  
 - ORDERING-PLATFORM-ARCHITECTURE-1  
-- Suggested follow-ons: PLACE-ORDER-IDENTITY-1 (non-table activation), SESSION-ANCHOR-1, OPS-FULFILMENT-LABEL-1, KIOSK-IDENTITY-ADOPTION-1  
+- Suggested follow-ons: PLACE-ORDER-IDENTITY-1 (non-table activation), OPS-FULFILMENT-LABEL-1, KIOSK-IDENTITY-ADOPTION-1  
 
 ---
 
@@ -91,7 +96,9 @@ Runtime foundation: `docs/engineering/programs/ORDER-IDENTITY-RUNTIME-1/ARCHITEC
 | Keep table-only PlaceOrder; fake tables per kiosk | Corrupts occupancy; channel-specific master data |
 | Channel-specific PlaceOrder services | Violates Platform Before Channels |
 | Session-only identity without Order-stamped mode/anchor | Orders need immutable fulfilment semantic after session ends |
+| Fulfilment Anchor as parent of Operational Session (Option A) | Cannot express optional sessions; collapses Order Identity into Session |
 | Virtual always-on “counter table” | Historical workaround, not a model |
+| Global DiningSession rename | Breaks compatibility; specialization preferred |
 
 ---
 
@@ -99,6 +106,7 @@ Runtime foundation: `docs/engineering/programs/ORDER-IDENTITY-RUNTIME-1/ARCHITEC
 
 - [x] Shared Service Mode + Fulfilment Anchor contracts exist (ORDER-IDENTITY-RUNTIME-1)  
 - [x] Runtime projects identity policies; PlaceOrder consumes table identity (ORDER-IDENTITY-RUNTIME-1)  
+- [x] Operational Session Platform + typed Session Anchors; table specialization (OPERATIONAL-SESSION-PLATFORM-1)  
 - [x] Table service path behaviourally compatible with today’s QR  
 - [ ] PlaceOrder accepts non-table anchors without channel forks  
 - [ ] Ops surfaces render fulfilment label  

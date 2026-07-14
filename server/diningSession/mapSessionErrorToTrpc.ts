@@ -1,5 +1,9 @@
 import { TRPCError } from "@trpc/server";
 import {
+  OperationalSessionAnchorNotActivatedError,
+  OperationalSessionValidationError,
+} from "../operational-session/operationalSessionErrors";
+import {
   DiningSessionConflictError,
   DiningSessionExpiredError,
   DiningSessionNotFoundError,
@@ -8,8 +12,14 @@ import {
   DiningSessionTransitionError,
 } from "./sessionTypes";
 
-/** Map dining session domain errors to tRPC errors (TABLE-MANAGEMENT-1 D3). */
+/** Map dining / operational session domain errors to tRPC errors. */
 export function throwSessionServiceTrpcError(err: unknown): never {
+  if (err instanceof OperationalSessionValidationError) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: err.message });
+  }
+  if (err instanceof OperationalSessionAnchorNotActivatedError) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: err.message });
+  }
   if (err instanceof DiningSessionValidationError) {
     throw new TRPCError({ code: "BAD_REQUEST", message: err.message });
   }

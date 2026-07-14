@@ -76,12 +76,15 @@ export type OrderingFulfilmentAnchor =
   | OrderingDriveLaneFulfilmentAnchor;
 
 /**
- * Runtime pointer to an operational session.
- * Session Platform still owns lifecycle; this program does not change it.
+ * Runtime pointer to an Operational Session.
+ * Operational Session Platform owns lifecycle (OPERATIONAL-SESSION-PLATFORM-1).
+ * Ordering Identity carries the pointer only — not session ownership.
  */
 export type OrderingOperationalSessionIdentity = Readonly<{
   sessionId: number | null;
   sessionToken?: string | null;
+  /** Session Anchor type when known (table specialization today). */
+  anchorType?: OrderingFulfilmentAnchorType | null;
 }>;
 
 /** Canonical Order Identity stamped / carried at PlaceOrder time. */
@@ -137,6 +140,7 @@ export function createTableOrderIdentity(input: {
     operationalSession: {
       sessionId: input.sessionId ?? null,
       sessionToken: input.sessionToken ?? null,
+      anchorType: "table",
     },
   };
 }

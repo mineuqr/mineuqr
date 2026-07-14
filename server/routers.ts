@@ -88,7 +88,8 @@ import { mergeRouters } from "./_core/trpc";
 import { ENV } from "./_core/env";
 import { opsLog } from "./_core/opsLog";
 import { OPS_EVENT } from "./_core/opsTaxonomy";
-import { resolveSessionForOrderCreate, markPaid, markComplimentary, closeSession } from "./diningSession/sessionService";
+import { markPaid, markComplimentary, closeSession } from "./diningSession/sessionService";
+import { resolveOperationalSession } from "./operational-session";
 import { findSessionById } from "./diningSession/sessionRepository";
 import { SESSION_TOKEN_PATTERN } from "./diningSession/sessionPublicStatus";
 import { throwSessionServiceTrpcError } from "./diningSession/mapSessionErrorToTrpc";
@@ -121,6 +122,7 @@ import { placeOrderService } from "./order/placeOrderComposition";
 import { runOrderCommand } from "./order/application/mapOrderDomainError";
 import { resolveOrderActorFromUser } from "./order/application/resolveOrderActor";
 import { createTableOrderIdentity } from "@shared/ordering-platform/orderingIdentityContract";
+import { createTableSessionAnchor } from "@shared/operational-session";
 import bcrypt from "bcryptjs";
 
 function generateSlug(name: string): string {
@@ -1861,10 +1863,14 @@ const orderRouter = router({
       let sessionToken: string | undefined;
       if (ENV.tableSessionDualWrite) {
         try {
-          const sessionResult = await resolveSessionForOrderCreate({
+          // OPERATIONAL-SESSION-PLATFORM-1 — QR table path via Operational Session Platform.
+          // Dining Session remains the table specialization (no rename / no behaviour change).
+          const sessionResult = await resolveOperationalSession({
             restaurantId: input.restaurantId,
-            tableId: table.id,
-            tableNumber: table.tableNumber,
+            anchor: createTableSessionAnchor({
+              tableId: table.id,
+              tableNumber: table.tableNumber,
+            }),
             sessionToken: input.sessionToken,
           });
           sessionId = sessionResult.session.id;
@@ -1880,6 +1886,7 @@ const orderRouter = router({
               sessionId: sessionResult.session.id,
               tableId: table.id,
               tableNumber: table.tableNumber,
+              anchorType: sessionResult.session.anchor.anchorType,
             },
           });
         } catch (err) {
