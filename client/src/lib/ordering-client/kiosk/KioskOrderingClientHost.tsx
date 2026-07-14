@@ -20,6 +20,16 @@ export type KioskOrderingClientHostProps = {
   kioskId?: string;
   /** Channel query string to preserve across navigator transitions. */
   querySuffix?: string;
+  /**
+   * KIOSK-SCREEN-ACTIVATION-1 — Screen Runtime host stage controller.
+   * When set, navigator updates host state instead of `/kiosk` URLs.
+   */
+  onHostStageNavigate?: (
+    stage: import("./createKioskOrderingNavigator").KioskShellStage,
+    extras?: { trackingToken?: string }
+  ) => void;
+  /** Hosted shell stage — used when onHostStageNavigate is active. */
+  hostStage?: import("./createKioskOrderingNavigator").KioskShellStage;
   children: ReactNode;
 };
 
@@ -35,6 +45,8 @@ export function KioskOrderingClientHost({
   restaurantId,
   kioskId,
   querySuffix,
+  onHostStageNavigate,
+  hostStage,
   children,
 }: KioskOrderingClientHostProps) {
   const [location, setLocation] = useLocation();
@@ -49,16 +61,22 @@ export function KioskOrderingClientHost({
       }),
     [slug, stationId, deviceSessionId, restaurantId, kioskId]
   );
-  const shellStage = resolveKioskOrderingStage(location);
+  const shellStage =
+    onHostStageNavigate && hostStage
+      ? hostStage === "resetting"
+        ? "idle"
+        : hostStage
+      : resolveKioskOrderingStage(location);
   const navigator = useMemo(
     () =>
       createKioskOrderingNavigator({
         slug,
-        stage: shellStage,
+        stage: shellStage === "confirmation" ? "confirmation" : shellStage,
         setLocation,
         querySuffix,
+        onHostStageNavigate,
       }),
-    [slug, shellStage, setLocation, querySuffix]
+    [slug, shellStage, setLocation, querySuffix, onHostStageNavigate]
   );
 
   if (!slug || !stationId || !deviceSessionId) return null;

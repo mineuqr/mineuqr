@@ -14,6 +14,7 @@ import { summarizeDeviceHealth } from "../domain/deviceHealth";
 import { resolveScreenConfigVersion } from "../domain/screenConfigVersion";
 import { enforcePairingRedeemRateLimit } from "../governance/pairingRateLimits";
 import { getClientIp } from "../../_core/rateLimit";
+import { getRestaurantById } from "../../db";
 
 const authenticateInput = z.object({
   deviceId: z.string().min(8).max(64),
@@ -109,12 +110,15 @@ export const operationalDeviceRuntimeRouter = router({
     const activeToken = await operationalDeviceComposition.store.findActiveTokenForDevice(
       device.deviceId
     );
+    // KIOSK-SCREEN-ACTIVATION-1 — slug required to host KioskShell from Screen Runtime.
+    const restaurant = await getRestaurantById(device.restaurantId);
     return {
       device: {
         deviceId: device.deviceId,
         role: device.role,
         displayName: device.displayName,
         restaurantId: device.restaurantId,
+        restaurantSlug: restaurant?.slug ?? null,
         branchId: device.branchId,
         status: device.status,
       },

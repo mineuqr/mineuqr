@@ -22,6 +22,22 @@ function kitchenCapabilities(): RoleCapabilityDeclaration {
     supportsTimeline: false,
     supportsAnimation: false,
     supportsPrintMonitor: false,
+    supportsKioskOrdering: false,
+  };
+}
+
+function kioskCapabilities(): RoleCapabilityDeclaration {
+  return {
+    supportsOrders: true,
+    supportsTickets: false,
+    supportsQueue: false,
+    supportsReadyOrders: false,
+    supportsDensity: false,
+    supportsCategoryFilter: false,
+    supportsTimeline: false,
+    supportsAnimation: false,
+    supportsPrintMonitor: false,
+    supportsKioskOrdering: true,
   };
 }
 
@@ -145,6 +161,7 @@ export const pickupDisplayRole = createBlockedRoleDefinition(
     supportsTimeline: false,
     supportsAnimation: false,
     supportsPrintMonitor: false,
+    supportsKioskOrdering: false,
   },
   ["SCREEN-CONFIG-RUNTIME-1"],
   {
@@ -169,6 +186,7 @@ export const customerDisplayRole = createBlockedRoleDefinition(
     supportsTimeline: true,
     supportsAnimation: true,
     supportsPrintMonitor: false,
+    supportsKioskOrdering: false,
   },
   ["SCREEN-CONFIG-RUNTIME-1"],
   {
@@ -193,6 +211,7 @@ export const printMonitorRole = createBlockedRoleDefinition(
     supportsTimeline: false,
     supportsAnimation: false,
     supportsPrintMonitor: true,
+    supportsKioskOrdering: false,
   },
   ["SCREEN-CONFIG-RUNTIME-1"],
   {
@@ -201,26 +220,43 @@ export const printMonitorRole = createBlockedRoleDefinition(
   }
 );
 
-export const selfOrderingKioskRole = createBlockedRoleDefinition(
-  "self_ordering_kiosk",
-  {
-    en: "Self-service ordering kiosk.",
-    ar: "كiosk الطلب الذاتي.",
-  },
-  {
-    supportsOrders: true,
-    supportsTickets: false,
-    supportsQueue: false,
-    supportsReadyOrders: false,
-    supportsDensity: false,
-    supportsCategoryFilter: false,
-    supportsTimeline: false,
-    supportsAnimation: false,
-    supportsPrintMonitor: false,
-  },
-  ["SCREEN-CONFIG-RUNTIME-1"],
-  {
-    en: "Self ordering runtime is registered — kiosk ordering UI activates in a future program.",
-    ar: "وقت تشغيل الطلب الذاتي مسجّل — واجهة الكiosk تُفعّل في برنامج لاحق.",
-  }
-);
+/** KIOSK-SCREEN-ACTIVATION-1 — operational role; mounts KioskShell via presentation_kiosk. */
+export const selfOrderingKioskRole = ((): RuntimeRoleDefinition => {
+  const lifecycle = createOperationalRoleLifecycle();
+  const role = "self_ordering_kiosk" as const;
+  return {
+    metadata: {
+      role,
+      displayName: DEVICE_ROLE_LABELS[role],
+      description: {
+        en: "Self-service ordering kiosk.",
+        ar: "كiosk الطلب الذاتي.",
+      },
+      operational: true,
+      capabilities: kioskCapabilities(),
+      configurationSchemaVersion: "1",
+      futurePrograms: ["KIOSK-SCREEN-ACTIVATION-1"],
+    },
+    lifecycle,
+    resolveRuntimeStatus(bootstrapPhase, _context, reconnecting) {
+      return resolveRoleRuntimeStatus(bootstrapPhase, true, reconnecting);
+    },
+    collectDiagnostics(ctx: RoleLifecycleContext) {
+      const configState = lifecycle.getConfigurationState();
+      const config = configState.lastConfiguration;
+      return {
+        presentation: "kiosk_shell",
+        configurationApplyCount: configState.configurationApplyCount,
+        activeConfiguration: config
+          ? {
+              language: config.active.language,
+              direction: config.active.direction,
+            }
+          : null,
+        heartbeatCount: ctx.heartbeatCount,
+        reconnectCount: ctx.reconnectCount,
+      };
+    },
+    presentationKey: "kiosk",
+  };
+})();

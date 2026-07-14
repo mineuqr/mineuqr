@@ -44,6 +44,27 @@ export function OperationalScreenShell({ children }: { children: React.ReactNode
   const connectionTone = resolveHeaderConnectionTone(context.screenState);
   const showConnection = connectionTone !== "live";
   const connectionLabel = headerConnectionLabel(connectionTone, isAr);
+  /** KIOSK-SCREEN-ACTIVATION-1 — kiosk owns full-bleed chrome; keep connection + unpair only. */
+  const isKioskHost = context.identity.role === "self_ordering_kiosk";
+
+  if (isKioskHost) {
+    return (
+      <div className="flex min-h-screen flex-col bg-[#0b0e14] text-foreground" dir={dir}>
+        <ScreenConnectionBanner screenState={context.screenState} language={language} />
+        {showConnection ? (
+          <div className="flex items-center justify-end gap-2 px-3 py-2">
+            <HeaderConnectionStatus tone={connectionTone} label={connectionLabel} />
+            <OperationalScreenOverflowMenu onUnpair={unpair} isAr={isAr} />
+          </div>
+        ) : (
+          <div className="absolute end-3 top-3 z-20">
+            <OperationalScreenOverflowMenu onUnpair={unpair} isAr={isAr} />
+          </div>
+        )}
+        <main className="relative flex min-h-0 flex-1 flex-col overflow-auto">{children}</main>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-[#0b0e14] text-foreground" dir={dir}>

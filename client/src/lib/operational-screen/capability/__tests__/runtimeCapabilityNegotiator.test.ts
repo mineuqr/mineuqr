@@ -37,6 +37,23 @@ describe("RuntimeCapabilityNegotiator", () => {
     expect(contract.presentationSupport).toBe("blocked");
   });
 
+  it("KIOSK-SCREEN-ACTIVATION-1: kiosk negotiates presentation_kiosk as supported", async () => {
+    const { KioskRolePresentation } = await import(
+      "@/components/operational-screen/roles/KioskRolePresentation"
+    );
+    const server = deriveServerCapabilities("self_ordering_kiosk");
+    const contract = runtimeCapabilityNegotiator.negotiate(
+      buildCapabilityNegotiationInput("self_ordering_kiosk", server, {
+        configurationActivated: true,
+        operationalBlocked: false,
+      })
+    );
+    expect(contract.capabilities.presentation_kiosk.status).toBe("supported");
+    expect(contract.capabilities.presentation_tickets.status).toBe("unsupported");
+    expect(contract.presentationSupport).toBe("supported");
+    expect(resolveCapabilityPresentation(contract)).toBe(KioskRolePresentation);
+  });
+
   it("print monitor capability derives from declaration", () => {
     const server = deriveServerCapabilities("print_monitor");
     expect(server.canAccessPrintMonitor).toBe(true);

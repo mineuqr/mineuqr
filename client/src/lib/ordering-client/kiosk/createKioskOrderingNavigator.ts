@@ -28,6 +28,14 @@ export type CreateKioskOrderingNavigatorInput = Readonly<{
   setLocation: (path: string, options?: { replace?: boolean }) => void;
   /** Preserved channel query (station / kiosk device). */
   querySuffix?: string;
+  /**
+   * KIOSK-SCREEN-ACTIVATION-1 — when hosted by Screen Runtime, stage transitions
+   * update host state instead of navigating `/kiosk/:slug` URLs.
+   */
+  onHostStageNavigate?: (
+    stage: KioskShellStage,
+    extras?: { trackingToken?: string }
+  ) => void;
 }>;
 
 function path(template: string, slug: string): string {
@@ -48,7 +56,7 @@ function withQuery(base: string, querySuffix?: string, extra?: Record<string, st
 export function createKioskOrderingNavigator(
   input: CreateKioskOrderingNavigatorInput
 ): KioskOrderingNavigator {
-  const { slug, stage, setLocation, querySuffix } = input;
+  const { slug, stage, setLocation, querySuffix, onHostStageNavigate } = input;
   const platformStage: OrderingClientStage =
     stage === "idle" || stage === "language" ? "browse" : stage;
 
@@ -59,27 +67,37 @@ export function createKioskOrderingNavigator(
   const languagePath = path(KIOSK_ORDERING_ROUTES.language, slug);
   const confirmedPath = path(KIOSK_ORDERING_ROUTES.confirmation, slug);
 
+  const go = (
+    hostStage: KioskShellStage,
+    url: string,
+    options?: { replace?: boolean; trackingToken?: string }
+  ) => {
+    if (onHostStageNavigate) {
+      onHostStageNavigate(hostStage, { trackingToken: options?.trackingToken });
+      return;
+    }
+    setLocation(url, options?.replace ? { replace: true } : undefined);
+  };
+
   return {
     stage: platformStage,
-    goToBrowse: () => setLocation(withQuery(browsePath, querySuffix)),
-    goToCart: () => setLocation(withQuery(cartPath, querySuffix)),
-    goToCheckout: () => setLocation(withQuery(checkoutPath, querySuffix)),
+    goToBrowse: () => go("browse", withQuery(browsePath, querySuffix)),
+    goToCart: () => go("cart", withQuery(cartPath, querySuffix)),
+    goToCheckout: () => go("checkout", withQuery(checkoutPath, querySuffix)),
     goToConfirmation: (trackingToken: string) =>
-      setLocation(
-        withQuery(confirmedPath, querySuffix, { token: trackingToken }),
-        { replace: true }
-      ),
+      go("confirmation", withQuery(confirmedPath, querySuffix, { token: trackingToken }), {
+        replace: true,
+        trackingToken,
+      }),
     // Kiosk has no live tracking surface — alias confirmation.
     goToTracking: (trackingToken: string) =>
-      setLocation(
-        withQuery(confirmedPath, querySuffix, { token: trackingToken }),
-        { replace: true }
-      ),
-    goToIdle: () =>
-      setLocation(withQuery(idlePath, querySuffix), { replace: true }),
-    goToLanguage: () => setLocation(withQuery(languagePath, querySuffix)),
-    goToResetIdle: () =>
-      setLocation(withQuery(idlePath, querySuffix), { replace: true }),
+      go("confirmation", withQuery(confirmedPath, querySuffix, { token: trackingToken }), {
+        replace: true,
+        trackingToken,
+      }),
+    goToIdle: () => go("idle", withQuery(idlePath, querySuffix), { replace: true }),
+    goToLanguage: () => go("language", withQuery(languagePath, querySuffix)),
+    goToResetIdle: () => go("idle", withQuery(idlePath, querySuffix), { replace: true }),
   };
 }
 

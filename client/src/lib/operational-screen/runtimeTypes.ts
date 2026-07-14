@@ -40,6 +40,8 @@ export type RuntimeGetStatusResponse = {
     role: OperationalDeviceRole;
     displayName: string;
     restaurantId: number;
+    /** KIOSK-SCREEN-ACTIVATION-1 — restaurant slug for KioskShell hosting. */
+    restaurantSlug?: string | null;
     branchId: number | null;
     status: "active" | "disabled";
   };
@@ -85,6 +87,7 @@ export type OperationalScreenRuntimeContext = {
     displayName: string;
     role: OperationalDeviceRole;
     restaurantId: number;
+    restaurantSlug?: string | null;
     branchId: number | null;
   };
   /** Normalized configuration — sole authority for runtime config consumption. */

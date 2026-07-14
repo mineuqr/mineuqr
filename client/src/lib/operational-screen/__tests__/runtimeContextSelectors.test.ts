@@ -55,6 +55,7 @@ function sampleContext(instanceId: string): RuntimeInstanceContext {
           supportsTimeline: false,
           supportsAnimation: false,
           supportsPrintMonitor: false,
+          supportsKioskOrdering: false,
         },
       },
       visibility: { operational: true, blockedReason: null },
@@ -62,6 +63,7 @@ function sampleContext(instanceId: string): RuntimeInstanceContext {
     business: {
       businessName: null,
       tenantId: 720007,
+      restaurantSlug: "demo",
       branchId: 3,
       timezone: null,
       currency: null,
@@ -91,6 +93,7 @@ function sampleContext(instanceId: string): RuntimeInstanceContext {
         supportsTimeline: false,
         supportsAnimation: false,
         supportsPrintMonitor: false,
+        supportsKioskOrdering: false,
       },
       theme: { language: "ar", direction: "rtl", density: "large" },
     },

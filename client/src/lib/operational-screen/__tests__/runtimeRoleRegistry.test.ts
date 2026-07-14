@@ -43,19 +43,20 @@ describe("ROLE-RUNTIME-1 role registry", () => {
     }
   });
 
-  it("kitchen and expo are operational", () => {
+  it("kitchen, expo, and self-ordering kiosk are operational", () => {
     expect(isRoleOperational("kitchen_display")).toBe(true);
     expect(isRoleOperational("expo_display")).toBe(true);
+    expect(isRoleOperational("self_ordering_kiosk")).toBe(true);
     expect(isBlockedRole("kitchen_display")).toBe(false);
     expect(isBlockedRole("expo_display")).toBe(false);
+    expect(isBlockedRole("self_ordering_kiosk")).toBe(false);
   });
 
-  it("pickup, customer, print, and self-ordering are blocked", () => {
+  it("pickup, customer, and print are blocked", () => {
     for (const role of [
       "pickup_display",
       "customer_display",
       "print_monitor",
-      "self_ordering_kiosk",
     ] as const) {
       expect(isRoleOperational(role)).toBe(false);
       expect(isBlockedRole(role)).toBe(true);
@@ -70,6 +71,10 @@ describe("ROLE-RUNTIME-1 role registry", () => {
     expect(resolveRuntimeRole("pickup_display").metadata.capabilities.supportsQueue).toBe(true);
     expect(resolveRuntimeRole("customer_display").metadata.capabilities.supportsTimeline).toBe(true);
     expect(resolveRuntimeRole("print_monitor").metadata.capabilities.supportsPrintMonitor).toBe(true);
+    expect(
+      resolveRuntimeRole("self_ordering_kiosk").metadata.capabilities.supportsKioskOrdering
+    ).toBe(true);
+    expect(resolveRuntimeRole("self_ordering_kiosk").presentationKey).toBe("kiosk");
   });
 
   it("maps bootstrap phases to formal runtime states", () => {

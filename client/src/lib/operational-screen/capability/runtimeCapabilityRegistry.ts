@@ -68,7 +68,7 @@ export class RuntimeCapabilityRegistry {
       capabilities,
       supportedFeatures: summary.supported,
       configurationSupport: capabilities.configuration.status,
-      presentationSupport: capabilities.presentation_tickets.status,
+      presentationSupport: resolvePresentationSupport(capabilities),
       healthSupport: capabilities.health.status,
       diagnosticsSupport: capabilities.diagnostics.status,
       version: this.versionCounter,
@@ -76,6 +76,22 @@ export class RuntimeCapabilityRegistry {
       negotiationSummary: summary,
     };
   }
+}
+
+/** Prefer kiosk or tickets presentation; otherwise expose tickets status for diagnostics. */
+function resolvePresentationSupport(
+  capabilities: Record<CapabilityId, CapabilityAdapter>
+): CapabilityAdapter["status"] {
+  if (capabilities.presentation_kiosk.status === "supported") {
+    return "supported";
+  }
+  if (capabilities.presentation_tickets.status === "supported") {
+    return "supported";
+  }
+  if (capabilities.presentation_kiosk.status === "blocked") {
+    return "blocked";
+  }
+  return capabilities.presentation_tickets.status;
 }
 
 function summarize(capabilities: Record<CapabilityId, CapabilityAdapter>): CapabilityNegotiationSummary {

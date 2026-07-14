@@ -149,6 +149,7 @@ export class RuntimeContextFactory {
         displayName: instance.identity.displayIdentity,
         role: instance.role.role,
         restaurantId: instance.business.tenantId,
+        restaurantSlug: instance.business.restaurantSlug,
         branchId: instance.business.branchId,
       },
       runtimeConfiguration,
@@ -332,6 +333,7 @@ export class RuntimeContextFactory {
       business: {
         businessName: null,
         tenantId: status.device.restaurantId,
+        restaurantSlug: status.device.restaurantSlug?.trim() || null,
         branchId: status.device.branchId,
         timezone: null,
         currency: null,

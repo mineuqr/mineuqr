@@ -177,6 +177,24 @@ export const presentationTicketsProvider: CapabilityProvider = {
   },
 };
 
+/** KIOSK-SCREEN-ACTIVATION-1 — kiosk shell presentation capability. */
+export const presentationKioskProvider: CapabilityProvider = {
+  capabilityId: "presentation_kiosk",
+  source: "PresentationKioskProvider",
+  negotiate(ctx) {
+    if (!ctx.declared.supportsKioskOrdering) {
+      return adapter("presentation_kiosk", "unsupported", this.source);
+    }
+    if (ctx.operationalBlocked || ctx.deviceDisabled) {
+      return adapter("presentation_kiosk", "blocked", this.source);
+    }
+    return adapter("presentation_kiosk", "supported", this.source, {
+      metadata: { presentation: "kiosk_shell" },
+      actions: ["render_kiosk_shell"],
+    });
+  },
+};
+
 export const DEFAULT_CAPABILITY_PROVIDERS: CapabilityProvider[] = [
   categoryFilteringProvider,
   displayDensityProvider,
@@ -187,4 +205,5 @@ export const DEFAULT_CAPABILITY_PROVIDERS: CapabilityProvider[] = [
   kitchenQueueProvider,
   printMonitorProvider,
   presentationTicketsProvider,
+  presentationKioskProvider,
 ];

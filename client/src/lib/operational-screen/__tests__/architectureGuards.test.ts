@@ -315,15 +315,33 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
   it("FF-BOOT-07: unsupported roles reach Blocked Runtime after heartbeat is active", () => {
     expect(isBlockedRole("pickup_display")).toBe(true);
     expect(isBlockedRole("customer_display")).toBe(true);
-    expect(isBlockedRole("self_ordering_kiosk")).toBe(true);
     expect(isBlockedRole("print_monitor")).toBe(true);
     expect(isBlockedRole("kitchen_display")).toBe(false);
     expect(isBlockedRole("expo_display")).toBe(false);
+    // KIOSK-SCREEN-ACTIVATION-1 — kiosk is operational (not blocked).
+    expect(isBlockedRole("self_ordering_kiosk")).toBe(false);
 
     const running = transition("heartbeat_active", { type: "HEARTBEAT_STARTED" });
     expect(running).toBe("running");
     const blocked = transition(running, { type: "RUN_BLOCKED" });
     expect(blocked).toBe("blocked");
+  });
+
+  it("KIOSK-SCREEN-ACTIVATION-1: kiosk capability resolves KioskShell presentation", () => {
+    const roleDef = read("client/src/lib/operational-screen/roles/roleDefinitions.ts");
+    const resolve = read(
+      "client/src/lib/operational-screen/capability/resolveCapabilityPresentation.ts"
+    );
+    const presentation = read(
+      "client/src/components/operational-screen/roles/KioskRolePresentation.tsx"
+    );
+    expect(roleDef).toContain('presentationKey: "kiosk"');
+    expect(roleDef).toContain("supportsKioskOrdering: true");
+    expect(resolve).toContain("presentation_kiosk");
+    expect(resolve).toContain("KioskRolePresentation");
+    expect(presentation).toContain("KioskShell");
+    expect(presentation).toContain("activation=");
+    expect(presentation).not.toContain("BlockedRolePresentation");
   });
 
   it("RUNTIME-CAPABILITY-NEGOTIATION-1: capability-driven runtime", () => {

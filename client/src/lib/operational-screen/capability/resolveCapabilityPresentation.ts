@@ -2,18 +2,26 @@ import type { ComponentType } from "react";
 import type { RuntimeCapabilityContract } from "./runtimeCapabilityContract";
 import { BlockedRolePresentation } from "@/components/operational-screen/roles/BlockedRolePresentation";
 import { KitchenRolePresentation } from "@/components/operational-screen/roles/KitchenRolePresentation";
+import { KioskRolePresentation } from "@/components/operational-screen/roles/KioskRolePresentation";
 
 const PRESENTATION_BY_CAPABILITY: Record<string, ComponentType> = {
   presentation_tickets: KitchenRolePresentation,
+  presentation_kiosk: KioskRolePresentation,
 };
 
 /**
  * Resolve presentation from negotiated capabilities — never from role names.
+ * KIOSK-SCREEN-ACTIVATION-1: presentation_kiosk → KioskShell host.
  */
 export function resolveCapabilityPresentation(
   contract: RuntimeCapabilityContract | null | undefined
 ): ComponentType {
   if (!contract) return BlockedRolePresentation;
+
+  const kiosk = contract.capabilities.presentation_kiosk;
+  if (kiosk?.status === "supported") {
+    return PRESENTATION_BY_CAPABILITY.presentation_kiosk ?? KioskRolePresentation;
+  }
 
   const presentation = contract.capabilities.presentation_tickets;
   if (presentation.status === "supported") {

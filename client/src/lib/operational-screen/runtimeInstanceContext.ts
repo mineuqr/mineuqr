@@ -43,6 +43,8 @@ export type RuntimeInstanceRole = {
 export type RuntimeInstanceBusiness = {
   businessName: string | null;
   tenantId: number;
+  /** Restaurant public slug — required for kiosk ordering host activation. */
+  restaurantSlug: string | null;
   branchId: number | null;
   timezone: string | null;
   currency: string | null;
