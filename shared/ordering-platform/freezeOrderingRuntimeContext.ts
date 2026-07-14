@@ -47,6 +47,10 @@ export function freezeOrderingRuntimeContext(
     capabilities: freezeSection({
       ...context.capabilities,
       supportedChannels: Object.freeze([...context.capabilities.supportedChannels]),
+      notes: freezeSection({
+        ...context.capabilities.notes,
+        allowedPolicies: Object.freeze([...context.capabilities.notes.allowedPolicies]),
+      }),
     }),
     featureFlags: freezeSection({ ...context.featureFlags }),
     metadata: freezeSection({ ...context.metadata }),

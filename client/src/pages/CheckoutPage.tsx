@@ -19,6 +19,10 @@ import { trpc } from "@/lib/trpc";
 import { usePostSubmissionGuard } from "@/hooks/usePostSubmissionGuard";
 import { PostSubmissionLockedScreen } from "@/components/customer/PostSubmissionLockedScreen";
 import { useQrOrderingRuntime } from "@/hooks/useQrOrderingRuntime";
+import {
+  validateItemNote,
+  validateOrderNote,
+} from "@shared/ordering-platform/orderingNotesContract";
 
 /**
  * QR-ORDERING-RUNTIME-MIGRATION-1 — Checkout consumes OrderingRuntimeContext.
@@ -114,14 +118,28 @@ export default function CheckoutPage() {
     if (!restaurant?.id || !tableData?.id || items.length === 0 || !canPlaceOrder) return;
     setIsSubmitting(true);
     try {
-      const cartItems = items.map((item) => ({
-        menuItemId: item.menuItemId,
-        quantity: item.quantity,
-        notes: item.notes,
-        nameAr: item.nameAr,
-        nameEn: item.nameEn,
-        price: item.price,
-      }));
+      const orderNoteResult = validateOrderNote(orderNotes, gates.notes.maxOrderNoteLength);
+      if (!orderNoteResult.ok) {
+        toast.error(
+          language === "ar" ? "ملاحظة الطلب طويلة جداً" : orderNoteResult.message
+        );
+        return;
+      }
+
+      const cartItems = items.map((item) => {
+        const itemNoteResult = validateItemNote(item.notes, gates.notes.maxItemNoteLength);
+        if (!itemNoteResult.ok) {
+          throw new Error(itemNoteResult.message);
+        }
+        return {
+          menuItemId: item.menuItemId,
+          quantity: item.quantity,
+          notes: itemNoteResult.value,
+          nameAr: item.nameAr,
+          nameEn: item.nameEn,
+          price: item.price,
+        };
+      });
 
       const result = await createOrderMutation.mutateAsync({
         restaurantId: restaurant.id,
@@ -130,7 +148,7 @@ export default function CheckoutPage() {
         sessionToken: recovery.session?.sessionToken,
         customerName: customerName || undefined,
         customerPhone: customerPhone || undefined,
-        notes: orderNotes || undefined,
+        notes: orderNoteResult.value ?? undefined,
         items: cartItems.map(({ menuItemId, quantity, notes }) => ({
           menuItemId,
           quantity,

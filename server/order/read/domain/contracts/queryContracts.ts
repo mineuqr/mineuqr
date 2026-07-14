@@ -115,6 +115,8 @@ export type MenuItemOrderLineItemDto = {
   nameEn: string | null;
   quantity: number;
   price: string;
+  /** Item Notes — belong exclusively to this line (ORDERING-NOTES-ARCHITECTURE-1). */
+  itemNotes: string | null;
   category: OrderCategoryProjection;
 };
 
@@ -126,6 +128,8 @@ export type OfferOrderLineItemDto = {
   nameEn: string | null;
   quantity: number;
   price: string;
+  /** Item Notes — belong exclusively to this line (ORDERING-NOTES-ARCHITECTURE-1). */
+  itemNotes: string | null;
   offer: OrderOfferProjection;
 };
 
@@ -158,6 +162,10 @@ export type ActiveOrderItemDto = {
   sessionId: number | null;
   customerName: string | null;
   customerPhone: string | null;
+  /**
+   * Order Notes — belong to the complete order.
+   * Field name `notes` retained for backward compatibility with existing clients.
+   */
   notes: string | null;
   totalAmount: string;
   createdAt: string;

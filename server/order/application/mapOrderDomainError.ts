@@ -1,7 +1,11 @@
 import { OrderDomainError } from "../domain/errors/OrderDomainErrors";
+import { PlaceOrderNotesValidationError } from "./PlaceOrderService";
 import { TRPCError } from "@trpc/server";
 
 export function mapOrderDomainErrorToTrpc(error: unknown): never {
+  if (error instanceof PlaceOrderNotesValidationError) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
+  }
   if (error instanceof OrderDomainError) {
     switch (error.code) {
       case "OrderNotFound":

@@ -70,6 +70,7 @@ function mockQueue(): KitchenQueueResult {
               nameEn: "Burger",
               quantity: 1,
               price: "10",
+              itemNotes: null,
               category: mockCategoryProjection({ categoryId: 1 }),
             },
           ],
@@ -101,6 +102,7 @@ function mockQueue(): KitchenQueueResult {
               nameEn: "Pizza",
               quantity: 1,
               price: "20",
+              itemNotes: null,
               category: mockCategoryProjection({ categoryId: 2 }),
             },
           ],
@@ -152,6 +154,7 @@ describe("kitchen category filter pipeline", () => {
       nameEn: "Salad",
       quantity: 1,
       price: "5",
+      itemNotes: null,
       category: mockCategoryProjection({ categoryId: 99 }),
     });
     queue.columns.pending[0].lineCount = 2;
@@ -224,6 +227,7 @@ describe("kitchen category filter pipeline", () => {
       nameEn: "Salad",
       quantity: 1,
       price: "5",
+      itemNotes: null,
       category: mockCategoryProjection({ categoryId: 99 }),
     });
 

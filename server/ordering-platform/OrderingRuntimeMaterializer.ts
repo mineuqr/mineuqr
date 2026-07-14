@@ -3,6 +3,7 @@ import { ORDERING_CHANNEL_IDS } from "@shared/ordering-platform/orderingPlatform
 import type { OrderingRuntimeContextInput } from "@shared/ordering-platform/orderingRuntimeContract";
 import type { OrderingRuntimeMaterializationRequest } from "@shared/ordering-platform/orderingRuntimeMaterializationContract";
 import type { OrderingRuntimeContext } from "@shared/ordering-platform/orderingRuntimeContract";
+import { DEFAULT_ORDERING_NOTES_CAPABILITIES } from "@shared/ordering-platform/orderingNotesContract";
 import {
   OrderingRuntimeContextFactory,
   orderingRuntimeContextFactory,
@@ -169,6 +170,24 @@ export class OrderingRuntimeMaterializer {
       : [request.channel];
 
     const guestEnabled = Boolean(request.policies.guest.guestOrderingEnabled);
+    const allowSpecialInstructions =
+      request.policies.guest.allowSpecialInstructions !== false;
+    const notesCapabilities = {
+      supportsOrderNotes:
+        request.capabilities?.notes?.supportsOrderNotes ?? allowSpecialInstructions,
+      supportsItemNotes:
+        request.capabilities?.notes?.supportsItemNotes ?? allowSpecialInstructions,
+      maxOrderNoteLength:
+        request.capabilities?.notes?.maxOrderNoteLength ??
+        DEFAULT_ORDERING_NOTES_CAPABILITIES.maxOrderNoteLength,
+      maxItemNoteLength:
+        request.capabilities?.notes?.maxItemNoteLength ??
+        DEFAULT_ORDERING_NOTES_CAPABILITIES.maxItemNoteLength,
+      allowedPolicies: [
+        ...(request.capabilities?.notes?.allowedPolicies ??
+          DEFAULT_ORDERING_NOTES_CAPABILITIES.allowedPolicies),
+      ],
+    };
 
     return {
       channel: request.channel,
@@ -216,8 +235,7 @@ export class OrderingRuntimeMaterializer {
           guestOrderingEnabled: guestEnabled,
           requireCustomerName: Boolean(request.policies.guest.requireCustomerName),
           requireCustomerPhone: Boolean(request.policies.guest.requireCustomerPhone),
-          allowSpecialInstructions:
-            request.policies.guest.allowSpecialInstructions !== false,
+          allowSpecialInstructions,
         },
       },
       pricing: {
@@ -232,6 +250,7 @@ export class OrderingRuntimeMaterializer {
         canCheckout: request.capabilities?.canCheckout ?? canPlaceOrder,
         canPlaceOrder: request.capabilities?.canPlaceOrder ?? canPlaceOrder,
         supportedChannels,
+        notes: notesCapabilities,
       },
       featureFlags: { ...(request.featureFlags ?? {}) },
       metadata: {

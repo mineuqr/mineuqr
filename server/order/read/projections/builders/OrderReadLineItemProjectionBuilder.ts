@@ -51,6 +51,7 @@ export class OrderReadLineItemProjectionBuilder {
       nameEn: item.nameEn ?? null,
       quantity: item.quantity,
       price: String(item.price),
+      itemNotes: item.notes ?? null,
       offer: this.offerBuilder.buildFromOrderLine(item),
     }));
 

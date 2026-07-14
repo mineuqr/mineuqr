@@ -84,6 +84,13 @@ export type OrderingRuntimeCapabilitiesSource = {
   canCheckout?: boolean;
   canPlaceOrder?: boolean;
   supportedChannels?: OrderingChannelId[];
+  notes?: {
+    supportsOrderNotes?: boolean;
+    supportsItemNotes?: boolean;
+    maxOrderNoteLength?: number;
+    maxItemNoteLength?: number;
+    allowedPolicies?: string[];
+  };
 };
 
 /**

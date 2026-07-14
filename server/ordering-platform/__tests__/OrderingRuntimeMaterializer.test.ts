@@ -133,6 +133,13 @@ describe("ORDERING-RUNTIME-MATERIALIZATION-1 OrderingRuntimeMaterializer", () =>
     ).toThrow(OrderingRuntimeMaterializationError);
   });
 
+  it("materializes default note capabilities", () => {
+    const input = materializer.composeInput(validRequest());
+    expect(input.capabilities.notes.supportsOrderNotes).toBe(true);
+    expect(input.capabilities.notes.supportsItemNotes).toBe(true);
+    expect(input.capabilities.notes.maxOrderNoteLength).toBeGreaterThan(0);
+  });
+
   it("canonical singleton materializes", () => {
     const ctx = orderingRuntimeMaterializer.materialize(validRequest());
     expect(ctx.channel).toBe(ORDERING_CHANNEL_QR);

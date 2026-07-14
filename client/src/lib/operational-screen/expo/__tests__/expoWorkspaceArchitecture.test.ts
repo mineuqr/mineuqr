@@ -69,6 +69,7 @@ describe("EXPO-WORKSPACE-ARCHITECTURE-1 presentation ownership", () => {
         nameAr: "صنف",
         nameEn: "Item",
         price: "15.00",
+        itemNotes: null,
         category: {
           categoryId: 1,
           categoryCode: "mains",

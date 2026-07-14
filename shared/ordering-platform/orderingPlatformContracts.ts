@@ -45,6 +45,9 @@ export const ORDERING_PLATFORM_OWNED_CONCERNS = [
   "checkout_validation",
   "place_order_orchestration",
   "ordering_events",
+  "ordering_notes",
+  "order_notes",
+  "item_notes",
 ] as const;
 
 export type OrderingPlatformOwnedConcern = (typeof ORDERING_PLATFORM_OWNED_CONCERNS)[number];

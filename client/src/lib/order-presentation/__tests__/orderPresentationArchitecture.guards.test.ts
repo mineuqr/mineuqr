@@ -92,6 +92,7 @@ describe("ORDER-WORKSPACE-CARD-ARCHITECTURE-1 presentation mapper", () => {
           nameAr: "شوربة",
           nameEn: "Soup",
           price: "10.00",
+          itemNotes: null,
           category: {
             categoryId: 1,
             categoryCode: "soups",
@@ -145,6 +146,7 @@ describe("ORDER-WORKSPACE-CARD-ARCHITECTURE-1 presentation mapper", () => {
           nameAr: "برجر",
           nameEn: "Burger",
           price: "12.00",
+          itemNotes: null,
           category: {
             categoryId: 1,
             categoryCode: "mains",

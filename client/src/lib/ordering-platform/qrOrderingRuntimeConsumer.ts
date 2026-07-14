@@ -1,20 +1,19 @@
 import type { OrderingRuntimeContext } from "@shared/ordering-platform/orderingRuntimeContract";
+import type { OrderingNotesCapabilities } from "@shared/ordering-platform/orderingNotesContract";
+import { DEFAULT_ORDERING_NOTES_CAPABILITIES } from "@shared/ordering-platform/orderingNotesContract";
 
 /**
- * QR-ORDERING-RUNTIME-MIGRATION-1 — pure QR consumption helpers.
- * Derives presentation gates from immutable OrderingRuntimeContext.
- * Must never recompute hours, guest entitlement, or compose runtime.
+ * QR-ORDERING-RUNTIME-MIGRATION-1 / ORDERING-NOTES-ARCHITECTURE-1 —
+ * pure QR consumption helpers.
  */
 
 export type QrOrderingRuntimeGates = {
-  /** Guest commercial entitlement from platform policies. */
   guestOrderingEnabled: boolean;
-  /** Hours + non-closure open state from platform business hours. */
   orderingAllowed: boolean;
-  /** Platform availability place-order gate (excludes channel session/journey). */
   platformCanPlaceOrder: boolean;
-  /** Restaurant active / browseable. */
   canBrowse: boolean;
+  /** Platform note capabilities — channels must not redefine. */
+  notes: OrderingNotesCapabilities;
 };
 
 export function deriveQrOrderingRuntimeGates(
@@ -26,6 +25,12 @@ export function deriveQrOrderingRuntimeGates(
       orderingAllowed: false,
       platformCanPlaceOrder: false,
       canBrowse: false,
+      notes: {
+        ...DEFAULT_ORDERING_NOTES_CAPABILITIES,
+        supportsOrderNotes: false,
+        supportsItemNotes: false,
+        allowedPolicies: [...DEFAULT_ORDERING_NOTES_CAPABILITIES.allowedPolicies],
+      },
     };
   }
 
@@ -35,6 +40,7 @@ export function deriveQrOrderingRuntimeGates(
       runtime.business.hours.isOpenNow && !runtime.business.closureActive,
     platformCanPlaceOrder: runtime.availability.canPlaceOrder,
     canBrowse: runtime.availability.canBrowse,
+    notes: runtime.capabilities.notes,
   };
 }
 

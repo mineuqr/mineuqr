@@ -41,6 +41,19 @@ export {
   type OrderingPlaceOrderCommand,
 } from "./orderingRuntimeContract";
 
+export {
+  ORDERING_ORDER_NOTE_MAX_LENGTH,
+  ORDERING_ITEM_NOTE_MAX_LENGTH,
+  DEFAULT_ORDERING_NOTES_CAPABILITIES,
+  validateOrderNote,
+  validateItemNote,
+  resolveOrderNoteInput,
+  resolveItemNoteInput,
+  type OrderingNoteKind,
+  type OrderingNotesCapabilities,
+  type OrderingNotesValidationResult,
+} from "./orderingNotesContract";
+
 export type {
   OrderingRuntimeMaterializationRequest,
   OrderingRuntimeRestaurantSource,

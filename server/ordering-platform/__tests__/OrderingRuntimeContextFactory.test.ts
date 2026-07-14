@@ -65,6 +65,13 @@ function materializedInput(
       canCheckout: true,
       canPlaceOrder: true,
       supportedChannels: [ORDERING_CHANNEL_QR],
+      notes: {
+        supportsOrderNotes: true,
+        supportsItemNotes: true,
+        maxOrderNoteLength: 500,
+        maxItemNoteLength: 300,
+        allowedPolicies: ["plain_text"],
+      },
     },
     featureFlags: { offers_enabled: true },
     metadata: {

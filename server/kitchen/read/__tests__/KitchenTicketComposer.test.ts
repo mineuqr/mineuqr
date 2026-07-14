@@ -50,6 +50,7 @@ const baseOrder: OrderReadPipelineOrderRow = {
       nameEn: "Burger",
       quantity: 2,
       price: "20.00",
+      itemNotes: null,
       category: sampleCategory(),
     },
   ],

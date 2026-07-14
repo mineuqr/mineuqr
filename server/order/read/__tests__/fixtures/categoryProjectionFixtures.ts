@@ -29,6 +29,7 @@ export function sampleActiveLineItem(
     nameEn: "Hummus",
     quantity: 2,
     price: "12.75",
+    itemNotes: null,
     category: sampleCategoryProjection(),
     ...overrides,
   };

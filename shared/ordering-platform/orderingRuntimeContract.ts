@@ -1,4 +1,6 @@
 import type { OrderingChannelId } from "./orderingPlatformContracts";
+import type { OrderingNotesCapabilities } from "./orderingNotesContract";
+import { DEFAULT_ORDERING_NOTES_CAPABILITIES } from "./orderingNotesContract";
 
 /**
  * ORDERING-RUNTIME-CONTEXT-1 — immutable Ordering Runtime Context contract.
@@ -93,6 +95,8 @@ export type OrderingRuntimeCapabilities = Readonly<{
   canCheckout: boolean;
   canPlaceOrder: boolean;
   supportedChannels: readonly OrderingChannelId[];
+  /** ORDERING-NOTES-ARCHITECTURE-1 — note capabilities (platform-owned). */
+  notes: OrderingNotesCapabilities;
 }>;
 
 /** Runtime feature flags — platform-controlled. */
@@ -190,6 +194,7 @@ export type OrderingRuntimeContextInput = {
     canCheckout: boolean;
     canPlaceOrder: boolean;
     supportedChannels: OrderingChannelId[];
+    notes: OrderingNotesCapabilities;
   };
   featureFlags: Record<string, boolean>;
   metadata: {
@@ -198,10 +203,16 @@ export type OrderingRuntimeContextInput = {
   };
 };
 
-/** Cart line input — channels submit identity + quantity only; platform resolves pricing. */
+/** Cart line input — channels submit identity + quantity; platform resolves pricing. */
 export type OrderingCartLineInput = Readonly<{
   menuItemId: number;
   quantity: number;
+  /**
+   * Item Notes — belong exclusively to this line.
+   * Legacy alias: `notes`. Prefer `itemNotes` for new channel code.
+   */
+  itemNotes?: string | null;
+  /** @deprecated Prefer `itemNotes` — kept for backward compatibility. */
   notes?: string | null;
 }>;
 
@@ -214,5 +225,13 @@ export type OrderingPlaceOrderCommand = Readonly<{
   items: readonly OrderingCartLineInput[];
   customerName?: string | null;
   customerPhone?: string | null;
+  /**
+   * Order Notes — belong to the complete order.
+   * Legacy alias: `notes`. Prefer `orderNotes` for new channel code.
+   */
+  orderNotes?: string | null;
+  /** @deprecated Prefer `orderNotes` — kept for backward compatibility. */
   notes?: string | null;
 }>;
+
+export { DEFAULT_ORDERING_NOTES_CAPABILITIES };

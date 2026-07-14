@@ -52,3 +52,11 @@ export {
   KIOSK_RUNTIME_DELIVERY,
   type KioskOrderingRuntimeGates,
 } from "./kioskRuntimeConsumerContract";
+
+export {
+  QR_ORDERING_NOTES_CONTRACT,
+  QR_SUPPORTED_NOTE_TYPES,
+  QR_ORDERING_NOTES_LIMITS,
+  KIOSK_ORDERING_NOTES_CONTRACT,
+  ORDERING_NOTES_DEFAULT_CAPABILITIES,
+} from "./orderingNotesChannelContract";

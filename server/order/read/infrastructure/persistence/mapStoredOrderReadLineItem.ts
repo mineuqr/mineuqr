@@ -27,6 +27,8 @@ function mapMenuItemRow(row: LineItemRow, category: OrderCategoryProjection): Me
     nameEn: row.nameEn,
     quantity: row.quantity,
     price: String(row.price),
+    // Persisted read table does not yet store itemNotes (projection follow-up).
+    itemNotes: null,
     category,
   };
 }
@@ -40,6 +42,7 @@ function mapOfferRow(row: LineItemRow, offer: OrderOfferProjection): OfferOrderL
     nameEn: row.nameEn,
     quantity: row.quantity,
     price: String(row.price),
+    itemNotes: null,
     offer,
   };
 }

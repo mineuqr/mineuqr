@@ -7,6 +7,12 @@ import type {
   OrderPricingPort,
   TrackingTokenPort,
 } from "../domain/ports/OrderPorts";
+import {
+  resolveItemNoteInput,
+  resolveOrderNoteInput,
+  validateItemNote,
+  validateOrderNote,
+} from "@shared/ordering-platform/orderingNotesContract";
 
 export type PlaceOrderCommand = {
   restaurantId: number;
@@ -15,8 +21,14 @@ export type PlaceOrderCommand = {
   sessionId?: number | null;
   customerName?: string | null;
   customerPhone?: string | null;
+  /** Order Notes — legacy `notes` kept for backward compatibility. */
+  orderNotes?: string | null;
   notes?: string | null;
-  items: OrderLineInput[];
+  items: Array<
+    OrderLineInput & {
+      itemNotes?: string | null;
+    }
+  >;
 };
 
 export type PlaceOrderResult = {
@@ -29,6 +41,16 @@ export type PlaceOrderResult = {
   createdAt: string;
 };
 
+export class PlaceOrderNotesValidationError extends Error {
+  readonly code: string;
+
+  constructor(code: string, message: string) {
+    super(message);
+    this.name = "PlaceOrderNotesValidationError";
+    this.code = code;
+  }
+}
+
 export class PlaceOrderService {
   constructor(
     private readonly repository: OrderRepository,
@@ -38,9 +60,38 @@ export class PlaceOrderService {
   ) {}
 
   async execute(command: PlaceOrderCommand): Promise<PlaceOrderResult> {
+    const orderNoteResult = validateOrderNote(
+      resolveOrderNoteInput({
+        orderNotes: command.orderNotes,
+        notes: command.notes,
+      })
+    );
+    if (!orderNoteResult.ok) {
+      throw new PlaceOrderNotesValidationError(orderNoteResult.code, orderNoteResult.message);
+    }
+
+    const normalizedItems = command.items.map((item, index) => {
+      const itemNoteResult = validateItemNote(
+        resolveItemNoteInput({
+          itemNotes: item.itemNotes,
+          notes: item.notes,
+        })
+      );
+      if (!itemNoteResult.ok) {
+        throw new PlaceOrderNotesValidationError(
+          itemNoteResult.code,
+          `Item ${index + 1}: ${itemNoteResult.message}`
+        );
+      }
+      return {
+        ...item,
+        notes: itemNoteResult.value,
+      };
+    });
+
     const { lines, totalAmount } = await this.pricing.resolveLines(
       command.restaurantId,
-      command.items
+      normalizedItems
     );
 
     const orderNumber = await this.orderNumbers.allocate(command.restaurantId);
@@ -54,7 +105,7 @@ export class PlaceOrderService {
       sessionId: command.sessionId ?? null,
       customerName: command.customerName ?? null,
       customerPhone: command.customerPhone ?? null,
-      notes: command.notes ?? null,
+      notes: orderNoteResult.value,
       totalAmount,
       orderNumber,
       trackingToken,

@@ -105,6 +105,7 @@ export class OrderCategoryProjectionBuilder {
         nameEn: item.nameEn ?? null,
         quantity: item.quantity,
         price: String(item.price),
+        itemNotes: item.notes ?? null,
         category: this.buildCategoryProjection(restaurantId, item.menuItemId, categorySource),
       });
     }

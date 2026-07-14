@@ -1,15 +1,15 @@
 import { ORDERING_CHANNEL_KIOSK } from "@shared/ordering-platform/orderingPlatformContracts";
 import type { OrderingRuntimeContext } from "@shared/ordering-platform/orderingRuntimeContract";
+import type { OrderingNotesCapabilities } from "@shared/ordering-platform/orderingNotesContract";
+import { DEFAULT_ORDERING_NOTES_CAPABILITIES } from "@shared/ordering-platform/orderingNotesContract";
 import {
   KIOSK_FORBIDDEN_RUNTIME_CONSTRUCTION,
   KIOSK_RUNTIME_CONSUMPTION_ENTRY,
 } from "./kioskOrderingChannelContract";
 
 /**
- * SELF-ORDERING-KIOSK-ARCHITECTURE-1 — runtime consumption model for Kiosk.
- *
- * Mirrors QR adoption: consume immutable OrderingRuntimeContext only.
- * No construction, composition, mutation, or local hours/guest recalculation.
+ * SELF-ORDERING-KIOSK-ARCHITECTURE-1 / ORDERING-NOTES-ARCHITECTURE-1 —
+ * runtime consumption model for Kiosk (same note contracts as QR).
  */
 
 export const KIOSK_RUNTIME_CHANNEL_ID = ORDERING_CHANNEL_KIOSK;
@@ -19,12 +19,9 @@ export type KioskOrderingRuntimeGates = {
   orderingAllowed: boolean;
   platformCanPlaceOrder: boolean;
   canBrowse: boolean;
+  notes: OrderingNotesCapabilities;
 };
 
-/**
- * Derive presentation gates from platform runtime.
- * Same semantic mapping as QR — channel must not recompute hours or entitlement.
- */
 export function deriveKioskOrderingRuntimeGates(
   runtime: OrderingRuntimeContext | null | undefined
 ): KioskOrderingRuntimeGates {
@@ -34,6 +31,12 @@ export function deriveKioskOrderingRuntimeGates(
       orderingAllowed: false,
       platformCanPlaceOrder: false,
       canBrowse: false,
+      notes: {
+        ...DEFAULT_ORDERING_NOTES_CAPABILITIES,
+        supportsOrderNotes: false,
+        supportsItemNotes: false,
+        allowedPolicies: [...DEFAULT_ORDERING_NOTES_CAPABILITIES.allowedPolicies],
+      },
     };
   }
 
@@ -43,10 +46,10 @@ export function deriveKioskOrderingRuntimeGates(
       runtime.business.hours.isOpenNow && !runtime.business.closureActive,
     platformCanPlaceOrder: runtime.availability.canPlaceOrder,
     canBrowse: runtime.availability.canBrowse,
+    notes: runtime.capabilities.notes,
   };
 }
 
-/** Assert runtime channel matches kiosk when a snapshot is present. */
 export function assertKioskRuntimeChannel(
   runtime: OrderingRuntimeContext
 ): boolean {
@@ -60,6 +63,7 @@ export const KIOSK_RUNTIME_CONSUMPTION_RULES = [
   "never_compose_runtime",
   "never_query_repositories_for_runtime_construction",
   "use_platform_delivery_entry",
+  "use_shared_ordering_notes_contracts",
 ] as const;
 
 export const KIOSK_RUNTIME_FORBIDDEN_SYMBOLS = KIOSK_FORBIDDEN_RUNTIME_CONSTRUCTION;

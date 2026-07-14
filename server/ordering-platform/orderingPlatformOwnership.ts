@@ -57,6 +57,12 @@ export const ORDERING_PLATFORM_RUNTIME_CONTEXT_CONTRACT =
   "shared/ordering-platform/orderingRuntimeContract.ts" as const;
 
 /**
+ * ORDERING-NOTES-ARCHITECTURE-1 — canonical Item Notes + Order Notes contracts.
+ */
+export const ORDERING_PLATFORM_NOTES_CONTRACT =
+  "shared/ordering-platform/orderingNotesContract.ts" as const;
+
+/**
  * SELF-ORDERING-KIOSK-ARCHITECTURE-1 — kiosk channel architecture contracts.
  * Experience-only; UI deferred.
  */

@@ -35,6 +35,7 @@ describe("print workspace view models", () => {
             nameEn: "Burger",
             quantity: 2,
             price: "15.25",
+            itemNotes: null,
             category: mockCategoryProjection(),
           },
         ],

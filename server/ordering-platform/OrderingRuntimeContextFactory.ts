@@ -130,6 +130,13 @@ export class OrderingRuntimeContextFactory {
         canCheckout: input.capabilities.canCheckout,
         canPlaceOrder: input.capabilities.canPlaceOrder,
         supportedChannels: Object.freeze([...input.capabilities.supportedChannels]),
+        notes: {
+          supportsOrderNotes: input.capabilities.notes.supportsOrderNotes,
+          supportsItemNotes: input.capabilities.notes.supportsItemNotes,
+          maxOrderNoteLength: input.capabilities.notes.maxOrderNoteLength,
+          maxItemNoteLength: input.capabilities.notes.maxItemNoteLength,
+          allowedPolicies: Object.freeze([...input.capabilities.notes.allowedPolicies]),
+        },
       },
       featureFlags: Object.freeze({ ...input.featureFlags }),
       metadata: {
