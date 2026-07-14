@@ -29,6 +29,14 @@ const REQUIRED = {
   orderReadColumns: [
     ["order_read_order_line_items", "categoryProjection"],
     ["order_read_order_line_items", "itemNotes"],
+    ["order_read_orders", "serviceMode"],
+    ["order_read_orders", "fulfilmentAnchorType"],
+    ["order_read_orders", "fulfilmentLabel"],
+  ],
+  orderWriteColumns: [
+    ["orders", "serviceMode"],
+    ["orders", "fulfilmentAnchorType"],
+    ["orders", "fulfilmentLabel"],
   ],
 };
 
@@ -106,9 +114,14 @@ async function main() {
         missing.push(`${table}.${column}`);
       }
     }
+    for (const [table, column] of REQUIRED.orderWriteColumns) {
+      if (!(await columnExists(conn, table, column))) {
+        missing.push(`${table}.${column}`);
+      }
+    }
 
     if (missing.length === 0) {
-      console.log("[schema-verify] OK — required schema objects present (auth, order-read, operational-device).");
+      console.log("[schema-verify] OK — required schema objects present (auth, order-read, operational-device, fulfilment).");
       return;
     }
 
