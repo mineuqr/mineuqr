@@ -1,5 +1,5 @@
 /**
- * ORDERING-CLIENT-RUNTIME-1 / CART-1 / BROWSE-1 — Ordering Client Platform API.
+ * ORDERING-CLIENT-RUNTIME-1 / CART-1 / BROWSE-1 / CHECKOUT-1 — Ordering Client Platform API.
  */
 
 export type { CartScopeAdapter, CartScopeDescription } from "./contracts/CartScopeAdapter";
@@ -65,6 +65,30 @@ export {
   type OrderingCartCapabilities,
   type OrderingCartProviderProps,
 } from "./cart/OrderingCartProvider";
+
+export type {
+  CheckoutSubmissionStatus,
+  CheckoutOrderSummaryLine,
+  CheckoutSubmitError,
+  CheckoutSubmitErrorCode,
+  CheckoutPlaceOrderResult,
+  CheckoutDraftSnapshot,
+  CheckoutSubmitRequest,
+  CheckoutSubmitOutcome,
+} from "./checkout/checkoutTypes";
+export {
+  buildOrderSummaryLines,
+  validateCheckoutNotes,
+  mapCheckoutSubmitError,
+  presentOrderNoteError,
+} from "./checkout/checkoutSubmission";
+export {
+  OrderingCheckoutProvider,
+  useOrderingCheckout,
+  useOptionalOrderingCheckout,
+  type OrderingCheckoutContextValue,
+  type OrderingCheckoutProviderProps,
+} from "./checkout/OrderingCheckoutProvider";
 
 export { createQrTableCartScopeAdapter } from "./qr/createQrCartScopeAdapter";
 export {

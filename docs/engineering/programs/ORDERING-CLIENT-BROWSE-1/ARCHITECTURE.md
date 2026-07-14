@@ -33,7 +33,7 @@
 | Template skins | `MenuTemplates` (presentation only) |
 | QR entry / bootstrap / deep links | `TableOrderingShell` / routes |
 | Dining session / post-submission / trackView | QR channel (`MenuView` shell) |
-| Cart / Checkout | Out of scope (CART-1 / future CHECKOUT-1) |
+| Cart / Checkout | CART-1 / CHECKOUT-1 (separate programs) |
 
 ---
 

@@ -1,16 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRoute, useLocation } from "wouter";
 import { ArrowLeft, Loader2, Send } from "lucide-react";
-import { TRPCClientError } from "@trpc/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { DiningSessionBanner } from "@/components/customer/DiningSessionBanner";
-import { useCart } from "@/contexts/CartContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useDiningSessionRecovery } from "@/hooks/useDiningSessionRecovery";
-import { isDiningSessionOrderingEnabled } from "@/lib/diningSessionRecovery";
 import { saveOrderConfirmationSnapshot } from "@/lib/orderConfirmationStorage";
 import { markOrderWelcomeReceived } from "@/lib/orderWelcomeStorage";
 import { saveDiningSession } from "@/lib/diningSessionStorage";
@@ -18,16 +15,16 @@ import { markCustomerJourneyTracking } from "@/lib/customerJourneyStorage";
 import { trpc } from "@/lib/trpc";
 import { usePostSubmissionGuard } from "@/hooks/usePostSubmissionGuard";
 import { PostSubmissionLockedScreen } from "@/components/customer/PostSubmissionLockedScreen";
-import { useQrOrderingRuntime } from "@/hooks/useQrOrderingRuntime";
-import { useOptionalOrderingClientRuntime } from "@/lib/ordering-client";
+import { isDiningSessionOrderingEnabled } from "@/lib/diningSessionRecovery";
 import {
-  validateItemNote,
-  validateOrderNote,
-} from "@shared/ordering-platform/orderingNotesContract";
+  useOrderingCheckout,
+  useOrderingClientRuntime,
+} from "@/lib/ordering-client";
 
 /**
- * ORDERING-CLIENT-RUNTIME-1 — Checkout hosted by Ordering Client Platform on table shell.
- * Place-order mutation authority unchanged (order.create).
+ * ORDERING-CLIENT-CHECKOUT-1 — QR checkout shell.
+ * Channel owns: route bootstrap, dining session, post-submission, tracking side effects.
+ * Checkout orchestration (form, notes validation, submit lifecycle) is Client Platform.
  */
 export default function CheckoutPage() {
   const [, params] = useRoute("/menu/:slug/table/:tableNumber/checkout");
@@ -37,40 +34,43 @@ export default function CheckoutPage() {
   const [, setLocation] = useLocation();
   const lang = language === "ar" ? "ar" : "en";
   const utils = trpc.useUtils();
-  const orderingClient = useOptionalOrderingClientRuntime();
-  const navigator = orderingClient?.navigator ?? null;
 
-  const { items, totalAmount, clearCart } = useCart();
-  const [customerName, setCustomerName] = useState("");
-  const [customerPhone, setCustomerPhone] = useState("");
-  const [orderNotes, setOrderNotes] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const menuPath = `/menu/${slug}/table/${tableNumber}`;
-
-  const goToBrowse = () => {
-    if (navigator) {
-      navigator.goToBrowse();
-      return;
-    }
-    setLocation(menuPath);
-  };
-
+  const runtime = useOrderingClientRuntime();
+  const checkout = useOrderingCheckout();
   const {
     restaurant,
     isLoading: restaurantLoading,
     gates,
-  } = useQrOrderingRuntime(slug);
+  } = runtime;
+  const {
+    summaryLines,
+    totalAmount,
+    customerName,
+    setCustomerName,
+    customerPhone,
+    setCustomerPhone,
+    orderNotes,
+    setOrderNotes,
+    isSubmitting,
+    supportsOrderNotes,
+    goToBrowse,
+    submit,
+  } = checkout;
 
   const { data: tableData } = trpc.table.getByNumber.useQuery(
-    { restaurantId: restaurant?.id ?? 0, tableNumber },
-    { enabled: !!restaurant?.id && tableNumber > 0, staleTime: 0, gcTime: 0, refetchOnMount: "always" }
+    { restaurantId: (restaurant as { id?: number } | null)?.id ?? 0, tableNumber },
+    {
+      enabled: !!(restaurant as { id?: number } | null)?.id && tableNumber > 0,
+      staleTime: 0,
+      gcTime: 0,
+      refetchOnMount: "always",
+    }
   );
 
   const { recovery, recoveryDone } = useDiningSessionRecovery({
     slug,
     tableNumber,
-    restaurantId: restaurant?.id,
+    restaurantId: (restaurant as { id?: number } | null)?.id,
     client: {
       getByToken: (input) => utils.client.session.getByToken.query(input),
       getActiveByTable: (input) => utils.client.session.getActiveByTable.query(input),
@@ -91,15 +91,14 @@ export default function CheckoutPage() {
     sessionAllowsOrder &&
     recoveryDone &&
     !postSubmission.blocked &&
-    items.length > 0;
+    summaryLines.length > 0;
 
-  const createOrderMutation = trpc.order.create.useMutation();
-
-  const currencySymbol = (restaurant as { currencySymbol?: string } | undefined)?.currencySymbol ?? "ر.س";
-  const restaurantName = restaurant?.nameAr ?? "";
-  const tableLabel = ((restaurant as { tableLabel?: string } | undefined)?.tableLabel ?? "tables") as
-    | "tables"
-    | "rooms";
+  const currencySymbol =
+    (restaurant as { currencySymbol?: string } | null)?.currencySymbol ?? "ر.س";
+  const restaurantName =
+    (restaurant as { nameAr?: string } | null)?.nameAr ?? "";
+  const tableLabel = ((restaurant as { tableLabel?: string } | null)?.tableLabel ??
+    "tables") as "tables" | "rooms";
   const isRooms = tableLabel === "rooms";
   const unitLabel =
     language === "ar" ? (isRooms ? "غرفة" : "طاولة") : isRooms ? "Room" : "Table";
@@ -113,122 +112,80 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     if (!recoveryDone || postSubmission.blocked) return;
-    if (items.length === 0) {
+    if (summaryLines.length === 0) {
       goToBrowse();
     }
-  }, [items.length, recoveryDone, postSubmission.blocked, menuPath, setLocation, navigator]);
+  }, [summaryLines.length, recoveryDone, postSubmission.blocked, goToBrowse]);
 
   useEffect(() => {
     if (!recoveryDone || restaurantLoading) return;
-    if (!canPlaceOrder && items.length > 0) {
+    if (!canPlaceOrder && summaryLines.length > 0) {
       goToBrowse();
     }
-  }, [canPlaceOrder, recoveryDone, restaurantLoading, items.length, menuPath, setLocation, navigator]);
+  }, [
+    canPlaceOrder,
+    recoveryDone,
+    restaurantLoading,
+    summaryLines.length,
+    goToBrowse,
+  ]);
 
   const handleSubmitOrder = async () => {
-    if (!restaurant?.id || !tableData?.id || items.length === 0 || !canPlaceOrder) return;
-    setIsSubmitting(true);
-    try {
-      const orderNoteResult = validateOrderNote(orderNotes, gates.notes.maxOrderNoteLength);
-      if (!orderNoteResult.ok) {
-        toast.error(
-          language === "ar" ? "ملاحظة الطلب طويلة جداً" : orderNoteResult.message
-        );
-        return;
-      }
+    const restaurantId = (restaurant as { id?: number } | null)?.id;
+    if (!restaurantId || !tableData?.id) return;
 
-      const cartItems = items.map((item) => {
-        const itemNoteResult = validateItemNote(item.notes, gates.notes.maxItemNoteLength);
-        if (!itemNoteResult.ok) {
-          throw new Error(itemNoteResult.message);
+    const outcome = await submit({
+      restaurantId,
+      tableId: tableData.id,
+      tableNumber,
+      sessionToken: recovery.session?.sessionToken,
+      channelAllowsSubmit: canPlaceOrder,
+      onSuccess: (result, draft) => {
+        if (result.sessionToken) {
+          saveDiningSession({
+            sessionToken: result.sessionToken,
+            slug,
+            tableNumber,
+          });
         }
-        return {
-          menuItemId: item.menuItemId,
-          quantity: item.quantity,
-          notes: itemNoteResult.value,
-          nameAr: item.nameAr,
-          nameEn: item.nameEn,
-          price: item.price,
-        };
-      });
 
-      const result = await createOrderMutation.mutateAsync({
-        restaurantId: restaurant.id,
-        tableId: tableData.id,
-        tableNumber,
-        sessionToken: recovery.session?.sessionToken,
-        customerName: customerName || undefined,
-        customerPhone: customerPhone || undefined,
-        notes: orderNoteResult.value ?? undefined,
-        items: cartItems.map(({ menuItemId, quantity, notes }) => ({
-          menuItemId,
-          quantity,
-          notes,
-        })),
-      });
+        saveOrderConfirmationSnapshot({
+          orderId: result.orderId ?? 0,
+          orderNumber: result.orderNumber ?? "",
+          trackingToken: result.trackingToken,
+          tableNumber: result.tableNumber ?? tableNumber,
+          totalAmount: result.totalAmount ?? draft.totalAmount.toFixed(2),
+          itemCount:
+            result.itemCount ??
+            draft.items.reduce((s, i) => s + i.quantity, 0),
+          createdAt: result.createdAt ?? new Date().toISOString(),
+          status: "pending",
+          currencySymbol,
+          restaurantName,
+          tableLabel,
+          customerName: draft.customerName || undefined,
+          customerPhone: draft.customerPhone || undefined,
+          orderNotes: draft.orderNotes || undefined,
+          items: draft.items.map((item) => ({
+            nameAr: item.nameAr,
+            nameEn: item.nameEn,
+            price: item.price,
+            quantity: item.quantity,
+          })),
+        });
 
-      if (!result.trackingToken) {
-        throw new Error("Missing tracking token");
-      }
-
-      if (result.sessionToken) {
-        saveDiningSession({
-          sessionToken: result.sessionToken,
+        markOrderWelcomeReceived(result.trackingToken);
+        markCustomerJourneyTracking({
           slug,
           tableNumber,
+          trackingToken: result.trackingToken,
+          sessionToken: result.sessionToken ?? recovery.session?.sessionToken,
         });
-      }
+      },
+    });
 
-      saveOrderConfirmationSnapshot({
-        orderId: result.orderId ?? 0,
-        orderNumber: result.orderNumber ?? "",
-        trackingToken: result.trackingToken,
-        tableNumber: result.tableNumber ?? tableNumber,
-        totalAmount: result.totalAmount ?? totalAmount.toFixed(2),
-        itemCount: result.itemCount ?? items.reduce((s, i) => s + i.quantity, 0),
-        createdAt: result.createdAt ?? new Date().toISOString(),
-        status: "pending",
-        currencySymbol,
-        restaurantName,
-        tableLabel,
-        customerName: customerName || undefined,
-        customerPhone: customerPhone || undefined,
-        orderNotes: orderNotes || undefined,
-        items: cartItems.map((item) => ({
-          nameAr: item.nameAr,
-          nameEn: item.nameEn,
-          price: item.price,
-          quantity: item.quantity,
-        })),
-      });
-
-      markOrderWelcomeReceived(result.trackingToken);
-      markCustomerJourneyTracking({
-        slug,
-        tableNumber,
-        trackingToken: result.trackingToken,
-        sessionToken: result.sessionToken ?? recovery.session?.sessionToken,
-      });
-      clearCart();
-      if (navigator) {
-        navigator.goToTracking(result.trackingToken);
-      } else {
-        setLocation(`/menu/${slug}/order/${result.trackingToken}`, { replace: true });
-      }
-    } catch (error) {
-      const sessionEnded =
-        error instanceof TRPCClientError && error.message.includes("انتهت جلسة الطاولة");
-      toast.error(
-        sessionEnded
-          ? language === "ar"
-            ? "انتهت جلسة الطاولة. للطلب مجدداً امسح رمز الطاولة."
-            : "This table session has ended. Scan the table QR to start a new session."
-          : language === "ar"
-            ? "حدث خطأ أثناء إرسال الطلب"
-            : "Error submitting order"
-      );
-    } finally {
-      setIsSubmitting(false);
+    if (!outcome.ok && outcome.error.code !== "NOT_READY") {
+      toast.error(outcome.error.message);
     }
   };
 
@@ -254,7 +211,7 @@ export default function CheckoutPage() {
     );
   }
 
-  if (!restaurant || items.length === 0) {
+  if (!restaurant || summaryLines.length === 0) {
     return null;
   }
 
@@ -297,7 +254,7 @@ export default function CheckoutPage() {
             </h2>
           </div>
           <ul className="divide-y divide-border/40">
-            {items.map((item) => (
+            {summaryLines.map((item) => (
               <li key={item.menuItemId} className="px-4 py-3 flex justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <p className="font-medium text-sm">
@@ -311,7 +268,7 @@ export default function CheckoutPage() {
                   </p>
                 </div>
                 <p className="text-sm font-semibold text-orange-600 shrink-0">
-                  {(parseFloat(item.price) * item.quantity).toFixed(2)} {currencySymbol}
+                  {item.lineTotal.toFixed(2)} {currencySymbol}
                 </p>
               </li>
             ))}
@@ -341,15 +298,17 @@ export default function CheckoutPage() {
             onChange={(e) => setCustomerPhone(e.target.value)}
             dir="ltr"
           />
-          <Textarea
-            placeholder={
-              language === "ar" ? "ملاحظات على الطلب (اختياري)" : "Order notes (optional)"
-            }
-            value={orderNotes}
-            onChange={(e) => setOrderNotes(e.target.value)}
-            rows={3}
-            className="resize-none"
-          />
+          {supportsOrderNotes && (
+            <Textarea
+              placeholder={
+                language === "ar" ? "ملاحظات على الطلب (اختياري)" : "Order notes (optional)"
+              }
+              value={orderNotes}
+              onChange={(e) => setOrderNotes(e.target.value)}
+              rows={3}
+              className="resize-none"
+            />
+          )}
         </section>
       </main>
 

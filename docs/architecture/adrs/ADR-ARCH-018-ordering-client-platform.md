@@ -10,7 +10,7 @@
 | **Date** | 2026-07-14 |
 | **Supersedes** | — |
 | **Refines** | ORDERING-PLATFORM-ARCHITECTURE-1 channel experience split; SELF-ORDERING-KIOSK-ARCHITECTURE-1 browse/cart/checkout ownership |
-| **Implementation status** | Partial — RUNTIME-1 + CART-1 + BROWSE-1 delivered; checkout extraction pending |
+| **Implementation status** | Implemented foundation — RUNTIME-1 + CART-1 + BROWSE-1 + CHECKOUT-1 delivered |
 
 ---
 
@@ -113,7 +113,7 @@ Ordering Platform multi-channel vision; Presentation vs Domain boundaries (Const
 
 - [x] Shared `ordering-client` module exists and owns cart orchestration + runtime consumer  
 - [x] Shared browse orchestration owned by Client Platform (ORDERING-CLIENT-BROWSE-1)  
-- [x] QR is a thin shell composing the platform (browse + cart; checkout pending)  
+- [x] Shared checkout orchestration owned by Client Platform (ORDERING-CLIENT-CHECKOUT-1)  
+- [x] QR is a thin shell composing the platform (browse + cart + checkout)  
 - [x] No second cart/validation implementation in channel code  
 - [x] Architecture guards enforce Client Platform boundaries  
-- [ ] Checkout presentation extraction (ORDERING-CLIENT-CHECKOUT-1)  

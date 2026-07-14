@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { ORDERING_CHANNEL_QR } from "@shared/ordering-platform/orderingPlatformContracts";
 import { OrderingBrowseProvider } from "../browse/OrderingBrowseProvider";
 import { OrderingCartProvider } from "../cart/OrderingCartProvider";
+import { OrderingCheckoutProvider } from "../checkout/OrderingCheckoutProvider";
 import { OrderingClientProvider } from "../context/OrderingClientProvider";
 import { OrderingClientErrorBoundary } from "../runtime/OrderingClientErrorBoundary";
 import { createQrTableCartScopeAdapter } from "./createQrCartScopeAdapter";
@@ -20,8 +21,8 @@ export type QrOrderingClientHostProps = {
 };
 
 /**
- * ORDERING-CLIENT-BROWSE-1 / CART-1 — QR shell host.
- * QR supplies CartScopeAdapter (+ navigator); Client Platform owns browse + cart.
+ * ORDERING-CLIENT-CHECKOUT-1 / BROWSE-1 / CART-1 — QR shell host.
+ * QR supplies adapters; Client Platform owns browse + cart + checkout.
  */
 export function QrOrderingClientHost({
   slug,
@@ -57,7 +58,9 @@ export function QrOrderingClientHost({
         navigator={navigator}
       >
         <OrderingBrowseProvider>
-          <OrderingCartProvider scope={cartScope}>{children}</OrderingCartProvider>
+          <OrderingCartProvider scope={cartScope}>
+            <OrderingCheckoutProvider>{children}</OrderingCheckoutProvider>
+          </OrderingCartProvider>
         </OrderingBrowseProvider>
       </OrderingClientProvider>
     </OrderingClientErrorBoundary>
