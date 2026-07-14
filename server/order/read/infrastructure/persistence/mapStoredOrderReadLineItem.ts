@@ -18,6 +18,12 @@ import { parseStoredOfferProjection } from "./parseStoredOfferProjection";
 
 type LineItemRow = typeof orderReadOrderLineItems.$inferSelect;
 
+function normalizeItemNotes(raw: string | null | undefined): string | null {
+  if (raw == null) return null;
+  const trimmed = raw.trim();
+  return trimmed.length === 0 ? null : trimmed;
+}
+
 function mapMenuItemRow(row: LineItemRow, category: OrderCategoryProjection): MenuItemOrderLineItemDto {
   return {
     projectionType: ORDER_LINE_PROJECTION_TYPE_MENU_ITEM,
@@ -27,8 +33,7 @@ function mapMenuItemRow(row: LineItemRow, category: OrderCategoryProjection): Me
     nameEn: row.nameEn,
     quantity: row.quantity,
     price: String(row.price),
-    // Persisted read table does not yet store itemNotes (projection follow-up).
-    itemNotes: null,
+    itemNotes: normalizeItemNotes(row.itemNotes),
     category,
   };
 }
@@ -42,13 +47,14 @@ function mapOfferRow(row: LineItemRow, offer: OrderOfferProjection): OfferOrderL
     nameEn: row.nameEn,
     quantity: row.quantity,
     price: String(row.price),
-    itemNotes: null,
+    itemNotes: normalizeItemNotes(row.itemNotes),
     offer,
   };
 }
 
 /**
  * Maps persisted order_read_order_line_items to canonical read DTOs.
+ * ORDERING-READ-ITEM-NOTES-PERSISTENCE-1 — itemNotes round-trips from the read store.
  * Offer lines never parse categoryProjection as menu category data.
  */
 export function mapStoredOrderReadLineItem(row: LineItemRow): ActiveOrderLineItemDto {
@@ -82,6 +88,7 @@ export function toPersistedLineItemColumns(item: ActiveOrderLineItemDto): {
   nameEn: string | null;
   quantity: number;
   price: string;
+  itemNotes: string | null;
   lineProjectionType: typeof ORDER_LINE_PROJECTION_TYPE_MENU_ITEM | typeof ORDER_LINE_PROJECTION_TYPE_OFFER;
   categoryProjection: OrderCategoryProjection | null;
   offerProjection: OrderOfferProjection | null;
@@ -93,6 +100,7 @@ export function toPersistedLineItemColumns(item: ActiveOrderLineItemDto): {
       nameEn: item.nameEn,
       quantity: item.quantity,
       price: item.price,
+      itemNotes: normalizeItemNotes(item.itemNotes),
       lineProjectionType: ORDER_LINE_PROJECTION_TYPE_OFFER,
       categoryProjection: null,
       offerProjection: item.offer,
@@ -105,6 +113,7 @@ export function toPersistedLineItemColumns(item: ActiveOrderLineItemDto): {
     nameEn: item.nameEn,
     quantity: item.quantity,
     price: item.price,
+    itemNotes: normalizeItemNotes(item.itemNotes),
     lineProjectionType: ORDER_LINE_PROJECTION_TYPE_MENU_ITEM,
     categoryProjection: item.category,
     offerProjection: null,

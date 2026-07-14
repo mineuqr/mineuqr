@@ -15,7 +15,7 @@ import {
 const repoRoot = join(__dirname, "../..");
 
 describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
-  it("journal contains canonical migrations 0000–0063 contiguously", () => {
+  it("journal contains canonical migrations 0000–0064 contiguously", () => {
     const journal = loadJournal();
     expect(journal.entries).toHaveLength(CANONICAL_JOURNAL_ENTRY_COUNT);
     expect(journal.entries[0]?.tag).toBe("0000_shiny_blizzard");
@@ -23,13 +23,14 @@ describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
     expect(journal.entries[60]?.tag).toBe("0060_device_activation_code");
     expect(journal.entries[61]?.tag).toBe("0061_order_business_identity");
     expect(journal.entries[62]?.tag).toBe("0062_order_lifecycle_stage");
-    expect(journal.entries[63]?.tag).toBe(CANONICAL_MIGRATION_TAIL_TAG);
+    expect(journal.entries[63]?.tag).toBe("0063_screen_credential_ciphertext");
+    expect(journal.entries[64]?.tag).toBe(CANONICAL_MIGRATION_TAIL_TAG);
     expect(validateJournalOrdering()).toEqual([]);
   });
 
   it("exports certified migration tail constant", () => {
-    expect(CANONICAL_MIGRATION_TAIL_TAG).toBe("0063_screen_credential_ciphertext");
-    expect(CANONICAL_JOURNAL_ENTRY_COUNT).toBe(64);
+    expect(CANONICAL_MIGRATION_TAIL_TAG).toBe("0064_order_read_item_notes");
+    expect(CANONICAL_JOURNAL_ENTRY_COUNT).toBe(65);
     const tags = loadJournal().entries.map((e) => e.tag);
     expect(tags[tags.length - 1]).toBe(CANONICAL_MIGRATION_TAIL_TAG);
   });
@@ -69,6 +70,7 @@ describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
     expect(verify).toContain("operational_devices");
     expect(verify).toContain("screenConfigRevision");
     expect(verify).toContain("categoryProjection");
+    expect(verify).toContain("itemNotes");
   });
 
   it("vercel build runs governance guard before compile", () => {

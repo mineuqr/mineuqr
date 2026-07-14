@@ -131,6 +131,7 @@ export class DrizzleOrderReadProjectionStore {
             nameEn: persisted.nameEn,
             quantity: persisted.quantity,
             price: persisted.price,
+            itemNotes: persisted.itemNotes,
             lineProjectionType: persisted.lineProjectionType,
             categoryProjection: persisted.categoryProjection,
             offerProjection: persisted.offerProjection,

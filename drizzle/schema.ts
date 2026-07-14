@@ -500,6 +500,8 @@ export const orderReadOrderLineItems = mysqlTable("order_read_order_line_items",
 	nameEn: varchar({ length: 255 }),
 	quantity: int().notNull(),
 	price: decimal({ precision: 10, scale: 2 }).notNull(),
+	/** ORDERING-READ-ITEM-NOTES-PERSISTENCE-1 — projected Item Notes from order_items.notes */
+	itemNotes: text(),
 	lineProjectionType: varchar({ length: 16 }).default("MenuItem").notNull(),
 	categoryProjection: json(),
 	offerProjection: json(),

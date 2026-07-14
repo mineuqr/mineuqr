@@ -26,7 +26,10 @@ const REQUIRED = {
     ["operational_devices", "screenConfig"],
     ["operational_devices", "screenConfigRevision"],
   ],
-  orderReadColumns: [["order_read_order_line_items", "categoryProjection"]],
+  orderReadColumns: [
+    ["order_read_order_line_items", "categoryProjection"],
+    ["order_read_order_line_items", "itemNotes"],
+  ],
 };
 
 async function columnExists(conn, table, column) {
