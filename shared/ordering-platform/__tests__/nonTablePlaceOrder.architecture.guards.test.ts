@@ -24,11 +24,12 @@ describe("NON-TABLE-PLACE-ORDER-1 architecture guards", () => {
     expect(orch).not.toContain("if (channel ===");
   });
 
-  it("order.create remains table QR path (no non-table public activation)", () => {
+  it("order.create remains table QR path; placeWithIdentity is identity entry", () => {
     const router = read("server/routers.ts");
     expect(router).toContain("createTableOrderIdentity");
     expect(router).toContain("getTableByRestaurantAndNumber");
-    expect(router).not.toContain("identityPlaceOrderService");
+    expect(router).toContain("placeWithIdentity");
+    expect(router).toContain("identityPlaceOrderService");
   });
 
   it("legacy non-table sentinels are platform-owned (not restaurant_tables)", () => {

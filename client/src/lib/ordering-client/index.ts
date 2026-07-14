@@ -90,8 +90,12 @@ export type {
   CheckoutPlaceOrderResult,
   CheckoutDraftSnapshot,
   CheckoutSubmitRequest,
+  CheckoutIdentitySubmitRequest,
+  CheckoutTableSubmitRequest,
+  CheckoutIdentitySubmit,
   CheckoutSubmitOutcome,
 } from "./checkout/checkoutTypes";
+export { isCheckoutIdentitySubmit } from "./checkout/checkoutTypes";
 export {
   buildOrderSummaryLines,
   validateCheckoutNotes,
@@ -142,3 +146,8 @@ export {
   kioskIsolationRulesOnReset,
   isKioskSessionResetTrigger,
 } from "./kiosk/kioskSession";
+export {
+  KIOSK_STATION_SERVICE_MODE,
+  buildKioskStationCheckoutIdentity,
+  createKioskStationFulfilmentAnchor,
+} from "./kiosk/kioskStationIdentity";

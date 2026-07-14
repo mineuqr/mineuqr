@@ -118,12 +118,120 @@ import { resolveTrialStatusRead } from "./commercial/wave1ReadAuthority";
 import {
   advanceOrderStatusService,
 } from "./order/composition";
-import { placeOrderService } from "./order/placeOrderComposition";
+import {
+  identityPlaceOrderService,
+  placeOrderService,
+} from "./order/placeOrderComposition";
 import { runOrderCommand } from "./order/application/mapOrderDomainError";
 import { resolveOrderActorFromUser } from "./order/application/resolveOrderActor";
-import { createTableOrderIdentity } from "@shared/ordering-platform/orderingIdentityContract";
+import {
+  ORDERING_SERVICE_MODES,
+  createDriveLaneFulfilmentAnchor,
+  createPickupPointFulfilmentAnchor,
+  createQueueFulfilmentAnchor,
+  createStationFulfilmentAnchor,
+  createTableFulfilmentAnchor,
+  createTableOrderIdentity,
+  deriveFulfilmentLabel,
+  type OrderingFulfilmentAnchor,
+  type OrderingServiceMode,
+} from "@shared/ordering-platform/orderingIdentityContract";
 import { createTableSessionAnchor } from "@shared/operational-session";
 import bcrypt from "bcryptjs";
+
+const placeOrderItemInput = z.object({
+  menuItemId: z.number(),
+  quantity: z.number().int().min(1).max(99),
+  notes: z.string().nullish(),
+  nameAr: z.string().optional(),
+  nameEn: z.string().nullish().optional(),
+  price: z.string().optional(),
+});
+
+/** Channel-agnostic Fulfilment Anchor input (NON-TABLE-PLACE-ORDER-1 / KIOSK-IDENTITY-ADOPTION-1). */
+const fulfilmentAnchorInput = z.discriminatedUnion("anchorType", [
+  z.object({
+    anchorType: z.literal("table"),
+    tableId: z.number().int().positive(),
+    tableNumber: z.number().int().positive(),
+    fulfilmentLabel: z.string().min(1).max(64).optional(),
+  }),
+  z.object({
+    anchorType: z.literal("station"),
+    stationId: z.string().min(1).max(128),
+    fulfilmentLabel: z.string().min(1).max(64).optional(),
+  }),
+  z.object({
+    anchorType: z.literal("pickup_point"),
+    pickupPointId: z.string().min(1).max(128),
+    fulfilmentLabel: z.string().min(1).max(64).optional(),
+  }),
+  z.object({
+    anchorType: z.literal("queue"),
+    queueId: z.string().min(1).max(128),
+    ticketLabel: z.string().min(1).max(64),
+    fulfilmentLabel: z.string().min(1).max(64).optional(),
+  }),
+  z.object({
+    anchorType: z.literal("drive_lane"),
+    laneId: z.string().min(1).max(128),
+    fulfilmentLabel: z.string().min(1).max(64).optional(),
+  }),
+]);
+
+function toFulfilmentAnchor(
+  input: z.infer<typeof fulfilmentAnchorInput>
+): OrderingFulfilmentAnchor {
+  switch (input.anchorType) {
+    case "table":
+      return createTableFulfilmentAnchor(input);
+    case "station":
+      return createStationFulfilmentAnchor(input);
+    case "pickup_point":
+      return createPickupPointFulfilmentAnchor(input);
+    case "queue":
+      return createQueueFulfilmentAnchor(input);
+    case "drive_lane":
+      return createDriveLaneFulfilmentAnchor(input);
+    default: {
+      const _exhaustive: never = input;
+      return _exhaustive;
+    }
+  }
+}
+
+async function assertPublicOrderingRestaurant(restaurantId: number) {
+  const restaurant = await getRestaurantById(restaurantId);
+  if (!restaurant) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "المطعم غير موجود" });
+  }
+  if (!restaurant.isActive) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "المطعم غير متاح حالياً" });
+  }
+  const temporaryClosure = parseTemporaryClosure(restaurant.temporaryClosure);
+  if (temporaryClosure?.active) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "المطعم مغلق مؤقتاً" });
+  }
+  if (restaurant.workingHours) {
+    const openNow = isRestaurantOpen({
+      workingHours: restaurant.workingHours,
+      temporaryClosure: restaurant.temporaryClosure,
+      applyTemporaryClosure: false,
+    });
+    if (!openNow) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "المطعم مغلق حالياً" });
+    }
+  }
+  const { canOrder: allowsOrdering } = await resolveGuestOrderingAllowed(restaurantId);
+  if (!allowsOrdering) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message:
+        "ميزة الطلب عبر المنيو متاحة فقط للمشتركين في الخطة الاحترافية أو المؤسسية",
+    });
+  }
+  return restaurant;
+}
 
 function generateSlug(name: string): string {
   const base = name.toLowerCase().replace(/[^a-z0-9\u0600-\u06FF]+/g, "-").replace(/^-|-$/g, "");
@@ -1797,7 +1905,90 @@ const orderRouter = router({
     .query(async ({ input }) => {
       return resolveGuestOrderingAllowed(input.restaurantId);
     }),
-  // Public: create order (no auth needed)
+  /**
+   * Public: identity-driven place order (NON-TABLE-PLACE-ORDER-1).
+   * Channel-agnostic — accepts Service Mode + Fulfilment Anchor.
+   * Channels must not invent platform types; QR table path remains `order.create`.
+   */
+  placeWithIdentity: publicProcedure
+    .input(
+      z.object({
+        restaurantId: z.number(),
+        serviceMode: z.enum(
+          ORDERING_SERVICE_MODES as unknown as [
+            (typeof ORDERING_SERVICE_MODES)[number],
+            ...(typeof ORDERING_SERVICE_MODES)[number][],
+          ]
+        ),
+        fulfilmentAnchor: fulfilmentAnchorInput,
+        customerName: z.string().nullish(),
+        customerPhone: z.string().nullish(),
+        notes: z.string().nullish(),
+        items: z.array(placeOrderItemInput).min(1),
+        sessionToken: z
+          .string()
+          .min(16)
+          .max(64)
+          .regex(SESSION_TOKEN_PATTERN)
+          .optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      await assertPublicOrderingRestaurant(input.restaurantId);
+
+      const fulfilmentAnchor = toFulfilmentAnchor(input.fulfilmentAnchor);
+      if (
+        fulfilmentAnchor.anchorType === "table" &&
+        !(await getTableByRestaurantAndNumber(
+          input.restaurantId,
+          fulfilmentAnchor.tableNumber
+        ))
+      ) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "الطاولة غير موجودة" });
+      }
+
+      try {
+        const placeResult = await runOrderCommand(() =>
+          identityPlaceOrderService.execute({
+            restaurantId: input.restaurantId,
+            serviceMode: input.serviceMode as OrderingServiceMode,
+            fulfilmentAnchor,
+            sessionToken: input.sessionToken,
+            customerName: input.customerName,
+            customerPhone: input.customerPhone,
+            notes: input.notes,
+            items: input.items.map((item) => ({
+              menuItemId: item.menuItemId,
+              quantity: item.quantity,
+              notes: item.notes,
+            })),
+          })
+        );
+
+        return {
+          orderId: placeResult.order.id,
+          orderNumber: placeResult.orderNumber,
+          trackingToken: placeResult.trackingToken,
+          fulfilmentLabel: deriveFulfilmentLabel(fulfilmentAnchor),
+          tableNumber:
+            fulfilmentAnchor.anchorType === "table"
+              ? fulfilmentAnchor.tableNumber
+              : placeResult.order.tableNumber,
+          totalAmount: placeResult.totalAmount,
+          itemCount: placeResult.itemCount,
+          createdAt: placeResult.createdAt,
+          status: "pending" as const,
+          sessionPersistence: placeResult.sessionPersistence,
+          ...(placeResult.identity.operationalSession.sessionToken
+            ? { sessionToken: placeResult.identity.operationalSession.sessionToken }
+            : {}),
+        };
+      } catch (err) {
+        throwSessionServiceTrpcError(err);
+      }
+    }),
+
+  // Public: create order (no auth needed) — QR table path (unchanged).
   create: publicProcedure
     .input(z.object({
       restaurantId: z.number(),
@@ -1806,15 +1997,7 @@ const orderRouter = router({
       customerName: z.string().nullish(),
       customerPhone: z.string().nullish(),
       notes: z.string().nullish(),
-      items: z.array(z.object({
-        menuItemId: z.number(),
-        quantity: z.number().int().min(1).max(99),
-        notes: z.string().nullish(),
-        /** Ignored if sent — server uses DB menu prices (LAUNCH-HARDENING-1A). */
-        nameAr: z.string().optional(),
-        nameEn: z.string().nullish().optional(),
-        price: z.string().optional(),
-      })).min(1),
+      items: z.array(placeOrderItemInput).min(1),
       sessionToken: z
         .string()
         .min(16)
@@ -1823,36 +2006,7 @@ const orderRouter = router({
         .optional(),
     }))
     .mutation(async ({ input }) => {
-      const restaurant = await getRestaurantById(input.restaurantId);
-      if (!restaurant) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "المطعم غير موجود" });
-      }
-      if (!restaurant.isActive) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "المطعم غير متاح حالياً" });
-      }
-
-      const temporaryClosure = parseTemporaryClosure(restaurant.temporaryClosure);
-      if (temporaryClosure?.active) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "المطعم مغلق مؤقتاً" });
-      }
-
-      if (restaurant.workingHours) {
-        const openNow = isRestaurantOpen({
-          workingHours: restaurant.workingHours,
-          temporaryClosure: restaurant.temporaryClosure,
-          applyTemporaryClosure: false,
-        });
-        if (!openNow) {
-          throw new TRPCError({ code: "FORBIDDEN", message: "المطعم مغلق حالياً" });
-        }
-      }
-
-      const { canOrder: allowsOrdering } = await resolveGuestOrderingAllowed(
-        input.restaurantId
-      );
-      if (!allowsOrdering) {
-        throw new TRPCError({ code: 'FORBIDDEN', message: 'ميزة الطلب عبر المنيو متاحة فقط للمشتركين في الخطة الاحترافية أو المؤسسية' });
-      }
+      await assertPublicOrderingRestaurant(input.restaurantId);
 
       const table = await getTableByRestaurantAndNumber(input.restaurantId, input.tableNumber);
       if (!table) {

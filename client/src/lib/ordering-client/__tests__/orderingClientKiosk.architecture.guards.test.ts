@@ -76,7 +76,7 @@ describe("SELF-ORDERING-KIOSK-PLATFORM-1 architecture guards", () => {
     const nav = createKioskOrderingNavigator({
       slug: "cafe",
       stage: "browse",
-      querySuffix: "station=front&table=7",
+      querySuffix: "station=front&kiosk=dev-1",
       setLocation: (p) => paths.push(p),
     });
     nav.goToCart();
@@ -84,10 +84,10 @@ describe("SELF-ORDERING-KIOSK-PLATFORM-1 architecture guards", () => {
     nav.goToConfirmation("tok");
     nav.goToIdle();
     expect(paths).toEqual([
-      "/kiosk/cafe/cart?station=front&table=7",
-      "/kiosk/cafe/checkout?station=front&table=7",
-      "/kiosk/cafe/confirmed?station=front&table=7&token=tok",
-      "/kiosk/cafe?station=front&table=7",
+      "/kiosk/cafe/cart?station=front&kiosk=dev-1",
+      "/kiosk/cafe/checkout?station=front&kiosk=dev-1",
+      "/kiosk/cafe/confirmed?station=front&kiosk=dev-1&token=tok",
+      "/kiosk/cafe?station=front&kiosk=dev-1",
     ]);
     expect(kioskIsolationRulesOnReset()).toContain("clear_cart");
   });

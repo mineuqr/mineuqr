@@ -2,15 +2,15 @@ import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { trpc } from "@/lib/trpc";
 import {
+  buildKioskStationCheckoutIdentity,
   useOrderingCheckout,
   useOrderingClientRuntime,
 } from "@/lib/ordering-client";
 
 type Props = {
   slug: string;
-  tableNumber: number;
+  stationId: string;
   qs: string;
   bumpActivity: () => void;
   onCancel: () => void;
@@ -18,11 +18,11 @@ type Props = {
 
 /**
  * Kiosk checkout chrome — consumes OrderingCheckoutProvider.
- * Table number is channel station binding (query); no dining-session logic.
+ * Places orders via station Fulfilment Anchor (no table binding, no fake tables).
  */
 export function KioskCheckoutStage({
   slug,
-  tableNumber,
+  stationId,
   qs,
   bumpActivity,
   onCancel,
@@ -31,39 +31,30 @@ export function KioskCheckoutStage({
   const [, setLocation] = useLocation();
   const runtime = useOrderingClientRuntime();
   const checkout = useOrderingCheckout();
-  const restaurant = runtime.restaurant as { id?: number; currencySymbol?: string } | null;
+  const restaurant = runtime.restaurant as {
+    id?: number;
+    currencySymbol?: string;
+  } | null;
   const currency = restaurant?.currencySymbol ?? "ر.س";
-
-  const { data: tableData, isLoading: tableLoading } = trpc.table.getByNumber.useQuery(
-    { restaurantId: restaurant?.id ?? 0, tableNumber },
-    {
-      enabled: !!restaurant?.id && tableNumber > 0,
-      staleTime: 0,
-      gcTime: 0,
-      refetchOnMount: "always",
-    }
-  );
 
   const canSubmit =
     runtime.gates.platformCanPlaceOrder &&
-    tableNumber > 0 &&
-    !!tableData?.id &&
+    !!stationId.trim() &&
     checkout.summaryLines.length > 0;
 
   const handleSubmit = async () => {
     bumpActivity();
-    if (!restaurant?.id || !tableData?.id) {
+    if (!restaurant?.id || !stationId.trim()) {
       toast.error(
         language === "ar"
-          ? "يجب ربط الكiosk بطاولة (table=)"
-          : "Kiosk must be bound to a table (?table=)"
+          ? "يجب تحديد محطة الكiosk (station=)"
+          : "Kiosk requires a station binding (?station=)"
       );
       return;
     }
     const outcome = await checkout.submit({
       restaurantId: restaurant.id,
-      tableId: tableData.id,
-      tableNumber,
+      identity: buildKioskStationCheckoutIdentity(stationId),
       channelAllowsSubmit: canSubmit,
     });
     if (!outcome.ok && outcome.error.code !== "NOT_READY") {
@@ -71,7 +62,7 @@ export function KioskCheckoutStage({
     }
   };
 
-  if (runtime.isLoading || (tableNumber > 0 && tableLoading)) {
+  if (runtime.isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-900">
         <Loader2 className="w-10 h-10 animate-spin text-orange-400" />
@@ -98,16 +89,15 @@ export function KioskCheckoutStage({
       </header>
 
       <main className="px-4 py-6 space-y-4">
-        {tableNumber <= 0 && (
-          <p className="rounded-xl bg-red-500/20 border border-red-400/40 p-3 text-sm">
-            {language === "ar"
-              ? "أضف ?table= رقم الطاولة في رابط الكiosk لإرسال الطلب."
-              : "Add ?table= to the kiosk URL to enable place order."}
-          </p>
-        )}
+        <p className="text-sm text-white/60 px-1">
+          {language === "ar" ? `المحطة: ${stationId}` : `Station: ${stationId}`}
+        </p>
         <ul className="rounded-2xl border border-white/10 divide-y divide-white/10 overflow-hidden">
           {checkout.summaryLines.map((line) => (
-            <li key={line.menuItemId} className="px-4 py-3 flex justify-between gap-3">
+            <li
+              key={line.menuItemId}
+              className="px-4 py-3 flex justify-between gap-3"
+            >
               <span>
                 {language === "ar" ? line.nameAr : line.nameEn || line.nameAr} ×{" "}
                 {line.quantity}

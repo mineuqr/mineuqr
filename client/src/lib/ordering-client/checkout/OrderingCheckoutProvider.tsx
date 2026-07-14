@@ -1,7 +1,9 @@
 /**
- * ORDERING-CLIENT-CHECKOUT-1 — Ordering Client Platform checkout orchestrator.
+ * ORDERING-CLIENT-CHECKOUT-1 / KIOSK-IDENTITY-ADOPTION-1 —
+ * Ordering Client Platform checkout orchestrator.
  * Owns form state, submission lifecycle, notes validation presentation, order summary.
- * Consumes cart + runtime gates; calls order.create (client entry only).
+ * Consumes cart + runtime gates; places orders via table (order.create) or
+ * identity (order.placeWithIdentity). Channel-agnostic — no channel forks here.
  */
 import {
   createContext,
@@ -21,13 +23,14 @@ import {
   presentOrderNoteError,
   validateCheckoutNotes,
 } from "./checkoutSubmission";
-import type {
-  CheckoutDraftSnapshot,
-  CheckoutOrderSummaryLine,
-  CheckoutSubmissionStatus,
-  CheckoutSubmitError,
-  CheckoutSubmitOutcome,
-  CheckoutSubmitRequest,
+import {
+  isCheckoutIdentitySubmit,
+  type CheckoutDraftSnapshot,
+  type CheckoutOrderSummaryLine,
+  type CheckoutSubmissionStatus,
+  type CheckoutSubmitError,
+  type CheckoutSubmitOutcome,
+  type CheckoutSubmitRequest,
 } from "./checkoutTypes";
 
 export type OrderingCheckoutContextValue = Readonly<{
@@ -67,6 +70,7 @@ export function OrderingCheckoutProvider({
   const runtime = useOptionalOrderingClientRuntime();
   const cart = useOrderingCart();
   const createOrderMutation = trpc.order.create.useMutation();
+  const placeWithIdentityMutation = trpc.order.placeWithIdentity.useMutation();
 
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -106,12 +110,17 @@ export function OrderingCheckoutProvider({
 
   const submit = useCallback(
     async (request: CheckoutSubmitRequest): Promise<CheckoutSubmitOutcome> => {
+      const identitySubmit = isCheckoutIdentitySubmit(request);
+      const tableReady =
+        !identitySubmit &&
+        !!request.tableId &&
+        Number.isInteger(request.tableNumber);
       if (
         !request.channelAllowsSubmit ||
         !request.restaurantId ||
-        !request.tableId ||
         items.length === 0 ||
-        !gates?.platformCanPlaceOrder
+        !gates?.platformCanPlaceOrder ||
+        (!identitySubmit && !tableReady)
       ) {
         return {
           ok: false,
@@ -150,21 +159,36 @@ export function OrderingCheckoutProvider({
         totalAmount,
       };
 
+      const linePayload = validated.items.map(
+        ({ menuItemId, quantity, notes }) => ({
+          menuItemId,
+          quantity,
+          notes,
+        })
+      );
+
       try {
-        const result = await createOrderMutation.mutateAsync({
-          restaurantId: request.restaurantId,
-          tableId: request.tableId,
-          tableNumber: request.tableNumber,
-          sessionToken: request.sessionToken,
-          customerName: customerName || undefined,
-          customerPhone: customerPhone || undefined,
-          notes: validated.orderNotes ?? undefined,
-          items: validated.items.map(({ menuItemId, quantity, notes }) => ({
-            menuItemId,
-            quantity,
-            notes,
-          })),
-        });
+        const result = identitySubmit
+          ? await placeWithIdentityMutation.mutateAsync({
+              restaurantId: request.restaurantId,
+              serviceMode: request.identity.serviceMode,
+              fulfilmentAnchor: request.identity.fulfilmentAnchor,
+              sessionToken: request.sessionToken,
+              customerName: customerName || undefined,
+              customerPhone: customerPhone || undefined,
+              notes: validated.orderNotes ?? undefined,
+              items: linePayload,
+            })
+          : await createOrderMutation.mutateAsync({
+              restaurantId: request.restaurantId,
+              tableId: request.tableId,
+              tableNumber: request.tableNumber,
+              sessionToken: request.sessionToken,
+              customerName: customerName || undefined,
+              customerPhone: customerPhone || undefined,
+              notes: validated.orderNotes ?? undefined,
+              items: linePayload,
+            });
 
         if (!result.trackingToken) {
           const error: CheckoutSubmitError = {
@@ -182,6 +206,10 @@ export function OrderingCheckoutProvider({
           trackingToken: result.trackingToken,
           sessionToken: result.sessionToken,
           tableNumber: result.tableNumber,
+          fulfilmentLabel:
+            "fulfilmentLabel" in result
+              ? result.fulfilmentLabel
+              : undefined,
           totalAmount: result.totalAmount,
           itemCount: result.itemCount,
           createdAt: result.createdAt,
@@ -207,6 +235,7 @@ export function OrderingCheckoutProvider({
     [
       cart,
       createOrderMutation,
+      placeWithIdentityMutation,
       customerName,
       customerPhone,
       gates,

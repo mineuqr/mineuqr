@@ -17,6 +17,7 @@ describe("ORDERING-CLIENT-CHECKOUT-1 architecture guards", () => {
       "client/src/lib/ordering-client/checkout/checkoutSubmission.ts"
     );
     expect(provider).toContain("order.create");
+    expect(provider).toContain("placeWithIdentity");
     expect(provider).toContain("validateCheckoutNotes");
     expect(provider).toContain("submissionStatus");
     expect(provider).toContain("goToTracking");
@@ -53,7 +54,7 @@ describe("ORDERING-CLIENT-CHECKOUT-1 architecture guards", () => {
     expect(shell).not.toContain("order.create");
   });
 
-  it("checkout uses order.create client entry and shared notes contracts only", () => {
+  it("checkout uses table + identity client entries and shared notes contracts only", () => {
     const provider = read(
       "client/src/lib/ordering-client/checkout/OrderingCheckoutProvider.tsx"
     );
@@ -61,7 +62,9 @@ describe("ORDERING-CLIENT-CHECKOUT-1 architecture guards", () => {
       "client/src/lib/ordering-client/checkout/checkoutSubmission.ts"
     );
     expect(provider).toContain("trpc.order.create");
+    expect(provider).toContain("trpc.order.placeWithIdentity");
     expect(provider).not.toMatch(/from ["'].*PlaceOrder/);
+    expect(provider).not.toContain("ORDERING_CHANNEL_KIOSK");
     expect(helpers).toContain("@shared/ordering-platform/orderingNotesContract");
   });
 });

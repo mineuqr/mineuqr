@@ -10,7 +10,7 @@
 | **Date** | 2026-07-14 |
 | **Supersedes** | — |
 | **Refines** | Order-Centric `TableReference` exclusivity; PlaceOrder table-only command shape |
-| **Implementation status** | Partial — runtime + session platform + non-table PlaceOrder capability delivered; ops label / channel UI adoption pending |
+| **Implementation status** | Partial — runtime + session + non-table PlaceOrder + Kiosk station adoption delivered; ops fulfilment label pending |
 
 ---
 
@@ -74,8 +74,9 @@ PlaceOrder: `docs/engineering/programs/NON-TABLE-PLACE-ORDER-1/ARCHITECTURE.md`.
 - **ORDER-IDENTITY-RUNTIME-1** (delivered)  
 - **OPERATIONAL-SESSION-PLATFORM-1** (delivered)  
 - **NON-TABLE-PLACE-ORDER-1** (delivered — platform capability)  
+- **KIOSK-IDENTITY-ADOPTION-1** (delivered — first channel adopter; station Fulfilment Anchor)  
 - SELF-ORDERING-KIOSK-PLATFORM-1  
-- Suggested follow-ons: OPS-FULFILMENT-LABEL-1, KIOSK-IDENTITY-ADOPTION-1, nullable table dual-write retirement  
+- Suggested follow-ons: OPS-FULFILMENT-LABEL-1, nullable table dual-write retirement  
 
 ---
 
@@ -112,5 +113,5 @@ PlaceOrder: `docs/engineering/programs/NON-TABLE-PLACE-ORDER-1/ARCHITECTURE.md`.
 - [x] Table service path behaviourally compatible with today’s QR  
 - [x] PlaceOrder accepts non-table anchors without channel forks (NON-TABLE-PLACE-ORDER-1)  
 - [ ] Ops surfaces render fulfilment label  
-- [ ] Kiosk no longer requires `?table=` workaround  
+- [x] Kiosk no longer requires `?table=` workaround (KIOSK-IDENTITY-ADOPTION-1)  
 - [x] Architecture guards forbid channel-invented PlaceOrder forks  

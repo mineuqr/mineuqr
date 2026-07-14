@@ -51,10 +51,9 @@ export default function KioskShell() {
     confirmedParams?.slug ??
     "";
 
+  // KIOSK-IDENTITY-ADOPTION-1 — station binding only; ?table= is ignored (not required).
   const stationId = readParam(search, "station") || "kiosk-1";
   const kioskId = readParam(search, "kiosk") || stationId;
-  const tableNumberRaw = readParam(search, "table");
-  const tableNumber = tableNumberRaw ? parseInt(tableNumberRaw, 10) : 0;
 
   const [deviceSessionId, setDeviceSessionId] = useState(() =>
     createKioskDeviceSessionId()
@@ -84,9 +83,8 @@ export default function KioskShell() {
     const p = new URLSearchParams();
     p.set("station", stationId);
     if (kioskId) p.set("kiosk", kioskId);
-    if (tableNumber > 0) p.set("table", String(tableNumber));
     return p.toString();
-  }, [stationId, kioskId, tableNumber]);
+  }, [stationId, kioskId]);
 
   const resetSession = useCallback(
     (_trigger: KioskSessionResetTrigger) => {
@@ -156,7 +154,7 @@ export default function KioskShell() {
       <KioskOrderingSurface
         stage={stage}
         slug={slug}
-        tableNumber={tableNumber}
+        stationId={stationId}
         qs={qs}
         onReset={resetSession}
         bumpActivity={bumpActivity}
@@ -168,12 +166,12 @@ export default function KioskShell() {
 function KioskOrderingSurface(props: {
   stage: "browse" | "cart" | "checkout" | "confirmation";
   slug: string;
-  tableNumber: number;
+  stationId: string;
   qs: string;
   onReset: (trigger: KioskSessionResetTrigger) => void;
   bumpActivity: () => void;
 }) {
-  const { stage, slug, tableNumber, qs, onReset, bumpActivity } = props;
+  const { stage, slug, stationId, qs, onReset, bumpActivity } = props;
   const cart = useOrderingCart();
 
   useEffect(() => {
@@ -205,7 +203,7 @@ function KioskOrderingSurface(props: {
     return (
       <KioskCheckoutStage
         slug={slug}
-        tableNumber={tableNumber}
+        stationId={stationId}
         qs={qs}
         bumpActivity={bumpActivity}
         onCancel={() => {

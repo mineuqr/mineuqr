@@ -26,7 +26,7 @@ export type CreateKioskOrderingNavigatorInput = Readonly<{
   slug: string;
   stage: OrderingClientStage | "idle" | "language";
   setLocation: (path: string, options?: { replace?: boolean }) => void;
-  /** Preserved channel query (station / table / kiosk). */
+  /** Preserved channel query (station / kiosk device). */
   querySuffix?: string;
 }>;
 

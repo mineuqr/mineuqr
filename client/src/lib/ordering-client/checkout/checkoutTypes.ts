@@ -1,6 +1,15 @@
 /**
- * ORDERING-CLIENT-CHECKOUT-1 — checkout presentation / submission contracts (ADR-ARCH-018).
+ * ORDERING-CLIENT-CHECKOUT-1 / KIOSK-IDENTITY-ADOPTION-1 —
+ * checkout presentation / submission contracts (ADR-ARCH-018).
+ *
+ * Submission is either table dual-compat (QR) or identity-driven (station/…).
+ * Channel-agnostic — no channel names in this contract.
  */
+
+import type {
+  OrderingFulfilmentAnchor,
+  OrderingServiceMode,
+} from "@shared/ordering-platform/orderingIdentityContract";
 
 export type CheckoutSubmissionStatus =
   | "idle"
@@ -37,6 +46,7 @@ export type CheckoutPlaceOrderResult = Readonly<{
   trackingToken: string;
   sessionToken?: string;
   tableNumber?: number;
+  fulfilmentLabel?: string;
   totalAmount?: string;
   itemCount?: number;
   createdAt?: string;
@@ -58,10 +68,14 @@ export type CheckoutDraftSnapshot = Readonly<{
   totalAmount: number;
 }>;
 
-export type CheckoutSubmitRequest = Readonly<{
+/** Identity facts for placeWithIdentity — platform vocabulary only. */
+export type CheckoutIdentitySubmit = Readonly<{
+  serviceMode: OrderingServiceMode;
+  fulfilmentAnchor: OrderingFulfilmentAnchor;
+}>;
+
+type CheckoutSubmitBase = Readonly<{
   restaurantId: number;
-  tableId: number;
-  tableNumber: number;
   sessionToken?: string;
   /** Dining session / post-submission / channel gates composed by shell. */
   channelAllowsSubmit: boolean;
@@ -71,6 +85,32 @@ export type CheckoutSubmitRequest = Readonly<{
   ) => void;
 }>;
 
+/** QR / table dual-compat path → order.create */
+export type CheckoutTableSubmitRequest = CheckoutSubmitBase &
+  Readonly<{
+    tableId: number;
+    tableNumber: number;
+    identity?: undefined;
+  }>;
+
+/** Identity-driven path → order.placeWithIdentity */
+export type CheckoutIdentitySubmitRequest = CheckoutSubmitBase &
+  Readonly<{
+    identity: CheckoutIdentitySubmit;
+    tableId?: undefined;
+    tableNumber?: undefined;
+  }>;
+
+export type CheckoutSubmitRequest =
+  | CheckoutTableSubmitRequest
+  | CheckoutIdentitySubmitRequest;
+
 export type CheckoutSubmitOutcome =
   | { ok: true; result: CheckoutPlaceOrderResult }
   | { ok: false; error: CheckoutSubmitError };
+
+export function isCheckoutIdentitySubmit(
+  request: CheckoutSubmitRequest
+): request is CheckoutIdentitySubmitRequest {
+  return request.identity != null;
+}
