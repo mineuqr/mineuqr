@@ -43,6 +43,13 @@ export {
 } from "./orderingRuntimeContract";
 
 export {
+  fulfilmentProjectionFromIdentity,
+  fulfilmentProjectionFromLegacyTable,
+  resolveFulfilmentProjection,
+  type OrderFulfilmentProjection,
+} from "./orderFulfilmentProjection";
+
+export {
   ORDERING_SERVICE_MODES,
   ORDERING_FULFILMENT_ANCHOR_TYPES,
   LEGACY_NON_TABLE_TABLE_ID,

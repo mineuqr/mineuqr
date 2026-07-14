@@ -28,6 +28,10 @@ export type NewOrderProps = {
   tableId: number;
   tableNumber: number;
   sessionId?: number | null;
+  /** OPERATIONAL-FULFILMENT-PROJECTION-1 — dual-write stamps for Order Read Model. */
+  serviceMode?: string | null;
+  fulfilmentAnchorType?: string | null;
+  fulfilmentLabel?: string | null;
   customerName?: string | null;
   customerPhone?: string | null;
   notes?: string | null;
@@ -54,6 +58,9 @@ export class Order {
   readonly tableId: number;
   readonly tableNumber: number;
   readonly sessionId: number | null;
+  readonly serviceMode: string | null;
+  readonly fulfilmentAnchorType: string | null;
+  readonly fulfilmentLabel: string | null;
   readonly customerName: string | null;
   readonly customerPhone: string | null;
   readonly notes: string | null;
@@ -74,6 +81,9 @@ export class Order {
     this.tableId = props.tableId;
     this.tableNumber = props.tableNumber;
     this.sessionId = props.sessionId ?? null;
+    this.serviceMode = props.serviceMode ?? null;
+    this.fulfilmentAnchorType = props.fulfilmentAnchorType ?? null;
+    this.fulfilmentLabel = props.fulfilmentLabel ?? null;
     this.customerName = props.customerName ?? null;
     this.customerPhone = props.customerPhone ?? null;
     this.notes = props.notes ?? null;
@@ -298,6 +308,9 @@ export class Order {
       tableId: this.tableId,
       tableNumber: this.tableNumber,
       sessionId: this.sessionId,
+      serviceMode: this.serviceMode,
+      fulfilmentAnchorType: this.fulfilmentAnchorType,
+      fulfilmentLabel: this.fulfilmentLabel,
       customerName: this.customerName,
       customerPhone: this.customerPhone,
       notes: this.notes,
@@ -324,6 +337,9 @@ export class Order {
       tableId: this.tableId,
       tableNumber: this.tableNumber,
       sessionId: this.sessionId,
+      serviceMode: this.serviceMode,
+      fulfilmentAnchorType: this.fulfilmentAnchorType,
+      fulfilmentLabel: this.fulfilmentLabel,
       customerName: this.customerName,
       customerPhone: this.customerPhone,
       notes: this.notes,

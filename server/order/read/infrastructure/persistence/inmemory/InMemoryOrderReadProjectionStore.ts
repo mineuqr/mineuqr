@@ -1,3 +1,4 @@
+import { resolveFulfilmentProjection } from "@shared/ordering-platform/orderFulfilmentProjection";
 import { ORDER_READ_PROJECTION_SCHEMA_VERSION } from "../../../domain/contracts/projectionIds";
 import type {
   ActiveOrderLineItemDto,
@@ -307,6 +308,13 @@ export class InMemoryOrderReadProjectionStore {
       businessDay: order.businessDay ?? null,
       dailyDisplayNumber: order.dailyDisplayNumber ?? null,
     });
+    const fulfilment = resolveFulfilmentProjection({
+      serviceMode: order.serviceMode,
+      fulfilmentAnchorType: order.fulfilmentAnchorType,
+      fulfilmentLabel: order.fulfilmentLabel,
+      tableNumber: order.tableNumber,
+      sessionId: order.sessionId,
+    });
     return {
       projectionId: "P-01-owner-orders",
       restaurantId: order.restaurantId,
@@ -322,6 +330,9 @@ export class InMemoryOrderReadProjectionStore {
       ),
       tableNumber: order.tableNumber,
       sessionId: order.sessionId ?? null,
+      serviceMode: fulfilment.serviceMode,
+      fulfilmentAnchorType: fulfilment.fulfilmentAnchorType,
+      fulfilmentLabel: fulfilment.fulfilmentLabel,
       customerName: order.customerName ?? null,
       customerPhone: order.customerPhone ?? null,
       notes: order.notes ?? null,

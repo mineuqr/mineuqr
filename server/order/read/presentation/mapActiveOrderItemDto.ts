@@ -1,3 +1,4 @@
+import { resolveFulfilmentProjection } from "@shared/ordering-platform/orderFulfilmentProjection";
 import { resolveOrderDisplayIdentity } from "../../business-identity/application/OrderDisplayIdentityResolver";
 import type { ActiveOrderItemDto, ActiveOrderLineItemDto } from "../domain/contracts/queryContracts";
 
@@ -10,6 +11,9 @@ export type OrderRowIdentitySource = {
   lifecycle: string;
   tableNumber: number;
   sessionId: number | null;
+  serviceMode?: string | null;
+  fulfilmentAnchorType?: string | null;
+  fulfilmentLabel?: string | null;
   customerName: string | null;
   customerPhone: string | null;
   notes: string | null;
@@ -25,6 +29,13 @@ export function mapActiveOrderItemDto(row: OrderRowIdentitySource): ActiveOrderI
     businessDay: row.businessDay,
     dailyDisplayNumber: row.dailyDisplayNumber,
   });
+  const fulfilment = resolveFulfilmentProjection({
+    serviceMode: row.serviceMode,
+    fulfilmentAnchorType: row.fulfilmentAnchorType,
+    fulfilmentLabel: row.fulfilmentLabel,
+    tableNumber: row.tableNumber,
+    sessionId: row.sessionId,
+  });
 
   return {
     orderId: row.orderId,
@@ -37,6 +48,9 @@ export function mapActiveOrderItemDto(row: OrderRowIdentitySource): ActiveOrderI
     lifecycle: row.lifecycle,
     tableNumber: row.tableNumber,
     sessionId: row.sessionId,
+    serviceMode: fulfilment.serviceMode,
+    fulfilmentAnchorType: fulfilment.fulfilmentAnchorType,
+    fulfilmentLabel: fulfilment.fulfilmentLabel,
     customerName: row.customerName,
     customerPhone: row.customerPhone,
     notes: row.notes,

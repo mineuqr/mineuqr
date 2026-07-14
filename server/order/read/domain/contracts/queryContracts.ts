@@ -160,6 +160,10 @@ export type ActiveOrderItemDto = {
   lifecycle: string;
   tableNumber: number;
   sessionId: number | null;
+  /** OPERATIONAL-FULFILMENT-PROJECTION-1 — projected fulfilment (ops consume these). */
+  serviceMode: string;
+  fulfilmentAnchorType: string;
+  fulfilmentLabel: string;
   customerName: string | null;
   customerPhone: string | null;
   /**

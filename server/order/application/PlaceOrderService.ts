@@ -19,6 +19,10 @@ import {
   resolvePlaceOrderPersistFields,
   resolvePlaceOrderSessionId,
 } from "@shared/ordering-platform/orderingIdentityContract";
+import {
+  fulfilmentProjectionFromIdentity,
+  fulfilmentProjectionFromLegacyTable,
+} from "@shared/ordering-platform/orderFulfilmentProjection";
 
 export type PlaceOrderCommand = {
   restaurantId: number;
@@ -128,11 +132,23 @@ export class PlaceOrderService {
       sessionId: command.sessionId,
     });
 
+    // OPERATIONAL-FULFILMENT-PROJECTION-1 — stamp fulfilment facts for Order Read Model.
+    // No PlaceOrder business-rule change; dual-write only.
+    const fulfilment = command.identity
+      ? fulfilmentProjectionFromIdentity(command.identity)
+      : fulfilmentProjectionFromLegacyTable({
+          tableNumber: tableFields.tableNumber,
+          sessionId,
+        });
+
     const order = Order.placeNew({
       restaurantId: command.restaurantId,
       tableId: tableFields.tableId,
       tableNumber: tableFields.tableNumber,
       sessionId,
+      serviceMode: fulfilment.serviceMode,
+      fulfilmentAnchorType: fulfilment.fulfilmentAnchorType,
+      fulfilmentLabel: fulfilment.fulfilmentLabel,
       customerName: command.customerName ?? null,
       customerPhone: command.customerPhone ?? null,
       notes: orderNoteResult.value,

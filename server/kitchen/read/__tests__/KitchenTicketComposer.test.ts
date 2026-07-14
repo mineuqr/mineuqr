@@ -34,6 +34,9 @@ const baseOrder: OrderReadPipelineOrderRow = {
   tableId: 3,
   tableNumber: 7,
   sessionId: null,
+  serviceMode: "table_service",
+  fulfilmentAnchorType: "table",
+  fulfilmentLabel: "7",
   customerName: "Guest",
   customerPhone: null,
   notes: "No onions",
@@ -71,6 +74,13 @@ describe("KitchenTicketComposer", () => {
   it("falls back to createdAt when timeline missing status entry", () => {
     const entered = deriveStatusEnteredAt("pending", baseOrder.createdAt, []);
     expect(entered).toBe(baseOrder.createdAt);
+  });
+
+  it("composes ticket with projected fulfilment fields", () => {
+    const ticket = composer.composeTicket(baseOrder, []);
+    expect(ticket.fulfilmentLabel).toBe("7");
+    expect(ticket.serviceMode).toBe("table_service");
+    expect(ticket.fulfilmentAnchorType).toBe("table");
   });
 
   it("composes ticket with urgency and summaries", () => {

@@ -1,3 +1,4 @@
+import { resolveFulfilmentProjection } from "@shared/ordering-platform/orderFulfilmentProjection";
 import type { orderReadOrders } from "../../../../drizzle/schema";
 import type { ActiveOrderLineItemDto } from "../../../order/read/domain/contracts/queryContracts";
 import { mapOrderDisplayIdentityFields } from "../../../order/read/presentation/mapOrderDisplayIdentity";
@@ -14,6 +15,13 @@ export function mapPrintWorkspaceOrderDto(
     businessDay: row.businessDay ?? null,
     dailyDisplayNumber: row.dailyDisplayNumber ?? null,
   });
+  const fulfilment = resolveFulfilmentProjection({
+    serviceMode: row.serviceMode,
+    fulfilmentAnchorType: row.fulfilmentAnchorType,
+    fulfilmentLabel: row.fulfilmentLabel,
+    tableNumber: row.tableNumber,
+    sessionId: row.sessionId,
+  });
 
   return {
     orderId: row.orderId,
@@ -22,6 +30,9 @@ export function mapPrintWorkspaceOrderDto(
     status: row.status,
     tableNumber: row.tableNumber,
     sessionId: row.sessionId ?? null,
+    serviceMode: fulfilment.serviceMode,
+    fulfilmentAnchorType: fulfilment.fulfilmentAnchorType,
+    fulfilmentLabel: fulfilment.fulfilmentLabel,
     customerName: row.customerName,
     customerPhone: row.customerPhone,
     notes: row.notes,

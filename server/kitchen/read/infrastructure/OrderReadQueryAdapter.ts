@@ -24,6 +24,9 @@ export type OrderReadPipelineOrderRow = {
   tableId: number;
   tableNumber: number;
   sessionId: number | null;
+  serviceMode: string;
+  fulfilmentAnchorType: string;
+  fulfilmentLabel: string;
   customerName: string | null;
   customerPhone: string | null;
   notes: string | null;
@@ -106,6 +109,9 @@ export class DrizzleOrderReadQueryAdapter implements OrderReadQueryPort {
         lifecycle: row.lifecycleStage,
         tableNumber: row.tableNumber,
         sessionId: row.sessionId ?? null,
+        serviceMode: row.serviceMode,
+        fulfilmentAnchorType: row.fulfilmentAnchorType,
+        fulfilmentLabel: row.fulfilmentLabel,
         customerName: row.customerName,
         customerPhone: row.customerPhone,
         notes: row.notes,
@@ -127,6 +133,9 @@ export class DrizzleOrderReadQueryAdapter implements OrderReadQueryPort {
         tableId: row.tableId,
         tableNumber: row.tableNumber,
         sessionId: row.sessionId ?? null,
+        serviceMode: mapped.serviceMode,
+        fulfilmentAnchorType: mapped.fulfilmentAnchorType,
+        fulfilmentLabel: mapped.fulfilmentLabel,
         customerName: row.customerName,
         customerPhone: row.customerPhone,
         notes: row.notes,

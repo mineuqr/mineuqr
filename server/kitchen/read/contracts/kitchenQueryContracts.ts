@@ -35,6 +35,9 @@ export type KitchenTicketDto = {
   displayReference: string;
   tableNumber: number;
   sessionId: number | null;
+  serviceMode: string;
+  fulfilmentAnchorType: string;
+  fulfilmentLabel: string;
   customerName: string | null;
   orderNotes: string | null;
   status: KitchenPipelineStatus;

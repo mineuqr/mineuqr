@@ -38,6 +38,9 @@ export type PrintWorkspaceOrderDto = {
   status: string;
   tableNumber: number;
   sessionId: number | null;
+  serviceMode: string;
+  fulfilmentAnchorType: string;
+  fulfilmentLabel: string;
   customerName: string | null;
   customerPhone: string | null;
   notes: string | null;

@@ -29,6 +29,10 @@ export type PrintPayload = {
   businessDay?: string | null;
   orderStatus: string;
   tableNumber: number;
+  /** OPERATIONAL-FULFILMENT-PROJECTION-1 — prefer over reconstructing from tableNumber. */
+  serviceMode?: string | null;
+  fulfilmentAnchorType?: string | null;
+  fulfilmentLabel?: string | null;
   customerName?: string | null;
   customerPhone?: string | null;
   notes?: string | null;
