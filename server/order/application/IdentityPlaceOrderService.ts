@@ -28,6 +28,8 @@ export type IdentityPlaceOrderCommand = {
   serviceMode: OrderingServiceMode;
   fulfilmentAnchor: OrderingFulfilmentAnchor;
   sessionToken?: string;
+  /** WAITER-ORDERING-FOUNDATION-1 — explicit BI scope stamp (e.g. WAITER). */
+  identityScope?: string | null;
   customerName?: string | null;
   customerPhone?: string | null;
   orderNotes?: string | null;
@@ -86,6 +88,7 @@ export class IdentityPlaceOrderService {
           ? command.fulfilmentAnchor.tableNumber
           : undefined,
       sessionId: identity.operationalSession.sessionId,
+      identityScope: command.identityScope,
       customerName: command.customerName,
       customerPhone: command.customerPhone,
       orderNotes: command.orderNotes,

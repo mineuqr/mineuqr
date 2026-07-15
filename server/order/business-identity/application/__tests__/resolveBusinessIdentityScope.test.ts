@@ -32,6 +32,16 @@ describe("resolveBusinessIdentityScope", () => {
     ).toBe("KIOSK");
   });
 
+  it("honors explicit WAITER scope over table fulfilment stamps", () => {
+    expect(
+      resolveBusinessIdentityScope({
+        identityScope: "WAITER",
+        fulfilmentAnchorType: "table",
+        serviceMode: "table_service",
+      })
+    ).toBe("WAITER");
+  });
+
   it("defaults historic rows without stamps to TABLE", () => {
     expect(resolveBusinessIdentityScope({})).toBe("TABLE");
   });
@@ -39,5 +49,6 @@ describe("resolveBusinessIdentityScope", () => {
   it("maps scope codes for display formatting", () => {
     expect(businessIdentityScopeCode("TABLE")).toBe("T");
     expect(businessIdentityScopeCode("KIOSK")).toBe("K");
+    expect(businessIdentityScopeCode("WAITER")).toBe("WT");
   });
 });

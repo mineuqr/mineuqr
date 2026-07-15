@@ -166,6 +166,9 @@ export class DrizzleOrderRepository implements OrderRepository {
           createdAt: order.createdAt,
           fulfilmentAnchorType: snapshot.fulfilmentAnchorType,
           serviceMode: snapshot.serviceMode,
+          identityScope: (options?.identityScope ?? undefined) as
+            | import("../../business-identity/types").BusinessIdentityScope
+            | undefined,
         }
       );
       businessIdentity = {

@@ -2,8 +2,9 @@
  * ORDERING-CLIENT-CHECKOUT-1 / KIOSK-IDENTITY-ADOPTION-1 —
  * Ordering Client Platform checkout orchestrator.
  * Owns form state, submission lifecycle, notes validation presentation, order summary.
- * Consumes cart + runtime gates; places orders via table (order.create) or
- * identity (order.placeWithIdentity). Channel-agnostic — no channel forks here.
+ * Consumes cart + runtime gates; places orders via table (order.create),
+ * public identity (order.placeWithIdentity), or staff identity (order.placeAsWaiter).
+ * Channel-agnostic — no channel forks here.
  */
 import {
   createContext,
@@ -72,6 +73,7 @@ export function OrderingCheckoutProvider({
   const cart = useOrderingCart();
   const createOrderMutation = trpc.order.create.useMutation();
   const placeWithIdentityMutation = trpc.order.placeWithIdentity.useMutation();
+  const placeAsWaiterMutation = trpc.order.placeAsWaiter.useMutation();
 
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -121,7 +123,10 @@ export function OrderingCheckoutProvider({
         !request.restaurantId ||
         items.length === 0 ||
         !gates?.platformCanPlaceOrder ||
-        (!identitySubmit && !tableReady)
+        (!identitySubmit && !tableReady) ||
+        (identitySubmit &&
+          request.identity.placeAuth === "staff" &&
+          !request.sessionToken)
       ) {
         return {
           ok: false,
@@ -169,27 +174,64 @@ export function OrderingCheckoutProvider({
       );
 
       try {
-        const result = identitySubmit
-          ? await placeWithIdentityMutation.mutateAsync({
-              restaurantId: request.restaurantId,
-              serviceMode: request.identity.serviceMode,
-              fulfilmentAnchor: request.identity.fulfilmentAnchor,
-              sessionToken: request.sessionToken,
-              customerName: customerName || undefined,
-              customerPhone: customerPhone || undefined,
-              notes: validated.orderNotes ?? undefined,
-              items: linePayload,
-            })
-          : await createOrderMutation.mutateAsync({
-              restaurantId: request.restaurantId,
-              tableId: request.tableId,
-              tableNumber: request.tableNumber,
-              sessionToken: request.sessionToken,
-              customerName: customerName || undefined,
-              customerPhone: customerPhone || undefined,
-              notes: validated.orderNotes ?? undefined,
-              items: linePayload,
-            });
+        let result:
+          | Awaited<ReturnType<typeof placeWithIdentityMutation.mutateAsync>>
+          | Awaited<ReturnType<typeof placeAsWaiterMutation.mutateAsync>>
+          | Awaited<ReturnType<typeof createOrderMutation.mutateAsync>>;
+
+        if (identitySubmit && request.identity.placeAuth === "staff") {
+          const anchor = request.identity.fulfilmentAnchor;
+          if (
+            request.identity.serviceMode !== "table_service" ||
+            anchor.anchorType !== "table" ||
+            !request.sessionToken
+          ) {
+            const error: CheckoutSubmitError = {
+              code: "NOT_READY",
+              message: "Checkout not ready",
+            };
+            setLastError(error);
+            setSubmissionStatus("failure");
+            return { ok: false, error };
+          }
+          result = await placeAsWaiterMutation.mutateAsync({
+            restaurantId: request.restaurantId,
+            serviceMode: "table_service",
+            fulfilmentAnchor: {
+              anchorType: "table",
+              tableId: anchor.tableId,
+              tableNumber: anchor.tableNumber,
+              fulfilmentLabel: anchor.fulfilmentLabel,
+            },
+            sessionToken: request.sessionToken,
+            customerName: customerName || undefined,
+            customerPhone: customerPhone || undefined,
+            notes: validated.orderNotes ?? undefined,
+            items: linePayload,
+          });
+        } else if (identitySubmit) {
+          result = await placeWithIdentityMutation.mutateAsync({
+            restaurantId: request.restaurantId,
+            serviceMode: request.identity.serviceMode,
+            fulfilmentAnchor: request.identity.fulfilmentAnchor,
+            sessionToken: request.sessionToken,
+            customerName: customerName || undefined,
+            customerPhone: customerPhone || undefined,
+            notes: validated.orderNotes ?? undefined,
+            items: linePayload,
+          });
+        } else {
+          result = await createOrderMutation.mutateAsync({
+            restaurantId: request.restaurantId,
+            tableId: request.tableId,
+            tableNumber: request.tableNumber,
+            sessionToken: request.sessionToken,
+            customerName: customerName || undefined,
+            customerPhone: customerPhone || undefined,
+            notes: validated.orderNotes ?? undefined,
+            items: linePayload,
+          });
+        }
 
         if (!result.trackingToken) {
           const error: CheckoutSubmitError = {
@@ -211,7 +253,7 @@ export function OrderingCheckoutProvider({
           orderNumber: result.orderNumber,
           trackingToken: result.trackingToken,
           displayReference,
-          sessionToken: result.sessionToken,
+          sessionToken: result.sessionToken ?? undefined,
           tableNumber: result.tableNumber,
           fulfilmentLabel:
             "fulfilmentLabel" in result
@@ -250,6 +292,7 @@ export function OrderingCheckoutProvider({
       cart,
       createOrderMutation,
       placeWithIdentityMutation,
+      placeAsWaiterMutation,
       customerName,
       customerPhone,
       gates,

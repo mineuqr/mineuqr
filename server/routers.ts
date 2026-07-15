@@ -90,7 +90,10 @@ import { opsLog } from "./_core/opsLog";
 import { OPS_EVENT } from "./_core/opsTaxonomy";
 import { markPaid, markComplimentary, closeSession } from "./diningSession/sessionService";
 import { resolveOperationalSession } from "./operational-session";
-import { findSessionById } from "./diningSession/sessionRepository";
+import {
+  findActiveSession,
+  findSessionById,
+} from "./diningSession/sessionRepository";
 import { SESSION_TOKEN_PATTERN } from "./diningSession/sessionPublicStatus";
 import { throwSessionServiceTrpcError } from "./diningSession/mapSessionErrorToTrpc";
 import {
@@ -1780,6 +1783,97 @@ const tableRouter = router({
 });
 
 // ─── Dining Session Router (TABLE-MANAGEMENT-1 D4) ─────────────
+/**
+ * WAITER-ORDERING-FOUNDATION-1 — staff channel orchestration APIs.
+ * Owns restaurant/table access + Session Platform attach only.
+ * Does not place orders or own session lifecycle.
+ */
+const waiterRouter = router({
+  listRestaurants: protectedProcedure.query(async ({ ctx }) => {
+    const restaurants = await getRestaurantsByUser(ctx.user.id);
+    return restaurants.map((r) => ({
+      id: r.id,
+      slug: r.slug,
+      nameAr: r.nameAr,
+      nameEn: r.nameEn,
+      isActive: r.isActive,
+    }));
+  }),
+
+  listFloorTables: protectedProcedure
+    .input(z.object({ restaurantId: z.number() }))
+    .query(async ({ input, ctx }) => {
+      await assertRestaurantAccess(ctx, input.restaurantId, "waiter.listFloorTables");
+      const tables = await getTablesByRestaurant(input.restaurantId);
+      const rows = await Promise.all(
+        tables.map(async (table) => {
+          const active = await findActiveSession(input.restaurantId, table.id);
+          return {
+            id: table.id,
+            tableNumber: table.tableNumber,
+            nameAr: table.nameAr,
+            nameEn: table.nameEn,
+            status: active ? ("occupied" as const) : ("available" as const),
+            sessionId: active?.id ?? null,
+            sessionStatus: active?.status ?? null,
+            totalOrders: active?.totalOrders ?? null,
+          };
+        })
+      );
+      return rows.sort((a, b) => a.tableNumber - b.tableNumber);
+    }),
+
+  attachTable: protectedProcedure
+    .input(
+      z.object({
+        restaurantId: z.number(),
+        tableId: z.number().int().positive(),
+        tableNumber: z.number().int().positive(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      await assertRestaurantAccess(ctx, input.restaurantId, "waiter.attachTable");
+      const table = await getTableById(input.tableId);
+      if (
+        !table ||
+        table.restaurantId !== input.restaurantId ||
+        table.tableNumber !== input.tableNumber
+      ) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "الطاولة غير موجودة" });
+      }
+
+      try {
+        const sessionResult = await resolveOperationalSession({
+          restaurantId: input.restaurantId,
+          anchor: createTableSessionAnchor({
+            tableId: table.id,
+            tableNumber: table.tableNumber,
+          }),
+        });
+
+        if (!sessionResult.session) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "تعذر فتح جلسة الطاولة",
+          });
+        }
+
+        return {
+          restaurantId: input.restaurantId,
+          tableId: table.id,
+          tableNumber: table.tableNumber,
+          sessionId: sessionResult.session.id,
+          sessionToken: sessionResult.session.sessionToken,
+          sessionStatus: sessionResult.session.status,
+          created: sessionResult.created,
+          persistence: sessionResult.persistence,
+        };
+      } catch (err) {
+        throwSessionServiceTrpcError(err);
+      }
+    }),
+});
+
 const sessionRouter = router({
   getActiveByTable: publicProcedure
     .input(
@@ -1983,6 +2077,91 @@ const orderRouter = router({
           ...(placeResult.identity.operationalSession.sessionToken
             ? { sessionToken: placeResult.identity.operationalSession.sessionToken }
             : {}),
+        };
+      } catch (err) {
+        throwSessionServiceTrpcError(err);
+      }
+    }),
+
+  /**
+   * WAITER-ORDERING-FOUNDATION-1 — authenticated staff place path.
+   * Wraps IdentityPlaceOrderService; forces Business Identity scope WAITER.
+   * Requires restaurant access + existing/resolvable table session token.
+   */
+  placeAsWaiter: verifiedProcedure
+    .input(
+      z.object({
+        restaurantId: z.number(),
+        serviceMode: z.literal("table_service"),
+        fulfilmentAnchor: z.object({
+          anchorType: z.literal("table"),
+          tableId: z.number().int().positive(),
+          tableNumber: z.number().int().positive(),
+          fulfilmentLabel: z.string().min(1).max(64).optional(),
+        }),
+        customerName: z.string().nullish(),
+        customerPhone: z.string().nullish(),
+        notes: z.string().nullish(),
+        items: z.array(placeOrderItemInput).min(1),
+        sessionToken: z
+          .string()
+          .min(16)
+          .max(64)
+          .regex(SESSION_TOKEN_PATTERN),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      await assertRestaurantAccess(ctx, input.restaurantId, "order.placeAsWaiter");
+      await assertPublicOrderingRestaurant(input.restaurantId);
+
+      const fulfilmentAnchor = createTableFulfilmentAnchor(input.fulfilmentAnchor);
+      const table = await getTableByRestaurantAndNumber(
+        input.restaurantId,
+        fulfilmentAnchor.tableNumber
+      );
+      if (!table || table.id !== fulfilmentAnchor.tableId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "الطاولة غير موجودة" });
+      }
+
+      try {
+        const placeResult = await runOrderCommand(() =>
+          identityPlaceOrderService.execute({
+            restaurantId: input.restaurantId,
+            serviceMode: "table_service",
+            fulfilmentAnchor,
+            sessionToken: input.sessionToken,
+            identityScope: "WAITER",
+            customerName: input.customerName,
+            customerPhone: input.customerPhone,
+            notes: input.notes,
+            items: input.items.map((item) => ({
+              menuItemId: item.menuItemId,
+              quantity: item.quantity,
+              notes: item.notes,
+            })),
+          })
+        );
+
+        if (!placeResult.identity.operationalSession.sessionId) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "يجب ربط الطلب بجلسة المطعم",
+          });
+        }
+
+        return {
+          orderId: placeResult.order.id,
+          orderNumber: placeResult.orderNumber,
+          trackingToken: placeResult.trackingToken,
+          displayReference: placeResult.displayReference,
+          fulfilmentLabel: deriveFulfilmentLabel(fulfilmentAnchor),
+          tableNumber: fulfilmentAnchor.tableNumber,
+          totalAmount: placeResult.totalAmount,
+          itemCount: placeResult.itemCount,
+          createdAt: placeResult.createdAt,
+          status: "pending" as const,
+          sessionPersistence: placeResult.sessionPersistence,
+          sessionToken: placeResult.identity.operationalSession.sessionToken,
         };
       } catch (err) {
         throwSessionServiceTrpcError(err);
@@ -2257,6 +2436,7 @@ export const appRouter = router({
   holiday: holidayRouter,
   table: tableRouter,
   session: sessionRouter,
+  waiter: waiterRouter,
   order: orderRouter,
   ordering: orderingRouter,
   ops: opsRouter,

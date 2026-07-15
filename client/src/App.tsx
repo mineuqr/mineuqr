@@ -9,6 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import MenuView from "./pages/MenuView";
 import TableOrderingShell from "./pages/TableOrderingShell";
 import KioskShell from "./pages/kiosk/KioskShell";
+import WaiterShell from "./pages/waiter/WaiterShell";
 import OrderConfirmationPage from "./pages/OrderConfirmationPage";
 import OrderStatusPage from "./pages/OrderStatusPage";
 import Pricing from "./pages/Pricing";
@@ -80,6 +81,13 @@ function Router() {
         <Route path="/kiosk/:slug/menu" component={KioskShell} />
         <Route path="/kiosk/:slug/language" component={KioskShell} />
         <Route path="/kiosk/:slug" component={KioskShell} />
+        <Route path="/waiter/:slug/confirmed" component={WaiterShell} />
+        <Route path="/waiter/:slug/checkout" component={WaiterShell} />
+        <Route path="/waiter/:slug/cart" component={WaiterShell} />
+        <Route path="/waiter/:slug/menu" component={WaiterShell} />
+        <Route path="/waiter/:slug/tables" component={WaiterShell} />
+        <Route path="/waiter/:slug" component={WaiterShell} />
+        <Route path="/waiter" component={WaiterShell} />
         <Route path="/pricing" component={Pricing} />
         <Route path="/subscription/success" component={SubscriptionSuccess} />
         <Route path="/subscription/cancel" component={SubscriptionCancel} />

@@ -153,7 +153,17 @@ export default function SubscriberLogin() {
       }
 
       navigated = true;
-      setLocation("/dashboard");
+      const returnTo = new URLSearchParams(window.location.search).get(
+        "returnTo"
+      );
+      const safeReturnTo =
+        returnTo &&
+        returnTo.startsWith("/") &&
+        !returnTo.startsWith("//") &&
+        !returnTo.includes("://")
+          ? returnTo
+          : "/dashboard";
+      setLocation(safeReturnTo);
     } catch {
       setFormError(t("auth.loginNetworkError"));
     } finally {

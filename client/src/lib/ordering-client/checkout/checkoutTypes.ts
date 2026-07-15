@@ -70,10 +70,15 @@ export type CheckoutDraftSnapshot = Readonly<{
   totalAmount: number;
 }>;
 
-/** Identity facts for placeWithIdentity — platform vocabulary only. */
+/**
+ * Identity facts for identity place paths — platform vocabulary only.
+ * placeAuth: public → order.placeWithIdentity; staff → order.placeAsWaiter.
+ */
 export type CheckoutIdentitySubmit = Readonly<{
   serviceMode: OrderingServiceMode;
   fulfilmentAnchor: OrderingFulfilmentAnchor;
+  /** Authenticated staff place path (restaurant-scoped). Default: public. */
+  placeAuth?: "public" | "staff";
 }>;
 
 type CheckoutSubmitBase = Readonly<{

@@ -40,6 +40,11 @@ export type PlaceOrderCommand = {
   tableId?: number;
   tableNumber?: number;
   sessionId?: number | null;
+  /**
+   * WAITER-ORDERING-FOUNDATION-1 — explicit BI scope (e.g. WAITER).
+   * Does not change fulfilment; partitions daily display sequences only.
+   */
+  identityScope?: string | null;
   customerName?: string | null;
   customerPhone?: string | null;
   /** Order Notes — legacy `notes` kept for backward compatibility. */
@@ -176,6 +181,7 @@ export class PlaceOrderService {
         events = p.pullDomainEvents();
         return events;
       },
+      identityScope: command.identityScope,
     });
     persisted.clearDomainEvents();
 
@@ -184,7 +190,8 @@ export class PlaceOrderService {
       orderNumber,
       businessDay: businessIdentity?.businessDay ?? null,
       dailyDisplayNumber: businessIdentity?.dailyDisplayNumber ?? null,
-      identityScope: businessIdentity?.identityScope ?? null,
+      identityScope:
+        businessIdentity?.identityScope ?? command.identityScope ?? null,
       fulfilmentAnchorType: fulfilment.fulfilmentAnchorType,
       serviceMode: fulfilment.serviceMode,
     }).displayReference;

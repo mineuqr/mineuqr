@@ -18,6 +18,7 @@ describe("ORDERING-CLIENT-CHECKOUT-1 architecture guards", () => {
     );
     expect(provider).toContain("order.create");
     expect(provider).toContain("placeWithIdentity");
+    expect(provider).toContain("placeAsWaiter");
     expect(provider).toContain("validateCheckoutNotes");
     expect(provider).toContain("submissionStatus");
     expect(provider).toContain("goToTracking");
@@ -63,8 +64,10 @@ describe("ORDERING-CLIENT-CHECKOUT-1 architecture guards", () => {
     );
     expect(provider).toContain("trpc.order.create");
     expect(provider).toContain("trpc.order.placeWithIdentity");
+    expect(provider).toContain("trpc.order.placeAsWaiter");
     expect(provider).not.toMatch(/from ["'].*PlaceOrder/);
     expect(provider).not.toContain("ORDERING_CHANNEL_KIOSK");
+    expect(provider).not.toContain("ORDERING_CHANNEL_WAITER");
     expect(helpers).toContain("@shared/ordering-platform/orderingNotesContract");
   });
 });

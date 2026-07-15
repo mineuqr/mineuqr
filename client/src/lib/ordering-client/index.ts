@@ -151,3 +151,20 @@ export {
   buildKioskStationCheckoutIdentity,
   createKioskStationFulfilmentAnchor,
 } from "./kiosk/kioskStationIdentity";
+
+export {
+  createWaiterOrderingNavigator,
+  resolveWaiterOrderingStage,
+  type WaiterOrderingNavigator,
+  type WaiterShellStage,
+  type CreateWaiterOrderingNavigatorInput,
+} from "./waiter/createWaiterOrderingNavigator";
+export {
+  WaiterOrderingClientHost,
+  type WaiterOrderingClientHostProps,
+} from "./waiter/WaiterOrderingClientHost";
+export {
+  WAITER_TABLE_SERVICE_MODE,
+  buildWaiterTableCheckoutIdentity,
+  createWaiterTableFulfilmentAnchor,
+} from "./waiter/waiterTableIdentity";

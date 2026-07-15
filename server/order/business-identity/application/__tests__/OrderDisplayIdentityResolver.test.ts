@@ -28,6 +28,20 @@ describe("OrderDisplayIdentityResolver", () => {
     expect(identity.displayReference).toBe("K #001");
   });
 
+  it("resolves Waiter-scoped display identity from explicit identityScope", () => {
+    const identity = resolveOrderDisplayIdentity({
+      orderNumber: "ORD-0042",
+      businessDay: "2026-07-10",
+      dailyDisplayNumber: 1,
+      identityScope: "WAITER",
+      fulfilmentAnchorType: "table",
+      serviceMode: "table_service",
+    });
+
+    expect(identity.identityScope).toBe("WAITER");
+    expect(identity.displayReference).toBe("WT #001");
+  });
+
   it("falls back to legacy orderNumber for historic orders", () => {
     const identity = resolveOrderDisplayIdentity({
       orderNumber: "ORD-0042",

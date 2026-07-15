@@ -1,9 +1,10 @@
 /**
- * KIOSK-PRESENTATION-ADOPTION-1 — map fulfilment stamps to Business Identity scope.
+ * KIOSK-PRESENTATION-ADOPTION-1 / WAITER-ORDERING-FOUNDATION-1 —
+ * map fulfilment stamps (or explicit scope) to Business Identity scope.
  * Single identity system; scopes partition the daily sequence only.
  */
 
-export const BUSINESS_IDENTITY_SCOPES = ["TABLE", "KIOSK"] as const;
+export const BUSINESS_IDENTITY_SCOPES = ["TABLE", "KIOSK", "WAITER"] as const;
 export type BusinessIdentityScope = (typeof BUSINESS_IDENTITY_SCOPES)[number];
 
 export function resolveBusinessIdentityScope(input: {
@@ -12,7 +13,7 @@ export function resolveBusinessIdentityScope(input: {
   identityScope?: string | null;
 }): BusinessIdentityScope {
   const explicit = input.identityScope?.trim().toUpperCase();
-  if (explicit === "TABLE" || explicit === "KIOSK") {
+  if (explicit === "TABLE" || explicit === "KIOSK" || explicit === "WAITER") {
     return explicit;
   }
 
@@ -38,6 +39,10 @@ export function resolveBusinessIdentityScope(input: {
   return "TABLE";
 }
 
-export function businessIdentityScopeCode(scope: BusinessIdentityScope): "T" | "K" {
-  return scope === "KIOSK" ? "K" : "T";
+export function businessIdentityScopeCode(
+  scope: BusinessIdentityScope
+): "T" | "K" | "WT" {
+  if (scope === "KIOSK") return "K";
+  if (scope === "WAITER") return "WT";
+  return "T";
 }

@@ -8,6 +8,11 @@ export type SaveOrderOptions = {
   onPersisted?: (order: import("../domain/aggregate/Order").Order) => OrderDomainEvent[];
   correlationId?: string | null;
   causationId?: string | null;
+  /**
+   * WAITER-ORDERING-FOUNDATION-1 — explicit Business Identity scope stamp
+   * (e.g. WAITER). When unset, allocator derives from fulfilment/serviceMode.
+   */
+  identityScope?: string | null;
 };
 
 export type SaveOrderResult = {
