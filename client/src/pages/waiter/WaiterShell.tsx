@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useRoute, useSearch } from "wouter";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -9,6 +9,7 @@ import {
   WaiterOrderingClientHost,
   useWaiterSessionBindingGuard,
   waiterBindingInvalidMessage,
+  type WaiterShellStage,
 } from "@/lib/ordering-client";
 import { trpc } from "@/lib/trpc";
 import { WaiterBrowseStage } from "./WaiterBrowseStage";
@@ -29,13 +30,29 @@ function readParam(search: string, key: string): string | null {
 
 const WAITER_STATION_ID = "waiter";
 
+export type WaiterShellActivation = Readonly<{
+  slug: string;
+  restaurantId?: number;
+}>;
+
+export type WaiterShellProps = Readonly<{
+  /** OPERATIONAL-SCREEN-CATALOG-POLICY-1 — Screen Runtime host mode. */
+  activation?: WaiterShellActivation;
+}>;
+
+type TableBinding = {
+  tableId: number;
+  tableNumber: number;
+  sessionId: number;
+  sessionToken: string;
+};
+
 /**
  * WAITER-ORDERING-FOUNDATION-1 — Waiter channel shell.
- * WAITER-SESSION-BINDING-HARDENING-1 — revalidates URL session binding before
- * browse/cart/checkout; clears stale bindings without creating sessions.
- * Ordering stages compose Ordering Client Platform via WaiterOrderingClientHost.
+ * WAITER-SESSION-BINDING-HARDENING-1 — revalidates URL/host session binding.
+ * OPERATIONAL-SCREEN-CATALOG-POLICY-1 — optional Screen Runtime activation host.
  */
-export default function WaiterShell() {
+export default function WaiterShell({ activation }: WaiterShellProps = {}) {
   const { language } = useLanguage();
   const lang = language === "ar" ? "ar" : "en";
   const [, setLocation] = useLocation();
@@ -48,6 +65,8 @@ export default function WaiterShell() {
   const [, checkoutParams] = useRoute("/waiter/:slug/checkout");
   const [, confirmedParams] = useRoute("/waiter/:slug/confirmed");
 
+  const hosted = activation != null;
+
   const returnPath =
     typeof window !== "undefined"
       ? `${window.location.pathname}${window.location.search}`
@@ -59,7 +78,7 @@ export default function WaiterShell() {
     redirectPath: loginRedirect,
   });
 
-  const slug =
+  const slugFromRoute =
     entryParams?.slug ??
     tablesParams?.slug ??
     menuParams?.slug ??
@@ -68,15 +87,17 @@ export default function WaiterShell() {
     confirmedParams?.slug ??
     "";
 
-  const stage = useMemo(() => {
-    if (confirmedParams) return "confirmation" as const;
-    if (checkoutParams) return "checkout" as const;
-    if (cartParams) return "cart" as const;
-    if (menuParams) return "browse" as const;
-    if (tablesParams) return "tables" as const;
-    if (entryParams) return "entry" as const;
-    if (isRoot) return "picker" as const;
-    return "picker" as const;
+  const slug = hosted ? activation.slug : slugFromRoute;
+
+  const routeStage = useMemo((): WaiterShellStage | "picker" | "entry" => {
+    if (confirmedParams) return "confirmation";
+    if (checkoutParams) return "checkout";
+    if (cartParams) return "cart";
+    if (menuParams) return "browse";
+    if (tablesParams) return "tables";
+    if (entryParams) return "entry";
+    if (isRoot) return "picker";
+    return "picker";
   }, [
     confirmedParams,
     checkoutParams,
@@ -87,19 +108,45 @@ export default function WaiterShell() {
     isRoot,
   ]);
 
+  const [hostStage, setHostStage] = useState<WaiterShellStage>("tables");
+  const [hostBinding, setHostBinding] = useState<TableBinding | null>(null);
+  const [hostTrackingToken, setHostTrackingToken] = useState<string | null>(
+    null
+  );
+
+  const stage: WaiterShellStage | "picker" | "entry" = hosted
+    ? hostStage
+    : routeStage;
+
   const restaurantsQuery = trpc.waiter.listRestaurants.useQuery(undefined, {
-    enabled: !!user,
+    enabled: !!user && !hosted,
   });
 
-  const restaurant = useMemo(() => {
+  const restaurantFromList = useMemo(() => {
     if (!slug || !restaurantsQuery.data) return null;
     return restaurantsQuery.data.find((r) => r.slug === slug) ?? null;
   }, [slug, restaurantsQuery.data]);
 
-  const tableId = Number(readParam(search, "tableId") || 0);
-  const tableNumber = Number(readParam(search, "table") || 0);
-  const sessionId = Number(readParam(search, "sessionId") || 0);
-  const sessionToken = readParam(search, "session") || "";
+  const restaurantId =
+    activation?.restaurantId ?? restaurantFromList?.id ?? null;
+
+  const restaurantName = restaurantFromList
+    ? language === "ar"
+      ? restaurantFromList.nameAr
+      : restaurantFromList.nameEn || restaurantFromList.nameAr
+    : slug;
+
+  const urlTableId = Number(readParam(search, "tableId") || 0);
+  const urlTableNumber = Number(readParam(search, "table") || 0);
+  const urlSessionId = Number(readParam(search, "sessionId") || 0);
+  const urlSessionToken = readParam(search, "session") || "";
+
+  const tableId = hosted ? hostBinding?.tableId ?? 0 : urlTableId;
+  const tableNumber = hosted ? hostBinding?.tableNumber ?? 0 : urlTableNumber;
+  const sessionId = hosted ? hostBinding?.sessionId ?? 0 : urlSessionId;
+  const sessionToken = hosted
+    ? hostBinding?.sessionToken ?? ""
+    : urlSessionToken;
 
   const qs = useMemo(() => {
     const p = new URLSearchParams();
@@ -136,8 +183,30 @@ export default function WaiterShell() {
 
   const staleRecoveryKeyRef = useRef<string | null>(null);
 
+  const onHostStageNavigate = useCallback(
+    (next: WaiterShellStage, extras?: { trackingToken?: string }) => {
+      setHostStage(next);
+      if (extras?.trackingToken) setHostTrackingToken(extras.trackingToken);
+      if (next === "tables") {
+        setHostBinding(null);
+        setHostTrackingToken(null);
+      }
+    },
+    []
+  );
+
+  const clearBindingToTables = useCallback(() => {
+    if (hosted) {
+      setHostBinding(null);
+      setHostTrackingToken(null);
+      setHostStage("tables");
+      return;
+    }
+    setLocation(`/waiter/${slug}/tables`, { replace: true });
+  }, [hosted, slug, setLocation]);
+
   useEffect(() => {
-    if (!user || !slug) return;
+    if (hosted || !user || !slug) return;
     if (stage === "entry") {
       setLocation(`/waiter/${slug}/tables`, { replace: true });
       return;
@@ -145,7 +214,15 @@ export default function WaiterShell() {
     if (sessionDependentStage && !orderingBound) {
       setLocation(`/waiter/${slug}/tables`, { replace: true });
     }
-  }, [user, slug, stage, sessionDependentStage, orderingBound, setLocation]);
+  }, [
+    hosted,
+    user,
+    slug,
+    stage,
+    sessionDependentStage,
+    orderingBound,
+    setLocation,
+  ]);
 
   useEffect(() => {
     if (!sessionDependentStage || !orderingBound || !slug) return;
@@ -159,8 +236,7 @@ export default function WaiterShell() {
     toast.error(
       waiterBindingInvalidMessage(bindingGuard.invalidReason, lang)
     );
-    // Clear binding by navigating to tables without query — do not attach/create.
-    setLocation(`/waiter/${slug}/tables`, { replace: true });
+    clearBindingToTables();
   }, [
     sessionDependentStage,
     orderingBound,
@@ -170,16 +246,16 @@ export default function WaiterShell() {
     bindingGuard.invalidReason,
     sessionBinding?.sessionToken,
     lang,
-    setLocation,
+    clearBindingToTables,
   ]);
 
-  const goMenuWithBinding = (binding: {
-    tableId: number;
-    tableNumber: number;
-    sessionId: number;
-    sessionToken: string;
-  }) => {
+  const goMenuWithBinding = (binding: TableBinding) => {
     staleRecoveryKeyRef.current = null;
+    if (hosted) {
+      setHostBinding(binding);
+      setHostStage("browse");
+      return;
+    }
     const p = new URLSearchParams();
     p.set("tableId", String(binding.tableId));
     p.set("table", String(binding.tableNumber));
@@ -196,7 +272,7 @@ export default function WaiterShell() {
     );
   }
 
-  if (stage === "picker") {
+  if (!hosted && stage === "picker") {
     if (restaurantsQuery.isLoading) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-slate-950 text-white">
@@ -242,7 +318,7 @@ export default function WaiterShell() {
     );
   }
 
-  if (restaurantsQuery.isLoading || stage === "entry") {
+  if (!hosted && (restaurantsQuery.isLoading || stage === "entry")) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-950 text-white">
         <Loader2 className="w-10 h-10 animate-spin text-teal-400" />
@@ -250,7 +326,7 @@ export default function WaiterShell() {
     );
   }
 
-  if (!restaurant) {
+  if (!hosted && !restaurantFromList) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-slate-950 text-white p-8 text-center">
         <p>
@@ -269,16 +345,26 @@ export default function WaiterShell() {
     );
   }
 
+  if (!restaurantId) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-white p-8 text-center">
+        {language === "ar"
+          ? "تعذر تحديد المطعم"
+          : "Restaurant context unavailable"}
+      </div>
+    );
+  }
+
   if (stage === "tables" || !orderingBound) {
     return (
       <WaiterTablesStage
-        restaurantId={restaurant.id}
-        restaurantName={
-          language === "ar"
-            ? restaurant.nameAr
-            : restaurant.nameEn || restaurant.nameAr
+        restaurantId={restaurantId}
+        restaurantName={restaurantName}
+        onBack={
+          hosted
+            ? undefined
+            : () => setLocation("/waiter")
         }
-        onBack={() => setLocation("/waiter")}
         onSelectTable={goMenuWithBinding}
       />
     );
@@ -295,10 +381,6 @@ export default function WaiterShell() {
     );
   }
 
-  const clearBindingToTables = () => {
-    setLocation(`/waiter/${slug}/tables`, { replace: true });
-  };
-
   return (
     <WaiterOrderingClientHost
       slug={slug}
@@ -306,6 +388,8 @@ export default function WaiterShell() {
       tableNumber={tableNumber}
       sessionId={sessionId}
       querySuffix={qs}
+      onHostStageNavigate={hosted ? onHostStageNavigate : undefined}
+      hostStage={hosted ? hostStage : undefined}
     >
       {stage === "browse" && (
         <WaiterBrowseStage
@@ -330,8 +414,15 @@ export default function WaiterShell() {
       {stage === "confirmation" && (
         <WaiterConfirmationStage
           tableNumber={tableNumber}
+          trackingToken={hosted ? hostTrackingToken : undefined}
           onBackToTables={clearBindingToTables}
-          onOrderAgain={() => setLocation(`/waiter/${slug}/menu?${qs}`)}
+          onOrderAgain={() => {
+            if (hosted) {
+              setHostStage("browse");
+              return;
+            }
+            setLocation(`/waiter/${slug}/menu?${qs}`);
+          }}
         />
       )}
     </WaiterOrderingClientHost>

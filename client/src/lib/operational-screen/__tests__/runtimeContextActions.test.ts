@@ -47,6 +47,7 @@ function sampleContext(instanceId: string): RuntimeInstanceContext {
           supportsAnimation: false,
           supportsPrintMonitor: false,
           supportsKioskOrdering: false,
+        supportsWaiterOrdering: false,
         },
       },
       visibility: { operational: true, blockedReason: null },

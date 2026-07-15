@@ -18,6 +18,7 @@ const OPERATIONAL_SCREEN_ROLES: OperationalDeviceRole[] = [
   "customer_display",
   "print_monitor",
   "self_ordering_kiosk",
+  "waiter_display",
 ];
 
 /** True when the operational screen exposes mark-ready for preparing tickets. */

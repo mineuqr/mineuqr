@@ -5,6 +5,7 @@ export const OPERATIONAL_DEVICE_ROLES = [
   "customer_display",
   "print_monitor",
   "self_ordering_kiosk",
+  "waiter_display",
 ] as const;
 
 export type OperationalDeviceRole = (typeof OPERATIONAL_DEVICE_ROLES)[number];
@@ -25,6 +26,7 @@ export const DEVICE_ROLE_LABELS: Record<
   customer_display: { en: "Customer Display", ar: "شاشة العملاء" },
   print_monitor: { en: "Print Monitor", ar: "مراقب الطباعة" },
   self_ordering_kiosk: { en: "Self Ordering Kiosk", ar: "كiosk الطلب الذاتي" },
+  waiter_display: { en: "Waiter Screen", ar: "شاشة النادل" },
 };
 
 export const KITCHEN_QUEUE_ROLES: OperationalDeviceRole[] = [

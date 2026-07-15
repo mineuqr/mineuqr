@@ -24,6 +24,7 @@ const ROLE_PERMITTED_ACTIONS: Record<OperationalDeviceRole, DeviceOrderActionId[
   customer_display: [],
   print_monitor: [],
   self_ordering_kiosk: [],
+  waiter_display: [],
 };
 
 const ACTION_REQUIRED_STATUS: Record<DeviceOrderActionId, DeviceOrderLifecycleStatus> = {

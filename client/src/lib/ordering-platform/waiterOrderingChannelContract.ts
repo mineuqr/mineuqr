@@ -11,6 +11,9 @@ import {
 
 export const WAITER_ORDERING_CHANNEL = ORDERING_CHANNEL_WAITER_TABLET;
 
+/** OPERATIONAL-SCREEN-CATALOG-POLICY-1 — Screen Platform role hosting WaiterShell. */
+export const WAITER_OPERATIONAL_DEVICE_ROLE = "waiter_display" as const;
+
 export const WAITER_ORDERING_ROUTES = {
   entry: "/waiter/:slug",
   tables: "/waiter/:slug/tables",

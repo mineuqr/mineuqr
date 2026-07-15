@@ -22,8 +22,6 @@ export type RestaurantOperationsShellProps = {
   onLogout: () => void;
   onRestaurantTabChange?: (tab: RestaurantTab) => void;
   tablesLabel?: string;
-  /** WAITER-NAVIGATION-ADOPTION-1 — pass-through for Waiter Ordering deep-link. */
-  restaurantSlug?: string | null;
   breadcrumbs?: AdminBreadcrumbItem[];
   className?: string;
 };
@@ -37,7 +35,6 @@ export function RestaurantOperationsShell({
   onLogout,
   onRestaurantTabChange,
   tablesLabel,
-  restaurantSlug,
   breadcrumbs = [],
   className,
 }: RestaurantOperationsShellProps) {
@@ -64,7 +61,6 @@ export function RestaurantOperationsShell({
           onRestaurants={onRestaurants}
           onRestaurantTabChange={onRestaurantTabChange}
           tablesLabel={tablesLabel}
-          restaurantSlug={restaurantSlug}
         />
         <SidebarInset
           dir={RESTAURANT_WORKSPACE_DIR}

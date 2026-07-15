@@ -1,6 +1,6 @@
 /**
  * WAITER-ORDERING-FOUNDATION-1 — Waiter OrderingNavigator.
- * Maps Client Platform stages to waiter routes. Tables/login are channel shell.
+ * OPERATIONAL-SCREEN-CATALOG-POLICY-1 — optional host-stage navigation for Screen Runtime.
  */
 import type {
   OrderingClientStage,
@@ -23,6 +23,14 @@ export type CreateWaiterOrderingNavigatorInput = Readonly<{
   setLocation: (path: string, options?: { replace?: boolean }) => void;
   /** Preserved channel query (table / session). */
   querySuffix?: string;
+  /**
+   * When hosted by Screen Runtime, stage transitions update host state
+   * instead of navigating `/waiter/:slug` URLs.
+   */
+  onHostStageNavigate?: (
+    stage: WaiterShellStage,
+    extras?: { trackingToken?: string }
+  ) => void;
 }>;
 
 function path(template: string, slug: string): string {
@@ -47,7 +55,7 @@ function withQuery(
 export function createWaiterOrderingNavigator(
   input: CreateWaiterOrderingNavigatorInput
 ): WaiterOrderingNavigator {
-  const { slug, stage, setLocation, querySuffix } = input;
+  const { slug, stage, setLocation, querySuffix, onHostStageNavigate } = input;
   const platformStage: OrderingClientStage =
     stage === "tables" ? "browse" : stage;
 
@@ -57,22 +65,34 @@ export function createWaiterOrderingNavigator(
   const checkoutPath = path(WAITER_ORDERING_ROUTES.checkout, slug);
   const confirmedPath = path(WAITER_ORDERING_ROUTES.confirmation, slug);
 
+  const go = (
+    hostStage: WaiterShellStage,
+    url: string,
+    options?: { replace?: boolean; trackingToken?: string }
+  ) => {
+    if (onHostStageNavigate) {
+      onHostStageNavigate(hostStage, { trackingToken: options?.trackingToken });
+      return;
+    }
+    setLocation(url, options?.replace ? { replace: true } : undefined);
+  };
+
   return {
     stage: platformStage,
-    goToBrowse: () => setLocation(withQuery(browsePath, querySuffix)),
-    goToCart: () => setLocation(withQuery(cartPath, querySuffix)),
-    goToCheckout: () => setLocation(withQuery(checkoutPath, querySuffix)),
+    goToBrowse: () => go("browse", withQuery(browsePath, querySuffix)),
+    goToCart: () => go("cart", withQuery(cartPath, querySuffix)),
+    goToCheckout: () => go("checkout", withQuery(checkoutPath, querySuffix)),
     goToConfirmation: (trackingToken: string) =>
-      setLocation(
-        withQuery(confirmedPath, querySuffix, { token: trackingToken }),
-        { replace: true }
-      ),
+      go("confirmation", withQuery(confirmedPath, querySuffix, { token: trackingToken }), {
+        replace: true,
+        trackingToken,
+      }),
     goToTracking: (trackingToken: string) =>
-      setLocation(
-        withQuery(confirmedPath, querySuffix, { token: trackingToken }),
-        { replace: true }
-      ),
-    goToTables: () => setLocation(withQuery(tablesPath, querySuffix)),
+      go("confirmation", withQuery(confirmedPath, querySuffix, { token: trackingToken }), {
+        replace: true,
+        trackingToken,
+      }),
+    goToTables: () => go("tables", withQuery(tablesPath, querySuffix)),
   };
 }
 

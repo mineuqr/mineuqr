@@ -4,6 +4,8 @@ import { loadConfirmationDisplayIdentity } from "@/lib/orderConfirmationStorage"
 
 type Props = {
   tableNumber: number;
+  /** Screen Runtime host may pass token without URL query. */
+  trackingToken?: string | null;
   onBackToTables: () => void;
   onOrderAgain: () => void;
 };
@@ -13,19 +15,22 @@ type Props = {
  */
 export function WaiterConfirmationStage({
   tableNumber,
+  trackingToken,
   onBackToTables,
   onOrderAgain,
 }: Props) {
   const { language } = useLanguage();
   const search = useSearch();
-  let token = "";
-  try {
-    token =
-      new URLSearchParams(search.startsWith("?") ? search : `?${search}`).get(
-        "token"
-      ) ?? "";
-  } catch {
-    token = "";
+  let token = trackingToken?.trim() ?? "";
+  if (!token) {
+    try {
+      token =
+        new URLSearchParams(search.startsWith("?") ? search : `?${search}`).get(
+          "token"
+        ) ?? "";
+    } catch {
+      token = "";
+    }
   }
 
   const identity = token ? loadConfirmationDisplayIdentity(token) : null;

@@ -5,6 +5,7 @@ export const DEVICE_ROLE_OPTIONS = [
   { id: "customer_display", en: "Customer Display", ar: "شاشة العملاء" },
   { id: "print_monitor", en: "Print Monitor", ar: "مراقب الطباعة" },
   { id: "self_ordering_kiosk", en: "Self Ordering Kiosk", ar: "كiosk الطلب الذاتي" },
+  { id: "waiter_display", en: "Waiter Screen", ar: "شاشة النادل" },
 ] as const;
 
 export function deviceRoleLabel(role: string, language: string): string {

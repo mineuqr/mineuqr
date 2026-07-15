@@ -27,6 +27,8 @@ export type RoleCapabilityDeclaration = {
   supportsPrintMonitor: boolean;
   /** KIOSK-SCREEN-ACTIVATION-1 — self-ordering kiosk presentation host. */
   supportsKioskOrdering: boolean;
+  /** OPERATIONAL-SCREEN-CATALOG-POLICY-1 — waiter ordering presentation host. */
+  supportsWaiterOrdering: boolean;
 };
 
 export type RoleMetadata = {
@@ -70,7 +72,7 @@ export type RuntimeRoleDefinition = {
     reconnecting: boolean
   ): RoleRuntimeStatus;
   collectDiagnostics(ctx: RoleLifecycleContext): RoleDiagnosticsContribution;
-  presentationKey: "kitchen" | "kiosk" | "blocked";
+  presentationKey: "kitchen" | "kiosk" | "waiter" | "blocked";
 };
 
 export type RoleRuntimeHealth = {

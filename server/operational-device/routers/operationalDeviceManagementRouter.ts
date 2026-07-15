@@ -23,6 +23,7 @@ const deviceRoleSchema = z.enum([
   "customer_display",
   "print_monitor",
   "self_ordering_kiosk",
+  "waiter_display",
 ]);
 
 const createDeviceInput = restaurantInput.extend({

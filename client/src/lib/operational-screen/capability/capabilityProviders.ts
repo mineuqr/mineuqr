@@ -195,6 +195,24 @@ export const presentationKioskProvider: CapabilityProvider = {
   },
 };
 
+/** OPERATIONAL-SCREEN-CATALOG-POLICY-1 — waiter shell presentation capability. */
+export const presentationWaiterProvider: CapabilityProvider = {
+  capabilityId: "presentation_waiter",
+  source: "PresentationWaiterProvider",
+  negotiate(ctx) {
+    if (!ctx.declared.supportsWaiterOrdering) {
+      return adapter("presentation_waiter", "unsupported", this.source);
+    }
+    if (ctx.operationalBlocked || ctx.deviceDisabled) {
+      return adapter("presentation_waiter", "blocked", this.source);
+    }
+    return adapter("presentation_waiter", "supported", this.source, {
+      metadata: { presentation: "waiter_shell" },
+      actions: ["render_waiter_shell"],
+    });
+  },
+};
+
 export const DEFAULT_CAPABILITY_PROVIDERS: CapabilityProvider[] = [
   categoryFilteringProvider,
   displayDensityProvider,
@@ -206,4 +224,5 @@ export const DEFAULT_CAPABILITY_PROVIDERS: CapabilityProvider[] = [
   printMonitorProvider,
   presentationTicketsProvider,
   presentationKioskProvider,
+  presentationWaiterProvider,
 ];

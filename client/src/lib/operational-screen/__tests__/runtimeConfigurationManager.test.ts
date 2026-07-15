@@ -117,6 +117,7 @@ describe("RuntimeConfigurationManager", () => {
       supportsAnimation: false,
       supportsPrintMonitor: false,
       supportsKioskOrdering: false,
+        supportsWaiterOrdering: false,
     };
 
     const config = manager.loadFromStatus(

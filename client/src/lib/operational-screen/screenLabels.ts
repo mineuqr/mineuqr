@@ -1,13 +1,35 @@
 /** Product-facing Screen Management labels (Operational Device remains technical entity). */
 
+/**
+ * Full architectural catalog — includes hidden roadmap types.
+ * OPERATIONAL-SCREEN-CATALOG-POLICY-1 — do not delete hidden entries.
+ */
 export const SCREEN_TYPE_OPTIONS = [
-  { id: "kitchen_display", en: "Kitchen Screen", ar: "شاشة المطبخ" },
+  { id: "kitchen_display", en: "Kitchen Display", ar: "شاشة المطبخ" },
   { id: "expo_display", en: "Expo Screen", ar: "شاشة التجهيز" },
   { id: "pickup_display", en: "Pickup Screen", ar: "شاشة الاستلام" },
   { id: "customer_display", en: "Display Screen", ar: "شاشة العرض" },
   { id: "print_monitor", en: "Print Monitor", ar: "مراقب الطباعة" },
-  { id: "self_ordering_kiosk", en: "Self-Order Screen", ar: "شاشة الطلب الذاتي" },
+  { id: "self_ordering_kiosk", en: "Self Ordering Kiosk", ar: "كiosk الطلب الذاتي" },
+  { id: "waiter_display", en: "Waiter Screen", ar: "شاشة النادل" },
 ] as const;
+
+/** OPERATIONAL-SCREEN-CATALOG-POLICY-1 — provisioning / create selector only. */
+export const PROVISIONING_VISIBLE_SCREEN_TYPE_IDS = [
+  "kitchen_display",
+  "waiter_display",
+  "self_ordering_kiosk",
+] as const;
+
+export type ProvisioningVisibleScreenTypeId =
+  (typeof PROVISIONING_VISIBLE_SCREEN_TYPE_IDS)[number];
+
+export const PROVISIONING_VISIBLE_SCREEN_TYPE_OPTIONS =
+  SCREEN_TYPE_OPTIONS.filter((option) =>
+    (PROVISIONING_VISIBLE_SCREEN_TYPE_IDS as readonly string[]).includes(
+      option.id
+    )
+  );
 
 export const DISPLAY_DENSITY_OPTIONS = [
   { id: "large", en: "Large", ar: "كبير", program: "KITCHEN-DISPLAY-DENSITY-1" },

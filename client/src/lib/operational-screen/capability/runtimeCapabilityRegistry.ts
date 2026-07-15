@@ -78,17 +78,23 @@ export class RuntimeCapabilityRegistry {
   }
 }
 
-/** Prefer kiosk or tickets presentation; otherwise expose tickets status for diagnostics. */
+/** Prefer waiter / kiosk / tickets presentation for diagnostics. */
 function resolvePresentationSupport(
   capabilities: Record<CapabilityId, CapabilityAdapter>
 ): CapabilityAdapter["status"] {
+  if (capabilities.presentation_waiter.status === "supported") {
+    return "supported";
+  }
   if (capabilities.presentation_kiosk.status === "supported") {
     return "supported";
   }
   if (capabilities.presentation_tickets.status === "supported") {
     return "supported";
   }
-  if (capabilities.presentation_kiosk.status === "blocked") {
+  if (
+    capabilities.presentation_waiter.status === "blocked" ||
+    capabilities.presentation_kiosk.status === "blocked"
+  ) {
     return "blocked";
   }
   return capabilities.presentation_tickets.status;

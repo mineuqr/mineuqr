@@ -48,6 +48,10 @@ const REQUIRED = {
   businessIdentityIndexes: [
     ["orders", "uq_orders_restaurant_business_day_scope_display"],
   ],
+  /** ENUM members that must appear in COLUMN_TYPE (substring match). */
+  enumMembers: [
+    ["operational_devices", "role", "waiter_display"],
+  ],
 };
 
 async function columnExists(conn, table, column) {
@@ -75,6 +79,17 @@ async function indexExists(conn, table, indexName) {
     [table, indexName]
   );
   return Array.isArray(rows) && rows.length > 0;
+}
+
+async function enumMemberExists(conn, table, column, member) {
+  const [rows] = await conn.query(
+    `SELECT COLUMN_TYPE AS columnType FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ? LIMIT 1`,
+    [table, column]
+  );
+  if (!Array.isArray(rows) || rows.length === 0) return false;
+  const columnType = String(rows[0].columnType ?? "");
+  return columnType.includes(`'${member}'`);
 }
 
 async function main() {
@@ -144,10 +159,15 @@ async function main() {
         missing.push(`index:${table}.${indexName}`);
       }
     }
+    for (const [table, column, member] of REQUIRED.enumMembers) {
+      if (!(await enumMemberExists(conn, table, column, member))) {
+        missing.push(`enum:${table}.${column}.${member}`);
+      }
+    }
 
     if (missing.length === 0) {
       console.log(
-        "[schema-verify] OK — required schema objects present (auth, order-read, operational-device, fulfilment, business-identity-scope)."
+        "[schema-verify] OK — required schema objects present (auth, order-read, operational-device, fulfilment, business-identity-scope, waiter_display)."
       );
       return;
     }

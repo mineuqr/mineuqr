@@ -836,6 +836,7 @@ export const operationalDeviceRoleEnum = mysqlEnum([
 	"customer_display",
 	"print_monitor",
 	"self_ordering_kiosk",
+	"waiter_display",
 ]);
 
 export const operationalDevices = mysqlTable("operational_devices", {
@@ -849,6 +850,7 @@ export const operationalDevices = mysqlTable("operational_devices", {
 		"customer_display",
 		"print_monitor",
 		"self_ordering_kiosk",
+		"waiter_display",
 	]).notNull(),
 	displayName: varchar({ length: 128 }).notNull(),
 	screenConfig: json(),

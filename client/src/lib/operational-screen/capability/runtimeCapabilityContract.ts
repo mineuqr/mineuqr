@@ -11,7 +11,8 @@ export type CapabilityId =
   | "kitchen_queue"
   | "print_monitor"
   | "presentation_tickets"
-  | "presentation_kiosk";
+  | "presentation_kiosk"
+  | "presentation_waiter";
 
 export const ALL_CAPABILITY_IDS: CapabilityId[] = [
   "category_filtering",
@@ -24,6 +25,7 @@ export const ALL_CAPABILITY_IDS: CapabilityId[] = [
   "print_monitor",
   "presentation_tickets",
   "presentation_kiosk",
+  "presentation_waiter",
 ];
 
 /** Canonical negotiation result — no booleans. */

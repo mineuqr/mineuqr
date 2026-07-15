@@ -6,6 +6,7 @@ import {
   pickupDisplayRole,
   printMonitorRole,
   selfOrderingKioskRole,
+  waiterDisplayRole,
 } from "./roleDefinitions";
 
 let registered = false;
@@ -19,6 +20,7 @@ export function ensureRuntimeRolesRegistered(): void {
   registerRuntimeRole(customerDisplayRole);
   registerRuntimeRole(printMonitorRole);
   registerRuntimeRole(selfOrderingKioskRole);
+  registerRuntimeRole(waiterDisplayRole);
   registered = true;
 }
 

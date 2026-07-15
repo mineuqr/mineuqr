@@ -4,7 +4,7 @@ Official workflow for **deployment-safe** schema changes.
 
 **Source of truth:** `drizzle/meta/_journal.json` — only tagged migrations run via `drizzle-kit migrate`.
 
-**Current canonical lineage:** `0000_shiny_blizzard` → `0066_order_business_identity_scope` (67 journal entries).
+**Current canonical lineage:** `0000_shiny_blizzard` → `0067_operational_device_waiter_display` (68 journal entries).
 
 ---
 

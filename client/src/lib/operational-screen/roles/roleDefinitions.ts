@@ -23,6 +23,7 @@ function kitchenCapabilities(): RoleCapabilityDeclaration {
     supportsAnimation: false,
     supportsPrintMonitor: false,
     supportsKioskOrdering: false,
+    supportsWaiterOrdering: false,
   };
 }
 
@@ -38,6 +39,23 @@ function kioskCapabilities(): RoleCapabilityDeclaration {
     supportsAnimation: false,
     supportsPrintMonitor: false,
     supportsKioskOrdering: true,
+    supportsWaiterOrdering: false,
+  };
+}
+
+function waiterCapabilities(): RoleCapabilityDeclaration {
+  return {
+    supportsOrders: true,
+    supportsTickets: false,
+    supportsQueue: false,
+    supportsReadyOrders: false,
+    supportsDensity: false,
+    supportsCategoryFilter: false,
+    supportsTimeline: false,
+    supportsAnimation: false,
+    supportsPrintMonitor: false,
+    supportsKioskOrdering: false,
+    supportsWaiterOrdering: true,
   };
 }
 
@@ -162,6 +180,7 @@ export const pickupDisplayRole = createBlockedRoleDefinition(
     supportsAnimation: false,
     supportsPrintMonitor: false,
     supportsKioskOrdering: false,
+    supportsWaiterOrdering: false,
   },
   ["SCREEN-CONFIG-RUNTIME-1"],
   {
@@ -187,6 +206,7 @@ export const customerDisplayRole = createBlockedRoleDefinition(
     supportsAnimation: true,
     supportsPrintMonitor: false,
     supportsKioskOrdering: false,
+    supportsWaiterOrdering: false,
   },
   ["SCREEN-CONFIG-RUNTIME-1"],
   {
@@ -212,6 +232,7 @@ export const printMonitorRole = createBlockedRoleDefinition(
     supportsAnimation: false,
     supportsPrintMonitor: true,
     supportsKioskOrdering: false,
+    supportsWaiterOrdering: false,
   },
   ["SCREEN-CONFIG-RUNTIME-1"],
   {
@@ -258,5 +279,46 @@ export const selfOrderingKioskRole = ((): RuntimeRoleDefinition => {
       };
     },
     presentationKey: "kiosk",
+  };
+})();
+
+/** OPERATIONAL-SCREEN-CATALOG-POLICY-1 — operational role; mounts WaiterShell via presentation_waiter. */
+export const waiterDisplayRole = ((): RuntimeRoleDefinition => {
+  const lifecycle = createOperationalRoleLifecycle();
+  const role = "waiter_display" as const;
+  return {
+    metadata: {
+      role,
+      displayName: DEVICE_ROLE_LABELS[role],
+      description: {
+        en: "Staff waiter ordering screen.",
+        ar: "شاشة طلب النادل للموظفين.",
+      },
+      operational: true,
+      capabilities: waiterCapabilities(),
+      configurationSchemaVersion: "1",
+      futurePrograms: ["OPERATIONAL-SCREEN-CATALOG-POLICY-1"],
+    },
+    lifecycle,
+    resolveRuntimeStatus(bootstrapPhase, _context, reconnecting) {
+      return resolveRoleRuntimeStatus(bootstrapPhase, true, reconnecting);
+    },
+    collectDiagnostics(ctx: RoleLifecycleContext) {
+      const configState = lifecycle.getConfigurationState();
+      const config = configState.lastConfiguration;
+      return {
+        presentation: "waiter_shell",
+        configurationApplyCount: configState.configurationApplyCount,
+        activeConfiguration: config
+          ? {
+              language: config.active.language,
+              direction: config.active.direction,
+            }
+          : null,
+        heartbeatCount: ctx.heartbeatCount,
+        reconnectCount: ctx.reconnectCount,
+      };
+    },
+    presentationKey: "waiter",
   };
 })();

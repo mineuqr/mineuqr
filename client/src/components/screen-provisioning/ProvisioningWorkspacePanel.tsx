@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { SCREEN_TYPE_OPTIONS } from "@/lib/operational-screen/screenLabels";
+import { PROVISIONING_VISIBLE_SCREEN_TYPE_OPTIONS } from "@/lib/operational-screen/screenLabels";
 import {
   provisioningActivationStateLabel,
   provisioningPairingStateLabel,
@@ -393,7 +393,7 @@ export function ProvisioningWorkspacePanel({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {SCREEN_TYPE_OPTIONS.map((option) => (
+                {PROVISIONING_VISIBLE_SCREEN_TYPE_OPTIONS.map((option) => (
                   <SelectItem key={option.id} value={option.id}>
                     {isAr ? option.ar : option.en}
                   </SelectItem>
@@ -410,7 +410,7 @@ export function ProvisioningWorkspacePanel({
               createMutation.mutate({
                 restaurantId,
                 displayName: screenName.trim(),
-                role: role as (typeof SCREEN_TYPE_OPTIONS)[number]["id"],
+                role: role as (typeof PROVISIONING_VISIBLE_SCREEN_TYPE_OPTIONS)[number]["id"],
                 branchId: branchId.trim() ? Number(branchId) : null,
               })
             }

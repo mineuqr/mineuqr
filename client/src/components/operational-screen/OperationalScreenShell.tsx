@@ -44,10 +44,12 @@ export function OperationalScreenShell({ children }: { children: React.ReactNode
   const connectionTone = resolveHeaderConnectionTone(context.screenState);
   const showConnection = connectionTone !== "live";
   const connectionLabel = headerConnectionLabel(connectionTone, isAr);
-  /** KIOSK-SCREEN-ACTIVATION-1 — kiosk owns full-bleed chrome; keep connection + unpair only. */
-  const isKioskHost = context.identity.role === "self_ordering_kiosk";
+  /** Kiosk / waiter own full-bleed chrome; keep connection + unpair only. */
+  const isChannelHost =
+    context.identity.role === "self_ordering_kiosk" ||
+    context.identity.role === "waiter_display";
 
-  if (isKioskHost) {
+  if (isChannelHost) {
     return (
       <div className="flex min-h-screen flex-col bg-[#0b0e14] text-foreground" dir={dir}>
         <ScreenConnectionBanner screenState={context.screenState} language={language} />

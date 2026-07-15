@@ -10,6 +10,7 @@ import { createWaiterStationCartScopeAdapter } from "../contracts/createChannelC
 import {
   createWaiterOrderingNavigator,
   resolveWaiterOrderingStage,
+  type WaiterShellStage,
 } from "./createWaiterOrderingNavigator";
 
 export type WaiterOrderingClientHostProps = {
@@ -19,6 +20,15 @@ export type WaiterOrderingClientHostProps = {
   sessionId: number;
   /** Channel query string to preserve across navigator transitions. */
   querySuffix?: string;
+  /**
+   * OPERATIONAL-SCREEN-CATALOG-POLICY-1 — Screen Runtime host stage controller.
+   * When set, navigator updates host state instead of `/waiter` URLs.
+   */
+  onHostStageNavigate?: (
+    stage: WaiterShellStage,
+    extras?: { trackingToken?: string }
+  ) => void;
+  hostStage?: WaiterShellStage;
   children: ReactNode;
 };
 
@@ -33,6 +43,8 @@ export function WaiterOrderingClientHost({
   tableNumber,
   sessionId,
   querySuffix,
+  onHostStageNavigate,
+  hostStage,
   children,
 }: WaiterOrderingClientHostProps) {
   const [location, setLocation] = useLocation();
@@ -46,7 +58,10 @@ export function WaiterOrderingClientHost({
       }),
     [slug, stationId, tableNumber, sessionId]
   );
-  const shellStage = resolveWaiterOrderingStage(location);
+  const shellStage =
+    onHostStageNavigate && hostStage
+      ? hostStage
+      : resolveWaiterOrderingStage(location);
   const navigator = useMemo(
     () =>
       createWaiterOrderingNavigator({
@@ -54,8 +69,9 @@ export function WaiterOrderingClientHost({
         stage: shellStage,
         setLocation,
         querySuffix,
+        onHostStageNavigate,
       }),
-    [slug, shellStage, setLocation, querySuffix]
+    [slug, shellStage, setLocation, querySuffix, onHostStageNavigate]
   );
 
   if (!slug || !stationId || !tableNumber || !sessionId) return null;

@@ -14,6 +14,7 @@ import {
   pickupDisplayRole,
   printMonitorRole,
   selfOrderingKioskRole,
+  waiterDisplayRole,
 } from "../roles/roleDefinitions";
 import { mapBootstrapPhaseToRoleRuntimeStatus } from "../roles/runtimeRoleState";
 import { isBlockedRole } from "../runtimeCapabilities";
@@ -25,6 +26,7 @@ function registerAllRoles() {
   registerRuntimeRole(customerDisplayRole);
   registerRuntimeRole(printMonitorRole);
   registerRuntimeRole(selfOrderingKioskRole);
+  registerRuntimeRole(waiterDisplayRole);
 }
 
 describe("ROLE-RUNTIME-1 role registry", () => {
@@ -33,7 +35,7 @@ describe("ROLE-RUNTIME-1 role registry", () => {
     registerAllRoles();
   });
 
-  it("registers all six operational device roles", () => {
+  it("registers all operational device roles", () => {
     expect(supportedRuntimeRoles().sort()).toEqual([...OPERATIONAL_DEVICE_ROLES].sort());
   });
 
@@ -43,13 +45,15 @@ describe("ROLE-RUNTIME-1 role registry", () => {
     }
   });
 
-  it("kitchen, expo, and self-ordering kiosk are operational", () => {
+  it("kitchen, expo, kiosk, and waiter are operational", () => {
     expect(isRoleOperational("kitchen_display")).toBe(true);
     expect(isRoleOperational("expo_display")).toBe(true);
     expect(isRoleOperational("self_ordering_kiosk")).toBe(true);
+    expect(isRoleOperational("waiter_display")).toBe(true);
     expect(isBlockedRole("kitchen_display")).toBe(false);
     expect(isBlockedRole("expo_display")).toBe(false);
     expect(isBlockedRole("self_ordering_kiosk")).toBe(false);
+    expect(isBlockedRole("waiter_display")).toBe(false);
   });
 
   it("pickup, customer, and print are blocked", () => {
@@ -75,6 +79,10 @@ describe("ROLE-RUNTIME-1 role registry", () => {
       resolveRuntimeRole("self_ordering_kiosk").metadata.capabilities.supportsKioskOrdering
     ).toBe(true);
     expect(resolveRuntimeRole("self_ordering_kiosk").presentationKey).toBe("kiosk");
+    expect(
+      resolveRuntimeRole("waiter_display").metadata.capabilities.supportsWaiterOrdering
+    ).toBe(true);
+    expect(resolveRuntimeRole("waiter_display").presentationKey).toBe("waiter");
   });
 
   it("maps bootstrap phases to formal runtime states", () => {
