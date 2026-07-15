@@ -36,6 +36,8 @@ export const KITCHEN_QUEUE_ROLES: OperationalDeviceRole[] = [
 
 export const PRINT_MONITOR_ROLES: OperationalDeviceRole[] = ["print_monitor"];
 
+export const WAITER_ORDERING_ROLES: OperationalDeviceRole[] = ["waiter_display"];
+
 export function assertDeviceRole(value: string): OperationalDeviceRole {
   if (!(OPERATIONAL_DEVICE_ROLES as readonly string[]).includes(value)) {
     throw new Error(`invalid_device_role:${value}`);
@@ -49,4 +51,9 @@ export function rolePermitsKitchenQueue(role: OperationalDeviceRole): boolean {
 
 export function rolePermitsPrintMonitor(role: OperationalDeviceRole): boolean {
   return PRINT_MONITOR_ROLES.includes(role);
+}
+
+/** WAITER-SCREEN-HOSTED-AUTH-ADOPTION-1 — device may host waiter floor + place. */
+export function rolePermitsWaiterOrdering(role: OperationalDeviceRole): boolean {
+  return WAITER_ORDERING_ROLES.includes(role);
 }

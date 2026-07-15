@@ -4,6 +4,7 @@
  * Owns form state, submission lifecycle, notes validation presentation, order summary.
  * Consumes cart + runtime gates; places orders via table (order.create),
  * public identity (order.placeWithIdentity), or staff identity (order.placeAsWaiter).
+ * Device-hosted waiter place stays in WaiterDeviceCheckoutStage (screenTrpc).
  * Channel-agnostic — no channel forks here.
  */
 import {

@@ -1,7 +1,8 @@
 /**
  * WAITER-ORDERING-FOUNDATION-1 — Waiter channel adapter for Order Identity facts.
+ * WAITER-SCREEN-HOSTED-AUTH-ADOPTION-1 — placeAuth staff | device.
  *
- * Channel supplies table + table_service + staff placeAuth.
+ * Channel supplies table + table_service + placeAuth.
  * Ordering Platform owns types. Business Identity scope is server-forced (WAITER).
  */
 
@@ -27,10 +28,12 @@ export function buildWaiterTableCheckoutIdentity(input: {
   tableId: number;
   tableNumber: number;
   fulfilmentLabel?: string;
+  /** Dashboard staff vs Screen Runtime device. Default: staff. */
+  placeAuth?: "staff" | "device";
 }): CheckoutIdentitySubmit {
   return {
     serviceMode: WAITER_TABLE_SERVICE_MODE,
     fulfilmentAnchor: createWaiterTableFulfilmentAnchor(input),
-    placeAuth: "staff",
+    placeAuth: input.placeAuth ?? "staff",
   };
 }

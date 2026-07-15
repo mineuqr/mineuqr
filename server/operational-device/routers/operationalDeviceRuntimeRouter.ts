@@ -9,12 +9,18 @@ import {
 } from "../domain/deviceRoles";
 import { DEVICE_ORDER_ACTION_IDS } from "../domain/deviceOrderExecution";
 import { executeDeviceOrderAction } from "../services/DeviceOrderExecutionService";
+import {
+  attachWaiterTableForDevice,
+  listWaiterFloorTablesForDevice,
+  placeWaiterOrderForDevice,
+} from "../services/WaiterDeviceOrderingService";
 import { operationalDeviceComposition } from "../operationalDeviceComposition";
 import { summarizeDeviceHealth } from "../domain/deviceHealth";
 import { resolveScreenConfigVersion } from "../domain/screenConfigVersion";
 import { enforcePairingRedeemRateLimit } from "../governance/pairingRateLimits";
 import { getClientIp } from "../../_core/rateLimit";
 import { getRestaurantById } from "../../db";
+import { SESSION_TOKEN_PATTERN } from "../../diningSession/sessionPublicStatus";
 
 const authenticateInput = z.object({
   deviceId: z.string().min(8).max(64),
@@ -42,6 +48,36 @@ const kitchenQueueInput = z.object({
 const executeOrderActionInput = z.object({
   orderId: z.number().int().positive(),
   action: z.enum(DEVICE_ORDER_ACTION_IDS),
+});
+
+const attachWaiterTableInput = z.object({
+  tableId: z.number().int().positive(),
+  tableNumber: z.number().int().positive(),
+});
+
+const placeWaiterOrderItemInput = z.object({
+  menuItemId: z.number().int().positive(),
+  quantity: z.number().int().positive().max(99),
+  notes: z.string().max(500).nullish(),
+});
+
+const placeWaiterOrderInput = z.object({
+  serviceMode: z.literal("table_service"),
+  fulfilmentAnchor: z.object({
+    anchorType: z.literal("table"),
+    tableId: z.number().int().positive(),
+    tableNumber: z.number().int().positive(),
+    fulfilmentLabel: z.string().min(1).max(64).optional(),
+  }),
+  customerName: z.string().nullish(),
+  customerPhone: z.string().nullish(),
+  notes: z.string().nullish(),
+  items: z.array(placeWaiterOrderItemInput).min(1),
+  sessionToken: z
+    .string()
+    .min(16)
+    .max(64)
+    .regex(SESSION_TOKEN_PATTERN),
 });
 
 /**
@@ -170,5 +206,25 @@ export const operationalDeviceRuntimeRouter = router({
         action: input.action,
         correlationId: ctx.correlationId,
       });
+    }),
+
+  /**
+   * WAITER-SCREEN-HOSTED-AUTH-ADOPTION-1 — device-authenticated waiter floor list.
+   * Restaurant scope comes from device session (not dashboard user).
+   */
+  listWaiterFloorTables: deviceProcedure.query(async ({ ctx }) => {
+    return listWaiterFloorTablesForDevice(ctx.deviceSession!);
+  }),
+
+  attachWaiterTable: deviceProcedure
+    .input(attachWaiterTableInput)
+    .mutation(async ({ input, ctx }) => {
+      return attachWaiterTableForDevice(ctx.deviceSession!, input);
+    }),
+
+  placeWaiterOrder: deviceProcedure
+    .input(placeWaiterOrderInput)
+    .mutation(async ({ input, ctx }) => {
+      return placeWaiterOrderForDevice(ctx.deviceSession!, input);
     }),
 });

@@ -33,6 +33,7 @@ const WAITER_STATION_ID = "waiter";
 export type WaiterShellActivation = Readonly<{
   slug: string;
   restaurantId?: number;
+  restaurantName?: string | null;
 }>;
 
 export type WaiterShellProps = Readonly<{
@@ -73,10 +74,20 @@ export default function WaiterShell({ activation }: WaiterShellProps = {}) {
       : "/waiter";
   const loginRedirect = `${LOGIN_PATH}?returnTo=${encodeURIComponent(returnPath)}`;
 
+  /**
+   * WAITER-SCREEN-HOSTED-AUTH-ADOPTION-1 —
+   * Dashboard (/waiter): staff useAuth redirect unchanged.
+   * Hosted (/screen): Screen Runtime device credentials authenticate the host —
+   * do not redirect to Dashboard login.
+   */
   const { user, authPending } = useAuth({
-    redirectOnUnauthenticated: true,
+    redirectOnUnauthenticated: !hosted,
     redirectPath: loginRedirect,
   });
+
+  const staffReady = !!user;
+  const hostedReady = hosted && !!activation.slug && !!activation.restaurantId;
+  const authReady = hosted ? hostedReady : staffReady;
 
   const slugFromRoute =
     entryParams?.slug ??
@@ -130,11 +141,13 @@ export default function WaiterShell({ activation }: WaiterShellProps = {}) {
   const restaurantId =
     activation?.restaurantId ?? restaurantFromList?.id ?? null;
 
-  const restaurantName = restaurantFromList
-    ? language === "ar"
-      ? restaurantFromList.nameAr
-      : restaurantFromList.nameEn || restaurantFromList.nameAr
-    : slug;
+  const restaurantName = hosted
+    ? activation.restaurantName?.trim() || slug
+    : restaurantFromList
+      ? language === "ar"
+        ? restaurantFromList.nameAr
+        : restaurantFromList.nameEn || restaurantFromList.nameAr
+      : slug;
 
   const urlTableId = Number(readParam(search, "tableId") || 0);
   const urlTableNumber = Number(readParam(search, "table") || 0);
@@ -177,7 +190,7 @@ export default function WaiterShell({ activation }: WaiterShellProps = {}) {
   );
 
   const bindingGuard = useWaiterSessionBindingGuard({
-    enabled: !!user && !!sessionBinding && sessionDependentStage,
+    enabled: authReady && !!sessionBinding && sessionDependentStage,
     binding: sessionBinding,
   });
 
@@ -264,10 +277,20 @@ export default function WaiterShell({ activation }: WaiterShellProps = {}) {
     setLocation(`/waiter/${slug}/menu?${p.toString()}`);
   };
 
-  if (authPending || !user) {
+  if (!hosted && (authPending || !user)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-950 text-white">
         <Loader2 className="w-10 h-10 animate-spin text-teal-400" />
+      </div>
+    );
+  }
+
+  if (hosted && !hostedReady) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-white p-8 text-center">
+        {language === "ar"
+          ? "سياق شاشة النادل غير جاهز"
+          : "Waiter screen context unavailable"}
       </div>
     );
   }
@@ -360,6 +383,7 @@ export default function WaiterShell({ activation }: WaiterShellProps = {}) {
       <WaiterTablesStage
         restaurantId={restaurantId}
         restaurantName={restaurantName}
+        authMode={hosted ? "device" : "staff"}
         onBack={
           hosted
             ? undefined
@@ -409,6 +433,7 @@ export default function WaiterShell({ activation }: WaiterShellProps = {}) {
           tableId={tableId}
           tableNumber={tableNumber}
           sessionToken={sessionToken}
+          placeAuth={hosted ? "device" : "staff"}
         />
       )}
       {stage === "confirmation" && (

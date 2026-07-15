@@ -72,13 +72,16 @@ export type CheckoutDraftSnapshot = Readonly<{
 
 /**
  * Identity facts for identity place paths — platform vocabulary only.
- * placeAuth: public → order.placeWithIdentity; staff → order.placeAsWaiter.
+ * placeAuth:
+ *   public → order.placeWithIdentity
+ *   staff → order.placeAsWaiter (dashboard)
+ *   device → operationalDevice.runtime.placeWaiterOrder (hosted screen)
  */
 export type CheckoutIdentitySubmit = Readonly<{
   serviceMode: OrderingServiceMode;
   fulfilmentAnchor: OrderingFulfilmentAnchor;
-  /** Authenticated staff place path (restaurant-scoped). Default: public. */
-  placeAuth?: "public" | "staff";
+  /** Place auth path. Default: public. */
+  placeAuth?: "public" | "staff" | "device";
 }>;
 
 type CheckoutSubmitBase = Readonly<{

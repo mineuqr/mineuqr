@@ -24,6 +24,7 @@ export function WaiterRolePresentation() {
         activation={{
           slug,
           restaurantId: context.identity.restaurantId,
+          restaurantName: context.business.businessName,
         }}
       />
     </div>

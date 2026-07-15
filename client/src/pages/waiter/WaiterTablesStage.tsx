@@ -1,11 +1,17 @@
 import { Loader2 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { screenTrpc } from "@/lib/operational-screen/screenTrpc";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 
 type Props = {
   restaurantId: number;
   restaurantName: string;
+  /**
+   * WAITER-SCREEN-HOSTED-AUTH-ADOPTION-1 —
+   * staff → dashboard trpc.waiter.*; device → screenTrpc device runtime.
+   */
+  authMode?: "staff" | "device";
   onSelectTable: (binding: {
     tableId: number;
     tableNumber: number;
@@ -22,26 +28,47 @@ type Props = {
 export function WaiterTablesStage({
   restaurantId,
   restaurantName,
+  authMode = "staff",
   onSelectTable,
   onBack,
 }: Props) {
   const { language } = useLanguage();
-  const floorQuery = trpc.waiter.listFloorTables.useQuery(
+  const deviceMode = authMode === "device";
+
+  const staffFloorQuery = trpc.waiter.listFloorTables.useQuery(
     { restaurantId },
-    { enabled: restaurantId > 0, refetchInterval: 15_000 }
+    { enabled: !deviceMode && restaurantId > 0, refetchInterval: 15_000 }
   );
-  const attachMutation = trpc.waiter.attachTable.useMutation();
+  const deviceFloorQuery =
+    screenTrpc.operationalDevice.runtime.listWaiterFloorTables.useQuery(
+      undefined,
+      { enabled: deviceMode, refetchInterval: 15_000 }
+    );
+
+  const staffAttach = trpc.waiter.attachTable.useMutation();
+  const deviceAttach =
+    screenTrpc.operationalDevice.runtime.attachWaiterTable.useMutation();
+
+  const floorQuery = deviceMode ? deviceFloorQuery : staffFloorQuery;
+  const attachPending = deviceMode
+    ? deviceAttach.isPending
+    : staffAttach.isPending;
 
   const handleSelect = async (table: {
     id: number;
     tableNumber: number;
   }) => {
     try {
-      const attached = await attachMutation.mutateAsync({
-        restaurantId,
-        tableId: table.id,
-        tableNumber: table.tableNumber,
-      });
+      const attached = deviceMode
+        ? await deviceAttach.mutateAsync({
+            tableId: table.id,
+            tableNumber: table.tableNumber,
+          })
+        : await staffAttach.mutateAsync({
+            restaurantId,
+            tableId: table.id,
+            tableNumber: table.tableNumber,
+          });
       onSelectTable({
         tableId: attached.tableId,
         tableNumber: attached.tableNumber,
@@ -113,7 +140,7 @@ export function WaiterTablesStage({
                 <li key={table.id}>
                   <button
                     type="button"
-                    disabled={attachMutation.isPending}
+                    disabled={attachPending}
                     onClick={() => void handleSelect(table)}
                     className={`w-full rounded-2xl border px-3 py-5 text-left transition ${
                       occupied

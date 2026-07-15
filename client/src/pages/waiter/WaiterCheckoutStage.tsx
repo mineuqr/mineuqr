@@ -4,9 +4,13 @@ import { Loader2 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
   buildWaiterTableCheckoutIdentity,
+  useOrderingCart,
   useOrderingCheckout,
   useOrderingClientRuntime,
+  useOptionalOrderingClientRuntime,
 } from "@/lib/ordering-client";
+import { screenTrpc } from "@/lib/operational-screen/screenTrpc";
+import { saveConfirmationDisplayIdentity } from "@/lib/orderConfirmationStorage";
 
 type Props = {
   slug: string;
@@ -14,53 +18,41 @@ type Props = {
   tableId: number;
   tableNumber: number;
   sessionToken: string;
+  /** WAITER-SCREEN-HOSTED-AUTH-ADOPTION-1 — device for /screen host. */
+  placeAuth?: "staff" | "device";
 };
 
 /**
  * Waiter checkout chrome — consumes OrderingCheckoutProvider.
- * Places via staff-authenticated identity path + table session token.
+ * Staff place → order.placeAsWaiter; device place → screen runtime placeWaiterOrder.
  */
-export function WaiterCheckoutStage({
-  slug,
-  qs,
-  tableId,
+export function WaiterCheckoutStage(props: Props) {
+  if (props.placeAuth === "device") {
+    return <WaiterDeviceCheckoutStage {...props} />;
+  }
+  return <WaiterStaffCheckoutStage {...props} />;
+}
+
+function WaiterCheckoutChrome({
   tableNumber,
-  sessionToken,
-}: Props) {
+  canSubmit,
+  isSubmitting,
+  onSubmit,
+  onBackToCart,
+}: {
+  tableNumber: number;
+  canSubmit: boolean;
+  isSubmitting: boolean;
+  onSubmit: () => void;
+  onBackToCart: () => void;
+}) {
   const { language } = useLanguage();
-  const [, setLocation] = useLocation();
   const runtime = useOrderingClientRuntime();
   const checkout = useOrderingCheckout();
   const restaurant = runtime.restaurant as {
-    id?: number;
     currencySymbol?: string;
   } | null;
   const currency = restaurant?.currencySymbol ?? "ر.س";
-
-  const canSubmit =
-    runtime.gates.platformCanPlaceOrder &&
-    tableId > 0 &&
-    tableNumber > 0 &&
-    !!sessionToken &&
-    checkout.summaryLines.length > 0;
-
-  const handleSubmit = async () => {
-    if (!restaurant?.id) {
-      toast.error(
-        language === "ar" ? "المطعم غير جاهز" : "Restaurant not ready"
-      );
-      return;
-    }
-    const outcome = await checkout.submit({
-      restaurantId: restaurant.id,
-      sessionToken,
-      identity: buildWaiterTableCheckoutIdentity({ tableId, tableNumber }),
-      channelAllowsSubmit: canSubmit,
-    });
-    if (!outcome.ok && outcome.error.code !== "NOT_READY") {
-      toast.error(outcome.error.message);
-    }
-  };
 
   if (runtime.isLoading) {
     return (
@@ -78,7 +70,7 @@ export function WaiterCheckoutStage({
         </h1>
         <button
           type="button"
-          onClick={() => setLocation(`/waiter/${slug}/cart?${qs}`)}
+          onClick={onBackToCart}
           className="text-sm text-white/70"
         >
           {language === "ar" ? "السلة" : "Cart"}
@@ -136,11 +128,11 @@ export function WaiterCheckoutStage({
         </p>
         <button
           type="button"
-          disabled={!canSubmit || checkout.isSubmitting}
-          onClick={() => void handleSubmit()}
+          disabled={!canSubmit || isSubmitting}
+          onClick={onSubmit}
           className="rounded-xl bg-teal-500 px-6 py-3 font-bold text-slate-950 disabled:opacity-40"
         >
-          {checkout.isSubmitting
+          {isSubmitting
             ? language === "ar"
               ? "جاري الإرسال..."
               : "Sending..."
@@ -150,5 +142,144 @@ export function WaiterCheckoutStage({
         </button>
       </div>
     </div>
+  );
+}
+
+function WaiterStaffCheckoutStage({
+  slug,
+  qs,
+  tableId,
+  tableNumber,
+  sessionToken,
+}: Props) {
+  const { language } = useLanguage();
+  const [, setLocation] = useLocation();
+  const runtime = useOrderingClientRuntime();
+  const checkout = useOrderingCheckout();
+  const restaurant = runtime.restaurant as { id?: number } | null;
+
+  const canSubmit =
+    runtime.gates.platformCanPlaceOrder &&
+    tableId > 0 &&
+    tableNumber > 0 &&
+    !!sessionToken &&
+    checkout.summaryLines.length > 0;
+
+  const handleSubmit = async () => {
+    if (!restaurant?.id) {
+      toast.error(
+        language === "ar" ? "المطعم غير جاهز" : "Restaurant not ready"
+      );
+      return;
+    }
+    const outcome = await checkout.submit({
+      restaurantId: restaurant.id,
+      sessionToken,
+      identity: buildWaiterTableCheckoutIdentity({
+        tableId,
+        tableNumber,
+        placeAuth: "staff",
+      }),
+      channelAllowsSubmit: canSubmit,
+    });
+    if (!outcome.ok && outcome.error.code !== "NOT_READY") {
+      toast.error(outcome.error.message);
+    }
+  };
+
+  return (
+    <WaiterCheckoutChrome
+      tableNumber={tableNumber}
+      canSubmit={canSubmit}
+      isSubmitting={checkout.isSubmitting}
+      onSubmit={() => void handleSubmit()}
+      onBackToCart={() => setLocation(`/waiter/${slug}/cart?${qs}`)}
+    />
+  );
+}
+
+/**
+ * Hosted Screen Runtime checkout — uses device credentials (screenTrpc).
+ * Must only mount under ScreenRuntimeProvider.
+ */
+function WaiterDeviceCheckoutStage({
+  tableId,
+  tableNumber,
+  sessionToken,
+}: Props) {
+  const { language } = useLanguage();
+  const runtime = useOrderingClientRuntime();
+  const orderingClient = useOptionalOrderingClientRuntime();
+  const checkout = useOrderingCheckout();
+  const cart = useOrderingCart();
+  const restaurant = runtime.restaurant as { id?: number } | null;
+  const placeMutation =
+    screenTrpc.operationalDevice.runtime.placeWaiterOrder.useMutation();
+
+  const canSubmit =
+    runtime.gates.platformCanPlaceOrder &&
+    tableId > 0 &&
+    tableNumber > 0 &&
+    !!sessionToken &&
+    checkout.summaryLines.length > 0 &&
+    !!restaurant?.id;
+
+  const handleSubmit = async () => {
+    if (!restaurant?.id || !sessionToken) {
+      toast.error(
+        language === "ar" ? "المطعم غير جاهز" : "Restaurant not ready"
+      );
+      return;
+    }
+    try {
+      const result = await placeMutation.mutateAsync({
+        serviceMode: "table_service",
+        fulfilmentAnchor: {
+          anchorType: "table",
+          tableId,
+          tableNumber,
+        },
+        sessionToken,
+        notes: checkout.orderNotes || undefined,
+        items: checkout.summaryLines.map((line) => ({
+          menuItemId: line.menuItemId,
+          quantity: line.quantity,
+          notes: line.notes,
+        })),
+      });
+      if (!result.trackingToken) {
+        toast.error(
+          language === "ar" ? "تعذر إرسال الطلب" : "Could not place order"
+        );
+        return;
+      }
+      if (result.displayReference) {
+        saveConfirmationDisplayIdentity(result.trackingToken, {
+          displayReference: result.displayReference,
+          orderNumber: result.orderNumber,
+        });
+      }
+      cart.clearCart();
+      checkout.setOrderNotes("");
+      orderingClient?.navigator?.goToTracking(result.trackingToken);
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : language === "ar"
+            ? "تعذر إرسال الطلب"
+            : "Could not place order";
+      toast.error(message);
+    }
+  };
+
+  return (
+    <WaiterCheckoutChrome
+      tableNumber={tableNumber}
+      canSubmit={canSubmit}
+      isSubmitting={placeMutation.isPending}
+      onSubmit={() => void handleSubmit()}
+      onBackToCart={() => orderingClient?.navigator?.goToCart()}
+    />
   );
 }
