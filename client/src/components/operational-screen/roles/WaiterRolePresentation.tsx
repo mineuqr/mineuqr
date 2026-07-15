@@ -1,12 +1,17 @@
-import { useScreenRuntime } from "../OperationalScreenRuntimeProvider";
+import {
+  useRuntimeBusiness,
+  useScreenRuntime,
+} from "../OperationalScreenRuntimeProvider";
 import WaiterShell from "@/pages/waiter/WaiterShell";
 
 /**
  * OPERATIONAL-SCREEN-CATALOG-POLICY-1 — capability presentation for presentation_waiter.
+ * WAITER-SCREEN-RUNTIME-ADOPTION-1 — business slice via Public Runtime API (useRuntimeBusiness).
  * Screen Runtime activates WaiterShell; waiter channel owns tables/ordering UX.
  */
 export function WaiterRolePresentation() {
   const { context } = useScreenRuntime();
+  const business = useRuntimeBusiness();
   if (!context) return null;
 
   const slug = context.identity.restaurantSlug?.trim() ?? "";
@@ -24,7 +29,7 @@ export function WaiterRolePresentation() {
         activation={{
           slug,
           restaurantId: context.identity.restaurantId,
-          restaurantName: context.business.businessName,
+          restaurantName: business.businessName,
         }}
       />
     </div>

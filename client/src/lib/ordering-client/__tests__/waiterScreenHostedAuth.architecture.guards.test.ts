@@ -63,5 +63,7 @@ describe("WAITER-SCREEN-HOSTED-AUTH-ADOPTION-1 architecture guards", () => {
     );
     expect(presentation).toContain("restaurantName");
     expect(presentation).toContain("WaiterShell");
+    expect(presentation).toContain("useRuntimeBusiness");
+    expect(presentation).not.toContain("context.business");
   });
 });
