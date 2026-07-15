@@ -63,8 +63,10 @@ describe("WAITER-SCREEN-HOSTED-AUTH-ADOPTION-1 architecture guards", () => {
       "client/src/components/operational-screen/roles/WaiterRolePresentation.tsx"
     );
     expect(presentation).toContain("restaurantName");
+    expect(presentation).toContain("screenName");
     expect(presentation).toContain("WaiterShell");
     expect(presentation).toContain("useRuntimeBusiness");
+    expect(presentation).toContain("useRuntimeIdentity");
     expect(presentation).not.toContain("context.business");
   });
 });

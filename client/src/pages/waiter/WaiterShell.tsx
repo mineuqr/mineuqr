@@ -35,6 +35,10 @@ export type WaiterShellActivation = Readonly<{
   slug: string;
   restaurantId?: number;
   restaurantName?: string | null;
+  /** WAITER-SCREEN-IDENTITY-PRESENTATION-1 — Runtime displayIdentity (device screen name). */
+  screenName?: string | null;
+  /** Optional role label from Runtime role (e.g. Waiter Screen). */
+  roleLabel?: string | null;
 }>;
 
 export type WaiterShellProps = Readonly<{
@@ -153,6 +157,9 @@ export default function WaiterShell({ activation }: WaiterShellProps = {}) {
         ? restaurantFromList.nameAr
         : restaurantFromList.nameEn || restaurantFromList.nameAr
       : slug;
+
+  const screenName = hosted ? activation.screenName?.trim() || null : null;
+  const roleLabel = hosted ? activation.roleLabel?.trim() || null : null;
 
   const urlTableId = Number(readParam(search, "tableId") || 0);
   const urlTableNumber = Number(readParam(search, "table") || 0);
@@ -407,6 +414,8 @@ export default function WaiterShell({ activation }: WaiterShellProps = {}) {
       <WaiterTablesStage
         restaurantId={restaurantId}
         restaurantName={restaurantName}
+        screenName={screenName}
+        roleLabel={roleLabel}
         authMode={hosted ? "device" : "staff"}
         onBack={
           hosted
@@ -435,6 +444,9 @@ export default function WaiterShell({ activation }: WaiterShellProps = {}) {
         restaurantId={restaurantId}
         sessionId={sessionId}
         tableNumber={tableNumber}
+        restaurantName={restaurantName}
+        screenName={screenName}
+        roleLabel={roleLabel}
         authMode={hosted ? "device" : "staff"}
         onBackToTables={clearBindingToTables}
         onAddOrder={goBrowseFromWorkspace}

@@ -7,6 +7,10 @@ type Props = {
   restaurantId: number;
   sessionId: number;
   tableNumber: number;
+  /** WAITER-SCREEN-IDENTITY-PRESENTATION-1 — optional hosted Runtime identity chrome. */
+  restaurantName?: string | null;
+  screenName?: string | null;
+  roleLabel?: string | null;
   authMode?: "staff" | "device";
   onBackToTables: () => void;
   onAddOrder: () => void;
@@ -20,6 +24,9 @@ export function WaiterTableWorkspaceStage({
   restaurantId,
   sessionId,
   tableNumber,
+  restaurantName,
+  screenName,
+  roleLabel,
   authMode = "staff",
   onBackToTables,
   onAddOrder,
@@ -86,6 +93,23 @@ export function WaiterTableWorkspaceStage({
         >
           {ar ? "← الطاولات" : "← Tables"}
         </button>
+        {(restaurantName || screenName || roleLabel) && (
+          <div className="mb-2 min-w-0">
+            {roleLabel ? (
+              <p className="text-xs uppercase tracking-wide text-white/50 truncate">
+                {roleLabel}
+              </p>
+            ) : null}
+            {restaurantName ? (
+              <p className="text-sm font-semibold truncate">{restaurantName}</p>
+            ) : null}
+            {screenName?.trim() ? (
+              <p className="text-xs text-teal-300/90 truncate">
+                {screenName.trim()}
+              </p>
+            ) : null}
+          </div>
+        )}
         <div className="flex items-start justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold">

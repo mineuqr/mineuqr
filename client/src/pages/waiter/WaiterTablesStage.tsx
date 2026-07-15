@@ -3,10 +3,14 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { screenTrpc } from "@/lib/operational-screen/screenTrpc";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
+import { WaiterScreenIdentityHeader } from "./WaiterScreenIdentityHeader";
 
 type Props = {
   restaurantId: number;
   restaurantName: string;
+  /** WAITER-SCREEN-IDENTITY-PRESENTATION-1 — Runtime screen displayIdentity when hosted. */
+  screenName?: string | null;
+  roleLabel?: string | null;
   /**
    * WAITER-SCREEN-HOSTED-AUTH-ADOPTION-1 —
    * staff → dashboard trpc.waiter.*; device → screenTrpc device runtime.
@@ -28,6 +32,8 @@ type Props = {
 export function WaiterTablesStage({
   restaurantId,
   restaurantName,
+  screenName,
+  roleLabel,
   authMode = "staff",
   onSelectTable,
   onBack,
@@ -104,23 +110,25 @@ export function WaiterTablesStage({
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
-      <header className="sticky top-0 z-10 border-b border-white/10 bg-slate-900/95 px-4 py-4 flex items-center justify-between gap-3">
-        <div>
-          <p className="text-xs uppercase tracking-wide text-white/50">
-            {language === "ar" ? "مساحة النادل" : "Waiter workspace"}
-          </p>
-          <h1 className="text-2xl font-bold truncate">{restaurantName}</h1>
-        </div>
-        {onBack ? (
-          <button
-            type="button"
-            onClick={onBack}
-            className="text-sm text-white/70"
-          >
-            {language === "ar" ? "المطاعم" : "Restaurants"}
-          </button>
-        ) : null}
-      </header>
+      <WaiterScreenIdentityHeader
+        restaurantName={restaurantName}
+        screenName={screenName}
+        roleLabel={
+          roleLabel ??
+          (language === "ar" ? "مساحة النادل" : "Waiter workspace")
+        }
+        trailing={
+          onBack ? (
+            <button
+              type="button"
+              onClick={onBack}
+              className="text-sm text-white/70 shrink-0"
+            >
+              {language === "ar" ? "المطاعم" : "Restaurants"}
+            </button>
+          ) : null
+        }
+      />
 
       <main className="px-4 py-6">
         <p className="text-sm text-white/60 mb-4">

@@ -22,6 +22,7 @@ describe("WAITER-SCREEN-RUNTIME-ADOPTION-1 architecture guards", () => {
   it("keeps identity binding aligned with other role presentations", () => {
     const src = presentation();
     expect(src).toContain("useScreenRuntime");
+    expect(src).toContain("useRuntimeIdentity");
     expect(src).toContain("context.identity.restaurantSlug");
     expect(src).toContain("context.identity.restaurantId");
     expect(src).toContain("WaiterShell");
