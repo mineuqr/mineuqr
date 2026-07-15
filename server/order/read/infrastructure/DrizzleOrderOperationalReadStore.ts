@@ -150,6 +150,31 @@ export class DrizzleOrderOperationalReadStore {
     return this.attachLineItems(rows);
   }
 
+  /**
+   * WAITER-TABLE-WORKSPACE-1 — session-scoped Order Read projection query.
+   * Does not alter materializers; reads order_read_* only.
+   */
+  async listOrdersBySessionId(input: {
+    restaurantId: number;
+    sessionId: number;
+  }): Promise<ActiveOrderItemDto[]> {
+    const db = await getDb();
+    if (!db) return [];
+
+    const rows = await db
+      .select()
+      .from(orderReadOrders)
+      .where(
+        and(
+          eq(orderReadOrders.restaurantId, input.restaurantId),
+          eq(orderReadOrders.sessionId, input.sessionId)
+        )
+      )
+      .orderBy(asc(orderReadOrders.createdAt));
+
+    return this.attachLineItems(rows);
+  }
+
   private async attachLineItems(rows: OrderRow[]): Promise<ActiveOrderItemDto[]> {
     if (rows.length === 0) return [];
     const db = await getDb();

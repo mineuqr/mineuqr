@@ -17,6 +17,8 @@ export const WAITER_OPERATIONAL_DEVICE_ROLE = "waiter_display" as const;
 export const WAITER_ORDERING_ROUTES = {
   entry: "/waiter/:slug",
   tables: "/waiter/:slug/tables",
+  /** WAITER-TABLE-WORKSPACE-1 — dedicated table session workspace. */
+  workspace: "/waiter/:slug/workspace",
   menu: "/waiter/:slug/menu",
   cart: "/waiter/:slug/cart",
   checkout: "/waiter/:slug/checkout",

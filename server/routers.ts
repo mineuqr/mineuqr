@@ -102,6 +102,10 @@ import {
 } from "./diningSession/sessionRecoveryService";
 import { getOwnerSessionTimeline } from "./diningSession/sessionOwnerTimeline";
 import { getOwnerSessionWorkspace } from "./diningSession/sessionOwnerWorkspace";
+import {
+  getWaiterTableWorkspace,
+  listWaiterFloorTables,
+} from "./operational-device/services/WaiterTableWorkspaceService";
 import { opsRouter } from "./ops/opsRouter";
 import { kitchenRouter } from "./kitchen/read/kitchenRouter";
 import { orderReadRouter } from "./order/read/orderReadRouter";
@@ -1804,23 +1808,23 @@ const waiterRouter = router({
     .input(z.object({ restaurantId: z.number() }))
     .query(async ({ input, ctx }) => {
       await assertRestaurantAccess(ctx, input.restaurantId, "waiter.listFloorTables");
-      const tables = await getTablesByRestaurant(input.restaurantId);
-      const rows = await Promise.all(
-        tables.map(async (table) => {
-          const active = await findActiveSession(input.restaurantId, table.id);
-          return {
-            id: table.id,
-            tableNumber: table.tableNumber,
-            nameAr: table.nameAr,
-            nameEn: table.nameEn,
-            status: active ? ("occupied" as const) : ("available" as const),
-            sessionId: active?.id ?? null,
-            sessionStatus: active?.status ?? null,
-            totalOrders: active?.totalOrders ?? null,
-          };
-        })
-      );
-      return rows.sort((a, b) => a.tableNumber - b.tableNumber);
+      return listWaiterFloorTables(input.restaurantId);
+    }),
+
+  /** WAITER-TABLE-WORKSPACE-1 — session workspace from Order Read projections. */
+  getTableWorkspace: protectedProcedure
+    .input(
+      z.object({
+        restaurantId: z.number().int().positive(),
+        sessionId: z.number().int().positive(),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      await assertRestaurantAccess(ctx, input.restaurantId, "waiter.getTableWorkspace");
+      return getWaiterTableWorkspace({
+        restaurantId: input.restaurantId,
+        sessionId: input.sessionId,
+      });
     }),
 
   attachTable: protectedProcedure

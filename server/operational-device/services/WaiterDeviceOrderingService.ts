@@ -11,15 +11,17 @@ import { createTableSessionAnchor } from "@shared/operational-session";
 import {
   getTableById,
   getTableByRestaurantAndNumber,
-  getTablesByRestaurant,
 } from "../../db";
-import { findActiveSession } from "../../diningSession/sessionRepository";
 import { throwSessionServiceTrpcError } from "../../diningSession/mapSessionErrorToTrpc";
 import { resolveOperationalSession } from "../../operational-session";
 import { identityPlaceOrderService } from "../../order/placeOrderComposition";
 import { runOrderCommand } from "../../order/application/mapOrderDomainError";
 import type { OperationalDeviceSession } from "../domain/deviceContracts";
 import { rolePermitsWaiterOrdering } from "../domain/deviceRoles";
+import {
+  getWaiterTableWorkspace,
+  listWaiterFloorTables,
+} from "./WaiterTableWorkspaceService";
 
 function assertWaiterDevice(session: OperationalDeviceSession): void {
   if (!rolePermitsWaiterOrdering(session.role)) {
@@ -34,24 +36,18 @@ export async function listWaiterFloorTablesForDevice(
   session: OperationalDeviceSession
 ) {
   assertWaiterDevice(session);
-  const restaurantId = session.restaurantId;
-  const tables = await getTablesByRestaurant(restaurantId);
-  const rows = await Promise.all(
-    tables.map(async (table) => {
-      const active = await findActiveSession(restaurantId, table.id);
-      return {
-        id: table.id,
-        tableNumber: table.tableNumber,
-        nameAr: table.nameAr,
-        nameEn: table.nameEn,
-        status: active ? ("occupied" as const) : ("available" as const),
-        sessionId: active?.id ?? null,
-        sessionStatus: active?.status ?? null,
-        totalOrders: active?.totalOrders ?? null,
-      };
-    })
-  );
-  return rows.sort((a, b) => a.tableNumber - b.tableNumber);
+  return listWaiterFloorTables(session.restaurantId);
+}
+
+export async function getWaiterTableWorkspaceForDevice(
+  session: OperationalDeviceSession,
+  input: { sessionId: number }
+) {
+  assertWaiterDevice(session);
+  return getWaiterTableWorkspace({
+    restaurantId: session.restaurantId,
+    sessionId: input.sessionId,
+  });
 }
 
 export async function attachWaiterTableForDevice(

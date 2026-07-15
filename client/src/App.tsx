@@ -11,6 +11,11 @@ import TableOrderingShell from "./pages/TableOrderingShell";
 import KioskShell from "./pages/kiosk/KioskShell";
 import WaiterShell from "./pages/waiter/WaiterShell";
 import OrderConfirmationPage from "./pages/OrderConfirmationPage";
+
+/** Dashboard routes — WaiterShell also accepts optional Screen Runtime activation props. */
+function WaiterShellRoute() {
+  return <WaiterShell />;
+}
 import OrderStatusPage from "./pages/OrderStatusPage";
 import Pricing from "./pages/Pricing";
 import SubscriptionSuccess from "./pages/SubscriptionSuccess";
@@ -81,13 +86,14 @@ function Router() {
         <Route path="/kiosk/:slug/menu" component={KioskShell} />
         <Route path="/kiosk/:slug/language" component={KioskShell} />
         <Route path="/kiosk/:slug" component={KioskShell} />
-        <Route path="/waiter/:slug/confirmed" component={WaiterShell} />
-        <Route path="/waiter/:slug/checkout" component={WaiterShell} />
-        <Route path="/waiter/:slug/cart" component={WaiterShell} />
-        <Route path="/waiter/:slug/menu" component={WaiterShell} />
-        <Route path="/waiter/:slug/tables" component={WaiterShell} />
-        <Route path="/waiter/:slug" component={WaiterShell} />
-        <Route path="/waiter" component={WaiterShell} />
+        <Route path="/waiter/:slug/confirmed" component={WaiterShellRoute} />
+        <Route path="/waiter/:slug/checkout" component={WaiterShellRoute} />
+        <Route path="/waiter/:slug/cart" component={WaiterShellRoute} />
+        <Route path="/waiter/:slug/menu" component={WaiterShellRoute} />
+        <Route path="/waiter/:slug/workspace" component={WaiterShellRoute} />
+        <Route path="/waiter/:slug/tables" component={WaiterShellRoute} />
+        <Route path="/waiter/:slug" component={WaiterShellRoute} />
+        <Route path="/waiter" component={WaiterShellRoute} />
         <Route path="/pricing" component={Pricing} />
         <Route path="/subscription/success" component={SubscriptionSuccess} />
         <Route path="/subscription/cancel" component={SubscriptionCancel} />

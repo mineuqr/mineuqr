@@ -10,11 +10,13 @@ import { WAITER_ORDERING_ROUTES } from "@/lib/ordering-platform/waiterOrderingCh
 
 export type WaiterShellStage =
   | "tables"
+  | "workspace"
   | OrderingClientStage;
 
 export type WaiterOrderingNavigator = OrderingNavigator &
   Readonly<{
     goToTables: () => void;
+    goToWorkspace: () => void;
   }>;
 
 export type CreateWaiterOrderingNavigatorInput = Readonly<{
@@ -57,9 +59,10 @@ export function createWaiterOrderingNavigator(
 ): WaiterOrderingNavigator {
   const { slug, stage, setLocation, querySuffix, onHostStageNavigate } = input;
   const platformStage: OrderingClientStage =
-    stage === "tables" ? "browse" : stage;
+    stage === "tables" || stage === "workspace" ? "browse" : stage;
 
   const tablesPath = path(WAITER_ORDERING_ROUTES.tables, slug);
+  const workspacePath = path(WAITER_ORDERING_ROUTES.workspace, slug);
   const browsePath = path(WAITER_ORDERING_ROUTES.menu, slug);
   const cartPath = path(WAITER_ORDERING_ROUTES.cart, slug);
   const checkoutPath = path(WAITER_ORDERING_ROUTES.checkout, slug);
@@ -93,6 +96,7 @@ export function createWaiterOrderingNavigator(
         trackingToken,
       }),
     goToTables: () => go("tables", withQuery(tablesPath, querySuffix)),
+    goToWorkspace: () => go("workspace", withQuery(workspacePath, querySuffix)),
   };
 }
 
@@ -103,5 +107,6 @@ export function resolveWaiterOrderingStage(
   if (pathName.includes("/checkout")) return "checkout";
   if (pathName.includes("/cart")) return "cart";
   if (pathName.includes("/menu")) return "browse";
+  if (pathName.includes("/workspace")) return "workspace";
   return "tables";
 }

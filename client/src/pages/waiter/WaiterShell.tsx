@@ -17,6 +17,7 @@ import { WaiterCartStage } from "./WaiterCartStage";
 import { WaiterCheckoutStage } from "./WaiterCheckoutStage";
 import { WaiterConfirmationStage } from "./WaiterConfirmationStage";
 import { WaiterTablesStage } from "./WaiterTablesStage";
+import { WaiterTableWorkspaceStage } from "./WaiterTableWorkspaceStage";
 
 function readParam(search: string, key: string): string | null {
   try {
@@ -61,6 +62,7 @@ export default function WaiterShell({ activation }: WaiterShellProps = {}) {
   const [isRoot] = useRoute("/waiter");
   const [, entryParams] = useRoute("/waiter/:slug");
   const [, tablesParams] = useRoute("/waiter/:slug/tables");
+  const [, workspaceParams] = useRoute("/waiter/:slug/workspace");
   const [, menuParams] = useRoute("/waiter/:slug/menu");
   const [, cartParams] = useRoute("/waiter/:slug/cart");
   const [, checkoutParams] = useRoute("/waiter/:slug/checkout");
@@ -92,6 +94,7 @@ export default function WaiterShell({ activation }: WaiterShellProps = {}) {
   const slugFromRoute =
     entryParams?.slug ??
     tablesParams?.slug ??
+    workspaceParams?.slug ??
     menuParams?.slug ??
     cartParams?.slug ??
     checkoutParams?.slug ??
@@ -105,6 +108,7 @@ export default function WaiterShell({ activation }: WaiterShellProps = {}) {
     if (checkoutParams) return "checkout";
     if (cartParams) return "cart";
     if (menuParams) return "browse";
+    if (workspaceParams) return "workspace";
     if (tablesParams) return "tables";
     if (entryParams) return "entry";
     if (isRoot) return "picker";
@@ -114,6 +118,7 @@ export default function WaiterShell({ activation }: WaiterShellProps = {}) {
     checkoutParams,
     cartParams,
     menuParams,
+    workspaceParams,
     tablesParams,
     entryParams,
     isRoot,
@@ -174,7 +179,10 @@ export default function WaiterShell({ activation }: WaiterShellProps = {}) {
     tableId > 0 && tableNumber > 0 && sessionId > 0 && !!sessionToken;
 
   const sessionDependentStage =
-    stage === "browse" || stage === "cart" || stage === "checkout";
+    stage === "workspace" ||
+    stage === "browse" ||
+    stage === "cart" ||
+    stage === "checkout";
 
   const sessionBinding = useMemo(
     () =>
@@ -262,11 +270,11 @@ export default function WaiterShell({ activation }: WaiterShellProps = {}) {
     clearBindingToTables,
   ]);
 
-  const goMenuWithBinding = (binding: TableBinding) => {
+  const goWorkspaceWithBinding = (binding: TableBinding) => {
     staleRecoveryKeyRef.current = null;
     if (hosted) {
       setHostBinding(binding);
-      setHostStage("browse");
+      setHostStage("workspace");
       return;
     }
     const p = new URLSearchParams();
@@ -274,7 +282,23 @@ export default function WaiterShell({ activation }: WaiterShellProps = {}) {
     p.set("table", String(binding.tableNumber));
     p.set("sessionId", String(binding.sessionId));
     p.set("session", binding.sessionToken);
-    setLocation(`/waiter/${slug}/menu?${p.toString()}`);
+    setLocation(`/waiter/${slug}/workspace?${p.toString()}`);
+  };
+
+  const goBrowseFromWorkspace = () => {
+    if (hosted) {
+      setHostStage("browse");
+      return;
+    }
+    setLocation(`/waiter/${slug}/menu?${qs}`);
+  };
+
+  const goWorkspaceFromOrdering = () => {
+    if (hosted) {
+      setHostStage("workspace");
+      return;
+    }
+    setLocation(`/waiter/${slug}/workspace?${qs}`);
   };
 
   if (!hosted && (authPending || !user)) {
@@ -389,7 +413,7 @@ export default function WaiterShell({ activation }: WaiterShellProps = {}) {
             ? undefined
             : () => setLocation("/waiter")
         }
-        onSelectTable={goMenuWithBinding}
+        onSelectTable={goWorkspaceWithBinding}
       />
     );
   }
@@ -402,6 +426,19 @@ export default function WaiterShell({ activation }: WaiterShellProps = {}) {
       <div className="min-h-screen flex items-center justify-center bg-slate-950 text-white">
         <Loader2 className="w-10 h-10 animate-spin text-teal-400" />
       </div>
+    );
+  }
+
+  if (stage === "workspace") {
+    return (
+      <WaiterTableWorkspaceStage
+        restaurantId={restaurantId}
+        sessionId={sessionId}
+        tableNumber={tableNumber}
+        authMode={hosted ? "device" : "staff"}
+        onBackToTables={clearBindingToTables}
+        onAddOrder={goBrowseFromWorkspace}
+      />
     );
   }
 
@@ -420,7 +457,7 @@ export default function WaiterShell({ activation }: WaiterShellProps = {}) {
           slug={slug}
           qs={qs}
           tableNumber={tableNumber}
-          onBackToTables={clearBindingToTables}
+          onBackToTables={goWorkspaceFromOrdering}
         />
       )}
       {stage === "cart" && (

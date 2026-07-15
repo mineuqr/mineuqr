@@ -29,6 +29,7 @@ describe("WAITER-SCREEN-HOSTED-AUTH-ADOPTION-1 architecture guards", () => {
     );
     expect(runtime).toContain("listWaiterFloorTables");
     expect(runtime).toContain("attachWaiterTable");
+    expect(runtime).toContain("getWaiterTableWorkspace");
     expect(runtime).toContain("placeWaiterOrder");
     expect(runtime).toContain("deviceProcedure");
   });

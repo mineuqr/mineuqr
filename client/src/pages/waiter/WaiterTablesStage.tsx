@@ -164,11 +164,17 @@ export function WaiterTablesStage({
                           ? "متاحة"
                           : "Available"}
                     </p>
-                    {occupied && table.totalOrders != null ? (
-                      <p className="mt-1 text-xs text-white/50">
-                        {language === "ar" ? "طلبات" : "Orders"}:{" "}
-                        {table.totalOrders}
-                      </p>
+                    {occupied ? (
+                      <div className="mt-2 space-y-0.5 text-xs text-white/50">
+                        <p>
+                          {language === "ar" ? "طلبات" : "Orders"}:{" "}
+                          {table.totalOrders ?? 0}
+                        </p>
+                        <p>
+                          {language === "ar" ? "الإجمالي" : "Total"}:{" "}
+                          {table.sessionTotalAmount ?? "—"}
+                        </p>
+                      </div>
                     ) : null}
                   </button>
                 </li>

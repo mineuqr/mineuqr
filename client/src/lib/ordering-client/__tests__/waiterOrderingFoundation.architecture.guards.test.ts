@@ -32,6 +32,7 @@ describe("WAITER-ORDERING-FOUNDATION-1 architecture guards", () => {
     const shell = read("client/src/pages/waiter/WaiterShell.tsx");
     expect(shell).toContain("WaiterOrderingClientHost");
     expect(shell).toContain("WaiterTablesStage");
+    expect(shell).toContain("WaiterTableWorkspaceStage");
     expect(shell).toContain("useAuth");
     expect(shell).not.toContain("PlaceOrderService");
     expect(shell).not.toContain("resolveBusinessIdentityScope");

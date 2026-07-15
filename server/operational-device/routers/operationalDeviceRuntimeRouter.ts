@@ -11,6 +11,7 @@ import { DEVICE_ORDER_ACTION_IDS } from "../domain/deviceOrderExecution";
 import { executeDeviceOrderAction } from "../services/DeviceOrderExecutionService";
 import {
   attachWaiterTableForDevice,
+  getWaiterTableWorkspaceForDevice,
   listWaiterFloorTablesForDevice,
   placeWaiterOrderForDevice,
 } from "../services/WaiterDeviceOrderingService";
@@ -53,6 +54,10 @@ const executeOrderActionInput = z.object({
 const attachWaiterTableInput = z.object({
   tableId: z.number().int().positive(),
   tableNumber: z.number().int().positive(),
+});
+
+const waiterTableWorkspaceInput = z.object({
+  sessionId: z.number().int().positive(),
 });
 
 const placeWaiterOrderItemInput = z.object({
@@ -220,6 +225,13 @@ export const operationalDeviceRuntimeRouter = router({
     .input(attachWaiterTableInput)
     .mutation(async ({ input, ctx }) => {
       return attachWaiterTableForDevice(ctx.deviceSession!, input);
+    }),
+
+  /** WAITER-TABLE-WORKSPACE-1 — session workspace from Order Read projections. */
+  getWaiterTableWorkspace: deviceProcedure
+    .input(waiterTableWorkspaceInput)
+    .query(async ({ input, ctx }) => {
+      return getWaiterTableWorkspaceForDevice(ctx.deviceSession!, input);
     }),
 
   placeWaiterOrder: deviceProcedure
