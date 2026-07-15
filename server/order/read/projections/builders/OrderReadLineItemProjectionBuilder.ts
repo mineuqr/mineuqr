@@ -1,4 +1,5 @@
 import type { SelectOrderItem } from "../../../../../drizzle/schema";
+import { normalizeOrderLineModifiers } from "@shared/ordering-platform/orderLineModifiers";
 import type { OrderCategoryProjection } from "../../domain/contracts/categoryProjectionContracts";
 import { maxCategoryProjectionVersion } from "../../domain/contracts/categoryProjectionContracts";
 import type { CategoryProjectionReadMeta } from "../../domain/contracts/categoryProjectionContracts";
@@ -52,6 +53,7 @@ export class OrderReadLineItemProjectionBuilder {
       quantity: item.quantity,
       price: String(item.price),
       itemNotes: item.notes ?? null,
+      modifiers: normalizeOrderLineModifiers(item.modifiers),
       offer: this.offerBuilder.buildFromOrderLine(item),
     }));
 

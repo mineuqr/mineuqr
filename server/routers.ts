@@ -150,6 +150,8 @@ const placeOrderItemInput = z.object({
   menuItemId: z.number(),
   quantity: z.number().int().min(1).max(99),
   notes: z.string().nullish(),
+  /** ORDER-READ-MODIFIERS-PERSISTENCE-1 — display labels dual-written into Order Aggregate. */
+  modifiers: z.array(z.string().max(120)).max(32).optional(),
   nameAr: z.string().optional(),
   nameEn: z.string().nullish().optional(),
   price: z.string().optional(),
@@ -2059,6 +2061,7 @@ const orderRouter = router({
               menuItemId: item.menuItemId,
               quantity: item.quantity,
               notes: item.notes,
+              modifiers: item.modifiers,
             })),
           })
         );
@@ -2142,6 +2145,7 @@ const orderRouter = router({
               menuItemId: item.menuItemId,
               quantity: item.quantity,
               notes: item.notes,
+              modifiers: item.modifiers,
             })),
           })
         );
@@ -2261,6 +2265,7 @@ const orderRouter = router({
             menuItemId: item.menuItemId,
             quantity: item.quantity,
             notes: item.notes,
+            modifiers: item.modifiers,
           })),
         })
       );

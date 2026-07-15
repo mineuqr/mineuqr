@@ -226,6 +226,8 @@ export type OrderingCartLineInput = Readonly<{
   itemNotes?: string | null;
   /** @deprecated Prefer `itemNotes` — kept for backward compatibility. */
   notes?: string | null;
+  /** ORDER-READ-MODIFIERS-PERSISTENCE-1 — display labels dual-written into Order Aggregate. */
+  modifiers?: readonly string[] | null;
 }>;
 
 /**

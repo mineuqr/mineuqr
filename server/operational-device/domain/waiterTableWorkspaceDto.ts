@@ -11,7 +11,7 @@ export type WaiterWorkspaceLineItemDto = Readonly<{
   quantity: number;
   price: string;
   itemNotes: string | null;
-  /** Order Read does not project modifiers today — always empty until projection adds them. */
+  /** ORDER-READ-MODIFIERS-PERSISTENCE-1 — forwarded from Order Read DTO. */
   modifiers: readonly string[];
 }>;
 

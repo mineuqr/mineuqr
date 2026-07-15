@@ -64,6 +64,16 @@ function OperationalItemTable({
               </span>
               <div className="min-w-0 flex-1">
                 <span className={cn(densityModel.lineItemClass, "block truncate")}>{name}</span>
+                {line.modifiers.length > 0 ? (
+                  <p
+                    className={cn(
+                      densityModel.notesClass,
+                      "mt-0.5 break-words text-muted-foreground"
+                    )}
+                  >
+                    {line.modifiers.join(", ")}
+                  </p>
+                ) : null}
                 {line.itemNotes ? (
                   <p
                     className={cn(

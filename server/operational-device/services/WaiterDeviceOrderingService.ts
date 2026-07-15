@@ -109,7 +109,12 @@ export async function placeWaiterOrderForDevice(
     customerName?: string | null;
     customerPhone?: string | null;
     notes?: string | null;
-    items: Array<{ menuItemId: number; quantity: number; notes?: string | null }>;
+    items: Array<{
+      menuItemId: number;
+      quantity: number;
+      notes?: string | null;
+      modifiers?: readonly string[] | null;
+    }>;
     sessionToken: string;
   }
 ) {
@@ -140,6 +145,7 @@ export async function placeWaiterOrderForDevice(
           menuItemId: item.menuItemId,
           quantity: item.quantity,
           notes: item.notes,
+          modifiers: item.modifiers,
         })),
       })
     );

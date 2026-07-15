@@ -117,6 +117,8 @@ export type MenuItemOrderLineItemDto = {
   price: string;
   /** Item Notes — belong exclusively to this line (ORDERING-NOTES-ARCHITECTURE-1). */
   itemNotes: string | null;
+  /** ORDER-READ-MODIFIERS-PERSISTENCE-1 — projected modifier display labels. */
+  modifiers: readonly string[];
   category: OrderCategoryProjection;
 };
 
@@ -130,6 +132,8 @@ export type OfferOrderLineItemDto = {
   price: string;
   /** Item Notes — belong exclusively to this line (ORDERING-NOTES-ARCHITECTURE-1). */
   itemNotes: string | null;
+  /** ORDER-READ-MODIFIERS-PERSISTENCE-1 — projected modifier display labels. */
+  modifiers: readonly string[];
   offer: OrderOfferProjection;
 };
 

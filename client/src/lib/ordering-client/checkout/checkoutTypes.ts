@@ -66,6 +66,7 @@ export type CheckoutDraftSnapshot = Readonly<{
     price: string;
     quantity: number;
     notes: string | null;
+    modifiers?: readonly string[];
   }>;
   totalAmount: number;
 }>;

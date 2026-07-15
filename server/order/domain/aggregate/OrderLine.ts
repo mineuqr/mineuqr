@@ -6,6 +6,8 @@ export type OrderLineProps = {
   unitPrice: string;
   quantity: number;
   notes: string | null;
+  /** ORDER-READ-MODIFIERS-PERSISTENCE-1 — display labels; dual-write only (no pricing). */
+  modifiers?: readonly string[];
 };
 
 export class OrderLine {
@@ -16,6 +18,7 @@ export class OrderLine {
   readonly unitPrice: string;
   readonly quantity: number;
   readonly notes: string | null;
+  readonly modifiers: readonly string[];
 
   private constructor(props: OrderLineProps) {
     if (props.quantity < 1 || props.quantity > 99) {
@@ -28,6 +31,7 @@ export class OrderLine {
     this.unitPrice = props.unitPrice;
     this.quantity = props.quantity;
     this.notes = props.notes;
+    this.modifiers = Object.freeze([...(props.modifiers ?? [])]);
   }
 
   static create(props: OrderLineProps): OrderLine {
@@ -47,6 +51,7 @@ export class OrderLine {
       unitPrice: this.unitPrice,
       quantity: this.quantity,
       notes: this.notes,
+      modifiers: this.modifiers,
     };
   }
 }

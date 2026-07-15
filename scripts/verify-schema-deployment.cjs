@@ -29,6 +29,8 @@ const REQUIRED = {
   orderReadColumns: [
     ["order_read_order_line_items", "categoryProjection"],
     ["order_read_order_line_items", "itemNotes"],
+    ["order_items", "modifiers"],
+    ["order_read_order_line_items", "modifiers"],
     ["order_read_orders", "serviceMode"],
     ["order_read_orders", "fulfilmentAnchorType"],
     ["order_read_orders", "fulfilmentLabel"],

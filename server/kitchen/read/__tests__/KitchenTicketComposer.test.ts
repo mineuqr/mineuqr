@@ -54,6 +54,7 @@ const baseOrder: OrderReadPipelineOrderRow = {
       quantity: 2,
       price: "20.00",
       itemNotes: null,
+      modifiers: [],
       category: sampleCategory(),
     },
   ],

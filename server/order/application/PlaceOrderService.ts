@@ -53,6 +53,8 @@ export type PlaceOrderCommand = {
   items: Array<
     OrderLineInput & {
       itemNotes?: string | null;
+      /** ORDER-READ-MODIFIERS-PERSISTENCE-1 — dual-write only; no pricing change. */
+      modifiers?: readonly string[] | null;
     }
   >;
 };
@@ -114,6 +116,7 @@ export class PlaceOrderService {
       return {
         ...item,
         notes: itemNoteResult.value,
+        modifiers: item.modifiers ?? [],
       };
     });
 
@@ -171,6 +174,7 @@ export class PlaceOrderService {
         unitPrice: line.price,
         quantity: line.quantity,
         notes: line.notes,
+        modifiers: line.modifiers,
       })),
     });
 

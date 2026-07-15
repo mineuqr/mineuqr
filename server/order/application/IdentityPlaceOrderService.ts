@@ -34,7 +34,12 @@ export type IdentityPlaceOrderCommand = {
   customerPhone?: string | null;
   orderNotes?: string | null;
   notes?: string | null;
-  items: Array<OrderLineInput & { itemNotes?: string | null }>;
+  items: Array<
+    OrderLineInput & {
+      itemNotes?: string | null;
+      modifiers?: readonly string[] | null;
+    }
+  >;
 };
 
 export type IdentityPlaceOrderResult = PlaceOrderResult & {

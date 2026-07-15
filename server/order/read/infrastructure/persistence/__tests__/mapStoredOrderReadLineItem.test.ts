@@ -22,6 +22,7 @@ describe("mapStoredOrderReadLineItem", () => {
       quantity: 1,
       price: "10.00",
       itemNotes: "  No oil  ",
+      modifiers: ["  Extra garlic  ", ""],
       lineProjectionType: ORDER_LINE_PROJECTION_TYPE_MENU_ITEM,
       categoryProjection: category,
       offerProjection: null,
@@ -29,6 +30,7 @@ describe("mapStoredOrderReadLineItem", () => {
 
     expect(dto.projectionType).toBe(ORDER_LINE_PROJECTION_TYPE_MENU_ITEM);
     expect(dto.itemNotes).toBe("No oil");
+    expect(dto.modifiers).toEqual(["Extra garlic"]);
     if (dto.projectionType === ORDER_LINE_PROJECTION_TYPE_MENU_ITEM) {
       expect(dto.category.categoryId).toBe(2);
     }
@@ -45,6 +47,7 @@ describe("mapStoredOrderReadLineItem", () => {
       quantity: 1,
       price: "20.00",
       itemNotes: "Extra napkins",
+      modifiers: ["Large"],
       lineProjectionType: ORDER_LINE_PROJECTION_TYPE_OFFER,
       categoryProjection: null,
       offerProjection: {
@@ -60,6 +63,7 @@ describe("mapStoredOrderReadLineItem", () => {
 
     expect(dto.projectionType).toBe(ORDER_LINE_PROJECTION_TYPE_OFFER);
     expect(dto.itemNotes).toBe("Extra napkins");
+    expect(dto.modifiers).toEqual(["Large"]);
     if (dto.projectionType === ORDER_LINE_PROJECTION_TYPE_OFFER) {
       expect(dto.offer.lineKind).toBe("offer");
       expect(dto.offer.titleAr).toBe("عرض");
@@ -77,6 +81,7 @@ describe("mapStoredOrderReadLineItem", () => {
       quantity: 1,
       price: "15.00",
       itemNotes: null,
+      modifiers: null,
       lineProjectionType: "MenuItem",
       categoryProjection: null,
       offerProjection: null,
@@ -84,9 +89,10 @@ describe("mapStoredOrderReadLineItem", () => {
 
     expect(dto.projectionType).toBe(ORDER_LINE_PROJECTION_TYPE_OFFER);
     expect(dto.itemNotes).toBeNull();
+    expect(dto.modifiers).toEqual([]);
   });
 
-  it("persists itemNotes through toPersistedLineItemColumns round-trip columns", () => {
+  it("persists itemNotes and modifiers through toPersistedLineItemColumns round-trip", () => {
     const category = sampleCategoryProjection({ categoryId: 3 });
     const persisted = toPersistedLineItemColumns({
       projectionType: ORDER_LINE_PROJECTION_TYPE_MENU_ITEM,
@@ -97,10 +103,12 @@ describe("mapStoredOrderReadLineItem", () => {
       quantity: 1,
       price: "30.00",
       itemNotes: "Cut into 8 slices",
+      modifiers: ["No onion", "Extra cheese"],
       category,
     });
 
     expect(persisted.itemNotes).toBe("Cut into 8 slices");
+    expect(persisted.modifiers).toEqual(["No onion", "Extra cheese"]);
     expect(persisted.menuItemId).toBe(22);
 
     const roundTrip = mapStoredOrderReadLineItem({
@@ -113,11 +121,13 @@ describe("mapStoredOrderReadLineItem", () => {
       quantity: persisted.quantity,
       price: persisted.price,
       itemNotes: persisted.itemNotes,
+      modifiers: persisted.modifiers,
       lineProjectionType: persisted.lineProjectionType,
       categoryProjection: persisted.categoryProjection,
       offerProjection: persisted.offerProjection,
     });
 
     expect(roundTrip.itemNotes).toBe("Cut into 8 slices");
+    expect(roundTrip.modifiers).toEqual(["No onion", "Extra cheese"]);
   });
 });

@@ -25,6 +25,7 @@ const line: KitchenTicketLine = {
   quantity: 2,
   price: "10.00",
   itemNotes: null,
+  modifiers: [],
   category: mockCategoryProjection(),
 };
 

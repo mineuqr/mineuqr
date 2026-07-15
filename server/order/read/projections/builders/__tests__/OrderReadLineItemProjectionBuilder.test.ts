@@ -42,6 +42,7 @@ describe("OrderReadLineItemProjectionBuilder", () => {
         price: "12.75",
         quantity: 2,
         notes: null,
+        modifiers: ["Extra tahini"],
         createdAt: "2026-06-27 10:00:00",
       },
       {
@@ -53,6 +54,7 @@ describe("OrderReadLineItemProjectionBuilder", () => {
         price: "30.00",
         quantity: 1,
         notes: null,
+        modifiers: null,
         createdAt: "2026-06-27 10:00:00",
       },
     ]);
@@ -60,8 +62,10 @@ describe("OrderReadLineItemProjectionBuilder", () => {
     expect(lineItems).toHaveLength(2);
     expect(lineItems[0]?.projectionType).toBe(ORDER_LINE_PROJECTION_TYPE_MENU_ITEM);
     expect(lineItems[0]).toHaveProperty("category");
+    expect(lineItems[0]?.modifiers).toEqual(["Extra tahini"]);
     expect(lineItems[1]?.projectionType).toBe(ORDER_LINE_PROJECTION_TYPE_OFFER);
     expect(lineItems[1]).toHaveProperty("offer");
+    expect(lineItems[1]?.modifiers).toEqual([]);
     expect(lineItems[1]).not.toHaveProperty("category");
   });
 });

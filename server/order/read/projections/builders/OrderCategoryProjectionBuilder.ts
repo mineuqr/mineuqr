@@ -1,4 +1,5 @@
 import type { SelectOrderItem } from "../../../../../drizzle/schema";
+import { normalizeOrderLineModifiers } from "@shared/ordering-platform/orderLineModifiers";
 import type {
   OrderCategoryProjection,
   CategoryProjectionReadMeta,
@@ -106,6 +107,7 @@ export class OrderCategoryProjectionBuilder {
         quantity: item.quantity,
         price: String(item.price),
         itemNotes: item.notes ?? null,
+        modifiers: normalizeOrderLineModifiers(item.modifiers),
         category: this.buildCategoryProjection(restaurantId, item.menuItemId, categorySource),
       });
     }

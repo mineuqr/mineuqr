@@ -49,6 +49,6 @@ describe("ORDERING-READ-ITEM-NOTES-PERSISTENCE-1 architecture guards", () => {
   });
 
   it("bumps order read projection schema version for itemNotes persistence", () => {
-    expect(ORDER_READ_PROJECTION_SCHEMA_VERSION).toBe(4);
+    expect(ORDER_READ_PROJECTION_SCHEMA_VERSION).toBeGreaterThanOrEqual(4);
   });
 });

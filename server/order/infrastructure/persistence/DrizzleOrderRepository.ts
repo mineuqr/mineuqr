@@ -153,6 +153,7 @@ export class DrizzleOrderRepository implements OrderRepository {
         price: line.unitPrice,
         quantity: line.quantity,
         notes: line.notes,
+        modifiers: [...(line.modifiers ?? [])],
       }))
     );
 
@@ -308,6 +309,7 @@ export class DrizzleOrderRepository implements OrderRepository {
         price: line.unitPrice,
         quantity: line.quantity,
         notes: line.notes,
+        modifiers: [...(line.modifiers ?? [])],
       }))
     );
 

@@ -64,6 +64,7 @@ const placeWaiterOrderItemInput = z.object({
   menuItemId: z.number().int().positive(),
   quantity: z.number().int().positive().max(99),
   notes: z.string().max(500).nullish(),
+  modifiers: z.array(z.string().max(120)).max(32).optional(),
 });
 
 const placeWaiterOrderInput = z.object({

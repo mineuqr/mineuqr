@@ -30,6 +30,7 @@ export function sampleActiveLineItem(
     quantity: 2,
     price: "12.75",
     itemNotes: null,
+    modifiers: [],
     category: sampleCategoryProjection(),
     ...overrides,
   };

@@ -1,4 +1,5 @@
 import type { SelectOrder, SelectOrderItem } from "../../../../drizzle/schema";
+import { normalizeOrderLineModifiers } from "@shared/ordering-platform/orderLineModifiers";
 import { Order } from "../../domain/aggregate/Order";
 import { assertOrderStatus } from "../../domain/value-objects/OrderStatus";
 import {
@@ -40,6 +41,7 @@ export function mapOrderRowToAggregate(
       unitPrice: String(item.price),
       quantity: item.quantity,
       notes: item.notes ?? null,
+      modifiers: normalizeOrderLineModifiers(item.modifiers),
     })),
   });
 }

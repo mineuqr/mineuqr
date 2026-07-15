@@ -2,8 +2,8 @@
  * Official projection identifiers (READ-ARCHITECTURE-1 RA-02).
  * Phase 1: catalog only — no materialized stores.
  */
-/** OPERATIONAL-FULFILMENT-PROJECTION-1 — includes fulfilment stamps. */
-export const ORDER_READ_PROJECTION_SCHEMA_VERSION = 5 as const;
+/** ORDER-READ-MODIFIERS-PERSISTENCE-1 — includes projected line modifiers. */
+export const ORDER_READ_PROJECTION_SCHEMA_VERSION = 6 as const;
 
 export type ProjectionId =
   | "P-01-owner-orders"

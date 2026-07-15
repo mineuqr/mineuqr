@@ -205,11 +205,7 @@ export function WaiterTableWorkspaceStage({
                             {ar ? "الإضافات" : "Modifiers"}:{" "}
                             {item.modifiers.join(", ")}
                           </p>
-                        ) : (
-                          <p className="text-xs text-white/40 mt-1">
-                            {ar ? "الإضافات: —" : "Modifiers: —"}
-                          </p>
-                        )}
+                        ) : null}
                         {item.itemNotes ? (
                           <p className="text-xs text-white/70 mt-1 whitespace-pre-wrap">
                             {ar ? "ملاحظات الصنف" : "Item notes"}:{" "}

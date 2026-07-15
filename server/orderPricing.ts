@@ -5,12 +5,15 @@ import {
   cartMenuItemIdToOfferId,
   isOfferCartMenuItemId,
 } from "@shared/ordering-platform/offerCartIdentity";
+import { normalizeOrderLineModifiers } from "@shared/ordering-platform/orderLineModifiers";
 
 /** Public order line input — pricing fields are not trusted. */
 export type OrderLineInput = {
   menuItemId: number;
   quantity: number;
   notes?: string | null;
+  /** ORDER-READ-MODIFIERS-PERSISTENCE-1 — pass-through display labels (not priced). */
+  modifiers?: readonly string[] | null;
 };
 
 export type ResolvedOrderLine = {
@@ -21,6 +24,7 @@ export type ResolvedOrderLine = {
   price: string;
   quantity: number;
   notes: string | null;
+  modifiers: readonly string[];
   lineTotal: number;
 };
 
@@ -122,6 +126,7 @@ export async function resolveAuthoritativeOrderLines(
         price: formatMoney(unitPrice),
         quantity: item.quantity,
         notes: item.notes ?? null,
+        modifiers: normalizeOrderLineModifiers(item.modifiers),
         lineTotal,
       });
       continue;
@@ -147,6 +152,7 @@ export async function resolveAuthoritativeOrderLines(
       price: formatMoney(unitPrice),
       quantity: item.quantity,
       notes: item.notes ?? null,
+      modifiers: normalizeOrderLineModifiers(item.modifiers),
       lineTotal,
     });
   }

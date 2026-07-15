@@ -23,6 +23,8 @@ export type MenuItemKitchenLineItem = {
   quantity: number;
   price: string;
   itemNotes: string | null;
+  /** ORDER-READ-MODIFIERS-PERSISTENCE-1 — projected from Order Read. */
+  modifiers: readonly string[];
   category: import("./categoryProjection").OrderCategoryProjection;
 };
 
@@ -35,6 +37,8 @@ export type OfferKitchenLineItem = {
   quantity: number;
   price: string;
   itemNotes: string | null;
+  /** ORDER-READ-MODIFIERS-PERSISTENCE-1 — projected from Order Read. */
+  modifiers: readonly string[];
   offer: OrderOfferProjection;
 };
 

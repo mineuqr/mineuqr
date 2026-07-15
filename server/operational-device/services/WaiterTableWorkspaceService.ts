@@ -30,7 +30,8 @@ function mapLineItem(
     quantity: item.quantity,
     price: item.price,
     itemNotes: item.itemNotes,
-    modifiers: [],
+    /** Forward projected modifiers only — no reconstruction. */
+    modifiers: item.modifiers,
   };
 }
 

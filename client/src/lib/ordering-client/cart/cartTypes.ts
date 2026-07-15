@@ -8,6 +8,8 @@ export type OrderingCartItem = {
   price: string;
   quantity: number;
   notes?: string;
+  /** ORDER-READ-MODIFIERS-PERSISTENCE-1 — optional display labels forwarded on place. */
+  modifiers?: readonly string[];
   imageUrl?: string;
 };
 

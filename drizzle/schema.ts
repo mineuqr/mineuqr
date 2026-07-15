@@ -446,6 +446,8 @@ export const orderItems = mysqlTable("order_items", {
 	price: decimal({ precision: 10, scale: 2 }).notNull(),
 	quantity: int().default(1).notNull(),
 	notes: text(),
+	/** ORDER-READ-MODIFIERS-PERSISTENCE-1 — selected modifier display labels (JSON string[]). */
+	modifiers: json().$type<string[]>(),
 	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
 },
 (table) => [
@@ -513,6 +515,8 @@ export const orderReadOrderLineItems = mysqlTable("order_read_order_line_items",
 	price: decimal({ precision: 10, scale: 2 }).notNull(),
 	/** ORDERING-READ-ITEM-NOTES-PERSISTENCE-1 — projected Item Notes from order_items.notes */
 	itemNotes: text(),
+	/** ORDER-READ-MODIFIERS-PERSISTENCE-1 — projected modifier labels from order_items.modifiers */
+	modifiers: json().$type<string[]>(),
 	lineProjectionType: varchar({ length: 16 }).default("MenuItem").notNull(),
 	categoryProjection: json(),
 	offerProjection: json(),

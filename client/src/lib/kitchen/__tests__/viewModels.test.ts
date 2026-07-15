@@ -54,6 +54,7 @@ describe("kitchen viewModels", () => {
           quantity: 1,
           price: "10.00",
           itemNotes: null,
+          modifiers: [],
           category: mockCategoryProjection(),
         },
       ],

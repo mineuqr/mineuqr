@@ -167,10 +167,11 @@ export function OrderingCheckoutProvider({
       };
 
       const linePayload = validated.items.map(
-        ({ menuItemId, quantity, notes }) => ({
+        ({ menuItemId, quantity, notes, modifiers }) => ({
           menuItemId,
           quantity,
           notes,
+          modifiers: modifiers ? [...modifiers] : undefined,
         })
       );
 

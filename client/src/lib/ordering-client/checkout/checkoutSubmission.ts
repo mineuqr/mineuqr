@@ -76,6 +76,7 @@ export function validateCheckoutNotes(input: {
       price: item.price,
       quantity: item.quantity,
       notes: itemNoteResult.value,
+      modifiers: item.modifiers,
     });
   }
 

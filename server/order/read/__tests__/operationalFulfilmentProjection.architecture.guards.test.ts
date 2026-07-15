@@ -40,7 +40,7 @@ describe("OPERATIONAL-FULFILMENT-PROJECTION-1 architecture guards", () => {
 
   it("projection schema version bumped for fulfilment stamps", () => {
     const ids = read("server/order/read/domain/contracts/projectionIds.ts");
-    expect(ids).toContain("ORDER_READ_PROJECTION_SCHEMA_VERSION = 5");
+    expect(ids).toContain("ORDER_READ_PROJECTION_SCHEMA_VERSION = 6");
   });
 
   it("additive migration exists for write + read fulfilment columns", () => {
