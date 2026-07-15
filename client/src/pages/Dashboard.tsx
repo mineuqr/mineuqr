@@ -283,6 +283,7 @@ export default function Dashboard() {
           activeSection === "restaurant-detail" ? handleRestaurantTabChange : undefined
         }
         tablesLabel={tablesLabel}
+        restaurantSlug={sidebarRestaurant?.slug ?? null}
         breadcrumbs={shellBreadcrumbs}
       >
         {isAuthenticated ? <EmailVerificationBanner className="mb-6" /> : null}

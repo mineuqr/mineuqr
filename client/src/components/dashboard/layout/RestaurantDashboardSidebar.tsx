@@ -13,6 +13,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import {
   BarChart3,
   ClipboardList,
+  ConciergeBell,
   Grid3X3,
   Home,
   LayoutGrid,
@@ -66,16 +67,28 @@ export function RestaurantDashboardSidebar({
   onRestaurants,
   onRestaurantTabChange,
   tablesLabel,
+  restaurantSlug,
 }: {
   activeSection: RestaurantDashboardSection;
   restaurantTab?: RestaurantTab;
   onRestaurants: () => void;
   onRestaurantTabChange?: (tab: RestaurantTab) => void;
   tablesLabel?: string;
+  /** WAITER-NAVIGATION-ADOPTION-1 — slug for deep-link into existing Waiter Shell. */
+  restaurantSlug?: string | null;
 }) {
   const { t, language } = useLanguage();
   const [, setLocation] = useLocation();
   const inRestaurant = activeSection === "restaurant-detail" && !!onRestaurantTabChange;
+
+  const openWaiterOrdering = () => {
+    const slug = restaurantSlug?.trim();
+    if (slug) {
+      setLocation(`/waiter/${slug}/tables`);
+      return;
+    }
+    setLocation("/waiter");
+  };
 
   const restaurantWorkspaceNav: NavItem[] = inRestaurant
     ? [
@@ -99,6 +112,13 @@ export function RestaurantDashboardSidebar({
           icon: ClipboardList,
           active: restaurantTab === "orders",
           onClick: () => onRestaurantTabChange!("orders"),
+        },
+        {
+          id: "waiter-ordering",
+          label: language === "ar" ? "طلب النادل" : "Waiter Ordering",
+          icon: ConciergeBell,
+          active: false,
+          onClick: openWaiterOrdering,
         },
         {
           id: "screens",
