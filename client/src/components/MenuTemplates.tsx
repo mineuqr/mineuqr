@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Store, Phone, MapPin, ChevronUp, ChevronDown,
-  AlertCircle, Sparkles, Crown, Star, MessageCircle, AlertTriangle, Info
+  AlertCircle, Sparkles, Crown, Star, MessageCircle, AlertTriangle, Info,
+  Clock, Calendar,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { resolveImageUrl } from "@/lib/utils";
