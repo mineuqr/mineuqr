@@ -1,10 +1,15 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useLocation, useRoute, useSearch } from "wouter";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { LOGIN_PATH } from "@/const";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { WaiterOrderingClientHost } from "@/lib/ordering-client";
+import {
+  WaiterOrderingClientHost,
+  useWaiterSessionBindingGuard,
+  waiterBindingInvalidMessage,
+} from "@/lib/ordering-client";
 import { trpc } from "@/lib/trpc";
 import { WaiterBrowseStage } from "./WaiterBrowseStage";
 import { WaiterCartStage } from "./WaiterCartStage";
@@ -26,11 +31,13 @@ const WAITER_STATION_ID = "waiter";
 
 /**
  * WAITER-ORDERING-FOUNDATION-1 — Waiter channel shell.
- * Owns staff auth gate, restaurant/table selection, session query binding.
+ * WAITER-SESSION-BINDING-HARDENING-1 — revalidates URL session binding before
+ * browse/cart/checkout; clears stale bindings without creating sessions.
  * Ordering stages compose Ordering Client Platform via WaiterOrderingClientHost.
  */
 export default function WaiterShell() {
   const { language } = useLanguage();
+  const lang = language === "ar" ? "ar" : "en";
   const [, setLocation] = useLocation();
   const search = useSearch();
   const [isRoot] = useRoute("/waiter");
@@ -106,19 +113,65 @@ export default function WaiterShell() {
   const orderingBound =
     tableId > 0 && tableNumber > 0 && sessionId > 0 && !!sessionToken;
 
+  const sessionDependentStage =
+    stage === "browse" || stage === "cart" || stage === "checkout";
+
+  const sessionBinding = useMemo(
+    () =>
+      orderingBound && slug
+        ? {
+            slug,
+            tableNumber,
+            sessionId,
+            sessionToken,
+          }
+        : null,
+    [orderingBound, slug, tableNumber, sessionId, sessionToken]
+  );
+
+  const bindingGuard = useWaiterSessionBindingGuard({
+    enabled: !!user && !!sessionBinding && sessionDependentStage,
+    binding: sessionBinding,
+  });
+
+  const staleRecoveryKeyRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (!user || !slug) return;
     if (stage === "entry") {
       setLocation(`/waiter/${slug}/tables`, { replace: true });
       return;
     }
-    if (
-      (stage === "browse" || stage === "cart" || stage === "checkout") &&
-      !orderingBound
-    ) {
+    if (sessionDependentStage && !orderingBound) {
       setLocation(`/waiter/${slug}/tables`, { replace: true });
     }
-  }, [user, slug, stage, orderingBound, setLocation]);
+  }, [user, slug, stage, sessionDependentStage, orderingBound, setLocation]);
+
+  useEffect(() => {
+    if (!sessionDependentStage || !orderingBound || !slug) return;
+    if (bindingGuard.validating || bindingGuard.isValid) return;
+    if (!bindingGuard.invalidReason) return;
+
+    const key = `${sessionBinding?.sessionToken}|${bindingGuard.invalidReason}`;
+    if (staleRecoveryKeyRef.current === key) return;
+    staleRecoveryKeyRef.current = key;
+
+    toast.error(
+      waiterBindingInvalidMessage(bindingGuard.invalidReason, lang)
+    );
+    // Clear binding by navigating to tables without query — do not attach/create.
+    setLocation(`/waiter/${slug}/tables`, { replace: true });
+  }, [
+    sessionDependentStage,
+    orderingBound,
+    slug,
+    bindingGuard.validating,
+    bindingGuard.isValid,
+    bindingGuard.invalidReason,
+    sessionBinding?.sessionToken,
+    lang,
+    setLocation,
+  ]);
 
   const goMenuWithBinding = (binding: {
     tableId: number;
@@ -126,6 +179,7 @@ export default function WaiterShell() {
     sessionId: number;
     sessionToken: string;
   }) => {
+    staleRecoveryKeyRef.current = null;
     const p = new URLSearchParams();
     p.set("tableId", String(binding.tableId));
     p.set("table", String(binding.tableNumber));
@@ -230,6 +284,21 @@ export default function WaiterShell() {
     );
   }
 
+  if (
+    sessionDependentStage &&
+    (bindingGuard.validating || !bindingGuard.isValid)
+  ) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-white">
+        <Loader2 className="w-10 h-10 animate-spin text-teal-400" />
+      </div>
+    );
+  }
+
+  const clearBindingToTables = () => {
+    setLocation(`/waiter/${slug}/tables`, { replace: true });
+  };
+
   return (
     <WaiterOrderingClientHost
       slug={slug}
@@ -243,7 +312,7 @@ export default function WaiterShell() {
           slug={slug}
           qs={qs}
           tableNumber={tableNumber}
-          onBackToTables={() => setLocation(`/waiter/${slug}/tables`)}
+          onBackToTables={clearBindingToTables}
         />
       )}
       {stage === "cart" && (
@@ -261,7 +330,7 @@ export default function WaiterShell() {
       {stage === "confirmation" && (
         <WaiterConfirmationStage
           tableNumber={tableNumber}
-          onBackToTables={() => setLocation(`/waiter/${slug}/tables`)}
+          onBackToTables={clearBindingToTables}
           onOrderAgain={() => setLocation(`/waiter/${slug}/menu?${qs}`)}
         />
       )}

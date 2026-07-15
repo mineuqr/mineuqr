@@ -168,3 +168,14 @@ export {
   buildWaiterTableCheckoutIdentity,
   createWaiterTableFulfilmentAnchor,
 } from "./waiter/waiterTableIdentity";
+export {
+  validateWaiterSessionBinding,
+  waiterBindingInvalidMessage,
+  type WaiterSessionBinding,
+  type WaiterBindingInvalidReason,
+  type WaiterBindingValidationResult,
+} from "./waiter/waiterSessionBinding";
+export {
+  useWaiterSessionBindingGuard,
+  type WaiterSessionBindingGuardState,
+} from "./waiter/useWaiterSessionBindingGuard";

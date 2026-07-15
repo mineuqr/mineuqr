@@ -37,6 +37,24 @@ describe("WAITER-ORDERING-FOUNDATION-1 architecture guards", () => {
     expect(shell).not.toContain("resolveBusinessIdentityScope");
   });
 
+  it("binding hardening reuses Session Platform reads without QR adopt-active path", () => {
+    const guard = read(
+      "client/src/lib/ordering-client/waiter/useWaiterSessionBindingGuard.ts"
+    );
+    const policy = read(
+      "client/src/lib/ordering-client/waiter/waiterSessionBinding.ts"
+    );
+    const recovery = read("client/src/lib/diningSessionRecovery.ts");
+    expect(guard).toContain("session.getByToken");
+    expect(guard).toContain("session.getActiveByTable");
+    expect(guard).toContain("attachDiningSessionRevalidationListeners");
+    expect(guard).not.toContain("recoverDiningSession");
+    expect(policy).toContain("Does NOT adopt a replacement session");
+    // QR recovery remains the only adopt-active-session path.
+    expect(recovery).toContain("getActiveByTable");
+    expect(recovery).toContain("saveDiningSession");
+  });
+
   it("checkout identity uses staff placeAuth + table_service", () => {
     const identity = buildWaiterTableCheckoutIdentity({
       tableId: 9,
