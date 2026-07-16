@@ -10,6 +10,8 @@ export {
   formatPricingMode,
   formatMoneyDisplay,
   formatTaxPolicySummary,
+  formatExportDateTime,
+  toWesternDigits,
 } from "./format";
 export { reportingExportLabels } from "./labels";
 export { fetchRestaurantLogoAsset } from "./branding";

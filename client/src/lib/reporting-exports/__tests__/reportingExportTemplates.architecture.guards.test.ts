@@ -78,4 +78,21 @@ describe("REPORTING-EXPORT-TEMPLATES-1 architecture guards", () => {
     expect(routers).toContain("reporting: reportingRouter");
     expect(contracts).not.toContain("REPORTING-EXPORT-TEMPLATES-1");
   });
+
+  it("enforces Western digits export policy in format helpers and templates", () => {
+    const format = read("client/src/lib/reporting-exports/format.ts");
+    const excel = read(
+      "client/src/lib/reporting-exports/excel/buildReportingExportWorkbook.ts"
+    );
+    const pdf = read(
+      "client/src/lib/reporting-exports/pdf/buildReportingExportPdf.ts"
+    );
+    expect(format).toContain("Western digits");
+    expect(format).toContain("numberingSystem: \"latn\"");
+    expect(format).toContain("toWesternDigits");
+    expect(excel).toContain("toWesternDigits");
+    expect(excel).toContain("formatExportDateTime");
+    expect(pdf).toContain("toWesternDigits");
+    expect(pdf).toContain("formatExportDateTime");
+  });
 });

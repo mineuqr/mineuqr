@@ -7,12 +7,14 @@
  * when Latin-safe, otherwise English fallbacks for glyph reliability.
  */
 import {
+  formatExportDateTime,
   formatMoneyDisplay,
   formatNullableCount,
   formatPricingMode,
   formatTaxPolicySummary,
   parseDtoAmountForDisplay,
   resolveExportCurrency,
+  toWesternDigits,
 } from "../format";
 import { reportingExportLabels } from "../labels";
 import type { RestaurantReportingExportBundle } from "../types";
@@ -112,7 +114,7 @@ class PdfDocumentBuilder {
 
   kv(label: string, value: string) {
     this.ensureSpace(16);
-    this.text(`${label}: ${value}`, { size: 10 });
+    this.text(`${label}: ${toWesternDigits(value)}`, { size: 10 });
   }
 
   table(
@@ -138,7 +140,7 @@ class PdfDocumentBuilder {
         this.ops.push(`${color} rg`);
         this.ops.push(`${header ? "/F2" : "/F1"} 8 Tf`);
         this.ops.push(`1 0 0 1 ${x + 3} ${this.y} Tm`);
-        this.ops.push(`(${pdfEscape(cell)}) Tj`);
+        this.ops.push(`(${pdfEscape(toWesternDigits(cell))}) Tj`);
         this.ops.push("ET");
         x += colWidths[i] ?? 80;
       });
@@ -317,8 +319,8 @@ export function buildReportingExportPdfBytes(
   doc.text(bundle.restaurantName || "Restaurant", { size: 18, bold: true });
   doc.text(reportTitle, { size: 14, bold: true, color: "0.06 0.09 0.16" });
   doc.gap(4);
-  doc.kv(L("period"), bundle.periodLabel);
-  doc.kv(L("generated"), new Date().toISOString());
+  doc.kv(L("period"), toWesternDigits(bundle.periodLabel));
+  doc.kv(L("generated"), formatExportDateTime(new Date(), bundle.language));
   doc.kv(L("currency"), `${currencyCode} (${currencySymbol})`);
   doc.kv(L("pricingMode"), formatPricingMode(biz, "en"));
   doc.kv(L("taxPolicy"), formatTaxPolicySummary(biz, "en"));
@@ -333,13 +335,13 @@ export function buildReportingExportPdfBytes(
     [
       [L("revenue"), money(biz.revenue)],
       [L("orderSalesMonth"), money(sales.month.orderSales)],
-      [L("paidChecks"), String(biz.paidCheckCount)],
+      [L("paidChecks"), toWesternDigits(String(biz.paidCheckCount))],
       [L("averageCheck"), money(biz.averageCheck)],
       [L("averageOrderMonth"), money(sales.month.averageOrder)],
-      [L("sessionsActive"), String(ops.activeSessions)],
-      [L("ordersMonth"), String(sales.month.totalOrders)],
+      [L("sessionsActive"), toWesternDigits(String(ops.activeSessions))],
+      [L("ordersMonth"), toWesternDigits(String(sales.month.totalOrders))],
       [L("orderSalesToday"), money(sales.today.orderSales)],
-      [L("ordersToday"), String(sales.today.totalOrders)],
+      [L("ordersToday"), toWesternDigits(String(sales.today.totalOrders))],
     ],
     [220, 260]
   );
@@ -397,16 +399,16 @@ export function buildReportingExportPdfBytes(
   doc.sectionTitle(L("revenueTrend"));
   doc.barChart(
     L("chartRevenueTrend"),
-    bundle.revenueTrend.points.map((p) => p.periodKey),
+    bundle.revenueTrend.points.map((p) => toWesternDigits(p.periodKey)),
     bundle.revenueTrend.points.map((p) => parseDtoAmountForDisplay(p.revenue))
   );
   doc.table(
     [L("periodKey"), L("paidCheckCount"), L("revenue"), L("taxCollected")],
     bundle.revenueTrend.points.map((p) => [
-      p.periodKey,
-      String(p.paidCheckCount),
-      p.revenue,
-      p.taxCollected,
+      toWesternDigits(p.periodKey),
+      toWesternDigits(String(p.paidCheckCount)),
+      toWesternDigits(p.revenue),
+      toWesternDigits(p.taxCollected),
     ]),
     [100, 90, 120, 120]
   );
@@ -414,7 +416,7 @@ export function buildReportingExportPdfBytes(
   doc.sectionTitle(L("orderSalesRollup"));
   doc.barChart(
     L("chartOrderTrend"),
-    bundle.orderSalesRollup.periods.map((p) => p.periodKey),
+    bundle.orderSalesRollup.periods.map((p) => toWesternDigits(p.periodKey)),
     bundle.orderSalesRollup.periods.map((p) =>
       parseDtoAmountForDisplay(p.orderSales)
     )
@@ -422,10 +424,10 @@ export function buildReportingExportPdfBytes(
   doc.table(
     [L("periodKey"), L("orderCount"), L("completedOrders"), L("orderSales")],
     bundle.orderSalesRollup.periods.map((p) => [
-      p.periodKey,
-      String(p.orderCount),
-      String(p.completedOrders),
-      p.orderSales,
+      toWesternDigits(p.periodKey),
+      toWesternDigits(String(p.orderCount)),
+      toWesternDigits(String(p.completedOrders)),
+      toWesternDigits(p.orderSales),
     ]),
     [100, 90, 110, 120]
   );

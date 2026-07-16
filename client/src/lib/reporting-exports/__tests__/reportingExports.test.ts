@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest";
 import { buildReportingExportWorkbook } from "../excel/buildReportingExportWorkbook";
 import { buildReportingExportPdfBytes } from "../pdf/buildReportingExportPdf";
 import { monthReportingRange, yearReportingRange } from "../periodRange";
-import { formatTaxPolicySummary, resolveExportCurrency } from "../format";
+import {
+  formatExportDateTime,
+  formatMoneyDisplay,
+  formatTaxPolicySummary,
+  resolveExportCurrency,
+  toWesternDigits,
+} from "../format";
 import type { RestaurantReportingExportBundle } from "../types";
 
 function sampleBundle(): RestaurantReportingExportBundle {
@@ -143,6 +149,15 @@ describe("REPORTING-EXPORTS-1 helpers", () => {
 
   it("formats tax policy from Check snapshot on the Reporting DTO", () => {
     expect(formatTaxPolicySummary(sampleBundle().business, "en")).toContain("15%");
+  });
+
+  it("enforces Western digits for export money/dates regardless of language", () => {
+    expect(toWesternDigits("١٥٤٥٠")).toBe("15450");
+    expect(toWesternDigits("۱۵٫۵")).toBe("15.5");
+    expect(formatMoneyDisplay("١٥٬٤٥٠٫٧٥", "SAR")).toBe("15,450.75 SAR");
+    const arDate = formatExportDateTime(new Date("2026-07-16T12:00:00.000Z"), "ar");
+    expect(arDate).toMatch(/[0-9]/);
+    expect(arDate).not.toMatch(/[٠-٩۰-۹]/);
   });
 
   it("builds enterprise Excel workbook sheets from the DTO bundle", async () => {

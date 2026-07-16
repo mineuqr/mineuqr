@@ -7,7 +7,6 @@ import {
   buildExcelCurrencyNumFmt,
   normalizeCurrencyCode,
 } from "@/lib/currencyLocale";
-import { formatInRestaurantTimezone } from "@/lib/datetime";
 import {
   REPORT_THEME,
   bodyFont,
@@ -24,12 +23,14 @@ import {
 import { fetchRestaurantLogoAsset } from "../branding";
 import { renderTrendChartPng } from "../charts/renderTrendChartPng";
 import {
+  formatExportDateTime,
   formatMoneyDisplay,
   formatNullableCount,
   formatPricingMode,
   formatTaxPolicySummary,
   parseDtoAmountForDisplay,
   resolveExportCurrency,
+  toWesternDigits,
 } from "../format";
 import { reportingExportLabels, type ReportingExportLabels } from "../labels";
 import type { RestaurantReportingExportBundle } from "../types";
@@ -140,7 +141,8 @@ function writeStyledTable(
     );
     values.forEach((value, col) => {
       const cell = row.getCell(col + 1);
-      cell.value = value;
+      // Official export policy: Western digits in all table values.
+      cell.value = typeof value === "string" ? toWesternDigits(value) : value;
       cell.font = bodyFont(language);
       cell.fill = fill;
       cell.border = cellBorder(REPORT_THEME.borderLight);
@@ -256,11 +258,8 @@ export async function buildReportingExportWorkbook(
   workbook.subject = "Business Performance Report";
   workbook.keywords = "MineuQR,Reporting,Revenue,Order Sales";
 
-  const generated = formatInRestaurantTimezone(
-    new Date(),
-    bundle.language === "ar" ? "ar-SA" : "en-GB",
-    { dateStyle: "medium", timeStyle: "short" }
-  );
+  const generated = formatExportDateTime(new Date(), bundle.language);
+  const periodLabel = toWesternDigits(bundle.periodLabel);
 
   const money = (amount: string) => formatMoneyDisplay(amount, currencySymbol);
   const biz = bundle.business;
@@ -275,6 +274,7 @@ export async function buildReportingExportWorkbook(
     labels,
     reportTitle,
     generated,
+    periodLabel,
     currencyCode,
     currencySymbol,
     logo,
@@ -285,6 +285,7 @@ export async function buildReportingExportWorkbook(
     labels,
     money,
     generated,
+    periodLabel,
   });
 
   buildFinancialSheet(workbook, {
@@ -321,13 +322,22 @@ function buildCoverSheet(
     labels: ReportingExportLabels;
     reportTitle: string;
     generated: string;
+    periodLabel: string;
     currencyCode: string;
     currencySymbol: string;
     logo: Awaited<ReturnType<typeof fetchRestaurantLogoAsset>>;
   }
 ) {
-  const { bundle, labels, reportTitle, generated, currencyCode, currencySymbol, logo } =
-    ctx;
+  const {
+    bundle,
+    labels,
+    reportTitle,
+    generated,
+    periodLabel,
+    currencyCode,
+    currencySymbol,
+    logo,
+  } = ctx;
   const sheet = workbook.addWorksheet(sanitizeSheetName(labels.cover));
   const lang = bundle.language;
 
@@ -372,7 +382,7 @@ function buildCoverSheet(
   sheet.getRow(row).height = 32;
   row += 2;
 
-  writeMetaRow(sheet, row++, labels.period, bundle.periodLabel, lang);
+  writeMetaRow(sheet, row++, labels.period, periodLabel, lang);
   writeMetaRow(sheet, row++, labels.generated, generated, lang);
   writeMetaRow(
     sheet,
@@ -416,9 +426,10 @@ function buildExecutiveSheet(
     labels: ReportingExportLabels;
     money: (amount: string) => string;
     generated: string;
+    periodLabel: string;
   }
 ) {
-  const { bundle, labels, money, generated } = ctx;
+  const { bundle, labels, money, generated, periodLabel } = ctx;
   const sheet = workbook.addWorksheet(sanitizeSheetName(labels.executive));
   const lang = bundle.language;
   const biz = bundle.business;
@@ -426,7 +437,7 @@ function buildExecutiveSheet(
   const ops = bundle.operational;
 
   styleSectionTitle(sheet, 1, 6, labels.executive, lang);
-  sheet.getCell(2, 1).value = `${labels.period}: ${bundle.periodLabel}`;
+  sheet.getCell(2, 1).value = `${labels.period}: ${periodLabel}`;
   sheet.getCell(2, 1).font = periodFont(lang);
   sheet.getCell(3, 1).value = `${labels.generated}: ${generated}`;
   sheet.getCell(3, 1).font = metaFont(lang);
@@ -437,13 +448,13 @@ function buildExecutiveSheet(
     [
       [labels.revenue, money(biz.revenue)],
       [labels.orderSalesMonth, money(sales.month.orderSales)],
-      [labels.paidChecks, String(biz.paidCheckCount)],
+      [labels.paidChecks, toWesternDigits(String(biz.paidCheckCount))],
       [labels.averageCheck, money(biz.averageCheck)],
       [labels.averageOrderMonth, money(sales.month.averageOrder)],
-      [labels.sessionsActive, String(ops.activeSessions)],
-      [labels.ordersMonth, String(sales.month.totalOrders)],
+      [labels.sessionsActive, toWesternDigits(String(ops.activeSessions))],
+      [labels.ordersMonth, toWesternDigits(String(sales.month.totalOrders))],
       [labels.orderSalesToday, money(sales.today.orderSales)],
-      [labels.ordersToday, String(sales.today.totalOrders)],
+      [labels.ordersToday, toWesternDigits(String(sales.today.totalOrders))],
     ],
     lang
   );
@@ -483,9 +494,9 @@ function buildFinancialSheet(
     [
       [labels.revenue, money(biz.revenue), ""],
       [labels.taxCollected, money(biz.taxCollected), ""],
-      [labels.complimentaryCount, String(biz.complimentaryCount), ""],
+      [labels.complimentaryCount, toWesternDigits(String(biz.complimentaryCount)), ""],
       [labels.complimentaryAmount, money(biz.complimentaryAmount), ""],
-      [labels.voidedCount, String(biz.voidedCount), ""],
+      [labels.voidedCount, toWesternDigits(String(biz.voidedCount)), ""],
       [labels.currency, `${currencyCode} (${currencySymbol})`, ""],
       [labels.pricingMode, formatPricingMode(biz, lang), ""],
       [labels.taxPolicy, formatTaxPolicySummary(biz, lang), ""],
@@ -518,10 +529,10 @@ function buildOperationalSheet(
     3,
     [labels.metric, labels.value],
     [
-      [labels.sessionsActive, String(ops.activeSessions)],
-      [labels.occupiedTables, String(ops.occupiedTables)],
-      [labels.pendingOrders, String(ops.pendingOrders)],
-      [labels.kitchenLoad, String(ops.kitchenLoad)],
+      [labels.sessionsActive, toWesternDigits(String(ops.activeSessions))],
+      [labels.occupiedTables, toWesternDigits(String(ops.occupiedTables))],
+      [labels.pendingOrders, toWesternDigits(String(ops.pendingOrders))],
+      [labels.kitchenLoad, toWesternDigits(String(ops.kitchenLoad))],
       [labels.activeOrders, formatNullableCount(ops.activeOrders)],
       [labels.preparingOrders, formatNullableCount(ops.preparingOrders)],
       [labels.readyOrders, formatNullableCount(ops.readyOrders)],
@@ -551,9 +562,9 @@ function buildCatalogSheet(
     3,
     [labels.metric, labels.value],
     [
-      [labels.categories, String(catalog.categoryCount)],
-      [labels.items, String(catalog.itemCount)],
-      [labels.menuVisits, String(catalog.menuVisits)],
+      [labels.categories, toWesternDigits(String(catalog.categoryCount))],
+      [labels.items, toWesternDigits(String(catalog.itemCount))],
+      [labels.menuVisits, toWesternDigits(String(catalog.menuVisits))],
     ],
     lang,
     new Set(),
@@ -624,7 +635,7 @@ async function buildRevenueTrendSheet(
     0,
     end + 1,
     labels.chartRevenueTrend,
-    points.map((p) => p.periodKey),
+    points.map((p) => toWesternDigits(p.periodKey)),
     [
       {
         label: labels.revenue,
@@ -681,7 +692,7 @@ async function buildOrderSalesSheet(
     0,
     end + 1,
     labels.chartOrderTrend,
-    periods.map((p) => p.periodKey),
+    periods.map((p) => toWesternDigits(p.periodKey)),
     [
       {
         label: labels.orderSales,

@@ -55,8 +55,13 @@
 |---------|-------|-----|
 | RTL sheet view | `rightToLeft` when `language === "ar"` | LTR text operators (font limit) |
 | Labels | Localized AR/EN | English-safe operators |
-| Dates | Restaurant timezone formatter | ISO / DTO timestamps as provided |
-| Currency | Snapshot symbol/code + Excel numFmt | Snapshot symbol/code in text |
+| Digits | **Western 0-9 always** (`toWesternDigits` / `numberingSystem: latn`) | Same |
+| Dates | Localized labels + Western digits | Localized + Western digits |
+| Currency | Snapshot symbol/code + Western amount digits | Same |
+
+### Official digit policy
+
+Arabic labels remain Arabic. All numeric values (money, counts, percentages, dates, tables, charts) use Western digits only — never Eastern Arabic digits (`١٥٬٤٥٠٫٧٥`).
 
 ---
 
