@@ -27,7 +27,8 @@ describe("REPORTING-EXPORTS-1 architecture guards", () => {
   it("ReportsTab exports via reporting-exports and reporting.* only", () => {
     const reports = read("client/src/components/dashboard/ReportsTab.tsx");
     expect(reports).toContain("downloadReportingExportXlsx");
-    expect(reports).toContain("downloadReportingExportPdf");
+    expect(reports).toContain("exportScopeXlsx");
+    expect(reports).not.toContain("downloadReportingExportPdf");
     expect(reports).toContain("reporting.getBusinessMetricsSummary");
     expect(reports).toContain("reporting.getBusinessMetricsTrend");
     expect(reports).toContain("reporting.getOrderSalesRollup");

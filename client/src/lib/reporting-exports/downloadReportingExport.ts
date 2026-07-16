@@ -1,5 +1,4 @@
 import { buildReportingExportWorkbook } from "./excel/buildReportingExportWorkbook";
-import { buildReportingExportPdfBlob } from "./pdf/buildReportingExportPdf";
 import type { RestaurantReportingExportBundle } from "./types";
 
 function triggerDownload(blob: Blob, filename: string) {
@@ -28,15 +27,16 @@ export async function downloadReportingExportXlsx(
   triggerDownload(blob, `${bundle.filenameStem}.xlsx`);
 }
 
+/**
+ * REPORTING-PERIOD-CONSISTENCY-1 — PDF export suspended.
+ * Excel is the sole executive reporting deliverable for now.
+ */
 export async function downloadReportingExportPdf(
-  bundle: RestaurantReportingExportBundle,
-  fallbackCurrencySymbol: string,
-  fallbackCurrencyCode?: string
+  _bundle: RestaurantReportingExportBundle,
+  _fallbackCurrencySymbol: string,
+  _fallbackCurrencyCode?: string
 ): Promise<void> {
-  const blob = await buildReportingExportPdfBlob(
-    bundle,
-    fallbackCurrencySymbol,
-    fallbackCurrencyCode
+  throw new Error(
+    "PDF reporting export is suspended (REPORTING-PERIOD-CONSISTENCY-1). Use Excel export."
   );
-  triggerDownload(blob, `${bundle.filenameStem}.pdf`);
 }

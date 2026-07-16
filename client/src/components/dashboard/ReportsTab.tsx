@@ -8,7 +8,6 @@ import { RestaurantKpiCard } from "@/components/dashboard/RestaurantKpiCard";
 import { VerificationRequiredPanel } from "@/components/auth/VerificationRequiredPanel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  downloadReportingExportPdf,
   downloadReportingExportXlsx,
   monthReportingRange,
   resolveExportCurrency,
@@ -106,11 +105,6 @@ export function ReportsTab({
     authPending,
     isAuthenticated,
   });
-  useDevQueryRuntimeLog("reporting.getOperationalMetricsSnapshot (exports)", {
-    enabled,
-    authPending,
-    isAuthenticated,
-  });
 
   const { data: catalog } = trpc.reporting.getCatalogStatsSummary.useQuery(
     { restaurantId },
@@ -185,7 +179,7 @@ export function ReportsTab({
     const business = scope === "month" ? businessMonth : businessYear;
     const orderSalesRollup = scope === "month" ? monthlyRollup : yearlyRollup;
     const revenueTrend = scope === "month" ? revenueTrendMonth : revenueTrendYear;
-    if (!business || !orderSales || !orderSalesRollup || !revenueTrend) {
+    if (!business || !orderSalesRollup || !revenueTrend) {
       return null;
     }
     const periodLabel =
@@ -213,16 +207,13 @@ export function ReportsTab({
           ? `reporting-${reportYear}-${String(reportMonth).padStart(2, "0")}`
           : `reporting-${reportYear}`,
       business,
-      orderSales,
       orderSalesRollup,
       revenueTrend,
     };
   };
 
-  const exportScope = async (
-    scope: ReportingExportScope,
-    format: "xlsx" | "pdf"
-  ) => {
+  /** Excel only — PDF export suspended (REPORTING-PERIOD-CONSISTENCY-1). */
+  const exportScopeXlsx = async (scope: ReportingExportScope) => {
     const bundle = buildBundle(scope);
     if (!bundle) {
       toast.error(
@@ -232,11 +223,7 @@ export function ReportsTab({
       );
       return;
     }
-    if (format === "xlsx") {
-      await downloadReportingExportXlsx(bundle, fallbackSym, currencyCode);
-    } else {
-      await downloadReportingExportPdf(bundle, fallbackSym, currencyCode);
-    }
+    await downloadReportingExportXlsx(bundle, fallbackSym, currencyCode);
   };
 
   return (
@@ -358,7 +345,7 @@ export function ReportsTab({
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => void exportScope("month", "xlsx")}
+                    onClick={() => void exportScopeXlsx("month")}
                     className="rounded border border-green-500/30 bg-green-500/10 px-2 py-1 text-xs text-green-400 hover:bg-green-500/20"
                   >
                     Excel
@@ -367,13 +354,6 @@ export function ReportsTab({
                         ({uiLang === "ar" ? "ترقية" : "upgrade"})
                       </span>
                     )}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void exportScope("month", "pdf")}
-                    className="rounded border border-sky-500/30 bg-sky-500/10 px-2 py-1 text-xs text-sky-300 hover:bg-sky-500/20"
-                  >
-                    PDF
                   </button>
                   <select
                     value={reportMonth}
@@ -432,7 +412,7 @@ export function ReportsTab({
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => void exportScope("year", "xlsx")}
+                    onClick={() => void exportScopeXlsx("year")}
                     className="rounded border border-green-500/30 bg-green-500/10 px-2 py-1 text-xs text-green-400 hover:bg-green-500/20"
                   >
                     Excel
@@ -441,13 +421,6 @@ export function ReportsTab({
                         ({uiLang === "ar" ? "ترقية" : "upgrade"})
                       </span>
                     )}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void exportScope("year", "pdf")}
-                    className="rounded border border-sky-500/30 bg-sky-500/10 px-2 py-1 text-xs text-sky-300 hover:bg-sky-500/20"
-                  >
-                    PDF
                   </button>
                   <span className="text-sm text-muted-foreground">{reportYear}</span>
                 </div>

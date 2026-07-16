@@ -1,6 +1,6 @@
 /**
- * REPORTING-EXPORT-TEMPLATES-ACCEPTANCE-2
- * Capture Cover / Executive / Financial / Revenue Trend from generated samples.
+ * REPORTING-PERIOD-CONSISTENCY-1
+ * Capture every Excel worksheet from monthly/yearly samples.
  * Renders Excel merges as colspan/rowspan so screenshots match Excel.
  */
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
@@ -12,11 +12,11 @@ import { chromium } from "playwright";
 const root = process.cwd();
 const samplesDir = join(
   root,
-  "docs/engineering/programs/REPORTING-EXPORT-TEMPLATES-ACCEPTANCE-2/samples"
+  "docs/engineering/programs/REPORTING-PERIOD-CONSISTENCY-1/samples"
 );
 const shotsDir = join(
   root,
-  "docs/engineering/programs/REPORTING-EXPORT-TEMPLATES-ACCEPTANCE-2/screenshots"
+  "docs/engineering/programs/REPORTING-PERIOD-CONSISTENCY-1/screenshots"
 );
 
 function argbToCss(argb) {
@@ -137,62 +137,6 @@ function escapeHtml(s) {
     .replaceAll('"', "&quot;");
 }
 
-async function capturePdfPages(page, pdfPath, outPrefix) {
-  const pdfData = readFileSync(pdfPath);
-  const b64 = pdfData.toString("base64");
-  const html = `<!doctype html>
-<html>
-<head>
-<meta charset="utf-8"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<style>
-  body { margin: 0; background: #64748b; }
-  #pages { display: flex; flex-direction: column; gap: 16px; padding: 16px; align-items: center; }
-  canvas { background: #fff; box-shadow: 0 8px 24px rgba(0,0,0,.2); }
-</style>
-</head>
-<body>
-<div id="pages"></div>
-<script>
-pdfjsLib.GlobalWorkerOptions.workerSrc =
-  "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-const data = atob("${b64}");
-const bytes = new Uint8Array(data.length);
-for (let i = 0; i < data.length; i++) bytes[i] = data.charCodeAt(i);
-(async () => {
-  const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
-  const root = document.getElementById("pages");
-  const count = Math.min(pdf.numPages, 4);
-  for (let i = 1; i <= count; i++) {
-    const p = await pdf.getPage(i);
-    const viewport = p.getViewport({ scale: 1.4 });
-    const canvas = document.createElement("canvas");
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
-    root.appendChild(canvas);
-    await p.render({ canvasContext: canvas.getContext("2d"), viewport }).promise;
-  }
-  document.title = "pdf-ready-" + count;
-})();
-</script>
-</body>
-</html>`;
-
-  const htmlPath = join(shotsDir, `${outPrefix}-pdf-render.html`);
-  writeFileSync(htmlPath, html, "utf8");
-  await page.goto(pathToFileURL(htmlPath).href, { waitUntil: "networkidle" });
-  await page.waitForFunction(() => document.title.startsWith("pdf-ready-"), null, {
-    timeout: 60_000,
-  });
-  const canvases = page.locator("canvas");
-  const n = await canvases.count();
-  for (let i = 0; i < n; i++) {
-    await canvases.nth(i).screenshot({
-      path: join(shotsDir, `${outPrefix}-pdf-page-${i + 1}.png`),
-    });
-  }
-}
-
 async function main() {
   mkdirSync(shotsDir, { recursive: true });
   const browser = await chromium.launch();
@@ -202,11 +146,12 @@ async function main() {
     ? `data:image/png;base64,${readFileSync(logoPath).toString("base64")}`
     : null;
 
-  for (const lang of ["en", "ar"]) {
-    const stem = `reporting-acceptance2-${lang}-2026-07`;
-    const xlsxPath = join(samplesDir, `${stem}.xlsx`);
-    const pdfPath = join(samplesDir, `${stem}.pdf`);
-    if (!existsSync(xlsxPath) || !existsSync(pdfPath)) {
+  for (const scope of [
+    { stem: "reporting-consistency-en-2026-07", label: "month" },
+    { stem: "reporting-consistency-en-2026", label: "year" },
+  ]) {
+    const xlsxPath = join(samplesDir, `${scope.stem}.xlsx`);
+    if (!existsSync(xlsxPath)) {
       throw new Error(
         `Missing samples. Run: pnpm exec vitest run client/src/lib/reporting-exports/__tests__/reportingExportAcceptance.samples.test.ts`
       );
@@ -214,25 +159,15 @@ async function main() {
 
     const wb = new ExcelJS.Workbook();
     await wb.xlsx.readFile(xlsxPath);
-    const coverName = lang === "ar" ? "الغلاف" : "Cover";
-    const execName = lang === "ar" ? "الملخص التنفيذي" : "Executive Summary";
-    const finName = lang === "ar" ? "الملخص المالي" : "Financial Summary";
-    const trendName = lang === "ar" ? "اتجاه الإيرادات" : "Revenue Trends";
 
-    for (const [name, shot, withLogo] of [
-      [coverName, `cover-${lang}`, true],
-      [execName, `executive-${lang}`, false],
-      [finName, `financial-${lang}`, false],
-      [trendName, `revenue-trend-${lang}`, false],
-    ]) {
-      const sheet = wb.getWorksheet(name);
-      if (!sheet) throw new Error(`Missing sheet ${name}`);
+    for (const sheet of wb.worksheets) {
+      const shot = `${scope.label}-${sheet.name.toLowerCase().replace(/\s+/g, "-")}`;
       const html = sheetToHtml(
         sheet,
-        `${name} (${stem}.xlsx)`,
-        name === trendName ? 40 : 34,
+        `${sheet.name} (${scope.stem}.xlsx)`,
+        sheet.name.includes("Trend") || sheet.name.includes("Sales") ? 42 : 34,
         8,
-        withLogo ? logoDataUrl : null
+        sheet.name === "Cover" || sheet.name === "الغلاف" ? logoDataUrl : null
       );
       const htmlPath = join(shotsDir, `${shot}.html`);
       writeFileSync(htmlPath, html, "utf8");
@@ -241,12 +176,10 @@ async function main() {
         path: join(shotsDir, `${shot}.png`),
       });
     }
-
-    await capturePdfPages(page, pdfPath, stem);
   }
 
   await browser.close();
-  console.log(`[acceptance-2] Screenshots written to ${shotsDir}`);
+  console.log(`[consistency-1] Screenshots written to ${shotsDir}`);
 }
 
 main().catch((err) => {

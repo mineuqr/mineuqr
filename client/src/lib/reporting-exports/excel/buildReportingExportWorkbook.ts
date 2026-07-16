@@ -1,6 +1,9 @@
 /**
- * REPORTING-EXPORT-TEMPLATES-ACCEPTANCE-2 — Executive Financial Report (Excel).
+ * REPORTING-PERIOD-CONSISTENCY-1 — Executive Financial Report (Excel).
  * Presentation only. Does not calculate Revenue or other KPIs.
+ *
+ * All worksheets share one selected reporting scope. Order Sales period KPIs
+ * come from OrderSalesRollup (scoped), never OrderSalesSummary.month (live UTC).
  *
  * Western digits are written as text (@) so Excel Arabic locales cannot
  * re-render them as Eastern Arabic numerals.
@@ -29,6 +32,7 @@ import {
   formatTrendAxisLabel,
   hasRenderableTrend,
 } from "../periodPresentation";
+import { scopedOrderSalesFromRollup } from "../scopeTotals";
 import type { RestaurantReportingExportBundle } from "../types";
 
 /** Premium corporate palette — navy / gold / slate (not SaaS teal grid). */
@@ -356,6 +360,7 @@ export async function buildReportingExportWorkbook(
   const businessName = (bundle.businessName || bundle.restaurantName || "").trim();
   const logo = await resolveExportLogoAsset(bundle.logoUrl);
   const scopeLabel = formatReportScopeLabel(bundle.scope, bundle.language);
+  const orderPeriod = scopedOrderSalesFromRollup(bundle.orderSalesRollup);
 
   buildCoverSheet(workbook, {
     bundle,
@@ -376,7 +381,7 @@ export async function buildReportingExportWorkbook(
     generated,
     periodLabel,
     scopeLabel,
-    reportTitle,
+    orderPeriod,
   });
   buildFinancialSheet(workbook, {
     bundle,
@@ -386,6 +391,7 @@ export async function buildReportingExportWorkbook(
     currencySymbol,
     periodLabel,
     scopeLabel,
+    orderPeriod,
   });
   await buildOrderSalesSheet(workbook, {
     bundle,
@@ -393,6 +399,7 @@ export async function buildReportingExportWorkbook(
     currencySymbol,
     periodLabel,
     scopeLabel,
+    orderPeriod,
   });
   await buildRevenueTrendSheet(workbook, {
     bundle,
@@ -584,14 +591,14 @@ function buildExecutiveSheet(
     generated: string;
     periodLabel: string;
     scopeLabel: string;
-    reportTitle: string;
+    orderPeriod: ReturnType<typeof scopedOrderSalesFromRollup>;
   }
 ) {
-  const { bundle, labels, money, generated, periodLabel, scopeLabel } = ctx;
+  const { bundle, labels, money, generated, periodLabel, scopeLabel, orderPeriod } =
+    ctx;
   const sheet = workbook.addWorksheet(sanitizeSheetName(labels.executive));
   const lang = bundle.language;
   const biz = bundle.business;
-  const sales = bundle.orderSales;
   const COLS = 6;
 
   for (let c = 1; c <= COLS; c++) sheet.getColumn(c).width = 14;
@@ -634,9 +641,9 @@ function buildExecutiveSheet(
       [labels.taxCollected, money(biz.taxCollected)],
       [labels.paidChecks, formatWesternCount(biz.paidCheckCount)],
       [labels.averageCheck, money(biz.averageCheck)],
-      [labels.orderSalesPeriod, money(sales.month.orderSales)],
-      [labels.averageOrderPeriod, money(sales.month.averageOrder)],
-      [labels.ordersPeriod, formatWesternCount(sales.month.totalOrders)],
+      [labels.orderSalesPeriod, money(orderPeriod.orderSales)],
+      [labels.averageOrderPeriod, money(orderPeriod.averageOrder)],
+      [labels.ordersPeriod, formatWesternCount(orderPeriod.orderCount)],
       [labels.complimentaryCount, formatWesternCount(biz.complimentaryCount)],
       [labels.voidedCount, formatWesternCount(biz.voidedCount)],
     ],
@@ -656,14 +663,22 @@ function buildFinancialSheet(
     currencySymbol: string;
     periodLabel: string;
     scopeLabel: string;
+    orderPeriod: ReturnType<typeof scopedOrderSalesFromRollup>;
   }
 ) {
-  const { bundle, labels, money, currencyCode, currencySymbol, periodLabel, scopeLabel } =
-    ctx;
+  const {
+    bundle,
+    labels,
+    money,
+    currencyCode,
+    currencySymbol,
+    periodLabel,
+    scopeLabel,
+    orderPeriod,
+  } = ctx;
   const sheet = workbook.addWorksheet(sanitizeSheetName(labels.financial));
   const lang = bundle.language;
   const biz = bundle.business;
-  const sales = bundle.orderSales;
   const COLS = 6;
 
   for (let c = 1; c <= COLS; c++) sheet.getColumn(c).width = 14;
@@ -714,9 +729,13 @@ function buildFinancialSheet(
     row + 1,
     [labels.metric, labels.value],
     [
-      [labels.orderSalesPeriod, money(sales.month.orderSales)],
-      [labels.averageOrderPeriod, money(sales.month.averageOrder)],
-      [labels.ordersPeriod, formatWesternCount(sales.month.totalOrders)],
+      [labels.orderSalesPeriod, money(orderPeriod.orderSales)],
+      [labels.averageOrderPeriod, money(orderPeriod.averageOrder)],
+      [labels.ordersPeriod, formatWesternCount(orderPeriod.orderCount)],
+      [
+        labels.completedOrders,
+        formatWesternCount(orderPeriod.completedOrders),
+      ],
     ],
     lang
   );
@@ -760,9 +779,11 @@ async function buildOrderSalesSheet(
     currencySymbol: string;
     periodLabel: string;
     scopeLabel: string;
+    orderPeriod: ReturnType<typeof scopedOrderSalesFromRollup>;
   }
 ) {
-  const { bundle, labels, currencySymbol, periodLabel, scopeLabel } = ctx;
+  const { bundle, labels, currencySymbol, periodLabel, scopeLabel, orderPeriod } =
+    ctx;
   const sheet = workbook.addWorksheet(sanitizeSheetName(labels.orderSalesRollup));
   const lang = bundle.language;
   const periods = bundle.orderSalesRollup.periods;
@@ -864,11 +885,39 @@ async function buildOrderSalesSheet(
     sheet.getRow(r).height = 24;
   });
 
+  const totalRow = row + 1 + periods.length;
+  sheet.mergeCells(totalRow, 1, totalRow, 2);
+  sheet.mergeCells(totalRow, 5, totalRow, 6);
+  setWesternText(sheet.getCell(totalRow, 1), periodLabel, lang, {
+    bold: true,
+    color: EX.white,
+    fill: EX.navy,
+  });
+  setWesternText(
+    sheet.getCell(totalRow, 3),
+    formatWesternCount(orderPeriod.orderCount),
+    lang,
+    { bold: true, color: EX.white, fill: EX.navy }
+  );
+  setWesternText(
+    sheet.getCell(totalRow, 4),
+    formatWesternCount(orderPeriod.completedOrders),
+    lang,
+    { bold: true, color: EX.white, fill: EX.navy }
+  );
+  setWesternText(
+    sheet.getCell(totalRow, 5),
+    `${formatWesternAmount(orderPeriod.orderSales)} ${currencySymbol}`,
+    lang,
+    { bold: true, color: EX.white, fill: EX.navy }
+  );
+  sheet.getRow(totalRow).height = 28;
+
   await maybeAddChartImage(
     workbook,
     sheet,
     0,
-    row + periods.length + 3,
+    totalRow + 3,
     labels.chartOrderTrend,
     axis,
     [
@@ -987,11 +1036,36 @@ async function buildRevenueTrendSheet(
     sheet.getRow(r).height = 24;
   });
 
+  // Period total — same BusinessMetricsSummary Revenue as Executive / Financial
+  const biz = bundle.business;
+  const totalRow = row + 1 + points.length;
+  sheet.mergeCells(totalRow, 1, totalRow, 2);
+  sheet.mergeCells(totalRow, 3, totalRow, 4);
+  sheet.mergeCells(totalRow, 5, totalRow, 6);
+  setWesternText(sheet.getCell(totalRow, 1), periodLabel, lang, {
+    bold: true,
+    color: EX.white,
+    fill: EX.navy,
+  });
+  setWesternText(
+    sheet.getCell(totalRow, 3),
+    `${formatWesternAmount(biz.revenue)} ${currencySymbol}`,
+    lang,
+    { bold: true, color: EX.white, fill: EX.navy }
+  );
+  setWesternText(
+    sheet.getCell(totalRow, 5),
+    formatWesternCount(biz.paidCheckCount),
+    lang,
+    { bold: true, color: EX.white, fill: EX.navy }
+  );
+  sheet.getRow(totalRow).height = 28;
+
   await maybeAddChartImage(
     workbook,
     sheet,
     0,
-    row + points.length + 3,
+    totalRow + 3,
     labels.chartRevenueTrend,
     axis,
     [

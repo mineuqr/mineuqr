@@ -1,6 +1,6 @@
 /**
- * REPORTING-EXPORT-TEMPLATES-ACCEPTANCE-2 — Executive Financial Report (PDF).
- * Uses pdfkit + Cairo for Arabic typography.
+ * PDF exporter — SUSPENDED (REPORTING-PERIOD-CONSISTENCY-1).
+ * Kept for compile compatibility; UI no longer offers PDF download.
  * Presentation only. Does not calculate Revenue or other KPIs.
  */
 import { resolveExportLogoAsset } from "../branding";
@@ -19,6 +19,7 @@ import {
   formatTrendAxisLabel,
   hasRenderableTrend,
 } from "../periodPresentation";
+import { scopedOrderSalesFromRollup } from "../scopeTotals";
 import type { RestaurantReportingExportBundle } from "../types";
 import { preparePdfText } from "./arabicPdfText";
 import { loadExportFontBytes } from "./loadExportFont";
@@ -71,7 +72,7 @@ async function renderPdfDocument(
   const money = (amount: string) =>
     toWesternDigits(formatMoneyDisplay(amount, currencySymbol));
   const biz = bundle.business;
-  const sales = bundle.orderSales;
+  const orderPeriod = scopedOrderSalesFromRollup(bundle.orderSalesRollup);
   const reportTitle =
     bundle.reportTitle?.trim() ||
     (bundle.scope === "month"
@@ -286,9 +287,9 @@ async function renderPdfDocument(
     [labels.taxCollected, money(biz.taxCollected)],
     [labels.paidChecks, formatWesternCount(biz.paidCheckCount)],
     [labels.averageCheck, money(biz.averageCheck)],
-    [labels.orderSalesPeriod, money(sales.month.orderSales)],
-    [labels.averageOrderPeriod, money(sales.month.averageOrder)],
-    [labels.ordersPeriod, formatWesternCount(sales.month.totalOrders)],
+    [labels.orderSalesPeriod, money(orderPeriod.orderSales)],
+    [labels.averageOrderPeriod, money(orderPeriod.averageOrder)],
+    [labels.ordersPeriod, formatWesternCount(orderPeriod.orderCount)],
     [labels.complimentaryCount, formatWesternCount(biz.complimentaryCount)],
     [labels.voidedCount, formatWesternCount(biz.voidedCount)],
   ]);
@@ -300,7 +301,7 @@ async function renderPdfDocument(
     [labels.taxCollected, money(biz.taxCollected)],
     [labels.paidChecks, formatWesternCount(biz.paidCheckCount)],
     [labels.averageCheck, money(biz.averageCheck)],
-    [labels.orderSalesPeriod, money(sales.month.orderSales)],
+    [labels.orderSalesPeriod, money(orderPeriod.orderSales)],
     [labels.complimentaryCount, formatWesternCount(biz.complimentaryCount)],
     [labels.complimentaryAmount, money(biz.complimentaryAmount)],
     [labels.voidedCount, formatWesternCount(biz.voidedCount)],

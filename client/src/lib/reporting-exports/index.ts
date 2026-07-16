@@ -17,10 +17,15 @@ export { reportingExportLabels } from "./labels";
 export { fetchRestaurantLogoAsset } from "./branding";
 export { buildReportingExportWorkbook } from "./excel/buildReportingExportWorkbook";
 export {
-  buildReportingExportPdfBytes,
-  buildReportingExportPdfBlob,
-} from "./pdf/buildReportingExportPdf";
+  scopedOrderSalesFromRollup,
+  scopedRevenueFromTrend,
+} from "./scopeTotals";
 export {
   downloadReportingExportXlsx,
   downloadReportingExportPdf,
 } from "./downloadReportingExport";
+/** @deprecated PDF suspended — REPORTING-PERIOD-CONSISTENCY-1 */
+export {
+  buildReportingExportPdfBytes,
+  buildReportingExportPdfBlob,
+} from "./pdf/buildReportingExportPdf";

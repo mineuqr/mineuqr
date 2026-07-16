@@ -28,7 +28,9 @@ describe("REPORTING-EXPORT-TEMPLATES architecture guards (superseded by ACCEPTAN
     const excel = read(
       "client/src/lib/reporting-exports/excel/buildReportingExportWorkbook.ts"
     );
-    expect(excel).toMatch(/REPORTING-EXPORT-TEMPLATES-ACCEPTANCE-[12]/);
+    expect(excel).toMatch(
+      /REPORTING-PERIOD-CONSISTENCY-1|REPORTING-EXPORT-TEMPLATES-ACCEPTANCE-[12]/
+    );
     expect(excel).toContain("buildCoverSheet");
     expect(excel).toContain("writeKpiCards");
     expect(excel).toContain("applyPrintSetup");
@@ -41,7 +43,9 @@ describe("REPORTING-EXPORT-TEMPLATES architecture guards (superseded by ACCEPTAN
     const pdf = read(
       "client/src/lib/reporting-exports/pdf/buildReportingExportPdf.ts"
     );
-    expect(pdf).toMatch(/REPORTING-EXPORT-TEMPLATES-ACCEPTANCE-[12]/);
+    expect(pdf).toMatch(
+      /SUSPENDED|REPORTING-PERIOD-CONSISTENCY-1|REPORTING-EXPORT-TEMPLATES-ACCEPTANCE-[12]/
+    );
     expect(pdf).toContain("kpiCards");
     expect(pdf).toContain("generatedBy");
     expect(pdf).toContain("Does not calculate Revenue");

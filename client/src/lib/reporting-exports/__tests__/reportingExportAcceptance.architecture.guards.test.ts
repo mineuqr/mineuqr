@@ -28,7 +28,7 @@ describe("REPORTING-EXPORT-TEMPLATES-ACCEPTANCE-2 architecture guards", () => {
     const excel = read(
       "client/src/lib/reporting-exports/excel/buildReportingExportWorkbook.ts"
     );
-    expect(excel).toContain("REPORTING-EXPORT-TEMPLATES-ACCEPTANCE-2");
+    expect(excel).toMatch(/REPORTING-PERIOD-CONSISTENCY-1|ACCEPTANCE-2/);
     expect(excel).toContain("buildCoverSheet");
     expect(excel).toContain("buildExecutiveSheet");
     expect(excel).toContain("buildFinancialSheet");
@@ -36,23 +36,23 @@ describe("REPORTING-EXPORT-TEMPLATES-ACCEPTANCE-2 architecture guards", () => {
     expect(excel).toContain("buildRevenueTrendSheet");
     expect(excel).toContain("hasRenderableTrend");
     expect(excel).toContain("formatTrendAxisLabel");
+    expect(excel).toContain("scopedOrderSalesFromRollup");
     expect(excel).not.toContain("buildOperationalSheet");
     expect(excel).not.toContain("buildCatalogSheet");
     expect(excel).not.toContain("catalogPlaceholder");
+    expect(excel).not.toContain("orderSales.month");
     expect(excel).not.toMatch(/\.reduce\s*\(/);
   });
 
-  it("PDF matches executive structure and Arabic presentation", () => {
+  it("PDF exporter is suspended — Excel is the deliverable", () => {
     const pdf = read(
       "client/src/lib/reporting-exports/pdf/buildReportingExportPdf.ts"
     );
-    expect(pdf).toContain("REPORTING-EXPORT-TEMPLATES-ACCEPTANCE-2");
-    expect(pdf).toContain("hasRenderableTrend");
-    expect(pdf).toContain("formatTrendAxisLabel");
-    expect(pdf).toContain("preparePdfText");
-    expect(pdf).not.toContain("labels.operational");
-    expect(pdf).not.toContain("labels.catalog");
-    expect(pdf).not.toContain("catalogPlaceholder");
+    const download = read(
+      "client/src/lib/reporting-exports/downloadReportingExport.ts"
+    );
+    expect(pdf).toContain("SUSPENDED");
+    expect(download).toContain("PDF reporting export is suspended");
   });
 
   it("period presentation enforces month/year business labels", () => {

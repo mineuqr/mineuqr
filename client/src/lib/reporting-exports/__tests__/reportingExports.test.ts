@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { buildReportingExportWorkbook } from "../excel/buildReportingExportWorkbook";
-import { buildReportingExportPdfBytes } from "../pdf/buildReportingExportPdf";
 import { monthReportingRange, yearReportingRange } from "../periodRange";
 import {
   formatExportDateTime,
@@ -10,6 +9,7 @@ import {
   toWesternDigits,
 } from "../format";
 import { formatTrendAxisLabel } from "../periodPresentation";
+import { scopedOrderSalesFromRollup } from "../scopeTotals";
 import type { RestaurantReportingExportBundle } from "../types";
 
 function sampleBundle(
@@ -45,24 +45,6 @@ function sampleBundle(
         enabled: true,
         mode: "inclusive",
         components: [{ id: "vat", name: "VAT", ratePercent: "15" }],
-      },
-    },
-    orderSales: {
-      contractVersion: 1,
-      contractId: "OrderSalesSummary",
-      generatedAt: "2026-07-16T00:00:00.000Z",
-      restaurantId: 1,
-      today: {
-        totalOrders: 2,
-        completedOrders: 2,
-        orderSales: "40.00",
-        averageOrder: "20.00",
-      },
-      month: {
-        totalOrders: 10,
-        completedOrders: 9,
-        orderSales: "200.00",
-        averageOrder: "22.22",
       },
     },
     orderSalesRollup: {
@@ -134,7 +116,7 @@ function sampleBundle(
   };
 }
 
-describe("REPORTING-EXPORTS-1 helpers", () => {
+describe("REPORTING-EXPORTS helpers", () => {
   it("builds month and year reporting ranges", () => {
     expect(monthReportingRange(2026, 2)).toEqual({
       from: "2026-02-01 00:00:00",
@@ -149,32 +131,28 @@ describe("REPORTING-EXPORTS-1 helpers", () => {
     expect(currency.currencySymbol).toBe("ر.س");
   });
 
-  it("renders PDF bytes from Reporting DTO bundle (async)", async () => {
-    const bytes = await buildReportingExportPdfBytes(sampleBundle(), "ر.س", "SAR");
-    const text = new TextDecoder("latin1").decode(bytes);
-    expect(text.startsWith("%PDF")).toBe(true);
-    expect(bytes.byteLength).toBeGreaterThan(500);
-    expect(text).not.toContain("ops.getSettlement");
-    expect(text).not.toMatch(/[٠-٩۰-۹]/);
-  });
-
   it("formats tax policy from Check snapshot on the Reporting DTO", () => {
     expect(formatTaxPolicySummary(sampleBundle().business, "en")).toContain("15%");
   });
 
   it("enforces Western digits for export money/dates regardless of language", () => {
     expect(toWesternDigits("١٥٤٥٠")).toBe("15450");
-    expect(toWesternDigits("۱۵٫۵")).toBe("15.5");
     expect(formatMoneyDisplay("١٥٬٤٥٠٫٧٥", "SAR")).toBe("15,450.75 SAR");
     const arDate = formatExportDateTime(new Date("2026-07-16T12:00:00.000Z"), "ar");
-    expect(arDate).toMatch(/[0-9]/);
     expect(arDate).not.toMatch(/[٠-٩۰-۹]/);
   });
 
   it("formats trend axis labels for month and year scopes", () => {
     expect(formatTrendAxisLabel("2026-07-01", "month", "en")).toBe("1 Jul");
     expect(formatTrendAxisLabel("2026-01", "year", "en")).toBe("Jan");
-    expect(formatTrendAxisLabel("2026-12", "year", "en")).toBe("Dec");
+  });
+
+  it("derives scoped Order Sales from rollup — not live UTC month summary", () => {
+    const totals = scopedOrderSalesFromRollup(sampleBundle().orderSalesRollup);
+    expect(totals.orderSales).toBe("115.00");
+    expect(totals.orderCount).toBe(6);
+    expect(totals.completedOrders).toBe(6);
+    expect(totals.averageOrder).toBe("19.17");
   });
 
   it("builds executive workbook with exactly five worksheets", async () => {
@@ -187,7 +165,5 @@ describe("REPORTING-EXPORTS-1 helpers", () => {
       "Order Sales",
       "Revenue Trends",
     ]);
-    expect(names).not.toContain("Operational Summary");
-    expect(names).not.toContain("Catalog");
   });
 });

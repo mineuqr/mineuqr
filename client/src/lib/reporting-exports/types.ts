@@ -1,12 +1,12 @@
 /**
- * REPORTING-EXPORTS presentation bundle.
+ * REPORTING-PERIOD-CONSISTENCY-1 — Presentation export bundle.
+ * Every worksheet must consume the identical selected reporting scope.
  * Assembled from reporting.* DTOs. Renderers must not invent KPIs.
  */
 import type {
   BusinessMetricsSummaryDto,
   BusinessMetricsTrendDto,
   OrderSalesRollupDto,
-  OrderSalesSummaryDto,
 } from "@shared/reporting-platform";
 
 export type ReportingExportLanguage = "ar" | "en";
@@ -27,12 +27,17 @@ export type RestaurantReportingExportBundle = Readonly<{
   periodLabel: string;
   /** Filename stem without extension. */
   filenameStem: string;
-  /** Check-domain business KPIs for the export period. */
+  /**
+   * Check-domain business KPIs for the selected export period only
+   * (BusinessMetricsSummary with explicit from/to).
+   */
   business: BusinessMetricsSummaryDto;
-  /** Order Sales today/month — same contract as Dashboard cards. */
-  orderSales: OrderSalesSummaryDto;
-  /** Order Sales rollup periods for the selected calendar scope. */
+  /**
+   * Order Sales rollup for the selected calendar scope only
+   * (day grain for month export, month grain for year export).
+   * Period Order Sales KPIs on Executive/Financial are derived from this DTO.
+   */
   orderSalesRollup: OrderSalesRollupDto;
-  /** Revenue trend points for the selected calendar scope. */
+  /** Revenue trend points for the selected calendar scope only. */
   revenueTrend: BusinessMetricsTrendDto;
 }>;
