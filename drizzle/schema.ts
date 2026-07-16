@@ -71,6 +71,11 @@ export const restaurants = mysqlTable("restaurants", {
 	countryCode: varchar({ length: 2 }),
 	currencyCode: varchar({ length: 3 }).default('SAR'),
 	currencySymbol: varchar({ length: 10 }).default('ر.س'),
+	/** CHECK-MANAGEMENT-ARCHITECTURE-1 — Business Settings taxation (owner-configured). */
+	taxEnabled: boolean().default(false).notNull(),
+	taxMode: mysqlEnum('tax_mode', ['inclusive', 'exclusive']).default('exclusive').notNull(),
+	/** Versioned live tax policy JSON — not a Check snapshot. */
+	taxPolicyJson: text(),
 	isActive: boolean().default(true).notNull(),
 	viewCount: int().default(0).notNull(),
 	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
@@ -343,6 +348,8 @@ export const diningSessions = mysqlTable("dining_sessions", {
 	closedAt: timestamp({ mode: 'string' }),
 	totalAmount: decimal({ precision: 10, scale: 2 }),
 	totalOrders: int().default(0).notNull(),
+	/** CHECK-MANAGEMENT-ARCHITECTURE-1 — active Check reference (Check id ≠ Session id). */
+	activeCheckId: int(),
 	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
 	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
 },
@@ -354,10 +361,42 @@ export const diningSessions = mysqlTable("dining_sessions", {
 	index("dining_sessions_restaurant_id_table_id").on(table.restaurantId, table.tableId),
 	index("dining_sessions_restaurant_id_status_opened_at").on(table.restaurantId, table.status, table.openedAt),
 	uniqueIndex("dining_sessions_restaurant_id_table_id_open_guard").on(table.restaurantId, table.tableId, table.openGuard),
+	index("dining_sessions_active_check_id").on(table.activeCheckId),
 ]);
 
 export type InsertDiningSession = typeof diningSessions.$inferInsert;
 export type SelectDiningSession = typeof diningSessions.$inferSelect;
+
+// ─── Operational Checks (CHECK-MANAGEMENT-ARCHITECTURE-1) ───────
+export const operationalChecks = mysqlTable("operational_checks", {
+	id: int().autoincrement().notNull(),
+	restaurantId: int().notNull(),
+	sessionId: int().notNull(),
+	outcome: mysqlEnum(['open', 'paid', 'complimentary', 'voided']).default('open').notNull(),
+	currencySnapshotJson: json().notNull(),
+	taxPolicySnapshotJson: json().notNull(),
+	/** Reserved Service Charge Snapshot slot — null until feature ships. */
+	serviceChargeSnapshotJson: json(),
+	billDiscountAmount: decimal({ precision: 10, scale: 2 }).default('0.00').notNull(),
+	subtotal: decimal({ precision: 10, scale: 2 }).default('0.00').notNull(),
+	taxAmount: decimal({ precision: 10, scale: 2 }).default('0.00').notNull(),
+	taxBreakdownJson: json().notNull(),
+	grandTotal: decimal({ precision: 10, scale: 2 }).default('0.00').notNull(),
+	snapshotsFrozenAt: timestamp({ mode: 'string' }).notNull(),
+	totalsFrozenAt: timestamp({ mode: 'string' }),
+	settledAt: timestamp({ mode: 'string' }),
+	voidedAt: timestamp({ mode: 'string' }),
+	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("operational_checks_restaurant_id").on(table.restaurantId),
+	index("operational_checks_session_id").on(table.sessionId),
+	index("operational_checks_outcome").on(table.outcome),
+]);
+
+export type InsertOperationalCheck = typeof operationalChecks.$inferInsert;
+export type SelectOperationalCheck = typeof operationalChecks.$inferSelect;
 
 // ─── Table Events (TABLE-MANAGEMENT-1 Phase C) ──────────────────
 export const tableEvents = mysqlTable("table_events", {

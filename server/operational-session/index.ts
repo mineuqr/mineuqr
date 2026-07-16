@@ -6,6 +6,8 @@ export {
   closeOperationalSession,
   settleOperationalSessionPaid,
   settleOperationalSessionComplimentary,
+  voidOperationalSessionCheck,
+  getOperationalSessionActiveCheck,
   OPERATIONAL_SESSION_LIFECYCLE_VERBS,
   type OperationalSessionStaffActionInput,
 } from "./operationalSessionLifecycle";
@@ -13,3 +15,14 @@ export {
   OperationalSessionValidationError,
   OperationalSessionAnchorNotActivatedError,
 } from "./operationalSessionErrors";
+export {
+  createOpenCheckForSession,
+  ensureOpenCheckForSession,
+  recalculateOpenCheckForSession,
+  settleCheckPaid,
+  settleCheckComplimentary,
+  voidCheck,
+  getCheckById,
+  getActiveCheckForSession,
+  CheckTransitionError,
+} from "./check";

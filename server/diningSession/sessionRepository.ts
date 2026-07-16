@@ -191,6 +191,27 @@ export async function updateSessionStatus(
     );
 }
 
+/** CHECK-MANAGEMENT-ARCHITECTURE-1 — Session holds active Check reference only. */
+export async function updateSessionActiveCheckId(
+  data: {
+    restaurantId: number;
+    sessionId: number;
+    activeCheckId: number;
+  },
+  client?: SessionDbClient
+): Promise<void> {
+  const db = await resolveDb(client);
+  await db
+    .update(diningSessions)
+    .set({ activeCheckId: data.activeCheckId })
+    .where(
+      and(
+        eq(diningSessions.id, data.sessionId),
+        eq(diningSessions.restaurantId, data.restaurantId)
+      )
+    );
+}
+
 export type UpdateSessionAggregatesInput = {
   restaurantId: number;
   sessionId: number;

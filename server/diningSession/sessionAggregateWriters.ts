@@ -8,6 +8,7 @@ import { opsLog } from "../_core/opsLog";
 import { computeOrdersTotalAmount } from "./sessionOrderTotals";
 import { findSessionById, updateSessionAggregates } from "./sessionRepository";
 import { DiningSessionValidationError } from "./sessionTypes";
+import { recalculateOpenCheckForSession } from "../operational-session/check/CheckService";
 
 export type IncrementSessionAggregatesForOrderInput = {
   restaurantId: number;
@@ -111,6 +112,12 @@ export async function incrementSessionAggregatesForOrder(
     totalAmountDelta: input.orderTotalAmount,
   });
 
+  // CHECK-MANAGEMENT-ARCHITECTURE-1 — open Check totals follow Session order money.
+  await recalculateOpenCheckForSession({
+    restaurantId: input.restaurantId,
+    sessionId: input.sessionId,
+  });
+
   await logSessionAggregateDriftIfAny({
     restaurantId: input.restaurantId,
     sessionId: input.sessionId,
@@ -139,6 +146,11 @@ export async function decrementSessionAggregatesForCancelledOrder(
     sessionId: input.sessionId,
     totalOrdersDelta: -1,
     totalAmountDelta: (-amount).toFixed(2),
+  });
+
+  await recalculateOpenCheckForSession({
+    restaurantId: input.restaurantId,
+    sessionId: input.sessionId,
   });
 
   await logSessionAggregateDriftIfAny({

@@ -23,6 +23,21 @@ vi.mock("../db", () => ({
   getOrdersBySessionId: (...args: unknown[]) => dbMocks.getOrdersBySessionId(...args),
 }));
 
+vi.mock("../operational-session/check/CheckService", () => ({
+  createOpenCheckForSession: vi.fn(),
+  settleCheckPaid: vi.fn(async () => ({
+    id: 900,
+    grandTotal: "50.00",
+    taxAmount: "0.00",
+  })),
+  settleCheckComplimentary: vi.fn(async () => ({
+    id: 900,
+    grandTotal: "50.00",
+    taxAmount: "0.00",
+  })),
+  voidCheck: vi.fn(async () => ({ id: 900 })),
+}));
+
 import {
   closeSession,
   isAllowedSessionStatusTransition,
@@ -45,6 +60,7 @@ const baseSession: SelectDiningSession = {
   closedAt: null,
   totalAmount: null,
   totalOrders: 0,
+  activeCheckId: 900,
   createdAt: "2026-06-18 12:00:00",
   updatedAt: "2026-06-18 12:00:00",
 };

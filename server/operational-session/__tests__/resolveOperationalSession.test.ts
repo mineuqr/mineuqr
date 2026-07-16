@@ -21,6 +21,7 @@ const diningRow = {
   closedAt: null,
   totalAmount: null,
   totalOrders: 0,
+  activeCheckId: null,
   createdAt: "2026-06-18 12:00:00",
   updatedAt: "2026-06-18 12:00:00",
 };

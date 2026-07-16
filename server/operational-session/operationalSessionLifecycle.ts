@@ -1,8 +1,9 @@
 /**
  * OPERATIONAL-SESSION-PLATFORM-1 — generic lifecycle surface.
+ * CHECK-MANAGEMENT-ARCHITECTURE-1 — Check settle/void verbs (Session Platform).
  *
  * Lifecycle is channel-independent. Table specialization delegates to Dining Session.
- * Non-table persistence / PlaceOrder activation is out of scope.
+ * Check sub-domain owns monetary settlement outcomes; Session owns visit close.
  */
 
 import {
@@ -10,6 +11,8 @@ import {
   markComplimentary,
   markPaid,
 } from "../diningSession/sessionService";
+import type { OperationalCheck } from "@shared/operational-session";
+import { getActiveCheckForSession, voidCheck } from "./check";
 
 export type OperationalSessionStaffActionInput = {
   restaurantId: number;
@@ -17,25 +20,40 @@ export type OperationalSessionStaffActionInput = {
   actorUserId: number;
 };
 
-/** Close without settlement (table specialization). */
+/** Close without settlement (table specialization) — voids open Check. */
 export async function closeOperationalSession(
   input: OperationalSessionStaffActionInput
 ): Promise<void> {
   await closeSession(input);
 }
 
-/** Settle paid then close (table specialization). */
+/** Settle paid then close (table specialization) — finalizes Check Paid. */
 export async function settleOperationalSessionPaid(
   input: OperationalSessionStaffActionInput
 ): Promise<void> {
   await markPaid(input);
 }
 
-/** Settle complimentary then close (table specialization). */
+/** Settle complimentary then close — finalizes Check Complimentary. */
 export async function settleOperationalSessionComplimentary(
   input: OperationalSessionStaffActionInput
 ): Promise<void> {
   await markComplimentary(input);
+}
+
+/** Void Check without Session close (staff ops). */
+export async function voidOperationalSessionCheck(input: {
+  restaurantId: number;
+  sessionId: number;
+}): Promise<OperationalCheck> {
+  return voidCheck(input);
+}
+
+export async function getOperationalSessionActiveCheck(input: {
+  restaurantId: number;
+  sessionId: number;
+}): Promise<OperationalCheck | null> {
+  return getActiveCheckForSession(input);
 }
 
 /**
@@ -51,5 +69,6 @@ export const OPERATIONAL_SESSION_LIFECYCLE_VERBS = Object.freeze([
   "expire",
   "settle_paid",
   "settle_complimentary",
+  "void_check",
   "anchor_resolve",
 ] as const);

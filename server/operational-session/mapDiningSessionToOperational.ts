@@ -29,5 +29,6 @@ export function mapDiningSessionToOperational(
       (row.settlementOutcome as "paid" | "complimentary" | null) ?? null,
     totalAmount: row.totalAmount ?? null,
     totalOrders: row.totalOrders ?? 0,
+    activeCheckId: row.activeCheckId ?? null,
   };
 }

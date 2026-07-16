@@ -11,6 +11,12 @@ import {
   insertSessionEvent,
   updateSessionStatus,
 } from "./sessionRepository";
+import {
+  createOpenCheckForSession,
+  settleCheckComplimentary,
+  settleCheckPaid,
+  voidCheck,
+} from "../operational-session/check/CheckService";
 import { generateDiningSessionToken } from "./sessionToken";
 import {
   DiningSessionConflictError,
@@ -163,6 +169,25 @@ async function settleAndCloseSession(
     ordersTotalAmount: computeOrdersTotalAmount(orderRows),
   };
 
+  // CHECK-MANAGEMENT-ARCHITECTURE-1 — finalize Check before Session settle/close.
+  const check =
+    settlement === "paid"
+      ? await settleCheckPaid({
+          restaurantId: session.restaurantId,
+          sessionId: session.id,
+        })
+      : await settleCheckComplimentary({
+          restaurantId: session.restaurantId,
+          sessionId: session.id,
+        });
+
+  const checkMetadata = {
+    ...closureMetadata,
+    checkId: check.id,
+    checkGrandTotal: check.grandTotal,
+    checkTaxAmount: check.taxAmount,
+  };
+
   await db.transaction(async (tx) => {
     await updateSessionStatus(
       {
@@ -181,7 +206,7 @@ async function settleAndCloseSession(
         tableId: session.tableId,
         sessionId: session.id,
         eventType: settlementEventType,
-        metadata: closureMetadata,
+        metadata: checkMetadata,
       },
       tx
     );
@@ -206,7 +231,7 @@ async function settleAndCloseSession(
         sessionId: session.id,
         eventType: TABLE_EVENT_TYPES.SESSION_CLOSED,
         metadata: {
-          ...closureMetadata,
+          ...checkMetadata,
           source: "settlement",
         },
       },
@@ -289,6 +314,12 @@ async function createSession(input: GetOrCreateSessionInput): Promise<{
         tx
       );
 
+      // CHECK-MANAGEMENT-ARCHITECTURE-1 — create Open Check with frozen snapshots.
+      await createOpenCheckForSession(
+        { restaurantId: input.restaurantId, sessionId: id },
+        tx
+      );
+
       return id;
     });
 
@@ -330,6 +361,18 @@ export async function getOrCreateSession(
 
   const existing = await findActiveSession(input.restaurantId, input.tableId);
   if (existing) {
+    if (existing.activeCheckId == null) {
+      try {
+        await createOpenCheckForSession({
+          restaurantId: input.restaurantId,
+          sessionId: existing.id,
+        });
+      } catch {
+        /* best-effort */
+      }
+      const refreshed = await findSessionById(existing.id);
+      if (refreshed) return { session: refreshed, created: false };
+    }
     return { session: existing, created: false };
   }
 
@@ -369,6 +412,21 @@ export async function resolveSessionForOrderCreate(
 
   const active = await findActiveSession(input.restaurantId, input.tableId);
   if (active) {
+    // CHECK-MANAGEMENT-ARCHITECTURE-1 — ensure legacy open sessions gain a Check.
+    if (active.activeCheckId == null) {
+      try {
+        await createOpenCheckForSession({
+          restaurantId: input.restaurantId,
+          sessionId: active.id,
+        });
+      } catch {
+        /* best-effort; settle path also ensures */
+      }
+      const refreshed = await findSessionById(active.id);
+      if (refreshed) {
+        return { session: refreshed, created: false };
+      }
+    }
     return { session: active, created: false };
   }
 
@@ -458,6 +516,18 @@ export async function closeSession(input: StaffSessionActionInput): Promise<void
   const now = formatDiningSessionTimestamp();
   const orderRows = await getOrdersBySessionId(input.restaurantId, input.sessionId);
 
+  // CHECK-MANAGEMENT-ARCHITECTURE-1 — void open Check when closing without settle.
+  let voidedCheckId: number | null = null;
+  try {
+    const voided = await voidCheck({
+      restaurantId: input.restaurantId,
+      sessionId: input.sessionId,
+    });
+    voidedCheckId = voided.id;
+  } catch {
+    /* no open check / already terminal — Session close still proceeds */
+  }
+
   await applySessionTransition(
     session,
     "closed",
@@ -468,6 +538,7 @@ export async function closeSession(input: StaffSessionActionInput): Promise<void
       source: "manual_close",
       orderCount: orderRows.length,
       ordersTotalAmount: computeOrdersTotalAmount(orderRows),
+      checkId: voidedCheckId,
     },
     { closedAt: now, openGuard: null, settledAt: null, settlementOutcome: null }
   );

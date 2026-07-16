@@ -34,6 +34,18 @@ vi.mock("./sessionToken", () => ({
   generateDiningSessionToken: vi.fn(() => "test-dining-session-token-abc"),
 }));
 
+vi.mock("../operational-session/check/CheckService", () => ({
+  createOpenCheckForSession: vi.fn(async () => ({
+    id: 900,
+    restaurantId: 1,
+    sessionId: 10,
+    outcome: "open",
+  })),
+  settleCheckPaid: vi.fn(),
+  settleCheckComplimentary: vi.fn(),
+  voidCheck: vi.fn(),
+}));
+
 import {
   getActiveSession,
   getOrCreateSession,
@@ -62,6 +74,7 @@ const baseSession: SelectDiningSession = {
   closedAt: null,
   totalAmount: null,
   totalOrders: 0,
+  activeCheckId: 900,
   createdAt: "2026-06-18 12:00:00",
   updatedAt: "2026-06-18 12:00:00",
 };

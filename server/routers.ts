@@ -143,7 +143,10 @@ import {
   type OrderingFulfilmentAnchor,
   type OrderingServiceMode,
 } from "@shared/ordering-platform/orderingIdentityContract";
-import { createTableSessionAnchor } from "@shared/operational-session";
+import {
+  createTableSessionAnchor,
+  serializeBusinessTaxPolicyJson,
+} from "@shared/operational-session";
 import bcrypt from "bcryptjs";
 
 const placeOrderItemInput = z.object({
@@ -335,6 +338,21 @@ const restaurantRouter = router({
       countryCode: z.string().optional(),
       currencyCode: z.string().optional(),
       currencySymbol: z.string().optional(),
+      /** CHECK-MANAGEMENT-ARCHITECTURE-1 — Business Settings taxation. */
+      taxEnabled: z.boolean().optional(),
+      taxMode: z.enum(["inclusive", "exclusive"]).optional(),
+      taxPolicy: z
+        .object({
+          version: z.number().int().positive().default(1),
+          components: z.array(
+            z.object({
+              id: z.string().min(1),
+              name: z.string().min(1),
+              ratePercent: z.string().min(1),
+            })
+          ),
+        })
+        .optional(),
       whatsapp: z.string().optional().nullable(),
       snapchat: z.string().optional().nullable(),
       instagram: z.string().optional().nullable(),
@@ -350,8 +368,13 @@ const restaurantRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "المطعم غير موجود" });
       }
       await assertRestaurantAccess(ctx, input.id, "restaurant.update");
-      const { id, ...data } = input;
-      await updateRestaurant(id, data);
+      const { id, taxPolicy, ...data } = input;
+      await updateRestaurant(id, {
+        ...data,
+        ...(taxPolicy !== undefined
+          ? { taxPolicyJson: serializeBusinessTaxPolicyJson(taxPolicy) }
+          : {}),
+      });
       return { success: true };
     }),
 

@@ -8,7 +8,11 @@
  *     ├── Session Identity (id, token)
  *     ├── Session Anchor (typed — uniqueness / occupancy key)
  *     ├── Status + Lifecycle
+ *     ├── Active Check reference (CHECK-MANAGEMENT-ARCHITECTURE-1)
  *     └── Orders (attached via sessionId)
+ *
+ * Check sub-domain owns monetary state / settlement outcome / snapshots.
+ * Check id is never Session id. Split Check is out of scope.
  *
  * Fulfilment Anchor remains Order Identity (ORDER-IDENTITY-RUNTIME-1).
  * Session Anchor keys the session; it does not make Fulfilment Anchor
@@ -130,6 +134,8 @@ export type OperationalSession = Readonly<{
   settlementOutcome: "paid" | "complimentary" | null;
   totalAmount: string | null;
   totalOrders: number;
+  /** Active Check id (own identity) — null when unset / legacy. */
+  activeCheckId: number | null;
 }>;
 
 /** Resolve (reuse or create) an operational session for Order attach. */
