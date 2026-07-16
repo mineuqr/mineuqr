@@ -1,54 +1,72 @@
 import { describe, expect, it } from "vitest";
 import {
+  formatAverageCheck,
   formatAveragePaidSessionValue,
   formatComplimentaryRate,
   formatSettlementRevenue,
   isSettlementOverviewEmpty,
-  type SettlementSummaryData,
+  type BusinessMetricsSummaryData,
 } from "./settlementOverviewDisplay";
 
 const baseSummary = (
-  overrides: Partial<SettlementSummaryData> = {}
-): SettlementSummaryData => ({
+  overrides: Partial<BusinessMetricsSummaryData> = {}
+): BusinessMetricsSummaryData => ({
+  contractVersion: 1,
+  contractId: "BusinessMetricsSummary",
   generatedAt: "2026-06-18T22:00:00.000Z",
-  paidSessionCount: 0,
-  complimentarySessionCount: 0,
-  totalSettledSessions: 0,
-  paidRevenue: "0.00",
-  complimentaryTotalAmount: "0.00",
+  restaurantId: 1,
+  from: null,
+  to: null,
+  revenue: "0.00",
+  paidCheckCount: 0,
+  averageCheck: "0.00",
+  taxCollected: "0.00",
+  complimentaryCount: 0,
+  complimentaryAmount: "0.00",
+  voidedCount: 0,
+  currency: { currencySnapshot: null },
+  sampleTaxPolicySnapshot: null,
   ...overrides,
 });
 
-describe("settlementOverviewDisplay SETTLEMENT-ARCHITECTURE-1B.3", () => {
-  it("formats complimentary rate from summary counts", () => {
+describe("settlementOverviewDisplay REPORTING-DASHBOARD-ADOPTION-1", () => {
+  it("formats complimentary rate from check counts", () => {
     expect(
       formatComplimentaryRate(
         baseSummary({
-          paidSessionCount: 3,
-          complimentarySessionCount: 1,
-          totalSettledSessions: 4,
+          paidCheckCount: 3,
+          complimentaryCount: 1,
         })
       )
     ).toBe("25.0%");
   });
 
-  it("returns dash when no settled sessions", () => {
+  it("returns dash when no settled checks", () => {
     expect(formatComplimentaryRate(baseSummary())).toBe("—");
   });
 
-  it("formats average paid session value from paid revenue", () => {
+  it("uses Reporting Platform averageCheck", () => {
+    expect(
+      formatAverageCheck(
+        baseSummary({
+          paidCheckCount: 2,
+          revenue: "60.00",
+          averageCheck: "30.00",
+        })
+      )
+    ).toBe("30.00");
     expect(
       formatAveragePaidSessionValue(
         baseSummary({
-          paidSessionCount: 2,
-          paidRevenue: "60.00",
+          paidCheckCount: 2,
+          averageCheck: "30.00",
         })
       )
     ).toBe("30.00");
   });
 
-  it("returns dash when there are no paid sessions", () => {
-    expect(formatAveragePaidSessionValue(baseSummary())).toBe("—");
+  it("returns dash when there are no paid checks", () => {
+    expect(formatAverageCheck(baseSummary())).toBe("—");
   });
 
   it("formats revenue with currency symbol", () => {
@@ -56,11 +74,11 @@ describe("settlementOverviewDisplay SETTLEMENT-ARCHITECTURE-1B.3", () => {
     expect(formatSettlementRevenue("120.00", "")).toBe("120.00 ر.س");
   });
 
-  it("detects empty settlement overview", () => {
+  it("detects empty business overview", () => {
     expect(isSettlementOverviewEmpty(baseSummary())).toBe(true);
     expect(
       isSettlementOverviewEmpty(
-        baseSummary({ totalSettledSessions: 1, paidSessionCount: 1 })
+        baseSummary({ paidCheckCount: 1, revenue: "10.00" })
       )
     ).toBe(false);
   });

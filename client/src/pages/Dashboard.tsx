@@ -14,13 +14,9 @@ import { PrintWorkspacePanel } from "@/components/print-workspace/PrintWorkspace
 import { PrinterManagementPanel } from "@/components/printer-management/PrinterManagementPanel";
 import { ActionCenterSection } from "@/components/dashboard/ActionCenterSection";
 import { OperationalActivityFeedSection } from "@/components/dashboard/OperationalActivityFeedSection";
-import { SettlementOverviewSection } from "@/components/dashboard/SettlementOverviewSection";
-import { SettlementTrendsSection } from "@/components/dashboard/SettlementTrendsSection";
-import { RestaurantKpiCard, RestaurantKpiGridSkeleton } from "@/components/dashboard/RestaurantKpiCard";
-import { RestaurantDashSection } from "@/components/dashboard/RestaurantDashSection";
-import {
-  RestaurantSectionError,
-} from "@/components/dashboard/RestaurantSectionStates";
+import { OperationalSnapshotSection } from "@/components/dashboard/OperationalSnapshotSection";
+import { ReportsTab } from "@/components/dashboard/ReportsTab";
+import { RestaurantKpiCard } from "@/components/dashboard/RestaurantKpiCard";
 import {
   RestaurantOperationsShell,
   type RestaurantTab,
@@ -38,7 +34,6 @@ import {
 } from "@/components/offers/OfferImageUpload";
 import { OfferImagePlaceholder } from "@/components/offers/OfferImagePlaceholder";
 import { formatRiyadhDateTime, todayYmd, convertUtcToRestaurantTime } from "@/lib/datetime";
-import { downloadSalesReportXlsx } from "@/lib/excel";
 import {
   buildVisibleSessionOrderCounts,
   formatDashboardSessionLabel,
@@ -47,8 +42,6 @@ import {
 } from "@/lib/diningSessionDashboardCopy";
 import {
   DASHBOARD_ORDER_LIST_POLL_MS,
-  homeSnapshotOrderQueryOptions,
-  opsOverviewQueryOptions,
   orderListQueryOptions,
   restaurantQueriesEnabled,
   useDevQueryRuntimeLog,
@@ -60,8 +53,8 @@ import {
   BarChart3, Eye, Trash2, Pencil, ArrowRight,
   ChevronLeft, Home, Settings, Image as ImageIcon, Loader2,
   Check, X, Upload, GripVertical, Palette, Tag, Calendar, Clock, User, Bell,
-  AlertTriangle, CalendarPlus, ClipboardList, Grid3X3, Download, Copy,
-  TrendingUp, DollarSign, CheckCircle2, Clock3, LayoutDashboard,
+  AlertTriangle, CalendarPlus, ClipboardList, Download, Copy,
+  CheckCircle2,
   Menu, CreditCard, Sparkles, Globe
 } from "lucide-react";
 import { useState, useRef, useCallback, useEffect, useMemo, type ComponentType } from "react";
@@ -815,210 +808,6 @@ function RestaurantHeaderCard({ restaurant }: { restaurant: any }) {
   );
 }
 
-function RestaurantStatisticsSection({
-  stats,
-  t,
-  ariaLabel,
-  language,
-}: {
-  stats?: { totalCategories?: number; totalItems?: number; viewCount?: number };
-  t: (key: string) => string;
-  ariaLabel: string;
-  language: string;
-}) {
-  const overviewTitle = language === "ar" ? "نظرة عامة" : "Overview";
-  const overviewDescription =
-    language === "ar" ? "مؤشرات الأداء الرئيسية لمطعمك" : "Key performance metrics for your restaurant";
-
-  return (
-    <RestaurantDashSection title={overviewTitle} description={overviewDescription} ariaLabel={ariaLabel}>
-      <div className={restaurantDash.kpiGridWide}>
-        <DashboardStatCard
-          label={t("dashboard.category")}
-          value={stats?.totalCategories ?? 0}
-          icon={LayoutGrid}
-          tone="primary"
-        />
-        <DashboardStatCard
-          label={t("dashboard.item")}
-          value={stats?.totalItems ?? 0}
-          icon={UtensilsCrossed}
-          tone="accent"
-        />
-        <DashboardStatCard
-          label={t("dashboard.visit")}
-          value={stats?.viewCount ?? 0}
-          icon={Eye}
-          tone="amber"
-          hint={
-            (stats?.viewCount ?? 0) > 0
-              ? language === "ar"
-                ? "زيارات المنيو"
-                : "Menu visits"
-              : undefined
-          }
-        />
-      </div>
-    </RestaurantDashSection>
-  );
-}
-
-function statusCount(
-  breakdown: { status: string; count: number }[],
-  status: string
-): number {
-  return breakdown.find((row) => row.status === status)?.count ?? 0;
-}
-
-function OperationalSnapshotSection({
-  restaurantId,
-  language,
-  queriesEnabled,
-  currencySymbol,
-}: {
-  restaurantId: number;
-  language: string;
-  queriesEnabled: boolean;
-  currencySymbol?: string;
-}) {
-  const { isAuthenticated, authPending } = useAuth();
-  const sym = currencySymbol || "ر.س";
-
-  useDevQueryRuntimeLog("ops.getRestaurantOverview", {
-    enabled: queriesEnabled,
-    authPending,
-    isAuthenticated,
-    pollMs: queriesEnabled ? DASHBOARD_ORDER_LIST_POLL_MS : undefined,
-  });
-  useDevQueryRuntimeLog("order.list (home snapshot)", {
-    enabled: queriesEnabled,
-    authPending,
-    isAuthenticated,
-  });
-
-  const {
-    data: overview,
-    isLoading: overviewLoading,
-    isError: overviewError,
-    error: overviewQueryError,
-    refetch: refetchOverview,
-    isFetching: overviewFetching,
-  } = trpc.ops.getRestaurantOverview.useQuery(
-    { restaurantId },
-    opsOverviewQueryOptions(queriesEnabled)
-  );
-
-  const {
-    data: allOrders,
-    isLoading: ordersLoading,
-    isError: ordersError,
-    error: ordersQueryError,
-    refetch: refetchOrders,
-    isFetching: ordersFetching,
-  } = trpc.order.list.useQuery(
-    { restaurantId },
-    homeSnapshotOrderQueryOptions(queriesEnabled)
-  );
-
-  const orderStats = useMemo(
-    () => buildOrderStatistics((allOrders ?? []) as DashboardOrder[]),
-    [allOrders]
-  );
-
-  const isAr = language === "ar";
-  const sectionTitle = isAr ? "لمحة تشغيلية" : "Operational Snapshot";
-  const sectionSub = isAr
-    ? "ما يحدث الآن في المطعم"
-    : "What is happening in your restaurant right now";
-  const ariaLabel = sectionTitle;
-  const isLoading = overviewLoading || ordersLoading;
-  const isFetching = overviewFetching || ordersFetching;
-  const overviewFailed = overviewError && !overview;
-  const ordersFailed = ordersError && !allOrders;
-  const verificationError = isEmailNotVerifiedError(overviewQueryError)
-    ? overviewQueryError
-    : isEmailNotVerifiedError(ordersQueryError)
-      ? ordersQueryError
-      : null;
-
-  if (verificationError) {
-    return (
-      <RestaurantDashSection title={sectionTitle} description={sectionSub} ariaLabel={ariaLabel}>
-        <VerificationRequiredPanel variant="orders" compact />
-      </RestaurantDashSection>
-    );
-  }
-
-  const newOrders = statusCount(orderStats.today.statusBreakdown, "pending");
-  const preparingOrders = statusCount(orderStats.today.statusBreakdown, "preparing");
-  const todayRevenue = Number(orderStats.today.completedSales).toFixed(2);
-
-  return (
-    <RestaurantDashSection title={sectionTitle} description={sectionSub} ariaLabel={ariaLabel}>
-      {isLoading ? (
-        <RestaurantKpiGridSkeleton count={5} />
-      ) : overviewFailed && ordersFailed ? (
-        <RestaurantSectionError
-          message={
-            isAr
-              ? "تعذر تحميل المؤشرات التشغيلية. حاول مرة أخرى."
-              : "Could not load operational metrics. Please try again."
-          }
-          retryLabel={isAr ? "إعادة المحاولة" : "Retry"}
-          isFetching={isFetching}
-          onRetry={() => {
-            void refetchOverview();
-            void refetchOrders();
-          }}
-        />
-      ) : (
-        <>
-          {ordersFailed ? (
-            <p className="rounded-lg border border-orange-500/25 bg-orange-500/5 px-3 py-2 text-xs text-orange-300">
-              {isAr
-                ? "تعذر تحميل مؤشرات الطلبات. تم عرض مؤشرات الجلسات فقط."
-                : "Order metrics unavailable. Showing session metrics only."}
-            </p>
-          ) : null}
-          <div className={restaurantDash.kpiGrid}>
-            <DashboardStatCard
-              label={isAr ? "جلسات نشطة" : "Active Sessions"}
-              value={overview?.activeSessions ?? 0}
-              icon={LayoutDashboard}
-              tone="primary"
-            />
-            <DashboardStatCard
-              label={isAr ? "طاولات مشغولة" : "Occupied Tables"}
-              value={overview?.occupiedTables ?? 0}
-              icon={Grid3X3}
-              tone="accent"
-            />
-            <DashboardStatCard
-              label={isAr ? "طلبات جديدة اليوم" : "New Orders Today"}
-              value={ordersFailed ? "—" : newOrders}
-              icon={ClipboardList}
-              tone="amber"
-            />
-            <DashboardStatCard
-              label={isAr ? "قيد التحضير اليوم" : "Preparing Today"}
-              value={ordersFailed ? "—" : preparingOrders}
-              icon={Clock3}
-              tone="default"
-            />
-            <DashboardStatCard
-              label={isAr ? "مبيعات طلبات اليوم" : "Today's Order Sales"}
-              value={ordersFailed ? "—" : `${todayRevenue} ${sym}`}
-              icon={DollarSign}
-              tone="success"
-              valueVariant="revenue"
-            />
-          </div>
-        </>
-      )}
-    </RestaurantDashSection>
-  );
-}
-
 function RestaurantHomePanel({
   restaurant,
   language,
@@ -1101,7 +890,6 @@ function RestaurantDetail({
     isAuthenticated,
     restaurantId
   );
-  const loadStats = activeTab === "reports";
   const loadCategories = activeTab === "categories";
 
   const {
@@ -1114,10 +902,6 @@ function RestaurantDetail({
   } = trpc.restaurant.getById.useQuery(
     { id: restaurantId },
     { enabled: queriesEnabled }
-  );
-  const { data: stats } = trpc.restaurant.stats.useQuery(
-    { id: restaurantId },
-    { enabled: queriesEnabled && loadStats }
   );
   const { data: categoriesList, isLoading: catsLoading } = trpc.category.list.useQuery(
     { restaurantId },
@@ -1177,11 +961,6 @@ function RestaurantDetail({
     return <AppEmptyState title={t("dashboard.restaurantNotFound")} />;
   }
 
-  const statsPayload = stats ?? {
-    totalCategories: 0,
-    totalItems: 0,
-    viewCount: restaurant.viewCount ?? 0,
-  };
   const statsAriaLabel = language === "ar" ? "نظرة عامة" : "Overview";
 
   return (
@@ -1286,7 +1065,6 @@ function RestaurantDetail({
           }
           currencySymbol={(restaurant as { currencySymbol?: string })?.currencySymbol}
           currencyCode={(restaurant as { currencyCode?: string })?.currencyCode}
-          stats={statsPayload}
           t={t}
           language={language}
           statsAriaLabel={statsAriaLabel}
@@ -3456,405 +3234,6 @@ function orderDateDay(value: string | Date | null | undefined): number {
   const ymd = orderDateYmd(value);
   if (!ymd) return 0;
   return Number(ymd.split("-")[2]) || 0;
-}
-
-function orderAmount(order: DashboardOrder): number {
-  return Number.parseFloat(String(order.totalAmount ?? "0")) || 0;
-}
-
-function isCompletedOrder(status: string) {
-  return status === "served";
-}
-
-function buildOrderStatistics(orders: DashboardOrder[]) {
-  const todayKey = todayYmd();
-  const nowParts = orderDateYearMonth(new Date());
-  const todayOrders = orders.filter((o) => orderDateYmd(o.createdAt) === todayKey);
-  const monthOrders = orders.filter((o) => {
-    const ym = orderDateYearMonth(o.createdAt);
-    return ym && nowParts && ym.year === nowParts.year && ym.month === nowParts.month;
-  });
-  const completedToday = todayOrders.filter((o) => isCompletedOrder(o.status));
-  const pendingToday = todayOrders.filter((o) => o.status === "pending" || o.status === "preparing");
-  const statusBreakdown = ["pending", "preparing", "ready", "served", "cancelled"]
-    .map((status) => ({
-      status,
-      count: todayOrders.filter((o) => o.status === status).length,
-    }))
-    .filter((row) => row.count > 0);
-  const monthCompleted = monthOrders.filter((o) => isCompletedOrder(o.status));
-  return {
-    today: {
-      totalOrders: todayOrders.length,
-      completedOrders: completedToday.length,
-      completedSales: completedToday.reduce((sum, o) => sum + orderAmount(o), 0),
-      pendingOrders: pendingToday.length,
-      statusBreakdown,
-    },
-    month: {
-      totalOrders: monthOrders.length,
-      totalSales: monthCompleted.reduce((sum, o) => sum + orderAmount(o), 0),
-      completedOrders: monthCompleted.length,
-    },
-  };
-}
-
-function buildTodayReport(orders: DashboardOrder[]) {
-  const todayKey = todayYmd();
-  const completed = orders.filter(
-    (o) => orderDateYmd(o.createdAt) === todayKey && isCompletedOrder(o.status)
-  );
-  return {
-    count: completed.length,
-    totalSales: completed.reduce((sum, o) => sum + orderAmount(o), 0),
-  };
-}
-
-function buildMonthlyReport(orders: DashboardOrder[], year: number, month: number) {
-  const daysInMonth = new Date(year, month, 0).getDate();
-  const rows: { day: number; count: number; totalSales: number }[] = [];
-  for (let day = 1; day <= daysInMonth; day++) {
-    const dayOrders = orders.filter((o) => {
-      const ym = orderDateYearMonth(o.createdAt);
-      return ym && ym.year === year && ym.month === month && orderDateDay(o.createdAt) === day;
-    });
-    if (dayOrders.length === 0) continue;
-    const completed = dayOrders.filter((o) => isCompletedOrder(o.status));
-    rows.push({
-      day,
-      count: dayOrders.length,
-      totalSales: completed.reduce((sum, o) => sum + orderAmount(o), 0),
-    });
-  }
-  return rows;
-}
-
-function buildYearlySummary(orders: DashboardOrder[], year: number) {
-  const rows: { month: number; count: number; totalSales: number }[] = [];
-  for (let month = 1; month <= 12; month++) {
-    const monthOrders = orders.filter((o) => {
-      const ym = orderDateYearMonth(o.createdAt);
-      return ym && ym.year === year && ym.month === month;
-    });
-    if (monthOrders.length === 0) continue;
-    const completed = monthOrders.filter((o) => isCompletedOrder(o.status));
-    rows.push({
-      month,
-      count: monthOrders.length,
-      totalSales: completed.reduce((sum, o) => sum + orderAmount(o), 0),
-    });
-  }
-  return rows;
-}
-
-// ─── Reports Tab ────────────────────────────────────────────
-function ReportsTab({
-  restaurantId,
-  restaurantName,
-  currencySymbol,
-  currencyCode,
-  stats,
-  t,
-  language,
-  statsAriaLabel,
-}: {
-  restaurantId: number;
-  restaurantName?: string;
-  currencySymbol?: string;
-  currencyCode?: string;
-  stats: { totalCategories?: number; totalItems?: number; viewCount?: number };
-  t: (key: string) => string;
-  language: string;
-  statsAriaLabel: string;
-}) {
-  const sym = currencySymbol || "ر.س";
-  const nowParts = orderDateYearMonth(new Date()) ?? { year: new Date().getFullYear(), month: new Date().getMonth() + 1 };
-  const [reportYear, setReportYear] = useState(nowParts.year);
-  const [reportMonth, setReportMonth] = useState(nowParts.month);
-
-  const monthNames =
-    language === "ar"
-      ? ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"]
-      : ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-
-  const { isAuthenticated, authPending } = useAuth();
-  const {
-    entitlements,
-    showReportsUpgrade,
-    showExcelUpgrade,
-  } = useCommercialFeatureVisibility();
-  const uiLang = language === "ar" ? "ar" : "en";
-  const ordersEnabled = restaurantQueriesEnabled(authPending, isAuthenticated, restaurantId);
-  useDevQueryRuntimeLog("order.list", {
-    enabled: ordersEnabled,
-    authPending,
-    isAuthenticated,
-    pollMs: ordersEnabled ? DASHBOARD_ORDER_LIST_POLL_MS : undefined,
-  });
-  const { data: allOrders, error: ordersError } = trpc.order.list.useQuery(
-    { restaurantId },
-    orderListQueryOptions(ordersEnabled)
-  );
-  const ordersBlocked = isEmailNotVerifiedError(ordersError);
-
-  const orderStats = useMemo(
-    () => buildOrderStatistics((allOrders ?? []) as DashboardOrder[]),
-    [allOrders]
-  );
-  const monthlyReport = useMemo(
-    () => buildMonthlyReport((allOrders ?? []) as DashboardOrder[], reportYear, reportMonth),
-    [allOrders, reportYear, reportMonth]
-  );
-  const yearlySummary = useMemo(
-    () => buildYearlySummary((allOrders ?? []) as DashboardOrder[], reportYear),
-    [allOrders, reportYear]
-  );
-
-  const statusLabels: Record<string, { ar: string; en: string }> = {
-    pending: { ar: "قيد الانتظار", en: "Pending" },
-    preparing: { ar: "قيد التحضير", en: "Preparing" },
-    ready: { ar: "جاهز", en: "Ready" },
-    served: { ar: "تم التقديم", en: "Served" },
-    cancelled: { ar: "ملغي", en: "Cancelled" },
-  };
-
-  const exportMonthlyExcel = () => {
-    const isAr = language === "ar";
-    void downloadSalesReportXlsx({
-      language: isAr ? "ar" : "en",
-      filename: `monthly-report-${reportYear}-${reportMonth}`,
-      sheetName: isAr ? "تقرير شهري" : "Monthly Report",
-      reportTitle: isAr ? "تقرير شهري" : "Monthly Report",
-      reportSubtitle: `${monthNames[reportMonth - 1]} ${reportYear}`,
-      columnHeaders: isAr
-        ? ["اليوم", "عدد الطلبات", "إجمالي المبيعات"]
-        : ["Day", "Orders", "Total Sales"],
-      rows: monthlyReport.map((row) => ({
-        label: isAr ? `يوم ${row.day}` : `Day ${row.day}`,
-        orderCount: row.count,
-        totalSales: row.totalSales,
-      })),
-      currencySymbol: sym,
-      currencyCode,
-      totalsLabel: isAr ? "الإجمالي" : "Total",
-      restaurantName,
-    });
-  };
-
-  const exportYearlyExcel = () => {
-    const isAr = language === "ar";
-    void downloadSalesReportXlsx({
-      language: isAr ? "ar" : "en",
-      filename: `yearly-summary-${reportYear}`,
-      sheetName: isAr ? "ملخص سنوي" : "Yearly Summary",
-      reportTitle: isAr ? "ملخص سنوي" : "Yearly Summary",
-      reportSubtitle: isAr ? `السنة ${reportYear}` : `Year ${reportYear}`,
-      columnHeaders: isAr
-        ? ["الشهر", "عدد الطلبات", "إجمالي المبيعات"]
-        : ["Month", "Orders", "Total Sales"],
-      rows: yearlySummary.map((row) => ({
-        label: monthNames[(row.month || 1) - 1],
-        orderCount: row.count,
-        totalSales: row.totalSales,
-      })),
-      currencySymbol: sym,
-      currencyCode,
-      totalsLabel: isAr ? "الإجمالي" : "Total",
-      restaurantName,
-    });
-  };
-
-  return (
-    <div className="space-y-8 sm:space-y-10">
-      <div className="space-y-1">
-        <h1 className={dash.pageTitle}>
-          {language === "ar" ? "التقارير والإحصائيات" : "Reports & Statistics"}
-        </h1>
-        <p className={dash.pageSub}>
-          {language === "ar" ? "تحليلات المبيعات والطلبات" : "Sales and order analytics"}
-        </p>
-      </div>
-
-      <RestaurantStatisticsSection stats={stats} t={t} ariaLabel={statsAriaLabel} language={language} />
-
-      {showReportsUpgrade && (
-        <CommercialUpgradeBanner
-          entitlements={entitlements}
-          featureKey="reports"
-          language={uiLang}
-          className="border-yellow-500/30 bg-yellow-500/5"
-        />
-      )}
-
-      <div className="space-y-1 border-b border-slate-700/40 pb-4">
-        <h2 className={restaurantDash.sectionTitle}>
-          {language === "ar" ? "تحليلات التسوية" : "Settlement Analytics"}
-        </h2>
-        <p className={restaurantDash.sectionSub}>
-          {language === "ar"
-            ? "إيرادات الجلسات المسددة والاتجاهات التاريخية"
-            : "Settled session revenue and historical trends"}
-        </p>
-      </div>
-
-      <SettlementOverviewSection
-        restaurantId={restaurantId}
-        language={language}
-        queriesEnabled={ordersEnabled}
-        currencySymbol={sym}
-      />
-      <SettlementTrendsSection
-        restaurantId={restaurantId}
-        language={language}
-        queriesEnabled={ordersEnabled}
-        currencySymbol={sym}
-      />
-
-      {ordersBlocked ? (
-        <VerificationRequiredPanel variant="orders" />
-      ) : (
-      <>
-      <div className="border-t border-slate-700/40 pt-4" />
-
-      <div className={restaurantDash.kpiGridWide}>
-        <RestaurantKpiCard
-          label={language === "ar" ? "طلبات اليوم" : "Today Orders"}
-          value={orderStats.today.totalOrders}
-          icon={ClipboardList}
-          tone="warning"
-        />
-        <RestaurantKpiCard
-          label={language === "ar" ? "طلبات الشهر" : "Month Orders"}
-          value={orderStats.month.totalOrders}
-          icon={Calendar}
-          tone="info"
-        />
-        <RestaurantKpiCard
-          label={language === "ar" ? "مبيعات طلبات اليوم" : "Today's Order Sales"}
-          value={`${Number(orderStats.today.completedSales).toFixed(2)} ${sym}`}
-          icon={DollarSign}
-          tone="success"
-          valueVariant="revenue"
-        />
-        <RestaurantKpiCard
-          label={language === "ar" ? "مبيعات الشهر" : "Month Sales"}
-          value={`${Number(orderStats.month.totalSales).toFixed(2)} ${sym}`}
-          icon={TrendingUp}
-          tone="success"
-          valueVariant="revenue"
-        />
-      </div>
-
-      <Card className={cn(dash.card)}>
-        <CardHeader className="pb-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <CardTitle className="text-sm font-semibold">
-              {language === "ar" ? "تقرير شهري" : "Monthly Report"}
-            </CardTitle>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={exportMonthlyExcel}
-                className="rounded border border-green-500/30 bg-green-500/10 px-2 py-1 text-xs text-green-400 hover:bg-green-500/20"
-              >
-                Excel
-                {showExcelUpgrade && (
-                  <span className="ml-1 text-[10px] text-yellow-500/90">
-                    ({uiLang === "ar" ? "ترقية" : "upgrade"})
-                  </span>
-                )}
-              </button>
-              <select
-                value={reportMonth}
-                onChange={(e) => setReportMonth(Number(e.target.value))}
-                className="rounded-md border border-border bg-card px-2 py-1 text-xs"
-              >
-                {monthNames.map((name, idx) => (
-                  <option key={name} value={idx + 1}>
-                    {name}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={reportYear}
-                onChange={(e) => setReportYear(Number(e.target.value))}
-                className="rounded-md border border-border bg-card px-2 py-1 text-xs"
-              >
-                {[2024, 2025, 2026, 2027].map((y) => (
-                  <option key={y} value={y}>
-                    {y}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-0">
-          {monthlyReport.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              {language === "ar" ? "لا توجد بيانات" : "No data"}
-            </p>
-          ) : (
-            <div className="max-h-64 space-y-1.5 overflow-y-auto">
-              {monthlyReport.map((row) => (
-                <div key={row.day} className="flex justify-between rounded-lg bg-muted/10 p-2.5 text-sm">
-                  <span>{language === "ar" ? `يوم ${row.day}` : `Day ${row.day}`}</span>
-                  <span className="tabular-nums">
-                    {row.count} · {row.totalSales.toFixed(2)} {sym}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card className={cn(dash.card)}>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between gap-3">
-            <CardTitle className="text-sm font-semibold">
-              {language === "ar" ? "ملخص سنوي" : "Yearly Summary"}
-            </CardTitle>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={exportYearlyExcel}
-                className="rounded border border-green-500/30 bg-green-500/10 px-2 py-1 text-xs text-green-400 hover:bg-green-500/20"
-              >
-                Excel
-                {showExcelUpgrade && (
-                  <span className="ml-1 text-[10px] text-yellow-500/90">
-                    ({uiLang === "ar" ? "ترقية" : "upgrade"})
-                  </span>
-                )}
-              </button>
-              <span className="text-sm text-muted-foreground">{reportYear}</span>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-0">
-          {yearlySummary.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              {language === "ar" ? "لا توجد بيانات" : "No data"}
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {yearlySummary.map((row) => (
-                <div key={row.month} className="flex justify-between rounded-lg bg-muted/10 p-3">
-                  <span className="font-medium">{monthNames[(row.month || 1) - 1]}</span>
-                  <span className="tabular-nums text-sm">
-                    {row.totalSales.toFixed(2)} {sym} · {row.count}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-      </>
-      )}
-    </div>
-  );
 }
 
 // ─── Orders Tab ─────────────────────────────────────────────

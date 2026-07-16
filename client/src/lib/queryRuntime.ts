@@ -49,18 +49,42 @@ export function opsActivityFeedQueryOptions(enabled: boolean) {
   } as const;
 }
 
-export function opsSettlementSummaryQueryOptions(enabled: boolean) {
+export function reportingBusinessSummaryQueryOptions(enabled: boolean) {
   return {
     enabled,
     refetchInterval: enabled ? DASHBOARD_ORDER_LIST_POLL_MS : false,
   } as const;
 }
 
-export function opsSettlementTrendQueryOptions(enabled: boolean) {
+export function reportingBusinessTrendQueryOptions(enabled: boolean) {
   return {
     enabled,
     refetchInterval: enabled ? DASHBOARD_ORDER_LIST_POLL_MS : false,
   } as const;
+}
+
+export function reportingOperationalSnapshotQueryOptions(enabled: boolean) {
+  return {
+    enabled,
+    refetchInterval: enabled ? DASHBOARD_ORDER_LIST_POLL_MS : false,
+  } as const;
+}
+
+export function reportingOrderSalesQueryOptions(enabled: boolean) {
+  return {
+    enabled,
+    refetchInterval: enabled ? DASHBOARD_ORDER_LIST_POLL_MS : false,
+  } as const;
+}
+
+/** @deprecated REPORTING-DASHBOARD-ADOPTION-1 — use reportingBusinessSummaryQueryOptions */
+export function opsSettlementSummaryQueryOptions(enabled: boolean) {
+  return reportingBusinessSummaryQueryOptions(enabled);
+}
+
+/** @deprecated REPORTING-DASHBOARD-ADOPTION-1 — use reportingBusinessTrendQueryOptions */
+export function opsSettlementTrendQueryOptions(enabled: boolean) {
+  return reportingBusinessTrendQueryOptions(enabled);
 }
 
 export function orderListQueryOptions(enabled: boolean) {

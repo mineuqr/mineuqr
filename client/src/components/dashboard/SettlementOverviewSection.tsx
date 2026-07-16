@@ -2,14 +2,15 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { VerificationRequiredPanel } from "@/components/auth/VerificationRequiredPanel";
 import {
   DASHBOARD_ORDER_LIST_POLL_MS,
-  opsSettlementSummaryQueryOptions,
+  reportingBusinessSummaryQueryOptions,
   useDevQueryRuntimeLog,
 } from "@/lib/queryRuntime";
 import {
-  formatAveragePaidSessionValue,
+  formatAverageCheck,
   formatComplimentaryRate,
   formatSettlementRevenue,
   isSettlementOverviewEmpty,
+  resolveReportingCurrencySymbol,
 } from "@/lib/settlementOverviewDisplay";
 import { isEmailNotVerifiedError } from "@/lib/trpcErrors";
 import { trpc } from "@/lib/trpc";
@@ -41,14 +42,13 @@ export function SettlementOverviewSection({
 }) {
   const { isAuthenticated, authPending } = useAuth();
   const isAr = language === "ar";
-  const sectionTitle = isAr ? "نظرة التسوية" : "Settlement Overview";
+  const sectionTitle = isAr ? "نظرة الإيرادات" : "Revenue Overview";
   const sectionSub = isAr
-    ? "إيرادات الجلسات المسددة والجلسات المجانية"
-    : "Settled session revenue and complimentary activity";
+    ? "إيرادات الشيكات المدفوعة والعمليات المجانية والملغاة"
+    : "Paid Check revenue, complimentary, and voided activity";
   const ariaLabel = sectionTitle;
-  const sym = currencySymbol || "ر.س";
 
-  useDevQueryRuntimeLog("ops.getSettlementSummary", {
+  useDevQueryRuntimeLog("reporting.getBusinessMetricsSummary", {
     enabled: queriesEnabled,
     authPending,
     isAuthenticated,
@@ -62,10 +62,12 @@ export function SettlementOverviewSection({
     error,
     refetch,
     isFetching,
-  } = trpc.ops.getSettlementSummary.useQuery(
+  } = trpc.reporting.getBusinessMetricsSummary.useQuery(
     { restaurantId },
-    opsSettlementSummaryQueryOptions(queriesEnabled)
+    reportingBusinessSummaryQueryOptions(queriesEnabled)
   );
+
+  const sym = resolveReportingCurrencySymbol(summary, currencySymbol || "ر.س");
 
   if (isEmailNotVerifiedError(error)) {
     return (
@@ -75,8 +77,9 @@ export function SettlementOverviewSection({
     );
   }
 
-  const isFullyEmpty = !isLoading && !isError && summary != null && isSettlementOverviewEmpty(summary);
-  const averageSessionValue = summary ? formatAveragePaidSessionValue(summary) : "—";
+  const isFullyEmpty =
+    !isLoading && !isError && summary != null && isSettlementOverviewEmpty(summary);
+  const averageCheck = summary ? formatAverageCheck(summary) : "—";
 
   return (
     <RestaurantDashSection title={sectionTitle} description={sectionSub} ariaLabel={ariaLabel}>
@@ -86,8 +89,8 @@ export function SettlementOverviewSection({
         <RestaurantSectionError
           message={
             isAr
-              ? "تعذر تحميل مؤشرات التسوية. حاول مرة أخرى."
-              : "Could not load settlement metrics. Please try again."
+              ? "تعذر تحميل مؤشرات الإيرادات. حاول مرة أخرى."
+              : "Could not load revenue metrics. Please try again."
           }
           retryLabel={isAr ? "إعادة المحاولة" : "Retry"}
           isFetching={isFetching}
@@ -97,28 +100,28 @@ export function SettlementOverviewSection({
         <RestaurantSectionEmpty
           message={
             isAr
-              ? "لا توجد جلسات مسددة بعد. ستظهر الإيرادات هنا بعد تسوية الجلسات."
-              : "No settled sessions yet. Revenue will appear here after sessions are settled."
+              ? "لا توجد شيكات مسددة بعد. ستظهر الإيرادات هنا بعد دفع الشيكات."
+              : "No settled checks yet. Revenue will appear here after checks are paid."
           }
         />
       ) : (
         <div className={restaurantDash.kpiGrid}>
           <RestaurantKpiCard
-            label={isAr ? "إيرادات مسددة" : "Settled Revenue"}
-            value={formatSettlementRevenue(summary?.paidRevenue ?? "0.00", sym)}
+            label={isAr ? "الإيرادات" : "Revenue"}
+            value={formatSettlementRevenue(summary?.revenue ?? "0.00", sym)}
             icon={DollarSign}
             tone="success"
             valueVariant="revenue"
           />
           <RestaurantKpiCard
-            label={isAr ? "جلسات مدفوعة" : "Paid Sessions"}
-            value={summary?.paidSessionCount ?? 0}
+            label={isAr ? "شيكات مدفوعة" : "Paid Checks"}
+            value={summary?.paidCheckCount ?? 0}
             icon={CheckCircle2}
             tone="info"
           />
           <RestaurantKpiCard
-            label={isAr ? "جلسات مجانية" : "Complimentary Sessions"}
-            value={summary?.complimentarySessionCount ?? 0}
+            label={isAr ? "شيكات مجانية" : "Complimentary Checks"}
+            value={summary?.complimentaryCount ?? 0}
             icon={Gift}
             tone="accent"
           />
@@ -129,8 +132,8 @@ export function SettlementOverviewSection({
             tone="warning"
           />
           <RestaurantKpiCard
-            label={isAr ? "متوسط قيمة الجلسة" : "Average Session Value"}
-            value={averageSessionValue === "—" ? "—" : `${averageSessionValue} ${sym}`}
+            label={isAr ? "متوسط الشيك" : "Average Check"}
+            value={averageCheck === "—" ? "—" : `${averageCheck} ${sym}`}
             icon={TrendingUp}
             tone="neutral"
             valueVariant="revenue"

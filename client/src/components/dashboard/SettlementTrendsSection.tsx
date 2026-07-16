@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { VerificationRequiredPanel } from "@/components/auth/VerificationRequiredPanel";
 import {
   DASHBOARD_ORDER_LIST_POLL_MS,
-  opsSettlementTrendQueryOptions,
+  reportingBusinessTrendQueryOptions,
   useDevQueryRuntimeLog,
 } from "@/lib/queryRuntime";
 import {
@@ -203,13 +203,13 @@ export function SettlementTrendsSection({
   const isAr = language === "ar";
   const sym = currencySymbol || "ر.س";
   const [grouping, setGrouping] = useState<SettlementTrendGrouping>("day");
-  const sectionTitle = isAr ? "اتجاهات التسوية" : "Settlement Trends";
+  const sectionTitle = isAr ? "اتجاهات الإيرادات" : "Revenue Trends";
   const sectionSub = isAr
-    ? "تطور الإيرادات والجلسات المسددة عبر الزمن"
-    : "How settled revenue and sessions change over time";
+    ? "تطور إيرادات الشيكات المدفوعة عبر الزمن"
+    : "How Paid Check revenue changes over time";
   const ariaLabel = sectionTitle;
 
-  useDevQueryRuntimeLog("ops.getSettlementTrend", {
+  useDevQueryRuntimeLog("reporting.getBusinessMetricsTrend", {
     enabled: queriesEnabled,
     authPending,
     isAuthenticated,
@@ -223,9 +223,9 @@ export function SettlementTrendsSection({
     error,
     refetch,
     isFetching,
-  } = trpc.ops.getSettlementTrend.useQuery(
+  } = trpc.reporting.getBusinessMetricsTrend.useQuery(
     { restaurantId, grouping },
-    opsSettlementTrendQueryOptions(queriesEnabled)
+    reportingBusinessTrendQueryOptions(queriesEnabled)
   );
 
   const chartRows = useMemo(
@@ -305,8 +305,8 @@ export function SettlementTrendsSection({
         <RestaurantSectionError
           message={
             isAr
-              ? "تعذر تحميل اتجاهات التسوية. حاول مرة أخرى."
-              : "Could not load settlement trends. Please try again."
+              ? "تعذر تحميل اتجاهات الإيرادات. حاول مرة أخرى."
+              : "Could not load revenue trends. Please try again."
           }
           retryLabel={isAr ? "إعادة المحاولة" : "Retry"}
           isFetching={isFetching}
@@ -318,8 +318,8 @@ export function SettlementTrendsSection({
             <RestaurantSectionEmpty
               message={
                 isAr
-                  ? "لا توجد جلسات مسددة لعرض الاتجاهات بعد."
-                  : "No settled sessions yet to show trends."
+                  ? "لا توجد شيكات مسددة لعرض الاتجاهات بعد."
+                  : "No settled checks yet to show trends."
               }
             />
           ) : null}
@@ -335,7 +335,7 @@ export function SettlementTrendsSection({
               isAr={isAr}
             />
             <SettlementTrendChart
-              title={isAr ? "اتجاه الجلسات المدفوعة" : "Paid Sessions Trend"}
+              title={isAr ? "اتجاه الشيكات المدفوعة" : "Paid Checks Trend"}
               data={chartRows}
               dataKey="paidSessionCount"
               stroke="#94a3b8"
@@ -344,7 +344,7 @@ export function SettlementTrendsSection({
               isAr={isAr}
             />
             <SettlementTrendChart
-              title={isAr ? "اتجاه الجلسات المجانية" : "Complimentary Sessions Trend"}
+              title={isAr ? "اتجاه الشيكات المجانية" : "Complimentary Checks Trend"}
               data={chartRows}
               dataKey="complimentarySessionCount"
               stroke="#a78bfa"
@@ -367,7 +367,7 @@ export function SettlementTrendsSection({
             <div className="flex items-center gap-2">
               <TrendingUp className={cn("h-5 w-5", restaurantSemantic.iconInfo)} aria-hidden />
               <h3 className="text-sm font-semibold text-white sm:text-base">
-                {isAr ? "رؤى تشغيلية" : "Settlement Insights"}
+                {isAr ? "رؤى الإيرادات" : "Revenue Insights"}
               </h3>
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:gap-4">
@@ -380,7 +380,7 @@ export function SettlementTrendsSection({
                 revenueValue
               />
               <TrendInsightCard
-                title={isAr ? "أعلى فترة تسوية" : "Highest Settlement Period"}
+                title={isAr ? "أعلى فترة نشاط" : "Highest Activity Period"}
                 periodLabel={settlementInsight?.periodLabel ?? null}
                 valueLabel={
                   settlementInsight

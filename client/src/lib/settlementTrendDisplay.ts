@@ -1,8 +1,17 @@
+/**
+ * REPORTING-DASHBOARD-ADOPTION-1 — chart row mapping for Business Metrics Trend DTOs.
+ * Presentation formatting only — no Revenue calculation.
+ */
 import type { RouterOutputs } from "@/lib/trpc";
 
-export type SettlementTrendData = RouterOutputs["ops"]["getSettlementTrend"];
-export type SettlementTrendPoint = SettlementTrendData["points"][number];
-export type SettlementTrendGrouping = SettlementTrendData["grouping"];
+export type BusinessMetricsTrendData =
+  RouterOutputs["reporting"]["getBusinessMetricsTrend"];
+export type BusinessMetricsTrendPoint = BusinessMetricsTrendData["points"][number];
+export type SettlementTrendGrouping = BusinessMetricsTrendData["grouping"];
+
+/** @deprecated Use BusinessMetricsTrendData */
+export type SettlementTrendData = BusinessMetricsTrendData;
+export type SettlementTrendPoint = BusinessMetricsTrendPoint;
 
 export type SettlementTrendChartRow = {
   periodKey: string;
@@ -10,6 +19,7 @@ export type SettlementTrendChartRow = {
   paidRevenue: number;
   paidSessionCount: number;
   complimentarySessionCount: number;
+  voidedCount: number;
   totalSettledSessions: number;
   complimentaryRate: number;
 };
@@ -61,20 +71,21 @@ export function formatTrendPeriodLabel(
 }
 
 export function buildSettlementTrendChartRows(
-  trend: SettlementTrendData,
+  trend: BusinessMetricsTrendData,
   language: string
 ): SettlementTrendChartRow[] {
   return trend.points.map((point) => {
-    const paidSessionCount = point.paidSessionCount;
-    const complimentarySessionCount = point.complimentarySessionCount;
+    const paidSessionCount = point.paidCheckCount;
+    const complimentarySessionCount = point.complimentaryCount;
     const totalSettledSessions = paidSessionCount + complimentarySessionCount;
 
     return {
       periodKey: point.periodKey,
       periodLabel: formatTrendPeriodLabel(point.periodKey, trend.grouping, language),
-      paidRevenue: parseTrendAmount(point.paidRevenue),
+      paidRevenue: parseTrendAmount(point.revenue),
       paidSessionCount,
       complimentarySessionCount,
+      voidedCount: point.voidedCount,
       totalSettledSessions,
       complimentaryRate:
         totalSettledSessions > 0
@@ -140,6 +151,6 @@ export function findHighestComplimentaryPeriod(
   );
 }
 
-export function isSettlementTrendEmpty(trend: SettlementTrendData): boolean {
+export function isSettlementTrendEmpty(trend: BusinessMetricsTrendData): boolean {
   return trend.points.length === 0;
 }
