@@ -1,8 +1,8 @@
 /**
- * REPORTING-PERIOD-CONSISTENCY-1
- * Excel samples + KPI reconciliation across all worksheets (same scope).
+ * REPORTING-EXCEL-UX-POLISH-1
+ * Excel samples + chart embeds + KPI reconciliation across all worksheets (same scope).
  */
-import { mkdirSync, writeFileSync, existsSync } from "node:fs";
+import { mkdirSync, writeFileSync, existsSync, copyFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { buildReportingExportWorkbook } from "../excel/buildReportingExportWorkbook";
@@ -14,10 +14,12 @@ import {
 import type { RestaurantReportingExportBundle } from "../types";
 
 const EASTERN_DIGITS = /[٠-٩۰-۹]/;
-const samplesDir = join(
+const programDir = join(
   process.cwd(),
-  "docs/engineering/programs/REPORTING-PERIOD-CONSISTENCY-1/samples"
+  "docs/engineering/programs/REPORTING-EXCEL-UX-POLISH-1"
 );
+const samplesDir = join(programDir, "samples");
+const beforeDir = join(programDir, "before");
 
 function dayPoints(count: number) {
   return Array.from({ length: count }, (_, i) => {
@@ -99,7 +101,6 @@ function sampleBundle(
     points: isMonth ? dayPoints(14) : monthPoints(),
   };
 
-  const orderTotals = scopedOrderSalesFromRollup(orderSalesRollup);
   const trendTotals = scopedRevenueFromTrend(revenueTrend);
 
   return {
@@ -114,8 +115,8 @@ function sampleBundle(
         : "July 2026"
       : "2026",
     filenameStem: isMonth
-      ? `reporting-consistency-${language}-2026-07`
-      : `reporting-consistency-${language}-2026`,
+      ? `reporting-excel-ux-${language}-2026-07`
+      : `reporting-excel-ux-${language}-2026`,
     reportTitle: isMonth
       ? language === "ar"
         ? "التقرير المالي الشهري"
@@ -131,7 +132,6 @@ function sampleBundle(
       restaurantId: 1,
       from: revenueTrend.from,
       to: revenueTrend.to,
-      // Align summary Revenue with trend series for reconciliation proof
       revenue: trendTotals.revenue,
       paidCheckCount: trendTotals.paidCheckCount,
       averageCheck:
@@ -157,7 +157,6 @@ function sampleBundle(
     },
     orderSalesRollup,
     revenueTrend,
-    // stash for assertions via closure — not on type; recompute in test
   };
 }
 
@@ -175,21 +174,43 @@ function workbookTextBlob(
   return blob;
 }
 
-describe("REPORTING-PERIOD-CONSISTENCY-1 samples + reconciliation", () => {
-  it("writes monthly/yearly Excel samples and reconciles KPIs across sheets", async () => {
+function copyBeforeBaselines() {
+  const srcShots = join(
+    process.cwd(),
+    "docs/engineering/programs/REPORTING-PERIOD-CONSISTENCY-1/screenshots"
+  );
+  mkdirSync(beforeDir, { recursive: true });
+  const names = [
+    "month-cover.png",
+    "month-executive-summary.png",
+    "month-financial-summary.png",
+    "month-order-sales.png",
+    "month-revenue-trends.png",
+    "year-cover.png",
+    "year-executive-summary.png",
+    "year-financial-summary.png",
+    "year-order-sales.png",
+    "year-revenue-trends.png",
+  ];
+  for (const name of names) {
+    const from = join(srcShots, name);
+    if (existsSync(from)) copyFileSync(from, join(beforeDir, name));
+  }
+}
+
+describe("REPORTING-EXCEL-UX-POLISH-1 samples + presentation", () => {
+  it("writes polished Excel samples with charts and reconciles KPIs", async () => {
     mkdirSync(samplesDir, { recursive: true });
-    mkdirSync(
-      join(process.cwd(), "docs/engineering/programs/REPORTING-PERIOD-CONSISTENCY-1"),
-      { recursive: true }
-    );
+    mkdirSync(programDir, { recursive: true });
+    copyBeforeBaselines();
     expect(existsSync(join(process.cwd(), "client/public/mineuqr-logo.png"))).toBe(
       true
     );
 
     const reconciliation: string[] = [
-      "# KPI Reconciliation — REPORTING-PERIOD-CONSISTENCY-1",
+      "# KPI Reconciliation — REPORTING-EXCEL-UX-POLISH-1",
       "",
-      "Proof that Executive, Financial, Order Sales, and Revenue Trends share one scope.",
+      "Presentation polish only. Scope totals unchanged from PERIOD-CONSISTENCY-1.",
       "",
     ];
 
@@ -199,7 +220,6 @@ describe("REPORTING-PERIOD-CONSISTENCY-1 samples + reconciliation", () => {
         const orderTotals = scopedOrderSalesFromRollup(bundle.orderSalesRollup);
         const trendTotals = scopedRevenueFromTrend(bundle.revenueTrend);
 
-        // Platform-aligned: summary Revenue matches trend sum for this sample
         expect(bundle.business.revenue).toBe(trendTotals.revenue);
         expect(bundle.business.paidCheckCount).toBe(trendTotals.paidCheckCount);
 
@@ -209,12 +229,40 @@ describe("REPORTING-PERIOD-CONSISTENCY-1 samples + reconciliation", () => {
         const blob = workbookTextBlob(workbook);
         expect(blob).not.toMatch(EASTERN_DIGITS);
 
+        // Full-width canvas: 12 columns on every sheet
+        for (const sheet of workbook.worksheets) {
+          expect(sheet.columnCount).toBeGreaterThanOrEqual(12);
+        }
+
+        // Charts mandatory when ≥2 trend points
+        const orderSheet = workbook.getWorksheet(
+          language === "ar" ? "مبيعات الطلبات" : "Order Sales"
+        );
+        const trendSheet = workbook.getWorksheet(
+          language === "ar" ? "اتجاه الإيرادات" : "Revenue Trends"
+        );
+        expect(orderSheet).toBeTruthy();
+        expect(trendSheet).toBeTruthy();
+        expect(orderSheet!.getImages().length).toBeGreaterThanOrEqual(1);
+        expect(trendSheet!.getImages().length).toBeGreaterThanOrEqual(1);
+
+        // Western digits stored as Excel text
+        let sawTextFmt = false;
+        for (const sheet of workbook.worksheets) {
+          sheet.eachRow({ includeEmpty: false }, (row) => {
+            row.eachCell({ includeEmpty: false }, (cell) => {
+              if (cell.numFmt === "@" && typeof cell.value === "string") {
+                sawTextFmt = true;
+              }
+            });
+          });
+        }
+        expect(sawTextFmt).toBe(true);
+
         const orderSalesDisplay = formatMoneyDisplay(orderTotals.orderSales, "ر.س");
         const revenueDisplay = formatMoneyDisplay(bundle.business.revenue, "ر.س");
 
-        // Executive + Financial + Order Sales total row must show same Order Sales
         expect(blob).toContain(orderSalesDisplay);
-        // Revenue on Exec/Financial/Trend total
         expect(blob).toContain(revenueDisplay);
         const ordersFmt = new Intl.NumberFormat("en-US", {
           maximumFractionDigits: 0,
@@ -224,8 +272,6 @@ describe("REPORTING-PERIOD-CONSISTENCY-1 samples + reconciliation", () => {
         }).format(bundle.business.paidCheckCount);
         expect(blob).toContain(ordersFmt);
         expect(blob).toContain(paidFmt);
-
-        // No live-month-only signal: workbook must include selected period label
         expect(blob).toContain(bundle.periodLabel);
 
         reconciliation.push(`## ${scope.toUpperCase()} — ${bundle.periodLabel}`);
@@ -244,12 +290,9 @@ describe("REPORTING-PERIOD-CONSISTENCY-1 samples + reconciliation", () => {
         reconciliation.push(
           `| Orders | OrderSalesRollup (sum) | ${orderTotals.orderCount} | Executive, Financial, Order Sales total |`
         );
-        reconciliation.push(
-          `| Completed Orders | OrderSalesRollup (sum) | ${orderTotals.completedOrders} | Financial, Order Sales total |`
-        );
         reconciliation.push("");
         reconciliation.push(
-          `Scope invariant: all values describe **${bundle.periodLabel}** only. OrderSalesSummary.month is not used.`
+          `Scope invariant: all values describe **${bundle.periodLabel}** only. Charts embedded on Order Sales and Revenue Trends.`
         );
         reconciliation.push("");
 
@@ -262,10 +305,7 @@ describe("REPORTING-PERIOD-CONSISTENCY-1 samples + reconciliation", () => {
     }
 
     writeFileSync(
-      join(
-        process.cwd(),
-        "docs/engineering/programs/REPORTING-PERIOD-CONSISTENCY-1/KPI-RECONCILIATION.md"
-      ),
+      join(programDir, "KPI-RECONCILIATION.md"),
       reconciliation.join("\n"),
       "utf8"
     );

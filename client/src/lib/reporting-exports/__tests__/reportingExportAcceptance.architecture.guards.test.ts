@@ -28,7 +28,9 @@ describe("REPORTING-EXPORT-TEMPLATES-ACCEPTANCE-2 architecture guards", () => {
     const excel = read(
       "client/src/lib/reporting-exports/excel/buildReportingExportWorkbook.ts"
     );
-    expect(excel).toMatch(/REPORTING-PERIOD-CONSISTENCY-1|ACCEPTANCE-2/);
+    expect(excel).toMatch(
+      /REPORTING-EXCEL-UX-POLISH-1|REPORTING-PERIOD-CONSISTENCY-1|ACCEPTANCE-2/
+    );
     expect(excel).toContain("buildCoverSheet");
     expect(excel).toContain("buildExecutiveSheet");
     expect(excel).toContain("buildFinancialSheet");

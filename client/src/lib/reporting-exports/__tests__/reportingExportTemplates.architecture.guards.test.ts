@@ -29,7 +29,7 @@ describe("REPORTING-EXPORT-TEMPLATES architecture guards (superseded by ACCEPTAN
       "client/src/lib/reporting-exports/excel/buildReportingExportWorkbook.ts"
     );
     expect(excel).toMatch(
-      /REPORTING-PERIOD-CONSISTENCY-1|REPORTING-EXPORT-TEMPLATES-ACCEPTANCE-[12]/
+      /REPORTING-EXCEL-UX-POLISH-1|REPORTING-PERIOD-CONSISTENCY-1|REPORTING-EXPORT-TEMPLATES-ACCEPTANCE-[12]/
     );
     expect(excel).toContain("buildCoverSheet");
     expect(excel).toContain("writeKpiCards");
