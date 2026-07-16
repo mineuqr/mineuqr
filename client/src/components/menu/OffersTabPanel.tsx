@@ -5,6 +5,7 @@ import AddToCartButton from "@/components/AddToCartButton";
 import { OfferImagePlaceholder } from "@/components/offers/OfferImagePlaceholder";
 import { resolveOfferImageUrl } from "@/lib/offers/offerImage";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { formatLocaleDateTime } from "@/lib/numericPresentation";
 
 const OFFER_TYPE_MAP: Record<string, { label: string; icon: typeof Tag }> = {
   daily: { label: "عرض يومي", icon: Clock },
@@ -168,7 +169,7 @@ export function OffersTabPanel({
             const typeInfo = OFFER_TYPE_MAP[offer.offerType] || OFFER_TYPE_MAP.daily;
             const TypeIcon = typeInfo.icon;
             const coverUrl = resolveOfferImageUrl(offer);
-            const validityLabel = `${new Date(offer.startDate).toLocaleDateString(locale)} — ${new Date(offer.endDate).toLocaleDateString(locale)}`;
+            const validityLabel = `${formatLocaleDateTime(offer.startDate, locale)} — ${formatLocaleDateTime(offer.endDate, locale)}`;
 
             return (
               <motion.article

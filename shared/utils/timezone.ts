@@ -132,9 +132,11 @@ export function formatInRestaurantTimezone(
 ): string {
   const date = parseStoredUtcInstant(value);
   if (!date) return "";
+  // GLOBAL-NUMERIC-PRESENTATION-POLICY-1 — Western digits for all locales.
   return new Intl.DateTimeFormat(locale, {
     timeZone,
     ...options,
+    numberingSystem: "latn",
   }).format(date);
 }
 

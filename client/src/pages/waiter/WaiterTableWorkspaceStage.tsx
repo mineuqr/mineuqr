@@ -1,5 +1,6 @@
 import { Loader2 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { formatLocaleDateTime } from "@/lib/numericPresentation";
 import { screenTrpc } from "@/lib/operational-screen/screenTrpc";
 import { trpc } from "@/lib/trpc";
 
@@ -255,10 +256,10 @@ function formatDateTime(value: string, ar: boolean): string {
   );
   if (!Number.isFinite(ms)) return value;
   try {
-    return new Intl.DateTimeFormat(ar ? "ar" : "en", {
+    return formatLocaleDateTime(new Date(ms), ar ? "ar" : "en", {
       dateStyle: "short",
       timeStyle: "short",
-    }).format(new Date(ms));
+    });
   } catch {
     return value;
   }

@@ -2,52 +2,20 @@
  * Presentation formatting only — no KPI authority.
  * Currency / pricing mode come from Reporting DTO Check snapshots — never live Business Settings.
  *
- * Official MineuQR export policy: Western digits (0-9) for all numeric values
- * in Excel/PDF, regardless of UI language. Arabic labels remain Arabic.
+ * Numeric glyphs follow GLOBAL-NUMERIC-PRESENTATION-POLICY-1 (Western digits).
  */
 import { formatInRestaurantTimezone } from "@/lib/datetime";
+import { toWesternDigits } from "@shared/utils/numericPresentation";
 import type { BusinessMetricsSummaryDto } from "@shared/reporting-platform";
 import type { ReportingExportLanguage } from "./types";
 
-const EASTERN_ARABIC_DIGITS = "٠١٢٣٤٥٦٧٨٩";
-const EXTENDED_ARABIC_DIGITS = "۰۱۲۳۴۵۶۷۸۹";
-
-/**
- * Convert Eastern/Persian digits to Western 0-9.
- * Also normalizes Arabic decimal (٫) / thousands (٬) separators for export tables.
- * Leaves letters and currency symbols unchanged.
- */
-export function toWesternDigits(input: string): string {
-  let out = "";
-  for (const ch of input) {
-    const eastern = EASTERN_ARABIC_DIGITS.indexOf(ch);
-    if (eastern >= 0) {
-      out += String(eastern);
-      continue;
-    }
-    const extended = EXTENDED_ARABIC_DIGITS.indexOf(ch);
-    if (extended >= 0) {
-      out += String(extended);
-      continue;
-    }
-    if (ch === "٫") {
-      out += ".";
-      continue;
-    }
-    if (ch === "٬") {
-      out += ",";
-      continue;
-    }
-    out += ch;
-  }
-  return out;
-}
+export { toWesternDigits };
 
 export function exportDateLocale(language: ReportingExportLanguage): string {
   return language === "ar" ? "ar-SA" : "en-GB";
 }
 
-/** Localized date/time with Western digits (numberingSystem: latn). */
+/** Localized date/time with Western digits (platform numberingSystem: latn). */
 export function formatExportDateTime(
   date: Date,
   language: ReportingExportLanguage
@@ -55,7 +23,6 @@ export function formatExportDateTime(
   const formatted = formatInRestaurantTimezone(date, exportDateLocale(language), {
     dateStyle: "medium",
     timeStyle: "short",
-    numberingSystem: "latn",
   });
   return toWesternDigits(formatted);
 }

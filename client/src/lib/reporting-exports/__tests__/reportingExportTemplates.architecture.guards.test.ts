@@ -87,9 +87,11 @@ describe("REPORTING-EXPORT-TEMPLATES-1 architecture guards", () => {
     const pdf = read(
       "client/src/lib/reporting-exports/pdf/buildReportingExportPdf.ts"
     );
+    const shared = read("shared/utils/numericPresentation.ts");
     expect(format).toContain("Western digits");
-    expect(format).toContain("numberingSystem: \"latn\"");
+    expect(format).toContain("@shared/utils/numericPresentation");
     expect(format).toContain("toWesternDigits");
+    expect(shared).toContain('WESTERN_NUMBERING_SYSTEM = "latn"');
     expect(excel).toContain("toWesternDigits");
     expect(excel).toContain("formatExportDateTime");
     expect(pdf).toContain("toWesternDigits");

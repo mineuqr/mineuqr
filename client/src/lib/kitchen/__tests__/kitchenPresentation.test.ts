@@ -30,9 +30,9 @@ const line: KitchenTicketLine = {
 };
 
 describe("kitchenPresentation", () => {
-  it("converts western digits to Arabic-Indic digits", () => {
-    expect(toArabicDigits(123)).toBe("١٢٣");
-    expect(toArabicDigits(0)).toBe("٠");
+  it("keeps Western digits under GLOBAL-NUMERIC-PRESENTATION-POLICY-1", () => {
+    expect(toArabicDigits(123)).toBe("123");
+    expect(toArabicDigits(0)).toBe("0");
   });
 
   it("prefers Arabic product name in Arabic mode even when English exists", () => {
@@ -43,15 +43,15 @@ describe("kitchenPresentation", () => {
     expect(productDisplayName({ ...line, nameEn: null }, false)).toBe("تبولة");
   });
 
-  it("formats Arabic-friendly quantity line", () => {
-    expect(formatQuantityLine(line, true)).toBe("٢ × تبولة");
+  it("formats Arabic-friendly quantity line with Western digits", () => {
+    expect(formatQuantityLine(line, true)).toBe("2 × تبولة");
   });
 
-  it("formats glanceable elapsed time", () => {
+  it("formats glanceable elapsed time with Western digits", () => {
     expect(formatKitchenElapsed(5, false)).toBe("5 min ago");
-    expect(formatKitchenElapsed(5, true)).toBe("منذ ٥ دقيقة");
+    expect(formatKitchenElapsed(5, true)).toBe("منذ 5 دقيقة");
     expect(formatKitchenElapsed(90, false)).toBe("1h 30m ago");
-    expect(formatKitchenElapsed(60, true)).toBe("منذ ١ ساعة");
+    expect(formatKitchenElapsed(60, true)).toBe("منذ 1 ساعة");
   });
 
   it("derives order type and fulfillment label from projected DTO fields", () => {
@@ -103,15 +103,15 @@ describe("kitchenPresentation", () => {
 
   it("formats compact elapsed time for kitchen headers", () => {
     expect(formatKitchenElapsedCompact(12, false)).toBe("12 min");
-    expect(formatKitchenElapsedCompact(12, true)).toBe("١٢ دقيقة");
+    expect(formatKitchenElapsedCompact(12, true)).toBe("12 دقيقة");
     expect(formatKitchenElapsedCompact(90, false)).toBe("1h 30m");
-    expect(formatKitchenElapsedCompact(60, true)).toBe("١ ساعة");
-    expect(formatKitchenElapsedCompact(90, true)).toBe("١ ساعة ٣٠ دقيقة");
+    expect(formatKitchenElapsedCompact(60, true)).toBe("1 ساعة");
+    expect(formatKitchenElapsedCompact(90, true)).toBe("1 ساعة 30 دقيقة");
   });
 
   it("formats localized item overflow label", () => {
     expect(formatKitchenItemOverflow(4, false)).toBe("+4 more");
-    expect(formatKitchenItemOverflow(4, true)).toBe("+٤ أخرى");
+    expect(formatKitchenItemOverflow(4, true)).toBe("+4 أخرى");
   });
 
   it("maps kitchen status to dot, accent, and action tones", () => {

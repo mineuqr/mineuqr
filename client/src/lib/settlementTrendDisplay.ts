@@ -3,6 +3,7 @@
  * Presentation formatting only — no Revenue calculation.
  */
 import type { RouterOutputs } from "@/lib/trpc";
+import { formatLocaleDateTime } from "@/lib/numericPresentation";
 
 export type BusinessMetricsTrendData =
   RouterOutputs["reporting"]["getBusinessMetricsTrend"];
@@ -46,7 +47,7 @@ export function formatTrendPeriodLabel(
   if (grouping === "day") {
     const date = new Date(`${periodKey}T00:00:00.000Z`);
     if (Number.isNaN(date.getTime())) return periodKey;
-    return date.toLocaleDateString(isAr ? "ar-SA" : "en-US", {
+    return formatLocaleDateTime(date, isAr ? "ar-SA" : "en-US", {
       month: "short",
       day: "numeric",
       timeZone: "UTC",
@@ -58,7 +59,7 @@ export function formatTrendPeriodLabel(
     if (!year || !month) return periodKey;
     const date = new Date(Date.UTC(Number(year), Number(month) - 1, 1));
     if (Number.isNaN(date.getTime())) return periodKey;
-    return date.toLocaleDateString(isAr ? "ar-SA" : "en-US", {
+    return formatLocaleDateTime(date, isAr ? "ar-SA" : "en-US", {
       month: "short",
       year: "numeric",
       timeZone: "UTC",

@@ -1,8 +1,13 @@
 /**
  * Locale-aware currency formatting for UI and Excel exports.
  * Uses Intl + ISO currency codes; avoids hardcoded per-country strings.
+ * GLOBAL-NUMERIC-PRESENTATION-POLICY-1 — Western digits always.
  */
 import { containsArabicScript } from "@shared/utils/textScript";
+import {
+  toWesternDigits,
+  withWesternDigitsIntlOptions,
+} from "@shared/utils/numericPresentation";
 
 export type AppLanguage = "ar" | "en";
 
@@ -41,11 +46,14 @@ function intlCurrencyUnit(
   currencyDisplay: "code" | "narrowSymbol"
 ): string {
   try {
-    const parts = new Intl.NumberFormat(intlLocale(language), {
-      style: "currency",
-      currency: code,
-      currencyDisplay,
-    }).formatToParts(1);
+    const parts = new Intl.NumberFormat(
+      intlLocale(language),
+      withWesternDigitsIntlOptions({
+        style: "currency" as const,
+        currency: code,
+        currencyDisplay,
+      })
+    ).formatToParts(1);
     const unit = parts.find((p) => p.type === "currency")?.value?.trim();
     if (unit) return unit;
   } catch {
@@ -95,23 +103,33 @@ export function formatCurrencyAmount(amount: number, input: CurrencyFormatInput)
 
   if (code) {
     try {
-      return new Intl.NumberFormat(locale, {
-        style: "currency",
-        currency: code,
-        currencyDisplay: language === "en" ? "code" : "narrowSymbol",
-        minimumFractionDigits: decimals,
-        maximumFractionDigits: decimals,
-      }).format(amount);
+      return toWesternDigits(
+        new Intl.NumberFormat(
+          locale,
+          withWesternDigitsIntlOptions({
+            style: "currency",
+            currency: code,
+            currencyDisplay: language === "en" ? "code" : "narrowSymbol",
+            minimumFractionDigits: decimals,
+            maximumFractionDigits: decimals,
+          })
+        ).format(amount)
+      );
     } catch {
       /* fallback below */
     }
   }
 
   const symbol = input.currencySymbol?.trim() ?? "";
-  const number = new Intl.NumberFormat(locale, {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  }).format(amount);
+  const number = toWesternDigits(
+    new Intl.NumberFormat(
+      locale,
+      withWesternDigitsIntlOptions({
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals,
+      })
+    ).format(amount)
+  );
 
   if (!symbol) return number;
   if (language === "en" && containsArabicScript(symbol)) return number;

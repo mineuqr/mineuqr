@@ -34,6 +34,7 @@ import {
 } from "@/components/offers/OfferImageUpload";
 import { OfferImagePlaceholder } from "@/components/offers/OfferImagePlaceholder";
 import { formatRiyadhDateTime, todayYmd, convertUtcToRestaurantTime } from "@/lib/datetime";
+import { formatLocaleDateTime } from "@/lib/numericPresentation";
 import {
   buildVisibleSessionOrderCounts,
   formatDashboardSessionLabel,
@@ -2242,12 +2243,12 @@ function OffersTab({ restaurantId, currencySymbol }: { restaurantId: number; cur
                       <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1">
                           <Calendar className="w-3 h-3" />
-                          {new Date(offer.startDate).toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US')}
+                          {formatLocaleDateTime(offer.startDate, language === 'ar' ? 'ar-SA' : 'en-US')}
                         </span>
                         <span>→</span>
                         <span className="flex items-center gap-1">
                           <Calendar className="w-3 h-3" />
-                          {new Date(offer.endDate).toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US')}
+                          {formatLocaleDateTime(offer.endDate, language === 'ar' ? 'ar-SA' : 'en-US')}
                         </span>
                       </div>
                     </div>

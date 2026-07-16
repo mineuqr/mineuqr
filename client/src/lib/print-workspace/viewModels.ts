@@ -1,4 +1,5 @@
 import type { RouterOutputs } from "@/lib/trpc";
+import { formatLocaleDateTime } from "@/lib/numericPresentation";
 import { formatProjectedFulfilmentLabel } from "@/lib/order-presentation/formatProjectedFulfilment";
 import { operationalDisplayReference } from "@/lib/operational-workspace/orderDisplayIdentity";
 
@@ -110,10 +111,10 @@ export function formatUptime(ms: number | null, language: string): string {
 export function formatTimestamp(value: string | null, language: string): string {
   if (!value) return language === "ar" ? "—" : "—";
   try {
-    return new Intl.DateTimeFormat(language === "ar" ? "ar-SA" : "en-US", {
+    return formatLocaleDateTime(value, language === "ar" ? "ar-SA" : "en-US", {
       dateStyle: "short",
       timeStyle: "short",
-    }).format(new Date(value));
+    });
   } catch {
     return value;
   }

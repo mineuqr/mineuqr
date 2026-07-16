@@ -74,25 +74,21 @@ export function kitchenStatusPresentation(status: KitchenColumnId): {
   }
 }
 
-/** Kitchen fulfillment line from projected DTO fields (Arabic-Indic digits for table labels). */
+/** Kitchen fulfillment line from projected DTO fields (Western digits — platform policy). */
 export function formatKitchenFulfillmentLabel(
   source: ProjectedFulfilmentPresentationSource,
   isAr: boolean,
   tableUnit: "table" | "room" = "table"
 ): string {
-  const formatted = formatProjectedFulfilmentLabel(source, { isAr, tableUnit });
-  if (!isAr) return formatted;
-  if (source.fulfilmentAnchorType === "table") {
-    return formatted.replace(/[0-9]/g, (d) => toArabicDigits(d));
-  }
-  return formatted;
+  return formatProjectedFulfilmentLabel(source, { isAr, tableUnit });
 }
 
-const ARABIC_DIGITS = ["٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩"];
-
-/** Presentation-only: convert Western digits to Arabic-Indic digits. */
+/**
+ * @deprecated GLOBAL-NUMERIC-PRESENTATION-POLICY-1 — Western digits are mandatory.
+ * Kept as identity for any residual imports; do not convert to Eastern digits.
+ */
 export function toArabicDigits(value: number | string): string {
-  return String(value).replace(/[0-9]/g, (d) => ARABIC_DIGITS[Number(d)] ?? d);
+  return String(value);
 }
 
 /** Arabic-first product name — never prefer English when Arabic exists. */
@@ -105,37 +101,33 @@ export function productDisplayName(line: KitchenTicketLine, isAr: boolean): stri
   return en || ar || "";
 }
 
-/** Kitchen-friendly quantity line, e.g. "١ × تبولة". */
+/** Kitchen-friendly quantity line, e.g. "2 × تبولة" (Western digits). */
 export function formatQuantityLine(line: KitchenTicketLine, isAr: boolean): string {
   const name = productDisplayName(line, isAr);
-  const qty = isAr ? toArabicDigits(line.quantity) : String(line.quantity);
-  return `${qty} × ${name}`;
+  return `${line.quantity} × ${name}`;
 }
 
 /**
  * Compact elapsed time for kitchen headers — fully localized, distance-readable.
  * English: "12 min", "1h 30m" — Arabic: "12 دقيقة", "1 ساعة 30 دقيقة"
+ * Digits are always Western (GLOBAL-NUMERIC-PRESENTATION-POLICY-1).
  */
 export function formatKitchenElapsedCompact(minutes: number, isAr: boolean): string {
   const safe = Math.max(0, Math.floor(minutes));
   if (safe < 60) {
-    const value = isAr ? toArabicDigits(safe) : String(safe);
-    return isAr ? `${value} دقيقة` : `${value} min`;
+    return isAr ? `${safe} دقيقة` : `${safe} min`;
   }
   const hours = Math.floor(safe / 60);
   const rem = safe % 60;
-  const h = isAr ? toArabicDigits(hours) : String(hours);
-  const m = isAr ? toArabicDigits(rem) : String(rem);
   if (rem === 0) {
-    return isAr ? `${h} ساعة` : `${h}h`;
+    return isAr ? `${hours} ساعة` : `${hours}h`;
   }
-  return isAr ? `${h} ساعة ${m} دقيقة` : `${h}h ${m}m`;
+  return isAr ? `${hours} ساعة ${rem} دقيقة` : `${hours}h ${rem}m`;
 }
 
 /** Localized overflow label when item list is truncated. */
 export function formatKitchenItemOverflow(count: number, isAr: boolean): string {
-  const value = isAr ? toArabicDigits(count) : String(count);
-  return isAr ? `+${value} أخرى` : `+${value} more`;
+  return isAr ? `+${count} أخرى` : `+${count} more`;
 }
 
 /**
@@ -158,15 +150,12 @@ export function kitchenCardElapsedClass(sla: SlaSnapshot, baseClass: string): st
 export function formatKitchenElapsed(minutes: number, isAr: boolean): string {
   const safe = Math.max(0, Math.floor(minutes));
   if (safe < 60) {
-    const value = isAr ? toArabicDigits(safe) : String(safe);
-    return isAr ? `منذ ${value} دقيقة` : `${value} min ago`;
+    return isAr ? `منذ ${safe} دقيقة` : `${safe} min ago`;
   }
   const hours = Math.floor(safe / 60);
   const rem = safe % 60;
-  const h = isAr ? toArabicDigits(hours) : String(hours);
-  const m = isAr ? toArabicDigits(rem) : String(rem);
   if (rem === 0) {
-    return isAr ? `منذ ${h} ساعة` : `${h}h ago`;
+    return isAr ? `منذ ${hours} ساعة` : `${hours}h ago`;
   }
-  return isAr ? `منذ ${h} ساعة ${m} دقيقة` : `${h}h ${m}m ago`;
+  return isAr ? `منذ ${hours} ساعة ${rem} دقيقة` : `${hours}h ${rem}m ago`;
 }
