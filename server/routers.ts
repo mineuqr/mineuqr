@@ -107,6 +107,7 @@ import {
   listWaiterFloorTables,
 } from "./operational-device/services/WaiterTableWorkspaceService";
 import { opsRouter } from "./ops/opsRouter";
+import { reportingRouter } from "./reporting-platform";
 import { kitchenRouter } from "./kitchen/read/kitchenRouter";
 import { orderReadRouter } from "./order/read/orderReadRouter";
 import { mapOrderDisplayIdentityFields } from "./order/read/presentation/mapOrderDisplayIdentity";
@@ -2472,6 +2473,7 @@ export const appRouter = router({
   order: orderRouter,
   ordering: orderingRouter,
   ops: opsRouter,
+  reporting: reportingRouter,
   kitchen: kitchenRouter,
   printWorkspace: printWorkspaceRouter,
   operationalDevice: operationalDeviceRouter,

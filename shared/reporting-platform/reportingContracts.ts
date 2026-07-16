@@ -1,0 +1,128 @@
+/**
+ * REPORTING-PLATFORM-ARCHITECTURE-1 — Reporting DTOs / contracts.
+ *
+ * Dashboard, Reports, PDF, Excel, Mobile, and AI MUST consume these DTOs.
+ * Presentation MUST NOT calculate KPI values.
+ */
+
+import type { CurrencySnapshot, TaxPolicySnapshot } from "../operational-session";
+
+export const REPORTING_CONTRACT_VERSION = 1 as const;
+
+export type ReportingPeriodInput = Readonly<{
+  restaurantId: number;
+  /** Inclusive lower bound (ISO / MySQL datetime). */
+  from?: string;
+  /** Inclusive upper bound (ISO / MySQL datetime). */
+  to?: string;
+}>;
+
+export type ReportingTrendGrouping = "day" | "week" | "month";
+
+/** Currency context taken from Check snapshots in the period (not live settings). */
+export type ReportingCurrencyContext = Readonly<{
+  /** Dominant / first observed currency snapshot among paid checks; null if none. */
+  currencySnapshot: CurrencySnapshot | null;
+}>;
+
+export type BusinessMetricsSummaryDto = Readonly<{
+  contractVersion: typeof REPORTING_CONTRACT_VERSION;
+  contractId: "BusinessMetricsSummary";
+  generatedAt: string;
+  restaurantId: number;
+  from: string | null;
+  to: string | null;
+  /** Official Revenue = SUM(paid Check grandTotal). */
+  revenue: string;
+  paidCheckCount: number;
+  averageCheck: string;
+  taxCollected: string;
+  complimentaryCount: number;
+  complimentaryAmount: string;
+  voidedCount: number;
+  currency: ReportingCurrencyContext;
+  /**
+   * Sample Tax Policy Snapshot from a paid Check in-range (immutable).
+   * Never live Business Settings.
+   */
+  sampleTaxPolicySnapshot: TaxPolicySnapshot | null;
+}>;
+
+export type BusinessMetricsTrendPointDto = Readonly<{
+  periodKey: string;
+  periodStart: string;
+  revenue: string;
+  paidCheckCount: number;
+  complimentaryCount: number;
+  voidedCount: number;
+  taxCollected: string;
+}>;
+
+export type BusinessMetricsTrendDto = Readonly<{
+  contractVersion: typeof REPORTING_CONTRACT_VERSION;
+  contractId: "BusinessMetricsTrend";
+  generatedAt: string;
+  restaurantId: number;
+  grouping: ReportingTrendGrouping;
+  from: string | null;
+  to: string | null;
+  points: readonly BusinessMetricsTrendPointDto[];
+}>;
+
+export type OperationalMetricsSnapshotDto = Readonly<{
+  contractVersion: typeof REPORTING_CONTRACT_VERSION;
+  contractId: "OperationalMetricsSnapshot";
+  generatedAt: string;
+  restaurantId: number;
+  activeSessions: number;
+  occupiedTables: number;
+  pendingOrders: number;
+  /** Kitchen load = pending + preparing + ready when P-06 available; else pendingOrders. */
+  kitchenLoad: number;
+  activeOrders: number | null;
+  preparingOrders: number | null;
+  readyOrders: number | null;
+}>;
+
+export type OrderSalesPeriodDto = Readonly<{
+  totalOrders: number;
+  completedOrders: number;
+  /** Completed order sales — NOT Revenue. */
+  orderSales: string;
+  averageOrder: string;
+}>;
+
+export type OrderSalesSummaryDto = Readonly<{
+  contractVersion: typeof REPORTING_CONTRACT_VERSION;
+  contractId: "OrderSalesSummary";
+  generatedAt: string;
+  restaurantId: number;
+  today: OrderSalesPeriodDto;
+  month: OrderSalesPeriodDto;
+}>;
+
+export type OrderSalesRollupPeriodDto = Readonly<{
+  periodKey: string;
+  orderCount: number;
+  completedOrders: number;
+  orderSales: string;
+}>;
+
+export type OrderSalesRollupDto = Readonly<{
+  contractVersion: typeof REPORTING_CONTRACT_VERSION;
+  contractId: "OrderSalesRollup";
+  generatedAt: string;
+  restaurantId: number;
+  granularity: "day" | "month";
+  periods: readonly OrderSalesRollupPeriodDto[];
+}>;
+
+export type CatalogStatsSummaryDto = Readonly<{
+  contractVersion: typeof REPORTING_CONTRACT_VERSION;
+  contractId: "CatalogStatsSummary";
+  generatedAt: string;
+  restaurantId: number;
+  categoryCount: number;
+  itemCount: number;
+  menuVisits: number;
+}>;
