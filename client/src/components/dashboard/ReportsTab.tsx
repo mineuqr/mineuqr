@@ -48,6 +48,7 @@ import { toast } from "sonner";
 export function ReportsTab({
   restaurantId,
   restaurantName,
+  logoUrl,
   currencySymbol,
   currencyCode,
   t,
@@ -56,6 +57,7 @@ export function ReportsTab({
 }: {
   restaurantId: number;
   restaurantName?: string;
+  logoUrl?: string | null;
   currencySymbol?: string;
   currencyCode?: string;
   t: (key: string) => string;
@@ -200,6 +202,9 @@ export function ReportsTab({
           : `Year ${reportYear}`;
     return {
       restaurantName: restaurantName?.trim() || "",
+      logoUrl: logoUrl ?? null,
+      reportTitle:
+        language === "ar" ? "تقرير الأداء التجاري" : "Business Performance Report",
       language: language === "ar" ? "ar" : "en",
       scope,
       periodLabel,

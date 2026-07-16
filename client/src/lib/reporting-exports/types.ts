@@ -1,5 +1,5 @@
 /**
- * REPORTING-EXPORTS-1 — Presentation export bundle.
+ * REPORTING-EXPORTS-1 / REPORTING-EXPORT-TEMPLATES-1 — Presentation export bundle.
  * Assembled exclusively from reporting.* DTOs. Renderers must not invent KPIs.
  */
 import type {
@@ -17,6 +17,10 @@ export type ReportingExportScope = "month" | "year";
 
 export type RestaurantReportingExportBundle = Readonly<{
   restaurantName: string;
+  /** Optional restaurant logo URL for branded cover headers. */
+  logoUrl?: string | null;
+  /** Report title override; defaults to localized Business Performance Report. */
+  reportTitle?: string;
   language: ReportingExportLanguage;
   scope: ReportingExportScope;
   /** Human period label (presentation only). */

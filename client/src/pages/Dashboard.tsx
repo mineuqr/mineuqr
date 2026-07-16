@@ -1073,6 +1073,7 @@ function RestaurantDetail({
               : (restaurant as { nameEn?: string })?.nameEn ||
                 (restaurant as { nameAr?: string })?.nameAr
           }
+          logoUrl={(restaurant as { logoUrl?: string | null })?.logoUrl}
           currencySymbol={(restaurant as { currencySymbol?: string })?.currencySymbol}
           currencyCode={(restaurant as { currencyCode?: string })?.currencyCode}
           t={t}

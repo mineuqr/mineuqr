@@ -9,8 +9,10 @@ export {
   resolveExportCurrency,
   formatPricingMode,
   formatMoneyDisplay,
+  formatTaxPolicySummary,
 } from "./format";
 export { reportingExportLabels } from "./labels";
+export { fetchRestaurantLogoAsset } from "./branding";
 export { buildReportingExportWorkbook } from "./excel/buildReportingExportWorkbook";
 export {
   buildReportingExportPdfBytes,
