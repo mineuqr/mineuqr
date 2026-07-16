@@ -25,8 +25,6 @@ import {
   isRtl,
   reportAlignment,
   solidFill,
-  totalsFont,
-  totalsRowBorder,
   type ReportLanguage,
 } from "./reportTheme";
 
@@ -132,47 +130,10 @@ function applyDataRow(
   row.height = REPORT_ROW_HEIGHTS.data;
 }
 
-function applyTotalsRow(
-  sheet: ExcelJS.Worksheet,
-  rowIndex: number,
-  totalsLabel: string,
-  totalOrders: number,
-  totalSales: number,
-  language: ReportLanguage,
-  currency: CurrencyFormatInput
-) {
-  const row = sheet.getRow(rowIndex);
-  const fill = solidFill(REPORT_THEME.totalsBg);
-  const font = totalsFont(language);
-  const border = totalsRowBorder();
-  const labelAlign = isRtl(language) ? "right" : "left";
-
-  const c1 = row.getCell(1);
-  c1.value = totalsLabel;
-  c1.font = font;
-  c1.fill = fill;
-  c1.alignment = reportAlignment(language, labelAlign, 1);
-  c1.border = border;
-
-  const c2 = row.getCell(2);
-  c2.value = totalOrders;
-  c2.numFmt = "#,##0";
-  c2.font = font;
-  c2.fill = fill;
-  c2.alignment = reportAlignment(language, "center");
-  c2.border = border;
-
-  const c3 = row.getCell(3);
-  c3.value = totalSales;
-  c3.numFmt = buildExcelCurrencyNumFmt(currency);
-  c3.font = font;
-  c3.fill = fill;
-  c3.alignment = reportAlignment(language, "center");
-  c3.border = border;
-
-  row.height = REPORT_ROW_HEIGHTS.totals;
-}
-
+/**
+ * @deprecated REPORTING-EXPORTS-1 — use `@/lib/reporting-exports` downloadReportingExportXlsx.
+ * Legacy single-sheet Order Sales table. Must not be used for Dashboard KPI exports.
+ */
 export async function buildSalesReportWorkbook(config: SalesReportExportConfig): Promise<ExcelJS.Workbook> {
   const {
     language,
@@ -181,7 +142,6 @@ export async function buildSalesReportWorkbook(config: SalesReportExportConfig):
     reportSubtitle,
     columnHeaders,
     rows,
-    totalsLabel,
     restaurantName,
     generatedAt = new Date(),
   } = config;
@@ -213,12 +173,10 @@ export async function buildSalesReportWorkbook(config: SalesReportExportConfig):
     applyDataRow(sheet, layout.dataStartRow + index, row, language, currency, index % 2 === 1);
   });
 
-  const totalOrders = rows.reduce((sum, r) => sum + r.orderCount, 0);
-  const totalSales = rows.reduce((sum, r) => sum + r.totalSales, 0);
-  const totalsRowIndex = layout.dataStartRow + rows.length;
-  applyTotalsRow(sheet, totalsRowIndex, totalsLabel, totalOrders, totalSales, language, currency);
+  // REPORTING-EXPORTS-1 — no client KPI aggregation / totals row.
+  const lastDataRow = layout.dataStartRow + Math.max(rows.length, 1) - 1;
 
-  applyTableColumnWidths(sheet, layout, totalsRowIndex);
+  applyTableColumnWidths(sheet, layout, lastDataRow);
   applyWorksheetUx(sheet, language, layout);
 
   return workbook;

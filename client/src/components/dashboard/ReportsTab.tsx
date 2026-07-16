@@ -7,9 +7,20 @@ import { restaurantDash } from "@/components/dashboard/restaurantDashStyles";
 import { RestaurantKpiCard } from "@/components/dashboard/RestaurantKpiCard";
 import { VerificationRequiredPanel } from "@/components/auth/VerificationRequiredPanel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { downloadSalesReportXlsx } from "@/lib/excel";
+import {
+  downloadReportingExportPdf,
+  downloadReportingExportXlsx,
+  monthReportingRange,
+  resolveExportCurrency,
+  yearReportingRange,
+  type RestaurantReportingExportBundle,
+  type ReportingExportScope,
+} from "@/lib/reporting-exports";
 import {
   DASHBOARD_ORDER_LIST_POLL_MS,
+  reportingBusinessSummaryQueryOptions,
+  reportingBusinessTrendQueryOptions,
+  reportingOperationalSnapshotQueryOptions,
   reportingOrderSalesQueryOptions,
   restaurantQueriesEnabled,
   useDevQueryRuntimeLog,
@@ -28,10 +39,11 @@ import {
   UtensilsCrossed,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 
 /**
- * REPORTING-DASHBOARD-ADOPTION-1 — Reports & Statistics presentation.
- * All KPIs / charts / Excel rows come from reporting.* DTOs.
+ * REPORTING-EXPORTS-1 — Reports presentation + Excel/PDF renderers.
+ * All KPIs come from reporting.* DTOs. Exports never calculate business values.
  */
 export function ReportsTab({
   restaurantId,
@@ -50,7 +62,7 @@ export function ReportsTab({
   language: string;
   statsAriaLabel: string;
 }) {
-  const sym = currencySymbol || "ر.س";
+  const fallbackSym = currencySymbol || "ر.س";
   const now = new Date();
   const [reportYear, setReportYear] = useState(now.getUTCFullYear());
   const [reportMonth, setReportMonth] = useState(now.getUTCMonth() + 1);
@@ -66,6 +78,12 @@ export function ReportsTab({
   const uiLang = language === "ar" ? "ar" : "en";
   const enabled = restaurantQueriesEnabled(authPending, isAuthenticated, restaurantId);
 
+  const monthRange = useMemo(
+    () => monthReportingRange(reportYear, reportMonth),
+    [reportYear, reportMonth]
+  );
+  const yearRange = useMemo(() => yearReportingRange(reportYear), [reportYear]);
+
   useDevQueryRuntimeLog("reporting.getCatalogStatsSummary", {
     enabled,
     authPending,
@@ -78,6 +96,16 @@ export function ReportsTab({
     pollMs: enabled ? DASHBOARD_ORDER_LIST_POLL_MS : undefined,
   });
   useDevQueryRuntimeLog("reporting.getOrderSalesRollup", {
+    enabled,
+    authPending,
+    isAuthenticated,
+  });
+  useDevQueryRuntimeLog("reporting.getBusinessMetricsSummary (exports)", {
+    enabled,
+    authPending,
+    isAuthenticated,
+  });
+  useDevQueryRuntimeLog("reporting.getOperationalMetricsSnapshot (exports)", {
     enabled,
     authPending,
     isAuthenticated,
@@ -115,72 +143,97 @@ export function ReportsTab({
     { enabled }
   );
 
+  const { data: businessMonth } = trpc.reporting.getBusinessMetricsSummary.useQuery(
+    { restaurantId, from: monthRange.from, to: monthRange.to },
+    reportingBusinessSummaryQueryOptions(enabled)
+  );
+
+  const { data: businessYear } = trpc.reporting.getBusinessMetricsSummary.useQuery(
+    { restaurantId, from: yearRange.from, to: yearRange.to },
+    reportingBusinessSummaryQueryOptions(enabled)
+  );
+
+  const { data: revenueTrendMonth } = trpc.reporting.getBusinessMetricsTrend.useQuery(
+    {
+      restaurantId,
+      from: monthRange.from,
+      to: monthRange.to,
+      grouping: "day",
+    },
+    reportingBusinessTrendQueryOptions(enabled)
+  );
+
+  const { data: revenueTrendYear } = trpc.reporting.getBusinessMetricsTrend.useQuery(
+    {
+      restaurantId,
+      from: yearRange.from,
+      to: yearRange.to,
+      grouping: "month",
+    },
+    reportingBusinessTrendQueryOptions(enabled)
+  );
+
+  const { data: operational } = trpc.reporting.getOperationalMetricsSnapshot.useQuery(
+    { restaurantId },
+    reportingOperationalSnapshotQueryOptions(enabled)
+  );
+
   const ordersBlocked = isEmailNotVerifiedError(orderSalesError);
 
-  const monthlyReport = useMemo(
-    () =>
-      (monthlyRollup?.periods ?? []).map((p) => ({
-        day: Number(p.periodKey.slice(-2)),
-        count: p.orderCount,
-        totalSales: Number.parseFloat(p.orderSales) || 0,
-      })),
-    [monthlyRollup]
-  );
+  const sym = resolveExportCurrency(businessMonth, fallbackSym, currencyCode)
+    .currencySymbol;
 
-  const yearlySummary = useMemo(
-    () =>
-      (yearlyRollup?.periods ?? []).map((p) => ({
-        month: Number(p.periodKey.slice(5, 7)),
-        count: p.orderCount,
-        totalSales: Number.parseFloat(p.orderSales) || 0,
-      })),
-    [yearlyRollup]
-  );
-
-  const exportMonthlyExcel = () => {
-    const isAr = language === "ar";
-    void downloadSalesReportXlsx({
-      language: isAr ? "ar" : "en",
-      filename: `monthly-report-${reportYear}-${reportMonth}`,
-      sheetName: isAr ? "تقرير شهري" : "Monthly Report",
-      reportTitle: isAr ? "تقرير شهري" : "Monthly Report",
-      reportSubtitle: `${monthNames[reportMonth - 1]} ${reportYear}`,
-      columnHeaders: isAr
-        ? ["اليوم", "عدد الطلبات", "مبيعات الطلبات"]
-        : ["Day", "Orders", "Order Sales"],
-      rows: monthlyReport.map((row) => ({
-        label: isAr ? `يوم ${row.day}` : `Day ${row.day}`,
-        orderCount: row.count,
-        totalSales: row.totalSales,
-      })),
-      currencySymbol: sym,
-      currencyCode,
-      totalsLabel: isAr ? "الإجمالي" : "Total",
-      restaurantName,
-    });
+  const buildBundle = (
+    scope: ReportingExportScope
+  ): RestaurantReportingExportBundle | null => {
+    const business = scope === "month" ? businessMonth : businessYear;
+    const orderSalesRollup = scope === "month" ? monthlyRollup : yearlyRollup;
+    const revenueTrend = scope === "month" ? revenueTrendMonth : revenueTrendYear;
+    if (!business || !orderSales || !operational || !catalog || !orderSalesRollup || !revenueTrend) {
+      return null;
+    }
+    const periodLabel =
+      scope === "month"
+        ? `${monthNames[reportMonth - 1]} ${reportYear}`
+        : language === "ar"
+          ? `السنة ${reportYear}`
+          : `Year ${reportYear}`;
+    return {
+      restaurantName: restaurantName?.trim() || "",
+      language: language === "ar" ? "ar" : "en",
+      scope,
+      periodLabel,
+      filenameStem:
+        scope === "month"
+          ? `reporting-${reportYear}-${String(reportMonth).padStart(2, "0")}`
+          : `reporting-${reportYear}`,
+      business,
+      orderSales,
+      operational,
+      catalog,
+      orderSalesRollup,
+      revenueTrend,
+    };
   };
 
-  const exportYearlyExcel = () => {
-    const isAr = language === "ar";
-    void downloadSalesReportXlsx({
-      language: isAr ? "ar" : "en",
-      filename: `yearly-summary-${reportYear}`,
-      sheetName: isAr ? "ملخص سنوي" : "Yearly Summary",
-      reportTitle: isAr ? "ملخص سنوي" : "Yearly Summary",
-      reportSubtitle: isAr ? `السنة ${reportYear}` : `Year ${reportYear}`,
-      columnHeaders: isAr
-        ? ["الشهر", "عدد الطلبات", "مبيعات الطلبات"]
-        : ["Month", "Orders", "Order Sales"],
-      rows: yearlySummary.map((row) => ({
-        label: monthNames[(row.month || 1) - 1],
-        orderCount: row.count,
-        totalSales: row.totalSales,
-      })),
-      currencySymbol: sym,
-      currencyCode,
-      totalsLabel: isAr ? "الإجمالي" : "Total",
-      restaurantName,
-    });
+  const exportScope = async (
+    scope: ReportingExportScope,
+    format: "xlsx" | "pdf"
+  ) => {
+    const bundle = buildBundle(scope);
+    if (!bundle) {
+      toast.error(
+        language === "ar"
+          ? "تعذر التصدير — انتظر اكتمال بيانات التقارير."
+          : "Export unavailable — wait for reporting data to load."
+      );
+      return;
+    }
+    if (format === "xlsx") {
+      await downloadReportingExportXlsx(bundle, fallbackSym, currencyCode);
+    } else {
+      downloadReportingExportPdf(bundle, fallbackSym, currencyCode);
+    }
   };
 
   return (
@@ -302,7 +355,7 @@ export function ReportsTab({
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={exportMonthlyExcel}
+                    onClick={() => void exportScope("month", "xlsx")}
                     className="rounded border border-green-500/30 bg-green-500/10 px-2 py-1 text-xs text-green-400 hover:bg-green-500/20"
                   >
                     Excel
@@ -311,6 +364,13 @@ export function ReportsTab({
                         ({uiLang === "ar" ? "ترقية" : "upgrade"})
                       </span>
                     )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void exportScope("month", "pdf")}
+                    className="rounded border border-sky-500/30 bg-sky-500/10 px-2 py-1 text-xs text-sky-300 hover:bg-sky-500/20"
+                  >
+                    PDF
                   </button>
                   <select
                     value={reportMonth}
@@ -338,22 +398,20 @@ export function ReportsTab({
               </div>
             </CardHeader>
             <CardContent className="pt-0">
-              {monthlyReport.length === 0 ? (
+              {(monthlyRollup?.periods.length ?? 0) === 0 ? (
                 <p className="py-8 text-center text-sm text-muted-foreground">
                   {language === "ar" ? "لا توجد بيانات" : "No data"}
                 </p>
               ) : (
                 <div className="max-h-64 space-y-1.5 overflow-y-auto">
-                  {monthlyReport.map((row) => (
+                  {monthlyRollup?.periods.map((row) => (
                     <div
-                      key={row.day}
+                      key={row.periodKey}
                       className="flex justify-between rounded-lg bg-muted/10 p-2.5 text-sm"
                     >
-                      <span>
-                        {language === "ar" ? `يوم ${row.day}` : `Day ${row.day}`}
-                      </span>
+                      <span>{row.periodKey}</span>
                       <span className="tabular-nums">
-                        {row.count} · {row.totalSales.toFixed(2)} {sym}
+                        {row.orderCount} · {row.orderSales} {sym}
                       </span>
                     </div>
                   ))}
@@ -371,7 +429,7 @@ export function ReportsTab({
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={exportYearlyExcel}
+                    onClick={() => void exportScope("year", "xlsx")}
                     className="rounded border border-green-500/30 bg-green-500/10 px-2 py-1 text-xs text-green-400 hover:bg-green-500/20"
                   >
                     Excel
@@ -381,27 +439,32 @@ export function ReportsTab({
                       </span>
                     )}
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => void exportScope("year", "pdf")}
+                    className="rounded border border-sky-500/30 bg-sky-500/10 px-2 py-1 text-xs text-sky-300 hover:bg-sky-500/20"
+                  >
+                    PDF
+                  </button>
                   <span className="text-sm text-muted-foreground">{reportYear}</span>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="pt-0">
-              {yearlySummary.length === 0 ? (
+              {(yearlyRollup?.periods.length ?? 0) === 0 ? (
                 <p className="py-8 text-center text-sm text-muted-foreground">
                   {language === "ar" ? "لا توجد بيانات" : "No data"}
                 </p>
               ) : (
                 <div className="space-y-2">
-                  {yearlySummary.map((row) => (
+                  {yearlyRollup?.periods.map((row) => (
                     <div
-                      key={row.month}
+                      key={row.periodKey}
                       className="flex justify-between rounded-lg bg-muted/10 p-3"
                     >
-                      <span className="font-medium">
-                        {monthNames[(row.month || 1) - 1]}
-                      </span>
+                      <span className="font-medium">{row.periodKey}</span>
                       <span className="tabular-nums text-sm">
-                        {row.totalSales.toFixed(2)} {sym} · {row.count}
+                        {row.orderSales} {sym} · {row.orderCount}
                       </span>
                     </div>
                   ))}

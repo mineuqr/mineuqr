@@ -1,0 +1,140 @@
+import { describe, expect, it } from "vitest";
+import { buildReportingExportPdfBytes } from "../pdf/buildReportingExportPdf";
+import { monthReportingRange, yearReportingRange } from "../periodRange";
+import { resolveExportCurrency } from "../format";
+import type { RestaurantReportingExportBundle } from "../types";
+
+function sampleBundle(): RestaurantReportingExportBundle {
+  return {
+    restaurantName: "Demo Cafe",
+    language: "en",
+    scope: "month",
+    periodLabel: "July 2026",
+    filenameStem: "reporting-2026-07",
+    business: {
+      contractVersion: 1,
+      contractId: "BusinessMetricsSummary",
+      generatedAt: "2026-07-16T00:00:00.000Z",
+      restaurantId: 1,
+      from: "2026-07-01 00:00:00",
+      to: "2026-07-31 23:59:59",
+      revenue: "100.00",
+      paidCheckCount: 4,
+      averageCheck: "25.00",
+      taxCollected: "15.00",
+      complimentaryCount: 1,
+      complimentaryAmount: "10.00",
+      voidedCount: 0,
+      currency: {
+        currencySnapshot: { currencyCode: "SAR", currencySymbol: "ر.س" },
+      },
+      sampleTaxPolicySnapshot: {
+        version: 1,
+        enabled: true,
+        mode: "inclusive",
+        components: [{ id: "vat", name: "VAT", ratePercent: "15" }],
+      },
+    },
+    orderSales: {
+      contractVersion: 1,
+      contractId: "OrderSalesSummary",
+      generatedAt: "2026-07-16T00:00:00.000Z",
+      restaurantId: 1,
+      today: {
+        totalOrders: 2,
+        completedOrders: 2,
+        orderSales: "40.00",
+        averageOrder: "20.00",
+      },
+      month: {
+        totalOrders: 10,
+        completedOrders: 9,
+        orderSales: "200.00",
+        averageOrder: "22.22",
+      },
+    },
+    operational: {
+      contractVersion: 1,
+      contractId: "OperationalMetricsSnapshot",
+      generatedAt: "2026-07-16T00:00:00.000Z",
+      restaurantId: 1,
+      activeSessions: 3,
+      occupiedTables: 2,
+      pendingOrders: 1,
+      kitchenLoad: 4,
+      activeOrders: 4,
+      preparingOrders: 2,
+      readyOrders: 1,
+    },
+    catalog: {
+      contractVersion: 1,
+      contractId: "CatalogStatsSummary",
+      generatedAt: "2026-07-16T00:00:00.000Z",
+      restaurantId: 1,
+      categoryCount: 5,
+      itemCount: 20,
+      menuVisits: 100,
+    },
+    orderSalesRollup: {
+      contractVersion: 1,
+      contractId: "OrderSalesRollup",
+      generatedAt: "2026-07-16T00:00:00.000Z",
+      restaurantId: 1,
+      granularity: "day",
+      periods: [
+        {
+          periodKey: "2026-07-01",
+          orderCount: 2,
+          completedOrders: 2,
+          orderSales: "40.00",
+        },
+      ],
+    },
+    revenueTrend: {
+      contractVersion: 1,
+      contractId: "BusinessMetricsTrend",
+      generatedAt: "2026-07-16T00:00:00.000Z",
+      restaurantId: 1,
+      grouping: "day",
+      from: "2026-07-01 00:00:00",
+      to: "2026-07-31 23:59:59",
+      points: [
+        {
+          periodKey: "2026-07-01",
+          periodStart: "2026-07-01T00:00:00.000Z",
+          revenue: "50.00",
+          paidCheckCount: 2,
+          complimentaryCount: 0,
+          voidedCount: 0,
+          taxCollected: "7.50",
+        },
+      ],
+    },
+  };
+}
+
+describe("REPORTING-EXPORTS-1 helpers", () => {
+  it("builds month and year reporting ranges", () => {
+    expect(monthReportingRange(2026, 2)).toEqual({
+      from: "2026-02-01 00:00:00",
+      to: "2026-02-28 23:59:59",
+    });
+    expect(yearReportingRange(2026).from).toBe("2026-01-01 00:00:00");
+  });
+
+  it("resolves currency from Check snapshot in Business Metrics DTO", () => {
+    const currency = resolveExportCurrency(sampleBundle().business, "$", "USD");
+    expect(currency.currencyCode).toBe("SAR");
+    expect(currency.currencySymbol).toBe("ر.س");
+  });
+
+  it("renders PDF bytes containing Reporting DTO Revenue verbatim", () => {
+    const bytes = buildReportingExportPdfBytes(sampleBundle(), "ر.س", "SAR");
+    const text = new TextDecoder().decode(bytes);
+    expect(text.startsWith("%PDF")).toBe(true);
+    expect(text).toContain("100.00");
+    expect(text).toContain("Revenue");
+    expect(text).toContain("Tax Collected");
+    expect(text).not.toContain("ops.getSettlement");
+  });
+});
