@@ -23,17 +23,16 @@ function listFiles(dirRel: string): string[] {
   return out;
 }
 
-describe("REPORTING-EXPORT-TEMPLATES-1 architecture guards", () => {
+describe("REPORTING-EXPORT-TEMPLATES architecture guards (superseded by ACCEPTANCE-2)", () => {
   it("enterprise Excel template includes cover, KPI cards, print setup, charts", () => {
     const excel = read(
       "client/src/lib/reporting-exports/excel/buildReportingExportWorkbook.ts"
     );
-    expect(excel).toMatch(/REPORTING-EXPORT-TEMPLATES-(ACCEPTANCE-)?1/);
+    expect(excel).toMatch(/REPORTING-EXPORT-TEMPLATES-ACCEPTANCE-[12]/);
     expect(excel).toContain("buildCoverSheet");
     expect(excel).toContain("writeKpiCards");
     expect(excel).toContain("applyPrintSetup");
     expect(excel).toContain("maybeAddChartImage");
-    expect(excel).toContain("catalogPlaceholderBody");
     expect(excel).toContain("Does not calculate Revenue");
     expect(excel).not.toMatch(/\.reduce\s*\(/);
   });
@@ -42,14 +41,14 @@ describe("REPORTING-EXPORT-TEMPLATES-1 architecture guards", () => {
     const pdf = read(
       "client/src/lib/reporting-exports/pdf/buildReportingExportPdf.ts"
     );
-    expect(pdf).toMatch(/REPORTING-EXPORT-TEMPLATES-(ACCEPTANCE-)?1/);
+    expect(pdf).toMatch(/REPORTING-EXPORT-TEMPLATES-ACCEPTANCE-[12]/);
     expect(pdf).toContain("kpiCards");
     expect(pdf).toContain("generatedBy");
     expect(pdf).toContain("Does not calculate Revenue");
     expect(pdf).not.toMatch(/\.reduce\s*\(/);
   });
 
-  it("branding is restaurant-driven (logoUrl) — no hardcoded restaurant identity", () => {
+  it("branding is restaurant-driven (logoUrl) with MineuQR image fallback", () => {
     const branding = read("client/src/lib/reporting-exports/branding.ts");
     const types = read("client/src/lib/reporting-exports/types.ts");
     const reports = read("client/src/components/dashboard/ReportsTab.tsx");
@@ -75,7 +74,7 @@ describe("REPORTING-EXPORT-TEMPLATES-1 architecture guards", () => {
     const routers = read("server/routers.ts");
     expect(contracts).toContain("BusinessMetricsSummary");
     expect(routers).toContain("reporting: reportingRouter");
-    expect(contracts).not.toContain("REPORTING-EXPORT-TEMPLATES-1");
+    expect(contracts).not.toContain("REPORTING-EXPORT-TEMPLATES-ACCEPTANCE-2");
   });
 
   it("enforces Western digits export policy in format helpers and templates", () => {

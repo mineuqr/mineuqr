@@ -1,5 +1,5 @@
 /**
- * REPORTING-EXPORT-TEMPLATES-ACCEPTANCE-1 — Executive PDF presentation.
+ * REPORTING-EXPORT-TEMPLATES-ACCEPTANCE-2 — Executive Financial Report (PDF).
  * Uses pdfkit + Cairo for Arabic typography.
  * Presentation only. Does not calculate Revenue or other KPIs.
  */
@@ -7,7 +7,6 @@ import { resolveExportLogoAsset } from "../branding";
 import {
   formatExportDateTime,
   formatMoneyDisplay,
-  formatNullableCount,
   formatPricingMode,
   formatTaxPolicySummary,
   parseDtoAmountForDisplay,
@@ -15,11 +14,25 @@ import {
   toWesternDigits,
 } from "../format";
 import { reportingExportLabels } from "../labels";
+import {
+  formatReportScopeLabel,
+  formatTrendAxisLabel,
+  hasRenderableTrend,
+} from "../periodPresentation";
 import type { RestaurantReportingExportBundle } from "../types";
 import { preparePdfText } from "./arabicPdfText";
 import { loadExportFontBytes } from "./loadExportFont";
 
 type PdfKitConstructor = typeof import("pdfkit").default;
+
+const NAVY = "#0B1F33";
+const NAVY_MID = "#16324F";
+const GOLD = "#B8943F";
+const GOLD_SOFT = "#F7F1E1";
+const INK = "#0F172A";
+const SLATE = "#475569";
+const MIST = "#F1F5F9";
+const LINE = "#D6DEE8";
 
 function formatWesternCount(value: number): string {
   return toWesternDigits(
@@ -59,12 +72,15 @@ async function renderPdfDocument(
     toWesternDigits(formatMoneyDisplay(amount, currencySymbol));
   const biz = bundle.business;
   const sales = bundle.orderSales;
-  const ops = bundle.operational;
-  const catalog = bundle.catalog;
-  const reportTitle = bundle.reportTitle?.trim() || labels.reportTitleDefault;
+  const reportTitle =
+    bundle.reportTitle?.trim() ||
+    (bundle.scope === "month"
+      ? labels.reportTitleMonthly
+      : labels.reportTitleAnnual);
   const businessName = (bundle.businessName || bundle.restaurantName || "").trim();
   const generated = formatExportDateTime(new Date(), bundle.language);
   const periodLabel = toWesternDigits(bundle.periodLabel);
+  const scopeLabel = formatReportScopeLabel(bundle.scope, bundle.language);
 
   const doc = new PDFDocument({
     size: "A4",
@@ -93,8 +109,6 @@ async function renderPdfDocument(
 
   const pageWidth = doc.page.width;
   const contentWidth = pageWidth - 96;
-  /** pdfkit draws LTR; Arabic strings are reshaped + visually reordered, then left-aligned. */
-  const pdfAlign = "left" as const;
   const T = (value: string) => preparePdfText(toWesternDigits(value), isAr);
   const text = (
     value: string,
@@ -102,58 +116,75 @@ async function renderPdfDocument(
     y: number,
     options?: { width?: number; lineBreak?: boolean }
   ) => {
-    doc.text(T(value), x, y, { ...options, align: pdfAlign });
+    doc.text(T(value), x, y, { ...options, align: "left" });
   };
 
-  // Cover — full-bleed brand plane + identity block
-  doc.rect(0, 0, pageWidth, 110).fill("#0F766E");
-  doc.rect(0, 110, pageWidth, 8).fill("#0D9488");
+  // ── Cover ──────────────────────────────────────────────
+  doc.rect(0, 0, pageWidth, 36).fill(NAVY);
+  doc.fillColor(GOLD).font(fontBold).fontSize(9);
+  text(labels.brand.toUpperCase(), 48, 12, { width: contentWidth });
+
+  let y = 72;
   if (logo) {
     try {
-      const logoX = isAr ? pageWidth - 48 - 72 : 48;
-      doc.roundedRect(logoX - 4, 19, 80, 80, 6).fill("#FFFFFF");
-      doc.image(Buffer.from(logo.buffer), logoX, 23, {
-        width: 72,
-        height: 72,
-        fit: [72, 72],
+      const logoX = (pageWidth - 96) / 2;
+      doc.roundedRect(logoX - 6, y - 6, 108, 108, 8).fill("#FFFFFF");
+      doc.image(Buffer.from(logo.buffer), logoX, y, {
+        width: 96,
+        height: 96,
+        fit: [96, 96],
       });
     } catch {
-      /* logo optional */
+      /* optional */
     }
   }
-  const coverTextX = isAr ? 48 : 140;
-  const coverTextW = contentWidth - 92;
-  doc.fillColor("#FFFFFF").font(fontBold).fontSize(22);
-  text(bundle.restaurantName || "—", coverTextX, 28, { width: coverTextW });
-  doc.font(font).fontSize(11).fillColor("#CCFBF1");
-  text(`${labels.businessName}: ${businessName || "—"}`, coverTextX, 56, {
-    width: coverTextW,
-  });
-  doc.font(fontBold).fontSize(13).fillColor("#FFFFFF");
-  text(reportTitle, coverTextX, 78, { width: coverTextW });
+  y = 200;
 
-  let y = 136;
-  doc.font(font).fontSize(10).fillColor("#64748B");
+  doc.fillColor(NAVY).font(fontBold).fontSize(26);
+  text(bundle.restaurantName || "—", 48, y, { width: contentWidth });
+  y = doc.y + 8;
+  doc.fillColor(SLATE).font(font).fontSize(12);
+  text(businessName || "—", 48, y, { width: contentWidth });
+  y = doc.y + 16;
+  doc.rect(48, y, contentWidth, 3).fill(GOLD);
+  y += 22;
+
+  doc.fillColor(GOLD).font(fontBold).fontSize(11);
+  text(scopeLabel.toUpperCase(), 48, y, { width: contentWidth });
+  y = doc.y + 8;
+  doc.fillColor(NAVY).font(fontBold).fontSize(18);
+  text(reportTitle, 48, y, { width: contentWidth });
+  y = doc.y + 14;
+  doc.fillColor(INK).font(fontBold).fontSize(28);
+  text(periodLabel, 48, y, { width: contentWidth });
+  y = doc.y + 8;
+  doc.fillColor(SLATE).font(font).fontSize(10);
   text(labels.coverSubtitle, 48, y, { width: contentWidth });
 
-  y = doc.y + 14;
+  y = doc.y + 28;
   const metaRows: Array<[string, string]> = [
-    [labels.period, periodLabel],
-    [labels.generated, generated],
-    [labels.currency, `${currencyCode} (${currencySymbol})`],
+    [labels.currency, `${currencyCode}  ·  ${currencySymbol}`],
     [labels.pricingMode, formatPricingMode(biz, bundle.language)],
     [labels.taxPolicy, formatTaxPolicySummary(biz, bundle.language)],
+    [labels.generated, generated],
   ];
   for (const [label, value] of metaRows) {
-    doc.roundedRect(48, y, contentWidth, 24, 4).fillAndStroke("#F0FDFA", "#99F6E4");
-    const labelX = isAr ? 48 + contentWidth / 2 : 56;
-    const valueX = isAr ? 56 : 48 + contentWidth / 2;
-    doc.fillColor("#64748B").font(font).fontSize(9);
-    text(label, labelX, y + 7, { width: contentWidth / 2 - 16 });
-    doc.fillColor("#0F172A").font(fontBold).fontSize(10);
-    text(value, valueX, y + 7, { width: contentWidth / 2 - 16 });
-    y += 28;
+    doc.roundedRect(48, y, contentWidth, 26, 4).fillAndStroke(GOLD_SOFT, GOLD);
+    doc.fillColor(SLATE).font(font).fontSize(9);
+    text(label, 60, y + 8, { width: contentWidth / 2 - 24 });
+    doc.fillColor(NAVY).font(fontBold).fontSize(10);
+    text(value, 48 + contentWidth / 2, y + 8, { width: contentWidth / 2 - 20 });
+    y += 32;
   }
+
+  y += 12;
+  doc.fillColor(SLATE).font(font).fontSize(9);
+  text(
+    `${labels.contents}: ${labels.executive} · ${labels.financial} · ${labels.orderSalesRollup} · ${labels.revenueTrend}`,
+    48,
+    y,
+    { width: contentWidth }
+  );
 
   const ensure = (need: number) => {
     if (y + need > doc.page.height - 64) {
@@ -163,20 +194,19 @@ async function renderPdfDocument(
   };
 
   const section = (title: string) => {
-    ensure(40);
-    y += 12;
-    doc.fillColor("#0F766E").font(fontBold).fontSize(14);
-    text(title, 48, y, { width: contentWidth });
-    y = doc.y + 6;
-    doc.moveTo(48, y).lineTo(48 + contentWidth, y).strokeColor("#99F6E4").lineWidth(1.5).stroke();
-    y += 12;
+    ensure(48);
+    y += 14;
+    doc.rect(48, y, contentWidth, 28).fill(NAVY);
+    doc.fillColor("#FFFFFF").font(fontBold).fontSize(12);
+    text(title, 60, y + 8, { width: contentWidth - 24 });
+    y += 40;
   };
 
   const kpiCards = (cards: Array<[string, string]>) => {
     const cols = 3;
     const gap = 10;
     const cardW = (contentWidth - gap * (cols - 1)) / cols;
-    const cardH = 52;
+    const cardH = 56;
     for (let i = 0; i < cards.length; i += cols) {
       ensure(cardH + 12);
       for (let c = 0; c < cols; c++) {
@@ -184,11 +214,11 @@ async function renderPdfDocument(
         if (!card) continue;
         const colIndex = isAr ? cols - 1 - c : c;
         const x = 48 + colIndex * (cardW + gap);
-        doc.roundedRect(x, y, cardW, cardH, 5).fillAndStroke("#F0FDFA", "#99F6E4");
-        doc.fillColor("#64748B").font(font).fontSize(8);
-        text(card[0], x + 10, y + 8, { width: cardW - 20 });
-        doc.fillColor("#0F766E").font(fontBold).fontSize(12);
-        text(card[1], x + 10, y + 26, { width: cardW - 20 });
+        doc.roundedRect(x, y, cardW, cardH, 5).fillAndStroke(GOLD_SOFT, GOLD);
+        doc.fillColor(SLATE).font(font).fontSize(8);
+        text(card[0], x + 10, y + 10, { width: cardW - 20 });
+        doc.fillColor(NAVY).font(fontBold).fontSize(13);
+        text(card[1], x + 10, y + 28, { width: cardW - 20 });
       }
       y += cardH + 10;
     }
@@ -196,7 +226,7 @@ async function renderPdfDocument(
 
   const kvTable = (rows: Array<[string, string]>) => {
     ensure(26);
-    doc.rect(48, y, contentWidth, 24).fill("#0B3B45");
+    doc.rect(48, y, contentWidth, 24).fill(NAVY);
     doc.fillColor("#FFFFFF").font(fontBold).fontSize(9);
     const metricX = isAr ? 48 + contentWidth * 0.48 : 56;
     const valueX = isAr ? 56 : 48 + contentWidth * 0.48;
@@ -206,129 +236,119 @@ async function renderPdfDocument(
     for (let i = 0; i < rows.length; i++) {
       ensure(24);
       const [label, value] = rows[i]!;
-      const bg = i % 2 === 1 ? "#F8FAFC" : "#FFFFFF";
+      const bg = i % 2 === 1 ? MIST : "#FFFFFF";
       doc.rect(48, y, contentWidth, 22).fill(bg);
-      doc.strokeColor("#E2E8F0").rect(48, y, contentWidth, 22).stroke();
-      doc.fillColor("#334155").font(font).fontSize(10);
+      doc.strokeColor(LINE).rect(48, y, contentWidth, 22).stroke();
+      doc.fillColor(SLATE).font(font).fontSize(10);
       text(label, metricX, y + 6, { width: contentWidth * 0.45 });
-      doc.fillColor("#0F172A").font(fontBold).fontSize(10);
+      doc.fillColor(INK).font(fontBold).fontSize(10);
       text(value, valueX, y + 6, { width: contentWidth * 0.48 });
       y += 22;
     }
   };
 
-  // Executive — KPI cards (not a plain table)
+  const drawBars = (values: number[], color: string) => {
+    if (!hasRenderableTrend(values.length)) {
+      ensure(48);
+      doc.roundedRect(48, y, contentWidth, 40, 4).fillAndStroke(GOLD_SOFT, GOLD);
+      doc.fillColor(SLATE).font(font).fontSize(10);
+      text(labels.trendInsufficient, 60, y + 14, { width: contentWidth - 24 });
+      y += 52;
+      return;
+    }
+    let max = 0;
+    for (const v of values) if (v > max) max = v;
+    max = max || 1;
+    ensure(120);
+    const chartH = 90;
+    const barGap = 3;
+    const barW = Math.max(2, (contentWidth - barGap * values.length) / values.length);
+    const baseY = y + chartH;
+    doc.strokeColor(LINE).moveTo(48, baseY).lineTo(48 + contentWidth, baseY).stroke();
+    for (let i = 0; i < values.length; i++) {
+      const h = (values[i]! / max) * (chartH - 8);
+      doc.rect(48 + i * (barW + barGap), baseY - h, barW, h).fill(color);
+    }
+    y = baseY + 16;
+  };
+
+  // ── Executive ──────────────────────────────────────────
+  doc.addPage();
+  y = 48;
   section(labels.executive);
+  doc.fillColor(SLATE).font(font).fontSize(9);
+  text(`${scopeLabel} · ${periodLabel} · ${generated}`, 48, y, {
+    width: contentWidth,
+  });
+  y = doc.y + 12;
   kpiCards([
     [labels.revenue, money(biz.revenue)],
-    [labels.orderSalesMonth, money(sales.month.orderSales)],
+    [labels.taxCollected, money(biz.taxCollected)],
     [labels.paidChecks, formatWesternCount(biz.paidCheckCount)],
     [labels.averageCheck, money(biz.averageCheck)],
-    [labels.averageOrderMonth, money(sales.month.averageOrder)],
-    [labels.sessionsActive, formatWesternCount(ops.activeSessions)],
-    [labels.ordersMonth, formatWesternCount(sales.month.totalOrders)],
-    [labels.orderSalesToday, money(sales.today.orderSales)],
-    [labels.ordersToday, formatWesternCount(sales.today.totalOrders)],
+    [labels.orderSalesPeriod, money(sales.month.orderSales)],
+    [labels.averageOrderPeriod, money(sales.month.averageOrder)],
+    [labels.ordersPeriod, formatWesternCount(sales.month.totalOrders)],
+    [labels.complimentaryCount, formatWesternCount(biz.complimentaryCount)],
+    [labels.voidedCount, formatWesternCount(biz.voidedCount)],
   ]);
 
+  // ── Financial ──────────────────────────────────────────
   section(labels.financial);
   kvTable([
     [labels.revenue, money(biz.revenue)],
     [labels.taxCollected, money(biz.taxCollected)],
+    [labels.paidChecks, formatWesternCount(biz.paidCheckCount)],
+    [labels.averageCheck, money(biz.averageCheck)],
+    [labels.orderSalesPeriod, money(sales.month.orderSales)],
     [labels.complimentaryCount, formatWesternCount(biz.complimentaryCount)],
     [labels.complimentaryAmount, money(biz.complimentaryAmount)],
     [labels.voidedCount, formatWesternCount(biz.voidedCount)],
     [labels.currency, `${currencyCode} (${currencySymbol})`],
     [labels.pricingMode, formatPricingMode(biz, bundle.language)],
     [labels.taxPolicy, formatTaxPolicySummary(biz, bundle.language)],
-    [labels.orderSalesMonth, money(sales.month.orderSales)],
   ]);
 
-  section(labels.operational);
-  kvTable([
-    [labels.sessionsActive, formatWesternCount(ops.activeSessions)],
-    [labels.occupiedTables, formatWesternCount(ops.occupiedTables)],
-    [labels.pendingOrders, formatWesternCount(ops.pendingOrders)],
-    [labels.kitchenLoad, formatWesternCount(ops.kitchenLoad)],
-    [labels.activeOrders, formatNullableCount(ops.activeOrders)],
-    [labels.preparingOrders, formatNullableCount(ops.preparingOrders)],
-    [labels.readyOrders, formatNullableCount(ops.readyOrders)],
-  ]);
-
-  section(labels.catalog);
-  kvTable([
-    [labels.categories, formatWesternCount(catalog.categoryCount)],
-    [labels.items, formatWesternCount(catalog.itemCount)],
-    [labels.menuVisits, formatWesternCount(catalog.menuVisits)],
-  ]);
-  ensure(50);
-  doc.fillColor("#0F766E").font(fontBold).fontSize(11);
-  text(labels.catalogPlaceholderTitle, 48, y, { width: contentWidth });
-  y = doc.y + 4;
-  doc.fillColor("#64748B").font(font).fontSize(9);
-  text(labels.catalogPlaceholderBody, 48, y, { width: contentWidth });
-  y = doc.y + 12;
-
-  section(labels.revenueTrend);
-  // Simple bar chart
-  const revValues = bundle.revenueTrend.points.map((p) =>
-    parseDtoAmountForDisplay(p.revenue)
-  );
-  let revMax = 0;
-  for (const v of revValues) if (v > revMax) revMax = v;
-  revMax = revMax || 1;
-  ensure(130);
-  const chartH = 90;
-  const barGap = 3;
-  const n = revValues.length;
-  if (n > 0) {
-    const barW = Math.max(2, (contentWidth - barGap * n) / n);
-    const baseY = y + chartH;
-    doc.strokeColor("#E2E8F0").moveTo(48, baseY).lineTo(48 + contentWidth, baseY).stroke();
-    for (let i = 0; i < n; i++) {
-      const h = (revValues[i]! / revMax) * (chartH - 8);
-      doc.rect(48 + i * (barW + barGap), baseY - h, barW, h).fill("#0D9488");
-    }
-    y = baseY + 16;
-  }
-  kvTable(
-    bundle.revenueTrend.points.slice(0, 31).map((p) => [
-      toWesternDigits(p.periodKey),
-      `${formatWesternAmount(p.revenue)} ${currencySymbol}`,
-    ])
-  );
-
+  // ── Order Sales ────────────────────────────────────────
   section(labels.orderSalesRollup);
+  const orderAxis = bundle.orderSalesRollup.periods.map((p) =>
+    formatTrendAxisLabel(p.periodKey, bundle.scope, bundle.language)
+  );
   const orderValues = bundle.orderSalesRollup.periods.map((p) =>
     parseDtoAmountForDisplay(p.orderSales)
   );
-  let orderMax = 0;
-  for (const v of orderValues) if (v > orderMax) orderMax = v;
-  orderMax = orderMax || 1;
-  ensure(130);
-  const oN = orderValues.length;
-  if (oN > 0) {
-    const barW = Math.max(2, (contentWidth - barGap * oN) / oN);
-    const baseY = y + chartH;
-    doc.strokeColor("#E2E8F0").moveTo(48, baseY).lineTo(48 + contentWidth, baseY).stroke();
-    for (let i = 0; i < oN; i++) {
-      const h = (orderValues[i]! / orderMax) * (chartH - 8);
-      doc.rect(48 + i * (barW + barGap), baseY - h, barW, h).fill("#0369A1");
-    }
-    y = baseY + 16;
+  drawBars(orderValues, NAVY_MID);
+  if (hasRenderableTrend(orderValues.length)) {
+    kvTable(
+      bundle.orderSalesRollup.periods.slice(0, 31).map((p, i) => [
+        orderAxis[i]!,
+        `${formatWesternAmount(p.orderSales)} ${currencySymbol}`,
+      ])
+    );
   }
-  kvTable(
-    bundle.orderSalesRollup.periods.slice(0, 31).map((p) => [
-      toWesternDigits(p.periodKey),
-      `${formatWesternAmount(p.orderSales)} ${currencySymbol}`,
-    ])
-  );
 
-  // Footers on each page
+  // ── Revenue Trends ─────────────────────────────────────
+  section(labels.revenueTrend);
+  const revAxis = bundle.revenueTrend.points.map((p) =>
+    formatTrendAxisLabel(p.periodKey, bundle.scope, bundle.language)
+  );
+  const revValues = bundle.revenueTrend.points.map((p) =>
+    parseDtoAmountForDisplay(p.revenue)
+  );
+  drawBars(revValues, GOLD);
+  if (hasRenderableTrend(revValues.length)) {
+    kvTable(
+      bundle.revenueTrend.points.slice(0, 31).map((p, i) => [
+        revAxis[i]!,
+        `${formatWesternAmount(p.revenue)} ${currencySymbol}`,
+      ])
+    );
+  }
+
   const range = doc.bufferedPageRange();
   for (let i = 0; i < range.count; i++) {
     doc.switchToPage(i);
-    doc.font(font).fontSize(8).fillColor("#94A3B8");
+    doc.font(font).fontSize(8).fillColor(SLATE);
     text(labels.generatedBy, 48, doc.page.height - 36, {
       width: contentWidth / 2,
       lineBreak: false,
@@ -338,6 +358,7 @@ async function renderPdfDocument(
       align: "right",
       lineBreak: false,
     });
+    doc.rect(48, doc.page.height - 48, contentWidth, 1).fill(GOLD);
   }
 
   doc.end();

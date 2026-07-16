@@ -20,7 +20,6 @@ import {
   DASHBOARD_ORDER_LIST_POLL_MS,
   reportingBusinessSummaryQueryOptions,
   reportingBusinessTrendQueryOptions,
-  reportingOperationalSnapshotQueryOptions,
   reportingOrderSalesQueryOptions,
   restaurantQueriesEnabled,
   useDevQueryRuntimeLog,
@@ -175,11 +174,6 @@ export function ReportsTab({
     reportingBusinessTrendQueryOptions(enabled)
   );
 
-  const { data: operational } = trpc.reporting.getOperationalMetricsSnapshot.useQuery(
-    { restaurantId },
-    reportingOperationalSnapshotQueryOptions(enabled)
-  );
-
   const ordersBlocked = isEmailNotVerifiedError(orderSalesError);
 
   const sym = resolveExportCurrency(businessMonth, fallbackSym, currencyCode)
@@ -191,21 +185,26 @@ export function ReportsTab({
     const business = scope === "month" ? businessMonth : businessYear;
     const orderSalesRollup = scope === "month" ? monthlyRollup : yearlyRollup;
     const revenueTrend = scope === "month" ? revenueTrendMonth : revenueTrendYear;
-    if (!business || !orderSales || !operational || !catalog || !orderSalesRollup || !revenueTrend) {
+    if (!business || !orderSales || !orderSalesRollup || !revenueTrend) {
       return null;
     }
     const periodLabel =
       scope === "month"
         ? `${monthNames[reportMonth - 1]} ${reportYear}`
+        : String(reportYear);
+    const reportTitle =
+      scope === "month"
+        ? language === "ar"
+          ? "التقرير المالي الشهري"
+          : "Monthly Financial Report"
         : language === "ar"
-          ? `السنة ${reportYear}`
-          : `Year ${reportYear}`;
+          ? "التقرير المالي السنوي"
+          : "Annual Financial Report";
     return {
       restaurantName: restaurantName?.trim() || "",
       businessName: restaurantName?.trim() || "",
       logoUrl: logoUrl ?? null,
-      reportTitle:
-        language === "ar" ? "تقرير الأداء التجاري" : "Business Performance Report",
+      reportTitle,
       language: language === "ar" ? "ar" : "en",
       scope,
       periodLabel,
@@ -215,8 +214,6 @@ export function ReportsTab({
           : `reporting-${reportYear}`,
       business,
       orderSales,
-      operational,
-      catalog,
       orderSalesRollup,
       revenueTrend,
     };

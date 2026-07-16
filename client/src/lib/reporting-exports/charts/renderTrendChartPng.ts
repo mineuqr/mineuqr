@@ -64,7 +64,7 @@ export async function renderTrendChartPng(input: {
   }
   const yMax = seriesMax > 0 ? seriesMax * 1.1 : 1;
 
-  const colors = ["#0D9488", "#0369A1", "#B45309"];
+  const colors = ["#0B1F33", "#B8943F", "#16324F"];
   const pointCount = Math.max(n, 1);
 
   input.series.forEach((s, seriesIndex) => {

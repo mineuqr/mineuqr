@@ -9,15 +9,20 @@ import {
   resolveExportCurrency,
   toWesternDigits,
 } from "../format";
+import { formatTrendAxisLabel } from "../periodPresentation";
 import type { RestaurantReportingExportBundle } from "../types";
 
-function sampleBundle(): RestaurantReportingExportBundle {
+function sampleBundle(
+  overrides?: Partial<RestaurantReportingExportBundle>
+): RestaurantReportingExportBundle {
   return {
     restaurantName: "Demo Cafe",
+    businessName: "Demo Hospitality Co.",
     language: "en",
     scope: "month",
     periodLabel: "July 2026",
     filenameStem: "reporting-2026-07",
+    reportTitle: "Monthly Financial Report",
     business: {
       contractVersion: 1,
       contractId: "BusinessMetricsSummary",
@@ -60,28 +65,6 @@ function sampleBundle(): RestaurantReportingExportBundle {
         averageOrder: "22.22",
       },
     },
-    operational: {
-      contractVersion: 1,
-      contractId: "OperationalMetricsSnapshot",
-      generatedAt: "2026-07-16T00:00:00.000Z",
-      restaurantId: 1,
-      activeSessions: 3,
-      occupiedTables: 2,
-      pendingOrders: 1,
-      kitchenLoad: 4,
-      activeOrders: 4,
-      preparingOrders: 2,
-      readyOrders: 1,
-    },
-    catalog: {
-      contractVersion: 1,
-      contractId: "CatalogStatsSummary",
-      generatedAt: "2026-07-16T00:00:00.000Z",
-      restaurantId: 1,
-      categoryCount: 5,
-      itemCount: 20,
-      menuVisits: 100,
-    },
     orderSalesRollup: {
       contractVersion: 1,
       contractId: "OrderSalesRollup",
@@ -94,6 +77,18 @@ function sampleBundle(): RestaurantReportingExportBundle {
           orderCount: 2,
           completedOrders: 2,
           orderSales: "40.00",
+        },
+        {
+          periodKey: "2026-07-02",
+          orderCount: 3,
+          completedOrders: 3,
+          orderSales: "55.00",
+        },
+        {
+          periodKey: "2026-07-03",
+          orderCount: 1,
+          completedOrders: 1,
+          orderSales: "20.00",
         },
       ],
     },
@@ -115,8 +110,27 @@ function sampleBundle(): RestaurantReportingExportBundle {
           voidedCount: 0,
           taxCollected: "7.50",
         },
+        {
+          periodKey: "2026-07-02",
+          periodStart: "2026-07-02T00:00:00.000Z",
+          revenue: "30.00",
+          paidCheckCount: 1,
+          complimentaryCount: 0,
+          voidedCount: 0,
+          taxCollected: "4.50",
+        },
+        {
+          periodKey: "2026-07-03",
+          periodStart: "2026-07-03T00:00:00.000Z",
+          revenue: "20.00",
+          paidCheckCount: 1,
+          complimentaryCount: 1,
+          voidedCount: 0,
+          taxCollected: "3.00",
+        },
       ],
     },
+    ...overrides,
   };
 }
 
@@ -157,19 +171,23 @@ describe("REPORTING-EXPORTS-1 helpers", () => {
     expect(arDate).not.toMatch(/[٠-٩۰-۹]/);
   });
 
-  it("builds enterprise Excel workbook sheets from the DTO bundle", async () => {
+  it("formats trend axis labels for month and year scopes", () => {
+    expect(formatTrendAxisLabel("2026-07-01", "month", "en")).toBe("1 Jul");
+    expect(formatTrendAxisLabel("2026-01", "year", "en")).toBe("Jan");
+    expect(formatTrendAxisLabel("2026-12", "year", "en")).toBe("Dec");
+  });
+
+  it("builds executive workbook with exactly five worksheets", async () => {
     const workbook = await buildReportingExportWorkbook(sampleBundle(), "ر.س", "SAR");
     const names = workbook.worksheets.map((s) => s.name);
-    expect(names).toEqual(
-      expect.arrayContaining([
-        "Cover",
-        "Executive Summary",
-        "Financial Summary",
-        "Operational Summary",
-        "Catalog",
-        "Revenue Trend",
-        "Order Sales",
-      ])
-    );
+    expect(names).toEqual([
+      "Cover",
+      "Executive Summary",
+      "Financial Summary",
+      "Order Sales",
+      "Revenue Trends",
+    ]);
+    expect(names).not.toContain("Operational Summary");
+    expect(names).not.toContain("Catalog");
   });
 });

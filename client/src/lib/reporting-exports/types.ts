@@ -1,12 +1,10 @@
 /**
- * REPORTING-EXPORTS-1 / REPORTING-EXPORT-TEMPLATES-1 — Presentation export bundle.
- * Assembled exclusively from reporting.* DTOs. Renderers must not invent KPIs.
+ * REPORTING-EXPORTS presentation bundle.
+ * Assembled from reporting.* DTOs. Renderers must not invent KPIs.
  */
 import type {
   BusinessMetricsSummaryDto,
   BusinessMetricsTrendDto,
-  CatalogStatsSummaryDto,
-  OperationalMetricsSnapshotDto,
   OrderSalesRollupDto,
   OrderSalesSummaryDto,
 } from "@shared/reporting-platform";
@@ -19,24 +17,20 @@ export type RestaurantReportingExportBundle = Readonly<{
   restaurantName: string;
   /** Optional distinct business / trade name; defaults to restaurantName. */
   businessName?: string;
-  /** Optional restaurant logo URL for branded cover headers. */
+  /** Optional restaurant logo URL for branded cover. */
   logoUrl?: string | null;
-  /** Report title override; defaults to localized Business Performance Report. */
+  /** Report title override; defaults to monthly/annual financial title. */
   reportTitle?: string;
   language: ReportingExportLanguage;
   scope: ReportingExportScope;
-  /** Human period label (presentation only). */
+  /** Human period label — month: "July 2026"; year: "2026". */
   periodLabel: string;
   /** Filename stem without extension. */
   filenameStem: string;
-  /** Check-domain business KPIs for the export period (or platform default). */
+  /** Check-domain business KPIs for the export period. */
   business: BusinessMetricsSummaryDto;
   /** Order Sales today/month — same contract as Dashboard cards. */
   orderSales: OrderSalesSummaryDto;
-  /** Point-in-time operational snapshot — same contract as Dashboard. */
-  operational: OperationalMetricsSnapshotDto;
-  /** Catalog counts — same contract as Dashboard. */
-  catalog: CatalogStatsSummaryDto;
   /** Order Sales rollup periods for the selected calendar scope. */
   orderSalesRollup: OrderSalesRollupDto;
   /** Revenue trend points for the selected calendar scope. */

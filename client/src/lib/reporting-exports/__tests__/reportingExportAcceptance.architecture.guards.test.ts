@@ -23,49 +23,48 @@ function listFiles(dirRel: string): string[] {
   return out;
 }
 
-describe("REPORTING-EXPORT-TEMPLATES-ACCEPTANCE-1 architecture guards", () => {
-  it("Excel presentation uses Western text cells and executive KPI cards", () => {
+describe("REPORTING-EXPORT-TEMPLATES-ACCEPTANCE-2 architecture guards", () => {
+  it("Excel workbook is executive-only — five sheets, no Ops/Catalog", () => {
     const excel = read(
       "client/src/lib/reporting-exports/excel/buildReportingExportWorkbook.ts"
     );
-    expect(excel).toContain("REPORTING-EXPORT-TEMPLATES-ACCEPTANCE-1");
-    expect(excel).toContain("setWesternText");
-    expect(excel).toContain('numFmt = "@"');
-    expect(excel).toContain("writeKpiCards");
+    expect(excel).toContain("REPORTING-EXPORT-TEMPLATES-ACCEPTANCE-2");
     expect(excel).toContain("buildCoverSheet");
-    expect(excel).toContain("resolveExportLogoAsset");
-    expect(excel).not.toContain("revenueVsOrderSales");
-    expect(excel).not.toMatch(/Revenue\s*=\s*Paid Check/i);
+    expect(excel).toContain("buildExecutiveSheet");
+    expect(excel).toContain("buildFinancialSheet");
+    expect(excel).toContain("buildOrderSalesSheet");
+    expect(excel).toContain("buildRevenueTrendSheet");
+    expect(excel).toContain("hasRenderableTrend");
+    expect(excel).toContain("formatTrendAxisLabel");
+    expect(excel).not.toContain("buildOperationalSheet");
+    expect(excel).not.toContain("buildCatalogSheet");
+    expect(excel).not.toContain("catalogPlaceholder");
     expect(excel).not.toMatch(/\.reduce\s*\(/);
   });
 
-  it("PDF presentation uses Cairo, logo asset, and KPI cards", () => {
+  it("PDF matches executive structure and Arabic presentation", () => {
     const pdf = read(
       "client/src/lib/reporting-exports/pdf/buildReportingExportPdf.ts"
     );
-    const arabic = read("client/src/lib/reporting-exports/pdf/arabicPdfText.ts");
-    const branding = read("client/src/lib/reporting-exports/branding.ts");
-    expect(pdf).toContain("REPORTING-EXPORT-TEMPLATES-ACCEPTANCE-1");
-    expect(pdf).toContain("loadExportFontBytes");
-    expect(pdf).toContain("kpiCards");
-    expect(pdf).toContain("resolveExportLogoAsset");
-    expect(pdf).toContain("generatedBy");
+    expect(pdf).toContain("REPORTING-EXPORT-TEMPLATES-ACCEPTANCE-2");
+    expect(pdf).toContain("hasRenderableTrend");
+    expect(pdf).toContain("formatTrendAxisLabel");
     expect(pdf).toContain("preparePdfText");
-    expect(arabic).toContain("convertArabic");
-    expect(arabic).toContain("getReorderedString");
-    expect(branding).toContain("mineuqr-logo.png");
-    expect(branding).toContain('source: "mineuqr"');
-    expect(pdf).not.toContain("revenueVsOrderSales");
-    expect(pdf).not.toMatch(/Revenue\s*=\s*Paid Check/i);
+    expect(pdf).not.toContain("labels.operational");
+    expect(pdf).not.toContain("labels.catalog");
+    expect(pdf).not.toContain("catalogPlaceholder");
   });
 
-  it("labels omit engineering documentation copy", () => {
-    const labels = read("client/src/lib/reporting-exports/labels.ts");
-    expect(labels).not.toContain("revenueVsOrderSales");
-    expect(labels).not.toMatch(/Order Sales ≠ Revenue/);
-    expect(labels).not.toMatch(/Paid Check grandTotal/i);
-    expect(labels).toContain("coverSubtitle");
-    expect(labels).toContain("businessName");
+  it("period presentation enforces month/year business labels", () => {
+    const period = read("client/src/lib/reporting-exports/periodPresentation.ts");
+    const reports = read("client/src/components/dashboard/ReportsTab.tsx");
+    expect(period).toContain("Monthly Report");
+    expect(period).toContain("Annual Report");
+    expect(period).toContain('"Jul"');
+    expect(period).toContain("MIN_TREND_OBSERVATIONS");
+    expect(reports).toContain("String(reportYear)");
+    expect(reports).not.toContain("`Year ${reportYear}`");
+    expect(reports).not.toContain("`السنة ${reportYear}`");
   });
 
   it("presentation-only — no platform/domain coupling", () => {

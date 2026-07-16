@@ -1,6 +1,6 @@
 /**
- * REPORTING-EXPORT-TEMPLATES-ACCEPTANCE-1
- * Generates sample workbooks/PDFs and asserts Western digits in cell values.
+ * REPORTING-EXPORT-TEMPLATES-ACCEPTANCE-2
+ * Generates executive Excel/PDF samples and asserts Western digits + sheet set.
  */
 import { mkdirSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
@@ -12,33 +12,103 @@ import type { RestaurantReportingExportBundle } from "../types";
 const EASTERN_DIGITS = /[٠-٩۰-۹]/;
 const samplesDir = join(
   process.cwd(),
-  "docs/engineering/programs/REPORTING-EXPORT-TEMPLATES-ACCEPTANCE-1/samples"
+  "docs/engineering/programs/REPORTING-EXPORT-TEMPLATES-ACCEPTANCE-2/samples"
 );
 
+function dayPoints(count: number) {
+  return Array.from({ length: count }, (_, i) => {
+    const day = String(i + 1).padStart(2, "0");
+    const revenue = (800 + i * 37.5).toFixed(2);
+    return {
+      periodKey: `2026-07-${day}`,
+      periodStart: `2026-07-${day}T00:00:00.000Z`,
+      revenue,
+      paidCheckCount: 3 + (i % 5),
+      complimentaryCount: i % 7 === 0 ? 1 : 0,
+      voidedCount: i % 11 === 0 ? 1 : 0,
+      taxCollected: (Number(revenue) * 0.15).toFixed(2),
+    };
+  });
+}
+
+function dayOrders(count: number) {
+  return Array.from({ length: count }, (_, i) => {
+    const day = String(i + 1).padStart(2, "0");
+    return {
+      periodKey: `2026-07-${day}`,
+      orderCount: 6 + (i % 4),
+      completedOrders: 5 + (i % 4),
+      orderSales: (1100 + i * 42).toFixed(2),
+    };
+  });
+}
+
+function monthPoints() {
+  return Array.from({ length: 12 }, (_, i) => {
+    const month = String(i + 1).padStart(2, "0");
+    const revenue = (12000 + i * 850).toFixed(2);
+    return {
+      periodKey: `2026-${month}`,
+      periodStart: `2026-${month}-01T00:00:00.000Z`,
+      revenue,
+      paidCheckCount: 40 + i * 3,
+      complimentaryCount: 1,
+      voidedCount: 0,
+      taxCollected: (Number(revenue) * 0.15).toFixed(2),
+    };
+  });
+}
+
+function monthOrders() {
+  return Array.from({ length: 12 }, (_, i) => {
+    const month = String(i + 1).padStart(2, "0");
+    return {
+      periodKey: `2026-${month}`,
+      orderCount: 180 + i * 8,
+      completedOrders: 170 + i * 8,
+      orderSales: (28000 + i * 1200).toFixed(2),
+    };
+  });
+}
+
 function sampleBundle(
-  language: RestaurantReportingExportBundle["language"]
+  language: RestaurantReportingExportBundle["language"],
+  scope: RestaurantReportingExportBundle["scope"]
 ): RestaurantReportingExportBundle {
+  const isMonth = scope === "month";
   return {
     restaurantName: language === "ar" ? "مقهى الديمو" : "Demo Cafe",
-    businessName: language === "ar" ? "شركة الديمو للضيافة" : "Demo Hospitality Co.",
+    businessName:
+      language === "ar" ? "شركة الديمو للضيافة" : "Demo Hospitality Co.",
     language,
-    scope: "month",
-    periodLabel: language === "ar" ? "يوليو 2026" : "July 2026",
-    filenameStem: `reporting-acceptance-${language}-2026-07`,
-    reportTitle:
-      language === "ar" ? "تقرير الأداء التجاري" : "Business Performance Report",
+    scope,
+    periodLabel: isMonth
+      ? language === "ar"
+        ? "يوليو 2026"
+        : "July 2026"
+      : "2026",
+    filenameStem: isMonth
+      ? `reporting-acceptance2-${language}-2026-07`
+      : `reporting-acceptance2-${language}-2026`,
+    reportTitle: isMonth
+      ? language === "ar"
+        ? "التقرير المالي الشهري"
+        : "Monthly Financial Report"
+      : language === "ar"
+        ? "التقرير المالي السنوي"
+        : "Annual Financial Report",
     logoUrl: null,
     business: {
       contractVersion: 1,
       contractId: "BusinessMetricsSummary",
       generatedAt: "2026-07-16T00:00:00.000Z",
       restaurantId: 1,
-      from: "2026-07-01 00:00:00",
-      to: "2026-07-31 23:59:59",
-      revenue: "15450.75",
-      paidCheckCount: 75,
-      averageCheck: "206.01",
-      taxCollected: "2015.32",
+      from: isMonth ? "2026-07-01 00:00:00" : "2026-01-01 00:00:00",
+      to: isMonth ? "2026-07-31 23:59:59" : "2026-12-31 23:59:59",
+      revenue: isMonth ? "15450.75" : "186200.00",
+      paidCheckCount: isMonth ? 75 : 920,
+      averageCheck: isMonth ? "206.01" : "202.39",
+      taxCollected: isMonth ? "2015.32" : "24280.00",
       complimentaryCount: 3,
       complimentaryAmount: "120.00",
       voidedCount: 1,
@@ -64,98 +134,29 @@ function sampleBundle(
         averageOrder: "80.95",
       },
       month: {
-        totalOrders: 210,
-        completedOrders: 198,
-        orderSales: "32100.00",
+        totalOrders: isMonth ? 210 : 2400,
+        completedOrders: isMonth ? 198 : 2280,
+        orderSales: isMonth ? "32100.00" : "390000.00",
         averageOrder: "162.12",
       },
-    },
-    operational: {
-      contractVersion: 1,
-      contractId: "OperationalMetricsSnapshot",
-      generatedAt: "2026-07-16T00:00:00.000Z",
-      restaurantId: 1,
-      activeSessions: 7,
-      occupiedTables: 5,
-      pendingOrders: 3,
-      kitchenLoad: 9,
-      activeOrders: 9,
-      preparingOrders: 4,
-      readyOrders: 2,
-    },
-    catalog: {
-      contractVersion: 1,
-      contractId: "CatalogStatsSummary",
-      generatedAt: "2026-07-16T00:00:00.000Z",
-      restaurantId: 1,
-      categoryCount: 8,
-      itemCount: 64,
-      menuVisits: 1420,
     },
     orderSalesRollup: {
       contractVersion: 1,
       contractId: "OrderSalesRollup",
       generatedAt: "2026-07-16T00:00:00.000Z",
       restaurantId: 1,
-      granularity: "day",
-      periods: [
-        {
-          periodKey: "2026-07-01",
-          orderCount: 8,
-          completedOrders: 8,
-          orderSales: "1240.00",
-        },
-        {
-          periodKey: "2026-07-02",
-          orderCount: 11,
-          completedOrders: 10,
-          orderSales: "1580.25",
-        },
-        {
-          periodKey: "2026-07-03",
-          orderCount: 9,
-          completedOrders: 9,
-          orderSales: "1310.50",
-        },
-      ],
+      granularity: isMonth ? "day" : "month",
+      periods: isMonth ? dayOrders(14) : monthOrders(),
     },
     revenueTrend: {
       contractVersion: 1,
       contractId: "BusinessMetricsTrend",
       generatedAt: "2026-07-16T00:00:00.000Z",
       restaurantId: 1,
-      grouping: "day",
-      from: "2026-07-01 00:00:00",
-      to: "2026-07-31 23:59:59",
-      points: [
-        {
-          periodKey: "2026-07-01",
-          periodStart: "2026-07-01T00:00:00.000Z",
-          revenue: "980.00",
-          paidCheckCount: 5,
-          complimentaryCount: 0,
-          voidedCount: 0,
-          taxCollected: "127.83",
-        },
-        {
-          periodKey: "2026-07-02",
-          periodStart: "2026-07-02T00:00:00.000Z",
-          revenue: "1210.50",
-          paidCheckCount: 6,
-          complimentaryCount: 1,
-          voidedCount: 0,
-          taxCollected: "157.89",
-        },
-        {
-          periodKey: "2026-07-03",
-          periodStart: "2026-07-03T00:00:00.000Z",
-          revenue: "1105.25",
-          paidCheckCount: 4,
-          complimentaryCount: 0,
-          voidedCount: 1,
-          taxCollected: "144.16",
-        },
-      ],
+      grouping: isMonth ? "day" : "month",
+      from: isMonth ? "2026-07-01 00:00:00" : "2026-01-01 00:00:00",
+      to: isMonth ? "2026-07-31 23:59:59" : "2026-12-31 23:59:59",
+      points: isMonth ? dayPoints(14) : monthPoints(),
     },
   };
 }
@@ -166,14 +167,9 @@ function assertNoEasternDigitsInWorkbook(
   for (const sheet of workbook.worksheets) {
     sheet.eachRow({ includeEmpty: false }, (row) => {
       row.eachCell({ includeEmpty: false }, (cell) => {
-        const raw = cell.value;
-        const text =
-          typeof raw === "object" && raw !== null && "richText" in (raw as object)
-            ? String(raw)
-            : String(raw ?? "");
+        const text = String(cell.value ?? "");
         expect(text, `${sheet.name}:${cell.address}`).not.toMatch(EASTERN_DIGITS);
-        // Display values must be Western text (@) — never locale-numeric cells.
-        if (typeof raw === "string" && /\d/.test(raw)) {
+        if (typeof cell.value === "string" && /\d/.test(cell.value)) {
           expect(cell.numFmt, `${sheet.name}:${cell.address}`).toBe("@");
         }
       });
@@ -181,48 +177,55 @@ function assertNoEasternDigitsInWorkbook(
   }
 }
 
-describe("REPORTING-EXPORT-TEMPLATES-ACCEPTANCE-1 samples", () => {
-  it("writes Excel/PDF samples and enforces Western digits in workbook cells", async () => {
+describe("REPORTING-EXPORT-TEMPLATES-ACCEPTANCE-2 samples", () => {
+  it("writes executive Excel/PDF samples with Western digits and five sheets", async () => {
     mkdirSync(samplesDir, { recursive: true });
     expect(existsSync(join(process.cwd(), "client/public/mineuqr-logo.png"))).toBe(
       true
     );
 
     for (const language of ["en", "ar"] as const) {
-      const bundle = sampleBundle(language);
-      const workbook = await buildReportingExportWorkbook(bundle, "ر.س", "SAR");
-      assertNoEasternDigitsInWorkbook(workbook);
+      for (const scope of ["month", "year"] as const) {
+        const bundle = sampleBundle(language, scope);
+        const workbook = await buildReportingExportWorkbook(bundle, "ر.س", "SAR");
+        assertNoEasternDigitsInWorkbook(workbook);
 
-      const cover = workbook.getWorksheet(
-        language === "ar" ? "الغلاف" : "Cover"
-      );
-      expect(cover).toBeTruthy();
-      const xlsxBuf = await workbook.xlsx.writeBuffer();
-      const xlsxPath = join(samplesDir, `${bundle.filenameStem}.xlsx`);
-      writeFileSync(xlsxPath, Buffer.from(xlsxBuf));
+        const names = workbook.worksheets.map((s) => s.name);
+        expect(names).toHaveLength(5);
+        expect(names.join(" ")).not.toMatch(/Operational|Catalog|تشغيلي|الكتالوج/);
 
-      const pdfBytes = await buildReportingExportPdfBytes(bundle, "ر.س", "SAR");
-      expect(pdfBytes.byteLength).toBeGreaterThan(1000);
-      const pdfText = new TextDecoder("latin1").decode(pdfBytes);
-      expect(pdfText.startsWith("%PDF")).toBe(true);
-      expect(pdfText).not.toMatch(EASTERN_DIGITS);
-      writeFileSync(join(samplesDir, `${bundle.filenameStem}.pdf`), Buffer.from(pdfBytes));
-
-      // Snapshot key cover values for visual audit HTML
-      const metaDump: string[] = [];
-      cover!.eachRow({ includeEmpty: false }, (row, rowNumber) => {
-        if (rowNumber < 8) return;
-        const parts: string[] = [];
-        row.eachCell({ includeEmpty: false }, (cell) => {
-          parts.push(String(cell.value ?? ""));
+        // Period must not look like a raw ISO date range on cover
+        const cover = workbook.worksheets[0]!;
+        let coverBlob = "";
+        cover.eachRow({ includeEmpty: false }, (row) => {
+          row.eachCell({ includeEmpty: false }, (cell) => {
+            coverBlob += `${cell.value ?? ""} `;
+          });
         });
-        if (parts.length) metaDump.push(parts.join(" | "));
-      });
-      writeFileSync(
-        join(samplesDir, `${bundle.filenameStem}.cover-cells.txt`),
-        metaDump.join("\n"),
-        "utf8"
-      );
+        expect(coverBlob).not.toMatch(/01-07-2026|2026-07-01/);
+        if (scope === "year") {
+          expect(coverBlob).toContain("2026");
+          expect(coverBlob).not.toMatch(/July|يوليو/);
+        } else {
+          expect(coverBlob).toMatch(/July 2026|يوليو 2026/);
+        }
+
+        const xlsxBuf = await workbook.xlsx.writeBuffer();
+        writeFileSync(
+          join(samplesDir, `${bundle.filenameStem}.xlsx`),
+          Buffer.from(xlsxBuf)
+        );
+
+        const pdfBytes = await buildReportingExportPdfBytes(bundle, "ر.س", "SAR");
+        expect(pdfBytes.byteLength).toBeGreaterThan(1000);
+        const pdfText = new TextDecoder("latin1").decode(pdfBytes);
+        expect(pdfText.startsWith("%PDF")).toBe(true);
+        expect(pdfText).not.toMatch(EASTERN_DIGITS);
+        writeFileSync(
+          join(samplesDir, `${bundle.filenameStem}.pdf`),
+          Buffer.from(pdfBytes)
+        );
+      }
     }
-  }, 60_000);
+  }, 120_000);
 });
