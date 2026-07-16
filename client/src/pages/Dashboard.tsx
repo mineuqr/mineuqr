@@ -56,7 +56,7 @@ import {
 import { useDashboardNavigation } from "@/lib/useDashboardNavigation";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
-  QrCode, Plus, Store, LayoutGrid, UtensilsCrossed,
+  Plus, Store, LayoutGrid, UtensilsCrossed,
   BarChart3, Eye, Trash2, Pencil, ArrowRight,
   ChevronLeft, Home, Settings, Image as ImageIcon, Loader2,
   Check, X, Upload, GripVertical, Palette, Tag, Calendar, Clock, User, Bell,
@@ -83,6 +83,21 @@ import { toast } from "sonner";
 import { EmailVerificationBanner } from "@/components/auth/EmailVerificationBanner";
 import { VerificationRequiredPanel } from "@/components/auth/VerificationRequiredPanel";
 import { isEmailNotVerifiedError, toastTrpcError } from "@/lib/trpcErrors";
+import {
+  formatUserFacingQueryError,
+  isSuccessfulCollectionResult,
+  isSuccessfulEmptyCollection,
+  resolveAsyncUiState,
+  userFacingErrorTitle,
+} from "@/lib/ui-state";
+import {
+  AppEmptyState,
+  AppEmptyStateActionButton,
+  AppErrorState,
+  AppForbiddenState,
+  AppLoadingState,
+  AppUnauthorizedState,
+} from "@/components/app-state";
 import { QRCodeSVG } from "qrcode.react";
 import { QRWithLogo } from "@/components/QRWithLogo";
 import { useCommercialFeatureVisibility } from "@/hooks/useCommercialFeatureVisibility";
@@ -253,19 +268,14 @@ export default function Dashboard() {
   if (gate.showLoginRequired) {
     return (
       <div className={cn(dash.shell, "flex items-center justify-center p-4")} dir={dir}>
-        <Card className={cn(dash.card, "max-w-md w-full")}>
-          <CardContent className="p-8 text-center">
-            <QrCode className="w-16 h-16 text-primary mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-foreground mb-2">{t('common.loginRequired')}</h2>
-            <p className="text-muted-foreground mb-6">{t('common.loginRequiredDesc')}</p>
-            <Button
-              onClick={() => spaNavigate(getLoginUrl())}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold w-full"
-            >
-              {t('common.login')}
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="w-full max-w-md">
+          <AppUnauthorizedState
+            title={t("uiState.unauthorizedTitle")}
+            description={t("dashboard.pleaseLogin")}
+            loginLabel={t("common.login")}
+            onLogin={() => spaNavigate(getLoginUrl())}
+          />
+        </div>
       </div>
     );
   }
@@ -299,9 +309,7 @@ export default function Dashboard() {
             onBack={handleBackToRestaurants}
           />
         ) : needsRestaurantResolve && restaurantsResolving ? (
-          <div className="flex justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          </div>
+          <AppLoadingState label={t("uiState.loading")} />
         ) : (
           <RestaurantsList onSelect={handleSelectRestaurant} userName={user?.name} />
         )}
@@ -321,14 +329,38 @@ function RestaurantsList({
 }) {
   const { isAuthenticated, authPending } = useAuth();
   const authResolved = !authPending;
-  const { data: restaurants, isLoading, refetch } = trpc.restaurant.list.useQuery(
-    undefined,
-    { enabled: authResolved && isAuthenticated }
-  );
+  const {
+    data: restaurants,
+    isPending: restaurantsPending,
+    isError: restaurantsError,
+    error: restaurantsQueryError,
+    isFetching: restaurantsFetching,
+    refetch,
+  } = trpc.restaurant.list.useQuery(undefined, {
+    enabled: authResolved && isAuthenticated,
+  });
   const { t, language } = useLanguage();
   const [showCreate, setShowCreate] = useState(false);
   const [deleteRestaurantId, setDeleteRestaurantId] = useState<number | null>(null);
-  
+
+  const listPhase = resolveAsyncUiState({
+    authPending,
+    isAuthenticated,
+    queryPending: restaurantsPending,
+    isError: restaurantsError,
+    error: restaurantsQueryError,
+    isSuccess: isSuccessfulCollectionResult(
+      restaurantsError,
+      restaurantsPending,
+      restaurants
+    ),
+    isEmpty: isSuccessfulEmptyCollection(
+      restaurantsError,
+      restaurantsPending,
+      restaurants
+    ),
+  });
+
   const deleteRestaurantMutation = trpc.restaurant.delete.useMutation({
     onSuccess: () => {
       toast.success(t('dashboard.restaurantDeleted'));
@@ -376,7 +408,7 @@ function RestaurantsList({
         </div>
       </div>
 
-      {!isLoading && restaurants && restaurants.length > 0 ? (
+      {listPhase === "success" && restaurants && restaurants.length > 0 ? (
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <DashboardStatCard
             label={t("dashboard.title")}
@@ -406,27 +438,45 @@ function RestaurantsList({
         </div>
       ) : null}
 
-      {isLoading ? (
-        <div className="flex justify-center py-24">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      ) : !restaurants?.length ? (
-        <Card className={cn(dash.card, "border-dashed")}>
-          <CardContent className="p-12 text-center sm:p-16">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl border border-border/50 bg-muted/30">
-              <Store className="h-7 w-7 text-muted-foreground" />
-            </div>
-            <h3 className="text-lg font-semibold text-foreground">{t("dashboard.noRestaurants")}</h3>
-            <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">{t("dashboard.noRestaurantsDesc")}</p>
-            <Button onClick={() => setShowCreate(true)} className="mt-6 shadow-sm">
+      {listPhase === "loading" ? (
+        <AppLoadingState label={t("uiState.loading")} />
+      ) : listPhase === "unauthorized" ? (
+        <AppUnauthorizedState
+          title={t("uiState.unauthorizedTitle")}
+          description={t("dashboard.pleaseLogin")}
+          loginLabel={t("common.login")}
+          onLogin={() => spaNavigate(getLoginUrl())}
+        />
+      ) : listPhase === "forbidden" ? (
+        <AppForbiddenState
+          title={t("uiState.forbiddenTitle")}
+          description={formatUserFacingQueryError(restaurantsQueryError, t)}
+        />
+      ) : listPhase === "error" ? (
+        <AppErrorState
+          title={userFacingErrorTitle(restaurantsQueryError, t)}
+          description={formatUserFacingQueryError(restaurantsQueryError, t)}
+          retryLabel={t("uiState.retry")}
+          onRetry={() => {
+            void refetch();
+          }}
+          isRetrying={restaurantsFetching}
+        />
+      ) : listPhase === "empty" ? (
+        <AppEmptyState
+          title={t("dashboard.noRestaurants")}
+          description={t("dashboard.noRestaurantsDesc")}
+          icon={Store}
+          action={
+            <AppEmptyStateActionButton onClick={() => setShowCreate(true)}>
               <Plus className="h-4 w-4" />
               {t("dashboard.addNewRestaurant")}
-            </Button>
-          </CardContent>
-        </Card>
+            </AppEmptyStateActionButton>
+          }
+        />
       ) : (
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-6 lg:grid-cols-3">
-          {restaurants.map((r) => (
+          {(restaurants ?? []).map((r) => (
             <Card
               key={r.id}
               className={cn(dash.cardHover, "cursor-pointer group")}
@@ -1054,7 +1104,14 @@ function RestaurantDetail({
   const loadStats = activeTab === "reports";
   const loadCategories = activeTab === "categories";
 
-  const { data: restaurant, isLoading } = trpc.restaurant.getById.useQuery(
+  const {
+    data: restaurant,
+    isPending: restaurantPending,
+    isError: restaurantError,
+    error: restaurantQueryError,
+    isFetching: restaurantFetching,
+    refetch: refetchRestaurant,
+  } = trpc.restaurant.getById.useQuery(
     { id: restaurantId },
     { enabled: queriesEnabled }
   );
@@ -1070,12 +1127,54 @@ function RestaurantDetail({
     useCommercialFeatureVisibility();
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
 
-  if (isLoading) {
-    return <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
-  }
+  const detailPhase = resolveAsyncUiState({
+    authPending,
+    isAuthenticated,
+    queryPending: restaurantPending,
+    isError: restaurantError,
+    error: restaurantQueryError,
+    isSuccess:
+      !restaurantError && !restaurantPending && restaurant !== undefined,
+    isEmpty:
+      !restaurantError && !restaurantPending && restaurant === null,
+  });
 
-  if (!restaurant) {
-    return <div className="text-center py-20 text-muted-foreground">{t('dashboard.restaurantNotFound')}</div>;
+  if (detailPhase === "loading") {
+    return <AppLoadingState label={t("uiState.loading")} />;
+  }
+  if (detailPhase === "unauthorized") {
+    return (
+      <AppUnauthorizedState
+        title={t("uiState.unauthorizedTitle")}
+        description={t("dashboard.pleaseLogin")}
+        loginLabel={t("common.login")}
+        onLogin={() => spaNavigate(getLoginUrl())}
+      />
+    );
+  }
+  if (detailPhase === "forbidden") {
+    return (
+      <AppForbiddenState
+        title={t("uiState.forbiddenTitle")}
+        description={formatUserFacingQueryError(restaurantQueryError, t)}
+      />
+    );
+  }
+  if (detailPhase === "error") {
+    return (
+      <AppErrorState
+        title={userFacingErrorTitle(restaurantQueryError, t)}
+        description={formatUserFacingQueryError(restaurantQueryError, t)}
+        retryLabel={t("uiState.retry")}
+        onRetry={() => {
+          void refetchRestaurant();
+        }}
+        isRetrying={restaurantFetching}
+      />
+    );
+  }
+  if (detailPhase === "empty" || !restaurant) {
+    return <AppEmptyState title={t("dashboard.restaurantNotFound")} />;
   }
 
   const statsPayload = stats ?? {

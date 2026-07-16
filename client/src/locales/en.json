@@ -77,6 +77,20 @@
     "export": "Export",
     "exported": "Exported successfully"
   },
+  "uiState": {
+    "loading": "Loading...",
+    "errorTitle": "Something went wrong",
+    "errorGeneric": "We couldn't load this right now. Please try again.",
+    "errorNetwork": "Connection problem. Check your network and try again.",
+    "errorDatabase": "We couldn't load your data. Please try again.",
+    "errorValidation": "Some information was invalid. Please review and try again.",
+    "errorBusinessRule": "This action isn't allowed right now.",
+    "unauthorizedTitle": "Sign in required",
+    "unauthorizedDesc": "Please sign in to continue.",
+    "forbiddenTitle": "Access denied",
+    "forbiddenDesc": "You don't have permission to view this.",
+    "retry": "Retry"
+  },
   "nav": {
     "home": "Home",
     "about": "About",
