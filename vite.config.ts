@@ -3,8 +3,23 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import path from "node:path";
 import { defineConfig } from "vite";
+import { nodePolyfills } from "vite-plugin-node-polyfills";
 
-const plugins = [react(), tailwindcss(), jsxLocPlugin()];
+const plugins = [
+  react(),
+  tailwindcss(),
+  jsxLocPlugin(),
+  // pdfkit (reporting PDF export) needs Node built-in polyfills in the browser bundle
+  nodePolyfills({
+    include: ["buffer", "process", "stream", "util", "events", "zlib", "assert"],
+    globals: {
+      Buffer: true,
+      global: true,
+      process: true,
+    },
+    protocolImports: true,
+  }),
+];
 
 export default defineConfig({
   plugins,

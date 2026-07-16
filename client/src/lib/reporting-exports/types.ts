@@ -17,6 +17,8 @@ export type ReportingExportScope = "month" | "year";
 
 export type RestaurantReportingExportBundle = Readonly<{
   restaurantName: string;
+  /** Optional distinct business / trade name; defaults to restaurantName. */
+  businessName?: string;
   /** Optional restaurant logo URL for branded cover headers. */
   logoUrl?: string | null;
   /** Report title override; defaults to localized Business Performance Report. */

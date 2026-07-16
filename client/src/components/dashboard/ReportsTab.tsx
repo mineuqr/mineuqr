@@ -202,6 +202,7 @@ export function ReportsTab({
           : `Year ${reportYear}`;
     return {
       restaurantName: restaurantName?.trim() || "",
+      businessName: restaurantName?.trim() || "",
       logoUrl: logoUrl ?? null,
       reportTitle:
         language === "ar" ? "تقرير الأداء التجاري" : "Business Performance Report",
@@ -237,7 +238,7 @@ export function ReportsTab({
     if (format === "xlsx") {
       await downloadReportingExportXlsx(bundle, fallbackSym, currencyCode);
     } else {
-      downloadReportingExportPdf(bundle, fallbackSym, currencyCode);
+      await downloadReportingExportPdf(bundle, fallbackSym, currencyCode);
     }
   };
 

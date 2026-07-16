@@ -58,7 +58,15 @@ export function formatMoneyDisplay(
   amount: string,
   currencySymbol: string
 ): string {
-  return `${toWesternDigits(String(amount).trim())} ${currencySymbol}`;
+  const western = toWesternDigits(String(amount).trim());
+  const n = Number.parseFloat(western.replace(/,/g, ""));
+  const formatted = Number.isFinite(n)
+    ? new Intl.NumberFormat("en-US", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(n)
+    : western;
+  return `${toWesternDigits(formatted)} ${currencySymbol}`;
 }
 
 export function formatNullableCount(value: number | null | undefined): string {

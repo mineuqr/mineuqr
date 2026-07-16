@@ -28,12 +28,12 @@ export async function downloadReportingExportXlsx(
   triggerDownload(blob, `${bundle.filenameStem}.xlsx`);
 }
 
-export function downloadReportingExportPdf(
+export async function downloadReportingExportPdf(
   bundle: RestaurantReportingExportBundle,
   fallbackCurrencySymbol: string,
   fallbackCurrencyCode?: string
-): void {
-  const blob = buildReportingExportPdfBlob(
+): Promise<void> {
+  const blob = await buildReportingExportPdfBlob(
     bundle,
     fallbackCurrencySymbol,
     fallbackCurrencyCode
