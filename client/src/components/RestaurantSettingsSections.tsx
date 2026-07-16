@@ -2,9 +2,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import type { CountryFinancialPolicySuggestion } from "@/lib/businessTaxPolicySettings";
 import { WEEKDAY_KEYS } from "@/lib/restaurantHours";
 import { cn } from "@/lib/utils";
-import { Clock, Globe, Store } from "lucide-react";
+import type { CheckTaxMode } from "@shared/operational-session";
+import { Clock, Globe, Percent, Store } from "lucide-react";
 import type { ReactNode } from "react";
 
 const settingsInput =
@@ -61,6 +63,183 @@ function Field({
       <Label className="text-sm font-medium text-foreground">{label}</Label>
       {children}
     </div>
+  );
+}
+
+export function RestaurantFinancialPolicySection({
+  language,
+  taxEnabled,
+  setTaxEnabled,
+  taxRatePercent,
+  setTaxRatePercent,
+  taxRateError,
+  taxMode,
+  setTaxMode,
+  suggestion,
+  onApplySuggestion,
+  onDismissSuggestion,
+}: {
+  language: string;
+  taxEnabled: boolean;
+  setTaxEnabled: (v: boolean) => void;
+  taxRatePercent: string;
+  setTaxRatePercent: (v: string) => void;
+  taxRateError: string | null;
+  taxMode: CheckTaxMode;
+  setTaxMode: (v: CheckTaxMode) => void;
+  suggestion: CountryFinancialPolicySuggestion | null;
+  onApplySuggestion: () => void;
+  onDismissSuggestion: () => void;
+}) {
+  const isAr = language === "ar";
+
+  return (
+    <section className="space-y-5 border-t border-border/30 pt-8">
+      <SettingsSectionHeader
+        icon={Percent}
+        title={isAr ? "السياسة المالية" : "Financial Policy"}
+        description={
+          isAr
+            ? "إعدادات الضريبة لشيكات العملاء الجديدة. الشيكات الحالية لا تتأثر."
+            : "Tax settings for new customer Checks. Existing Checks are not changed."
+        }
+      />
+
+      {suggestion ? (
+        <div className="rounded-xl border border-primary/25 bg-primary/5 px-4 py-3 space-y-3">
+          <p className="text-sm text-foreground">
+            {isAr
+              ? `اقتراح لـ ${suggestion.countryCode}: ضريبة ${suggestion.taxRatePercent}% · الأسعار تشمل الضريبة`
+              : `Suggested for ${suggestion.countryCode}: ${suggestion.taxRatePercent}% tax · Prices Include Tax`}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {isAr
+              ? "اقتراح فقط — لن يُطبَّق تلقائياً."
+              : "Suggestion only — never applied automatically."}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={onApplySuggestion}
+              className="rounded-lg border border-primary/40 bg-primary/15 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/25"
+            >
+              {isAr ? "تطبيق الاقتراح" : "Apply suggestion"}
+            </button>
+            <button
+              type="button"
+              onClick={onDismissSuggestion}
+              className="rounded-lg border border-border/50 px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted/30"
+            >
+              {isAr ? "تجاهل" : "Dismiss"}
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="flex items-center justify-between gap-4 rounded-xl border border-border/35 bg-[#10141b]/70 px-4 py-3">
+        <div className="min-w-0 space-y-0.5">
+          <Label className="text-sm font-medium text-foreground">
+            {isAr ? "تطبيق الضريبة" : "Apply Tax"}
+          </Label>
+          <p className="text-xs text-muted-foreground">
+            {isAr ? "تفعيل أو تعطيل الضريبة على الشيكات الجديدة" : "Enable or disable tax on new Checks"}
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <Switch checked={taxEnabled} onCheckedChange={setTaxEnabled} />
+          <span
+            className={cn(
+              "text-sm font-medium",
+              taxEnabled ? "text-primary" : "text-muted-foreground"
+            )}
+          >
+            {taxEnabled
+              ? isAr
+                ? "مفعّل"
+                : "Enabled"
+              : isAr
+                ? "معطّل"
+                : "Disabled"}
+          </span>
+        </div>
+      </div>
+
+      <Field label={isAr ? "نسبة الضريبة (%)" : "Tax Rate (%)"}>
+        <Input
+          type="text"
+          inputMode="decimal"
+          value={taxRatePercent}
+          onChange={(e) => setTaxRatePercent(e.target.value)}
+          placeholder={isAr ? "مثال: 15" : "e.g. 15"}
+          className={cn(settingsInput, taxRateError && "border-destructive/60")}
+          dir="ltr"
+        />
+        <p className="mt-1.5 text-xs text-muted-foreground">
+          {isAr ? "من 0 إلى 100 — يُسمح بالكسور" : "0–100 — decimals allowed"}
+        </p>
+        {taxRateError ? (
+          <p className="mt-1 text-xs text-destructive">
+            {taxRateError === "required"
+              ? isAr
+                ? "أدخل نسبة الضريبة عند التفعيل."
+                : "Enter a tax rate when tax is enabled."
+              : taxRateError === "range"
+                ? isAr
+                  ? "يجب أن تكون النسبة بين 0 و 100."
+                  : "Rate must be between 0 and 100."
+                : isAr
+                  ? "نسبة ضريبة غير صالحة."
+                  : "Invalid tax rate."}
+          </p>
+        ) : null}
+      </Field>
+
+      <div className="space-y-2">
+        <Label className="text-sm font-medium text-foreground">
+          {isAr ? "وضع التسعير" : "Pricing Mode"}
+        </Label>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={() => setTaxMode("inclusive")}
+            className={cn(
+              "rounded-xl border-2 p-3 text-start transition-all",
+              taxMode === "inclusive"
+                ? "border-primary bg-primary/10 ring-2 ring-primary/30"
+                : "border-border bg-input hover:border-primary/50"
+            )}
+          >
+            <span className="block text-sm font-medium text-foreground">
+              {isAr ? "الأسعار تشمل الضريبة" : "Prices Include Tax"}
+            </span>
+            <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
+              {isAr
+                ? "أسعار القائمة تشمل الضريبة. يستخرج الشيك مبلغ الضريبة."
+                : "Menu prices already include tax. The customer Check extracts the tax amount."}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setTaxMode("exclusive")}
+            className={cn(
+              "rounded-xl border-2 p-3 text-start transition-all",
+              taxMode === "exclusive"
+                ? "border-primary bg-primary/10 ring-2 ring-primary/30"
+                : "border-border bg-input hover:border-primary/50"
+            )}
+          >
+            <span className="block text-sm font-medium text-foreground">
+              {isAr ? "الأسعار لا تشمل الضريبة" : "Prices Exclude Tax"}
+            </span>
+            <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
+              {isAr
+                ? "تُضاف الضريبة عند إنشاء الشيك."
+                : "Tax is added when generating the Check."}
+            </span>
+          </button>
+        </div>
+      </div>
+    </section>
   );
 }
 

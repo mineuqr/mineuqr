@@ -98,8 +98,18 @@ import { CommercialUpgradeBanner } from "@/components/commercial";
 import {
   RestaurantBasicInfoSection,
   RestaurantContactLinksSection,
+  RestaurantFinancialPolicySection,
   WorkingHoursEditor,
 } from "@/components/RestaurantSettingsSections";
+import {
+  buildBusinessTaxPolicyDocument,
+  extractPrimaryTaxRatePercent,
+  getCountryFinancialPolicySuggestion,
+  resolveTaxMode,
+  validateTaxRatePercent,
+  type CountryFinancialPolicySuggestion,
+} from "@/lib/businessTaxPolicySettings";
+import type { CheckTaxMode } from "@shared/operational-session";
 
 // ─── Dashboard UI primitives (Stripe / Linear–style) ─────────
 
@@ -2518,6 +2528,16 @@ function SettingsTab({ restaurant, onBack }: { restaurant: any; onBack: () => vo
   const [localCurrencySymbol, setLocalCurrencySymbol] = useState("");
   const [localCurrencyNameAr, setLocalCurrencyNameAr] = useState("");
   const [localCurrencyNameEn, setLocalCurrencyNameEn] = useState("");
+  const [taxEnabled, setTaxEnabled] = useState(Boolean(restaurant.taxEnabled));
+  const [taxMode, setTaxMode] = useState<CheckTaxMode>(() =>
+    resolveTaxMode(restaurant.taxMode)
+  );
+  const [taxRatePercent, setTaxRatePercent] = useState(() =>
+    extractPrimaryTaxRatePercent(restaurant.taxPolicyJson)
+  );
+  const [taxRateError, setTaxRateError] = useState<string | null>(null);
+  const [taxSuggestion, setTaxSuggestion] =
+    useState<CountryFinancialPolicySuggestion | null>(null);
   const [whatsapp, setWhatsapp] = useState(restaurant.whatsapp || "");
   const [snapchat, setSnapchat] = useState(restaurant.snapchat || "");
   const [instagram, setInstagram] = useState(restaurant.instagram || "");
@@ -2596,7 +2616,19 @@ function SettingsTab({ restaurant, onBack }: { restaurant: any; onBack: () => vo
         setCurrencySymbol(country.currencySymbol);
       }
     }
+    // BUSINESS-TAX-POLICY-SETTINGS-1 — suggest only; never auto-overwrite tax config.
+    setTaxSuggestion(getCountryFinancialPolicySuggestion(countryCode));
   };
+
+  const applyTaxSuggestion = () => {
+    if (!taxSuggestion) return;
+    setTaxEnabled(taxSuggestion.taxEnabled);
+    setTaxMode(taxSuggestion.taxMode);
+    setTaxRatePercent(taxSuggestion.taxRatePercent);
+    setTaxRateError(null);
+    setTaxSuggestion(null);
+  };
+
   const handleCurrencySelect = (type: 'local' | 'usd') => {
     if (type === 'usd') {
       setSelectedCurrency('USD');
@@ -2954,6 +2986,27 @@ function SettingsTab({ restaurant, onBack }: { restaurant: any; onBack: () => vo
               </div>
             </div>
           )}
+
+          <RestaurantFinancialPolicySection
+            language={language}
+            taxEnabled={taxEnabled}
+            setTaxEnabled={(enabled) => {
+              setTaxEnabled(enabled);
+              if (!enabled) setTaxRateError(null);
+            }}
+            taxRatePercent={taxRatePercent}
+            setTaxRatePercent={(value) => {
+              setTaxRatePercent(value);
+              if (taxRateError) setTaxRateError(null);
+            }}
+            taxRateError={taxRateError}
+            taxMode={taxMode}
+            setTaxMode={setTaxMode}
+            suggestion={taxSuggestion}
+            onApplySuggestion={applyTaxSuggestion}
+            onDismissSuggestion={() => setTaxSuggestion(null)}
+          />
+
           {/* Table/Room Label Toggle */}
           <div className="space-y-2">
             <Label className="text-foreground">{language === 'ar' ? 'مسمى الوحدات' : 'Unit Label'}</Label>
@@ -2995,21 +3048,55 @@ function SettingsTab({ restaurant, onBack }: { restaurant: any; onBack: () => vo
             </div>
           </div>
           <Button
-            onClick={() => updateMutation.mutate({
-              id: restaurant.id, nameAr, nameEn: nameEn || undefined,
-              descriptionAr: descriptionAr || undefined, descriptionEn: descriptionEn || undefined,
-              phone: phone || undefined, address: address || undefined, isActive,
-              countryCode: selectedCountry || undefined, currencyCode: selectedCurrency || undefined,
-              currencySymbol: currencySymbol || undefined,
-              whatsapp: whatsapp || null,
-              snapchat: snapchat || null,
-              instagram: instagram || null,
-              xTwitter: xTwitter || null,
-              locationUrl: locationUrl || null,
-              workingHours: JSON.stringify(workingHours),
-              temporaryClosure: JSON.stringify({ active: tempClosed, message: tempClosedMsg }),
-              tableLabel,
-            })}
+            onClick={() => {
+              if (taxEnabled) {
+                const rateErr = validateTaxRatePercent(taxRatePercent);
+                if (rateErr) {
+                  setTaxRateError(rateErr);
+                  toast.error(
+                    language === "ar"
+                      ? "تحقق من نسبة الضريبة قبل الحفظ."
+                      : "Fix the tax rate before saving."
+                  );
+                  return;
+                }
+              } else if (taxRatePercent.trim() !== "") {
+                const rateErr = validateTaxRatePercent(taxRatePercent);
+                if (rateErr) {
+                  setTaxRateError(rateErr);
+                  toast.error(
+                    language === "ar"
+                      ? "تحقق من نسبة الضريبة قبل الحفظ."
+                      : "Fix the tax rate before saving."
+                  );
+                  return;
+                }
+              }
+              setTaxRateError(null);
+              const taxPolicy = buildBusinessTaxPolicyDocument({
+                taxRatePercent,
+                componentName: language === "ar" ? "ضريبة القيمة المضافة" : "VAT",
+                existingPolicyJson: restaurant.taxPolicyJson,
+              });
+              updateMutation.mutate({
+                id: restaurant.id, nameAr, nameEn: nameEn || undefined,
+                descriptionAr: descriptionAr || undefined, descriptionEn: descriptionEn || undefined,
+                phone: phone || undefined, address: address || undefined, isActive,
+                countryCode: selectedCountry || undefined, currencyCode: selectedCurrency || undefined,
+                currencySymbol: currencySymbol || undefined,
+                taxEnabled,
+                taxMode,
+                taxPolicy,
+                whatsapp: whatsapp || null,
+                snapchat: snapchat || null,
+                instagram: instagram || null,
+                xTwitter: xTwitter || null,
+                locationUrl: locationUrl || null,
+                workingHours: JSON.stringify(workingHours),
+                temporaryClosure: JSON.stringify({ active: tempClosed, message: tempClosedMsg }),
+                tableLabel,
+              });
+            }}
             disabled={updateMutation.isPending}
             className="h-11 w-full rounded-xl bg-primary text-primary-foreground shadow-none hover:bg-primary/90"
           >
