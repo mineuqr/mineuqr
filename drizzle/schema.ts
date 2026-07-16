@@ -73,7 +73,7 @@ export const restaurants = mysqlTable("restaurants", {
 	currencySymbol: varchar({ length: 10 }).default('ر.س'),
 	/** CHECK-MANAGEMENT-ARCHITECTURE-1 — Business Settings taxation (owner-configured). */
 	taxEnabled: boolean().default(false).notNull(),
-	taxMode: mysqlEnum('tax_mode', ['inclusive', 'exclusive']).default('exclusive').notNull(),
+	taxMode: mysqlEnum('taxMode', ['inclusive', 'exclusive']).default('exclusive').notNull(),
 	/** Versioned live tax policy JSON — not a Check snapshot. */
 	taxPolicyJson: text(),
 	isActive: boolean().default(true).notNull(),
