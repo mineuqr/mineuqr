@@ -394,6 +394,11 @@ const restaurantRouter = router({
       return { success: true };
     }),
 
+  /**
+   * @deprecated REPORTING-CANONICAL-API-SUNSET-1 — Legacy catalog/visit stats surface.
+   * Soft-sunset for KPI display. Canonical: `reporting.getCatalogStatsSummary`.
+   * Still invalidated from Dashboard after catalog edits; no active useQuery found.
+   */
   stats: protectedProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ input, ctx }) => {
@@ -1108,7 +1113,11 @@ const adminCoreRouter = router({
       return getAdminStatistics();
     }),
 
-  /** @deprecated EXEC-6 — Statistics.tsx dual-read only (revenue chart). Canonical analytics.getRevenueByMonth deferred. */
+  /**
+   * @deprecated REPORTING-CANONICAL-API-SUNSET-1 + EXEC-6 — Legacy Reporting Surface.
+   * Soft-sunset: no production client useQuery. Not restaurant Check Revenue.
+   * Gap program: ADMIN-REPORTING-PLATFORM-ADOPTION.
+   */
   getRevenueByMonth: protectedProcedure
     .query(async ({ ctx }) => {
       assertAdminAccess(ctx, "admin.getRevenueByMonth");

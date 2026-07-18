@@ -604,7 +604,7 @@ export function listKpiMetadata(): readonly KpiMetadata[] {
 
 /**
  * Non-canonical legacy surfaces that must never be treated as Revenue SSOT.
- * Documented for governance; not registered as KPIs.
+ * Full sunset registry: `legacyReportingSurfaces.ts` (REPORTING-CANONICAL-API-SUNSET-1).
  */
 export const NON_CANONICAL_REVENUE_SURFACES = Object.freeze([
   "ops.getSettlementSummary",

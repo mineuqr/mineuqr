@@ -20,6 +20,10 @@ const settlementMetricsInput = z.object({
 
 /**
  * OPS-DASHBOARD-2 — owner restaurant operations read API.
+ *
+ * REPORTING-CANONICAL-API-SUNSET-1:
+ * `getSettlement*` procedures below are soft-sunset legacy reporting surfaces.
+ * Canonical restaurant business KPIs: `reporting.*` only.
  */
 export const opsRouter = router({
   getRestaurantOverview: verifiedProcedure
@@ -70,6 +74,12 @@ export const opsRouter = router({
       });
     }),
 
+  /**
+   * @deprecated REPORTING-CANONICAL-API-SUNSET-1 — Legacy Reporting Surface (non-canonical).
+   * Soft-sunset: no production Dashboard/Reports consumers.
+   * Canonical: `reporting.getBusinessMetricsSummary` (Paid Check grandTotal Revenue).
+   * Do not use for new code. Backward compatible until hard-delete program.
+   */
   getSettlementSummary: verifiedProcedure
     .input(settlementMetricsInput)
     .query(async ({ input, ctx }) => {
@@ -81,6 +91,10 @@ export const opsRouter = router({
       return getSettlementSummary(input);
     }),
 
+  /**
+   * @deprecated REPORTING-CANONICAL-API-SUNSET-1 — Legacy Reporting Surface (non-canonical).
+   * Canonical: `reporting.getBusinessMetricsSummary`.
+   */
   getSettlementBreakdown: verifiedProcedure
     .input(settlementMetricsInput)
     .query(async ({ input, ctx }) => {
@@ -92,6 +106,10 @@ export const opsRouter = router({
       return getSettlementBreakdown(input);
     }),
 
+  /**
+   * @deprecated REPORTING-CANONICAL-API-SUNSET-1 — Legacy Reporting Surface (non-canonical).
+   * Canonical: `reporting.getBusinessMetricsTrend`.
+   */
   getSettlementTrend: verifiedProcedure
     .input(
       settlementMetricsInput.extend({

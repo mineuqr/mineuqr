@@ -27,9 +27,9 @@ function mapReportingError(err: unknown): never {
 }
 
 /**
- * Official Reporting Platform API — sole business KPI contract surface.
- * Legacy ops.getSettlement* remains transitional and is NOT canonical Revenue
- * (see NON_CANONICAL_REVENUE_SURFACES / REPORTING-KPI-GOVERNANCE-1).
+ * Official Reporting Platform API — exclusive canonical restaurant KPI surface.
+ * REPORTING-CANONICAL-API-SUNSET-1: Legacy ops.getSettlement* / admin.getRevenueByMonth
+ * are soft-sunset non-canonical surfaces (see LEGACY_REPORTING_SURFACES).
  */
 export const reportingRouter = router({
   /**

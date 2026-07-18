@@ -5,10 +5,12 @@
  * Session paidRevenue = SUM(totalAmount) WHERE settlementOutcome = 'paid'.
  * Complimentary sessions never contribute to paidRevenue.
  *
+ * @deprecated REPORTING-CANONICAL-API-SUNSET-1 — Legacy Reporting Surface (soft-sunset).
  * REPORTING-KPI-GOVERNANCE-1 — NON-CANONICAL for product Revenue:
  * Canonical Revenue is Check-owned Paid Check SUM(grandTotal) via
  * reporting.getBusinessMetricsSummary (see KPI_DICTIONARY.revenue).
  * This module must not be used as Dashboard / Reports Revenue SSOT.
+ * Kept for backward compatibility of ops.getSettlement* only.
  */
 import { and, eq, gte, inArray, isNotNull, lte } from "drizzle-orm";
 import { diningSessions } from "../../drizzle/schema";

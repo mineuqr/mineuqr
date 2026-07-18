@@ -77,12 +77,18 @@ export function reportingOrderSalesQueryOptions(enabled: boolean) {
   } as const;
 }
 
-/** @deprecated REPORTING-DASHBOARD-ADOPTION-1 — use reportingBusinessSummaryQueryOptions */
+/**
+ * @deprecated REPORTING-CANONICAL-API-SUNSET-1 — soft-sunset alias.
+ * Use `reportingBusinessSummaryQueryOptions`. Do not import in new code.
+ */
 export function opsSettlementSummaryQueryOptions(enabled: boolean) {
   return reportingBusinessSummaryQueryOptions(enabled);
 }
 
-/** @deprecated REPORTING-DASHBOARD-ADOPTION-1 — use reportingBusinessTrendQueryOptions */
+/**
+ * @deprecated REPORTING-CANONICAL-API-SUNSET-1 — soft-sunset alias.
+ * Use `reportingBusinessTrendQueryOptions`. Do not import in new code.
+ */
 export function opsSettlementTrendQueryOptions(enabled: boolean) {
   return reportingBusinessTrendQueryOptions(enabled);
 }

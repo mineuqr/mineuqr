@@ -782,7 +782,11 @@ export async function getAdminStatistics() {
   };
 }
 
-/** @deprecated EXEC-6 — S6 legacy revenue buckets. Statistics.tsx dual-read only; canonical analytics.getRevenueByMonth deferred. */
+/**
+ * @deprecated REPORTING-CANONICAL-API-SUNSET-1 + EXEC-6 — Legacy admin revenue buckets.
+ * Soft-sunset: no production client consumers.
+ * Not restaurant Check Revenue SSOT. Gap: ADMIN-REPORTING-PLATFORM-ADOPTION.
+ */
 export async function getRevenueByMonth(months: number = 12) {
   const db = await getDb();
   if (!db) return [];

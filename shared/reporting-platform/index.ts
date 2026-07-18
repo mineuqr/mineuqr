@@ -47,3 +47,15 @@ export {
   formatReportingAmount,
   averageReportingAmount,
 } from "./reportingMoney";
+
+export {
+  CANONICAL_REPORTING_SURFACE,
+  REPORTING_CANONICAL_API_SUNSET_PROGRAM_ID,
+  LEGACY_REPORTING_SURFACES,
+  FORBIDDEN_RESTAURANT_KPI_CLIENT_APIS,
+  listSoftSunsetUnusedSurfaces,
+  listArchitecturalGaps,
+  type LegacyReportingSurface,
+  type LegacyReportingSurfaceStatus,
+  type LegacyReportingSurfaceName,
+} from "./legacyReportingSurfaces";
