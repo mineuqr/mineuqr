@@ -42,8 +42,8 @@ export type MonetaryPaymentMethod = (typeof MONETARY_PAYMENT_METHODS)[number];
 
 /**
  * Default tender when staff settle paid without specifying a method.
- * Preserves backward-compatible markPaid UX; analytics can distinguish
- * unspecified tenders via `other`.
+ * SETTLEMENT-PAYMENT-METHOD-CAPTURE-1 — Mark Paid UI supplies tenders;
+ * this remains the legacy fallback when settlements[] is omitted.
  */
 export const DEFAULT_PAID_PAYMENT_METHOD: PaymentMethod = "other";
 

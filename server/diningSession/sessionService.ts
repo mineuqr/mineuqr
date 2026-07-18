@@ -43,6 +43,7 @@ import {
 import type { SelectDiningSession } from "../../drizzle/schema";
 import { getDb } from "../db";
 import { computeOrdersTotalAmount } from "./sessionOrderTotals";
+import type { StaffSettlementLineInput } from "@shared/operational-session";
 
 const ALLOWED_STATUS_TRANSITIONS: Record<DiningSessionStatus, DiningSessionStatus[]> = {
   open: ["paid", "complimentary", "closed"],
@@ -55,6 +56,15 @@ export type StaffSessionActionInput = {
   restaurantId: number;
   sessionId: number;
   actorUserId: number;
+};
+
+/** SETTLEMENT-PAYMENT-METHOD-CAPTURE-1 — Mark Paid with optional tender lines. */
+export type MarkPaidInput = StaffSessionActionInput & {
+  /**
+   * Operator settlement tenders. When omitted, Check domain keeps legacy
+   * DEFAULT_PAID_PAYMENT_METHOD = "other" for backward compatibility.
+   */
+  settlements?: readonly StaffSettlementLineInput[];
 };
 
 function assertValidSessionActionInput(input: StaffSessionActionInput): void {
@@ -141,7 +151,8 @@ async function applySessionTransition(
 async function settleAndCloseSession(
   session: SelectDiningSession,
   settlement: DiningSessionSettlementOutcome,
-  metadata: Record<string, unknown>
+  metadata: Record<string, unknown>,
+  settlements?: readonly StaffSettlementLineInput[]
 ): Promise<void> {
   if (session.status !== "open") {
     throw new DiningSessionTransitionError(
@@ -170,11 +181,13 @@ async function settleAndCloseSession(
   };
 
   // CHECK-MANAGEMENT-ARCHITECTURE-1 — finalize Check before Session settle/close.
+  // SETTLEMENT-PAYMENT-METHOD-CAPTURE-1 — pass operator tenders when provided.
   const check =
     settlement === "paid"
       ? await settleCheckPaid({
           restaurantId: session.restaurantId,
           sessionId: session.id,
+          settlements,
         })
       : await settleCheckComplimentary({
           restaurantId: session.restaurantId,
@@ -488,14 +501,19 @@ export async function recordSessionEvent(
 }
 
 /** SETTLEMENT-ARCHITECTURE-1A — staff marks session paid (open → paid → closed). */
-export async function markPaid(input: StaffSessionActionInput): Promise<void> {
+export async function markPaid(input: MarkPaidInput): Promise<void> {
   assertValidSessionActionInput(input);
   const session = await loadSessionForStaffAction(input.restaurantId, input.sessionId);
 
-  await settleAndCloseSession(session, "paid", {
-    source: "staff",
-    actorUserId: input.actorUserId,
-  });
+  await settleAndCloseSession(
+    session,
+    "paid",
+    {
+      source: "staff",
+      actorUserId: input.actorUserId,
+    },
+    input.settlements
+  );
 }
 
 /** SETTLEMENT-ARCHITECTURE-1A — staff marks session complimentary (open → complimentary → closed). */

@@ -1973,6 +1973,30 @@ const sessionRouter = router({
       z.object({
         restaurantId: z.number(),
         sessionId: z.number().int().positive(),
+        /**
+         * SETTLEMENT-PAYMENT-METHOD-CAPTURE-1 — optional operator tenders.
+         * Omitted → legacy DEFAULT_PAID_PAYMENT_METHOD ("other").
+         * Single line may omit amount (domain fills Check grandTotal).
+         * Multi-tender lines require amount on each line.
+         */
+        settlements: z
+          .array(
+            z.object({
+              paymentMethod: z.enum([
+                "cash",
+                "mada",
+                "visa",
+                "mastercard",
+                "apple_pay",
+                "stc_pay",
+                "bank_transfer",
+                "other",
+              ]),
+              amount: z.string().min(1).optional(),
+            })
+          )
+          .min(1)
+          .optional(),
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -1982,6 +2006,7 @@ const sessionRouter = router({
           restaurantId: input.restaurantId,
           sessionId: input.sessionId,
           actorUserId: ctx.user.id,
+          settlements: input.settlements,
         });
         return await getOwnerSessionWorkspace(input.restaurantId, input.sessionId);
       } catch (err) {

@@ -16,8 +16,12 @@ export const sessionActionLabels = {
   },
   paidConfirmTitle: { ar: "تسجيل الدفع؟", en: "Mark session paid?" },
   paidConfirmBody: {
-    ar: "سيتم تسوية الجلسة وإغلاقها تلقائياً وتحرير الطاولة.",
-    en: "The session will be settled and closed automatically, freeing the table.",
+    ar: "اختر طريقة الدفع. سيتم تسوية الجلسة وإغلاقها تلقائياً وتحرير الطاولة.",
+    en: "Select a payment method. The session will be settled and closed automatically, freeing the table.",
+  },
+  selectPaymentMethod: {
+    ar: "طريقة الدفع",
+    en: "Payment method",
   },
   complimentaryConfirmTitle: { ar: "تسجيل ضيافة؟", en: "Mark complimentary?" },
   complimentaryConfirmBody: {

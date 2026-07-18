@@ -20,7 +20,6 @@ import {
   formatDiningSessionTimestamp,
 } from "../../diningSession/sessionTypes";
 import {
-  assertPaidSettlementLines,
   businessTaxSettingsFromRestaurantRow,
   captureCurrencySnapshot,
   captureTaxPolicySnapshot,
@@ -28,10 +27,12 @@ import {
   computeCheckMoney,
   decideCheckRecalculation,
   defaultPaidSettlementLine,
+  resolveStaffSettlementLines,
   SettlementValidationError,
   type CheckOutcome,
   type OperationalCheck,
   type SettlementTransactionInput,
+  type StaffSettlementLineInput,
 } from "@shared/operational-session";
 import { mapRowToOperationalCheck } from "./checkMapper";
 import {
@@ -229,8 +230,11 @@ async function finalizeOpenCheck(
     restaurantId: number;
     sessionId: number;
     outcome: Exclude<CheckOutcome, "open">;
-    /** Paid/comp tender lines; omitted → default full-cover line. */
-    settlements?: readonly SettlementTransactionInput[];
+    /**
+     * SETTLEMENT-PAYMENT-METHOD-CAPTURE-1 — operator tender lines.
+     * Omitted → legacy default full-cover `other`.
+     */
+    settlements?: readonly StaffSettlementLineInput[];
   },
   client?: SessionDbClient
 ): Promise<OperationalCheck> {
@@ -260,7 +264,7 @@ async function finalizeOpenCheck(
   try {
     if (input.outcome === "paid") {
       settlementLines = input.settlements?.length
-        ? assertPaidSettlementLines(money.grandTotal, input.settlements)
+        ? resolveStaffSettlementLines(money.grandTotal, input.settlements)
         : [defaultPaidSettlementLine(money.grandTotal)];
     } else if (input.outcome === "complimentary") {
       settlementLines = [complimentarySettlementLine(money.grandTotal)];
@@ -316,11 +320,12 @@ async function finalizeOpenCheck(
  * Settle Check Paid — freezes totals + records settlement transaction(s).
  * Session close remains Session responsibility.
  * Omitting `settlements` writes one `other` tender for grandTotal (backward compatible).
+ * SETTLEMENT-PAYMENT-METHOD-CAPTURE-1 — supplied settlements persist operator tenders.
  */
 export async function settleCheckPaid(input: {
   restaurantId: number;
   sessionId: number;
-  settlements?: readonly SettlementTransactionInput[];
+  settlements?: readonly StaffSettlementLineInput[];
 }): Promise<OperationalCheck> {
   return finalizeOpenCheck({
     restaurantId: input.restaurantId,

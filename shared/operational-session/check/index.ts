@@ -66,10 +66,13 @@ export {
   type SettlementTransactionInput,
 } from "./settlementTransactionContract";
 
+export type { StaffSettlementLineInput } from "./staffSettlementDto";
+
 export {
   SettlementValidationError,
   assertPaidSettlementLines,
   complimentarySettlementLine,
   defaultPaidSettlementLine,
+  resolveStaffSettlementLines,
   isCheckFullyCoveredBySettlements,
 } from "./settlementInvariants";

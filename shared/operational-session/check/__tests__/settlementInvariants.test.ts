@@ -4,6 +4,7 @@ import {
   complimentarySettlementLine,
   defaultPaidSettlementLine,
   isCheckFullyCoveredBySettlements,
+  resolveStaffSettlementLines,
   SettlementValidationError,
 } from "../settlementInvariants";
 
@@ -55,5 +56,30 @@ describe("CHECK-SETTLEMENT-METHODS-1 settlement invariants", () => {
       true
     );
     expect(isCheckFullyCoveredBySettlements("30.00", ["10.00"])).toBe(false);
+  });
+});
+
+describe("SETTLEMENT-PAYMENT-METHOD-CAPTURE-1 resolveStaffSettlementLines", () => {
+  it("fills grandTotal for a single tender without amount", () => {
+    expect(resolveStaffSettlementLines("88.50", [{ paymentMethod: "cash" }])).toEqual([
+      { paymentMethod: "cash", amount: "88.50", status: "captured" },
+    ]);
+  });
+
+  it("accepts multi-tender lines with amounts", () => {
+    const lines = resolveStaffSettlementLines("100.00", [
+      { paymentMethod: "cash", amount: "40.00" },
+      { paymentMethod: "mada", amount: "60.00" },
+    ]);
+    expect(lines).toHaveLength(2);
+  });
+
+  it("rejects multi-tender without amounts", () => {
+    expect(() =>
+      resolveStaffSettlementLines("100.00", [
+        { paymentMethod: "cash" },
+        { paymentMethod: "mada" },
+      ])
+    ).toThrow(/Multi-tender/);
   });
 });

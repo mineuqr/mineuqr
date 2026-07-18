@@ -51,7 +51,9 @@ describe("CHECK-SETTLEMENT-METHODS-1 architecture guards", () => {
     const svc = read("server/operational-session/check/CheckService.ts");
     expect(svc).toContain("insertSettlementTransactions");
     expect(svc).toContain("defaultPaidSettlementLine");
-    expect(svc).toContain("assertPaidSettlementLines");
+    // CAPTURE-1 — staff lines resolve via resolveStaffSettlementLines
+    // (which calls assertPaidSettlementLines internally).
+    expect(svc).toContain("resolveStaffSettlementLines");
     expect(svc).not.toMatch(/stripe|paypal|moyasar|tap\.company/i);
   });
 
@@ -74,15 +76,17 @@ describe("CHECK-SETTLEMENT-METHODS-1 architecture guards", () => {
     expect(router).not.toContain("SettlementDistribution");
   });
 
-  it("session.markPaid signature stays restaurantId + sessionId only", () => {
+  it("session.markPaid accepts optional settlements (CAPTURE-1) with legacy omit path", () => {
     const routers = read("server/routers.ts");
     const markPaidBlock = routers.slice(
       routers.indexOf("markPaid:"),
-      routers.indexOf("markPaid:") + 400
+      routers.indexOf("markPaid:") + 900
     );
     expect(markPaidBlock).toContain("restaurantId");
     expect(markPaidBlock).toContain("sessionId");
-    expect(markPaidBlock).not.toContain("paymentMethod");
-    expect(markPaidBlock).not.toContain("settlements");
+    expect(markPaidBlock).toContain("settlements");
+    expect(markPaidBlock).toContain("paymentMethod");
+    expect(markPaidBlock).toContain("SETTLEMENT-PAYMENT-METHOD-CAPTURE-1");
+    expect(markPaidBlock).toContain(".optional()");
   });
 });

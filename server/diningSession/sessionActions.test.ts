@@ -44,6 +44,7 @@ import {
   markComplimentary,
   markPaid,
 } from "./sessionService";
+import { settleCheckPaid } from "../operational-session/check/CheckService";
 import { DiningSessionTransitionError, TABLE_EVENT_TYPES } from "./sessionTypes";
 
 const baseSession: SelectDiningSession = {
@@ -105,6 +106,13 @@ describe("session lifecycle SETTLEMENT-ARCHITECTURE-1A", () => {
 
     await markPaid(actionInput);
 
+    expect(settleCheckPaid).toHaveBeenCalledWith(
+      expect.objectContaining({
+        restaurantId: 1,
+        sessionId: 10,
+        settlements: undefined,
+      })
+    );
     expect(repoMocks.updateSessionStatus).toHaveBeenCalledWith(
       expect.objectContaining({
         status: "paid",
@@ -129,6 +137,21 @@ describe("session lifecycle SETTLEMENT-ARCHITECTURE-1A", () => {
       expect.objectContaining({ eventType: TABLE_EVENT_TYPES.SESSION_CLOSED }),
       expect.anything()
     );
+  });
+
+  it("markPaid forwards operator settlements to Check settle", async () => {
+    repoMocks.findSessionById.mockResolvedValue(baseSession);
+
+    await markPaid({
+      ...actionInput,
+      settlements: [{ paymentMethod: "mada" }],
+    });
+
+    expect(settleCheckPaid).toHaveBeenCalledWith({
+      restaurantId: 1,
+      sessionId: 10,
+      settlements: [{ paymentMethod: "mada" }],
+    });
   });
 
   it("markComplimentary settles and auto-closes session", async () => {

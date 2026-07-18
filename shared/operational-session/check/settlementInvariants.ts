@@ -6,9 +6,11 @@
 
 import {
   DEFAULT_PAID_PAYMENT_METHOD,
+  isMonetaryPaymentMethod,
   type PaymentMethod,
 } from "./paymentMethod";
 import type { SettlementTransactionInput } from "./settlementTransactionContract";
+import type { StaffSettlementLineInput } from "./staffSettlementDto";
 
 export class SettlementValidationError extends Error {
   constructor(message: string) {
@@ -82,7 +84,7 @@ export function complimentarySettlementLine(
 
 /**
  * Default paid tender when UI/API omits methods — full grandTotal as `other`.
- * Preserves existing markPaid behavior.
+ * SETTLEMENT-PAYMENT-METHOD-CAPTURE-1 — legacy fallback when settlements[] omitted.
  */
 export function defaultPaidSettlementLine(
   grandTotal: string,
@@ -98,6 +100,46 @@ export function defaultPaidSettlementLine(
     amount: formatAmount(parseAmount(grandTotal)),
     status: "captured",
   };
+}
+
+/**
+ * Resolve staff settlement DTOs → validated persistence lines.
+ * Single line without amount → full Check grandTotal.
+ * Multi-tender requires explicit amounts that sum to grandTotal.
+ */
+export function resolveStaffSettlementLines(
+  grandTotal: string,
+  lines: readonly StaffSettlementLineInput[]
+): readonly SettlementTransactionInput[] {
+  if (lines.length === 0) {
+    throw new SettlementValidationError(
+      "Paid settlement requires at least one settlement transaction"
+    );
+  }
+
+  const normalized: SettlementTransactionInput[] = lines.map((line) => {
+    if (!isMonetaryPaymentMethod(line.paymentMethod)) {
+      throw new SettlementValidationError(
+        `Invalid monetary payment method: ${line.paymentMethod}`
+      );
+    }
+    const hasAmount =
+      line.amount != null && String(line.amount).trim().length > 0;
+    if (!hasAmount && lines.length > 1) {
+      throw new SettlementValidationError(
+        "Multi-tender settlement lines require an amount on each line"
+      );
+    }
+    return {
+      paymentMethod: line.paymentMethod,
+      amount: hasAmount
+        ? formatAmount(parseAmount(String(line.amount)))
+        : formatAmount(parseAmount(grandTotal)),
+      status: "captured",
+    };
+  });
+
+  return assertPaidSettlementLines(grandTotal, normalized);
 }
 
 /**

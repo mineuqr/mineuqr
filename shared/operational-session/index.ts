@@ -61,6 +61,7 @@ export {
   assertPaidSettlementLines,
   complimentarySettlementLine,
   defaultPaidSettlementLine,
+  resolveStaffSettlementLines,
   isCheckFullyCoveredBySettlements,
   type CheckOutcome,
   type CheckTerminalOutcome,
@@ -83,4 +84,5 @@ export {
   type SettlementTransactionStatus,
   type SettlementTransaction,
   type SettlementTransactionInput,
+  type StaffSettlementLineInput,
 } from "./check";

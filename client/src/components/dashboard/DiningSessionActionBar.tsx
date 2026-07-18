@@ -10,14 +10,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { MarkPaidSettlementDialog } from "@/components/dashboard/MarkPaidSettlementDialog";
 import type { DiningSessionStatus } from "@/lib/diningSessionCopy";
 import { sessionActionLabel } from "@/lib/diningSessionActionCopy";
 import { trpc } from "@/lib/trpc";
 import { toastTrpcError } from "@/lib/trpcErrors";
 import { useLanguage } from "@/contexts/LanguageContext";
+import type { StaffSettlementLineInput } from "@shared/operational-session";
 import { Loader2 } from "lucide-react";
 
-type ConfirmKind = "close" | "paid" | "complimentary" | null;
+type ConfirmKind = "close" | "complimentary" | null;
 
 type DiningSessionActionBarProps = {
   restaurantId: number;
@@ -36,6 +38,7 @@ export function DiningSessionActionBar({
   const lang = language === "ar" ? "ar" : "en";
   const utils = trpc.useUtils();
   const [confirmKind, setConfirmKind] = useState<ConfirmKind>(null);
+  const [paidOpen, setPaidOpen] = useState(false);
 
   const invalidateAfterAction = async () => {
     await utils.session.getOwnerWorkspace.invalidate({ restaurantId, sessionId });
@@ -47,6 +50,7 @@ export function DiningSessionActionBar({
     onSuccess: () => {
       void invalidateAfterAction();
       setConfirmKind(null);
+      setPaidOpen(false);
     },
     onError: (err: unknown) => toastTrpcError(err, t),
   };
@@ -68,30 +72,32 @@ export function DiningSessionActionBar({
     const input = { restaurantId, sessionId };
     if (confirmKind === "close") {
       closeMutation.mutate(input);
-    } else if (confirmKind === "paid") {
-      markPaidMutation.mutate(input);
     } else if (confirmKind === "complimentary") {
       markComplimentaryMutation.mutate(input);
     }
   };
 
+  const confirmPaid = (settlements: readonly StaffSettlementLineInput[]) => {
+    markPaidMutation.mutate({
+      restaurantId,
+      sessionId,
+      settlements: [...settlements],
+    });
+  };
+
   const confirmTitle =
     confirmKind === "close"
       ? sessionActionLabel("closeConfirmTitle", lang)
-      : confirmKind === "paid"
-        ? sessionActionLabel("paidConfirmTitle", lang)
-        : confirmKind === "complimentary"
-          ? sessionActionLabel("complimentaryConfirmTitle", lang)
-          : "";
+      : confirmKind === "complimentary"
+        ? sessionActionLabel("complimentaryConfirmTitle", lang)
+        : "";
 
   const confirmBody =
     confirmKind === "close"
       ? sessionActionLabel("closeConfirmBody", lang)
-      : confirmKind === "paid"
-        ? sessionActionLabel("paidConfirmBody", lang)
-        : confirmKind === "complimentary"
-          ? sessionActionLabel("complimentaryConfirmBody", lang)
-          : "";
+      : confirmKind === "complimentary"
+        ? sessionActionLabel("complimentaryConfirmBody", lang)
+        : "";
 
   return (
     <>
@@ -102,7 +108,7 @@ export function DiningSessionActionBar({
               type="button"
               className="w-full sm:w-auto"
               disabled={pending}
-              onClick={() => setConfirmKind("paid")}
+              onClick={() => setPaidOpen(true)}
             >
               {pending && markPaidMutation.isPending ? (
                 <Loader2 className="me-2 h-4 w-4 animate-spin" />
@@ -130,6 +136,14 @@ export function DiningSessionActionBar({
           </>
         )}
       </div>
+
+      <MarkPaidSettlementDialog
+        open={paidOpen}
+        language={lang}
+        pending={pending && markPaidMutation.isPending}
+        onOpenChange={setPaidOpen}
+        onConfirm={confirmPaid}
+      />
 
       <AlertDialog open={confirmKind != null} onOpenChange={(open) => !open && setConfirmKind(null)}>
         <AlertDialogContent>

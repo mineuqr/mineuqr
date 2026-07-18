@@ -16,16 +16,18 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { MarkPaidSettlementDialog } from "@/components/dashboard/MarkPaidSettlementDialog";
 import type { DiningSessionStatus } from "@/lib/diningSessionCopy";
 import { sessionActionLabel } from "@/lib/diningSessionActionCopy";
 import { trpc } from "@/lib/trpc";
 import { toastTrpcError } from "@/lib/trpcErrors";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/contexts/LanguageContext";
+import type { StaffSettlementLineInput } from "@shared/operational-session";
 import { Loader2, MoreHorizontal } from "lucide-react";
 import { restaurantDash } from "./restaurantDashStyles";
 
-type ConfirmKind = "close" | "paid" | "complimentary" | null;
+type ConfirmKind = "close" | "complimentary" | null;
 
 export function SessionRowQuickActions({
   restaurantId,
@@ -44,6 +46,7 @@ export function SessionRowQuickActions({
   const lang = isAr ? "ar" : "en";
   const utils = trpc.useUtils();
   const [confirmKind, setConfirmKind] = useState<ConfirmKind>(null);
+  const [paidOpen, setPaidOpen] = useState(false);
 
   const invalidateAfterAction = async () => {
     await Promise.all([
@@ -59,6 +62,7 @@ export function SessionRowQuickActions({
     onSuccess: () => {
       void invalidateAfterAction();
       setConfirmKind(null);
+      setPaidOpen(false);
     },
     onError: (err: unknown) => toastTrpcError(err, t),
   };
@@ -76,30 +80,32 @@ export function SessionRowQuickActions({
     const input = { restaurantId, sessionId };
     if (confirmKind === "close") {
       closeMutation.mutate(input);
-    } else if (confirmKind === "paid") {
-      markPaidMutation.mutate(input);
     } else if (confirmKind === "complimentary") {
       markComplimentaryMutation.mutate(input);
     }
   };
 
+  const confirmPaid = (settlements: readonly StaffSettlementLineInput[]) => {
+    markPaidMutation.mutate({
+      restaurantId,
+      sessionId,
+      settlements: [...settlements],
+    });
+  };
+
   const confirmTitle =
     confirmKind === "close"
       ? sessionActionLabel("closeConfirmTitle", lang)
-      : confirmKind === "paid"
-        ? sessionActionLabel("paidConfirmTitle", lang)
-        : confirmKind === "complimentary"
-          ? sessionActionLabel("complimentaryConfirmTitle", lang)
-          : "";
+      : confirmKind === "complimentary"
+        ? sessionActionLabel("complimentaryConfirmTitle", lang)
+        : "";
 
   const confirmBody =
     confirmKind === "close"
       ? sessionActionLabel("closeConfirmBody", lang)
-      : confirmKind === "paid"
-        ? sessionActionLabel("paidConfirmBody", lang)
-        : confirmKind === "complimentary"
-          ? sessionActionLabel("complimentaryConfirmBody", lang)
-          : "";
+      : confirmKind === "complimentary"
+        ? sessionActionLabel("complimentaryConfirmBody", lang)
+        : "";
 
   const showSettlementActions = sessionStatus === "open";
 
@@ -135,7 +141,7 @@ export function SessionRowQuickActions({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="border-slate-700/50 bg-slate-950">
-              <DropdownMenuItem disabled={pending} onClick={() => setConfirmKind("paid")}>
+              <DropdownMenuItem disabled={pending} onClick={() => setPaidOpen(true)}>
                 {sessionActionLabel("markPaid", lang)}
               </DropdownMenuItem>
               <DropdownMenuItem
@@ -155,6 +161,14 @@ export function SessionRowQuickActions({
           </DropdownMenu>
         ) : null}
       </div>
+
+      <MarkPaidSettlementDialog
+        open={paidOpen}
+        language={lang}
+        pending={pending && markPaidMutation.isPending}
+        onOpenChange={setPaidOpen}
+        onConfirm={confirmPaid}
+      />
 
       <AlertDialog open={confirmKind != null} onOpenChange={(open) => !open && setConfirmKind(null)}>
         <AlertDialogContent>
