@@ -1,7 +1,13 @@
 /**
- * REPORTING-PRODUCT-SEMANTICS-1 — export labels aligned with preferred KPI terminology.
- * Presentation only — no KPI calculations.
+ * REPORTING-PRODUCT-SEMANTICS-1 / REPORTING-EXECUTIVE-SUMMARY-RATIONALIZATION-1
+ * Export chrome + KPI labels from Product Semantics — no hardcoded KPI names.
  */
+import {
+  preferredKpiLabel,
+  SECTION_TERMINOLOGY,
+  SEMANTIC_CLARIFICATIONS,
+  type PresentationLanguage,
+} from "@shared/reporting-platform";
 import type { ReportingExportLanguage } from "./types";
 
 export type ReportingExportLabels = Readonly<{
@@ -50,6 +56,9 @@ export type ReportingExportLabels = Readonly<{
   orderSalesSection: string;
   adjustmentsSection: string;
   reportingBasisSection: string;
+  executiveSnapshotSection: string;
+  executiveSnapshotHint: string;
+  taxAnalysisSection: string;
   checkRevenueBasis: string;
   orderSalesBasis: string;
   trendInsufficient: string;
@@ -60,66 +69,77 @@ export type ReportingExportLabels = Readonly<{
   contents: string;
 }>;
 
+function langOf(language: ReportingExportLanguage): PresentationLanguage {
+  return language === "ar" ? "ar" : "en";
+}
+
 export function reportingExportLabels(
   language: ReportingExportLanguage
 ): ReportingExportLabels {
-  if (language === "ar") {
+  const lang = langOf(language);
+  const section = SECTION_TERMINOLOGY[lang];
+  const clarify = SEMANTIC_CLARIFICATIONS[lang];
+  const kpi = (id: Parameters<typeof preferredKpiLabel>[0]) =>
+    preferredKpiLabel(id, lang);
+
+  if (lang === "ar") {
     return {
       brand: "MineuQR",
       generatedBy: "أعدّ بواسطة MineuQR",
       cover: "الغلاف",
-      reportTitleDefault: "التقرير المالي التنفيذي",
-      reportTitleMonthly: "التقرير المالي الشهري",
-      reportTitleAnnual: "التقرير المالي السنوي",
-      coverSubtitle: "وثيقة مالية تنفيذية",
-      executive: "الملخص التنفيذي",
-      financial: "الملخص المالي",
-      orderSalesRollup: "مبيعات الطلبات",
-      revenueTrend: "اتجاهات إيرادات الشيكات",
-      revenue: "إيرادات الشيكات",
-      orderSales: "مبيعات الطلبات",
-      orderSalesPeriod: "مبيعات الطلبات للفترة",
-      paidChecks: "الشيكات المدفوعة",
-      averageCheck: "متوسط الشيك",
-      averageOrder: "متوسط الطلب",
-      averageOrderPeriod: "متوسط الطلب للفترة",
-      orders: "الطلبات",
-      ordersPeriod: "عدد الطلبات للفترة",
-      taxCollected: "الضريبة المحصّلة",
-      complimentaryCount: "الشيكات المجانية",
-      complimentaryAmount: "قيمة الشيكات المجانية",
-      voidedCount: "الشيكات الملغاة",
+      reportTitleDefault: "تقرير أداء العمل",
+      reportTitleMonthly: "تقرير الأداء الشهري",
+      reportTitleAnnual: "تقرير الأداء السنوي",
+      coverSubtitle: section.coverSubtitle,
+      executive: section.executiveSummary,
+      financial: section.financialSummary,
+      orderSalesRollup: kpi("orderSales"),
+      revenueTrend: section.checkRevenueTrends,
+      revenue: kpi("revenue"),
+      orderSales: kpi("orderSales"),
+      orderSalesPeriod: kpi("orderSales"),
+      paidChecks: kpi("paidCheckCount"),
+      averageCheck: kpi("averageCheck"),
+      averageOrder: kpi("averageOrder"),
+      averageOrderPeriod: kpi("averageOrder"),
+      orders: kpi("orderCount"),
+      ordersPeriod: kpi("orderCount"),
+      taxCollected: kpi("taxCollected"),
+      complimentaryCount: kpi("complimentaryCount"),
+      complimentaryAmount: kpi("complimentaryAmount"),
+      voidedCount: kpi("voidedCount"),
       currency: "العملة",
       pricingMode: "أساس التسعير",
       taxPolicy: "السياسة الضريبية",
       period: "فترة التقرير",
       periodKey: "الفترة",
-      orderCount: "عدد الطلبات",
-      completedOrders: "الطلبات المكتملة",
-      paidCheckCount: "الشيكات المدفوعة",
+      orderCount: kpi("orderCount"),
+      completedOrders: kpi("completedOrders"),
+      paidCheckCount: kpi("paidCheckCount"),
       generated: "تاريخ الإصدار",
       metric: "البند",
       value: "القيمة",
       restaurantName: "اسم المطعم",
       businessName: "الاسم التجاري",
-      chartRevenueTrend: "اتجاه إيرادات الشيكات",
-      chartOrderTrend: "اتجاه مبيعات الطلبات",
+      chartRevenueTrend: section.checkRevenueTrends,
+      chartOrderTrend: `اتجاه ${kpi("orderSales")}`,
       printFooter: "MineuQR",
       confidential: "سري — للاستخدام الداخلي",
-      performanceSection: "أداء إيرادات الشيكات",
-      orderSalesSection: "مبيعات الطلبات",
-      adjustmentsSection: "التسويات",
+      performanceSection: section.financialPerformance,
+      orderSalesSection: section.orderSalesPerformance,
+      adjustmentsSection: section.adjustmentsAnalysis,
       reportingBasisSection: "أساس التقرير",
-      checkRevenueBasis:
-        "إيرادات الشيكات = مجموع قيم الشيكات المدفوعة (وليست مبيعات الطلبات).",
-      orderSalesBasis:
-        "مبيعات الطلبات = مجموع الطلبات المكتملة (وليست إيرادات الشيكات).",
+      executiveSnapshotSection: section.executiveSnapshot,
+      executiveSnapshotHint: section.executiveSnapshotHint,
+      taxAnalysisSection: section.taxAnalysis,
+      checkRevenueBasis: clarify.checkRevenue,
+      orderSalesBasis: clarify.orderSales,
       trendInsufficient:
         "لا تتوفر مشاهدات كافية لعرض اتجاه موثوق لهذه الفترة.",
-      dailyRevenueTitle: "إيرادات الشيكات اليومية",
-      monthlyRevenueTitle: "إيرادات الشيكات الشهرية",
-      dailyOrderSalesTitle: "مبيعات الطلبات اليومية",
-      monthlyOrderSalesTitle: "مبيعات الطلبات الشهرية",
+      dailyRevenueTitle: kpi("dailySales"),
+      monthlyRevenueTitle: `${kpi("revenue")} الشهرية`,
+      dailyOrderSalesTitle: `${kpi("orderSales")} اليومية`,
+      monthlyOrderSalesTitle: `${kpi("orderSales")} الشهرية`,
       contents: "محتويات التقرير",
     };
   }
@@ -128,58 +148,59 @@ export function reportingExportLabels(
     brand: "MineuQR",
     generatedBy: "Prepared by MineuQR",
     cover: "Cover",
-    reportTitleDefault: "Executive Financial Report",
-    reportTitleMonthly: "Monthly Financial Report",
-    reportTitleAnnual: "Annual Financial Report",
-    coverSubtitle: "Executive Financial Document",
-    executive: "Executive Summary",
-    financial: "Financial Summary",
-    orderSalesRollup: "Order Sales",
-    revenueTrend: "Check Revenue Trends",
-    revenue: "Check Revenue",
-    orderSales: "Order Sales",
-    orderSalesPeriod: "Order Sales (Period)",
-    paidChecks: "Paid Checks",
-    averageCheck: "Average Check",
-    averageOrder: "Average Order",
-    averageOrderPeriod: "Average Order (Period)",
-    orders: "Orders",
-    ordersPeriod: "Orders (Period)",
-    taxCollected: "Tax Collected",
-    complimentaryCount: "Complimentary Checks",
-    complimentaryAmount: "Complimentary Amount",
-    voidedCount: "Voided Checks",
+    reportTitleDefault: "Business Performance Report",
+    reportTitleMonthly: "Monthly Performance Report",
+    reportTitleAnnual: "Annual Performance Report",
+    coverSubtitle: section.coverSubtitle,
+    executive: section.executiveSummary,
+    financial: section.financialSummary,
+    orderSalesRollup: kpi("orderSales"),
+    revenueTrend: section.checkRevenueTrends,
+    revenue: kpi("revenue"),
+    orderSales: kpi("orderSales"),
+    orderSalesPeriod: kpi("orderSales"),
+    paidChecks: kpi("paidCheckCount"),
+    averageCheck: kpi("averageCheck"),
+    averageOrder: kpi("averageOrder"),
+    averageOrderPeriod: kpi("averageOrder"),
+    orders: kpi("orderCount"),
+    ordersPeriod: kpi("orderCount"),
+    taxCollected: kpi("taxCollected"),
+    complimentaryCount: kpi("complimentaryCount"),
+    complimentaryAmount: kpi("complimentaryAmount"),
+    voidedCount: kpi("voidedCount"),
     currency: "Currency",
     pricingMode: "Pricing Basis",
     taxPolicy: "Tax Policy",
     period: "Reporting Period",
     periodKey: "Period",
-    orderCount: "Orders",
-    completedOrders: "Completed Orders",
-    paidCheckCount: "Paid Checks",
+    orderCount: kpi("orderCount"),
+    completedOrders: kpi("completedOrders"),
+    paidCheckCount: kpi("paidCheckCount"),
     generated: "Issued",
     metric: "Line Item",
     value: "Amount",
     restaurantName: "Restaurant",
     businessName: "Business Name",
-    chartRevenueTrend: "Check Revenue Trend",
-    chartOrderTrend: "Order Sales Trend",
+    chartRevenueTrend: section.checkRevenueTrends,
+    chartOrderTrend: `${kpi("orderSales")} Trend`,
     printFooter: "MineuQR",
     confidential: "Confidential — Internal Use",
-    performanceSection: "Check Revenue Performance",
-    orderSalesSection: "Order Sales",
-    adjustmentsSection: "Adjustments",
+    performanceSection: section.financialPerformance,
+    orderSalesSection: section.orderSalesPerformance,
+    adjustmentsSection: section.adjustmentsAnalysis,
     reportingBasisSection: "Reporting Basis",
-    checkRevenueBasis:
-      "Check Revenue = sum of paid Check totals (not Order Sales).",
-    orderSalesBasis:
-      "Order Sales = completed (served) order totals (not Check Revenue).",
+    executiveSnapshotSection: section.executiveSnapshot,
+    executiveSnapshotHint: section.executiveSnapshotHint,
+    taxAnalysisSection: section.taxAnalysis,
+    checkRevenueBasis: clarify.checkRevenue,
+    orderSalesBasis: clarify.orderSales,
     trendInsufficient:
       "Insufficient observations are available to present a reliable trend for this reporting period.",
-    dailyRevenueTitle: "Daily Check Revenue",
-    monthlyRevenueTitle: "Monthly Check Revenue",
-    dailyOrderSalesTitle: "Daily Order Sales",
-    monthlyOrderSalesTitle: "Monthly Order Sales",
+    dailyRevenueTitle: kpi("dailySales"),
+    monthlyRevenueTitle: `Monthly ${kpi("revenue")}`,
+    dailyOrderSalesTitle: `Daily ${kpi("orderSales")}`,
+    monthlyOrderSalesTitle: `Monthly ${kpi("orderSales")}`,
     contents: "Report Contents",
   };
 }

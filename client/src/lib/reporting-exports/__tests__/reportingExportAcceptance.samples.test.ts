@@ -332,16 +332,19 @@ describe("REPORTING-DESIGN-LANGUAGE-1 samples + presentation", () => {
         reconciliation.push("| KPI | Source DTO | Value | Present on |");
         reconciliation.push("|-----|------------|-------|------------|");
         reconciliation.push(
-          `| Check Revenue | BusinessMetricsSummary (= trend sum) | ${revenueDisplay} | Executive, Financial, Check Revenue Trends total |`
+          `| Check Revenue | BusinessMetricsSummary (= trend sum) | ${revenueDisplay} | Executive (At a Glance), Financial, Check Revenue Trends |`
         );
         reconciliation.push(
-          `| Paid Checks | BusinessMetricsSummary | ${bundle.business.paidCheckCount} | Executive, Financial, Revenue Trends total |`
+          `| Paid Checks | BusinessMetricsSummary | ${bundle.business.paidCheckCount} | Executive (At a Glance), Financial, Check Revenue Trends |`
         );
         reconciliation.push(
-          `| Order Sales | OrderSalesRollup (sum of periods) | ${orderSalesDisplay} | Executive, Financial, Order Sales total |`
+          `| Order Sales | OrderSalesRollup (sum of periods) | ${orderSalesDisplay} | Executive (At a Glance), Financial, Order Sales |`
         );
         reconciliation.push(
-          `| Orders | OrderSalesRollup (sum) | ${orderTotals.orderCount} | Executive, Financial, Order Sales total |`
+          `| Orders | OrderSalesRollup (sum) | ${orderTotals.orderCount} | Executive (At a Glance), Financial, Order Sales |`
+        );
+        reconciliation.push(
+          `| Tax / Complimentary / Voided | BusinessMetricsSummary | (analysis) | Financial Summary only — not Executive |`
         );
         reconciliation.push("");
         reconciliation.push(

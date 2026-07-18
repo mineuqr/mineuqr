@@ -13,6 +13,10 @@ import {
   resolveExportCurrency,
   toWesternDigits,
 } from "../format";
+import {
+  buildExecutiveSummaryCards,
+  executiveSummaryCardTuples,
+} from "../executiveSummaryPresentation";
 import { reportingExportLabels } from "../labels";
 import {
   formatReportScopeLabel,
@@ -273,7 +277,7 @@ async function renderPdfDocument(
     y = baseY + 16;
   };
 
-  // ── Executive ──────────────────────────────────────────
+  // ── Executive (management snapshot) ────────────────────
   doc.addPage();
   y = 48;
   section(labels.executive);
@@ -281,27 +285,35 @@ async function renderPdfDocument(
   text(`${scopeLabel} · ${periodLabel} · ${generated}`, 48, y, {
     width: contentWidth,
   });
+  y = doc.y + 8;
+  doc.fillColor(NAVY).font(fontBold).fontSize(11);
+  text(labels.executiveSnapshotSection, 48, y, { width: contentWidth });
+  y = doc.y + 4;
+  doc.fillColor(SLATE).font(font).fontSize(9);
+  text(labels.executiveSnapshotHint, 48, y, { width: contentWidth });
   y = doc.y + 12;
-  kpiCards([
-    [labels.revenue, money(biz.revenue)],
-    [labels.taxCollected, money(biz.taxCollected)],
-    [labels.paidChecks, formatWesternCount(biz.paidCheckCount)],
-    [labels.averageCheck, money(biz.averageCheck)],
-    [labels.orderSalesPeriod, money(orderPeriod.orderSales)],
-    [labels.averageOrderPeriod, money(orderPeriod.averageOrder)],
-    [labels.ordersPeriod, formatWesternCount(orderPeriod.orderCount)],
-    [labels.complimentaryCount, formatWesternCount(biz.complimentaryCount)],
-    [labels.voidedCount, formatWesternCount(biz.voidedCount)],
-  ]);
+  kpiCards(
+    executiveSummaryCardTuples(
+      buildExecutiveSummaryCards({
+        language: bundle.language,
+        business: biz,
+        orderPeriod,
+        formatMoney: money,
+      })
+    )
+  );
 
-  // ── Financial ──────────────────────────────────────────
+  // ── Financial (detailed analysis) ──────────────────────
   section(labels.financial);
   kvTable([
     [labels.revenue, money(biz.revenue)],
-    [labels.taxCollected, money(biz.taxCollected)],
     [labels.paidChecks, formatWesternCount(biz.paidCheckCount)],
     [labels.averageCheck, money(biz.averageCheck)],
-    [labels.orderSalesPeriod, money(orderPeriod.orderSales)],
+    [labels.taxCollected, money(biz.taxCollected)],
+    [labels.orderSales, money(orderPeriod.orderSales)],
+    [labels.averageOrder, money(orderPeriod.averageOrder)],
+    [labels.orders, formatWesternCount(orderPeriod.orderCount)],
+    [labels.completedOrders, formatWesternCount(orderPeriod.completedOrders)],
     [labels.complimentaryCount, formatWesternCount(biz.complimentaryCount)],
     [labels.complimentaryAmount, money(biz.complimentaryAmount)],
     [labels.voidedCount, formatWesternCount(biz.voidedCount)],

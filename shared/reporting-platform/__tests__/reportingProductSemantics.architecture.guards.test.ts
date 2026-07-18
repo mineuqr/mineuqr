@@ -38,10 +38,12 @@ describe("REPORTING-PRODUCT-SEMANTICS-1 architecture guards", () => {
     const display = read("client/src/lib/reporting/kpiDisplay.ts");
     const labels = read("client/src/lib/reporting-exports/labels.ts");
     expect(display).toContain("preferredKpiLabel");
-    expect(labels).toContain("Check Revenue");
-    expect(labels).toContain("إيرادات الشيكات");
+    expect(labels).toContain("preferredKpiLabel");
+    expect(labels).toContain("SECTION_TERMINOLOGY");
     expect(labels).toContain("checkRevenueBasis");
     expect(labels).not.toMatch(/revenue:\s*"Revenue"/);
+    expect(PREFERRED_KPI_LABELS.revenue.en).toBe("Check Revenue");
+    expect(PREFERRED_KPI_LABELS.revenue.ar).toBe("إيرادات الشيكات");
   });
 
   it("Dashboard Check Revenue sections avoid bare Revenue as section title", () => {

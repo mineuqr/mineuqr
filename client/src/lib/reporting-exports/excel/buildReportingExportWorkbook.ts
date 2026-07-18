@@ -1,6 +1,6 @@
 /**
  * REPORTING-DESIGN-LANGUAGE-1 — MineuQR Official Excel Design Language.
- * Full visual replacement of prior Excel presentations (navy/gold polish deprecated).
+ * REPORTING-EXECUTIVE-SUMMARY-RATIONALIZATION-1 — Executive = management snapshot.
  * Preserves REPORTING-PERIOD-CONSISTENCY-1 scoped totals (scopedOrderSalesFromRollup).
  * Presentation only. Does not calculate Revenue or other KPIs.
  *
@@ -17,6 +17,10 @@ import {
 } from "@/lib/excel/reportTheme";
 import { resolveExportLogoAsset } from "../branding";
 import { renderTrendChartPng } from "../charts/renderTrendChartPng";
+import {
+  buildExecutiveSummaryCards,
+  executiveSummaryCardTuples,
+} from "../executiveSummaryPresentation";
 import {
   formatExportDateTime,
   formatMoneyDisplay,
@@ -688,7 +692,6 @@ function buildExecutiveSheet(
     ctx;
   const sheet = workbook.addWorksheet(sanitizeSheetName(labels.executive));
   const lang = bundle.language;
-  const biz = bundle.business;
   setColWidths(sheet);
 
   writeSheetChrome(
@@ -699,23 +702,27 @@ function buildExecutiveSheet(
   );
 
   paintRow(sheet, 4, COLS, DL.canvas, 12);
-  writeSectionLabel(sheet, 5, labels.performanceSection, lang);
-  writeKpiCards(
-    sheet,
-    7,
-    [
-      [labels.revenue, money(biz.revenue)],
-      [labels.taxCollected, money(biz.taxCollected)],
-      [labels.paidChecks, formatWesternCount(biz.paidCheckCount)],
-      [labels.averageCheck, money(biz.averageCheck)],
-      [labels.orderSalesPeriod, money(orderPeriod.orderSales)],
-      [labels.averageOrderPeriod, money(orderPeriod.averageOrder)],
-      [labels.ordersPeriod, formatWesternCount(orderPeriod.orderCount)],
-      [labels.complimentaryCount, formatWesternCount(biz.complimentaryCount)],
-      [labels.voidedCount, formatWesternCount(biz.voidedCount)],
-    ],
-    lang
+  writeSectionLabel(sheet, 5, labels.executiveSnapshotSection, lang);
+  // Hint row — management framing, not accounting jargon
+  sheet.mergeCells(6, 1, 6, COLS);
+  setWesternText(sheet.getCell(6, 1), labels.executiveSnapshotHint, lang, {
+    size: 10,
+    color: DL.muted,
+    fill: DL.canvas,
+  });
+  sheet.getCell(6, 1).alignment = reportAlignment(
+    lang,
+    isRtl(lang) ? "right" : "left",
+    1
   );
+
+  const cards = buildExecutiveSummaryCards({
+    language: lang,
+    business: bundle.business,
+    orderPeriod,
+    formatMoney: money,
+  });
+  writeKpiCards(sheet, 8, executiveSummaryCardTuples(cards), lang);
 
   applyPrintSetup(sheet, lang, { freezeAt: 3 });
 }
@@ -763,7 +770,6 @@ function buildFinancialSheet(
     labels.performanceSection,
     [
       [labels.revenue, money(biz.revenue)],
-      [labels.taxCollected, money(biz.taxCollected)],
       [labels.paidChecks, formatWesternCount(biz.paidCheckCount)],
       [labels.averageCheck, money(biz.averageCheck)],
     ],
@@ -772,11 +778,18 @@ function buildFinancialSheet(
   row = writeStatementBlock(
     sheet,
     row,
+    labels.taxAnalysisSection,
+    [[labels.taxCollected, money(biz.taxCollected)]],
+    lang
+  );
+  row = writeStatementBlock(
+    sheet,
+    row,
     labels.orderSalesSection,
     [
-      [labels.orderSalesPeriod, money(orderPeriod.orderSales)],
-      [labels.averageOrderPeriod, money(orderPeriod.averageOrder)],
-      [labels.ordersPeriod, formatWesternCount(orderPeriod.orderCount)],
+      [labels.orderSales, money(orderPeriod.orderSales)],
+      [labels.averageOrder, money(orderPeriod.averageOrder)],
+      [labels.orders, formatWesternCount(orderPeriod.orderCount)],
       [labels.completedOrders, formatWesternCount(orderPeriod.completedOrders)],
     ],
     lang

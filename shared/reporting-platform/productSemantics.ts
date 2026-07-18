@@ -112,15 +112,47 @@ export const SECTION_TERMINOLOGY = Object.freeze({
     checkRevenueOverview: "Check Revenue Overview",
     checkRevenueTrends: "Check Revenue Trends",
     orderSalesAnalytics: "Order Sales",
-    financialPerformance: "Check Revenue Performance",
-    orderSalesPerformance: "Order Sales Performance",
+    financialPerformance: "Check Revenue Detail",
+    orderSalesPerformance: "Order Sales Detail",
+    /** REPORTING-EXECUTIVE-SUMMARY-RATIONALIZATION-1 */
+    executiveSnapshot: "At a Glance",
+    executiveSnapshotHint:
+      "How the restaurant performed this period — details follow in later sections.",
+    taxAnalysis: "Tax",
+    adjustmentsAnalysis: "Adjustments",
+    financialSummary: "Financial Summary",
+    executiveSummary: "Executive Summary",
+    coverSubtitle: "Business performance overview",
   },
   ar: {
     checkRevenueAnalytics: "تحليلات إيرادات الشيكات",
     checkRevenueOverview: "نظرة إيرادات الشيكات",
     checkRevenueTrends: "اتجاهات إيرادات الشيكات",
     orderSalesAnalytics: "مبيعات الطلبات",
-    financialPerformance: "أداء إيرادات الشيكات",
-    orderSalesPerformance: "أداء مبيعات الطلبات",
+    financialPerformance: "تفاصيل إيرادات الشيكات",
+    orderSalesPerformance: "تفاصيل مبيعات الطلبات",
+    executiveSnapshot: "لمحة سريعة",
+    executiveSnapshotHint:
+      "أداء المطعم في هذه الفترة — التفاصيل في الأقسام التالية.",
+    taxAnalysis: "الضريبة",
+    adjustmentsAnalysis: "التسويات",
+    financialSummary: "الملخص المالي",
+    executiveSummary: "الملخص التنفيذي",
+    coverSubtitle: "نظرة على أداء العمل",
   },
 } as const);
+
+/**
+ * KPI ids allowed on the Executive Summary (management snapshot).
+ * Tax / complimentary / voided belong in Financial Summary analysis.
+ */
+export const EXECUTIVE_SUMMARY_KPI_IDS = [
+  "revenue",
+  "orderSales",
+  "paidCheckCount",
+  "orderCount",
+  "averageCheck",
+  "averageOrder",
+] as const satisfies readonly KpiId[];
+
+export type ExecutiveSummaryKpiId = (typeof EXECUTIVE_SUMMARY_KPI_IDS)[number];

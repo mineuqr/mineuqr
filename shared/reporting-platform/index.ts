@@ -68,8 +68,10 @@ export {
   DEPRECATED_PRESENTATION_LABELS,
   SEMANTIC_CLARIFICATIONS,
   SECTION_TERMINOLOGY,
+  EXECUTIVE_SUMMARY_KPI_IDS,
   preferredKpiLabel,
   type PresentationLanguage,
+  type ExecutiveSummaryKpiId,
 } from "./productSemantics";
 
 export {
