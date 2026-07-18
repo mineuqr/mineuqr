@@ -160,7 +160,7 @@ export function SessionsWorkspacePanel({
               <RestaurantKpiCard
                 label={
                   isAr
-                    ? "إيرادات اليوم"
+                    ? "إيرادات الشيكات اليوم"
                     : `Today's ${kpiDisplayName("revenue", "en")}`
                 }
                 value={

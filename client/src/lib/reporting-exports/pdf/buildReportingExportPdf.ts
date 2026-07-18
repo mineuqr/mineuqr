@@ -305,6 +305,8 @@ async function renderPdfDocument(
     [labels.complimentaryCount, formatWesternCount(biz.complimentaryCount)],
     [labels.complimentaryAmount, money(biz.complimentaryAmount)],
     [labels.voidedCount, formatWesternCount(biz.voidedCount)],
+    [labels.revenue, labels.checkRevenueBasis],
+    [labels.orderSales, labels.orderSalesBasis],
     [labels.currency, `${currencyCode} (${currencySymbol})`],
     [labels.pricingMode, formatPricingMode(biz, bundle.language)],
     [labels.taxPolicy, formatTaxPolicySummary(biz, bundle.language)],

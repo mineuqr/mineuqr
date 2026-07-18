@@ -278,7 +278,9 @@ describe("REPORTING-DESIGN-LANGUAGE-1 samples + presentation", () => {
         const orderSheetName =
           language === "ar" ? "مبيعات الطلبات" : "Order Sales";
         const trendSheetName =
-          language === "ar" ? "اتجاه الإيرادات" : "Revenue Trends";
+          language === "ar"
+            ? "اتجاهات إيرادات الشيكات"
+            : "Check Revenue Trends";
         const orderSheet = workbook.getWorksheet(orderSheetName);
         const trendSheet = workbook.getWorksheet(trendSheetName);
         expect(orderSheet).toBeTruthy();
@@ -330,7 +332,7 @@ describe("REPORTING-DESIGN-LANGUAGE-1 samples + presentation", () => {
         reconciliation.push("| KPI | Source DTO | Value | Present on |");
         reconciliation.push("|-----|------------|-------|------------|");
         reconciliation.push(
-          `| Revenue | BusinessMetricsSummary (= trend sum) | ${revenueDisplay} | Executive, Financial, Revenue Trends total |`
+          `| Check Revenue | BusinessMetricsSummary (= trend sum) | ${revenueDisplay} | Executive, Financial, Check Revenue Trends total |`
         );
         reconciliation.push(
           `| Paid Checks | BusinessMetricsSummary | ${bundle.business.paidCheckCount} | Executive, Financial, Revenue Trends total |`

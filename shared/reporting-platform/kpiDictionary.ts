@@ -119,7 +119,8 @@ function def(
 export const KPI_DICTIONARY = Object.freeze({
   revenue: def({
     id: "revenue",
-    name: "Revenue",
+    /** REPORTING-PRODUCT-SEMANTICS-1 — preferred user label (id unchanged). */
+    name: "Check Revenue",
     definition: "Sum of Paid Check grand totals in the reporting period.",
     formula: "SUM(operational_checks.grandTotal WHERE outcome = 'paid')",
     kpiClass: "business",
@@ -140,6 +141,11 @@ export const KPI_DICTIONARY = Object.freeze({
       "Order Domain totalAmount",
       "Live Business Settings tax configuration",
       "ops.getSettlement* / Session totalAmount",
+      "Order Sales",
+      "Gross Sales",
+      "Paid Revenue",
+      "Settlement Revenue",
+      "Net Revenue",
     ],
   }),
   paidCheckCount: def({
@@ -186,8 +192,8 @@ export const KPI_DICTIONARY = Object.freeze({
   averageCheck: def({
     id: "averageCheck",
     name: "Average Check",
-    definition: "Revenue divided by count of Paid Checks in the period.",
-    formula: "Revenue / paidCheckCount",
+    definition: "Check Revenue divided by count of Paid Checks in the period.",
+    formula: "Check Revenue / paidCheckCount",
     kpiClass: "business",
     ownerDomain: "check",
     owner: "Check Management",
@@ -264,8 +270,8 @@ export const KPI_DICTIONARY = Object.freeze({
   }),
   dailySales: def({
     id: "dailySales",
-    name: "Daily Sales (Revenue)",
-    definition: "Revenue per calendar day (Paid Checks).",
+    name: "Daily Check Revenue",
+    definition: "Check Revenue per business calendar day (Paid Checks).",
     formula:
       "SUM(paid Check.grandTotal) GROUP BY day(settledAt)",
     kpiClass: "business",
@@ -303,8 +309,12 @@ export const KPI_DICTIONARY = Object.freeze({
     calculationVersion: KPI_CALCULATION_VERSION_BASELINE,
     notDefinedAs: [
       "Revenue",
+      "Check Revenue",
       "Paid Check grand totals",
       "ops.getSettlement* / Session totalAmount",
+      "Gross Sales",
+      "Paid Revenue",
+      "Settlement Revenue",
     ],
   }),
   completedOrders: def({
@@ -349,7 +359,7 @@ export const KPI_DICTIONARY = Object.freeze({
   }),
   orderCount: def({
     id: "orderCount",
-    name: "Order Count",
+    name: "Orders",
     definition: "Count of orders recorded in Order Read Analytics Projection.",
     formula: "SUM(order_read_analytics_daily.orderCount)",
     kpiClass: "business",
@@ -495,7 +505,7 @@ export const KPI_DICTIONARY = Object.freeze({
   }),
   catalogItemCount: def({
     id: "catalogItemCount",
-    name: "Items",
+    name: "Menu Items",
     definition: "Number of menu items.",
     formula: "COUNT(menu_items)",
     kpiClass: "catalog",

@@ -165,7 +165,7 @@ describe("REPORTING-EXPORTS helpers", () => {
       "Executive Summary",
       "Financial Summary",
       "Order Sales",
-      "Revenue Trends",
+      "Check Revenue Trends",
     ]);
   });
 });

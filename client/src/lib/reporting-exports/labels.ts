@@ -1,3 +1,7 @@
+/**
+ * REPORTING-PRODUCT-SEMANTICS-1 — export labels aligned with preferred KPI terminology.
+ * Presentation only — no KPI calculations.
+ */
 import type { ReportingExportLanguage } from "./types";
 
 export type ReportingExportLabels = Readonly<{
@@ -46,6 +50,8 @@ export type ReportingExportLabels = Readonly<{
   orderSalesSection: string;
   adjustmentsSection: string;
   reportingBasisSection: string;
+  checkRevenueBasis: string;
+  orderSalesBasis: string;
   trendInsufficient: string;
   dailyRevenueTitle: string;
   monthlyRevenueTitle: string;
@@ -69,13 +75,13 @@ export function reportingExportLabels(
       executive: "الملخص التنفيذي",
       financial: "الملخص المالي",
       orderSalesRollup: "مبيعات الطلبات",
-      revenueTrend: "اتجاه الإيرادات",
-      revenue: "الإيرادات",
+      revenueTrend: "اتجاهات إيرادات الشيكات",
+      revenue: "إيرادات الشيكات",
       orderSales: "مبيعات الطلبات",
       orderSalesPeriod: "مبيعات الطلبات للفترة",
       paidChecks: "الشيكات المدفوعة",
-      averageCheck: "متوسط قيمة الشيك",
-      averageOrder: "متوسط قيمة الطلب",
+      averageCheck: "متوسط الشيك",
+      averageOrder: "متوسط الطلب",
       averageOrderPeriod: "متوسط الطلب للفترة",
       orders: "الطلبات",
       ordersPeriod: "عدد الطلبات للفترة",
@@ -96,18 +102,22 @@ export function reportingExportLabels(
       value: "القيمة",
       restaurantName: "اسم المطعم",
       businessName: "الاسم التجاري",
-      chartRevenueTrend: "اتجاه الإيرادات",
+      chartRevenueTrend: "اتجاه إيرادات الشيكات",
       chartOrderTrend: "اتجاه مبيعات الطلبات",
       printFooter: "MineuQR",
       confidential: "سري — للاستخدام الداخلي",
-      performanceSection: "الأداء المالي",
+      performanceSection: "أداء إيرادات الشيكات",
       orderSalesSection: "مبيعات الطلبات",
       adjustmentsSection: "التسويات",
       reportingBasisSection: "أساس التقرير",
+      checkRevenueBasis:
+        "إيرادات الشيكات = مجموع قيم الشيكات المدفوعة (وليست مبيعات الطلبات).",
+      orderSalesBasis:
+        "مبيعات الطلبات = مجموع الطلبات المكتملة (وليست إيرادات الشيكات).",
       trendInsufficient:
         "لا تتوفر مشاهدات كافية لعرض اتجاه موثوق لهذه الفترة.",
-      dailyRevenueTitle: "الإيرادات اليومية",
-      monthlyRevenueTitle: "الإيرادات الشهرية",
+      dailyRevenueTitle: "إيرادات الشيكات اليومية",
+      monthlyRevenueTitle: "إيرادات الشيكات الشهرية",
       dailyOrderSalesTitle: "مبيعات الطلبات اليومية",
       monthlyOrderSalesTitle: "مبيعات الطلبات الشهرية",
       contents: "محتويات التقرير",
@@ -125,8 +135,8 @@ export function reportingExportLabels(
     executive: "Executive Summary",
     financial: "Financial Summary",
     orderSalesRollup: "Order Sales",
-    revenueTrend: "Revenue Trends",
-    revenue: "Revenue",
+    revenueTrend: "Check Revenue Trends",
+    revenue: "Check Revenue",
     orderSales: "Order Sales",
     orderSalesPeriod: "Order Sales (Period)",
     paidChecks: "Paid Checks",
@@ -152,18 +162,22 @@ export function reportingExportLabels(
     value: "Amount",
     restaurantName: "Restaurant",
     businessName: "Business Name",
-    chartRevenueTrend: "Revenue Trend",
+    chartRevenueTrend: "Check Revenue Trend",
     chartOrderTrend: "Order Sales Trend",
     printFooter: "MineuQR",
     confidential: "Confidential — Internal Use",
-    performanceSection: "Financial Performance",
+    performanceSection: "Check Revenue Performance",
     orderSalesSection: "Order Sales",
     adjustmentsSection: "Adjustments",
     reportingBasisSection: "Reporting Basis",
+    checkRevenueBasis:
+      "Check Revenue = sum of paid Check totals (not Order Sales).",
+    orderSalesBasis:
+      "Order Sales = completed (served) order totals (not Check Revenue).",
     trendInsufficient:
       "Insufficient observations are available to present a reliable trend for this reporting period.",
-    dailyRevenueTitle: "Daily Revenue",
-    monthlyRevenueTitle: "Monthly Revenue",
+    dailyRevenueTitle: "Daily Check Revenue",
+    monthlyRevenueTitle: "Monthly Check Revenue",
     dailyOrderSalesTitle: "Daily Order Sales",
     monthlyOrderSalesTitle: "Monthly Order Sales",
     contents: "Report Contents",

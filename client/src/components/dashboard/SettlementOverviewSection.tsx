@@ -44,10 +44,10 @@ export function SettlementOverviewSection({
   const { isAuthenticated, authPending } = useAuth();
   const lang = language === "ar" ? "ar" : "en";
   const isAr = lang === "ar";
-  const sectionTitle = isAr ? "نظرة الإيرادات" : "Revenue Overview";
+  const sectionTitle = isAr ? "نظرة إيرادات الشيكات" : "Check Revenue Overview";
   const sectionSub = isAr
-    ? "إيرادات الشيكات المدفوعة والعمليات المجانية والملغاة"
-    : "Paid Check revenue, complimentary, and voided activity";
+    ? "مجموع الشيكات المدفوعة — ليست مبيعات الطلبات"
+    : "Paid Check totals — not Order Sales";
   const ariaLabel = sectionTitle;
 
   useDevQueryRuntimeLog("reporting.getBusinessMetricsSummary", {
@@ -91,7 +91,7 @@ export function SettlementOverviewSection({
         <RestaurantSectionError
           message={
             isAr
-              ? "تعذر تحميل مؤشرات الإيرادات. حاول مرة أخرى."
+              ? "تعذر تحميل مؤشرات إيرادات الشيكات. حاول مرة أخرى."
               : "Could not load revenue metrics. Please try again."
           }
           retryLabel={isAr ? "إعادة المحاولة" : "Retry"}
@@ -102,8 +102,8 @@ export function SettlementOverviewSection({
         <RestaurantSectionEmpty
           message={
             isAr
-              ? "لا توجد شيكات مسددة بعد. ستظهر الإيرادات هنا بعد دفع الشيكات."
-              : "No settled checks yet. Revenue will appear here after checks are paid."
+              ? "لا توجد شيكات مسددة بعد. ستظهر إيرادات الشيكات هنا بعد الدفع."
+              : "No settled checks yet. Check Revenue will appear here after checks are paid."
           }
         />
       ) : (

@@ -1,39 +1,17 @@
 /**
- * REPORTING-KPI-GOVERNANCE-1 — presentation labels from canonical KPI registry.
- * Does not calculate KPI values.
+ * REPORTING-PRODUCT-SEMANTICS-1 — presentation labels from canonical terminology.
+ * REPORTING-KPI-GOVERNANCE-1 — KPI ids unchanged; values never calculated here.
  */
-import { getKpiDefinition, type KpiId } from "@shared/reporting-platform";
+import {
+  preferredKpiLabel,
+  type KpiId,
+  type PresentationLanguage,
+} from "@shared/reporting-platform";
 
-const AR_LABELS: Partial<Record<KpiId, string>> = {
-  revenue: "الإيرادات",
-  paidCheckCount: "شيكات مدفوعة",
-  taxCollected: "الضريبة المحصّلة",
-  averageCheck: "متوسط الشيك",
-  complimentaryCount: "شيكات مجانية",
-  complimentaryAmount: "قيمة الشيكات المجانية",
-  voidedCount: "الشيكات الملغاة",
-  orderSales: "مبيعات الطلبات",
-  averageOrder: "متوسط قيمة الطلب",
-  orderCount: "عدد الطلبات",
-  completedOrders: "الطلبات المكتملة",
-  dailySales: "المبيعات اليومية",
-  activeSessions: "الجلسات النشطة",
-  occupiedTables: "الطاولات المشغولة",
-  pendingOrders: "الطلبات المعلقة",
-  activeOrders: "الطلبات النشطة",
-  kitchenLoad: "حمل المطبخ",
-  catalogCategoryCount: "التصنيفات",
-  catalogItemCount: "الأصناف",
-  menuVisits: "زيارات القائمة",
-};
-
-/** Canonical display name — English from KPI_DICTIONARY; Arabic from locale map. */
+/** Canonical display name for restaurant users. */
 export function kpiDisplayName(
   id: KpiId,
-  language: "ar" | "en"
+  language: PresentationLanguage
 ): string {
-  if (language === "ar") {
-    return AR_LABELS[id] ?? getKpiDefinition(id).name;
-  }
-  return getKpiDefinition(id).name;
+  return preferredKpiLabel(id, language);
 }

@@ -65,7 +65,7 @@ describe("REPORTING-KPI-GOVERNANCE-1 architecture guards", () => {
     expect(overview).toContain("kpiDisplayName");
     expect(ops).toContain("reporting.getOrderSalesSummary");
     expect(ops).toContain("kpiDisplayName");
-    expect(display).toContain("getKpiDefinition");
+    expect(display).toContain("preferredKpiLabel");
     expect(display).not.toMatch(/\.reduce\s*\(/);
   });
 

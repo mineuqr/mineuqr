@@ -4,36 +4,39 @@ Canonical machine registry: `shared/reporting-platform/kpiDictionary.ts` (`KPI_D
 
 Governance extension (formulas, versions, catalog API): **REPORTING-KPI-GOVERNANCE-1** — see `docs/engineering/programs/REPORTING-KPI-GOVERNANCE-1/`.
 
+Presentation labels: **REPORTING-PRODUCT-SEMANTICS-1** — see `docs/engineering/programs/REPORTING-PRODUCT-SEMANTICS-1/TERMINOLOGY.md`.
+
 ---
 
 ## Business metrics
 
-| KPI | Owner | Source of Truth | Contract |
+| KPI (preferred label) | Owner | Source of Truth | Contract |
 |-----|-------|-----------------|----------|
-| **Revenue** | Check | Paid Checks → `SUM(grandTotal)` | `BusinessMetricsSummary` |
+| **Check Revenue** (`revenue`) | Check | Paid Checks → `SUM(grandTotal)` | `BusinessMetricsSummary` |
 | **Tax Collected** | Check | Paid Checks → `SUM(taxAmount)` via Tax Policy Snapshot path | `BusinessMetricsSummary` |
-| **Average Check** | Check | Revenue / paidCheckCount | `BusinessMetricsSummary` |
+| **Average Check** | Check | Check Revenue / paidCheckCount | `BusinessMetricsSummary` |
 | **Complimentary Count** | Check | `outcome = complimentary` | `BusinessMetricsSummary` |
-| **Complimentary Amount** | Check | Complimentary → `SUM(grandTotal)` (not Revenue) | `BusinessMetricsSummary` |
+| **Complimentary Amount** | Check | Complimentary → `SUM(grandTotal)` (not Check Revenue) | `BusinessMetricsSummary` |
 | **Voided Checks** | Check | `outcome = voided` | `BusinessMetricsSummary` |
-| **Daily Sales (Revenue)** | Check | Paid Check grand totals by `settledAt` day | `BusinessMetricsTrend` |
+| **Daily Check Revenue** (`dailySales`) | Check | Paid Check grand totals by settled day | `BusinessMetricsTrend` |
 
-### Revenue — explicit non-definitions
+### Check Revenue — explicit non-definitions
 
-- Served order totals  
+- Served order totals / Order Sales  
 - Closed session totals  
 - Order Domain `totalAmount`  
 - Live Business Settings tax configuration  
+- Gross Sales / Paid Revenue / Settlement Revenue  
 
 ---
 
-## Order sales metrics (≠ Revenue)
+## Order sales metrics (≠ Check Revenue)
 
 | KPI | Owner | Source of Truth | Contract |
 |-----|-------|-----------------|----------|
 | **Order Sales** | Order Read | P-10 `completedSales` | `OrderSalesSummary` |
 | **Average Order** | Order Read | Order Sales / completedOrderCount | `OrderSalesSummary` |
-| **Order Count** | Order Read | P-10 `orderCount` | `OrderSalesSummary` |
+| **Orders** (`orderCount`) | Order Read | P-10 `orderCount` | `OrderSalesSummary` |
 | **Top Selling Items** | Order Read | Line-item projections (future rollup) | `OrderSalesRollup` |
 
 ---

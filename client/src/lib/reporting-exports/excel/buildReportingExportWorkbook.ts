@@ -797,6 +797,8 @@ function buildFinancialSheet(
     row,
     labels.reportingBasisSection,
     [
+      [labels.revenue, labels.checkRevenueBasis],
+      [labels.orderSales, labels.orderSalesBasis],
       [labels.currency, `${currencyCode} (${currencySymbol})`],
       [labels.pricingMode, formatPricingMode(biz, lang)],
       [labels.taxPolicy, formatTaxPolicySummary(biz, lang)],

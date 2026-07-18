@@ -15,6 +15,7 @@ import {
   type RestaurantReportingExportBundle,
   type ReportingExportScope,
 } from "@/lib/reporting-exports";
+import { kpiDisplayName } from "@/lib/reporting/kpiDisplay";
 import {
   DASHBOARD_ORDER_LIST_POLL_MS,
   reportingBusinessSummaryQueryOptions,
@@ -279,12 +280,14 @@ export function ReportsTab({
 
       <div className="space-y-1 border-b border-slate-700/40 pb-4">
         <h2 className={restaurantDash.sectionTitle}>
-          {language === "ar" ? "تحليلات الإيرادات" : "Revenue Analytics"}
+          {language === "ar"
+            ? "تحليلات إيرادات الشيكات"
+            : "Check Revenue Analytics"}
         </h2>
         <p className={restaurantDash.sectionSub}>
           {language === "ar"
-            ? "إيرادات الشيكات المدفوعة والاتجاهات التاريخية"
-            : "Paid Check revenue and historical trends"}
+            ? "إيرادات الشيكات المدفوعة والاتجاهات التاريخية — ليست مبيعات الطلبات"
+            : "Paid Check totals and historical trends — not Order Sales"}
         </p>
       </div>
 
@@ -309,26 +312,42 @@ export function ReportsTab({
 
           <div className={restaurantDash.kpiGridWide}>
             <RestaurantKpiCard
-              label={language === "ar" ? "طلبات اليوم" : "Today Orders"}
+              label={
+                language === "ar"
+                  ? `طلبات اليوم`
+                  : `Today's ${kpiDisplayName("orderCount", "en")}`
+              }
               value={orderSales?.today.totalOrders ?? 0}
               icon={ClipboardList}
               tone="warning"
             />
             <RestaurantKpiCard
-              label={language === "ar" ? "طلبات الشهر" : "Month Orders"}
+              label={
+                language === "ar"
+                  ? `طلبات الشهر`
+                  : `Month ${kpiDisplayName("orderCount", "en")}`
+              }
               value={orderSales?.month.totalOrders ?? 0}
               icon={Calendar}
               tone="info"
             />
             <RestaurantKpiCard
-              label={language === "ar" ? "مبيعات طلبات اليوم" : "Today's Order Sales"}
+              label={
+                language === "ar"
+                  ? `مبيعات طلبات اليوم`
+                  : `Today's ${kpiDisplayName("orderSales", "en")}`
+              }
               value={`${orderSales?.today.orderSales ?? "0.00"} ${sym}`}
               icon={DollarSign}
               tone="success"
               valueVariant="revenue"
             />
             <RestaurantKpiCard
-              label={language === "ar" ? "مبيعات طلبات الشهر" : "Month Order Sales"}
+              label={
+                language === "ar"
+                  ? `مبيعات طلبات الشهر`
+                  : `Month ${kpiDisplayName("orderSales", "en")}`
+              }
               value={`${orderSales?.month.orderSales ?? "0.00"} ${sym}`}
               icon={TrendingUp}
               tone="success"

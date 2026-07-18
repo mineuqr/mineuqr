@@ -61,6 +61,16 @@ export {
 } from "./legacyReportingSurfaces";
 
 export {
+  PRODUCT_SEMANTICS_PROGRAM_ID,
+  PREFERRED_KPI_LABELS,
+  DEPRECATED_PRESENTATION_LABELS,
+  SEMANTIC_CLARIFICATIONS,
+  SECTION_TERMINOLOGY,
+  preferredKpiLabel,
+  type PresentationLanguage,
+} from "./productSemantics";
+
+export {
   TIME_SERIES_PROGRAM_ID,
   TIME_SERIES_GRANULARITIES,
   REPORTING_TREND_GRANULARITIES,
