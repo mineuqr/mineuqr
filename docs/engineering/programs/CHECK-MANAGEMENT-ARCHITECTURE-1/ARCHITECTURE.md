@@ -148,10 +148,12 @@ No statutory country tax engines. No ledger / journal / AR / financial statement
 ## 10. Non-goals
 
 - Split Check / seat transfer  
-- Tender lines / partial payments  
 - Service charge calculation (slot reserved only)  
 - Order Domain / Ordering Platform / Runtime / Order Read changes  
 - Accounting / ERP surfaces  
+
+**Successor:** Tender lines / split payment architecture → **CHECK-SETTLEMENT-METHODS-1**  
+(Check remains aggregate root; Revenue remains paid Check `grandTotal`.)
 
 ---
 

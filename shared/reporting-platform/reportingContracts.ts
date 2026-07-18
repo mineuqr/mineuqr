@@ -162,3 +162,29 @@ export type KpiCatalogDto = Readonly<{
   generatedAt: string;
   kpis: readonly KpiCatalogEntryDto[];
 }>;
+
+/**
+ * CHECK-SETTLEMENT-METHODS-1 — future tender analytics contract.
+ * Not mounted on reporting.* yet. Revenue KPI remains Check.grandTotal.
+ */
+export type SettlementDistributionBucketDto = Readonly<{
+  paymentMethod: string;
+  category: string;
+  transactionCount: number;
+  amount: string;
+}>;
+
+export type SettlementDistributionDto = Readonly<{
+  contractVersion: typeof REPORTING_CONTRACT_VERSION;
+  contractId: "SettlementDistribution";
+  programId: "CHECK-SETTLEMENT-METHODS-1";
+  generatedAt: string;
+  restaurantId: number;
+  from: string | null;
+  to: string | null;
+  /**
+   * Tender breakdown from settlement transactions.
+   * Must not replace BusinessMetricsSummary.revenue.
+   */
+  buckets: readonly SettlementDistributionBucketDto[];
+}>;

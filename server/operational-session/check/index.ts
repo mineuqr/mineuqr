@@ -11,3 +11,10 @@ export {
 } from "./CheckService";
 
 export { mapRowToOperationalCheck } from "./checkMapper";
+
+export {
+  insertSettlementTransactions,
+  listSettlementTransactionsForCheck,
+  listSettlementTransactionsForRestaurant,
+  mapRowToSettlementTransaction,
+} from "./settlementTransactionRepository";

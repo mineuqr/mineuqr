@@ -398,6 +398,43 @@ export const operationalChecks = mysqlTable("operational_checks", {
 export type InsertOperationalCheck = typeof operationalChecks.$inferInsert;
 export type SelectOperationalCheck = typeof operationalChecks.$inferSelect;
 
+// ─── Check Settlement Transactions (CHECK-SETTLEMENT-METHODS-1) ──
+/** Tender lines owned by Check aggregate. Revenue SSOT remains Check.grandTotal. */
+export const checkSettlementTransactions = mysqlTable(
+	"check_settlement_transactions",
+	{
+		id: int().autoincrement().primaryKey(),
+		restaurantId: int().notNull(),
+		checkId: int().notNull(),
+		sessionId: int().notNull(),
+		/** Extensible payment method code (cash, mada, visa, …). */
+		paymentMethod: varchar({ length: 32 }).notNull(),
+		amount: decimal({ precision: 10, scale: 2 }).notNull(),
+		currencyCode: varchar({ length: 8 }).notNull(),
+		status: mysqlEnum(["captured", "pending", "voided", "refunded"])
+			.default("captured")
+			.notNull(),
+		businessTimestamp: timestamp({ mode: "string" }).notNull(),
+		reference: varchar({ length: 128 }),
+		externalReference: varchar({ length: 128 }),
+		notes: text(),
+		createdAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+		updatedAt: timestamp({ mode: "string" }).defaultNow().onUpdateNow().notNull(),
+	},
+	(table) => [
+		index("check_settlement_tx_restaurant_id").on(table.restaurantId),
+		index("check_settlement_tx_check_id").on(table.checkId),
+		index("check_settlement_tx_session_id").on(table.sessionId),
+		index("check_settlement_tx_payment_method").on(table.paymentMethod),
+		index("check_settlement_tx_business_ts").on(table.businessTimestamp),
+	]
+);
+
+export type InsertCheckSettlementTransaction =
+	typeof checkSettlementTransactions.$inferInsert;
+export type SelectCheckSettlementTransaction =
+	typeof checkSettlementTransactions.$inferSelect;
+
 // ─── Table Events (TABLE-MANAGEMENT-1 Phase C) ──────────────────
 export const tableEvents = mysqlTable("table_events", {
 	id: bigint({ mode: "number" }).autoincrement().primaryKey(),

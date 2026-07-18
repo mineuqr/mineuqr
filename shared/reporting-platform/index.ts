@@ -40,6 +40,8 @@ export {
   type CatalogStatsSummaryDto,
   type KpiCatalogEntryDto,
   type KpiCatalogDto,
+  type SettlementDistributionBucketDto,
+  type SettlementDistributionDto,
 } from "./reportingContracts";
 
 export {

@@ -1,5 +1,6 @@
 /**
  * CHECK-MANAGEMENT-ARCHITECTURE-1 — Check sub-domain application service.
+ * CHECK-SETTLEMENT-METHODS-1 — settlement transactions under Check.
  *
  * Owned by Operational Session Platform. Does not modify Order Domain.
  */
@@ -19,13 +20,18 @@ import {
   formatDiningSessionTimestamp,
 } from "../../diningSession/sessionTypes";
 import {
+  assertPaidSettlementLines,
   businessTaxSettingsFromRestaurantRow,
   captureCurrencySnapshot,
   captureTaxPolicySnapshot,
+  complimentarySettlementLine,
   computeCheckMoney,
   decideCheckRecalculation,
+  defaultPaidSettlementLine,
+  SettlementValidationError,
   type CheckOutcome,
   type OperationalCheck,
+  type SettlementTransactionInput,
 } from "@shared/operational-session";
 import { mapRowToOperationalCheck } from "./checkMapper";
 import {
@@ -35,6 +41,7 @@ import {
   insertOperationalCheck,
   updateCheckMoney,
 } from "./checkRepository";
+import { insertSettlementTransactions } from "./settlementTransactionRepository";
 
 export class CheckTransitionError extends Error {
   constructor(message: string) {
@@ -222,6 +229,8 @@ async function finalizeOpenCheck(
     restaurantId: number;
     sessionId: number;
     outcome: Exclude<CheckOutcome, "open">;
+    /** Paid/comp tender lines; omitted → default full-cover line. */
+    settlements?: readonly SettlementTransactionInput[];
   },
   client?: SessionDbClient
 ): Promise<OperationalCheck> {
@@ -247,6 +256,22 @@ async function finalizeOpenCheck(
   });
   const now = formatDiningSessionTimestamp();
 
+  let settlementLines: readonly SettlementTransactionInput[] | null = null;
+  try {
+    if (input.outcome === "paid") {
+      settlementLines = input.settlements?.length
+        ? assertPaidSettlementLines(money.grandTotal, input.settlements)
+        : [defaultPaidSettlementLine(money.grandTotal)];
+    } else if (input.outcome === "complimentary") {
+      settlementLines = [complimentarySettlementLine(money.grandTotal)];
+    }
+  } catch (err) {
+    if (err instanceof SettlementValidationError) {
+      throw new DiningSessionValidationError(err.message);
+    }
+    throw err;
+  }
+
   await finalizeCheckOutcome(
     {
       checkId: check.id,
@@ -266,6 +291,20 @@ async function finalizeOpenCheck(
     client
   );
 
+  if (settlementLines) {
+    await insertSettlementTransactions(
+      {
+        restaurantId: input.restaurantId,
+        checkId: check.id,
+        sessionId: input.sessionId,
+        currencyCode: check.currencySnapshot.currencyCode,
+        businessTimestamp: now,
+        lines: settlementLines,
+      },
+      client
+    );
+  }
+
   const row = await findCheckById(check.id, client);
   if (!row) {
     throw new DiningSessionUnavailableError("Check not found after finalize");
@@ -273,12 +312,22 @@ async function finalizeOpenCheck(
   return mapRowToOperationalCheck(row);
 }
 
-/** Settle Check Paid — freezes totals. Session close remains Session responsibility. */
+/**
+ * Settle Check Paid — freezes totals + records settlement transaction(s).
+ * Session close remains Session responsibility.
+ * Omitting `settlements` writes one `other` tender for grandTotal (backward compatible).
+ */
 export async function settleCheckPaid(input: {
   restaurantId: number;
   sessionId: number;
+  settlements?: readonly SettlementTransactionInput[];
 }): Promise<OperationalCheck> {
-  return finalizeOpenCheck({ ...input, outcome: "paid" });
+  return finalizeOpenCheck({
+    restaurantId: input.restaurantId,
+    sessionId: input.sessionId,
+    outcome: "paid",
+    settlements: input.settlements,
+  });
 }
 
 export async function settleCheckComplimentary(input: {

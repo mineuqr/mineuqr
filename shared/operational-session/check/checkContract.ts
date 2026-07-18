@@ -8,7 +8,8 @@
  *
  * Check owns monetary state, settlement outcome, and immutable snapshots.
  * Check is NOT an Order, Invoice, Accounting document, or Projection.
- * Split Check is out of scope.
+ * Split Check (seat transfer) is out of scope.
+ * Settlement tender lines: CHECK-SETTLEMENT-METHODS-1 (owned under Check).
  */
 
 /** Operational settlement outcomes only — avoid "cancelled" (Order owns cancel). */
