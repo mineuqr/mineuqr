@@ -2,6 +2,7 @@
  * PDF exporter — SUSPENDED (REPORTING-PERIOD-CONSISTENCY-1).
  * Kept for compile compatibility; UI no longer offers PDF download.
  * Presentation only. Does not calculate Revenue or other KPIs.
+ * REPORTING-PAYMENT-METHOD-ANALYTICS-1 — Payment Method Analysis section.
  */
 import { resolveExportLogoAsset } from "../branding";
 import {
@@ -13,6 +14,7 @@ import {
   resolveExportCurrency,
   toWesternDigits,
 } from "../format";
+import { preferredPaymentMethodLabel } from "@shared/reporting-platform";
 import { buildExecutiveSummaryViewModel } from "../executiveSummaryPresentation";
 import { reportingExportLabels } from "../labels";
 import {
@@ -182,7 +184,7 @@ async function renderPdfDocument(
   y += 12;
   doc.fillColor(SLATE).font(font).fontSize(9);
   text(
-    `${labels.contents}: ${labels.executive} · ${labels.financial} · ${labels.orderSalesRollup} · ${labels.revenueTrend}`,
+    `${labels.contents}: ${labels.executive} · ${labels.financial} · ${labels.paymentMethodAnalysis} · ${labels.orderSalesRollup} · ${labels.revenueTrend}`,
     48,
     y,
     { width: contentWidth }
@@ -338,6 +340,40 @@ async function renderPdfDocument(
     [labels.pricingMode, formatPricingMode(biz, bundle.language)],
     [labels.taxPolicy, formatTaxPolicySummary(biz, bundle.language)],
   ]);
+
+  // ── Payment Method Analysis (settlement tenders) ───────
+  section(labels.paymentMethodAnalysis);
+  doc.fillColor(SLATE).font(font).fontSize(8);
+  text(labels.paymentAnalyticsNote, 48, y, { width: contentWidth });
+  y = doc.y + 10;
+  const pm = bundle.paymentMethodAnalytics;
+  kvTable([
+    [labels.monetaryTenderTotal, money(pm.monetaryTenderTotal)],
+    [
+      preferredPaymentMethodLabel("complimentary", bundle.language),
+      money(pm.complimentaryAmount),
+    ],
+  ]);
+  if (pm.buckets.length === 0) {
+    ensure(36);
+    doc.fillColor(SLATE).font(font).fontSize(10);
+    text(
+      isAr
+        ? "لا توجد معاملات تسوية في هذه الفترة."
+        : "No settlement tenders in this period.",
+      48,
+      y,
+      { width: contentWidth }
+    );
+    y = doc.y + 12;
+  } else {
+    kvTable(
+      pm.buckets.map((b) => [
+        preferredPaymentMethodLabel(b.paymentMethod, bundle.language),
+        `${money(b.tenderAmount)} · ${labels.mixPercent} ${toWesternDigits(b.mixPercent)}% · ${labels.checksByMethod} ${formatWesternCount(b.checkCount)} · ${labels.averageCheckByMethod} ${money(b.averageCheck)}`,
+      ])
+    );
+  }
 
   // ── Order Sales ────────────────────────────────────────
   section(labels.orderSalesRollup);

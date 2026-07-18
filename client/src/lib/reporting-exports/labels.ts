@@ -67,6 +67,16 @@ export type ReportingExportLabels = Readonly<{
   dailyOrderSalesTitle: string;
   monthlyOrderSalesTitle: string;
   contents: string;
+  paymentMethodAnalysis: string;
+  paymentMix: string;
+  tenderAmount: string;
+  mixPercent: string;
+  checksByMethod: string;
+  averageCheckByMethod: string;
+  monetaryTenderTotal: string;
+  paymentAnalyticsNote: string;
+  paymentMethod: string;
+  transactions: string;
 }>;
 
 function langOf(language: ReportingExportLanguage): PresentationLanguage {
@@ -141,6 +151,16 @@ export function reportingExportLabels(
       dailyOrderSalesTitle: `${kpi("orderSales")} اليومية`,
       monthlyOrderSalesTitle: `${kpi("orderSales")} الشهرية`,
       contents: "محتويات التقرير",
+      paymentMethodAnalysis: section.paymentMethodAnalysis,
+      paymentMix: section.paymentMix,
+      tenderAmount: section.tenderAmount,
+      mixPercent: section.mixPercent,
+      checksByMethod: section.checksByMethod,
+      averageCheckByMethod: section.averageCheckByMethod,
+      monetaryTenderTotal: section.monetaryTenderTotal,
+      paymentAnalyticsNote: section.paymentAnalyticsNote,
+      paymentMethod: section.paymentMethod,
+      transactions: section.transactions,
     };
   }
 
@@ -202,5 +222,15 @@ export function reportingExportLabels(
     dailyOrderSalesTitle: `Daily ${kpi("orderSales")}`,
     monthlyOrderSalesTitle: `Monthly ${kpi("orderSales")}`,
     contents: "Report Contents",
+    paymentMethodAnalysis: section.paymentMethodAnalysis,
+    paymentMix: section.paymentMix,
+    tenderAmount: section.tenderAmount,
+    mixPercent: section.mixPercent,
+    checksByMethod: section.checksByMethod,
+    averageCheckByMethod: section.averageCheckByMethod,
+    monetaryTenderTotal: section.monetaryTenderTotal,
+    paymentAnalyticsNote: section.paymentAnalyticsNote,
+    paymentMethod: section.paymentMethod,
+    transactions: section.transactions,
   };
 }

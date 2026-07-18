@@ -42,6 +42,8 @@ export {
   type KpiCatalogDto,
   type SettlementDistributionBucketDto,
   type SettlementDistributionDto,
+  type PaymentMethodAnalyticsBucketDto,
+  type PaymentMethodAnalyticsDto,
 } from "./reportingContracts";
 
 export {
@@ -69,9 +71,12 @@ export {
   SEMANTIC_CLARIFICATIONS,
   SECTION_TERMINOLOGY,
   EXECUTIVE_SUMMARY_KPI_IDS,
+  PAYMENT_METHOD_LABELS,
   preferredKpiLabel,
+  preferredPaymentMethodLabel,
   type PresentationLanguage,
   type ExecutiveSummaryKpiId,
+  type PaymentMethodLabelCode,
 } from "./productSemantics";
 
 export {

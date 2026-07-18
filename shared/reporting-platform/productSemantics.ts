@@ -123,6 +123,18 @@ export const SECTION_TERMINOLOGY = Object.freeze({
     financialSummary: "Financial Summary",
     executiveSummary: "Executive Summary",
     coverSubtitle: "Business performance overview",
+    /** REPORTING-PAYMENT-METHOD-ANALYTICS-1 */
+    paymentMethodAnalysis: "Payment Method Analysis",
+    paymentMix: "Payment Mix",
+    tenderAmount: "Tender Amount",
+    mixPercent: "Mix %",
+    checksByMethod: "Paid Checks (by method)",
+    averageCheckByMethod: "Average Check (by method)",
+    monetaryTenderTotal: "Monetary Tender Total",
+    paymentAnalyticsNote:
+      "Payment mix is from settlement tenders. Check Revenue remains the official revenue total from paid checks.",
+    paymentMethod: "Payment Method",
+    transactions: "Transactions",
   },
   ar: {
     checkRevenueAnalytics: "تحليلات إيرادات الشيكات",
@@ -139,8 +151,44 @@ export const SECTION_TERMINOLOGY = Object.freeze({
     financialSummary: "الملخص المالي",
     executiveSummary: "الملخص التنفيذي",
     coverSubtitle: "نظرة على أداء العمل",
+    paymentMethodAnalysis: "تحليل طرق الدفع",
+    paymentMix: "مزيج الدفع",
+    tenderAmount: "مبلغ وسيلة الدفع",
+    mixPercent: "نسبة المزيج %",
+    checksByMethod: "الشيكات المدفوعة (حسب الطريقة)",
+    averageCheckByMethod: "متوسط الشيك (حسب الطريقة)",
+    monetaryTenderTotal: "إجمالي مبالغ وسائل الدفع",
+    paymentAnalyticsNote:
+      "مزيج الدفع من معاملات التسوية. إيرادات الشيكات تبقى الإجمالي الرسمي من الشيكات المدفوعة.",
+    paymentMethod: "طريقة الدفع",
+    transactions: "المعاملات",
   },
 } as const);
+
+/** Payment method display labels (Settlement Transaction codes). */
+export const PAYMENT_METHOD_LABELS = Object.freeze({
+  cash: { en: "Cash", ar: "نقداً" },
+  mada: { en: "Mada", ar: "مدى" },
+  visa: { en: "Visa", ar: "فيزا" },
+  mastercard: { en: "Mastercard", ar: "ماستركارد" },
+  apple_pay: { en: "Apple Pay", ar: "Apple Pay" },
+  stc_pay: { en: "STC Pay", ar: "STC Pay" },
+  bank_transfer: { en: "Bank Transfer", ar: "تحويل بنكي" },
+  complimentary: { en: "Complimentary", ar: "مجاني" },
+  other: { en: "Other", ar: "أخرى" },
+} as const);
+
+export type PaymentMethodLabelCode = keyof typeof PAYMENT_METHOD_LABELS;
+
+export function preferredPaymentMethodLabel(
+  method: string,
+  language: PresentationLanguage
+): string {
+  const entry =
+    PAYMENT_METHOD_LABELS[method as PaymentMethodLabelCode];
+  if (entry) return entry[language];
+  return method;
+}
 
 /**
  * KPI ids allowed on the Executive Summary (management snapshot).

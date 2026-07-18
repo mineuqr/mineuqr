@@ -184,6 +184,43 @@ function sampleBundle(
     },
     orderSalesRollup,
     revenueTrend,
+    paymentMethodAnalytics: {
+      contractVersion: 1,
+      contractId: "PaymentMethodAnalytics",
+      programId: "REPORTING-PAYMENT-METHOD-ANALYTICS-1",
+      generatedAt: "2026-07-16T00:00:00.000Z",
+      restaurantId: 1,
+      from: revenueTrend.from,
+      to: revenueTrend.to,
+      monetaryTenderTotal: trendTotals.revenue,
+      complimentaryAmount: "120.00",
+      buckets: [
+        {
+          paymentMethod: "cash",
+          category: "cash",
+          tenderAmount: (parseDtoAmountForDisplay(trendTotals.revenue) * 0.4).toFixed(2),
+          transactionCount: Math.max(1, Math.floor(trendTotals.paidCheckCount * 0.4)),
+          checkCount: Math.max(1, Math.floor(trendTotals.paidCheckCount * 0.4)),
+          averageCheck: (
+            (parseDtoAmountForDisplay(trendTotals.revenue) * 0.4) /
+            Math.max(1, Math.floor(trendTotals.paidCheckCount * 0.4))
+          ).toFixed(2),
+          mixPercent: "40.00",
+        },
+        {
+          paymentMethod: "mada",
+          category: "card",
+          tenderAmount: (parseDtoAmountForDisplay(trendTotals.revenue) * 0.6).toFixed(2),
+          transactionCount: Math.max(1, Math.ceil(trendTotals.paidCheckCount * 0.6)),
+          checkCount: Math.max(1, Math.ceil(trendTotals.paidCheckCount * 0.6)),
+          averageCheck: (
+            (parseDtoAmountForDisplay(trendTotals.revenue) * 0.6) /
+            Math.max(1, Math.ceil(trendTotals.paidCheckCount * 0.6))
+          ).toFixed(2),
+          mixPercent: "60.00",
+        },
+      ],
+    },
   };
 }
 
@@ -264,7 +301,12 @@ describe("REPORTING-DESIGN-LANGUAGE-1 samples + presentation", () => {
         expect(bundle.business.paidCheckCount).toBe(trendTotals.paidCheckCount);
 
         const workbook = await buildReportingExportWorkbook(bundle, "ر.س", "SAR");
-        expect(workbook.worksheets).toHaveLength(5);
+        expect(workbook.worksheets).toHaveLength(6);
+        expect(
+          workbook.getWorksheet(
+            language === "ar" ? "تحليل طرق الدفع" : "Payment Method Analysis"
+          )
+        ).toBeTruthy();
 
         const blob = workbookTextBlob(workbook);
         expect(blob).not.toMatch(EASTERN_DIGITS);
@@ -346,9 +388,12 @@ describe("REPORTING-DESIGN-LANGUAGE-1 samples + presentation", () => {
         reconciliation.push(
           `| Tax / Complimentary / Voided | BusinessMetricsSummary | (analysis) | Financial Summary only — not Executive |`
         );
+        reconciliation.push(
+          `| Payment Method Mix | PaymentMethodAnalytics (Settlement Transactions) | ${bundle.paymentMethodAnalytics.monetaryTenderTotal} tender total | Payment Method Analysis sheet — not Executive / not Check Revenue |`
+        );
         reconciliation.push("");
         reconciliation.push(
-          `Scope invariant: all values describe **${bundle.periodLabel}** only. Design language: REPORTING-DESIGN-LANGUAGE-1.`
+          `Scope invariant: all values describe **${bundle.periodLabel}** only. Design language: REPORTING-DESIGN-LANGUAGE-1. Payment analytics: REPORTING-PAYMENT-METHOD-ANALYTICS-1.`
         );
         reconciliation.push("");
 

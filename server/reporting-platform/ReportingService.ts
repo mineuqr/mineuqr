@@ -21,3 +21,4 @@ export {
   compareMetricValues,
   getComparisonBaselineRange,
 } from "./TimeSeriesComparisonService";
+export { getPaymentMethodAnalytics } from "./PaymentMethodAnalyticsService";

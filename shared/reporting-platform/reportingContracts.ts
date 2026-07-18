@@ -164,8 +164,9 @@ export type KpiCatalogDto = Readonly<{
 }>;
 
 /**
- * CHECK-SETTLEMENT-METHODS-1 — future tender analytics contract.
- * Not mounted on reporting.* yet. Revenue KPI remains Check.grandTotal.
+ * CHECK-SETTLEMENT-METHODS-1 — tender distribution (legacy shape).
+ * Prefer PaymentMethodAnalyticsDto for full analytics.
+ * Revenue KPI remains Check.grandTotal.
  */
 export type SettlementDistributionBucketDto = Readonly<{
   paymentMethod: string;
@@ -187,4 +188,39 @@ export type SettlementDistributionDto = Readonly<{
    * Must not replace BusinessMetricsSummary.revenue.
    */
   buckets: readonly SettlementDistributionBucketDto[];
+}>;
+
+/**
+ * REPORTING-PAYMENT-METHOD-ANALYTICS-1 — payment-method analytics from
+ * Settlement Transactions only. Not a substitute for Check Revenue.
+ */
+export type PaymentMethodAnalyticsBucketDto = Readonly<{
+  paymentMethod: string;
+  category: string;
+  /** Sum of captured tender amounts for this method. */
+  tenderAmount: string;
+  transactionCount: number;
+  /** Distinct Checks with a captured tender of this method. */
+  checkCount: number;
+  /** tenderAmount / checkCount (0 when checkCount = 0). */
+  averageCheck: string;
+  /** Share of monetaryTenderTotal (0–100, two decimals). */
+  mixPercent: string;
+}>;
+
+export type PaymentMethodAnalyticsDto = Readonly<{
+  contractVersion: typeof REPORTING_CONTRACT_VERSION;
+  contractId: "PaymentMethodAnalytics";
+  programId: "REPORTING-PAYMENT-METHOD-ANALYTICS-1";
+  generatedAt: string;
+  restaurantId: number;
+  from: string | null;
+  to: string | null;
+  /**
+   * Sum of captured monetary settlement tenders in range.
+   * Must not replace BusinessMetricsSummary.revenue.
+   */
+  monetaryTenderTotal: string;
+  complimentaryAmount: string;
+  buckets: readonly PaymentMethodAnalyticsBucketDto[];
 }>;

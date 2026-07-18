@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { CommercialUpgradeBanner } from "@/components/commercial";
+import { PaymentMethodAnalysisSection } from "@/components/dashboard/PaymentMethodAnalysisSection";
 import { SettlementOverviewSection } from "@/components/dashboard/SettlementOverviewSection";
 import { SettlementTrendsSection } from "@/components/dashboard/SettlementTrendsSection";
 import { RestaurantDashSection } from "@/components/dashboard/RestaurantDashSection";
@@ -169,6 +170,18 @@ export function ReportsTab({
     reportingBusinessTrendQueryOptions(enabled)
   );
 
+  const { data: paymentAnalyticsMonth } =
+    trpc.reporting.getPaymentMethodAnalytics.useQuery(
+      { restaurantId, from: monthRange.from, to: monthRange.to },
+      reportingBusinessSummaryQueryOptions(enabled)
+    );
+
+  const { data: paymentAnalyticsYear } =
+    trpc.reporting.getPaymentMethodAnalytics.useQuery(
+      { restaurantId, from: yearRange.from, to: yearRange.to },
+      reportingBusinessSummaryQueryOptions(enabled)
+    );
+
   const ordersBlocked = isEmailNotVerifiedError(orderSalesError);
 
   const sym = resolveExportCurrency(businessMonth, fallbackSym, currencyCode)
@@ -180,7 +193,14 @@ export function ReportsTab({
     const business = scope === "month" ? businessMonth : businessYear;
     const orderSalesRollup = scope === "month" ? monthlyRollup : yearlyRollup;
     const revenueTrend = scope === "month" ? revenueTrendMonth : revenueTrendYear;
-    if (!business || !orderSalesRollup || !revenueTrend) {
+    const paymentMethodAnalytics =
+      scope === "month" ? paymentAnalyticsMonth : paymentAnalyticsYear;
+    if (
+      !business ||
+      !orderSalesRollup ||
+      !revenueTrend ||
+      !paymentMethodAnalytics
+    ) {
       return null;
     }
     const periodLabel =
@@ -210,6 +230,7 @@ export function ReportsTab({
       business,
       orderSalesRollup,
       revenueTrend,
+      paymentMethodAnalytics,
     };
   };
 
@@ -302,6 +323,14 @@ export function ReportsTab({
         language={language}
         queriesEnabled={enabled}
         currencySymbol={sym}
+      />
+      <PaymentMethodAnalysisSection
+        restaurantId={restaurantId}
+        language={language}
+        queriesEnabled={enabled}
+        currencySymbol={sym}
+        from={monthRange.from}
+        to={monthRange.to}
       />
 
       {ordersBlocked ? (

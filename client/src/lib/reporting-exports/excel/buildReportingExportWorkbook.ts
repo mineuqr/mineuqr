@@ -5,8 +5,9 @@
  * Preserves REPORTING-PERIOD-CONSISTENCY-1 scoped totals (scopedOrderSalesFromRollup).
  * Presentation only. Does not calculate Revenue or other KPIs.
  *
- * Sheets: Cover · Executive Summary · Financial Summary · Order Sales · Revenue Trends
+ * Sheets: Cover · Executive · Financial · Payment Methods · Order Sales · Revenue Trends
  * Western digits as Excel text (@). Values from reporting.* DTOs only.
+ * REPORTING-PAYMENT-METHOD-ANALYTICS-1 — Payment Method Analysis from SettlementTransactions.
  */
 import ExcelJS from "exceljs";
 import {
@@ -16,6 +17,7 @@ import {
   reportFont,
   solidFill,
 } from "@/lib/excel/reportTheme";
+import { preferredPaymentMethodLabel } from "@shared/reporting-platform";
 import { resolveExportLogoAsset } from "../branding";
 import { renderTrendChartPng } from "../charts/renderTrendChartPng";
 import { buildExecutiveSummaryViewModel } from "../executiveSummaryPresentation";
@@ -501,6 +503,13 @@ export async function buildReportingExportWorkbook(
     scopeLabel,
     orderPeriod,
   });
+  buildPaymentMethodSheet(workbook, {
+    bundle,
+    labels,
+    money,
+    periodLabel,
+    scopeLabel,
+  });
   await buildOrderSalesSheet(workbook, {
     bundle,
     labels,
@@ -673,7 +682,7 @@ function buildCoverSheet(
   sheet.mergeCells(contentsRow, 1, contentsRow, COLS);
   setWesternText(
     sheet.getCell(contentsRow, 1),
-    `${labels.contents}:  ${labels.executive}  ·  ${labels.financial}  ·  ${labels.orderSalesRollup}  ·  ${labels.revenueTrend}`,
+    `${labels.contents}:  ${labels.executive}  ·  ${labels.financial}  ·  ${labels.paymentMethodAnalysis}  ·  ${labels.orderSalesRollup}  ·  ${labels.revenueTrend}`,
     lang,
     { size: 10, color: DL.muted }
   );
@@ -871,6 +880,120 @@ function buildFinancialSheet(
     ],
     lang
   );
+
+  applyPrintSetup(sheet, lang, { freezeAt: 3 });
+}
+
+function buildPaymentMethodSheet(
+  workbook: ExcelJS.Workbook,
+  ctx: {
+    bundle: RestaurantReportingExportBundle;
+    labels: ReportingExportLabels;
+    money: (amount: string) => string;
+    periodLabel: string;
+    scopeLabel: string;
+  }
+) {
+  const { bundle, labels, money, periodLabel, scopeLabel } = ctx;
+  const sheet = workbook.addWorksheet(
+    sanitizeSheetName(labels.paymentMethodAnalysis)
+  );
+  const lang = bundle.language;
+  const analytics = bundle.paymentMethodAnalytics;
+  setColWidths(sheet);
+
+  writeSheetChrome(
+    sheet,
+    labels.paymentMethodAnalysis,
+    `${scopeLabel}  ·  ${periodLabel}`,
+    lang
+  );
+
+  paintRow(sheet, 4, COLS, DL.canvas, 10);
+  sheet.mergeCells(5, 1, 5, COLS);
+  setWesternText(sheet.getCell(5, 1), labels.paymentAnalyticsNote, lang, {
+    size: 10,
+    color: DL.muted,
+    fill: DL.canvas,
+  });
+  sheet.getCell(5, 1).alignment = reportAlignment(
+    lang,
+    isRtl(lang) ? "right" : "left",
+    1
+  );
+
+  let row = writeStatementBlock(
+    sheet,
+    7,
+    labels.paymentMix,
+    [
+      [labels.monetaryTenderTotal, money(analytics.monetaryTenderTotal)],
+      [
+        preferredPaymentMethodLabel("complimentary", lang),
+        money(analytics.complimentaryAmount),
+      ],
+    ],
+    lang
+  );
+
+  writeSectionLabel(sheet, row, labels.paymentMethodAnalysis, lang);
+  row += 1;
+
+  const headers = [
+    labels.paymentMethod,
+    labels.tenderAmount,
+    labels.checksByMethod,
+    labels.averageCheckByMethod,
+    labels.mixPercent,
+    labels.transactions,
+  ];
+  const colStarts = [1, 4, 7, 9, 11, 13];
+  const colEnds = [3, 6, 8, 10, 12, COLS];
+  for (let i = 0; i < headers.length; i++) {
+    sheet.mergeCells(row, colStarts[i]!, row, colEnds[i]!);
+    setWesternText(sheet.getCell(row, colStarts[i]!), headers[i]!, lang, {
+      bold: true,
+      size: 10,
+      color: DL.inkSoft,
+      fill: DL.brandWash,
+    });
+    sheet.getCell(row, colStarts[i]!).border = cellBorder(DL.line);
+  }
+  row += 1;
+
+  if (analytics.buckets.length === 0) {
+    sheet.mergeCells(row, 1, row, COLS);
+    setWesternText(
+      sheet.getCell(row, 1),
+      lang === "ar" ? "لا توجد معاملات تسوية في هذه الفترة." : "No settlement tenders in this period.",
+      lang,
+      { size: 11, color: DL.muted, fill: DL.surface }
+    );
+  } else {
+    for (const bucket of analytics.buckets) {
+      const fill = DL.surface;
+      const cells = [
+        preferredPaymentMethodLabel(bucket.paymentMethod, lang),
+        money(bucket.tenderAmount),
+        formatWesternCount(bucket.checkCount),
+        money(bucket.averageCheck),
+        `${toWesternDigits(bucket.mixPercent)}%`,
+        formatWesternCount(bucket.transactionCount),
+      ];
+      for (let i = 0; i < cells.length; i++) {
+        sheet.mergeCells(row, colStarts[i]!, row, colEnds[i]!);
+        setWesternText(sheet.getCell(row, colStarts[i]!), cells[i]!, lang, {
+          size: 12,
+          color: DL.ink,
+          fill,
+          bold: i === 1,
+        });
+        sheet.getCell(row, colStarts[i]!).border = cellBorder(DL.line);
+      }
+      sheet.getRow(row).height = 26;
+      row += 1;
+    }
+  }
 
   applyPrintSetup(sheet, lang, { freezeAt: 3 });
 }

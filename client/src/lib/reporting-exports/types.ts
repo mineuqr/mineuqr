@@ -7,6 +7,7 @@ import type {
   BusinessMetricsSummaryDto,
   BusinessMetricsTrendDto,
   OrderSalesRollupDto,
+  PaymentMethodAnalyticsDto,
 } from "@shared/reporting-platform";
 
 export type ReportingExportLanguage = "ar" | "en";
@@ -40,4 +41,9 @@ export type RestaurantReportingExportBundle = Readonly<{
   orderSalesRollup: OrderSalesRollupDto;
   /** Revenue trend points for the selected calendar scope only. */
   revenueTrend: BusinessMetricsTrendDto;
+  /**
+   * Payment-method analytics for the selected scope (Settlement Transactions).
+   * Not a substitute for business.revenue (Check Revenue).
+   */
+  paymentMethodAnalytics: PaymentMethodAnalyticsDto;
 }>;

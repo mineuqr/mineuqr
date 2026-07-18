@@ -12,6 +12,7 @@ import {
   getOperationalMetricsSnapshot,
   getOrderSalesRollup,
   getOrderSalesSummary,
+  getPaymentMethodAnalytics,
   ReportingValidationError,
 } from "./ReportingService";
 
@@ -145,6 +146,25 @@ export const reportingRouter = router({
       );
       try {
         return await getCatalogStatsSummary(input.restaurantId);
+      } catch (err) {
+        mapReportingError(err);
+      }
+    }),
+
+  /**
+   * Payment-method analytics from Settlement Transactions only.
+   * Does not replace BusinessMetricsSummary.revenue (Check Revenue SSOT).
+   */
+  getPaymentMethodAnalytics: verifiedProcedure
+    .input(periodInput)
+    .query(async ({ input, ctx }) => {
+      await assertRestaurantAccess(
+        ctx,
+        input.restaurantId,
+        "reporting.getPaymentMethodAnalytics"
+      );
+      try {
+        return await getPaymentMethodAnalytics(input);
       } catch (err) {
         mapReportingError(err);
       }

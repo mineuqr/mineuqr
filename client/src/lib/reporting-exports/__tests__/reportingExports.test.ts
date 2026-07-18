@@ -112,6 +112,37 @@ function sampleBundle(
         },
       ],
     },
+    paymentMethodAnalytics: {
+      contractVersion: 1,
+      contractId: "PaymentMethodAnalytics",
+      programId: "REPORTING-PAYMENT-METHOD-ANALYTICS-1",
+      generatedAt: "2026-07-16T00:00:00.000Z",
+      restaurantId: 1,
+      from: "2026-07-01 00:00:00",
+      to: "2026-07-31 23:59:59",
+      monetaryTenderTotal: "100.00",
+      complimentaryAmount: "10.00",
+      buckets: [
+        {
+          paymentMethod: "cash",
+          category: "cash",
+          tenderAmount: "40.00",
+          transactionCount: 2,
+          checkCount: 2,
+          averageCheck: "20.00",
+          mixPercent: "40.00",
+        },
+        {
+          paymentMethod: "mada",
+          category: "card",
+          tenderAmount: "60.00",
+          transactionCount: 2,
+          checkCount: 2,
+          averageCheck: "30.00",
+          mixPercent: "60.00",
+        },
+      ],
+    },
     ...overrides,
   };
 }
@@ -157,13 +188,14 @@ describe("REPORTING-EXPORTS helpers", () => {
     expect(totals.averageOrder).toBe("19.17");
   });
 
-  it("builds executive workbook with exactly five worksheets", async () => {
+  it("builds executive workbook with six worksheets including Payment Method Analysis", async () => {
     const workbook = await buildReportingExportWorkbook(sampleBundle(), "ر.س", "SAR");
     const names = workbook.worksheets.map((s) => s.name);
     expect(names).toEqual([
       "Cover",
       "Executive Summary",
       "Financial Summary",
+      "Payment Method Analysis",
       "Order Sales",
       "Check Revenue Trends",
     ]);
