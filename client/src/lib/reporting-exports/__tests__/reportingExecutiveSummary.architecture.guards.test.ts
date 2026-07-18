@@ -31,59 +31,58 @@ const sampleOrders = {
   averageOrder: "25.00",
 };
 
-describe("REPORTING-EXECUTIVE-SUMMARY-RATIONALIZATION-1 + UX-1 guards", () => {
-  it("Executive Summary exposes exactly six management KPIs", () => {
+describe("REPORTING-EXECUTIVE-SUMMARY-SIMPLIFICATION-1 guards", () => {
+  it("Executive Summary exposes exactly three operational KPIs", () => {
     expect([...EXECUTIVE_SUMMARY_KPI_IDS]).toEqual([
-      "revenue",
       "orderSales",
-      "paidCheckCount",
       "orderCount",
-      "averageCheck",
       "averageOrder",
     ]);
   });
 
-  it("UX view model groups collected vs served without renaming KPIs", () => {
+  it("view model is operational-only — no Money Collected group", () => {
     const vm = buildExecutiveSummaryViewModel({
       language: "en",
       business: sampleBusiness,
       orderPeriod: sampleOrders,
       formatMoney: (a) => a,
     });
-    expect(vm.primaryQuestion).toMatch(/perform/i);
-    expect(vm.groups).toHaveLength(2);
-    expect(vm.groups[0]?.id).toBe("collected");
-    expect(vm.groups[1]?.id).toBe("served");
+    expect(vm.primaryQuestion).toMatch(/operational/i);
+    expect(vm.groups).toHaveLength(1);
+    expect(vm.groups[0]?.id).toBe("operational");
     expect(vm.groups[0]?.cards.map((c) => c.kpiId)).toEqual([
-      "revenue",
-      "paidCheckCount",
-      "averageCheck",
-    ]);
-    expect(vm.groups[1]?.cards.map((c) => c.kpiId)).toEqual([
       "orderSales",
       "orderCount",
       "averageOrder",
     ]);
-    expect(vm.groups[0]?.cards[0]?.label).toBe("Check Revenue");
-    expect(vm.groups[0]?.cards[0]?.caption).toMatch(/paid/i);
-    expect(vm.comparisonNote).toMatch(/different/i);
+    expect(vm.groups[0]?.cards[0]?.label).toBe("Order Sales");
+    expect(vm.footerNote).toMatch(/Financial Summary/i);
+    const allLabels = vm.groups
+      .flatMap((g) => g.cards)
+      .map((c) => c.label)
+      .join(" ");
+    expect(allLabels).not.toMatch(/Check Revenue/i);
+    expect(allLabels).not.toMatch(/Paid Checks/i);
+    expect(allLabels).not.toMatch(/Average Check/i);
+    expect(allLabels).not.toMatch(/Tax/i);
   });
 
-  it("flat card builder still omits tax / complimentary / voided", () => {
+  it("flat card builder returns three operational cards only", () => {
     const cards = buildExecutiveSummaryCards({
       language: "en",
       business: sampleBusiness,
       orderPeriod: sampleOrders,
       formatMoney: (a) => a,
     });
-    expect(cards).toHaveLength(6);
-    const labels = cards.map((c) => c.label).join(" ");
-    expect(labels).not.toMatch(/Tax/i);
-    expect(labels).not.toMatch(/Complimentary/i);
-    expect(labels).not.toMatch(/Voided/i);
+    expect(cards).toHaveLength(3);
+    expect(cards.map((c) => c.kpiId)).toEqual([
+      "orderSales",
+      "orderCount",
+      "averageOrder",
+    ]);
   });
 
-  it("Excel and PDF consume the shared UX view model", () => {
+  it("Excel and PDF consume the shared view model with footerNote", () => {
     const excel = read(
       "client/src/lib/reporting-exports/excel/buildReportingExportWorkbook.ts"
     );
@@ -94,25 +93,38 @@ describe("REPORTING-EXECUTIVE-SUMMARY-RATIONALIZATION-1 + UX-1 guards", () => {
       "client/src/lib/reporting-exports/executiveSummaryPresentation.ts"
     );
     expect(excel).toContain("buildExecutiveSummaryViewModel");
+    expect(excel).toContain("footerNote");
+    expect(excel).toContain("moneyCollectedSection");
+    expect(excel).toContain("taxAnalysisPeriodNote");
     expect(pdf).toContain("buildExecutiveSummaryViewModel");
-    expect(presentation).toContain("REPORTING-EXECUTIVE-SUMMARY-UX-1");
+    expect(pdf).toContain("footerNote");
+    expect(pdf).toContain("moneyCollectedSection");
+    expect(pdf).toContain("taxAnalysisPeriodNote");
+    expect(presentation).toContain(
+      "REPORTING-EXECUTIVE-SUMMARY-SIMPLIFICATION-1"
+    );
     expect(presentation).toContain("preferredKpiLabel");
-    expect(presentation).not.toContain('label: "Revenue"');
+    expect(presentation).not.toContain("Money collected");
   });
 
   it("export labels still pull KPI names from Product Semantics", () => {
     const labels = read("client/src/lib/reporting-exports/labels.ts");
     expect(labels).toContain("preferredKpiLabel");
     expect(labels).toContain("SECTION_TERMINOLOGY");
+    expect(labels).toContain("moneyCollected");
+    expect(labels).toContain("taxAnalysisPeriodNote");
     expect(labels).not.toMatch(/revenue:\s*"Revenue"/);
   });
 
-  it("Financial Summary retains tax and adjustments analysis", () => {
+  it("Financial Summary retains Money Collected KPIs and tax period clarity", () => {
     const excel = read(
       "client/src/lib/reporting-exports/excel/buildReportingExportWorkbook.ts"
     );
-    expect(excel).toContain("taxAnalysisSection");
-    expect(excel).toContain("adjustmentsSection");
+    expect(excel).toContain("labels.revenue");
+    expect(excel).toContain("labels.paidChecks");
+    expect(excel).toContain("labels.averageCheck");
     expect(excel).toContain("labels.taxCollected");
+    expect(excel).toContain("taxAnalysisPeriodNote");
+    expect(excel).toContain("moneyCollectedSection");
   });
 });

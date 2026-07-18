@@ -116,13 +116,20 @@ export const SECTION_TERMINOLOGY = Object.freeze({
     orderSalesPerformance: "Order Sales Detail",
     /** REPORTING-EXECUTIVE-SUMMARY-RATIONALIZATION-1 */
     executiveSnapshot: "At a Glance",
+    /** REPORTING-EXECUTIVE-SUMMARY-SIMPLIFICATION-1 — operational focus */
     executiveSnapshotHint:
-      "How the restaurant performed this period — details follow in later sections.",
+      "Operational performance this period — Check Revenue and tax are in Financial Summary.",
     taxAnalysis: "Tax",
+    /** Clarifies Tax Collected covers the full report period (presentation only). */
+    taxAnalysisPeriodNote:
+      "Tax Collected is the total tax from all paid checks in this reporting period (not a subset of sections).",
     adjustmentsAnalysis: "Adjustments",
     financialSummary: "Financial Summary",
     executiveSummary: "Executive Summary",
     coverSubtitle: "Business performance overview",
+    moneyCollected: "Money Collected",
+    moneyCollectedHint:
+      "Paid guest checks for this reporting period — Check Revenue story.",
     /** REPORTING-PAYMENT-METHOD-ANALYTICS-1 */
     paymentMethodAnalysis: "Payment Method Analysis",
     paymentMix: "Payment Mix",
@@ -145,12 +152,17 @@ export const SECTION_TERMINOLOGY = Object.freeze({
     orderSalesPerformance: "تفاصيل مبيعات الطلبات",
     executiveSnapshot: "لمحة سريعة",
     executiveSnapshotHint:
-      "أداء المطعم في هذه الفترة — التفاصيل في الأقسام التالية.",
+      "الأداء التشغيلي لهذه الفترة — إيرادات الشيكات والضريبة في الملخص المالي.",
     taxAnalysis: "الضريبة",
+    taxAnalysisPeriodNote:
+      "الضريبة المحصّلة هي إجمالي الضريبة من جميع الشيكات المدفوعة في فترة التقرير كاملة (وليست جزءاً من أقسام محددة).",
     adjustmentsAnalysis: "التسويات",
     financialSummary: "الملخص المالي",
     executiveSummary: "الملخص التنفيذي",
     coverSubtitle: "نظرة على أداء العمل",
+    moneyCollected: "الأموال المحصّلة",
+    moneyCollectedHint:
+      "شيكات الضيوف المدفوعة لهذه الفترة — قصة إيرادات الشيكات.",
     paymentMethodAnalysis: "تحليل طرق الدفع",
     paymentMix: "مزيج الدفع",
     tenderAmount: "مبلغ وسيلة الدفع",
@@ -191,15 +203,14 @@ export function preferredPaymentMethodLabel(
 }
 
 /**
- * KPI ids allowed on the Executive Summary (management snapshot).
- * Tax / complimentary / voided belong in Financial Summary analysis.
+ * KPI ids allowed on the Executive Summary (operational snapshot).
+ * REPORTING-EXECUTIVE-SUMMARY-SIMPLIFICATION-1 — Money Collected KPIs
+ * (Check Revenue, Paid Checks, Average Check) live on Financial Summary only.
+ * Tax / complimentary / voided remain Financial Summary analysis.
  */
 export const EXECUTIVE_SUMMARY_KPI_IDS = [
-  "revenue",
   "orderSales",
-  "paidCheckCount",
   "orderCount",
-  "averageCheck",
   "averageOrder",
 ] as const satisfies readonly KpiId[];
 

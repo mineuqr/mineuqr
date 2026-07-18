@@ -1,6 +1,7 @@
 /**
- * REPORTING-EXECUTIVE-SUMMARY-RATIONALIZATION-1 — KPI selection
+ * REPORTING-EXECUTIVE-SUMMARY-RATIONALIZATION-1 — KPI selection foundation
  * REPORTING-EXECUTIVE-SUMMARY-UX-1 — owner/manager readability
+ * REPORTING-EXECUTIVE-SUMMARY-SIMPLIFICATION-1 — operational KPIs only
  *
  * Presentation only. KPI names from Product Semantics (`preferredKpiLabel`).
  * UX grouping / captions / plain-language framing live here — not in Product Semantics.
@@ -10,7 +11,6 @@ import {
   EXECUTIVE_SUMMARY_KPI_IDS,
   preferredKpiLabel,
   SECTION_TERMINOLOGY,
-  SEMANTIC_CLARIFICATIONS,
   type ExecutiveSummaryKpiId,
   type PresentationLanguage,
 } from "@shared/reporting-platform";
@@ -28,7 +28,7 @@ export type ExecutiveSummaryCard = Readonly<{
 }>;
 
 export type ExecutiveSummaryGroup = Readonly<{
-  id: "collected" | "served";
+  id: "operational";
   title: string;
   hint: string;
   cards: readonly ExecutiveSummaryCard[];
@@ -39,26 +39,14 @@ export type ExecutiveSummaryViewModel = Readonly<{
   /** Primary question the page answers. */
   primaryQuestion: string;
   groups: readonly ExecutiveSummaryGroup[];
-  /** Why Check Revenue and Order Sales can differ. */
-  comparisonNote: string;
+  /** Where to find Check Revenue / tax / payment details. */
+  footerNote: string;
 }>;
 
 /** UX captions — explain meaning without replacing Product Semantics names. */
 const KPI_CAPTIONS: Readonly<
   Record<ExecutiveSummaryKpiId, Readonly<{ en: string; ar: string }>>
 > = Object.freeze({
-  revenue: {
-    en: "What guests paid on settled checks",
-    ar: "ما دفعه الضيوف على الشيكات المسددة",
-  },
-  paidCheckCount: {
-    en: "How many checks were paid",
-    ar: "عدد الشيكات التي تم دفعها",
-  },
-  averageCheck: {
-    en: "Typical size of a paid check",
-    ar: "متوسط قيمة الشيك المدفوع",
-  },
   orderSales: {
     en: "Value of orders that were completed (served)",
     ar: "قيمة الطلبات التي اكتملت (قُدّمت)",
@@ -73,52 +61,31 @@ const KPI_CAPTIONS: Readonly<
   },
 });
 
-const GROUP_COPY = Object.freeze({
+const PAGE_COPY = Object.freeze({
   en: {
-    primaryQuestion: "How did the restaurant perform this period?",
-    collectedTitle: "Money collected",
-    collectedHint: "From paid guest checks — your Check Revenue story.",
-    servedTitle: "Orders served",
-    servedHint: "From completed kitchen orders — your Order Sales story.",
-    comparisonNote:
-      "These two money totals measure different things and can differ. Check Revenue is money collected on paid checks; Order Sales is the value of completed orders.",
+    primaryQuestion: "How is the restaurant performing operationally?",
+    operationalTitle: "Orders served",
+    operationalHint:
+      "From completed kitchen orders — your Order Sales story for this period.",
+    footerNote:
+      "Check Revenue, Paid Checks, Average Check, and Tax Collected are in Financial Summary. Payment mix is in Payment Method Analysis.",
   },
   ar: {
-    primaryQuestion: "كيف كان أداء المطعم في هذه الفترة؟",
-    collectedTitle: "الأموال المحصّلة",
-    collectedHint: "من شيكات الضيوف المدفوعة — قصة إيرادات الشيكات.",
-    servedTitle: "الطلبات المقدَّمة",
-    servedHint: "من الطلبات المكتملة في المطبخ — قصة مبيعات الطلبات.",
-    comparisonNote:
-      "هذان الرقمان الماليان يقيسان شيئين مختلفين وقد يختلفان. إيرادات الشيكات = ما حُصّل من الشيكات المدفوعة؛ مبيعات الطلبات = قيمة الطلبات المكتملة.",
+    primaryQuestion: "كيف يؤدي المطعم تشغيلياً؟",
+    operationalTitle: "الطلبات المقدَّمة",
+    operationalHint:
+      "من الطلبات المكتملة في المطبخ — قصة مبيعات الطلبات لهذه الفترة.",
+    footerNote:
+      "إيرادات الشيكات وعدد الشيكات المدفوعة ومتوسط الشيك والضريبة المحصّلة في الملخص المالي. مزيج الدفع في تحليل طرق الدفع.",
   },
 } as const);
 
-const COLLECTED_KPI_IDS = [
-  "revenue",
-  "paidCheckCount",
-  "averageCheck",
-] as const satisfies readonly ExecutiveSummaryKpiId[];
-
-const SERVED_KPI_IDS = [
-  "orderSales",
-  "orderCount",
-  "averageOrder",
-] as const satisfies readonly ExecutiveSummaryKpiId[];
-
 function cardValue(
   kpiId: ExecutiveSummaryKpiId,
-  biz: BusinessMetricsSummaryDto,
   orderPeriod: ScopedOrderSalesTotals,
   formatMoney: (amount: string) => string
 ): string {
   switch (kpiId) {
-    case "revenue":
-      return formatMoney(biz.revenue);
-    case "paidCheckCount":
-      return formatNullableCount(biz.paidCheckCount);
-    case "averageCheck":
-      return formatMoney(biz.averageCheck);
     case "orderSales":
       return formatMoney(orderPeriod.orderSales);
     case "orderCount":
@@ -135,21 +102,20 @@ function cardValue(
 function buildCard(
   kpiId: ExecutiveSummaryKpiId,
   lang: PresentationLanguage,
-  biz: BusinessMetricsSummaryDto,
   orderPeriod: ScopedOrderSalesTotals,
   formatMoney: (amount: string) => string
 ): ExecutiveSummaryCard {
   return {
     kpiId,
     label: preferredKpiLabel(kpiId, lang),
-    value: cardValue(kpiId, biz, orderPeriod, formatMoney),
+    value: cardValue(kpiId, orderPeriod, formatMoney),
     caption: KPI_CAPTIONS[kpiId][lang],
   };
 }
 
 /**
  * Owner-first Executive Summary view model (Excel + PDF).
- * Same six KPI ids as RATIONALIZATION-1; improved grouping and plain language.
+ * Operational KPIs only (SIMPLIFICATION-1). Money Collected → Financial Summary.
  */
 export function buildExecutiveSummaryViewModel(input: {
   language: PresentationLanguage;
@@ -158,14 +124,11 @@ export function buildExecutiveSummaryViewModel(input: {
   formatMoney: (amount: string) => string;
 }): ExecutiveSummaryViewModel {
   const lang = input.language;
-  const copy = GROUP_COPY[lang];
-  const { business: biz, orderPeriod, formatMoney } = input;
+  const copy = PAGE_COPY[lang];
+  const { orderPeriod, formatMoney } = input;
 
-  const collectedCards = COLLECTED_KPI_IDS.map((id) =>
-    buildCard(id, lang, biz, orderPeriod, formatMoney)
-  );
-  const servedCards = SERVED_KPI_IDS.map((id) =>
-    buildCard(id, lang, biz, orderPeriod, formatMoney)
+  const cards = EXECUTIVE_SUMMARY_KPI_IDS.map((id) =>
+    buildCard(id, lang, orderPeriod, formatMoney)
   );
 
   return {
@@ -173,23 +136,17 @@ export function buildExecutiveSummaryViewModel(input: {
     primaryQuestion: copy.primaryQuestion,
     groups: [
       {
-        id: "collected",
-        title: copy.collectedTitle,
-        hint: copy.collectedHint,
-        cards: collectedCards,
-      },
-      {
-        id: "served",
-        title: copy.servedTitle,
-        hint: copy.servedHint,
-        cards: servedCards,
+        id: "operational",
+        title: copy.operationalTitle,
+        hint: copy.operationalHint,
+        cards,
       },
     ],
-    comparisonNote: `${copy.comparisonNote} ${SEMANTIC_CLARIFICATIONS[lang].averagePair}`,
+    footerNote: copy.footerNote,
   };
 }
 
-/** @deprecated Prefer buildExecutiveSummaryViewModel — kept for flat card lists. */
+/** Flat card list in EXECUTIVE_SUMMARY_KPI_IDS order. */
 export function buildExecutiveSummaryCards(input: {
   language: PresentationLanguage;
   business: BusinessMetricsSummaryDto;
@@ -197,13 +154,7 @@ export function buildExecutiveSummaryCards(input: {
   formatMoney: (amount: string) => string;
 }): readonly ExecutiveSummaryCard[] {
   const vm = buildExecutiveSummaryViewModel(input);
-  const out: ExecutiveSummaryCard[] = [];
-  for (const g of vm.groups) {
-    for (const c of g.cards) out.push(c);
-  }
-  // Preserve RATIONALIZATION id order for any legacy consumer
-  const byId = new Map(out.map((c) => [c.kpiId, c]));
-  return EXECUTIVE_SUMMARY_KPI_IDS.map((id) => byId.get(id)!);
+  return vm.groups[0]?.cards ?? [];
 }
 
 export function executiveSnapshotSectionTitle(

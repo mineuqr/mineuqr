@@ -59,6 +59,9 @@ export type ReportingExportLabels = Readonly<{
   executiveSnapshotSection: string;
   executiveSnapshotHint: string;
   taxAnalysisSection: string;
+  taxAnalysisPeriodNote: string;
+  moneyCollectedSection: string;
+  moneyCollectedHint: string;
   checkRevenueBasis: string;
   orderSalesBasis: string;
   trendInsufficient: string;
@@ -142,6 +145,9 @@ export function reportingExportLabels(
       executiveSnapshotSection: section.executiveSnapshot,
       executiveSnapshotHint: section.executiveSnapshotHint,
       taxAnalysisSection: section.taxAnalysis,
+      taxAnalysisPeriodNote: section.taxAnalysisPeriodNote,
+      moneyCollectedSection: section.moneyCollected,
+      moneyCollectedHint: section.moneyCollectedHint,
       checkRevenueBasis: clarify.checkRevenue,
       orderSalesBasis: clarify.orderSales,
       trendInsufficient:
@@ -213,6 +219,9 @@ export function reportingExportLabels(
     executiveSnapshotSection: section.executiveSnapshot,
     executiveSnapshotHint: section.executiveSnapshotHint,
     taxAnalysisSection: section.taxAnalysis,
+    taxAnalysisPeriodNote: section.taxAnalysisPeriodNote,
+    moneyCollectedSection: section.moneyCollected,
+    moneyCollectedHint: section.moneyCollectedHint,
     checkRevenueBasis: clarify.checkRevenue,
     orderSalesBasis: clarify.orderSales,
     trendInsufficient:

@@ -3,6 +3,7 @@
  * Kept for compile compatibility; UI no longer offers PDF download.
  * Presentation only. Does not calculate Revenue or other KPIs.
  * REPORTING-PAYMENT-METHOD-ANALYTICS-1 — Payment Method Analysis section.
+ * REPORTING-EXECUTIVE-SUMMARY-SIMPLIFICATION-1 — operational Executive KPIs only.
  */
 import { resolveExportLogoAsset } from "../branding";
 import {
@@ -314,19 +315,33 @@ async function renderPdfDocument(
       group.cards.map((c) => [c.label, c.value, c.caption] as const)
     );
   }
-  ensure(40);
-  doc.roundedRect(48, y, contentWidth, 36, 4).fillAndStroke(GOLD_SOFT, GOLD);
+  ensure(48);
+  doc.roundedRect(48, y, contentWidth, 44, 4).fillAndStroke(GOLD_SOFT, GOLD);
   doc.fillColor(SLATE).font(font).fontSize(8);
-  text(execVm.comparisonNote, 56, y + 8, { width: contentWidth - 16 });
-  y += 48;
+  text(execVm.footerNote, 56, y + 8, { width: contentWidth - 16 });
+  y += 56;
 
-  // ── Financial (detailed analysis) ──────────────────────
+  // ── Financial (Money Collected + tax + detail) ─────────
   section(labels.financial);
+  doc.fillColor(NAVY).font(fontBold).fontSize(10);
+  text(labels.moneyCollectedSection, 48, y, { width: contentWidth });
+  y = doc.y + 2;
+  doc.fillColor(SLATE).font(font).fontSize(8);
+  text(labels.moneyCollectedHint, 48, y, { width: contentWidth });
+  y = doc.y + 8;
   kvTable([
     [labels.revenue, money(biz.revenue)],
     [labels.paidChecks, formatWesternCount(biz.paidCheckCount)],
     [labels.averageCheck, money(biz.averageCheck)],
-    [labels.taxCollected, money(biz.taxCollected)],
+  ]);
+  doc.fillColor(NAVY).font(fontBold).fontSize(10);
+  text(labels.taxAnalysisSection, 48, y, { width: contentWidth });
+  y = doc.y + 2;
+  doc.fillColor(SLATE).font(font).fontSize(8);
+  text(labels.taxAnalysisPeriodNote, 48, y, { width: contentWidth });
+  y = doc.y + 8;
+  kvTable([[labels.taxCollected, money(biz.taxCollected)]]);
+  kvTable([
     [labels.orderSales, money(orderPeriod.orderSales)],
     [labels.averageOrder, money(orderPeriod.averageOrder)],
     [labels.orders, formatWesternCount(orderPeriod.orderCount)],

@@ -2,6 +2,7 @@
  * REPORTING-DESIGN-LANGUAGE-1 — MineuQR Official Excel Design Language.
  * REPORTING-EXECUTIVE-SUMMARY-RATIONALIZATION-1 — Executive = management snapshot.
  * REPORTING-EXECUTIVE-SUMMARY-UX-1 — owner-readable grouping + captions.
+ * REPORTING-EXECUTIVE-SUMMARY-SIMPLIFICATION-1 — operational Executive KPIs only.
  * Preserves REPORTING-PERIOD-CONSISTENCY-1 scoped totals (scopedOrderSalesFromRollup).
  * Presentation only. Does not calculate Revenue or other KPIs.
  *
@@ -773,7 +774,7 @@ function buildExecutiveSheet(
   }
 
   sheet.mergeCells(row, 1, row, COLS);
-  setWesternText(sheet.getCell(row, 1), vm.comparisonNote, lang, {
+  setWesternText(sheet.getCell(row, 1), vm.footerNote, lang, {
     size: 9,
     color: DL.muted,
     fill: DL.brandWash,
@@ -826,6 +827,21 @@ function buildFinancialSheet(
 
   paintRow(sheet, 4, COLS, DL.canvas, 10);
   let row = 5;
+  // Money Collected (relocated from Executive — SIMPLIFICATION-1)
+  writeSectionLabel(sheet, row, labels.moneyCollectedSection, lang);
+  row += 1;
+  sheet.mergeCells(row, 1, row, COLS);
+  setWesternText(sheet.getCell(row, 1), labels.moneyCollectedHint, lang, {
+    size: 10,
+    color: DL.muted,
+    fill: DL.canvas,
+  });
+  sheet.getCell(row, 1).alignment = reportAlignment(
+    lang,
+    isRtl(lang) ? "right" : "left",
+    1
+  );
+  row += 1;
   row = writeStatementBlock(
     sheet,
     row,
@@ -837,13 +853,50 @@ function buildFinancialSheet(
     ],
     lang
   );
-  row = writeStatementBlock(
-    sheet,
-    row,
-    labels.taxAnalysisSection,
-    [[labels.taxCollected, money(biz.taxCollected)]],
-    lang
+  writeSectionLabel(sheet, row, labels.taxAnalysisSection, lang);
+  row += 1;
+  sheet.mergeCells(row, 1, row, COLS);
+  setWesternText(sheet.getCell(row, 1), labels.taxAnalysisPeriodNote, lang, {
+    size: 10,
+    color: DL.muted,
+    fill: DL.canvas,
+  });
+  sheet.getCell(row, 1).alignment = reportAlignment(
+    lang,
+    isRtl(lang) ? "right" : "left",
+    1
   );
+  row += 1;
+  // Tax value row (section title already written above with period note)
+  {
+    const fill = DL.surface;
+    const rtl = isRtl(lang);
+    sheet.mergeCells(row, 1, row, 8);
+    sheet.mergeCells(row, 9, row, COLS);
+    setWesternText(sheet.getCell(row, 1), labels.taxCollected, lang, {
+      size: 12,
+      color: DL.inkSoft,
+      fill,
+    });
+    setWesternText(sheet.getCell(row, 9), money(biz.taxCollected), lang, {
+      bold: true,
+      size: 16,
+      color: DL.ink,
+      fill,
+    });
+    sheet.getCell(row, 1).alignment = reportAlignment(
+      lang,
+      rtl ? "right" : "left",
+      1
+    );
+    sheet.getCell(row, 9).alignment = reportAlignment(
+      lang,
+      rtl ? "left" : "right",
+      1
+    );
+    sheet.getRow(row).height = 30;
+    row += 2;
+  }
   row = writeStatementBlock(
     sheet,
     row,
