@@ -14,6 +14,7 @@ export {
   toWesternDigits,
 } from "./format";
 export { reportingExportLabels } from "./labels";
+export { buildPaymentMethodAnalysisViewModel } from "./paymentMethodAnalysisPresentation";
 export { fetchRestaurantLogoAsset } from "./branding";
 export { buildReportingExportWorkbook } from "./excel/buildReportingExportWorkbook";
 export {

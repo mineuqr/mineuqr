@@ -9,6 +9,7 @@
  * Sheets: Cover · Executive · Financial · Payment Methods · Order Sales · Revenue Trends
  * Western digits as Excel text (@). Values from reporting.* DTOs only.
  * REPORTING-PAYMENT-METHOD-ANALYTICS-1 — Payment Method Analysis from SettlementTransactions.
+ * REPORTING-PAYMENT-METHOD-PRESENTATION-ADOPTION-1 — full catalog via shared view model.
  */
 import ExcelJS from "exceljs";
 import {
@@ -18,10 +19,10 @@ import {
   reportFont,
   solidFill,
 } from "@/lib/excel/reportTheme";
-import { preferredPaymentMethodLabel } from "@shared/reporting-platform";
 import { resolveExportLogoAsset } from "../branding";
 import { renderTrendChartPng } from "../charts/renderTrendChartPng";
 import { buildExecutiveSummaryViewModel } from "../executiveSummaryPresentation";
+import { buildPaymentMethodAnalysisViewModel } from "../paymentMethodAnalysisPresentation";
 import {
   formatExportDateTime,
   formatMoneyDisplay,
@@ -952,7 +953,10 @@ function buildPaymentMethodSheet(
     sanitizeSheetName(labels.paymentMethodAnalysis)
   );
   const lang = bundle.language;
-  const analytics = bundle.paymentMethodAnalytics;
+  const vm = buildPaymentMethodAnalysisViewModel({
+    language: lang,
+    analytics: bundle.paymentMethodAnalytics,
+  });
   setColWidths(sheet);
 
   writeSheetChrome(
@@ -964,7 +968,7 @@ function buildPaymentMethodSheet(
 
   paintRow(sheet, 4, COLS, DL.canvas, 10);
   sheet.mergeCells(5, 1, 5, COLS);
-  setWesternText(sheet.getCell(5, 1), labels.paymentAnalyticsNote, lang, {
+  setWesternText(sheet.getCell(5, 1), vm.sectionNote, lang, {
     size: 10,
     color: DL.muted,
     fill: DL.canvas,
@@ -980,14 +984,21 @@ function buildPaymentMethodSheet(
     7,
     labels.paymentMix,
     [
-      [labels.monetaryTenderTotal, money(analytics.monetaryTenderTotal)],
-      [
-        preferredPaymentMethodLabel("complimentary", lang),
-        money(analytics.complimentaryAmount),
-      ],
+      [labels.monetaryTenderTotal, money(vm.monetaryTenderTotal)],
+      [vm.complimentaryLabel, money(vm.complimentaryAmount)],
     ],
     lang
   );
+
+  if (!vm.hasActivity) {
+    sheet.mergeCells(row, 1, row, COLS);
+    setWesternText(sheet.getCell(row, 1), vm.emptyMessage, lang, {
+      size: 11,
+      color: DL.muted,
+      fill: DL.surface,
+    });
+    row += 2;
+  }
 
   writeSectionLabel(sheet, row, labels.paymentMethodAnalysis, lang);
   row += 1;
@@ -1014,38 +1025,28 @@ function buildPaymentMethodSheet(
   }
   row += 1;
 
-  if (analytics.buckets.length === 0) {
-    sheet.mergeCells(row, 1, row, COLS);
-    setWesternText(
-      sheet.getCell(row, 1),
-      lang === "ar" ? "لا توجد معاملات تسوية في هذه الفترة." : "No settlement tenders in this period.",
-      lang,
-      { size: 11, color: DL.muted, fill: DL.surface }
-    );
-  } else {
-    for (const bucket of analytics.buckets) {
-      const fill = DL.surface;
-      const cells = [
-        preferredPaymentMethodLabel(bucket.paymentMethod, lang),
-        money(bucket.tenderAmount),
-        formatWesternCount(bucket.checkCount),
-        money(bucket.averageCheck),
-        `${toWesternDigits(bucket.mixPercent)}%`,
-        formatWesternCount(bucket.transactionCount),
-      ];
-      for (let i = 0; i < cells.length; i++) {
-        sheet.mergeCells(row, colStarts[i]!, row, colEnds[i]!);
-        setWesternText(sheet.getCell(row, colStarts[i]!), cells[i]!, lang, {
-          size: 12,
-          color: DL.ink,
-          fill,
-          bold: i === 1,
-        });
-        sheet.getCell(row, colStarts[i]!).border = cellBorder(DL.line);
-      }
-      sheet.getRow(row).height = 26;
-      row += 1;
+  for (const bucket of vm.rows) {
+    const fill = bucket.hasActivity ? DL.surface : DL.zebra;
+    const cells = [
+      bucket.label,
+      money(bucket.tenderAmount),
+      formatWesternCount(bucket.checkCount),
+      money(bucket.averageCheck),
+      `${toWesternDigits(bucket.mixPercent)}%`,
+      formatWesternCount(bucket.transactionCount),
+    ];
+    for (let i = 0; i < cells.length; i++) {
+      sheet.mergeCells(row, colStarts[i]!, row, colEnds[i]!);
+      setWesternText(sheet.getCell(row, colStarts[i]!), cells[i]!, lang, {
+        size: 12,
+        color: DL.ink,
+        fill,
+        bold: i === 1,
+      });
+      sheet.getCell(row, colStarts[i]!).border = cellBorder(DL.line);
     }
+    sheet.getRow(row).height = 26;
+    row += 1;
   }
 
   applyPrintSetup(sheet, lang, { freezeAt: 3 });

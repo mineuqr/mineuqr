@@ -1,7 +1,6 @@
 /**
- * REPORTING-PAYMENT-METHOD-ANALYTICS-1 — Dashboard Payment Method Analysis.
- * Presentation only. Values from reporting.getPaymentMethodAnalytics.
- * Labels from Product Semantics.
+ * REPORTING-PAYMENT-METHOD-ANALYTICS-1 / PRESENTATION-ADOPTION-1
+ * Dashboard Payment Method Analysis — Reporting DTO only, shared view model.
  */
 import { useAuth } from "@/_core/hooks/useAuth";
 import { VerificationRequiredPanel } from "@/components/auth/VerificationRequiredPanel";
@@ -10,19 +9,14 @@ import {
   useDevQueryRuntimeLog,
 } from "@/lib/queryRuntime";
 import { formatMoneyDisplay } from "@/lib/reporting-exports/format";
+import { buildPaymentMethodAnalysisViewModel } from "@/lib/reporting-exports/paymentMethodAnalysisPresentation";
 import { isEmailNotVerifiedError } from "@/lib/trpcErrors";
 import { trpc } from "@/lib/trpc";
-import {
-  preferredPaymentMethodLabel,
-  SECTION_TERMINOLOGY,
-} from "@shared/reporting-platform";
+import { SECTION_TERMINOLOGY } from "@shared/reporting-platform";
 import { CreditCard } from "lucide-react";
 import { RestaurantDashSection } from "./RestaurantDashSection";
 import { RestaurantKpiCard, RestaurantKpiGridSkeleton } from "./RestaurantKpiCard";
-import {
-  RestaurantSectionEmpty,
-  RestaurantSectionError,
-} from "./RestaurantSectionStates";
+import { RestaurantSectionError } from "./RestaurantSectionStates";
 import { restaurantDash } from "./restaurantDashStyles";
 
 export function PaymentMethodAnalysisSection({
@@ -42,7 +36,6 @@ export function PaymentMethodAnalysisSection({
 }) {
   const { isAuthenticated, authPending } = useAuth();
   const lang = language === "ar" ? "ar" : "en";
-  const isAr = lang === "ar";
   const section = SECTION_TERMINOLOGY[lang];
   const sectionTitle = section.paymentMethodAnalysis;
   const sectionSub = section.paymentAnalyticsNote;
@@ -66,6 +59,11 @@ export function PaymentMethodAnalysisSection({
     reportingBusinessSummaryQueryOptions(queriesEnabled)
   );
 
+  const vm =
+    analytics != null
+      ? buildPaymentMethodAnalysisViewModel({ language: lang, analytics })
+      : null;
+
   if (isEmailNotVerifiedError(error)) {
     return (
       <RestaurantDashSection
@@ -78,13 +76,6 @@ export function PaymentMethodAnalysisSection({
     );
   }
 
-  const empty =
-    !isLoading &&
-    !isError &&
-    analytics != null &&
-    analytics.buckets.length === 0 &&
-    analytics.complimentaryAmount === "0.00";
-
   return (
     <RestaurantDashSection
       title={sectionTitle}
@@ -95,92 +86,79 @@ export function PaymentMethodAnalysisSection({
         <RestaurantKpiGridSkeleton count={4} />
       ) : isError ? (
         <RestaurantSectionError
-          message={
-            isAr
-              ? "تعذر تحميل تحليل طرق الدفع. حاول مرة أخرى."
-              : "Could not load payment method analysis. Please try again."
-          }
-          retryLabel={isAr ? "إعادة المحاولة" : "Retry"}
+          message={section.paymentAnalyticsLoadError}
+          retryLabel={lang === "ar" ? "إعادة المحاولة" : "Retry"}
           isFetching={isFetching}
           onRetry={() => void refetch()}
         />
-      ) : empty ? (
-        <RestaurantSectionEmpty
-          message={
-            isAr
-              ? "لا توجد معاملات تسوية في هذه الفترة."
-              : "No settlement tenders in this period."
-          }
-        />
-      ) : (
+      ) : vm == null ? null : (
         <div className="space-y-4">
+          {!vm.hasActivity ? (
+            <p className="text-sm text-slate-400" role="status">
+              {vm.emptyMessage}
+            </p>
+          ) : null}
           <div className={restaurantDash.kpiGrid}>
             <RestaurantKpiCard
               label={section.monetaryTenderTotal}
-              value={formatMoneyDisplay(
-                analytics?.monetaryTenderTotal ?? "0.00",
-                sym
-              )}
+              value={formatMoneyDisplay(vm.monetaryTenderTotal, sym)}
               icon={CreditCard}
               tone="success"
               valueVariant="revenue"
             />
             <RestaurantKpiCard
-              label={preferredPaymentMethodLabel("complimentary", lang)}
-              value={formatMoneyDisplay(
-                analytics?.complimentaryAmount ?? "0.00",
-                sym
-              )}
+              label={vm.complimentaryLabel}
+              value={formatMoneyDisplay(vm.complimentaryAmount, sym)}
               icon={CreditCard}
               tone="accent"
               valueVariant="revenue"
             />
           </div>
-          {analytics && analytics.buckets.length > 0 ? (
-            <div className="overflow-x-auto rounded-lg border border-slate-700/50">
-              <table className="w-full min-w-[560px] text-sm">
-                <thead className="bg-slate-800/60 text-slate-300">
-                  <tr>
-                    <th className="px-3 py-2 text-start font-medium">
-                      {section.paymentMethod}
-                    </th>
-                    <th className="px-3 py-2 text-start font-medium">
-                      {section.tenderAmount}
-                    </th>
-                    <th className="px-3 py-2 text-start font-medium">
-                      {section.checksByMethod}
-                    </th>
-                    <th className="px-3 py-2 text-start font-medium">
-                      {section.averageCheckByMethod}
-                    </th>
-                    <th className="px-3 py-2 text-start font-medium">
-                      {section.mixPercent}
-                    </th>
+          <div className="overflow-x-auto rounded-lg border border-slate-700/50">
+            <table className="w-full min-w-[640px] text-sm">
+              <thead className="bg-slate-800/60 text-slate-300">
+                <tr>
+                  <th className="px-3 py-2 text-start font-medium">
+                    {section.paymentMethod}
+                  </th>
+                  <th className="px-3 py-2 text-start font-medium">
+                    {section.tenderAmount}
+                  </th>
+                  <th className="px-3 py-2 text-start font-medium">
+                    {section.checksByMethod}
+                  </th>
+                  <th className="px-3 py-2 text-start font-medium">
+                    {section.averageCheckByMethod}
+                  </th>
+                  <th className="px-3 py-2 text-start font-medium">
+                    {section.mixPercent}
+                  </th>
+                  <th className="px-3 py-2 text-start font-medium">
+                    {section.transactions}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {vm.rows.map((b) => (
+                  <tr
+                    key={b.paymentMethod}
+                    className="border-t border-slate-700/40 text-slate-100"
+                  >
+                    <td className="px-3 py-2">{b.label}</td>
+                    <td className="px-3 py-2">
+                      {formatMoneyDisplay(b.tenderAmount, sym)}
+                    </td>
+                    <td className="px-3 py-2">{b.checkCount}</td>
+                    <td className="px-3 py-2">
+                      {formatMoneyDisplay(b.averageCheck, sym)}
+                    </td>
+                    <td className="px-3 py-2">{b.mixPercent}%</td>
+                    <td className="px-3 py-2">{b.transactionCount}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {analytics.buckets.map((b) => (
-                    <tr
-                      key={b.paymentMethod}
-                      className="border-t border-slate-700/40 text-slate-100"
-                    >
-                      <td className="px-3 py-2">
-                        {preferredPaymentMethodLabel(b.paymentMethod, lang)}
-                      </td>
-                      <td className="px-3 py-2">
-                        {formatMoneyDisplay(b.tenderAmount, sym)}
-                      </td>
-                      <td className="px-3 py-2">{b.checkCount}</td>
-                      <td className="px-3 py-2">
-                        {formatMoneyDisplay(b.averageCheck, sym)}
-                      </td>
-                      <td className="px-3 py-2">{b.mixPercent}%</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : null}
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </RestaurantDashSection>

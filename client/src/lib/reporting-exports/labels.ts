@@ -78,6 +78,7 @@ export type ReportingExportLabels = Readonly<{
   averageCheckByMethod: string;
   monetaryTenderTotal: string;
   paymentAnalyticsNote: string;
+  paymentAnalyticsEmpty: string;
   paymentMethod: string;
   transactions: string;
 }>;
@@ -165,6 +166,7 @@ export function reportingExportLabels(
       averageCheckByMethod: section.averageCheckByMethod,
       monetaryTenderTotal: section.monetaryTenderTotal,
       paymentAnalyticsNote: section.paymentAnalyticsNote,
+      paymentAnalyticsEmpty: section.paymentAnalyticsEmpty,
       paymentMethod: section.paymentMethod,
       transactions: section.transactions,
     };
@@ -239,6 +241,7 @@ export function reportingExportLabels(
     averageCheckByMethod: section.averageCheckByMethod,
     monetaryTenderTotal: section.monetaryTenderTotal,
     paymentAnalyticsNote: section.paymentAnalyticsNote,
+    paymentAnalyticsEmpty: section.paymentAnalyticsEmpty,
     paymentMethod: section.paymentMethod,
     transactions: section.transactions,
   };

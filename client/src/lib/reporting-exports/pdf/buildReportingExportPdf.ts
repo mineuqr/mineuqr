@@ -4,6 +4,7 @@
  * Presentation only. Does not calculate Revenue or other KPIs.
  * REPORTING-PAYMENT-METHOD-ANALYTICS-1 — Payment Method Analysis section.
  * REPORTING-EXECUTIVE-SUMMARY-SIMPLIFICATION-1 — operational Executive KPIs only.
+ * REPORTING-PAYMENT-METHOD-PRESENTATION-ADOPTION-1 — full catalog via shared view model.
  */
 import { resolveExportLogoAsset } from "../branding";
 import {
@@ -15,9 +16,9 @@ import {
   resolveExportCurrency,
   toWesternDigits,
 } from "../format";
-import { preferredPaymentMethodLabel } from "@shared/reporting-platform";
 import { buildExecutiveSummaryViewModel } from "../executiveSummaryPresentation";
 import { reportingExportLabels } from "../labels";
+import { buildPaymentMethodAnalysisViewModel } from "../paymentMethodAnalysisPresentation";
 import {
   formatReportScopeLabel,
   formatTrendAxisLabel,
@@ -358,37 +359,30 @@ async function renderPdfDocument(
 
   // ── Payment Method Analysis (settlement tenders) ───────
   section(labels.paymentMethodAnalysis);
+  const pmVm = buildPaymentMethodAnalysisViewModel({
+    language: bundle.language,
+    analytics: bundle.paymentMethodAnalytics,
+  });
   doc.fillColor(SLATE).font(font).fontSize(8);
-  text(labels.paymentAnalyticsNote, 48, y, { width: contentWidth });
+  text(pmVm.sectionNote, 48, y, { width: contentWidth });
   y = doc.y + 10;
-  const pm = bundle.paymentMethodAnalytics;
   kvTable([
-    [labels.monetaryTenderTotal, money(pm.monetaryTenderTotal)],
-    [
-      preferredPaymentMethodLabel("complimentary", bundle.language),
-      money(pm.complimentaryAmount),
-    ],
+    [labels.monetaryTenderTotal, money(pmVm.monetaryTenderTotal)],
+    [pmVm.complimentaryLabel, money(pmVm.complimentaryAmount)],
   ]);
-  if (pm.buckets.length === 0) {
+  if (!pmVm.hasActivity) {
     ensure(36);
     doc.fillColor(SLATE).font(font).fontSize(10);
-    text(
-      isAr
-        ? "لا توجد معاملات تسوية في هذه الفترة."
-        : "No settlement tenders in this period.",
-      48,
-      y,
-      { width: contentWidth }
-    );
+    text(pmVm.emptyMessage, 48, y, { width: contentWidth });
     y = doc.y + 12;
-  } else {
-    kvTable(
-      pm.buckets.map((b) => [
-        preferredPaymentMethodLabel(b.paymentMethod, bundle.language),
-        `${money(b.tenderAmount)} · ${labels.mixPercent} ${toWesternDigits(b.mixPercent)}% · ${labels.checksByMethod} ${formatWesternCount(b.checkCount)} · ${labels.averageCheckByMethod} ${money(b.averageCheck)}`,
-      ])
-    );
   }
+  // Semantic parity with Excel: tender, checks, average, mix, transactions
+  kvTable(
+    pmVm.rows.map((b) => [
+      b.label,
+      `${money(b.tenderAmount)} · ${labels.mixPercent} ${toWesternDigits(b.mixPercent)}% · ${labels.checksByMethod} ${formatWesternCount(b.checkCount)} · ${labels.averageCheckByMethod} ${money(b.averageCheck)} · ${labels.transactions} ${formatWesternCount(b.transactionCount)}`,
+    ])
+  );
 
   // ── Order Sales ────────────────────────────────────────
   section(labels.orderSalesRollup);

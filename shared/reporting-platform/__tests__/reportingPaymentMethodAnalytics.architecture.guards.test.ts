@@ -80,10 +80,11 @@ describe("REPORTING-PAYMENT-METHOD-ANALYTICS-1 architecture guards", () => {
       "client/src/components/dashboard/PaymentMethodAnalysisSection.tsx"
     );
     expect(excel).toContain("buildPaymentMethodSheet");
-    expect(excel).toContain("preferredPaymentMethodLabel");
+    expect(excel).toContain("buildPaymentMethodAnalysisViewModel");
     expect(pdf).toContain("paymentMethodAnalysis");
-    expect(pdf).toContain("preferredPaymentMethodLabel");
+    expect(pdf).toContain("buildPaymentMethodAnalysisViewModel");
     expect(dashboard).toContain("getPaymentMethodAnalytics");
+    expect(dashboard).toContain("buildPaymentMethodAnalysisViewModel");
     expect(dashboard).toContain("SECTION_TERMINOLOGY");
     expect(executive).not.toContain("paymentMethod");
     expect(executive).not.toContain("PaymentMethod");

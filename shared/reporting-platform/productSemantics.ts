@@ -145,6 +145,11 @@ export const SECTION_TERMINOLOGY = Object.freeze({
       "Payment mix is from settlement tenders. Check Revenue remains the official revenue total from paid checks.",
     paymentMethod: "Payment Method",
     transactions: "Transactions",
+    /** Period-agnostic empty / error (PRESENTATION-ADOPTION-1). */
+    paymentAnalyticsEmpty:
+      "No settlement tenders for the reporting period.",
+    paymentAnalyticsLoadError:
+      "Could not load payment method analysis. Please try again.",
   },
   ar: {
     checkRevenueAnalytics: "تحليلات إيرادات الشيكات",
@@ -177,6 +182,9 @@ export const SECTION_TERMINOLOGY = Object.freeze({
       "مزيج الدفع من معاملات التسوية. إيرادات الشيكات تبقى الإجمالي الرسمي من الشيكات المدفوعة.",
     paymentMethod: "طريقة الدفع",
     transactions: "المعاملات",
+    paymentAnalyticsEmpty: "لا توجد معاملات تسوية لفترة التقرير.",
+    paymentAnalyticsLoadError:
+      "تعذر تحميل تحليل طرق الدفع. حاول مرة أخرى.",
   },
 } as const);
 

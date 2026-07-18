@@ -310,6 +310,16 @@ describe("REPORTING-DESIGN-LANGUAGE-1 samples + presentation", () => {
 
         const blob = workbookTextBlob(workbook);
         expect(blob).not.toMatch(EASTERN_DIGITS);
+        // Full monetary catalog rendered (PRESENTATION-ADOPTION-1)
+        expect(blob).toContain("Cash");
+        expect(blob).toContain("Mada");
+        expect(blob).toContain("Visa");
+        expect(blob).toContain("Mastercard");
+        expect(blob).toContain("Apple Pay");
+        expect(blob).toContain("STC Pay");
+        expect(blob).toContain("Bank Transfer");
+        expect(blob).toContain("Other");
+        expect(blob).toContain("Complimentary");
 
         // Full-width canvas: 14 columns on every sheet
         for (const sheet of workbook.worksheets) {
