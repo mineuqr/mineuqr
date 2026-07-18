@@ -2,6 +2,8 @@
 
 Canonical machine registry: `shared/reporting-platform/kpiDictionary.ts` (`KPI_DICTIONARY`).
 
+Governance extension (formulas, versions, catalog API): **REPORTING-KPI-GOVERNANCE-1** — see `docs/engineering/programs/REPORTING-KPI-GOVERNANCE-1/`.
+
 ---
 
 ## Business metrics

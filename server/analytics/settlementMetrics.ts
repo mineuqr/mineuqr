@@ -2,8 +2,13 @@
  * SETTLEMENT-ARCHITECTURE-1B.1 — settlement analytics foundation.
  *
  * Authoritative fields: dining_sessions.settlementOutcome, settledAt, totalAmount only.
- * Revenue = SUM(totalAmount) WHERE settlementOutcome = 'paid'.
- * Complimentary sessions never contribute to revenue.
+ * Session paidRevenue = SUM(totalAmount) WHERE settlementOutcome = 'paid'.
+ * Complimentary sessions never contribute to paidRevenue.
+ *
+ * REPORTING-KPI-GOVERNANCE-1 — NON-CANONICAL for product Revenue:
+ * Canonical Revenue is Check-owned Paid Check SUM(grandTotal) via
+ * reporting.getBusinessMetricsSummary (see KPI_DICTIONARY.revenue).
+ * This module must not be used as Dashboard / Reports Revenue SSOT.
  */
 import { and, eq, gte, inArray, isNotNull, lte } from "drizzle-orm";
 import { diningSessions } from "../../drizzle/schema";

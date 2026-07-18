@@ -6,6 +6,7 @@ import {
   reportingOrderSalesQueryOptions,
   useDevQueryRuntimeLog,
 } from "@/lib/queryRuntime";
+import { kpiDisplayName } from "@/lib/reporting/kpiDisplay";
 import { isEmailNotVerifiedError } from "@/lib/trpcErrors";
 import { trpc } from "@/lib/trpc";
 import {
@@ -74,7 +75,8 @@ export function OperationalSnapshotSection({
     reportingOrderSalesQueryOptions(queriesEnabled)
   );
 
-  const isAr = language === "ar";
+  const lang = language === "ar" ? "ar" : "en";
+  const isAr = lang === "ar";
   const sectionTitle = isAr ? "لمحة تشغيلية" : "Operational Snapshot";
   const sectionSub = isAr
     ? "ما يحدث الآن في المطعم"
@@ -129,19 +131,19 @@ export function OperationalSnapshotSection({
           ) : null}
           <div className={restaurantDash.kpiGrid}>
             <RestaurantKpiCard
-              label={isAr ? "جلسات نشطة" : "Active Sessions"}
+              label={kpiDisplayName("activeSessions", lang)}
               value={ops?.activeSessions ?? 0}
               icon={LayoutDashboard}
               tone="primary"
             />
             <RestaurantKpiCard
-              label={isAr ? "طاولات مشغولة" : "Occupied Tables"}
+              label={kpiDisplayName("occupiedTables", lang)}
               value={ops?.occupiedTables ?? 0}
               icon={Grid3X3}
               tone="accent"
             />
             <RestaurantKpiCard
-              label={isAr ? "طلبات معلّقة" : "Pending Orders"}
+              label={kpiDisplayName("pendingOrders", lang)}
               value={opsFailed ? "—" : (ops?.pendingOrders ?? 0)}
               icon={ClipboardList}
               tone="warning"
@@ -153,7 +155,11 @@ export function OperationalSnapshotSection({
               tone="neutral"
             />
             <RestaurantKpiCard
-              label={isAr ? "مبيعات طلبات اليوم" : "Today's Order Sales"}
+              label={
+                isAr
+                  ? "مبيعات طلبات اليوم"
+                  : `Today's ${kpiDisplayName("orderSales", "en")}`
+              }
               value={salesFailed ? "—" : todayOrderSales}
               icon={DollarSign}
               tone="success"

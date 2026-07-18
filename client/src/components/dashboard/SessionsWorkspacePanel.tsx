@@ -20,6 +20,7 @@ import {
   restaurantQueriesEnabled,
   useDevQueryRuntimeLog,
 } from "@/lib/queryRuntime";
+import { kpiDisplayName } from "@/lib/reporting/kpiDisplay";
 import { resolveReportingCurrencySymbol } from "@/lib/settlementOverviewDisplay";
 import { isEmailNotVerifiedError } from "@/lib/trpcErrors";
 import { trpc } from "@/lib/trpc";
@@ -40,7 +41,8 @@ export function SessionsWorkspacePanel({
   const { isAuthenticated, authPending } = useAuth();
   const queriesEnabled = restaurantQueriesEnabled(authPending, isAuthenticated, restaurantId);
   const [workspaceSessionId, setWorkspaceSessionId] = useState<number | null>(null);
-  const isAr = language === "ar";
+  const lang = language === "ar" ? "ar" : "en";
+  const isAr = lang === "ar";
   const todayKey = todayYmd();
 
   const pageTitle = isAr ? "الجلسات" : "Sessions";
@@ -144,19 +146,23 @@ export function SessionsWorkspacePanel({
             ) : null}
             <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
               <RestaurantKpiCard
-                label={isAr ? "جلسات نشطة" : "Active Sessions"}
+                label={kpiDisplayName("activeSessions", lang)}
                 value={ops?.activeSessions ?? 0}
                 icon={LayoutDashboard}
                 tone="primary"
               />
               <RestaurantKpiCard
-                label={isAr ? "طاولات مشغولة" : "Occupied Tables"}
+                label={kpiDisplayName("occupiedTables", lang)}
                 value={ops?.occupiedTables ?? 0}
                 icon={Grid3X3}
                 tone="accent"
               />
               <RestaurantKpiCard
-                label={isAr ? "إيرادات اليوم" : "Today's Revenue"}
+                label={
+                  isAr
+                    ? "إيرادات اليوم"
+                    : `Today's ${kpiDisplayName("revenue", "en")}`
+                }
                 value={
                   businessError ? "—" : `${businessToday?.revenue ?? "0.00"} ${sym}`
                 }

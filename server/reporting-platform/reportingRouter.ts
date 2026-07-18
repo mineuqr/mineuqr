@@ -6,6 +6,7 @@ import {
   getBusinessMetricsSummary,
   getBusinessMetricsTrend,
   getCatalogStatsSummary,
+  getKpiCatalog,
   getOperationalMetricsSnapshot,
   getOrderSalesRollup,
   getOrderSalesSummary,
@@ -27,9 +28,25 @@ function mapReportingError(err: unknown): never {
 
 /**
  * Official Reporting Platform API — sole business KPI contract surface.
- * Legacy ops.getSettlement* remains for transitional clients until cutover.
+ * Legacy ops.getSettlement* remains transitional and is NOT canonical Revenue
+ * (see NON_CANONICAL_REVENUE_SURFACES / REPORTING-KPI-GOVERNANCE-1).
  */
 export const reportingRouter = router({
+  /**
+   * Metadata-only KPI governance catalog (no values, no calculations).
+   * Tenant-scoped access via restaurantId for audit consistency.
+   */
+  getKpiCatalog: verifiedProcedure
+    .input(z.object({ restaurantId: z.number().int().positive() }))
+    .query(async ({ input, ctx }) => {
+      await assertRestaurantAccess(
+        ctx,
+        input.restaurantId,
+        "reporting.getKpiCatalog"
+      );
+      return getKpiCatalog();
+    }),
+
   getBusinessMetricsSummary: verifiedProcedure
     .input(periodInput)
     .query(async ({ input, ctx }) => {

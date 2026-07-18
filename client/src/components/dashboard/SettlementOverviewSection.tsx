@@ -5,6 +5,7 @@ import {
   reportingBusinessSummaryQueryOptions,
   useDevQueryRuntimeLog,
 } from "@/lib/queryRuntime";
+import { kpiDisplayName } from "@/lib/reporting/kpiDisplay";
 import {
   formatAverageCheck,
   formatComplimentaryRate,
@@ -41,7 +42,8 @@ export function SettlementOverviewSection({
   currencySymbol?: string;
 }) {
   const { isAuthenticated, authPending } = useAuth();
-  const isAr = language === "ar";
+  const lang = language === "ar" ? "ar" : "en";
+  const isAr = lang === "ar";
   const sectionTitle = isAr ? "نظرة الإيرادات" : "Revenue Overview";
   const sectionSub = isAr
     ? "إيرادات الشيكات المدفوعة والعمليات المجانية والملغاة"
@@ -107,20 +109,20 @@ export function SettlementOverviewSection({
       ) : (
         <div className={restaurantDash.kpiGrid}>
           <RestaurantKpiCard
-            label={isAr ? "الإيرادات" : "Revenue"}
+            label={kpiDisplayName("revenue", lang)}
             value={formatSettlementRevenue(summary?.revenue ?? "0.00", sym)}
             icon={DollarSign}
             tone="success"
             valueVariant="revenue"
           />
           <RestaurantKpiCard
-            label={isAr ? "شيكات مدفوعة" : "Paid Checks"}
+            label={kpiDisplayName("paidCheckCount", lang)}
             value={summary?.paidCheckCount ?? 0}
             icon={CheckCircle2}
             tone="info"
           />
           <RestaurantKpiCard
-            label={isAr ? "شيكات مجانية" : "Complimentary Checks"}
+            label={kpiDisplayName("complimentaryCount", lang)}
             value={summary?.complimentaryCount ?? 0}
             icon={Gift}
             tone="accent"
@@ -132,7 +134,7 @@ export function SettlementOverviewSection({
             tone="warning"
           />
           <RestaurantKpiCard
-            label={isAr ? "متوسط الشيك" : "Average Check"}
+            label={kpiDisplayName("averageCheck", lang)}
             value={averageCheck === "—" ? "—" : `${averageCheck} ${sym}`}
             icon={TrendingUp}
             tone="neutral"

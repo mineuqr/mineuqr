@@ -1,13 +1,18 @@
 /**
- * REPORTING-PLATFORM-ARCHITECTURE-1 — Official KPI Ownership Registry.
+ * REPORTING-KPI-GOVERNANCE-1 — Canonical KPI Governance Registry.
+ * Extends REPORTING-PLATFORM-ARCHITECTURE-1 ownership rules.
  *
- * Every KPI consumed by Dashboard / Reports / PDF / Excel / Mobile / AI
- * MUST be registered here with Owner Domain, Source of Truth, and Reporting Contract.
+ * Authoritative catalog for every business / operational / catalog KPI.
+ * Presentation layers MUST NOT invent formulas or alternate ownership.
  *
- * Presentation layers MUST NOT invent KPI definitions.
+ * calculationVersion: increment when the business meaning of a KPI changes.
  */
 
 export const REPORTING_PLATFORM_ID = "REPORTING-PLATFORM-ARCHITECTURE-1" as const;
+export const KPI_GOVERNANCE_PROGRAM_ID = "REPORTING-KPI-GOVERNANCE-1" as const;
+
+/** Initial governance baseline — bump per-KPI when meaning changes. */
+export const KPI_CALCULATION_VERSION_BASELINE = 1 as const;
 
 export type KpiClass =
   | "operational"
@@ -30,213 +35,523 @@ export type ReportingContractId =
   | "OperationalMetricsSnapshot"
   | "OrderSalesSummary"
   | "OrderSalesRollup"
-  | "CatalogStatsSummary";
+  | "CatalogStatsSummary"
+  | "KpiCatalog";
+
+export type KpiUnit = "money" | "count" | "ratio";
+
+export type KpiValueType = "decimal_string" | "integer";
+
+export type KpiAggregation =
+  | "sum"
+  | "count"
+  | "average"
+  | "snapshot"
+  | "derived";
+
+export type KpiAvailability = "ga" | "planned";
+
+/** Human-readable owner label for governance docs and diagnostics. */
+export type KpiOwnerLabel =
+  | "Check Management"
+  | "Order Domain"
+  | "Order Read"
+  | "Operational Session"
+  | "Catalog"
+  | "Business Settings"
+  | "Reporting Platform";
 
 export type KpiDefinition = Readonly<{
+  /** Stable KPI identifier (machine key). */
   id: string;
+  /** Display name (English canonical). */
   name: string;
-  kpiClass: KpiClass;
-  ownerDomain: KpiOwnerDomain;
-  /** Human-readable source-of-truth statement. */
-  sourceOfTruth: string;
-  reportingContract: ReportingContractId;
+  /** Business description for glossary / diagnostics. */
+  description: string;
   /** Official definition — immutable product glossary. */
   definition: string;
+  /** Canonical formula (human + machine readable). */
+  formula: string;
+  kpiClass: KpiClass;
+  /** Alias of kpiClass for metadata consumers. */
+  category: KpiClass;
+  ownerDomain: KpiOwnerDomain;
+  /** Explicit ownership label. */
+  owner: KpiOwnerLabel;
+  /** Reporting service entry that materializes this KPI. */
+  sourceService: string;
+  /** Reporting DTO contract that carries the value. */
+  sourceDto: ReportingContractId;
+  /** Field name on the source DTO. */
+  dtoField: string;
+  /** @deprecated Prefer sourceDto — kept for REPORTING-PLATFORM-ARCHITECTURE-1 compat. */
+  reportingContract: ReportingContractId;
+  /** Human-readable source-of-truth statement. */
+  sourceOfTruth: string;
+  unit: KpiUnit;
+  valueType: KpiValueType;
+  aggregation: KpiAggregation;
+  availability: KpiAvailability;
+  /**
+   * Increment when the business meaning of this KPI changes.
+   * Silent semantic changes are forbidden.
+   */
+  calculationVersion: number;
+  /** Dependent KPI ids (derived metrics). */
+  dependsOn?: readonly string[];
   /** Explicit non-definitions to prevent regressions. */
   notDefinedAs?: readonly string[];
 }>;
 
+function def(
+  partial: Omit<KpiDefinition, "category" | "reportingContract" | "description"> & {
+    description?: string;
+  }
+): KpiDefinition {
+  return {
+    ...partial,
+    description: partial.description ?? partial.definition,
+    category: partial.kpiClass,
+    reportingContract: partial.sourceDto,
+  };
+}
+
 export const KPI_DICTIONARY = Object.freeze({
-  revenue: {
+  revenue: def({
     id: "revenue",
     name: "Revenue",
+    definition: "Sum of Paid Check grand totals in the reporting period.",
+    formula: "SUM(operational_checks.grandTotal WHERE outcome = 'paid')",
     kpiClass: "business",
     ownerDomain: "check",
+    owner: "Check Management",
+    sourceService: "getBusinessMetricsSummary",
+    sourceDto: "BusinessMetricsSummary",
+    dtoField: "revenue",
     sourceOfTruth: "operational_checks where outcome = paid → SUM(grandTotal)",
-    reportingContract: "BusinessMetricsSummary",
-    definition: "Sum of Paid Check grand totals in the reporting period.",
+    unit: "money",
+    valueType: "decimal_string",
+    aggregation: "sum",
+    availability: "ga",
+    calculationVersion: KPI_CALCULATION_VERSION_BASELINE,
     notDefinedAs: [
       "Served order totals",
       "Closed session totals",
       "Order Domain totalAmount",
       "Live Business Settings tax configuration",
+      "ops.getSettlement* / Session totalAmount",
     ],
-  },
-  taxCollected: {
+  }),
+  paidCheckCount: def({
+    id: "paidCheckCount",
+    name: "Paid Checks",
+    definition: "Count of Paid Checks in the reporting period.",
+    formula: "COUNT(operational_checks WHERE outcome = 'paid')",
+    kpiClass: "business",
+    ownerDomain: "check",
+    owner: "Check Management",
+    sourceService: "getBusinessMetricsSummary",
+    sourceDto: "BusinessMetricsSummary",
+    dtoField: "paidCheckCount",
+    sourceOfTruth: "operational_checks where outcome = paid → COUNT(*)",
+    unit: "count",
+    valueType: "integer",
+    aggregation: "count",
+    availability: "ga",
+    calculationVersion: KPI_CALCULATION_VERSION_BASELINE,
+    notDefinedAs: ["Order count", "Session count"],
+  }),
+  taxCollected: def({
     id: "taxCollected",
     name: "Tax Collected",
-    kpiClass: "business",
-    ownerDomain: "check",
-    sourceOfTruth:
-      "operational_checks where outcome = paid → SUM(taxAmount) from Check Tax Policy Snapshot path",
-    reportingContract: "BusinessMetricsSummary",
     definition:
       "Sum of taxAmount on Paid Checks. Tax is always from immutable Check Tax Policy Snapshot — never live Business Settings.",
+    formula:
+      "SUM(operational_checks.taxAmount WHERE outcome = 'paid') /* snapshot path */",
+    kpiClass: "business",
+    ownerDomain: "check",
+    owner: "Check Management",
+    sourceService: "getBusinessMetricsSummary",
+    sourceDto: "BusinessMetricsSummary",
+    dtoField: "taxCollected",
+    sourceOfTruth:
+      "operational_checks where outcome = paid → SUM(taxAmount) from Check Tax Policy Snapshot path",
+    unit: "money",
+    valueType: "decimal_string",
+    aggregation: "sum",
+    availability: "ga",
+    calculationVersion: KPI_CALCULATION_VERSION_BASELINE,
     notDefinedAs: ["restaurants.taxEnabled / taxMode / taxPolicyJson at report time"],
-  },
-  averageCheck: {
+  }),
+  averageCheck: def({
     id: "averageCheck",
     name: "Average Check",
+    definition: "Revenue divided by count of Paid Checks in the period.",
+    formula: "Revenue / paidCheckCount",
     kpiClass: "business",
     ownerDomain: "check",
+    owner: "Check Management",
+    sourceService: "getBusinessMetricsSummary",
+    sourceDto: "BusinessMetricsSummary",
+    dtoField: "averageCheck",
     sourceOfTruth: "Revenue / paidCheckCount",
-    reportingContract: "BusinessMetricsSummary",
-    definition: "Revenue divided by count of Paid Checks in the period.",
-  },
-  complimentaryCount: {
+    unit: "money",
+    valueType: "decimal_string",
+    aggregation: "derived",
+    availability: "ga",
+    calculationVersion: KPI_CALCULATION_VERSION_BASELINE,
+    dependsOn: ["revenue", "paidCheckCount"],
+    notDefinedAs: ["Average Order"],
+  }),
+  complimentaryCount: def({
     id: "complimentaryCount",
     name: "Complimentary Checks",
+    definition: "Count of complimentary Checks in the period.",
+    formula: "COUNT(operational_checks WHERE outcome = 'complimentary')",
     kpiClass: "business",
     ownerDomain: "check",
+    owner: "Check Management",
+    sourceService: "getBusinessMetricsSummary",
+    sourceDto: "BusinessMetricsSummary",
+    dtoField: "complimentaryCount",
     sourceOfTruth: "operational_checks where outcome = complimentary",
-    reportingContract: "BusinessMetricsSummary",
-    definition: "Count of complimentary Checks in the period.",
+    unit: "count",
+    valueType: "integer",
+    aggregation: "count",
+    availability: "ga",
+    calculationVersion: KPI_CALCULATION_VERSION_BASELINE,
     notDefinedAs: ["Revenue"],
-  },
-  complimentaryAmount: {
+  }),
+  complimentaryAmount: def({
     id: "complimentaryAmount",
     name: "Complimentary Amount",
+    definition: "Sum of complimentary Check grand totals. Not Revenue.",
+    formula:
+      "SUM(operational_checks.grandTotal WHERE outcome = 'complimentary')",
     kpiClass: "business",
     ownerDomain: "check",
+    owner: "Check Management",
+    sourceService: "getBusinessMetricsSummary",
+    sourceDto: "BusinessMetricsSummary",
+    dtoField: "complimentaryAmount",
     sourceOfTruth:
       "operational_checks where outcome = complimentary → SUM(grandTotal)",
-    reportingContract: "BusinessMetricsSummary",
-    definition: "Sum of complimentary Check grand totals. Not Revenue.",
-  },
-  voidedCount: {
+    unit: "money",
+    valueType: "decimal_string",
+    aggregation: "sum",
+    availability: "ga",
+    calculationVersion: KPI_CALCULATION_VERSION_BASELINE,
+    notDefinedAs: ["Revenue"],
+  }),
+  voidedCount: def({
     id: "voidedCount",
     name: "Voided Checks",
+    definition: "Count of voided Checks in the period.",
+    formula: "COUNT(operational_checks WHERE outcome = 'voided')",
     kpiClass: "business",
     ownerDomain: "check",
+    owner: "Check Management",
+    sourceService: "getBusinessMetricsSummary",
+    sourceDto: "BusinessMetricsSummary",
+    dtoField: "voidedCount",
     sourceOfTruth: "operational_checks where outcome = voided",
-    reportingContract: "BusinessMetricsSummary",
-    definition: "Count of voided Checks in the period.",
+    unit: "count",
+    valueType: "integer",
+    aggregation: "count",
+    availability: "ga",
+    calculationVersion: KPI_CALCULATION_VERSION_BASELINE,
     notDefinedAs: ["Revenue", "Order cancellations"],
-  },
-  dailySales: {
+  }),
+  dailySales: def({
     id: "dailySales",
     name: "Daily Sales (Revenue)",
+    definition: "Revenue per calendar day (Paid Checks).",
+    formula:
+      "SUM(paid Check.grandTotal) GROUP BY day(settledAt)",
     kpiClass: "business",
     ownerDomain: "check",
+    owner: "Check Management",
+    sourceService: "getBusinessMetricsTrend",
+    sourceDto: "BusinessMetricsTrend",
+    dtoField: "points[].revenue",
     sourceOfTruth: "Paid Check grand totals bucketed by settledAt day",
-    reportingContract: "BusinessMetricsTrend",
-    definition: "Revenue per calendar day (Paid Checks).",
-  },
-  orderSales: {
+    unit: "money",
+    valueType: "decimal_string",
+    aggregation: "sum",
+    availability: "ga",
+    calculationVersion: KPI_CALCULATION_VERSION_BASELINE,
+    dependsOn: ["revenue"],
+  }),
+  orderSales: def({
     id: "orderSales",
     name: "Order Sales",
-    kpiClass: "business",
-    ownerDomain: "order_read",
-    sourceOfTruth:
-      "order_read_analytics_daily.completedSales (served / completed orders)",
-    reportingContract: "OrderSalesSummary",
     definition:
       "Sum of completed (served) Order totals from Order Read Analytics Projection (P-10).",
-    notDefinedAs: ["Revenue", "Paid Check grand totals"],
-  },
-  averageOrder: {
+    formula: "SUM(order_read_analytics_daily.completedSales)",
+    kpiClass: "business",
+    ownerDomain: "order_read",
+    owner: "Order Read",
+    sourceService: "getOrderSalesSummary / getOrderSalesRollup",
+    sourceDto: "OrderSalesSummary",
+    dtoField: "today.orderSales | month.orderSales | periods[].orderSales",
+    sourceOfTruth:
+      "order_read_analytics_daily.completedSales (served / completed orders)",
+    unit: "money",
+    valueType: "decimal_string",
+    aggregation: "sum",
+    availability: "ga",
+    calculationVersion: KPI_CALCULATION_VERSION_BASELINE,
+    notDefinedAs: [
+      "Revenue",
+      "Paid Check grand totals",
+      "ops.getSettlement* / Session totalAmount",
+    ],
+  }),
+  completedOrders: def({
+    id: "completedOrders",
+    name: "Completed Orders",
+    definition:
+      "Count of completed (served) orders from Order Read Analytics Projection (P-10).",
+    formula: "SUM(order_read_analytics_daily.completedOrderCount)",
+    kpiClass: "business",
+    ownerDomain: "order_read",
+    owner: "Order Read",
+    sourceService: "getOrderSalesSummary / getOrderSalesRollup",
+    sourceDto: "OrderSalesSummary",
+    dtoField: "today.completedOrders | month.completedOrders | periods[].completedOrders",
+    sourceOfTruth: "order_read_analytics_daily.completedOrderCount",
+    unit: "count",
+    valueType: "integer",
+    aggregation: "count",
+    availability: "ga",
+    calculationVersion: KPI_CALCULATION_VERSION_BASELINE,
+    notDefinedAs: ["Paid Checks"],
+  }),
+  averageOrder: def({
     id: "averageOrder",
     name: "Average Order",
+    definition: "Completed order sales divided by completed order count.",
+    formula: "Order Sales / completedOrderCount",
     kpiClass: "business",
     ownerDomain: "order_read",
+    owner: "Order Read",
+    sourceService: "getOrderSalesSummary / getOrderSalesRollup",
+    sourceDto: "OrderSalesSummary",
+    dtoField: "today.averageOrder | month.averageOrder",
     sourceOfTruth: "Order Sales / completedOrderCount (P-10)",
-    reportingContract: "OrderSalesSummary",
-    definition: "Completed order sales divided by completed order count.",
-  },
-  orderCount: {
+    unit: "money",
+    valueType: "decimal_string",
+    aggregation: "derived",
+    availability: "ga",
+    calculationVersion: KPI_CALCULATION_VERSION_BASELINE,
+    dependsOn: ["orderSales", "completedOrders"],
+    notDefinedAs: ["Average Check"],
+  }),
+  orderCount: def({
     id: "orderCount",
     name: "Order Count",
+    definition: "Count of orders recorded in Order Read Analytics Projection.",
+    formula: "SUM(order_read_analytics_daily.orderCount)",
     kpiClass: "business",
     ownerDomain: "order_read",
+    owner: "Order Read",
+    sourceService: "getOrderSalesSummary / getOrderSalesRollup",
+    sourceDto: "OrderSalesSummary",
+    dtoField: "today.totalOrders | month.totalOrders | periods[].orderCount",
     sourceOfTruth: "order_read_analytics_daily.orderCount",
-    reportingContract: "OrderSalesSummary",
-    definition: "Count of orders recorded in Order Read Analytics Projection.",
-  },
-  topSellingItems: {
+    unit: "count",
+    valueType: "integer",
+    aggregation: "count",
+    availability: "ga",
+    calculationVersion: KPI_CALCULATION_VERSION_BASELINE,
+  }),
+  topSellingItems: def({
     id: "topSellingItems",
     name: "Top Selling Items",
-    kpiClass: "catalog",
-    ownerDomain: "order_read",
-    sourceOfTruth: "Order Read line-item projections (future rollup)",
-    reportingContract: "OrderSalesRollup",
     definition:
       "Ranked catalog items by sold quantity/amount from Order Read line projections.",
-  },
-  activeSessions: {
+    formula: "RANK(Order Read line-item projections) /* planned */",
+    kpiClass: "catalog",
+    ownerDomain: "order_read",
+    owner: "Order Read",
+    sourceService: "getOrderSalesRollup",
+    sourceDto: "OrderSalesRollup",
+    dtoField: "(future)",
+    sourceOfTruth: "Order Read line-item projections (future rollup)",
+    unit: "count",
+    valueType: "integer",
+    aggregation: "sum",
+    availability: "planned",
+    calculationVersion: KPI_CALCULATION_VERSION_BASELINE,
+  }),
+  activeSessions: def({
     id: "activeSessions",
     name: "Active Sessions",
+    definition: "Count of currently active Operational Sessions.",
+    formula: "COUNT(open dining sessions)",
     kpiClass: "operational",
     ownerDomain: "operational_session",
+    owner: "Operational Session",
+    sourceService: "getOperationalMetricsSnapshot",
+    sourceDto: "OperationalMetricsSnapshot",
+    dtoField: "activeSessions",
     sourceOfTruth: "Open dining sessions for restaurant",
-    reportingContract: "OperationalMetricsSnapshot",
-    definition: "Count of currently active Operational Sessions.",
-  },
-  occupiedTables: {
+    unit: "count",
+    valueType: "integer",
+    aggregation: "snapshot",
+    availability: "ga",
+    calculationVersion: KPI_CALCULATION_VERSION_BASELINE,
+  }),
+  occupiedTables: def({
     id: "occupiedTables",
     name: "Occupied Tables",
+    definition: "Count of tables with an active session.",
+    formula: "COUNT(DISTINCT tableId among active sessions)",
     kpiClass: "operational",
     ownerDomain: "operational_session",
+    owner: "Operational Session",
+    sourceService: "getOperationalMetricsSnapshot",
+    sourceDto: "OperationalMetricsSnapshot",
+    dtoField: "occupiedTables",
     sourceOfTruth: "Distinct tableId among active sessions",
-    reportingContract: "OperationalMetricsSnapshot",
-    definition: "Count of tables with an active session.",
-  },
-  activeOrders: {
+    unit: "count",
+    valueType: "integer",
+    aggregation: "snapshot",
+    availability: "ga",
+    calculationVersion: KPI_CALCULATION_VERSION_BASELINE,
+  }),
+  activeOrders: def({
     id: "activeOrders",
     name: "Active Orders",
+    definition: "Orders in active fulfilment statuses.",
+    formula: "Order Read P-06 activeOrders",
     kpiClass: "operational",
     ownerDomain: "order_read",
+    owner: "Order Read",
+    sourceService: "getOperationalMetricsSnapshot",
+    sourceDto: "OperationalMetricsSnapshot",
+    dtoField: "activeOrders",
     sourceOfTruth: "Order Read P-06 / active order counters",
-    reportingContract: "OperationalMetricsSnapshot",
-    definition: "Orders in active fulfilment statuses.",
-  },
-  pendingOrders: {
+    unit: "count",
+    valueType: "integer",
+    aggregation: "snapshot",
+    availability: "ga",
+    calculationVersion: KPI_CALCULATION_VERSION_BASELINE,
+  }),
+  pendingOrders: def({
     id: "pendingOrders",
     name: "Pending Orders",
+    definition: "Orders awaiting or in kitchen fulfilment pipeline.",
+    formula: "Order Domain / P-06 pendingOrders",
     kpiClass: "operational",
     ownerDomain: "order",
+    owner: "Order Domain",
+    sourceService: "getOperationalMetricsSnapshot",
+    sourceDto: "OperationalMetricsSnapshot",
+    dtoField: "pendingOrders",
     sourceOfTruth: "Order Domain active status count (via ops overview / P-06)",
-    reportingContract: "OperationalMetricsSnapshot",
-    definition: "Orders awaiting or in kitchen fulfilment pipeline.",
-  },
-  kitchenLoad: {
+    unit: "count",
+    valueType: "integer",
+    aggregation: "snapshot",
+    availability: "ga",
+    calculationVersion: KPI_CALCULATION_VERSION_BASELINE,
+  }),
+  kitchenLoad: def({
     id: "kitchenLoad",
     name: "Kitchen Load",
+    definition: "Aggregate kitchen queue depth from Order Read operational KPIs.",
+    formula: "P-06 pending + preparing + ready",
     kpiClass: "operational",
     ownerDomain: "order_read",
+    owner: "Order Read",
+    sourceService: "getOperationalMetricsSnapshot",
+    sourceDto: "OperationalMetricsSnapshot",
+    dtoField: "kitchenLoad",
     sourceOfTruth: "P-06 pending + preparing + ready",
-    reportingContract: "OperationalMetricsSnapshot",
-    definition: "Aggregate kitchen queue depth from Order Read operational KPIs.",
-  },
-  catalogCategoryCount: {
+    unit: "count",
+    valueType: "integer",
+    aggregation: "snapshot",
+    availability: "ga",
+    calculationVersion: KPI_CALCULATION_VERSION_BASELINE,
+    dependsOn: ["pendingOrders", "activeOrders"],
+  }),
+  catalogCategoryCount: def({
     id: "catalogCategoryCount",
     name: "Categories",
+    definition: "Number of menu categories.",
+    formula: "COUNT(categories)",
     kpiClass: "catalog",
     ownerDomain: "catalog",
+    owner: "Catalog",
+    sourceService: "getCatalogStatsSummary",
+    sourceDto: "CatalogStatsSummary",
+    dtoField: "categoryCount",
     sourceOfTruth: "categories COUNT",
-    reportingContract: "CatalogStatsSummary",
-    definition: "Number of menu categories.",
-  },
-  catalogItemCount: {
+    unit: "count",
+    valueType: "integer",
+    aggregation: "snapshot",
+    availability: "ga",
+    calculationVersion: KPI_CALCULATION_VERSION_BASELINE,
+  }),
+  catalogItemCount: def({
     id: "catalogItemCount",
     name: "Items",
+    definition: "Number of menu items.",
+    formula: "COUNT(menu_items)",
     kpiClass: "catalog",
     ownerDomain: "catalog",
+    owner: "Catalog",
+    sourceService: "getCatalogStatsSummary",
+    sourceDto: "CatalogStatsSummary",
+    dtoField: "itemCount",
     sourceOfTruth: "menu_items COUNT",
-    reportingContract: "CatalogStatsSummary",
-    definition: "Number of menu items.",
-  },
-  menuVisits: {
+    unit: "count",
+    valueType: "integer",
+    aggregation: "snapshot",
+    availability: "ga",
+    calculationVersion: KPI_CALCULATION_VERSION_BASELINE,
+  }),
+  menuVisits: def({
     id: "menuVisits",
     name: "Menu Visits",
+    definition: "Lifetime menu view counter (not sales).",
+    formula: "restaurants.viewCount",
     kpiClass: "customer",
     ownerDomain: "business_settings",
+    owner: "Business Settings",
+    sourceService: "getCatalogStatsSummary",
+    sourceDto: "CatalogStatsSummary",
+    dtoField: "menuVisits",
     sourceOfTruth: "restaurants.viewCount",
-    reportingContract: "CatalogStatsSummary",
-    definition: "Lifetime menu view counter (not sales).",
-  },
+    unit: "count",
+    valueType: "integer",
+    aggregation: "snapshot",
+    availability: "ga",
+    calculationVersion: KPI_CALCULATION_VERSION_BASELINE,
+    notDefinedAs: ["Revenue", "Order Sales"],
+  }),
 } as const satisfies Record<string, KpiDefinition>);
 
 export type KpiId = keyof typeof KPI_DICTIONARY;
+
+export type KpiMetadata = Readonly<{
+  id: KpiId;
+  name: string;
+  description: string;
+  owner: KpiOwnerLabel;
+  ownerDomain: KpiOwnerDomain;
+  calculationVersion: number;
+  source: string;
+  sourceService: string;
+  sourceDto: ReportingContractId;
+  dtoField: string;
+  unit: KpiUnit;
+  category: KpiClass;
+  formula: string;
+  aggregation: KpiAggregation;
+  availability: KpiAvailability;
+  dependsOn: readonly string[];
+}>;
 
 export function getKpiDefinition(id: KpiId): KpiDefinition {
   return KPI_DICTIONARY[id];
@@ -245,3 +560,55 @@ export function getKpiDefinition(id: KpiId): KpiDefinition {
 export function listKpisByClass(kpiClass: KpiClass): readonly KpiDefinition[] {
   return Object.values(KPI_DICTIONARY).filter((k) => k.kpiClass === kpiClass);
 }
+
+export function listAllKpis(): readonly KpiDefinition[] {
+  return Object.values(KPI_DICTIONARY);
+}
+
+export function listKpisByOwner(
+  ownerDomain: KpiOwnerDomain
+): readonly KpiDefinition[] {
+  return Object.values(KPI_DICTIONARY).filter((k) => k.ownerDomain === ownerDomain);
+}
+
+export function listKpisByContract(
+  contract: ReportingContractId
+): readonly KpiDefinition[] {
+  return Object.values(KPI_DICTIONARY).filter((k) => k.sourceDto === contract);
+}
+
+export function toKpiMetadata(def: KpiDefinition): KpiMetadata {
+  return {
+    id: def.id as KpiId,
+    name: def.name,
+    description: def.description,
+    owner: def.owner,
+    ownerDomain: def.ownerDomain,
+    calculationVersion: def.calculationVersion,
+    source: def.sourceOfTruth,
+    sourceService: def.sourceService,
+    sourceDto: def.sourceDto,
+    dtoField: def.dtoField,
+    unit: def.unit,
+    category: def.category,
+    formula: def.formula,
+    aggregation: def.aggregation,
+    availability: def.availability,
+    dependsOn: def.dependsOn ?? [],
+  };
+}
+
+export function listKpiMetadata(): readonly KpiMetadata[] {
+  return listAllKpis().map(toKpiMetadata);
+}
+
+/**
+ * Non-canonical legacy surfaces that must never be treated as Revenue SSOT.
+ * Documented for governance; not registered as KPIs.
+ */
+export const NON_CANONICAL_REVENUE_SURFACES = Object.freeze([
+  "ops.getSettlementSummary",
+  "ops.getSettlementTrend",
+  "ops.getSettlementBreakdown",
+  "server/analytics/settlementMetrics.ts (Session totalAmount)",
+] as const);

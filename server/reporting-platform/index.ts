@@ -6,5 +6,6 @@ export {
   getOrderSalesSummary,
   getOrderSalesRollup,
   getCatalogStatsSummary,
+  getKpiCatalog,
   ReportingValidationError,
 } from "./ReportingService";

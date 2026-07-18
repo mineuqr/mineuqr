@@ -126,3 +126,34 @@ export type CatalogStatsSummaryDto = Readonly<{
   itemCount: number;
   menuVisits: number;
 }>;
+
+/**
+ * REPORTING-KPI-GOVERNANCE-1 — metadata-only catalog (no KPI values).
+ * Diagnostics / future reporting tooling. Does not calculate business metrics.
+ */
+export type KpiCatalogEntryDto = Readonly<{
+  id: string;
+  name: string;
+  description: string;
+  owner: string;
+  ownerDomain: string;
+  calculationVersion: number;
+  source: string;
+  sourceService: string;
+  sourceDto: string;
+  dtoField: string;
+  unit: string;
+  category: string;
+  formula: string;
+  aggregation: string;
+  availability: string;
+  dependsOn: readonly string[];
+}>;
+
+export type KpiCatalogDto = Readonly<{
+  contractVersion: typeof REPORTING_CONTRACT_VERSION;
+  contractId: "KpiCatalog";
+  programId: "REPORTING-KPI-GOVERNANCE-1";
+  generatedAt: string;
+  kpis: readonly KpiCatalogEntryDto[];
+}>;

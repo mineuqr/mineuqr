@@ -1,12 +1,26 @@
 export {
   REPORTING_PLATFORM_ID,
+  KPI_GOVERNANCE_PROGRAM_ID,
+  KPI_CALCULATION_VERSION_BASELINE,
   KPI_DICTIONARY,
+  NON_CANONICAL_REVENUE_SURFACES,
   getKpiDefinition,
   listKpisByClass,
+  listAllKpis,
+  listKpisByOwner,
+  listKpisByContract,
+  toKpiMetadata,
+  listKpiMetadata,
   type KpiClass,
   type KpiOwnerDomain,
+  type KpiOwnerLabel,
   type KpiDefinition,
   type KpiId,
+  type KpiMetadata,
+  type KpiUnit,
+  type KpiValueType,
+  type KpiAggregation,
+  type KpiAvailability,
   type ReportingContractId,
 } from "./kpiDictionary";
 
@@ -24,6 +38,8 @@ export {
   type OrderSalesRollupPeriodDto,
   type OrderSalesRollupDto,
   type CatalogStatsSummaryDto,
+  type KpiCatalogEntryDto,
+  type KpiCatalogDto,
 } from "./reportingContracts";
 
 export {
