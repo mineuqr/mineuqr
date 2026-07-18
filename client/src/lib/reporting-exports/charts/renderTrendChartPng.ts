@@ -1,5 +1,5 @@
 /**
- * REPORTING-EXCEL-UX-POLISH-1 — executive trend chart PNG for Excel.
+ * REPORTING-DESIGN-LANGUAGE-1 — executive trend chart PNG for Excel.
  * Works in browser (canvas) and Node (pure PNG) so sample workbooks always embed charts.
  * Presentation scaling only — does not invent KPI values.
  */
@@ -233,11 +233,11 @@ function renderPurePng(input: {
   const rgba = new Uint8Array(width * height * 4);
   // background
   fillRect(rgba, width, 0, 0, width, height, hexToRgb("#FFFFFF"));
-  // header band
-  fillRect(rgba, width, 0, 0, width, 44, hexToRgb("#0B1F33"));
-  drawText(rgba, width, 24, 14, input.title.slice(0, 42), hexToRgb("#F7F1E1"), 2);
+  // header band — MineuQR Design Language
+  fillRect(rgba, width, 0, 0, width, 44, hexToRgb("#0B3B45"));
+  drawText(rgba, width, 24, 14, input.title.slice(0, 42), hexToRgb("#F0FDFA"), 2);
   // accent
-  fillRect(rgba, width, 0, 44, width, 4, hexToRgb("#B8943F"));
+  fillRect(rgba, width, 0, 44, width, 4, hexToRgb("#0D9488"));
 
   const pad = { top: 70, right: 36, bottom: 56, left: 72 };
   const plotW = width - pad.left - pad.right;
@@ -248,14 +248,14 @@ function renderPurePng(input: {
   const yMax = seriesMax > 0 ? seriesMax * 1.15 : 1;
 
   // plot frame
-  fillRect(rgba, width, pad.left, pad.top, plotW, plotH, hexToRgb("#F8FAFC"));
-  fillRect(rgba, width, pad.left, pad.top + plotH, plotW, 2, hexToRgb("#0B1F33"));
-  fillRect(rgba, width, pad.left, pad.top, 2, plotH, hexToRgb("#0B1F33"));
+  fillRect(rgba, width, pad.left, pad.top, plotW, plotH, hexToRgb("#F7F8FA"));
+  fillRect(rgba, width, pad.left, pad.top + plotH, plotW, 2, hexToRgb("#0B3B45"));
+  fillRect(rgba, width, pad.left, pad.top, 2, plotH, hexToRgb("#0B3B45"));
 
   const gap = 4;
   const barW = Math.max(6, (plotW - gap * n) / Math.max(n, 1));
-  const barColor = hexToRgb("#16324F");
-  const topColor = hexToRgb("#B8943F");
+  const barColor = hexToRgb("#0F766E");
+  const topColor = hexToRgb("#0D9488");
 
   for (let i = 0; i < n; i++) {
     const v = values[i] ?? 0;
@@ -304,17 +304,17 @@ async function renderBrowserPng(input: {
 
   ctx.fillStyle = "#FFFFFF";
   ctx.fillRect(0, 0, width, height);
-  ctx.fillStyle = "#0B1F33";
+  ctx.fillStyle = "#0B3B45";
   ctx.fillRect(0, 0, width, 44);
-  ctx.fillStyle = "#F7F1E1";
+  ctx.fillStyle = "#F0FDFA";
   ctx.font = "bold 16px Calibri, Arial, sans-serif";
   ctx.fillText(input.title, 24, 28);
-  ctx.fillStyle = "#B8943F";
+  ctx.fillStyle = "#0D9488";
   ctx.fillRect(0, 44, width, 4);
 
-  ctx.fillStyle = "#F8FAFC";
+  ctx.fillStyle = "#F7F8FA";
   ctx.fillRect(pad.left, pad.top, plotW, plotH);
-  ctx.strokeStyle = "#0B1F33";
+  ctx.strokeStyle = "#0B3B45";
   ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.moveTo(pad.left, pad.top);
@@ -336,9 +336,9 @@ async function renderBrowserPng(input: {
     const h = Math.max(2, ((values[i] ?? 0) / yMax) * (plotH - 8));
     const x = pad.left + 8 + i * (barW + gap);
     const y = pad.top + plotH - h;
-    ctx.fillStyle = "#16324F";
+    ctx.fillStyle = "#0F766E";
     ctx.fillRect(x, y, barW, h);
-    ctx.fillStyle = "#B8943F";
+    ctx.fillStyle = "#0D9488";
     ctx.fillRect(x, y, barW, 3);
   }
 

@@ -1,6 +1,6 @@
 /**
- * REPORTING-EXCEL-UX-POLISH-1
- * Capture every Excel worksheet from monthly/yearly polished samples.
+ * REPORTING-DESIGN-LANGUAGE-1
+ * Capture every Excel worksheet from monthly/yearly design-language samples.
  * Renders merges + embedded chart/logo images so screenshots match Excel.
  */
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
@@ -12,11 +12,11 @@ import { chromium } from "playwright";
 const root = process.cwd();
 const samplesDir = join(
   root,
-  "docs/engineering/programs/REPORTING-EXCEL-UX-POLISH-1/samples"
+  "docs/engineering/programs/REPORTING-DESIGN-LANGUAGE-1/samples"
 );
 const shotsDir = join(
   root,
-  "docs/engineering/programs/REPORTING-EXCEL-UX-POLISH-1/screenshots"
+  "docs/engineering/programs/REPORTING-DESIGN-LANGUAGE-1/screenshots"
 );
 
 function argbToCss(argb) {
@@ -214,8 +214,8 @@ async function main() {
     : null;
 
   for (const scope of [
-    { stem: "reporting-excel-ux-en-2026-07", label: "month" },
-    { stem: "reporting-excel-ux-en-2026", label: "year" },
+    { stem: "reporting-design-language-en-2026-07", label: "month" },
+    { stem: "reporting-design-language-en-2026", label: "year" },
   ]) {
     const xlsxPath = join(samplesDir, `${scope.stem}.xlsx`);
     if (!existsSync(xlsxPath)) {
@@ -239,7 +239,7 @@ async function main() {
         sheet,
         `${sheet.name} (${scope.stem}.xlsx)`,
         tall ? 55 : 40,
-        12,
+        14,
         sheet.name === "Cover" || sheet.name === "الغلاف" ? logoDataUrl : null
       );
       const htmlPath = join(shotsDir, `${shot}.html`);
@@ -252,7 +252,7 @@ async function main() {
   }
 
   await browser.close();
-  console.log(`[excel-ux-polish-1] Screenshots written to ${shotsDir}`);
+  console.log(`[design-language-1] Screenshots written to ${shotsDir}`);
 }
 
 main().catch((err) => {

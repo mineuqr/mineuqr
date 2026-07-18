@@ -29,7 +29,7 @@ describe("REPORTING-EXPORT-TEMPLATES-ACCEPTANCE-2 architecture guards", () => {
       "client/src/lib/reporting-exports/excel/buildReportingExportWorkbook.ts"
     );
     expect(excel).toMatch(
-      /REPORTING-EXCEL-UX-POLISH-1|REPORTING-PERIOD-CONSISTENCY-1|ACCEPTANCE-2/
+      /REPORTING-DESIGN-LANGUAGE-1|REPORTING-EXCEL-UX-POLISH-1|REPORTING-PERIOD-CONSISTENCY-1|ACCEPTANCE-2/
     );
     expect(excel).toContain("buildCoverSheet");
     expect(excel).toContain("buildExecutiveSheet");

@@ -1,5 +1,5 @@
 /**
- * REPORTING-EXCEL-UX-POLISH-1
+ * REPORTING-DESIGN-LANGUAGE-1
  * Excel samples + chart embeds + KPI reconciliation across all worksheets (same scope).
  */
 import { mkdirSync, writeFileSync, existsSync, copyFileSync } from "node:fs";
@@ -16,7 +16,7 @@ import type { RestaurantReportingExportBundle } from "../types";
 const EASTERN_DIGITS = /[٠-٩۰-۹]/;
 const programDir = join(
   process.cwd(),
-  "docs/engineering/programs/REPORTING-EXCEL-UX-POLISH-1"
+  "docs/engineering/programs/REPORTING-DESIGN-LANGUAGE-1"
 );
 const samplesDir = join(programDir, "samples");
 const beforeDir = join(programDir, "before");
@@ -115,8 +115,8 @@ function sampleBundle(
         : "July 2026"
       : "2026",
     filenameStem: isMonth
-      ? `reporting-excel-ux-${language}-2026-07`
-      : `reporting-excel-ux-${language}-2026`,
+      ? `reporting-design-language-${language}-2026-07`
+      : `reporting-design-language-${language}-2026`,
     reportTitle: isMonth
       ? language === "ar"
         ? "التقرير المالي الشهري"
@@ -175,10 +175,17 @@ function workbookTextBlob(
 }
 
 function copyBeforeBaselines() {
-  const srcShots = join(
-    process.cwd(),
-    "docs/engineering/programs/REPORTING-PERIOD-CONSISTENCY-1/screenshots"
-  );
+  // Previous official presentation (UX polish) as before baseline
+  const srcCandidates = [
+    join(
+      process.cwd(),
+      "docs/engineering/programs/REPORTING-EXCEL-UX-POLISH-1/screenshots"
+    ),
+    join(
+      process.cwd(),
+      "docs/engineering/programs/REPORTING-PERIOD-CONSISTENCY-1/screenshots"
+    ),
+  ];
   mkdirSync(beforeDir, { recursive: true });
   const names = [
     "month-cover.png",
@@ -193,13 +200,18 @@ function copyBeforeBaselines() {
     "year-revenue-trends.png",
   ];
   for (const name of names) {
-    const from = join(srcShots, name);
-    if (existsSync(from)) copyFileSync(from, join(beforeDir, name));
+    for (const srcShots of srcCandidates) {
+      const from = join(srcShots, name);
+      if (existsSync(from)) {
+        copyFileSync(from, join(beforeDir, name));
+        break;
+      }
+    }
   }
 }
 
-describe("REPORTING-EXCEL-UX-POLISH-1 samples + presentation", () => {
-  it("writes polished Excel samples with charts and reconciles KPIs", async () => {
+describe("REPORTING-DESIGN-LANGUAGE-1 samples + presentation", () => {
+  it("writes design-language Excel samples with charts and reconciles KPIs", async () => {
     mkdirSync(samplesDir, { recursive: true });
     mkdirSync(programDir, { recursive: true });
     copyBeforeBaselines();
@@ -208,9 +220,9 @@ describe("REPORTING-EXCEL-UX-POLISH-1 samples + presentation", () => {
     );
 
     const reconciliation: string[] = [
-      "# KPI Reconciliation — REPORTING-EXCEL-UX-POLISH-1",
+      "# KPI Reconciliation — REPORTING-DESIGN-LANGUAGE-1",
       "",
-      "Presentation polish only. Scope totals unchanged from PERIOD-CONSISTENCY-1.",
+      "Presentation redesign only. Scope totals unchanged from PERIOD-CONSISTENCY-1.",
       "",
     ];
 
@@ -229,9 +241,9 @@ describe("REPORTING-EXCEL-UX-POLISH-1 samples + presentation", () => {
         const blob = workbookTextBlob(workbook);
         expect(blob).not.toMatch(EASTERN_DIGITS);
 
-        // Full-width canvas: 12 columns on every sheet
+        // Full-width canvas: 14 columns on every sheet
         for (const sheet of workbook.worksheets) {
-          expect(sheet.columnCount).toBeGreaterThanOrEqual(12);
+          expect(sheet.columnCount).toBeGreaterThanOrEqual(14);
         }
 
         // Charts mandatory when ≥2 trend points
@@ -258,6 +270,18 @@ describe("REPORTING-EXCEL-UX-POLISH-1 samples + presentation", () => {
           });
         }
         expect(sawTextFmt).toBe(true);
+
+        // Legacy navy/gold fills must not appear in the new design language
+        let sawLegacyNavy = false;
+        for (const sheet of workbook.worksheets) {
+          sheet.eachRow({ includeEmpty: false }, (row) => {
+            row.eachCell({ includeEmpty: false }, (cell) => {
+              const argb = cell.fill?.fgColor?.argb;
+              if (argb === "FF0B1F33" || argb === "FFB8943F") sawLegacyNavy = true;
+            });
+          });
+        }
+        expect(sawLegacyNavy).toBe(false);
 
         const orderSalesDisplay = formatMoneyDisplay(orderTotals.orderSales, "ر.س");
         const revenueDisplay = formatMoneyDisplay(bundle.business.revenue, "ر.س");
@@ -292,7 +316,7 @@ describe("REPORTING-EXCEL-UX-POLISH-1 samples + presentation", () => {
         );
         reconciliation.push("");
         reconciliation.push(
-          `Scope invariant: all values describe **${bundle.periodLabel}** only. Charts embedded on Order Sales and Revenue Trends.`
+          `Scope invariant: all values describe **${bundle.periodLabel}** only. Design language: REPORTING-DESIGN-LANGUAGE-1.`
         );
         reconciliation.push("");
 

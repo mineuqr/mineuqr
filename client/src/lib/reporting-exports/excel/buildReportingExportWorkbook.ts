@@ -1,17 +1,18 @@
 /**
- * REPORTING-EXCEL-UX-POLISH-1 — Executive Financial Report (Excel).
+ * REPORTING-DESIGN-LANGUAGE-1 — MineuQR Official Excel Design Language.
+ * Full visual replacement of prior Excel presentations (navy/gold polish deprecated).
  * Preserves REPORTING-PERIOD-CONSISTENCY-1 scoped totals (scopedOrderSalesFromRollup).
  * Presentation only. Does not calculate Revenue or other KPIs.
  *
- * Full-width page composition, large KPI blocks, mandatory trend charts.
- * Order Sales period KPIs from scoped OrderSalesRollup.
- * Western digits as text (@).
+ * Sheets: Cover · Executive Summary · Financial Summary · Order Sales · Revenue Trends
+ * Western digits as Excel text (@). Values from reporting.* DTOs only.
  */
 import ExcelJS from "exceljs";
 import {
   cellBorder,
   isRtl,
   reportAlignment,
+  reportFont,
   solidFill,
 } from "@/lib/excel/reportTheme";
 import { resolveExportLogoAsset } from "../branding";
@@ -34,22 +35,30 @@ import {
 import { scopedOrderSalesFromRollup } from "../scopeTotals";
 import type { RestaurantReportingExportBundle } from "../types";
 
-const EX = {
-  navy: "FF0B1F33",
-  navyMid: "FF16324F",
-  gold: "FFB8943F",
-  goldSoft: "FFF7F1E1",
-  ink: "FF0F172A",
-  slate: "FF475569",
-  mist: "FFF1F5F9",
-  white: "FFFFFFFF",
-  line: "FFD6DEE8",
+/** Official MineuQR Executive Design Language tokens (ARGB). */
+const DL = {
+  ink: "FF0C1222",
+  inkSoft: "FF1E293B",
+  muted: "FF64748B",
+  faint: "FF94A3B8",
+  canvas: "FFF7F8FA",
+  surface: "FFFFFFFF",
+  brand: "FF0D9488",
+  brandDark: "FF0F766E",
+  brandDeep: "FF0B3B45",
+  brandSoft: "FFCCFBF1",
+  brandWash: "FFF0FDFA",
+  line: "FFE2E8F0",
+  lineStrong: "FFCBD5E1",
   zebra: "FFF8FAFC",
+  white: "FFFFFFFF",
 } as const;
 
-/** Landscape executive canvas — 12 columns, full printable width. */
-const COLS = 12;
-const COL_WIDTH = 11.5;
+/** Landscape executive canvas — 14 columns. */
+const COLS = 14;
+const COL_WIDTH = 10.2;
+
+type Lang = RestaurantReportingExportBundle["language"];
 
 function sanitizeSheetName(name: string): string {
   const cleaned = name.replace(/[\\/?*[\]:]/g, " ").trim() || "Report";
@@ -59,7 +68,7 @@ function sanitizeSheetName(name: string): string {
 function setWesternText(
   cell: ExcelJS.Cell,
   value: string,
-  language: RestaurantReportingExportBundle["language"],
+  language: Lang,
   options?: {
     bold?: boolean;
     size?: number;
@@ -71,11 +80,11 @@ function setWesternText(
   cell.value = toWesternDigits(value);
   cell.numFmt = "@";
   cell.font = {
-    name: language === "ar" ? "Arial" : "Calibri",
-    size: options?.size ?? 12,
+    name: reportFont(language),
+    size: options?.size ?? 11,
     bold: options?.bold ?? false,
     italic: options?.italic ?? false,
-    color: { argb: options?.color ?? EX.ink },
+    color: { argb: options?.color ?? DL.ink },
   };
   if (options?.fill) cell.fill = solidFill(options.fill);
 }
@@ -110,35 +119,36 @@ function paintRow(
   }
 }
 
-function setColWidths(sheet: ExcelJS.Worksheet, cols = COLS) {
-  for (let c = 1; c <= cols; c++) sheet.getColumn(c).width = COL_WIDTH;
+function setColWidths(sheet: ExcelJS.Worksheet) {
+  for (let c = 1; c <= COLS; c++) sheet.getColumn(c).width = COL_WIDTH;
 }
 
 function applyPrintSetup(
   sheet: ExcelJS.Worksheet,
-  language: RestaurantReportingExportBundle["language"],
-  options?: { landscape?: boolean; freezeAt?: number }
+  language: Lang,
+  options?: { freezeAt?: number }
 ) {
+  const freeze = options?.freezeAt ?? 3;
   sheet.views = [
     {
-      rightToLeft: false,
-      state: options?.freezeAt === 0 ? "normal" : "frozen",
-      ySplit: options?.freezeAt === 0 ? undefined : options?.freezeAt ?? 4,
+      rightToLeft: isRtl(language),
+      state: freeze === 0 ? "normal" : "frozen",
+      ySplit: freeze === 0 ? undefined : freeze,
       showGridLines: false,
     },
   ];
   sheet.pageSetup = {
-    orientation: options?.landscape === false ? "portrait" : "landscape",
+    orientation: "landscape",
     fitToPage: true,
     fitToWidth: 1,
     fitToHeight: 0,
     paperSize: 9,
     horizontalCentered: true,
     margins: {
-      left: 0.45,
-      right: 0.45,
-      top: 0.5,
-      bottom: 0.5,
+      left: 0.5,
+      right: 0.5,
+      top: 0.55,
+      bottom: 0.55,
       header: 0.25,
       footer: 0.3,
     },
@@ -151,137 +161,74 @@ function applyPrintSetup(
   };
 }
 
-function writeSheetHeader(
+/** Thin brand accent rule under sheet chrome. */
+function writeAccentRule(sheet: ExcelJS.Worksheet, row: number) {
+  paintRow(sheet, row, COLS, DL.brand, 4);
+}
+
+function writeSheetChrome(
   sheet: ExcelJS.Worksheet,
   title: string,
   subtitle: string,
-  language: RestaurantReportingExportBundle["language"]
+  language: Lang
 ) {
-  paintRow(sheet, 1, COLS, EX.navy, 10);
-  paintRow(sheet, 2, COLS, EX.navy, 34);
-  sheet.mergeCells(2, 1, 2, COLS);
-  setWesternText(sheet.getCell(2, 1), title, language, {
+  paintRow(sheet, 1, COLS, DL.brandDeep, 36);
+  sheet.mergeCells(1, 1, 1, COLS);
+  setWesternText(sheet.getCell(1, 1), title, language, {
     bold: true,
-    size: 22,
-    color: EX.white,
-    fill: EX.navy,
+    size: 20,
+    color: DL.white,
+    fill: DL.brandDeep,
+  });
+  sheet.getCell(1, 1).alignment = reportAlignment(
+    language,
+    isRtl(language) ? "right" : "left",
+    1
+  );
+
+  paintRow(sheet, 2, COLS, DL.canvas, 22);
+  sheet.mergeCells(2, 1, 2, COLS);
+  setWesternText(sheet.getCell(2, 1), subtitle, language, {
+    size: 11,
+    color: DL.muted,
+    fill: DL.canvas,
   });
   sheet.getCell(2, 1).alignment = reportAlignment(
     language,
     isRtl(language) ? "right" : "left",
     1
   );
-  paintRow(sheet, 3, COLS, EX.navyMid, 26);
-  sheet.mergeCells(3, 1, 3, COLS);
-  setWesternText(sheet.getCell(3, 1), subtitle, language, {
-    size: 12,
-    color: EX.goldSoft,
-    fill: EX.navyMid,
-  });
-  sheet.getCell(3, 1).alignment = reportAlignment(
-    language,
-    isRtl(language) ? "right" : "left",
-    1
-  );
-  paintRow(sheet, 4, COLS, EX.gold, 5);
+
+  writeAccentRule(sheet, 3);
 }
 
-function writeSectionBand(
+function writeSectionLabel(
   sheet: ExcelJS.Worksheet,
   row: number,
   title: string,
-  language: RestaurantReportingExportBundle["language"]
+  language: Lang
 ) {
   sheet.mergeCells(row, 1, row, COLS);
-  setWesternText(sheet.getCell(row, 1), title, language, {
+  setWesternText(sheet.getCell(row, 1), title.toUpperCase(), language, {
     bold: true,
-    size: 13,
-    color: EX.white,
-    fill: EX.navyMid,
+    size: 10,
+    color: DL.brandDark,
+    fill: DL.brandWash,
   });
   sheet.getCell(row, 1).alignment = reportAlignment(
     language,
     isRtl(language) ? "right" : "left",
     1
   );
-  sheet.getRow(row).height = 30;
+  sheet.getRow(row).height = 26;
 }
 
-/** Full-width two-column financial statement. */
-function writeStatementTable(
-  sheet: ExcelJS.Worksheet,
-  startRow: number,
-  headers: readonly [string, string],
-  dataRows: ReadonlyArray<readonly [string, string]>,
-  language: RestaurantReportingExportBundle["language"]
-): number {
-  const rtl = isRtl(language);
-  sheet.mergeCells(startRow, 1, startRow, 7);
-  sheet.mergeCells(startRow, 8, startRow, COLS);
-  setWesternText(sheet.getCell(startRow, 1), headers[0], language, {
-    bold: true,
-    size: 12,
-    color: EX.white,
-    fill: EX.navy,
-  });
-  setWesternText(sheet.getCell(startRow, 8), headers[1], language, {
-    bold: true,
-    size: 12,
-    color: EX.white,
-    fill: EX.navy,
-  });
-  sheet.getCell(startRow, 1).alignment = reportAlignment(
-    language,
-    rtl ? "right" : "left",
-    1
-  );
-  sheet.getCell(startRow, 8).alignment = reportAlignment(
-    language,
-    rtl ? "left" : "right",
-    1
-  );
-  sheet.getRow(startRow).height = 32;
-
-  dataRows.forEach(([label, value], index) => {
-    const r = startRow + 1 + index;
-    const fill = index % 2 === 1 ? EX.zebra : EX.white;
-    sheet.mergeCells(r, 1, r, 7);
-    sheet.mergeCells(r, 8, r, COLS);
-    setWesternText(sheet.getCell(r, 1), label, language, {
-      size: 13,
-      color: EX.ink,
-      fill,
-    });
-    setWesternText(sheet.getCell(r, 8), value, language, {
-      bold: true,
-      size: 14,
-      color: EX.navy,
-      fill,
-    });
-    sheet.getCell(r, 1).alignment = reportAlignment(
-      language,
-      rtl ? "right" : "left",
-      1
-    );
-    sheet.getCell(r, 8).alignment = reportAlignment(
-      language,
-      rtl ? "left" : "right",
-      1
-    );
-    sheet.getCell(r, 1).border = cellBorder(EX.line);
-    sheet.getCell(r, 8).border = cellBorder(EX.line);
-    sheet.getRow(r).height = 32;
-  });
-
-  return startRow + 1 + dataRows.length;
-}
-
-/** Large 3-column KPI card grid spanning full width. */
+/** Executive dashboard KPI cards — not spreadsheet tables. */
 function writeKpiCards(
   sheet: ExcelJS.Worksheet,
   startRow: number,
   cards: ReadonlyArray<readonly [string, string]>,
-  language: RestaurantReportingExportBundle["language"]
+  language: Lang
 ): number {
   const rtl = isRtl(language);
   const perRow = 3;
@@ -290,48 +237,95 @@ function writeKpiCards(
     for (let c = 0; c < perRow; c++) {
       const card = cards[i + c];
       if (!card) continue;
-      const col = c * 4 + 1;
-      sheet.mergeCells(row, col, row, col + 3);
-      sheet.mergeCells(row + 1, col, row + 1, col + 3);
-      sheet.mergeCells(row + 2, col, row + 2, col + 3);
+      const col = c * 5 + 1;
+      const end = col + 3;
+      sheet.mergeCells(row, col, row, end);
+      sheet.mergeCells(row + 1, col, row + 1, end);
+      sheet.mergeCells(row + 2, col, row + 2, end);
 
       setWesternText(sheet.getCell(row, col), card[0], language, {
-        size: 11,
-        color: EX.slate,
-        fill: EX.goldSoft,
+        size: 10,
+        color: DL.muted,
+        fill: DL.brandWash,
       });
       sheet.getCell(row, col).alignment = reportAlignment(
         language,
         rtl ? "right" : "left",
         1
       );
-      sheet.getCell(row, col).border = cellBorder(EX.gold);
+      sheet.getCell(row, col).border = cellBorder(DL.line);
 
       setWesternText(sheet.getCell(row + 1, col), card[1], language, {
         bold: true,
-        size: 22,
-        color: EX.navy,
-        fill: EX.white,
+        size: 20,
+        color: DL.ink,
+        fill: DL.surface,
       });
       sheet.getCell(row + 1, col).alignment = reportAlignment(
         language,
         rtl ? "right" : "left",
         1
       );
-      sheet.getCell(row + 1, col).border = cellBorder(EX.line);
+      sheet.getCell(row + 1, col).border = cellBorder(DL.line);
 
-      setWesternText(sheet.getCell(row + 2, col), " ", language, {
-        size: 6,
-        fill: EX.mist,
-      });
-      sheet.getCell(row + 2, col).border = cellBorder(EX.line);
+      for (let x = col; x <= end; x++) {
+        sheet.getCell(row + 2, x).fill = solidFill(DL.brand);
+      }
+      sheet.getRow(row + 2).height = 5;
     }
-    sheet.getRow(row).height = 26;
-    sheet.getRow(row + 1).height = 44;
-    sheet.getRow(row + 2).height = 12;
+    sheet.getRow(row).height = 22;
+    sheet.getRow(row + 1).height = 40;
     row += 4;
   }
   return row;
+}
+
+/** Financial statement lines — not a default Excel table. */
+function writeStatementBlock(
+  sheet: ExcelJS.Worksheet,
+  startRow: number,
+  sectionTitle: string,
+  rows: ReadonlyArray<readonly [string, string]>,
+  language: Lang
+): number {
+  const rtl = isRtl(language);
+  writeSectionLabel(sheet, startRow, sectionTitle, language);
+  let r = startRow + 1;
+  rows.forEach(([label, value], index) => {
+    const fill = index % 2 === 1 ? DL.zebra : DL.surface;
+    sheet.mergeCells(r, 1, r, 8);
+    sheet.mergeCells(r, 9, r, COLS);
+    setWesternText(sheet.getCell(r, 1), label, language, {
+      size: 12,
+      color: DL.inkSoft,
+      fill,
+    });
+    setWesternText(sheet.getCell(r, 9), value, language, {
+      bold: true,
+      size: 16,
+      color: DL.ink,
+      fill,
+    });
+    sheet.getCell(r, 1).alignment = reportAlignment(
+      language,
+      rtl ? "right" : "left",
+      1
+    );
+    sheet.getCell(r, 9).alignment = reportAlignment(
+      language,
+      rtl ? "left" : "right",
+      1
+    );
+    sheet.getCell(r, 1).border = {
+      bottom: { style: "thin", color: { argb: DL.line } },
+    };
+    sheet.getCell(r, 9).border = {
+      bottom: { style: "thin", color: { argb: DL.line } },
+    };
+    sheet.getRow(r).height = 30;
+    r += 1;
+  });
+  return r + 1;
 }
 
 async function maybeAddChartImage(
@@ -349,8 +343,8 @@ async function maybeAddChartImage(
     title,
     categories: categories.map((c) => toWesternDigits(c)),
     series,
-    width: Math.round(size.width * 1.35),
-    height: Math.round(size.height * 1.35),
+    width: Math.round(size.width * 1.25),
+    height: Math.round(size.height * 1.25),
   });
   if (!png) return false;
   const imageId = workbook.addImage({
@@ -364,6 +358,33 @@ async function maybeAddChartImage(
   return true;
 }
 
+function writeInsufficientPanel(
+  sheet: ExcelJS.Worksheet,
+  row: number,
+  message: string,
+  language: Lang
+) {
+  sheet.mergeCells(row, 1, row + 5, COLS);
+  paintRow(sheet, row, COLS, DL.brandWash, 28);
+  for (let r = row; r <= row + 5; r++) {
+    paintRow(sheet, r, COLS, DL.brandWash, 28);
+    for (let c = 1; c <= COLS; c++) {
+      sheet.getCell(r, c).border = cellBorder(DL.brandSoft);
+    }
+  }
+  setWesternText(sheet.getCell(row, 1), message, language, {
+    size: 13,
+    color: DL.muted,
+    fill: DL.brandWash,
+    italic: true,
+  });
+  sheet.getCell(row, 1).alignment = {
+    ...reportAlignment(language, "center"),
+    wrapText: true,
+    vertical: "middle",
+  };
+}
+
 function resolveReportTitle(
   bundle: RestaurantReportingExportBundle,
   labels: ReportingExportLabels
@@ -374,31 +395,28 @@ function resolveReportTitle(
     : labels.reportTitleAnnual;
 }
 
-function writeInsufficientPanel(
+function writeDataTableHeader(
   sheet: ExcelJS.Worksheet,
   row: number,
-  message: string,
-  language: RestaurantReportingExportBundle["language"]
+  columns: ReadonlyArray<{ start: number; end: number; label: string }>,
+  language: Lang
 ) {
-  sheet.mergeCells(row, 1, row + 4, COLS);
-  setWesternText(sheet.getCell(row, 1), message, language, {
-    size: 14,
-    color: EX.slate,
-    fill: EX.goldSoft,
-    italic: true,
-  });
-  sheet.getCell(row, 1).alignment = {
-    ...reportAlignment(language, "center"),
-    wrapText: true,
-    vertical: "middle",
-  };
-  for (let r = row; r <= row + 4; r++) {
-    sheet.getRow(r).height = 28;
-    for (let c = 1; c <= COLS; c++) {
-      sheet.getCell(r, c).fill = solidFill(EX.goldSoft);
-      sheet.getCell(r, c).border = cellBorder(EX.gold);
-    }
+  const rtl = isRtl(language);
+  for (const col of columns) {
+    sheet.mergeCells(row, col.start, row, col.end);
+    setWesternText(sheet.getCell(row, col.start), col.label, language, {
+      bold: true,
+      size: 11,
+      color: DL.white,
+      fill: DL.brandDeep,
+    });
+    sheet.getCell(row, col.start).alignment = reportAlignment(
+      language,
+      rtl && col.start === 1 ? "right" : col.start === 1 ? "left" : "right",
+      1
+    );
   }
+  sheet.getRow(row).height = 28;
 }
 
 export async function buildReportingExportWorkbook(
@@ -513,18 +531,16 @@ function buildCoverSheet(
   const rtl = isRtl(lang);
   setColWidths(sheet);
 
-  paintRow(sheet, 1, COLS, EX.navy, 12);
-  paintRow(sheet, 2, COLS, EX.navy, 20);
+  // Hero band
+  for (let r = 1; r <= 8; r++) paintRow(sheet, r, COLS, DL.brandDeep, 18);
   sheet.mergeCells(2, 1, 2, COLS);
   setWesternText(sheet.getCell(2, 1), labels.brand.toUpperCase(), lang, {
     bold: true,
-    size: 12,
-    color: EX.gold,
-    fill: EX.navy,
+    size: 11,
+    color: DL.brandSoft,
+    fill: DL.brandDeep,
   });
   sheet.getCell(2, 1).alignment = reportAlignment(lang, "center");
-
-  for (let r = 3; r <= 8; r++) paintRow(sheet, r, COLS, EX.white, 16);
 
   if (logo) {
     const imageId = workbook.addImage({
@@ -532,113 +548,128 @@ function buildCoverSheet(
       extension: logo.extension,
     });
     sheet.addImage(imageId, {
-      tl: { col: 5.2, row: 2.8 },
-      ext: { width: 130, height: 130 },
+      tl: { col: 5.8, row: 2.6 },
+      ext: { width: 120, height: 120 },
     });
   }
 
-  sheet.mergeCells(10, 1, 10, COLS);
-  setWesternText(sheet.getCell(10, 1), bundle.restaurantName || "—", lang, {
+  paintRow(sheet, 9, COLS, DL.brand, 5);
+
+  // Identity
+  paintRow(sheet, 11, COLS, DL.surface, 10);
+  sheet.mergeCells(12, 1, 12, COLS);
+  setWesternText(sheet.getCell(12, 1), bundle.restaurantName || "—", lang, {
     bold: true,
-    size: 32,
-    color: EX.navy,
+    size: 28,
+    color: DL.ink,
   });
-  sheet.getCell(10, 1).alignment = reportAlignment(lang, "center");
-  sheet.getRow(10).height = 42;
+  sheet.getCell(12, 1).alignment = reportAlignment(lang, "center");
+  sheet.getRow(12).height = 38;
 
-  sheet.mergeCells(11, 1, 11, COLS);
-  setWesternText(sheet.getCell(11, 1), businessName || "—", lang, {
-    size: 14,
-    color: EX.slate,
+  sheet.mergeCells(13, 1, 13, COLS);
+  setWesternText(sheet.getCell(13, 1), businessName || "—", lang, {
+    size: 13,
+    color: DL.muted,
   });
-  sheet.getCell(11, 1).alignment = reportAlignment(lang, "center");
-  sheet.getRow(11).height = 24;
+  sheet.getCell(13, 1).alignment = reportAlignment(lang, "center");
+  sheet.getRow(13).height = 22;
 
-  paintRow(sheet, 13, COLS, EX.gold, 6);
-
-  sheet.mergeCells(15, 1, 15, COLS);
-  setWesternText(sheet.getCell(15, 1), scopeLabel.toUpperCase(), lang, {
+  // Scope badge
+  sheet.mergeCells(15, 5, 15, 10);
+  setWesternText(sheet.getCell(15, 5), scopeLabel.toUpperCase(), lang, {
     bold: true,
-    size: 12,
-    color: EX.gold,
+    size: 11,
+    color: DL.brandDark,
+    fill: DL.brandSoft,
   });
-  sheet.getCell(15, 1).alignment = reportAlignment(lang, "center");
+  sheet.getCell(15, 5).alignment = reportAlignment(lang, "center");
+  sheet.getRow(15).height = 26;
 
   sheet.mergeCells(16, 1, 16, COLS);
   setWesternText(sheet.getCell(16, 1), reportTitle, lang, {
     bold: true,
-    size: 22,
-    color: EX.navy,
+    size: 18,
+    color: DL.inkSoft,
   });
   sheet.getCell(16, 1).alignment = reportAlignment(lang, "center");
-  sheet.getRow(16).height = 32;
+  sheet.getRow(16).height = 28;
 
   sheet.mergeCells(18, 1, 18, COLS);
   setWesternText(sheet.getCell(18, 1), periodLabel, lang, {
     bold: true,
-    size: 36,
-    color: EX.ink,
+    size: 40,
+    color: DL.ink,
   });
   sheet.getCell(18, 1).alignment = reportAlignment(lang, "center");
-  sheet.getRow(18).height = 48;
+  sheet.getRow(18).height = 52;
 
   sheet.mergeCells(19, 1, 19, COLS);
   setWesternText(sheet.getCell(19, 1), labels.coverSubtitle, lang, {
-    size: 12,
-    color: EX.slate,
+    size: 11,
+    color: DL.faint,
     italic: true,
   });
   sheet.getCell(19, 1).alignment = reportAlignment(lang, "center");
 
-  const metaStart = 21;
+  // Meta strip
   const meta: Array<readonly [string, string]> = [
     [labels.currency, `${currencyCode}  ·  ${currencySymbol}`],
     [labels.pricingMode, formatPricingMode(bundle.business, lang)],
     [labels.taxPolicy, formatTaxPolicySummary(bundle.business, lang)],
     [labels.generated, generated],
   ];
+  let metaRow = 21;
   meta.forEach(([label, value], index) => {
-    const r = metaStart + index;
-    sheet.mergeCells(r, 2, r, 5);
-    sheet.mergeCells(r, 6, r, 11);
-    setWesternText(sheet.getCell(r, 2), label, lang, {
-      size: 12,
-      color: EX.slate,
-      fill: index % 2 === 0 ? EX.mist : EX.white,
+    const fill = index % 2 === 0 ? DL.canvas : DL.surface;
+    sheet.mergeCells(metaRow, 3, metaRow, 6);
+    sheet.mergeCells(metaRow, 7, metaRow, 12);
+    setWesternText(sheet.getCell(metaRow, 3), label, lang, {
+      size: 11,
+      color: DL.muted,
+      fill,
     });
-    setWesternText(sheet.getCell(r, 6), value, lang, {
+    setWesternText(sheet.getCell(metaRow, 7), value, lang, {
       bold: true,
-      size: 13,
-      color: EX.navy,
-      fill: index % 2 === 0 ? EX.mist : EX.white,
+      size: 12,
+      color: DL.ink,
+      fill,
     });
-    sheet.getCell(r, 2).alignment = reportAlignment(lang, rtl ? "right" : "left", 1);
-    sheet.getCell(r, 6).alignment = reportAlignment(lang, rtl ? "right" : "left", 1);
-    sheet.getRow(r).height = 28;
+    sheet.getCell(metaRow, 3).alignment = reportAlignment(
+      lang,
+      rtl ? "right" : "left",
+      1
+    );
+    sheet.getCell(metaRow, 7).alignment = reportAlignment(
+      lang,
+      rtl ? "right" : "left",
+      1
+    );
+    sheet.getRow(metaRow).height = 26;
+    metaRow += 1;
   });
 
-  const contentsRow = metaStart + meta.length + 2;
+  const contentsRow = metaRow + 2;
   sheet.mergeCells(contentsRow, 1, contentsRow, COLS);
   setWesternText(
     sheet.getCell(contentsRow, 1),
     `${labels.contents}:  ${labels.executive}  ·  ${labels.financial}  ·  ${labels.orderSalesRollup}  ·  ${labels.revenueTrend}`,
     lang,
-    { size: 11, color: EX.slate }
+    { size: 10, color: DL.muted }
   );
   sheet.getCell(contentsRow, 1).alignment = reportAlignment(lang, "center");
 
-  paintRow(sheet, contentsRow + 2, COLS, EX.navy, 12);
+  paintRow(sheet, contentsRow + 2, COLS, DL.brandDeep, 10);
   sheet.mergeCells(contentsRow + 3, 1, contentsRow + 3, COLS);
   setWesternText(
     sheet.getCell(contentsRow + 3, 1),
     `${labels.confidential}  ·  ${labels.generatedBy}`,
     lang,
-    { size: 10, color: EX.slate }
+    { size: 10, color: DL.faint }
   );
   sheet.getCell(contentsRow + 3, 1).alignment = reportAlignment(lang, "center");
 
-  applyPrintSetup(sheet, lang, { freezeAt: 0, landscape: true });
-  sheet.views = [{ rightToLeft: false, showGridLines: false }];
+  applyPrintSetup(sheet, lang, { freezeAt: 0 });
+  sheet.views = [{ rightToLeft: isRtl(lang), showGridLines: false }];
 }
 
 function buildExecutiveSheet(
@@ -660,17 +691,18 @@ function buildExecutiveSheet(
   const biz = bundle.business;
   setColWidths(sheet);
 
-  writeSheetHeader(
+  writeSheetChrome(
     sheet,
     labels.executive,
     `${scopeLabel}  ·  ${periodLabel}  ·  ${generated}`,
     lang
   );
 
-  writeSectionBand(sheet, 6, labels.performanceSection, lang);
+  paintRow(sheet, 4, COLS, DL.canvas, 12);
+  writeSectionLabel(sheet, 5, labels.performanceSection, lang);
   writeKpiCards(
     sheet,
-    8,
+    7,
     [
       [labels.revenue, money(biz.revenue)],
       [labels.taxCollected, money(biz.taxCollected)],
@@ -685,7 +717,7 @@ function buildExecutiveSheet(
     lang
   );
 
-  applyPrintSetup(sheet, lang, { freezeAt: 4 });
+  applyPrintSetup(sheet, lang, { freezeAt: 3 });
 }
 
 function buildFinancialSheet(
@@ -716,19 +748,19 @@ function buildFinancialSheet(
   const biz = bundle.business;
   setColWidths(sheet);
 
-  writeSheetHeader(
+  writeSheetChrome(
     sheet,
     labels.financial,
     `${scopeLabel}  ·  ${periodLabel}`,
     lang
   );
 
-  let row = 6;
-  writeSectionBand(sheet, row, labels.performanceSection, lang);
-  row = writeStatementTable(
+  paintRow(sheet, 4, COLS, DL.canvas, 10);
+  let row = 5;
+  row = writeStatementBlock(
     sheet,
-    row + 1,
-    [labels.metric, labels.value],
+    row,
+    labels.performanceSection,
     [
       [labels.revenue, money(biz.revenue)],
       [labels.taxCollected, money(biz.taxCollected)],
@@ -737,13 +769,10 @@ function buildFinancialSheet(
     ],
     lang
   );
-
-  row += 2;
-  writeSectionBand(sheet, row, labels.orderSalesSection, lang);
-  row = writeStatementTable(
+  row = writeStatementBlock(
     sheet,
-    row + 1,
-    [labels.metric, labels.value],
+    row,
+    labels.orderSalesSection,
     [
       [labels.orderSalesPeriod, money(orderPeriod.orderSales)],
       [labels.averageOrderPeriod, money(orderPeriod.averageOrder)],
@@ -752,13 +781,10 @@ function buildFinancialSheet(
     ],
     lang
   );
-
-  row += 2;
-  writeSectionBand(sheet, row, labels.adjustmentsSection, lang);
-  row = writeStatementTable(
+  row = writeStatementBlock(
     sheet,
-    row + 1,
-    [labels.metric, labels.value],
+    row,
+    labels.adjustmentsSection,
     [
       [labels.complimentaryCount, formatWesternCount(biz.complimentaryCount)],
       [labels.complimentaryAmount, money(biz.complimentaryAmount)],
@@ -766,13 +792,10 @@ function buildFinancialSheet(
     ],
     lang
   );
-
-  row += 2;
-  writeSectionBand(sheet, row, labels.reportingBasisSection, lang);
-  writeStatementTable(
+  writeStatementBlock(
     sheet,
-    row + 1,
-    [labels.metric, labels.value],
+    row,
+    labels.reportingBasisSection,
     [
       [labels.currency, `${currencyCode} (${currencySymbol})`],
       [labels.pricingMode, formatPricingMode(biz, lang)],
@@ -781,7 +804,7 @@ function buildFinancialSheet(
     lang
   );
 
-  applyPrintSetup(sheet, lang, { freezeAt: 4 });
+  applyPrintSetup(sheet, lang, { freezeAt: 3 });
 }
 
 async function buildOrderSalesSheet(
@@ -807,7 +830,7 @@ async function buildOrderSalesSheet(
       ? `${labels.dailyOrderSalesTitle} — ${periodLabel}`
       : `${labels.monthlyOrderSalesTitle} — ${periodLabel}`;
 
-  writeSheetHeader(
+  writeSheetChrome(
     sheet,
     labels.orderSalesRollup,
     `${scopeLabel}  ·  ${seriesTitle}`,
@@ -819,18 +842,17 @@ async function buildOrderSalesSheet(
   );
 
   if (!hasRenderableTrend(periods.length)) {
-    writeInsufficientPanel(sheet, 6, labels.trendInsufficient, lang);
-    applyPrintSetup(sheet, lang, { freezeAt: 4 });
+    writeInsufficientPanel(sheet, 5, labels.trendInsufficient, lang);
+    applyPrintSetup(sheet, lang, { freezeAt: 3 });
     return;
   }
 
-  // Chart first — dominant visual
-  writeSectionBand(sheet, 6, labels.chartOrderTrend, lang);
+  writeSectionLabel(sheet, 5, labels.chartOrderTrend, lang);
   const chartPlaced = await maybeAddChartImage(
     workbook,
     sheet,
-    0.3,
-    6.9,
+    0.2,
+    5.8,
     labels.chartOrderTrend,
     axis,
     [
@@ -839,78 +861,59 @@ async function buildOrderSalesSheet(
         values: periods.map((p) => parseDtoAmountForDisplay(p.orderSales)),
       },
     ],
-    { width: 1100, height: 340 }
+    { width: 1120, height: 320 }
   );
-  // Reserve vertical space for the floating chart (tight — avoid empty cavern)
-  let row = chartPlaced ? 24 : 8;
-  for (let r = 7; r < row; r++) {
-    sheet.getRow(r).height = 16;
-    paintRow(sheet, r, COLS, EX.white);
+
+  let row = chartPlaced ? 23 : 7;
+  for (let r = 6; r < row; r++) {
+    paintRow(sheet, r, COLS, DL.surface, 15);
   }
 
-  writeSectionBand(sheet, row, labels.orderSalesSection, lang);
+  writeSectionLabel(sheet, row, labels.orderSalesSection, lang);
   row += 1;
 
-  sheet.mergeCells(row, 1, row, 3);
-  sheet.mergeCells(row, 4, row, 6);
-  sheet.mergeCells(row, 7, row, 9);
-  sheet.mergeCells(row, 10, row, COLS);
-  setWesternText(sheet.getCell(row, 1), labels.periodKey, lang, {
-    bold: true,
-    size: 12,
-    color: EX.white,
-    fill: EX.navy,
-  });
-  setWesternText(sheet.getCell(row, 4), labels.orderCount, lang, {
-    bold: true,
-    size: 12,
-    color: EX.white,
-    fill: EX.navy,
-  });
-  setWesternText(sheet.getCell(row, 7), labels.completedOrders, lang, {
-    bold: true,
-    size: 12,
-    color: EX.white,
-    fill: EX.navy,
-  });
-  setWesternText(sheet.getCell(row, 10), labels.orderSales, lang, {
-    bold: true,
-    size: 12,
-    color: EX.white,
-    fill: EX.navy,
-  });
-  sheet.getRow(row).height = 30;
+  writeDataTableHeader(
+    sheet,
+    row,
+    [
+      { start: 1, end: 3, label: labels.periodKey },
+      { start: 4, end: 6, label: labels.orderCount },
+      { start: 7, end: 9, label: labels.completedOrders },
+      { start: 10, end: COLS, label: labels.orderSales },
+    ],
+    lang
+  );
 
   periods.forEach((p, index) => {
     const r = row + 1 + index;
-    const fill = index % 2 === 1 ? EX.zebra : EX.white;
+    const fill = index % 2 === 1 ? DL.zebra : DL.surface;
     sheet.mergeCells(r, 1, r, 3);
     sheet.mergeCells(r, 4, r, 6);
     sheet.mergeCells(r, 7, r, 9);
     sheet.mergeCells(r, 10, r, COLS);
-    setWesternText(sheet.getCell(r, 1), axis[index]!, lang, { size: 12, fill });
+    setWesternText(sheet.getCell(r, 1), axis[index]!, lang, { size: 11, fill });
     setWesternText(sheet.getCell(r, 4), formatWesternCount(p.orderCount), lang, {
-      size: 12,
+      size: 11,
       fill,
     });
     setWesternText(
       sheet.getCell(r, 7),
       formatWesternCount(p.completedOrders),
       lang,
-      { size: 12, fill }
+      { size: 11, fill }
     );
     setWesternText(
       sheet.getCell(r, 10),
       `${formatWesternAmount(p.orderSales)} ${currencySymbol}`,
       lang,
-      { bold: true, size: 13, fill }
+      { bold: true, size: 12, fill }
     );
     sheet.getCell(r, 10).alignment = reportAlignment(
       lang,
       isRtl(lang) ? "left" : "right",
       1
     );
-    sheet.getRow(r).height = 28;
+    sheet.getRow(r).height = 24;
   });
 
   const totalRow = row + 1 + periods.length;
@@ -920,31 +923,31 @@ async function buildOrderSalesSheet(
   sheet.mergeCells(totalRow, 10, totalRow, COLS);
   setWesternText(sheet.getCell(totalRow, 1), periodLabel, lang, {
     bold: true,
-    size: 13,
-    color: EX.white,
-    fill: EX.navy,
+    size: 12,
+    color: DL.white,
+    fill: DL.brandDark,
   });
   setWesternText(
     sheet.getCell(totalRow, 4),
     formatWesternCount(orderPeriod.orderCount),
     lang,
-    { bold: true, size: 13, color: EX.white, fill: EX.navy }
+    { bold: true, size: 12, color: DL.white, fill: DL.brandDark }
   );
   setWesternText(
     sheet.getCell(totalRow, 7),
     formatWesternCount(orderPeriod.completedOrders),
     lang,
-    { bold: true, size: 13, color: EX.white, fill: EX.navy }
+    { bold: true, size: 12, color: DL.white, fill: DL.brandDark }
   );
   setWesternText(
     sheet.getCell(totalRow, 10),
     `${formatWesternAmount(orderPeriod.orderSales)} ${currencySymbol}`,
     lang,
-    { bold: true, size: 14, color: EX.white, fill: EX.navy }
+    { bold: true, size: 13, color: DL.white, fill: DL.brandDark }
   );
-  sheet.getRow(totalRow).height = 34;
+  sheet.getRow(totalRow).height = 30;
 
-  applyPrintSetup(sheet, lang, { freezeAt: 4 });
+  applyPrintSetup(sheet, lang, { freezeAt: 3 });
 }
 
 async function buildRevenueTrendSheet(
@@ -968,7 +971,7 @@ async function buildRevenueTrendSheet(
       ? `${labels.dailyRevenueTitle} — ${periodLabel}`
       : `${labels.monthlyRevenueTitle} — ${periodLabel}`;
 
-  writeSheetHeader(
+  writeSheetChrome(
     sheet,
     labels.revenueTrend,
     `${scopeLabel}  ·  ${seriesTitle}`,
@@ -980,18 +983,17 @@ async function buildRevenueTrendSheet(
   );
 
   if (!hasRenderableTrend(points.length)) {
-    writeInsufficientPanel(sheet, 6, labels.trendInsufficient, lang);
-    applyPrintSetup(sheet, lang, { freezeAt: 4 });
+    writeInsufficientPanel(sheet, 5, labels.trendInsufficient, lang);
+    applyPrintSetup(sheet, lang, { freezeAt: 3 });
     return;
   }
 
-  // 1) Large chart at top (mandatory)
-  writeSectionBand(sheet, 6, labels.chartRevenueTrend, lang);
+  writeSectionLabel(sheet, 5, labels.chartRevenueTrend, lang);
   const chartPlaced = await maybeAddChartImage(
     workbook,
     sheet,
-    0.3,
-    6.9,
+    0.2,
+    5.8,
     labels.chartRevenueTrend,
     axis,
     [
@@ -1000,93 +1002,79 @@ async function buildRevenueTrendSheet(
         values: points.map((p) => parseDtoAmountForDisplay(p.revenue)),
       },
     ],
-    { width: 1100, height: 360 }
+    { width: 1120, height: 340 }
   );
-  let row = chartPlaced ? 25 : 8;
-  for (let r = 7; r < row; r++) {
-    sheet.getRow(r).height = 16;
-    paintRow(sheet, r, COLS, EX.white);
+
+  let row = chartPlaced ? 24 : 7;
+  for (let r = 6; r < row; r++) {
+    paintRow(sheet, r, COLS, DL.surface, 15);
   }
 
-  // 2) Full-width detail table
-  writeSectionBand(sheet, row, labels.performanceSection, lang);
+  writeSectionLabel(sheet, row, labels.performanceSection, lang);
   row += 1;
 
-  sheet.mergeCells(row, 1, row, 4);
-  sheet.mergeCells(row, 5, row, 8);
-  sheet.mergeCells(row, 9, row, COLS);
-  setWesternText(sheet.getCell(row, 1), labels.periodKey, lang, {
-    bold: true,
-    size: 12,
-    color: EX.white,
-    fill: EX.navy,
-  });
-  setWesternText(sheet.getCell(row, 5), labels.revenue, lang, {
-    bold: true,
-    size: 12,
-    color: EX.white,
-    fill: EX.navy,
-  });
-  setWesternText(sheet.getCell(row, 9), labels.paidCheckCount, lang, {
-    bold: true,
-    size: 12,
-    color: EX.white,
-    fill: EX.navy,
-  });
-  sheet.getRow(row).height = 30;
+  writeDataTableHeader(
+    sheet,
+    row,
+    [
+      { start: 1, end: 4, label: labels.periodKey },
+      { start: 5, end: 9, label: labels.revenue },
+      { start: 10, end: COLS, label: labels.paidCheckCount },
+    ],
+    lang
+  );
 
   points.forEach((p, index) => {
     const r = row + 1 + index;
-    const fill = index % 2 === 1 ? EX.zebra : EX.white;
+    const fill = index % 2 === 1 ? DL.zebra : DL.surface;
     sheet.mergeCells(r, 1, r, 4);
-    sheet.mergeCells(r, 5, r, 8);
-    sheet.mergeCells(r, 9, r, COLS);
-    setWesternText(sheet.getCell(r, 1), axis[index]!, lang, { size: 12, fill });
+    sheet.mergeCells(r, 5, r, 9);
+    sheet.mergeCells(r, 10, r, COLS);
+    setWesternText(sheet.getCell(r, 1), axis[index]!, lang, { size: 11, fill });
     setWesternText(
       sheet.getCell(r, 5),
       `${formatWesternAmount(p.revenue)} ${currencySymbol}`,
       lang,
-      { bold: true, size: 13, fill }
+      { bold: true, size: 12, fill }
     );
     setWesternText(
-      sheet.getCell(r, 9),
+      sheet.getCell(r, 10),
       formatWesternCount(p.paidCheckCount),
       lang,
-      { size: 12, fill }
+      { size: 11, fill }
     );
     sheet.getCell(r, 5).alignment = reportAlignment(
       lang,
       isRtl(lang) ? "left" : "right",
       1
     );
-    sheet.getRow(r).height = 28;
+    sheet.getRow(r).height = 24;
   });
 
-  // 3) Period totals (same BusinessMetricsSummary as Executive / Financial)
   const biz = bundle.business;
   const totalRow = row + 1 + points.length;
   sheet.mergeCells(totalRow, 1, totalRow, 4);
-  sheet.mergeCells(totalRow, 5, totalRow, 8);
-  sheet.mergeCells(totalRow, 9, totalRow, COLS);
+  sheet.mergeCells(totalRow, 5, totalRow, 9);
+  sheet.mergeCells(totalRow, 10, totalRow, COLS);
   setWesternText(sheet.getCell(totalRow, 1), periodLabel, lang, {
     bold: true,
-    size: 13,
-    color: EX.white,
-    fill: EX.navy,
+    size: 12,
+    color: DL.white,
+    fill: DL.brandDark,
   });
   setWesternText(
     sheet.getCell(totalRow, 5),
     `${formatWesternAmount(biz.revenue)} ${currencySymbol}`,
     lang,
-    { bold: true, size: 14, color: EX.white, fill: EX.navy }
+    { bold: true, size: 13, color: DL.white, fill: DL.brandDark }
   );
   setWesternText(
-    sheet.getCell(totalRow, 9),
+    sheet.getCell(totalRow, 10),
     formatWesternCount(biz.paidCheckCount),
     lang,
-    { bold: true, size: 13, color: EX.white, fill: EX.navy }
+    { bold: true, size: 12, color: DL.white, fill: DL.brandDark }
   );
-  sheet.getRow(totalRow).height = 34;
+  sheet.getRow(totalRow).height = 30;
 
-  applyPrintSetup(sheet, lang, { freezeAt: 4 });
+  applyPrintSetup(sheet, lang, { freezeAt: 3 });
 }
