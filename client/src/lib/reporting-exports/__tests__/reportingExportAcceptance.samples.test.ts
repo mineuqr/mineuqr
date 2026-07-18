@@ -4,6 +4,7 @@
  */
 import { mkdirSync, writeFileSync, existsSync, copyFileSync } from "node:fs";
 import { join } from "node:path";
+import type { Fill } from "exceljs";
 import { describe, expect, it } from "vitest";
 import { buildReportingExportWorkbook } from "../excel/buildReportingExportWorkbook";
 import { formatMoneyDisplay, parseDtoAmountForDisplay } from "../format";
@@ -14,6 +15,32 @@ import {
 import type { RestaurantReportingExportBundle } from "../types";
 
 const EASTERN_DIGITS = /[٠-٩۰-۹]/;
+const LEGACY_NAVY_GOLD = new Set(["FF0B1F33", "FFB8943F"]);
+
+/** Pattern fills expose fgColor; gradient fills use stops — never assume fgColor on Fill. */
+function fillArgbColors(fill: Fill | undefined | null): readonly string[] {
+  if (!fill) return [];
+  if (fill.type === "pattern") {
+    const argb = fill.fgColor?.argb;
+    return argb ? [argb] : [];
+  }
+  if (fill.type === "gradient") {
+    const out: string[] = [];
+    for (const stop of fill.stops) {
+      const argb = stop.color?.argb;
+      if (argb) out.push(argb);
+    }
+    return out;
+  }
+  return [];
+}
+
+function isLegacyNavyOrGoldFill(fill: Fill | undefined | null): boolean {
+  for (const argb of fillArgbColors(fill)) {
+    if (LEGACY_NAVY_GOLD.has(argb)) return true;
+  }
+  return false;
+}
 const programDir = join(
   process.cwd(),
   "docs/engineering/programs/REPORTING-DESIGN-LANGUAGE-1"
@@ -226,7 +253,8 @@ describe("REPORTING-DESIGN-LANGUAGE-1 samples + presentation", () => {
       "",
     ];
 
-    for (const language of ["en"] as const) {
+    const languages: RestaurantReportingExportBundle["language"][] = ["en"];
+    for (const language of languages) {
       for (const scope of ["month", "year"] as const) {
         const bundle = sampleBundle(language, scope);
         const orderTotals = scopedOrderSalesFromRollup(bundle.orderSalesRollup);
@@ -247,12 +275,12 @@ describe("REPORTING-DESIGN-LANGUAGE-1 samples + presentation", () => {
         }
 
         // Charts mandatory when ≥2 trend points
-        const orderSheet = workbook.getWorksheet(
-          language === "ar" ? "مبيعات الطلبات" : "Order Sales"
-        );
-        const trendSheet = workbook.getWorksheet(
-          language === "ar" ? "اتجاه الإيرادات" : "Revenue Trends"
-        );
+        const orderSheetName =
+          language === "ar" ? "مبيعات الطلبات" : "Order Sales";
+        const trendSheetName =
+          language === "ar" ? "اتجاه الإيرادات" : "Revenue Trends";
+        const orderSheet = workbook.getWorksheet(orderSheetName);
+        const trendSheet = workbook.getWorksheet(trendSheetName);
         expect(orderSheet).toBeTruthy();
         expect(trendSheet).toBeTruthy();
         expect(orderSheet!.getImages().length).toBeGreaterThanOrEqual(1);
@@ -276,8 +304,7 @@ describe("REPORTING-DESIGN-LANGUAGE-1 samples + presentation", () => {
         for (const sheet of workbook.worksheets) {
           sheet.eachRow({ includeEmpty: false }, (row) => {
             row.eachCell({ includeEmpty: false }, (cell) => {
-              const argb = cell.fill?.fgColor?.argb;
-              if (argb === "FF0B1F33" || argb === "FFB8943F") sawLegacyNavy = true;
+              if (isLegacyNavyOrGoldFill(cell.fill)) sawLegacyNavy = true;
             });
           });
         }
