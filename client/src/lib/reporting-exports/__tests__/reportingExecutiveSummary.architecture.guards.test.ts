@@ -1,12 +1,19 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { EXECUTIVE_SUMMARY_KPI_IDS } from "@shared/reporting-platform";
+import {
+  EXECUTIVE_SUMMARY_KPI_IDS,
+  SECTION_TERMINOLOGY,
+} from "@shared/reporting-platform";
 import {
   buildExecutiveSummaryCards,
   buildExecutiveSummaryViewModel,
 } from "../executiveSummaryPresentation";
 import type { BusinessMetricsSummaryDto } from "@shared/reporting-platform";
+
+/** Forbids period-specific assumptions in Executive / Tax helper copy. */
+const PERIOD_SPECIFIC_COPY =
+  /\b(daily|weekly|monthly|quarterly|annual|yearly|month|week|quarter|year)\b/i;
 
 const repoRoot = join(__dirname, "../../../../../");
 
@@ -126,5 +133,47 @@ describe("REPORTING-EXECUTIVE-SUMMARY-SIMPLIFICATION-1 guards", () => {
     expect(excel).toContain("labels.taxCollected");
     expect(excel).toContain("taxAnalysisPeriodNote");
     expect(excel).toContain("moneyCollectedSection");
+  });
+
+  it("Executive + Tax presentation copy is period-agnostic (no month/year/… assumptions)", () => {
+    for (const lang of ["en", "ar"] as const) {
+      const section = SECTION_TERMINOLOGY[lang];
+      expect(section.taxAnalysisPeriodNote).not.toMatch(PERIOD_SPECIFIC_COPY);
+      expect(section.taxAnalysisPeriodNote).toMatch(/reporting period|فترة التقرير/i);
+      expect(section.moneyCollectedHint).not.toMatch(PERIOD_SPECIFIC_COPY);
+      expect(section.executiveSnapshotHint).not.toMatch(PERIOD_SPECIFIC_COPY);
+    }
+
+    const vm = buildExecutiveSummaryViewModel({
+      language: "en",
+      business: sampleBusiness,
+      orderPeriod: sampleOrders,
+      formatMoney: (a) => a,
+    });
+    expect(vm.primaryQuestion).not.toMatch(PERIOD_SPECIFIC_COPY);
+    expect(vm.footerNote).not.toMatch(PERIOD_SPECIFIC_COPY);
+    expect(vm.groups[0]?.hint).not.toMatch(PERIOD_SPECIFIC_COPY);
+
+    const presentation = read(
+      "client/src/lib/reporting-exports/executiveSummaryPresentation.ts"
+    );
+    expect(presentation).not.toMatch(/bundle\.scope|scope\s*===/);
+    expect(presentation).not.toMatch(PERIOD_SPECIFIC_COPY);
+
+    // Executive / Financial tax note must not branch on report scope
+    const excel = read(
+      "client/src/lib/reporting-exports/excel/buildReportingExportWorkbook.ts"
+    );
+    const excelExecutive = excel.slice(
+      excel.indexOf("function buildExecutiveSheet"),
+      excel.indexOf("function buildFinancialSheet")
+    );
+    const excelFinancial = excel.slice(
+      excel.indexOf("function buildFinancialSheet"),
+      excel.indexOf("function buildPaymentMethodSheet")
+    );
+    expect(excelExecutive).not.toMatch(/scope\s*===/);
+    expect(excelFinancial).not.toMatch(/scope\s*===/);
+    expect(excelFinancial).toContain("labels.taxAnalysisPeriodNote");
   });
 });

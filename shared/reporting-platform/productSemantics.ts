@@ -120,9 +120,12 @@ export const SECTION_TERMINOLOGY = Object.freeze({
     executiveSnapshotHint:
       "Operational performance this period — Check Revenue and tax are in Financial Summary.",
     taxAnalysis: "Tax",
-    /** Clarifies Tax Collected covers the full report period (presentation only). */
+    /**
+     * Period-agnostic (SIMPLIFICATION-1 governance).
+     * Must not say month / week / year / quarter / day.
+     */
     taxAnalysisPeriodNote:
-      "Tax Collected is the total tax from all paid checks in this reporting period (not a subset of sections).",
+      "Tax Collected covers the full reporting period — total tax from all paid checks in range (not a subset of sections).",
     adjustmentsAnalysis: "Adjustments",
     financialSummary: "Financial Summary",
     executiveSummary: "Executive Summary",
@@ -155,7 +158,7 @@ export const SECTION_TERMINOLOGY = Object.freeze({
       "الأداء التشغيلي لهذه الفترة — إيرادات الشيكات والضريبة في الملخص المالي.",
     taxAnalysis: "الضريبة",
     taxAnalysisPeriodNote:
-      "الضريبة المحصّلة هي إجمالي الضريبة من جميع الشيكات المدفوعة في فترة التقرير كاملة (وليست جزءاً من أقسام محددة).",
+      "الضريبة المحصّلة تغطي فترة التقرير كاملة — إجمالي الضريبة من جميع الشيكات المدفوعة في النطاق (وليست جزءاً من أقسام محددة).",
     adjustmentsAnalysis: "التسويات",
     financialSummary: "الملخص المالي",
     executiveSummary: "الملخص التنفيذي",

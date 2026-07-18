@@ -43,8 +43,15 @@ Financial Summary already duplicated Check Revenue / Paid Checks / Average Check
 ## 4.5 Tax presentation review
 
 - Formula unchanged: `SUM(taxAmount)` on paid checks in period (KPI registry).
-- Presentation: Financial Summary Tax section now shows `taxAnalysisPeriodNote` stating Tax Collected is the **total for the entire reporting period**.
+- Presentation: Financial Summary Tax section shows period-agnostic helper text: **Tax Collected covers the full reporting period**.
 - No API / DTO / calculation changes.
+
+## 4.6 Period-agnostic governance
+
+Executive + Tax helper copy applies uniformly to daily / weekly / monthly / quarterly / yearly / future periods.
+
+- No period-specific branching in `executiveSummaryPresentation` or Financial tax note blocks.
+- Guard test forbids month/week/year/quarter/day assumptions in those strings.
 
 ## 5. Product Semantics compliance
 
