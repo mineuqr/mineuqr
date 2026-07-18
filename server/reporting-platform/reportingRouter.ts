@@ -3,9 +3,11 @@ import { TRPCError } from "@trpc/server";
 import { verifiedProcedure, router } from "../_core/trpc";
 import { assertRestaurantAccess } from "../restaurantAccess";
 import {
+  compareMetricValues,
   getBusinessMetricsSummary,
   getBusinessMetricsTrend,
   getCatalogStatsSummary,
+  getComparisonBaselineRange,
   getKpiCatalog,
   getOperationalMetricsSnapshot,
   getOrderSalesRollup,
@@ -146,5 +148,66 @@ export const reportingRouter = router({
       } catch (err) {
         mapReportingError(err);
       }
+    }),
+
+  /**
+   * Canonical comparison DTO — presentation must not compute growth/delta.
+   * Values must already come from reporting.* KPI DTOs (no formula change).
+   */
+  compareMetricValues: verifiedProcedure
+    .input(
+      z.object({
+        restaurantId: z.number().int().positive(),
+        strategy: z.enum([
+          "previous_period",
+          "previous_business_period",
+          "previous_year",
+        ]),
+        currentValue: z.string(),
+        previousValue: z.string(),
+        currentFrom: z.string().nullable().optional(),
+        currentTo: z.string().nullable().optional(),
+        previousFrom: z.string().nullable().optional(),
+        previousTo: z.string().nullable().optional(),
+        metricId: z.string().optional(),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      await assertRestaurantAccess(
+        ctx,
+        input.restaurantId,
+        "reporting.compareMetricValues"
+      );
+      return compareMetricValues(input);
+    }),
+
+  getComparisonBaselineRange: verifiedProcedure
+    .input(
+      z.object({
+        restaurantId: z.number().int().positive(),
+        strategy: z.enum([
+          "previous_period",
+          "previous_business_period",
+          "previous_year",
+        ]),
+        granularity: z.enum([
+          "hour",
+          "day",
+          "week",
+          "month",
+          "quarter",
+          "year",
+        ]),
+        year: z.number().int().positive(),
+        month: z.number().int().min(1).max(12).optional(),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      await assertRestaurantAccess(
+        ctx,
+        input.restaurantId,
+        "reporting.getComparisonBaselineRange"
+      );
+      return getComparisonBaselineRange(input);
     }),
 });

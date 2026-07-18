@@ -6,6 +6,8 @@ import type {
 import {
   REPORTING_CONTRACT_VERSION,
   averageReportingAmount,
+  businessCurrentYearMonth,
+  businessTodayKey,
   formatReportingAmount,
   parseReportingAmount,
 } from "@shared/reporting-platform";
@@ -43,13 +45,12 @@ function sumDays(days: readonly AnalyticsDayRow[]): OrderSalesPeriodDto {
   };
 }
 
-function utcDayKey(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
-
 /**
  * Order Sales KPIs — Order Read Analytics Projection (P-10).
  * Explicitly NOT Revenue.
+ *
+ * "Today" / current month selection uses Business Calendar (APP_TIMEZONE).
+ * dayKey values themselves remain Order Read projection ownership.
  */
 export async function getOrderSalesSummary(
   restaurantId: number,
@@ -59,9 +60,8 @@ export async function getOrderSalesSummary(
     throw new ReportingValidationError("Invalid restaurantId");
   }
 
-  const todayKey = utcDayKey(now);
-  const year = now.getUTCFullYear();
-  const month = now.getUTCMonth() + 1;
+  const todayKey = businessTodayKey(now);
+  const { year, month } = businessCurrentYearMonth(now);
 
   const [todayRow, monthRows] = await Promise.all([
     readAnalyticsDay(restaurantId, todayKey),

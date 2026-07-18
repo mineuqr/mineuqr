@@ -18,13 +18,13 @@ import {
 import type { TaxPolicySnapshot } from "@shared/operational-session";
 import type { CheckReportingRow } from "./checkReportingRepository";
 
-/** Reuse settlement period helpers without adopting Session money SSOT. */
+/** Canonical Business Calendar period keys (REPORTING-TIME-SERIES-ARCHITECTURE-1). */
 import {
-  formatIsoWeekKey,
-  parseSettledTimestampMs,
-  resolvePeriodKey,
-  resolvePeriodStart,
-} from "../analytics/settlementMetrics";
+  formatIsoWeekKeyFromYmd,
+  parseReportingInstantMs,
+  resolveBusinessPeriodKey,
+  resolveBusinessPeriodStart,
+} from "@shared/reporting-platform";
 
 export function eventTimestampForCheck(row: CheckReportingRow): string | null {
   if (row.outcome === "voided") return row.voidedAt;
@@ -103,12 +103,12 @@ export function buildBusinessMetricsTrend(
   for (const row of rows) {
     const ts = eventTimestampForCheck(row);
     if (!ts) continue;
-    const periodKey = resolvePeriodKey(ts, grouping);
+    const periodKey = resolveBusinessPeriodKey(ts, grouping);
     if (!periodKey) continue;
     let acc = buckets.get(periodKey);
     if (!acc) {
       acc = {
-        periodStart: resolvePeriodStart(periodKey, grouping),
+        periodStart: resolveBusinessPeriodStart(periodKey, grouping),
         revenue: 0,
         paidCheckCount: 0,
         complimentaryCount: 0,
@@ -152,4 +152,4 @@ export function buildBusinessMetricsTrend(
   };
 }
 
-export { formatIsoWeekKey, parseSettledTimestampMs };
+export { formatIsoWeekKeyFromYmd as formatIsoWeekKey, parseReportingInstantMs as parseSettledTimestampMs };

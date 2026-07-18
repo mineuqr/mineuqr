@@ -138,7 +138,12 @@ function emptyTrend(now: Date, grouping: SettlementTrendGrouping): SettlementTre
   };
 }
 
-/** ISO-8601 week key (`YYYY-Www`) in UTC. */
+/**
+ * ISO-8601 week key (`YYYY-Www`) in UTC.
+ * LEGACY — Session soft-sunset analytics only.
+ * Canonical Reporting Platform bucketing:
+ * `resolveBusinessPeriodKey` (REPORTING-TIME-SERIES-ARCHITECTURE-1).
+ */
 export function formatIsoWeekKey(date: Date): string {
   const target = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
   const dayNum = target.getUTCDay() || 7;

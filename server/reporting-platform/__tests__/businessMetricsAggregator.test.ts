@@ -98,4 +98,24 @@ describe("businessMetricsAggregator — Revenue = Paid Check grandTotal", () => 
     expect(trend.points[0]?.revenue).toBe("10.00");
     expect(trend.points[1]?.revenue).toBe("20.00");
   });
+
+  it("buckets late UTC evening onto next Business Calendar day (APP_TIMEZONE)", () => {
+    const trend = buildBusinessMetricsTrend(
+      1,
+      [
+        check({
+          id: 1,
+          outcome: "paid",
+          grandTotal: "30.00",
+          settledAt: "2026-07-15 22:00:00",
+        }),
+      ],
+      "day",
+      null,
+      null
+    );
+    expect(trend.points).toHaveLength(1);
+    expect(trend.points[0]?.periodKey).toBe("2026-07-16");
+    expect(trend.points[0]?.revenue).toBe("30.00");
+  });
 });

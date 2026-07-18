@@ -117,12 +117,14 @@ function sampleBundle(
 }
 
 describe("REPORTING-EXPORTS helpers", () => {
-  it("builds month and year reporting ranges", () => {
+  it("builds month and year reporting ranges in Business Calendar (APP_TIMEZONE)", () => {
+    // Asia/Riyadh = UTC+3 → wall midnight is prior UTC evening
     expect(monthReportingRange(2026, 2)).toEqual({
-      from: "2026-02-01 00:00:00",
-      to: "2026-02-28 23:59:59",
+      from: "2026-01-31 21:00:00",
+      to: "2026-02-28 20:59:59",
     });
-    expect(yearReportingRange(2026).from).toBe("2026-01-01 00:00:00");
+    expect(yearReportingRange(2026).from).toBe("2025-12-31 21:00:00");
+    expect(yearReportingRange(2026).to).toBe("2026-12-31 20:59:59");
   });
 
   it("resolves currency from Check snapshot in Business Metrics DTO", () => {

@@ -17,6 +17,11 @@ export type ReportingPeriodInput = Readonly<{
   to?: string;
 }>;
 
+/**
+ * Check trend API grouping — subset of TimeSeriesGranularity.
+ * Full set: hour | day | week | month | quarter | year
+ * (see REPORTING-TIME-SERIES-ARCHITECTURE-1).
+ */
 export type ReportingTrendGrouping = "day" | "week" | "month";
 
 /** Currency context taken from Check snapshots in the period (not live settings). */
