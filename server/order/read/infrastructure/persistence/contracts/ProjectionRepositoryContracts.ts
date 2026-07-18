@@ -90,6 +90,8 @@ export type OperationalKpiProjectionRecord = ProjectionRecordMeta & {
 export interface OperationalKpiProjectionRepository
   extends ProjectionRepository<OperationalKpiProjectionRecord, OperationalKpiProjectionKey> {
   getForDay(restaurantId: number, dayKey: string): Promise<OperationalKpiProjectionRecord | null>;
+  /** REPORTING-BUSINESS-DAY-BACKFILL-1 — clear daily rows before replace rebuild. */
+  deleteAllForRestaurant(restaurantId: number): Promise<void>;
 }
 
 export type PublicOrderStatusProjectionKey = {
@@ -137,6 +139,8 @@ export interface OrderAnalyticsProjectionRepository
   extends ProjectionRepository<OrderAnalyticsDayRecord, OrderAnalyticsDayKey> {
   getDay(restaurantId: number, dayKey: string): Promise<OrderAnalyticsDayRecord | null>;
   listDaysInMonth(restaurantId: number, year: number, month: number): Promise<OrderAnalyticsDayRecord[]>;
+  /** REPORTING-BUSINESS-DAY-BACKFILL-1 — clear daily rows before replace rebuild. */
+  deleteAllForRestaurant(restaurantId: number): Promise<void>;
 }
 
 export type OrderReadProjectionRepositories = {

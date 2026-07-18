@@ -11,11 +11,13 @@ import type { ComparisonStrategy, TimeRange, TrendDirection } from "./types";
 import {
   businessCalendarMonthReportingBounds,
   businessCalendarYearReportingBounds,
-  businessWallToUtcInstant,
-  formatStoredUtcDatetime,
-  resolveBusinessPeriodKey,
   REPORTING_BUSINESS_TIMEZONE,
 } from "./calendar";
+import {
+  businessDayReportingBoundsForDay,
+  reportingWorkingHours,
+  type NormalizedWorkingHours,
+} from "./businessDayReporting";
 import type { TimeSeriesGranularity } from "./granularity";
 
 const FLAT_EPSILON = 0.005;
@@ -94,8 +96,9 @@ function shiftYearMonth(
 }
 
 /**
- * Resolve the comparison baseline range for a business calendar window.
- * previous_business_period and previous_period are equivalent for calendar months/years.
+ * Resolve the comparison baseline range for a Business Day window.
+ * previous_business_period and previous_period are equivalent for months/years.
+ * REPORTING-BUSINESS-DAY-ADOPTION-1 — opening → next opening (not wall midnight).
  */
 export function resolveComparisonRange(input: {
   strategy: ComparisonStrategy;
@@ -103,18 +106,21 @@ export function resolveComparisonRange(input: {
   year: number;
   month?: number;
   timeZone?: string;
+  workingHours?: NormalizedWorkingHours;
 }): TimeRange {
   const tz = input.timeZone ?? REPORTING_BUSINESS_TIMEZONE;
+  const hours = input.workingHours ?? reportingWorkingHours(null);
 
   if (input.strategy === "previous_year") {
     if (input.granularity === "year") {
-      return businessCalendarYearReportingBounds(input.year - 1, tz);
+      return businessCalendarYearReportingBounds(input.year - 1, tz, hours);
     }
     if (input.granularity === "month" && input.month != null) {
       return businessCalendarMonthReportingBounds(
         input.year - 1,
         input.month,
-        tz
+        tz,
+        hours
       );
     }
     if (input.granularity === "quarter" && input.month != null) {
@@ -122,12 +128,14 @@ export function resolveComparisonRange(input: {
       const from = businessCalendarMonthReportingBounds(
         input.year - 1,
         qStart,
-        tz
+        tz,
+        hours
       );
       const to = businessCalendarMonthReportingBounds(
         input.year - 1,
         qStart + 2,
-        tz
+        tz,
+        hours
       );
       return { from: from.from, to: to.to };
     }
@@ -136,39 +144,38 @@ export function resolveComparisonRange(input: {
   // previous_period / previous_business_period
   if (input.granularity === "month" && input.month != null) {
     const prev = shiftYearMonth(input.year, input.month, -1);
-    return businessCalendarMonthReportingBounds(prev.year, prev.month, tz);
+    return businessCalendarMonthReportingBounds(
+      prev.year,
+      prev.month,
+      tz,
+      hours
+    );
   }
   if (input.granularity === "year") {
-    return businessCalendarYearReportingBounds(input.year - 1, tz);
+    return businessCalendarYearReportingBounds(input.year - 1, tz, hours);
   }
   if (input.granularity === "quarter" && input.month != null) {
     const qStart = Math.floor((input.month - 1) / 3) * 3 + 1;
     const prev = shiftYearMonth(input.year, qStart, -3);
-    const from = businessCalendarMonthReportingBounds(prev.year, prev.month, tz);
+    const from = businessCalendarMonthReportingBounds(
+      prev.year,
+      prev.month,
+      tz,
+      hours
+    );
     const to = businessCalendarMonthReportingBounds(
       prev.year,
       prev.month + 2,
-      tz
+      tz,
+      hours
     );
     return { from: from.from, to: to.to };
   }
 
-  // Day / week / hour: shift by one civil day in business TZ as a baseline helper.
+  // Day / week / hour: previous Business Day relative to the first day of the month.
   const ymd = `${input.year}-${String(input.month ?? 1).padStart(2, "0")}-01`;
-  const start = businessWallToUtcInstant(ymd, 0, 0, 0, tz);
-  const prevDay = new Date(start.getTime() - 24 * 60 * 60 * 1000);
-  const key = resolveBusinessPeriodKey(
-    formatStoredUtcDatetime(prevDay),
-    "day",
-    tz
-  );
-  if (!key) {
-    return { from: null, to: null };
-  }
-  const fromInstant = businessWallToUtcInstant(key, 0, 0, 0, tz);
-  const toInstant = businessWallToUtcInstant(key, 23, 59, 59, tz);
-  return {
-    from: formatStoredUtcDatetime(fromInstant),
-    to: formatStoredUtcDatetime(toInstant),
-  };
+  const [y, mo, d] = ymd.split("-").map(Number);
+  const prev = new Date(Date.UTC(y!, mo! - 1, d! - 1));
+  const prevKey = prev.toISOString().slice(0, 10);
+  return businessDayReportingBoundsForDay(prevKey, hours, tz);
 }

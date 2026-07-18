@@ -29,6 +29,7 @@ import { isEmailNotVerifiedError } from "@/lib/trpcErrors";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { useCommercialFeatureVisibility } from "@/hooks/useCommercialFeatureVisibility";
+import { businessCurrentYearMonth } from "@shared/reporting-platform";
 import {
   Calendar,
   ClipboardList,
@@ -54,6 +55,7 @@ export function ReportsTab({
   t,
   language,
   statsAriaLabel,
+  workingHoursRaw,
 }: {
   restaurantId: number;
   restaurantName?: string;
@@ -63,11 +65,13 @@ export function ReportsTab({
   t: (key: string) => string;
   language: string;
   statsAriaLabel: string;
+  /** Restaurant workingHours for Business Day month/year bounds. */
+  workingHoursRaw?: unknown;
 }) {
   const fallbackSym = currencySymbol || "ر.س";
-  const now = new Date();
-  const [reportYear, setReportYear] = useState(now.getUTCFullYear());
-  const [reportMonth, setReportMonth] = useState(now.getUTCMonth() + 1);
+  const initialYm = businessCurrentYearMonth();
+  const [reportYear, setReportYear] = useState(initialYm.year);
+  const [reportMonth, setReportMonth] = useState(initialYm.month);
 
   const monthNames =
     language === "ar"
@@ -81,10 +85,13 @@ export function ReportsTab({
   const enabled = restaurantQueriesEnabled(authPending, isAuthenticated, restaurantId);
 
   const monthRange = useMemo(
-    () => monthReportingRange(reportYear, reportMonth),
-    [reportYear, reportMonth]
+    () => monthReportingRange(reportYear, reportMonth, workingHoursRaw),
+    [reportYear, reportMonth, workingHoursRaw]
   );
-  const yearRange = useMemo(() => yearReportingRange(reportYear), [reportYear]);
+  const yearRange = useMemo(
+    () => yearReportingRange(reportYear, workingHoursRaw),
+    [reportYear, workingHoursRaw]
+  );
 
   useDevQueryRuntimeLog("reporting.getCatalogStatsSummary", {
     enabled,

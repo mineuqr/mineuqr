@@ -18,12 +18,14 @@ import {
 import type { TaxPolicySnapshot } from "@shared/operational-session";
 import type { CheckReportingRow } from "./checkReportingRepository";
 
-/** Canonical Business Calendar period keys (REPORTING-TIME-SERIES-ARCHITECTURE-1). */
+/** Business Day period keys (REPORTING-BUSINESS-DAY-ADOPTION-1). */
 import {
   formatIsoWeekKeyFromYmd,
   parseReportingInstantMs,
+  reportingWorkingHours,
   resolveBusinessPeriodKey,
   resolveBusinessPeriodStart,
+  type NormalizedWorkingHours,
 } from "@shared/reporting-platform";
 
 export function eventTimestampForCheck(row: CheckReportingRow): string | null {
@@ -96,19 +98,30 @@ export function buildBusinessMetricsTrend(
   grouping: ReportingTrendGrouping,
   from: string | null | undefined,
   to: string | null | undefined,
-  now: Date = new Date()
+  now: Date = new Date(),
+  workingHours: NormalizedWorkingHours = reportingWorkingHours(null)
 ): BusinessMetricsTrendDto {
   const buckets = new Map<string, TrendAcc>();
 
   for (const row of rows) {
     const ts = eventTimestampForCheck(row);
     if (!ts) continue;
-    const periodKey = resolveBusinessPeriodKey(ts, grouping);
+    const periodKey = resolveBusinessPeriodKey(
+      ts,
+      grouping,
+      undefined,
+      workingHours
+    );
     if (!periodKey) continue;
     let acc = buckets.get(periodKey);
     if (!acc) {
       acc = {
-        periodStart: resolveBusinessPeriodStart(periodKey, grouping),
+        periodStart: resolveBusinessPeriodStart(
+          periodKey,
+          grouping,
+          undefined,
+          workingHours
+        ),
         revenue: 0,
         paidCheckCount: 0,
         complimentaryCount: 0,

@@ -12,7 +12,6 @@ import { restaurantDash } from "@/components/dashboard/restaurantDashStyles";
 import {
   RestaurantSectionError,
 } from "@/components/dashboard/RestaurantSectionStates";
-import { todayYmd } from "@/lib/datetime";
 import {
   DASHBOARD_ORDER_LIST_POLL_MS,
   reportingBusinessSummaryQueryOptions,
@@ -24,26 +23,36 @@ import { kpiDisplayName } from "@/lib/reporting/kpiDisplay";
 import { resolveReportingCurrencySymbol } from "@/lib/settlementOverviewDisplay";
 import { isEmailNotVerifiedError } from "@/lib/trpcErrors";
 import { trpc } from "@/lib/trpc";
+import {
+  businessDayTodayReportingBounds,
+  reportingWorkingHours,
+} from "@shared/reporting-platform";
 import { DollarSign, Grid3X3, LayoutDashboard } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 export function SessionsWorkspacePanel({
   restaurantId,
   language,
   currencySymbol,
   tableLabel,
+  workingHoursRaw,
 }: {
   restaurantId: number;
   language: string;
   currencySymbol?: string;
   tableLabel?: string;
+  /** Restaurant workingHours JSON / object for Business Day bounds. */
+  workingHoursRaw?: unknown;
 }) {
   const { isAuthenticated, authPending } = useAuth();
   const queriesEnabled = restaurantQueriesEnabled(authPending, isAuthenticated, restaurantId);
   const [workspaceSessionId, setWorkspaceSessionId] = useState<number | null>(null);
   const lang = language === "ar" ? "ar" : "en";
   const isAr = lang === "ar";
-  const todayKey = todayYmd();
+  const todayBounds = useMemo(() => {
+    const hours = reportingWorkingHours(workingHoursRaw ?? null);
+    return businessDayTodayReportingBounds(hours);
+  }, [workingHoursRaw]);
 
   const pageTitle = isAr ? "الجلسات" : "Sessions";
   const pageSub = isAr
@@ -85,8 +94,8 @@ export function SessionsWorkspacePanel({
   } = trpc.reporting.getBusinessMetricsSummary.useQuery(
     {
       restaurantId,
-      from: `${todayKey} 00:00:00`,
-      to: `${todayKey} 23:59:59`,
+      from: todayBounds.from ?? undefined,
+      to: todayBounds.to ?? undefined,
     },
     reportingBusinessSummaryQueryOptions(queriesEnabled)
   );

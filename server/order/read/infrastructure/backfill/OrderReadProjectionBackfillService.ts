@@ -8,6 +8,8 @@ import type { OrderReadContextLoader } from "../persistence/OrderReadContextLoad
 import { DrizzleOrderReadProjectionStore } from "../persistence/drizzle/DrizzleOrderReadProjectionStore";
 import type { OrderReadProjectionMaterializer } from "../../projections/materializers/OrderReadProjectionMaterializer";
 import { dayKeyFromTimestamp } from "../../projections/materializers/projectionStatus";
+import { restaurantOpeningTimeResolver } from "../../../business-identity/infrastructure/RestaurantOpeningTimeResolver";
+import type { NormalizedWorkingHours } from "@shared/utils/businessDay";
 
 export type BackfillScope = "full" | "tenant" | "partial";
 
@@ -66,12 +68,22 @@ export class OrderReadProjectionBackfillService {
     try {
       const restaurantIds = await this.resolveRestaurantIds(request);
       for (const restaurantId of restaurantIds) {
+        const workingHours =
+          await restaurantOpeningTimeResolver.getWorkingHours(restaurantId);
         const orderIds = await this.contextLoader.listOrderIdsForRestaurant(restaurantId);
         for (const orderId of orderIds) {
           const source = await this.contextLoader.loadByOrderId(orderId);
           if (!source) continue;
-          if (!this.matchesPartialRange(source.order.createdAt, request)) continue;
-        await this.materializer.syncOrderProjections(orderId, runId);
+          if (
+            !this.matchesPartialRange(
+              source.order.createdAt,
+              request,
+              workingHours
+            )
+          ) {
+            continue;
+          }
+          await this.materializer.syncOrderProjections(orderId, runId);
           run.rowsProcessed += 1;
         }
         await this.materializer.rebuildRollupsForRestaurant(restaurantId);
@@ -124,9 +136,13 @@ export class OrderReadProjectionBackfillService {
     return this.contextLoader.listRestaurantIds();
   }
 
-  private matchesPartialRange(createdAt: string, request: BackfillRequest): boolean {
+  private matchesPartialRange(
+    createdAt: string,
+    request: BackfillRequest,
+    workingHours: NormalizedWorkingHours
+  ): boolean {
     if (request.scope !== "partial") return true;
-    const dayKey = dayKeyFromTimestamp(createdAt);
+    const dayKey = dayKeyFromTimestamp(createdAt, workingHours);
     if (request.fromDayKey && dayKey < request.fromDayKey) return false;
     if (request.toDayKey && dayKey > request.toDayKey) return false;
     return true;

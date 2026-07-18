@@ -1,14 +1,18 @@
 /**
- * REPORTING-TIME-SERIES-ARCHITECTURE-1 — Business Calendar governance.
+ * REPORTING-TIME-SERIES-ARCHITECTURE-1 — timezone / period-key primitives.
+ * REPORTING-BUSINESS-DAY-ADOPTION-1 — day keys and filter bounds use Business Day
+ * (opening → next opening) via shared/utils/businessDay.ts.
  *
- * All Reporting Platform time-series bucketing uses APP_TIMEZONE wall time.
  * Never aggregate with server local time, browser local time, or UTC calendar
  * for business reporting period keys.
- *
- * Opening-hours Business Day (order identity) remains a separate concern in
- * shared/utils/businessDay.ts and is not used for reporting series keys.
  */
 
+import {
+  resolveBusinessDayKey,
+  resolveBusinessDayWindow,
+  resolveNormalizedOpeningHours,
+  type NormalizedWorkingHours,
+} from "../../utils/businessDay";
 import {
   APP_TIMEZONE,
   parseStoredUtcInstant,
@@ -18,6 +22,10 @@ import {
 } from "../../utils/timezone";
 import type { TimeSeriesGranularity } from "./granularity";
 import type { TimeRange } from "./types";
+import {
+  businessDayMonthReportingBounds,
+  businessDayYearReportingBounds,
+} from "./businessDayReporting";
 
 export const REPORTING_BUSINESS_TIMEZONE = APP_TIMEZONE;
 
@@ -144,32 +152,43 @@ export function parseReportingInstantMs(value: string): number {
 
 /**
  * Canonical period key for a stored UTC instant at the given granularity.
- * Keys are business wall calendar, never UTC calendar.
+ * Day (and higher rolls of the day label) use Business Day opening-hours keys.
+ * Never UTC calendar grouping.
  */
 export function resolveBusinessPeriodKey(
   settledAt: string,
   granularity: TimeSeriesGranularity,
-  timeZone: string = REPORTING_BUSINESS_TIMEZONE
+  timeZone: string = REPORTING_BUSINESS_TIMEZONE,
+  workingHours: NormalizedWorkingHours = resolveNormalizedOpeningHours(null)
 ): string | null {
   const instant = parseStoredUtcInstant(settledAt);
   if (!instant) return null;
+
+  const businessDay = resolveBusinessDayKey(
+    instant,
+    workingHours,
+    timeZone
+  );
+  const [by, bm] = businessDay.split("-").map(Number);
   const wall = businessWallPartsFromInstant(instant, timeZone);
 
   switch (granularity) {
-    case "hour":
-      return `${wall.ymd}T${pad2(wall.hour)}`;
+    case "hour": {
+      // Hour of wall clock, labeled on the Business Day key
+      return `${businessDay}T${pad2(wall.hour)}`;
+    }
     case "day":
-      return wall.ymd;
+      return businessDay;
     case "week":
-      return formatIsoWeekKeyFromYmd(wall.ymd);
+      return formatIsoWeekKeyFromYmd(businessDay);
     case "month":
-      return `${wall.year}-${pad2(wall.month)}`;
+      return `${by}-${pad2(bm!)}`;
     case "quarter": {
-      const q = Math.floor((wall.month - 1) / 3) + 1;
-      return `${wall.year}-Q${q}`;
+      const q = Math.floor((bm! - 1) / 3) + 1;
+      return `${by}-Q${q}`;
     }
     case "year":
-      return String(wall.year);
+      return String(by);
     default:
       return null;
   }
@@ -177,26 +196,36 @@ export function resolveBusinessPeriodKey(
 
 /**
  * Inclusive bucket start as UTC ISO instant for a period key.
+ * Day keys use Business Day opening instant.
  */
 export function resolveBusinessPeriodStart(
   periodKey: string,
   granularity: TimeSeriesGranularity,
-  timeZone: string = REPORTING_BUSINESS_TIMEZONE
+  timeZone: string = REPORTING_BUSINESS_TIMEZONE,
+  workingHours: NormalizedWorkingHours = resolveNormalizedOpeningHours(null)
 ): string {
   switch (granularity) {
     case "hour": {
       const match = /^(\d{4}-\d{2}-\d{2})T(\d{2})$/.exec(periodKey);
       if (!match) return periodKey;
-      return businessWallToUtcInstant(
+      const dayWindow = resolveBusinessDayWindow(
+        match[1]!,
+        workingHours,
+        timeZone
+      );
+      // Hour buckets still start at wall hour; clamp to business-day open when needed
+      const wallStart = businessWallToUtcInstant(
         match[1]!,
         Number(match[2]),
         0,
         0,
         timeZone
       ).toISOString();
+      return wallStart < dayWindow.startIso ? dayWindow.startIso : wallStart;
     }
     case "day":
-      return businessWallToUtcInstant(periodKey, 0, 0, 0, timeZone).toISOString();
+      return resolveBusinessDayWindow(periodKey, workingHours, timeZone)
+        .startIso;
     case "week": {
       const match = /^(\d{4})-W(\d{2})$/.exec(periodKey);
       if (!match) return periodKey;
@@ -250,7 +279,10 @@ export function resolveBusinessPeriodStart(
   }
 }
 
-/** Business calendar day key for "today" (APP_TIMEZONE wall date). */
+/**
+ * @deprecated Prefer reportingBusinessTodayKey(workingHours, now).
+ * Wall YMD — kept for non-reporting callers; reporting must use Business Day.
+ */
 export function businessTodayKey(
   now: Date = new Date(),
   timeZone: string = REPORTING_BUSINESS_TIMEZONE
@@ -267,54 +299,33 @@ export function businessCurrentYearMonth(
 }
 
 /**
- * Inclusive from/to bounds as stored UTC datetime strings for a business month.
- * Used by reporting.* period filters (lexicographic compare on UTC-stored values).
+ * Month filter bounds — Business Day adoption (opening → next opening).
+ * Optional workingHours; defaults to platform normalized hours (09:00 open).
  */
 export function businessCalendarMonthReportingBounds(
   year: number,
   month: number,
-  timeZone: string = REPORTING_BUSINESS_TIMEZONE
+  timeZone: string = REPORTING_BUSINESS_TIMEZONE,
+  workingHours: NormalizedWorkingHours = resolveNormalizedOpeningHours(null)
 ): TimeRange {
-  const mm = pad2(month);
-  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
-  const fromInstant = businessWallToUtcInstant(
-    `${year}-${mm}-01`,
-    0,
-    0,
-    0,
-    timeZone
-  );
-  const toInstant = businessWallToUtcInstant(
-    `${year}-${mm}-${pad2(lastDay)}`,
-    23,
-    59,
-    59,
-    timeZone
-  );
-  return {
-    from: formatStoredUtcDatetime(fromInstant),
-    to: formatStoredUtcDatetime(toInstant),
-  };
+  return businessDayMonthReportingBounds(year, month, workingHours, timeZone);
 }
 
 export function businessCalendarYearReportingBounds(
   year: number,
+  timeZone: string = REPORTING_BUSINESS_TIMEZONE,
+  workingHours: NormalizedWorkingHours = resolveNormalizedOpeningHours(null)
+): TimeRange {
+  return businessDayYearReportingBounds(year, workingHours, timeZone);
+}
+
+/** @deprecated Use businessDayReportingBoundsForDay — wall midnight helpers removed from filters. */
+export function businessCalendarDayReportingBoundsWall(
+  ymd: string,
   timeZone: string = REPORTING_BUSINESS_TIMEZONE
 ): TimeRange {
-  const fromInstant = businessWallToUtcInstant(
-    `${year}-01-01`,
-    0,
-    0,
-    0,
-    timeZone
-  );
-  const toInstant = businessWallToUtcInstant(
-    `${year}-12-31`,
-    23,
-    59,
-    59,
-    timeZone
-  );
+  const fromInstant = businessWallToUtcInstant(ymd, 0, 0, 0, timeZone);
+  const toInstant = businessWallToUtcInstant(ymd, 23, 59, 59, timeZone);
   return {
     from: formatStoredUtcDatetime(fromInstant),
     to: formatStoredUtcDatetime(toInstant),

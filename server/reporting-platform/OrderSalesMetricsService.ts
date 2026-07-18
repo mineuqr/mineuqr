@@ -7,9 +7,9 @@ import {
   REPORTING_CONTRACT_VERSION,
   averageReportingAmount,
   businessCurrentYearMonth,
-  businessTodayKey,
   formatReportingAmount,
   parseReportingAmount,
+  reportingBusinessTodayKey,
 } from "@shared/reporting-platform";
 import {
   listAnalyticsDaysInMonth,
@@ -18,6 +18,7 @@ import {
   type AnalyticsDayRow,
 } from "./orderReadReportingAdapter";
 import { ReportingValidationError } from "./BusinessMetricsService";
+import { loadRestaurantWorkingHoursForReporting } from "./restaurantWorkingHoursAdapter";
 
 function emptyPeriod(): OrderSalesPeriodDto {
   return {
@@ -49,8 +50,7 @@ function sumDays(days: readonly AnalyticsDayRow[]): OrderSalesPeriodDto {
  * Order Sales KPIs — Order Read Analytics Projection (P-10).
  * Explicitly NOT Revenue.
  *
- * "Today" / current month selection uses Business Calendar (APP_TIMEZONE).
- * dayKey values themselves remain Order Read projection ownership.
+ * REPORTING-BUSINESS-DAY-ADOPTION-1 — "today" uses Business Day key + hours.
  */
 export async function getOrderSalesSummary(
   restaurantId: number,
@@ -60,7 +60,8 @@ export async function getOrderSalesSummary(
     throw new ReportingValidationError("Invalid restaurantId");
   }
 
-  const todayKey = businessTodayKey(now);
+  const workingHours = await loadRestaurantWorkingHoursForReporting(restaurantId);
+  const todayKey = reportingBusinessTodayKey(workingHours, now);
   const { year, month } = businessCurrentYearMonth(now);
 
   const [todayRow, monthRows] = await Promise.all([
@@ -116,7 +117,6 @@ export async function getOrderSalesRollup(input: {
     };
   }
 
-  // Month granularity: aggregate each month in the year from day keys YYYY-MM-*
   const from = `${input.year}-01-01`;
   const to = `${input.year}-12-31`;
   const days = await listAnalyticsDaysInRange(input.restaurantId, from, to);

@@ -1028,6 +1028,7 @@ function RestaurantDetail({
           language={language}
           currencySymbol={(restaurant as { currencySymbol?: string })?.currencySymbol}
           tableLabel={(restaurant as { tableLabel?: string })?.tableLabel}
+          workingHoursRaw={(restaurant as { workingHours?: string | null })?.workingHours}
         />
       )}
 
@@ -1080,6 +1081,7 @@ function RestaurantDetail({
           t={t}
           language={language}
           statsAriaLabel={statsAriaLabel}
+          workingHoursRaw={(restaurant as { workingHours?: string | null })?.workingHours}
         />
       )}
 

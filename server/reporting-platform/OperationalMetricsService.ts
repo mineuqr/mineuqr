@@ -1,16 +1,17 @@
 import type { OperationalMetricsSnapshotDto } from "@shared/reporting-platform";
 import {
   REPORTING_CONTRACT_VERSION,
-  businessTodayKey,
+  reportingBusinessTodayKey,
 } from "@shared/reporting-platform";
 import { getRestaurantOverview } from "../ops/restaurantOverview";
 import { readOperationalKpiDay } from "./orderReadReportingAdapter";
 import { ReportingValidationError } from "./BusinessMetricsService";
+import { loadRestaurantWorkingHoursForReporting } from "./restaurantWorkingHoursAdapter";
 
 /**
  * Operational KPIs — Session overview + optional Order Read P-06.
  * Not business revenue.
- * Day selection uses Business Calendar (APP_TIMEZONE).
+ * Day selection uses Business Day (REPORTING-BUSINESS-DAY-ADOPTION-1).
  */
 export async function getOperationalMetricsSnapshot(
   restaurantId: number
@@ -19,9 +20,12 @@ export async function getOperationalMetricsSnapshot(
     throw new ReportingValidationError("Invalid restaurantId");
   }
 
+  const workingHours = await loadRestaurantWorkingHoursForReporting(restaurantId);
+  const todayKey = reportingBusinessTodayKey(workingHours);
+
   const [overview, kpiDay] = await Promise.all([
     getRestaurantOverview(restaurantId),
-    readOperationalKpiDay(restaurantId, businessTodayKey()),
+    readOperationalKpiDay(restaurantId, todayKey),
   ]);
 
   const preparing = kpiDay?.preparingOrders ?? null;

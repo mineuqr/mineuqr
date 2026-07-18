@@ -17,8 +17,13 @@ import {
   statusBucket,
 } from "./projectionStatus";
 import { isOrderInOperationalLifecycle } from "./projectionLifecycle";
-import { assertOrderLifecycleStage } from "../../../domain/value-objects/OrderLifecycleStage";
+import {
+  assertOrderLifecycleStage,
+  DEFAULT_ORDER_LIFECYCLE_STAGE,
+} from "../../../domain/value-objects/OrderLifecycleStage";
 import type { DrizzleBusinessIdentityAllocator } from "../../../business-identity/infrastructure/DrizzleBusinessIdentityAllocator";
+import { restaurantOpeningTimeResolver } from "../../../business-identity/infrastructure/RestaurantOpeningTimeResolver";
+import type { NormalizedWorkingHours } from "@shared/utils/businessDay";
 
 function parsePayload(envelope: EventEnvelope): OrderDomainEvent {
   return envelope.payload as OrderDomainEvent;
@@ -148,7 +153,8 @@ export class OrderReadProjectionMaterializer {
   async adjustOperationalKpi(envelope: EventEnvelope): Promise<void> {
     const payload = parsePayload(envelope);
     const restaurantId = envelope.restaurantId;
-    const dayKey = dayKeyFromTimestamp(envelope.occurredAt);
+    const hours = await this.hoursFor(restaurantId);
+    const dayKey = dayKeyFromTimestamp(envelope.occurredAt, hours);
     const kpi = await this.getOrCreateKpi(restaurantId, dayKey);
 
     if (payload.type === "OrderCreated") {
@@ -170,7 +176,8 @@ export class OrderReadProjectionMaterializer {
   async adjustAnalytics(envelope: EventEnvelope): Promise<void> {
     const payload = parsePayload(envelope);
     const restaurantId = envelope.restaurantId;
-    const dayKey = dayKeyFromTimestamp(envelope.occurredAt);
+    const hours = await this.hoursFor(restaurantId);
+    const dayKey = dayKeyFromTimestamp(envelope.occurredAt, hours);
     const row = await this.getOrCreateAnalytics(restaurantId, dayKey);
 
     if (payload.type === "OrderCreated") {
@@ -264,8 +271,22 @@ export class OrderReadProjectionMaterializer {
     if (bucket === "ready") kpi.readyOrders = Math.max(0, kpi.readyOrders - 1);
   }
 
-  /** Rebuild KPI/analytics counters from owner order rows (backfill). */
-  async rebuildRollupsForRestaurant(restaurantId: number): Promise<void> {
+  private async hoursFor(restaurantId: number): Promise<NormalizedWorkingHours> {
+    return restaurantOpeningTimeResolver.getWorkingHours(restaurantId);
+  }
+
+  /**
+   * REPORTING-BUSINESS-DAY-BACKFILL-1 — replace daily rollups for a restaurant.
+   *
+   * Scans every write-model order (not findPage/100 clamp). dayKey via canonical
+   * Business Day. Deletes prior P-06/P-10 rows so stale UTC/wall keys cannot remain.
+   * Idempotent: re-run yields the same BD-keyed set.
+   */
+  async rebuildRollupsForRestaurant(restaurantId: number): Promise<{
+    ordersScanned: number;
+    dayKeysWritten: number;
+  }> {
+    const hours = await this.hoursFor(restaurantId);
     const kpiByDay = new Map<
       string,
       {
@@ -281,15 +302,24 @@ export class OrderReadProjectionMaterializer {
         updatedAt: string;
       }
     >();
-    const analyticsByDay = new Map<string, Awaited<ReturnType<OrderReadProjectionMaterializer["getOrCreateAnalytics"]>>>();
+    const analyticsByDay = new Map<
+      string,
+      Awaited<ReturnType<OrderReadProjectionMaterializer["getOrCreateAnalytics"]>>
+    >();
 
-    const orders = await this.repos.ownerOrders.findPage({
-      restaurantId,
-      limit: 10_000,
-    });
+    const orderIds =
+      await this.contextLoader.listOrderIdsForRestaurant(restaurantId);
+    let ordersScanned = 0;
 
-    for (const order of orders) {
-      const dayKey = dayKeyFromTimestamp(order.createdAt);
+    for (const orderId of orderIds) {
+      const source = await this.contextLoader.loadByOrderId(orderId);
+      if (!source || source.order.restaurantId !== restaurantId) continue;
+      ordersScanned += 1;
+      const order = source.order;
+      const dayKey = dayKeyFromTimestamp(order.createdAt, hours);
+      const lifecycle = assertOrderLifecycleStage(
+        order.lifecycleStage ?? DEFAULT_ORDER_LIFECYCLE_STAGE
+      );
       const kpi =
         kpiByDay.get(dayKey) ??
         {
@@ -305,7 +335,7 @@ export class OrderReadProjectionMaterializer {
           updatedAt: new Date().toISOString(),
         };
       if (
-        isOrderInOperationalLifecycle(assertOrderLifecycleStage(order.lifecycle)) &&
+        isOrderInOperationalLifecycle(lifecycle) &&
         isActiveOrderStatus(order.status)
       ) {
         const bucket = statusBucket(order.status);
@@ -329,17 +359,30 @@ export class OrderReadProjectionMaterializer {
       analytics.orderCount += 1;
       if (order.status === "served") {
         analytics.completedOrderCount += 1;
-        analytics.completedSales = addDecimal(analytics.completedSales, order.totalAmount);
+        analytics.completedSales = addDecimal(
+          analytics.completedSales,
+          String(order.totalAmount)
+        );
       }
       analyticsByDay.set(dayKey, analytics);
     }
 
+    // Delete-then-upsert: remove orphan UTC/wall dayKeys from prior materialization.
+    await this.repos.operationalKpi.deleteAllForRestaurant(restaurantId);
+    await this.repos.orderAnalytics.deleteAllForRestaurant(restaurantId);
+
     for (const kpi of Array.from(kpiByDay.values())) {
-      kpi.activeOrders = kpi.pendingOrders + kpi.preparingOrders + kpi.readyOrders;
+      kpi.activeOrders =
+        kpi.pendingOrders + kpi.preparingOrders + kpi.readyOrders;
       await this.repos.operationalKpi.upsert(kpi);
     }
     for (const analytics of Array.from(analyticsByDay.values())) {
       await this.repos.orderAnalytics.upsert(analytics);
     }
+
+    return {
+      ordersScanned,
+      dayKeysWritten: Math.max(kpiByDay.size, analyticsByDay.size),
+    };
   }
 }

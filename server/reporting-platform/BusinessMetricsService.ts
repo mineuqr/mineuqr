@@ -9,6 +9,7 @@ import {
   buildBusinessMetricsSummary,
   buildBusinessMetricsTrend,
 } from "./businessMetricsAggregator";
+import { loadRestaurantWorkingHoursForReporting } from "./restaurantWorkingHoursAdapter";
 
 export class ReportingValidationError extends Error {
   constructor(message: string) {
@@ -26,6 +27,8 @@ function assertRestaurantId(restaurantId: number): void {
 /**
  * Business KPIs — Check Domain is Revenue SSOT.
  * Never reads live Business Settings for tax/currency.
+ * Period filtering uses caller from/to (Business Day bounds from client/server).
+ * Trend bucketing uses restaurant Business Day opening hours.
  */
 export async function getBusinessMetricsSummary(
   input: ReportingPeriodInput
@@ -44,12 +47,17 @@ export async function getBusinessMetricsTrend(
   input: ReportingPeriodInput & { grouping: ReportingTrendGrouping }
 ): Promise<BusinessMetricsTrendDto> {
   assertRestaurantId(input.restaurantId);
-  const rows = await listTerminalChecksForReporting(input);
+  const [rows, workingHours] = await Promise.all([
+    listTerminalChecksForReporting(input),
+    loadRestaurantWorkingHoursForReporting(input.restaurantId),
+  ]);
   return buildBusinessMetricsTrend(
     input.restaurantId,
     rows,
     input.grouping,
     input.from,
-    input.to
+    input.to,
+    new Date(),
+    workingHours
   );
 }

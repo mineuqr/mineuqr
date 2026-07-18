@@ -27,7 +27,7 @@ function listFiles(dirRel: string): string[] {
   return out;
 }
 
-describe("REPORTING-TIME-SERIES-ARCHITECTURE-1 architecture guards", () => {
+describe("REPORTING-TIME-SERIES + BUSINESS-DAY-ADOPTION guards", () => {
   it("registers the program and six granularities", () => {
     expect(TIME_SERIES_PROGRAM_ID).toBe(
       "REPORTING-TIME-SERIES-ARCHITECTURE-1"
@@ -35,26 +35,28 @@ describe("REPORTING-TIME-SERIES-ARCHITECTURE-1 architecture guards", () => {
     expect(TIME_SERIES_GRANULARITIES).toHaveLength(6);
   });
 
-  it("Check trend aggregator owns Business Calendar — not settlementMetrics period keys", () => {
+  it("Check trend aggregator owns Business Day period keys", () => {
     const agg = read("server/reporting-platform/businessMetricsAggregator.ts");
     expect(agg).toContain("resolveBusinessPeriodKey");
     expect(agg).toContain("resolveBusinessPeriodStart");
+    expect(agg).toContain("workingHours");
     expect(agg).not.toContain('from "../analytics/settlementMetrics"');
     expect(agg).not.toContain("resolvePeriodKey(");
   });
 
-  it("Order Sales summary selects today/month via Business Calendar", () => {
+  it("Order Sales summary selects today via Business Day key", () => {
     const svc = read("server/reporting-platform/OrderSalesMetricsService.ts");
-    expect(svc).toContain("businessTodayKey");
-    expect(svc).toContain("businessCurrentYearMonth");
+    expect(svc).toContain("reportingBusinessTodayKey");
+    expect(svc).toContain("loadRestaurantWorkingHoursForReporting");
     expect(svc).not.toContain("utcDayKey");
     expect(svc).not.toContain("getUTCFullYear");
   });
 
-  it("export periodRange delegates to Reporting Platform calendar", () => {
+  it("export periodRange uses Business Day month/year bounds", () => {
     const range = read("client/src/lib/reporting-exports/periodRange.ts");
-    expect(range).toContain("businessCalendarMonthReportingBounds");
-    expect(range).toContain("businessCalendarYearReportingBounds");
+    expect(range).toContain("businessDayMonthReportingBounds");
+    expect(range).toContain("businessDayYearReportingBounds");
+    expect(range).toContain("reportingWorkingHours");
     expect(range).not.toContain("Date.UTC");
   });
 
@@ -90,6 +92,7 @@ describe("REPORTING-TIME-SERIES-ARCHITECTURE-1 architecture guards", () => {
     const index = read("shared/reporting-platform/timeSeries/index.ts");
     expect(index).toContain("resolveBusinessPeriodKey");
     expect(index).toContain("buildMetricComparison");
+    expect(index).toContain("businessDayMonthReportingBounds");
     expect(index).not.toMatch(/Dashboard|react|trpc/);
   });
 });

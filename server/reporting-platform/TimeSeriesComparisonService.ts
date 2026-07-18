@@ -10,6 +10,7 @@ import {
   type ComparisonStrategy,
   type TimeSeriesGranularity,
 } from "@shared/reporting-platform";
+import { loadRestaurantWorkingHoursForReporting } from "./restaurantWorkingHoursAdapter";
 
 export function compareMetricValues(input: {
   strategy: ComparisonStrategy;
@@ -37,11 +38,21 @@ export function compareMetricValues(input: {
   });
 }
 
-export function getComparisonBaselineRange(input: {
+export async function getComparisonBaselineRange(input: {
+  restaurantId: number;
   strategy: ComparisonStrategy;
   granularity: TimeSeriesGranularity;
   year: number;
   month?: number;
 }) {
-  return resolveComparisonRange(input);
+  const workingHours = await loadRestaurantWorkingHoursForReporting(
+    input.restaurantId
+  );
+  return resolveComparisonRange({
+    strategy: input.strategy,
+    granularity: input.granularity,
+    year: input.year,
+    month: input.month,
+    workingHours,
+  });
 }

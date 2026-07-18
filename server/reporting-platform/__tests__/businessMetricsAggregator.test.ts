@@ -99,7 +99,8 @@ describe("businessMetricsAggregator — Revenue = Paid Check grandTotal", () => 
     expect(trend.points[1]?.revenue).toBe("20.00");
   });
 
-  it("buckets late UTC evening onto next Business Calendar day (APP_TIMEZONE)", () => {
+  it("buckets pre-opening wall time onto previous Business Day (default 09:00)", () => {
+    // 22:00 UTC 15th = 01:00 Riyadh 16th → before 09:00 → BD 2026-07-15
     const trend = buildBusinessMetricsTrend(
       1,
       [
@@ -115,7 +116,7 @@ describe("businessMetricsAggregator — Revenue = Paid Check grandTotal", () => 
       null
     );
     expect(trend.points).toHaveLength(1);
-    expect(trend.points[0]?.periodKey).toBe("2026-07-16");
+    expect(trend.points[0]?.periodKey).toBe("2026-07-15");
     expect(trend.points[0]?.revenue).toBe("30.00");
   });
 });

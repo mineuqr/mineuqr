@@ -91,6 +91,7 @@ export class InMemoryOrderReadProjectionStore {
         },
         findByKey: async (k) => store.getForDay(k.restaurantId, k.dayKey),
         getForDay: (rid, dk) => store.getForDay(rid, dk),
+        deleteAllForRestaurant: (rid) => store.deleteKpiForRestaurant(rid),
       },
       publicOrderStatus: {
         upsert: (r) => store.upsertPublicStatus(r),
@@ -108,6 +109,7 @@ export class InMemoryOrderReadProjectionStore {
         findByKey: async (k) => store.getDay(k.restaurantId, k.dayKey),
         getDay: (rid, dk) => store.getDay(rid, dk),
         listDaysInMonth: (rid, y, m) => store.listDaysInMonth(rid, y, m),
+        deleteAllForRestaurant: (rid) => store.deleteAnalyticsForRestaurant(rid),
       },
     };
   }
@@ -214,6 +216,12 @@ export class InMemoryOrderReadProjectionStore {
     this.kpiDaily.set(`${record.restaurantId}:${record.dayKey}`, { ...record });
   }
 
+  async deleteKpiForRestaurant(restaurantId: number): Promise<void> {
+    for (const key of Array.from(this.kpiDaily.keys())) {
+      if (key.startsWith(`${restaurantId}:`)) this.kpiDaily.delete(key);
+    }
+  }
+
   async getForDay(
     restaurantId: number,
     dayKey: string
@@ -245,6 +253,12 @@ export class InMemoryOrderReadProjectionStore {
 
   async upsertAnalytics(record: OrderAnalyticsDayRecord): Promise<void> {
     this.analyticsDaily.set(`${record.restaurantId}:${record.dayKey}`, { ...record });
+  }
+
+  async deleteAnalyticsForRestaurant(restaurantId: number): Promise<void> {
+    for (const key of Array.from(this.analyticsDaily.keys())) {
+      if (key.startsWith(`${restaurantId}:`)) this.analyticsDaily.delete(key);
+    }
   }
 
   async getDay(restaurantId: number, dayKey: string): Promise<OrderAnalyticsDayRecord | null> {

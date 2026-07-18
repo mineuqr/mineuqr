@@ -52,6 +52,10 @@ export function createPersistingProjectionRepositories(
         await inner.operationalKpi.upsert(record);
         await drizzle.upsertKpi(record);
       },
+      deleteAllForRestaurant: async (restaurantId: number) => {
+        await inner.operationalKpi.deleteAllForRestaurant(restaurantId);
+        await drizzle.deleteKpiForRestaurant(restaurantId);
+      },
     },
     publicOrderStatus: {
       ...inner.publicOrderStatus,
@@ -64,6 +68,10 @@ export function createPersistingProjectionRepositories(
       upsert: async (record: OrderAnalyticsDayRecord) => {
         await inner.orderAnalytics.upsert(record);
         await drizzle.upsertAnalytics(record);
+      },
+      deleteAllForRestaurant: async (restaurantId: number) => {
+        await inner.orderAnalytics.deleteAllForRestaurant(restaurantId);
+        await drizzle.deleteAnalyticsForRestaurant(restaurantId);
       },
     },
   };

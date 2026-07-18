@@ -234,6 +234,14 @@ export class DrizzleOrderReadProjectionStore {
       });
   }
 
+  async deleteKpiForRestaurant(restaurantId: number): Promise<void> {
+    const db = await getDb();
+    if (!db) return;
+    await db
+      .delete(orderReadOperationalKpiDaily)
+      .where(eq(orderReadOperationalKpiDaily.restaurantId, restaurantId));
+  }
+
   async upsertAnalytics(record: OrderAnalyticsDayRecord): Promise<void> {
     const db = await getDb();
     if (!db) return;
@@ -259,5 +267,13 @@ export class DrizzleOrderReadProjectionStore {
           updatedAt: record.updatedAt,
         },
       });
+  }
+
+  async deleteAnalyticsForRestaurant(restaurantId: number): Promise<void> {
+    const db = await getDb();
+    if (!db) return;
+    await db
+      .delete(orderReadAnalyticsDaily)
+      .where(eq(orderReadAnalyticsDaily.restaurantId, restaurantId));
   }
 }
