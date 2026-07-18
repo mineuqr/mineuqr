@@ -1,6 +1,7 @@
 /**
  * REPORTING-DESIGN-LANGUAGE-1 — MineuQR Official Excel Design Language.
  * REPORTING-EXECUTIVE-SUMMARY-RATIONALIZATION-1 — Executive = management snapshot.
+ * REPORTING-EXECUTIVE-SUMMARY-UX-1 — owner-readable grouping + captions.
  * Preserves REPORTING-PERIOD-CONSISTENCY-1 scoped totals (scopedOrderSalesFromRollup).
  * Presentation only. Does not calculate Revenue or other KPIs.
  *
@@ -17,10 +18,7 @@ import {
 } from "@/lib/excel/reportTheme";
 import { resolveExportLogoAsset } from "../branding";
 import { renderTrendChartPng } from "../charts/renderTrendChartPng";
-import {
-  buildExecutiveSummaryCards,
-  executiveSummaryCardTuples,
-} from "../executiveSummaryPresentation";
+import { buildExecutiveSummaryViewModel } from "../executiveSummaryPresentation";
 import {
   formatExportDateTime,
   formatMoneyDisplay,
@@ -227,11 +225,15 @@ function writeSectionLabel(
   sheet.getRow(row).height = 26;
 }
 
+type ExecutiveCardTuple =
+  | readonly [string, string]
+  | readonly [string, string, string];
+
 /** Executive dashboard KPI cards — not spreadsheet tables. */
 function writeKpiCards(
   sheet: ExcelJS.Worksheet,
   startRow: number,
-  cards: ReadonlyArray<readonly [string, string]>,
+  cards: ReadonlyArray<ExecutiveCardTuple>,
   language: Lang
 ): number {
   const rtl = isRtl(language);
@@ -243,9 +245,11 @@ function writeKpiCards(
       if (!card) continue;
       const col = c * 5 + 1;
       const end = col + 3;
+      const caption = card[2];
       sheet.mergeCells(row, col, row, end);
       sheet.mergeCells(row + 1, col, row + 1, end);
       sheet.mergeCells(row + 2, col, row + 2, end);
+      sheet.mergeCells(row + 3, col, row + 3, end);
 
       setWesternText(sheet.getCell(row, col), card[0], language, {
         size: 10,
@@ -272,14 +276,27 @@ function writeKpiCards(
       );
       sheet.getCell(row + 1, col).border = cellBorder(DL.line);
 
+      setWesternText(sheet.getCell(row + 2, col), caption ?? "", language, {
+        size: 9,
+        color: DL.faint,
+        fill: DL.surface,
+      });
+      sheet.getCell(row + 2, col).alignment = reportAlignment(
+        language,
+        rtl ? "right" : "left",
+        1
+      );
+      sheet.getCell(row + 2, col).border = cellBorder(DL.line);
+
       for (let x = col; x <= end; x++) {
-        sheet.getCell(row + 2, x).fill = solidFill(DL.brand);
+        sheet.getCell(row + 3, x).fill = solidFill(DL.brand);
       }
-      sheet.getRow(row + 2).height = 5;
+      sheet.getRow(row + 3).height = 5;
     }
     sheet.getRow(row).height = 22;
-    sheet.getRow(row + 1).height = 40;
-    row += 4;
+    sheet.getRow(row + 1).height = 36;
+    sheet.getRow(row + 2).height = 28;
+    row += 5;
   }
   return row;
 }
@@ -702,12 +719,19 @@ function buildExecutiveSheet(
   );
 
   paintRow(sheet, 4, COLS, DL.canvas, 12);
-  writeSectionLabel(sheet, 5, labels.executiveSnapshotSection, lang);
-  // Hint row — management framing, not accounting jargon
+  const vm = buildExecutiveSummaryViewModel({
+    language: lang,
+    business: bundle.business,
+    orderPeriod,
+    formatMoney: money,
+  });
+
+  writeSectionLabel(sheet, 5, vm.sectionTitle, lang);
   sheet.mergeCells(6, 1, 6, COLS);
-  setWesternText(sheet.getCell(6, 1), labels.executiveSnapshotHint, lang, {
-    size: 10,
-    color: DL.muted,
+  setWesternText(sheet.getCell(6, 1), vm.primaryQuestion, lang, {
+    bold: true,
+    size: 12,
+    color: DL.inkSoft,
     fill: DL.canvas,
   });
   sheet.getCell(6, 1).alignment = reportAlignment(
@@ -716,13 +740,42 @@ function buildExecutiveSheet(
     1
   );
 
-  const cards = buildExecutiveSummaryCards({
-    language: lang,
-    business: bundle.business,
-    orderPeriod,
-    formatMoney: money,
+  let row = 8;
+  for (const group of vm.groups) {
+    writeSectionLabel(sheet, row, group.title, lang);
+    row += 1;
+    sheet.mergeCells(row, 1, row, COLS);
+    setWesternText(sheet.getCell(row, 1), group.hint, lang, {
+      size: 10,
+      color: DL.muted,
+      fill: DL.canvas,
+    });
+    sheet.getCell(row, 1).alignment = reportAlignment(
+      lang,
+      isRtl(lang) ? "right" : "left",
+      1
+    );
+    row += 1;
+    const tuples = group.cards.map(
+      (c) => [c.label, c.value, c.caption] as const
+    );
+    row = writeKpiCards(sheet, row, tuples, lang);
+    row += 1;
+  }
+
+  sheet.mergeCells(row, 1, row, COLS);
+  setWesternText(sheet.getCell(row, 1), vm.comparisonNote, lang, {
+    size: 9,
+    color: DL.muted,
+    fill: DL.brandWash,
   });
-  writeKpiCards(sheet, 8, executiveSummaryCardTuples(cards), lang);
+  sheet.getCell(row, 1).alignment = reportAlignment(
+    lang,
+    isRtl(lang) ? "right" : "left",
+    1
+  );
+  sheet.getCell(row, 1).border = cellBorder(DL.line);
+  sheet.getRow(row).height = 36;
 
   applyPrintSetup(sheet, lang, { freezeAt: 3 });
 }

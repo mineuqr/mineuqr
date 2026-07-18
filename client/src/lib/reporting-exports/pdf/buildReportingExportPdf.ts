@@ -13,10 +13,7 @@ import {
   resolveExportCurrency,
   toWesternDigits,
 } from "../format";
-import {
-  buildExecutiveSummaryCards,
-  executiveSummaryCardTuples,
-} from "../executiveSummaryPresentation";
+import { buildExecutiveSummaryViewModel } from "../executiveSummaryPresentation";
 import { reportingExportLabels } from "../labels";
 import {
   formatReportScopeLabel,
@@ -207,11 +204,13 @@ async function renderPdfDocument(
     y += 40;
   };
 
-  const kpiCards = (cards: Array<[string, string]>) => {
+  const kpiCards = (
+    cards: Array<readonly [string, string] | readonly [string, string, string]>
+  ) => {
     const cols = 3;
     const gap = 10;
     const cardW = (contentWidth - gap * (cols - 1)) / cols;
-    const cardH = 56;
+    const cardH = 72;
     for (let i = 0; i < cards.length; i += cols) {
       ensure(cardH + 12);
       for (let c = 0; c < cols; c++) {
@@ -221,9 +220,13 @@ async function renderPdfDocument(
         const x = 48 + colIndex * (cardW + gap);
         doc.roundedRect(x, y, cardW, cardH, 5).fillAndStroke(GOLD_SOFT, GOLD);
         doc.fillColor(SLATE).font(font).fontSize(8);
-        text(card[0], x + 10, y + 10, { width: cardW - 20 });
+        text(card[0], x + 10, y + 8, { width: cardW - 20 });
         doc.fillColor(NAVY).font(fontBold).fontSize(13);
-        text(card[1], x + 10, y + 28, { width: cardW - 20 });
+        text(card[1], x + 10, y + 26, { width: cardW - 20 });
+        if (card[2]) {
+          doc.fillColor(SLATE).font(font).fontSize(7);
+          text(card[2], x + 10, y + 48, { width: cardW - 20 });
+        }
       }
       y += cardH + 10;
     }
@@ -277,7 +280,7 @@ async function renderPdfDocument(
     y = baseY + 16;
   };
 
-  // ── Executive (management snapshot) ────────────────────
+  // ── Executive (owner/manager UX snapshot) ───────────────
   doc.addPage();
   y = 48;
   section(labels.executive);
@@ -286,22 +289,34 @@ async function renderPdfDocument(
     width: contentWidth,
   });
   y = doc.y + 8;
+  const execVm = buildExecutiveSummaryViewModel({
+    language: bundle.language,
+    business: biz,
+    orderPeriod,
+    formatMoney: money,
+  });
   doc.fillColor(NAVY).font(fontBold).fontSize(11);
-  text(labels.executiveSnapshotSection, 48, y, { width: contentWidth });
+  text(execVm.sectionTitle, 48, y, { width: contentWidth });
   y = doc.y + 4;
-  doc.fillColor(SLATE).font(font).fontSize(9);
-  text(labels.executiveSnapshotHint, 48, y, { width: contentWidth });
-  y = doc.y + 12;
-  kpiCards(
-    executiveSummaryCardTuples(
-      buildExecutiveSummaryCards({
-        language: bundle.language,
-        business: biz,
-        orderPeriod,
-        formatMoney: money,
-      })
-    )
-  );
+  doc.fillColor(INK).font(fontBold).fontSize(10);
+  text(execVm.primaryQuestion, 48, y, { width: contentWidth });
+  y = doc.y + 10;
+  for (const group of execVm.groups) {
+    doc.fillColor(NAVY).font(fontBold).fontSize(10);
+    text(group.title, 48, y, { width: contentWidth });
+    y = doc.y + 2;
+    doc.fillColor(SLATE).font(font).fontSize(8);
+    text(group.hint, 48, y, { width: contentWidth });
+    y = doc.y + 8;
+    kpiCards(
+      group.cards.map((c) => [c.label, c.value, c.caption] as const)
+    );
+  }
+  ensure(40);
+  doc.roundedRect(48, y, contentWidth, 36, 4).fillAndStroke(GOLD_SOFT, GOLD);
+  doc.fillColor(SLATE).font(font).fontSize(8);
+  text(execVm.comparisonNote, 56, y + 8, { width: contentWidth - 16 });
+  y += 48;
 
   // ── Financial (detailed analysis) ──────────────────────
   section(labels.financial);
