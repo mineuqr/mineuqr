@@ -44,6 +44,7 @@ function kitchenTicket(
         nameEn: "Shawarma",
         price: "10.00",
         itemNotes: null,
+        modifiers: [],
         category: mockCategoryProjection({ categoryId: 1, categoryCode: "mains" }),
       },
       {
@@ -55,6 +56,7 @@ function kitchenTicket(
         nameEn: "Hummus",
         price: "5.00",
         itemNotes: null,
+        modifiers: [],
         category: mockCategoryProjection({ categoryId: 2, categoryCode: "sides" }),
       },
     ],

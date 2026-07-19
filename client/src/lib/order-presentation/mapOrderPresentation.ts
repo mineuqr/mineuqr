@@ -42,6 +42,7 @@ import type {
   OrderPresentationLineItem,
   OrderPresentationModel,
 } from "./orderPresentationModel";
+import { normalizeOrderLineModifiers } from "@shared/ordering-platform/orderLineModifiers";
 import { presentationalNote } from "./presentationalNote";
 
 type ActiveOrderLineItem = {
@@ -50,6 +51,8 @@ type ActiveOrderLineItem = {
   nameAr: string;
   nameEn?: string | null;
   itemNotes?: string | null;
+  /** Projected modifiers from Order Read / Kitchen DTO — optional on older sources. */
+  modifiers?: readonly string[] | null;
 };
 
 export type ActiveOrderPresentationSource = OperationalOrderIdentitySource & {
@@ -189,6 +192,7 @@ function mapLineItems(items: ActiveOrderLineItem[]): OrderPresentationLineItem[]
     nameEn: line.nameEn?.trim() || line.nameAr?.trim() || "",
     nameAr: line.nameAr?.trim() || line.nameEn?.trim() || "",
     itemNotes: presentationalNote(line.itemNotes),
+    modifiers: normalizeOrderLineModifiers(line.modifiers),
   }));
 }
 
@@ -380,6 +384,7 @@ export function mapKitchenTicketPresentation(
     nameAr: line.nameAr,
     nameEn: line.nameEn,
     itemNotes: line.itemNotes,
+    modifiers: line.modifiers,
   }));
 
   const fulfilmentSource = {
@@ -423,6 +428,7 @@ export function mapKitchenTicketPresentation(
         nameEn: productDisplayName(line, false),
         nameAr: productDisplayName(line, true),
         itemNotes: presentationalNote(line.itemNotes),
+        modifiers: normalizeOrderLineModifiers(line.modifiers),
       })),
     },
     emphasis: {

@@ -102,6 +102,7 @@ describe("ORDER-WORKSPACE-CARD-ARCHITECTURE-1 presentation mapper", () => {
           nameEn: "Soup",
           price: "10.00",
           itemNotes: null,
+          modifiers: ["Extra lemon"],
           category: {
             categoryId: 1,
             categoryCode: "soups",
@@ -124,6 +125,60 @@ describe("ORDER-WORKSPACE-CARD-ARCHITECTURE-1 presentation mapper", () => {
     expect(presentation.emphasis.statusAccentClass).toContain("bg-sky-500");
     expect(presentation.availableActions[0]?.id).toBe("start-preparing");
     expect(presentation.fulfillment.label.en).toBe("Table 5");
+    expect(presentation.items.lines[0]?.modifiers).toEqual(["Extra lemon"]);
+  });
+
+  it("KITCHEN-PRESENTATION-MODIFIERS-ADOPTION-1: empty modifiers map to empty array", () => {
+    const presentation = mapKitchenTicketPresentation({
+      orderId: 71,
+      orderNumber: "ORD-0071",
+      businessDay: "2026-07-11",
+      dailyDisplayNumber: 71,
+      displayOrderNumber: "071",
+      displayReference: "T #071",
+      tableNumber: 1,
+      sessionId: null,
+      serviceMode: "table_service",
+      fulfilmentAnchorType: "table",
+      fulfilmentLabel: "1",
+      customerName: null,
+      orderNotes: null,
+      status: "pending",
+      totalAmount: "8.00",
+      createdAt: "2026-07-11 10:00:00",
+      readyAt: null,
+      statusEnteredAt: "2026-07-11 10:00:00",
+      elapsedSeconds: 60,
+      columnElapsedSeconds: 60,
+      urgencyTier: "normal",
+      lineCount: 1,
+      linesSummary: "1× Tea",
+      lineItems: [
+        {
+          projectionType: "MenuItem" as const,
+          lineItemId: 11,
+          menuItemId: 3,
+          quantity: 1,
+          nameAr: "شاي",
+          nameEn: "Tea",
+          price: "8.00",
+          itemNotes: null,
+          modifiers: [],
+          category: {
+            categoryId: 1,
+            categoryCode: "drinks",
+            categoryName: "Drinks",
+            displayOrder: 1,
+            parentCategoryId: null,
+            version: 1,
+            updatedAt: "2026-07-11 10:00:00",
+          },
+        },
+      ],
+      lastEventId: null,
+    });
+
+    expect(presentation.items.lines[0]?.modifiers).toEqual([]);
   });
 
   it("KITCHEN-LIFECYCLE-OWNERSHIP-1: kitchen ticket presentation excludes mark-ready", () => {
@@ -161,6 +216,7 @@ describe("ORDER-WORKSPACE-CARD-ARCHITECTURE-1 presentation mapper", () => {
           nameEn: "Burger",
           price: "12.00",
           itemNotes: null,
+          modifiers: [],
           category: {
             categoryId: 1,
             categoryCode: "mains",
@@ -220,6 +276,22 @@ describe("ORDER-WORKSPACE-CARD-ARCHITECTURE-1 architecture guards", () => {
     expect(kitchenCard).not.toContain("operationalFooterStatusLabel");
     expect(kitchenPanel).toContain("mapKitchenTicketPresentation");
     expect(kitchenPanel).not.toContain("computeSlaSnapshot");
+  });
+
+  it("KITCHEN-PRESENTATION-MODIFIERS-ADOPTION-1: presentation adopts DTO modifiers", () => {
+    const model = read("client/src/lib/order-presentation/orderPresentationModel.ts");
+    const mapper = read("client/src/lib/order-presentation/mapOrderPresentation.ts");
+    const kitchenCard = read("client/src/components/kitchen/KitchenExecutionCard.tsx");
+    const waiterStage = read("client/src/pages/waiter/WaiterTableWorkspaceStage.tsx");
+
+    expect(model).toContain("modifiers: readonly string[]");
+    expect(mapper).toContain("normalizeOrderLineModifiers");
+    expect(mapper).toContain("modifiers: line.modifiers");
+    expect(mapper).toContain("modifiers: normalizeOrderLineModifiers(line.modifiers)");
+    expect(kitchenCard).toContain("line.modifiers.length");
+    expect(kitchenCard).toContain("presentation: OrderPresentationModel");
+    // Waiter consumes equivalent projected modifiers (workspace DTO from Order Read).
+    expect(waiterStage).toContain("item.modifiers.length");
   });
 
   it("keeps presentation formatting out of card components", () => {

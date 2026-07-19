@@ -38,6 +38,11 @@ export type OrderPresentationLineItem = Readonly<{
   nameAr: string;
   /** Projected item note — null/blank means render nothing. */
   itemNotes: string | null;
+  /**
+   * ORDER-READ-MODIFIERS-PERSISTENCE-1 / KITCHEN-PRESENTATION-MODIFIERS-ADOPTION-1 —
+   * Projected display labels only. Always an array (empty when none).
+   */
+  modifiers: readonly string[];
 }>;
 
 export type OrderPresentationTiming = Readonly<{
