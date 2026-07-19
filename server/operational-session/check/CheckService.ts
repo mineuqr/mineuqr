@@ -43,6 +43,10 @@ import {
   updateCheckMoney,
 } from "./checkRepository";
 import { insertSettlementTransactions } from "./settlementTransactionRepository";
+import {
+  dualWriteDeactivateMembershipsOnVoid,
+  dualWriteSyncSessionOrdersToCheck,
+} from "./checkMembershipService";
 
 export class CheckTransitionError extends Error {
   constructor(message: string) {
@@ -99,6 +103,11 @@ export async function createOpenCheckForSession(
     client
   );
   if (existing) {
+    await dualWriteSyncSessionOrdersToCheck({
+      restaurantId: input.restaurantId,
+      sessionId: input.sessionId,
+      checkId: existing.id,
+    });
     return mapRowToOperationalCheck(existing);
   }
 
@@ -138,6 +147,13 @@ export async function createOpenCheckForSession(
     },
     client
   );
+
+  // M1 dual-write — membership sync; Session scan remains money authority.
+  await dualWriteSyncSessionOrdersToCheck({
+    restaurantId: input.restaurantId,
+    sessionId: input.sessionId,
+    checkId,
+  });
 
   const row = await findCheckById(checkId, client);
   if (!row) {
@@ -307,6 +323,13 @@ async function finalizeOpenCheck(
       },
       client
     );
+  }
+
+  if (input.outcome === "voided") {
+    await dualWriteDeactivateMembershipsOnVoid({
+      restaurantId: input.restaurantId,
+      checkId: check.id,
+    });
   }
 
   const row = await findCheckById(check.id, client);

@@ -85,4 +85,7 @@ export {
   type SettlementTransaction,
   type SettlementTransactionInput,
   type StaffSettlementLineInput,
+  CHECK_MEMBERSHIP_ENROLLED_REASONS,
+  type CheckMembershipEnrolledReason,
+  type CheckOrderMembershipRecord,
 } from "./check";

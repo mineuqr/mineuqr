@@ -76,3 +76,9 @@ export {
   resolveStaffSettlementLines,
   isCheckFullyCoveredBySettlements,
 } from "./settlementInvariants";
+
+export {
+  CHECK_MEMBERSHIP_ENROLLED_REASONS,
+  type CheckMembershipEnrolledReason,
+  type CheckOrderMembershipRecord,
+} from "./checkMembershipContract";

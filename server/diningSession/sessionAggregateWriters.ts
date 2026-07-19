@@ -9,11 +9,14 @@ import { computeOrdersTotalAmount } from "./sessionOrderTotals";
 import { findSessionById, updateSessionAggregates } from "./sessionRepository";
 import { DiningSessionValidationError } from "./sessionTypes";
 import { recalculateOpenCheckForSession } from "../operational-session/check/CheckService";
+import { dualWriteEnrollOrderForSession } from "../operational-session/check/checkMembershipService";
 
 export type IncrementSessionAggregatesForOrderInput = {
   restaurantId: number;
   sessionId: number;
   orderTotalAmount: string;
+  /** CHECK-GENERALIZATION-M1 — dual-write membership when provided. */
+  orderId?: number;
 };
 
 export type DecrementSessionAggregatesForCancelledOrderInput = {
@@ -112,7 +115,18 @@ export async function incrementSessionAggregatesForOrder(
     totalAmountDelta: input.orderTotalAmount,
   });
 
+  // CHECK-GENERALIZATION-M1 — dual-write membership (best-effort).
+  if (input.orderId != null) {
+    await dualWriteEnrollOrderForSession({
+      restaurantId: input.restaurantId,
+      sessionId: input.sessionId,
+      orderId: input.orderId,
+      enrolledReason: "session_attach",
+    });
+  }
+
   // CHECK-MANAGEMENT-ARCHITECTURE-1 — open Check totals follow Session order money.
+  // M1: Session discovery remains authoritative (no membership-based subtotal).
   await recalculateOpenCheckForSession({
     restaurantId: input.restaurantId,
     sessionId: input.sessionId,

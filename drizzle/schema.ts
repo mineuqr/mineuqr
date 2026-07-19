@@ -435,6 +435,46 @@ export type InsertCheckSettlementTransaction =
 export type SelectCheckSettlementTransaction =
 	typeof checkSettlementTransactions.$inferSelect;
 
+// ─── Check Order Membership (CHECK-GENERALIZATION-M1 / ADR-ARCH-020) ──
+/** Check-owned Order membership. Not a separate aggregate. Dual-write only in M1. */
+export const checkOrderMembership = mysqlTable(
+	"check_order_membership",
+	{
+		id: int().autoincrement().primaryKey(),
+		restaurantId: int().notNull(),
+		checkId: int().notNull(),
+		orderId: int().notNull(),
+		enrolledAt: timestamp({ mode: "string" }).notNull(),
+		enrolledReason: mysqlEnum([
+			"session_attach",
+			"order_place",
+			"backfill",
+			"manual",
+		])
+			.default("session_attach")
+			.notNull(),
+		active: tinyint().default(1).notNull(),
+		createdAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+		updatedAt: timestamp({ mode: "string" }).defaultNow().onUpdateNow().notNull(),
+	},
+	(table) => [
+		uniqueIndex("check_order_membership_check_order_unique").on(
+			table.checkId,
+			table.orderId
+		),
+		index("check_order_membership_restaurant_id").on(table.restaurantId),
+		index("check_order_membership_check_id").on(table.checkId),
+		index("check_order_membership_order_id").on(table.orderId),
+		index("check_order_membership_restaurant_order").on(
+			table.restaurantId,
+			table.orderId
+		),
+	]
+);
+
+export type InsertCheckOrderMembership = typeof checkOrderMembership.$inferInsert;
+export type SelectCheckOrderMembership = typeof checkOrderMembership.$inferSelect;
+
 // ─── Table Events (TABLE-MANAGEMENT-1 Phase C) ──────────────────
 export const tableEvents = mysqlTable("table_events", {
 	id: bigint({ mode: "number" }).autoincrement().primaryKey(),

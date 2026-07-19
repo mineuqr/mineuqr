@@ -78,6 +78,7 @@ export class OrderSessionConsumer implements OrderEventConsumer {
           restaurantId: event.restaurantId,
           sessionId: event.sessionId,
           orderTotalAmount: event.totalAmount,
+          orderId: event.orderId,
         },
         { procedure: "OrderSessionConsumer" }
       );

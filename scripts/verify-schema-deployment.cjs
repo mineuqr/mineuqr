@@ -54,6 +54,24 @@ const REQUIRED = {
   enumMembers: [
     ["operational_devices", "role", "waiter_display"],
   ],
+  /** CHECK-GENERALIZATION-M1 — Check-owned Order membership. */
+  checkMembershipTables: ["check_order_membership"],
+  checkMembershipColumns: [
+    ["check_order_membership", "id"],
+    ["check_order_membership", "restaurantId"],
+    ["check_order_membership", "checkId"],
+    ["check_order_membership", "orderId"],
+    ["check_order_membership", "enrolledAt"],
+    ["check_order_membership", "enrolledReason"],
+    ["check_order_membership", "active"],
+  ],
+  checkMembershipIndexes: [
+    ["check_order_membership", "check_order_membership_check_order_unique"],
+    ["check_order_membership", "check_order_membership_restaurant_id"],
+    ["check_order_membership", "check_order_membership_check_id"],
+    ["check_order_membership", "check_order_membership_order_id"],
+    ["check_order_membership", "check_order_membership_restaurant_order"],
+  ],
 };
 
 async function columnExists(conn, table, column) {
@@ -166,10 +184,25 @@ async function main() {
         missing.push(`enum:${table}.${column}.${member}`);
       }
     }
+    for (const table of REQUIRED.checkMembershipTables) {
+      if (!(await tableExists(conn, table))) {
+        missing.push(`table:${table}`);
+      }
+    }
+    for (const [table, column] of REQUIRED.checkMembershipColumns) {
+      if (!(await columnExists(conn, table, column))) {
+        missing.push(`${table}.${column}`);
+      }
+    }
+    for (const [table, indexName] of REQUIRED.checkMembershipIndexes) {
+      if (!(await indexExists(conn, table, indexName))) {
+        missing.push(`index:${table}.${indexName}`);
+      }
+    }
 
     if (missing.length === 0) {
       console.log(
-        "[schema-verify] OK — required schema objects present (auth, order-read, operational-device, fulfilment, business-identity-scope, waiter_display)."
+        "[schema-verify] OK — required schema objects present (auth, order-read, operational-device, fulfilment, business-identity-scope, waiter_display, check-order-membership)."
       );
       return;
     }

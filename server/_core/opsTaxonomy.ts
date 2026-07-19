@@ -158,6 +158,9 @@ export const OPS_EVENT = {
   session_aggregate_drift_detected: "session_aggregate_drift_detected",
   session_aggregate_update_failed: "session_aggregate_update_failed",
 
+  // CHECK-GENERALIZATION-M1 — membership dual-write (best-effort)
+  check_membership_dual_write_failed: "check_membership_dual_write_failed",
+
   // SESSION-AGGREGATES-1 Phase B
   session_aggregate_reader_fallback: "session_aggregate_reader_fallback",
 

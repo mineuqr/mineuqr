@@ -498,6 +498,13 @@
       "when": 1784560000000,
       "tag": "0070_check_settlement_transactions",
       "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "5",
+      "when": 1784570000000,
+      "tag": "0071_check_order_membership",
+      "breakpoints": true
     }
   ]
 }
