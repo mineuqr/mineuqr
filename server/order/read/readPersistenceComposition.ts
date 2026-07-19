@@ -3,6 +3,10 @@ import { DrizzleOrderReadProjectionStore } from "./infrastructure/persistence/dr
 import { DrizzleOrderReadContextLoader } from "./infrastructure/persistence/DrizzleOrderReadContextLoader";
 import { createPersistingProjectionRepositories } from "./infrastructure/persistence/PersistingOrderReadProjectionRepositories";
 import { OrderReadProjectionMaterializer } from "./projections/materializers/OrderReadProjectionMaterializer";
+import {
+  DrizzleP10AnalyticsCompletionIdempotencyStore,
+  InMemoryP10AnalyticsCompletionIdempotencyStore,
+} from "./projections/materializers/p10AnalyticsCompletionIdempotency";
 import { OrderReadProjectionBackfillService } from "./infrastructure/backfill/OrderReadProjectionBackfillService";
 import { OrderReadBusinessDayRollupBackfillService } from "./infrastructure/backfill/OrderReadBusinessDayRollupBackfillService";
 import { OrderCategoryProjectionBuilder } from "./projections/builders/OrderCategoryProjectionBuilder";
@@ -27,6 +31,11 @@ const lineItemProjectionBuilder = new OrderReadLineItemProjectionBuilder(
   categoryProjectionBuilder
 );
 
+const completionIdempotency =
+  process.env.NODE_ENV === "test"
+    ? new InMemoryP10AnalyticsCompletionIdempotencyStore()
+    : new DrizzleP10AnalyticsCompletionIdempotencyStore();
+
 const innerRepos =
   process.env.NODE_ENV === "test"
     ? inMemoryStore.asRepositories()
@@ -43,7 +52,10 @@ export const orderReadProjectionMaterializer = new OrderReadProjectionMaterializ
   contextLoader,
   inMemoryStore,
   lineItemProjectionBuilder,
-  businessIdentityAllocator
+  {
+    businessIdentityAllocator,
+    completionIdempotency,
+  }
 );
 
 export const orderReadProjectionBackfillService = new OrderReadProjectionBackfillService(

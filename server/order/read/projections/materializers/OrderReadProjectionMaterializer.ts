@@ -17,6 +17,10 @@ import {
   statusBucket,
 } from "./projectionStatus";
 import { orderAnalyticsBusinessDayKey } from "./orderAnalyticsDayKey";
+import {
+  InMemoryP10AnalyticsCompletionIdempotencyStore,
+  type P10AnalyticsCompletionIdempotencyStore,
+} from "./p10AnalyticsCompletionIdempotency";
 import { isOrderInOperationalLifecycle } from "./projectionLifecycle";
 import {
   assertOrderLifecycleStage,
@@ -35,6 +39,9 @@ function addDecimal(a: string, b: string): string {
 }
 
 export class OrderReadProjectionMaterializer {
+  private readonly businessIdentityAllocator?: DrizzleBusinessIdentityAllocator;
+  private readonly completionIdempotency: P10AnalyticsCompletionIdempotencyStore;
+
   constructor(
     private readonly repos: OrderReadProjectionRepositories,
     private readonly contextLoader: OrderReadContextLoader,
@@ -42,8 +49,16 @@ export class OrderReadProjectionMaterializer {
     private readonly lineItemBuilder: OrderReadLineItemProjectionBuilder = new OrderReadLineItemProjectionBuilder(
       new OrderCategoryProjectionBuilder(drizzleCategoryResolutionPort)
     ),
-    private readonly businessIdentityAllocator?: DrizzleBusinessIdentityAllocator
-  ) {}
+    options?: {
+      businessIdentityAllocator?: DrizzleBusinessIdentityAllocator;
+      completionIdempotency?: P10AnalyticsCompletionIdempotencyStore;
+    }
+  ) {
+    this.businessIdentityAllocator = options?.businessIdentityAllocator;
+    this.completionIdempotency =
+      options?.completionIdempotency ??
+      new InMemoryP10AnalyticsCompletionIdempotencyStore();
+  }
 
   async syncOrderProjections(orderId: number, eventId: string): Promise<void> {
     if (this.businessIdentityAllocator) {
@@ -201,6 +216,18 @@ export class OrderReadProjectionMaterializer {
     if (payload.type === "OrderCreated") {
       row.orderCount += 1;
     } else {
+      // P10-ORDER-COMPLETION-IDEMPOTENCY-1 — claim once per business order.
+      const claimed = await this.completionIdempotency.tryClaimCompletion(
+        restaurantId,
+        payload.orderId
+      );
+      if (!claimed) {
+        row.lastEventId = envelope.eventId;
+        row.updatedAt = new Date().toISOString();
+        await this.repos.orderAnalytics.upsert(row);
+        return;
+      }
+
       row.completedOrderCount += 1;
       if (source) {
         row.completedSales = addDecimal(
@@ -388,6 +415,11 @@ export class OrderReadProjectionMaterializer {
         analytics.completedSales = addDecimal(
           analytics.completedSales,
           String(order.totalAmount)
+        );
+        // Seed completion markers so post-rebuild duplicate OrderCompleted is harmless.
+        await this.completionIdempotency.markCompletionApplied(
+          restaurantId,
+          orderId
         );
       }
       analyticsByDay.set(analyticsDayKey, analytics);

@@ -242,6 +242,38 @@ export class DrizzleOrderReadProjectionStore {
       .where(eq(orderReadOperationalKpiDaily.restaurantId, restaurantId));
   }
 
+  async getAnalyticsDay(
+    restaurantId: number,
+    dayKey: string
+  ): Promise<OrderAnalyticsDayRecord | null> {
+    const db = await getDb();
+    if (!db) return null;
+    const [row] = await db
+      .select()
+      .from(orderReadAnalyticsDaily)
+      .where(
+        and(
+          eq(orderReadAnalyticsDaily.restaurantId, restaurantId),
+          eq(orderReadAnalyticsDaily.dayKey, dayKey)
+        )
+      )
+      .limit(1);
+    if (!row) return null;
+    return {
+      projectionId: "P-10-analytics",
+      restaurantId: row.restaurantId,
+      dayKey: row.dayKey,
+      orderCount: Number(row.orderCount ?? 0),
+      completedOrderCount: Number(row.completedOrderCount ?? 0),
+      completedSales: String(row.completedSales ?? "0.00"),
+      schemaVersion: Number(
+        row.projectionSchemaVersion ?? ORDER_READ_PROJECTION_SCHEMA_VERSION
+      ),
+      lastEventId: row.lastEventId ?? null,
+      updatedAt: String(row.updatedAt),
+    };
+  }
+
   async upsertAnalytics(record: OrderAnalyticsDayRecord): Promise<void> {
     const db = await getDb();
     if (!db) return;

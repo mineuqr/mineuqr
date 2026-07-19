@@ -65,6 +65,16 @@ export function createPersistingProjectionRepositories(
     },
     orderAnalytics: {
       ...inner.orderAnalytics,
+      /** Prefer memory; fall back to Drizzle so incremental adjust survives restart. */
+      getDay: async (restaurantId: number, dayKey: string) => {
+        const mem = await inner.orderAnalytics.getDay(restaurantId, dayKey);
+        if (mem) return mem;
+        const durable = await drizzle.getAnalyticsDay(restaurantId, dayKey);
+        if (durable) {
+          await inner.orderAnalytics.upsert(durable);
+        }
+        return durable;
+      },
       upsert: async (record: OrderAnalyticsDayRecord) => {
         await inner.orderAnalytics.upsert(record);
         await drizzle.upsertAnalytics(record);
