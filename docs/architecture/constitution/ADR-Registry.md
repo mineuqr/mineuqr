@@ -27,6 +27,7 @@
 | ADR-ARCH-017 | Printer Catalog Ownership and Lifecycle | **Accepted** (v1.1) | Architecture Authority | PRINT-CONNECTOR-ONBOARDING-1A | PRINT-PRINTER-CATALOG-1 | Printing Platform §Catalog | **Implemented** | Extends ADR-ARCH-016; retires `print_connector_selections` as SSOT; mandates pure catalog reads |
 | ADR-ARCH-018 | Ordering Client Platform as Shared Channel Experience Layer | **Accepted** | Architecture Authority | ORDERING-CLIENT-PLATFORM-ARCHITECTURE-1 | ORDERING-CLIENT-GOVERNANCE-1 | Ordering multi-channel client tier | Implemented + governed | Inserts Client Platform between Runtime and channel shells; refines Kiosk browse/cart/checkout ownership |
 | ADR-ARCH-019 | Order Identity via Service Mode and Fulfilment Anchor | **Accepted** | Architecture Authority | KIOSK-ORDER-IDENTITY-ARCHITECTURE-1 | ORDER-IDENTITY-RUNTIME-1 … OPERATIONAL-FULFILMENT-PRESENTATION-1 | Order identity / PlaceOrder / Session / Read / Ops UI | Implemented (presentation adopted) | Ops UIs consume projected fulfilmentLabel; tableNumber heuristics removed |
+| ADR-ARCH-020 | Financial Settlement Platform Architecture | **Accepted** | Architecture Authority | SALES-SETTLEMENT-PLATFORM-ARCHITECTURE-1 · CHECK-GENERALIZATION-ARCHITECTURE-1 | — | Check / Session / Reporting financial SSOT | **Not implemented** | Generalizes Check; membership + optional Session; forbids second monetary aggregate / ERP |
 
 **Registry maintenance:** Principal Engineer updates Implementation Status at program exit certification. Status changes require Architecture Authority approval per §26.
 
@@ -54,5 +55,6 @@
 | ADR-ARCH-017 | [ADR-ARCH-017-printer-catalog-ownership-and-lifecycle.md](../adrs/ADR-ARCH-017-printer-catalog-ownership-and-lifecycle.md) |
 | ADR-ARCH-018 | [ADR-ARCH-018-ordering-client-platform.md](../adrs/ADR-ARCH-018-ordering-client-platform.md) |
 | ADR-ARCH-019 | [ADR-ARCH-019-order-identity-fulfilment-anchor.md](../adrs/ADR-ARCH-019-order-identity-fulfilment-anchor.md) |
+| ADR-ARCH-020 | [ADR-ARCH-020-financial-settlement-platform.md](../adrs/ADR-ARCH-020-financial-settlement-platform.md) |
 
 **Related:** [Blueprint](../blueprints/Order-Centric-Architecture.md) · [ADR Lifecycle](../governance/ADR-Lifecycle.md)
