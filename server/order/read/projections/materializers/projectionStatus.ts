@@ -17,8 +17,12 @@ export function statusBucket(status: string): ActiveOrderStatus | null {
 }
 
 /**
- * REPORTING-BUSINESS-DAY-ADOPTION-1 — analytics dayKey is Business Day label.
+ * REPORTING-BUSINESS-DAY-ADOPTION-1 — Business Day label from a timestamp.
  * Never UTC calendar slice (ts.slice(0,10)).
+ *
+ * For Order Analytics (P-10) day membership, call
+ * `orderAnalyticsBusinessDayKey(order.createdAt)` — do not pass servedAt /
+ * envelope.occurredAt (REPORTING-ORDER-ANALYTICS-DAYKEY-UNIFICATION-1).
  */
 export function dayKeyFromTimestamp(
   ts: string,

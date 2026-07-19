@@ -16,6 +16,7 @@ import {
   isActiveOrderStatus,
   statusBucket,
 } from "./projectionStatus";
+import { orderAnalyticsBusinessDayKey } from "./orderAnalyticsDayKey";
 import { isOrderInOperationalLifecycle } from "./projectionLifecycle";
 import {
   assertOrderLifecycleStage,
@@ -173,20 +174,39 @@ export class OrderReadProjectionMaterializer {
     await this.repos.operationalKpi.upsert(kpi);
   }
 
+  /**
+   * P-10 Order Analytics — REPORTING-ORDER-ANALYTICS-DAYKEY-UNIFICATION-1.
+   * dayKey always from order.createdAt via orderAnalyticsBusinessDayKey.
+   * Never envelope.occurredAt / servedAt (those diverge from rebuild).
+   */
   async adjustAnalytics(envelope: EventEnvelope): Promise<void> {
     const payload = parsePayload(envelope);
+    if (payload.type !== "OrderCreated" && payload.type !== "OrderCompleted") {
+      return;
+    }
+
     const restaurantId = envelope.restaurantId;
     const hours = await this.hoursFor(restaurantId);
-    const dayKey = dayKeyFromTimestamp(envelope.occurredAt, hours);
+    const source = await this.contextLoader.loadByOrderId(payload.orderId);
+    const createdAt =
+      source?.order.createdAt ??
+      (payload.type === "OrderCreated" ? payload.createdAt : null);
+    if (!createdAt) {
+      return;
+    }
+
+    const dayKey = orderAnalyticsBusinessDayKey(createdAt, hours);
     const row = await this.getOrCreateAnalytics(restaurantId, dayKey);
 
     if (payload.type === "OrderCreated") {
       row.orderCount += 1;
-    } else if (payload.type === "OrderCompleted") {
+    } else {
       row.completedOrderCount += 1;
-      const source = await this.contextLoader.loadByOrderId(payload.orderId);
       if (source) {
-        row.completedSales = addDecimal(row.completedSales, String(source.order.totalAmount));
+        row.completedSales = addDecimal(
+          row.completedSales,
+          String(source.order.totalAmount)
+        );
       }
     }
 
@@ -276,11 +296,14 @@ export class OrderReadProjectionMaterializer {
   }
 
   /**
-   * REPORTING-BUSINESS-DAY-BACKFILL-1 — replace daily rollups for a restaurant.
+   * REPORTING-BUSINESS-DAY-BACKFILL-1 / ORDER-ANALYTICS-DAYKEY-UNIFICATION-1 —
+   * replace daily rollups for a restaurant.
    *
-   * Scans every write-model order (not findPage/100 clamp). dayKey via canonical
-   * Business Day. Deletes prior P-06/P-10 rows so stale UTC/wall keys cannot remain.
-   * Idempotent: re-run yields the same BD-keyed set.
+   * Scans every write-model order (not findPage/100 clamp).
+   * P-10 dayKey via orderAnalyticsBusinessDayKey(createdAt) — same helper as
+   * incremental adjustAnalytics. P-06 operational deltas remain event-time
+   * (snapshot rebuild keys active orders by createdAt for kitchen day placement).
+   * Deletes prior P-06/P-10 rows so stale keys cannot remain. Idempotent.
    */
   async rebuildRollupsForRestaurant(restaurantId: number): Promise<{
     ordersScanned: number;
@@ -316,7 +339,10 @@ export class OrderReadProjectionMaterializer {
       if (!source || source.order.restaurantId !== restaurantId) continue;
       ordersScanned += 1;
       const order = source.order;
+      // P-06 snapshot placement (operational) — createdAt BD
       const dayKey = dayKeyFromTimestamp(order.createdAt, hours);
+      // P-10 analytics — identical canonical helper as incremental path
+      const analyticsDayKey = orderAnalyticsBusinessDayKey(order.createdAt, hours);
       const lifecycle = assertOrderLifecycleStage(
         order.lifecycleStage ?? DEFAULT_ORDER_LIFECYCLE_STAGE
       );
@@ -344,11 +370,11 @@ export class OrderReadProjectionMaterializer {
       kpiByDay.set(dayKey, kpi);
 
       const analytics =
-        analyticsByDay.get(dayKey) ??
+        analyticsByDay.get(analyticsDayKey) ??
         {
           projectionId: "P-10-analytics" as const,
           restaurantId,
-          dayKey,
+          dayKey: analyticsDayKey,
           orderCount: 0,
           completedOrderCount: 0,
           completedSales: "0.00",
@@ -364,7 +390,7 @@ export class OrderReadProjectionMaterializer {
           String(order.totalAmount)
         );
       }
-      analyticsByDay.set(dayKey, analytics);
+      analyticsByDay.set(analyticsDayKey, analytics);
     }
 
     // Delete-then-upsert: remove orphan UTC/wall dayKeys from prior materialization.
