@@ -84,6 +84,13 @@ export const SEMANTIC_CLARIFICATIONS = Object.freeze({
       "Order Sales = completed (served) order totals from Order Read (not Check Revenue).",
     averagePair:
       "Average Check uses Check Revenue; Average Order uses Order Sales.",
+    /**
+     * REPORTING-DASHBOARD-ORDER-KPI-PRESENTATION-1
+     * Adjacent Order Sales cards must use Completed Orders (same population).
+     * "Orders" (orderCount) = all placed — do not pair unlabeled with Order Sales.
+     */
+    orderSalesPopulation:
+      "Order Sales, Completed Orders, and Average Order share the completed (served) population. Orders (orderCount) counts every order placed.",
   },
   ar: {
     checkRevenue:
@@ -92,6 +99,8 @@ export const SEMANTIC_CLARIFICATIONS = Object.freeze({
       "مبيعات الطلبات = مجموع الطلبات المكتملة من قراءة الطلبات (وليست إيرادات الشيكات).",
     averagePair:
       "متوسط الشيك من إيرادات الشيكات؛ متوسط الطلب من مبيعات الطلبات.",
+    orderSalesPopulation:
+      "مبيعات الطلبات والطلبات المكتملة ومتوسط الطلب تشترك في مجموعة الطلبات المكتملة (المقدَّمة). عدد الطلبات يحسب كل الطلبات المسجّلة.",
   },
 } as const);
 
@@ -112,6 +121,9 @@ export const SECTION_TERMINOLOGY = Object.freeze({
     checkRevenueOverview: "Check Revenue Overview",
     checkRevenueTrends: "Check Revenue Trends",
     orderSalesAnalytics: "Order Sales",
+    /** REPORTING-DASHBOARD-ORDER-KPI-PRESENTATION-1 — population clarity */
+    orderSalesAnalyticsNote:
+      "Completed (served) orders — comparable with Order Sales. Not every order placed.",
     financialPerformance: "Check Revenue Detail",
     orderSalesPerformance: "Order Sales Detail",
     /** REPORTING-EXECUTIVE-SUMMARY-RATIONALIZATION-1 */
@@ -156,6 +168,8 @@ export const SECTION_TERMINOLOGY = Object.freeze({
     checkRevenueOverview: "نظرة إيرادات الشيكات",
     checkRevenueTrends: "اتجاهات إيرادات الشيكات",
     orderSalesAnalytics: "مبيعات الطلبات",
+    orderSalesAnalyticsNote:
+      "الطلبات المكتملة (المقدَّمة) — قابلة للمقارنة مع مبيعات الطلبات. ليست كل الطلبات المسجّلة.",
     financialPerformance: "تفاصيل إيرادات الشيكات",
     orderSalesPerformance: "تفاصيل مبيعات الطلبات",
     executiveSnapshot: "لمحة سريعة",
@@ -218,10 +232,14 @@ export function preferredPaymentMethodLabel(
  * REPORTING-EXECUTIVE-SUMMARY-SIMPLIFICATION-1 — Money Collected KPIs
  * (Check Revenue, Paid Checks, Average Check) live on Financial Summary only.
  * Tax / complimentary / voided remain Financial Summary analysis.
+ *
+ * REPORTING-DASHBOARD-ORDER-KPI-PRESENTATION-1 — `completedOrders` (not
+ * `orderCount`) so Executive cards share the completed/served population with
+ * Order Sales and Average Order.
  */
 export const EXECUTIVE_SUMMARY_KPI_IDS = [
   "orderSales",
-  "orderCount",
+  "completedOrders",
   "averageOrder",
 ] as const satisfies readonly KpiId[];
 

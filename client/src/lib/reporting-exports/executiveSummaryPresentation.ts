@@ -51,9 +51,9 @@ const KPI_CAPTIONS: Readonly<
     en: "Value of orders that were completed (served)",
     ar: "قيمة الطلبات التي اكتملت (قُدّمت)",
   },
-  orderCount: {
-    en: "How many orders were placed",
-    ar: "عدد الطلبات المسجّلة",
+  completedOrders: {
+    en: "How many orders were completed (served)",
+    ar: "عدد الطلبات التي اكتملت (قُدّمت)",
   },
   averageOrder: {
     en: "Typical size of a completed order",
@@ -88,8 +88,8 @@ function cardValue(
   switch (kpiId) {
     case "orderSales":
       return formatMoney(orderPeriod.orderSales);
-    case "orderCount":
-      return formatNullableCount(orderPeriod.orderCount);
+    case "completedOrders":
+      return formatNullableCount(orderPeriod.completedOrders);
     case "averageOrder":
       return formatMoney(orderPeriod.averageOrder);
     default: {

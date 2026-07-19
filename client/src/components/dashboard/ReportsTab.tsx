@@ -29,7 +29,10 @@ import { isEmailNotVerifiedError } from "@/lib/trpcErrors";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { useCommercialFeatureVisibility } from "@/hooks/useCommercialFeatureVisibility";
-import { businessCurrentYearMonth } from "@shared/reporting-platform";
+import {
+  businessCurrentYearMonth,
+  SECTION_TERMINOLOGY,
+} from "@shared/reporting-platform";
 import {
   Calendar,
   ClipboardList,
@@ -344,33 +347,34 @@ export function ReportsTab({
         <VerificationRequiredPanel variant="orders" />
       ) : (
         <>
-          <div className="border-t border-slate-700/40 pt-4" />
+          {/*
+            REPORTING-DASHBOARD-ORDER-KPI-PRESENTATION-1
+            Count cards bind completedOrders (served) — same population as Order Sales.
+          */}
+          <div className="space-y-1 border-t border-slate-700/40 pt-4">
+            <h2 className={restaurantDash.sectionTitle}>
+              {SECTION_TERMINOLOGY[uiLang].orderSalesAnalytics}
+            </h2>
+            <p className={restaurantDash.sectionSub}>
+              {SECTION_TERMINOLOGY[uiLang].orderSalesAnalyticsNote}
+            </p>
+          </div>
 
           <div className={restaurantDash.kpiGridWide}>
             <RestaurantKpiCard
               label={
                 language === "ar"
-                  ? `طلبات اليوم`
-                  : `Today's ${kpiDisplayName("orderCount", "en")}`
+                  ? `${kpiDisplayName("completedOrders", "ar")} اليوم`
+                  : `Today's ${kpiDisplayName("completedOrders", "en")}`
               }
-              value={orderSales?.today.totalOrders ?? 0}
+              value={orderSales?.today.completedOrders ?? 0}
               icon={ClipboardList}
               tone="warning"
             />
             <RestaurantKpiCard
               label={
                 language === "ar"
-                  ? `طلبات الشهر`
-                  : `Month ${kpiDisplayName("orderCount", "en")}`
-              }
-              value={orderSales?.month.totalOrders ?? 0}
-              icon={Calendar}
-              tone="info"
-            />
-            <RestaurantKpiCard
-              label={
-                language === "ar"
-                  ? `مبيعات طلبات اليوم`
+                  ? `${kpiDisplayName("orderSales", "ar")} اليوم`
                   : `Today's ${kpiDisplayName("orderSales", "en")}`
               }
               value={`${orderSales?.today.orderSales ?? "0.00"} ${sym}`}
@@ -381,7 +385,17 @@ export function ReportsTab({
             <RestaurantKpiCard
               label={
                 language === "ar"
-                  ? `مبيعات طلبات الشهر`
+                  ? `${kpiDisplayName("completedOrders", "ar")} الشهر`
+                  : `Month ${kpiDisplayName("completedOrders", "en")}`
+              }
+              value={orderSales?.month.completedOrders ?? 0}
+              icon={Calendar}
+              tone="info"
+            />
+            <RestaurantKpiCard
+              label={
+                language === "ar"
+                  ? `${kpiDisplayName("orderSales", "ar")} الشهر`
                   : `Month ${kpiDisplayName("orderSales", "en")}`
               }
               value={`${orderSales?.month.orderSales ?? "0.00"} ${sym}`}
@@ -449,7 +463,7 @@ export function ReportsTab({
                     >
                       <span>{row.periodKey}</span>
                       <span className="tabular-nums">
-                        {row.orderCount} · {row.orderSales} {sym}
+                        {row.completedOrders} · {row.orderSales} {sym}
                       </span>
                     </div>
                   ))}
@@ -495,7 +509,7 @@ export function ReportsTab({
                     >
                       <span className="font-medium">{row.periodKey}</span>
                       <span className="tabular-nums text-sm">
-                        {row.orderSales} {sym} · {row.orderCount}
+                        {row.orderSales} {sym} · {row.completedOrders}
                       </span>
                     </div>
                   ))}

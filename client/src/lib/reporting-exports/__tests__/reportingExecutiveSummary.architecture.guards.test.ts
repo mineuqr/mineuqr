@@ -42,7 +42,7 @@ describe("REPORTING-EXECUTIVE-SUMMARY-SIMPLIFICATION-1 guards", () => {
   it("Executive Summary exposes exactly three operational KPIs", () => {
     expect([...EXECUTIVE_SUMMARY_KPI_IDS]).toEqual([
       "orderSales",
-      "orderCount",
+      "completedOrders",
       "averageOrder",
     ]);
   });
@@ -59,10 +59,12 @@ describe("REPORTING-EXECUTIVE-SUMMARY-SIMPLIFICATION-1 guards", () => {
     expect(vm.groups[0]?.id).toBe("operational");
     expect(vm.groups[0]?.cards.map((c) => c.kpiId)).toEqual([
       "orderSales",
-      "orderCount",
+      "completedOrders",
       "averageOrder",
     ]);
     expect(vm.groups[0]?.cards[0]?.label).toBe("Order Sales");
+    expect(vm.groups[0]?.cards[1]?.label).toBe("Completed Orders");
+    expect(vm.groups[0]?.cards[1]?.value).toBe("8");
     expect(vm.footerNote).toMatch(/Financial Summary/i);
     const allLabels = vm.groups
       .flatMap((g) => g.cards)
@@ -84,7 +86,7 @@ describe("REPORTING-EXECUTIVE-SUMMARY-SIMPLIFICATION-1 guards", () => {
     expect(cards).toHaveLength(3);
     expect(cards.map((c) => c.kpiId)).toEqual([
       "orderSales",
-      "orderCount",
+      "completedOrders",
       "averageOrder",
     ]);
   });

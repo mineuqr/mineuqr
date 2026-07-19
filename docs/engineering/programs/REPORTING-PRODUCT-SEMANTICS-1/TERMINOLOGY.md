@@ -20,7 +20,9 @@ Source: `shared/reporting-platform/productSemantics.ts` + `KPI_DICTIONARY.name`.
 | `paidCheckCount` | Paid Checks | الشيكات المدفوعة | Count of paid Checks |
 | `taxCollected` | Tax Collected | الضريبة المحصّلة | Tax on paid Checks (snapshot) |
 | `completedOrders` | Completed Orders | الطلبات المكتملة | Served order count |
-| `orderCount` | Orders | عدد الطلبات | Order count (P-10) |
+| `orderCount` | Orders | عدد الطلبات | All orders placed (P-10 `orderCount`) |
+
+**REPORTING-DASHBOARD-ORDER-KPI-PRESENTATION-1:** When Order Sales is shown next to a count (Dashboard Order Sales section, Executive Summary), use **Completed Orders** — not bare Orders — so the population matches Order Sales / Average Order.
 
 Full map includes operational and catalog KPIs in `PREFERRED_KPI_LABELS`.
 

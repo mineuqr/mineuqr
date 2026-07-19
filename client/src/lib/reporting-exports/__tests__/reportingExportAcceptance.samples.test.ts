@@ -372,10 +372,14 @@ describe("REPORTING-DESIGN-LANGUAGE-1 samples + presentation", () => {
         const ordersFmt = new Intl.NumberFormat("en-US", {
           maximumFractionDigits: 0,
         }).format(orderTotals.orderCount);
+        const completedFmt = new Intl.NumberFormat("en-US", {
+          maximumFractionDigits: 0,
+        }).format(orderTotals.completedOrders);
         const paidFmt = new Intl.NumberFormat("en-US", {
           maximumFractionDigits: 0,
         }).format(bundle.business.paidCheckCount);
         expect(blob).toContain(ordersFmt);
+        expect(blob).toContain(completedFmt);
         expect(blob).toContain(paidFmt);
         expect(blob).toContain(bundle.periodLabel);
 
@@ -393,7 +397,10 @@ describe("REPORTING-DESIGN-LANGUAGE-1 samples + presentation", () => {
           `| Order Sales | OrderSalesRollup (sum of periods) | ${orderSalesDisplay} | Executive (operational), Financial, Order Sales |`
         );
         reconciliation.push(
-          `| Orders | OrderSalesRollup (sum) | ${orderTotals.orderCount} | Executive (operational), Financial, Order Sales |`
+          `| Completed Orders | OrderSalesRollup (sum) | ${orderTotals.completedOrders} | Executive (operational) — same population as Order Sales |`
+        );
+        reconciliation.push(
+          `| Orders (placed) | OrderSalesRollup (sum) | ${orderTotals.orderCount} | Financial / Order Sales detail — not Executive snapshot |`
         );
         reconciliation.push(
           `| Tax / Complimentary / Voided | BusinessMetricsSummary | (analysis) | Financial Summary only — Tax = full period paid checks |`
