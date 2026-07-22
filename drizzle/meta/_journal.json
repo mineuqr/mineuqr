@@ -512,6 +512,13 @@
       "when": 1784580000000,
       "tag": "0072_check_session_optionality",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "5",
+      "when": 1784590000000,
+      "tag": "0073_check_order_settlements",
+      "breakpoints": true
     }
   ]
 }

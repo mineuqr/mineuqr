@@ -41,3 +41,25 @@ export {
   listSettlementTransactionsForRestaurant,
   mapRowToSettlementTransaction,
 } from "./settlementTransactionRepository";
+
+export {
+  mapRowToOrderSettlement,
+  toOrderSettlementInsertValues,
+  toOrderSettlementUpdateValues,
+  type OrderSettlementPersistenceRow,
+  type OrderSettlementInsertValues,
+  type OrderSettlementUpdateValues,
+} from "./orderSettlementMapper";
+
+export {
+  OrderSettlementPersistenceError,
+  insertOrderSettlement,
+  findOrderSettlementByIdentity,
+  existsOrderSettlement,
+  listOrderSettlementsForCheck,
+  listOrderSettlementsForOrder,
+  listOrderSettlementsForRestaurant,
+  updateOrderSettlement,
+  persistOrderSettlement,
+  type OrderSettlementRow,
+} from "./orderSettlementRepository";

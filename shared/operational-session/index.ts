@@ -93,6 +93,8 @@ export {
   ORDER_SETTLEMENT_STATUSES,
   ORDER_SETTLEMENT_TERMINAL_STATUSES,
   ORDER_SETTLEMENT_NON_TERMINAL_STATUSES,
+  isOrderSettlementStatus,
+  assertOrderSettlementStatus,
   isOrderSettlementTerminalStatus,
   isOrderSettlementNonTerminalStatus,
   createOrderSettlement,

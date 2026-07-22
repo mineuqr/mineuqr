@@ -72,6 +72,28 @@ const REQUIRED = {
     ["check_order_membership", "check_order_membership_order_id"],
     ["check_order_membership", "check_order_membership_restaurant_order"],
   ],
+  /** ORDER-SETTLEMENT-PERSISTENCE-1 / ADR-ARCH-022 — Check-owned Order Settlement. */
+  checkOrderSettlementTables: ["check_order_settlements"],
+  checkOrderSettlementColumns: [
+    ["check_order_settlements", "id"],
+    ["check_order_settlements", "restaurantId"],
+    ["check_order_settlements", "checkId"],
+    ["check_order_settlements", "orderId"],
+    ["check_order_settlements", "status"],
+    ["check_order_settlements", "orderTotalSnapshot"],
+    ["check_order_settlements", "allocatedAmount"],
+    ["check_order_settlements", "settledAmount"],
+    ["check_order_settlements", "outstandingAmount"],
+  ],
+  checkOrderSettlementIndexes: [
+    ["check_order_settlements", "check_order_settlements_check_order_unique"],
+    ["check_order_settlements", "check_order_settlements_restaurant_id"],
+    ["check_order_settlements", "check_order_settlements_check_id"],
+    ["check_order_settlements", "check_order_settlements_order_id"],
+    ["check_order_settlements", "check_order_settlements_restaurant_order"],
+    ["check_order_settlements", "check_order_settlements_restaurant_check"],
+    ["check_order_settlements", "check_order_settlements_status"],
+  ],
 };
 
 async function columnExists(conn, table, column) {
@@ -199,10 +221,25 @@ async function main() {
         missing.push(`index:${table}.${indexName}`);
       }
     }
+    for (const table of REQUIRED.checkOrderSettlementTables) {
+      if (!(await tableExists(conn, table))) {
+        missing.push(`table:${table}`);
+      }
+    }
+    for (const [table, column] of REQUIRED.checkOrderSettlementColumns) {
+      if (!(await columnExists(conn, table, column))) {
+        missing.push(`${table}.${column}`);
+      }
+    }
+    for (const [table, indexName] of REQUIRED.checkOrderSettlementIndexes) {
+      if (!(await indexExists(conn, table, indexName))) {
+        missing.push(`index:${table}.${indexName}`);
+      }
+    }
 
     if (missing.length === 0) {
       console.log(
-        "[schema-verify] OK — required schema objects present (auth, order-read, operational-device, fulfilment, business-identity-scope, waiter_display, check-order-membership)."
+        "[schema-verify] OK — required schema objects present (auth, order-read, operational-device, fulfilment, business-identity-scope, waiter_display, check-order-membership, check-order-settlements)."
       );
       return;
     }

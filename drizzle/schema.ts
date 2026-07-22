@@ -477,6 +477,56 @@ export const checkOrderMembership = mysqlTable(
 export type InsertCheckOrderMembership = typeof checkOrderMembership.$inferInsert;
 export type SelectCheckOrderMembership = typeof checkOrderMembership.$inferSelect;
 
+// ─── Check Order Settlements (ORDER-SETTLEMENT-PERSISTENCE-1 / ADR-ARCH-022) ──
+/** Check-owned Order Settlement entity storage. Not an aggregate root. No Domain logic. */
+export const checkOrderSettlements = mysqlTable(
+	"check_order_settlements",
+	{
+		id: int().autoincrement().primaryKey(),
+		restaurantId: int().notNull(),
+		checkId: int().notNull(),
+		orderId: int().notNull(),
+		status: mysqlEnum([
+			"pending",
+			"partially_settled",
+			"settled",
+			"complimentary",
+			"cancelled",
+			"voided",
+			"refunded",
+		])
+			.default("pending")
+			.notNull(),
+		orderTotalSnapshot: decimal({ precision: 10, scale: 2 }).default("0.00").notNull(),
+		allocatedAmount: decimal({ precision: 10, scale: 2 }).default("0.00").notNull(),
+		settledAmount: decimal({ precision: 10, scale: 2 }).default("0.00").notNull(),
+		outstandingAmount: decimal({ precision: 10, scale: 2 }).default("0.00").notNull(),
+		createdAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+		updatedAt: timestamp({ mode: "string" }).defaultNow().onUpdateNow().notNull(),
+	},
+	(table) => [
+		uniqueIndex("check_order_settlements_check_order_unique").on(
+			table.checkId,
+			table.orderId
+		),
+		index("check_order_settlements_restaurant_id").on(table.restaurantId),
+		index("check_order_settlements_check_id").on(table.checkId),
+		index("check_order_settlements_order_id").on(table.orderId),
+		index("check_order_settlements_restaurant_order").on(
+			table.restaurantId,
+			table.orderId
+		),
+		index("check_order_settlements_restaurant_check").on(
+			table.restaurantId,
+			table.checkId
+		),
+		index("check_order_settlements_status").on(table.status),
+	]
+);
+
+export type InsertCheckOrderSettlement = typeof checkOrderSettlements.$inferInsert;
+export type SelectCheckOrderSettlement = typeof checkOrderSettlements.$inferSelect;
+
 // ─── Table Events (TABLE-MANAGEMENT-1 Phase C) ──────────────────
 export const tableEvents = mysqlTable("table_events", {
 	id: bigint({ mode: "number" }).autoincrement().primaryKey(),

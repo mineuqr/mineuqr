@@ -21,6 +21,7 @@ const require = createRequire(import.meta.url);
 /** Children → parents. DELETE only — never DROP. */
 const CLEAR_TABLES = [
   "check_settlement_transactions",
+  "check_order_settlements",
   "check_order_membership",
   "customer_push_subscriptions",
   "order_items",
