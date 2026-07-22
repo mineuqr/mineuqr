@@ -1,5 +1,6 @@
 /**
  * CHECK-GENERALIZATION-M5 / ADR-ARCH-020 — channel adoption architecture guards.
+ * COMPATIBILITY-CLEANUP-1 — dual-write remnants must not remain.
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -43,11 +44,12 @@ describe("CHECK-GENERALIZATION-M5 architecture guards", () => {
     expect(writers).not.toContain("dualWriteEnrollOrderForSession");
   });
 
-  it("does not disable dual-write or remove Session aggregate", () => {
+  it("Session aggregate remains; dual-write helpers are gone", () => {
     const membership = read(
       "server/operational-session/check/checkMembershipService.ts"
     );
-    expect(membership).toContain("dualWriteEnabled()");
+    expect(membership).not.toContain("dualWriteEnabled()");
+    expect(membership).not.toContain("dualWrite");
     const sessionSvc = read("server/diningSession/sessionService.ts");
     expect(sessionSvc).toContain("export async function markPaid");
     expect(sessionSvc).toContain("export async function getOrCreateSession");

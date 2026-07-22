@@ -77,22 +77,6 @@ export function reportingOrderSalesQueryOptions(enabled: boolean) {
   } as const;
 }
 
-/**
- * @deprecated REPORTING-CANONICAL-API-SUNSET-1 — soft-sunset alias.
- * Use `reportingBusinessSummaryQueryOptions`. Do not import in new code.
- */
-export function opsSettlementSummaryQueryOptions(enabled: boolean) {
-  return reportingBusinessSummaryQueryOptions(enabled);
-}
-
-/**
- * @deprecated REPORTING-CANONICAL-API-SUNSET-1 — soft-sunset alias.
- * Use `reportingBusinessTrendQueryOptions`. Do not import in new code.
- */
-export function opsSettlementTrendQueryOptions(enabled: boolean) {
-  return reportingBusinessTrendQueryOptions(enabled);
-}
-
 export function orderListQueryOptions(enabled: boolean) {
   return {
     enabled,

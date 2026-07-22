@@ -4,8 +4,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  authoritative: true,
-  dualWrite: true,
   findSessionById: vi.fn(),
   findOpenCheckBySessionId: vi.fn(),
   findCheckById: vi.fn(),
@@ -14,7 +12,6 @@ const mocks = vi.hoisted(() => ({
   updateCheckMoney: vi.fn(),
   finalizeCheckOutcome: vi.fn(),
   insertSettlementTransactions: vi.fn(),
-  getOrdersBySessionId: vi.fn(),
   getOrdersByIds: vi.fn(),
   getRestaurantById: vi.fn(),
   getOrderById: vi.fn(),
@@ -25,23 +22,11 @@ const mocks = vi.hoisted(() => ({
   deactivateMembershipsOnCheckVoid: vi.fn(),
 }));
 
-vi.mock("../../../_core/env", () => ({
-  ENV: {
-    get checkMembershipAuthoritativeRead() {
-      return mocks.authoritative;
-    },
-    get checkMembershipDualWrite() {
-      return mocks.dualWrite;
-    },
-  },
-}));
-
 vi.mock("../../../_core/opsLog", () => ({
   opsLog: vi.fn(),
 }));
 
 vi.mock("../../../db", () => ({
-  getOrdersBySessionId: (...a: unknown[]) => mocks.getOrdersBySessionId(...a),
   getOrdersByIds: (...a: unknown[]) => mocks.getOrdersByIds(...a),
   getRestaurantById: (...a: unknown[]) => mocks.getRestaurantById(...a),
   getOrderById: (...a: unknown[]) => mocks.getOrderById(...a),
@@ -124,8 +109,6 @@ const sessionlessOpenCheck = {
 describe("CHECK-GENERALIZATION-M4 Session optionality", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.authoritative = true;
-    mocks.dualWrite = true;
     mocks.getRestaurantById.mockResolvedValue({
       id: 1,
       currencyCode: "SAR",
@@ -282,7 +265,6 @@ describe("CHECK-GENERALIZATION-M4 Session optionality", () => {
 
     await recalculateOpenCheck({ restaurantId: 1, checkId: 200 });
 
-    expect(mocks.getOrdersBySessionId).not.toHaveBeenCalled();
     expect(mocks.listActiveOrderIdsForCheck).toHaveBeenCalledWith(1, 200);
     expect(mocks.updateCheckMoney).toHaveBeenCalledWith(
       expect.objectContaining({ checkId: 200, subtotal: "10.00" })

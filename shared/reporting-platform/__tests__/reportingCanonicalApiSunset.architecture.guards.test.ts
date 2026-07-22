@@ -1,7 +1,8 @@
 /**
  * REPORTING-CANONICAL-API-SUNSET-1 — prevent new consumption of legacy reporting APIs.
+ * COMPATIBILITY-CLEANUP-1 — ops settlement surfaces hard-deleted.
  */
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
@@ -48,18 +49,22 @@ describe("REPORTING-CANONICAL-API-SUNSET-1 architecture guards", () => {
       "shared/reporting-platform/legacyReportingSurfaces.ts"
     );
     expect(registry).toContain(REPORTING_CANONICAL_API_SUNSET_PROGRAM_ID);
-    expect(LEGACY_REPORTING_SURFACES.length).toBeGreaterThanOrEqual(8);
-    expect(listSoftSunsetUnusedSurfaces().length).toBeGreaterThanOrEqual(5);
+    expect(LEGACY_REPORTING_SURFACES.length).toBeGreaterThanOrEqual(6);
+    expect(listSoftSunsetUnusedSurfaces().length).toBeGreaterThanOrEqual(3);
     expect(listArchitecturalGaps().some((g) => g.gapProgram)).toBe(true);
   });
 
-  it("ops settlement procedures are soft-sunset deprecated", () => {
+  it("ops settlement procedures and settlementMetrics are hard-deleted", () => {
     const ops = read("server/ops/opsRouter.ts");
-    expect(ops).toContain("@deprecated REPORTING-CANONICAL-API-SUNSET-1");
-    expect(ops).toContain("getSettlementSummary");
-    expect(ops).toContain("reporting.getBusinessMetricsSummary");
-    const settlement = read("server/analytics/settlementMetrics.ts");
-    expect(settlement).toContain("@deprecated REPORTING-CANONICAL-API-SUNSET-1");
+    expect(ops).not.toContain("getSettlementSummary");
+    expect(ops).not.toContain("getSettlementTrend");
+    expect(ops).not.toContain("getSettlementBreakdown");
+    expect(
+      existsSync(join(repoRoot, "server/analytics/settlementMetrics.ts"))
+    ).toBe(false);
+    const queryRuntime = read("client/src/lib/queryRuntime.ts");
+    expect(queryRuntime).not.toContain("opsSettlementSummaryQueryOptions");
+    expect(queryRuntime).not.toContain("opsSettlementTrendQueryOptions");
   });
 
   it("restaurant Dashboard / Reports / exports forbid legacy settlement KPI APIs", () => {
@@ -75,13 +80,6 @@ describe("REPORTING-CANONICAL-API-SUNSET-1 architecture guards", () => {
         if (isTestOrGuardFile(file)) continue;
         const src = read(file);
         for (const forbidden of FORBIDDEN_RESTAURANT_KPI_CLIENT_APIS) {
-          if (
-            forbidden.startsWith("opsSettlement") &&
-            file.endsWith("queryRuntime.ts")
-          ) {
-            // Alias definitions live only in queryRuntime (soft-sunset).
-            continue;
-          }
           expect(src, `${file} must not contain ${forbidden}`).not.toContain(
             forbidden
           );
@@ -104,7 +102,6 @@ describe("REPORTING-CANONICAL-API-SUNSET-1 architecture guards", () => {
   it("client production sources do not import opsSettlement*QueryOptions", () => {
     for (const file of listFiles("client/src")) {
       if (isTestOrGuardFile(file)) continue;
-      if (file.endsWith("queryRuntime.ts")) continue;
       const src = read(file);
       expect(src, file).not.toContain("opsSettlementSummaryQueryOptions");
       expect(src, file).not.toContain("opsSettlementTrendQueryOptions");

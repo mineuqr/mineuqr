@@ -7,10 +7,8 @@
  * Owned by Operational Session Platform. Does not modify Order Domain.
  */
 
-import { ENV } from "../../_core/env";
 import {
   getOrdersByIds,
-  getOrdersBySessionId,
   getRestaurantById,
 } from "../../db";
 import { computeOrdersTotalAmount } from "../../diningSession/sessionOrderTotals";
@@ -21,7 +19,6 @@ import {
 } from "../../diningSession/sessionRepository";
 import {
   DiningSessionNotFoundError,
-  DiningSessionTransitionError,
   DiningSessionUnavailableError,
   DiningSessionValidationError,
   formatDiningSessionTimestamp,
@@ -69,38 +66,12 @@ export class CheckTransitionError extends Error {
 }
 
 /**
- * COMPATIBILITY-DEPENDENCY-ELIMINATION-1 — Session-scan money discovery.
- * Compatibility / emergency rollback only. Production default never enters here
- * while CHECK_MEMBERSHIP_AUTHORITATIVE_READ remains ON (default).
- */
-async function loadOrdersSubtotalCompatibilitySessionScan(
-  restaurantId: number,
-  sessionId: number
-): Promise<string> {
-  const orderRows = await getOrdersBySessionId(restaurantId, sessionId);
-  return computeOrdersTotalAmount(orderRows);
-}
-
-/**
- * Check Order money discovery — Membership is production authority.
- * Session scan is isolated compatibility rollback when authoritative flag is OFF.
+ * COMPATIBILITY-CLEANUP-1 — Check Order money discovery is Membership-only.
  */
 async function loadOrdersSubtotal(input: {
   restaurantId: number;
-  sessionId: number | null;
   checkId: number;
 }): Promise<string> {
-  // Sessionless Checks always use Membership (no Session to scan).
-  const useMembership =
-    ENV.checkMembershipAuthoritativeRead || input.sessionId == null;
-
-  if (!useMembership) {
-    return loadOrdersSubtotalCompatibilitySessionScan(
-      input.restaurantId,
-      input.sessionId!
-    );
-  }
-
   const orderIds = await listActiveOrderIdsForCheck(
     input.restaurantId,
     input.checkId
@@ -111,14 +82,12 @@ async function loadOrdersSubtotal(input: {
 
 async function refreshOpenCheckMoneyFromDiscovery(input: {
   restaurantId: number;
-  sessionId: number | null;
   checkId: number;
   billDiscountAmount: string;
   taxPolicySnapshot: OperationalCheck["taxPolicySnapshot"];
 }): Promise<void> {
   const ordersSubtotal = await loadOrdersSubtotal({
     restaurantId: input.restaurantId,
-    sessionId: input.sessionId,
     checkId: input.checkId,
   });
   const money = computeCheckMoney({
@@ -186,7 +155,6 @@ export async function createOpenCheckForSession(
       const mapped = mapRowToOperationalCheck(existing);
       await refreshOpenCheckMoneyFromDiscovery({
         restaurantId: input.restaurantId,
-        sessionId: input.sessionId,
         checkId: existing.id,
         billDiscountAmount: mapped.billDiscountAmount,
         taxPolicySnapshot: mapped.taxPolicySnapshot,
@@ -242,7 +210,6 @@ export async function createOpenCheckForSession(
 
   await refreshOpenCheckMoneyFromDiscovery({
     restaurantId: input.restaurantId,
-    sessionId: input.sessionId,
     checkId,
     billDiscountAmount: "0.00",
     taxPolicySnapshot,
@@ -310,7 +277,6 @@ export async function recalculateOpenCheckForSession(input: {
 
     await refreshOpenCheckMoneyFromDiscovery({
       restaurantId: input.restaurantId,
-      sessionId: input.sessionId,
       checkId: check.id,
       billDiscountAmount: check.billDiscountAmount,
       taxPolicySnapshot: check.taxPolicySnapshot,
@@ -350,7 +316,6 @@ async function finalizeOpenCheckById(
 
   const ordersSubtotal = await loadOrdersSubtotal({
     restaurantId: input.restaurantId,
-    sessionId: check.sessionId,
     checkId: check.id,
   });
   const money = computeCheckMoney({
@@ -423,72 +388,6 @@ async function finalizeOpenCheckById(
   return mapRowToOperationalCheck(row);
 }
 
-/** Session-façade finalize — resolves Check via Session, then Check-centric finalize. */
-async function finalizeOpenCheck(
-  input: {
-    restaurantId: number;
-    sessionId: number;
-    outcome: Exclude<CheckOutcome, "open">;
-    settlements?: readonly StaffSettlementLineInput[];
-  },
-  client?: SessionDbClient
-): Promise<OperationalCheck> {
-  const check = await ensureOpenCheckForSession({
-    restaurantId: input.restaurantId,
-    sessionId: input.sessionId,
-  });
-  return finalizeOpenCheckById(
-    {
-      restaurantId: input.restaurantId,
-      checkId: check.id,
-      outcome: input.outcome,
-      settlements: input.settlements,
-    },
-    client
-  );
-}
-
-/**
- * Settle Check Paid — freezes totals + records settlement transaction(s).
- * Session close remains Session responsibility.
- * Omitting `settlements` writes one `other` tender for grandTotal (backward compatible).
- * SETTLEMENT-PAYMENT-METHOD-CAPTURE-1 — supplied settlements persist operator tenders.
- */
-export async function settleCheckPaid(input: {
-  restaurantId: number;
-  sessionId: number;
-  settlements?: readonly StaffSettlementLineInput[];
-}): Promise<OperationalCheck> {
-  return finalizeOpenCheck({
-    restaurantId: input.restaurantId,
-    sessionId: input.sessionId,
-    outcome: "paid",
-    settlements: input.settlements,
-  });
-}
-
-export async function settleCheckComplimentary(input: {
-  restaurantId: number;
-  sessionId: number;
-}): Promise<OperationalCheck> {
-  return finalizeOpenCheck({ ...input, outcome: "complimentary" });
-}
-
-/** Void Check — operational abandon; distinct from Order cancelled. */
-export async function voidCheck(input: {
-  restaurantId: number;
-  sessionId: number;
-}): Promise<OperationalCheck> {
-  const session = await findSessionById(input.sessionId);
-  if (!session || session.restaurantId !== input.restaurantId) {
-    throw new DiningSessionNotFoundError();
-  }
-  if (session.status === "closed") {
-    throw new DiningSessionTransitionError("Session is closed");
-  }
-  return finalizeOpenCheck({ ...input, outcome: "voided" });
-}
-
 // ─── M4 Check-centric financial APIs (Session optional) ───────────
 
 /**
@@ -511,7 +410,6 @@ export async function recalculateOpenCheck(input: {
 
     await refreshOpenCheckMoneyFromDiscovery({
       restaurantId: input.restaurantId,
-      sessionId: check.sessionId,
       checkId: check.id,
       billDiscountAmount: check.billDiscountAmount,
       taxPolicySnapshot: check.taxPolicySnapshot,

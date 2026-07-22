@@ -6,23 +6,11 @@ import { getActiveTablesBoard } from "./activeTablesBoard";
 import { getActionCenter } from "./actionCenter";
 import { getActivityFeed } from "./activityFeed";
 import { ACTIVITY_FEED_DEFAULT_LIMIT, ACTIVITY_FEED_MAX_LIMIT } from "./operationalConstants";
-import {
-  getSettlementBreakdown,
-  getSettlementSummary,
-  getSettlementTrend,
-} from "../analytics/settlementMetrics";
-
-const settlementMetricsInput = z.object({
-  restaurantId: z.number().int().positive(),
-  from: z.string().optional(),
-  to: z.string().optional(),
-});
 
 /**
  * OPS-DASHBOARD-2 — owner restaurant operations read API.
  *
- * REPORTING-CANONICAL-API-SUNSET-1:
- * `getSettlement*` procedures below are soft-sunset legacy reporting surfaces.
+ * COMPATIBILITY-CLEANUP-1 — legacy ops.getSettlement* procedures removed.
  * Canonical restaurant business KPIs: `reporting.*` only.
  */
 export const opsRouter = router({
@@ -72,56 +60,5 @@ export const opsRouter = router({
       return getActivityFeed(input.restaurantId, {
         limit: input.limit ?? ACTIVITY_FEED_DEFAULT_LIMIT,
       });
-    }),
-
-  /**
-   * @deprecated REPORTING-CANONICAL-API-SUNSET-1 — Legacy Reporting Surface (non-canonical).
-   * Soft-sunset: no production Dashboard/Reports consumers.
-   * Canonical: `reporting.getBusinessMetricsSummary` (Paid Check grandTotal Revenue).
-   * Do not use for new code. Backward compatible until hard-delete program.
-   */
-  getSettlementSummary: verifiedProcedure
-    .input(settlementMetricsInput)
-    .query(async ({ input, ctx }) => {
-      await assertRestaurantAccess(
-        ctx,
-        input.restaurantId,
-        "ops.getSettlementSummary"
-      );
-      return getSettlementSummary(input);
-    }),
-
-  /**
-   * @deprecated REPORTING-CANONICAL-API-SUNSET-1 — Legacy Reporting Surface (non-canonical).
-   * Canonical: `reporting.getBusinessMetricsSummary`.
-   */
-  getSettlementBreakdown: verifiedProcedure
-    .input(settlementMetricsInput)
-    .query(async ({ input, ctx }) => {
-      await assertRestaurantAccess(
-        ctx,
-        input.restaurantId,
-        "ops.getSettlementBreakdown"
-      );
-      return getSettlementBreakdown(input);
-    }),
-
-  /**
-   * @deprecated REPORTING-CANONICAL-API-SUNSET-1 — Legacy Reporting Surface (non-canonical).
-   * Canonical: `reporting.getBusinessMetricsTrend`.
-   */
-  getSettlementTrend: verifiedProcedure
-    .input(
-      settlementMetricsInput.extend({
-        grouping: z.enum(["day", "week", "month"]),
-      })
-    )
-    .query(async ({ input, ctx }) => {
-      await assertRestaurantAccess(
-        ctx,
-        input.restaurantId,
-        "ops.getSettlementTrend"
-      );
-      return getSettlementTrend(input);
     }),
 });

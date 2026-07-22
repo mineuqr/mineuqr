@@ -1,5 +1,6 @@
 /**
  * CHECK-GENERALIZATION-M3 / ADR-ARCH-020 — architecture guards for authoritative cutover.
+ * COMPATIBILITY-CLEANUP-1 — rollback Session-scan / flags removed.
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -12,22 +13,21 @@ function read(rel: string): string {
 }
 
 describe("CHECK-GENERALIZATION-M3 architecture guards", () => {
-  it("CheckService money path uses membership discovery (authoritative cutover)", () => {
+  it("CheckService money path uses membership discovery (authoritative)", () => {
     const svc = read("server/operational-session/check/CheckService.ts");
     expect(svc).toContain("listActiveOrderIdsForCheck");
     expect(svc).toContain("getOrdersByIds");
-    expect(svc).toContain("checkMembershipAuthoritativeRead");
     expect(svc).toContain("syncSessionOrdersToCheck");
-    // Session scan may remain as bootstrap/rollback only — not sole authority.
-    expect(svc).toContain("loadOrdersSubtotalCompatibilitySessionScan");
+    expect(svc).not.toContain("checkMembershipAuthoritativeRead");
+    expect(svc).not.toContain("loadOrdersSubtotalCompatibilitySessionScan");
   });
 
-  it("authoritative-read env flag exists and defaults ON", () => {
+  it("membership compatibility env flags are removed", () => {
     const env = read("server/_core/env.ts");
-    expect(env).toContain("CHECK_MEMBERSHIP_AUTHORITATIVE_READ");
-    expect(env).toContain("checkMembershipAuthoritativeRead");
-    expect(env).toContain('CHECK_MEMBERSHIP_AUTHORITATIVE_READ !== "false"');
-    expect(env).toContain("CHECK_MEMBERSHIP_DUAL_WRITE");
+    expect(env).not.toContain("CHECK_MEMBERSHIP_AUTHORITATIVE_READ");
+    expect(env).not.toContain("checkMembershipAuthoritativeRead");
+    expect(env).not.toContain("CHECK_MEMBERSHIP_DUAL_WRITE");
+    expect(env).not.toContain("checkMembershipDualWrite");
   });
 
   it("does not introduce Order settle façade (M6)", () => {

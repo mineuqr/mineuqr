@@ -49,18 +49,6 @@ export const ENV = {
   /** TABLE-MANAGEMENT-1 D3 — dual-write orders.sessionId when true. */
   tableSessionDualWrite: process.env.TABLE_SESSION_DUAL_WRITE === "true",
   /**
-   * CHECK-GENERALIZATION-M1 / ADR-ARCH-020 — dual-write Check Order membership.
-   * Default ON. Set CHECK_MEMBERSHIP_DUAL_WRITE=false to disable (rollback).
-   */
-  checkMembershipDualWrite: process.env.CHECK_MEMBERSHIP_DUAL_WRITE !== "false",
-  /**
-   * CHECK-GENERALIZATION-M3 / ADR-ARCH-020 — membership is authoritative for Check
-   * Order discovery / subtotals. Default ON. Set CHECK_MEMBERSHIP_AUTHORITATIVE_READ=false
-   * to roll back to Session scan **only while dual-write remains ON**.
-   */
-  checkMembershipAuthoritativeRead:
-    process.env.CHECK_MEMBERSHIP_AUTHORITATIVE_READ !== "false",
-  /**
    * ORDERS-READ-MODEL-1 Phase 3B — when true, publisher delegates to integration + projection registries.
    * Default on in non-test environments; set ORDER_READ_PROJECTIONS_ENABLED=false to disable.
    */

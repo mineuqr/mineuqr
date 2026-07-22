@@ -1,12 +1,9 @@
 /**
- * CHECK-GENERALIZATION-M1 — Check-owned membership service.
- *
- * ADR-ARCH-020: Membership belongs to Check. Not an aggregate.
- * COMPATIBILITY-DEPENDENCY-ELIMINATION-1 — production uses authoritative enroll/sync/void.
- * Dual-write helpers remain flag-gated compatibility mirrors (not required by production).
+ * Check-owned membership service (ADR-ARCH-020).
+ * Membership belongs to Check. Not an aggregate.
+ * COMPATIBILITY-CLEANUP-1 — dual-write helpers removed; authoritative enroll/sync/void only.
  */
 
-import { ENV } from "../../_core/env";
 import { opsLog } from "../../_core/opsLog";
 import { OPS_EVENT } from "../../_core/opsTaxonomy";
 import { getOrderById, getOrdersBySessionId } from "../../db";
@@ -29,14 +26,8 @@ export class CheckMembershipError extends Error {
   }
 }
 
-function dualWriteEnabled(): boolean {
-  return ENV.checkMembershipDualWrite;
-}
-
 /**
  * Enroll one Order into an open Check (idempotent).
- * Check-owned command (ADR-ARCH-020 / M4) — not gated by dual-write.
- * Dual-write helpers remain best-effort and flag-gated separately.
  * Does NOT recalculate Check money — callers invoke recalc.
  */
 export async function enrollOrderInCheck(
@@ -52,7 +43,6 @@ export async function enrollOrderInCheck(
   if (!check || check.restaurantId !== input.restaurantId) {
     throw new CheckMembershipError("Check not found for enrollment");
   }
-  // Live dual-write: open Checks only. Backfill may enroll historical paid/comp.
   if (check.outcome !== "open") {
     if (input.enrolledReason !== "backfill") {
       throw new CheckMembershipError("Cannot enroll into a non-open Check");
@@ -111,8 +101,8 @@ export async function enrollOrderInCheck(
 }
 
 /**
- * COMPATIBILITY-DEPENDENCY-ELIMINATION-1 — authoritative enroll for Session-linked Order.
- * Not gated by dual-write. Best-effort (ops-logged) for Session aggregate writers.
+ * Authoritative enroll for Session-linked Order.
+ * Best-effort (ops-logged) for Session aggregate writers.
  */
 export async function enrollOrderForSessionCheck(input: {
   restaurantId: number;
@@ -157,22 +147,8 @@ export async function enrollOrderForSessionCheck(input: {
 }
 
 /**
- * Dual-write compatibility mirror — flag-gated. Production must not depend on this.
- */
-export async function dualWriteEnrollOrderForSession(input: {
-  restaurantId: number;
-  sessionId: number;
-  orderId: number;
-  checkId?: number | null;
-  enrolledReason?: CheckMembershipEnrolledReason;
-}): Promise<void> {
-  if (!dualWriteEnabled()) return;
-  await enrollOrderForSessionCheck(input);
-}
-
-/**
- * COMPATIBILITY-DEPENDENCY-ELIMINATION-1 — authoritative sync of Session Orders → Check.
- * Not gated by dual-write. Visit order list is operational seed; Membership owns finance after.
+ * Authoritative sync of Session Orders → Check Membership.
+ * Visit order list is operational seed; Membership owns finance after.
  */
 export async function syncSessionOrdersToCheck(input: {
   restaurantId: number;
@@ -209,19 +185,7 @@ export async function syncSessionOrdersToCheck(input: {
   }
 }
 
-/**
- * Dual-write compatibility mirror — flag-gated. Production must not depend on this.
- */
-export async function dualWriteSyncSessionOrdersToCheck(input: {
-  restaurantId: number;
-  sessionId: number;
-  checkId: number;
-}): Promise<void> {
-  if (!dualWriteEnabled()) return;
-  await syncSessionOrdersToCheck(input);
-}
-
-/** Authoritative void deactivate — not gated by dual-write. */
+/** Authoritative void deactivate. */
 export async function deactivateMembershipsOnCheckVoid(input: {
   restaurantId: number;
   checkId: number;
@@ -242,13 +206,4 @@ export async function deactivateMembershipsOnCheckVoid(input: {
       },
     });
   }
-}
-
-/** Dual-write compatibility mirror — flag-gated. Production must not depend on this. */
-export async function dualWriteDeactivateMembershipsOnVoid(input: {
-  restaurantId: number;
-  checkId: number;
-}): Promise<void> {
-  if (!dualWriteEnabled()) return;
-  await deactivateMembershipsOnCheckVoid(input);
 }

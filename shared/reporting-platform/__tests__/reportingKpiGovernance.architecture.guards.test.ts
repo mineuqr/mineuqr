@@ -1,7 +1,7 @@
 /**
  * REPORTING-KPI-GOVERNANCE-1 — architecture guards.
  */
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
@@ -79,10 +79,13 @@ describe("REPORTING-KPI-GOVERNANCE-1 architecture guards", () => {
     }
   });
 
-  it("legacy settlement metrics are marked non-canonical for Revenue", () => {
-    const settlement = read("server/analytics/settlementMetrics.ts");
-    expect(settlement).toContain("REPORTING-KPI-GOVERNANCE-1");
-    expect(settlement).toContain("NON-CANONICAL");
-    expect(settlement).toContain("getBusinessMetricsSummary");
+  it("legacy settlement metrics module is hard-deleted (non-canonical for Revenue)", () => {
+    expect(
+      existsSync(join(repoRoot, "server/analytics/settlementMetrics.ts"))
+    ).toBe(false);
+    const dict = read("shared/reporting-platform/kpiDictionary.ts");
+    expect(dict).toContain("NON_CANONICAL_REVENUE_SURFACES");
+    expect(dict).toContain("ops.getSettlementSummary");
   });
 });
+

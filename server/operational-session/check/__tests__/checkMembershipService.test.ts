@@ -1,5 +1,6 @@
 /**
- * CHECK-GENERALIZATION-M1 — membership dual-write unit tests.
+ * CHECK-GENERALIZATION-M1 — membership authoritative enroll/sync unit tests.
+ * COMPATIBILITY-CLEANUP-1 — dual-write helpers removed.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -13,15 +14,6 @@ const mocks = vi.hoisted(() => ({
   insertCheckOrderMembership: vi.fn(),
   reactivateCheckOrderMembership: vi.fn(),
   deactivateMembershipsForCheck: vi.fn(),
-  dualWriteEnabled: true,
-}));
-
-vi.mock("../../../_core/env", () => ({
-  ENV: {
-    get checkMembershipDualWrite() {
-      return mocks.dualWriteEnabled;
-    },
-  },
 }));
 
 vi.mock("../../../_core/opsLog", () => ({
@@ -54,15 +46,13 @@ vi.mock("../checkOrderMembershipRepository", () => ({
 
 import {
   enrollOrderInCheck,
-  dualWriteEnrollOrderForSession,
   enrollOrderForSessionCheck,
   syncSessionOrdersToCheck,
 } from "../checkMembershipService";
 
-describe("CHECK-GENERALIZATION-M1 membership dual-write", () => {
+describe("CHECK-GENERALIZATION-M1 membership service", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.dualWriteEnabled = true;
     mocks.findMembershipOnCheck.mockResolvedValue(null);
     mocks.findBlockingMembershipForOrder.mockResolvedValue(null);
     mocks.insertCheckOrderMembership.mockResolvedValue(1);
@@ -142,18 +132,7 @@ describe("CHECK-GENERALIZATION-M1 membership dual-write", () => {
     ).rejects.toThrow(/already enrolled/);
   });
 
-  it("dual-write helper no-ops when dual-write disabled (rollback)", async () => {
-    mocks.dualWriteEnabled = false;
-    await dualWriteEnrollOrderForSession({
-      restaurantId: 1,
-      sessionId: 3,
-      orderId: 5,
-    });
-    expect(mocks.findOpenCheckBySessionId).not.toHaveBeenCalled();
-  });
-
-  it("enrollOrderForSessionCheck works when dual-write is disabled", async () => {
-    mocks.dualWriteEnabled = false;
+  it("enrollOrderForSessionCheck enrolls via open Session Check", async () => {
     mocks.findOpenCheckBySessionId.mockResolvedValue({ id: 10 });
     mocks.findCheckById.mockResolvedValue({
       id: 10,
@@ -171,38 +150,7 @@ describe("CHECK-GENERALIZATION-M1 membership dual-write", () => {
     expect(mocks.insertCheckOrderMembership).toHaveBeenCalled();
   });
 
-  it("enrollOrderInCheck remains available when dual-write is disabled (M4)", async () => {
-    mocks.dualWriteEnabled = false;
-    mocks.findCheckById.mockResolvedValue({
-      id: 10,
-      restaurantId: 1,
-      outcome: "open",
-    });
-    mocks.getOrderById.mockResolvedValue({ id: 5, restaurantId: 1 });
-    const status = await enrollOrderInCheck({
-      restaurantId: 1,
-      checkId: 10,
-      orderId: 5,
-      enrolledReason: "order_place",
-    });
-    expect(status).toBe("enrolled");
-  });
-
-  it("dualWriteEnrollOrderForSession does not throw on failure", async () => {
-    mocks.findOpenCheckBySessionId.mockResolvedValue({ id: 10 });
-    mocks.findCheckById.mockRejectedValue(new Error("db down"));
-
-    await expect(
-      dualWriteEnrollOrderForSession({
-        restaurantId: 1,
-        sessionId: 3,
-        orderId: 5,
-      })
-    ).resolves.toBeUndefined();
-  });
-
-  it("syncSessionOrdersToCheck enrolls without dual-write flag", async () => {
-    mocks.dualWriteEnabled = false;
+  it("syncSessionOrdersToCheck enrolls all Session orders", async () => {
     mocks.getOrdersBySessionId.mockResolvedValue([{ id: 5 }, { id: 6 }]);
     mocks.findCheckById.mockResolvedValue({
       id: 10,

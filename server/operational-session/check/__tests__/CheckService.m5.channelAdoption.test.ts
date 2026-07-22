@@ -4,30 +4,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  authoritative: true,
-  dualWrite: true,
   findSessionById: vi.fn(),
   findOpenCheckBySessionId: vi.fn(),
   findCheckById: vi.fn(),
   insertOperationalCheck: vi.fn(),
   updateSessionActiveCheckId: vi.fn(),
   updateCheckMoney: vi.fn(),
-  getOrdersBySessionId: vi.fn(),
   getOrdersByIds: vi.fn(),
   getRestaurantById: vi.fn(),
   listActiveOrderIdsForCheck: vi.fn(),
   syncSessionOrdersToCheck: vi.fn(),
-}));
-
-vi.mock("../../../_core/env", () => ({
-  ENV: {
-    get checkMembershipAuthoritativeRead() {
-      return mocks.authoritative;
-    },
-    get checkMembershipDualWrite() {
-      return mocks.dualWrite;
-    },
-  },
 }));
 
 vi.mock("../../../_core/opsLog", () => ({
@@ -35,7 +21,6 @@ vi.mock("../../../_core/opsLog", () => ({
 }));
 
 vi.mock("../../../db", () => ({
-  getOrdersBySessionId: (...a: unknown[]) => mocks.getOrdersBySessionId(...a),
   getOrdersByIds: (...a: unknown[]) => mocks.getOrdersByIds(...a),
   getRestaurantById: (...a: unknown[]) => mocks.getRestaurantById(...a),
 }));
@@ -77,8 +62,6 @@ import { createOpenCheckForSession } from "../CheckService";
 describe("CHECK-GENERALIZATION-M5 createOpenCheckForSession", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.authoritative = true;
-    mocks.dualWrite = true;
     mocks.findSessionById.mockResolvedValue({
       id: 10,
       restaurantId: 1,
@@ -125,7 +108,6 @@ describe("CHECK-GENERALIZATION-M5 createOpenCheckForSession", () => {
   it("seeds Check at zero then refreshes from Membership — no Session money scan seed", async () => {
     await createOpenCheckForSession({ restaurantId: 1, sessionId: 10 });
 
-    expect(mocks.getOrdersBySessionId).not.toHaveBeenCalled();
     expect(mocks.insertOperationalCheck).toHaveBeenCalledWith(
       expect.objectContaining({
         sessionId: 10,

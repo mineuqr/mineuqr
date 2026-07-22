@@ -1,8 +1,8 @@
 /**
- * COMPATIBILITY-DEPENDENCY-ELIMINATION-1 — production must not depend on
- * dual-write / Session money façades / soft-sunset settlement APIs.
+ * COMPATIBILITY-DEPENDENCY-ELIMINATION-1 + COMPATIBILITY-CLEANUP-1 —
+ * financial compatibility layers must be absent from production code.
  */
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -12,7 +12,7 @@ function read(rel: string): string {
   return readFileSync(join(repoRoot, rel), "utf8");
 }
 
-describe("COMPATIBILITY-DEPENDENCY-ELIMINATION-1 architecture guards", () => {
+describe("COMPATIBILITY-CLEANUP-1 architecture guards", () => {
   it("production Check create uses authoritative syncSessionOrdersToCheck", () => {
     const svc = read("server/operational-session/check/CheckService.ts");
     expect(svc).toContain("syncSessionOrdersToCheck");
@@ -35,31 +35,30 @@ describe("COMPATIBILITY-DEPENDENCY-ELIMINATION-1 architecture guards", () => {
     expect(lifecycle).not.toMatch(/\bvoidCheck\b/);
   });
 
-  it("Session scan money discovery is isolated compatibility helper", () => {
+  it("Session-scan money discovery is removed", () => {
     const svc = read("server/operational-session/check/CheckService.ts");
-    expect(svc).toContain("loadOrdersSubtotalCompatibilitySessionScan");
-    expect(svc).toMatch(
-      /loadOrdersSubtotalCompatibilitySessionScan[\s\S]*getOrdersBySessionId/
-    );
+    expect(svc).not.toContain("loadOrdersSubtotalCompatibilitySessionScan");
+    expect(svc).not.toContain("getOrdersBySessionId");
   });
 
-  it("dual-write helpers remain in codebase (unused by production callers)", () => {
+  it("dual-write helpers are deleted from membership service", () => {
     const membership = read(
       "server/operational-session/check/checkMembershipService.ts"
     );
-    expect(membership).toContain("export async function dualWriteEnrollOrderForSession");
-    expect(membership).toContain("export async function dualWriteSyncSessionOrdersToCheck");
-    expect(membership).toContain("if (!dualWriteEnabled()) return");
+    expect(membership).not.toContain("dualWriteEnrollOrderForSession");
+    expect(membership).not.toContain("dualWriteSyncSessionOrdersToCheck");
+    expect(membership).not.toContain("dualWriteEnabled");
   });
 
-  it("no production client/runtime calls ops.getSettlement*", () => {
-    const clientSrcDirs = [
-      "client/src/components",
-      "client/src/pages",
-      "client/src/hooks",
-      "client/src/lib",
-    ];
-    // Spot-check known production surfaces previously audited
+  it("ops.getSettlement* APIs and settlementMetrics module are deleted", () => {
+    const ops = read("server/ops/opsRouter.ts");
+    expect(ops).not.toContain("getSettlementSummary");
+    expect(ops).not.toContain("getSettlementTrend");
+    expect(ops).not.toContain("getSettlementBreakdown");
+    expect(
+      existsSync(join(repoRoot, "server/analytics/settlementMetrics.ts"))
+    ).toBe(false);
+
     for (const file of [
       "client/src/components/dashboard/ReportsTab.tsx",
       "client/src/components/dashboard/DiningSessionWorkspaceSheet.tsx",
@@ -68,16 +67,12 @@ describe("COMPATIBILITY-DEPENDENCY-ELIMINATION-1 architecture guards", () => {
       try {
         const src = read(file);
         expect(src, file).not.toContain("getSettlementSummary");
-        expect(src, file).not.toContain("getSettlementTrend");
-        expect(src, file).not.toContain("getSettlementBreakdown");
         expect(src, file).not.toContain("ops.getSettlement");
       } catch (e) {
         if ((e as NodeJS.ErrnoException).code === "ENOENT") continue;
         throw e;
       }
     }
-    void clientSrcDirs;
-    // Soft-sunset procedures may remain registered — no non-ops production importer.
     const reporting = read("server/reporting-platform/BusinessMetricsService.ts");
     expect(reporting).not.toContain("settlementMetrics");
     expect(reporting).not.toContain("getSettlementSummary");

@@ -2,7 +2,9 @@
  * REPORTING-CANONICAL-API-SUNSET-1 — Legacy reporting surface registry.
  *
  * Canonical restaurant business KPIs must come from `reporting.*` only.
- * Entries here are soft-sunset targets (kept for compatibility; not deleted).
+ * COMPATIBILITY-CLEANUP-1 hard-deleted ops.getSettlement* + settlementMetrics
+ * + client opsSettlement* aliases. Remaining entries are non-financial soft-sunset
+ * or out-of-scope surfaces.
  */
 
 export const CANONICAL_REPORTING_SURFACE = "reporting.*" as const;
@@ -34,81 +36,6 @@ export type LegacyReportingSurface = Readonly<{
  * Verified against repository references (see program AUDIT.md).
  */
 export const LEGACY_REPORTING_SURFACES = Object.freeze([
-  {
-    name: "ops.getSettlementSummary",
-    file: "server/ops/opsRouter.ts → server/analytics/settlementMetrics.ts",
-    owner: "Ops / Settlement Analytics (legacy)",
-    purpose:
-      "Session-based paidRevenue = SUM(dining_sessions.totalAmount) where settlementOutcome=paid",
-    canonicalReplacement: "reporting.getBusinessMetricsSummary",
-    consumers: [
-      "server/ops/opsRouter.test.ts (unit only)",
-      "server/analytics/settlementMetrics.test.ts (unit only)",
-    ],
-    status: "soft_sunset_unused",
-    sunsetRecommendation:
-      "No production UI consumers. Soft-sunset now; hard-delete in a follow-up after external API freeze.",
-  },
-  {
-    name: "ops.getSettlementTrend",
-    file: "server/ops/opsRouter.ts → server/analytics/settlementMetrics.ts",
-    owner: "Ops / Settlement Analytics (legacy)",
-    purpose: "Session paidRevenue trend buckets",
-    canonicalReplacement: "reporting.getBusinessMetricsTrend",
-    consumers: [
-      "server/ops/opsRouter.test.ts (unit only)",
-      "server/analytics/settlementMetrics.test.ts (unit only)",
-    ],
-    status: "soft_sunset_unused",
-    sunsetRecommendation:
-      "No production UI consumers. Soft-sunset now; hard-delete in a follow-up.",
-  },
-  {
-    name: "ops.getSettlementBreakdown",
-    file: "server/ops/opsRouter.ts → server/analytics/settlementMetrics.ts",
-    owner: "Ops / Settlement Analytics (legacy)",
-    purpose: "Session paid vs complimentary breakdown",
-    canonicalReplacement: "reporting.getBusinessMetricsSummary",
-    consumers: [
-      "server/ops/opsRouter.test.ts (unit only)",
-      "server/analytics/settlementMetrics.test.ts (unit only)",
-    ],
-    status: "soft_sunset_unused",
-    sunsetRecommendation:
-      "No production UI consumers. Soft-sunset now; hard-delete in a follow-up.",
-  },
-  {
-    name: "getSettlementSummary/Trend/Breakdown (service)",
-    file: "server/analytics/settlementMetrics.ts",
-    owner: "Settlement Analytics",
-    purpose: "Underlying Session totalAmount analytics (non-canonical Revenue)",
-    canonicalReplacement:
-      "reporting.getBusinessMetricsSummary / getBusinessMetricsTrend (Check grandTotal)",
-    consumers: ["ops.getSettlement* procedures only"],
-    status: "soft_sunset_unused",
-    sunsetRecommendation:
-      "Keep module until ops procedures hard-deleted; never import from Dashboard/Reports.",
-  },
-  {
-    name: "opsSettlementSummaryQueryOptions",
-    file: "client/src/lib/queryRuntime.ts",
-    owner: "Client query runtime",
-    purpose: "Deprecated alias → reportingBusinessSummaryQueryOptions",
-    canonicalReplacement: "reportingBusinessSummaryQueryOptions",
-    consumers: ["(none outside queryRuntime.ts)"],
-    status: "soft_sunset_alias",
-    sunsetRecommendation: "Remove alias in a follow-up cleanup PR.",
-  },
-  {
-    name: "opsSettlementTrendQueryOptions",
-    file: "client/src/lib/queryRuntime.ts",
-    owner: "Client query runtime",
-    purpose: "Deprecated alias → reportingBusinessTrendQueryOptions",
-    canonicalReplacement: "reportingBusinessTrendQueryOptions",
-    consumers: ["(none outside queryRuntime.ts)"],
-    status: "soft_sunset_alias",
-    sunsetRecommendation: "Remove alias in a follow-up cleanup PR.",
-  },
   {
     name: "admin.getRevenueByMonth",
     file: "server/routers.ts → server/db.ts getRevenueByMonth",
@@ -210,8 +137,6 @@ export const FORBIDDEN_RESTAURANT_KPI_CLIENT_APIS = Object.freeze([
   "getSettlementBreakdown",
   "admin.getRevenueByMonth",
   "getRevenueByMonth",
-  "opsSettlementSummaryQueryOptions",
-  "opsSettlementTrendQueryOptions",
   "buildOrderStatistics",
   "computeTodayCompletedSales",
 ] as const);
@@ -221,5 +146,8 @@ export function listSoftSunsetUnusedSurfaces(): readonly LegacyReportingSurface[
 }
 
 export function listArchitecturalGaps(): readonly LegacyReportingSurface[] {
-  return LEGACY_REPORTING_SURFACES.filter((s) => Boolean(s.gapProgram));
+  return LEGACY_REPORTING_SURFACES.filter(
+    (s): s is LegacyReportingSurface & { gapProgram: string } =>
+      "gapProgram" in s && Boolean(s.gapProgram)
+  );
 }

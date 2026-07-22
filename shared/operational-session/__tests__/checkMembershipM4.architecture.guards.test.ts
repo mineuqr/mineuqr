@@ -1,5 +1,6 @@
 /**
  * CHECK-GENERALIZATION-M4 / ADR-ARCH-020 — Session optionality architecture guards.
+ * COMPATIBILITY-CLEANUP-1 — Session money façades removed; Check-centric APIs remain.
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -22,7 +23,7 @@ describe("CHECK-GENERALIZATION-M4 architecture guards", () => {
     expect(sql).toContain("check_settlement_transactions");
   });
 
-  it("CheckService exposes Check-centric financial APIs", () => {
+  it("CheckService exposes Check-centric financial APIs only", () => {
     const svc = read("server/operational-session/check/CheckService.ts");
     expect(svc).toContain("export async function ensureCheckForOrder");
     expect(svc).toContain("export async function settleCheckPaidById");
@@ -30,24 +31,24 @@ describe("CHECK-GENERALIZATION-M4 architecture guards", () => {
     expect(svc).toContain("export async function voidCheckById");
     expect(svc).toContain("export async function createOpenCheck");
     expect(svc).toContain("export async function recalculateOpenCheck");
-    // Session façades remain
-    expect(svc).toContain("export async function settleCheckPaid");
     expect(svc).toContain("export async function createOpenCheckForSession");
+    expect(svc).not.toMatch(/export async function settleCheckPaid\b/);
+    expect(svc).not.toMatch(/export async function settleCheckComplimentary\b/);
+    expect(svc).not.toMatch(/export async function voidCheck\b/);
     const barrel = read("server/operational-session/index.ts");
     expect(barrel).toContain("settleCheckPaidById");
     expect(barrel).toContain("ensureCheckForOrder");
+    expect(barrel).not.toMatch(/\bsettleCheckPaid\b/);
+    expect(barrel).not.toMatch(/\bvoidCheck\b/);
   });
 
   it("enrollOrderInCheck is not gated by dual-write", () => {
     const membership = read(
       "server/operational-session/check/checkMembershipService.ts"
     );
-    const enrollBlock = membership.slice(
-      membership.indexOf("export async function enrollOrderInCheck"),
-      membership.indexOf("export async function dualWriteEnrollOrderForSession")
-    );
-    expect(enrollBlock).not.toContain("dualWriteEnabled()");
-    expect(membership).toContain("if (!dualWriteEnabled()) return");
+    expect(membership).toContain("export async function enrollOrderInCheck");
+    expect(membership).not.toContain("dualWriteEnabled");
+    expect(membership).not.toContain("dualWrite");
   });
 
   it("does not ship Order settle façade (M6)", () => {

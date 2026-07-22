@@ -1,5 +1,6 @@
 /**
  * CHECK-GENERALIZATION-M1 / ADR-ARCH-020 — architecture guards.
+ * COMPATIBILITY-CLEANUP-1 — dual-write / Session-scan compatibility removed.
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -23,27 +24,28 @@ describe("CHECK-GENERALIZATION-M1 architecture guards", () => {
     expect(schema).toContain("checkOrderMembership");
   });
 
-  it("CheckService money path supports M3 membership discovery (cutover)", () => {
+  it("CheckService money path uses Membership discovery only", () => {
     const svc = read("server/operational-session/check/CheckService.ts");
     expect(svc).toContain("loadOrdersSubtotal");
     expect(svc).toContain("listActiveOrderIdsForCheck");
     expect(svc).toContain("syncSessionOrdersToCheck");
-    // Session scan retained only as isolated compatibility rollback
-    expect(svc).toContain("loadOrdersSubtotalCompatibilitySessionScan");
-    expect(svc).toContain("getOrdersBySessionId");
+    expect(svc).not.toContain("loadOrdersSubtotalCompatibilitySessionScan");
+    expect(svc).not.toContain("getOrdersBySessionId");
   });
 
-  it("dual-write is best-effort and flag-gated", () => {
+  it("membership service is authoritative (no dual-write helpers)", () => {
     const membership = read(
       "server/operational-session/check/checkMembershipService.ts"
     );
-    expect(membership).toContain("checkMembershipDualWrite");
-    expect(membership).toContain("dualWriteEnrollOrderForSession");
+    expect(membership).toContain("enrollOrderForSessionCheck");
+    expect(membership).toContain("syncSessionOrdersToCheck");
     expect(membership).toContain("Not an aggregate");
+    expect(membership).not.toContain("dualWrite");
+    expect(membership).not.toContain("checkMembershipDualWrite");
 
     const env = read("server/_core/env.ts");
-    expect(env).toContain("CHECK_MEMBERSHIP_DUAL_WRITE");
-    expect(env).toContain("CHECK_MEMBERSHIP_AUTHORITATIVE_READ");
+    expect(env).not.toContain("CHECK_MEMBERSHIP_DUAL_WRITE");
+    expect(env).not.toContain("CHECK_MEMBERSHIP_AUTHORITATIVE_READ");
   });
 
   it("does not introduce Order settle façade (M6)", () => {
@@ -51,7 +53,7 @@ describe("CHECK-GENERALIZATION-M1 architecture guards", () => {
     expect(routers).not.toMatch(/order\.settlePaid/);
   });
 
-  it("OrderSessionConsumer passes orderId for dual-write", () => {
+  it("OrderSessionConsumer passes orderId for membership enroll", () => {
     const consumer = read(
       "server/order/infrastructure/events/consumers/OrderSessionConsumer.ts"
     );

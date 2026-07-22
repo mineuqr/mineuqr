@@ -1,11 +1,10 @@
 /**
  * CHECK-GENERALIZATION-M3 — membership-authoritative Check money discovery.
+ * COMPATIBILITY-CLEANUP-1 — Session-scan rollback path removed.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  authoritative: true,
-  dualWrite: true,
   findSessionById: vi.fn(),
   findOpenCheckBySessionId: vi.fn(),
   findCheckById: vi.fn(),
@@ -14,7 +13,6 @@ const mocks = vi.hoisted(() => ({
   updateCheckMoney: vi.fn(),
   finalizeCheckOutcome: vi.fn(),
   insertSettlementTransactions: vi.fn(),
-  getOrdersBySessionId: vi.fn(),
   getOrdersByIds: vi.fn(),
   getRestaurantById: vi.fn(),
   listActiveOrderIdsForCheck: vi.fn(),
@@ -22,23 +20,11 @@ const mocks = vi.hoisted(() => ({
   deactivateMembershipsOnCheckVoid: vi.fn(),
 }));
 
-vi.mock("../../../_core/env", () => ({
-  ENV: {
-    get checkMembershipAuthoritativeRead() {
-      return mocks.authoritative;
-    },
-    get checkMembershipDualWrite() {
-      return mocks.dualWrite;
-    },
-  },
-}));
-
 vi.mock("../../../_core/opsLog", () => ({
   opsLog: vi.fn(),
 }));
 
 vi.mock("../../../db", () => ({
-  getOrdersBySessionId: (...a: unknown[]) => mocks.getOrdersBySessionId(...a),
   getOrdersByIds: (...a: unknown[]) => mocks.getOrdersByIds(...a),
   getRestaurantById: (...a: unknown[]) => mocks.getRestaurantById(...a),
 }));
@@ -78,8 +64,8 @@ vi.mock("../checkOrderMembershipRepository", () => ({
 import {
   createOpenCheckForSession,
   recalculateOpenCheckForSession,
-  settleCheckPaid,
-  voidCheck,
+  settleCheckPaidById,
+  voidCheckById,
 } from "../CheckService";
 
 const openCheckRow = {
@@ -109,8 +95,6 @@ const openCheckRow = {
 describe("CHECK-GENERALIZATION-M3 CheckService cutover", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.authoritative = true;
-    mocks.dualWrite = true;
     mocks.findSessionById.mockResolvedValue({
       id: 10,
       restaurantId: 1,
@@ -126,7 +110,7 @@ describe("CHECK-GENERALIZATION-M3 CheckService cutover", () => {
     mocks.updateCheckMoney.mockResolvedValue(undefined);
   });
 
-  it("recalculate uses membership order ids when authoritative", async () => {
+  it("recalculate uses membership order ids", async () => {
     mocks.findCheckById.mockResolvedValue(openCheckRow);
     mocks.listActiveOrderIdsForCheck.mockResolvedValue([55, 56]);
     mocks.getOrdersByIds.mockResolvedValue([
@@ -139,29 +123,12 @@ describe("CHECK-GENERALIZATION-M3 CheckService cutover", () => {
 
     expect(mocks.listActiveOrderIdsForCheck).toHaveBeenCalledWith(1, 100);
     expect(mocks.getOrdersByIds).toHaveBeenCalledWith(1, [55, 56]);
-    expect(mocks.getOrdersBySessionId).not.toHaveBeenCalled();
     expect(mocks.updateCheckMoney).toHaveBeenCalledWith(
       expect.objectContaining({
         checkId: 100,
         subtotal: "15.00",
         grandTotal: "15.00",
       })
-    );
-  });
-
-  it("recalculate falls back to Session scan when authoritative flag is off", async () => {
-    mocks.authoritative = false;
-    mocks.findCheckById.mockResolvedValue(openCheckRow);
-    mocks.getOrdersBySessionId.mockResolvedValue([
-      { id: 1, status: "served", totalAmount: "20.00" },
-    ]);
-
-    await recalculateOpenCheckForSession({ restaurantId: 1, sessionId: 10 });
-
-    expect(mocks.getOrdersBySessionId).toHaveBeenCalledWith(1, 10);
-    expect(mocks.listActiveOrderIdsForCheck).not.toHaveBeenCalled();
-    expect(mocks.updateCheckMoney).toHaveBeenCalledWith(
-      expect.objectContaining({ subtotal: "20.00" })
     );
   });
 
@@ -173,9 +140,6 @@ describe("CHECK-GENERALIZATION-M3 CheckService cutover", () => {
       activeCheckId: null,
     });
     mocks.findOpenCheckBySessionId.mockResolvedValue(null);
-    mocks.getOrdersBySessionId.mockResolvedValue([
-      { id: 55, status: "pending", totalAmount: "10.00" },
-    ]);
     mocks.insertOperationalCheck.mockResolvedValue(100);
     mocks.listActiveOrderIdsForCheck.mockResolvedValue([55]);
     mocks.getOrdersByIds.mockResolvedValue([
@@ -194,10 +158,8 @@ describe("CHECK-GENERALIZATION-M3 CheckService cutover", () => {
     expect(mocks.updateCheckMoney).toHaveBeenCalled();
   });
 
-  it("settleCheckPaid freezes membership-derived totals", async () => {
-    // ensureOpenCheckForSession + finalizeOpenCheckById + post-finalize reload
+  it("settleCheckPaidById freezes membership-derived totals", async () => {
     mocks.findCheckById
-      .mockResolvedValueOnce(openCheckRow)
       .mockResolvedValueOnce(openCheckRow)
       .mockResolvedValueOnce({
         ...openCheckRow,
@@ -213,7 +175,7 @@ describe("CHECK-GENERALIZATION-M3 CheckService cutover", () => {
     mocks.finalizeCheckOutcome.mockResolvedValue(undefined);
     mocks.insertSettlementTransactions.mockResolvedValue(undefined);
 
-    const result = await settleCheckPaid({ restaurantId: 1, sessionId: 10 });
+    const result = await settleCheckPaidById({ restaurantId: 1, checkId: 100 });
 
     expect(mocks.listActiveOrderIdsForCheck).toHaveBeenCalledWith(1, 100);
     expect(mocks.finalizeCheckOutcome).toHaveBeenCalledWith(
@@ -226,10 +188,8 @@ describe("CHECK-GENERALIZATION-M3 CheckService cutover", () => {
     expect(result.outcome).toBe("paid");
   });
 
-  it("voidCheck uses membership discovery then deactivates memberships", async () => {
-    // ensureOpenCheckForSession + finalizeOpenCheckById + post-finalize reload
+  it("voidCheckById uses membership discovery then deactivates memberships", async () => {
     mocks.findCheckById
-      .mockResolvedValueOnce(openCheckRow)
       .mockResolvedValueOnce(openCheckRow)
       .mockResolvedValueOnce({
         ...openCheckRow,
@@ -241,7 +201,7 @@ describe("CHECK-GENERALIZATION-M3 CheckService cutover", () => {
     mocks.getOrdersByIds.mockResolvedValue([]);
     mocks.finalizeCheckOutcome.mockResolvedValue(undefined);
 
-    await voidCheck({ restaurantId: 1, sessionId: 10 });
+    await voidCheckById({ restaurantId: 1, checkId: 100 });
 
     expect(mocks.listActiveOrderIdsForCheck).toHaveBeenCalledWith(1, 100);
     expect(mocks.deactivateMembershipsOnCheckVoid).toHaveBeenCalledWith({
@@ -250,4 +210,3 @@ describe("CHECK-GENERALIZATION-M3 CheckService cutover", () => {
     });
   });
 });
-

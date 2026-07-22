@@ -2,9 +2,6 @@ export {
   createOpenCheckForSession,
   ensureOpenCheckForSession,
   recalculateOpenCheckForSession,
-  settleCheckPaid,
-  settleCheckComplimentary,
-  voidCheck,
   createOpenCheck,
   ensureCheckForOrder,
   recalculateOpenCheck,
@@ -21,9 +18,6 @@ export {
   enrollOrderForSessionCheck,
   syncSessionOrdersToCheck,
   deactivateMembershipsOnCheckVoid,
-  dualWriteEnrollOrderForSession,
-  dualWriteSyncSessionOrdersToCheck,
-  dualWriteDeactivateMembershipsOnVoid,
   CheckMembershipError,
 } from "./checkMembershipService";
 

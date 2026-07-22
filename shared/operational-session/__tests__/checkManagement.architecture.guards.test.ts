@@ -49,8 +49,8 @@ describe("CHECK-MANAGEMENT-ARCHITECTURE-1 architecture guards", () => {
     expect(lifecycle).toContain("voidOperationalSessionCheck");
     const sessionService = read("server/diningSession/sessionService.ts");
     expect(sessionService).toContain("createOpenCheckForSession");
-    expect(sessionService).toContain("settleCheckPaid");
-    expect(sessionService).toContain("voidCheck");
+    expect(sessionService).toContain("settleCheckPaidById");
+    expect(sessionService).toContain("voidCheckById");
   });
 
   it("persists operational_checks and business tax settings", () => {
