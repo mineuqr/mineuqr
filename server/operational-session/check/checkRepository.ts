@@ -29,7 +29,8 @@ async function resolveDb(client?: SessionDbClient): Promise<SessionDbClient> {
 
 export type InsertCheckData = {
   restaurantId: number;
-  sessionId: number;
+  /** Null for sessionless Checks (M4). */
+  sessionId: number | null;
   currencySnapshot: CurrencySnapshot;
   taxPolicySnapshot: TaxPolicySnapshot;
   billDiscountAmount?: string;

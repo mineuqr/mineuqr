@@ -118,7 +118,7 @@ export function mapRowToOperationalCheck(
   return {
     id: row.id,
     restaurantId: row.restaurantId,
-    sessionId: row.sessionId,
+    sessionId: row.sessionId ?? null,
     outcome: assertCheckOutcome(row.outcome),
     currencySnapshot: parseCurrencySnapshot(row.currencySnapshotJson),
     taxPolicySnapshot: parseTaxPolicySnapshot(row.taxPolicySnapshotJson),

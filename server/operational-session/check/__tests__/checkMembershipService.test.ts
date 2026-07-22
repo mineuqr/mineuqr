@@ -140,16 +140,31 @@ describe("CHECK-GENERALIZATION-M1 membership dual-write", () => {
     ).rejects.toThrow(/already enrolled/);
   });
 
-  it("skips when dual-write disabled (rollback)", async () => {
+  it("dual-write helper no-ops when dual-write disabled (rollback)", async () => {
     mocks.dualWriteEnabled = false;
+    await dualWriteEnrollOrderForSession({
+      restaurantId: 1,
+      sessionId: 3,
+      orderId: 5,
+    });
+    expect(mocks.findOpenCheckBySessionId).not.toHaveBeenCalled();
+  });
+
+  it("enrollOrderInCheck remains available when dual-write is disabled (M4)", async () => {
+    mocks.dualWriteEnabled = false;
+    mocks.findCheckById.mockResolvedValue({
+      id: 10,
+      restaurantId: 1,
+      outcome: "open",
+    });
+    mocks.getOrderById.mockResolvedValue({ id: 5, restaurantId: 1 });
     const status = await enrollOrderInCheck({
       restaurantId: 1,
       checkId: 10,
       orderId: 5,
-      enrolledReason: "session_attach",
+      enrolledReason: "order_place",
     });
-    expect(status).toBe("skipped");
-    expect(mocks.findCheckById).not.toHaveBeenCalled();
+    expect(status).toBe("enrolled");
   });
 
   it("dualWriteEnrollOrderForSession does not throw on failure", async () => {

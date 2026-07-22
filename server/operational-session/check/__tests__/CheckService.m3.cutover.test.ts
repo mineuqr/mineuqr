@@ -195,7 +195,9 @@ describe("CHECK-GENERALIZATION-M3 CheckService cutover", () => {
   });
 
   it("settleCheckPaid freezes membership-derived totals", async () => {
+    // ensureOpenCheckForSession + finalizeOpenCheckById + post-finalize reload
     mocks.findCheckById
+      .mockResolvedValueOnce(openCheckRow)
       .mockResolvedValueOnce(openCheckRow)
       .mockResolvedValueOnce({
         ...openCheckRow,
@@ -225,7 +227,9 @@ describe("CHECK-GENERALIZATION-M3 CheckService cutover", () => {
   });
 
   it("voidCheck uses membership discovery then deactivates memberships", async () => {
+    // ensureOpenCheckForSession + finalizeOpenCheckById + post-finalize reload
     mocks.findCheckById
+      .mockResolvedValueOnce(openCheckRow)
       .mockResolvedValueOnce(openCheckRow)
       .mockResolvedValueOnce({
         ...openCheckRow,
@@ -246,3 +250,4 @@ describe("CHECK-GENERALIZATION-M3 CheckService cutover", () => {
     });
   });
 });
+

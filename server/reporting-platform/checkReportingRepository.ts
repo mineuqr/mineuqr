@@ -15,7 +15,7 @@ import type {
 export type CheckReportingRow = Readonly<{
   id: number;
   restaurantId: number;
-  sessionId: number;
+  sessionId: number | null;
   outcome: CheckOutcome;
   grandTotal: string;
   taxAmount: string;
@@ -46,7 +46,7 @@ function asSnapshot<T>(value: unknown, fallback: T): T {
 function mapRow(row: {
   id: number;
   restaurantId: number;
-  sessionId: number;
+  sessionId: number | null;
   outcome: string;
   grandTotal: string;
   taxAmount: string;

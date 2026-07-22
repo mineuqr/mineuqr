@@ -1,0 +1,291 @@
+/**
+ * CHECK-GENERALIZATION-M4 — Session optionality for financial Check APIs.
+ */
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const mocks = vi.hoisted(() => ({
+  authoritative: true,
+  dualWrite: true,
+  findSessionById: vi.fn(),
+  findOpenCheckBySessionId: vi.fn(),
+  findCheckById: vi.fn(),
+  insertOperationalCheck: vi.fn(),
+  updateSessionActiveCheckId: vi.fn(),
+  updateCheckMoney: vi.fn(),
+  finalizeCheckOutcome: vi.fn(),
+  insertSettlementTransactions: vi.fn(),
+  getOrdersBySessionId: vi.fn(),
+  getOrdersByIds: vi.fn(),
+  getRestaurantById: vi.fn(),
+  getOrderById: vi.fn(),
+  listActiveOrderIdsForCheck: vi.fn(),
+  findBlockingMembershipForOrder: vi.fn(),
+  enrollOrderInCheck: vi.fn(),
+  dualWriteSyncSessionOrdersToCheck: vi.fn(),
+  dualWriteDeactivateMembershipsOnVoid: vi.fn(),
+}));
+
+vi.mock("../../../_core/env", () => ({
+  ENV: {
+    get checkMembershipAuthoritativeRead() {
+      return mocks.authoritative;
+    },
+    get checkMembershipDualWrite() {
+      return mocks.dualWrite;
+    },
+  },
+}));
+
+vi.mock("../../../_core/opsLog", () => ({
+  opsLog: vi.fn(),
+}));
+
+vi.mock("../../../db", () => ({
+  getOrdersBySessionId: (...a: unknown[]) => mocks.getOrdersBySessionId(...a),
+  getOrdersByIds: (...a: unknown[]) => mocks.getOrdersByIds(...a),
+  getRestaurantById: (...a: unknown[]) => mocks.getRestaurantById(...a),
+  getOrderById: (...a: unknown[]) => mocks.getOrderById(...a),
+}));
+
+vi.mock("../../../diningSession/sessionRepository", () => ({
+  findSessionById: (...a: unknown[]) => mocks.findSessionById(...a),
+  updateSessionActiveCheckId: (...a: unknown[]) =>
+    mocks.updateSessionActiveCheckId(...a),
+}));
+
+vi.mock("../checkRepository", () => ({
+  findOpenCheckBySessionId: (...a: unknown[]) =>
+    mocks.findOpenCheckBySessionId(...a),
+  findCheckById: (...a: unknown[]) => mocks.findCheckById(...a),
+  insertOperationalCheck: (...a: unknown[]) => mocks.insertOperationalCheck(...a),
+  updateCheckMoney: (...a: unknown[]) => mocks.updateCheckMoney(...a),
+  finalizeCheckOutcome: (...a: unknown[]) => mocks.finalizeCheckOutcome(...a),
+}));
+
+vi.mock("../settlementTransactionRepository", () => ({
+  insertSettlementTransactions: (...a: unknown[]) =>
+    mocks.insertSettlementTransactions(...a),
+}));
+
+vi.mock("../checkMembershipService", () => ({
+  dualWriteSyncSessionOrdersToCheck: (...a: unknown[]) =>
+    mocks.dualWriteSyncSessionOrdersToCheck(...a),
+  dualWriteDeactivateMembershipsOnVoid: (...a: unknown[]) =>
+    mocks.dualWriteDeactivateMembershipsOnVoid(...a),
+  enrollOrderInCheck: (...a: unknown[]) => mocks.enrollOrderInCheck(...a),
+  CheckMembershipError: class CheckMembershipError extends Error {
+    constructor(message: string) {
+      super(message);
+      this.name = "CheckMembershipError";
+    }
+  },
+}));
+
+vi.mock("../checkOrderMembershipRepository", () => ({
+  listActiveOrderIdsForCheck: (...a: unknown[]) =>
+    mocks.listActiveOrderIdsForCheck(...a),
+  findBlockingMembershipForOrder: (...a: unknown[]) =>
+    mocks.findBlockingMembershipForOrder(...a),
+}));
+
+import {
+  createOpenCheck,
+  ensureCheckForOrder,
+  settleCheckPaidById,
+  settleCheckComplimentaryById,
+  voidCheckById,
+  recalculateOpenCheck,
+} from "../CheckService";
+
+const sessionlessOpenCheck = {
+  id: 200,
+  restaurantId: 1,
+  sessionId: null,
+  outcome: "open" as const,
+  currencySnapshot: { currencyCode: "SAR", currencySymbol: "ر.س" },
+  taxPolicySnapshot: {
+    taxEnabled: false,
+    taxMode: "exclusive" as const,
+    rates: [],
+  },
+  subtotal: "0.00",
+  taxAmount: "0.00",
+  taxBreakdown: [],
+  grandTotal: "0.00",
+  billDiscountAmount: "0.00",
+  snapshotsFrozenAt: "2026-07-22 10:00:00",
+  totalsFrozenAt: null,
+  settledAt: null,
+  voidedAt: null,
+  createdAt: "2026-07-22 10:00:00",
+  updatedAt: "2026-07-22 10:00:00",
+};
+
+describe("CHECK-GENERALIZATION-M4 Session optionality", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.authoritative = true;
+    mocks.dualWrite = true;
+    mocks.getRestaurantById.mockResolvedValue({
+      id: 1,
+      currencyCode: "SAR",
+      currencySymbol: "ر.س",
+    });
+    mocks.enrollOrderInCheck.mockResolvedValue("enrolled");
+    mocks.updateCheckMoney.mockResolvedValue(undefined);
+    mocks.findSessionById.mockResolvedValue(null);
+  });
+
+  it("createOpenCheck creates a sessionless Check without Session lookup", async () => {
+    mocks.insertOperationalCheck.mockResolvedValue(200);
+    mocks.findCheckById.mockResolvedValue(sessionlessOpenCheck);
+
+    const check = await createOpenCheck({
+      restaurantId: 1,
+      sessionId: null,
+    });
+
+    expect(mocks.findSessionById).not.toHaveBeenCalled();
+    expect(mocks.insertOperationalCheck).toHaveBeenCalledWith(
+      expect.objectContaining({ restaurantId: 1, sessionId: null })
+    );
+    expect(check.sessionId).toBeNull();
+  });
+
+  it("ensureCheckForOrder creates sessionless Check, enrolls, recalculates", async () => {
+    mocks.findBlockingMembershipForOrder.mockResolvedValue(null);
+    mocks.insertOperationalCheck.mockResolvedValue(200);
+    mocks.findCheckById.mockResolvedValue({
+      ...sessionlessOpenCheck,
+      subtotal: "10.00",
+      grandTotal: "10.00",
+    });
+    mocks.listActiveOrderIdsForCheck.mockResolvedValue([55]);
+    mocks.getOrdersByIds.mockResolvedValue([
+      { id: 55, status: "pending", totalAmount: "10.00" },
+    ]);
+
+    const check = await ensureCheckForOrder({
+      restaurantId: 1,
+      orderId: 55,
+    });
+
+    expect(mocks.findSessionById).not.toHaveBeenCalled();
+    expect(mocks.enrollOrderInCheck).toHaveBeenCalledWith(
+      expect.objectContaining({
+        checkId: 200,
+        orderId: 55,
+        enrolledReason: "order_place",
+      })
+    );
+    expect(mocks.listActiveOrderIdsForCheck).toHaveBeenCalledWith(1, 200);
+    expect(check.id).toBe(200);
+  });
+
+  it("settleCheckPaidById freezes membership totals without Session", async () => {
+    mocks.findCheckById
+      .mockResolvedValueOnce(sessionlessOpenCheck)
+      .mockResolvedValueOnce({
+        ...sessionlessOpenCheck,
+        outcome: "paid",
+        totalsFrozenAt: "2026-07-22 11:00:00",
+        settledAt: "2026-07-22 11:00:00",
+        grandTotal: "10.00",
+        subtotal: "10.00",
+      });
+    mocks.listActiveOrderIdsForCheck.mockResolvedValue([55]);
+    mocks.getOrdersByIds.mockResolvedValue([
+      { id: 55, status: "served", totalAmount: "10.00" },
+    ]);
+    mocks.finalizeCheckOutcome.mockResolvedValue(undefined);
+    mocks.insertSettlementTransactions.mockResolvedValue(undefined);
+
+    const result = await settleCheckPaidById({
+      restaurantId: 1,
+      checkId: 200,
+    });
+
+    expect(mocks.findSessionById).not.toHaveBeenCalled();
+    expect(mocks.insertSettlementTransactions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        checkId: 200,
+        sessionId: null,
+      }),
+      undefined
+    );
+    expect(result.outcome).toBe("paid");
+  });
+
+  it("settleCheckComplimentaryById freezes without Session", async () => {
+    mocks.findCheckById
+      .mockResolvedValueOnce(sessionlessOpenCheck)
+      .mockResolvedValueOnce({
+        ...sessionlessOpenCheck,
+        outcome: "complimentary",
+        totalsFrozenAt: "2026-07-22 11:00:00",
+        settledAt: "2026-07-22 11:00:00",
+        grandTotal: "10.00",
+        subtotal: "10.00",
+      });
+    mocks.listActiveOrderIdsForCheck.mockResolvedValue([55]);
+    mocks.getOrdersByIds.mockResolvedValue([
+      { id: 55, status: "served", totalAmount: "10.00" },
+    ]);
+    mocks.finalizeCheckOutcome.mockResolvedValue(undefined);
+    mocks.insertSettlementTransactions.mockResolvedValue(undefined);
+
+    const result = await settleCheckComplimentaryById({
+      restaurantId: 1,
+      checkId: 200,
+    });
+
+    expect(mocks.findSessionById).not.toHaveBeenCalled();
+    expect(mocks.finalizeCheckOutcome).toHaveBeenCalledWith(
+      expect.objectContaining({ outcome: "complimentary" }),
+      undefined
+    );
+    expect(result.outcome).toBe("complimentary");
+  });
+
+  it("voidCheckById voids without Session and deactivates memberships", async () => {
+    mocks.findCheckById
+      .mockResolvedValueOnce(sessionlessOpenCheck)
+      .mockResolvedValueOnce({
+        ...sessionlessOpenCheck,
+        outcome: "voided",
+        voidedAt: "2026-07-22 11:00:00",
+        totalsFrozenAt: "2026-07-22 11:00:00",
+      });
+    mocks.listActiveOrderIdsForCheck.mockResolvedValue([]);
+    mocks.getOrdersByIds.mockResolvedValue([]);
+    mocks.finalizeCheckOutcome.mockResolvedValue(undefined);
+
+    await voidCheckById({ restaurantId: 1, checkId: 200 });
+
+    expect(mocks.findSessionById).not.toHaveBeenCalled();
+    expect(mocks.dualWriteDeactivateMembershipsOnVoid).toHaveBeenCalledWith({
+      restaurantId: 1,
+      checkId: 200,
+    });
+  });
+
+  it("recalculateOpenCheck uses membership for sessionless Checks", async () => {
+    mocks.findCheckById.mockResolvedValue({
+      ...sessionlessOpenCheck,
+      subtotal: "10.00",
+      grandTotal: "10.00",
+    });
+    mocks.listActiveOrderIdsForCheck.mockResolvedValue([55]);
+    mocks.getOrdersByIds.mockResolvedValue([
+      { id: 55, status: "served", totalAmount: "10.00" },
+    ]);
+
+    await recalculateOpenCheck({ restaurantId: 1, checkId: 200 });
+
+    expect(mocks.getOrdersBySessionId).not.toHaveBeenCalled();
+    expect(mocks.listActiveOrderIdsForCheck).toHaveBeenCalledWith(1, 200);
+    expect(mocks.updateCheckMoney).toHaveBeenCalledWith(
+      expect.objectContaining({ checkId: 200, subtotal: "10.00" })
+    );
+  });
+});

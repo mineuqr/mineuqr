@@ -35,7 +35,9 @@ function dualWriteEnabled(): boolean {
 
 /**
  * Enroll one Order into an open Check (idempotent).
- * Does NOT recalculate Check money — callers keep Session-based recalc.
+ * Check-owned command (ADR-ARCH-020 / M4) — not gated by dual-write.
+ * Dual-write helpers remain best-effort and flag-gated separately.
+ * Does NOT recalculate Check money — callers invoke recalc.
  */
 export async function enrollOrderInCheck(
   input: {
@@ -45,9 +47,7 @@ export async function enrollOrderInCheck(
     enrolledReason: CheckMembershipEnrolledReason;
   },
   client?: SessionDbClient
-): Promise<"enrolled" | "already" | "skipped"> {
-  if (!dualWriteEnabled()) return "skipped";
-
+): Promise<"enrolled" | "already"> {
   const check = await findCheckById(input.checkId, client);
   if (!check || check.restaurantId !== input.restaurantId) {
     throw new CheckMembershipError("Check not found for enrollment");

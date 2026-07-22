@@ -40,7 +40,8 @@ export type SettlementTransaction = Readonly<{
   id: number;
   restaurantId: number;
   checkId: number;
-  sessionId: number;
+  /** Copied from Check at settle; null when Check is sessionless. */
+  sessionId: number | null;
   paymentMethod: PaymentMethod;
   /** Decimal string, same money scale as Check.grandTotal. */
   amount: string;

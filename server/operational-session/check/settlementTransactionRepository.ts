@@ -52,7 +52,7 @@ export async function insertSettlementTransactions(
   input: {
     restaurantId: number;
     checkId: number;
-    sessionId: number;
+    sessionId: number | null;
     currencyCode: string;
     businessTimestamp: string;
     lines: readonly SettlementTransactionInput[];

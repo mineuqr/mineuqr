@@ -371,7 +371,8 @@ export type SelectDiningSession = typeof diningSessions.$inferSelect;
 export const operationalChecks = mysqlTable("operational_checks", {
 	id: int().autoincrement().notNull(),
 	restaurantId: int().notNull(),
-	sessionId: int().notNull(),
+	/** ADR-ARCH-020 / M4 — nullable for sessionless finance; set for table visits. */
+	sessionId: int(),
 	outcome: mysqlEnum(['open', 'paid', 'complimentary', 'voided']).default('open').notNull(),
 	currencySnapshotJson: json().notNull(),
 	taxPolicySnapshotJson: json().notNull(),
@@ -406,7 +407,8 @@ export const checkSettlementTransactions = mysqlTable(
 		id: int().autoincrement().primaryKey(),
 		restaurantId: int().notNull(),
 		checkId: int().notNull(),
-		sessionId: int().notNull(),
+		/** ADR-ARCH-020 / M4 — nullable when Check is sessionless. */
+		sessionId: int(),
 		/** Extensible payment method code (cash, mada, visa, …). */
 		paymentMethod: varchar({ length: 32 }).notNull(),
 		amount: decimal({ precision: 10, scale: 2 }).notNull(),

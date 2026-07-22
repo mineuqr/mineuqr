@@ -2,6 +2,7 @@
  * CHECK-MANAGEMENT-ARCHITECTURE-1 — Check sub-domain application service.
  * CHECK-SETTLEMENT-METHODS-1 — settlement transactions under Check.
  * CHECK-GENERALIZATION-M3 — Membership is authoritative Order discovery for money.
+ * CHECK-GENERALIZATION-M4 — Session optional for financial correctness (Check-centric APIs).
  *
  * Owned by Operational Session Platform. Does not modify Order Domain.
  */
@@ -54,8 +55,13 @@ import { insertSettlementTransactions } from "./settlementTransactionRepository"
 import {
   dualWriteDeactivateMembershipsOnVoid,
   dualWriteSyncSessionOrdersToCheck,
+  enrollOrderInCheck,
+  CheckMembershipError,
 } from "./checkMembershipService";
-import { listActiveOrderIdsForCheck } from "./checkOrderMembershipRepository";
+import {
+  findBlockingMembershipForOrder,
+  listActiveOrderIdsForCheck,
+} from "./checkOrderMembershipRepository";
 
 export class CheckTransitionError extends Error {
   constructor(message: string) {
@@ -65,17 +71,23 @@ export class CheckTransitionError extends Error {
 }
 
 /**
- * M3 — Check Order money discovery.
- * Authoritative: membership → Order ids → non-cancelled totals.
- * Rollback: Session scan (only while dual-write remains operational).
+ * M3/M4 — Check Order money discovery.
+ * Membership when authoritative OR when Check is sessionless (no Session to scan).
+ * Rollback Session scan only for Session-linked Checks when flag is off.
  */
 async function loadOrdersSubtotal(input: {
   restaurantId: number;
-  sessionId: number;
+  sessionId: number | null;
   checkId: number;
 }): Promise<string> {
-  if (ENV.checkMembershipAuthoritativeRead) {
-    if (!ENV.checkMembershipDualWrite) {
+  const useMembership =
+    ENV.checkMembershipAuthoritativeRead || input.sessionId == null;
+
+  if (useMembership) {
+    if (
+      ENV.checkMembershipAuthoritativeRead &&
+      !ENV.checkMembershipDualWrite
+    ) {
       opsLog({
         type: OPS_EVENT.check_membership_dual_write_failed,
         category: "ORDER",
@@ -100,7 +112,7 @@ async function loadOrdersSubtotal(input: {
 
   const orderRows = await getOrdersBySessionId(
     input.restaurantId,
-    input.sessionId
+    input.sessionId!
   );
   return computeOrdersTotalAmount(orderRows);
 }
@@ -116,7 +128,7 @@ async function loadOrdersSubtotalFromSession(
 
 async function refreshOpenCheckMoneyFromDiscovery(input: {
   restaurantId: number;
-  sessionId: number;
+  sessionId: number | null;
   checkId: number;
   billDiscountAmount: string;
   taxPolicySnapshot: OperationalCheck["taxPolicySnapshot"];
@@ -333,24 +345,25 @@ export async function recalculateOpenCheckForSession(input: {
   }
 }
 
-async function finalizeOpenCheck(
+/**
+ * M4 — Check-centric finalize. Does not require Session existence.
+ */
+async function finalizeOpenCheckById(
   input: {
     restaurantId: number;
-    sessionId: number;
+    checkId: number;
     outcome: Exclude<CheckOutcome, "open">;
-    /**
-     * SETTLEMENT-PAYMENT-METHOD-CAPTURE-1 — operator tender lines.
-     * Omitted → legacy default full-cover `other`.
-     */
     settlements?: readonly StaffSettlementLineInput[];
   },
   client?: SessionDbClient
 ): Promise<OperationalCheck> {
-  const check = await ensureOpenCheckForSession({
+  const check = await getCheckById({
     restaurantId: input.restaurantId,
-    sessionId: input.sessionId,
+    checkId: input.checkId,
   });
-
+  if (!check) {
+    throw new DiningSessionUnavailableError("Check not found");
+  }
   if (check.outcome !== "open") {
     throw new CheckTransitionError(
       `Cannot finalize check from outcome ${check.outcome}`
@@ -359,7 +372,7 @@ async function finalizeOpenCheck(
 
   const ordersSubtotal = await loadOrdersSubtotal({
     restaurantId: input.restaurantId,
-    sessionId: input.sessionId,
+    sessionId: check.sessionId,
     checkId: check.id,
   });
   const money = computeCheckMoney({
@@ -409,7 +422,7 @@ async function finalizeOpenCheck(
       {
         restaurantId: input.restaurantId,
         checkId: check.id,
-        sessionId: input.sessionId,
+        sessionId: check.sessionId,
         currencyCode: check.currencySnapshot.currencyCode,
         businessTimestamp: now,
         lines: settlementLines,
@@ -430,6 +443,31 @@ async function finalizeOpenCheck(
     throw new DiningSessionUnavailableError("Check not found after finalize");
   }
   return mapRowToOperationalCheck(row);
+}
+
+/** Session-façade finalize — resolves Check via Session, then Check-centric finalize. */
+async function finalizeOpenCheck(
+  input: {
+    restaurantId: number;
+    sessionId: number;
+    outcome: Exclude<CheckOutcome, "open">;
+    settlements?: readonly StaffSettlementLineInput[];
+  },
+  client?: SessionDbClient
+): Promise<OperationalCheck> {
+  const check = await ensureOpenCheckForSession({
+    restaurantId: input.restaurantId,
+    sessionId: input.sessionId,
+  });
+  return finalizeOpenCheckById(
+    {
+      restaurantId: input.restaurantId,
+      checkId: check.id,
+      outcome: input.outcome,
+      settlements: input.settlements,
+    },
+    client
+  );
 }
 
 /**
@@ -471,6 +509,177 @@ export async function voidCheck(input: {
     throw new DiningSessionTransitionError("Session is closed");
   }
   return finalizeOpenCheck({ ...input, outcome: "voided" });
+}
+
+// ─── M4 Check-centric financial APIs (Session optional) ───────────
+
+/**
+ * Recalculate an open Check by id — no Session required.
+ */
+export async function recalculateOpenCheck(input: {
+  restaurantId: number;
+  checkId: number;
+}): Promise<OperationalCheck | null> {
+  try {
+    const check = await getCheckById(input);
+    if (!check) return null;
+    const decision = decideCheckRecalculation(
+      check.outcome,
+      check.totalsFrozenAt
+    );
+    if (!decision.allowed) {
+      return check;
+    }
+
+    await refreshOpenCheckMoneyFromDiscovery({
+      restaurantId: input.restaurantId,
+      sessionId: check.sessionId,
+      checkId: check.id,
+      billDiscountAmount: check.billDiscountAmount,
+      taxPolicySnapshot: check.taxPolicySnapshot,
+    });
+
+    const row = await findCheckById(check.id);
+    return row ? mapRowToOperationalCheck(row) : check;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Create an open Check with optional Session link.
+ * `sessionId: null` → sessionless finance (kiosk/counter path).
+ */
+export async function createOpenCheck(input: {
+  restaurantId: number;
+  sessionId: number | null;
+}): Promise<OperationalCheck> {
+  if (input.sessionId != null) {
+    return createOpenCheckForSession({
+      restaurantId: input.restaurantId,
+      sessionId: input.sessionId,
+    });
+  }
+
+  const { currencySnapshot, taxPolicySnapshot } =
+    await captureSnapshotsFromBusinessSettings(input.restaurantId);
+  const money = computeCheckMoney({
+    ordersSubtotal: "0.00",
+    billDiscountAmount: "0.00",
+    taxPolicySnapshot,
+  });
+  const snapshotsFrozenAt = formatDiningSessionTimestamp();
+
+  const checkId = await insertOperationalCheck({
+    restaurantId: input.restaurantId,
+    sessionId: null,
+    currencySnapshot,
+    taxPolicySnapshot,
+    subtotal: money.subtotal,
+    taxAmount: money.taxAmount,
+    taxBreakdown: money.taxBreakdown,
+    grandTotal: money.grandTotal,
+    snapshotsFrozenAt,
+  });
+
+  const row = await findCheckById(checkId);
+  if (!row) {
+    throw new DiningSessionUnavailableError("Check not found after create");
+  }
+  return mapRowToOperationalCheck(row);
+}
+
+/**
+ * Ensure an open Check for an Order via Membership (sessionless-capable).
+ * Creates a sessionless Check when none exists; enrolls the Order; recalculates.
+ */
+export async function ensureCheckForOrder(input: {
+  restaurantId: number;
+  orderId: number;
+}): Promise<OperationalCheck> {
+  const blocking = await findBlockingMembershipForOrder(
+    input.restaurantId,
+    input.orderId
+  );
+
+  if (blocking) {
+    if (blocking.checkOutcome !== "open") {
+      throw new CheckMembershipError(
+        `Order ${input.orderId} already enrolled on ${blocking.checkOutcome} Check ${blocking.membership.checkId}`
+      );
+    }
+    const existing = await getCheckById({
+      restaurantId: input.restaurantId,
+      checkId: blocking.membership.checkId,
+    });
+    if (!existing) {
+      throw new DiningSessionUnavailableError("Check not found for membership");
+    }
+    await enrollOrderInCheck({
+      restaurantId: input.restaurantId,
+      checkId: existing.id,
+      orderId: input.orderId,
+      enrolledReason: "order_place",
+    });
+    return (await recalculateOpenCheck({
+      restaurantId: input.restaurantId,
+      checkId: existing.id,
+    })) ?? existing;
+  }
+
+  const created = await createOpenCheck({
+    restaurantId: input.restaurantId,
+    sessionId: null,
+  });
+
+  await enrollOrderInCheck({
+    restaurantId: input.restaurantId,
+    checkId: created.id,
+    orderId: input.orderId,
+    enrolledReason: "order_place",
+  });
+
+  return (
+    (await recalculateOpenCheck({
+      restaurantId: input.restaurantId,
+      checkId: created.id,
+    })) ?? created
+  );
+}
+
+export async function settleCheckPaidById(input: {
+  restaurantId: number;
+  checkId: number;
+  settlements?: readonly StaffSettlementLineInput[];
+}): Promise<OperationalCheck> {
+  return finalizeOpenCheckById({
+    restaurantId: input.restaurantId,
+    checkId: input.checkId,
+    outcome: "paid",
+    settlements: input.settlements,
+  });
+}
+
+export async function settleCheckComplimentaryById(input: {
+  restaurantId: number;
+  checkId: number;
+}): Promise<OperationalCheck> {
+  return finalizeOpenCheckById({
+    restaurantId: input.restaurantId,
+    checkId: input.checkId,
+    outcome: "complimentary",
+  });
+}
+
+export async function voidCheckById(input: {
+  restaurantId: number;
+  checkId: number;
+}): Promise<OperationalCheck> {
+  return finalizeOpenCheckById({
+    restaurantId: input.restaurantId,
+    checkId: input.checkId,
+    outcome: "voided",
+  });
 }
 
 export async function getCheckById(input: {

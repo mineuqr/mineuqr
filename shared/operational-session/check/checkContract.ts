@@ -93,7 +93,8 @@ export type TaxBreakdown = Readonly<{
 export type OperationalCheck = Readonly<{
   id: number;
   restaurantId: number;
-  sessionId: number;
+  /** Null for sessionless Checks (kiosk/counter); set for table Session visits. */
+  sessionId: number | null;
   outcome: CheckOutcome;
   currencySnapshot: CurrencySnapshot;
   taxPolicySnapshot: TaxPolicySnapshot;

@@ -30,10 +30,8 @@ describe("CHECK-GENERALIZATION-M3 architecture guards", () => {
     expect(env).toContain("CHECK_MEMBERSHIP_DUAL_WRITE");
   });
 
-  it("does not introduce sessionless EnsureCheckForOrder (M4) or Order settle façade", () => {
-    const svc = read("server/operational-session/check/CheckService.ts");
-    expect(svc).not.toContain("EnsureCheckForOrder");
-    expect(svc).not.toContain("ensureCheckForOrder");
-    expect(svc).not.toContain("settleCheckPaidById");
+  it("does not introduce Order settle façade (M6)", () => {
+    const routers = read("server/routers.ts");
+    expect(routers).not.toMatch(/order\.settlePaid/);
   });
 });

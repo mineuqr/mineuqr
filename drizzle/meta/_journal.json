@@ -505,6 +505,13 @@
       "when": 1784570000000,
       "tag": "0071_check_order_membership",
       "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "5",
+      "when": 1784580000000,
+      "tag": "0072_check_session_optionality",
+      "breakpoints": true
     }
   ]
 }
