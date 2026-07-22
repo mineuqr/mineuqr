@@ -31,6 +31,7 @@
 | ADR-ARCH-021 | Event Idempotency Governance | **Accepted** | Architecture Authority | EVENT-IDEMPOTENCY-GOVERNANCE-ADR-1 | — | §8, §12, §15, §22 | **Partial** | Refines ADR-014: transport vs business idempotency; multi-pattern selection algorithm; mandatory consumer checklist |
 | ADR-ARCH-022 | Order Settlement Platform | **Accepted** (rev 1.1) | Architecture Authority | ORDER-SETTLEMENT-ARCHITECTURE-1 · ORDER-SETTLEMENT-ARCHITECTURE-HARDENING-1 | — | Check / Order financial state (FSP) | **Not implemented** | Refines ADR-020: Check-owned Order Settlement entity; Check remains Revenue root; I-FIN-12 preserved; I-OS-14 no terminal→non-terminal regression |
 | ADR-ARCH-023 | Financial Core Capabilities Architecture | **Accepted** | Architecture Authority | FINANCIAL-CORE-CAPABILITIES-ARCHITECTURE-1 | — | FSP Phase C shared language / ownership | **Not implemented** | Refines ADR-020/022: Payment, Allocation, Refund, Outstanding, Timeline constitution; no new monetary Aggregate Roots; preserves certified OS/Projection/API/Presentation |
+| ADR-ARCH-024 | Split Payment Platform | **Accepted** | Architecture Authority | SPLIT-PAYMENT-ARCHITECTURE-1 | — | FSP multi-tender / incremental Payment | **Not implemented** | Refines ADR-023: Payment≠Aggregate Root; Payment Success≠Financial Settlement; OS remains settlement SSOT; Revenue unchanged |
 
 **Registry maintenance:** Principal Engineer updates Implementation Status at program exit certification. Status changes require Architecture Authority approval per §26.
 
@@ -62,5 +63,6 @@
 | ADR-ARCH-021 | [ADR-ARCH-021-EVENT-IDEMPOTENCY-GOVERNANCE.md](../adrs/ADR-ARCH-021-EVENT-IDEMPOTENCY-GOVERNANCE.md) |
 | ADR-ARCH-022 | [ADR-ARCH-022-order-settlement-platform.md](../adrs/ADR-ARCH-022-order-settlement-platform.md) |
 | ADR-ARCH-023 | [ADR-ARCH-023-financial-core-capabilities.md](../adrs/ADR-ARCH-023-financial-core-capabilities.md) |
+| ADR-ARCH-024 | [ADR-ARCH-024-split-payment-platform.md](../adrs/ADR-ARCH-024-split-payment-platform.md) |
 
 **Related:** [Blueprint](../blueprints/Order-Centric-Architecture.md) · [ADR Lifecycle](../governance/ADR-Lifecycle.md)
