@@ -43,6 +43,9 @@ export function DiningSessionActionBar({
   const invalidateAfterAction = async () => {
     await utils.session.getOwnerWorkspace.invalidate({ restaurantId, sessionId });
     await utils.order.list.invalidate({ restaurantId });
+    await utils.orderSettlement.listByCheck.invalidate();
+    await utils.orderSettlement.getSummaryByCheck.invalidate();
+    await utils.orderSettlement.listByRestaurant.invalidate({ restaurantId });
     onWorkspaceUpdated?.();
   };
 

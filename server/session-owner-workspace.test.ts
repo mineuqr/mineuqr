@@ -17,6 +17,25 @@ vi.mock("./db", () => ({
   getOrdersBySessionId: vi.fn(),
 }));
 
+vi.mock("./operational-session/check/CheckService", () => ({
+  getCheckById: vi.fn(async () => null),
+}));
+
+vi.mock("./operational-session/check/orderSettlementRepository", () => ({
+  listOrderSettlementsForCheck: vi.fn(async () => []),
+}));
+
+vi.mock("./operational-session/check/api/orderSettlementReadComposition", () => ({
+  getOrderSettlementProjectionStore: vi.fn(() => ({})),
+}));
+
+vi.mock(
+  "./operational-session/check/read/orderSettlementProjectionMaterializer",
+  () => ({
+    tryMaterializeOrderSettlementProjections: vi.fn(async () => null),
+  })
+);
+
 import { appRouter } from "./routers";
 import { assertRestaurantAccess } from "./restaurantAccess";
 import { findEventsBySessionId, findSessionById } from "./diningSession/sessionRepository";
@@ -117,10 +136,11 @@ describe("session.getOwnerWorkspace UX-1B", () => {
       closedAt: null,
       orderCount: 3,
       ordersTotalAmount: "165.00",
+      checkId: null,
       aggregateSource: "computed",
     });
     expect(result.orders).toHaveLength(3);
-    expect(result.orders[0]?.displayReference).toBe("002");
+    expect(result.orders[0]?.displayReference).toBe("T #002");
     expect(result.orders[1]?.displayReference).toBe("ORD-0143");
     expect(result.events).toHaveLength(1);
     expect(getOrdersBySessionId).toHaveBeenCalledWith(10, 1);

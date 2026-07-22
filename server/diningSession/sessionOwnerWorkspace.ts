@@ -8,6 +8,9 @@ import { findEventsBySessionId, findSessionById } from "./sessionRepository";
 import { resolveSessionAggregates, type AggregateSource } from "./sessionAggregateReaders";
 import { mapOrderDisplayIdentityFields } from "../order/read/presentation/mapOrderDisplayIdentity";
 import { getCheckById } from "../operational-session/check/CheckService";
+import { getOrderSettlementProjectionStore } from "../operational-session/check/api/orderSettlementReadComposition";
+import { tryMaterializeOrderSettlementProjections } from "../operational-session/check/read/orderSettlementProjectionMaterializer";
+import { listOrderSettlementsForCheck } from "../operational-session/check/orderSettlementRepository";
 import {
   DiningSessionNotFoundError,
   OWNER_TIMELINE_OPERATIONAL_EVENT_TYPES,
@@ -35,6 +38,11 @@ export type OwnerSessionWorkspace = {
   closedAt: string | null;
   orderCount: number;
   ordersTotalAmount: string;
+  /**
+   * Active Check id for Order Settlement API adoption (presentation pointer).
+   * Null when Session has no linked Check.
+   */
+  checkId: number | null;
   /** Operational observability — not displayed in UI. */
   aggregateSource: AggregateSource;
   orders: OwnerSessionOrder[];
@@ -118,14 +126,29 @@ export async function getOwnerSessionWorkspace(
   // CHECK-GENERALIZATION-M5 — billing amount from Check when linked (Membership money SSOT).
   let ordersTotalAmount = aggregates.ordersTotalAmount;
   let aggregateSource: AggregateSource = aggregates.aggregateSource;
-  if (session.activeCheckId != null) {
+  const checkId = session.activeCheckId ?? null;
+  if (checkId != null) {
     const check = await getCheckById({
       restaurantId,
-      checkId: session.activeCheckId,
+      checkId,
     });
     if (check) {
       ordersTotalAmount = check.grandTotal;
       aggregateSource = "check";
+    }
+    // ORDER-SETTLEMENT-PRESENTATION-ADOPTION-1 — hydrate Projection Read Store from
+    // committed Write Model so orderSettlement.* API has rows (isolated from finance).
+    try {
+      const committed = await listOrderSettlementsForCheck({
+        restaurantId,
+        checkId,
+      });
+      await tryMaterializeOrderSettlementProjections(
+        getOrderSettlementProjectionStore(),
+        { committedSettlements: committed }
+      );
+    } catch {
+      // Projection hydration failures must not break workspace reads.
     }
   }
 
@@ -137,6 +160,7 @@ export async function getOwnerSessionWorkspace(
     closedAt: session.closedAt ?? null,
     orderCount: aggregates.orderCount,
     ordersTotalAmount,
+    checkId,
     aggregateSource,
     orders,
     events: eventRows.map((row) => {

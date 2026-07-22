@@ -29,6 +29,7 @@ const workspacePayload = {
   closedAt: null,
   orderCount: 2,
   ordersTotalAmount: "165.00",
+  checkId: 900,
   aggregateSource: "session_row" as const,
   orders: [],
   events: [{ id: 1, eventType: TABLE_EVENT_TYPES.SESSION_OPENED, createdAt: "x", orderId: null, orderNumber: null, totalAmount: null }],

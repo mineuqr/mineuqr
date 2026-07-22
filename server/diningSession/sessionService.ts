@@ -14,10 +14,12 @@ import {
 import {
   createOpenCheckForSession,
   ensureOpenCheckForSession,
-  settleCheckComplimentaryById,
-  settleCheckPaidById,
-  voidCheckById,
+  settleCheckComplimentaryByIdDetailed,
+  settleCheckPaidByIdDetailed,
+  voidCheckByIdDetailed,
 } from "../operational-session/check/CheckService";
+import { getOrderSettlementProjectionStore } from "../operational-session/check/api/orderSettlementReadComposition";
+import { tryMaterializeOrderSettlementProjections } from "../operational-session/check/read/orderSettlementProjectionMaterializer";
 import { generateDiningSessionToken } from "./sessionToken";
 import {
   DiningSessionConflictError,
@@ -183,17 +185,27 @@ async function settleAndCloseSession(
 
   // CHECK-MANAGEMENT-ARCHITECTURE-1 — finalize Check before Session settle/close.
   // SETTLEMENT-PAYMENT-METHOD-CAPTURE-1 — pass operator tenders when provided.
-  const check =
+  const financial =
     settlement === "paid"
-      ? await settleCheckPaidById({
+      ? await settleCheckPaidByIdDetailed({
           restaurantId: session.restaurantId,
           checkId,
           settlements,
         })
-      : await settleCheckComplimentaryById({
+      : await settleCheckComplimentaryByIdDetailed({
           restaurantId: session.restaurantId,
           checkId,
         });
+  const check = financial.check;
+
+  // ORDER-SETTLEMENT-PRESENTATION-ADOPTION-1 — post-commit Projection sync (isolated).
+  await tryMaterializeOrderSettlementProjections(
+    getOrderSettlementProjectionStore(),
+    {
+      committedSettlements: financial.orderSettlement.settlements,
+      events: financial.orderSettlementEvents,
+    }
+  );
 
   const checkMetadata = {
     ...metadata,
@@ -552,12 +564,19 @@ export async function closeSession(input: StaffSessionActionInput): Promise<void
       });
       checkId = ensured.id;
     }
-    const voided = await voidCheckById({
+    const voidedFinancial = await voidCheckByIdDetailed({
       restaurantId: input.restaurantId,
       checkId,
     });
-    voidedCheckId = voided.id;
-    voidedGrandTotal = voided.grandTotal;
+    voidedCheckId = voidedFinancial.check.id;
+    voidedGrandTotal = voidedFinancial.check.grandTotal;
+    await tryMaterializeOrderSettlementProjections(
+      getOrderSettlementProjectionStore(),
+      {
+        committedSettlements: voidedFinancial.orderSettlement.settlements,
+        events: voidedFinancial.orderSettlementEvents,
+      }
+    );
   } catch {
     /* no open check / already terminal — Session close still proceeds */
   }

@@ -10,19 +10,18 @@ import {
 import { DiningSessionActionBar } from "@/components/dashboard/DiningSessionActionBar";
 import { DiningSessionOverviewSection } from "@/components/dashboard/DiningSessionOverviewSection";
 import { DiningSessionOrdersSummarySection } from "@/components/dashboard/DiningSessionOrdersSummarySection";
-import { DiningSessionSettlementSummarySection } from "@/components/dashboard/DiningSessionSettlementSummarySection";
-import { DiningSessionTimelineList } from "@/components/dashboard/DiningSessionTimelineList";
 import {
   DiningSessionWorkspaceRecovery,
   DiningSessionWorkspaceSkeleton,
 } from "@/components/dashboard/DiningSessionWorkspaceRecovery";
+import { DiningSessionTimelineList } from "@/components/dashboard/DiningSessionTimelineList";
+import { OrderSettlementPanel } from "@/components/order-settlement/OrderSettlementPanel";
 import { useLanguage } from "@/contexts/LanguageContext";
 import type { DiningSessionStatus } from "@/lib/diningSessionCopy";
 import { formatDashboardSessionLabel } from "@/lib/diningSessionDashboardCopy";
 import { sessionSummaryLabel } from "@/lib/diningSessionWorkspaceCopy";
 import {
   countSessionItems,
-  deriveSettlementSummary,
   isSessionNotFoundError,
 } from "@/lib/diningSessionWorkspaceView";
 import {
@@ -73,6 +72,11 @@ export function DiningSessionWorkspaceSheet({
     authPending,
     isAuthenticated,
   });
+  useDevQueryRuntimeLog("orderSettlement.listByCheck", {
+    enabled: workspaceEnabled,
+    authPending,
+    isAuthenticated,
+  });
 
   const {
     data,
@@ -100,17 +104,6 @@ export function DiningSessionWorkspaceSheet({
     if (!sessionId || !restaurantOrders) return 0;
     return countSessionItems(restaurantOrders, sessionId);
   }, [restaurantOrders, sessionId]);
-
-  const settlementSummary = useMemo(() => {
-    if (!data) {
-      return { state: "pending" } as const;
-    }
-    return deriveSettlementSummary(
-      data.events,
-      data.ordersTotalAmount,
-      data.status as DiningSessionStatus
-    );
-  }, [data]);
 
   const [sheetSide, setSheetSide] = useState<"bottom" | "right">("right");
   useEffect(() => {
@@ -180,10 +173,13 @@ export function DiningSessionWorkspaceSheet({
                 currencySymbol={sym}
               />
 
-              <DiningSessionSettlementSummarySection
-                settlement={settlementSummary}
+              <OrderSettlementPanel
+                restaurantId={restaurantId}
+                checkId={data.checkId}
                 language={lang}
                 currencySymbol={sym}
+                enabled={workspaceEnabled}
+                showDiagnostics={import.meta.env.DEV}
               />
 
               <section

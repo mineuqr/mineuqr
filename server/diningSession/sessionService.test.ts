@@ -42,10 +42,21 @@ vi.mock("../operational-session/check/CheckService", () => ({
     outcome: "open",
   })),
   ensureOpenCheckForSession: vi.fn(),
-  settleCheckPaidById: vi.fn(),
-  settleCheckComplimentaryById: vi.fn(),
-  voidCheckById: vi.fn(),
+  settleCheckPaidByIdDetailed: vi.fn(),
+  settleCheckComplimentaryByIdDetailed: vi.fn(),
+  voidCheckByIdDetailed: vi.fn(),
 }));
+
+vi.mock("../operational-session/check/api/orderSettlementReadComposition", () => ({
+  getOrderSettlementProjectionStore: vi.fn(() => ({})),
+}));
+
+vi.mock(
+  "../operational-session/check/read/orderSettlementProjectionMaterializer",
+  () => ({
+    tryMaterializeOrderSettlementProjections: vi.fn(async () => null),
+  })
+);
 
 import {
   getActiveSession,

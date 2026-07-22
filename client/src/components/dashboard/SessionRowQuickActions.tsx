@@ -55,6 +55,9 @@ export function SessionRowQuickActions({
       utils.ops.getActiveTablesBoard.invalidate({ restaurantId }),
       utils.ops.getRestaurantOverview.invalidate({ restaurantId }),
       utils.ops.getActivityFeed.invalidate({ restaurantId }),
+      utils.orderSettlement.listByCheck.invalidate(),
+      utils.orderSettlement.getSummaryByCheck.invalidate(),
+      utils.orderSettlement.listByRestaurant.invalidate({ restaurantId }),
     ]);
   };
 
