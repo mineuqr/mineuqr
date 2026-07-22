@@ -45,6 +45,10 @@ export function createPersistingProjectionRepositories(
         await inner.orderTimeline.upsert(record);
         await drizzle.upsertTimeline(record);
       },
+      deleteAllForRestaurant: async (restaurantId: number) => {
+        await inner.orderTimeline.deleteAllForRestaurant(restaurantId);
+        await drizzle.deleteTimelineForRestaurant(restaurantId);
+      },
     },
     operationalKpi: {
       ...inner.operationalKpi,

@@ -75,14 +75,16 @@ describe("OrderReadProjectionMaterializer", () => {
     listOrderIdsForRestaurant: vi.fn(async () => [10]),
     listRestaurantIds: vi.fn(async () => [1]),
   };
-  const materializer = new OrderReadProjectionMaterializer(
-    store.asRepositories(),
-    loader,
-    store
-  );
+  let materializer: OrderReadProjectionMaterializer;
 
   beforeEach(() => {
     store.clear();
+    // Fresh claim stores so KPI/analytics business claims do not leak across tests.
+    materializer = new OrderReadProjectionMaterializer(
+      store.asRepositories(),
+      loader,
+      store
+    );
   });
 
   it("syncs order projections on OrderCreated", async () => {

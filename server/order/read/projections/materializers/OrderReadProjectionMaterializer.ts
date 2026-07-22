@@ -28,6 +28,9 @@ import {
   p06CanonicalTransitionsForStatus,
   p06OrderCreatedKey,
   p06StatusTransitionKey,
+  p10OrderCreatedKey,
+  timelineCreatedEventId,
+  timelineTransitionEventId,
 } from "../../../infrastructure/events/consumers/idempotency/DurableBusinessClaimStore";
 import { isOrderInOperationalLifecycle } from "./projectionLifecycle";
 import {
@@ -139,16 +142,21 @@ export class OrderReadProjectionMaterializer {
   async appendTimeline(envelope: EventEnvelope): Promise<void> {
     const payload = parsePayload(envelope);
     const restaurantId = envelope.restaurantId;
-    const orderId = envelope.aggregateId;
+    const orderId =
+      "orderId" in payload && typeof payload.orderId === "number"
+        ? payload.orderId
+        : envelope.aggregateId;
     const occurredAt = envelope.occurredAt;
 
     if (payload.type === "OrderCreated") {
+      // ADR-ARCH-021 Pattern E — PK is business identity, not transport eventId.
+      const businessEventId = timelineCreatedEventId(restaurantId, orderId);
       await this.repos.orderTimeline.upsert({
         projectionId: "P-04-order-timeline",
         restaurantId,
         orderId,
         event: {
-          eventId: envelope.eventId,
+          eventId: businessEventId,
           fromStatus: null,
           toStatus: "pending",
           occurredAt,
@@ -161,12 +169,18 @@ export class OrderReadProjectionMaterializer {
     }
 
     if (payload.type === "OrderStatusChanged") {
+      const businessEventId = timelineTransitionEventId(
+        restaurantId,
+        orderId,
+        payload.fromStatus,
+        payload.toStatus
+      );
       await this.repos.orderTimeline.upsert({
         projectionId: "P-04-order-timeline",
         restaurantId,
         orderId,
         event: {
-          eventId: envelope.eventId,
+          eventId: businessEventId,
           fromStatus: payload.fromStatus,
           toStatus: payload.toStatus,
           occurredAt: payload.changedAt,
@@ -252,6 +266,17 @@ export class OrderReadProjectionMaterializer {
     const row = await this.getOrCreateAnalytics(restaurantId, dayKey);
 
     if (payload.type === "OrderCreated") {
+      // EVENT-PROJECTION-IDEMPOTENCY-1 / ADR-021 Pattern B — once-per-order count.
+      const claimed = await this.kpiClaims.tryClaim(
+        BUSINESS_CLAIM_NS.p10Created,
+        p10OrderCreatedKey(restaurantId, payload.orderId)
+      );
+      if (!claimed) {
+        row.lastEventId = envelope.eventId;
+        row.updatedAt = new Date().toISOString();
+        await this.repos.orderAnalytics.upsert(row);
+        return;
+      }
       row.orderCount += 1;
     } else {
       // P10-ORDER-COMPLETION-IDEMPOTENCY-1 — claim once per business order.
@@ -394,6 +419,12 @@ export class OrderReadProjectionMaterializer {
       string,
       Awaited<ReturnType<OrderReadProjectionMaterializer["getOrCreateAnalytics"]>>
     >();
+    const timelineRebuild: Array<{
+      orderId: number;
+      createdAt: string;
+      status: string;
+      updatedAt: string;
+    }> = [];
 
     const orderIds =
       await this.contextLoader.listOrderIdsForRestaurant(restaurantId);
@@ -460,6 +491,11 @@ export class OrderReadProjectionMaterializer {
           updatedAt: new Date().toISOString(),
         };
       analytics.orderCount += 1;
+      // Seed P-10 Created claims so post-rebuild duplicate OrderCreated cannot inflate.
+      await this.kpiClaims.markClaimed(
+        BUSINESS_CLAIM_NS.p10Created,
+        p10OrderCreatedKey(restaurantId, orderId)
+      );
       if (order.status === "served") {
         analytics.completedOrderCount += 1;
         analytics.completedSales = addDecimal(
@@ -473,11 +509,20 @@ export class OrderReadProjectionMaterializer {
         );
       }
       analyticsByDay.set(analyticsDayKey, analytics);
+
+      // P-04 — rematerialize canonical timeline with business eventIds (Pattern E).
+      timelineRebuild.push({
+        orderId,
+        createdAt: order.createdAt,
+        status: order.status,
+        updatedAt: order.updatedAt,
+      });
     }
 
     // Delete-then-upsert: remove orphan UTC/wall dayKeys from prior materialization.
     await this.repos.operationalKpi.deleteAllForRestaurant(restaurantId);
     await this.repos.orderAnalytics.deleteAllForRestaurant(restaurantId);
+    await this.repos.orderTimeline.deleteAllForRestaurant(restaurantId);
 
     for (const kpi of Array.from(kpiByDay.values())) {
       kpi.activeOrders =
@@ -487,10 +532,102 @@ export class OrderReadProjectionMaterializer {
     for (const analytics of Array.from(analyticsByDay.values())) {
       await this.repos.orderAnalytics.upsert(analytics);
     }
+    for (const row of timelineRebuild) {
+      await this.rematerializeTimelineFromSnapshot(
+        restaurantId,
+        row.orderId,
+        row.createdAt,
+        row.status,
+        row.updatedAt
+      );
+    }
 
     return {
       ordersScanned,
       dayKeysWritten: Math.max(kpiByDay.size, analyticsByDay.size),
     };
   }
+
+  /**
+   * EVENT-PROJECTION-IDEMPOTENCY-1 — P-04 rebuild from order snapshot.
+   * Uses deterministic business eventIds so repeated rebuild / replay converge.
+   */
+  private async rematerializeTimelineFromSnapshot(
+    restaurantId: number,
+    orderId: number,
+    createdAt: string,
+    status: string,
+    updatedAt: string
+  ): Promise<void> {
+    const now = new Date().toISOString();
+    await this.repos.orderTimeline.upsert({
+      projectionId: "P-04-order-timeline",
+      restaurantId,
+      orderId,
+      event: {
+        eventId: timelineCreatedEventId(restaurantId, orderId),
+        fromStatus: null,
+        toStatus: "pending",
+        occurredAt: createdAt,
+      },
+      schemaVersion: ORDER_READ_PROJECTION_SCHEMA_VERSION,
+      lastEventId: null,
+      updatedAt: now,
+    });
+
+    if (status === "cancelled") {
+      await this.repos.orderTimeline.upsert({
+        projectionId: "P-04-order-timeline",
+        restaurantId,
+        orderId,
+        event: {
+          eventId: timelineTransitionEventId(
+            restaurantId,
+            orderId,
+            "pending",
+            "cancelled"
+          ),
+          fromStatus: "pending",
+          toStatus: "cancelled",
+          occurredAt: updatedAt,
+        },
+        schemaVersion: ORDER_READ_PROJECTION_SCHEMA_VERSION,
+        lastEventId: null,
+        updatedAt: now,
+      });
+      return;
+    }
+
+    const transitions = p06CanonicalTransitionsForStatus(status);
+    for (let i = 0; i < transitions.length; i++) {
+      const [from, to] = transitions[i]!;
+      await this.repos.orderTimeline.upsert({
+        projectionId: "P-04-order-timeline",
+        restaurantId,
+        orderId,
+        event: {
+          eventId: timelineTransitionEventId(restaurantId, orderId, from, to),
+          fromStatus: from,
+          toStatus: to,
+          // Monotonic occurredAt so list ordering stays path-stable when
+          // createdAt === updatedAt on the snapshot.
+          occurredAt: offsetTimestamp(
+            to === status ? updatedAt : createdAt,
+            i + 1
+          ),
+        },
+        schemaVersion: ORDER_READ_PROJECTION_SCHEMA_VERSION,
+        lastEventId: null,
+        updatedAt: now,
+      });
+    }
+  }
+}
+
+function offsetTimestamp(base: string, seconds: number): string {
+  const normalized = base.includes("T") ? base : base.replace(" ", "T");
+  const ms = Date.parse(normalized.endsWith("Z") ? normalized : `${normalized}Z`);
+  if (!Number.isFinite(ms)) return base;
+  const d = new Date(ms + seconds * 1000);
+  return d.toISOString().slice(0, 19).replace("T", " ");
 }

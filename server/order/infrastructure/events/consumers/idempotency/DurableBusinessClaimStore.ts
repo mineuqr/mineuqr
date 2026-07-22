@@ -106,6 +106,7 @@ export const BUSINESS_CLAIM_NS = {
   sessionOrderCreated: "BizClaim:SessionCreated",
   sessionOrderCancelled: "BizClaim:SessionCancel",
   p06Kpi: "BizClaim:P06Kpi",
+  p10Created: "BizClaim:P10Created",
 } as const;
 
 export function notificationNewOrderKey(
@@ -169,4 +170,32 @@ export function orderPrintBusinessIdempotencyKey(
   eventType: string
 ): string {
   return `order:${orderId}:${eventType}`;
+}
+
+/** P-10 OrderCreated claim — once-per-order orderCount increment. */
+export function p10OrderCreatedKey(
+  restaurantId: number,
+  orderId: number
+): string {
+  return `a:${restaurantId}:${orderId}:c`;
+}
+
+/**
+ * P-04 Timeline — deterministic eventId (PK) for Pattern E natural uniqueness.
+ * Fits varchar(36). Transport eventId is retained on lastEventId only.
+ */
+export function timelineCreatedEventId(
+  restaurantId: number,
+  orderId: number
+): string {
+  return `t:${restaurantId}:${orderId}:c`;
+}
+
+export function timelineTransitionEventId(
+  restaurantId: number,
+  orderId: number,
+  fromStatus: string,
+  toStatus: string
+): string {
+  return `t:${restaurantId}:${orderId}:${fromStatus}>${toStatus}`;
 }

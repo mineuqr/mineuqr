@@ -72,6 +72,8 @@ export type OrderTimelineProjectionRecord = ProjectionRecordMeta & {
 export interface OrderTimelineProjectionRepository
   extends ProjectionRepository<OrderTimelineProjectionRecord, OrderTimelineProjectionKey> {
   listByOrderId(orderId: number, restaurantId: number, limit?: number): Promise<OrderTimelineProjectionRecord[]>;
+  /** EVENT-PROJECTION-IDEMPOTENCY-1 — clear timeline before replace rebuild. */
+  deleteAllForRestaurant(restaurantId: number): Promise<void>;
 }
 
 export type OperationalKpiProjectionKey = TenantScopedProjectionKey & {

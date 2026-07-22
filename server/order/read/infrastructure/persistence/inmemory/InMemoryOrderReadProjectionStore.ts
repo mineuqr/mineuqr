@@ -83,6 +83,7 @@ export class InMemoryOrderReadProjectionStore {
         deleteByKey: (k) => store.deleteTimelineByKey(k),
         findByKey: (k) => store.findTimelineByKey(k),
         listByOrderId: (oid, rid, lim) => store.listByOrderId(oid, rid, lim),
+        deleteAllForRestaurant: (rid) => store.deleteTimelineForRestaurant(rid),
       },
       operationalKpi: {
         upsert: (r) => store.upsertKpi(r),
@@ -188,6 +189,17 @@ export class InMemoryOrderReadProjectionStore {
 
   async upsertTimeline(record: OrderTimelineProjectionRecord): Promise<void> {
     const key = `${record.restaurantId}:${record.orderId}:${record.event.eventId}`;
+    const existing = this.timeline.get(key);
+    // Match Drizzle onDuplicateKeyUpdate: first-write wins for event payload /
+    // occurredAt; only touch updatedAt (and lastEventId) on redelivery.
+    if (existing) {
+      this.timeline.set(key, {
+        ...existing,
+        lastEventId: record.lastEventId,
+        updatedAt: record.updatedAt,
+      });
+      return;
+    }
     this.timeline.set(key, { ...record });
   }
 
@@ -210,6 +222,12 @@ export class InMemoryOrderReadProjectionStore {
       .filter((r) => r.restaurantId === restaurantId && r.orderId === orderId)
       .sort((a, b) => a.event.occurredAt.localeCompare(b.event.occurredAt))
       .slice(0, limit);
+  }
+
+  async deleteTimelineForRestaurant(restaurantId: number): Promise<void> {
+    for (const [key, record] of Array.from(this.timeline.entries())) {
+      if (record.restaurantId === restaurantId) this.timeline.delete(key);
+    }
   }
 
   async upsertKpi(record: OperationalKpiProjectionRecord): Promise<void> {

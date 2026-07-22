@@ -205,6 +205,14 @@ export class DrizzleOrderReadProjectionStore {
       .onDuplicateKeyUpdate({ set: { updatedAt: record.updatedAt } });
   }
 
+  async deleteTimelineForRestaurant(restaurantId: number): Promise<void> {
+    const db = await getDb();
+    if (!db) return;
+    await db
+      .delete(orderReadOrderTimeline)
+      .where(eq(orderReadOrderTimeline.restaurantId, restaurantId));
+  }
+
   async upsertKpi(record: OperationalKpiProjectionRecord): Promise<void> {
     const db = await getDb();
     if (!db) return;
