@@ -11,8 +11,8 @@
 | **Revision** | **1.0** |
 | **Supersedes** | — |
 | **Refines** | [ADR-ARCH-023](./ADR-ARCH-023-financial-core-capabilities.md) · [ADR-ARCH-020](./ADR-ARCH-020-financial-settlement-platform.md) · [ADR-ARCH-022](./ADR-ARCH-022-order-settlement-platform.md) |
-| **Related ADRs** | ADR-ARCH-020 · ADR-ARCH-021 · ADR-ARCH-022 · ADR-ARCH-023 |
-| **Related programs** | SPLIT-PAYMENT-ARCHITECTURE-1 · SPLIT-PAYMENT-DOMAIN-1 (successor) · OUTSTANDING-BALANCE-ARCHITECTURE-1 · FINANCIAL-TIMELINE-ARCHITECTURE-1 |
+| **Related ADRs** | ADR-ARCH-020 · ADR-ARCH-021 · ADR-ARCH-022 · ADR-ARCH-023 · ADR-ARCH-025 |
+| **Related programs** | SPLIT-PAYMENT-ARCHITECTURE-1 · SPLIT-PAYMENT-DOMAIN-1 (successor) · MULTI-CHECK-ALLOCATION-ARCHITECTURE-1 · OUTSTANDING-BALANCE-ARCHITECTURE-1 · FINANCIAL-TIMELINE-ARCHITECTURE-1 |
 | **Implementation status** | **Not implemented** — constitutional + program architecture only; no schema/API/runtime changes authorized by this ADR alone |
 
 ---
