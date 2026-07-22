@@ -161,6 +161,12 @@ export {
   type OrderSettlementProjectionStore,
   type OrderSettlementProjectionMaterializeInput,
   type OrderSettlementProjectionMaterializeResult,
+  InMemorySplitPaymentProjectionStore,
+  materializeSplitPaymentProjections,
+  tryMaterializeSplitPaymentProjections,
+  type SplitPaymentProjectionStore,
+  type SplitPaymentProjectionMaterializeInput,
+  type SplitPaymentProjectionMaterializeResult,
 } from "./read";
 
 export {
