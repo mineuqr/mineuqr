@@ -353,6 +353,10 @@ Allowed without changing this constitutional model:
 - Refund flows via SettlementTransaction status under Check.  
 - Multi-rate tax via existing snapshot `components[]`.
 
+Allowed via refining ADR (does not replace Check as Revenue root):
+
+- **Order Settlement** as Check-owned per-Order financial state — see [ADR-ARCH-022](./ADR-ARCH-022-order-settlement-platform.md).
+
 Requires a **new ADR** (fundamental capability change):
 
 - Split Check / seat transfer as first-class multi-Check per Session.  
