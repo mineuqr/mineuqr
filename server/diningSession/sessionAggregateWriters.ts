@@ -12,7 +12,7 @@ import {
   recalculateOpenCheck,
   recalculateOpenCheckForSession,
 } from "../operational-session/check/CheckService";
-import { dualWriteEnrollOrderForSession } from "../operational-session/check/checkMembershipService";
+import { enrollOrderForSessionCheck } from "../operational-session/check/checkMembershipService";
 
 /** M5 — Check money recalc by activeCheckId when available; Session façade as fallback. */
 async function recalculateCheckMoneyForSession(input: {
@@ -141,9 +141,9 @@ export async function incrementSessionAggregatesForOrder(
     totalAmountDelta: input.orderTotalAmount,
   });
 
-  // CHECK-GENERALIZATION-M1 — dual-write membership (best-effort).
+  // COMPATIBILITY-DEPENDENCY-ELIMINATION-1 — authoritative Membership enroll (not dual-write).
   if (input.orderId != null) {
-    await dualWriteEnrollOrderForSession({
+    await enrollOrderForSessionCheck({
       restaurantId: input.restaurantId,
       sessionId: input.sessionId,
       orderId: input.orderId,

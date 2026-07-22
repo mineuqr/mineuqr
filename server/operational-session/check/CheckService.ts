@@ -8,8 +8,6 @@
  */
 
 import { ENV } from "../../_core/env";
-import { opsLog } from "../../_core/opsLog";
-import { OPS_EVENT } from "../../_core/opsTaxonomy";
 import {
   getOrdersByIds,
   getOrdersBySessionId,
@@ -53,9 +51,9 @@ import {
 } from "./checkRepository";
 import { insertSettlementTransactions } from "./settlementTransactionRepository";
 import {
-  dualWriteDeactivateMembershipsOnVoid,
-  dualWriteSyncSessionOrdersToCheck,
+  deactivateMembershipsOnCheckVoid,
   enrollOrderInCheck,
+  syncSessionOrdersToCheck,
   CheckMembershipError,
 } from "./checkMembershipService";
 import {
@@ -71,49 +69,43 @@ export class CheckTransitionError extends Error {
 }
 
 /**
- * M3/M4 — Check Order money discovery.
- * Membership when authoritative OR when Check is sessionless (no Session to scan).
- * Rollback Session scan only for Session-linked Checks when flag is off.
+ * COMPATIBILITY-DEPENDENCY-ELIMINATION-1 — Session-scan money discovery.
+ * Compatibility / emergency rollback only. Production default never enters here
+ * while CHECK_MEMBERSHIP_AUTHORITATIVE_READ remains ON (default).
+ */
+async function loadOrdersSubtotalCompatibilitySessionScan(
+  restaurantId: number,
+  sessionId: number
+): Promise<string> {
+  const orderRows = await getOrdersBySessionId(restaurantId, sessionId);
+  return computeOrdersTotalAmount(orderRows);
+}
+
+/**
+ * Check Order money discovery — Membership is production authority.
+ * Session scan is isolated compatibility rollback when authoritative flag is OFF.
  */
 async function loadOrdersSubtotal(input: {
   restaurantId: number;
   sessionId: number | null;
   checkId: number;
 }): Promise<string> {
+  // Sessionless Checks always use Membership (no Session to scan).
   const useMembership =
     ENV.checkMembershipAuthoritativeRead || input.sessionId == null;
 
-  if (useMembership) {
-    if (
-      ENV.checkMembershipAuthoritativeRead &&
-      !ENV.checkMembershipDualWrite
-    ) {
-      opsLog({
-        type: OPS_EVENT.check_membership_dual_write_failed,
-        category: "ORDER",
-        severity: "warn",
-        ts: new Date().toISOString(),
-        restaurantId: input.restaurantId,
-        procedure: "loadOrdersSubtotal",
-        metadata: {
-          checkId: input.checkId,
-          sessionId: input.sessionId,
-          reason: "authoritative_read_without_dual_write",
-        },
-      });
-    }
-    const orderIds = await listActiveOrderIdsForCheck(
+  if (!useMembership) {
+    return loadOrdersSubtotalCompatibilitySessionScan(
       input.restaurantId,
-      input.checkId
+      input.sessionId!
     );
-    const orderRows = await getOrdersByIds(input.restaurantId, orderIds);
-    return computeOrdersTotalAmount(orderRows);
   }
 
-  const orderRows = await getOrdersBySessionId(
+  const orderIds = await listActiveOrderIdsForCheck(
     input.restaurantId,
-    input.sessionId!
+    input.checkId
   );
+  const orderRows = await getOrdersByIds(input.restaurantId, orderIds);
   return computeOrdersTotalAmount(orderRows);
 }
 
@@ -184,12 +176,13 @@ export async function createOpenCheckForSession(
     client
   );
   if (existing) {
-    await dualWriteSyncSessionOrdersToCheck({
+    // Authoritative Membership sync (not dual-write gated).
+    await syncSessionOrdersToCheck({
       restaurantId: input.restaurantId,
       sessionId: input.sessionId,
       checkId: existing.id,
     });
-    if (ENV.checkMembershipAuthoritativeRead && existing.outcome === "open") {
+    if (existing.outcome === "open") {
       const mapped = mapRowToOperationalCheck(existing);
       await refreshOpenCheckMoneyFromDiscovery({
         restaurantId: input.restaurantId,
@@ -208,7 +201,7 @@ export async function createOpenCheckForSession(
 
   const { currencySnapshot, taxPolicySnapshot } =
     await captureSnapshotsFromBusinessSettings(input.restaurantId);
-  // M5 — seed zeros; money authority comes from Membership after dual-write sync.
+  // Seed zeros; money authority comes from Membership after authoritative sync.
   const money = computeCheckMoney({
     ordersSubtotal: "0.00",
     billDiscountAmount: "0.00",
@@ -240,8 +233,8 @@ export async function createOpenCheckForSession(
     client
   );
 
-  // Dual-write membership, then money refresh (Membership when M3 ON).
-  await dualWriteSyncSessionOrdersToCheck({
+  // Authoritative Membership ownership, then money refresh.
+  await syncSessionOrdersToCheck({
     restaurantId: input.restaurantId,
     sessionId: input.sessionId,
     checkId,
@@ -417,7 +410,7 @@ async function finalizeOpenCheckById(
   }
 
   if (input.outcome === "voided") {
-    await dualWriteDeactivateMembershipsOnVoid({
+    await deactivateMembershipsOnCheckVoid({
       restaurantId: input.restaurantId,
       checkId: check.id,
     });

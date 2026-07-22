@@ -17,9 +17,9 @@ describe("CHECK-GENERALIZATION-M3 architecture guards", () => {
     expect(svc).toContain("listActiveOrderIdsForCheck");
     expect(svc).toContain("getOrdersByIds");
     expect(svc).toContain("checkMembershipAuthoritativeRead");
-    expect(svc).toContain("dualWriteSyncSessionOrdersToCheck");
+    expect(svc).toContain("syncSessionOrdersToCheck");
     // Session scan may remain as bootstrap/rollback only — not sole authority.
-    expect(svc).toContain("loadOrdersSubtotalFromSession");
+    expect(svc).toContain("loadOrdersSubtotalCompatibilitySessionScan");
   });
 
   it("authoritative-read env flag exists and defaults ON", () => {

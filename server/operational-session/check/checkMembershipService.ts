@@ -1,9 +1,9 @@
 /**
- * CHECK-GENERALIZATION-M1 — Check-owned membership dual-write service.
+ * CHECK-GENERALIZATION-M1 — Check-owned membership service.
  *
  * ADR-ARCH-020: Membership belongs to Check. Not an aggregate.
- * M1: Dual-write enrollment. M3: money discovery is membership-authoritative by default.
- * Failures are best-effort (ops-logged) so waiter/session flows never regress.
+ * COMPATIBILITY-DEPENDENCY-ELIMINATION-1 — production uses authoritative enroll/sync/void.
+ * Dual-write helpers remain flag-gated compatibility mirrors (not required by production).
  */
 
 import { ENV } from "../../_core/env";
@@ -111,18 +111,16 @@ export async function enrollOrderInCheck(
 }
 
 /**
- * Dual-write helper: enroll Order into Session's open Check.
- * Best-effort — never throws to callers of Session aggregate writers.
+ * COMPATIBILITY-DEPENDENCY-ELIMINATION-1 — authoritative enroll for Session-linked Order.
+ * Not gated by dual-write. Best-effort (ops-logged) for Session aggregate writers.
  */
-export async function dualWriteEnrollOrderForSession(input: {
+export async function enrollOrderForSessionCheck(input: {
   restaurantId: number;
   sessionId: number;
   orderId: number;
   checkId?: number | null;
   enrolledReason?: CheckMembershipEnrolledReason;
 }): Promise<void> {
-  if (!dualWriteEnabled()) return;
-
   try {
     let checkId = input.checkId ?? null;
     if (checkId == null) {
@@ -144,10 +142,10 @@ export async function dualWriteEnrollOrderForSession(input: {
     opsLog({
       type: OPS_EVENT.check_membership_dual_write_failed,
       category: "ORDER",
-      severity: "warn",
+      severity: "error",
       ts: new Date().toISOString(),
       restaurantId: input.restaurantId,
-      procedure: "dualWriteEnrollOrderForSession",
+      procedure: "enrollOrderForSessionCheck",
       metadata: {
         sessionId: input.sessionId,
         orderId: input.orderId,
@@ -159,16 +157,28 @@ export async function dualWriteEnrollOrderForSession(input: {
 }
 
 /**
- * After Check create/ensure: enroll all current Session Orders (idempotent).
- * Best-effort.
+ * Dual-write compatibility mirror — flag-gated. Production must not depend on this.
  */
-export async function dualWriteSyncSessionOrdersToCheck(input: {
+export async function dualWriteEnrollOrderForSession(input: {
+  restaurantId: number;
+  sessionId: number;
+  orderId: number;
+  checkId?: number | null;
+  enrolledReason?: CheckMembershipEnrolledReason;
+}): Promise<void> {
+  if (!dualWriteEnabled()) return;
+  await enrollOrderForSessionCheck(input);
+}
+
+/**
+ * COMPATIBILITY-DEPENDENCY-ELIMINATION-1 — authoritative sync of Session Orders → Check.
+ * Not gated by dual-write. Visit order list is operational seed; Membership owns finance after.
+ */
+export async function syncSessionOrdersToCheck(input: {
   restaurantId: number;
   sessionId: number;
   checkId: number;
 }): Promise<void> {
-  if (!dualWriteEnabled()) return;
-
   try {
     const orders = await getOrdersBySessionId(
       input.restaurantId,
@@ -186,10 +196,10 @@ export async function dualWriteSyncSessionOrdersToCheck(input: {
     opsLog({
       type: OPS_EVENT.check_membership_dual_write_failed,
       category: "ORDER",
-      severity: "warn",
+      severity: "error",
       ts: new Date().toISOString(),
       restaurantId: input.restaurantId,
-      procedure: "dualWriteSyncSessionOrdersToCheck",
+      procedure: "syncSessionOrdersToCheck",
       metadata: {
         sessionId: input.sessionId,
         checkId: input.checkId,
@@ -199,26 +209,46 @@ export async function dualWriteSyncSessionOrdersToCheck(input: {
   }
 }
 
-/** Called when Check is voided — soft-deactivate memberships (best-effort). */
-export async function dualWriteDeactivateMembershipsOnVoid(input: {
+/**
+ * Dual-write compatibility mirror — flag-gated. Production must not depend on this.
+ */
+export async function dualWriteSyncSessionOrdersToCheck(input: {
   restaurantId: number;
+  sessionId: number;
   checkId: number;
 }): Promise<void> {
   if (!dualWriteEnabled()) return;
+  await syncSessionOrdersToCheck(input);
+}
+
+/** Authoritative void deactivate — not gated by dual-write. */
+export async function deactivateMembershipsOnCheckVoid(input: {
+  restaurantId: number;
+  checkId: number;
+}): Promise<void> {
   try {
     await deactivateMembershipsForCheck(input);
   } catch (e) {
     opsLog({
       type: OPS_EVENT.check_membership_dual_write_failed,
       category: "ORDER",
-      severity: "warn",
+      severity: "error",
       ts: new Date().toISOString(),
       restaurantId: input.restaurantId,
-      procedure: "dualWriteDeactivateMembershipsOnVoid",
+      procedure: "deactivateMembershipsOnCheckVoid",
       metadata: {
         checkId: input.checkId,
         error: e instanceof Error ? e.message : String(e),
       },
     });
   }
+}
+
+/** Dual-write compatibility mirror — flag-gated. Production must not depend on this. */
+export async function dualWriteDeactivateMembershipsOnVoid(input: {
+  restaurantId: number;
+  checkId: number;
+}): Promise<void> {
+  if (!dualWriteEnabled()) return;
+  await deactivateMembershipsOnCheckVoid(input);
 }

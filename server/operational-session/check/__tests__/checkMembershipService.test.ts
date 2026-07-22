@@ -55,6 +55,8 @@ vi.mock("../checkOrderMembershipRepository", () => ({
 import {
   enrollOrderInCheck,
   dualWriteEnrollOrderForSession,
+  enrollOrderForSessionCheck,
+  syncSessionOrdersToCheck,
 } from "../checkMembershipService";
 
 describe("CHECK-GENERALIZATION-M1 membership dual-write", () => {
@@ -150,6 +152,25 @@ describe("CHECK-GENERALIZATION-M1 membership dual-write", () => {
     expect(mocks.findOpenCheckBySessionId).not.toHaveBeenCalled();
   });
 
+  it("enrollOrderForSessionCheck works when dual-write is disabled", async () => {
+    mocks.dualWriteEnabled = false;
+    mocks.findOpenCheckBySessionId.mockResolvedValue({ id: 10 });
+    mocks.findCheckById.mockResolvedValue({
+      id: 10,
+      restaurantId: 1,
+      outcome: "open",
+    });
+    mocks.getOrderById.mockResolvedValue({ id: 5, restaurantId: 1 });
+
+    await enrollOrderForSessionCheck({
+      restaurantId: 1,
+      sessionId: 3,
+      orderId: 5,
+    });
+
+    expect(mocks.insertCheckOrderMembership).toHaveBeenCalled();
+  });
+
   it("enrollOrderInCheck remains available when dual-write is disabled (M4)", async () => {
     mocks.dualWriteEnabled = false;
     mocks.findCheckById.mockResolvedValue({
@@ -178,6 +199,27 @@ describe("CHECK-GENERALIZATION-M1 membership dual-write", () => {
         orderId: 5,
       })
     ).resolves.toBeUndefined();
+  });
+
+  it("syncSessionOrdersToCheck enrolls without dual-write flag", async () => {
+    mocks.dualWriteEnabled = false;
+    mocks.getOrdersBySessionId.mockResolvedValue([{ id: 5 }, { id: 6 }]);
+    mocks.findCheckById.mockResolvedValue({
+      id: 10,
+      restaurantId: 1,
+      outcome: "open",
+    });
+    mocks.getOrderById
+      .mockResolvedValueOnce({ id: 5, restaurantId: 1 })
+      .mockResolvedValueOnce({ id: 6, restaurantId: 1 });
+
+    await syncSessionOrdersToCheck({
+      restaurantId: 1,
+      sessionId: 3,
+      checkId: 10,
+    });
+
+    expect(mocks.insertCheckOrderMembership).toHaveBeenCalledTimes(2);
   });
 
   it("allows backfill enroll onto paid check", async () => {

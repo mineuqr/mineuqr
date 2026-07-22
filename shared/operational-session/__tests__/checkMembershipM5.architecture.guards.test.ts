@@ -39,6 +39,8 @@ describe("CHECK-GENERALIZATION-M5 architecture guards", () => {
     const writers = read("server/diningSession/sessionAggregateWriters.ts");
     expect(writers).toContain("recalculateOpenCheck");
     expect(writers).toContain("activeCheckId");
+    expect(writers).toContain("enrollOrderForSessionCheck");
+    expect(writers).not.toContain("dualWriteEnrollOrderForSession");
   });
 
   it("does not disable dual-write or remove Session aggregate", () => {

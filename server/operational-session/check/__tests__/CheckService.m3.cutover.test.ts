@@ -18,8 +18,8 @@ const mocks = vi.hoisted(() => ({
   getOrdersByIds: vi.fn(),
   getRestaurantById: vi.fn(),
   listActiveOrderIdsForCheck: vi.fn(),
-  dualWriteSyncSessionOrdersToCheck: vi.fn(),
-  dualWriteDeactivateMembershipsOnVoid: vi.fn(),
+  syncSessionOrdersToCheck: vi.fn(),
+  deactivateMembershipsOnCheckVoid: vi.fn(),
 }));
 
 vi.mock("../../../_core/env", () => ({
@@ -64,10 +64,10 @@ vi.mock("../settlementTransactionRepository", () => ({
 }));
 
 vi.mock("../checkMembershipService", () => ({
-  dualWriteSyncSessionOrdersToCheck: (...a: unknown[]) =>
-    mocks.dualWriteSyncSessionOrdersToCheck(...a),
-  dualWriteDeactivateMembershipsOnVoid: (...a: unknown[]) =>
-    mocks.dualWriteDeactivateMembershipsOnVoid(...a),
+  syncSessionOrdersToCheck: (...a: unknown[]) =>
+    mocks.syncSessionOrdersToCheck(...a),
+  deactivateMembershipsOnCheckVoid: (...a: unknown[]) =>
+    mocks.deactivateMembershipsOnCheckVoid(...a),
 }));
 
 vi.mock("../checkOrderMembershipRepository", () => ({
@@ -122,7 +122,7 @@ describe("CHECK-GENERALIZATION-M3 CheckService cutover", () => {
       currencyCode: "SAR",
       currencySymbol: "ر.س",
     });
-    mocks.dualWriteSyncSessionOrdersToCheck.mockResolvedValue(undefined);
+    mocks.syncSessionOrdersToCheck.mockResolvedValue(undefined);
     mocks.updateCheckMoney.mockResolvedValue(undefined);
   });
 
@@ -185,7 +185,7 @@ describe("CHECK-GENERALIZATION-M3 CheckService cutover", () => {
 
     await createOpenCheckForSession({ restaurantId: 1, sessionId: 10 });
 
-    expect(mocks.dualWriteSyncSessionOrdersToCheck).toHaveBeenCalledWith({
+    expect(mocks.syncSessionOrdersToCheck).toHaveBeenCalledWith({
       restaurantId: 1,
       sessionId: 10,
       checkId: 100,
@@ -244,7 +244,7 @@ describe("CHECK-GENERALIZATION-M3 CheckService cutover", () => {
     await voidCheck({ restaurantId: 1, sessionId: 10 });
 
     expect(mocks.listActiveOrderIdsForCheck).toHaveBeenCalledWith(1, 100);
-    expect(mocks.dualWriteDeactivateMembershipsOnVoid).toHaveBeenCalledWith({
+    expect(mocks.deactivateMembershipsOnCheckVoid).toHaveBeenCalledWith({
       restaurantId: 1,
       checkId: 100,
     });

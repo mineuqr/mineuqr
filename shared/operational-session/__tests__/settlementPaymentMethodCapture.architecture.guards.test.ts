@@ -29,11 +29,11 @@ describe("SETTLEMENT-PAYMENT-METHOD-CAPTURE-1 architecture guards", () => {
     expect(pres).not.toMatch(/Cash.*Mada.*Visa/);
   });
 
-  it("session service passes settlements into settleCheckPaid", () => {
+  it("session service passes settlements into settleCheckPaidById", () => {
     const svc = read("server/diningSession/sessionService.ts");
     expect(svc).toContain("SETTLEMENT-PAYMENT-METHOD-CAPTURE-1");
     expect(svc).toContain("input.settlements");
-    expect(svc).toMatch(/settleCheckPaid\(\{[\s\S]*settlements/);
+    expect(svc).toMatch(/settleCheckPaidById\(\{[\s\S]*settlements/);
   });
 
   it("domain resolves staff lines; legacy other fallback preserved", () => {

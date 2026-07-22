@@ -18,8 +18,12 @@ export {
 
 export {
   enrollOrderInCheck,
+  enrollOrderForSessionCheck,
+  syncSessionOrdersToCheck,
+  deactivateMembershipsOnCheckVoid,
   dualWriteEnrollOrderForSession,
   dualWriteSyncSessionOrdersToCheck,
+  dualWriteDeactivateMembershipsOnVoid,
   CheckMembershipError,
 } from "./checkMembershipService";
 

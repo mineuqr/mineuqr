@@ -27,8 +27,9 @@ describe("CHECK-GENERALIZATION-M1 architecture guards", () => {
     const svc = read("server/operational-session/check/CheckService.ts");
     expect(svc).toContain("loadOrdersSubtotal");
     expect(svc).toContain("listActiveOrderIdsForCheck");
-    expect(svc).toContain("dualWriteSyncSessionOrdersToCheck");
-    // Session scan retained only as bootstrap / rollback path
+    expect(svc).toContain("syncSessionOrdersToCheck");
+    // Session scan retained only as isolated compatibility rollback
+    expect(svc).toContain("loadOrdersSubtotalCompatibilitySessionScan");
     expect(svc).toContain("getOrdersBySessionId");
   });
 

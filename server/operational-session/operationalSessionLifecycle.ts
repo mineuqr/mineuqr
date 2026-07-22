@@ -12,7 +12,11 @@ import {
   markPaid,
 } from "../diningSession/sessionService";
 import type { OperationalCheck } from "@shared/operational-session";
-import { getActiveCheckForSession, voidCheck } from "./check";
+import {
+  ensureOpenCheckForSession,
+  getActiveCheckForSession,
+  voidCheckById,
+} from "./check";
 
 export type OperationalSessionStaffActionInput = {
   restaurantId: number;
@@ -41,12 +45,27 @@ export async function settleOperationalSessionComplimentary(
   await markComplimentary(input);
 }
 
-/** Void Check without Session close (staff ops). */
+/**
+ * Void Check without Session close (staff ops).
+ * COMPATIBILITY-DEPENDENCY-ELIMINATION-1 — Check ById; Session façade unused.
+ */
 export async function voidOperationalSessionCheck(input: {
   restaurantId: number;
   sessionId: number;
 }): Promise<OperationalCheck> {
-  return voidCheck(input);
+  const active = await getActiveCheckForSession(input);
+  const checkId =
+    active?.id ??
+    (
+      await ensureOpenCheckForSession({
+        restaurantId: input.restaurantId,
+        sessionId: input.sessionId,
+      })
+    ).id;
+  return voidCheckById({
+    restaurantId: input.restaurantId,
+    checkId,
+  });
 }
 
 export async function getOperationalSessionActiveCheck(input: {

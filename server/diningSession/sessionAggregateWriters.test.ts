@@ -28,6 +28,15 @@ vi.mock("../_core/opsLog", () => ({
   opsLog: (...args: unknown[]) => opsMocks.opsLog(...args),
 }));
 
+vi.mock("../operational-session/check/CheckService", () => ({
+  recalculateOpenCheck: vi.fn(async () => null),
+  recalculateOpenCheckForSession: vi.fn(async () => null),
+}));
+
+vi.mock("../operational-session/check/checkMembershipService", () => ({
+  enrollOrderForSessionCheck: vi.fn(async () => undefined),
+}));
+
 import { OPS_EVENT } from "../_core/opsTaxonomy";
 import {
   decrementSessionAggregatesForCancelledOrder,

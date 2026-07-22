@@ -16,7 +16,7 @@ const mocks = vi.hoisted(() => ({
   getOrdersByIds: vi.fn(),
   getRestaurantById: vi.fn(),
   listActiveOrderIdsForCheck: vi.fn(),
-  dualWriteSyncSessionOrdersToCheck: vi.fn(),
+  syncSessionOrdersToCheck: vi.fn(),
 }));
 
 vi.mock("../../../_core/env", () => ({
@@ -60,9 +60,9 @@ vi.mock("../settlementTransactionRepository", () => ({
 }));
 
 vi.mock("../checkMembershipService", () => ({
-  dualWriteSyncSessionOrdersToCheck: (...a: unknown[]) =>
-    mocks.dualWriteSyncSessionOrdersToCheck(...a),
-  dualWriteDeactivateMembershipsOnVoid: vi.fn(),
+  syncSessionOrdersToCheck: (...a: unknown[]) =>
+    mocks.syncSessionOrdersToCheck(...a),
+  deactivateMembershipsOnCheckVoid: vi.fn(),
   enrollOrderInCheck: vi.fn(),
 }));
 
@@ -92,7 +92,7 @@ describe("CHECK-GENERALIZATION-M5 createOpenCheckForSession", () => {
       currencySymbol: "ر.س",
     });
     mocks.insertOperationalCheck.mockResolvedValue(100);
-    mocks.dualWriteSyncSessionOrdersToCheck.mockResolvedValue(undefined);
+    mocks.syncSessionOrdersToCheck.mockResolvedValue(undefined);
     mocks.listActiveOrderIdsForCheck.mockResolvedValue([55]);
     mocks.getOrdersByIds.mockResolvedValue([
       { id: 55, status: "pending", totalAmount: "10.00" },
@@ -134,7 +134,7 @@ describe("CHECK-GENERALIZATION-M5 createOpenCheckForSession", () => {
       }),
       undefined
     );
-    expect(mocks.dualWriteSyncSessionOrdersToCheck).toHaveBeenCalled();
+    expect(mocks.syncSessionOrdersToCheck).toHaveBeenCalled();
     expect(mocks.listActiveOrderIdsForCheck).toHaveBeenCalledWith(1, 100);
     expect(mocks.updateCheckMoney).toHaveBeenCalledWith(
       expect.objectContaining({ checkId: 100, subtotal: "10.00" })

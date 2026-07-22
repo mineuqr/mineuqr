@@ -21,8 +21,8 @@ const mocks = vi.hoisted(() => ({
   listActiveOrderIdsForCheck: vi.fn(),
   findBlockingMembershipForOrder: vi.fn(),
   enrollOrderInCheck: vi.fn(),
-  dualWriteSyncSessionOrdersToCheck: vi.fn(),
-  dualWriteDeactivateMembershipsOnVoid: vi.fn(),
+  syncSessionOrdersToCheck: vi.fn(),
+  deactivateMembershipsOnCheckVoid: vi.fn(),
 }));
 
 vi.mock("../../../_core/env", () => ({
@@ -68,10 +68,10 @@ vi.mock("../settlementTransactionRepository", () => ({
 }));
 
 vi.mock("../checkMembershipService", () => ({
-  dualWriteSyncSessionOrdersToCheck: (...a: unknown[]) =>
-    mocks.dualWriteSyncSessionOrdersToCheck(...a),
-  dualWriteDeactivateMembershipsOnVoid: (...a: unknown[]) =>
-    mocks.dualWriteDeactivateMembershipsOnVoid(...a),
+  syncSessionOrdersToCheck: (...a: unknown[]) =>
+    mocks.syncSessionOrdersToCheck(...a),
+  deactivateMembershipsOnCheckVoid: (...a: unknown[]) =>
+    mocks.deactivateMembershipsOnCheckVoid(...a),
   enrollOrderInCheck: (...a: unknown[]) => mocks.enrollOrderInCheck(...a),
   CheckMembershipError: class CheckMembershipError extends Error {
     constructor(message: string) {
@@ -263,7 +263,7 @@ describe("CHECK-GENERALIZATION-M4 Session optionality", () => {
     await voidCheckById({ restaurantId: 1, checkId: 200 });
 
     expect(mocks.findSessionById).not.toHaveBeenCalled();
-    expect(mocks.dualWriteDeactivateMembershipsOnVoid).toHaveBeenCalledWith({
+    expect(mocks.deactivateMembershipsOnCheckVoid).toHaveBeenCalledWith({
       restaurantId: 1,
       checkId: 200,
     });
