@@ -39,10 +39,13 @@ export function mapTableEventToOwnerTimeline(row: SelectTableEvent): OwnerTimeli
   const metadata = parseEventMetadata(row.metadata);
   const orderNumber =
     typeof metadata.orderNumber === "string" ? metadata.orderNumber : null;
+  // M5 — prefer Check grandTotal on settlement events; fall back to legacy totalAmount.
   const totalAmount =
-    metadata.totalAmount != null && metadata.totalAmount !== ""
-      ? String(metadata.totalAmount)
-      : null;
+    metadata.checkGrandTotal != null && metadata.checkGrandTotal !== ""
+      ? String(metadata.checkGrandTotal)
+      : metadata.totalAmount != null && metadata.totalAmount !== ""
+        ? String(metadata.totalAmount)
+        : null;
 
   return {
     id: row.id,

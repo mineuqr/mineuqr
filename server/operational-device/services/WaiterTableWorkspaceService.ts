@@ -17,6 +17,7 @@ import type {
   WaiterWorkspaceOrderDto,
 } from "../domain/waiterTableWorkspaceDto";
 import { getTablesByRestaurant } from "../../db";
+import { getCheckById } from "../../operational-session/check/CheckService";
 
 const orderReadStore = new DrizzleOrderOperationalReadStore();
 
@@ -73,6 +74,18 @@ export async function getWaiterTableWorkspace(input: {
 
   const orders = projectedOrders.map(mapOrder);
 
+  // CHECK-GENERALIZATION-M5 — prefer Check grandTotal for billing display.
+  let sessionTotalAmount = formatSessionTotal(session.totalAmount);
+  if (session.activeCheckId != null) {
+    const check = await getCheckById({
+      restaurantId: input.restaurantId,
+      checkId: session.activeCheckId,
+    });
+    if (check) {
+      sessionTotalAmount = formatSessionTotal(check.grandTotal);
+    }
+  }
+
   return {
     sessionId: session.id,
     tableId: session.tableId,
@@ -81,7 +94,7 @@ export async function getWaiterTableWorkspace(input: {
     openedAt: session.openedAt,
     closedAt: session.closedAt,
     orderCount: session.totalOrders ?? orders.length,
-    sessionTotalAmount: formatSessionTotal(session.totalAmount),
+    sessionTotalAmount,
     orders,
   };
 }
@@ -94,6 +107,19 @@ export async function listWaiterFloorTables(
   const rows = await Promise.all(
     tables.map(async (table) => {
       const active = await findActiveSession(restaurantId, table.id);
+      let sessionTotalAmount: string | null = null;
+      if (active) {
+        sessionTotalAmount = formatSessionTotal(active.totalAmount);
+        if (active.activeCheckId != null) {
+          const check = await getCheckById({
+            restaurantId,
+            checkId: active.activeCheckId,
+          });
+          if (check) {
+            sessionTotalAmount = formatSessionTotal(check.grandTotal);
+          }
+        }
+      }
       return {
         id: table.id,
         tableNumber: table.tableNumber,
@@ -103,9 +129,7 @@ export async function listWaiterFloorTables(
         sessionId: active?.id ?? null,
         sessionStatus: active?.status ?? null,
         totalOrders: active?.totalOrders ?? null,
-        sessionTotalAmount: active
-          ? formatSessionTotal(active.totalAmount)
-          : null,
+        sessionTotalAmount,
       };
     })
   );

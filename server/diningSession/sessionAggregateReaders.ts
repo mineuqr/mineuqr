@@ -7,7 +7,7 @@ import { opsLog } from "../_core/opsLog";
 import type { SessionLinkedOrderRow } from "../db";
 import { computeOrdersTotalAmount } from "./sessionOrderTotals";
 
-export type AggregateSource = "maintained" | "computed";
+export type AggregateSource = "maintained" | "computed" | "check";
 
 export type SessionAggregateFallbackReason =
   | "missing_total_orders"

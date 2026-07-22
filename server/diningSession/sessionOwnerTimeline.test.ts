@@ -27,6 +27,24 @@ describe("sessionOwnerTimeline (UX-1C)", () => {
     });
   });
 
+  it("maps SESSION_PAID preferring checkGrandTotal over totalAmount", () => {
+    const row: SelectTableEvent = {
+      id: 3,
+      restaurantId: 10,
+      tableId: 3,
+      sessionId: 99,
+      orderId: null,
+      eventType: TABLE_EVENT_TYPES.SESSION_PAID,
+      metadata: {
+        totalAmount: "1.00",
+        checkGrandTotal: "95.00",
+      },
+      createdAt: "2026-06-18 21:44:00",
+    };
+
+    expect(mapTableEventToOwnerTimeline(row).totalAmount).toBe("95.00");
+  });
+
   it("maps ORDER_CREATED with metadata orderNumber and totalAmount", () => {
     const row: SelectTableEvent = {
       id: 2,

@@ -7,6 +7,11 @@ import * as operationalSession from "../../../operational-session";
 
 vi.mock("../../../operational-session", () => ({
   resolveOperationalSession: vi.fn(),
+  ensureCheckForOrder: vi.fn(),
+}));
+
+vi.mock("../../../_core/opsLog", () => ({
+  opsLog: vi.fn(),
 }));
 
 describe("NON-TABLE-PLACE-ORDER-1 IdentityPlaceOrderService", () => {
@@ -21,6 +26,10 @@ describe("NON-TABLE-PLACE-ORDER-1 IdentityPlaceOrderService", () => {
       created: false,
       persistence: "ephemeral",
     });
+    vi.mocked(operationalSession.ensureCheckForOrder).mockResolvedValue({
+      id: 200,
+      sessionId: null,
+    } as Awaited<ReturnType<typeof operationalSession.ensureCheckForOrder>>);
     execute.mockResolvedValue({
       order: { id: 99, tableId: 0, tableNumber: 0 },
       events: [],
@@ -71,6 +80,11 @@ describe("NON-TABLE-PLACE-ORDER-1 IdentityPlaceOrderService", () => {
         sessionId: null,
       })
     );
+    // CHECK-GENERALIZATION-M5 — sessionless place enrolls Check + Membership
+    expect(operationalSession.ensureCheckForOrder).toHaveBeenCalledWith({
+      restaurantId: 1,
+      orderId: 99,
+    });
     expect(result.sessionPersistence).toBe("ephemeral");
     expect(result.identity.fulfilmentAnchor.anchorType).toBe("station");
     // Persist dual-write is inside PlaceOrderService; orchestrator leaves table fields unset.

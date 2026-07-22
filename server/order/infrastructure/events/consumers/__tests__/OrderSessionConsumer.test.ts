@@ -13,6 +13,10 @@ vi.mock("../../../../../diningSession/sessionAggregateWriters", () => ({
   decrementSessionAggregatesForCancelledOrder: vi.fn(async () => undefined),
 }));
 
+vi.mock("../../../../../operational-session/check/CheckService", () => ({
+  ensureCheckForOrder: vi.fn(async () => ({ id: 200, sessionId: null })),
+}));
+
 vi.mock("../../../../../db", () => ({
   getOrderById: vi.fn(),
 }));
@@ -22,6 +26,7 @@ import {
   decrementSessionAggregatesForCancelledOrder,
   incrementSessionAggregatesForOrder,
 } from "../../../../../diningSession/sessionAggregateWriters";
+import { ensureCheckForOrder } from "../../../../../operational-session/check/CheckService";
 import { getOrderById } from "../../../../../db";
 
 describe("OrderSessionConsumer", () => {
@@ -85,6 +90,46 @@ describe("OrderSessionConsumer", () => {
       },
       { procedure: "OrderSessionConsumer" }
     );
+  });
+
+  it("enrolls sessionless OrderCreated into Check via ensureCheckForOrder", async () => {
+    const envelope: EventEnvelope = {
+      id: "o1b",
+      eventId: "e1b",
+      eventType: "OrderCreated",
+      aggregateType: "Order",
+      aggregateId: 56,
+      aggregateVersion: null,
+      restaurantId: 1,
+      sequenceNumber: 1,
+      occurredAt: "2026-06-27 10:00:00",
+      correlationId: null,
+      causationId: null,
+      payloadVersion: 1,
+      payload: {
+        type: "OrderCreated",
+        schemaVersion: 1,
+        orderId: 56,
+        restaurantId: 1,
+        tableId: 0,
+        tableNumber: 0,
+        orderNumber: "ORD-K1",
+        trackingToken: "tok-k",
+        totalAmount: "12.00",
+        lineCount: 1,
+        sessionId: null,
+        createdAt: "2026-06-27 10:00:00",
+      },
+    };
+
+    await consumer.handle(envelope);
+
+    expect(ensureCheckForOrder).toHaveBeenCalledWith({
+      restaurantId: 1,
+      orderId: 56,
+    });
+    expect(recordSessionEvent).not.toHaveBeenCalled();
+    expect(incrementSessionAggregatesForOrder).not.toHaveBeenCalled();
   });
 
   it("decrements aggregates on OrderCancelled when order has session", async () => {

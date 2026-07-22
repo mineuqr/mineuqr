@@ -17,7 +17,12 @@ import {
   type OrderingServiceMode,
 } from "@shared/ordering-platform/orderingIdentityContract";
 import { sessionAnchorFromFulfilmentAnchor } from "@shared/operational-session";
-import { resolveOperationalSession } from "../../operational-session";
+import {
+  ensureCheckForOrder,
+  resolveOperationalSession,
+} from "../../operational-session";
+import { opsLog } from "../../_core/opsLog";
+import { OPS_EVENT } from "../../_core/opsTaxonomy";
 import {
   PlaceOrderService,
   type PlaceOrderResult,
@@ -100,6 +105,33 @@ export class IdentityPlaceOrderService {
       notes: command.notes,
       items: command.items,
     });
+
+    // CHECK-GENERALIZATION-M5 — sessionless / ephemeral channels enroll into Check + Membership.
+    // Table Session path keeps Session Check create + dual-write (avoid duplicate sessionless Check).
+    if (
+      sessionResult.persistence === "ephemeral" ||
+      identity.operationalSession.sessionId == null
+    ) {
+      try {
+        await ensureCheckForOrder({
+          restaurantId: command.restaurantId,
+          orderId: result.order.id,
+        });
+      } catch (e) {
+        opsLog({
+          type: OPS_EVENT.check_membership_dual_write_failed,
+          category: "ORDER",
+          severity: "error",
+          ts: new Date().toISOString(),
+          restaurantId: command.restaurantId,
+          procedure: "IdentityPlaceOrderService.ensureCheckForOrder",
+          metadata: {
+            orderId: result.order.id,
+            error: e instanceof Error ? e.message : String(e),
+          },
+        });
+      }
+    }
 
     return {
       ...result,

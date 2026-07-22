@@ -7,6 +7,7 @@ import { mapTableEventToOwnerTimeline, type OwnerTimelineEvent } from "./session
 import { findEventsBySessionId, findSessionById } from "./sessionRepository";
 import { resolveSessionAggregates, type AggregateSource } from "./sessionAggregateReaders";
 import { mapOrderDisplayIdentityFields } from "../order/read/presentation/mapOrderDisplayIdentity";
+import { getCheckById } from "../operational-session/check/CheckService";
 import {
   DiningSessionNotFoundError,
   OWNER_TIMELINE_OPERATIONAL_EVENT_TYPES,
@@ -114,6 +115,20 @@ export async function getOwnerSessionWorkspace(
     procedure: "session.getOwnerWorkspace",
   });
 
+  // CHECK-GENERALIZATION-M5 — billing amount from Check when linked (Membership money SSOT).
+  let ordersTotalAmount = aggregates.ordersTotalAmount;
+  let aggregateSource: AggregateSource = aggregates.aggregateSource;
+  if (session.activeCheckId != null) {
+    const check = await getCheckById({
+      restaurantId,
+      checkId: session.activeCheckId,
+    });
+    if (check) {
+      ordersTotalAmount = check.grandTotal;
+      aggregateSource = "check";
+    }
+  }
+
   return {
     sessionId: session.id,
     tableNumber: session.tableNumber,
@@ -121,8 +136,8 @@ export async function getOwnerSessionWorkspace(
     openedAt: session.openedAt,
     closedAt: session.closedAt ?? null,
     orderCount: aggregates.orderCount,
-    ordersTotalAmount: aggregates.ordersTotalAmount,
-    aggregateSource: aggregates.aggregateSource,
+    ordersTotalAmount,
+    aggregateSource,
     orders,
     events: eventRows.map((row) => {
       const event = mapTableEventToOwnerTimeline(row);

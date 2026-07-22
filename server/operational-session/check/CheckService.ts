@@ -117,15 +117,6 @@ async function loadOrdersSubtotal(input: {
   return computeOrdersTotalAmount(orderRows);
 }
 
-/** Bootstrap seed for brand-new Check insert before membership rows exist. */
-async function loadOrdersSubtotalFromSession(
-  restaurantId: number,
-  sessionId: number
-): Promise<string> {
-  const orderRows = await getOrdersBySessionId(restaurantId, sessionId);
-  return computeOrdersTotalAmount(orderRows);
-}
-
 async function refreshOpenCheckMoneyFromDiscovery(input: {
   restaurantId: number;
   sessionId: number | null;
@@ -217,13 +208,9 @@ export async function createOpenCheckForSession(
 
   const { currencySnapshot, taxPolicySnapshot } =
     await captureSnapshotsFromBusinessSettings(input.restaurantId);
-  // Insert seed: Session scan (membership rows do not exist until after insert + sync).
-  const seedSubtotal = await loadOrdersSubtotalFromSession(
-    input.restaurantId,
-    input.sessionId
-  );
+  // M5 — seed zeros; money authority comes from Membership after dual-write sync.
   const money = computeCheckMoney({
-    ordersSubtotal: seedSubtotal,
+    ordersSubtotal: "0.00",
     billDiscountAmount: "0.00",
     taxPolicySnapshot,
   });
@@ -253,22 +240,20 @@ export async function createOpenCheckForSession(
     client
   );
 
-  // Dual-write membership, then authoritative money refresh when M3 is ON.
+  // Dual-write membership, then money refresh (Membership when M3 ON).
   await dualWriteSyncSessionOrdersToCheck({
     restaurantId: input.restaurantId,
     sessionId: input.sessionId,
     checkId,
   });
 
-  if (ENV.checkMembershipAuthoritativeRead) {
-    await refreshOpenCheckMoneyFromDiscovery({
-      restaurantId: input.restaurantId,
-      sessionId: input.sessionId,
-      checkId,
-      billDiscountAmount: "0.00",
-      taxPolicySnapshot,
-    });
-  }
+  await refreshOpenCheckMoneyFromDiscovery({
+    restaurantId: input.restaurantId,
+    sessionId: input.sessionId,
+    checkId,
+    billDiscountAmount: "0.00",
+    taxPolicySnapshot,
+  });
 
   const row = await findCheckById(checkId, client);
   if (!row) {

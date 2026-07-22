@@ -8,8 +8,34 @@ import { opsLog } from "../_core/opsLog";
 import { computeOrdersTotalAmount } from "./sessionOrderTotals";
 import { findSessionById, updateSessionAggregates } from "./sessionRepository";
 import { DiningSessionValidationError } from "./sessionTypes";
-import { recalculateOpenCheckForSession } from "../operational-session/check/CheckService";
+import {
+  recalculateOpenCheck,
+  recalculateOpenCheckForSession,
+} from "../operational-session/check/CheckService";
 import { dualWriteEnrollOrderForSession } from "../operational-session/check/checkMembershipService";
+
+/** M5 — Check money recalc by activeCheckId when available; Session façade as fallback. */
+async function recalculateCheckMoneyForSession(input: {
+  restaurantId: number;
+  sessionId: number;
+}): Promise<void> {
+  const session = await findSessionById(input.sessionId);
+  if (
+    session &&
+    session.restaurantId === input.restaurantId &&
+    session.activeCheckId != null
+  ) {
+    await recalculateOpenCheck({
+      restaurantId: input.restaurantId,
+      checkId: session.activeCheckId,
+    });
+    return;
+  }
+  await recalculateOpenCheckForSession({
+    restaurantId: input.restaurantId,
+    sessionId: input.sessionId,
+  });
+}
 
 export type IncrementSessionAggregatesForOrderInput = {
   restaurantId: number;
@@ -125,8 +151,8 @@ export async function incrementSessionAggregatesForOrder(
     });
   }
 
-  // M3: Check money recalc uses membership discovery (CheckService); Session attach unchanged.
-  await recalculateOpenCheckForSession({
+  // M5: Check money recalc via activeCheckId → Membership discovery.
+  await recalculateCheckMoneyForSession({
     restaurantId: input.restaurantId,
     sessionId: input.sessionId,
   });
@@ -161,7 +187,7 @@ export async function decrementSessionAggregatesForCancelledOrder(
     totalAmountDelta: (-amount).toFixed(2),
   });
 
-  await recalculateOpenCheckForSession({
+  await recalculateCheckMoneyForSession({
     restaurantId: input.restaurantId,
     sessionId: input.sessionId,
   });

@@ -41,9 +41,10 @@ vi.mock("../operational-session/check/CheckService", () => ({
     sessionId: 10,
     outcome: "open",
   })),
-  settleCheckPaid: vi.fn(),
-  settleCheckComplimentary: vi.fn(),
-  voidCheck: vi.fn(),
+  ensureOpenCheckForSession: vi.fn(),
+  settleCheckPaidById: vi.fn(),
+  settleCheckComplimentaryById: vi.fn(),
+  voidCheckById: vi.fn(),
 }));
 
 import {

@@ -9,7 +9,6 @@ const repoMocks = vi.hoisted(() => ({
 
 const dbMocks = vi.hoisted(() => ({
   getDb: vi.fn(),
-  getOrdersBySessionId: vi.fn(),
 }));
 
 vi.mock("./sessionRepository", () => ({
@@ -20,22 +19,22 @@ vi.mock("./sessionRepository", () => ({
 
 vi.mock("../db", () => ({
   getDb: (...args: unknown[]) => dbMocks.getDb(...args),
-  getOrdersBySessionId: (...args: unknown[]) => dbMocks.getOrdersBySessionId(...args),
 }));
 
 vi.mock("../operational-session/check/CheckService", () => ({
   createOpenCheckForSession: vi.fn(),
-  settleCheckPaid: vi.fn(async () => ({
+  ensureOpenCheckForSession: vi.fn(),
+  settleCheckPaidById: vi.fn(async () => ({
     id: 900,
     grandTotal: "50.00",
     taxAmount: "0.00",
   })),
-  settleCheckComplimentary: vi.fn(async () => ({
+  settleCheckComplimentaryById: vi.fn(async () => ({
     id: 900,
     grandTotal: "50.00",
     taxAmount: "0.00",
   })),
-  voidCheck: vi.fn(async () => ({ id: 900 })),
+  voidCheckById: vi.fn(async () => ({ id: 900, grandTotal: "50.00" })),
 }));
 
 import {
@@ -44,7 +43,7 @@ import {
   markComplimentary,
   markPaid,
 } from "./sessionService";
-import { settleCheckPaid } from "../operational-session/check/CheckService";
+import { settleCheckPaidById } from "../operational-session/check/CheckService";
 import { DiningSessionTransitionError, TABLE_EVENT_TYPES } from "./sessionTypes";
 
 const baseSession: SelectDiningSession = {
@@ -80,9 +79,6 @@ describe("session lifecycle SETTLEMENT-ARCHITECTURE-1A", () => {
     mockTransaction();
     repoMocks.updateSessionStatus.mockResolvedValue(undefined);
     repoMocks.insertSessionEvent.mockResolvedValue(1);
-    dbMocks.getOrdersBySessionId.mockResolvedValue([
-      { id: 1, orderNumber: "ORD-1", status: "served", totalAmount: "50.00", createdAt: "x" },
-    ]);
   });
 
   describe("isAllowedSessionStatusTransition", () => {
@@ -106,10 +102,10 @@ describe("session lifecycle SETTLEMENT-ARCHITECTURE-1A", () => {
 
     await markPaid(actionInput);
 
-    expect(settleCheckPaid).toHaveBeenCalledWith(
+    expect(settleCheckPaidById).toHaveBeenCalledWith(
       expect.objectContaining({
         restaurantId: 1,
-        sessionId: 10,
+        checkId: 900,
         settlements: undefined,
       })
     );
@@ -147,9 +143,9 @@ describe("session lifecycle SETTLEMENT-ARCHITECTURE-1A", () => {
       settlements: [{ paymentMethod: "mada" }],
     });
 
-    expect(settleCheckPaid).toHaveBeenCalledWith({
+    expect(settleCheckPaidById).toHaveBeenCalledWith({
       restaurantId: 1,
-      sessionId: 10,
+      checkId: 900,
       settlements: [{ paymentMethod: "mada" }],
     });
   });

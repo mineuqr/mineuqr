@@ -8,6 +8,7 @@ import {
 } from "../../../../diningSession/sessionAggregateWriters";
 import { recordSessionEvent } from "../../../../diningSession/sessionService";
 import { TABLE_EVENT_TYPES } from "../../../../diningSession/sessionTypes";
+import { ensureCheckForOrder } from "../../../../operational-session/check/CheckService";
 import type {
   OrderCancelledEvent,
   OrderCreatedEvent,
@@ -32,8 +33,6 @@ export class OrderSessionConsumer implements OrderEventConsumer {
   ) {}
 
   async handle(envelope: EventEnvelope): Promise<void> {
-    if (!ENV.tableSessionDualWrite) return;
-
     switch (envelope.eventType) {
       case "OrderCreated":
         await this.handleOrderCreated(
@@ -41,6 +40,7 @@ export class OrderSessionConsumer implements OrderEventConsumer {
         );
         break;
       case "OrderCancelled":
+        if (!ENV.tableSessionDualWrite) return;
         await this.handleOrderCancelled(
           parseEnvelopePayload<OrderCancelledEvent>(envelope),
           envelope.restaurantId
@@ -52,7 +52,37 @@ export class OrderSessionConsumer implements OrderEventConsumer {
   }
 
   private async handleOrderCreated(event: OrderCreatedEvent): Promise<void> {
-    if (event.sessionId == null) return;
+    // CHECK-GENERALIZATION-M5 — sessionless orders enroll into Check + Membership.
+    if (event.sessionId == null) {
+      const claimed = await this.businessClaims.tryClaim(
+        BUSINESS_CLAIM_NS.sessionOrderCreated,
+        sessionOrderCreatedKey(event.restaurantId, event.orderId)
+      );
+      if (!claimed) return;
+      try {
+        await ensureCheckForOrder({
+          restaurantId: event.restaurantId,
+          orderId: event.orderId,
+        });
+      } catch (e) {
+        opsLog({
+          type: OPS_EVENT.check_membership_dual_write_failed,
+          category: "ORDER",
+          severity: "error",
+          ts: new Date().toISOString(),
+          restaurantId: event.restaurantId,
+          procedure: "OrderSessionConsumer.ensureCheckForOrder",
+          metadata: {
+            orderId: event.orderId,
+            orderNumber: event.orderNumber,
+            error: e instanceof Error ? e.message : String(e),
+          },
+        });
+      }
+      return;
+    }
+
+    if (!ENV.tableSessionDualWrite) return;
 
     // ADR-ARCH-021 Pattern B — once-per-order session create effects.
     const claimed = await this.businessClaims.tryClaim(

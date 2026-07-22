@@ -2,7 +2,7 @@
  * TABLE-MANAGEMENT-1 D2 — dining session service (no router / order integration).
  * SETTLEMENT-ARCHITECTURE-1A — settlement foundation (markPaid / markComplimentary).
  */
-import { getRestaurantById, getTableById, getOrdersBySessionId } from "../db";
+import { getRestaurantById, getTableById } from "../db";
 import {
   findActiveSession,
   findSessionById,
@@ -13,9 +13,10 @@ import {
 } from "./sessionRepository";
 import {
   createOpenCheckForSession,
-  settleCheckComplimentary,
-  settleCheckPaid,
-  voidCheck,
+  ensureOpenCheckForSession,
+  settleCheckComplimentaryById,
+  settleCheckPaidById,
+  voidCheckById,
 } from "../operational-session/check/CheckService";
 import { generateDiningSessionToken } from "./sessionToken";
 import {
@@ -42,7 +43,6 @@ import {
 } from "./sessionTypes";
 import type { SelectDiningSession } from "../../drizzle/schema";
 import { getDb } from "../db";
-import { computeOrdersTotalAmount } from "./sessionOrderTotals";
 import type { StaffSettlementLineInput } from "@shared/operational-session";
 
 const ALLOWED_STATUS_TRANSITIONS: Record<DiningSessionStatus, DiningSessionStatus[]> = {
@@ -161,7 +161,6 @@ async function settleAndCloseSession(
   }
 
   const now = formatDiningSessionTimestamp();
-  const orderRows = await getOrdersBySessionId(session.restaurantId, session.id);
   const settlementEventType =
     settlement === "paid"
       ? TABLE_EVENT_TYPES.SESSION_PAID
@@ -172,30 +171,38 @@ async function settleAndCloseSession(
     throw new DiningSessionUnavailableError();
   }
 
-  const closureMetadata = {
-    ...metadata,
-    settlement,
-    tableNumber: session.tableNumber,
-    orderCount: orderRows.length,
-    ordersTotalAmount: computeOrdersTotalAmount(orderRows),
-  };
+  // CHECK-GENERALIZATION-M5 — settle by Check id (Membership money); Session is visit context only.
+  let checkId = session.activeCheckId;
+  if (checkId == null) {
+    const ensured = await ensureOpenCheckForSession({
+      restaurantId: session.restaurantId,
+      sessionId: session.id,
+    });
+    checkId = ensured.id;
+  }
 
   // CHECK-MANAGEMENT-ARCHITECTURE-1 — finalize Check before Session settle/close.
   // SETTLEMENT-PAYMENT-METHOD-CAPTURE-1 — pass operator tenders when provided.
   const check =
     settlement === "paid"
-      ? await settleCheckPaid({
+      ? await settleCheckPaidById({
           restaurantId: session.restaurantId,
-          sessionId: session.id,
+          checkId,
           settlements,
         })
-      : await settleCheckComplimentary({
+      : await settleCheckComplimentaryById({
           restaurantId: session.restaurantId,
-          sessionId: session.id,
+          checkId,
         });
 
   const checkMetadata = {
-    ...closureMetadata,
+    ...metadata,
+    settlement,
+    tableNumber: session.tableNumber,
+    orderCount: session.totalOrders ?? 0,
+    // Check grandTotal is financial SSOT (not Session order rediscovery).
+    ordersTotalAmount: check.grandTotal,
+    totalAmount: check.grandTotal,
     checkId: check.id,
     checkGrandTotal: check.grandTotal,
     checkTaxAmount: check.taxAmount,
@@ -532,16 +539,25 @@ export async function closeSession(input: StaffSessionActionInput): Promise<void
   assertValidSessionActionInput(input);
   const session = await loadSessionForStaffAction(input.restaurantId, input.sessionId);
   const now = formatDiningSessionTimestamp();
-  const orderRows = await getOrdersBySessionId(input.restaurantId, input.sessionId);
 
-  // CHECK-MANAGEMENT-ARCHITECTURE-1 — void open Check when closing without settle.
+  // CHECK-GENERALIZATION-M5 — void by Check id; no Session order rediscovery for money metadata.
   let voidedCheckId: number | null = null;
+  let voidedGrandTotal: string | null = null;
   try {
-    const voided = await voidCheck({
+    let checkId = session.activeCheckId;
+    if (checkId == null) {
+      const ensured = await ensureOpenCheckForSession({
+        restaurantId: input.restaurantId,
+        sessionId: input.sessionId,
+      });
+      checkId = ensured.id;
+    }
+    const voided = await voidCheckById({
       restaurantId: input.restaurantId,
-      sessionId: input.sessionId,
+      checkId,
     });
     voidedCheckId = voided.id;
+    voidedGrandTotal = voided.grandTotal;
   } catch {
     /* no open check / already terminal — Session close still proceeds */
   }
@@ -554,9 +570,11 @@ export async function closeSession(input: StaffSessionActionInput): Promise<void
       actorUserId: input.actorUserId,
       tableNumber: session.tableNumber,
       source: "manual_close",
-      orderCount: orderRows.length,
-      ordersTotalAmount: computeOrdersTotalAmount(orderRows),
+      orderCount: session.totalOrders ?? 0,
+      ordersTotalAmount: voidedGrandTotal ?? "0.00",
+      totalAmount: voidedGrandTotal ?? "0.00",
       checkId: voidedCheckId,
+      checkGrandTotal: voidedGrandTotal,
     },
     { closedAt: now, openGuard: null, settledAt: null, settlementOutcome: null }
   );
