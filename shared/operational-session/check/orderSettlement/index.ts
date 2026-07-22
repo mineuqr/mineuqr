@@ -110,3 +110,16 @@ export {
   type VoidOrderSettlementCommand,
   type RefundOrderSettlementCommand,
 } from "./orderSettlementCommands";
+
+export {
+  ORDER_SETTLEMENT_PROJECTION_PROGRAM_ID,
+  ORDER_SETTLEMENT_PROJECTION_SCHEMA_VERSION,
+  ORDER_SETTLEMENT_PROJECTION_ID,
+  buildOrderSettlementProjection,
+  buildOrderSettlementProjections,
+  buildOrderSettlementProjectionRevision,
+  buildOrderSettlementProjectionEventClaimKey,
+  type OrderSettlementProjection,
+  type OrderSettlementProjectionIdentity,
+  type OrderSettlementProjectionEventClaimKey,
+} from "./projection";

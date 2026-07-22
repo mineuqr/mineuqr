@@ -84,3 +84,12 @@ export {
   persistOrderSettlement,
   type OrderSettlementRow,
 } from "./orderSettlementRepository";
+
+export {
+  InMemoryOrderSettlementProjectionStore,
+  materializeOrderSettlementProjections,
+  tryMaterializeOrderSettlementProjections,
+  type OrderSettlementProjectionStore,
+  type OrderSettlementProjectionMaterializeInput,
+  type OrderSettlementProjectionMaterializeResult,
+} from "./read";

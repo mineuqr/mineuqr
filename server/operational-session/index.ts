@@ -28,4 +28,7 @@ export {
   getCheckById,
   getActiveCheckForSession,
   CheckTransitionError,
+  InMemoryOrderSettlementProjectionStore,
+  materializeOrderSettlementProjections,
+  tryMaterializeOrderSettlementProjections,
 } from "./check";
