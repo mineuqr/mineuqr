@@ -6,13 +6,21 @@
 |---|---|
 | **Status** | Accepted |
 | **Owner** | Architecture Authority |
-| **Program** | ORDER-SETTLEMENT-ARCHITECTURE-1 |
+| **Program** | ORDER-SETTLEMENT-ARCHITECTURE-1 · ORDER-SETTLEMENT-ARCHITECTURE-HARDENING-1 |
 | **Date** | 2026-07-22 |
+| **Revision** | **1.1** — 2026-07-22 (ORDER-SETTLEMENT-ARCHITECTURE-HARDENING-1) |
 | **Supersedes** | — |
 | **Refines** | [ADR-ARCH-020](./ADR-ARCH-020-financial-settlement-platform.md) (introduces per-Order financial state **without** moving settlement into the Order aggregate or creating a second Revenue root) |
 | **Related ADRs** | ADR-ARCH-001 · ADR-ARCH-002 · ADR-ARCH-003 · ADR-ARCH-007 · ADR-ARCH-019 · ADR-ARCH-020 · ADR-ARCH-021 |
-| **Related programs** | CHECK-MANAGEMENT-ARCHITECTURE-1 · CHECK-SETTLEMENT-METHODS-1 · CHECK-GENERALIZATION-* · COMPATIBILITY-CLEANUP-1 · ORDER-SETTLEMENT-DOMAIN-1 (successor) |
+| **Related programs** | CHECK-MANAGEMENT-ARCHITECTURE-1 · CHECK-SETTLEMENT-METHODS-1 · CHECK-GENERALIZATION-* · COMPATIBILITY-CLEANUP-1 · ORDER-SETTLEMENT-ARCHITECTURE-HARDENING-1 · ORDER-SETTLEMENT-DOMAIN-1 (successor) |
 | **Implementation status** | **Not implemented** — constitutional + program architecture only; no schema/API/runtime changes authorized by this ADR alone |
+
+### Revision notes
+
+| Rev | Date | Program | Change |
+|-----|------|---------|--------|
+| 1.0 | 2026-07-22 | ORDER-SETTLEMENT-ARCHITECTURE-1 | Initial acceptance |
+| 1.1 | 2026-07-22 | ORDER-SETTLEMENT-ARCHITECTURE-HARDENING-1 | Governance hardening only: **I-OS-14** (no terminal→non-terminal regression); lifecycle terminal/non-terminal documentation; explicit Aggregate Ownership boundaries. **Does not** alter ADR-ARCH-020, Revenue SSOT, Membership authority, Check ownership, or I-OS-01…I-OS-12 meaning. |
 
 ---
 
@@ -185,7 +193,40 @@ Business decision: **introduce Order Settlement as the financial state of each O
 
 **Not used as OS states:** Check `open` (Check outcome), Order FSM statuses (operational), Membership `active` flag (composition).
 
-### 6.2 Transitions (canonical)
+### 6.2 Terminal vs non-terminal states
+
+| Class | States | Meaning |
+|-------|--------|---------|
+| **Non-terminal** | `pending`, `partially_settled` | Financial lifecycle still open; further business transitions allowed under this ADR |
+| **Terminal** | `settled`, `complimentary`, `refunded`, `voided`, `cancelled` | Financial lifecycle closed for that path; **must not regress** to non-terminal (I-OS-14) |
+
+Notes:
+
+- `refunded` is terminal for the settled/complimentary coverage path. It is **not** a return to `pending`.  
+- `settled` → `voided` / `complimentary` → `voided` (if ever productized) are **terminal → terminal** and remain constrained by domain legality — they are **not** regressions to non-terminal.  
+- Any exception that would reopen a terminal OS into `pending` or `partially_settled` requires a **new ADR** and Architecture Authority approval.
+
+### 6.3 Allowed business transitions
+
+These are the **only** transitions authorized by this ADR (v1 + reserved partial):
+
+| From | To | Business meaning |
+|------|----|------------------|
+| *(none)* | `pending` | Membership enroll opens OS |
+| `pending` | `partially_settled` | Partial cover (future product) |
+| `pending` | `settled` | Full paid cover |
+| `pending` | `complimentary` | Comp cover |
+| `pending` | `cancelled` | Order cancelled while Check open |
+| `pending` | `voided` | Check voided |
+| `partially_settled` | `settled` | Remaining paid cover |
+| `partially_settled` | `complimentary` | Comp cover (constrained) |
+| `partially_settled` | `cancelled` | Order cancelled while Check open |
+| `partially_settled` | `voided` | Check voided |
+| `settled` | `refunded` | Refund of paid coverage |
+| `complimentary` | `refunded` | Refund of complimentary coverage |
+| `settled` | `voided` | Constrained void-after-settle (domain legality) |
+| `complimentary` | `voided` | Constrained void-after-comp (domain legality) |
+| `refunded` | `voided` | Constrained void-after-refund (domain legality) |
 
 ```
 (none)
@@ -199,7 +240,32 @@ settled|complimentary --refund--> refunded
 settled|complimentary|refunded --check void--> voided   [constrained; domain program defines legality]
 ```
 
-### 6.3 Amount fields (conceptual — not schema)
+### 6.4 Architecturally forbidden transitions (lifecycle regression)
+
+The following are **architecturally forbidden** (not merely “not implemented”). They violate **I-OS-14**.
+
+| From (terminal) | To (non-terminal) | Status |
+|-----------------|-------------------|--------|
+| `settled` | `pending` | **Forbidden** |
+| `settled` | `partially_settled` | **Forbidden** |
+| `complimentary` | `pending` | **Forbidden** |
+| `complimentary` | `partially_settled` | **Forbidden** |
+| `refunded` | `pending` | **Forbidden** |
+| `refunded` | `partially_settled` | **Forbidden** |
+| `voided` | `pending` | **Forbidden** |
+| `voided` | `partially_settled` | **Forbidden** |
+| `cancelled` | `pending` | **Forbidden** |
+| `cancelled` | `partially_settled` | **Forbidden** |
+
+Also forbidden without a new ADR:
+
+- Any terminal → non-terminal transition not listed above  
+- “Re-open” semantics that recreate unpaid state on the same OS identity after terminal close  
+- Treating refund as a return to `pending` (refund is its own terminal state)
+
+**Exception rule:** Any future exception requires a **new ADR** and explicit Architecture Authority approval.
+
+### 6.5 Amount fields (conceptual — not schema)
 
 | Field | Meaning |
 |-------|---------|
@@ -209,6 +275,53 @@ settled|complimentary|refunded --check void--> voided   [constrained; domain pro
 | `allocatedAmount` | Amount of Order contribution included in current open Check bill (v1: equals `orderTotalSnapshot` when pending) |
 
 Exact decimal/tax allocation rules (especially bill discounts shared across Orders) are deferred to `ORDER-SETTLEMENT-DOMAIN-1` under invariants below.
+
+---
+
+## 6A. Aggregate Ownership
+
+### 6A.1 Canonical aggregate boundary diagram
+
+```
++------------------------------------------------------+
+|                 Check Aggregate                      |
+|------------------------------------------------------|
+| Check                                                |
+| Membership[]                                         |
+| SettlementTransaction[]                              |
+| OrderSettlement[]                                    |
++------------------------------------------------------+
+
+                 references
+                       │
+                       ▼
++------------------------------------------------------+
+|                 Order Aggregate                      |
+|------------------------------------------------------|
+| Order                                                |
+| Order Items                                          |
+| Notes                                                |
+| Modifiers                                            |
+| Operational Lifecycle                                |
++------------------------------------------------------+
+```
+
+### 6A.2 Boundary rules
+
+1. **Check owns Order Settlement.** `OrderSettlement[]` lives inside the Check aggregate boundary.  
+2. **Order Aggregate never owns financial settlement.** No settlement outcome, tender, tax policy, or OS lifecycle authority on Order.  
+3. **Order Settlement references Order** by `orderId` (and `restaurantId`) but **does not belong** to the Order Aggregate.  
+4. **Membership** and **SettlementTransaction** remain Check-owned; Order Settlement does not absorb either.  
+5. Cross-aggregate rule: Check/FSP **may reference** Order; Order **must not** embed Check/OS as write authority.
+
+### 6A.3 Ownership boundaries (explicit)
+
+| Owner | Owns | Does not own |
+|-------|------|--------------|
+| **Order Aggregate** | Operational lifecycle · Order items · Notes · Modifiers · Customer intent · line/`totalAmount` money | Membership · Check · Order Settlement · Settlement Transactions · tax snapshots · Revenue |
+| **Financial Settlement Platform (Check Aggregate)** | Membership · Check · Order Settlement · Settlement Transactions · bill tax/grandTotal/outcome | Order items · Notes · Modifiers · operational FSM · customer intent |
+
+This section **strengthens documentation only**. It does not change ADR-ARCH-020 decisions, Revenue SSOT, Membership authority, or Check ownership.
 
 ---
 
@@ -233,7 +346,10 @@ Exact decimal/tax allocation rules (especially bill discounts shared across Orde
 9. **I-OS-09** Terminal Check `voided` ⇒ active OS on that Check become `voided`; no new tenders (I-FIN-07).  
 10. **I-OS-10** Order Settlement **MUST NOT** redefine Check Revenue or Payment Method Analytics.  
 11. **I-OS-11** Order Settlement **MUST** carry `restaurantId` matching Check and Order.  
-12. **I-OS-12** Business Identity fields **MUST NOT** key Order Settlement (I-FIN-11).
+12. **I-OS-12** Business Identity fields **MUST NOT** key Order Settlement (I-FIN-11).  
+13. **I-OS-14** Terminal Order Settlement states (`settled`, `complimentary`, `refunded`, `voided`, `cancelled`) **MUST NOT** transition back to non-terminal states (`pending`, `partially_settled`). Lifecycle regression is architecturally forbidden. Any future exception requires a **new ADR** and explicit Architecture Authority approval.
+
+> **Note:** Identifier **I-OS-13** is reserved / unused in this ADR revision to preserve the review-assigned **I-OS-14** id without renumbering accepted invariants I-OS-01…I-OS-12.
 
 ---
 
@@ -339,7 +455,8 @@ Check remains the sole bill/Revenue/tender aggregate.
 Membership remains the sole composition authority.  
 Order remains the sole operational core and MUST NOT own settlement.  
 SettlementTransaction remains under Check.  
-Restaurant Revenue mathematics are unchanged.**
+Restaurant Revenue mathematics are unchanged.  
+Terminal Order Settlement states MUST NOT regress to non-terminal states (I-OS-14).**
 
 This decision governs Order Settlement architecture until Architecture Authority accepts a superseding ADR.
 
