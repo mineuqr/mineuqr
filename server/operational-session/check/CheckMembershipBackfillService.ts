@@ -11,6 +11,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { operationalChecks } from "../../../drizzle/schema";
 import { getDb, getOrdersBySessionId } from "../../db";
 import { enrollOrderInCheck } from "./checkMembershipService";
+import { ensureOrderSettlementForEnrollment } from "./checkOrderSettlementIntegration";
 
 /** Voided Checks are skipped — membership was deactivated / not authoritative history. */
 const BACKFILL_OUTCOMES = ["open", "paid", "complimentary"] as const;
@@ -87,6 +88,11 @@ export async function backfillCheckOrderMembership(input: {
             checkId: check.id,
             orderId: order.id,
             enrolledReason: "backfill",
+          });
+          await ensureOrderSettlementForEnrollment({
+            restaurantId: check.restaurantId,
+            checkId: check.id,
+            orderId: order.id,
           });
           if (status === "enrolled") result.membershipsEnrolled += 1;
           else if (status === "already") result.membershipsAlready += 1;

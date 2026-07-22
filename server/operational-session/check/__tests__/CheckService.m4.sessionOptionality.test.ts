@@ -15,12 +15,20 @@ const mocks = vi.hoisted(() => ({
   getOrdersByIds: vi.fn(),
   getRestaurantById: vi.fn(),
   getOrderById: vi.fn(),
+  getDb: vi.fn(),
   listActiveOrderIdsForCheck: vi.fn(),
   findBlockingMembershipForOrder: vi.fn(),
   enrollOrderInCheck: vi.fn(),
   syncSessionOrdersToCheck: vi.fn(),
   deactivateMembershipsOnCheckVoid: vi.fn(),
+  ensureOrderSettlementForEnrollment: vi.fn(),
+  recalculateOrderSettlementsForCheck: vi.fn(),
+  applyFullSettlementToCheckOrders: vi.fn(),
+  applyComplimentaryToCheckOrders: vi.fn(),
+  voidOrderSettlementsForCheck: vi.fn(),
 }));
+
+const fakeTx = { __tx: true };
 
 vi.mock("../../../_core/opsLog", () => ({
   opsLog: vi.fn(),
@@ -30,6 +38,24 @@ vi.mock("../../../db", () => ({
   getOrdersByIds: (...a: unknown[]) => mocks.getOrdersByIds(...a),
   getRestaurantById: (...a: unknown[]) => mocks.getRestaurantById(...a),
   getOrderById: (...a: unknown[]) => mocks.getOrderById(...a),
+  getDb: (...a: unknown[]) => mocks.getDb(...a),
+}));
+
+vi.mock("../checkOrderSettlementIntegration", () => ({
+  ensureOrderSettlementForEnrollment: (...a: unknown[]) =>
+    mocks.ensureOrderSettlementForEnrollment(...a),
+  recalculateOrderSettlementsForCheck: (...a: unknown[]) =>
+    mocks.recalculateOrderSettlementsForCheck(...a),
+  applyFullSettlementToCheckOrders: (...a: unknown[]) =>
+    mocks.applyFullSettlementToCheckOrders(...a),
+  applyComplimentaryToCheckOrders: (...a: unknown[]) =>
+    mocks.applyComplimentaryToCheckOrders(...a),
+  voidOrderSettlementsForCheck: (...a: unknown[]) =>
+    mocks.voidOrderSettlementsForCheck(...a),
+  ensureOrderSettlementsForCheck: vi.fn(),
+  refundOrderSettlementsForCheck: vi.fn(),
+  cancelOrderSettlementForOrder: vi.fn(),
+  applyPartialSettlementForOrder: vi.fn(),
 }));
 
 vi.mock("../../../diningSession/sessionRepository", () => ({
@@ -117,6 +143,34 @@ describe("CHECK-GENERALIZATION-M4 Session optionality", () => {
     mocks.enrollOrderInCheck.mockResolvedValue("enrolled");
     mocks.updateCheckMoney.mockResolvedValue(undefined);
     mocks.findSessionById.mockResolvedValue(null);
+    mocks.getDb.mockResolvedValue({
+      transaction: async (fn: (tx: unknown) => Promise<unknown>) => fn(fakeTx),
+    });
+    mocks.ensureOrderSettlementForEnrollment.mockResolvedValue({
+      settlements: [],
+      events: [],
+      outcomes: ["applied"],
+    });
+    mocks.recalculateOrderSettlementsForCheck.mockResolvedValue({
+      settlements: [],
+      events: [],
+      outcomes: [],
+    });
+    mocks.applyFullSettlementToCheckOrders.mockResolvedValue({
+      settlements: [],
+      events: [],
+      outcomes: ["applied"],
+    });
+    mocks.applyComplimentaryToCheckOrders.mockResolvedValue({
+      settlements: [],
+      events: [],
+      outcomes: ["applied"],
+    });
+    mocks.voidOrderSettlementsForCheck.mockResolvedValue({
+      settlements: [],
+      events: [],
+      outcomes: ["applied"],
+    });
   });
 
   it("createOpenCheck creates a sessionless Check without Session lookup", async () => {
@@ -159,9 +213,13 @@ describe("CHECK-GENERALIZATION-M4 Session optionality", () => {
         checkId: 200,
         orderId: 55,
         enrolledReason: "order_place",
-      })
+      }),
+      fakeTx
     );
-    expect(mocks.listActiveOrderIdsForCheck).toHaveBeenCalledWith(1, 200);
+    expect(mocks.ensureOrderSettlementForEnrollment).toHaveBeenCalledWith(
+      expect.objectContaining({ checkId: 200, orderId: 55 }),
+      fakeTx
+    );
     expect(check.id).toBe(200);
   });
 
@@ -194,7 +252,11 @@ describe("CHECK-GENERALIZATION-M4 Session optionality", () => {
         checkId: 200,
         sessionId: null,
       }),
-      undefined
+      fakeTx
+    );
+    expect(mocks.applyFullSettlementToCheckOrders).toHaveBeenCalledWith(
+      { restaurantId: 1, checkId: 200 },
+      fakeTx
     );
     expect(result.outcome).toBe("paid");
   });
@@ -225,7 +287,11 @@ describe("CHECK-GENERALIZATION-M4 Session optionality", () => {
     expect(mocks.findSessionById).not.toHaveBeenCalled();
     expect(mocks.finalizeCheckOutcome).toHaveBeenCalledWith(
       expect.objectContaining({ outcome: "complimentary" }),
-      undefined
+      fakeTx
+    );
+    expect(mocks.applyComplimentaryToCheckOrders).toHaveBeenCalledWith(
+      { restaurantId: 1, checkId: 200 },
+      fakeTx
     );
     expect(result.outcome).toBe("complimentary");
   });
@@ -246,10 +312,17 @@ describe("CHECK-GENERALIZATION-M4 Session optionality", () => {
     await voidCheckById({ restaurantId: 1, checkId: 200 });
 
     expect(mocks.findSessionById).not.toHaveBeenCalled();
-    expect(mocks.deactivateMembershipsOnCheckVoid).toHaveBeenCalledWith({
-      restaurantId: 1,
-      checkId: 200,
-    });
+    expect(mocks.voidOrderSettlementsForCheck).toHaveBeenCalledWith(
+      { restaurantId: 1, checkId: 200 },
+      fakeTx
+    );
+    expect(mocks.deactivateMembershipsOnCheckVoid).toHaveBeenCalledWith(
+      {
+        restaurantId: 1,
+        checkId: 200,
+      },
+      fakeTx
+    );
   });
 
   it("recalculateOpenCheck uses membership for sessionless Checks", async () => {
@@ -265,9 +338,15 @@ describe("CHECK-GENERALIZATION-M4 Session optionality", () => {
 
     await recalculateOpenCheck({ restaurantId: 1, checkId: 200 });
 
-    expect(mocks.listActiveOrderIdsForCheck).toHaveBeenCalledWith(1, 200);
-    expect(mocks.updateCheckMoney).toHaveBeenCalledWith(
-      expect.objectContaining({ checkId: 200, subtotal: "10.00" })
+    expect(mocks.listActiveOrderIdsForCheck).toHaveBeenCalledWith(
+      1,
+      200,
+      undefined
     );
+    expect(mocks.updateCheckMoney).toHaveBeenCalledWith(
+      expect.objectContaining({ checkId: 200, subtotal: "10.00" }),
+      undefined
+    );
+    expect(mocks.recalculateOrderSettlementsForCheck).toHaveBeenCalled();
   });
 });

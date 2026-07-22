@@ -18,6 +18,7 @@ import {
   insertCheckOrderMembership,
   reactivateCheckOrderMembership,
 } from "./checkOrderMembershipRepository";
+import { ensureOrderSettlementForEnrollment } from "./checkOrderSettlementIntegration";
 
 export class CheckMembershipError extends Error {
   constructor(message: string) {
@@ -104,30 +105,46 @@ export async function enrollOrderInCheck(
  * Authoritative enroll for Session-linked Order.
  * Best-effort (ops-logged) for Session aggregate writers.
  */
-export async function enrollOrderForSessionCheck(input: {
-  restaurantId: number;
-  sessionId: number;
-  orderId: number;
-  checkId?: number | null;
-  enrolledReason?: CheckMembershipEnrolledReason;
-}): Promise<void> {
+export async function enrollOrderForSessionCheck(
+  input: {
+    restaurantId: number;
+    sessionId: number;
+    orderId: number;
+    checkId?: number | null;
+    enrolledReason?: CheckMembershipEnrolledReason;
+  },
+  client?: SessionDbClient
+): Promise<void> {
   try {
     let checkId = input.checkId ?? null;
     if (checkId == null) {
       const open = await findOpenCheckBySessionId(
         input.restaurantId,
-        input.sessionId
+        input.sessionId,
+        client
       );
       checkId = open?.id ?? null;
     }
     if (checkId == null) return;
 
-    await enrollOrderInCheck({
-      restaurantId: input.restaurantId,
-      checkId,
-      orderId: input.orderId,
-      enrolledReason: input.enrolledReason ?? "session_attach",
-    });
+    await enrollOrderInCheck(
+      {
+        restaurantId: input.restaurantId,
+        checkId,
+        orderId: input.orderId,
+        enrolledReason: input.enrolledReason ?? "session_attach",
+      },
+      client
+    );
+    // Check Aggregate OS surface — Membership does not mutate OS directly.
+    await ensureOrderSettlementForEnrollment(
+      {
+        restaurantId: input.restaurantId,
+        checkId,
+        orderId: input.orderId,
+      },
+      client
+    );
   } catch (e) {
     opsLog({
       type: OPS_EVENT.check_membership_dual_write_failed,
@@ -150,23 +167,37 @@ export async function enrollOrderForSessionCheck(input: {
  * Authoritative sync of Session Orders → Check Membership.
  * Visit order list is operational seed; Membership owns finance after.
  */
-export async function syncSessionOrdersToCheck(input: {
-  restaurantId: number;
-  sessionId: number;
-  checkId: number;
-}): Promise<void> {
+export async function syncSessionOrdersToCheck(
+  input: {
+    restaurantId: number;
+    sessionId: number;
+    checkId: number;
+  },
+  client?: SessionDbClient
+): Promise<void> {
   try {
     const orders = await getOrdersBySessionId(
       input.restaurantId,
       input.sessionId
     );
     for (const order of orders) {
-      await enrollOrderInCheck({
-        restaurantId: input.restaurantId,
-        checkId: input.checkId,
-        orderId: order.id,
-        enrolledReason: "session_attach",
-      });
+      await enrollOrderInCheck(
+        {
+          restaurantId: input.restaurantId,
+          checkId: input.checkId,
+          orderId: order.id,
+          enrolledReason: "session_attach",
+        },
+        client
+      );
+      await ensureOrderSettlementForEnrollment(
+        {
+          restaurantId: input.restaurantId,
+          checkId: input.checkId,
+          orderId: order.id,
+        },
+        client
+      );
     }
   } catch (e) {
     opsLog({
@@ -185,13 +216,20 @@ export async function syncSessionOrdersToCheck(input: {
   }
 }
 
-/** Authoritative void deactivate. */
-export async function deactivateMembershipsOnCheckVoid(input: {
-  restaurantId: number;
-  checkId: number;
-}): Promise<void> {
+/**
+ * Authoritative void deactivate.
+ * ORDER-SETTLEMENT-INTEGRATION-1 — must participate in Check Aggregate
+ * transaction; failures rethrow so financial mutations roll back atomically.
+ */
+export async function deactivateMembershipsOnCheckVoid(
+  input: {
+    restaurantId: number;
+    checkId: number;
+  },
+  client?: SessionDbClient
+): Promise<void> {
   try {
-    await deactivateMembershipsForCheck(input);
+    await deactivateMembershipsForCheck(input, client);
   } catch (e) {
     opsLog({
       type: OPS_EVENT.check_membership_dual_write_failed,
@@ -205,5 +243,6 @@ export async function deactivateMembershipsOnCheckVoid(input: {
         error: e instanceof Error ? e.message : String(e),
       },
     });
+    throw e;
   }
 }

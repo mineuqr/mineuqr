@@ -6,12 +6,33 @@ export {
   ensureCheckForOrder,
   recalculateOpenCheck,
   settleCheckPaidById,
+  settleCheckPaidByIdDetailed,
   settleCheckComplimentaryById,
+  settleCheckComplimentaryByIdDetailed,
   voidCheckById,
+  voidCheckByIdDetailed,
+  cancelOrderSettlementOnCheck,
+  applyPartialOrderSettlementOnCheck,
+  refundOrderSettlementsOnCheck,
   getCheckById,
   getActiveCheckForSession,
   CheckTransitionError,
+  type CheckFinancialMutationResult,
 } from "./CheckService";
+
+export {
+  ensureOrderSettlementForEnrollment,
+  ensureOrderSettlementsForCheck,
+  recalculateOrderSettlementsForCheck,
+  applyFullSettlementToCheckOrders,
+  applyComplimentaryToCheckOrders,
+  voidOrderSettlementsForCheck,
+  refundOrderSettlementsForCheck,
+  cancelOrderSettlementForOrder,
+  applyPartialSettlementForOrder,
+  loadOrderSettlementsForCheck,
+  type CheckOrderSettlementMutationResult,
+} from "./checkOrderSettlementIntegration";
 
 export {
   enrollOrderInCheck,

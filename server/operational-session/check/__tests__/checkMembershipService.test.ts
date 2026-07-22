@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   insertCheckOrderMembership: vi.fn(),
   reactivateCheckOrderMembership: vi.fn(),
   deactivateMembershipsForCheck: vi.fn(),
+  ensureOrderSettlementForEnrollment: vi.fn(),
 }));
 
 vi.mock("../../../_core/opsLog", () => ({
@@ -44,6 +45,11 @@ vi.mock("../checkOrderMembershipRepository", () => ({
     mocks.deactivateMembershipsForCheck(...args),
 }));
 
+vi.mock("../checkOrderSettlementIntegration", () => ({
+  ensureOrderSettlementForEnrollment: (...args: unknown[]) =>
+    mocks.ensureOrderSettlementForEnrollment(...args),
+}));
+
 import {
   enrollOrderInCheck,
   enrollOrderForSessionCheck,
@@ -56,6 +62,11 @@ describe("CHECK-GENERALIZATION-M1 membership service", () => {
     mocks.findMembershipOnCheck.mockResolvedValue(null);
     mocks.findBlockingMembershipForOrder.mockResolvedValue(null);
     mocks.insertCheckOrderMembership.mockResolvedValue(1);
+    mocks.ensureOrderSettlementForEnrollment.mockResolvedValue({
+      settlements: [],
+      events: [],
+      outcomes: ["applied"],
+    });
   });
 
   it("enrolls order into open check", async () => {
@@ -148,6 +159,10 @@ describe("CHECK-GENERALIZATION-M1 membership service", () => {
     });
 
     expect(mocks.insertCheckOrderMembership).toHaveBeenCalled();
+    expect(mocks.ensureOrderSettlementForEnrollment).toHaveBeenCalledWith(
+      expect.objectContaining({ checkId: 10, orderId: 5 }),
+      undefined
+    );
   });
 
   it("syncSessionOrdersToCheck enrolls all Session orders", async () => {
@@ -168,6 +183,7 @@ describe("CHECK-GENERALIZATION-M1 membership service", () => {
     });
 
     expect(mocks.insertCheckOrderMembership).toHaveBeenCalledTimes(2);
+    expect(mocks.ensureOrderSettlementForEnrollment).toHaveBeenCalledTimes(2);
   });
 
   it("allows backfill enroll onto paid check", async () => {

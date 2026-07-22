@@ -15,10 +15,17 @@ const mocks = vi.hoisted(() => ({
   insertSettlementTransactions: vi.fn(),
   getOrdersByIds: vi.fn(),
   getRestaurantById: vi.fn(),
+  getDb: vi.fn(),
   listActiveOrderIdsForCheck: vi.fn(),
   syncSessionOrdersToCheck: vi.fn(),
   deactivateMembershipsOnCheckVoid: vi.fn(),
+  recalculateOrderSettlementsForCheck: vi.fn(),
+  applyFullSettlementToCheckOrders: vi.fn(),
+  applyComplimentaryToCheckOrders: vi.fn(),
+  voidOrderSettlementsForCheck: vi.fn(),
 }));
+
+const fakeTx = { __tx: true };
 
 vi.mock("../../../_core/opsLog", () => ({
   opsLog: vi.fn(),
@@ -27,6 +34,23 @@ vi.mock("../../../_core/opsLog", () => ({
 vi.mock("../../../db", () => ({
   getOrdersByIds: (...a: unknown[]) => mocks.getOrdersByIds(...a),
   getRestaurantById: (...a: unknown[]) => mocks.getRestaurantById(...a),
+  getDb: (...a: unknown[]) => mocks.getDb(...a),
+}));
+
+vi.mock("../checkOrderSettlementIntegration", () => ({
+  recalculateOrderSettlementsForCheck: (...a: unknown[]) =>
+    mocks.recalculateOrderSettlementsForCheck(...a),
+  applyFullSettlementToCheckOrders: (...a: unknown[]) =>
+    mocks.applyFullSettlementToCheckOrders(...a),
+  applyComplimentaryToCheckOrders: (...a: unknown[]) =>
+    mocks.applyComplimentaryToCheckOrders(...a),
+  voidOrderSettlementsForCheck: (...a: unknown[]) =>
+    mocks.voidOrderSettlementsForCheck(...a),
+  ensureOrderSettlementForEnrollment: vi.fn(),
+  ensureOrderSettlementsForCheck: vi.fn(),
+  refundOrderSettlementsForCheck: vi.fn(),
+  cancelOrderSettlementForOrder: vi.fn(),
+  applyPartialSettlementForOrder: vi.fn(),
 }));
 
 vi.mock("../../../diningSession/sessionRepository", () => ({
@@ -108,6 +132,29 @@ describe("CHECK-GENERALIZATION-M3 CheckService cutover", () => {
     });
     mocks.syncSessionOrdersToCheck.mockResolvedValue(undefined);
     mocks.updateCheckMoney.mockResolvedValue(undefined);
+    mocks.getDb.mockResolvedValue({
+      transaction: async (fn: (tx: unknown) => Promise<unknown>) => fn(fakeTx),
+    });
+    mocks.recalculateOrderSettlementsForCheck.mockResolvedValue({
+      settlements: [],
+      events: [],
+      outcomes: [],
+    });
+    mocks.applyFullSettlementToCheckOrders.mockResolvedValue({
+      settlements: [],
+      events: [],
+      outcomes: ["applied"],
+    });
+    mocks.applyComplimentaryToCheckOrders.mockResolvedValue({
+      settlements: [],
+      events: [],
+      outcomes: ["applied"],
+    });
+    mocks.voidOrderSettlementsForCheck.mockResolvedValue({
+      settlements: [],
+      events: [],
+      outcomes: ["applied"],
+    });
   });
 
   it("recalculate uses membership order ids", async () => {
@@ -121,14 +168,19 @@ describe("CHECK-GENERALIZATION-M3 CheckService cutover", () => {
 
     await recalculateOpenCheckForSession({ restaurantId: 1, sessionId: 10 });
 
-    expect(mocks.listActiveOrderIdsForCheck).toHaveBeenCalledWith(1, 100);
+    expect(mocks.listActiveOrderIdsForCheck).toHaveBeenCalledWith(
+      1,
+      100,
+      undefined
+    );
     expect(mocks.getOrdersByIds).toHaveBeenCalledWith(1, [55, 56]);
     expect(mocks.updateCheckMoney).toHaveBeenCalledWith(
       expect.objectContaining({
         checkId: 100,
         subtotal: "15.00",
         grandTotal: "15.00",
-      })
+      }),
+      undefined
     );
   });
 
@@ -149,13 +201,21 @@ describe("CHECK-GENERALIZATION-M3 CheckService cutover", () => {
 
     await createOpenCheckForSession({ restaurantId: 1, sessionId: 10 });
 
-    expect(mocks.syncSessionOrdersToCheck).toHaveBeenCalledWith({
-      restaurantId: 1,
-      sessionId: 10,
-      checkId: 100,
-    });
-    expect(mocks.listActiveOrderIdsForCheck).toHaveBeenCalledWith(1, 100);
+    expect(mocks.syncSessionOrdersToCheck).toHaveBeenCalledWith(
+      {
+        restaurantId: 1,
+        sessionId: 10,
+        checkId: 100,
+      },
+      undefined
+    );
+    expect(mocks.listActiveOrderIdsForCheck).toHaveBeenCalledWith(
+      1,
+      100,
+      undefined
+    );
     expect(mocks.updateCheckMoney).toHaveBeenCalled();
+    expect(mocks.recalculateOrderSettlementsForCheck).toHaveBeenCalled();
   });
 
   it("settleCheckPaidById freezes membership-derived totals", async () => {
@@ -177,13 +237,21 @@ describe("CHECK-GENERALIZATION-M3 CheckService cutover", () => {
 
     const result = await settleCheckPaidById({ restaurantId: 1, checkId: 100 });
 
-    expect(mocks.listActiveOrderIdsForCheck).toHaveBeenCalledWith(1, 100);
+    expect(mocks.listActiveOrderIdsForCheck).toHaveBeenCalledWith(
+      1,
+      100,
+      undefined
+    );
     expect(mocks.finalizeCheckOutcome).toHaveBeenCalledWith(
       expect.objectContaining({
         outcome: "paid",
         grandTotal: "10.00",
       }),
-      undefined
+      fakeTx
+    );
+    expect(mocks.applyFullSettlementToCheckOrders).toHaveBeenCalledWith(
+      { restaurantId: 1, checkId: 100 },
+      fakeTx
     );
     expect(result.outcome).toBe("paid");
   });
@@ -203,10 +271,21 @@ describe("CHECK-GENERALIZATION-M3 CheckService cutover", () => {
 
     await voidCheckById({ restaurantId: 1, checkId: 100 });
 
-    expect(mocks.listActiveOrderIdsForCheck).toHaveBeenCalledWith(1, 100);
-    expect(mocks.deactivateMembershipsOnCheckVoid).toHaveBeenCalledWith({
-      restaurantId: 1,
-      checkId: 100,
-    });
+    expect(mocks.listActiveOrderIdsForCheck).toHaveBeenCalledWith(
+      1,
+      100,
+      undefined
+    );
+    expect(mocks.voidOrderSettlementsForCheck).toHaveBeenCalledWith(
+      { restaurantId: 1, checkId: 100 },
+      fakeTx
+    );
+    expect(mocks.deactivateMembershipsOnCheckVoid).toHaveBeenCalledWith(
+      {
+        restaurantId: 1,
+        checkId: 100,
+      },
+      fakeTx
+    );
   });
 });

@@ -23,6 +23,25 @@ vi.mock("../../../_core/opsLog", () => ({
 vi.mock("../../../db", () => ({
   getOrdersByIds: (...a: unknown[]) => mocks.getOrdersByIds(...a),
   getRestaurantById: (...a: unknown[]) => mocks.getRestaurantById(...a),
+  getDb: vi.fn(async () => ({
+    transaction: async (fn: (tx: unknown) => Promise<unknown>) => fn({}),
+  })),
+}));
+
+vi.mock("../checkOrderSettlementIntegration", () => ({
+  recalculateOrderSettlementsForCheck: vi.fn(async () => ({
+    settlements: [],
+    events: [],
+    outcomes: [],
+  })),
+  ensureOrderSettlementForEnrollment: vi.fn(),
+  ensureOrderSettlementsForCheck: vi.fn(),
+  applyFullSettlementToCheckOrders: vi.fn(),
+  applyComplimentaryToCheckOrders: vi.fn(),
+  voidOrderSettlementsForCheck: vi.fn(),
+  refundOrderSettlementsForCheck: vi.fn(),
+  cancelOrderSettlementForOrder: vi.fn(),
+  applyPartialSettlementForOrder: vi.fn(),
 }));
 
 vi.mock("../../../diningSession/sessionRepository", () => ({
@@ -117,9 +136,14 @@ describe("CHECK-GENERALIZATION-M5 createOpenCheckForSession", () => {
       undefined
     );
     expect(mocks.syncSessionOrdersToCheck).toHaveBeenCalled();
-    expect(mocks.listActiveOrderIdsForCheck).toHaveBeenCalledWith(1, 100);
+    expect(mocks.listActiveOrderIdsForCheck).toHaveBeenCalledWith(
+      1,
+      100,
+      undefined
+    );
     expect(mocks.updateCheckMoney).toHaveBeenCalledWith(
-      expect.objectContaining({ checkId: 100, subtotal: "10.00" })
+      expect.objectContaining({ checkId: 100, subtotal: "10.00" }),
+      undefined
     );
   });
 });
