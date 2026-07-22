@@ -23,13 +23,13 @@ describe("CHECK-GENERALIZATION-M1 architecture guards", () => {
     expect(schema).toContain("checkOrderMembership");
   });
 
-  it("CheckService money path still uses Session order discovery (no cutover)", () => {
+  it("CheckService money path supports M3 membership discovery (cutover)", () => {
     const svc = read("server/operational-session/check/CheckService.ts");
     expect(svc).toContain("loadOrdersSubtotal");
-    expect(svc).toContain("getOrdersBySessionId");
+    expect(svc).toContain("listActiveOrderIdsForCheck");
     expect(svc).toContain("dualWriteSyncSessionOrdersToCheck");
-    // Must not use membership list for subtotal in M1
-    expect(svc).not.toContain("listActiveOrderIdsForCheck");
+    // Session scan retained only as bootstrap / rollback path
+    expect(svc).toContain("getOrdersBySessionId");
   });
 
   it("dual-write is best-effort and flag-gated", () => {
@@ -42,6 +42,7 @@ describe("CHECK-GENERALIZATION-M1 architecture guards", () => {
 
     const env = read("server/_core/env.ts");
     expect(env).toContain("CHECK_MEMBERSHIP_DUAL_WRITE");
+    expect(env).toContain("CHECK_MEMBERSHIP_AUTHORITATIVE_READ");
   });
 
   it("does not introduce sessionless EnsureCheckForOrder or Order settle façade", () => {

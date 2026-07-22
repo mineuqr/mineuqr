@@ -1083,6 +1083,33 @@ export async function getOrdersBySessionId(
     .orderBy(desc(orders.createdAt));
 }
 
+/**
+ * CHECK-GENERALIZATION-M3 — load Order money rows by id for Check membership discovery.
+ */
+export async function getOrdersByIds(
+  restaurantId: number,
+  orderIds: readonly number[]
+): Promise<SessionLinkedOrderRow[]> {
+  const db = await getDb();
+  if (!db || orderIds.length === 0) return [];
+
+  return db
+    .select({
+      id: orders.id,
+      orderNumber: orders.orderNumber,
+      businessDay: orders.businessDay,
+      dailyDisplayNumber: orders.dailyDisplayNumber,
+      status: orders.status,
+      totalAmount: orders.totalAmount,
+      createdAt: orders.createdAt,
+    })
+    .from(orders)
+    .where(
+      and(eq(orders.restaurantId, restaurantId), inArray(orders.id, [...orderIds]))
+    )
+    .orderBy(desc(orders.createdAt));
+}
+
 export async function getOrdersWithItemsByRestaurant(
   restaurantId: number,
   status?: string

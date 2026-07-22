@@ -125,8 +125,7 @@ export async function incrementSessionAggregatesForOrder(
     });
   }
 
-  // CHECK-MANAGEMENT-ARCHITECTURE-1 — open Check totals follow Session order money.
-  // M1: Session discovery remains authoritative (no membership-based subtotal).
+  // M3: Check money recalc uses membership discovery (CheckService); Session attach unchanged.
   await recalculateOpenCheckForSession({
     restaurantId: input.restaurantId,
     sessionId: input.sessionId,

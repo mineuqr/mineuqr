@@ -1,11 +1,19 @@
 /**
  * CHECK-MANAGEMENT-ARCHITECTURE-1 — Check sub-domain application service.
  * CHECK-SETTLEMENT-METHODS-1 — settlement transactions under Check.
+ * CHECK-GENERALIZATION-M3 — Membership is authoritative Order discovery for money.
  *
  * Owned by Operational Session Platform. Does not modify Order Domain.
  */
 
-import { getOrdersBySessionId, getRestaurantById } from "../../db";
+import { ENV } from "../../_core/env";
+import { opsLog } from "../../_core/opsLog";
+import { OPS_EVENT } from "../../_core/opsTaxonomy";
+import {
+  getOrdersByIds,
+  getOrdersBySessionId,
+  getRestaurantById,
+} from "../../db";
 import { computeOrdersTotalAmount } from "../../diningSession/sessionOrderTotals";
 import {
   findSessionById,
@@ -47,6 +55,7 @@ import {
   dualWriteDeactivateMembershipsOnVoid,
   dualWriteSyncSessionOrdersToCheck,
 } from "./checkMembershipService";
+import { listActiveOrderIdsForCheck } from "./checkOrderMembershipRepository";
 
 export class CheckTransitionError extends Error {
   constructor(message: string) {
@@ -55,12 +64,81 @@ export class CheckTransitionError extends Error {
   }
 }
 
-async function loadOrdersSubtotal(
+/**
+ * M3 — Check Order money discovery.
+ * Authoritative: membership → Order ids → non-cancelled totals.
+ * Rollback: Session scan (only while dual-write remains operational).
+ */
+async function loadOrdersSubtotal(input: {
+  restaurantId: number;
+  sessionId: number;
+  checkId: number;
+}): Promise<string> {
+  if (ENV.checkMembershipAuthoritativeRead) {
+    if (!ENV.checkMembershipDualWrite) {
+      opsLog({
+        type: OPS_EVENT.check_membership_dual_write_failed,
+        category: "ORDER",
+        severity: "warn",
+        ts: new Date().toISOString(),
+        restaurantId: input.restaurantId,
+        procedure: "loadOrdersSubtotal",
+        metadata: {
+          checkId: input.checkId,
+          sessionId: input.sessionId,
+          reason: "authoritative_read_without_dual_write",
+        },
+      });
+    }
+    const orderIds = await listActiveOrderIdsForCheck(
+      input.restaurantId,
+      input.checkId
+    );
+    const orderRows = await getOrdersByIds(input.restaurantId, orderIds);
+    return computeOrdersTotalAmount(orderRows);
+  }
+
+  const orderRows = await getOrdersBySessionId(
+    input.restaurantId,
+    input.sessionId
+  );
+  return computeOrdersTotalAmount(orderRows);
+}
+
+/** Bootstrap seed for brand-new Check insert before membership rows exist. */
+async function loadOrdersSubtotalFromSession(
   restaurantId: number,
   sessionId: number
 ): Promise<string> {
   const orderRows = await getOrdersBySessionId(restaurantId, sessionId);
   return computeOrdersTotalAmount(orderRows);
+}
+
+async function refreshOpenCheckMoneyFromDiscovery(input: {
+  restaurantId: number;
+  sessionId: number;
+  checkId: number;
+  billDiscountAmount: string;
+  taxPolicySnapshot: OperationalCheck["taxPolicySnapshot"];
+}): Promise<void> {
+  const ordersSubtotal = await loadOrdersSubtotal({
+    restaurantId: input.restaurantId,
+    sessionId: input.sessionId,
+    checkId: input.checkId,
+  });
+  const money = computeCheckMoney({
+    ordersSubtotal,
+    billDiscountAmount: input.billDiscountAmount,
+    taxPolicySnapshot: input.taxPolicySnapshot,
+  });
+  await updateCheckMoney({
+    checkId: input.checkId,
+    restaurantId: input.restaurantId,
+    subtotal: money.subtotal,
+    taxAmount: money.taxAmount,
+    taxBreakdown: money.taxBreakdown,
+    grandTotal: money.grandTotal,
+  });
 }
 
 async function captureSnapshotsFromBusinessSettings(restaurantId: number) {
@@ -108,17 +186,32 @@ export async function createOpenCheckForSession(
       sessionId: input.sessionId,
       checkId: existing.id,
     });
+    if (ENV.checkMembershipAuthoritativeRead && existing.outcome === "open") {
+      const mapped = mapRowToOperationalCheck(existing);
+      await refreshOpenCheckMoneyFromDiscovery({
+        restaurantId: input.restaurantId,
+        sessionId: input.sessionId,
+        checkId: existing.id,
+        billDiscountAmount: mapped.billDiscountAmount,
+        taxPolicySnapshot: mapped.taxPolicySnapshot,
+      });
+      const refreshed = await findCheckById(existing.id, client);
+      return refreshed
+        ? mapRowToOperationalCheck(refreshed)
+        : mapped;
+    }
     return mapRowToOperationalCheck(existing);
   }
 
   const { currencySnapshot, taxPolicySnapshot } =
     await captureSnapshotsFromBusinessSettings(input.restaurantId);
-  const ordersSubtotal = await loadOrdersSubtotal(
+  // Insert seed: Session scan (membership rows do not exist until after insert + sync).
+  const seedSubtotal = await loadOrdersSubtotalFromSession(
     input.restaurantId,
     input.sessionId
   );
   const money = computeCheckMoney({
-    ordersSubtotal,
+    ordersSubtotal: seedSubtotal,
     billDiscountAmount: "0.00",
     taxPolicySnapshot,
   });
@@ -148,12 +241,22 @@ export async function createOpenCheckForSession(
     client
   );
 
-  // M1 dual-write — membership sync; Session scan remains money authority.
+  // Dual-write membership, then authoritative money refresh when M3 is ON.
   await dualWriteSyncSessionOrdersToCheck({
     restaurantId: input.restaurantId,
     sessionId: input.sessionId,
     checkId,
   });
+
+  if (ENV.checkMembershipAuthoritativeRead) {
+    await refreshOpenCheckMoneyFromDiscovery({
+      restaurantId: input.restaurantId,
+      sessionId: input.sessionId,
+      checkId,
+      billDiscountAmount: "0.00",
+      taxPolicySnapshot,
+    });
+  }
 
   const row = await findCheckById(checkId, client);
   if (!row) {
@@ -215,23 +318,12 @@ export async function recalculateOpenCheckForSession(input: {
       return check;
     }
 
-    const ordersSubtotal = await loadOrdersSubtotal(
-      input.restaurantId,
-      input.sessionId
-    );
-    const money = computeCheckMoney({
-      ordersSubtotal,
+    await refreshOpenCheckMoneyFromDiscovery({
+      restaurantId: input.restaurantId,
+      sessionId: input.sessionId,
+      checkId: check.id,
       billDiscountAmount: check.billDiscountAmount,
       taxPolicySnapshot: check.taxPolicySnapshot,
-    });
-
-    await updateCheckMoney({
-      checkId: check.id,
-      restaurantId: input.restaurantId,
-      subtotal: money.subtotal,
-      taxAmount: money.taxAmount,
-      taxBreakdown: money.taxBreakdown,
-      grandTotal: money.grandTotal,
     });
 
     const row = await findCheckById(check.id);
@@ -265,10 +357,11 @@ async function finalizeOpenCheck(
     );
   }
 
-  const ordersSubtotal = await loadOrdersSubtotal(
-    input.restaurantId,
-    input.sessionId
-  );
+  const ordersSubtotal = await loadOrdersSubtotal({
+    restaurantId: input.restaurantId,
+    sessionId: input.sessionId,
+    checkId: check.id,
+  });
   const money = computeCheckMoney({
     ordersSubtotal,
     billDiscountAmount: check.billDiscountAmount,

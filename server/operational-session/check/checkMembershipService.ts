@@ -2,7 +2,7 @@
  * CHECK-GENERALIZATION-M1 — Check-owned membership dual-write service.
  *
  * ADR-ARCH-020: Membership belongs to Check. Not an aggregate.
- * M1: Dual-write only. loadOrdersSubtotal / Session discovery remains money SSOT.
+ * M1: Dual-write enrollment. M3: money discovery is membership-authoritative by default.
  * Failures are best-effort (ops-logged) so waiter/session flows never regress.
  */
 
