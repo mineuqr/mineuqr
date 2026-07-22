@@ -111,6 +111,7 @@ import { reportingRouter } from "./reporting-platform";
 import { kitchenRouter } from "./kitchen/read/kitchenRouter";
 import { orderReadRouter } from "./order/read/orderReadRouter";
 import { orderSettlementReadRouter } from "./operational-session/check/api/orderSettlementReadRouter";
+import { splitPaymentReadRouter } from "./operational-session/check/api/splitPaymentReadRouter";
 import { mapOrderDisplayIdentityFields } from "./order/read/presentation/mapOrderDisplayIdentity";
 import { printWorkspaceRouter } from "./print-workspace/printWorkspaceRouter";
 import { operationalDeviceRouter } from "./operational-device/operationalDeviceRouter";
@@ -2511,6 +2512,7 @@ export const appRouter = router({
   reporting: reportingRouter,
   kitchen: kitchenRouter,
   orderSettlement: orderSettlementReadRouter,
+  splitPayment: splitPaymentReadRouter,
   printWorkspace: printWorkspaceRouter,
   operationalDevice: operationalDeviceRouter,
   printConnector: printConnectorRouter,
