@@ -193,6 +193,7 @@ export {
   assertSplitPaymentStatus,
   isSplitPaymentTerminalStatus,
   isSplitPaymentNonTerminalStatus,
+  isValueReceivedStatus,
   isTenderMethod,
   TENDER_METHODS,
   createSplitPayment,
@@ -205,6 +206,8 @@ export {
   voidPayment,
   refundPayment,
   updateOutstandingSnapshot,
+  buildCheckFinancialResponsibility,
+  parseSplitPaymentMoney,
   startPaymentAttempt,
   succeedPaymentAttempt,
   failPaymentAttempt,
@@ -226,4 +229,6 @@ export {
   type PaymentReference,
   type FinancialReference,
   type CheckFinancialResponsibility,
+  type PaymentPortion,
+  type TenderMethod,
 } from "./splitPayment";

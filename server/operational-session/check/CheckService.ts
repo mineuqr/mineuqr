@@ -4,6 +4,7 @@
  * CHECK-GENERALIZATION-M3 — Membership is authoritative Order discovery for money.
  * CHECK-GENERALIZATION-M4 — Session optional for financial correctness (Check-centric APIs).
  * ORDER-SETTLEMENT-INTEGRATION-1 — Check Aggregate is sole Order Settlement mutation authority.
+ * SPLIT-PAYMENT-INTEGRATION-1 — Check Aggregate is sole Split Payment mutation authority.
  *
  * Owned by Operational Session Platform. Does not modify Order Domain.
  */
@@ -71,6 +72,26 @@ import {
   voidOrderSettlementsForCheck,
   type CheckOrderSettlementMutationResult,
 } from "./checkOrderSettlementIntegration";
+import {
+  allocateTendersOnCheck,
+  applyPaymentOnCheck,
+  authorizePaymentOnCheck,
+  cancelPaymentAttemptOnCheck,
+  cancelPaymentOnCheck,
+  capturePaymentOnCheck,
+  createPaymentOnCheck,
+  failPaymentAttemptOnCheck,
+  failPaymentOnCheck,
+  loadCheckOutstanding,
+  loadPaymentAttemptsForCheck,
+  loadSplitPaymentsForCheck,
+  refundPaymentOnCheck,
+  startPaymentAttemptOnCheck,
+  succeedPaymentAttemptOnCheck,
+  voidPaymentOnCheck,
+  type CheckSplitPaymentMutationResult,
+} from "./checkSplitPaymentIntegration";
+import type { PaymentPortion, TenderMethod } from "@shared/operational-session";
 
 export class CheckTransitionError extends Error {
   constructor(message: string) {
@@ -775,6 +796,190 @@ export async function cancelOrderSettlementOnCheck(input: {
   return withCheckOwnedTransaction(undefined, async (tx) =>
     cancelOrderSettlementForOrder(input, tx)
   );
+}
+
+// ─── SPLIT-PAYMENT-INTEGRATION-1 — Aggregate commands ───────────────
+
+export type { CheckSplitPaymentMutationResult };
+
+export async function createSplitPaymentOnCheck(input: {
+  restaurantId: number;
+  checkId: number;
+  paymentId: string;
+  paymentReference: string;
+  financialReference?: string | null;
+  amount: string;
+  initialStatus?: "pending" | "authorized" | "captured";
+  tenders?: readonly {
+    tenderId: string;
+    method: TenderMethod;
+    amount: string;
+  }[];
+}): Promise<CheckSplitPaymentMutationResult> {
+  return withCheckOwnedTransaction(undefined, async (tx) =>
+    createPaymentOnCheck(input, tx)
+  );
+}
+
+export async function authorizeSplitPaymentOnCheck(input: {
+  restaurantId: number;
+  checkId: number;
+  paymentId: string;
+}): Promise<CheckSplitPaymentMutationResult> {
+  return withCheckOwnedTransaction(undefined, async (tx) =>
+    authorizePaymentOnCheck(input, tx)
+  );
+}
+
+export async function captureSplitPaymentOnCheck(input: {
+  restaurantId: number;
+  checkId: number;
+  paymentId: string;
+  tenders?: readonly {
+    tenderId: string;
+    method: TenderMethod;
+    amount: string;
+  }[];
+}): Promise<CheckSplitPaymentMutationResult> {
+  return withCheckOwnedTransaction(undefined, async (tx) =>
+    capturePaymentOnCheck(input, tx)
+  );
+}
+
+/** Apply / allocate Payment portions → Order Settlement via OS Aggregate path. */
+export async function applySplitPaymentOnCheck(input: {
+  restaurantId: number;
+  checkId: number;
+  paymentId: string;
+  portions: readonly PaymentPortion[];
+  allocationIds: readonly string[];
+}): Promise<CheckSplitPaymentMutationResult> {
+  return withCheckOwnedTransaction(undefined, async (tx) =>
+    applyPaymentOnCheck(input, tx)
+  );
+}
+
+export async function allocateSplitPaymentTendersOnCheck(input: {
+  restaurantId: number;
+  checkId: number;
+  paymentId: string;
+  allocations: readonly {
+    tenderAllocationId: string;
+    tenderId: string;
+    amount: string;
+  }[];
+}): Promise<CheckSplitPaymentMutationResult> {
+  return withCheckOwnedTransaction(undefined, async (tx) =>
+    allocateTendersOnCheck(input, tx)
+  );
+}
+
+export async function failSplitPaymentOnCheck(input: {
+  restaurantId: number;
+  checkId: number;
+  paymentId: string;
+}): Promise<CheckSplitPaymentMutationResult> {
+  return withCheckOwnedTransaction(undefined, async (tx) =>
+    failPaymentOnCheck(input, tx)
+  );
+}
+
+export async function cancelSplitPaymentOnCheck(input: {
+  restaurantId: number;
+  checkId: number;
+  paymentId: string;
+}): Promise<CheckSplitPaymentMutationResult> {
+  return withCheckOwnedTransaction(undefined, async (tx) =>
+    cancelPaymentOnCheck(input, tx)
+  );
+}
+
+export async function voidSplitPaymentOnCheck(input: {
+  restaurantId: number;
+  checkId: number;
+  paymentId: string;
+}): Promise<CheckSplitPaymentMutationResult> {
+  return withCheckOwnedTransaction(undefined, async (tx) =>
+    voidPaymentOnCheck(input, tx)
+  );
+}
+
+export async function refundSplitPaymentOnCheck(input: {
+  restaurantId: number;
+  checkId: number;
+  paymentId: string;
+  refundedAmount?: string;
+}): Promise<CheckSplitPaymentMutationResult> {
+  return withCheckOwnedTransaction(undefined, async (tx) =>
+    refundPaymentOnCheck(input, tx)
+  );
+}
+
+export async function startSplitPaymentAttemptOnCheck(input: {
+  restaurantId: number;
+  checkId: number;
+  attemptId: string;
+  amount: string;
+  method: TenderMethod;
+  paymentId?: string | null;
+  externalProviderReference?: string | null;
+}): Promise<CheckSplitPaymentMutationResult> {
+  return withCheckOwnedTransaction(undefined, async (tx) =>
+    startPaymentAttemptOnCheck(input, tx)
+  );
+}
+
+export async function succeedSplitPaymentAttemptOnCheck(input: {
+  restaurantId: number;
+  checkId: number;
+  attemptId: string;
+  paymentId: string;
+  externalProviderReference?: string | null;
+}): Promise<CheckSplitPaymentMutationResult> {
+  return withCheckOwnedTransaction(undefined, async (tx) =>
+    succeedPaymentAttemptOnCheck(input, tx)
+  );
+}
+
+export async function failSplitPaymentAttemptOnCheck(input: {
+  restaurantId: number;
+  checkId: number;
+  attemptId: string;
+}): Promise<CheckSplitPaymentMutationResult> {
+  return withCheckOwnedTransaction(undefined, async (tx) =>
+    failPaymentAttemptOnCheck(input, tx)
+  );
+}
+
+export async function cancelSplitPaymentAttemptOnCheck(input: {
+  restaurantId: number;
+  checkId: number;
+  attemptId: string;
+}): Promise<CheckSplitPaymentMutationResult> {
+  return withCheckOwnedTransaction(undefined, async (tx) =>
+    cancelPaymentAttemptOnCheck(input, tx)
+  );
+}
+
+export async function getSplitPaymentsForCheck(input: {
+  restaurantId: number;
+  checkId: number;
+}) {
+  return loadSplitPaymentsForCheck(input);
+}
+
+export async function getSplitPaymentAttemptsForCheck(input: {
+  restaurantId: number;
+  checkId: number;
+}) {
+  return loadPaymentAttemptsForCheck(input);
+}
+
+export async function getCheckOutstandingBalance(input: {
+  restaurantId: number;
+  checkId: number;
+}) {
+  return loadCheckOutstanding(input);
 }
 
 /**
