@@ -519,6 +519,13 @@
       "when": 1784590000000,
       "tag": "0073_check_order_settlements",
       "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "5",
+      "when": 1784600000000,
+      "tag": "0074_check_split_payments",
+      "breakpoints": true
     }
   ]
 }

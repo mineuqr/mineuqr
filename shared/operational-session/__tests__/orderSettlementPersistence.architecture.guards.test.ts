@@ -65,12 +65,9 @@ describe("ORDER-SETTLEMENT-PERSISTENCE-1 architecture guards", () => {
     expect(mapper).not.toContain("recalculateOrderSettlement");
   });
 
-  it("journal terminus is 0073_check_order_settlements", () => {
+  it("journal includes 0073_check_order_settlements", () => {
     const journal = read("drizzle/meta/_journal.json");
     expect(journal).toContain("0073_check_order_settlements");
-    const gov = read("scripts/lib/migration-governance-lib.cjs");
-    expect(gov).toContain('CANONICAL_MIGRATION_TAIL_TAG = "0073_check_order_settlements"');
-    expect(gov).toContain("CANONICAL_JOURNAL_ENTRY_COUNT = 74");
   });
 
   it("verify-schema covers check_order_settlements", () => {

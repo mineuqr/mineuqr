@@ -527,6 +527,188 @@ export const checkOrderSettlements = mysqlTable(
 export type InsertCheckOrderSettlement = typeof checkOrderSettlements.$inferInsert;
 export type SelectCheckOrderSettlement = typeof checkOrderSettlements.$inferSelect;
 
+// ─── Check Split Payments (SPLIT-PAYMENT-PERSISTENCE-1 / ADR-ARCH-024) ──
+/** Check-owned Split Payment storage. Not an aggregate root. No Domain logic. */
+export const checkSplitPayments = mysqlTable(
+	"check_split_payments",
+	{
+		id: int().autoincrement().primaryKey(),
+		restaurantId: int().notNull(),
+		checkId: int().notNull(),
+		/** Canonical domain PaymentId — never replaced by surrogate id. */
+		paymentId: varchar({ length: 128 }).notNull(),
+		paymentReference: varchar({ length: 128 }).notNull(),
+		financialReference: varchar({ length: 128 }),
+		status: mysqlEnum([
+			"pending",
+			"authorized",
+			"captured",
+			"partially_applied",
+			"applied",
+			"cancelled",
+			"voided",
+			"refunded",
+			"failed",
+		])
+			.default("pending")
+			.notNull(),
+		amount: decimal({ precision: 10, scale: 2 }).default("0.00").notNull(),
+		allocatedAmount: decimal({ precision: 10, scale: 2 }).default("0.00").notNull(),
+		unallocatedAmount: decimal({ precision: 10, scale: 2 }).default("0.00").notNull(),
+		/** Optimistic concurrency token (CAS). Not a Domain field. */
+		version: int().default(1).notNull(),
+		createdAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+		updatedAt: timestamp({ mode: "string" }).defaultNow().onUpdateNow().notNull(),
+	},
+	(table) => [
+		uniqueIndex("check_split_payments_payment_id_unique").on(table.paymentId),
+		uniqueIndex("check_split_payments_check_payment_unique").on(
+			table.checkId,
+			table.paymentId
+		),
+		uniqueIndex("check_split_payments_check_payment_ref_unique").on(
+			table.checkId,
+			table.paymentReference
+		),
+		index("check_split_payments_restaurant_id").on(table.restaurantId),
+		index("check_split_payments_check_id").on(table.checkId),
+		index("check_split_payments_restaurant_check").on(
+			table.restaurantId,
+			table.checkId
+		),
+		index("check_split_payments_financial_ref").on(table.financialReference),
+		index("check_split_payments_status").on(table.status),
+	]
+);
+
+export type InsertCheckSplitPayment = typeof checkSplitPayments.$inferInsert;
+export type SelectCheckSplitPayment = typeof checkSplitPayments.$inferSelect;
+
+export const checkSplitPaymentTenders = mysqlTable(
+	"check_split_payment_tenders",
+	{
+		id: int().autoincrement().primaryKey(),
+		restaurantId: int().notNull(),
+		checkId: int().notNull(),
+		paymentId: varchar({ length: 128 }).notNull(),
+		tenderId: varchar({ length: 128 }).notNull(),
+		method: varchar({ length: 32 }).notNull(),
+		amount: decimal({ precision: 10, scale: 2 }).notNull(),
+		createdAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+	},
+	(table) => [
+		uniqueIndex("check_split_payment_tenders_tender_id_unique").on(table.tenderId),
+		uniqueIndex("check_split_payment_tenders_payment_tender_unique").on(
+			table.paymentId,
+			table.tenderId
+		),
+		index("check_split_payment_tenders_payment_id").on(table.paymentId),
+		index("check_split_payment_tenders_check_id").on(table.checkId),
+		index("check_split_payment_tenders_restaurant_id").on(table.restaurantId),
+	]
+);
+
+export type InsertCheckSplitPaymentTender =
+	typeof checkSplitPaymentTenders.$inferInsert;
+export type SelectCheckSplitPaymentTender =
+	typeof checkSplitPaymentTenders.$inferSelect;
+
+export const checkSplitPaymentTenderAllocations = mysqlTable(
+	"check_split_payment_tender_allocations",
+	{
+		id: int().autoincrement().primaryKey(),
+		restaurantId: int().notNull(),
+		checkId: int().notNull(),
+		paymentId: varchar({ length: 128 }).notNull(),
+		tenderAllocationId: varchar({ length: 128 }).notNull(),
+		tenderId: varchar({ length: 128 }).notNull(),
+		amount: decimal({ precision: 10, scale: 2 }).notNull(),
+		createdAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+	},
+	(table) => [
+		uniqueIndex("check_split_payment_tender_alloc_id_unique").on(
+			table.tenderAllocationId
+		),
+		index("check_split_payment_tender_alloc_payment_id").on(table.paymentId),
+		index("check_split_payment_tender_alloc_check_id").on(table.checkId),
+		index("check_split_payment_tender_alloc_restaurant_id").on(table.restaurantId),
+	]
+);
+
+export type InsertCheckSplitPaymentTenderAllocation =
+	typeof checkSplitPaymentTenderAllocations.$inferInsert;
+export type SelectCheckSplitPaymentTenderAllocation =
+	typeof checkSplitPaymentTenderAllocations.$inferSelect;
+
+export const checkSplitPaymentAllocations = mysqlTable(
+	"check_split_payment_allocations",
+	{
+		id: int().autoincrement().primaryKey(),
+		restaurantId: int().notNull(),
+		checkId: int().notNull(),
+		paymentId: varchar({ length: 128 }).notNull(),
+		allocationId: varchar({ length: 128 }).notNull(),
+		orderId: int().notNull(),
+		amount: decimal({ precision: 10, scale: 2 }).notNull(),
+		createdAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+	},
+	(table) => [
+		uniqueIndex("check_split_payment_allocations_alloc_id_unique").on(
+			table.allocationId
+		),
+		index("check_split_payment_allocations_payment_id").on(table.paymentId),
+		index("check_split_payment_allocations_check_id").on(table.checkId),
+		index("check_split_payment_allocations_order_id").on(table.orderId),
+		index("check_split_payment_allocations_restaurant_id").on(table.restaurantId),
+	]
+);
+
+export type InsertCheckSplitPaymentAllocation =
+	typeof checkSplitPaymentAllocations.$inferInsert;
+export type SelectCheckSplitPaymentAllocation =
+	typeof checkSplitPaymentAllocations.$inferSelect;
+
+/**
+ * Payment Attempt historical rows — insert + outcome finalize only.
+ * Never reuse attemptId for a different external attempt.
+ */
+export const checkSplitPaymentAttempts = mysqlTable(
+	"check_split_payment_attempts",
+	{
+		id: int().autoincrement().primaryKey(),
+		restaurantId: int().notNull(),
+		checkId: int().notNull(),
+		attemptId: varchar({ length: 128 }).notNull(),
+		paymentId: varchar({ length: 128 }),
+		status: mysqlEnum(["started", "succeeded", "failed", "cancelled"])
+			.default("started")
+			.notNull(),
+		amount: decimal({ precision: 10, scale: 2 }).notNull(),
+		method: varchar({ length: 32 }).notNull(),
+		/** Persistence-only provider correlation; not a Domain Aggregate field. */
+		externalProviderReference: varchar({ length: 128 }),
+		createdAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+		updatedAt: timestamp({ mode: "string" }).defaultNow().onUpdateNow().notNull(),
+	},
+	(table) => [
+		uniqueIndex("check_split_payment_attempts_attempt_id_unique").on(
+			table.attemptId
+		),
+		index("check_split_payment_attempts_payment_id").on(table.paymentId),
+		index("check_split_payment_attempts_check_id").on(table.checkId),
+		index("check_split_payment_attempts_restaurant_id").on(table.restaurantId),
+		index("check_split_payment_attempts_check_created").on(
+			table.checkId,
+			table.createdAt
+		),
+	]
+);
+
+export type InsertCheckSplitPaymentAttempt =
+	typeof checkSplitPaymentAttempts.$inferInsert;
+export type SelectCheckSplitPaymentAttempt =
+	typeof checkSplitPaymentAttempts.$inferSelect;
+
 // ─── Table Events (TABLE-MANAGEMENT-1 Phase C) ──────────────────
 export const tableEvents = mysqlTable("table_events", {
 	id: bigint({ mode: "number" }).autoincrement().primaryKey(),

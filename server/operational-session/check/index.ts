@@ -86,6 +86,40 @@ export {
 } from "./orderSettlementRepository";
 
 export {
+  mapRowsToSplitPayment,
+  mapRowToPaymentAttempt,
+  mapRowToTender,
+  mapRowToTenderAllocation,
+  mapRowToPaymentAllocation,
+  toSplitPaymentInsertValues,
+  toSplitPaymentUpdateValues,
+  toPaymentAttemptInsertValues,
+  toPaymentAttemptOutcomeUpdateValues,
+  getAttemptExternalProviderReference,
+  type SplitPaymentPersistenceRow,
+  type PaymentAttemptPersistenceRow,
+  type SplitPaymentInsertValues,
+  type SplitPaymentUpdateValues,
+} from "./splitPaymentMapper";
+
+export {
+  SplitPaymentPersistenceError,
+  insertSplitPayment,
+  findSplitPaymentByIdentity,
+  existsSplitPayment,
+  listSplitPaymentsForCheck,
+  updateSplitPayment,
+  persistSplitPayment,
+  insertPaymentAttempt,
+  finalizePaymentAttemptOutcome,
+  findPaymentAttemptByIdentity,
+  listPaymentAttemptsForCheck,
+  listPaymentAttemptsForPayment,
+  type SplitPaymentLoadResult,
+  type PaymentAttemptLoadResult,
+} from "./splitPaymentRepository";
+
+export {
   InMemoryOrderSettlementProjectionStore,
   materializeOrderSettlementProjections,
   tryMaterializeOrderSettlementProjections,

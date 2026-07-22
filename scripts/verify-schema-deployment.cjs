@@ -94,6 +94,42 @@ const REQUIRED = {
     ["check_order_settlements", "check_order_settlements_restaurant_check"],
     ["check_order_settlements", "check_order_settlements_status"],
   ],
+  /** SPLIT-PAYMENT-PERSISTENCE-1 / ADR-ARCH-024 — Check-owned Split Payment. */
+  checkSplitPaymentTables: [
+    "check_split_payments",
+    "check_split_payment_tenders",
+    "check_split_payment_tender_allocations",
+    "check_split_payment_allocations",
+    "check_split_payment_attempts",
+  ],
+  checkSplitPaymentColumns: [
+    ["check_split_payments", "id"],
+    ["check_split_payments", "restaurantId"],
+    ["check_split_payments", "checkId"],
+    ["check_split_payments", "paymentId"],
+    ["check_split_payments", "paymentReference"],
+    ["check_split_payments", "financialReference"],
+    ["check_split_payments", "status"],
+    ["check_split_payments", "amount"],
+    ["check_split_payments", "allocatedAmount"],
+    ["check_split_payments", "unallocatedAmount"],
+    ["check_split_payments", "version"],
+    ["check_split_payment_attempts", "attemptId"],
+    ["check_split_payment_attempts", "paymentId"],
+    ["check_split_payment_attempts", "externalProviderReference"],
+    ["check_split_payment_tenders", "tenderId"],
+    ["check_split_payment_tender_allocations", "tenderAllocationId"],
+    ["check_split_payment_allocations", "allocationId"],
+  ],
+  checkSplitPaymentIndexes: [
+    ["check_split_payments", "check_split_payments_payment_id_unique"],
+    ["check_split_payments", "check_split_payments_check_payment_unique"],
+    ["check_split_payments", "check_split_payments_check_payment_ref_unique"],
+    ["check_split_payment_attempts", "check_split_payment_attempts_attempt_id_unique"],
+    ["check_split_payment_tenders", "check_split_payment_tenders_tender_id_unique"],
+    ["check_split_payment_tender_allocations", "check_split_payment_tender_alloc_id_unique"],
+    ["check_split_payment_allocations", "check_split_payment_allocations_alloc_id_unique"],
+  ],
 };
 
 async function columnExists(conn, table, column) {
@@ -232,6 +268,21 @@ async function main() {
       }
     }
     for (const [table, indexName] of REQUIRED.checkOrderSettlementIndexes) {
+      if (!(await indexExists(conn, table, indexName))) {
+        missing.push(`index:${table}.${indexName}`);
+      }
+    }
+    for (const table of REQUIRED.checkSplitPaymentTables) {
+      if (!(await tableExists(conn, table))) {
+        missing.push(`table:${table}`);
+      }
+    }
+    for (const [table, column] of REQUIRED.checkSplitPaymentColumns) {
+      if (!(await columnExists(conn, table, column))) {
+        missing.push(`${table}.${column}`);
+      }
+    }
+    for (const [table, indexName] of REQUIRED.checkSplitPaymentIndexes) {
       if (!(await indexExists(conn, table, indexName))) {
         missing.push(`index:${table}.${indexName}`);
       }

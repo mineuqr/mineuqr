@@ -193,6 +193,8 @@ export {
   assertSplitPaymentStatus,
   isSplitPaymentTerminalStatus,
   isSplitPaymentNonTerminalStatus,
+  isTenderMethod,
+  TENDER_METHODS,
   createSplitPayment,
   authorizePayment,
   capturePayment,
