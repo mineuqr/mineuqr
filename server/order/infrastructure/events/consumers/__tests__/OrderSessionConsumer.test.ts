@@ -81,6 +81,7 @@ describe("OrderSessionConsumer", () => {
         restaurantId: 1,
         sessionId: 10,
         orderTotalAmount: "20.00",
+        orderId: 55,
       },
       { procedure: "OrderSessionConsumer" }
     );

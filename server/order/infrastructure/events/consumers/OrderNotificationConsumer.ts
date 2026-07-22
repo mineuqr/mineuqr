@@ -15,6 +15,12 @@ import type {
   OrderReadyEvent,
 } from "../../../domain/events/OrderDomainEvents";
 import type { OrderEventConsumer } from "./contracts/OrderEventConsumer";
+import type { DurableBusinessClaimStore } from "./idempotency/DurableBusinessClaimStore";
+import {
+  BUSINESS_CLAIM_NS,
+  InMemoryDurableBusinessClaimStore,
+  notificationNewOrderKey,
+} from "./idempotency/DurableBusinessClaimStore";
 
 export class OrderNotificationConsumer implements OrderEventConsumer {
   readonly name = "OrderNotificationConsumer" as const;
@@ -25,11 +31,16 @@ export class OrderNotificationConsumer implements OrderEventConsumer {
     "OrderCancelled",
   ] as const;
 
+  constructor(
+    private readonly businessClaims: DurableBusinessClaimStore = new InMemoryDurableBusinessClaimStore()
+  ) {}
+
   async handle(envelope: EventEnvelope): Promise<void> {
     switch (envelope.eventType) {
       case "OrderCreated":
         await this.handleOrderCreated(
-          parseEnvelopePayload<OrderCreatedEvent>(envelope)
+          parseEnvelopePayload<OrderCreatedEvent>(envelope),
+          envelope.restaurantId
         );
         break;
       case "OrderReady":
@@ -50,7 +61,17 @@ export class OrderNotificationConsumer implements OrderEventConsumer {
     }
   }
 
-  private async handleOrderCreated(event: OrderCreatedEvent): Promise<void> {
+  private async handleOrderCreated(
+    event: OrderCreatedEvent,
+    restaurantId: number
+  ): Promise<void> {
+    // ADR-ARCH-021 Pattern B — one new_order notification per business order.
+    const claimed = await this.businessClaims.tryClaim(
+      BUSINESS_CLAIM_NS.notificationNewOrder,
+      notificationNewOrderKey(restaurantId, event.orderId)
+    );
+    if (!claimed) return;
+
     const restaurant = await getRestaurantById(event.restaurantId);
     if (!restaurant) return;
 
@@ -73,6 +94,7 @@ export class OrderNotificationConsumer implements OrderEventConsumer {
     const order = await getOrderById(event.orderId);
     if (!order) return;
 
+    // Pattern D already inside sendReadyPushForOrder (readyPushSentAt CAS).
     await sendReadyPushForOrder({
       orderId: event.orderId,
       trackingToken: event.trackingToken ?? order.trackingToken,

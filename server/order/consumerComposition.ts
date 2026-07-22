@@ -1,5 +1,9 @@
 import { OrderEventConsumerRegistry } from "./infrastructure/events/registry/OrderEventConsumerRegistry";
 import { DrizzleConsumerIdempotencyStore } from "./infrastructure/events/consumers/idempotency/DrizzleConsumerIdempotencyStore";
+import {
+  DrizzleDurableBusinessClaimStore,
+  InMemoryDurableBusinessClaimStore,
+} from "./infrastructure/events/consumers/idempotency/DurableBusinessClaimStore";
 import { OrderNotificationConsumer } from "./infrastructure/events/consumers/OrderNotificationConsumer";
 import { OrderSessionConsumer } from "./infrastructure/events/consumers/OrderSessionConsumer";
 import { OrderKitchenConsumer } from "./infrastructure/events/consumers/OrderKitchenConsumer";
@@ -17,13 +21,18 @@ const consumerMetrics =
 
 export const orderConsumerIdempotencyStore = new DrizzleConsumerIdempotencyStore();
 
+export const orderBusinessClaimStore =
+  process.env.NODE_ENV === "test"
+    ? new InMemoryDurableBusinessClaimStore()
+    : new DrizzleDurableBusinessClaimStore();
+
 export const orderEventConsumerRegistry = new OrderEventConsumerRegistry(
   orderConsumerIdempotencyStore,
   consumerMetrics
 );
 
-const notificationConsumer = new OrderNotificationConsumer();
-const sessionConsumer = new OrderSessionConsumer();
+const notificationConsumer = new OrderNotificationConsumer(orderBusinessClaimStore);
+const sessionConsumer = new OrderSessionConsumer(orderBusinessClaimStore);
 const kitchenConsumer = new OrderKitchenConsumer();
 const printingConsumer = new OrderPrintingConsumer(orderPrintDispatchAdapter);
 

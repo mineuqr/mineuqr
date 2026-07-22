@@ -7,6 +7,10 @@ import {
   DrizzleP10AnalyticsCompletionIdempotencyStore,
   InMemoryP10AnalyticsCompletionIdempotencyStore,
 } from "./projections/materializers/p10AnalyticsCompletionIdempotency";
+import {
+  DrizzleDurableBusinessClaimStore,
+  InMemoryDurableBusinessClaimStore,
+} from "../infrastructure/events/consumers/idempotency/DurableBusinessClaimStore";
 import { OrderReadProjectionBackfillService } from "./infrastructure/backfill/OrderReadProjectionBackfillService";
 import { OrderReadBusinessDayRollupBackfillService } from "./infrastructure/backfill/OrderReadBusinessDayRollupBackfillService";
 import { OrderCategoryProjectionBuilder } from "./projections/builders/OrderCategoryProjectionBuilder";
@@ -36,6 +40,11 @@ const completionIdempotency =
     ? new InMemoryP10AnalyticsCompletionIdempotencyStore()
     : new DrizzleP10AnalyticsCompletionIdempotencyStore();
 
+const kpiClaims =
+  process.env.NODE_ENV === "test"
+    ? new InMemoryDurableBusinessClaimStore()
+    : new DrizzleDurableBusinessClaimStore();
+
 const innerRepos =
   process.env.NODE_ENV === "test"
     ? inMemoryStore.asRepositories()
@@ -55,6 +64,7 @@ export const orderReadProjectionMaterializer = new OrderReadProjectionMaterializ
   {
     businessIdentityAllocator,
     completionIdempotency,
+    kpiClaims,
   }
 );
 

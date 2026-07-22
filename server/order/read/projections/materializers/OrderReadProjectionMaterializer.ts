@@ -21,6 +21,14 @@ import {
   InMemoryP10AnalyticsCompletionIdempotencyStore,
   type P10AnalyticsCompletionIdempotencyStore,
 } from "./p10AnalyticsCompletionIdempotency";
+import type { DurableBusinessClaimStore } from "../../../infrastructure/events/consumers/idempotency/DurableBusinessClaimStore";
+import {
+  BUSINESS_CLAIM_NS,
+  InMemoryDurableBusinessClaimStore,
+  p06CanonicalTransitionsForStatus,
+  p06OrderCreatedKey,
+  p06StatusTransitionKey,
+} from "../../../infrastructure/events/consumers/idempotency/DurableBusinessClaimStore";
 import { isOrderInOperationalLifecycle } from "./projectionLifecycle";
 import {
   assertOrderLifecycleStage,
@@ -41,6 +49,7 @@ function addDecimal(a: string, b: string): string {
 export class OrderReadProjectionMaterializer {
   private readonly businessIdentityAllocator?: DrizzleBusinessIdentityAllocator;
   private readonly completionIdempotency: P10AnalyticsCompletionIdempotencyStore;
+  private readonly kpiClaims: DurableBusinessClaimStore;
 
   constructor(
     private readonly repos: OrderReadProjectionRepositories,
@@ -52,12 +61,15 @@ export class OrderReadProjectionMaterializer {
     options?: {
       businessIdentityAllocator?: DrizzleBusinessIdentityAllocator;
       completionIdempotency?: P10AnalyticsCompletionIdempotencyStore;
+      kpiClaims?: DurableBusinessClaimStore;
     }
   ) {
     this.businessIdentityAllocator = options?.businessIdentityAllocator;
     this.completionIdempotency =
       options?.completionIdempotency ??
       new InMemoryP10AnalyticsCompletionIdempotencyStore();
+    this.kpiClaims =
+      options?.kpiClaims ?? new InMemoryDurableBusinessClaimStore();
   }
 
   async syncOrderProjections(orderId: number, eventId: string): Promise<void> {
@@ -174,9 +186,35 @@ export class OrderReadProjectionMaterializer {
     const kpi = await this.getOrCreateKpi(restaurantId, dayKey);
 
     if (payload.type === "OrderCreated") {
+      // ADR-ARCH-021 Pattern B — once-per-order Created increment.
+      const claimed = await this.kpiClaims.tryClaim(
+        BUSINESS_CLAIM_NS.p06Kpi,
+        p06OrderCreatedKey(restaurantId, payload.orderId)
+      );
+      if (!claimed) {
+        kpi.lastEventId = envelope.eventId;
+        kpi.updatedAt = new Date().toISOString();
+        await this.repos.operationalKpi.upsert(kpi);
+        return;
+      }
       kpi.pendingOrders += 1;
       kpi.activeOrders = kpi.pendingOrders + kpi.preparingOrders + kpi.readyOrders;
     } else if (payload.type === "OrderStatusChanged") {
+      const claimed = await this.kpiClaims.tryClaim(
+        BUSINESS_CLAIM_NS.p06Kpi,
+        p06StatusTransitionKey(
+          restaurantId,
+          payload.orderId,
+          payload.fromStatus,
+          payload.toStatus
+        )
+      );
+      if (!claimed) {
+        kpi.lastEventId = envelope.eventId;
+        kpi.updatedAt = new Date().toISOString();
+        await this.repos.operationalKpi.upsert(kpi);
+        return;
+      }
       const from = statusBucket(payload.fromStatus);
       const to = statusBucket(payload.toStatus);
       if (from) this.decrementKpiBucket(kpi, from);
@@ -395,6 +433,18 @@ export class OrderReadProjectionMaterializer {
         if (bucket) this.incrementKpiBucket(kpi, bucket);
       }
       kpiByDay.set(dayKey, kpi);
+
+      // Seed P-06 claims so post-rebuild duplicate events cannot re-skew counters.
+      await this.kpiClaims.markClaimed(
+        BUSINESS_CLAIM_NS.p06Kpi,
+        p06OrderCreatedKey(restaurantId, orderId)
+      );
+      for (const [from, to] of p06CanonicalTransitionsForStatus(order.status)) {
+        await this.kpiClaims.markClaimed(
+          BUSINESS_CLAIM_NS.p06Kpi,
+          p06StatusTransitionKey(restaurantId, orderId, from, to)
+        );
+      }
 
       const analytics =
         analyticsByDay.get(analyticsDayKey) ??

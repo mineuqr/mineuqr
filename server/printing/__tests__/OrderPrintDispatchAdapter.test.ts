@@ -34,9 +34,54 @@ describe("OrderPrintDispatchAdapter", () => {
     expect(printingService.buildPayloadForOrder).toHaveBeenCalled();
     expect(printingService.requestPrint).toHaveBeenCalledWith(
       expect.objectContaining({
-        idempotencyKey: "order-event:OrderCreated:evt-1",
+        idempotencyKey: "order:9:OrderCreated",
         source: "order_event",
       })
+    );
+  });
+
+  it("uses the same business key for distinct eventIds (ADR-021 Pattern E)", async () => {
+    const printingService = {
+      buildPayloadForOrder: vi.fn(async () => ({
+        schemaVersion: 1,
+        restaurantId: 1,
+        orderId: 9,
+        orderNumber: "ORD-9",
+        orderStatus: "pending",
+        tableNumber: 1,
+        totalAmount: "10.00",
+        createdAt: "2026-06-27T10:00:00.000Z",
+        lineItems: [],
+        requestedAt: "2026-06-27T10:01:00.000Z",
+        trigger: { source: "order_event" },
+      })),
+      requestPrint: vi.fn(async () => makeJob()),
+    } satisfies Partial<PrintingService>;
+
+    const adapter = new OrderPrintDispatchAdapter(printingService as PrintingService);
+
+    await adapter.dispatchPrintRequest({
+      orderId: 9,
+      restaurantId: 1,
+      eventType: "OrderCreated",
+      eventId: "evt-a",
+      orderNumber: "ORD-9",
+    });
+    await adapter.dispatchPrintRequest({
+      orderId: 9,
+      restaurantId: 1,
+      eventType: "OrderCreated",
+      eventId: "evt-b",
+      orderNumber: "ORD-9",
+    });
+
+    expect(printingService.requestPrint).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ idempotencyKey: "order:9:OrderCreated" })
+    );
+    expect(printingService.requestPrint).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ idempotencyKey: "order:9:OrderCreated" })
     );
   });
 });
