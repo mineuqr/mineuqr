@@ -16,6 +16,7 @@ import {
 } from "@/components/dashboard/DiningSessionWorkspaceRecovery";
 import { DiningSessionTimelineList } from "@/components/dashboard/DiningSessionTimelineList";
 import { OrderSettlementPanel } from "@/components/order-settlement/OrderSettlementPanel";
+import { SplitPaymentPanel } from "@/components/split-payment/SplitPaymentPanel";
 import { useLanguage } from "@/contexts/LanguageContext";
 import type { DiningSessionStatus } from "@/lib/diningSessionCopy";
 import { formatDashboardSessionLabel } from "@/lib/diningSessionDashboardCopy";
@@ -73,6 +74,11 @@ export function DiningSessionWorkspaceSheet({
     isAuthenticated,
   });
   useDevQueryRuntimeLog("orderSettlement.listByCheck", {
+    enabled: workspaceEnabled,
+    authPending,
+    isAuthenticated,
+  });
+  useDevQueryRuntimeLog("splitPayment.listByCheck", {
     enabled: workspaceEnabled,
     authPending,
     isAuthenticated,
@@ -174,6 +180,15 @@ export function DiningSessionWorkspaceSheet({
               />
 
               <OrderSettlementPanel
+                restaurantId={restaurantId}
+                checkId={data.checkId}
+                language={lang}
+                currencySymbol={sym}
+                enabled={workspaceEnabled}
+                showDiagnostics={import.meta.env.DEV}
+              />
+
+              <SplitPaymentPanel
                 restaurantId={restaurantId}
                 checkId={data.checkId}
                 language={lang}

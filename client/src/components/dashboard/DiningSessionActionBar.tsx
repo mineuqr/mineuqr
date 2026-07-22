@@ -46,6 +46,10 @@ export function DiningSessionActionBar({
     await utils.orderSettlement.listByCheck.invalidate();
     await utils.orderSettlement.getSummaryByCheck.invalidate();
     await utils.orderSettlement.listByRestaurant.invalidate({ restaurantId });
+    await utils.splitPayment.listByCheck.invalidate();
+    await utils.splitPayment.getOutstanding.invalidate();
+    await utils.splitPayment.getSummaryByCheck.invalidate();
+    await utils.splitPayment.listByRestaurant.invalidate({ restaurantId });
     onWorkspaceUpdated?.();
   };
 
