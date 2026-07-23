@@ -1,6 +1,10 @@
 /**
  * SPLIT-PAYMENT-PRESENTATION-ADOPTION-1 — Check Split Payment panel.
  * Renders API View Models only.
+ *
+ * SETTLEMENT-UI-CLEANUP-1 — UI dormant:
+ * Not mounted in DiningSessionWorkspaceSheet. Do not reintroduce operational
+ * entry points unless SPLIT_PAYMENT_UI_ENABLED is flipped.
  */
 
 import { useMemo, useState } from "react";

@@ -1,6 +1,17 @@
 /**
  * SPLIT-PAYMENT-PRESENTATION-ADOPTION-1 — presentation barrel.
+ *
+ * SETTLEMENT-UI-CLEANUP-1: operator UI is dormant (not mounted in Check Workspace).
+ * Library + components remain for reactivation. Core platform stays active.
  */
+
+export {
+  SPLIT_PAYMENT_CAPABILITY_STATUS,
+  SPLIT_PAYMENT_UI_ENABLED,
+  SPLIT_PAYMENT_CORE_ACTIVE,
+  SPLIT_PAYMENT_REACTIVATION_SUPPORTED,
+  isSplitPaymentUiEnabled,
+} from "./splitPaymentCapability";
 
 export type {
   SplitPaymentApiDto,

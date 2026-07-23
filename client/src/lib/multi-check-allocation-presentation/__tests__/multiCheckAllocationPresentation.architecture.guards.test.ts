@@ -44,20 +44,23 @@ describe("MULTI-CHECK-ALLOCATION-PRODUCTION-ADOPTION-1 UI suspension guards", ()
     expect(isMultiCheckAllocationUiEnabled()).toBe(false);
   });
 
-  it("Check Workspace does not expose Multi Check Allocation to operators", () => {
+  it("Check Workspace does not expose Multi Check Allocation or Split Payment to operators", () => {
     const sheet = read(
       "client/src/components/dashboard/DiningSessionWorkspaceSheet.tsx"
     );
-    expect(sheet).toContain("SplitPaymentPanel");
     expect(sheet).toContain("OrderSettlementPanel");
     expect(sheet).not.toContain("<MultiCheckAllocationPanel");
+    expect(sheet).not.toContain("<SplitPaymentPanel");
     expect(sheet).not.toContain(
       'from "@/components/multi-check-allocation/MultiCheckAllocationPanel"'
     );
-    expect(sheet).toContain("UI is dormant");
+    expect(sheet).not.toContain(
+      'from "@/components/split-payment/SplitPaymentPanel"'
+    );
+    expect(sheet).toContain("SETTLEMENT-UI-CLEANUP-1");
   });
 
-  it("settlement action bars do not bind orphaned MCA invalidation", () => {
+  it("settlement action bars do not bind orphaned MCA or Split Payment invalidation", () => {
     const actionBar = read(
       "client/src/components/dashboard/DiningSessionActionBar.tsx"
     );
@@ -66,8 +69,8 @@ describe("MULTI-CHECK-ALLOCATION-PRODUCTION-ADOPTION-1 UI suspension guards", ()
     );
     expect(actionBar).not.toContain("multiCheckAllocation.");
     expect(quick).not.toContain("multiCheckAllocation.");
-    expect(actionBar).toContain("splitPayment.listByCheck.invalidate");
-    expect(quick).toContain("splitPayment.listByCheck.invalidate");
+    expect(actionBar).not.toContain("splitPayment.");
+    expect(quick).not.toContain("splitPayment.");
   });
 
   it("presentation library + components remain for reactivation", () => {

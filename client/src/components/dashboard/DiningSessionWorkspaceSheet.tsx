@@ -16,7 +16,6 @@ import {
 } from "@/components/dashboard/DiningSessionWorkspaceRecovery";
 import { DiningSessionTimelineList } from "@/components/dashboard/DiningSessionTimelineList";
 import { OrderSettlementPanel } from "@/components/order-settlement/OrderSettlementPanel";
-import { SplitPaymentPanel } from "@/components/split-payment/SplitPaymentPanel";
 import { useLanguage } from "@/contexts/LanguageContext";
 import type { DiningSessionStatus } from "@/lib/diningSessionCopy";
 import { formatDashboardSessionLabel } from "@/lib/diningSessionDashboardCopy";
@@ -74,11 +73,6 @@ export function DiningSessionWorkspaceSheet({
     isAuthenticated,
   });
   useDevQueryRuntimeLog("orderSettlement.listByCheck", {
-    enabled: workspaceEnabled,
-    authPending,
-    isAuthenticated,
-  });
-  useDevQueryRuntimeLog("splitPayment.listByCheck", {
     enabled: workspaceEnabled,
     authPending,
     isAuthenticated,
@@ -188,21 +182,13 @@ export function DiningSessionWorkspaceSheet({
                 showDiagnostics={import.meta.env.DEV}
               />
 
-              <SplitPaymentPanel
-                restaurantId={restaurantId}
-                checkId={data.checkId}
-                language={lang}
-                currencySymbol={sym}
-                enabled={workspaceEnabled}
-                showDiagnostics={import.meta.env.DEV}
-              />
-
               {/*
-                MULTI-CHECK-ALLOCATION-PRODUCTION-ADOPTION-1 (Rev 2.0):
-                Multi Check Allocation UI is dormant — not mounted for operators.
+                SETTLEMENT-UI-CLEANUP-1:
+                Split Payment + Multi Check Allocation operator UI is dormant.
+                Panels are not mounted — no allocation/split queries from this sheet.
                 Core (Domain / Integration / Projection / API) remains active.
-                Reactivate by remounting MultiCheckAllocationPanel behind
-                isMultiCheckAllocationUiEnabled() when Settlement Record needs it.
+                Reactivate via isSplitPaymentUiEnabled() /
+                isMultiCheckAllocationUiEnabled() when product requires it.
               */}
 
               <section

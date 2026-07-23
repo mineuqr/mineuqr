@@ -1,9 +1,17 @@
 /**
- * SPLIT-PAYMENT-PRESENTATION-ADOPTION-1 — architecture guards.
+ * SPLIT-PAYMENT-PRESENTATION-ADOPTION-1 + SETTLEMENT-UI-CLEANUP-1
+ * Architecture guards — operator UI dormant, core preserved.
  */
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import {
+  isSplitPaymentUiEnabled,
+  SPLIT_PAYMENT_CAPABILITY_STATUS,
+  SPLIT_PAYMENT_CORE_ACTIVE,
+  SPLIT_PAYMENT_REACTIVATION_SUPPORTED,
+  SPLIT_PAYMENT_UI_ENABLED,
+} from "../splitPaymentCapability";
 
 const repoRoot = join(__dirname, "../../../../../");
 
@@ -27,16 +35,40 @@ function listTsFiles(dirRel: string): string[] {
   return out;
 }
 
-describe("SPLIT-PAYMENT-PRESENTATION-ADOPTION-1 architecture guards", () => {
-  it("Check Workspace consumes splitPayment API panel", () => {
+describe("SETTLEMENT-UI-CLEANUP-1 Split Payment UI suspension", () => {
+  it("capability is dormant — UI disabled, core active, reactivation supported", () => {
+    expect(SPLIT_PAYMENT_CAPABILITY_STATUS).toBe("dormant");
+    expect(SPLIT_PAYMENT_UI_ENABLED).toBe(false);
+    expect(SPLIT_PAYMENT_CORE_ACTIVE).toBe(true);
+    expect(SPLIT_PAYMENT_REACTIVATION_SUPPORTED).toBe(true);
+    expect(isSplitPaymentUiEnabled()).toBe(false);
+  });
+
+  it("Check Workspace does not mount Split Payment or MCA panels", () => {
     const sheet = read(
       "client/src/components/dashboard/DiningSessionWorkspaceSheet.tsx"
     );
-    expect(sheet).toContain("SplitPaymentPanel");
-    expect(sheet).toContain("splitPayment.listByCheck");
-    expect(sheet).not.toContain("getSplitPaymentProjectionStore");
-    expect(sheet).not.toContain("splitPaymentRepository");
-    expect(sheet).not.toContain("materializeSplitPaymentProjections");
+    expect(sheet).not.toContain("<SplitPaymentPanel");
+    expect(sheet).not.toContain(
+      'from "@/components/split-payment/SplitPaymentPanel"'
+    );
+    expect(sheet).not.toContain("<MultiCheckAllocationPanel");
+    expect(sheet).not.toContain("splitPayment.listByCheck");
+    expect(sheet).toContain("SETTLEMENT-UI-CLEANUP-1");
+    expect(sheet).toContain("OrderSettlementPanel");
+  });
+
+  it("settlement action bars do not bind orphaned splitPayment invalidation", () => {
+    const actionBar = read(
+      "client/src/components/dashboard/DiningSessionActionBar.tsx"
+    );
+    const quick = read(
+      "client/src/components/dashboard/SessionRowQuickActions.tsx"
+    );
+    expect(actionBar).not.toContain("splitPayment.");
+    expect(quick).not.toContain("splitPayment.");
+    expect(actionBar).not.toContain("multiCheckAllocation.");
+    expect(quick).not.toContain("multiCheckAllocation.");
   });
 
   it("presentation module does not touch Write Model / Projection store / Domain", () => {
@@ -55,29 +87,13 @@ describe("SPLIT-PAYMENT-PRESENTATION-ADOPTION-1 architecture guards", () => {
     }
   });
 
-  it("SplitPaymentPanel reads only via presentation hooks / View Models", () => {
+  it("SplitPaymentPanel library remains for reactivation", () => {
     const panel = read(
       "client/src/components/split-payment/SplitPaymentPanel.tsx"
     );
     expect(panel).toContain("useSplitPaymentsByCheck");
-    expect(panel).toContain("useSplitPaymentOutstanding");
-    expect(panel).toContain("toSplitPaymentPanelViewModel");
+    expect(panel).toContain("UI dormant");
     expect(panel).not.toContain("getSplitPaymentProjectionStore");
-    expect(panel).not.toContain("session.getOwnerWorkspace");
-    expect(panel).not.toContain(".mutation(");
-  });
-
-  it("action bars invalidate splitPayment queries after mutations", () => {
-    const actionBar = read(
-      "client/src/components/dashboard/DiningSessionActionBar.tsx"
-    );
-    const quick = read(
-      "client/src/components/dashboard/SessionRowQuickActions.tsx"
-    );
-    expect(actionBar).toContain("splitPayment.listByCheck.invalidate");
-    expect(actionBar).toContain("splitPayment.getOutstanding.invalidate");
-    expect(quick).toContain("splitPayment.listByCheck.invalidate");
-    expect(quick).toContain("splitPayment.getSummaryByCheck.invalidate");
   });
 
   it("does not redesign Split Payment API, Domain, or Projection builders", () => {
@@ -85,18 +101,19 @@ describe("SPLIT-PAYMENT-PRESENTATION-ADOPTION-1 architecture guards", () => {
       "server/operational-session/check/api/splitPaymentReadRouter.ts"
     );
     expect(apiRouter).toContain("SPLIT-PAYMENT-API-1");
-    expect(apiRouter).not.toContain("SPLIT-PAYMENT-PRESENTATION");
 
     const builder = read(
       "shared/operational-session/check/splitPayment/projection/splitPaymentProjectionBuilder.ts"
     );
     expect(builder).toContain("SPLIT-PAYMENT-PROJECTION-1");
-    expect(builder).not.toContain("SPLIT-PAYMENT-PRESENTATION");
 
     const integration = read(
       "server/operational-session/check/checkSplitPaymentIntegration.ts"
     );
     expect(integration).toContain("SPLIT-PAYMENT-INTEGRATION-1");
     expect(integration).not.toContain("SplitPaymentPanel");
+
+    const routers = read("server/routers.ts");
+    expect(routers).toContain("splitPayment: splitPaymentReadRouter");
   });
 });
