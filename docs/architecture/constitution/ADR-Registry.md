@@ -33,6 +33,7 @@
 | ADR-ARCH-023 | Financial Core Capabilities Architecture | **Accepted** | Architecture Authority | FINANCIAL-CORE-CAPABILITIES-ARCHITECTURE-1 | — | FSP Phase C shared language / ownership | **Not implemented** | Refines ADR-020/022: Payment, Allocation, Refund, Outstanding, Timeline constitution; no new monetary Aggregate Roots; preserves certified OS/Projection/API/Presentation |
 | ADR-ARCH-024 | Split Payment Platform | **Accepted** | Architecture Authority | SPLIT-PAYMENT-ARCHITECTURE-1 | — | FSP multi-tender / incremental Payment | **Not implemented** | Refines ADR-023: Payment≠Aggregate Root; Payment Success≠Financial Settlement; OS remains settlement SSOT; Revenue unchanged |
 | ADR-ARCH-025 | Multi Check Allocation Platform | **Accepted** | Architecture Authority | MULTI-CHECK-ALLOCATION-ARCHITECTURE-1 | — | FSP cross-Check responsibility redistribution | **Not implemented** | Refines ADR-023/024: Allocation≠Aggregate Root; Check-commanded relationship facts; conserves I-FC/I-SP; Membership remains composition SSOT |
+| ADR-ARCH-026 | Settlement Record Platform | **Accepted** | Architecture Authority | SETTLEMENT-RECORD-PLATFORM-1 | — | FSP Canonical Financial Document / Reporting publication | **Not implemented** | Refines ADR-020/021/023: Settlement Record≠Aggregate Root; Check remains sole monetary authority; append-only immutable publication; SR-INV-01…10 |
 
 **Registry maintenance:** Principal Engineer updates Implementation Status at program exit certification. Status changes require Architecture Authority approval per §26.
 
@@ -66,5 +67,6 @@
 | ADR-ARCH-023 | [ADR-ARCH-023-financial-core-capabilities.md](../adrs/ADR-ARCH-023-financial-core-capabilities.md) |
 | ADR-ARCH-024 | [ADR-ARCH-024-split-payment-platform.md](../adrs/ADR-ARCH-024-split-payment-platform.md) |
 | ADR-ARCH-025 | [ADR-ARCH-025-multi-check-allocation-platform.md](../adrs/ADR-ARCH-025-multi-check-allocation-platform.md) |
+| ADR-ARCH-026 | [ADR-ARCH-026-settlement-record-platform.md](../adrs/ADR-ARCH-026-settlement-record-platform.md) |
 
 **Related:** [Blueprint](../blueprints/Order-Centric-Architecture.md) · [ADR Lifecycle](../governance/ADR-Lifecycle.md)
