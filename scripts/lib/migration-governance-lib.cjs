@@ -30,8 +30,8 @@ const CANONICAL_TAIL_TAGS = [
 ];
 
 /** PRODUCTION-MIGRATION-GOVERNANCE — certified production journal terminus. */
-const CANONICAL_MIGRATION_TAIL_TAG = "0074_check_split_payments";
-const CANONICAL_JOURNAL_ENTRY_COUNT = 75;
+const CANONICAL_MIGRATION_TAIL_TAG = "0075_multi_check_allocation";
+const CANONICAL_JOURNAL_ENTRY_COUNT = 76;
 
 function loadJournal() {
   return JSON.parse(fs.readFileSync(JOURNAL_PATH, "utf8"));

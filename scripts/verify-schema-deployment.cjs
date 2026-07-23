@@ -130,6 +130,42 @@ const REQUIRED = {
     ["check_split_payment_tender_allocations", "check_split_payment_tender_alloc_id_unique"],
     ["check_split_payment_allocations", "check_split_payment_allocations_alloc_id_unique"],
   ],
+  /** MULTI-CHECK-ALLOCATION-PERSISTENCE-1 / ADR-ARCH-025 */
+  multiCheckAllocationTables: [
+    "multi_check_allocations",
+    "multi_check_allocation_sources",
+    "multi_check_allocation_portions",
+    "multi_check_allocation_adjustments",
+    "multi_check_allocation_reversals",
+    "multi_check_allocation_history",
+  ],
+  multiCheckAllocationColumns: [
+    ["multi_check_allocations", "id"],
+    ["multi_check_allocations", "restaurantId"],
+    ["multi_check_allocations", "allocationId"],
+    ["multi_check_allocations", "allocationReference"],
+    ["multi_check_allocations", "financialReference"],
+    ["multi_check_allocations", "sourceCheckId"],
+    ["multi_check_allocations", "sourcePaymentId"],
+    ["multi_check_allocations", "status"],
+    ["multi_check_allocations", "version"],
+    ["multi_check_allocations", "schemaVersion"],
+    ["multi_check_allocation_portions", "portionId"],
+    ["multi_check_allocation_portions", "allocationSequence"],
+    ["multi_check_allocation_portions", "targetCheckId"],
+    ["multi_check_allocation_adjustments", "adjustmentId"],
+    ["multi_check_allocation_reversals", "reversalId"],
+    ["multi_check_allocation_history", "previousRevision"],
+    ["multi_check_allocation_history", "newRevision"],
+    ["multi_check_allocation_history", "mutationType"],
+  ],
+  multiCheckAllocationIndexes: [
+    ["multi_check_allocations", "mca_allocation_id_unique"],
+    ["multi_check_allocations", "mca_restaurant_alloc_ref_unique"],
+    ["multi_check_allocation_portions", "mca_portions_portion_id_unique"],
+    ["multi_check_allocation_adjustments", "mca_adjustments_adjustment_id_unique"],
+    ["multi_check_allocation_reversals", "mca_reversals_reversal_id_unique"],
+  ],
 };
 
 async function columnExists(conn, table, column) {
@@ -283,6 +319,21 @@ async function main() {
       }
     }
     for (const [table, indexName] of REQUIRED.checkSplitPaymentIndexes) {
+      if (!(await indexExists(conn, table, indexName))) {
+        missing.push(`index:${table}.${indexName}`);
+      }
+    }
+    for (const table of REQUIRED.multiCheckAllocationTables) {
+      if (!(await tableExists(conn, table))) {
+        missing.push(`table:${table}`);
+      }
+    }
+    for (const [table, column] of REQUIRED.multiCheckAllocationColumns) {
+      if (!(await columnExists(conn, table, column))) {
+        missing.push(`${table}.${column}`);
+      }
+    }
+    for (const [table, indexName] of REQUIRED.multiCheckAllocationIndexes) {
       if (!(await indexExists(conn, table, indexName))) {
         missing.push(`index:${table}.${indexName}`);
       }

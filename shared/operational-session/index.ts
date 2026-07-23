@@ -223,5 +223,7 @@ export {
   type AllocationReference,
   type AllocationPortion,
   type AllocationSource,
+  type AllocationAdjustment,
+  type AllocationReversal,
   type AllocationCardinality,
 } from "./check";

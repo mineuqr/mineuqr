@@ -155,6 +155,36 @@ export {
 } from "./splitPaymentRepository";
 
 export {
+  MULTI_CHECK_ALLOCATION_SCHEMA_VERSION,
+  mapRowsToMultiCheckAllocation,
+  mapRowToAllocationHistory,
+  toMultiCheckAllocationInsertValues,
+  toMultiCheckAllocationUpdateValues,
+  toAllocationHistoryInsertValues,
+  getAllocationPersistenceMetadata,
+  type MultiCheckAllocationPersistenceRow,
+  type AllocationHistoryRecord,
+  type AllocationMutationType,
+  type MultiCheckAllocationInsertValues,
+  type MultiCheckAllocationUpdateValues,
+} from "./multiCheckAllocationMapper";
+
+export {
+  MultiCheckAllocationPersistenceError,
+  insertMultiCheckAllocation,
+  findMultiCheckAllocationByIdentity,
+  existsMultiCheckAllocation,
+  listMultiCheckAllocationsForSourceCheck,
+  listMultiCheckAllocationsForTargetCheck,
+  updateMultiCheckAllocation,
+  persistMultiCheckAllocation,
+  listAllocationHistory,
+  appendAllocationHistoryRecord,
+  type MultiCheckAllocationLoadResult,
+  type PersistMultiCheckAllocationOptions,
+} from "./multiCheckAllocationRepository";
+
+export {
   InMemoryOrderSettlementProjectionStore,
   materializeOrderSettlementProjections,
   tryMaterializeOrderSettlementProjections,

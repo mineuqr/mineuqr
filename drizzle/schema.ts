@@ -709,6 +709,234 @@ export type InsertCheckSplitPaymentAttempt =
 export type SelectCheckSplitPaymentAttempt =
 	typeof checkSplitPaymentAttempts.$inferSelect;
 
+// ─── Multi Check Allocation (MULTI-CHECK-ALLOCATION-PERSISTENCE-1 / ADR-ARCH-025) ──
+/** Check-owned Multi Check Allocation storage. Not an aggregate root. No Domain logic. */
+export const multiCheckAllocations = mysqlTable(
+	"multi_check_allocations",
+	{
+		id: int().autoincrement().primaryKey(),
+		restaurantId: int().notNull(),
+		/** Canonical domain AllocationId — never replaced by surrogate id. */
+		allocationId: varchar({ length: 128 }).notNull(),
+		allocationReference: varchar({ length: 128 }).notNull(),
+		financialReference: varchar({ length: 128 }),
+		sourceCheckId: int().notNull(),
+		sourcePaymentId: varchar({ length: 128 }),
+		status: mysqlEnum([
+			"pending",
+			"reserved",
+			"applied",
+			"adjusted",
+			"reversed",
+			"completed",
+			"cancelled",
+		])
+			.default("pending")
+			.notNull(),
+		financialResponsibility: decimal({ precision: 10, scale: 2 })
+			.default("0.00")
+			.notNull(),
+		allocatedAmount: decimal({ precision: 10, scale: 2 }).default("0.00").notNull(),
+		remainingAmount: decimal({ precision: 10, scale: 2 }).default("0.00").notNull(),
+		paymentValueCap: decimal({ precision: 10, scale: 2 }),
+		schemaVersion: int().default(1).notNull(),
+		/** Optimistic concurrency token (CAS). Not a Domain field. */
+		version: int().default(1).notNull(),
+		/** Persistence metadata / audit reason — not Domain behavior. */
+		allocationReason: varchar({ length: 255 }),
+		createdAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+		updatedAt: timestamp({ mode: "string" }).defaultNow().onUpdateNow().notNull(),
+	},
+	(table) => [
+		uniqueIndex("mca_allocation_id_unique").on(table.allocationId),
+		uniqueIndex("mca_restaurant_alloc_ref_unique").on(
+			table.restaurantId,
+			table.allocationReference
+		),
+		index("mca_restaurant_id").on(table.restaurantId),
+		index("mca_source_check_id").on(table.sourceCheckId),
+		index("mca_restaurant_source_check").on(
+			table.restaurantId,
+			table.sourceCheckId
+		),
+		index("mca_source_payment_id").on(table.sourcePaymentId),
+		index("mca_financial_ref").on(table.financialReference),
+		index("mca_status").on(table.status),
+		index("mca_version").on(table.version),
+	]
+);
+
+export type InsertMultiCheckAllocation = typeof multiCheckAllocations.$inferInsert;
+export type SelectMultiCheckAllocation = typeof multiCheckAllocations.$inferSelect;
+
+export const multiCheckAllocationSources = mysqlTable(
+	"multi_check_allocation_sources",
+	{
+		id: int().autoincrement().primaryKey(),
+		restaurantId: int().notNull(),
+		allocationId: varchar({ length: 128 }).notNull(),
+		sourceCheckId: int().notNull(),
+		sourcePaymentId: varchar({ length: 128 }),
+		financialReference: varchar({ length: 128 }),
+		responsibilityAmount: decimal({ precision: 10, scale: 2 }).notNull(),
+		createdAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+	},
+	(table) => [
+		uniqueIndex("mca_sources_alloc_check_unique").on(
+			table.allocationId,
+			table.sourceCheckId
+		),
+		index("mca_sources_allocation_id").on(table.allocationId),
+		index("mca_sources_source_check_id").on(table.sourceCheckId),
+		index("mca_sources_restaurant_id").on(table.restaurantId),
+	]
+);
+
+export type InsertMultiCheckAllocationSource =
+	typeof multiCheckAllocationSources.$inferInsert;
+export type SelectMultiCheckAllocationSource =
+	typeof multiCheckAllocationSources.$inferSelect;
+
+export const multiCheckAllocationPortions = mysqlTable(
+	"multi_check_allocation_portions",
+	{
+		id: int().autoincrement().primaryKey(),
+		restaurantId: int().notNull(),
+		allocationId: varchar({ length: 128 }).notNull(),
+		portionId: varchar({ length: 128 }).notNull(),
+		allocationSequence: int().notNull(),
+		targetCheckId: int().notNull(),
+		amount: decimal({ precision: 10, scale: 2 }).notNull(),
+		applied: boolean().default(false).notNull(),
+		createdAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+	},
+	(table) => [
+		uniqueIndex("mca_portions_portion_id_unique").on(table.portionId),
+		uniqueIndex("mca_portions_alloc_sequence_unique").on(
+			table.allocationId,
+			table.allocationSequence
+		),
+		index("mca_portions_allocation_id").on(table.allocationId),
+		index("mca_portions_target_check_id").on(table.targetCheckId),
+		index("mca_portions_restaurant_id").on(table.restaurantId),
+		index("mca_portions_alloc_sequence").on(
+			table.allocationId,
+			table.allocationSequence
+		),
+	]
+);
+
+export type InsertMultiCheckAllocationPortion =
+	typeof multiCheckAllocationPortions.$inferInsert;
+export type SelectMultiCheckAllocationPortion =
+	typeof multiCheckAllocationPortions.$inferSelect;
+
+export const multiCheckAllocationAdjustments = mysqlTable(
+	"multi_check_allocation_adjustments",
+	{
+		id: int().autoincrement().primaryKey(),
+		restaurantId: int().notNull(),
+		allocationId: varchar({ length: 128 }).notNull(),
+		adjustmentId: varchar({ length: 128 }).notNull(),
+		portionId: varchar({ length: 128 }),
+		amount: decimal({ precision: 10, scale: 2 }).notNull(),
+		direction: mysqlEnum(["increase", "decrease"]).notNull(),
+		createdAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+	},
+	(table) => [
+		uniqueIndex("mca_adjustments_adjustment_id_unique").on(table.adjustmentId),
+		index("mca_adjustments_allocation_id").on(table.allocationId),
+		index("mca_adjustments_restaurant_id").on(table.restaurantId),
+	]
+);
+
+export type InsertMultiCheckAllocationAdjustment =
+	typeof multiCheckAllocationAdjustments.$inferInsert;
+export type SelectMultiCheckAllocationAdjustment =
+	typeof multiCheckAllocationAdjustments.$inferSelect;
+
+export const multiCheckAllocationReversals = mysqlTable(
+	"multi_check_allocation_reversals",
+	{
+		id: int().autoincrement().primaryKey(),
+		restaurantId: int().notNull(),
+		allocationId: varchar({ length: 128 }).notNull(),
+		reversalId: varchar({ length: 128 }).notNull(),
+		reversedAmount: decimal({ precision: 10, scale: 2 }).notNull(),
+		createdAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+	},
+	(table) => [
+		uniqueIndex("mca_reversals_reversal_id_unique").on(table.reversalId),
+		index("mca_reversals_allocation_id").on(table.allocationId),
+		index("mca_reversals_restaurant_id").on(table.restaurantId),
+	]
+);
+
+export type InsertMultiCheckAllocationReversal =
+	typeof multiCheckAllocationReversals.$inferInsert;
+export type SelectMultiCheckAllocationReversal =
+	typeof multiCheckAllocationReversals.$inferSelect;
+
+/**
+ * Append-only Allocation audit history.
+ * Never update/delete rows — reconstructible financial mutation trail.
+ */
+export const multiCheckAllocationHistory = mysqlTable(
+	"multi_check_allocation_history",
+	{
+		id: int().autoincrement().primaryKey(),
+		restaurantId: int().notNull(),
+		allocationId: varchar({ length: 128 }).notNull(),
+		allocationReference: varchar({ length: 128 }).notNull(),
+		financialReference: varchar({ length: 128 }),
+		sourceCheckId: int().notNull(),
+		targetCheckId: int(),
+		sourcePaymentId: varchar({ length: 128 }),
+		previousRevision: int().notNull(),
+		newRevision: int().notNull(),
+		mutationType: mysqlEnum([
+			"create",
+			"reserve",
+			"apply",
+			"adjust",
+			"reverse",
+			"complete",
+			"cancel",
+			"update",
+		]).notNull(),
+		status: mysqlEnum([
+			"pending",
+			"reserved",
+			"applied",
+			"adjusted",
+			"reversed",
+			"completed",
+			"cancelled",
+		]).notNull(),
+		financialResponsibility: decimal({ precision: 10, scale: 2 }).notNull(),
+		allocatedAmount: decimal({ precision: 10, scale: 2 }).notNull(),
+		remainingAmount: decimal({ precision: 10, scale: 2 }).notNull(),
+		allocationReason: varchar({ length: 255 }),
+		schemaVersion: int().default(1).notNull(),
+		createdAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+	},
+	(table) => [
+		index("mca_history_allocation_id").on(table.allocationId),
+		index("mca_history_restaurant_id").on(table.restaurantId),
+		index("mca_history_alloc_revision").on(table.allocationId, table.newRevision),
+		index("mca_history_financial_ref").on(table.financialReference),
+		index("mca_history_source_check_id").on(table.sourceCheckId),
+		index("mca_history_target_check_id").on(table.targetCheckId),
+		index("mca_history_mutation_type").on(table.mutationType),
+		index("mca_history_created_at").on(table.createdAt),
+	]
+);
+
+export type InsertMultiCheckAllocationHistory =
+	typeof multiCheckAllocationHistory.$inferInsert;
+export type SelectMultiCheckAllocationHistory =
+	typeof multiCheckAllocationHistory.$inferSelect;
+
 // ─── Table Events (TABLE-MANAGEMENT-1 Phase C) ──────────────────
 export const tableEvents = mysqlTable("table_events", {
 	id: bigint({ mode: "number" }).autoincrement().primaryKey(),

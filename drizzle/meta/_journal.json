@@ -526,6 +526,13 @@
       "when": 1784600000000,
       "tag": "0074_check_split_payments",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "5",
+      "when": 1784610000000,
+      "tag": "0075_multi_check_allocation",
+      "breakpoints": true
     }
   ]
 }
