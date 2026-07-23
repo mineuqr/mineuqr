@@ -211,6 +211,7 @@ export {
   assertMultiCheckAllocationTransitionAllowed,
   assertMultiCheckAllocationNoTerminalRegression,
   assertMultiCheckAllocationValid,
+  MultiCheckAllocationDomainError,
   MultiCheckAllocationIllegalTerminalTransitionError,
   MultiCheckAllocationInvalidTransitionError,
   MultiCheckAllocationFinalityViolationError,

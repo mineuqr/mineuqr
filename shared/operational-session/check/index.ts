@@ -273,6 +273,7 @@ export {
   assertTransitionAllowed as assertMultiCheckAllocationTransitionAllowed,
   assertNoTerminalRegression as assertMultiCheckAllocationNoTerminalRegression,
   assertMultiCheckAllocationValid,
+  MultiCheckAllocationDomainError,
   IllegalTerminalTransitionError as MultiCheckAllocationIllegalTerminalTransitionError,
   InvalidAllocationTransitionError as MultiCheckAllocationInvalidTransitionError,
   FinalityViolationError as MultiCheckAllocationFinalityViolationError,

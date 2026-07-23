@@ -1,5 +1,6 @@
 /**
- * Check Read API surface barrel (Order Settlement + Split Payment).
+ * Check API surface barrel
+ * (Order Settlement + Split Payment + Multi Check Allocation).
  */
 
 export { orderSettlementReadRouter } from "./orderSettlementReadRouter";
@@ -59,3 +60,39 @@ export {
   throwSplitPaymentApiError,
   runSplitPaymentRead,
 } from "./mapSplitPaymentApiError";
+
+export { multiCheckAllocationRouter } from "./multiCheckAllocationRouter";
+export {
+  multiCheckAllocationReadService,
+  multiCheckAllocationWriteService,
+  getMultiCheckAllocationProjectionStore,
+} from "./multiCheckAllocationApiComposition";
+export { MultiCheckAllocationReadService } from "./multiCheckAllocationReadService";
+export { MultiCheckAllocationWriteService } from "./multiCheckAllocationWriteService";
+export {
+  toMultiCheckAllocationDto,
+  toMultiCheckAllocationDtoList,
+  toMultiCheckAllocationSummaryDto,
+  toMultiCheckAllocationTimelineDto,
+  toMultiCheckAllocationResponsibilityDto,
+  toMultiCheckAllocationProjectionCatalogDto,
+  toMultiCheckAllocationCommandResultDto,
+  toMultiCheckAllocationProjectionMetaDto,
+} from "./multiCheckAllocationApiMapper";
+export {
+  MULTI_CHECK_ALLOCATION_API_CONTRACT_VERSION,
+  MULTI_CHECK_ALLOCATION_API_CONTRACT_ID,
+  type MultiCheckAllocationDto,
+  type MultiCheckAllocationSummaryDto,
+  type MultiCheckAllocationTimelineDto,
+  type MultiCheckAllocationResponsibilityDto,
+  type MultiCheckAllocationProjectionMetaDto,
+  type MultiCheckAllocationProjectionCatalogDto,
+  type MultiCheckAllocationCommandResultDto,
+} from "./multiCheckAllocationApiDtos";
+export {
+  MultiCheckAllocationProjectionUnavailableError,
+  throwMultiCheckAllocationApiError,
+  runMultiCheckAllocationRead,
+  runMultiCheckAllocationWrite,
+} from "./mapMultiCheckAllocationApiError";

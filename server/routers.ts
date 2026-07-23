@@ -112,6 +112,7 @@ import { kitchenRouter } from "./kitchen/read/kitchenRouter";
 import { orderReadRouter } from "./order/read/orderReadRouter";
 import { orderSettlementReadRouter } from "./operational-session/check/api/orderSettlementReadRouter";
 import { splitPaymentReadRouter } from "./operational-session/check/api/splitPaymentReadRouter";
+import { multiCheckAllocationRouter } from "./operational-session/check/api/multiCheckAllocationRouter";
 import { mapOrderDisplayIdentityFields } from "./order/read/presentation/mapOrderDisplayIdentity";
 import { printWorkspaceRouter } from "./print-workspace/printWorkspaceRouter";
 import { operationalDeviceRouter } from "./operational-device/operationalDeviceRouter";
@@ -2513,6 +2514,7 @@ export const appRouter = router({
   kitchen: kitchenRouter,
   orderSettlement: orderSettlementReadRouter,
   splitPayment: splitPaymentReadRouter,
+  multiCheckAllocation: multiCheckAllocationRouter,
   printWorkspace: printWorkspaceRouter,
   operationalDevice: operationalDeviceRouter,
   printConnector: printConnectorRouter,
