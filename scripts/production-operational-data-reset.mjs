@@ -18,8 +18,24 @@ import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
 
-/** Children → parents. DELETE only — never DROP. */
+/**
+ * Children → parents. DELETE only — never DROP.
+ * FINANCIAL-EPOCH-RESET-1: includes settlement_records, split payments, MCA.
+ * Prefer `scripts/financial-epoch-reset.mjs` for epoch resets (backup + probes).
+ */
 const CLEAR_TABLES = [
+  "settlement_records",
+  "multi_check_allocation_history",
+  "multi_check_allocation_reversals",
+  "multi_check_allocation_adjustments",
+  "multi_check_allocation_portions",
+  "multi_check_allocation_sources",
+  "multi_check_allocations",
+  "check_split_payment_tender_allocations",
+  "check_split_payment_allocations",
+  "check_split_payment_tenders",
+  "check_split_payment_attempts",
+  "check_split_payments",
   "check_settlement_transactions",
   "check_order_settlements",
   "check_order_membership",
