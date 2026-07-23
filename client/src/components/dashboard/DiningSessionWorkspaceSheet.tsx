@@ -17,7 +17,6 @@ import {
 import { DiningSessionTimelineList } from "@/components/dashboard/DiningSessionTimelineList";
 import { OrderSettlementPanel } from "@/components/order-settlement/OrderSettlementPanel";
 import { SplitPaymentPanel } from "@/components/split-payment/SplitPaymentPanel";
-import { MultiCheckAllocationPanel } from "@/components/multi-check-allocation/MultiCheckAllocationPanel";
 import { useLanguage } from "@/contexts/LanguageContext";
 import type { DiningSessionStatus } from "@/lib/diningSessionCopy";
 import { formatDashboardSessionLabel } from "@/lib/diningSessionDashboardCopy";
@@ -198,14 +197,13 @@ export function DiningSessionWorkspaceSheet({
                 showDiagnostics={import.meta.env.DEV}
               />
 
-              <MultiCheckAllocationPanel
-                restaurantId={restaurantId}
-                checkId={data.checkId}
-                language={lang}
-                currencySymbol={sym}
-                enabled={workspaceEnabled}
-                showDiagnostics={import.meta.env.DEV}
-              />
+              {/*
+                MULTI-CHECK-ALLOCATION-PRODUCTION-ADOPTION-1 (Rev 2.0):
+                Multi Check Allocation UI is dormant — not mounted for operators.
+                Core (Domain / Integration / Projection / API) remains active.
+                Reactivate by remounting MultiCheckAllocationPanel behind
+                isMultiCheckAllocationUiEnabled() when Settlement Record needs it.
+              */}
 
               <section
                 className={cn(restaurantDash.panelInset, "p-4")}

@@ -62,11 +62,6 @@ export function SessionRowQuickActions({
       utils.splitPayment.getOutstanding.invalidate(),
       utils.splitPayment.getSummaryByCheck.invalidate(),
       utils.splitPayment.listByRestaurant.invalidate({ restaurantId }),
-      utils.multiCheckAllocation.listAllocations.invalidate(),
-      utils.multiCheckAllocation.listBySourceCheck.invalidate(),
-      utils.multiCheckAllocation.getAllocation.invalidate(),
-      utils.multiCheckAllocation.getAllocationSummary.invalidate(),
-      utils.multiCheckAllocation.listByRestaurant.invalidate({ restaurantId }),
     ]);
   };
 

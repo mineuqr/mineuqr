@@ -1,6 +1,11 @@
 /**
  * MULTI-CHECK-ALLOCATION-PRESENTATION-1 — Check Workspace allocation panel.
  * Renders API View Models only. Mutations go through multiCheckAllocation.* API.
+ *
+ * PRODUCTION-ADOPTION-1 Rev 2.0 — UI dormant:
+ * Not mounted in DiningSessionWorkspaceSheet. Do not reintroduce operational
+ * entry points unless MULTI_CHECK_ALLOCATION_UI_ENABLED is flipped and
+ * Settlement Record adoption explicitly requires it.
  */
 
 import { useMemo, useState } from "react";

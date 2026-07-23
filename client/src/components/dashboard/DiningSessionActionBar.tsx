@@ -50,13 +50,6 @@ export function DiningSessionActionBar({
     await utils.splitPayment.getOutstanding.invalidate();
     await utils.splitPayment.getSummaryByCheck.invalidate();
     await utils.splitPayment.listByRestaurant.invalidate({ restaurantId });
-    await utils.multiCheckAllocation.listAllocations.invalidate();
-    await utils.multiCheckAllocation.listBySourceCheck.invalidate();
-    await utils.multiCheckAllocation.getAllocation.invalidate();
-    await utils.multiCheckAllocation.getAllocationSummary.invalidate();
-    await utils.multiCheckAllocation.listByRestaurant.invalidate({
-      restaurantId,
-    });
     onWorkspaceUpdated?.();
   };
 

@@ -99,3 +99,11 @@ No Architecture · Domain · Persistence · Integration · Projection · API · 
 ## Ready for
 
 **MULTI-CHECK-ALLOCATION-PRODUCTION-ADOPTION-1**
+
+---
+
+## Post-certification note (PRODUCTION-ADOPTION-1 Rev 2.0)
+
+Operational UI for Multi Check Allocation was **suspended** (dormant).  
+Presentation library and components remain; Check Workspace no longer mounts the panel.  
+See `docs/engineering/programs/MULTI-CHECK-ALLOCATION-PRODUCTION-ADOPTION-1/CERTIFICATION-REPORT.md`.

@@ -1,9 +1,17 @@
 /**
- * MULTI-CHECK-ALLOCATION-PRESENTATION-1 — architecture guards.
+ * MULTI-CHECK-ALLOCATION-PRESENTATION-1 + PRODUCTION-ADOPTION-1 Rev 2.0
+ * Architecture guards — UI dormant, core preserved.
  */
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import {
+  isMultiCheckAllocationUiEnabled,
+  MULTI_CHECK_ALLOCATION_CAPABILITY_STATUS,
+  MULTI_CHECK_ALLOCATION_CORE_ACTIVE,
+  MULTI_CHECK_ALLOCATION_REACTIVATION_SUPPORTED,
+  MULTI_CHECK_ALLOCATION_UI_ENABLED,
+} from "../multiCheckAllocationCapability";
 
 const repoRoot = join(__dirname, "../../../../../");
 
@@ -27,21 +35,56 @@ function listTsFiles(dirRel: string): string[] {
   return out;
 }
 
-describe("MULTI-CHECK-ALLOCATION-PRESENTATION-1 architecture guards", () => {
-  it("Check Workspace exposes Multi Check Allocation in settlement workflow", () => {
+describe("MULTI-CHECK-ALLOCATION-PRODUCTION-ADOPTION-1 UI suspension guards", () => {
+  it("capability is dormant — UI disabled, core active, reactivation supported", () => {
+    expect(MULTI_CHECK_ALLOCATION_CAPABILITY_STATUS).toBe("dormant");
+    expect(MULTI_CHECK_ALLOCATION_UI_ENABLED).toBe(false);
+    expect(MULTI_CHECK_ALLOCATION_CORE_ACTIVE).toBe(true);
+    expect(MULTI_CHECK_ALLOCATION_REACTIVATION_SUPPORTED).toBe(true);
+    expect(isMultiCheckAllocationUiEnabled()).toBe(false);
+  });
+
+  it("Check Workspace does not expose Multi Check Allocation to operators", () => {
     const sheet = read(
       "client/src/components/dashboard/DiningSessionWorkspaceSheet.tsx"
     );
-    expect(sheet).toContain("MultiCheckAllocationPanel");
     expect(sheet).toContain("SplitPaymentPanel");
-    expect(sheet).not.toContain("getMultiCheckAllocationProjectionStore");
-    expect(sheet).not.toContain("multiCheckAllocationRepository");
+    expect(sheet).toContain("OrderSettlementPanel");
+    expect(sheet).not.toContain("<MultiCheckAllocationPanel");
     expect(sheet).not.toContain(
-      "materializeMultiCheckAllocationProjections"
+      'from "@/components/multi-check-allocation/MultiCheckAllocationPanel"'
     );
+    expect(sheet).toContain("UI is dormant");
   });
 
-  it("presentation module consumes API only — no Write Model / Projection store / Domain", () => {
+  it("settlement action bars do not bind orphaned MCA invalidation", () => {
+    const actionBar = read(
+      "client/src/components/dashboard/DiningSessionActionBar.tsx"
+    );
+    const quick = read(
+      "client/src/components/dashboard/SessionRowQuickActions.tsx"
+    );
+    expect(actionBar).not.toContain("multiCheckAllocation.");
+    expect(quick).not.toContain("multiCheckAllocation.");
+    expect(actionBar).toContain("splitPayment.listByCheck.invalidate");
+    expect(quick).toContain("splitPayment.listByCheck.invalidate");
+  });
+
+  it("presentation library + components remain for reactivation", () => {
+    expect(
+      listTsFiles("client/src/lib/multi-check-allocation-presentation").length
+    ).toBeGreaterThan(0);
+    expect(
+      listTsFiles("client/src/components/multi-check-allocation").length
+    ).toBeGreaterThan(0);
+    const panel = read(
+      "client/src/components/multi-check-allocation/MultiCheckAllocationPanel.tsx"
+    );
+    expect(panel).toContain("useMultiCheckAllocationsBySourceCheck");
+    expect(panel).toContain("UI dormant");
+  });
+
+  it("presentation module still does not touch Write Model / Projection store / Domain", () => {
     const files = [
       ...listTsFiles("client/src/lib/multi-check-allocation-presentation"),
       ...listTsFiles("client/src/components/multi-check-allocation"),
@@ -64,57 +107,32 @@ describe("MULTI-CHECK-ALLOCATION-PRESENTATION-1 architecture guards", () => {
     }
   });
 
-  it("panel reads/writes only via presentation hooks and API procedures", () => {
-    const panel = read(
-      "client/src/components/multi-check-allocation/MultiCheckAllocationPanel.tsx"
-    );
-    expect(panel).toContain("useMultiCheckAllocationsBySourceCheck");
-    expect(panel).toContain("useMultiCheckAllocationMutations");
-    expect(panel).toContain("toMultiCheckAllocationPanelViewModel");
-    expect(panel).toContain("createAllocation");
-    expect(panel).toContain("AllocationActionBar");
-    expect(panel).not.toContain("getMultiCheckAllocationProjectionStore");
-    expect(panel).not.toContain("session.getOwnerWorkspace");
-  });
-
-  it("action bars invalidate multiCheckAllocation queries after mutations", () => {
-    const actionBar = read(
-      "client/src/components/dashboard/DiningSessionActionBar.tsx"
-    );
-    const quick = read(
-      "client/src/components/dashboard/SessionRowQuickActions.tsx"
-    );
-    expect(actionBar).toContain(
-      "multiCheckAllocation.listAllocations.invalidate"
-    );
-    expect(actionBar).toContain(
-      "multiCheckAllocation.getAllocation.invalidate"
-    );
-    expect(quick).toContain(
-      "multiCheckAllocation.listAllocations.invalidate"
-    );
-    expect(quick).toContain(
-      "multiCheckAllocation.getAllocationSummary.invalidate"
-    );
-  });
-
-  it("does not redesign API, Domain, Projection, or Integration", () => {
+  it("preserves API, Domain, Projection, and Integration (core active)", () => {
     const apiRouter = read(
       "server/operational-session/check/api/multiCheckAllocationRouter.ts"
     );
     expect(apiRouter).toContain("MULTI-CHECK-ALLOCATION-API-1");
-    expect(apiRouter).not.toContain("PRESENTATION-1");
+    expect(apiRouter).toContain("createAllocation");
 
     const builder = read(
       "shared/operational-session/check/multiCheckAllocation/projection/multiCheckAllocationProjectionBuilder.ts"
     );
     expect(builder).toContain("MULTI-CHECK-ALLOCATION-PROJECTION-1");
-    expect(builder).not.toContain("PRESENTATION-1");
 
     const integration = read(
       "server/operational-session/check/checkMultiCheckAllocationIntegration.ts"
     );
     expect(integration).toContain("MULTI-CHECK-ALLOCATION-INTEGRATION-1");
     expect(integration).not.toContain("MultiCheckAllocationPanel");
+
+    const domain = read(
+      "shared/operational-session/check/multiCheckAllocation/multiCheckAllocationCommands.ts"
+    );
+    expect(domain).toContain("MULTI-CHECK-ALLOCATION-DOMAIN-1");
+
+    const routers = read("server/routers.ts");
+    expect(routers).toContain(
+      "multiCheckAllocation: multiCheckAllocationRouter"
+    );
   });
 });
