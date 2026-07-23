@@ -5,6 +5,7 @@
  * CHECK-GENERALIZATION-M4 — Session optional for financial correctness (Check-centric APIs).
  * ORDER-SETTLEMENT-INTEGRATION-1 — Check Aggregate is sole Order Settlement mutation authority.
  * SPLIT-PAYMENT-INTEGRATION-1 — Check Aggregate is sole Split Payment mutation authority.
+ * MULTI-CHECK-ALLOCATION-INTEGRATION-1 — Check Aggregate is sole Multi Check Allocation mutation authority.
  *
  * Owned by Operational Session Platform. Does not modify Order Domain.
  */
@@ -91,7 +92,24 @@ import {
   voidPaymentOnCheck,
   type CheckSplitPaymentMutationResult,
 } from "./checkSplitPaymentIntegration";
-import type { PaymentPortion, TenderMethod } from "@shared/operational-session";
+import {
+  adjustAllocationOnCheck,
+  applyAllocationOnCheck,
+  cancelAllocationOnCheck,
+  completeAllocationOnCheck,
+  createAllocationOnCheck,
+  loadAllocationByIdentity,
+  loadAllocationsForSourceCheck,
+  reserveAllocationOnCheck,
+  reverseAllocationOnCheck,
+  type CheckMultiCheckAllocationMutationResult,
+} from "./checkMultiCheckAllocationIntegration";
+import type {
+  CreateAllocationPortionInput,
+  CreateAllocationSourceInput,
+  PaymentPortion,
+  TenderMethod,
+} from "@shared/operational-session";
 
 export class CheckTransitionError extends Error {
   constructor(message: string) {
@@ -980,6 +998,114 @@ export async function getCheckOutstandingBalance(input: {
   checkId: number;
 }) {
   return loadCheckOutstanding(input);
+}
+
+// ─── MULTI-CHECK-ALLOCATION-INTEGRATION-1 — Aggregate commands ─────
+
+export type { CheckMultiCheckAllocationMutationResult };
+
+export async function createMultiCheckAllocationOnCheck(input: {
+  restaurantId: number;
+  checkId: number;
+  allocationId: string;
+  allocationReference: string;
+  financialReference?: string | null;
+  sourceCheckId?: number;
+  sourcePaymentId?: string | null;
+  financialResponsibility: string;
+  paymentValueCap?: string | null;
+  portions: readonly CreateAllocationPortionInput[];
+  sources?: readonly CreateAllocationSourceInput[];
+  allocationReason?: string | null;
+}): Promise<CheckMultiCheckAllocationMutationResult> {
+  return withCheckOwnedTransaction(undefined, async (tx) =>
+    createAllocationOnCheck(input, tx)
+  );
+}
+
+export async function reserveMultiCheckAllocationOnCheck(input: {
+  restaurantId: number;
+  checkId: number;
+  allocationId: string;
+  allocationReason?: string | null;
+}): Promise<CheckMultiCheckAllocationMutationResult> {
+  return withCheckOwnedTransaction(undefined, async (tx) =>
+    reserveAllocationOnCheck(input, tx)
+  );
+}
+
+export async function applyMultiCheckAllocationOnCheck(input: {
+  restaurantId: number;
+  checkId: number;
+  allocationId: string;
+  allocationReason?: string | null;
+}): Promise<CheckMultiCheckAllocationMutationResult> {
+  return withCheckOwnedTransaction(undefined, async (tx) =>
+    applyAllocationOnCheck(input, tx)
+  );
+}
+
+export async function adjustMultiCheckAllocationOnCheck(input: {
+  restaurantId: number;
+  checkId: number;
+  allocationId: string;
+  adjustmentId: string;
+  amount: string;
+  direction: "increase" | "decrease";
+  portionId?: string | null;
+  allocationReason?: string | null;
+}): Promise<CheckMultiCheckAllocationMutationResult> {
+  return withCheckOwnedTransaction(undefined, async (tx) =>
+    adjustAllocationOnCheck(input, tx)
+  );
+}
+
+export async function reverseMultiCheckAllocationOnCheck(input: {
+  restaurantId: number;
+  checkId: number;
+  allocationId: string;
+  reversalId: string;
+  allocationReason?: string | null;
+}): Promise<CheckMultiCheckAllocationMutationResult> {
+  return withCheckOwnedTransaction(undefined, async (tx) =>
+    reverseAllocationOnCheck(input, tx)
+  );
+}
+
+export async function completeMultiCheckAllocationOnCheck(input: {
+  restaurantId: number;
+  checkId: number;
+  allocationId: string;
+  allocationReason?: string | null;
+}): Promise<CheckMultiCheckAllocationMutationResult> {
+  return withCheckOwnedTransaction(undefined, async (tx) =>
+    completeAllocationOnCheck(input, tx)
+  );
+}
+
+export async function cancelMultiCheckAllocationOnCheck(input: {
+  restaurantId: number;
+  checkId: number;
+  allocationId: string;
+  allocationReason?: string | null;
+}): Promise<CheckMultiCheckAllocationMutationResult> {
+  return withCheckOwnedTransaction(undefined, async (tx) =>
+    cancelAllocationOnCheck(input, tx)
+  );
+}
+
+export async function getMultiCheckAllocationsForSourceCheck(input: {
+  restaurantId: number;
+  sourceCheckId: number;
+}) {
+  return loadAllocationsForSourceCheck(input);
+}
+
+export async function getMultiCheckAllocationByIdentity(input: {
+  restaurantId: number;
+  allocationId: string;
+}) {
+  return loadAllocationByIdentity(input);
 }
 
 /**

@@ -226,4 +226,6 @@ export {
   type AllocationAdjustment,
   type AllocationReversal,
   type AllocationCardinality,
+  type CreateAllocationPortionInput,
+  type CreateAllocationSourceInput,
 } from "./check";

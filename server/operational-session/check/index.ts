@@ -30,11 +30,21 @@ export {
   getSplitPaymentsForCheck,
   getSplitPaymentAttemptsForCheck,
   getCheckOutstandingBalance,
+  createMultiCheckAllocationOnCheck,
+  reserveMultiCheckAllocationOnCheck,
+  applyMultiCheckAllocationOnCheck,
+  adjustMultiCheckAllocationOnCheck,
+  reverseMultiCheckAllocationOnCheck,
+  completeMultiCheckAllocationOnCheck,
+  cancelMultiCheckAllocationOnCheck,
+  getMultiCheckAllocationsForSourceCheck,
+  getMultiCheckAllocationByIdentity,
   getCheckById,
   getActiveCheckForSession,
   CheckTransitionError,
   type CheckFinancialMutationResult,
   type CheckSplitPaymentMutationResult,
+  type CheckMultiCheckAllocationMutationResult,
 } from "./CheckService";
 
 export {
@@ -54,6 +64,18 @@ export {
   loadCheckOutstanding,
   computeAppliedPaymentValue,
 } from "./checkSplitPaymentIntegration";
+
+export {
+  createAllocationOnCheck,
+  reserveAllocationOnCheck,
+  applyAllocationOnCheck,
+  adjustAllocationOnCheck,
+  reverseAllocationOnCheck,
+  completeAllocationOnCheck,
+  cancelAllocationOnCheck,
+  loadAllocationsForSourceCheck,
+  loadAllocationByIdentity,
+} from "./checkMultiCheckAllocationIntegration";
 
 export {
   ensureOrderSettlementForEnrollment,
