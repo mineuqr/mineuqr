@@ -6,6 +6,8 @@
  * ORDER-SETTLEMENT-INTEGRATION-1 — Check Aggregate is sole Order Settlement mutation authority.
  * SPLIT-PAYMENT-INTEGRATION-1 — Check Aggregate is sole Split Payment mutation authority.
  * MULTI-CHECK-ALLOCATION-INTEGRATION-1 — Check Aggregate is sole Multi Check Allocation mutation authority.
+ * SETTLEMENT-RECORD-IMPLEMENTATION-1 — Check Aggregate produces Settlement Record at financial finalization.
+ * SETTLEMENT-FINALIZATION-IDEMPOTENCY-HOTFIX-1 — abort finalize when outcome ownership is lost (0-row UPDATE).
  *
  * Owned by Operational Session Platform. Does not modify Order Domain.
  */
@@ -40,6 +42,7 @@ import {
   type CheckOutcome,
   type OperationalCheck,
   type OrderSettlementDomainEvent,
+  type SettlementRecordDomainEvent,
   type SettlementTransactionInput,
   type StaffSettlementLineInput,
 } from "@shared/operational-session";
@@ -104,6 +107,10 @@ import {
   reverseAllocationOnCheck,
   type CheckMultiCheckAllocationMutationResult,
 } from "./checkMultiCheckAllocationIntegration";
+import {
+  createSettlementRecordForCheckFinalize,
+  type CheckSettlementRecordMutationResult,
+} from "./checkSettlementRecordIntegration";
 import type {
   CreateAllocationPortionInput,
   CreateAllocationSourceInput,
@@ -123,6 +130,8 @@ export type CheckFinancialMutationResult = Readonly<{
   check: OperationalCheck;
   orderSettlement: CheckOrderSettlementMutationResult;
   orderSettlementEvents: readonly OrderSettlementDomainEvent[];
+  settlementRecord: CheckSettlementRecordMutationResult;
+  settlementRecordEvents: readonly SettlementRecordDomainEvent[];
 }>;
 
 /**
@@ -463,7 +472,7 @@ async function finalizeOpenCheckById(
   }
 
   return withCheckOwnedTransaction(client, async (tx) => {
-    await finalizeCheckOutcome(
+    const ownedRows = await finalizeCheckOutcome(
       {
         checkId: check.id,
         restaurantId: input.restaurantId,
@@ -481,6 +490,15 @@ async function finalizeOpenCheckById(
       },
       tx
     );
+
+    // HOTFIX: lost Check finalization ownership — abort before any side effects.
+    // Canonical idempotent response: CheckTransitionError (same as pre-TX non-open gate).
+    if (ownedRows === 0) {
+      const current = await findCheckById(check.id, tx);
+      throw new CheckTransitionError(
+        `Cannot finalize check from outcome ${current?.outcome ?? "unknown"}`
+      );
+    }
 
     if (settlementLines) {
       await insertSettlementTransactions(
@@ -526,6 +544,30 @@ async function finalizeOpenCheckById(
       );
     }
 
+    const settledAt =
+      input.outcome === "paid" || input.outcome === "complimentary" ? now : null;
+
+    // SR-INV-04 — Settlement Record in the same Check-owned financial TX.
+    const settlementRecord = await createSettlementRecordForCheckFinalize(
+      {
+        restaurantId: input.restaurantId,
+        check,
+        outcome: input.outcome,
+        freeze: {
+          subtotal: money.subtotal,
+          billDiscountAmount: check.billDiscountAmount,
+          taxAmount: money.taxAmount,
+          taxBreakdown: money.taxBreakdown,
+          grandTotal: money.grandTotal,
+          settledAt,
+        },
+        settlementLines,
+        orderSettlements: orderSettlement.settlements,
+        createdAt: now,
+      },
+      tx
+    );
+
     const row = await findCheckById(check.id, tx);
     if (!row) {
       throw new DiningSessionUnavailableError("Check not found after finalize");
@@ -534,6 +576,8 @@ async function finalizeOpenCheckById(
       check: mapRowToOperationalCheck(row),
       orderSettlement,
       orderSettlementEvents: orderSettlement.events,
+      settlementRecord,
+      settlementRecordEvents: settlementRecord.events,
     };
   });
 }

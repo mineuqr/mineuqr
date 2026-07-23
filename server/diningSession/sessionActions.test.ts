@@ -26,6 +26,8 @@ const financialMocks = vi.hoisted(() => {
     check: { id: 900, grandTotal: "50.00", taxAmount: "0.00" },
     orderSettlement: { settlements: [], events: [], outcomes: [] },
     orderSettlementEvents: [],
+    settlementRecord: { record: null, events: [], outcome: "skipped" as const },
+    settlementRecordEvents: [],
   };
   return {
     financialResult,

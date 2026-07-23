@@ -937,6 +937,71 @@ export type InsertMultiCheckAllocationHistory =
 export type SelectMultiCheckAllocationHistory =
 	typeof multiCheckAllocationHistory.$inferSelect;
 
+// ─── Settlement Records (SETTLEMENT-RECORD-IMPLEMENTATION-1 / ADR-ARCH-026) ──
+/** Immutable Canonical Financial Document. Append-only. Not an Aggregate Root. */
+export const settlementRecords = mysqlTable(
+	"settlement_records",
+	{
+		id: int().autoincrement().primaryKey(),
+		settlementRecordId: varchar({ length: 128 }).notNull(),
+		restaurantId: int().notNull(),
+		recordKind: mysqlEnum([
+			"settlement",
+			"refund",
+			"void",
+			"reversal",
+			"correction",
+		]).notNull(),
+		schemaVersion: int().default(1).notNull(),
+		recordGeneration: int().notNull(),
+		checkId: int().notNull(),
+		sessionId: int(),
+		financialReference: varchar({ length: 128 }),
+		priorSettlementRecordId: varchar({ length: 128 }),
+		orderRefsJson: json().notNull(),
+		orderSettlementRefsJson: json().notNull(),
+		subtotal: decimal({ precision: 10, scale: 2 }).notNull(),
+		discountAmount: decimal({ precision: 10, scale: 2 }).default("0.00").notNull(),
+		taxAmount: decimal({ precision: 10, scale: 2 }).notNull(),
+		grandTotal: decimal({ precision: 10, scale: 2 }).notNull(),
+		outcome: mysqlEnum(["paid", "complimentary", "voided"]).notNull(),
+		currencySnapshotJson: json().notNull(),
+		taxPolicySnapshotJson: json().notNull(),
+		taxBreakdownJson: json().notNull(),
+		paymentSnapshotJson: json().notNull(),
+		businessDay: varchar({ length: 10 }).notNull(),
+		settledAt: timestamp({ mode: "string" }),
+		createdAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+		createdByActorType: varchar({ length: 64 }),
+		createdByActorId: varchar({ length: 128 }),
+		producer: varchar({ length: 64 }).default("check_aggregate").notNull(),
+	},
+	(table) => [
+		uniqueIndex("settlement_records_record_id_unique").on(table.settlementRecordId),
+		uniqueIndex("settlement_records_business_unique").on(
+			table.restaurantId,
+			table.checkId,
+			table.recordKind,
+			table.recordGeneration
+		),
+		index("settlement_records_restaurant_id").on(table.restaurantId),
+		index("settlement_records_check_id").on(table.checkId),
+		index("settlement_records_restaurant_check").on(
+			table.restaurantId,
+			table.checkId
+		),
+		index("settlement_records_session_id").on(table.sessionId),
+		index("settlement_records_business_day").on(table.businessDay),
+		index("settlement_records_financial_ref").on(table.financialReference),
+		index("settlement_records_prior_record_id").on(table.priorSettlementRecordId),
+		index("settlement_records_outcome").on(table.outcome),
+		index("settlement_records_record_kind").on(table.recordKind),
+	]
+);
+
+export type InsertSettlementRecord = typeof settlementRecords.$inferInsert;
+export type SelectSettlementRecord = typeof settlementRecords.$inferSelect;
+
 // ─── Table Events (TABLE-MANAGEMENT-1 Phase C) ──────────────────
 export const tableEvents = mysqlTable("table_events", {
 	id: bigint({ mode: "number" }).autoincrement().primaryKey(),

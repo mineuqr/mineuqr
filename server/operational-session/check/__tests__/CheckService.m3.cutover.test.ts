@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => ({
   applyFullSettlementToCheckOrders: vi.fn(),
   applyComplimentaryToCheckOrders: vi.fn(),
   voidOrderSettlementsForCheck: vi.fn(),
+  createSettlementRecordForCheckFinalize: vi.fn(),
 }));
 
 const fakeTx = { __tx: true };
@@ -83,6 +84,11 @@ vi.mock("../checkMembershipService", () => ({
 vi.mock("../checkOrderMembershipRepository", () => ({
   listActiveOrderIdsForCheck: (...a: unknown[]) =>
     mocks.listActiveOrderIdsForCheck(...a),
+}));
+
+vi.mock("../checkSettlementRecordIntegration", () => ({
+  createSettlementRecordForCheckFinalize: (...a: unknown[]) =>
+    mocks.createSettlementRecordForCheckFinalize(...a),
 }));
 
 import {
@@ -154,6 +160,11 @@ describe("CHECK-GENERALIZATION-M3 CheckService cutover", () => {
       settlements: [],
       events: [],
       outcomes: ["applied"],
+    });
+    mocks.createSettlementRecordForCheckFinalize.mockResolvedValue({
+      record: { settlementRecordId: "sr:1:100:settlement:1" },
+      events: [],
+      outcome: "applied",
     });
   });
 
@@ -232,7 +243,7 @@ describe("CHECK-GENERALIZATION-M3 CheckService cutover", () => {
     mocks.getOrdersByIds.mockResolvedValue([
       { id: 55, status: "served", totalAmount: "10.00" },
     ]);
-    mocks.finalizeCheckOutcome.mockResolvedValue(undefined);
+    mocks.finalizeCheckOutcome.mockResolvedValue(1);
     mocks.insertSettlementTransactions.mockResolvedValue(undefined);
 
     const result = await settleCheckPaidById({ restaurantId: 1, checkId: 100 });
@@ -267,7 +278,7 @@ describe("CHECK-GENERALIZATION-M3 CheckService cutover", () => {
       });
     mocks.listActiveOrderIdsForCheck.mockResolvedValue([]);
     mocks.getOrdersByIds.mockResolvedValue([]);
-    mocks.finalizeCheckOutcome.mockResolvedValue(undefined);
+    mocks.finalizeCheckOutcome.mockResolvedValue(1);
 
     await voidCheckById({ restaurantId: 1, checkId: 100 });
 

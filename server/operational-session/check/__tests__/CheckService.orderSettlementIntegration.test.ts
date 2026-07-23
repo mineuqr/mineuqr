@@ -28,6 +28,7 @@ const mocks = vi.hoisted(() => ({
   refundOrderSettlementsForCheck: vi.fn(),
   cancelOrderSettlementForOrder: vi.fn(),
   applyPartialSettlementForOrder: vi.fn(),
+  createSettlementRecordForCheckFinalize: vi.fn(),
 }));
 
 const fakeTx = { __tx: true };
@@ -103,6 +104,11 @@ vi.mock("../checkOrderSettlementIntegration", () => ({
   ensureOrderSettlementsForCheck: vi.fn(),
 }));
 
+vi.mock("../checkSettlementRecordIntegration", () => ({
+  createSettlementRecordForCheckFinalize: (...a: unknown[]) =>
+    mocks.createSettlementRecordForCheckFinalize(...a),
+}));
+
 import {
   applyPartialOrderSettlementOnCheck,
   cancelOrderSettlementOnCheck,
@@ -146,7 +152,7 @@ describe("ORDER-SETTLEMENT-INTEGRATION-1 Check Aggregate", () => {
     mocks.getOrdersByIds.mockResolvedValue([
       { id: 55, status: "served", totalAmount: "20.00" },
     ]);
-    mocks.finalizeCheckOutcome.mockResolvedValue(undefined);
+    mocks.finalizeCheckOutcome.mockResolvedValue(1);
     mocks.insertSettlementTransactions.mockResolvedValue(undefined);
     mocks.deactivateMembershipsOnCheckVoid.mockResolvedValue(undefined);
     mocks.applyFullSettlementToCheckOrders.mockResolvedValue({
@@ -179,6 +185,11 @@ describe("ORDER-SETTLEMENT-INTEGRATION-1 Check Aggregate", () => {
       events: [],
       outcomes: ["applied"],
     });
+    mocks.createSettlementRecordForCheckFinalize.mockResolvedValue({
+      record: { settlementRecordId: "sr:1:100:settlement:1" },
+      events: [{ eventType: "SettlementRecordCreated" }],
+      outcome: "applied",
+    });
   });
 
   it("paid settle runs Check + tenders + OS inside one transaction client", async () => {
@@ -206,6 +217,16 @@ describe("ORDER-SETTLEMENT-INTEGRATION-1 Check Aggregate", () => {
     expect(detailed.orderSettlementEvents[0]?.eventType).toBe(
       "OrderSettlementSettled"
     );
+    expect(mocks.createSettlementRecordForCheckFinalize).toHaveBeenCalledWith(
+      expect.objectContaining({
+        restaurantId: 1,
+        outcome: "paid",
+      }),
+      fakeTx
+    );
+    expect(detailed.settlementRecordEvents[0]?.eventType).toBe(
+      "SettlementRecordCreated"
+    );
     expect(detailed.check.outcome).toBe("paid");
   });
 
@@ -223,6 +244,25 @@ describe("ORDER-SETTLEMENT-INTEGRATION-1 Check Aggregate", () => {
     expect(mocks.finalizeCheckOutcome).toHaveBeenCalled();
     expect(mocks.insertSettlementTransactions).toHaveBeenCalled();
     expect(mocks.applyFullSettlementToCheckOrders).toHaveBeenCalled();
+    expect(mocks.createSettlementRecordForCheckFinalize).not.toHaveBeenCalled();
+  });
+
+  it("rolls back complete financial operation when Settlement Record insert fails", async () => {
+    mocks.findCheckById.mockResolvedValue(openCheck);
+    mocks.createSettlementRecordForCheckFinalize.mockRejectedValue(
+      new Error("SR insert failed")
+    );
+
+    await expect(
+      settleCheckPaidById({ restaurantId: 1, checkId: 100 })
+    ).rejects.toThrow(/SR insert failed/);
+
+    expect(mocks.finalizeCheckOutcome).toHaveBeenCalled();
+    expect(mocks.applyFullSettlementToCheckOrders).toHaveBeenCalled();
+    expect(mocks.createSettlementRecordForCheckFinalize).toHaveBeenCalledWith(
+      expect.objectContaining({ outcome: "paid" }),
+      fakeTx
+    );
   });
 
   it("rolls back when membership void fails after OS void", async () => {

@@ -137,6 +137,11 @@ export async function updateCheckMoney(
     );
 }
 
+/**
+ * Conditional Check outcome finalize (WHERE outcome='open').
+ * Returns affected row count — callers MUST abort when 0
+ * (SETTLEMENT-FINALIZATION-IDEMPOTENCY-HOTFIX-1 / lost ownership).
+ */
 export async function finalizeCheckOutcome(
   input: {
     checkId: number;
@@ -151,9 +156,9 @@ export async function finalizeCheckOutcome(
     voidedAt?: string | null;
   },
   client?: SessionDbClient
-): Promise<void> {
+): Promise<number> {
   const db = await resolveDb(client);
-  await db
+  const result = await db
     .update(operationalChecks)
     .set({
       outcome: input.outcome,
@@ -172,4 +177,7 @@ export async function finalizeCheckOutcome(
         eq(operationalChecks.outcome, "open")
       )
     );
+  return (
+    (result[0] as { affectedRows?: number } | undefined)?.affectedRows ?? 0
+  );
 }

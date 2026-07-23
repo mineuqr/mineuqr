@@ -26,6 +26,7 @@ const mocks = vi.hoisted(() => ({
   applyFullSettlementToCheckOrders: vi.fn(),
   applyComplimentaryToCheckOrders: vi.fn(),
   voidOrderSettlementsForCheck: vi.fn(),
+  createSettlementRecordForCheckFinalize: vi.fn(),
 }));
 
 const fakeTx = { __tx: true };
@@ -97,6 +98,11 @@ vi.mock("../checkOrderMembershipRepository", () => ({
     mocks.listActiveOrderIdsForCheck(...a),
   findBlockingMembershipForOrder: (...a: unknown[]) =>
     mocks.findBlockingMembershipForOrder(...a),
+}));
+
+vi.mock("../checkSettlementRecordIntegration", () => ({
+  createSettlementRecordForCheckFinalize: (...a: unknown[]) =>
+    mocks.createSettlementRecordForCheckFinalize(...a),
 }));
 
 import {
@@ -171,6 +177,11 @@ describe("CHECK-GENERALIZATION-M4 Session optionality", () => {
       events: [],
       outcomes: ["applied"],
     });
+    mocks.createSettlementRecordForCheckFinalize.mockResolvedValue({
+      record: { settlementRecordId: "sr:1:200:settlement:1" },
+      events: [],
+      outcome: "applied",
+    });
   });
 
   it("createOpenCheck creates a sessionless Check without Session lookup", async () => {
@@ -238,7 +249,7 @@ describe("CHECK-GENERALIZATION-M4 Session optionality", () => {
     mocks.getOrdersByIds.mockResolvedValue([
       { id: 55, status: "served", totalAmount: "10.00" },
     ]);
-    mocks.finalizeCheckOutcome.mockResolvedValue(undefined);
+    mocks.finalizeCheckOutcome.mockResolvedValue(1);
     mocks.insertSettlementTransactions.mockResolvedValue(undefined);
 
     const result = await settleCheckPaidById({
@@ -276,7 +287,7 @@ describe("CHECK-GENERALIZATION-M4 Session optionality", () => {
     mocks.getOrdersByIds.mockResolvedValue([
       { id: 55, status: "served", totalAmount: "10.00" },
     ]);
-    mocks.finalizeCheckOutcome.mockResolvedValue(undefined);
+    mocks.finalizeCheckOutcome.mockResolvedValue(1);
     mocks.insertSettlementTransactions.mockResolvedValue(undefined);
 
     const result = await settleCheckComplimentaryById({
@@ -307,7 +318,7 @@ describe("CHECK-GENERALIZATION-M4 Session optionality", () => {
       });
     mocks.listActiveOrderIdsForCheck.mockResolvedValue([]);
     mocks.getOrdersByIds.mockResolvedValue([]);
-    mocks.finalizeCheckOutcome.mockResolvedValue(undefined);
+    mocks.finalizeCheckOutcome.mockResolvedValue(1);
 
     await voidCheckById({ restaurantId: 1, checkId: 200 });
 

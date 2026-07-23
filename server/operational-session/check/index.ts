@@ -177,6 +177,33 @@ export {
 } from "./splitPaymentRepository";
 
 export {
+  mapRowToSettlementRecord,
+  toSettlementRecordInsertValues,
+  type SettlementRecordPersistenceRow,
+  type SettlementRecordInsertValues,
+} from "./settlementRecordMapper";
+
+export {
+  SettlementRecordPersistenceError,
+  insertSettlementRecord,
+  findSettlementRecordById,
+  findSettlementRecordByIdentity,
+  existsSettlementRecord,
+  listSettlementRecordsForCheck,
+  listSettlementRecordsForRestaurant,
+  listSettlementRecordsForSession,
+  updateSettlementRecord,
+  deleteSettlementRecord,
+  type SettlementRecordRow,
+} from "./settlementRecordRepository";
+
+export {
+  createSettlementRecordForCheckFinalize,
+  settlementRecordExistsForCheck,
+  type CheckSettlementRecordMutationResult,
+} from "./checkSettlementRecordIntegration";
+
+export {
   MULTI_CHECK_ALLOCATION_SCHEMA_VERSION,
   mapRowsToMultiCheckAllocation,
   mapRowToAllocationHistory,

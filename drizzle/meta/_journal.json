@@ -533,6 +533,13 @@
       "when": 1784610000000,
       "tag": "0075_multi_check_allocation",
       "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "5",
+      "when": 1784620000000,
+      "tag": "0076_settlement_records",
+      "breakpoints": true
     }
   ]
 }
