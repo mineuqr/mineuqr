@@ -219,6 +219,12 @@ export {
   type SplitPaymentProjectionStore,
   type SplitPaymentProjectionMaterializeInput,
   type SplitPaymentProjectionMaterializeResult,
+  InMemoryMultiCheckAllocationProjectionStore,
+  materializeMultiCheckAllocationProjections,
+  tryMaterializeMultiCheckAllocationProjections,
+  type MultiCheckAllocationProjectionStore,
+  type MultiCheckAllocationProjectionMaterializeInput,
+  type MultiCheckAllocationProjectionMaterializeResult,
 } from "./read";
 
 export {

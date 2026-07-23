@@ -1,5 +1,6 @@
 /**
- * Check-owned Read Model surface (Order Settlement + Split Payment projections).
+ * Check-owned Read Model surface
+ * (Order Settlement + Split Payment + Multi Check Allocation projections).
  */
 
 export {
@@ -25,3 +26,15 @@ export {
   type SplitPaymentProjectionMaterializeInput,
   type SplitPaymentProjectionMaterializeResult,
 } from "./splitPaymentProjectionMaterializer";
+
+export {
+  InMemoryMultiCheckAllocationProjectionStore,
+  type MultiCheckAllocationProjectionStore,
+} from "./multiCheckAllocationProjectionStore";
+
+export {
+  materializeMultiCheckAllocationProjections,
+  tryMaterializeMultiCheckAllocationProjections,
+  type MultiCheckAllocationProjectionMaterializeInput,
+  type MultiCheckAllocationProjectionMaterializeResult,
+} from "./multiCheckAllocationProjectionMaterializer";
