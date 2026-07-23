@@ -29,11 +29,11 @@ describe("SETTLEMENT-PAYMENT-METHOD-CAPTURE-1 architecture guards", () => {
     expect(pres).not.toMatch(/Cash.*Mada.*Visa/);
   });
 
-  it("session service passes settlements into settleCheckPaidById", () => {
+  it("session service passes settlements into settleCheckPaidByIdDetailed", () => {
     const svc = read("server/diningSession/sessionService.ts");
     expect(svc).toContain("SETTLEMENT-PAYMENT-METHOD-CAPTURE-1");
     expect(svc).toContain("input.settlements");
-    expect(svc).toMatch(/settleCheckPaidById\(\{[\s\S]*settlements/);
+    expect(svc).toMatch(/settleCheckPaidByIdDetailed\(\{[\s\S]*settlements/);
   });
 
   it("domain resolves staff lines; legacy other fallback preserved", () => {
@@ -47,11 +47,11 @@ describe("SETTLEMENT-PAYMENT-METHOD-CAPTURE-1 architecture guards", () => {
     expect(invariants).toContain("Multi-tender settlement lines require an amount");
   });
 
-  it("reporting PaymentMethodAnalyticsService is unchanged consumer", () => {
+  it("reporting PaymentMethodAnalyticsService consumes Settlement Record publication", () => {
     const analytics = read(
       "server/reporting-platform/PaymentMethodAnalyticsService.ts"
     );
-    expect(analytics).toContain("listSettlementTransactionsForReporting");
+    expect(analytics).toContain("listSettlementRecordPaymentLinesForReporting");
     expect(analytics).not.toContain("SETTLEMENT-PAYMENT-METHOD-CAPTURE-1");
   });
 });

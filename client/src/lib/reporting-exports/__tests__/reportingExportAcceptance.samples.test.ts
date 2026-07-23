@@ -406,7 +406,7 @@ describe("REPORTING-DESIGN-LANGUAGE-1 samples + presentation", () => {
           `| Tax / Complimentary / Voided | BusinessMetricsSummary | (analysis) | Financial Summary only — Tax = full period paid checks |`
         );
         reconciliation.push(
-          `| Payment Method Mix | PaymentMethodAnalytics (Settlement Transactions) | ${bundle.paymentMethodAnalytics.monetaryTenderTotal} tender total | Payment Method Analysis sheet — not Executive / not Check Revenue |`
+          `| Payment Method Mix | PaymentMethodAnalytics (Settlement Record payment snapshots) | ${bundle.paymentMethodAnalytics.monetaryTenderTotal} tender total | Payment Method Analysis sheet — not Executive / not Check Revenue |`
         );
         reconciliation.push("");
         reconciliation.push(

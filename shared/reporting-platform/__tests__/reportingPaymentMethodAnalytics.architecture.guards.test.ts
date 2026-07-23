@@ -22,12 +22,13 @@ describe("REPORTING-PAYMENT-METHOD-ANALYTICS-1 architecture guards", () => {
     expect(revenue.calculationVersion).toBe(1);
   });
 
-  it("analytics service reads Settlement Transactions only", () => {
+  it("analytics service reads Settlement Record payment snapshots (canonical)", () => {
     const service = read(
       "server/reporting-platform/PaymentMethodAnalyticsService.ts"
     );
-    expect(service).toContain("listSettlementTransactionsForReporting");
+    expect(service).toContain("listSettlementRecordPaymentLinesForReporting");
     expect(service).toContain("REPORTING-PAYMENT-METHOD-ANALYTICS-1");
+    expect(service).toContain("SETTLEMENT-RECORD-REPORTING-ADOPTION-1");
     expect(service).not.toMatch(/from\(["']orders["']\)/);
     expect(service).not.toMatch(/dining_sessions/);
     expect(service).not.toMatch(/operational_checks/);

@@ -1,9 +1,12 @@
 /**
- * CHECK-SETTLEMENT-METHODS-1 — Reporting Platform read adapter for settlement tenders.
+ * CHECK-SETTLEMENT-METHODS-1 — legacy Settlement Transaction tender read adapter.
+ *
+ * SETTLEMENT-RECORD-REPORTING-ADOPTION-1: Payment Method Analytics defaults to
+ * Settlement Record payment snapshots. This adapter remains for dual-run parity
+ * and REPORTING_FINANCIAL_SOURCE=check emergency rollback only.
  *
  * Does not change Revenue / Tax / Paid Checks formulas.
- * Revenue remains SUM(paid Check.grandTotal).
- * This adapter enables future "Revenue by payment method" without gateway logic.
+ * Canonical Revenue = SUM(paid Settlement Record grandTotal).
  */
 
 import {

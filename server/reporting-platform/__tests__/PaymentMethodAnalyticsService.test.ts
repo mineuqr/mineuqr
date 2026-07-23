@@ -1,52 +1,60 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { SettlementTransaction } from "@shared/operational-session";
 import { getPaymentMethodAnalytics } from "../PaymentMethodAnalyticsService";
-import * as adapter from "../settlementTransactionReportingAdapter";
+import * as srAdapter from "../settlementRecordReportingAdapter";
 
-vi.mock("../settlementTransactionReportingAdapter", () => ({
-  listSettlementTransactionsForReporting: vi.fn(),
+vi.mock("../settlementRecordReportingAdapter", () => ({
+  listSettlementRecordPaymentLinesForReporting: vi.fn(),
+  listSettlementRecordsForReporting: vi.fn(),
 }));
 
-function tx(
-  overrides: Partial<SettlementTransaction> &
-    Pick<SettlementTransaction, "paymentMethod" | "amount" | "checkId">
-): SettlementTransaction {
+function line(
+  overrides: Partial<{
+    paymentMethod: string;
+    amount: string;
+    checkId: number;
+    status: string;
+  }> &
+    Pick<
+      {
+        paymentMethod: string;
+        amount: string;
+        checkId: number;
+      },
+      "paymentMethod" | "amount" | "checkId"
+    >
+) {
   return {
-    id: overrides.id ?? 1,
     restaurantId: 1,
     checkId: overrides.checkId,
-    sessionId: 10,
+    settlementRecordId: `sr-${overrides.checkId}`,
     paymentMethod: overrides.paymentMethod,
     amount: overrides.amount,
-    currencyCode: "SAR",
     status: overrides.status ?? "captured",
     businessTimestamp: "2026-07-10T12:00:00.000Z",
-    reference: null,
-    externalReference: null,
-    notes: null,
-    createdAt: "2026-07-10T12:00:00.000Z",
-    updatedAt: "2026-07-10T12:00:00.000Z",
+    currencyCode: "SAR",
   };
 }
 
-describe("PaymentMethodAnalyticsService", () => {
+describe("PaymentMethodAnalyticsService (Settlement Record)", () => {
   beforeEach(() => {
-    vi.mocked(adapter.listSettlementTransactionsForReporting).mockReset();
+    vi.mocked(
+      srAdapter.listSettlementRecordPaymentLinesForReporting
+    ).mockReset();
   });
 
   it("aggregates monetary mix, check counts, and complimentary separately", async () => {
-    vi.mocked(adapter.listSettlementTransactionsForReporting).mockResolvedValue([
-      tx({ id: 1, paymentMethod: "cash", amount: "40.00", checkId: 1 }),
-      tx({ id: 2, paymentMethod: "mada", amount: "60.00", checkId: 2 }),
-      tx({ id: 3, paymentMethod: "mada", amount: "20.00", checkId: 2 }),
-      tx({
-        id: 4,
+    vi.mocked(
+      srAdapter.listSettlementRecordPaymentLinesForReporting
+    ).mockResolvedValue([
+      line({ paymentMethod: "cash", amount: "40.00", checkId: 1 }),
+      line({ paymentMethod: "mada", amount: "60.00", checkId: 2 }),
+      line({ paymentMethod: "mada", amount: "20.00", checkId: 2 }),
+      line({
         paymentMethod: "complimentary",
         amount: "15.00",
         checkId: 3,
       }),
-      tx({
-        id: 5,
+      line({
         paymentMethod: "visa",
         amount: "10.00",
         checkId: 4,
@@ -77,9 +85,9 @@ describe("PaymentMethodAnalyticsService", () => {
   });
 
   it("returns empty buckets when no captured monetary tenders exist", async () => {
-    vi.mocked(adapter.listSettlementTransactionsForReporting).mockResolvedValue(
-      []
-    );
+    vi.mocked(
+      srAdapter.listSettlementRecordPaymentLinesForReporting
+    ).mockResolvedValue([]);
     const dto = await getPaymentMethodAnalytics({ restaurantId: 1 });
     expect(dto.buckets).toEqual([]);
     expect(dto.monetaryTenderTotal).toBe("0.00");

@@ -12,7 +12,7 @@ Presentation redesign only. Scope totals unchanged from PERIOD-CONSISTENCY-1.
 | Completed Orders | OrderSalesRollup (sum) | 89 | Executive (operational) — same population as Order Sales |
 | Orders (placed) | OrderSalesRollup (sum) | 103 | Financial / Order Sales detail — not Executive snapshot |
 | Tax / Complimentary / Voided | BusinessMetricsSummary | (analysis) | Financial Summary only — Tax = full period paid checks |
-| Payment Method Mix | PaymentMethodAnalytics (Settlement Transactions) | 14612.50 tender total | Payment Method Analysis sheet — not Executive / not Check Revenue |
+| Payment Method Mix | PaymentMethodAnalytics (Settlement Record payment snapshots) | 14612.50 tender total | Payment Method Analysis sheet — not Executive / not Check Revenue |
 
 Scope invariant: all values describe **July 2026** only. Design language: REPORTING-DESIGN-LANGUAGE-1. Payment analytics: REPORTING-PAYMENT-METHOD-ANALYTICS-1.
 
@@ -26,6 +26,6 @@ Scope invariant: all values describe **July 2026** only. Design language: REPORT
 | Completed Orders | OrderSalesRollup (sum) | 2568 | Executive (operational) — same population as Order Sales |
 | Orders (placed) | OrderSalesRollup (sum) | 2688 | Financial / Order Sales detail — not Executive snapshot |
 | Tax / Complimentary / Voided | BusinessMetricsSummary | (analysis) | Financial Summary only — Tax = full period paid checks |
-| Payment Method Mix | PaymentMethodAnalytics (Settlement Transactions) | 200100.00 tender total | Payment Method Analysis sheet — not Executive / not Check Revenue |
+| Payment Method Mix | PaymentMethodAnalytics (Settlement Record payment snapshots) | 200100.00 tender total | Payment Method Analysis sheet — not Executive / not Check Revenue |
 
 Scope invariant: all values describe **2026** only. Design language: REPORTING-DESIGN-LANGUAGE-1. Payment analytics: REPORTING-PAYMENT-METHOD-ANALYTICS-1.

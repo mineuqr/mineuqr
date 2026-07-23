@@ -1,6 +1,7 @@
 /**
- * Pure aggregation of Check reporting rows → Business Metrics DTOs.
- * Revenue = Paid Check grandTotal only.
+ * Pure aggregation of financial reporting facts → Business Metrics DTOs.
+ * Revenue = SUM(paid grandTotal) — values are Settlement Record publications
+ * of finalized Check freeze (ADR-ARCH-026). No money recalculation.
  */
 
 import type {

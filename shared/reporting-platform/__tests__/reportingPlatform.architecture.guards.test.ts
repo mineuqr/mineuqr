@@ -50,12 +50,22 @@ describe("REPORTING-PLATFORM-ARCHITECTURE-1 architecture guards", () => {
       "server/reporting-platform/checkReportingRepository.ts"
     );
     expect(checkRepo).toContain("read-only");
+    expect(biz).toContain("listSettlementRecordsForReporting");
+    expect(biz).toContain("SETTLEMENT-RECORD-REPORTING-ADOPTION-1");
     expect(biz).not.toContain("settleCheckPaid");
     expect(biz).not.toContain("createOpenCheckForSession");
     expect(biz).not.toContain("placeOrder");
     expect(read("server/reporting-platform/reportingRouter.ts")).toContain(
       "reportingRouter"
     );
+  });
+
+  it("default financial reporting source is Settlement Record", () => {
+    const source = read(
+      "server/reporting-platform/financialReportingSource.ts"
+    );
+    expect(source).toContain('DEFAULT_MODE: FinancialReportingSourceMode = "settlement_record"');
+    expect(source).toContain("REPORTING_FINANCIAL_SOURCE");
   });
 
   it("Revenue aggregation uses Check grandTotal not session totalAmount", () => {

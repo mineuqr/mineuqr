@@ -37,7 +37,7 @@ export type BusinessMetricsSummaryDto = Readonly<{
   restaurantId: number;
   from: string | null;
   to: string | null;
-  /** Official Revenue = SUM(paid Check grandTotal). */
+  /** Official Revenue = SUM(paid Settlement Record grandTotal) — Check freeze publication. */
   revenue: string;
   paidCheckCount: number;
   averageCheck: string;
@@ -192,7 +192,8 @@ export type SettlementDistributionDto = Readonly<{
 
 /**
  * REPORTING-PAYMENT-METHOD-ANALYTICS-1 — payment-method analytics from
- * Settlement Transactions only. Not a substitute for Check Revenue.
+ * Settlement Record payment snapshots (publication of Check finalize tenders).
+ * Not a substitute for Check Revenue.
  */
 export type PaymentMethodAnalyticsBucketDto = Readonly<{
   paymentMethod: string;

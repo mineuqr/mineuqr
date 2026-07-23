@@ -1,8 +1,10 @@
 /**
  * REPORTING-PAYMENT-METHOD-ANALYTICS-1
+ * SETTLEMENT-RECORD-REPORTING-ADOPTION-1
  *
- * Payment-method analytics derived exclusively from Settlement Transactions.
- * Does not replace Check Revenue (SUM paid Check.grandTotal).
+ * Payment-method analytics from Settlement Record payment snapshots (publication).
+ * Does not replace Check Revenue (SUM paid published grandTotal).
+ * Does not recalculate tender amounts.
  */
 
 import {
@@ -19,7 +21,11 @@ import {
   type PaymentMethod,
 } from "@shared/operational-session";
 import { ReportingValidationError } from "./BusinessMetricsService";
+import { comparePaymentMethodParity } from "./financialReportingParity";
+import { resolveFinancialReportingSourceMode } from "./financialReportingSource";
 import { listSettlementTransactionsForReporting } from "./settlementTransactionReportingAdapter";
+import { listSettlementRecordPaymentLinesForReporting } from "./settlementRecordReportingAdapter";
+import { opsLog } from "../_core/opsLog";
 
 type Acc = {
   tenderAmount: number;
@@ -27,27 +33,21 @@ type Acc = {
   checkIds: Set<number>;
 };
 
+type TenderLine = Readonly<{
+  paymentMethod: string;
+  amount: string;
+  status: string;
+  checkId: number;
+}>;
+
 function emptyAcc(): Acc {
   return { tenderAmount: 0, transactionCount: 0, checkIds: new Set() };
 }
 
-/**
- * Build payment-method analytics for a restaurant period.
- * Source: captured Settlement Transactions only.
- */
-export async function getPaymentMethodAnalytics(
-  input: ReportingPeriodInput
-): Promise<PaymentMethodAnalyticsDto> {
-  if (!Number.isInteger(input.restaurantId) || input.restaurantId <= 0) {
-    throw new ReportingValidationError("Invalid restaurantId");
-  }
-
-  const rows = await listSettlementTransactionsForReporting({
-    restaurantId: input.restaurantId,
-    from: input.from,
-    to: input.to,
-  });
-
+function buildPaymentMethodAnalyticsDto(
+  input: ReportingPeriodInput,
+  rows: readonly TenderLine[]
+): PaymentMethodAnalyticsDto {
   const monetary = new Map<PaymentMethod, Acc>();
   let complimentaryAmount = 0;
 
@@ -101,4 +101,86 @@ export async function getPaymentMethodAnalytics(
     complimentaryAmount: formatReportingAmount(complimentaryAmount),
     buckets,
   };
+}
+
+async function loadTenderLines(
+  input: ReportingPeriodInput
+): Promise<readonly TenderLine[]> {
+  const mode = resolveFinancialReportingSourceMode();
+  if (mode === "check") {
+    const st = await listSettlementTransactionsForReporting({
+      restaurantId: input.restaurantId,
+      from: input.from,
+      to: input.to,
+    });
+    return st.map((row) => ({
+      paymentMethod: row.paymentMethod,
+      amount: row.amount,
+      status: row.status,
+      checkId: row.checkId,
+    }));
+  }
+
+  const srLines = await listSettlementRecordPaymentLinesForReporting({
+    restaurantId: input.restaurantId,
+    from: input.from,
+    to: input.to,
+  });
+  const srTenders = srLines.map((row) => ({
+    paymentMethod: row.paymentMethod,
+    amount: row.amount,
+    status: row.status,
+    checkId: row.checkId,
+  }));
+
+  if (mode === "dual") {
+    const st = await listSettlementTransactionsForReporting({
+      restaurantId: input.restaurantId,
+      from: input.from,
+      to: input.to,
+    });
+    const legacy = buildPaymentMethodAnalyticsDto(
+      input,
+      st.map((row) => ({
+        paymentMethod: row.paymentMethod,
+        amount: row.amount,
+        status: row.status,
+        checkId: row.checkId,
+      }))
+    );
+    const published = buildPaymentMethodAnalyticsDto(input, srTenders);
+    const parity = comparePaymentMethodParity(legacy, published);
+    if (!parity.matched) {
+      opsLog({
+        type: "reporting_payment_parity_mismatch",
+        category: "SYSTEM",
+        severity: "warn",
+        ts: new Date().toISOString(),
+        restaurantId: input.restaurantId,
+        metadata: {
+          from: input.from ?? null,
+          to: input.to ?? null,
+          deltas: parity.deltas,
+        },
+      });
+    }
+  }
+
+  return srTenders;
+}
+
+/**
+ * Build payment-method analytics for a restaurant period.
+ * Source: Settlement Record paymentSnapshot (captured lines).
+ * listSettlementRecordPaymentLinesForReporting is the publication read path.
+ */
+export async function getPaymentMethodAnalytics(
+  input: ReportingPeriodInput
+): Promise<PaymentMethodAnalyticsDto> {
+  if (!Number.isInteger(input.restaurantId) || input.restaurantId <= 0) {
+    throw new ReportingValidationError("Invalid restaurantId");
+  }
+
+  const rows = await loadTenderLines(input);
+  return buildPaymentMethodAnalyticsDto(input, rows);
 }

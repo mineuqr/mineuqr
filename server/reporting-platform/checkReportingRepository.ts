@@ -1,5 +1,9 @@
 /**
- * REPORTING-PLATFORM-ARCHITECTURE-1 — read-only Check facts for business KPIs.
+ * REPORTING-PLATFORM-ARCHITECTURE-1 — read-only Check facts.
+ *
+ * SETTLEMENT-RECORD-REPORTING-ADOPTION-1: Canonical financial KPIs read Settlement
+ * Record. This repository remains for dual-run parity and
+ * REPORTING_FINANCIAL_SOURCE=check emergency rollback only.
  * Does not mutate Check / Session / Order Domain.
  */
 
