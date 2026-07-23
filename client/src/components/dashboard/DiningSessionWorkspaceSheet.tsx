@@ -17,6 +17,7 @@ import {
 import { DiningSessionTimelineList } from "@/components/dashboard/DiningSessionTimelineList";
 import { OrderSettlementPanel } from "@/components/order-settlement/OrderSettlementPanel";
 import { SplitPaymentPanel } from "@/components/split-payment/SplitPaymentPanel";
+import { MultiCheckAllocationPanel } from "@/components/multi-check-allocation/MultiCheckAllocationPanel";
 import { useLanguage } from "@/contexts/LanguageContext";
 import type { DiningSessionStatus } from "@/lib/diningSessionCopy";
 import { formatDashboardSessionLabel } from "@/lib/diningSessionDashboardCopy";
@@ -189,6 +190,15 @@ export function DiningSessionWorkspaceSheet({
               />
 
               <SplitPaymentPanel
+                restaurantId={restaurantId}
+                checkId={data.checkId}
+                language={lang}
+                currencySymbol={sym}
+                enabled={workspaceEnabled}
+                showDiagnostics={import.meta.env.DEV}
+              />
+
+              <MultiCheckAllocationPanel
                 restaurantId={restaurantId}
                 checkId={data.checkId}
                 language={lang}
