@@ -416,12 +416,12 @@ Attribution remains blocked on those successors — documented gap, **not** a re
 
 ## 15. ADR Recommendations
 
-| Recommendation | Purpose |
-|----------------|---------|
-| **ADR-ARCH-029 — Register Operations Platform** | Constitutionalize Duty plane, resolution policies, non-ownership of money, device matrix |
-| **ADR-028 addendum** | Clarify Catalog vs Duty statuses; OpenRegister ≠ OpenFinancialShift |
+| Recommendation | Status |
+|----------------|--------|
+| **ADR-ARCH-030 — Financial Shift Operational Lifecycle Governance** | **Accepted** — constitutionalizes Register Catalog/Duty, Shift lifecycle, Attribution fail-open; OpenRegister ≠ OpenFinancialShift |
+| **ADR-ARCH-029 — Register Operations Platform** | Optional later; MUST NOT contradict ADR-030 (device matrix may still be elaborated) |
 
-Do **not** amend ADR-020/022/026 money or publication ownership.
+Do **not** amend ADR-020/022/026/028 money or publication ownership.
 
 ---
 
@@ -460,4 +460,5 @@ Current production schema (`crmp_registers`) supports identity + catalog status 
 
 **REGISTER-OPERATIONS-PLATFORM-1 — ARCHITECTURE CERTIFIED**
 
-Authorized next (separate programs): ADR-029 draft → Register Operations Implementation (duty/operator persistence) → FINANCIAL-SHIFT-LIFECYCLE-1 → SETTLEMENT-CONTEXT-ADOPTION-1 → SETTLEMENT-ATTRIBUTION-ADOPTION-1.
+Authorized next (separate programs): Register Operations Implementation (duty/operator persistence) → Financial Shift Lifecycle Implementation → SETTLEMENT-CONTEXT-ADOPTION-1 → SETTLEMENT-ATTRIBUTION-ADOPTION-1.  
+**ADR-ARCH-030:** Accepted (governs Register Duty + Financial Shift lifecycle). **FINANCIAL-SHIFT-LIFECYCLE-1:** Architecture certified.

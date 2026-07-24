@@ -593,13 +593,13 @@ Aligns with ADR-028 CR-INV-* and CRMP D-INV-* (FS-INV-* are lifecycle elaboratio
 
 ## 15. ADR Recommendations
 
-| Recommendation | Purpose |
-|----------------|---------|
-| **ADR-ARCH-030 — Financial Shift Lifecycle** | Constitutionalize refined statuses (`suspended`, `closing`, `archived`), resolution commands, CancelOpen, non-ownership of money, settle fail-open w.r.t. attribution |
-| **ADR-028 addendum (optional)** | Point lifecycle detail to ADR-030; preserve AR classification |
-| **Do not amend** | ADR-020 / 022 / 026 money or publication ownership |
+| Recommendation | Status |
+|----------------|--------|
+| **ADR-ARCH-030 — Financial Shift Operational Lifecycle Governance** | **Accepted** — `docs/architecture/adrs/ADR-ARCH-030-financial-shift-operational-lifecycle.md` |
+| **ADR-028 addendum (optional)** | Not required; ADR-030 refines 028 without modifying ownership |
+| **Do not amend** | ADR-020 / 022 / 026 / 028 money or publication ownership |
 
-Register Operations ADR-029 (recommended by ROP) remains complementary: Duty plane vs Shift accountability plane.
+Register Operations ADR-029 (if published later) MUST NOT contradict ADR-030; Duty plane is already constitutional under ADR-030.
 
 ---
 
@@ -709,6 +709,7 @@ Current production foundation (`0077_crmp` + CRMP-IMPLEMENTATION-1) supports `op
 
 **FINANCIAL-SHIFT-LIFECYCLE-1 — ARCHITECTURE CERTIFIED**
 
-Authorized next (separate programs): ADR-ARCH-030 draft → Financial Shift Lifecycle Implementation (status refinement + ROP duty guards) → SETTLEMENT-CONTEXT-ADOPTION-1 → SETTLEMENT-ATTRIBUTION-ADOPTION-1.
+Authorized next (separate programs): Financial Shift Lifecycle Implementation (status refinement + ROP duty guards) → SETTLEMENT-CONTEXT-ADOPTION-1 → SETTLEMENT-ATTRIBUTION-ADOPTION-1.  
+**ADR-ARCH-030:** Accepted (governance publication complete).
 
 **Explicitly unauthorized by this program:** implementation, schema changes, production migration, UI development, redesign of Check / Settlement Record / Register ownership.
