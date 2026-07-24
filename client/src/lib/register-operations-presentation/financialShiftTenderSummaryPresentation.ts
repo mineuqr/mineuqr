@@ -1,9 +1,16 @@
 /**
- * FINANCIAL-SHIFT-SUMMARIES-ADOPTION-1 — presentation mapping for tender summary.
- * No amount calculation — maps API DTO fields to display rows only.
+ * FINANCIAL-SHIFT-SUMMARIES-ADOPTION-1 /
+ * FINANCIAL-SHIFT-TENDER-PRESENTATION-REFINEMENT-1 —
+ * presentation mapping for Register Operations tender summary.
+ *
+ * Groups electronic methods for Ops display only.
+ * Does not change API DTO, Settlement, Reporting, or Expected Cash.
  */
 
-import { preferredPaymentMethodLabel } from "@shared/reporting-platform";
+import {
+  formatReportingAmount,
+  parseReportingAmount,
+} from "@shared/reporting-platform";
 import {
   registerOperationsUiLabel,
   type RegisterOperationsLang,
@@ -28,8 +35,8 @@ type TenderSummaryDto = Readonly<{
   }>[];
 }>;
 
-const METHOD_ORDER = [
-  "cash",
+/** Electronic / bank tenders rolled into Ops “شبكة / بنك”. */
+export const OPS_NETWORK_BANK_METHODS = [
   "mada",
   "visa",
   "mastercard",
@@ -39,17 +46,28 @@ const METHOD_ORDER = [
   "other",
 ] as const;
 
-/** Build display rows from certified tender summary DTO (no math). */
+function sumDisplayAmounts(amounts: readonly string[]): string {
+  let total = 0;
+  for (const amount of amounts) {
+    total += parseReportingAmount(amount);
+  }
+  return formatReportingAmount(total);
+}
+
+/** Build operational rows from certified tender summary DTO. */
 export function presentTenderSummaryRows(
   summary: TenderSummaryDto,
   language: RegisterOperationsLang
 ): readonly TenderSummaryRowVm[] {
-  const lang = language === "ar" ? "ar" : "en";
   const byMethod = new Map(
     summary.methods.map((m) => [m.paymentMethod, m.amount] as const)
   );
 
-  const rows: TenderSummaryRowVm[] = [
+  const networkBankAmount = sumDisplayAmounts(
+    OPS_NETWORK_BANK_METHODS.map((method) => byMethod.get(method) ?? "0.00")
+  );
+
+  return [
     {
       key: "total",
       label: registerOperationsUiLabel("totalSalesTenders", language),
@@ -61,27 +79,20 @@ export function presentTenderSummaryRows(
       label: registerOperationsUiLabel("cashSales", language),
       amount: summary.cashTenderTotal,
     },
+    {
+      key: "network_bank",
+      label: registerOperationsUiLabel("tenderNetworkBank", language),
+      amount: networkBankAmount,
+    },
+    {
+      key: "complimentary",
+      label: registerOperationsUiLabel("tenderComplimentary", language),
+      amount: summary.complimentaryAmount,
+    },
+    {
+      key: "refund",
+      label: registerOperationsUiLabel("tenderRefund", language),
+      amount: summary.refundAmount,
+    },
   ];
-
-  for (const method of METHOD_ORDER) {
-    if (method === "cash") continue;
-    rows.push({
-      key: method,
-      label: preferredPaymentMethodLabel(method, lang),
-      amount: byMethod.get(method) ?? "0.00",
-    });
-  }
-
-  rows.push({
-    key: "complimentary",
-    label: registerOperationsUiLabel("tenderComplimentary", language),
-    amount: summary.complimentaryAmount,
-  });
-  rows.push({
-    key: "refund",
-    label: registerOperationsUiLabel("tenderRefund", language),
-    amount: summary.refundAmount,
-  });
-
-  return rows;
 }

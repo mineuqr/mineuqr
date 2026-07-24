@@ -58,13 +58,17 @@ describe("Register Operations presentation architecture guards", () => {
     expect(panel).not.toContain("attachDevice");
   });
 
-  it("tender summary presentation does not calculate amounts", () => {
+  it("tender summary presentation groups Ops rows without Domain/API changes", () => {
     const present = read(
       "src/lib/register-operations-presentation/financialShiftTenderSummaryPresentation.ts"
     );
+    expect(present).toContain("FINANCIAL-SHIFT-TENDER-PRESENTATION-REFINEMENT-1");
     expect(present).toContain("presentTenderSummaryRows");
-    expect(present).not.toMatch(/parseFloat|Number\(|toCents|computeExpectedCash/);
-    expect(present).toContain("preferredPaymentMethodLabel");
+    expect(present).toContain("OPS_NETWORK_BANK_METHODS");
+    expect(present).toContain("tenderNetworkBank");
+    expect(present).not.toMatch(/toCents|computeExpectedCash|openFinancialShift/);
+    expect(present).not.toContain("trpc.");
+    expect(present).not.toMatch(/from ["']@shared\/crmp/);
   });
 
   it("Register.open remains independent of FinancialShift.open in domain service", () => {

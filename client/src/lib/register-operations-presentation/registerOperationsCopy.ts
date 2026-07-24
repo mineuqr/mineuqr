@@ -39,8 +39,9 @@ const COPY = {
     ar: "إجمالي المبيعات",
     en: "Total sales (tenders)",
   },
-  cashSales: { ar: "المبيعات النقدية", en: "Cash sales" },
-  tenderComplimentary: { ar: "مجاملة", en: "Complimentary" },
+  cashSales: { ar: "نقد", en: "Cash" },
+  tenderNetworkBank: { ar: "شبكة / بنك", en: "Network / Bank" },
+  tenderComplimentary: { ar: "ضيافة", en: "Hospitality" },
   tenderRefund: { ar: "مرتجع", en: "Refund" },
   tenderSummaryEmpty: {
     ar: "لا توجد تسويات منسوبة لهذه الوردية بعد.",
