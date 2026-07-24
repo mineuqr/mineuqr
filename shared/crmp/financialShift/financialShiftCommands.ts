@@ -623,6 +623,8 @@ export function rejectHandover(
 
 export type AcceptHandoverCommand = Readonly<{
   outgoing: FinancialShift;
+  /** Canonical Register AR — successor open must not invent Register / Duty. */
+  register: CashRegister;
   acceptingUserId: number;
   successorShiftId: string;
   successorDrawerId: string;
@@ -669,20 +671,22 @@ export function acceptHandover(
     ...bump(outgoing, command.acceptedAt),
   };
 
+  if (command.register.registerId !== outgoing.registerId) {
+    throw new CrmpInvariantError(
+      "Handover successor Register must match outgoing Financial Shift Register"
+    );
+  }
+  if (command.register.restaurantId !== outgoing.restaurantId) {
+    throw new CrmpInvariantError(
+      "Handover successor Register restaurant mismatch"
+    );
+  }
+
   const successor = openFinancialShift({
     financialShiftId: command.successorShiftId,
     drawerId: command.successorDrawerId,
     openingMovementId: command.successorOpeningMovementId,
-    register: {
-      registerId: outgoing.registerId,
-      restaurantId: outgoing.restaurantId,
-      displayName: "",
-      status: "active",
-      deviceId: null,
-      version: 1,
-      createdAt: command.acceptedAt,
-      updatedAt: command.acceptedAt,
-    },
+    register: command.register,
     hasActiveShiftOnRegister: false,
     restaurantId: outgoing.restaurantId,
     operatorUserId: command.acceptingUserId,

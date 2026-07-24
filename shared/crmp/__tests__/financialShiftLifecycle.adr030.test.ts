@@ -15,10 +15,14 @@ import {
   CrmpConflictError,
   CrmpInvariantError,
 } from "../index";
-import { activateRegister, provisionRegister } from "../register/registerCommands";
+import {
+  activateRegister,
+  openRegister,
+  provisionRegister,
+} from "../register/registerCommands";
 
 function activeRegister() {
-  return activateRegister({
+  const catalog = activateRegister({
     register: provisionRegister({
       registerId: "reg_1",
       restaurantId: 1,
@@ -27,6 +31,7 @@ function activeRegister() {
     }),
     at: "t1",
   });
+  return openRegister({ register: catalog, at: "t1b", operatorUserId: 10 });
 }
 
 function openShift() {

@@ -1549,7 +1549,7 @@ export type SelectCustomerPushSubscription = typeof customerPushSubscriptions.$i
 export type InsertOrderItem = typeof orderItems.$inferInsert;
 export type SelectOrderItem = typeof orderItems.$inferSelect;
 
-// ─── CRMP (CRMP-IMPLEMENTATION-1 / ADR-ARCH-028) ─────────────────────
+// ─── CRMP (CRMP-IMPLEMENTATION-1 / ADR-ARCH-028 / REGISTER-OPERATIONS-IMPLEMENTATION-1) ─
 /** Cash Register — operational financial station. Not Device. Not money owner. */
 export const crmpRegisters = mysqlTable(
 	"crmp_registers",
@@ -1559,7 +1559,11 @@ export const crmpRegisters = mysqlTable(
 		restaurantId: int().notNull(),
 		displayName: varchar({ length: 128 }).notNull(),
 		status: mysqlEnum(["provisioned", "active", "inactive"]).notNull(),
+		/** Duty plane — ADR-ARCH-030 / ROP */
+		dutyStatus: mysqlEnum(["closed", "open", "suspended"]).default("closed").notNull(),
 		deviceId: varchar({ length: 64 }),
+		assignedOperatorUserId: int(),
+		operatorAssignedAt: timestamp({ mode: "string" }),
 		version: int().default(1).notNull(),
 		createdAt: timestamp({ mode: "string" }).notNull(),
 		updatedAt: timestamp({ mode: "string" }).notNull(),
@@ -1568,6 +1572,7 @@ export const crmpRegisters = mysqlTable(
 		uniqueIndex("crmp_registers_register_id_unique").on(table.registerId),
 		index("crmp_registers_restaurant_id").on(table.restaurantId),
 		index("crmp_registers_restaurant_status").on(table.restaurantId, table.status),
+		index("crmp_registers_restaurant_duty").on(table.restaurantId, table.dutyStatus),
 	]
 );
 

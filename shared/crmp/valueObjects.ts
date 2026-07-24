@@ -18,6 +18,17 @@ export const REGISTER_STATUSES = [
 ] as const;
 export type RegisterStatus = (typeof REGISTER_STATUSES)[number];
 
+/** ADR-ARCH-030 / ROP — Register Duty plane (operational accountability cycle). */
+export const REGISTER_DUTY_STATUSES = [
+  "closed",
+  "open",
+  "suspended",
+] as const;
+export type RegisterDutyStatus = (typeof REGISTER_DUTY_STATUSES)[number];
+
+export const REGISTER_OPERATIONS_PROGRAM_ID =
+  "REGISTER-OPERATIONS-IMPLEMENTATION-1" as const;
+
 /** ADR-ARCH-030 canonical statuses. Persisted `pending` is prohibited. */
 export const SHIFT_STATUSES = [
   "open",

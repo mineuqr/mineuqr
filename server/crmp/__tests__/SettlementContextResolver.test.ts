@@ -27,6 +27,12 @@ describe("SettlementContextResolver", () => {
       deviceId: "dev_1",
       at: "t1b",
     });
+    await registers.open({
+      restaurantId: 1,
+      registerId: "reg_1",
+      operatorUserId: 10,
+      at: "t1c",
+    });
   });
 
   it("resolves when open shift exists", async () => {

@@ -10,7 +10,8 @@ import type {
 
 export type CrmpRegisterRepository = {
   insert(register: CashRegister): Promise<void>;
-  update(register: CashRegister): Promise<void>;
+  /** Optimistic concurrency when expectedVersion is supplied. */
+  update(register: CashRegister, expectedVersion?: number): Promise<void>;
   findById(
     restaurantId: number,
     registerId: string

@@ -19,8 +19,10 @@ describe("CRMP Register lifecycle", () => {
       createdAt: "2026-07-24T06:00:00Z",
     });
     expect(r.status).toBe("provisioned");
+    expect(r.dutyStatus).toBe("closed");
     const active = activateRegister({ register: r, at: "2026-07-24T06:01:00Z" });
     expect(active.status).toBe("active");
+    expect(active.dutyStatus).toBe("closed");
     const inactive = deactivateRegister({
       register: active,
       hasActiveShift: false,

@@ -55,6 +55,12 @@ describe("checkSettlementAttributionAdoption", () => {
       at: "t0",
     });
     await registers.activate({ restaurantId: 1, registerId: "reg_1", at: "t1" });
+    await registers.open({
+      restaurantId: 1,
+      registerId: "reg_1",
+      operatorUserId: 10,
+      at: "t1b",
+    });
     await shifts.open({
       restaurantId: 1,
       registerId: "reg_1",

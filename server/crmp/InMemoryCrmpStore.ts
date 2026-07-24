@@ -34,10 +34,18 @@ export function createInMemoryCrmpStore(): CrmpUnitOfWork {
       }
       registers.set(key, cloneRegister(register));
     },
-    async update(register) {
+    async update(register, expectedVersion) {
       const key = `${register.restaurantId}:${register.registerId}`;
       const existing = registers.get(key);
       if (!existing) throw new Error(`Register not found: ${register.registerId}`);
+      if (
+        expectedVersion != null &&
+        existing.version !== expectedVersion
+      ) {
+        throw new CrmpConflictError(
+          `Register version conflict: expected ${expectedVersion}, found ${existing.version}`
+        );
+      }
       registers.set(key, cloneRegister(register));
     },
     async findById(restaurantId, registerId) {

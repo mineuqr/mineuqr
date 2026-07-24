@@ -10,11 +10,15 @@ import {
   rejectHandover,
 } from "../financialShift/financialShiftCommands";
 import { computeExpectedCash } from "../financialShift/expectedCash";
-import { activateRegister, provisionRegister } from "../register/registerCommands";
+import {
+  activateRegister,
+  openRegister,
+  provisionRegister,
+} from "../register/registerCommands";
 import { CrmpConflictError, CrmpImmutabilityError, CrmpInvariantError } from "../crmpErrors";
 
 function activeRegister() {
-  return activateRegister({
+  const catalog = activateRegister({
     register: provisionRegister({
       registerId: "reg_1",
       restaurantId: 1,
@@ -23,6 +27,7 @@ function activeRegister() {
     }),
     at: "t1",
   });
+  return openRegister({ register: catalog, at: "t1b", operatorUserId: 10 });
 }
 
 function openShift() {
@@ -193,6 +198,7 @@ describe("CRMP Financial Shift commands", () => {
     });
     const { closed, successor } = acceptHandover({
       outgoing: shift,
+      register: activeRegister(),
       acceptingUserId: 20,
       successorShiftId: "fsh_2",
       successorDrawerId: "drw_2",

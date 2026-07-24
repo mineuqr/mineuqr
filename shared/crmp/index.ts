@@ -11,6 +11,8 @@ export * from "./valueObjects";
 export * from "./register/registerContract";
 export * from "./register/registerLifecycle";
 export * from "./register/registerCommands";
+export * from "./register/registerEvents";
+export * from "./register/registerResolve";
 export * from "./financialShift/financialShiftContract";
 export * from "./financialShift/financialShiftLifecycle";
 export * from "./financialShift/expectedCash";

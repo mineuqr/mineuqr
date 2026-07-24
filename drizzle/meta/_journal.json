@@ -554,6 +554,13 @@
       "when": 1784640000000,
       "tag": "0078_crmp_shift_lifecycle",
       "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "5",
+      "when": 1784650000000,
+      "tag": "0079_crmp_register_duty",
+      "breakpoints": true
     }
   ]
 }

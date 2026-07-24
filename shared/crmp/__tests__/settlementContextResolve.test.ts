@@ -3,11 +3,15 @@ import {
   resolveSettlementContextFromFacts,
   unavailableSettlementContext,
 } from "../index";
-import { activateRegister, provisionRegister } from "../register/registerCommands";
+import {
+  activateRegister,
+  openRegister,
+  provisionRegister,
+} from "../register/registerCommands";
 import { openFinancialShift } from "../financialShift/financialShiftCommands";
 
 function reg(deviceId: string | null = null) {
-  const base = activateRegister({
+  const catalog = activateRegister({
     register: provisionRegister({
       registerId: "reg_1",
       restaurantId: 1,
@@ -15,6 +19,11 @@ function reg(deviceId: string | null = null) {
       createdAt: "t0",
     }),
     at: "t1",
+  });
+  const base = openRegister({
+    register: catalog,
+    at: "t1b",
+    operatorUserId: 10,
   });
   return deviceId ? { ...base, deviceId } : base;
 }
@@ -154,5 +163,29 @@ describe("SETTLEMENT-CONTEXT-ADOPTION-1 resolveSettlementContextFromFacts", () =
     const ctx = unavailableSettlementContext(9, "t", ["x"]);
     expect(ctx.status).toBe("unavailable");
     expect(ctx.restaurantId).toBe(9);
+  });
+
+  it("closed Duty cannot accept settlement context", () => {
+    const closed = activateRegister({
+      register: provisionRegister({
+        registerId: "reg_1",
+        restaurantId: 1,
+        displayName: "Front",
+        createdAt: "t0",
+      }),
+      at: "t1",
+    });
+    expect(closed.dutyStatus).toBe("closed");
+    const ctx = resolveSettlementContextFromFacts({
+      restaurantId: 1,
+      resolvedAt: "t3",
+      hints: { registerId: "reg_1", operatorUserId: 10 },
+      registers: [closed],
+      activeShiftOnRegister: null,
+      activeShiftsForOperator: [],
+    });
+    expect(ctx.gaps).toContain("register_duty_closed");
+    expect(ctx.financialShiftId).toBeNull();
+    expect(ctx.status).not.toBe("resolved");
   });
 });

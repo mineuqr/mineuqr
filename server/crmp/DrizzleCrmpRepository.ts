@@ -36,7 +36,10 @@ function mapRegister(
     restaurantId: row.restaurantId,
     displayName: row.displayName,
     status: row.status,
+    dutyStatus: row.dutyStatus,
     deviceId: row.deviceId ?? null,
+    assignedOperatorUserId: row.assignedOperatorUserId ?? null,
+    operatorAssignedAt: row.operatorAssignedAt ?? null,
     version: row.version,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -265,21 +268,44 @@ export function createDrizzleCrmpUnitOfWork(): CrmpUnitOfWork {
         restaurantId: register.restaurantId,
         displayName: register.displayName,
         status: register.status,
+        dutyStatus: register.dutyStatus,
         deviceId: register.deviceId,
+        assignedOperatorUserId: register.assignedOperatorUserId,
+        operatorAssignedAt: register.operatorAssignedAt,
         version: register.version,
         createdAt: register.createdAt,
         updatedAt: register.updatedAt,
       });
     },
-    async update(register) {
+    async update(register, expectedVersion) {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
+      if (expectedVersion != null) {
+        const rows = await db
+          .select({ version: crmpRegisters.version })
+          .from(crmpRegisters)
+          .where(
+            and(
+              eq(crmpRegisters.restaurantId, register.restaurantId),
+              eq(crmpRegisters.registerId, register.registerId)
+            )
+          )
+          .limit(1);
+        if (rows[0] && rows[0].version !== expectedVersion) {
+          throw new CrmpConflictError(
+            `Register version conflict: expected ${expectedVersion}, found ${rows[0].version}`
+          );
+        }
+      }
       await db
         .update(crmpRegisters)
         .set({
           displayName: register.displayName,
           status: register.status,
+          dutyStatus: register.dutyStatus,
           deviceId: register.deviceId,
+          assignedOperatorUserId: register.assignedOperatorUserId,
+          operatorAssignedAt: register.operatorAssignedAt,
           version: register.version,
           updatedAt: register.updatedAt,
         })

@@ -4,6 +4,7 @@
  */
 
 import type { CashRegister } from "../register/registerContract";
+import { registerDutyAllowsSettlementContext } from "../register/registerLifecycle";
 import type { FinancialShift } from "../financialShift/financialShiftContract";
 import { isActiveShiftStatus } from "../valueObjects";
 import {
@@ -79,6 +80,11 @@ export function resolveSettlementContextFromFacts(
       gaps.push("register_not_active");
       registerId = hit.registerId;
       if (hit.deviceId) deviceId = deviceId ?? hit.deviceId;
+    } else if (!registerDutyAllowsSettlementContext(hit.dutyStatus)) {
+      // Closed Duty cannot accept settlements (ADR-030 / ROP).
+      gaps.push("register_duty_closed");
+      registerId = hit.registerId;
+      if (hit.deviceId) deviceId = deviceId ?? hit.deviceId;
     } else {
       registerId = hit.registerId;
       if (hit.deviceId) deviceId = deviceId ?? hit.deviceId;
@@ -96,6 +102,8 @@ export function resolveSettlementContextFromFacts(
       const hit = byDevice[0]!;
       if (hit.status !== "active") {
         gaps.push("register_not_active");
+      } else if (!registerDutyAllowsSettlementContext(hit.dutyStatus)) {
+        gaps.push("register_duty_closed");
       }
       registerId = hit.registerId;
     }

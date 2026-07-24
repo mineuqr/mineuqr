@@ -77,19 +77,35 @@ describe("CRMP / SHIFT-LIFECYCLE architecture guards", () => {
     expect(sql).not.toMatch(/DROP TABLE/);
   });
 
-  it("schema exports ADR-030 shift statuses", () => {
+  it("migration 0079 is additive Register Duty only", () => {
+    const sql = read("drizzle/0079_crmp_register_duty.sql");
+    expect(sql).toContain("crmp_registers");
+    expect(sql).toContain("dutyStatus");
+    expect(sql).toContain("assignedOperatorUserId");
+    expect(sql).toContain("operatorAssignedAt");
+    expect(sql).not.toMatch(/operational_checks/);
+    expect(sql).not.toMatch(/settlement_records/);
+    expect(sql).not.toMatch(/crmp_financial_shifts/);
+    expect(sql).not.toMatch(/DROP TABLE/);
+  });
+
+  it("schema exports ADR-030 shift statuses and Register Duty", () => {
     const schema = read("drizzle/schema.ts");
     expect(schema).toContain("crmpRegisters");
     expect(schema).toContain("suspended");
     expect(schema).toContain("closing");
     expect(schema).toContain("archived");
     expect(schema).toContain("SHIFT-LIFECYCLE-IMPLEMENTATION-1");
+    expect(schema).toContain("REGISTER-OPERATIONS-IMPLEMENTATION-1");
+    expect(schema).toContain("dutyStatus");
+    expect(schema).toContain("assignedOperatorUserId");
   });
 
-  it("journal includes 0077 and 0078", () => {
+  it("journal includes 0077–0079", () => {
     const journal = read("drizzle/meta/_journal.json");
     expect(journal).toContain("0077_crmp");
     expect(journal).toContain("0078_crmp_shift_lifecycle");
+    expect(journal).toContain("0079_crmp_register_duty");
   });
 
   it("domain barrel marks ADR-028 program", () => {

@@ -441,8 +441,16 @@ export class FinancialShiftDomainService {
       input.restaurantId,
       input.financialShiftId
     );
+    const register = await this.uow.registers.findById(
+      input.restaurantId,
+      current.registerId
+    );
+    if (!register) {
+      throw new CrmpNotFoundError(`Register not found: ${current.registerId}`);
+    }
     const result = acceptHandover({
       outgoing: current,
+      register,
       acceptingUserId: input.acceptingUserId,
       successorShiftId: newCrmpId("fsh"),
       successorDrawerId: newCrmpId("drw"),
