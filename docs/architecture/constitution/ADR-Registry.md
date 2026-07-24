@@ -35,6 +35,7 @@
 | ADR-ARCH-025 | Multi Check Allocation Platform | **Accepted** | Architecture Authority | MULTI-CHECK-ALLOCATION-ARCHITECTURE-1 | — | FSP cross-Check responsibility redistribution | **Not implemented** | Refines ADR-023/024: Allocation≠Aggregate Root; Check-commanded relationship facts; conserves I-FC/I-SP; Membership remains composition SSOT |
 | ADR-ARCH-026 | Settlement Record Platform | **Accepted** | Architecture Authority | SETTLEMENT-RECORD-PLATFORM-1 · SETTLEMENT-RECORD-IMPLEMENTATION-1 | — | FSP Canonical Financial Document / Reporting publication | **Partial (write-side)** | Refines ADR-020/021/023: Settlement Record≠Aggregate Root; Check remains sole monetary authority; append-only immutable publication; SR-INV-01…10. Reporting cutover pending. |
 | ADR-ARCH-027 | Operational Document Identity Standard | **Accepted** | Architecture Authority | OPERATIONAL-DOCUMENT-IDENTITY-STANDARD-1 | Ad-hoc document presentation formats | Cross-platform human document identity | **Partial** | Registry + Provider + Settlement adoption; Orders/Checks/Reporting/Printing/Notifications phased. Standard: `docs/architecture/standards/OPERATIONAL-DOCUMENT-IDENTITY-STANDARD.md` |
+| ADR-ARCH-028 | Cash Register Management Platform (CRMP) | **Accepted** | Architecture Authority | CASH-REGISTER-MANAGEMENT-ARCHITECTURE-1 | — | Register / Financial Shift / Drawer accountability / Settlement Attribution | **Not implemented** | Additive ops platform; Check remains sole monetary AR (020); SR remains Check-published (026); no Cashier domain; CR-INV-01…14. Implementation unauthorized by ADR alone. |
 
 **Registry maintenance:** Principal Engineer updates Implementation Status at program exit certification. Status changes require Architecture Authority approval per §26.
 
@@ -69,5 +70,7 @@
 | ADR-ARCH-024 | [ADR-ARCH-024-split-payment-platform.md](../adrs/ADR-ARCH-024-split-payment-platform.md) |
 | ADR-ARCH-025 | [ADR-ARCH-025-multi-check-allocation-platform.md](../adrs/ADR-ARCH-025-multi-check-allocation-platform.md) |
 | ADR-ARCH-026 | [ADR-ARCH-026-settlement-record-platform.md](../adrs/ADR-ARCH-026-settlement-record-platform.md) |
+| ADR-ARCH-027 | [ADR-ARCH-027-operational-document-identity.md](../adrs/ADR-ARCH-027-operational-document-identity.md) |
+| ADR-ARCH-028 | [ADR-ARCH-028-cash-register-management-platform.md](../adrs/ADR-ARCH-028-cash-register-management-platform.md) |
 
 **Related:** [Blueprint](../blueprints/Order-Centric-Architecture.md) · [ADR Lifecycle](../governance/ADR-Lifecycle.md)
