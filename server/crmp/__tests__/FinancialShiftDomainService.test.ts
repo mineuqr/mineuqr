@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { CrmpConflictError, CrmpImmutabilityError } from "@shared/crmp";
+import {
+  CrmpConflictError,
+  CrmpImmutabilityError,
+  CrmpInvariantError,
+} from "@shared/crmp";
 import { createInMemoryCrmpStore } from "../InMemoryCrmpStore";
 import { RegisterDomainService } from "../RegisterDomainService";
 import { FinancialShiftDomainService } from "../FinancialShiftDomainService";
@@ -25,7 +29,7 @@ describe("FinancialShiftDomainService + repository", () => {
   });
 
   it("opens shift and persists expected cash path", async () => {
-    const shift = await shifts.open({
+    const { shift, events } = await shifts.open({
       restaurantId: 1,
       registerId: "reg_1",
       operatorUserId: 10,
@@ -35,6 +39,7 @@ describe("FinancialShiftDomainService + repository", () => {
       at: "t2",
     });
     expect(shift.drawer.movements[0]?.movementType).toBe("opening_float");
+    expect(events[0]?.eventType).toBe("FinancialShiftOpened");
     await drawer.recordMovement({
       restaurantId: 1,
       financialShiftId: "fsh_1",
@@ -69,8 +74,31 @@ describe("FinancialShiftDomainService + repository", () => {
     ).rejects.toBeInstanceOf(CrmpConflictError);
   });
 
+  it("open is idempotent by financialShiftId", async () => {
+    const first = await shifts.open({
+      restaurantId: 1,
+      registerId: "reg_1",
+      operatorUserId: 10,
+      openingFloatAmount: "0",
+      currencyCode: "SAR",
+      financialShiftId: "fsh_1",
+      at: "t2",
+    });
+    const second = await shifts.open({
+      restaurantId: 1,
+      registerId: "reg_1",
+      operatorUserId: 10,
+      openingFloatAmount: "0",
+      currencyCode: "SAR",
+      financialShiftId: "fsh_1",
+      at: "t3",
+    });
+    expect(second.alreadyApplied).toBe(true);
+    expect(second.shift.version).toBe(first.shift.version);
+  });
+
   it("attribution idempotent by settlementRecordId", async () => {
-    const shift = await shifts.open({
+    const { shift } = await shifts.open({
       restaurantId: 1,
       registerId: "reg_1",
       operatorUserId: 10,
@@ -101,7 +129,7 @@ describe("FinancialShiftDomainService + repository", () => {
   });
 
   it("close makes shift immutable", async () => {
-    const shift = await shifts.open({
+    const { shift } = await shifts.open({
       restaurantId: 1,
       registerId: "reg_1",
       operatorUserId: 10,
@@ -137,7 +165,7 @@ describe("FinancialShiftDomainService + repository", () => {
   });
 
   it("handover accept opens successor", async () => {
-    const shift = await shifts.open({
+    const { shift } = await shifts.open({
       restaurantId: 1,
       registerId: "reg_1",
       operatorUserId: 10,
@@ -168,7 +196,233 @@ describe("FinancialShiftDomainService + repository", () => {
       at: "t5",
     });
     expect(closed.status).toBe("closed");
+    expect(closed.closeReason).toBe("handover");
     expect(successor.operatorUserId).toBe(20);
     expect(successor.openingFloatAmount).toBe("75.00");
+  });
+
+  it("suspend/resume and beginClose/close corridor", async () => {
+    const { shift } = await shifts.open({
+      restaurantId: 1,
+      registerId: "reg_1",
+      operatorUserId: 10,
+      openingFloatAmount: "50.00",
+      currencyCode: "SAR",
+      financialShiftId: "fsh_1",
+      at: "t2",
+    });
+    const suspended = await shifts.suspend({
+      restaurantId: 1,
+      financialShiftId: shift.financialShiftId,
+      at: "t3",
+    });
+    expect(suspended.shift.status).toBe("suspended");
+    expect(suspended.events[0]?.eventType).toBe("FinancialShiftSuspended");
+
+    const resumed = await shifts.resume({
+      restaurantId: 1,
+      financialShiftId: shift.financialShiftId,
+      at: "t4",
+    });
+    expect(resumed.shift.status).toBe("open");
+
+    const closing = await shifts.beginClose({
+      restaurantId: 1,
+      financialShiftId: shift.financialShiftId,
+      at: "t5",
+    });
+    expect(closing.shift.status).toBe("closing");
+    expect(closing.events[0]?.eventType).toBe("FinancialShiftClosingStarted");
+
+    await shifts.recordCount({
+      restaurantId: 1,
+      financialShiftId: shift.financialShiftId,
+      kind: "final",
+      actualAmount: "50.00",
+      actorUserId: 10,
+      at: "t6",
+    });
+    const closed = await shifts.close({
+      restaurantId: 1,
+      financialShiftId: shift.financialShiftId,
+      at: "t7",
+    });
+    expect(closed.shift.status).toBe("closed");
+    expect(closed.events[0]?.eventType).toBe("FinancialShiftClosed");
+
+    const again = await shifts.close({
+      restaurantId: 1,
+      financialShiftId: shift.financialShiftId,
+      at: "t8",
+    });
+    expect(again.alreadyApplied).toBe(true);
+
+    const archived = await shifts.archive({
+      restaurantId: 1,
+      financialShiftId: shift.financialShiftId,
+      at: "t9",
+    });
+    expect(archived.shift.status).toBe("archived");
+    expect(archived.events[0]?.eventType).toBe("FinancialShiftArchived");
+  });
+
+  it("abort close when no final count; block after final count", async () => {
+    const { shift } = await shifts.open({
+      restaurantId: 1,
+      registerId: "reg_1",
+      operatorUserId: 10,
+      openingFloatAmount: "10.00",
+      currencyCode: "SAR",
+      financialShiftId: "fsh_1",
+      at: "t2",
+    });
+    await shifts.beginClose({
+      restaurantId: 1,
+      financialShiftId: shift.financialShiftId,
+      at: "t3",
+    });
+    const aborted = await shifts.abortClose({
+      restaurantId: 1,
+      financialShiftId: shift.financialShiftId,
+      at: "t4",
+    });
+    expect(aborted.shift.status).toBe("open");
+
+    await shifts.beginClose({
+      restaurantId: 1,
+      financialShiftId: shift.financialShiftId,
+      at: "t5",
+    });
+    await shifts.recordCount({
+      restaurantId: 1,
+      financialShiftId: shift.financialShiftId,
+      kind: "final",
+      actualAmount: "10.00",
+      actorUserId: 10,
+      at: "t6",
+    });
+    await expect(
+      shifts.abortClose({
+        restaurantId: 1,
+        financialShiftId: shift.financialShiftId,
+        at: "t7",
+      })
+    ).rejects.toBeInstanceOf(CrmpInvariantError);
+  });
+
+  it("cancelOpen on empty shift; reject when not empty", async () => {
+    const { shift } = await shifts.open({
+      restaurantId: 1,
+      registerId: "reg_1",
+      operatorUserId: 10,
+      openingFloatAmount: "5.00",
+      currencyCode: "SAR",
+      financialShiftId: "fsh_1",
+      at: "t2",
+    });
+    const cancelled = await shifts.cancelOpen({
+      restaurantId: 1,
+      financialShiftId: shift.financialShiftId,
+      at: "t3",
+    });
+    expect(cancelled.shift.status).toBe("closed");
+    expect(cancelled.shift.closeReason).toBe("cancelled_empty");
+
+    const { shift: s2 } = await shifts.open({
+      restaurantId: 1,
+      registerId: "reg_1",
+      operatorUserId: 10,
+      openingFloatAmount: "5.00",
+      currencyCode: "SAR",
+      financialShiftId: "fsh_2",
+      at: "t4",
+    });
+    await shifts.recordMovement({
+      restaurantId: 1,
+      financialShiftId: s2.financialShiftId,
+      movementType: "paid_in",
+      amount: "1.00",
+      reason: "x",
+      actorUserId: 10,
+      at: "t5",
+    });
+    await expect(
+      shifts.cancelOpen({
+        restaurantId: 1,
+        financialShiftId: s2.financialShiftId,
+        at: "t6",
+      })
+    ).rejects.toBeInstanceOf(CrmpInvariantError);
+  });
+
+  it("resolve active / by register / by operator", async () => {
+    await shifts.open({
+      restaurantId: 1,
+      registerId: "reg_1",
+      operatorUserId: 10,
+      openingFloatAmount: "0",
+      currencyCode: "SAR",
+      financialShiftId: "fsh_1",
+      at: "t2",
+    });
+    const active = await shifts.resolveActive({
+      restaurantId: 1,
+      registerId: "reg_1",
+    });
+    expect(active?.financialShiftId).toBe("fsh_1");
+    const byOp = await shifts.resolveByOperator({
+      restaurantId: 1,
+      operatorUserId: 10,
+    });
+    expect(byOp?.financialShiftId).toBe("fsh_1");
+    expect(
+      await shifts.resolveByOperator({ restaurantId: 1, operatorUserId: 99 })
+    ).toBeNull();
+  });
+
+  it("register deactivate blocked while suspended shift active", async () => {
+    const { shift } = await shifts.open({
+      restaurantId: 1,
+      registerId: "reg_1",
+      operatorUserId: 10,
+      openingFloatAmount: "0",
+      currencyCode: "SAR",
+      financialShiftId: "fsh_1",
+      at: "t2",
+    });
+    await shifts.suspend({
+      restaurantId: 1,
+      financialShiftId: shift.financialShiftId,
+      at: "t3",
+    });
+    await expect(
+      registers.deactivate({ restaurantId: 1, registerId: "reg_1", at: "t4" })
+    ).rejects.toBeInstanceOf(CrmpInvariantError);
+  });
+
+  it("concurrent save rejects on version conflict", async () => {
+    const { shift } = await shifts.open({
+      restaurantId: 1,
+      registerId: "reg_1",
+      operatorUserId: 10,
+      openingFloatAmount: "0",
+      currencyCode: "SAR",
+      financialShiftId: "fsh_1",
+      at: "t2",
+    });
+    await shifts.suspend({
+      restaurantId: 1,
+      financialShiftId: shift.financialShiftId,
+      at: "t3",
+      expectedVersion: shift.version,
+    });
+    await expect(
+      shifts.resume({
+        restaurantId: 1,
+        financialShiftId: shift.financialShiftId,
+        at: "t4",
+        expectedVersion: shift.version,
+      })
+    ).rejects.toBeInstanceOf(CrmpConflictError);
   });
 });

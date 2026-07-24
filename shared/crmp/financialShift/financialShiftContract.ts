@@ -1,11 +1,12 @@
 /**
- * CRMP-IMPLEMENTATION-1 — Financial Shift Aggregate Root + owned entities.
+ * CRMP / ADR-ARCH-030 — Financial Shift Aggregate Root + owned entities.
  */
 
 import type {
   CountKind,
   HandoverOutcome,
   MovementType,
+  ShiftCloseReason,
   ShiftStatus,
 } from "../valueObjects";
 
@@ -86,5 +87,7 @@ export type FinancialShift = Readonly<{
   version: number;
   openedAt: string;
   closedAt: string | null;
+  closeReason: ShiftCloseReason | null;
+  archivedAt: string | null;
   updatedAt: string;
 }>;

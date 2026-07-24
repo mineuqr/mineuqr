@@ -1,6 +1,6 @@
 /**
- * CRMP-IMPLEMENTATION-1 — server barrel.
- * Domain foundation only — no routers / UI / Settlement adoption.
+ * CRMP / SHIFT-LIFECYCLE-IMPLEMENTATION-1 — server barrel.
+ * Domain foundation + Financial Shift lifecycle — no routers / UI / Settlement adoption.
  */
 
 export type {
@@ -11,6 +11,9 @@ export type {
 export { createInMemoryCrmpStore } from "./InMemoryCrmpStore";
 export { createDrizzleCrmpUnitOfWork } from "./DrizzleCrmpRepository";
 export { RegisterDomainService } from "./RegisterDomainService";
-export { FinancialShiftDomainService } from "./FinancialShiftDomainService";
+export {
+  FinancialShiftDomainService,
+  type FinancialShiftCommandResult,
+} from "./FinancialShiftDomainService";
 export { DrawerDomainService } from "./DrawerDomainService";
 export { newCrmpId } from "./crmpIds";

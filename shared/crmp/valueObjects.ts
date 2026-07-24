@@ -1,12 +1,15 @@
 /**
- * CRMP-IMPLEMENTATION-1 / ADR-ARCH-028 — value objects.
+ * CRMP / ADR-ARCH-028 · ADR-ARCH-030 — value objects.
  * Pure domain — no persistence. Money is opaque decimal strings (2 dp).
+ * SHIFT-LIFECYCLE-IMPLEMENTATION-1 expands Financial Shift statuses.
  */
 
 import { CrmpValidationError } from "./crmpErrors";
 
 export const CRMP_PROGRAM_ID = "CRMP-IMPLEMENTATION-1" as const;
 export const CRMP_ADR_ID = "ADR-ARCH-028" as const;
+export const SHIFT_LIFECYCLE_PROGRAM_ID = "SHIFT-LIFECYCLE-IMPLEMENTATION-1" as const;
+export const SHIFT_LIFECYCLE_ADR_ID = "ADR-ARCH-030" as const;
 
 export const REGISTER_STATUSES = [
   "provisioned",
@@ -15,12 +18,24 @@ export const REGISTER_STATUSES = [
 ] as const;
 export type RegisterStatus = (typeof REGISTER_STATUSES)[number];
 
+/** ADR-ARCH-030 canonical statuses. Persisted `pending` is prohibited. */
 export const SHIFT_STATUSES = [
   "open",
+  "suspended",
+  "closing",
   "handover_pending",
   "closed",
+  "archived",
 ] as const;
 export type ShiftStatus = (typeof SHIFT_STATUSES)[number];
+
+export const SHIFT_CLOSE_REASONS = [
+  "normal",
+  "handover",
+  "cancelled_empty",
+  "recovery",
+] as const;
+export type ShiftCloseReason = (typeof SHIFT_CLOSE_REASONS)[number];
 
 export const MOVEMENT_TYPES = [
   "opening_float",
@@ -140,6 +155,16 @@ export function normalizeAmount(amount: string): string {
   return fromCents(toCents(amount));
 }
 
+/** ADR-ARCH-030 active set — blocks second open and Register close/deactivate. */
 export function isActiveShiftStatus(status: ShiftStatus): boolean {
-  return status === "open" || status === "handover_pending";
+  return (
+    status === "open" ||
+    status === "suspended" ||
+    status === "closing" ||
+    status === "handover_pending"
+  );
+}
+
+export function isTerminalShiftStatus(status: ShiftStatus): boolean {
+  return status === "closed" || status === "archived";
 }

@@ -1,5 +1,5 @@
 /**
- * CRMP-IMPLEMENTATION-1 / ADR-ARCH-028 — Cash Register Management Platform domain.
+ * CRMP / ADR-ARCH-028 · ADR-ARCH-030 — Cash Register Management Platform domain.
  * Pure domain barrel. No Settlement / Check / Reporting imports.
  */
 
@@ -15,3 +15,5 @@ export * from "./financialShift/financialShiftContract";
 export * from "./financialShift/financialShiftLifecycle";
 export * from "./financialShift/expectedCash";
 export * from "./financialShift/financialShiftCommands";
+export * from "./financialShift/financialShiftEvents";
+export * from "./financialShift/financialShiftResolve";

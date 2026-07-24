@@ -1,6 +1,5 @@
 /**
- * CRMP-IMPLEMENTATION-1 — in-memory repositories for domain/lifecycle tests.
- * Production path uses DrizzleCrmpRepository (same ports).
+ * CRMP / SHIFT-LIFECYCLE-IMPLEMENTATION-1 — in-memory repositories.
  */
 
 import type {
@@ -8,7 +7,7 @@ import type {
   FinancialShift,
   SettlementAttribution,
 } from "@shared/crmp";
-import { isActiveShiftStatus } from "@shared/crmp";
+import { CrmpConflictError, isActiveShiftStatus } from "@shared/crmp";
 import type {
   CrmpFinancialShiftRepository,
   CrmpRegisterRepository,
@@ -39,9 +38,6 @@ export function createInMemoryCrmpStore(): CrmpUnitOfWork {
       const key = `${register.restaurantId}:${register.registerId}`;
       const existing = registers.get(key);
       if (!existing) throw new Error(`Register not found: ${register.registerId}`);
-      if (existing.version !== register.version - 1 && existing.version !== register.version) {
-        // allow same version idempotent write or +1 bump from domain
-      }
       registers.set(key, cloneRegister(register));
     },
     async findById(restaurantId, registerId) {
@@ -62,7 +58,13 @@ export function createInMemoryCrmpStore(): CrmpUnitOfWork {
       }
       shifts.set(shift.financialShiftId, cloneShift(shift));
     },
-    async save(shift) {
+    async save(shift, expectedVersion) {
+      const current = shifts.get(shift.financialShiftId);
+      if (current && expectedVersion != null && current.version !== expectedVersion) {
+        throw new CrmpConflictError(
+          `Financial Shift version conflict: expected ${expectedVersion}, found ${current.version}`
+        );
+      }
       shifts.set(shift.financialShiftId, cloneShift(shift));
     },
     async findById(restaurantId, financialShiftId) {
@@ -81,6 +83,24 @@ export function createInMemoryCrmpStore(): CrmpUnitOfWork {
         }
       }
       return null;
+    },
+    async findActiveByOperator(restaurantId, operatorUserId) {
+      return [...shifts.values()]
+        .filter(
+          (s) =>
+            s.restaurantId === restaurantId &&
+            s.operatorUserId === operatorUserId &&
+            isActiveShiftStatus(s.status)
+        )
+        .map(cloneShift);
+    },
+    async listByRegister(restaurantId, registerId) {
+      return [...shifts.values()]
+        .filter(
+          (s) =>
+            s.restaurantId === restaurantId && s.registerId === registerId
+        )
+        .map(cloneShift);
     },
     async findAttributionBySettlementRecordId(
       restaurantId,

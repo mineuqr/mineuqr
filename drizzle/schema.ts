@@ -1571,6 +1571,7 @@ export const crmpRegisters = mysqlTable(
 	]
 );
 
+/** Financial Shift — ADR-ARCH-030 statuses (SHIFT-LIFECYCLE-IMPLEMENTATION-1). */
 export const crmpFinancialShifts = mysqlTable(
 	"crmp_financial_shifts",
 	{
@@ -1579,13 +1580,27 @@ export const crmpFinancialShifts = mysqlTable(
 		restaurantId: int().notNull(),
 		registerId: varchar({ length: 128 }).notNull(),
 		operatorUserId: int().notNull(),
-		status: mysqlEnum(["open", "handover_pending", "closed"]).notNull(),
+		status: mysqlEnum([
+			"open",
+			"suspended",
+			"closing",
+			"handover_pending",
+			"closed",
+			"archived",
+		]).notNull(),
 		openingFloatAmount: decimal({ precision: 10, scale: 2 }).notNull(),
 		currencyCode: varchar({ length: 8 }).notNull(),
 		drawerId: varchar({ length: 128 }).notNull(),
 		version: int().default(1).notNull(),
 		openedAt: timestamp({ mode: "string" }).notNull(),
 		closedAt: timestamp({ mode: "string" }),
+		closeReason: mysqlEnum([
+			"normal",
+			"handover",
+			"cancelled_empty",
+			"recovery",
+		]),
+		archivedAt: timestamp({ mode: "string" }),
 		updatedAt: timestamp({ mode: "string" }).notNull(),
 	},
 	(table) => [

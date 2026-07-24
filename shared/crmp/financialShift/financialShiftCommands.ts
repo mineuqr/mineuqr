@@ -1,6 +1,7 @@
 /**
- * CRMP-IMPLEMENTATION-1 — Financial Shift domain commands (pure).
- * Enforces D-INV-* custody invariants. Never mutates Settlement money.
+ * ADR-ARCH-030 / SHIFT-LIFECYCLE-IMPLEMENTATION-1 — Financial Shift domain commands.
+ * Enforces custody invariants. Never mutates Settlement money.
+ * All lifecycle commands are idempotent on terminal predicates.
  */
 
 import {
@@ -18,6 +19,7 @@ import {
   normalizeAmount,
   toCents,
   type MovementType,
+  type ShiftCloseReason,
 } from "../valueObjects";
 import { computeExpectedCash } from "./expectedCash";
 import type {
@@ -29,6 +31,8 @@ import type {
 } from "./financialShiftContract";
 import {
   assertShiftTransition,
+  shiftAllowsFinalCount,
+  shiftAllowsInterimCount,
   shiftIsMutable,
 } from "./financialShiftLifecycle";
 
@@ -40,7 +44,7 @@ function bump(shift: FinancialShift, at: string): Pick<
 }
 
 function assertOpenMutable(shift: FinancialShift): void {
-  if (shift.status === "closed") {
+  if (shift.status === "closed" || shift.status === "archived") {
     throw new CrmpImmutabilityError("Closed Financial Shift is immutable");
   }
   if (!shiftIsMutable(shift.status)) {
@@ -50,6 +54,17 @@ function assertOpenMutable(shift: FinancialShift): void {
   }
 }
 
+function isEmptyCancellable(shift: FinancialShift): boolean {
+  return (
+    shift.status === "open" &&
+    shift.attributions.length === 0 &&
+    shift.drawer.counts.length === 0 &&
+    shift.handover == null &&
+    shift.drawer.movements.length === 1 &&
+    shift.drawer.movements[0]?.movementType === "opening_float"
+  );
+}
+
 // ─── Open ───────────────────────────────────────────────────────────
 
 export type OpenFinancialShiftCommand = Readonly<{
@@ -57,18 +72,31 @@ export type OpenFinancialShiftCommand = Readonly<{
   drawerId: string;
   openingMovementId: string;
   register: CashRegister;
-  /** True when another open/handover_pending shift exists on register. */
+  /** True when another open/handover_pending/suspended/closing shift exists on register. */
   hasActiveShiftOnRegister: boolean;
   restaurantId: number;
   operatorUserId: number;
   openingFloatAmount: string;
   currencyCode: string;
   openedAt: string;
+  /** Existing row for same id — idempotent return. */
+  existingById?: FinancialShift | null;
 }>;
 
 export function openFinancialShift(
   command: OpenFinancialShiftCommand
 ): FinancialShift {
+  if (command.existingById) {
+    if (
+      command.existingById.registerId === command.register.registerId &&
+      command.existingById.restaurantId === command.restaurantId
+    ) {
+      return command.existingById;
+    }
+    throw new CrmpConflictError(
+      "Financial Shift id already exists for a different Register"
+    );
+  }
   assertRegisterCanOpenShift(command.register);
   if (command.hasActiveShiftOnRegister) {
     throw new CrmpConflictError(
@@ -116,7 +144,193 @@ export function openFinancialShift(
     version: 1,
     openedAt: command.openedAt,
     closedAt: null,
+    closeReason: null,
+    archivedAt: null,
     updatedAt: command.openedAt,
+  };
+}
+
+// ─── Suspend / Resume ───────────────────────────────────────────────
+
+export type SuspendFinancialShiftCommand = Readonly<{
+  shift: FinancialShift;
+  at: string;
+}>;
+
+export function suspendFinancialShift(
+  command: SuspendFinancialShiftCommand
+): FinancialShift {
+  if (command.shift.status === "suspended") return command.shift;
+  if (command.shift.status !== "open") {
+    throw new CrmpInvariantError(
+      `Cannot suspend Financial Shift from status ${command.shift.status}`
+    );
+  }
+  assertShiftTransition(command.shift.status, "suspended");
+  return {
+    ...command.shift,
+    status: "suspended",
+    ...bump(command.shift, command.at),
+  };
+}
+
+export type ResumeFinancialShiftCommand = Readonly<{
+  shift: FinancialShift;
+  at: string;
+}>;
+
+export function resumeFinancialShift(
+  command: ResumeFinancialShiftCommand
+): FinancialShift {
+  if (command.shift.status === "open") return command.shift;
+  if (command.shift.status !== "suspended") {
+    throw new CrmpInvariantError(
+      `Cannot resume Financial Shift from status ${command.shift.status}`
+    );
+  }
+  assertShiftTransition(command.shift.status, "open");
+  return {
+    ...command.shift,
+    status: "open",
+    ...bump(command.shift, command.at),
+  };
+}
+
+// ─── Close corridor ─────────────────────────────────────────────────
+
+export type BeginCloseFinancialShiftCommand = Readonly<{
+  shift: FinancialShift;
+  at: string;
+}>;
+
+export function beginCloseFinancialShift(
+  command: BeginCloseFinancialShiftCommand
+): FinancialShift {
+  if (command.shift.status === "closing") return command.shift;
+  if (command.shift.status !== "open" && command.shift.status !== "suspended") {
+    throw new CrmpInvariantError(
+      `Cannot begin close from status ${command.shift.status}`
+    );
+  }
+  assertShiftTransition(command.shift.status, "closing");
+  return {
+    ...command.shift,
+    status: "closing",
+    ...bump(command.shift, command.at),
+  };
+}
+
+export type AbortCloseFinancialShiftCommand = Readonly<{
+  shift: FinancialShift;
+  at: string;
+}>;
+
+export function abortCloseFinancialShift(
+  command: AbortCloseFinancialShiftCommand
+): FinancialShift {
+  if (command.shift.status === "open") return command.shift;
+  if (command.shift.status !== "closing") {
+    throw new CrmpInvariantError(
+      `Cannot abort close from status ${command.shift.status}`
+    );
+  }
+  const hasFinal = command.shift.drawer.counts.some((c) => c.kind === "final");
+  if (hasFinal) {
+    throw new CrmpInvariantError(
+      "Cannot abort close after final Drawer Count is recorded"
+    );
+  }
+  assertShiftTransition(command.shift.status, "open");
+  return {
+    ...command.shift,
+    status: "open",
+    ...bump(command.shift, command.at),
+  };
+}
+
+export type CloseFinancialShiftCommand = Readonly<{
+  shift: FinancialShift;
+  closedAt: string;
+  closeReason?: ShiftCloseReason;
+}>;
+
+export function closeFinancialShift(
+  command: CloseFinancialShiftCommand
+): FinancialShift {
+  if (command.shift.status === "closed" || command.shift.status === "archived") {
+    return command.shift;
+  }
+  const from = command.shift.status;
+  if (from !== "open" && from !== "closing") {
+    throw new CrmpInvariantError(
+      `Cannot close Financial Shift from status ${from}`
+    );
+  }
+  const hasFinal = command.shift.drawer.counts.some((c) => c.kind === "final");
+  if (!hasFinal) {
+    throw new CrmpInvariantError(
+      "Final Drawer Count required to close Financial Shift"
+    );
+  }
+  assertShiftTransition(from, "closed");
+  return {
+    ...command.shift,
+    status: "closed",
+    closedAt: command.closedAt,
+    closeReason: command.closeReason ?? "normal",
+    ...bump(command.shift, command.closedAt),
+  };
+}
+
+export type CancelOpenFinancialShiftCommand = Readonly<{
+  shift: FinancialShift;
+  closedAt: string;
+}>;
+
+export function cancelOpenFinancialShift(
+  command: CancelOpenFinancialShiftCommand
+): FinancialShift {
+  if (
+    command.shift.status === "closed" &&
+    command.shift.closeReason === "cancelled_empty"
+  ) {
+    return command.shift;
+  }
+  if (!isEmptyCancellable(command.shift)) {
+    throw new CrmpInvariantError(
+      "CancelOpen allowed only on empty open Financial Shift"
+    );
+  }
+  assertShiftTransition(command.shift.status, "closed");
+  return {
+    ...command.shift,
+    status: "closed",
+    closedAt: command.closedAt,
+    closeReason: "cancelled_empty",
+    ...bump(command.shift, command.closedAt),
+  };
+}
+
+export type ArchiveFinancialShiftCommand = Readonly<{
+  shift: FinancialShift;
+  archivedAt: string;
+}>;
+
+export function archiveFinancialShift(
+  command: ArchiveFinancialShiftCommand
+): FinancialShift {
+  if (command.shift.status === "archived") return command.shift;
+  if (command.shift.status !== "closed") {
+    throw new CrmpInvariantError(
+      "Archive allowed only from closed Financial Shift"
+    );
+  }
+  assertShiftTransition(command.shift.status, "archived");
+  return {
+    ...command.shift,
+    status: "archived",
+    archivedAt: command.archivedAt,
+    ...bump(command.shift, command.archivedAt),
   };
 }
 
@@ -142,7 +356,6 @@ export function recordDrawerMovement(
     if (!command.reason?.trim()) {
       throw new CrmpValidationError("manual_adjustment requires reason");
     }
-    // signed amount allowed
     if (!/^-?\d+(\.\d{1,2})?$/.test(amount) || toCents(amount) === 0) {
       throw new CrmpValidationError(
         "manual_adjustment amount must be non-zero decimal"
@@ -205,22 +418,18 @@ export type RecordDrawerCountCommand = Readonly<{
 export function recordDrawerCount(
   command: RecordDrawerCountCommand
 ): FinancialShift {
-  if (command.shift.status === "closed") {
+  if (command.shift.status === "closed" || command.shift.status === "archived") {
     throw new CrmpImmutabilityError("Closed Financial Shift is immutable");
   }
-  // Allow final count on open or handover_pending
-  if (
-    command.shift.status === "handover_pending" &&
-    command.kind !== "final"
-  ) {
+  if (command.kind === "interim" && !shiftAllowsInterimCount(command.shift.status)) {
     throw new CrmpInvariantError(
-      "Only final count allowed during handover_pending"
+      `Interim count not allowed on status ${command.shift.status}`
     );
   }
-  if (command.shift.status === "open" || command.shift.status === "handover_pending") {
-    // ok
-  } else {
-    throw new CrmpInvariantError("Cannot count on this shift status");
+  if (command.kind === "final" && !shiftAllowsFinalCount(command.shift.status)) {
+    throw new CrmpInvariantError(
+      `Final count not allowed on status ${command.shift.status}`
+    );
   }
 
   if (command.kind === "final") {
@@ -268,43 +477,6 @@ export function recordDrawerCount(
   };
 }
 
-// ─── Close ──────────────────────────────────────────────────────────
-
-export type CloseFinancialShiftCommand = Readonly<{
-  shift: FinancialShift;
-  closedAt: string;
-}>;
-
-export function closeFinancialShift(
-  command: CloseFinancialShiftCommand
-): FinancialShift {
-  if (command.shift.status === "closed") {
-    return command.shift; // idempotent
-  }
-  if (command.shift.status !== "open") {
-    throw new CrmpInvalidCloseStatus(command.shift.status);
-  }
-  const hasFinal = command.shift.drawer.counts.some((c) => c.kind === "final");
-  if (!hasFinal) {
-    throw new CrmpInvariantError(
-      "Final Drawer Count required to close Financial Shift"
-    );
-  }
-  assertShiftTransition(command.shift.status, "closed");
-  return {
-    ...command.shift,
-    status: "closed",
-    closedAt: command.closedAt,
-    ...bump(command.shift, command.closedAt),
-  };
-}
-
-function CrmpInvalidCloseStatus(status: string): Error {
-  return new CrmpInvariantError(
-    `Cannot directly close Financial Shift from status ${status}`
-  );
-}
-
 // ─── Attribution (domain model only — no Settlement Platform calls) ─
 
 export type CreateSettlementAttributionCommand = Readonly<{
@@ -321,7 +493,11 @@ export type CreateSettlementAttributionCommand = Readonly<{
 
 export function createSettlementAttribution(
   command: CreateSettlementAttributionCommand
-): { shift: FinancialShift; attribution: SettlementAttribution; alreadyApplied: boolean } {
+): {
+  shift: FinancialShift;
+  attribution: SettlementAttribution;
+  alreadyApplied: boolean;
+} {
   if (command.existingBySettlementRecordId) {
     return {
       shift: command.shift,
@@ -388,9 +564,7 @@ export function initiateHandover(
 ): FinancialShift {
   assertOpenMutable(command.shift);
   if (command.initiatorUserId === command.receiverUserId) {
-    throw new CrmpInvariantError(
-      "Handover requires two distinct Users"
-    );
+    throw new CrmpInvariantError("Handover requires two distinct Users");
   }
   if (command.initiatorUserId !== command.shift.operatorUserId) {
     throw new CrmpInvariantError(
@@ -425,8 +599,11 @@ export type RejectHandoverCommand = Readonly<{
 export function rejectHandover(
   command: RejectHandoverCommand
 ): FinancialShift {
-  if (command.shift.status === "open" && command.shift.handover?.outcome === "rejected") {
-    return command.shift; // idempotent
+  if (
+    command.shift.status === "open" &&
+    command.shift.handover?.outcome === "rejected"
+  ) {
+    return command.shift;
   }
   if (command.shift.status !== "handover_pending" || !command.shift.handover) {
     throw new CrmpInvariantError("No pending handover to reject");
@@ -446,7 +623,6 @@ export function rejectHandover(
 
 export type AcceptHandoverCommand = Readonly<{
   outgoing: FinancialShift;
-  /** Must already include final count on outgoing. */
   acceptingUserId: number;
   successorShiftId: string;
   successorDrawerId: string;
@@ -483,6 +659,7 @@ export function acceptHandover(
     ...outgoing,
     status: "closed",
     closedAt: command.acceptedAt,
+    closeReason: "handover",
     handover: {
       ...outgoing.handover,
       outcome: "accepted",
@@ -492,7 +669,6 @@ export function acceptHandover(
     ...bump(outgoing, command.acceptedAt),
   };
 
-  // Successor opens with counted actual as opening float (custody continuity).
   const successor = openFinancialShift({
     financialShiftId: command.successorShiftId,
     drawerId: command.successorDrawerId,

@@ -1,5 +1,5 @@
 /**
- * CRMP-IMPLEMENTATION-1 — repository ports (no business logic).
+ * CRMP / SHIFT-LIFECYCLE-IMPLEMENTATION-1 — repository ports (no business logic).
  */
 
 import type {
@@ -21,7 +21,7 @@ export type CrmpRegisterRepository = {
 export type CrmpFinancialShiftRepository = {
   insert(shift: FinancialShift): Promise<void>;
   /** Full replace of shift aggregate graph (shift + drawer children + handover + attributions). */
-  save(shift: FinancialShift): Promise<void>;
+  save(shift: FinancialShift, expectedVersion?: number): Promise<void>;
   findById(
     restaurantId: number,
     financialShiftId: string
@@ -30,6 +30,14 @@ export type CrmpFinancialShiftRepository = {
     restaurantId: number,
     registerId: string
   ): Promise<FinancialShift | null>;
+  findActiveByOperator(
+    restaurantId: number,
+    operatorUserId: number
+  ): Promise<FinancialShift[]>;
+  listByRegister(
+    restaurantId: number,
+    registerId: string
+  ): Promise<FinancialShift[]>;
   findAttributionBySettlementRecordId(
     restaurantId: number,
     settlementRecordId: string

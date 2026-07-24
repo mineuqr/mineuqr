@@ -1,11 +1,21 @@
 /**
- * CRMP-IMPLEMENTATION-1 — Financial Shift domain service.
- * Owns drawer / movements / counts / handover / attribution persistence coordination.
- * Does NOT call Settlement / Check platforms.
+ * ADR-ARCH-030 / SHIFT-LIFECYCLE-IMPLEMENTATION-1 — Financial Shift domain service.
+ * Owns lifecycle / drawer / handover coordination. Does NOT call Settlement / Check.
+ * Events are collected facts (no bus/outbox in this program).
  */
 
 import {
+  abortCloseFinancialShift,
   acceptHandover,
+  archiveFinancialShift,
+  beginCloseFinancialShift,
+  buildFinancialShiftArchivedEvent,
+  buildFinancialShiftClosedEvent,
+  buildFinancialShiftClosingStartedEvent,
+  buildFinancialShiftOpenedEvent,
+  buildFinancialShiftResumedEvent,
+  buildFinancialShiftSuspendedEvent,
+  cancelOpenFinancialShift,
   closeFinancialShift,
   createSettlementAttribution,
   initiateHandover,
@@ -13,14 +23,27 @@ import {
   recordDrawerCount,
   recordDrawerMovement,
   rejectHandover,
+  resolveActiveFinancialShift,
+  resolveFinancialShiftByOperator,
+  resolveFinancialShiftByRegister,
+  resumeFinancialShift,
+  suspendFinancialShift,
   type FinancialShift,
+  type FinancialShiftDomainEvent,
   type MovementType,
   type SettlementAttribution,
+  CrmpConflictError,
   CrmpNotFoundError,
   computeExpectedCash,
 } from "@shared/crmp";
 import type { CrmpUnitOfWork } from "./CrmpRepository";
 import { newCrmpId } from "./crmpIds";
+
+export type FinancialShiftCommandResult = Readonly<{
+  shift: FinancialShift;
+  events: readonly FinancialShiftDomainEvent[];
+  alreadyApplied?: boolean;
+}>;
 
 export class FinancialShiftDomainService {
   constructor(private readonly uow: CrmpUnitOfWork) {}
@@ -33,7 +56,20 @@ export class FinancialShiftDomainService {
     currencyCode: string;
     at?: string;
     financialShiftId?: string;
-  }): Promise<FinancialShift> {
+  }): Promise<FinancialShiftCommandResult> {
+    const at = input.at ?? new Date().toISOString();
+    const financialShiftId = input.financialShiftId ?? newCrmpId("fsh");
+    const existing = await this.uow.shifts.findById(
+      input.restaurantId,
+      financialShiftId
+    );
+    if (existing) {
+      return {
+        shift: existing,
+        events: [],
+        alreadyApplied: true,
+      };
+    }
     const register = await this.uow.registers.findById(
       input.restaurantId,
       input.registerId
@@ -46,7 +82,7 @@ export class FinancialShiftDomainService {
       input.registerId
     );
     const shift = openFinancialShift({
-      financialShiftId: input.financialShiftId ?? newCrmpId("fsh"),
+      financialShiftId,
       drawerId: newCrmpId("drw"),
       openingMovementId: newCrmpId("mov"),
       register,
@@ -55,10 +91,213 @@ export class FinancialShiftDomainService {
       operatorUserId: input.operatorUserId,
       openingFloatAmount: input.openingFloatAmount,
       currencyCode: input.currencyCode,
-      openedAt: input.at ?? new Date().toISOString(),
+      openedAt: at,
+      existingById: null,
     });
     await this.uow.shifts.insert(shift);
-    return shift;
+    return {
+      shift,
+      events: [buildFinancialShiftOpenedEvent(shift, at)],
+      alreadyApplied: false,
+    };
+  }
+
+  async suspend(input: {
+    restaurantId: number;
+    financialShiftId: string;
+    at?: string;
+    expectedVersion?: number;
+  }): Promise<FinancialShiftCommandResult> {
+    const at = input.at ?? new Date().toISOString();
+    const current = await this.requireShift(
+      input.restaurantId,
+      input.financialShiftId
+    );
+    const next = suspendFinancialShift({ shift: current, at });
+    if (next === current || next.version === current.version) {
+      return { shift: current, events: [], alreadyApplied: true };
+    }
+    await this.uow.shifts.save(next, input.expectedVersion ?? current.version);
+    return {
+      shift: next,
+      events: [buildFinancialShiftSuspendedEvent(next, at)],
+    };
+  }
+
+  async resume(input: {
+    restaurantId: number;
+    financialShiftId: string;
+    at?: string;
+    expectedVersion?: number;
+  }): Promise<FinancialShiftCommandResult> {
+    const at = input.at ?? new Date().toISOString();
+    const current = await this.requireShift(
+      input.restaurantId,
+      input.financialShiftId
+    );
+    const next = resumeFinancialShift({ shift: current, at });
+    if (next.version === current.version) {
+      return { shift: current, events: [], alreadyApplied: true };
+    }
+    await this.uow.shifts.save(next, input.expectedVersion ?? current.version);
+    return {
+      shift: next,
+      events: [buildFinancialShiftResumedEvent(next, at)],
+    };
+  }
+
+  async beginClose(input: {
+    restaurantId: number;
+    financialShiftId: string;
+    at?: string;
+    expectedVersion?: number;
+  }): Promise<FinancialShiftCommandResult> {
+    const at = input.at ?? new Date().toISOString();
+    const current = await this.requireShift(
+      input.restaurantId,
+      input.financialShiftId
+    );
+    const next = beginCloseFinancialShift({ shift: current, at });
+    if (next.version === current.version) {
+      return { shift: current, events: [], alreadyApplied: true };
+    }
+    await this.uow.shifts.save(next, input.expectedVersion ?? current.version);
+    return {
+      shift: next,
+      events: [buildFinancialShiftClosingStartedEvent(next, at)],
+    };
+  }
+
+  async abortClose(input: {
+    restaurantId: number;
+    financialShiftId: string;
+    at?: string;
+    expectedVersion?: number;
+  }): Promise<FinancialShiftCommandResult> {
+    const at = input.at ?? new Date().toISOString();
+    const current = await this.requireShift(
+      input.restaurantId,
+      input.financialShiftId
+    );
+    const next = abortCloseFinancialShift({ shift: current, at });
+    if (next.version === current.version) {
+      return { shift: current, events: [], alreadyApplied: true };
+    }
+    await this.uow.shifts.save(next, input.expectedVersion ?? current.version);
+    return { shift: next, events: [] };
+  }
+
+  async close(input: {
+    restaurantId: number;
+    financialShiftId: string;
+    at?: string;
+    expectedVersion?: number;
+  }): Promise<FinancialShiftCommandResult> {
+    const at = input.at ?? new Date().toISOString();
+    const current = await this.requireShift(
+      input.restaurantId,
+      input.financialShiftId
+    );
+    const next = closeFinancialShift({ shift: current, closedAt: at });
+    if (next.version === current.version) {
+      return { shift: current, events: [], alreadyApplied: true };
+    }
+    await this.uow.shifts.save(next, input.expectedVersion ?? current.version);
+    return {
+      shift: next,
+      events: [buildFinancialShiftClosedEvent(next, at)],
+    };
+  }
+
+  async cancelOpen(input: {
+    restaurantId: number;
+    financialShiftId: string;
+    at?: string;
+    expectedVersion?: number;
+  }): Promise<FinancialShiftCommandResult> {
+    const at = input.at ?? new Date().toISOString();
+    const current = await this.requireShift(
+      input.restaurantId,
+      input.financialShiftId
+    );
+    const next = cancelOpenFinancialShift({ shift: current, closedAt: at });
+    if (next.version === current.version) {
+      return { shift: current, events: [], alreadyApplied: true };
+    }
+    await this.uow.shifts.save(next, input.expectedVersion ?? current.version);
+    return {
+      shift: next,
+      events: [buildFinancialShiftClosedEvent(next, at)],
+    };
+  }
+
+  async archive(input: {
+    restaurantId: number;
+    financialShiftId: string;
+    at?: string;
+    expectedVersion?: number;
+  }): Promise<FinancialShiftCommandResult> {
+    const at = input.at ?? new Date().toISOString();
+    const current = await this.requireShift(
+      input.restaurantId,
+      input.financialShiftId
+    );
+    const next = archiveFinancialShift({ shift: current, archivedAt: at });
+    if (next.version === current.version) {
+      return { shift: current, events: [], alreadyApplied: true };
+    }
+    await this.uow.shifts.save(next, input.expectedVersion ?? current.version);
+    return {
+      shift: next,
+      events: [buildFinancialShiftArchivedEvent(next, at)],
+    };
+  }
+
+  async resolveActive(input: {
+    restaurantId: number;
+    registerId: string;
+  }): Promise<FinancialShift | null> {
+    return this.uow.shifts.findActiveByRegister(
+      input.restaurantId,
+      input.registerId
+    );
+  }
+
+  async resolveByRegister(input: {
+    restaurantId: number;
+    registerId: string;
+    includeClosed?: boolean;
+  }): Promise<FinancialShift | null> {
+    const listed = await this.uow.shifts.listByRegister(
+      input.restaurantId,
+      input.registerId
+    );
+    return resolveFinancialShiftByRegister(listed, input.registerId, {
+      includeClosed: input.includeClosed,
+    });
+  }
+
+  async resolveByOperator(input: {
+    restaurantId: number;
+    operatorUserId: number;
+  }): Promise<FinancialShift | null> {
+    const active = await this.uow.shifts.findActiveByOperator(
+      input.restaurantId,
+      input.operatorUserId
+    );
+    return resolveFinancialShiftByOperator(active, input.operatorUserId);
+  }
+
+  /** @deprecated Prefer resolveActive — kept for call-site clarity. */
+  async resolveActiveFinancialShift(input: {
+    restaurantId: number;
+    registerId: string;
+  }): Promise<FinancialShift | null> {
+    const listed = await this.uow.shifts.listByRegister(
+      input.restaurantId,
+      input.registerId
+    );
+    return resolveActiveFinancialShift(listed);
   }
 
   async recordMovement(input: {
@@ -69,6 +308,7 @@ export class FinancialShiftDomainService {
     reason: string | null;
     actorUserId: number;
     at?: string;
+    expectedVersion?: number;
   }): Promise<FinancialShift> {
     const current = await this.requireShift(
       input.restaurantId,
@@ -83,7 +323,7 @@ export class FinancialShiftDomainService {
       actorUserId: input.actorUserId,
       recordedAt: input.at ?? new Date().toISOString(),
     });
-    await this.uow.shifts.save(next);
+    await this.uow.shifts.save(next, input.expectedVersion ?? current.version);
     return next;
   }
 
@@ -94,6 +334,7 @@ export class FinancialShiftDomainService {
     actualAmount: string;
     actorUserId: number;
     at?: string;
+    expectedVersion?: number;
   }): Promise<FinancialShift> {
     const current = await this.requireShift(
       input.restaurantId,
@@ -107,30 +348,13 @@ export class FinancialShiftDomainService {
       actorUserId: input.actorUserId,
       recordedAt: input.at ?? new Date().toISOString(),
     });
-    await this.uow.shifts.save(next);
-    return next;
-  }
-
-  async close(input: {
-    restaurantId: number;
-    financialShiftId: string;
-    at?: string;
-  }): Promise<FinancialShift> {
-    const current = await this.requireShift(
-      input.restaurantId,
-      input.financialShiftId
-    );
-    const next = closeFinancialShift({
-      shift: current,
-      closedAt: input.at ?? new Date().toISOString(),
-    });
-    await this.uow.shifts.save(next);
+    await this.uow.shifts.save(next, input.expectedVersion ?? current.version);
     return next;
   }
 
   /**
    * Domain-only attribution. Caller supplies settlementRecordId + cashTenderAmount.
-   * No Settlement Platform integration in CRMP-IMPLEMENTATION-1.
+   * Settlement Context / Attribution adoption are out of scope for this program.
    */
   async createAttribution(input: {
     restaurantId: number;
@@ -163,7 +387,7 @@ export class FinancialShiftDomainService {
       existingBySettlementRecordId: existing,
     });
     if (!result.alreadyApplied) {
-      await this.uow.shifts.save(result.shift);
+      await this.uow.shifts.save(result.shift, current.version);
     }
     return result;
   }
@@ -186,7 +410,7 @@ export class FinancialShiftDomainService {
       receiverUserId: input.receiverUserId,
       offeredAt: input.at ?? new Date().toISOString(),
     });
-    await this.uow.shifts.save(next);
+    await this.uow.shifts.save(next, current.version);
     return next;
   }
 
@@ -203,7 +427,7 @@ export class FinancialShiftDomainService {
       shift: current,
       rejectedAt: input.at ?? new Date().toISOString(),
     });
-    await this.uow.shifts.save(next);
+    await this.uow.shifts.save(next, current.version);
     return next;
   }
 
@@ -225,7 +449,7 @@ export class FinancialShiftDomainService {
       successorOpeningMovementId: newCrmpId("mov"),
       acceptedAt: input.at ?? new Date().toISOString(),
     });
-    await this.uow.shifts.save(result.closed);
+    await this.uow.shifts.save(result.closed, current.version);
     await this.uow.shifts.insert(result.successor);
     return result;
   }
@@ -243,6 +467,20 @@ export class FinancialShiftDomainService {
     financialShiftId: string
   ): Promise<FinancialShift | null> {
     return this.uow.shifts.findById(restaurantId, financialShiftId);
+  }
+
+  /** Concurrent save probe — throws CrmpConflictError on version mismatch. */
+  async assertVersion(
+    restaurantId: number,
+    financialShiftId: string,
+    expectedVersion: number
+  ): Promise<void> {
+    const current = await this.requireShift(restaurantId, financialShiftId);
+    if (current.version !== expectedVersion) {
+      throw new CrmpConflictError(
+        `Financial Shift version conflict: expected ${expectedVersion}, found ${current.version}`
+      );
+    }
   }
 
   private async requireShift(

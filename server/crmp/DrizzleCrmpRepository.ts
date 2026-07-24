@@ -1,5 +1,5 @@
 /**
- * CRMP-IMPLEMENTATION-1 — Drizzle persistence adapters.
+ * CRMP / SHIFT-LIFECYCLE-IMPLEMENTATION-1 — Drizzle persistence adapters.
  * Repository responsibilities only — no domain rules.
  */
 
@@ -13,13 +13,14 @@ import {
   crmpSettlementAttributions,
   crmpShiftHandovers,
 } from "../../drizzle/schema";
-import type {
-  CashRegister,
-  DrawerCount,
-  DrawerMovement,
-  FinancialShift,
-  SettlementAttribution,
-  ShiftHandover,
+import {
+  CrmpConflictError,
+  type CashRegister,
+  type DrawerCount,
+  type DrawerMovement,
+  type FinancialShift,
+  type SettlementAttribution,
+  type ShiftHandover,
 } from "@shared/crmp";
 import type {
   CrmpFinancialShiftRepository,
@@ -135,6 +136,8 @@ async function loadShiftGraph(
     version: shiftRow.version,
     openedAt: shiftRow.openedAt,
     closedAt: shiftRow.closedAt ?? null,
+    closeReason: shiftRow.closeReason ?? null,
+    archivedAt: shiftRow.archivedAt ?? null,
     updatedAt: shiftRow.updatedAt,
   };
 }
@@ -157,6 +160,8 @@ async function persistShiftGraph(shift: FinancialShift): Promise<void> {
       version: shift.version,
       openedAt: shift.openedAt,
       closedAt: shift.closedAt,
+      closeReason: shift.closeReason,
+      archivedAt: shift.archivedAt,
       updatedAt: shift.updatedAt,
     })
     .onDuplicateKeyUpdate({
@@ -165,6 +170,8 @@ async function persistShiftGraph(shift: FinancialShift): Promise<void> {
         operatorUserId: shift.operatorUserId,
         version: shift.version,
         closedAt: shift.closedAt,
+        closeReason: shift.closeReason,
+        archivedAt: shift.archivedAt,
         updatedAt: shift.updatedAt,
       },
     });
@@ -313,7 +320,29 @@ export function createDrizzleCrmpUnitOfWork(): CrmpUnitOfWork {
     async insert(shift) {
       await persistShiftGraph(shift);
     },
-    async save(shift) {
+    async save(shift, expectedVersion) {
+      if (expectedVersion != null) {
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+        const rows = await db
+          .select({ version: crmpFinancialShifts.version })
+          .from(crmpFinancialShifts)
+          .where(
+            and(
+              eq(crmpFinancialShifts.restaurantId, shift.restaurantId),
+              eq(
+                crmpFinancialShifts.financialShiftId,
+                shift.financialShiftId
+              )
+            )
+          )
+          .limit(1);
+        if (rows[0] && rows[0].version !== expectedVersion) {
+          throw new CrmpConflictError(
+            `Financial Shift version conflict: expected ${expectedVersion}, found ${rows[0].version}`
+          );
+        }
+      }
       await persistShiftGraph(shift);
     },
     async findById(restaurantId, financialShiftId) {
@@ -342,12 +371,55 @@ export function createDrizzleCrmpUnitOfWork(): CrmpUnitOfWork {
           and(
             eq(crmpFinancialShifts.restaurantId, restaurantId),
             eq(crmpFinancialShifts.registerId, registerId),
-            inArray(crmpFinancialShifts.status, ["open", "handover_pending"])
+            inArray(crmpFinancialShifts.status, [
+              "open",
+              "suspended",
+              "closing",
+              "handover_pending",
+            ])
           )
         )
         .limit(1);
       if (!rows[0]) return null;
       return loadShiftGraph(restaurantId, rows[0]);
+    },
+    async findActiveByOperator(restaurantId, operatorUserId) {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      const rows = await db
+        .select()
+        .from(crmpFinancialShifts)
+        .where(
+          and(
+            eq(crmpFinancialShifts.restaurantId, restaurantId),
+            eq(crmpFinancialShifts.operatorUserId, operatorUserId),
+            inArray(crmpFinancialShifts.status, [
+              "open",
+              "suspended",
+              "closing",
+              "handover_pending",
+            ])
+          )
+        );
+      return Promise.all(
+        rows.map((row) => loadShiftGraph(restaurantId, row))
+      );
+    },
+    async listByRegister(restaurantId, registerId) {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      const rows = await db
+        .select()
+        .from(crmpFinancialShifts)
+        .where(
+          and(
+            eq(crmpFinancialShifts.restaurantId, restaurantId),
+            eq(crmpFinancialShifts.registerId, registerId)
+          )
+        );
+      return Promise.all(
+        rows.map((row) => loadShiftGraph(restaurantId, row))
+      );
     },
     async findAttributionBySettlementRecordId(
       restaurantId,
