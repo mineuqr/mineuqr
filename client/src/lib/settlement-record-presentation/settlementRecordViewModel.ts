@@ -2,7 +2,6 @@
  * SETTLEMENT-RECORD-UI-ADOPTION-1 — ViewModels (presentation only).
  */
 
-import { formatRiyadhDateTime } from "@/lib/datetime";
 import {
   preferredPaymentMethodLabel,
   type PresentationLanguage,
@@ -17,19 +16,17 @@ import {
   settlementStatusLabel,
   type SettlementRecordLang,
 } from "./settlementRecordCopy";
-
-function localeOf(language: SettlementRecordLang): string {
-  return language === "ar" ? "ar-SA" : "en-US";
-}
+import {
+  formatOperationalSettlementNumber,
+  formatSettlementHistoryTimeParts,
+} from "./settlementHistoryPresentation";
 
 function formatTime(value: string, language: SettlementRecordLang): string {
-  return formatRiyadhDateTime(value, localeOf(language), {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const { dateLabel, timeLabel } = formatSettlementHistoryTimeParts(
+    value,
+    language
+  );
+  return `${dateLabel} · ${timeLabel}`;
 }
 
 function money(amount: string, symbol: string): string {
@@ -47,13 +44,13 @@ function methodLabel(method: string, language: PresentationLanguage): string {
 export type SettlementHistoryRowViewModel = Readonly<{
   settlementRecordId: string;
   settlementNumber: string;
-  settlementTimeLabel: string;
-  sourceTypeLabel: string;
-  sourceNumber: string;
+  settlementTimeDateLabel: string;
+  settlementTimeClockLabel: string;
+  sourceLabel: string;
+  sourceType: "session" | "check";
   grandTotalLabel: string;
-  paymentStatusLabel: string;
   paymentMethodSummaryLabel: string;
-  settlementStatusLabel: string;
+  statusLabel: string;
 }>;
 
 export function toSettlementHistoryRowViewModel(
@@ -73,19 +70,26 @@ export function toSettlementHistoryRowViewModel(
     )
     .join(", ");
 
+  const sourceTypeLabel =
+    item.sourceType === "session"
+      ? settlementRecordUiLabel("sessionSource", language)
+      : settlementRecordUiLabel("checkSource", language);
+
+  const time = formatSettlementHistoryTimeParts(item.settlementTime, language);
+
   return {
     settlementRecordId: item.settlementRecordId,
-    settlementNumber: item.settlementNumber,
-    settlementTimeLabel: formatTime(item.settlementTime, language),
-    sourceTypeLabel:
-      item.sourceType === "session"
-        ? settlementRecordUiLabel("sessionSource", language)
-        : settlementRecordUiLabel("checkSource", language),
-    sourceNumber: item.sourceNumber,
+    settlementNumber: formatOperationalSettlementNumber({
+      checkId: item.checkId,
+      settlementRecordId: item.settlementRecordId,
+    }),
+    settlementTimeDateLabel: time.dateLabel,
+    settlementTimeClockLabel: time.timeLabel,
+    sourceLabel: `${sourceTypeLabel} #${item.sourceNumber}`,
+    sourceType: item.sourceType,
     grandTotalLabel: money(item.grandTotal, item.currencySymbol),
-    paymentStatusLabel: settlementStatusLabel(item.paymentStatus, language),
     paymentMethodSummaryLabel: methods || "—",
-    settlementStatusLabel: settlementStatusLabel(item.settlementStatus, language),
+    statusLabel: settlementStatusLabel(item.settlementStatus, language),
   };
 }
 
@@ -122,15 +126,19 @@ export function toSettlementDetailViewModel(
   language: SettlementRecordLang
 ): SettlementDetailViewModel {
   const sym = detail.financialSnapshot.currencySymbol;
+  const sourceTypeLabel =
+    detail.sourceType === "session"
+      ? settlementRecordUiLabel("sessionSource", language)
+      : settlementRecordUiLabel("checkSource", language);
   return {
-    settlementNumber: detail.settlementNumber,
+    settlementNumber: formatOperationalSettlementNumber({
+      checkId: detail.checkId,
+      settlementRecordId: detail.settlementRecordId,
+    }),
     settlementTimeLabel: formatTime(detail.settlementTime, language),
     settlementStatusLabel: settlementStatusLabel(detail.settlementStatus, language),
-    sourceTypeLabel:
-      detail.sourceType === "session"
-        ? settlementRecordUiLabel("sessionSource", language)
-        : settlementRecordUiLabel("checkSource", language),
-    sourceIdentifier: detail.sourceIdentifier,
+    sourceTypeLabel,
+    sourceIdentifier: `${sourceTypeLabel} #${detail.sourceIdentifier}`,
     orders: detail.orders.map((o) => ({
       orderId: o.orderId,
       label: o.displayReference ?? `#${o.orderId}`,
@@ -188,6 +196,7 @@ export function toSettlementReceiptViewModel(
   receipt: SettlementRecordReceiptApiDto,
   language: SettlementRecordLang
 ): SettlementReceiptViewModel {
+  const checkIdFromId = Number(receipt.settlementRecordId.split(":")[2] ?? 0);
   const detailLike: SettlementRecordDetailApiDto = {
     settlementRecordId: receipt.settlementRecordId,
     settlementNumber: receipt.settlementNumber,
@@ -197,7 +206,7 @@ export function toSettlementReceiptViewModel(
     sourceIdentifier: "",
     recordKind: "settlement",
     outcome: receipt.outcome,
-    checkId: 0,
+    checkId: Number.isFinite(checkIdFromId) ? checkIdFromId : 0,
     sessionId: null,
     orders: receipt.orders,
     checks: [],

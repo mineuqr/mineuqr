@@ -1,5 +1,6 @@
 /**
- * SETTLEMENT-RECORD-UI-ADOPTION-1 — Settlement History (paginated + filters).
+ * SETTLEMENT-HISTORY-UX-RATIONALIZATION-1 — operational Settlement History register.
+ * Presentation only — server pagination / filters unchanged financially.
  */
 
 import { useMemo, useState } from "react";
@@ -12,17 +13,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { restaurantDash } from "@/components/dashboard/restaurantDashStyles";
 import {
+  defaultSettlementHistoryRange,
   mapSettlementRecordApiError,
+  settlementQuickRangeBounds,
   settlementRecordErrorMessage,
   settlementRecordUiLabel,
   toSettlementHistoryRowViewModel,
   useSettlementRecordHistory,
+  type SettlementQuickRange,
   type SettlementRecordLang,
 } from "@/lib/settlement-record-presentation";
 import { cn } from "@/lib/utils";
-import { Loader2 } from "lucide-react";
+import { Eye, Loader2, Receipt } from "lucide-react";
 import { SettlementDetailSheet } from "./SettlementDetailSheet";
 import { SettlementReceiptDialog } from "./SettlementReceiptDialog";
 
@@ -33,6 +42,10 @@ type SettlementHistoryPanelProps = {
   currencySymbol?: string;
 };
 
+type SourceFilter = "all" | "session" | "check";
+
+const INITIAL_RANGE = defaultSettlementHistoryRange();
+
 export function SettlementHistoryPanel({
   restaurantId,
   language,
@@ -40,11 +53,10 @@ export function SettlementHistoryPanel({
 }: SettlementHistoryPanelProps) {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-  const [outcome, setOutcome] = useState<"all" | "paid" | "complimentary" | "voided">(
-    "all"
-  );
+  const [quickRange, setQuickRange] = useState<SettlementQuickRange>("30d");
+  const [dateFrom, setDateFrom] = useState(INITIAL_RANGE.dateFrom);
+  const [dateTo, setDateTo] = useState(INITIAL_RANGE.dateTo);
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
   const [detailId, setDetailId] = useState<string | null>(null);
   const [receiptId, setReceiptId] = useState<string | null>(null);
 
@@ -55,28 +67,73 @@ export function SettlementHistoryPanel({
     search: search.trim() || null,
     dateFrom: dateFrom || null,
     dateTo: dateTo || null,
-    outcome: outcome === "all" ? null : outcome,
+    outcome: null,
   });
 
-  const rows = useMemo(
-    () =>
-      (query.data?.items ?? []).map((item) =>
-        toSettlementHistoryRowViewModel(item, language)
-      ),
-    [query.data?.items, language]
-  );
+  const rows = useMemo(() => {
+    const mapped = (query.data?.items ?? []).map((item) =>
+      toSettlementHistoryRowViewModel(item, language)
+    );
+    if (sourceFilter === "all") return mapped;
+    return mapped.filter((row) => row.sourceType === sourceFilter);
+  }, [query.data?.items, language, sourceFilter]);
 
   const totalPages = Math.max(
     1,
     Math.ceil((query.data?.totalCount ?? 0) / (query.data?.pageSize ?? 20))
   );
 
+  const applyQuickRange = (range: Exclude<SettlementQuickRange, "custom">) => {
+    const bounds = settlementQuickRangeBounds(range);
+    setQuickRange(range);
+    setDateFrom(bounds.dateFrom);
+    setDateTo(bounds.dateTo);
+    setPage(1);
+  };
+
+  const onDateFromChange = (value: string) => {
+    setQuickRange("custom");
+    setDateFrom(value);
+    setPage(1);
+  };
+
+  const onDateToChange = (value: string) => {
+    setQuickRange("custom");
+    setDateTo(value);
+    setPage(1);
+  };
+
+  const quickButtons: Array<{
+    id: Exclude<SettlementQuickRange, "custom">;
+    labelKey: "quickToday" | "quick7d" | "quick30d" | "quick90d";
+  }> = [
+    { id: "today", labelKey: "quickToday" },
+    { id: "7d", labelKey: "quick7d" },
+    { id: "30d", labelKey: "quick30d" },
+    { id: "90d", labelKey: "quick90d" },
+  ];
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" dir={language === "ar" ? "rtl" : "ltr"}>
       <div>
         <h2 className="text-xl font-semibold text-white">
           {settlementRecordUiLabel("historyTitle", language)}
         </h2>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {quickButtons.map((btn) => (
+          <Button
+            key={btn.id}
+            type="button"
+            size="sm"
+            variant={quickRange === btn.id ? "default" : "outline"}
+            className="min-w-[4.5rem]"
+            onClick={() => applyQuickRange(btn.id)}
+          >
+            {settlementRecordUiLabel(btn.labelKey, language)}
+          </Button>
+        ))}
       </div>
 
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
@@ -87,50 +144,61 @@ export function SettlementHistoryPanel({
             setSearch(e.target.value);
           }}
           placeholder={settlementRecordUiLabel("search", language)}
+          aria-label={settlementRecordUiLabel("search", language)}
         />
-        <Input
-          type="date"
-          value={dateFrom}
-          onChange={(e) => {
-            setPage(1);
-            setDateFrom(e.target.value);
-          }}
-          aria-label={settlementRecordUiLabel("dateFrom", language)}
-        />
-        <Input
-          type="date"
-          value={dateTo}
-          onChange={(e) => {
-            setPage(1);
-            setDateTo(e.target.value);
-          }}
-          aria-label={settlementRecordUiLabel("dateTo", language)}
-        />
-        <Select
-          value={outcome}
-          onValueChange={(v) => {
-            setPage(1);
-            setOutcome(v as typeof outcome);
-          }}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder={settlementRecordUiLabel("filterStatus", language)} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">
-              {settlementRecordUiLabel("allStatuses", language)}
-            </SelectItem>
-            <SelectItem value="paid">
-              {settlementRecordUiLabel("paid", language)}
-            </SelectItem>
-            <SelectItem value="complimentary">
-              {settlementRecordUiLabel("complimentary", language)}
-            </SelectItem>
-            <SelectItem value="voided">
-              {settlementRecordUiLabel("voided", language)}
-            </SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="space-y-1">
+          <label className="text-xs text-slate-400" htmlFor="settlement-date-from">
+            {settlementRecordUiLabel("dateFrom", language)}
+          </label>
+          <Input
+            id="settlement-date-from"
+            type="date"
+            value={dateFrom}
+            onChange={(e) => onDateFromChange(e.target.value)}
+            aria-label={settlementRecordUiLabel("dateFrom", language)}
+            className="[color-scheme:dark]"
+          />
+        </div>
+        <div className="space-y-1">
+          <label className="text-xs text-slate-400" htmlFor="settlement-date-to">
+            {settlementRecordUiLabel("dateTo", language)}
+          </label>
+          <Input
+            id="settlement-date-to"
+            type="date"
+            value={dateTo}
+            onChange={(e) => onDateToChange(e.target.value)}
+            aria-label={settlementRecordUiLabel("dateTo", language)}
+            className="[color-scheme:dark]"
+          />
+        </div>
+        <div className="space-y-1">
+          <label className="text-xs text-slate-400">
+            {settlementRecordUiLabel("filterSource", language)}
+          </label>
+          <Select
+            value={sourceFilter}
+            onValueChange={(v) => {
+              setPage(1);
+              setSourceFilter(v as SourceFilter);
+            }}
+          >
+            <SelectTrigger aria-label={settlementRecordUiLabel("filterSource", language)}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">
+                {settlementRecordUiLabel("allSources", language)}
+              </SelectItem>
+              <SelectItem value="session">
+                {settlementRecordUiLabel("sessionSource", language)}
+              </SelectItem>
+              <SelectItem value="check">
+                {settlementRecordUiLabel("checkSource", language)}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <section className={cn(restaurantDash.panelInset, "overflow-x-auto p-0")}>
@@ -157,34 +225,32 @@ export function SettlementHistoryPanel({
         ) : null}
 
         {rows.length > 0 ? (
-          <table className="w-full min-w-[720px] text-left text-sm">
+          <table className="w-full min-w-[640px] text-sm">
             <thead className="border-b border-slate-700/60 text-xs uppercase text-slate-400">
               <tr>
-                <th className="px-3 py-2 font-medium">
+                <th className="px-3 py-2 text-start font-medium">
                   {settlementRecordUiLabel("settlementNumber", language)}
                 </th>
-                <th className="px-3 py-2 font-medium">
+                <th className="px-3 py-2 text-start font-medium">
                   {settlementRecordUiLabel("settlementTime", language)}
                 </th>
-                <th className="px-3 py-2 font-medium">
-                  {settlementRecordUiLabel("sourceType", language)}
+                <th className="px-3 py-2 text-start font-medium">
+                  {settlementRecordUiLabel("source", language)}
                 </th>
-                <th className="px-3 py-2 font-medium">
-                  {settlementRecordUiLabel("sourceNumber", language)}
-                </th>
-                <th className="px-3 py-2 font-medium">
+                <th className="px-3 py-2 text-start font-medium">
                   {settlementRecordUiLabel("grandTotal", language)}
                 </th>
-                <th className="px-3 py-2 font-medium">
-                  {settlementRecordUiLabel("paymentStatus", language)}
-                </th>
-                <th className="px-3 py-2 font-medium">
+                <th className="px-3 py-2 text-start font-medium">
                   {settlementRecordUiLabel("paymentMethodSummary", language)}
                 </th>
-                <th className="px-3 py-2 font-medium">
-                  {settlementRecordUiLabel("settlementStatus", language)}
+                <th className="px-3 py-2 text-start font-medium">
+                  {settlementRecordUiLabel("status", language)}
                 </th>
-                <th className="px-3 py-2 font-medium" />
+                <th className="px-3 py-2 text-end font-medium">
+                  <span className="sr-only">
+                    {settlementRecordUiLabel("viewAction", language)}
+                  </span>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -193,34 +259,63 @@ export function SettlementHistoryPanel({
                   key={row.settlementRecordId}
                   className="border-b border-slate-800/80 text-slate-200"
                 >
-                  <td className="max-w-[160px] truncate px-3 py-2 font-mono text-xs">
+                  <td className="px-3 py-2 font-semibold tabular-nums tracking-wide">
                     {row.settlementNumber}
                   </td>
-                  <td className="px-3 py-2 whitespace-nowrap">{row.settlementTimeLabel}</td>
-                  <td className="px-3 py-2">{row.sourceTypeLabel}</td>
-                  <td className="px-3 py-2">{row.sourceNumber}</td>
+                  <td className="px-3 py-2 whitespace-nowrap">
+                    <div className="leading-tight">
+                      <div>{row.settlementTimeDateLabel}</div>
+                      <div className="text-xs text-slate-400">
+                        {row.settlementTimeClockLabel}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-3 py-2">{row.sourceLabel}</td>
                   <td className="px-3 py-2 tabular-nums">{row.grandTotalLabel}</td>
-                  <td className="px-3 py-2">{row.paymentStatusLabel}</td>
                   <td className="px-3 py-2">{row.paymentMethodSummaryLabel}</td>
-                  <td className="px-3 py-2">{row.settlementStatusLabel}</td>
+                  <td className="px-3 py-2">{row.statusLabel}</td>
                   <td className="px-3 py-2">
-                    <div className="flex gap-1">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setDetailId(row.settlementRecordId)}
-                      >
-                        {settlementRecordUiLabel("viewDetail", language)}
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setReceiptId(row.settlementRecordId)}
-                      >
-                        {settlementRecordUiLabel("viewReceipt", language)}
-                      </Button>
+                    <div className="flex items-center justify-end gap-1">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            className="h-9 w-9"
+                            aria-label={settlementRecordUiLabel(
+                              "receiptAction",
+                              language
+                            )}
+                            onClick={() => setReceiptId(row.settlementRecordId)}
+                          >
+                            <Receipt className="h-4 w-4" aria-hidden />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {settlementRecordUiLabel("receiptAction", language)}
+                        </TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            className="h-9 w-9"
+                            aria-label={settlementRecordUiLabel(
+                              "viewAction",
+                              language
+                            )}
+                            onClick={() => setDetailId(row.settlementRecordId)}
+                          >
+                            <Eye className="h-4 w-4" aria-hidden />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {settlementRecordUiLabel("viewAction", language)}
+                        </TooltipContent>
+                      </Tooltip>
                     </div>
                   </td>
                 </tr>

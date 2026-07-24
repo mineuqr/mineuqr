@@ -3,6 +3,7 @@
  */
 
 import {
+  formatOperationalSettlementNumber,
   settlementRecordUiLabel,
   useSettlementRecordsBySession,
   type SettlementRecordLang,
@@ -67,8 +68,11 @@ export function SettlementSessionStatusPanel({
         <div className="space-y-2">
           <p className="text-sm text-slate-300">
             {settlementRecordUiLabel("settlementNumber", language)}:{" "}
-            <span className="font-mono text-xs text-slate-200">
-              {latest.settlementNumber}
+            <span className="font-semibold tabular-nums tracking-wide text-slate-200">
+              {formatOperationalSettlementNumber({
+                checkId: latest.checkId,
+                settlementRecordId: latest.settlementRecordId,
+              })}
             </span>
           </p>
           <p className="text-sm text-slate-300">

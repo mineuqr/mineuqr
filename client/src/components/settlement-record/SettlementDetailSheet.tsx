@@ -111,11 +111,7 @@ export function SettlementDetailSheet({
                   value={vm.settlementStatusLabel}
                 />
                 <Field
-                  label={settlementRecordUiLabel("sourceType", language)}
-                  value={vm.sourceTypeLabel}
-                />
-                <Field
-                  label={settlementRecordUiLabel("sourceNumber", language)}
+                  label={settlementRecordUiLabel("source", language)}
                   value={vm.sourceIdentifier}
                 />
                 <Field

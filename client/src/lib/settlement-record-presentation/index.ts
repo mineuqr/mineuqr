@@ -34,6 +34,15 @@ export {
 } from "./settlementRecordViewModel";
 
 export {
+  formatOperationalSettlementNumber,
+  formatSettlementHistoryTimeParts,
+  formatSettlementHistoryTimeLabel,
+  settlementQuickRangeBounds,
+  defaultSettlementHistoryRange,
+  type SettlementQuickRange,
+} from "./settlementHistoryPresentation";
+
+export {
   useSettlementRecordHistory,
   useSettlementRecordDetail,
   useSettlementRecordReceipt,
