@@ -1,5 +1,5 @@
 /**
- * REGISTER-CATALOG-MANAGEMENT-1 — catalog presentation architecture guards.
+ * REGISTER-CATALOG-MANAGEMENT-1 / REGISTER-CATALOG-VALIDATION-PRESENTATION-1
  * @vitest-environment node
  */
 import { readFileSync } from "node:fs";
@@ -30,10 +30,33 @@ describe("Register Catalog presentation architecture guards", () => {
     const panel = read(
       "src/components/register-catalog/RegisterCatalogPanel.tsx"
     );
-    expect(panel).toContain("REGISTER-CATALOG-MANAGEMENT-1");
+    expect(panel).toContain("REGISTER-CATALOG-VALIDATION-PRESENTATION-1");
     expect(panel).not.toContain("openRegister");
     expect(panel).not.toContain("assignOperator");
     expect(panel).not.toContain("trpc.crmp.register");
     expect(panel).toContain("openOperations");
+  });
+
+  it("panel never renders raw error.message / Zod dumps", () => {
+    const panel = read(
+      "src/components/register-catalog/RegisterCatalogPanel.tsx"
+    );
+    expect(panel).toContain("presentRegisterCatalogError");
+    expect(panel).toContain("aria-invalid");
+    expect(panel).toContain("aria-describedby");
+    expect(panel).toContain("toast.success");
+    expect(panel).not.toMatch(/setError\(e instanceof Error \? e\.message/);
+    expect(panel).not.toContain("JSON.stringify");
+    expect(panel).not.toMatch(/listQuery\.error\.message/);
+  });
+
+  it("validation mapper is presentation-only (no domain imports)", () => {
+    const mapper = read(
+      "src/lib/register-catalog-presentation/registerCatalogValidationPresentation.ts"
+    );
+    expect(mapper).toContain("REGISTER-CATALOG-VALIDATION-PRESENTATION-1");
+    expect(mapper).not.toMatch(/from ["']@shared\/crmp/);
+    expect(mapper).not.toContain("provisionRegister");
+    expect(mapper).not.toContain("normalizeRegisterCode");
   });
 });

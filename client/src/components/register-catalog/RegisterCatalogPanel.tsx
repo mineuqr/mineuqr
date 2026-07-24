@@ -1,22 +1,29 @@
 /**
- * REGISTER-CATALOG-MANAGEMENT-1 — Manager Register Catalog host.
- * Presentation only — crmp.catalog.*. No Duty controls.
+ * REGISTER-CATALOG-MANAGEMENT-1 / REGISTER-CATALOG-VALIDATION-PRESENTATION-1 —
+ * Manager Register Catalog host. Presentation only — crmp.catalog.*.
+ * Validation presentation maps server errors; no Domain/API/DB changes.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { restaurantDash } from "@/components/dashboard/restaurantDashStyles";
 import { syncDashboardUrl } from "@/lib/dashboardUrl";
 import {
+  catalogFieldErrorId,
   catalogStatusLabel,
+  presentRegisterCatalogError,
   registerCatalogUiLabel,
+  registerCatalogValidationMessage,
   registerTypeLabel,
   useRegisterCatalogList,
   useRegisterCatalogMutations,
+  type CatalogFormField,
   type CatalogLanguage,
   type CatalogRegisterDto,
+  type CatalogValidationMessageKey,
 } from "@/lib/register-catalog-presentation";
 import { cn } from "@/lib/utils";
 import { Loader2, RefreshCw, Search } from "lucide-react";
@@ -47,6 +54,27 @@ function emptyForm() {
   };
 }
 
+function FieldHelper({
+  field,
+  messageKey,
+  language,
+}: {
+  field: CatalogFormField;
+  messageKey: CatalogValidationMessageKey | undefined;
+  language: CatalogLanguage;
+}) {
+  if (!messageKey) return null;
+  return (
+    <p
+      id={catalogFieldErrorId(field)}
+      className="text-xs text-rose-300"
+      role="alert"
+    >
+      {registerCatalogValidationMessage(messageKey, language)}
+    </p>
+  );
+}
+
 export function RegisterCatalogPanel({
   restaurantId,
   language,
@@ -63,7 +91,18 @@ export function RegisterCatalogPanel({
   const [formOpen, setFormOpen] = useState(openCreate);
   const [editing, setEditing] = useState<CatalogRegisterDto | null>(null);
   const [form, setForm] = useState(emptyForm);
-  const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<
+    Partial<Record<CatalogFormField, CatalogValidationMessageKey>>
+  >({});
+  const [globalErrorKey, setGlobalErrorKey] =
+    useState<CatalogValidationMessageKey | null>(null);
+  const [actionErrorKey, setActionErrorKey] =
+    useState<CatalogValidationMessageKey | null>(null);
+
+  const codeRef = useRef<HTMLInputElement>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
+  const typeRef = useRef<HTMLSelectElement>(null);
+  const submittingRef = useRef(false);
 
   useEffect(() => {
     if (openCreate && canManageCatalog) setFormOpen(true);
@@ -86,18 +125,40 @@ export function RegisterCatalogPanel({
     });
   }, [listQuery.data, query, statusFilter]);
 
-  const busy =
-    mutations.create.isPending ||
-    mutations.update.isPending ||
+  const formBusy =
+    mutations.create.isPending || mutations.update.isPending;
+  const listBusy =
     mutations.activate.isPending ||
     mutations.deactivate.isPending ||
     mutations.archive.isPending;
+  const busy = formBusy || listBusy;
+
+  function clearPresentationErrors() {
+    setFieldErrors({});
+    setGlobalErrorKey(null);
+  }
+
+  function clearFieldError(field: CatalogFormField) {
+    setFieldErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  }
+
+  function focusField(field: CatalogFormField | null) {
+    if (field === "code") codeRef.current?.focus();
+    else if (field === "displayName") nameRef.current?.focus();
+    else if (field === "registerType") typeRef.current?.focus();
+  }
 
   function openCreateForm() {
     if (!canManageCatalog) return;
     setEditing(null);
     setForm(emptyForm());
-    setError(null);
+    clearPresentationErrors();
+    setActionErrorKey(null);
     setFormOpen(true);
   }
 
@@ -109,12 +170,16 @@ export function RegisterCatalogPanel({
       displayName: row.displayName,
       registerType: row.registerType,
     });
-    setError(null);
+    clearPresentationErrors();
+    setActionErrorKey(null);
     setFormOpen(true);
   }
 
   async function submitForm() {
-    setError(null);
+    if (submittingRef.current || formBusy) return;
+    submittingRef.current = true;
+    clearPresentationErrors();
+    setActionErrorKey(null);
     try {
       if (editing) {
         await mutations.update.mutateAsync({
@@ -125,6 +190,9 @@ export function RegisterCatalogPanel({
           registerType: form.registerType,
           expectedVersion: editing.version,
         });
+        toast.success(
+          registerCatalogUiLabel("saveSuccessUpdate", language)
+        );
       } else {
         await mutations.create.mutateAsync({
           restaurantId,
@@ -132,14 +200,38 @@ export function RegisterCatalogPanel({
           displayName: form.displayName,
           registerType: form.registerType,
         });
+        toast.success(
+          registerCatalogUiLabel("saveSuccessCreate", language)
+        );
       }
       setFormOpen(false);
       setEditing(null);
       setForm(emptyForm());
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      const presented = presentRegisterCatalogError(e);
+      setFieldErrors(presented.fieldErrors);
+      setGlobalErrorKey(presented.globalKey);
+      focusField(presented.firstInvalidField);
+    } finally {
+      submittingRef.current = false;
     }
   }
+
+  async function runLifecycle(
+    action: () => Promise<unknown>
+  ): Promise<void> {
+    setActionErrorKey(null);
+    try {
+      await action();
+    } catch (e) {
+      const presented = presentRegisterCatalogError(e);
+      setActionErrorKey(presented.globalKey ?? "unknown");
+    }
+  }
+
+  const listErrorPresented = listQuery.isError
+    ? presentRegisterCatalogError(listQuery.error)
+    : null;
 
   return (
     <section
@@ -176,7 +268,7 @@ export function RegisterCatalogPanel({
           <Button
             size="sm"
             onClick={openCreateForm}
-            disabled={!canManageCatalog}
+            disabled={!canManageCatalog || formBusy}
             title={
               canManageCatalog
                 ? undefined
@@ -203,10 +295,20 @@ export function RegisterCatalogPanel({
         </p>
       )}
 
+      {actionErrorKey && (
+        <div
+          className="rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-200"
+          role="alert"
+        >
+          {registerCatalogValidationMessage(actionErrorKey, language)}
+        </div>
+      )}
+
       {formOpen && canManageCatalog && (
         <div
           className="space-y-3 rounded-xl border border-slate-600/60 bg-slate-900/50 p-4"
           role="form"
+          aria-busy={formBusy || undefined}
           aria-label={
             editing
               ? registerCatalogUiLabel("editDialogTitle", language)
@@ -218,18 +320,44 @@ export function RegisterCatalogPanel({
               ? registerCatalogUiLabel("editDialogTitle", language)
               : registerCatalogUiLabel("createDialogTitle", language)}
           </h3>
+
+          {globalErrorKey && (
+            <div
+              className="rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-200"
+              role="alert"
+            >
+              {registerCatalogValidationMessage(globalErrorKey, language)}
+            </div>
+          )}
+
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="space-y-1">
               <Label htmlFor="reg-code">
                 {registerCatalogUiLabel("code", language)}
               </Label>
               <Input
+                ref={codeRef}
                 id="reg-code"
                 value={form.code}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, code: e.target.value }))
-                }
+                onChange={(e) => {
+                  clearFieldError("code");
+                  setForm((f) => ({ ...f, code: e.target.value }));
+                }}
                 autoComplete="off"
+                disabled={formBusy}
+                aria-invalid={fieldErrors.code ? true : undefined}
+                aria-describedby={
+                  fieldErrors.code ? catalogFieldErrorId("code") : undefined
+                }
+                className={cn(
+                  fieldErrors.code &&
+                    "border-rose-500 focus-visible:ring-rose-500"
+                )}
+              />
+              <FieldHelper
+                field="code"
+                messageKey={fieldErrors.code}
+                language={language}
               />
             </div>
             <div className="space-y-1">
@@ -237,11 +365,29 @@ export function RegisterCatalogPanel({
                 {registerCatalogUiLabel("displayName", language)}
               </Label>
               <Input
+                ref={nameRef}
                 id="reg-name"
                 value={form.displayName}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, displayName: e.target.value }))
+                onChange={(e) => {
+                  clearFieldError("displayName");
+                  setForm((f) => ({ ...f, displayName: e.target.value }));
+                }}
+                disabled={formBusy}
+                aria-invalid={fieldErrors.displayName ? true : undefined}
+                aria-describedby={
+                  fieldErrors.displayName
+                    ? catalogFieldErrorId("displayName")
+                    : undefined
                 }
+                className={cn(
+                  fieldErrors.displayName &&
+                    "border-rose-500 focus-visible:ring-rose-500"
+                )}
+              />
+              <FieldHelper
+                field="displayName"
+                messageKey={fieldErrors.displayName}
+                language={language}
               />
             </div>
             <div className="space-y-1">
@@ -249,15 +395,29 @@ export function RegisterCatalogPanel({
                 {registerCatalogUiLabel("registerType", language)}
               </Label>
               <select
+                ref={typeRef}
                 id="reg-type"
-                className="flex h-10 w-full rounded-md border border-slate-600 bg-slate-950 px-3 text-sm text-white"
+                className={cn(
+                  "flex h-10 w-full rounded-md border bg-slate-950 px-3 text-sm text-white",
+                  fieldErrors.registerType
+                    ? "border-rose-500"
+                    : "border-slate-600"
+                )}
                 value={form.registerType}
-                onChange={(e) =>
+                disabled={formBusy}
+                aria-invalid={fieldErrors.registerType ? true : undefined}
+                aria-describedby={
+                  fieldErrors.registerType
+                    ? catalogFieldErrorId("registerType")
+                    : undefined
+                }
+                onChange={(e) => {
+                  clearFieldError("registerType");
                   setForm((f) => ({
                     ...f,
                     registerType: e.target.value as RegisterType,
-                  }))
-                }
+                  }));
+                }}
               >
                 {TYPES.map((t) => (
                   <option key={t} value={t}>
@@ -265,27 +425,38 @@ export function RegisterCatalogPanel({
                   </option>
                 ))}
               </select>
+              <FieldHelper
+                field="registerType"
+                messageKey={fieldErrors.registerType}
+                language={language}
+              />
             </div>
           </div>
-          {error && (
-            <p className="text-sm text-rose-300" role="alert">
-              {error}
-            </p>
-          )}
+
           <div className="flex gap-2">
-            <Button disabled={busy} onClick={() => void submitForm()}>
-              {busy ? (
-                <Loader2 className="size-4 animate-spin" />
+            <Button
+              disabled={formBusy}
+              onClick={() => void submitForm()}
+              aria-busy={formBusy || undefined}
+            >
+              {formBusy ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" aria-hidden />
+                  <span className="ms-2">
+                    {registerCatalogUiLabel("saving", language)}
+                  </span>
+                </>
               ) : (
                 registerCatalogUiLabel("save", language)
               )}
             </Button>
             <Button
               variant="ghost"
-              disabled={busy}
+              disabled={formBusy}
               onClick={() => {
                 setFormOpen(false);
                 setEditing(null);
+                clearPresentationErrors();
               }}
             >
               {registerCatalogUiLabel("cancel", language)}
@@ -330,12 +501,13 @@ export function RegisterCatalogPanel({
         <p className="text-sm text-slate-400">
           {registerCatalogUiLabel("loading", language)}
         </p>
-      ) : listQuery.isError ? (
+      ) : listErrorPresented ? (
         <div role="alert" className="space-y-2">
           <p className="text-sm text-rose-300">
-            {listQuery.error instanceof Error
-              ? listQuery.error.message
-              : String(listQuery.error)}
+            {registerCatalogValidationMessage(
+              listErrorPresented.globalKey ?? "unknown",
+              language
+            )}
           </p>
           <Button size="sm" onClick={() => void listQuery.refetch()}>
             {registerCatalogUiLabel("retry", language)}
@@ -353,7 +525,10 @@ export function RegisterCatalogPanel({
           </p>
         </div>
       ) : (
-        <ul className="space-y-2" aria-label={registerCatalogUiLabel("title", language)}>
+        <ul
+          className="space-y-2"
+          aria-label={registerCatalogUiLabel("title", language)}
+        >
           {rows.map((row) => (
             <li
               key={row.registerId}
@@ -383,11 +558,13 @@ export function RegisterCatalogPanel({
                         size="sm"
                         disabled={busy}
                         onClick={() =>
-                          void mutations.activate.mutateAsync({
-                            restaurantId,
-                            registerId: row.registerId,
-                            expectedVersion: row.version,
-                          })
+                          void runLifecycle(() =>
+                            mutations.activate.mutateAsync({
+                              restaurantId,
+                              registerId: row.registerId,
+                              expectedVersion: row.version,
+                            })
+                          )
                         }
                       >
                         {registerCatalogUiLabel("activate", language)}
@@ -404,11 +581,13 @@ export function RegisterCatalogPanel({
                             : undefined
                         }
                         onClick={() =>
-                          void mutations.deactivate.mutateAsync({
-                            restaurantId,
-                            registerId: row.registerId,
-                            expectedVersion: row.version,
-                          })
+                          void runLifecycle(() =>
+                            mutations.deactivate.mutateAsync({
+                              restaurantId,
+                              registerId: row.registerId,
+                              expectedVersion: row.version,
+                            })
+                          )
                         }
                       >
                         {registerCatalogUiLabel("deactivate", language)}
@@ -420,11 +599,13 @@ export function RegisterCatalogPanel({
                         variant="ghost"
                         disabled={busy || row.dutyStatus !== "closed"}
                         onClick={() =>
-                          void mutations.archive.mutateAsync({
-                            restaurantId,
-                            registerId: row.registerId,
-                            expectedVersion: row.version,
-                          })
+                          void runLifecycle(() =>
+                            mutations.archive.mutateAsync({
+                              restaurantId,
+                              registerId: row.registerId,
+                              expectedVersion: row.version,
+                            })
+                          )
                         }
                       >
                         {registerCatalogUiLabel("archive", language)}

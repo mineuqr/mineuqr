@@ -55,6 +55,19 @@ const COPY = {
     ar: "لا تملك صلاحية إنشاء صندوق لهذا الفرع.",
     en: "You do not have permission to create a register for this branch.",
   },
+  saveSuccessCreate: {
+    ar: "تم إنشاء الصندوق بنجاح.",
+    en: "Register created successfully.",
+  },
+  saveSuccessUpdate: {
+    ar: "تم حفظ تعديلات الصندوق.",
+    en: "Register updates saved.",
+  },
+  saving: { ar: "جاري الحفظ…", en: "Saving…" },
+  actionFailed: {
+    ar: "تعذر تنفيذ العملية، يرجى المحاولة مرة أخرى.",
+    en: "Could not complete the action. Please try again.",
+  },
 } as const;
 
 export type RegisterCatalogCopyKey = keyof typeof COPY;
