@@ -86,6 +86,17 @@ describe("SELF-ORDERING-SETTLEMENT-ADOPTION-1 SettleOrderPaidService", () => {
         outcome: "created",
       },
       settlementRecordEvents: [],
+      settlementContext: {
+        restaurantId: 1,
+        registerId: null,
+        financialShiftId: null,
+        operatorUserId: null,
+        deviceId: null,
+        operationalScreenId: null,
+        resolvedAt: "t",
+        status: "unavailable",
+        gaps: ["no_operational_hints"],
+      },
     });
     mocks.tryMaterializeOrderSettlementProjections.mockResolvedValue(undefined);
   });
@@ -102,10 +113,35 @@ describe("SELF-ORDERING-SETTLEMENT-ADOPTION-1 SettleOrderPaidService", () => {
       restaurantId: 1,
       checkId: 100,
       settlements: [{ paymentMethod: "cash" }],
+      settlementContextHints: {
+        registerId: undefined,
+        deviceId: undefined,
+        operatorUserId: undefined,
+        operationalScreenId: undefined,
+      },
     });
     expect(result.settlementRecordId).toBe("sr:1:100:settlement:1");
     expect(result.alreadySettled).toBe(false);
+    expect(result.settlementContext.status).toBe("unavailable");
     expect(mocks.tryMaterializeOrderSettlementProjections).toHaveBeenCalled();
+  });
+
+  it("passes station hints into settle without fabricating", async () => {
+    await settleOrderPaid({
+      restaurantId: 1,
+      orderId: 55,
+      trackingToken: "tok-abc",
+      registerId: "reg_1",
+      deviceId: "dev_1",
+    });
+    expect(mocks.settleCheckPaidByIdDetailed).toHaveBeenCalledWith(
+      expect.objectContaining({
+        settlementContextHints: expect.objectContaining({
+          registerId: "reg_1",
+          deviceId: "dev_1",
+        }),
+      })
+    );
   });
 
   it("is idempotent when Check already paid", async () => {

@@ -46,6 +46,7 @@ import {
 import type { SelectDiningSession } from "../../drizzle/schema";
 import { getDb } from "../db";
 import type { StaffSettlementLineInput } from "@shared/operational-session";
+import type { SettlementContextHints } from "@shared/crmp";
 
 const ALLOWED_STATUS_TRANSITIONS: Record<DiningSessionStatus, DiningSessionStatus[]> = {
   open: ["paid", "complimentary", "closed"],
@@ -67,6 +68,19 @@ export type MarkPaidInput = StaffSessionActionInput & {
    * DEFAULT_PAID_PAYMENT_METHOD = "other" for backward compatibility.
    */
   settlements?: readonly StaffSettlementLineInput[];
+  /**
+   * SETTLEMENT-CONTEXT-ADOPTION-1 — optional operational hints (fail-open).
+   * Never fabricates Register/Shift when absent.
+   */
+  registerId?: string | null;
+  deviceId?: string | null;
+  operationalScreenId?: string | null;
+};
+
+export type StaffSessionActionWithContextInput = StaffSessionActionInput & {
+  registerId?: string | null;
+  deviceId?: string | null;
+  operationalScreenId?: string | null;
 };
 
 function assertValidSessionActionInput(input: StaffSessionActionInput): void {
@@ -154,7 +168,8 @@ async function settleAndCloseSession(
   session: SelectDiningSession,
   settlement: DiningSessionSettlementOutcome,
   metadata: Record<string, unknown>,
-  settlements?: readonly StaffSettlementLineInput[]
+  settlements?: readonly StaffSettlementLineInput[],
+  contextHints?: SettlementContextHints
 ): Promise<void> {
   if (session.status !== "open") {
     throw new DiningSessionTransitionError(
@@ -183,6 +198,15 @@ async function settleAndCloseSession(
     checkId = ensured.id;
   }
 
+  // SETTLEMENT-CONTEXT-ADOPTION-1 — operator from staff action; optional register/device.
+  const settlementContextHints: SettlementContextHints = {
+    operatorUserId:
+      typeof metadata.actorUserId === "number" ? metadata.actorUserId : null,
+    registerId: contextHints?.registerId,
+    deviceId: contextHints?.deviceId,
+    operationalScreenId: contextHints?.operationalScreenId,
+  };
+
   // CHECK-MANAGEMENT-ARCHITECTURE-1 — finalize Check before Session settle/close.
   // SETTLEMENT-PAYMENT-METHOD-CAPTURE-1 — pass operator tenders when provided.
   const financial =
@@ -191,10 +215,12 @@ async function settleAndCloseSession(
           restaurantId: session.restaurantId,
           checkId,
           settlements,
+          settlementContextHints,
         })
       : await settleCheckComplimentaryByIdDetailed({
           restaurantId: session.restaurantId,
           checkId,
+          settlementContextHints,
         });
   const check = financial.check;
 
@@ -218,6 +244,12 @@ async function settleAndCloseSession(
     checkId: check.id,
     checkGrandTotal: check.grandTotal,
     checkTaxAmount: check.taxAmount,
+    // Operational context (non-financial) — never blocks settle.
+    settlementContextStatus: financial.settlementContext.status,
+    settlementContextRegisterId: financial.settlementContext.registerId,
+    settlementContextFinancialShiftId:
+      financial.settlementContext.financialShiftId,
+    settlementContextGaps: financial.settlementContext.gaps,
   };
 
   await db.transaction(async (tx) => {
@@ -531,23 +563,42 @@ export async function markPaid(input: MarkPaidInput): Promise<void> {
       source: "staff",
       actorUserId: input.actorUserId,
     },
-    input.settlements
+    input.settlements,
+    {
+      registerId: input.registerId,
+      deviceId: input.deviceId,
+      operationalScreenId: input.operationalScreenId,
+    }
   );
 }
 
 /** SETTLEMENT-ARCHITECTURE-1A — staff marks session complimentary (open → complimentary → closed). */
-export async function markComplimentary(input: StaffSessionActionInput): Promise<void> {
+export async function markComplimentary(
+  input: StaffSessionActionWithContextInput
+): Promise<void> {
   assertValidSessionActionInput(input);
   const session = await loadSessionForStaffAction(input.restaurantId, input.sessionId);
 
-  await settleAndCloseSession(session, "complimentary", {
-    source: "staff",
-    actorUserId: input.actorUserId,
-  });
+  await settleAndCloseSession(
+    session,
+    "complimentary",
+    {
+      source: "staff",
+      actorUserId: input.actorUserId,
+    },
+    undefined,
+    {
+      registerId: input.registerId,
+      deviceId: input.deviceId,
+      operationalScreenId: input.operationalScreenId,
+    }
+  );
 }
 
 /** Administrative override — close without settlement (open → closed). */
-export async function closeSession(input: StaffSessionActionInput): Promise<void> {
+export async function closeSession(
+  input: StaffSessionActionWithContextInput
+): Promise<void> {
   assertValidSessionActionInput(input);
   const session = await loadSessionForStaffAction(input.restaurantId, input.sessionId);
   const now = formatDiningSessionTimestamp();
@@ -567,6 +618,12 @@ export async function closeSession(input: StaffSessionActionInput): Promise<void
     const voidedFinancial = await voidCheckByIdDetailed({
       restaurantId: input.restaurantId,
       checkId,
+      settlementContextHints: {
+        operatorUserId: input.actorUserId,
+        registerId: input.registerId,
+        deviceId: input.deviceId,
+        operationalScreenId: input.operationalScreenId,
+      },
     });
     voidedCheckId = voidedFinancial.check.id;
     voidedGrandTotal = voidedFinancial.check.grandTotal;

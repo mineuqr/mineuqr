@@ -2007,6 +2007,10 @@ const sessionRouter = router({
           )
           .min(1)
           .optional(),
+        /** SETTLEMENT-CONTEXT-ADOPTION-1 — optional; settle remains fail-open. */
+        registerId: z.string().min(1).max(128).optional(),
+        deviceId: z.string().min(1).max(64).optional(),
+        operationalScreenId: z.string().min(1).max(128).optional(),
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -2017,6 +2021,9 @@ const sessionRouter = router({
           sessionId: input.sessionId,
           actorUserId: ctx.user.id,
           settlements: input.settlements,
+          registerId: input.registerId,
+          deviceId: input.deviceId,
+          operationalScreenId: input.operationalScreenId,
         });
         const workspace = await getOwnerSessionWorkspace(
           input.restaurantId,
@@ -2045,6 +2052,9 @@ const sessionRouter = router({
       z.object({
         restaurantId: z.number(),
         sessionId: z.number().int().positive(),
+        registerId: z.string().min(1).max(128).optional(),
+        deviceId: z.string().min(1).max(64).optional(),
+        operationalScreenId: z.string().min(1).max(128).optional(),
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -2054,6 +2064,9 @@ const sessionRouter = router({
           restaurantId: input.restaurantId,
           sessionId: input.sessionId,
           actorUserId: ctx.user.id,
+          registerId: input.registerId,
+          deviceId: input.deviceId,
+          operationalScreenId: input.operationalScreenId,
         });
         return await getOwnerSessionWorkspace(input.restaurantId, input.sessionId);
       } catch (err) {
@@ -2204,6 +2217,11 @@ const orderRouter = router({
           )
           .min(1)
           .optional(),
+        /** SETTLEMENT-CONTEXT-ADOPTION-1 — optional station hints; settle fail-open. */
+        registerId: z.string().min(1).max(128).optional(),
+        deviceId: z.string().min(1).max(64).optional(),
+        operatorUserId: z.number().int().positive().optional(),
+        operationalScreenId: z.string().min(1).max(128).optional(),
       })
     )
     .mutation(async ({ input }) => {
@@ -2214,6 +2232,10 @@ const orderRouter = router({
           orderId: input.orderId,
           trackingToken: input.trackingToken,
           settlements: input.settlements,
+          registerId: input.registerId,
+          deviceId: input.deviceId,
+          operatorUserId: input.operatorUserId,
+          operationalScreenId: input.operationalScreenId,
         });
       } catch (err) {
         if (err instanceof SettleOrderPaidError) {

@@ -21,6 +21,8 @@ describe("CRMP / SHIFT-LIFECYCLE architecture guards", () => {
       "server/crmp/FinancialShiftDomainService.ts",
       "server/crmp/RegisterDomainService.ts",
       "server/crmp/DrizzleCrmpRepository.ts",
+      "server/crmp/SettlementContextResolver.ts",
+      "shared/crmp/settlementContext/resolveSettlementContext.ts",
     ];
     for (const f of files) {
       const src = read(f);
@@ -28,6 +30,15 @@ describe("CRMP / SHIFT-LIFECYCLE architecture guards", () => {
       expect(src, f).not.toMatch(/from ["']@shared\/operational-session/);
       expect(src, f).not.toMatch(/reporting-platform/);
     }
+  });
+
+  it("settlement context never fabricates Register or Shift", () => {
+    const resolve = read(
+      "shared/crmp/settlementContext/resolveSettlementContext.ts"
+    );
+    expect(resolve).toContain("Never fabricates");
+    expect(resolve).not.toContain("openFinancialShift");
+    expect(resolve).not.toContain("provisionRegister");
   });
 
   it("migration 0077 is additive CRMP-only", () => {

@@ -16,4 +16,8 @@ export {
   type FinancialShiftCommandResult,
 } from "./FinancialShiftDomainService";
 export { DrawerDomainService } from "./DrawerDomainService";
+export {
+  SettlementContextResolver,
+  resolveSettlementContextForSettle,
+} from "./SettlementContextResolver";
 export { newCrmpId } from "./crmpIds";

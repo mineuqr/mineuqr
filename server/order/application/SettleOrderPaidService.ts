@@ -15,6 +15,8 @@ import {
   settleCheckPaidByIdDetailed,
 } from "../../operational-session/check";
 import type { StaffSettlementLineInput } from "@shared/operational-session";
+import type { SettlementContext, SettlementContextHints } from "@shared/crmp";
+import { unavailableSettlementContext } from "@shared/crmp";
 import { listSettlementRecordsForCheck } from "../../operational-session/check/settlementRecordRepository";
 import { getOrderSettlementProjectionStore } from "../../operational-session/check/api/orderSettlementReadComposition";
 import { tryMaterializeOrderSettlementProjections } from "../../operational-session/check/read/orderSettlementProjectionMaterializer";
@@ -47,6 +49,8 @@ export type SettleOrderPaidResult = Readonly<{
   currencySymbol: string;
   paymentMethodSummary: string;
   alreadySettled: boolean;
+  /** SETTLEMENT-CONTEXT-ADOPTION-1 — operational context (fail-open). */
+  settlementContext: SettlementContext;
 }>;
 
 function newestSettlementRecordId(
@@ -80,6 +84,11 @@ export async function settleOrderPaid(input: {
   orderId: number;
   trackingToken: string;
   settlements?: readonly StaffSettlementLineInput[];
+  /** SETTLEMENT-CONTEXT-ADOPTION-1 — optional station hints (fail-open). */
+  registerId?: string | null;
+  deviceId?: string | null;
+  operatorUserId?: number | null;
+  operationalScreenId?: string | null;
 }): Promise<SettleOrderPaidResult> {
   const order = await getOrderById(input.orderId);
   if (!order || order.restaurantId !== input.restaurantId) {
@@ -94,6 +103,19 @@ export async function settleOrderPaid(input: {
       "Order tracking token mismatch"
     );
   }
+
+  const settlementContextHints: SettlementContextHints = {
+    registerId: input.registerId,
+    deviceId: input.deviceId,
+    operatorUserId: input.operatorUserId,
+    operationalScreenId: input.operationalScreenId,
+  };
+  const unavailableCtx = () =>
+    unavailableSettlementContext(
+      input.restaurantId,
+      new Date().toISOString(),
+      ["already_settled_no_live_context"]
+    );
 
   let membership = await findBlockingMembershipForOrder(
     input.restaurantId,
@@ -145,6 +167,7 @@ export async function settleOrderPaid(input: {
       currencySymbol: record.currencySnapshot.currencySymbol,
       paymentMethodSummary: paymentSummaryFromRecord(record),
       alreadySettled: true,
+      settlementContext: unavailableCtx(),
     };
   }
 
@@ -161,6 +184,7 @@ export async function settleOrderPaid(input: {
       restaurantId: input.restaurantId,
       checkId,
       settlements: input.settlements,
+      settlementContextHints,
     });
   } catch (err) {
     if (err instanceof CheckTransitionError) {
@@ -184,6 +208,7 @@ export async function settleOrderPaid(input: {
           currencySymbol: record.currencySnapshot.currencySymbol,
           paymentMethodSummary: paymentSummaryFromRecord(record),
           alreadySettled: true,
+          settlementContext: unavailableCtx(),
         };
       }
     }
@@ -225,6 +250,7 @@ export async function settleOrderPaid(input: {
       currencySymbol: fallback.currencySnapshot.currencySymbol,
       paymentMethodSummary: paymentSummaryFromRecord(fallback),
       alreadySettled: financial.settlementRecord.outcome === "already_applied",
+      settlementContext: financial.settlementContext,
     };
   }
 
@@ -238,5 +264,6 @@ export async function settleOrderPaid(input: {
     currencySymbol: record.currencySnapshot.currencySymbol,
     paymentMethodSummary: paymentSummaryFromRecord(record),
     alreadySettled: financial.settlementRecord.outcome === "already_applied",
+    settlementContext: financial.settlementContext,
   };
 }

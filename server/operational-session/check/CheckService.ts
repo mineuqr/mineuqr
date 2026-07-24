@@ -117,6 +117,12 @@ import type {
   PaymentPortion,
   TenderMethod,
 } from "@shared/operational-session";
+import {
+  unavailableSettlementContext,
+  type SettlementContext,
+  type SettlementContextHints,
+} from "@shared/crmp";
+import { resolveSettlementContextForSettle } from "../../crmp/SettlementContextResolver";
 
 export class CheckTransitionError extends Error {
   constructor(message: string) {
@@ -132,6 +138,11 @@ export type CheckFinancialMutationResult = Readonly<{
   orderSettlementEvents: readonly OrderSettlementDomainEvent[];
   settlementRecord: CheckSettlementRecordMutationResult;
   settlementRecordEvents: readonly SettlementRecordDomainEvent[];
+  /**
+   * SETTLEMENT-CONTEXT-ADOPTION-1 — operational context (fail-open).
+   * Never owns money. Never blocks settle when unavailable.
+   */
+  settlementContext: SettlementContext;
 }>;
 
 /**
@@ -428,6 +439,10 @@ async function finalizeOpenCheckById(
     checkId: number;
     outcome: Exclude<CheckOutcome, "open">;
     settlements?: readonly StaffSettlementLineInput[];
+    /** Pre-resolved context (preferred). */
+    settlementContext?: SettlementContext;
+    /** Hints when context not pre-resolved — never fabricate. */
+    settlementContextHints?: SettlementContextHints;
   },
   client?: SessionDbClient
 ): Promise<CheckFinancialMutationResult> {
@@ -454,6 +469,27 @@ async function finalizeOpenCheckById(
     taxPolicySnapshot: check.taxPolicySnapshot,
   });
   const now = formatDiningSessionTimestamp();
+
+  // SETTLEMENT-CONTEXT-ADOPTION-1 — resolve outside money TX; fail-open.
+  // No hints → unavailable without fabricating or querying CRMP.
+  const hints = input.settlementContextHints ?? {};
+  const hasOperationalHints = Boolean(
+    hints.registerId ||
+      hints.deviceId ||
+      hints.operatorUserId ||
+      hints.operationalScreenId
+  );
+  const settlementContext =
+    input.settlementContext ??
+    (hasOperationalHints
+      ? await resolveSettlementContextForSettle({
+          restaurantId: input.restaurantId,
+          ...hints,
+          at: now,
+        })
+      : unavailableSettlementContext(input.restaurantId, now, [
+          "no_operational_hints",
+        ]));
 
   let settlementLines: readonly SettlementTransactionInput[] | null = null;
   try {
@@ -548,6 +584,7 @@ async function finalizeOpenCheckById(
       input.outcome === "paid" || input.outcome === "complimentary" ? now : null;
 
     // SR-INV-04 — Settlement Record in the same Check-owned financial TX.
+    // Actor slots: optional adoption from Settlement Context (not Attribution).
     const settlementRecord = await createSettlementRecordForCheckFinalize(
       {
         restaurantId: input.restaurantId,
@@ -564,6 +601,12 @@ async function finalizeOpenCheckById(
         settlementLines,
         orderSettlements: orderSettlement.settlements,
         createdAt: now,
+        createdByActorType:
+          settlementContext.operatorUserId != null ? "staff_user" : null,
+        createdByActorId:
+          settlementContext.operatorUserId != null
+            ? String(settlementContext.operatorUserId)
+            : null,
       },
       tx
     );
@@ -578,6 +621,7 @@ async function finalizeOpenCheckById(
       orderSettlementEvents: orderSettlement.events,
       settlementRecord,
       settlementRecordEvents: settlementRecord.events,
+      settlementContext,
     };
   });
 }
@@ -777,12 +821,16 @@ export async function settleCheckPaidById(input: {
   restaurantId: number;
   checkId: number;
   settlements?: readonly StaffSettlementLineInput[];
+  settlementContext?: SettlementContext;
+  settlementContextHints?: SettlementContextHints;
 }): Promise<OperationalCheck> {
   const result = await finalizeOpenCheckById({
     restaurantId: input.restaurantId,
     checkId: input.checkId,
     outcome: "paid",
     settlements: input.settlements,
+    settlementContext: input.settlementContext,
+    settlementContextHints: input.settlementContextHints,
   });
   return result.check;
 }
@@ -792,23 +840,31 @@ export async function settleCheckPaidByIdDetailed(input: {
   restaurantId: number;
   checkId: number;
   settlements?: readonly StaffSettlementLineInput[];
+  settlementContext?: SettlementContext;
+  settlementContextHints?: SettlementContextHints;
 }): Promise<CheckFinancialMutationResult> {
   return finalizeOpenCheckById({
     restaurantId: input.restaurantId,
     checkId: input.checkId,
     outcome: "paid",
     settlements: input.settlements,
+    settlementContext: input.settlementContext,
+    settlementContextHints: input.settlementContextHints,
   });
 }
 
 export async function settleCheckComplimentaryById(input: {
   restaurantId: number;
   checkId: number;
+  settlementContext?: SettlementContext;
+  settlementContextHints?: SettlementContextHints;
 }): Promise<OperationalCheck> {
   const result = await finalizeOpenCheckById({
     restaurantId: input.restaurantId,
     checkId: input.checkId,
     outcome: "complimentary",
+    settlementContext: input.settlementContext,
+    settlementContextHints: input.settlementContextHints,
   });
   return result.check;
 }
@@ -816,22 +872,30 @@ export async function settleCheckComplimentaryById(input: {
 export async function settleCheckComplimentaryByIdDetailed(input: {
   restaurantId: number;
   checkId: number;
+  settlementContext?: SettlementContext;
+  settlementContextHints?: SettlementContextHints;
 }): Promise<CheckFinancialMutationResult> {
   return finalizeOpenCheckById({
     restaurantId: input.restaurantId,
     checkId: input.checkId,
     outcome: "complimentary",
+    settlementContext: input.settlementContext,
+    settlementContextHints: input.settlementContextHints,
   });
 }
 
 export async function voidCheckById(input: {
   restaurantId: number;
   checkId: number;
+  settlementContext?: SettlementContext;
+  settlementContextHints?: SettlementContextHints;
 }): Promise<OperationalCheck> {
   const result = await finalizeOpenCheckById({
     restaurantId: input.restaurantId,
     checkId: input.checkId,
     outcome: "voided",
+    settlementContext: input.settlementContext,
+    settlementContextHints: input.settlementContextHints,
   });
   return result.check;
 }
@@ -839,11 +903,15 @@ export async function voidCheckById(input: {
 export async function voidCheckByIdDetailed(input: {
   restaurantId: number;
   checkId: number;
+  settlementContext?: SettlementContext;
+  settlementContextHints?: SettlementContextHints;
 }): Promise<CheckFinancialMutationResult> {
   return finalizeOpenCheckById({
     restaurantId: input.restaurantId,
     checkId: input.checkId,
     outcome: "voided",
+    settlementContext: input.settlementContext,
+    settlementContextHints: input.settlementContextHints,
   });
 }
 
