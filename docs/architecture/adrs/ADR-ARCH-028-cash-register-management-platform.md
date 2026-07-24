@@ -12,7 +12,7 @@
 | **Supersedes** | — |
 | **Refines** | [ADR-ARCH-020](./ADR-ARCH-020-financial-settlement-platform.md) · [ADR-ARCH-022](./ADR-ARCH-022-order-settlement-platform.md) · [ADR-ARCH-023](./ADR-ARCH-023-financial-core-capabilities.md) · [ADR-ARCH-026](./ADR-ARCH-026-settlement-record-platform.md) · Operational Screen / Device Management architecture |
 | **Does not modify** | ADR-ARCH-020 · 022 · 023 · 026 money / publication ownership (additive platform only) |
-| **Implementation status** | **Not implemented** — constitutional decision only; no schema, API, service, or UI authorized by this ADR alone |
+| **Implementation status** | **Partial** — CRMP-IMPLEMENTATION-1 certified domain foundation + additive `0077_crmp` persistence. No UI, Settlement adoption, or Reporting authorized yet. |
 | **Related programs** | CASH-REGISTER-MANAGEMENT-ARCHITECTURE-1 · SELF-ORDERING-COUNTER-PICKUP-ARCHITECTURE-1 (consumer) · REPORTING-PAYMENT-METHOD-ANALYTICS-1 (future-readiness note) |
 
 ---

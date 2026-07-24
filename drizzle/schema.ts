@@ -1548,3 +1548,150 @@ export type SelectCustomerPushSubscription = typeof customerPushSubscriptions.$i
 
 export type InsertOrderItem = typeof orderItems.$inferInsert;
 export type SelectOrderItem = typeof orderItems.$inferSelect;
+
+// ─── CRMP (CRMP-IMPLEMENTATION-1 / ADR-ARCH-028) ─────────────────────
+/** Cash Register — operational financial station. Not Device. Not money owner. */
+export const crmpRegisters = mysqlTable(
+	"crmp_registers",
+	{
+		id: int().autoincrement().primaryKey(),
+		registerId: varchar({ length: 128 }).notNull(),
+		restaurantId: int().notNull(),
+		displayName: varchar({ length: 128 }).notNull(),
+		status: mysqlEnum(["provisioned", "active", "inactive"]).notNull(),
+		deviceId: varchar({ length: 64 }),
+		version: int().default(1).notNull(),
+		createdAt: timestamp({ mode: "string" }).notNull(),
+		updatedAt: timestamp({ mode: "string" }).notNull(),
+	},
+	(table) => [
+		uniqueIndex("crmp_registers_register_id_unique").on(table.registerId),
+		index("crmp_registers_restaurant_id").on(table.restaurantId),
+		index("crmp_registers_restaurant_status").on(table.restaurantId, table.status),
+	]
+);
+
+export const crmpFinancialShifts = mysqlTable(
+	"crmp_financial_shifts",
+	{
+		id: int().autoincrement().primaryKey(),
+		financialShiftId: varchar({ length: 128 }).notNull(),
+		restaurantId: int().notNull(),
+		registerId: varchar({ length: 128 }).notNull(),
+		operatorUserId: int().notNull(),
+		status: mysqlEnum(["open", "handover_pending", "closed"]).notNull(),
+		openingFloatAmount: decimal({ precision: 10, scale: 2 }).notNull(),
+		currencyCode: varchar({ length: 8 }).notNull(),
+		drawerId: varchar({ length: 128 }).notNull(),
+		version: int().default(1).notNull(),
+		openedAt: timestamp({ mode: "string" }).notNull(),
+		closedAt: timestamp({ mode: "string" }),
+		updatedAt: timestamp({ mode: "string" }).notNull(),
+	},
+	(table) => [
+		uniqueIndex("crmp_financial_shifts_shift_id_unique").on(table.financialShiftId),
+		uniqueIndex("crmp_financial_shifts_drawer_id_unique").on(table.drawerId),
+		index("crmp_financial_shifts_restaurant_id").on(table.restaurantId),
+		index("crmp_financial_shifts_register_id").on(table.registerId),
+		index("crmp_financial_shifts_register_status").on(table.registerId, table.status),
+	]
+);
+
+export const crmpDrawerMovements = mysqlTable(
+	"crmp_drawer_movements",
+	{
+		id: int().autoincrement().primaryKey(),
+		movementId: varchar({ length: 128 }).notNull(),
+		financialShiftId: varchar({ length: 128 }).notNull(),
+		restaurantId: int().notNull(),
+		movementType: mysqlEnum([
+			"opening_float",
+			"paid_in",
+			"paid_out",
+			"safe_drop",
+			"manual_adjustment",
+		]).notNull(),
+		amount: decimal({ precision: 10, scale: 2 }).notNull(),
+		currencyCode: varchar({ length: 8 }).notNull(),
+		reason: varchar({ length: 512 }),
+		actorUserId: int().notNull(),
+		recordedAt: timestamp({ mode: "string" }).notNull(),
+	},
+	(table) => [
+		uniqueIndex("crmp_drawer_movements_movement_id_unique").on(table.movementId),
+		index("crmp_drawer_movements_shift_id").on(table.financialShiftId),
+		index("crmp_drawer_movements_restaurant_id").on(table.restaurantId),
+	]
+);
+
+export const crmpDrawerCounts = mysqlTable(
+	"crmp_drawer_counts",
+	{
+		id: int().autoincrement().primaryKey(),
+		countId: varchar({ length: 128 }).notNull(),
+		financialShiftId: varchar({ length: 128 }).notNull(),
+		restaurantId: int().notNull(),
+		kind: mysqlEnum(["interim", "final"]).notNull(),
+		expectedAmount: decimal({ precision: 10, scale: 2 }).notNull(),
+		actualAmount: decimal({ precision: 10, scale: 2 }).notNull(),
+		varianceAmount: decimal({ precision: 10, scale: 2 }).notNull(),
+		currencyCode: varchar({ length: 8 }).notNull(),
+		actorUserId: int().notNull(),
+		recordedAt: timestamp({ mode: "string" }).notNull(),
+	},
+	(table) => [
+		uniqueIndex("crmp_drawer_counts_count_id_unique").on(table.countId),
+		index("crmp_drawer_counts_shift_id").on(table.financialShiftId),
+		index("crmp_drawer_counts_restaurant_id").on(table.restaurantId),
+	]
+);
+
+export const crmpShiftHandovers = mysqlTable(
+	"crmp_shift_handovers",
+	{
+		id: int().autoincrement().primaryKey(),
+		handoverId: varchar({ length: 128 }).notNull(),
+		financialShiftId: varchar({ length: 128 }).notNull(),
+		restaurantId: int().notNull(),
+		initiatorUserId: int().notNull(),
+		receiverUserId: int().notNull(),
+		outcome: mysqlEnum(["pending", "accepted", "rejected"]).notNull(),
+		finalCountId: varchar({ length: 128 }),
+		offeredAt: timestamp({ mode: "string" }).notNull(),
+		resolvedAt: timestamp({ mode: "string" }),
+	},
+	(table) => [
+		uniqueIndex("crmp_shift_handovers_handover_id_unique").on(table.handoverId),
+		uniqueIndex("crmp_shift_handovers_shift_id_unique").on(table.financialShiftId),
+		index("crmp_shift_handovers_restaurant_id").on(table.restaurantId),
+	]
+);
+
+/** Settlement Attribution — association only; references Settlement Record id. No money ownership. */
+export const crmpSettlementAttributions = mysqlTable(
+	"crmp_settlement_attributions",
+	{
+		id: int().autoincrement().primaryKey(),
+		attributionId: varchar({ length: 128 }).notNull(),
+		restaurantId: int().notNull(),
+		registerId: varchar({ length: 128 }).notNull(),
+		financialShiftId: varchar({ length: 128 }).notNull(),
+		settlementRecordId: varchar({ length: 128 }).notNull(),
+		operatorUserId: int().notNull(),
+		cashTenderAmount: decimal({ precision: 10, scale: 2 }).notNull(),
+		currencyCode: varchar({ length: 8 }).notNull(),
+		attributedAt: timestamp({ mode: "string" }).notNull(),
+	},
+	(table) => [
+		uniqueIndex("crmp_settlement_attributions_attr_id_unique").on(table.attributionId),
+		uniqueIndex("crmp_settlement_attributions_sr_unique").on(table.settlementRecordId),
+		index("crmp_settlement_attributions_shift_id").on(table.financialShiftId),
+		index("crmp_settlement_attributions_register_id").on(table.registerId),
+		index("crmp_settlement_attributions_restaurant_id").on(table.restaurantId),
+	]
+);
+
+export type InsertCrmpRegister = typeof crmpRegisters.$inferInsert;
+export type SelectCrmpRegister = typeof crmpRegisters.$inferSelect;
+export type InsertCrmpFinancialShift = typeof crmpFinancialShifts.$inferInsert;
+export type SelectCrmpFinancialShift = typeof crmpFinancialShifts.$inferSelect;
