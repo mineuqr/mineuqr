@@ -42,6 +42,9 @@ export {
   type SettlementQuickRange,
 } from "./settlementHistoryPresentation";
 
+/** OI-08 — Settlement Operational Identity via shared platform provider. */
+export { resolveSettlementOperationalIdentity } from "@shared/operational-document-identity";
+
 export {
   useSettlementRecordHistory,
   useSettlementRecordDetail,

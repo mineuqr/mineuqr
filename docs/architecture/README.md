@@ -13,6 +13,7 @@ Official architectural reference for MineuQR 2.0. Start here for onboarding, gov
 | Read supreme authority | [Architecture Constitution v1.0](./constitution/Architecture-Constitution-v1.0.md) |
 | Design Order domain | [Order-Centric Blueprint](./blueprints/Order-Centric-Architecture.md) |
 | Find a decision | [ADR Registry](./constitution/ADR-Registry.md) |
+| Apply document identity rules | [Operational Document Identity Standard](./standards/OPERATIONAL-DOCUMENT-IDENTITY-STANDARD.md) |
 | Start a program | [Program Charter template](./templates/Program-Charter.md) |
 | Pass compliance | [Compliance Checklist](./governance/Compliance-Checklist.md) |
 | Look up a term | [Glossary](./glossary/Architecture-Glossary.md) |

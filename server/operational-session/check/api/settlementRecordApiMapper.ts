@@ -4,6 +4,7 @@
  */
 
 import type { SettlementRecord } from "@shared/operational-session";
+import { resolveSettlementOperationalIdentity } from "@shared/operational-document-identity";
 import type {
   SettlementRecordDetailDto,
   SettlementRecordHistoryItemDto,
@@ -15,7 +16,11 @@ import type {
 } from "./settlementRecordApiDtos";
 
 function settlementNumberOf(record: SettlementRecord): string {
-  return record.settlementRecordId;
+  return resolveSettlementOperationalIdentity({
+    checkId: record.checkId,
+    settlementRecordId: record.settlementRecordId,
+    recordGeneration: record.recordGeneration,
+  });
 }
 
 function settlementTimeOf(record: SettlementRecord): string {

@@ -17,9 +17,9 @@ import {
   type SettlementRecordLang,
 } from "./settlementRecordCopy";
 import {
-  formatOperationalSettlementNumber,
   formatSettlementHistoryTimeParts,
 } from "./settlementHistoryPresentation";
+import { resolveSettlementOperationalIdentity } from "@shared/operational-document-identity";
 
 function formatTime(value: string, language: SettlementRecordLang): string {
   const { dateLabel, timeLabel } = formatSettlementHistoryTimeParts(
@@ -79,7 +79,7 @@ export function toSettlementHistoryRowViewModel(
 
   return {
     settlementRecordId: item.settlementRecordId,
-    settlementNumber: formatOperationalSettlementNumber({
+    settlementNumber: resolveSettlementOperationalIdentity({
       checkId: item.checkId,
       settlementRecordId: item.settlementRecordId,
     }),
@@ -131,7 +131,7 @@ export function toSettlementDetailViewModel(
       ? settlementRecordUiLabel("sessionSource", language)
       : settlementRecordUiLabel("checkSource", language);
   return {
-    settlementNumber: formatOperationalSettlementNumber({
+    settlementNumber: resolveSettlementOperationalIdentity({
       checkId: detail.checkId,
       settlementRecordId: detail.settlementRecordId,
     }),

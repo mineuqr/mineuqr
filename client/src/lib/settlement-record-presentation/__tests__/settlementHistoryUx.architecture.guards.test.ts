@@ -41,6 +41,15 @@ describe("SETTLEMENT-HISTORY-UX-RATIONALIZATION-1 guards", () => {
     expect(panel).toContain("dir={language === \"ar\" ? \"rtl\" : \"ltr\"}");
   });
 
+  it("Settlement presentation resolves via provider alias (no local ST compose)", () => {
+    const helpers = read(
+      "client/src/lib/settlement-record-presentation/settlementHistoryPresentation.ts"
+    );
+    expect(helpers).toContain("resolveSettlementOperationalIdentity");
+    expect(helpers).toContain("@shared/operational-document-identity");
+    expect(helpers).toContain("formatOperationalSettlementNumber");
+  });
+
   it("does not change Settlement Record domain or write APIs", () => {
     const panel = read(
       "client/src/components/settlement-record/SettlementHistoryPanel.tsx"
@@ -52,6 +61,6 @@ describe("SETTLEMENT-HISTORY-UX-RATIONALIZATION-1 guards", () => {
       "client/src/lib/settlement-record-presentation/settlementHistoryPresentation.ts"
     );
     expect(helpers).toContain("SETTLEMENT-HISTORY-UX-RATIONALIZATION-1");
-    expect(helpers).toContain("formatOperationalSettlementNumber");
+    expect(helpers).toContain("resolveSettlementOperationalIdentity");
   });
 });

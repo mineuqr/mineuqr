@@ -60,7 +60,8 @@ function sampleRecord(
 describe("settlementRecordApiMapper", () => {
   it("maps history fields without recalculating money", () => {
     const item = toSettlementRecordHistoryItemDto(sampleRecord());
-    expect(item.settlementNumber).toBe("sr:1:10:settlement:1");
+    expect(item.settlementRecordId).toBe("sr:1:10:settlement:1");
+    expect(item.settlementNumber).toBe("ST-000010");
     expect(item.grandTotal).toBe("57.50");
     expect(item.sourceType).toBe("session");
     expect(item.sourceNumber).toBe("20");
