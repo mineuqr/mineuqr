@@ -119,10 +119,13 @@ import type {
 } from "@shared/operational-session";
 import {
   unavailableSettlementContext,
+  type SettlementAttributed,
+  type SettlementAttributionAdoptionResult,
   type SettlementContext,
   type SettlementContextHints,
 } from "@shared/crmp";
 import { resolveSettlementContextForSettle } from "../../crmp/SettlementContextResolver";
+import { adoptSettlementAttributionAfterFinalize } from "./checkSettlementAttributionAdoption";
 
 export class CheckTransitionError extends Error {
   constructor(message: string) {
@@ -143,6 +146,12 @@ export type CheckFinancialMutationResult = Readonly<{
    * Never owns money. Never blocks settle when unavailable.
    */
   settlementContext: SettlementContext;
+  /**
+   * SETTLEMENT-ATTRIBUTION-ADOPTION-1 — post-commit operational Attribution (fail-open).
+   * Never owns money. Never blocks settle.
+   */
+  settlementAttribution: SettlementAttributionAdoptionResult;
+  settlementAttributionEvents: readonly SettlementAttributed[];
 }>;
 
 /**
@@ -507,7 +516,7 @@ async function finalizeOpenCheckById(
     throw err;
   }
 
-  return withCheckOwnedTransaction(client, async (tx) => {
+  const financial = await withCheckOwnedTransaction(client, async (tx) => {
     const ownedRows = await finalizeCheckOutcome(
       {
         checkId: check.id,
@@ -624,6 +633,22 @@ async function finalizeOpenCheckById(
       settlementContext,
     };
   });
+
+  // SETTLEMENT-ATTRIBUTION-ADOPTION-1 — AFTER money+SR commit; fail-open.
+  const attributionBundle = await adoptSettlementAttributionAfterFinalize({
+    restaurantId: input.restaurantId,
+    outcome: input.outcome,
+    settlementContext,
+    settlementRecord: financial.settlementRecord.record,
+    settlementLines,
+    at: now,
+  });
+
+  return {
+    ...financial,
+    settlementAttribution: attributionBundle.attribution,
+    settlementAttributionEvents: attributionBundle.events,
+  };
 }
 
 // ─── M4 Check-centric financial APIs (Session optional) ───────────

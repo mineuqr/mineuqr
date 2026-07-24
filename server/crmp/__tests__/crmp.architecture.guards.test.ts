@@ -41,6 +41,21 @@ describe("CRMP / SHIFT-LIFECYCLE architecture guards", () => {
     expect(resolve).not.toContain("provisionRegister");
   });
 
+  it("attribution adoption helpers never recalculate Check money", () => {
+    const adoption = read(
+      "shared/crmp/settlementContext/settlementAttributionAdoption.ts"
+    );
+    expect(adoption).toContain("never recalculates Check totals");
+    expect(adoption).not.toContain("computeCheckMoney");
+    expect(adoption).not.toContain("grandTotal");
+    const hook = read(
+      "server/operational-session/check/checkSettlementAttributionAdoption.ts"
+    );
+    expect(hook).toContain("AFTER Check-owned financial TX");
+    expect(hook).toContain("Never mutates Settlement Record");
+    expect(hook).not.toContain("finalizeCheckOutcome");
+  });
+
   it("migration 0077 is additive CRMP-only", () => {
     const sql = read("drizzle/0077_crmp.sql");
     expect(sql).toContain("CREATE TABLE `crmp_registers`");

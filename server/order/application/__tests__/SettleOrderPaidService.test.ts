@@ -97,6 +97,18 @@ describe("SELF-ORDERING-SETTLEMENT-ADOPTION-1 SettleOrderPaidService", () => {
         status: "unavailable",
         gaps: ["no_operational_hints"],
       },
+      settlementAttribution: {
+        outcome: "skipped",
+        attributionId: null,
+        settlementRecordId: null,
+        registerId: null,
+        financialShiftId: null,
+        operatorUserId: null,
+        cashTenderAmount: null,
+        gaps: ["no_operational_hints"],
+        reason: "skipped",
+      },
+      settlementAttributionEvents: [],
     });
     mocks.tryMaterializeOrderSettlementProjections.mockResolvedValue(undefined);
   });

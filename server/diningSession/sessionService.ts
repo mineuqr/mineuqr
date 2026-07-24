@@ -250,6 +250,10 @@ async function settleAndCloseSession(
     settlementContextFinancialShiftId:
       financial.settlementContext.financialShiftId,
     settlementContextGaps: financial.settlementContext.gaps,
+    // SETTLEMENT-ATTRIBUTION-ADOPTION-1 — fail-open status only.
+    settlementAttributionOutcome: financial.settlementAttribution.outcome,
+    settlementAttributionId: financial.settlementAttribution.attributionId,
+    settlementAttributionGaps: financial.settlementAttribution.gaps,
   };
 
   await db.transaction(async (tx) => {

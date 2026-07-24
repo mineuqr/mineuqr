@@ -19,3 +19,5 @@ export * from "./financialShift/financialShiftEvents";
 export * from "./financialShift/financialShiftResolve";
 export * from "./settlementContext/settlementContextContract";
 export * from "./settlementContext/resolveSettlementContext";
+export * from "./settlementContext/settlementAttributionAdoption";
+export * from "./financialShift/settlementAttributedEvent";

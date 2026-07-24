@@ -353,8 +353,8 @@ export class FinancialShiftDomainService {
   }
 
   /**
-   * Domain-only attribution. Caller supplies settlementRecordId + cashTenderAmount.
-   * Settlement Context / Attribution adoption are out of scope for this program.
+   * Domain attribution. Caller supplies settlementRecordId + cashTenderAmount
+   * (custody copy). Settled via SETTLEMENT-ATTRIBUTION-ADOPTION-1 post-commit.
    */
   async createAttribution(input: {
     restaurantId: number;
