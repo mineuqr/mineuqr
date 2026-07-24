@@ -1,15 +1,28 @@
 /**
- * ADR-ARCH-030 / REGISTER-OPERATIONS-IMPLEMENTATION-1 — Register domain events.
+ * ADR-ARCH-030 / REGISTER-OPERATIONS-IMPLEMENTATION-1 /
+ * REGISTER-CATALOG-MANAGEMENT-1 — Register domain events.
  *
  * Collected facts only — no bus, outbox, or transport in this program.
  * Ordering: per-register monotonic `version`.
  * Idempotency: consumers key on `claimKey` = `${registerId}:${eventType}:v${version}`.
  */
 
-import type { RegisterDutyStatus, RegisterStatus } from "../valueObjects";
+import type {
+  RegisterDutyStatus,
+  RegisterStatus,
+  RegisterType,
+} from "../valueObjects";
 import type { CashRegister } from "./registerContract";
 
 export const REGISTER_DOMAIN_EVENT_TYPES = [
+  // Catalog plane
+  "RegisterProvisioned",
+  "RegisterActivated",
+  "RegisterDeactivated",
+  "RegisterRenamed",
+  "RegisterTypeChanged",
+  "RegisterArchived",
+  // Duty / operations plane
   "RegisterOpened",
   "RegisterClosed",
   "RegisterSuspended",
@@ -34,6 +47,40 @@ type RegisterEventBase = Readonly<{
   occurredAt: string;
   claimKey: string;
 }>;
+
+export type RegisterProvisioned = RegisterEventBase &
+  Readonly<{
+    eventType: "RegisterProvisioned";
+    code: string;
+    displayName: string;
+    registerType: RegisterType;
+  }>;
+
+export type RegisterActivated = RegisterEventBase &
+  Readonly<{ eventType: "RegisterActivated" }>;
+
+export type RegisterDeactivated = RegisterEventBase &
+  Readonly<{ eventType: "RegisterDeactivated" }>;
+
+export type RegisterRenamed = RegisterEventBase &
+  Readonly<{
+    eventType: "RegisterRenamed";
+    displayName: string;
+    previousDisplayName: string;
+  }>;
+
+export type RegisterTypeChanged = RegisterEventBase &
+  Readonly<{
+    eventType: "RegisterTypeChanged";
+    registerType: RegisterType;
+    previousRegisterType: RegisterType;
+  }>;
+
+export type RegisterArchived = RegisterEventBase &
+  Readonly<{
+    eventType: "RegisterArchived";
+    archivedAt: string;
+  }>;
 
 export type RegisterOpened = RegisterEventBase &
   Readonly<{
@@ -83,6 +130,12 @@ export type RegisterResolved = RegisterEventBase &
   }>;
 
 export type RegisterDomainEvent =
+  | RegisterProvisioned
+  | RegisterActivated
+  | RegisterDeactivated
+  | RegisterRenamed
+  | RegisterTypeChanged
+  | RegisterArchived
   | RegisterOpened
   | RegisterClosed
   | RegisterSuspended
@@ -124,6 +177,79 @@ function base(
       version: register.version,
       suffix,
     }),
+  };
+}
+
+export function buildRegisterProvisionedEvent(
+  register: CashRegister,
+  occurredAt: string
+): RegisterProvisioned {
+  return {
+    ...base(register, "RegisterProvisioned", occurredAt),
+    eventType: "RegisterProvisioned",
+    code: register.code,
+    displayName: register.displayName,
+    registerType: register.registerType,
+  };
+}
+
+export function buildRegisterActivatedEvent(
+  register: CashRegister,
+  occurredAt: string
+): RegisterActivated {
+  return {
+    ...base(register, "RegisterActivated", occurredAt),
+    eventType: "RegisterActivated",
+  };
+}
+
+export function buildRegisterDeactivatedEvent(
+  register: CashRegister,
+  occurredAt: string
+): RegisterDeactivated {
+  return {
+    ...base(register, "RegisterDeactivated", occurredAt),
+    eventType: "RegisterDeactivated",
+  };
+}
+
+export function buildRegisterRenamedEvent(
+  register: CashRegister,
+  previousDisplayName: string,
+  occurredAt: string
+): RegisterRenamed {
+  return {
+    ...base(register, "RegisterRenamed", occurredAt),
+    eventType: "RegisterRenamed",
+    displayName: register.displayName,
+    previousDisplayName,
+  };
+}
+
+export function buildRegisterTypeChangedEvent(
+  register: CashRegister,
+  previousRegisterType: RegisterType,
+  occurredAt: string
+): RegisterTypeChanged {
+  return {
+    ...base(register, "RegisterTypeChanged", occurredAt),
+    eventType: "RegisterTypeChanged",
+    registerType: register.registerType,
+    previousRegisterType,
+  };
+}
+
+export function buildRegisterArchivedEvent(
+  register: CashRegister,
+  occurredAt: string
+): RegisterArchived {
+  if (!register.archivedAt) {
+    throw new Error("RegisterArchived requires archivedAt");
+  }
+  return {
+    ...base(register, "RegisterArchived", occurredAt),
+    eventType: "RegisterArchived",
+    archivedAt: register.archivedAt,
   };
 }
 

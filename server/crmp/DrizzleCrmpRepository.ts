@@ -34,9 +34,12 @@ function mapRegister(
   return {
     registerId: row.registerId,
     restaurantId: row.restaurantId,
+    code: row.code,
     displayName: row.displayName,
+    registerType: row.registerType,
     status: row.status,
     dutyStatus: row.dutyStatus,
+    archivedAt: row.archivedAt ?? null,
     deviceId: row.deviceId ?? null,
     assignedOperatorUserId: row.assignedOperatorUserId ?? null,
     operatorAssignedAt: row.operatorAssignedAt ?? null,
@@ -266,9 +269,12 @@ export function createDrizzleCrmpUnitOfWork(): CrmpUnitOfWork {
       await db.insert(crmpRegisters).values({
         registerId: register.registerId,
         restaurantId: register.restaurantId,
+        code: register.code,
         displayName: register.displayName,
+        registerType: register.registerType,
         status: register.status,
         dutyStatus: register.dutyStatus,
+        archivedAt: register.archivedAt,
         deviceId: register.deviceId,
         assignedOperatorUserId: register.assignedOperatorUserId,
         operatorAssignedAt: register.operatorAssignedAt,
@@ -300,9 +306,12 @@ export function createDrizzleCrmpUnitOfWork(): CrmpUnitOfWork {
       await db
         .update(crmpRegisters)
         .set({
+          code: register.code,
           displayName: register.displayName,
+          registerType: register.registerType,
           status: register.status,
           dutyStatus: register.dutyStatus,
+          archivedAt: register.archivedAt,
           deviceId: register.deviceId,
           assignedOperatorUserId: register.assignedOperatorUserId,
           operatorAssignedAt: register.operatorAssignedAt,

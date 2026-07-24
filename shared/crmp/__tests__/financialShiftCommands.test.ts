@@ -22,6 +22,8 @@ function activeRegister() {
     register: provisionRegister({
       registerId: "reg_1",
       restaurantId: 1,
+      code: "FRONT",
+      registerType: "counter",
       displayName: "Front",
       createdAt: "t0",
     }),

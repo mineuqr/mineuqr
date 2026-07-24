@@ -99,7 +99,20 @@ describe("CRMP / SHIFT-LIFECYCLE architecture guards", () => {
     expect(sql).not.toMatch(/DROP TABLE/);
   });
 
-  it("schema exports ADR-030 shift statuses and Register Duty", () => {
+  it("migration 0080 is additive Register Catalog only", () => {
+    const sql = read("drizzle/0080_crmp_register_catalog.sql");
+    expect(sql).toContain("crmp_registers");
+    expect(sql).toContain("`code`");
+    expect(sql).toContain("registerType");
+    expect(sql).toContain("archivedAt");
+    expect(sql).toContain("crmp_registers_restaurant_code_unique");
+    expect(sql).not.toMatch(/operational_checks/);
+    expect(sql).not.toMatch(/settlement_records/);
+    expect(sql).not.toMatch(/crmp_financial_shifts/);
+    expect(sql).not.toMatch(/DROP TABLE/);
+  });
+
+  it("schema exports ADR-030 shift statuses, Duty, and Catalog fields", () => {
     const schema = read("drizzle/schema.ts");
     expect(schema).toContain("crmpRegisters");
     expect(schema).toContain("suspended");
@@ -107,15 +120,28 @@ describe("CRMP / SHIFT-LIFECYCLE architecture guards", () => {
     expect(schema).toContain("archived");
     expect(schema).toContain("SHIFT-LIFECYCLE-IMPLEMENTATION-1");
     expect(schema).toContain("REGISTER-OPERATIONS-IMPLEMENTATION-1");
+    expect(schema).toContain("REGISTER-CATALOG-MANAGEMENT-1");
     expect(schema).toContain("dutyStatus");
     expect(schema).toContain("assignedOperatorUserId");
+    expect(schema).toContain("registerType");
+    expect(schema).toContain("settlement_station");
   });
 
-  it("journal includes 0077–0079", () => {
+  it("journal includes 0077–0080", () => {
     const journal = read("drizzle/meta/_journal.json");
     expect(journal).toContain("0077_crmp");
     expect(journal).toContain("0078_crmp_shift_lifecycle");
     expect(journal).toContain("0079_crmp_register_duty");
+    expect(journal).toContain("0080_crmp_register_catalog");
+  });
+
+  it("catalog API façade stays thin and separate from Duty", () => {
+    const router = read("server/crmp/api/crmpRouter.ts");
+    expect(router).toContain("crmp.catalog.");
+    expect(router).toContain("getCrmpRegisterCatalogService");
+    const catalog = read("server/crmp/api/crmpRegisterCatalogService.ts");
+    expect(catalog).not.toMatch(/openRegister|closeRegister|suspendRegister/);
+    expect(catalog).not.toMatch(/computeExpectedCash|toCents|grandTotal/);
   });
 
   it("domain barrel marks ADR-028 program", () => {

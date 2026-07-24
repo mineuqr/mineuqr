@@ -9,6 +9,8 @@ describe("crmpApiMapper", () => {
         register: provisionRegister({
           registerId: "reg_1",
           restaurantId: 1,
+          code: "FRONT",
+          registerType: "counter",
           displayName: "Front",
           createdAt: "t0",
         }),
@@ -21,9 +23,12 @@ describe("crmpApiMapper", () => {
     expect(dto).toEqual({
       registerId: "reg_1",
       restaurantId: 1,
+      code: "FRONT",
       displayName: "Front",
+      registerType: "counter",
       catalogStatus: "active",
       dutyStatus: "open",
+      archivedAt: null,
       deviceId: null,
       assignedOperatorUserId: 7,
       operatorAssignedAt: "t2",

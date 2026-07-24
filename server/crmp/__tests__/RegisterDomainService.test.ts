@@ -20,7 +20,9 @@ describe("RegisterDomainService", () => {
   async function provisionAndActivate(registerId = "reg_1") {
     await registers.provision({
       restaurantId: 1,
+      code: "C1",
       displayName: "Counter 1",
+      registerType: "counter",
       registerId,
       at: "t0",
     });
@@ -32,14 +34,18 @@ describe("RegisterDomainService", () => {
   }
 
   it("provisions and activates a register with Duty closed", async () => {
-    const r = await registers.provision({
+    const { register: r } = await registers.provision({
       restaurantId: 1,
+      code: "C1",
       displayName: "Counter 1",
+      registerType: "counter",
       registerId: "reg_fixed",
       at: "t0",
     });
     expect(r.status).toBe("provisioned");
     expect(r.dutyStatus).toBe("closed");
+    expect(r.code).toBe("C1");
+    expect(r.registerType).toBe("counter");
     const { register: active } = await registers.activate({
       restaurantId: 1,
       registerId: "reg_fixed",

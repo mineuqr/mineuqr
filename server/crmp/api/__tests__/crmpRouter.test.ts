@@ -42,7 +42,9 @@ describe("crmp.register API", () => {
     shifts = new FinancialShiftDomainService(uow);
     await registers.provision({
       restaurantId: 42,
+      code: "C1",
       displayName: "Counter 1",
+      registerType: "counter",
       registerId: "reg_1",
       at: "t0",
     });

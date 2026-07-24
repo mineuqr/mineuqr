@@ -561,6 +561,13 @@
       "when": 1784650000000,
       "tag": "0079_crmp_register_duty",
       "breakpoints": true
+    },
+    {
+      "idx": 80,
+      "version": "5",
+      "when": 1784660000000,
+      "tag": "0080_crmp_register_catalog",
+      "breakpoints": true
     }
   ]
 }

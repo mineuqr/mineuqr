@@ -15,6 +15,8 @@ describe("CRMP Register lifecycle", () => {
     const r = provisionRegister({
       registerId: "reg_1",
       restaurantId: 1,
+      code: "FRONT",
+      registerType: "counter",
       displayName: "Front",
       createdAt: "2026-07-24T06:00:00Z",
     });
@@ -36,6 +38,8 @@ describe("CRMP Register lifecycle", () => {
       register: provisionRegister({
         registerId: "reg_1",
         restaurantId: 1,
+        code: "FRONT",
+        registerType: "counter",
         displayName: "Front",
         createdAt: "t0",
       }),

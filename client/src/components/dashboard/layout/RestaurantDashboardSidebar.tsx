@@ -24,6 +24,7 @@ import {
   Settings,
   Store,
   WalletCards,
+  BookMarked,
   Tag,
   UsersRound,
   Wrench,
@@ -115,6 +116,13 @@ export function RestaurantDashboardSidebar({
           icon: WalletCards,
           active: restaurantTab === "register",
           onClick: () => onRestaurantTabChange!("register"),
+        },
+        {
+          id: "register-catalog",
+          label: language === "ar" ? "كتالوج الصناديق" : "Register Catalog",
+          icon: BookMarked,
+          active: restaurantTab === "register-catalog",
+          onClick: () => onRestaurantTabChange!("register-catalog"),
         },
         {
           id: "screens",

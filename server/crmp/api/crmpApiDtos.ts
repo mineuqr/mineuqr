@@ -1,5 +1,5 @@
 /**
- * CRMP-OPERATIONS-API-1 — operational API contracts.
+ * CRMP-OPERATIONS-API-1 / REGISTER-CATALOG-MANAGEMENT-1 — operational API contracts.
  * Hide aggregate events, persistence rows, and domain internals.
  */
 
@@ -12,12 +12,20 @@ export type RegisterCatalogStatusDto = "provisioned" | "active" | "inactive";
 /** Duty plane — operational label. */
 export type RegisterDutyStatusDto = "closed" | "open" | "suspended";
 
+export type RegisterTypeDto =
+  | "settlement_station"
+  | "counter"
+  | "mobile_pos";
+
 export type RegisterDto = Readonly<{
   registerId: string;
   restaurantId: number;
+  code: string;
   displayName: string;
+  registerType: RegisterTypeDto;
   catalogStatus: RegisterCatalogStatusDto;
   dutyStatus: RegisterDutyStatusDto;
+  archivedAt: string | null;
   deviceId: string | null;
   assignedOperatorUserId: number | null;
   operatorAssignedAt: string | null;

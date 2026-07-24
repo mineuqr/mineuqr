@@ -21,7 +21,9 @@ describe("FinancialShiftDomainService + repository", () => {
     drawer = new DrawerDomainService(shifts);
     await registers.provision({
       restaurantId: 1,
+      code: "FRONT",
       displayName: "Front",
+      registerType: "counter",
       registerId: "reg_1",
       at: "t0",
     });

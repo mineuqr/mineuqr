@@ -1,41 +1,53 @@
 /**
- * ADR-ARCH-030 / REGISTER-OPERATIONS-IMPLEMENTATION-1 — Register domain service.
+ * ADR-ARCH-030 / REGISTER-OPERATIONS-IMPLEMENTATION-1 /
+ * REGISTER-CATALOG-MANAGEMENT-1 — Register domain service.
  * Catalog + Duty + operator + device. No Settlement / Check / channel orchestration.
  * Events are collected facts (no bus/outbox in this program).
  */
 
 import {
   activateRegister,
+  archiveRegister,
   assignOperator,
   attachDevice,
   buildDeviceAttachedEvent,
   buildDeviceDetachedEvent,
   buildOperatorAssignedEvent,
   buildOperatorReleasedEvent,
+  buildRegisterActivatedEvent,
+  buildRegisterArchivedEvent,
   buildRegisterClosedEvent,
+  buildRegisterDeactivatedEvent,
   buildRegisterOpenedEvent,
+  buildRegisterProvisionedEvent,
+  buildRegisterRenamedEvent,
   buildRegisterResolvedEvent,
   buildRegisterResumedEvent,
   buildRegisterSuspendedEvent,
+  buildRegisterTypeChangedEvent,
+  changeRegisterType,
   closeRegister,
   deactivateRegister,
   detachDevice,
+  normalizeRegisterCode,
   openRegister,
   provisionRegister,
   reassignOperator,
   releaseOperator,
+  renameRegister,
   replaceDevice,
   resolveActiveRegister,
   resolveRegisterByDevice,
   resolveRegisterByOperator,
   resumeRegister,
   suspendRegister,
+  updateRegisterCode,
   type CashRegister,
   type RegisterDomainEvent,
+  type RegisterType,
   CrmpNotFoundError,
 } from "@shared/crmp";
 import type { CrmpUnitOfWork } from "./CrmpRepository";
-import { newCrmpId } from "./crmpIds";
 
 export type RegisterCommandResult = Readonly<{
   register: CashRegister;
@@ -43,24 +55,59 @@ export type RegisterCommandResult = Readonly<{
   alreadyApplied?: boolean;
 }>;
 
+/** Deterministic Register identity from restaurant + code. */
+export function deterministicRegisterId(
+  restaurantId: number,
+  code: string
+): string {
+  return `reg_${restaurantId}_${normalizeRegisterCode(code).toLowerCase()}`;
+}
+
 export class RegisterDomainService {
   constructor(private readonly uow: CrmpUnitOfWork) {}
 
   async provision(input: {
     restaurantId: number;
+    code: string;
     displayName: string;
+    registerType: RegisterType;
     at?: string;
     registerId?: string;
-  }): Promise<CashRegister> {
+  }): Promise<RegisterCommandResult> {
     const at = input.at ?? new Date().toISOString();
+    const code = normalizeRegisterCode(input.code);
+    const siblings = await this.uow.registers.listByRestaurant(
+      input.restaurantId
+    );
+    const registerId =
+      input.registerId?.trim() ||
+      deterministicRegisterId(input.restaurantId, code);
+    const existing = await this.uow.registers.findById(
+      input.restaurantId,
+      registerId
+    );
+    if (existing) {
+      return {
+        register: existing,
+        events: [],
+        alreadyApplied: true,
+      };
+    }
     const register = provisionRegister({
-      registerId: input.registerId ?? newCrmpId("reg"),
+      registerId,
       restaurantId: input.restaurantId,
+      code,
       displayName: input.displayName,
+      registerType: input.registerType,
       createdAt: at,
+      siblingRegisters: siblings,
     });
     await this.uow.registers.insert(register);
-    return register;
+    return {
+      register,
+      events: [buildRegisterProvisionedEvent(register, at)],
+      alreadyApplied: false,
+    };
   }
 
   async activate(input: {
@@ -82,7 +129,11 @@ export class RegisterDomainService {
       next,
       input.expectedVersion ?? current.version
     );
-    return { register: next, events: [], alreadyApplied: false };
+    return {
+      register: next,
+      events: [buildRegisterActivatedEvent(next, at)],
+      alreadyApplied: false,
+    };
   }
 
   async deactivate(input: {
@@ -112,7 +163,214 @@ export class RegisterDomainService {
       next,
       input.expectedVersion ?? current.version
     );
+    return {
+      register: next,
+      events: [buildRegisterDeactivatedEvent(next, at)],
+      alreadyApplied: false,
+    };
+  }
+
+  async rename(input: {
+    restaurantId: number;
+    registerId: string;
+    displayName: string;
+    at?: string;
+    expectedVersion?: number;
+  }): Promise<RegisterCommandResult> {
+    const at = input.at ?? new Date().toISOString();
+    const current = await this.requireRegister(
+      input.restaurantId,
+      input.registerId
+    );
+    const previousDisplayName = current.displayName;
+    const next = renameRegister({
+      register: current,
+      displayName: input.displayName,
+      at,
+    });
+    if (next === current || next.version === current.version) {
+      return { register: current, events: [], alreadyApplied: true };
+    }
+    await this.uow.registers.update(
+      next,
+      input.expectedVersion ?? current.version
+    );
+    return {
+      register: next,
+      events: [buildRegisterRenamedEvent(next, previousDisplayName, at)],
+      alreadyApplied: false,
+    };
+  }
+
+  async changeType(input: {
+    restaurantId: number;
+    registerId: string;
+    registerType: RegisterType;
+    at?: string;
+    expectedVersion?: number;
+  }): Promise<RegisterCommandResult> {
+    const at = input.at ?? new Date().toISOString();
+    const current = await this.requireRegister(
+      input.restaurantId,
+      input.registerId
+    );
+    const previousRegisterType = current.registerType;
+    const next = changeRegisterType({
+      register: current,
+      registerType: input.registerType,
+      at,
+    });
+    if (next === current || next.version === current.version) {
+      return { register: current, events: [], alreadyApplied: true };
+    }
+    await this.uow.registers.update(
+      next,
+      input.expectedVersion ?? current.version
+    );
+    return {
+      register: next,
+      events: [
+        buildRegisterTypeChangedEvent(next, previousRegisterType, at),
+      ],
+      alreadyApplied: false,
+    };
+  }
+
+  async updateCode(input: {
+    restaurantId: number;
+    registerId: string;
+    code: string;
+    at?: string;
+    expectedVersion?: number;
+  }): Promise<RegisterCommandResult> {
+    const at = input.at ?? new Date().toISOString();
+    const current = await this.requireRegister(
+      input.restaurantId,
+      input.registerId
+    );
+    const siblings = await this.uow.registers.listByRestaurant(
+      input.restaurantId
+    );
+    const next = updateRegisterCode({
+      register: current,
+      code: input.code,
+      at,
+      siblingRegisters: siblings,
+    });
+    if (next === current || next.version === current.version) {
+      return { register: current, events: [], alreadyApplied: true };
+    }
+    await this.uow.registers.update(
+      next,
+      input.expectedVersion ?? current.version
+    );
     return { register: next, events: [], alreadyApplied: false };
+  }
+
+  async update(input: {
+    restaurantId: number;
+    registerId: string;
+    displayName?: string;
+    code?: string;
+    registerType?: RegisterType;
+    at?: string;
+    expectedVersion?: number;
+  }): Promise<RegisterCommandResult> {
+    const at = input.at ?? new Date().toISOString();
+    let current = await this.requireRegister(
+      input.restaurantId,
+      input.registerId
+    );
+    const events: RegisterDomainEvent[] = [];
+    let expected = input.expectedVersion ?? current.version;
+
+    if (input.displayName != null) {
+      const previousDisplayName = current.displayName;
+      const next = renameRegister({
+        register: current,
+        displayName: input.displayName,
+        at,
+      });
+      if (next !== current && next.version !== current.version) {
+        await this.uow.registers.update(next, expected);
+        events.push(buildRegisterRenamedEvent(next, previousDisplayName, at));
+        current = next;
+        expected = next.version;
+      }
+    }
+
+    if (input.code != null) {
+      const siblings = await this.uow.registers.listByRestaurant(
+        input.restaurantId
+      );
+      const next = updateRegisterCode({
+        register: current,
+        code: input.code,
+        at,
+        siblingRegisters: siblings,
+      });
+      if (next !== current && next.version !== current.version) {
+        await this.uow.registers.update(next, expected);
+        current = next;
+        expected = next.version;
+      }
+    }
+
+    if (input.registerType != null) {
+      const previousRegisterType = current.registerType;
+      const next = changeRegisterType({
+        register: current,
+        registerType: input.registerType,
+        at,
+      });
+      if (next !== current && next.version !== current.version) {
+        await this.uow.registers.update(next, expected);
+        events.push(
+          buildRegisterTypeChangedEvent(next, previousRegisterType, at)
+        );
+        current = next;
+      }
+    }
+
+    return {
+      register: current,
+      events,
+      alreadyApplied: events.length === 0,
+    };
+  }
+
+  async archive(input: {
+    restaurantId: number;
+    registerId: string;
+    at?: string;
+    expectedVersion?: number;
+  }): Promise<RegisterCommandResult> {
+    const at = input.at ?? new Date().toISOString();
+    const current = await this.requireRegister(
+      input.restaurantId,
+      input.registerId
+    );
+    const active = await this.uow.shifts.findActiveByRegister(
+      input.restaurantId,
+      input.registerId
+    );
+    const next = archiveRegister({
+      register: current,
+      hasActiveShift: active != null,
+      at,
+    });
+    if (next === current || next.version === current.version) {
+      return { register: current, events: [], alreadyApplied: true };
+    }
+    await this.uow.registers.update(
+      next,
+      input.expectedVersion ?? current.version
+    );
+    return {
+      register: next,
+      events: [buildRegisterArchivedEvent(next, at)],
+      alreadyApplied: false,
+    };
   }
 
   async open(input: {

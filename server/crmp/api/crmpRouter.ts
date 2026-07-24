@@ -1,5 +1,6 @@
 /**
- * CRMP-OPERATIONS-API-1 — canonical tRPC exposure for Register Operations.
+ * CRMP-OPERATIONS-API-1 / REGISTER-CATALOG-MANAGEMENT-1 —
+ * canonical tRPC exposure for Register Operations + Register Catalog.
  *
  * Authorization + validation + DTO serialization only.
  * Orchestrates RegisterDomainService / FinancialShiftDomainService.
@@ -7,9 +8,13 @@
  */
 
 import { z } from "zod";
+import { REGISTER_TYPES } from "@shared/crmp";
 import { verifiedProcedure, router } from "../../_core/trpc";
 import { assertRestaurantAccess } from "../../restaurantAccess";
-import { getCrmpRegisterOperationsService } from "./crmpApiComposition";
+import {
+  getCrmpRegisterCatalogService,
+  getCrmpRegisterOperationsService,
+} from "./crmpApiComposition";
 import { runCrmpRead, runCrmpWrite } from "./mapCrmpApiError";
 
 const restaurantInput = z.object({
@@ -50,10 +55,215 @@ const resolveByOperatorInput = restaurantInput.extend({
   operatorUserId: z.coerce.number().int().positive(),
 });
 
+const registerTypeSchema = z.enum(REGISTER_TYPES);
+
+const catalogCreateInput = restaurantInput.extend({
+  code: z.string().min(1).max(64),
+  displayName: z.string().min(1).max(128),
+  registerType: registerTypeSchema,
+  registerId: z.string().min(1).max(128).optional(),
+  at: z.string().min(1).max(64).optional(),
+});
+
+const catalogUpdateInput = registerIdentityInput.merge(concurrencyInput).extend({
+  displayName: z.string().min(1).max(128).optional(),
+  code: z.string().min(1).max(64).optional(),
+  registerType: registerTypeSchema.optional(),
+});
+
+const catalogRenameInput = registerIdentityInput.merge(concurrencyInput).extend({
+  displayName: z.string().min(1).max(128),
+});
+
+const catalogChangeTypeInput = registerIdentityInput
+  .merge(concurrencyInput)
+  .extend({
+    registerType: registerTypeSchema,
+  });
+
+const catalogSearchInput = restaurantInput.extend({
+  query: z.string().max(128).optional(),
+  catalogStatus: z.enum(["provisioned", "active", "inactive"]).optional(),
+  registerType: registerTypeSchema.optional(),
+  includeArchived: z.boolean().optional(),
+});
+
 /**
- * Canonical CRMP Register Operations API (`crmp.register.*`).
+ * Canonical CRMP APIs:
+ * - `crmp.register.*` — Duty / operator / device (Register Operations)
+ * - `crmp.catalog.*` — provision / catalog lifecycle (Register Catalog)
  */
 export const crmpRouter = router({
+  catalog: router({
+    create: verifiedProcedure
+      .input(catalogCreateInput)
+      .mutation(async ({ input, ctx }) => {
+        await assertRestaurantAccess(ctx, input.restaurantId, "crmp.catalog.create");
+        const svc = getCrmpRegisterCatalogService();
+        return runCrmpWrite(() =>
+          svc.create({
+            restaurantId: input.restaurantId,
+            code: input.code,
+            displayName: input.displayName,
+            registerType: input.registerType,
+            registerId: input.registerId,
+            at: input.at,
+          })
+        );
+      }),
+
+    update: verifiedProcedure
+      .input(catalogUpdateInput)
+      .mutation(async ({ input, ctx }) => {
+        await assertRestaurantAccess(ctx, input.restaurantId, "crmp.catalog.update");
+        const svc = getCrmpRegisterCatalogService();
+        return runCrmpWrite(() =>
+          svc.update({
+            restaurantId: input.restaurantId,
+            registerId: input.registerId,
+            displayName: input.displayName,
+            code: input.code,
+            registerType: input.registerType,
+            expectedVersion: input.expectedVersion,
+            at: input.at,
+          })
+        );
+      }),
+
+    activate: verifiedProcedure
+      .input(registerIdentityInput.merge(concurrencyInput))
+      .mutation(async ({ input, ctx }) => {
+        await assertRestaurantAccess(
+          ctx,
+          input.restaurantId,
+          "crmp.catalog.activate"
+        );
+        const svc = getCrmpRegisterCatalogService();
+        return runCrmpWrite(() =>
+          svc.activate({
+            restaurantId: input.restaurantId,
+            registerId: input.registerId,
+            expectedVersion: input.expectedVersion,
+            at: input.at,
+          })
+        );
+      }),
+
+    deactivate: verifiedProcedure
+      .input(registerIdentityInput.merge(concurrencyInput))
+      .mutation(async ({ input, ctx }) => {
+        await assertRestaurantAccess(
+          ctx,
+          input.restaurantId,
+          "crmp.catalog.deactivate"
+        );
+        const svc = getCrmpRegisterCatalogService();
+        return runCrmpWrite(() =>
+          svc.deactivate({
+            restaurantId: input.restaurantId,
+            registerId: input.registerId,
+            expectedVersion: input.expectedVersion,
+            at: input.at,
+          })
+        );
+      }),
+
+    rename: verifiedProcedure
+      .input(catalogRenameInput)
+      .mutation(async ({ input, ctx }) => {
+        await assertRestaurantAccess(ctx, input.restaurantId, "crmp.catalog.rename");
+        const svc = getCrmpRegisterCatalogService();
+        return runCrmpWrite(() =>
+          svc.rename({
+            restaurantId: input.restaurantId,
+            registerId: input.registerId,
+            displayName: input.displayName,
+            expectedVersion: input.expectedVersion,
+            at: input.at,
+          })
+        );
+      }),
+
+    changeType: verifiedProcedure
+      .input(catalogChangeTypeInput)
+      .mutation(async ({ input, ctx }) => {
+        await assertRestaurantAccess(
+          ctx,
+          input.restaurantId,
+          "crmp.catalog.changeType"
+        );
+        const svc = getCrmpRegisterCatalogService();
+        return runCrmpWrite(() =>
+          svc.changeType({
+            restaurantId: input.restaurantId,
+            registerId: input.registerId,
+            registerType: input.registerType,
+            expectedVersion: input.expectedVersion,
+            at: input.at,
+          })
+        );
+      }),
+
+    archive: verifiedProcedure
+      .input(registerIdentityInput.merge(concurrencyInput))
+      .mutation(async ({ input, ctx }) => {
+        await assertRestaurantAccess(
+          ctx,
+          input.restaurantId,
+          "crmp.catalog.archive"
+        );
+        const svc = getCrmpRegisterCatalogService();
+        return runCrmpWrite(() =>
+          svc.archive({
+            restaurantId: input.restaurantId,
+            registerId: input.registerId,
+            expectedVersion: input.expectedVersion,
+            at: input.at,
+          })
+        );
+      }),
+
+    get: verifiedProcedure
+      .input(registerIdentityInput)
+      .query(async ({ input, ctx }) => {
+        await assertRestaurantAccess(ctx, input.restaurantId, "crmp.catalog.get");
+        const svc = getCrmpRegisterCatalogService();
+        return runCrmpRead(() => svc.get(input));
+      }),
+
+    list: verifiedProcedure
+      .input(restaurantInput)
+      .query(async ({ input, ctx }) => {
+        await assertRestaurantAccess(ctx, input.restaurantId, "crmp.catalog.list");
+        const svc = getCrmpRegisterCatalogService();
+        return runCrmpRead(() => svc.list(input));
+      }),
+
+    listByRestaurant: verifiedProcedure
+      .input(restaurantInput)
+      .query(async ({ input, ctx }) => {
+        await assertRestaurantAccess(
+          ctx,
+          input.restaurantId,
+          "crmp.catalog.listByRestaurant"
+        );
+        const svc = getCrmpRegisterCatalogService();
+        return runCrmpRead(() => svc.listByRestaurant(input));
+      }),
+
+    search: verifiedProcedure
+      .input(catalogSearchInput)
+      .query(async ({ input, ctx }) => {
+        await assertRestaurantAccess(
+          ctx,
+          input.restaurantId,
+          "crmp.catalog.search"
+        );
+        const svc = getCrmpRegisterCatalogService();
+        return runCrmpRead(() => svc.search(input));
+      }),
+  }),
+
   register: router({
     // ─── Commands ────────────────────────────────────────────────────
 

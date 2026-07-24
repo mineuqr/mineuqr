@@ -50,7 +50,9 @@ describe("checkSettlementAttributionAdoption", () => {
     shifts = new FinancialShiftDomainService(uow);
     await registers.provision({
       restaurantId: 1,
+      code: "FRONT",
       displayName: "Front",
+      registerType: "counter",
       registerId: "reg_1",
       at: "t0",
     });

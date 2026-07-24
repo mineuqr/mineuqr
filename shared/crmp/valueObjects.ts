@@ -29,6 +29,21 @@ export type RegisterDutyStatus = (typeof REGISTER_DUTY_STATUSES)[number];
 export const REGISTER_OPERATIONS_PROGRAM_ID =
   "REGISTER-OPERATIONS-IMPLEMENTATION-1" as const;
 
+export const REGISTER_CATALOG_PROGRAM_ID =
+  "REGISTER-CATALOG-MANAGEMENT-1" as const;
+
+/** Catalog classification — not Duty, not Device role. */
+export const REGISTER_TYPES = [
+  "settlement_station",
+  "counter",
+  "mobile_pos",
+] as const;
+export type RegisterType = (typeof REGISTER_TYPES)[number];
+
+export function isRegisterType(value: string): value is RegisterType {
+  return (REGISTER_TYPES as readonly string[]).includes(value);
+}
+
 /** ADR-ARCH-030 canonical statuses. Persisted `pending` is prohibited. */
 export const SHIFT_STATUSES = [
   "open",

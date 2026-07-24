@@ -6,6 +6,7 @@
 import { createDrizzleCrmpUnitOfWork } from "../DrizzleCrmpRepository";
 import { FinancialShiftDomainService } from "../FinancialShiftDomainService";
 import { RegisterDomainService } from "../RegisterDomainService";
+import { CrmpRegisterCatalogService } from "./crmpRegisterCatalogService";
 import { CrmpRegisterOperationsService } from "./crmpRegisterOperationsService";
 import type { CrmpUnitOfWork } from "../CrmpRepository";
 
@@ -26,4 +27,9 @@ export function getCrmpRegisterOperationsService(): CrmpRegisterOperationsServic
     new RegisterDomainService(uow),
     new FinancialShiftDomainService(uow)
   );
+}
+
+export function getCrmpRegisterCatalogService(): CrmpRegisterCatalogService {
+  const uow = getUnitOfWork();
+  return new CrmpRegisterCatalogService(new RegisterDomainService(uow));
 }

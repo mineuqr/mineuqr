@@ -1,5 +1,6 @@
 /**
- * REGISTER-OPERATIONS-UI-UX-REFINEMENT-1 — architecture guards.
+ * REGISTER-OPERATIONS-UI-UX-REFINEMENT-1 / REGISTER-CATALOG-MANAGEMENT-1 —
+ * architecture guards for Register Operations presentation.
  * @vitest-environment node
  */
 import { readFileSync } from "node:fs";
@@ -12,8 +13,8 @@ function read(rel: string): string {
   return readFileSync(join(root, rel), "utf8");
 }
 
-describe("REGISTER-OPERATIONS-UI-UX-REFINEMENT-1 architecture guards", () => {
-  it("presentation still calls only crmp.register.*", () => {
+describe("Register Operations presentation architecture guards", () => {
+  it("Duty presentation still calls only crmp.register.*", () => {
     const q = read(
       "src/lib/register-operations-presentation/useRegisterOperationsQueries.ts"
     );
@@ -22,32 +23,33 @@ describe("REGISTER-OPERATIONS-UI-UX-REFINEMENT-1 architecture guards", () => {
     );
     expect(q).toContain("trpc.crmp.register");
     expect(m).toContain("trpc.crmp.register");
+    expect(q + m).not.toMatch(/trpc\.crmp\.catalog/);
     expect(q + m).not.toMatch(/computeExpectedCash|toCents|grandTotal/);
   });
 
-  it("panel is presentation-only and keeps create CTA disabled without new APIs", () => {
+  it("Ops panel stays presentation-only; create navigates to Catalog", () => {
     const panel = read(
       "src/components/register-operations/RegisterOperationsPanel.tsx"
     );
-    expect(panel).toContain("UX-REFINEMENT-1");
-    expect(panel).toContain("createRegisterDisabledHint");
-    expect(panel).toMatch(/disabled[\s\S]*createRegister|createRegister[\s\S]*disabled/);
+    expect(panel).toContain("REGISTER-CATALOG-MANAGEMENT-1");
+    expect(panel).toContain("section=register-catalog&create=1");
+    expect(panel).toContain("spaNavigate");
     expect(panel).not.toMatch(/from ["']@shared\/crmp/);
     expect(panel).not.toMatch(/computeExpectedCash|toCents|grandTotal/);
-    expect(panel).not.toContain("spaNavigate");
-    expect(panel).not.toContain("buildDashboardPath");
+    expect(panel).not.toContain("trpc.crmp.catalog");
   });
 
-  it("does not change routing or dashboard section wiring beyond existing register tab", () => {
+  it("dashboard wires register + register-catalog sections", () => {
     const url = read("src/lib/dashboardUrl.ts");
     const types = read("src/components/dashboard/layout/types.ts");
     expect(url).toContain('register: "register"');
+    expect(url).toContain('"register-catalog": "register-catalog"');
     expect(types).toContain('"register"');
-    // register stays query-section only — not a PATH_ROUTE_TABS member
+    expect(types).toContain('"register-catalog"');
     expect(url).toContain('new Set<RestaurantTab>(["sessions"])');
   });
 
-  it("empty-state copy matches refinement requirements", () => {
+  it("empty-state copy keeps create CTA wording", () => {
     const copy = read(
       "src/lib/register-operations-presentation/registerOperationsCopy.ts"
     );

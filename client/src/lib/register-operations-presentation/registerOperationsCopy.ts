@@ -27,16 +27,20 @@ const COPY = {
   },
   createRegister: { ar: "إنشاء صندوق", en: "Create register" },
   createRegisterDisabledHint: {
-    ar: "إنشاء الصندوق غير متاح من هذه الشاشة حالياً. يتم تجهيز الصناديق عبر كتالوج التشغيل المعتمد.",
-    en: "Creating a register is not available from this screen yet. Registers are provisioned through the certified catalog process.",
+    ar: "لا تملك صلاحية إنشاء صندوق لهذا الفرع.",
+    en: "You do not have permission to create a register for this branch.",
+  },
+  createRegisterHint: {
+    ar: "سيتم فتح كتالوج الصناديق لإنشاء صندوق جديد.",
+    en: "Opens Register Catalog to create a new register.",
   },
   listEmptyGuidance: {
     ar: "لم يتم إنشاء أي صندوق تشغيل لهذا المطعم.",
     en: "No operating register has been created for this restaurant.",
   },
   listEmptyNext: {
-    ar: "الخطوة التالية: تجهيز صندوق من الكتالوج التشغيلي المعتمد.",
-    en: "Next: provision a register via the certified operational catalog.",
+    ar: "التالي: أنشئ صندوقاً من كتالوج الصناديق.",
+    en: "Next: create a register from Register Catalog.",
   },
   selectRegister: { ar: "اختر صندوقاً", en: "Select a register" },
   selectRegisterHint: {

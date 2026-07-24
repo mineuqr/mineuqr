@@ -14,9 +14,12 @@ function base(over: Partial<RegisterDto> = {}): RegisterDto {
   return {
     registerId: "reg_1",
     restaurantId: 1,
+    code: "FRONT",
     displayName: "Front",
+    registerType: "counter",
     catalogStatus: "active",
     dutyStatus: "closed",
+    archivedAt: null,
     deviceId: null,
     assignedOperatorUserId: null,
     operatorAssignedAt: null,

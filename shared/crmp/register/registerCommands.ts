@@ -1,5 +1,6 @@
 /**
- * ADR-ARCH-030 / REGISTER-OPERATIONS-IMPLEMENTATION-1 — Register domain commands (pure).
+ * ADR-ARCH-030 / REGISTER-OPERATIONS-IMPLEMENTATION-1 /
+ * REGISTER-CATALOG-MANAGEMENT-1 — Register domain commands (pure).
  * Catalog + Duty + operator + device. Never mutates Settlement money.
  */
 
@@ -9,6 +10,10 @@ import {
   CrmpInvariantError,
   CrmpValidationError,
 } from "../crmpErrors";
+import {
+  isRegisterType,
+  type RegisterType,
+} from "../valueObjects";
 import type { CashRegister } from "./registerContract";
 import {
   assertCatalogAllowsDuty,
@@ -21,8 +26,12 @@ import {
 export type ProvisionRegisterCommand = Readonly<{
   registerId: string;
   restaurantId: number;
+  code: string;
   displayName: string;
+  registerType: RegisterType;
   createdAt: string;
+  /** Sibling registers in restaurant — enforce unique code. */
+  siblingRegisters?: readonly CashRegister[];
 }>;
 
 export type ActivateRegisterCommand = Readonly<{
@@ -31,6 +40,31 @@ export type ActivateRegisterCommand = Readonly<{
 }>;
 
 export type DeactivateRegisterCommand = Readonly<{
+  register: CashRegister;
+  hasActiveShift: boolean;
+  at: string;
+}>;
+
+export type RenameRegisterCommand = Readonly<{
+  register: CashRegister;
+  displayName: string;
+  at: string;
+}>;
+
+export type ChangeRegisterTypeCommand = Readonly<{
+  register: CashRegister;
+  registerType: RegisterType;
+  at: string;
+}>;
+
+export type UpdateRegisterCodeCommand = Readonly<{
+  register: CashRegister;
+  code: string;
+  at: string;
+  siblingRegisters?: readonly CashRegister[];
+}>;
+
+export type ArchiveRegisterCommand = Readonly<{
   register: CashRegister;
   hasActiveShift: boolean;
   at: string;
@@ -116,6 +150,48 @@ function assertValidOperatorUserId(operatorUserId: number): void {
   }
 }
 
+export function normalizeRegisterCode(code: string): string {
+  const trimmed = code.trim();
+  if (!trimmed) {
+    throw new CrmpValidationError("register code required");
+  }
+  if (trimmed.length > 64) {
+    throw new CrmpValidationError("register code too long");
+  }
+  if (!/^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(trimmed)) {
+    throw new CrmpValidationError(
+      "register code must be alphanumeric (optional _-)"
+    );
+  }
+  return trimmed;
+}
+
+function assertCodeAvailable(
+  registerId: string,
+  restaurantId: number,
+  code: string,
+  siblings: readonly CashRegister[] | undefined
+): void {
+  if (!siblings) return;
+  const conflict = siblings.find(
+    (r) =>
+      r.registerId !== registerId &&
+      r.restaurantId === restaurantId &&
+      r.code.toLowerCase() === code.toLowerCase()
+  );
+  if (conflict) {
+    throw new CrmpConflictError(
+      `Register code ${code} already used on Register ${conflict.registerId}`
+    );
+  }
+}
+
+function assertNotArchived(register: CashRegister): void {
+  if (register.archivedAt != null) {
+    throw new CrmpImmutabilityError("Archived Register cannot be modified");
+  }
+}
+
 function assertOperatorAvailable(
   register: CashRegister,
   operatorUserId: number,
@@ -170,12 +246,25 @@ export function provisionRegister(
   if (!command.displayName.trim()) {
     throw new CrmpValidationError("displayName required");
   }
+  if (!isRegisterType(command.registerType)) {
+    throw new CrmpValidationError("invalid register type");
+  }
+  const code = normalizeRegisterCode(command.code);
+  assertCodeAvailable(
+    command.registerId,
+    command.restaurantId,
+    code,
+    command.siblingRegisters
+  );
   return {
     registerId: command.registerId,
     restaurantId: command.restaurantId,
+    code,
     displayName: command.displayName.trim(),
+    registerType: command.registerType,
     status: "provisioned",
     dutyStatus: "closed",
+    archivedAt: null,
     deviceId: null,
     assignedOperatorUserId: null,
     operatorAssignedAt: null,
@@ -188,6 +277,7 @@ export function provisionRegister(
 export function activateRegister(
   command: ActivateRegisterCommand
 ): CashRegister {
+  assertNotArchived(command.register);
   assertRegisterTransition(command.register.status, "active");
   if (command.register.status === "active") return command.register;
   return {
@@ -200,6 +290,7 @@ export function activateRegister(
 export function deactivateRegister(
   command: DeactivateRegisterCommand
 ): CashRegister {
+  assertNotArchived(command.register);
   if (command.hasActiveShift) {
     throw new CrmpInvariantError(
       "Register cannot deactivate while a Financial Shift is active"
@@ -215,6 +306,89 @@ export function deactivateRegister(
   return {
     ...command.register,
     status: "inactive",
+    ...bump(command.register, command.at),
+  };
+}
+
+export function renameRegister(command: RenameRegisterCommand): CashRegister {
+  assertNotArchived(command.register);
+  if (!command.displayName.trim()) {
+    throw new CrmpValidationError("displayName required");
+  }
+  const displayName = command.displayName.trim();
+  if (displayName === command.register.displayName) {
+    return command.register;
+  }
+  return {
+    ...command.register,
+    displayName,
+    ...bump(command.register, command.at),
+  };
+}
+
+export function changeRegisterType(
+  command: ChangeRegisterTypeCommand
+): CashRegister {
+  assertNotArchived(command.register);
+  if (!isRegisterType(command.registerType)) {
+    throw new CrmpValidationError("invalid register type");
+  }
+  if (command.registerType === command.register.registerType) {
+    return command.register;
+  }
+  return {
+    ...command.register,
+    registerType: command.registerType,
+    ...bump(command.register, command.at),
+  };
+}
+
+export function updateRegisterCode(
+  command: UpdateRegisterCodeCommand
+): CashRegister {
+  assertNotArchived(command.register);
+  const code = normalizeRegisterCode(command.code);
+  if (code.toLowerCase() === command.register.code.toLowerCase()) {
+    if (code === command.register.code) return command.register;
+  }
+  assertCodeAvailable(
+    command.register.registerId,
+    command.register.restaurantId,
+    code,
+    command.siblingRegisters
+  );
+  return {
+    ...command.register,
+    code,
+    ...bump(command.register, command.at),
+  };
+}
+
+/**
+ * Soft archive: catalog → inactive + archivedAt.
+ * Not a new catalog status (ADR-030). Blocks reactivation.
+ */
+export function archiveRegister(command: ArchiveRegisterCommand): CashRegister {
+  if (command.register.archivedAt != null) {
+    return command.register;
+  }
+  if (command.hasActiveShift) {
+    throw new CrmpInvariantError(
+      "Register cannot archive while a Financial Shift is active"
+    );
+  }
+  if (command.register.dutyStatus !== "closed") {
+    throw new CrmpInvariantError(
+      "Register cannot archive while Duty is not closed"
+    );
+  }
+  if (command.register.status !== "inactive") {
+    assertRegisterTransition(command.register.status, "inactive");
+  }
+  return {
+    ...command.register,
+    status: "inactive",
+    archivedAt: command.at,
     ...bump(command.register, command.at),
   };
 }

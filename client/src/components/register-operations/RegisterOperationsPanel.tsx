@@ -1,6 +1,7 @@
 /**
- * REGISTER-OPERATIONS-UI-UX-REFINEMENT-1 — Manager / Counter host.
- * Presentation only — crmp.register.* unchanged. No routing / API changes.
+ * REGISTER-OPERATIONS-UI-UX-REFINEMENT-1 / REGISTER-CATALOG-MANAGEMENT-1 —
+ * Manager / Counter host. Presentation only — crmp.register.* for Duty.
+ * Empty-state create navigates to Register Catalog (no Duty catalog commands here).
  */
 
 import {
@@ -38,6 +39,7 @@ import {
   type RegisterListRowVm,
   type RegisterOperationsLang,
 } from "@/lib/register-operations-presentation";
+import { spaNavigate } from "@/const";
 import { cn } from "@/lib/utils";
 import {
   Loader2,
@@ -49,6 +51,8 @@ import {
 type Props = {
   restaurantId: number;
   language: RegisterOperationsLang;
+  /** When false, Create stays disabled with explanation. */
+  canManageCatalog?: boolean;
 };
 
 function OpButton({
@@ -86,9 +90,13 @@ function SkeletonBlock({ className }: { className?: string }) {
 function EmptyOnboarding({
   language,
   station,
+  restaurantId,
+  canManageCatalog,
 }: {
   language: RegisterOperationsLang;
   station: boolean;
+  restaurantId: number;
+  canManageCatalog: boolean;
 }) {
   return (
     <div
@@ -121,14 +129,26 @@ function EmptyOnboarding({
       <OpButton
         station={station}
         className="mt-6 min-w-[12rem]"
-        disabled
-        aria-disabled="true"
-        title={registerOperationsUiLabel("createRegisterDisabledHint", language)}
+        disabled={!canManageCatalog}
+        aria-disabled={!canManageCatalog ? "true" : undefined}
+        title={
+          canManageCatalog
+            ? registerOperationsUiLabel("createRegisterHint", language)
+            : registerOperationsUiLabel("createRegisterDisabledHint", language)
+        }
+        onClick={() => {
+          if (!canManageCatalog) return;
+          spaNavigate(
+            `/dashboard?restaurant=${restaurantId}&section=register-catalog&create=1`
+          );
+        }}
       >
         {registerOperationsUiLabel("createRegister", language)}
       </OpButton>
       <p className="mt-3 max-w-lg text-xs leading-relaxed text-slate-500 sm:text-sm">
-        {registerOperationsUiLabel("createRegisterDisabledHint", language)}
+        {canManageCatalog
+          ? registerOperationsUiLabel("createRegisterHint", language)
+          : registerOperationsUiLabel("createRegisterDisabledHint", language)}
       </p>
     </div>
   );
@@ -194,7 +214,11 @@ function RegisterCard({
   );
 }
 
-export function RegisterOperationsPanel({ restaurantId, language }: Props) {
+export function RegisterOperationsPanel({
+  restaurantId,
+  language,
+  canManageCatalog = true,
+}: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [stationMode, setStationMode] = useState(true);
   const [search, setSearch] = useState("");
@@ -324,7 +348,12 @@ export function RegisterOperationsPanel({ restaurantId, language }: Props) {
             </p>
           </div>
         </header>
-        <EmptyOnboarding language={language} station={stationMode} />
+        <EmptyOnboarding
+          language={language}
+          station={stationMode}
+          restaurantId={restaurantId}
+          canManageCatalog={canManageCatalog}
+        />
         <p className="mt-3 text-center text-xs text-slate-500">
           {registerOperationsUiLabel("listEmptyGuidance", language)}{" "}
           {registerOperationsUiLabel("listEmptyNext", language)}

@@ -28,6 +28,8 @@ function catalogActive(id = "reg_1") {
     register: provisionRegister({
       registerId: id,
       restaurantId: 1,
+      code: "FRONT",
+      registerType: "counter",
       displayName: "Front",
       createdAt: "t0",
     }),
@@ -40,6 +42,8 @@ describe("REGISTER-OPERATIONS-IMPLEMENTATION-1 Duty lifecycle", () => {
     const r = provisionRegister({
       registerId: "reg_1",
       restaurantId: 1,
+      code: "FRONT",
+      registerType: "counter",
       displayName: "Front",
       createdAt: "t0",
     });
@@ -86,6 +90,8 @@ describe("REGISTER-OPERATIONS-IMPLEMENTATION-1 Duty lifecycle", () => {
     const provisioned = provisionRegister({
       registerId: "reg_1",
       restaurantId: 1,
+      code: "FRONT",
+      registerType: "counter",
       displayName: "Front",
       createdAt: "t0",
     });

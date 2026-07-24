@@ -4,6 +4,7 @@ export type RestaurantTab =
   | "orders"
   | "settlements"
   | "register"
+  | "register-catalog"
   | "screens"
   /** @deprecated Use screens */
   | "devices"

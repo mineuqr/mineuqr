@@ -18,6 +18,7 @@ import { OperationalSnapshotSection } from "@/components/dashboard/OperationalSn
 import { ReportsTab } from "@/components/dashboard/ReportsTab";
 import { SettlementHistoryPanel } from "@/components/settlement-record/SettlementHistoryPanel";
 import { RegisterOperationsPanel } from "@/components/register-operations/RegisterOperationsPanel";
+import { RegisterCatalogPanel } from "@/components/register-catalog/RegisterCatalogPanel";
 import { RestaurantKpiCard } from "@/components/dashboard/RestaurantKpiCard";
 import {
   RestaurantOperationsShell,
@@ -141,6 +142,7 @@ function restaurantTabLabel(tab: RestaurantTab, language: string, t: (key: strin
     orders: language === "ar" ? "الطلبات" : "Orders",
     settlements: language === "ar" ? "التسويات" : "Settlements",
     register: language === "ar" ? "عمليات الصندوق" : "Register Ops",
+    "register-catalog": language === "ar" ? "كتالوج الصناديق" : "Register Catalog",
     screens: language === "ar" ? "إدارة الشاشات" : "Screen Management",
     devices: language === "ar" ? "إدارة الشاشات" : "Screen Management",
     "screen-provisioning": language === "ar" ? "تجهيز الشاشة" : "Screen Provisioning",
@@ -1063,6 +1065,18 @@ function RestaurantDetail({
         <RegisterOperationsPanel
           restaurantId={restaurantId}
           language={language === "ar" ? "ar" : "en"}
+        />
+      )}
+
+      {activeTab === "register-catalog" && (
+        <RegisterCatalogPanel
+          restaurantId={restaurantId}
+          language={language === "ar" ? "ar" : "en"}
+          openCreate={
+            typeof window !== "undefined" &&
+            new URLSearchParams(window.location.search).get("create") === "1"
+          }
+          canManageCatalog
         />
       )}
 

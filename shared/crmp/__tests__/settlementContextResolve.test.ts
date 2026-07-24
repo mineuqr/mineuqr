@@ -15,6 +15,8 @@ function reg(deviceId: string | null = null) {
     register: provisionRegister({
       registerId: "reg_1",
       restaurantId: 1,
+      code: "FRONT",
+      registerType: "counter",
       displayName: "Front",
       createdAt: "t0",
     }),
@@ -140,6 +142,8 @@ describe("SETTLEMENT-CONTEXT-ADOPTION-1 resolveSettlementContextFromFacts", () =
         register: provisionRegister({
           registerId: "reg_2",
           restaurantId: 1,
+          code: "FRONT2",
+          registerType: "counter",
           displayName: "B",
           createdAt: "t0",
         }),
@@ -170,6 +174,8 @@ describe("SETTLEMENT-CONTEXT-ADOPTION-1 resolveSettlementContextFromFacts", () =
       register: provisionRegister({
         registerId: "reg_1",
         restaurantId: 1,
+        code: "FRONT",
+        registerType: "counter",
         displayName: "Front",
         createdAt: "t0",
       }),

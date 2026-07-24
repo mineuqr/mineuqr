@@ -14,9 +14,12 @@ export function toRegisterDto(register: CashRegister): RegisterDto {
   return {
     registerId: register.registerId,
     restaurantId: register.restaurantId,
+    code: register.code,
     displayName: register.displayName,
+    registerType: register.registerType,
     catalogStatus: register.status,
     dutyStatus: register.dutyStatus,
+    archivedAt: register.archivedAt,
     deviceId: register.deviceId,
     assignedOperatorUserId: register.assignedOperatorUserId,
     operatorAssignedAt: register.operatorAssignedAt,

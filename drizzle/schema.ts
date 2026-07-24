@@ -1557,10 +1557,16 @@ export const crmpRegisters = mysqlTable(
 		id: int().autoincrement().primaryKey(),
 		registerId: varchar({ length: 128 }).notNull(),
 		restaurantId: int().notNull(),
+		/** Restaurant-scoped unique operational code — REGISTER-CATALOG-MANAGEMENT-1 */
+		code: varchar({ length: 64 }).notNull(),
 		displayName: varchar({ length: 128 }).notNull(),
+		/** Catalog type — not Device role, not Duty */
+		registerType: mysqlEnum(["settlement_station", "counter", "mobile_pos"]).notNull(),
 		status: mysqlEnum(["provisioned", "active", "inactive"]).notNull(),
 		/** Duty plane — ADR-ARCH-030 / ROP */
 		dutyStatus: mysqlEnum(["closed", "open", "suspended"]).default("closed").notNull(),
+		/** Soft archive — not a catalog status enum (ADR-030) */
+		archivedAt: timestamp({ mode: "string" }),
 		deviceId: varchar({ length: 64 }),
 		assignedOperatorUserId: int(),
 		operatorAssignedAt: timestamp({ mode: "string" }),
@@ -1570,9 +1576,14 @@ export const crmpRegisters = mysqlTable(
 	},
 	(table) => [
 		uniqueIndex("crmp_registers_register_id_unique").on(table.registerId),
+		uniqueIndex("crmp_registers_restaurant_code_unique").on(
+			table.restaurantId,
+			table.code
+		),
 		index("crmp_registers_restaurant_id").on(table.restaurantId),
 		index("crmp_registers_restaurant_status").on(table.restaurantId, table.status),
 		index("crmp_registers_restaurant_duty").on(table.restaurantId, table.dutyStatus),
+		index("crmp_registers_restaurant_type").on(table.restaurantId, table.registerType),
 	]
 );
 
