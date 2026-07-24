@@ -91,8 +91,10 @@ type CheckoutSubmitBase = Readonly<{
   /** Dining session / post-submission / channel gates composed by shell. */
   channelAllowsSubmit: boolean;
   /**
-   * SELF-ORDERING-SETTLEMENT-ADOPTION-1 — when true, skip auto goToTracking
-   * so the channel can run Register Payment before confirmation.
+   * When true, skip cart clear + auto goToTracking after place.
+   * Kiosk counter-pickup (SELF-ORDERING-COUNTER-PICKUP-ARCHITECTURE-1 Phase 2)
+   * must leave this unset/false — customer journey ends at confirmation.
+   * Retained for non-kiosk channels that need a post-place step before tracking.
    */
   deferTrackingNavigation?: boolean;
   onSuccess?: (

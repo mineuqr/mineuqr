@@ -274,7 +274,9 @@ export function OrderingCheckoutProvider({
         }
 
         request.onSuccess?.(placed, draft);
-        // SELF-ORDERING-SETTLEMENT-ADOPTION-1 — keep cart until settle when deferred.
+        // Default: clear cart + go to confirmation/tracking immediately after place.
+        // deferTrackingNavigation=true keeps cart (post-place channel steps only).
+        // Kiosk counter-pickup must not defer — customer never settles.
         if (!request.deferTrackingNavigation) {
           cart.clearCart();
           resetForm();

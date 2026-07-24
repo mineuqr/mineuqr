@@ -32,15 +32,17 @@ export function KioskConfirmationStage({ trackingToken, onDone }: Props) {
   const identity = token ? loadConfirmationDisplayIdentity(token) : null;
   const displayReference = identity?.displayReference?.trim() || "";
 
+  // SELF-ORDERING-COUNTER-PICKUP-ARCHITECTURE-1 — Phase 2:
+  // Confirmation ends the customer journey (operational identity only; no payment/settlement copy).
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-6 bg-gradient-to-b from-teal-900 to-slate-900 text-white px-8 text-center">
       <p className="text-4xl md:text-5xl font-bold">
-        {language === "ar" ? "تم إرسال طلبك" : "Order placed"}
+        {language === "ar" ? "تم استلام طلبك" : "Your Order Has Been Received"}
       </p>
       {displayReference ? (
         <div className="space-y-1">
           <p className="text-white/60 text-sm">
-            {language === "ar" ? "رقم الطلب" : "Order Number"}
+            {language === "ar" ? "رقم الاستلام" : "Pickup Number"}
           </p>
           <p className="text-3xl md:text-4xl font-bold tracking-wide text-orange-300">
             {displayReference}
@@ -49,8 +51,8 @@ export function KioskConfirmationStage({ trackingToken, onDone }: Props) {
       ) : null}
       <p className="text-white/60">
         {language === "ar"
-          ? "سيتم إعادة الشاشة تلقائياً..."
-          : "Returning to start automatically..."}
+          ? "توجه إلى الكاشير لإتمام الدفع. سيتم إعادة الشاشة تلقائياً..."
+          : "Please proceed to the cashier to pay. Returning to start automatically..."}
       </p>
       <button
         type="button"
