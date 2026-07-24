@@ -60,6 +60,7 @@ export function useInvalidateRegisterOperationsQueries() {
       utils.crmp.register.resolveByDevice.invalidate(),
       utils.crmp.register.resolveByOperator.invalidate(),
       utils.crmp.financialShift.getCurrent.invalidate(),
+      utils.crmp.financialShift.getTenderSummary.invalidate(),
       registerId
         ? utils.crmp.register.getCurrent.invalidate({
             restaurantId,
@@ -68,6 +69,12 @@ export function useInvalidateRegisterOperationsQueries() {
         : Promise.resolve(),
       registerId
         ? utils.crmp.financialShift.getCurrent.invalidate({
+            restaurantId,
+            registerId,
+          })
+        : Promise.resolve(),
+      registerId
+        ? utils.crmp.financialShift.getTenderSummary.invalidate({
             restaurantId,
             registerId,
           })

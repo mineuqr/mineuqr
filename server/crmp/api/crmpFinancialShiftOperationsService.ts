@@ -8,12 +8,20 @@ import { CrmpNotFoundError } from "@shared/crmp";
 import type { FinancialShiftDomainService } from "../FinancialShiftDomainService";
 import type {
   FinancialShiftCommandResultDto,
+  FinancialShiftTenderSummaryDto,
   FinancialShiftViewDto,
 } from "./crmpApiDtos";
 import { toFinancialShiftCommandResultDto } from "./crmpApiMapper";
+import {
+  buildFinancialShiftTenderSummary,
+  type SettlementRecordBatchLoader,
+} from "./crmpFinancialShiftTenderSummary";
 
 export class CrmpFinancialShiftOperationsService {
-  constructor(private readonly shifts: FinancialShiftDomainService) {}
+  constructor(
+    private readonly shifts: FinancialShiftDomainService,
+    private readonly loadSettlementRecords?: SettlementRecordBatchLoader
+  ) {}
 
   async open(input: {
     restaurantId: number;
@@ -101,5 +109,18 @@ export class CrmpFinancialShiftOperationsService {
       );
     }
     return current;
+  }
+
+  /** Shift-scoped tender mix — Settlement snapshots + Reporting bucket rules. */
+  async getTenderSummary(input: {
+    restaurantId: number;
+    registerId: string;
+  }): Promise<FinancialShiftTenderSummaryDto | null> {
+    return buildFinancialShiftTenderSummary({
+      restaurantId: input.restaurantId,
+      registerId: input.registerId,
+      shifts: this.shifts,
+      loadSettlementRecords: this.loadSettlementRecords,
+    });
   }
 }

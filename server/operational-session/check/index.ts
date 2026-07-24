@@ -188,6 +188,7 @@ export {
   insertSettlementRecord,
   findSettlementRecordById,
   findSettlementRecordByIdentity,
+  listSettlementRecordsByIds,
   existsSettlementRecord,
   listSettlementRecordsForCheck,
   listSettlementRecordsForRestaurant,

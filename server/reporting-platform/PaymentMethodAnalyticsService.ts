@@ -33,15 +33,40 @@ type Acc = {
   checkIds: Set<number>;
 };
 
-type TenderLine = Readonly<{
+export type PaymentMethodAnalyticsTenderLine = Readonly<{
   paymentMethod: string;
   amount: string;
   status: string;
   checkId: number;
 }>;
 
+type TenderLine = PaymentMethodAnalyticsTenderLine;
+
 function emptyAcc(): Acc {
   return { tenderAmount: 0, transactionCount: 0, checkIds: new Set() };
+}
+
+/**
+ * Pure tender-bucket builder (REPORTING-PAYMENT-METHOD-ANALYTICS-1 rules).
+ * Reused by Financial Shift Ops tender summary (attribution → SR snapshots).
+ * Does not recalculate tender amounts — only aggregates captured lines.
+ */
+export function buildPaymentMethodAnalyticsFromCapturedLines(
+  input: Readonly<{
+    restaurantId: number;
+    from?: string | null;
+    to?: string | null;
+  }>,
+  rows: readonly PaymentMethodAnalyticsTenderLine[]
+): PaymentMethodAnalyticsDto {
+  return buildPaymentMethodAnalyticsDto(
+    {
+      restaurantId: input.restaurantId,
+      from: input.from ?? undefined,
+      to: input.to ?? undefined,
+    },
+    rows
+  );
 }
 
 function buildPaymentMethodAnalyticsDto(

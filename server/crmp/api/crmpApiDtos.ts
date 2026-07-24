@@ -81,6 +81,32 @@ export type FinancialShiftCommandResultDto = Readonly<{
   alreadyApplied: boolean;
 }>;
 
+/**
+ * FINANCIAL-SHIFT-SUMMARIES-ADOPTION-1 — shift-scoped tender summary.
+ * Built from Attribution membership → Settlement Record payment snapshots.
+ * Bucket rules reused from REPORTING-PAYMENT-METHOD-ANALYTICS-1 (no UI math).
+ * Not Expected Cash. Not Check Revenue.
+ */
+export type FinancialShiftTenderMethodAmountDto = Readonly<{
+  paymentMethod: string;
+  amount: string;
+  transactionCount: number;
+}>;
+
+export type FinancialShiftTenderSummaryDto = Readonly<{
+  financialShiftId: string;
+  registerId: string;
+  restaurantId: number;
+  attributedSettlementCount: number;
+  /** Σ captured monetary tenders on attributed Settlement Records. */
+  monetaryTenderTotal: string;
+  cashTenderTotal: string;
+  complimentaryAmount: string;
+  /** Σ grandTotal on attributed Settlement Records with recordKind=refund. */
+  refundAmount: string;
+  methods: readonly FinancialShiftTenderMethodAmountDto[];
+}>;
+
 export type CurrentRegisterViewDto = Readonly<{
   register: RegisterDto;
   dutyStatus: RegisterDutyStatusDto;

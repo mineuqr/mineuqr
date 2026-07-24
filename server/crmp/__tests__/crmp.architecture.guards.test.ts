@@ -56,6 +56,18 @@ describe("CRMP / SHIFT-LIFECYCLE architecture guards", () => {
     expect(registerSvc).not.toContain("FinancialShiftDomainService");
   });
 
+  it("Shift tender summary adopts Settlement + Reporting rules without Expected Cash changes", () => {
+    const tender = read("server/crmp/api/crmpFinancialShiftTenderSummary.ts");
+    const expected = read("shared/crmp/financialShift/expectedCash.ts");
+    expect(tender).toContain("FINANCIAL-SHIFT-SUMMARIES-ADOPTION-1");
+    expect(tender).toContain("buildPaymentMethodAnalyticsFromCapturedLines");
+    expect(tender).toContain("listSettlementRecordsByIds");
+    expect(tender).not.toMatch(/computeExpectedCash\s*\(/);
+    expect(tender).toContain("Does NOT invoke the Expected Cash formula");
+    expect(expected).toContain("Σ attributed cash tender amounts");
+    expect(expected).toContain("Never uses Order totals");
+  });
+
   it("settlement context never fabricates Register or Shift", () => {
     const resolve = read(
       "shared/crmp/settlementContext/resolveSettlementContext.ts"

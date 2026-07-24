@@ -46,7 +46,12 @@ export {
 export {
   useFinancialShiftCurrent,
   useFinancialShiftMutations,
+  useFinancialShiftTenderSummary,
 } from "./useFinancialShiftMutations";
+export {
+  presentTenderSummaryRows,
+  type TenderSummaryRowVm,
+} from "./financialShiftTenderSummaryPresentation";
 export {
   formatOpenedAtDisplay,
   formatRegisterMoneyDisplay,

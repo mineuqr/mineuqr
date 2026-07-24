@@ -690,5 +690,17 @@ export const crmpRouter = router({
         const svc = getCrmpFinancialShiftOperationsService();
         return runCrmpRead(() => svc.getCurrent(input));
       }),
+
+    getTenderSummary: verifiedProcedure
+      .input(registerIdentityInput)
+      .query(async ({ input, ctx }) => {
+        await assertRestaurantAccess(
+          ctx,
+          input.restaurantId,
+          "crmp.financialShift.getTenderSummary"
+        );
+        const svc = getCrmpFinancialShiftOperationsService();
+        return runCrmpRead(() => svc.getTenderSummary(input));
+      }),
   }),
 });

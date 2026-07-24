@@ -14,7 +14,42 @@ const COPY = {
   registerLabel: { ar: "الصندوق", en: "Register" },
   mainRegister: { ar: "الصندوق الرئيسي", en: "Main register" },
   registerStatus: { ar: "حالة الصندوق", en: "Register status" },
-  currentShift: { ar: "الوردية الحالية", en: "Current shift" },
+  currentShift: { ar: "الوردية المالية", en: "Financial shift" },
+  financialShiftSection: {
+    ar: "الوردية المالية",
+    en: "Financial shift",
+  },
+  registerSection: { ar: "الصندوق", en: "Register" },
+  cashDrawerSection: { ar: "درج النقد", en: "Cash drawer" },
+  tenderSummarySection: {
+    ar: "ملخص وسائل الدفع",
+    en: "Payment methods summary",
+  },
+  expectedCashInDrawer: {
+    ar: "النقد المتوقع داخل الدرج",
+    en: "Expected cash in drawer",
+  },
+  actualCashInDrawer: {
+    ar: "النقد الفعلي داخل الدرج",
+    en: "Actual cash in drawer",
+  },
+  cashDifference: { ar: "الفرق", en: "Difference" },
+  shiftStatus: { ar: "حالة الوردية", en: "Shift status" },
+  totalSalesTenders: {
+    ar: "إجمالي المبيعات",
+    en: "Total sales (tenders)",
+  },
+  cashSales: { ar: "المبيعات النقدية", en: "Cash sales" },
+  tenderComplimentary: { ar: "مجاملة", en: "Complimentary" },
+  tenderRefund: { ar: "مرتجع", en: "Refund" },
+  tenderSummaryEmpty: {
+    ar: "لا توجد تسويات منسوبة لهذه الوردية بعد.",
+    en: "No attributed settlements on this shift yet.",
+  },
+  tenderSummaryHint: {
+    ar: "ملخص طرق الدفع للتسويات المنسوبة للوردية. لا يغيّر النقد المتوقع داخل الدرج.",
+    en: "Payment methods for settlements attributed to this shift. Does not change expected drawer cash.",
+  },
   currentUser: { ar: "المستخدم الحالي", en: "Current user" },
   thisDevice: { ar: "هذا الجهاز", en: "This device" },
   currentDeviceBound: { ar: "الجهاز الحالي", en: "Current device" },
@@ -180,8 +215,8 @@ const COPY = {
     en: "Actual cash",
   },
   cashCountExpected: {
-    ar: "النقد المتوقع",
-    en: "Expected cash",
+    ar: "النقد المتوقع داخل الدرج",
+    en: "Expected cash in drawer",
   },
   cashCountDifference: {
     ar: "الفرق",
@@ -196,8 +231,8 @@ const COPY = {
     en: "Cancel",
   },
   currentCashSummary: {
-    ar: "ملخص النقدية الحالية",
-    en: "Current cash summary",
+    ar: "درج النقد",
+    en: "Cash drawer",
   },
   openedAt: {
     ar: "وقت الفتح",

@@ -39,12 +39,15 @@ describe("Register Operations presentation architecture guards", () => {
     );
     expect(panel).toContain("REGISTER-OPERATIONS-SIMPLIFICATION-1");
     expect(panel).toContain("FINANCIAL-SHIFT-WORKFLOW-ADOPTION-1");
+    expect(panel).toContain("FINANCIAL-SHIFT-SUMMARIES-ADOPTION-1");
     expect(panel).toContain("resolveRegisterOpsLayoutMode");
     expect(panel).toContain("presentFriendlyOperator");
     expect(panel).toContain("presentFriendlyDevice");
     expect(panel).toContain("needsOpeningFloatPrompt");
     expect(panel).toContain("OpeningFloatDialog");
     expect(panel).toContain("CashCountDialog");
+    expect(panel).toContain("CashDrawerSummaryCard");
+    expect(panel).toContain("FinancialShiftTenderSummaryCard");
     expect(panel).toContain("section=register-catalog");
     expect(panel).not.toMatch(/from ["']@shared\/crmp/);
     expect(panel).not.toMatch(/computeExpectedCash|toCents|grandTotal/);
@@ -53,6 +56,15 @@ describe("Register Operations presentation architecture guards", () => {
     expect(panel).not.toContain('registerOperationsUiLabel("deviceId"');
     expect(panel).not.toContain("assignOperator");
     expect(panel).not.toContain("attachDevice");
+  });
+
+  it("tender summary presentation does not calculate amounts", () => {
+    const present = read(
+      "src/lib/register-operations-presentation/financialShiftTenderSummaryPresentation.ts"
+    );
+    expect(present).toContain("presentTenderSummaryRows");
+    expect(present).not.toMatch(/parseFloat|Number\(|toCents|computeExpectedCash/);
+    expect(present).toContain("preferredPaymentMethodLabel");
   });
 
   it("Register.open remains independent of FinancialShift.open in domain service", () => {

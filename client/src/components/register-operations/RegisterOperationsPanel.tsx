@@ -1,8 +1,10 @@
 /**
  * REGISTER-OPERATIONS-SIMPLIFICATION-1 /
- * FINANCIAL-SHIFT-WORKFLOW-ADOPTION-1 — adaptive Register Operations host.
+ * FINANCIAL-SHIFT-WORKFLOW-ADOPTION-1 /
+ * FINANCIAL-SHIFT-SUMMARIES-ADOPTION-1 — adaptive Register Operations host.
  * Presentation only — crmp.register.* + crmp.financialShift.*.
  * Register.open does not create Financial Shift; workflow links them in UI.
+ * Cash Drawer vs Tender Summary are separate cards; Expected Cash unchanged.
  */
 
 import {
@@ -17,6 +19,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { restaurantDash } from "@/components/dashboard/restaurantDashStyles";
 import { CashCountDialog } from "./CashCountDialog";
+import { CashDrawerSummaryCard } from "./CashDrawerSummaryCard";
+import { FinancialShiftTenderSummaryCard } from "./FinancialShiftTenderSummaryCard";
 import { OpeningFloatDialog } from "./OpeningFloatDialog";
 import {
   AvailabilityBadge,
@@ -27,7 +31,6 @@ import {
   closeRequiresCashCount,
   dutyStatusLabel,
   filterRegisterRows,
-  formatOpenedAtDisplay,
   formatRegisterMoneyDisplay,
   mapRegisterOperationsApiError,
   needsOpeningFloatPrompt,
@@ -43,6 +46,7 @@ import {
   toRegisterListRowVm,
   useFinancialShiftCurrent,
   useFinancialShiftMutations,
+  useFinancialShiftTenderSummary,
   useInvalidateRegisterOperationsQueries,
   useRegisterCurrent,
   useRegisterHistory,
@@ -255,6 +259,10 @@ export function RegisterOperationsPanel({
   const shiftQuery = useFinancialShiftCurrent(
     { restaurantId, registerId: selectedId ?? "" },
     { enabled: !!selectedId }
+  );
+  const tenderQuery = useFinancialShiftTenderSummary(
+    { restaurantId, registerId: selectedId ?? "" },
+    { enabled: !!selectedId && !!shiftQuery.data }
   );
 
   const mutations = useRegisterOperationsMutations(restaurantId, language);
@@ -678,94 +686,97 @@ export function RegisterOperationsPanel({
             </div>
           ) : (
             <>
-              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+              <section
+                aria-label={registerOperationsUiLabel(
+                  "registerSection",
+                  language
+                )}
+                className="space-y-2"
+              >
+                <h3 className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  {registerOperationsUiLabel("registerSection", language)}
+                </h3>
+                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                  <StatusCard
+                    label={registerOperationsUiLabel("registerStatus", language)}
+                  >
+                    <DutyBadge
+                      tone={register.dutyStatus}
+                      label={dutyStatusLabel(register.dutyStatus, language)}
+                    />
+                  </StatusCard>
+                  <StatusCard
+                    label={registerOperationsUiLabel("currentUser", language)}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="flex size-9 shrink-0 items-center justify-center rounded-full bg-cyan-500/20 text-xs font-semibold text-cyan-100"
+                        aria-hidden
+                      >
+                        {operatorVm.initials}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-white">
+                          {operatorVm.title}
+                        </p>
+                        <p className="truncate text-xs text-slate-400">
+                          {operatorVm.subtitle}
+                        </p>
+                      </div>
+                    </div>
+                  </StatusCard>
+                  <StatusCard
+                    label={registerOperationsUiLabel("currentDevice", language)}
+                  >
+                    <p className="font-medium text-white">{deviceVm.title}</p>
+                    <p className="text-xs text-slate-400">{deviceVm.subtitle}</p>
+                  </StatusCard>
+                </div>
+              </section>
+
+              <section
+                aria-label={registerOperationsUiLabel(
+                  "financialShiftSection",
+                  language
+                )}
+                className="space-y-2"
+              >
+                <h3 className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  {registerOperationsUiLabel("financialShiftSection", language)}
+                </h3>
                 <StatusCard
-                  label={registerOperationsUiLabel("registerStatus", language)}
-                >
-                  <DutyBadge
-                    tone={register.dutyStatus}
-                    label={dutyStatusLabel(register.dutyStatus, language)}
-                  />
-                </StatusCard>
-                <StatusCard
-                  label={registerOperationsUiLabel("currentShift", language)}
+                  label={registerOperationsUiLabel("shiftStatus", language)}
                 >
                   <ShiftBadge tone={shiftInfo.tone} label={shiftInfo.label} />
                 </StatusCard>
-                <StatusCard
-                  label={registerOperationsUiLabel("currentUser", language)}
-                >
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="flex size-9 shrink-0 items-center justify-center rounded-full bg-cyan-500/20 text-xs font-semibold text-cyan-100"
-                      aria-hidden
-                    >
-                      {operatorVm.initials}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="truncate font-medium text-white">
-                        {operatorVm.title}
-                      </p>
-                      <p className="truncate text-xs text-slate-400">
-                        {operatorVm.subtitle}
-                      </p>
-                    </div>
-                  </div>
-                </StatusCard>
-                <StatusCard
-                  label={registerOperationsUiLabel("currentDevice", language)}
-                >
-                  <p className="font-medium text-white">{deviceVm.title}</p>
-                  <p className="text-xs text-slate-400">{deviceVm.subtitle}</p>
-                </StatusCard>
-              </div>
+              </section>
 
               {activeShift && (
-                <section
-                  aria-label={registerOperationsUiLabel(
-                    "currentCashSummary",
-                    language
-                  )}
-                  className="rounded-xl border border-emerald-500/25 bg-emerald-950/15 p-3 sm:p-4"
-                >
-                  <h3 className="text-sm font-medium text-emerald-100/90">
-                    {registerOperationsUiLabel("currentCashSummary", language)}
-                  </h3>
-                  <dl className="mt-3 grid gap-2 sm:grid-cols-3">
-                    <div>
-                      <dt className="text-xs text-slate-500">
-                        {registerOperationsUiLabel("openingFloatTitle", language)}
-                      </dt>
-                      <dd className="mt-0.5 font-medium text-white">
-                        {formatRegisterMoneyDisplay(
-                          activeShift.openingFloatAmount,
-                          currencySymbol,
-                          language
-                        )}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs text-slate-500">
-                        {registerOperationsUiLabel("currentShift", language)}
-                      </dt>
-                      <dd className="mt-0.5 font-medium text-white">
-                        {formatRegisterMoneyDisplay(
-                          activeShift.expectedCashAmount,
-                          currencySymbol,
-                          language
-                        )}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs text-slate-500">
-                        {registerOperationsUiLabel("openedAt", language)}
-                      </dt>
-                      <dd className="mt-0.5 font-medium text-white">
-                        {formatOpenedAtDisplay(activeShift.openedAt, language)}
-                      </dd>
-                    </div>
-                  </dl>
-                </section>
+                <CashDrawerSummaryCard
+                  language={language}
+                  currencySymbol={currencySymbol}
+                  openingFloatAmount={activeShift.openingFloatAmount}
+                  expectedCashAmount={activeShift.expectedCashAmount}
+                  actualCashAmount={
+                    activeShift.finalCount?.actualAmount ?? null
+                  }
+                  differenceAmount={
+                    activeShift.finalCount?.varianceAmount ??
+                    closeVariance
+                  }
+                  openedAt={activeShift.openedAt}
+                  shiftStatusLabel={shiftInfo.label}
+                  shiftTone={shiftInfo.tone}
+                />
+              )}
+
+              {activeShift && (
+                <FinancialShiftTenderSummaryCard
+                  language={language}
+                  currencySymbol={currencySymbol}
+                  summary={tenderQuery.data}
+                  loading={tenderQuery.isLoading || tenderQuery.isFetching}
+                />
               )}
 
               {closeVariance != null && (

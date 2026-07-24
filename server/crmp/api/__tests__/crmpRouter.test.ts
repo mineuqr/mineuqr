@@ -457,4 +457,29 @@ describe("crmp.financialShift API", () => {
       } as never)
     ).rejects.toBeTruthy();
   });
+
+  it("getTenderSummary returns empty mix when shift has no attributions", async () => {
+    const caller = createVerifiedCaller();
+    await caller.crmp.register.open({
+      restaurantId: 42,
+      registerId: "reg_1",
+      operatorUserId: 7,
+      at: "t2",
+    });
+    await caller.crmp.financialShift.open({
+      restaurantId: 42,
+      registerId: "reg_1",
+      operatorUserId: 7,
+      openingFloatAmount: "100.00",
+      currencyCode: "SAR",
+      at: "t3",
+    });
+    const summary = await caller.crmp.financialShift.getTenderSummary({
+      restaurantId: 42,
+      registerId: "reg_1",
+    });
+    expect(summary?.attributedSettlementCount).toBe(0);
+    expect(summary?.monetaryTenderTotal).toBe("0.00");
+    expect(summary?.cashTenderTotal).toBe("0.00");
+  });
 });

@@ -6,7 +6,7 @@
  * Unique (restaurantId, checkId, recordKind, recordGeneration) → SR-INV-05.
  */
 
-import { and, desc, eq, gte, like, lte, or, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, like, lte, or, sql, type SQL } from "drizzle-orm";
 import {
   settlementRecords,
   type SelectSettlementRecord,
@@ -126,6 +126,29 @@ export async function findSettlementRecordById(
     )
     .limit(1);
   return row ? mapRowToSettlementRecord(row) : null;
+}
+
+/** Batch read for Financial Shift tender summary (attribution → SR join). */
+export async function listSettlementRecordsByIds(
+  input: {
+    restaurantId: number;
+    settlementRecordIds: readonly string[];
+  },
+  client?: SessionDbClient
+): Promise<SettlementRecord[]> {
+  const ids = [...new Set(input.settlementRecordIds.filter(Boolean))];
+  if (ids.length === 0) return [];
+  const db = await resolveDb(client);
+  const rows = await db
+    .select()
+    .from(settlementRecords)
+    .where(
+      and(
+        eq(settlementRecords.restaurantId, input.restaurantId),
+        inArray(settlementRecords.settlementRecordId, ids)
+      )
+    );
+  return rows.map(mapRowToSettlementRecord);
 }
 
 export async function findSettlementRecordByIdentity(
