@@ -17,6 +17,7 @@ import { OperationalActivityFeedSection } from "@/components/dashboard/Operation
 import { OperationalSnapshotSection } from "@/components/dashboard/OperationalSnapshotSection";
 import { ReportsTab } from "@/components/dashboard/ReportsTab";
 import { SettlementHistoryPanel } from "@/components/settlement-record/SettlementHistoryPanel";
+import { RegisterOperationsPanel } from "@/components/register-operations/RegisterOperationsPanel";
 import { RestaurantKpiCard } from "@/components/dashboard/RestaurantKpiCard";
 import {
   RestaurantOperationsShell,
@@ -139,6 +140,7 @@ function restaurantTabLabel(tab: RestaurantTab, language: string, t: (key: strin
     sessions: language === "ar" ? "الجلسات" : "Sessions",
     orders: language === "ar" ? "الطلبات" : "Orders",
     settlements: language === "ar" ? "التسويات" : "Settlements",
+    register: language === "ar" ? "عمليات الصندوق" : "Register Ops",
     screens: language === "ar" ? "إدارة الشاشات" : "Screen Management",
     devices: language === "ar" ? "إدارة الشاشات" : "Screen Management",
     "screen-provisioning": language === "ar" ? "تجهيز الشاشة" : "Screen Provisioning",
@@ -1054,6 +1056,13 @@ function RestaurantDetail({
                 (restaurant as { nameAr?: string })?.nameAr
           }
           currencySymbol={(restaurant as { currencySymbol?: string })?.currencySymbol}
+        />
+      )}
+
+      {activeTab === "register" && (
+        <RegisterOperationsPanel
+          restaurantId={restaurantId}
+          language={language === "ar" ? "ar" : "en"}
         />
       )}
 

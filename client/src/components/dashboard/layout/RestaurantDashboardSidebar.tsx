@@ -23,6 +23,7 @@ import {
   Receipt,
   Settings,
   Store,
+  WalletCards,
   Tag,
   UsersRound,
   Wrench,
@@ -107,6 +108,13 @@ export function RestaurantDashboardSidebar({
           icon: Receipt,
           active: restaurantTab === "settlements",
           onClick: () => onRestaurantTabChange!("settlements"),
+        },
+        {
+          id: "register",
+          label: language === "ar" ? "عمليات الصندوق" : "Register Ops",
+          icon: WalletCards,
+          active: restaurantTab === "register",
+          onClick: () => onRestaurantTabChange!("register"),
         },
         {
           id: "screens",
