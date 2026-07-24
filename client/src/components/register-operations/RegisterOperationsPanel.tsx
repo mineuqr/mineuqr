@@ -1,10 +1,12 @@
 /**
  * REGISTER-OPERATIONS-SIMPLIFICATION-1 /
  * FINANCIAL-SHIFT-WORKFLOW-ADOPTION-1 /
- * FINANCIAL-SHIFT-SUMMARIES-ADOPTION-1 — adaptive Register Operations host.
+ * FINANCIAL-SHIFT-SUMMARIES-ADOPTION-1 /
+ * FINANCIAL-SHIFT-CLOSING-PRESENTATION-1 — adaptive Register Operations host.
  * Presentation only — crmp.register.* + crmp.financialShift.*.
  * Register.open does not create Financial Shift; workflow links them in UI.
  * Cash Drawer vs Tender Summary are separate cards; Expected Cash unchanged.
+ * Closing uses Shift Closing Summary + window.print (Settlement Receipt path).
  */
 
 import {
@@ -18,10 +20,14 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { restaurantDash } from "@/components/dashboard/restaurantDashStyles";
-import { CashCountDialog } from "./CashCountDialog";
 import { CashDrawerSummaryCard } from "./CashDrawerSummaryCard";
 import { FinancialShiftTenderSummaryCard } from "./FinancialShiftTenderSummaryCard";
 import { OpeningFloatDialog } from "./OpeningFloatDialog";
+import {
+  ShiftClosingSummaryDialog,
+  type ShiftClosingConfirmPayload,
+} from "./ShiftClosingSummaryDialog";
+import { ShiftClosingPrintReport } from "./ShiftClosingPrintReport";
 import {
   AvailabilityBadge,
   DutyBadge,
@@ -36,6 +42,7 @@ import {
   needsOpeningFloatPrompt,
   presentFriendlyDevice,
   presentFriendlyOperator,
+  printShiftClosingReport,
   registerOperationsErrorMessage,
   registerOperationsUiLabel,
   rememberActiveRegister,
@@ -54,6 +61,7 @@ import {
   useRegisterOperationsMutations,
   type RegisterListRowVm,
   type RegisterOperationsLang,
+  type ShiftClosingReportVm,
 } from "@/lib/register-operations-presentation";
 import { spaNavigate } from "@/const";
 import { cn } from "@/lib/utils";
@@ -65,6 +73,7 @@ type Props = {
   canManageCatalog?: boolean;
   currencyCode?: string;
   currencySymbol?: string;
+  restaurantName?: string;
 };
 
 function OpButton({
@@ -240,12 +249,15 @@ export function RegisterOperationsPanel({
   canManageCatalog = true,
   currencyCode = "SAR",
   currencySymbol = "ر.س",
+  restaurantName = "",
 }: Props) {
   const { user } = useAuth();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [cashCountOpen, setCashCountOpen] = useState(false);
   const [closeVariance, setCloseVariance] = useState<string | null>(null);
+  const [postClosePrintReport, setPostClosePrintReport] =
+    useState<ShiftClosingReportVm | null>(null);
 
   const listQuery = useRegisterList({ restaurantId });
   const currentQuery = useRegisterCurrent(
@@ -417,13 +429,13 @@ export function RegisterOperationsPanel({
     mutations.resume.mutate(base);
   }
 
-  async function confirmCashCount(actualCashAmount: string) {
+  async function confirmCashCount(payload: ShiftClosingConfirmPayload) {
     if (!activeShift || !register || !user?.id) return;
     try {
       const closed = await shiftMutations.close.mutateAsync({
         restaurantId,
         financialShiftId: activeShift.financialShiftId,
-        actualCashAmount,
+        actualCashAmount: payload.actualCashAmount,
         actorUserId: user.id,
         expectedVersion: activeShift.version,
       });
@@ -433,6 +445,13 @@ export function RegisterOperationsPanel({
         restaurantId,
         registerId: register.registerId,
       });
+      if (payload.autoPrint) {
+        setPostClosePrintReport(payload.report);
+        window.setTimeout(() => {
+          printShiftClosingReport();
+          setPostClosePrintReport(null);
+        }, 150);
+      }
     } catch {
       /* toasts from mutation hooks */
     }
@@ -921,22 +940,44 @@ export function RegisterOperationsPanel({
         onCloseDutyWithoutShift={closeDuty}
       />
 
-      <CashCountDialog
-        key={
-          cashCountOpen
-            ? `${activeShift?.financialShiftId ?? "none"}:${activeShift?.expectedCashAmount ?? ""}`
-            : "closed"
-        }
-        open={cashCountOpen}
-        language={language}
-        currencySymbol={currencySymbol}
-        expectedCashAmount={activeShift?.expectedCashAmount ?? null}
-        pending={
-          shiftMutations.close.isPending || mutations.close.isPending
-        }
-        onConfirm={(amount) => void confirmCashCount(amount)}
-        onCancel={() => setCashCountOpen(false)}
-      />
+      {activeShift && (
+        <ShiftClosingSummaryDialog
+          key={
+            cashCountOpen
+              ? `${activeShift.financialShiftId}:${activeShift.expectedCashAmount}`
+              : "closed"
+          }
+          open={cashCountOpen}
+          language={language}
+          currencySymbol={currencySymbol}
+          restaurantName={restaurantName}
+          registerName={registerTitle}
+          operatorName={
+            operatorVm.title || user?.name || registerOperationsUiLabel("currentUserFallback", language)
+          }
+          financialShiftId={activeShift.financialShiftId}
+          openedAt={activeShift.openedAt}
+          openingFloatAmount={activeShift.openingFloatAmount}
+          expectedCashAmount={activeShift.expectedCashAmount}
+          tenderSummary={tenderQuery.data}
+          tenderLoading={tenderQuery.isLoading || tenderQuery.isFetching}
+          pending={
+            shiftMutations.close.isPending || mutations.close.isPending
+          }
+          onConfirm={(payload) => void confirmCashCount(payload)}
+          onCancel={() => setCashCountOpen(false)}
+        />
+      )}
+
+      {postClosePrintReport && (
+        <div className="hidden print:block" aria-hidden>
+          <ShiftClosingPrintReport
+            language={language}
+            currencySymbol={currencySymbol}
+            report={postClosePrintReport}
+          />
+        </div>
+      )}
     </section>
   );
 }

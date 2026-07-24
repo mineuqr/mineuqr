@@ -204,12 +204,60 @@ const COPY = {
     en: "Close register without shift",
   },
   cashCountTitle: {
-    ar: "عدّ النقدية",
-    en: "Cash count",
+    ar: "ملخص إغلاق الوردية",
+    en: "Shift closing summary",
   },
   cashCountSubtitle: {
-    ar: "أدخل النقد الفعلي في الدرج لإغلاق الوردية ثم الصندوق.",
-    en: "Enter actual drawer cash to close the financial shift, then the register.",
+    ar: "راجع ملخص الوردية وأدخل النقد الفعلي قبل الإغلاق.",
+    en: "Review the shift summary and enter actual cash before closing.",
+  },
+  closingReportTitle: {
+    ar: "تقرير إغلاق الوردية",
+    en: "Shift closing report",
+  },
+  closingReportNotInvoice: {
+    ar: "ملخص تشغيلي — ليس فاتورة ضريبية",
+    en: "Operational summary — not a fiscal invoice",
+  },
+  closingShiftNumber: {
+    ar: "رقم الوردية",
+    en: "Shift number",
+  },
+  closedAt: {
+    ar: "وقت الإغلاق",
+    en: "Closed at",
+  },
+  shiftDuration: {
+    ar: "مدة الوردية",
+    en: "Shift duration",
+  },
+  printClosingReport: {
+    ar: "طباعة تقرير الإغلاق",
+    en: "Print closing report",
+  },
+  autoPrintClosingReport: {
+    ar: "طباعة تلقائية بعد الإغلاق",
+    en: "Auto-print after close",
+  },
+  ordersCount: {
+    ar: "عدد الطلبات",
+    en: "Orders count",
+  },
+  settlementsCount: {
+    ar: "عدد التسويات",
+    en: "Settlements count",
+  },
+  generatedAt: {
+    ar: "وقت الإنشاء",
+    en: "Generated at",
+  },
+  closingTenderSection: {
+    ar: "ملخص وسائل الدفع",
+    en: "Payment methods summary",
+  },
+  closingDrawerSection: {
+    ar: "درج النقد",
+    en: "Cash drawer",
   },
   cashCountActual: {
     ar: "النقد الفعلي",

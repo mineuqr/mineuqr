@@ -54,6 +54,16 @@ export {
   type TenderSummaryRowVm,
 } from "./financialShiftTenderSummaryPresentation";
 export {
+  buildShiftClosingReportVm,
+  computeLiveCashDifference,
+  formatShiftDuration,
+  printShiftClosingReport,
+  readAutoPrintClosingReport,
+  shortenShiftNumber,
+  writeAutoPrintClosingReport,
+  type ShiftClosingReportVm,
+} from "./shiftClosingPresentation";
+export {
   formatOpenedAtDisplay,
   formatRegisterMoneyDisplay,
   parseMoneyAmountInput,

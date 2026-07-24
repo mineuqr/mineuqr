@@ -1069,6 +1069,15 @@ function RestaurantDetail({
           currencySymbol={
             (restaurant as { currencySymbol?: string })?.currencySymbol
           }
+          restaurantName={
+            language === "ar"
+              ? (restaurant as { nameAr?: string })?.nameAr ||
+                (restaurant as { nameEn?: string })?.nameEn ||
+                ""
+              : (restaurant as { nameEn?: string })?.nameEn ||
+                (restaurant as { nameAr?: string })?.nameAr ||
+                ""
+          }
         />
       )}
 

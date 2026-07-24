@@ -45,9 +45,10 @@ describe("Register Operations presentation architecture guards", () => {
     expect(panel).toContain("presentFriendlyDevice");
     expect(panel).toContain("needsOpeningFloatPrompt");
     expect(panel).toContain("OpeningFloatDialog");
-    expect(panel).toContain("CashCountDialog");
+    expect(panel).toContain("ShiftClosingSummaryDialog");
     expect(panel).toContain("CashDrawerSummaryCard");
     expect(panel).toContain("FinancialShiftTenderSummaryCard");
+    expect(panel).toContain("FINANCIAL-SHIFT-CLOSING-PRESENTATION-1");
     expect(panel).toContain("section=register-catalog");
     expect(panel).not.toMatch(/from ["']@shared\/crmp/);
     expect(panel).not.toMatch(/computeExpectedCash|toCents|grandTotal/);
