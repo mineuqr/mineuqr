@@ -111,8 +111,10 @@ import { reportingRouter } from "./reporting-platform";
 import { kitchenRouter } from "./kitchen/read/kitchenRouter";
 import { orderReadRouter } from "./order/read/orderReadRouter";
 import { orderSettlementReadRouter } from "./operational-session/check/api/orderSettlementReadRouter";
+import { settlementRecordReadRouter } from "./operational-session/check/api/settlementRecordReadRouter";
 import { splitPaymentReadRouter } from "./operational-session/check/api/splitPaymentReadRouter";
 import { multiCheckAllocationRouter } from "./operational-session/check/api/multiCheckAllocationRouter";
+import { listSettlementRecordsForSession } from "./operational-session/check/settlementRecordRepository";
 import { mapOrderDisplayIdentityFields } from "./order/read/presentation/mapOrderDisplayIdentity";
 import { printWorkspaceRouter } from "./print-workspace/printWorkspaceRouter";
 import { operationalDeviceRouter } from "./operational-device/operationalDeviceRouter";
@@ -2011,7 +2013,24 @@ const sessionRouter = router({
           actorUserId: ctx.user.id,
           settlements: input.settlements,
         });
-        return await getOwnerSessionWorkspace(input.restaurantId, input.sessionId);
+        const workspace = await getOwnerSessionWorkspace(
+          input.restaurantId,
+          input.sessionId
+        );
+        // SETTLEMENT-RECORD-UI-ADOPTION-1 — acknowledge published Settlement Record.
+        const records = await listSettlementRecordsForSession({
+          restaurantId: input.restaurantId,
+          sessionId: input.sessionId,
+        });
+        const latest = [...records].sort((a, b) => {
+          const ta = Date.parse(a.settledAt ?? a.createdAt);
+          const tb = Date.parse(b.settledAt ?? b.createdAt);
+          return (Number.isFinite(tb) ? tb : 0) - (Number.isFinite(ta) ? ta : 0);
+        })[0];
+        return {
+          ...workspace,
+          settlementRecordId: latest?.settlementRecordId ?? null,
+        };
       } catch (err) {
         throwSessionServiceTrpcError(err);
       }
@@ -2513,6 +2532,7 @@ export const appRouter = router({
   reporting: reportingRouter,
   kitchen: kitchenRouter,
   orderSettlement: orderSettlementReadRouter,
+  settlementRecord: settlementRecordReadRouter,
   splitPayment: splitPaymentReadRouter,
   multiCheckAllocation: multiCheckAllocationRouter,
   printWorkspace: printWorkspaceRouter,

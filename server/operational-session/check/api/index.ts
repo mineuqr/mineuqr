@@ -1,9 +1,36 @@
 /**
  * Check API surface barrel
- * (Order Settlement + Split Payment + Multi Check Allocation).
+ * (Order Settlement + Split Payment + Multi Check Allocation + Settlement Record).
  */
 
 export { orderSettlementReadRouter } from "./orderSettlementReadRouter";
+
+export { settlementRecordReadRouter } from "./settlementRecordReadRouter";
+export { settlementRecordReadService } from "./settlementRecordReadService";
+export { SettlementRecordReadService } from "./settlementRecordReadService";
+export {
+  toSettlementRecordHistoryItemDto,
+  toSettlementRecordDetailDto,
+  toSettlementRecordReceiptDto,
+} from "./settlementRecordApiMapper";
+export type {
+  SettlementRecordHistoryItemDto,
+  SettlementRecordHistoryPageDto,
+  SettlementRecordDetailDto,
+  SettlementRecordReceiptDto,
+  SettlementRecordOrderRefDto,
+  SettlementRecordItemSnapshotLineDto,
+  SettlementRecordPaymentLineDto,
+  SettlementRecordTaxLineDto,
+} from "./settlementRecordApiDtos";
+export {
+  SETTLEMENT_RECORD_API_CONTRACT_ID,
+  SETTLEMENT_RECORD_API_CONTRACT_VERSION,
+} from "./settlementRecordApiDtos";
+export {
+  throwSettlementRecordApiError,
+  runSettlementRecordRead,
+} from "./mapSettlementRecordApiError";
 export {
   orderSettlementReadService,
   getOrderSettlementProjectionStore,

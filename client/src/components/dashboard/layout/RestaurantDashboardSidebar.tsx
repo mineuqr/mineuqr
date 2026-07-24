@@ -20,6 +20,7 @@ import {
   Palette,
   Printer,
   QrCode,
+  Receipt,
   Settings,
   Store,
   Tag,
@@ -99,6 +100,13 @@ export function RestaurantDashboardSidebar({
           icon: ClipboardList,
           active: restaurantTab === "orders",
           onClick: () => onRestaurantTabChange!("orders"),
+        },
+        {
+          id: "settlements",
+          label: language === "ar" ? "التسويات" : "Settlements",
+          icon: Receipt,
+          active: restaurantTab === "settlements",
+          onClick: () => onRestaurantTabChange!("settlements"),
         },
         {
           id: "screens",

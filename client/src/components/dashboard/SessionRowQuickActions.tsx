@@ -17,8 +17,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { MarkPaidSettlementDialog } from "@/components/dashboard/MarkPaidSettlementDialog";
+import { SettlementSuccessDialog } from "@/components/settlement-record/SettlementSuccessDialog";
+import { SettlementDetailSheet } from "@/components/settlement-record/SettlementDetailSheet";
+import { SettlementReceiptDialog } from "@/components/settlement-record/SettlementReceiptDialog";
 import type { DiningSessionStatus } from "@/lib/diningSessionCopy";
 import { sessionActionLabel } from "@/lib/diningSessionActionCopy";
+import { syncDashboardUrl } from "@/lib/dashboardUrl";
+import { useInvalidateSettlementRecordQueries } from "@/lib/settlement-record-presentation";
 import { trpc } from "@/lib/trpc";
 import { toastTrpcError } from "@/lib/trpcErrors";
 import { cn } from "@/lib/utils";
@@ -34,19 +39,37 @@ export function SessionRowQuickActions({
   sessionId,
   sessionStatus,
   isAr,
+  outstandingAmount = "0.00",
+  currencySymbol = "",
   onOpenSession,
 }: {
   restaurantId: number;
   sessionId: number;
   sessionStatus: Extract<DiningSessionStatus, "open" | "paid" | "complimentary">;
   isAr: boolean;
+  outstandingAmount?: string;
+  currencySymbol?: string;
   onOpenSession: (sessionId: number) => void;
 }) {
   const { t } = useLanguage();
   const lang = isAr ? "ar" : "en";
   const utils = trpc.useUtils();
+  const invalidateSettlements = useInvalidateSettlementRecordQueries();
   const [confirmKind, setConfirmKind] = useState<ConfirmKind>(null);
   const [paidOpen, setPaidOpen] = useState(false);
+  const [successOpen, setSuccessOpen] = useState(false);
+  const [settlementRecordId, setSettlementRecordId] = useState<string | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [receiptOpen, setReceiptOpen] = useState(false);
+
+  const workspaceQuery = trpc.session.getOwnerWorkspace.useQuery(
+    { restaurantId, sessionId },
+    { enabled: paidOpen && restaurantId > 0 && sessionId > 0 }
+  );
+  const resolvedOutstanding =
+    outstandingAmount !== "0.00"
+      ? outstandingAmount
+      : (workspaceQuery.data?.ordersTotalAmount ?? outstandingAmount);
 
   const invalidateAfterAction = async () => {
     await Promise.all([
@@ -58,6 +81,7 @@ export function SessionRowQuickActions({
       utils.orderSettlement.listByCheck.invalidate(),
       utils.orderSettlement.getSummaryByCheck.invalidate(),
       utils.orderSettlement.listByRestaurant.invalidate({ restaurantId }),
+      invalidateSettlements(restaurantId),
     ]);
   };
 
@@ -70,7 +94,20 @@ export function SessionRowQuickActions({
     onError: (err: unknown) => toastTrpcError(err, t),
   };
 
-  const markPaidMutation = trpc.session.markPaid.useMutation(mutationOpts);
+  const markPaidMutation = trpc.session.markPaid.useMutation({
+    ...mutationOpts,
+    onSuccess: (data) => {
+      void invalidateAfterAction();
+      setConfirmKind(null);
+      setPaidOpen(false);
+      const id =
+        data && typeof data === "object" && "settlementRecordId" in data
+          ? (data.settlementRecordId as string | null)
+          : null;
+      setSettlementRecordId(id);
+      setSuccessOpen(true);
+    },
+  });
   const markComplimentaryMutation = trpc.session.markComplimentary.useMutation(mutationOpts);
   const closeMutation = trpc.session.close.useMutation(mutationOpts);
 
@@ -169,8 +206,57 @@ export function SessionRowQuickActions({
         open={paidOpen}
         language={lang}
         pending={pending && markPaidMutation.isPending}
+        outstandingAmount={resolvedOutstanding}
+        currencySymbol={currencySymbol}
         onOpenChange={setPaidOpen}
         onConfirm={confirmPaid}
+      />
+
+      <SettlementSuccessDialog
+        open={successOpen}
+        language={lang}
+        settlementRecordId={settlementRecordId}
+        onOpenChange={setSuccessOpen}
+        onViewDetail={() => {
+          setSuccessOpen(false);
+          setDetailOpen(true);
+        }}
+        onViewReceipt={() => {
+          setSuccessOpen(false);
+          setReceiptOpen(true);
+        }}
+        onViewCompletedOrders={() => {
+          setSuccessOpen(false);
+          syncDashboardUrl({ restaurantId, section: "orders" });
+        }}
+        onViewHistory={() => {
+          setSuccessOpen(false);
+          syncDashboardUrl({ restaurantId, section: "settlements" });
+        }}
+      />
+
+      <SettlementDetailSheet
+        open={detailOpen}
+        restaurantId={restaurantId}
+        settlementRecordId={settlementRecordId}
+        language={lang}
+        onOpenChange={setDetailOpen}
+        onViewReceipt={() => {
+          setDetailOpen(false);
+          setReceiptOpen(true);
+        }}
+        onViewHistory={() => {
+          setDetailOpen(false);
+          syncDashboardUrl({ restaurantId, section: "settlements" });
+        }}
+      />
+
+      <SettlementReceiptDialog
+        open={receiptOpen}
+        restaurantId={restaurantId}
+        settlementRecordId={settlementRecordId}
+        language={lang}
+        onOpenChange={setReceiptOpen}
       />
 
       <AlertDialog open={confirmKind != null} onOpenChange={(open) => !open && setConfirmKind(null)}>

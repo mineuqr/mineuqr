@@ -16,6 +16,9 @@ import {
 } from "@/components/dashboard/DiningSessionWorkspaceRecovery";
 import { DiningSessionTimelineList } from "@/components/dashboard/DiningSessionTimelineList";
 import { OrderSettlementPanel } from "@/components/order-settlement/OrderSettlementPanel";
+import { SettlementSessionStatusPanel } from "@/components/settlement-record/SettlementSessionStatusPanel";
+import { SettlementDetailSheet } from "@/components/settlement-record/SettlementDetailSheet";
+import { SettlementReceiptDialog } from "@/components/settlement-record/SettlementReceiptDialog";
 import { useLanguage } from "@/contexts/LanguageContext";
 import type { DiningSessionStatus } from "@/lib/diningSessionCopy";
 import { formatDashboardSessionLabel } from "@/lib/diningSessionDashboardCopy";
@@ -24,6 +27,7 @@ import {
   countSessionItems,
   isSessionNotFoundError,
 } from "@/lib/diningSessionWorkspaceView";
+import { syncDashboardUrl } from "@/lib/dashboardUrl";
 import {
   DASHBOARD_ORDER_LIST_POLL_MS,
   orderListQueryOptions,
@@ -55,6 +59,9 @@ export function DiningSessionWorkspaceSheet({
   const { isAuthenticated, authPending } = useAuth();
   const lang = language === "ar" ? "ar" : "en";
   const sym = currencySymbol || "ر.س";
+  const [workspaceSettlementId, setWorkspaceSettlementId] = useState<string | null>(null);
+  const [workspaceDetailOpen, setWorkspaceDetailOpen] = useState(false);
+  const [workspaceReceiptOpen, setWorkspaceReceiptOpen] = useState(false);
   const workspaceEnabled =
     restaurantQueriesEnabled(authPending, isAuthenticated, restaurantId) &&
     open &&
@@ -182,6 +189,25 @@ export function DiningSessionWorkspaceSheet({
                 showDiagnostics={import.meta.env.DEV}
               />
 
+              <SettlementSessionStatusPanel
+                restaurantId={restaurantId}
+                sessionId={data.sessionId}
+                language={lang}
+                enabled={workspaceEnabled}
+                sessionStatus={data.status}
+                onOpenDetail={(id) => {
+                  setWorkspaceSettlementId(id);
+                  setWorkspaceDetailOpen(true);
+                }}
+                onOpenReceipt={(id) => {
+                  setWorkspaceSettlementId(id);
+                  setWorkspaceReceiptOpen(true);
+                }}
+                onOpenHistory={() =>
+                  syncDashboardUrl({ restaurantId, section: "settlements" })
+                }
+              />
+
               {/*
                 SETTLEMENT-UI-CLEANUP-1:
                 Split Payment + Multi Check Allocation operator UI is dormant.
@@ -202,6 +228,8 @@ export function DiningSessionWorkspaceSheet({
                   restaurantId={restaurantId}
                   sessionId={data.sessionId}
                   status={data.status as DiningSessionStatus}
+                  outstandingAmount={data.ordersTotalAmount}
+                  currencySymbol={sym}
                 />
               </section>
 
@@ -209,6 +237,28 @@ export function DiningSessionWorkspaceSheet({
                 events={data.events}
                 language={lang}
                 currencySymbol={sym}
+              />
+
+              <SettlementDetailSheet
+                open={workspaceDetailOpen}
+                restaurantId={restaurantId}
+                settlementRecordId={workspaceSettlementId}
+                language={lang}
+                onOpenChange={setWorkspaceDetailOpen}
+                onViewReceipt={() => {
+                  setWorkspaceDetailOpen(false);
+                  setWorkspaceReceiptOpen(true);
+                }}
+                onViewHistory={() =>
+                  syncDashboardUrl({ restaurantId, section: "settlements" })
+                }
+              />
+              <SettlementReceiptDialog
+                open={workspaceReceiptOpen}
+                restaurantId={restaurantId}
+                settlementRecordId={workspaceSettlementId}
+                language={lang}
+                onOpenChange={setWorkspaceReceiptOpen}
               />
             </>
           ) : null}

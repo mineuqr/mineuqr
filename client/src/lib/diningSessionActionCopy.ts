@@ -6,7 +6,7 @@
 type Lang = "ar" | "en";
 
 export const sessionActionLabels = {
-  markPaid: { ar: "تسجيل الدفع", en: "Mark Paid" },
+  markPaid: { ar: "تسجيل الدفع", en: "Register Payment" },
   markComplimentary: { ar: "ضيافة", en: "Mark Complimentary" },
   closeSession: { ar: "إغلاق الجلسة", en: "Close Session" },
   closeConfirmTitle: { ar: "إغلاق الجلسة؟", en: "Close session?" },
@@ -14,14 +14,14 @@ export const sessionActionLabels = {
     ar: "سيؤدي إغلاق الجلسة إلى تحرير الطاولة، وسيحتاج العملاء إلى بدء جلسة جديدة للطلب مجدداً.",
     en: "Closing the session will free the table and customers must start a new session to order again.",
   },
-  paidConfirmTitle: { ar: "تسجيل الدفع؟", en: "Mark session paid?" },
+  paidConfirmTitle: { ar: "تسجيل الدفع؟", en: "Register payment?" },
   paidConfirmBody: {
     ar: "اختر طريقة الدفع. سيتم تسوية الجلسة وإغلاقها تلقائياً وتحرير الطاولة.",
     en: "Select a payment method. The session will be settled and closed automatically, freeing the table.",
   },
   selectPaymentMethod: {
-    ar: "طريقة الدفع",
-    en: "Payment method",
+    ar: "طرق الدفع",
+    en: "Payment Methods",
   },
   complimentaryConfirmTitle: { ar: "تسجيل ضيافة؟", en: "Mark complimentary?" },
   complimentaryConfirmBody: {

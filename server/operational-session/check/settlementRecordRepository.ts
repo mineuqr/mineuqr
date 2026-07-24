@@ -6,7 +6,7 @@
  * Unique (restaurantId, checkId, recordKind, recordGeneration) → SR-INV-05.
  */
 
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq, gte, like, lte, or, sql, type SQL } from "drizzle-orm";
 import {
   settlementRecords,
   type SelectSettlementRecord,
@@ -24,6 +24,26 @@ import {
   mapRowToSettlementRecord,
   toSettlementRecordInsertValues,
 } from "./settlementRecordMapper";
+
+export type SettlementRecordListQuery = Readonly<{
+  restaurantId: number;
+  /** Inclusive YYYY-MM-DD (businessDay) or ISO date prefix. */
+  dateFrom?: string | null;
+  dateTo?: string | null;
+  /** Matches settlementRecordId, financialReference, checkId, sessionId. */
+  search?: string | null;
+  outcome?: string | null;
+  recordKind?: SettlementRecordKind | null;
+  page?: number;
+  pageSize?: number;
+}>;
+
+export type SettlementRecordListPage = Readonly<{
+  records: SettlementRecord[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+}>;
 
 export class SettlementRecordPersistenceError extends Error {
   readonly code: "NOT_FOUND" | "DUPLICATE" | "UNAVAILABLE" | "IMMUTABLE";
@@ -180,6 +200,82 @@ export async function listSettlementRecordsForSession(
       )
     );
   return rows.map(mapRowToSettlementRecord);
+}
+
+function buildRestaurantListFilters(input: SettlementRecordListQuery): SQL[] {
+  const filters: SQL[] = [eq(settlementRecords.restaurantId, input.restaurantId)];
+
+  if (input.dateFrom && /^\d{4}-\d{2}-\d{2}/.test(input.dateFrom)) {
+    filters.push(gte(settlementRecords.businessDay, input.dateFrom.slice(0, 10)));
+  }
+  if (input.dateTo && /^\d{4}-\d{2}-\d{2}/.test(input.dateTo)) {
+    filters.push(lte(settlementRecords.businessDay, input.dateTo.slice(0, 10)));
+  }
+  if (input.outcome) {
+    filters.push(
+      eq(
+        settlementRecords.outcome,
+        input.outcome as "paid" | "complimentary" | "voided"
+      )
+    );
+  }
+  if (input.recordKind) {
+    filters.push(eq(settlementRecords.recordKind, input.recordKind));
+  }
+
+  const search = input.search?.trim();
+  if (search) {
+    const likePat = `%${search}%`;
+    const searchOr = or(
+      like(settlementRecords.settlementRecordId, likePat),
+      like(settlementRecords.financialReference, likePat),
+      sql`CAST(${settlementRecords.checkId} AS CHAR) LIKE ${likePat}`,
+      sql`CAST(${settlementRecords.sessionId} AS CHAR) LIKE ${likePat}`
+    );
+    if (searchOr) filters.push(searchOr);
+  }
+
+  return filters;
+}
+
+/**
+ * Tenant-scoped Settlement History — newest first, filterable, paginated.
+ * Restaurant isolation is mandatory (SR-INV-07).
+ */
+export async function listSettlementRecordsForRestaurantPaged(
+  input: SettlementRecordListQuery,
+  client?: SessionDbClient
+): Promise<SettlementRecordListPage> {
+  const db = await resolveDb(client);
+  const page = Math.max(1, input.page ?? 1);
+  const pageSize = Math.min(100, Math.max(1, input.pageSize ?? 20));
+  const offset = (page - 1) * pageSize;
+  const where = and(...buildRestaurantListFilters(input));
+
+  const [countRow] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(settlementRecords)
+    .where(where);
+  const totalCount = Number(countRow?.count ?? 0);
+
+  const rows = await db
+    .select()
+    .from(settlementRecords)
+    .where(where)
+    .orderBy(
+      desc(settlementRecords.settledAt),
+      desc(settlementRecords.createdAt),
+      desc(settlementRecords.id)
+    )
+    .limit(pageSize)
+    .offset(offset);
+
+  return {
+    records: rows.map(mapRowToSettlementRecord),
+    totalCount,
+    page,
+    pageSize,
+  };
 }
 
 /**

@@ -191,6 +191,7 @@ export {
   existsSettlementRecord,
   listSettlementRecordsForCheck,
   listSettlementRecordsForRestaurant,
+  listSettlementRecordsForRestaurantPaged,
   listSettlementRecordsForSession,
   updateSettlementRecord,
   deleteSettlementRecord,

@@ -2,6 +2,7 @@ export type RestaurantTab =
   | "home"
   | "sessions"
   | "orders"
+  | "settlements"
   | "screens"
   /** @deprecated Use screens */
   | "devices"

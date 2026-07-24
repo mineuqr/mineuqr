@@ -16,6 +16,7 @@ function sectionToRestaurantTab(section: string | null | undefined): RestaurantT
   const map: Record<string, RestaurantTab> = {
     home: "home",
     orders: "orders",
+    settlements: "settlements",
     screens: "screens",
     devices: "screens",
     "screen-provisioning": "screen-provisioning",
