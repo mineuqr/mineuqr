@@ -1,6 +1,6 @@
 /**
- * CRMP / SHIFT-LIFECYCLE-IMPLEMENTATION-1 — server barrel.
- * Domain foundation + Financial Shift lifecycle — no routers / UI / Settlement adoption.
+ * CRMP / ADR-ARCH-028 · ADR-ARCH-030 — server barrel.
+ * Domain + Settlement Context/Attribution + Register Operations API (CRMP-OPERATIONS-API-1).
  */
 
 export type {

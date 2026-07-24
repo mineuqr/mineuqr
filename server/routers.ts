@@ -114,6 +114,7 @@ import { orderSettlementReadRouter } from "./operational-session/check/api/order
 import { settlementRecordReadRouter } from "./operational-session/check/api/settlementRecordReadRouter";
 import { splitPaymentReadRouter } from "./operational-session/check/api/splitPaymentReadRouter";
 import { multiCheckAllocationRouter } from "./operational-session/check/api/multiCheckAllocationRouter";
+import { crmpRouter } from "./crmp/api/crmpRouter";
 import { listSettlementRecordsForSession } from "./operational-session/check/settlementRecordRepository";
 import {
   settleOrderPaid,
@@ -2670,6 +2671,7 @@ export const appRouter = router({
   settlementRecord: settlementRecordReadRouter,
   splitPayment: splitPaymentReadRouter,
   multiCheckAllocation: multiCheckAllocationRouter,
+  crmp: crmpRouter,
   printWorkspace: printWorkspaceRouter,
   operationalDevice: operationalDeviceRouter,
   printConnector: printConnectorRouter,

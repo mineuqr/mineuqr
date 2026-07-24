@@ -263,6 +263,17 @@ export class FinancialShiftDomainService {
     );
   }
 
+  /** Operational history / listing for a Register — existing repository read. */
+  async listByRegister(input: {
+    restaurantId: number;
+    registerId: string;
+  }): Promise<FinancialShift[]> {
+    return this.uow.shifts.listByRegister(
+      input.restaurantId,
+      input.registerId
+    );
+  }
+
   async resolveByRegister(input: {
     restaurantId: number;
     registerId: string;

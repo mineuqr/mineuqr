@@ -550,6 +550,11 @@ export class RegisterDomainService {
     return this.uow.registers.findById(restaurantId, registerId);
   }
 
+  /** Catalog list for restaurant — no Duty filter (caller/API maps availability). */
+  async listByRestaurant(restaurantId: number): Promise<CashRegister[]> {
+    return this.uow.registers.listByRestaurant(restaurantId);
+  }
+
   private async requireRegister(
     restaurantId: number,
     registerId: string

@@ -23,6 +23,8 @@ describe("CRMP / SHIFT-LIFECYCLE architecture guards", () => {
       "server/crmp/DrizzleCrmpRepository.ts",
       "server/crmp/SettlementContextResolver.ts",
       "shared/crmp/settlementContext/resolveSettlementContext.ts",
+      "server/crmp/api/crmpRegisterOperationsService.ts",
+      "server/crmp/api/crmpApiMapper.ts",
     ];
     for (const f of files) {
       const src = read(f);
@@ -30,6 +32,14 @@ describe("CRMP / SHIFT-LIFECYCLE architecture guards", () => {
       expect(src, f).not.toMatch(/from ["']@shared\/operational-session/);
       expect(src, f).not.toMatch(/reporting-platform/);
     }
+  });
+
+  it("CRMP API façade does not contain financial calculations", () => {
+    const router = read("server/crmp/api/crmpRouter.ts");
+    expect(router).toContain("CRMP-OPERATIONS-API-1");
+    expect(router).not.toMatch(/computeExpectedCash|grandTotal|toCents/);
+    const svc = read("server/crmp/api/crmpRegisterOperationsService.ts");
+    expect(svc).not.toMatch(/computeExpectedCash|grandTotal|toCents/);
   });
 
   it("settlement context never fabricates Register or Shift", () => {
