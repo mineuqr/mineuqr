@@ -274,11 +274,14 @@ export function OrderingCheckoutProvider({
         }
 
         request.onSuccess?.(placed, draft);
-        cart.clearCart();
-        resetForm();
+        // SELF-ORDERING-SETTLEMENT-ADOPTION-1 — keep cart until settle when deferred.
+        if (!request.deferTrackingNavigation) {
+          cart.clearCart();
+          resetForm();
+        }
         setSubmissionStatus("success");
 
-        if (navigator) {
+        if (navigator && !request.deferTrackingNavigation) {
           navigator.goToTracking(result.trackingToken);
         }
 

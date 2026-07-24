@@ -115,6 +115,11 @@ import { settlementRecordReadRouter } from "./operational-session/check/api/sett
 import { splitPaymentReadRouter } from "./operational-session/check/api/splitPaymentReadRouter";
 import { multiCheckAllocationRouter } from "./operational-session/check/api/multiCheckAllocationRouter";
 import { listSettlementRecordsForSession } from "./operational-session/check/settlementRecordRepository";
+import {
+  settleOrderPaid,
+  SettleOrderPaidError,
+} from "./order/application/SettleOrderPaidService";
+import { settlementRecordReadService } from "./operational-session/check/api/settlementRecordReadService";
 import { mapOrderDisplayIdentityFields } from "./order/read/presentation/mapOrderDisplayIdentity";
 import { printWorkspaceRouter } from "./print-workspace/printWorkspaceRouter";
 import { operationalDeviceRouter } from "./operational-device/operationalDeviceRouter";
@@ -2168,6 +2173,114 @@ const orderRouter = router({
       } catch (err) {
         throwSessionServiceTrpcError(err);
       }
+    }),
+
+  /**
+   * SELF-ORDERING-SETTLEMENT-ADOPTION-1 — public Order settle façade.
+   * Resolves Check via membership → settleCheckPaidByIdDetailed (certified pipeline).
+   * Auth: trackingToken proves order ownership (same capability as public status).
+   */
+  settlePaid: publicProcedure
+    .input(
+      z.object({
+        restaurantId: z.number().int().positive(),
+        orderId: z.number().int().positive(),
+        trackingToken: z.string().min(8).max(128),
+        settlements: z
+          .array(
+            z.object({
+              paymentMethod: z.enum([
+                "cash",
+                "mada",
+                "visa",
+                "mastercard",
+                "apple_pay",
+                "stc_pay",
+                "bank_transfer",
+                "other",
+              ]),
+              amount: z.string().min(1).optional(),
+            })
+          )
+          .min(1)
+          .optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      await assertPublicOrderingRestaurant(input.restaurantId);
+      try {
+        return await settleOrderPaid({
+          restaurantId: input.restaurantId,
+          orderId: input.orderId,
+          trackingToken: input.trackingToken,
+          settlements: input.settlements,
+        });
+      } catch (err) {
+        if (err instanceof SettleOrderPaidError) {
+          if (
+            err.code === "ORDER_NOT_FOUND" ||
+            err.code === "CHECK_NOT_FOUND"
+          ) {
+            throw new TRPCError({ code: "NOT_FOUND", message: err.message });
+          }
+          if (err.code === "TRACKING_MISMATCH") {
+            throw new TRPCError({ code: "FORBIDDEN", message: err.message });
+          }
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: err.message,
+          });
+        }
+        throwSessionServiceTrpcError(err);
+      }
+    }),
+
+  /**
+   * SELF-ORDERING-SETTLEMENT-ADOPTION-1 — public receipt from Settlement Record.
+   * Tracking token + order ownership gate; money from certified SR read service.
+   */
+  getSettlementReceipt: publicProcedure
+    .input(
+      z.object({
+        restaurantId: z.number().int().positive(),
+        orderId: z.number().int().positive(),
+        trackingToken: z.string().min(8).max(128),
+        settlementRecordId: z.string().min(1).max(128),
+      })
+    )
+    .query(async ({ input }) => {
+      await assertPublicOrderingRestaurant(input.restaurantId);
+      const order = await getOrderById(input.orderId);
+      if (!order || order.restaurantId !== input.restaurantId) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
+      }
+      if (
+        !order.trackingToken ||
+        order.trackingToken !== input.trackingToken
+      ) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Order tracking token mismatch",
+        });
+      }
+      const receipt = await settlementRecordReadService.getReceipt({
+        restaurantId: input.restaurantId,
+        settlementRecordId: input.settlementRecordId,
+      });
+      if (!receipt) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Settlement Record not found",
+        });
+      }
+      const onOrder = receipt.orders.some((o) => o.orderId === input.orderId);
+      if (!onOrder) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Settlement does not include this order",
+        });
+      }
+      return receipt;
     }),
 
   /**

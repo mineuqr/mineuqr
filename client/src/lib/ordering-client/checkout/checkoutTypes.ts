@@ -90,6 +90,11 @@ type CheckoutSubmitBase = Readonly<{
   sessionToken?: string;
   /** Dining session / post-submission / channel gates composed by shell. */
   channelAllowsSubmit: boolean;
+  /**
+   * SELF-ORDERING-SETTLEMENT-ADOPTION-1 — when true, skip auto goToTracking
+   * so the channel can run Register Payment before confirmation.
+   */
+  deferTrackingNavigation?: boolean;
   onSuccess?: (
     result: CheckoutPlaceOrderResult,
     draft: CheckoutDraftSnapshot
