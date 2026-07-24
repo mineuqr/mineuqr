@@ -1065,6 +1065,10 @@ function RestaurantDetail({
         <RegisterOperationsPanel
           restaurantId={restaurantId}
           language={language === "ar" ? "ar" : "en"}
+          currencyCode={(restaurant as { currencyCode?: string })?.currencyCode}
+          currencySymbol={
+            (restaurant as { currencySymbol?: string })?.currencySymbol
+          }
         />
       )}
 

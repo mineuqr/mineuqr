@@ -59,8 +59,15 @@ export function useInvalidateRegisterOperationsQueries() {
       utils.crmp.register.resolveActive.invalidate(),
       utils.crmp.register.resolveByDevice.invalidate(),
       utils.crmp.register.resolveByOperator.invalidate(),
+      utils.crmp.financialShift.getCurrent.invalidate(),
       registerId
         ? utils.crmp.register.getCurrent.invalidate({
+            restaurantId,
+            registerId,
+          })
+        : Promise.resolve(),
+      registerId
+        ? utils.crmp.financialShift.getCurrent.invalidate({
             restaurantId,
             registerId,
           })

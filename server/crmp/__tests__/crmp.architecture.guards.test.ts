@@ -37,9 +37,23 @@ describe("CRMP / SHIFT-LIFECYCLE architecture guards", () => {
   it("CRMP API façade does not contain financial calculations", () => {
     const router = read("server/crmp/api/crmpRouter.ts");
     expect(router).toContain("CRMP-OPERATIONS-API-1");
+    expect(router).toContain("FINANCIAL-SHIFT-WORKFLOW-ADOPTION-1");
+    expect(router).toContain("crmp.financialShift.");
     expect(router).not.toMatch(/computeExpectedCash|grandTotal|toCents/);
     const svc = read("server/crmp/api/crmpRegisterOperationsService.ts");
     expect(svc).not.toMatch(/computeExpectedCash|grandTotal|toCents/);
+    const shiftSvc = read(
+      "server/crmp/api/crmpFinancialShiftOperationsService.ts"
+    );
+    expect(shiftSvc).toContain("getExpectedCash");
+    expect(shiftSvc).not.toMatch(/computeExpectedCash|grandTotal|toCents/);
+    expect(shiftSvc).not.toMatch(/openRegister|closeRegister/);
+  });
+
+  it("Register domain open does not open Financial Shift", () => {
+    const registerSvc = read("server/crmp/RegisterDomainService.ts");
+    expect(registerSvc).not.toContain("openFinancialShift");
+    expect(registerSvc).not.toContain("FinancialShiftDomainService");
   });
 
   it("settlement context never fabricates Register or Shift", () => {

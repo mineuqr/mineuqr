@@ -51,6 +51,36 @@ export type FinancialShiftRefDto = Readonly<{
   version: number;
 }>;
 
+/**
+ * FINANCIAL-SHIFT-WORKFLOW-ADOPTION-1 — operational Shift view for Ops UI.
+ * Amounts are opaque decimal strings from the domain (no recalculation in API).
+ */
+export type FinancialShiftViewDto = Readonly<{
+  financialShiftId: string;
+  registerId: string;
+  restaurantId: number;
+  status: string;
+  operatorUserId: number;
+  openedAt: string;
+  closedAt: string | null;
+  version: number;
+  openingFloatAmount: string;
+  currencyCode: string;
+  /** Domain expected cash (OpeningFloat + movements + attributed cash). */
+  expectedCashAmount: string;
+  /** Present after a final drawer count (close workflow). */
+  finalCount: Readonly<{
+    expectedAmount: string;
+    actualAmount: string;
+    varianceAmount: string;
+  }> | null;
+}>;
+
+export type FinancialShiftCommandResultDto = Readonly<{
+  shift: FinancialShiftViewDto;
+  alreadyApplied: boolean;
+}>;
+
 export type CurrentRegisterViewDto = Readonly<{
   register: RegisterDto;
   dutyStatus: RegisterDutyStatusDto;

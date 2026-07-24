@@ -16,6 +16,7 @@ import { SettlementDetailSheet } from "@/components/settlement-record/Settlement
 import { SettlementReceiptDialog } from "@/components/settlement-record/SettlementReceiptDialog";
 import type { DiningSessionStatus } from "@/lib/diningSessionCopy";
 import { sessionActionLabel } from "@/lib/diningSessionActionCopy";
+import { readActiveRegister } from "@/lib/register-operations-presentation";
 import { useInvalidateSettlementRecordQueries } from "@/lib/settlement-record-presentation";
 import { syncDashboardUrl } from "@/lib/dashboardUrl";
 import { trpc } from "@/lib/trpc";
@@ -159,10 +160,13 @@ export function DiningSessionActionBar({
   };
 
   const confirmPaid = (settlements: readonly StaffSettlementLineInput[]) => {
+    // FINANCIAL-SHIFT-WORKFLOW-ADOPTION-1 — pass remembered Register for Settlement Context.
+    const registerId = readActiveRegister(restaurantId);
     markPaidMutation.mutate({
       restaurantId,
       sessionId,
       settlements: [...settlements],
+      ...(registerId ? { registerId } : {}),
     });
   };
 

@@ -1,9 +1,10 @@
 /**
- * CRMP-OPERATIONS-API-1 / REGISTER-CATALOG-MANAGEMENT-1 —
- * canonical tRPC exposure for Register Operations + Register Catalog.
+ * CRMP-OPERATIONS-API-1 / REGISTER-CATALOG-MANAGEMENT-1 /
+ * FINANCIAL-SHIFT-WORKFLOW-ADOPTION-1 —
+ * canonical tRPC exposure for Register Operations, Catalog, and Financial Shift workflow.
  *
  * Authorization + validation + DTO serialization only.
- * Orchestrates RegisterDomainService / FinancialShiftDomainService.
+ * Orchestrates RegisterDomainService / FinancialShiftDomainService via thin façades.
  * No Domain rules, Persistence access, or financial calculations.
  */
 
@@ -12,6 +13,7 @@ import { REGISTER_TYPES } from "@shared/crmp";
 import { verifiedProcedure, router } from "../../_core/trpc";
 import { assertRestaurantAccess } from "../../restaurantAccess";
 import {
+  getCrmpFinancialShiftOperationsService,
   getCrmpRegisterCatalogService,
   getCrmpRegisterOperationsService,
 } from "./crmpApiComposition";
@@ -88,10 +90,34 @@ const catalogSearchInput = restaurantInput.extend({
   includeArchived: z.boolean().optional(),
 });
 
+const moneyAmountInput = z
+  .string()
+  .min(1)
+  .max(32)
+  .regex(/^\d+(\.\d{1,2})?$/, "invalid decimal amount");
+
+const openFinancialShiftInput = registerIdentityInput
+  .merge(concurrencyInput)
+  .extend({
+    operatorUserId: z.coerce.number().int().positive(),
+    openingFloatAmount: moneyAmountInput,
+    currencyCode: z.string().min(1).max(8),
+    financialShiftId: z.string().min(1).max(128).optional(),
+  });
+
+const closeFinancialShiftInput = restaurantInput
+  .merge(concurrencyInput)
+  .extend({
+    financialShiftId: z.string().min(1).max(128),
+    actualCashAmount: moneyAmountInput,
+    actorUserId: z.coerce.number().int().positive(),
+  });
+
 /**
  * Canonical CRMP APIs:
  * - `crmp.register.*` — Duty / operator / device (Register Operations)
  * - `crmp.catalog.*` — provision / catalog lifecycle (Register Catalog)
+ * - `crmp.financialShift.*` — Financial Shift lifecycle workflow (thin)
  */
 export const crmpRouter = router({
   catalog: router({
@@ -606,6 +632,63 @@ export const crmpRouter = router({
         );
         const svc = getCrmpRegisterOperationsService();
         return runCrmpRead(() => svc.resolveByOperator(input));
+      }),
+  }),
+
+  financialShift: router({
+    open: verifiedProcedure
+      .input(openFinancialShiftInput)
+      .mutation(async ({ input, ctx }) => {
+        await assertRestaurantAccess(
+          ctx,
+          input.restaurantId,
+          "crmp.financialShift.open"
+        );
+        const svc = getCrmpFinancialShiftOperationsService();
+        return runCrmpWrite(() =>
+          svc.open({
+            restaurantId: input.restaurantId,
+            registerId: input.registerId,
+            operatorUserId: input.operatorUserId,
+            openingFloatAmount: input.openingFloatAmount,
+            currencyCode: input.currencyCode,
+            financialShiftId: input.financialShiftId,
+            at: input.at,
+          })
+        );
+      }),
+
+    close: verifiedProcedure
+      .input(closeFinancialShiftInput)
+      .mutation(async ({ input, ctx }) => {
+        await assertRestaurantAccess(
+          ctx,
+          input.restaurantId,
+          "crmp.financialShift.close"
+        );
+        const svc = getCrmpFinancialShiftOperationsService();
+        return runCrmpWrite(() =>
+          svc.close({
+            restaurantId: input.restaurantId,
+            financialShiftId: input.financialShiftId,
+            actualCashAmount: input.actualCashAmount,
+            actorUserId: input.actorUserId,
+            expectedVersion: input.expectedVersion,
+            at: input.at,
+          })
+        );
+      }),
+
+    getCurrent: verifiedProcedure
+      .input(registerIdentityInput)
+      .query(async ({ input, ctx }) => {
+        await assertRestaurantAccess(
+          ctx,
+          input.restaurantId,
+          "crmp.financialShift.getCurrent"
+        );
+        const svc = getCrmpFinancialShiftOperationsService();
+        return runCrmpRead(() => svc.getCurrent(input));
       }),
   }),
 });

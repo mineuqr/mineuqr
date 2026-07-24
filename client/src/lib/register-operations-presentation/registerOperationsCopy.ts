@@ -139,6 +139,78 @@ const COPY = {
   contextualActions: { ar: "إجراءات سياقية", en: "Contextual actions" },
   version: { ar: "الإصدار", en: "Version" },
   noResults: { ar: "لا نتائج للبحث", en: "No matching registers" },
+  openingFloatTitle: {
+    ar: "العهدة الافتتاحية",
+    en: "Opening float",
+  },
+  openingFloatSubtitle: {
+    ar: "أدخل مبلغ العهدة لفتح الوردية المالية قبل متابعة المبيعات.",
+    en: "Enter the opening float to open the financial shift before sales continue.",
+  },
+  openingFloatAmount: {
+    ar: "مبلغ العهدة",
+    en: "Opening float amount",
+  },
+  openingFloatRequired: {
+    ar: "مبلغ العهدة مطلوب.",
+    en: "Opening float amount is required.",
+  },
+  openingFloatInvalid: {
+    ar: "أدخل مبلغاً صالحاً (رقمان عشريان كحد أقصى).",
+    en: "Enter a valid amount (up to 2 decimal places).",
+  },
+  openingFloatConfirm: {
+    ar: "فتح الوردية",
+    en: "Open shift",
+  },
+  openingFloatCancelCloseDuty: {
+    ar: "إغلاق الصندوق بدون وردية",
+    en: "Close register without shift",
+  },
+  cashCountTitle: {
+    ar: "عدّ النقدية",
+    en: "Cash count",
+  },
+  cashCountSubtitle: {
+    ar: "أدخل النقد الفعلي في الدرج لإغلاق الوردية ثم الصندوق.",
+    en: "Enter actual drawer cash to close the financial shift, then the register.",
+  },
+  cashCountActual: {
+    ar: "النقد الفعلي",
+    en: "Actual cash",
+  },
+  cashCountExpected: {
+    ar: "النقد المتوقع",
+    en: "Expected cash",
+  },
+  cashCountDifference: {
+    ar: "الفرق",
+    en: "Difference",
+  },
+  cashCountConfirm: {
+    ar: "إغلاق الوردية والصندوق",
+    en: "Close shift and register",
+  },
+  cashCountCancel: {
+    ar: "إلغاء",
+    en: "Cancel",
+  },
+  currentCashSummary: {
+    ar: "ملخص النقدية الحالية",
+    en: "Current cash summary",
+  },
+  openedAt: {
+    ar: "وقت الفتح",
+    en: "Opened at",
+  },
+  shiftOpenSuccess: {
+    ar: "تم فتح الوردية المالية.",
+    en: "Financial shift opened.",
+  },
+  shiftCloseSuccess: {
+    ar: "تم إغلاق الوردية المالية.",
+    en: "Financial shift closed.",
+  },
 } as const;
 
 export type RegisterOperationsCopyKey = keyof typeof COPY;

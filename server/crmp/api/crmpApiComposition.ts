@@ -6,6 +6,7 @@
 import { createDrizzleCrmpUnitOfWork } from "../DrizzleCrmpRepository";
 import { FinancialShiftDomainService } from "../FinancialShiftDomainService";
 import { RegisterDomainService } from "../RegisterDomainService";
+import { CrmpFinancialShiftOperationsService } from "./crmpFinancialShiftOperationsService";
 import { CrmpRegisterCatalogService } from "./crmpRegisterCatalogService";
 import { CrmpRegisterOperationsService } from "./crmpRegisterOperationsService";
 import type { CrmpUnitOfWork } from "../CrmpRepository";
@@ -32,4 +33,11 @@ export function getCrmpRegisterOperationsService(): CrmpRegisterOperationsServic
 export function getCrmpRegisterCatalogService(): CrmpRegisterCatalogService {
   const uow = getUnitOfWork();
   return new CrmpRegisterCatalogService(new RegisterDomainService(uow));
+}
+
+export function getCrmpFinancialShiftOperationsService(): CrmpFinancialShiftOperationsService {
+  const uow = getUnitOfWork();
+  return new CrmpFinancialShiftOperationsService(
+    new FinancialShiftDomainService(uow)
+  );
 }

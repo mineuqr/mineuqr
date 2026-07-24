@@ -1,6 +1,7 @@
 /**
- * REGISTER-OPERATIONS-UI — presentation barrel.
- * Consumes crmp.register.* only. No domain / financial logic.
+ * REGISTER-OPERATIONS-UI / FINANCIAL-SHIFT-WORKFLOW-ADOPTION-1 —
+ * presentation barrel. Consumes crmp.register.* + crmp.financialShift.*.
+ * No domain / financial calculation logic.
  */
 
 export type { RegisterOperationsLang } from "./registerOperationsCopy";
@@ -42,6 +43,23 @@ export {
   useRegisterOperationsMutations,
   useResolveActiveRegister,
 } from "./useRegisterOperationsMutations";
+export {
+  useFinancialShiftCurrent,
+  useFinancialShiftMutations,
+} from "./useFinancialShiftMutations";
+export {
+  formatOpenedAtDisplay,
+  formatRegisterMoneyDisplay,
+  parseMoneyAmountInput,
+} from "./openingFloatPresentation";
+export {
+  closeRequiresCashCount,
+  needsOpeningFloatPrompt,
+} from "./registerOperationsWorkflow";
+export {
+  readActiveRegister,
+  rememberActiveRegister,
+} from "./registerOperationsStationContext";
 export {
   isCatalogActiveRegister,
   parseUserAgentFriendly,

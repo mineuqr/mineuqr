@@ -1,6 +1,8 @@
 /**
- * REGISTER-OPERATIONS-SIMPLIFICATION-1 — adaptive Register Operations host.
- * Presentation only — crmp.register.*. No Domain / API / DB changes.
+ * REGISTER-OPERATIONS-SIMPLIFICATION-1 /
+ * FINANCIAL-SHIFT-WORKFLOW-ADOPTION-1 — adaptive Register Operations host.
+ * Presentation only — crmp.register.* + crmp.financialShift.*.
+ * Register.open does not create Financial Shift; workflow links them in UI.
  */
 
 import {
@@ -14,24 +16,33 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { restaurantDash } from "@/components/dashboard/restaurantDashStyles";
+import { CashCountDialog } from "./CashCountDialog";
+import { OpeningFloatDialog } from "./OpeningFloatDialog";
 import {
   AvailabilityBadge,
   DutyBadge,
   ShiftBadge,
 } from "./RegisterStatusBadges";
 import {
+  closeRequiresCashCount,
   dutyStatusLabel,
   filterRegisterRows,
+  formatOpenedAtDisplay,
+  formatRegisterMoneyDisplay,
   mapRegisterOperationsApiError,
+  needsOpeningFloatPrompt,
   presentFriendlyDevice,
   presentFriendlyOperator,
   registerOperationsErrorMessage,
   registerOperationsUiLabel,
+  rememberActiveRegister,
   resolvePrimaryDutyAction,
   resolveRegisterOpsLayoutMode,
   selectActiveRegisters,
   shiftBadgeFromRef,
   toRegisterListRowVm,
+  useFinancialShiftCurrent,
+  useFinancialShiftMutations,
   useInvalidateRegisterOperationsQueries,
   useRegisterCurrent,
   useRegisterHistory,
@@ -48,6 +59,8 @@ type Props = {
   restaurantId: number;
   language: RegisterOperationsLang;
   canManageCatalog?: boolean;
+  currencyCode?: string;
+  currencySymbol?: string;
 };
 
 function OpButton({
@@ -221,10 +234,14 @@ export function RegisterOperationsPanel({
   restaurantId,
   language,
   canManageCatalog = true,
+  currencyCode = "SAR",
+  currencySymbol = "ر.س",
 }: Props) {
   const { user } = useAuth();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [cashCountOpen, setCashCountOpen] = useState(false);
+  const [closeVariance, setCloseVariance] = useState<string | null>(null);
 
   const listQuery = useRegisterList({ restaurantId });
   const currentQuery = useRegisterCurrent(
@@ -235,8 +252,13 @@ export function RegisterOperationsPanel({
     { restaurantId, registerId: selectedId ?? "" },
     { enabled: !!selectedId }
   );
+  const shiftQuery = useFinancialShiftCurrent(
+    { restaurantId, registerId: selectedId ?? "" },
+    { enabled: !!selectedId }
+  );
 
   const mutations = useRegisterOperationsMutations(restaurantId, language);
+  const shiftMutations = useFinancialShiftMutations(restaurantId, language);
   const invalidate = useInvalidateRegisterOperationsQueries();
 
   const registers = listQuery.data ?? [];
@@ -272,6 +294,10 @@ export function RegisterOperationsPanel({
   }, [simpleMode, activeRegisters, rows, selectedId]);
 
   useEffect(() => {
+    rememberActiveRegister(restaurantId, selectedId);
+  }, [restaurantId, selectedId]);
+
+  useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "F5") {
         e.preventDefault();
@@ -285,7 +311,18 @@ export function RegisterOperationsPanel({
   const view = currentQuery.data;
   const register = view?.register;
   const version = register?.version;
-  const shiftInfo = shiftBadgeFromRef(!!view?.financialShift, language);
+  const activeShift = shiftQuery.data ?? null;
+  const hasActiveShift = activeShift != null;
+  const shiftInfo = shiftBadgeFromRef(
+    hasActiveShift || !!view?.financialShift,
+    language
+  );
+
+  const showOpeningFloat = needsOpeningFloatPrompt({
+    dutyStatus: register?.dutyStatus,
+    hasActiveFinancialShift: hasActiveShift,
+    currentLoaded: !!register && !currentQuery.isLoading && !shiftQuery.isLoading,
+  });
 
   const operatorVm = presentFriendlyOperator({
     assignedOperatorUserId: register?.assignedOperatorUserId ?? null,
@@ -310,7 +347,9 @@ export function RegisterOperationsPanel({
     mutations.open.isPending ||
     mutations.close.isPending ||
     mutations.suspend.isPending ||
-    mutations.resume.isPending;
+    mutations.resume.isPending ||
+    shiftMutations.open.isPending ||
+    shiftMutations.close.isPending;
 
   const listError =
     listQuery.error != null
@@ -329,6 +368,78 @@ export function RegisterOperationsPanel({
       : null;
 
   const dir = language === "ar" ? "rtl" : "ltr";
+
+  function closeDuty() {
+    if (!register) return;
+    mutations.close.mutate({
+      restaurantId,
+      registerId: register.registerId,
+      expectedVersion: version,
+    });
+  }
+
+  function runPrimaryAction() {
+    if (!register || !primaryAction) return;
+    const base = {
+      restaurantId,
+      registerId: register.registerId,
+      expectedVersion: version,
+    };
+    if (primaryAction === "open") {
+      mutations.open.mutate({
+        ...base,
+        operatorUserId: user?.id ?? null,
+      });
+      return;
+    }
+    if (primaryAction === "close") {
+      if (
+        closeRequiresCashCount({
+          dutyStatus: register.dutyStatus,
+          hasActiveFinancialShift: hasActiveShift,
+        })
+      ) {
+        setCloseVariance(null);
+        setCashCountOpen(true);
+        return;
+      }
+      closeDuty();
+      return;
+    }
+    mutations.resume.mutate(base);
+  }
+
+  async function confirmCashCount(actualCashAmount: string) {
+    if (!activeShift || !register || !user?.id) return;
+    try {
+      const closed = await shiftMutations.close.mutateAsync({
+        restaurantId,
+        financialShiftId: activeShift.financialShiftId,
+        actualCashAmount,
+        actorUserId: user.id,
+        expectedVersion: activeShift.version,
+      });
+      setCloseVariance(closed.shift.finalCount?.varianceAmount ?? null);
+      setCashCountOpen(false);
+      await mutations.close.mutateAsync({
+        restaurantId,
+        registerId: register.registerId,
+      });
+    } catch {
+      /* toasts from mutation hooks */
+    }
+  }
+
+  function confirmOpeningFloat(openingFloatAmount: string) {
+    if (!register || !user?.id) return;
+    shiftMutations.open.mutate({
+      restaurantId,
+      registerId: register.registerId,
+      operatorUserId: user.id,
+      openingFloatAmount,
+      currencyCode: currencyCode || "SAR",
+    });
+  }
 
   if (listQuery.isLoading) {
     return (
@@ -382,27 +493,6 @@ export function RegisterOperationsPanel({
         />
       </section>
     );
-  }
-
-  function runPrimaryAction() {
-    if (!register || !primaryAction) return;
-    const base = {
-      restaurantId,
-      registerId: register.registerId,
-      expectedVersion: version,
-    };
-    if (primaryAction === "open") {
-      mutations.open.mutate({
-        ...base,
-        operatorUserId: user?.id ?? null,
-      });
-      return;
-    }
-    if (primaryAction === "close") {
-      mutations.close.mutate(base);
-      return;
-    }
-    mutations.resume.mutate(base);
   }
 
   const registerTitle =
@@ -526,8 +616,11 @@ export function RegisterOperationsPanel({
                 {filtered.map((row) => {
                   const isSelected = selectedId === row.registerId;
                   const shift =
-                    isSelected && view
-                      ? shiftBadgeFromRef(!!view.financialShift, language)
+                    isSelected && (activeShift || view)
+                      ? shiftBadgeFromRef(
+                          hasActiveShift || !!view?.financialShift,
+                          language
+                        )
                       : undefined;
                   return (
                     <li key={row.registerId}>
@@ -627,6 +720,70 @@ export function RegisterOperationsPanel({
                 </StatusCard>
               </div>
 
+              {activeShift && (
+                <section
+                  aria-label={registerOperationsUiLabel(
+                    "currentCashSummary",
+                    language
+                  )}
+                  className="rounded-xl border border-emerald-500/25 bg-emerald-950/15 p-3 sm:p-4"
+                >
+                  <h3 className="text-sm font-medium text-emerald-100/90">
+                    {registerOperationsUiLabel("currentCashSummary", language)}
+                  </h3>
+                  <dl className="mt-3 grid gap-2 sm:grid-cols-3">
+                    <div>
+                      <dt className="text-xs text-slate-500">
+                        {registerOperationsUiLabel("openingFloatTitle", language)}
+                      </dt>
+                      <dd className="mt-0.5 font-medium text-white">
+                        {formatRegisterMoneyDisplay(
+                          activeShift.openingFloatAmount,
+                          currencySymbol,
+                          language
+                        )}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">
+                        {registerOperationsUiLabel("currentShift", language)}
+                      </dt>
+                      <dd className="mt-0.5 font-medium text-white">
+                        {formatRegisterMoneyDisplay(
+                          activeShift.expectedCashAmount,
+                          currencySymbol,
+                          language
+                        )}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">
+                        {registerOperationsUiLabel("openedAt", language)}
+                      </dt>
+                      <dd className="mt-0.5 font-medium text-white">
+                        {formatOpenedAtDisplay(activeShift.openedAt, language)}
+                      </dd>
+                    </div>
+                  </dl>
+                </section>
+              )}
+
+              {closeVariance != null && (
+                <div
+                  role="status"
+                  className="rounded-xl border border-slate-600/40 bg-slate-900/40 px-4 py-3 text-sm text-slate-200"
+                >
+                  {registerOperationsUiLabel("cashCountDifference", language)}:{" "}
+                  <span className="font-medium text-white">
+                    {formatRegisterMoneyDisplay(
+                      closeVariance,
+                      currencySymbol,
+                      language
+                    )}
+                  </span>
+                </div>
+              )}
+
               {register.catalogStatus !== "active" && (
                 <div
                   className="rounded-xl border border-amber-500/30 bg-amber-950/20 px-4 py-3 text-sm text-amber-100"
@@ -659,7 +816,7 @@ export function RegisterOperationsPanel({
                   <OpButton
                     station
                     className="w-full sm:w-auto sm:min-w-[14rem]"
-                    disabled={busy}
+                    disabled={busy || showOpeningFloat}
                     variant={
                       primaryAction === "close" ? "destructive" : "default"
                     }
@@ -668,11 +825,14 @@ export function RegisterOperationsPanel({
                     {busy ? (
                       <Loader2 className="size-4 animate-spin" aria-hidden />
                     ) : (
-                      registerOperationsUiLabel(primaryAction === "open"
-                        ? "open"
-                        : primaryAction === "close"
-                          ? "close"
-                          : "resume", language)
+                      registerOperationsUiLabel(
+                        primaryAction === "open"
+                          ? "open"
+                          : primaryAction === "close"
+                            ? "close"
+                            : "resume",
+                        language
+                      )
                     )}
                   </OpButton>
                 ) : (
@@ -680,7 +840,7 @@ export function RegisterOperationsPanel({
                     {registerOperationsUiLabel("openDisabledHint", language)}
                   </p>
                 )}
-                {(busy || currentQuery.isFetching) && (
+                {(busy || currentQuery.isFetching || shiftQuery.isFetching) && (
                   <p className="mt-2 inline-flex items-center gap-1 text-xs text-cyan-300">
                     <Loader2 className="size-3.5 animate-spin" />
                     {registerOperationsUiLabel("syncing", language)}
@@ -694,7 +854,7 @@ export function RegisterOperationsPanel({
                 >
                   <OpButton
                     variant="secondary"
-                    disabled={busy}
+                    disabled={busy || showOpeningFloat}
                     onClick={() =>
                       mutations.suspend.mutate({
                         restaurantId,
@@ -740,6 +900,32 @@ export function RegisterOperationsPanel({
           )}
         </div>
       </div>
+
+      <OpeningFloatDialog
+        open={showOpeningFloat}
+        language={language}
+        currencySymbol={currencySymbol}
+        pending={shiftMutations.open.isPending || mutations.close.isPending}
+        onConfirm={confirmOpeningFloat}
+        onCloseDutyWithoutShift={closeDuty}
+      />
+
+      <CashCountDialog
+        key={
+          cashCountOpen
+            ? `${activeShift?.financialShiftId ?? "none"}:${activeShift?.expectedCashAmount ?? ""}`
+            : "closed"
+        }
+        open={cashCountOpen}
+        language={language}
+        currencySymbol={currencySymbol}
+        expectedCashAmount={activeShift?.expectedCashAmount ?? null}
+        pending={
+          shiftMutations.close.isPending || mutations.close.isPending
+        }
+        onConfirm={(amount) => void confirmCashCount(amount)}
+        onCancel={() => setCashCountOpen(false)}
+      />
     </section>
   );
 }

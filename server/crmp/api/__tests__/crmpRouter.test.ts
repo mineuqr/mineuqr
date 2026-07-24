@@ -332,3 +332,129 @@ describe("crmp.register API", () => {
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 });
+
+describe("crmp.financialShift API", () => {
+  let registers: RegisterDomainService;
+
+  beforeEach(async () => {
+    vi.mocked(assertRestaurantAccess).mockReset();
+    vi.mocked(assertRestaurantAccess).mockResolvedValue(undefined);
+    const uow = createInMemoryCrmpStore();
+    setCrmpApiUnitOfWorkForTests(uow);
+    registers = new RegisterDomainService(uow);
+    await registers.provision({
+      restaurantId: 42,
+      code: "C1",
+      displayName: "Counter 1",
+      registerType: "counter",
+      registerId: "reg_1",
+      at: "t0",
+    });
+    await registers.activate({
+      restaurantId: 42,
+      registerId: "reg_1",
+      at: "t1",
+    });
+  });
+
+  afterEach(() => {
+    setCrmpApiUnitOfWorkForTests(null);
+  });
+
+  it("opens shift with float, getCurrent, closes with cash count then duty", async () => {
+    const caller = createVerifiedCaller();
+    await caller.crmp.register.open({
+      restaurantId: 42,
+      registerId: "reg_1",
+      operatorUserId: 7,
+      at: "t2",
+    });
+
+    expect(
+      await caller.crmp.financialShift.getCurrent({
+        restaurantId: 42,
+        registerId: "reg_1",
+      })
+    ).toBeNull();
+
+    const opened = await caller.crmp.financialShift.open({
+      restaurantId: 42,
+      registerId: "reg_1",
+      operatorUserId: 7,
+      openingFloatAmount: "100.00",
+      currencyCode: "SAR",
+      financialShiftId: "fsh_api_1",
+      at: "t3",
+    });
+    expect(opened.shift.openingFloatAmount).toBe("100.00");
+    expect(opened.shift.expectedCashAmount).toBe("100.00");
+    expect(opened.shift.status).toBe("open");
+    expect(opened).not.toHaveProperty("events");
+
+    const current = await caller.crmp.financialShift.getCurrent({
+      restaurantId: 42,
+      registerId: "reg_1",
+    });
+    expect(current?.financialShiftId).toBe("fsh_api_1");
+    expect(current?.openingFloatAmount).toBe("100.00");
+
+    const closed = await caller.crmp.financialShift.close({
+      restaurantId: 42,
+      financialShiftId: "fsh_api_1",
+      actualCashAmount: "100.00",
+      actorUserId: 7,
+      at: "t4",
+    });
+    expect(closed.shift.status).toBe("closed");
+    expect(closed.shift.finalCount?.actualAmount).toBe("100.00");
+    expect(closed.shift.finalCount?.varianceAmount).toBe("0.00");
+
+    expect(
+      await caller.crmp.financialShift.getCurrent({
+        restaurantId: 42,
+        registerId: "reg_1",
+      })
+    ).toBeNull();
+
+    const dutyClosed = await caller.crmp.register.close({
+      restaurantId: 42,
+      registerId: "reg_1",
+      at: "t5",
+    });
+    expect(dutyClosed.register.dutyStatus).toBe("closed");
+  });
+
+  it("register.open does not create a financial shift", async () => {
+    const caller = createVerifiedCaller();
+    await caller.crmp.register.open({
+      restaurantId: 42,
+      registerId: "reg_1",
+      operatorUserId: 7,
+      at: "t2",
+    });
+    const current = await caller.crmp.financialShift.getCurrent({
+      restaurantId: 42,
+      registerId: "reg_1",
+    });
+    expect(current).toBeNull();
+  });
+
+  it("rejects negative opening float at API boundary", async () => {
+    const caller = createVerifiedCaller();
+    await caller.crmp.register.open({
+      restaurantId: 42,
+      registerId: "reg_1",
+      operatorUserId: 7,
+      at: "t2",
+    });
+    await expect(
+      caller.crmp.financialShift.open({
+        restaurantId: 42,
+        registerId: "reg_1",
+        operatorUserId: 7,
+        openingFloatAmount: "-1.00",
+        currencyCode: "SAR",
+      } as never)
+    ).rejects.toBeTruthy();
+  });
+});

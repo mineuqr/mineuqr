@@ -23,6 +23,7 @@ import { SettlementReceiptDialog } from "@/components/settlement-record/Settleme
 import type { DiningSessionStatus } from "@/lib/diningSessionCopy";
 import { sessionActionLabel } from "@/lib/diningSessionActionCopy";
 import { syncDashboardUrl } from "@/lib/dashboardUrl";
+import { readActiveRegister } from "@/lib/register-operations-presentation";
 import { useInvalidateSettlementRecordQueries } from "@/lib/settlement-record-presentation";
 import { trpc } from "@/lib/trpc";
 import { toastTrpcError } from "@/lib/trpcErrors";
@@ -126,10 +127,12 @@ export function SessionRowQuickActions({
   };
 
   const confirmPaid = (settlements: readonly StaffSettlementLineInput[]) => {
+    const registerId = readActiveRegister(restaurantId);
     markPaidMutation.mutate({
       restaurantId,
       sessionId,
       settlements: [...settlements],
+      ...(registerId ? { registerId } : {}),
     });
   };
 
