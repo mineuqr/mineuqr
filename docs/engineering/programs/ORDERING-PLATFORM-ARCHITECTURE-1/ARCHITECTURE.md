@@ -197,6 +197,14 @@ Guest menu and order read projections are **separate today**. Phase 2 will unify
 | OP-05 | QR client does not import operational runtime |
 | OP-06 | Platform/channel ownership lists are explicit and separate |
 
+### Ordering Invariants
+
+Normative catalog: [`docs/architecture/constitution/Ordering-Invariants.md`](../../../architecture/constitution/Ordering-Invariants.md) (`OI-*`).
+
+| ID | Title |
+|----|-------|
+| **OI-RT-01** | Runtime Identity Continuity — journey `deviceSessionId` immutable across Browse→Confirmation |
+
 ---
 
 ## 12. Out of Scope (This Program)

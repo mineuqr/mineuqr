@@ -1,4 +1,3 @@
-import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -20,16 +19,16 @@ type Props = {
 /**
  * Kiosk checkout chrome — consumes OrderingCheckoutProvider.
  * Places orders via station Fulfilment Anchor (no table binding, no fake tables).
+ * SELF-ORDERING-RUNTIME-IDENTITY-FIX-1 — back to cart via OrderingNavigator.
  */
 export function KioskCheckoutStage({
-  slug,
+  slug: _slug,
   stationId,
-  qs,
+  qs: _qs,
   bumpActivity,
   onCancel,
 }: Props) {
   const { language } = useLanguage();
-  const [, setLocation] = useLocation();
   const runtime = useOrderingClientRuntime();
   const checkout = useOrderingCheckout();
   const restaurant = runtime.restaurant as {
@@ -81,7 +80,7 @@ export function KioskCheckoutStage({
           type="button"
           onClick={() => {
             bumpActivity();
-            setLocation(`/kiosk/${slug}/cart?${qs}`);
+            runtime.navigator?.goToCart();
           }}
           className="text-sm text-white/70"
         >

@@ -1,4 +1,4 @@
-> **Navigation:** [Architecture Home](../README.md) · [North Star](./North-Star.md) · [Quality Attributes](./Quality-Attributes.md) · [ADR Registry](./ADR-Registry.md) · [Blueprint](../blueprints/Order-Centric-Architecture.md)
+> **Navigation:** [Architecture Home](../README.md) · [North Star](./North-Star.md) · [Quality Attributes](./Quality-Attributes.md) · [ADR Registry](./ADR-Registry.md) · [Ordering Invariants](./Ordering-Invariants.md) · [Blueprint](../blueprints/Order-Centric-Architecture.md)
 
 # MineuQR 2.0 — Architecture Constitution
 
@@ -496,6 +496,6 @@ No architectural redesign is authorized by this ratification except through futu
 
 *Published to repository under ARCH-CONSTITUTION-1. Engineering implementation begins only under ORDER-1 charter and [§28 Compliance](./Compliance.md).*
 
-**See also:** [North Star](./North-Star.md) · [Quality Attributes](./Quality-Attributes.md) · [Governance](./Governance.md) · [Compliance](./Compliance.md) · [ADR Registry](./ADR-Registry.md)
+**See also:** [North Star](./North-Star.md) · [Quality Attributes](./Quality-Attributes.md) · [Governance](./Governance.md) · [Compliance](./Compliance.md) · [ADR Registry](./ADR-Registry.md) · [Ordering Invariants](./Ordering-Invariants.md)
 
 [REDACTED]

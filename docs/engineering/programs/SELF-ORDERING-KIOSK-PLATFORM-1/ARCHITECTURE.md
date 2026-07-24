@@ -25,7 +25,7 @@
 | Idle / touch-to-start | Kiosk shell |
 | Language selection | Kiosk shell |
 | Auto-reset timer / confirmation dwell | Kiosk shell |
-| Device session id + isolation wipe | Kiosk shell |
+| Device session id + isolation wipe | Kiosk shell (`loadOrCreate` / `rotate` — Runtime Identity Invariant) |
 | `CartScopeAdapter` / `OrderingNavigator` factories | Kiosk channel (`ordering-client/kiosk`) |
 | Browse / cart / checkout / submission | Ordering Client Platform |
 | Runtime delivery / gates | Ordering Client Platform → Ordering Runtime |
@@ -73,6 +73,10 @@ Place order is Client Platform checkout (`order.create`). Confirmation + reset a
 **CartScopeAdapter** key: `mineuqr:cart:{slug}:station:{stationId}:device:{deviceSessionId}[:kioskId]`
 
 **Navigator:** `goToBrowse|Cart|Checkout|Confirmation|Tracking` + shell `goToIdle|Language|ResetIdle`. Query (`station`, `table`, `kiosk`) preserved.
+
+### Ordering Runtime Identity Invariant — **OI-RT-01**
+
+`deviceSessionId` is **immutable for one customer journey**. It MUST survive Browse → Cart → Checkout → Payment → Confirmation. Navigation / shell remount MUST NOT mint a new id. Rotate only on idle Start, intentional reset, or idle timeout ([Ordering-Invariants.md](../../../architecture/constitution/Ordering-Invariants.md#oi-rt-01--runtime-identity-continuity) · ADR-ARCH-018 Decision §6 · SELF-ORDERING-KIOSK-ARCHITECTURE-1 §6.1 · `kioskDeviceSessionIdentity.ts`).
 
 ---
 

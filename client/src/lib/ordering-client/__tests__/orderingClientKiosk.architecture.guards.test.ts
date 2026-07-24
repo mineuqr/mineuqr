@@ -52,8 +52,20 @@ describe("SELF-ORDERING-KIOSK-PLATFORM-1 architecture guards", () => {
       expect(src).not.toContain("getRuntimeBySlug");
       expect(src).not.toContain("validateOrderNote");
       expect(src).not.toContain("PlaceOrderService");
+      expect(src).not.toContain("setLocation(`/kiosk/");
+      expect(src).toMatch(/navigator\?\.goTo(Cart|Browse|Checkout)/);
     }
     expect(checkout).not.toContain("trpc.order.create");
+  });
+
+  it("KioskShell persists deviceSessionId across remounts (identity fix)", () => {
+    const shell = read("client/src/pages/kiosk/KioskShell.tsx");
+    expect(shell).toContain("loadOrCreateKioskDeviceSessionId");
+    expect(shell).toContain("rotateKioskDeviceSessionId");
+    expect(shell).toContain("SELF-ORDERING-RUNTIME-IDENTITY-FIX-1");
+    expect(shell).not.toMatch(
+      /useState\(\(\)\s*=>\s*createKioskDeviceSessionId\(\)/
+    );
   });
 
   it("kiosk cart scope includes station + device session via platform key builder", () => {

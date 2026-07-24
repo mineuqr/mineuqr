@@ -10,7 +10,7 @@
 | **Date** | 2026-07-14 |
 | **Supersedes** | — |
 | **Refines** | ORDERING-PLATFORM-ARCHITECTURE-1 channel experience split; SELF-ORDERING-KIOSK-ARCHITECTURE-1 browse/cart/checkout ownership |
-| **Implementation status** | Implemented — RUNTIME-1 + CART-1 + BROWSE-1 + CHECKOUT-1 + GOVERNANCE-1 |
+| **Implementation status** | Implemented — RUNTIME-1 + CART-1 + BROWSE-1 + CHECKOUT-1 + GOVERNANCE-1 · Runtime Identity Invariant (SELF-ORDERING-RUNTIME-IDENTITY-FIX-1) |
 
 ---
 
@@ -40,6 +40,8 @@ Ordering Platform → OrderingRuntimeContext → Ordering Client Platform → Ch
 
 5. Migration SHALL be phased with QR behavioral compatibility; Kiosk/Waiter UI programs SHALL not start until shared platform extraction **and governance** programs are certified.
 
+6. **Ordering Runtime Identity Invariant (constitutional) — [OI-RT-01](../constitution/Ordering-Invariants.md#oi-rt-01--runtime-identity-continuity).** Within a single customer ordering journey, channel Runtime Identity (including Kiosk `deviceSessionId` and any CartScope identity segment derived from it) **MUST remain immutable** across Browse → Cart → Checkout → Payment → Confirmation. A new Runtime Identity may be created **only** when the customer explicitly starts a new order, the journey is intentionally reset, or idle-timeout policy ends the session. Navigation, provider remounts, and route transitions MUST NOT mint a new journey identity. Normative channel detail: SELF-ORDERING-KIOSK-ARCHITECTURE-1 §6; implementation: SELF-ORDERING-RUNTIME-IDENTITY-FIX-1.
+
 ### Governance rules (ORDERING-CLIENT-GOVERNANCE-1)
 
 Normative detail: `docs/engineering/programs/ORDERING-CLIENT-GOVERNANCE-1/ARCHITECTURE.md`.
@@ -51,6 +53,7 @@ Normative detail: `docs/engineering/programs/ORDERING-CLIENT-GOVERNANCE-1/ARCHIT
 | Cart / browse / checkout | Client Platform providers only |
 | Adapters | Every channel supplies `CartScopeAdapter` + `OrderingNavigator` |
 | CartScope extension | QR table; Kiosk `deviceSessionId`; Waiter `stationId` (+ optional table/session) |
+| **Runtime Identity** | **[OI-RT-01](../constitution/Ordering-Invariants.md#oi-rt-01--runtime-identity-continuity)** — Immutable for one customer journey; survive Browse→Cart→Checkout→Payment→Confirmation; rotate only on new order / intentional reset / idle timeout |
 | Navigator stages | `goToBrowse`, `goToCart`, `goToCheckout`, `goToConfirmation`, `goToTracking` |
 | Dependencies | Channel pages MUST NOT import `@shared/ordering-platform` business modules or call runtime delivery directly |
 | Guards | Permanent architecture tests under `ordering-client/__tests__/*governance*` |
@@ -91,6 +94,8 @@ Ordering Platform multi-channel vision; Presentation vs Domain boundaries (Const
 - ORDERING-PLATFORM-ARCHITECTURE-1  
 - QR-ORDERING-RUNTIME-MIGRATION-1  
 - SELF-ORDERING-KIOSK-ARCHITECTURE-1  
+- SELF-ORDERING-RUNTIME-IDENTITY-FIX-1  
+- SELF-ORDERING-CART-RUNTIME-FORENSICS-1  
 - ORDERING-NOTES-ARCHITECTURE-1  
 
 ---
@@ -125,3 +130,4 @@ Ordering Platform multi-channel vision; Presentation vs Domain boundaries (Const
 - [x] No second cart/validation implementation in channel code  
 - [x] Architecture guards enforce Client Platform boundaries (ORDERING-CLIENT-GOVERNANCE-1)  
 - [x] CartScopeAdapter + OrderingNavigator hardened for QR / Kiosk / Waiter  
+- [x] Ordering Runtime Identity Invariant: journey `deviceSessionId` / CartScope identity survives Browse→Cart→Checkout without remount drift (SELF-ORDERING-RUNTIME-IDENTITY-FIX-1)  

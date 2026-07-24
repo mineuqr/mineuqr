@@ -2,11 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useRoute, useSearch } from "wouter";
 import {
   KioskOrderingClientHost,
-  createKioskDeviceSessionId,
   KIOSK_CONFIRMATION_RESET_MS,
   KIOSK_DEFAULT_IDLE_TIMEOUT_MS,
   useOrderingCart,
 } from "@/lib/ordering-client";
+import {
+  loadOrCreateKioskDeviceSessionId,
+  rotateKioskDeviceSessionId,
+} from "@/lib/ordering-client/kiosk/kioskDeviceSessionIdentity";
 import type { KioskShellStage } from "@/lib/ordering-client/kiosk/createKioskOrderingNavigator";
 import type { KioskSessionResetTrigger } from "@/lib/ordering-platform/kioskSessionLifecycle";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -77,9 +80,30 @@ export default function KioskShell({ activation }: KioskShellProps = {}) {
     ? activation.kioskId || activation.stationId
     : readParam(search, "kiosk") || stationId;
 
-  const [deviceSessionId, setDeviceSessionId] = useState(() =>
-    createKioskDeviceSessionId()
+  const deviceSessionIdentity = useMemo(
+    () => ({
+      slug,
+      stationId,
+      kioskId,
+    }),
+    [slug, stationId, kioskId]
   );
+
+  /**
+   * SELF-ORDERING-RUNTIME-IDENTITY-FIX-1 — journey deviceSessionId is persisted.
+   * Menu ↔ Cart ↔ Checkout remounts MUST reuse the same id (same cart scope key).
+   * Only idle Start / resetSession rotate identity.
+   */
+  const [deviceSessionId, setDeviceSessionId] = useState(() =>
+    loadOrCreateKioskDeviceSessionId(deviceSessionIdentity)
+  );
+
+  // Reconcile after first paint if route identity was empty at initializer time.
+  useEffect(() => {
+    if (!slug || !stationId) return;
+    setDeviceSessionId(loadOrCreateKioskDeviceSessionId(deviceSessionIdentity));
+  }, [slug, stationId, deviceSessionIdentity]);
+
   const [lastActivityAt, setLastActivityAt] = useState(() => Date.now());
   const [hostStage, setHostStage] = useState<KioskShellStage>("idle");
   const [hostTrackingToken, setHostTrackingToken] = useState<string | null>(null);
@@ -128,7 +152,7 @@ export default function KioskShell({ activation }: KioskShellProps = {}) {
 
   const resetSession = useCallback(
     (_trigger: KioskSessionResetTrigger) => {
-      setDeviceSessionId(createKioskDeviceSessionId());
+      setDeviceSessionId(rotateKioskDeviceSessionId(deviceSessionIdentity));
       setLanguage("ar");
       setLastActivityAt(Date.now());
       if (hosted) {
@@ -138,7 +162,7 @@ export default function KioskShell({ activation }: KioskShellProps = {}) {
       }
       setLocation(`/kiosk/${slug}?${qs}`, { replace: true });
     },
-    [hosted, slug, qs, setLanguage, setLocation]
+    [hosted, slug, qs, setLanguage, setLocation, deviceSessionIdentity]
   );
 
   useEffect(() => {
@@ -168,7 +192,7 @@ export default function KioskShell({ activation }: KioskShellProps = {}) {
     return (
       <KioskIdleScreen
         onStart={() => {
-          setDeviceSessionId(createKioskDeviceSessionId());
+          setDeviceSessionId(rotateKioskDeviceSessionId(deviceSessionIdentity));
           bumpActivity();
           if (hosted) {
             setHostStage("language");

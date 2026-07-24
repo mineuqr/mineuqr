@@ -1,5 +1,3 @@
-import { useLocation } from "wouter";
-import { Loader2 } from "lucide-react";
 import { MenuBrowseArea } from "@/components/menu/MenuBrowseArea";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
@@ -7,6 +5,7 @@ import {
   useOrderingCart,
   useOrderingClientRuntime,
 } from "@/lib/ordering-client";
+import { Loader2 } from "lucide-react";
 
 type Props = {
   slug: string;
@@ -16,12 +15,11 @@ type Props = {
 
 /**
  * Kiosk browse chrome — consumes OrderingBrowseProvider only.
- * KIOSK-BROWSE-PRESENTATION-ADOPTION-1 — adopts shared MenuBrowseArea
- * (search, categories, item cards, offers) without Runtime/DTO changes.
+ * SELF-ORDERING-RUNTIME-IDENTITY-FIX-1 — cart nav via OrderingNavigator
+ * (hosted stage update or URL) — never invent a second cart identity.
  */
-export function KioskBrowseStage({ slug, qs, bumpActivity }: Props) {
+export function KioskBrowseStage({ slug: _slug, qs: _qs, bumpActivity }: Props) {
   const { language } = useLanguage();
-  const [, setLocation] = useLocation();
   const browse = useOrderingBrowse();
   const cart = useOrderingCart();
   const runtime = useOrderingClientRuntime();
@@ -58,7 +56,7 @@ export function KioskBrowseStage({ slug, qs, bumpActivity }: Props) {
           type="button"
           onClick={() => {
             bumpActivity();
-            setLocation(`/kiosk/${slug}/cart?${qs}`);
+            runtime.navigator?.goToCart();
           }}
           className="rounded-xl bg-orange-500 px-4 py-3 font-bold text-sm"
         >

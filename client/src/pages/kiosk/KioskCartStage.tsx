@@ -1,6 +1,8 @@
-import { useLocation } from "wouter";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { useOrderingCart, useOrderingClientRuntime } from "@/lib/ordering-client";
+import {
+  useOrderingCart,
+  useOrderingClientRuntime,
+} from "@/lib/ordering-client";
 
 type Props = {
   slug: string;
@@ -9,10 +11,17 @@ type Props = {
   onCancel: () => void;
 };
 
-/** Kiosk cart chrome — consumes OrderingCartProvider only. */
-export function KioskCartStage({ slug, qs, bumpActivity, onCancel }: Props) {
+/**
+ * Kiosk cart chrome — consumes OrderingCartProvider only.
+ * SELF-ORDERING-RUNTIME-IDENTITY-FIX-1 — stage transitions via OrderingNavigator.
+ */
+export function KioskCartStage({
+  slug: _slug,
+  qs: _qs,
+  bumpActivity,
+  onCancel,
+}: Props) {
   const { language } = useLanguage();
-  const [, setLocation] = useLocation();
   const cart = useOrderingCart();
   const runtime = useOrderingClientRuntime();
   const currency =
@@ -29,7 +38,7 @@ export function KioskCartStage({ slug, qs, bumpActivity, onCancel }: Props) {
           type="button"
           onClick={() => {
             bumpActivity();
-            setLocation(`/kiosk/${slug}/menu?${qs}`);
+            runtime.navigator?.goToBrowse();
           }}
           className="text-sm text-white/70"
         >
@@ -95,18 +104,21 @@ export function KioskCartStage({ slug, qs, bumpActivity, onCancel }: Props) {
           disabled={cart.items.length === 0}
           onClick={() => {
             bumpActivity();
-            setLocation(`/kiosk/${slug}/checkout?${qs}`);
+            runtime.navigator?.goToCheckout();
           }}
           className="w-full rounded-2xl bg-orange-500 disabled:opacity-40 py-5 text-lg font-bold"
         >
-          {language === "ar" ? "متابعة للدفع" : "Checkout"}
+          {language === "ar" ? "الدفع" : "Checkout"}
         </button>
         <button
           type="button"
-          onClick={onCancel}
-          className="w-full rounded-2xl bg-white/10 py-3 text-sm"
+          onClick={() => {
+            bumpActivity();
+            onCancel();
+          }}
+          className="w-full rounded-2xl border border-white/20 py-3 text-sm text-white/70"
         >
-          {language === "ar" ? "إلغاء والعودة للبداية" : "Cancel & start over"}
+          {language === "ar" ? "إلغاء" : "Cancel"}
         </button>
       </div>
     </div>

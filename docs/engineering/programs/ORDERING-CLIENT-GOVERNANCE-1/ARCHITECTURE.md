@@ -27,6 +27,7 @@
 | Browse lifecycle | `OrderingBrowseProvider` | **Pass** |
 | Checkout lifecycle | `OrderingCheckoutProvider` | **Pass** |
 | In-experience navigation | `OrderingNavigator` + Client Platform | **Pass** (full stage surface) |
+| **Runtime Identity** | Immutable for one customer journey; survive Browse→Cart→Checkout→Payment→Confirmation; rotate only on new order / intentional reset / idle timeout | **Pass** — SELF-ORDERING-RUNTIME-IDENTITY-FIX-1 (Kiosk) |
 | Notes validation rules | Ordering Platform contracts | **Pass** — checkout helpers only |
 | Dining session / post-submission / tracking storage | QR shell | **Pass** (channel-owned) |
 | Direct `@shared/ordering-platform` in channel pages | Forbidden | **Pass** — none |
@@ -79,17 +80,19 @@ Ordering Platform (+ @shared/ordering-platform contracts)
 | `slug` | ✓ | ✓ | ✓ |
 | `tableNumber` | ✓ | — | optional |
 | `sessionId` | optional | — | optional |
-| `deviceSessionId` | — | ✓ | — |
+| `deviceSessionId` | — | ✓ (immutable per journey — Runtime Identity Invariant) | — |
 | `stationId` | — | — | ✓ |
 | `extraKeySegments` | optional | optional | optional |
 
 Factories:
 
 - `createQrTableCartScopeAdapter` (existing; legacy key unchanged)
-- `createKioskDeviceCartScopeAdapter` (extension point)
+- `createKioskCartScopeAdapter` / device-session identity persistence (`kioskDeviceSessionIdentity.ts`)
 - `createWaiterStationCartScopeAdapter` (extension point)
 
 All keys via `buildCartPersistenceKey`.
+
+**Runtime Identity Invariant ([OI-RT-01](../../../architecture/constitution/Ordering-Invariants.md#oi-rt-01--runtime-identity-continuity) · ADR-ARCH-018 Decision §6):** CartScope identity segments that encode a customer journey (notably Kiosk `deviceSessionId`) MUST NOT change across Browse → Cart → Checkout → Payment → Confirmation. A new identity may be created only on explicit new order, intentional reset, or idle timeout.
 
 ### 3.2 OrderingNavigator
 

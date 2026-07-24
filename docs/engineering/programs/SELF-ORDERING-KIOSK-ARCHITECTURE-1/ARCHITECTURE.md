@@ -92,12 +92,45 @@ Defined in `kioskExperienceLifecycle.ts`.
 
 ## 6. Session Lifecycle
 
+### 6.1 Ordering Runtime Identity Invariant — **OI-RT-01**
+
+Within a **single customer ordering journey**:
+
+- **`deviceSessionId` MUST remain immutable.**
+- **Runtime Identity MUST survive:**
+
+```
+Browse
+  ↓
+Cart
+  ↓
+Checkout
+  ↓
+Payment
+  ↓
+Confirmation
+```
+
+A **new** Runtime Identity may only be created when:
+
+- The customer explicitly starts a new order (idle Start).
+- The journey is intentionally reset (cancel / successful order / administrative reset).
+- Idle timeout policy ends the session.
+
+**Forbidden:** minting a new `deviceSessionId` (or otherwise changing CartScope identity) because of menu↔cart↔checkout navigation, `KioskShell` remount, provider remount, or route transition.
+
+Catalog entry: [OI-RT-01 — Runtime Identity Continuity](../../../architecture/constitution/Ordering-Invariants.md#oi-rt-01--runtime-identity-continuity).  
+Constitutional home: [ADR-ARCH-018](../../../architecture/adrs/ADR-ARCH-018-ordering-client-platform.md) Decision §6.  
+Implementation: `kioskDeviceSessionIdentity.ts` (SELF-ORDERING-RUNTIME-IDENTITY-FIX-1).
+
+### 6.2 Reset triggers
+
 | Reset trigger | Result |
 |---------------|--------|
-| Successful order | Full isolation wipe → idle |
-| Cancellation | Full isolation wipe → idle |
-| Timeout | Full isolation wipe → idle |
-| Administrative reset | Full isolation wipe → idle |
+| Successful order | Full isolation wipe → idle (+ new Runtime Identity) |
+| Cancellation | Full isolation wipe → idle (+ new Runtime Identity) |
+| Timeout | Full isolation wipe → idle (+ new Runtime Identity) |
+| Administrative reset | Full isolation wipe → idle (+ new Runtime Identity) |
 
 Isolation rules (all required): clear cart, clear customer drafts, clear language override, clear navigation stack, discard unsaved modifiers, return to idle.
 

@@ -147,6 +147,13 @@ export {
   isKioskSessionResetTrigger,
 } from "./kiosk/kioskSession";
 export {
+  buildKioskDeviceSessionStorageKey,
+  loadOrCreateKioskDeviceSessionId,
+  rotateKioskDeviceSessionId,
+  clearKioskDeviceSessionId,
+  type KioskDeviceSessionIdentityInput,
+} from "./kiosk/kioskDeviceSessionIdentity";
+export {
   KIOSK_STATION_SERVICE_MODE,
   buildKioskStationCheckoutIdentity,
   createKioskStationFulfilmentAnchor,
