@@ -1,6 +1,5 @@
 /**
- * REGISTER-OPERATIONS-UI-UX-REFINEMENT-1 / REGISTER-CATALOG-MANAGEMENT-1 —
- * architecture guards for Register Operations presentation.
+ * REGISTER-OPERATIONS-SIMPLIFICATION-1 — architecture guards.
  * @vitest-environment node
  */
 import { readFileSync } from "node:fs";
@@ -27,16 +26,31 @@ describe("Register Operations presentation architecture guards", () => {
     expect(q + m).not.toMatch(/computeExpectedCash|toCents|grandTotal/);
   });
 
-  it("Ops panel stays presentation-only; create navigates to Catalog", () => {
+  it("Ops panel is presentation-only adaptive simplification", () => {
     const panel = read(
       "src/components/register-operations/RegisterOperationsPanel.tsx"
     );
-    expect(panel).toContain("REGISTER-CATALOG-MANAGEMENT-1");
-    expect(panel).toContain("section=register-catalog&create=1");
-    expect(panel).toContain("spaNavigate");
+    expect(panel).toContain("REGISTER-OPERATIONS-SIMPLIFICATION-1");
+    expect(panel).toContain("resolveRegisterOpsLayoutMode");
+    expect(panel).toContain("presentFriendlyOperator");
+    expect(panel).toContain("presentFriendlyDevice");
+    expect(panel).toContain("section=register-catalog");
     expect(panel).not.toMatch(/from ["']@shared\/crmp/);
     expect(panel).not.toMatch(/computeExpectedCash|toCents|grandTotal/);
     expect(panel).not.toContain("trpc.crmp.catalog");
+    expect(panel).not.toContain('registerOperationsUiLabel("operatorUserId"');
+    expect(panel).not.toContain('registerOperationsUiLabel("deviceId"');
+    expect(panel).not.toContain("assignOperator");
+    expect(panel).not.toContain("attachDevice");
+  });
+
+  it("adaptive helpers do not import domain", () => {
+    const adaptive = read(
+      "src/lib/register-operations-presentation/registerOperationsAdaptive.ts"
+    );
+    expect(adaptive).not.toMatch(/from ["']@shared\/crmp/);
+    expect(adaptive).not.toContain("openRegister");
+    expect(adaptive).not.toContain("provisionRegister");
   });
 
   it("dashboard wires register + register-catalog sections", () => {
@@ -46,16 +60,15 @@ describe("Register Operations presentation architecture guards", () => {
     expect(url).toContain('"register-catalog": "register-catalog"');
     expect(types).toContain('"register"');
     expect(types).toContain('"register-catalog"');
-    expect(url).toContain('new Set<RestaurantTab>(["sessions"])');
   });
 
-  it("empty-state copy keeps create CTA wording", () => {
+  it("empty-state copy keeps create and activate guidance", () => {
     const copy = read(
       "src/lib/register-operations-presentation/registerOperationsCopy.ts"
     );
     expect(copy).toContain("لا يوجد أي صندوق تشغيل");
-    expect(copy).toContain("ابدأ بإنشاء أول صندوق تشغيل لهذا الفرع.");
+    expect(copy).toContain("لا يوجد صندوق نشط");
     expect(copy).toContain("إنشاء صندوق");
-    expect(copy).toContain("واجهة محسّنة للأجهزة اللوحية ونقاط البيع.");
+    expect(copy).toContain("قم بتفعيل صندوق من كتالوج الصناديق.");
   });
 });

@@ -46,7 +46,7 @@ describe("registerOperationsViewModel (UX refinement)", () => {
     expect(shiftBadgeFromRef(false, "ar").label).toBe("لا توجد وردية");
   });
 
-  it("builds searchable list rows from API fields", () => {
+  it("builds searchable list rows without internal ids", () => {
     const row = toRegisterListRowVm(
       base({
         dutyStatus: "open",
@@ -56,10 +56,11 @@ describe("registerOperationsViewModel (UX refinement)", () => {
       "en"
     );
     expect(row.dutyTone).toBe("open");
-    expect(row.operatorLabel).toBe("7");
-    expect(row.deviceLabel).toBe("dev_1");
+    expect(row.operatorLabel).toBe("Assigned operator");
+    expect(row.deviceLabel).toBe("Current device");
     expect(row.searchText).toContain("front");
-    expect(row.searchText).toContain("dev_1");
+    expect(row.searchText).not.toContain("dev_1");
+    expect(row.searchText).not.toContain("7");
   });
 
   it("filters rows by search text", () => {

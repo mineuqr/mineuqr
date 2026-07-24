@@ -85,10 +85,11 @@ export function toRegisterListRowVm(
   );
   const operatorLabel =
     register.assignedOperatorUserId != null
-      ? String(register.assignedOperatorUserId)
-      : registerOperationsUiLabel("none", language);
-  const deviceLabel =
-    register.deviceId?.trim() || registerOperationsUiLabel("none", language);
+      ? registerOperationsUiLabel("operatorAssignedOther", language)
+      : registerOperationsUiLabel("operatorFollowsCurrentUser", language);
+  const deviceLabel = register.deviceId?.trim()
+    ? registerOperationsUiLabel("currentDeviceBound", language)
+    : registerOperationsUiLabel("thisDevice", language);
   return {
     registerId: register.registerId,
     displayName: register.displayName,
@@ -103,10 +104,8 @@ export function toRegisterListRowVm(
     deviceLabel,
     searchText: [
       register.displayName,
-      register.registerId,
-      operatorLabel,
-      deviceLabel,
       dutyStatusLabel(register.dutyStatus, language),
+      registerOperationsUiLabel(`catalog_${register.catalogStatus}`, language),
     ]
       .join(" ")
       .toLowerCase(),

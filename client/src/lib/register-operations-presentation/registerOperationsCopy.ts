@@ -1,5 +1,6 @@
 /**
- * REGISTER-OPERATIONS-UI-1 / UX-REFINEMENT-1 — operator-facing copy (ar/en).
+ * REGISTER-OPERATIONS-UI-1 / UX-REFINEMENT-1 /
+ * REGISTER-OPERATIONS-SIMPLIFICATION-1 — operator-facing copy (ar/en).
  */
 
 export type RegisterOperationsLang = "ar" | "en";
@@ -7,8 +8,51 @@ export type RegisterOperationsLang = "ar" | "en";
 const COPY = {
   title: { ar: "عمليات الصندوق", en: "Register Operations" },
   subtitle: {
-    ar: "إدارة واجب الصندوق والمشغّل والجهاز لهذا الفرع",
-    en: "Manage register duty, operator, and device for this branch",
+    ar: "فتح وإغلاق صندوق التشغيل لهذا الفرع",
+    en: "Open and close the operating register for this branch",
+  },
+  registerLabel: { ar: "الصندوق", en: "Register" },
+  mainRegister: { ar: "الصندوق الرئيسي", en: "Main register" },
+  registerStatus: { ar: "حالة الصندوق", en: "Register status" },
+  currentShift: { ar: "الوردية الحالية", en: "Current shift" },
+  currentUser: { ar: "المستخدم الحالي", en: "Current user" },
+  thisDevice: { ar: "هذا الجهاز", en: "This device" },
+  currentDeviceBound: { ar: "الجهاز الحالي", en: "Current device" },
+  operatorFollowsCurrentUser: {
+    ar: "يعتمد على المستخدم الحالي",
+    en: "Follows the current user",
+  },
+  operatorAssignedOther: {
+    ar: "مشغّل معيّن",
+    en: "Assigned operator",
+  },
+  operatorAssignedOtherHint: {
+    ar: "تم التعيين لمستخدم آخر",
+    en: "Assigned to another user",
+  },
+  currentUserFallback: { ar: "المستخدم", en: "User" },
+  roleAdmin: { ar: "مسؤول", en: "Admin" },
+  roleManager: { ar: "مدير", en: "Manager" },
+  roleUser: { ar: "مستخدم", en: "User" },
+  noActiveRegisterTitle: {
+    ar: "لا يوجد صندوق نشط",
+    en: "No active register",
+  },
+  noActiveRegisterSubtitle: {
+    ar: "قم بتفعيل صندوق من كتالوج الصناديق.",
+    en: "Activate a register from the Register Catalog.",
+  },
+  openCatalogActivate: {
+    ar: "فتح كتالوج الصناديق",
+    en: "Open Register Catalog",
+  },
+  catalogActivateHint: {
+    ar: "يجب تفعيل الصندوق من الكتالوج قبل فتحه.",
+    en: "Activate the register in the catalog before opening duty.",
+  },
+  openDisabledHint: {
+    ar: "الصندوق غير جاهز للفتح حتى يتم تفعيله من الكتالوج.",
+    en: "Register cannot open until it is activated in the catalog.",
   },
   stationMode: { ar: "وضع المحطة", en: "Station mode" },
   stationModeHint: {

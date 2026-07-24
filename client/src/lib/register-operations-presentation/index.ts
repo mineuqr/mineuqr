@@ -42,3 +42,17 @@ export {
   useRegisterOperationsMutations,
   useResolveActiveRegister,
 } from "./useRegisterOperationsMutations";
+export {
+  isCatalogActiveRegister,
+  parseUserAgentFriendly,
+  presentFriendlyDevice,
+  presentFriendlyOperator,
+  presentRoleLabel,
+  resolvePrimaryDutyAction,
+  resolveRegisterOpsLayoutMode,
+  selectActiveRegisters,
+  type FriendlyDeviceVm,
+  type FriendlyOperatorVm,
+  type RegisterOpsLayoutMode,
+  type RegisterOpsPrimaryAction,
+} from "./registerOperationsAdaptive";
