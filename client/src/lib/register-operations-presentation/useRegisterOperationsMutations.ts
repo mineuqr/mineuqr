@@ -5,7 +5,6 @@
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import {
-  extractTrpcMessage,
   mapRegisterOperationsApiError,
   registerOperationsErrorMessage,
 } from "./registerOperationsErrorPresentation";
@@ -21,9 +20,7 @@ function mutationErrorToast(
   language: RegisterOperationsLang
 ) {
   const kind = mapRegisterOperationsApiError(error);
-  toast.error(
-    registerOperationsErrorMessage(kind, language, extractTrpcMessage(error))
-  );
+  toast.error(registerOperationsErrorMessage(kind, language));
 }
 
 function successToast(

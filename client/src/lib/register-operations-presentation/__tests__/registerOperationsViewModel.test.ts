@@ -3,7 +3,9 @@
  */
 import { describe, expect, it } from "vitest";
 import {
-  availabilityLabelFromDto,
+  availabilityFromCatalogStatus,
+  filterRegisterRows,
+  shiftBadgeFromRef,
   toRegisterListRowVm,
 } from "../registerOperationsViewModel";
 import type { RegisterDto } from "../registerOperationsApiTypes";
@@ -24,21 +26,24 @@ function base(over: Partial<RegisterDto> = {}): RegisterDto {
   };
 }
 
-describe("registerOperationsViewModel", () => {
-  it("maps availability from catalog/duty only", () => {
-    expect(availabilityLabelFromDto(base(), "en")).toBe("Ready for duty");
-    expect(
-      availabilityLabelFromDto(base({ dutyStatus: "open" }), "en")
-    ).toBe("On duty");
-    expect(
-      availabilityLabelFromDto(base({ dutyStatus: "suspended" }), "en")
-    ).toBe("Duty paused");
-    expect(
-      availabilityLabelFromDto(base({ catalogStatus: "inactive" }), "en")
-    ).toBe("Not available");
+describe("registerOperationsViewModel (UX refinement)", () => {
+  it("maps availability from catalogStatus only", () => {
+    expect(availabilityFromCatalogStatus("active", "en").tone).toBe("ready");
+    expect(availabilityFromCatalogStatus("active", "ar").label).toBe("جاهز");
+    expect(availabilityFromCatalogStatus("inactive", "en").tone).toBe(
+      "unavailable"
+    );
+    expect(availabilityFromCatalogStatus("provisioned", "en").label).toBe(
+      "Unavailable"
+    );
   });
 
-  it("builds list row without inventing fields", () => {
+  it("maps shift badge from backend null|presence", () => {
+    expect(shiftBadgeFromRef(true, "en").tone).toBe("active");
+    expect(shiftBadgeFromRef(false, "ar").label).toBe("لا توجد وردية");
+  });
+
+  it("builds searchable list rows from API fields", () => {
     const row = toRegisterListRowVm(
       base({
         dutyStatus: "open",
@@ -47,8 +52,23 @@ describe("registerOperationsViewModel", () => {
       }),
       "en"
     );
+    expect(row.dutyTone).toBe("open");
     expect(row.operatorLabel).toBe("7");
     expect(row.deviceLabel).toBe("dev_1");
-    expect(row.dutyLabel).toBe("Open");
+    expect(row.searchText).toContain("front");
+    expect(row.searchText).toContain("dev_1");
+  });
+
+  it("filters rows by search text", () => {
+    const rows = [
+      toRegisterListRowVm(base({ registerId: "reg_a", displayName: "Bar" }), "en"),
+      toRegisterListRowVm(
+        base({ registerId: "reg_b", displayName: "Drive Thru" }),
+        "en"
+      ),
+    ];
+    expect(filterRegisterRows(rows, "drive")).toHaveLength(1);
+    expect(filterRegisterRows(rows, "drive")[0]?.registerId).toBe("reg_b");
+    expect(filterRegisterRows(rows, "")).toHaveLength(2);
   });
 });

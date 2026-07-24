@@ -1,5 +1,5 @@
 /**
- * REGISTER-OPERATIONS-UI-1 — presentation barrel.
+ * REGISTER-OPERATIONS-UI — presentation barrel.
  * Consumes crmp.register.* only. No domain / financial logic.
  */
 
@@ -10,15 +10,20 @@ export {
   registerOperationsUiLabel,
 } from "./registerOperationsCopy";
 export {
-  extractTrpcMessage,
   mapRegisterOperationsApiError,
   registerOperationsErrorMessage,
   type RegisterOperationsErrorKind,
 } from "./registerOperationsErrorPresentation";
 export {
-  availabilityLabelFromDto,
+  availabilityFromCatalogStatus,
+  dutyToneFromStatus,
+  filterRegisterRows,
+  shiftBadgeFromRef,
   toRegisterListRowVm,
+  type AvailabilityBadgeTone,
+  type DutyBadgeTone,
   type RegisterListRowVm,
+  type ShiftBadgeTone,
 } from "./registerOperationsViewModel";
 export type {
   CurrentRegisterViewDto,

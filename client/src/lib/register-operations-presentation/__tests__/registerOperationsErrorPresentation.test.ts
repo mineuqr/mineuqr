@@ -7,8 +7,8 @@ import {
   registerOperationsErrorMessage,
 } from "../registerOperationsErrorPresentation";
 
-describe("registerOperationsErrorPresentation", () => {
-  it("maps TRPC codes", () => {
+describe("registerOperationsErrorPresentation (UX refinement)", () => {
+  it("maps TRPC codes to kinds", () => {
     expect(
       mapRegisterOperationsApiError({ data: { code: "NOT_FOUND" } })
     ).toBe("not_found");
@@ -21,24 +21,21 @@ describe("registerOperationsErrorPresentation", () => {
     expect(
       mapRegisterOperationsApiError({ data: { code: "BAD_REQUEST" } })
     ).toBe("bad_request");
+    expect(
+      mapRegisterOperationsApiError({ data: { code: "PRECONDITION_FAILED" } })
+    ).toBe("unavailable");
   });
 
-  it("prefers safe API message for conflict", () => {
-    const msg = registerOperationsErrorMessage(
-      "conflict",
-      "en",
-      "Register unavailable while a financial shift is active"
-    );
-    expect(msg).toContain("financial shift");
+  it("never surfaces raw API or stack text", () => {
+    const msg = registerOperationsErrorMessage("conflict", "en");
+    expect(msg).not.toMatch(/at Object|Error:|stack|SELECT/i);
+    expect(msg).toContain("refresh");
   });
 
-  it("never echoes stack-like messages", () => {
-    const msg = registerOperationsErrorMessage(
-      "unknown",
-      "en",
-      "Error: boom\n    at Object.<anonymous>"
+  it("provides offline and permission copy", () => {
+    expect(registerOperationsErrorMessage("offline", "ar")).toContain("اتصال");
+    expect(registerOperationsErrorMessage("forbidden", "en")).toContain(
+      "authorized"
     );
-    expect(msg).not.toMatch(/at Object/);
-    expect(msg).toBe("Could not complete register operation");
   });
 });

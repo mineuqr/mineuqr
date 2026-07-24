@@ -1,21 +1,33 @@
 /**
- * REGISTER-OPERATIONS-UI-1 — Manager / Counter host for Register Operations.
- * Presentation only — all commands via crmp.register.*.
+ * REGISTER-OPERATIONS-UI-UX-REFINEMENT-1 — Manager / Counter host.
+ * Presentation only — crmp.register.* unchanged. No routing / API changes.
  */
 
-import { useEffect, useMemo, useState, type ComponentProps } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type ComponentProps,
+  type ReactNode,
+} from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { restaurantDash } from "@/components/dashboard/restaurantDashStyles";
 import {
-  availabilityLabelFromDto,
+  AvailabilityBadge,
+  DutyBadge,
+  ShiftBadge,
+} from "./RegisterStatusBadges";
+import {
   catalogStatusLabel,
   dutyStatusLabel,
+  filterRegisterRows,
   mapRegisterOperationsApiError,
   registerOperationsErrorMessage,
   registerOperationsUiLabel,
+  shiftBadgeFromRef,
   toRegisterListRowVm,
   useInvalidateRegisterOperationsQueries,
   useRegisterCurrent,
@@ -23,28 +35,34 @@ import {
   useRegisterList,
   useRegisterOperationsMutations,
   useResolveActiveRegister,
+  type RegisterListRowVm,
   type RegisterOperationsLang,
 } from "@/lib/register-operations-presentation";
 import { cn } from "@/lib/utils";
-import { Loader2, RefreshCw } from "lucide-react";
+import {
+  Loader2,
+  RefreshCw,
+  Search,
+  WalletCards,
+} from "lucide-react";
 
 type Props = {
   restaurantId: number;
   language: RegisterOperationsLang;
 };
 
-function ActionButton({
+function OpButton({
   station,
   children,
   className,
   ...props
-}: ComponentProps<typeof Button> & { station: boolean }) {
+}: ComponentProps<typeof Button> & { station?: boolean }) {
   return (
     <Button
       {...props}
       className={cn(
-        station && "min-h-14 touch-manipulation text-base sm:min-h-16 sm:text-lg",
-        !station && "min-h-11 touch-manipulation",
+        "touch-manipulation",
+        station ? "min-h-12 text-sm sm:min-h-14 sm:text-base" : "min-h-10",
         className
       )}
     >
@@ -53,9 +71,133 @@ function ActionButton({
   );
 }
 
+function SkeletonBlock({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn(
+        "animate-pulse rounded-lg bg-slate-700/40",
+        className
+      )}
+      aria-hidden
+    />
+  );
+}
+
+function EmptyOnboarding({
+  language,
+  station,
+}: {
+  language: RegisterOperationsLang;
+  station: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        restaurantDash.panel,
+        "flex min-h-[min(28rem,70vh)] flex-col items-center justify-center px-6 py-12 text-center sm:px-10"
+      )}
+      dir={language === "ar" ? "rtl" : "ltr"}
+    >
+      <div
+        className={cn(
+          "mb-5 flex items-center justify-center rounded-2xl border border-cyan-500/25 bg-cyan-500/10 text-cyan-300",
+          station ? "size-20 [&_svg]:size-10" : "size-16 [&_svg]:size-8"
+        )}
+        aria-hidden
+      >
+        <WalletCards />
+      </div>
+      <h2
+        className={cn(
+          "font-semibold text-white",
+          station ? "text-2xl sm:text-3xl" : "text-xl sm:text-2xl"
+        )}
+      >
+        {registerOperationsUiLabel("emptyTitle", language)}
+      </h2>
+      <p className="mt-2 max-w-md text-sm text-slate-400 sm:text-base">
+        {registerOperationsUiLabel("emptySubtitle", language)}
+      </p>
+      <OpButton
+        station={station}
+        className="mt-6 min-w-[12rem]"
+        disabled
+        aria-disabled="true"
+        title={registerOperationsUiLabel("createRegisterDisabledHint", language)}
+      >
+        {registerOperationsUiLabel("createRegister", language)}
+      </OpButton>
+      <p className="mt-3 max-w-lg text-xs leading-relaxed text-slate-500 sm:text-sm">
+        {registerOperationsUiLabel("createRegisterDisabledHint", language)}
+      </p>
+    </div>
+  );
+}
+
+function RegisterCard({
+  row,
+  selected,
+  station,
+  shiftLabel,
+  shiftTone,
+  onSelect,
+  language,
+}: {
+  row: RegisterListRowVm;
+  selected: boolean;
+  station: boolean;
+  shiftLabel?: string;
+  shiftTone?: "active" | "none";
+  onSelect: () => void;
+  language: RegisterOperationsLang;
+}) {
+  return (
+    <button
+      type="button"
+      role="option"
+      aria-selected={selected}
+      onClick={onSelect}
+      className={cn(
+        "w-full rounded-xl border px-3 text-start transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60",
+        station ? "min-h-[4.5rem] py-3" : "min-h-14 py-2.5",
+        selected
+          ? "border-cyan-400/50 bg-cyan-950/35 shadow-sm shadow-cyan-500/10"
+          : "border-slate-700/55 bg-slate-950/35 hover:border-cyan-500/30"
+      )}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="truncate font-medium text-white">{row.displayName}</div>
+          <div className="mt-1 flex flex-wrap gap-1.5">
+            <DutyBadge tone={row.dutyTone} label={row.dutyLabel} />
+            <AvailabilityBadge
+              tone={row.availabilityTone}
+              label={row.availabilityLabel}
+            />
+            {shiftLabel && shiftTone && (
+              <ShiftBadge tone={shiftTone} label={shiftLabel} />
+            )}
+          </div>
+        </div>
+      </div>
+      <div className="mt-2 grid grid-cols-2 gap-1 text-xs text-slate-400">
+        <span>
+          {registerOperationsUiLabel("currentOperator", language)}:{" "}
+          <span className="text-slate-200">{row.operatorLabel}</span>
+        </span>
+        <span className="truncate">
+          {registerOperationsUiLabel("currentDevice", language)}:{" "}
+          <span className="text-slate-200">{row.deviceLabel}</span>
+        </span>
+      </div>
+    </button>
+  );
+}
+
 export function RegisterOperationsPanel({ restaurantId, language }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [stationMode, setStationMode] = useState(true);
+  const [search, setSearch] = useState("");
   const [operatorId, setOperatorId] = useState("");
   const [deviceId, setDeviceId] = useState("");
 
@@ -77,11 +219,13 @@ export function RegisterOperationsPanel({ restaurantId, language }: Props) {
     () => (listQuery.data ?? []).map((r) => toRegisterListRowVm(r, language)),
     [listQuery.data, language]
   );
+  const filtered = useMemo(
+    () => filterRegisterRows(rows, search),
+    [rows, search]
+  );
 
   useEffect(() => {
-    if (!selectedId && rows[0]) {
-      setSelectedId(rows[0].registerId);
-    }
+    if (!selectedId && rows[0]) setSelectedId(rows[0].registerId);
   }, [rows, selectedId]);
 
   useEffect(() => {
@@ -98,6 +242,8 @@ export function RegisterOperationsPanel({ restaurantId, language }: Props) {
   const view = currentQuery.data;
   const register = view?.register;
   const version = register?.version;
+  const shiftInfo = shiftBadgeFromRef(!!view?.financialShift, language);
+
   const busy =
     mutations.open.isPending ||
     mutations.close.isPending ||
@@ -114,8 +260,7 @@ export function RegisterOperationsPanel({ restaurantId, language }: Props) {
     listQuery.error != null
       ? registerOperationsErrorMessage(
           mapRegisterOperationsApiError(listQuery.error),
-          language,
-          (listQuery.error as { message?: string }).message
+          language
         )
       : null;
 
@@ -123,8 +268,7 @@ export function RegisterOperationsPanel({ restaurantId, language }: Props) {
     currentQuery.error != null
       ? registerOperationsErrorMessage(
           mapRegisterOperationsApiError(currentQuery.error),
-          language,
-          (currentQuery.error as { message?: string }).message
+          language
         )
       : null;
 
@@ -133,21 +277,77 @@ export function RegisterOperationsPanel({ restaurantId, language }: Props) {
     return Number.isInteger(n) && n > 0 ? n : null;
   };
 
+  const dir = language === "ar" ? "rtl" : "ltr";
+
+  if (listQuery.isLoading) {
+    return (
+      <section
+        className={cn(restaurantDash.panel, "p-4 sm:p-6")}
+        dir={dir}
+        aria-busy="true"
+        aria-label={registerOperationsUiLabel("title", language)}
+      >
+        <SkeletonBlock className="mb-4 h-8 w-56" />
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,20rem)_1fr]">
+          <div className="space-y-2">
+            <SkeletonBlock className="h-12 w-full" />
+            <SkeletonBlock className="h-20 w-full" />
+            <SkeletonBlock className="h-20 w-full" />
+          </div>
+          <div className="space-y-3">
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+              <SkeletonBlock className="h-20" />
+              <SkeletonBlock className="h-20" />
+              <SkeletonBlock className="h-20" />
+              <SkeletonBlock className="h-20" />
+            </div>
+            <SkeletonBlock className="h-28 w-full" />
+          </div>
+        </div>
+        <span className="sr-only">
+          {registerOperationsUiLabel("loading", language)}
+        </span>
+      </section>
+    );
+  }
+
+  if (!listQuery.isLoading && rows.length === 0 && !listError) {
+    return (
+      <section dir={dir} aria-label={registerOperationsUiLabel("title", language)}>
+        <header className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-white sm:text-2xl">
+              {registerOperationsUiLabel("title", language)}
+            </h2>
+            <p className="text-sm text-slate-400">
+              {registerOperationsUiLabel("subtitle", language)}
+            </p>
+          </div>
+        </header>
+        <EmptyOnboarding language={language} station={stationMode} />
+        <p className="mt-3 text-center text-xs text-slate-500">
+          {registerOperationsUiLabel("listEmptyGuidance", language)}{" "}
+          {registerOperationsUiLabel("listEmptyNext", language)}
+        </p>
+      </section>
+    );
+  }
+
   return (
     <section
       className={cn(
         restaurantDash.panel,
-        "flex flex-col gap-4 p-4 sm:gap-5 sm:p-6 lg:p-7",
-        stationMode && "gap-5 sm:gap-6"
+        "flex flex-col gap-4 p-4 sm:gap-5 sm:p-6"
       )}
+      dir={dir}
       aria-label={registerOperationsUiLabel("title", language)}
     >
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
+      <header className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
           <h2
             className={cn(
               "font-semibold text-white",
-              stationMode ? "text-2xl sm:text-3xl" : "text-xl"
+              stationMode ? "text-2xl" : "text-xl"
             )}
           >
             {registerOperationsUiLabel("title", language)}
@@ -156,190 +356,283 @@ export function RegisterOperationsPanel({ restaurantId, language }: Props) {
             {registerOperationsUiLabel("subtitle", language)}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2 rounded-lg border border-slate-700/60 bg-slate-900/40 px-3 py-2">
-            <Switch
-              id="register-station-mode"
-              checked={stationMode}
-              onCheckedChange={setStationMode}
-            />
-            <Label htmlFor="register-station-mode" className="text-slate-200">
-              {registerOperationsUiLabel("stationMode", language)}
-            </Label>
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <div className="flex max-w-xs flex-col gap-1 rounded-xl border border-slate-700/55 bg-slate-900/40 px-3 py-2">
+            <div className="flex items-center gap-2">
+              <Switch
+                id="register-station-mode"
+                checked={stationMode}
+                onCheckedChange={setStationMode}
+              />
+              <Label htmlFor="register-station-mode" className="text-slate-200">
+                {registerOperationsUiLabel("stationMode", language)}
+              </Label>
+            </div>
+            <p className="text-[11px] leading-snug text-slate-500">
+              {registerOperationsUiLabel("stationModeHint", language)}
+            </p>
           </div>
-          <ActionButton
-            station={stationMode}
-            variant="secondary"
+          <OpButton
+            station={false}
+            size="sm"
+            variant="outline"
+            className="min-h-9"
             disabled={listQuery.isFetching || busy}
-            onClick={() => void invalidate(restaurantId, selectedId ?? undefined)}
+            onClick={() =>
+              void invalidate(restaurantId, selectedId ?? undefined)
+            }
+            aria-label={registerOperationsUiLabel("refresh", language)}
           >
             {listQuery.isFetching || currentQuery.isFetching ? (
-              <Loader2 className="me-2 h-4 w-4 animate-spin" aria-hidden />
+              <Loader2 className="size-4 animate-spin" aria-hidden />
             ) : (
-              <RefreshCw className="me-2 h-4 w-4" aria-hidden />
+              <RefreshCw className="size-4" aria-hidden />
             )}
-            {registerOperationsUiLabel("refresh", language)}
-          </ActionButton>
+            <span className="ms-1.5 hidden sm:inline">
+              {registerOperationsUiLabel("refresh", language)}
+            </span>
+          </OpButton>
         </div>
       </header>
 
       {listError && (
         <div
           role="alert"
-          className="rounded-lg border border-rose-500/40 bg-rose-950/40 px-4 py-3 text-rose-100"
+          className="rounded-xl border border-rose-500/35 bg-rose-950/35 px-4 py-3 text-rose-100"
         >
           <p>{listError}</p>
-          <ActionButton
-            station={stationMode}
+          <OpButton
             className="mt-3"
             variant="outline"
             onClick={() => void listQuery.refetch()}
           >
             {registerOperationsUiLabel("retry", language)}
-          </ActionButton>
+          </OpButton>
         </div>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,18rem)_1fr] xl:grid-cols-[minmax(0,20rem)_1fr]">
-        {/* Available registers */}
-        <aside className="rounded-xl border border-slate-700/50 bg-slate-900/40 p-3 sm:p-4">
-          <h3 className="mb-3 text-sm font-medium uppercase tracking-wide text-slate-400">
-            {registerOperationsUiLabel("availableRegisters", language)}
-          </h3>
-          {listQuery.isLoading ? (
-            <p className="flex items-center gap-2 text-slate-300">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              {registerOperationsUiLabel("loading", language)}
-            </p>
-          ) : rows.length === 0 ? (
-            <p className="text-slate-400">
-              {registerOperationsUiLabel("noRegisters", language)}
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,19rem)_minmax(0,1fr)] xl:grid-cols-[minmax(0,21rem)_minmax(0,1fr)]">
+        <aside className="flex flex-col gap-3 rounded-xl border border-slate-700/50 bg-slate-900/35 p-3 sm:p-4">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-xs font-medium uppercase tracking-wide text-slate-400">
+              {registerOperationsUiLabel("availableRegisters", language)}
+            </h3>
+            <span className="text-xs text-slate-500">{rows.length}</span>
+          </div>
+
+          {rows.length > 3 && (
+            <div className="relative">
+              <Search
+                className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-slate-500"
+                aria-hidden
+              />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={registerOperationsUiLabel(
+                  "searchRegisters",
+                  language
+                )}
+                aria-label={registerOperationsUiLabel(
+                  "searchRegisters",
+                  language
+                )}
+                className="ps-9"
+              />
+            </div>
+          )}
+
+          {filtered.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-slate-700/60 px-3 py-6 text-center text-sm text-slate-500">
+              {rows.length === 0
+                ? registerOperationsUiLabel("listEmptyGuidance", language)
+                : registerOperationsUiLabel("noResults", language)}
             </p>
           ) : (
-            <ul className="flex flex-col gap-2" role="listbox">
-              {rows.map((row) => (
-                <li key={row.registerId}>
-                  <button
-                    type="button"
-                    role="option"
-                    aria-selected={selectedId === row.registerId}
-                    className={cn(
-                      "w-full rounded-lg border px-3 text-start transition",
-                      stationMode ? "min-h-16 py-3" : "min-h-12 py-2",
-                      selectedId === row.registerId
-                        ? "border-cyan-400/50 bg-cyan-950/40 text-white"
-                        : "border-slate-700/60 bg-slate-950/40 text-slate-200 hover:border-cyan-500/30"
-                    )}
-                    onClick={() => setSelectedId(row.registerId)}
-                  >
-                    <div className="font-medium">{row.displayName}</div>
-                    <div className="mt-0.5 text-xs text-slate-400">
-                      {row.dutyLabel} · {row.availabilityLabel}
-                    </div>
-                  </button>
-                </li>
-              ))}
+            <ul
+              className="flex max-h-[min(28rem,55vh)] flex-col gap-2 overflow-y-auto pe-0.5"
+              role="listbox"
+              aria-label={registerOperationsUiLabel(
+                "availableRegisters",
+                language
+              )}
+            >
+              {filtered.map((row) => {
+                const isSelected = selectedId === row.registerId;
+                const shift =
+                  isSelected && view
+                    ? shiftBadgeFromRef(!!view.financialShift, language)
+                    : undefined;
+                return (
+                  <li key={row.registerId}>
+                    <RegisterCard
+                      row={row}
+                      selected={isSelected}
+                      station={stationMode}
+                      language={language}
+                      shiftLabel={shift?.label}
+                      shiftTone={shift?.tone}
+                      onSelect={() => setSelectedId(row.registerId)}
+                    />
+                  </li>
+                );
+              })}
             </ul>
           )}
         </aside>
 
-        {/* Details + actions */}
         <div className="flex min-w-0 flex-col gap-4">
-          {!selectedId || !register ? (
-            <div className="rounded-xl border border-dashed border-slate-700/60 p-8 text-center text-slate-400">
-              {currentQuery.isLoading
-                ? registerOperationsUiLabel("loading", language)
-                : registerOperationsUiLabel("selectRegister", language)}
-              {currentError && (
-                <p className="mt-3 text-rose-300" role="alert">
-                  {currentError}
-                </p>
-              )}
+          {!selectedId ? (
+            <div className="flex min-h-48 flex-col items-center justify-center rounded-xl border border-dashed border-slate-700/55 px-4 py-10 text-center">
+              <p className="font-medium text-slate-200">
+                {registerOperationsUiLabel("selectRegister", language)}
+              </p>
+              <p className="mt-1 text-sm text-slate-500">
+                {registerOperationsUiLabel("selectRegisterHint", language)}
+              </p>
+            </div>
+          ) : currentQuery.isLoading && !register ? (
+            <div className="space-y-3" aria-busy="true">
+              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                <SkeletonBlock className="h-20" />
+                <SkeletonBlock className="h-20" />
+                <SkeletonBlock className="h-20" />
+                <SkeletonBlock className="h-20" />
+              </div>
+              <SkeletonBlock className="h-24" />
+              <span className="sr-only">
+                {registerOperationsUiLabel("loading", language)}
+              </span>
+            </div>
+          ) : !register ? (
+            <div
+              role="alert"
+              className="rounded-xl border border-rose-500/35 bg-rose-950/30 px-4 py-4 text-rose-100"
+            >
+              <p>
+                {currentError ??
+                  registerOperationsUiLabel("selectRegister", language)}
+              </p>
+              <OpButton
+                className="mt-3"
+                variant="outline"
+                onClick={() => void currentQuery.refetch()}
+              >
+                {registerOperationsUiLabel("retry", language)}
+              </OpButton>
             </div>
           ) : (
             <>
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
                 <StatusCard
                   label={registerOperationsUiLabel("dutyStatus", language)}
-                  value={dutyStatusLabel(register.dutyStatus, language)}
                   station={stationMode}
-                />
+                >
+                  <DutyBadge
+                    tone={register.dutyStatus}
+                    label={dutyStatusLabel(register.dutyStatus, language)}
+                  />
+                </StatusCard>
                 <StatusCard
                   label={registerOperationsUiLabel("currentOperator", language)}
-                  value={
-                    register.assignedOperatorUserId != null
-                      ? String(register.assignedOperatorUserId)
-                      : registerOperationsUiLabel("none", language)
-                  }
                   station={stationMode}
-                />
+                >
+                  <span className="text-lg font-medium text-white">
+                    {register.assignedOperatorUserId != null
+                      ? String(register.assignedOperatorUserId)
+                      : registerOperationsUiLabel("none", language)}
+                  </span>
+                </StatusCard>
                 <StatusCard
                   label={registerOperationsUiLabel("currentDevice", language)}
-                  value={
-                    register.deviceId ??
-                    registerOperationsUiLabel("none", language)
-                  }
                   station={stationMode}
-                />
+                >
+                  <span className="break-all text-lg font-medium text-white">
+                    {register.deviceId ??
+                      registerOperationsUiLabel("none", language)}
+                  </span>
+                </StatusCard>
                 <StatusCard
                   label={registerOperationsUiLabel("financialShift", language)}
-                  value={
-                    view.financialShift
-                      ? `${view.financialShift.financialShiftId} (${view.financialShift.status})`
-                      : registerOperationsUiLabel("noShift", language)
-                  }
                   station={stationMode}
+                >
+                  <div className="space-y-1">
+                    <ShiftBadge
+                      tone={shiftInfo.tone}
+                      label={shiftInfo.label}
+                    />
+                    {view.financialShift && (
+                      <p className="truncate font-mono text-[11px] text-slate-400">
+                        {view.financialShift.financialShiftId}
+                      </p>
+                    )}
+                  </div>
+                </StatusCard>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                <AvailabilityBadge
+                  tone={
+                    register.catalogStatus === "active" ? "ready" : "unavailable"
+                  }
+                  label={
+                    register.catalogStatus === "active"
+                      ? registerOperationsUiLabel("ready", language)
+                      : registerOperationsUiLabel("unavailable", language)
+                  }
                 />
+                <span>
+                  {registerOperationsUiLabel("catalogStatus", language)}:{" "}
+                  <span className="text-slate-200">
+                    {catalogStatusLabel(register.catalogStatus, language)}
+                  </span>
+                </span>
+                <span>
+                  {registerOperationsUiLabel("version", language)}:{" "}
+                  <span className="text-slate-200">{register.version}</span>
+                </span>
+                {(busy || currentQuery.isFetching) && (
+                  <span className="inline-flex items-center gap-1 text-cyan-300">
+                    <Loader2 className="size-3.5 animate-spin" />
+                    {registerOperationsUiLabel("syncing", language)}
+                  </span>
+                )}
               </div>
 
-              <div className="rounded-xl border border-slate-700/50 bg-slate-900/30 p-3 sm:p-4 text-sm text-slate-300">
-                <div className="flex flex-wrap gap-x-4 gap-y-1">
-                  <span>
-                    {registerOperationsUiLabel("catalogStatus", language)}:{" "}
-                    <strong className="text-white">
-                      {catalogStatusLabel(register.catalogStatus, language)}
-                    </strong>
-                  </span>
-                  <span>
-                    {registerOperationsUiLabel("availability", language)}:{" "}
-                    <strong className="text-white">
-                      {availabilityLabelFromDto(register, language)}
-                    </strong>
-                  </span>
-                  <span>
-                    {registerOperationsUiLabel("version", language)}:{" "}
-                    <strong className="text-white">{register.version}</strong>
-                  </span>
-                  {(busy || currentQuery.isFetching) && (
-                    <span className="inline-flex items-center gap-1 text-cyan-300">
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      {registerOperationsUiLabel("syncing", language)}
-                    </span>
-                  )}
-                </div>
-              </div>
+              {/* Primary action */}
+              <section
+                aria-label={registerOperationsUiLabel("primaryActions", language)}
+                className="rounded-xl border border-cyan-500/25 bg-cyan-950/20 p-3 sm:p-4"
+              >
+                <OpButton
+                  station={stationMode}
+                  className="w-full sm:w-auto sm:min-w-[14rem]"
+                  disabled={busy || register.catalogStatus !== "active"}
+                  onClick={() =>
+                    mutations.open.mutate({
+                      restaurantId,
+                      registerId: register.registerId,
+                      operatorUserId: parseOperator(),
+                      expectedVersion: version,
+                    })
+                  }
+                >
+                  {registerOperationsUiLabel("open", language)}
+                </OpButton>
+              </section>
 
-              {/* Duty actions */}
-              <section aria-label={registerOperationsUiLabel("actions", language)}>
-                <h3 className="mb-2 text-sm font-medium text-slate-400">
+              {/* Contextual duty */}
+              <section
+                aria-label={registerOperationsUiLabel(
+                  "contextualActions",
+                  language
+                )}
+              >
+                <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
                   {registerOperationsUiLabel("actions", language)}
                 </h3>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                  <ActionButton
-                    station={stationMode}
-                    disabled={busy || register.catalogStatus !== "active"}
-                    onClick={() =>
-                      mutations.open.mutate({
-                        restaurantId,
-                        registerId: register.registerId,
-                        operatorUserId: parseOperator(),
-                        expectedVersion: version,
-                      })
-                    }
-                  >
-                    {registerOperationsUiLabel("open", language)}
-                  </ActionButton>
-                  <ActionButton
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  <OpButton
                     station={stationMode}
                     variant="secondary"
                     disabled={busy}
@@ -352,8 +645,8 @@ export function RegisterOperationsPanel({ restaurantId, language }: Props) {
                     }
                   >
                     {registerOperationsUiLabel("suspend", language)}
-                  </ActionButton>
-                  <ActionButton
+                  </OpButton>
+                  <OpButton
                     station={stationMode}
                     variant="secondary"
                     disabled={busy}
@@ -366,8 +659,8 @@ export function RegisterOperationsPanel({ restaurantId, language }: Props) {
                     }
                   >
                     {registerOperationsUiLabel("resume", language)}
-                  </ActionButton>
-                  <ActionButton
+                  </OpButton>
+                  <OpButton
                     station={stationMode}
                     variant="destructive"
                     disabled={busy}
@@ -380,7 +673,7 @@ export function RegisterOperationsPanel({ restaurantId, language }: Props) {
                     }
                   >
                     {registerOperationsUiLabel("close", language)}
-                  </ActionButton>
+                  </OpButton>
                 </div>
               </section>
 
@@ -398,14 +691,14 @@ export function RegisterOperationsPanel({ restaurantId, language }: Props) {
                     )}
                     value={operatorId}
                     onChange={(e) => setOperatorId(e.target.value)}
-                    className={cn(stationMode && "min-h-14 text-lg")}
+                    className={cn(stationMode && "min-h-12")}
                     aria-label={registerOperationsUiLabel(
                       "operatorUserId",
                       language
                     )}
                   />
-                  <div className="grid grid-cols-3 gap-2 sm:flex">
-                    <ActionButton
+                  <div className="grid grid-cols-3 gap-2">
+                    <OpButton
                       station={stationMode}
                       disabled={busy || parseOperator() == null}
                       onClick={() => {
@@ -420,8 +713,8 @@ export function RegisterOperationsPanel({ restaurantId, language }: Props) {
                       }}
                     >
                       {registerOperationsUiLabel("assignOperator", language)}
-                    </ActionButton>
-                    <ActionButton
+                    </OpButton>
+                    <OpButton
                       station={stationMode}
                       variant="secondary"
                       disabled={busy || parseOperator() == null}
@@ -437,8 +730,8 @@ export function RegisterOperationsPanel({ restaurantId, language }: Props) {
                       }}
                     >
                       {registerOperationsUiLabel("reassignOperator", language)}
-                    </ActionButton>
-                    <ActionButton
+                    </OpButton>
+                    <OpButton
                       station={stationMode}
                       variant="outline"
                       disabled={busy}
@@ -451,7 +744,7 @@ export function RegisterOperationsPanel({ restaurantId, language }: Props) {
                       }
                     >
                       {registerOperationsUiLabel("releaseOperator", language)}
-                    </ActionButton>
+                    </OpButton>
                   </div>
                 </div>
               </section>
@@ -466,11 +759,11 @@ export function RegisterOperationsPanel({ restaurantId, language }: Props) {
                     placeholder={registerOperationsUiLabel("deviceId", language)}
                     value={deviceId}
                     onChange={(e) => setDeviceId(e.target.value)}
-                    className={cn(stationMode && "min-h-14 text-lg")}
+                    className={cn(stationMode && "min-h-12")}
                     aria-label={registerOperationsUiLabel("deviceId", language)}
                   />
-                  <div className="grid grid-cols-3 gap-2 sm:flex">
-                    <ActionButton
+                  <div className="grid grid-cols-3 gap-2">
+                    <OpButton
                       station={stationMode}
                       disabled={busy || !deviceId.trim()}
                       onClick={() =>
@@ -483,8 +776,8 @@ export function RegisterOperationsPanel({ restaurantId, language }: Props) {
                       }
                     >
                       {registerOperationsUiLabel("attachDevice", language)}
-                    </ActionButton>
-                    <ActionButton
+                    </OpButton>
+                    <OpButton
                       station={stationMode}
                       variant="secondary"
                       disabled={busy || !deviceId.trim()}
@@ -498,8 +791,8 @@ export function RegisterOperationsPanel({ restaurantId, language }: Props) {
                       }
                     >
                       {registerOperationsUiLabel("replaceDevice", language)}
-                    </ActionButton>
-                    <ActionButton
+                    </OpButton>
+                    <OpButton
                       station={stationMode}
                       variant="outline"
                       disabled={busy}
@@ -512,21 +805,21 @@ export function RegisterOperationsPanel({ restaurantId, language }: Props) {
                       }
                     >
                       {registerOperationsUiLabel("detachDevice", language)}
-                    </ActionButton>
+                    </OpButton>
                   </div>
                 </div>
               </section>
 
               {/* Recovery */}
-              <section className="rounded-xl border border-amber-500/30 bg-amber-950/20 p-3 sm:p-4">
-                <h3 className="mb-1 text-sm font-medium text-amber-200">
+              <section className="rounded-xl border border-amber-500/25 bg-amber-950/15 p-3 sm:p-4">
+                <h3 className="mb-1 text-sm font-medium text-amber-100">
                   {registerOperationsUiLabel("recovery", language)}
                 </h3>
-                <p className="mb-3 text-xs text-amber-100/80 sm:text-sm">
+                <p className="mb-3 text-xs text-amber-100/75 sm:text-sm">
                   {registerOperationsUiLabel("recoveryHint", language)}
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  <ActionButton
+                  <OpButton
                     station={stationMode}
                     variant="secondary"
                     disabled={busy || register.dutyStatus !== "suspended"}
@@ -539,8 +832,8 @@ export function RegisterOperationsPanel({ restaurantId, language }: Props) {
                     }
                   >
                     {registerOperationsUiLabel("resume", language)}
-                  </ActionButton>
-                  <ActionButton
+                  </OpButton>
+                  <OpButton
                     station={stationMode}
                     variant="outline"
                     disabled={busy}
@@ -552,17 +845,7 @@ export function RegisterOperationsPanel({ restaurantId, language }: Props) {
                     }
                   >
                     {registerOperationsUiLabel("resolveActive", language)}
-                  </ActionButton>
-                  <ActionButton
-                    station={stationMode}
-                    variant="outline"
-                    disabled={busy}
-                    onClick={() =>
-                      void invalidate(restaurantId, register.registerId)
-                    }
-                  >
-                    {registerOperationsUiLabel("refresh", language)}
-                  </ActionButton>
+                  </OpButton>
                 </div>
               </section>
 
@@ -572,11 +855,12 @@ export function RegisterOperationsPanel({ restaurantId, language }: Props) {
                   {registerOperationsUiLabel("history", language)}
                 </h3>
                 {historyQuery.isLoading ? (
-                  <p className="text-slate-400">
-                    {registerOperationsUiLabel("loading", language)}
-                  </p>
+                  <div className="space-y-2" aria-busy="true">
+                    <SkeletonBlock className="h-8 w-full" />
+                    <SkeletonBlock className="h-8 w-full" />
+                  </div>
                 ) : (historyQuery.data?.shifts.length ?? 0) === 0 ? (
-                  <p className="text-slate-500">
+                  <p className="text-sm text-slate-500">
                     {registerOperationsUiLabel("noShift", language)}
                   </p>
                 ) : (
@@ -607,31 +891,24 @@ export function RegisterOperationsPanel({ restaurantId, language }: Props) {
 
 function StatusCard({
   label,
-  value,
+  children,
   station,
 }: {
   label: string;
-  value: string;
+  children: ReactNode;
   station: boolean;
 }) {
   return (
     <div
       className={cn(
-        "rounded-xl border border-slate-700/50 bg-slate-950/50 p-3",
-        station && "p-4"
+        "rounded-xl border border-slate-700/50 bg-slate-950/45 p-3",
+        station && "p-3.5"
       )}
     >
-      <div className="text-xs uppercase tracking-wide text-slate-500">
+      <div className="text-[11px] uppercase tracking-wide text-slate-500">
         {label}
       </div>
-      <div
-        className={cn(
-          "mt-1 break-all font-medium text-white",
-          station ? "text-lg sm:text-xl" : "text-base"
-        )}
-      >
-        {value}
-      </div>
+      <div className="mt-1.5">{children}</div>
     </div>
   );
 }

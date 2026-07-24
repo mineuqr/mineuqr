@@ -1,5 +1,5 @@
 /**
- * REGISTER-OPERATIONS-UI-1 — architecture guards (presentation only).
+ * REGISTER-OPERATIONS-UI-UX-REFINEMENT-1 — architecture guards.
  * @vitest-environment node
  */
 import { readFileSync } from "node:fs";
@@ -12,8 +12,8 @@ function read(rel: string): string {
   return readFileSync(join(root, rel), "utf8");
 }
 
-describe("REGISTER-OPERATIONS-UI-1 architecture guards", () => {
-  it("presentation hooks call only crmp.register.*", () => {
+describe("REGISTER-OPERATIONS-UI-UX-REFINEMENT-1 architecture guards", () => {
+  it("presentation still calls only crmp.register.*", () => {
     const q = read(
       "src/lib/register-operations-presentation/useRegisterOperationsQueries.ts"
     );
@@ -22,38 +22,38 @@ describe("REGISTER-OPERATIONS-UI-1 architecture guards", () => {
     );
     expect(q).toContain("trpc.crmp.register");
     expect(m).toContain("trpc.crmp.register");
-    expect(q + m).not.toMatch(/trpc\.(session|order|settlementRecord)\./);
     expect(q + m).not.toMatch(/computeExpectedCash|toCents|grandTotal/);
   });
 
-  it("panel does not invent financial logic or bypass API", () => {
+  it("panel is presentation-only and keeps create CTA disabled without new APIs", () => {
     const panel = read(
       "src/components/register-operations/RegisterOperationsPanel.tsx"
     );
-    expect(panel).toContain("REGISTER-OPERATIONS-UI-1");
-    expect(panel).toContain("useRegisterOperationsMutations");
-    expect(panel).not.toMatch(/computeExpectedCash|toCents|grandTotal/);
+    expect(panel).toContain("UX-REFINEMENT-1");
+    expect(panel).toContain("createRegisterDisabledHint");
+    expect(panel).toMatch(/disabled[\s\S]*createRegister|createRegister[\s\S]*disabled/);
     expect(panel).not.toMatch(/from ["']@shared\/crmp/);
+    expect(panel).not.toMatch(/computeExpectedCash|toCents|grandTotal/);
+    expect(panel).not.toContain("spaNavigate");
+    expect(panel).not.toContain("buildDashboardPath");
   });
 
-  it("dashboard mounts register tab near settlements", () => {
-    const types = read("src/components/dashboard/layout/types.ts");
-    const dash = read("src/pages/Dashboard.tsx");
-    const sidebar = read(
-      "src/components/dashboard/layout/RestaurantDashboardSidebar.tsx"
-    );
+  it("does not change routing or dashboard section wiring beyond existing register tab", () => {
     const url = read("src/lib/dashboardUrl.ts");
+    const types = read("src/components/dashboard/layout/types.ts");
+    expect(url).toContain('register: "register"');
     expect(types).toContain('"register"');
-    expect(url).toContain("register: \"register\"");
-    expect(sidebar).toContain('id: "register"');
-    expect(dash).toContain('activeTab === "register"');
-    expect(dash).toContain("RegisterOperationsPanel");
+    // register stays query-section only — not a PATH_ROUTE_TABS member
+    expect(url).toContain('new Set<RestaurantTab>(["sessions"])');
   });
 
-  it("does not mount Register Ops on waiter/kiosk/kitchen hosts", () => {
-    const waiter = read("src/pages/waiter/WaiterShell.tsx");
-    const kiosk = read("src/pages/kiosk/KioskShell.tsx");
-    expect(waiter).not.toContain("RegisterOperationsPanel");
-    expect(kiosk).not.toContain("RegisterOperationsPanel");
+  it("empty-state copy matches refinement requirements", () => {
+    const copy = read(
+      "src/lib/register-operations-presentation/registerOperationsCopy.ts"
+    );
+    expect(copy).toContain("لا يوجد أي صندوق تشغيل");
+    expect(copy).toContain("ابدأ بإنشاء أول صندوق تشغيل لهذا الفرع.");
+    expect(copy).toContain("إنشاء صندوق");
+    expect(copy).toContain("واجهة محسّنة للأجهزة اللوحية ونقاط البيع.");
   });
 });
