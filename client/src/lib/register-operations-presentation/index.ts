@@ -51,7 +51,6 @@ export {
   useFinancialShiftTenderSummary,
 } from "./useFinancialShiftMutations";
 export {
-  OPS_NETWORK_BANK_METHODS,
   presentTenderSummaryRows,
   type TenderSummaryRowVm,
 } from "./financialShiftTenderSummaryPresentation";

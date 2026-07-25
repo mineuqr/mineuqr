@@ -85,7 +85,7 @@ describe("buildFinancialShiftTenderSummary", () => {
     });
   });
 
-  it("aggregates cash + mada from attributed Settlement Records", async () => {
+  it("aggregates cash + legacy mada as canonical card from attributed Settlement Records", async () => {
     await shifts.createAttribution({
       restaurantId: 42,
       financialShiftId: "fsh_1",
@@ -129,8 +129,11 @@ describe("buildFinancialShiftTenderSummary", () => {
     expect(summary!.monetaryTenderTotal).toBe("20.00");
     expect(summary!.cashTenderTotal).toBe("10.00");
     expect(
-      summary!.methods.find((m) => m.paymentMethod === "mada")?.amount
+      summary!.methods.find((m) => m.paymentMethod === "card")?.amount
     ).toBe("10.00");
+    expect(
+      summary!.methods.find((m) => m.paymentMethod === "mada")
+    ).toBeUndefined();
     expect(summary!.complimentaryAmount).toBe("0.00");
     expect(summary!.refundAmount).toBe("0.00");
   });

@@ -64,6 +64,7 @@ export const SPLIT_PAYMENT_VALUE_RECEIVED_STATUSES = [
 
 export type TenderMethod =
   | "cash"
+  | "card"
   | "visa"
   | "mastercard"
   | "mada"
@@ -75,6 +76,7 @@ export type TenderMethod =
 
 export const TENDER_METHODS: readonly TenderMethod[] = [
   "cash",
+  "card",
   "visa",
   "mastercard",
   "mada",

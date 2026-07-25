@@ -72,16 +72,17 @@ describe("PaymentMethodAnalyticsService (Settlement Record)", () => {
     expect(dto.programId).toBe("REPORTING-PAYMENT-METHOD-ANALYTICS-1");
     expect(dto.monetaryTenderTotal).toBe("120.00");
     expect(dto.complimentaryAmount).toBe("15.00");
-    expect(dto.buckets.map((b) => b.paymentMethod)).toEqual(["cash", "mada"]);
+    expect(dto.buckets.map((b) => b.paymentMethod)).toEqual(["card", "cash"]);
     const cash = dto.buckets.find((b) => b.paymentMethod === "cash")!;
-    const mada = dto.buckets.find((b) => b.paymentMethod === "mada")!;
+    const card = dto.buckets.find((b) => b.paymentMethod === "card")!;
     expect(cash.tenderAmount).toBe("40.00");
     expect(cash.mixPercent).toBe("33.33");
     expect(cash.checkCount).toBe(1);
-    expect(mada.tenderAmount).toBe("80.00");
-    expect(mada.checkCount).toBe(1);
-    expect(mada.transactionCount).toBe(2);
-    expect(mada.averageCheck).toBe("80.00");
+    expect(card.tenderAmount).toBe("80.00");
+    expect(card.checkCount).toBe(1);
+    expect(card.transactionCount).toBe(2);
+    expect(card.averageCheck).toBe("80.00");
+    expect(card.category).toBe("card");
   });
 
   it("returns empty buckets when no captured monetary tenders exist", async () => {

@@ -77,9 +77,11 @@ describe("Register Operations presentation architecture guards", () => {
       "src/lib/register-operations-presentation/financialShiftTenderSummaryPresentation.ts"
     );
     expect(present).toContain("FINANCIAL-SHIFT-TENDER-PRESENTATION-REFINEMENT-1");
+    expect(present).toContain("PAYMENT-METHOD-CATALOG-UNIFICATION-1");
     expect(present).toContain("presentTenderSummaryRows");
-    expect(present).toContain("OPS_NETWORK_BANK_METHODS");
+    expect(present).toContain("toCanonicalPaymentMethod");
     expect(present).toContain("tenderNetworkBank");
+    expect(present).not.toContain("OPS_NETWORK_BANK_METHODS");
     expect(present).not.toMatch(/toCents|computeExpectedCash|openFinancialShift/);
     expect(present).not.toContain("trpc.");
     expect(present).not.toMatch(/from ["']@shared\/crmp/);

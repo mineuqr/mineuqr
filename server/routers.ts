@@ -1992,7 +1992,7 @@ const sessionRouter = router({
         sessionId: z.number().int().positive(),
         /**
          * SETTLEMENT-PAYMENT-METHOD-CAPTURE-1 — optional operator tenders.
-         * Omitted → legacy DEFAULT_PAID_PAYMENT_METHOD ("other").
+         * Omitted → DEFAULT_PAID_PAYMENT_METHOD ("other").
          * Single line may omit amount (domain fills Check grandTotal).
          * Multi-tender lines require amount on each line.
          */
@@ -2001,13 +2001,15 @@ const sessionRouter = router({
             z.object({
               paymentMethod: z.enum([
                 "cash",
+                "card",
+                "other",
+                // Legacy brand codes (map to card in analytics/display).
                 "mada",
                 "visa",
                 "mastercard",
                 "apple_pay",
                 "stc_pay",
                 "bank_transfer",
-                "other",
               ]),
               amount: z.string().min(1).optional(),
             })
@@ -2211,13 +2213,14 @@ const orderRouter = router({
             z.object({
               paymentMethod: z.enum([
                 "cash",
+                "card",
+                "other",
                 "mada",
                 "visa",
                 "mastercard",
                 "apple_pay",
                 "stc_pay",
                 "bank_transfer",
-                "other",
               ]),
               amount: z.string().min(1).optional(),
             })
@@ -2347,13 +2350,14 @@ const orderRouter = router({
             z.object({
               paymentMethod: z.enum([
                 "cash",
+                "card",
+                "other",
                 "mada",
                 "visa",
                 "mastercard",
                 "apple_pay",
                 "stc_pay",
                 "bank_transfer",
-                "other",
               ]),
               amount: z.string().min(1).optional(),
             })

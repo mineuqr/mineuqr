@@ -25,7 +25,7 @@ const sampleDto = {
       mixPercent: "40.00",
     },
     {
-      paymentMethod: "mada",
+      paymentMethod: "card",
       category: "card",
       tenderAmount: "60.00",
       transactionCount: 2,
@@ -39,8 +39,8 @@ const sampleDto = {
 const PERIOD_SPECIFIC =
   /\b(daily|weekly|monthly|quarterly|annual|yearly|month|week|quarter|year)\b/i;
 
-describe("REPORTING-PAYMENT-METHOD-PRESENTATION-ADOPTION-1", () => {
-  it("expands full monetary catalog with Product Semantics labels", () => {
+describe("REPORTING-PAYMENT-METHOD-PRESENTATION-ADOPTION-1 / CATALOG-UNIFICATION-1", () => {
+  it("expands canonical monetary catalog with Product Semantics labels", () => {
     const vm = buildPaymentMethodAnalysisViewModel({
       language: "en",
       analytics: sampleDto,
@@ -50,11 +50,43 @@ describe("REPORTING-PAYMENT-METHOD-PRESENTATION-ADOPTION-1", () => {
       ...MONETARY_PAYMENT_METHODS,
     ]);
     expect(vm.rows.find((r) => r.paymentMethod === "cash")?.label).toBe("Cash");
-    expect(vm.rows.find((r) => r.paymentMethod === "visa")?.tenderAmount).toBe(
+    expect(vm.rows.find((r) => r.paymentMethod === "card")?.label).toBe(
+      "Card (network / bank)"
+    );
+    expect(vm.rows.find((r) => r.paymentMethod === "other")?.tenderAmount).toBe(
       "0.00"
     );
     expect(vm.complimentaryLabel).toBe("Complimentary");
     expect(vm.hasActivity).toBe(true);
+  });
+
+  it("maps historical brand buckets to canonical card for display", () => {
+    const legacyDto = {
+      ...sampleDto,
+      buckets: [
+        {
+          paymentMethod: "mada",
+          category: "card",
+          tenderAmount: "60.00",
+          transactionCount: 2,
+          checkCount: 2,
+          averageCheck: "30.00",
+          mixPercent: "60.00",
+        },
+      ],
+      monetaryTenderTotal: "60.00",
+      complimentaryAmount: "0.00",
+    } as PaymentMethodAnalyticsDto;
+    const vm = buildPaymentMethodAnalysisViewModel({
+      language: "ar",
+      analytics: legacyDto,
+    });
+    const card = vm.rows.find((r) => r.paymentMethod === "card")!;
+    expect(card.label).toBe("بطاقة (شبكة / بنك)");
+    expect(card.mixPercent).toBe("60.00");
+    expect(card.averageCheck).toBe("30.00");
+    expect(card.checkCount).toBe(2);
+    expect(vm.rows.find((r) => r.paymentMethod === "mada")).toBeUndefined();
   });
 
   it("does not recompute DTO mix or averages for active methods", () => {
@@ -62,10 +94,10 @@ describe("REPORTING-PAYMENT-METHOD-PRESENTATION-ADOPTION-1", () => {
       language: "en",
       analytics: sampleDto,
     });
-    const mada = vm.rows.find((r) => r.paymentMethod === "mada")!;
-    expect(mada.mixPercent).toBe("60.00");
-    expect(mada.averageCheck).toBe("30.00");
-    expect(mada.checkCount).toBe(2);
+    const card = vm.rows.find((r) => r.paymentMethod === "card")!;
+    expect(card.mixPercent).toBe("60.00");
+    expect(card.averageCheck).toBe("30.00");
+    expect(card.checkCount).toBe(2);
   });
 
   it("empty / note copy is period-agnostic", () => {
@@ -79,7 +111,12 @@ describe("REPORTING-PAYMENT-METHOD-PRESENTATION-ADOPTION-1", () => {
     }
     const empty = buildPaymentMethodAnalysisViewModel({
       language: "en",
-      analytics: { ...sampleDto, buckets: [], monetaryTenderTotal: "0.00", complimentaryAmount: "0.00" },
+      analytics: {
+        ...sampleDto,
+        buckets: [],
+        monetaryTenderTotal: "0.00",
+        complimentaryAmount: "0.00",
+      },
     });
     expect(empty.hasActivity).toBe(false);
     expect(empty.emptyMessage).not.toMatch(PERIOD_SPECIFIC);

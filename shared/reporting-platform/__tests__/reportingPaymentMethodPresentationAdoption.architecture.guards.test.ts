@@ -43,6 +43,7 @@ describe("REPORTING-PAYMENT-METHOD-PRESENTATION-ADOPTION-1 guards", () => {
     );
     expect(helper).toContain("buildPaymentMethodAnalysisViewModel");
     expect(helper).toContain("MONETARY_PAYMENT_METHODS");
+    expect(helper).toContain("toCanonicalPaymentMethod");
     expect(helper).toContain("preferredPaymentMethodLabel");
     expect(helper).not.toMatch(/scope\s*===/);
     expect(excel).toContain("buildPaymentMethodAnalysisViewModel");

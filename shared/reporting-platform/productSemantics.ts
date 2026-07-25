@@ -8,6 +8,7 @@
  * Product Semantics defines HOW it is named for restaurant users.
  */
 
+import { toCanonicalPaymentMethod } from "../operational-session/check/paymentMethod";
 import type { KpiId } from "./kpiDictionary";
 import { getKpiDefinition } from "./kpiDictionary";
 
@@ -202,17 +203,15 @@ export const SECTION_TERMINOLOGY = Object.freeze({
   },
 } as const);
 
-/** Payment method display labels (Settlement Transaction codes). */
+/**
+ * PAYMENT-METHOD-CATALOG-UNIFICATION-1 — canonical display labels.
+ * Historical brand codes map via preferredPaymentMethodLabel → card.
+ */
 export const PAYMENT_METHOD_LABELS = Object.freeze({
-  cash: { en: "Cash", ar: "نقداً" },
-  mada: { en: "Mada", ar: "مدى" },
-  visa: { en: "Visa", ar: "فيزا" },
-  mastercard: { en: "Mastercard", ar: "ماستركارد" },
-  apple_pay: { en: "Apple Pay", ar: "Apple Pay" },
-  stc_pay: { en: "STC Pay", ar: "STC Pay" },
-  bank_transfer: { en: "Bank Transfer", ar: "تحويل بنكي" },
-  complimentary: { en: "Complimentary", ar: "مجاني" },
+  cash: { en: "Cash", ar: "نقدًا" },
+  card: { en: "Card (network / bank)", ar: "بطاقة (شبكة / بنك)" },
   other: { en: "Other", ar: "أخرى" },
+  complimentary: { en: "Complimentary", ar: "مجاني" },
 } as const);
 
 export type PaymentMethodLabelCode = keyof typeof PAYMENT_METHOD_LABELS;
@@ -221,8 +220,9 @@ export function preferredPaymentMethodLabel(
   method: string,
   language: PresentationLanguage
 ): string {
+  const canonical = toCanonicalPaymentMethod(method);
   const entry =
-    PAYMENT_METHOD_LABELS[method as PaymentMethodLabelCode];
+    PAYMENT_METHOD_LABELS[canonical as PaymentMethodLabelCode];
   if (entry) return entry[language];
   return method;
 }

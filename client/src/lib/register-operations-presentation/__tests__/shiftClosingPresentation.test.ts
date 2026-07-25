@@ -77,10 +77,8 @@ describe("buildShiftClosingReportVm", () => {
     );
     expect(vm.settlementsCount).toBe(2);
     expect(vm.ordersCount).toBe(2);
-    expect(vm.tenderRows.find((r) => r.key === "network_bank")?.amount).toBe(
-      "10.00"
-    );
-    expect(vm.tenderRows.find((r) => r.key === "cash")?.label).toBe("نقد");
+    expect(vm.tenderRows.find((r) => r.key === "card")?.amount).toBe("10.00");
+    expect(vm.tenderRows.find((r) => r.key === "cash")?.label).toBe("نقدًا");
     expect(vm.differenceAmount).toBe("0.00");
   });
 });

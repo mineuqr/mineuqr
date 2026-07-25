@@ -208,7 +208,7 @@ function sampleBundle(
           mixPercent: "40.00",
         },
         {
-          paymentMethod: "mada",
+          paymentMethod: "card",
           category: "card",
           tenderAmount: (parseDtoAmountForDisplay(trendTotals.revenue) * 0.6).toFixed(2),
           transactionCount: Math.max(1, Math.ceil(trendTotals.paidCheckCount * 0.6)),
@@ -310,16 +310,13 @@ describe("REPORTING-DESIGN-LANGUAGE-1 samples + presentation", () => {
 
         const blob = workbookTextBlob(workbook);
         expect(blob).not.toMatch(EASTERN_DIGITS);
-        // Full monetary catalog rendered (PRESENTATION-ADOPTION-1)
+        // Canonical monetary catalog (PAYMENT-METHOD-CATALOG-UNIFICATION-1)
         expect(blob).toContain("Cash");
-        expect(blob).toContain("Mada");
-        expect(blob).toContain("Visa");
-        expect(blob).toContain("Mastercard");
-        expect(blob).toContain("Apple Pay");
-        expect(blob).toContain("STC Pay");
-        expect(blob).toContain("Bank Transfer");
+        expect(blob).toContain("Card (network / bank)");
         expect(blob).toContain("Other");
         expect(blob).toContain("Complimentary");
+        expect(blob).not.toContain("Mada");
+        expect(blob).not.toContain("Visa");
 
         // Full-width canvas: 14 columns on every sheet
         for (const sheet of workbook.worksheets) {

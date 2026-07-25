@@ -2,10 +2,14 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  CANONICAL_MONETARY_PAYMENT_METHODS,
   CHECK_SETTLEMENT_METHODS_PROGRAM_ID,
   DEFAULT_PAID_PAYMENT_METHOD,
+  PAYMENT_METHOD_CATALOG_UNIFICATION_PROGRAM_ID,
   PAYMENT_METHODS,
+  SELECTABLE_PAYMENT_METHODS,
   paymentMethodCategory,
+  toCanonicalPaymentMethod,
 } from "../check/paymentMethod";
 
 const repoRoot = join(__dirname, "../../../");
@@ -14,14 +18,25 @@ function read(rel: string): string {
   return readFileSync(join(repoRoot, rel), "utf8");
 }
 
-describe("CHECK-SETTLEMENT-METHODS-1 architecture guards", () => {
-  it("registers payment methods including Saudi-relevant tenders", () => {
+describe("CHECK-SETTLEMENT-METHODS-1 / PAYMENT-METHOD-CATALOG-UNIFICATION-1 architecture guards", () => {
+  it("registers one canonical catalog; legacy brand codes map to card", () => {
     expect(CHECK_SETTLEMENT_METHODS_PROGRAM_ID).toBe(
       "CHECK-SETTLEMENT-METHODS-1"
     );
+    expect(PAYMENT_METHOD_CATALOG_UNIFICATION_PROGRAM_ID).toBe(
+      "PAYMENT-METHOD-CATALOG-UNIFICATION-1"
+    );
+    expect([...CANONICAL_MONETARY_PAYMENT_METHODS]).toEqual([
+      "cash",
+      "card",
+      "other",
+    ]);
+    expect([...SELECTABLE_PAYMENT_METHODS]).toEqual(["cash", "card"]);
     expect(PAYMENT_METHODS).toEqual(
       expect.arrayContaining([
         "cash",
+        "card",
+        "other",
         "mada",
         "visa",
         "mastercard",
@@ -29,12 +44,13 @@ describe("CHECK-SETTLEMENT-METHODS-1 architecture guards", () => {
         "stc_pay",
         "bank_transfer",
         "complimentary",
-        "other",
       ])
     );
     expect(DEFAULT_PAID_PAYMENT_METHOD).toBe("other");
     expect(paymentMethodCategory("mada")).toBe("card");
-    expect(paymentMethodCategory("stc_pay")).toBe("digital_wallet");
+    expect(paymentMethodCategory("stc_pay")).toBe("card");
+    expect(toCanonicalPaymentMethod("visa")).toBe("card");
+    expect(toCanonicalPaymentMethod("card")).toBe("card");
   });
 
   it("persists check_settlement_transactions under Check ownership", () => {
@@ -80,7 +96,7 @@ describe("CHECK-SETTLEMENT-METHODS-1 architecture guards", () => {
     const routers = read("server/routers.ts");
     const markPaidBlock = routers.slice(
       routers.indexOf("markPaid:"),
-      routers.indexOf("markPaid:") + 900
+      routers.indexOf("markPaid:") + 1600
     );
     expect(markPaidBlock).toContain("restaurantId");
     expect(markPaidBlock).toContain("sessionId");
@@ -88,5 +104,6 @@ describe("CHECK-SETTLEMENT-METHODS-1 architecture guards", () => {
     expect(markPaidBlock).toContain("paymentMethod");
     expect(markPaidBlock).toContain("SETTLEMENT-PAYMENT-METHOD-CAPTURE-1");
     expect(markPaidBlock).toContain(".optional()");
+    expect(markPaidBlock).toContain('"card"');
   });
 });

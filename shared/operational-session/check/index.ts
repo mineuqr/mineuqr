@@ -45,15 +45,25 @@ export {
 
 export {
   CHECK_SETTLEMENT_METHODS_PROGRAM_ID,
+  PAYMENT_METHOD_CATALOG_UNIFICATION_PROGRAM_ID,
   PAYMENT_METHODS,
+  CANONICAL_MONETARY_PAYMENT_METHODS,
+  SELECTABLE_PAYMENT_METHODS,
+  LEGACY_CARD_PAYMENT_METHODS,
+  ACCEPTED_SETTLEMENT_PAYMENT_METHODS,
   MONETARY_PAYMENT_METHODS,
   DEFAULT_PAID_PAYMENT_METHOD,
   isPaymentMethod,
   assertPaymentMethod,
   isMonetaryPaymentMethod,
+  isLegacyCardPaymentMethod,
+  toCanonicalPaymentMethod,
   paymentMethodCategory,
   type PaymentMethod,
   type MonetaryPaymentMethod,
+  type CanonicalMonetaryPaymentMethod,
+  type SelectablePaymentMethod,
+  type AcceptedSettlementPaymentMethod,
   type PaymentMethodCategory,
 } from "./paymentMethod";
 

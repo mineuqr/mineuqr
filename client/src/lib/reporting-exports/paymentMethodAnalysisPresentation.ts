@@ -1,13 +1,17 @@
 /**
- * REPORTING-PAYMENT-METHOD-PRESENTATION-ADOPTION-1
+ * REPORTING-PAYMENT-METHOD-PRESENTATION-ADOPTION-1 /
+ * PAYMENT-METHOD-CATALOG-UNIFICATION-1
  *
  * Shared Payment Method Analysis view model for Dashboard, Excel, and PDF.
  * Presentation only — values from PaymentMethodAnalyticsDto; labels from Product Semantics.
- * Expands the monetary catalog so every supported method appears (zeros when absent).
+ * Expands the canonical monetary catalog so every supported method appears (zeros when absent).
  * Period-agnostic: no report-scope branching.
  */
 
-import { MONETARY_PAYMENT_METHODS } from "@shared/operational-session";
+import {
+  MONETARY_PAYMENT_METHODS,
+  toCanonicalPaymentMethod,
+} from "@shared/operational-session";
 import {
   preferredPaymentMethodLabel,
   SECTION_TERMINOLOGY,
@@ -40,6 +44,8 @@ export type PaymentMethodAnalysisViewModel = Readonly<{
   hasActivity: boolean;
 }>;
 
+type AnalyticsBucket = PaymentMethodAnalyticsDto["buckets"][number];
+
 function zeroRow(
   paymentMethod: string,
   lang: PresentationLanguage
@@ -54,6 +60,21 @@ function zeroRow(
     transactionCount: 0,
     hasActivity: false,
   };
+}
+
+/** Prefer exact canonical bucket; fall back to legacy brand buckets mapped to it. */
+function bucketForCatalogMethod(
+  byMethod: ReadonlyMap<string, AnalyticsBucket>,
+  catalogMethod: string
+): AnalyticsBucket | undefined {
+  const exact = byMethod.get(catalogMethod);
+  if (exact) return exact;
+  for (const [code, bucket] of byMethod) {
+    if (toCanonicalPaymentMethod(code) === catalogMethod) {
+      return { ...bucket, paymentMethod: catalogMethod };
+    }
+  }
+  return undefined;
 }
 
 /**
@@ -76,7 +97,7 @@ export function buildPaymentMethodAnalysisViewModel(input: {
 
   for (const method of MONETARY_PAYMENT_METHODS) {
     seen.add(method);
-    const bucket = byMethod.get(method);
+    const bucket = bucketForCatalogMethod(byMethod, method);
     if (!bucket) {
       rows.push(zeroRow(method, lang));
       continue;
@@ -98,8 +119,11 @@ export function buildPaymentMethodAnalysisViewModel(input: {
 
   // Future / unexpected monetary codes from DTO — append without redesign
   for (const bucket of analytics.buckets) {
-    if (seen.has(bucket.paymentMethod)) continue;
     if (bucket.paymentMethod === "complimentary") continue;
+    const canonical = toCanonicalPaymentMethod(bucket.paymentMethod);
+    if (canonical === "complimentary") continue;
+    if (seen.has(canonical) || seen.has(bucket.paymentMethod)) continue;
+    seen.add(bucket.paymentMethod);
     rows.push({
       paymentMethod: bucket.paymentMethod,
       label: preferredPaymentMethodLabel(bucket.paymentMethod, lang),

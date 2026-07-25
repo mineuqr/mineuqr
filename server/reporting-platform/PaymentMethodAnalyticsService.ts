@@ -18,6 +18,7 @@ import {
 import {
   isPaymentMethod,
   paymentMethodCategory,
+  toCanonicalPaymentMethod,
   type PaymentMethod,
 } from "@shared/operational-session";
 import { ReportingValidationError } from "./BusinessMetricsService";
@@ -85,11 +86,15 @@ function buildPaymentMethodAnalyticsDto(
       continue;
     }
 
-    const acc = monetary.get(row.paymentMethod) ?? emptyAcc();
+    // PAYMENT-METHOD-CATALOG-UNIFICATION-1 — aggregate by canonical catalog key.
+    const catalogKey = toCanonicalPaymentMethod(
+      row.paymentMethod
+    ) as PaymentMethod;
+    const acc = monetary.get(catalogKey) ?? emptyAcc();
     acc.tenderAmount += parseReportingAmount(row.amount);
     acc.transactionCount += 1;
     acc.checkIds.add(row.checkId);
-    monetary.set(row.paymentMethod, acc);
+    monetary.set(catalogKey, acc);
   }
 
   let monetaryTotal = 0;

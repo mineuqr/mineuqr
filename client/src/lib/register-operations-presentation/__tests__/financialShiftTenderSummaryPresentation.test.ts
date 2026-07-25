@@ -1,18 +1,16 @@
 /**
  * FINANCIAL-SHIFT-SUMMARIES-ADOPTION-1 /
- * FINANCIAL-SHIFT-TENDER-PRESENTATION-REFINEMENT-1 —
+ * FINANCIAL-SHIFT-TENDER-PRESENTATION-REFINEMENT-1 /
+ * PAYMENT-METHOD-CATALOG-UNIFICATION-1 —
  * tender summary presentation.
  * @vitest-environment node
  */
 import { describe, expect, it } from "vitest";
-import {
-  OPS_NETWORK_BANK_METHODS,
-  presentTenderSummaryRows,
-} from "../financialShiftTenderSummaryPresentation";
+import { presentTenderSummaryRows } from "../financialShiftTenderSummaryPresentation";
 import { registerOperationsUiLabel } from "../registerOperationsCopy";
 
-describe("presentTenderSummaryRows (Ops refinement)", () => {
-  it("groups electronic methods under network/bank", () => {
+describe("presentTenderSummaryRows (Ops catalog unification)", () => {
+  it("groups electronic methods under canonical card", () => {
     const rows = presentTenderSummaryRows(
       {
         monetaryTenderTotal: "45.00",
@@ -32,15 +30,15 @@ describe("presentTenderSummaryRows (Ops refinement)", () => {
     expect(rows.map((r) => r.key)).toEqual([
       "total",
       "cash",
-      "network_bank",
+      "card",
       "complimentary",
       "refund",
     ]);
     expect(rows.find((r) => r.key === "total")?.amount).toBe("45.00");
     expect(rows.find((r) => r.key === "cash")?.amount).toBe("10.00");
-    expect(rows.find((r) => r.key === "network_bank")?.amount).toBe("35.00");
-    expect(rows.find((r) => r.key === "network_bank")?.label).toBe(
-      "شبكة / بنك"
+    expect(rows.find((r) => r.key === "card")?.amount).toBe("35.00");
+    expect(rows.find((r) => r.key === "card")?.label).toBe(
+      "بطاقة (شبكة / بنك)"
     );
     expect(rows.find((r) => r.key === "mada")).toBeUndefined();
     expect(rows.find((r) => r.key === "visa")).toBeUndefined();
@@ -59,9 +57,7 @@ describe("presentTenderSummaryRows (Ops refinement)", () => {
       },
       "en"
     );
-    expect(cashOnly.find((r) => r.key === "network_bank")?.amount).toBe(
-      "0.00"
-    );
+    expect(cashOnly.find((r) => r.key === "card")?.amount).toBe("0.00");
 
     const electronicOnly = presentTenderSummaryRows(
       {
@@ -77,8 +73,9 @@ describe("presentTenderSummaryRows (Ops refinement)", () => {
       "en"
     );
     expect(electronicOnly.find((r) => r.key === "cash")?.amount).toBe("0.00");
-    expect(electronicOnly.find((r) => r.key === "network_bank")?.amount).toBe(
-      "20.00"
+    expect(electronicOnly.find((r) => r.key === "card")?.amount).toBe("20.00");
+    expect(electronicOnly.find((r) => r.key === "card")?.label).toBe(
+      "Card (network / bank)"
     );
   });
 
@@ -100,18 +97,23 @@ describe("presentTenderSummaryRows (Ops refinement)", () => {
     expect(registerOperationsUiLabel("tenderComplimentary", "ar")).toBe(
       "ضيافة"
     );
-    expect(registerOperationsUiLabel("cashSales", "ar")).toBe("نقد");
+    expect(registerOperationsUiLabel("cashSales", "ar")).toBe("نقدًا");
   });
 
-  it("lists all network/bank method codes for grouping coverage", () => {
-    expect([...OPS_NETWORK_BANK_METHODS]).toEqual([
-      "mada",
-      "visa",
-      "mastercard",
-      "apple_pay",
-      "stc_pay",
-      "bank_transfer",
-      "other",
-    ]);
+  it("aggregates canonical card key from analytics DTO", () => {
+    const rows = presentTenderSummaryRows(
+      {
+        monetaryTenderTotal: "30.00",
+        cashTenderTotal: "10.00",
+        complimentaryAmount: "0.00",
+        refundAmount: "0.00",
+        methods: [
+          { paymentMethod: "cash", amount: "10.00", transactionCount: 1 },
+          { paymentMethod: "card", amount: "20.00", transactionCount: 2 },
+        ],
+      },
+      "ar"
+    );
+    expect(rows.find((r) => r.key === "card")?.amount).toBe("20.00");
   });
 });

@@ -24,9 +24,10 @@ describe("SETTLEMENT-PAYMENT-METHOD-CAPTURE-1 architecture guards", () => {
 
   it("presentation uses canonical catalog + Product Semantics labels", () => {
     const pres = read("client/src/lib/settlementPaymentMethodPresentation.ts");
-    expect(pres).toContain("MONETARY_PAYMENT_METHODS");
+    expect(pres).toContain("SELECTABLE_PAYMENT_METHODS");
     expect(pres).toContain("preferredPaymentMethodLabel");
     expect(pres).not.toMatch(/Cash.*Mada.*Visa/);
+    expect(pres).not.toContain("mada");
   });
 
   it("session service passes settlements into settleCheckPaidByIdDetailed", () => {

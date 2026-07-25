@@ -409,7 +409,7 @@ export const checkSettlementTransactions = mysqlTable(
 		checkId: int().notNull(),
 		/** ADR-ARCH-020 / M4 — nullable when Check is sessionless. */
 		sessionId: int(),
-		/** Extensible payment method code (cash, mada, visa, …). */
+		/** Payment method code (canonical: cash|card|other; legacy brand codes retained). */
 		paymentMethod: varchar({ length: 32 }).notNull(),
 		amount: decimal({ precision: 10, scale: 2 }).notNull(),
 		currencyCode: varchar({ length: 8 }).notNull(),

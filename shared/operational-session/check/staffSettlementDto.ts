@@ -6,10 +6,10 @@
  * Multi-tender lines require explicit amounts that sum to grandTotal.
  */
 
-import type { MonetaryPaymentMethod } from "./paymentMethod";
+import type { AcceptedSettlementPaymentMethod } from "./paymentMethod";
 
 export type StaffSettlementLineInput = Readonly<{
-  paymentMethod: MonetaryPaymentMethod;
+  paymentMethod: AcceptedSettlementPaymentMethod;
   /** Decimal string; required when more than one line is supplied. */
   amount?: string;
 }>;

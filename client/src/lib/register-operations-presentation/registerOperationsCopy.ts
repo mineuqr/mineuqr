@@ -39,8 +39,11 @@ const COPY = {
     ar: "إجمالي المبيعات",
     en: "Total sales (tenders)",
   },
-  cashSales: { ar: "نقد", en: "Cash" },
-  tenderNetworkBank: { ar: "شبكة / بنك", en: "Network / Bank" },
+  cashSales: { ar: "نقدًا", en: "Cash" },
+  tenderNetworkBank: {
+    ar: "بطاقة (شبكة / بنك)",
+    en: "Card (network / bank)",
+  },
   tenderComplimentary: { ar: "ضيافة", en: "Hospitality" },
   tenderRefund: { ar: "مرتجع", en: "Refund" },
   tenderSummaryEmpty: {

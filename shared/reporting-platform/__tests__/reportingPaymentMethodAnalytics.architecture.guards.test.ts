@@ -47,21 +47,17 @@ describe("REPORTING-PAYMENT-METHOD-ANALYTICS-1 architecture guards", () => {
     expect(SECTION_TERMINOLOGY.en.paymentMethodAnalysis).toBe(
       "Payment Method Analysis"
     );
-    expect(preferredPaymentMethodLabel("mada", "en")).toBe("Mada");
-    expect(preferredPaymentMethodLabel("cash", "ar")).toBe("نقداً");
-    expect(Object.keys(PAYMENT_METHOD_LABELS)).toEqual(
-      expect.arrayContaining([
-        "cash",
-        "mada",
-        "visa",
-        "mastercard",
-        "apple_pay",
-        "stc_pay",
-        "bank_transfer",
-        "complimentary",
-        "other",
-      ])
+    expect(preferredPaymentMethodLabel("mada", "en")).toBe(
+      "Card (network / bank)"
     );
+    expect(preferredPaymentMethodLabel("card", "ar")).toBe(
+      "بطاقة (شبكة / بنك)"
+    );
+    expect(preferredPaymentMethodLabel("cash", "ar")).toBe("نقدًا");
+    expect(Object.keys(PAYMENT_METHOD_LABELS)).toEqual(
+      expect.arrayContaining(["cash", "card", "other", "complimentary"])
+    );
+    expect(Object.keys(PAYMENT_METHOD_LABELS)).not.toContain("mada");
     const labels = read("client/src/lib/reporting-exports/labels.ts");
     expect(labels).toContain("section.paymentMethodAnalysis");
     expect(labels).not.toMatch(/paymentMethodAnalysis:\s*"Payment Method Analysis"/);

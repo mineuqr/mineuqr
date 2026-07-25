@@ -22,16 +22,8 @@ import { listSettlementRecordsByIds } from "../../operational-session/check/sett
 import type { FinancialShiftDomainService } from "../FinancialShiftDomainService";
 import type { FinancialShiftTenderSummaryDto } from "./crmpApiDtos";
 
-const DISPLAY_METHODS = [
-  "cash",
-  "mada",
-  "visa",
-  "mastercard",
-  "apple_pay",
-  "stc_pay",
-  "bank_transfer",
-  "other",
-] as const;
+/** PAYMENT-METHOD-CATALOG-UNIFICATION-1 — canonical catalog only. */
+const DISPLAY_METHODS = ["cash", "card", "other"] as const;
 
 export type SettlementRecordBatchLoader = (input: {
   restaurantId: number;

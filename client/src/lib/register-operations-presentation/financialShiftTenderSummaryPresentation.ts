@@ -1,12 +1,14 @@
 /**
  * FINANCIAL-SHIFT-SUMMARIES-ADOPTION-1 /
- * FINANCIAL-SHIFT-TENDER-PRESENTATION-REFINEMENT-1 —
+ * FINANCIAL-SHIFT-TENDER-PRESENTATION-REFINEMENT-1 /
+ * PAYMENT-METHOD-CATALOG-UNIFICATION-1 —
  * presentation mapping for Register Operations tender summary.
  *
- * Groups electronic methods for Ops display only.
+ * Groups electronic / legacy brand methods under canonical `card`.
  * Does not change API DTO, Settlement, Reporting, or Expected Cash.
  */
 
+import { toCanonicalPaymentMethod } from "@shared/operational-session";
 import {
   formatReportingAmount,
   parseReportingAmount,
@@ -35,21 +37,19 @@ type TenderSummaryDto = Readonly<{
   }>[];
 }>;
 
-/** Electronic / bank tenders rolled into Ops “شبكة / بنك”. */
-export const OPS_NETWORK_BANK_METHODS = [
-  "mada",
-  "visa",
-  "mastercard",
-  "apple_pay",
-  "stc_pay",
-  "bank_transfer",
-  "other",
-] as const;
-
-function sumDisplayAmounts(amounts: readonly string[]): string {
+/**
+ * Ops non-cash row: canonical card + reserved other (prior Ops rolled
+ * electronic brands and other into one network/bank line).
+ */
+function sumOpsCardTenders(
+  methods: TenderSummaryDto["methods"]
+): string {
   let total = 0;
-  for (const amount of amounts) {
-    total += parseReportingAmount(amount);
+  for (const row of methods) {
+    const canonical = toCanonicalPaymentMethod(row.paymentMethod);
+    if (canonical === "card" || canonical === "other") {
+      total += parseReportingAmount(row.amount);
+    }
   }
   return formatReportingAmount(total);
 }
@@ -59,14 +59,6 @@ export function presentTenderSummaryRows(
   summary: TenderSummaryDto,
   language: RegisterOperationsLang
 ): readonly TenderSummaryRowVm[] {
-  const byMethod = new Map(
-    summary.methods.map((m) => [m.paymentMethod, m.amount] as const)
-  );
-
-  const networkBankAmount = sumDisplayAmounts(
-    OPS_NETWORK_BANK_METHODS.map((method) => byMethod.get(method) ?? "0.00")
-  );
-
   return [
     {
       key: "total",
@@ -80,9 +72,9 @@ export function presentTenderSummaryRows(
       amount: summary.cashTenderTotal,
     },
     {
-      key: "network_bank",
+      key: "card",
       label: registerOperationsUiLabel("tenderNetworkBank", language),
-      amount: networkBankAmount,
+      amount: sumOpsCardTenders(summary.methods),
     },
     {
       key: "complimentary",
