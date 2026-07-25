@@ -9,7 +9,8 @@
  * CSA-03: staff settle requires registerId + resolved active Financial Shift.
  * CS-14: underlying Attribution remains fail-open after money commits.
  *
- * Callers: Register Ops CounterPickupCashierPanel + OrdersWorkspacePanel.
+ * Callers: OrdersWorkspacePanel (REGISTER-OPERATIONS-RESPONSIBILITY-CLEANUP-1 —
+ * Register Ops no longer hosts unpaid Order queues).
  */
 
 import { and, desc, eq, isNull, like, or, sql } from "drizzle-orm";

@@ -8,8 +8,9 @@
  * REGISTER-CREATION-UX-CONSOLIDATION-1 /
  * REGISTER-CREATION-LABEL-ADOPTION-1 /
  * FINANCIAL-SHIFT-RETENTION-ADOPTION-1 /
- * SELF-ORDERING-COUNTER-PICKUP-ADOPTION-1 — adaptive Register Operations host.
- * Presentation only — crmp.register.* + crmp.financialShift.* + counter settle UI.
+ * REGISTER-OPERATIONS-RESPONSIBILITY-CLEANUP-1 — financial responsibilities only.
+ * Presentation only — crmp.register.* + crmp.financialShift.*.
+ * Unpaid Order queues live in Orders Workspace (not Register Ops).
  * Shift Archive + human Shift Number; DRAP display window transparent.
  */
 
@@ -34,7 +35,6 @@ import {
 import { ShiftClosingPrintHost } from "./ShiftClosingPrintHost";
 import { CreateRegisterDialog } from "./CreateRegisterDialog";
 import { FinancialShiftArchivePanel } from "./FinancialShiftArchivePanel";
-import { CounterPickupCashierPanel } from "./CounterPickupCashierPanel";
 import {
   AvailabilityBadge,
   DutyBadge,
@@ -901,16 +901,6 @@ export function RegisterOperationsPanel({
                   currencySymbol={currencySymbol}
                   summary={tenderQuery.data}
                   loading={tenderQuery.isLoading || tenderQuery.isFetching}
-                />
-              )}
-
-              {register && (
-                <CounterPickupCashierPanel
-                  restaurantId={restaurantId}
-                  language={language}
-                  registerId={register.registerId}
-                  shiftOpen={!!activeShift}
-                  currencySymbol={currencySymbol}
                 />
               )}
 

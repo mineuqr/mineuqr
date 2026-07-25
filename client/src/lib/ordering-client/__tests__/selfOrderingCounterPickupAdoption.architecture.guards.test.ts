@@ -1,5 +1,6 @@
 /**
  * SELF-ORDERING-COUNTER-PICKUP-ADOPTION-1 — Phase 4 architecture guards.
+ * REGISTER-OPERATIONS-RESPONSIBILITY-CLEANUP-1 — unpaid queue left Register Ops.
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -37,17 +38,19 @@ describe("SELF-ORDERING-COUNTER-PICKUP-ADOPTION-1 Phase 4 guards", () => {
     expect(checkout).not.toContain("order.settlePaid");
   });
 
-  it("cashier UI lives in Register Ops and reuses MarkPaidSettlementDialog", () => {
-    const panel = read(
-      "client/src/components/register-operations/CounterPickupCashierPanel.tsx"
+  it("Orders Workspace owns unpaid settle UI; Register Ops does not", () => {
+    const orders = read(
+      "client/src/components/orders-workspace/OrdersWorkspacePanel.tsx"
     );
     const ops = read(
       "client/src/components/register-operations/RegisterOperationsPanel.tsx"
     );
-    expect(panel).toContain("MarkPaidSettlementDialog");
-    expect(panel).toContain("staffSettleCounterPickup");
-    expect(panel).toContain("staffCancelCounterPickup");
-    expect(ops).toContain("CounterPickupCashierPanel");
-    expect(ops).toContain("SELF-ORDERING-COUNTER-PICKUP-ADOPTION-1");
+    expect(orders).toContain("MarkPaidSettlementDialog");
+    expect(orders).toContain("staffSettleCounterPickup");
+    expect(orders).toContain("staffCancelCounterPickup");
+    expect(ops).not.toContain("CounterPickupCashierPanel");
+    expect(ops).not.toContain("listUnpaidCounterPickup");
+    expect(ops).not.toContain("staffSettleCounterPickup");
+    expect(ops).toContain("REGISTER-OPERATIONS-RESPONSIBILITY-CLEANUP-1");
   });
 });
