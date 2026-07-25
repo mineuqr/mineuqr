@@ -16,8 +16,8 @@ import {
   ensureOpenCheckForSession,
   settleCheckComplimentaryByIdDetailed,
   settleCheckPaidByIdDetailed,
-  voidCheckByIdDetailed,
 } from "../operational-session/check/CheckService";
+import { assertSessionCloseable } from "../operational-session/check/lifecycleSettlementGuardService";
 import { getOrderSettlementProjectionStore } from "../operational-session/check/api/orderSettlementReadComposition";
 import { tryMaterializeOrderSettlementProjections } from "../operational-session/check/read/orderSettlementProjectionMaterializer";
 import { generateDiningSessionToken } from "./sessionToken";
@@ -599,7 +599,11 @@ export async function markComplimentary(
   );
 }
 
-/** Administrative override — close without settlement (open → closed). */
+/**
+ * LIFECYCLE-SETTLEMENT-GUARDS-1 — close Session only after financial completion.
+ * Requires associated Check outcome paid | complimentary.
+ * Never auto-settles. Never voids unpaid Checks as a close shortcut.
+ */
 export async function closeSession(
   input: StaffSessionActionWithContextInput
 ): Promise<void> {
@@ -607,40 +611,13 @@ export async function closeSession(
   const session = await loadSessionForStaffAction(input.restaurantId, input.sessionId);
   const now = formatDiningSessionTimestamp();
 
-  // CHECK-GENERALIZATION-M5 — void by Check id; no Session order rediscovery for money metadata.
-  let voidedCheckId: number | null = null;
-  let voidedGrandTotal: string | null = null;
-  try {
-    let checkId = session.activeCheckId;
-    if (checkId == null) {
-      const ensured = await ensureOpenCheckForSession({
-        restaurantId: input.restaurantId,
-        sessionId: input.sessionId,
-      });
-      checkId = ensured.id;
-    }
-    const voidedFinancial = await voidCheckByIdDetailed({
-      restaurantId: input.restaurantId,
-      checkId,
-      settlementContextHints: {
-        operatorUserId: input.actorUserId,
-        registerId: input.registerId,
-        deviceId: input.deviceId,
-        operationalScreenId: input.operationalScreenId,
-      },
-    });
-    voidedCheckId = voidedFinancial.check.id;
-    voidedGrandTotal = voidedFinancial.check.grandTotal;
-    await tryMaterializeOrderSettlementProjections(
-      getOrderSettlementProjectionStore(),
-      {
-        committedSettlements: voidedFinancial.orderSettlement.settlements,
-        events: voidedFinancial.orderSettlementEvents,
-      }
-    );
-  } catch {
-    /* no open check / already terminal — Session close still proceeds */
-  }
+  const settled = await assertSessionCloseable({
+    restaurantId: input.restaurantId,
+    sessionId: input.sessionId,
+  });
+
+  const settlementOutcome =
+    settled.outcome === "complimentary" ? "complimentary" : "paid";
 
   await applySessionTransition(
     session,
@@ -651,12 +628,17 @@ export async function closeSession(
       tableNumber: session.tableNumber,
       source: "manual_close",
       orderCount: session.totalOrders ?? 0,
-      ordersTotalAmount: voidedGrandTotal ?? "0.00",
-      totalAmount: voidedGrandTotal ?? "0.00",
-      checkId: voidedCheckId,
-      checkGrandTotal: voidedGrandTotal,
+      checkId: settled.checkId,
+      settlement: settlementOutcome,
     },
-    { closedAt: now, openGuard: null, settledAt: null, settlementOutcome: null }
+    {
+      closedAt: now,
+      openGuard: null,
+      settledAt: session.settledAt ?? now,
+      settlementOutcome:
+        (session.settlementOutcome as DiningSessionSettlementOutcome | null) ??
+        settlementOutcome,
+    }
   );
 }
 

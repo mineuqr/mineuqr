@@ -1,4 +1,11 @@
 export {
+  assertSessionCloseable,
+  assertOrderCompletable,
+  LIFECYCLE_SETTLEMENT_GUARDS_PROGRAM_ID,
+  LifecycleSettlementGuardError,
+} from "./lifecycleSettlementGuardService";
+
+export {
   createOpenCheckForSession,
   ensureOpenCheckForSession,
   recalculateOpenCheckForSession,

@@ -27,16 +27,16 @@ describe("SELF-ORDERING-ORDER-SETTLEMENT-ADOPTION-1 presentation", () => {
     expect(unpaidGrandTotalForOrder([], 9)).toBeNull();
   });
 
-  it("exposes Settle + Cancel for unpaid sessionless; blocks cancel after paid", () => {
+  it("exposes Settle + Cancel for unpaid sessionless; blocks complete until paid", () => {
     const unpaid = getOrdersWorkspaceActions("ready", {
       sessionless: true,
       unpaidSessionless: true,
     });
     expect(unpaid.map((a) => a.id)).toEqual([
-      "serve-order",
       "settle-self-ordering",
       "cancel-order",
     ]);
+    expect(unpaid.some((a) => a.id === "serve-order")).toBe(false);
 
     const paid = getOrdersWorkspaceActions("ready", {
       sessionless: true,

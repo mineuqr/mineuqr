@@ -1,4 +1,5 @@
 import { TRPCError } from "@trpc/server";
+import { LifecycleSettlementGuardError } from "@shared/operational-session";
 import {
   OperationalSessionAnchorNotActivatedError,
   OperationalSessionValidationError,
@@ -14,6 +15,9 @@ import {
 
 /** Map dining / operational session domain errors to tRPC errors. */
 export function throwSessionServiceTrpcError(err: unknown): never {
+  if (err instanceof LifecycleSettlementGuardError) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: err.message });
+  }
   if (err instanceof OperationalSessionValidationError) {
     throw new TRPCError({ code: "BAD_REQUEST", message: err.message });
   }

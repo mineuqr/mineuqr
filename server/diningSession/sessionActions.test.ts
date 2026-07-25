@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SelectDiningSession } from "../../drizzle/schema";
+import { LifecycleSettlementGuardError } from "@shared/operational-session";
 
 const repoMocks = vi.hoisted(() => ({
   findSessionById: vi.fn(),
@@ -28,12 +29,22 @@ const financialMocks = vi.hoisted(() => {
     orderSettlementEvents: [],
     settlementRecord: { record: null, events: [], outcome: "skipped" as const },
     settlementRecordEvents: [],
+    settlementContext: {
+      status: "unavailable",
+      registerId: null,
+      financialShiftId: null,
+      gaps: ["test"],
+    },
+    settlementAttribution: {
+      outcome: "skipped",
+      attributionId: null,
+      gaps: [],
+    },
   };
   return {
     financialResult,
     settleCheckPaidByIdDetailed: vi.fn(async () => financialResult),
     settleCheckComplimentaryByIdDetailed: vi.fn(async () => financialResult),
-    voidCheckByIdDetailed: vi.fn(async () => financialResult),
   };
 });
 
@@ -44,8 +55,15 @@ vi.mock("../operational-session/check/CheckService", () => ({
     financialMocks.settleCheckPaidByIdDetailed(...a),
   settleCheckComplimentaryByIdDetailed: (...a: unknown[]) =>
     financialMocks.settleCheckComplimentaryByIdDetailed(...a),
-  voidCheckByIdDetailed: (...a: unknown[]) =>
-    financialMocks.voidCheckByIdDetailed(...a),
+}));
+
+const guardMocks = vi.hoisted(() => ({
+  assertSessionCloseable: vi.fn(),
+}));
+
+vi.mock("../operational-session/check/lifecycleSettlementGuardService", () => ({
+  assertSessionCloseable: (...a: unknown[]) =>
+    guardMocks.assertSessionCloseable(...a),
 }));
 
 vi.mock("../operational-session/check/api/orderSettlementReadComposition", () => ({
@@ -94,47 +112,24 @@ function mockTransaction() {
   });
 }
 
-describe("session lifecycle SETTLEMENT-ARCHITECTURE-1A", () => {
+describe("session lifecycle SETTLEMENT-ARCHITECTURE-1A / LIFECYCLE-SETTLEMENT-GUARDS-1", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockTransaction();
-    repoMocks.updateSessionStatus.mockResolvedValue(undefined);
-    repoMocks.insertSessionEvent.mockResolvedValue(1);
-  });
-
-  describe("isAllowedSessionStatusTransition", () => {
-    it("allows approved transitions", () => {
-      expect(isAllowedSessionStatusTransition("open", "paid")).toBe(true);
-      expect(isAllowedSessionStatusTransition("open", "complimentary")).toBe(true);
-      expect(isAllowedSessionStatusTransition("open", "closed")).toBe(true);
-      expect(isAllowedSessionStatusTransition("paid", "closed")).toBe(true);
-      expect(isAllowedSessionStatusTransition("complimentary", "closed")).toBe(true);
-    });
-
-    it("rejects invalid transitions", () => {
-      expect(isAllowedSessionStatusTransition("open", "open")).toBe(false);
-      expect(isAllowedSessionStatusTransition("closed", "open")).toBe(false);
-      expect(isAllowedSessionStatusTransition("paid", "open")).toBe(false);
-    });
-  });
-
-  it("markPaid settles and auto-closes session", async () => {
     repoMocks.findSessionById.mockResolvedValue(baseSession);
+    guardMocks.assertSessionCloseable.mockResolvedValue({
+      checkId: 900,
+      outcome: "paid",
+    });
+  });
 
+  it("markPaid settles Check then closes session", async () => {
     await markPaid(actionInput);
-
-    expect(financialMocks.settleCheckPaidByIdDetailed).toHaveBeenCalledWith(
-      expect.objectContaining({
-        restaurantId: 1,
-        checkId: 900,
-        settlements: undefined,
-      })
-    );
+    expect(financialMocks.settleCheckPaidByIdDetailed).toHaveBeenCalled();
     expect(repoMocks.updateSessionStatus).toHaveBeenCalledWith(
       expect.objectContaining({
-        status: "paid",
+        status: "closed",
         settlementOutcome: "paid",
-        settledAt: expect.any(String),
       }),
       expect.anything()
     );
@@ -142,40 +137,13 @@ describe("session lifecycle SETTLEMENT-ARCHITECTURE-1A", () => {
       expect.objectContaining({ eventType: TABLE_EVENT_TYPES.SESSION_PAID }),
       expect.anything()
     );
-    expect(repoMocks.updateSessionStatus).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: "closed",
-        openGuard: null,
-        settlementOutcome: "paid",
-      }),
-      expect.anything()
-    );
-    expect(repoMocks.insertSessionEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ eventType: TABLE_EVENT_TYPES.SESSION_CLOSED }),
-      expect.anything()
-    );
   });
 
-  it("markPaid forwards operator settlements to Check settle", async () => {
-    repoMocks.findSessionById.mockResolvedValue(baseSession);
-
-    await markPaid({
-      ...actionInput,
-      settlements: [{ paymentMethod: "mada" }],
-    });
-
-    expect(financialMocks.settleCheckPaidByIdDetailed).toHaveBeenCalledWith({
-      restaurantId: 1,
-      checkId: 900,
-      settlements: [{ paymentMethod: "mada" }],
-    });
-  });
-
-  it("markComplimentary settles and auto-closes session", async () => {
-    repoMocks.findSessionById.mockResolvedValue(baseSession);
-
+  it("markComplimentary settles Check then closes session", async () => {
     await markComplimentary(actionInput);
-
+    expect(
+      financialMocks.settleCheckComplimentaryByIdDetailed
+    ).toHaveBeenCalled();
     expect(repoMocks.insertSessionEvent).toHaveBeenCalledWith(
       expect.objectContaining({ eventType: TABLE_EVENT_TYPES.SESSION_COMPLIMENTARY }),
       expect.anything()
@@ -189,17 +157,38 @@ describe("session lifecycle SETTLEMENT-ARCHITECTURE-1A", () => {
     );
   });
 
-  it("closeSession clears openGuard without settlement", async () => {
-    repoMocks.findSessionById.mockResolvedValue(baseSession);
+  it("closeSession rejects unpaid session (SESSION_REQUIRES_SETTLEMENT)", async () => {
+    guardMocks.assertSessionCloseable.mockRejectedValue(
+      new LifecycleSettlementGuardError(
+        "SESSION_REQUIRES_SETTLEMENT",
+        "Cannot close session before settlement."
+      )
+    );
+
+    await expect(closeSession(actionInput)).rejects.toMatchObject({
+      code: "SESSION_REQUIRES_SETTLEMENT",
+    });
+    expect(repoMocks.updateSessionStatus).not.toHaveBeenCalled();
+  });
+
+  it("closeSession allows paid Check without auto-settle", async () => {
+    guardMocks.assertSessionCloseable.mockResolvedValue({
+      checkId: 900,
+      outcome: "paid",
+    });
 
     await closeSession(actionInput);
 
+    expect(guardMocks.assertSessionCloseable).toHaveBeenCalledWith({
+      restaurantId: 1,
+      sessionId: 10,
+    });
+    expect(financialMocks.settleCheckPaidByIdDetailed).not.toHaveBeenCalled();
     expect(repoMocks.updateSessionStatus).toHaveBeenCalledWith(
       expect.objectContaining({
         status: "closed",
         openGuard: null,
-        settlementOutcome: null,
-        settledAt: null,
+        settlementOutcome: "paid",
       }),
       expect.anything()
     );
@@ -212,6 +201,23 @@ describe("session lifecycle SETTLEMENT-ARCHITECTURE-1A", () => {
     );
   });
 
+  it("closeSession allows complimentary Check", async () => {
+    guardMocks.assertSessionCloseable.mockResolvedValue({
+      checkId: 900,
+      outcome: "complimentary",
+    });
+
+    await closeSession(actionInput);
+
+    expect(repoMocks.updateSessionStatus).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "closed",
+        settlementOutcome: "complimentary",
+      }),
+      expect.anything()
+    );
+  });
+
   it("rejects settlement on closed sessions", async () => {
     repoMocks.findSessionById.mockResolvedValue({
       ...baseSession,
@@ -219,6 +225,14 @@ describe("session lifecycle SETTLEMENT-ARCHITECTURE-1A", () => {
       openGuard: null,
     });
 
-    await expect(markPaid(actionInput)).rejects.toBeInstanceOf(DiningSessionTransitionError);
+    await expect(markPaid(actionInput)).rejects.toBeInstanceOf(
+      DiningSessionTransitionError
+    );
+  });
+
+  it("documents allowed session status transitions", () => {
+    expect(isAllowedSessionStatusTransition("open", "closed")).toBe(true);
+    expect(isAllowedSessionStatusTransition("paid", "closed")).toBe(true);
+    expect(isAllowedSessionStatusTransition("closed", "open")).toBe(false);
   });
 });

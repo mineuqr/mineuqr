@@ -20,6 +20,20 @@ export {
 } from "./checkContract";
 
 export {
+  LIFECYCLE_SETTLEMENT_GUARDS_PROGRAM_ID,
+  FINANCIAL_COMPLETION_CHECK_OUTCOMES,
+  LifecycleSettlementGuardError,
+  isFinanciallyCompleteCheckOutcome,
+  canCloseSession,
+  canCompleteOrder,
+  validateSettlementBeforeTerminalTransition,
+  assertSessionCloseAllowed,
+  assertOrderCompleteAllowed,
+  type FinancialCompletionCheckOutcome,
+  type LifecycleSettlementGuardCode,
+} from "./lifecycleSettlementGuards";
+
+export {
   computeCheckMoney,
   type CheckMoneyInput,
   type CheckMoneyResult,

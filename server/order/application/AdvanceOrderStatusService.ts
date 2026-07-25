@@ -3,6 +3,7 @@ import type { OrderActor } from "../domain/value-objects/OrderActor";
 import type { OrderDomainEvent } from "../domain/events/OrderDomainEvents";
 import { OrderNotFoundError } from "../domain/errors/OrderDomainErrors";
 import type { OrderRepository } from "../repositories/OrderRepository";
+import { assertOrderCompletable } from "../../operational-session/check/lifecycleSettlementGuardService";
 
 export type AdvanceOrderStatusCommand = {
   orderId: number;
@@ -34,6 +35,16 @@ export class AdvanceOrderStatusService {
         previousStatus,
         newStatus: command.targetStatus,
       };
+    }
+
+    // LIFECYCLE-SETTLEMENT-GUARDS-1 — sessionless complete requires settled Check.
+    // Waiter / Table QR serve remains allowed while unpaid (Session close is guarded).
+    if (command.targetStatus === "served") {
+      await assertOrderCompletable({
+        restaurantId: order.restaurantId,
+        orderId: command.orderId,
+        sessionId: order.sessionId,
+      });
     }
 
     const expectedUpdatedAt = order.toPersistedProps().updatedAt;

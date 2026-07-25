@@ -100,12 +100,13 @@ export function getOrderWorkspaceActions(status: OrderLifecycleStatus): Operatio
 }
 
 /**
- * SELF-ORDERING-ORDER-SETTLEMENT-ADOPTION-1 —
+ * SELF-ORDERING-ORDER-SETTLEMENT-ADOPTION-1 /
+ * LIFECYCLE-SETTLEMENT-GUARDS-1 —
  * Settlement-aware Orders actions for Self Ordering (sessionless) Orders.
  *
- * - Unpaid sessionless: kitchen lifecycle + Settle + Cancel (staff void path)
- * - Paid / no open Check sessionless: kitchen lifecycle only (cancel blocked)
- * - Sessioned (Waiter / Table QR): unchanged lifecycle actions
+ * - Unpaid sessionless: prep lifecycle only + Settle + Cancel (no serve/complete)
+ * - Paid sessionless: kitchen complete allowed; cancel blocked
+ * - Sessioned (Waiter / Table QR): unchanged lifecycle (serve unpaid allowed)
  */
 export type OrdersSettlementGate = Readonly<{
   sessionless: boolean;
@@ -127,5 +128,11 @@ export function getOrdersWorkspaceActions(
     return lifecycle;
   }
 
-  return [...lifecycle, SETTLE_SELF_ORDERING, { id: "cancel-order", ...ACTIONS["cancel-order"] }];
+  // LIFECYCLE-SETTLEMENT-GUARDS-1 — completion requires settlement first.
+  const nonComplete = lifecycle.filter((a) => a.id !== "serve-order");
+  return [
+    ...nonComplete,
+    SETTLE_SELF_ORDERING,
+    { id: "cancel-order", ...ACTIONS["cancel-order"] },
+  ];
 }
