@@ -51,6 +51,10 @@ describe("Register Operations presentation architecture guards", () => {
     expect(panel).toContain("FINANCIAL-SHIFT-CLOSING-PRESENTATION-1");
     expect(panel).toContain("FINANCIAL-SHIFT-CLOSING-UX-REFINEMENT-1");
     expect(panel).toContain("FINANCIAL-SHIFT-CLOSING-PRINT-ISOLATION-1");
+    // Dimensions program lives on the dialog component (presentation only).
+    expect(
+      read("src/components/register-operations/ShiftClosingSummaryDialog.tsx")
+    ).toContain("FINANCIAL-SHIFT-CLOSING-DIALOG-DIMENSIONS-1");
     expect(panel).toContain("ShiftClosingPrintHost");
     expect(panel).toContain("overflow-x-hidden");
     expect(panel).not.toContain("hidden print:block");

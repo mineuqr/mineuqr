@@ -1,9 +1,11 @@
 /**
  * FINANCIAL-SHIFT-CLOSING-PRESENTATION-1 /
- * FINANCIAL-SHIFT-CLOSING-UX-REFINEMENT-1 — Shift Closing Summary dialog.
- * Presentation + print workflow only. Close still requires confirmation.
+ * FINANCIAL-SHIFT-CLOSING-UX-REFINEMENT-1 /
+ * FINANCIAL-SHIFT-CLOSING-DIALOG-DIMENSIONS-1 — Shift Closing Summary dialog.
+ * Presentation only. Close still requires confirmation.
  *
- * Layout: wide modal, single vertical body scroll, sticky footer (no H-scroll).
+ * Layout: content-height desktop reconciliation window, equal cards,
+ * compact sticky footer, body scroll only when viewport is short.
  */
 
 import { useEffect, useMemo, useState } from "react";
@@ -211,53 +213,56 @@ export function ShiftClosingSummaryDialog({
         dir={dir}
         showCloseButton={!pending}
         className={cn(
-          // Override default Dialog narrow width — wide desktop modal, sheet-like mobile.
-          "flex w-[min(100vw-1rem,56rem)] max-w-4xl flex-col gap-0 overflow-hidden p-0",
-          "max-h-[min(92dvh,52rem)] sm:max-w-4xl",
-          // Mobile: near full-height bottom sheet feel without H-scroll.
-          "max-sm:top-auto max-sm:bottom-2 max-sm:max-h-[min(94dvh,100%)] max-sm:translate-y-0"
+          // Content-height reconciliation window — wide on desktop, not oversized tall.
+          "flex h-auto w-[min(100vw-1.5rem,72rem)] max-w-6xl flex-col gap-0 overflow-hidden rounded-xl p-0",
+          "max-h-[min(88dvh,40rem)] sm:max-w-6xl",
+          // Mobile: bottom-anchored sheet without forcing empty vertical space.
+          "max-sm:top-auto max-sm:bottom-2 max-sm:max-h-[min(92dvh,100%)] max-sm:translate-y-0 max-sm:rounded-2xl"
         )}
       >
-        <DialogHeader className="shrink-0 space-y-1 border-b border-slate-800/80 px-4 py-4 text-start sm:px-6">
-          <DialogTitle className="pe-8 text-lg sm:text-xl">
+        <DialogHeader className="shrink-0 space-y-0.5 border-b border-slate-800/80 px-4 py-3 text-start sm:px-5 sm:py-3.5">
+          <DialogTitle className="pe-8 text-base font-semibold tracking-tight sm:text-lg">
             {registerOperationsUiLabel("cashCountTitle", language)}
           </DialogTitle>
-          <DialogDescription className="text-sm text-slate-400">
+          <DialogDescription className="text-xs text-slate-400 sm:text-sm">
             {registerOperationsUiLabel("cashCountSubtitle", language)}
           </DialogDescription>
         </DialogHeader>
 
-        {/* Single vertical scroll container — body only */}
+        {/* Single vertical scroll — only when viewport is shorter than content */}
         <div
-          className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-4 py-4 sm:px-6"
+          className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-4 py-3 sm:px-5 sm:py-3.5"
           data-closing-scroll="body"
         >
-          <div className="grid min-w-0 gap-4 lg:grid-cols-2 lg:gap-5">
+          <div
+            className="grid min-w-0 grid-cols-1 items-stretch gap-3 md:grid-cols-2 md:gap-4"
+            data-closing-cards="equal"
+          >
             <section
               aria-label={registerOperationsUiLabel(
                 "closingTenderSection",
                 language
               )}
-              className="min-w-0 rounded-xl border border-sky-500/25 bg-sky-950/20 p-4 sm:p-5"
+              className="flex min-h-0 min-w-0 flex-col rounded-lg border border-sky-500/25 bg-sky-950/20 p-3.5 sm:p-4"
             >
-              <h3 className="text-sm font-medium text-sky-100 sm:text-base">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-sky-200/90 sm:text-sm sm:normal-case sm:tracking-normal sm:font-medium sm:text-sky-100">
                 {registerOperationsUiLabel("closingTenderSection", language)}
               </h3>
               {tenderLoading && !tenderSummary ? (
-                <p className="mt-3 inline-flex items-center gap-2 text-sm text-sky-200">
+                <p className="mt-2.5 inline-flex items-center gap-2 text-sm text-sky-200">
                   <Loader2 className="size-4 animate-spin" aria-hidden />
                   {registerOperationsUiLabel("loading", language)}
                 </p>
               ) : tenderRows.length === 0 ? (
-                <p className="mt-3 text-sm text-slate-400">
+                <p className="mt-2.5 text-sm text-slate-400">
                   {registerOperationsUiLabel("tenderSummaryEmpty", language)}
                 </p>
               ) : (
-                <ul className="mt-3 divide-y divide-slate-800/80">
+                <ul className="mt-2.5 flex-1 divide-y divide-slate-800/80">
                   {tenderRows.map((row) => (
                     <li
                       key={row.key}
-                      className="flex min-w-0 items-baseline justify-between gap-3 py-2.5 text-sm"
+                      className="flex min-w-0 items-baseline justify-between gap-3 py-2 text-sm"
                     >
                       <span
                         className={cn(
@@ -294,17 +299,17 @@ export function ShiftClosingSummaryDialog({
                 "closingDrawerSection",
                 language
               )}
-              className="flex min-w-0 flex-col gap-4 rounded-xl border border-emerald-500/25 bg-emerald-950/15 p-4 sm:p-5"
+              className="flex min-h-0 min-w-0 flex-col gap-3 rounded-lg border border-emerald-500/25 bg-emerald-950/15 p-3.5 sm:p-4"
             >
-              <h3 className="text-sm font-medium text-emerald-100 sm:text-base">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-emerald-200/90 sm:text-sm sm:normal-case sm:tracking-normal sm:font-medium sm:text-emerald-100">
                 {registerOperationsUiLabel("closingDrawerSection", language)}
               </h3>
-              <dl className="grid min-w-0 gap-3 sm:grid-cols-2">
+              <dl className="grid min-w-0 grid-cols-2 gap-x-3 gap-y-2.5">
                 <div className="min-w-0">
-                  <dt className="text-xs text-slate-500">
+                  <dt className="text-[11px] text-slate-500 sm:text-xs">
                     {registerOperationsUiLabel("openingFloatTitle", language)}
                   </dt>
-                  <dd className="mt-1 break-words text-base font-medium text-white">
+                  <dd className="mt-0.5 break-words text-sm font-medium text-white sm:text-base">
                     {formatRegisterMoneyDisplay(
                       openingFloatAmount,
                       currencySymbol,
@@ -313,13 +318,13 @@ export function ShiftClosingSummaryDialog({
                   </dd>
                 </div>
                 <div className="min-w-0">
-                  <dt className="text-xs text-slate-500">
+                  <dt className="text-[11px] text-slate-500 sm:text-xs">
                     {registerOperationsUiLabel(
                       "expectedCashInDrawer",
                       language
                     )}
                   </dt>
-                  <dd className="mt-1 break-words text-base font-medium text-white">
+                  <dd className="mt-0.5 break-words text-sm font-medium text-white sm:text-base">
                     {formatRegisterMoneyDisplay(
                       expectedCashAmount,
                       currencySymbol,
@@ -328,24 +333,24 @@ export function ShiftClosingSummaryDialog({
                   </dd>
                 </div>
                 <div className="min-w-0">
-                  <dt className="text-xs text-slate-500">
+                  <dt className="text-[11px] text-slate-500 sm:text-xs">
                     {registerOperationsUiLabel("openedAt", language)}
                   </dt>
-                  <dd className="mt-1 break-words text-sm font-medium text-white">
+                  <dd className="mt-0.5 break-words text-xs font-medium text-slate-100 sm:text-sm">
                     {reportVm?.openedAtLabel}
                   </dd>
                 </div>
                 <div className="min-w-0">
-                  <dt className="text-xs text-slate-500">
+                  <dt className="text-[11px] text-slate-500 sm:text-xs">
                     {registerOperationsUiLabel("closedAt", language)}
                   </dt>
-                  <dd className="mt-1 break-words text-sm font-medium text-white">
+                  <dd className="mt-0.5 break-words text-xs font-medium text-slate-100 sm:text-sm">
                     {reportVm?.closedAtLabel}
                   </dd>
                 </div>
               </dl>
 
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <label
                   className="text-sm text-slate-300"
                   htmlFor="shift-closing-actual-cash"
@@ -359,7 +364,7 @@ export function ShiftClosingSummaryDialog({
                   autoFocus
                   value={raw}
                   disabled={pending}
-                  className="min-h-11 text-base"
+                  className="min-h-10 text-base sm:min-h-11"
                   aria-invalid={error ? true : undefined}
                   onChange={(e) => {
                     setRaw(e.target.value);
@@ -379,11 +384,11 @@ export function ShiftClosingSummaryDialog({
                 )}
               </div>
 
-              <div className="rounded-lg border border-slate-700/50 bg-slate-950/40 px-4 py-3">
-                <div className="text-xs text-slate-500">
+              <div className="mt-auto rounded-md border border-slate-700/50 bg-slate-950/40 px-3 py-2.5">
+                <div className="text-[11px] text-slate-500 sm:text-xs">
                   {registerOperationsUiLabel("cashCountDifference", language)}
                 </div>
-                <div className="mt-1 break-words text-lg font-semibold text-white">
+                <div className="mt-0.5 break-words text-base font-semibold tabular-nums text-white sm:text-lg">
                   {liveDifference != null
                     ? formatRegisterMoneyDisplay(
                         liveDifference,
@@ -396,7 +401,7 @@ export function ShiftClosingSummaryDialog({
             </section>
           </div>
 
-          <label className="mt-4 flex min-h-11 items-center gap-3 text-sm text-slate-300">
+          <label className="mt-3 flex items-center gap-2.5 py-1 text-sm text-slate-300">
             <input
               type="checkbox"
               className="size-4 shrink-0 accent-cyan-500"
@@ -413,16 +418,16 @@ export function ShiftClosingSummaryDialog({
           </label>
         </div>
 
-        {/* Sticky footer — always visible, never inside body scroll */}
+        {/* Compact sticky footer — actions in one row from sm+ */}
         <div
-          className="shrink-0 border-t border-slate-800/80 bg-background px-4 py-3 sm:px-6 sm:py-4"
+          className="shrink-0 border-t border-slate-800/80 bg-background px-4 py-2.5 sm:px-5 sm:py-3"
           data-closing-footer="actions"
         >
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end sm:gap-2.5">
             <Button
               type="button"
               variant="secondary"
-              className="min-h-11 w-full touch-manipulation"
+              className="min-h-11 w-full touch-manipulation sm:min-h-10 sm:w-auto sm:min-w-[9.5rem] sm:shrink-0"
               disabled={pending || !reportVm}
               onClick={handlePrint}
             >
@@ -431,11 +436,11 @@ export function ShiftClosingSummaryDialog({
                 {registerOperationsUiLabel("printClosingReport", language)}
               </span>
             </Button>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <div className="grid grid-cols-2 gap-2 sm:contents">
               <Button
                 type="button"
                 variant="outline"
-                className="min-h-11 w-full touch-manipulation"
+                className="min-h-11 w-full touch-manipulation sm:min-h-10 sm:w-auto sm:min-w-[7.5rem]"
                 disabled={pending}
                 onClick={onCancel}
               >
@@ -444,7 +449,7 @@ export function ShiftClosingSummaryDialog({
               <Button
                 type="button"
                 variant="destructive"
-                className="min-h-11 w-full touch-manipulation"
+                className="min-h-11 w-full touch-manipulation sm:min-h-10 sm:min-w-[10rem] sm:flex-1 sm:max-w-[16rem]"
                 disabled={pending}
                 onClick={submit}
               >
