@@ -83,9 +83,10 @@ printShiftClosingReport() → body.printing-shift-closing + window.print()
 
 File: `client/src/index.css` (FINANCIAL-SHIFT-CLOSING-PRINT-ISOLATION-1)
 
-- Hide: `body.printing-shift-closing * { visibility: hidden }`
-- Show: `#shift-closing-print-root` and descendants `visibility: visible`
-- Unclip root: absolute, full width, `overflow: visible`, `opacity: 1`
+- Hide shell: `body.printing-shift-closing > *:not(#shift-closing-print-root) { display: none }`  
+  (**not** `visibility: hidden` — that reserved full layout height and produced trailing blank pages: thermal 3 / PDF 2)
+- Show root: `#shift-closing-print-root { display: block; position: static; height: auto }`
+- `html`/`body` height collapse under isolation class
 - Document width: `max-width: 80mm` (thermal-first, A4-compatible)
 - Blocks: `break-inside: avoid; page-break-inside: avoid`
 

@@ -22,8 +22,12 @@ describe("Shift closing print isolation", () => {
     expect(css).toContain("FINANCIAL-SHIFT-CLOSING-PRINT-ISOLATION-1");
     expect(css).toContain(`body.${SHIFT_CLOSING_PRINT_BODY_CLASS}`);
     expect(css).toContain(`#${SHIFT_CLOSING_PRINT_ROOT_ID}`);
-    expect(css).toContain("visibility: hidden !important");
-    expect(css).toContain("visibility: visible !important");
+    // display:none removes shell from layout (visibility:hidden caused blank pages)
+    expect(css).toContain(
+      `body.${SHIFT_CLOSING_PRINT_BODY_CLASS} > *:not(#${SHIFT_CLOSING_PRINT_ROOT_ID})`
+    );
+    expect(css).toContain("display: none !important");
+    expect(css).not.toContain("visibility: hidden !important");
     expect(css).toContain("break-inside: avoid");
     expect(css).toContain("page-break-inside: avoid");
   });

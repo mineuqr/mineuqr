@@ -29,7 +29,7 @@ export function ShiftClosingPrintHost({
       id={SHIFT_CLOSING_PRINT_ROOT_ID}
       data-shift-closing-print-root="true"
       aria-hidden={report ? undefined : true}
-      className="pointer-events-none fixed start-0 top-0 z-[-1] h-0 w-0 overflow-hidden opacity-0"
+      className="pointer-events-none fixed start-0 top-0 -z-10 h-px w-px overflow-hidden opacity-0"
     >
       {report ? (
         <ShiftClosingPrintReport
