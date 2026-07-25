@@ -42,12 +42,12 @@ export function FinancialShiftTenderSummaryCard({
   return (
     <section
       aria-label={registerOperationsUiLabel("tenderSummarySection", language)}
-      className="rounded-xl border border-sky-500/25 bg-sky-950/15 p-3 sm:p-4"
+      className="min-w-0 overflow-hidden rounded-xl border border-sky-500/25 bg-sky-950/15 p-4 sm:p-5"
     >
-      <h3 className="text-sm font-medium text-sky-100/90">
+      <h3 className="text-sm font-medium text-sky-100/90 sm:text-base">
         {registerOperationsUiLabel("tenderSummarySection", language)}
       </h3>
-      <p className="mt-1 text-xs text-slate-500">
+      <p className="mt-1.5 text-xs leading-relaxed text-slate-500 sm:text-sm">
         {registerOperationsUiLabel("tenderSummaryHint", language)}
       </p>
 
@@ -61,17 +61,17 @@ export function FinancialShiftTenderSummaryCard({
           {registerOperationsUiLabel("tenderSummaryEmpty", language)}
         </p>
       ) : (
-        <ul className="mt-3 divide-y divide-slate-800/80">
+        <ul className="mt-4 divide-y divide-slate-800/80">
           {rows.map((row) => (
             <li
               key={row.key}
-              className="flex flex-wrap items-baseline justify-between gap-2 py-2 text-sm"
+              className="flex min-w-0 items-baseline justify-between gap-3 py-2.5 text-sm"
             >
               <span
                 className={
                   row.emphasize
-                    ? "font-medium text-white"
-                    : "text-slate-300"
+                    ? "min-w-0 break-words font-medium text-white"
+                    : "min-w-0 break-words text-slate-300"
                 }
               >
                 {row.label}
@@ -79,8 +79,8 @@ export function FinancialShiftTenderSummaryCard({
               <span
                 className={
                   row.emphasize
-                    ? "font-semibold text-white"
-                    : "tabular-nums text-slate-200"
+                    ? "shrink-0 tabular-nums font-semibold text-white"
+                    : "shrink-0 tabular-nums text-slate-200"
                 }
               >
                 {formatRegisterMoneyDisplay(

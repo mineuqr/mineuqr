@@ -2,7 +2,8 @@
  * REGISTER-OPERATIONS-SIMPLIFICATION-1 /
  * FINANCIAL-SHIFT-WORKFLOW-ADOPTION-1 /
  * FINANCIAL-SHIFT-SUMMARIES-ADOPTION-1 /
- * FINANCIAL-SHIFT-CLOSING-PRESENTATION-1 — adaptive Register Operations host.
+ * FINANCIAL-SHIFT-CLOSING-PRESENTATION-1 /
+ * FINANCIAL-SHIFT-CLOSING-UX-REFINEMENT-1 — adaptive Register Operations host.
  * Presentation only — crmp.register.* + crmp.financialShift.*.
  * Register.open does not create Financial Shift; workflow links them in UI.
  * Cash Drawer vs Tender Summary are separate cards; Expected Cash unchanged.
@@ -530,7 +531,7 @@ export function RegisterOperationsPanel({
     <section
       className={cn(
         restaurantDash.panel,
-        "flex flex-col gap-4 p-4 sm:gap-5 sm:p-6"
+        "flex min-w-0 flex-col gap-4 overflow-x-hidden p-4 sm:gap-5 sm:p-6"
       )}
       dir={dir}
       aria-label={registerOperationsUiLabel("title", language)}
@@ -593,7 +594,7 @@ export function RegisterOperationsPanel({
 
       <div
         className={cn(
-          "grid gap-4",
+          "grid min-w-0 gap-4",
           !simpleMode &&
             "lg:grid-cols-[minmax(0,19rem)_minmax(0,1fr)] xl:grid-cols-[minmax(0,21rem)_minmax(0,1fr)]"
         )}

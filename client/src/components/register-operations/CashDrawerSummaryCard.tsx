@@ -36,17 +36,17 @@ export function CashDrawerSummaryCard({
   return (
     <section
       aria-label={registerOperationsUiLabel("cashDrawerSection", language)}
-      className="rounded-xl border border-emerald-500/25 bg-emerald-950/15 p-3 sm:p-4"
+      className="min-w-0 overflow-hidden rounded-xl border border-emerald-500/25 bg-emerald-950/15 p-4 sm:p-5"
     >
-      <h3 className="text-sm font-medium text-emerald-100/90">
+      <h3 className="text-sm font-medium text-emerald-100/90 sm:text-base">
         {registerOperationsUiLabel("cashDrawerSection", language)}
       </h3>
-      <dl className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        <div>
+      <dl className="mt-4 grid min-w-0 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="min-w-0">
           <dt className="text-xs text-slate-500">
             {registerOperationsUiLabel("openingFloatTitle", language)}
           </dt>
-          <dd className="mt-0.5 font-medium text-white">
+          <dd className="mt-1 break-words text-base font-medium text-white">
             {formatRegisterMoneyDisplay(
               openingFloatAmount,
               currencySymbol,
@@ -54,11 +54,11 @@ export function CashDrawerSummaryCard({
             )}
           </dd>
         </div>
-        <div>
+        <div className="min-w-0">
           <dt className="text-xs text-slate-500">
             {registerOperationsUiLabel("expectedCashInDrawer", language)}
           </dt>
-          <dd className="mt-0.5 font-medium text-white">
+          <dd className="mt-1 break-words text-base font-medium text-white">
             {formatRegisterMoneyDisplay(
               expectedCashAmount,
               currencySymbol,
@@ -66,11 +66,11 @@ export function CashDrawerSummaryCard({
             )}
           </dd>
         </div>
-        <div>
+        <div className="min-w-0">
           <dt className="text-xs text-slate-500">
             {registerOperationsUiLabel("actualCashInDrawer", language)}
           </dt>
-          <dd className="mt-0.5 font-medium text-white">
+          <dd className="mt-1 break-words text-base font-medium text-white">
             {actualCashAmount != null
               ? formatRegisterMoneyDisplay(
                   actualCashAmount,
@@ -80,11 +80,11 @@ export function CashDrawerSummaryCard({
               : registerOperationsUiLabel("none", language)}
           </dd>
         </div>
-        <div>
+        <div className="min-w-0">
           <dt className="text-xs text-slate-500">
             {registerOperationsUiLabel("cashDifference", language)}
           </dt>
-          <dd className="mt-0.5 font-medium text-white">
+          <dd className="mt-1 break-words text-base font-medium text-white">
             {differenceAmount != null
               ? formatRegisterMoneyDisplay(
                   differenceAmount,
@@ -94,19 +94,19 @@ export function CashDrawerSummaryCard({
               : registerOperationsUiLabel("none", language)}
           </dd>
         </div>
-        <div>
+        <div className="min-w-0">
           <dt className="text-xs text-slate-500">
             {registerOperationsUiLabel("openedAt", language)}
           </dt>
-          <dd className="mt-0.5 font-medium text-white">
+          <dd className="mt-1 break-words text-sm font-medium text-white">
             {formatOpenedAtDisplay(openedAt, language)}
           </dd>
         </div>
-        <div>
+        <div className="min-w-0">
           <dt className="text-xs text-slate-500">
             {registerOperationsUiLabel("shiftStatus", language)}
           </dt>
-          <dd className="mt-1">
+          <dd className="mt-1.5">
             <ShiftBadge tone={shiftTone} label={shiftStatusLabel} />
           </dd>
         </div>
