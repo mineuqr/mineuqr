@@ -433,3 +433,43 @@ input[type="date"].subscription-date-input-ltr::-webkit-date-and-time-value {
   unicode-bidi: plaintext;
   font-variant-numeric: tabular-nums;
 }
+
+/*
+ * FINANCIAL-SHIFT-CLOSING-PRINT-ISOLATION-1
+ * Scoped to body.printing-shift-closing only — does not affect Settlement Receipt.
+ * Hides the entire application shell; shows only #shift-closing-print-root.
+ */
+@media print {
+  body.printing-shift-closing * {
+    visibility: hidden !important;
+  }
+
+  body.printing-shift-closing #shift-closing-print-root,
+  body.printing-shift-closing #shift-closing-print-root * {
+    visibility: visible !important;
+  }
+
+  body.printing-shift-closing #shift-closing-print-root {
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    z-index: 1 !important;
+    width: 100% !important;
+    height: auto !important;
+    max-width: none !important;
+    overflow: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+
+  body.printing-shift-closing .shift-closing-print-document {
+    max-width: 80mm;
+    margin: 0 auto;
+    color: #0f172a;
+    background: #fff;
+  }
+
+  body.printing-shift-closing .shift-closing-print-block {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}

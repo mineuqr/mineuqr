@@ -61,6 +61,8 @@ export {
   readAutoPrintClosingReport,
   shortenShiftNumber,
   writeAutoPrintClosingReport,
+  SHIFT_CLOSING_PRINT_BODY_CLASS,
+  SHIFT_CLOSING_PRINT_ROOT_ID,
   type ShiftClosingReportVm,
 } from "./shiftClosingPresentation";
 export {

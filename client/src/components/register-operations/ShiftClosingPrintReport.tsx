@@ -1,6 +1,7 @@
 /**
- * FINANCIAL-SHIFT-CLOSING-PRESENTATION-1 — printable closing summary.
- * Uses window.print() (same infra as Settlement Receipt). Not a fiscal invoice.
+ * FINANCIAL-SHIFT-CLOSING-PRESENTATION-1 /
+ * FINANCIAL-SHIFT-CLOSING-PRINT-ISOLATION-1 — printable closing summary.
+ * Single template for browser / PDF / thermal. Not a fiscal invoice.
  */
 
 import {
@@ -25,11 +26,15 @@ function Line({
 }) {
   return (
     <div className="flex justify-between gap-3 text-sm">
-      <span>{label}</span>
-      <span className="tabular-nums font-medium">{value}</span>
+      <span className="min-w-0 break-words">{label}</span>
+      <span className="shrink-0 tabular-nums font-medium">{value}</span>
     </div>
   );
 }
+
+/** Keep logical blocks together across page breaks (thermal / A4). */
+const blockClass =
+  "shift-closing-print-block space-y-1 border-t border-dashed border-slate-400 pt-2";
 
 export function ShiftClosingPrintReport({
   language,
@@ -41,12 +46,14 @@ export function ShiftClosingPrintReport({
 
   return (
     <div
-      id="shift-closing-report-print"
-      className="space-y-3 text-slate-900"
+      data-shift-closing-report="true"
+      className="shift-closing-print-document mx-auto max-w-[80mm] space-y-3 bg-white p-3 text-slate-900"
       dir={language === "ar" ? "rtl" : "ltr"}
     >
-      <div className="space-y-1 text-center">
-        <p className="text-base font-semibold">{report.restaurantName}</p>
+      <div className="shift-closing-print-block space-y-1 text-center">
+        <p className="text-base font-semibold break-words">
+          {report.restaurantName}
+        </p>
         <p className="font-medium">
           {registerOperationsUiLabel("closingReportTitle", language)}
         </p>
@@ -55,7 +62,7 @@ export function ShiftClosingPrintReport({
         </p>
       </div>
 
-      <div className="space-y-1 border-t border-dashed border-slate-400 pt-2 text-sm">
+      <div className={`${blockClass} text-sm`}>
         <Line
           label={registerOperationsUiLabel("registerLabel", language)}
           value={report.registerName}
@@ -82,7 +89,7 @@ export function ShiftClosingPrintReport({
         />
       </div>
 
-      <div className="space-y-1 border-t border-dashed border-slate-400 pt-2">
+      <div className={blockClass}>
         <p className="text-xs font-semibold uppercase tracking-wide">
           {registerOperationsUiLabel("cashDrawerSection", language)}
         </p>
@@ -104,7 +111,7 @@ export function ShiftClosingPrintReport({
         />
       </div>
 
-      <div className="space-y-1 border-t border-dashed border-slate-400 pt-2">
+      <div className={blockClass}>
         <p className="text-xs font-semibold uppercase tracking-wide">
           {registerOperationsUiLabel("tenderSummarySection", language)}
         </p>
@@ -113,7 +120,7 @@ export function ShiftClosingPrintReport({
         ))}
       </div>
 
-      <div className="space-y-1 border-t border-dashed border-slate-400 pt-2 text-sm">
+      <div className={`${blockClass} text-sm`}>
         <Line
           label={registerOperationsUiLabel("ordersCount", language)}
           value={String(report.ordersCount)}
@@ -124,7 +131,7 @@ export function ShiftClosingPrintReport({
         />
       </div>
 
-      <p className="border-t border-dashed border-slate-400 pt-2 text-center text-xs text-slate-600">
+      <p className="shift-closing-print-block border-t border-dashed border-slate-400 pt-2 text-center text-xs text-slate-600">
         {registerOperationsUiLabel("generatedAt", language)}:{" "}
         {report.generatedAtLabel}
       </p>

@@ -50,7 +50,10 @@ describe("Register Operations presentation architecture guards", () => {
     expect(panel).toContain("FinancialShiftTenderSummaryCard");
     expect(panel).toContain("FINANCIAL-SHIFT-CLOSING-PRESENTATION-1");
     expect(panel).toContain("FINANCIAL-SHIFT-CLOSING-UX-REFINEMENT-1");
+    expect(panel).toContain("FINANCIAL-SHIFT-CLOSING-PRINT-ISOLATION-1");
+    expect(panel).toContain("ShiftClosingPrintHost");
     expect(panel).toContain("overflow-x-hidden");
+    expect(panel).not.toContain("hidden print:block");
     expect(panel).toContain("section=register-catalog");
     expect(panel).not.toMatch(/from ["']@shared\/crmp/);
     expect(panel).not.toMatch(/computeExpectedCash|toCents|grandTotal/);

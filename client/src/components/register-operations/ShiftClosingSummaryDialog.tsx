@@ -16,14 +16,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { ShiftClosingPrintReport } from "./ShiftClosingPrintReport";
 import {
   buildShiftClosingReportVm,
   computeLiveCashDifference,
   formatRegisterMoneyDisplay,
   parseMoneyAmountInput,
   presentTenderSummaryRows,
-  printShiftClosingReport,
   readAutoPrintClosingReport,
   registerOperationsUiLabel,
   writeAutoPrintClosingReport,
@@ -67,6 +65,8 @@ type Props = {
   tenderLoading: boolean;
   pending: boolean;
   onConfirm: (payload: ShiftClosingConfirmPayload) => void;
+  /** Loads the single print host then prints (parent owns the only print root). */
+  onPrint: (report: ShiftClosingReportVm) => void;
   onCancel: () => void;
 };
 
@@ -85,6 +85,7 @@ export function ShiftClosingSummaryDialog({
   tenderLoading,
   pending,
   onConfirm,
+  onPrint,
   onCancel,
 }: Props) {
   const [raw, setRaw] = useState(expectedCashAmount);
@@ -186,8 +187,17 @@ export function ShiftClosingSummaryDialog({
   }
 
   function handlePrint() {
+    if (!reportVm) return;
     writeAutoPrintClosingReport(autoPrint);
-    printShiftClosingReport();
+    const parsed = parseMoneyAmountInput(raw);
+    const actual = parsed.ok ? parsed.amount : expectedCashAmount;
+    onPrint({
+      ...reportVm,
+      actualCashAmount: actual,
+      differenceAmount:
+        computeLiveCashDifference(expectedCashAmount, actual) ??
+        reportVm.differenceAmount,
+    });
   }
 
   return (
@@ -205,11 +215,10 @@ export function ShiftClosingSummaryDialog({
           "flex w-[min(100vw-1rem,56rem)] max-w-4xl flex-col gap-0 overflow-hidden p-0",
           "max-h-[min(92dvh,52rem)] sm:max-w-4xl",
           // Mobile: near full-height bottom sheet feel without H-scroll.
-          "max-sm:top-auto max-sm:bottom-2 max-sm:max-h-[min(94dvh,100%)] max-sm:translate-y-0",
-          "print:max-h-none print:max-w-none print:overflow-visible print:border-0 print:p-6 print:shadow-none"
+          "max-sm:top-auto max-sm:bottom-2 max-sm:max-h-[min(94dvh,100%)] max-sm:translate-y-0"
         )}
       >
-        <DialogHeader className="shrink-0 space-y-1 border-b border-slate-800/80 px-4 py-4 text-start sm:px-6 print:hidden">
+        <DialogHeader className="shrink-0 space-y-1 border-b border-slate-800/80 px-4 py-4 text-start sm:px-6">
           <DialogTitle className="pe-8 text-lg sm:text-xl">
             {registerOperationsUiLabel("cashCountTitle", language)}
           </DialogTitle>
@@ -220,7 +229,7 @@ export function ShiftClosingSummaryDialog({
 
         {/* Single vertical scroll container — body only */}
         <div
-          className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-4 py-4 sm:px-6 print:hidden"
+          className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-4 py-4 sm:px-6"
           data-closing-scroll="body"
         >
           <div className="grid min-w-0 gap-4 lg:grid-cols-2 lg:gap-5">
@@ -404,19 +413,9 @@ export function ShiftClosingSummaryDialog({
           </label>
         </div>
 
-        {reportVm && (
-          <div className="hidden print:block">
-            <ShiftClosingPrintReport
-              language={language}
-              currencySymbol={currencySymbol}
-              report={reportVm}
-            />
-          </div>
-        )}
-
         {/* Sticky footer — always visible, never inside body scroll */}
         <div
-          className="shrink-0 border-t border-slate-800/80 bg-background px-4 py-3 sm:px-6 sm:py-4 print:hidden"
+          className="shrink-0 border-t border-slate-800/80 bg-background px-4 py-3 sm:px-6 sm:py-4"
           data-closing-footer="actions"
         >
           <div className="flex flex-col gap-2">

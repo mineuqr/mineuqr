@@ -3,11 +3,10 @@
  * FINANCIAL-SHIFT-WORKFLOW-ADOPTION-1 /
  * FINANCIAL-SHIFT-SUMMARIES-ADOPTION-1 /
  * FINANCIAL-SHIFT-CLOSING-PRESENTATION-1 /
- * FINANCIAL-SHIFT-CLOSING-UX-REFINEMENT-1 — adaptive Register Operations host.
+ * FINANCIAL-SHIFT-CLOSING-UX-REFINEMENT-1 /
+ * FINANCIAL-SHIFT-CLOSING-PRINT-ISOLATION-1 — adaptive Register Operations host.
  * Presentation only — crmp.register.* + crmp.financialShift.*.
- * Register.open does not create Financial Shift; workflow links them in UI.
- * Cash Drawer vs Tender Summary are separate cards; Expected Cash unchanged.
- * Closing uses Shift Closing Summary + window.print (Settlement Receipt path).
+ * Closing print: single ShiftClosingPrintHost root (isolated @media print).
  */
 
 import {
@@ -28,7 +27,7 @@ import {
   ShiftClosingSummaryDialog,
   type ShiftClosingConfirmPayload,
 } from "./ShiftClosingSummaryDialog";
-import { ShiftClosingPrintReport } from "./ShiftClosingPrintReport";
+import { ShiftClosingPrintHost } from "./ShiftClosingPrintHost";
 import {
   AvailabilityBadge,
   DutyBadge,
@@ -257,7 +256,8 @@ export function RegisterOperationsPanel({
   const [search, setSearch] = useState("");
   const [cashCountOpen, setCashCountOpen] = useState(false);
   const [closeVariance, setCloseVariance] = useState<string | null>(null);
-  const [postClosePrintReport, setPostClosePrintReport] =
+  /** Sole print payload for ShiftClosingPrintHost (one root). */
+  const [closingPrintReport, setClosingPrintReport] =
     useState<ShiftClosingReportVm | null>(null);
 
   const listQuery = useRegisterList({ restaurantId });
@@ -447,15 +447,18 @@ export function RegisterOperationsPanel({
         registerId: register.registerId,
       });
       if (payload.autoPrint) {
-        setPostClosePrintReport(payload.report);
-        window.setTimeout(() => {
-          printShiftClosingReport();
-          setPostClosePrintReport(null);
-        }, 150);
+        runClosingPrint(payload.report);
       }
     } catch {
       /* toasts from mutation hooks */
     }
+  }
+
+  function runClosingPrint(report: ShiftClosingReportVm) {
+    setClosingPrintReport(report);
+    window.setTimeout(() => {
+      printShiftClosingReport();
+    }, 50);
   }
 
   function confirmOpeningFloat(openingFloatAmount: string) {
@@ -966,19 +969,16 @@ export function RegisterOperationsPanel({
             shiftMutations.close.isPending || mutations.close.isPending
           }
           onConfirm={(payload) => void confirmCashCount(payload)}
+          onPrint={runClosingPrint}
           onCancel={() => setCashCountOpen(false)}
         />
       )}
 
-      {postClosePrintReport && (
-        <div className="hidden print:block" aria-hidden>
-          <ShiftClosingPrintReport
-            language={language}
-            currencySymbol={currencySymbol}
-            report={postClosePrintReport}
-          />
-        </div>
-      )}
+      <ShiftClosingPrintHost
+        language={language}
+        currencySymbol={currencySymbol}
+        report={closingPrintReport}
+      />
     </section>
   );
 }

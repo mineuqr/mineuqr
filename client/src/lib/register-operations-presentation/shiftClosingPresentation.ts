@@ -152,8 +152,31 @@ export function writeAutoPrintClosingReport(enabled: boolean): void {
   else localStorage.removeItem(AUTO_PRINT_KEY);
 }
 
-/** Reuse Settlement Receipt print path: browser / thermal via window.print. */
+/**
+ * FINANCIAL-SHIFT-CLOSING-PRINT-ISOLATION-1 —
+ * Body class scopes @media print isolation to the single closing print root.
+ * Does not affect Settlement Receipt or other print surfaces.
+ */
+export const SHIFT_CLOSING_PRINT_BODY_CLASS = "printing-shift-closing" as const;
+export const SHIFT_CLOSING_PRINT_ROOT_ID = "shift-closing-print-root" as const;
+
+/** Browser / thermal / PDF — one pipeline via window.print + isolated root. */
 export function printShiftClosingReport(): void {
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined" || typeof document === "undefined") return;
+
+  const body = document.body;
+  body.classList.add(SHIFT_CLOSING_PRINT_BODY_CLASS);
+
+  let cleaned = false;
+  const cleanup = () => {
+    if (cleaned) return;
+    cleaned = true;
+    body.classList.remove(SHIFT_CLOSING_PRINT_BODY_CLASS);
+    window.removeEventListener("afterprint", cleanup);
+  };
+
+  window.addEventListener("afterprint", cleanup);
   window.print();
+  // Fallback when afterprint is delayed or skipped.
+  window.setTimeout(cleanup, 2_000);
 }
