@@ -120,6 +120,12 @@ import {
   settleOrderPaid,
   SettleOrderPaidError,
 } from "./order/application/SettleOrderPaidService";
+import {
+  cancelCounterPickupUnpaid,
+  listUnpaidCounterPickupChecks,
+  settleCounterPickupPaid,
+  StaffCounterPickupError,
+} from "./order/application/StaffCounterPickupSettlementService";
 import { settlementRecordReadService } from "./operational-session/check/api/settlementRecordReadService";
 import { mapOrderDisplayIdentityFields } from "./order/read/presentation/mapOrderDisplayIdentity";
 import { printWorkspaceRouter } from "./print-workspace/printWorkspaceRouter";
@@ -2304,6 +2310,154 @@ const orderRouter = router({
         });
       }
       return receipt;
+    }),
+
+  /**
+   * SELF-ORDERING-COUNTER-PICKUP-ADOPTION-1 — unpaid sessionless Check queue.
+   */
+  listUnpaidCounterPickup: verifiedProcedure
+    .input(
+      z.object({
+        restaurantId: z.number().int().positive(),
+        query: z.string().max(64).optional(),
+        limit: z.number().int().min(1).max(100).optional(),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      await assertRestaurantAccess(
+        ctx,
+        input.restaurantId,
+        "order.listUnpaidCounterPickup"
+      );
+      return listUnpaidCounterPickupChecks(input);
+    }),
+
+  /**
+   * SELF-ORDERING-COUNTER-PICKUP-ADOPTION-1 — staff settle sessionless Check.
+   * Requires active Register + open Financial Shift (CSA-03). No trackingToken.
+   */
+  staffSettleCounterPickup: verifiedProcedure
+    .input(
+      z.object({
+        restaurantId: z.number().int().positive(),
+        orderId: z.number().int().positive(),
+        registerId: z.string().min(1).max(128),
+        settlements: z
+          .array(
+            z.object({
+              paymentMethod: z.enum([
+                "cash",
+                "mada",
+                "visa",
+                "mastercard",
+                "apple_pay",
+                "stc_pay",
+                "bank_transfer",
+                "other",
+              ]),
+              amount: z.string().min(1).optional(),
+            })
+          )
+          .min(1)
+          .optional(),
+        deviceId: z.string().min(1).max(64).optional(),
+        operationalScreenId: z.string().min(1).max(128).optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      await assertRestaurantAccess(
+        ctx,
+        input.restaurantId,
+        "order.staffSettleCounterPickup"
+      );
+      try {
+        return await settleCounterPickupPaid({
+          restaurantId: input.restaurantId,
+          orderId: input.orderId,
+          operatorUserId: ctx.user.id,
+          registerId: input.registerId,
+          settlements: input.settlements,
+          deviceId: input.deviceId,
+          operationalScreenId: input.operationalScreenId,
+        });
+      } catch (err) {
+        if (err instanceof StaffCounterPickupError) {
+          if (
+            err.code === "ORDER_NOT_FOUND" ||
+            err.code === "CHECK_NOT_FOUND"
+          ) {
+            throw new TRPCError({ code: "NOT_FOUND", message: err.message });
+          }
+          if (
+            err.code === "REGISTER_REQUIRED" ||
+            err.code === "SHIFT_REQUIRED"
+          ) {
+            throw new TRPCError({
+              code: "PRECONDITION_FAILED",
+              message: err.message,
+            });
+          }
+          throw new TRPCError({ code: "BAD_REQUEST", message: err.message });
+        }
+        throwSessionServiceTrpcError(err);
+      }
+    }),
+
+  /**
+   * SELF-ORDERING-COUNTER-PICKUP-ADOPTION-1 — void unpaid Check + cancel Order.
+   */
+  staffCancelCounterPickup: verifiedProcedure
+    .input(
+      z.object({
+        restaurantId: z.number().int().positive(),
+        orderId: z.number().int().positive(),
+        registerId: z.string().min(1).max(128).optional(),
+        reason: z.string().max(256).optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      await assertRestaurantAccess(
+        ctx,
+        input.restaurantId,
+        "order.staffCancelCounterPickup"
+      );
+      const order = await getOrderById(input.orderId);
+      if (!order || order.restaurantId !== input.restaurantId) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
+      }
+      const restaurant = await getRestaurantById(input.restaurantId);
+      const actor = resolveOrderActorFromUser(
+        ctx.user,
+        input.restaurantId,
+        restaurant?.userId ?? ctx.user.id
+      );
+      try {
+        return await cancelCounterPickupUnpaid({
+          restaurantId: input.restaurantId,
+          orderId: input.orderId,
+          operatorUserId: ctx.user.id,
+          actor,
+          registerId: input.registerId,
+          reason: input.reason,
+        });
+      } catch (err) {
+        if (err instanceof StaffCounterPickupError) {
+          if (
+            err.code === "ORDER_NOT_FOUND" ||
+            err.code === "CHECK_NOT_FOUND"
+          ) {
+            throw new TRPCError({ code: "NOT_FOUND", message: err.message });
+          }
+          if (err.code === "ALREADY_SETTLED") {
+            throw new TRPCError({
+              code: "PRECONDITION_FAILED",
+              message: err.message,
+            });
+          }
+          throw new TRPCError({ code: "BAD_REQUEST", message: err.message });
+        }
+        throwSessionServiceTrpcError(err);
+      }
     }),
 
   /**

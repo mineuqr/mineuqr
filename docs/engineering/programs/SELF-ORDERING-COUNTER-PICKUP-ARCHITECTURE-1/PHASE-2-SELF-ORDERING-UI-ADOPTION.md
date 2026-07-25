@@ -171,7 +171,8 @@ Do **not** start Phase 3 validation gates or Phase 4 Cashier adoption without ex
 
 ## Deferred (later phases)
 
-- Phase 3 — Runtime / operational validation certification  
-- Phase 4 — Cashier Cancel + Settle (sessionless Check — IMPACT-1)  
+- Phase 3 — Cashier Settlement Architecture — **CERTIFIED** (resequenced; see `PHASE-3-CASHIER-SETTLEMENT-ARCHITECTURE.md`)  
+- Phase 4 — Cashier Cancel + Settle adoption — **CERTIFIED** (see `SELF-ORDERING-COUNTER-PICKUP-ADOPTION-1/IMPLEMENTATION.md`)  
+- Phase 3b (optional) — Runtime / operational validation certification  
 - Phase 5 — Present Order = Served  
 - Phase 6–7 — Settlement / Reporting adoption confirmation  
