@@ -74,6 +74,11 @@ export type ActiveOrderPresentationSource = OperationalOrderIdentitySource & {
 export type MapActiveOrderPresentationOptions = Readonly<{
   tableUnit?: "table" | "room";
   now?: Date;
+  /**
+   * SELF-ORDERING-ORDER-SETTLEMENT-ADOPTION-1 — override lifecycle actions
+   * (e.g. sessionless Settle / cancel-after-paid gate).
+   */
+  availableActions?: OperationalAction[];
 }>;
 
 export type MapKitchenTicketPresentationOptions = Readonly<{
@@ -342,7 +347,9 @@ export function mapActiveOrderPresentation(
     sla,
     columnElapsedMinutes,
     timingClass: "text-sm font-bold tabular-nums leading-none text-foreground",
-    availableActions: getOrderWorkspaceActions(source.status as OrderLifecycleStatus),
+    availableActions:
+      options.availableActions ??
+      getOrderWorkspaceActions(source.status as OrderLifecycleStatus),
   });
 }
 

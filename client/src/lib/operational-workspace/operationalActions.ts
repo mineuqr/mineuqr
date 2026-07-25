@@ -6,17 +6,23 @@ export type OperationalActionId =
   | "mark-ready"
   | "serve-order"
   | "cancel-order"
-  | "restore-order";
+  | "restore-order"
+  /** SELF-ORDERING-ORDER-SETTLEMENT-ADOPTION-1 — sessionless Check settle from Orders. */
+  | "settle-self-ordering";
 
 export type OperationalAction = {
   id: OperationalActionId;
-  targetStatus: OrderLifecycleStatus;
+  /** Present for kitchen lifecycle actions; omitted for money settle. */
+  targetStatus?: OrderLifecycleStatus;
   labelEn: string;
   labelAr: string;
   variant: "primary" | "secondary" | "destructive";
 };
 
-const ACTIONS: Record<OperationalActionId, Omit<OperationalAction, "id">> = {
+const ACTIONS: Record<
+  Exclude<OperationalActionId, "settle-self-ordering">,
+  Omit<OperationalAction, "id">
+> = {
   "accept-order": {
     targetStatus: "preparing",
     labelEn: "Accept Order",
@@ -55,7 +61,15 @@ const ACTIONS: Record<OperationalActionId, Omit<OperationalAction, "id">> = {
   },
 };
 
+const SETTLE_SELF_ORDERING: OperationalAction = {
+  id: "settle-self-ordering",
+  labelEn: "Settle",
+  labelAr: "تحصيل",
+  variant: "primary",
+};
+
 export function getOperationalActionById(id: OperationalActionId): OperationalAction {
+  if (id === "settle-self-ordering") return SETTLE_SELF_ORDERING;
   return { id, ...ACTIONS[id] };
 }
 
@@ -85,3 +99,33 @@ export function getOrderWorkspaceActions(status: OrderLifecycleStatus): Operatio
   }
 }
 
+/**
+ * SELF-ORDERING-ORDER-SETTLEMENT-ADOPTION-1 —
+ * Settlement-aware Orders actions for Self Ordering (sessionless) Orders.
+ *
+ * - Unpaid sessionless: kitchen lifecycle + Settle + Cancel (staff void path)
+ * - Paid / no open Check sessionless: kitchen lifecycle only (cancel blocked)
+ * - Sessioned (Waiter / Table QR): unchanged lifecycle actions
+ */
+export type OrdersSettlementGate = Readonly<{
+  sessionless: boolean;
+  unpaidSessionless: boolean;
+}>;
+
+export function getOrdersWorkspaceActions(
+  status: OrderLifecycleStatus,
+  gate: OrdersSettlementGate = {
+    sessionless: false,
+    unpaidSessionless: false,
+  }
+): OperationalAction[] {
+  const base = getOrderWorkspaceActions(status);
+  if (!gate.sessionless) return base;
+
+  const lifecycle = base.filter((a) => a.id !== "cancel-order");
+  if (!gate.unpaidSessionless) {
+    return lifecycle;
+  }
+
+  return [...lifecycle, SETTLE_SELF_ORDERING, { id: "cancel-order", ...ACTIONS["cancel-order"] }];
+}

@@ -1,12 +1,15 @@
 /**
  * SELF-ORDERING-COUNTER-PICKUP-ADOPTION-1 — Phase 4
- * Staff Cancel + Settle for sessionless Counter Pickup Checks.
+ * SELF-ORDERING-ORDER-SETTLEMENT-ADOPTION-1 — Orders Workspace adoption
+ * Staff Cancel + Settle for sessionless Self Ordering / Counter Pickup Checks.
  *
  * Reuses certified Check settle/void + Settlement Record + Attribution.
  * No trackingToken. No Session fabrication. No new money platform.
  *
  * CSA-03: staff settle requires registerId + resolved active Financial Shift.
  * CS-14: underlying Attribution remains fail-open after money commits.
+ *
+ * Callers: Register Ops CounterPickupCashierPanel + OrdersWorkspacePanel.
  */
 
 import { and, desc, eq, isNull, like, or, sql } from "drizzle-orm";

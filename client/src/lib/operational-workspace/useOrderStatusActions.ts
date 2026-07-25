@@ -2,13 +2,16 @@ import { trpc } from "@/lib/trpc";
 import type { OrderLifecycleStatus } from "@/lib/orderStatusDisplay";
 import type { OperationalActionId } from "./operationalActions";
 
-const ACTION_MAP: Record<OperationalActionId, { targetStatus: OrderLifecycleStatus }> = {
+const ACTION_MAP: Partial<
+  Record<OperationalActionId, { targetStatus: OrderLifecycleStatus }>
+> = {
   "accept-order": { targetStatus: "preparing" },
   "start-preparing": { targetStatus: "preparing" },
   "mark-ready": { targetStatus: "ready" },
   "serve-order": { targetStatus: "served" },
   "cancel-order": { targetStatus: "cancelled" },
   "restore-order": { targetStatus: "pending" },
+  // settle-self-ordering — money path; not order.updateStatus
 };
 
 export function useOrderStatusActions(restaurantId: number, onSuccess?: () => void) {

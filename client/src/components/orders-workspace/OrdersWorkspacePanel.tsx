@@ -1,5 +1,12 @@
+/**
+ * Orders Workspace — operational order lifecycle.
+ * SELF-ORDERING-ORDER-SETTLEMENT-ADOPTION-1 — Self Ordering (sessionless)
+ * settle/cancel from Orders via staff Counter Pickup façade + MarkPaidSettlementDialog.
+ */
+
 import { useAuth } from "@/_core/hooks/useAuth";
 import { VerificationRequiredPanel } from "@/components/auth/VerificationRequiredPanel";
+import { MarkPaidSettlementDialog } from "@/components/dashboard/MarkPaidSettlementDialog";
 import { OperationalCard } from "@/components/operational-workspace/OperationalCard";
 import { OperationalDetailsDrawer } from "@/components/operational-workspace/OperationalDetailsDrawer";
 import { OperationalWorkspaceShell } from "@/components/operational-workspace/OperationalWorkspaceShell";
@@ -9,7 +16,7 @@ import { RestaurantKpiCard, RestaurantKpiGridSkeleton } from "@/components/dashb
 import { RestaurantSectionError } from "@/components/dashboard/RestaurantSectionStates";
 import { Button } from "@/components/ui/button";
 import type { OperationalActionId } from "@/lib/operational-workspace/operationalActions";
-import { getOrderWorkspaceActions } from "@/lib/operational-workspace/operationalActions";
+import { getOrdersWorkspaceActions } from "@/lib/operational-workspace/operationalActions";
 import { isLateOrder } from "@/lib/operational-workspace/orderViewModels";
 import {
   mapActiveOrderPresentation,
@@ -23,14 +30,25 @@ import {
 import { useGracePeriod } from "@/lib/operational-workspace/useGracePeriod";
 import type { OrderLifecycleStatus } from "@/lib/orderStatusDisplay";
 import {
+  isSessionlessSelfOrderingOrder,
+  unpaidGrandTotalForOrder,
+  unpaidOrderIdSet,
+} from "@/lib/orders-workspace/selfOrderingOrderSettlementPresentation";
+import {
+  readActiveRegister,
+  useFinancialShiftCurrent,
+} from "@/lib/register-operations-presentation";
+import {
   orderReadListQueryOptions,
   restaurantQueriesEnabled,
   useDevQueryRuntimeLog,
 } from "@/lib/queryRuntime";
 import { isEmailNotVerifiedError } from "@/lib/trpcErrors";
 import { trpc } from "@/lib/trpc";
+import type { StaffSettlementLineInput } from "@shared/operational-session";
 import { Loader2, RefreshCw, ClipboardList, ChefHat, CheckCircle, AlertTriangle } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 
 export function OrdersWorkspacePanel({
   restaurantId,
@@ -44,12 +62,23 @@ export function OrdersWorkspacePanel({
   tableLabel?: string;
 }) {
   const isAr = language === "ar";
+  const settleLang = isAr ? "ar" : "en";
   const tableUnit = tableLabel === "rooms" ? "room" : "table";
   const { isAuthenticated, authPending } = useAuth();
   const enabled = restaurantQueriesEnabled(authPending, isAuthenticated, restaurantId);
   const { presets, activeId, active, select } = useSavedFilters("orders", restaurantId, DEFAULT_ORDER_FILTERS);
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [pendingActionOrderId, setPendingActionOrderId] = useState<number | null>(null);
+  const [settleOrderId, setSettleOrderId] = useState<number | null>(null);
+  const [settleAmount, setSettleAmount] = useState("0.00");
+  const utils = trpc.useUtils();
+
+  const activeRegisterId = readActiveRegister(restaurantId)?.trim() || "";
+  const shiftQuery = useFinancialShiftCurrent(
+    { restaurantId, registerId: activeRegisterId },
+    { enabled: enabled && activeRegisterId.length > 0 }
+  );
+  const shiftOpen = !!shiftQuery.data;
 
   useDevQueryRuntimeLog("order.read.listActive", {
     enabled,
@@ -70,14 +99,65 @@ export function OrdersWorkspacePanel({
     orderReadListQueryOptions(enabled)
   );
 
+  const unpaidQuery = trpc.order.listUnpaidCounterPickup.useQuery(
+    { restaurantId, limit: 100 },
+    {
+      enabled,
+      staleTime: 3_000,
+      refetchInterval: enabled ? 15_000 : false,
+    }
+  );
+
+  const unpaidIds = useMemo(
+    () => unpaidOrderIdSet(unpaidQuery.data),
+    [unpaidQuery.data]
+  );
+
   const detailQuery = trpc.order.read.getDetail.useQuery(
     { restaurantId, orderId: selectedOrderId ?? 0 },
     { enabled: enabled && selectedOrderId != null }
   );
 
+  const invalidateAfterMoney = useCallback(async () => {
+    await Promise.all([
+      utils.order.read.listActive.invalidate({ restaurantId }),
+      utils.order.listUnpaidCounterPickup.invalidate(),
+      utils.crmp.financialShift.getTenderSummary.invalidate(),
+      utils.kitchen.read.getQueue.invalidate({ restaurantId, status: "all" }),
+    ]);
+  }, [restaurantId, utils]);
+
+  const settleMutation = trpc.order.staffSettleCounterPickup.useMutation({
+    onSuccess: async () => {
+      toast.success(isAr ? "تم التحصيل" : "Settled");
+      setSettleOrderId(null);
+      setPendingActionOrderId(null);
+      await invalidateAfterMoney();
+      if (selectedOrderId) void detailQuery.refetch();
+    },
+    onError: (err) => {
+      toast.error(err.message);
+      setPendingActionOrderId(null);
+    },
+  });
+
+  const cancelSessionlessMutation = trpc.order.staffCancelCounterPickup.useMutation({
+    onSuccess: async () => {
+      toast.success(isAr ? "تم الإلغاء" : "Cancelled");
+      setPendingActionOrderId(null);
+      setSelectedOrderId(null);
+      await invalidateAfterMoney();
+    },
+    onError: (err) => {
+      toast.error(err.message);
+      setPendingActionOrderId(null);
+    },
+  });
+
   const orderActions = useOrderStatusActions(restaurantId, () => {
     setPendingActionOrderId(null);
     void listQuery.refetch();
+    void unpaidQuery.refetch();
     if (selectedOrderId) void detailQuery.refetch();
   });
   const orderActionsRef = useRef(orderActions);
@@ -93,10 +173,27 @@ export function OrdersWorkspacePanel({
 
   const { displayItems, isFading } = useGracePeriod(items, (o) => String(o.orderId));
 
+  const settlementGateFor = useCallback(
+    (order: { sessionId?: number | null; orderId: number }) => {
+      const sessionless = isSessionlessSelfOrderingOrder(order);
+      return {
+        sessionless,
+        unpaidSessionless: sessionless && unpaidIds.has(order.orderId),
+      };
+    },
+    [unpaidIds]
+  );
+
   const mapOrder = useCallback(
     (order: (typeof displayItems)[number]) =>
-      mapActiveOrderPresentation(order, { tableUnit }),
-    [tableUnit]
+      mapActiveOrderPresentation(order, {
+        tableUnit,
+        availableActions: getOrdersWorkspaceActions(
+          order.status as OrderLifecycleStatus,
+          settlementGateFor(order)
+        ),
+      }),
+    [tableUnit, settlementGateFor]
   );
   const getOrderKey = useCallback(
     (order: (typeof displayItems)[number]) => String(order.orderId),
@@ -114,13 +211,98 @@ export function OrdersWorkspacePanel({
     [displayItems, presentations, isFading]
   );
 
+  const needShiftMessage = isAr
+    ? "افتح وردية على الصندوق النشط لتسوية طلبات الطلب الذاتي"
+    : "Open a Financial Shift on the active register to settle Self Ordering";
+
+  const openSettle = useCallback(
+    (orderId: number) => {
+      if (!shiftOpen || !activeRegisterId) {
+        toast.error(needShiftMessage);
+        return;
+      }
+      const grandTotal =
+        unpaidGrandTotalForOrder(unpaidQuery.data, orderId) ??
+        displayItems.find((o) => o.orderId === orderId)?.totalAmount ??
+        "0.00";
+      setSettleAmount(grandTotal);
+      setSettleOrderId(orderId);
+    },
+    [
+      shiftOpen,
+      activeRegisterId,
+      needShiftMessage,
+      unpaidQuery.data,
+      displayItems,
+    ]
+  );
+
+  const confirmSettle = useCallback(
+    (settlements: readonly StaffSettlementLineInput[]) => {
+      if (settleOrderId == null || !activeRegisterId || settleMutation.isPending) {
+        return;
+      }
+      setPendingActionOrderId(settleOrderId);
+      settleMutation.mutate({
+        restaurantId,
+        orderId: settleOrderId,
+        registerId: activeRegisterId,
+        settlements: [...settlements],
+      });
+    },
+    [settleOrderId, activeRegisterId, settleMutation, restaurantId]
+  );
+
   const handleAction = useCallback(
     async (orderId: number, actionId: OperationalActionId) => {
+      const order =
+        displayItems.find((o) => o.orderId === orderId) ??
+        (selectedOrderId === orderId ? detailQuery.data?.order : undefined);
+      const gate = order
+        ? settlementGateFor(order)
+        : { sessionless: false, unpaidSessionless: false };
+
+      if (actionId === "settle-self-ordering") {
+        openSettle(orderId);
+        return;
+      }
+
+      if (actionId === "cancel-order" && gate.sessionless) {
+        if (!gate.unpaidSessionless) {
+          toast.error(
+            isAr
+              ? "لا يمكن إلغاء طلب مسوّى — استخدم مسار المرتجع"
+              : "Cannot cancel a settled order — use refund workflow"
+          );
+          return;
+        }
+        const confirmLabel = isAr ? "إلغاء الطلب؟" : "Cancel order?";
+        if (!window.confirm(confirmLabel)) return;
+        setPendingActionOrderId(orderId);
+        cancelSessionlessMutation.mutate({
+          restaurantId,
+          orderId,
+          registerId: activeRegisterId || undefined,
+        });
+        return;
+      }
+
       setPendingActionOrderId(orderId);
       await orderActionsRef.current.executeAction(orderId, actionId);
     },
-    []
+    [
+      displayItems,
+      selectedOrderId,
+      detailQuery.data?.order,
+      settlementGateFor,
+      openSettle,
+      isAr,
+      cancelSessionlessMutation,
+      restaurantId,
+      activeRegisterId,
+    ]
   );
+
   const handleOpenDetails = useCallback((orderId: number) => {
     setSelectedOrderId(orderId);
   }, []);
@@ -136,13 +318,27 @@ export function OrdersWorkspacePanel({
   }, [listQuery.data]);
 
   const selected = detailQuery.data?.order;
-  const selectedPresentation = useMemo(
-    () => (selected ? mapActiveOrderPresentation(selected, { tableUnit }) : null),
-    [selected, tableUnit]
-  );
+  const selectedPresentation = useMemo(() => {
+    if (!selected) return null;
+    const gate = settlementGateFor(selected);
+    return mapActiveOrderPresentation(selected, {
+      tableUnit,
+      availableActions: getOrdersWorkspaceActions(
+        selected.status as OrderLifecycleStatus,
+        gate
+      ),
+    });
+  }, [selected, tableUnit, settlementGateFor]);
   const selectedActions = selected
-    ? getOrderWorkspaceActions(selected.status as OrderLifecycleStatus)
+    ? getOrdersWorkspaceActions(
+        selected.status as OrderLifecycleStatus,
+        settlementGateFor(selected)
+      )
     : [];
+
+  const moneyPending =
+    settleMutation.isPending || cancelSessionlessMutation.isPending;
+  const actionPending = orderActions.isPending || moneyPending;
 
   if (listQuery.error && isEmailNotVerifiedError(listQuery.error)) {
     return <VerificationRequiredPanel variant="orders" />;
@@ -151,7 +347,11 @@ export function OrdersWorkspacePanel({
   return (
     <OperationalWorkspaceShell
       title={isAr ? "الطلبات" : "Orders"}
-      description={isAr ? "إدارة دورة حياة الطلبات التشغيلية" : "Operational order lifecycle management"}
+      description={
+        isAr
+          ? "إدارة دورة حياة الطلبات وتسوية الطلب الذاتي"
+          : "Order lifecycle and Self Ordering settlement"
+      }
       headerAside={
         <Button variant="outline" size="sm" onClick={() => void listQuery.refetch()} disabled={listQuery.isFetching}>
           {listQuery.isFetching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
@@ -189,11 +389,10 @@ export function OrdersWorkspacePanel({
           language={language}
           timeline={detailQuery.data?.timeline}
           actions={selectedActions}
-          actionPending={orderActions.isPending}
+          actionPending={actionPending}
           onAction={async (actionId) => {
             if (!selectedOrderId) return;
-            setPendingActionOrderId(selectedOrderId);
-            await orderActions.executeAction(selectedOrderId, actionId);
+            await handleAction(selectedOrderId, actionId);
           }}
         >
           {selectedPresentation ? (
@@ -231,13 +430,30 @@ export function OrdersWorkspacePanel({
               currencySymbol={currencySymbol}
               language={language}
               fading={fading}
-              actionPending={pendingActionOrderId === order.orderId && orderActions.isPending}
+              actionPending={
+                pendingActionOrderId === order.orderId && actionPending
+              }
               onAction={handleAction}
               onOpenDetails={handleOpenDetails}
             />
           ))}
         </div>
       )}
+
+      <MarkPaidSettlementDialog
+        open={settleOrderId != null}
+        language={settleLang}
+        pending={settleMutation.isPending}
+        outstandingAmount={
+          unpaidGrandTotalForOrder(unpaidQuery.data, settleOrderId ?? 0) ??
+          settleAmount
+        }
+        currencySymbol={currencySymbol}
+        onOpenChange={(open) => {
+          if (!open && !settleMutation.isPending) setSettleOrderId(null);
+        }}
+        onConfirm={confirmSettle}
+      />
     </OperationalWorkspaceShell>
   );
 }
