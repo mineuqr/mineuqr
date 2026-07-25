@@ -8,7 +8,8 @@
 | **Migration** | `drizzle/0081_crmp_financial_shift_number.sql` |
 | **DB migrate** | **NOT EXECUTED** |
 | **Production deploy** | **NOT EXECUTED** |
-| **HEAD / origin/main** | `53a451889be469fdefc93d45334eb89c6b0e6a49` |
+| **Release commit** | `53a451889be469fdefc93d45334eb89c6b0e6a49` |
+| **Certification HEAD** | `ec7ec9d` on `origin/main` |
 | **Verdict** | **RELEASE READY — CERTIFIED** |
 
 ---
