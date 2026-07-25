@@ -4,9 +4,11 @@
  * FINANCIAL-SHIFT-SUMMARIES-ADOPTION-1 /
  * FINANCIAL-SHIFT-CLOSING-PRESENTATION-1 /
  * FINANCIAL-SHIFT-CLOSING-UX-REFINEMENT-1 /
- * FINANCIAL-SHIFT-CLOSING-PRINT-ISOLATION-1 — adaptive Register Operations host.
+ * FINANCIAL-SHIFT-CLOSING-PRINT-ISOLATION-1 /
+ * REGISTER-CREATION-UX-CONSOLIDATION-1 /
+ * REGISTER-CREATION-LABEL-ADOPTION-1 — adaptive Register Operations host.
  * Presentation only — crmp.register.* + crmp.financialShift.*.
- * Closing print: single ShiftClosingPrintHost root (isolated @media print).
+ * Visible create entry: إنشاء صندوق (shared RegisterCatalogForm).
  */
 
 import {
@@ -28,6 +30,7 @@ import {
   type ShiftClosingConfirmPayload,
 } from "./ShiftClosingSummaryDialog";
 import { ShiftClosingPrintHost } from "./ShiftClosingPrintHost";
+import { CreateRegisterDialog } from "./CreateRegisterDialog";
 import {
   AvailabilityBadge,
   DutyBadge,
@@ -65,7 +68,7 @@ import {
 } from "@/lib/register-operations-presentation";
 import { spaNavigate } from "@/const";
 import { cn } from "@/lib/utils";
-import { Loader2, RefreshCw, Search, WalletCards } from "lucide-react";
+import { Loader2, Plus, RefreshCw, Search, WalletCards } from "lucide-react";
 
 type Props = {
   restaurantId: number;
@@ -127,18 +130,22 @@ function EmptyOnboarding({
   restaurantId,
   canManageCatalog,
   variant,
+  refreshing,
+  onCreate,
+  onRefresh,
 }: {
   language: RegisterOperationsLang;
   restaurantId: number;
   canManageCatalog: boolean;
   variant: "none" | "inactive";
+  refreshing: boolean;
+  onCreate: () => void;
+  onRefresh: () => void;
 }) {
   const titleKey =
     variant === "inactive" ? "noActiveRegisterTitle" : "emptyTitle";
   const subtitleKey =
     variant === "inactive" ? "noActiveRegisterSubtitle" : "emptySubtitle";
-  const ctaKey =
-    variant === "inactive" ? "openCatalogActivate" : "createRegister";
 
   return (
     <div
@@ -147,6 +154,7 @@ function EmptyOnboarding({
         "flex min-h-[min(28rem,70vh)] flex-col items-center justify-center px-6 py-12 text-center sm:px-10"
       )}
       dir={language === "ar" ? "rtl" : "ltr"}
+      data-register-empty={variant}
     >
       <div
         className="mb-5 flex size-16 items-center justify-center rounded-2xl border border-cyan-500/25 bg-cyan-500/10 text-cyan-300 sm:size-20 [&_svg]:size-8 sm:[&_svg]:size-10"
@@ -160,27 +168,60 @@ function EmptyOnboarding({
       <p className="mt-2 max-w-md text-sm text-slate-400 sm:text-base">
         {registerOperationsUiLabel(subtitleKey, language)}
       </p>
-      <OpButton
-        station
-        className="mt-6 min-w-[12rem]"
-        disabled={!canManageCatalog}
-        aria-disabled={!canManageCatalog ? "true" : undefined}
-        title={
-          canManageCatalog
-            ? undefined
-            : registerOperationsUiLabel("createRegisterDisabledHint", language)
-        }
-        onClick={() => {
-          if (!canManageCatalog) return;
-          spaNavigate(
-            variant === "inactive"
-              ? `/dashboard?restaurant=${restaurantId}&section=register-catalog`
-              : `/dashboard?restaurant=${restaurantId}&section=register-catalog&create=1`
-          );
-        }}
-      >
-        {registerOperationsUiLabel(ctaKey, language)}
-      </OpButton>
+      <div className="mt-6 flex w-full max-w-md flex-col items-stretch gap-2 sm:flex-row sm:justify-center">
+        <OpButton
+          station
+          className="min-w-[12rem]"
+          disabled={!canManageCatalog}
+          aria-disabled={!canManageCatalog ? "true" : undefined}
+          title={
+            canManageCatalog
+              ? undefined
+              : registerOperationsUiLabel(
+                  "createRegisterDisabledHint",
+                  language
+                )
+          }
+          onClick={() => {
+            if (!canManageCatalog) return;
+            onCreate();
+          }}
+        >
+          <Plus className="size-4 shrink-0" aria-hidden />
+          <span className="ms-1.5">
+            {registerOperationsUiLabel("createRegister", language)}
+          </span>
+        </OpButton>
+        {variant === "inactive" && canManageCatalog && (
+          <OpButton
+            variant="secondary"
+            className="min-w-[12rem]"
+            onClick={() =>
+              spaNavigate(
+                `/dashboard?restaurant=${restaurantId}&section=register-catalog`
+              )
+            }
+          >
+            {registerOperationsUiLabel("openCatalogActivate", language)}
+          </OpButton>
+        )}
+        <OpButton
+          variant="outline"
+          className="min-w-[8rem]"
+          disabled={refreshing}
+          onClick={onRefresh}
+          aria-label={registerOperationsUiLabel("refresh", language)}
+        >
+          {refreshing ? (
+            <Loader2 className="size-4 animate-spin" aria-hidden />
+          ) : (
+            <RefreshCw className="size-4" aria-hidden />
+          )}
+          <span className="ms-1.5">
+            {registerOperationsUiLabel("refresh", language)}
+          </span>
+        </OpButton>
+      </div>
       {!canManageCatalog && (
         <p className="mt-3 max-w-lg text-xs text-slate-500 sm:text-sm">
           {registerOperationsUiLabel("createRegisterDisabledHint", language)}
@@ -259,6 +300,7 @@ export function RegisterOperationsPanel({
   /** Sole print payload for ShiftClosingPrintHost (one root). */
   const [closingPrintReport, setClosingPrintReport] =
     useState<ShiftClosingReportVm | null>(null);
+  const [createRegisterOpen, setCreateRegisterOpen] = useState(false);
 
   const listQuery = useRegisterList({ restaurantId });
   const currentQuery = useRegisterCurrent(
@@ -503,6 +545,16 @@ export function RegisterOperationsPanel({
           restaurantId={restaurantId}
           canManageCatalog={canManageCatalog}
           variant="none"
+          refreshing={listQuery.isFetching}
+          onCreate={() => setCreateRegisterOpen(true)}
+          onRefresh={() => void listQuery.refetch()}
+        />
+        <CreateRegisterDialog
+          open={createRegisterOpen}
+          restaurantId={restaurantId}
+          language={language}
+          onOpenChange={setCreateRegisterOpen}
+          onCreated={() => void invalidate(restaurantId)}
         />
       </section>
     );
@@ -521,6 +573,16 @@ export function RegisterOperationsPanel({
           restaurantId={restaurantId}
           canManageCatalog={canManageCatalog}
           variant="inactive"
+          refreshing={listQuery.isFetching}
+          onCreate={() => setCreateRegisterOpen(true)}
+          onRefresh={() => void listQuery.refetch()}
+        />
+        <CreateRegisterDialog
+          open={createRegisterOpen}
+          restaurantId={restaurantId}
+          language={language}
+          onOpenChange={setCreateRegisterOpen}
+          onCreated={() => void invalidate(restaurantId)}
         />
       </section>
     );
@@ -558,25 +620,40 @@ export function RegisterOperationsPanel({
             </p>
           )}
         </div>
-        <OpButton
-          size="sm"
-          variant="outline"
-          className="min-h-9"
-          disabled={listQuery.isFetching || busy}
-          onClick={() =>
-            void invalidate(restaurantId, selectedId ?? undefined)
-          }
-          aria-label={registerOperationsUiLabel("refresh", language)}
-        >
-          {listQuery.isFetching || currentQuery.isFetching ? (
-            <Loader2 className="size-4 animate-spin" aria-hidden />
-          ) : (
-            <RefreshCw className="size-4" aria-hidden />
+        <div className="flex flex-wrap items-center gap-2">
+          {canManageCatalog && (
+            <OpButton
+              size="sm"
+              className="min-h-9"
+              onClick={() => setCreateRegisterOpen(true)}
+              aria-label={registerOperationsUiLabel("createRegister", language)}
+            >
+              <Plus className="size-4 shrink-0" aria-hidden />
+              <span className="ms-1.5">
+                {registerOperationsUiLabel("createRegister", language)}
+              </span>
+            </OpButton>
           )}
-          <span className="ms-1.5 hidden sm:inline">
-            {registerOperationsUiLabel("refresh", language)}
-          </span>
-        </OpButton>
+          <OpButton
+            size="sm"
+            variant="outline"
+            className="min-h-9"
+            disabled={listQuery.isFetching || busy}
+            onClick={() =>
+              void invalidate(restaurantId, selectedId ?? undefined)
+            }
+            aria-label={registerOperationsUiLabel("refresh", language)}
+          >
+            {listQuery.isFetching || currentQuery.isFetching ? (
+              <Loader2 className="size-4 animate-spin" aria-hidden />
+            ) : (
+              <RefreshCw className="size-4" aria-hidden />
+            )}
+            <span className="ms-1.5 hidden sm:inline">
+              {registerOperationsUiLabel("refresh", language)}
+            </span>
+          </OpButton>
+        </div>
       </header>
 
       {listError && (
@@ -978,6 +1055,14 @@ export function RegisterOperationsPanel({
         language={language}
         currencySymbol={currencySymbol}
         report={closingPrintReport}
+      />
+
+      <CreateRegisterDialog
+        open={createRegisterOpen}
+        restaurantId={restaurantId}
+        language={language}
+        onOpenChange={setCreateRegisterOpen}
+        onCreated={() => void invalidate(restaurantId, selectedId ?? undefined)}
       />
     </section>
   );

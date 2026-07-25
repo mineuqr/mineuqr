@@ -142,7 +142,7 @@ function restaurantTabLabel(tab: RestaurantTab, language: string, t: (key: strin
     orders: language === "ar" ? "الطلبات" : "Orders",
     settlements: language === "ar" ? "التسويات" : "Settlements",
     register: language === "ar" ? "عمليات الصندوق" : "Register Ops",
-    "register-catalog": language === "ar" ? "كتالوج الصناديق" : "Register Catalog",
+    "register-catalog": language === "ar" ? "إنشاء صندوق" : "Create register",
     screens: language === "ar" ? "إدارة الشاشات" : "Screen Management",
     devices: language === "ar" ? "إدارة الشاشات" : "Screen Management",
     "screen-provisioning": language === "ar" ? "تجهيز الشاشة" : "Screen Provisioning",

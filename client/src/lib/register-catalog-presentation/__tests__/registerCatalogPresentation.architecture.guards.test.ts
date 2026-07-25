@@ -31,6 +31,8 @@ describe("Register Catalog presentation architecture guards", () => {
       "src/components/register-catalog/RegisterCatalogPanel.tsx"
     );
     expect(panel).toContain("REGISTER-CATALOG-VALIDATION-PRESENTATION-1");
+    expect(panel).toContain("REGISTER-CREATION-UX-CONSOLIDATION-1");
+    expect(panel).toContain("RegisterCatalogForm");
     expect(panel).not.toContain("openRegister");
     expect(panel).not.toContain("assignOperator");
     expect(panel).not.toContain("trpc.crmp.register");
@@ -41,12 +43,18 @@ describe("Register Catalog presentation architecture guards", () => {
     const panel = read(
       "src/components/register-catalog/RegisterCatalogPanel.tsx"
     );
+    const form = read(
+      "src/components/register-catalog/RegisterCatalogForm.tsx"
+    );
     expect(panel).toContain("presentRegisterCatalogError");
-    expect(panel).toContain("aria-invalid");
-    expect(panel).toContain("aria-describedby");
-    expect(panel).toContain("toast.success");
-    expect(panel).not.toMatch(/setError\(e instanceof Error \? e\.message/);
-    expect(panel).not.toContain("JSON.stringify");
+    expect(form).toContain("presentRegisterCatalogError");
+    expect(form).toContain("aria-invalid");
+    expect(form).toContain("aria-describedby");
+    expect(form).toContain("toast.success");
+    expect(panel + form).not.toMatch(
+      /setError\(e instanceof Error \? e\.message/
+    );
+    expect(panel + form).not.toContain("JSON.stringify");
     expect(panel).not.toMatch(/listQuery\.error\.message/);
   });
 

@@ -5,7 +5,7 @@
 export type CatalogLanguage = "ar" | "en";
 
 const COPY = {
-  title: { ar: "كتالوج الصناديق", en: "Register Catalog" },
+  title: { ar: "إنشاء صندوق", en: "Create register" },
   subtitle: {
     ar: "تجهيز وتفعيل صناديق التشغيل قبل فتح الوردية التشغيلية",
     en: "Provision and activate registers before opening duty",

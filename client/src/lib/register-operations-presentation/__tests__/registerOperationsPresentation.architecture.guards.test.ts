@@ -51,14 +51,18 @@ describe("Register Operations presentation architecture guards", () => {
     expect(panel).toContain("FINANCIAL-SHIFT-CLOSING-PRESENTATION-1");
     expect(panel).toContain("FINANCIAL-SHIFT-CLOSING-UX-REFINEMENT-1");
     expect(panel).toContain("FINANCIAL-SHIFT-CLOSING-PRINT-ISOLATION-1");
+    expect(panel).toContain("REGISTER-CREATION-UX-CONSOLIDATION-1");
     // Dimensions program lives on the dialog component (presentation only).
     expect(
       read("src/components/register-operations/ShiftClosingSummaryDialog.tsx")
     ).toContain("FINANCIAL-SHIFT-CLOSING-DIALOG-DIMENSIONS-1");
     expect(panel).toContain("ShiftClosingPrintHost");
+    expect(panel).toContain("CreateRegisterDialog");
     expect(panel).toContain("overflow-x-hidden");
     expect(panel).not.toContain("hidden print:block");
+    // Activate deep-link route unchanged; create is embedded with user label.
     expect(panel).toContain("section=register-catalog");
+    expect(panel).toContain("REGISTER-CREATION-LABEL-ADOPTION-1");
     expect(panel).not.toMatch(/from ["']@shared\/crmp/);
     expect(panel).not.toMatch(/computeExpectedCash|toCents|grandTotal/);
     expect(panel).not.toContain("trpc.crmp.catalog");
@@ -109,9 +113,11 @@ describe("Register Operations presentation architecture guards", () => {
     const copy = read(
       "src/lib/register-operations-presentation/registerOperationsCopy.ts"
     );
-    expect(copy).toContain("لا يوجد أي صندوق تشغيل");
+    expect(copy).toContain("لا يوجد صندوق لهذا الفرع.");
     expect(copy).toContain("لا يوجد صندوق نشط");
     expect(copy).toContain("إنشاء صندوق");
-    expect(copy).toContain("قم بتفعيل صندوق من كتالوج الصناديق.");
+    expect(copy).toContain("فعّل صندوقاً موجوداً أو أنشئ صندوقاً جديداً للمتابعة.");
+    expect(copy).not.toContain("إدارة الصناديق");
+    expect(copy).not.toContain("كتالوج الصناديق");
   });
 });

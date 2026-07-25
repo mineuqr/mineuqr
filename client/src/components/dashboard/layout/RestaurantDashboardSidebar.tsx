@@ -24,7 +24,6 @@ import {
   Settings,
   Store,
   WalletCards,
-  BookMarked,
   Tag,
   UsersRound,
   Wrench,
@@ -117,13 +116,9 @@ export function RestaurantDashboardSidebar({
           active: restaurantTab === "register",
           onClick: () => onRestaurantTabChange!("register"),
         },
-        {
-          id: "register-catalog",
-          label: language === "ar" ? "كتالوج الصناديق" : "Register Catalog",
-          icon: BookMarked,
-          active: restaurantTab === "register-catalog",
-          onClick: () => onRestaurantTabChange!("register-catalog"),
-        },
+        // REGISTER-CREATION-UX-CONSOLIDATION-1 /
+        // REGISTER-CREATION-LABEL-ADOPTION-1 — Catalog removed from sidebar;
+        // create lives in Register Ops (label: إنشاء صندوق).
         {
           id: "screens",
           label: language === "ar" ? "إدارة الشاشات" : "Screens",

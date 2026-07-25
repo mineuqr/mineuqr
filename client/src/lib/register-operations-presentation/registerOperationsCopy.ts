@@ -75,20 +75,25 @@ const COPY = {
     en: "No active register",
   },
   noActiveRegisterSubtitle: {
-    ar: "قم بتفعيل صندوق من كتالوج الصناديق.",
-    en: "Activate a register from the Register Catalog.",
+    ar: "فعّل صندوقاً موجوداً أو أنشئ صندوقاً جديداً للمتابعة.",
+    en: "Activate an existing register or create a new one to continue.",
   },
+  /** Deep-link to activate (route unchanged); visible label is action-oriented. */
   openCatalogActivate: {
-    ar: "فتح كتالوج الصناديق",
-    en: "Open Register Catalog",
+    ar: "تفعيل الصندوق",
+    en: "Activate register",
+  },
+  createRegisterNew: {
+    ar: "إنشاء صندوق",
+    en: "Create register",
   },
   catalogActivateHint: {
-    ar: "يجب تفعيل الصندوق من الكتالوج قبل فتحه.",
-    en: "Activate the register in the catalog before opening duty.",
+    ar: "يجب تفعيل الصندوق قبل فتحه.",
+    en: "Activate the register before opening duty.",
   },
   openDisabledHint: {
-    ar: "الصندوق غير جاهز للفتح حتى يتم تفعيله من الكتالوج.",
-    en: "Register cannot open until it is activated in the catalog.",
+    ar: "الصندوق غير جاهز للفتح حتى يتم تفعيله.",
+    en: "Register cannot open until it is activated.",
   },
   stationMode: { ar: "وضع المحطة", en: "Station mode" },
   stationModeHint: {
@@ -98,12 +103,12 @@ const COPY = {
   availableRegisters: { ar: "الصناديق", en: "Registers" },
   searchRegisters: { ar: "بحث عن صندوق…", en: "Search registers…" },
   emptyTitle: {
-    ar: "لا يوجد أي صندوق تشغيل",
-    en: "No operating registers yet",
+    ar: "لا يوجد صندوق لهذا الفرع.",
+    en: "No register for this branch.",
   },
   emptySubtitle: {
-    ar: "ابدأ بإنشاء أول صندوق تشغيل لهذا الفرع.",
-    en: "Start by creating the first operating register for this branch.",
+    ar: "للبدء بعمليات الصندوق قم بإنشاء أول صندوق.",
+    en: "To start register operations, create the first register.",
   },
   createRegister: { ar: "إنشاء صندوق", en: "Create register" },
   createRegisterDisabledHint: {
@@ -111,16 +116,20 @@ const COPY = {
     en: "You do not have permission to create a register for this branch.",
   },
   createRegisterHint: {
-    ar: "سيتم فتح كتالوج الصناديق لإنشاء صندوق جديد.",
-    en: "Opens Register Catalog to create a new register.",
+    ar: "أنشئ صندوقاً جديداً من شاشة عمليات الصندوق.",
+    en: "Create a new register from Register Operations.",
+  },
+  createRegisterEmbeddedHint: {
+    ar: "أدخل رمز واسم الصندوق لبدء عمليات الصندوق.",
+    en: "Enter the register code and name to start register operations.",
   },
   listEmptyGuidance: {
     ar: "لم يتم إنشاء أي صندوق تشغيل لهذا المطعم.",
     en: "No operating register has been created for this restaurant.",
   },
   listEmptyNext: {
-    ar: "التالي: أنشئ صندوقاً من كتالوج الصناديق.",
-    en: "Next: create a register from Register Catalog.",
+    ar: "التالي: أنشئ صندوقاً من زر إنشاء صندوق.",
+    en: "Next: create a register with Create register.",
   },
   selectRegister: { ar: "اختر صندوقاً", en: "Select a register" },
   selectRegisterHint: {
