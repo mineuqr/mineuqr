@@ -8,13 +8,14 @@
 | **Migration** | `drizzle/0081_crmp_financial_shift_number.sql` |
 | **DB migrate** | **NOT EXECUTED** |
 | **Production deploy** | **NOT EXECUTED** |
+| **HEAD / origin/main** | `53a451889be469fdefc93d45334eb89c6b0e6a49` |
 | **Verdict** | **RELEASE READY — CERTIFIED** |
 
 ---
 
 ## 1. Executive Summary
 
-Release 0081 is complete in the repository: migration SQL, journal/governance terminus `0081`, schema, domain shift numbers, archive API/UI, DRAP Financial Shift adoption, tests, and program docs. Production build **PASS**. Targeted suites **PASS**. Governance / preflight **PASS** (0081 pending apply — intentional).
+Release 0081 is complete on **`origin/main`** (`53a4518`): migration SQL, journal/governance terminus `0081`, schema, domain shift numbers, archive API/UI, DRAP Financial Shift adoption, tests, and program docs. Production build **PASS**. Targeted suites **PASS**. Governance / preflight **PASS** (0081 pending apply — intentional).
 
 **Deploy application first; run `PRODUCTION-MIGRATION-0081-EXECUTION-1` only after the application revision is live.**
 
@@ -42,7 +43,12 @@ CI fix in this program: Financial Shift ops façade uses domain `getExpectedCash
 
 ## 3. Git Cleanliness
 
-Post-commit expectation: working tree clean for Release 0081 scope; HEAD contains the full package; no required file left untracked.
+| Check | Result |
+|-------|--------|
+| Working tree | Clean after release commit(s) |
+| `origin/main` | Synced at `53a4518` |
+| Untracked release files | None |
+| Reproducible from HEAD | Yes |
 
 ---
 
@@ -119,8 +125,7 @@ Hidden blockers cleared relative to GOVERNANCE-ADOPTION-0081 Phase 5 (local-only
 
 1. **Post-deploy / pre-migrate window** — new open-shift code requires `shiftNumber` column; keep the window short.
 2. **Production migrate still pending** — only `PRODUCTION-MIGRATION-0081-EXECUTION-1` may apply DDL.
-3. **Remote sync** — if HEAD is ahead of `origin/main`, push before production deploy from remote CI.
-4. **Full-repo `tsc`** — pre-existing debt; not introduced as the Vercel gate.
+3. **Full-repo `tsc`** — pre-existing debt (~81 errors on prior main); not the Vercel gate (`governance` + `pnpm build`).
 
 ---
 
