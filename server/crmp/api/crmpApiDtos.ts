@@ -42,12 +42,14 @@ export type RegisterCommandResultDto = Readonly<{
 /** Lightweight Financial Shift reference — not the full custody aggregate. */
 export type FinancialShiftRefDto = Readonly<{
   financialShiftId: string;
+  shiftNumber: number;
   registerId: string;
   restaurantId: number;
   status: string;
   operatorUserId: number;
   openedAt: string;
   closedAt: string | null;
+  archivedAt: string | null;
   version: number;
 }>;
 
@@ -57,12 +59,14 @@ export type FinancialShiftRefDto = Readonly<{
  */
 export type FinancialShiftViewDto = Readonly<{
   financialShiftId: string;
+  shiftNumber: number;
   registerId: string;
   restaurantId: number;
   status: string;
   operatorUserId: number;
   openedAt: string;
   closedAt: string | null;
+  archivedAt: string | null;
   version: number;
   openingFloatAmount: string;
   currencyCode: string;
@@ -74,6 +78,32 @@ export type FinancialShiftViewDto = Readonly<{
     actualAmount: string;
     varianceAmount: string;
   }> | null;
+}>;
+
+/** FINANCIAL-SHIFT-RETENTION-ADOPTION-1 — archive browse row. */
+export type FinancialShiftArchiveItemDto = Readonly<{
+  financialShiftId: string;
+  shiftNumber: number;
+  registerId: string;
+  registerName: string;
+  restaurantId: number;
+  status: string;
+  operatorUserId: number;
+  openedAt: string;
+  closedAt: string | null;
+  archivedAt: string | null;
+  openingFloatAmount: string;
+  expectedCashAmount: string;
+  actualCashAmount: string | null;
+  currencyCode: string;
+  inDisplayWindow: boolean;
+}>;
+
+export type FinancialShiftArchiveListDto = Readonly<{
+  items: readonly FinancialShiftArchiveItemDto[];
+  total: number;
+  displayWindowDays: number;
+  preset: string;
 }>;
 
 export type FinancialShiftCommandResultDto = Readonly<{
@@ -105,6 +135,29 @@ export type FinancialShiftTenderSummaryDto = Readonly<{
   /** Σ grandTotal on attributed Settlement Records with recordKind=refund. */
   refundAmount: string;
   methods: readonly FinancialShiftTenderMethodAmountDto[];
+}>;
+
+/**
+ * Closing report facts for archive reprint — domain-stored amounts only.
+ * FINANCIAL-SHIFT-RETENTION-ADOPTION-1
+ */
+export type FinancialShiftClosingReportDto = Readonly<{
+  financialShiftId: string;
+  shiftNumber: number;
+  registerId: string;
+  registerName: string;
+  restaurantId: number;
+  operatorUserId: number;
+  status: string;
+  openedAt: string;
+  closedAt: string | null;
+  openingFloatAmount: string;
+  expectedCashAmount: string;
+  actualCashAmount: string;
+  differenceAmount: string;
+  currencyCode: string;
+  settlementsCount: number;
+  tender: FinancialShiftTenderSummaryDto | null;
 }>;
 
 export type CurrentRegisterViewDto = Readonly<{

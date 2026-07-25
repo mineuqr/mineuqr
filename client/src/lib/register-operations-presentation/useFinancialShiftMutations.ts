@@ -1,5 +1,6 @@
 /**
- * FINANCIAL-SHIFT-WORKFLOW-ADOPTION-1 — mutations over crmp.financialShift.*.
+ * FINANCIAL-SHIFT-WORKFLOW-ADOPTION-1 /
+ * FINANCIAL-SHIFT-RETENTION-ADOPTION-1 — mutations/queries over crmp.financialShift.*.
  */
 
 import { toast } from "sonner";
@@ -47,7 +48,49 @@ export function useFinancialShiftMutations(
       },
       onError,
     }),
+    archive: trpc.crmp.financialShift.archive.useMutation({
+      onSuccess: async () => {
+        await utils.crmp.financialShift.listArchive.invalidate();
+        toast.success(
+          registerOperationsUiLabel("shiftArchiveSuccess", language)
+        );
+      },
+      onError,
+    }),
   };
+}
+
+export function useFinancialShiftArchive(
+  input: {
+    restaurantId: number;
+    preset?: "today" | "last_7" | "last_30" | "last_90" | "custom" | "all";
+    customFromIso?: string;
+    customToIso?: string;
+    registerId?: string;
+    shiftNumber?: number;
+    operatorUserId?: number;
+    financialShiftIdQuery?: string;
+    limit?: number;
+    offset?: number;
+  },
+  options: { enabled?: boolean } = {}
+) {
+  return trpc.crmp.financialShift.listArchive.useQuery(input, {
+    enabled: (options.enabled ?? true) && input.restaurantId > 0,
+    staleTime: 5_000,
+  });
+}
+
+export function useFinancialShiftClosingReport(
+  input: { restaurantId: number; financialShiftId: string },
+  options: { enabled?: boolean } = {}
+) {
+  return trpc.crmp.financialShift.getClosingReport.useQuery(input, {
+    enabled:
+      (options.enabled ?? true) &&
+      input.restaurantId > 0 &&
+      input.financialShiftId.length > 0,
+  });
 }
 
 export function useFinancialShiftCurrent(

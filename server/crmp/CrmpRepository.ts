@@ -19,6 +19,21 @@ export type CrmpRegisterRepository = {
   listByRestaurant(restaurantId: number): Promise<CashRegister[]>;
 };
 
+export type FinancialShiftArchiveListQuery = Readonly<{
+  restaurantId: number;
+  registerId?: string;
+  /** Inclusive ISO lower bound on closedAt (or openedAt if still open — rare). */
+  fromIso?: string;
+  toIso?: string;
+  status?: readonly string[];
+  shiftNumber?: number;
+  operatorUserId?: number;
+  /** Substring match on financialShiftId (admin). */
+  financialShiftIdQuery?: string;
+  limit: number;
+  offset: number;
+}>;
+
 export type CrmpFinancialShiftRepository = {
   insert(shift: FinancialShift): Promise<void>;
   /** Full replace of shift aggregate graph (shift + drawer children + handover + attributions). */
@@ -39,6 +54,15 @@ export type CrmpFinancialShiftRepository = {
     restaurantId: number,
     registerId: string
   ): Promise<FinancialShift[]>;
+  /** Next human shift number for restaurant+register (immutable allocator). */
+  allocateNextShiftNumber(
+    restaurantId: number,
+    registerId: string
+  ): Promise<number>;
+  /** Archive browse — closed/archived shifts, newest closedAt first. */
+  listArchive(
+    query: FinancialShiftArchiveListQuery
+  ): Promise<{ rows: FinancialShift[]; total: number }>;
   findAttributionBySettlementRecordId(
     restaurantId: number,
     settlementRecordId: string

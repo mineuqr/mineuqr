@@ -42,6 +42,7 @@ function shift(registerId = "reg_1", operatorUserId = 10) {
     openingFloatAmount: "0",
     currencyCode: "SAR",
     openedAt: "t2",
+    shiftNumber: 1,
   });
 }
 

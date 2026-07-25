@@ -75,11 +75,18 @@ export async function buildFinancialShiftTenderSummary(input: {
   registerId: string;
   shifts: FinancialShiftDomainService;
   loadSettlementRecords?: SettlementRecordBatchLoader;
+  /**
+   * FINANCIAL-SHIFT-RETENTION-ADOPTION-1 — when set, compose tender for a
+   * closed/archived shift (active resolve would miss it).
+   */
+  financialShiftId?: string;
 }): Promise<FinancialShiftTenderSummaryDto | null> {
-  const shift = await input.shifts.resolveActive({
-    restaurantId: input.restaurantId,
-    registerId: input.registerId,
-  });
+  const shift = input.financialShiftId
+    ? await input.shifts.get(input.restaurantId, input.financialShiftId)
+    : await input.shifts.resolveActive({
+        restaurantId: input.restaurantId,
+        registerId: input.registerId,
+      });
   if (!shift) return null;
 
   const settlementRecordIds = shift.attributions.map(

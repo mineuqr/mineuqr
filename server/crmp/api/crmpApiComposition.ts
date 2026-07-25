@@ -38,6 +38,7 @@ export function getCrmpRegisterCatalogService(): CrmpRegisterCatalogService {
 export function getCrmpFinancialShiftOperationsService(): CrmpFinancialShiftOperationsService {
   const uow = getUnitOfWork();
   return new CrmpFinancialShiftOperationsService(
-    new FinancialShiftDomainService(uow)
+    new FinancialShiftDomainService(uow),
+    new RegisterDomainService(uow)
   );
 }

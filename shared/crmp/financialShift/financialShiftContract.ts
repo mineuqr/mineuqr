@@ -75,6 +75,11 @@ export type SettlementAttribution = Readonly<{
 
 export type FinancialShift = Readonly<{
   financialShiftId: FinancialShiftId;
+  /**
+   * HUMAN shift number — sequential, restaurant+register scoped, immutable.
+   * UUID (`financialShiftId`) remains the internal identity.
+   */
+  shiftNumber: number;
   restaurantId: number;
   registerId: string;
   operatorUserId: number;

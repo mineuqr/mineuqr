@@ -1587,12 +1587,30 @@ export const crmpRegisters = mysqlTable(
 	]
 );
 
+/** Per-register human Shift Number allocator (FINANCIAL-SHIFT-RETENTION-ADOPTION-1). */
+export const crmpRegisterShiftSequences = mysqlTable(
+	"crmp_register_shift_sequences",
+	{
+		restaurantId: int().notNull(),
+		registerId: varchar({ length: 128 }).notNull(),
+		lastNumber: int().default(0).notNull(),
+	},
+	(table) => [
+		primaryKey({
+			columns: [table.restaurantId, table.registerId],
+			name: "crmp_register_shift_sequences_pk",
+		}),
+	]
+);
+
 /** Financial Shift — ADR-ARCH-030 statuses (SHIFT-LIFECYCLE-IMPLEMENTATION-1). */
 export const crmpFinancialShifts = mysqlTable(
 	"crmp_financial_shifts",
 	{
 		id: int().autoincrement().primaryKey(),
 		financialShiftId: varchar({ length: 128 }).notNull(),
+		/** Human-readable sequential number (restaurant + register scoped). */
+		shiftNumber: int().notNull(),
 		restaurantId: int().notNull(),
 		registerId: varchar({ length: 128 }).notNull(),
 		operatorUserId: int().notNull(),
@@ -1622,9 +1640,23 @@ export const crmpFinancialShifts = mysqlTable(
 	(table) => [
 		uniqueIndex("crmp_financial_shifts_shift_id_unique").on(table.financialShiftId),
 		uniqueIndex("crmp_financial_shifts_drawer_id_unique").on(table.drawerId),
+		uniqueIndex("crmp_financial_shifts_register_shift_number_unique").on(
+			table.restaurantId,
+			table.registerId,
+			table.shiftNumber
+		),
 		index("crmp_financial_shifts_restaurant_id").on(table.restaurantId),
 		index("crmp_financial_shifts_register_id").on(table.registerId),
 		index("crmp_financial_shifts_register_status").on(table.registerId, table.status),
+		index("crmp_financial_shifts_restaurant_closed").on(
+			table.restaurantId,
+			table.closedAt
+		),
+		index("crmp_financial_shifts_restaurant_status_closed").on(
+			table.restaurantId,
+			table.status,
+			table.closedAt
+		),
 	]
 );
 

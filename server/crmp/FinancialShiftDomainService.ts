@@ -81,6 +81,10 @@ export class FinancialShiftDomainService {
       input.restaurantId,
       input.registerId
     );
+    const shiftNumber = await this.uow.shifts.allocateNextShiftNumber(
+      input.restaurantId,
+      input.registerId
+    );
     const shift = openFinancialShift({
       financialShiftId,
       drawerId: newCrmpId("drw"),
@@ -92,6 +96,7 @@ export class FinancialShiftDomainService {
       openingFloatAmount: input.openingFloatAmount,
       currencyCode: input.currencyCode,
       openedAt: at,
+      shiftNumber,
       existingById: null,
     });
     await this.uow.shifts.insert(shift);
@@ -459,6 +464,10 @@ export class FinancialShiftDomainService {
     if (!register) {
       throw new CrmpNotFoundError(`Register not found: ${current.registerId}`);
     }
+    const successorShiftNumber = await this.uow.shifts.allocateNextShiftNumber(
+      input.restaurantId,
+      current.registerId
+    );
     const result = acceptHandover({
       outgoing: current,
       register,
@@ -466,6 +475,7 @@ export class FinancialShiftDomainService {
       successorShiftId: newCrmpId("fsh"),
       successorDrawerId: newCrmpId("drw"),
       successorOpeningMovementId: newCrmpId("mov"),
+      successorShiftNumber,
       acceptedAt: input.at ?? new Date().toISOString(),
     });
     await this.uow.shifts.save(result.closed, current.version);
@@ -486,6 +496,12 @@ export class FinancialShiftDomainService {
     financialShiftId: string
   ): Promise<FinancialShift | null> {
     return this.uow.shifts.findById(restaurantId, financialShiftId);
+  }
+
+  async listArchive(
+    query: Parameters<CrmpUnitOfWork["shifts"]["listArchive"]>[0]
+  ) {
+    return this.uow.shifts.listArchive(query);
   }
 
   /** Concurrent save probe — throws CrmpConflictError on version mismatch. */

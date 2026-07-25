@@ -131,6 +131,10 @@ describe("CRMP / SHIFT-LIFECYCLE architecture guards", () => {
     expect(sql).toContain("`code`");
     expect(sql).toContain("registerType");
     expect(sql).toContain("archivedAt");
+    const shiftNumberSql = read("drizzle/0081_crmp_financial_shift_number.sql");
+    expect(shiftNumberSql).toContain("FINANCIAL-SHIFT-RETENTION-ADOPTION-1");
+    expect(shiftNumberSql).toContain("shiftNumber");
+    expect(shiftNumberSql).toContain("crmp_register_shift_sequences");
     expect(sql).toContain("crmp_registers_restaurant_code_unique");
     expect(sql).not.toMatch(/operational_checks/);
     expect(sql).not.toMatch(/settlement_records/);

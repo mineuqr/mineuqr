@@ -46,12 +46,14 @@ export function toFinancialShiftRefDto(
 ): FinancialShiftRefDto {
   return {
     financialShiftId: shift.financialShiftId,
+    shiftNumber: shift.shiftNumber,
     registerId: shift.registerId,
     restaurantId: shift.restaurantId,
     status: shift.status,
     operatorUserId: shift.operatorUserId,
     openedAt: shift.openedAt,
     closedAt: shift.closedAt,
+    archivedAt: shift.archivedAt,
     version: shift.version,
   };
 }
@@ -64,12 +66,14 @@ export function toFinancialShiftViewDto(
     [...shift.drawer.counts].reverse().find((c) => c.kind === "final") ?? null;
   return {
     financialShiftId: shift.financialShiftId,
+    shiftNumber: shift.shiftNumber,
     registerId: shift.registerId,
     restaurantId: shift.restaurantId,
     status: shift.status,
     operatorUserId: shift.operatorUserId,
     openedAt: shift.openedAt,
     closedAt: shift.closedAt,
+    archivedAt: shift.archivedAt,
     version: shift.version,
     openingFloatAmount: shift.openingFloatAmount,
     currencyCode: shift.currencyCode,

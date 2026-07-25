@@ -3,7 +3,7 @@
  * Repository responsibilities only — no domain rules.
  */
 
-import { and, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, like, lte, sql } from "drizzle-orm";
 import { getDb } from "../db";
 import {
   crmpDrawerCounts,
@@ -26,6 +26,7 @@ import type {
   CrmpFinancialShiftRepository,
   CrmpRegisterRepository,
   CrmpUnitOfWork,
+  FinancialShiftArchiveListQuery,
 } from "./CrmpRepository";
 
 function mapRegister(
@@ -129,6 +130,7 @@ async function loadShiftGraph(
     registerId: shiftRow.registerId,
     operatorUserId: shiftRow.operatorUserId,
     status: shiftRow.status,
+    shiftNumber: shiftRow.shiftNumber,
     openingFloatAmount: String(shiftRow.openingFloatAmount),
     currencyCode: shiftRow.currencyCode,
     drawer: {
@@ -156,6 +158,7 @@ async function persistShiftGraph(shift: FinancialShift): Promise<void> {
     .insert(crmpFinancialShifts)
     .values({
       financialShiftId: shift.financialShiftId,
+      shiftNumber: shift.shiftNumber,
       restaurantId: shift.restaurantId,
       registerId: shift.registerId,
       operatorUserId: shift.operatorUserId,
@@ -179,6 +182,7 @@ async function persistShiftGraph(shift: FinancialShift): Promise<void> {
         closeReason: shift.closeReason,
         archivedAt: shift.archivedAt,
         updatedAt: shift.updatedAt,
+        // shiftNumber is immutable — never updated
       },
     });
 
@@ -455,6 +459,79 @@ export function createDrizzleCrmpUnitOfWork(): CrmpUnitOfWork {
       return Promise.all(
         rows.map((row) => loadShiftGraph(restaurantId, row))
       );
+    },
+    async allocateNextShiftNumber(restaurantId, registerId) {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      await db.execute(sql`
+        INSERT INTO crmp_register_shift_sequences (restaurantId, registerId, lastNumber)
+        VALUES (${restaurantId}, ${registerId}, LAST_INSERT_ID(1))
+        ON DUPLICATE KEY UPDATE lastNumber = LAST_INSERT_ID(lastNumber + 1)
+      `);
+      const [seqRow] = await db.execute(sql`SELECT LAST_INSERT_ID() AS n`);
+      const n = Number((seqRow as { n: number }[])[0]?.n ?? 1);
+      if (!Number.isInteger(n) || n < 1) {
+        throw new Error("Failed to allocate shiftNumber");
+      }
+      return n;
+    },
+    async listArchive(query: FinancialShiftArchiveListQuery) {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      const statuses = query.status?.length
+        ? query.status
+        : (["closed", "archived"] as const);
+      const predicates = [
+        eq(crmpFinancialShifts.restaurantId, query.restaurantId),
+        inArray(
+          crmpFinancialShifts.status,
+          statuses as Array<
+            "closed" | "archived" | "open" | "suspended" | "closing" | "handover_pending"
+          >
+        ),
+      ];
+      if (query.registerId) {
+        predicates.push(eq(crmpFinancialShifts.registerId, query.registerId));
+      }
+      if (query.fromIso) {
+        predicates.push(gte(crmpFinancialShifts.closedAt, query.fromIso));
+      }
+      if (query.toIso) {
+        predicates.push(lte(crmpFinancialShifts.closedAt, query.toIso));
+      }
+      if (query.shiftNumber != null) {
+        predicates.push(eq(crmpFinancialShifts.shiftNumber, query.shiftNumber));
+      }
+      if (query.operatorUserId != null) {
+        predicates.push(
+          eq(crmpFinancialShifts.operatorUserId, query.operatorUserId)
+        );
+      }
+      if (query.financialShiftIdQuery?.trim()) {
+        predicates.push(
+          like(
+            crmpFinancialShifts.financialShiftId,
+            `%${query.financialShiftIdQuery.trim()}%`
+          )
+        );
+      }
+      const where = and(...predicates);
+      const countRows = await db
+        .select({ c: sql<number>`count(*)` })
+        .from(crmpFinancialShifts)
+        .where(where);
+      const total = Number(countRows[0]?.c ?? 0);
+      const rows = await db
+        .select()
+        .from(crmpFinancialShifts)
+        .where(where)
+        .orderBy(desc(crmpFinancialShifts.closedAt), desc(crmpFinancialShifts.openedAt))
+        .limit(query.limit)
+        .offset(query.offset);
+      const loaded = await Promise.all(
+        rows.map((row) => loadShiftGraph(query.restaurantId, row))
+      );
+      return { rows: loaded, total };
     },
     async findAttributionBySettlementRecordId(
       restaurantId,

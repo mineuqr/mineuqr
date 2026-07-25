@@ -48,6 +48,7 @@ function openShift() {
     openingFloatAmount: "100.00",
     currencyCode: "SAR",
     openedAt: "t2",
+    shiftNumber: 1,
   });
 }
 

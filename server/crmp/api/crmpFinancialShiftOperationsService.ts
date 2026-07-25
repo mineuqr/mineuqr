@@ -1,12 +1,22 @@
 /**
- * FINANCIAL-SHIFT-WORKFLOW-ADOPTION-1 — thin application orchestration.
+ * FINANCIAL-SHIFT-WORKFLOW-ADOPTION-1 /
+ * FINANCIAL-SHIFT-RETENTION-ADOPTION-1 — thin application orchestration.
  * Auth / validation live in the router. Domain rules stay in domain services.
- * Does not own money formulas — reads expected cash from FinancialShiftDomainService.
+ * DRAP owns display-window policy; Shift remains Aggregate Root.
  */
 
 import { CrmpNotFoundError } from "@shared/crmp";
 import type { FinancialShiftDomainService } from "../FinancialShiftDomainService";
+import type { RegisterDomainService } from "../RegisterDomainService";
+import {
+  ensureFinancialShiftRetentionAdapter,
+  getFinancialShiftDrapPlatform,
+  resolveFinancialShiftDisplayWindow,
+  type ShiftArchiveWindowPreset,
+} from "../retention/financialShiftDrapAdoption";
 import type {
+  FinancialShiftArchiveListDto,
+  FinancialShiftClosingReportDto,
   FinancialShiftCommandResultDto,
   FinancialShiftTenderSummaryDto,
   FinancialShiftViewDto,
@@ -17,11 +27,21 @@ import {
   type SettlementRecordBatchLoader,
 } from "./crmpFinancialShiftTenderSummary";
 
+function parseReportingDiff(expected: string, actual: string): string {
+  const e = Number(expected);
+  const a = Number(actual);
+  if (!Number.isFinite(e) || !Number.isFinite(a)) return "0.00";
+  return (a - e).toFixed(2);
+}
+
 export class CrmpFinancialShiftOperationsService {
   constructor(
     private readonly shifts: FinancialShiftDomainService,
+    private readonly registers?: RegisterDomainService,
     private readonly loadSettlementRecords?: SettlementRecordBatchLoader
-  ) {}
+  ) {
+    ensureFinancialShiftRetentionAdapter(shifts);
+  }
 
   async open(input: {
     restaurantId: number;
@@ -82,6 +102,24 @@ export class CrmpFinancialShiftOperationsService {
     });
   }
 
+  async archive(input: {
+    restaurantId: number;
+    financialShiftId: string;
+    expectedVersion?: number;
+    at?: string;
+  }): Promise<FinancialShiftCommandResultDto> {
+    const result = await this.shifts.archive(input);
+    const expectedCashAmount = await this.shifts.getExpectedCash(
+      input.restaurantId,
+      result.shift.financialShiftId
+    );
+    return toFinancialShiftCommandResultDto({
+      shift: result.shift,
+      expectedCashAmount,
+      alreadyApplied: result.alreadyApplied,
+    });
+  }
+
   async getCurrent(input: {
     restaurantId: number;
     registerId: string;
@@ -122,5 +160,151 @@ export class CrmpFinancialShiftOperationsService {
       shifts: this.shifts,
       loadSettlementRecords: this.loadSettlementRecords,
     });
+  }
+
+  async listArchive(input: {
+    restaurantId: number;
+    preset?: ShiftArchiveWindowPreset;
+    customFromIso?: string;
+    customToIso?: string;
+    registerId?: string;
+    shiftNumber?: number;
+    operatorUserId?: number;
+    financialShiftIdQuery?: string;
+    status?: readonly string[];
+    limit?: number;
+    offset?: number;
+  }): Promise<FinancialShiftArchiveListDto> {
+    const preset = input.preset ?? "last_30";
+    const window = resolveFinancialShiftDisplayWindow({
+      restaurantId: input.restaurantId,
+      preset,
+      customFromIso: input.customFromIso,
+      customToIso: input.customToIso,
+    });
+    const limit = Math.min(Math.max(input.limit ?? 25, 1), 100);
+    const offset = Math.max(input.offset ?? 0, 0);
+    const { rows, total } = await this.shifts.listArchive({
+      restaurantId: input.restaurantId,
+      registerId: input.registerId,
+      fromIso: window.fromIso,
+      toIso: window.toIso,
+      shiftNumber: input.shiftNumber,
+      operatorUserId: input.operatorUserId,
+      financialShiftIdQuery: input.financialShiftIdQuery,
+      status: input.status,
+      limit,
+      offset,
+    });
+
+    const drap = getFinancialShiftDrapPlatform();
+    const items = [];
+    for (const shift of rows) {
+      const register = this.registers
+        ? await this.registers.get(input.restaurantId, shift.registerId)
+        : null;
+      const expectedCashAmount = await this.shifts.getExpectedCash(
+        input.restaurantId,
+        shift.financialShiftId
+      );
+      const final =
+        [...shift.drawer.counts].reverse().find((c) => c.kind === "final") ??
+        null;
+      const eligibility = drap.evaluate({
+        subject: {
+          restaurantId: shift.restaurantId,
+          entityType: "financial_shift",
+          entityId: shift.financialShiftId,
+        },
+        timestamps: {
+          referenceAt: shift.closedAt ?? shift.openedAt,
+          archivedAt: shift.archivedAt,
+        },
+        currentState:
+          shift.status === "archived" ? "ARCHIVED" : "DISPLAY_WINDOW",
+        nowIso: new Date().toISOString(),
+        entityOpen: false,
+      });
+      items.push({
+        financialShiftId: shift.financialShiftId,
+        shiftNumber: shift.shiftNumber,
+        registerId: shift.registerId,
+        registerName: register?.displayName ?? shift.registerId,
+        restaurantId: shift.restaurantId,
+        status: shift.status,
+        operatorUserId: shift.operatorUserId,
+        openedAt: shift.openedAt,
+        closedAt: shift.closedAt,
+        archivedAt: shift.archivedAt,
+        openingFloatAmount: shift.openingFloatAmount,
+        expectedCashAmount,
+        actualCashAmount: final?.actualAmount ?? null,
+        currencyCode: shift.currencyCode,
+        inDisplayWindow: eligibility.inDisplayWindow,
+      });
+    }
+
+    return {
+      items,
+      total,
+      displayWindowDays: window.displayWindowDays,
+      preset,
+    };
+  }
+
+  async getClosingReport(input: {
+    restaurantId: number;
+    financialShiftId: string;
+  }): Promise<FinancialShiftClosingReportDto> {
+    const shift = await this.shifts.get(
+      input.restaurantId,
+      input.financialShiftId
+    );
+    if (!shift) {
+      throw new CrmpNotFoundError(
+        `Financial Shift not found: ${input.financialShiftId}`
+      );
+    }
+    if (shift.status !== "closed" && shift.status !== "archived") {
+      throw new CrmpNotFoundError(
+        "Closing report is available for closed or archived shifts only"
+      );
+    }
+    const register = this.registers
+      ? await this.registers.get(input.restaurantId, shift.registerId)
+      : null;
+    const expectedCashAmount = await this.shifts.getExpectedCash(
+      input.restaurantId,
+      shift.financialShiftId
+    );
+    const final =
+      [...shift.drawer.counts].reverse().find((c) => c.kind === "final") ?? null;
+    const actualCashAmount = final?.actualAmount ?? expectedCashAmount;
+    const tender = await buildFinancialShiftTenderSummary({
+      restaurantId: input.restaurantId,
+      registerId: shift.registerId,
+      shifts: this.shifts,
+      loadSettlementRecords: this.loadSettlementRecords,
+      financialShiftId: shift.financialShiftId,
+    });
+
+    return {
+      financialShiftId: shift.financialShiftId,
+      shiftNumber: shift.shiftNumber,
+      registerId: shift.registerId,
+      registerName: register?.displayName ?? shift.registerId,
+      restaurantId: shift.restaurantId,
+      operatorUserId: shift.operatorUserId,
+      status: shift.status,
+      openedAt: shift.openedAt,
+      closedAt: shift.closedAt,
+      openingFloatAmount: shift.openingFloatAmount,
+      expectedCashAmount,
+      actualCashAmount,
+      differenceAmount: parseReportingDiff(expectedCashAmount, actualCashAmount),
+      currencyCode: shift.currencyCode,
+      settlementsCount: shift.attributions.length,
+      tender,
+    };
   }
 }

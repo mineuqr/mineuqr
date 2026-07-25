@@ -44,6 +44,8 @@ export {
   useResolveActiveRegister,
 } from "./useRegisterOperationsMutations";
 export {
+  useFinancialShiftArchive,
+  useFinancialShiftClosingReport,
   useFinancialShiftCurrent,
   useFinancialShiftMutations,
   useFinancialShiftTenderSummary,
@@ -56,6 +58,7 @@ export {
 export {
   buildShiftClosingReportVm,
   computeLiveCashDifference,
+  formatOpsShiftNumber,
   formatShiftDuration,
   printShiftClosingReport,
   readAutoPrintClosingReport,

@@ -72,10 +72,18 @@ export function formatShiftDuration(
   return `${h}h ${m}m`;
 }
 
+/** @deprecated Prefer human `shiftNumber` from API; UUID suffix is fallback only. */
 export function shortenShiftNumber(financialShiftId: string): string {
   const id = financialShiftId.trim();
   if (id.length <= 12) return id;
   return id.slice(-12);
+}
+
+export function formatOpsShiftNumber(shiftNumber: number | null | undefined): string {
+  if (shiftNumber == null || !Number.isInteger(shiftNumber) || shiftNumber < 1) {
+    return "—";
+  }
+  return String(shiftNumber).padStart(6, "0");
 }
 
 export function buildShiftClosingReportVm(input: {
@@ -84,6 +92,8 @@ export function buildShiftClosingReportVm(input: {
   registerName: string;
   operatorName: string;
   financialShiftId: string;
+  /** Human sequential shift number when available. */
+  shiftNumber?: number | null;
   openedAt: string;
   closedAtIso: string;
   openingFloatAmount: string;
@@ -118,7 +128,10 @@ export function buildShiftClosingReportVm(input: {
     restaurantName: input.restaurantName.trim() || "—",
     registerName: input.registerName.trim() || "—",
     operatorName: input.operatorName.trim() || "—",
-    shiftNumber: shortenShiftNumber(input.financialShiftId),
+    shiftNumber:
+      input.shiftNumber != null
+        ? formatOpsShiftNumber(input.shiftNumber)
+        : shortenShiftNumber(input.financialShiftId),
     openedAtLabel: formatOpenedAtDisplay(input.openedAt, input.language),
     closedAtLabel: formatOpenedAtDisplay(input.closedAtIso, input.language),
     durationLabel: formatShiftDuration(

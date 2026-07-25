@@ -60,6 +60,7 @@ type Props = {
   registerName: string;
   operatorName: string;
   financialShiftId: string;
+  shiftNumber?: number | null;
   openedAt: string;
   openingFloatAmount: string;
   expectedCashAmount: string;
@@ -80,6 +81,7 @@ export function ShiftClosingSummaryDialog({
   registerName,
   operatorName,
   financialShiftId,
+  shiftNumber,
   openedAt,
   openingFloatAmount,
   expectedCashAmount,
@@ -133,6 +135,7 @@ export function ShiftClosingSummaryDialog({
       registerName,
       operatorName,
       financialShiftId,
+      shiftNumber,
       openedAt,
       closedAtIso: closedAtPreview,
       openingFloatAmount,
@@ -148,6 +151,7 @@ export function ShiftClosingSummaryDialog({
     registerName,
     operatorName,
     financialShiftId,
+    shiftNumber,
     openedAt,
     closedAtPreview,
     openingFloatAmount,

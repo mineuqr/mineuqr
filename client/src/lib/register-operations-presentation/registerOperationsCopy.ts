@@ -300,6 +300,33 @@ const COPY = {
     ar: "تم فتح الوردية المالية.",
     en: "Financial shift opened.",
   },
+  shiftArchive: { ar: "أرشيف الورديات", en: "Shift Archive" },
+  shiftArchiveSubtitle: {
+    ar: "عرض وطباعة تقارير إغلاق الورديات.",
+    en: "Browse and reprint shift closing reports.",
+  },
+  currentShiftNav: { ar: "الوردية الحالية", en: "Current Shift" },
+  archiveWindow: { ar: "الفترة", en: "Period" },
+  archiveToday: { ar: "اليوم", en: "Today" },
+  archiveLast7: { ar: "آخر 7 أيام", en: "Last 7 days" },
+  archiveLast30: { ar: "آخر 30 يوماً", en: "Last 30 days" },
+  archiveLast90: { ar: "آخر 90 يوماً", en: "Last 90 days" },
+  archiveAll: { ar: "الكل", en: "All" },
+  archiveSearch: {
+    ar: "بحث برقم الوردية أو المعرّف…",
+    en: "Search by shift number or id…",
+  },
+  archiveEmpty: {
+    ar: "لا توجد ورديات في هذه الفترة.",
+    en: "No shifts in this period.",
+  },
+  viewClosingReport: { ar: "عرض التقرير", en: "View report" },
+  reprintClosingReport: { ar: "إعادة طباعة", en: "Reprint" },
+  downloadClosingPdf: { ar: "حفظ PDF", en: "Save PDF" },
+  shiftArchiveSuccess: {
+    ar: "تم أرشفة الوردية.",
+    en: "Shift archived.",
+  },
   shiftCloseSuccess: {
     ar: "تم إغلاق الوردية المالية.",
     en: "Financial shift closed.",

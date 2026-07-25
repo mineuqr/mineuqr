@@ -79,6 +79,8 @@ export type OpenFinancialShiftCommand = Readonly<{
   openingFloatAmount: string;
   currencyCode: string;
   openedAt: string;
+  /** Pre-allocated human shift number (restaurant + register scoped). */
+  shiftNumber: number;
   /** Existing row for same id — idempotent return. */
   existingById?: FinancialShift | null;
 }>;
@@ -113,6 +115,12 @@ export function openFinancialShift(
     { amount: command.openingFloatAmount, currencyCode: command.currencyCode },
     "openingFloat"
   );
+  if (
+    !Number.isInteger(command.shiftNumber) ||
+    command.shiftNumber < 1
+  ) {
+    throw new CrmpValidationError("shiftNumber must be a positive integer");
+  }
 
   const float = normalizeAmount(command.openingFloatAmount);
   const openingMovement: DrawerMovement = {
@@ -127,6 +135,7 @@ export function openFinancialShift(
 
   return {
     financialShiftId: command.financialShiftId,
+    shiftNumber: command.shiftNumber,
     restaurantId: command.restaurantId,
     registerId: command.register.registerId,
     operatorUserId: command.operatorUserId,
@@ -629,6 +638,7 @@ export type AcceptHandoverCommand = Readonly<{
   successorShiftId: string;
   successorDrawerId: string;
   successorOpeningMovementId: string;
+  successorShiftNumber: number;
   acceptedAt: string;
 }>;
 
@@ -693,6 +703,7 @@ export function acceptHandover(
     openingFloatAmount: finalCount.actualAmount,
     currencyCode: outgoing.currencyCode,
     openedAt: command.acceptedAt,
+    shiftNumber: command.successorShiftNumber,
   });
 
   return { closed, successor };

@@ -25,6 +25,7 @@ function cloneShift(s: FinancialShift): FinancialShift {
 export function createInMemoryCrmpStore(): CrmpUnitOfWork {
   const registers = new Map<string, CashRegister>();
   const shifts = new Map<string, FinancialShift>();
+  const shiftSequences = new Map<string, number>();
 
   const registerRepo: CrmpRegisterRepository = {
     async insert(register) {
@@ -109,6 +110,49 @@ export function createInMemoryCrmpStore(): CrmpUnitOfWork {
             s.restaurantId === restaurantId && s.registerId === registerId
         )
         .map(cloneShift);
+    },
+    async allocateNextShiftNumber(restaurantId, registerId) {
+      const key = `${restaurantId}:${registerId}`;
+      const next = (shiftSequences.get(key) ?? 0) + 1;
+      shiftSequences.set(key, next);
+      return next;
+    },
+    async listArchive(query) {
+      const statuses = new Set(
+        query.status?.length ? query.status : ["closed", "archived"]
+      );
+      let rows = [...shifts.values()].filter((s) => {
+        if (s.restaurantId !== query.restaurantId) return false;
+        if (!statuses.has(s.status)) return false;
+        if (query.registerId && s.registerId !== query.registerId) return false;
+        if (query.shiftNumber != null && s.shiftNumber !== query.shiftNumber) {
+          return false;
+        }
+        if (
+          query.operatorUserId != null &&
+          s.operatorUserId !== query.operatorUserId
+        ) {
+          return false;
+        }
+        if (
+          query.financialShiftIdQuery?.trim() &&
+          !s.financialShiftId.includes(query.financialShiftIdQuery.trim())
+        ) {
+          return false;
+        }
+        const closedAt = s.closedAt ?? s.openedAt;
+        if (query.fromIso && closedAt < query.fromIso) return false;
+        if (query.toIso && closedAt > query.toIso) return false;
+        return true;
+      });
+      rows.sort((a, b) => {
+        const ac = a.closedAt ?? a.openedAt;
+        const bc = b.closedAt ?? b.openedAt;
+        return bc.localeCompare(ac);
+      });
+      const total = rows.length;
+      rows = rows.slice(query.offset, query.offset + query.limit);
+      return { rows: rows.map(cloneShift), total };
     },
     async findAttributionBySettlementRecordId(
       restaurantId,

@@ -6,9 +6,10 @@
  * FINANCIAL-SHIFT-CLOSING-UX-REFINEMENT-1 /
  * FINANCIAL-SHIFT-CLOSING-PRINT-ISOLATION-1 /
  * REGISTER-CREATION-UX-CONSOLIDATION-1 /
- * REGISTER-CREATION-LABEL-ADOPTION-1 — adaptive Register Operations host.
+ * REGISTER-CREATION-LABEL-ADOPTION-1 /
+ * FINANCIAL-SHIFT-RETENTION-ADOPTION-1 — adaptive Register Operations host.
  * Presentation only — crmp.register.* + crmp.financialShift.*.
- * Visible create entry: إنشاء صندوق (shared RegisterCatalogForm).
+ * Shift Archive + human Shift Number; DRAP display window transparent.
  */
 
 import {
@@ -31,6 +32,7 @@ import {
 } from "./ShiftClosingSummaryDialog";
 import { ShiftClosingPrintHost } from "./ShiftClosingPrintHost";
 import { CreateRegisterDialog } from "./CreateRegisterDialog";
+import { FinancialShiftArchivePanel } from "./FinancialShiftArchivePanel";
 import {
   AvailabilityBadge,
   DutyBadge,
@@ -301,6 +303,7 @@ export function RegisterOperationsPanel({
   const [closingPrintReport, setClosingPrintReport] =
     useState<ShiftClosingReportVm | null>(null);
   const [createRegisterOpen, setCreateRegisterOpen] = useState(false);
+  const [opsView, setOpsView] = useState<"current" | "archive">("current");
 
   const listQuery = useRegisterList({ restaurantId });
   const currentQuery = useRegisterCurrent(
@@ -537,6 +540,18 @@ export function RegisterOperationsPanel({
     );
   }
 
+  if (opsView === "archive") {
+    return (
+      <FinancialShiftArchivePanel
+        restaurantId={restaurantId}
+        language={language}
+        currencySymbol={currencySymbol}
+        restaurantName={restaurantName}
+        onBack={() => setOpsView("current")}
+      />
+    );
+  }
+
   if (!listQuery.isLoading && registers.length === 0 && !listError) {
     return (
       <section dir={dir} aria-label={registerOperationsUiLabel("title", language)}>
@@ -621,6 +636,14 @@ export function RegisterOperationsPanel({
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <OpButton
+            size="sm"
+            variant="secondary"
+            className="min-h-9"
+            onClick={() => setOpsView("archive")}
+          >
+            {registerOperationsUiLabel("shiftArchive", language)}
+          </OpButton>
           {canManageCatalog && (
             <OpButton
               size="sm"
@@ -1037,6 +1060,7 @@ export function RegisterOperationsPanel({
             operatorVm.title || user?.name || registerOperationsUiLabel("currentUserFallback", language)
           }
           financialShiftId={activeShift.financialShiftId}
+          shiftNumber={activeShift.shiftNumber}
           openedAt={activeShift.openedAt}
           openingFloatAmount={activeShift.openingFloatAmount}
           expectedCashAmount={activeShift.expectedCashAmount}

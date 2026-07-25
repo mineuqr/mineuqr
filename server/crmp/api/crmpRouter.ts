@@ -1,6 +1,7 @@
 /**
  * CRMP-OPERATIONS-API-1 / REGISTER-CATALOG-MANAGEMENT-1 /
- * FINANCIAL-SHIFT-WORKFLOW-ADOPTION-1 —
+ * FINANCIAL-SHIFT-WORKFLOW-ADOPTION-1 /
+ * FINANCIAL-SHIFT-RETENTION-ADOPTION-1 —
  * canonical tRPC exposure for Register Operations, Catalog, and Financial Shift workflow.
  *
  * Authorization + validation + DTO serialization only.
@@ -112,6 +113,31 @@ const closeFinancialShiftInput = restaurantInput
     actualCashAmount: moneyAmountInput,
     actorUserId: z.coerce.number().int().positive(),
   });
+
+const archiveFinancialShiftInput = restaurantInput
+  .merge(concurrencyInput)
+  .extend({
+    financialShiftId: z.string().min(1).max(128),
+  });
+
+const listFinancialShiftArchiveInput = restaurantInput.extend({
+  preset: z
+    .enum(["today", "last_7", "last_30", "last_90", "custom", "all"])
+    .optional(),
+  customFromIso: z.string().min(1).max(64).optional(),
+  customToIso: z.string().min(1).max(64).optional(),
+  registerId: z.string().min(1).max(128).optional(),
+  shiftNumber: z.coerce.number().int().positive().optional(),
+  operatorUserId: z.coerce.number().int().positive().optional(),
+  financialShiftIdQuery: z.string().max(128).optional(),
+  status: z.array(z.string().min(1).max(32)).optional(),
+  limit: z.coerce.number().int().positive().max(100).optional(),
+  offset: z.coerce.number().int().nonnegative().optional(),
+});
+
+const closingReportInput = restaurantInput.extend({
+  financialShiftId: z.string().min(1).max(128),
+});
 
 /**
  * Canonical CRMP APIs:
@@ -701,6 +727,49 @@ export const crmpRouter = router({
         );
         const svc = getCrmpFinancialShiftOperationsService();
         return runCrmpRead(() => svc.getTenderSummary(input));
+      }),
+
+    archive: verifiedProcedure
+      .input(archiveFinancialShiftInput)
+      .mutation(async ({ input, ctx }) => {
+        await assertRestaurantAccess(
+          ctx,
+          input.restaurantId,
+          "crmp.financialShift.archive"
+        );
+        const svc = getCrmpFinancialShiftOperationsService();
+        return runCrmpWrite(() =>
+          svc.archive({
+            restaurantId: input.restaurantId,
+            financialShiftId: input.financialShiftId,
+            expectedVersion: input.expectedVersion,
+            at: input.at,
+          })
+        );
+      }),
+
+    listArchive: verifiedProcedure
+      .input(listFinancialShiftArchiveInput)
+      .query(async ({ input, ctx }) => {
+        await assertRestaurantAccess(
+          ctx,
+          input.restaurantId,
+          "crmp.financialShift.listArchive"
+        );
+        const svc = getCrmpFinancialShiftOperationsService();
+        return runCrmpRead(() => svc.listArchive(input));
+      }),
+
+    getClosingReport: verifiedProcedure
+      .input(closingReportInput)
+      .query(async ({ input, ctx }) => {
+        await assertRestaurantAccess(
+          ctx,
+          input.restaurantId,
+          "crmp.financialShift.getClosingReport"
+        );
+        const svc = getCrmpFinancialShiftOperationsService();
+        return runCrmpRead(() => svc.getClosingReport(input));
       }),
   }),
 });

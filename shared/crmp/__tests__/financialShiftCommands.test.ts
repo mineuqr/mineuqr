@@ -44,6 +44,7 @@ function openShift() {
     openingFloatAmount: "100.00",
     currencyCode: "SAR",
     openedAt: "t2",
+    shiftNumber: 1,
   });
 }
 
@@ -69,6 +70,7 @@ describe("CRMP Financial Shift commands", () => {
         openingFloatAmount: "0",
         currencyCode: "SAR",
         openedAt: "t3",
+        shiftNumber: 2,
       })
     ).toThrow(CrmpConflictError);
   });
@@ -205,11 +207,13 @@ describe("CRMP Financial Shift commands", () => {
       successorShiftId: "fsh_2",
       successorDrawerId: "drw_2",
       successorOpeningMovementId: "mov_2",
+      successorShiftNumber: 2,
       acceptedAt: "t5",
     });
     expect(closed.status).toBe("closed");
     expect(closed.handover?.outcome).toBe("accepted");
     expect(successor.status).toBe("open");
+    expect(successor.shiftNumber).toBe(2);
     expect(successor.operatorUserId).toBe(20);
     expect(successor.openingFloatAmount).toBe("95.00");
   });
