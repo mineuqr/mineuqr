@@ -78,27 +78,78 @@ async function main() {
          ON r.registerId = s.registerId AND r.restaurantId = s.restaurantId
        WHERE r.registerId IS NULL`
     );
-
-    console.log(
-      JSON.stringify(
-        {
-          mode: MODE,
-          hash0081,
-          lastMigrations: mig,
-          hash0081Applied: hashHit,
-          shiftNumberPresent: cols.some((c) => c.COLUMN_NAME === "shiftNumber"),
-          columns: cols,
-          targetIndexes: indexes,
-          sequencesTablePresent: seqTable.length > 0,
-          shiftRows: cnt[0].n,
-          nullOrEmptyUuid: nullUuid[0].n,
-          dupFinancialShiftId: dupUuid[0].n,
-          orphanShiftsVsRegisters: orph[0].n,
-        },
-        null,
-        2
-      )
+    const [counts] = await conn.query(
+      `SELECT
+         (SELECT COUNT(*) FROM crmp_registers) AS registers,
+         (SELECT COUNT(*) FROM crmp_financial_shifts) AS shifts,
+         (SELECT COUNT(*) FROM crmp_settlement_attributions) AS attributions,
+         (SELECT COUNT(*) FROM settlement_records) AS settlement_records,
+         (SELECT COUNT(*) FROM operational_checks) AS checks`
     );
+
+    const payload = {
+      mode: MODE,
+      hash0081,
+      lastMigrations: mig,
+      hash0081Applied: hashHit,
+      shiftNumberPresent: cols.some((c) => c.COLUMN_NAME === "shiftNumber"),
+      columns: cols,
+      targetIndexes: indexes,
+      sequencesTablePresent: seqTable.length > 0,
+      shiftRows: cnt[0].n,
+      nullOrEmptyUuid: nullUuid[0].n,
+      dupFinancialShiftId: dupUuid[0].n,
+      orphanShiftsVsRegisters: orph[0].n,
+      platformCounts: counts[0],
+    };
+
+    if (MODE === "post" || cols.some((c) => c.COLUMN_NAME === "shiftNumber")) {
+      const shiftCol = cols.find((c) => c.COLUMN_NAME === "shiftNumber");
+      const [nullShiftNumber] = await conn.query(
+        "SELECT COUNT(*) AS n FROM crmp_financial_shifts WHERE shiftNumber IS NULL"
+      );
+      const [dupShiftNumber] = await conn.query(
+        `SELECT COUNT(*) AS n FROM (
+           SELECT restaurantId, registerId, shiftNumber
+           FROM crmp_financial_shifts
+           GROUP BY restaurantId, registerId, shiftNumber
+           HAVING COUNT(*) > 1
+         ) t`
+      );
+      const [seqRows] = await conn.query(
+        "SELECT restaurantId, registerId, lastNumber FROM crmp_register_shift_sequences ORDER BY restaurantId, registerId"
+      );
+      const [maxPerRegister] = await conn.query(
+        `SELECT restaurantId, registerId, MAX(shiftNumber) AS maxN, COUNT(*) AS n
+         FROM crmp_financial_shifts
+         GROUP BY restaurantId, registerId
+         ORDER BY restaurantId, registerId`
+      );
+      const [sample] = await conn.query(
+        `SELECT id, financialShiftId, restaurantId, registerId, shiftNumber, status
+         FROM crmp_financial_shifts
+         ORDER BY id`
+      );
+      const [explainArchive] = await conn.query(
+        `EXPLAIN SELECT financialShiftId, shiftNumber, closedAt
+         FROM crmp_financial_shifts
+         WHERE restaurantId = 1 AND status IN ('closed','archived')
+         ORDER BY closedAt DESC
+         LIMIT 25`
+      );
+
+      payload.post = {
+        shiftNumberColumn: shiftCol ?? null,
+        nullShiftNumber: nullShiftNumber[0].n,
+        dupShiftNumberScoped: dupShiftNumber[0].n,
+        sequences: seqRows,
+        maxPerRegister,
+        sampleShifts: sample,
+        explainArchive,
+      };
+    }
+
+    console.log(JSON.stringify(payload, null, 2));
   } finally {
     await conn.end();
   }
