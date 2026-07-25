@@ -13,7 +13,7 @@
 | **Refines** | Cross-cutting lifecycle of persisted subjects; does **not** move Aggregate ownership |
 | **Does not modify** | ADR-ARCH-020 · 022 · 026 · 028 · 030 ownership or monetary SSOT |
 | **Related programs** | DATA-RETENTION-ARCHITECTURE-1 · (future) FINANCIAL-SHIFT-RETENTION-ADOPTION-1 · DATA-RETENTION-PLATFORM-FOUNDATION-1 |
-| **Implementation status** | **Not implemented** — constitutional governance + architecture design only |
+| **Implementation status** | **Partial** — platform foundation in `shared/data-retention` (DATA-RETENTION-PLATFORM-1). Domain adoption (Financial Shift) not started. No DB/API/purge runtime. |
 
 ---
 
