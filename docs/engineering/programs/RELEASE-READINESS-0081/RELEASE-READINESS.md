@@ -9,7 +9,7 @@
 | **DB migrate** | **NOT EXECUTED** |
 | **Production deploy** | **NOT EXECUTED** |
 | **Release commit** | `53a451889be469fdefc93d45334eb89c6b0e6a49` |
-| **Certification HEAD** | `ec7ec9d` on `origin/main` |
+| **Remote** | `origin/main` (includes release commit) |
 | **Verdict** | **RELEASE READY — CERTIFIED** |
 
 ---
