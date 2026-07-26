@@ -1,5 +1,6 @@
 /**
- * SETTLEMENT-RECORD-UI-ADOPTION-1 — operator copy (ar/en).
+ * SETTLEMENT-RECORD-UI-ADOPTION-1 / REFUND-SETTLEMENT-RECORD-ADOPTION-1
+ * Operator copy (ar/en). Polymorphic status labels include refunded.
  * Operational language only — no accounting / implementation terms.
  */
 
@@ -72,7 +73,11 @@ export const settlementRecordUiLabels = {
   paid: { ar: "مدفوع", en: "Paid" },
   complimentary: { ar: "ضيافة", en: "Complimentary" },
   voided: { ar: "ملغى", en: "Voided" },
+  refunded: { ar: "مُسترد", en: "Refunded" },
+  reversed: { ar: "معكوس", en: "Reversed" },
+  corrected: { ar: "مصحّح", en: "Corrected" },
   settlementComplete: { ar: "اكتملت التسوية", en: "Settlement complete" },
+  refundPublished: { ar: "تم تسجيل المرتجع", en: "Refund published" },
   readOnly: { ar: "عرض فقط", en: "Read-only" },
 } as const;
 
@@ -89,8 +94,15 @@ export function settlementStatusLabel(
   status: string,
   language: SettlementRecordLang
 ): string {
-  if (status === "complimentary") return settlementRecordUiLabel("complimentary", language);
+  if (status === "complimentary") {
+    return settlementRecordUiLabel("complimentary", language);
+  }
   if (status === "voided") return settlementRecordUiLabel("voided", language);
   if (status === "paid") return settlementRecordUiLabel("paid", language);
+  if (status === "refunded") return settlementRecordUiLabel("refunded", language);
+  if (status === "reversed") return settlementRecordUiLabel("reversed", language);
+  if (status === "corrected") {
+    return settlementRecordUiLabel("corrected", language);
+  }
   return settlementRecordUiLabel("settled", language);
 }

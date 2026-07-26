@@ -1,5 +1,6 @@
 /**
- * SETTLEMENT-RECORD-UI-ADOPTION-1 — Settlement Record → API DTO mapping.
+ * SETTLEMENT-RECORD-UI-ADOPTION-1 / REFUND-SETTLEMENT-RECORD-ADOPTION-1
+ * Settlement Record → API DTO mapping (polymorphic over recordKind).
  * Pure field mapping / display summarization. No money arithmetic.
  */
 
@@ -101,6 +102,8 @@ export function toSettlementRecordHistoryItemDto(
     paymentMethodSummary: paymentMethodSummaryOf(record),
     settlementStatus: settlementStatusOf(record),
     recordKind: record.recordKind,
+    recordGeneration: record.recordGeneration,
+    priorSettlementRecordId: record.priorSettlementRecordId,
     outcome: record.outcome,
     businessDay: record.businessDay,
     checkId: record.checkId,
@@ -129,6 +132,8 @@ export function toSettlementRecordDetailDto(input: {
     sourceType: sourceTypeOf(record),
     sourceIdentifier: sourceNumberOf(record),
     recordKind: record.recordKind,
+    recordGeneration: record.recordGeneration,
+    priorSettlementRecordId: record.priorSettlementRecordId,
     outcome: record.outcome,
     checkId: record.checkId,
     sessionId: record.sessionId,
@@ -169,6 +174,9 @@ export function toSettlementRecordReceiptDto(
     settlementNumber: detail.settlementNumber,
     settlementTime: detail.settlementTime,
     settlementStatus: detail.settlementStatus,
+    recordKind: detail.recordKind,
+    recordGeneration: detail.recordGeneration,
+    priorSettlementRecordId: detail.priorSettlementRecordId,
     businessDay: detail.audit.businessDay,
     orders: detail.orders,
     itemsSnapshot: detail.itemsSnapshot,

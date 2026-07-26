@@ -1,7 +1,9 @@
 /**
- * SETTLEMENT-RECORD-UI-ADOPTION-1 — API-safe Settlement Record read DTOs.
+ * SETTLEMENT-RECORD-UI-ADOPTION-1 / REFUND-SETTLEMENT-RECORD-ADOPTION-1
+ * API-safe Settlement Record read DTOs.
  *
  * Copy-only fields from immutable Settlement Record documents.
+ * Refund is a native recordKind — no parallel DTO model.
  * No Domain mutation, no money calculation, no legacy financial DTOs.
  */
 
@@ -9,7 +11,8 @@ import type { SettlementRecordKind } from "@shared/operational-session";
 
 export const SETTLEMENT_RECORD_API_CONTRACT_ID =
   "SETTLEMENT-RECORD-UI-ADOPTION-1" as const;
-export const SETTLEMENT_RECORD_API_CONTRACT_VERSION = 1 as const;
+/** v2 — exposes generation + prior linkage for compensating (refund) records. */
+export const SETTLEMENT_RECORD_API_CONTRACT_VERSION = 2 as const;
 
 /** Operator-facing history row — newest-first list. */
 export type SettlementRecordHistoryItemDto = Readonly<{
@@ -26,6 +29,8 @@ export type SettlementRecordHistoryItemDto = Readonly<{
   paymentMethodSummary: string;
   settlementStatus: string;
   recordKind: SettlementRecordKind;
+  recordGeneration: number;
+  priorSettlementRecordId: string | null;
   outcome: string;
   businessDay: string;
   checkId: number;
@@ -76,6 +81,8 @@ export type SettlementRecordDetailDto = Readonly<{
   sourceType: "session" | "check";
   sourceIdentifier: string;
   recordKind: SettlementRecordKind;
+  recordGeneration: number;
+  priorSettlementRecordId: string | null;
   outcome: string;
   checkId: number;
   sessionId: number | null;
@@ -113,6 +120,9 @@ export type SettlementRecordReceiptDto = Readonly<{
   settlementNumber: string;
   settlementTime: string;
   settlementStatus: string;
+  recordKind: SettlementRecordKind;
+  recordGeneration: number;
+  priorSettlementRecordId: string | null;
   businessDay: string;
   orders: readonly SettlementRecordOrderRefDto[];
   itemsSnapshot: readonly SettlementRecordItemSnapshotLineDto[];

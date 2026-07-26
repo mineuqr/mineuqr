@@ -1,5 +1,6 @@
 /**
- * SETTLEMENT-RECORD-UI-ADOPTION-1 — mapper unit tests (no money math).
+ * SETTLEMENT-RECORD-UI-ADOPTION-1 / REFUND-SETTLEMENT-RECORD-ADOPTION-1
+ * Mapper unit tests (no money math) — polymorphic refund adoption.
  */
 import { describe, expect, it } from "vitest";
 import type { SettlementRecord } from "@shared/operational-session";
@@ -75,10 +76,73 @@ describe("settlementRecordApiMapper", () => {
     expect(detail.taxSnapshot.totalTaxAmount).toBe("7.50");
     expect(detail.paymentMethods[0]?.paymentMethod).toBe("cash");
     expect(detail.checks).toEqual([{ checkId: 10 }]);
+    expect(detail.recordGeneration).toBe(1);
+    expect(detail.priorSettlementRecordId).toBeNull();
 
     const receipt = toSettlementRecordReceiptDto(detail);
     expect(receipt.grandTotal).toBe(detail.grandTotal);
     expect(receipt.financialSnapshot).toEqual(detail.financialSnapshot);
     expect(receipt.settlementRecordId).toBe(detail.settlementRecordId);
+    expect(receipt.recordKind).toBe("settlement");
+    expect(receipt.recordGeneration).toBe(1);
+  });
+
+  it("maps refund Settlement Record polymorphically (status + chain fields)", () => {
+    const refund = sampleRecord({
+      settlementRecordId: "sr:1:10:refund:2",
+      recordKind: "refund",
+      recordGeneration: 2,
+      priorSettlementRecordId: "sr:1:10:settlement:1",
+      grandTotal: "20.00",
+      subtotal: "20.00",
+      taxAmount: "0.00",
+      taxBreakdown: { totalTaxAmount: "0.00", lines: [] },
+      paymentSnapshot: [
+        {
+          settlementTransactionId: null,
+          paymentMethod: "cash",
+          amount: "20.00",
+          currencyCode: "SAR",
+          status: "refunded",
+          businessTimestamp: "2026-07-26T14:00:00.000Z",
+          reference: null,
+          externalReference: null,
+        },
+      ],
+    });
+
+    const history = toSettlementRecordHistoryItemDto(refund);
+    expect(history.settlementStatus).toBe("refunded");
+    expect(history.recordKind).toBe("refund");
+    expect(history.recordGeneration).toBe(2);
+    expect(history.priorSettlementRecordId).toBe("sr:1:10:settlement:1");
+    expect(history.grandTotal).toBe("20.00");
+
+    const detail = toSettlementRecordDetailDto({ record: refund });
+    expect(detail.settlementStatus).toBe("refunded");
+    expect(detail.priorSettlementRecordId).toBe("sr:1:10:settlement:1");
+
+    const receipt = toSettlementRecordReceiptDto(detail);
+    expect(receipt.recordKind).toBe("refund");
+    expect(receipt.settlementStatus).toBe("refunded");
+    expect(receipt.priorSettlementRecordId).toBe("sr:1:10:settlement:1");
+  });
+
+  it("backward compatibility: complimentary and voided statuses unchanged", () => {
+    expect(
+      toSettlementRecordHistoryItemDto(
+        sampleRecord({ outcome: "complimentary" })
+      ).settlementStatus
+    ).toBe("complimentary");
+    expect(
+      toSettlementRecordHistoryItemDto(
+        sampleRecord({
+          outcome: "voided",
+          recordKind: "void",
+          settlementRecordId: "sr:1:10:void:1",
+        })
+      ).settlementStatus
+    ).toBe("voided");
   });
 });
+

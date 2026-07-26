@@ -1,11 +1,15 @@
 /**
- * SETTLEMENT-RECORD-UI-ADOPTION-1 — Settlement Record read service.
+ * SETTLEMENT-RECORD-UI-ADOPTION-1 / REFUND-SETTLEMENT-RECORD-ADOPTION-1
+ * Settlement Record read service — polymorphic over recordKind (incl. refund).
  *
  * Reads immutable Settlement Record documents only.
  * Optional order/item display enrichment is presentation identity — not money math.
  */
 
-import type { SettlementRecord } from "@shared/operational-session";
+import {
+  sortSettlementRecordsNewestFirst,
+  type SettlementRecord,
+} from "@shared/operational-session";
 import { getOrderById, getOrderItemsByOrderId } from "../../../db";
 import { mapOrderDisplayIdentityFields } from "../../../order/read/presentation/mapOrderDisplayIdentity";
 import {
@@ -98,14 +102,6 @@ async function toEnrichedDetail(
   return toSettlementRecordDetailDto({ record, orders, itemsSnapshot });
 }
 
-function sortNewestFirst(records: SettlementRecord[]): SettlementRecord[] {
-  return [...records].sort((a, b) => {
-    const ta = Date.parse(a.settledAt ?? a.createdAt);
-    const tb = Date.parse(b.settledAt ?? b.createdAt);
-    return (Number.isFinite(tb) ? tb : 0) - (Number.isFinite(ta) ? ta : 0);
-  });
-}
-
 export class SettlementRecordReadService {
   async getById(input: {
     restaurantId: number;
@@ -120,7 +116,9 @@ export class SettlementRecordReadService {
     restaurantId: number;
     checkId: number;
   }): Promise<readonly SettlementRecordDetailDto[]> {
-    const records = sortNewestFirst(await listSettlementRecordsForCheck(input));
+    const records = sortSettlementRecordsNewestFirst(
+      await listSettlementRecordsForCheck(input)
+    );
     return Promise.all(
       records.map((record) => toEnrichedDetail(input.restaurantId, record))
     );
@@ -130,7 +128,7 @@ export class SettlementRecordReadService {
     restaurantId: number;
     sessionId: number;
   }): Promise<readonly SettlementRecordHistoryItemDto[]> {
-    const records = sortNewestFirst(
+    const records = sortSettlementRecordsNewestFirst(
       await listSettlementRecordsForSession(input)
     );
     return records.map(toSettlementRecordHistoryItemDto);

@@ -1,5 +1,6 @@
 /**
- * SETTLEMENT-RECORD-UI-ADOPTION-1 — ViewModels (presentation only).
+ * SETTLEMENT-RECORD-UI-ADOPTION-1 / REFUND-SETTLEMENT-RECORD-ADOPTION-1
+ * ViewModels (presentation only) — polymorphic over recordKind.
  */
 
 import {
@@ -48,6 +49,9 @@ export type SettlementHistoryRowViewModel = Readonly<{
   settlementTimeClockLabel: string;
   sourceLabel: string;
   sourceType: "session" | "check";
+  recordKind: string;
+  recordGeneration: number;
+  priorSettlementRecordId: string | null;
   grandTotalLabel: string;
   paymentMethodSummaryLabel: string;
   statusLabel: string;
@@ -82,11 +86,15 @@ export function toSettlementHistoryRowViewModel(
     settlementNumber: resolveSettlementOperationalIdentity({
       checkId: item.checkId,
       settlementRecordId: item.settlementRecordId,
+      recordGeneration: item.recordGeneration,
     }),
     settlementTimeDateLabel: time.dateLabel,
     settlementTimeClockLabel: time.timeLabel,
     sourceLabel: `${sourceTypeLabel} #${item.sourceNumber}`,
     sourceType: item.sourceType,
+    recordKind: item.recordKind,
+    recordGeneration: item.recordGeneration,
+    priorSettlementRecordId: item.priorSettlementRecordId,
     grandTotalLabel: money(item.grandTotal, item.currencySymbol),
     paymentMethodSummaryLabel: methods || "—",
     statusLabel: settlementStatusLabel(item.settlementStatus, language),
@@ -134,6 +142,7 @@ export function toSettlementDetailViewModel(
     settlementNumber: resolveSettlementOperationalIdentity({
       checkId: detail.checkId,
       settlementRecordId: detail.settlementRecordId,
+      recordGeneration: detail.recordGeneration,
     }),
     settlementTimeLabel: formatTime(detail.settlementTime, language),
     settlementStatusLabel: settlementStatusLabel(detail.settlementStatus, language),
@@ -204,7 +213,9 @@ export function toSettlementReceiptViewModel(
     settlementStatus: receipt.settlementStatus,
     sourceType: "check",
     sourceIdentifier: "",
-    recordKind: "settlement",
+    recordKind: receipt.recordKind,
+    recordGeneration: receipt.recordGeneration,
+    priorSettlementRecordId: receipt.priorSettlementRecordId,
     outcome: receipt.outcome,
     checkId: Number.isFinite(checkIdFromId) ? checkIdFromId : 0,
     sessionId: null,

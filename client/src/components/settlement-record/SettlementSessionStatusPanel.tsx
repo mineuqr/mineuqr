@@ -1,10 +1,12 @@
 /**
- * SETTLEMENT-RECORD-UI-ADOPTION-1 — session workspace settlement completion status.
+ * SETTLEMENT-RECORD-UI-ADOPTION-1 / REFUND-SETTLEMENT-RECORD-ADOPTION-1
+ * Session workspace settlement / refund publication status (polymorphic).
  */
 
 import {
   resolveSettlementOperationalIdentity,
   settlementRecordUiLabel,
+  settlementStatusLabel,
   useSettlementRecordsBySession,
   type SettlementRecordLang,
 } from "@/lib/settlement-record-presentation";
@@ -47,14 +49,16 @@ export function SettlementSessionStatusPanel({
   if (!settled) return null;
 
   const latest = query.data?.[0];
+  const panelTitleKey =
+    latest?.recordKind === "refund" ? "refundPublished" : "settlementComplete";
 
   return (
     <section
       className={cn(restaurantDash.panelInset, "p-4")}
-      aria-label={settlementRecordUiLabel("settlementComplete", language)}
+      aria-label={settlementRecordUiLabel(panelTitleKey, language)}
     >
       <h3 className="mb-2 text-sm font-semibold text-white">
-        {settlementRecordUiLabel("settlementComplete", language)}
+        {settlementRecordUiLabel(panelTitleKey, language)}
       </h3>
 
       {query.isLoading ? (
@@ -72,12 +76,13 @@ export function SettlementSessionStatusPanel({
               {resolveSettlementOperationalIdentity({
                 checkId: latest.checkId,
                 settlementRecordId: latest.settlementRecordId,
+                recordGeneration: latest.recordGeneration,
               })}
             </span>
           </p>
           <p className="text-sm text-slate-300">
             {settlementRecordUiLabel("settlementStatus", language)}:{" "}
-            {latest.settlementStatus}
+            {settlementStatusLabel(latest.settlementStatus, language)}
           </p>
           <div className="flex flex-wrap gap-2 pt-1">
             {onOpenDetail ? (

@@ -80,7 +80,11 @@ function inDateWindow(
 /**
  * List Settlement Records for Reporting (tenant + optional settled/created window).
  * Primary settlements + void primary records only (recordGeneration = 1).
- * Compensating generations are excluded from Revenue KPIs (future correction reporting).
+ * Compensating generations (incl. recordKind=refund) are excluded from Revenue KPIs.
+ *
+ * REFUND-SETTLEMENT-RECORD-ADOPTION-1: Refund is a native Settlement Record on the
+ * publication platform. Net Revenue / refund metric cutover is intentionally deferred
+ * to REFUND-REPORTING-ADOPTION-1 (no silent dual Revenue formula here).
  */
 export async function listSettlementRecordsForReporting(
   input: SettlementRecordReportingQuery

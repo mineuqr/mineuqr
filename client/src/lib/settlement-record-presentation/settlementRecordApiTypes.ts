@@ -1,5 +1,6 @@
 /**
- * SETTLEMENT-RECORD-UI-ADOPTION-1 — client API type aliases.
+ * SETTLEMENT-RECORD-UI-ADOPTION-1 / REFUND-SETTLEMENT-RECORD-ADOPTION-1
+ * Client API type aliases — polymorphic over recordKind (incl. refund).
  */
 
 export type SettlementRecordHistoryItemApiDto = Readonly<{
@@ -15,6 +16,8 @@ export type SettlementRecordHistoryItemApiDto = Readonly<{
   paymentMethodSummary: string;
   settlementStatus: string;
   recordKind: string;
+  recordGeneration: number;
+  priorSettlementRecordId: string | null;
   outcome: string;
   businessDay: string;
   checkId: number;
@@ -37,6 +40,8 @@ export type SettlementRecordDetailApiDto = Readonly<{
   sourceType: "session" | "check";
   sourceIdentifier: string;
   recordKind: string;
+  recordGeneration: number;
+  priorSettlementRecordId: string | null;
   outcome: string;
   checkId: number;
   sessionId: number | null;
@@ -82,6 +87,9 @@ export type SettlementRecordReceiptApiDto = Readonly<{
   settlementNumber: string;
   settlementTime: string;
   settlementStatus: string;
+  recordKind: string;
+  recordGeneration: number;
+  priorSettlementRecordId: string | null;
   businessDay: string;
   orders: SettlementRecordDetailApiDto["orders"];
   itemsSnapshot: SettlementRecordDetailApiDto["itemsSnapshot"];

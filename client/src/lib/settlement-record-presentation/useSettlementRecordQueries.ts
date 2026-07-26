@@ -1,5 +1,6 @@
 /**
- * SETTLEMENT-RECORD-UI-ADOPTION-1 — tRPC hooks over settlementRecord.* only.
+ * SETTLEMENT-RECORD-UI-ADOPTION-1 / REFUND-SETTLEMENT-RECORD-ADOPTION-1
+ * tRPC hooks over settlementRecord.* only — recordKind filter includes refund.
  */
 
 import { trpc } from "@/lib/trpc";
@@ -15,6 +16,13 @@ export function useSettlementRecordHistory(
     dateFrom?: string | null;
     dateTo?: string | null;
     outcome?: "paid" | "complimentary" | "voided" | null;
+    recordKind?:
+      | "settlement"
+      | "refund"
+      | "void"
+      | "reversal"
+      | "correction"
+      | null;
   },
   options: Enabled = {}
 ) {

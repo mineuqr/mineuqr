@@ -88,3 +88,16 @@ export {
   type CreateSettlementRecordCommand,
   type CreateCompensatingSettlementRecordCommand,
 } from "./settlementRecordCommands";
+
+export {
+  SETTLEMENT_RECORD_ADOPTION_PROGRAM_ID,
+  COMPENSATING_SETTLEMENT_RECORD_KINDS,
+  isCompensatingSettlementRecordKind,
+  isCompensatingSettlementRecord,
+  isRefundSettlementRecord,
+  sortSettlementRecordsChronologically,
+  sortSettlementRecordsNewestFirst,
+  assertSettlementRecordChainIntegrity,
+  assertSettlementRecordAppendOnlyOperation,
+  type CompensatingSettlementRecordKind,
+} from "./settlementRecordAdoption";
