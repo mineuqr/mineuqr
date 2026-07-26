@@ -63,6 +63,8 @@ describe("SETTLEMENT-RECORD-UI-ADOPTION-1 architecture guards", () => {
       "client/src/lib/settlement-record-presentation/useSettlementRecordQueries.ts"
     );
     expect(hooks).toContain("trpc.settlementRecord");
+    // REFUND-OPERATIONAL-WORKFLOW-ADOPTION-1 — Check Aggregate refund façade only.
+    expect(hooks).toContain("trpc.checkRefund");
   });
 
   it("history / detail / receipt UI mounts are present", () => {

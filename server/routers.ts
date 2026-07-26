@@ -112,6 +112,7 @@ import { kitchenRouter } from "./kitchen/read/kitchenRouter";
 import { orderReadRouter } from "./order/read/orderReadRouter";
 import { orderSettlementReadRouter } from "./operational-session/check/api/orderSettlementReadRouter";
 import { settlementRecordReadRouter } from "./operational-session/check/api/settlementRecordReadRouter";
+import { checkRefundRouter } from "./operational-session/check/api/checkRefundRouter";
 import { splitPaymentReadRouter } from "./operational-session/check/api/splitPaymentReadRouter";
 import { multiCheckAllocationRouter } from "./operational-session/check/api/multiCheckAllocationRouter";
 import { crmpRouter } from "./crmp/api/crmpRouter";
@@ -2827,6 +2828,7 @@ export const appRouter = router({
   kitchen: kitchenRouter,
   orderSettlement: orderSettlementReadRouter,
   settlementRecord: settlementRecordReadRouter,
+  checkRefund: checkRefundRouter,
   splitPayment: splitPaymentReadRouter,
   multiCheckAllocation: multiCheckAllocationRouter,
   crmp: crmpRouter,

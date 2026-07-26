@@ -25,7 +25,7 @@ describe("REFUND-PRESENTATION-ADOPTION-1 architecture guards", () => {
     expect(dash).not.toContain("RefundHistoryPanel");
   });
 
-  it("presentation performs no financial calculations or mutations", () => {
+  it("presentation performs no financial calculations or domain mutations", () => {
     const files = [
       "client/src/lib/settlement-record-presentation/settlementChainPresentation.ts",
       "client/src/lib/settlement-record-presentation/settlementHistoryFilterPresentation.ts",
@@ -35,7 +35,8 @@ describe("REFUND-PRESENTATION-ADOPTION-1 architecture guards", () => {
     for (const file of files) {
       const src = read(file);
       expect(src, file).not.toContain("computeCheckMoney");
-      expect(src, file).not.toContain("applyRefund");
+      expect(src, file).not.toContain("applyRefundOnCheck");
+      expect(src, file).not.toContain("executeRefundOnCheck");
       expect(src, file).not.toContain("insertSettlementRecord");
       expect(src, file).not.toContain("UPDATE ");
       expect(src, file).not.toContain("DELETE ");

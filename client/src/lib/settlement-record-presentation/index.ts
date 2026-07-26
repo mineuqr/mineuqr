@@ -64,4 +64,22 @@ export {
   useSettlementRecordsBySession,
   useSettlementRecordsByCheck,
   useInvalidateSettlementRecordQueries,
+  useCheckRefundBudget,
+  useApplyCheckRefund,
 } from "./useSettlementRecordQueries";
+
+export {
+  isRefundActionVisible,
+  type RefundActionVisibilityInput,
+} from "./refundWorkflowPresentation";
+
+export {
+  mapCheckRefundApiError,
+  checkRefundErrorMessage,
+  type CheckRefundErrorKind,
+} from "./checkRefundErrorPresentation";
+
+export type {
+  CheckRefundBudgetApiDto,
+  CheckRefundApplyResultApiDto,
+} from "./checkRefundApiTypes";

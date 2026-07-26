@@ -96,6 +96,45 @@ export function useInvalidateSettlementRecordQueries() {
       utils.settlementRecord.getById.invalidate(),
       utils.settlementRecord.getByCheck.invalidate(),
       utils.settlementRecord.getReceipt.invalidate(),
+      utils.checkRefund.getBudget.invalidate(),
     ]);
   };
+}
+
+/** Domain budget façade — eligibility/display only. */
+export function useCheckRefundBudget(
+  input: { restaurantId: number; checkId: number },
+  options: Enabled = {}
+) {
+  return trpc.checkRefund.getBudget.useQuery(input, {
+    enabled:
+      (options.enabled ?? true) &&
+      input.restaurantId > 0 &&
+      input.checkId > 0,
+    staleTime: 10_000,
+  });
+}
+
+/** Applies refund via Check Aggregate façade (no presentation money math). */
+export function useApplyCheckRefund() {
+  const utils = trpc.useUtils();
+  return trpc.checkRefund.applyOnCheck.useMutation({
+    onSuccess: async (_data, variables) => {
+      await Promise.all([
+        utils.settlementRecord.listByRestaurant.invalidate({
+          restaurantId: variables.restaurantId,
+        }),
+        utils.settlementRecord.getByCheck.invalidate({
+          restaurantId: variables.restaurantId,
+          checkId: variables.checkId,
+        }),
+        utils.settlementRecord.getById.invalidate(),
+        utils.settlementRecord.getReceipt.invalidate(),
+        utils.checkRefund.getBudget.invalidate({
+          restaurantId: variables.restaurantId,
+          checkId: variables.checkId,
+        }),
+      ]);
+    },
+  });
 }

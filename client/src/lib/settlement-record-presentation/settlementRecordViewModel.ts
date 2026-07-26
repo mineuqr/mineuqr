@@ -141,6 +141,7 @@ export type SettlementDetailViewModel = Readonly<{
   sourceIdentifier: string;
   checkId: number;
   recordKind: string;
+  outcome: string;
   recordGeneration: number;
   generationLabel: string;
   priorSettlementRecordId: string | null;
@@ -195,6 +196,7 @@ export function toSettlementDetailViewModel(
     sourceIdentifier: `${sourceTypeLabel} #${detail.sourceIdentifier}`,
     checkId: detail.checkId,
     recordKind: detail.recordKind,
+    outcome: detail.outcome,
     recordGeneration: detail.recordGeneration,
     generationLabel: String(detail.recordGeneration),
     priorSettlementRecordId: priorId,

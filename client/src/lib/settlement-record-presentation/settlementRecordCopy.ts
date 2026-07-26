@@ -102,6 +102,52 @@ export const settlementRecordUiLabels = {
   paymentStatusRefunded: { ar: "مُسترد", en: "Refunded" },
   operatorStaff: { ar: "مشغّل", en: "Staff" },
   operatorSystem: { ar: "النظام", en: "System" },
+  refundAction: { ar: "استرداد", en: "Refund" },
+  refundConfirmTitle: { ar: "تأكيد الاسترداد", en: "Confirm Refund" },
+  refundConfirmBody: {
+    ar: "سيتم تسجيل مرتجع عبر سجل التسوية. لا يمكن التراجع عن المنشور المالي.",
+    en: "A refund publication will be recorded in Settlement History. The financial publication cannot be undone.",
+  },
+  refundableBalance: {
+    ar: "الرصيد القابل للاسترداد",
+    en: "Refundable Balance",
+  },
+  refundAmount: { ar: "مبلغ الاسترداد", en: "Refund Amount" },
+  refundReason: { ar: "السبب (اختياري)", en: "Reason (optional)" },
+  refundTender: { ar: "طريقة الاسترداد", en: "Refund Method" },
+  refundConfirmAction: { ar: "تأكيد الاسترداد", en: "Confirm Refund" },
+  refundSuccess: {
+    ar: "تم تسجيل المرتجع بنجاح.",
+    en: "Refund published successfully.",
+  },
+  refundErrorBudget: {
+    ar: "رصيد الاسترداد مستنفد.",
+    en: "Refund budget exhausted.",
+  },
+  refundErrorAlready: {
+    ar: "تم استرداد هذا المبلغ مسبقاً.",
+    en: "Already refunded.",
+  },
+  refundErrorNotRefundable: {
+    ar: "هذه التسوية غير قابلة للاسترداد.",
+    en: "Settlement is not refundable.",
+  },
+  refundErrorPermission: {
+    ar: "لا تملك صلاحية تنفيذ الاسترداد.",
+    en: "Permission denied for refund.",
+  },
+  refundErrorAmount: {
+    ar: "مبلغ الاسترداد غير صالح.",
+    en: "Invalid refund amount.",
+  },
+  refundErrorConflict: {
+    ar: "تعارض أثناء تسجيل المرتجع. حاول مرة أخرى.",
+    en: "Refund conflict. Please try again.",
+  },
+  refundErrorGeneric: {
+    ar: "تعذر تنفيذ الاسترداد.",
+    en: "Could not execute refund.",
+  },
 } as const;
 
 export type SettlementRecordUiKey = keyof typeof settlementRecordUiLabels;

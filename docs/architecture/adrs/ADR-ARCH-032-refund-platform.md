@@ -15,7 +15,7 @@
 | **Related ADRs** | ADR-ARCH-001 · 002 · 003 · 006 · 014 · 020 · 021 · 022 · 023 · 024 · 025 · 026 · 028 · 030 · 031 |
 | **Related programs** | REFUND-PLATFORM-ARCHITECTURE-1 (investigation + this ADR) · FINANCIAL-CORE-CAPABILITIES-ARCHITECTURE-1 · SETTLEMENT-RECORD-PLATFORM-1 · successors listed in §22 |
 | **Investigation** | [ARCHITECTURE-INVESTIGATION.md](../../engineering/programs/REFUND-PLATFORM-ARCHITECTURE-1/ARCHITECTURE-INVESTIGATION.md) — verdict **READY FOR ADR** |
-| **Implementation status** | **Implemented (domain + SR + Register + Reporting + Presentation)** — Domain, SR, Register AttributeRefund, Reporting Net Revenue, and Settlement Ledger presentation (REFUND-PRESENTATION-ADOPTION-1) certified. |
+| **Implementation status** | **Implemented (domain + SR + Register + Reporting + Presentation + Operational workflow)** — Full Refund Platform certified; Settlement Ledger executes Refund via CheckService façade (REFUND-OPERATIONAL-WORKFLOW-ADOPTION-1). |
 | **Numbering note** | Next FSP capability ADR after ADR-ARCH-031. **ADR-ARCH-023 remains Financial Core Capabilities** and MUST NOT be reused. |
 
 ---
@@ -760,6 +760,7 @@ Recommended after this ADR (Architecture Authority sequencing required; this ADR
 | **REFUND-REGISTER-ADOPTION-1** | AttributeRefund + cash custody effects under ADR-028/030 fail-open |
 | **REFUND-REPORTING-ADOPTION-1** | **Certified** — Gross unchanged; Net Revenue = Gross − refund publications; payment refund buckets additive |
 | **REFUND-PRESENTATION-ADOPTION-1** | **Certified** — Refund inside Settlement Ledger; chain/timeline/filters/attribution labels; no financial logic |
+| **REFUND-OPERATIONAL-WORKFLOW-ADOPTION-1** | **Certified** — Refund action in Settlement Detail → `checkRefund` façade → CheckService; no new domain |
 
 Optional later (only if justified by product demand):
 

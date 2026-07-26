@@ -1,9 +1,10 @@
 /**
  * SETTLEMENT-RECORD-UI-ADOPTION-1 / REFUND-PRESENTATION-ADOPTION-1
- * Read-only Settlement Detail — compensating chain + attribution display.
+ * REFUND-OPERATIONAL-WORKFLOW-ADOPTION-1
+ * Settlement Detail — compensating chain + optional Refund action (Check façade).
  */
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -14,17 +15,22 @@ import {
 import { restaurantDash } from "@/components/dashboard/restaurantDashStyles";
 import {
   formatSettlementHistoryTimeParts,
+  isRefundActionVisible,
   mapSettlementRecordApiError,
   settlementRecordErrorMessage,
   settlementRecordUiLabel,
   toSettlementChainViewModel,
   toSettlementDetailViewModel,
+  useApplyCheckRefund,
+  useCheckRefundBudget,
   useSettlementRecordDetail,
   useSettlementRecordsByCheck,
   type SettlementRecordLang,
 } from "@/lib/settlement-record-presentation";
+import { readActiveRegister } from "@/lib/register-operations-presentation";
 import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
+import { SettlementRefundDialog } from "./SettlementRefundDialog";
 
 type SettlementDetailSheetProps = {
   open: boolean;
@@ -57,6 +63,9 @@ export function SettlementDetailSheet({
   onViewHistory,
   onOpenSettlementRecord,
 }: SettlementDetailSheetProps) {
+  const [refundOpen, setRefundOpen] = useState(false);
+  const [refundSuccess, setRefundSuccess] = useState(false);
+
   const query = useSettlementRecordDetail(
     {
       restaurantId,
@@ -78,6 +87,22 @@ export function SettlementDetailSheet({
     { enabled: open && (vm?.checkId ?? 0) > 0 }
   );
 
+  const budgetQuery = useCheckRefundBudget(
+    {
+      restaurantId,
+      checkId: vm?.checkId ?? 0,
+    },
+    {
+      enabled:
+        open &&
+        (vm?.checkId ?? 0) > 0 &&
+        vm?.recordKind === "settlement" &&
+        (vm.outcome === "paid" || vm.outcome === "complimentary"),
+    }
+  );
+
+  const refundMutation = useApplyCheckRefund();
+
   const chain = useMemo(
     () =>
       toSettlementChainViewModel(
@@ -88,6 +113,12 @@ export function SettlementDetailSheet({
     [chainQuery.data, language, settlementRecordId]
   );
 
+  const showRefund = isRefundActionVisible({
+    recordKind: vm?.recordKind ?? "",
+    outcome: vm?.outcome ?? "",
+    budgetEligible: budgetQuery.data?.eligible ?? null,
+  });
+
   const openLinked = (id: string) => {
     if (onOpenSettlementRecord) {
       onOpenSettlementRecord(id);
@@ -96,6 +127,7 @@ export function SettlementDetailSheet({
   };
 
   return (
+    <>
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
@@ -398,9 +430,32 @@ export function SettlementDetailSheet({
                 />
               </section>
 
-              <div className="flex flex-col gap-2 sm:flex-row">
+              {refundSuccess ? (
+                <p className="text-sm text-emerald-400" role="status">
+                  {settlementRecordUiLabel("refundSuccess", language)}
+                </p>
+              ) : null}
+
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                {showRefund ? (
+                  <Button
+                    type="button"
+                    className="flex-1"
+                    onClick={() => {
+                      setRefundSuccess(false);
+                      setRefundOpen(true);
+                    }}
+                  >
+                    {settlementRecordUiLabel("refundAction", language)}
+                  </Button>
+                ) : null}
                 {onViewReceipt ? (
-                  <Button type="button" className="flex-1" onClick={onViewReceipt}>
+                  <Button
+                    type="button"
+                    variant={showRefund ? "outline" : "default"}
+                    className="flex-1"
+                    onClick={onViewReceipt}
+                  >
                     {settlementRecordUiLabel("viewReceipt", language)}
                   </Button>
                 ) : null}
@@ -420,5 +475,42 @@ export function SettlementDetailSheet({
         </div>
       </SheetContent>
     </Sheet>
+
+    <SettlementRefundDialog
+      open={refundOpen}
+      language={language}
+      pending={refundMutation.isPending}
+      refundableBalance={budgetQuery.data?.refundableBalance ?? "0.00"}
+      currencySymbol={query.data?.financialSnapshot.currencySymbol}
+      error={refundMutation.error}
+      onOpenChange={(next) => {
+        if (!next) refundMutation.reset();
+        setRefundOpen(next);
+      }}
+      onConfirm={({ amount, tenderMethod, reason }) => {
+        if (!vm) return;
+        const registerId = readActiveRegister(restaurantId);
+        refundMutation.mutate(
+          {
+            restaurantId,
+            checkId: vm.checkId,
+            amount,
+            tenderMethod,
+            reason,
+            ...(registerId ? { registerId } : {}),
+          },
+          {
+            onSuccess: (result) => {
+              setRefundOpen(false);
+              setRefundSuccess(true);
+              if (result.settlementRecordId && onOpenSettlementRecord) {
+                onOpenSettlementRecord(result.settlementRecordId);
+              }
+            },
+          }
+        );
+      }}
+    />
+    </>
   );
 }
