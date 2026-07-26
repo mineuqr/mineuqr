@@ -86,9 +86,19 @@ export function SettlementReceiptDialog({
             ) : null}
             <div className="space-y-1 text-center">
               <p className="font-medium">
-                {settlementRecordUiLabel("receiptTitle", language)}
+                {vm.isRefundReceipt
+                  ? settlementRecordUiLabel("refundReceiptTitle", language)
+                  : settlementRecordUiLabel("receiptTitle", language)}
               </p>
-              <p className="text-muted-foreground">{vm.settlementNumber}</p>
+              <p className="text-lg font-semibold tabular-nums tracking-wide">
+                {vm.documentNumber}
+              </p>
+              {vm.originSettlementNumber ? (
+                <p className="text-muted-foreground">
+                  {settlementRecordUiLabel("originSettlementNumber", language)}{" "}
+                  {vm.originSettlementNumber}
+                </p>
+              ) : null}
               <p className="text-muted-foreground">{vm.settlementTimeLabel}</p>
               <p className="text-muted-foreground">{vm.statusLabel}</p>
             </div>

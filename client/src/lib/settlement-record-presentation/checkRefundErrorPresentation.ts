@@ -14,6 +14,8 @@ export type CheckRefundErrorKind =
   | "permission_denied"
   | "invalid_amount"
   | "conflict"
+  | "window_expired"
+  | "unknown_settlement"
   | "generic";
 
 export function mapCheckRefundApiError(error: unknown): CheckRefundErrorKind {
@@ -32,6 +34,12 @@ export function mapCheckRefundApiError(error: unknown): CheckRefundErrorKind {
       : "";
 
   const hay = `${message} ${code}`.toLowerCase();
+  if (hay.includes("refund_window_expired") || hay.includes("window_expired")) {
+    return "window_expired";
+  }
+  if (hay.includes("unknown settlement") || hay.includes("not_found")) {
+    return "unknown_settlement";
+  }
   if (hay.includes("forbidden") || hay.includes("permission")) {
     return "permission_denied";
   }
@@ -44,7 +52,8 @@ export function mapCheckRefundApiError(error: unknown): CheckRefundErrorKind {
   if (
     hay.includes("not_refundable") ||
     hay.includes("no_prior") ||
-    hay.includes("not refundable")
+    hay.includes("not refundable") ||
+    hay.includes("refund_policy_disabled")
   ) {
     return "not_refundable";
   }
@@ -74,6 +83,10 @@ export function checkRefundErrorMessage(
       return settlementRecordUiLabel("refundErrorAmount", language);
     case "conflict":
       return settlementRecordUiLabel("refundErrorConflict", language);
+    case "window_expired":
+      return settlementRecordUiLabel("refundErrorWindowExpired", language);
+    case "unknown_settlement":
+      return settlementRecordUiLabel("refundErrorUnknownSettlement", language);
     default:
       return settlementRecordUiLabel("refundErrorGeneric", language);
   }

@@ -65,6 +65,7 @@ export {
   useSettlementRecordsByCheck,
   useInvalidateSettlementRecordQueries,
   useCheckRefundBudget,
+  useLookupCheckRefundBySettlementNumber,
   useApplyCheckRefund,
 } from "./useSettlementRecordQueries";
 
@@ -72,6 +73,8 @@ export {
   isRefundActionVisible,
   type RefundActionVisibilityInput,
 } from "./refundWorkflowPresentation";
+
+export { formatElapsedRefundWindow } from "./refundWindowPresentation";
 
 export {
   mapCheckRefundApiError,
@@ -83,3 +86,5 @@ export type {
   CheckRefundBudgetApiDto,
   CheckRefundApplyResultApiDto,
 } from "./checkRefundApiTypes";
+
+export { parseSettlementOperationalIdentity } from "@shared/operational-document-identity";

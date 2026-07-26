@@ -17,7 +17,10 @@ describe("OPERATIONAL-DOCUMENT-IDENTITY-STANDARD-1 architecture guards", () => {
     const provider = read("shared/operational-document-identity/provider.ts");
     expect(registry).toContain("OPERATIONAL_DOCUMENT_IDENTITY_REGISTRY");
     expect(registry).toContain('prefix: "ST"');
+    expect(registry).toContain('prefix: "RF"');
+    expect(registry).toContain('documentType: "refund"');
     expect(provider).toContain("resolveSettlementOperationalIdentity");
+    expect(provider).toContain("resolveRefundOperationalIdentity");
     expect(provider).toContain("formatOperationalIdentity");
     expect(provider).toContain("isPersistenceIdentityLeak");
   });
@@ -35,11 +38,16 @@ describe("OPERATIONAL-DOCUMENT-IDENTITY-STANDARD-1 architecture guards", () => {
     expect(helpers).not.toMatch(/padStart\(6,\s*"0"\)[\s\S]*return `ST-/);
   });
 
-  it("Settlement read API maps operational settlementNumber via provider", () => {
+  it("Settlement read API maps operational document numbers via provider", () => {
+    const identity = read(
+      "server/operational-session/check/api/settlementRecordDocumentIdentity.ts"
+    );
     const mapper = read(
       "server/operational-session/check/api/settlementRecordApiMapper.ts"
     );
-    expect(mapper).toContain("resolveSettlementOperationalIdentity");
+    expect(identity).toContain("resolveSettlementOperationalIdentity");
+    expect(identity).toContain("resolveRefundOperationalIdentity");
+    expect(mapper).toContain("resolveSettlementRecordDocumentIdentity");
     expect(mapper).not.toContain(
       "return record.settlementRecordId;\n}"
     );

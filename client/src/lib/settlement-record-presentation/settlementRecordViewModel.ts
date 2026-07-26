@@ -24,11 +24,6 @@ import {
 } from "./settlementHistoryPresentation";
 import { resolveSettlementOperationalIdentity } from "@shared/operational-document-identity";
 
-function parseCheckIdFromSettlementRecordId(id: string): number {
-  const n = Number(id.split(":")[2] ?? 0);
-  return Number.isFinite(n) ? n : 0;
-}
-
 function operatorDisplayLabel(
   detail: SettlementRecordDetailApiDto,
   language: SettlementRecordLang
@@ -67,6 +62,10 @@ function methodLabel(method: string, language: PresentationLanguage): string {
 export type SettlementHistoryRowViewModel = Readonly<{
   settlementRecordId: string;
   settlementNumber: string;
+  documentNumber: string;
+  documentType: "settlement" | "refund";
+  documentTypeLabel: string;
+  originSettlementNumber: string | null;
   settlementTimeDateLabel: string;
   settlementTimeClockLabel: string;
   businessDay: string;
@@ -111,13 +110,26 @@ export function toSettlementHistoryRowViewModel(
     item.recordKind === "correction" ||
     item.recordGeneration > 1;
 
+  const documentType =
+    item.documentType ??
+    (item.recordKind === "refund" ? "refund" : "settlement");
+  const documentNumber =
+    item.documentNumber ||
+    item.settlementNumber ||
+    (documentType === "settlement"
+      ? resolveSettlementOperationalIdentity({ checkId: item.checkId })
+      : item.settlementNumber);
+
   return {
     settlementRecordId: item.settlementRecordId,
-    settlementNumber: resolveSettlementOperationalIdentity({
-      checkId: item.checkId,
-      settlementRecordId: item.settlementRecordId,
-      recordGeneration: item.recordGeneration,
-    }),
+    settlementNumber: documentNumber,
+    documentNumber,
+    documentType,
+    documentTypeLabel:
+      documentType === "refund"
+        ? settlementRecordUiLabel("documentTypeRefund", language)
+        : settlementRecordUiLabel("documentTypeSettlement", language),
+    originSettlementNumber: item.originSettlementNumber ?? null,
     settlementTimeDateLabel: time.dateLabel,
     settlementTimeClockLabel: time.timeLabel,
     businessDay: item.businessDay,
@@ -135,6 +147,11 @@ export function toSettlementHistoryRowViewModel(
 
 export type SettlementDetailViewModel = Readonly<{
   settlementNumber: string;
+  documentNumber: string;
+  documentType: "settlement" | "refund";
+  documentTypeLabel: string;
+  refundNumber: string | null;
+  originSettlementNumber: string | null;
   settlementTimeLabel: string;
   settlementStatusLabel: string;
   sourceTypeLabel: string;
@@ -180,16 +197,29 @@ export function toSettlementDetailViewModel(
       ? settlementRecordUiLabel("sessionSource", language)
       : settlementRecordUiLabel("checkSource", language);
   const priorId = detail.priorSettlementRecordId;
-  const priorCheckId = priorId
-    ? parseCheckIdFromSettlementRecordId(priorId)
-    : 0;
+  const documentType =
+    detail.documentType ??
+    (detail.recordKind === "refund" ? "refund" : "settlement");
+  const documentNumber =
+    detail.documentNumber ||
+    detail.settlementNumber ||
+    resolveSettlementOperationalIdentity({ checkId: detail.checkId });
+  const originSettlementNumber =
+    detail.originSettlementNumber ??
+    (documentType === "refund"
+      ? resolveSettlementOperationalIdentity({ checkId: detail.checkId })
+      : null);
 
   return {
-    settlementNumber: resolveSettlementOperationalIdentity({
-      checkId: detail.checkId,
-      settlementRecordId: detail.settlementRecordId,
-      recordGeneration: detail.recordGeneration,
-    }),
+    settlementNumber: documentNumber,
+    documentNumber,
+    documentType,
+    documentTypeLabel:
+      documentType === "refund"
+        ? settlementRecordUiLabel("documentTypeRefund", language)
+        : settlementRecordUiLabel("documentTypeSettlement", language),
+    refundNumber: detail.refundNumber ?? null,
+    originSettlementNumber,
     settlementTimeLabel: formatTime(detail.settlementTime, language),
     settlementStatusLabel: settlementStatusLabel(detail.settlementStatus, language),
     sourceTypeLabel,
@@ -200,13 +230,7 @@ export function toSettlementDetailViewModel(
     recordGeneration: detail.recordGeneration,
     generationLabel: String(detail.recordGeneration),
     priorSettlementRecordId: priorId,
-    priorSettlementNumber:
-      priorId != null && priorCheckId > 0
-        ? resolveSettlementOperationalIdentity({
-            checkId: priorCheckId,
-            settlementRecordId: priorId,
-          })
-        : null,
+    priorSettlementNumber: originSettlementNumber,
     orders: detail.orders.map((o) => ({
       orderId: o.orderId,
       label: o.displayReference ?? `#${o.orderId}`,
@@ -253,6 +277,10 @@ export function toSettlementDetailViewModel(
 
 export type SettlementReceiptViewModel = Readonly<{
   settlementNumber: string;
+  documentNumber: string;
+  documentType: "settlement" | "refund";
+  isRefundReceipt: boolean;
+  originSettlementNumber: string | null;
   settlementTimeLabel: string;
   businessDay: string;
   statusLabel: string;
@@ -267,12 +295,14 @@ export function toSettlementReceiptViewModel(
   receipt: SettlementRecordReceiptApiDto,
   language: SettlementRecordLang
 ): SettlementReceiptViewModel {
-  const checkIdFromId = parseCheckIdFromSettlementRecordId(
-    receipt.settlementRecordId
-  );
+  const checkIdFromId = Number(receipt.settlementRecordId.split(":")[2] ?? 0);
   const detailLike: SettlementRecordDetailApiDto = {
     settlementRecordId: receipt.settlementRecordId,
     settlementNumber: receipt.settlementNumber,
+    documentNumber: receipt.documentNumber,
+    documentType: receipt.documentType,
+    refundNumber: receipt.refundNumber,
+    originSettlementNumber: receipt.originSettlementNumber,
     settlementTime: receipt.settlementTime,
     settlementStatus: receipt.settlementStatus,
     sourceType: "check",
@@ -281,7 +311,7 @@ export function toSettlementReceiptViewModel(
     recordGeneration: receipt.recordGeneration,
     priorSettlementRecordId: receipt.priorSettlementRecordId,
     outcome: receipt.outcome,
-    checkId: checkIdFromId,
+    checkId: Number.isFinite(checkIdFromId) ? checkIdFromId : 0,
     sessionId: null,
     orders: receipt.orders,
     checks: [],
@@ -300,7 +330,11 @@ export function toSettlementReceiptViewModel(
   };
   const detail = toSettlementDetailViewModel(detailLike, language);
   return {
-    settlementNumber: detail.settlementNumber,
+    settlementNumber: detail.documentNumber,
+    documentNumber: detail.documentNumber,
+    documentType: detail.documentType,
+    isRefundReceipt: detail.documentType === "refund",
+    originSettlementNumber: detail.originSettlementNumber,
     settlementTimeLabel: detail.settlementTimeLabel,
     businessDay: receipt.businessDay,
     statusLabel: detail.settlementStatusLabel,

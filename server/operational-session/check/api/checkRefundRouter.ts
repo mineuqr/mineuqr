@@ -1,7 +1,8 @@
 /**
- * REFUND-OPERATIONAL-WORKFLOW-ADOPTION-1
+ * REFUND-OPERATIONAL-WORKFLOW-ADOPTION-1 / ADOPTION-2
  *
  * Thin tRPC transport façade over certified CheckService refund entry points.
+ * ADOPTION-2 adds Settlement Number lookup + refund policy window enforcement.
  * Authorization + validation + DTO serialization only.
  * No Refund Domain reimplementation. No Check Aggregate changes.
  */
@@ -24,6 +25,10 @@ import {
   type CheckRefundBudgetDto,
 } from "./checkRefundApiDtos";
 import { runCheckRefundApi } from "./mapCheckRefundApiError";
+import {
+  assertRefundPolicyAllowsApply,
+  lookupCheckRefundBySettlementNumber,
+} from "./checkRefundLookupService";
 
 const restaurantInput = z.object({
   restaurantId: z.coerce.number().int().positive(),
@@ -31,6 +36,10 @@ const restaurantInput = z.object({
 
 const budgetInput = restaurantInput.extend({
   checkId: z.coerce.number().int().positive(),
+});
+
+const lookupInput = restaurantInput.extend({
+  settlementNumber: z.string().min(1).max(64),
 });
 
 const moneyAmount = z
@@ -45,6 +54,7 @@ const applyInput = restaurantInput.extend({
   reason: z.string().max(500).optional().nullable(),
   tenderMethod: z.enum(SELECTABLE_PAYMENT_METHODS).optional(),
   registerId: z.string().min(1).max(128).optional().nullable(),
+  managerApproved: z.boolean().optional().nullable(),
 });
 
 function toBudgetDto(
@@ -69,10 +79,27 @@ function toBudgetDto(
 
 /**
  * Operational Check Refund façade (Settlement Ledger entry):
+ * - lookupBySettlementNumber (ADOPTION-2)
  * - getBudget
  * - applyOnCheck (tRPC reserves the name `apply`)
  */
 export const checkRefundRouter = router({
+  lookupBySettlementNumber: verifiedProcedure
+    .input(lookupInput)
+    .query(async ({ input, ctx }) => {
+      await assertRestaurantAccess(
+        ctx,
+        input.restaurantId,
+        "checkRefund.lookupBySettlementNumber"
+      );
+      return runCheckRefundApi(() =>
+        lookupCheckRefundBySettlementNumber({
+          restaurantId: input.restaurantId,
+          settlementNumber: input.settlementNumber,
+        })
+      );
+    }),
+
   getBudget: verifiedProcedure
     .input(budgetInput)
     .query(async ({ input, ctx }) => {
@@ -99,6 +126,14 @@ export const checkRefundRouter = router({
         "checkRefund.applyOnCheck"
       );
       return runCheckRefundApi(async () => {
+        await assertRefundPolicyAllowsApply({
+          restaurantId: input.restaurantId,
+          checkId: input.checkId,
+          amount: input.amount,
+          reason: input.reason,
+          managerApproved: input.managerApproved,
+        });
+
         const result = await applyRefundOnCheck({
           restaurantId: input.restaurantId,
           checkId: input.checkId,

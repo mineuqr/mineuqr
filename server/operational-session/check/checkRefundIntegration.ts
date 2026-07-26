@@ -35,6 +35,7 @@ import {
   listSettlementRecordsForCheck,
   SettlementRecordPersistenceError,
 } from "./settlementRecordRepository";
+import { allocateRefundDocumentNumber } from "./refundDocumentNumberRepository";
 
 export type CheckRefundMutationResult = Readonly<{
   outcome: ExecuteRefundOnCheckResult["outcome"];
@@ -135,6 +136,17 @@ export async function applyRefundOnCheck(
   });
 
   if (domainResult.outcome === "already_applied") {
+    const existingRecord =
+      domainResult.settlementRecordResult?.record ?? existingRefundRecord;
+    if (existingRecord) {
+      await allocateRefundDocumentNumber(
+        {
+          restaurantId: input.restaurantId,
+          settlementRecordId: existingRecord.settlementRecordId,
+        },
+        client
+      );
+    }
     return {
       outcome: "already_applied",
       refund: domainResult.refund,
@@ -142,7 +154,7 @@ export async function applyRefundOnCheck(
       settledValue: domainResult.budget.settledValue,
       appliedRefundTotal: domainResult.budget.appliedRefundTotal,
       orderSettlements: domainResult.orderSettlements,
-      settlementRecord: domainResult.settlementRecordResult?.record ?? null,
+      settlementRecord: existingRecord,
       events: [],
       check,
     };
@@ -173,6 +185,14 @@ export async function applyRefundOnCheck(
   if (srResult.outcome === "applied") {
     try {
       await insertSettlementRecord(srResult.record, client);
+      // REFUND-DOCUMENT-NUMBERING-ADOPTION-1 — immutable RF- identity (identity plane).
+      await allocateRefundDocumentNumber(
+        {
+          restaurantId: input.restaurantId,
+          settlementRecordId: srResult.record.settlementRecordId,
+        },
+        client
+      );
     } catch (error) {
       if (
         error instanceof SettlementRecordPersistenceError &&
@@ -188,6 +208,13 @@ export async function applyRefundOnCheck(
           client
         );
         if (raced) {
+          await allocateRefundDocumentNumber(
+            {
+              restaurantId: input.restaurantId,
+              settlementRecordId: raced.settlementRecordId,
+            },
+            client
+          );
           return {
             outcome: "already_applied",
             refund: {

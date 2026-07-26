@@ -12,8 +12,11 @@ import {
   resolveCheckOperationalIdentity,
   resolveReceiptOperationalIdentity,
   resolveSessionOperationalIdentity,
+  resolveRefundOperationalIdentity,
   resolveSettlementOperationalIdentity,
   resolveTableOperationalIdentity,
+  parseRefundOperationalIdentity,
+  parseLedgerDocumentSearch,
 } from "../index";
 
 describe("Operational Identity Registry", () => {
@@ -28,12 +31,15 @@ describe("Operational Identity Registry", () => {
         "session",
         "check",
         "settlement",
+        "refund",
         "receipt",
         "kitchen_ticket",
       ])
     );
     expect(OPERATIONAL_DOCUMENT_IDENTITY_REGISTRY.settlement.prefix).toBe("ST");
     expect(OPERATIONAL_DOCUMENT_IDENTITY_REGISTRY.settlement.digits).toBe(6);
+    expect(OPERATIONAL_DOCUMENT_IDENTITY_REGISTRY.refund.prefix).toBe("RF");
+    expect(OPERATIONAL_DOCUMENT_IDENTITY_REGISTRY.refund.digits).toBe(6);
     expect(OPERATIONAL_DOCUMENT_IDENTITY_REGISTRY.receipt.aliasesTo).toBe(
       "settlement"
     );
@@ -85,5 +91,37 @@ describe("Operational Identity Provider", () => {
     expect(isPersistenceIdentityLeak("sr:1:2:settlement:1")).toBe(true);
     expect(isPersistenceIdentityLeak("fin:check:1:gen:1")).toBe(true);
     expect(isPersistenceIdentityLeak("ST-000001")).toBe(false);
+  });
+
+  it("formats Refund as independent RF sequence (not ST / check-derived)", () => {
+    expect(resolveRefundOperationalIdentity({ sequence: 1 })).toBe("RF-000001");
+    expect(resolveRefundOperationalIdentity({ sequence: 570001 })).toBe(
+      "RF-570001"
+    );
+    expect(
+      resolveSettlementOperationalIdentity({
+        checkId: 570004,
+        recordGeneration: 2,
+      })
+    ).toBe("ST-570004");
+    expect(isValidOperationalIdentityFormat("refund", "RF-000001")).toBe(true);
+  });
+
+  it("parses RF and ledger search tokens", () => {
+    expect(parseRefundOperationalIdentity("RF-570001")?.sequence).toBe(570001);
+    expect(parseLedgerDocumentSearch("RF-000002")).toEqual({
+      kind: "refund",
+      sequence: 2,
+      refundNumber: "RF-000002",
+    });
+    expect(parseLedgerDocumentSearch("ST-000010")).toEqual({
+      kind: "settlement",
+      checkId: 10,
+      settlementNumber: "ST-000010",
+    });
+    expect(parseLedgerDocumentSearch("570004")).toEqual({
+      kind: "check",
+      checkId: 570004,
+    });
   });
 });

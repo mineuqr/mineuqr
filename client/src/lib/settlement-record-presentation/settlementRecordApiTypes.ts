@@ -7,6 +7,10 @@
 export type SettlementRecordHistoryItemApiDto = Readonly<{
   settlementRecordId: string;
   settlementNumber: string;
+  documentNumber: string;
+  documentType: "settlement" | "refund";
+  refundNumber: string | null;
+  originSettlementNumber: string | null;
   settlementTime: string;
   sourceType: "session" | "check";
   sourceNumber: string;
@@ -36,6 +40,10 @@ export type SettlementRecordHistoryPageApiDto = Readonly<{
 export type SettlementRecordDetailApiDto = Readonly<{
   settlementRecordId: string;
   settlementNumber: string;
+  documentNumber: string;
+  documentType: "settlement" | "refund";
+  refundNumber: string | null;
+  originSettlementNumber: string | null;
   settlementTime: string;
   settlementStatus: string;
   sourceType: "session" | "check";
@@ -91,6 +99,10 @@ export type SettlementRecordDetailApiDto = Readonly<{
 export type SettlementRecordReceiptApiDto = Readonly<{
   settlementRecordId: string;
   settlementNumber: string;
+  documentNumber: string;
+  documentType: "settlement" | "refund";
+  refundNumber: string | null;
+  originSettlementNumber: string | null;
   settlementTime: string;
   settlementStatus: string;
   recordKind: string;

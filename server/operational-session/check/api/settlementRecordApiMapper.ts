@@ -1,11 +1,11 @@
 /**
  * SETTLEMENT-RECORD-UI-ADOPTION-1 / REFUND-SETTLEMENT-RECORD-ADOPTION-1
+ * REFUND-DOCUMENT-NUMBERING-ADOPTION-1
  * Settlement Record → API DTO mapping (polymorphic over recordKind).
  * Pure field mapping / display summarization. No money arithmetic.
  */
 
 import type { SettlementRecord } from "@shared/operational-session";
-import { resolveSettlementOperationalIdentity } from "@shared/operational-document-identity";
 import type {
   SettlementRecordDetailDto,
   SettlementRecordHistoryItemDto,
@@ -15,13 +15,16 @@ import type {
   SettlementRecordReceiptDto,
   SettlementRecordTaxLineDto,
 } from "./settlementRecordApiDtos";
+import {
+  resolveSettlementRecordDocumentIdentity,
+  type SettlementRecordDocumentIdentity,
+} from "./settlementRecordDocumentIdentity";
 
-function settlementNumberOf(record: SettlementRecord): string {
-  return resolveSettlementOperationalIdentity({
-    checkId: record.checkId,
-    settlementRecordId: record.settlementRecordId,
-    recordGeneration: record.recordGeneration,
-  });
+function documentIdentityOf(
+  record: SettlementRecord,
+  refundSequence?: number | null
+): SettlementRecordDocumentIdentity {
+  return resolveSettlementRecordDocumentIdentity(record, refundSequence);
 }
 
 function settlementTimeOf(record: SettlementRecord): string {
@@ -87,11 +90,17 @@ function toTaxLines(record: SettlementRecord): readonly SettlementRecordTaxLineD
 }
 
 export function toSettlementRecordHistoryItemDto(
-  record: SettlementRecord
+  record: SettlementRecord,
+  refundSequence?: number | null
 ): SettlementRecordHistoryItemDto {
+  const identity = documentIdentityOf(record, refundSequence);
   return {
     settlementRecordId: record.settlementRecordId,
-    settlementNumber: settlementNumberOf(record),
+    settlementNumber: identity.settlementNumber,
+    documentNumber: identity.documentNumber,
+    documentType: identity.documentType,
+    refundNumber: identity.refundNumber,
+    originSettlementNumber: identity.originSettlementNumber,
     settlementTime: settlementTimeOf(record),
     sourceType: sourceTypeOf(record),
     sourceNumber: sourceNumberOf(record),
@@ -115,8 +124,10 @@ export function toSettlementRecordDetailDto(input: {
   record: SettlementRecord;
   orders?: readonly SettlementRecordOrderRefDto[];
   itemsSnapshot?: readonly SettlementRecordItemSnapshotLineDto[];
+  refundSequence?: number | null;
 }): SettlementRecordDetailDto {
   const { record } = input;
+  const identity = documentIdentityOf(record, input.refundSequence);
   const orders =
     input.orders ??
     record.orderRefs.map((ref) => ({
@@ -126,7 +137,11 @@ export function toSettlementRecordDetailDto(input: {
 
   return {
     settlementRecordId: record.settlementRecordId,
-    settlementNumber: settlementNumberOf(record),
+    settlementNumber: identity.settlementNumber,
+    documentNumber: identity.documentNumber,
+    documentType: identity.documentType,
+    refundNumber: identity.refundNumber,
+    originSettlementNumber: identity.originSettlementNumber,
     settlementTime: settlementTimeOf(record),
     settlementStatus: settlementStatusOf(record),
     sourceType: sourceTypeOf(record),
@@ -181,6 +196,10 @@ export function toSettlementRecordReceiptDto(
   return {
     settlementRecordId: detail.settlementRecordId,
     settlementNumber: detail.settlementNumber,
+    documentNumber: detail.documentNumber,
+    documentType: detail.documentType,
+    refundNumber: detail.refundNumber,
+    originSettlementNumber: detail.originSettlementNumber,
     settlementTime: detail.settlementTime,
     settlementStatus: detail.settlementStatus,
     recordKind: detail.recordKind,

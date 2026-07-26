@@ -1,11 +1,12 @@
 /**
- * REFUND-OPERATIONAL-WORKFLOW-ADOPTION-1 — presentation workflow tests.
+ * REFUND-OPERATIONAL-WORKFLOW-ADOPTION-1 / ADOPTION-2 — presentation workflow tests.
  */
 import { describe, expect, it } from "vitest";
 import {
   checkRefundErrorMessage,
   mapCheckRefundApiError,
 } from "../checkRefundErrorPresentation";
+import { formatElapsedRefundWindow } from "../refundWindowPresentation";
 import { isRefundActionVisible } from "../refundWorkflowPresentation";
 import { settlementRecordUiLabel } from "../settlementRecordCopy";
 
@@ -76,14 +77,21 @@ describe("refund domain error presentation", () => {
     expect(checkRefundErrorMessage("budget_exhausted", "ar")).toBe(
       settlementRecordUiLabel("refundErrorBudget", "ar")
     );
+    expect(
+      mapCheckRefundApiError({ message: "REFUND_WINDOW_EXPIRED" })
+    ).toBe("window_expired");
+    expect(
+      mapCheckRefundApiError({ message: "Unknown settlement number" })
+    ).toBe("unknown_settlement");
   });
 });
 
 describe("RTL copy for refund workflow", () => {
-  it("exposes Arabic refund action labels", () => {
-    expect(settlementRecordUiLabel("refundAction", "ar")).toBe("استرداد");
-    expect(settlementRecordUiLabel("refundConfirmTitle", "ar")).toBe(
-      "تأكيد الاسترداد"
+  it("exposes Arabic ledger مرتجع entry and window copy", () => {
+    expect(settlementRecordUiLabel("ledgerRefundAction", "ar")).toBe("مرتجع");
+    expect(settlementRecordUiLabel("refundWindowExpiredTitle", "en")).toBe(
+      "Refund period has expired."
     );
+    expect(formatElapsedRefundWindow(90 * 60_000, "en")).toBe("1h 30m");
   });
 });

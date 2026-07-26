@@ -28,6 +28,11 @@ export type ResolveSettlementOperationalIdentityInput = Readonly<{
   recordGeneration?: number | null;
 }>;
 
+export type ResolveRefundOperationalIdentityInput = Readonly<{
+  /** Restaurant-scoped immutable refund document sequence (positive integer). */
+  sequence: number;
+}>;
+
 function padDigits(value: number, digits: number): string {
   const n = Math.max(0, Math.trunc(value));
   return String(n).padStart(digits, "0");
@@ -67,9 +72,10 @@ export function formatOperationalIdentity(
 }
 
 /**
- * Settlement / Receipt Operational Identity.
+ * Settlement Operational Identity.
  * Derives sequence from Check id (presentation facts only — not domain logic).
  * Persistence Identity (`sr:…`) is never returned (OI-03).
+ * Refund documents MUST NOT use this — see resolveRefundOperationalIdentity.
  */
 export function resolveSettlementOperationalIdentity(
   input: ResolveSettlementOperationalIdentityInput
@@ -78,24 +84,51 @@ export function resolveSettlementOperationalIdentity(
     input.recordGeneration != null && input.recordGeneration > 0
       ? input.recordGeneration
       : parseGenerationFromSettlementRecordId(input.settlementRecordId);
+  // Refund compensating publications use generation > 1 historically for ST suffix.
+  // Primary settlement display omits generation when 1.
   return formatOperationalIdentity({
     documentType: "settlement",
     sequence: input.checkId,
-    generation,
+    // Origin Settlement identity never carries refund generation suffixes.
+    generation: 1,
   });
 }
 
-/** Receipt Operational Identity — Settlement Reference (same ST- value). */
-export function resolveReceiptOperationalIdentity(
-  input: ResolveSettlementOperationalIdentityInput
+/**
+ * Refund Operational Identity — independent RF- sequence (REFUND-DOCUMENT-NUMBERING-ADOPTION-1).
+ * Sequence is allocated at publish time; never derived from Check / ST numbers.
+ */
+export function resolveRefundOperationalIdentity(
+  input: ResolveRefundOperationalIdentityInput
 ): string {
+  return formatOperationalIdentity({
+    documentType: "refund",
+    sequence: input.sequence,
+  });
+}
+
+/**
+ * Receipt Operational Identity.
+ * Settlement receipts → ST reference.
+ * Refund receipts → RF document number (caller supplies refund sequence).
+ */
+export function resolveReceiptOperationalIdentity(
+  input: ResolveSettlementOperationalIdentityInput & {
+    recordKind?: string | null;
+    refundSequence?: number | null;
+  }
+): string {
+  if (
+    input.recordKind === "refund" &&
+    input.refundSequence != null &&
+    input.refundSequence > 0
+  ) {
+    return resolveRefundOperationalIdentity({ sequence: input.refundSequence });
+  }
   return formatOperationalIdentity({
     documentType: "receipt",
     sequence: input.checkId,
-    generation:
-      input.recordGeneration != null && input.recordGeneration > 0
-        ? input.recordGeneration
-        : parseGenerationFromSettlementRecordId(input.settlementRecordId),
+    generation: 1,
   });
 }
 
@@ -142,6 +175,134 @@ export function isValidOperationalIdentityFormat(
     `^${escaped}-\\d{${spec.digits}}(-\\d+)?$`
   );
   return re.test(value.trim());
+}
+
+export type ParsedSettlementOperationalIdentity = Readonly<{
+  checkId: number;
+  recordGeneration: number;
+  /** Normalized operational identity (ST-…). */
+  settlementNumber: string;
+  /**
+   * Lookup channel — manual entry today; reserved for barcode/QR/scanner.
+   */
+  channel: "manual";
+}>;
+
+export type ParsedRefundOperationalIdentity = Readonly<{
+  sequence: number;
+  refundNumber: string;
+  channel: "manual";
+}>;
+
+export type ParsedLedgerDocumentSearch = Readonly<
+  | {
+      kind: "settlement";
+      checkId: number;
+      settlementNumber: string;
+    }
+  | {
+      kind: "refund";
+      sequence: number;
+      refundNumber: string;
+    }
+  | {
+      kind: "check";
+      checkId: number;
+    }
+>;
+
+/**
+ * Parse Settlement Operational Identity for ledger lookup (presentation / transport).
+ * Accepts `ST-000570004`, `ST-570004`, optional generation suffix (ignored for origin ST),
+ * or bare check digits.
+ * Does not participate in money logic (OI-04 / OI-05).
+ */
+export function parseSettlementOperationalIdentity(
+  raw: string
+): ParsedSettlementOperationalIdentity | null {
+  const value = raw.trim().toUpperCase();
+  if (!value || isPersistenceIdentityLeak(value)) return null;
+
+  const st = value.match(/^ST-(\d+)(?:-(\d+))?$/i);
+  if (st) {
+    const checkId = Number.parseInt(st[1]!, 10);
+    const generation = st[2] ? Number.parseInt(st[2], 10) : 1;
+    if (!Number.isFinite(checkId) || checkId <= 0) return null;
+    if (!Number.isFinite(generation) || generation <= 0) return null;
+    return {
+      checkId,
+      recordGeneration: generation,
+      settlementNumber: resolveSettlementOperationalIdentity({
+        checkId,
+        recordGeneration: 1,
+      }),
+      channel: "manual",
+    };
+  }
+
+  // Bare positive digits → Check sequence (extensible scanner path may emit digits).
+  if (/^\d{1,12}$/.test(value)) {
+    const checkId = Number.parseInt(value, 10);
+    if (!Number.isFinite(checkId) || checkId <= 0) return null;
+    return {
+      checkId,
+      recordGeneration: 1,
+      settlementNumber: resolveSettlementOperationalIdentity({
+        checkId,
+        recordGeneration: 1,
+      }),
+      channel: "manual",
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Parse Refund Operational Identity (`RF-000001` / `RF-1`).
+ */
+export function parseRefundOperationalIdentity(
+  raw: string
+): ParsedRefundOperationalIdentity | null {
+  const value = raw.trim().toUpperCase();
+  if (!value || isPersistenceIdentityLeak(value)) return null;
+  const rf = value.match(/^RF-(\d+)$/i);
+  if (!rf) return null;
+  const sequence = Number.parseInt(rf[1]!, 10);
+  if (!Number.isFinite(sequence) || sequence <= 0) return null;
+  return {
+    sequence,
+    refundNumber: resolveRefundOperationalIdentity({ sequence }),
+    channel: "manual",
+  };
+}
+
+/**
+ * Parse ledger search tokens: RF-… | ST-… | bare Check digits.
+ */
+export function parseLedgerDocumentSearch(
+  raw: string
+): ParsedLedgerDocumentSearch | null {
+  const refund = parseRefundOperationalIdentity(raw);
+  if (refund) {
+    return {
+      kind: "refund",
+      sequence: refund.sequence,
+      refundNumber: refund.refundNumber,
+    };
+  }
+  const settlement = parseSettlementOperationalIdentity(raw);
+  if (settlement) {
+    if (/^\d{1,12}$/.test(raw.trim())) {
+      return { kind: "check", checkId: settlement.checkId };
+    }
+    return {
+      kind: "settlement",
+      checkId: settlement.checkId,
+      settlementNumber: settlement.settlementNumber,
+    };
+  }
+  return null;
 }
 
 /**

@@ -65,6 +65,7 @@ Used for: ops UI, search, print, receipts, support, reporting, notifications.
 | Session | Session |
 | Check | Check |
 | Settlement | Settlement |
+| Refund | Settlement |
 | Receipt | Settlement |
 | Kitchen Ticket | Order |
 
@@ -83,7 +84,8 @@ Future document types **must** declare ownership and register before implementat
 | Session | `session` | `S-000001` |
 | Check | `check` | `C-000001` |
 | Settlement | `settlement` | `ST-000001` |
-| Receipt | `receipt` | Settlement Reference (`ST-…`) |
+| Refund | `refund` | `RF-000001` (restaurant-scoped sequence; independent of ST) |
+| Receipt | `receipt` | Settlement Reference (`ST-…`) or Refund Reference (`RF-…`) |
 | Kitchen Ticket | `kitchen_ticket` | `KT-000001` |
 
 Source of truth: `shared/operational-document-identity/registry.ts`.

@@ -575,6 +575,13 @@
       "when": 1784670000000,
       "tag": "0081_crmp_financial_shift_number",
       "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "5",
+      "when": 1784680000000,
+      "tag": "0082_refund_document_numbering",
+      "breakpoints": true
     }
   ]
 }

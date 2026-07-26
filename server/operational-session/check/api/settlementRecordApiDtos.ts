@@ -19,8 +19,16 @@ export const SETTLEMENT_RECORD_API_CONTRACT_VERSION = 2 as const;
 /** Operator-facing history row — newest-first list. */
 export type SettlementRecordHistoryItemDto = Readonly<{
   settlementRecordId: string;
-  /** Document number for operator display (opaque Settlement Record id). */
+  /**
+   * Primary document number (ST-… or RF-…).
+   * Kept as `settlementNumber` for backward-compatible clients.
+   */
   settlementNumber: string;
+  /** Explicit document number (same as settlementNumber). */
+  documentNumber: string;
+  documentType: "settlement" | "refund";
+  refundNumber: string | null;
+  originSettlementNumber: string | null;
   settlementTime: string;
   sourceType: "session" | "check";
   sourceNumber: string;
@@ -78,6 +86,10 @@ export type SettlementRecordTaxLineDto = Readonly<{
 export type SettlementRecordDetailDto = Readonly<{
   settlementRecordId: string;
   settlementNumber: string;
+  documentNumber: string;
+  documentType: "settlement" | "refund";
+  refundNumber: string | null;
+  originSettlementNumber: string | null;
   settlementTime: string;
   settlementStatus: string;
   sourceType: "session" | "check";
@@ -129,6 +141,10 @@ export type SettlementRecordDetailDto = Readonly<{
 export type SettlementRecordReceiptDto = Readonly<{
   settlementRecordId: string;
   settlementNumber: string;
+  documentNumber: string;
+  documentType: "settlement" | "refund";
+  refundNumber: string | null;
+  originSettlementNumber: string | null;
   settlementTime: string;
   settlementStatus: string;
   recordKind: SettlementRecordKind;

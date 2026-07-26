@@ -15,12 +15,21 @@ vi.mock("../../CheckService", () => ({
   applyRefundOnCheck: vi.fn(),
 }));
 
+vi.mock("../checkRefundLookupService", () => ({
+  assertRefundPolicyAllowsApply: vi.fn(async () => undefined),
+  lookupCheckRefundBySettlementNumber: vi.fn(),
+}));
+
 import { assertRestaurantAccess } from "../../../../restaurantAccess";
 import { appRouter } from "../../../../routers";
 import {
   applyRefundOnCheck,
   getCheckRefundBudget,
 } from "../../CheckService";
+import {
+  assertRefundPolicyAllowsApply,
+  lookupCheckRefundBySettlementNumber,
+} from "../checkRefundLookupService";
 
 function createVerifiedCaller(userId = 7) {
   return appRouter.createCaller({
@@ -35,12 +44,69 @@ function createVerifiedCaller(userId = 7) {
   });
 }
 
-describe("checkRefundRouter REFUND-OPERATIONAL-WORKFLOW-ADOPTION-1", () => {
+describe("checkRefundRouter REFUND-OPERATIONAL-WORKFLOW-ADOPTION-1/2", () => {
   beforeEach(() => {
     vi.mocked(assertRestaurantAccess).mockReset();
     vi.mocked(assertRestaurantAccess).mockResolvedValue(undefined as never);
     vi.mocked(getCheckRefundBudget).mockReset();
     vi.mocked(applyRefundOnCheck).mockReset();
+    vi.mocked(assertRefundPolicyAllowsApply).mockReset();
+    vi.mocked(assertRefundPolicyAllowsApply).mockResolvedValue(undefined);
+    vi.mocked(lookupCheckRefundBySettlementNumber).mockReset();
+  });
+
+  it("lookupBySettlementNumber requires access and returns façade DTO", async () => {
+    vi.mocked(lookupCheckRefundBySettlementNumber).mockResolvedValue({
+      contractId: "REFUND-OPERATIONAL-WORKFLOW-ADOPTION-2",
+      contractVersion: 2,
+      restaurantId: 42,
+      settlementNumber: "ST-000000010",
+      settlementRecordId: "sr:1:10:settlement:1",
+      checkId: 10,
+      sessionId: null,
+      businessDay: "2026-07-26",
+      settledAt: "2026-07-26T10:00:00.000Z",
+      paymentMethodSummary: "cash",
+      originalAmount: "100.00",
+      previouslyRefunded: "0.00",
+      refundableBalance: "100.00",
+      currencyCode: "SAR",
+      currencySymbol: "ر.س",
+      outcome: "paid",
+      recordKind: "settlement",
+      recordGeneration: 1,
+      eligible: true,
+      customer: null,
+      policy: {
+        version: 1,
+        refundEnabled: true,
+        windowHours: 24,
+        partialRefundAllowed: true,
+        requireReason: false,
+        requireManagerApproval: false,
+      },
+      window: {
+        windowHours: 24,
+        settlementAt: "2026-07-26T10:00:00.000Z",
+        elapsedMs: 1000,
+        windowMs: 86_400_000,
+        expired: false,
+        remainingMs: 86_399_000,
+      },
+      rejectionCode: null,
+    });
+    const caller = createVerifiedCaller();
+    const dto = await caller.checkRefund.lookupBySettlementNumber({
+      restaurantId: 42,
+      settlementNumber: "ST-000000010",
+    });
+    expect(assertRestaurantAccess).toHaveBeenCalledWith(
+      expect.anything(),
+      42,
+      "checkRefund.lookupBySettlementNumber"
+    );
+    expect(dto.eligible).toBe(true);
+    expect(dto.checkId).toBe(10);
   });
 
   it("getBudget requires restaurant access and maps eligibility", async () => {

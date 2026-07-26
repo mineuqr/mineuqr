@@ -1,7 +1,8 @@
 /**
  * SETTLEMENT-HISTORY-UX-RATIONALIZATION-1 / REFUND-PRESENTATION-ADOPTION-1
+ * REFUND-OPERATIONAL-WORKFLOW-ADOPTION-2
  * Operational Settlement History (Unified Financial Entry Point).
- * Presentation only — Refund is a status/kind within the same ledger.
+ * Presentation only — Refund documents appear in the ledger; مرتجع is the write entry.
  */
 
 import { useMemo, useState } from "react";
@@ -34,8 +35,9 @@ import {
   type SettlementRecordLang,
 } from "@/lib/settlement-record-presentation";
 import { cn } from "@/lib/utils";
-import { Eye, Loader2, Receipt } from "lucide-react";
+import { Eye, Loader2, Receipt, Undo2 } from "lucide-react";
 import { SettlementDetailSheet } from "./SettlementDetailSheet";
+import { SettlementLedgerRefundDialog } from "./SettlementLedgerRefundDialog";
 import { SettlementReceiptDialog } from "./SettlementReceiptDialog";
 
 type SettlementHistoryPanelProps = {
@@ -64,6 +66,7 @@ export function SettlementHistoryPanel({
     useState<SettlementHistoryStatusFacet>("all");
   const [detailId, setDetailId] = useState<string | null>(null);
   const [receiptId, setReceiptId] = useState<string | null>(null);
+  const [refundOpen, setRefundOpen] = useState(false);
 
   const apiFilters = settlementHistoryFiltersForStatusFacet(statusFacet);
 
@@ -123,10 +126,18 @@ export function SettlementHistoryPanel({
 
   return (
     <div className="space-y-4" dir={language === "ar" ? "rtl" : "ltr"}>
-      <div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-xl font-semibold text-white">
           {settlementRecordUiLabel("historyTitle", language)}
         </h2>
+        <Button
+          type="button"
+          onClick={() => setRefundOpen(true)}
+          className="gap-2"
+        >
+          <Undo2 className="h-4 w-4" aria-hidden />
+          {settlementRecordUiLabel("ledgerRefundAction", language)}
+        </Button>
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -276,7 +287,10 @@ export function SettlementHistoryPanel({
             <thead className="border-b border-slate-700/60 text-xs uppercase text-slate-400">
               <tr>
                 <th className="px-3 py-2 text-start font-medium">
-                  {settlementRecordUiLabel("settlementNumber", language)}
+                  {settlementRecordUiLabel("documentNumber", language)}
+                </th>
+                <th className="px-3 py-2 text-start font-medium">
+                  {settlementRecordUiLabel("documentType", language)}
                 </th>
                 <th className="px-3 py-2 text-start font-medium">
                   {settlementRecordUiLabel("settlementTime", language)}
@@ -307,8 +321,15 @@ export function SettlementHistoryPanel({
                   className="border-b border-slate-800/80 text-slate-200"
                 >
                   <td className="px-3 py-2 font-semibold tabular-nums tracking-wide">
-                    {row.settlementNumber}
+                    <div>{row.documentNumber}</div>
+                    {row.originSettlementNumber ? (
+                      <div className="text-xs font-normal text-slate-400">
+                        {settlementRecordUiLabel("originSettlementNumber", language)}{" "}
+                        {row.originSettlementNumber}
+                      </div>
+                    ) : null}
                   </td>
+                  <td className="px-3 py-2">{row.documentTypeLabel}</td>
                   <td className="px-3 py-2 whitespace-nowrap">
                     <div className="leading-tight">
                       <div>{row.settlementTimeDateLabel}</div>
@@ -417,6 +438,19 @@ export function SettlementHistoryPanel({
         onOpenSettlementRecord={(id) => setDetailId(id)}
         onViewReceipt={() => {
           if (detailId) setReceiptId(detailId);
+        }}
+      />
+
+      <SettlementLedgerRefundDialog
+        open={refundOpen}
+        restaurantId={restaurantId}
+        language={language}
+        onOpenChange={setRefundOpen}
+        onPublished={(id) => {
+          if (id) setDetailId(id);
+        }}
+        onSaveAndPrint={(id) => {
+          if (id) setReceiptId(id);
         }}
       />
 

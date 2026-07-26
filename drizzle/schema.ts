@@ -1002,6 +1002,38 @@ export const settlementRecords = mysqlTable(
 export type InsertSettlementRecord = typeof settlementRecords.$inferInsert;
 export type SelectSettlementRecord = typeof settlementRecords.$inferSelect;
 
+// ─── Refund Document Numbers (REFUND-DOCUMENT-NUMBERING-ADOPTION-1) ──
+/** Restaurant-scoped RF- sequence allocator. Identity plane only — not money. */
+export const refundDocumentSequences = mysqlTable(
+	"refund_document_sequences",
+	{
+		restaurantId: int().notNull().primaryKey(),
+		lastNumber: int().notNull().default(0),
+	}
+);
+
+export const refundDocumentNumbers = mysqlTable(
+	"refund_document_numbers",
+	{
+		id: int().autoincrement().primaryKey(),
+		restaurantId: int().notNull(),
+		settlementRecordId: varchar({ length: 128 }).notNull(),
+		sequenceNumber: int().notNull(),
+		createdAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+	},
+	(table) => [
+		uniqueIndex("refund_document_numbers_record_unique").on(table.settlementRecordId),
+		uniqueIndex("refund_document_numbers_restaurant_sequence_unique").on(
+			table.restaurantId,
+			table.sequenceNumber
+		),
+		index("refund_document_numbers_restaurant_id").on(table.restaurantId),
+	]
+);
+
+export type InsertRefundDocumentNumber = typeof refundDocumentNumbers.$inferInsert;
+export type SelectRefundDocumentNumber = typeof refundDocumentNumbers.$inferSelect;
+
 // ─── Table Events (TABLE-MANAGEMENT-1 Phase C) ──────────────────
 export const tableEvents = mysqlTable("table_events", {
 	id: bigint({ mode: "number" }).autoincrement().primaryKey(),

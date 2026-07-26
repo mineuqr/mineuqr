@@ -7,7 +7,9 @@
  */
 
 import { and, desc, eq, gte, inArray, like, lte, or, sql, type SQL } from "drizzle-orm";
+import { parseLedgerDocumentSearch } from "@shared/operational-document-identity";
 import {
+  refundDocumentNumbers,
   settlementRecords,
   type SelectSettlementRecord,
 } from "../../../drizzle/schema";
@@ -30,7 +32,7 @@ export type SettlementRecordListQuery = Readonly<{
   /** Inclusive YYYY-MM-DD (businessDay) or ISO date prefix. */
   dateFrom?: string | null;
   dateTo?: string | null;
-  /** Matches settlementRecordId, financialReference, checkId, sessionId. */
+  /** Matches RF-/ST-/Check number, settlementRecordId, financialReference, checkId, sessionId. */
   search?: string | null;
   outcome?: string | null;
   recordKind?: SettlementRecordKind | null;
@@ -248,14 +250,28 @@ function buildRestaurantListFilters(input: SettlementRecordListQuery): SQL[] {
 
   const search = input.search?.trim();
   if (search) {
-    const likePat = `%${search}%`;
-    const searchOr = or(
-      like(settlementRecords.settlementRecordId, likePat),
-      like(settlementRecords.financialReference, likePat),
-      sql`CAST(${settlementRecords.checkId} AS CHAR) LIKE ${likePat}`,
-      sql`CAST(${settlementRecords.sessionId} AS CHAR) LIKE ${likePat}`
-    );
-    if (searchOr) filters.push(searchOr);
+    const parsed = parseLedgerDocumentSearch(search);
+    if (parsed?.kind === "refund") {
+      filters.push(
+        sql`${settlementRecords.settlementRecordId} IN (
+          SELECT ${refundDocumentNumbers.settlementRecordId}
+          FROM ${refundDocumentNumbers}
+          WHERE ${refundDocumentNumbers.restaurantId} = ${input.restaurantId}
+            AND ${refundDocumentNumbers.sequenceNumber} = ${parsed.sequence}
+        )`
+      );
+    } else if (parsed?.kind === "settlement" || parsed?.kind === "check") {
+      filters.push(eq(settlementRecords.checkId, parsed.checkId));
+    } else {
+      const likePat = `%${search}%`;
+      const searchOr = or(
+        like(settlementRecords.settlementRecordId, likePat),
+        like(settlementRecords.financialReference, likePat),
+        sql`CAST(${settlementRecords.checkId} AS CHAR) LIKE ${likePat}`,
+        sql`CAST(${settlementRecords.sessionId} AS CHAR) LIKE ${likePat}`
+      );
+      if (searchOr) filters.push(searchOr);
+    }
   }
 
   return filters;

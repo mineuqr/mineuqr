@@ -14,6 +14,7 @@ export const OPERATIONAL_DOCUMENT_TYPES = [
   "session",
   "check",
   "settlement",
+  "refund",
   "receipt",
   "kitchen_ticket",
 ] as const;
@@ -45,7 +46,7 @@ export type OperationalDocumentIdentitySpec = Readonly<{
 
 /**
  * Canonical Operational Identity Registry (prefix + digit + ownership policy).
- * Format examples: ST-000001, K-000001, WT-000001, Q-000001, T-0001, S-000001, C-000001, KT-000001.
+ * Format examples: ST-000001, RF-000001, K-000001, WT-000001, Q-000001, T-0001, S-000001, C-000001, KT-000001.
  */
 export const OPERATIONAL_DOCUMENT_IDENTITY_REGISTRY: Readonly<
   Record<OperationalDocumentType, OperationalDocumentIdentitySpec>
@@ -98,6 +99,14 @@ export const OPERATIONAL_DOCUMENT_IDENTITY_REGISTRY: Readonly<
     digits: 6,
     owner: "Settlement",
     description: "Settlement Record operational document",
+  },
+  refund: {
+    documentType: "refund",
+    prefix: "RF",
+    digits: 6,
+    owner: "Settlement",
+    description:
+      "Refund Settlement Record operational document (independent of ST)",
   },
   receipt: {
     documentType: "receipt",

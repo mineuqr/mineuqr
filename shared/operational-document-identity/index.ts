@@ -17,6 +17,7 @@ export {
 export {
   formatOperationalIdentity,
   resolveSettlementOperationalIdentity,
+  resolveRefundOperationalIdentity,
   resolveReceiptOperationalIdentity,
   resolveSessionOperationalIdentity,
   resolveCheckOperationalIdentity,
@@ -24,6 +25,13 @@ export {
   resolveKitchenTicketOperationalIdentity,
   isValidOperationalIdentityFormat,
   isPersistenceIdentityLeak,
+  parseSettlementOperationalIdentity,
+  parseRefundOperationalIdentity,
+  parseLedgerDocumentSearch,
   type OperationalIdentitySequenceInput,
   type ResolveSettlementOperationalIdentityInput,
+  type ResolveRefundOperationalIdentityInput,
+  type ParsedSettlementOperationalIdentity,
+  type ParsedRefundOperationalIdentity,
+  type ParsedLedgerDocumentSearch,
 } from "./provider";

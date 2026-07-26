@@ -115,6 +115,21 @@ export function useCheckRefundBudget(
   });
 }
 
+/** Settlement Ledger lookup by Settlement Number (ADOPTION-2). */
+export function useLookupCheckRefundBySettlementNumber(
+  input: { restaurantId: number; settlementNumber: string },
+  options: Enabled = {}
+) {
+  return trpc.checkRefund.lookupBySettlementNumber.useQuery(input, {
+    enabled:
+      (options.enabled ?? true) &&
+      input.restaurantId > 0 &&
+      input.settlementNumber.trim().length > 0,
+    staleTime: 5_000,
+    retry: false,
+  });
+}
+
 /** Applies refund via Check Aggregate façade (no presentation money math). */
 export function useApplyCheckRefund() {
   const utils = trpc.useUtils();
@@ -134,6 +149,7 @@ export function useApplyCheckRefund() {
           restaurantId: variables.restaurantId,
           checkId: variables.checkId,
         }),
+        utils.checkRefund.lookupBySettlementNumber.invalidate(),
       ]);
     },
   });

@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   findSettlementRecordByIdentity: vi.fn(),
   insertSettlementRecord: vi.fn(),
   updateOrderSettlement: vi.fn(),
+  allocateRefundDocumentNumber: vi.fn(),
 }));
 
 vi.mock("../checkRepository", () => ({
@@ -41,6 +42,11 @@ vi.mock("../orderSettlementRepository", () => ({
     mocks.listOrderSettlementsForCheck(...a),
   updateOrderSettlement: (...a: unknown[]) =>
     mocks.updateOrderSettlement(...a),
+}));
+
+vi.mock("../refundDocumentNumberRepository", () => ({
+  allocateRefundDocumentNumber: (...a: unknown[]) =>
+    mocks.allocateRefundDocumentNumber(...a),
 }));
 
 import { applyRefundOnCheck } from "../checkRefundIntegration";
@@ -133,6 +139,7 @@ describe("checkRefundIntegration", () => {
     mocks.listOrderSettlementsForCheck.mockResolvedValue([makeOs()]);
     mocks.findSettlementRecordByIdentity.mockResolvedValue(null);
     mocks.insertSettlementRecord.mockResolvedValue(1);
+    mocks.allocateRefundDocumentNumber.mockResolvedValue(1);
     mocks.updateOrderSettlement.mockResolvedValue(undefined);
   });
 
@@ -145,6 +152,7 @@ describe("checkRefundIntegration", () => {
 
     expect(result.outcome).toBe("applied");
     expect(result.settlementRecord?.recordKind).toBe("refund");
+    expect(mocks.allocateRefundDocumentNumber).toHaveBeenCalled();
     expect(result.orderSettlements[0]?.status).toBe("refunded");
     expect(mocks.insertSettlementRecord).toHaveBeenCalledTimes(1);
     expect(mocks.updateOrderSettlement).toHaveBeenCalled();

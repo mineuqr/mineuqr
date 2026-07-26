@@ -87,7 +87,7 @@ describe("settlementRecordApiMapper", () => {
     expect(receipt.recordGeneration).toBe(1);
   });
 
-  it("maps refund Settlement Record polymorphically (status + chain fields)", () => {
+  it("maps refund Settlement Record with independent RF document number", () => {
     const refund = sampleRecord({
       settlementRecordId: "sr:1:10:refund:2",
       recordKind: "refund",
@@ -111,22 +111,30 @@ describe("settlementRecordApiMapper", () => {
       ],
     });
 
-    const history = toSettlementRecordHistoryItemDto(refund);
+    const history = toSettlementRecordHistoryItemDto(refund, 1);
     expect(history.settlementStatus).toBe("refunded");
     expect(history.recordKind).toBe("refund");
-    expect(history.recordGeneration).toBe(2);
+    expect(history.documentType).toBe("refund");
+    expect(history.documentNumber).toBe("RF-000001");
+    expect(history.refundNumber).toBe("RF-000001");
+    expect(history.originSettlementNumber).toBe("ST-000010");
+    expect(history.settlementNumber).toBe("RF-000001");
     expect(history.priorSettlementRecordId).toBe("sr:1:10:settlement:1");
     expect(history.grandTotal).toBe("20.00");
 
-    const detail = toSettlementRecordDetailDto({ record: refund });
+    const detail = toSettlementRecordDetailDto({
+      record: refund,
+      refundSequence: 1,
+    });
     expect(detail.settlementStatus).toBe("refunded");
-    expect(detail.priorSettlementRecordId).toBe("sr:1:10:settlement:1");
+    expect(detail.documentNumber).toBe("RF-000001");
+    expect(detail.originSettlementNumber).toBe("ST-000010");
     expect(detail.attribution).toBeNull();
 
     const receipt = toSettlementRecordReceiptDto(detail);
     expect(receipt.recordKind).toBe("refund");
-    expect(receipt.settlementStatus).toBe("refunded");
-    expect(receipt.priorSettlementRecordId).toBe("sr:1:10:settlement:1");
+    expect(receipt.documentNumber).toBe("RF-000001");
+    expect(receipt.originSettlementNumber).toBe("ST-000010");
   });
 
   it("backward compatibility: complimentary and voided statuses unchanged", () => {
