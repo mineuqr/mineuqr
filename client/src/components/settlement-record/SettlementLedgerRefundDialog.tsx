@@ -364,15 +364,15 @@ export function SettlementLedgerRefundDialog({
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                   {options.map((opt) => (
                     <button
-                      key={opt.value}
+                      key={opt.paymentMethod}
                       type="button"
                       className={cn(
                         "rounded-md border px-2 py-2 text-sm transition-colors",
-                        tender === opt.value
+                        tender === opt.paymentMethod
                           ? "border-primary bg-primary/10"
                           : "border-border hover:border-muted-foreground/40"
                       )}
-                      onClick={() => setTender(opt.value)}
+                      onClick={() => setTender(opt.paymentMethod)}
                     >
                       {opt.label}
                     </button>
