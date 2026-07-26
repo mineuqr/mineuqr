@@ -50,6 +50,10 @@ function baseSummary(
     complimentaryCount: 0,
     complimentaryAmount: "0.00",
     voidedCount: 0,
+    refundPublishedTotal: "0.00",
+    refundPublicationCount: 0,
+    netRevenue: "100.00",
+    refundRate: "0.00",
     currency: { currencySnapshot: null },
     sampleTaxPolicySnapshot: null,
     ...overrides,
@@ -89,6 +93,8 @@ function basePayment(
         mixPercent: "60.00",
       },
     ],
+    refundTenderTotal: "0.00",
+    refundBuckets: [],
     ...overrides,
   };
 }

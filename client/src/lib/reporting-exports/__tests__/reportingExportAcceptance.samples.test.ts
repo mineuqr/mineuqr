@@ -60,6 +60,8 @@ function dayPoints(count: number) {
       complimentaryCount: i % 7 === 0 ? 1 : 0,
       voidedCount: i % 11 === 0 ? 1 : 0,
       taxCollected: (Number(revenue) * 0.15).toFixed(2),
+      refundPublishedTotal: "0.00",
+      netRevenue: revenue,
     };
   });
 }
@@ -88,6 +90,8 @@ function monthPoints() {
       complimentaryCount: 1,
       voidedCount: 0,
       taxCollected: (Number(revenue) * 0.15).toFixed(2),
+      refundPublishedTotal: "0.00",
+      netRevenue: revenue,
     };
   });
 }
@@ -172,6 +176,10 @@ function sampleBundle(
       complimentaryCount: 3,
       complimentaryAmount: "120.00",
       voidedCount: 1,
+      refundPublishedTotal: "0.00",
+      refundPublicationCount: 0,
+      netRevenue: trendTotals.revenue,
+      refundRate: "0.00",
       currency: {
         currencySnapshot: { currencyCode: "SAR", currencySymbol: "ر.س" },
       },
@@ -194,6 +202,8 @@ function sampleBundle(
       to: revenueTrend.to,
       monetaryTenderTotal: trendTotals.revenue,
       complimentaryAmount: "120.00",
+      refundTenderTotal: "0.00",
+      refundBuckets: [],
       buckets: [
         {
           paymentMethod: "cash",

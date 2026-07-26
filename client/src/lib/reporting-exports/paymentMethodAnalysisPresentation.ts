@@ -41,6 +41,9 @@ export type PaymentMethodAnalysisViewModel = Readonly<{
   complimentaryAmount: string;
   /** Full monetary catalog order + any future DTO methods not in catalog. */
   rows: readonly PaymentMethodAnalysisRow[];
+  /** REFUND-REPORTING-ADOPTION-1 — refund tender publications by method. */
+  refundTenderTotal: string;
+  refundRows: readonly PaymentMethodAnalysisRow[];
   hasActivity: boolean;
 }>;
 
@@ -136,8 +139,35 @@ export function buildPaymentMethodAnalysisViewModel(input: {
     });
   }
 
+  const refundByMethod = new Map(
+    (analytics.refundBuckets ?? []).map((b) => [b.paymentMethod, b] as const)
+  );
+  const refundRows: PaymentMethodAnalysisRow[] = [];
+  for (const method of MONETARY_PAYMENT_METHODS) {
+    const bucket = bucketForCatalogMethod(refundByMethod, method);
+    if (!bucket) {
+      refundRows.push(zeroRow(method, lang));
+      continue;
+    }
+    refundRows.push({
+      paymentMethod: method,
+      label: preferredPaymentMethodLabel(method, lang),
+      tenderAmount: bucket.tenderAmount,
+      checkCount: bucket.checkCount,
+      averageCheck: bucket.averageCheck,
+      mixPercent: bucket.mixPercent,
+      transactionCount: bucket.transactionCount,
+      hasActivity:
+        bucket.transactionCount > 0 ||
+        bucket.checkCount > 0 ||
+        bucket.tenderAmount !== "0.00",
+    });
+  }
+
   const hasActivity =
-    rows.some((r) => r.hasActivity) || analytics.complimentaryAmount !== "0.00";
+    rows.some((r) => r.hasActivity) ||
+    analytics.complimentaryAmount !== "0.00" ||
+    (analytics.refundTenderTotal ?? "0.00") !== "0.00";
 
   return {
     sectionTitle: section.paymentMethodAnalysis,
@@ -148,6 +178,8 @@ export function buildPaymentMethodAnalysisViewModel(input: {
     complimentaryLabel: preferredPaymentMethodLabel("complimentary", lang),
     complimentaryAmount: analytics.complimentaryAmount,
     rows,
+    refundTenderTotal: analytics.refundTenderTotal ?? "0.00",
+    refundRows,
     hasActivity,
   };
 }

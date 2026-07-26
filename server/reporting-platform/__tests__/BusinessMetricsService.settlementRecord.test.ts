@@ -7,6 +7,8 @@ import type { SettlementRecordReportingFact } from "../settlementRecordReporting
 vi.mock("../settlementRecordReportingAdapter", () => ({
   listSettlementRecordsForReporting: vi.fn(),
   listSettlementRecordPaymentLinesForReporting: vi.fn(),
+  listRefundSettlementRecordsForReporting: vi.fn(),
+  listRefundSettlementRecordPaymentLinesForReporting: vi.fn(),
 }));
 
 vi.mock("../checkReportingRepository", () => ({
@@ -45,6 +47,10 @@ describe("BusinessMetricsService — Settlement Record canonical source", () => 
   beforeEach(() => {
     process.env.REPORTING_FINANCIAL_SOURCE = "settlement_record";
     vi.mocked(srAdapter.listSettlementRecordsForReporting).mockReset();
+    vi.mocked(srAdapter.listRefundSettlementRecordsForReporting).mockReset();
+    vi.mocked(srAdapter.listRefundSettlementRecordsForReporting).mockResolvedValue(
+      []
+    );
     vi.mocked(checkRepo.listTerminalChecksForReporting).mockReset();
   });
 
@@ -80,7 +86,44 @@ describe("BusinessMetricsService — Settlement Record canonical source", () => 
     expect(summary.paidCheckCount).toBe(1);
     expect(summary.averageCheck).toBe("230.00");
     expect(summary.complimentaryAmount).toBe("40.00");
+    expect(summary.netRevenue).toBe("230.00");
+    expect(summary.refundPublishedTotal).toBe("0.00");
     expect(checkRepo.listTerminalChecksForReporting).not.toHaveBeenCalled();
+  });
+
+  it("derives Net Revenue from refund publications without mutating Gross", async () => {
+    vi.mocked(srAdapter.listSettlementRecordsForReporting).mockResolvedValue([
+      srFact({
+        id: 1,
+        outcome: "paid",
+        grandTotal: "200.00",
+        taxAmount: "26.09",
+      }),
+    ]);
+    vi.mocked(srAdapter.listRefundSettlementRecordsForReporting).mockResolvedValue([
+      srFact({
+        id: 1,
+        outcome: "paid",
+        grandTotal: "50.00",
+        taxAmount: "6.52",
+        recordKind: "refund",
+        settlementRecordId: "sr-refund-1",
+        settledAt: "2026-07-17 10:00:00",
+      }),
+    ]);
+
+    const summary = await getBusinessMetricsSummary({
+      restaurantId: 1,
+      from: "2026-07-01 00:00:00",
+      to: "2026-07-31 23:59:59",
+    });
+
+    expect(summary.revenue).toBe("200.00");
+    expect(summary.taxCollected).toBe("26.09");
+    expect(summary.refundPublishedTotal).toBe("50.00");
+    expect(summary.refundPublicationCount).toBe(1);
+    expect(summary.netRevenue).toBe("150.00");
+    expect(summary.refundRate).toBe("25.00");
   });
 
   it("does not call Check repository in settlement_record mode", async () => {

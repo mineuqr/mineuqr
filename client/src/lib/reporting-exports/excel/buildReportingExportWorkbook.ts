@@ -849,7 +849,11 @@ function buildFinancialSheet(
     labels.performanceSection,
     [
       [labels.revenue, money(biz.revenue)],
+      [labels.refundPublishedTotal, money(biz.refundPublishedTotal)],
+      [labels.netRevenue, money(biz.netRevenue)],
+      [labels.refundRate, `${toWesternDigits(biz.refundRate)}%`],
       [labels.paidChecks, formatWesternCount(biz.paidCheckCount)],
+      [labels.refundPublicationCount, formatWesternCount(biz.refundPublicationCount)],
       [labels.averageCheck, money(biz.averageCheck)],
     ],
     lang
@@ -1027,6 +1031,39 @@ function buildPaymentMethodSheet(
 
   for (const bucket of vm.rows) {
     const fill = bucket.hasActivity ? DL.surface : DL.zebra;
+    const cells = [
+      bucket.label,
+      money(bucket.tenderAmount),
+      formatWesternCount(bucket.checkCount),
+      money(bucket.averageCheck),
+      `${toWesternDigits(bucket.mixPercent)}%`,
+      formatWesternCount(bucket.transactionCount),
+    ];
+    for (let i = 0; i < cells.length; i++) {
+      sheet.mergeCells(row, colStarts[i]!, row, colEnds[i]!);
+      setWesternText(sheet.getCell(row, colStarts[i]!), cells[i]!, lang, {
+        size: 12,
+        color: DL.ink,
+        fill,
+        bold: i === 1,
+      });
+      sheet.getCell(row, colStarts[i]!).border = cellBorder(DL.line);
+    }
+    sheet.getRow(row).height = 26;
+    row += 1;
+  }
+
+  row += 1;
+  row = writeStatementBlock(
+    sheet,
+    row,
+    labels.refundPaymentMix,
+    [[labels.refundTenderTotal, money(vm.refundTenderTotal)]],
+    lang
+  );
+  for (const bucket of vm.refundRows) {
+    if (!bucket.hasActivity) continue;
+    const fill = DL.surface;
     const cells = [
       bucket.label,
       money(bucket.tenderAmount),

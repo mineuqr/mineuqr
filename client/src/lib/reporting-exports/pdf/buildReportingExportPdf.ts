@@ -332,7 +332,14 @@ async function renderPdfDocument(
   y = doc.y + 8;
   kvTable([
     [labels.revenue, money(biz.revenue)],
+    [labels.refundPublishedTotal, money(biz.refundPublishedTotal)],
+    [labels.netRevenue, money(biz.netRevenue)],
+    [labels.refundRate, `${toWesternDigits(biz.refundRate)}%`],
     [labels.paidChecks, formatWesternCount(biz.paidCheckCount)],
+    [
+      labels.refundPublicationCount,
+      formatWesternCount(biz.refundPublicationCount),
+    ],
     [labels.averageCheck, money(biz.averageCheck)],
   ]);
   doc.fillColor(NAVY).font(fontBold).fontSize(10);
@@ -369,6 +376,7 @@ async function renderPdfDocument(
   kvTable([
     [labels.monetaryTenderTotal, money(pmVm.monetaryTenderTotal)],
     [pmVm.complimentaryLabel, money(pmVm.complimentaryAmount)],
+    [labels.refundTenderTotal, money(pmVm.refundTenderTotal)],
   ]);
   if (!pmVm.hasActivity) {
     ensure(36);
@@ -383,6 +391,18 @@ async function renderPdfDocument(
       `${money(b.tenderAmount)} · ${labels.mixPercent} ${toWesternDigits(b.mixPercent)}% · ${labels.checksByMethod} ${formatWesternCount(b.checkCount)} · ${labels.averageCheckByMethod} ${money(b.averageCheck)} · ${labels.transactions} ${formatWesternCount(b.transactionCount)}`,
     ])
   );
+  const refundActive = pmVm.refundRows.filter((b) => b.hasActivity);
+  if (refundActive.length > 0) {
+    doc.fillColor(NAVY).font(fontBold).fontSize(10);
+    text(labels.refundPaymentMix, 48, y, { width: contentWidth });
+    y = doc.y + 8;
+    kvTable(
+      refundActive.map((b) => [
+        b.label,
+        `${money(b.tenderAmount)} · ${labels.mixPercent} ${toWesternDigits(b.mixPercent)}% · ${labels.transactions} ${formatWesternCount(b.transactionCount)}`,
+      ])
+    );
+  }
 
   // ── Order Sales ────────────────────────────────────────
   section(labels.orderSalesRollup);

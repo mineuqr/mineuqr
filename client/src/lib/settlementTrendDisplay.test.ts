@@ -41,6 +41,8 @@ describe("settlementTrendDisplay REPORTING-DASHBOARD-ADOPTION-1", () => {
           voidedCount: 0,
           revenue: "60.00",
           taxCollected: "0.00",
+          refundPublishedTotal: "0.00",
+          netRevenue: "60.00",
         },
       ]),
       "en"
@@ -65,6 +67,8 @@ describe("settlementTrendDisplay REPORTING-DASHBOARD-ADOPTION-1", () => {
           voidedCount: 0,
           revenue: "40.00",
           taxCollected: "0.00",
+          refundPublishedTotal: "0.00",
+          netRevenue: "40.00",
         },
         {
           periodKey: "2026-06-02",
@@ -74,6 +78,8 @@ describe("settlementTrendDisplay REPORTING-DASHBOARD-ADOPTION-1", () => {
           voidedCount: 0,
           revenue: "80.00",
           taxCollected: "0.00",
+          refundPublishedTotal: "0.00",
+          netRevenue: "80.00",
         },
       ]),
       "en"
@@ -95,6 +101,8 @@ describe("settlementTrendDisplay REPORTING-DASHBOARD-ADOPTION-1", () => {
           voidedCount: 0,
           revenue: "0.00",
           taxCollected: "0.00",
+          refundPublishedTotal: "0.00",
+          netRevenue: "0.00",
         },
       ]),
       "en"

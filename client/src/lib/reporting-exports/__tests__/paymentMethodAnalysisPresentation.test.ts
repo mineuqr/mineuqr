@@ -14,6 +14,8 @@ const sampleDto = {
   to: null,
   monetaryTenderTotal: "100.00",
   complimentaryAmount: "10.00",
+  refundTenderTotal: "0.00",
+  refundBuckets: [],
   buckets: [
     {
       paymentMethod: "cash",

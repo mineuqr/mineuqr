@@ -37,7 +37,10 @@ export type BusinessMetricsSummaryDto = Readonly<{
   restaurantId: number;
   from: string | null;
   to: string | null;
-  /** Official Revenue = SUM(paid Settlement Record grandTotal) — Check freeze publication. */
+  /**
+   * Gross Check Revenue = SUM(paid gen=1 Settlement Record grandTotal).
+   * Refund publications MUST NOT mutate this field (ADR-ARCH-032).
+   */
   revenue: string;
   paidCheckCount: number;
   averageCheck: string;
@@ -45,6 +48,23 @@ export type BusinessMetricsSummaryDto = Readonly<{
   complimentaryCount: number;
   complimentaryAmount: string;
   voidedCount: number;
+  /**
+   * REFUND-REPORTING-ADOPTION-1 — SUM(refund Settlement Record grandTotal) in period.
+   * Compensating publication total; not a second Revenue authority.
+   */
+  refundPublishedTotal: string;
+  /** Count of refund Settlement Record publications in period. */
+  refundPublicationCount: number;
+  /**
+   * Net Revenue = Gross Check Revenue − Refund Publications (publication-derived).
+   * Reporting derivation only — never financial truth ownership.
+   */
+  netRevenue: string;
+  /**
+   * Refund Rate = refundPublishedTotal / revenue × 100 (0 when revenue = 0).
+   * Percent string with two decimals.
+   */
+  refundRate: string;
   currency: ReportingCurrencyContext;
   /**
    * Sample Tax Policy Snapshot from a paid Check in-range (immutable).
@@ -56,11 +76,16 @@ export type BusinessMetricsSummaryDto = Readonly<{
 export type BusinessMetricsTrendPointDto = Readonly<{
   periodKey: string;
   periodStart: string;
+  /** Gross Check Revenue for the period. */
   revenue: string;
   paidCheckCount: number;
   complimentaryCount: number;
   voidedCount: number;
   taxCollected: string;
+  /** REFUND-REPORTING-ADOPTION-1 — refund publications in the period. */
+  refundPublishedTotal: string;
+  /** Gross revenue − refund publications for the period. */
+  netRevenue: string;
 }>;
 
 export type BusinessMetricsTrendDto = Readonly<{
@@ -224,4 +249,11 @@ export type PaymentMethodAnalyticsDto = Readonly<{
   monetaryTenderTotal: string;
   complimentaryAmount: string;
   buckets: readonly PaymentMethodAnalyticsBucketDto[];
+  /**
+   * REFUND-REPORTING-ADOPTION-1 — sum of refunded tender snapshot amounts.
+   * Compensating publication analytics; does not mutate monetaryTenderTotal.
+   */
+  refundTenderTotal: string;
+  /** Refund tender breakdown by payment method (status=refunded). */
+  refundBuckets: readonly PaymentMethodAnalyticsBucketDto[];
 }>;

@@ -22,6 +22,10 @@ export type ReportingExportLabels = Readonly<{
   orderSalesRollup: string;
   revenueTrend: string;
   revenue: string;
+  netRevenue: string;
+  refundPublishedTotal: string;
+  refundPublicationCount: string;
+  refundRate: string;
   orderSales: string;
   orderSalesPeriod: string;
   paidChecks: string;
@@ -77,6 +81,8 @@ export type ReportingExportLabels = Readonly<{
   checksByMethod: string;
   averageCheckByMethod: string;
   monetaryTenderTotal: string;
+  refundTenderTotal: string;
+  refundPaymentMix: string;
   paymentAnalyticsNote: string;
   paymentAnalyticsEmpty: string;
   paymentMethod: string;
@@ -110,6 +116,10 @@ export function reportingExportLabels(
       orderSalesRollup: kpi("orderSales"),
       revenueTrend: section.checkRevenueTrends,
       revenue: kpi("revenue"),
+      netRevenue: kpi("netRevenue"),
+      refundPublishedTotal: kpi("refundPublishedTotal"),
+      refundPublicationCount: kpi("refundPublicationCount"),
+      refundRate: kpi("refundRate"),
       orderSales: kpi("orderSales"),
       orderSalesPeriod: kpi("orderSales"),
       paidChecks: kpi("paidCheckCount"),
@@ -165,6 +175,8 @@ export function reportingExportLabels(
       checksByMethod: section.checksByMethod,
       averageCheckByMethod: section.averageCheckByMethod,
       monetaryTenderTotal: section.monetaryTenderTotal,
+      refundTenderTotal: section.refundTenderTotal,
+      refundPaymentMix: section.refundPaymentMix,
       paymentAnalyticsNote: section.paymentAnalyticsNote,
       paymentAnalyticsEmpty: section.paymentAnalyticsEmpty,
       paymentMethod: section.paymentMethod,
@@ -185,6 +197,10 @@ export function reportingExportLabels(
     orderSalesRollup: kpi("orderSales"),
     revenueTrend: section.checkRevenueTrends,
     revenue: kpi("revenue"),
+    netRevenue: kpi("netRevenue"),
+    refundPublishedTotal: kpi("refundPublishedTotal"),
+    refundPublicationCount: kpi("refundPublicationCount"),
+    refundRate: kpi("refundRate"),
     orderSales: kpi("orderSales"),
     orderSalesPeriod: kpi("orderSales"),
     paidChecks: kpi("paidCheckCount"),
@@ -240,6 +256,8 @@ export function reportingExportLabels(
     checksByMethod: section.checksByMethod,
     averageCheckByMethod: section.averageCheckByMethod,
     monetaryTenderTotal: section.monetaryTenderTotal,
+    refundTenderTotal: section.refundTenderTotal,
+    refundPaymentMix: section.refundPaymentMix,
     paymentAnalyticsNote: section.paymentAnalyticsNote,
     paymentAnalyticsEmpty: section.paymentAnalyticsEmpty,
     paymentMethod: section.paymentMethod,

@@ -15,7 +15,7 @@
 | **Related ADRs** | ADR-ARCH-001 · 002 · 003 · 006 · 014 · 020 · 021 · 022 · 023 · 024 · 025 · 026 · 028 · 030 · 031 |
 | **Related programs** | REFUND-PLATFORM-ARCHITECTURE-1 (investigation + this ADR) · FINANCIAL-CORE-CAPABILITIES-ARCHITECTURE-1 · SETTLEMENT-RECORD-PLATFORM-1 · successors listed in §22 |
 | **Investigation** | [ARCHITECTURE-INVESTIGATION.md](../../engineering/programs/REFUND-PLATFORM-ARCHITECTURE-1/ARCHITECTURE-INVESTIGATION.md) — verdict **READY FOR ADR** |
-| **Implementation status** | **Partial (domain + SR + Register)** — Domain, Settlement Record adoption, and Register AttributeRefund (custody/fail-open) certified. Reporting Net Revenue remains REFUND-REPORTING-ADOPTION-1. |
+| **Implementation status** | **Implemented (domain + SR + Register + Reporting)** — Domain, Settlement Record adoption, Register AttributeRefund (custody/fail-open), and Reporting Net Revenue from refund publications certified (REFUND-REPORTING-ADOPTION-1). |
 | **Numbering note** | Next FSP capability ADR after ADR-ARCH-031. **ADR-ARCH-023 remains Financial Core Capabilities** and MUST NOT be reused. |
 
 ---
@@ -758,7 +758,7 @@ Recommended after this ADR (Architecture Authority sequencing required; this ADR
 | **REFUND-DOMAIN-IMPLEMENTATION-1** | Pure domain model: commands, invariants, refundable budget derivation, Refund Reference/Allocation — no persistence/API unless sequenced |
 | **REFUND-SETTLEMENT-RECORD-ADOPTION-1** | Atomic compensating Settlement Record publish on Refund apply; collapse stub refund publishers |
 | **REFUND-REGISTER-ADOPTION-1** | AttributeRefund + cash custody effects under ADR-028/030 fail-open |
-| **REFUND-REPORTING-ADOPTION-1** | Dual-run / parity / cutover for Net Revenue and refund metrics from Settlement publications |
+| **REFUND-REPORTING-ADOPTION-1** | **Certified** — Gross unchanged; Net Revenue = Gross − refund publications; payment refund buckets additive |
 | **REFUND-PRESENTATION-ADOPTION-1** | Operator façades via Settlement Ledger entry — presentation only |
 
 Optional later (only if justified by product demand):

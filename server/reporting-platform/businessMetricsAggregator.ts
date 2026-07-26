@@ -1,7 +1,8 @@
 /**
  * Pure aggregation of financial reporting facts → Business Metrics DTOs.
- * Revenue = SUM(paid grandTotal) — values are Settlement Record publications
+ * Gross Revenue = SUM(paid gen=1 grandTotal) — Settlement Record publications
  * of finalized Check freeze (ADR-ARCH-026). No money recalculation.
+ * REFUND-REPORTING-ADOPTION-1 — Net Revenue = Gross − refund publications.
  */
 
 import type {
@@ -65,6 +66,7 @@ export function buildBusinessMetricsSummary(
     }
   }
 
+  const revenueFormatted = formatReportingAmount(revenue);
   return {
     contractVersion: REPORTING_CONTRACT_VERSION,
     contractId: "BusinessMetricsSummary",
@@ -72,15 +74,44 @@ export function buildBusinessMetricsSummary(
     restaurantId,
     from: from ?? null,
     to: to ?? null,
-    revenue: formatReportingAmount(revenue),
+    revenue: revenueFormatted,
     paidCheckCount,
     averageCheck: averageReportingAmount(revenue, paidCheckCount),
     taxCollected: formatReportingAmount(taxCollected),
     complimentaryCount,
     complimentaryAmount: formatReportingAmount(complimentaryAmount),
     voidedCount,
+    refundPublishedTotal: "0.00",
+    refundPublicationCount: 0,
+    netRevenue: revenueFormatted,
+    refundRate: "0.00",
     currency: { currencySnapshot },
     sampleTaxPolicySnapshot: sampleTax,
+  };
+}
+
+/**
+ * REFUND-REPORTING-ADOPTION-1 — attach compensating refund publications.
+ * Does not mutate Gross Revenue / tax / paid counts.
+ */
+export function applyRefundPublicationsToBusinessMetrics(
+  summary: BusinessMetricsSummaryDto,
+  refundRows: readonly CheckReportingRow[]
+): BusinessMetricsSummaryDto {
+  let refundPublishedTotal = 0;
+  for (const row of refundRows) {
+    refundPublishedTotal += parseReportingAmount(row.grandTotal);
+  }
+  const gross = parseReportingAmount(summary.revenue);
+  const net = gross - refundPublishedTotal;
+  const refundRate =
+    gross > 0 ? (refundPublishedTotal / gross) * 100 : 0;
+  return {
+    ...summary,
+    refundPublishedTotal: formatReportingAmount(refundPublishedTotal),
+    refundPublicationCount: refundRows.length,
+    netRevenue: formatReportingAmount(net),
+    refundRate: (Math.round(refundRate * 100) / 100).toFixed(2),
   };
 }
 
@@ -91,7 +122,35 @@ type TrendAcc = {
   complimentaryCount: number;
   voidedCount: number;
   taxCollected: number;
+  refundPublishedTotal: number;
 };
+
+function ensureTrendBucket(
+  buckets: Map<string, TrendAcc>,
+  periodKey: string,
+  grouping: ReportingTrendGrouping,
+  workingHours: NormalizedWorkingHours
+): TrendAcc {
+  let acc = buckets.get(periodKey);
+  if (!acc) {
+    acc = {
+      periodStart: resolveBusinessPeriodStart(
+        periodKey,
+        grouping,
+        undefined,
+        workingHours
+      ),
+      revenue: 0,
+      paidCheckCount: 0,
+      complimentaryCount: 0,
+      voidedCount: 0,
+      taxCollected: 0,
+      refundPublishedTotal: 0,
+    };
+    buckets.set(periodKey, acc);
+  }
+  return acc;
+}
 
 export function buildBusinessMetricsTrend(
   restaurantId: number,
@@ -100,7 +159,8 @@ export function buildBusinessMetricsTrend(
   from: string | null | undefined,
   to: string | null | undefined,
   now: Date = new Date(),
-  workingHours: NormalizedWorkingHours = reportingWorkingHours(null)
+  workingHours: NormalizedWorkingHours = reportingWorkingHours(null),
+  refundRows: readonly CheckReportingRow[] = []
 ): BusinessMetricsTrendDto {
   const buckets = new Map<string, TrendAcc>();
 
@@ -114,23 +174,7 @@ export function buildBusinessMetricsTrend(
       workingHours
     );
     if (!periodKey) continue;
-    let acc = buckets.get(periodKey);
-    if (!acc) {
-      acc = {
-        periodStart: resolveBusinessPeriodStart(
-          periodKey,
-          grouping,
-          undefined,
-          workingHours
-        ),
-        revenue: 0,
-        paidCheckCount: 0,
-        complimentaryCount: 0,
-        voidedCount: 0,
-        taxCollected: 0,
-      };
-      buckets.set(periodKey, acc);
-    }
+    const acc = ensureTrendBucket(buckets, periodKey, grouping, workingHours);
     if (row.outcome === "paid") {
       acc.paidCheckCount += 1;
       acc.revenue += parseReportingAmount(row.grandTotal);
@@ -140,6 +184,20 @@ export function buildBusinessMetricsTrend(
     } else if (row.outcome === "voided") {
       acc.voidedCount += 1;
     }
+  }
+
+  for (const row of refundRows) {
+    const ts = eventTimestampForCheck(row);
+    if (!ts) continue;
+    const periodKey = resolveBusinessPeriodKey(
+      ts,
+      grouping,
+      undefined,
+      workingHours
+    );
+    if (!periodKey) continue;
+    const acc = ensureTrendBucket(buckets, periodKey, grouping, workingHours);
+    acc.refundPublishedTotal += parseReportingAmount(row.grandTotal);
   }
 
   const points: BusinessMetricsTrendPointDto[] = [...buckets.entries()]
@@ -152,6 +210,8 @@ export function buildBusinessMetricsTrend(
       complimentaryCount: acc.complimentaryCount,
       voidedCount: acc.voidedCount,
       taxCollected: formatReportingAmount(acc.taxCollected),
+      refundPublishedTotal: formatReportingAmount(acc.refundPublishedTotal),
+      netRevenue: formatReportingAmount(acc.revenue - acc.refundPublishedTotal),
     }));
 
   return {

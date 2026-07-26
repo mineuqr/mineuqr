@@ -25,6 +25,13 @@ export const PREFERRED_KPI_LABELS: Readonly<
   Record<KpiId, Readonly<{ en: string; ar: string }>>
 > = Object.freeze({
   revenue: { en: "Check Revenue", ar: "إيرادات الشيكات" },
+  refundPublishedTotal: {
+    en: "Refund Publications",
+    ar: "منشورات المرتجعات",
+  },
+  refundPublicationCount: { en: "Refund Count", ar: "عدد المرتجعات" },
+  netRevenue: { en: "Net Revenue", ar: "صافي الإيرادات" },
+  refundRate: { en: "Refund Rate", ar: "معدل المرتجعات" },
   paidCheckCount: { en: "Paid Checks", ar: "الشيكات المدفوعة" },
   taxCollected: { en: "Tax Collected", ar: "الضريبة المحصّلة" },
   averageCheck: { en: "Average Check", ar: "متوسط الشيك" },
@@ -145,7 +152,7 @@ export const SECTION_TERMINOLOGY = Object.freeze({
     coverSubtitle: "Business performance overview",
     moneyCollected: "Money Collected",
     moneyCollectedHint:
-      "Paid guest checks for this reporting period — Check Revenue story.",
+      "Paid guest checks for this reporting period — Gross Check Revenue. Net Revenue subtracts Refund Publications.",
     /** REPORTING-PAYMENT-METHOD-ANALYTICS-1 */
     paymentMethodAnalysis: "Payment Method Analysis",
     paymentMix: "Payment Mix",
@@ -154,8 +161,10 @@ export const SECTION_TERMINOLOGY = Object.freeze({
     checksByMethod: "Paid Checks (by method)",
     averageCheckByMethod: "Average Check (by method)",
     monetaryTenderTotal: "Monetary Tender Total",
+    refundTenderTotal: "Refund Tender Total",
+    refundPaymentMix: "Refund Mix by Payment Method",
     paymentAnalyticsNote:
-      "Payment mix is from settlement tenders. Check Revenue remains the official revenue total from paid checks.",
+      "Payment mix is from settlement tenders. Check Revenue remains Gross from paid checks; refund tenders are listed separately and do not replace Check Revenue.",
     paymentMethod: "Payment Method",
     transactions: "Transactions",
     /** Period-agnostic empty / error (PRESENTATION-ADOPTION-1). */
@@ -185,7 +194,7 @@ export const SECTION_TERMINOLOGY = Object.freeze({
     coverSubtitle: "نظرة على أداء العمل",
     moneyCollected: "الأموال المحصّلة",
     moneyCollectedHint:
-      "شيكات الضيوف المدفوعة لهذه الفترة — قصة إيرادات الشيكات.",
+      "شيكات الضيوف المدفوعة لهذه الفترة — إجمالي إيرادات الشيكات. صافي الإيرادات يخصم منشورات المرتجعات.",
     paymentMethodAnalysis: "تحليل طرق الدفع",
     paymentMix: "مزيج الدفع",
     tenderAmount: "مبلغ وسيلة الدفع",
@@ -193,8 +202,10 @@ export const SECTION_TERMINOLOGY = Object.freeze({
     checksByMethod: "الشيكات المدفوعة (حسب الطريقة)",
     averageCheckByMethod: "متوسط الشيك (حسب الطريقة)",
     monetaryTenderTotal: "إجمالي مبالغ وسائل الدفع",
+    refundTenderTotal: "إجمالي مرتجعات وسائل الدفع",
+    refundPaymentMix: "مزيج المرتجعات حسب طريقة الدفع",
     paymentAnalyticsNote:
-      "مزيج الدفع من معاملات التسوية. إيرادات الشيكات تبقى الإجمالي الرسمي من الشيكات المدفوعة.",
+      "مزيج الدفع من معاملات التسوية. إيرادات الشيكات تبقى الإجمالي من الشيكات المدفوعة؛ مرتجعات الوسائل تُعرض منفصلة ولا تستبدل إيرادات الشيكات.",
     paymentMethod: "طريقة الدفع",
     transactions: "المعاملات",
     paymentAnalyticsEmpty: "لا توجد معاملات تسوية لفترة التقرير.",

@@ -1,8 +1,10 @@
 /**
  * SETTLEMENT-RECORD-REPORTING-ADOPTION-1
+ * REFUND-REPORTING-ADOPTION-1
  *
  * Business KPIs — Settlement Record is the canonical financial publication source.
  * Check remains Monetary Aggregate Root; Reporting aggregates published grandTotal/tax.
+ * Gross Revenue stays gen=1 paid publications; Net Revenue derives from refund SRs.
  * Never reads live Business Settings for tax/currency.
  */
 
@@ -14,13 +16,17 @@ import type {
 } from "@shared/reporting-platform";
 import { listTerminalChecksForReporting } from "./checkReportingRepository";
 import {
+  applyRefundPublicationsToBusinessMetrics,
   buildBusinessMetricsSummary,
   buildBusinessMetricsTrend,
 } from "./businessMetricsAggregator";
 import { compareBusinessMetricsParity } from "./financialReportingParity";
 import { resolveFinancialReportingSourceMode } from "./financialReportingSource";
 import { loadRestaurantWorkingHoursForReporting } from "./restaurantWorkingHoursAdapter";
-import { listSettlementRecordsForReporting } from "./settlementRecordReportingAdapter";
+import {
+  listRefundSettlementRecordsForReporting,
+  listSettlementRecordsForReporting,
+} from "./settlementRecordReportingAdapter";
 import { opsLog } from "../_core/opsLog";
 
 export class ReportingValidationError extends Error {
@@ -85,27 +91,33 @@ async function loadFinancialFacts(input: ReportingPeriodInput) {
 /**
  * Business KPIs — Settlement Record publication path (ADR-ARCH-026 Phase D).
  * Period filtering uses caller from/to (Business Day bounds from client/server).
+ * Refund publications are always read from Settlement Record (compensating docs).
  */
 export async function getBusinessMetricsSummary(
   input: ReportingPeriodInput
 ): Promise<BusinessMetricsSummaryDto> {
   assertRestaurantId(input.restaurantId);
-  const { rows } = await loadFinancialFacts(input);
-  return buildBusinessMetricsSummary(
+  const [{ rows }, refundRows] = await Promise.all([
+    loadFinancialFacts(input),
+    listRefundSettlementRecordsForReporting(input),
+  ]);
+  const gross = buildBusinessMetricsSummary(
     input.restaurantId,
     rows,
     input.from,
     input.to
   );
+  return applyRefundPublicationsToBusinessMetrics(gross, refundRows);
 }
 
 export async function getBusinessMetricsTrend(
   input: ReportingPeriodInput & { grouping: ReportingTrendGrouping }
 ): Promise<BusinessMetricsTrendDto> {
   assertRestaurantId(input.restaurantId);
-  const [{ rows }, workingHours] = await Promise.all([
+  const [{ rows }, workingHours, refundRows] = await Promise.all([
     loadFinancialFacts(input),
     loadRestaurantWorkingHoursForReporting(input.restaurantId),
+    listRefundSettlementRecordsForReporting(input),
   ]);
   return buildBusinessMetricsTrend(
     input.restaurantId,
@@ -114,11 +126,12 @@ export async function getBusinessMetricsTrend(
     input.from,
     input.to,
     new Date(),
-    workingHours
+    workingHours,
+    refundRows
   );
 }
 
-/** Test / diagnostics: dual-run parity for Business Metrics. */
+/** Test / diagnostics: dual-run parity for Business Metrics (Gross fields). */
 export async function getBusinessMetricsParityDiagnostic(
   input: ReportingPeriodInput
 ): Promise<{
@@ -128,21 +141,28 @@ export async function getBusinessMetricsParityDiagnostic(
   legacyCheck: BusinessMetricsSummaryDto;
 }> {
   assertRestaurantId(input.restaurantId);
-  const [srRows, checkRows] = await Promise.all([
+  const [srRows, checkRows, refundRows] = await Promise.all([
     listSettlementRecordsForReporting(input),
     listTerminalChecksForReporting(input),
+    listRefundSettlementRecordsForReporting(input),
   ]);
-  const settlementRecord = buildBusinessMetricsSummary(
-    input.restaurantId,
-    srRows,
-    input.from,
-    input.to
+  const settlementRecord = applyRefundPublicationsToBusinessMetrics(
+    buildBusinessMetricsSummary(
+      input.restaurantId,
+      srRows,
+      input.from,
+      input.to
+    ),
+    refundRows
   );
-  const legacyCheck = buildBusinessMetricsSummary(
-    input.restaurantId,
-    checkRows,
-    input.from,
-    input.to
+  const legacyCheck = applyRefundPublicationsToBusinessMetrics(
+    buildBusinessMetricsSummary(
+      input.restaurantId,
+      checkRows,
+      input.from,
+      input.to
+    ),
+    refundRows
   );
   const parity = compareBusinessMetricsParity(legacyCheck, settlementRecord);
   return {

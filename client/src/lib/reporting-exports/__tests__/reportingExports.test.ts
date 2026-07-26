@@ -37,6 +37,10 @@ function sampleBundle(
       complimentaryCount: 1,
       complimentaryAmount: "10.00",
       voidedCount: 0,
+      refundPublishedTotal: "0.00",
+      refundPublicationCount: 0,
+      netRevenue: "100.00",
+      refundRate: "0.00",
       currency: {
         currencySnapshot: { currencyCode: "SAR", currencySymbol: "ر.س" },
       },
@@ -91,6 +95,8 @@ function sampleBundle(
           complimentaryCount: 0,
           voidedCount: 0,
           taxCollected: "7.50",
+          refundPublishedTotal: "0.00",
+          netRevenue: "50.00",
         },
         {
           periodKey: "2026-07-02",
@@ -100,6 +106,8 @@ function sampleBundle(
           complimentaryCount: 0,
           voidedCount: 0,
           taxCollected: "4.50",
+          refundPublishedTotal: "0.00",
+          netRevenue: "30.00",
         },
         {
           periodKey: "2026-07-03",
@@ -109,6 +117,8 @@ function sampleBundle(
           complimentaryCount: 1,
           voidedCount: 0,
           taxCollected: "3.00",
+          refundPublishedTotal: "0.00",
+          netRevenue: "20.00",
         },
       ],
     },
@@ -122,6 +132,8 @@ function sampleBundle(
       to: "2026-07-31 23:59:59",
       monetaryTenderTotal: "100.00",
       complimentaryAmount: "10.00",
+      refundTenderTotal: "0.00",
+      refundBuckets: [],
       buckets: [
         {
           paymentMethod: "cash",

@@ -86,7 +86,7 @@ export function SettlementOverviewSection({
   return (
     <RestaurantDashSection title={sectionTitle} description={sectionSub} ariaLabel={ariaLabel}>
       {isLoading ? (
-        <RestaurantKpiGridSkeleton count={5} />
+        <RestaurantKpiGridSkeleton count={6} />
       ) : isError ? (
         <RestaurantSectionError
           message={
@@ -113,6 +113,13 @@ export function SettlementOverviewSection({
             value={formatSettlementRevenue(summary?.revenue ?? "0.00", sym)}
             icon={DollarSign}
             tone="success"
+            valueVariant="revenue"
+          />
+          <RestaurantKpiCard
+            label={kpiDisplayName("netRevenue", lang)}
+            value={formatSettlementRevenue(summary?.netRevenue ?? "0.00", sym)}
+            icon={TrendingUp}
+            tone="info"
             valueVariant="revenue"
           />
           <RestaurantKpiCard

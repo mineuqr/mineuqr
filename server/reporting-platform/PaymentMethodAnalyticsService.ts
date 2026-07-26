@@ -1,10 +1,12 @@
 /**
  * REPORTING-PAYMENT-METHOD-ANALYTICS-1
  * SETTLEMENT-RECORD-REPORTING-ADOPTION-1
+ * REFUND-REPORTING-ADOPTION-1
  *
  * Payment-method analytics from Settlement Record payment snapshots (publication).
  * Does not replace Check Revenue (SUM paid published grandTotal).
  * Does not recalculate tender amounts.
+ * Refund tender buckets are additive (status=refunded) — never mutate captured totals.
  */
 
 import {
@@ -12,6 +14,7 @@ import {
   averageReportingAmount,
   formatReportingAmount,
   parseReportingAmount,
+  type PaymentMethodAnalyticsBucketDto,
   type PaymentMethodAnalyticsDto,
   type ReportingPeriodInput,
 } from "@shared/reporting-platform";
@@ -25,7 +28,10 @@ import { ReportingValidationError } from "./BusinessMetricsService";
 import { comparePaymentMethodParity } from "./financialReportingParity";
 import { resolveFinancialReportingSourceMode } from "./financialReportingSource";
 import { listSettlementTransactionsForReporting } from "./settlementTransactionReportingAdapter";
-import { listSettlementRecordPaymentLinesForReporting } from "./settlementRecordReportingAdapter";
+import {
+  listRefundSettlementRecordPaymentLinesForReporting,
+  listSettlementRecordPaymentLinesForReporting,
+} from "./settlementRecordReportingAdapter";
 import { opsLog } from "../_core/opsLog";
 
 type Acc = {
@@ -70,39 +76,11 @@ export function buildPaymentMethodAnalyticsFromCapturedLines(
   );
 }
 
-function buildPaymentMethodAnalyticsDto(
-  input: ReportingPeriodInput,
-  rows: readonly TenderLine[]
-): PaymentMethodAnalyticsDto {
-  const monetary = new Map<PaymentMethod, Acc>();
-  let complimentaryAmount = 0;
-
-  for (const row of rows) {
-    if (row.status !== "captured") continue;
-    if (!isPaymentMethod(row.paymentMethod)) continue;
-
-    if (row.paymentMethod === "complimentary") {
-      complimentaryAmount += parseReportingAmount(row.amount);
-      continue;
-    }
-
-    // PAYMENT-METHOD-CATALOG-UNIFICATION-1 — aggregate by canonical catalog key.
-    const catalogKey = toCanonicalPaymentMethod(
-      row.paymentMethod
-    ) as PaymentMethod;
-    const acc = monetary.get(catalogKey) ?? emptyAcc();
-    acc.tenderAmount += parseReportingAmount(row.amount);
-    acc.transactionCount += 1;
-    acc.checkIds.add(row.checkId);
-    monetary.set(catalogKey, acc);
-  }
-
-  let monetaryTotal = 0;
-  for (const acc of monetary.values()) {
-    monetaryTotal += acc.tenderAmount;
-  }
-
-  const buckets = [...monetary.entries()]
+function bucketsFromAccMap(
+  monetary: Map<PaymentMethod, Acc>,
+  monetaryTotal: number
+): PaymentMethodAnalyticsBucketDto[] {
+  return [...monetary.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([paymentMethod, acc]) => {
       const checkCount = acc.checkIds.size;
@@ -118,6 +96,52 @@ function buildPaymentMethodAnalyticsDto(
         mixPercent: (Math.round(mix * 100) / 100).toFixed(2),
       };
     });
+}
+
+function accumulateTenderLines(
+  rows: readonly TenderLine[],
+  status: "captured" | "refunded"
+): { monetary: Map<PaymentMethod, Acc>; complimentaryAmount: number; total: number } {
+  const monetary = new Map<PaymentMethod, Acc>();
+  let complimentaryAmount = 0;
+
+  for (const row of rows) {
+    if (row.status !== status) continue;
+    if (!isPaymentMethod(row.paymentMethod)) continue;
+
+    if (row.paymentMethod === "complimentary") {
+      if (status === "captured") {
+        complimentaryAmount += parseReportingAmount(row.amount);
+      }
+      continue;
+    }
+
+    const catalogKey = toCanonicalPaymentMethod(
+      row.paymentMethod
+    ) as PaymentMethod;
+    const acc = monetary.get(catalogKey) ?? emptyAcc();
+    acc.tenderAmount += parseReportingAmount(row.amount);
+    acc.transactionCount += 1;
+    acc.checkIds.add(row.checkId);
+    monetary.set(catalogKey, acc);
+  }
+
+  let total = 0;
+  for (const acc of monetary.values()) {
+    total += acc.tenderAmount;
+  }
+  return { monetary, complimentaryAmount, total };
+}
+
+function buildPaymentMethodAnalyticsDto(
+  input: ReportingPeriodInput,
+  rows: readonly TenderLine[],
+  refundRows: readonly TenderLine[] = []
+): PaymentMethodAnalyticsDto {
+  const captured = accumulateTenderLines(rows, "captured");
+  // Prefer dedicated refund publications; fall back to refunded status on primary lines.
+  const refundSource = refundRows.length > 0 ? refundRows : rows;
+  const refunded = accumulateTenderLines(refundSource, "refunded");
 
   return {
     contractVersion: REPORTING_CONTRACT_VERSION,
@@ -127,15 +151,32 @@ function buildPaymentMethodAnalyticsDto(
     restaurantId: input.restaurantId,
     from: input.from ?? null,
     to: input.to ?? null,
-    monetaryTenderTotal: formatReportingAmount(monetaryTotal),
-    complimentaryAmount: formatReportingAmount(complimentaryAmount),
-    buckets,
+    monetaryTenderTotal: formatReportingAmount(captured.total),
+    complimentaryAmount: formatReportingAmount(captured.complimentaryAmount),
+    buckets: bucketsFromAccMap(captured.monetary, captured.total),
+    refundTenderTotal: formatReportingAmount(refunded.total),
+    refundBuckets: bucketsFromAccMap(refunded.monetary, refunded.total),
   };
 }
 
 async function loadTenderLines(
   input: ReportingPeriodInput
-): Promise<readonly TenderLine[]> {
+): Promise<{
+  rows: readonly TenderLine[];
+  refundRows: readonly TenderLine[];
+}> {
+  const refundLines = await listRefundSettlementRecordPaymentLinesForReporting({
+    restaurantId: input.restaurantId,
+    from: input.from,
+    to: input.to,
+  });
+  const refundRows = refundLines.map((row) => ({
+    paymentMethod: row.paymentMethod,
+    amount: row.amount,
+    status: row.status,
+    checkId: row.checkId,
+  }));
+
   const mode = resolveFinancialReportingSourceMode();
   if (mode === "check") {
     const st = await listSettlementTransactionsForReporting({
@@ -143,12 +184,15 @@ async function loadTenderLines(
       from: input.from,
       to: input.to,
     });
-    return st.map((row) => ({
-      paymentMethod: row.paymentMethod,
-      amount: row.amount,
-      status: row.status,
-      checkId: row.checkId,
-    }));
+    return {
+      rows: st.map((row) => ({
+        paymentMethod: row.paymentMethod,
+        amount: row.amount,
+        status: row.status,
+        checkId: row.checkId,
+      })),
+      refundRows,
+    };
   }
 
   const srLines = await listSettlementRecordPaymentLinesForReporting({
@@ -176,9 +220,14 @@ async function loadTenderLines(
         amount: row.amount,
         status: row.status,
         checkId: row.checkId,
-      }))
+      })),
+      refundRows
     );
-    const published = buildPaymentMethodAnalyticsDto(input, srTenders);
+    const published = buildPaymentMethodAnalyticsDto(
+      input,
+      srTenders,
+      refundRows
+    );
     const parity = comparePaymentMethodParity(legacy, published);
     if (!parity.matched) {
       opsLog({
@@ -196,12 +245,12 @@ async function loadTenderLines(
     }
   }
 
-  return srTenders;
+  return { rows: srTenders, refundRows };
 }
 
 /**
  * Build payment-method analytics for a restaurant period.
- * Source: Settlement Record paymentSnapshot (captured lines).
+ * Source: Settlement Record paymentSnapshot (captured + refunded lines).
  * listSettlementRecordPaymentLinesForReporting is the publication read path.
  */
 export async function getPaymentMethodAnalytics(
@@ -211,6 +260,6 @@ export async function getPaymentMethodAnalytics(
     throw new ReportingValidationError("Invalid restaurantId");
   }
 
-  const rows = await loadTenderLines(input);
-  return buildPaymentMethodAnalyticsDto(input, rows);
+  const { rows, refundRows } = await loadTenderLines(input);
+  return buildPaymentMethodAnalyticsDto(input, rows, refundRows);
 }

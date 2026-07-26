@@ -68,7 +68,7 @@ const PAGE_COPY = Object.freeze({
     operationalHint:
       "From completed kitchen orders — your Order Sales story for this period.",
     footerNote:
-      "Check Revenue, Paid Checks, Average Check, and Tax Collected are in Financial Summary. Payment mix is in Payment Method Analysis.",
+      "Check Revenue (Gross), Net Revenue, Refund Publications, Paid Checks, Average Check, and Tax Collected are in Financial Summary. Payment and refund mix are in Payment Method Analysis.",
   },
   ar: {
     primaryQuestion: "كيف يؤدي المطعم تشغيلياً؟",
@@ -76,7 +76,7 @@ const PAGE_COPY = Object.freeze({
     operationalHint:
       "من الطلبات المكتملة في المطبخ — قصة مبيعات الطلبات لهذه الفترة.",
     footerNote:
-      "إيرادات الشيكات وعدد الشيكات المدفوعة ومتوسط الشيك والضريبة المحصّلة في الملخص المالي. مزيج الدفع في تحليل طرق الدفع.",
+      "إيرادات الشيكات (الإجمالي) وصافي الإيرادات ومنشورات المرتجعات وعدد الشيكات المدفوعة ومتوسط الشيك والضريبة المحصّلة في الملخص المالي. مزيج الدفع والمرتجعات في تحليل طرق الدفع.",
   },
 } as const);
 

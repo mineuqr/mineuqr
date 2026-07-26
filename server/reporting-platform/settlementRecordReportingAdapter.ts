@@ -77,14 +77,74 @@ function inDateWindow(
   return true;
 }
 
+function mapSettlementRecordRow(
+  row: typeof settlementRecords.$inferSelect
+): SettlementRecordReportingFact {
+  const outcome = row.outcome as CheckOutcome;
+  const settledAt = row.settledAt ?? null;
+  const createdAt = row.createdAt;
+  const voidedAt = outcome === "voided" ? settledAt ?? createdAt : null;
+  const kind = assertSettlementRecordKind(row.recordKind);
+
+  return {
+    id: row.checkId,
+    restaurantId: row.restaurantId,
+    sessionId: row.sessionId ?? null,
+    outcome,
+    grandTotal: String(row.grandTotal ?? "0.00"),
+    taxAmount: String(row.taxAmount ?? "0.00"),
+    settledAt,
+    voidedAt,
+    currencySnapshot: asSnapshot(row.currencySnapshotJson, {
+      currencyCode: "SAR",
+      currencySymbol: "ر.س",
+    }) as CurrencySnapshot,
+    taxPolicySnapshot: asSnapshot(row.taxPolicySnapshotJson, {
+      version: 1,
+      enabled: false,
+      mode: "exclusive" as const,
+      components: [],
+    }) as TaxPolicySnapshot,
+    settlementRecordId: row.settlementRecordId,
+    recordKind: kind,
+    businessDay: row.businessDay,
+    paymentSnapshot: asPaymentSnapshot(row.paymentSnapshotJson),
+    publicationSource: "settlement_record",
+  };
+}
+
+function filterByReportingWindow(
+  mapped: SettlementRecordReportingFact[],
+  input: SettlementRecordReportingQuery
+): SettlementRecordReportingFact[] {
+  if (!input.from && !input.to) {
+    return mapped.filter((row) =>
+      row.outcome === "voided" ? row.voidedAt != null : row.settledAt != null
+    );
+  }
+  return mapped.filter((row) => {
+    if (row.outcome === "voided") {
+      return inDateWindow(row.voidedAt, input.from, input.to);
+    }
+    return inDateWindow(row.settledAt, input.from, input.to);
+  });
+}
+
+/** Refund reporting facts use publication time (createdAt) for Business Day windows. */
+function mapRefundSettlementRecordRow(
+  row: typeof settlementRecords.$inferSelect
+): SettlementRecordReportingFact {
+  const fact = mapSettlementRecordRow(row);
+  return {
+    ...fact,
+    settledAt: row.createdAt,
+  };
+}
+
 /**
- * List Settlement Records for Reporting (tenant + optional settled/created window).
+ * List Settlement Records for Gross Revenue / Check Revenue KPIs.
  * Primary settlements + void primary records only (recordGeneration = 1).
- * Compensating generations (incl. recordKind=refund) are excluded from Revenue KPIs.
- *
- * REFUND-SETTLEMENT-RECORD-ADOPTION-1: Refund is a native Settlement Record on the
- * publication platform. Net Revenue / refund metric cutover is intentionally deferred
- * to REFUND-REPORTING-ADOPTION-1 (no silent dual Revenue formula here).
+ * Compensating refund generations MUST NOT enter this list (ADR-ARCH-032).
  */
 export async function listSettlementRecordsForReporting(
   input: SettlementRecordReportingQuery
@@ -102,63 +162,41 @@ export async function listSettlementRecordsForReporting(
     if (row.recordGeneration !== 1) continue;
     const kind = assertSettlementRecordKind(row.recordKind);
     if (kind !== "settlement" && kind !== "void") continue;
-
-    const outcome = row.outcome as CheckOutcome;
-    const settledAt = row.settledAt ?? null;
-    const createdAt = row.createdAt;
-    const voidedAt =
-      outcome === "voided" ? settledAt ?? createdAt : null;
-
-    const fact: SettlementRecordReportingFact = {
-      id: row.checkId,
-      restaurantId: row.restaurantId,
-      sessionId: row.sessionId ?? null,
-      outcome,
-      grandTotal: String(row.grandTotal ?? "0.00"),
-      taxAmount: String(row.taxAmount ?? "0.00"),
-      settledAt,
-      voidedAt,
-      currencySnapshot: asSnapshot(row.currencySnapshotJson, {
-        currencyCode: "SAR",
-        currencySymbol: "ر.س",
-      }) as CurrencySnapshot,
-      taxPolicySnapshot: asSnapshot(row.taxPolicySnapshotJson, {
-        version: 1,
-        enabled: false,
-        mode: "exclusive" as const,
-        components: [],
-      }) as TaxPolicySnapshot,
-      settlementRecordId: row.settlementRecordId,
-      recordKind: kind,
-      businessDay: row.businessDay,
-      paymentSnapshot: asPaymentSnapshot(row.paymentSnapshotJson),
-      publicationSource: "settlement_record",
-    };
-    mapped.push(fact);
+    mapped.push(mapSettlementRecordRow(row));
   }
 
-  if (!input.from && !input.to) {
-    return mapped.filter((row) =>
-      row.outcome === "voided" ? row.voidedAt != null : row.settledAt != null
-    );
-  }
-
-  return mapped.filter((row) => {
-    if (row.outcome === "voided") {
-      return inDateWindow(row.voidedAt, input.from, input.to);
-    }
-    return inDateWindow(row.settledAt, input.from, input.to);
-  });
+  return filterByReportingWindow(mapped, input);
 }
 
 /**
- * Flatten captured payment snapshot lines for Payment Method Analytics.
- * Does not recalculate amounts — copies Settlement Record payment snapshot.
+ * REFUND-REPORTING-ADOPTION-1 — refund Settlement Record publications only.
+ * Used for Net Revenue / refund analytics — never for Check Revenue (Gross).
+ * Window uses publication time (createdAt), not original Check settledAt.
  */
-export async function listSettlementRecordPaymentLinesForReporting(
+export async function listRefundSettlementRecordsForReporting(
   input: SettlementRecordReportingQuery
-): Promise<readonly SettlementRecordPaymentReportingLine[]> {
-  const records = await listSettlementRecordsForReporting(input);
+): Promise<SettlementRecordReportingFact[]> {
+  const db = await getDb();
+  if (!db) return [];
+
+  const rows = await db
+    .select()
+    .from(settlementRecords)
+    .where(eq(settlementRecords.restaurantId, input.restaurantId));
+
+  const mapped: SettlementRecordReportingFact[] = [];
+  for (const row of rows) {
+    const kind = assertSettlementRecordKind(row.recordKind);
+    if (kind !== "refund") continue;
+    mapped.push(mapRefundSettlementRecordRow(row));
+  }
+
+  return filterByReportingWindow(mapped, input);
+}
+
+function flattenPaymentLines(
+  records: readonly SettlementRecordReportingFact[]
+): SettlementRecordPaymentReportingLine[] {
   const lines: SettlementRecordPaymentReportingLine[] = [];
   for (const record of records) {
     for (const snap of record.paymentSnapshot) {
@@ -175,4 +213,27 @@ export async function listSettlementRecordPaymentLinesForReporting(
     }
   }
   return lines;
+}
+
+/**
+ * Flatten captured payment snapshot lines for Payment Method Analytics (Gross).
+ * Does not recalculate amounts — copies Settlement Record payment snapshot.
+ * Gen=1 settlement/void only — excludes refund publications.
+ */
+export async function listSettlementRecordPaymentLinesForReporting(
+  input: SettlementRecordReportingQuery
+): Promise<readonly SettlementRecordPaymentReportingLine[]> {
+  const records = await listSettlementRecordsForReporting(input);
+  return flattenPaymentLines(records);
+}
+
+/**
+ * REFUND-REPORTING-ADOPTION-1 — payment snapshot lines from refund publications.
+ * Status is typically "refunded" (compensating tender publication).
+ */
+export async function listRefundSettlementRecordPaymentLinesForReporting(
+  input: SettlementRecordReportingQuery
+): Promise<readonly SettlementRecordPaymentReportingLine[]> {
+  const records = await listRefundSettlementRecordsForReporting(input);
+  return flattenPaymentLines(records);
 }
