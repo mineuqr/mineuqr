@@ -1,5 +1,6 @@
 /**
  * SETTLEMENT-RECORD-UI-ADOPTION-1 / REFUND-SETTLEMENT-RECORD-ADOPTION-1
+ * REFUND-PRESENTATION-ADOPTION-1
  * Client API type aliases — polymorphic over recordKind (incl. refund).
  */
 
@@ -75,6 +76,11 @@ export type SettlementRecordDetailApiDto = Readonly<{
   }[];
   grandTotal: string;
   operator: Readonly<{ actorType: string | null; actorId: string | null }>;
+  attribution: Readonly<{
+    registerLabel: string;
+    shiftLabel: string;
+    operatorLabel: string;
+  }> | null;
   audit: Readonly<{
     createdAt: string;
     settledAt: string | null;

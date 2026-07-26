@@ -245,6 +245,7 @@ export function DiningSessionWorkspaceSheet({
                 settlementRecordId={workspaceSettlementId}
                 language={lang}
                 onOpenChange={setWorkspaceDetailOpen}
+                onOpenSettlementRecord={(id) => setWorkspaceSettlementId(id)}
                 onViewReceipt={() => {
                   setWorkspaceDetailOpen(false);
                   setWorkspaceReceiptOpen(true);

@@ -1,5 +1,6 @@
 /**
  * SETTLEMENT-RECORD-UI-ADOPTION-1 / REFUND-SETTLEMENT-RECORD-ADOPTION-1
+ * REFUND-PRESENTATION-ADOPTION-1
  * ViewModels (presentation only) — polymorphic over recordKind.
  */
 
@@ -13,6 +14,7 @@ import type {
   SettlementRecordReceiptApiDto,
 } from "./settlementRecordApiTypes";
 import {
+  settlementPaymentStatusLabel,
   settlementRecordUiLabel,
   settlementStatusLabel,
   type SettlementRecordLang,
@@ -21,6 +23,26 @@ import {
   formatSettlementHistoryTimeParts,
 } from "./settlementHistoryPresentation";
 import { resolveSettlementOperationalIdentity } from "@shared/operational-document-identity";
+
+function parseCheckIdFromSettlementRecordId(id: string): number {
+  const n = Number(id.split(":")[2] ?? 0);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function operatorDisplayLabel(
+  detail: SettlementRecordDetailApiDto,
+  language: SettlementRecordLang
+): string {
+  if (detail.attribution?.operatorLabel && detail.attribution.operatorLabel !== "—") {
+    return detail.attribution.operatorLabel;
+  }
+  if (detail.operator.actorId == null) return "—";
+  const type = (detail.operator.actorType ?? "staff").toLowerCase();
+  if (type === "system") {
+    return settlementRecordUiLabel("operatorSystem", language);
+  }
+  return settlementRecordUiLabel("operatorStaff", language);
+}
 
 function formatTime(value: string, language: SettlementRecordLang): string {
   const { dateLabel, timeLabel } = formatSettlementHistoryTimeParts(
@@ -47,10 +69,12 @@ export type SettlementHistoryRowViewModel = Readonly<{
   settlementNumber: string;
   settlementTimeDateLabel: string;
   settlementTimeClockLabel: string;
+  businessDay: string;
   sourceLabel: string;
   sourceType: "session" | "check";
   recordKind: string;
   recordGeneration: number;
+  generationLabel: string | null;
   priorSettlementRecordId: string | null;
   grandTotalLabel: string;
   paymentMethodSummaryLabel: string;
@@ -81,6 +105,12 @@ export function toSettlementHistoryRowViewModel(
 
   const time = formatSettlementHistoryTimeParts(item.settlementTime, language);
 
+  const showGeneration =
+    item.recordKind === "refund" ||
+    item.recordKind === "reversal" ||
+    item.recordKind === "correction" ||
+    item.recordGeneration > 1;
+
   return {
     settlementRecordId: item.settlementRecordId,
     settlementNumber: resolveSettlementOperationalIdentity({
@@ -90,10 +120,12 @@ export function toSettlementHistoryRowViewModel(
     }),
     settlementTimeDateLabel: time.dateLabel,
     settlementTimeClockLabel: time.timeLabel,
+    businessDay: item.businessDay,
     sourceLabel: `${sourceTypeLabel} #${item.sourceNumber}`,
     sourceType: item.sourceType,
     recordKind: item.recordKind,
     recordGeneration: item.recordGeneration,
+    generationLabel: showGeneration ? String(item.recordGeneration) : null,
     priorSettlementRecordId: item.priorSettlementRecordId,
     grandTotalLabel: money(item.grandTotal, item.currencySymbol),
     paymentMethodSummaryLabel: methods || "—",
@@ -107,6 +139,12 @@ export type SettlementDetailViewModel = Readonly<{
   settlementStatusLabel: string;
   sourceTypeLabel: string;
   sourceIdentifier: string;
+  checkId: number;
+  recordKind: string;
+  recordGeneration: number;
+  generationLabel: string;
+  priorSettlementRecordId: string | null;
+  priorSettlementNumber: string | null;
   orders: readonly { orderId: number; label: string }[];
   checks: readonly { label: string }[];
   items: readonly { name: string; quantity: number; unitPriceLabel: string }[];
@@ -124,6 +162,8 @@ export type SettlementDetailViewModel = Readonly<{
   }[];
   grandTotalLabel: string;
   operatorLabel: string;
+  registerLabel: string;
+  shiftLabel: string;
   createdAtLabel: string;
   settledAtLabel: string;
   businessDay: string;
@@ -138,6 +178,11 @@ export function toSettlementDetailViewModel(
     detail.sourceType === "session"
       ? settlementRecordUiLabel("sessionSource", language)
       : settlementRecordUiLabel("checkSource", language);
+  const priorId = detail.priorSettlementRecordId;
+  const priorCheckId = priorId
+    ? parseCheckIdFromSettlementRecordId(priorId)
+    : 0;
+
   return {
     settlementNumber: resolveSettlementOperationalIdentity({
       checkId: detail.checkId,
@@ -148,6 +193,18 @@ export function toSettlementDetailViewModel(
     settlementStatusLabel: settlementStatusLabel(detail.settlementStatus, language),
     sourceTypeLabel,
     sourceIdentifier: `${sourceTypeLabel} #${detail.sourceIdentifier}`,
+    checkId: detail.checkId,
+    recordKind: detail.recordKind,
+    recordGeneration: detail.recordGeneration,
+    generationLabel: String(detail.recordGeneration),
+    priorSettlementRecordId: priorId,
+    priorSettlementNumber:
+      priorId != null && priorCheckId > 0
+        ? resolveSettlementOperationalIdentity({
+            checkId: priorCheckId,
+            settlementRecordId: priorId,
+          })
+        : null,
     orders: detail.orders.map((o) => ({
       orderId: o.orderId,
       label: o.displayReference ?? `#${o.orderId}`,
@@ -174,13 +231,16 @@ export function toSettlementDetailViewModel(
     payments: detail.paymentMethods.map((p) => ({
       methodLabel: methodLabel(p.paymentMethod, language),
       amountLabel: money(p.amount, sym),
-      statusLabel: p.status,
+      statusLabel: settlementPaymentStatusLabel(p.status, language),
     })),
     grandTotalLabel: money(detail.grandTotal, sym),
-    operatorLabel:
-      detail.operator.actorId != null
-        ? `${detail.operator.actorType ?? "staff"} · ${detail.operator.actorId}`
-        : "—",
+    operatorLabel: operatorDisplayLabel(detail, language),
+    registerLabel:
+      detail.attribution?.registerLabel ??
+      settlementRecordUiLabel("attributionMissing", language),
+    shiftLabel:
+      detail.attribution?.shiftLabel ??
+      settlementRecordUiLabel("attributionMissing", language),
     createdAtLabel: formatTime(detail.audit.createdAt, language),
     settledAtLabel: detail.audit.settledAt
       ? formatTime(detail.audit.settledAt, language)
@@ -205,7 +265,9 @@ export function toSettlementReceiptViewModel(
   receipt: SettlementRecordReceiptApiDto,
   language: SettlementRecordLang
 ): SettlementReceiptViewModel {
-  const checkIdFromId = Number(receipt.settlementRecordId.split(":")[2] ?? 0);
+  const checkIdFromId = parseCheckIdFromSettlementRecordId(
+    receipt.settlementRecordId
+  );
   const detailLike: SettlementRecordDetailApiDto = {
     settlementRecordId: receipt.settlementRecordId,
     settlementNumber: receipt.settlementNumber,
@@ -217,7 +279,7 @@ export function toSettlementReceiptViewModel(
     recordGeneration: receipt.recordGeneration,
     priorSettlementRecordId: receipt.priorSettlementRecordId,
     outcome: receipt.outcome,
-    checkId: Number.isFinite(checkIdFromId) ? checkIdFromId : 0,
+    checkId: checkIdFromId,
     sessionId: null,
     orders: receipt.orders,
     checks: [],
@@ -227,6 +289,7 @@ export function toSettlementReceiptViewModel(
     paymentMethods: receipt.paymentMethods,
     grandTotal: receipt.grandTotal,
     operator: { actorType: null, actorId: null },
+    attribution: null,
     audit: {
       createdAt: receipt.settlementTime,
       settledAt: receipt.settlementTime,

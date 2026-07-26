@@ -44,6 +44,8 @@ describe("Settlement Record refund presentation adoption", () => {
     expect(row.statusLabel).toBe("Refunded");
     expect(row.recordKind).toBe("refund");
     expect(row.recordGeneration).toBe(2);
+    expect(row.generationLabel).toBe("2");
+    expect(row.businessDay).toBe("2026-07-26");
     expect(row.priorSettlementRecordId).toBe("sr:1:10:settlement:1");
   });
 

@@ -1,5 +1,6 @@
 /**
  * SETTLEMENT-RECORD-UI-ADOPTION-1 / REFUND-SETTLEMENT-RECORD-ADOPTION-1
+ * REFUND-PRESENTATION-ADOPTION-1
  * tRPC hooks over settlementRecord.* only — recordKind filter includes refund.
  */
 
@@ -68,6 +69,20 @@ export function useSettlementRecordsBySession(
       (options.enabled ?? true) &&
       input.restaurantId > 0 &&
       input.sessionId > 0,
+    staleTime: 15_000,
+  });
+}
+
+/** Compensating chain / timeline for a Check (read-only). */
+export function useSettlementRecordsByCheck(
+  input: { restaurantId: number; checkId: number },
+  options: Enabled = {}
+) {
+  return trpc.settlementRecord.getByCheck.useQuery(input, {
+    enabled:
+      (options.enabled ?? true) &&
+      input.restaurantId > 0 &&
+      input.checkId > 0,
     staleTime: 15_000,
   });
 }

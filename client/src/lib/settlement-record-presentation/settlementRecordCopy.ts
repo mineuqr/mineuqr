@@ -1,5 +1,6 @@
 /**
  * SETTLEMENT-RECORD-UI-ADOPTION-1 / REFUND-SETTLEMENT-RECORD-ADOPTION-1
+ * REFUND-PRESENTATION-ADOPTION-1
  * Operator copy (ar/en). Polymorphic status labels include refunded.
  * Operational language only — no accounting / implementation terms.
  */
@@ -79,6 +80,28 @@ export const settlementRecordUiLabels = {
   settlementComplete: { ar: "اكتملت التسوية", en: "Settlement complete" },
   refundPublished: { ar: "تم تسجيل المرتجع", en: "Refund published" },
   readOnly: { ar: "عرض فقط", en: "Read-only" },
+  generation: { ar: "الجيل", en: "Generation" },
+  businessDay: { ar: "يوم العمل", en: "Business Day" },
+  priorSettlement: { ar: "التسوية السابقة", en: "Prior Settlement" },
+  compensatingChain: { ar: "سلسلة التسوية", en: "Settlement Chain" },
+  kindSettlement: { ar: "تسوية", en: "Settlement" },
+  kindRefund: { ar: "مرتجع", en: "Refund" },
+  kindVoid: { ar: "إلغاء", en: "Void" },
+  kindReversal: { ar: "عكس", en: "Reversal" },
+  kindCorrection: { ar: "تصحيح", en: "Correction" },
+  register: { ar: "الصندوق", en: "Register" },
+  financialShift: { ar: "الوردية", en: "Shift" },
+  attributionMissing: {
+    ar: "غير منسوب",
+    en: "Not attributed",
+  },
+  createdAt: { ar: "وقت الإنشاء", en: "Created" },
+  settledAt: { ar: "وقت التسوية", en: "Settled" },
+  openPrior: { ar: "فتح التسوية السابقة", en: "Open prior settlement" },
+  paymentStatusCaptured: { ar: "مقبوض", en: "Captured" },
+  paymentStatusRefunded: { ar: "مُسترد", en: "Refunded" },
+  operatorStaff: { ar: "مشغّل", en: "Staff" },
+  operatorSystem: { ar: "النظام", en: "System" },
 } as const;
 
 export type SettlementRecordUiKey = keyof typeof settlementRecordUiLabels;
@@ -105,4 +128,22 @@ export function settlementStatusLabel(
     return settlementRecordUiLabel("corrected", language);
   }
   return settlementRecordUiLabel("settled", language);
+}
+
+export function settlementPaymentStatusLabel(
+  status: string,
+  language: SettlementRecordLang
+): string {
+  if (status === "refunded") {
+    return settlementRecordUiLabel("paymentStatusRefunded", language);
+  }
+  if (
+    status === "captured" ||
+    status === "applied" ||
+    status === "succeeded" ||
+    status === "paid"
+  ) {
+    return settlementRecordUiLabel("paymentStatusCaptured", language);
+  }
+  return status;
 }

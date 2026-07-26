@@ -121,6 +121,7 @@ describe("settlementRecordApiMapper", () => {
     const detail = toSettlementRecordDetailDto({ record: refund });
     expect(detail.settlementStatus).toBe("refunded");
     expect(detail.priorSettlementRecordId).toBe("sr:1:10:settlement:1");
+    expect(detail.attribution).toBeNull();
 
     const receipt = toSettlementRecordReceiptDto(detail);
     expect(receipt.recordKind).toBe("refund");

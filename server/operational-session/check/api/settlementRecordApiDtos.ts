@@ -1,9 +1,11 @@
 /**
  * SETTLEMENT-RECORD-UI-ADOPTION-1 / REFUND-SETTLEMENT-RECORD-ADOPTION-1
+ * REFUND-PRESENTATION-ADOPTION-1
  * API-safe Settlement Record read DTOs.
  *
  * Copy-only fields from immutable Settlement Record documents.
  * Refund is a native recordKind — no parallel DTO model.
+ * Optional attribution display is CRMP read enrichment (labels only).
  * No Domain mutation, no money calculation, no legacy financial DTOs.
  */
 
@@ -107,6 +109,15 @@ export type SettlementRecordDetailDto = Readonly<{
     actorType: string | null;
     actorId: string | null;
   }>;
+  /**
+   * REFUND-PRESENTATION-ADOPTION-1 — Register / Shift / Operator display labels
+   * from Settlement Attribution (fail-open null when not attributed).
+   */
+  attribution: Readonly<{
+    registerLabel: string;
+    shiftLabel: string;
+    operatorLabel: string;
+  }> | null;
   audit: Readonly<{
     createdAt: string;
     settledAt: string | null;

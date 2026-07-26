@@ -158,12 +158,21 @@ export function toSettlementRecordDetailDto(input: {
       actorType: record.createdByActorType,
       actorId: record.createdByActorId,
     },
+    attribution: null,
     audit: {
       createdAt: record.createdAt,
       settledAt: record.settledAt,
       businessDay: record.businessDay,
     },
   };
+}
+
+/** Attach presentation attribution labels without mutating the Settlement Record. */
+export function withSettlementRecordAttributionDisplay(
+  detail: SettlementRecordDetailDto,
+  attribution: SettlementRecordDetailDto["attribution"]
+): SettlementRecordDetailDto {
+  return { ...detail, attribution };
 }
 
 export function toSettlementRecordReceiptDto(

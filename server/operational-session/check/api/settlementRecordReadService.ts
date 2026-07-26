@@ -1,9 +1,10 @@
 /**
  * SETTLEMENT-RECORD-UI-ADOPTION-1 / REFUND-SETTLEMENT-RECORD-ADOPTION-1
+ * REFUND-PRESENTATION-ADOPTION-1
  * Settlement Record read service — polymorphic over recordKind (incl. refund).
  *
  * Reads immutable Settlement Record documents only.
- * Optional order/item display enrichment is presentation identity — not money math.
+ * Optional order/item/attribution display enrichment is presentation — not money math.
  */
 
 import {
@@ -27,10 +28,12 @@ import type {
   SettlementRecordOrderRefDto,
   SettlementRecordReceiptDto,
 } from "./settlementRecordApiDtos";
+import { loadSettlementRecordAttributionDisplay } from "./settlementRecordAttributionDisplay";
 import {
   toSettlementRecordDetailDto,
   toSettlementRecordHistoryItemDto,
   toSettlementRecordReceiptDto,
+  withSettlementRecordAttributionDisplay,
 } from "./settlementRecordApiMapper";
 
 async function enrichOrders(
@@ -95,11 +98,18 @@ async function toEnrichedDetail(
   restaurantId: number,
   record: SettlementRecord
 ): Promise<SettlementRecordDetailDto> {
-  const [orders, itemsSnapshot] = await Promise.all([
+  const [orders, itemsSnapshot, attribution] = await Promise.all([
     enrichOrders(restaurantId, record),
     enrichItemsSnapshot(restaurantId, record),
+    loadSettlementRecordAttributionDisplay({
+      restaurantId,
+      settlementRecordId: record.settlementRecordId,
+    }),
   ]);
-  return toSettlementRecordDetailDto({ record, orders, itemsSnapshot });
+  return withSettlementRecordAttributionDisplay(
+    toSettlementRecordDetailDto({ record, orders, itemsSnapshot }),
+    attribution
+  );
 }
 
 export class SettlementRecordReadService {

@@ -1,5 +1,6 @@
 /**
- * SETTLEMENT-RECORD-UI-ADOPTION-1 — read-only Settlement Detail.
+ * SETTLEMENT-RECORD-UI-ADOPTION-1 / REFUND-PRESENTATION-ADOPTION-1
+ * Read-only Settlement Detail — compensating chain + attribution display.
  */
 
 import { useMemo } from "react";
@@ -12,11 +13,14 @@ import {
 } from "@/components/ui/sheet";
 import { restaurantDash } from "@/components/dashboard/restaurantDashStyles";
 import {
+  formatSettlementHistoryTimeParts,
   mapSettlementRecordApiError,
   settlementRecordErrorMessage,
   settlementRecordUiLabel,
+  toSettlementChainViewModel,
   toSettlementDetailViewModel,
   useSettlementRecordDetail,
+  useSettlementRecordsByCheck,
   type SettlementRecordLang,
 } from "@/lib/settlement-record-presentation";
 import { cn } from "@/lib/utils";
@@ -30,6 +34,8 @@ type SettlementDetailSheetProps = {
   onOpenChange: (open: boolean) => void;
   onViewReceipt?: () => void;
   onViewHistory?: () => void;
+  /** Open another Settlement Record in the same sheet (prior / chain). */
+  onOpenSettlementRecord?: (settlementRecordId: string) => void;
 };
 
 function Field({ label, value }: { label: string; value: string }) {
@@ -49,6 +55,7 @@ export function SettlementDetailSheet({
   onOpenChange,
   onViewReceipt,
   onViewHistory,
+  onOpenSettlementRecord,
 }: SettlementDetailSheetProps) {
   const query = useSettlementRecordDetail(
     {
@@ -63,11 +70,37 @@ export function SettlementDetailSheet({
     [query.data, language]
   );
 
+  const chainQuery = useSettlementRecordsByCheck(
+    {
+      restaurantId,
+      checkId: vm?.checkId ?? 0,
+    },
+    { enabled: open && (vm?.checkId ?? 0) > 0 }
+  );
+
+  const chain = useMemo(
+    () =>
+      toSettlementChainViewModel(
+        chainQuery.data ?? [],
+        language,
+        settlementRecordId
+      ),
+    [chainQuery.data, language, settlementRecordId]
+  );
+
+  const openLinked = (id: string) => {
+    if (onOpenSettlementRecord) {
+      onOpenSettlementRecord(id);
+      return;
+    }
+  };
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
         className="w-full overflow-y-auto border-slate-700/50 bg-slate-950 sm:max-w-lg"
+        dir={language === "ar" ? "rtl" : "ltr"}
       >
         <SheetHeader>
           <SheetTitle className="text-white">
@@ -111,6 +144,14 @@ export function SettlementDetailSheet({
                   value={vm.settlementStatusLabel}
                 />
                 <Field
+                  label={settlementRecordUiLabel("generation", language)}
+                  value={vm.generationLabel}
+                />
+                <Field
+                  label={settlementRecordUiLabel("businessDay", language)}
+                  value={vm.businessDay}
+                />
+                <Field
                   label={settlementRecordUiLabel("source", language)}
                   value={vm.sourceIdentifier}
                 />
@@ -118,7 +159,95 @@ export function SettlementDetailSheet({
                   label={settlementRecordUiLabel("grandTotal", language)}
                   value={vm.grandTotalLabel}
                 />
+                {vm.priorSettlementNumber ? (
+                  <div className="space-y-1">
+                    <Field
+                      label={settlementRecordUiLabel("priorSettlement", language)}
+                      value={vm.priorSettlementNumber}
+                    />
+                    {vm.priorSettlementRecordId && onOpenSettlementRecord ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="mt-1"
+                        onClick={() =>
+                          openLinked(vm.priorSettlementRecordId!)
+                        }
+                      >
+                        {settlementRecordUiLabel("openPrior", language)}
+                      </Button>
+                    ) : null}
+                  </div>
+                ) : null}
               </section>
+
+              {chain.length > 1 ? (
+                <section
+                  className={cn(restaurantDash.panelInset, "space-y-2 p-4")}
+                  aria-label={settlementRecordUiLabel(
+                    "compensatingChain",
+                    language
+                  )}
+                >
+                  <h3 className="text-sm font-semibold text-white">
+                    {settlementRecordUiLabel("compensatingChain", language)}
+                  </h3>
+                  <ol className="space-y-2">
+                    {chain.map((event, index) => {
+                      const time = formatSettlementHistoryTimeParts(
+                        event.timeLabel,
+                        language
+                      );
+                      return (
+                        <li key={event.settlementRecordId}>
+                          {index > 0 ? (
+                            <div
+                              className="mx-2 my-1 h-3 w-px bg-slate-600"
+                              aria-hidden
+                            />
+                          ) : null}
+                          <button
+                            type="button"
+                            className={cn(
+                              "w-full rounded-md border px-3 py-2 text-start transition-colors",
+                              event.isCurrent
+                                ? "border-sky-500/60 bg-sky-950/40"
+                                : "border-slate-700/60 bg-slate-900/40 hover:border-slate-500"
+                            )}
+                            onClick={() =>
+                              openLinked(event.settlementRecordId)
+                            }
+                            disabled={!onOpenSettlementRecord}
+                            aria-current={event.isCurrent ? "true" : undefined}
+                          >
+                            <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-slate-100">
+                              <span className="font-semibold tabular-nums">
+                                {event.settlementNumber}
+                              </span>
+                              <span className="text-xs text-slate-400">
+                                {settlementRecordUiLabel("generation", language)}{" "}
+                                {event.generationLabel}
+                              </span>
+                            </div>
+                            <div className="mt-0.5 text-xs text-slate-300">
+                              {event.recordKindLabel} · {event.statusLabel}
+                            </div>
+                            <div className="mt-0.5 flex flex-wrap justify-between gap-2 text-xs text-slate-400">
+                              <span>
+                                {time.dateLabel} · {time.timeLabel}
+                              </span>
+                              <span className="tabular-nums">
+                                {event.grandTotalLabel}
+                              </span>
+                            </div>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                </section>
+              ) : null}
 
               <section className={cn(restaurantDash.panelInset, "space-y-2 p-4")}>
                 <h3 className="text-sm font-semibold text-white">
@@ -237,16 +366,36 @@ export function SettlementDetailSheet({
                 <h3 className="text-sm font-semibold text-white">
                   {settlementRecordUiLabel("operator", language)}
                 </h3>
-                <p className="text-sm text-slate-200">{vm.operatorLabel}</p>
+                <Field
+                  label={settlementRecordUiLabel("operator", language)}
+                  value={vm.operatorLabel}
+                />
+                <Field
+                  label={settlementRecordUiLabel("register", language)}
+                  value={vm.registerLabel}
+                />
+                <Field
+                  label={settlementRecordUiLabel("financialShift", language)}
+                  value={vm.shiftLabel}
+                />
               </section>
 
               <section className={cn(restaurantDash.panelInset, "space-y-2 p-4")}>
                 <h3 className="text-sm font-semibold text-white">
                   {settlementRecordUiLabel("audit", language)}
                 </h3>
-                <Field label="createdAt" value={vm.createdAtLabel} />
-                <Field label="settledAt" value={vm.settledAtLabel} />
-                <Field label="businessDay" value={vm.businessDay} />
+                <Field
+                  label={settlementRecordUiLabel("createdAt", language)}
+                  value={vm.createdAtLabel}
+                />
+                <Field
+                  label={settlementRecordUiLabel("settledAt", language)}
+                  value={vm.settledAtLabel}
+                />
+                <Field
+                  label={settlementRecordUiLabel("businessDay", language)}
+                  value={vm.businessDay}
+                />
               </section>
 
               <div className="flex flex-col gap-2 sm:flex-row">

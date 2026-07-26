@@ -13,9 +13,21 @@ export {
   settlementRecordUiLabels,
   settlementRecordUiLabel,
   settlementStatusLabel,
+  settlementPaymentStatusLabel,
   type SettlementRecordLang,
   type SettlementRecordUiKey,
 } from "./settlementRecordCopy";
+
+export {
+  settlementHistoryFiltersForStatusFacet,
+  type SettlementHistoryStatusFacet,
+  type SettlementHistoryApiFilters,
+} from "./settlementHistoryFilterPresentation";
+
+export {
+  toSettlementChainViewModel,
+  type SettlementChainEventViewModel,
+} from "./settlementChainPresentation";
 
 export {
   mapSettlementRecordApiError,
@@ -50,5 +62,6 @@ export {
   useSettlementRecordDetail,
   useSettlementRecordReceipt,
   useSettlementRecordsBySession,
+  useSettlementRecordsByCheck,
   useInvalidateSettlementRecordQueries,
 } from "./useSettlementRecordQueries";

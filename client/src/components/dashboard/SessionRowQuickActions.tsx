@@ -244,6 +244,7 @@ export function SessionRowQuickActions({
         settlementRecordId={settlementRecordId}
         language={lang}
         onOpenChange={setDetailOpen}
+        onOpenSettlementRecord={(id) => setSettlementRecordId(id)}
         onViewReceipt={() => {
           setDetailOpen(false);
           setReceiptOpen(true);

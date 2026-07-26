@@ -1,6 +1,7 @@
 /**
- * SETTLEMENT-HISTORY-UX-RATIONALIZATION-1 — operational Settlement History register.
- * Presentation only — server pagination / filters unchanged financially.
+ * SETTLEMENT-HISTORY-UX-RATIONALIZATION-1 / REFUND-PRESENTATION-ADOPTION-1
+ * Operational Settlement History (Unified Financial Entry Point).
+ * Presentation only — Refund is a status/kind within the same ledger.
  */
 
 import { useMemo, useState } from "react";
@@ -22,11 +23,13 @@ import { restaurantDash } from "@/components/dashboard/restaurantDashStyles";
 import {
   defaultSettlementHistoryRange,
   mapSettlementRecordApiError,
+  settlementHistoryFiltersForStatusFacet,
   settlementQuickRangeBounds,
   settlementRecordErrorMessage,
   settlementRecordUiLabel,
   toSettlementHistoryRowViewModel,
   useSettlementRecordHistory,
+  type SettlementHistoryStatusFacet,
   type SettlementQuickRange,
   type SettlementRecordLang,
 } from "@/lib/settlement-record-presentation";
@@ -57,8 +60,12 @@ export function SettlementHistoryPanel({
   const [dateFrom, setDateFrom] = useState(INITIAL_RANGE.dateFrom);
   const [dateTo, setDateTo] = useState(INITIAL_RANGE.dateTo);
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
+  const [statusFacet, setStatusFacet] =
+    useState<SettlementHistoryStatusFacet>("all");
   const [detailId, setDetailId] = useState<string | null>(null);
   const [receiptId, setReceiptId] = useState<string | null>(null);
+
+  const apiFilters = settlementHistoryFiltersForStatusFacet(statusFacet);
 
   const query = useSettlementRecordHistory({
     restaurantId,
@@ -67,7 +74,8 @@ export function SettlementHistoryPanel({
     search: search.trim() || null,
     dateFrom: dateFrom || null,
     dateTo: dateTo || null,
-    outcome: null,
+    outcome: apiFilters.outcome,
+    recordKind: apiFilters.recordKind,
   });
 
   const rows = useMemo(() => {
@@ -136,7 +144,7 @@ export function SettlementHistoryPanel({
         ))}
       </div>
 
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <Input
           value={search}
           onChange={(e) => {
@@ -173,7 +181,43 @@ export function SettlementHistoryPanel({
           />
         </div>
         <div className="space-y-1">
-          <label className="text-xs text-slate-400">
+          <label className="text-xs text-slate-400" htmlFor="settlement-status-facet">
+            {settlementRecordUiLabel("filterStatus", language)}
+          </label>
+          <Select
+            value={statusFacet}
+            onValueChange={(v) => {
+              setPage(1);
+              setStatusFacet(v as SettlementHistoryStatusFacet);
+            }}
+          >
+            <SelectTrigger
+              id="settlement-status-facet"
+              aria-label={settlementRecordUiLabel("filterStatus", language)}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">
+                {settlementRecordUiLabel("allStatuses", language)}
+              </SelectItem>
+              <SelectItem value="paid">
+                {settlementRecordUiLabel("paid", language)}
+              </SelectItem>
+              <SelectItem value="refunded">
+                {settlementRecordUiLabel("refunded", language)}
+              </SelectItem>
+              <SelectItem value="complimentary">
+                {settlementRecordUiLabel("complimentary", language)}
+              </SelectItem>
+              <SelectItem value="voided">
+                {settlementRecordUiLabel("voided", language)}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <label className="text-xs text-slate-400" htmlFor="settlement-source-filter">
             {settlementRecordUiLabel("filterSource", language)}
           </label>
           <Select
@@ -183,7 +227,10 @@ export function SettlementHistoryPanel({
               setSourceFilter(v as SourceFilter);
             }}
           >
-            <SelectTrigger aria-label={settlementRecordUiLabel("filterSource", language)}>
+            <SelectTrigger
+              id="settlement-source-filter"
+              aria-label={settlementRecordUiLabel("filterSource", language)}
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -268,12 +315,26 @@ export function SettlementHistoryPanel({
                       <div className="text-xs text-slate-400">
                         {row.settlementTimeClockLabel}
                       </div>
+                      <div className="text-xs text-slate-500">
+                        {settlementRecordUiLabel("businessDay", language)}{" "}
+                        {row.businessDay}
+                      </div>
                     </div>
                   </td>
                   <td className="px-3 py-2">{row.sourceLabel}</td>
                   <td className="px-3 py-2 tabular-nums">{row.grandTotalLabel}</td>
                   <td className="px-3 py-2">{row.paymentMethodSummaryLabel}</td>
-                  <td className="px-3 py-2">{row.statusLabel}</td>
+                  <td className="px-3 py-2">
+                    <div className="leading-tight">
+                      <div>{row.statusLabel}</div>
+                      {row.generationLabel ? (
+                        <div className="text-xs text-slate-400">
+                          {settlementRecordUiLabel("generation", language)}{" "}
+                          {row.generationLabel}
+                        </div>
+                      ) : null}
+                    </div>
+                  </td>
                   <td className="px-3 py-2">
                     <div className="flex items-center justify-end gap-1">
                       <Tooltip>
@@ -353,6 +414,7 @@ export function SettlementHistoryPanel({
         settlementRecordId={detailId}
         language={language}
         onOpenChange={(open) => !open && setDetailId(null)}
+        onOpenSettlementRecord={(id) => setDetailId(id)}
         onViewReceipt={() => {
           if (detailId) setReceiptId(detailId);
         }}

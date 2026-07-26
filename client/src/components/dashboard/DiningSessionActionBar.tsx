@@ -129,6 +129,7 @@ export function DiningSessionActionBar({
           settlementRecordId={settlementRecordId}
           language={lang}
           onOpenChange={setDetailOpen}
+          onOpenSettlementRecord={(id) => setSettlementRecordId(id)}
           onViewReceipt={() => {
             setDetailOpen(false);
             setReceiptOpen(true);
@@ -261,6 +262,7 @@ export function DiningSessionActionBar({
         settlementRecordId={settlementRecordId}
         language={lang}
         onOpenChange={setDetailOpen}
+        onOpenSettlementRecord={(id) => setSettlementRecordId(id)}
         onViewReceipt={() => {
           setDetailOpen(false);
           setReceiptOpen(true);
