@@ -71,6 +71,7 @@ export {
 export {
   SETTLEMENT_RECORD_DOMAIN_EVENT_TYPES,
   buildSettlementRecordCreatedEvent,
+  buildSettlementRecordRefundedEvent,
   type SettlementRecordDomainEventType,
   type SettlementRecordDomainEvent,
   type SettlementRecordCreated,

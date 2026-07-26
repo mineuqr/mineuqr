@@ -88,3 +88,31 @@ export function buildSettlementRecordCreatedEvent(
     financialReference: record.financialReference,
   };
 }
+
+/** Compensating refund publication companion fact (ADR-026 §10.2 / ADR-032). */
+export function buildSettlementRecordRefundedEvent(
+  record: SettlementRecord,
+  occurredAt: string
+): SettlementRecordRefunded {
+  if (record.recordKind !== "refund" || !record.priorSettlementRecordId) {
+    throw new Error(
+      "SettlementRecordRefunded requires recordKind=refund and priorSettlementRecordId"
+    );
+  }
+  return {
+    eventType: "SettlementRecordRefunded",
+    restaurantId: record.restaurantId,
+    checkId: record.checkId,
+    settlementRecordId: record.settlementRecordId,
+    recordKind: record.recordKind,
+    recordGeneration: record.recordGeneration,
+    occurredAt,
+    claimKey: buildSettlementRecordEventClaimKey({
+      restaurantId: record.restaurantId,
+      checkId: record.checkId,
+      recordKind: record.recordKind,
+      recordGeneration: record.recordGeneration,
+    }),
+    priorSettlementRecordId: record.priorSettlementRecordId,
+  };
+}

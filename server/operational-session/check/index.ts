@@ -21,6 +21,8 @@ export {
   cancelOrderSettlementOnCheck,
   applyPartialOrderSettlementOnCheck,
   refundOrderSettlementsOnCheck,
+  applyRefundOnCheck,
+  getCheckRefundBudget,
   createSplitPaymentOnCheck,
   authorizeSplitPaymentOnCheck,
   captureSplitPaymentOnCheck,
@@ -52,6 +54,7 @@ export {
   type CheckFinancialMutationResult,
   type CheckSplitPaymentMutationResult,
   type CheckMultiCheckAllocationMutationResult,
+  type CheckRefundMutationResult,
 } from "./CheckService";
 
 export {
@@ -83,6 +86,12 @@ export {
   loadAllocationsForSourceCheck,
   loadAllocationByIdentity,
 } from "./checkMultiCheckAllocationIntegration";
+
+export {
+  applyRefundOnCheck as applyRefundOnCheckIntegration,
+  getRefundBudgetForCheck,
+  type CheckRefundMutationResult as CheckRefundIntegrationResult,
+} from "./checkRefundIntegration";
 
 export {
   ensureOrderSettlementForEnrollment,

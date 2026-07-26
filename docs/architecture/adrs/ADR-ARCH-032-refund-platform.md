@@ -15,7 +15,7 @@
 | **Related ADRs** | ADR-ARCH-001 · 002 · 003 · 006 · 014 · 020 · 021 · 022 · 023 · 024 · 025 · 026 · 028 · 030 · 031 |
 | **Related programs** | REFUND-PLATFORM-ARCHITECTURE-1 (investigation + this ADR) · FINANCIAL-CORE-CAPABILITIES-ARCHITECTURE-1 · SETTLEMENT-RECORD-PLATFORM-1 · successors listed in §22 |
 | **Investigation** | [ARCHITECTURE-INVESTIGATION.md](../../engineering/programs/REFUND-PLATFORM-ARCHITECTURE-1/ARCHITECTURE-INVESTIGATION.md) — verdict **READY FOR ADR** |
-| **Implementation status** | **Not implemented** — constitutional publication only; no schema/API/runtime changes authorized by this ADR alone |
+| **Implementation status** | **Partial (domain)** — REFUND-DOMAIN-IMPLEMENTATION-1 certified: pure Refund domain + Check Aggregate TX orchestration (OS + compensating SR). No UI / Reporting / Register attribution. |
 | **Numbering note** | Next FSP capability ADR after ADR-ARCH-031. **ADR-ARCH-023 remains Financial Core Capabilities** and MUST NOT be reused. |
 
 ---

@@ -8,6 +8,7 @@
  * MULTI-CHECK-ALLOCATION-INTEGRATION-1 — Check Aggregate is sole Multi Check Allocation mutation authority.
  * SETTLEMENT-RECORD-IMPLEMENTATION-1 — Check Aggregate produces Settlement Record at financial finalization.
  * SETTLEMENT-FINALIZATION-IDEMPOTENCY-HOTFIX-1 — abort finalize when outcome ownership is lost (0-row UPDATE).
+ * REFUND-DOMAIN-IMPLEMENTATION-1 — Check Aggregate is sole Refund mutation authority (ADR-ARCH-032).
  *
  * Owned by Operational Session Platform. Does not modify Order Domain.
  */
@@ -111,6 +112,11 @@ import {
   createSettlementRecordForCheckFinalize,
   type CheckSettlementRecordMutationResult,
 } from "./checkSettlementRecordIntegration";
+import {
+  applyRefundOnCheck as applyRefundOnCheckIntegration,
+  getRefundBudgetForCheck,
+  type CheckRefundMutationResult,
+} from "./checkRefundIntegration";
 import type {
   CreateAllocationPortionInput,
   CreateAllocationSourceInput,
@@ -1283,6 +1289,44 @@ export async function refundOrderSettlementsOnCheck(input: {
     refundOrderSettlementsForCheck(input, tx)
   );
 }
+
+/**
+ * ADR-ARCH-032 — Apply Refund under Check Aggregate (sole monetary authority).
+ * Atomic: budget + OS transition + compensating Settlement Record.
+ * No Register attribution / Reporting / UI in this program.
+ */
+export async function applyRefundOnCheck(input: {
+  restaurantId: number;
+  checkId: number;
+  amount: string;
+  reason?: string | null;
+  allocations?: readonly {
+    orderId: number | null;
+    amount: string;
+    tenderMethod: string | null;
+  }[];
+  tenderMethod?: string;
+  refundId?: string;
+}): Promise<CheckRefundMutationResult> {
+  return withCheckOwnedTransaction(undefined, async (tx) =>
+    applyRefundOnCheckIntegration(input, tx)
+  );
+}
+
+export async function getCheckRefundBudget(input: {
+  restaurantId: number;
+  checkId: number;
+}): Promise<{
+  settledValue: string;
+  appliedRefundTotal: string;
+  refundableBalance: string;
+  priorSettlementRecordId: string;
+  nextRecordGeneration: number;
+}> {
+  return getRefundBudgetForCheck(input);
+}
+
+export type { CheckRefundMutationResult };
 
 export async function getCheckById(input: {
   restaurantId: number;
