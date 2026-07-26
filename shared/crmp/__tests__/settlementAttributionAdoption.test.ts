@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  cashCustodyAmountForRefundRecord,
   isAttributionEligible,
+  isRefundAttributionEligible,
   skippedAttribution,
   sumCashTenderAmounts,
 } from "../settlementContext/settlementAttributionAdoption";
@@ -78,5 +80,22 @@ describe("SETTLEMENT-ATTRIBUTION-ADOPTION-1 pure helpers", () => {
     });
     expect(s.outcome).toBe("skipped");
     expect(s.attributionId).toBeNull();
+  });
+
+  it("refund eligibility is recordKind-gated (not Check outcome)", () => {
+    expect(
+      isRefundAttributionEligible({
+        recordKind: "refund",
+        settlementRecordId: "sr:r",
+        registerId: "reg_1",
+        financialShiftId: "fsh_1",
+        operatorUserId: 1,
+      }).ok
+    ).toBe(true);
+    expect(
+      cashCustodyAmountForRefundRecord({
+        paymentSnapshot: [{ paymentMethod: "cash", amount: "5.00" }],
+      })
+    ).toBe("-5.00");
   });
 });

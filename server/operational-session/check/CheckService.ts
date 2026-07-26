@@ -131,7 +131,10 @@ import {
   type SettlementContextHints,
 } from "@shared/crmp";
 import { resolveSettlementContextForSettle } from "../../crmp/SettlementContextResolver";
-import { adoptSettlementAttributionAfterFinalize } from "./checkSettlementAttributionAdoption";
+import {
+  adoptRefundAttributionAfterFinalize,
+  adoptSettlementAttributionAfterFinalize,
+} from "./checkSettlementAttributionAdoption";
 
 export class CheckTransitionError extends Error {
   constructor(message: string) {
@@ -1291,9 +1294,10 @@ export async function refundOrderSettlementsOnCheck(input: {
 }
 
 /**
- * ADR-ARCH-032 — Apply Refund under Check Aggregate (sole monetary authority).
- * Atomic: budget + OS transition + compensating Settlement Record.
- * No Register attribution / Reporting / UI in this program.
+ * ADR-ARCH-032 / REFUND-REGISTER-ADOPTION-1 —
+ * Apply Refund under Check Aggregate (sole monetary authority), then
+ * post-commit AttributeRefund to Register/Shift (custody only, fail-open).
+ * Register never executes Refund. Never rolls back financial TX on attribution failure.
  */
 export async function applyRefundOnCheck(input: {
   restaurantId: number;
@@ -1307,10 +1311,46 @@ export async function applyRefundOnCheck(input: {
   }[];
   tenderMethod?: string;
   refundId?: string;
-}): Promise<CheckRefundMutationResult> {
-  return withCheckOwnedTransaction(undefined, async (tx) =>
+  settlementContext?: SettlementContext;
+  settlementContextHints?: SettlementContextHints;
+}): Promise<
+  CheckRefundMutationResult & {
+    settlementContext: SettlementContext;
+    settlementAttribution: SettlementAttributionAdoptionResult;
+    settlementAttributionEvents: readonly SettlementAttributed[];
+  }
+> {
+  const at = formatDiningSessionTimestamp();
+  const hints = input.settlementContextHints ?? {};
+  const settlementContext =
+    input.settlementContext ??
+    (await resolveSettlementContextForSettle({
+      restaurantId: input.restaurantId,
+      hints,
+      at,
+    }).catch(() =>
+      unavailableSettlementContext(input.restaurantId, at, [
+        "crmp_resolution_error",
+      ])
+    ));
+
+  const financial = await withCheckOwnedTransaction(undefined, async (tx) =>
     applyRefundOnCheckIntegration(input, tx)
   );
+
+  const attributionBundle = await adoptRefundAttributionAfterFinalize({
+    restaurantId: input.restaurantId,
+    settlementContext,
+    settlementRecord: financial.settlementRecord,
+    at,
+  });
+
+  return {
+    ...financial,
+    settlementContext,
+    settlementAttribution: attributionBundle.attribution,
+    settlementAttributionEvents: attributionBundle.events,
+  };
 }
 
 export async function getCheckRefundBudget(input: {

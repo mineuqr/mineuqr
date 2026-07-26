@@ -75,6 +75,7 @@ async function loadCheckOrThrow(
  * - Compensating Settlement Record (recordKind=refund)
  *
  * Idempotent retries: already_applied when generation / RefundId already published.
+ * Register Attribution is post-commit via CheckService (REFUND-REGISTER-ADOPTION-1) — fail-open.
  */
 export async function applyRefundOnCheck(
   input: {

@@ -57,7 +57,8 @@ export type ShiftHandover = Readonly<{
 
 /**
  * Settlement Attribution — association only (never owns money).
- * cashTenderAmount is a copied custody fact supplied by the caller at create time;
+ * cashTenderAmount is a copied custody fact supplied by the caller at create time
+ * (settle cash ≥ 0; refund cash return may be negative — REFUND-REGISTER-ADOPTION-1);
  * CRMP does not read Settlement Platform in this program.
  */
 export type SettlementAttribution = Readonly<{

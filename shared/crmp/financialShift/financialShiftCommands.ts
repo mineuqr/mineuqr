@@ -13,6 +13,7 @@ import {
 import type { CashRegister } from "../register/registerContract";
 import { assertRegisterCanOpenShift } from "../register/registerCommands";
 import {
+  assertMoneyAmount,
   assertNonNegativeMoney,
   assertPositiveMoney,
   deriveDrawerVariance,
@@ -520,7 +521,9 @@ export function createSettlementAttribution(
       "Settlement Attribution requires settlementRecordId"
     );
   }
-  assertNonNegativeMoney(
+  // Signed custody fact: settle cash ≥ 0; refund cash return < 0 (REFUND-REGISTER-ADOPTION-1).
+  // CRMP never recalculates — caller copies from Settlement Record publication.
+  assertMoneyAmount(
     {
       amount: command.cashTenderAmount,
       currencyCode: command.shift.currencyCode,

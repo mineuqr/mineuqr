@@ -1,12 +1,17 @@
 /**
- * SETTLEMENT-ATTRIBUTION-ADOPTION-1 — pure helpers for attribution adoption.
- * Copies cash tender facts from settle lines / SR snapshot — never recalculates Check totals.
+ * SETTLEMENT-ATTRIBUTION-ADOPTION-1 / REFUND-REGISTER-ADOPTION-1
+ * Pure helpers for attribution adoption.
+ * Copies cash tender facts from settle / refund SR snapshots — never recalculates Check totals.
+ * Register remains custody only (ADR-ARCH-028 / 032).
  */
 
-import { addAmounts, normalizeAmount } from "../valueObjects";
+import { addAmounts, fromCents, normalizeAmount, toCents } from "../valueObjects";
 
 export const SETTLEMENT_ATTRIBUTION_ADOPTION_PROGRAM_ID =
   "SETTLEMENT-ATTRIBUTION-ADOPTION-1" as const;
+
+export const REFUND_REGISTER_ADOPTION_PROGRAM_ID =
+  "REFUND-REGISTER-ADOPTION-1" as const;
 
 export const SETTLEMENT_ATTRIBUTION_OUTCOMES = [
   "created",
@@ -77,24 +82,12 @@ export function sumCashTenderAmounts(
   return addAmounts(...cash);
 }
 
-/**
- * Eligible when terminal paid/complimentary publish path and context is fully resolved.
- * Never fabricates missing Register/Shift/operator.
- */
-export function isAttributionEligible(input: {
-  outcome: string;
+function assertContextResolved(input: {
   settlementRecordId: string | null | undefined;
   registerId: string | null | undefined;
   financialShiftId: string | null | undefined;
   operatorUserId: number | null | undefined;
 }): { ok: true } | { ok: false; gaps: string[]; reason: string } {
-  if (input.outcome !== "paid" && input.outcome !== "complimentary") {
-    return {
-      ok: false,
-      gaps: ["outcome_not_attributable"],
-      reason: "Only paid/complimentary settlements are attributed",
-    };
-  }
   if (!input.settlementRecordId?.trim()) {
     return {
       ok: false,
@@ -116,4 +109,62 @@ export function isAttributionEligible(input: {
     };
   }
   return { ok: true };
+}
+
+/**
+ * Eligible when terminal paid/complimentary publish path and context is fully resolved.
+ * Never fabricates missing Register/Shift/operator.
+ */
+export function isAttributionEligible(input: {
+  outcome: string;
+  settlementRecordId: string | null | undefined;
+  registerId: string | null | undefined;
+  financialShiftId: string | null | undefined;
+  operatorUserId: number | null | undefined;
+}): { ok: true } | { ok: false; gaps: string[]; reason: string } {
+  if (input.outcome !== "paid" && input.outcome !== "complimentary") {
+    return {
+      ok: false,
+      gaps: ["outcome_not_attributable"],
+      reason: "Only paid/complimentary settlements are attributed",
+    };
+  }
+  return assertContextResolved(input);
+}
+
+/**
+ * REFUND-REGISTER-ADOPTION-1 — eligible when published Settlement Record is recordKind=refund
+ * and Settlement Context is fully resolved. Never fabricates Register/Shift/operator.
+ * Check outcome alone is NOT the refund signal (Check stays paid|complimentary).
+ */
+export function isRefundAttributionEligible(input: {
+  recordKind: string | null | undefined;
+  settlementRecordId: string | null | undefined;
+  registerId: string | null | undefined;
+  financialShiftId: string | null | undefined;
+  operatorUserId: number | null | undefined;
+}): { ok: true } | { ok: false; gaps: string[]; reason: string } {
+  if (input.recordKind !== "refund") {
+    return {
+      ok: false,
+      gaps: ["record_kind_not_refund"],
+      reason: "Only Settlement Record recordKind=refund is refund-attributable",
+    };
+  }
+  return assertContextResolved(input);
+}
+
+/**
+ * Custody fact for refund SR: cash returned decreases Expected Cash (signed negative).
+ * Non-cash refund → 0.00. Never invents movement without paymentSnapshot facts.
+ */
+export function cashCustodyAmountForRefundRecord(input: {
+  paymentSnapshot: readonly Readonly<{
+    paymentMethod: string;
+    amount: string;
+  }>[];
+}): string {
+  const cashOut = sumCashTenderAmounts(input.paymentSnapshot);
+  if (toCents(cashOut) === 0) return "0.00";
+  return normalizeAmount(fromCents(-toCents(cashOut)));
 }
