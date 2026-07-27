@@ -112,6 +112,15 @@ Per-program package: Architecture Traceability Matrix, affected ADRs, affected B
 
 ---
 
+## Architecture Governance Operations (Architecture Ops)
+
+| Topic | Document | Status |
+|---|---|---|
+| Operations Index | [Architecture-Governance-Operations-Index.md](../operations/Architecture-Governance-Operations-Index.md) | Pending Architecture Authority adoption (ARCHITECTURE-GOVERNANCE-OPERATIONS-1) |
+| Program package | [ARCHITECTURE-GOVERNANCE-OPERATIONS-1](../../engineering/programs/ARCHITECTURE-GOVERNANCE-OPERATIONS-1/00-PROGRAM-PACKAGE.md) | Operating framework only — **not** a constitution |
+
+Operates existing constitutions and `docs/architecture/governance/` processes. Does not redesign or duplicate them.
+
 ## Standalone process documents
 
 | Topic | Document |

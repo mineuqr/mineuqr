@@ -28,6 +28,7 @@ Official architectural reference for MineuQR 2.0. Start here for onboarding, gov
 | Version any Constitution | [Architecture Constitution Versioning Framework v1.0](./constitution/Architecture-Constitution-Versioning-Framework-v1.0.md) |
 | Look up all Constitutions | [Constitution Registry](./constitution/Constitution-Registry.md) |
 | Govern cross-domain authority | [Enterprise Architecture Governance Framework v1.0](./constitution/Enterprise-Architecture-Governance-Framework-v1.0.md) |
+| Run Architecture Ops | [Architecture Governance Operations Index](./operations/Architecture-Governance-Operations-Index.md) |
 
 ## Documentation hierarchy
 
@@ -67,6 +68,10 @@ The [Architecture Constitution v1.0](./constitution/Architecture-Constitution-v1
 - [Architecture Constitution Versioning Framework v1.0](./constitution/Architecture-Constitution-Versioning-Framework-v1.0.md) — CV-01…06 (pending review)
 - [Constitution Registry](./constitution/Constitution-Registry.md) — authoritative index of all constitutions
 - [Enterprise Architecture Governance Framework v1.0](./constitution/Enterprise-Architecture-Governance-Framework-v1.0.md) — CD-01…06 cross-domain (pending review)
+
+## Architecture Ops
+
+Operating manuals (not constitutions): [Architecture Governance Operations Index](./operations/Architecture-Governance-Operations-Index.md) — Authority, ADR Ops, Constitution Ops, Programs, Certification, ARB, Exceptions, Debt, Compliance, Audit, Metrics, Annual Review.
 
 ## Architecture Blueprint
 
