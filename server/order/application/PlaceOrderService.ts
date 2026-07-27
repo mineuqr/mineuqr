@@ -19,6 +19,7 @@ import {
   resolvePlaceOrderPersistFields,
   resolvePlaceOrderSessionId,
 } from "@shared/ordering-platform/orderingIdentityContract";
+import { assertOrderingChannelId } from "@shared/ordering-platform/orderingChannelRegistry";
 import {
   fulfilmentProjectionFromIdentity,
   fulfilmentProjectionFromLegacyTable,
@@ -45,6 +46,11 @@ export type PlaceOrderCommand = {
    * Does not change fulfilment; partitions daily display sequences only.
    */
   identityScope?: string | null;
+  /**
+   * ORDERING-CHANNEL-GOVERNANCE-1 — required OrderingChannelId before persistence.
+   * No default, no post-hoc inference.
+   */
+  orderingChannel: string;
   customerName?: string | null;
   customerPhone?: string | null;
   /** Order Notes — legacy `notes` kept for backward compatibility. */
@@ -99,6 +105,8 @@ export class PlaceOrderService {
     if (!orderNoteResult.ok) {
       throw new PlaceOrderNotesValidationError(orderNoteResult.code, orderNoteResult.message);
     }
+
+    const orderingChannel = assertOrderingChannelId(command.orderingChannel);
 
     const normalizedItems = command.items.map((item, index) => {
       const itemNoteResult = validateItemNote(
@@ -186,6 +194,7 @@ export class PlaceOrderService {
         return events;
       },
       identityScope: command.identityScope,
+      orderingChannel,
     });
     persisted.clearDomainEvents();
 

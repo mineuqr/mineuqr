@@ -65,7 +65,7 @@ function main() {
   if (journal.entries.length !== CANONICAL_JOURNAL_ENTRY_COUNT) {
     failed = true;
     console.error(
-      `\n✗ FAIL — expected ${CANONICAL_JOURNAL_ENTRY_COUNT} journal entries (0000–0082), got ${journal.entries.length}`
+      `\n✗ FAIL — expected ${CANONICAL_JOURNAL_ENTRY_COUNT} journal entries (0000–0083), got ${journal.entries.length}`
     );
   }
 
@@ -75,7 +75,7 @@ function main() {
   }
 
   console.log(
-    `\n✓ Journal ↔ SQL lineage consistent (canonical migrations 0000–0082).`
+    `\n✓ Journal ↔ SQL lineage consistent (canonical migrations 0000–0083).`
   );
   console.log("✓ No non-legacy orphan SQL files.");
   console.log("✓ Journal ordering valid.");

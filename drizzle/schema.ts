@@ -1075,6 +1075,11 @@ export const orders = mysqlTable("orders", {
 	dailyDisplayNumber: int("daily_display_number"),
 	/** KIOSK-PRESENTATION-ADOPTION-1 — TABLE | KIOSK sequence partition. */
 	identityScope: varchar({ length: 16 }),
+	/**
+	 * REPORTING-SALES-CHANNEL-ANALYTICS-1 — OrderingChannelId stamp at place
+	 * (qr | kiosk | mobile | waiter_tablet). Nullable for pre-program history.
+	 */
+	orderingChannel: varchar("ordering_channel", { length: 32 }),
 	trackingToken: varchar({ length: 64 }),
 	readyPushSentAt: timestamp({ mode: 'string' }),
 	readyAt: timestamp({ mode: 'string' }),
@@ -1149,6 +1154,10 @@ export const orderReadOrders = mysqlTable("order_read_orders", {
 	businessDay: varchar({ length: 10 }),
 	dailyDisplayNumber: int("daily_display_number"),
 	identityScope: varchar({ length: 16 }),
+	/**
+	 * REPORTING-SALES-CHANNEL-ANALYTICS-1 — projected OrderingChannelId stamp.
+	 */
+	orderingChannel: varchar("ordering_channel", { length: 32 }),
 	status: mysqlEnum(["pending", "preparing", "ready", "served", "cancelled"]).notNull(),
 	lifecycleStage: mysqlEnum(["active", "completed", "archived"]).default("active").notNull(),
 	tableId: int().notNull(),

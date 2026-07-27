@@ -50,6 +50,7 @@ describe("NON-TABLE-PLACE-ORDER-1 IdentityPlaceOrderService", () => {
         stationId: "counter-1",
         fulfilmentLabel: "Counter 1",
       }),
+      orderingChannel: "kiosk",
       items: [{ menuItemId: 1, quantity: 1 }],
     });
 

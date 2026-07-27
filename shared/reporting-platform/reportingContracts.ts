@@ -259,3 +259,35 @@ export type PaymentMethodAnalyticsDto = Readonly<{
   /** Refund tender breakdown by payment method (status=refunded). */
   refundBuckets: readonly PaymentMethodAnalyticsBucketDto[];
 }>;
+
+/**
+ * REPORTING-SALES-CHANNEL-ANALYTICS-1 — Order Sales by ordering channel.
+ * Operational plane (Order Read). Does NOT replace Total Sales (Check Revenue)
+ * or Payment Method Analytics.
+ */
+export type SalesChannelAnalyticsBucketDto = Readonly<{
+  channelId: string;
+  channelName: string;
+  orderCount: number;
+  /** Completed / served order sales for the channel (Order Sales plane). */
+  salesAmount: string;
+  /** Share of sum(channel salesAmount) — 0–100, two decimals. */
+  salesMixPercent: string;
+  /** Share of sum(channel orderCount) — 0–100, two decimals. */
+  orderMixPercent: string;
+}>;
+
+export type SalesChannelAnalyticsDto = Readonly<{
+  contractVersion: typeof REPORTING_CONTRACT_VERSION;
+  contractId: "SalesChannelAnalytics";
+  programId: "REPORTING-SALES-CHANNEL-ANALYTICS-1";
+  generatedAt: string;
+  restaurantId: number;
+  from: string | null;
+  to: string | null;
+  /** Sum of bucket salesAmount (Order Sales by channel — not Check Revenue). */
+  totalSalesAmount: string;
+  /** Sum of bucket orderCount. */
+  totalOrderCount: number;
+  buckets: readonly SalesChannelAnalyticsBucketDto[];
+}>;

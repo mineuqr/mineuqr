@@ -44,6 +44,8 @@ export {
   type SettlementDistributionDto,
   type PaymentMethodAnalyticsBucketDto,
   type PaymentMethodAnalyticsDto,
+  type SalesChannelAnalyticsBucketDto,
+  type SalesChannelAnalyticsDto,
 } from "./reportingContracts";
 
 export {

@@ -163,6 +163,11 @@ import {
   type OrderingServiceMode,
 } from "@shared/ordering-platform/orderingIdentityContract";
 import {
+  ORDERING_CHANNEL_IDS,
+  ORDERING_CHANNEL_QR,
+  ORDERING_CHANNEL_WAITER_TABLET,
+} from "@shared/ordering-platform/orderingPlatformContracts";
+import {
   createTableSessionAnchor,
   serializeBusinessTaxPolicyJson,
 } from "@shared/operational-session";
@@ -2139,6 +2144,12 @@ const orderRouter = router({
           .max(64)
           .regex(SESSION_TOKEN_PATTERN)
           .optional(),
+        orderingChannel: z.enum(
+          ORDERING_CHANNEL_IDS as unknown as [
+            (typeof ORDERING_CHANNEL_IDS)[number],
+            ...(typeof ORDERING_CHANNEL_IDS)[number][],
+          ]
+        ),
       })
     )
     .mutation(async ({ input }) => {
@@ -2162,6 +2173,7 @@ const orderRouter = router({
             serviceMode: input.serviceMode as OrderingServiceMode,
             fulfilmentAnchor,
             sessionToken: input.sessionToken,
+            orderingChannel: input.orderingChannel,
             customerName: input.customerName,
             customerPhone: input.customerPhone,
             notes: input.notes,
@@ -2513,6 +2525,7 @@ const orderRouter = router({
             fulfilmentAnchor,
             sessionToken: input.sessionToken,
             identityScope: "WAITER",
+            orderingChannel: ORDERING_CHANNEL_WAITER_TABLET,
             customerName: input.customerName,
             customerPhone: input.customerPhone,
             notes: input.notes,
@@ -2633,6 +2646,7 @@ const orderRouter = router({
           ...(ENV.tableSessionDualWrite && sessionId != null
             ? { sessionId }
             : {}),
+          orderingChannel: ORDERING_CHANNEL_QR,
           customerName: input.customerName,
           customerPhone: input.customerPhone,
           notes: input.notes,

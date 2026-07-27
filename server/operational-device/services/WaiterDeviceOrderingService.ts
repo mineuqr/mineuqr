@@ -7,6 +7,7 @@ import {
   createTableFulfilmentAnchor,
   deriveFulfilmentLabel,
 } from "@shared/ordering-platform/orderingIdentityContract";
+import { ORDERING_CHANNEL_WAITER_TABLET } from "@shared/ordering-platform/orderingPlatformContracts";
 import { createTableSessionAnchor } from "@shared/operational-session";
 import {
   getTableById,
@@ -138,6 +139,7 @@ export async function placeWaiterOrderForDevice(
         fulfilmentAnchor,
         sessionToken: input.sessionToken,
         identityScope: "WAITER",
+        orderingChannel: ORDERING_CHANNEL_WAITER_TABLET,
         customerName: input.customerName,
         customerPhone: input.customerPhone,
         notes: input.notes,

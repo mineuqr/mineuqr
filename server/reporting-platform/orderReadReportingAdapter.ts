@@ -7,6 +7,7 @@ import { and, eq, gte, like, lte } from "drizzle-orm";
 import {
   orderReadAnalyticsDaily,
   orderReadOperationalKpiDaily,
+  orderReadOrders,
 } from "../../drizzle/schema";
 import { getDb } from "../db";
 
@@ -112,6 +113,55 @@ export async function listAnalyticsDaysInRange(
     orderCount: Number(row.orderCount ?? 0),
     completedOrderCount: Number(row.completedOrderCount ?? 0),
     completedSales: String(row.completedSales ?? "0.00"),
+  }));
+}
+
+export type OrderChannelLineRow = Readonly<{
+  orderId: number;
+  orderingChannel: string | null;
+  identityScope: string | null;
+  totalAmount: string;
+  status: string;
+  createdAt: string;
+}>;
+
+/**
+ * REPORTING-SALES-CHANNEL-ANALYTICS-1 — served Order Read rows in period.
+ * Sales Amount uses completed (served) Order Sales — not Check Revenue.
+ */
+export async function listServedOrdersForChannelReporting(
+  restaurantId: number,
+  from?: string | null,
+  to?: string | null
+): Promise<OrderChannelLineRow[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const conditions = [
+    eq(orderReadOrders.restaurantId, restaurantId),
+    eq(orderReadOrders.status, "served"),
+  ];
+  if (from) conditions.push(gte(orderReadOrders.createdAt, from));
+  if (to) conditions.push(lte(orderReadOrders.createdAt, to));
+
+  const rows = await db
+    .select({
+      orderId: orderReadOrders.orderId,
+      orderingChannel: orderReadOrders.orderingChannel,
+      identityScope: orderReadOrders.identityScope,
+      totalAmount: orderReadOrders.totalAmount,
+      status: orderReadOrders.status,
+      createdAt: orderReadOrders.createdAt,
+    })
+    .from(orderReadOrders)
+    .where(and(...conditions));
+
+  return rows.map((row) => ({
+    orderId: row.orderId,
+    orderingChannel: row.orderingChannel ?? null,
+    identityScope: row.identityScope ?? null,
+    totalAmount: String(row.totalAmount ?? "0.00"),
+    status: row.status,
+    createdAt: row.createdAt,
   }));
 }
 

@@ -1,5 +1,6 @@
 /**
  * REPORTING-PRODUCT-HOTFIX-1 — hotfix guards (presentation).
+ * REPORTING-SALES-CHANNEL-ANALYTICS-1 superseded the null-facts lock.
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -54,14 +55,20 @@ describe("REPORTING-PRODUCT-HOTFIX-1", () => {
     expect(withFacts.cards.find((c) => c.channelId === "qr")?.hasFact).toBe(false);
   });
 
-  it("ReportsTab passes null channel facts (no mock binding)", () => {
+  it("ReportsTab binds Sales Channel Analytics API (no mock facts)", () => {
     const reports = read("client/src/components/dashboard/ReportsTab.tsx");
-    expect(reports).toContain("facts={null}");
-    expect(reports).not.toContain("amountDisplay: \"0.00\"");
+    expect(reports).toContain("SalesSourceAnalysisSection");
+    expect(reports).not.toContain("facts={null}");
+    expect(reports).not.toContain('amountDisplay: "0.00"');
+    const section = read(
+      "client/src/components/dashboard/SalesSourceAnalysisSection.tsx"
+    );
+    expect(section).toContain("reporting.getSalesChannelAnalytics");
   });
 
-  it("reporting contracts still lack Sales Source DTO (root-cause lock)", () => {
+  it("reporting contracts publish SalesChannelAnalytics DTO", () => {
     const contracts = read("shared/reporting-platform/reportingContracts.ts");
-    expect(contracts).not.toMatch(/SalesSource|ChannelSales|OrderingChannelAnalytics/);
+    expect(contracts).toContain("SalesChannelAnalyticsDto");
+    expect(contracts).toContain('contractId: "SalesChannelAnalytics"');
   });
 });

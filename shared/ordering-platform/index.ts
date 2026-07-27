@@ -6,10 +6,14 @@ export {
 } from "./offerCartIdentity";
 
 export {
+  ORDERING_CHANNEL_TABLE_SESSION,
   ORDERING_CHANNEL_QR,
   ORDERING_CHANNEL_KIOSK,
   ORDERING_CHANNEL_MOBILE,
   ORDERING_CHANNEL_WAITER_TABLET,
+  ORDERING_CHANNEL_MARKETPLACE,
+  ORDERING_CHANNEL_DELIVERY_PARTNER,
+  ORDERING_CHANNEL_CALL_CENTER,
   ORDERING_CHANNEL_IDS,
   ORDERING_PLATFORM_OWNED_CONCERNS,
   ORDERING_CHANNEL_OWNED_CONCERNS,
@@ -21,6 +25,33 @@ export {
   type OrderingChannelOwnedConcern,
   type OrderingFormFactor,
 } from "./orderingPlatformContracts";
+
+export {
+  ORDERING_CHANNEL_REGISTRY,
+  REPORTING_SALES_CHANNEL_UNASSIGNED,
+  getOrderingChannelRegistryEntry,
+  isRegisteredOrderingChannelId,
+  assertOrderingChannelId,
+  orderingChannelDisplayName,
+  reportingVisibleSalesChannelIds,
+  type OrderingChannelRegistryEntry,
+  type OrderingChannelLifecycle,
+} from "./orderingChannelRegistry";
+
+export {
+  REPORTING_SALES_CHANNEL_TABLE,
+  REPORTING_SALES_CHANNEL_WAITER,
+  REPORTING_SALES_CHANNEL_QR,
+  REPORTING_SALES_CHANNEL_KIOSK,
+  REPORTING_SALES_CHANNEL_MOBILE,
+  REPORTING_SALES_CHANNEL_CATALOG,
+  REPORTING_SALES_CHANNEL_LABELS,
+  mapOrderingChannelToSalesChannel,
+  resolveReportingSalesChannel,
+  reportingSalesChannelLabel,
+  isKnownOrderingChannelId,
+  type ReportingSalesChannelId,
+} from "./salesChannelReporting";
 
 export {
   ORDERING_RUNTIME_CONTEXT_SCHEMA_VERSION,

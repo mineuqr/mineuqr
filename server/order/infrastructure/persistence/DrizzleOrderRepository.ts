@@ -137,6 +137,9 @@ export class DrizzleOrderRepository implements OrderRepository {
       trackingToken: snapshot.trackingToken,
       status: snapshot.status,
       lifecycleStage: snapshot.lifecycleStage,
+      ...(options?.orderingChannel != null
+        ? { orderingChannel: options.orderingChannel }
+        : {}),
     });
 
     const orderId = Number(insertResult[0].insertId);
@@ -294,6 +297,9 @@ export class DrizzleOrderRepository implements OrderRepository {
       orderNumber: props.orderNumber,
       trackingToken: props.trackingToken,
       status: props.status,
+      ...(options?.orderingChannel != null
+        ? { orderingChannel: options.orderingChannel }
+        : {}),
     });
 
     if (!result?.id) {

@@ -661,10 +661,17 @@ export function ReportsTab({
           />
 
           <SalesSourceAnalysisSection
+            restaurantId={restaurantId}
             language={language}
+            queriesEnabled={enabled}
+            currencySymbol={
+              resolveExportCurrency(businessMonth, fallbackSym, currencyCode)
+                .currencySymbol
+            }
+            from={monthRange.from}
+            to={monthRange.to}
             sectionId={FINANCIAL_SECTION_IDS.salesSource}
             emphasized={financialFocus === "sales-source"}
-            facts={null}
           />
 
           <OrdersDetailsSection

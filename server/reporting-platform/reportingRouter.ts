@@ -13,6 +13,7 @@ import {
   getOrderSalesRollup,
   getOrderSalesSummary,
   getPaymentMethodAnalytics,
+  getSalesChannelAnalytics,
   ReportingValidationError,
 } from "./ReportingService";
 
@@ -167,6 +168,25 @@ export const reportingRouter = router({
       );
       try {
         return await getPaymentMethodAnalytics(input);
+      } catch (err) {
+        mapReportingError(err);
+      }
+    }),
+
+  /**
+   * REPORTING-SALES-CHANNEL-ANALYTICS-1 — Order Sales by ordering channel.
+   * Does not replace BusinessMetricsSummary.revenue (Total Sales SSOT).
+   */
+  getSalesChannelAnalytics: verifiedProcedure
+    .input(periodInput)
+    .query(async ({ input, ctx }) => {
+      await assertRestaurantAccess(
+        ctx,
+        input.restaurantId,
+        "reporting.getSalesChannelAnalytics"
+      );
+      try {
+        return await getSalesChannelAnalytics(input);
       } catch (err) {
         mapReportingError(err);
       }

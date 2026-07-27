@@ -1,25 +1,20 @@
 /**
- * ORDERING-PLATFORM-ARCHITECTURE-1 — platform channel identifiers.
- * Channels own experience only; business rules live in the Ordering Platform.
+ * ORDERING-PLATFORM-ARCHITECTURE-1 — platform channel identifiers + concerns.
+ * Channel ids are governed by ORDERING-CHANNEL-GOVERNANCE-1 registry.
  */
 
-export const ORDERING_CHANNEL_QR = "qr" as const;
-export const ORDERING_CHANNEL_KIOSK = "kiosk" as const;
-export const ORDERING_CHANNEL_MOBILE = "mobile" as const;
-export const ORDERING_CHANNEL_WAITER_TABLET = "waiter_tablet" as const;
-
-export type OrderingChannelId =
-  | typeof ORDERING_CHANNEL_QR
-  | typeof ORDERING_CHANNEL_KIOSK
-  | typeof ORDERING_CHANNEL_MOBILE
-  | typeof ORDERING_CHANNEL_WAITER_TABLET;
-
-export const ORDERING_CHANNEL_IDS = [
+export {
+  ORDERING_CHANNEL_TABLE_SESSION,
   ORDERING_CHANNEL_QR,
   ORDERING_CHANNEL_KIOSK,
   ORDERING_CHANNEL_MOBILE,
   ORDERING_CHANNEL_WAITER_TABLET,
-] as const satisfies readonly OrderingChannelId[];
+  ORDERING_CHANNEL_MARKETPLACE,
+  ORDERING_CHANNEL_DELIVERY_PARTNER,
+  ORDERING_CHANNEL_CALL_CENTER,
+  ORDERING_CHANNEL_IDS,
+  type OrderingChannelId,
+} from "./orderingChannelRegistry";
 
 /** Platform-owned concerns — must not be duplicated in channel code. */
 export const ORDERING_PLATFORM_OWNED_CONCERNS = [

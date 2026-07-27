@@ -212,11 +212,17 @@ export function OrderingCheckoutProvider({
             items: linePayload,
           });
         } else if (identitySubmit) {
+          if (!runtime?.channel) {
+            throw new Error(
+              "ORDERING-CHANNEL-GOVERNANCE-1: OrderingChannelId required for identity place"
+            );
+          }
           result = await placeWithIdentityMutation.mutateAsync({
             restaurantId: request.restaurantId,
             serviceMode: request.identity.serviceMode,
             fulfilmentAnchor: request.identity.fulfilmentAnchor,
             sessionToken: request.sessionToken,
+            orderingChannel: runtime.channel,
             customerName: customerName || undefined,
             customerPhone: customerPhone || undefined,
             notes: validated.orderNotes ?? undefined,

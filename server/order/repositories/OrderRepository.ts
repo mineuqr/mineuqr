@@ -13,6 +13,11 @@ export type SaveOrderOptions = {
    * (e.g. WAITER). When unset, allocator derives from fulfilment/serviceMode.
    */
   identityScope?: string | null;
+  /**
+   * REPORTING-SALES-CHANNEL-ANALYTICS-1 — OrderingChannelId stamp for reporting.
+   * Provenance only — does not change PlaceOrder ownership or identity.
+   */
+  orderingChannel?: string | null;
 };
 
 export type SaveOrderResult = {

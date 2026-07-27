@@ -35,6 +35,10 @@ export type IdentityPlaceOrderCommand = {
   sessionToken?: string;
   /** WAITER-ORDERING-FOUNDATION-1 — explicit BI scope stamp (e.g. WAITER). */
   identityScope?: string | null;
+  /**
+   * ORDERING-CHANNEL-GOVERNANCE-1 — required OrderingChannelId before persistence.
+   */
+  orderingChannel: string;
   customerName?: string | null;
   customerPhone?: string | null;
   orderNotes?: string | null;
@@ -99,6 +103,7 @@ export class IdentityPlaceOrderService {
           : undefined,
       sessionId: identity.operationalSession.sessionId,
       identityScope: command.identityScope,
+      orderingChannel: command.orderingChannel,
       customerName: command.customerName,
       customerPhone: command.customerPhone,
       orderNotes: command.orderNotes,

@@ -22,3 +22,4 @@ export {
   getComparisonBaselineRange,
 } from "./TimeSeriesComparisonService";
 export { getPaymentMethodAnalytics } from "./PaymentMethodAnalyticsService";
+export { getSalesChannelAnalytics } from "./SalesChannelAnalyticsService";
