@@ -1,18 +1,24 @@
 /**
  * REPORTING-UX-SIMPLIFICATION-1 — Executive Overview (max 6 cards).
+ * REPORTING-VISUAL-HIERARCHY-1 — Decision-flow order + visual tiers.
  * Presentation only. KPI names from Product Semantics (`preferredKpiLabel`).
  * Formulas unchanged — values from reporting.* DTOs only.
  *
- * Primary: Total Sales, Sales Orders, Orders, Refund Amount, Tax Collected,
- * Payment Overview (tender total — not a KPI registry id).
- * Secondary (Advanced Financial): Average Order/Check, Refund Rate, etc.
+ * Decision flow (approved Exec set):
+ * 1. Total Sales (primary)
+ * 2. Orders + Sales Orders (secondary)
+ * 3. Refund Amount (secondary)
+ * 4. Tax + Payment Overview (supporting)
+ * Net Sales relationship lives in Financial Analytics (not Executive).
  */
 
 import {
+  EXECUTIVE_CARD_VISUAL_TIER,
   EXECUTIVE_PAYMENT_OVERVIEW_CARD_ID,
   EXECUTIVE_SUMMARY_KPI_IDS,
   preferredKpiLabel,
   SECTION_TERMINOLOGY,
+  type ExecutiveCardVisualTier,
   type ExecutiveSummaryKpiId,
   type PresentationLanguage,
 } from "@shared/reporting-platform";
@@ -31,13 +37,31 @@ export type ExecutiveSummaryCard = Readonly<{
   value: string;
   /** Plain-language caption for first-time owners (not a KPI rename). */
   caption: string;
+  /** Visual weight — presentation only. */
+  visualTier: ExecutiveCardVisualTier;
+}>;
+
+export type ExecutiveDecisionBandId =
+  | "sold"
+  | "orders"
+  | "refunds"
+  | "collection";
+
+export type ExecutiveSummaryBand = Readonly<{
+  id: ExecutiveDecisionBandId;
+  title: string;
+  hint: string;
+  cards: readonly ExecutiveSummaryCard[];
 }>;
 
 export type ExecutiveSummaryGroup = Readonly<{
   id: "executive";
   title: string;
   hint: string;
+  /** Flat decision-flow order (Excel/PDF + legacy consumers). */
   cards: readonly ExecutiveSummaryCard[];
+  /** Visual bands for Dashboard hierarchy. */
+  bands: readonly ExecutiveSummaryBand[];
 }>;
 
 export type ExecutiveSummaryViewModel = Readonly<{
@@ -80,17 +104,33 @@ const PAGE_COPY = Object.freeze({
     primaryQuestion: "How is the restaurant performing this period?",
     executiveTitle: "Executive Overview",
     executiveHint:
-      "Six primary indicators — open Sales or Financial analytics for deeper detail.",
+      "Decision flow: sales → orders → refunds → collection. Open Financial for Net Sales.",
     footerNote:
-      "Sales Analytics covers trends and order detail. Financial Analytics covers refunds, payments, tax, and advanced indicators.",
+      "Net Sales = Total Sales − Refund Amount (Financial Analytics). Sales Analytics covers order trends.",
+    bandSold: "How much did I sell?",
+    bandSoldHint: "Primary financial result",
+    bandOrders: "How much order activity?",
+    bandOrdersHint: "Order volume and completed sales",
+    bandRefunds: "How much was refunded?",
+    bandRefundsHint: "Refund impact at a glance",
+    bandCollection: "Tax & payments",
+    bandCollectionHint: "Supporting collection indicators",
   },
   ar: {
     primaryQuestion: "كيف يؤدي المطعم في هذه الفترة؟",
     executiveTitle: "نظرة تنفيذية",
     executiveHint:
-      "ستة مؤشرات أساسية — افتح تحليلات المبيعات أو المالية للتفاصيل.",
+      "مسار القرار: المبيعات ← الطلبات ← المرتجعات ← التحصيل. صافي المبيعات في التحليلات المالية.",
     footerNote:
-      "تحليلات المبيعات للاتجاهات وتفاصيل الطلبات. التحليلات المالية للمرتجعات والمدفوعات والضريبة والمؤشرات المتقدمة.",
+      "صافي المبيعات = إجمالي المبيعات − مبلغ المرتجعات (التحليلات المالية). تحليلات المبيعات لاتجاهات الطلبات.",
+    bandSold: "كم بعت؟",
+    bandSoldHint: "النتيجة المالية الأساسية",
+    bandOrders: "كم كان نشاط الطلبات؟",
+    bandOrdersHint: "حجم الطلبات والمبيعات المكتملة",
+    bandRefunds: "كم تم إرجاعه؟",
+    bandRefundsHint: "أثر المرتجعات بنظرة سريعة",
+    bandCollection: "الضريبة والمدفوعات",
+    bandCollectionHint: "مؤشرات تحصيل داعمة",
   },
 } as const);
 
@@ -130,11 +170,51 @@ function buildCard(
     label: preferredKpiLabel(kpiId, lang),
     value: cardValue(kpiId, business, orderPeriod, formatMoney),
     caption: KPI_CAPTIONS[kpiId][lang],
+    visualTier: EXECUTIVE_CARD_VISUAL_TIER[kpiId],
   };
+}
+
+function buildBands(
+  cards: readonly ExecutiveSummaryCard[],
+  copy: (typeof PAGE_COPY)["en"] | (typeof PAGE_COPY)["ar"]
+): readonly ExecutiveSummaryBand[] {
+  const byId = new Map(cards.map((c) => [c.kpiId, c]));
+  const pick = (...ids: ExecutiveSummaryCardId[]) =>
+    ids
+      .map((id) => byId.get(id))
+      .filter((c): c is ExecutiveSummaryCard => c != null);
+
+  return [
+    {
+      id: "sold",
+      title: copy.bandSold,
+      hint: copy.bandSoldHint,
+      cards: pick("revenue"),
+    },
+    {
+      id: "orders",
+      title: copy.bandOrders,
+      hint: copy.bandOrdersHint,
+      cards: pick("orderCount", "orderSales"),
+    },
+    {
+      id: "refunds",
+      title: copy.bandRefunds,
+      hint: copy.bandRefundsHint,
+      cards: pick("refundPublishedTotal"),
+    },
+    {
+      id: "collection",
+      title: copy.bandCollection,
+      hint: copy.bandCollectionHint,
+      cards: pick("taxCollected", "paymentOverview"),
+    },
+  ];
 }
 
 /**
  * Owner-first Executive Overview — max 6 cards (5 KPIs + Payment Overview).
+ * Decision-flow order + visual tiers (REPORTING-VISUAL-HIERARCHY-1).
  */
 export function buildExecutiveSummaryViewModel(input: {
   language: PresentationLanguage;
@@ -158,6 +238,7 @@ export function buildExecutiveSummaryViewModel(input: {
     label: section.paymentOverview,
     value: formatMoney(input.paymentMonetaryTenderTotal ?? "0.00"),
     caption: section.paymentOverviewHint,
+    visualTier: EXECUTIVE_CARD_VISUAL_TIER.paymentOverview,
   });
 
   return {
@@ -169,6 +250,7 @@ export function buildExecutiveSummaryViewModel(input: {
         title: copy.executiveTitle,
         hint: copy.executiveHint,
         cards,
+        bands: buildBands(cards, copy),
       },
     ],
     footerNote: copy.footerNote,

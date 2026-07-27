@@ -140,13 +140,7 @@ export function RefundAnalyticsSection({
         />
       ) : (
         <div className="space-y-4">
-          <div className={restaurantDash.kpiGrid}>
-            <RestaurantKpiCard
-              label={kpiDisplayName("refundPublicationCount", lang)}
-              value={summary?.refundPublicationCount ?? 0}
-              icon={RotateCcw}
-              tone="warning"
-            />
+          <div className={restaurantDash.kpiGridSecondary}>
             <RestaurantKpiCard
               label={kpiDisplayName("refundPublishedTotal", lang)}
               value={formatSettlementRevenue(
@@ -154,14 +148,9 @@ export function RefundAnalyticsSection({
                 sym
               )}
               icon={Wallet}
-              tone="accent"
-              valueVariant="revenue"
-            />
-            <RestaurantKpiCard
-              label={kpiDisplayName("refundRate", lang)}
-              value={`${summary?.refundRate ?? "0.00"}%`}
-              icon={Percent}
               tone="warning"
+              valueVariant="revenue"
+              emphasis="secondary"
             />
             <RestaurantKpiCard
               label={kpiDisplayName("netRevenue", lang)}
@@ -172,15 +161,35 @@ export function RefundAnalyticsSection({
               icon={TrendingDown}
               tone="info"
               valueVariant="revenue"
+              emphasis="secondary"
+            />
+            <RestaurantKpiCard
+              label={kpiDisplayName("refundRate", lang)}
+              value={`${summary?.refundRate ?? "0.00"}%`}
+              icon={Percent}
+              tone="warning"
+              emphasis="supporting"
+            />
+            <RestaurantKpiCard
+              label={kpiDisplayName("refundPublicationCount", lang)}
+              value={summary?.refundPublicationCount ?? 0}
+              icon={RotateCcw}
+              tone="warning"
+              emphasis="supporting"
             />
           </div>
 
           {refundTrendRows.length > 0 ? (
-            <div className={restaurantDash.panel + " p-4"}>
-              <h3 className="mb-3 text-sm font-semibold text-white">
-                {isAr ? "اتجاه المرتجعات" : "Refund Trend"}
+            <div className={restaurantDash.chartSupporting + " p-4"}>
+              <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                {isAr ? "اتجاه المرتجعات (داعم)" : "Refund trend (supporting)"}
               </h3>
-              <div className="h-[200px] w-full sm:h-[240px]">
+              <p className="mb-3 text-[11px] text-slate-500">
+                {isAr
+                  ? "الرسم يوضح الاتجاه — الأرقام أعلاه هي المرجع للقرار."
+                  : "Chart reinforces the story — KPI cards above remain the decision numbers."}
+              </p>
+              <div className="h-[160px] w-full sm:h-[180px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart
                     data={refundTrendRows}

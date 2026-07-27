@@ -71,7 +71,11 @@ export function formatMoneyDisplay(
 
 export function formatNullableCount(value: number | null | undefined): string {
   if (value == null) return "—";
-  return toWesternDigits(String(value));
+  const n = Number(value);
+  if (!Number.isFinite(n)) return toWesternDigits(String(value));
+  return toWesternDigits(
+    new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n)
+  );
 }
 
 /** Tax policy display from Check Tax Policy Snapshot on the Reporting DTO. */

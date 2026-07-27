@@ -15,7 +15,8 @@ describe("REFUND-REPORTING-ADOPTION-1 architecture guards", () => {
     const revenue = getKpiDefinition("revenue");
     expect(revenue.formula).toContain("recordGeneration = 1");
     expect(revenue.formula.toLowerCase()).toContain("refund");
-    expect(revenue.notDefinedAs).toContain("Net Revenue");
+    expect(revenue.notDefinedAs).toContain("Sales Orders");
+    expect(revenue.name).toBe("Total Sales");
   });
 
   it("Net Revenue is publication-derived and Reporting-owned derivation only", () => {
@@ -39,10 +40,10 @@ describe("REFUND-REPORTING-ADOPTION-1 architecture guards", () => {
     expect(adapter).not.toMatch(/\bUPDATE\b|\bDELETE\b/);
   });
 
-  it("Executive Summary does not inflate with refund financial KPIs", () => {
+  it("Executive Summary keeps Net Sales off Overview; refund glance allowed", () => {
     expect(EXECUTIVE_SUMMARY_KPI_IDS).not.toContain("netRevenue");
-    expect(EXECUTIVE_SUMMARY_KPI_IDS).not.toContain("refundPublishedTotal");
-    expect(EXECUTIVE_SUMMARY_KPI_IDS).not.toContain("revenue");
+    expect(EXECUTIVE_SUMMARY_KPI_IDS).toContain("revenue");
+    expect(EXECUTIVE_SUMMARY_KPI_IDS).toContain("refundPublishedTotal");
   });
 
   it("Payment analytics keeps refund buckets additive", () => {

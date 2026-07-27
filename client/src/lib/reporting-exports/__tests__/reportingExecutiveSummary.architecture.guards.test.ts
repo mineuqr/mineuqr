@@ -1,6 +1,7 @@
 /**
- * REPORTING-UX-SIMPLIFICATION-1 — Executive Overview guards.
+ * REPORTING-UX-SIMPLIFICATION-1 + REPORTING-VISUAL-HIERARCHY-1 — Executive Overview guards.
  * Max 6 cards: 5 KPI ids + Payment Overview presentation card.
+ * Decision-flow order; visual tiers presentation-only.
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -48,17 +49,17 @@ const sampleOrders = {
 };
 
 describe("REPORTING-UX-SIMPLIFICATION-1 Executive Overview guards", () => {
-  it("Executive Overview exposes simplified primary KPI set", () => {
+  it("Executive Overview exposes decision-flow primary KPI set", () => {
     expect([...EXECUTIVE_SUMMARY_KPI_IDS]).toEqual([
       "revenue",
-      "orderSales",
       "orderCount",
+      "orderSales",
       "refundPublishedTotal",
       "taxCollected",
     ]);
   });
 
-  it("view model is six cards including Payment Overview", () => {
+  it("view model is six cards including Payment Overview with visual tiers", () => {
     const vm = buildExecutiveSummaryViewModel({
       language: "en",
       business: sampleBusiness,
@@ -74,9 +75,18 @@ describe("REPORTING-UX-SIMPLIFICATION-1 Executive Overview guards", () => {
       EXECUTIVE_PAYMENT_OVERVIEW_CARD_ID,
     ]);
     expect(vm.groups[0]?.cards[0]?.label).toBe("Total Sales");
-    expect(vm.groups[0]?.cards[1]?.label).toBe("Sales Orders");
+    expect(vm.groups[0]?.cards[0]?.visualTier).toBe("primary");
+    expect(vm.groups[0]?.cards[1]?.label).toBe("Orders");
+    expect(vm.groups[0]?.cards[2]?.label).toBe("Sales Orders");
     expect(vm.groups[0]?.cards[5]?.label).toBe("Payment Overview");
     expect(vm.groups[0]?.cards[5]?.value).toBe("95.00");
+    expect(vm.groups[0]?.cards[5]?.visualTier).toBe("supporting");
+    expect(vm.groups[0]?.bands.map((b) => b.id)).toEqual([
+      "sold",
+      "orders",
+      "refunds",
+      "collection",
+    ]);
   });
 
   it("flat card builder returns six Executive Overview cards", () => {
@@ -104,8 +114,10 @@ describe("REPORTING-UX-SIMPLIFICATION-1 Executive Overview guards", () => {
     const pdf = read(
       "client/src/lib/reporting-exports/pdf/buildReportingExportPdf.ts"
     );
-    expect(presentation).toContain("REPORTING-UX-SIMPLIFICATION-1");
+    expect(presentation).toContain("REPORTING-VISUAL-HIERARCHY-1");
     expect(presentation).toContain("footerNote");
+    expect(presentation).toContain("visualTier");
+    expect(presentation).toContain("bands");
     expect(excel).toContain("buildExecutiveSummaryViewModel");
     expect(excel).toContain("paymentMonetaryTenderTotal");
     expect(pdf).toContain("buildExecutiveSummaryViewModel");

@@ -36,21 +36,53 @@ export const restaurantRevenueValueClass =
 
 export const restaurantOperationalValueClass = "text-white";
 
+/** REPORTING-VISUAL-HIERARCHY-1 — Executive primary value size. */
+export const restaurantRevenueValueClassPrimary =
+  "bg-gradient-to-b from-amber-300 via-orange-400 to-orange-500 bg-clip-text text-transparent text-2xl sm:text-3xl lg:text-4xl font-bold tabular-nums";
+
 export const restaurantDash = {
   /** Admin OperationsShell background */
   shell: "min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900",
   /** Admin-aligned main content container */
   main: "mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8",
   stack: "flex flex-col gap-6 sm:gap-8",
+  /** Extra space between decision bands */
+  bandStack: "flex flex-col gap-5 sm:gap-7",
   section: "flex flex-col gap-3 sm:gap-4",
   sectionTitle: "text-base font-semibold tracking-tight text-white sm:text-lg",
   sectionSub: "max-w-2xl text-xs leading-relaxed text-slate-400 sm:text-sm",
+  bandTitle: "text-xs font-semibold uppercase tracking-wide text-slate-300 sm:text-sm",
+  bandHint: "text-[11px] text-slate-500 sm:text-xs",
   kpiGrid: "grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-5 xl:gap-3",
   kpiGridWide: "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 lg:gap-4",
+  /** Primary hero — one dominant metric */
+  kpiGridPrimary: "grid grid-cols-1 gap-3",
+  /** Secondary pair / trio */
+  kpiGridSecondary: "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:gap-4",
+  /** Supporting — denser, less visual weight */
+  kpiGridSupporting: "grid grid-cols-2 gap-2 sm:grid-cols-2 lg:grid-cols-2 lg:gap-3",
   card: cn(pricingPanelBase, "overflow-hidden", restaurantHoverGlow),
   kpiCard: cn(pricingPanelBase, restaurantHoverGlow),
+  kpiCardPrimary: cn(
+    pricingPanelBase,
+    restaurantHoverGlow,
+    "border-amber-500/35 bg-gradient-to-b from-slate-800/70 to-slate-900/80 sm:min-h-[7.5rem]"
+  ),
+  kpiCardSecondary: cn(pricingPanelBase, restaurantHoverGlow),
+  kpiCardSupporting: cn(
+    "rounded-xl border border-cyan-500/20 bg-slate-900/40 shadow-none",
+    restaurantHoverGlow
+  ),
+  /** Financial relationship strip */
+  flowStrip: cn(
+    pricingPanelBase,
+    "flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:p-5"
+  ),
+  flowStep: "flex min-w-0 flex-1 flex-col gap-0.5",
+  flowArrow: "hidden text-slate-500 sm:block",
   panel: cn(pricingPanelBase, "overflow-hidden"),
   panelInset: "rounded-xl border border-cyan-500/15 bg-slate-900/40",
+  chartSupporting: cn(pricingPanelBase, "overflow-hidden opacity-95"),
   hero: cn(
     pricingPanelBase,
     "border-cyan-500/25 bg-gradient-to-br from-slate-800/60 via-slate-900/70 to-slate-900/90 p-4 sm:p-5"

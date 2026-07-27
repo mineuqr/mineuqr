@@ -2,6 +2,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { CommercialUpgradeBanner } from "@/components/commercial";
 import { PaymentMethodAnalysisSection } from "@/components/dashboard/PaymentMethodAnalysisSection";
 import { RefundAnalyticsSection } from "@/components/dashboard/RefundAnalyticsSection";
+import { FinancialSalesFlowStrip } from "@/components/dashboard/FinancialSalesFlowStrip";
 import { SettlementOverviewSection } from "@/components/dashboard/SettlementOverviewSection";
 import { SettlementTrendsSection } from "@/components/dashboard/SettlementTrendsSection";
 import { RestaurantDashSection } from "@/components/dashboard/RestaurantDashSection";
@@ -49,8 +50,9 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 /**
- * REPORTING-UX-SIMPLIFICATION-1
+ * REPORTING-UX-SIMPLIFICATION-1 + REPORTING-VISUAL-HIERARCHY-1
  * Four-area reporting workspace: Overview · Sales · Financial · Exports.
+ * Decision-flow visual hierarchy on Executive; Financial relationship strip.
  * KPIs from reporting.* only — no financial recalculation.
  */
 export function ReportsTab({
@@ -406,7 +408,10 @@ export function ReportsTab({
       {reportArea === "overview" ? (
         <RestaurantDashSection
           title={SECTION_TERMINOLOGY[uiLang].executiveSnapshot}
-          description={SECTION_TERMINOLOGY[uiLang].executiveSnapshotHint}
+          description={
+            executiveVm?.groups[0]?.hint ??
+            SECTION_TERMINOLOGY[uiLang].executiveSnapshotHint
+          }
           ariaLabel={SECTION_TERMINOLOGY[uiLang].executiveSnapshot}
         >
           {executiveVm == null ? (
@@ -414,32 +419,58 @@ export function ReportsTab({
               {language === "ar" ? "جاري التحميل…" : "Loading…"}
             </p>
           ) : (
-            <div className={restaurantDash.kpiGridWide}>
-              {executiveVm.groups[0]?.cards.map((card) => (
-                <RestaurantKpiCard
-                  key={card.kpiId}
-                  label={card.label}
-                  value={card.value}
-                  icon={
-                    card.kpiId === "orderCount" || card.kpiId === "orderSales"
-                      ? ClipboardList
-                      : card.kpiId === "taxCollected"
-                        ? Receipt
-                        : DollarSign
-                  }
-                  tone={
-                    card.kpiId === "refundPublishedTotal"
-                      ? "warning"
-                      : card.kpiId === "paymentOverview"
-                        ? "info"
-                        : "success"
-                  }
-                  valueVariant={
-                    card.kpiId === "orderCount" ? "default" : "revenue"
-                  }
-                  hint={card.caption}
-                />
-              ))}
+            <div className={restaurantDash.bandStack}>
+              <p className="text-sm font-medium text-slate-200">
+                {executiveVm.primaryQuestion}
+              </p>
+              {executiveVm.groups[0]?.bands.map((band) => {
+                const gridClass =
+                  band.id === "sold"
+                    ? restaurantDash.kpiGridPrimary
+                    : band.id === "collection"
+                      ? restaurantDash.kpiGridSupporting
+                      : restaurantDash.kpiGridSecondary;
+                return (
+                  <div key={band.id} className="space-y-2">
+                    <div>
+                      <h3 className={restaurantDash.bandTitle}>{band.title}</h3>
+                      <p className={restaurantDash.bandHint}>{band.hint}</p>
+                    </div>
+                    <div className={gridClass}>
+                      {band.cards.map((card) => (
+                        <RestaurantKpiCard
+                          key={card.kpiId}
+                          label={card.label}
+                          value={card.value}
+                          emphasis={card.visualTier}
+                          icon={
+                            card.kpiId === "orderCount" ||
+                            card.kpiId === "orderSales"
+                              ? ClipboardList
+                              : card.kpiId === "taxCollected"
+                                ? Receipt
+                                : DollarSign
+                          }
+                          tone={
+                            card.kpiId === "refundPublishedTotal"
+                              ? "warning"
+                              : card.kpiId === "paymentOverview"
+                                ? "info"
+                                : card.kpiId === "revenue"
+                                  ? "success"
+                                  : "info"
+                          }
+                          valueVariant={
+                            card.kpiId === "orderCount" ? "operational" : "revenue"
+                          }
+                          hint={card.caption}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+              <p className="text-xs text-slate-500">{executiveVm.footerNote}</p>
             </div>
           )}
         </RestaurantDashSection>
@@ -527,14 +558,17 @@ export function ReportsTab({
 
       {reportArea === "financial" ? (
         <div className="space-y-6 sm:space-y-8">
-          <SettlementOverviewSection
-            restaurantId={restaurantId}
-            language={language}
-            queriesEnabled={enabled}
-            currencySymbol={sym}
-            from={activeRange.from}
-            to={activeRange.to}
-          />
+          {activeBusiness != null ? (
+            <FinancialSalesFlowStrip
+              language={uiLang}
+              revenue={activeBusiness.revenue ?? "0.00"}
+              refundPublishedTotal={
+                activeBusiness.refundPublishedTotal ?? "0.00"
+              }
+              netRevenue={activeBusiness.netRevenue ?? "0.00"}
+              currencySymbol={displaySym}
+            />
+          ) : null}
           <RefundAnalyticsSection
             restaurantId={restaurantId}
             language={language}
@@ -556,7 +590,7 @@ export function ReportsTab({
             description={SECTION_TERMINOLOGY[uiLang].taxAnalysisPeriodNote}
             ariaLabel={SECTION_TERMINOLOGY[uiLang].taxAnalysis}
           >
-            <div className={restaurantDash.kpiGrid}>
+            <div className={restaurantDash.kpiGridSupporting}>
               <RestaurantKpiCard
                 label={kpiDisplayName("taxCollected", uiLang)}
                 value={formatSettlementRevenue(
@@ -566,23 +600,23 @@ export function ReportsTab({
                 icon={Receipt}
                 tone="info"
                 valueVariant="revenue"
-              />
-              <RestaurantKpiCard
-                label={kpiDisplayName("netRevenue", uiLang)}
-                value={formatSettlementRevenue(
-                  activeBusiness?.netRevenue ?? "0.00",
-                  displaySym
-                )}
-                icon={DollarSign}
-                tone="success"
-                valueVariant="revenue"
+                emphasis="supporting"
               />
               <RestaurantKpiCard
                 label={kpiDisplayName("refundRate", uiLang)}
                 value={`${activeBusiness?.refundRate ?? "0.00"}%`}
                 icon={Receipt}
                 tone="warning"
+                emphasis="supporting"
               />
+            </div>
+          </RestaurantDashSection>
+          <RestaurantDashSection
+            title={SECTION_TERMINOLOGY[uiLang].advancedFinancial}
+            description={SECTION_TERMINOLOGY[uiLang].advancedFinancialNote}
+            ariaLabel={SECTION_TERMINOLOGY[uiLang].advancedFinancial}
+          >
+            <div className={restaurantDash.kpiGridSupporting}>
               <RestaurantKpiCard
                 label={kpiDisplayName("averageCheck", uiLang)}
                 value={formatSettlementRevenue(
@@ -592,6 +626,7 @@ export function ReportsTab({
                 icon={DollarSign}
                 tone="info"
                 valueVariant="revenue"
+                emphasis="supporting"
               />
               <RestaurantKpiCard
                 label={kpiDisplayName("averageOrder", uiLang)}
@@ -599,9 +634,18 @@ export function ReportsTab({
                 icon={ClipboardList}
                 tone="info"
                 valueVariant="revenue"
+                emphasis="supporting"
               />
             </div>
           </RestaurantDashSection>
+          <SettlementOverviewSection
+            restaurantId={restaurantId}
+            language={language}
+            queriesEnabled={enabled}
+            currencySymbol={sym}
+            from={activeRange.from}
+            to={activeRange.to}
+          />
         </div>
       ) : null}
 

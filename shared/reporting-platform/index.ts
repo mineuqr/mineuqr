@@ -72,11 +72,13 @@ export {
   SECTION_TERMINOLOGY,
   EXECUTIVE_SUMMARY_KPI_IDS,
   EXECUTIVE_PAYMENT_OVERVIEW_CARD_ID,
+  EXECUTIVE_CARD_VISUAL_TIER,
   PAYMENT_METHOD_LABELS,
   preferredKpiLabel,
   preferredPaymentMethodLabel,
   type PresentationLanguage,
   type ExecutiveSummaryKpiId,
+  type ExecutiveCardVisualTier,
   type PaymentMethodLabelCode,
 } from "./productSemantics";
 

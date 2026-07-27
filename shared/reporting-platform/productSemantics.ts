@@ -144,7 +144,7 @@ export const SECTION_TERMINOLOGY = Object.freeze({
     orderSalesPerformance: "Sales Orders Detail",
     executiveSnapshot: "Executive Overview",
     executiveSnapshotHint:
-      "Restaurant health at a glance — Total Sales, Sales Orders, Orders, Refunds, Tax, and Payment Overview.",
+      "Decision flow at a glance — Total Sales first, then orders, refunds, and collection. Net Sales is in Financial Analytics.",
     salesAnalytics: "Sales Analytics",
     salesAnalyticsNote:
       "Operational sales trends and period detail — not a second financial statement.",
@@ -202,7 +202,7 @@ export const SECTION_TERMINOLOGY = Object.freeze({
     orderSalesPerformance: "تفاصيل مبيعات الطلبات",
     executiveSnapshot: "نظرة تنفيذية",
     executiveSnapshotHint:
-      "صحة المطعم بنظرة سريعة — إجمالي المبيعات ومبيعات الطلبات والطلبات والمرتجعات والضريبة ونظرة المدفوعات.",
+      "مسار القرار بنظرة سريعة — إجمالي المبيعات أولاً ثم الطلبات والمرتجعات والتحصيل. صافي المبيعات في التحليلات المالية.",
     salesAnalytics: "تحليلات المبيعات",
     salesAnalyticsNote:
       "اتجاهات المبيعات التشغيلية وتفاصيل الفترة — وليست بياناً مالياً ثانياً.",
@@ -275,15 +275,19 @@ export function preferredPaymentMethodLabel(
 }
 
 /**
- * KPI ids on the Executive Overview (REPORTING-UX-SIMPLIFICATION-1).
+ * KPI ids on the Executive Overview (REPORTING-UX-SIMPLIFICATION-1 +
+ * REPORTING-VISUAL-HIERARCHY-1 decision-flow order).
  * Max primary indicators — averages/rates live in secondary Financial analytics.
  * Payment Overview is a presentation card (tender total), not a KPI id.
- * Formulas unchanged; presentation selection only.
+ * Formulas unchanged; presentation selection + order only.
+ *
+ * Decision flow: Sold → Orders → Order sales → Refunded → Tax
+ * (Net Sales remains Financial — Class 3; not Executive.)
  */
 export const EXECUTIVE_SUMMARY_KPI_IDS = [
   "revenue",
-  "orderSales",
   "orderCount",
+  "orderSales",
   "refundPublishedTotal",
   "taxCollected",
 ] as const satisfies readonly KpiId[];
@@ -292,3 +296,22 @@ export type ExecutiveSummaryKpiId = (typeof EXECUTIVE_SUMMARY_KPI_IDS)[number];
 
 /** Presentation-only Executive card for payment tender total (not a KPI registry id). */
 export const EXECUTIVE_PAYMENT_OVERVIEW_CARD_ID = "paymentOverview" as const;
+
+/**
+ * Visual weight for Executive cards (REPORTING-VISUAL-HIERARCHY-1).
+ * Presentation only — does not change KPI class or eligibility.
+ */
+export const EXECUTIVE_CARD_VISUAL_TIER = {
+  revenue: "primary",
+  orderCount: "secondary",
+  orderSales: "secondary",
+  refundPublishedTotal: "secondary",
+  taxCollected: "supporting",
+  paymentOverview: "supporting",
+} as const satisfies Record<
+  ExecutiveSummaryKpiId | typeof EXECUTIVE_PAYMENT_OVERVIEW_CARD_ID,
+  "primary" | "secondary" | "supporting"
+>;
+
+export type ExecutiveCardVisualTier =
+  (typeof EXECUTIVE_CARD_VISUAL_TIER)[keyof typeof EXECUTIVE_CARD_VISUAL_TIER];

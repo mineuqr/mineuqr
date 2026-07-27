@@ -19,11 +19,11 @@ function read(rel: string): string {
 }
 
 describe("REPORTING-UX-SIMPLIFICATION-1 dashboard presentation guards", () => {
-  it("Executive Overview uses simplified primary KPI ids", () => {
+  it("Executive Overview uses decision-flow primary KPI ids", () => {
     expect([...EXECUTIVE_SUMMARY_KPI_IDS]).toEqual([
       "revenue",
-      "orderSales",
       "orderCount",
+      "orderSales",
       "refundPublishedTotal",
       "taxCollected",
     ]);
