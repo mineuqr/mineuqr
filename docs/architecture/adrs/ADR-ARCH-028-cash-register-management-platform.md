@@ -1,6 +1,6 @@
 # ADR-ARCH-028: Cash Register Management Platform (CRMP)
 
-> [← ADR-ARCH-020](./ADR-ARCH-020-financial-settlement-platform.md) · [← ADR-ARCH-022](./ADR-ARCH-022-order-settlement-platform.md) · [← ADR-ARCH-026](./ADR-ARCH-026-settlement-record-platform.md) · [← ADR-ARCH-027](./ADR-ARCH-027-operational-document-identity.md) · [Registry](../constitution/ADR-Registry.md)
+> [← ADR-ARCH-020](./ADR-ARCH-020-financial-settlement-platform.md) · [← ADR-ARCH-022](./ADR-ARCH-022-order-settlement-platform.md) · [← ADR-ARCH-026](./ADR-ARCH-026-settlement-record-platform.md) · [← ADR-ARCH-027](./ADR-ARCH-027-operational-document-identity.md) · [ADR-ARCH-033 →](./ADR-ARCH-033-financial-custody-plane.md) · [Registry](../constitution/ADR-Registry.md)
 
 | Field | Value |
 |---|---|

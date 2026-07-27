@@ -1,6 +1,6 @@
 # ADR-ARCH-030: Financial Shift Operational Lifecycle Governance
 
-> [← ADR-ARCH-028](./ADR-ARCH-028-cash-register-management-platform.md) · [← ADR-ARCH-026](./ADR-ARCH-026-settlement-record-platform.md) · [← ADR-ARCH-022](./ADR-ARCH-022-order-settlement-platform.md) · [← ADR-ARCH-020](./ADR-ARCH-020-financial-settlement-platform.md) · [Registry](../constitution/ADR-Registry.md)
+> [← ADR-ARCH-028](./ADR-ARCH-028-cash-register-management-platform.md) · [← ADR-ARCH-026](./ADR-ARCH-026-settlement-record-platform.md) · [← ADR-ARCH-022](./ADR-ARCH-022-order-settlement-platform.md) · [← ADR-ARCH-020](./ADR-ARCH-020-financial-settlement-platform.md) · [ADR-ARCH-033 →](./ADR-ARCH-033-financial-custody-plane.md) · [Registry](../constitution/ADR-Registry.md)
 
 | Field | Value |
 |---|---|

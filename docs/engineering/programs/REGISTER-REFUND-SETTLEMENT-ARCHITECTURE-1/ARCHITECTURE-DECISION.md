@@ -220,11 +220,7 @@ Every successful Register Refund Settlement records:
 ## 12. ADR recommendations
 
 1. **Keep ADR-ARCH-032 / 028 / 030 as constitutional base** — do not fork money ownership.  
-2. **Optional ADR refinement (recommended):** short amendment or successor note **ADR-ARCH-033 — Register Refund Settlement (Custody Plane)** that:
-   - Names RRS lifecycle states  
-   - Codifies RRS-INV-01…10  
-   - Affirms `SettlementAttributed` as completion event  
-   - Affirms RF ≠ cash left drawer  
+2. **Ratified:** **[ADR-ARCH-033 — Financial Custody Plane](../../../architecture/adrs/ADR-ARCH-033-financial-custody-plane.md)** names the custody plane, codifies FC-INV + RRS specialization, affirms `SettlementAttributed` completion, and affirms RF ≠ cash left drawer.  
 3. **Do not** introduce a Register-owned Refund Aggregate or Drawer `paid_out` as monetary SSOT without a new ADR.
 
 ---
@@ -236,7 +232,7 @@ Every successful Register Refund Settlement records:
 | **A** | Presentation: surface AWAITING / ATTRIBUTED / SKIPPED on Ledger/Detail (read-only) |
 | **B** | Ops repair: re-attempt AttributeRefund when context becomes available |
 | **C** | Optional explicit cashier “confirm cash handed out” UX (still CRMP custody; no money re-decision) |
-| **D** | Optional ADR-033 ratification |
+| **D** | **Done** — ADR-ARCH-033 Financial Custody Plane ratified (2026-07-27) |
 | **E** | Multi-register policy UI (which Register may attribute) |
 
 This program **does not implement** any phase.
