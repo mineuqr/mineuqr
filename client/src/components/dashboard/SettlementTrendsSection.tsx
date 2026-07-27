@@ -41,6 +41,10 @@ import {
 } from "./RestaurantSectionStates";
 import { restaurantDash, restaurantHoverGlow, restaurantRevenueValueClass, restaurantSemantic } from "./restaurantDashStyles";
 import { SECTION_TERMINOLOGY } from "@shared/reporting-platform";
+import {
+  REPORTING_CATEGORY_HEX,
+  reportingCategoryFill,
+} from "@/lib/reporting-exports/reportingExecutiveColors";
 
 const PANEL_CLASS = cn(restaurantDash.panel, "p-4 sm:p-5", restaurantHoverGlow);
 const GROUPING_OPTIONS: SettlementTrendGrouping[] = ["day", "week", "month"];
@@ -71,39 +75,62 @@ function SettlementTrendChart({
   valueFormatter: (value: number) => string;
   isAr: boolean;
 }) {
+  const reduceMotion =
+    typeof window !== "undefined" &&
+    window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+
   return (
     <div className={PANEL_CLASS}>
-      <h3 className="mb-3 text-sm font-semibold text-white sm:text-base">{title}</h3>
+      <h3 className="mb-3 text-sm font-semibold tracking-tight text-white sm:text-base">
+        {title}
+      </h3>
       {data.length === 0 ? (
-        <div className="flex h-[200px] items-center justify-center text-sm text-slate-400 sm:h-[240px]">
-          {isAr ? "لا توجد بيانات للعرض" : "No data to display"}
+        <div
+          className="flex h-[200px] items-center justify-center px-4 text-center text-sm text-slate-400 sm:h-[240px]"
+          role="status"
+        >
+          {isAr
+            ? "لا توجد بيانات كافية لعرض هذا الاتجاه بعد."
+            : "Not enough data to show this trend yet."}
         </div>
       ) : (
-        <div className="h-[200px] w-full sm:h-[240px]">
+        <div className="h-[200px] w-full min-w-0 sm:h-[240px]">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
+            <AreaChart
+              data={data}
+              margin={{ top: 10, right: 12, left: 4, bottom: 4 }}
+            >
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="rgba(255,255,255,0.06)"
+                vertical={false}
+              />
               <XAxis
                 dataKey="periodLabel"
-                stroke="rgba(255,255,255,0.45)"
+                stroke="rgba(255,255,255,0.4)"
                 fontSize={11}
                 tickLine={false}
+                axisLine={false}
                 interval="preserveStartEnd"
-                minTickGap={12}
+                minTickGap={16}
               />
               <YAxis
-                stroke="rgba(255,255,255,0.45)"
+                stroke="rgba(255,255,255,0.4)"
                 fontSize={11}
                 tickLine={false}
-                width={42}
+                axisLine={false}
+                width={44}
               />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: "rgba(10, 14, 20, 0.95)",
+                  backgroundColor: "rgba(10, 14, 20, 0.96)",
                   border: "1px solid rgba(255,255,255,0.12)",
-                  borderRadius: "10px",
+                  borderRadius: "12px",
+                  padding: "8px 12px",
+                  boxShadow: "0 8px 24px rgba(0,0,0,0.35)",
                 }}
-                labelStyle={{ color: "rgba(255,255,255,0.85)" }}
+                labelStyle={{ color: "rgba(255,255,255,0.85)", marginBottom: 4 }}
+                itemStyle={{ color: stroke }}
                 formatter={(value: number) => [valueFormatter(value), title]}
               />
               <Area
@@ -112,6 +139,10 @@ function SettlementTrendChart({
                 stroke={stroke}
                 fill={fill}
                 strokeWidth={2}
+                isAnimationActive={!reduceMotion}
+                animationDuration={450}
+                dot={false}
+                activeDot={{ r: 4, strokeWidth: 0 }}
               />
             </AreaChart>
           </ResponsiveContainer>
@@ -123,9 +154,9 @@ function SettlementTrendChart({
 
 function TrendChartSkeleton() {
   return (
-    <div className={cn(PANEL_CLASS, "animate-pulse")}>
-      <div className="mb-4 h-5 w-36 rounded bg-muted/40" />
-      <div className="h-[220px] rounded-xl bg-muted/20 sm:h-[260px]" />
+    <div className={cn(PANEL_CLASS, "motion-safe:animate-pulse")}>
+      <div className="mb-4 h-5 w-36 rounded bg-slate-700/50" />
+      <div className="h-[200px] rounded-xl bg-slate-800/40 sm:h-[240px]" />
     </div>
   );
 }
@@ -177,12 +208,12 @@ function TrendInsightCard({
 
 function TrendInsightSkeleton() {
   return (
-    <div className={cn(PANEL_CLASS, "animate-pulse")}>
+    <div className={cn(PANEL_CLASS, "motion-safe:animate-pulse")}>
       <div className="flex items-start gap-3">
-        <div className="h-10 w-10 rounded-full bg-muted/40" />
+        <div className="h-10 w-10 rounded-xl bg-slate-700/50" />
         <div className="flex-1 space-y-2">
-          <div className="h-4 w-28 rounded bg-muted/30" />
-          <div className="h-5 w-24 rounded bg-muted/40" />
+          <div className="h-4 w-28 rounded bg-slate-700/40" />
+          <div className="h-5 w-24 rounded bg-slate-700/50" />
         </div>
       </div>
     </div>
@@ -196,6 +227,8 @@ export function SettlementTrendsSection({
   currencySymbol,
   from,
   to,
+  sectionId,
+  emphasized,
 }: {
   restaurantId: number;
   language: string;
@@ -204,6 +237,8 @@ export function SettlementTrendsSection({
   /** Required period bounds — no lifetime leakage. */
   from: string;
   to: string;
+  sectionId?: string;
+  emphasized?: boolean;
 }) {
   const { isAuthenticated, authPending } = useAuth();
   const isAr = language === "ar";
@@ -290,10 +325,15 @@ export function SettlementTrendsSection({
 
   return (
     <RestaurantDashSection
+      id={sectionId}
       title={sectionTitle}
       description={sectionSub}
       ariaLabel={ariaLabel}
       headerAside={groupingControls}
+      className={cn(
+        emphasized &&
+          "rounded-2xl ring-2 ring-teal-400/35 ring-offset-2 ring-offset-slate-950"
+      )}
     >
       {isLoading ? (
         <>
@@ -325,8 +365,8 @@ export function SettlementTrendsSection({
             <RestaurantSectionEmpty
               message={
                 isAr
-                  ? "لا توجد شيكات مسددة لعرض الاتجاهات بعد."
-                  : "No settled checks yet to show trends."
+                  ? "لا توجد مبيعات كافية لعرض الاتجاهات بعد. ابدأ بتسجيل الطلبات وستظهر الرسوم هنا."
+                  : "Not enough sales yet to show trends. Once orders are recorded, charts will appear here."
               }
             />
           ) : null}
@@ -336,8 +376,8 @@ export function SettlementTrendsSection({
               title={isAr ? "اتجاه إجمالي المبيعات" : "Total Sales Trend"}
               data={chartRows}
               dataKey="paidRevenue"
-              stroke="#4ade80"
-              fill="#4ade8030"
+              stroke={REPORTING_CATEGORY_HEX.net}
+              fill={reportingCategoryFill("net", 0.2)}
               valueFormatter={(value) => `${value.toFixed(2)} ${sym}`}
               isAr={isAr}
             />
@@ -345,8 +385,8 @@ export function SettlementTrendsSection({
               title={isAr ? "اتجاه الشيكات المدفوعة" : "Paid Checks Trend"}
               data={chartRows}
               dataKey="paidSessionCount"
-              stroke="#94a3b8"
-              fill="#94a3b830"
+              stroke={REPORTING_CATEGORY_HEX.orders}
+              fill={reportingCategoryFill("orders", 0.2)}
               valueFormatter={(value) => String(Math.round(value))}
               isAr={isAr}
             />
@@ -354,8 +394,8 @@ export function SettlementTrendsSection({
               title={isAr ? "اتجاه الشيكات المجانية" : "Complimentary Checks Trend"}
               data={chartRows}
               dataKey="complimentarySessionCount"
-              stroke="#a78bfa"
-              fill="#a78bfa30"
+              stroke={REPORTING_CATEGORY_HEX.tax}
+              fill={reportingCategoryFill("tax", 0.2)}
               valueFormatter={(value) => String(Math.round(value))}
               isAr={isAr}
             />
@@ -363,8 +403,8 @@ export function SettlementTrendsSection({
               title={isAr ? "اتجاه نسبة المجانية" : "Complimentary Rate Trend"}
               data={chartRows}
               dataKey="complimentaryRate"
-              stroke="#fb923c"
-              fill="#fb923c30"
+              stroke={REPORTING_CATEGORY_HEX.neutral}
+              fill={reportingCategoryFill("neutral", 0.2)}
               valueFormatter={(value) => `${value.toFixed(1)}%`}
               isAr={isAr}
             />

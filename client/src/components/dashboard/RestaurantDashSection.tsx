@@ -9,6 +9,7 @@ type RestaurantDashSectionProps = {
   ariaLabel?: string;
   className?: string;
   headerAside?: ReactNode;
+  id?: string;
 };
 
 export function RestaurantDashSection({
@@ -18,9 +19,14 @@ export function RestaurantDashSection({
   ariaLabel,
   className,
   headerAside,
+  id,
 }: RestaurantDashSectionProps) {
   return (
-    <section className={cn(restaurantDash.section, className)} aria-label={ariaLabel ?? title}>
+    <section
+      id={id}
+      className={cn(restaurantDash.section, className)}
+      aria-label={ariaLabel ?? title}
+    >
       <div
         className={cn(
           "flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between",

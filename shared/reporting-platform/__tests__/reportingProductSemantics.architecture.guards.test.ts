@@ -60,14 +60,16 @@ describe("REPORTING-PRODUCT-SEMANTICS-1 architecture guards", () => {
       "client/src/components/dashboard/SettlementTrendsSection.tsx"
     );
     const reports = read("client/src/components/dashboard/ReportsTab.tsx");
+    const flow = read(
+      "client/src/components/dashboard/FinancialSalesFlowStrip.tsx"
+    );
     expect(overview).toContain("SECTION_TERMINOLOGY");
     expect(trends).toContain("SECTION_TERMINOLOGY");
-    expect(reports).toContain("Total Sales");
-    expect(reports).toContain("Sales Orders");
-    expect(reports).toContain("salesAnalytics");
     expect(reports).toContain("financialAnalytics");
+    expect(reports).toContain("SECTION_TERMINOLOGY");
     expect(reports).not.toContain("Gross Sales");
     expect(reports).not.toContain("Check Revenue");
+    expect(flow).toContain("Total Sales");
     expect(overview).not.toContain('"Revenue Overview"');
     expect(trends).not.toContain('"Revenue Trends"');
   });

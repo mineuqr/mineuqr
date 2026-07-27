@@ -22,6 +22,21 @@ export {
   scopedRevenueFromTrend,
 } from "./scopeTotals";
 export {
+  buildExecutivePeriodDashboardVm,
+  isExecutivePeriodEmpty,
+  type ExecutivePeriodDashboardVm,
+  type ExecutivePeriodCard,
+} from "./executivePeriodDashboard";
+export {
+  executiveCardDrillTarget,
+  FINANCIAL_SECTION_IDS,
+  type FinancialAnalyticsFocus,
+} from "./executiveDrillDown";
+export {
+  REPORTING_CATEGORY_HEX,
+  reportingCategoryFill,
+} from "./reportingExecutiveColors";
+export {
   downloadReportingExportXlsx,
   downloadReportingExportPdf,
 } from "./downloadReportingExport";

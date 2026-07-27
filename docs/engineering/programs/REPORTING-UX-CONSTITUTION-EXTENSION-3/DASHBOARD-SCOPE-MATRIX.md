@@ -4,7 +4,7 @@
 |-------|-------|
 | **Program** | REPORTING-UX-CONSTITUTION-EXTENSION-3 |
 | **Constitution** | KPI-10 · OBJ-04 · UX-06 |
-| **Primary surface** | Restaurant `ReportsTab` four-area workspace |
+| **Primary surface** | Restaurant `ReportsTab` — **production chrome: three tabs** (Today · This Month · Financial Analytics). UX-06 four-area vocabulary maps into that chrome (see REPORTING-PRODUCT-UX-RESTRUCTURE-2). |
 | **Date** | 2026-07-27 |
 
 ## Nav area → allowed scopes

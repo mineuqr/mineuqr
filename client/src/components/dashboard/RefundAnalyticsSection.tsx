@@ -38,6 +38,11 @@ import { RestaurantDashSection } from "./RestaurantDashSection";
 import { RestaurantKpiCard, RestaurantKpiGridSkeleton } from "./RestaurantKpiCard";
 import { RestaurantSectionError } from "./RestaurantSectionStates";
 import { restaurantDash } from "./restaurantDashStyles";
+import { cn } from "@/lib/utils";
+import {
+  REPORTING_CATEGORY_HEX,
+  reportingCategoryFill,
+} from "@/lib/reporting-exports/reportingExecutiveColors";
 
 export function RefundAnalyticsSection({
   restaurantId,
@@ -46,6 +51,8 @@ export function RefundAnalyticsSection({
   currencySymbol,
   from,
   to,
+  sectionId,
+  emphasized,
 }: {
   restaurantId: number;
   language: string;
@@ -53,6 +60,8 @@ export function RefundAnalyticsSection({
   currencySymbol?: string;
   from: string;
   to: string;
+  sectionId?: string;
+  emphasized?: boolean;
 }) {
   const { isAuthenticated, authPending } = useAuth();
   const lang = language === "ar" ? "ar" : "en";
@@ -121,9 +130,14 @@ export function RefundAnalyticsSection({
 
   return (
     <RestaurantDashSection
+      id={sectionId}
       title={section.refundAnalytics}
       description={section.refundAnalyticsNote}
       ariaLabel={section.refundAnalytics}
+      className={cn(
+        emphasized &&
+          "rounded-2xl ring-2 ring-rose-400/40 ring-offset-2 ring-offset-slate-950"
+      )}
     >
       {isLoading ? (
         <RestaurantKpiGridSkeleton count={4} />
@@ -182,51 +196,59 @@ export function RefundAnalyticsSection({
           {refundTrendRows.length > 0 ? (
             <div className={restaurantDash.chartSupporting + " p-4"}>
               <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                {isAr ? "اتجاه المرتجعات (داعم)" : "Refund trend (supporting)"}
+                {isAr ? "اتجاه المرتجعات" : "Refund Trend"}
               </h3>
               <p className="mb-3 text-[11px] text-slate-500">
                 {isAr
-                  ? "الرسم يوضح الاتجاه — الأرقام أعلاه هي المرجع للقرار."
-                  : "Chart reinforces the story — KPI cards above remain the decision numbers."}
+                  ? "الرسم يدعم القصة — الأرقام أعلاه هي مرجع القرار."
+                  : "The chart supports the story — the numbers above remain the decision reference."}
               </p>
-              <div className="h-[160px] w-full sm:h-[180px]">
+              <div className="h-[160px] w-full min-w-0 sm:h-[180px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart
                     data={refundTrendRows}
-                    margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+                    margin={{ top: 10, right: 12, left: 4, bottom: 4 }}
                   >
                     <CartesianGrid
                       strokeDasharray="3 3"
-                      stroke="rgba(255,255,255,0.08)"
+                      stroke="rgba(255,255,255,0.06)"
+                      vertical={false}
                     />
                     <XAxis
                       dataKey="periodLabel"
-                      stroke="rgba(255,255,255,0.45)"
+                      stroke="rgba(255,255,255,0.4)"
                       fontSize={11}
                       tickLine={false}
+                      axisLine={false}
                       interval="preserveStartEnd"
-                      minTickGap={12}
+                      minTickGap={16}
                     />
                     <YAxis
-                      stroke="rgba(255,255,255,0.45)"
+                      stroke="rgba(255,255,255,0.4)"
                       fontSize={11}
                       tickLine={false}
-                      width={42}
+                      axisLine={false}
+                      width={44}
                     />
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: "rgba(10, 14, 20, 0.95)",
+                        backgroundColor: "rgba(10, 14, 20, 0.96)",
                         border: "1px solid rgba(255,255,255,0.12)",
-                        borderRadius: "10px",
+                        borderRadius: "12px",
+                        padding: "8px 12px",
                       }}
+                      labelStyle={{ color: "rgba(255,255,255,0.85)" }}
                     />
                     <Area
                       type="monotone"
                       dataKey="refundAmount"
-                      stroke="#f59e0b"
-                      fill="rgba(245, 158, 11, 0.25)"
+                      stroke={REPORTING_CATEGORY_HEX.refund}
+                      fill={reportingCategoryFill("refund", 0.22)}
                       strokeWidth={2}
                       name={kpiDisplayName("refundPublishedTotal", lang)}
+                      dot={false}
+                      activeDot={{ r: 4, strokeWidth: 0 }}
+                      animationDuration={450}
                     />
                   </AreaChart>
                 </ResponsiveContainer>

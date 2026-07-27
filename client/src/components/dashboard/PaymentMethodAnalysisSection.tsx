@@ -13,11 +13,17 @@ import { buildPaymentMethodAnalysisViewModel } from "@/lib/reporting-exports/pay
 import { isEmailNotVerifiedError } from "@/lib/trpcErrors";
 import { trpc } from "@/lib/trpc";
 import { SECTION_TERMINOLOGY } from "@shared/reporting-platform";
+import { toCanonicalPaymentMethod } from "@shared/operational-session";
 import { CreditCard } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { RestaurantDashSection } from "./RestaurantDashSection";
 import { RestaurantKpiCard, RestaurantKpiGridSkeleton } from "./RestaurantKpiCard";
 import { RestaurantSectionError } from "./RestaurantSectionStates";
 import { restaurantDash } from "./restaurantDashStyles";
+import {
+  REPORTING_CATEGORY_HEX,
+  reportingCategoryFill,
+} from "@/lib/reporting-exports/reportingExecutiveColors";
 
 export function PaymentMethodAnalysisSection({
   restaurantId,
@@ -26,6 +32,9 @@ export function PaymentMethodAnalysisSection({
   currencySymbol,
   from,
   to,
+  sectionId,
+  highlightCanonical,
+  emphasized,
 }: {
   restaurantId: number;
   language: string;
@@ -33,6 +42,10 @@ export function PaymentMethodAnalysisSection({
   currencySymbol?: string;
   from?: string;
   to?: string;
+  sectionId?: string;
+  /** Smart drill-down: emphasize cash or card tender rows. */
+  highlightCanonical?: "cash" | "card" | null;
+  emphasized?: boolean;
 }) {
   const { isAuthenticated, authPending } = useAuth();
   const lang = language === "ar" ? "ar" : "en";
@@ -78,9 +91,14 @@ export function PaymentMethodAnalysisSection({
 
   return (
     <RestaurantDashSection
+      id={sectionId}
       title={sectionTitle}
       description={sectionSub}
       ariaLabel={sectionTitle}
+      className={cn(
+        emphasized &&
+          "rounded-2xl ring-2 ring-sky-400/35 ring-offset-2 ring-offset-slate-950"
+      )}
     >
       {isLoading ? (
         <RestaurantKpiGridSkeleton count={4} />
@@ -139,23 +157,49 @@ export function PaymentMethodAnalysisSection({
                 </tr>
               </thead>
               <tbody>
-                {vm.rows.map((b) => (
-                  <tr
-                    key={b.paymentMethod}
-                    className="border-t border-slate-700/40 text-slate-100"
-                  >
-                    <td className="px-3 py-2">{b.label}</td>
-                    <td className="px-3 py-2">
-                      {formatMoneyDisplay(b.tenderAmount, sym)}
-                    </td>
-                    <td className="px-3 py-2">{b.checkCount}</td>
-                    <td className="px-3 py-2">
-                      {formatMoneyDisplay(b.averageCheck, sym)}
-                    </td>
-                    <td className="px-3 py-2">{b.mixPercent}%</td>
-                    <td className="px-3 py-2">{b.transactionCount}</td>
-                  </tr>
-                ))}
+                {vm.rows.map((b) => {
+                  const canonical = toCanonicalPaymentMethod(b.paymentMethod);
+                  const isHit =
+                    highlightCanonical != null &&
+                    canonical === highlightCanonical;
+                  const rowTint =
+                    canonical === "cash"
+                      ? REPORTING_CATEGORY_HEX.cash
+                      : canonical === "card"
+                        ? REPORTING_CATEGORY_HEX.card
+                        : REPORTING_CATEGORY_HEX.neutral;
+                  return (
+                    <tr
+                      key={b.paymentMethod}
+                      className={cn(
+                        "border-t border-slate-700/40 text-slate-100 motion-safe:transition-colors",
+                        isHit && "bg-sky-500/10"
+                      )}
+                      style={
+                        isHit
+                          ? {
+                              boxShadow: `inset 3px 0 0 ${rowTint}`,
+                              backgroundColor: reportingCategoryFill(
+                                canonical === "cash" ? "cash" : "card",
+                                0.12
+                              ),
+                            }
+                          : undefined
+                      }
+                    >
+                      <td className="px-3 py-2 font-medium">{b.label}</td>
+                      <td className="px-3 py-2">
+                        {formatMoneyDisplay(b.tenderAmount, sym)}
+                      </td>
+                      <td className="px-3 py-2">{b.checkCount}</td>
+                      <td className="px-3 py-2">
+                        {formatMoneyDisplay(b.averageCheck, sym)}
+                      </td>
+                      <td className="px-3 py-2">{b.mixPercent}%</td>
+                      <td className="px-3 py-2">{b.transactionCount}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

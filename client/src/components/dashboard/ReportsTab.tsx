@@ -1,15 +1,28 @@
+/**
+ * REPORTING-PRODUCT-POLISH-1
+ * Three-tab restaurant executive reporting — final presentation polish.
+ * Presentation only — values from reporting.* DTOs; no financial recalculation.
+ */
 import { useAuth } from "@/_core/hooks/useAuth";
 import { CommercialUpgradeBanner } from "@/components/commercial";
 import { PaymentMethodAnalysisSection } from "@/components/dashboard/PaymentMethodAnalysisSection";
 import { RefundAnalyticsSection } from "@/components/dashboard/RefundAnalyticsSection";
 import { FinancialSalesFlowStrip } from "@/components/dashboard/FinancialSalesFlowStrip";
-import { SettlementOverviewSection } from "@/components/dashboard/SettlementOverviewSection";
 import { SettlementTrendsSection } from "@/components/dashboard/SettlementTrendsSection";
+import { SalesSourceAnalysisSection } from "@/components/dashboard/SalesSourceAnalysisSection";
+import { OrdersDetailsSection } from "@/components/dashboard/OrdersDetailsSection";
+import {
+  ExecutivePeriodDashboardGrid,
+} from "@/components/dashboard/ExecutivePeriodDashboard";
+import {
+  ExecutivePeriodDashboardSkeleton,
+  ExecutivePeriodEmptyState,
+} from "@/components/dashboard/ExecutivePeriodEmptyState";
 import { RestaurantDashSection } from "@/components/dashboard/RestaurantDashSection";
-import { restaurantDash } from "@/components/dashboard/restaurantDashStyles";
 import { RestaurantKpiCard } from "@/components/dashboard/RestaurantKpiCard";
+import { restaurantDash } from "@/components/dashboard/restaurantDashStyles";
 import { VerificationRequiredPanel } from "@/components/auth/VerificationRequiredPanel";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ReportingPeriodToolbar } from "@/components/dashboard/ReportingPeriodToolbar";
 import {
   downloadReportingExportXlsx,
   monthReportingRange,
@@ -18,7 +31,17 @@ import {
   type RestaurantReportingExportBundle,
   type ReportingExportScope,
 } from "@/lib/reporting-exports";
-import { buildExecutiveSummaryViewModel } from "@/lib/reporting-exports/executiveSummaryPresentation";
+import {
+  buildExecutivePeriodDashboardVm,
+  isExecutivePeriodEmpty,
+  type ExecutivePeriodCard,
+} from "@/lib/reporting-exports/executivePeriodDashboard";
+import {
+  executiveCardDrillTarget,
+  focusBreadcrumbLabel,
+  FINANCIAL_SECTION_IDS,
+  type FinancialAnalyticsFocus,
+} from "@/lib/reporting-exports/executiveDrillDown";
 import { scopedOrderSalesFromRollup } from "@/lib/reporting-exports/scopeTotals";
 import { kpiDisplayName } from "@/lib/reporting/kpiDisplay";
 import {
@@ -39,22 +62,16 @@ import { cn } from "@/lib/utils";
 import { useCommercialFeatureVisibility } from "@/hooks/useCommercialFeatureVisibility";
 import {
   businessCurrentYearMonth,
+  businessDayTodayReportingBounds,
+  reportingWorkingHours,
   SECTION_TERMINOLOGY,
 } from "@shared/reporting-platform";
-import {
-  ClipboardList,
-  DollarSign,
-  Receipt,
-} from "lucide-react";
-import { useMemo, useState } from "react";
+import { ChevronRight, Receipt, Scale, CircleDollarSign } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-/**
- * REPORTING-UX-SIMPLIFICATION-1 + REPORTING-VISUAL-HIERARCHY-1
- * Four-area reporting workspace: Overview · Sales · Financial · Exports.
- * Decision-flow visual hierarchy on Executive; Financial relationship strip.
- * KPIs from reporting.* only — no financial recalculation.
- */
+type ProductReportTab = "today" | "month" | "financial";
+
 export function ReportsTab({
   restaurantId,
   restaurantName,
@@ -80,19 +97,62 @@ export function ReportsTab({
   const initialYm = businessCurrentYearMonth();
   const [reportYear, setReportYear] = useState(initialYm.year);
   const [reportMonth, setReportMonth] = useState(initialYm.month);
-  const [reportScope, setReportScope] = useState<ReportingExportScope>("month");
+  const [productTab, setProductTab] = useState<ProductReportTab>("today");
+  const [financialFocus, setFinancialFocus] =
+    useState<FinancialAnalyticsFocus | null>(null);
 
   const monthNames =
     language === "ar"
-      ? ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"]
-      : ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+      ? [
+          "يناير",
+          "فبراير",
+          "مارس",
+          "أبريل",
+          "مايو",
+          "يونيو",
+          "يوليو",
+          "أغسطس",
+          "سبتمبر",
+          "أكتوبر",
+          "نوفمبر",
+          "ديسمبر",
+        ]
+      : [
+          "January",
+          "February",
+          "March",
+          "April",
+          "May",
+          "June",
+          "July",
+          "August",
+          "September",
+          "October",
+          "November",
+          "December",
+        ];
 
   const { isAuthenticated, authPending } = useAuth();
   const { entitlements, showReportsUpgrade, showExcelUpgrade } =
     useCommercialFeatureVisibility();
   const uiLang = language === "ar" ? "ar" : "en";
-  const enabled = restaurantQueriesEnabled(authPending, isAuthenticated, restaurantId);
+  const enabled = restaurantQueriesEnabled(
+    authPending,
+    isAuthenticated,
+    restaurantId
+  );
 
+  const hours = useMemo(
+    () => reportingWorkingHours(workingHoursRaw),
+    [workingHoursRaw]
+  );
+  const todayRange = useMemo(() => {
+    const bounds = businessDayTodayReportingBounds(hours);
+    return {
+      from: bounds.from ?? undefined,
+      to: bounds.to ?? undefined,
+    };
+  }, [hours]);
   const monthRange = useMemo(
     () => monthReportingRange(reportYear, reportMonth, workingHoursRaw),
     [reportYear, reportMonth, workingHoursRaw]
@@ -101,11 +161,6 @@ export function ReportsTab({
     () => yearReportingRange(reportYear, workingHoursRaw),
     [reportYear, workingHoursRaw]
   );
-  const activeRange = reportScope === "month" ? monthRange : yearRange;
-  const periodLabel =
-    reportScope === "month"
-      ? `${monthNames[reportMonth - 1]} ${reportYear}`
-      : String(reportYear);
 
   useDevQueryRuntimeLog("reporting.getOrderSalesSummary", {
     enabled,
@@ -113,24 +168,12 @@ export function ReportsTab({
     isAuthenticated,
     pollMs: enabled ? DASHBOARD_ORDER_LIST_POLL_MS : undefined,
   });
-  useDevQueryRuntimeLog("reporting.getOrderSalesRollup", {
-    enabled,
-    authPending,
-    isAuthenticated,
-  });
-  useDevQueryRuntimeLog("reporting.getBusinessMetricsSummary (exports)", {
-    enabled,
-    authPending,
-    isAuthenticated,
-  });
 
-  const {
-    data: orderSales,
-    error: orderSalesError,
-  } = trpc.reporting.getOrderSalesSummary.useQuery(
-    { restaurantId },
-    reportingOrderSalesQueryOptions(enabled)
-  );
+  const { data: orderSales, error: orderSalesError } =
+    trpc.reporting.getOrderSalesSummary.useQuery(
+      { restaurantId },
+      reportingOrderSalesQueryOptions(enabled)
+    );
 
   const { data: monthlyRollup } = trpc.reporting.getOrderSalesRollup.useQuery(
     {
@@ -151,100 +194,190 @@ export function ReportsTab({
     { enabled }
   );
 
-  const { data: businessMonth } = trpc.reporting.getBusinessMetricsSummary.useQuery(
-    { restaurantId, from: monthRange.from, to: monthRange.to },
-    reportingBusinessSummaryQueryOptions(enabled)
-  );
+  const { data: businessToday, isLoading: businessTodayLoading } =
+    trpc.reporting.getBusinessMetricsSummary.useQuery(
+      { restaurantId, from: todayRange.from, to: todayRange.to },
+      reportingBusinessSummaryQueryOptions(enabled)
+    );
 
-  const { data: businessYear } = trpc.reporting.getBusinessMetricsSummary.useQuery(
-    { restaurantId, from: yearRange.from, to: yearRange.to },
-    reportingBusinessSummaryQueryOptions(enabled)
-  );
+  const { data: businessMonth, isLoading: businessMonthLoading } =
+    trpc.reporting.getBusinessMetricsSummary.useQuery(
+      { restaurantId, from: monthRange.from, to: monthRange.to },
+      reportingBusinessSummaryQueryOptions(enabled)
+    );
 
-  const { data: revenueTrendMonth } = trpc.reporting.getBusinessMetricsTrend.useQuery(
-    {
-      restaurantId,
-      from: monthRange.from,
-      to: monthRange.to,
-      grouping: "day",
-    },
-    reportingBusinessTrendQueryOptions(enabled)
-  );
+  const { data: businessYear } =
+    trpc.reporting.getBusinessMetricsSummary.useQuery(
+      { restaurantId, from: yearRange.from, to: yearRange.to },
+      reportingBusinessSummaryQueryOptions(enabled)
+    );
 
-  const { data: revenueTrendYear } = trpc.reporting.getBusinessMetricsTrend.useQuery(
-    {
-      restaurantId,
-      from: yearRange.from,
-      to: yearRange.to,
-      grouping: "month",
-    },
-    reportingBusinessTrendQueryOptions(enabled)
-  );
+  const { data: revenueTrendMonth } =
+    trpc.reporting.getBusinessMetricsTrend.useQuery(
+      {
+        restaurantId,
+        from: monthRange.from,
+        to: monthRange.to,
+        grouping: "day",
+      },
+      reportingBusinessTrendQueryOptions(enabled)
+    );
 
-  const { data: paymentAnalyticsMonth } =
+  const { data: revenueTrendYear } =
+    trpc.reporting.getBusinessMetricsTrend.useQuery(
+      {
+        restaurantId,
+        from: yearRange.from,
+        to: yearRange.to,
+        grouping: "month",
+      },
+      reportingBusinessTrendQueryOptions(enabled)
+    );
+
+  const { data: paymentToday, isLoading: paymentTodayLoading } =
+    trpc.reporting.getPaymentMethodAnalytics.useQuery(
+      { restaurantId, from: todayRange.from, to: todayRange.to },
+      reportingBusinessSummaryQueryOptions(enabled)
+    );
+
+  const { data: paymentMonth, isLoading: paymentMonthLoading } =
     trpc.reporting.getPaymentMethodAnalytics.useQuery(
       { restaurantId, from: monthRange.from, to: monthRange.to },
       reportingBusinessSummaryQueryOptions(enabled)
     );
 
-  const { data: paymentAnalyticsYear } =
+  const { data: paymentYear } =
     trpc.reporting.getPaymentMethodAnalytics.useQuery(
       { restaurantId, from: yearRange.from, to: yearRange.to },
       reportingBusinessSummaryQueryOptions(enabled)
     );
 
   const ordersBlocked = isEmailNotVerifiedError(orderSalesError);
-  const activeBusiness = reportScope === "month" ? businessMonth : businessYear;
-  const activeRollup = reportScope === "month" ? monthlyRollup : yearlyRollup;
-  const sym = resolveExportCurrency(activeBusiness, fallbackSym, currencyCode)
-    .currencySymbol;
-  const displaySym = resolveReportingCurrencySymbol(
-    activeBusiness,
+  const monthOrderPeriod = useMemo(() => {
+    if (monthlyRollup) {
+      const scoped = scopedOrderSalesFromRollup(monthlyRollup);
+      return {
+        orderSales: scoped.orderSales,
+        orderCount: scoped.orderCount,
+        completedOrders: scoped.completedOrders,
+      };
+    }
+    return { orderSales: "0.00", orderCount: 0, completedOrders: 0 };
+  }, [monthlyRollup]);
+  const monthOrderCount = monthOrderPeriod.orderCount;
+
+  const todayLoading =
+    enabled && (businessTodayLoading || paymentTodayLoading);
+  const monthLoading =
+    enabled && (businessMonthLoading || paymentMonthLoading);
+
+  const todayEmpty = useMemo(
+    () =>
+      !todayLoading &&
+      isExecutivePeriodEmpty({
+        business: businessToday,
+        payment: paymentToday,
+        orderCount: orderSales?.today.totalOrders,
+      }),
+    [todayLoading, businessToday, paymentToday, orderSales]
+  );
+
+  const monthEmpty = useMemo(
+    () =>
+      !monthLoading &&
+      isExecutivePeriodEmpty({
+        business: businessMonth,
+        payment: paymentMonth,
+        orderCount: monthOrderCount,
+      }),
+    [monthLoading, businessMonth, paymentMonth, monthOrderCount]
+  );
+
+  const todaySym = resolveReportingCurrencySymbol(businessToday, fallbackSym);
+  const monthSym = resolveReportingCurrencySymbol(businessMonth, fallbackSym);
+  const financialSym = resolveReportingCurrencySymbol(
+    businessMonth,
     fallbackSym
   );
 
-  const orderPeriod = useMemo(() => {
-    if (activeRollup) return scopedOrderSalesFromRollup(activeRollup);
-    return {
-      orderSales: "0.00",
-      orderCount: 0,
-      completedOrders: 0,
-      averageOrder: "0.00",
-    };
-  }, [activeRollup]);
+  const todayVm = useMemo(
+    () =>
+      buildExecutivePeriodDashboardVm({
+        scope: "today",
+        language: uiLang,
+        business: businessToday,
+        payment: paymentToday,
+        orderCount: orderSales?.today.totalOrders,
+        formatMoney: (a) => formatSettlementRevenue(a, todaySym),
+      }),
+    [businessToday, paymentToday, orderSales, uiLang, todaySym]
+  );
 
-  const [reportArea, setReportArea] = useState<
-    "overview" | "sales" | "financial" | "exports"
-  >("overview");
+  const monthVm = useMemo(
+    () =>
+      buildExecutivePeriodDashboardVm({
+        scope: "month",
+        language: uiLang,
+        business: businessMonth,
+        payment: paymentMonth,
+        orderCount: monthOrderCount,
+        formatMoney: (a) => formatSettlementRevenue(a, monthSym),
+      }),
+    [businessMonth, paymentMonth, monthOrderCount, uiLang, monthSym]
+  );
 
-  const activePayment =
-    reportScope === "month" ? paymentAnalyticsMonth : paymentAnalyticsYear;
+  const tabLabels: Record<ProductReportTab, string> = {
+    today: uiLang === "ar" ? "اليوم" : "Today",
+    month: uiLang === "ar" ? "هذا الشهر" : "This Month",
+    financial: SECTION_TERMINOLOGY[uiLang].financialAnalytics,
+  };
 
-  const executiveVm = useMemo(() => {
-    if (!activeBusiness) return null;
-    return buildExecutiveSummaryViewModel({
-      language: uiLang,
-      business: activeBusiness,
-      orderPeriod,
-      formatMoney: (amount) => formatSettlementRevenue(amount, displaySym),
-      paymentMonetaryTenderTotal: activePayment?.monetaryTenderTotal ?? "0.00",
+  const selectProductTab = (id: ProductReportTab) => {
+    setProductTab(id);
+    if (id !== "financial") setFinancialFocus(null);
+  };
+
+  const drillFromCard = (card: ExecutivePeriodCard) => {
+    const target = executiveCardDrillTarget(card.id);
+    setFinancialFocus(target.focus);
+    setProductTab("financial");
+  };
+
+  useEffect(() => {
+    if (productTab !== "financial" || !financialFocus) return;
+    const target = Object.values(FINANCIAL_SECTION_IDS).find((id) => {
+      if (financialFocus === "payment-cash" || financialFocus === "payment-card") {
+        return id === FINANCIAL_SECTION_IDS.payment;
+      }
+      if (financialFocus === "sales-trend") return id === FINANCIAL_SECTION_IDS.salesTrend;
+      if (financialFocus === "orders") return id === FINANCIAL_SECTION_IDS.orders;
+      if (financialFocus === "refunds") return id === FINANCIAL_SECTION_IDS.refunds;
+      if (financialFocus === "tax") return id === FINANCIAL_SECTION_IDS.tax;
+      if (financialFocus === "sales-source") return id === FINANCIAL_SECTION_IDS.salesSource;
+      if (financialFocus === "exports") return id === FINANCIAL_SECTION_IDS.exports;
+      return id === FINANCIAL_SECTION_IDS.overview;
     });
-  }, [
-    activeBusiness,
-    orderPeriod,
-    uiLang,
-    displaySym,
-    activePayment?.monetaryTenderTotal,
-  ]);
+    if (!target) return;
+    const t = window.setTimeout(() => {
+      document.getElementById(target)?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 80);
+    return () => window.clearTimeout(t);
+  }, [productTab, financialFocus]);
+
+  const focusCrumb = focusBreadcrumbLabel(financialFocus, uiLang);
 
   const buildBundle = (
     scope: ReportingExportScope
   ): RestaurantReportingExportBundle | null => {
     const business = scope === "month" ? businessMonth : businessYear;
     const orderSalesRollup = scope === "month" ? monthlyRollup : yearlyRollup;
-    const revenueTrend = scope === "month" ? revenueTrendMonth : revenueTrendYear;
+    const revenueTrend =
+      scope === "month" ? revenueTrendMonth : revenueTrendYear;
     const paymentMethodAnalytics =
-      scope === "month" ? paymentAnalyticsMonth : paymentAnalyticsYear;
+      scope === "month" ? paymentMonth : paymentYear;
     if (
       !business ||
       !orderSalesRollup ||
@@ -257,19 +390,18 @@ export function ReportsTab({
       scope === "month"
         ? `${monthNames[reportMonth - 1]} ${reportYear}`
         : String(reportYear);
-    const reportTitle =
-      scope === "month"
-        ? language === "ar"
-          ? "التقرير المالي الشهري"
-          : "Monthly Financial Report"
-        : language === "ar"
-          ? "التقرير المالي السنوي"
-          : "Annual Financial Report";
     return {
       restaurantName: restaurantName?.trim() || "",
       businessName: restaurantName?.trim() || "",
       logoUrl: logoUrl ?? null,
-      reportTitle,
+      reportTitle:
+        scope === "month"
+          ? language === "ar"
+            ? "التقرير المالي الشهري"
+            : "Monthly Financial Report"
+          : language === "ar"
+            ? "التقرير المالي السنوي"
+            : "Annual Financial Report",
       language: language === "ar" ? "ar" : "en",
       scope,
       periodLabel: label,
@@ -289,8 +421,8 @@ export function ReportsTab({
     if (!bundle) {
       toast.error(
         language === "ar"
-          ? "تعذر التصدير — انتظر اكتمال بيانات التقارير."
-          : "Export unavailable — wait for reporting data to load."
+          ? "التصدير غير جاهز بعد — انتظر اكتمال أرقام الفترة."
+          : "Export isn’t ready yet — wait until this period’s numbers finish loading."
       );
       return;
     }
@@ -298,96 +430,41 @@ export function ReportsTab({
   };
 
   return (
-    <div className="space-y-6 sm:space-y-8">
-      <div className="space-y-1">
+    <div className={cn(restaurantDash.stack, "pb-2")}>
+      <header className="space-y-2">
         <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
-          {language === "ar" ? "التقارير" : "Restaurant Reports"}
+          {language === "ar" ? "التقارير" : "Reports"}
         </h1>
-        <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-400">
+        <p className="max-w-2xl text-sm leading-relaxed text-slate-400">
           {language === "ar"
-            ? "نظرة تنفيذية وتحليلات المبيعات والمالية — نفس فترة لوحة التحكم وExcel"
-            : "Total Sales and Sales Orders — Overview, Sales, Financial, and Exports"}
+            ? "اليوم · هذا الشهر · التحليلات المالية — افهم أداء مطعمك بسرعة واتخذ قرارات أوضح."
+            : "Today · This Month · Financial Analytics — understand performance quickly and decide with clarity."}
         </p>
-      </div>
-
-      <Card className={cn("border-slate-700/50 bg-slate-900/40")}>
-        <CardHeader className="pb-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <CardTitle className="text-sm font-semibold">
-              {language === "ar" ? "فترة التقرير" : "Report period"}
-            </CardTitle>
-            <div className="flex flex-wrap items-center gap-2">
-              <select
-                value={reportScope}
-                onChange={(e) =>
-                  setReportScope(e.target.value as ReportingExportScope)
-                }
-                className="rounded-md border border-border bg-card px-2 py-1 text-xs"
-                aria-label={language === "ar" ? "نطاق الفترة" : "Period scope"}
-              >
-                <option value="month">
-                  {language === "ar" ? "شهر ميلادي" : "Calendar month"}
-                </option>
-                <option value="year">
-                  {language === "ar" ? "سنة ميلادية" : "Calendar year"}
-                </option>
-              </select>
-              {reportScope === "month" ? (
-                <select
-                  value={reportMonth}
-                  onChange={(e) => setReportMonth(Number(e.target.value))}
-                  className="rounded-md border border-border bg-card px-2 py-1 text-xs"
-                >
-                  {monthNames.map((name, idx) => (
-                    <option key={name} value={idx + 1}>
-                      {name}
-                    </option>
-                  ))}
-                </select>
-              ) : null}
-              <select
-                value={reportYear}
-                onChange={(e) => setReportYear(Number(e.target.value))}
-                className="rounded-md border border-border bg-card px-2 py-1 text-xs"
-              >
-                {[2024, 2025, 2026, 2027].map((y) => (
-                  <option key={y} value={y}>
-                    {y}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <p className="text-xs text-slate-400">
-            {language === "ar" ? "الفترة النشطة:" : "Active period:"}{" "}
-            <span className="font-medium text-slate-200">{periodLabel}</span>
-          </p>
-        </CardHeader>
-      </Card>
+      </header>
 
       <div
-        className="flex flex-wrap gap-2 border-b border-slate-700/50 pb-2"
+        className="flex flex-wrap gap-2 border-b border-slate-700/40 pb-3"
         role="tablist"
-        aria-label={language === "ar" ? "أقسام التقارير" : "Report areas"}
+        aria-label={language === "ar" ? "أقسام التقارير" : "Report sections"}
       >
         {(
           [
-            ["overview", SECTION_TERMINOLOGY[uiLang].executiveSnapshot],
-            ["sales", SECTION_TERMINOLOGY[uiLang].salesAnalytics],
-            ["financial", SECTION_TERMINOLOGY[uiLang].financialAnalytics],
-            ["exports", SECTION_TERMINOLOGY[uiLang].reportingExports],
+            ["today", tabLabels.today],
+            ["month", tabLabels.month],
+            ["financial", tabLabels.financial],
           ] as const
         ).map(([id, label]) => (
           <button
             key={id}
             type="button"
             role="tab"
-            aria-selected={reportArea === id}
-            onClick={() => setReportArea(id)}
+            aria-selected={productTab === id}
+            onClick={() => selectProductTab(id)}
             className={cn(
-              "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-              reportArea === id
-                ? "bg-slate-100 text-slate-900"
+              "min-h-10 rounded-xl px-4 py-2 text-sm font-semibold motion-safe:transition-all motion-safe:duration-200",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/50",
+              productTab === id
+                ? "bg-white text-slate-900 shadow-md shadow-white/10"
                 : "text-slate-300 hover:bg-slate-800 hover:text-white"
             )}
           >
@@ -395,6 +472,23 @@ export function ReportsTab({
           </button>
         ))}
       </div>
+
+      <nav
+        className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500"
+        aria-label={uiLang === "ar" ? "مسار التصفح" : "Breadcrumb"}
+      >
+        <span className="font-medium text-slate-300">
+          {uiLang === "ar" ? "التقارير" : "Reports"}
+        </span>
+        <ChevronRight className="h-3.5 w-3.5 opacity-50 rtl:rotate-180" aria-hidden />
+        <span className="font-medium text-slate-200">{tabLabels[productTab]}</span>
+        {productTab === "financial" && focusCrumb ? (
+          <>
+            <ChevronRight className="h-3.5 w-3.5 opacity-50 rtl:rotate-180" aria-hidden />
+            <span className="text-teal-300/90">{focusCrumb}</span>
+          </>
+        ) : null}
+      </nav>
 
       {showReportsUpgrade && (
         <CommercialUpgradeBanner
@@ -405,276 +499,268 @@ export function ReportsTab({
         />
       )}
 
-      {reportArea === "overview" ? (
+      {productTab === "today" ? (
         <RestaurantDashSection
-          title={SECTION_TERMINOLOGY[uiLang].executiveSnapshot}
-          description={
-            executiveVm?.groups[0]?.hint ??
-            SECTION_TERMINOLOGY[uiLang].executiveSnapshotHint
-          }
-          ariaLabel={SECTION_TERMINOLOGY[uiLang].executiveSnapshot}
+          title={todayVm.title}
+          description={todayVm.subtitle}
+          ariaLabel={todayVm.title}
         >
-          {executiveVm == null ? (
-            <p className="text-sm text-slate-400">
-              {language === "ar" ? "جاري التحميل…" : "Loading…"}
+          <div className="space-y-4">
+            <p className="text-sm font-medium text-slate-200">
+              {todayVm.primaryQuestion}
             </p>
-          ) : (
-            <div className={restaurantDash.bandStack}>
-              <p className="text-sm font-medium text-slate-200">
-                {executiveVm.primaryQuestion}
-              </p>
-              {executiveVm.groups[0]?.bands.map((band) => {
-                const gridClass =
-                  band.id === "sold"
-                    ? restaurantDash.kpiGridPrimary
-                    : band.id === "collection"
-                      ? restaurantDash.kpiGridSupporting
-                      : restaurantDash.kpiGridSecondary;
-                return (
-                  <div key={band.id} className="space-y-2">
-                    <div>
-                      <h3 className={restaurantDash.bandTitle}>{band.title}</h3>
-                      <p className={restaurantDash.bandHint}>{band.hint}</p>
-                    </div>
-                    <div className={gridClass}>
-                      {band.cards.map((card) => (
-                        <RestaurantKpiCard
-                          key={card.kpiId}
-                          label={card.label}
-                          value={card.value}
-                          emphasis={card.visualTier}
-                          icon={
-                            card.kpiId === "orderCount" ||
-                            card.kpiId === "orderSales"
-                              ? ClipboardList
-                              : card.kpiId === "taxCollected"
-                                ? Receipt
-                                : DollarSign
-                          }
-                          tone={
-                            card.kpiId === "refundPublishedTotal"
-                              ? "warning"
-                              : card.kpiId === "paymentOverview"
-                                ? "info"
-                                : card.kpiId === "revenue"
-                                  ? "success"
-                                  : "info"
-                          }
-                          valueVariant={
-                            card.kpiId === "orderCount" ? "operational" : "revenue"
-                          }
-                          hint={card.caption}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-              <p className="text-xs text-slate-500">{executiveVm.footerNote}</p>
-            </div>
-          )}
+            {ordersBlocked ? (
+              <VerificationRequiredPanel variant="orders" />
+            ) : todayLoading ? (
+              <ExecutivePeriodDashboardSkeleton />
+            ) : todayEmpty ? (
+              <ExecutivePeriodEmptyState scope="today" language={uiLang} />
+            ) : (
+              <ExecutivePeriodDashboardGrid
+                cards={todayVm.cards}
+                language={uiLang}
+                onActivate={drillFromCard}
+              />
+            )}
+          </div>
         </RestaurantDashSection>
       ) : null}
 
-      {reportArea === "sales" ? (
-        <div className="space-y-6 sm:space-y-8">
-          {ordersBlocked ? (
-            <VerificationRequiredPanel variant="orders" />
-          ) : (
-            <RestaurantDashSection
-              title={SECTION_TERMINOLOGY[uiLang].salesAnalytics}
-              description={SECTION_TERMINOLOGY[uiLang].salesAnalyticsNote}
-              ariaLabel={SECTION_TERMINOLOGY[uiLang].salesAnalytics}
-            >
-              <div className={restaurantDash.kpiGridWide}>
-                <RestaurantKpiCard
-                  label={
-                    language === "ar"
-                      ? `${kpiDisplayName("orderSales", "ar")} اليوم (يوم العمل)`
-                      : `Today's ${kpiDisplayName("orderSales", "en")} (Business Day)`
-                  }
-                  value={`${orderSales?.today.orderSales ?? "0.00"} ${sym}`}
-                  icon={DollarSign}
-                  tone="accent"
-                  valueVariant="revenue"
+      {productTab === "month" ? (
+        <div className="space-y-5 sm:space-y-6">
+          <ReportingPeriodToolbar
+            title={language === "ar" ? "اختر الشهر" : "Choose month"}
+            month={reportMonth}
+            year={reportYear}
+            monthNames={monthNames}
+            onMonthChange={setReportMonth}
+            onYearChange={setReportYear}
+          />
+          <RestaurantDashSection
+            title={monthVm.title}
+            description={monthVm.subtitle}
+            ariaLabel={monthVm.title}
+          >
+            <div className="space-y-4">
+              <p className="text-sm font-medium text-slate-200">
+                {monthVm.primaryQuestion}
+              </p>
+              {ordersBlocked ? (
+                <VerificationRequiredPanel variant="orders" />
+              ) : monthLoading ? (
+                <ExecutivePeriodDashboardSkeleton />
+              ) : monthEmpty ? (
+                <ExecutivePeriodEmptyState scope="month" language={uiLang} />
+              ) : (
+                <ExecutivePeriodDashboardGrid
+                  cards={monthVm.cards}
+                  language={uiLang}
+                  onActivate={drillFromCard}
                 />
-                <RestaurantKpiCard
-                  label={`${kpiDisplayName("completedOrders", uiLang)} · ${periodLabel}`}
-                  value={orderPeriod.completedOrders}
-                  icon={ClipboardList}
-                  tone="info"
-                />
-              </div>
-            </RestaurantDashSection>
-          )}
+              )}
+            </div>
+          </RestaurantDashSection>
+        </div>
+      ) : null}
+
+      {productTab === "financial" ? (
+        <div className="space-y-6 sm:space-y-8 lg:space-y-10">
+          <ReportingPeriodToolbar
+            title={
+              language === "ar"
+                ? "فترة التحليلات المالية"
+                : "Financial analytics period"
+            }
+            month={reportMonth}
+            year={reportYear}
+            monthNames={monthNames}
+            onMonthChange={setReportMonth}
+            onYearChange={setReportYear}
+          />
+
+          <div
+            id={FINANCIAL_SECTION_IDS.overview}
+            className={cn(
+              financialFocus === "overview" &&
+                "rounded-2xl ring-2 ring-teal-400/30 ring-offset-2 ring-offset-slate-950"
+            )}
+          >
+            {businessMonth != null ? (
+              <FinancialSalesFlowStrip
+                language={uiLang}
+                revenue={businessMonth.revenue ?? "0.00"}
+                refundPublishedTotal={
+                  businessMonth.refundPublishedTotal ?? "0.00"
+                }
+                netRevenue={businessMonth.netRevenue ?? "0.00"}
+                currencySymbol={financialSym}
+              />
+            ) : businessMonthLoading ? (
+              <ExecutivePeriodDashboardSkeleton className="max-w-4xl" />
+            ) : (
+              <ExecutivePeriodEmptyState scope="month" language={uiLang} />
+            )}
+          </div>
 
           <SettlementTrendsSection
             restaurantId={restaurantId}
             language={language}
             queriesEnabled={enabled}
-            currencySymbol={sym}
-            from={activeRange.from}
-            to={activeRange.to}
+            currencySymbol={
+              resolveExportCurrency(businessMonth, fallbackSym, currencyCode)
+                .currencySymbol
+            }
+            from={monthRange.from}
+            to={monthRange.to}
+            sectionId={FINANCIAL_SECTION_IDS.salesTrend}
+            emphasized={financialFocus === "sales-trend"}
           />
 
-          {!ordersBlocked && activeRollup != null ? (
-            <Card className={cn("border-slate-700/50 bg-slate-900/40")}>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold">
-                  {reportScope === "month"
-                    ? language === "ar"
-                      ? "تفصيل أيام الشهر (مبيعات الطلبات)"
-                      : "Month day detail (Sales Orders)"
-                    : language === "ar"
-                      ? "تفصيل أشهر السنة (مبيعات الطلبات)"
-                      : "Year month detail (Sales Orders)"}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                {(activeRollup.periods.length ?? 0) === 0 ? (
-                  <p className="py-8 text-center text-sm text-muted-foreground">
-                    {language === "ar" ? "لا توجد بيانات" : "No data"}
-                  </p>
-                ) : (
-                  <div className="max-h-64 space-y-1.5 overflow-y-auto">
-                    {activeRollup.periods.map((row) => (
-                      <div
-                        key={row.periodKey}
-                        className="flex justify-between rounded-lg bg-muted/10 p-2.5 text-sm"
-                      >
-                        <span>{row.periodKey}</span>
-                        <span className="tabular-nums">
-                          {row.completedOrders} · {row.orderSales} {sym}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ) : null}
-        </div>
-      ) : null}
-
-      {reportArea === "financial" ? (
-        <div className="space-y-6 sm:space-y-8">
-          {activeBusiness != null ? (
-            <FinancialSalesFlowStrip
-              language={uiLang}
-              revenue={activeBusiness.revenue ?? "0.00"}
-              refundPublishedTotal={
-                activeBusiness.refundPublishedTotal ?? "0.00"
-              }
-              netRevenue={activeBusiness.netRevenue ?? "0.00"}
-              currencySymbol={displaySym}
-            />
-          ) : null}
-          <RefundAnalyticsSection
-            restaurantId={restaurantId}
-            language={language}
-            queriesEnabled={enabled}
-            currencySymbol={sym}
-            from={activeRange.from}
-            to={activeRange.to}
-          />
           <PaymentMethodAnalysisSection
             restaurantId={restaurantId}
             language={language}
             queriesEnabled={enabled}
-            currencySymbol={sym}
-            from={activeRange.from}
-            to={activeRange.to}
+            currencySymbol={
+              resolveExportCurrency(businessMonth, fallbackSym, currencyCode)
+                .currencySymbol
+            }
+            from={monthRange.from}
+            to={monthRange.to}
+            sectionId={FINANCIAL_SECTION_IDS.payment}
+            highlightCanonical={
+              financialFocus === "payment-cash"
+                ? "cash"
+                : financialFocus === "payment-card"
+                  ? "card"
+                  : null
+            }
+            emphasized={
+              financialFocus === "payment-cash" ||
+              financialFocus === "payment-card"
+            }
           />
-          <RestaurantDashSection
-            title={SECTION_TERMINOLOGY[uiLang].taxAnalysis}
-            description={SECTION_TERMINOLOGY[uiLang].taxAnalysisPeriodNote}
-            ariaLabel={SECTION_TERMINOLOGY[uiLang].taxAnalysis}
-          >
-            <div className={restaurantDash.kpiGridSupporting}>
-              <RestaurantKpiCard
-                label={kpiDisplayName("taxCollected", uiLang)}
-                value={formatSettlementRevenue(
-                  activeBusiness?.taxCollected ?? "0.00",
-                  displaySym
-                )}
-                icon={Receipt}
-                tone="info"
-                valueVariant="revenue"
-                emphasis="supporting"
-              />
-              <RestaurantKpiCard
-                label={kpiDisplayName("refundRate", uiLang)}
-                value={`${activeBusiness?.refundRate ?? "0.00"}%`}
-                icon={Receipt}
-                tone="warning"
-                emphasis="supporting"
-              />
-            </div>
-          </RestaurantDashSection>
-          <RestaurantDashSection
-            title={SECTION_TERMINOLOGY[uiLang].advancedFinancial}
-            description={SECTION_TERMINOLOGY[uiLang].advancedFinancialNote}
-            ariaLabel={SECTION_TERMINOLOGY[uiLang].advancedFinancial}
-          >
-            <div className={restaurantDash.kpiGridSupporting}>
-              <RestaurantKpiCard
-                label={kpiDisplayName("averageCheck", uiLang)}
-                value={formatSettlementRevenue(
-                  activeBusiness?.averageCheck ?? "0.00",
-                  displaySym
-                )}
-                icon={DollarSign}
-                tone="info"
-                valueVariant="revenue"
-                emphasis="supporting"
-              />
-              <RestaurantKpiCard
-                label={kpiDisplayName("averageOrder", uiLang)}
-                value={`${orderPeriod.averageOrder} ${sym}`}
-                icon={ClipboardList}
-                tone="info"
-                valueVariant="revenue"
-                emphasis="supporting"
-              />
-            </div>
-          </RestaurantDashSection>
-          <SettlementOverviewSection
+
+          <SalesSourceAnalysisSection
+            language={language}
+            sectionId={FINANCIAL_SECTION_IDS.salesSource}
+            emphasized={financialFocus === "sales-source"}
+          />
+
+          <OrdersDetailsSection
+            language={language}
+            orderCount={monthOrderPeriod.orderCount}
+            completedOrders={monthOrderPeriod.completedOrders}
+            orderSalesDisplay={formatSettlementRevenue(
+              monthOrderPeriod.orderSales,
+              financialSym
+            )}
+            sectionId={FINANCIAL_SECTION_IDS.orders}
+            emphasized={financialFocus === "orders"}
+          />
+
+          <RefundAnalyticsSection
             restaurantId={restaurantId}
             language={language}
             queriesEnabled={enabled}
-            currencySymbol={sym}
-            from={activeRange.from}
-            to={activeRange.to}
+            currencySymbol={
+              resolveExportCurrency(businessMonth, fallbackSym, currencyCode)
+                .currencySymbol
+            }
+            from={monthRange.from}
+            to={monthRange.to}
+            sectionId={FINANCIAL_SECTION_IDS.refunds}
+            emphasized={financialFocus === "refunds"}
           />
-        </div>
-      ) : null}
 
-      {reportArea === "exports" ? (
-        <RestaurantDashSection
-          title={SECTION_TERMINOLOGY[uiLang].reportingExports}
-          description={SECTION_TERMINOLOGY[uiLang].reportingExportsNote}
-          ariaLabel={SECTION_TERMINOLOGY[uiLang].reportingExports}
-        >
-          <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() => void exportScopeXlsx(reportScope)}
-              className="rounded-md border border-green-500/30 bg-green-500/10 px-4 py-2 text-sm font-medium text-green-400 hover:bg-green-500/20"
-            >
-              {language === "ar" ? "تنزيل Excel" : "Download Excel"}
-              {showExcelUpgrade && (
-                <span className="ml-1 text-[10px] text-yellow-500/90">
-                  ({uiLang === "ar" ? "ترقية" : "upgrade"})
-                </span>
-              )}
-            </button>
-            <p className="w-full text-xs text-slate-400">
-              {language === "ar"
-                ? `يُصدَّر لنفس الفترة النشطة: ${periodLabel}`
-                : `Exports use the active period: ${periodLabel}`}
-            </p>
-          </div>
-        </RestaurantDashSection>
+          <RestaurantDashSection
+            id={FINANCIAL_SECTION_IDS.tax}
+            title={SECTION_TERMINOLOGY[uiLang].taxAnalysis}
+            description={SECTION_TERMINOLOGY[uiLang].taxAnalysisPeriodNote}
+            ariaLabel={SECTION_TERMINOLOGY[uiLang].taxAnalysis}
+            className={cn(
+              financialFocus === "tax" &&
+                "rounded-2xl ring-2 ring-violet-400/40 ring-offset-2 ring-offset-slate-950"
+            )}
+          >
+            <div className={restaurantDash.kpiGridSecondary}>
+              <RestaurantKpiCard
+                label={kpiDisplayName("taxCollected", uiLang)}
+                value={formatSettlementRevenue(
+                  businessMonth?.taxCollected ?? "0.00",
+                  financialSym
+                )}
+                icon={Receipt}
+                tone="accent"
+                valueVariant="revenue"
+                emphasis="secondary"
+              />
+              <RestaurantKpiCard
+                label={
+                  uiLang === "ar" ? "المبيعات قبل الضريبة" : "Sales Before Tax"
+                }
+                value="—"
+                icon={Scale}
+                tone="neutral"
+                emphasis="supporting"
+                hint={
+                  uiLang === "ar"
+                    ? "يظهر عند توفر أساس الضريبة"
+                    : "Appears when tax base is available"
+                }
+              />
+              <RestaurantKpiCard
+                label={
+                  uiLang === "ar" ? "المبيعات بعد الضريبة" : "Sales After Tax"
+                }
+                value="—"
+                icon={CircleDollarSign}
+                tone="neutral"
+                emphasis="supporting"
+                hint={
+                  uiLang === "ar"
+                    ? "يظهر عند توفر أساس الضريبة"
+                    : "Appears when tax base is available"
+                }
+              />
+            </div>
+          </RestaurantDashSection>
+
+          <RestaurantDashSection
+            id={FINANCIAL_SECTION_IDS.exports}
+            title={SECTION_TERMINOLOGY[uiLang].reportingExports}
+            description={SECTION_TERMINOLOGY[uiLang].reportingExportsNote}
+            ariaLabel={SECTION_TERMINOLOGY[uiLang].reportingExports}
+            className={cn(
+              financialFocus === "exports" &&
+                "rounded-2xl ring-2 ring-cyan-400/35 ring-offset-2 ring-offset-slate-950"
+            )}
+          >
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => void exportScopeXlsx("month")}
+                className="min-h-10 rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-2.5 text-sm font-medium text-green-400 motion-safe:transition hover:bg-green-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400/40"
+              >
+                {language === "ar" ? "Excel لهذا الشهر" : "Excel for this month"}
+              </button>
+              <button
+                type="button"
+                onClick={() => void exportScopeXlsx("year")}
+                className="min-h-10 rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-2.5 text-sm font-medium text-cyan-400 motion-safe:transition hover:bg-cyan-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/40"
+              >
+                {language === "ar" ? "Excel لهذه السنة" : "Excel for this year"}
+              </button>
+              {showExcelUpgrade ? (
+                <CommercialUpgradeBanner
+                  entitlements={entitlements}
+                  featureKey="excelExport"
+                  language={uiLang}
+                  className="w-full border-yellow-500/30 bg-yellow-500/5"
+                />
+              ) : null}
+            </div>
+          </RestaurantDashSection>
+        </div>
       ) : null}
     </div>
   );

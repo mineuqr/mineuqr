@@ -1,13 +1,14 @@
 /**
- * REPORTING-VISUAL-HIERARCHY-1 — Financial relationship strip (presentation only).
+ * REPORTING-PRODUCT-POLISH-1 — Financial relationship strip (presentation only).
  * Shows Total Sales → Refund Amount → Net Sales using existing DTO values.
- * No formulas invented — displays BusinessMetricsSummary fields as-is.
  */
 import { kpiDisplayName } from "@/lib/reporting/kpiDisplay";
 import { formatSettlementRevenue } from "@/lib/settlementOverviewDisplay";
+import { REPORTING_CATEGORY_HEX } from "@/lib/reporting-exports/reportingExecutiveColors";
 import { SECTION_TERMINOLOGY } from "@shared/reporting-platform";
 import { ChevronRight } from "lucide-react";
 import { restaurantDash } from "./restaurantDashStyles";
+import { cn } from "@/lib/utils";
 
 export function FinancialSalesFlowStrip({
   language,
@@ -30,26 +31,26 @@ export function FinancialSalesFlowStrip({
       id: "revenue" as const,
       label: kpiDisplayName("revenue", language),
       value: formatSettlementRevenue(revenue, currencySymbol),
-      emphasis: "primary" as const,
+      color: REPORTING_CATEGORY_HEX.net,
     },
     {
       id: "refundPublishedTotal" as const,
       label: kpiDisplayName("refundPublishedTotal", language),
       value: formatSettlementRevenue(refundPublishedTotal, currencySymbol),
-      emphasis: "secondary" as const,
+      color: REPORTING_CATEGORY_HEX.refund,
     },
     {
       id: "netRevenue" as const,
       label: kpiDisplayName("netRevenue", language),
       value: formatSettlementRevenue(netRevenue, currencySymbol),
-      emphasis: "primary" as const,
+      color: REPORTING_CATEGORY_HEX.cash,
     },
   ];
 
   return (
     <section
-      className={restaurantDash.flowStrip}
-      aria-label={isAr ? "علاقة المبيعات والمرتجعات" : "Sales to net relationship"}
+      className={cn(restaurantDash.flowStrip, "rounded-2xl")}
+      aria-label={isAr ? "من إجمالي المبيعات إلى الصافي" : "From Total Sales to Net"}
     >
       <div className="w-full space-y-3">
         <div>
@@ -69,11 +70,9 @@ export function FinancialSalesFlowStrip({
                   {step.label}
                 </span>
                 <span
-                  className={
-                    step.emphasis === "primary"
-                      ? "text-lg font-bold tabular-nums text-white sm:text-xl"
-                      : "text-base font-semibold tabular-nums text-orange-300/90 sm:text-lg"
-                  }
+                  dir="ltr"
+                  className="text-lg font-bold tabular-nums sm:text-xl"
+                  style={{ color: step.color }}
                 >
                   {step.value}
                 </span>

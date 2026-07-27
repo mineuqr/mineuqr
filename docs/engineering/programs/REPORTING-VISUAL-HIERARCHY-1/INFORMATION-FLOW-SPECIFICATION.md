@@ -27,3 +27,5 @@ Rendered by `FinancialSalesFlowStrip` using existing DTO fields only (no recalcu
 ## Nav areas (unchanged)
 
 Overview → Sales → Financial → Exports (UX-06 four-area workspace).
+
+**Product UI (production):** Today → This Month → Financial Analytics (three-tab overlay; see REPORTING-PRODUCT-UX-RESTRUCTURE-2).

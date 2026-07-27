@@ -32,7 +32,7 @@ describe("REPORTING-EXPORTS-1 architecture guards", () => {
     expect(reports).toContain("reporting.getBusinessMetricsSummary");
     expect(reports).toContain("reporting.getBusinessMetricsTrend");
     expect(reports).toContain("reporting.getOrderSalesRollup");
-    expect(reports).toContain("reporting.getCatalogStatsSummary");
+    expect(reports).toContain("reporting.getPaymentMethodAnalytics");
     expect(reports).not.toContain("downloadSalesReportXlsx");
     expect(reports).not.toMatch(/ops\.getSettlement/);
     expect(reports).not.toContain("order.list");

@@ -62,7 +62,7 @@ describe("REPORTING-DASHBOARD-ADOPTION-1 architecture guards", () => {
       "reporting.getOrderSalesRollup"
     );
     expect(read("client/src/components/dashboard/ReportsTab.tsx")).toContain(
-      "reporting.getCatalogStatsSummary"
+      "reporting.getPaymentMethodAnalytics"
     );
     expect(read("client/src/components/dashboard/SessionsWorkspacePanel.tsx")).toContain(
       "reporting.getBusinessMetricsSummary"

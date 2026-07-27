@@ -48,7 +48,7 @@ export const restaurantDash = {
   stack: "flex flex-col gap-6 sm:gap-8",
   /** Extra space between decision bands */
   bandStack: "flex flex-col gap-5 sm:gap-7",
-  section: "flex flex-col gap-3 sm:gap-4",
+  section: "flex flex-col gap-3 sm:gap-4 scroll-mt-24",
   sectionTitle: "text-base font-semibold tracking-tight text-white sm:text-lg",
   sectionSub: "max-w-2xl text-xs leading-relaxed text-slate-400 sm:text-sm",
   bandTitle: "text-xs font-semibold uppercase tracking-wide text-slate-300 sm:text-sm",
@@ -88,8 +88,8 @@ export const restaurantDash = {
     "border-cyan-500/25 bg-gradient-to-br from-slate-800/60 via-slate-900/70 to-slate-900/90 p-4 sm:p-5"
   ),
   listPanel: cn(pricingPanelBase, "divide-y divide-cyan-500/15 overflow-hidden"),
-  emptyPanel: cn(pricingPanelBase, "px-4 py-8 text-center sm:px-6"),
-  errorPanel: cn(pricingPanelBase, "flex flex-col items-center gap-3 px-4 py-8 text-center sm:px-6"),
+  emptyPanel: cn(pricingPanelBase, "px-4 py-10 text-center sm:px-8 sm:py-12"),
+  errorPanel: cn(pricingPanelBase, "flex flex-col items-center gap-3 px-4 py-10 text-center sm:px-8"),
   itemRow: cn(
     "rounded-xl border border-cyan-500/15 bg-slate-900/30",
     restaurantMotion,

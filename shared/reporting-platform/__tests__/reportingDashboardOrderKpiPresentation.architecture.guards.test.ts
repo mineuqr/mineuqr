@@ -30,17 +30,19 @@ describe("REPORTING-UX-SIMPLIFICATION-1 dashboard presentation guards", () => {
     expect(EXECUTIVE_SUMMARY_KPI_IDS).toContain("orderSales");
   });
 
-  it("ReportsTab Sales Analytics binds completedOrders detail", () => {
+  it("ReportsTab product UX uses three tabs — Today / Month / Financial", () => {
     const reports = read("client/src/components/dashboard/ReportsTab.tsx");
-    expect(reports).toContain("REPORTING-UX-SIMPLIFICATION-1");
-    expect(reports).toContain('kpiDisplayName("completedOrders"');
-    expect(reports).toContain("orderPeriod.completedOrders");
-    expect(reports).toContain("row.completedOrders");
-    expect(reports).toContain("salesAnalytics");
-    expect(reports).toContain("Sales Orders");
-    expect(reports).toContain("Total Sales");
-    expect(reports).not.toContain("today.totalOrders");
-    expect(reports).not.toContain("month.totalOrders");
+    expect(reports).toMatch(/REPORTING-PRODUCT-(UX-RESTRUCTURE-2|POLISH-1)/);
+    expect(reports).toContain('ProductReportTab = "today" | "month" | "financial"');
+    expect(reports).toContain("buildExecutivePeriodDashboardVm");
+    expect(reports).toContain("ExecutivePeriodDashboardGrid");
+    expect(reports).toContain("executiveCardDrillTarget");
+    expect(reports).toContain("SalesSourceAnalysisSection");
+    expect(reports).toContain("OrdersDetailsSection");
+    expect(reports).toContain("financialAnalytics");
+    expect(reports).not.toContain("salesAnalytics");
+    expect(reports).not.toContain("averageOrder");
+    expect(reports).not.toContain("averageCheck");
   });
 
   it("Executive presentation maps Sales Orders from scoped totals", () => {
