@@ -63,6 +63,9 @@ describe("REPORTING-PRODUCT-SEMANTICS-1 architecture guards", () => {
     expect(overview).toContain("SECTION_TERMINOLOGY");
     expect(trends).toContain("SECTION_TERMINOLOGY");
     expect(reports).toContain("Total Sales");
+    expect(reports).toContain("Sales Orders");
+    expect(reports).toContain("salesAnalytics");
+    expect(reports).toContain("financialAnalytics");
     expect(reports).not.toContain("Gross Sales");
     expect(reports).not.toContain("Check Revenue");
     expect(overview).not.toContain('"Revenue Overview"');

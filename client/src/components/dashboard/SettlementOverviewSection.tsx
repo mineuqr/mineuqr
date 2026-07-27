@@ -49,10 +49,8 @@ export function SettlementOverviewSection({
   const { isAuthenticated, authPending } = useAuth();
   const lang = language === "ar" ? "ar" : "en";
   const isAr = lang === "ar";
-  const sectionTitle = SECTION_TERMINOLOGY[lang].checkRevenueOverview;
-  const sectionSub = isAr
-    ? "الأداء المالي للفترة المحددة — ليست مبيعات الطلبات"
-    : "Financial performance for the selected period — not Sales Orders";
+  const sectionTitle = SECTION_TERMINOLOGY[lang].advancedFinancial;
+  const sectionSub = SECTION_TERMINOLOGY[lang].advancedFinancialNote;
   const ariaLabel = sectionTitle;
 
   useDevQueryRuntimeLog("reporting.getBusinessMetricsSummary", {

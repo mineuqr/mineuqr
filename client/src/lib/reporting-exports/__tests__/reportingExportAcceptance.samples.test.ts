@@ -335,7 +335,7 @@ describe("REPORTING-DESIGN-LANGUAGE-1 samples + presentation", () => {
 
         // Charts mandatory when ≥2 trend points
         const orderSheetName =
-          language === "ar" ? "مبيعات الطلبات" : "Sales Orders";
+          language === "ar" ? "تحليلات المبيعات" : "Sales Analytics";
         const trendSheetName =
           language === "ar" ? "اتجاهات المبيعات" : "Sales Trends";
         const orderSheet = workbook.getWorksheet(orderSheetName);

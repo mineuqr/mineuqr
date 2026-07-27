@@ -234,12 +234,15 @@ describe("REPORTING-UX-RATIONALIZATION-1 Final UAT reconciliation", () => {
         business: bundle.business,
         orderPeriod,
         formatMoney,
+        paymentMonetaryTenderTotal:
+          bundle.paymentMethodAnalytics.monetaryTenderTotal,
       });
 
       expect(dashVm.groups[0]?.cards.map((c) => c.kpiId)).toEqual([
         ...EXECUTIVE_SUMMARY_KPI_IDS,
+        "paymentOverview",
       ]);
-      expect(preferredKpiLabel("revenue", "en")).toBe("Total Sales");
+      expect(dashVm.groups[0]?.cards).toHaveLength(6);      expect(preferredKpiLabel("revenue", "en")).toBe("Total Sales");
       expect(preferredKpiLabel("netRevenue", "en")).toBe("Net Sales");
       expect(preferredKpiLabel("refundPublishedTotal", "en")).toBe(
         "Refund Amount"
@@ -275,15 +278,14 @@ describe("REPORTING-UX-RATIONALIZATION-1 Final UAT reconciliation", () => {
       );
 
       for (const card of dashVm.groups[0]!.cards) {
-        if (card.kpiId === "refundRate") {
-          expect(blob).toContain(bundle.business.refundRate);
-          expect(card.value).toBe(`${bundle.business.refundRate}%`);
-        } else if (card.kpiId === "orderCount") {
+        if (card.kpiId === "orderCount") {
           expect(String(card.value)).toBe(String(orderPeriod.orderCount));
           expect(blob).toContain(String(orderPeriod.orderCount));
-        } else if (card.kpiId === "averageOrder") {
-          expect(card.value).toBe(formatMoney(orderPeriod.averageOrder));
-          expect(blob).toContain(formatMoney(orderPeriod.averageOrder));
+        } else if (card.kpiId === "paymentOverview") {
+          expect(card.value).toBe(
+            formatMoney(bundle.paymentMethodAnalytics.monetaryTenderTotal)
+          );
+          expect(blob).toContain(card.value);
         } else {
           expect(blob).toContain(card.value);
         }

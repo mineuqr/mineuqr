@@ -142,15 +142,28 @@ export const SECTION_TERMINOLOGY = Object.freeze({
       "Completed (served) orders — comparable with Sales Orders. Not every order placed.",
     financialPerformance: "Financial Performance",
     orderSalesPerformance: "Sales Orders Detail",
-    executiveSnapshot: "Executive KPIs",
+    executiveSnapshot: "Executive Overview",
     executiveSnapshotHint:
-      "Period executive snapshot — Total Sales, Net Sales, refunds, tax, and order averages.",
+      "Restaurant health at a glance — Total Sales, Sales Orders, Orders, Refunds, Tax, and Payment Overview.",
+    salesAnalytics: "Sales Analytics",
+    salesAnalyticsNote:
+      "Operational sales trends and period detail — not a second financial statement.",
+    financialAnalytics: "Financial Analytics",
+    financialAnalyticsNote:
+      "Financial detail, refunds, payments, and tax for the selected period.",
+    reportingExports: "Exports",
+    reportingExportsNote: "Download Excel or PDF for the active period.",
+    paymentOverview: "Payment Overview",
+    paymentOverviewHint: "Monetary payment tenders for the selected period.",
+    advancedFinancial: "Advanced Financial",
+    advancedFinancialNote:
+      "Secondary indicators — averages, complimentary, and paid-check counts.",
     taxAnalysis: "Tax",
     taxAnalysisPeriodNote:
       "Tax Collected covers the full reporting period — total tax from all paid checks in range (not a subset of sections).",
     adjustmentsAnalysis: "Adjustments",
-    financialSummary: "Financial Summary",
-    executiveSummary: "Executive Summary",
+    financialSummary: "Financial Analytics",
+    executiveSummary: "Executive Overview",
     coverSubtitle: "Business performance overview",
     moneyCollected: "Money Collected",
     moneyCollectedHint:
@@ -187,15 +200,28 @@ export const SECTION_TERMINOLOGY = Object.freeze({
       "الطلبات المكتملة (المقدَّمة) — قابلة للمقارنة مع مبيعات الطلبات. ليست كل الطلبات المسجّلة.",
     financialPerformance: "الأداء المالي",
     orderSalesPerformance: "تفاصيل مبيعات الطلبات",
-    executiveSnapshot: "مؤشرات تنفيذية",
+    executiveSnapshot: "نظرة تنفيذية",
     executiveSnapshotHint:
-      "لمحة تنفيذية للفترة — إجمالي المبيعات وصافي المبيعات والمرتجعات والضريبة ومتوسطات الطلبات.",
+      "صحة المطعم بنظرة سريعة — إجمالي المبيعات ومبيعات الطلبات والطلبات والمرتجعات والضريبة ونظرة المدفوعات.",
+    salesAnalytics: "تحليلات المبيعات",
+    salesAnalyticsNote:
+      "اتجاهات المبيعات التشغيلية وتفاصيل الفترة — وليست بياناً مالياً ثانياً.",
+    financialAnalytics: "التحليلات المالية",
+    financialAnalyticsNote:
+      "التفاصيل المالية بعد الدفع والمرتجعات والمدفوعات والضريبة للفترة المحددة.",
+    reportingExports: "التصدير",
+    reportingExportsNote: "تنزيل Excel أو PDF للفترة النشطة.",
+    paymentOverview: "نظرة على المدفوعات",
+    paymentOverviewHint: "إجمالي مبالغ وسائل الدفع للفترة المحددة.",
+    advancedFinancial: "تحليلات مالية متقدمة",
+    advancedFinancialNote:
+      "مؤشرات ثانوية — المتوسطات والمجاني وعدد الشيكات المدفوعة.",
     taxAnalysis: "الضريبة",
     taxAnalysisPeriodNote:
       "الضريبة المحصّلة تغطي فترة التقرير كاملة — إجمالي الضريبة من جميع الشيكات المدفوعة في النطاق (وليست جزءاً من أقسام محددة).",
     adjustmentsAnalysis: "التسويات",
-    financialSummary: "الملخص المالي",
-    executiveSummary: "الملخص التنفيذي",
+    financialSummary: "التحليلات المالية",
+    executiveSummary: "نظرة تنفيذية",
     coverSubtitle: "نظرة على أداء العمل",
     moneyCollected: "الأموال المحصّلة",
     moneyCollectedHint:
@@ -249,18 +275,20 @@ export function preferredPaymentMethodLabel(
 }
 
 /**
- * KPI ids allowed on the Executive Summary (Exec V2).
+ * KPI ids on the Executive Overview (REPORTING-UX-SIMPLIFICATION-1).
+ * Max primary indicators — averages/rates live in secondary Financial analytics.
+ * Payment Overview is a presentation card (tender total), not a KPI id.
  * Formulas unchanged; presentation selection only.
  */
 export const EXECUTIVE_SUMMARY_KPI_IDS = [
   "revenue",
-  "netRevenue",
-  "refundPublishedTotal",
-  "refundRate",
-  "taxCollected",
+  "orderSales",
   "orderCount",
-  "averageOrder",
-  "averageCheck",
+  "refundPublishedTotal",
+  "taxCollected",
 ] as const satisfies readonly KpiId[];
 
 export type ExecutiveSummaryKpiId = (typeof EXECUTIVE_SUMMARY_KPI_IDS)[number];
+
+/** Presentation-only Executive card for payment tender total (not a KPI registry id). */
+export const EXECUTIVE_PAYMENT_OVERVIEW_CARD_ID = "paymentOverview" as const;

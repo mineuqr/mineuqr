@@ -298,6 +298,8 @@ async function renderPdfDocument(
     business: biz,
     orderPeriod,
     formatMoney: money,
+    paymentMonetaryTenderTotal:
+      bundle.paymentMethodAnalytics.monetaryTenderTotal,
   });
   doc.fillColor(NAVY).font(fontBold).fontSize(11);
   text(execVm.sectionTitle, 48, y, { width: contentWidth });

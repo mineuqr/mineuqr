@@ -17,6 +17,17 @@ Official architectural reference for MineuQR 2.0. Start here for onboarding, gov
 | Start a program | [Program Charter template](./templates/Program-Charter.md) |
 | Pass compliance | [Compliance Checklist](./governance/Compliance-Checklist.md) |
 | Look up a term | [Glossary](./glossary/Architecture-Glossary.md) |
+| Apply Reporting UX rules | [Reporting UX Constitution v1.0](./constitution/Reporting-UX-Constitution-v1.0.md) |
+| Apply KPI ownership rules | [KPI Ownership Constitution v1.0](./constitution/KPI-Ownership-Constitution-v1.0.md) |
+| Apply Object Model / KPI lifecycle | [Object Model & KPI Lifecycle Constitution v1.0](./constitution/Reporting-Object-Model-and-KPI-Lifecycle-Constitution-v1.0.md) |
+| Apply KPI classification / promotion | [Classification & Promotion Constitution v1.0](./constitution/KPI-Classification-and-Promotion-Governance-Constitution-v1.0.md) |
+| Apply Presentation Scope | [Presentation Scope Constitution v1.0](./constitution/KPI-Presentation-Scope-Constitution-v1.0.md) |
+| Apply Executive Eligibility / Governance Metadata | [Executive Eligibility & Governance Metadata Constitution v1.0](./constitution/Executive-Eligibility-and-Governance-Metadata-Constitution-v1.0.md) |
+| Apply Operational Mirror / Truth Layers | [Operational Mirror & Truth Layer Constitution v1.0](./constitution/Operational-Mirror-and-Truth-Layer-Constitution-v1.0.md) |
+| Enforce Reporting Constitution | [Reporting Constitution Enforcement Framework v1.0](./constitution/Reporting-Constitution-Enforcement-Framework-v1.0.md) |
+| Version any Constitution | [Architecture Constitution Versioning Framework v1.0](./constitution/Architecture-Constitution-Versioning-Framework-v1.0.md) |
+| Look up all Constitutions | [Constitution Registry](./constitution/Constitution-Registry.md) |
+| Govern cross-domain authority | [Enterprise Architecture Governance Framework v1.0](./constitution/Enterprise-Architecture-Governance-Framework-v1.0.md) |
 
 ## Documentation hierarchy
 
@@ -45,6 +56,17 @@ The [Architecture Constitution v1.0](./constitution/Architecture-Constitution-v1
 - [Governance](./constitution/Governance.md) — Part II §18–27
 - [Compliance](./constitution/Compliance.md) — §28 certification requirements
 - [ADR Registry](./constitution/ADR-Registry.md) — authoritative ADR index
+- [Reporting UX Constitution v1.0](./constitution/Reporting-UX-Constitution-v1.0.md) — UX-01…UX-07 (pending adoption)
+- [KPI Ownership Constitution v1.0](./constitution/KPI-Ownership-Constitution-v1.0.md) — KPI-01…KPI-10 (pending adoption)
+- [Object Model & KPI Lifecycle Constitution v1.0](./constitution/Reporting-Object-Model-and-KPI-Lifecycle-Constitution-v1.0.md) — OBJ-01…04, KPI-07 (pending adoption)
+- [Classification & Promotion Constitution v1.0](./constitution/KPI-Classification-and-Promotion-Governance-Constitution-v1.0.md) — KPI-08…09 (pending adoption)
+- [Presentation Scope Constitution v1.0](./constitution/KPI-Presentation-Scope-Constitution-v1.0.md) — KPI-10 (pending adoption)
+- [Executive Eligibility & Governance Metadata Constitution v1.0](./constitution/Executive-Eligibility-and-Governance-Metadata-Constitution-v1.0.md) — GOV-01…05 (pending adoption)
+- [Operational Mirror & Truth Layer Constitution v1.0](./constitution/Operational-Mirror-and-Truth-Layer-Constitution-v1.0.md) — GOV-06…10 (pending adoption)
+- [Reporting Constitution Enforcement Framework v1.0](./constitution/Reporting-Constitution-Enforcement-Framework-v1.0.md) — GOV-11…16 final enforcement layer (pending adoption)
+- [Architecture Constitution Versioning Framework v1.0](./constitution/Architecture-Constitution-Versioning-Framework-v1.0.md) — CV-01…06 (pending review)
+- [Constitution Registry](./constitution/Constitution-Registry.md) — authoritative index of all constitutions
+- [Enterprise Architecture Governance Framework v1.0](./constitution/Enterprise-Architecture-Governance-Framework-v1.0.md) — CD-01…06 cross-domain (pending review)
 
 ## Architecture Blueprint
 

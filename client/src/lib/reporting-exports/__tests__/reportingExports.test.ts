@@ -205,11 +205,11 @@ describe("REPORTING-EXPORTS helpers", () => {
     const names = workbook.worksheets.map((s) => s.name);
     expect(names).toEqual([
       "Cover",
-      "Executive Summary",
-      "Financial Summary",
-      "Payment Analytics",
-      "Sales Orders",
+      "Executive Overview",
+      "Sales Analytics",
       "Sales Trends",
+      "Financial Analytics",
+      "Payment Analytics",
     ]);
   });
 });

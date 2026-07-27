@@ -123,6 +123,49 @@ Per-program package: Architecture Traceability Matrix, affected ADRs, affected B
 | Program certification | [Program-Certification.md](../governance/Program-Certification.md) |
 | Exceptions | [Architecture-Exception-Process.md](../governance/Architecture-Exception-Process.md) |
 
+## Constitution Versioning (platform-wide)
+
+| Topic | Document | Status |
+|---|---|---|
+| Versioning Framework (CV-01…06) | [Architecture-Constitution-Versioning-Framework-v1.0.md](./Architecture-Constitution-Versioning-Framework-v1.0.md) | Pending Review (ARCHITECTURE-CONSTITUTION-VERSIONING-1) |
+| Constitution Registry | [Constitution-Registry.md](./Constitution-Registry.md) | Seeded — sync on every constitution transition |
+| Program package | [ARCHITECTURE-CONSTITUTION-VERSIONING-1](../../engineering/programs/ARCHITECTURE-CONSTITUTION-VERSIONING-1/00-PROGRAM-PACKAGE.md) | Governance only |
+
+Applies to **all** MineuQR constitutions (Architecture, Reporting, future domains). Deletion of constitutions is prohibited.
+
+## Enterprise Cross-Domain Governance
+
+| Topic | Document | Status |
+|---|---|---|
+| Enterprise Architecture Governance Framework (CD-01…06) | [Enterprise-Architecture-Governance-Framework-v1.0.md](./Enterprise-Architecture-Governance-Framework-v1.0.md) | Pending Review (CROSS-DOMAIN-GOVERNANCE-1) |
+| Program package | [CROSS-DOMAIN-GOVERNANCE-1](../../engineering/programs/CROSS-DOMAIN-GOVERNANCE-1/00-PROGRAM-PACKAGE.md) | Enterprise governance only |
+
+Coordinates domain sovereignty, dependencies, shared principles, and conflict resolution across Order, Settlement, Reporting, Register, Session, Kitchen, Menu, Device, Waiter, and future platforms.
+
+## Reporting Product Constitutions
+
+| Topic | Document | Status |
+|---|---|---|
+| Reporting UX | [Reporting-UX-Constitution-v1.0.md](./Reporting-UX-Constitution-v1.0.md) | Pending Architecture Authority adoption (REPORTING-UX-CONSTITUTION-1) |
+| KPI Ownership | [KPI-Ownership-Constitution-v1.0.md](./KPI-Ownership-Constitution-v1.0.md) | Pending Architecture Authority adoption (REPORTING-UX-CONSTITUTION-1) |
+| Object Model & KPI Lifecycle | [Reporting-Object-Model-and-KPI-Lifecycle-Constitution-v1.0.md](./Reporting-Object-Model-and-KPI-Lifecycle-Constitution-v1.0.md) | Pending Architecture Authority adoption (REPORTING-UX-CONSTITUTION-EXTENSION-1) |
+| Classification & Promotion | [KPI-Classification-and-Promotion-Governance-Constitution-v1.0.md](./KPI-Classification-and-Promotion-Governance-Constitution-v1.0.md) | Pending Architecture Authority adoption (REPORTING-UX-CONSTITUTION-EXTENSION-2) |
+| Presentation Scope | [KPI-Presentation-Scope-Constitution-v1.0.md](./KPI-Presentation-Scope-Constitution-v1.0.md) | Pending Architecture Authority adoption (REPORTING-UX-CONSTITUTION-EXTENSION-3) |
+| Executive Eligibility & Governance Metadata | [Executive-Eligibility-and-Governance-Metadata-Constitution-v1.0.md](./Executive-Eligibility-and-Governance-Metadata-Constitution-v1.0.md) | Pending Architecture Authority adoption (REPORTING-GOVERNANCE-METADATA-CONSTITUTION-1) |
+| Operational Mirror & Truth Layers | [Operational-Mirror-and-Truth-Layer-Constitution-v1.0.md](./Operational-Mirror-and-Truth-Layer-Constitution-v1.0.md) | Pending Architecture Authority adoption (REPORTING-GOVERNANCE-CONSTITUTION-EXTENSION-2) |
+| Enforcement Framework (final layer) | [Reporting-Constitution-Enforcement-Framework-v1.0.md](./Reporting-Constitution-Enforcement-Framework-v1.0.md) | Pending Architecture Authority adoption (REPORTING-CONSTITUTION-ENFORCEMENT-1) |
+| Program package (base) | [REPORTING-UX-CONSTITUTION-1](../../engineering/programs/REPORTING-UX-CONSTITUTION-1/00-PROGRAM-PACKAGE.md) | Governance only |
+| Program package (extension 1) | [REPORTING-UX-CONSTITUTION-EXTENSION-1](../../engineering/programs/REPORTING-UX-CONSTITUTION-EXTENSION-1/00-PROGRAM-PACKAGE.md) | Governance extension only |
+| Program package (extension 2) | [REPORTING-UX-CONSTITUTION-EXTENSION-2](../../engineering/programs/REPORTING-UX-CONSTITUTION-EXTENSION-2/00-PROGRAM-PACKAGE.md) | Governance extension only |
+| Program package (extension 3) | [REPORTING-UX-CONSTITUTION-EXTENSION-3](../../engineering/programs/REPORTING-UX-CONSTITUTION-EXTENSION-3/00-PROGRAM-PACKAGE.md) | Governance extension only |
+| Program package (governance metadata) | [REPORTING-GOVERNANCE-METADATA-CONSTITUTION-1](../../engineering/programs/REPORTING-GOVERNANCE-METADATA-CONSTITUTION-1/00-PROGRAM-PACKAGE.md) | Governance extension only |
+| Program package (mirror & truth layers) | [REPORTING-GOVERNANCE-CONSTITUTION-EXTENSION-2](../../engineering/programs/REPORTING-GOVERNANCE-CONSTITUTION-EXTENSION-2/00-PROGRAM-PACKAGE.md) | Governance constitution only |
+| Program package (enforcement) | [REPORTING-CONSTITUTION-ENFORCEMENT-1](../../engineering/programs/REPORTING-CONSTITUTION-ENFORCEMENT-1/00-PROGRAM-PACKAGE.md) | Enforcement only |
+
+Canonical status/version for the above: [Constitution Registry](./Constitution-Registry.md).
+
+Reporting implementations that violate UX-01…UX-07, KPI-01…KPI-10, OBJ-01…OBJ-04, or GOV-01…GOV-16 are Architecture Violations and must not be Production Certified.
+
 **Related:** [ADR-ARCH-013](../adrs/ADR-ARCH-013.md) · [Templates](../templates/)
 
 ## Full constitutional text (§19–§25)

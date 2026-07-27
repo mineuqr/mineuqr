@@ -495,6 +495,21 @@ export async function buildReportingExportWorkbook(
     scopeLabel,
     orderPeriod,
   });
+  await buildOrderSalesSheet(workbook, {
+    bundle,
+    labels,
+    currencySymbol,
+    periodLabel,
+    scopeLabel,
+    orderPeriod,
+  });
+  await buildRevenueTrendSheet(workbook, {
+    bundle,
+    labels,
+    currencySymbol,
+    periodLabel,
+    scopeLabel,
+  });
   buildFinancialSheet(workbook, {
     bundle,
     labels,
@@ -509,21 +524,6 @@ export async function buildReportingExportWorkbook(
     bundle,
     labels,
     money,
-    periodLabel,
-    scopeLabel,
-  });
-  await buildOrderSalesSheet(workbook, {
-    bundle,
-    labels,
-    currencySymbol,
-    periodLabel,
-    scopeLabel,
-    orderPeriod,
-  });
-  await buildRevenueTrendSheet(workbook, {
-    bundle,
-    labels,
-    currencySymbol,
     periodLabel,
     scopeLabel,
   });
@@ -684,7 +684,7 @@ function buildCoverSheet(
   sheet.mergeCells(contentsRow, 1, contentsRow, COLS);
   setWesternText(
     sheet.getCell(contentsRow, 1),
-    `${labels.contents}:  ${labels.executive}  ·  ${labels.financial}  ·  ${labels.paymentMethodAnalysis}  ·  ${labels.orderSalesRollup}  ·  ${labels.revenueTrend}`,
+    `${labels.contents}:  ${labels.executive}  ·  ${labels.orderSalesRollup}  ·  ${labels.revenueTrend}  ·  ${labels.financial}  ·  ${labels.paymentMethodAnalysis}`,
     lang,
     { size: 10, color: DL.muted }
   );
@@ -735,6 +735,8 @@ function buildExecutiveSheet(
     business: bundle.business,
     orderPeriod,
     formatMoney: money,
+    paymentMonetaryTenderTotal:
+      bundle.paymentMethodAnalytics.monetaryTenderTotal,
   });
 
   writeSectionLabel(sheet, 5, vm.sectionTitle, lang);

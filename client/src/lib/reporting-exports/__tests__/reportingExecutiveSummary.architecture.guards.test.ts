@@ -1,7 +1,12 @@
+/**
+ * REPORTING-UX-SIMPLIFICATION-1 — Executive Overview guards.
+ * Max 6 cards: 5 KPI ids + Payment Overview presentation card.
+ */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  EXECUTIVE_PAYMENT_OVERVIEW_CARD_ID,
   EXECUTIVE_SUMMARY_KPI_IDS,
   SECTION_TERMINOLOGY,
 } from "@shared/reporting-platform";
@@ -42,82 +47,84 @@ const sampleOrders = {
   averageOrder: "25.00",
 };
 
-describe("REPORTING-UX-RATIONALIZATION-1 Executive Summary V2 guards", () => {
-  it("Executive Summary exposes Exec V2 KPI set", () => {
+describe("REPORTING-UX-SIMPLIFICATION-1 Executive Overview guards", () => {
+  it("Executive Overview exposes simplified primary KPI set", () => {
     expect([...EXECUTIVE_SUMMARY_KPI_IDS]).toEqual([
       "revenue",
-      "netRevenue",
-      "refundPublishedTotal",
-      "refundRate",
-      "taxCollected",
+      "orderSales",
       "orderCount",
-      "averageOrder",
-      "averageCheck",
+      "refundPublishedTotal",
+      "taxCollected",
     ]);
   });
 
-  it("view model is executive money + averages", () => {
+  it("view model is six cards including Payment Overview", () => {
     const vm = buildExecutiveSummaryViewModel({
       language: "en",
       business: sampleBusiness,
       orderPeriod: sampleOrders,
       formatMoney: (a) => a,
+      paymentMonetaryTenderTotal: "95.00",
     });
     expect(vm.primaryQuestion).toMatch(/performing/i);
     expect(vm.groups).toHaveLength(1);
     expect(vm.groups[0]?.id).toBe("executive");
     expect(vm.groups[0]?.cards.map((c) => c.kpiId)).toEqual([
       ...EXECUTIVE_SUMMARY_KPI_IDS,
+      EXECUTIVE_PAYMENT_OVERVIEW_CARD_ID,
     ]);
     expect(vm.groups[0]?.cards[0]?.label).toBe("Total Sales");
-    expect(vm.groups[0]?.cards[1]?.label).toBe("Net Sales");
-    expect(vm.groups[0]?.cards[2]?.label).toBe("Refund Amount");
-    expect(vm.groups[0]?.cards[2]?.value).toBe("10.00");
-    expect(vm.groups[0]?.cards[3]?.value).toBe("10.00%");
+    expect(vm.groups[0]?.cards[1]?.label).toBe("Sales Orders");
+    expect(vm.groups[0]?.cards[5]?.label).toBe("Payment Overview");
+    expect(vm.groups[0]?.cards[5]?.value).toBe("95.00");
   });
 
-  it("flat card builder returns Exec V2 cards", () => {
+  it("flat card builder returns six Executive Overview cards", () => {
     const cards = buildExecutiveSummaryCards({
       language: "en",
       business: sampleBusiness,
       orderPeriod: sampleOrders,
       formatMoney: (a) => a,
+      paymentMonetaryTenderTotal: "95.00",
     });
-    expect(cards).toHaveLength(8);
-    expect(cards.map((c) => c.kpiId)).toEqual([...EXECUTIVE_SUMMARY_KPI_IDS]);
+    expect(cards).toHaveLength(6);
+    expect(cards.map((c) => c.kpiId)).toEqual([
+      ...EXECUTIVE_SUMMARY_KPI_IDS,
+      EXECUTIVE_PAYMENT_OVERVIEW_CARD_ID,
+    ]);
   });
 
   it("Excel and PDF consume the shared view model with footerNote", () => {
+    const presentation = read(
+      "client/src/lib/reporting-exports/executiveSummaryPresentation.ts"
+    );
     const excel = read(
       "client/src/lib/reporting-exports/excel/buildReportingExportWorkbook.ts"
     );
     const pdf = read(
       "client/src/lib/reporting-exports/pdf/buildReportingExportPdf.ts"
     );
-    const presentation = read(
-      "client/src/lib/reporting-exports/executiveSummaryPresentation.ts"
-    );
+    expect(presentation).toContain("REPORTING-UX-SIMPLIFICATION-1");
+    expect(presentation).toContain("footerNote");
     expect(excel).toContain("buildExecutiveSummaryViewModel");
-    expect(excel).toContain("footerNote");
-    expect(excel).toContain("moneyCollectedSection");
-    expect(excel).toContain("taxAnalysisPeriodNote");
+    expect(excel).toContain("paymentMonetaryTenderTotal");
     expect(pdf).toContain("buildExecutiveSummaryViewModel");
-    expect(pdf).toContain("footerNote");
-    expect(presentation).toContain("REPORTING-UX-RATIONALIZATION-1");
-    expect(presentation).toContain("preferredKpiLabel");
   });
 
-  it("export labels still pull KPI names from Product Semantics", () => {
-    const labels = read("client/src/lib/reporting-exports/labels.ts");
-    expect(labels).toContain("preferredKpiLabel");
-    expect(labels).toContain("SECTION_TERMINOLOGY");
-  });
-
-  it("section terminology exposes executive snapshot", () => {
-    expect(SECTION_TERMINOLOGY.en.executiveSnapshot).toBe("Executive KPIs");
-    expect(SECTION_TERMINOLOGY.en.taxAnalysis).toBe("Tax");
-    expect(SECTION_TERMINOLOGY.en.taxAnalysisPeriodNote).not.toMatch(
+  it("section terminology exposes executive overview", () => {
+    expect(SECTION_TERMINOLOGY.en.executiveSnapshot).toBe("Executive Overview");
+    expect(SECTION_TERMINOLOGY.en.executiveSnapshotHint).not.toMatch(
       PERIOD_SPECIFIC_COPY
     );
+    expect(SECTION_TERMINOLOGY.en.taxAnalysisPeriodNote).not.toMatch(
+      /\b(daily|weekly|monthly|quarterly|annual|yearly)\b/i
+    );
+  });
+
+  it("secondary averages are not on Executive Overview", () => {
+    expect(EXECUTIVE_SUMMARY_KPI_IDS).not.toContain("averageOrder");
+    expect(EXECUTIVE_SUMMARY_KPI_IDS).not.toContain("averageCheck");
+    expect(EXECUTIVE_SUMMARY_KPI_IDS).not.toContain("refundRate");
+    expect(EXECUTIVE_SUMMARY_KPI_IDS).not.toContain("netRevenue");
   });
 });
