@@ -1,65 +1,94 @@
 /**
- * REPORTING-PRODUCT-POLISH-1 — Sales Source Analysis (presentation shell).
- * Channel list is product UX. Values appear only when reporting publishes them.
+ * REPORTING-PRODUCT-HOTFIX-1 — Sales Source Analysis (presentation only).
+ * Binds reporting channel facts when published. Never invents totals.
  */
 import { RestaurantDashSection } from "./RestaurantDashSection";
+import { RestaurantSectionEmpty } from "./RestaurantSectionStates";
 import { restaurantDash } from "./restaurantDashStyles";
 import { cn } from "@/lib/utils";
-
-const CHANNELS = [
-  { id: "table", en: "Table Sessions", ar: "جلسات الطاولات" },
-  { id: "waiter", en: "Waiter Orders", ar: "طلبات الويتر" },
-  { id: "qr", en: "QR Ordering", ar: "الطلب عبر QR" },
-  { id: "kiosk", en: "Self Ordering Kiosk", ar: "كيوسك الطلب الذاتي" },
-] as const;
+import {
+  buildSalesSourceAnalysisVm,
+  type SalesSourceChannelFact,
+} from "@/lib/reporting-exports/salesSourceAnalysisPresentation";
+import { Network } from "lucide-react";
 
 export function SalesSourceAnalysisSection({
   language,
   sectionId,
   emphasized,
+  /**
+   * Channel facts from reporting only.
+   * `null` = Reporting Platform has not published a channel contract (current production).
+   * `[]` = contract exists, period empty.
+   */
+  facts = null,
 }: {
   language: string;
   sectionId?: string;
   emphasized?: boolean;
+  facts?: readonly SalesSourceChannelFact[] | null;
 }) {
-  const isAr = language === "ar";
-  const title = isAr ? "تحليل مصدر المبيعات" : "Sales Source Analysis";
-  const note = isAr
-    ? "القنوات جاهزة. تظهر أرقام كل مصدر تلقائياً عند توفرها."
-    : "Channels are ready. Source totals appear automatically when available.";
+  const lang = language === "ar" ? "ar" : "en";
+  const vm = buildSalesSourceAnalysisVm({ language: lang, facts });
 
   return (
     <RestaurantDashSection
       id={sectionId}
-      title={title}
-      description={note}
-      ariaLabel={title}
+      title={vm.title}
+      description={vm.description}
+      ariaLabel={vm.title}
       className={cn(
         emphasized &&
           "rounded-2xl ring-2 ring-orange-400/35 ring-offset-2 ring-offset-slate-950"
       )}
     >
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 lg:gap-4">
-        {CHANNELS.map((ch) => (
-          <div
-            key={ch.id}
-            className={cn(restaurantDash.kpiCardSupporting, "rounded-2xl p-4")}
-          >
-            <p className="text-xs font-medium text-slate-400 sm:text-sm">
-              {isAr ? ch.ar : ch.en}
-            </p>
-            <p
-              className="mt-2 text-lg font-semibold tabular-nums text-slate-500"
-              aria-hidden
+      {vm.projectionUnavailable || !vm.hasAnyFact ? (
+        <RestaurantSectionEmpty
+          icon={Network}
+          title={
+            vm.projectionUnavailable
+              ? lang === "ar"
+                ? "تحليل القنوات غير متاح بعد"
+                : "Channel analysis not available yet"
+              : lang === "ar"
+                ? "لا توجد بيانات لهذه الفترة"
+                : "No channel activity this period"
+          }
+          message={vm.unavailableMessage}
+        />
+      ) : (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 lg:gap-4">
+          {vm.cards.map((ch) => (
+            <div
+              key={ch.channelId}
+              className={cn(restaurantDash.kpiCardSupporting, "rounded-2xl p-4")}
             >
-              —
-            </p>
-            <p className="mt-1 text-[11px] leading-snug text-slate-600">
-              {isAr ? "سيظهر عند توفر البيانات" : "Appears when data is available"}
-            </p>
-          </div>
-        ))}
-      </div>
+              <p className="text-xs font-medium text-slate-400 sm:text-sm">
+                {ch.label}
+              </p>
+              {ch.hasFact ? (
+                <>
+                  <p
+                    dir="ltr"
+                    className="mt-2 text-lg font-semibold tabular-nums text-orange-200"
+                  >
+                    {ch.amountDisplay}
+                  </p>
+                  {ch.countDisplay != null ? (
+                    <p className="mt-1 text-[11px] text-slate-500">
+                      {ch.countDisplay}
+                    </p>
+                  ) : null}
+                </>
+              ) : (
+                <p className="mt-2 text-lg font-semibold tabular-nums text-slate-500">
+                  —
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </RestaurantDashSection>
   );
 }

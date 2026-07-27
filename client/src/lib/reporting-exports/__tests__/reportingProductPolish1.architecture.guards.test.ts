@@ -15,10 +15,9 @@ function read(rel: string): string {
 describe("REPORTING-PRODUCT-POLISH-1", () => {
   it("ReportsTab uses shared period toolbar and polish program id", () => {
     const reports = read("client/src/components/dashboard/ReportsTab.tsx");
-    expect(reports).toContain("REPORTING-PRODUCT-POLISH-1");
+    expect(reports).toMatch(/REPORTING-PRODUCT-(POLISH-1|HOTFIX-1)/);
     expect(reports).toContain("ReportingPeriodToolbar");
-    expect(reports).toContain("Scale");
-    expect(reports).toContain("CircleDollarSign");
+    expect(reports).toContain("ReportingExcelToolbar");
     expect(reports).not.toContain("Restaurant Reports");
     expect(reports).not.toContain("Excel or PDF");
   });

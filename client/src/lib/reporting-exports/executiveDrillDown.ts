@@ -31,7 +31,7 @@ export const FINANCIAL_SECTION_IDS = Object.freeze({
   orders: "reporting-fin-orders",
   refunds: "reporting-fin-refunds",
   tax: "reporting-fin-tax",
-  exports: "reporting-fin-exports",
+  exports: "reporting-excel-toolbar",
 } as const);
 
 export function executiveCardDrillTarget(

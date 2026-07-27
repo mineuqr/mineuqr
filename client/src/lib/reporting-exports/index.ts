@@ -37,6 +37,11 @@ export {
   reportingCategoryFill,
 } from "./reportingExecutiveColors";
 export {
+  buildSalesSourceAnalysisVm,
+  type SalesSourceChannelFact,
+  type SalesSourceAnalysisVm,
+} from "./salesSourceAnalysisPresentation";
+export {
   downloadReportingExportXlsx,
   downloadReportingExportPdf,
 } from "./downloadReportingExport";

@@ -32,7 +32,7 @@ describe("REPORTING-UX-SIMPLIFICATION-1 dashboard presentation guards", () => {
 
   it("ReportsTab product UX uses three tabs — Today / Month / Financial", () => {
     const reports = read("client/src/components/dashboard/ReportsTab.tsx");
-    expect(reports).toMatch(/REPORTING-PRODUCT-(UX-RESTRUCTURE-2|POLISH-1)/);
+    expect(reports).toMatch(/REPORTING-PRODUCT-(UX-RESTRUCTURE-2|POLISH-1|HOTFIX-1)/);
     expect(reports).toContain('ProductReportTab = "today" | "month" | "financial"');
     expect(reports).toContain("buildExecutivePeriodDashboardVm");
     expect(reports).toContain("ExecutivePeriodDashboardGrid");

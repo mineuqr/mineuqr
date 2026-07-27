@@ -1,6 +1,6 @@
 /**
- * REPORTING-PRODUCT-POLISH-1
- * Three-tab restaurant executive reporting — final presentation polish.
+ * REPORTING-PRODUCT-HOTFIX-1
+ * Reporting product hotfix — Excel header toolbar + Sales Source honesty.
  * Presentation only — values from reporting.* DTOs; no financial recalculation.
  */
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -23,6 +23,7 @@ import { RestaurantKpiCard } from "@/components/dashboard/RestaurantKpiCard";
 import { restaurantDash } from "@/components/dashboard/restaurantDashStyles";
 import { VerificationRequiredPanel } from "@/components/auth/VerificationRequiredPanel";
 import { ReportingPeriodToolbar } from "@/components/dashboard/ReportingPeriodToolbar";
+import { ReportingExcelToolbar } from "@/components/dashboard/ReportingExcelToolbar";
 import {
   downloadReportingExportXlsx,
   monthReportingRange,
@@ -66,7 +67,7 @@ import {
   reportingWorkingHours,
   SECTION_TERMINOLOGY,
 } from "@shared/reporting-platform";
-import { ChevronRight, Receipt, Scale, CircleDollarSign } from "lucide-react";
+import { ChevronRight, Receipt } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -431,46 +432,65 @@ export function ReportsTab({
 
   return (
     <div className={cn(restaurantDash.stack, "pb-2")}>
-      <header className="space-y-2">
-        <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
-          {language === "ar" ? "التقارير" : "Reports"}
-        </h1>
-        <p className="max-w-2xl text-sm leading-relaxed text-slate-400">
-          {language === "ar"
-            ? "اليوم · هذا الشهر · التحليلات المالية — افهم أداء مطعمك بسرعة واتخذ قرارات أوضح."
-            : "Today · This Month · Financial Analytics — understand performance quickly and decide with clarity."}
-        </p>
-      </header>
+      <div className="sticky top-0 z-30 -mx-1 space-y-3 bg-gradient-to-b from-slate-950 via-slate-950/95 to-slate-950/80 px-1 pb-3 pt-1 backdrop-blur-md">
+        <header className="space-y-2">
+          <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
+            {language === "ar" ? "التقارير" : "Reports"}
+          </h1>
+          <p className="max-w-2xl text-sm leading-relaxed text-slate-400">
+            {language === "ar"
+              ? "اليوم · هذا الشهر · التحليلات المالية — افهم أداء مطعمك بسرعة واتخذ قرارات أوضح."
+              : "Today · This Month · Financial Analytics — understand performance quickly and decide with clarity."}
+          </p>
+        </header>
 
-      <div
-        className="flex flex-wrap gap-2 border-b border-slate-700/40 pb-3"
-        role="tablist"
-        aria-label={language === "ar" ? "أقسام التقارير" : "Report sections"}
-      >
-        {(
-          [
-            ["today", tabLabels.today],
-            ["month", tabLabels.month],
-            ["financial", tabLabels.financial],
-          ] as const
-        ).map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            aria-selected={productTab === id}
-            onClick={() => selectProductTab(id)}
-            className={cn(
-              "min-h-10 rounded-xl px-4 py-2 text-sm font-semibold motion-safe:transition-all motion-safe:duration-200",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/50",
-              productTab === id
-                ? "bg-white text-slate-900 shadow-md shadow-white/10"
-                : "text-slate-300 hover:bg-slate-800 hover:text-white"
-            )}
-          >
-            {label}
-          </button>
-        ))}
+        <ReportingExcelToolbar
+          toolbarId={FINANCIAL_SECTION_IDS.exports}
+          language={language}
+          onExportMonth={() => void exportScopeXlsx("month")}
+          onExportYear={() => void exportScopeXlsx("year")}
+          upgradeSlot={
+            showExcelUpgrade ? (
+              <CommercialUpgradeBanner
+                entitlements={entitlements}
+                featureKey="excelExport"
+                language={uiLang}
+                className="border-yellow-500/30 bg-yellow-500/5"
+              />
+            ) : null
+          }
+        />
+
+        <div
+          className="flex flex-wrap gap-2 border-b border-slate-700/40 pb-3"
+          role="tablist"
+          aria-label={language === "ar" ? "أقسام التقارير" : "Report sections"}
+        >
+          {(
+            [
+              ["today", tabLabels.today],
+              ["month", tabLabels.month],
+              ["financial", tabLabels.financial],
+            ] as const
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              aria-selected={productTab === id}
+              onClick={() => selectProductTab(id)}
+              className={cn(
+                "min-h-10 rounded-xl px-4 py-2 text-sm font-semibold motion-safe:transition-all motion-safe:duration-200",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/50",
+                productTab === id
+                  ? "bg-white text-slate-900 shadow-md shadow-white/10"
+                  : "text-slate-300 hover:bg-slate-800 hover:text-white"
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <nav
@@ -644,6 +664,7 @@ export function ReportsTab({
             language={language}
             sectionId={FINANCIAL_SECTION_IDS.salesSource}
             emphasized={financialFocus === "sales-source"}
+            facts={null}
           />
 
           <OrdersDetailsSection
@@ -694,71 +715,12 @@ export function ReportsTab({
                 valueVariant="revenue"
                 emphasis="secondary"
               />
-              <RestaurantKpiCard
-                label={
-                  uiLang === "ar" ? "المبيعات قبل الضريبة" : "Sales Before Tax"
-                }
-                value="—"
-                icon={Scale}
-                tone="neutral"
-                emphasis="supporting"
-                hint={
-                  uiLang === "ar"
-                    ? "يظهر عند توفر أساس الضريبة"
-                    : "Appears when tax base is available"
-                }
-              />
-              <RestaurantKpiCard
-                label={
-                  uiLang === "ar" ? "المبيعات بعد الضريبة" : "Sales After Tax"
-                }
-                value="—"
-                icon={CircleDollarSign}
-                tone="neutral"
-                emphasis="supporting"
-                hint={
-                  uiLang === "ar"
-                    ? "يظهر عند توفر أساس الضريبة"
-                    : "Appears when tax base is available"
-                }
-              />
             </div>
-          </RestaurantDashSection>
-
-          <RestaurantDashSection
-            id={FINANCIAL_SECTION_IDS.exports}
-            title={SECTION_TERMINOLOGY[uiLang].reportingExports}
-            description={SECTION_TERMINOLOGY[uiLang].reportingExportsNote}
-            ariaLabel={SECTION_TERMINOLOGY[uiLang].reportingExports}
-            className={cn(
-              financialFocus === "exports" &&
-                "rounded-2xl ring-2 ring-cyan-400/35 ring-offset-2 ring-offset-slate-950"
-            )}
-          >
-            <div className="flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={() => void exportScopeXlsx("month")}
-                className="min-h-10 rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-2.5 text-sm font-medium text-green-400 motion-safe:transition hover:bg-green-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400/40"
-              >
-                {language === "ar" ? "Excel لهذا الشهر" : "Excel for this month"}
-              </button>
-              <button
-                type="button"
-                onClick={() => void exportScopeXlsx("year")}
-                className="min-h-10 rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-2.5 text-sm font-medium text-cyan-400 motion-safe:transition hover:bg-cyan-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/40"
-              >
-                {language === "ar" ? "Excel لهذه السنة" : "Excel for this year"}
-              </button>
-              {showExcelUpgrade ? (
-                <CommercialUpgradeBanner
-                  entitlements={entitlements}
-                  featureKey="excelExport"
-                  language={uiLang}
-                  className="w-full border-yellow-500/30 bg-yellow-500/5"
-                />
-              ) : null}
-            </div>
+            <p className="mt-3 text-xs leading-relaxed text-slate-500">
+              {uiLang === "ar"
+                ? "المبيعات قبل/بعد الضريبة تظهر عند نشر أساس الضريبة في عقود التقارير."
+                : "Sales before/after tax appear when Reporting publishes tax-base facts."}
+            </p>
           </RestaurantDashSection>
         </div>
       ) : null}

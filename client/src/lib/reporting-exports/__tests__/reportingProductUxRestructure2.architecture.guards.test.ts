@@ -66,7 +66,7 @@ describe("REPORTING-PRODUCT-UX-RESTRUCTURE-2", () => {
 
   it("wires drill-down and empty states in ReportsTab", () => {
     const reports = read("client/src/components/dashboard/ReportsTab.tsx");
-    expect(reports).toMatch(/REPORTING-PRODUCT-(UX-RESTRUCTURE-2|POLISH-1)/);
+    expect(reports).toMatch(/REPORTING-PRODUCT-(UX-RESTRUCTURE-2|POLISH-1|HOTFIX-1)/);
     expect(reports).toContain("drillFromCard");
     expect(reports).toContain("ExecutivePeriodEmptyState");
     expect(reports).toContain("ExecutivePeriodDashboardSkeleton");

@@ -17,7 +17,7 @@ function read(rel: string): string {
 describe("REPORTING-PRODUCT-UX-RESTRUCTURE-1 architecture guards", () => {
   it("ReportsTab ships exactly three product tabs", () => {
     const reports = read("client/src/components/dashboard/ReportsTab.tsx");
-    expect(reports).toMatch(/REPORTING-PRODUCT-(UX-RESTRUCTURE-2|POLISH-1)/);
+    expect(reports).toMatch(/REPORTING-PRODUCT-(UX-RESTRUCTURE-2|POLISH-1|HOTFIX-1)/);
     expect(reports).toContain('"today" | "month" | "financial"');
     expect(reports).toContain("ExecutivePeriodDashboardGrid");
     expect(reports).toContain("executiveCardDrillTarget");
@@ -56,10 +56,14 @@ describe("REPORTING-PRODUCT-UX-RESTRUCTURE-1 architecture guards", () => {
     const src = read(
       "client/src/components/dashboard/SalesSourceAnalysisSection.tsx"
     );
-    expect(src).toMatch(/REPORTING-PRODUCT-UX-RESTRUCTURE-[12]|REPORTING-PRODUCT-POLISH-1/);
-    expect(src).toContain("—");
+    const vm = read(
+      "client/src/lib/reporting-exports/salesSourceAnalysisPresentation.ts"
+    );
+    expect(src).toContain("buildSalesSourceAnalysisVm");
     expect(src).not.toContain("grandTotal");
-    expect(src).not.toMatch(/tenderAmount/);
+    expect(vm).toContain("Never invents");
+    expect(vm).not.toMatch(/\.reduce\s*\(/);
+    expect(vm).not.toContain("grandTotal");
   });
 
   it("interactive cards are presentation motion only", () => {
