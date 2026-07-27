@@ -95,7 +95,12 @@ See [VALIDATION.md](./VALIDATION.md).
 
 1. Staff UX to choose payment method at settle (reduces `other` default).
 2. Optional future chart in Excel using existing chart helpers.
-3. Gateway / reconciliation programs should read the same Settlement Transactions.
+3. Gateway / reconciliation programs should read the same **canonical PaymentMethodAnalyticsDto**
+   (Settlement Record payment snapshots by default; Settlement Transactions for legacy/detail modes).
+
+> **Supersession (REPORTING-UX-RATIONALIZATION-1 certification):** Settlement Record is the
+> canonical financial reporting source in Production. Settlement Transactions remain
+> implementation/payment-detail data where applicable — not the default Payment Analytics path.
 
 ## 11. Architectural gaps
 

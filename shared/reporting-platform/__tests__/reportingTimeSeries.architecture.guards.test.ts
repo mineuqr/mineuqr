@@ -52,12 +52,12 @@ describe("REPORTING-TIME-SERIES + BUSINESS-DAY-ADOPTION guards", () => {
     expect(svc).not.toContain("getUTCFullYear");
   });
 
-  it("export periodRange uses Business Day month/year bounds", () => {
+  it("export periodRange uses Gregorian calendar month/year bounds (Rev 2.0)", () => {
     const range = read("client/src/lib/reporting-exports/periodRange.ts");
-    expect(range).toContain("businessDayMonthReportingBounds");
-    expect(range).toContain("businessDayYearReportingBounds");
-    expect(range).toContain("reportingWorkingHours");
-    expect(range).not.toContain("Date.UTC");
+    expect(range).toContain("gregorianCalendarMonthReportingBounds");
+    expect(range).toContain("gregorianCalendarYearReportingBounds");
+    expect(range).not.toContain("businessDayMonthReportingBounds");
+    expect(range).not.toContain("businessDayYearReportingBounds");
   });
 
   it("exposes comparison APIs on reporting router", () => {
@@ -86,6 +86,17 @@ describe("REPORTING-TIME-SERIES + BUSINESS-DAY-ADOPTION guards", () => {
     expect(trends).toContain("getBusinessMetricsTrend");
     expect(trends).not.toContain("getSettlementTrend");
     expect(trends).not.toContain("ops.getSettlement");
+  });
+
+  it("legacy BD month/year helpers are deprecated; Production filters use Gregorian", () => {
+    const bd = read(
+      "shared/reporting-platform/timeSeries/businessDayReporting.ts"
+    );
+    expect(bd).toContain("@deprecated Legacy / internal");
+    expect(bd).toContain("businessDayMonthReportingBounds");
+    expect(bd).toContain("businessDayYearReportingBounds");
+    expect(bd).toContain("gregorianCalendarMonthReportingBounds");
+    expect(bd).toContain("gregorianCalendarYearReportingBounds");
   });
 
   it("shared time-series package has no presentation imports", () => {

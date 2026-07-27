@@ -1,10 +1,7 @@
 /**
- * REPORTING-EXECUTIVE-SUMMARY-RATIONALIZATION-1 — KPI selection foundation
- * REPORTING-EXECUTIVE-SUMMARY-UX-1 — owner/manager readability
- * REPORTING-EXECUTIVE-SUMMARY-SIMPLIFICATION-1 — operational KPIs only
- *
+ * REPORTING-UX-RATIONALIZATION-1 Rev 2.0 — Executive Summary Version 2.
  * Presentation only. KPI names from Product Semantics (`preferredKpiLabel`).
- * UX grouping / captions / plain-language framing live here — not in Product Semantics.
+ * Formulas unchanged — values from reporting.* DTOs only.
  */
 
 import {
@@ -28,7 +25,7 @@ export type ExecutiveSummaryCard = Readonly<{
 }>;
 
 export type ExecutiveSummaryGroup = Readonly<{
-  id: "operational";
+  id: "executive";
   title: string;
   hint: string;
   cards: readonly ExecutiveSummaryCard[];
@@ -39,7 +36,7 @@ export type ExecutiveSummaryViewModel = Readonly<{
   /** Primary question the page answers. */
   primaryQuestion: string;
   groups: readonly ExecutiveSummaryGroup[];
-  /** Where to find Check Revenue / tax / payment details. */
+  /** Where to find detailed financial / payment sections. */
   footerNote: string;
 }>;
 
@@ -47,51 +44,88 @@ export type ExecutiveSummaryViewModel = Readonly<{
 const KPI_CAPTIONS: Readonly<
   Record<ExecutiveSummaryKpiId, Readonly<{ en: string; ar: string }>>
 > = Object.freeze({
-  orderSales: {
-    en: "Value of orders that were completed (served)",
-    ar: "قيمة الطلبات التي اكتملت (قُدّمت)",
+  revenue: {
+    en: "Paid check totals for this period (gross)",
+    ar: "إجمالي الشيكات المدفوعة لهذه الفترة",
   },
-  completedOrders: {
-    en: "How many orders were completed (served)",
-    ar: "عدد الطلبات التي اكتملت (قُدّمت)",
+  netRevenue: {
+    en: "Gross Sales after published refunds",
+    ar: "إجمالي المبيعات بعد المرتجعات المنشورة",
+  },
+  refundPublishedTotal: {
+    en: "Total refunded (published Settlement Records)",
+    ar: "إجمالي المرتجعات المنشورة",
+  },
+  refundRate: {
+    en: "Refund Amount as a percent of Gross Sales",
+    ar: "مبلغ المرتجعات كنسبة من إجمالي المبيعات",
+  },
+  taxCollected: {
+    en: "Tax on paid checks (frozen snapshot)",
+    ar: "الضريبة على الشيكات المدفوعة (لقطة مجمّدة)",
+  },
+  orderCount: {
+    en: "All orders placed in this period",
+    ar: "كل الطلبات المسجّلة في هذه الفترة",
   },
   averageOrder: {
     en: "Typical size of a completed order",
     ar: "متوسط قيمة الطلب المكتمل",
   },
+  averageCheck: {
+    en: "Typical size of a paid check",
+    ar: "متوسط قيمة الشيك المدفوع",
+  },
 });
 
 const PAGE_COPY = Object.freeze({
   en: {
-    primaryQuestion: "How is the restaurant performing operationally?",
-    operationalTitle: "Orders served",
-    operationalHint:
-      "From completed kitchen orders — your Order Sales story for this period.",
+    primaryQuestion: "How is the restaurant performing this period?",
+    executiveTitle: "Executive KPIs",
+    executiveHint:
+      "Gross Sales, Net Sales, refunds, tax, and order averages for the selected period.",
     footerNote:
-      "Check Revenue (Gross), Net Revenue, Refund Publications, Paid Checks, Average Check, and Tax Collected are in Financial Summary. Payment and refund mix are in Payment Method Analysis.",
+      "Details: Financial Performance, Refund Analytics, Payment Analytics, Order Sales, and Trends follow. Operational rollups are on dedicated sheets.",
   },
   ar: {
-    primaryQuestion: "كيف يؤدي المطعم تشغيلياً؟",
-    operationalTitle: "الطلبات المقدَّمة",
-    operationalHint:
-      "من الطلبات المكتملة في المطبخ — قصة مبيعات الطلبات لهذه الفترة.",
+    primaryQuestion: "كيف يؤدي المطعم في هذه الفترة؟",
+    executiveTitle: "مؤشرات تنفيذية",
+    executiveHint:
+      "إجمالي المبيعات وصافي المبيعات والمرتجعات والضريبة ومتوسطات الطلبات للفترة المحددة.",
     footerNote:
-      "إيرادات الشيكات (الإجمالي) وصافي الإيرادات ومنشورات المرتجعات وعدد الشيكات المدفوعة ومتوسط الشيك والضريبة المحصّلة في الملخص المالي. مزيج الدفع والمرتجعات في تحليل طرق الدفع.",
+      "التفاصيل: الأداء المالي وتحليل المرتجعات والمدفوعات ومبيعات الطلبات والاتجاهات. التفاصيل التشغيلية في أوراق مخصصة.",
   },
 } as const);
 
+function formatRefundRate(value: string | undefined): string {
+  const n = Number.parseFloat(value ?? "0");
+  if (!Number.isFinite(n)) return "0.00%";
+  return `${n.toFixed(2)}%`;
+}
+
 function cardValue(
   kpiId: ExecutiveSummaryKpiId,
+  business: BusinessMetricsSummaryDto,
   orderPeriod: ScopedOrderSalesTotals,
   formatMoney: (amount: string) => string
 ): string {
   switch (kpiId) {
-    case "orderSales":
-      return formatMoney(orderPeriod.orderSales);
-    case "completedOrders":
-      return formatNullableCount(orderPeriod.completedOrders);
+    case "revenue":
+      return formatMoney(business.revenue ?? "0.00");
+    case "netRevenue":
+      return formatMoney(business.netRevenue ?? "0.00");
+    case "refundPublishedTotal":
+      return formatMoney(business.refundPublishedTotal ?? "0.00");
+    case "refundRate":
+      return formatRefundRate(business.refundRate);
+    case "taxCollected":
+      return formatMoney(business.taxCollected ?? "0.00");
+    case "orderCount":
+      return formatNullableCount(orderPeriod.orderCount);
     case "averageOrder":
       return formatMoney(orderPeriod.averageOrder);
+    case "averageCheck":
+      return formatMoney(business.averageCheck ?? "0.00");
     default: {
       const _exhaustive: never = kpiId;
       return _exhaustive;
@@ -102,20 +136,20 @@ function cardValue(
 function buildCard(
   kpiId: ExecutiveSummaryKpiId,
   lang: PresentationLanguage,
+  business: BusinessMetricsSummaryDto,
   orderPeriod: ScopedOrderSalesTotals,
   formatMoney: (amount: string) => string
 ): ExecutiveSummaryCard {
   return {
     kpiId,
     label: preferredKpiLabel(kpiId, lang),
-    value: cardValue(kpiId, orderPeriod, formatMoney),
+    value: cardValue(kpiId, business, orderPeriod, formatMoney),
     caption: KPI_CAPTIONS[kpiId][lang],
   };
 }
 
 /**
- * Owner-first Executive Summary view model (Excel + PDF).
- * Operational KPIs only (SIMPLIFICATION-1). Money Collected → Financial Summary.
+ * Owner-first Executive Summary view model (Excel + PDF) — Exec V2.
  */
 export function buildExecutiveSummaryViewModel(input: {
   language: PresentationLanguage;
@@ -125,10 +159,10 @@ export function buildExecutiveSummaryViewModel(input: {
 }): ExecutiveSummaryViewModel {
   const lang = input.language;
   const copy = PAGE_COPY[lang];
-  const { orderPeriod, formatMoney } = input;
+  const { business, orderPeriod, formatMoney } = input;
 
   const cards = EXECUTIVE_SUMMARY_KPI_IDS.map((id) =>
-    buildCard(id, lang, orderPeriod, formatMoney)
+    buildCard(id, lang, business, orderPeriod, formatMoney)
   );
 
   return {
@@ -136,9 +170,9 @@ export function buildExecutiveSummaryViewModel(input: {
     primaryQuestion: copy.primaryQuestion,
     groups: [
       {
-        id: "operational",
-        title: copy.operationalTitle,
-        hint: copy.operationalHint,
+        id: "executive",
+        title: copy.executiveTitle,
+        hint: copy.executiveHint,
         cards,
       },
     ],

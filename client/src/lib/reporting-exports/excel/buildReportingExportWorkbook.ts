@@ -6,9 +6,9 @@
  * Preserves REPORTING-PERIOD-CONSISTENCY-1 scoped totals (scopedOrderSalesFromRollup).
  * Presentation only. Does not calculate Revenue or other KPIs.
  *
- * Sheets: Cover · Executive · Financial · Payment Methods · Order Sales · Revenue Trends
+ * Sheets: Cover · Executive · Financial · Payment Analytics · Order Sales · Sales Trends
  * Western digits as Excel text (@). Values from reporting.* DTOs only.
- * REPORTING-PAYMENT-METHOD-ANALYTICS-1 — Payment Method Analysis from SettlementTransactions.
+ * REPORTING-UX-RATIONALIZATION-1 Rev 2.0 — Exec V2 + Gregorian month/year periods.
  * REPORTING-PAYMENT-METHOD-PRESENTATION-ADOPTION-1 — full catalog via shared view model.
  */
 import ExcelJS from "exceljs";

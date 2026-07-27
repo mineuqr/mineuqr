@@ -40,6 +40,7 @@ import {
   RestaurantSectionError,
 } from "./RestaurantSectionStates";
 import { restaurantDash, restaurantHoverGlow, restaurantRevenueValueClass, restaurantSemantic } from "./restaurantDashStyles";
+import { SECTION_TERMINOLOGY } from "@shared/reporting-platform";
 
 const PANEL_CLASS = cn(restaurantDash.panel, "p-4 sm:p-5", restaurantHoverGlow);
 const GROUPING_OPTIONS: SettlementTrendGrouping[] = ["day", "week", "month"];
@@ -193,22 +194,26 @@ export function SettlementTrendsSection({
   language,
   queriesEnabled,
   currencySymbol,
+  from,
+  to,
 }: {
   restaurantId: number;
   language: string;
   queriesEnabled: boolean;
   currencySymbol?: string;
+  /** Required period bounds — no lifetime leakage. */
+  from: string;
+  to: string;
 }) {
   const { isAuthenticated, authPending } = useAuth();
   const isAr = language === "ar";
+  const lang = isAr ? "ar" : "en";
   const sym = currencySymbol || "ر.س";
   const [grouping, setGrouping] = useState<SettlementTrendGrouping>("day");
-  const sectionTitle = isAr
-    ? "اتجاهات إيرادات الشيكات"
-    : "Check Revenue Trends";
+  const sectionTitle = SECTION_TERMINOLOGY[lang].checkRevenueTrends;
   const sectionSub = isAr
-    ? "تطور إيرادات الشيكات المدفوعة عبر الزمن — ليست مبيعات الطلبات"
-    : "How Check Revenue changes over time — not Order Sales";
+    ? "تطور إجمالي المبيعات عبر الزمن للفترة المحددة — ليست مبيعات الطلبات"
+    : "How Gross Sales changes over the selected period — not Order Sales";
   const ariaLabel = sectionTitle;
 
   useDevQueryRuntimeLog("reporting.getBusinessMetricsTrend", {
@@ -226,7 +231,7 @@ export function SettlementTrendsSection({
     refetch,
     isFetching,
   } = trpc.reporting.getBusinessMetricsTrend.useQuery(
-    { restaurantId, grouping },
+    { restaurantId, from, to, grouping },
     reportingBusinessTrendQueryOptions(queriesEnabled)
   );
 
@@ -307,8 +312,8 @@ export function SettlementTrendsSection({
         <RestaurantSectionError
           message={
             isAr
-              ? "تعذر تحميل اتجاهات إيرادات الشيكات. حاول مرة أخرى."
-              : "Could not load revenue trends. Please try again."
+              ? "تعذر تحميل اتجاهات المبيعات. حاول مرة أخرى."
+              : "Could not load sales trends. Please try again."
           }
           retryLabel={isAr ? "إعادة المحاولة" : "Retry"}
           isFetching={isFetching}
@@ -328,7 +333,7 @@ export function SettlementTrendsSection({
 
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-4">
             <SettlementTrendChart
-              title={isAr ? "اتجاه إيرادات الشيكات" : "Check Revenue Trend"}
+              title={isAr ? "اتجاه إجمالي المبيعات" : "Gross Sales Trend"}
               data={chartRows}
               dataKey="paidRevenue"
               stroke="#4ade80"
@@ -369,13 +374,13 @@ export function SettlementTrendsSection({
             <div className="flex items-center gap-2">
               <TrendingUp className={cn("h-5 w-5", restaurantSemantic.iconInfo)} aria-hidden />
               <h3 className="text-sm font-semibold text-white sm:text-base">
-                {isAr ? "رؤى إيرادات الشيكات" : "Check Revenue Insights"}
+                {isAr ? "رؤى المبيعات" : "Sales Insights"}
               </h3>
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:gap-4">
               <TrendInsightCard
                 title={
-                  isAr ? "أعلى فترة لإيرادات الشيكات" : "Highest Check Revenue Period"
+                  isAr ? "أعلى فترة لإجمالي المبيعات" : "Highest Gross Sales Period"
                 }
                 periodLabel={revenueInsight?.periodLabel ?? null}
                 valueLabel={revenueInsight?.valueLabel ?? null}

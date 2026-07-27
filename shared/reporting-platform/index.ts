@@ -96,6 +96,8 @@ export {
   businessCurrentYearMonth,
   businessCalendarMonthReportingBounds,
   businessCalendarYearReportingBounds,
+  gregorianCalendarMonthReportingBounds,
+  gregorianCalendarYearReportingBounds,
   formatStoredUtcDatetime,
   restaurantYearMonth,
   reportingWorkingHours,

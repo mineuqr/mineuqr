@@ -38,7 +38,7 @@ export type BusinessMetricsSummaryDto = Readonly<{
   from: string | null;
   to: string | null;
   /**
-   * Gross Check Revenue = SUM(paid gen=1 Settlement Record grandTotal).
+   * Gross Sales (KPI id: revenue) = SUM(paid gen=1 Settlement Record grandTotal).
    * Refund publications MUST NOT mutate this field (ADR-ARCH-032).
    */
   revenue: string;
@@ -49,19 +49,20 @@ export type BusinessMetricsSummaryDto = Readonly<{
   complimentaryAmount: string;
   voidedCount: number;
   /**
-   * REFUND-REPORTING-ADOPTION-1 — SUM(refund Settlement Record grandTotal) in period.
+   * Refund Amount (KPI id: refundPublishedTotal) —
+   * SUM(refund Settlement Record grandTotal) in period.
    * Compensating publication total; not a second Revenue authority.
    */
   refundPublishedTotal: string;
-  /** Count of refund Settlement Record publications in period. */
+  /** Refund Count — count of refund Settlement Record publications in period. */
   refundPublicationCount: number;
   /**
-   * Net Revenue = Gross Check Revenue − Refund Publications (publication-derived).
+   * Net Sales (KPI id: netRevenue) = Gross Sales − Refund Amount (publication-derived).
    * Reporting derivation only — never financial truth ownership.
    */
   netRevenue: string;
   /**
-   * Refund Rate = refundPublishedTotal / revenue × 100 (0 when revenue = 0).
+   * Refund Rate = Refund Amount / Gross Sales × 100 (0 when Gross Sales = 0).
    * Percent string with two decimals.
    */
   refundRate: string;
@@ -76,7 +77,7 @@ export type BusinessMetricsSummaryDto = Readonly<{
 export type BusinessMetricsTrendPointDto = Readonly<{
   periodKey: string;
   periodStart: string;
-  /** Gross Check Revenue for the period. */
+  /** Gross Sales (KPI id: revenue) for the period. */
   revenue: string;
   paidCheckCount: number;
   complimentaryCount: number;
@@ -217,8 +218,9 @@ export type SettlementDistributionDto = Readonly<{
 
 /**
  * REPORTING-PAYMENT-METHOD-ANALYTICS-1 — payment-method analytics from
- * Settlement Record payment snapshots (publication of Check finalize tenders).
- * Not a substitute for Check Revenue.
+ * Settlement Record payment snapshots (canonical financial reporting source).
+ * Settlement Transactions remain implementation/payment-detail data where applicable.
+ * Not a substitute for Gross Sales (KPI id: revenue).
  */
 export type PaymentMethodAnalyticsBucketDto = Readonly<{
   paymentMethod: string;

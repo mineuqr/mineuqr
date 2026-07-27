@@ -19,18 +19,19 @@ export type PresentationLanguage = "en" | "ar";
 
 /**
  * Preferred restaurant-facing labels.
- * English aligns with KPI_DICTIONARY.name after PRODUCT-SEMANTICS adoption.
+ * REPORTING-UX-RATIONALIZATION-1 Rev 2.0 — Gross Sales / Net Sales / Refund Amount.
+ * KPI ids and formulas unchanged.
  */
 export const PREFERRED_KPI_LABELS: Readonly<
   Record<KpiId, Readonly<{ en: string; ar: string }>>
 > = Object.freeze({
-  revenue: { en: "Check Revenue", ar: "إيرادات الشيكات" },
+  revenue: { en: "Gross Sales", ar: "إجمالي المبيعات" },
   refundPublishedTotal: {
-    en: "Refund Publications",
-    ar: "منشورات المرتجعات",
+    en: "Refund Amount",
+    ar: "مبلغ المرتجعات",
   },
   refundPublicationCount: { en: "Refund Count", ar: "عدد المرتجعات" },
-  netRevenue: { en: "Net Revenue", ar: "صافي الإيرادات" },
+  netRevenue: { en: "Net Sales", ar: "صافي المبيعات" },
   refundRate: { en: "Refund Rate", ar: "معدل المرتجعات" },
   paidCheckCount: { en: "Paid Checks", ar: "الشيكات المدفوعة" },
   taxCollected: { en: "Tax Collected", ar: "الضريبة المحصّلة" },
@@ -41,7 +42,7 @@ export const PREFERRED_KPI_LABELS: Readonly<
     ar: "قيمة الشيكات المجانية",
   },
   voidedCount: { en: "Voided Checks", ar: "الشيكات الملغاة" },
-  dailySales: { en: "Daily Check Revenue", ar: "إيرادات الشيكات اليومية" },
+  dailySales: { en: "Daily Gross Sales", ar: "إجمالي المبيعات اليومية" },
   orderSales: { en: "Order Sales", ar: "مبيعات الطلبات" },
   completedOrders: { en: "Completed Orders", ar: "الطلبات المكتملة" },
   averageOrder: { en: "Average Order", ar: "متوسط الطلب" },
@@ -58,55 +59,50 @@ export const PREFERRED_KPI_LABELS: Readonly<
 });
 
 /**
- * Labels that must not be used as synonyms for Check Revenue or Order Sales.
+ * Labels that must not be used as synonyms for Gross Sales or Order Sales.
  * Presentation must not reintroduce these as primary KPI names.
  */
 export const DEPRECATED_PRESENTATION_LABELS = Object.freeze({
-  /** Must not replace Check Revenue */
+  /** Must not replace Gross Sales (KPI id: revenue) */
   forCheckRevenue: [
     "Revenue",
     "Paid Revenue",
     "Settlement",
     "Settlement Revenue",
-    "Gross Sales",
     "Sales",
-    "Net Revenue",
+    "Check Revenue",
     "الإيرادات",
     "المبيعات",
   ],
   /** Must not replace Order Sales */
   forOrderSales: [
     "Revenue",
-    "Check Revenue",
     "Gross Sales",
+    "Net Sales",
     "Paid Revenue",
     "Settlement",
+    "Check Revenue",
   ],
 } as const);
 
 export const SEMANTIC_CLARIFICATIONS = Object.freeze({
   en: {
     checkRevenue:
-      "Check Revenue = sum of paid Check totals (not Order Sales).",
+      "Gross Sales = sum of paid Check totals (not Order Sales).",
     orderSales:
-      "Order Sales = completed (served) order totals from Order Read (not Check Revenue).",
+      "Order Sales = completed (served) order totals from Order Read (not Gross Sales).",
     averagePair:
-      "Average Check uses Check Revenue; Average Order uses Order Sales.",
-    /**
-     * REPORTING-DASHBOARD-ORDER-KPI-PRESENTATION-1
-     * Adjacent Order Sales cards must use Completed Orders (same population).
-     * "Orders" (orderCount) = all placed — do not pair unlabeled with Order Sales.
-     */
+      "Average Check uses Gross Sales; Average Order uses Order Sales.",
     orderSalesPopulation:
       "Order Sales, Completed Orders, and Average Order share the completed (served) population. Orders (orderCount) counts every order placed.",
   },
   ar: {
     checkRevenue:
-      "إيرادات الشيكات = مجموع قيم الشيكات المدفوعة (وليست مبيعات الطلبات).",
+      "إجمالي المبيعات = مجموع قيم الشيكات المدفوعة (وليست مبيعات الطلبات).",
     orderSales:
-      "مبيعات الطلبات = مجموع الطلبات المكتملة من قراءة الطلبات (وليست إيرادات الشيكات).",
+      "مبيعات الطلبات = مجموع الطلبات المكتملة من قراءة الطلبات (وليست إجمالي المبيعات).",
     averagePair:
-      "متوسط الشيك من إيرادات الشيكات؛ متوسط الطلب من مبيعات الطلبات.",
+      "متوسط الشيك من إجمالي المبيعات؛ متوسط الطلب من مبيعات الطلبات.",
     orderSalesPopulation:
       "مبيعات الطلبات والطلبات المكتملة ومتوسط الطلب تشترك في مجموعة الطلبات المكتملة (المقدَّمة). عدد الطلبات يحسب كل الطلبات المسجّلة.",
   },
@@ -122,28 +118,21 @@ export function preferredKpiLabel(
   return getKpiDefinition(id).name;
 }
 
-/** Section titles that pair Check Revenue vs Order Sales domains. */
+/** Section titles that pair Gross Sales vs Order Sales domains. */
 export const SECTION_TERMINOLOGY = Object.freeze({
   en: {
-    checkRevenueAnalytics: "Check Revenue Analytics",
-    checkRevenueOverview: "Check Revenue Overview",
-    checkRevenueTrends: "Check Revenue Trends",
+    checkRevenueAnalytics: "Gross Sales Analytics",
+    checkRevenueOverview: "Financial Performance",
+    checkRevenueTrends: "Sales Trends",
     orderSalesAnalytics: "Order Sales",
-    /** REPORTING-DASHBOARD-ORDER-KPI-PRESENTATION-1 — population clarity */
     orderSalesAnalyticsNote:
       "Completed (served) orders — comparable with Order Sales. Not every order placed.",
-    financialPerformance: "Check Revenue Detail",
+    financialPerformance: "Financial Performance",
     orderSalesPerformance: "Order Sales Detail",
-    /** REPORTING-EXECUTIVE-SUMMARY-RATIONALIZATION-1 */
-    executiveSnapshot: "At a Glance",
-    /** REPORTING-EXECUTIVE-SUMMARY-SIMPLIFICATION-1 — operational focus */
+    executiveSnapshot: "Executive KPIs",
     executiveSnapshotHint:
-      "Operational performance this period — Check Revenue and tax are in Financial Summary.",
+      "Period executive snapshot — Gross Sales, Net Sales, refunds, tax, and order averages.",
     taxAnalysis: "Tax",
-    /**
-     * Period-agnostic (SIMPLIFICATION-1 governance).
-     * Must not say month / week / year / quarter / day.
-     */
     taxAnalysisPeriodNote:
       "Tax Collected covers the full reporting period — total tax from all paid checks in range (not a subset of sections).",
     adjustmentsAnalysis: "Adjustments",
@@ -152,9 +141,8 @@ export const SECTION_TERMINOLOGY = Object.freeze({
     coverSubtitle: "Business performance overview",
     moneyCollected: "Money Collected",
     moneyCollectedHint:
-      "Paid guest checks for this reporting period — Gross Check Revenue. Net Revenue subtracts Refund Publications.",
-    /** REPORTING-PAYMENT-METHOD-ANALYTICS-1 */
-    paymentMethodAnalysis: "Payment Method Analysis",
+      "Paid guest checks for this reporting period — Gross Sales. Net Sales subtracts Refund Amount.",
+    paymentMethodAnalysis: "Payment Analytics",
     paymentMix: "Payment Mix",
     tenderAmount: "Tender Amount",
     mixPercent: "Mix %",
@@ -162,29 +150,33 @@ export const SECTION_TERMINOLOGY = Object.freeze({
     averageCheckByMethod: "Average Check (by method)",
     monetaryTenderTotal: "Monetary Tender Total",
     refundTenderTotal: "Refund Tender Total",
-    refundPaymentMix: "Refund Mix by Payment Method",
+    refundPaymentMix: "Refund by Payment Method",
     paymentAnalyticsNote:
-      "Payment mix is from settlement tenders. Check Revenue remains Gross from paid checks; refund tenders are listed separately and do not replace Check Revenue.",
+      "Payment mix is from settlement tenders. Gross Sales remains from paid checks; refund tenders are listed separately and do not replace Gross Sales.",
     paymentMethod: "Payment Method",
     transactions: "Transactions",
-    /** Period-agnostic empty / error (PRESENTATION-ADOPTION-1). */
     paymentAnalyticsEmpty:
       "No settlement tenders for the reporting period.",
     paymentAnalyticsLoadError:
       "Could not load payment method analysis. Please try again.",
+    refundAnalytics: "Refund Analytics",
+    refundAnalyticsNote:
+      "Refund publications for this period. Net Sales = Gross Sales − Refund Amount.",
+    refundByOperatorPlaceholder: "Refund by Operator — coming soon (custody attribution)",
+    refundByRegisterPlaceholder: "Refund by Register — coming soon (custody attribution)",
   },
   ar: {
-    checkRevenueAnalytics: "تحليلات إيرادات الشيكات",
-    checkRevenueOverview: "نظرة إيرادات الشيكات",
-    checkRevenueTrends: "اتجاهات إيرادات الشيكات",
+    checkRevenueAnalytics: "تحليلات إجمالي المبيعات",
+    checkRevenueOverview: "الأداء المالي",
+    checkRevenueTrends: "اتجاهات المبيعات",
     orderSalesAnalytics: "مبيعات الطلبات",
     orderSalesAnalyticsNote:
       "الطلبات المكتملة (المقدَّمة) — قابلة للمقارنة مع مبيعات الطلبات. ليست كل الطلبات المسجّلة.",
-    financialPerformance: "تفاصيل إيرادات الشيكات",
+    financialPerformance: "الأداء المالي",
     orderSalesPerformance: "تفاصيل مبيعات الطلبات",
-    executiveSnapshot: "لمحة سريعة",
+    executiveSnapshot: "مؤشرات تنفيذية",
     executiveSnapshotHint:
-      "الأداء التشغيلي لهذه الفترة — إيرادات الشيكات والضريبة في الملخص المالي.",
+      "لمحة تنفيذية للفترة — إجمالي المبيعات وصافي المبيعات والمرتجعات والضريبة ومتوسطات الطلبات.",
     taxAnalysis: "الضريبة",
     taxAnalysisPeriodNote:
       "الضريبة المحصّلة تغطي فترة التقرير كاملة — إجمالي الضريبة من جميع الشيكات المدفوعة في النطاق (وليست جزءاً من أقسام محددة).",
@@ -194,8 +186,8 @@ export const SECTION_TERMINOLOGY = Object.freeze({
     coverSubtitle: "نظرة على أداء العمل",
     moneyCollected: "الأموال المحصّلة",
     moneyCollectedHint:
-      "شيكات الضيوف المدفوعة لهذه الفترة — إجمالي إيرادات الشيكات. صافي الإيرادات يخصم منشورات المرتجعات.",
-    paymentMethodAnalysis: "تحليل طرق الدفع",
+      "شيكات الضيوف المدفوعة لهذه الفترة — إجمالي المبيعات. صافي المبيعات يخصم مبلغ المرتجعات.",
+    paymentMethodAnalysis: "تحليل المدفوعات",
     paymentMix: "مزيج الدفع",
     tenderAmount: "مبلغ وسيلة الدفع",
     mixPercent: "نسبة المزيج %",
@@ -203,14 +195,19 @@ export const SECTION_TERMINOLOGY = Object.freeze({
     averageCheckByMethod: "متوسط الشيك (حسب الطريقة)",
     monetaryTenderTotal: "إجمالي مبالغ وسائل الدفع",
     refundTenderTotal: "إجمالي مرتجعات وسائل الدفع",
-    refundPaymentMix: "مزيج المرتجعات حسب طريقة الدفع",
+    refundPaymentMix: "المرتجعات حسب طريقة الدفع",
     paymentAnalyticsNote:
-      "مزيج الدفع من معاملات التسوية. إيرادات الشيكات تبقى الإجمالي من الشيكات المدفوعة؛ مرتجعات الوسائل تُعرض منفصلة ولا تستبدل إيرادات الشيكات.",
+      "مزيج الدفع من معاملات التسوية. إجمالي المبيعات يبقى من الشيكات المدفوعة؛ مرتجعات الوسائل تُعرض منفصلة ولا تستبدل إجمالي المبيعات.",
     paymentMethod: "طريقة الدفع",
     transactions: "المعاملات",
     paymentAnalyticsEmpty: "لا توجد معاملات تسوية لفترة التقرير.",
     paymentAnalyticsLoadError:
       "تعذر تحميل تحليل طرق الدفع. حاول مرة أخرى.",
+    refundAnalytics: "تحليل المرتجعات",
+    refundAnalyticsNote:
+      "منشورات المرتجعات لهذه الفترة. صافي المبيعات = إجمالي المبيعات − مبلغ المرتجعات.",
+    refundByOperatorPlaceholder: "المرتجعات حسب الموظف — قريباً (إسناد العهدة)",
+    refundByRegisterPlaceholder: "المرتجعات حسب الصندوق — قريباً (إسناد العهدة)",
   },
 } as const);
 
@@ -239,19 +236,19 @@ export function preferredPaymentMethodLabel(
 }
 
 /**
- * KPI ids allowed on the Executive Summary (operational snapshot).
- * REPORTING-EXECUTIVE-SUMMARY-SIMPLIFICATION-1 — Money Collected KPIs
- * (Check Revenue, Paid Checks, Average Check) live on Financial Summary only.
- * Tax / complimentary / voided remain Financial Summary analysis.
- *
- * REPORTING-DASHBOARD-ORDER-KPI-PRESENTATION-1 — `completedOrders` (not
- * `orderCount`) so Executive cards share the completed/served population with
- * Order Sales and Average Order.
+ * KPI ids allowed on the Executive Summary (Exec V2).
+ * REPORTING-UX-RATIONALIZATION-1 Rev 2.0 — executive money + order averages.
+ * Formulas unchanged; presentation selection only.
  */
 export const EXECUTIVE_SUMMARY_KPI_IDS = [
-  "orderSales",
-  "completedOrders",
+  "revenue",
+  "netRevenue",
+  "refundPublishedTotal",
+  "refundRate",
+  "taxCollected",
+  "orderCount",
   "averageOrder",
+  "averageCheck",
 ] as const satisfies readonly KpiId[];
 
 export type ExecutiveSummaryKpiId = (typeof EXECUTIVE_SUMMARY_KPI_IDS)[number];

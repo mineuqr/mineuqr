@@ -29,6 +29,10 @@ const sampleBusiness = {
   complimentaryCount: 2,
   complimentaryAmount: "10.00",
   voidedCount: 1,
+  refundPublishedTotal: "10.00",
+  refundPublicationCount: 1,
+  netRevenue: "90.00",
+  refundRate: "10.00",
 } as BusinessMetricsSummaryDto;
 
 const sampleOrders = {
@@ -38,57 +42,49 @@ const sampleOrders = {
   averageOrder: "25.00",
 };
 
-describe("REPORTING-EXECUTIVE-SUMMARY-SIMPLIFICATION-1 guards", () => {
-  it("Executive Summary exposes exactly three operational KPIs", () => {
+describe("REPORTING-UX-RATIONALIZATION-1 Executive Summary V2 guards", () => {
+  it("Executive Summary exposes Exec V2 KPI set", () => {
     expect([...EXECUTIVE_SUMMARY_KPI_IDS]).toEqual([
-      "orderSales",
-      "completedOrders",
+      "revenue",
+      "netRevenue",
+      "refundPublishedTotal",
+      "refundRate",
+      "taxCollected",
+      "orderCount",
       "averageOrder",
+      "averageCheck",
     ]);
   });
 
-  it("view model is operational-only — no Money Collected group", () => {
+  it("view model is executive money + averages", () => {
     const vm = buildExecutiveSummaryViewModel({
       language: "en",
       business: sampleBusiness,
       orderPeriod: sampleOrders,
       formatMoney: (a) => a,
     });
-    expect(vm.primaryQuestion).toMatch(/operational/i);
+    expect(vm.primaryQuestion).toMatch(/performing/i);
     expect(vm.groups).toHaveLength(1);
-    expect(vm.groups[0]?.id).toBe("operational");
+    expect(vm.groups[0]?.id).toBe("executive");
     expect(vm.groups[0]?.cards.map((c) => c.kpiId)).toEqual([
-      "orderSales",
-      "completedOrders",
-      "averageOrder",
+      ...EXECUTIVE_SUMMARY_KPI_IDS,
     ]);
-    expect(vm.groups[0]?.cards[0]?.label).toBe("Order Sales");
-    expect(vm.groups[0]?.cards[1]?.label).toBe("Completed Orders");
-    expect(vm.groups[0]?.cards[1]?.value).toBe("8");
-    expect(vm.footerNote).toMatch(/Financial Summary/i);
-    const allLabels = vm.groups
-      .flatMap((g) => g.cards)
-      .map((c) => c.label)
-      .join(" ");
-    expect(allLabels).not.toMatch(/Check Revenue/i);
-    expect(allLabels).not.toMatch(/Paid Checks/i);
-    expect(allLabels).not.toMatch(/Average Check/i);
-    expect(allLabels).not.toMatch(/Tax/i);
+    expect(vm.groups[0]?.cards[0]?.label).toBe("Gross Sales");
+    expect(vm.groups[0]?.cards[1]?.label).toBe("Net Sales");
+    expect(vm.groups[0]?.cards[2]?.label).toBe("Refund Amount");
+    expect(vm.groups[0]?.cards[2]?.value).toBe("10.00");
+    expect(vm.groups[0]?.cards[3]?.value).toBe("10.00%");
   });
 
-  it("flat card builder returns three operational cards only", () => {
+  it("flat card builder returns Exec V2 cards", () => {
     const cards = buildExecutiveSummaryCards({
       language: "en",
       business: sampleBusiness,
       orderPeriod: sampleOrders,
       formatMoney: (a) => a,
     });
-    expect(cards).toHaveLength(3);
-    expect(cards.map((c) => c.kpiId)).toEqual([
-      "orderSales",
-      "completedOrders",
-      "averageOrder",
-    ]);
+    expect(cards).toHaveLength(8);
+    expect(cards.map((c) => c.kpiId)).toEqual([...EXECUTIVE_SUMMARY_KPI_IDS]);
   });
 
   it("Excel and PDF consume the shared view model with footerNote", () => {
@@ -107,75 +103,21 @@ describe("REPORTING-EXECUTIVE-SUMMARY-SIMPLIFICATION-1 guards", () => {
     expect(excel).toContain("taxAnalysisPeriodNote");
     expect(pdf).toContain("buildExecutiveSummaryViewModel");
     expect(pdf).toContain("footerNote");
-    expect(pdf).toContain("moneyCollectedSection");
-    expect(pdf).toContain("taxAnalysisPeriodNote");
-    expect(presentation).toContain(
-      "REPORTING-EXECUTIVE-SUMMARY-SIMPLIFICATION-1"
-    );
+    expect(presentation).toContain("REPORTING-UX-RATIONALIZATION-1");
     expect(presentation).toContain("preferredKpiLabel");
-    expect(presentation).not.toContain("Money collected");
   });
 
   it("export labels still pull KPI names from Product Semantics", () => {
     const labels = read("client/src/lib/reporting-exports/labels.ts");
     expect(labels).toContain("preferredKpiLabel");
     expect(labels).toContain("SECTION_TERMINOLOGY");
-    expect(labels).toContain("moneyCollected");
-    expect(labels).toContain("taxAnalysisPeriodNote");
-    expect(labels).not.toMatch(/revenue:\s*"Revenue"/);
   });
 
-  it("Financial Summary retains Money Collected KPIs and tax period clarity", () => {
-    const excel = read(
-      "client/src/lib/reporting-exports/excel/buildReportingExportWorkbook.ts"
+  it("section terminology exposes executive snapshot", () => {
+    expect(SECTION_TERMINOLOGY.en.executiveSnapshot).toBe("Executive KPIs");
+    expect(SECTION_TERMINOLOGY.en.taxAnalysis).toBe("Tax");
+    expect(SECTION_TERMINOLOGY.en.taxAnalysisPeriodNote).not.toMatch(
+      PERIOD_SPECIFIC_COPY
     );
-    expect(excel).toContain("labels.revenue");
-    expect(excel).toContain("labels.paidChecks");
-    expect(excel).toContain("labels.averageCheck");
-    expect(excel).toContain("labels.taxCollected");
-    expect(excel).toContain("taxAnalysisPeriodNote");
-    expect(excel).toContain("moneyCollectedSection");
-  });
-
-  it("Executive + Tax presentation copy is period-agnostic (no month/year/… assumptions)", () => {
-    for (const lang of ["en", "ar"] as const) {
-      const section = SECTION_TERMINOLOGY[lang];
-      expect(section.taxAnalysisPeriodNote).not.toMatch(PERIOD_SPECIFIC_COPY);
-      expect(section.taxAnalysisPeriodNote).toMatch(/reporting period|فترة التقرير/i);
-      expect(section.moneyCollectedHint).not.toMatch(PERIOD_SPECIFIC_COPY);
-      expect(section.executiveSnapshotHint).not.toMatch(PERIOD_SPECIFIC_COPY);
-    }
-
-    const vm = buildExecutiveSummaryViewModel({
-      language: "en",
-      business: sampleBusiness,
-      orderPeriod: sampleOrders,
-      formatMoney: (a) => a,
-    });
-    expect(vm.primaryQuestion).not.toMatch(PERIOD_SPECIFIC_COPY);
-    expect(vm.footerNote).not.toMatch(PERIOD_SPECIFIC_COPY);
-    expect(vm.groups[0]?.hint).not.toMatch(PERIOD_SPECIFIC_COPY);
-
-    const presentation = read(
-      "client/src/lib/reporting-exports/executiveSummaryPresentation.ts"
-    );
-    expect(presentation).not.toMatch(/bundle\.scope|scope\s*===/);
-    expect(presentation).not.toMatch(PERIOD_SPECIFIC_COPY);
-
-    // Executive / Financial tax note must not branch on report scope
-    const excel = read(
-      "client/src/lib/reporting-exports/excel/buildReportingExportWorkbook.ts"
-    );
-    const excelExecutive = excel.slice(
-      excel.indexOf("function buildExecutiveSheet"),
-      excel.indexOf("function buildFinancialSheet")
-    );
-    const excelFinancial = excel.slice(
-      excel.indexOf("function buildFinancialSheet"),
-      excel.indexOf("function buildPaymentMethodSheet")
-    );
-    expect(excelExecutive).not.toMatch(/scope\s*===/);
-    expect(excelFinancial).not.toMatch(/scope\s*===/);
-    expect(excelFinancial).toContain("labels.taxAnalysisPeriodNote");
   });
 });

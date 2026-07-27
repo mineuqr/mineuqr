@@ -26,10 +26,12 @@ describe("REPORTING-PRODUCT-SEMANTICS-1 architecture guards", () => {
     }
   });
 
-  it("Check Revenue and Order Sales stay distinct in dictionary names", () => {
-    expect(getKpiDefinition("revenue").name).toBe("Check Revenue");
+  it("Gross Sales and Order Sales stay distinct in dictionary names", () => {
+    expect(getKpiDefinition("revenue").name).toBe("Gross Sales");
     expect(getKpiDefinition("orderSales").name).toBe("Order Sales");
-    expect(getKpiDefinition("dailySales").name).toBe("Daily Check Revenue");
+    expect(getKpiDefinition("dailySales").name).toBe("Daily Gross Sales");
+    expect(getKpiDefinition("netRevenue").name).toBe("Net Sales");
+    expect(getKpiDefinition("refundPublishedTotal").name).toBe("Refund Amount");
     expect(getKpiDefinition("revenue").formula).toContain("grandTotal");
     expect(getKpiDefinition("revenue").calculationVersion).toBe(1);
   });
@@ -42,11 +44,12 @@ describe("REPORTING-PRODUCT-SEMANTICS-1 architecture guards", () => {
     expect(labels).toContain("SECTION_TERMINOLOGY");
     expect(labels).toContain("checkRevenueBasis");
     expect(labels).not.toMatch(/revenue:\s*"Revenue"/);
-    expect(PREFERRED_KPI_LABELS.revenue.en).toBe("Check Revenue");
-    expect(PREFERRED_KPI_LABELS.revenue.ar).toBe("إيرادات الشيكات");
+    expect(PREFERRED_KPI_LABELS.revenue.en).toBe("Gross Sales");
+    expect(PREFERRED_KPI_LABELS.netRevenue.en).toBe("Net Sales");
+    expect(PREFERRED_KPI_LABELS.refundPublishedTotal.en).toBe("Refund Amount");
   });
 
-  it("Dashboard Check Revenue sections avoid bare Revenue as section title", () => {
+  it("Dashboard sections avoid bare Revenue as section title", () => {
     const overview = read(
       "client/src/components/dashboard/SettlementOverviewSection.tsx"
     );
@@ -54,9 +57,9 @@ describe("REPORTING-PRODUCT-SEMANTICS-1 architecture guards", () => {
       "client/src/components/dashboard/SettlementTrendsSection.tsx"
     );
     const reports = read("client/src/components/dashboard/ReportsTab.tsx");
-    expect(overview).toContain("Check Revenue Overview");
-    expect(trends).toContain("Check Revenue Trends");
-    expect(reports).toContain("Check Revenue Analytics");
+    expect(overview).toContain("SECTION_TERMINOLOGY");
+    expect(trends).toContain("SECTION_TERMINOLOGY");
+    expect(reports).toContain("Gross Sales");
     expect(overview).not.toContain('"Revenue Overview"');
     expect(trends).not.toContain('"Revenue Trends"');
   });
@@ -65,17 +68,17 @@ describe("REPORTING-PRODUCT-SEMANTICS-1 architecture guards", () => {
     expect(DEPRECATED_PRESENTATION_LABELS.forCheckRevenue).toEqual(
       expect.arrayContaining([
         "Revenue",
-        "Gross Sales",
         "Paid Revenue",
         "Settlement Revenue",
+        "Check Revenue",
       ])
     );
     expect(DEPRECATED_PRESENTATION_LABELS.forOrderSales).toEqual(
-      expect.arrayContaining(["Check Revenue", "Gross Sales"])
+      expect.arrayContaining(["Gross Sales", "Net Sales", "Check Revenue"])
     );
   });
 
-  it("Excel reporting basis clarifies Check Revenue vs Order Sales", () => {
+  it("Excel reporting basis clarifies Gross Sales vs Order Sales", () => {
     const excel = read(
       "client/src/lib/reporting-exports/excel/buildReportingExportWorkbook.ts"
     );

@@ -314,7 +314,7 @@ describe("REPORTING-DESIGN-LANGUAGE-1 samples + presentation", () => {
         expect(workbook.worksheets).toHaveLength(6);
         expect(
           workbook.getWorksheet(
-            language === "ar" ? "تحليل طرق الدفع" : "Payment Method Analysis"
+            language === "ar" ? "تحليل المدفوعات" : "Payment Analytics"
           )
         ).toBeTruthy();
 
@@ -337,9 +337,7 @@ describe("REPORTING-DESIGN-LANGUAGE-1 samples + presentation", () => {
         const orderSheetName =
           language === "ar" ? "مبيعات الطلبات" : "Order Sales";
         const trendSheetName =
-          language === "ar"
-            ? "اتجاهات إيرادات الشيكات"
-            : "Check Revenue Trends";
+          language === "ar" ? "اتجاهات المبيعات" : "Sales Trends";
         const orderSheet = workbook.getWorksheet(orderSheetName);
         const trendSheet = workbook.getWorksheet(trendSheetName);
         expect(orderSheet).toBeTruthy();
@@ -395,10 +393,10 @@ describe("REPORTING-DESIGN-LANGUAGE-1 samples + presentation", () => {
         reconciliation.push("| KPI | Source DTO | Value | Present on |");
         reconciliation.push("|-----|------------|-------|------------|");
         reconciliation.push(
-          `| Check Revenue | BusinessMetricsSummary (= trend sum) | ${revenueDisplay} | Financial (Money Collected), Check Revenue Trends — not Executive |`
+          `| Gross Sales | BusinessMetricsSummary (= trend sum) | ${revenueDisplay} | Financial (Money Collected), Sales Trends — not Executive detail sheets |`
         );
         reconciliation.push(
-          `| Paid Checks | BusinessMetricsSummary | ${bundle.business.paidCheckCount} | Financial (Money Collected), Check Revenue Trends — not Executive |`
+          `| Paid Checks | BusinessMetricsSummary | ${bundle.business.paidCheckCount} | Financial (Money Collected), Sales Trends |`
         );
         reconciliation.push(
           `| Order Sales | OrderSalesRollup (sum of periods) | ${orderSalesDisplay} | Executive (operational), Financial, Order Sales |`
@@ -413,7 +411,7 @@ describe("REPORTING-DESIGN-LANGUAGE-1 samples + presentation", () => {
           `| Tax / Complimentary / Voided | BusinessMetricsSummary | (analysis) | Financial Summary only — Tax = full period paid checks |`
         );
         reconciliation.push(
-          `| Payment Method Mix | PaymentMethodAnalytics (Settlement Record payment snapshots) | ${bundle.paymentMethodAnalytics.monetaryTenderTotal} tender total | Payment Method Analysis sheet — not Executive / not Check Revenue |`
+          `| Payment Method Mix | PaymentMethodAnalytics (Settlement Record payment snapshots) | ${bundle.paymentMethodAnalytics.monetaryTenderTotal} tender total | Payment Analytics sheet — not Executive / not Gross Sales |`
         );
         reconciliation.push("");
         reconciliation.push(

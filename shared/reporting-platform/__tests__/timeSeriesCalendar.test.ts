@@ -73,16 +73,36 @@ describe("REPORTING-BUSINESS-DAY-ADOPTION-1 — Business Day period keys", () =>
     ).toBe("2026-07-16T06:00:00.000Z");
   });
 
-  it("builds month/year reporting bounds from opening → next opening", () => {
-    // Feb 2026: first open 09:00 Riyadh 1 Feb → 06:00Z; last BD ends at Mar 1 09:00 → inclusive 05:59:59Z
+  it("builds month/year reporting bounds from Gregorian wall calendar (Rev 2.0)", () => {
+    // Feb 2026: wall 00:00 Riyadh 1 Feb → 21:00Z prior day; last day 23:59:59 Riyadh → 20:59:59Z
     expect(businessCalendarMonthReportingBounds(2026, 2, undefined, defaultHours)).toEqual({
-      from: "2026-02-01 06:00:00",
-      to: "2026-03-01 05:59:59",
+      from: "2026-01-31 21:00:00",
+      to: "2026-02-28 20:59:59",
     });
     expect(businessCalendarYearReportingBounds(2026, undefined, defaultHours)).toEqual({
-      from: "2026-01-01 06:00:00",
-      to: "2027-01-01 05:59:59",
+      from: "2025-12-31 21:00:00",
+      to: "2026-12-31 20:59:59",
     });
+  });
+
+  it("month/year period keys use Gregorian wall calendar (not Business Day month)", () => {
+    // 22:00 UTC 15th = 01:00 Riyadh 16th → BD 2026-07-15, wall month still July
+    expect(
+      resolveBusinessPeriodKey(
+        "2026-07-15 22:00:00",
+        "month",
+        undefined,
+        defaultHours
+      )
+    ).toBe("2026-07");
+    expect(
+      resolveBusinessPeriodKey(
+        "2026-07-15 22:00:00",
+        "day",
+        undefined,
+        defaultHours
+      )
+    ).toBe("2026-07-15");
   });
 
   it("businessTodayKey (wall) still matches APP_TIMEZONE YMD for chrome", () => {

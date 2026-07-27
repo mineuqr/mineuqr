@@ -93,6 +93,11 @@ export function businessDayTodayReportingBounds(
 }
 
 /**
+ * @deprecated Legacy / internal — do not use for Production month reporting filters.
+ * REPORTING-UX-RATIONALIZATION-1 Rev 2.0: month filters use
+ * `gregorianCalendarMonthReportingBounds` (pure Gregorian wall month).
+ * Retained for compatibility and non-reporting BD utilities only.
+ *
  * Inclusive bounds covering every Business Day whose label falls in the
  * civil year-month (first day open → last day's exclusive next open).
  */
@@ -113,6 +118,12 @@ export function businessDayMonthReportingBounds(
   };
 }
 
+/**
+ * @deprecated Legacy / internal — do not use for Production year reporting filters.
+ * REPORTING-UX-RATIONALIZATION-1 Rev 2.0: year filters use
+ * `gregorianCalendarYearReportingBounds` (pure Gregorian wall year).
+ * Retained for compatibility only.
+ */
 export function businessDayYearReportingBounds(
   year: number,
   workingHours: NormalizedWorkingHours,

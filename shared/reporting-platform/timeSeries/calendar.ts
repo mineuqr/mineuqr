@@ -7,11 +7,13 @@
  * for business reporting period keys.
  */
 
+import type { TimeSeriesGranularity } from "./granularity";
+import type { TimeRange } from "./types";
+import type { NormalizedWorkingHours } from "../../utils/businessDay";
 import {
   resolveBusinessDayKey,
   resolveBusinessDayWindow,
   resolveNormalizedOpeningHours,
-  type NormalizedWorkingHours,
 } from "../../utils/businessDay";
 import {
   APP_TIMEZONE,
@@ -20,12 +22,6 @@ import {
   restaurantYearMonth,
   businessYearMonthMonthsAgo,
 } from "../../utils/timezone";
-import type { TimeSeriesGranularity } from "./granularity";
-import type { TimeRange } from "./types";
-import {
-  businessDayMonthReportingBounds,
-  businessDayYearReportingBounds,
-} from "./businessDayReporting";
 
 export const REPORTING_BUSINESS_TIMEZONE = APP_TIMEZONE;
 
@@ -152,8 +148,10 @@ export function parseReportingInstantMs(value: string): number {
 
 /**
  * Canonical period key for a stored UTC instant at the given granularity.
- * Day (and higher rolls of the day label) use Business Day opening-hours keys.
- * Never UTC calendar grouping.
+ * Daily / weekly: Business Day opening-hours keys (REPORTING-BUSINESS-DAY-ADOPTION-1).
+ * Monthly / quarterly / yearly: Gregorian wall calendar in the restaurant TZ
+ * (REPORTING-UX-RATIONALIZATION-1 Rev 2.0 — not Business Day windows).
+ * Never server-local or browser-local calendar grouping.
  */
 export function resolveBusinessPeriodKey(
   settledAt: string,
@@ -169,7 +167,6 @@ export function resolveBusinessPeriodKey(
     workingHours,
     timeZone
   );
-  const [by, bm] = businessDay.split("-").map(Number);
   const wall = businessWallPartsFromInstant(instant, timeZone);
 
   switch (granularity) {
@@ -182,13 +179,13 @@ export function resolveBusinessPeriodKey(
     case "week":
       return formatIsoWeekKeyFromYmd(businessDay);
     case "month":
-      return `${by}-${pad2(bm!)}`;
+      return `${wall.year}-${pad2(wall.month)}`;
     case "quarter": {
-      const q = Math.floor((bm! - 1) / 3) + 1;
-      return `${by}-Q${q}`;
+      const q = Math.floor((wall.month - 1) / 3) + 1;
+      return `${wall.year}-Q${q}`;
     }
     case "year":
-      return String(by);
+      return String(wall.year);
     default:
       return null;
   }
@@ -298,9 +295,59 @@ export function businessCurrentYearMonth(
   return businessYearMonthMonthsAgo(0, now, timeZone);
 }
 
+function daysInGregorianMonth(year: number, month: number): number {
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+
 /**
- * Month filter bounds — Business Day adoption (opening → next opening).
- * Optional workingHours; defaults to platform normalized hours (09:00 open).
+ * Pure Gregorian calendar month bounds (wall 00:00:00 day 1 → 23:59:59 last day)
+ * in the restaurant business timezone.
+ * REPORTING-UX-RATIONALIZATION-1 Rev 2.0 — not Business Day windows.
+ * `workingHours` retained for call-site compatibility; unused for month bounds.
+ */
+export function gregorianCalendarMonthReportingBounds(
+  year: number,
+  month: number,
+  timeZone: string = REPORTING_BUSINESS_TIMEZONE,
+  _workingHours?: NormalizedWorkingHours
+): TimeRange {
+  const mm = pad2(month);
+  const last = daysInGregorianMonth(year, month);
+  const firstYmd = `${year}-${mm}-01`;
+  const lastYmd = `${year}-${mm}-${pad2(last)}`;
+  return {
+    from: formatStoredUtcDatetime(
+      businessWallToUtcInstant(firstYmd, 0, 0, 0, timeZone)
+    ),
+    to: formatStoredUtcDatetime(
+      businessWallToUtcInstant(lastYmd, 23, 59, 59, timeZone)
+    ),
+  };
+}
+
+/**
+ * Pure Gregorian calendar year bounds (Jan 1 00:00:00 → Dec 31 23:59:59)
+ * in the restaurant business timezone.
+ * REPORTING-UX-RATIONALIZATION-1 Rev 2.0 — not Business Day windows.
+ */
+export function gregorianCalendarYearReportingBounds(
+  year: number,
+  timeZone: string = REPORTING_BUSINESS_TIMEZONE,
+  _workingHours?: NormalizedWorkingHours
+): TimeRange {
+  return {
+    from: formatStoredUtcDatetime(
+      businessWallToUtcInstant(`${year}-01-01`, 0, 0, 0, timeZone)
+    ),
+    to: formatStoredUtcDatetime(
+      businessWallToUtcInstant(`${year}-12-31`, 23, 59, 59, timeZone)
+    ),
+  };
+}
+
+/**
+ * Month filter bounds — Gregorian calendar month (Rev 2.0).
+ * Optional workingHours retained for API compatibility.
  */
 export function businessCalendarMonthReportingBounds(
   year: number,
@@ -308,7 +355,12 @@ export function businessCalendarMonthReportingBounds(
   timeZone: string = REPORTING_BUSINESS_TIMEZONE,
   workingHours: NormalizedWorkingHours = resolveNormalizedOpeningHours(null)
 ): TimeRange {
-  return businessDayMonthReportingBounds(year, month, workingHours, timeZone);
+  return gregorianCalendarMonthReportingBounds(
+    year,
+    month,
+    timeZone,
+    workingHours
+  );
 }
 
 export function businessCalendarYearReportingBounds(
@@ -316,7 +368,7 @@ export function businessCalendarYearReportingBounds(
   timeZone: string = REPORTING_BUSINESS_TIMEZONE,
   workingHours: NormalizedWorkingHours = resolveNormalizedOpeningHours(null)
 ): TimeRange {
-  return businessDayYearReportingBounds(year, workingHours, timeZone);
+  return gregorianCalendarYearReportingBounds(year, timeZone, workingHours);
 }
 
 /** @deprecated Use businessDayReportingBoundsForDay — wall midnight helpers removed from filters. */

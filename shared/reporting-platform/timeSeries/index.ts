@@ -29,6 +29,8 @@ export {
   businessCurrentYearMonth,
   businessCalendarMonthReportingBounds,
   businessCalendarYearReportingBounds,
+  gregorianCalendarMonthReportingBounds,
+  gregorianCalendarYearReportingBounds,
   formatStoredUtcDatetime,
   restaurantYearMonth,
   type BusinessWallParts,

@@ -45,7 +45,7 @@ describe("REPORTING-PAYMENT-METHOD-ANALYTICS-1 architecture guards", () => {
 
   it("Product Semantics owns payment method + section terminology", () => {
     expect(SECTION_TERMINOLOGY.en.paymentMethodAnalysis).toBe(
-      "Payment Method Analysis"
+      "Payment Analytics"
     );
     expect(preferredPaymentMethodLabel("mada", "en")).toBe(
       "Card (network / bank)"

@@ -9,12 +9,12 @@ import { kpiDisplayName } from "@/lib/reporting/kpiDisplay";
 import {
   formatAverageCheck,
   formatComplimentaryRate,
-  formatSettlementRevenue,
   isSettlementOverviewEmpty,
   resolveReportingCurrencySymbol,
 } from "@/lib/settlementOverviewDisplay";
 import { isEmailNotVerifiedError } from "@/lib/trpcErrors";
 import { trpc } from "@/lib/trpc";
+import { SECTION_TERMINOLOGY } from "@shared/reporting-platform";
 import {
   CheckCircle2,
   DollarSign,
@@ -35,19 +35,24 @@ export function SettlementOverviewSection({
   language,
   queriesEnabled,
   currencySymbol,
+  from,
+  to,
 }: {
   restaurantId: number;
   language: string;
   queriesEnabled: boolean;
   currencySymbol?: string;
+  /** Required period bounds — no lifetime leakage (REPORTING-UX-RATIONALIZATION-1). */
+  from: string;
+  to: string;
 }) {
   const { isAuthenticated, authPending } = useAuth();
   const lang = language === "ar" ? "ar" : "en";
   const isAr = lang === "ar";
-  const sectionTitle = isAr ? "نظرة إيرادات الشيكات" : "Check Revenue Overview";
+  const sectionTitle = SECTION_TERMINOLOGY[lang].checkRevenueOverview;
   const sectionSub = isAr
-    ? "مجموع الشيكات المدفوعة — ليست مبيعات الطلبات"
-    : "Paid Check totals — not Order Sales";
+    ? "الأداء المالي للفترة المحددة — ليست مبيعات الطلبات"
+    : "Financial performance for the selected period — not Order Sales";
   const ariaLabel = sectionTitle;
 
   useDevQueryRuntimeLog("reporting.getBusinessMetricsSummary", {
@@ -65,7 +70,7 @@ export function SettlementOverviewSection({
     refetch,
     isFetching,
   } = trpc.reporting.getBusinessMetricsSummary.useQuery(
-    { restaurantId },
+    { restaurantId, from, to },
     reportingBusinessSummaryQueryOptions(queriesEnabled)
   );
 
@@ -86,13 +91,13 @@ export function SettlementOverviewSection({
   return (
     <RestaurantDashSection title={sectionTitle} description={sectionSub} ariaLabel={ariaLabel}>
       {isLoading ? (
-        <RestaurantKpiGridSkeleton count={6} />
+        <RestaurantKpiGridSkeleton count={5} />
       ) : isError ? (
         <RestaurantSectionError
           message={
             isAr
-              ? "تعذر تحميل مؤشرات إيرادات الشيكات. حاول مرة أخرى."
-              : "Could not load revenue metrics. Please try again."
+              ? "تعذر تحميل المؤشرات المالية. حاول مرة أخرى."
+              : "Could not load financial metrics. Please try again."
           }
           retryLabel={isAr ? "إعادة المحاولة" : "Retry"}
           isFetching={isFetching}
@@ -102,31 +107,24 @@ export function SettlementOverviewSection({
         <RestaurantSectionEmpty
           message={
             isAr
-              ? "لا توجد شيكات مسددة بعد. ستظهر إيرادات الشيكات هنا بعد الدفع."
-              : "No settled checks yet. Check Revenue will appear here after checks are paid."
+              ? "لا توجد شيكات مسددة في هذه الفترة."
+              : "No settled checks in this period."
           }
         />
       ) : (
         <div className={restaurantDash.kpiGrid}>
           <RestaurantKpiCard
-            label={kpiDisplayName("revenue", lang)}
-            value={formatSettlementRevenue(summary?.revenue ?? "0.00", sym)}
-            icon={DollarSign}
-            tone="success"
-            valueVariant="revenue"
-          />
-          <RestaurantKpiCard
-            label={kpiDisplayName("netRevenue", lang)}
-            value={formatSettlementRevenue(summary?.netRevenue ?? "0.00", sym)}
-            icon={TrendingUp}
-            tone="info"
-            valueVariant="revenue"
-          />
-          <RestaurantKpiCard
             label={kpiDisplayName("paidCheckCount", lang)}
             value={summary?.paidCheckCount ?? 0}
             icon={CheckCircle2}
             tone="info"
+          />
+          <RestaurantKpiCard
+            label={kpiDisplayName("averageCheck", lang)}
+            value={averageCheck === "—" ? "—" : `${averageCheck} ${sym}`}
+            icon={TrendingUp}
+            tone="neutral"
+            valueVariant="revenue"
           />
           <RestaurantKpiCard
             label={kpiDisplayName("complimentaryCount", lang)}
@@ -141,11 +139,10 @@ export function SettlementOverviewSection({
             tone="warning"
           />
           <RestaurantKpiCard
-            label={kpiDisplayName("averageCheck", lang)}
-            value={averageCheck === "—" ? "—" : `${averageCheck} ${sym}`}
-            icon={TrendingUp}
-            tone="neutral"
-            valueVariant="revenue"
+            label={kpiDisplayName("voidedCount", lang)}
+            value={summary?.voidedCount ?? 0}
+            icon={DollarSign}
+            tone="warning"
           />
         </div>
       )}

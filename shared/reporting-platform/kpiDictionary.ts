@@ -119,10 +119,10 @@ function def(
 export const KPI_DICTIONARY = Object.freeze({
   revenue: def({
     id: "revenue",
-    /** REPORTING-PRODUCT-SEMANTICS-1 — preferred user label (id unchanged). */
-    name: "Check Revenue",
+    /** REPORTING-UX-RATIONALIZATION-1 Rev 2.0 — preferred user label (id unchanged). */
+    name: "Gross Sales",
     definition:
-      "Gross Check Revenue: sum of Paid Check grand totals (gen=1 Settlement Record publications) in the reporting period. Refund publications do not mutate this KPI.",
+      "Gross Sales: sum of Paid Check grand totals (gen=1 Settlement Record publications) in the reporting period. Refund publications do not mutate this KPI.",
     formula:
       "SUM(settlement_records.grandTotal WHERE outcome = 'paid' AND recordGeneration = 1 AND recordKind IN ('settlement','void')) /* Gross — excludes recordKind=refund */",
     kpiClass: "business",
@@ -145,20 +145,20 @@ export const KPI_DICTIONARY = Object.freeze({
       "Live Business Settings tax configuration",
       "ops.getSettlement* / Session totalAmount",
       "Order Sales",
-      "Gross Sales",
       "Paid Revenue",
       "Settlement Revenue",
-      "Net Revenue",
-      "Refund publications",
+      "Net Sales",
+      "Refund Amount",
+      "Check Revenue",
     ],
   }),
   refundPublishedTotal: def({
     id: "refundPublishedTotal",
-    name: "Refund Publications",
+    name: "Refund Amount",
     definition:
       "Sum of compensating Settlement Record grand totals with recordKind=refund in the reporting period (publication time).",
     formula:
-      "SUM(settlement_records.grandTotal WHERE recordKind = 'refund') /* compensating publication — not Gross Revenue */",
+      "SUM(settlement_records.grandTotal WHERE recordKind = 'refund') /* compensating publication — not Gross Sales */",
     kpiClass: "business",
     ownerDomain: "check",
     owner: "Check Management",
@@ -172,7 +172,7 @@ export const KPI_DICTIONARY = Object.freeze({
     aggregation: "sum",
     availability: "ga",
     calculationVersion: KPI_CALCULATION_VERSION_BASELINE,
-    notDefinedAs: ["Check Revenue", "Net Revenue", "Register Expected Cash"],
+    notDefinedAs: ["Gross Sales", "Net Sales", "Register Expected Cash"],
   }),
   refundPublicationCount: def({
     id: "refundPublicationCount",
@@ -197,9 +197,9 @@ export const KPI_DICTIONARY = Object.freeze({
   }),
   netRevenue: def({
     id: "netRevenue",
-    name: "Net Revenue",
+    name: "Net Sales",
     definition:
-      "Gross Check Revenue minus Refund Publications. Reporting derivation from immutable Settlement Record publications only — Reporting never owns financial truth.",
+      "Gross Sales minus Refund Amount. Reporting derivation from immutable Settlement Record publications only — Reporting never owns financial truth.",
     formula:
       "BusinessMetricsSummary.revenue − BusinessMetricsSummary.refundPublishedTotal",
     kpiClass: "business",
@@ -209,7 +209,7 @@ export const KPI_DICTIONARY = Object.freeze({
     sourceDto: "BusinessMetricsSummary",
     dtoField: "netRevenue",
     sourceOfTruth:
-      "Derived: Gross Check Revenue (gen=1 paid) − refund Settlement Record publications",
+      "Derived: Gross Sales (gen=1 paid) − refund Settlement Record publications",
     unit: "money",
     valueType: "decimal_string",
     aggregation: "derived",
@@ -217,7 +217,7 @@ export const KPI_DICTIONARY = Object.freeze({
     calculationVersion: KPI_CALCULATION_VERSION_BASELINE,
     dependsOn: ["revenue", "refundPublishedTotal"],
     notDefinedAs: [
-      "Check Revenue",
+      "Gross Sales",
       "Order Sales",
       "Register Expected Cash",
       "Second monetary authority",
@@ -227,7 +227,7 @@ export const KPI_DICTIONARY = Object.freeze({
     id: "refundRate",
     name: "Refund Rate",
     definition:
-      "Refund Publications as a percent of Gross Check Revenue in the period (0 when Gross = 0).",
+      "Refund Amount as a percent of Gross Sales in the period (0 when Gross = 0).",
     formula:
       "(refundPublishedTotal / revenue) × 100 when revenue > 0 else 0",
     kpiClass: "business",
@@ -236,7 +236,7 @@ export const KPI_DICTIONARY = Object.freeze({
     sourceService: "getBusinessMetricsSummary",
     sourceDto: "BusinessMetricsSummary",
     dtoField: "refundRate",
-    sourceOfTruth: "Derived from Gross Check Revenue and Refund Publications",
+    sourceOfTruth: "Derived from Gross Sales and Refund Amount",
     unit: "ratio",
     valueType: "decimal_string",
     aggregation: "derived",
@@ -291,15 +291,15 @@ export const KPI_DICTIONARY = Object.freeze({
   averageCheck: def({
     id: "averageCheck",
     name: "Average Check",
-    definition: "Check Revenue divided by count of Paid Checks in the period.",
-    formula: "Check Revenue / paidCheckCount",
+    definition: "Gross Sales divided by count of Paid Checks in the period.",
+    formula: "Gross Sales / paidCheckCount",
     kpiClass: "business",
     ownerDomain: "check",
     owner: "Check Management",
     sourceService: "getBusinessMetricsSummary",
     sourceDto: "BusinessMetricsSummary",
     dtoField: "averageCheck",
-    sourceOfTruth: "Revenue / paidCheckCount",
+    sourceOfTruth: "Gross Sales / paidCheckCount",
     unit: "money",
     valueType: "decimal_string",
     aggregation: "derived",
@@ -373,8 +373,8 @@ export const KPI_DICTIONARY = Object.freeze({
   }),
   dailySales: def({
     id: "dailySales",
-    name: "Daily Check Revenue",
-    definition: "Check Revenue per business calendar day (Paid Checks).",
+    name: "Daily Gross Sales",
+    definition: "Gross Sales per business calendar day (Paid Checks).",
     formula:
       "SUM(settlement_records.grandTotal WHERE outcome = 'paid' AND recordGeneration = 1) GROUP BY day(settledAt)",
     kpiClass: "business",

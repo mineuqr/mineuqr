@@ -42,8 +42,9 @@ export type RestaurantReportingExportBundle = Readonly<{
   /** Revenue trend points for the selected calendar scope only. */
   revenueTrend: BusinessMetricsTrendDto;
   /**
-   * Payment-method analytics for the selected scope (Settlement Transactions).
-   * Not a substitute for business.revenue (Check Revenue).
+   * Payment-method analytics for the selected scope (Settlement Record payment
+   * snapshots — canonical financial reporting source).
+   * Not a substitute for business.revenue (Gross Sales).
    */
   paymentMethodAnalytics: PaymentMethodAnalyticsDto;
 }>;
