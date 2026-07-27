@@ -2,12 +2,16 @@
 
 | Field | Value |
 |-------|-------|
-| **Document** | Reporting UX Constitution |
-| **Version** | **1.0** |
-| **Status** | Pending Architecture Authority adoption |
+| **Unique Name** | Reporting UX Constitution |
+| **Version** | 1.0.0 |
+| **Status** | Pending Review |
+| **Approval Authority** | Architecture Authority |
+| **Effective Date** | Upon Architecture Authority adoption |
+| **Previous Version** | — |
+| **Successor Version** | — |
+| **Domain** | Reporting UX |
+| **Owner** | Architecture Authority / Technical Design Authority |
 | **Program** | REPORTING-UX-CONSTITUTION-1 |
-| **Effective** | Upon Architecture Authority approval |
-| **Authority** | Technical Design Authority / Architecture Authority |
 | **Supersedes** | Informal reporting UX guidance prior to this constitution |
 
 > **Related:** [KPI Ownership Constitution v1.0](./KPI-Ownership-Constitution-v1.0.md) · [Reporting Object Model & KPI Lifecycle Constitution v1.0](./Reporting-Object-Model-and-KPI-Lifecycle-Constitution-v1.0.md) · [Architecture Constitution v1.0](./Architecture-Constitution-v1.0.md) · [Governance](./Governance.md)

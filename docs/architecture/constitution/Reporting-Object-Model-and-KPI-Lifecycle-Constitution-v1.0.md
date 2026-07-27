@@ -2,13 +2,17 @@
 
 | Field | Value |
 |-------|-------|
-| **Document** | Reporting Object Model & KPI Lifecycle Constitution |
-| **Version** | **1.0** |
-| **Status** | Pending Architecture Authority adoption |
+| **Unique Name** | Reporting Object Model & KPI Lifecycle Constitution |
+| **Version** | 1.0.0 |
+| **Status** | Pending Review |
+| **Approval Authority** | Architecture Authority |
+| **Effective Date** | Upon Architecture Authority adoption |
+| **Previous Version** | — |
+| **Successor Version** | — |
+| **Domain** | Reporting Object Model |
+| **Owner** | Architecture Authority / Technical Design Authority |
 | **Program** | REPORTING-UX-CONSTITUTION-EXTENSION-1 |
-| **Extends** | [Reporting UX Constitution v1.0](./Reporting-UX-Constitution-v1.0.md) · [KPI Ownership Constitution v1.0](./KPI-Ownership-Constitution-v1.0.md) |
-| **Effective** | Upon Architecture Authority approval |
-| **Authority** | Technical Design Authority / Architecture Authority |
+| **Extends** | Reporting UX Constitution · KPI Ownership Constitution |
 
 > **Related:** [Architecture Constitution v1.0](./Architecture-Constitution-v1.0.md) · [Governance](./Governance.md) · [Program package](../../engineering/programs/REPORTING-UX-CONSTITUTION-EXTENSION-1/00-PROGRAM-PACKAGE.md)
 

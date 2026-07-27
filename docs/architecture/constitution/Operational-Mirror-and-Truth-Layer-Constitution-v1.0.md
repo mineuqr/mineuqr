@@ -2,13 +2,17 @@
 
 | Field | Value |
 |-------|-------|
-| **Document** | Operational Mirror Principle & Truth Layer Constitution |
-| **Version** | **1.0** |
-| **Status** | Pending Architecture Authority adoption |
+| **Unique Name** | Operational Mirror Principle & Truth Layer Constitution |
+| **Version** | 1.0.0 |
+| **Status** | Pending Review |
+| **Approval Authority** | Architecture Authority |
+| **Effective Date** | Upon Architecture Authority adoption |
+| **Previous Version** | — |
+| **Successor Version** | — |
+| **Domain** | Reporting Authority Hierarchy |
+| **Owner** | Architecture Authority / Technical Design Authority |
 | **Program** | REPORTING-GOVERNANCE-CONSTITUTION-EXTENSION-2 |
-| **Extends** | [Executive Eligibility & Governance Metadata Constitution v1.0](./Executive-Eligibility-and-Governance-Metadata-Constitution-v1.0.md) (GOV-01…05) |
-| **Effective** | Upon Architecture Authority approval |
-| **Authority** | Technical Design Authority / Architecture Authority |
+| **Extends** | Executive Eligibility & Governance Metadata Constitution (GOV-01…05) |
 
 > **Related:** [Architecture Constitution v1.0](./Architecture-Constitution-v1.0.md) · [Governance](./Governance.md)
 

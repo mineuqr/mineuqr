@@ -2,14 +2,18 @@
 
 | Field | Value |
 |-------|-------|
-| **Document** | Reporting Constitution Enforcement Framework |
-| **Version** | **1.0** |
-| **Status** | Pending Architecture Authority adoption |
+| **Unique Name** | Reporting Constitution Enforcement Framework |
+| **Version** | 1.0.0 |
+| **Status** | Pending Review |
+| **Approval Authority** | Architecture Authority |
+| **Effective Date** | Upon Architecture Authority adoption |
+| **Previous Version** | — |
+| **Successor Version** | — |
+| **Domain** | Reporting Enforcement |
+| **Owner** | Architecture Authority / Technical Design Authority |
 | **Program** | REPORTING-CONSTITUTION-ENFORCEMENT-1 |
 | **Role** | Final constitutional layer — **enforcement only** |
 | **Extends** | GOV-01…10 · UX · KPI · OBJ Reporting Constitutions |
-| **Effective** | Upon Architecture Authority approval |
-| **Authority** | Technical Design Authority / Architecture Authority |
 
 > **Related:** [Operational Mirror & Truth Layer](./Operational-Mirror-and-Truth-Layer-Constitution-v1.0.md) · [Governance Metadata](./Executive-Eligibility-and-Governance-Metadata-Constitution-v1.0.md) · [Governance](./Governance.md)
 

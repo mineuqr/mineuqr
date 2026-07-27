@@ -38,19 +38,17 @@ Every constitution MUST appear here. Deletion prohibited — use Deprecated / Ar
 | KPI Classification & Promotion Governance Constitution | 1.0.0 | Pending Review | Reporting Classification | Architecture Authority / TDA | KPI Ownership; Object Model | REPORTING-UX-CONSTITUTION-EXTENSION-2 | [KPI-Classification-and-Promotion-Governance-Constitution-v1.0.md](./KPI-Classification-and-Promotion-Governance-Constitution-v1.0.md) |
 | KPI Presentation Scope Constitution | 1.0.0 | Pending Review | Reporting Scope | Architecture Authority / TDA | Classification; Ownership | REPORTING-UX-CONSTITUTION-EXTENSION-3 | [KPI-Presentation-Scope-Constitution-v1.0.md](./KPI-Presentation-Scope-Constitution-v1.0.md) |
 | Executive Eligibility & Governance Metadata Constitution | 1.0.0 | Pending Review | Reporting Governance Metadata | Architecture Authority / TDA | Scope; Promotion; Ownership | REPORTING-GOVERNANCE-METADATA-CONSTITUTION-1 | [Executive-Eligibility-and-Governance-Metadata-Constitution-v1.0.md](./Executive-Eligibility-and-Governance-Metadata-Constitution-v1.0.md) |
-| Operational Mirror & Truth Layer Constitution | 1.0.0 | Pending Review | Reporting Authority Hierarchy | Architecture Authority / TDA | Governance Metadata; Architecture Constitution | REPORTING-GOVERNANCE-CONSTITUTION-EXTENSION-2 | [Operational-Mirror-and-Truth-Layer-Constitution-v1.0.md](./Operational-Mirror-and-Truth-Layer-Constitution-v1.0.md) |
+| Operational Mirror Principle & Truth Layer Constitution | 1.0.0 | Pending Review | Reporting Authority Hierarchy | Architecture Authority / TDA | Governance Metadata; Architecture Constitution | REPORTING-GOVERNANCE-CONSTITUTION-EXTENSION-2 | [Operational-Mirror-and-Truth-Layer-Constitution-v1.0.md](./Operational-Mirror-and-Truth-Layer-Constitution-v1.0.md) |
 | Reporting Constitution Enforcement Framework | 1.0.0 | Pending Review | Reporting Enforcement | Architecture Authority / TDA | All Reporting Constitutions; Mirror & Truth Layers | REPORTING-CONSTITUTION-ENFORCEMENT-1 | [Reporting-Constitution-Enforcement-Framework-v1.0.md](./Reporting-Constitution-Enforcement-Framework-v1.0.md) |
 
 ---
 
-## Registry maintenance
+## Non-constitution operating artifacts
 
-| Event | Action |
-|-------|--------|
-| New constitution Draft | Add row Status=Draft |
-| Submit for adoption | Status=Pending Review |
-| Authority adopts | Status=Adopted; set Effective Date on document |
-| Major supersession | Prior → Deprecated; new row; CV-05 migration notes on successor |
-| Long-term retention | Deprecated → Archived |
+| Artifact | Classification | Path |
+|----------|----------------|------|
+| Architecture Governance Operations | Operating framework (not a constitution) | [../operations/Architecture-Governance-Operations-Index.md](../operations/Architecture-Governance-Operations-Index.md) |
 
 **Previous Version / Successor Version** live primarily on each constitution’s CV-01 header; Registry Status must stay synchronized.
+
+**Hardening:** PRE-COMMIT-GOVERNANCE-HARDENING-1 normalized CV-01 fields (Unique Name, Version 1.0.0, Pending Review, Previous/Successor).

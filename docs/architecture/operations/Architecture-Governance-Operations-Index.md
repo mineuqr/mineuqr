@@ -5,7 +5,7 @@
 | **Program** | ARCHITECTURE-GOVERNANCE-OPERATIONS-1 |
 | **Type** | Operating framework (not a constitution) |
 | **Version** | 1.0.0 |
-| **Status** | Pending Architecture Authority adoption |
+| **Status** | Pending Review |
 | **Date** | 2026-07-27 |
 
 > **Does not redesign:** Architecture Constitution · Reporting Constitutions · Versioning (CV) · Registry · Cross-Domain (CD) · Truth Layers · Mirror / Enforcement (GOV) · existing `docs/architecture/governance/*` process texts.

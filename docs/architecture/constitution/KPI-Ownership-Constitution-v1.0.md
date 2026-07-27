@@ -2,12 +2,16 @@
 
 | Field | Value |
 |-------|-------|
-| **Document** | KPI Ownership Governance Constitution |
-| **Version** | **1.0** |
-| **Status** | Pending Architecture Authority adoption |
+| **Unique Name** | KPI Ownership Constitution |
+| **Version** | 1.0.0 |
+| **Status** | Pending Review |
+| **Approval Authority** | Architecture Authority |
+| **Effective Date** | Upon Architecture Authority adoption |
+| **Previous Version** | — |
+| **Successor Version** | — |
+| **Domain** | Reporting KPI |
+| **Owner** | Architecture Authority / Technical Design Authority |
 | **Program** | REPORTING-UX-CONSTITUTION-1 |
-| **Effective** | Upon Architecture Authority approval |
-| **Authority** | Technical Design Authority / Architecture Authority |
 | **Code SSOT (definitions)** | `shared/reporting-platform/kpiDictionary.ts` |
 | **Code SSOT (business names)** | `shared/reporting-platform/productSemantics.ts` |
 

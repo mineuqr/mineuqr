@@ -2,13 +2,17 @@
 
 | Field | Value |
 |-------|-------|
-| **Document** | KPI Presentation Scope Constitution |
-| **Version** | **1.0** |
-| **Status** | Pending Architecture Authority adoption |
+| **Unique Name** | KPI Presentation Scope Constitution |
+| **Version** | 1.0.0 |
+| **Status** | Pending Review |
+| **Approval Authority** | Architecture Authority |
+| **Effective Date** | Upon Architecture Authority adoption |
+| **Previous Version** | — |
+| **Successor Version** | — |
+| **Domain** | Reporting Scope |
+| **Owner** | Architecture Authority / Technical Design Authority |
 | **Program** | REPORTING-UX-CONSTITUTION-EXTENSION-3 |
 | **Extends** | Reporting UX · KPI Ownership · Object Model · Classification & Promotion |
-| **Effective** | Upon Architecture Authority approval |
-| **Authority** | Technical Design Authority / Architecture Authority |
 
 > **Related:** [KPI Ownership Constitution v1.0](./KPI-Ownership-Constitution-v1.0.md) · [Classification & Promotion Constitution v1.0](./KPI-Classification-and-Promotion-Governance-Constitution-v1.0.md) · [Governance](./Governance.md)
 

@@ -2,13 +2,17 @@
 
 | Field | Value |
 |-------|-------|
-| **Document** | Executive Eligibility & Governance Metadata Constitution |
-| **Version** | **1.0** |
-| **Status** | Pending Architecture Authority adoption |
+| **Unique Name** | Executive Eligibility & Governance Metadata Constitution |
+| **Version** | 1.0.0 |
+| **Status** | Pending Review |
+| **Approval Authority** | Architecture Authority |
+| **Effective Date** | Upon Architecture Authority adoption |
+| **Previous Version** | — |
+| **Successor Version** | — |
+| **Domain** | Reporting Governance Metadata |
+| **Owner** | Architecture Authority / Technical Design Authority |
 | **Program** | REPORTING-GOVERNANCE-METADATA-CONSTITUTION-1 |
 | **Extends** | Reporting UX · KPI Ownership · Object Model · Classification & Promotion · Presentation Scope |
-| **Effective** | Upon Architecture Authority approval |
-| **Authority** | Technical Design Authority / Architecture Authority |
 
 > **Related:** [KPI-09 Promotion](./KPI-Classification-and-Promotion-Governance-Constitution-v1.0.md) · [KPI-10 Presentation Scope](./KPI-Presentation-Scope-Constitution-v1.0.md) · [Governance](./Governance.md)
 
