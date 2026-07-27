@@ -69,7 +69,7 @@ describe("REPORTING-UX-RATIONALIZATION-1 Executive Summary V2 guards", () => {
     expect(vm.groups[0]?.cards.map((c) => c.kpiId)).toEqual([
       ...EXECUTIVE_SUMMARY_KPI_IDS,
     ]);
-    expect(vm.groups[0]?.cards[0]?.label).toBe("Gross Sales");
+    expect(vm.groups[0]?.cards[0]?.label).toBe("Total Sales");
     expect(vm.groups[0]?.cards[1]?.label).toBe("Net Sales");
     expect(vm.groups[0]?.cards[2]?.label).toBe("Refund Amount");
     expect(vm.groups[0]?.cards[2]?.value).toBe("10.00");

@@ -123,11 +123,14 @@ async function main() {
       checks[card.kpiId] = blob.includes(card.value);
     }
   }
-  checks.grossSalesLabel = blob.includes("Gross Sales");
+  checks.totalSalesLabel = blob.includes("Total Sales");
   checks.netSalesLabel = blob.includes("Net Sales");
   checks.refundAmountLabel = blob.includes("Refund Amount");
+  checks.noGrossSales = !blob.includes("Gross Sales");
+  checks.noCheckRevenue = !blob.includes("Check Revenue");
   checks.paymentSheet = Boolean(workbook.getWorksheet("Payment Analytics"));
   checks.trendsSheet = Boolean(workbook.getWorksheet("Sales Trends"));
+  checks.salesOrdersSheet = Boolean(workbook.getWorksheet("Sales Orders"));
   checks.yearBoundsGregorian =
     year.from === "2025-12-31 21:00:00" &&
     year.to === "2026-12-31 20:59:59";

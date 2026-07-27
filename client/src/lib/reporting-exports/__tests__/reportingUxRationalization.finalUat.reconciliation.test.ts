@@ -239,12 +239,15 @@ describe("REPORTING-UX-RATIONALIZATION-1 Final UAT reconciliation", () => {
       expect(dashVm.groups[0]?.cards.map((c) => c.kpiId)).toEqual([
         ...EXECUTIVE_SUMMARY_KPI_IDS,
       ]);
-      expect(preferredKpiLabel("revenue", "en")).toBe("Gross Sales");
+      expect(preferredKpiLabel("revenue", "en")).toBe("Total Sales");
       expect(preferredKpiLabel("netRevenue", "en")).toBe("Net Sales");
       expect(preferredKpiLabel("refundPublishedTotal", "en")).toBe(
         "Refund Amount"
       );
       expect(preferredKpiLabel("refundRate", "en")).toBe("Refund Rate");
+      expect(preferredKpiLabel("orderSales", "en")).toBe("Sales Orders");
+      expect(preferredKpiLabel("revenue", "ar")).toBe("إجمالي المبيعات");
+      expect(preferredKpiLabel("orderSales", "ar")).toBe("مبيعات الطلبات");
 
       const workbook = await buildReportingExportWorkbook(
         bundle,
@@ -287,10 +290,12 @@ describe("REPORTING-UX-RATIONALIZATION-1 Final UAT reconciliation", () => {
         expect(blob).toContain(card.label);
       }
 
-      expect(blob).toContain("Gross Sales");
+      expect(blob).toContain("Total Sales");
       expect(blob).toContain("Net Sales");
       expect(blob).toContain("Refund Amount");
       expect(blob).toContain("Refund Rate");
+      expect(blob).not.toContain("Gross Sales");
+      expect(blob).not.toContain("Check Revenue");
     }
   );
 });

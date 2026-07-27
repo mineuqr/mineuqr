@@ -38,7 +38,7 @@ export type BusinessMetricsSummaryDto = Readonly<{
   from: string | null;
   to: string | null;
   /**
-   * Gross Sales (KPI id: revenue) = SUM(paid gen=1 Settlement Record grandTotal).
+   * Total Sales (KPI id: revenue) = SUM(paid gen=1 Settlement Record grandTotal).
    * Refund publications MUST NOT mutate this field (ADR-ARCH-032).
    */
   revenue: string;
@@ -57,12 +57,12 @@ export type BusinessMetricsSummaryDto = Readonly<{
   /** Refund Count — count of refund Settlement Record publications in period. */
   refundPublicationCount: number;
   /**
-   * Net Sales (KPI id: netRevenue) = Gross Sales − Refund Amount (publication-derived).
+   * Net Sales (KPI id: netRevenue) = Total Sales − Refund Amount (publication-derived).
    * Reporting derivation only — never financial truth ownership.
    */
   netRevenue: string;
   /**
-   * Refund Rate = Refund Amount / Gross Sales × 100 (0 when Gross Sales = 0).
+   * Refund Rate = Refund Amount / Total Sales × 100 (0 when Total Sales = 0).
    * Percent string with two decimals.
    */
   refundRate: string;
@@ -77,7 +77,7 @@ export type BusinessMetricsSummaryDto = Readonly<{
 export type BusinessMetricsTrendPointDto = Readonly<{
   periodKey: string;
   periodStart: string;
-  /** Gross Sales (KPI id: revenue) for the period. */
+  /** Total Sales (KPI id: revenue) for the period. */
   revenue: string;
   paidCheckCount: number;
   complimentaryCount: number;
@@ -220,7 +220,7 @@ export type SettlementDistributionDto = Readonly<{
  * REPORTING-PAYMENT-METHOD-ANALYTICS-1 — payment-method analytics from
  * Settlement Record payment snapshots (canonical financial reporting source).
  * Settlement Transactions remain implementation/payment-detail data where applicable.
- * Not a substitute for Gross Sales (KPI id: revenue).
+ * Not a substitute for Total Sales (KPI id: revenue).
  */
 export type PaymentMethodAnalyticsBucketDto = Readonly<{
   paymentMethod: string;

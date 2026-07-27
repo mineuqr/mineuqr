@@ -155,7 +155,7 @@ export const reportingRouter = router({
    * Payment-method analytics from the canonical financial reporting source
    * (Settlement Record payment snapshots by default; Settlement Transactions
    * remain available for legacy/check source mode and payment-detail parity).
-   * Does not replace BusinessMetricsSummary.revenue (Gross Sales SSOT).
+   * Does not replace BusinessMetricsSummary.revenue (Total Sales SSOT).
    */
   getPaymentMethodAnalytics: verifiedProcedure
     .input(periodInput)

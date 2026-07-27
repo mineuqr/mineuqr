@@ -289,7 +289,7 @@ export function ReportsTab({
         <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-400">
           {language === "ar"
             ? "إجمالي المبيعات ومبيعات الطلبات — نفس فترة لوحة التحكم وExcel"
-            : "Gross Sales and Order Sales — dashboard and Excel share the same period"}
+            : "Total Sales and Sales Orders — dashboard and Excel share the same period"}
         </p>
       </div>
 
@@ -407,7 +407,7 @@ export function ReportsTab({
         )}
       </RestaurantDashSection>
 
-      {/* 2. Sales (Order Sales) */}
+      {/* 2. Sales Orders (operational) */}
       {ordersBlocked ? (
         <VerificationRequiredPanel variant="orders" />
       ) : (
@@ -512,10 +512,10 @@ export function ReportsTab({
               {reportScope === "month"
                 ? language === "ar"
                   ? "تفصيل أيام الشهر (مبيعات الطلبات)"
-                  : "Month day detail (Order Sales)"
+                  : "Month day detail (Sales Orders)"
                 : language === "ar"
                   ? "تفصيل أشهر السنة (مبيعات الطلبات)"
-                  : "Year month detail (Order Sales)"}
+                  : "Year month detail (Sales Orders)"}
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">

@@ -119,10 +119,10 @@ function def(
 export const KPI_DICTIONARY = Object.freeze({
   revenue: def({
     id: "revenue",
-    /** REPORTING-UX-RATIONALIZATION-1 Rev 2.0 — preferred user label (id unchanged). */
-    name: "Gross Sales",
+    /** Presentation name (Business Language). KPI id / formula unchanged. */
+    name: "Total Sales",
     definition:
-      "Gross Sales: sum of Paid Check grand totals (gen=1 Settlement Record publications) in the reporting period. Refund publications do not mutate this KPI.",
+      "Total Sales: financial sales after settlement across all sales channels — sum of Paid Check grand totals (gen=1 Settlement Record publications) in the reporting period. Refund publications do not mutate this KPI.",
     formula:
       "SUM(settlement_records.grandTotal WHERE outcome = 'paid' AND recordGeneration = 1 AND recordKind IN ('settlement','void')) /* Gross — excludes recordKind=refund */",
     kpiClass: "business",
@@ -144,12 +144,16 @@ export const KPI_DICTIONARY = Object.freeze({
       "Order Domain totalAmount",
       "Live Business Settings tax configuration",
       "ops.getSettlement* / Session totalAmount",
+      "Sales Orders",
       "Order Sales",
       "Paid Revenue",
       "Settlement Revenue",
       "Net Sales",
       "Refund Amount",
       "Check Revenue",
+      "Gross Sales",
+      "Check Sales",
+      "Session Sales",
     ],
   }),
   refundPublishedTotal: def({
@@ -158,7 +162,7 @@ export const KPI_DICTIONARY = Object.freeze({
     definition:
       "Sum of compensating Settlement Record grand totals with recordKind=refund in the reporting period (publication time).",
     formula:
-      "SUM(settlement_records.grandTotal WHERE recordKind = 'refund') /* compensating publication — not Gross Sales */",
+      "SUM(settlement_records.grandTotal WHERE recordKind = 'refund') /* compensating publication — not Total Sales */",
     kpiClass: "business",
     ownerDomain: "check",
     owner: "Check Management",
@@ -172,7 +176,7 @@ export const KPI_DICTIONARY = Object.freeze({
     aggregation: "sum",
     availability: "ga",
     calculationVersion: KPI_CALCULATION_VERSION_BASELINE,
-    notDefinedAs: ["Gross Sales", "Net Sales", "Register Expected Cash"],
+    notDefinedAs: ["Total Sales", "Gross Sales", "Net Sales", "Register Expected Cash"],
   }),
   refundPublicationCount: def({
     id: "refundPublicationCount",
@@ -199,7 +203,7 @@ export const KPI_DICTIONARY = Object.freeze({
     id: "netRevenue",
     name: "Net Sales",
     definition:
-      "Gross Sales minus Refund Amount. Reporting derivation from immutable Settlement Record publications only — Reporting never owns financial truth.",
+      "Total Sales minus Refund Amount. Reporting derivation from immutable Settlement Record publications only — Reporting never owns financial truth.",
     formula:
       "BusinessMetricsSummary.revenue − BusinessMetricsSummary.refundPublishedTotal",
     kpiClass: "business",
@@ -209,7 +213,7 @@ export const KPI_DICTIONARY = Object.freeze({
     sourceDto: "BusinessMetricsSummary",
     dtoField: "netRevenue",
     sourceOfTruth:
-      "Derived: Gross Sales (gen=1 paid) − refund Settlement Record publications",
+      "Derived: Total Sales (gen=1 paid) − refund Settlement Record publications",
     unit: "money",
     valueType: "decimal_string",
     aggregation: "derived",
@@ -217,7 +221,9 @@ export const KPI_DICTIONARY = Object.freeze({
     calculationVersion: KPI_CALCULATION_VERSION_BASELINE,
     dependsOn: ["revenue", "refundPublishedTotal"],
     notDefinedAs: [
+      "Total Sales",
       "Gross Sales",
+      "Sales Orders",
       "Order Sales",
       "Register Expected Cash",
       "Second monetary authority",
@@ -227,7 +233,7 @@ export const KPI_DICTIONARY = Object.freeze({
     id: "refundRate",
     name: "Refund Rate",
     definition:
-      "Refund Amount as a percent of Gross Sales in the period (0 when Gross = 0).",
+      "Refund Amount as a percent of Total Sales in the period (0 when Total Sales = 0).",
     formula:
       "(refundPublishedTotal / revenue) × 100 when revenue > 0 else 0",
     kpiClass: "business",
@@ -236,7 +242,7 @@ export const KPI_DICTIONARY = Object.freeze({
     sourceService: "getBusinessMetricsSummary",
     sourceDto: "BusinessMetricsSummary",
     dtoField: "refundRate",
-    sourceOfTruth: "Derived from Gross Sales and Refund Amount",
+    sourceOfTruth: "Derived from Total Sales and Refund Amount",
     unit: "ratio",
     valueType: "decimal_string",
     aggregation: "derived",
@@ -291,15 +297,15 @@ export const KPI_DICTIONARY = Object.freeze({
   averageCheck: def({
     id: "averageCheck",
     name: "Average Check",
-    definition: "Gross Sales divided by count of Paid Checks in the period.",
-    formula: "Gross Sales / paidCheckCount",
+    definition: "Total Sales divided by count of Paid Checks in the period.",
+    formula: "Total Sales / paidCheckCount",
     kpiClass: "business",
     ownerDomain: "check",
     owner: "Check Management",
     sourceService: "getBusinessMetricsSummary",
     sourceDto: "BusinessMetricsSummary",
     dtoField: "averageCheck",
-    sourceOfTruth: "Gross Sales / paidCheckCount",
+    sourceOfTruth: "Total Sales / paidCheckCount",
     unit: "money",
     valueType: "decimal_string",
     aggregation: "derived",
@@ -373,8 +379,8 @@ export const KPI_DICTIONARY = Object.freeze({
   }),
   dailySales: def({
     id: "dailySales",
-    name: "Daily Gross Sales",
-    definition: "Gross Sales per business calendar day (Paid Checks).",
+    name: "Daily Total Sales",
+    definition: "Total Sales per business calendar day (Paid Checks).",
     formula:
       "SUM(settlement_records.grandTotal WHERE outcome = 'paid' AND recordGeneration = 1) GROUP BY day(settledAt)",
     kpiClass: "business",
@@ -394,9 +400,9 @@ export const KPI_DICTIONARY = Object.freeze({
   }),
   orderSales: def({
     id: "orderSales",
-    name: "Order Sales",
+    name: "Sales Orders",
     definition:
-      "Sum of completed (served) Order totals from Order Read Analytics Projection (P-10).",
+      "Operational sales originating from the Order Platform — sum of completed (served) Order totals from Order Read Analytics Projection (P-10).",
     formula: "SUM(order_read_analytics_daily.completedSales)",
     kpiClass: "business",
     ownerDomain: "order_read",
@@ -416,7 +422,10 @@ export const KPI_DICTIONARY = Object.freeze({
       "Check Revenue",
       "Paid Check grand totals",
       "ops.getSettlement* / Session totalAmount",
+      "Total Sales",
       "Gross Sales",
+      "Check Sales",
+      "Session Sales",
       "Paid Revenue",
       "Settlement Revenue",
     ],
@@ -445,14 +454,14 @@ export const KPI_DICTIONARY = Object.freeze({
     id: "averageOrder",
     name: "Average Order",
     definition: "Completed order sales divided by completed order count.",
-    formula: "Order Sales / completedOrderCount",
+    formula: "Sales Orders / completedOrderCount",
     kpiClass: "business",
     ownerDomain: "order_read",
     owner: "Order Read",
     sourceService: "getOrderSalesSummary / getOrderSalesRollup",
     sourceDto: "OrderSalesSummary",
     dtoField: "today.averageOrder | month.averageOrder",
-    sourceOfTruth: "Order Sales / completedOrderCount (P-10)",
+    sourceOfTruth: "Sales Orders / completedOrderCount (P-10)",
     unit: "money",
     valueType: "decimal_string",
     aggregation: "derived",

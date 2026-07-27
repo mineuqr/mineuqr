@@ -335,7 +335,7 @@ describe("REPORTING-DESIGN-LANGUAGE-1 samples + presentation", () => {
 
         // Charts mandatory when ≥2 trend points
         const orderSheetName =
-          language === "ar" ? "مبيعات الطلبات" : "Order Sales";
+          language === "ar" ? "مبيعات الطلبات" : "Sales Orders";
         const trendSheetName =
           language === "ar" ? "اتجاهات المبيعات" : "Sales Trends";
         const orderSheet = workbook.getWorksheet(orderSheetName);
@@ -393,25 +393,25 @@ describe("REPORTING-DESIGN-LANGUAGE-1 samples + presentation", () => {
         reconciliation.push("| KPI | Source DTO | Value | Present on |");
         reconciliation.push("|-----|------------|-------|------------|");
         reconciliation.push(
-          `| Gross Sales | BusinessMetricsSummary (= trend sum) | ${revenueDisplay} | Financial (Money Collected), Sales Trends — not Executive detail sheets |`
+          `| Total Sales | BusinessMetricsSummary (= trend sum) | ${revenueDisplay} | Financial (Money Collected), Sales Trends — not Executive detail sheets |`
         );
         reconciliation.push(
           `| Paid Checks | BusinessMetricsSummary | ${bundle.business.paidCheckCount} | Financial (Money Collected), Sales Trends |`
         );
         reconciliation.push(
-          `| Order Sales | OrderSalesRollup (sum of periods) | ${orderSalesDisplay} | Executive (operational), Financial, Order Sales |`
+          `| Sales Orders | OrderSalesRollup (sum of periods) | ${orderSalesDisplay} | Executive (operational), Financial, Sales Orders |`
         );
         reconciliation.push(
-          `| Completed Orders | OrderSalesRollup (sum) | ${orderTotals.completedOrders} | Executive (operational) — same population as Order Sales |`
+          `| Completed Orders | OrderSalesRollup (sum) | ${orderTotals.completedOrders} | Executive (operational) — same population as Sales Orders |`
         );
         reconciliation.push(
-          `| Orders (placed) | OrderSalesRollup (sum) | ${orderTotals.orderCount} | Financial / Order Sales detail — not Executive snapshot |`
+          `| Orders (placed) | OrderSalesRollup (sum) | ${orderTotals.orderCount} | Financial / Sales Orders detail — not Executive snapshot |`
         );
         reconciliation.push(
           `| Tax / Complimentary / Voided | BusinessMetricsSummary | (analysis) | Financial Summary only — Tax = full period paid checks |`
         );
         reconciliation.push(
-          `| Payment Method Mix | PaymentMethodAnalytics (Settlement Record payment snapshots) | ${bundle.paymentMethodAnalytics.monetaryTenderTotal} tender total | Payment Analytics sheet — not Executive / not Gross Sales |`
+          `| Payment Method Mix | PaymentMethodAnalytics (Settlement Record payment snapshots) | ${bundle.paymentMethodAnalytics.monetaryTenderTotal} tender total | Payment Analytics sheet — not Executive / not Total Sales |`
         );
         reconciliation.push("");
         reconciliation.push(

@@ -208,7 +208,7 @@ describe("REPORTING-EXPORTS helpers", () => {
       "Executive Summary",
       "Financial Summary",
       "Payment Analytics",
-      "Order Sales",
+      "Sales Orders",
       "Sales Trends",
     ]);
   });

@@ -142,13 +142,16 @@ async function main() {
     }
   }
   for (const label of [
-    "Gross Sales",
+    "Total Sales",
     "Net Sales",
     "Refund Amount",
     "Payment Analytics",
     "Sales Trends",
   ]) {
     if (!blob.includes(label)) failed.push(`label:${label}`);
+  }
+  if (blob.includes("Gross Sales") || blob.includes("Check Revenue")) {
+    failed.push("deprecated_financial_label");
   }
 
   console.log(

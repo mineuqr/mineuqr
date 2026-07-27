@@ -1,6 +1,8 @@
 /**
  * REPORTING-DASHBOARD-ORDER-KPI-PRESENTATION-1 — architecture guards.
- * Presentation only: Order Sales-adjacent counts use completedOrders.
+ * Superseded presentation selection by REPORTING-UX-RATIONALIZATION-1 Exec V2;
+ * operational Sales Orders cards still bind completedOrders on ReportsTab.
+ * REPORTING-BUSINESS-TERMINOLOGY-FINANCIAL-GOVERNANCE-ADOPTION-1 — Sales Orders label.
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -20,44 +22,47 @@ function read(rel: string): string {
 }
 
 describe("REPORTING-DASHBOARD-ORDER-KPI-PRESENTATION-1 architecture guards", () => {
-  it("Executive Summary uses completedOrders — not orderCount — with Order Sales", () => {
+  it("Executive Summary Exec V2 includes averageOrder from operational totals", () => {
     expect([...EXECUTIVE_SUMMARY_KPI_IDS]).toEqual([
-      "orderSales",
-      "completedOrders",
+      "revenue",
+      "netRevenue",
+      "refundPublishedTotal",
+      "refundRate",
+      "taxCollected",
+      "orderCount",
       "averageOrder",
+      "averageCheck",
     ]);
-    expect(EXECUTIVE_SUMMARY_KPI_IDS).not.toContain("orderCount");
+    expect(EXECUTIVE_SUMMARY_KPI_IDS).toContain("averageOrder");
   });
 
-  it("ReportsTab Order Sales cards bind completedOrders DTO fields", () => {
+  it("ReportsTab Sales Orders cards bind completedOrders DTO fields", () => {
     const reports = read("client/src/components/dashboard/ReportsTab.tsx");
-    expect(reports).toContain("REPORTING-DASHBOARD-ORDER-KPI-PRESENTATION-1");
     expect(reports).toContain('kpiDisplayName("completedOrders"');
-    expect(reports).toContain("today.completedOrders");
-    expect(reports).toContain("month.completedOrders");
+    expect(reports).toContain("orderPeriod.completedOrders");
     expect(reports).toContain("row.completedOrders");
     expect(reports).toContain("orderSalesAnalyticsNote");
-    // Must not bind all-created totalOrders on Order Sales KPI cards
+    expect(reports).toContain("Sales Orders");
     expect(reports).not.toContain("today.totalOrders");
     expect(reports).not.toContain("month.totalOrders");
   });
 
-  it("Executive presentation maps completedOrders value from scoped totals", () => {
+  it("Executive presentation maps averageOrder from scoped operational totals", () => {
     const presentation = read(
       "client/src/lib/reporting-exports/executiveSummaryPresentation.ts"
     );
-    expect(presentation).toContain("case \"completedOrders\"");
-    expect(presentation).toContain("orderPeriod.completedOrders");
-    expect(presentation).not.toMatch(
-      /case "orderCount":\s*return formatNullableCount\(orderPeriod\.orderCount\)/
-    );
+    expect(presentation).toContain('case "averageOrder"');
+    expect(presentation).toContain("orderPeriod.averageOrder");
+    expect(presentation).toContain("Total Sales");
+    expect(presentation).toContain("Sales Orders");
   });
 
   it("Product Semantics labels remain unambiguous", () => {
     expect(preferredKpiLabel("completedOrders", "en")).toBe("Completed Orders");
     expect(preferredKpiLabel("completedOrders", "ar")).toBe("الطلبات المكتملة");
     expect(preferredKpiLabel("orderCount", "en")).toBe("Orders");
-    expect(preferredKpiLabel("orderSales", "en")).toBe("Order Sales");
+    expect(preferredKpiLabel("orderSales", "en")).toBe("Sales Orders");
+    expect(preferredKpiLabel("revenue", "en")).toBe("Total Sales");
     expect(SEMANTIC_CLARIFICATIONS.en.orderSalesPopulation).toMatch(
       /completed \(served\) population/i
     );
@@ -67,7 +72,7 @@ describe("REPORTING-DASHBOARD-ORDER-KPI-PRESENTATION-1 architecture guards", () 
     expect(SECTION_TERMINOLOGY.ar.orderSalesAnalyticsNote).toMatch(/المكتملة/);
   });
 
-  it("does not change Order Sales / Revenue formulas", () => {
+  it("does not change Sales Orders / Total Sales formulas", () => {
     expect(getKpiDefinition("orderSales").formula).toContain("completedSales");
     expect(getKpiDefinition("revenue").formula).toContain("grandTotal");
     expect(getKpiDefinition("completedOrders").dtoField).toContain(

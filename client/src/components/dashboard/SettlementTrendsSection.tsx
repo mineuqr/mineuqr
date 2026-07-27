@@ -213,7 +213,7 @@ export function SettlementTrendsSection({
   const sectionTitle = SECTION_TERMINOLOGY[lang].checkRevenueTrends;
   const sectionSub = isAr
     ? "تطور إجمالي المبيعات عبر الزمن للفترة المحددة — ليست مبيعات الطلبات"
-    : "How Gross Sales changes over the selected period — not Order Sales";
+    : "How Total Sales changes over the selected period — not Sales Orders";
   const ariaLabel = sectionTitle;
 
   useDevQueryRuntimeLog("reporting.getBusinessMetricsTrend", {
@@ -333,7 +333,7 @@ export function SettlementTrendsSection({
 
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-4">
             <SettlementTrendChart
-              title={isAr ? "اتجاه إجمالي المبيعات" : "Gross Sales Trend"}
+              title={isAr ? "اتجاه إجمالي المبيعات" : "Total Sales Trend"}
               data={chartRows}
               dataKey="paidRevenue"
               stroke="#4ade80"
@@ -380,7 +380,7 @@ export function SettlementTrendsSection({
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:gap-4">
               <TrendInsightCard
                 title={
-                  isAr ? "أعلى فترة لإجمالي المبيعات" : "Highest Gross Sales Period"
+                  isAr ? "أعلى فترة لإجمالي المبيعات" : "Highest Total Sales Period"
                 }
                 periodLabel={revenueInsight?.periodLabel ?? null}
                 valueLabel={revenueInsight?.valueLabel ?? null}

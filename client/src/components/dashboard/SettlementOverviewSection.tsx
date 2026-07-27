@@ -52,7 +52,7 @@ export function SettlementOverviewSection({
   const sectionTitle = SECTION_TERMINOLOGY[lang].checkRevenueOverview;
   const sectionSub = isAr
     ? "الأداء المالي للفترة المحددة — ليست مبيعات الطلبات"
-    : "Financial performance for the selected period — not Order Sales";
+    : "Financial performance for the selected period — not Sales Orders";
   const ariaLabel = sectionTitle;
 
   useDevQueryRuntimeLog("reporting.getBusinessMetricsSummary", {

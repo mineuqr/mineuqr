@@ -45,19 +45,19 @@ const KPI_CAPTIONS: Readonly<
   Record<ExecutiveSummaryKpiId, Readonly<{ en: string; ar: string }>>
 > = Object.freeze({
   revenue: {
-    en: "Paid check totals for this period (gross)",
-    ar: "إجمالي الشيكات المدفوعة لهذه الفترة",
+    en: "Financial sales for this period across all channels",
+    ar: "المبيعات المالية لهذه الفترة عبر كل القنوات",
   },
   netRevenue: {
-    en: "Gross Sales after published refunds",
+    en: "Total Sales after published refunds",
     ar: "إجمالي المبيعات بعد المرتجعات المنشورة",
   },
   refundPublishedTotal: {
-    en: "Total refunded (published Settlement Records)",
+    en: "Total refunded (published)",
     ar: "إجمالي المرتجعات المنشورة",
   },
   refundRate: {
-    en: "Refund Amount as a percent of Gross Sales",
+    en: "Refund Amount as a percent of Total Sales",
     ar: "مبلغ المرتجعات كنسبة من إجمالي المبيعات",
   },
   taxCollected: {
@@ -83,9 +83,9 @@ const PAGE_COPY = Object.freeze({
     primaryQuestion: "How is the restaurant performing this period?",
     executiveTitle: "Executive KPIs",
     executiveHint:
-      "Gross Sales, Net Sales, refunds, tax, and order averages for the selected period.",
+      "Total Sales, Net Sales, refunds, tax, and order averages for the selected period.",
     footerNote:
-      "Details: Financial Performance, Refund Analytics, Payment Analytics, Order Sales, and Trends follow. Operational rollups are on dedicated sheets.",
+      "Details: Financial Performance, Refund Analytics, Payment Analytics, Sales Orders, and Trends follow. Operational rollups are on dedicated sheets.",
   },
   ar: {
     primaryQuestion: "كيف يؤدي المطعم في هذه الفترة؟",

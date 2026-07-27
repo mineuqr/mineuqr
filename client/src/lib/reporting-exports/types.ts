@@ -44,7 +44,7 @@ export type RestaurantReportingExportBundle = Readonly<{
   /**
    * Payment-method analytics for the selected scope (Settlement Record payment
    * snapshots — canonical financial reporting source).
-   * Not a substitute for business.revenue (Gross Sales).
+   * Not a substitute for business.revenue (Total Sales).
    */
   paymentMethodAnalytics: PaymentMethodAnalyticsDto;
 }>;
