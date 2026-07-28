@@ -1,3 +1,7 @@
+/**
+ * SEMANTIC-CARD-PLATFORM-ADOPTION-1
+ * Admin KPI section — SemanticKpiCard only.
+ */
 import {
   Clock,
   CreditCard,
@@ -8,9 +12,9 @@ import {
 import type { AdminKPIValues } from "@/lib/admin/dashboardSummaryKpis";
 import { ADMIN_EXPIRING_SOON_DAYS } from "@/lib/admin/dashboardSummaryKpis";
 import { formatAdminKpiNumber, formatAdminRevenueUSD } from "@/lib/admin/formatAdminCurrency";
+import { SemanticKpiCard } from "@/design-system/semantic-card";
 import { AdminLoadingState } from "../operations/AdminLoadingState";
 import { AdminSection } from "./AdminSection";
-import { AdminStatCard } from "./AdminStatCard";
 
 type AdminKPISectionProps = {
   kpis: AdminKPIValues;
@@ -49,65 +53,71 @@ export function AdminKPISection({
       {loading ? (
         <AdminLoadingState variant="kpiStrip" label={loadingLabel} />
       ) : (
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
-        <AdminStatCard
-          title={labels.activeRestaurants ?? (isAr ? "المطاعم النشطة" : "Active Restaurants")}
-          value={formatAdminKpiNumber(kpis.activeRestaurants)}
-          icon={Store}
-          loading={loading}
-          valueDir="ltr"
-          hint={
-            labels.activeRestaurantsHint ??
-            (isAr ? "اشتراك فعّال أو تجريبي" : "Active or trial subscription")
-          }
-        />
-        <AdminStatCard
-          title={labels.activeSubscriptions ?? (isAr ? "الاشتراكات النشطة" : "Active Subscriptions")}
-          value={formatAdminKpiNumber(kpis.activeSubscriptions)}
-          icon={CreditCard}
-          loading={loading}
-          valueDir="ltr"
-          hint={
-            labels.activeSubscriptionsHint ??
-            (isAr ? "فعّال + تجريبي" : "Active & trial")
-          }
-        />
-        <AdminStatCard
-          title={labels.expiringSoon ?? (isAr ? "تنتهي قريباً" : "Expiring Soon")}
-          value={formatAdminKpiNumber(kpis.expiringSoon)}
-          icon={Clock}
-          loading={loading}
-          valueDir="ltr"
-          hint={
-            labels.expiringSoonHint ??
-            (isAr
-              ? `خلال ${ADMIN_EXPIRING_SOON_DAYS} يوماً`
-              : `Within ${ADMIN_EXPIRING_SOON_DAYS} days`)
-          }
-        />
-        <AdminStatCard
-          title={labels.estimatedMrr ?? (isAr ? "MRR تقديري (USD)" : "Estimated MRR (USD)")}
-          value={mrrDisplay}
-          icon={DollarSign}
-          loading={loading}
-          valueDir="ltr"
-          hint={
-            labels.estimatedMrrHint ??
-            (isAr
-              ? "تقدير شهري من اشتراكات فعّالة مدفوعة فقط — ليس إيراداً محصلاً"
-              : "Projected monthly from paid active subs only — not collected revenue")
-          }
-        />
-        <div className="col-span-2 lg:col-span-1">
-          <AdminStatCard
-            title={labels.totalUsers ?? (isAr ? "إجمالي المستخدمين" : "Total Users")}
-            value={formatAdminKpiNumber(kpis.totalUsers)}
-            icon={Users}
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
+          <SemanticKpiCard
+            label={labels.activeRestaurants ?? (isAr ? "المطاعم النشطة" : "Active Restaurants")}
+            value={formatAdminKpiNumber(kpis.activeRestaurants)}
+            icon={Store}
             loading={loading}
             valueDir="ltr"
+            tone="info"
+            hint={
+              labels.activeRestaurantsHint ??
+              (isAr ? "اشتراك فعّال أو تجريبي" : "Active or trial subscription")
+            }
           />
+          <SemanticKpiCard
+            label={labels.activeSubscriptions ?? (isAr ? "الاشتراكات النشطة" : "Active Subscriptions")}
+            value={formatAdminKpiNumber(kpis.activeSubscriptions)}
+            icon={CreditCard}
+            loading={loading}
+            valueDir="ltr"
+            tone="info"
+            hint={
+              labels.activeSubscriptionsHint ??
+              (isAr ? "فعّال + تجريبي" : "Active & trial")
+            }
+          />
+          <SemanticKpiCard
+            label={labels.expiringSoon ?? (isAr ? "تنتهي قريباً" : "Expiring Soon")}
+            value={formatAdminKpiNumber(kpis.expiringSoon)}
+            icon={Clock}
+            loading={loading}
+            valueDir="ltr"
+            tone="warning"
+            hint={
+              labels.expiringSoonHint ??
+              (isAr
+                ? `خلال ${ADMIN_EXPIRING_SOON_DAYS} يوماً`
+                : `Within ${ADMIN_EXPIRING_SOON_DAYS} days`)
+            }
+          />
+          <SemanticKpiCard
+            label={labels.estimatedMrr ?? (isAr ? "MRR تقديري (USD)" : "Estimated MRR (USD)")}
+            value={mrrDisplay}
+            icon={DollarSign}
+            loading={loading}
+            valueDir="ltr"
+            tone="success"
+            valueVariant="revenue"
+            hint={
+              labels.estimatedMrrHint ??
+              (isAr
+                ? "تقدير شهري من اشتراكات فعّالة مدفوعة فقط — ليس إيراداً محصلاً"
+                : "Projected monthly from paid active subs only — not collected revenue")
+            }
+          />
+          <div className="col-span-2 lg:col-span-1">
+            <SemanticKpiCard
+              label={labels.totalUsers ?? (isAr ? "إجمالي المستخدمين" : "Total Users")}
+              value={formatAdminKpiNumber(kpis.totalUsers)}
+              icon={Users}
+              loading={loading}
+              valueDir="ltr"
+              tone="neutral"
+            />
+          </div>
         </div>
-      </div>
       )}
     </AdminSection>
   );

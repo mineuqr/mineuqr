@@ -4,10 +4,7 @@ import { ActiveSessionsTableSection } from "@/components/dashboard/ActiveSession
 import { DiningSessionWorkspaceSheet } from "@/components/dashboard/DiningSessionWorkspaceSheet";
 import { OperationalActivityFeedSection } from "@/components/dashboard/OperationalActivityFeedSection";
 import { RestaurantDashSection } from "@/components/dashboard/RestaurantDashSection";
-import {
-  RestaurantKpiCard,
-  RestaurantKpiGridSkeleton,
-} from "@/components/dashboard/RestaurantKpiCard";
+import { SemanticKpiCard, SemanticKpiSkeleton } from "@/design-system/semantic-card";
 import { restaurantDash } from "@/components/dashboard/restaurantDashStyles";
 import {
   RestaurantSectionError,
@@ -129,7 +126,7 @@ export function SessionsWorkspacePanel({
         {verificationError ? (
           <VerificationRequiredPanel variant="orders" compact />
         ) : kpiLoading ? (
-          <RestaurantKpiGridSkeleton count={3} />
+          <SemanticKpiSkeleton count={3} />
         ) : kpiFailed ? (
           <RestaurantSectionError
             message={
@@ -154,19 +151,19 @@ export function SessionsWorkspacePanel({
               </p>
             ) : null}
             <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
-              <RestaurantKpiCard
+              <SemanticKpiCard
                 label={kpiDisplayName("activeSessions", lang)}
                 value={ops?.activeSessions ?? 0}
                 icon={LayoutDashboard}
                 tone="primary"
               />
-              <RestaurantKpiCard
+              <SemanticKpiCard
                 label={kpiDisplayName("occupiedTables", lang)}
                 value={ops?.occupiedTables ?? 0}
                 icon={Grid3X3}
                 tone="accent"
               />
-              <RestaurantKpiCard
+              <SemanticKpiCard
                 label={
                   isAr
                     ? "إيرادات الشيكات اليوم"

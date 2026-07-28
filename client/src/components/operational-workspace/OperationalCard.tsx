@@ -1,6 +1,7 @@
 import { memo } from "react";
 import { Button } from "@/components/ui/button";
 import { DelayExplanation } from "@/components/operational-workspace/DelayExplanation";
+import { SemanticBadge } from "@/design-system/semantic-badge";
 import type { OperationalActionId } from "@/lib/operational-workspace/operationalActions";
 import {
   pickLocalizedLabel,
@@ -35,9 +36,9 @@ function PresentationSlaIndicator({
         / {pickLocalizedLabel(timing.targetLabel, isAr)} {isAr ? "هدف" : "target"}
       </span>
       {timing.lateLabel ? (
-        <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
+        <SemanticBadge tone="danger" density="soft" size="sm">
           +{pickLocalizedLabel(timing.lateLabel, isAr)} {isAr ? "تأخير" : "late"}
-        </span>
+        </SemanticBadge>
       ) : null}
     </div>
   );

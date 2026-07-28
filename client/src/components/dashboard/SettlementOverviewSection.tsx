@@ -23,7 +23,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { RestaurantDashSection } from "./RestaurantDashSection";
-import { RestaurantKpiCard, RestaurantKpiGridSkeleton } from "./RestaurantKpiCard";
+import { SemanticKpiCard, SemanticKpiSkeleton } from "@/design-system/semantic-card";
 import {
   RestaurantSectionEmpty,
   RestaurantSectionError,
@@ -89,7 +89,7 @@ export function SettlementOverviewSection({
   return (
     <RestaurantDashSection title={sectionTitle} description={sectionSub} ariaLabel={ariaLabel}>
       {isLoading ? (
-        <RestaurantKpiGridSkeleton count={5} />
+        <SemanticKpiSkeleton count={5} />
       ) : isError ? (
         <RestaurantSectionError
           message={
@@ -111,32 +111,32 @@ export function SettlementOverviewSection({
         />
       ) : (
         <div className={restaurantDash.kpiGrid}>
-          <RestaurantKpiCard
+          <SemanticKpiCard
             label={kpiDisplayName("paidCheckCount", lang)}
             value={summary?.paidCheckCount ?? 0}
             icon={CheckCircle2}
             tone="info"
           />
-          <RestaurantKpiCard
+          <SemanticKpiCard
             label={kpiDisplayName("averageCheck", lang)}
             value={averageCheck === "—" ? "—" : `${averageCheck} ${sym}`}
             icon={TrendingUp}
             tone="neutral"
             valueVariant="revenue"
           />
-          <RestaurantKpiCard
+          <SemanticKpiCard
             label={kpiDisplayName("complimentaryCount", lang)}
             value={summary?.complimentaryCount ?? 0}
             icon={Gift}
             tone="accent"
           />
-          <RestaurantKpiCard
+          <SemanticKpiCard
             label={isAr ? "نسبة المجانية" : "Complimentary Rate"}
             value={summary ? formatComplimentaryRate(summary) : "—"}
             icon={Percent}
             tone="warning"
           />
-          <RestaurantKpiCard
+          <SemanticKpiCard
             label={kpiDisplayName("voidedCount", lang)}
             value={summary?.voidedCount ?? 0}
             icon={DollarSign}

@@ -141,7 +141,7 @@ export const REPORTS_ASSET_DEFINITIONS: ReportsAssetDefinition[] = [
   {
     id: "stat-card-primitive",
     category: "widget",
-    ownerPath: "components/admin/layout/AdminStatCard.tsx",
+    ownerPath: "design-system/semantic-card/components/SemanticKpiCard.tsx",
     surfaces: ["overview", "commercial", "analytics"],
   },
   {

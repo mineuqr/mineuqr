@@ -35,7 +35,7 @@ import {
 } from "lucide-react";
 import { useMemo } from "react";
 import { RestaurantDashSection } from "./RestaurantDashSection";
-import { RestaurantKpiCard, RestaurantKpiGridSkeleton } from "./RestaurantKpiCard";
+import { SemanticKpiCard, SemanticKpiSkeleton } from "@/design-system/semantic-card";
 import { RestaurantSectionError } from "./RestaurantSectionStates";
 import { restaurantDash } from "./restaurantDashStyles";
 import { cn } from "@/lib/utils";
@@ -140,7 +140,7 @@ export function RefundAnalyticsSection({
       )}
     >
       {isLoading ? (
-        <RestaurantKpiGridSkeleton count={4} />
+        <SemanticKpiSkeleton count={4} />
       ) : isError ? (
         <RestaurantSectionError
           message={
@@ -155,7 +155,7 @@ export function RefundAnalyticsSection({
       ) : (
         <div className="space-y-4">
           <div className={restaurantDash.kpiGridSecondary}>
-            <RestaurantKpiCard
+            <SemanticKpiCard
               label={kpiDisplayName("refundPublishedTotal", lang)}
               value={formatSettlementRevenue(
                 summary?.refundPublishedTotal ?? "0.00",
@@ -166,7 +166,7 @@ export function RefundAnalyticsSection({
               valueVariant="revenue"
               emphasis="secondary"
             />
-            <RestaurantKpiCard
+            <SemanticKpiCard
               label={kpiDisplayName("netRevenue", lang)}
               value={formatSettlementRevenue(
                 summary?.netRevenue ?? "0.00",
@@ -177,14 +177,14 @@ export function RefundAnalyticsSection({
               valueVariant="revenue"
               emphasis="secondary"
             />
-            <RestaurantKpiCard
+            <SemanticKpiCard
               label={kpiDisplayName("refundRate", lang)}
               value={`${summary?.refundRate ?? "0.00"}%`}
               icon={Percent}
               tone="warning"
               emphasis="supporting"
             />
-            <RestaurantKpiCard
+            <SemanticKpiCard
               label={kpiDisplayName("refundPublicationCount", lang)}
               value={summary?.refundPublicationCount ?? 0}
               icon={RotateCcw}

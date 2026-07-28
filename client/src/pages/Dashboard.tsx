@@ -19,7 +19,7 @@ import { ReportsTab } from "@/components/dashboard/ReportsTab";
 import { SettlementHistoryPanel } from "@/components/settlement-record/SettlementHistoryPanel";
 import { RegisterOperationsPanel } from "@/components/register-operations/RegisterOperationsPanel";
 import { RegisterCatalogPanel } from "@/components/register-catalog/RegisterCatalogPanel";
-import { RestaurantKpiCard } from "@/components/dashboard/RestaurantKpiCard";
+import { SemanticKpiCard } from "@/design-system/semantic-card";
 import {
   RestaurantOperationsShell,
   type RestaurantTab,
@@ -186,7 +186,7 @@ function DashboardStatCard({
   valueVariant?: "operational" | "revenue";
 }) {
   return (
-    <RestaurantKpiCard
+    <SemanticKpiCard
       label={label}
       value={value}
       icon={icon}

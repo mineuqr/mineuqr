@@ -18,7 +18,7 @@ import {
 } from "@/lib/screen-management/screenDetailsPresentation";
 import { VirtualizedFleetGrid } from "@/components/screen-management/VirtualizedFleetGrid";
 import { VirtualizedFleetTable } from "@/components/screen-management/VirtualizedFleetTable";
-import { RestaurantKpiCard, RestaurantKpiGridSkeleton } from "@/components/dashboard/RestaurantKpiCard";
+import { SemanticKpiCard, SemanticKpiSkeleton } from "@/design-system/semantic-card";
 import { RestaurantSectionError } from "@/components/dashboard/RestaurantSectionStates";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -249,13 +249,13 @@ export function ScreenManagementWorkspacePanel({
       }
       kpis={
         fleetQuery.isLoading ? (
-          <RestaurantKpiGridSkeleton count={4} />
+          <SemanticKpiSkeleton count={4} />
         ) : (
           <>
-            <RestaurantKpiCard label={isAr ? "الشاشات" : "Screens"} value={counts.total} icon={Monitor} />
-            <RestaurantKpiCard label={isAr ? "متصل" : "Online"} value={counts.online} tone="success" icon={Monitor} />
-            <RestaurantKpiCard label={isAr ? "غير متصل" : "Offline"} value={counts.offline} tone="warning" icon={Monitor} />
-            <RestaurantKpiCard
+            <SemanticKpiCard label={isAr ? "الشاشات" : "Screens"} value={counts.total} icon={Monitor} />
+            <SemanticKpiCard label={isAr ? "متصل" : "Online"} value={counts.online} tone="success" icon={Monitor} />
+            <SemanticKpiCard label={isAr ? "غير متصل" : "Offline"} value={counts.offline} tone="warning" icon={Monitor} />
+            <SemanticKpiCard
               label={isAr ? "يحتاج انتباه" : "Needs attention"}
               value={counts.needsAttention}
               tone={counts.needsAttention > 0 ? "warning" : "neutral"}

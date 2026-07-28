@@ -20,7 +20,7 @@ describe("SCREEN-FLEET-SCALE-1 client architecture guards", () => {
 
   it("SCREEN-MANAGEMENT-INFORMATION-HIERARCHY-1 — workspace has one KPI section", () => {
     const panel = read("client/src/components/screen-management/ScreenManagementWorkspacePanel.tsx");
-    expect(panel).toContain("RestaurantKpiCard");
+    expect(panel).toContain("SemanticKpiCard");
     expect(panel).not.toContain("OperationsBar");
     expect(panel).not.toContain("operationsBar=");
   });

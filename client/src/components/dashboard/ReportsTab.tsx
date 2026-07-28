@@ -19,7 +19,7 @@ import {
   ExecutivePeriodEmptyState,
 } from "@/components/dashboard/ExecutivePeriodEmptyState";
 import { RestaurantDashSection } from "@/components/dashboard/RestaurantDashSection";
-import { RestaurantKpiCard } from "@/components/dashboard/RestaurantKpiCard";
+import { SemanticKpiCard } from "@/design-system/semantic-card";
 import { restaurantDash } from "@/components/dashboard/restaurantDashStyles";
 import { VerificationRequiredPanel } from "@/components/auth/VerificationRequiredPanel";
 import { ReportingPeriodToolbar } from "@/components/dashboard/ReportingPeriodToolbar";
@@ -711,7 +711,7 @@ export function ReportsTab({
             )}
           >
             <div className={restaurantDash.kpiGridSecondary}>
-              <RestaurantKpiCard
+              <SemanticKpiCard
                 label={kpiDisplayName("taxCollected", uiLang)}
                 value={formatSettlementRevenue(
                   businessMonth?.taxCollected ?? "0.00",

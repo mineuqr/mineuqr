@@ -1,7 +1,7 @@
 /**
- * REPORTING-PRODUCT-UX-RESTRUCTURE-1/2 + SEMANTIC-CARD-DESIGN-SYSTEM-1
- * Interactive executive period cards — thin adapter over SemanticExecutiveCard.
- * Presentation / motion only. Values from parent view model.
+ * SEMANTIC-CARD-PLATFORM-ADOPTION-1
+ * Typed adapter: ExecutivePeriodCard VM → SemanticExecutiveGrid.
+ * Official card implementation remains SemanticExecutiveCard only.
  */
 import {
   SemanticExecutiveCard,

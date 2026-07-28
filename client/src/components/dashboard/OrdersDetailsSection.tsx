@@ -3,7 +3,7 @@
  */
 import { ClipboardList, CheckCircle2, ShoppingBag } from "lucide-react";
 import { RestaurantDashSection } from "./RestaurantDashSection";
-import { RestaurantKpiCard } from "./RestaurantKpiCard";
+import { SemanticKpiCard } from "@/design-system/semantic-card";
 import { restaurantDash } from "./restaurantDashStyles";
 import { preferredKpiLabel } from "@shared/reporting-platform";
 import { cn } from "@/lib/utils";
@@ -42,21 +42,21 @@ export function OrdersDetailsSection({
       )}
     >
       <div className={restaurantDash.kpiGridSecondary}>
-        <RestaurantKpiCard
+        <SemanticKpiCard
           label={preferredKpiLabel("orderCount", lang)}
           value={orderCount ?? 0}
           icon={ClipboardList}
           tone="warning"
           emphasis="secondary"
         />
-        <RestaurantKpiCard
+        <SemanticKpiCard
           label={preferredKpiLabel("completedOrders", lang)}
           value={completedOrders ?? 0}
           icon={CheckCircle2}
           tone="success"
           emphasis="secondary"
         />
-        <RestaurantKpiCard
+        <SemanticKpiCard
           label={preferredKpiLabel("orderSales", lang)}
           value={orderSalesDisplay}
           icon={ShoppingBag}

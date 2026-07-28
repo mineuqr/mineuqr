@@ -1,6 +1,6 @@
 import { Activity, AlertTriangle, BarChart3, CalendarDays } from "lucide-react";
 import { AdminPageSection } from "@/components/admin/sections/AdminPageSection";
-import { AdminStatCard } from "@/components/admin/layout/AdminStatCard";
+import { SemanticKpiCard } from "@/design-system/semantic-card";
 import { adminDash } from "@/components/admin/layout/adminDashStyles";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { formatAdminKpiNumber } from "@/lib/admin/formatAdminCurrency";
@@ -27,35 +27,39 @@ export function SecurityOverviewSection() {
       ) : (
         <>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <AdminStatCard
-              compact
-              title={t("admin.security.overview.totalEvents")}
+            <SemanticKpiCard
+              emphasis="compact"
+              label={t("admin.security.overview.totalEvents")}
               icon={BarChart3}
               value={formatAdminKpiNumber(data?.total ?? 0)}
+              tone="info"
             />
-            <AdminStatCard
-              compact
-              title={t("admin.security.overview.eventsToday")}
+            <SemanticKpiCard
+              emphasis="compact"
+              label={t("admin.security.overview.eventsToday")}
               icon={CalendarDays}
               value={formatAdminKpiNumber(data?.today ?? 0)}
+              tone="info"
             />
-            <AdminStatCard
-              compact
-              title={t("admin.security.overview.categories")}
+            <SemanticKpiCard
+              emphasis="compact"
+              label={t("admin.security.overview.categories")}
               icon={Activity}
               value={formatAdminKpiNumber(
                 countAuditBuckets(data?.byCategory).length
               )}
               hint={t("admin.security.overview.categoriesHint")}
+              tone="neutral"
             />
-            <AdminStatCard
-              compact
-              title={t("admin.security.overview.severity")}
+            <SemanticKpiCard
+              emphasis="compact"
+              label={t("admin.security.overview.severity")}
               icon={AlertTriangle}
               value={formatAdminKpiNumber(
                 countAuditBuckets(data?.bySeverity).length
               )}
               hint={t("admin.security.overview.severityHint")}
+              tone="warning"
             />
           </div>
 

@@ -1,4 +1,12 @@
-import { Badge } from "@/components/ui/badge";
+/**
+ * SEMANTIC-CARD-PLATFORM-ADOPTION-1
+ * Session summary presentation — SemanticBadge for status; metrics as SemanticKpi grid.
+ */
+import {
+  SemanticBadge,
+  mapTableSessionStatusToBadgeTone,
+} from "@/design-system/semantic-badge";
+import { SemanticKpiCard } from "@/design-system/semantic-card";
 import { getDiningSessionBannerTitle, type DiningSessionStatus } from "@/lib/diningSessionCopy";
 import { formatDashboardSessionLabel } from "@/lib/diningSessionDashboardCopy";
 import {
@@ -8,6 +16,7 @@ import {
   sessionSummaryLabel,
 } from "@/lib/diningSessionWorkspaceCopy";
 import { formatRiyadhDateTime } from "@/lib/datetime";
+import { Clock, Hash, ShoppingBag, Wallet } from "lucide-react";
 
 type Lang = "ar" | "en";
 
@@ -40,53 +49,62 @@ export function DiningSessionSummaryCard({
   const unitAr = isRooms ? "غرفة" : "طاولة";
   const unitEn = isRooms ? "Room" : "Table";
   const durationMs = computeWorkspaceDurationMs(openedAt, closedAt, status);
-
-  const rows = [
-    {
-      label: sessionSummaryLabel("openedAt", language),
-      value: formatRiyadhDateTime(openedAt, language === "ar" ? "ar-SA" : "en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-    },
-    {
-      label: sessionSummaryLabel("duration", language),
-      value: formatSessionDuration(durationMs, language),
-    },
-    {
-      label: sessionSummaryLabel("orders", language),
-      value: String(orderCount),
-    },
-    {
-      label: sessionSummaryLabel("sessionTotal", language),
-      value: formatSessionTotalAmount(ordersTotalAmount, currencySymbol, language),
-    },
-  ];
+  const tableLabelText =
+    language === "ar" ? `${unitAr} ${tableNumber}` : `${unitEn} ${tableNumber}`;
 
   return (
-    <div className="rounded-xl border border-border/40 bg-muted/10 p-4">
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <span className="font-semibold text-foreground">
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="font-semibold text-white">
           {formatDashboardSessionLabel(sessionId, language)}
         </span>
-        <Badge variant="outline" className="border-border/60 text-xs">
-          {language === "ar" ? `${unitAr} ${tableNumber}` : `${unitEn} ${tableNumber}`}
-        </Badge>
-        <Badge variant="secondary" className="text-xs">
+        <SemanticBadge tone="neutral" density="outline" size="sm">
+          {tableLabelText}
+        </SemanticBadge>
+        <SemanticBadge
+          tone={mapTableSessionStatusToBadgeTone(status)}
+          density="soft"
+          size="sm"
+        >
           {getDiningSessionBannerTitle(status, language)}
-        </Badge>
+        </SemanticBadge>
       </div>
-      <dl className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-        {rows.map((row) => (
-          <div key={row.label} className="flex flex-col gap-0.5">
-            <dt className="text-xs text-muted-foreground">{row.label}</dt>
-            <dd className="text-sm font-medium tabular-nums text-foreground">{row.value}</dd>
-          </div>
-        ))}
-      </dl>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <SemanticKpiCard
+          emphasis="compact"
+          label={sessionSummaryLabel("openedAt", language)}
+          value={formatRiyadhDateTime(openedAt, language === "ar" ? "ar-SA" : "en-US", {
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+          icon={Clock}
+          tone="neutral"
+        />
+        <SemanticKpiCard
+          emphasis="compact"
+          label={sessionSummaryLabel("duration", language)}
+          value={formatSessionDuration(durationMs, language)}
+          icon={Hash}
+          tone="info"
+        />
+        <SemanticKpiCard
+          emphasis="compact"
+          label={sessionSummaryLabel("orders", language)}
+          value={String(orderCount)}
+          icon={ShoppingBag}
+          tone="info"
+        />
+        <SemanticKpiCard
+          emphasis="compact"
+          label={sessionSummaryLabel("sessionTotal", language)}
+          value={formatSessionTotalAmount(ordersTotalAmount, currencySymbol, language)}
+          icon={Wallet}
+          tone="success"
+          valueVariant="revenue"
+        />
+      </div>
     </div>
   );
 }

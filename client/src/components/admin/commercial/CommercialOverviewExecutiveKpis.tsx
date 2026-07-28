@@ -1,9 +1,13 @@
+/**
+ * SEMANTIC-CARD-PLATFORM-ADOPTION-1
+ * Commercial executive KPIs — SemanticKpiCard only.
+ */
 import { DollarSign, Store, TrendingUp, Users } from "lucide-react";
 import { formatAdminKpiNumber, formatAdminRevenueUSD } from "@/lib/admin/formatAdminCurrency";
-import { AdminStatCard } from "@/components/admin/layout/AdminStatCard";
-import { Skeleton } from "@/components/ui/skeleton";
-import { adminDash } from "@/components/admin/layout/adminDashStyles";
-import { cn } from "@/lib/utils";
+import {
+  SemanticKpiCard,
+  SemanticKpiSkeleton,
+} from "@/design-system/semantic-card";
 
 type CommercialOverviewExecutiveKpisProps = {
   executive?: {
@@ -26,25 +30,6 @@ type CommercialOverviewExecutiveKpisProps = {
   };
 };
 
-function ExecutiveKpiSkeleton() {
-  return (
-    <div
-      className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4"
-      role="status"
-      aria-live="polite"
-      aria-busy="true"
-    >
-      {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} className={cn(adminDash.kpiCard, "space-y-3 p-4")}>
-          <Skeleton className="h-4 w-28" />
-          <Skeleton className="h-8 w-20" />
-          <Skeleton className="h-3 w-36" />
-        </div>
-      ))}
-    </div>
-  );
-}
-
 export function CommercialOverviewExecutiveKpis({
   executive,
   loading = false,
@@ -52,38 +37,49 @@ export function CommercialOverviewExecutiveKpis({
   labels,
 }: CommercialOverviewExecutiveKpisProps) {
   if (loading || !executive) {
-    return <ExecutiveKpiSkeleton />;
+    return (
+      <SemanticKpiSkeleton
+        count={4}
+        gridClassName="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4"
+      />
+    );
   }
 
   return (
     <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-      <AdminStatCard
-        title={labels.commercialSubscribers}
+      <SemanticKpiCard
+        label={labels.commercialSubscribers}
         value={formatAdminKpiNumber(executive.commercialSubscribers)}
         icon={Users}
         hint={labels.commercialSubscribersHint}
         valueDir="ltr"
+        tone="info"
       />
-      <AdminStatCard
-        title={labels.activeRestaurants}
+      <SemanticKpiCard
+        label={labels.activeRestaurants}
         value={formatAdminKpiNumber(executive.activeRestaurants)}
         icon={Store}
         hint={labels.activeRestaurantsHint}
         valueDir="ltr"
+        tone="info"
       />
-      <AdminStatCard
-        title={labels.mrr}
+      <SemanticKpiCard
+        label={labels.mrr}
         value={formatAdminRevenueUSD(executive.mrr, locale)}
         icon={DollarSign}
         hint={labels.mrrHint}
         valueDir="ltr"
+        tone="success"
+        valueVariant="revenue"
       />
-      <AdminStatCard
-        title={labels.arr}
+      <SemanticKpiCard
+        label={labels.arr}
         value={formatAdminRevenueUSD(executive.arr, locale)}
         icon={TrendingUp}
         hint={labels.arrHint}
         valueDir="ltr"
+        tone="success"
+        valueVariant="revenue"
       />
     </div>
   );

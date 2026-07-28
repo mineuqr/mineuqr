@@ -10,6 +10,5 @@ export { AdminDashboardSidebar } from "./AdminDashboardSidebar";
 export { AdminShellBreadcrumbs } from "./AdminShellBreadcrumbs";
 export type { AdminBreadcrumbItem } from "./AdminShellBreadcrumbs";
 export { AdminSection } from "./AdminSection";
-export { AdminStatCard } from "./AdminStatCard";
 export { AdminKPISection } from "./AdminKPISection";
 export { AdminOperationsSection } from "./AdminOperationsSection";

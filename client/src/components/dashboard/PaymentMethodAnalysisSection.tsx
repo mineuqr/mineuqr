@@ -17,7 +17,7 @@ import { toCanonicalPaymentMethod } from "@shared/operational-session";
 import { CreditCard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { RestaurantDashSection } from "./RestaurantDashSection";
-import { RestaurantKpiCard, RestaurantKpiGridSkeleton } from "./RestaurantKpiCard";
+import { SemanticKpiCard, SemanticKpiSkeleton } from "@/design-system/semantic-card";
 import { RestaurantSectionError } from "./RestaurantSectionStates";
 import { restaurantDash } from "./restaurantDashStyles";
 import {
@@ -101,7 +101,7 @@ export function PaymentMethodAnalysisSection({
       )}
     >
       {isLoading ? (
-        <RestaurantKpiGridSkeleton count={4} />
+        <SemanticKpiSkeleton count={4} />
       ) : isError ? (
         <RestaurantSectionError
           message={section.paymentAnalyticsLoadError}
@@ -117,14 +117,14 @@ export function PaymentMethodAnalysisSection({
             </p>
           ) : null}
           <div className={restaurantDash.kpiGrid}>
-            <RestaurantKpiCard
+            <SemanticKpiCard
               label={section.monetaryTenderTotal}
               value={formatMoneyDisplay(vm.monetaryTenderTotal, sym)}
               icon={CreditCard}
               tone="success"
               valueVariant="revenue"
             />
-            <RestaurantKpiCard
+            <SemanticKpiCard
               label={vm.complimentaryLabel}
               value={formatMoneyDisplay(vm.complimentaryAmount, sym)}
               icon={CreditCard}

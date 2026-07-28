@@ -1,5 +1,12 @@
+/**
+ * SEMANTIC-CARD-PLATFORM-ADOPTION-1
+ * Current printer ops surface — status via SemanticBadge.
+ */
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import {
+  SemanticBadge,
+  mapHealthToneToBadgeTone,
+} from "@/design-system/semantic-badge";
 import {
   derivePrinterOperationalState,
   printerStateGuidance,
@@ -10,15 +17,23 @@ import { Loader2, Printer, Settings2 } from "lucide-react";
 
 type CurrentPrinter = RouterOutputs["printWorkspace"]["read"]["getCurrentPrinter"];
 
-const STATE_TONE: Record<string, string> = {
-  ready: "text-emerald-400",
-  offline: "text-red-400",
-  busy: "text-amber-300",
-  paper_out: "text-amber-300",
-  driver_error: "text-red-400",
-  unavailable: "text-slate-500",
-  not_configured: "text-amber-300",
-};
+function printerStateToHealthTone(
+  state: string
+): "ok" | "warn" | "bad" | "muted" {
+  switch (state) {
+    case "ready":
+      return "ok";
+    case "busy":
+    case "paper_out":
+    case "not_configured":
+      return "warn";
+    case "offline":
+    case "driver_error":
+      return "bad";
+    default:
+      return "muted";
+  }
+}
 
 export function CurrentPrinterCard({
   language,
@@ -65,9 +80,17 @@ export function CurrentPrinterCard({
           <p className="text-base font-semibold text-white">
             {displayName ?? (isAr ? "الطابعة الحالية" : "Current printer")}
           </p>
-          <p className={cn("mt-1 text-sm font-medium", STATE_TONE[printerState] ?? "text-slate-400")}>
-            {stateLabel}
-          </p>
+          <div className="mt-1.5">
+            <SemanticBadge
+              tone={mapHealthToneToBadgeTone(
+                printerStateToHealthTone(printerState)
+              )}
+              density="soft"
+              size="sm"
+            >
+              {stateLabel}
+            </SemanticBadge>
+          </div>
           {guidance ? (
             <p className="mt-2 text-sm leading-relaxed text-slate-400">{guidance}</p>
           ) : null}
@@ -79,7 +102,9 @@ export function CurrentPrinterCard({
           type="button"
           size="sm"
           variant={printerState === "ready" ? "default" : "outline"}
-          onClick={printerState === "not_configured" ? onChangePrinter : onTestPrint}
+          onClick={
+            printerState === "not_configured" ? onChangePrinter : onTestPrint
+          }
           disabled={
             printerState === "not_configured"
               ? !connectorOnline

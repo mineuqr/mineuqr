@@ -1,11 +1,15 @@
-import type { ReactNode } from "react";
+/**
+ * SEMANTIC-CARD-PLATFORM-ADOPTION-1
+ * Commercial needs-attention KPIs — SemanticKpiCard only (no local color maps).
+ */
 import { AlertTriangle, Ban, Clock, type LucideIcon } from "lucide-react";
 import { Link } from "wouter";
 import { formatAdminKpiNumber } from "@/lib/admin/formatAdminCurrency";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { adminDash } from "@/components/admin/layout/adminDashStyles";
-import { cn } from "@/lib/utils";
+import {
+  SemanticKpiCard,
+  SemanticKpiSkeleton,
+  type SemanticTone,
+} from "@/design-system/semantic-card";
 
 type NeedsAttentionCounts = {
   expiringWithin30Days: number;
@@ -18,30 +22,13 @@ type AttentionKey = keyof NeedsAttentionCounts;
 type AttentionConfig = {
   key: AttentionKey;
   icon: LucideIcon;
-  cardClassName: string;
-  iconClassName: string;
-  hint?: string;
+  tone: SemanticTone;
 };
 
 const ATTENTION_CONFIG: AttentionConfig[] = [
-  {
-    key: "expiringWithin30Days",
-    icon: Clock,
-    cardClassName: "border-amber-500/30 bg-amber-500/5",
-    iconClassName: "text-amber-600 dark:text-amber-400",
-  },
-  {
-    key: "expiredAccounts",
-    icon: AlertTriangle,
-    cardClassName: "border-red-500/30 bg-red-500/5",
-    iconClassName: "text-red-600 dark:text-red-400",
-  },
-  {
-    key: "canceledAccounts",
-    icon: Ban,
-    cardClassName: "border-amber-500/30 bg-amber-500/5",
-    iconClassName: "text-amber-600 dark:text-amber-400",
-  },
+  { key: "expiringWithin30Days", icon: Clock, tone: "warning" },
+  { key: "expiredAccounts", icon: AlertTriangle, tone: "danger" },
+  { key: "canceledAccounts", icon: Ban, tone: "warning" },
 ];
 
 type CommercialOverviewNeedsAttentionProps = {
@@ -49,60 +36,8 @@ type CommercialOverviewNeedsAttentionProps = {
   loading?: boolean;
   labels: Record<AttentionKey, string>;
   hints?: Partial<Record<AttentionKey, string>>;
-  /** Optional per-card drill links (e.g. command center → accounts workspace). */
   drillHref?: Partial<Record<AttentionKey, string>>;
 };
-
-function NeedsAttentionSkeleton() {
-  return (
-    <div
-      className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3"
-      role="status"
-      aria-live="polite"
-      aria-busy="true"
-    >
-      {Array.from({ length: 3 }).map((_, i) => (
-        <div key={i} className={cn(adminDash.kpiCard, "space-y-3 p-4")}>
-          <Skeleton className="h-4 w-32" />
-          <Skeleton className="h-8 w-12" />
-          <Skeleton className="h-3 w-24" />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function AttentionCard({
-  cardClassName,
-  children,
-  href,
-}: {
-  cardClassName: string;
-  children: ReactNode;
-  href?: string;
-}) {
-  const card = (
-    <Card
-      className={cn(
-        adminDash.kpiCard,
-        cardClassName,
-        href && "transition-all duration-300 hover:border-cyan-400/60"
-      )}
-    >
-      {children}
-    </Card>
-  );
-
-  if (!href) {
-    return card;
-  }
-
-  return (
-    <Link href={href} className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400">
-      {card}
-    </Link>
-  );
-}
 
 export function CommercialOverviewNeedsAttention({
   needsAttention,
@@ -112,29 +47,40 @@ export function CommercialOverviewNeedsAttention({
   drillHref = {},
 }: CommercialOverviewNeedsAttentionProps) {
   if (loading || !needsAttention) {
-    return <NeedsAttentionSkeleton />;
+    return (
+      <SemanticKpiSkeleton
+        count={3}
+        gridClassName="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3"
+      />
+    );
   }
 
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
-      {ATTENTION_CONFIG.map(({ key, icon: Icon, cardClassName, iconClassName }) => {
+      {ATTENTION_CONFIG.map(({ key, icon, tone }) => {
         const hint = hints[key];
         const href = drillHref[key];
+        const card = (
+          <SemanticKpiCard
+            label={labels[key]}
+            value={formatAdminKpiNumber(needsAttention[key])}
+            icon={icon}
+            hint={hint}
+            tone={tone}
+            valueDir="ltr"
+          />
+        );
+
+        if (!href) return <div key={key}>{card}</div>;
+
         return (
-          <AttentionCard key={key} href={href} cardClassName={cardClassName}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-xs font-medium text-muted-foreground sm:text-sm">
-                {labels[key]}
-              </CardTitle>
-              <Icon className={cn("h-4 w-4 shrink-0", iconClassName)} aria-hidden />
-            </CardHeader>
-            <CardContent>
-              <div dir="ltr" className="text-xl font-bold tabular-nums sm:text-2xl">
-                {formatAdminKpiNumber(needsAttention[key])}
-              </div>
-              {hint ? <p className="mt-1 text-xs text-muted-foreground">{hint}</p> : null}
-            </CardContent>
-          </AttentionCard>
+          <Link
+            key={key}
+            href={href}
+            className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
+          >
+            {card}
+          </Link>
         );
       })}
     </div>

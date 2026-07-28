@@ -17,7 +17,7 @@ import {
   LayoutDashboard,
 } from "lucide-react";
 import { RestaurantDashSection } from "./RestaurantDashSection";
-import { RestaurantKpiCard, RestaurantKpiGridSkeleton } from "./RestaurantKpiCard";
+import { SemanticKpiCard, SemanticKpiSkeleton } from "@/design-system/semantic-card";
 import { RestaurantSectionError } from "./RestaurantSectionStates";
 import { restaurantDash } from "./restaurantDashStyles";
 
@@ -105,7 +105,7 @@ export function OperationalSnapshotSection({
   return (
     <RestaurantDashSection title={sectionTitle} description={sectionSub} ariaLabel={ariaLabel}>
       {isLoading ? (
-        <RestaurantKpiGridSkeleton count={5} />
+        <SemanticKpiSkeleton count={5} />
       ) : opsFailed && salesFailed ? (
         <RestaurantSectionError
           message={
@@ -130,31 +130,31 @@ export function OperationalSnapshotSection({
             </p>
           ) : null}
           <div className={restaurantDash.kpiGrid}>
-            <RestaurantKpiCard
+            <SemanticKpiCard
               label={kpiDisplayName("activeSessions", lang)}
               value={ops?.activeSessions ?? 0}
               icon={LayoutDashboard}
               tone="primary"
             />
-            <RestaurantKpiCard
+            <SemanticKpiCard
               label={kpiDisplayName("occupiedTables", lang)}
               value={ops?.occupiedTables ?? 0}
               icon={Grid3X3}
               tone="accent"
             />
-            <RestaurantKpiCard
+            <SemanticKpiCard
               label={kpiDisplayName("pendingOrders", lang)}
               value={opsFailed ? "—" : (ops?.pendingOrders ?? 0)}
               icon={ClipboardList}
               tone="warning"
             />
-            <RestaurantKpiCard
+            <SemanticKpiCard
               label={isAr ? "قيد التحضير" : "Preparing"}
               value={opsFailed ? "—" : (ops?.preparingOrders ?? "—")}
               icon={Clock3}
               tone="neutral"
             />
-            <RestaurantKpiCard
+            <SemanticKpiCard
               label={
                 isAr
                   ? "مبيعات طلبات اليوم"

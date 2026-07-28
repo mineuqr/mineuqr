@@ -39,7 +39,8 @@ import {
   RestaurantSectionEmpty,
   RestaurantSectionError,
 } from "./RestaurantSectionStates";
-import { restaurantDash, restaurantHoverGlow, restaurantRevenueValueClass, restaurantSemantic } from "./restaurantDashStyles";
+import { restaurantDash, restaurantHoverGlow, restaurantSemantic } from "./restaurantDashStyles";
+import { SemanticKpiCard } from "@/design-system/semantic-card";
 import { SECTION_TERMINOLOGY } from "@shared/reporting-platform";
 import {
   REPORTING_CATEGORY_HEX,
@@ -177,32 +178,14 @@ function TrendInsightCard({
   revenueValue?: boolean;
 }) {
   return (
-    <div className={PANEL_CLASS}>
-      <div className="flex items-start gap-3">
-        <div className={restaurantDash.iconContainerLg}>
-          <Icon aria-hidden />
-        </div>
-        <div className="min-w-0">
-          <p className="text-sm font-medium text-slate-400">{title}</p>
-          {periodLabel && valueLabel ? (
-            <>
-              <p className="mt-1 truncate text-base font-semibold text-white">{periodLabel}</p>
-              <p
-                dir="ltr"
-                className={cn(
-                  "mt-1 text-end text-sm tabular-nums sm:text-start",
-                  revenueValue ? restaurantRevenueValueClass : "text-slate-100"
-                )}
-              >
-                {valueLabel}
-              </p>
-            </>
-          ) : (
-            <p className="mt-2 text-sm text-slate-500">{emptyText}</p>
-          )}
-        </div>
-      </div>
-    </div>
+    <SemanticKpiCard
+      label={title}
+      value={periodLabel && valueLabel ? periodLabel : emptyText}
+      hint={periodLabel && valueLabel ? valueLabel : undefined}
+      icon={Icon}
+      tone={revenueValue ? "success" : "info"}
+      valueVariant={revenueValue ? "revenue" : "operational"}
+    />
   );
 }
 

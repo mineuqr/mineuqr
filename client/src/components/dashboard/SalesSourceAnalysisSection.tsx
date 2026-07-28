@@ -17,7 +17,7 @@ import { trpc } from "@/lib/trpc";
 import { Network } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { RestaurantDashSection } from "./RestaurantDashSection";
-import { RestaurantKpiGridSkeleton } from "./RestaurantKpiCard";
+import { SemanticKpiSkeleton } from "@/design-system/semantic-card";
 import {
   RestaurantSectionEmpty,
   RestaurantSectionError,
@@ -112,7 +112,7 @@ export function SalesSourceAnalysisSection({
       )}
     >
       {isLoading && !analytics ? (
-        <RestaurantKpiGridSkeleton count={4} />
+        <SemanticKpiSkeleton count={4} />
       ) : isError ? (
         <RestaurantSectionError
           message={

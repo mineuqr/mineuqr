@@ -12,7 +12,7 @@ import { OperationalDetailsDrawer } from "@/components/operational-workspace/Ope
 import { OperationalWorkspaceShell } from "@/components/operational-workspace/OperationalWorkspaceShell";
 import { OperationsBar } from "@/components/operational-workspace/OperationsBar";
 import { WorkspaceFilters } from "@/components/operational-workspace/WorkspaceFilters";
-import { RestaurantKpiCard, RestaurantKpiGridSkeleton } from "@/components/dashboard/RestaurantKpiCard";
+import { SemanticKpiCard, SemanticKpiSkeleton } from "@/design-system/semantic-card";
 import { RestaurantSectionError } from "@/components/dashboard/RestaurantSectionStates";
 import { Button } from "@/components/ui/button";
 import type { OperationalActionId } from "@/lib/operational-workspace/operationalActions";
@@ -360,13 +360,13 @@ export function OrdersWorkspacePanel({
       }
       kpis={
         listQuery.isLoading ? (
-          <RestaurantKpiGridSkeleton count={4} />
+          <SemanticKpiSkeleton count={4} />
         ) : (
           <>
-            <RestaurantKpiCard label={isAr ? "بانتظار القبول" : "Needs acceptance"} value={counts.pending} tone="warning" icon={ClipboardList} />
-            <RestaurantKpiCard label={isAr ? "قيد التحضير" : "Preparing"} value={counts.preparing} tone="info" icon={ChefHat} />
-            <RestaurantKpiCard label={isAr ? "جاهز" : "Ready"} value={counts.ready} tone="success" icon={CheckCircle} />
-            <RestaurantKpiCard label={isAr ? "متأخر" : "Late"} value={counts.late} tone={counts.late > 0 ? "warning" : "neutral"} icon={AlertTriangle} />
+            <SemanticKpiCard label={isAr ? "بانتظار القبول" : "Needs acceptance"} value={counts.pending} tone="warning" icon={ClipboardList} />
+            <SemanticKpiCard label={isAr ? "قيد التحضير" : "Preparing"} value={counts.preparing} tone="info" icon={ChefHat} />
+            <SemanticKpiCard label={isAr ? "جاهز" : "Ready"} value={counts.ready} tone="success" icon={CheckCircle} />
+            <SemanticKpiCard label={isAr ? "متأخر" : "Late"} value={counts.late} tone={counts.late > 0 ? "warning" : "neutral"} icon={AlertTriangle} />
           </>
         )
       }
