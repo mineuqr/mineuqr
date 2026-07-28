@@ -14,11 +14,12 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { SemanticBadge } from "@/design-system/semantic-badge";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { Plus, Trash2, Loader2, Search, Users, FileText, CreditCard } from "lucide-react";
 import { SubscriptionAdminFormFields } from "@/components/admin/subscription/SubscriptionAdminFormFields";
-import { ADMIN_WORKSPACE_DIR, adminActionBtn, adminDash, adminSemantic } from "@/components/admin/layout";
+import { ADMIN_WORKSPACE_DIR, adminActionBtn, adminDash } from "@/components/admin/layout";
 import {
   AdminActionGroup,
   AdminEmptyState,
@@ -185,13 +186,36 @@ export function CustomerSuccessAccountsSection() {
   };
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'active': return <Badge className={cn(adminDash.opsBadge, "bg-green-600 text-white")}>فعال</Badge>;
-      case 'trial': return <Badge className={cn(adminDash.opsBadge, adminSemantic.statusTrial)}>تجريبي</Badge>;
-      case 'expired': return <Badge className={cn(adminDash.opsBadge, "bg-red-600 text-white")}>منتهي</Badge>;
-      case 'canceled': return <Badge className={cn(adminDash.opsBadge, "bg-gray-600 text-white")}>ملغي</Badge>;
-      default: return <Badge variant="secondary" className={adminDash.opsBadge}>بدون اشتراك</Badge>;
-    }
+    const label =
+      status === "active"
+        ? "فعال"
+        : status === "trial"
+          ? "تجريبي"
+          : status === "expired"
+            ? "منتهي"
+            : status === "canceled"
+              ? "ملغي"
+              : "بدون اشتراك";
+    const tone =
+      status === "active"
+        ? "success"
+        : status === "trial"
+          ? "info"
+          : status === "expired"
+            ? "danger"
+            : status === "canceled"
+              ? "cancelled"
+              : "disabled";
+    return (
+      <SemanticBadge
+        tone={tone as "success" | "info" | "danger" | "cancelled" | "disabled"}
+        density={status === "active" || status === "trial" || status === "expired" ? "filled" : "soft"}
+        size="sm"
+        className={adminDash.opsBadge}
+      >
+        {label}
+      </SemanticBadge>
+    );
   };
 
   const renderUserActions = (u: any) => {

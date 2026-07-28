@@ -1,13 +1,17 @@
 /**
  * Admin dashboard presentation tokens (UX-REFINE-1B).
  * + SEMANTIC-CARD-DESIGN-SYSTEM-1 — panel chrome owned by design-system.
- * Visual authority: Pricing page (`pages/Pricing.tsx`) — reuse only, no new language.
+ * + SEMANTIC-STATUS-BADGE-SYSTEM-1 — filled status pills owned by badge system.
  */
 import {
   SEMANTIC_PANEL_BASE,
   SEMANTIC_SHELL,
   SEMANTIC_TONE,
 } from "@/design-system/semantic-card";
+import {
+  semanticBadgeHoverClass,
+  semanticBadgeToneClass,
+} from "@/design-system/semantic-badge";
 import { cn } from "@/lib/utils";
 
 /** ADMIN-RTL-WORKSPACE — operator console LTR geometry (shell + portaled modals). */
@@ -81,14 +85,26 @@ export const adminDash = {
 } as const;
 
 /**
- * Admin status accents — icons/rows derive from SEMANTIC_TONE;
- * filled status pills remain admin-console specific (dense ops chrome).
+ * Admin status accents — filled pills owned by Semantic Badge System;
+ * icons/rows derive from SEMANTIC_TONE.
  */
 export const adminSemantic = {
-  statusActive: "bg-green-600/90 text-white border-transparent",
-  statusTrial: "bg-cyan-500 text-slate-900 border-transparent",
-  statusWarning: "bg-orange-500/90 text-white border-transparent",
-  statusDanger: "bg-red-600/90 text-white border-transparent",
+  statusActive: cn(
+    semanticBadgeToneClass("success", "filled"),
+    semanticBadgeHoverClass("success", "filled")
+  ),
+  statusTrial: cn(
+    semanticBadgeToneClass("info", "filled"),
+    semanticBadgeHoverClass("info", "filled")
+  ),
+  statusWarning: cn(
+    semanticBadgeToneClass("warning", "filled"),
+    semanticBadgeHoverClass("warning", "filled")
+  ),
+  statusDanger: cn(
+    semanticBadgeToneClass("danger", "filled"),
+    semanticBadgeHoverClass("danger", "filled")
+  ),
   cardAccentActive: SEMANTIC_TONE.row.success,
   cardAccentTrial: SEMANTIC_TONE.row.info,
   cardAccentWarning: SEMANTIC_TONE.row.warning,

@@ -69,6 +69,17 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import {
+  CountBadge,
+  SemanticBadge,
+  mapOfferTypeToBadgeTone,
+  mapOrderStatusToBadgeTone,
+  semanticBadgeToneClass,
+} from "@/design-system/semantic-badge";
+import {
+  formatOrderStatusLabel,
+  type OrderLifecycleStatus,
+} from "@/lib/orderStatusDisplay";
+import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
 import {
@@ -2214,12 +2225,6 @@ function OffersTab({ restaurantId, currencySymbol }: { restaurantId: number; cur
     monthly: t('dashboard.monthly'),
   };
 
-  const OFFER_TYPE_COLORS: Record<string, string> = {
-    daily: "bg-red-500/10 text-red-500 border-red-500/20",
-    weekly: "bg-amber-500/10 text-amber-500 border-amber-500/20",
-    monthly: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
-  };
-
   const deleteMutation = trpc.offer.delete.useMutation({
     onSuccess: () => {
       utils.offer.list.invalidate({ restaurantId });
@@ -2281,18 +2286,36 @@ function OffersTab({ restaurantId, currencySymbol }: { restaurantId: number; cur
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <h3 className="font-bold text-foreground">{offer.titleAr}</h3>
-                        <Badge variant="outline" className={OFFER_TYPE_COLORS[offer.offerType]}>
+                        <SemanticBadge
+                          tone={mapOfferTypeToBadgeTone(offer.offerType)}
+                          density="outline"
+                          size="sm"
+                        >
                           {OFFER_TYPE_LABELS[offer.offerType]}
-                        </Badge>
-                        {isExpired && <Badge variant="destructive" className="text-xs">{t('dashboard.expired')}</Badge>}
-                        {isUpcoming && <Badge variant="secondary" className="text-xs">{t('dashboard.upcoming')}</Badge>}
-                        {!isExpired && !isUpcoming && offer.isActive && <Badge className="bg-green-500/10 text-green-500 border-green-500/20 text-xs">{t('dashboard.active')}</Badge>}
+                        </SemanticBadge>
+                        {isExpired && (
+                          <SemanticBadge tone="danger" density="filled" size="sm">
+                            {t('dashboard.expired')}
+                          </SemanticBadge>
+                        )}
+                        {isUpcoming && (
+                          <SemanticBadge tone="neutral" density="soft" size="sm">
+                            {t('dashboard.upcoming')}
+                          </SemanticBadge>
+                        )}
+                        {!isExpired && !isUpcoming && offer.isActive && (
+                          <SemanticBadge tone="success" density="soft" size="sm">
+                            {t('dashboard.active')}
+                          </SemanticBadge>
+                        )}
                       </div>
                       {offer.descriptionAr && <p className="text-sm text-muted-foreground line-clamp-1 mb-2">{offer.descriptionAr}</p>}
                       <div className="flex items-center gap-3">
                         <span className="text-lg font-bold text-primary">{offer.offerPrice} {currencySymbol || t('dashboard.sar')}</span>
                         <span className="text-sm text-muted-foreground line-through">{offer.originalPrice} {currencySymbol || t('dashboard.sar')}</span>
-                        {discount > 0 && <Badge className="bg-red-500 text-white text-xs">-{discount}%</Badge>}
+                        {discount > 0 && (
+                          <CountBadge count={`-${discount}%`} tone="danger" />
+                        )}
                       </div>
                       <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1">
@@ -2394,12 +2417,6 @@ function OfferFormDialog({
     monthly: t('dashboard.monthly'),
   };
 
-  const OFFER_TYPE_COLORS: Record<string, string> = {
-    daily: "bg-red-500/10 text-red-500 border-red-500/20",
-    weekly: "bg-amber-500/10 text-amber-500 border-amber-500/20",
-    monthly: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
-  };
-
   const uploadImageMutation = trpc.offer.uploadImage.useMutation();
   const createMutation = trpc.offer.create.useMutation();
   const updateMutation = trpc.offer.update.useMutation();
@@ -2499,7 +2516,13 @@ function OfferFormDialog({
                   onClick={() => setOfferType(type)}
                   className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium border transition-all ${
                     offerType === type
-                      ? OFFER_TYPE_COLORS[type] + " border-current"
+                      ? cn(
+                          semanticBadgeToneClass(
+                            mapOfferTypeToBadgeTone(type),
+                            "soft"
+                          ),
+                          "border-current"
+                        )
                       : "border-border text-muted-foreground hover:border-primary/30"
                   }`}
                 >
@@ -3413,22 +3436,6 @@ function OrdersTab({ restaurantId, currencySymbol, tableLabel }: { restaurantId:
     [orders]
   );
 
-  const statusColors: Record<string, string> = {
-    pending: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
-    preparing: "bg-blue-500/20 text-blue-400 border-blue-500/30",
-    ready: "bg-green-500/20 text-green-400 border-green-500/30",
-    served: "bg-gray-500/20 text-gray-400 border-gray-500/30",
-    cancelled: "bg-red-500/20 text-red-400 border-red-500/30",
-  };
-
-  const statusLabels: Record<string, { ar: string; en: string }> = {
-    pending: { ar: "قيد الانتظار", en: "Pending" },
-    preparing: { ar: "قيد التحضير", en: "Preparing" },
-    ready: { ar: "جاهز", en: "Ready" },
-    served: { ar: "تم التقديم", en: "Served" },
-    cancelled: { ar: "ملغي", en: "Cancelled" },
-  };
-
   const updateStatusMutation = trpc.order.updateStatus.useMutation({
     onSuccess: () => refetch(),
     onError: (err) => toastTrpcError(err, t),
@@ -3462,7 +3469,10 @@ function OrdersTab({ restaurantId, currencySymbol, tableLabel }: { restaurantId:
               >
                 {status === "all"
                   ? (language === "ar" ? "الكل" : "All")
-                  : (language === "ar" ? statusLabels[status]?.ar : statusLabels[status]?.en)}
+                  : formatOrderStatusLabel(
+                      status as OrderLifecycleStatus,
+                      language === "ar" ? "ar" : "en"
+                    )}
               </button>
             ))}
           </div>
@@ -3496,9 +3506,16 @@ function OrdersTab({ restaurantId, currencySymbol, tableLabel }: { restaurantId:
                         displayReference: order.displayReference,
                       })}
                     </span>
-                    <Badge className={`${statusColors[order.status]} border px-2.5 py-0.5 text-sm`}>
-                      {language === "ar" ? statusLabels[order.status]?.ar : statusLabels[order.status]?.en}
-                    </Badge>
+                    <SemanticBadge
+                      tone={mapOrderStatusToBadgeTone(order.status)}
+                      density="soft"
+                      size="md"
+                    >
+                      {formatOrderStatusLabel(
+                        order.status as OrderLifecycleStatus,
+                        language === "ar" ? "ar" : "en"
+                      )}
+                    </SemanticBadge>
                   </div>
                   <span className="text-sm text-muted-foreground">
                     {order.fulfilmentLabel &&

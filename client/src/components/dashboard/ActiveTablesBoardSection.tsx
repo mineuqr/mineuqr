@@ -2,6 +2,12 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { VerificationRequiredPanel } from "@/components/auth/VerificationRequiredPanel";
 import {
+  SemanticBadge,
+  mapTableSessionStatusToBadgeTone,
+  resolveBadgeBaseTone,
+} from "@/design-system/semantic-badge";
+import { semanticToneRowClass } from "@/design-system/semantic-card";
+import {
   DASHBOARD_ORDER_LIST_POLL_MS,
   opsActiveTablesBoardQueryOptions,
   useDevQueryRuntimeLog,
@@ -16,24 +22,10 @@ import {
   RestaurantSectionEmpty,
   RestaurantSectionError,
 } from "./RestaurantSectionStates";
-import { restaurantDash, restaurantHoverGlow, restaurantSemantic } from "./restaurantDashStyles";
+import { restaurantDash, restaurantHoverGlow } from "./restaurantDashStyles";
 
 type ActiveTableRow = RouterOutputs["ops"]["getActiveTablesBoard"]["tables"][number];
 type BoardStatus = ActiveTableRow["status"];
-
-const STATUS_STYLES: Record<
-  BoardStatus,
-  { card: string; badge: string }
-> = {
-  available: {
-    card: restaurantSemantic.rowNeutral,
-    badge: restaurantSemantic.badgeAvailable,
-  },
-  occupied: {
-    card: restaurantSemantic.rowSuccess,
-    badge: restaurantSemantic.badgeOccupied,
-  },
-};
 
 function statusLabel(status: BoardStatus, isAr: boolean): string {
   const labels: Record<BoardStatus, { ar: string; en: string }> = {
@@ -76,7 +68,11 @@ function ActiveTableBoardCard({
   isAr: boolean;
   onOpenSession: (sessionId: number) => void;
 }) {
-  const styles = STATUS_STYLES[table.status];
+  const styles = {
+    card: semanticToneRowClass(
+      resolveBadgeBaseTone(mapTableSessionStatusToBadgeTone(table.status))
+    ),
+  };
 
   return (
     <article
@@ -88,14 +84,13 @@ function ActiveTableBoardCard({
     >
       <div className="flex items-start justify-between gap-3">
         <h3 className="text-lg font-semibold tracking-tight text-white">{table.tableName}</h3>
-        <span
-          className={cn(
-            "shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-medium",
-            styles.badge
-          )}
+        <SemanticBadge
+          tone={mapTableSessionStatusToBadgeTone(table.status)}
+          density="soft"
+          size="sm"
         >
           {statusLabel(table.status, isAr)}
-        </span>
+        </SemanticBadge>
       </div>
 
       <dl className="mt-5 grid grid-cols-3 gap-3 text-sm">

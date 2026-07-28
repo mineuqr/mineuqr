@@ -18,6 +18,7 @@ import {
   restaurantHoverGlow,
   restaurantMotion,
 } from "@/components/dashboard/restaurantDashStyles";
+import { semanticBadgeToneClass } from "@/design-system/semantic-badge";
 import { cn } from "@/lib/utils";
 
 /** Primary landing card — same panel + cyan hover glow as dashboard. */
@@ -56,12 +57,14 @@ export const landingDashChip = cn(
   "hover:border-cyan-400/30 hover:bg-cyan-500/10 hover:text-cyan-400 hover:shadow-sm hover:shadow-cyan-500/10"
 );
 
-/** Live status pill — emerald success language from dashboard. */
+/** Live status pill — Semantic Badge success soft. */
 export const landingDashStatusOk = cn(
-  "inline-flex items-center gap-1 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-[9px] font-medium text-emerald-300"
+  "inline-flex items-center gap-1 rounded-xl px-2 py-0.5 text-[9px] font-medium",
+  semanticBadgeToneClass("success", "soft")
 );
 
-/** Live / active pill — cyan info. */
+/** Live / active pill — Semantic Badge info soft. */
 export const landingDashStatusLive = cn(
-  "inline-flex items-center gap-1.5 rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-medium text-cyan-300"
+  "inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-[10px] font-medium",
+  semanticBadgeToneClass("info", "soft")
 );

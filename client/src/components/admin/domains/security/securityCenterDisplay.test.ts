@@ -12,9 +12,11 @@ describe("securityCenterDisplay", () => {
       const warning = securityStatusBadgeClass("warning");
       const critical = securityStatusBadgeClass("critical");
 
-      expect(healthy).toContain("emerald");
-      expect(warning).toContain("amber");
+      expect(healthy).toContain("green");
+      expect(warning).toContain("orange");
       expect(critical).toContain("red");
+      expect(healthy).not.toBe(warning);
+      expect(warning).not.toBe(critical);
       expect(new Set([healthy, warning, critical]).size).toBe(3);
     });
   });

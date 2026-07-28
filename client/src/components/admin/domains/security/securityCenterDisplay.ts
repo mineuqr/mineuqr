@@ -1,16 +1,14 @@
-/** ADMIN-SECURITY-CENTER PR-7 — display helpers for Security Center UI. */
+/** ADMIN-SECURITY-CENTER PR-7 + SEMANTIC-STATUS-BADGE-SYSTEM-1 — display helpers. */
+
+import {
+  mapSecurityHealthToBadgeTone,
+  semanticBadgeToneClass,
+} from "@/design-system/semantic-badge";
 
 export type SecurityHealthStatus = "healthy" | "warning" | "critical";
 
 export function securityStatusBadgeClass(status: SecurityHealthStatus): string {
-  switch (status) {
-    case "healthy":
-      return "border-emerald-500/40 bg-emerald-500/10 text-emerald-300";
-    case "warning":
-      return "border-amber-500/40 bg-amber-500/10 text-amber-300";
-    case "critical":
-      return "border-red-500/40 bg-red-500/10 text-red-300";
-  }
+  return semanticBadgeToneClass(mapSecurityHealthToBadgeTone(status), "soft");
 }
 
 export function formatAuditStatsRangeLabel(days: number): string {

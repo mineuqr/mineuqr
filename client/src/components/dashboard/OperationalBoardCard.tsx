@@ -1,31 +1,15 @@
 import { Button } from "@/components/ui/button";
+import {
+  SemanticBadge,
+  mapTableSessionStatusToBadgeTone,
+  resolveBadgeBaseTone,
+} from "@/design-system/semantic-badge";
+import { semanticToneRowClass } from "@/design-system/semantic-card";
 import type { OperationalTableRow } from "@/lib/sessionWorkspaceOps";
 import { tableStatusDisplayLabel } from "@/lib/sessionWorkspaceOps";
 import { cn } from "@/lib/utils";
 import { SessionRowQuickActions } from "./SessionRowQuickActions";
-import { restaurantDash, restaurantHoverGlow, restaurantSemantic } from "./restaurantDashStyles";
-
-const TABLE_STATUS_STYLES: Record<
-  OperationalTableRow["sessionStatus"],
-  { card: string; badge: string }
-> = {
-  open: {
-    card: restaurantSemantic.rowSuccess,
-    badge: restaurantSemantic.badgeOccupied,
-  },
-  paid: {
-    card: "border-cyan-500/25 bg-cyan-500/5",
-    badge: "border-cyan-500/30 bg-cyan-500/10 text-cyan-300",
-  },
-  complimentary: {
-    card: "border-violet-500/25 bg-violet-500/5",
-    badge: "border-violet-500/30 bg-violet-500/10 text-violet-300",
-  },
-  available: {
-    card: restaurantSemantic.rowNeutral,
-    badge: restaurantSemantic.badgeAvailable,
-  },
-};
+import { restaurantDash, restaurantHoverGlow } from "./restaurantDashStyles";
 
 function formatDuration(minutes: number, isAr: boolean): string {
   if (minutes <= 0) return isAr ? "—" : "—";
@@ -45,7 +29,8 @@ export function OperationalBoardCard({
   variant?: "home" | "workspace";
   restaurantId?: number;
 }) {
-  const styles = TABLE_STATUS_STYLES[table.sessionStatus];
+  const badgeTone = mapTableSessionStatusToBadgeTone(table.sessionStatus);
+  const cardClass = semanticToneRowClass(resolveBadgeBaseTone(badgeTone));
   const hasSession = table.sessionId != null && table.sessionStatus !== "available";
   const sessionId = hasSession ? Number.parseInt(table.sessionId!, 10) : null;
 
@@ -59,7 +44,7 @@ export function OperationalBoardCard({
       className={cn(
         "flex flex-col rounded-xl border p-4 sm:p-5",
         restaurantHoverGlow,
-        styles.card,
+        cardClass,
         hasSession && "cursor-pointer"
       )}
       role={hasSession ? "button" : undefined}
@@ -78,14 +63,9 @@ export function OperationalBoardCard({
     >
       <div className="flex items-start justify-between gap-3">
         <h3 className="text-lg font-semibold tracking-tight text-white">{table.tableName}</h3>
-        <span
-          className={cn(
-            "shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-medium",
-            styles.badge
-          )}
-        >
+        <SemanticBadge tone={badgeTone} density="soft" size="sm">
           {tableStatusDisplayLabel(table.sessionStatus, isAr)}
-        </span>
+        </SemanticBadge>
       </div>
 
       <dl className="mt-5 grid grid-cols-3 gap-3 text-sm">

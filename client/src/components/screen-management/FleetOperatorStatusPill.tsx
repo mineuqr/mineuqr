@@ -1,13 +1,14 @@
-import { cn } from "@/lib/utils";
-import type { OperatorFleetStatusKind } from "@/lib/screen-management/operatorFleetPresentation";
-import {
-  operatorFleetStatusLabel,
-  operatorFleetStatusPillClass,
-} from "@/lib/screen-management/operatorFleetPresentation";
-
 /**
- * SCREEN-MANAGEMENT-UX-1B — single status pill used by cards and table.
+ * SCREEN-MANAGEMENT-UX-1B + SEMANTIC-STATUS-BADGE-SYSTEM-1
+ * Single fleet status pill — SemanticBadge only.
  */
+import {
+  SemanticBadge,
+  mapFleetStatusToBadgeTone,
+} from "@/design-system/semantic-badge";
+import type { OperatorFleetStatusKind } from "@/lib/screen-management/operatorFleetPresentation";
+import { operatorFleetStatusLabel } from "@/lib/screen-management/operatorFleetPresentation";
+
 export function FleetOperatorStatusPill({
   kind,
   language,
@@ -18,15 +19,13 @@ export function FleetOperatorStatusPill({
   className?: string;
 }) {
   return (
-    <span
-      className={cn(
-        "inline-flex shrink-0 truncate rounded-full px-2.5 py-0.5 text-xs font-medium",
-        operatorFleetStatusPillClass(kind),
-        className
-      )}
+    <SemanticBadge
+      tone={mapFleetStatusToBadgeTone(kind)}
+      density="soft"
+      className={className}
       data-operator-status={kind}
     >
       {operatorFleetStatusLabel(kind, language)}
-    </span>
+    </SemanticBadge>
   );
 }

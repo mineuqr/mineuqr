@@ -1,4 +1,8 @@
 import type { FleetScreenReadModel } from "@/lib/screen-fleet/fleetReadModel";
+import {
+  mapFleetStatusToBadgeTone,
+  semanticBadgeToneClass,
+} from "@/design-system/semantic-badge";
 import { roleSupportsRuntimeDensityAndCategoryFilter } from "./screenSettingsRuntimeMessaging";
 
 /** SCREEN-MANAGEMENT-UX-1A/1B — operator-facing fleet filters (Revision B). */
@@ -62,18 +66,7 @@ export function operatorFleetStatusLabel(
 
 /** Tailwind class tokens for status pills — shared by cards, table, filters. */
 export function operatorFleetStatusPillClass(kind: OperatorFleetStatusKind): string {
-  switch (kind) {
-    case "online":
-      return "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300";
-    case "offline":
-      return "bg-amber-500/15 text-amber-800 dark:text-amber-200";
-    case "needs_attention":
-      return "bg-amber-500/20 text-amber-900 dark:text-amber-100";
-    case "never_seen":
-      return "bg-muted text-muted-foreground";
-    default:
-      return "bg-muted text-muted-foreground";
-  }
+  return semanticBadgeToneClass(mapFleetStatusToBadgeTone(kind), "soft");
 }
 
 export function formatLastSeen(
