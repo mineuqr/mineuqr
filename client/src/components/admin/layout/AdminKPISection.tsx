@@ -12,7 +12,7 @@ import {
 import type { AdminKPIValues } from "@/lib/admin/dashboardSummaryKpis";
 import { ADMIN_EXPIRING_SOON_DAYS } from "@/lib/admin/dashboardSummaryKpis";
 import { formatAdminKpiNumber, formatAdminRevenueUSD } from "@/lib/admin/formatAdminCurrency";
-import { SemanticKpiCard } from "@/design-system/semantic-card";
+import { SemanticKpiCard, SEMANTIC_KPI_GRID } from "@/design-system/semantic-card";
 import { AdminLoadingState } from "../operations/AdminLoadingState";
 import { AdminSection } from "./AdminSection";
 
@@ -53,7 +53,7 @@ export function AdminKPISection({
       {loading ? (
         <AdminLoadingState variant="kpiStrip" label={loadingLabel} />
       ) : (
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
+        <div className={SEMANTIC_KPI_GRID.dense}>
           <SemanticKpiCard
             label={labels.activeRestaurants ?? (isAr ? "المطاعم النشطة" : "Active Restaurants")}
             value={formatAdminKpiNumber(kpis.activeRestaurants)}

@@ -6,7 +6,7 @@
 import type { ComponentType } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { semanticPanel } from "../tokens/panel";
+import { semanticPanel, SEMANTIC_KPI_GRID } from "../tokens/panel";
 import {
   SEMANTIC_CATEGORY_ICON,
   semanticCategorySurface,
@@ -129,10 +129,7 @@ export function SemanticExecutiveGrid({
 }) {
   return (
     <div
-      className={cn(
-        "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:gap-5 lg:gap-4",
-        className
-      )}
+      className={cn(SEMANTIC_KPI_GRID.executive, className)}
     >
       {cards.map((card) => (
         <SemanticExecutiveCard

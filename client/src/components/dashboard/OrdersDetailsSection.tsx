@@ -62,7 +62,7 @@ export function OrdersDetailsSection({
           icon={ShoppingBag}
           tone="info"
           valueVariant="revenue"
-          emphasis="supporting"
+          emphasis="secondary"
         />
       </div>
     </RestaurantDashSection>

@@ -7,6 +7,7 @@ import { formatAdminKpiNumber, formatAdminRevenueUSD } from "@/lib/admin/formatA
 import {
   SemanticKpiCard,
   SemanticKpiSkeleton,
+  SEMANTIC_KPI_GRID,
 } from "@/design-system/semantic-card";
 
 type CommercialOverviewExecutiveKpisProps = {
@@ -40,13 +41,13 @@ export function CommercialOverviewExecutiveKpis({
     return (
       <SemanticKpiSkeleton
         count={4}
-        gridClassName="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4"
+        gridClassName={SEMANTIC_KPI_GRID.quad}
       />
     );
   }
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+    <div className={SEMANTIC_KPI_GRID.quad}>
       <SemanticKpiCard
         label={labels.commercialSubscribers}
         value={formatAdminKpiNumber(executive.commercialSubscribers)}

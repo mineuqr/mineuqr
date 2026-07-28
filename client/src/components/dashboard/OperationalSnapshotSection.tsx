@@ -134,7 +134,7 @@ export function OperationalSnapshotSection({
               label={kpiDisplayName("activeSessions", lang)}
               value={ops?.activeSessions ?? 0}
               icon={LayoutDashboard}
-              tone="primary"
+              tone="info"
             />
             <SemanticKpiCard
               label={kpiDisplayName("occupiedTables", lang)}

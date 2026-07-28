@@ -126,7 +126,10 @@ export function SessionsWorkspacePanel({
         {verificationError ? (
           <VerificationRequiredPanel variant="orders" compact />
         ) : kpiLoading ? (
-          <SemanticKpiSkeleton count={3} />
+          <SemanticKpiSkeleton
+            count={3}
+            gridClassName={restaurantDash.kpiGridQuad}
+          />
         ) : kpiFailed ? (
           <RestaurantSectionError
             message={
@@ -150,12 +153,12 @@ export function SessionsWorkspacePanel({
                   : "Today's revenue unavailable. Showing session metrics only."}
               </p>
             ) : null}
-            <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
+            <div className={restaurantDash.kpiGridQuad}>
               <SemanticKpiCard
                 label={kpiDisplayName("activeSessions", lang)}
                 value={ops?.activeSessions ?? 0}
                 icon={LayoutDashboard}
-                tone="primary"
+                tone="info"
               />
               <SemanticKpiCard
                 label={kpiDisplayName("occupiedTables", lang)}

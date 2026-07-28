@@ -27,7 +27,7 @@ export function OperationalWorkspaceShell({
   return (
     <div className={cn("space-y-6", className)}>
       <RestaurantDashSection title={title} description={description} headerAside={headerAside}>
-        {kpis ? <div className={cn(restaurantDash.kpiGrid, "mb-6")}>{kpis}</div> : null}
+        {kpis ? <div className={cn(restaurantDash.kpiGridQuad, "mb-6")}>{kpis}</div> : null}
         {operationsBar ? <div className="mb-4">{operationsBar}</div> : null}
         {filters ? <div className="mb-4">{filters}</div> : null}
         {children}

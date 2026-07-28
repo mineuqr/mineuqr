@@ -5,6 +5,7 @@
  * + TABLE-PLATFORM-ADOPTION-1 — ops table chrome owned by semantic-table.
  */
 import {
+  SEMANTIC_HOVER_GLOW,
   SEMANTIC_PANEL_BASE,
   SEMANTIC_SHELL,
   SEMANTIC_TONE,
@@ -66,9 +67,9 @@ export const adminDash = {
     "flex flex-wrap items-center justify-between gap-2 border-b border-cyan-500/15 px-3 py-2.5 last:border-b-0 hover:bg-slate-800/30",
   opsInput: "h-8 text-sm border-cyan-500/20 bg-slate-900/50",
   opsSelect: "h-8 text-sm border-cyan-500/20 bg-slate-900/50",
-  /** Pricing plan-card pattern — interactive */
-  card: cn(pricingCardBase, "transition-all duration-300 hover:border-cyan-400"),
-  kpiCard: cn(pricingCardBase, "gap-0 py-0 transition-all duration-300 hover:border-cyan-400"),
+  /** Pricing plan-card pattern — interactive; hover owned by SEMANTIC_HOVER_GLOW */
+  card: cn(pricingCardBase, SEMANTIC_HOVER_GLOW),
+  kpiCard: cn(pricingCardBase, "gap-0 py-0", SEMANTIC_HOVER_GLOW),
   /** Pricing plan-card pattern — static container */
   operationsCard: cn(pricingCardBase, "overflow-hidden"),
   /** Pricing feature-icon treatment */

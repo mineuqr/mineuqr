@@ -6,7 +6,7 @@ import { Clock, DollarSign, FlaskConical, Users } from "lucide-react";
 import { useAuthGate } from "@/_core/hooks/useAuthGate";
 import { PageDataLoading } from "@/components/AuthGate";
 import { AdminPageSection } from "@/components/admin/sections/AdminPageSection";
-import { SemanticKpiCard } from "@/design-system/semantic-card";
+import { SemanticKpiCard, SEMANTIC_KPI_GRID } from "@/design-system/semantic-card";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { mapDashboardSummaryToKPIs } from "@/lib/admin/dashboardSummaryKpis";
 import { formatAdminKpiNumber, formatAdminRevenueUSD } from "@/lib/admin/formatAdminCurrency";
@@ -35,9 +35,8 @@ export function ReportsHomeKpiSection() {
       {isLoading ? (
         <PageDataLoading minHeight="min-h-[96px]" />
       ) : (
-        <div className="grid grid-cols-1 gap-2 sm:gap-3 lg:grid-cols-5">
+        <div className={SEMANTIC_KPI_GRID.dense}>
           <SemanticKpiCard
-            emphasis="compact"
             label={t("admin.estimatedMrr")}
             icon={DollarSign}
             value={formatAdminRevenueUSD(kpis.estimatedMrr, locale)}
@@ -47,7 +46,6 @@ export function ReportsHomeKpiSection() {
             valueVariant="revenue"
           />
           <SemanticKpiCard
-            emphasis="compact"
             label={t("admin.activeSubscriptions")}
             icon={Users}
             value={formatAdminKpiNumber(kpis.activeSubscriptions)}
@@ -55,7 +53,6 @@ export function ReportsHomeKpiSection() {
             tone="info"
           />
           <SemanticKpiCard
-            emphasis="compact"
             label={t("admin.commandCenter.activeTrials")}
             icon={FlaskConical}
             value={formatAdminKpiNumber(kpis.activeTrials)}
@@ -63,7 +60,6 @@ export function ReportsHomeKpiSection() {
             tone="info"
           />
           <SemanticKpiCard
-            emphasis="compact"
             label={t("admin.expiringSoon")}
             icon={Clock}
             value={formatAdminKpiNumber(kpis.expiringSoon)}
@@ -71,7 +67,6 @@ export function ReportsHomeKpiSection() {
             tone="warning"
           />
           <SemanticKpiCard
-            emphasis="compact"
             label={t("admin.totalUsers")}
             icon={Users}
             value={formatAdminKpiNumber(kpis.totalUsers)}

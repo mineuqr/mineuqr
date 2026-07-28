@@ -6,7 +6,7 @@ import {
   SemanticBadge,
   mapTableSessionStatusToBadgeTone,
 } from "@/design-system/semantic-badge";
-import { SemanticKpiCard } from "@/design-system/semantic-card";
+import { SemanticKpiCard, SEMANTIC_KPI_GRID } from "@/design-system/semantic-card";
 import { getDiningSessionBannerTitle, type DiningSessionStatus } from "@/lib/diningSessionCopy";
 import { formatDashboardSessionLabel } from "@/lib/diningSessionDashboardCopy";
 import {
@@ -69,9 +69,8 @@ export function DiningSessionSummaryCard({
           {getDiningSessionBannerTitle(status, language)}
         </SemanticBadge>
       </div>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className={SEMANTIC_KPI_GRID.quad}>
         <SemanticKpiCard
-          emphasis="compact"
           label={sessionSummaryLabel("openedAt", language)}
           value={formatRiyadhDateTime(openedAt, language === "ar" ? "ar-SA" : "en-US", {
             month: "short",
@@ -83,21 +82,18 @@ export function DiningSessionSummaryCard({
           tone="neutral"
         />
         <SemanticKpiCard
-          emphasis="compact"
           label={sessionSummaryLabel("duration", language)}
           value={formatSessionDuration(durationMs, language)}
           icon={Hash}
           tone="info"
         />
         <SemanticKpiCard
-          emphasis="compact"
           label={sessionSummaryLabel("orders", language)}
           value={String(orderCount)}
           icon={ShoppingBag}
           tone="info"
         />
         <SemanticKpiCard
-          emphasis="compact"
           label={sessionSummaryLabel("sessionTotal", language)}
           value={formatSessionTotalAmount(ordersTotalAmount, currencySymbol, language)}
           icon={Wallet}

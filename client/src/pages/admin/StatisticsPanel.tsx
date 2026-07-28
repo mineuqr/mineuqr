@@ -3,6 +3,7 @@ import { trpc } from "@/lib/trpc";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { PageDataLoading } from "@/components/AuthGate";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { SemanticKpiCard, SEMANTIC_KPI_GRID } from "@/design-system/semantic-card";
 import {
   SemanticTableScroll,
   SemanticTableRoot,
@@ -94,52 +95,37 @@ export function StatisticsPanel({ showExport = true }: StatisticsPanelProps) {
         <h2 className={adminDash.sectionTitleCompact}>
           {t("admin.platformOverview") || "Platform Overview"}
         </h2>
-        <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-5">
-          <Card className={adminDash.kpiCard}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{t("admin.totalRestaurants") || "Total Restaurants"}</CardTitle>
-              <UtensilsCrossed className="w-4 h-4 text-cyan-400" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{platform?.totalRestaurants ?? 0}</div>
-            </CardContent>
-          </Card>
-          <Card className={adminDash.kpiCard}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{t("admin.totalUsers") || "Total Users"}</CardTitle>
-              <Users className="w-4 h-4 text-cyan-400" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{platform?.totalUsers ?? executive?.totalUsers ?? 0}</div>
-            </CardContent>
-          </Card>
-          <Card className={adminDash.kpiCard}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{t("admin.totalMenuItems") || "Total Menu Items"}</CardTitle>
-              <LayoutGrid className="w-4 h-4 text-cyan-400" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{platform?.totalMenuItems ?? 0}</div>
-            </CardContent>
-          </Card>
-          <Card className={adminDash.kpiCard}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{t("admin.totalCategories") || "Total Categories"}</CardTitle>
-              <FolderOpen className="w-4 h-4 text-cyan-400" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{platform?.totalCategories ?? 0}</div>
-            </CardContent>
-          </Card>
-          <Card className={adminDash.kpiCard}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{t("admin.totalOffers") || "Total Offers"}</CardTitle>
-              <Tag className="w-4 h-4 text-cyan-400" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{platform?.totalOffers ?? 0}</div>
-            </CardContent>
-          </Card>
+        <div className={SEMANTIC_KPI_GRID.dense}>
+          <SemanticKpiCard
+            label={t("admin.totalRestaurants") || "Total Restaurants"}
+            value={platform?.totalRestaurants ?? 0}
+            icon={UtensilsCrossed}
+            tone="info"
+          />
+          <SemanticKpiCard
+            label={t("admin.totalUsers") || "Total Users"}
+            value={platform?.totalUsers ?? executive?.totalUsers ?? 0}
+            icon={Users}
+            tone="info"
+          />
+          <SemanticKpiCard
+            label={t("admin.totalMenuItems") || "Total Menu Items"}
+            value={platform?.totalMenuItems ?? 0}
+            icon={LayoutGrid}
+            tone="info"
+          />
+          <SemanticKpiCard
+            label={t("admin.totalCategories") || "Total Categories"}
+            value={platform?.totalCategories ?? 0}
+            icon={FolderOpen}
+            tone="info"
+          />
+          <SemanticKpiCard
+            label={t("admin.totalOffers") || "Total Offers"}
+            value={platform?.totalOffers ?? 0}
+            icon={Tag}
+            tone="info"
+          />
         </div>
       </div>
 
@@ -147,59 +133,43 @@ export function StatisticsPanel({ showExport = true }: StatisticsPanelProps) {
         <h2 className={adminDash.sectionTitleCompact}>
           {t("admin.totalSubscribers") || "Subscriptions"}
         </h2>
-        <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
-          <Card className={adminDash.kpiCard}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{t("admin.totalSubscribers") || "Entitled Owners"}</CardTitle>
-              <Users className="w-4 h-4 text-cyan-400" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{executive?.commercialSubscribers ?? 0}</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {executive?.activeSubscriptions ?? 0} {t("admin.active") || "Active"}
-              </p>
-            </CardContent>
-          </Card>
-          <Card className={adminDash.kpiCard}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{t("admin.estimatedMrr") || "Estimated MRR (USD)"}</CardTitle>
-              <DollarSign className="w-4 h-4 text-cyan-400" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold" dir="ltr">
-                {formatAdminRevenueUSD(mrr, language === "ar" ? "ar" : "en")}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {t("admin.estimatedMrrHint") || "Canonical owner-based MRR"}
-              </p>
-            </CardContent>
-          </Card>
-          <Card className={adminDash.kpiCard}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">ARR (USD)</CardTitle>
-              <TrendingUp className={cn("w-4 h-4", adminSemantic.iconActive)} />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold" dir="ltr">
-                {formatAdminRevenueUSD(arr, language === "ar" ? "ar" : "en")}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">MRR × 12</p>
-            </CardContent>
-          </Card>
-          <Card className={adminDash.kpiCard}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{t("admin.renewalRate") || "Renewal Rate"}</CardTitle>
-              <RotateCcw className={cn("w-4 h-4", adminSemantic.iconMuted)} />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">—</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {language === "ar"
-                  ? "غير متوفر — لا مقياس تجاري معتمد"
-                  : "Unavailable — no canonical renewal metric"}
-              </p>
-            </CardContent>
-          </Card>
+        <div className={SEMANTIC_KPI_GRID.quad}>
+          <SemanticKpiCard
+            label={t("admin.totalSubscribers") || "Entitled Owners"}
+            value={executive?.commercialSubscribers ?? 0}
+            icon={Users}
+            tone="info"
+            hint={`${executive?.activeSubscriptions ?? 0} ${t("admin.active") || "Active"}`}
+          />
+          <SemanticKpiCard
+            label={t("admin.estimatedMrr") || "Estimated MRR (USD)"}
+            value={formatAdminRevenueUSD(mrr, language === "ar" ? "ar" : "en")}
+            icon={DollarSign}
+            tone="success"
+            valueVariant="revenue"
+            valueDir="ltr"
+            hint={t("admin.estimatedMrrHint") || "Canonical owner-based MRR"}
+          />
+          <SemanticKpiCard
+            label="ARR (USD)"
+            value={formatAdminRevenueUSD(arr, language === "ar" ? "ar" : "en")}
+            icon={TrendingUp}
+            tone="success"
+            valueVariant="revenue"
+            valueDir="ltr"
+            hint="MRR × 12"
+          />
+          <SemanticKpiCard
+            label={t("admin.renewalRate") || "Renewal Rate"}
+            value="—"
+            icon={RotateCcw}
+            tone="neutral"
+            hint={
+              language === "ar"
+                ? "غير متوفر — لا مقياس تجاري معتمد"
+                : "Unavailable — no canonical renewal metric"
+            }
+          />
         </div>
       </div>
 

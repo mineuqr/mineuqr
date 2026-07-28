@@ -40,7 +40,7 @@ import {
   RestaurantSectionError,
 } from "./RestaurantSectionStates";
 import { restaurantDash, restaurantHoverGlow, restaurantSemantic } from "./restaurantDashStyles";
-import { SemanticKpiCard } from "@/design-system/semantic-card";
+import { SemanticKpiCard, SemanticKpiSkeleton, SEMANTIC_KPI_GRID } from "@/design-system/semantic-card";
 import { SECTION_TERMINOLOGY } from "@shared/reporting-platform";
 import {
   REPORTING_CATEGORY_HEX,
@@ -191,15 +191,10 @@ function TrendInsightCard({
 
 function TrendInsightSkeleton() {
   return (
-    <div className={cn(PANEL_CLASS, "motion-safe:animate-pulse")}>
-      <div className="flex items-start gap-3">
-        <div className="h-10 w-10 rounded-xl bg-slate-700/50" />
-        <div className="flex-1 space-y-2">
-          <div className="h-4 w-28 rounded bg-slate-700/40" />
-          <div className="h-5 w-24 rounded bg-slate-700/50" />
-        </div>
-      </div>
-    </div>
+    <SemanticKpiSkeleton
+      count={3}
+      gridClassName={SEMANTIC_KPI_GRID.trio}
+    />
   );
 }
 
@@ -325,11 +320,7 @@ export function SettlementTrendsSection({
               <TrendChartSkeleton key={i} />
             ))}
           </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:gap-4">
-            {[0, 1, 2].map((i) => (
-              <TrendInsightSkeleton key={i} />
-            ))}
-          </div>
+          <TrendInsightSkeleton />
         </>
       ) : isError ? (
         <RestaurantSectionError
@@ -400,7 +391,7 @@ export function SettlementTrendsSection({
                 {isAr ? "رؤى المبيعات" : "Sales Insights"}
               </h3>
             </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:gap-4">
+            <div className={SEMANTIC_KPI_GRID.trio}>
               <TrendInsightCard
                 title={
                   isAr ? "أعلى فترة لإجمالي المبيعات" : "Highest Total Sales Period"

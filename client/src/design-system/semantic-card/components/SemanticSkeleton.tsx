@@ -5,12 +5,12 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { semanticPanel } from "../tokens/panel";
+import { semanticPanel, SEMANTIC_KPI_GRID } from "../tokens/panel";
 
 export function SemanticKpiSkeleton({
   count = 5,
   className,
-  gridClassName = "grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-5 xl:gap-3",
+  gridClassName = SEMANTIC_KPI_GRID.dense,
 }: {
   count?: number;
   className?: string;
@@ -23,12 +23,12 @@ export function SemanticKpiSkeleton({
           key={index}
           className={cn(semanticPanel.kpi, "animate-pulse")}
         >
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 px-3 pb-1 pt-3">
+          <CardHeader className="flex flex-row items-center justify-between gap-0 space-y-0 px-3 pb-1 pt-3 sm:px-4 sm:pt-4">
             <Skeleton className="h-3 w-16" />
             <Skeleton className="h-3.5 w-3.5 rounded-full" />
           </CardHeader>
-          <CardContent className="px-3 pb-3">
-            <Skeleton className="h-7 w-14" />
+          <CardContent className="px-3 pb-3 sm:px-4 sm:pb-4">
+            <Skeleton className="h-7 w-14 sm:h-8 sm:w-16" />
           </CardContent>
         </Card>
       ))}
@@ -45,10 +45,7 @@ export function SemanticExecutiveSkeleton({
 }) {
   return (
     <div
-      className={cn(
-        "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 lg:gap-4",
-        className
-      )}
+      className={cn(SEMANTIC_KPI_GRID.executive, className)}
       aria-busy="true"
       aria-label="Loading"
     >

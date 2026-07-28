@@ -149,7 +149,10 @@ export function RefundAnalyticsSection({
       )}
     >
       {isLoading ? (
-        <SemanticKpiSkeleton count={4} />
+        <SemanticKpiSkeleton
+          count={4}
+          gridClassName={restaurantDash.kpiGridSecondary}
+        />
       ) : isError ? (
         <RestaurantSectionError
           message={
@@ -191,14 +194,14 @@ export function RefundAnalyticsSection({
               value={`${summary?.refundRate ?? "0.00"}%`}
               icon={Percent}
               tone="warning"
-              emphasis="supporting"
+              emphasis="secondary"
             />
             <SemanticKpiCard
               label={kpiDisplayName("refundPublicationCount", lang)}
               value={summary?.refundPublicationCount ?? 0}
               icon={RotateCcw}
               tone="warning"
-              emphasis="supporting"
+              emphasis="secondary"
             />
           </div>
 

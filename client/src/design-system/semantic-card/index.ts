@@ -14,6 +14,7 @@ export {
   SEMANTIC_HOVER_GLOW,
   SEMANTIC_MOTION,
   SEMANTIC_SHELL,
+  SEMANTIC_KPI_GRID,
   semanticPanel,
 } from "./tokens/panel";
 

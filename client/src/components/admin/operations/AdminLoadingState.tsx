@@ -1,6 +1,7 @@
 import { Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { SEMANTIC_KPI_GRID } from "@/design-system/semantic-card";
 import { adminDash } from "../layout/adminDashStyles";
 
 type AdminLoadingStateProps = {
@@ -33,7 +34,7 @@ export function AdminLoadingState({
   if (variant === "kpiStrip") {
     return (
       <div
-        className={cn("grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5", className)}
+        className={cn(SEMANTIC_KPI_GRID.dense, className)}
         role="status"
         aria-live="polite"
         aria-busy="true"

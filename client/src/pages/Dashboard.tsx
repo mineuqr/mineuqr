@@ -19,7 +19,7 @@ import { ReportsTab } from "@/components/dashboard/ReportsTab";
 import { SettlementHistoryPanel } from "@/components/settlement-record/SettlementHistoryPanel";
 import { RegisterOperationsPanel } from "@/components/register-operations/RegisterOperationsPanel";
 import { RegisterCatalogPanel } from "@/components/register-catalog/RegisterCatalogPanel";
-import { SemanticKpiCard } from "@/design-system/semantic-card";
+import { SemanticKpiCard, SEMANTIC_KPI_GRID, type SemanticTone } from "@/design-system/semantic-card";
 import {
   RestaurantOperationsShell,
   type RestaurantTab,
@@ -174,14 +174,14 @@ function DashboardStatCard({
   label,
   value,
   icon,
-  tone = "default",
+  tone = "neutral",
   hint,
   valueVariant = "operational",
 }: {
   label: string;
   value: number | string;
   icon: ComponentType<{ className?: string }>;
-  tone?: "default" | "primary" | "accent" | "emerald" | "amber" | "success" | "info" | "warning" | "neutral";
+  tone?: SemanticTone;
   hint?: string;
   valueVariant?: "operational" | "revenue";
 }) {
@@ -430,24 +430,24 @@ function RestaurantsList({
       </div>
 
       {listPhase === "success" && restaurants && restaurants.length > 0 ? (
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className={SEMANTIC_KPI_GRID.quad}>
           <DashboardStatCard
             label={t("dashboard.title")}
             value={restaurants.length}
             icon={Store}
-            tone="primary"
+            tone="info"
           />
           <DashboardStatCard
             label={t("dashboard.active")}
             value={activeCount}
             icon={CheckCircle2}
-            tone="emerald"
+            tone="success"
           />
           <DashboardStatCard
             label={t("dashboard.visit")}
             value={totalViews}
             icon={Eye}
-            tone="amber"
+            tone="warning"
           />
           <DashboardStatCard
             label={language === "ar" ? "جاهز للإدارة" : "Ready to manage"}

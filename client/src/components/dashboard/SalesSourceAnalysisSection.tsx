@@ -17,13 +17,11 @@ import { trpc } from "@/lib/trpc";
 import { Network } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { RestaurantDashSection } from "./RestaurantDashSection";
-import { SemanticKpiSkeleton } from "@/design-system/semantic-card";
+import { SemanticKpiSkeleton, SemanticKpiCard, SEMANTIC_KPI_GRID } from "@/design-system/semantic-card";
 import {
   RestaurantSectionEmpty,
   RestaurantSectionError,
 } from "./RestaurantSectionStates";
-import { restaurantDash } from "./restaurantDashStyles";
-
 export function SalesSourceAnalysisSection({
   restaurantId,
   language,
@@ -112,7 +110,7 @@ export function SalesSourceAnalysisSection({
       )}
     >
       {isLoading && !analytics ? (
-        <SemanticKpiSkeleton count={4} />
+        <SemanticKpiSkeleton count={4} gridClassName={SEMANTIC_KPI_GRID.quad} />
       ) : isError ? (
         <RestaurantSectionError
           message={
@@ -140,40 +138,33 @@ export function SalesSourceAnalysisSection({
           }
         />
       ) : (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 lg:gap-4">
+        <div className={SEMANTIC_KPI_GRID.quad}>
           {vm.cards
             .filter((ch) =>
               ["table", "waiter", "qr", "kiosk"].includes(ch.channelId)
                 ? true
                 : ch.amountDisplay != null && ch.amountDisplay !== "0.00"
             )
-            .map((ch) => (
-              <div
-                key={ch.channelId}
-                className={cn(restaurantDash.kpiCardSupporting, "rounded-2xl p-4")}
-              >
-                <p className="text-xs font-medium text-slate-400 sm:text-sm">
-                  {ch.label}
-                </p>
-                <p
-                  dir="ltr"
-                  className="mt-2 text-lg font-semibold tabular-nums text-orange-200"
-                >
-                  {formatMoneyDisplay(ch.amountDisplay ?? "0.00", sym)}
-                </p>
-                {ch.salesMixDisplay != null ? (
-                  <p className="mt-1 text-[11px] text-slate-500" dir="ltr">
-                    {ch.salesMixDisplay}
-                    {lang === "ar" ? " من المبيعات" : " of sales"}
-                  </p>
-                ) : null}
-                {ch.countDisplay != null ? (
-                  <p className="mt-0.5 text-[11px] text-slate-500">
-                    {ch.countDisplay}
-                  </p>
-                ) : null}
-              </div>
-            ))}
+            .map((ch) => {
+              const mixHint =
+                ch.salesMixDisplay != null
+                  ? `${ch.salesMixDisplay}${lang === "ar" ? " من المبيعات" : " of sales"}`
+                  : null;
+              const hintParts = [mixHint, ch.countDisplay].filter(Boolean);
+              return (
+                <SemanticKpiCard
+                  key={ch.channelId}
+                  label={ch.label}
+                  value={formatMoneyDisplay(ch.amountDisplay ?? "0.00", sym)}
+                  icon={Network}
+                  tone="accent"
+                  valueVariant="revenue"
+                  emphasis="supporting"
+                  valueDir="ltr"
+                  hint={hintParts.length > 0 ? hintParts.join(" · ") : undefined}
+                />
+              );
+            })}
         </div>
       )}
     </RestaurantDashSection>

@@ -110,7 +110,10 @@ export function PaymentMethodAnalysisSection({
       )}
     >
       {isLoading ? (
-        <SemanticKpiSkeleton count={4} />
+        <SemanticKpiSkeleton
+          count={2}
+          gridClassName={restaurantDash.kpiGridSecondary}
+        />
       ) : isError ? (
         <RestaurantSectionError
           message={section.paymentAnalyticsLoadError}
@@ -125,7 +128,7 @@ export function PaymentMethodAnalysisSection({
               {vm.emptyMessage}
             </p>
           ) : null}
-          <div className={restaurantDash.kpiGrid}>
+          <div className={restaurantDash.kpiGridSecondary}>
             <SemanticKpiCard
               label={section.monetaryTenderTotal}
               value={formatMoneyDisplay(vm.monetaryTenderTotal, sym)}

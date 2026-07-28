@@ -5,6 +5,7 @@
  */
 import {
   SEMANTIC_HOVER_GLOW,
+  SEMANTIC_KPI_GRID,
   SEMANTIC_MOTION,
   SEMANTIC_PANEL_BASE,
   SEMANTIC_SHELL,
@@ -61,24 +62,25 @@ export const restaurantDash = {
   sectionSub: "max-w-2xl text-xs leading-relaxed text-slate-400 sm:text-sm",
   bandTitle: "text-xs font-semibold uppercase tracking-wide text-slate-300 sm:text-sm",
   bandHint: "text-[11px] text-slate-500 sm:text-xs",
-  kpiGrid: "grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-5 xl:gap-3",
-  kpiGridWide: "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 lg:gap-4",
-  /** Primary hero — one dominant metric */
-  kpiGridPrimary: "grid grid-cols-1 gap-3",
-  /** Secondary pair / trio */
-  kpiGridSecondary: "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:gap-4",
-  /** Supporting — denser, less visual weight */
-  kpiGridSupporting: "grid grid-cols-2 gap-2 sm:grid-cols-2 lg:grid-cols-2 lg:gap-3",
+  /** Facade → SEMANTIC_KPI_GRID (VISUAL-CONSISTENCY-1) */
+  kpiGrid: SEMANTIC_KPI_GRID.dense,
+  kpiGridWide: SEMANTIC_KPI_GRID.wide,
+  kpiGridPrimary: SEMANTIC_KPI_GRID.primary,
+  kpiGridSecondary: SEMANTIC_KPI_GRID.secondary,
+  kpiGridSupporting: SEMANTIC_KPI_GRID.supporting,
+  kpiGridQuad: SEMANTIC_KPI_GRID.quad,
+  kpiGridTrio: SEMANTIC_KPI_GRID.trio,
   card: cn(pricingPanelBase, "overflow-hidden", restaurantHoverGlow),
-  kpiCard: cn(pricingPanelBase, restaurantHoverGlow),
+  kpiCard: cn(pricingPanelBase, restaurantHoverGlow, "gap-0 py-0"),
   kpiCardPrimary: cn(
     pricingPanelBase,
     restaurantHoverGlow,
+    "gap-0 py-0",
     "border-amber-500/35 bg-gradient-to-b from-slate-800/70 to-slate-900/80 sm:min-h-[7.5rem]"
   ),
-  kpiCardSecondary: cn(pricingPanelBase, restaurantHoverGlow),
+  kpiCardSecondary: cn(pricingPanelBase, restaurantHoverGlow, "gap-0 py-0"),
   kpiCardSupporting: cn(
-    "rounded-xl border border-cyan-500/20 bg-slate-900/40 shadow-none",
+    "rounded-xl border border-cyan-500/20 bg-slate-900/40 shadow-none gap-0 py-0",
     restaurantHoverGlow
   ),
   /** Financial relationship strip */
