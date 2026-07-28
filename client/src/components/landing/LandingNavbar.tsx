@@ -11,6 +11,8 @@ import { useState } from "react";
 
 const navLinks = [
   { href: "/", key: "nav.home" },
+  { href: "/#journey", key: "home.navJourney", hash: "journey" },
+  { href: "/#features", key: "home.navFeatures", hash: "features" },
   { href: "/pricing", key: "nav.pricing" },
   { href: "/contact", key: "nav.contact" },
 ] as const;
@@ -21,7 +23,28 @@ export function LandingNavbar() {
   const { t } = useLanguage();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const go = (href: string) => {
+  const go = (href: string, hash?: string) => {
+    if (hash) {
+      if (location === "/" || location.startsWith("/#")) {
+        setMobileOpen(false);
+        requestAnimationFrame(() => {
+          document.getElementById(hash)?.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+          });
+        });
+        return;
+      }
+      setLocation("/");
+      setMobileOpen(false);
+      window.setTimeout(() => {
+        document.getElementById(hash)?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 80);
+      return;
+    }
     setLocation(href);
     setMobileOpen(false);
   };
@@ -41,7 +64,9 @@ export function LandingNavbar() {
               <button
                 key={link.href}
                 type="button"
-                onClick={() => go(link.href)}
+                onClick={() =>
+                  go(link.href, "hash" in link ? link.hash : undefined)
+                }
                 className={cn(
                   "landing-nav-link",
                   location === link.href && "landing-nav-link-active"
@@ -102,7 +127,9 @@ export function LandingNavbar() {
                 <button
                   key={link.href}
                   type="button"
-                  onClick={() => go(link.href)}
+                  onClick={() =>
+                    go(link.href, "hash" in link ? link.hash : undefined)
+                  }
                   className={cn(
                     "landing-nav-link w-full text-start",
                     location === link.href && "landing-nav-link-active"

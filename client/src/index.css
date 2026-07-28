@@ -328,6 +328,66 @@
     @apply rounded-xl border border-border/50 bg-white/[0.03] font-medium text-foreground transition-all hover:border-border hover:bg-white/[0.06];
   }
 
+  /* LANDING-PAGE-EXPERIENCE-1 — lightweight motion */
+  @keyframes landing-pulse-dot {
+    0%,
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.55;
+      transform: scale(0.85);
+    }
+  }
+
+  @keyframes landing-preview-in {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes landing-glow-drift {
+    0%,
+    100% {
+      opacity: 0.55;
+      transform: translate(0, 0);
+    }
+    50% {
+      opacity: 0.85;
+      transform: translate(-6%, 4%);
+    }
+  }
+
+  .landing-pulse-dot {
+    animation: landing-pulse-dot 2.2s ease-in-out infinite;
+  }
+
+  .landing-preview-tile {
+    animation: landing-preview-in 0.45s ease-out both;
+  }
+
+  .landing-preview-glow {
+    animation: landing-glow-drift 8s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .landing-pulse-dot,
+    .landing-preview-tile,
+    .landing-preview-glow {
+      animation: none !important;
+    }
+
+    .landing-card.group:hover {
+      transform: none;
+    }
+  }
+
   .text-gradient-teal {
     background: linear-gradient(135deg, oklch(0.7 0.18 195), oklch(0.8 0.12 195));
     -webkit-background-clip: text;
