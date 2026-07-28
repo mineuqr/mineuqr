@@ -13,8 +13,20 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { SemanticBadge } from "@/design-system/semantic-badge";
+import {
+  SemanticBadge,
+  mapCommercialStatusToBadgeTone,
+} from "@/design-system/semantic-badge";
+import {
+  SemanticTableBody,
+  SemanticTableCell,
+  SemanticTableDesktop,
+  SemanticTableHead,
+  SemanticTableHeader,
+  SemanticTableMobile,
+  SemanticTableRoot,
+  SemanticTableRow,
+} from "@/design-system/semantic-table";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { Plus, Trash2, Loader2, Search, Users, FileText, CreditCard } from "lucide-react";
@@ -185,38 +197,16 @@ export function CustomerSuccessAccountsSection() {
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    const label =
-      status === "active"
-        ? "فعال"
-        : status === "trial"
-          ? "تجريبي"
-          : status === "expired"
-            ? "منتهي"
-            : status === "canceled"
-              ? "ملغي"
-              : "بدون اشتراك";
-    const tone =
-      status === "active"
-        ? "success"
-        : status === "trial"
-          ? "info"
-          : status === "expired"
-            ? "danger"
-            : status === "canceled"
-              ? "cancelled"
-              : "disabled";
-    return (
-      <SemanticBadge
-        tone={tone as "success" | "info" | "danger" | "cancelled" | "disabled"}
-        density={status === "active" || status === "trial" || status === "expired" ? "filled" : "soft"}
-        size="sm"
-        className={adminDash.opsBadge}
-      >
-        {label}
-      </SemanticBadge>
-    );
-  };
+  const getStatusBadge = (status: string) => (
+    <SemanticBadge
+      tone={mapCommercialStatusToBadgeTone(status)}
+      density="outline"
+      size="sm"
+      className={adminDash.opsBadge}
+    >
+      {t(`subscription.status.${status}`)}
+    </SemanticBadge>
+  );
 
   const renderUserActions = (u: any) => {
     const isEditing = governance.editingUserId === u.id;
@@ -350,7 +340,8 @@ export function CustomerSuccessAccountsSection() {
           ) : (
             <>
               {/* Mobile / tablet card layout */}
-              <div className="divide-y divide-border/50 lg:hidden" role="list">
+              <SemanticTableMobile>
+              <div className="divide-y divide-border/50" role="list">
                 {filteredUsers.map((u: any) => (
                   <article key={u.id} className={cn(adminDash.opsListRow, "flex-col items-stretch sm:flex-row sm:items-center")} role="listitem">
                     <div className="min-w-0 flex-1 space-y-1">
@@ -365,12 +356,12 @@ export function CustomerSuccessAccountsSection() {
                           role={u.role}
                           language={language === "ar" ? "ar" : "en"}
                         />
-                        <Badge variant="outline" className={adminDash.opsBadge}>
+                        <SemanticBadge tone="neutral" density="outline" size="sm" className={adminDash.opsBadge}>
                           {accountClassificationLabel(
                             u.accountClassification ?? "COMMERCIAL",
                             language === "ar" ? "ar" : "en"
                           )}
-                        </Badge>
+                        </SemanticBadge>
                         <SecurityPlatformAccountBadge
                           user={u}
                           label={t("admin.operations.platformBadge")}
@@ -380,9 +371,9 @@ export function CustomerSuccessAccountsSection() {
                     <dl className="grid gap-2 text-sm">
                       <div className="flex flex-wrap items-center gap-1.5">
                         {isOwnerEntitled(u.commercial) ? getStatusBadge(ownerSubscriptionStatus(u.commercial)) : (
-                          <Badge variant="outline" className={cn(adminDash.opsBadge, "text-muted-foreground")}>
+                          <SemanticBadge tone="disabled" density="outline" size="sm" className={adminDash.opsBadge}>
                             {t("admin.noAccountSubscription")}
-                          </Badge>
+                          </SemanticBadge>
                         )}
                         <span className="text-xs tabular-nums text-muted-foreground" dir="ltr">
                           {u.restaurants?.length ?? 0} {t("admin.restaurantCount")}
@@ -407,10 +398,11 @@ export function CustomerSuccessAccountsSection() {
                   </article>
                 ))}
               </div>
+              </SemanticTableMobile>
 
               {/* Desktop table — UX-REFINE-1B: fixed layout, no horizontal scroll */}
-              <div className={adminDash.opsTableWrap}>
-                <table className={adminDash.opsTable}>
+              <SemanticTableDesktop>
+                <SemanticTableRoot density="ops">
                   <colgroup>
                     <col className="w-[28%]" />
                     <col className="w-[14%]" />
@@ -418,35 +410,36 @@ export function CustomerSuccessAccountsSection() {
                     <col className="w-[14%]" />
                     <col className="w-[10%]" />
                   </colgroup>
-                  <thead className="border-b border-border/60 bg-muted/15">
-                    <tr>
-                      <th scope="col" className={adminDash.opsTableHead}>
+                  <SemanticTableHeader density="ops" className="border-b border-border/60 bg-muted/15">
+                    <SemanticTableRow density="ops">
+                      <SemanticTableHead density="ops">
                         {language === "ar" ? "الحساب" : "Account"}
-                      </th>
-                      <th scope="col" className={adminDash.opsTableHead}>
+                      </SemanticTableHead>
+                      <SemanticTableHead density="ops">
                         {language === "ar" ? "التصنيف" : "Classification"}
-                      </th>
-                      <th scope="col" className={adminDash.opsTableHead}>
+                      </SemanticTableHead>
+                      <SemanticTableHead density="ops">
                         {language === "ar" ? "الاشتراك" : "Subscription"}
-                      </th>
-                      <th scope="col" className={adminDash.opsTableHead}>
+                      </SemanticTableHead>
+                      <SemanticTableHead density="ops">
                         {language === "ar" ? "التفاصيل" : "Details"}
-                      </th>
-                      <th scope="col" className={cn(adminDash.opsTableHead, "text-end")}>
+                      </SemanticTableHead>
+                      <SemanticTableHead density="ops" className="text-end">
                         {t("users.actions") || "الإجراءات"}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
+                      </SemanticTableHead>
+                    </SemanticTableRow>
+                  </SemanticTableHeader>
+                  <SemanticTableBody>
                     {filteredUsers.map((u: any, idx: number) => (
-                      <tr
+                      <SemanticTableRow
                         key={u.id}
+                        density="ops"
                         className={cn(
                           "border-b border-border/30 last:border-b-0",
                           idx % 2 === 0 ? "bg-background/20" : "bg-transparent"
                         )}
                       >
-                        <td className={cn(adminDash.opsTableCell, adminDash.opsTableTruncate, "text-foreground")}>
+                        <SemanticTableCell density="ops" truncate className="text-foreground">
                           <div className={adminDash.opsIdentityName}>
                             {u.name || (language === "ar" ? "بدون اسم" : "No name")}
                           </div>
@@ -464,23 +457,23 @@ export function CustomerSuccessAccountsSection() {
                               label={t("admin.operations.platformBadge")}
                             />
                           </div>
-                        </td>
-                        <td className={adminDash.opsTableCell}>
+                        </SemanticTableCell>
+                        <SemanticTableCell density="ops">
                           <SecurityClassificationCell user={u} governance={governance} />
-                        </td>
-                        <td className={cn(adminDash.opsTableCell, adminDash.opsTableTruncate)}>
+                        </SemanticTableCell>
+                        <SemanticTableCell density="ops" truncate>
                           <div className="flex flex-wrap items-center gap-1">
                             {isOwnerEntitled(u.commercial) ? getStatusBadge(ownerSubscriptionStatus(u.commercial)) : (
-                              <Badge variant="outline" className={cn(adminDash.opsBadge, "text-muted-foreground")}>
+                              <SemanticBadge tone="disabled" density="outline" size="sm" className={adminDash.opsBadge}>
                                 {t("admin.noAccountSubscription")}
-                              </Badge>
+                              </SemanticBadge>
                             )}
                           </div>
                           <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
                             {ownerPlanLabel(u.commercial)}
                           </div>
-                        </td>
-                        <td className={cn(adminDash.opsTableCell, "text-muted-foreground")}>
+                        </SemanticTableCell>
+                        <SemanticTableCell density="ops" className="text-muted-foreground">
                           <div className="tabular-nums" dir="ltr">
                             {u.restaurants?.length ?? 0} {t("admin.restaurantCount")}
                           </div>
@@ -489,15 +482,15 @@ export function CustomerSuccessAccountsSection() {
                               ? formatSubscriptionEndDate(u.commercial.currentPeriodEnd, language === "ar" ? "ar" : "en")
                               : "—"}
                           </div>
-                        </td>
-                        <td className={cn(adminDash.opsTableActionsCell, "text-end")}>
+                        </SemanticTableCell>
+                        <SemanticTableCell density="ops" actions className="text-end">
                           {renderUserActions(u)}
-                        </td>
-                      </tr>
+                        </SemanticTableCell>
+                      </SemanticTableRow>
                     ))}
-                  </tbody>
-                </table>
-              </div>
+                  </SemanticTableBody>
+                </SemanticTableRoot>
+              </SemanticTableDesktop>
             </>
           )}
       </OperationsTabFrame>

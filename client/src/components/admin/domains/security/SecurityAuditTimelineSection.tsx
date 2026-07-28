@@ -3,12 +3,24 @@ import { History } from "lucide-react";
 import { AdminPageSection } from "@/components/admin/sections/AdminPageSection";
 import { AdminEmptyState } from "@/components/admin/operations/AdminEmptyState";
 import { adminDash } from "@/components/admin/layout/adminDashStyles";
-import { cn } from "@/lib/utils";
+import {
+  SemanticBadge,
+  mapAuditSeverityToBadgeTone,
+} from "@/design-system/semantic-badge";
+import {
+  SemanticTableBody,
+  SemanticTableCell,
+  SemanticTableDesktop,
+  SemanticTableHead,
+  SemanticTableHeader,
+  SemanticTableMobile,
+  SemanticTableRoot,
+  SemanticTableRow,
+} from "@/design-system/semantic-table";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { AuditEventDetailDrawer } from "./AuditEventDetailDrawer";
 import { AuditEventListFooter } from "./AuditEventListFooter";
 import {
-  auditSeverityClass,
   formatAuditActorLabel,
   formatAuditTimestamp,
 } from "./auditEventDisplay";
@@ -52,66 +64,69 @@ export function SecurityAuditTimelineSection() {
           />
         ) : (
           <div className={adminDash.operationsCard}>
-            <div className={adminDash.opsTableWrap}>
-              <table className={adminDash.opsTable}>
-                <thead>
-                  <tr className="border-b border-cyan-500/20">
-                    <th scope="col" className={adminDash.opsTableHead}>
+            <SemanticTableDesktop>
+              <SemanticTableRoot density="ops">
+                <SemanticTableHeader density="ops">
+                  <SemanticTableRow density="ops" className="border-b border-cyan-500/20">
+                    <SemanticTableHead density="ops">
                       {t("admin.security.timeline.colEventType")}
-                    </th>
-                    <th scope="col" className={adminDash.opsTableHead}>
+                    </SemanticTableHead>
+                    <SemanticTableHead density="ops">
                       {t("admin.security.timeline.colCategory")}
-                    </th>
-                    <th scope="col" className={adminDash.opsTableHead}>
+                    </SemanticTableHead>
+                    <SemanticTableHead density="ops">
                       {t("admin.security.timeline.colSeverity")}
-                    </th>
-                    <th scope="col" className={adminDash.opsTableHead}>
+                    </SemanticTableHead>
+                    <SemanticTableHead density="ops">
                       {t("admin.security.timeline.colActor")}
-                    </th>
-                    <th scope="col" className={adminDash.opsTableHead}>
+                    </SemanticTableHead>
+                    <SemanticTableHead density="ops">
                       {t("admin.security.timeline.colTimestamp")}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
+                    </SemanticTableHead>
+                  </SemanticTableRow>
+                </SemanticTableHeader>
+                <SemanticTableBody>
                   {items.map((event) => (
-                    <tr
+                    <SemanticTableRow
                       key={event.id}
-                      className="cursor-pointer border-b border-cyan-500/10 hover:bg-slate-800/30"
+                      density="ops"
+                      className="cursor-pointer"
                       onClick={() => openDetail(event.id)}
                     >
-                      <td
+                      <SemanticTableCell
                         dir="ltr"
-                        className={cn(adminDash.opsTableCell, adminDash.opsTableTruncate, "text-white")}
+                        density="ops"
+                        truncate
+                        className="text-white"
                       >
                         {event.eventType}
-                      </td>
-                      <td dir="ltr" className={cn(adminDash.opsTableCell, "text-slate-300")}>
+                      </SemanticTableCell>
+                      <SemanticTableCell dir="ltr" density="ops" className="text-slate-300">
                         {event.category}
-                      </td>
-                      <td className={adminDash.opsTableCell}>
-                        <span
-                          className={cn(
-                            "inline-flex rounded border px-1.5 py-0.5 text-[10px] font-medium",
-                            auditSeverityClass(event.severity)
-                          )}
+                      </SemanticTableCell>
+                      <SemanticTableCell density="ops">
+                        <SemanticBadge
+                          tone={mapAuditSeverityToBadgeTone(event.severity)}
+                          density="outline"
+                          size="sm"
                         >
                           {event.severity}
-                        </span>
-                      </td>
-                      <td dir="ltr" className={cn(adminDash.opsTableCell, "text-slate-300")}>
+                        </SemanticBadge>
+                      </SemanticTableCell>
+                      <SemanticTableCell dir="ltr" density="ops" className="text-slate-300">
                         {formatAuditActorLabel(event.actorId)}
-                      </td>
-                      <td dir="ltr" className={cn(adminDash.opsTableCell, "text-slate-400")}>
+                      </SemanticTableCell>
+                      <SemanticTableCell dir="ltr" density="ops" className="text-slate-400">
                         {formatAuditTimestamp(event.occurredAt)}
-                      </td>
-                    </tr>
+                      </SemanticTableCell>
+                    </SemanticTableRow>
                   ))}
-                </tbody>
-              </table>
-            </div>
+                </SemanticTableBody>
+              </SemanticTableRoot>
+            </SemanticTableDesktop>
 
-            <ul className="divide-y divide-cyan-500/15 lg:hidden">
+            <SemanticTableMobile>
+            <ul className="divide-y divide-cyan-500/15">
               {items.map((event) => (
                 <li key={event.id}>
                   <button
@@ -131,6 +146,7 @@ export function SecurityAuditTimelineSection() {
                 </li>
               ))}
             </ul>
+            </SemanticTableMobile>
 
             <AuditEventListFooter
               hasMore={hasMore}

@@ -35,7 +35,28 @@ import {
   type SettlementRecordLang,
 } from "@/lib/settlement-record-presentation";
 import { cn } from "@/lib/utils";
-import { Eye, Loader2, Receipt, Undo2 } from "lucide-react";
+import {
+  SemanticTable,
+  SemanticTableScroll,
+  SemanticTableRoot,
+  SemanticTableHeader,
+  SemanticTableBody,
+  SemanticTableRow,
+  SemanticTableHead,
+  SemanticTableCell,
+  SemanticTableToolbar,
+  SemanticTableFilters,
+  SemanticTablePagination,
+  SemanticTableEmptyState,
+  SemanticTableLoadingState,
+  SemanticTableErrorState,
+  SemanticTableActions,
+} from "@/design-system/semantic-table";
+import {
+  SemanticBadge,
+  mapSettlementStatusToBadgeTone,
+} from "@/design-system/semantic-badge";
+import { Eye, Receipt, Undo2 } from "lucide-react";
 import { SettlementDetailSheet } from "./SettlementDetailSheet";
 import { SettlementLedgerRefundDialog } from "./SettlementLedgerRefundDialog";
 import { SettlementReceiptDialog } from "./SettlementReceiptDialog";
@@ -140,294 +161,316 @@ export function SettlementHistoryPanel({
         </Button>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {quickButtons.map((btn) => (
-          <Button
-            key={btn.id}
-            type="button"
-            size="sm"
-            variant={quickRange === btn.id ? "default" : "outline"}
-            className="min-w-[4.5rem]"
-            onClick={() => applyQuickRange(btn.id)}
-          >
-            {settlementRecordUiLabel(btn.labelKey, language)}
-          </Button>
-        ))}
-      </div>
-
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-        <Input
-          value={search}
-          onChange={(e) => {
-            setPage(1);
-            setSearch(e.target.value);
-          }}
-          placeholder={settlementRecordUiLabel("search", language)}
-          aria-label={settlementRecordUiLabel("search", language)}
-        />
-        <div className="space-y-1">
-          <label className="text-xs text-slate-400" htmlFor="settlement-date-from">
-            {settlementRecordUiLabel("dateFrom", language)}
-          </label>
-          <Input
-            id="settlement-date-from"
-            type="date"
-            value={dateFrom}
-            onChange={(e) => onDateFromChange(e.target.value)}
-            aria-label={settlementRecordUiLabel("dateFrom", language)}
-            className="[color-scheme:dark]"
-          />
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs text-slate-400" htmlFor="settlement-date-to">
-            {settlementRecordUiLabel("dateTo", language)}
-          </label>
-          <Input
-            id="settlement-date-to"
-            type="date"
-            value={dateTo}
-            onChange={(e) => onDateToChange(e.target.value)}
-            aria-label={settlementRecordUiLabel("dateTo", language)}
-            className="[color-scheme:dark]"
-          />
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs text-slate-400" htmlFor="settlement-status-facet">
-            {settlementRecordUiLabel("filterStatus", language)}
-          </label>
-          <Select
-            value={statusFacet}
-            onValueChange={(v) => {
-              setPage(1);
-              setStatusFacet(v as SettlementHistoryStatusFacet);
-            }}
-          >
-            <SelectTrigger
-              id="settlement-status-facet"
-              aria-label={settlementRecordUiLabel("filterStatus", language)}
+      <SemanticTableToolbar className="flex-col items-stretch gap-3">
+        <div className="flex flex-wrap gap-2">
+          {quickButtons.map((btn) => (
+            <Button
+              key={btn.id}
+              type="button"
+              size="sm"
+              variant={quickRange === btn.id ? "default" : "outline"}
+              className="min-w-[4.5rem]"
+              onClick={() => applyQuickRange(btn.id)}
             >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">
-                {settlementRecordUiLabel("allStatuses", language)}
-              </SelectItem>
-              <SelectItem value="paid">
-                {settlementRecordUiLabel("paid", language)}
-              </SelectItem>
-              <SelectItem value="refunded">
-                {settlementRecordUiLabel("refunded", language)}
-              </SelectItem>
-              <SelectItem value="complimentary">
-                {settlementRecordUiLabel("complimentary", language)}
-              </SelectItem>
-              <SelectItem value="voided">
-                {settlementRecordUiLabel("voided", language)}
-              </SelectItem>
-            </SelectContent>
-          </Select>
+              {settlementRecordUiLabel(btn.labelKey, language)}
+            </Button>
+          ))}
         </div>
-        <div className="space-y-1">
-          <label className="text-xs text-slate-400" htmlFor="settlement-source-filter">
-            {settlementRecordUiLabel("filterSource", language)}
-          </label>
-          <Select
-            value={sourceFilter}
-            onValueChange={(v) => {
-              setPage(1);
-              setSourceFilter(v as SourceFilter);
-            }}
-          >
-            <SelectTrigger
-              id="settlement-source-filter"
-              aria-label={settlementRecordUiLabel("filterSource", language)}
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">
-                {settlementRecordUiLabel("allSources", language)}
-              </SelectItem>
-              <SelectItem value="session">
-                {settlementRecordUiLabel("sessionSource", language)}
-              </SelectItem>
-              <SelectItem value="check">
-                {settlementRecordUiLabel("checkSource", language)}
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
 
-      <section className={cn(restaurantDash.panelInset, "overflow-x-auto p-0")}>
-        {query.isLoading ? (
-          <div className="flex items-center gap-2 p-4 text-sm text-slate-300">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            {settlementRecordUiLabel("loading", language)}
-          </div>
-        ) : null}
-
-        {query.error ? (
-          <p className="p-4 text-sm text-red-400">
-            {settlementRecordErrorMessage(
-              mapSettlementRecordApiError(query.error),
-              language
-            )}
-          </p>
-        ) : null}
-
-        {!query.isLoading && !query.error && rows.length === 0 ? (
-          <p className="p-4 text-sm text-slate-400">
-            {settlementRecordUiLabel("empty", language)}
-          </p>
-        ) : null}
-
-        {rows.length > 0 ? (
-          <table className="w-full min-w-[640px] text-sm">
-            <thead className="border-b border-slate-700/60 text-xs uppercase text-slate-400">
-              <tr>
-                <th className="px-3 py-2 text-start font-medium">
-                  {settlementRecordUiLabel("documentNumber", language)}
-                </th>
-                <th className="px-3 py-2 text-start font-medium">
-                  {settlementRecordUiLabel("documentType", language)}
-                </th>
-                <th className="px-3 py-2 text-start font-medium">
-                  {settlementRecordUiLabel("settlementTime", language)}
-                </th>
-                <th className="px-3 py-2 text-start font-medium">
-                  {settlementRecordUiLabel("source", language)}
-                </th>
-                <th className="px-3 py-2 text-start font-medium">
-                  {settlementRecordUiLabel("grandTotal", language)}
-                </th>
-                <th className="px-3 py-2 text-start font-medium">
-                  {settlementRecordUiLabel("paymentMethodSummary", language)}
-                </th>
-                <th className="px-3 py-2 text-start font-medium">
-                  {settlementRecordUiLabel("status", language)}
-                </th>
-                <th className="px-3 py-2 text-end font-medium">
-                  <span className="sr-only">
-                    {settlementRecordUiLabel("viewAction", language)}
-                  </span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr
-                  key={row.settlementRecordId}
-                  className="border-b border-slate-800/80 text-slate-200"
+        <SemanticTableFilters>
+          <div className="grid w-full gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+            <Input
+              value={search}
+              onChange={(e) => {
+                setPage(1);
+                setSearch(e.target.value);
+              }}
+              placeholder={settlementRecordUiLabel("search", language)}
+              aria-label={settlementRecordUiLabel("search", language)}
+            />
+            <div className="space-y-1">
+              <label className="text-xs text-slate-400" htmlFor="settlement-date-from">
+                {settlementRecordUiLabel("dateFrom", language)}
+              </label>
+              <Input
+                id="settlement-date-from"
+                type="date"
+                value={dateFrom}
+                onChange={(e) => onDateFromChange(e.target.value)}
+                aria-label={settlementRecordUiLabel("dateFrom", language)}
+                className="[color-scheme:dark]"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-slate-400" htmlFor="settlement-date-to">
+                {settlementRecordUiLabel("dateTo", language)}
+              </label>
+              <Input
+                id="settlement-date-to"
+                type="date"
+                value={dateTo}
+                onChange={(e) => onDateToChange(e.target.value)}
+                aria-label={settlementRecordUiLabel("dateTo", language)}
+                className="[color-scheme:dark]"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-slate-400" htmlFor="settlement-status-facet">
+                {settlementRecordUiLabel("filterStatus", language)}
+              </label>
+              <Select
+                value={statusFacet}
+                onValueChange={(v) => {
+                  setPage(1);
+                  setStatusFacet(v as SettlementHistoryStatusFacet);
+                }}
+              >
+                <SelectTrigger
+                  id="settlement-status-facet"
+                  aria-label={settlementRecordUiLabel("filterStatus", language)}
                 >
-                  <td className="px-3 py-2 font-semibold tabular-nums tracking-wide">
-                    <div>{row.documentNumber}</div>
-                    {row.originSettlementNumber ? (
-                      <div className="text-xs font-normal text-slate-400">
-                        {settlementRecordUiLabel("originSettlementNumber", language)}{" "}
-                        {row.originSettlementNumber}
-                      </div>
-                    ) : null}
-                  </td>
-                  <td className="px-3 py-2">{row.documentTypeLabel}</td>
-                  <td className="px-3 py-2 whitespace-nowrap">
-                    <div className="leading-tight">
-                      <div>{row.settlementTimeDateLabel}</div>
-                      <div className="text-xs text-slate-400">
-                        {row.settlementTimeClockLabel}
-                      </div>
-                      <div className="text-xs text-slate-500">
-                        {settlementRecordUiLabel("businessDay", language)}{" "}
-                        {row.businessDay}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-3 py-2">{row.sourceLabel}</td>
-                  <td className="px-3 py-2 tabular-nums">{row.grandTotalLabel}</td>
-                  <td className="px-3 py-2">{row.paymentMethodSummaryLabel}</td>
-                  <td className="px-3 py-2">
-                    <div className="leading-tight">
-                      <div>{row.statusLabel}</div>
-                      {row.generationLabel ? (
-                        <div className="text-xs text-slate-400">
-                          {settlementRecordUiLabel("generation", language)}{" "}
-                          {row.generationLabel}
-                        </div>
-                      ) : null}
-                    </div>
-                  </td>
-                  <td className="px-3 py-2">
-                    <div className="flex items-center justify-end gap-1">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            type="button"
-                            size="icon"
-                            variant="ghost"
-                            className="h-9 w-9"
-                            aria-label={settlementRecordUiLabel(
-                              "receiptAction",
-                              language
-                            )}
-                            onClick={() => setReceiptId(row.settlementRecordId)}
-                          >
-                            <Receipt className="h-4 w-4" aria-hidden />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          {settlementRecordUiLabel("receiptAction", language)}
-                        </TooltipContent>
-                      </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            type="button"
-                            size="icon"
-                            variant="ghost"
-                            className="h-9 w-9"
-                            aria-label={settlementRecordUiLabel(
-                              "viewAction",
-                              language
-                            )}
-                            onClick={() => setDetailId(row.settlementRecordId)}
-                          >
-                            <Eye className="h-4 w-4" aria-hidden />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          {settlementRecordUiLabel("viewAction", language)}
-                        </TooltipContent>
-                      </Tooltip>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : null}
-      </section>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">
+                    {settlementRecordUiLabel("allStatuses", language)}
+                  </SelectItem>
+                  <SelectItem value="paid">
+                    {settlementRecordUiLabel("paid", language)}
+                  </SelectItem>
+                  <SelectItem value="refunded">
+                    {settlementRecordUiLabel("refunded", language)}
+                  </SelectItem>
+                  <SelectItem value="complimentary">
+                    {settlementRecordUiLabel("complimentary", language)}
+                  </SelectItem>
+                  <SelectItem value="voided">
+                    {settlementRecordUiLabel("voided", language)}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-slate-400" htmlFor="settlement-source-filter">
+                {settlementRecordUiLabel("filterSource", language)}
+              </label>
+              <Select
+                value={sourceFilter}
+                onValueChange={(v) => {
+                  setPage(1);
+                  setSourceFilter(v as SourceFilter);
+                }}
+              >
+                <SelectTrigger
+                  id="settlement-source-filter"
+                  aria-label={settlementRecordUiLabel("filterSource", language)}
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">
+                    {settlementRecordUiLabel("allSources", language)}
+                  </SelectItem>
+                  <SelectItem value="session">
+                    {settlementRecordUiLabel("sessionSource", language)}
+                  </SelectItem>
+                  <SelectItem value="check">
+                    {settlementRecordUiLabel("checkSource", language)}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </SemanticTableFilters>
+      </SemanticTableToolbar>
 
-      <div className="flex items-center justify-between gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          disabled={page <= 1 || query.isFetching}
-          onClick={() => setPage((p) => Math.max(1, p - 1))}
-        >
-          {settlementRecordUiLabel("previous", language)}
-        </Button>
-        <p className="text-sm text-slate-300">
-          {settlementRecordUiLabel("pageOf", language)} {page} / {totalPages}
-        </p>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={!query.data?.hasMore || query.isFetching}
-          onClick={() => setPage((p) => p + 1)}
-        >
-          {settlementRecordUiLabel("next", language)}
-        </Button>
-      </div>
+      <SemanticTable>
+        <section className={cn(restaurantDash.panelInset, "p-0")}>
+          {query.isLoading ? (
+            <SemanticTableLoadingState
+              label={settlementRecordUiLabel("loading", language)}
+            />
+          ) : null}
+
+          {query.error ? (
+            <SemanticTableErrorState
+              message={settlementRecordErrorMessage(
+                mapSettlementRecordApiError(query.error),
+                language
+              )}
+            />
+          ) : null}
+
+          {!query.isLoading && !query.error && rows.length === 0 ? (
+            <SemanticTableEmptyState
+              message={settlementRecordUiLabel("empty", language)}
+            />
+          ) : null}
+
+          {rows.length > 0 ? (
+            <SemanticTableScroll className="rounded-none border-0">
+              <SemanticTableRoot density="ledger">
+                <SemanticTableHeader density="ledger">
+                  <SemanticTableRow density="ledger">
+                    <SemanticTableHead density="ledger">
+                      {settlementRecordUiLabel("documentNumber", language)}
+                    </SemanticTableHead>
+                    <SemanticTableHead density="ledger">
+                      {settlementRecordUiLabel("documentType", language)}
+                    </SemanticTableHead>
+                    <SemanticTableHead density="ledger">
+                      {settlementRecordUiLabel("settlementTime", language)}
+                    </SemanticTableHead>
+                    <SemanticTableHead density="ledger">
+                      {settlementRecordUiLabel("source", language)}
+                    </SemanticTableHead>
+                    <SemanticTableHead density="ledger">
+                      {settlementRecordUiLabel("grandTotal", language)}
+                    </SemanticTableHead>
+                    <SemanticTableHead density="ledger">
+                      {settlementRecordUiLabel("paymentMethodSummary", language)}
+                    </SemanticTableHead>
+                    <SemanticTableHead density="ledger">
+                      {settlementRecordUiLabel("status", language)}
+                    </SemanticTableHead>
+                    <SemanticTableHead density="ledger" className="text-end">
+                      <span className="sr-only">
+                        {settlementRecordUiLabel("viewAction", language)}
+                      </span>
+                    </SemanticTableHead>
+                  </SemanticTableRow>
+                </SemanticTableHeader>
+                <SemanticTableBody>
+                  {rows.map((row) => (
+                    <SemanticTableRow
+                      key={row.settlementRecordId}
+                      density="ledger"
+                    >
+                      <SemanticTableCell
+                        density="ledger"
+                        className="font-semibold tabular-nums tracking-wide"
+                      >
+                        <div>{row.documentNumber}</div>
+                        {row.originSettlementNumber ? (
+                          <div className="text-xs font-normal text-slate-400">
+                            {settlementRecordUiLabel("originSettlementNumber", language)}{" "}
+                            {row.originSettlementNumber}
+                          </div>
+                        ) : null}
+                      </SemanticTableCell>
+                      <SemanticTableCell density="ledger">
+                        {row.documentTypeLabel}
+                      </SemanticTableCell>
+                      <SemanticTableCell density="ledger" className="whitespace-nowrap">
+                        <div className="leading-tight">
+                          <div>{row.settlementTimeDateLabel}</div>
+                          <div className="text-xs text-slate-400">
+                            {row.settlementTimeClockLabel}
+                          </div>
+                          <div className="text-xs text-slate-500">
+                            {settlementRecordUiLabel("businessDay", language)}{" "}
+                            {row.businessDay}
+                          </div>
+                        </div>
+                      </SemanticTableCell>
+                      <SemanticTableCell density="ledger">
+                        {row.sourceLabel}
+                      </SemanticTableCell>
+                      <SemanticTableCell density="ledger" className="tabular-nums">
+                        {row.grandTotalLabel}
+                      </SemanticTableCell>
+                      <SemanticTableCell density="ledger">
+                        {row.paymentMethodSummaryLabel}
+                      </SemanticTableCell>
+                      <SemanticTableCell density="ledger">
+                        <div className="leading-tight">
+                          <SemanticBadge
+                            tone={mapSettlementStatusToBadgeTone(row.settlementStatus)}
+                          >
+                            {row.statusLabel}
+                          </SemanticBadge>
+                          {row.generationLabel ? (
+                            <div className="mt-1 text-xs text-slate-400">
+                              {settlementRecordUiLabel("generation", language)}{" "}
+                              {row.generationLabel}
+                            </div>
+                          ) : null}
+                        </div>
+                      </SemanticTableCell>
+                      <SemanticTableCell density="ledger" actions>
+                        <SemanticTableActions>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                type="button"
+                                size="icon"
+                                variant="ghost"
+                                className="h-9 w-9"
+                                aria-label={settlementRecordUiLabel(
+                                  "receiptAction",
+                                  language
+                                )}
+                                onClick={() => setReceiptId(row.settlementRecordId)}
+                              >
+                                <Receipt className="h-4 w-4" aria-hidden />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {settlementRecordUiLabel("receiptAction", language)}
+                            </TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                type="button"
+                                size="icon"
+                                variant="ghost"
+                                className="h-9 w-9"
+                                aria-label={settlementRecordUiLabel(
+                                  "viewAction",
+                                  language
+                                )}
+                                onClick={() => setDetailId(row.settlementRecordId)}
+                              >
+                                <Eye className="h-4 w-4" aria-hidden />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {settlementRecordUiLabel("viewAction", language)}
+                            </TooltipContent>
+                          </Tooltip>
+                        </SemanticTableActions>
+                      </SemanticTableCell>
+                    </SemanticTableRow>
+                  ))}
+                </SemanticTableBody>
+              </SemanticTableRoot>
+            </SemanticTableScroll>
+          ) : null}
+        </section>
+
+        <SemanticTablePagination>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={page <= 1 || query.isFetching}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+          >
+            {settlementRecordUiLabel("previous", language)}
+          </Button>
+          <p className="text-sm text-slate-300">
+            {settlementRecordUiLabel("pageOf", language)} {page} / {totalPages}
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={!query.data?.hasMore || query.isFetching}
+            onClick={() => setPage((p) => p + 1)}
+          >
+            {settlementRecordUiLabel("next", language)}
+          </Button>
+        </SemanticTablePagination>
+      </SemanticTable>
 
       <SettlementDetailSheet
         open={detailId != null}

@@ -7,6 +7,10 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  SemanticBadge,
+  mapAuditSeverityToBadgeTone,
+} from "@/design-system/semantic-badge";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { adminQueriesEnabled } from "@/lib/queryRuntime";
 import { trpc } from "@/lib/trpc";
@@ -14,7 +18,6 @@ import { cn } from "@/lib/utils";
 import { adminDash } from "@/components/admin/layout/adminDashStyles";
 import { AuditEventJsonField } from "./AuditEventJsonField";
 import {
-  auditSeverityClass,
   formatAuditActorLabel,
   formatAuditTargetLabel,
   formatAuditTimestamp,
@@ -106,14 +109,13 @@ export function AuditEventDetailDrawer({
                     {t("admin.security.timeline.colSeverity")}
                   </dt>
                   <dd className="mt-0.5">
-                    <span
-                      className={cn(
-                        "inline-flex rounded border px-1.5 py-0.5 text-[10px] font-medium",
-                        auditSeverityClass(event.severity)
-                      )}
+                    <SemanticBadge
+                      tone={mapAuditSeverityToBadgeTone(event.severity)}
+                      density="outline"
+                      size="sm"
                     >
                       {event.severity}
-                    </span>
+                    </SemanticBadge>
                   </dd>
                 </div>
                 <DetailFact

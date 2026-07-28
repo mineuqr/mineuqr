@@ -2,6 +2,7 @@
  * Admin dashboard presentation tokens (UX-REFINE-1B).
  * + SEMANTIC-CARD-DESIGN-SYSTEM-1 — panel chrome owned by design-system.
  * + SEMANTIC-STATUS-BADGE-SYSTEM-1 — filled status pills owned by badge system.
+ * + TABLE-PLATFORM-ADOPTION-1 — ops table chrome owned by semantic-table.
  */
 import {
   SEMANTIC_PANEL_BASE,
@@ -12,6 +13,7 @@ import {
   semanticBadgeHoverClass,
   semanticBadgeToneClass,
 } from "@/design-system/semantic-badge";
+import { SEMANTIC_TABLE } from "@/design-system/semantic-table";
 import { cn } from "@/lib/utils";
 
 /** ADMIN-RTL-WORKSPACE — operator console LTR geometry (shell + portaled modals). */
@@ -43,13 +45,13 @@ export const adminDash = {
   opsToolbar: "p-2 sm:p-2.5",
   opsTabList:
     "grid h-8 w-fit max-w-full grid-cols-3 self-start rounded-lg border border-cyan-500/30 bg-slate-800/50 p-0.5",
-  opsTable: "w-full table-fixed",
-  opsTableWrap: "hidden lg:block",
-  opsTableHead:
-    "px-2.5 py-1 text-start text-[11px] font-medium uppercase tracking-wide text-slate-400",
-  opsTableCell: "px-2.5 py-1.5 text-xs align-middle",
-  opsTableTruncate: "max-w-0 overflow-hidden text-ellipsis whitespace-nowrap",
-  opsTableActionsCell: "w-[1%] whitespace-nowrap px-1.5 py-1",
+  /** Facade → SEMANTIC_TABLE (TABLE-PLATFORM-ADOPTION-1) */
+  opsTable: SEMANTIC_TABLE.opsTable,
+  opsTableWrap: SEMANTIC_TABLE.desktop,
+  opsTableHead: SEMANTIC_TABLE.opsHead,
+  opsTableCell: SEMANTIC_TABLE.opsCell,
+  opsTableTruncate: SEMANTIC_TABLE.opsTruncate,
+  opsTableActionsCell: SEMANTIC_TABLE.opsActions,
   opsBadge: "text-[10px] px-1.5 py-0 font-medium leading-tight",
   opsListStrip: "border-b border-cyan-500/20 bg-slate-800/40 px-2.5 py-1.5",
   opsPanelHead:

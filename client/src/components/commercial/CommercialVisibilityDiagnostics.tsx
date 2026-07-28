@@ -1,5 +1,14 @@
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  SemanticTableScroll,
+  SemanticTableRoot,
+  SemanticTableHeader,
+  SemanticTableBody,
+  SemanticTableRow,
+  SemanticTableHead,
+  SemanticTableCell,
+} from "@/design-system/semantic-table";
+import { OutlineBadge, SemanticBadge } from "@/design-system/semantic-badge";
 import {
   getFeatureDisplayName,
   type CommercialUiLanguage,
@@ -33,18 +42,28 @@ export function CommercialVisibilityDiagnostics({
         </p>
       </CardHeader>
       <CardContent>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-border text-xs text-muted-foreground">
-                <th className="py-2 pr-4">{language === "ar" ? "الملف" : "File"}</th>
-                <th className="py-2 pr-4">{language === "ar" ? "القديم" : "Legacy"}</th>
-                <th className="py-2 pr-4">{language === "ar" ? "المفتاح" : "Feature key"}</th>
-                <th className="py-2 pr-4">{language === "ar" ? "الحالة" : "Status"}</th>
-                <th className="py-2">{language === "ar" ? "مرئي؟" : "Visible?"}</th>
-              </tr>
-            </thead>
-            <tbody>
+        <SemanticTableScroll>
+          <SemanticTableRoot density="comfortable" className="text-left">
+            <SemanticTableHeader density="comfortable">
+              <SemanticTableRow density="comfortable">
+                <SemanticTableHead density="comfortable" className="pr-4">
+                  {language === "ar" ? "الملف" : "File"}
+                </SemanticTableHead>
+                <SemanticTableHead density="comfortable" className="pr-4">
+                  {language === "ar" ? "القديم" : "Legacy"}
+                </SemanticTableHead>
+                <SemanticTableHead density="comfortable" className="pr-4">
+                  {language === "ar" ? "المفتاح" : "Feature key"}
+                </SemanticTableHead>
+                <SemanticTableHead density="comfortable" className="pr-4">
+                  {language === "ar" ? "الحالة" : "Status"}
+                </SemanticTableHead>
+                <SemanticTableHead density="comfortable">
+                  {language === "ar" ? "مرئي؟" : "Visible?"}
+                </SemanticTableHead>
+              </SemanticTableRow>
+            </SemanticTableHeader>
+            <SemanticTableBody>
               {UI_VISIBILITY_INVENTORY.map((entry) => {
                 const visible = resolveVisibilityForInventory(entitlements, entry);
                 const keyLabel =
@@ -54,38 +73,47 @@ export function CommercialVisibilityDiagnostics({
                     : getFeatureDisplayName(entry.featureKey, language);
 
                 return (
-                  <tr key={entry.id} className="border-b border-border/50 align-top">
-                    <td className="py-2 pr-4 font-mono text-xs">{entry.file.split("/").pop()}</td>
-                    <td className="py-2 pr-4 text-xs text-muted-foreground max-w-[200px]">
+                  <SemanticTableRow
+                    key={entry.id}
+                    density="comfortable"
+                    className="align-top"
+                  >
+                    <SemanticTableCell density="comfortable" className="pr-4 font-mono text-xs">
+                      {entry.file.split("/").pop()}
+                    </SemanticTableCell>
+                    <SemanticTableCell
+                      density="comfortable"
+                      className="max-w-[200px] pr-4 text-xs text-muted-foreground"
+                    >
                       {entry.legacyLogic}
-                    </td>
-                    <td className="py-2 pr-4">
+                    </SemanticTableCell>
+                    <SemanticTableCell density="comfortable" className="pr-4">
                       <code className="text-xs">{keyLabel}</code>
-                    </td>
-                    <td className="py-2 pr-4">
-                      <Badge variant="outline" className="text-xs">
+                    </SemanticTableCell>
+                    <SemanticTableCell density="comfortable" className="pr-4">
+                      <OutlineBadge className="text-xs">
                         {entry.replacementStatus}
-                      </Badge>
-                    </td>
-                    <td className="py-2">
+                      </OutlineBadge>
+                    </SemanticTableCell>
+                    <SemanticTableCell density="comfortable">
                       {visible === null ? (
                         <span className="text-xs text-muted-foreground">—</span>
                       ) : visible ? (
-                        <Badge className="bg-green-500/15 text-green-700 dark:text-green-300">
+                        <SemanticBadge tone="success" className="text-xs">
                           {language === "ar" ? "نعم" : "Yes"}
-                        </Badge>
+                        </SemanticBadge>
                       ) : (
-                        <Badge variant="secondary">
+                        <SemanticBadge tone="disabled" className="text-xs">
                           {language === "ar" ? "لا" : "No"}
-                        </Badge>
+                        </SemanticBadge>
                       )}
-                    </td>
-                  </tr>
+                    </SemanticTableCell>
+                  </SemanticTableRow>
                 );
               })}
-            </tbody>
-          </table>
-        </div>
+            </SemanticTableBody>
+          </SemanticTableRoot>
+        </SemanticTableScroll>
       </CardContent>
     </Card>
   );

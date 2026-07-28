@@ -3,7 +3,16 @@ import { UserCog } from "lucide-react";
 import { AdminPageSection } from "@/components/admin/sections/AdminPageSection";
 import { AdminEmptyState } from "@/components/admin/operations/AdminEmptyState";
 import { adminDash } from "@/components/admin/layout/adminDashStyles";
-import { cn } from "@/lib/utils";
+import {
+  SemanticTableBody,
+  SemanticTableCell,
+  SemanticTableDesktop,
+  SemanticTableHead,
+  SemanticTableHeader,
+  SemanticTableMobile,
+  SemanticTableRoot,
+  SemanticTableRow,
+} from "@/design-system/semantic-table";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { AuditEventListFooter } from "./AuditEventListFooter";
 import {
@@ -51,55 +60,56 @@ export function SecurityRoleChangesSection() {
         />
       ) : (
         <div className={adminDash.operationsCard}>
-          <div className={adminDash.opsTableWrap}>
-            <table className={adminDash.opsTable}>
-              <thead>
-                <tr className="border-b border-cyan-500/20">
-                  <th scope="col" className={adminDash.opsTableHead}>
+          <SemanticTableDesktop>
+            <SemanticTableRoot density="ops">
+              <SemanticTableHeader density="ops">
+                <SemanticTableRow density="ops" className="border-b border-cyan-500/20">
+                  <SemanticTableHead density="ops">
                     {t("admin.security.timeline.colActor")}
-                  </th>
-                  <th scope="col" className={adminDash.opsTableHead}>
+                  </SemanticTableHead>
+                  <SemanticTableHead density="ops">
                     {t("admin.security.roleChanges.colTarget")}
-                  </th>
-                  <th scope="col" className={adminDash.opsTableHead}>
+                  </SemanticTableHead>
+                  <SemanticTableHead density="ops">
                     {t("admin.security.roleChanges.colPreviousRole")}
-                  </th>
-                  <th scope="col" className={adminDash.opsTableHead}>
+                  </SemanticTableHead>
+                  <SemanticTableHead density="ops">
                     {t("admin.security.roleChanges.colNewRole")}
-                  </th>
-                  <th scope="col" className={adminDash.opsTableHead}>
+                  </SemanticTableHead>
+                  <SemanticTableHead density="ops">
                     {t("admin.security.timeline.colTimestamp")}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
+                  </SemanticTableHead>
+                </SemanticTableRow>
+              </SemanticTableHeader>
+              <SemanticTableBody>
                 {items.map((event) => {
                   const row = extractRoleChangeDisplay(event);
                   return (
-                    <tr key={event.id} className="border-b border-cyan-500/10">
-                      <td dir="ltr" className={cn(adminDash.opsTableCell, "text-slate-300")}>
+                    <SemanticTableRow key={event.id} density="ops">
+                      <SemanticTableCell dir="ltr" density="ops" className="text-slate-300">
                         {formatAuditActorLabel(row.actorId)}
-                      </td>
-                      <td dir="ltr" className={cn(adminDash.opsTableCell, "text-white")}>
+                      </SemanticTableCell>
+                      <SemanticTableCell dir="ltr" density="ops" className="text-white">
                         {formatAuditTargetLabel("user", row.targetUserId)}
-                      </td>
-                      <td dir="ltr" className={cn(adminDash.opsTableCell, "text-slate-300")}>
+                      </SemanticTableCell>
+                      <SemanticTableCell dir="ltr" density="ops" className="text-slate-300">
                         {row.previousRole ?? "—"}
-                      </td>
-                      <td dir="ltr" className={cn(adminDash.opsTableCell, "text-slate-300")}>
+                      </SemanticTableCell>
+                      <SemanticTableCell dir="ltr" density="ops" className="text-slate-300">
                         {row.newRole ?? "—"}
-                      </td>
-                      <td dir="ltr" className={cn(adminDash.opsTableCell, "text-slate-400")}>
+                      </SemanticTableCell>
+                      <SemanticTableCell dir="ltr" density="ops" className="text-slate-400">
                         {formatAuditTimestamp(event.occurredAt)}
-                      </td>
-                    </tr>
+                      </SemanticTableCell>
+                    </SemanticTableRow>
                   );
                 })}
-              </tbody>
-            </table>
-          </div>
+              </SemanticTableBody>
+            </SemanticTableRoot>
+          </SemanticTableDesktop>
 
-          <ul className="divide-y divide-cyan-500/15 lg:hidden">
+          <SemanticTableMobile>
+          <ul className="divide-y divide-cyan-500/15">
             {items.map((event) => {
               const row = extractRoleChangeDisplay(event);
               return (
@@ -115,6 +125,7 @@ export function SecurityRoleChangesSection() {
               );
             })}
           </ul>
+          </SemanticTableMobile>
 
           <AuditEventListFooter
             hasMore={hasMore}

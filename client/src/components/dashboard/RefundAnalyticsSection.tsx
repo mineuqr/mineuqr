@@ -36,6 +36,15 @@ import {
 import { useMemo } from "react";
 import { RestaurantDashSection } from "./RestaurantDashSection";
 import { SemanticKpiCard, SemanticKpiSkeleton } from "@/design-system/semantic-card";
+import {
+  SemanticTableScroll,
+  SemanticTableRoot,
+  SemanticTableHeader,
+  SemanticTableBody,
+  SemanticTableRow,
+  SemanticTableHead,
+  SemanticTableCell,
+} from "@/design-system/semantic-table";
 import { RestaurantSectionError } from "./RestaurantSectionStates";
 import { restaurantDash } from "./restaurantDashStyles";
 import { cn } from "@/lib/utils";
@@ -257,40 +266,41 @@ export function RefundAnalyticsSection({
           ) : null}
 
           {paymentVm != null && paymentVm.refundRows.length > 0 ? (
-            <div className="overflow-x-auto rounded-lg border border-slate-700/50">
+            <SemanticTableScroll className="rounded-lg border-slate-700/50">
               <p className="bg-slate-800/60 px-3 py-2 text-sm font-medium text-slate-200">
                 {section.refundPaymentMix}
               </p>
-              <table className="w-full min-w-[480px] text-sm">
-                <thead className="bg-slate-800/40 text-slate-300">
-                  <tr>
-                    <th className="px-3 py-2 text-start font-medium">
+              <SemanticTableRoot density="ledger" className="min-w-[480px]">
+                <SemanticTableHeader density="ledger" className="bg-slate-800/40 text-slate-300">
+                  <SemanticTableRow density="ledger">
+                    <SemanticTableHead density="ledger">
                       {section.paymentMethod}
-                    </th>
-                    <th className="px-3 py-2 text-start font-medium">
+                    </SemanticTableHead>
+                    <SemanticTableHead density="ledger">
                       {section.tenderAmount}
-                    </th>
-                    <th className="px-3 py-2 text-start font-medium">
+                    </SemanticTableHead>
+                    <SemanticTableHead density="ledger">
                       {section.transactions}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
+                    </SemanticTableHead>
+                  </SemanticTableRow>
+                </SemanticTableHeader>
+                <SemanticTableBody>
                   {paymentVm.refundRows.map((b) => (
-                    <tr
+                    <SemanticTableRow
                       key={b.paymentMethod}
-                      className="border-t border-slate-700/40 text-slate-100"
+                      density="ledger"
+                      className="text-slate-100"
                     >
-                      <td className="px-3 py-2">{b.label}</td>
-                      <td className="px-3 py-2">
+                      <SemanticTableCell density="ledger">{b.label}</SemanticTableCell>
+                      <SemanticTableCell density="ledger">
                         {formatMoneyDisplay(b.tenderAmount, sym)}
-                      </td>
-                      <td className="px-3 py-2">{b.transactionCount}</td>
-                    </tr>
+                      </SemanticTableCell>
+                      <SemanticTableCell density="ledger">{b.transactionCount}</SemanticTableCell>
+                    </SemanticTableRow>
                   ))}
-                </tbody>
-              </table>
-            </div>
+                </SemanticTableBody>
+              </SemanticTableRoot>
+            </SemanticTableScroll>
           ) : null}
 
           <div className="grid gap-2 sm:grid-cols-2">

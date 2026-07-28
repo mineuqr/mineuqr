@@ -7,6 +7,20 @@ import { Download, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { formatRiyadhDate } from "@/lib/datetime";
 import { useCommercialFeatureVisibility } from "@/hooks/useCommercialFeatureVisibility";
+import {
+  SemanticTableScroll,
+  SemanticTableRoot,
+  SemanticTableHeader,
+  SemanticTableBody,
+  SemanticTableRow,
+  SemanticTableHead,
+  SemanticTableCell,
+  SemanticTableEmptyState,
+} from "@/design-system/semantic-table";
+import {
+  SemanticBadge,
+  mapInvoiceStatusToBadgeTone,
+} from "@/design-system/semantic-badge";
 
 type InvoiceStatus = "paid" | "pending" | "failed" | "refunded";
 
@@ -47,20 +61,6 @@ export default function PaymentHistory() {
       invoiceUrl: inv.pdfUrl,
     }));
   }, [invoices, planLabel]);
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "paid":
-        return "text-green-400 bg-green-500/10";
-      case "pending":
-        return "text-yellow-400 bg-yellow-500/10";
-      case "failed":
-      case "refunded":
-        return "text-red-400 bg-red-500/10";
-      default:
-        return "text-gray-400 bg-gray-500/10";
-    }
-  };
 
   const getStatusLabel = (status: string) => {
     switch (status) {
@@ -118,48 +118,49 @@ export default function PaymentHistory() {
           </CardHeader>
           <CardContent>
             {payments.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-border">
-                      <th className="text-left py-3 px-4 text-muted-foreground">
+              <SemanticTableScroll className="rounded-lg border-border/40">
+                <SemanticTableRoot density="comfortable">
+                  <SemanticTableHeader density="comfortable">
+                    <SemanticTableRow density="comfortable">
+                      <SemanticTableHead density="comfortable">
                         {t("common.date")}
-                      </th>
-                      <th className="text-left py-3 px-4 text-muted-foreground">
+                      </SemanticTableHead>
+                      <SemanticTableHead density="comfortable">
                         {t("common.planName")}
-                      </th>
-                      <th className="text-left py-3 px-4 text-muted-foreground">
+                      </SemanticTableHead>
+                      <SemanticTableHead density="comfortable">
                         {t("common.amount")}
-                      </th>
-                      <th className="text-left py-3 px-4 text-muted-foreground">
+                      </SemanticTableHead>
+                      <SemanticTableHead density="comfortable">
                         {t("common.status")}
-                      </th>
-                      <th className="text-left py-3 px-4 text-muted-foreground">
+                      </SemanticTableHead>
+                      <SemanticTableHead density="comfortable">
                         {t("common.invoices")}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
+                      </SemanticTableHead>
+                    </SemanticTableRow>
+                  </SemanticTableHeader>
+                  <SemanticTableBody>
                     {payments.map((payment) => (
-                      <tr
+                      <SemanticTableRow
                         key={payment.id}
-                        className="border-b border-border hover:bg-muted/50 transition-colors"
+                        density="comfortable"
+                        className="hover:bg-muted/50 transition-colors"
                       >
-                        <td className="py-3 px-4 text-foreground">
+                        <SemanticTableCell density="comfortable" className="text-foreground">
                           {formatRiyadhDate(payment.date, language === "ar" ? "ar-SA" : "en-US")}
-                        </td>
-                        <td className="py-3 px-4 text-foreground">
+                        </SemanticTableCell>
+                        <SemanticTableCell density="comfortable" className="text-foreground">
                           {payment.planName}
-                        </td>
-                        <td className="py-3 px-4 text-foreground">
+                        </SemanticTableCell>
+                        <SemanticTableCell density="comfortable" className="text-foreground">
                           ${payment.amount.toFixed(2)} {payment.currency}
-                        </td>
-                        <td className="py-3 px-4">
-                          <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(payment.status)}`}>
+                        </SemanticTableCell>
+                        <SemanticTableCell density="comfortable">
+                          <SemanticBadge tone={mapInvoiceStatusToBadgeTone(payment.status)}>
                             {getStatusLabel(payment.status)}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4">
+                          </SemanticBadge>
+                        </SemanticTableCell>
+                        <SemanticTableCell density="comfortable">
                           <div className="flex gap-2">
                             <Button
                               size="sm"
@@ -182,18 +183,16 @@ export default function PaymentHistory() {
                               {t("common.download")}
                             </Button>
                           </div>
-                        </td>
-                      </tr>
+                        </SemanticTableCell>
+                      </SemanticTableRow>
                     ))}
-                  </tbody>
-                </table>
-              </div>
+                  </SemanticTableBody>
+                </SemanticTableRoot>
+              </SemanticTableScroll>
             ) : (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground">
-                  {t("common.noPayments") || t("invoices.noInvoices")}
-                </p>
-              </div>
+              <SemanticTableEmptyState
+                message={t("common.noPayments") || t("invoices.noInvoices")}
+              />
             )}
           </CardContent>
         </Card>

@@ -77,6 +77,7 @@ export type SettlementHistoryRowViewModel = Readonly<{
   priorSettlementRecordId: string | null;
   grandTotalLabel: string;
   paymentMethodSummaryLabel: string;
+  settlementStatus: string;
   statusLabel: string;
 }>;
 
@@ -141,6 +142,7 @@ export function toSettlementHistoryRowViewModel(
     priorSettlementRecordId: item.priorSettlementRecordId,
     grandTotalLabel: money(item.grandTotal, item.currencySymbol),
     paymentMethodSummaryLabel: methods || "—",
+    settlementStatus: item.settlementStatus,
     statusLabel: settlementStatusLabel(item.settlementStatus, language),
   };
 }

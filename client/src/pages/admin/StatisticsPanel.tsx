@@ -3,7 +3,19 @@ import { trpc } from "@/lib/trpc";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { PageDataLoading } from "@/components/AuthGate";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import {
+  SemanticTableScroll,
+  SemanticTableRoot,
+  SemanticTableHeader,
+  SemanticTableBody,
+  SemanticTableRow,
+  SemanticTableHead,
+  SemanticTableCell,
+} from "@/design-system/semantic-table";
+import {
+  SemanticBadge,
+  mapCommercialStatusToBadgeTone,
+} from "@/design-system/semantic-badge";
 import {
   TrendingUp, Users, DollarSign, RotateCcw,
   UtensilsCrossed, LayoutGrid, Tag, FolderOpen
@@ -301,54 +313,56 @@ export function StatisticsPanel({ showExport = true }: StatisticsPanelProps) {
           </p>
         </CardHeader>
         <CardContent className="pt-4">
-          <div className="overflow-x-auto rounded-lg border border-border/40">
-            <table className="w-full text-sm">
-              <thead className="border-b border-border/40 bg-muted/20">
-                <tr>
-                  <th className="text-start py-2 px-2 font-semibold">{t("admin.owner") || "Owner"}</th>
-                  <th className="text-start py-2 px-2 font-semibold">{t("admin.plan") || "Plan"}</th>
-                  <th className="text-start py-2 px-2 font-semibold">{t("admin.status") || "Status"}</th>
-                  <th className="text-start py-2 px-2 font-semibold">{t("admin.endDate") || "End Date"}</th>
-                </tr>
-              </thead>
-              <tbody>
+          <SemanticTableScroll className="rounded-lg border-border/40">
+            <SemanticTableRoot density="comfortable">
+              <SemanticTableHeader density="comfortable" className="bg-muted/20">
+                <SemanticTableRow density="comfortable">
+                  <SemanticTableHead density="comfortable">{t("admin.owner") || "Owner"}</SemanticTableHead>
+                  <SemanticTableHead density="comfortable">{t("admin.plan") || "Plan"}</SemanticTableHead>
+                  <SemanticTableHead density="comfortable">{t("admin.status") || "Status"}</SemanticTableHead>
+                  <SemanticTableHead density="comfortable">{t("admin.endDate") || "End Date"}</SemanticTableHead>
+                </SemanticTableRow>
+              </SemanticTableHeader>
+              <SemanticTableBody>
                 {overviewRows.length === 0 && (
-                  <tr>
-                    <td colSpan={4} className="py-8 text-center text-muted-foreground">
+                  <SemanticTableRow density="comfortable">
+                    <SemanticTableCell
+                      density="comfortable"
+                      colSpan={4}
+                      className="py-8 text-center text-muted-foreground"
+                    >
                       {t("common.noData") || "No data available"}
-                    </td>
-                  </tr>
+                    </SemanticTableCell>
+                  </SemanticTableRow>
                 )}
                 {overviewRows.map((entry) => (
-                  <tr key={entry.owner.id} className="border-b border-cyan-500/15 hover:bg-slate-800/30">
-                    <td className="py-2 px-2">
+                  <SemanticTableRow
+                    key={entry.owner.id}
+                    density="comfortable"
+                    className="hover:bg-slate-800/30"
+                  >
+                    <SemanticTableCell density="comfortable">
                       <div className="font-medium">{entry.owner.name ?? "-"}</div>
                       <div className="text-xs text-muted-foreground">{entry.owner.email ?? "-"}</div>
-                    </td>
-                    <td className="py-2 px-2">{ownerPlanLabel(entry.commercial)}</td>
-                    <td className="py-2 px-2">
-                      <Badge
-                        variant={
-                          entry.commercial.subscriptionStatus === "active"
-                            ? "default"
-                            : entry.commercial.subscriptionStatus === "trial"
-                            ? "secondary"
-                            : "destructive"
-                        }
+                    </SemanticTableCell>
+                    <SemanticTableCell density="comfortable">{ownerPlanLabel(entry.commercial)}</SemanticTableCell>
+                    <SemanticTableCell density="comfortable">
+                      <SemanticBadge
+                        tone={mapCommercialStatusToBadgeTone(entry.commercial.subscriptionStatus)}
                       >
                         {ownerSubscriptionStatus(entry.commercial)}
-                      </Badge>
-                    </td>
-                    <td className="py-2 px-2 text-xs">
+                      </SemanticBadge>
+                    </SemanticTableCell>
+                    <SemanticTableCell density="comfortable" className="text-xs">
                       {entry.commercial.currentPeriodEnd
                         ? formatRiyadhDate(entry.commercial.currentPeriodEnd, "ar-SA")
                         : "-"}
-                    </td>
-                  </tr>
+                    </SemanticTableCell>
+                  </SemanticTableRow>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </SemanticTableBody>
+            </SemanticTableRoot>
+          </SemanticTableScroll>
         </CardContent>
       </Card>
     </div>

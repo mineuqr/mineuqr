@@ -47,4 +47,8 @@ export {
   mapRegisterShiftToBadgeTone,
   mapCommercialStatusToBadgeTone,
   mapOfferTypeToBadgeTone,
+  mapInvoiceStatusToBadgeTone,
+  mapAuditSeverityToBadgeTone,
+  mapSettlementStatusToBadgeTone,
+  mapGateStatusToBadgeTone,
 } from "./mappers/statusToneMappers";

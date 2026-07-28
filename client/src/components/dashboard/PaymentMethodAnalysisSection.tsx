@@ -18,6 +18,15 @@ import { CreditCard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { RestaurantDashSection } from "./RestaurantDashSection";
 import { SemanticKpiCard, SemanticKpiSkeleton } from "@/design-system/semantic-card";
+import {
+  SemanticTableScroll,
+  SemanticTableRoot,
+  SemanticTableHeader,
+  SemanticTableBody,
+  SemanticTableRow,
+  SemanticTableHead,
+  SemanticTableCell,
+} from "@/design-system/semantic-table";
 import { RestaurantSectionError } from "./RestaurantSectionStates";
 import { restaurantDash } from "./restaurantDashStyles";
 import {
@@ -132,31 +141,31 @@ export function PaymentMethodAnalysisSection({
               valueVariant="revenue"
             />
           </div>
-          <div className="overflow-x-auto rounded-lg border border-slate-700/50">
-            <table className="w-full min-w-[640px] text-sm">
-              <thead className="bg-slate-800/60 text-slate-300">
-                <tr>
-                  <th className="px-3 py-2 text-start font-medium">
+          <SemanticTableScroll className="rounded-lg border-slate-700/50">
+            <SemanticTableRoot density="ledger">
+              <SemanticTableHeader density="ledger" className="bg-slate-800/60 text-slate-300">
+                <SemanticTableRow density="ledger">
+                  <SemanticTableHead density="ledger">
                     {section.paymentMethod}
-                  </th>
-                  <th className="px-3 py-2 text-start font-medium">
+                  </SemanticTableHead>
+                  <SemanticTableHead density="ledger">
                     {section.tenderAmount}
-                  </th>
-                  <th className="px-3 py-2 text-start font-medium">
+                  </SemanticTableHead>
+                  <SemanticTableHead density="ledger">
                     {section.checksByMethod}
-                  </th>
-                  <th className="px-3 py-2 text-start font-medium">
+                  </SemanticTableHead>
+                  <SemanticTableHead density="ledger">
                     {section.averageCheckByMethod}
-                  </th>
-                  <th className="px-3 py-2 text-start font-medium">
+                  </SemanticTableHead>
+                  <SemanticTableHead density="ledger">
                     {section.mixPercent}
-                  </th>
-                  <th className="px-3 py-2 text-start font-medium">
+                  </SemanticTableHead>
+                  <SemanticTableHead density="ledger">
                     {section.transactions}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
+                  </SemanticTableHead>
+                </SemanticTableRow>
+              </SemanticTableHeader>
+              <SemanticTableBody>
                 {vm.rows.map((b) => {
                   const canonical = toCanonicalPaymentMethod(b.paymentMethod);
                   const isHit =
@@ -169,10 +178,11 @@ export function PaymentMethodAnalysisSection({
                         ? REPORTING_CATEGORY_HEX.card
                         : REPORTING_CATEGORY_HEX.neutral;
                   return (
-                    <tr
+                    <SemanticTableRow
                       key={b.paymentMethod}
+                      density="ledger"
                       className={cn(
-                        "border-t border-slate-700/40 text-slate-100 motion-safe:transition-colors",
+                        "text-slate-100 motion-safe:transition-colors",
                         isHit && "bg-sky-500/10"
                       )}
                       style={
@@ -187,22 +197,24 @@ export function PaymentMethodAnalysisSection({
                           : undefined
                       }
                     >
-                      <td className="px-3 py-2 font-medium">{b.label}</td>
-                      <td className="px-3 py-2">
+                      <SemanticTableCell density="ledger" className="font-medium">
+                        {b.label}
+                      </SemanticTableCell>
+                      <SemanticTableCell density="ledger">
                         {formatMoneyDisplay(b.tenderAmount, sym)}
-                      </td>
-                      <td className="px-3 py-2">{b.checkCount}</td>
-                      <td className="px-3 py-2">
+                      </SemanticTableCell>
+                      <SemanticTableCell density="ledger">{b.checkCount}</SemanticTableCell>
+                      <SemanticTableCell density="ledger">
                         {formatMoneyDisplay(b.averageCheck, sym)}
-                      </td>
-                      <td className="px-3 py-2">{b.mixPercent}%</td>
-                      <td className="px-3 py-2">{b.transactionCount}</td>
-                    </tr>
+                      </SemanticTableCell>
+                      <SemanticTableCell density="ledger">{b.mixPercent}%</SemanticTableCell>
+                      <SemanticTableCell density="ledger">{b.transactionCount}</SemanticTableCell>
+                    </SemanticTableRow>
                   );
                 })}
-              </tbody>
-            </table>
-          </div>
+              </SemanticTableBody>
+            </SemanticTableRoot>
+          </SemanticTableScroll>
         </div>
       )}
     </RestaurantDashSection>

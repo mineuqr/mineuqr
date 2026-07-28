@@ -1,6 +1,18 @@
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import {
+  SemanticTableScroll,
+  SemanticTableRoot,
+  SemanticTableHeader,
+  SemanticTableBody,
+  SemanticTableRow,
+  SemanticTableHead,
+  SemanticTableCell,
+} from "@/design-system/semantic-table";
+import {
+  SemanticBadge,
+  mapGateStatusToBadgeTone,
+} from "@/design-system/semantic-badge";
 import {
   CLIENT_GATE_REGISTRY,
   getClientGateConsolidationStats,
@@ -12,15 +24,12 @@ type CommercialGateConsolidationDiagnosticsProps = {
   language: CommercialUiLanguage;
 };
 
-const STATUS_LABELS: Record<
-  ClientGateStatus,
-  { en: string; ar: string; variant: "default" | "secondary" | "outline" | "destructive" }
-> = {
-  MIGRATED: { en: "Migrated", ar: "مُهاجَر", variant: "default" },
-  ACTIVE: { en: "Active", ar: "نشط", variant: "secondary" },
-  NEEDS_MIGRATION: { en: "Needs migration", ar: "يحتاج هجرة", variant: "destructive" },
-  REDUNDANT: { en: "Redundant", ar: "مكرر", variant: "outline" },
-  KEEP_TEMPORARY: { en: "Keep temporary", ar: "مؤقت", variant: "outline" },
+const STATUS_LABELS: Record<ClientGateStatus, { en: string; ar: string }> = {
+  MIGRATED: { en: "Migrated", ar: "مُهاجَر" },
+  ACTIVE: { en: "Active", ar: "نشط" },
+  NEEDS_MIGRATION: { en: "Needs migration", ar: "يحتاج هجرة" },
+  REDUNDANT: { en: "Redundant", ar: "مكرر" },
+  KEEP_TEMPORARY: { en: "Keep temporary", ar: "مؤقت" },
 };
 
 /** PG-1C.3C — consolidation progress and legacy gate inventory. */
@@ -148,41 +157,65 @@ function GateTable({
         <CardTitle className="text-base">{title}</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-border text-xs text-muted-foreground">
-                <th className="py-2 pr-4">ID</th>
-                <th className="py-2 pr-4">{language === "ar" ? "الملف" : "File"}</th>
-                <th className="py-2 pr-4">{language === "ar" ? "القديم" : "Legacy"}</th>
-                <th className="py-2 pr-4">{language === "ar" ? "المسار" : "Authority"}</th>
-                <th className="py-2">{language === "ar" ? "الحالة" : "Status"}</th>
-              </tr>
-            </thead>
-            <tbody>
+        <SemanticTableScroll>
+          <SemanticTableRoot density="comfortable" className="text-left">
+            <SemanticTableHeader density="comfortable">
+              <SemanticTableRow density="comfortable">
+                <SemanticTableHead density="comfortable" className="pr-4">
+                  ID
+                </SemanticTableHead>
+                <SemanticTableHead density="comfortable" className="pr-4">
+                  {language === "ar" ? "الملف" : "File"}
+                </SemanticTableHead>
+                <SemanticTableHead density="comfortable" className="pr-4">
+                  {language === "ar" ? "القديم" : "Legacy"}
+                </SemanticTableHead>
+                <SemanticTableHead density="comfortable" className="pr-4">
+                  {language === "ar" ? "المسار" : "Authority"}
+                </SemanticTableHead>
+                <SemanticTableHead density="comfortable">
+                  {language === "ar" ? "الحالة" : "Status"}
+                </SemanticTableHead>
+              </SemanticTableRow>
+            </SemanticTableHeader>
+            <SemanticTableBody>
               {entries.map((entry) => {
                 const statusMeta = STATUS_LABELS[entry.status];
                 return (
-                  <tr key={entry.id} className="border-b border-border/50 align-top">
-                    <td className="py-2 pr-4 font-mono text-xs">{entry.id}</td>
-                    <td className="py-2 pr-4 font-mono text-xs">
+                  <SemanticTableRow
+                    key={entry.id}
+                    density="comfortable"
+                    className="align-top"
+                  >
+                    <SemanticTableCell density="comfortable" className="pr-4 font-mono text-xs">
+                      {entry.id}
+                    </SemanticTableCell>
+                    <SemanticTableCell density="comfortable" className="pr-4 font-mono text-xs">
                       {entry.file.split("/").pop()}
-                    </td>
-                    <td className="py-2 pr-4 text-xs text-muted-foreground max-w-[180px]">
+                    </SemanticTableCell>
+                    <SemanticTableCell
+                      density="comfortable"
+                      className="max-w-[180px] pr-4 text-xs text-muted-foreground"
+                    >
                       {entry.legacyLogic}
-                    </td>
-                    <td className="py-2 pr-4 text-xs">{entry.authorityPath}</td>
-                    <td className="py-2">
-                      <Badge variant={statusMeta.variant} className="text-xs">
+                    </SemanticTableCell>
+                    <SemanticTableCell density="comfortable" className="pr-4 text-xs">
+                      {entry.authorityPath}
+                    </SemanticTableCell>
+                    <SemanticTableCell density="comfortable">
+                      <SemanticBadge
+                        tone={mapGateStatusToBadgeTone(entry.status)}
+                        className="text-xs"
+                      >
                         {language === "ar" ? statusMeta.ar : statusMeta.en}
-                      </Badge>
-                    </td>
-                  </tr>
+                      </SemanticBadge>
+                    </SemanticTableCell>
+                  </SemanticTableRow>
                 );
               })}
-            </tbody>
-          </table>
-        </div>
+            </SemanticTableBody>
+          </SemanticTableRoot>
+        </SemanticTableScroll>
       </CardContent>
     </Card>
   );

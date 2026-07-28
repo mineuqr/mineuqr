@@ -17,7 +17,21 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
+import {
+  SemanticBadge,
+  mapCommercialStatusToBadgeTone,
+} from "@/design-system/semantic-badge";
+import {
+  SemanticTableActions,
+  SemanticTableBody,
+  SemanticTableCell,
+  SemanticTableDesktop,
+  SemanticTableHead,
+  SemanticTableHeader,
+  SemanticTableMobile,
+  SemanticTableRoot,
+  SemanticTableRow,
+} from "@/design-system/semantic-table";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { Plus, Trash2, Edit, Loader2, Store, Search, Filter, X, UserPlus } from "lucide-react";
@@ -315,112 +329,117 @@ export function CustomerSuccessTenantsSection() {
           />
         ) : (
           <>
-            <div className={adminDash.opsTableWrap}>
-              <table className={adminDash.opsTable}>
+            <SemanticTableDesktop>
+              <SemanticTableRoot density="ops">
                 <colgroup>
                   <col className="w-[28%]" />
                   <col className="w-[28%]" />
                   <col className="w-[24%]" />
                   <col className="w-[12%]" />
                 </colgroup>
-                <thead className="border-b border-border/60 bg-muted/15">
-                  <tr>
-                    <th scope="col" className={adminDash.opsTableHead}>
+                <SemanticTableHeader density="ops" className="border-b border-border/60 bg-muted/15">
+                  <SemanticTableRow density="ops">
+                    <SemanticTableHead density="ops">
                       {language === "ar" ? "المستأجر" : "Tenant"}
-                    </th>
-                    <th scope="col" className={adminDash.opsTableHead}>
+                    </SemanticTableHead>
+                    <SemanticTableHead density="ops">
                       {language === "ar" ? "حساب المالك" : "Owner account"}
-                    </th>
-                    <th scope="col" className={adminDash.opsTableHead}>
+                    </SemanticTableHead>
+                    <SemanticTableHead density="ops">
                       {language === "ar" ? "الاشتراك" : "Subscription"}
-                    </th>
-                    <th scope="col" className={cn(adminDash.opsTableHead, "text-end")}>
+                    </SemanticTableHead>
+                    <SemanticTableHead density="ops" className="text-end">
                       {t("users.actions")}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
+                    </SemanticTableHead>
+                  </SemanticTableRow>
+                </SemanticTableHeader>
+                <SemanticTableBody>
                   {filteredRestaurants.map((restaurant: any, idx: number) => {
                     const commercial = restaurant.ownerCommercial;
                     const entitled = isOwnerEntitled(commercial);
                     const status = entitled ? ownerSubscriptionStatus(commercial) : "inactive";
 
                     return (
-                      <tr
+                      <SemanticTableRow
                         key={restaurant.id}
+                        density="ops"
                         className={cn(
                           "border-b border-border/30 last:border-b-0",
                           idx % 2 === 0 ? "bg-background/20" : "bg-transparent"
                         )}
                       >
-                        <td className={cn(adminDash.opsTableCell, adminDash.opsTableTruncate, "text-foreground")}>
+                        <SemanticTableCell density="ops" truncate className="text-foreground">
                           <div className="truncate font-medium">{restaurant.nameAr}</div>
                           {restaurant.nameEn ? (
                             <div className="truncate text-[11px] text-muted-foreground" dir="ltr">
                               {restaurant.nameEn}
                             </div>
                           ) : null}
-                        </td>
-                        <td className={cn(adminDash.opsTableCell, adminDash.opsTableTruncate, "text-muted-foreground")}>
+                        </SemanticTableCell>
+                        <SemanticTableCell density="ops" truncate className="text-muted-foreground">
                           <div className="truncate">{restaurant.ownerName || "—"}</div>
                           {restaurant.ownerEmail ? (
                             <div className="truncate text-[11px]" dir="ltr" title={restaurant.ownerEmail}>
                               {restaurant.ownerEmail}
                             </div>
                           ) : null}
-                        </td>
-                        <td className={cn(adminDash.opsTableCell, adminDash.opsTableTruncate)}>
+                        </SemanticTableCell>
+                        <SemanticTableCell density="ops" truncate>
                           {entitled ? (
-                            <Badge
-                              variant={status === "active" ? "default" : "secondary"}
-                              className={adminDash.opsBadge}
+                            <SemanticBadge
+                              tone={mapCommercialStatusToBadgeTone(status)}
+                              density="outline"
+                              size="sm"
                             >
                               {t(`subscription.status.${status}`)}
-                            </Badge>
+                            </SemanticBadge>
                           ) : (
-                            <Badge variant="outline" className={cn(adminDash.opsBadge, "text-muted-foreground")}>
+                            <SemanticBadge tone="disabled" density="outline" size="sm">
                               {t("admin.noAccountSubscription")}
-                            </Badge>
+                            </SemanticBadge>
                           )}
                           <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
                             {entitled ? ownerPlanLabel(commercial) : "—"}
                           </div>
-                        </td>
-                        <td className={cn(adminDash.opsTableActionsCell, "text-end")}>
-                          <AdminActionGroup
-                            compact
-                            ariaLabel={t("admin.restaurantActions")}
-                            primary={
-                              <AdminIconButton
-                                compact
-                                label={t("admin.editRestaurant")}
-                                onClick={() =>
-                                  setLocation(`/dashboard?restaurant=${restaurant.id}`)
-                                }
-                              >
-                                <Edit className="h-3 w-3" />
-                              </AdminIconButton>
-                            }
-                            danger={
-                              <AdminIconButton
-                                compact
-                                label={t("admin.deleteRestaurantAction")}
-                                variant="destructive"
-                                onClick={() => setDeleteRestaurantId(restaurant.id)}
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </AdminIconButton>
-                            }
-                          />
-                        </td>
-                      </tr>
+                        </SemanticTableCell>
+                        <SemanticTableCell density="ops" actions className="text-end">
+                          <SemanticTableActions>
+                            <AdminActionGroup
+                              compact
+                              ariaLabel={t("admin.restaurantActions")}
+                              primary={
+                                <AdminIconButton
+                                  compact
+                                  label={t("admin.editRestaurant")}
+                                  onClick={() =>
+                                    setLocation(`/dashboard?restaurant=${restaurant.id}`)
+                                  }
+                                >
+                                  <Edit className="h-3 w-3" />
+                                </AdminIconButton>
+                              }
+                              danger={
+                                <AdminIconButton
+                                  compact
+                                  label={t("admin.deleteRestaurantAction")}
+                                  variant="destructive"
+                                  onClick={() => setDeleteRestaurantId(restaurant.id)}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </AdminIconButton>
+                              }
+                            />
+                          </SemanticTableActions>
+                        </SemanticTableCell>
+                      </SemanticTableRow>
                     );
                   })}
-                </tbody>
-              </table>
-            </div>
+                </SemanticTableBody>
+              </SemanticTableRoot>
+            </SemanticTableDesktop>
 
-            <div className="divide-y divide-border/50 lg:hidden" role="list">
+            <SemanticTableMobile>
+            <div className="divide-y divide-border/50" role="list">
               {filteredRestaurants.map((restaurant: any) => {
                 const commercial = restaurant.ownerCommercial;
                 const entitled = isOwnerEntitled(commercial);
@@ -434,12 +453,13 @@ export function CustomerSuccessTenantsSection() {
                           {restaurant.nameAr}
                         </span>
                         {entitled ? (
-                          <Badge
-                            variant={status === "active" ? "default" : "secondary"}
-                            className="text-[10px] px-1.5 py-0"
+                          <SemanticBadge
+                            tone={mapCommercialStatusToBadgeTone(status)}
+                            density="outline"
+                            size="sm"
                           >
                             {t(`subscription.status.${status}`)}
-                          </Badge>
+                          </SemanticBadge>
                         ) : null}
                       </div>
                       <div className="mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
@@ -476,6 +496,7 @@ export function CustomerSuccessTenantsSection() {
                 );
               })}
             </div>
+            </SemanticTableMobile>
           </>
         )}
       </OperationsTabFrame>

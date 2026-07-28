@@ -43,17 +43,6 @@ export function formatAuditTargetLabel(
   return `#${targetId}`;
 }
 
-export function auditSeverityClass(severity: string): string {
-  switch (severity) {
-    case "error":
-      return "border-red-500/30 bg-red-500/10 text-red-300";
-    case "warn":
-      return "border-amber-500/30 bg-amber-500/10 text-amber-300";
-    default:
-      return "border-cyan-500/20 bg-slate-800/50 text-slate-300";
-  }
-}
-
 function readString(value: unknown): string | null {
   return typeof value === "string" ? value : null;
 }
