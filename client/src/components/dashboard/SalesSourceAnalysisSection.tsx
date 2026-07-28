@@ -158,6 +158,7 @@ export function SalesSourceAnalysisSection({
                   value={formatMoneyDisplay(ch.amountDisplay ?? "0.00", sym)}
                   icon={Network}
                   tone="accent"
+                  domain="growth"
                   valueVariant="revenue"
                   emphasis="supporting"
                   valueDir="ltr"

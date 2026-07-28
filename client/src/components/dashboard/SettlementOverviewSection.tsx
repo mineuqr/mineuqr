@@ -115,13 +115,15 @@ export function SettlementOverviewSection({
             label={kpiDisplayName("paidCheckCount", lang)}
             value={summary?.paidCheckCount ?? 0}
             icon={CheckCircle2}
-            tone="info"
+            tone="success"
+            domain="payments"
           />
           <SemanticKpiCard
             label={kpiDisplayName("averageCheck", lang)}
             value={averageCheck === "—" ? "—" : `${averageCheck} ${sym}`}
             icon={TrendingUp}
-            tone="neutral"
+            tone="success"
+            domain="revenue"
             valueVariant="revenue"
           />
           <SemanticKpiCard
@@ -129,18 +131,21 @@ export function SettlementOverviewSection({
             value={summary?.complimentaryCount ?? 0}
             icon={Gift}
             tone="accent"
+            domain="payments"
           />
           <SemanticKpiCard
             label={isAr ? "نسبة المجانية" : "Complimentary Rate"}
             value={summary ? formatComplimentaryRate(summary) : "—"}
             icon={Percent}
             tone="warning"
+            domain="warning"
           />
           <SemanticKpiCard
             label={kpiDisplayName("voidedCount", lang)}
             value={summary?.voidedCount ?? 0}
             icon={DollarSign}
             tone="warning"
+            domain="danger"
           />
         </div>
       )}

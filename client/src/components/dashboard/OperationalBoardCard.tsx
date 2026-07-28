@@ -4,7 +4,7 @@ import {
   mapTableSessionStatusToBadgeTone,
   resolveBadgeBaseTone,
 } from "@/design-system/semantic-badge";
-import { semanticToneRowClass, SEMANTIC_PANEL_BASE } from "@/design-system/semantic-card";
+import { semanticToneRowClass, SEMANTIC_PANEL_BASE, semanticDomainAccentClass } from "@/design-system/semantic-card";
 import type { OperationalTableRow } from "@/lib/sessionWorkspaceOps";
 import { tableStatusDisplayLabel } from "@/lib/sessionWorkspaceOps";
 import { cn } from "@/lib/utils";
@@ -41,8 +41,10 @@ export function OperationalBoardCard({
 
   return (
     <article
+      data-domain="orders"
       className={cn(
         SEMANTIC_PANEL_BASE,
+        semanticDomainAccentClass("orders"),
         "flex flex-col p-4 sm:p-5",
         restaurantHoverGlow,
         cardClass,

@@ -159,12 +159,14 @@ export function SessionsWorkspacePanel({
                 value={ops?.activeSessions ?? 0}
                 icon={LayoutDashboard}
                 tone="info"
+                domain="analytics"
               />
               <SemanticKpiCard
                 label={kpiDisplayName("occupiedTables", lang)}
                 value={ops?.occupiedTables ?? 0}
                 icon={Grid3X3}
                 tone="accent"
+                domain="orders"
               />
               <SemanticKpiCard
                 label={
@@ -177,6 +179,7 @@ export function SessionsWorkspacePanel({
                 }
                 icon={DollarSign}
                 tone="success"
+                domain="revenue"
                 valueVariant="revenue"
               />
             </div>

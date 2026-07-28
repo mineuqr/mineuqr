@@ -184,6 +184,7 @@ function TrendInsightCard({
       hint={periodLabel && valueLabel ? valueLabel : undefined}
       icon={Icon}
       tone={revenueValue ? "success" : "info"}
+      domain={revenueValue ? "revenue" : "analytics"}
       valueVariant={revenueValue ? "revenue" : "operational"}
     />
   );

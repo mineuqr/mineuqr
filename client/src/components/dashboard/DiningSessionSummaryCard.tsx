@@ -80,24 +80,28 @@ export function DiningSessionSummaryCard({
           })}
           icon={Clock}
           tone="neutral"
+          domain="information"
         />
         <SemanticKpiCard
           label={sessionSummaryLabel("duration", language)}
           value={formatSessionDuration(durationMs, language)}
           icon={Hash}
           tone="info"
+          domain="analytics"
         />
         <SemanticKpiCard
           label={sessionSummaryLabel("orders", language)}
           value={String(orderCount)}
           icon={ShoppingBag}
           tone="info"
+          domain="orders"
         />
         <SemanticKpiCard
           label={sessionSummaryLabel("sessionTotal", language)}
           value={formatSessionTotalAmount(ordersTotalAmount, currencySymbol, language)}
           icon={Wallet}
           tone="success"
+          domain="revenue"
           valueVariant="revenue"
         />
       </div>

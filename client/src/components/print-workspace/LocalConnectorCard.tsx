@@ -26,7 +26,10 @@ export function LocalConnectorCard({
   isLoading: boolean;
   onRefresh?: () => void;
 }) {
-  const shell = semanticCardTypeClass("status", { interactive: false });
+  const shell = semanticCardTypeClass("status", {
+    domain: "information",
+    interactive: false,
+  });
 
   if (isLoading) {
     return (

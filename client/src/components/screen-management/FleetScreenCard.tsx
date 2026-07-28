@@ -7,6 +7,7 @@ import {
   SEMANTIC_HOVER_GLOW,
   SEMANTIC_PANEL_BASE,
   SEMANTIC_TONE,
+  semanticDomainAccentClass,
 } from "@/design-system/semantic-card";
 import { cn } from "@/lib/utils";
 import { AlertTriangle } from "lucide-react";
@@ -51,11 +52,13 @@ export function FleetScreenCard({
     <article
       className={cn(
         SEMANTIC_PANEL_BASE,
+        semanticDomainAccentClass("analytics"),
         SEMANTIC_HOVER_GLOW,
         "flex w-full flex-col p-4 min-h-[188px]",
         statusShell,
         isDisabled && "opacity-70"
       )}
+      data-domain="analytics"
       data-screen-id={screen.screenId}
       data-needs-attention={needsAttention ? "true" : "false"}
       data-operator-status={statusKind}

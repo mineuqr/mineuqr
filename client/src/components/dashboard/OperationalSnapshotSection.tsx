@@ -135,24 +135,28 @@ export function OperationalSnapshotSection({
               value={ops?.activeSessions ?? 0}
               icon={LayoutDashboard}
               tone="info"
+              domain="analytics"
             />
             <SemanticKpiCard
               label={kpiDisplayName("occupiedTables", lang)}
               value={ops?.occupiedTables ?? 0}
               icon={Grid3X3}
               tone="accent"
+              domain="orders"
             />
             <SemanticKpiCard
               label={kpiDisplayName("pendingOrders", lang)}
               value={opsFailed ? "—" : (ops?.pendingOrders ?? 0)}
               icon={ClipboardList}
               tone="warning"
+              domain="orders"
             />
             <SemanticKpiCard
               label={isAr ? "قيد التحضير" : "Preparing"}
               value={opsFailed ? "—" : (ops?.preparingOrders ?? "—")}
               icon={Clock3}
-              tone="neutral"
+              tone="accent"
+              domain="kitchen"
             />
             <SemanticKpiCard
               label={
@@ -163,6 +167,7 @@ export function OperationalSnapshotSection({
               value={salesFailed ? "—" : todayOrderSales}
               icon={DollarSign}
               tone="success"
+              domain="revenue"
               valueVariant="revenue"
             />
           </div>

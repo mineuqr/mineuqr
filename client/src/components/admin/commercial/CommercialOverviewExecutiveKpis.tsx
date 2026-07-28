@@ -55,6 +55,7 @@ export function CommercialOverviewExecutiveKpis({
         hint={labels.commercialSubscribersHint}
         valueDir="ltr"
         tone="info"
+        domain="growth"
       />
       <SemanticKpiCard
         label={labels.activeRestaurants}
@@ -63,6 +64,7 @@ export function CommercialOverviewExecutiveKpis({
         hint={labels.activeRestaurantsHint}
         valueDir="ltr"
         tone="info"
+        domain="analytics"
       />
       <SemanticKpiCard
         label={labels.mrr}
@@ -71,6 +73,7 @@ export function CommercialOverviewExecutiveKpis({
         hint={labels.mrrHint}
         valueDir="ltr"
         tone="success"
+        domain="growth"
         valueVariant="revenue"
       />
       <SemanticKpiCard
@@ -80,6 +83,7 @@ export function CommercialOverviewExecutiveKpis({
         hint={labels.arrHint}
         valueDir="ltr"
         tone="success"
+        domain="revenue"
         valueVariant="revenue"
       />
     </div>

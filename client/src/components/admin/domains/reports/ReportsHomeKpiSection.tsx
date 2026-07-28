@@ -43,6 +43,7 @@ export function ReportsHomeKpiSection() {
             hint={t("admin.estimatedMrrHint")}
             valueDir="ltr"
             tone="success"
+            domain="growth"
             valueVariant="revenue"
           />
           <SemanticKpiCard
@@ -51,6 +52,7 @@ export function ReportsHomeKpiSection() {
             value={formatAdminKpiNumber(kpis.activeSubscriptions)}
             hint={t("admin.nav.statCanonical")}
             tone="info"
+            domain="analytics"
           />
           <SemanticKpiCard
             label={t("admin.commandCenter.activeTrials")}
@@ -58,6 +60,7 @@ export function ReportsHomeKpiSection() {
             value={formatAdminKpiNumber(kpis.activeTrials)}
             hint={t("admin.commandCenter.activeTrialsHint")}
             tone="info"
+            domain="information"
           />
           <SemanticKpiCard
             label={t("admin.expiringSoon")}
@@ -65,12 +68,14 @@ export function ReportsHomeKpiSection() {
             value={formatAdminKpiNumber(kpis.expiringSoon)}
             hint={t("admin.expiringSoonHint")}
             tone="warning"
+            domain="warning"
           />
           <SemanticKpiCard
             label={t("admin.totalUsers")}
             icon={Users}
             value={formatAdminKpiNumber(kpis.totalUsers)}
             tone="neutral"
+            domain="information"
           />
         </div>
       )}

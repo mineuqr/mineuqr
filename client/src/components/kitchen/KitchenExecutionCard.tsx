@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import {
   SEMANTIC_MOTION,
   SEMANTIC_PANEL_BASE,
+  semanticDomainAccentClass,
 } from "@/design-system/semantic-card";
 import type { PresentationDensityModel } from "@/lib/operational-screen/density/runtimeDisplayDensityContract";
 import {
@@ -186,9 +187,11 @@ function KitchenExecutionCardImpl({
 
   return (
     <article
+      data-domain="kitchen"
       className={cn(
         "group relative flex h-full w-full flex-col overflow-hidden",
         SEMANTIC_PANEL_BASE,
+        semanticDomainAccentClass("kitchen"),
         SEMANTIC_MOTION,
         densityModel.cardRadius,
         densityModel.cardPadding,

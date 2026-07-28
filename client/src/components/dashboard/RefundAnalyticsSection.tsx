@@ -175,6 +175,7 @@ export function RefundAnalyticsSection({
               )}
               icon={Wallet}
               tone="warning"
+              domain="danger"
               valueVariant="revenue"
               emphasis="secondary"
             />
@@ -185,7 +186,8 @@ export function RefundAnalyticsSection({
                 sym
               )}
               icon={TrendingDown}
-              tone="info"
+              tone="success"
+              domain="revenue"
               valueVariant="revenue"
               emphasis="secondary"
             />
@@ -194,6 +196,7 @@ export function RefundAnalyticsSection({
               value={`${summary?.refundRate ?? "0.00"}%`}
               icon={Percent}
               tone="warning"
+              domain="warning"
               emphasis="secondary"
             />
             <SemanticKpiCard
@@ -201,6 +204,7 @@ export function RefundAnalyticsSection({
               value={summary?.refundPublicationCount ?? 0}
               icon={RotateCcw}
               tone="warning"
+              domain="danger"
               emphasis="secondary"
             />
           </div>

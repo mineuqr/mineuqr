@@ -385,6 +385,67 @@
     );
   }
 
+  /* SEMANTIC-DOMAIN-COLOR-ADOPTION-1 — soft ambient by data-domain (no body flood) */
+  .semantic-card[data-domain="analytics"]::before {
+    background: radial-gradient(
+      120% 70% at 50% -15%,
+      rgb(34 211 238 / 0.14),
+      transparent 55%
+    );
+  }
+  .semantic-card[data-domain="payments"]::before,
+  .semantic-card[data-domain="revenue"]::before {
+    background: radial-gradient(
+      120% 70% at 50% -15%,
+      rgb(52 211 153 / 0.14),
+      transparent 55%
+    );
+  }
+  .semantic-card[data-domain="kitchen"]::before {
+    background: radial-gradient(
+      120% 70% at 50% -15%,
+      rgb(167 139 250 / 0.14),
+      transparent 55%
+    );
+  }
+  .semantic-card[data-domain="orders"]::before,
+  .semantic-card[data-domain="information"]::before {
+    background: radial-gradient(
+      120% 70% at 50% -15%,
+      rgb(56 189 248 / 0.14),
+      transparent 55%
+    );
+  }
+  .semantic-card[data-domain="qr"]::before,
+  .semantic-card[data-domain="warning"]::before {
+    background: radial-gradient(
+      120% 70% at 50% -15%,
+      rgb(251 191 36 / 0.14),
+      transparent 55%
+    );
+  }
+  .semantic-card[data-domain="growth"]::before {
+    background: radial-gradient(
+      120% 70% at 50% -15%,
+      rgb(45 212 191 / 0.16),
+      transparent 55%
+    );
+  }
+  .semantic-card[data-domain="success"]::before {
+    background: radial-gradient(
+      120% 70% at 50% -15%,
+      rgb(74 222 128 / 0.12),
+      transparent 55%
+    );
+  }
+  .semantic-card[data-domain="danger"]::before {
+    background: radial-gradient(
+      120% 70% at 50% -15%,
+      rgb(248 113 113 / 0.12),
+      transparent 55%
+    );
+  }
+
   /*
    * PLATFORM-CARD-DESIGN-SYSTEM-UNIFICATION-1
    * Legacy cinematic glass — aliased to landing-card language.
@@ -420,15 +481,15 @@
    * Domain accents derive from SEMANTIC_DOMAIN_HEX / SEMANTIC_CATEGORY_HEX.
    */
   .landing-page {
-    --landing-accent-qr: #fb923c; /* SEMANTIC_DOMAIN_HEX.qr */
-    --landing-accent-ordering: #38bdf8; /* SEMANTIC_CATEGORY_HEX.card */
+    --landing-accent-qr: #fbbf24; /* SEMANTIC_DOMAIN_HEX.qr — amber */
+    --landing-accent-ordering: #38bdf8; /* SEMANTIC_DOMAIN_HEX.orders — sky */
     --landing-accent-kitchen: #a78bfa; /* SEMANTIC_DOMAIN_HEX.kitchen */
     --landing-accent-payments: #34d399; /* SEMANTIC_DOMAIN_HEX.payments */
     --landing-accent-analytics: #22d3ee; /* SEMANTIC_DOMAIN_HEX.analytics */
-    --landing-accent-tables: #38bdf8; /* SEMANTIC_CATEGORY_HEX.card */
+    --landing-accent-tables: #38bdf8; /* SEMANTIC_DOMAIN_HEX.orders — sky */
     --landing-accent-mgmt: #22d3ee; /* SEMANTIC_DOMAIN_HEX.analytics */
     --landing-accent-growth: #2dd4bf; /* SEMANTIC_DOMAIN_HEX.growth */
-    --landing-accent-lang: #22d3ee; /* SEMANTIC_DOMAIN_HEX.information */
+    --landing-accent-lang: #38bdf8; /* SEMANTIC_DOMAIN_HEX.information */
     background-color: #0f172a;
     background-image: linear-gradient(
       to bottom right,
@@ -535,8 +596,8 @@
 
   /* Soft category shells — ExecutivePeriodDashboard pattern */
   .landing-card[data-accent="qr"] {
-    border-color: rgb(249 115 22 / 0.35);
-    background: linear-gradient(to bottom, rgb(67 20 7 / 0.35), rgb(15 23 42 / 0.85));
+    border-color: rgb(251 191 36 / 0.35);
+    background: linear-gradient(to bottom, rgb(69 26 3 / 0.35), rgb(15 23 42 / 0.85));
   }
   .landing-card[data-accent="ordering"],
   .landing-card[data-accent="tables"] {
@@ -552,10 +613,13 @@
     background: linear-gradient(to bottom, rgb(2 44 34 / 0.4), rgb(15 23 42 / 0.85));
   }
   .landing-card[data-accent="analytics"],
-  .landing-card[data-accent="mgmt"],
-  .landing-card[data-accent="lang"] {
+  .landing-card[data-accent="mgmt"] {
     border-color: rgb(6 182 212 / 0.35);
     background: linear-gradient(to bottom, rgb(8 51 68 / 0.45), rgb(15 23 42 / 0.9));
+  }
+  .landing-card[data-accent="lang"] {
+    border-color: rgb(14 165 233 / 0.35);
+    background: linear-gradient(to bottom, rgb(8 47 73 / 0.4), rgb(15 23 42 / 0.85));
   }
   .landing-card[data-accent="growth"] {
     border-color: rgb(20 184 166 / 0.4);

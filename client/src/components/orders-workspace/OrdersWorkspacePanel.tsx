@@ -363,10 +363,10 @@ export function OrdersWorkspacePanel({
           <SemanticKpiSkeleton count={4} />
         ) : (
           <>
-            <SemanticKpiCard label={isAr ? "بانتظار القبول" : "Needs acceptance"} value={counts.pending} tone="warning" icon={ClipboardList} />
-            <SemanticKpiCard label={isAr ? "قيد التحضير" : "Preparing"} value={counts.preparing} tone="info" icon={ChefHat} />
-            <SemanticKpiCard label={isAr ? "جاهز" : "Ready"} value={counts.ready} tone="success" icon={CheckCircle} />
-            <SemanticKpiCard label={isAr ? "متأخر" : "Late"} value={counts.late} tone={counts.late > 0 ? "warning" : "neutral"} icon={AlertTriangle} />
+            <SemanticKpiCard label={isAr ? "بانتظار القبول" : "Needs acceptance"} value={counts.pending} tone="warning" domain="orders" icon={ClipboardList} />
+            <SemanticKpiCard label={isAr ? "قيد التحضير" : "Preparing"} value={counts.preparing} tone="accent" domain="kitchen" icon={ChefHat} />
+            <SemanticKpiCard label={isAr ? "جاهز" : "Ready"} value={counts.ready} tone="success" domain="orders" icon={CheckCircle} />
+            <SemanticKpiCard label={isAr ? "متأخر" : "Late"} value={counts.late} tone={counts.late > 0 ? "warning" : "neutral"} domain={counts.late > 0 ? "warning" : "orders"} icon={AlertTriangle} />
           </>
         )
       }

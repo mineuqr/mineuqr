@@ -134,6 +134,7 @@ export function PaymentMethodAnalysisSection({
               value={formatMoneyDisplay(vm.monetaryTenderTotal, sym)}
               icon={CreditCard}
               tone="success"
+              domain="payments"
               valueVariant="revenue"
             />
             <SemanticKpiCard
@@ -141,6 +142,7 @@ export function PaymentMethodAnalysisSection({
               value={formatMoneyDisplay(vm.complimentaryAmount, sym)}
               icon={CreditCard}
               tone="accent"
+              domain="payments"
               valueVariant="revenue"
             />
           </div>

@@ -60,7 +60,10 @@ export function CurrentPrinterCard({
   onOpenManagement: () => void;
 }) {
   const isAr = language === "ar";
-  const shell = semanticCardTypeClass("status", { interactive: false });
+  const shell = semanticCardTypeClass("status", {
+    domain: "information",
+    interactive: false,
+  });
 
   if (isLoading) {
     return (

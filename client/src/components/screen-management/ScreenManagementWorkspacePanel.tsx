@@ -252,13 +252,14 @@ export function ScreenManagementWorkspacePanel({
           <SemanticKpiSkeleton count={4} />
         ) : (
           <>
-            <SemanticKpiCard label={isAr ? "الشاشات" : "Screens"} value={counts.total} icon={Monitor} />
-            <SemanticKpiCard label={isAr ? "متصل" : "Online"} value={counts.online} tone="success" icon={Monitor} />
-            <SemanticKpiCard label={isAr ? "غير متصل" : "Offline"} value={counts.offline} tone="warning" icon={Monitor} />
+            <SemanticKpiCard label={isAr ? "الشاشات" : "Screens"} value={counts.total} domain="analytics" tone="info" icon={Monitor} />
+            <SemanticKpiCard label={isAr ? "متصل" : "Online"} value={counts.online} tone="success" domain="success" icon={Monitor} />
+            <SemanticKpiCard label={isAr ? "غير متصل" : "Offline"} value={counts.offline} tone="warning" domain="warning" icon={Monitor} />
             <SemanticKpiCard
               label={isAr ? "يحتاج انتباه" : "Needs attention"}
               value={counts.needsAttention}
               tone={counts.needsAttention > 0 ? "warning" : "neutral"}
+              domain={counts.needsAttention > 0 ? "warning" : "analytics"}
               icon={Monitor}
             />
           </>

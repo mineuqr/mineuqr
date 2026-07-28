@@ -47,6 +47,7 @@ export function OrdersDetailsSection({
           value={orderCount ?? 0}
           icon={ClipboardList}
           tone="warning"
+          domain="orders"
           emphasis="secondary"
         />
         <SemanticKpiCard
@@ -54,13 +55,15 @@ export function OrdersDetailsSection({
           value={completedOrders ?? 0}
           icon={CheckCircle2}
           tone="success"
+          domain="orders"
           emphasis="secondary"
         />
         <SemanticKpiCard
           label={preferredKpiLabel("orderSales", lang)}
           value={orderSalesDisplay}
           icon={ShoppingBag}
-          tone="info"
+          tone="success"
+          domain="revenue"
           valueVariant="revenue"
           emphasis="secondary"
         />

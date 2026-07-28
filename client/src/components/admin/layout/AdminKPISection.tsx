@@ -61,6 +61,7 @@ export function AdminKPISection({
             loading={loading}
             valueDir="ltr"
             tone="info"
+            domain="analytics"
             hint={
               labels.activeRestaurantsHint ??
               (isAr ? "اشتراك فعّال أو تجريبي" : "Active or trial subscription")
@@ -73,6 +74,7 @@ export function AdminKPISection({
             loading={loading}
             valueDir="ltr"
             tone="info"
+            domain="growth"
             hint={
               labels.activeSubscriptionsHint ??
               (isAr ? "فعّال + تجريبي" : "Active & trial")
@@ -85,6 +87,7 @@ export function AdminKPISection({
             loading={loading}
             valueDir="ltr"
             tone="warning"
+            domain="warning"
             hint={
               labels.expiringSoonHint ??
               (isAr
@@ -99,6 +102,7 @@ export function AdminKPISection({
             loading={loading}
             valueDir="ltr"
             tone="success"
+            domain="growth"
             valueVariant="revenue"
             hint={
               labels.estimatedMrrHint ??
@@ -115,6 +119,7 @@ export function AdminKPISection({
               loading={loading}
               valueDir="ltr"
               tone="neutral"
+              domain="information"
             />
           </div>
         </div>

@@ -57,12 +57,18 @@ export {
 export {
   SEMANTIC_DOMAIN_HEX,
   SEMANTIC_DOMAIN_SURFACE,
+  SEMANTIC_DOMAIN_ACCENT,
   LANDING_ACCENT_TO_DOMAIN,
   semanticDomainFill,
   semanticDomainHex,
   semanticDomainSurface,
+  semanticDomainAccent,
+  semanticDomainAccentClass,
+  semanticDomainIconClass,
+  semanticDomainToTone,
   type SemanticDomain,
   type SemanticDomainSurface,
+  type SemanticDomainAccent,
 } from "./tokens/domain";
 
 export {

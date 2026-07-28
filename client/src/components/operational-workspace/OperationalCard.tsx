@@ -5,6 +5,7 @@ import { SemanticBadge } from "@/design-system/semantic-badge";
 import {
   SEMANTIC_HOVER_GLOW,
   SEMANTIC_PANEL_BASE,
+  semanticDomainAccentClass,
   semanticPanel,
 } from "@/design-system/semantic-card";
 import type { OperationalActionId } from "@/lib/operational-workspace/operationalActions";
@@ -78,8 +79,10 @@ function OperationalCardImpl({
 
   return (
     <article
+      data-domain="orders"
       className={cn(
         SEMANTIC_PANEL_BASE,
+        semanticDomainAccentClass("orders"),
         semanticPanel.radius.executive,
         SEMANTIC_HOVER_GLOW,
         "p-5 touch-manipulation min-h-[140px]",

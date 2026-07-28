@@ -719,6 +719,7 @@ export function ReportsTab({
                 )}
                 icon={Receipt}
                 tone="accent"
+                domain="kitchen"
                 valueVariant="revenue"
                 emphasis="secondary"
               />

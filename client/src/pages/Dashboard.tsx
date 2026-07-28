@@ -191,6 +191,7 @@ function DashboardStatCard({
       value={value}
       icon={icon}
       tone={tone}
+      domain="analytics"
       hint={hint}
       valueVariant={valueVariant}
     />
