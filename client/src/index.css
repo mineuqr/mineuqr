@@ -279,23 +279,28 @@
     box-shadow: 0 0 30px oklch(0.68 0.19 55 / 20%), 0 0 60px oklch(0.68 0.19 55 / 10%);
   }
 
-  /* Premium landing page */
+  /*
+   * LANDING-DESIGN-SYSTEM-ALIGNMENT-1
+   * Surfaces mirror restaurantDashStyles (slate + cyan panel language).
+   * Category accents mirror ExecutivePeriodDashboard semantic shells.
+   */
   .landing-page {
-    --landing-accent-qr: oklch(0.74 0.11 55);
-    --landing-accent-ordering: oklch(0.7 0.09 250);
-    --landing-accent-kitchen: oklch(0.7 0.09 295);
-    --landing-accent-payments: oklch(0.72 0.1 160);
-    --landing-accent-analytics: oklch(0.74 0.1 195);
-    --landing-accent-tables: oklch(0.72 0.08 230);
-    --landing-accent-mgmt: oklch(0.7 0.12 195);
-    --landing-accent-growth: oklch(0.73 0.09 145);
-    --landing-accent-lang: oklch(0.72 0.1 210);
-    background-color: #090d11;
-    background-image:
-      radial-gradient(ellipse 75% 50% at 50% -18%, oklch(0.65 0.14 195 / 16%), transparent 58%),
-      radial-gradient(ellipse 45% 35% at 92% 12%, oklch(0.68 0.11 55 / 7%), transparent 52%),
-      radial-gradient(ellipse 40% 30% at 8% 40%, oklch(0.55 0.08 250 / 5%), transparent 55%),
-      radial-gradient(ellipse 50% 40% at 70% 85%, oklch(0.5 0.06 195 / 4%), transparent 60%);
+    --landing-accent-qr: #fb923c; /* orange-400 — orders */
+    --landing-accent-ordering: #38bdf8; /* sky-400 */
+    --landing-accent-kitchen: #a78bfa; /* violet-400 */
+    --landing-accent-payments: #4ade80; /* green-400 — cash/success */
+    --landing-accent-analytics: #22d3ee; /* cyan-400 — info */
+    --landing-accent-tables: #38bdf8; /* sky-400 */
+    --landing-accent-mgmt: #22d3ee; /* cyan-400 */
+    --landing-accent-growth: #2dd4bf; /* teal-400 */
+    --landing-accent-lang: #22d3ee;
+    background-color: #0f172a;
+    background-image: linear-gradient(
+      to bottom right,
+      #0f172a 0%,
+      #1e293b 48%,
+      #0f172a 100%
+    );
   }
 
   .landing-page::before {
@@ -304,7 +309,7 @@
     position: fixed;
     inset: 0;
     z-index: 0;
-    opacity: 0.035;
+    opacity: 0.028;
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
     background-size: 180px 180px;
   }
@@ -314,46 +319,40 @@
     z-index: 1;
   }
 
+  /* Shell header — RestaurantOperationsShell: bg-background/60 backdrop-blur + cyan-tinted edge */
   .landing-glass {
-    background: oklch(0.13 0.02 220 / 78%);
-    backdrop-filter: blur(18px) saturate(150%);
-    border: 1px solid oklch(0.38 0.03 195 / 32%);
-    box-shadow: 0 1px 0 oklch(1 0 0 / 4%) inset;
+    background: rgb(15 23 42 / 0.72);
+    backdrop-filter: blur(16px) saturate(140%);
+    border: 1px solid rgb(6 182 212 / 0.22);
+    box-shadow: 0 1px 0 rgb(255 255 255 / 0.03) inset;
   }
 
+  /* pricingPanelBase + restaurantHoverGlow */
   .landing-card {
     background: linear-gradient(
-      155deg,
-      oklch(0.2 0.025 220 / 92%) 0%,
-      oklch(0.155 0.02 220 / 78%) 100%
+      to bottom,
+      rgb(30 41 59 / 0.55),
+      rgb(15 23 42 / 0.55)
     );
-    border: 1px solid oklch(0.34 0.03 195 / 38%);
-    box-shadow:
-      0 1px 0 oklch(1 0 0 / 4%) inset,
-      0 8px 28px oklch(0 0 0 / 28%);
-    transition:
-      border-color 0.25s ease,
-      box-shadow 0.25s ease,
-      transform 0.25s ease,
-      background 0.25s ease;
+    border: 1px solid rgb(6 182 212 / 0.3);
+    box-shadow: none;
+    transition: all 200ms ease;
   }
 
   .landing-card:hover {
-    border-color: oklch(0.55 0.1 195 / 45%);
-    box-shadow:
-      0 1px 0 oklch(1 0 0 / 5%) inset,
-      0 14px 40px oklch(0.65 0.12 195 / 14%),
-      0 4px 16px oklch(0 0 0 / 30%);
+    border-color: rgb(34 211 238 / 0.3);
+    box-shadow: 0 1px 2px 0 rgb(6 182 212 / 0.1);
   }
 
   .landing-card:focus-within {
-    border-color: oklch(0.6 0.12 195 / 50%);
+    border-color: rgb(34 211 238 / 0.45);
     outline: none;
   }
 
-  /* Category accents — desaturated, system-safe */
   .landing-card[data-accent] {
     --accent: var(--landing-accent-mgmt);
+    position: relative;
+    overflow: hidden;
   }
   .landing-card[data-accent="qr"] { --accent: var(--landing-accent-qr); }
   .landing-card[data-accent="ordering"] { --accent: var(--landing-accent-ordering); }
@@ -365,6 +364,35 @@
   .landing-card[data-accent="growth"] { --accent: var(--landing-accent-growth); }
   .landing-card[data-accent="lang"] { --accent: var(--landing-accent-lang); }
 
+  /* Soft category shells — ExecutivePeriodDashboard pattern */
+  .landing-card[data-accent="qr"] {
+    border-color: rgb(249 115 22 / 0.35);
+    background: linear-gradient(to bottom, rgb(67 20 7 / 0.35), rgb(15 23 42 / 0.85));
+  }
+  .landing-card[data-accent="ordering"],
+  .landing-card[data-accent="tables"] {
+    border-color: rgb(14 165 233 / 0.35);
+    background: linear-gradient(to bottom, rgb(8 47 73 / 0.4), rgb(15 23 42 / 0.85));
+  }
+  .landing-card[data-accent="kitchen"] {
+    border-color: rgb(139 92 246 / 0.35);
+    background: linear-gradient(to bottom, rgb(46 16 101 / 0.4), rgb(15 23 42 / 0.85));
+  }
+  .landing-card[data-accent="payments"] {
+    border-color: rgb(16 185 129 / 0.35);
+    background: linear-gradient(to bottom, rgb(2 44 34 / 0.4), rgb(15 23 42 / 0.85));
+  }
+  .landing-card[data-accent="analytics"],
+  .landing-card[data-accent="mgmt"],
+  .landing-card[data-accent="lang"] {
+    border-color: rgb(6 182 212 / 0.35);
+    background: linear-gradient(to bottom, rgb(8 51 68 / 0.45), rgb(15 23 42 / 0.9));
+  }
+  .landing-card[data-accent="growth"] {
+    border-color: rgb(20 184 166 / 0.4);
+    background: linear-gradient(to bottom, rgb(4 47 46 / 0.5), rgb(15 23 42 / 0.9));
+  }
+
   .landing-card[data-accent]::before {
     content: "";
     position: absolute;
@@ -374,35 +402,33 @@
     background: linear-gradient(
       90deg,
       transparent,
-      color-mix(in oklab, var(--accent) 55%, transparent),
+      color-mix(in srgb, var(--accent) 50%, transparent),
       transparent
     );
-    opacity: 0.9;
-  }
-
-  .landing-card[data-accent] {
-    position: relative;
-    overflow: hidden;
   }
 
   .landing-card[data-accent]:hover {
-    border-color: color-mix(in oklab, var(--accent) 42%, oklch(0.35 0.03 195 / 40%));
-    box-shadow:
-      0 1px 0 oklch(1 0 0 / 5%) inset,
-      0 14px 40px color-mix(in oklab, var(--accent) 16%, transparent),
-      0 4px 16px oklch(0 0 0 / 28%);
+    border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+    box-shadow: 0 4px 24px color-mix(in srgb, var(--accent) 18%, transparent);
   }
 
+  /* restaurantDash.iconContainer recipe */
   .landing-accent-icon {
-    border-color: color-mix(in oklab, var(--accent) 35%, transparent) !important;
-    background: color-mix(in oklab, var(--accent) 14%, transparent) !important;
-    color: var(--accent) !important;
+    border: 1px solid rgb(6 182 212 / 0.2) !important;
+    background: rgb(15 23 42 / 0.6) !important;
+    color: var(--accent, #22d3ee) !important;
+    transition: all 200ms ease;
+  }
+
+  .landing-card[data-accent] .landing-accent-icon {
+    border-color: color-mix(in srgb, var(--accent) 30%, transparent) !important;
+    background: color-mix(in srgb, var(--accent) 10%, rgb(15 23 42 / 0.6)) !important;
   }
 
   .landing-section-soft {
     background-image: radial-gradient(
       ellipse 60% 50% at 50% 0%,
-      oklch(0.55 0.06 195 / 6%),
+      rgb(6 182 212 / 0.06),
       transparent 70%
     );
   }
@@ -417,9 +443,9 @@
     inset: -10% -5% auto;
     height: min(70vh, 640px);
     background:
-      radial-gradient(ellipse 50% 55% at 28% 40%, oklch(0.65 0.14 195 / 18%), transparent 70%),
-      radial-gradient(ellipse 40% 45% at 78% 35%, oklch(0.7 0.1 55 / 10%), transparent 68%),
-      radial-gradient(ellipse 35% 40% at 55% 70%, oklch(0.55 0.08 250 / 8%), transparent 70%);
+      radial-gradient(ellipse 50% 55% at 28% 40%, rgb(6 182 212 / 0.16), transparent 70%),
+      radial-gradient(ellipse 40% 45% at 78% 35%, rgb(249 115 22 / 0.08), transparent 68%),
+      radial-gradient(ellipse 35% 40% at 55% 70%, rgb(56 189 248 / 0.06), transparent 70%);
     filter: blur(2px);
   }
 
@@ -436,7 +462,7 @@
     border-radius: 2rem;
     background: radial-gradient(
       ellipse at 50% 40%,
-      oklch(0.65 0.14 195 / 22%),
+      rgb(6 182 212 / 0.2),
       transparent 68%
     );
     filter: blur(28px);
@@ -450,11 +476,7 @@
     inset: auto 12% -4%;
     height: 40%;
     border-radius: 50%;
-    background: radial-gradient(
-      ellipse,
-      oklch(0 0 0 / 45%),
-      transparent 70%
-    );
+    background: radial-gradient(ellipse, rgb(0 0 0 / 0.45), transparent 70%);
     filter: blur(20px);
     z-index: 0;
   }
@@ -463,68 +485,67 @@
     position: relative;
     z-index: 1;
     box-shadow:
-      0 0 0 1px oklch(1 0 0 / 6%),
-      0 24px 64px oklch(0 0 0 / 45%),
-      0 0 80px oklch(0.65 0.14 195 / 12%);
+      0 0 0 1px rgb(6 182 212 / 0.15),
+      0 24px 64px rgb(0 0 0 / 0.45),
+      0 0 48px rgb(6 182 212 / 0.1);
   }
 
   .landing-headline {
     letter-spacing: -0.025em;
-    text-shadow: 0 1px 24px oklch(0.65 0.1 195 / 12%);
+    color: #fff;
   }
 
   .landing-nav-link {
-    @apply rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors;
+    @apply rounded-xl px-3 py-2 text-sm font-medium text-slate-400 transition-all duration-200;
   }
 
   .landing-nav-link:hover {
-    @apply text-foreground bg-white/[0.04];
+    @apply border-cyan-400/30 bg-cyan-500/10 text-cyan-400;
   }
 
   .landing-nav-link-active {
-    @apply text-foreground bg-white/[0.06];
+    @apply bg-cyan-500/10 text-white;
   }
 
+  /* Primary CTA — brand primary + dashboard cyan glow */
   .landing-btn-primary {
-    @apply rounded-xl bg-primary font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all duration-200 hover:bg-primary/90 hover:shadow-primary/40 hover:-translate-y-px active:translate-y-0 active:scale-[0.98];
+    @apply rounded-xl bg-primary font-semibold text-primary-foreground shadow-sm shadow-cyan-500/20 transition-all duration-200 hover:bg-primary/90 hover:shadow-md hover:shadow-cyan-500/25 hover:-translate-y-px active:translate-y-0 active:scale-[0.98];
   }
 
   .landing-btn-primary:focus-visible {
-    outline: 2px solid oklch(0.75 0.12 195 / 70%);
+    outline: 2px solid rgb(34 211 238 / 0.6);
     outline-offset: 2px;
   }
 
+  /* Ghost — toolbarBtn language */
   .landing-btn-ghost {
-    @apply rounded-xl border border-border/50 bg-white/[0.03] font-medium text-foreground transition-all duration-200 hover:border-primary/35 hover:bg-white/[0.07] hover:-translate-y-px active:translate-y-0 active:scale-[0.98];
+    @apply rounded-xl border border-cyan-500/30 bg-slate-900/50 font-medium text-slate-200 transition-all duration-200 hover:border-cyan-400/30 hover:bg-cyan-500/10 hover:text-cyan-400 hover:shadow-sm hover:shadow-cyan-500/10 hover:-translate-y-px active:translate-y-0 active:scale-[0.98];
   }
 
   .landing-btn-ghost:focus-visible {
-    outline: 2px solid oklch(0.65 0.08 195 / 55%);
+    outline: 2px solid rgb(34 211 238 / 0.5);
     outline-offset: 2px;
   }
 
   .landing-trust-chip {
-    @apply inline-flex items-center gap-1.5 rounded-lg border border-border/30 bg-white/[0.03] px-2.5 py-1.5 text-xs text-muted-foreground transition-all duration-200;
+    @apply inline-flex items-center gap-1.5 rounded-xl border border-cyan-500/20 bg-slate-900/60 px-2.5 py-1.5 text-xs text-slate-300 transition-all duration-200;
   }
 
   .landing-trust-chip:hover {
-    border-color: oklch(0.55 0.1 195 / 40%);
-    background: oklch(1 0 0 / 5%);
-    color: oklch(0.92 0.01 220);
+    @apply border-cyan-400/30 bg-cyan-500/10 text-cyan-400 shadow-sm shadow-cyan-500/10;
     transform: translateY(-1px);
   }
 
   .landing-secondary-row {
-    @apply flex gap-3 rounded-xl border border-border/25 bg-white/[0.025] p-4 transition-all duration-200;
+    @apply flex gap-3 rounded-xl border border-cyan-500/20 bg-slate-900/40 p-4 shadow-none transition-all duration-200;
   }
 
   .landing-secondary-row:hover {
-    border-color: oklch(0.5 0.08 195 / 35%);
-    background: oklch(1 0 0 / 4.5%);
+    @apply border-cyan-400/30 shadow-sm shadow-cyan-500/10;
     transform: translateY(-1px);
   }
 
-  /* LANDING-PAGE-EXPERIENCE-1 + VISUAL-POLISH-1 — lightweight motion */
+  /* LANDING-PAGE-EXPERIENCE-1 + VISUAL-POLISH + DESIGN-SYSTEM-ALIGNMENT — motion */
   @keyframes landing-pulse-dot {
     0%,
     100% {
@@ -647,9 +668,9 @@
   .text-gradient-teal {
     background: linear-gradient(
       125deg,
-      oklch(0.78 0.14 195) 0%,
-      oklch(0.7 0.18 195) 45%,
-      oklch(0.82 0.1 180) 100%
+      #67e8f9 0%,
+      #22d3ee 45%,
+      #2dd4bf 100%
     );
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;

@@ -1,6 +1,7 @@
 /**
- * LANDING-PAGE-EXPERIENCE-1
+ * LANDING-PAGE-EXPERIENCE-1 + LANDING-DESIGN-SYSTEM-ALIGNMENT-1
  * Restaurant OS product journey — storytelling without fabricated claims.
+ * Cards inherit dashboard slate/cyan + semantic category accents.
  */
 import { usePrefersReducedMotion } from "@/components/landing/usePrefersReducedMotion";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -75,17 +76,17 @@ export function ProductJourney() {
   return (
     <section
       id="journey"
-      className="landing-section-soft border-t border-border/20 py-20 sm:py-24"
+      className="landing-section-soft border-t border-cyan-500/15 py-20 sm:py-24"
     >
       <div className="container">
         <div className="mx-auto mb-12 max-w-2xl text-center sm:mb-14">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-cyan-400">
             {t("home.journeyEyebrow")}
           </p>
-          <h2 className="landing-headline text-balance text-2xl font-bold tracking-tight text-foreground sm:text-3xl md:text-4xl">
+          <h2 className="landing-headline text-balance text-2xl font-bold tracking-tight text-white sm:text-3xl md:text-4xl">
             {t("home.journeyTitle")}
           </h2>
-          <p className="mt-4 text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
+          <p className="mt-4 text-pretty text-base leading-relaxed text-slate-400 sm:text-lg">
             {t("home.journeyDesc")}
           </p>
         </div>
@@ -117,16 +118,16 @@ export function ProductJourney() {
                     {String(index + 1).padStart(2, "0")}
                   </span>
                 </div>
-                <h3 className="text-sm font-semibold tracking-tight text-foreground sm:text-base">
+                <h3 className="text-sm font-semibold tracking-tight text-white sm:text-base">
                   {t(step.titleKey)}
                 </h3>
-                <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground sm:text-sm">
+                <p className="mt-1.5 text-xs leading-relaxed text-slate-400 sm:text-sm">
                   {t(step.descKey)}
                 </p>
                 {index < STEPS.length - 1 ? (
                   <ArrowRight
                     className={cn(
-                      "pointer-events-none absolute -bottom-2 end-4 hidden h-4 w-4 text-primary/35 lg:hidden",
+                      "pointer-events-none absolute -bottom-2 end-4 hidden h-4 w-4 text-cyan-400/35 lg:hidden",
                       dir === "rtl" && "rotate-180"
                     )}
                     aria-hidden

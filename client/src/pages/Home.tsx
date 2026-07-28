@@ -1,9 +1,14 @@
 /**
  * LANDING-PAGE-EXPERIENCE-1 + LANDING-PAGE-VISUAL-POLISH-1
- * Public landing — Restaurant OS storytelling within existing MineuQR visual system.
+ * + LANDING-DESIGN-SYSTEM-ALIGNMENT-1
+ * Public landing — Restaurant OS storytelling; surfaces inherit restaurantDash.
  */
 import { useAuth } from "@/_core/hooks/useAuth";
 import { HeroPreview } from "@/components/landing/HeroPreview";
+import {
+  landingDashIcon,
+  landingDashIconLg,
+} from "@/components/landing/landingDesignSystem";
 import { LandingLogo } from "@/components/landing/LandingLogo";
 import { LandingNavbar } from "@/components/landing/LandingNavbar";
 import { MarketingFooter } from "@/components/landing/MarketingFooter";
@@ -183,26 +188,26 @@ export default function Home() {
         <div className="container relative">
           <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16 xl:gap-[4.5rem]">
             <motion.div {...fadeUp(0)} className="max-w-xl lg:max-w-none">
-              <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1.5 shadow-[0_0_24px_oklch(0.65_0.14_195_/_0.12)] backdrop-blur-sm">
+              <div className="mb-6 inline-flex items-center gap-2 rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-3.5 py-1.5 shadow-sm shadow-cyan-500/10 backdrop-blur-sm">
                 <span
                   className={cn(
-                    "h-1.5 w-1.5 rounded-full bg-primary",
+                    "h-1.5 w-1.5 rounded-full bg-cyan-400",
                     !reducedMotion && "landing-pulse-dot"
                   )}
                 />
-                <span className="text-xs font-medium tracking-wide text-primary sm:text-sm">
+                <span className="text-xs font-medium tracking-wide text-cyan-300 sm:text-sm">
                   {t("home.platformBadge")}
                 </span>
               </div>
 
-              <h1 className="landing-headline text-balance text-[1.9rem] font-bold leading-[1.1] text-foreground sm:text-4xl md:text-5xl lg:text-[2.9rem] lg:leading-[1.08]">
+              <h1 className="landing-headline text-balance text-[1.9rem] font-bold leading-[1.1] text-white sm:text-4xl md:text-5xl lg:text-[2.9rem] lg:leading-[1.08]">
                 {t("home.heroHeadline")}
                 <span className="mt-2 block text-gradient-teal">
                   {t("home.heroHeadlineAccent")}
                 </span>
               </h1>
 
-              <p className="mt-6 max-w-lg text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg sm:leading-relaxed">
+              <p className="mt-6 max-w-lg text-pretty text-base leading-relaxed text-slate-400 sm:text-lg sm:leading-relaxed">
                 {t("home.subtitle")}
               </p>
 
@@ -230,7 +235,7 @@ export default function Home() {
                 </Button>
               </div>
 
-              <p className="mt-5 text-xs leading-relaxed text-muted-foreground/90 sm:text-sm">
+              <p className="mt-5 text-xs leading-relaxed text-slate-500 sm:text-sm">
                 {t("home.heroSupport")}
               </p>
             </motion.div>
@@ -253,15 +258,15 @@ export default function Home() {
                   viewport: { once: true },
                   transition: { duration: 0.4, delay: 0.15 },
                 })}
-            className="mt-14 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 border-t border-border/25 pt-9 text-sm text-muted-foreground sm:justify-between lg:mt-16"
+            className="mt-14 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 border-t border-cyan-500/15 pt-9 text-sm text-slate-400 sm:justify-between lg:mt-16"
           >
             <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
-              <span className="font-medium text-foreground/90">
+              <span className="font-medium text-slate-200">
                 {t("home.statLanguagesLabel")}
               </span>
-              <span className="hidden h-3 w-px bg-border/50 sm:inline-block" />
+              <span className="hidden h-3 w-px bg-cyan-500/20 sm:inline-block" />
               <span>{t("home.statModulesLabel")}</span>
-              <span className="hidden h-3 w-px bg-border/50 sm:inline-block" />
+              <span className="hidden h-3 w-px bg-cyan-500/20 sm:inline-block" />
               <span>{t("home.statMobileLabel")}</span>
             </div>
             <div className="flex flex-wrap items-center justify-center gap-3">
@@ -274,7 +279,7 @@ export default function Home() {
                     onClick={() => setLocation(link.href)}
                     className="landing-trust-chip"
                   >
-                    <Icon className="h-3.5 w-3.5 text-primary/80" aria-hidden />
+                    <Icon className="h-3.5 w-3.5 text-cyan-400/80" aria-hidden />
                     {t(link.labelKey)}
                   </button>
                 );
@@ -289,14 +294,14 @@ export default function Home() {
       {/* Primary capabilities */}
       <section
         id="features"
-        className="landing-section-soft border-t border-border/20 py-20 sm:py-24"
+        className="landing-section-soft border-t border-cyan-500/15 py-20 sm:py-24"
       >
         <div className="container">
           <div className="mx-auto mb-12 max-w-2xl text-center sm:mb-14">
-            <h2 className="landing-headline text-balance text-2xl font-bold tracking-tight text-foreground sm:text-3xl md:text-4xl">
+            <h2 className="landing-headline text-balance text-2xl font-bold tracking-tight text-white sm:text-3xl md:text-4xl">
               {t("home.allInOne")}
             </h2>
-            <p className="mt-4 text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
+            <p className="mt-4 text-pretty text-base leading-relaxed text-slate-400 sm:text-lg">
               {t("home.allInOneDesc")}
             </p>
           </div>
@@ -322,10 +327,10 @@ export default function Home() {
                   <div className="landing-accent-icon mb-4 flex h-11 w-11 items-center justify-center rounded-xl border transition-transform duration-200 group-hover:scale-105">
                     <Icon className="h-5 w-5" aria-hidden />
                   </div>
-                  <h3 className="text-base font-semibold tracking-tight text-foreground sm:text-lg">
+                  <h3 className="text-base font-semibold tracking-tight text-white sm:text-lg">
                     {t(feature.titleKey)}
                   </h3>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  <p className="mt-2 text-sm leading-relaxed text-slate-400">
                     {t(feature.descKey)}
                   </p>
                 </motion.div>
@@ -341,14 +346,14 @@ export default function Home() {
                   key={feature.titleKey}
                   className="landing-secondary-row"
                 >
-                  <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
-                    <Icon className="h-4 w-4" aria-hidden />
+                  <div className={cn(landingDashIcon, "mt-0.5")}>
+                    <Icon aria-hidden />
                   </div>
                   <div>
-                    <h3 className="text-sm font-semibold tracking-tight text-foreground">
+                    <h3 className="text-sm font-semibold tracking-tight text-white">
                       {t(feature.titleKey)}
                     </h3>
-                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                    <p className="mt-1 text-xs leading-relaxed text-slate-400">
                       {t(feature.descKey)}
                     </p>
                   </div>
@@ -360,13 +365,13 @@ export default function Home() {
       </section>
 
       {/* How it works */}
-      <section className="border-t border-border/20 py-20 sm:py-24">
+      <section className="border-t border-cyan-500/15 py-20 sm:py-24">
         <div className="container">
           <div className="mx-auto mb-12 max-w-2xl text-center sm:mb-14">
-            <h2 className="landing-headline text-2xl font-bold tracking-tight text-foreground sm:text-3xl md:text-4xl">
+            <h2 className="landing-headline text-2xl font-bold tracking-tight text-white sm:text-3xl md:text-4xl">
               {t("home.howItWorks")}
             </h2>
-            <p className="mt-4 text-base leading-relaxed text-muted-foreground sm:text-lg">
+            <p className="mt-4 text-base leading-relaxed text-slate-400 sm:text-lg">
               {t("home.howItWorksDesc")}
             </p>
           </div>
@@ -389,17 +394,22 @@ export default function Home() {
                   className="relative text-center lg:text-start"
                 >
                   <div className="relative mx-auto mb-5 inline-flex lg:mx-0">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-border/40 bg-white/[0.045] shadow-[0_0_24px_oklch(0.65_0.1_195_/_0.08)] transition-transform duration-200 hover:scale-105">
-                      <Icon className="h-6 w-6 text-primary" aria-hidden />
+                    <div
+                      className={cn(
+                        landingDashIconLg,
+                        "h-14 w-14 rounded-2xl [&_svg]:size-6 transition-transform duration-200 hover:scale-105"
+                      )}
+                    >
+                      <Icon aria-hidden />
                     </div>
-                    <span className="absolute -top-2 -end-2 rounded-lg border border-primary/30 bg-primary/15 px-2 py-0.5 text-xs font-bold text-primary shadow-[0_0_12px_oklch(0.65_0.14_195_/_0.2)]">
+                    <span className="absolute -top-2 -end-2 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-xs font-bold text-cyan-300 shadow-sm shadow-cyan-500/10">
                       {step.num}
                     </span>
                   </div>
-                  <h3 className="text-base font-semibold tracking-tight text-foreground sm:text-lg">
+                  <h3 className="text-base font-semibold tracking-tight text-white sm:text-lg">
                     {t(step.titleKey)}
                   </h3>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  <p className="mt-2 text-sm leading-relaxed text-slate-400">
                     {t(step.descKey)}
                   </p>
                 </motion.div>
@@ -410,20 +420,20 @@ export default function Home() {
       </section>
 
       {/* CTA */}
-      <section className="landing-section-soft border-t border-border/20 py-20 sm:py-24">
+      <section className="landing-section-soft border-t border-cyan-500/15 py-20 sm:py-24">
         <div className="container">
           <div
             data-accent="mgmt"
             className="landing-card relative mx-auto max-w-3xl overflow-hidden rounded-2xl px-6 py-11 text-center sm:px-10 sm:py-14"
           >
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,oklch(0.65_0.14_195_/_0.1),transparent_55%)]" />
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgb(6_182_212_/_0.12),transparent_55%)]" />
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-400/50 to-transparent" />
             <div className="relative">
               <LandingLogo imageClassName="mx-auto h-14 w-auto sm:h-16" />
-              <h2 className="landing-headline mt-6 text-balance text-2xl font-bold text-foreground sm:text-3xl">
+              <h2 className="landing-headline mt-6 text-balance text-2xl font-bold text-white sm:text-3xl">
                 {t("home.ctaTitle")}
               </h2>
-              <p className="mx-auto mt-4 max-w-md text-base leading-relaxed text-muted-foreground">
+              <p className="mx-auto mt-4 max-w-md text-base leading-relaxed text-slate-400">
                 {t("home.ctaDesc")}
               </p>
               <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">

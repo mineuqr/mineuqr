@@ -51,7 +51,7 @@ export function LandingNavbar() {
 
   return (
     <header className="fixed inset-x-0 top-0 z-50">
-      <nav className="landing-glass border-b border-border/25">
+      <nav className="landing-glass border-b border-cyan-500/20">
         <div className="container flex h-[4.25rem] items-center justify-between gap-4 sm:h-[4.5rem]">
           <LandingLogo
             onClick={() => go("/")}
