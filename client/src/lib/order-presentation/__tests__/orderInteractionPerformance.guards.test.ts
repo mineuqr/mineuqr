@@ -159,13 +159,16 @@ describe("ORDER-INTERACTION-PERFORMANCE-1 instrumentation", () => {
 
 describe("ORDER-INTERACTION-PERFORMANCE-1 architecture guards", () => {
   it("memoizes order card components and instruments their renders", () => {
+    const platformCard = read(
+      "client/src/design-system/operational-order-card/components/OperationalOrderCard.tsx"
+    );
     const operationalCard = read("client/src/components/operational-workspace/OperationalCard.tsx");
     const kitchenCard = read("client/src/components/kitchen/KitchenExecutionCard.tsx");
 
-    expect(operationalCard).toContain("memo(OperationalCardImpl)");
-    expect(operationalCard).toContain('recordOrderPerfEvent("card:rendered")');
-    expect(kitchenCard).toContain("memo(KitchenExecutionCardImpl)");
-    expect(kitchenCard).toContain('recordOrderPerfEvent("card:rendered")');
+    expect(platformCard).toContain("memo(OperationalOrderCardImpl)");
+    expect(platformCard).toContain('recordOrderPerfEvent("card:rendered")');
+    expect(operationalCard).toContain("OperationalOrderCard");
+    expect(kitchenCard).toContain("OperationalOrderCard");
   });
 
   it("routes workspace presentation through the stable reconciliation hook", () => {

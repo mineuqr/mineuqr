@@ -263,14 +263,17 @@ describe("ORDER-WORKSPACE-CARD-ARCHITECTURE-1 architecture guards", () => {
   });
 
   it("order cards consume OrderPresentationModel instead of read model formatting", () => {
+    const platformCard = read(
+      "client/src/design-system/operational-order-card/components/OperationalOrderCard.tsx"
+    );
     const operationalCard = read("client/src/components/operational-workspace/OperationalCard.tsx");
     const kitchenCard = read("client/src/components/kitchen/KitchenExecutionCard.tsx");
     const kitchenPanel = read("client/src/components/operational-screen/KitchenScreenPanel.tsx");
 
-    expect(operationalCard).toContain("presentation: OrderPresentationModel");
-    expect(operationalCard).toContain("presentation.identity.displayReference");
-    expect(kitchenCard).toContain("presentation: OrderPresentationModel");
-    expect(kitchenCard).toContain("presentation.identity.displayReference");
+    expect(platformCard).toContain("presentation: OrderPresentationModel");
+    expect(platformCard).toContain("presentation.identity.displayReference");
+    expect(operationalCard).toContain("OperationalOrderCard");
+    expect(kitchenCard).toContain("OperationalOrderCard");
     expect(kitchenCard).not.toContain("explainDelay");
     expect(kitchenCard).not.toContain("formatOperationalElapsedCompact");
     expect(kitchenCard).not.toContain("operationalFooterStatusLabel");
@@ -281,17 +284,17 @@ describe("ORDER-WORKSPACE-CARD-ARCHITECTURE-1 architecture guards", () => {
   it("KITCHEN-PRESENTATION-MODIFIERS-ADOPTION-1: presentation adopts DTO modifiers", () => {
     const model = read("client/src/lib/order-presentation/orderPresentationModel.ts");
     const mapper = read("client/src/lib/order-presentation/mapOrderPresentation.ts");
-    const kitchenCard = read("client/src/components/kitchen/KitchenExecutionCard.tsx");
+    const item = read(
+      "client/src/design-system/operational-order-card/components/OperationalOrderItem.tsx"
+    );
     const waiterStage = read("client/src/pages/waiter/WaiterTableWorkspaceStage.tsx");
 
     expect(model).toContain("modifiers: readonly string[]");
     expect(mapper).toContain("normalizeOrderLineModifiers");
     expect(mapper).toContain("modifiers: line.modifiers");
     expect(mapper).toContain("modifiers: normalizeOrderLineModifiers(line.modifiers)");
-    expect(kitchenCard).toContain("line.modifiers.length");
-    expect(kitchenCard).toContain("presentation: OrderPresentationModel");
-    // Waiter consumes equivalent projected modifiers (workspace DTO from Order Read).
-    expect(waiterStage).toContain("item.modifiers.length");
+    expect(item).toContain("OperationalOrderModifiers");
+    expect(waiterStage).toContain("mapWaiterOrderPresentation");
   });
 
   it("keeps presentation formatting out of card components", () => {
@@ -330,8 +333,12 @@ describe("ORDER-WORKSPACE-CARD-ARCHITECTURE-1 architecture guards", () => {
   it("ORDERING-OPERATIONAL-NOTES-PRESENTATION-1: projected notes flow through presentation only", () => {
     const model = read("client/src/lib/order-presentation/orderPresentationModel.ts");
     const mapper = read("client/src/lib/order-presentation/mapOrderPresentation.ts");
-    const kitchenCard = read("client/src/components/kitchen/KitchenExecutionCard.tsx");
-    const operationalCard = read("client/src/components/operational-workspace/OperationalCard.tsx");
+    const item = read(
+      "client/src/design-system/operational-order-card/components/OperationalOrderItem.tsx"
+    );
+    const card = read(
+      "client/src/design-system/operational-order-card/components/OperationalOrderCard.tsx"
+    );
     const printSerializer = read(
       "server/print-connector/runtime/PrintPayloadTextSerializer.ts"
     );
@@ -339,13 +346,11 @@ describe("ORDER-WORKSPACE-CARD-ARCHITECTURE-1 architecture guards", () => {
     expect(model).toContain("itemNotes: string | null");
     expect(mapper).toContain("presentationalNote");
     expect(mapper).toContain("itemNotes: presentationalNote");
-    expect(kitchenCard).toContain("line.itemNotes");
-    expect(kitchenCard).toContain("presentation.notes");
-    expect(operationalCard).toContain("line.itemNotes");
-    expect(operationalCard).toContain("presentation.notes");
+    expect(item).toContain("line.itemNotes");
+    expect(card).toContain("presentation.notes");
     expect(printSerializer).toContain("item.itemNotes");
     expect(printSerializer).toContain("Notes:");
-    expect(kitchenCard).not.toContain("getDb");
-    expect(operationalCard).not.toContain("PlaceOrderService");
+    expect(card).not.toContain("getDb");
+    expect(card).not.toContain("PlaceOrderService");
   });
 });

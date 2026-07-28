@@ -83,7 +83,7 @@ describe("SEMANTIC-STATUS-BADGE-SYSTEM-1", () => {
       "utf8"
     );
     expect(src).not.toContain("statusColors");
-    expect(src).toContain("mapOrderStatusToBadgeTone");
+    expect(src).toContain("OperationalOrderStatus");
   });
 
   it("HealthStatusBadge has no local TONE_CLASS map", () => {

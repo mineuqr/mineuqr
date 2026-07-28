@@ -1,7 +1,9 @@
+/**
+ * OPERATIONAL-ORDER-CARD-PLATFORM-1 — session order rows use SemanticBadge status.
+ */
 import {
-  SemanticBadge,
-  mapOrderStatusToBadgeTone,
-} from "@/design-system/semantic-badge";
+  OperationalOrderStatus,
+} from "@/design-system/operational-order-card";
 import { formatOrderStatusLabel, type OrderLifecycleStatus } from "@/lib/orderStatusDisplay";
 import { formatOperationalOrderHeading } from "@/lib/operational-workspace/orderDisplayIdentity";
 import { sessionSummaryLabel } from "@/lib/diningSessionWorkspaceCopy";
@@ -31,6 +33,7 @@ export function DiningSessionOrdersList({
   language,
   currencySymbol,
 }: DiningSessionOrdersListProps) {
+  const isAr = language === "ar";
   const formatTime = (value: string) =>
     formatRiyadhDateTime(value, language === "ar" ? "ar-SA" : "en-US", {
       hour: "2-digit",
@@ -63,13 +66,11 @@ export function DiningSessionOrdersList({
                     <span className="font-mono text-sm font-semibold text-primary">
                       {formatOperationalOrderHeading(order)}
                     </span>
-                    <SemanticBadge
-                      tone={mapOrderStatusToBadgeTone(order.status)}
-                      density="soft"
-                      size="sm"
-                    >
-                      {statusLabel}
-                    </SemanticBadge>
+                    <OperationalOrderStatus
+                      status={order.status}
+                      statusLabel={statusLabel}
+                      isAr={isAr}
+                    />
                   </div>
                   <time
                     dateTime={order.createdAt}

@@ -6,6 +6,10 @@ import { DiningSessionWorkspaceSheet } from "@/components/dashboard/DiningSessio
 import { ActiveSessionsPreviewSection } from "@/components/dashboard/ActiveSessionsPreviewSection";
 import { SessionsWorkspacePanel } from "@/components/dashboard/SessionsWorkspacePanel";
 import { OrdersWorkspacePanel } from "@/components/orders-workspace/OrdersWorkspacePanel";
+import {
+  OperationalOrderCard,
+  mapDashboardOrderPresentation,
+} from "@/design-system/operational-order-card";
 import { formatProjectedFulfilmentLabel } from "@/lib/order-presentation/formatProjectedFulfilment";
 import { formatOperationalOrderHeading } from "@/lib/operational-workspace/orderDisplayIdentity";
 import { ScreenManagementWorkspacePanel } from "@/components/screen-management/ScreenManagementWorkspacePanel";
@@ -3489,61 +3493,46 @@ function OrdersTab({ restaurantId, currencySymbol, tableLabel }: { restaurantId:
         </div>
       ) : (
         <div className="space-y-4 sm:space-y-5">
-          {orders.map((order: any) => (
-            <Card key={order.id} className={cn(dash.card, "border-border/40")}>
-              <CardContent className="p-6 sm:p-7">
-                <div
-                  className={cn(
-                    "flex items-center justify-between",
-                    hasDashboardSession(order.sessionId) ? "mb-1" : "mb-4"
-                  )}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="font-mono text-base font-bold text-primary">
-                      {formatOperationalOrderHeading({
-                        orderNumber: order.orderNumber ?? "",
-                        businessDay: order.businessDay ?? null,
-                        dailyDisplayNumber: order.dailyDisplayNumber ?? null,
-                        displayReference: order.displayReference,
-                      })}
-                    </span>
-                    <SemanticBadge
-                      tone={mapOrderStatusToBadgeTone(order.status)}
-                      density="soft"
-                      size="md"
-                    >
-                      {formatOrderStatusLabel(
-                        order.status as OrderLifecycleStatus,
-                        language === "ar" ? "ar" : "en"
-                      )}
-                    </SemanticBadge>
-                  </div>
-                  <span className="text-sm text-muted-foreground">
-                    {order.fulfilmentLabel &&
-                    order.fulfilmentAnchorType &&
-                    order.serviceMode
-                      ? formatProjectedFulfilmentLabel(
-                          {
-                            serviceMode: order.serviceMode,
-                            fulfilmentAnchorType: order.fulfilmentAnchorType,
-                            fulfilmentLabel: order.fulfilmentLabel,
-                          },
-                          {
-                            isAr: language === "ar",
-                            tableUnit: isRooms ? "room" : "table",
-                          }
-                        )
-                      : language === "ar"
-                        ? `${unitAr} ${order.tableNumber}`
-                        : `${unitEn} ${order.tableNumber}`}
-                  </span>
-                </div>
+          {orders.map((order: any) => {
+            const { presentation, linePrices } = mapDashboardOrderPresentation(
+              {
+                id: order.id,
+                orderNumber: order.orderNumber,
+                displayReference: order.displayReference,
+                businessDay: order.businessDay,
+                dailyDisplayNumber: order.dailyDisplayNumber,
+                status: order.status,
+                tableNumber: order.tableNumber,
+                serviceMode: order.serviceMode ?? undefined,
+                fulfilmentAnchorType: order.fulfilmentAnchorType ?? undefined,
+                fulfilmentLabel: order.fulfilmentLabel ?? undefined,
+                customerName: order.customerName,
+                customerPhone: order.customerPhone,
+                notes: order.notes,
+                totalAmount: order.totalAmount,
+                createdAt: order.createdAt,
+                items: Array.isArray(order.items)
+                  ? order.items.map((line: any) => ({
+                      id: line.id,
+                      quantity: line.quantity,
+                      nameAr: line.nameAr,
+                      nameEn: line.nameEn,
+                      price: line.price,
+                      itemNotes: line.itemNotes ?? null,
+                      modifiers: line.modifiers ?? [],
+                    }))
+                  : [],
+              },
+              { tableUnit: isRooms ? "room" : "table" }
+            );
 
+            return (
+              <div key={order.id} className="space-y-2">
                 {hasDashboardSession(order.sessionId) && (
                   <button
                     type="button"
                     onClick={() => setTimelineSessionId(order.sessionId)}
-                    className="mb-3 block text-start text-sm text-muted-foreground transition-colors hover:text-foreground"
+                    className="block text-start text-sm text-muted-foreground transition-colors hover:text-foreground"
                     aria-label={
                       language === "ar"
                         ? `عرض سجل جلسة #${order.sessionId}`
@@ -3566,51 +3555,34 @@ function OrdersTab({ restaurantId, currencySymbol, tableLabel }: { restaurantId:
                   </button>
                 )}
 
-                {order.customerName && (
-                  <p className="text-sm text-muted-foreground mb-1">
-                    <User className="w-3.5 h-3.5 inline ml-1" />
-                    {order.customerName}
+                <OperationalOrderCard
+                  presentation={presentation}
+                  language={language}
+                  currencySymbol={currencySymbol || "ر.س"}
+                  density="comfortable"
+                  domain="orders"
+                  showFinancial
+                  showCustomer
+                  showSlaTimeline
+                  showExecutionFooter={false}
+                  actionMode="none"
+                  linePrices={linePrices}
+                />
+
+                <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+                  <p className="text-xs text-muted-foreground">
+                    {formatRiyadhDateTime(
+                      order.createdAt,
+                      language === "ar" ? "ar-SA" : "en-US",
+                      {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      }
+                    )}
                   </p>
-                )}
-
-                {order.customerPhone && (
-                  <p className="text-sm text-muted-foreground mb-1">
-                    {order.customerPhone}
-                  </p>
-                )}
-
-                {order.notes && (
-                  <p className="text-xs text-muted-foreground mb-2 italic">
-                    {order.notes}
-                  </p>
-                )}
-
-                {Array.isArray(order.items) && order.items.length > 0 && (
-                  <ul className="mt-2 mb-3 space-y-1 border-t border-border/40 pt-2">
-                    {order.items.map((line: any) => (
-                      <li
-                        key={line.id}
-                        className="flex items-center justify-between text-sm gap-2"
-                      >
-                        <span className="text-foreground">
-                          {language === "ar"
-                            ? line.nameAr
-                            : line.nameEn || line.nameAr}
-                          <span className="text-muted-foreground"> ×{line.quantity}</span>
-                        </span>
-                        <span className="text-muted-foreground shrink-0">
-                          {(parseFloat(line.price) * line.quantity).toFixed(2)}{" "}
-                          {currencySymbol || "ر.س"}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-
-                <div className="flex items-center justify-between mt-3">
-                  <span className="font-bold text-foreground">
-                    {order.totalAmount} {currencySymbol || "ر.س"}
-                  </span>
                   <div className="flex gap-1">
                     {order.status === "pending" && (
                       <>
@@ -3618,7 +3590,12 @@ function OrdersTab({ restaurantId, currencySymbol, tableLabel }: { restaurantId:
                           size="sm"
                           variant="outline"
                           className="text-xs h-7 border-blue-500/50 text-blue-400 hover:bg-blue-500/10"
-                          onClick={() => updateStatusMutation.mutate({ id: order.id, status: "preparing" })}
+                          onClick={() =>
+                            updateStatusMutation.mutate({
+                              id: order.id,
+                              status: "preparing",
+                            })
+                          }
                         >
                           {language === "ar" ? "تحضير" : "Prepare"}
                         </Button>
@@ -3626,7 +3603,12 @@ function OrdersTab({ restaurantId, currencySymbol, tableLabel }: { restaurantId:
                           size="sm"
                           variant="outline"
                           className="text-xs h-7 border-red-500/50 text-red-400 hover:bg-red-500/10"
-                          onClick={() => updateStatusMutation.mutate({ id: order.id, status: "cancelled" })}
+                          onClick={() =>
+                            updateStatusMutation.mutate({
+                              id: order.id,
+                              status: "cancelled",
+                            })
+                          }
                         >
                           {language === "ar" ? "إلغاء" : "Cancel"}
                         </Button>
@@ -3637,7 +3619,12 @@ function OrdersTab({ restaurantId, currencySymbol, tableLabel }: { restaurantId:
                         size="sm"
                         variant="outline"
                         className="text-xs h-7 border-green-500/50 text-green-400 hover:bg-green-500/10"
-                        onClick={() => updateStatusMutation.mutate({ id: order.id, status: "ready" })}
+                        onClick={() =>
+                          updateStatusMutation.mutate({
+                            id: order.id,
+                            status: "ready",
+                          })
+                        }
                       >
                         {language === "ar" ? "جاهز" : "Ready"}
                       </Button>
@@ -3647,30 +3634,21 @@ function OrdersTab({ restaurantId, currencySymbol, tableLabel }: { restaurantId:
                         size="sm"
                         variant="outline"
                         className="text-xs h-7 border-gray-500/50 text-gray-400 hover:bg-gray-500/10"
-                        onClick={() => updateStatusMutation.mutate({ id: order.id, status: "served" })}
+                        onClick={() =>
+                          updateStatusMutation.mutate({
+                            id: order.id,
+                            status: "served",
+                          })
+                        }
                       >
                         {language === "ar" ? "تم التقديم" : "Served"}
                       </Button>
                     )}
                   </div>
                 </div>
-
-                <p className="text-xs text-muted-foreground mt-2">
-                  {formatRiyadhDateTime(
-                    order.createdAt,
-                    language === "ar" ? "ar-SA" : "en-US",
-                    {
-                      year: "numeric",
-                      month: "short",
-                      day: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    }
-                  )}
-                </p>
-              </CardContent>
-            </Card>
-          ))}
+              </div>
+            );
+          })}
         </div>
       )}
       </>

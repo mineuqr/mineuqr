@@ -82,10 +82,10 @@ describe("SEMANTIC-DOMAIN-COLOR-ADOPTION-1", () => {
 
   it("ops tickets inherit Reporting domain surfaces", () => {
     expect(read("client/src/components/kitchen/KitchenExecutionCard.tsx")).toContain(
-      'semanticDomainReportingSurfaceClass("kitchen")'
+      'domain="kitchen"'
     );
     expect(read("client/src/components/operational-workspace/OperationalCard.tsx")).toContain(
-      'semanticDomainReportingSurfaceClass("orders")'
+      'domain="orders"'
     );
     expect(read("client/src/components/screen-management/FleetScreenCard.tsx")).toContain(
       'semanticDomainReportingSurfaceClass("analytics")'

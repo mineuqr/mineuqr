@@ -31,6 +31,15 @@ export type OrderPresentationAction = Readonly<{
   variant: "primary" | "secondary" | "destructive";
 }>;
 
+/**
+ * OPERATIONAL-ORDER-CARD-PLATFORM-1 — presentation-only line chrome.
+ * Does not encode domain workflow; adapters set when source projects a state.
+ */
+export type OrderPresentationLineState =
+  | "normal"
+  | "cancelled"
+  | "complimentary";
+
 export type OrderPresentationLineItem = Readonly<{
   lineItemId: number;
   quantityLabel: string;
@@ -43,6 +52,8 @@ export type OrderPresentationLineItem = Readonly<{
    * Projected display labels only. Always an array (empty when none).
    */
   modifiers: readonly string[];
+  /** Optional presentation state — defaults to normal when omitted. */
+  lineState?: OrderPresentationLineState;
 }>;
 
 export type OrderPresentationTiming = Readonly<{

@@ -16,6 +16,9 @@ import {
   DEFAULT_PRINT_FILTERS,
   useSavedFilters,
 } from "@/lib/operational-workspace/useSavedFilters";
+import {
+  OperationalOrderStatus,
+} from "@/design-system/operational-order-card";
 import { formatProjectedFulfilmentLabel } from "@/lib/order-presentation/formatProjectedFulfilment";
 import { operationalDisplayReference } from "@/lib/operational-workspace/orderDisplayIdentity";
 import { useCurrentPrinter } from "@/lib/print-workspace/useCurrentPrinter";
@@ -331,11 +334,16 @@ export function PrintWorkspacePanel({
                           )}
                         >
                           <div className="flex items-start justify-between gap-2">
-                            <div>
+                            <div className="min-w-0 space-y-1">
                               <p className="font-semibold text-white">{card.displayReference}</p>
-                              <p className="text-xs text-slate-400">
-                                {card.tableLabel} · {card.statusLabel}
-                              </p>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <OperationalOrderStatus
+                                  status={card.status}
+                                  statusLabel={card.statusLabel}
+                                  isAr={isAr}
+                                />
+                                <span className="text-xs text-slate-400">{card.tableLabel}</span>
+                              </div>
                               {card.notesPreview ? (
                                 <p className="mt-1 line-clamp-2 break-words text-xs text-slate-400">
                                   {card.notesPreview}

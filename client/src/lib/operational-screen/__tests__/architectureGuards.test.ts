@@ -62,33 +62,41 @@ describe("OPERATIONAL-SCREEN-CLIENT-1 architecture guards", () => {
   it("OPERATIONAL-CARD-POLISH-1: operational cards use English numerals", () => {
     const typography = read("client/src/lib/operational-screen/operationalCardTypography.ts");
     const mapper = read("client/src/lib/order-presentation/mapOrderPresentation.ts");
-    const card = read("client/src/components/kitchen/KitchenExecutionCard.tsx");
+    const quantity = read(
+      "client/src/design-system/operational-order-card/components/OperationalOrderQuantity.tsx"
+    );
     expect(typography).toContain("formatOperationalElapsedCompact");
     expect(mapper).toContain("formatOperationalElapsedCompact");
-    expect(card).toContain("formatOperationalQuantity");
-    expect(card).not.toContain("toArabicDigits");
+    expect(quantity).toContain("formatOperationalQuantity");
+    expect(quantity).not.toContain("toArabicDigits");
   });
 
   it("OPERATIONAL-CARD-POLISH-1: execution footer groups elapsed time and status", () => {
-    const card = read("client/src/components/kitchen/KitchenExecutionCard.tsx");
-    expect(card).toContain("OperationalExecutionFooter");
-    expect(card).toContain("presentation.statusLabel");
-    expect(card).not.toContain("KitchenStatusIndicator");
+    const footer = read(
+      "client/src/design-system/operational-order-card/components/OperationalOrderFooter.tsx"
+    );
+    expect(footer).toContain("OperationalOrderTimeline");
+    expect(footer).toContain("presentation.statusLabel");
+    expect(footer).not.toContain("KitchenStatusIndicator");
   });
 
   it("OPERATIONAL-CARD-POLISH-2: operational item table uses fixed quantity column", () => {
-    const card = read("client/src/components/kitchen/KitchenExecutionCard.tsx");
+    const item = read(
+      "client/src/design-system/operational-order-card/components/OperationalOrderItem.tsx"
+    );
     const density = read("client/src/lib/operational-screen/density/presentationDensityModels.ts");
-    expect(card).toContain("OperationalItemTable");
-    expect(card).toContain("quantityColumnClass");
-    expect(card).not.toMatch(/×\{qty\}|×\$\{/);
+    expect(item).toContain("OperationalOrderQuantity");
+    expect(item).toContain("quantityColumnClass");
+    expect(item).not.toMatch(/×\{qty\}|×\$\{/);
     expect(density).toContain("w-[40px]");
   });
 
   it("OPERATIONAL-CARD-POLISH-2B: item rows use ultra-light separators", () => {
-    const card = read("client/src/components/kitchen/KitchenExecutionCard.tsx");
+    const item = read(
+      "client/src/design-system/operational-order-card/components/OperationalOrderItem.tsx"
+    );
     const typography = read("client/src/lib/operational-screen/operationalCardTypography.ts");
-    expect(card).toContain("OPERATIONAL_ITEM_ROW_DIVIDER_CLASS");
+    expect(item).toContain("OPERATIONAL_ITEM_ROW_DIVIDER_CLASS");
     expect(typography).toContain("border-border/[0.08]");
   });
 

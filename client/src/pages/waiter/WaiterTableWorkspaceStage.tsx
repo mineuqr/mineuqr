@@ -1,5 +1,9 @@
 import { Loader2 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import {
+  OperationalOrderCard,
+  mapWaiterOrderPresentation,
+} from "@/design-system/operational-order-card";
 import { formatLocaleDateTime } from "@/lib/numericPresentation";
 import { screenTrpc } from "@/lib/operational-screen/screenTrpc";
 import { trpc } from "@/lib/trpc";
@@ -175,74 +179,27 @@ export function WaiterTableWorkspaceStage({
               {ar ? "لا توجد طلبات لهذه الجلسة" : "No orders for this session"}
             </p>
           ) : (
-            workspace.orders.map((order) => (
-              <article
-                key={order.orderId}
-                className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-3"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-semibold">{order.displayReference}</p>
-                    <p className="text-xs text-white/50 mt-1">
-                      {formatDateTime(order.createdAt, ar)}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs text-amber-300 font-medium">
-                      {order.status}
-                    </p>
-                    <p className="text-sm font-semibold mt-1">
-                      {order.totalAmount}
-                    </p>
-                  </div>
-                </div>
-
-                {order.notes ? (
-                  <div className="rounded-xl bg-black/20 px-3 py-2">
-                    <p className="text-xs uppercase tracking-wide text-white/40 mb-1">
-                      {ar ? "ملاحظات الطلب" : "Order notes"}
-                    </p>
-                    <p className="text-sm text-white/80 whitespace-pre-wrap">
-                      {order.notes}
-                    </p>
-                  </div>
-                ) : null}
-
-                <ul className="space-y-3">
-                  {order.lineItems.map((item) => {
-                    const name =
-                      ar || !item.nameEn ? item.nameAr : item.nameEn;
-                    return (
-                      <li
-                        key={item.lineItemId}
-                        className="border-t border-white/10 pt-3 first:border-0 first:pt-0"
-                      >
-                        <div className="flex justify-between gap-3">
-                          <p className="font-medium">
-                            {item.quantity}× {name}
-                          </p>
-                          <p className="text-sm text-white/70 shrink-0">
-                            {item.price}
-                          </p>
-                        </div>
-                        {item.modifiers.length > 0 ? (
-                          <p className="text-xs text-white/50 mt-1">
-                            {ar ? "الإضافات" : "Modifiers"}:{" "}
-                            {item.modifiers.join(", ")}
-                          </p>
-                        ) : null}
-                        {item.itemNotes ? (
-                          <p className="text-xs text-white/70 mt-1 whitespace-pre-wrap">
-                            {ar ? "ملاحظات الصنف" : "Item notes"}:{" "}
-                            {item.itemNotes}
-                          </p>
-                        ) : null}
-                      </li>
-                    );
-                  })}
-                </ul>
-              </article>
-            ))
+            workspace.orders.map((order) => {
+              const { presentation, linePrices } = mapWaiterOrderPresentation(
+                order,
+                { tableNumber: displayTable }
+              );
+              return (
+                <OperationalOrderCard
+                  key={order.orderId}
+                  presentation={presentation}
+                  language={language}
+                  density="compact"
+                  domain="orders"
+                  showFinancial
+                  showCustomer={false}
+                  showSlaTimeline
+                  showExecutionFooter={false}
+                  actionMode="none"
+                  linePrices={linePrices}
+                />
+              );
+            })
           )}
         </section>
       </main>

@@ -76,11 +76,14 @@ describe("REPORTING-SEMANTIC-SURFACE-PLATFORM-ADOPTION-1", () => {
 
   it("ops / register / board business cards consume Reporting surfaces", () => {
     expect(read("client/src/components/kitchen/KitchenExecutionCard.tsx")).toContain(
-      'semanticDomainReportingSurfaceClass("kitchen")'
+      'domain="kitchen"'
     );
     expect(
       read("client/src/components/operational-workspace/OperationalCard.tsx")
-    ).toContain('semanticDomainReportingSurfaceClass("orders")');
+    ).toContain('domain="orders"');
+    expect(
+      read("client/src/design-system/operational-order-card/components/OperationalOrderCard.tsx")
+    ).toContain("semanticDomainReportingSurfaceClass");
     expect(
       read("client/src/components/dashboard/OperationalBoardCard.tsx")
     ).toContain('semanticDomainReportingSurfaceClass("orders")');

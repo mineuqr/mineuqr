@@ -7,6 +7,7 @@ export type {
   OrderPresentationIndicator,
   OrderPresentationLifecycle,
   OrderPresentationLineItem,
+  OrderPresentationLineState,
   OrderPresentationModel,
   OrderPresentationPriority,
   OrderPresentationTiming,

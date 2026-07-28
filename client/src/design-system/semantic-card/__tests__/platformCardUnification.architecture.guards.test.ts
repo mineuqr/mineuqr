@@ -91,10 +91,14 @@ describe("PLATFORM-CARD-DESIGN-SYSTEM-UNIFICATION-1", () => {
     const fleet = read(
       "client/src/components/screen-management/FleetScreenCard.tsx"
     );
-    expect(kitchen).toContain('semanticDomainReportingSurfaceClass("kitchen")');
-    expect(kitchen).not.toContain("shadow-[0_1px_2px");
-    expect(ops).toContain('semanticDomainReportingSurfaceClass("orders")');
-    expect(ops).not.toContain("shadow-sm transition-all");
+    const platform = read(
+      "client/src/design-system/operational-order-card/components/OperationalOrderCard.tsx"
+    );
+    expect(kitchen).toContain("OperationalOrderCard");
+    expect(kitchen).toContain('domain="kitchen"');
+    expect(ops).toContain("OperationalOrderCard");
+    expect(ops).toContain('domain="orders"');
+    expect(platform).toContain("semanticDomainReportingSurfaceClass");
     expect(fleet).toContain('semanticDomainReportingSurfaceClass("analytics")');
     expect(fleet).toContain("SEMANTIC_TONE.row");
   });
