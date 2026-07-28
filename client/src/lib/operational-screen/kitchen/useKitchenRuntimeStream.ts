@@ -11,6 +11,7 @@ import {
 import { useKitchenArrivalNotifications } from "./useKitchenArrivalNotifications";
 import { noteOrderLifecycleObserverRefresh } from "@/lib/order-lifecycle-latency";
 import { subscribeOrderLifecycleUpdates } from "@/lib/order-lifecycle-latency/orderLifecycleBroadcast";
+import { kitchenQueueStructuralSharing } from "@/lib/read-freshness/queryStructuralSharing";
 
 export type { KitchenProjectionDiagnostics, KitchenRuntimeStream };
 
@@ -40,6 +41,7 @@ export function useKitchenRuntimeStream(): KitchenRuntimeStream & {
       refetchInterval: visible && kitchenQueueSupported ? DATA_POLL_INTERVAL_MS : false,
       refetchOnWindowFocus: true,
       placeholderData: (prev) => prev,
+      structuralSharing: kitchenQueueStructuralSharing,
     }
   );
 

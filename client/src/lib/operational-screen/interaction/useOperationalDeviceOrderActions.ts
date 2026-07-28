@@ -16,6 +16,8 @@ import {
 } from "@/lib/order-lifecycle-latency";
 import { publishOrderLifecycleUpdate } from "@/lib/order-lifecycle-latency/orderLifecycleBroadcast";
 import { orderLifecycleNowMs } from "@shared/order-lifecycle-latency";
+import { confirmOrderStatusWrite } from "@shared/read-freshness";
+import { targetStatusForDeviceAction } from "../../../../../server/operational-device/domain/deviceOrderExecution";
 
 /**
  * ORDER-INTERACTION-PERFORMANCE-1 — device order execution.
@@ -37,11 +39,14 @@ export function useOperationalDeviceOrderActions() {
       markOrderLifecycleClient(active, "mutation_success");
       markOrderLifecycleClient(active, "visible_update");
 
+      const targetStatus = targetStatusForDeviceAction(vars.action);
+      confirmOrderStatusWrite(vars.orderId, targetStatus);
+
       publishOrderLifecycleUpdate({
         type: "order_status_changed",
         restaurantId,
         orderId: vars.orderId,
-        status: vars.action,
+        status: targetStatus,
         at: Date.now(),
       });
 

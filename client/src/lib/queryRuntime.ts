@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { activeOrderListStructuralSharing } from "@/lib/read-freshness/queryStructuralSharing";
 
 /** Single dashboard order poll interval (was 5s / 10s / 15s). */
 export const DASHBOARD_ORDER_LIST_POLL_MS = 10_000;
@@ -9,8 +10,12 @@ export const DASHBOARD_ORDER_LIST_POLL_MS = 10_000;
  */
 export const OPERATIONAL_LIFECYCLE_POLL_MS = 3_000;
 
-/** Customer order status page (PR-CUX-1B). */
-export const CUSTOMER_ORDER_STATUS_POLL_MS = 8_000;
+/**
+ * Customer order status page (PR-CUX-1B).
+ * ORDER-STATE-PROPAGATION-REMEDIATION-1 — tightened from 8s (write-model poll;
+ * independent of operational projection freshness governance).
+ */
+export const CUSTOMER_ORDER_STATUS_POLL_MS = 3_000;
 
 export function customerOrderStatusQueryOptions(
   enabled: boolean,
@@ -102,6 +107,7 @@ export function orderReadListQueryOptions(enabled: boolean) {
     enabled,
     refetchInterval: enabled ? OPERATIONAL_LIFECYCLE_POLL_MS : false,
     staleTime: 0,
+    structuralSharing: activeOrderListStructuralSharing,
   } as const;
 }
 

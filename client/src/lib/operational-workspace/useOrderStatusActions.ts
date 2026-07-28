@@ -12,6 +12,10 @@ import {
 } from "@/lib/order-lifecycle-latency";
 import { publishOrderLifecycleUpdate } from "@/lib/order-lifecycle-latency/orderLifecycleBroadcast";
 import { orderLifecycleNowMs } from "@shared/order-lifecycle-latency";
+import {
+  clearOrderStatusWriteConfirmation,
+  confirmOrderStatusWrite,
+} from "@shared/read-freshness";
 
 type ListActiveData = RouterOutputs["order"]["read"]["listActive"];
 
@@ -56,6 +60,9 @@ function patchListActive(
 /**
  * ORDER-LIFECYCLE-LATENCY-REMEDIATION-1
  * Optimistic listActive patch + non-blocking invalidate; deferred server relay.
+ *
+ * ORDER-STATE-PROPAGATION-REMEDIATION-1
+ * Confirm write watermark so structuralSharing rejects stale projection refetches.
  */
 export function useOrderStatusActions(restaurantId: number, onSuccess?: () => void) {
   const utils = trpc.useUtils();
@@ -70,16 +77,20 @@ export function useOrderStatusActions(restaurantId: number, onSuccess?: () => vo
         input,
         data: utils.order.read.listActive.getData(input),
       }));
+      confirmOrderStatusWrite(id, status);
       for (const { input } of snapshots) {
         utils.order.read.listActive.setData(input, (old) =>
           patchListActive(old, id, status)
         );
       }
-      return { snapshots };
+      return { snapshots, orderId: id };
     },
     onError: (_err, _vars, ctx) => {
       const active = getActiveOrderLifecycleClientTrace();
       markOrderLifecycleClient(active, "mutation_error");
+      if (ctx?.orderId != null) {
+        clearOrderStatusWriteConfirmation(ctx.orderId);
+      }
       if (ctx?.snapshots) {
         for (const { input, data } of ctx.snapshots) {
           utils.order.read.listActive.setData(input, data);
@@ -92,6 +103,8 @@ export function useOrderStatusActions(restaurantId: number, onSuccess?: () => vo
       markOrderLifecycleClient(active, "mutation_success");
       markOrderLifecycleClient(active, "visible_update");
 
+      confirmOrderStatusWrite(vars.id, result.newStatus ?? vars.status);
+
       publishOrderLifecycleUpdate({
         type: "order_status_changed",
         restaurantId,
@@ -101,6 +114,7 @@ export function useOrderStatusActions(restaurantId: number, onSuccess?: () => vo
       });
 
       // Non-blocking refresh — do not await on the mutation critical path.
+      // Stale projection payloads are rejected by Read Freshness Governance.
       markOrderLifecycleClient(active, "invalidate_start");
       const invStarted = orderLifecycleNowMs();
       void Promise.all([
