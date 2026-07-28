@@ -150,70 +150,70 @@ export type SemanticDomainAccent = {
  */
 export const SEMANTIC_DOMAIN_ACCENT = Object.freeze({
   analytics: {
-    border: "border-cyan-500/40",
+    border: "border-cyan-500/52",
     icon: "text-cyan-400",
     hoverGlow:
-      "hover:border-cyan-400/55 hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08),0_0_0_1px_rgba(34,211,238,0.14),0_10px_28px_-8px_rgba(34,211,238,0.28)]",
+      "hover:border-cyan-400/70 hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.11),0_0_0_1px_rgba(34,211,238,0.20),0_14px_36px_-6px_rgba(34,211,238,0.38)]",
   },
   payments: {
-    border: "border-emerald-500/40",
+    border: "border-emerald-500/52",
     icon: "text-emerald-400",
     hoverGlow:
-      "hover:border-emerald-400/55 hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08),0_0_0_1px_rgba(52,211,153,0.14),0_10px_28px_-8px_rgba(52,211,153,0.28)]",
+      "hover:border-emerald-400/70 hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.11),0_0_0_1px_rgba(52,211,153,0.20),0_14px_36px_-6px_rgba(52,211,153,0.38)]",
   },
   revenue: {
-    border: "border-emerald-500/45",
+    border: "border-emerald-500/58",
     icon: "text-emerald-300",
     hoverGlow:
-      "hover:border-emerald-400/60 hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08),0_0_0_1px_rgba(52,211,153,0.16),0_12px_32px_-8px_rgba(52,211,153,0.32)]",
+      "hover:border-emerald-400/75 hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12),0_0_0_1px_rgba(52,211,153,0.22),0_16px_40px_-6px_rgba(52,211,153,0.42)]",
   },
   kitchen: {
-    border: "border-violet-500/40",
+    border: "border-violet-500/52",
     icon: "text-violet-400",
     hoverGlow:
-      "hover:border-violet-400/55 hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08),0_0_0_1px_rgba(167,139,250,0.14),0_10px_28px_-8px_rgba(167,139,250,0.28)]",
+      "hover:border-violet-400/70 hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.11),0_0_0_1px_rgba(167,139,250,0.20),0_14px_36px_-6px_rgba(167,139,250,0.38)]",
   },
   orders: {
-    border: "border-sky-500/40",
+    border: "border-sky-500/52",
     icon: "text-sky-400",
     hoverGlow:
-      "hover:border-sky-400/55 hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08),0_0_0_1px_rgba(56,189,248,0.14),0_10px_28px_-8px_rgba(56,189,248,0.28)]",
+      "hover:border-sky-400/70 hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.11),0_0_0_1px_rgba(56,189,248,0.20),0_14px_36px_-6px_rgba(56,189,248,0.38)]",
   },
   qr: {
-    border: "border-amber-500/40",
+    border: "border-amber-500/52",
     icon: "text-amber-400",
     hoverGlow:
-      "hover:border-amber-400/55 hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08),0_0_0_1px_rgba(251,191,36,0.14),0_10px_28px_-8px_rgba(251,191,36,0.28)]",
+      "hover:border-amber-400/70 hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.11),0_0_0_1px_rgba(251,191,36,0.20),0_14px_36px_-6px_rgba(251,191,36,0.38)]",
   },
   growth: {
-    border: "border-teal-500/40",
+    border: "border-teal-500/52",
     icon: "text-teal-300",
     hoverGlow:
-      "hover:border-teal-400/55 hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08),0_0_0_1px_rgba(45,212,191,0.16),0_12px_32px_-8px_rgba(45,212,191,0.30)]",
+      "hover:border-teal-400/70 hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12),0_0_0_1px_rgba(45,212,191,0.22),0_16px_40px_-6px_rgba(45,212,191,0.40)]",
   },
   success: {
-    border: "border-green-500/40",
+    border: "border-green-500/52",
     icon: SEMANTIC_TONE.icon.success,
     hoverGlow:
-      "hover:border-green-400/55 hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08),0_0_0_1px_rgba(74,222,128,0.14),0_10px_28px_-8px_rgba(74,222,128,0.26)]",
+      "hover:border-green-400/70 hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.11),0_0_0_1px_rgba(74,222,128,0.20),0_14px_36px_-6px_rgba(74,222,128,0.36)]",
   },
   warning: {
-    border: "border-amber-500/40",
+    border: "border-amber-500/52",
     icon: "text-amber-400",
     hoverGlow:
-      "hover:border-amber-400/55 hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08),0_0_0_1px_rgba(251,191,36,0.14),0_10px_28px_-8px_rgba(251,191,36,0.26)]",
+      "hover:border-amber-400/70 hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.11),0_0_0_1px_rgba(251,191,36,0.20),0_14px_36px_-6px_rgba(251,191,36,0.36)]",
   },
   danger: {
-    border: "border-red-500/40",
+    border: "border-red-500/52",
     icon: SEMANTIC_TONE.icon.danger,
     hoverGlow:
-      "hover:border-red-400/55 hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08),0_0_0_1px_rgba(248,113,113,0.14),0_10px_28px_-8px_rgba(248,113,113,0.26)]",
+      "hover:border-red-400/70 hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.11),0_0_0_1px_rgba(248,113,113,0.20),0_14px_36px_-6px_rgba(248,113,113,0.36)]",
   },
   information: {
-    border: "border-sky-500/40",
+    border: "border-sky-500/52",
     icon: "text-sky-400",
     hoverGlow:
-      "hover:border-sky-400/55 hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08),0_0_0_1px_rgba(56,189,248,0.14),0_10px_28px_-8px_rgba(56,189,248,0.28)]",
+      "hover:border-sky-400/70 hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.11),0_0_0_1px_rgba(56,189,248,0.20),0_14px_36px_-6px_rgba(56,189,248,0.38)]",
   },
 } as const satisfies Record<SemanticDomain, SemanticDomainAccent>);
 

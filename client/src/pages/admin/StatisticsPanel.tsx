@@ -101,30 +101,35 @@ export function StatisticsPanel({ showExport = true }: StatisticsPanelProps) {
             value={platform?.totalRestaurants ?? 0}
             icon={UtensilsCrossed}
             tone="info"
+            domain="analytics"
           />
           <SemanticKpiCard
             label={t("admin.totalUsers") || "Total Users"}
             value={platform?.totalUsers ?? executive?.totalUsers ?? 0}
             icon={Users}
             tone="info"
+            domain="information"
           />
           <SemanticKpiCard
             label={t("admin.totalMenuItems") || "Total Menu Items"}
             value={platform?.totalMenuItems ?? 0}
             icon={LayoutGrid}
             tone="info"
+            domain="orders"
           />
           <SemanticKpiCard
             label={t("admin.totalCategories") || "Total Categories"}
             value={platform?.totalCategories ?? 0}
             icon={FolderOpen}
             tone="info"
+            domain="analytics"
           />
           <SemanticKpiCard
             label={t("admin.totalOffers") || "Total Offers"}
             value={platform?.totalOffers ?? 0}
             icon={Tag}
             tone="info"
+            domain="growth"
           />
         </div>
       </div>
@@ -139,6 +144,7 @@ export function StatisticsPanel({ showExport = true }: StatisticsPanelProps) {
             value={executive?.commercialSubscribers ?? 0}
             icon={Users}
             tone="info"
+            domain="growth"
             hint={`${executive?.activeSubscriptions ?? 0} ${t("admin.active") || "Active"}`}
           />
           <SemanticKpiCard
@@ -146,6 +152,7 @@ export function StatisticsPanel({ showExport = true }: StatisticsPanelProps) {
             value={formatAdminRevenueUSD(mrr, language === "ar" ? "ar" : "en")}
             icon={DollarSign}
             tone="success"
+            domain="growth"
             valueVariant="revenue"
             valueDir="ltr"
             hint={t("admin.estimatedMrrHint") || "Canonical owner-based MRR"}
@@ -155,6 +162,7 @@ export function StatisticsPanel({ showExport = true }: StatisticsPanelProps) {
             value={formatAdminRevenueUSD(arr, language === "ar" ? "ar" : "en")}
             icon={TrendingUp}
             tone="success"
+            domain="revenue"
             valueVariant="revenue"
             valueDir="ltr"
             hint="MRR × 12"
@@ -164,6 +172,7 @@ export function StatisticsPanel({ showExport = true }: StatisticsPanelProps) {
             value="—"
             icon={RotateCcw}
             tone="neutral"
+            domain="information"
             hint={
               language === "ar"
                 ? "غير متوفر — لا مقياس تجاري معتمد"

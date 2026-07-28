@@ -75,7 +75,7 @@ export const restaurantDash = {
   ),
   kpiCardSecondary: cn(pricingPanelBase, restaurantHoverGlow, "gap-0 py-0"),
   kpiCardSupporting: cn(
-    "rounded-xl border border-cyan-500/20 bg-slate-900/40 shadow-none gap-0 py-0",
+    "rounded-xl border border-cyan-500/28 bg-slate-900/45 shadow-none gap-0 py-0",
     restaurantHoverGlow
   ),
   /** Financial relationship strip */

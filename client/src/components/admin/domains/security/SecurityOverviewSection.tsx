@@ -32,12 +32,14 @@ export function SecurityOverviewSection() {
               icon={BarChart3}
               value={formatAdminKpiNumber(data?.total ?? 0)}
               tone="info"
+              domain="analytics"
             />
             <SemanticKpiCard
               label={t("admin.security.overview.eventsToday")}
               icon={CalendarDays}
               value={formatAdminKpiNumber(data?.today ?? 0)}
               tone="info"
+              domain="information"
             />
             <SemanticKpiCard
               label={t("admin.security.overview.categories")}
@@ -47,6 +49,7 @@ export function SecurityOverviewSection() {
               )}
               hint={t("admin.security.overview.categoriesHint")}
               tone="neutral"
+              domain="analytics"
             />
             <SemanticKpiCard
               label={t("admin.security.overview.severity")}
@@ -56,6 +59,7 @@ export function SecurityOverviewSection() {
               )}
               hint={t("admin.security.overview.severityHint")}
               tone="warning"
+              domain="warning"
             />
           </div>
 

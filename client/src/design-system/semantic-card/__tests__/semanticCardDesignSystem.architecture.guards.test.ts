@@ -47,8 +47,8 @@ describe("SEMANTIC-CARD-DESIGN-SYSTEM-1", () => {
   });
 
   it("panel base is the single cyan panel string", () => {
-    expect(SEMANTIC_PANEL_BASE).toContain("border-cyan-500/30");
-    expect(SEMANTIC_PANEL_BASE).toContain("from-slate-800/50");
+    expect(SEMANTIC_PANEL_BASE).toContain("border-cyan-500/40");
+    expect(SEMANTIC_PANEL_BASE).toContain("from-slate-800/55");
   });
 
   it("ExecutivePeriodDashboard does not redefine CATEGORY_STYLE", () => {

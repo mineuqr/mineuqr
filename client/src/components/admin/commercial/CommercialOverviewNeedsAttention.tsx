@@ -8,6 +8,7 @@ import { formatAdminKpiNumber } from "@/lib/admin/formatAdminCurrency";
 import {
   SemanticKpiCard,
   SemanticKpiSkeleton,
+  type SemanticDomain,
   type SemanticTone,
 } from "@/design-system/semantic-card";
 
@@ -23,12 +24,13 @@ type AttentionConfig = {
   key: AttentionKey;
   icon: LucideIcon;
   tone: SemanticTone;
+  domain: SemanticDomain;
 };
 
 const ATTENTION_CONFIG: AttentionConfig[] = [
-  { key: "expiringWithin30Days", icon: Clock, tone: "warning" },
-  { key: "expiredAccounts", icon: AlertTriangle, tone: "danger" },
-  { key: "canceledAccounts", icon: Ban, tone: "warning" },
+  { key: "expiringWithin30Days", icon: Clock, tone: "warning", domain: "warning" },
+  { key: "expiredAccounts", icon: AlertTriangle, tone: "danger", domain: "danger" },
+  { key: "canceledAccounts", icon: Ban, tone: "warning", domain: "warning" },
 ];
 
 type CommercialOverviewNeedsAttentionProps = {
@@ -57,7 +59,7 @@ export function CommercialOverviewNeedsAttention({
 
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
-      {ATTENTION_CONFIG.map(({ key, icon, tone }) => {
+      {ATTENTION_CONFIG.map(({ key, icon, tone, domain }) => {
         const hint = hints[key];
         const href = drillHref[key];
         const card = (
@@ -67,6 +69,7 @@ export function CommercialOverviewNeedsAttention({
             icon={icon}
             hint={hint}
             tone={tone}
+            domain={domain}
             valueDir="ltr"
           />
         );

@@ -16,6 +16,7 @@ import {
   SEMANTIC_KPI_GRID,
   SemanticKpiCard,
   semanticPanel,
+  type SemanticDomain,
   type SemanticTone,
 } from "@/design-system/semantic-card";
 import { cn } from "@/lib/utils";
@@ -34,15 +35,16 @@ type HealthStatusConfig = {
   key: HealthStatusKey;
   icon: LucideIcon;
   tone: SemanticTone;
+  domain: SemanticDomain;
 };
 
 /** Status → SemanticTone — meanings owned by commercial; chrome by design-system. */
 const HEALTH_STATUS_CONFIG: HealthStatusConfig[] = [
-  { key: "active", icon: CheckCircle2, tone: "success" },
-  { key: "trial", icon: Clock, tone: "info" },
-  { key: "canceled", icon: Ban, tone: "warning" },
-  { key: "expired", icon: AlertTriangle, tone: "danger" },
-  { key: "inactive", icon: MinusCircle, tone: "neutral" },
+  { key: "active", icon: CheckCircle2, tone: "success", domain: "success" },
+  { key: "trial", icon: Clock, tone: "info", domain: "information" },
+  { key: "canceled", icon: Ban, tone: "warning", domain: "warning" },
+  { key: "expired", icon: AlertTriangle, tone: "danger", domain: "danger" },
+  { key: "inactive", icon: MinusCircle, tone: "neutral", domain: "analytics" },
 ];
 
 type CommercialOverviewSubscriptionHealthProps = {
@@ -80,13 +82,14 @@ export function CommercialOverviewSubscriptionHealth({
 
   return (
     <div className={SEMANTIC_KPI_GRID.dense}>
-      {HEALTH_STATUS_CONFIG.map(({ key, icon, tone }) => (
+      {HEALTH_STATUS_CONFIG.map(({ key, icon, tone, domain }) => (
         <SemanticKpiCard
           key={key}
           label={labels[key]}
           value={formatAdminKpiNumber(subscriptionHealth[key])}
           icon={icon}
           tone={tone}
+          domain={domain}
           valueDir="ltr"
         />
       ))}

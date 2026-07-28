@@ -264,6 +264,7 @@
 
   /*
    * SEMANTIC-CARD-PREMIUM-INTERACTION-1
+   * + SEMANTIC-VISUAL-INTENSITY-CALIBRATION-1 (~+30% light alpha / rim — not saturation)
    * Layered lighting + depth for `.semantic-card` (panel SSOT class).
    * GPU-friendly: opacity / transform / filter / box-shadow only.
    * Does not change layout spacing or typography.
@@ -272,8 +273,9 @@
     position: relative;
     isolation: isolate;
     box-shadow:
-      inset 0 1px 0 0 rgb(255 255 255 / 0.055),
-      0 1px 2px rgb(2 6 23 / 0.18);
+      inset 0 1px 0 0 rgb(255 255 255 / 0.075),
+      0 1px 3px rgb(2 6 23 / 0.22),
+      0 0 0 1px rgb(34 211 238 / 0.04);
   }
 
   .semantic-card::before {
@@ -285,16 +287,16 @@
     z-index: 0;
     background:
       radial-gradient(
-        120% 70% at 50% -15%,
-        rgb(34 211 238 / 0.10),
-        transparent 55%
+        125% 75% at 50% -12%,
+        rgb(34 211 238 / 0.16),
+        transparent 58%
       ),
       radial-gradient(
-        80% 50% at 100% 100%,
-        rgb(15 23 42 / 0.35),
-        transparent 50%
+        85% 55% at 100% 100%,
+        rgb(15 23 42 / 0.42),
+        transparent 52%
       );
-    opacity: 0.75;
+    opacity: 0.92;
     transition: opacity 300ms cubic-bezier(0.22, 1, 0.36, 1);
   }
 
@@ -305,8 +307,8 @@
     inset: 0;
     border-radius: inherit;
     z-index: 0;
-    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.03);
-    opacity: 0.8;
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.05);
+    opacity: 0.9;
     transition: opacity 300ms cubic-bezier(0.22, 1, 0.36, 1);
   }
 
@@ -318,131 +320,131 @@
   .semantic-card:hover::after,
   .semantic-card:focus-within::after {
     opacity: 1;
-    box-shadow: inset 0 0 0 1px rgb(34 211 238 / 0.08);
+    box-shadow: inset 0 0 0 1px rgb(34 211 238 / 0.14);
   }
 
-  /* Primary KPI — warm amber ambient (richer, not higher saturation) */
+  /* Primary KPI — warm amber ambient (richer light, not higher saturation) */
   .semantic-card-kpi-primary::before {
     background:
       radial-gradient(
-        120% 70% at 50% -15%,
-        rgb(251 191 36 / 0.12),
-        transparent 55%
+        125% 75% at 50% -12%,
+        rgb(251 191 36 / 0.18),
+        transparent 58%
       ),
       radial-gradient(
-        80% 50% at 100% 100%,
-        rgb(15 23 42 / 0.4),
-        transparent 50%
+        85% 55% at 100% 100%,
+        rgb(15 23 42 / 0.45),
+        transparent 52%
       );
   }
 
   .semantic-card-kpi-primary:hover::after,
   .semantic-card-kpi-primary:focus-within::after {
-    box-shadow: inset 0 0 0 1px rgb(251 191 36 / 0.10);
+    box-shadow: inset 0 0 0 1px rgb(251 191 36 / 0.16);
   }
 
   /* Executive category edge wash via data-category */
   .semantic-card[data-category="cash"]::before {
     background: radial-gradient(
-      120% 70% at 50% -15%,
-      rgb(52 211 153 / 0.14),
-      transparent 55%
+      125% 75% at 50% -12%,
+      rgb(52 211 153 / 0.20),
+      transparent 58%
     );
   }
   .semantic-card[data-category="card"]::before {
     background: radial-gradient(
-      120% 70% at 50% -15%,
-      rgb(56 189 248 / 0.14),
-      transparent 55%
+      125% 75% at 50% -12%,
+      rgb(56 189 248 / 0.20),
+      transparent 58%
     );
   }
   .semantic-card[data-category="refund"]::before {
     background: radial-gradient(
-      120% 70% at 50% -15%,
-      rgb(251 113 133 / 0.12),
-      transparent 55%
+      125% 75% at 50% -12%,
+      rgb(251 113 133 / 0.17),
+      transparent 58%
     );
   }
   .semantic-card[data-category="tax"]::before {
     background: radial-gradient(
-      120% 70% at 50% -15%,
-      rgb(167 139 250 / 0.14),
-      transparent 55%
+      125% 75% at 50% -12%,
+      rgb(167 139 250 / 0.20),
+      transparent 58%
     );
   }
   .semantic-card[data-category="orders"]::before {
     background: radial-gradient(
-      120% 70% at 50% -15%,
-      rgb(251 146 60 / 0.14),
-      transparent 55%
+      125% 75% at 50% -12%,
+      rgb(251 146 60 / 0.20),
+      transparent 58%
     );
   }
   .semantic-card[data-category="net"]::before {
     background: radial-gradient(
-      120% 70% at 50% -15%,
-      rgb(45 212 191 / 0.16),
-      transparent 55%
+      125% 75% at 50% -12%,
+      rgb(45 212 191 / 0.24),
+      transparent 58%
     );
   }
 
-  /* SEMANTIC-DOMAIN-COLOR-ADOPTION-1 — soft ambient by data-domain (no body flood) */
+  /* SEMANTIC-DOMAIN-COLOR-ADOPTION-1 + INTENSITY-1 — ambient by data-domain */
   .semantic-card[data-domain="analytics"]::before {
     background: radial-gradient(
-      120% 70% at 50% -15%,
-      rgb(34 211 238 / 0.14),
-      transparent 55%
+      125% 75% at 50% -12%,
+      rgb(34 211 238 / 0.20),
+      transparent 58%
     );
   }
   .semantic-card[data-domain="payments"]::before,
   .semantic-card[data-domain="revenue"]::before {
     background: radial-gradient(
-      120% 70% at 50% -15%,
-      rgb(52 211 153 / 0.14),
-      transparent 55%
+      125% 75% at 50% -12%,
+      rgb(52 211 153 / 0.20),
+      transparent 58%
     );
   }
   .semantic-card[data-domain="kitchen"]::before {
     background: radial-gradient(
-      120% 70% at 50% -15%,
-      rgb(167 139 250 / 0.14),
-      transparent 55%
+      125% 75% at 50% -12%,
+      rgb(167 139 250 / 0.20),
+      transparent 58%
     );
   }
   .semantic-card[data-domain="orders"]::before,
   .semantic-card[data-domain="information"]::before {
     background: radial-gradient(
-      120% 70% at 50% -15%,
-      rgb(56 189 248 / 0.14),
-      transparent 55%
+      125% 75% at 50% -12%,
+      rgb(56 189 248 / 0.20),
+      transparent 58%
     );
   }
   .semantic-card[data-domain="qr"]::before,
   .semantic-card[data-domain="warning"]::before {
     background: radial-gradient(
-      120% 70% at 50% -15%,
-      rgb(251 191 36 / 0.14),
-      transparent 55%
+      125% 75% at 50% -12%,
+      rgb(251 191 36 / 0.20),
+      transparent 58%
     );
   }
   .semantic-card[data-domain="growth"]::before {
     background: radial-gradient(
-      120% 70% at 50% -15%,
-      rgb(45 212 191 / 0.16),
-      transparent 55%
+      125% 75% at 50% -12%,
+      rgb(45 212 191 / 0.22),
+      transparent 58%
     );
   }
   .semantic-card[data-domain="success"]::before {
     background: radial-gradient(
-      120% 70% at 50% -15%,
-      rgb(74 222 128 / 0.12),
-      transparent 55%
+      125% 75% at 50% -12%,
+      rgb(74 222 128 / 0.17),
+      transparent 58%
     );
   }
   .semantic-card[data-domain="danger"]::before {
     background: radial-gradient(
-      120% 70% at 50% -15%,
-      rgb(248 113 113 / 0.12),
-      transparent 55%
+      125% 75% at 50% -12%,
+      rgb(248 113 113 / 0.17),
+      transparent 58%
     );
   }
 
@@ -529,13 +531,14 @@
     isolation: isolate;
     background: linear-gradient(
       to bottom,
-      rgb(30 41 59 / 0.55),
-      rgb(15 23 42 / 0.55)
+      rgb(30 41 59 / 0.58),
+      rgb(15 23 42 / 0.58)
     );
-    border: 1px solid rgb(6 182 212 / 0.3);
+    border: 1px solid rgb(6 182 212 / 0.38);
     box-shadow:
-      inset 0 1px 0 0 rgb(255 255 255 / 0.055),
-      0 1px 2px rgb(2 6 23 / 0.18);
+      inset 0 1px 0 0 rgb(255 255 255 / 0.075),
+      0 1px 3px rgb(2 6 23 / 0.22),
+      0 0 0 1px rgb(34 211 238 / 0.04);
     transition:
       transform 300ms cubic-bezier(0.22, 1, 0.36, 1),
       box-shadow 300ms cubic-bezier(0.22, 1, 0.36, 1),
@@ -551,23 +554,23 @@
     border-radius: inherit;
     z-index: 0;
     background: radial-gradient(
-      120% 70% at 50% -15%,
-      rgb(34 211 238 / 0.10),
-      transparent 55%
+      125% 75% at 50% -12%,
+      rgb(34 211 238 / 0.16),
+      transparent 58%
     );
-    opacity: 0.7;
+    opacity: 0.9;
     transition: opacity 300ms cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   .landing-card:hover {
-    border-color: rgb(34 211 238 / 0.45);
+    border-color: rgb(34 211 238 / 0.55);
     transform: translateY(-2px);
-    filter: brightness(1.035);
+    filter: brightness(1.05);
     box-shadow:
-      inset 0 1px 0 0 rgb(255 255 255 / 0.08),
-      0 0 0 1px rgb(34 211 238 / 0.10),
-      0 10px 28px -8px rgb(6 182 212 / 0.28),
-      0 4px 12px -4px rgb(2 6 23 / 0.55);
+      inset 0 1px 0 0 rgb(255 255 255 / 0.11),
+      0 0 0 1px rgb(34 211 238 / 0.16),
+      0 12px 36px -6px rgb(6 182 212 / 0.38),
+      0 4px 14px -2px rgb(2 6 23 / 0.55);
   }
 
   .landing-card:hover::before {

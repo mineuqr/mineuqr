@@ -19,7 +19,7 @@ import {
  */
 export const SEMANTIC_PANEL_BASE = cn(
   SEMANTIC_SURFACE_PREMIUM,
-  "rounded-xl border border-cyan-500/30 bg-gradient-to-b from-slate-800/50 to-slate-900/50 shadow-none"
+  "rounded-xl border border-cyan-500/40 bg-gradient-to-b from-slate-800/55 to-slate-900/55 shadow-none"
 );
 
 /** @deprecated Prefer SEMANTIC_HOVER_PREMIUM — kept as facade alias. */
@@ -74,7 +74,7 @@ export const semanticPanel = {
   ),
   kpiSupporting: cn(
     SEMANTIC_SURFACE_PREMIUM,
-    "group rounded-xl border border-cyan-500/20 bg-slate-900/40 shadow-none",
+    "group rounded-xl border border-cyan-500/28 bg-slate-900/45 shadow-none",
     SEMANTIC_HOVER_GLOW,
     KPI_CARD_RESET
   ),
@@ -85,11 +85,11 @@ export const semanticPanel = {
   ),
   inset: cn(
     SEMANTIC_SURFACE_PREMIUM,
-    "rounded-xl border border-cyan-500/15 bg-slate-900/40"
+    "rounded-xl border border-cyan-500/22 bg-slate-900/45"
   ),
   hero: cn(
     SEMANTIC_PANEL_BASE,
-    "group border-cyan-500/25 bg-gradient-to-br from-slate-800/60 via-slate-900/70 to-slate-900/90 p-4 sm:p-5",
+    "group border-cyan-500/35 bg-gradient-to-br from-slate-800/65 via-slate-900/75 to-slate-900/90 p-4 sm:p-5",
     SEMANTIC_HOVER_GLOW
   ),
   radius: {

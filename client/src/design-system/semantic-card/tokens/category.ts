@@ -49,53 +49,53 @@ export type SemanticCategorySurface = {
 export const SEMANTIC_CATEGORY_SURFACE = Object.freeze({
   cash: {
     shell:
-      "border-emerald-500/35 bg-gradient-to-b from-emerald-950/45 to-slate-900/85",
+      "border-emerald-500/45 bg-gradient-to-b from-emerald-950/50 to-slate-900/85",
     icon: "text-emerald-400",
     value: "text-emerald-300",
-    glow: "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.07),0_0_0_1px_rgba(52,211,153,0.12),0_14px_36px_-10px_rgba(52,211,153,0.32)]",
+    glow: "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.10),0_0_0_1px_rgba(52,211,153,0.18),0_18px_44px_-8px_rgba(52,211,153,0.42)]",
   },
   card: {
     shell:
-      "border-sky-500/35 bg-gradient-to-b from-sky-950/40 to-slate-900/85",
+      "border-sky-500/45 bg-gradient-to-b from-sky-950/45 to-slate-900/85",
     icon: "text-sky-400",
     value: "text-sky-300",
-    glow: "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.07),0_0_0_1px_rgba(56,189,248,0.12),0_14px_36px_-10px_rgba(56,189,248,0.32)]",
+    glow: "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.10),0_0_0_1px_rgba(56,189,248,0.18),0_18px_44px_-8px_rgba(56,189,248,0.42)]",
   },
   refund: {
     shell:
-      "border-rose-500/35 bg-gradient-to-b from-rose-950/40 to-slate-900/85",
+      "border-rose-500/45 bg-gradient-to-b from-rose-950/45 to-slate-900/85",
     icon: "text-rose-400",
     value: "text-rose-300",
-    glow: "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.07),0_0_0_1px_rgba(251,113,133,0.12),0_14px_36px_-10px_rgba(251,113,133,0.30)]",
+    glow: "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.10),0_0_0_1px_rgba(251,113,133,0.18),0_18px_44px_-8px_rgba(251,113,133,0.40)]",
   },
   tax: {
     shell:
-      "border-violet-500/35 bg-gradient-to-b from-violet-950/40 to-slate-900/85",
+      "border-violet-500/45 bg-gradient-to-b from-violet-950/45 to-slate-900/85",
     icon: "text-violet-400",
     value: "text-violet-300",
-    glow: "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.07),0_0_0_1px_rgba(167,139,250,0.12),0_14px_36px_-10px_rgba(167,139,250,0.30)]",
+    glow: "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.10),0_0_0_1px_rgba(167,139,250,0.18),0_18px_44px_-8px_rgba(167,139,250,0.40)]",
   },
   orders: {
     shell:
-      "border-orange-500/35 bg-gradient-to-b from-orange-950/35 to-slate-900/85",
+      "border-orange-500/45 bg-gradient-to-b from-orange-950/40 to-slate-900/85",
     icon: "text-orange-400",
     value: "text-orange-300",
-    glow: "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.07),0_0_0_1px_rgba(251,146,60,0.12),0_14px_36px_-10px_rgba(251,146,60,0.30)]",
+    glow: "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.10),0_0_0_1px_rgba(251,146,60,0.18),0_18px_44px_-8px_rgba(251,146,60,0.40)]",
   },
   net: {
     shell:
-      "border-teal-500/40 bg-gradient-to-b from-teal-950/50 to-slate-900/90 sm:col-span-2 lg:col-span-2",
+      "border-teal-500/50 bg-gradient-to-b from-teal-950/55 to-slate-900/90 sm:col-span-2 lg:col-span-2",
     icon: "text-teal-300",
     value:
       "bg-gradient-to-b from-teal-200 via-emerald-300 to-teal-400 bg-clip-text text-transparent",
-    glow: "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08),0_0_0_1px_rgba(45,212,191,0.16),0_16px_40px_-10px_rgba(45,212,191,0.36)]",
+    glow: "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12),0_0_0_1px_rgba(45,212,191,0.22),0_20px_48px_-8px_rgba(45,212,191,0.48)]",
   },
   neutral: {
     shell:
-      "border-cyan-500/30 bg-gradient-to-b from-slate-800/50 to-slate-900/50",
+      "border-cyan-500/40 bg-gradient-to-b from-slate-800/55 to-slate-900/55",
     icon: "text-slate-400",
     value: "text-white",
-    glow: "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06),0_0_0_1px_rgba(34,211,238,0.10),0_12px_28px_-8px_rgba(6,182,212,0.22)]",
+    glow: "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.09),0_0_0_1px_rgba(34,211,238,0.14),0_14px_32px_-6px_rgba(6,182,212,0.30)]",
   },
 } as const satisfies Record<SemanticExecutiveCategory, SemanticCategorySurface>);
 

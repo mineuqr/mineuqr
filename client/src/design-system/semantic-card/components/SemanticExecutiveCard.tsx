@@ -89,7 +89,7 @@ export function SemanticExecutiveCard({
       />
       {/* Soft edge illumination */}
       <span
-        className="pointer-events-none absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent opacity-60 motion-safe:transition-opacity motion-safe:duration-300 group-hover:opacity-100"
+        className="pointer-events-none absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent opacity-70 motion-safe:transition-opacity motion-safe:duration-300 group-hover:opacity-100"
         aria-hidden
       />
       <div className="relative flex items-start justify-between gap-3">
