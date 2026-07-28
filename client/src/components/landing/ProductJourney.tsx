@@ -22,37 +22,49 @@ const STEPS: {
   icon: LucideIcon;
   titleKey: string;
   descKey: string;
+  accent: string;
 }[] = [
-  { icon: QrCode, titleKey: "home.journeyMenu", descKey: "home.journeyMenuDesc" },
+  {
+    icon: QrCode,
+    titleKey: "home.journeyMenu",
+    descKey: "home.journeyMenuDesc",
+    accent: "qr",
+  },
   {
     icon: ClipboardList,
     titleKey: "home.journeyOrdering",
     descKey: "home.journeyOrderingDesc",
+    accent: "ordering",
   },
   {
     icon: UtensilsCrossed,
     titleKey: "home.journeyKitchen",
     descKey: "home.journeyKitchenDesc",
+    accent: "kitchen",
   },
   {
     icon: CreditCard,
     titleKey: "home.journeyPayments",
     descKey: "home.journeyPaymentsDesc",
+    accent: "payments",
   },
   {
     icon: BarChart3,
     titleKey: "home.journeyAnalytics",
     descKey: "home.journeyAnalyticsDesc",
+    accent: "analytics",
   },
   {
     icon: Settings2,
     titleKey: "home.journeyManagement",
     descKey: "home.journeyManagementDesc",
+    accent: "mgmt",
   },
   {
     icon: TrendingUp,
     titleKey: "home.journeyGrowth",
     descKey: "home.journeyGrowthDesc",
+    accent: "growth",
   },
 ];
 
@@ -61,16 +73,19 @@ export function ProductJourney() {
   const reducedMotion = usePrefersReducedMotion();
 
   return (
-    <section id="journey" className="border-t border-border/20 py-20 sm:py-24">
+    <section
+      id="journey"
+      className="landing-section-soft border-t border-border/20 py-20 sm:py-24"
+    >
       <div className="container">
         <div className="mx-auto mb-12 max-w-2xl text-center sm:mb-14">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-primary">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
             {t("home.journeyEyebrow")}
           </p>
-          <h2 className="text-balance text-2xl font-bold tracking-tight text-foreground sm:text-3xl md:text-4xl">
+          <h2 className="landing-headline text-balance text-2xl font-bold tracking-tight text-foreground sm:text-3xl md:text-4xl">
             {t("home.journeyTitle")}
           </h2>
-          <p className="mt-3 text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
+          <p className="mt-4 text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
             {t("home.journeyDesc")}
           </p>
         </div>
@@ -88,17 +103,21 @@ export function ProductJourney() {
                   duration: 0.35,
                   delay: reducedMotion ? 0 : Math.min(index, 6) * 0.04,
                 }}
-                className="landing-card group relative rounded-2xl p-4 sm:p-5"
+                data-accent={step.accent}
+                className="landing-card group relative rounded-2xl p-4 sm:p-5 hover:-translate-y-0.5"
               >
                 <div className="mb-3 flex items-center justify-between gap-2">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary transition-transform duration-200 group-hover:scale-105">
+                  <div className="landing-accent-icon flex h-10 w-10 items-center justify-center rounded-xl border transition-transform duration-200 group-hover:scale-105">
                     <Icon className="h-5 w-5" aria-hidden />
                   </div>
-                  <span className="text-[11px] font-bold tabular-nums text-primary/80">
+                  <span
+                    className="text-[11px] font-bold tabular-nums"
+                    style={{ color: "var(--accent)" }}
+                  >
                     {String(index + 1).padStart(2, "0")}
                   </span>
                 </div>
-                <h3 className="text-sm font-semibold text-foreground sm:text-base">
+                <h3 className="text-sm font-semibold tracking-tight text-foreground sm:text-base">
                   {t(step.titleKey)}
                 </h3>
                 <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground sm:text-sm">
