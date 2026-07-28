@@ -39,6 +39,15 @@ import Statistics from "./pages/Statistics";
 import Users from "./pages/Users";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
+import Security from "./pages/Security";
+import Billing from "./pages/Billing";
+import Trust from "./pages/Trust";
+import Subprocessors from "./pages/Subprocessors";
+import Dpa from "./pages/Dpa";
+import ResponsibleDisclosure from "./pages/ResponsibleDisclosure";
+import Docs from "./pages/Docs";
+import Roadmap from "./pages/Roadmap";
+import Status from "./pages/Status";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
 import TemplateSelector from "./pages/TemplateSelector";
@@ -123,6 +132,15 @@ function Router() {
         <Route path="/users" component={Users} />
         <Route path="/terms" component={Terms} />
         <Route path="/privacy" component={Privacy} />
+        <Route path="/security/disclosure" component={ResponsibleDisclosure} />
+        <Route path="/security" component={Security} />
+        <Route path="/billing" component={Billing} />
+        <Route path="/trust" component={Trust} />
+        <Route path="/subprocessors" component={Subprocessors} />
+        <Route path="/dpa" component={Dpa} />
+        <Route path="/docs" component={Docs} />
+        <Route path="/roadmap" component={Roadmap} />
+        <Route path="/status" component={Status} />
         <Route path="/about" component={About} />
         <Route path="/contact" component={Contact} />
         <Route path="/404" component={NotFound} />

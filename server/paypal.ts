@@ -2,7 +2,21 @@ import { ENV } from "./_core/env";
 import { opsLog } from "./_core/opsLog";
 import { OPS_EVENT } from "./_core/opsTaxonomy";
 
-const PAYPAL_API_BASE = "https://api.sandbox.paypal.com";
+/** Prefer PAYPAL_API_BASE; otherwise live vs sandbox from PAYPAL_MODE. */
+const PAYPAL_API_BASE =
+  process.env.PAYPAL_API_BASE?.trim() ||
+  (process.env.PAYPAL_MODE === "live"
+    ? "https://api.paypal.com"
+    : "https://api.sandbox.paypal.com");
+
+function paypalCheckoutWebBase(): string {
+  if (process.env.PAYPAL_CHECKOUT_BASE?.trim()) {
+    return process.env.PAYPAL_CHECKOUT_BASE.trim().replace(/\/$/, "");
+  }
+  return PAYPAL_API_BASE.includes("sandbox")
+    ? "https://www.sandbox.paypal.com"
+    : "https://www.paypal.com";
+}
 
 let cachedAccessToken: { token: string; expiresAt: number } | null = null;
 
@@ -78,7 +92,9 @@ export interface CreateOrderParams {
   cancelUrl: string;
 }
 
-export async function createPayPalOrder(params: CreateOrderParams): Promise<string> {
+export async function createPayPalOrder(
+  params: CreateOrderParams
+): Promise<{ orderId: string; checkoutUrl: string }> {
   const accessToken = await getAccessToken();
 
   const response = await fetch(`${PAYPAL_API_BASE}/v2/checkout/orders`, {
@@ -121,8 +137,18 @@ export async function createPayPalOrder(params: CreateOrderParams): Promise<stri
     throw new Error(`Failed to create PayPal order: ${error}`);
   }
 
-  const data = await response.json() as { id: string };
-  return data.id;
+  const data = (await response.json()) as {
+    id: string;
+    links?: Array<{ rel: string; href: string }>;
+  };
+  const approveLink = data.links?.find(
+    (l) => l.rel === "payer-action" || l.rel === "approve"
+  )?.href;
+  const checkoutUrl =
+    approveLink ||
+    `${paypalCheckoutWebBase()}/checkoutnow?token=${data.id}`;
+
+  return { orderId: data.id, checkoutUrl };
 }
 
 export interface CaptureOrderParams {

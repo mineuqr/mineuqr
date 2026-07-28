@@ -116,7 +116,10 @@ vi.mock("./db", () => ({
 // Mock PayPal functions
 vi.mock("./paypal", () => ({
   createPayPalOrder: vi.fn(async (params: any) => {
-    return "PAYPAL-ORDER-ID-123";
+    return {
+      orderId: "PAYPAL-ORDER-ID-123",
+      checkoutUrl: "https://www.sandbox.paypal.com/checkoutnow?token=PAYPAL-ORDER-ID-123",
+    };
   }),
 }));
 

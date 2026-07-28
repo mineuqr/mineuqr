@@ -2,6 +2,8 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { HeroPreview } from "@/components/landing/HeroPreview";
 import { LandingLogo } from "@/components/landing/LandingLogo";
 import { LandingNavbar } from "@/components/landing/LandingNavbar";
+import { MarketingFooter } from "@/components/landing/MarketingFooter";
+import { useMarketingDocumentMeta } from "@/components/landing/useMarketingDocumentMeta";
 import { Button } from "@/components/ui/button";
 import { getRegisterUrl } from "@/const";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -55,6 +57,12 @@ export default function Home() {
   const { isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
   const { t, dir } = useLanguage();
+
+  useMarketingDocumentMeta({
+    title: t("home.heroTitle"),
+    description: t("home.allInOneDesc"),
+    path: "/",
+  });
 
   const startHref = () => (isAuthenticated ? "/dashboard" : getRegisterUrl());
 
@@ -238,43 +246,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-border/25 py-10 sm:py-12">
-        <div className="container">
-          <div className="flex flex-col items-center gap-8 md:flex-row md:items-start md:justify-between">
-            <div className="flex flex-col items-center gap-3 md:items-start">
-              <LandingLogo imageClassName="h-12 w-auto sm:h-14" />
-              <p className="max-w-xs text-center text-sm text-muted-foreground md:text-start">
-                {t("home.platformBadge")}
-              </p>
-            </div>
-            <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm">
-              {[
-                { href: "/about", label: t("home.aboutUs") },
-                { href: "/pricing", label: t("home.plans") },
-                { href: "/contact", label: t("home.contactUs") },
-                { href: "/terms", label: t("home.termsOfService") },
-                { href: "/privacy", label: t("home.privacyPolicy") },
-              ].map((link) => (
-                <a
-                  key={link.href}
-                  href={link.href}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setLocation(link.href);
-                  }}
-                  className="text-muted-foreground transition-colors hover:text-primary"
-                >
-                  {link.label}
-                </a>
-              ))}
-            </nav>
-          </div>
-          <p className="mt-8 text-center text-xs text-muted-foreground">
-            {t("home.allRightsReserved")} &copy; {new Date().getFullYear()} MineuQR
-          </p>
-        </div>
-      </footer>
+      <MarketingFooter />
     </div>
   );
 }

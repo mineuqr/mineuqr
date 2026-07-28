@@ -1,0 +1,29 @@
+User-agent: *
+Allow: /
+Allow: /pricing
+Allow: /about
+Allow: /contact
+Allow: /trust
+Allow: /terms
+Allow: /privacy
+Allow: /security
+Allow: /security/disclosure
+Allow: /billing
+Allow: /subprocessors
+Allow: /dpa
+Allow: /docs
+Allow: /roadmap
+Allow: /status
+Allow: /login
+Allow: /register
+
+Disallow: /dashboard
+Disallow: /admin
+Disallow: /super-admin
+Disallow: /api/
+Disallow: /screen
+Disallow: /device
+Disallow: /kiosk
+Disallow: /waiter
+
+Sitemap: https://www.mineuqr.com/sitemap.xml

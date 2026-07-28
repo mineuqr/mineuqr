@@ -24,7 +24,11 @@ import * as db from "./db";
 // Mock PayPal
 vi.mock("./paypal", () => ({
   createPayPalOrder: vi.fn(async (params: any) => {
-    return "PAYPAL-ORDER-ID-" + params.userId;
+    const orderId = "PAYPAL-ORDER-ID-" + params.userId;
+    return {
+      orderId,
+      checkoutUrl: `https://www.sandbox.paypal.com/checkoutnow?token=${orderId}`,
+    };
   }),
   capturePayPalOrder: vi.fn(async (params: any) => {
     return { status: "COMPLETED", id: params.orderId };

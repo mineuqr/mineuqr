@@ -916,7 +916,7 @@ const subscriptionRouter = router({
       const amount = input.billingCycle === "yearly" ? plan.priceYearly : plan.priceMonthly;
       if (!amount) throw new TRPCError({ code: "BAD_REQUEST", message: "السعر غير متوفر" });
 
-      const orderId = await createPayPalOrder({
+      const { orderId, checkoutUrl } = await createPayPalOrder({
         userId: ctx.user.id,
         planId: input.planId,
         planName: plan.nameAr,
@@ -926,7 +926,7 @@ const subscriptionRouter = router({
         cancelUrl,
       });
 
-      return { orderId };
+      return { orderId, checkoutUrl };
     }),
 
   createTapCheckout: verifiedProcedure

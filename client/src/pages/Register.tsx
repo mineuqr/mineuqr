@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
 import { syncAuthAfterLogin } from "@/lib/authSession";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Card,
   CardContent,
@@ -79,6 +80,7 @@ export default function Register() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<{
@@ -120,6 +122,12 @@ export default function Register() {
       next.confirmPassword = t("auth.registerConfirmRequired");
     } else if (password !== confirmPassword) {
       next.confirmPassword = t("auth.registerPasswordMismatch");
+    }
+    if (!acceptedTerms) {
+      setFormError(t("auth.registerAcceptRequired"));
+      setFieldErrors(next);
+      if (Object.keys(next).length > 0) return;
+      return;
     }
 
     if (Object.keys(next).length > 0) {
@@ -474,6 +482,43 @@ export default function Register() {
                     {fieldErrors.confirmPassword}
                   </p>
                 )}
+              </div>
+
+              <div className="flex items-start gap-3">
+                <Checkbox
+                  id="register-accept-terms"
+                  checked={acceptedTerms}
+                  onCheckedChange={(checked) => {
+                    setAcceptedTerms(checked === true);
+                    if (checked === true && formError === t("auth.registerAcceptRequired")) {
+                      setFormError(null);
+                    }
+                  }}
+                  disabled={isLoading}
+                  aria-required
+                />
+                <label
+                  htmlFor="register-accept-terms"
+                  className="text-sm leading-relaxed text-muted-foreground"
+                >
+                  {t("auth.registerAcceptPrefix")}{" "}
+                  <Link
+                    href="/terms"
+                    className="text-primary underline-offset-2 hover:underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {t("nav.terms")}
+                  </Link>{" "}
+                  {t("auth.registerAcceptAnd")}{" "}
+                  <Link
+                    href="/privacy"
+                    className="text-primary underline-offset-2 hover:underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {t("nav.privacy")}
+                  </Link>
+                  .
+                </label>
               </div>
 
               <Button

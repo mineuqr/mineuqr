@@ -9,12 +9,25 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { MarketingFooter } from "@/components/landing/MarketingFooter";
+import { useMarketingDocumentMeta } from "@/components/landing/useMarketingDocumentMeta";
+import { MINEUQR_BRAND_NAME, MINEUQR_LOGO_SRC } from "@/const/branding";
+import {
+  MINEUQR_PUBLIC_SUPPORT_EMAIL,
+  MINEUQR_PUBLIC_WHATSAPP_E164,
+} from "@/const/publicContact";
 import { trpc } from "@/lib/trpc";
 
 export default function About() {
   const [, setLocation] = useLocation();
   const { isAuthenticated } = useAuth();
   const { t, language } = useLanguage();
+
+  useMarketingDocumentMeta({
+    title: t("about.title"),
+    description: t("about.hero.description"),
+    path: "/about",
+  });
 
   const values = [
     {
@@ -53,7 +66,7 @@ export default function About() {
     { number: publicStats?.totalRestaurants?.toString() || "0", labelKey: "about.stats.restaurants", icon: UtensilsCrossed },
     { number: publicStats?.totalUsers?.toString() || "0", labelKey: "about.stats.users", icon: Users },
     { number: publicStats?.totalMenuItems?.toString() || "0", labelKey: "about.stats.menuItems", icon: LayoutGrid },
-    { number: "24/7", labelKey: "about.stats.support", icon: Globe },
+    { number: t("about.stats.supportValue"), labelKey: "about.stats.support", icon: Globe },
   ];
 
   const milestones = [
@@ -86,13 +99,13 @@ export default function About() {
             aria-label={language === "ar" ? "الصفحة الرئيسية" : "Go to homepage"}
           >
             <img
-              src="https://d2xsxph8kpxj0f.cloudfront.net/310519663504545475/fcy9GqTzfuy9H9eCsDbdLA/mineuqr-logo_150417d8.png"
-              alt=""
+              src={MINEUQR_LOGO_SRC}
+              alt={MINEUQR_BRAND_NAME}
               className="h-14 w-auto object-contain"
               draggable={false}
             />
             <span className="text-2xl font-bold text-foreground">
-              mine<span className="text-gradient-teal">uqr</span>
+              {MINEUQR_BRAND_NAME}
             </span>
           </button>
           <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
@@ -154,6 +167,28 @@ export default function About() {
 
             <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
               {t("about.hero.description")}
+            </p>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Why MineuQR */}
+      <section className="py-16 relative">
+        <div className="container relative z-10 max-w-3xl mx-auto text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+          >
+            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+              {t("about.why.title")}
+            </h2>
+            <p className="text-muted-foreground text-lg leading-relaxed mb-4">
+              {t("about.why.description")}
+            </p>
+            <p className="text-muted-foreground leading-relaxed">
+              {t("about.philosophy.description")}
             </p>
           </motion.div>
         </div>
@@ -323,17 +358,16 @@ export default function About() {
             className="text-center mb-10"
           >
             <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-              {language === 'ar' ? 'تواصل ' : 'Contact '}
-              <span className="text-gradient-teal">{language === 'ar' ? 'معنا' : 'Us'}</span>
+              {t("about.contactSection.title")}
             </h2>
             <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-              {language === 'ar' ? 'نحن هنا لمساعدتك. تواصل معنا عبر أي من القنوات التالية' : 'We are here to help. Reach out to us through any of the following channels'}
+              {t("about.contactSection.description")}
             </p>
           </motion.div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-2xl mx-auto">
             <motion.a
-              href="https://wa.me/963983933413"
+              href={`https://wa.me/${MINEUQR_PUBLIC_WHATSAPP_E164}`}
               target="_blank"
               rel="noopener noreferrer"
               initial={{ opacity: 0, y: 20 }}
@@ -348,11 +382,11 @@ export default function About() {
                 </svg>
               </div>
               <h3 className="text-lg font-bold text-foreground mb-2">WhatsApp</h3>
-              <p className="text-muted-foreground text-sm">{language === 'ar' ? 'تواصل عبر واتساب' : 'Chat on WhatsApp'}</p>
+              <p className="text-muted-foreground text-sm">{t("about.contactSection.whatsapp")}</p>
             </motion.a>
 
             <motion.a
-              href="mailto:info@mineuqr.com"
+              href={`mailto:${MINEUQR_PUBLIC_SUPPORT_EMAIL}`}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
@@ -365,8 +399,8 @@ export default function About() {
                   <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
                 </svg>
               </div>
-              <h3 className="text-lg font-bold text-foreground mb-2">{language === 'ar' ? 'البريد الإلكتروني' : 'Email'}</h3>
-              <p className="text-muted-foreground text-sm">info@mineuqr.com</p>
+              <h3 className="text-lg font-bold text-foreground mb-2">{t("about.contactSection.email")}</h3>
+              <p className="text-muted-foreground text-sm">{MINEUQR_PUBLIC_SUPPORT_EMAIL}</p>
             </motion.a>
           </div>
         </div>
@@ -401,6 +435,8 @@ export default function About() {
           </motion.div>
         </div>
       </section>
+
+      <MarketingFooter />
     </div>
   );
 }

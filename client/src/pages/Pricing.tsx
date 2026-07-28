@@ -1,4 +1,5 @@
-import { useAuth } from "@/_core/hooks/useAuth";
+import { MarketingFooter } from "@/components/landing/MarketingFooter";
+import { useMarketingDocumentMeta } from "@/components/landing/useMarketingDocumentMeta";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
@@ -12,6 +13,7 @@ import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { QrCode } from "lucide-react";
 import { formatRiyadhDate } from "@/lib/datetime";
 import { useCommercialFeatureVisibility } from "@/hooks/useCommercialFeatureVisibility";
+import { MINEUQR_PUBLIC_SUPPORT_EMAIL } from "@/const/publicContact";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,6 +24,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 function PayPalCheckoutButton({
   planId,
@@ -45,7 +48,7 @@ function PayPalCheckoutButton({
 
   const handleCheckout = async () => {
     if (!isAuthenticated) {
-      setLocation("/");
+      setLocation("/login");
       toast.info(t('pricing.loginFirst'));
       return;
     }
@@ -61,8 +64,12 @@ function PayPalCheckoutButton({
         billingCycle,
       });
 
-      if (result.orderId) {
-        const checkoutUrl = `https://www.sandbox.paypal.com/checkoutnow?token=${result.orderId}`;
+      const checkoutUrl =
+        result.checkoutUrl ||
+        (result.orderId
+          ? `https://www.paypal.com/checkoutnow?token=${result.orderId}`
+          : null);
+      if (checkoutUrl) {
         toast.success(t('pricing.redirectingToPayment'));
         window.location.href = checkoutUrl;
       }
@@ -152,7 +159,7 @@ function TapCheckoutButton({
 
   const handleCheckout = async () => {
     if (!isAuthenticated) {
-      setLocation("/");
+      setLocation("/login");
       toast.info(t('pricing.loginFirst'));
       return;
     }
@@ -255,6 +262,12 @@ export default function Pricing() {
   });
 
   const [selectedCycle, setSelectedCycle] = useState<"monthly" | "yearly">("yearly");
+
+  useMarketingDocumentMeta({
+    title: t("common.pricing"),
+    description: t("pricing.faqPaymentAnswer"),
+    path: "/pricing",
+  });
 
   if (isLoading) {
     return (
@@ -469,8 +482,8 @@ export default function Pricing() {
                       {/* Email */}
                       <a
                         href={language === 'ar' 
-                          ? `mailto:info@mineuqr.com?subject=طلب اشتراك - ${plan.nameAr}&body=مرحباً،%0A%0Aأرغب في الاشتراك في ${plan.nameAr} (الدورة: ${selectedCycle === "yearly" ? "سنوية" : "شهرية"} - $${price}).%0A%0Aالاسم: %0Aاسم المطعم: %0Aرقم الهاتف: %0A%0Aشكراً`
-                          : `mailto:info@mineuqr.com?subject=Subscription Request - ${plan.nameEn}&body=Hello,%0A%0AI would like to subscribe to ${plan.nameEn} (Cycle: ${selectedCycle} - $${price}).%0A%0AName: %0ARestaurant Name: %0APhone: %0A%0AThank you`
+                          ? `mailto:${MINEUQR_PUBLIC_SUPPORT_EMAIL}?subject=طلب اشتراك - ${plan.nameAr}&body=مرحباً،%0A%0Aأرغب في الاشتراك في ${plan.nameAr} (الدورة: ${selectedCycle === "yearly" ? "سنوية" : "شهرية"} - $${price}).%0A%0Aالاسم: %0Aاسم المطعم: %0Aرقم الهاتف: %0A%0Aشكراً`
+                          : `mailto:${MINEUQR_PUBLIC_SUPPORT_EMAIL}?subject=Subscription Request - ${plan.nameEn}&body=Hello,%0A%0AI would like to subscribe to ${plan.nameEn} (Cycle: ${selectedCycle} - $${price}).%0A%0AName: %0ARestaurant Name: %0APhone: %0A%0AThank you`
                         }
                         className="w-full flex items-center justify-center gap-2 border border-cyan-500/50 text-cyan-300 hover:bg-cyan-500/10 hover:text-cyan-200 rounded-md px-4 py-2 text-sm font-medium transition-all"
                       >
@@ -523,8 +536,8 @@ export default function Pricing() {
             </p>
             <a
               href={language === 'ar'
-                ? "mailto:info@mineuqr.com?subject=طلب اشتراك - mineuqr&body=مرحباً،%0A%0Aأرغب في الاشتراك في منصة mineuqr.%0A%0Aالاسم: %0Aاسم المطعم: %0Aالخطة المطلوبة: %0Aرقم الهاتف: %0A%0Aشكراً"
-                : "mailto:info@mineuqr.com?subject=Subscription Request - mineuqr&body=Hello,%0A%0AI would like to subscribe to mineuqr platform.%0A%0AName: %0ARestaurant Name: %0APlan: %0APhone: %0A%0AThank you"
+                ? `mailto:${MINEUQR_PUBLIC_SUPPORT_EMAIL}?subject=طلب اشتراك - mineuqr&body=مرحباً،%0A%0Aأرغب في الاشتراك في منصة mineuqr.%0A%0Aالاسم: %0Aاسم المطعم: %0Aالخطة المطلوبة: %0Aرقم الهاتف: %0A%0Aشكراً`
+                : `mailto:${MINEUQR_PUBLIC_SUPPORT_EMAIL}?subject=Subscription Request - mineuqr&body=Hello,%0A%0AI would like to subscribe to mineuqr platform.%0A%0AName: %0ARestaurant Name: %0APlan: %0APhone: %0A%0AThank you`
               }
               className="inline-flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-400 hover:from-orange-600 hover:to-orange-500 text-slate-900 font-bold px-8 py-3 rounded-lg transition-all"
             >
@@ -567,6 +580,8 @@ export default function Pricing() {
           </div>
         </div>
       </div>
+
+      <MarketingFooter />
     </div>
   );
 }

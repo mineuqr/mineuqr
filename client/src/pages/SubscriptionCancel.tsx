@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { XCircle } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { MINEUQR_PUBLIC_SUPPORT_EMAIL } from "@/const/publicContact";
 
 export default function SubscriptionCancel() {
   const [, setLocation] = useLocation();
@@ -52,7 +53,7 @@ export default function SubscriptionCancel() {
           <div className="text-xs text-muted-foreground text-center">
             <p>
               {t("common.needHelp") || "هل تحتاج إلى مساعدة؟"}{" "}
-              <a href="mailto:support@qrmenu.com" className="text-cyan-400 hover:underline">
+              <a href={`mailto:${MINEUQR_PUBLIC_SUPPORT_EMAIL}`} className="text-cyan-400 hover:underline">
                 {t("common.contactSupport") || "تواصل معنا"}
               </a>
             </p>
