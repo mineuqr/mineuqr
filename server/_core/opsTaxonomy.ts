@@ -123,6 +123,15 @@ export const OPS_EVENT = {
   order_lifecycle_latency_span: "order_lifecycle_latency_span",
   order_lifecycle_latency_observer: "order_lifecycle_latency_observer",
 
+  // REALTIME-PLATFORM-FOUNDATION-1
+  realtime_connection_opened: "realtime_connection_opened",
+  realtime_connection_closed: "realtime_connection_closed",
+  realtime_hint_published: "realtime_hint_published",
+  realtime_hint_delivered: "realtime_hint_delivered",
+  realtime_auth_failed: "realtime_auth_failed",
+  realtime_gap_detected: "realtime_gap_detected",
+  realtime_fallback_activated: "realtime_fallback_activated",
+
   // ORDER-EVENTS-1B — event consumers
   order_consumer_executed: "order_consumer_executed",
   order_consumer_failed: "order_consumer_failed",

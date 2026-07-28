@@ -8,6 +8,7 @@ import { localAuthRouter } from "../auth-local";
 import { validateAuthSecurityConfig, shouldTrustProxy } from "./authSecurity";
 import { validateDeploymentAuthReadiness } from "./deploymentReadiness";
 import { customerPushRouter } from "../customerPush/routes";
+import { realtimeHttpRouter } from "../realtime-platform/http/realtimeHttpRouter";
 import { registerConnectorProductHttpRoutes } from "./connectorProductRoutes";
 import { validateCustomerPushAtStartup } from "../customerPush/vapid";
 import {
@@ -51,6 +52,7 @@ export async function createApiApp(): Promise<Express> {
   app.post("/api/paypal/webhook", handlePayPalWebhook);
   registerConnectorProductHttpRoutes(app);
   app.use("/api/push", customerPushRouter);
+  app.use("/api/realtime", realtimeHttpRouter);
   app.use(localAuthRouter);
   app.use(
     "/api/trpc",

@@ -85,6 +85,7 @@ import {
 import { notifyOwnerNewRestaurant, notifyOwnerNewSubscription, notifyOwnerSubscriptionCancelled } from "./owner-email-notifications";
 import { generateInvoicePDFBuffer } from "./invoice-pdf";
 import { mergeRouters } from "./_core/trpc";
+import { realtimePlatformRouter } from "./realtime-platform/realtimePlatformRouter";
 import { ENV } from "./_core/env";
 import { opsLog } from "./_core/opsLog";
 import { OPS_EVENT } from "./_core/opsTaxonomy";
@@ -2826,6 +2827,7 @@ const orderRouter = router({
 
 export const appRouter = router({
   system: systemRouter,
+  realtime: realtimePlatformRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(async ({ ctx }) => {
