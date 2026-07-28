@@ -1,7 +1,10 @@
+/**
+ * SEMANTIC-SECTION-STATE-PLATFORM-1
+ * Admin empty — facade over SemanticEmptyState (admin density).
+ */
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
-import { cn } from "@/lib/utils";
-import { adminDash } from "../layout/adminDashStyles";
+import { SemanticEmptyState } from "@/design-system/semantic-section-state";
 
 type AdminEmptyStateProps = {
   icon: LucideIcon;
@@ -14,7 +17,7 @@ type AdminEmptyStateProps = {
 };
 
 export function AdminEmptyState({
-  icon: Icon,
+  icon,
   title,
   description,
   action,
@@ -22,19 +25,14 @@ export function AdminEmptyState({
   ariaLabel,
 }: AdminEmptyStateProps) {
   return (
-    <div
-      role="status"
-      aria-label={ariaLabel ?? title}
-      className={cn("p-6 sm:p-8 text-center", className)}
-    >
-      <div className={cn("mx-auto mb-3", adminDash.iconContainer)}>
-        <Icon className="h-5 w-5" aria-hidden />
-      </div>
-      <h3 className="text-sm font-semibold text-white">{title}</h3>
-      {description ? (
-        <p className="mx-auto mt-1.5 max-w-md text-xs text-cyan-300/80">{description}</p>
-      ) : null}
-      {action ? <div className="mt-4 flex justify-center">{action}</div> : null}
-    </div>
+    <SemanticEmptyState
+      variant="admin"
+      icon={icon}
+      title={title}
+      description={description}
+      action={action}
+      className={className}
+      ariaLabel={ariaLabel}
+    />
   );
 }

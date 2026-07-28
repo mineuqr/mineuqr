@@ -19,6 +19,10 @@ import {
 import { VirtualizedFleetGrid } from "@/components/screen-management/VirtualizedFleetGrid";
 import { VirtualizedFleetTable } from "@/components/screen-management/VirtualizedFleetTable";
 import { SemanticKpiCard, SemanticKpiSkeleton } from "@/design-system/semantic-card";
+import {
+  SemanticEmptyState,
+  SemanticLoadingState,
+} from "@/design-system/semantic-section-state";
 import { RestaurantSectionError } from "@/components/dashboard/RestaurantSectionStates";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,24 +60,22 @@ function FleetEmptyState({
   restaurantId: number;
 }) {
   return (
-    <div
-      className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed py-14 text-center"
-      data-fleet-state="empty"
-    >
-      <Monitor className="h-10 w-10 text-muted-foreground" />
-      <div className="max-w-md space-y-1.5">
-        <p className="text-base font-medium">{isAr ? "لا توجد شاشات بعد" : "No screens yet"}</p>
-        <p className="text-sm text-muted-foreground">
-          {isAr
-            ? "أنشئ شاشة لربط شاشة مطبخ أو استلام على جهازك."
-            : "Create a screen to connect a kitchen or service display on your device."}
-        </p>
-      </div>
-      <Button onClick={() => navigateToProvisioning({ restaurantId, mode: "create" })}>
-        <Plus className="mr-2 h-4 w-4" />
-        {isAr ? "إنشاء شاشة" : "Create screen"}
-      </Button>
-    </div>
+    <SemanticEmptyState
+      variant="page"
+      icon={Monitor}
+      title={isAr ? "لا توجد شاشات بعد" : "No screens yet"}
+      description={
+        isAr
+          ? "أنشئ شاشة لربط شاشة مطبخ أو استلام على جهازك."
+          : "Create a screen to connect a kitchen or service display on your device."
+      }
+      action={
+        <Button onClick={() => navigateToProvisioning({ restaurantId, mode: "create" })}>
+          <Plus className="mr-2 h-4 w-4" />
+          {isAr ? "إنشاء شاشة" : "Create screen"}
+        </Button>
+      }
+    />
   );
 }
 
@@ -85,26 +87,22 @@ function FleetFilterEmptyState({
   onClear: () => void;
 }) {
   return (
-    <div
-      className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed py-14 text-center"
-      data-fleet-state="filter-empty"
-    >
-      <p className="text-sm text-muted-foreground">
-        {isAr ? "لا توجد شاشات مطابقة للفلاتر." : "No screens match these filters."}
-      </p>
-      <Button variant="outline" size="sm" onClick={onClear}>
-        {isAr ? "مسح الفلاتر" : "Clear filters"}
-      </Button>
-    </div>
+    <SemanticEmptyState
+      variant="page"
+      message={
+        isAr ? "لا توجد شاشات مطابقة للفلاتر." : "No screens match these filters."
+      }
+      action={
+        <Button variant="outline" size="sm" onClick={onClear}>
+          {isAr ? "مسح الفلاتر" : "Clear filters"}
+        </Button>
+      }
+    />
   );
 }
 
 function FleetLoadingState() {
-  return (
-    <div className="flex justify-center py-14" data-fleet-state="loading">
-      <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" aria-label="Loading" />
-    </div>
-  );
+  return <SemanticLoadingState variant="spinner" />;
 }
 
 export function ScreenManagementWorkspacePanel({

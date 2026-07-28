@@ -46,6 +46,7 @@ import {
 import { isEmailNotVerifiedError } from "@/lib/trpcErrors";
 import { trpc } from "@/lib/trpc";
 import type { StaffSettlementLineInput } from "@shared/operational-session";
+import { SemanticEmptyState, SemanticLoadingState } from "@/design-system/semantic-section-state";
 import { Loader2, RefreshCw, ClipboardList, ChefHat, CheckCircle, AlertTriangle } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -413,14 +414,14 @@ export function OrdersWorkspacePanel({
           onRetry={() => void listQuery.refetch()}
         />
       ) : listQuery.isLoading ? (
-        <div className="flex justify-center py-16">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
+        <SemanticLoadingState variant="spinner" className="py-16" />
       ) : cards.length === 0 ? (
-        <div className="py-16 text-center">
-          <ClipboardList className="mx-auto mb-4 h-10 w-10 text-muted-foreground/60" />
-          <p className="text-muted-foreground">{isAr ? "لا توجد طلبات" : "No orders"}</p>
-        </div>
+        <SemanticEmptyState
+          variant="panel"
+          icon={ClipboardList}
+          message={isAr ? "لا توجد طلبات" : "No orders"}
+          className="border-transparent bg-transparent"
+        />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {cards.map(({ order, presentation, fading }) => (

@@ -1,12 +1,12 @@
 /**
- * REPORTING-PRODUCT-POLISH-1 + SEMANTIC-CARD-DESIGN-SYSTEM-1
- * Shared empty / error states — empty owned by Semantic Card DS.
+ * REPORTING-PRODUCT-POLISH-1 + SEMANTIC-SECTION-STATE-PLATFORM-1
+ * Restaurant section empty / error — thin facades over Section State Platform.
  */
-import { Button } from "@/components/ui/button";
-import { SemanticEmptyState } from "@/design-system/semantic-card";
-import { cn } from "@/lib/utils";
-import { AlertTriangle, Inbox, Loader2, type LucideIcon } from "lucide-react";
-import { restaurantDash, restaurantSemantic } from "./restaurantDashStyles";
+import {
+  SemanticEmptyState,
+  SemanticErrorState,
+} from "@/design-system/semantic-section-state";
+import { Inbox, type LucideIcon } from "lucide-react";
 
 export function RestaurantSectionEmpty({
   message,
@@ -44,30 +44,13 @@ export function RestaurantSectionError({
   className?: string;
 }) {
   return (
-    <div
-      className={cn(restaurantDash.errorPanel, "rounded-2xl", className)}
-      role="alert"
-    >
-      <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-orange-500/30 bg-orange-500/10">
-        <AlertTriangle
-          className={cn("h-6 w-6", restaurantSemantic.iconWarning)}
-          aria-hidden
-        />
-      </div>
-      <p className="max-w-md text-sm leading-relaxed text-slate-300">{message}</p>
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        className={cn(restaurantDash.toolbarBtn, "min-h-10 px-4")}
-        disabled={isFetching}
-        onClick={onRetry}
-      >
-        {isFetching ? (
-          <Loader2 className="h-4 w-4 motion-safe:animate-spin" aria-hidden />
-        ) : null}
-        {retryLabel}
-      </Button>
-    </div>
+    <SemanticErrorState
+      message={message}
+      retryLabel={retryLabel}
+      onRetry={onRetry}
+      isFetching={isFetching}
+      className={className}
+      variant="section"
+    />
   );
 }
