@@ -1,12 +1,14 @@
-import type { ReactNode } from "react";
-import { Loader2 } from "lucide-react";
+/**
+ * SEMANTIC-DETAIL-SHEET-PLATFORM-1
+ * Audit event detail — read-oriented Sheet (legacy name: Drawer).
+ */
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+  SemanticDetailError,
+  SemanticDetailFact,
+  SemanticDetailGroup,
+  SemanticDetailLoading,
+  SemanticDetailSheet,
+} from "@/design-system/semantic-detail-sheet";
 import {
   SemanticBadge,
   mapAuditSeverityToBadgeTone,
@@ -14,8 +16,6 @@ import {
 import { useLanguage } from "@/contexts/LanguageContext";
 import { adminQueriesEnabled } from "@/lib/queryRuntime";
 import { trpc } from "@/lib/trpc";
-import { cn } from "@/lib/utils";
-import { adminDash } from "@/components/admin/layout/adminDashStyles";
 import { AuditEventJsonField } from "./AuditEventJsonField";
 import {
   formatAuditActorLabel,
@@ -24,36 +24,17 @@ import {
 } from "./auditEventDisplay";
 import { useAuthGate } from "@/_core/hooks/useAuthGate";
 
-type AuditEventDetailDrawerProps = {
+type AuditEventDetailSheetProps = {
   eventId: number | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 };
 
-function DetailFact({
-  label,
-  value,
-  dir = "auto",
-}: {
-  label: string;
-  value: ReactNode;
-  dir?: "ltr" | "rtl" | "auto";
-}) {
-  return (
-    <div className="rounded-md border border-cyan-500/15 bg-slate-900/30 px-2.5 py-1.5">
-      <dt className="text-[10px] uppercase tracking-wide text-slate-500">{label}</dt>
-      <dd dir={dir} className="mt-0.5 text-xs font-medium text-white">
-        {value}
-      </dd>
-    </div>
-  );
-}
-
-export function AuditEventDetailDrawer({
+export function AuditEventDetailSheet({
   eventId,
   open,
   onOpenChange,
-}: AuditEventDetailDrawerProps) {
+}: AuditEventDetailSheetProps) {
   const { t } = useLanguage();
   const gate = useAuthGate();
   const adminEnabled = adminQueriesEnabled(
@@ -70,100 +51,96 @@ export function AuditEventDetailDrawer({
   const event = detailQuery.data;
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="right"
-        className={cn(adminDash.dialogContent, "w-full sm:max-w-md")}
-      >
-        <SheetHeader className="border-b border-cyan-500/20 pb-3">
-          <SheetTitle className="text-sm text-white">
-            {t("admin.security.timeline.detailTitle")}
-          </SheetTitle>
-          <SheetDescription className="text-xs">
-            {event ? event.eventType : t("admin.security.timeline.detailLoading")}
-          </SheetDescription>
-        </SheetHeader>
+    <SemanticDetailSheet
+      open={open}
+      onOpenChange={onOpenChange}
+      size="sm"
+      title={t("admin.security.timeline.detailTitle")}
+      subtitle={
+        event ? event.eventType : t("admin.security.timeline.detailLoading")
+      }
+      className="border-slate-700 bg-slate-800"
+      headerClassName="border-cyan-500/20"
+    >
+      {detailQuery.isLoading ? <SemanticDetailLoading /> : null}
 
-        <div className="flex-1 space-y-2 overflow-y-auto px-1 py-3">
-          {detailQuery.isLoading ? (
-            <div className="flex items-center justify-center py-8 text-slate-400">
-              <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
-            </div>
-          ) : detailQuery.isError || !event ? (
-            <p className="text-xs text-red-300">{t("admin.security.loadError")}</p>
-          ) : (
-            <>
-              <div className="grid grid-cols-2 gap-1.5">
-                <DetailFact
-                  label={t("admin.security.timeline.colEventType")}
-                  value={event.eventType}
-                  dir="ltr"
-                />
-                <DetailFact
-                  label={t("admin.security.timeline.colCategory")}
-                  value={event.category}
-                  dir="ltr"
-                />
-                <div className="rounded-md border border-cyan-500/15 bg-slate-900/30 px-2.5 py-1.5">
-                  <dt className="text-[10px] uppercase tracking-wide text-slate-500">
-                    {t("admin.security.timeline.colSeverity")}
-                  </dt>
-                  <dd className="mt-0.5">
-                    <SemanticBadge
-                      tone={mapAuditSeverityToBadgeTone(event.severity)}
-                      density="outline"
-                      size="sm"
-                    >
-                      {event.severity}
-                    </SemanticBadge>
-                  </dd>
-                </div>
-                <DetailFact
-                  label={t("admin.security.timeline.colTimestamp")}
-                  value={formatAuditTimestamp(event.occurredAt)}
-                  dir="ltr"
-                />
-              </div>
+      {!detailQuery.isLoading && (detailQuery.isError || !event) ? (
+        <SemanticDetailError message={t("admin.security.loadError")} />
+      ) : null}
 
-              <div className="grid gap-1.5">
-                <DetailFact
-                  label={t("admin.security.timeline.colActor")}
-                  value={formatAuditActorLabel(event.actorId)}
-                  dir="ltr"
-                />
-                <DetailFact
-                  label={t("admin.security.timeline.detailTarget")}
-                  value={formatAuditTargetLabel(event.targetType, event.targetId)}
-                  dir="ltr"
-                />
-                <DetailFact
-                  label={t("admin.security.timeline.detailProcedure")}
-                  value={event.procedure ?? "—"}
-                  dir="ltr"
-                />
-                <DetailFact
-                  label={t("admin.security.timeline.detailCorrelationId")}
-                  value={event.correlationId ?? "—"}
-                  dir="ltr"
-                />
-              </div>
+      {!detailQuery.isLoading && event ? (
+        <div className="space-y-2">
+          <SemanticDetailGroup columns={2}>
+            <SemanticDetailFact
+              label={t("admin.security.timeline.colEventType")}
+              value={event.eventType}
+              dir="ltr"
+            />
+            <SemanticDetailFact
+              label={t("admin.security.timeline.colCategory")}
+              value={event.category}
+              dir="ltr"
+            />
+            <SemanticDetailFact
+              label={t("admin.security.timeline.colSeverity")}
+              value={event.severity}
+              badge={
+                <SemanticBadge
+                  tone={mapAuditSeverityToBadgeTone(event.severity)}
+                  density="outline"
+                  size="sm"
+                >
+                  {event.severity}
+                </SemanticBadge>
+              }
+            />
+            <SemanticDetailFact
+              label={t("admin.security.timeline.colTimestamp")}
+              value={formatAuditTimestamp(event.occurredAt)}
+              dir="ltr"
+            />
+          </SemanticDetailGroup>
 
-              <AuditEventJsonField
-                label={t("admin.security.timeline.detailMetadata")}
-                value={event.metadata}
-              />
-              <AuditEventJsonField
-                label={t("admin.security.timeline.detailBefore")}
-                value={event.before}
-              />
-              <AuditEventJsonField
-                label={t("admin.security.timeline.detailAfter")}
-                value={event.after}
-              />
-            </>
-          )}
+          <SemanticDetailGroup>
+            <SemanticDetailFact
+              label={t("admin.security.timeline.colActor")}
+              value={formatAuditActorLabel(event.actorId)}
+              dir="ltr"
+            />
+            <SemanticDetailFact
+              label={t("admin.security.timeline.detailTarget")}
+              value={formatAuditTargetLabel(event.targetType, event.targetId)}
+              dir="ltr"
+            />
+            <SemanticDetailFact
+              label={t("admin.security.timeline.detailProcedure")}
+              value={event.procedure ?? "—"}
+              dir="ltr"
+            />
+            <SemanticDetailFact
+              label={t("admin.security.timeline.detailCorrelationId")}
+              value={event.correlationId ?? "—"}
+              dir="ltr"
+            />
+          </SemanticDetailGroup>
+
+          <AuditEventJsonField
+            label={t("admin.security.timeline.detailMetadata")}
+            value={event.metadata}
+          />
+          <AuditEventJsonField
+            label={t("admin.security.timeline.detailBefore")}
+            value={event.before}
+          />
+          <AuditEventJsonField
+            label={t("admin.security.timeline.detailAfter")}
+            value={event.after}
+          />
         </div>
-      </SheetContent>
-    </Sheet>
+      ) : null}
+    </SemanticDetailSheet>
   );
 }
+
+/** @deprecated Prefer AuditEventDetailSheet — Drawer was a Sheet. */
+export const AuditEventDetailDrawer = AuditEventDetailSheet;

@@ -1,17 +1,12 @@
 import type { FleetScreenReadModel } from "@/lib/screen-fleet/fleetReadModel";
 import type { FleetScreenManageAction } from "@/components/screen-management/FleetScreenCard";
 import { ScreenAccessTabPanel } from "@/components/screen-management/ScreenAccessTabPanel";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { SemanticDetailSheet } from "@/design-system/semantic-detail-sheet";
 
 /**
  * Legacy access lifecycle sheet — prefer ScreenDetailsSheet (UX-1C).
  * Retained for credential governance guard references.
+ * SEMANTIC-DETAIL-SHEET-PLATFORM-1 — chrome via SemanticDetailSheet.
  */
 export function ScreenCredentialLifecycleSheet({
   open,
@@ -36,31 +31,30 @@ export function ScreenCredentialLifecycleSheet({
 }) {
   const isAr = language === "ar";
   const enabled = open && screenId != null;
+  void screen;
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="overflow-y-auto sm:max-w-md">
-        <SheetHeader>
-          <SheetTitle>{isAr ? "الوصول للشاشة" : "Screen Access"}</SheetTitle>
-          <SheetDescription>{displayName}</SheetDescription>
-        </SheetHeader>
-        {screenId ? (
-          <div className="mt-6">
-            <ScreenAccessTabPanel
-              screenId={screenId}
-              displayName={displayName}
-              restaurantId={restaurantId}
-              language={language}
-              enabled={enabled}
-              initialFocus={initialFocus}
-              onDeleted={() => {
-                onOpenChange(false);
-                onDeleted?.();
-              }}
-            />
-          </div>
-        ) : null}
-      </SheetContent>
-    </Sheet>
+    <SemanticDetailSheet
+      open={open}
+      onOpenChange={onOpenChange}
+      size="sm"
+      title={isAr ? "الوصول للشاشة" : "Screen Access"}
+      subtitle={displayName}
+    >
+      {screenId ? (
+        <ScreenAccessTabPanel
+          screenId={screenId}
+          displayName={displayName}
+          restaurantId={restaurantId}
+          language={language}
+          enabled={enabled}
+          initialFocus={initialFocus}
+          onDeleted={() => {
+            onOpenChange(false);
+            onDeleted?.();
+          }}
+        />
+      ) : null}
+    </SemanticDetailSheet>
   );
 }

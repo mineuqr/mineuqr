@@ -1,12 +1,9 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+  SemanticDetailFooter,
+  SemanticDetailSheet,
+} from "@/design-system/semantic-detail-sheet";
 import { VerificationRequiredPanel } from "@/components/auth/VerificationRequiredPanel";
 import { formatRiyadhDateTime } from "@/lib/datetime";
 import {
@@ -341,64 +338,66 @@ export function OperationalActivityFeedSection({
       </RestaurantDashSection>
 
       {enableExpandSheet ? (
-      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent
+        <SemanticDetailSheet
+          open={sheetOpen}
+          onOpenChange={setSheetOpen}
           side={isAr ? "left" : "right"}
-          className="flex w-full flex-col border-slate-700/50 bg-slate-950 sm:max-w-md"
+          size="sm"
+          title={isAr ? "سجل النشاط" : "Activity Log"}
+          subtitle={
+            isAr
+              ? "آخر أحداث الجلسات والطلبات في المطعم"
+              : "Recent session and order events for your restaurant"
+          }
+          className="border-slate-700/50 bg-slate-950"
+          headerClassName="border-slate-700/40"
+          footer={
+            fullFetching && !fullLoading ? (
+              <SemanticDetailFooter className="border-slate-700/40 pt-2">
+                <div className="flex items-center justify-center gap-2 text-xs text-slate-500">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  {isAr ? "جاري التحديث…" : "Refreshing…"}
+                </div>
+              </SemanticDetailFooter>
+            ) : undefined
+          }
         >
-          <SheetHeader className="border-b border-slate-700/40 pb-4 text-start">
-            <SheetTitle className="text-white">
-              {isAr ? "سجل النشاط" : "Activity Log"}
-            </SheetTitle>
-            <SheetDescription>
-              {isAr
-                ? "آخر أحداث الجلسات والطلبات في المطعم"
-                : "Recent session and order events for your restaurant"}
-            </SheetDescription>
-          </SheetHeader>
-
-          <div className="min-h-0 flex-1 overflow-y-auto py-4">
-            {fullLoading ? (
-              <div className={restaurantDash.listPanel}>
-                {Array.from({ length: 8 }, (_, index) => (
-                  <ActivityFeedItemSkeleton key={index} isLast={index === 7} />
-                ))}
-              </div>
-            ) : fullError ? (
-              <RestaurantSectionError
-                message={
-                  isAr
-                    ? "تعذر تحميل سجل النشاط. حاول مرة أخرى."
-                    : "Could not load the activity feed. Please try again."
-                }
-                retryLabel={isAr ? "إعادة المحاولة" : "Retry"}
-                isFetching={fullFetching}
-                onRetry={() => void refetchFull()}
-              />
-            ) : fullEvents.length === 0 ? (
-              <RestaurantSectionEmpty
-                message={isAr ? "لا يوجد نشاط تشغيلي حديث" : "No recent operational activity"}
-              />
-            ) : (
-              <ActivityFeedTimeline
-                events={fullEvents}
-                isAr={isAr}
-                onOpenSession={(sessionId) => {
-                  setSheetOpen(false);
-                  onOpenSession(sessionId);
-                }}
-              />
-            )}
-          </div>
-
-          {fullFetching && !fullLoading ? (
-            <div className="flex items-center justify-center gap-2 border-t border-slate-700/40 py-2 text-xs text-slate-500">
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              {isAr ? "جاري التحديث…" : "Refreshing…"}
+          {fullLoading ? (
+            <div className={restaurantDash.listPanel}>
+              {Array.from({ length: 8 }, (_, index) => (
+                <ActivityFeedItemSkeleton key={index} isLast={index === 7} />
+              ))}
             </div>
-          ) : null}
-        </SheetContent>
-      </Sheet>
+          ) : fullError ? (
+            <RestaurantSectionError
+              message={
+                isAr
+                  ? "تعذر تحميل سجل النشاط. حاول مرة أخرى."
+                  : "Could not load the activity feed. Please try again."
+              }
+              retryLabel={isAr ? "إعادة المحاولة" : "Retry"}
+              isFetching={fullFetching}
+              onRetry={() => void refetchFull()}
+            />
+          ) : fullEvents.length === 0 ? (
+            <RestaurantSectionEmpty
+              message={
+                isAr
+                  ? "لا يوجد نشاط تشغيلي حديث"
+                  : "No recent operational activity"
+              }
+            />
+          ) : (
+            <ActivityFeedTimeline
+              events={fullEvents}
+              isAr={isAr}
+              onOpenSession={(sessionId) => {
+                setSheetOpen(false);
+                onOpenSession(sessionId);
+              }}
+            />
+          )}
+        </SemanticDetailSheet>
       ) : null}
     </>
   );

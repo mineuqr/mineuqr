@@ -1,12 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useEffect, useMemo, useState } from "react";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import { DiningSessionActionBar } from "@/components/dashboard/DiningSessionActionBar";
 import { DiningSessionOverviewSection } from "@/components/dashboard/DiningSessionOverviewSection";
 import { DiningSessionOrdersSummarySection } from "@/components/dashboard/DiningSessionOrdersSummarySection";
@@ -19,6 +12,7 @@ import { OrderSettlementPanel } from "@/components/order-settlement/OrderSettlem
 import { SettlementSessionStatusPanel } from "@/components/settlement-record/SettlementSessionStatusPanel";
 import { SettlementDetailSheet } from "@/components/settlement-record/SettlementDetailSheet";
 import { SettlementReceiptDialog } from "@/components/settlement-record/SettlementReceiptDialog";
+import { SemanticDetailSheet } from "@/design-system/semantic-detail-sheet";
 import { useLanguage } from "@/contexts/LanguageContext";
 import type { DiningSessionStatus } from "@/lib/diningSessionCopy";
 import { formatDashboardSessionLabel } from "@/lib/diningSessionDashboardCopy";
@@ -129,142 +123,138 @@ export function DiningSessionWorkspaceSheet({
         : "Session";
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side={sheetSide}
-        className={cn(
-          "flex flex-col border-cyan-500/20 bg-slate-950 p-0",
-          sheetSide === "bottom"
-            ? "max-h-[92vh] sm:max-w-full"
-            : "w-full sm:max-w-lg"
-        )}
-      >
-        <SheetHeader className="border-b border-cyan-500/15 px-4 pb-4 pt-6 text-start sm:px-6">
-          <SheetTitle className="text-lg text-white">{sheetTitle}</SheetTitle>
-          <SheetDescription className="text-slate-400">
-            {language === "ar"
-              ? "مساحة تفاصيل الجلسة التشغيلية"
-              : "Operational session detail workspace"}
-          </SheetDescription>
-        </SheetHeader>
+    <SemanticDetailSheet
+      open={open}
+      onOpenChange={onOpenChange}
+      side={sheetSide}
+      size="md"
+      title={sheetTitle}
+      subtitle={
+        language === "ar"
+          ? "مساحة تفاصيل الجلسة التشغيلية"
+          : "Operational session detail workspace"
+      }
+      className={cn(
+        "border-cyan-500/20 bg-slate-950",
+        sheetSide === "bottom" && "sm:max-w-full"
+      )}
+      headerClassName="border-cyan-500/15"
+      bodyClassName="flex flex-col gap-4 pb-6"
+    >
+      {isLoading ? <DiningSessionWorkspaceSkeleton /> : null}
 
-        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-6 pt-4 sm:px-6">
-          {isLoading ? <DiningSessionWorkspaceSkeleton /> : null}
+      {!isLoading && error ? (
+        <DiningSessionWorkspaceRecovery
+          kind={isSessionNotFoundError(error) ? "notFound" : "loadError"}
+          language={lang}
+          onRetry={() => void refetch()}
+          isFetching={isFetching}
+        />
+      ) : null}
 
-          {!isLoading && error ? (
-            <DiningSessionWorkspaceRecovery
-              kind={isSessionNotFoundError(error) ? "notFound" : "loadError"}
-              language={lang}
-              onRetry={() => void refetch()}
-              isFetching={isFetching}
+      {!isLoading && !error && data ? (
+        <>
+          <DiningSessionOverviewSection
+            sessionId={data.sessionId}
+            tableNumber={data.tableNumber}
+            status={data.status as DiningSessionStatus}
+            openedAt={data.openedAt}
+            closedAt={data.closedAt}
+            language={lang}
+            tableLabel={tableLabel}
+          />
+
+          <DiningSessionOrdersSummarySection
+            orderCount={data.orderCount}
+            itemsCount={itemsCount}
+            ordersTotalAmount={data.ordersTotalAmount}
+            language={lang}
+            currencySymbol={sym}
+          />
+
+          <OrderSettlementPanel
+            restaurantId={restaurantId}
+            checkId={data.checkId}
+            language={lang}
+            currencySymbol={sym}
+            enabled={workspaceEnabled}
+            showDiagnostics={import.meta.env.DEV}
+          />
+
+          <SettlementSessionStatusPanel
+            restaurantId={restaurantId}
+            sessionId={data.sessionId}
+            language={lang}
+            enabled={workspaceEnabled}
+            sessionStatus={data.status}
+            onOpenDetail={(id) => {
+              setWorkspaceSettlementId(id);
+              setWorkspaceDetailOpen(true);
+            }}
+            onOpenReceipt={(id) => {
+              setWorkspaceSettlementId(id);
+              setWorkspaceReceiptOpen(true);
+            }}
+            onOpenHistory={() =>
+              syncDashboardUrl({ restaurantId, section: "settlements" })
+            }
+          />
+
+          {/*
+            SETTLEMENT-UI-CLEANUP-1:
+            Split Payment + Multi Check Allocation operator UI is dormant.
+            Panels are not mounted — no allocation/split queries from this sheet.
+            Core (Domain / Integration / Projection / API) remains active.
+            Reactivate via isSplitPaymentUiEnabled() /
+            isMultiCheckAllocationUiEnabled() when product requires it.
+          */}
+
+          <section
+            className={cn(restaurantDash.panelInset, "p-4")}
+            aria-label={sessionSummaryLabel("actions", lang)}
+          >
+            <h3 className="mb-3 text-sm font-semibold text-white">
+              {sessionSummaryLabel("actions", lang)}
+            </h3>
+            <DiningSessionActionBar
+              restaurantId={restaurantId}
+              sessionId={data.sessionId}
+              status={data.status as DiningSessionStatus}
+              outstandingAmount={data.ordersTotalAmount}
+              currencySymbol={sym}
             />
-          ) : null}
+          </section>
 
-          {!isLoading && !error && data ? (
-            <>
-              <DiningSessionOverviewSection
-                sessionId={data.sessionId}
-                tableNumber={data.tableNumber}
-                status={data.status as DiningSessionStatus}
-                openedAt={data.openedAt}
-                closedAt={data.closedAt}
-                language={lang}
-                tableLabel={tableLabel}
-              />
+          <DiningSessionTimelineList
+            events={data.events}
+            language={lang}
+            currencySymbol={sym}
+          />
 
-              <DiningSessionOrdersSummarySection
-                orderCount={data.orderCount}
-                itemsCount={itemsCount}
-                ordersTotalAmount={data.ordersTotalAmount}
-                language={lang}
-                currencySymbol={sym}
-              />
-
-              <OrderSettlementPanel
-                restaurantId={restaurantId}
-                checkId={data.checkId}
-                language={lang}
-                currencySymbol={sym}
-                enabled={workspaceEnabled}
-                showDiagnostics={import.meta.env.DEV}
-              />
-
-              <SettlementSessionStatusPanel
-                restaurantId={restaurantId}
-                sessionId={data.sessionId}
-                language={lang}
-                enabled={workspaceEnabled}
-                sessionStatus={data.status}
-                onOpenDetail={(id) => {
-                  setWorkspaceSettlementId(id);
-                  setWorkspaceDetailOpen(true);
-                }}
-                onOpenReceipt={(id) => {
-                  setWorkspaceSettlementId(id);
-                  setWorkspaceReceiptOpen(true);
-                }}
-                onOpenHistory={() =>
-                  syncDashboardUrl({ restaurantId, section: "settlements" })
-                }
-              />
-
-              {/*
-                SETTLEMENT-UI-CLEANUP-1:
-                Split Payment + Multi Check Allocation operator UI is dormant.
-                Panels are not mounted — no allocation/split queries from this sheet.
-                Core (Domain / Integration / Projection / API) remains active.
-                Reactivate via isSplitPaymentUiEnabled() /
-                isMultiCheckAllocationUiEnabled() when product requires it.
-              */}
-
-              <section
-                className={cn(restaurantDash.panelInset, "p-4")}
-                aria-label={sessionSummaryLabel("actions", lang)}
-              >
-                <h3 className="mb-3 text-sm font-semibold text-white">
-                  {sessionSummaryLabel("actions", lang)}
-                </h3>
-                <DiningSessionActionBar
-                  restaurantId={restaurantId}
-                  sessionId={data.sessionId}
-                  status={data.status as DiningSessionStatus}
-                  outstandingAmount={data.ordersTotalAmount}
-                  currencySymbol={sym}
-                />
-              </section>
-
-              <DiningSessionTimelineList
-                events={data.events}
-                language={lang}
-                currencySymbol={sym}
-              />
-
-              <SettlementDetailSheet
-                open={workspaceDetailOpen}
-                restaurantId={restaurantId}
-                settlementRecordId={workspaceSettlementId}
-                language={lang}
-                onOpenChange={setWorkspaceDetailOpen}
-                onOpenSettlementRecord={(id) => setWorkspaceSettlementId(id)}
-                onViewReceipt={() => {
-                  setWorkspaceDetailOpen(false);
-                  setWorkspaceReceiptOpen(true);
-                }}
-                onViewHistory={() =>
-                  syncDashboardUrl({ restaurantId, section: "settlements" })
-                }
-              />
-              <SettlementReceiptDialog
-                open={workspaceReceiptOpen}
-                restaurantId={restaurantId}
-                settlementRecordId={workspaceSettlementId}
-                language={lang}
-                onOpenChange={setWorkspaceReceiptOpen}
-              />
-            </>
-          ) : null}
-        </div>
-      </SheetContent>
-    </Sheet>
+          <SettlementDetailSheet
+            open={workspaceDetailOpen}
+            restaurantId={restaurantId}
+            settlementRecordId={workspaceSettlementId}
+            language={lang}
+            onOpenChange={setWorkspaceDetailOpen}
+            onOpenSettlementRecord={(id) => setWorkspaceSettlementId(id)}
+            onViewReceipt={() => {
+              setWorkspaceDetailOpen(false);
+              setWorkspaceReceiptOpen(true);
+            }}
+            onViewHistory={() =>
+              syncDashboardUrl({ restaurantId, section: "settlements" })
+            }
+          />
+          <SettlementReceiptDialog
+            open={workspaceReceiptOpen}
+            restaurantId={restaurantId}
+            settlementRecordId={workspaceSettlementId}
+            language={lang}
+            onOpenChange={setWorkspaceReceiptOpen}
+          />
+        </>
+      ) : null}
+    </SemanticDetailSheet>
   );
 }

@@ -18,7 +18,7 @@ import {
   SemanticTableRow,
 } from "@/design-system/semantic-table";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { AuditEventDetailDrawer } from "./AuditEventDetailDrawer";
+import { AuditEventDetailSheet } from "./AuditEventDetailDrawer";
 import { AuditEventListFooter } from "./AuditEventListFooter";
 import {
   formatAuditActorLabel,
@@ -157,7 +157,7 @@ export function SecurityAuditTimelineSection() {
         )}
       </AdminPageSection>
 
-      <AuditEventDetailDrawer
+      <AuditEventDetailSheet
         eventId={selectedEventId}
         open={drawerOpen}
         onOpenChange={setDrawerOpen}

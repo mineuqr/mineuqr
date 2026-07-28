@@ -2,13 +2,7 @@ import type { FleetScreenManageAction } from "@/components/screen-management/Fle
 import { ScreenAccessTabPanel } from "@/components/screen-management/ScreenAccessTabPanel";
 import { ScreenDiagnosticsTabPanel } from "@/components/screen-management/ScreenDiagnosticsTabPanel";
 import { ScreenDisplayTabPanel } from "@/components/screen-management/ScreenDisplayTabPanel";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { SemanticDetailSheet } from "@/design-system/semantic-detail-sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { FleetScreenReadModel } from "@/lib/screen-fleet/fleetReadModel";
 import {
@@ -17,6 +11,10 @@ import {
 } from "@/lib/screen-management/screenDetailsPresentation";
 import { useEffect, useState } from "react";
 
+/**
+ * SEMANTIC-DETAIL-SHEET-PLATFORM-1 — Screen details chrome.
+ * Tab panels remain feature-owned (display / access / diagnostics).
+ */
 export function ScreenDetailsSheet({
   open,
   onOpenChange,
@@ -53,83 +51,88 @@ export function ScreenDetailsSheet({
   const displayName = screen.displayName;
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="flex w-full flex-col overflow-hidden sm:max-w-lg">
-        <SheetHeader className="shrink-0">
-          <SheetTitle>{isAr ? "تفاصيل الشاشة" : "Screen details"}</SheetTitle>
-          <SheetDescription>{displayName}</SheetDescription>
-        </SheetHeader>
-
-        <Tabs
-          value={activeTab}
-          onValueChange={(value) => setActiveTab(value as ScreenDetailsTab)}
-          className="mt-4 flex min-h-0 flex-1 flex-col gap-0"
+    <SemanticDetailSheet
+      open={open}
+      onOpenChange={onOpenChange}
+      size="md"
+      title={isAr ? "تفاصيل الشاشة" : "Screen details"}
+      subtitle={displayName}
+      scrollBody={false}
+      bodyClassName="flex min-h-0 flex-1 flex-col overflow-hidden py-0"
+    >
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => setActiveTab(value as ScreenDetailsTab)}
+        className="mt-0 flex min-h-0 flex-1 flex-col gap-0 pb-4"
+      >
+        <TabsList
+          className="grid h-auto w-full shrink-0 grid-cols-3"
+          aria-label={isAr ? "تبويبات تفاصيل الشاشة" : "Screen details tabs"}
         >
-          <TabsList
-            className="grid h-auto w-full shrink-0 grid-cols-3"
-            aria-label={isAr ? "تبويبات تفاصيل الشاشة" : "Screen details tabs"}
+          <TabsTrigger value="display">
+            {screenDetailsTabLabel("display", language)}
+          </TabsTrigger>
+          <TabsTrigger value="access">
+            {screenDetailsTabLabel("access", language)}
+          </TabsTrigger>
+          <TabsTrigger value="diagnostics">
+            {screenDetailsTabLabel("diagnostics", language)}
+          </TabsTrigger>
+        </TabsList>
+
+        <div className="min-h-0 flex-1 overflow-y-auto pt-4">
+          <TabsContent
+            value="display"
+            className="mt-0 focus-visible:outline-none transition-opacity duration-150 data-[state=inactive]:hidden"
           >
-            <TabsTrigger value="display">{screenDetailsTabLabel("display", language)}</TabsTrigger>
-            <TabsTrigger value="access">{screenDetailsTabLabel("access", language)}</TabsTrigger>
-            <TabsTrigger value="diagnostics">
-              {screenDetailsTabLabel("diagnostics", language)}
-            </TabsTrigger>
-          </TabsList>
+            {activeTab === "display" ? (
+              <ScreenDisplayTabPanel
+                screenId={screenId}
+                fleetScreen={screen}
+                restaurantId={restaurantId}
+                language={language}
+                categorySummary={categorySummary}
+                enabled={open}
+              />
+            ) : null}
+          </TabsContent>
 
-          <div className="min-h-0 flex-1 overflow-y-auto pt-4">
-            <TabsContent
-              value="display"
-              className="mt-0 focus-visible:outline-none transition-opacity duration-150 data-[state=inactive]:hidden"
-            >
-              {activeTab === "display" ? (
-                <ScreenDisplayTabPanel
-                  screenId={screenId}
-                  fleetScreen={screen}
-                  restaurantId={restaurantId}
-                  language={language}
-                  categorySummary={categorySummary}
-                  enabled={open}
-                />
-              ) : null}
-            </TabsContent>
+          <TabsContent
+            value="access"
+            className="mt-0 focus-visible:outline-none transition-opacity duration-150 data-[state=inactive]:hidden"
+          >
+            {activeTab === "access" ? (
+              <ScreenAccessTabPanel
+                screenId={screenId}
+                displayName={displayName}
+                restaurantId={restaurantId}
+                language={language}
+                enabled={open}
+                initialFocus={accessFocus}
+                onDeleted={() => {
+                  onOpenChange(false);
+                  onDeleted?.();
+                }}
+              />
+            ) : null}
+          </TabsContent>
 
-            <TabsContent
-              value="access"
-              className="mt-0 focus-visible:outline-none transition-opacity duration-150 data-[state=inactive]:hidden"
-            >
-              {activeTab === "access" ? (
-                <ScreenAccessTabPanel
-                  screenId={screenId}
-                  displayName={displayName}
-                  restaurantId={restaurantId}
-                  language={language}
-                  enabled={open}
-                  initialFocus={accessFocus}
-                  onDeleted={() => {
-                    onOpenChange(false);
-                    onDeleted?.();
-                  }}
-                />
-              ) : null}
-            </TabsContent>
-
-            <TabsContent
-              value="diagnostics"
-              className="mt-0 focus-visible:outline-none transition-opacity duration-150 data-[state=inactive]:hidden"
-            >
-              {activeTab === "diagnostics" ? (
-                <ScreenDiagnosticsTabPanel
-                  screenId={screenId}
-                  fleetScreen={screen}
-                  restaurantId={restaurantId}
-                  language={language}
-                  enabled={open}
-                />
-              ) : null}
-            </TabsContent>
-          </div>
-        </Tabs>
-      </SheetContent>
-    </Sheet>
+          <TabsContent
+            value="diagnostics"
+            className="mt-0 focus-visible:outline-none transition-opacity duration-150 data-[state=inactive]:hidden"
+          >
+            {activeTab === "diagnostics" ? (
+              <ScreenDiagnosticsTabPanel
+                screenId={screenId}
+                fleetScreen={screen}
+                restaurantId={restaurantId}
+                language={language}
+                enabled={open}
+              />
+            ) : null}
+          </TabsContent>
+        </div>
+      </Tabs>
+    </SemanticDetailSheet>
   );
 }

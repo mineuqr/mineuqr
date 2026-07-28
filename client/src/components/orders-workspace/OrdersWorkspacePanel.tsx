@@ -8,7 +8,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { VerificationRequiredPanel } from "@/components/auth/VerificationRequiredPanel";
 import { MarkPaidSettlementDialog } from "@/components/dashboard/MarkPaidSettlementDialog";
 import { OperationalCard } from "@/components/operational-workspace/OperationalCard";
-import { OperationalDetailsDrawer } from "@/components/operational-workspace/OperationalDetailsDrawer";
+import { OperationalDetailsSheet } from "@/components/operational-workspace/OperationalDetailsDrawer";
 import { OperationalWorkspaceShell } from "@/components/operational-workspace/OperationalWorkspaceShell";
 import { OperationsBar } from "@/components/operational-workspace/OperationsBar";
 import { WorkspaceFilters } from "@/components/operational-workspace/WorkspaceFilters";
@@ -382,7 +382,7 @@ export function OrdersWorkspacePanel({
       }
       filters={<WorkspaceFilters presets={presets} activeId={activeId} onSelect={select} language={language} />}
       drawer={
-        <OperationalDetailsDrawer
+        <OperationalDetailsSheet
           open={selectedOrderId != null}
           onOpenChange={(open) => !open && setSelectedOrderId(null)}
           title={selectedPresentation?.identity.displayReference ?? ""}
@@ -403,7 +403,7 @@ export function OrdersWorkspacePanel({
               executionOnly
             />
           ) : null}
-        </OperationalDetailsDrawer>
+        </OperationalDetailsSheet>
       }
     >
       {listQuery.error ? (

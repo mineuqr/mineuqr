@@ -49,4 +49,7 @@ export { useSecurityCenterQueries } from "./useSecurityCenterQueries";
 export { SecurityAuditTimelineSection } from "./SecurityAuditTimelineSection";
 export { SecurityRoleChangesSection } from "./SecurityRoleChangesSection";
 export { SecuritySubscriptionChangesSection } from "./SecuritySubscriptionChangesSection";
-export { AuditEventDetailDrawer } from "./AuditEventDetailDrawer";
+export {
+  AuditEventDetailSheet,
+  AuditEventDetailDrawer,
+} from "./AuditEventDetailDrawer";
