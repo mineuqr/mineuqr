@@ -16,7 +16,8 @@ export const HEARTBEAT_INTERVAL_MS = 30_000;
 export const HEARTBEAT_RETRY_MIN_MS = 5_000;
 export const HEARTBEAT_RETRY_MAX_MS = 30_000;
 export const STATUS_POLL_INTERVAL_MS = 60_000;
-export const DATA_POLL_INTERVAL_MS = 10_000;
+/** ORDER-LIFECYCLE-LATENCY-REMEDIATION-1 — Mode A observer fallback (was 10s). */
+export const DATA_POLL_INTERVAL_MS = 3_000;
 
 export function isDeviceAuthError(error: unknown): boolean {
   if (!(error instanceof TRPCClientError)) return false;

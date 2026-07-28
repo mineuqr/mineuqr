@@ -5,6 +5,7 @@ import {
   mapWaiterOrderPresentation,
 } from "@/design-system/operational-order-card";
 import { formatLocaleDateTime } from "@/lib/numericPresentation";
+import { OPERATIONAL_LIFECYCLE_POLL_MS } from "@/lib/queryRuntime";
 import { screenTrpc } from "@/lib/operational-screen/screenTrpc";
 import { trpc } from "@/lib/trpc";
 
@@ -44,7 +45,7 @@ export function WaiterTableWorkspaceStage({
     { restaurantId, sessionId },
     {
       enabled: !deviceMode && restaurantId > 0 && sessionId > 0,
-      refetchInterval: 10_000,
+      refetchInterval: OPERATIONAL_LIFECYCLE_POLL_MS,
     }
   );
   const deviceQuery =
@@ -52,7 +53,7 @@ export function WaiterTableWorkspaceStage({
       { sessionId },
       {
         enabled: deviceMode && sessionId > 0,
-        refetchInterval: 10_000,
+        refetchInterval: OPERATIONAL_LIFECYCLE_POLL_MS,
       }
     );
 

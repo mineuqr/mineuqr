@@ -43,12 +43,13 @@ import {
   restaurantQueriesEnabled,
   useDevQueryRuntimeLog,
 } from "@/lib/queryRuntime";
+import { subscribeOrderLifecycleUpdates } from "@/lib/order-lifecycle-latency/orderLifecycleBroadcast";
 import { isEmailNotVerifiedError } from "@/lib/trpcErrors";
 import { trpc } from "@/lib/trpc";
 import type { StaffSettlementLineInput } from "@shared/operational-session";
 import { SemanticEmptyState, SemanticLoadingState } from "@/design-system/semantic-section-state";
 import { Loader2, RefreshCw, ClipboardList, ChefHat, CheckCircle, AlertTriangle } from "lucide-react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 export function OrdersWorkspacePanel({
@@ -85,7 +86,7 @@ export function OrdersWorkspacePanel({
     enabled,
     authPending,
     isAuthenticated,
-    pollMs: enabled ? 10_000 : undefined,
+    pollMs: enabled ? 3_000 : undefined,
   });
 
   const listQuery = trpc.order.read.listActive.useQuery(
@@ -99,6 +100,13 @@ export function OrdersWorkspacePanel({
     },
     orderReadListQueryOptions(enabled)
   );
+
+  useEffect(() => {
+    if (!enabled || restaurantId <= 0) return;
+    return subscribeOrderLifecycleUpdates(restaurantId, () => {
+      void utils.order.read.listActive.invalidate({ restaurantId });
+    });
+  }, [enabled, restaurantId, utils.order.read.listActive]);
 
   const unpaidQuery = trpc.order.listUnpaidCounterPickup.useQuery(
     { restaurantId, limit: 100 },
@@ -156,10 +164,8 @@ export function OrdersWorkspacePanel({
   });
 
   const orderActions = useOrderStatusActions(restaurantId, () => {
+    // Pending cleared here; list refresh is optimistic + non-blocking invalidate.
     setPendingActionOrderId(null);
-    void listQuery.refetch();
-    void unpaidQuery.refetch();
-    if (selectedOrderId) void detailQuery.refetch();
   });
   const orderActionsRef = useRef(orderActions);
   orderActionsRef.current = orderActions;

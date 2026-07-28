@@ -76,12 +76,14 @@ export async function executeDeviceOrderAction(
     },
     async () => {
       markOrderLifecycleLatency("authz");
-      return runOrderCommand(() =>
-        advanceOrderStatusService.execute({
-          orderId,
-          targetStatus,
-          actor,
-        })
+      return runOrderCommand(
+        () =>
+          advanceOrderStatusService.execute({
+            orderId,
+            targetStatus,
+            actor,
+          }),
+        { awaitRelay: false }
       );
     }
   );

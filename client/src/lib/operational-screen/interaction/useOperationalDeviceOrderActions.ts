@@ -2,7 +2,10 @@ import { useCallback, useRef, useState } from "react";
 import { screenTrpc } from "@/lib/operational-screen/screenTrpc";
 import type { DeviceOrderActionId } from "../../../../../server/operational-device/domain/deviceOrderExecution";
 import type { OperationalActionId } from "@/lib/operational-workspace/operationalActions";
-import { useRuntimeRole } from "@/components/operational-screen/OperationalScreenRuntimeProvider";
+import {
+  useRuntimeIdentity,
+  useRuntimeRole,
+} from "@/components/operational-screen/OperationalScreenRuntimeProvider";
 import {
   beginOrderLifecycleClientTrace,
   endOrderLifecycleClientTrace,
@@ -11,34 +14,47 @@ import {
   noteOrderLifecycleClientPhase,
   createOrderLifecycleTraceId,
 } from "@/lib/order-lifecycle-latency";
+import { publishOrderLifecycleUpdate } from "@/lib/order-lifecycle-latency/orderLifecycleBroadcast";
 import { orderLifecycleNowMs } from "@shared/order-lifecycle-latency";
 
 /**
  * ORDER-INTERACTION-PERFORMANCE-1 — device order execution.
- * ORDER-LIFECYCLE-LATENCY-INSTRUMENTATION-1 — client latency marks (no behavior change).
+ * ORDER-LIFECYCLE-LATENCY-REMEDIATION-1 — non-blocking invalidate + broadcast.
  */
 export function useOperationalDeviceOrderActions() {
   const role = useRuntimeRole();
+  const identity = useRuntimeIdentity();
   const canExecute = role.permissions.canExecuteOrderActions;
+  const restaurantId = identity.restaurantId;
   const [pendingOrderId, setPendingOrderId] = useState<number | null>(null);
   const [successOrderId, setSuccessOrderId] = useState<number | null>(null);
   const successTimerRef = useRef<number | null>(null);
   const utils = screenTrpc.useUtils();
 
   const mutation = screenTrpc.operationalDevice.runtime.executeOrderAction.useMutation({
-    onSuccess: async () => {
+    onSuccess: (_data, vars) => {
       const active = getActiveOrderLifecycleClientTrace();
       markOrderLifecycleClient(active, "mutation_success");
+      markOrderLifecycleClient(active, "visible_update");
+
+      publishOrderLifecycleUpdate({
+        type: "order_status_changed",
+        restaurantId,
+        orderId: vars.orderId,
+        status: vars.action,
+        at: Date.now(),
+      });
+
       markOrderLifecycleClient(active, "invalidate_start");
       const invStarted = orderLifecycleNowMs();
-      await utils.operationalDevice.runtime.getKitchenQueue.invalidate();
-      noteOrderLifecycleClientPhase(
-        active,
-        "invalidate_ms",
-        orderLifecycleNowMs() - invStarted
-      );
-      markOrderLifecycleClient(active, "invalidate_end");
-      markOrderLifecycleClient(active, "visible_update");
+      void utils.operationalDevice.runtime.getKitchenQueue.invalidate().finally(() => {
+        noteOrderLifecycleClientPhase(
+          active,
+          "invalidate_ms",
+          orderLifecycleNowMs() - invStarted
+        );
+        markOrderLifecycleClient(active, "invalidate_end");
+      });
       endOrderLifecycleClientTrace(active, "ok");
     },
     onError: () => {
@@ -70,6 +86,7 @@ export function useOperationalDeviceOrderActions() {
       const trace = beginOrderLifecycleClientTrace({
         traceId,
         orderId,
+        restaurantId,
         transition: actionId,
         surface: "operational-device",
       });
@@ -93,7 +110,7 @@ export function useOperationalDeviceOrderActions() {
         setPendingOrderId((current) => (current === orderId ? null : current));
       }
     },
-    [clearSuccessTimer]
+    [clearSuccessTimer, restaurantId]
   );
 
   return {

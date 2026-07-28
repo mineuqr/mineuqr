@@ -43,13 +43,66 @@ export function mapOrderDomainErrorToTrpc(error: unknown): never {
   throw error;
 }
 
+export type RunOrderCommandOptions = {
+  /**
+   * ORDER-LIFECYCLE-LATENCY-REMEDIATION-1
+   * When false, outbox relay runs after the command returns (not on the HTTP
+   * critical path). Default true preserves prior place-order / sync behavior.
+   */
+  awaitRelay?: boolean;
+};
+
+async function runOrderEventRelaySafe(latencyActive: boolean): Promise<void> {
+  try {
+    if (latencyActive) markOrderLifecycleLatency("relay_start");
+    const relayStarted = orderLifecycleNowMs();
+    const { runOrderEventRelayBatch } = await import(
+      "../eventInfrastructureComposition"
+    );
+    const batch = await runOrderEventRelayBatch();
+    if (latencyActive) {
+      noteOrderLifecyclePhase(
+        "event_relay_ms",
+        orderLifecycleNowMs() - relayStarted
+      );
+      noteOrderLifecycleMeta("event_relay_processed", batch.processed);
+      noteOrderLifecycleMeta("event_relay_published", batch.published);
+      noteOrderLifecycleMeta("event_relay_failed", batch.failed);
+      markOrderLifecycleLatency("relay_end");
+    }
+  } catch {
+    if (latencyActive) {
+      noteOrderLifecycleMeta("event_relay_unavailable", true);
+      markOrderLifecycleLatency("relay_end");
+    }
+  }
+}
+
+function scheduleOrderEventRelay(latencyActive: boolean): void {
+  if (latencyActive) {
+    noteOrderLifecycleMeta("event_relay_mode", "deferred");
+    markOrderLifecycleLatency("relay_start");
+    markOrderLifecycleLatency("relay_end");
+  }
+  const kick = () => {
+    void runOrderEventRelaySafe(false);
+  };
+  if (typeof setImmediate === "function") {
+    setImmediate(kick);
+  } else {
+    setTimeout(kick, 0);
+  }
+}
+
 /**
- * Runs an order write command then awaits outbox relay (unchanged behavior).
- * ORDER-LIFECYCLE-LATENCY-INSTRUMENTATION-1 — records phase timings when a
- * lifecycle ALS context is active (status transitions). Place-order callers
- * remain unaffected.
+ * Runs an order write command, then relays outbox events.
+ * ORDER-LIFECYCLE-LATENCY-REMEDIATION-1 — status transitions may defer relay.
  */
-export async function runOrderCommand<T>(fn: () => Promise<T>): Promise<T> {
+export async function runOrderCommand<T>(
+  fn: () => Promise<T>,
+  options?: RunOrderCommandOptions
+): Promise<T> {
+  const awaitRelay = options?.awaitRelay !== false;
   const latencyActive = Boolean(getOrderLifecycleLatencyContext());
   try {
     if (latencyActive) markOrderLifecycleLatency("command_start");
@@ -62,30 +115,16 @@ export async function runOrderCommand<T>(fn: () => Promise<T>): Promise<T> {
       );
       markOrderLifecycleLatency("command_complete");
     }
-    try {
-      if (latencyActive) markOrderLifecycleLatency("relay_start");
-      const relayStarted = orderLifecycleNowMs();
-      const { runOrderEventRelayBatch } = await import(
-        "../eventInfrastructureComposition"
-      );
-      const batch = await runOrderEventRelayBatch();
+
+    if (awaitRelay) {
       if (latencyActive) {
-        noteOrderLifecyclePhase(
-          "event_relay_ms",
-          orderLifecycleNowMs() - relayStarted
-        );
-        noteOrderLifecycleMeta("event_relay_processed", batch.processed);
-        noteOrderLifecycleMeta("event_relay_published", batch.published);
-        noteOrderLifecycleMeta("event_relay_failed", batch.failed);
-        markOrderLifecycleLatency("relay_end");
+        noteOrderLifecycleMeta("event_relay_mode", "awaited");
       }
-    } catch {
-      /* relay unavailable when composition or DB is partially mocked */
-      if (latencyActive) {
-        noteOrderLifecycleMeta("event_relay_unavailable", true);
-        markOrderLifecycleLatency("relay_end");
-      }
+      await runOrderEventRelaySafe(latencyActive);
+    } else {
+      scheduleOrderEventRelay(latencyActive);
     }
+
     return result;
   } catch (error) {
     mapOrderDomainErrorToTrpc(error);

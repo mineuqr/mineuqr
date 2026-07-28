@@ -24,7 +24,7 @@ describe("ORDER-LIFECYCLE-LATENCY-INSTRUMENTATION-1", () => {
     expect(
       existsSync(resolve(root, "shared/order-lifecycle-latency/contracts.ts"))
     ).toBe(true);
-    expect(ORDER_LIFECYCLE_OBSERVER_POLL_MS).toBe(10_000);
+    expect(ORDER_LIFECYCLE_OBSERVER_POLL_MS).toBe(3_000);
     expect(createOrderLifecycleTraceId().startsWith("olt_")).toBe(true);
 
     resetOrderLifecycleLatencyAggregateForTests();
@@ -91,12 +91,13 @@ describe("ORDER-LIFECYCLE-LATENCY-INSTRUMENTATION-1", () => {
     expect(links).toContain("lifecycleTraceId");
   });
 
-  it("does not change poll intervals or introduce realtime", () => {
+  it("does not introduce realtime WebSocket; poll remains fallback", () => {
     const runtime = read("client/src/lib/queryRuntime.ts");
     expect(runtime).toContain("DASHBOARD_ORDER_LIST_POLL_MS = 10_000");
+    expect(runtime).toContain("OPERATIONAL_LIFECYCLE_POLL_MS = 3_000");
 
     const boot = read("client/src/lib/operational-screen/bootstrapLogic.ts");
-    expect(boot).toContain("DATA_POLL_INTERVAL_MS = 10_000");
+    expect(boot).toContain("DATA_POLL_INTERVAL_MS = 3_000");
 
     const clientLat = read("client/src/lib/order-lifecycle-latency/index.ts");
     expect(clientLat).toContain("realtimeEnabled: false");

@@ -2738,12 +2738,14 @@ const orderRouter = router({
         },
         async () => {
           markOrderLifecycleLatency("authz");
-          const result = await runOrderCommand(() =>
-            advanceOrderStatusService.execute({
-              orderId: input.id,
-              targetStatus: input.status,
-              actor,
-            })
+          const result = await runOrderCommand(
+            () =>
+              advanceOrderStatusService.execute({
+                orderId: input.id,
+                targetStatus: input.status,
+                actor,
+              }),
+            { awaitRelay: false }
           );
 
           return {

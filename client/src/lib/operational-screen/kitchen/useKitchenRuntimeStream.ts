@@ -10,6 +10,7 @@ import {
 } from "./buildKitchenRuntimeStream";
 import { useKitchenArrivalNotifications } from "./useKitchenArrivalNotifications";
 import { noteOrderLifecycleObserverRefresh } from "@/lib/order-lifecycle-latency";
+import { subscribeOrderLifecycleUpdates } from "@/lib/order-lifecycle-latency/orderLifecycleBroadcast";
 
 export type { KitchenProjectionDiagnostics, KitchenRuntimeStream };
 
@@ -54,6 +55,14 @@ export function useKitchenRuntimeStream(): KitchenRuntimeStream & {
     queueQuery.isFetching,
     context?.identity.restaurantId,
   ]);
+
+  useEffect(() => {
+    const restaurantId = context?.identity.restaurantId;
+    if (!restaurantId || !kitchenQueueSupported) return;
+    return subscribeOrderLifecycleUpdates(restaurantId, () => {
+      void queueQuery.refetch();
+    });
+  }, [context?.identity.restaurantId, kitchenQueueSupported, queueQuery.refetch]);
 
   const stream = useMemo(
     () =>

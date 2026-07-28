@@ -91,5 +91,5 @@ export function orderLifecycleIsoNow(): string {
   return new Date().toISOString();
 }
 
-/** Default operational poll ceiling (Mode A) — instrumentation constant only. */
-export const ORDER_LIFECYCLE_OBSERVER_POLL_MS = 10_000;
+/** Default operational poll ceiling (Mode A fallback after remediation). */
+export const ORDER_LIFECYCLE_OBSERVER_POLL_MS = 3_000;
