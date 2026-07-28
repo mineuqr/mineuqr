@@ -7,3 +7,4 @@ export * from "./semantic-card";
 export * from "./semantic-badge";
 export * from "./semantic-table";
 export * from "./operational-order-card";
+export * from "./semantic-confirm-dialog";

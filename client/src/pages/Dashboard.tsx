@@ -86,10 +86,7 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { SemanticConfirmDialog } from "@/design-system/semantic-confirm-dialog";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { EmailVerificationBanner } from "@/components/auth/EmailVerificationBanner";
@@ -558,26 +555,23 @@ function RestaurantsList({
 
       <CreateRestaurantDialog open={showCreate} onClose={() => setShowCreate(false)} />
       
-      <AlertDialog open={deleteRestaurantId !== null} onOpenChange={(open) => !open && setDeleteRestaurantId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t('dashboard.deleteRestaurant')}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t('dashboard.deleteRestaurantConfirm')}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteRestaurant}
-              disabled={deleteRestaurantMutation.isPending}
-              className="bg-red-500 hover:bg-red-600"
-            >
-              {deleteRestaurantMutation.isPending ? t('common.deleting') : t('common.delete')}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <SemanticConfirmDialog
+        open={deleteRestaurantId !== null}
+        onOpenChange={(open) => !open && setDeleteRestaurantId(null)}
+        kind="destructive"
+        icon="delete"
+        title={t("dashboard.deleteRestaurant")}
+        description={t("dashboard.deleteRestaurantConfirm")}
+        cancelLabel={t("common.cancel")}
+        confirmLabel={
+          deleteRestaurantMutation.isPending
+            ? t("common.deleting")
+            : t("common.delete")
+        }
+        onConfirm={handleDeleteRestaurant}
+        loading={deleteRestaurantMutation.isPending}
+        loadingLabel={t("common.deleting")}
+      />
     </div>
   );
 }
@@ -1321,25 +1315,20 @@ function CategoriesTab({
         />
       )}
 
-      <AlertDialog open={!!deleteCatId} onOpenChange={(v) => { if (!v) setDeleteCatId(null); }}>
-        <AlertDialogContent className="bg-card border-border">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-foreground">{t('dashboard.deleteCategory')}</AlertDialogTitle>
-            <AlertDialogDescription className="text-muted-foreground">
-              {t('dashboard.deleteCategoryConfirm')}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="gap-2">
-            <AlertDialogCancel className="border-border text-foreground">{t('dashboard.cancel')}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => deleteCatId && deleteCatMutation.mutate({ id: deleteCatId })}
-              className="bg-destructive text-destructive-foreground"
-            >
-              {t('dashboard.delete')}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <SemanticConfirmDialog
+        open={!!deleteCatId}
+        onOpenChange={(v) => {
+          if (!v) setDeleteCatId(null);
+        }}
+        kind="destructive"
+        icon="delete"
+        title={t("dashboard.deleteCategory")}
+        description={t("dashboard.deleteCategoryConfirm")}
+        cancelLabel={t("dashboard.cancel")}
+        confirmLabel={t("dashboard.delete")}
+        onConfirm={() => deleteCatId && deleteCatMutation.mutate({ id: deleteCatId })}
+        loading={deleteCatMutation.isPending}
+      />
     </div>
   );
 }
@@ -1568,23 +1557,20 @@ function ItemsView({
         />
       )}
 
-      <AlertDialog open={!!deleteItemId} onOpenChange={(v) => { if (!v) setDeleteItemId(null); }}>
-        <AlertDialogContent className="bg-card border-border">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-foreground">{t('dashboard.deleteItem')}</AlertDialogTitle>
-            <AlertDialogDescription className="text-muted-foreground">{t('dashboard.deleteItemConfirm')}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="gap-2">
-            <AlertDialogCancel className="border-border text-foreground">{t('dashboard.cancel')}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => deleteItemId && deleteItemMutation.mutate({ id: deleteItemId })}
-              className="bg-destructive text-destructive-foreground"
-            >
-              {t('dashboard.delete')}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <SemanticConfirmDialog
+        open={!!deleteItemId}
+        onOpenChange={(v) => {
+          if (!v) setDeleteItemId(null);
+        }}
+        kind="destructive"
+        icon="delete"
+        title={t("dashboard.deleteItem")}
+        description={t("dashboard.deleteItemConfirm")}
+        cancelLabel={t("dashboard.cancel")}
+        confirmLabel={t("dashboard.delete")}
+        onConfirm={() => deleteItemId && deleteItemMutation.mutate({ id: deleteItemId })}
+        loading={deleteItemMutation.isPending}
+      />
     </div>
   );
 }
@@ -2360,24 +2346,20 @@ function OffersTab({ restaurantId, currencySymbol }: { restaurantId: number; cur
         />
       )}
 
-      {/* Delete Confirmation */}
-      <AlertDialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t('dashboard.deleteOfferConfirm')}</AlertDialogTitle>
-            <AlertDialogDescription>{t('dashboard.deleteOfferConfirmMessage')}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t('dashboard.cancel')}</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => deleteId && deleteMutation.mutate({ id: deleteId })}
-            >
-              {t('dashboard.delete')}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <SemanticConfirmDialog
+        open={deleteId !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteId(null);
+        }}
+        kind="destructive"
+        icon="delete"
+        title={t("dashboard.deleteOfferConfirm")}
+        description={t("dashboard.deleteOfferConfirmMessage")}
+        cancelLabel={t("dashboard.cancel")}
+        confirmLabel={t("dashboard.delete")}
+        onConfirm={() => deleteId && deleteMutation.mutate({ id: deleteId })}
+        loading={deleteMutation.isPending}
+      />
     </div>
   );
 }
@@ -3341,25 +3323,18 @@ function SettingsTab({ restaurant, onBack }: { restaurant: any; onBack: () => vo
         </CardContent>
       </Card>
 
-      <AlertDialog open={showDelete} onOpenChange={setShowDelete}>
-        <AlertDialogContent className="bg-card border-border">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-foreground">{t('dashboard.deleteForever')}</AlertDialogTitle>
-            <AlertDialogDescription className="text-muted-foreground">
-              {t('dashboard.deleteForeverConfirm')}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="gap-2">
-            <AlertDialogCancel className="border-border text-foreground">{t('dashboard.cancel')}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => deleteMutation.mutate({ id: restaurant.id })}
-              className="bg-destructive text-destructive-foreground"
-            >
-              {t('dashboard.deleteForever')}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <SemanticConfirmDialog
+        open={showDelete}
+        onOpenChange={setShowDelete}
+        kind="destructive"
+        icon="delete"
+        title={t("dashboard.deleteForever")}
+        description={t("dashboard.deleteForeverConfirm")}
+        cancelLabel={t("dashboard.cancel")}
+        confirmLabel={t("dashboard.deleteForever")}
+        onConfirm={() => deleteMutation.mutate({ id: restaurant.id })}
+        loading={deleteMutation.isPending}
+      />
     </div>
   );
 }

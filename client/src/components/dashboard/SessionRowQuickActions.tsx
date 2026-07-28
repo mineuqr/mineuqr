@@ -1,21 +1,12 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { SemanticConfirmDialog } from "@/design-system/semantic-confirm-dialog";
 import { MarkPaidSettlementDialog } from "@/components/dashboard/MarkPaidSettlementDialog";
 import { SettlementSuccessDialog } from "@/components/settlement-record/SettlementSuccessDialog";
 import { SettlementDetailSheet } from "@/components/settlement-record/SettlementDetailSheet";
@@ -263,22 +254,18 @@ export function SessionRowQuickActions({
         onOpenChange={setReceiptOpen}
       />
 
-      <AlertDialog open={confirmKind != null} onOpenChange={(open) => !open && setConfirmKind(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{confirmTitle}</AlertDialogTitle>
-            <AlertDialogDescription>{confirmBody}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={pending}>
-              {isAr ? "إلغاء" : "Cancel"}
-            </AlertDialogCancel>
-            <AlertDialogAction disabled={pending} onClick={runConfirmed}>
-              {isAr ? "تأكيد" : "Confirm"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <SemanticConfirmDialog
+        open={confirmKind != null}
+        onOpenChange={(open) => !open && setConfirmKind(null)}
+        kind={confirmKind === "close" ? "destructive" : "warning"}
+        icon={confirmKind === "close" ? "close" : "warning"}
+        title={confirmTitle}
+        description={confirmBody}
+        cancelLabel={isAr ? "إلغاء" : "Cancel"}
+        confirmLabel={isAr ? "تأكيد" : "Confirm"}
+        onConfirm={runConfirmed}
+        loading={pending}
+      />
     </>
   );
 }

@@ -9,16 +9,7 @@ import {
   DialogFooter,
   DialogDescription,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { SemanticConfirmDialog } from "@/design-system/semantic-confirm-dialog";
 import {
   Select,
   SelectContent,
@@ -169,32 +160,19 @@ export function SecurityAccountControlsSection({ governance }: SecurityAccountCo
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={deleteUserId !== null} onOpenChange={(open) => !open && setDeleteUserId(null)}>
-        <AlertDialogContent dir={ADMIN_WORKSPACE_DIR} className="bg-card border-border">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-foreground">تأكيد حذف المستخدم</AlertDialogTitle>
-            <AlertDialogDescription className="text-muted-foreground">
-              هل أنت متأكد من حذف هذا المستخدم؟ لا يمكن التراجع عن هذا الإجراء.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="bg-background border-border text-foreground">
-              إلغاء
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDeleteUser}
-              disabled={deleteUserMutation.isPending}
-              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
-            >
-              {deleteUserMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                "حذف"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <SemanticConfirmDialog
+        open={deleteUserId !== null}
+        onOpenChange={(open) => !open && setDeleteUserId(null)}
+        kind="destructive"
+        icon="delete"
+        dir={ADMIN_WORKSPACE_DIR}
+        title="تأكيد حذف المستخدم"
+        description="هل أنت متأكد من حذف هذا المستخدم؟ لا يمكن التراجع عن هذا الإجراء."
+        cancelLabel="إلغاء"
+        confirmLabel="حذف"
+        onConfirm={confirmDeleteUser}
+        loading={deleteUserMutation.isPending}
+      />
     </>
   );
 }

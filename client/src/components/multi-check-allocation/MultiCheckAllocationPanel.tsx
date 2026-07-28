@@ -9,16 +9,7 @@
  */
 
 import { useMemo, useState } from "react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { SemanticConfirmDialog } from "@/design-system/semantic-confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { restaurantDash, restaurantSemantic } from "@/components/dashboard/restaurantDashStyles";
 import { AllocationActionBar, type AllocationDialogKind } from "./AllocationActionBar";
@@ -376,51 +367,41 @@ export function MultiCheckAllocationPanel({
         onSubmit={onAdjust}
       />
 
-      <AlertDialog
+      <SemanticConfirmDialog
         open={confirm != null}
         onOpenChange={(open) => {
           if (!open) setConfirm(null);
         }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {confirm
-                ? multiCheckAllocationUiLabel(
-                    confirm.kind === "reverse"
-                      ? "reverseTitle"
-                      : confirm.kind === "reserve"
-                        ? "reserve"
-                        : confirm.kind === "apply"
-                          ? "apply"
-                          : confirm.kind === "complete"
-                            ? "complete"
-                            : "cancel",
-                    language
-                  )
-                : ""}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {confirm ? confirmCopy(confirm.kind) : ""}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={mutations.pending}>
-              {multiCheckAllocationUiLabel("dismiss", language)}
-            </AlertDialogCancel>
-            <AlertDialogAction
-              disabled={mutations.pending}
-              onClick={() => {
-                if (!confirm) return;
-                runLifecycle(confirm.kind, confirm.row);
-                setConfirm(null);
-              }}
-            >
-              {multiCheckAllocationUiLabel("confirm", language)}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        kind={confirm?.kind === "reverse" || confirm?.kind === "cancel" ? "destructive" : "default"}
+        icon={
+          confirm?.kind === "reverse" || confirm?.kind === "cancel" ? "close" : "question"
+        }
+        title={
+          confirm
+            ? multiCheckAllocationUiLabel(
+                confirm.kind === "reverse"
+                  ? "reverseTitle"
+                  : confirm.kind === "reserve"
+                    ? "reserve"
+                    : confirm.kind === "apply"
+                      ? "apply"
+                      : confirm.kind === "complete"
+                        ? "complete"
+                        : "cancel",
+                language
+              )
+            : ""
+        }
+        description={confirm ? confirmCopy(confirm.kind) : ""}
+        cancelLabel={multiCheckAllocationUiLabel("dismiss", language)}
+        confirmLabel={multiCheckAllocationUiLabel("confirm", language)}
+        onConfirm={() => {
+          if (!confirm) return;
+          runLifecycle(confirm.kind, confirm.row);
+          setConfirm(null);
+        }}
+        loading={mutations.pending}
+      />
     </section>
   );
 }

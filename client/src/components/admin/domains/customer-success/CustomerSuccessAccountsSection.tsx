@@ -6,10 +6,7 @@ import { Input } from "@/components/ui/input";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { SemanticConfirmDialog } from "@/design-system/semantic-confirm-dialog";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -547,27 +544,21 @@ export function CustomerSuccessAccountsSection() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Subscription Confirmation Dialog */}
-      <AlertDialog open={deleteSubUserId !== null} onOpenChange={(open) => !open && setDeleteSubUserId(null)}>
-        <AlertDialogContent dir={ADMIN_WORKSPACE_DIR} className="bg-card border-border">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-foreground">تأكيد حذف الاشتراك</AlertDialogTitle>
-            <AlertDialogDescription className="text-muted-foreground">
-              {t("admin.deleteAccountSubscriptionConfirm")}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="bg-background border-border text-foreground">إلغاء</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => deleteSubUserId && deleteSubMutation.mutate({ userId: deleteSubUserId })}
-              disabled={deleteSubMutation.isPending}
-              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
-            >
-              {deleteSubMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'حذف الاشتراك'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <SemanticConfirmDialog
+        open={deleteSubUserId !== null}
+        onOpenChange={(open) => !open && setDeleteSubUserId(null)}
+        kind="destructive"
+        icon="delete"
+        dir={ADMIN_WORKSPACE_DIR}
+        title="تأكيد حذف الاشتراك"
+        description={t("admin.deleteAccountSubscriptionConfirm")}
+        cancelLabel="إلغاء"
+        confirmLabel="حذف الاشتراك"
+        onConfirm={() =>
+          deleteSubUserId && deleteSubMutation.mutate({ userId: deleteSubUserId })
+        }
+        loading={deleteSubMutation.isPending}
+      />
     </TooltipProvider>
   );
 }

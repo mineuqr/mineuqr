@@ -10,10 +10,7 @@ import { Label } from "@/components/ui/label";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { SemanticConfirmDialog } from "@/design-system/semantic-confirm-dialog";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -695,27 +692,25 @@ export function CustomerSuccessTenantsSection() {
       </Dialog>
 
       {/* Delete Confirmation */}
-      <AlertDialog open={deleteRestaurantId !== null} onOpenChange={() => setDeleteRestaurantId(null)}>
-        <AlertDialogContent dir={ADMIN_WORKSPACE_DIR} className="bg-card border-border">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-foreground">{t('admin.deleteRestaurant')}</AlertDialogTitle>
-            <AlertDialogDescription className="text-muted-foreground">{t('admin.deleteConfirm')}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="border-border/50 text-foreground">{t('admin.cancel')}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (deleteRestaurantId) {
-                  deleteRestaurantMutation.mutate({ id: deleteRestaurantId });
-                }
-              }}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              {t('admin.delete')}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <SemanticConfirmDialog
+        open={deleteRestaurantId !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteRestaurantId(null);
+        }}
+        kind="destructive"
+        icon="delete"
+        dir={ADMIN_WORKSPACE_DIR}
+        title={t("admin.deleteRestaurant")}
+        description={t("admin.deleteConfirm")}
+        cancelLabel={t("admin.cancel")}
+        confirmLabel={t("admin.delete")}
+        onConfirm={() => {
+          if (deleteRestaurantId) {
+            deleteRestaurantMutation.mutate({ id: deleteRestaurantId });
+          }
+        }}
+        loading={deleteRestaurantMutation.isPending}
+      />
     </TooltipProvider>
   );
 }

@@ -14,16 +14,7 @@ import { QrCode } from "lucide-react";
 import { formatRiyadhDate } from "@/lib/datetime";
 import { useCommercialFeatureVisibility } from "@/hooks/useCommercialFeatureVisibility";
 import { MINEUQR_PUBLIC_SUPPORT_EMAIL } from "@/const/publicContact";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { SemanticConfirmDialog } from "@/design-system/semantic-confirm-dialog";
 import { useAuth } from "@/_core/hooks/useAuth";
 
 function PayPalCheckoutButton({
@@ -96,43 +87,34 @@ function PayPalCheckoutButton({
         {isLoading ? t("common.processing") : "PayPal"}
       </Button>
 
-      <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
-        <AlertDialogContent className="bg-slate-800 border-slate-700" dir={language === 'ar' ? 'rtl' : 'ltr'}>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-white text-xl">
-              {t('pricing.confirmSubscription')}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-cyan-300 text-base space-y-3">
-              <p>{t('pricing.confirmMessage')}</p>
-              <div className="bg-slate-900/50 rounded-lg p-4 border border-slate-700 space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-400">{t('pricing.planLabel')}:</span>
-                  <span className="text-white font-semibold">{planName}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-400">{t('pricing.priceLabel')}:</span>
-                  <span className="text-cyan-400 font-bold">${price}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-400">{t('pricing.cycleLabel')}:</span>
-                  <span className="text-white">{cycleText}</span>
-                </div>
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className={language === 'ar' ? 'flex-row-reverse gap-2' : ''}>
-            <AlertDialogCancel className="bg-slate-700 text-white border-slate-600 hover:bg-slate-600">
-              {t('common.cancel')}
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleConfirm}
-              className="bg-gradient-to-r from-blue-600 to-blue-500 text-white font-bold hover:from-blue-700 hover:to-blue-600"
-            >
-              {t('pricing.confirmAndPay')}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <SemanticConfirmDialog
+        open={showConfirm}
+        onOpenChange={setShowConfirm}
+        kind="information"
+        icon="information"
+        dir={language === "ar" ? "rtl" : "ltr"}
+        title={t("pricing.confirmSubscription")}
+        description={t("pricing.confirmMessage")}
+        cancelLabel={t("common.cancel")}
+        confirmLabel={t("pricing.confirmAndPay")}
+        onConfirm={handleConfirm}
+        loading={isLoading}
+      >
+        <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-2">
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-muted-foreground">{t("pricing.planLabel")}:</span>
+            <span className="font-semibold text-foreground">{planName}</span>
+          </div>
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-muted-foreground">{t("pricing.priceLabel")}:</span>
+            <span className="font-bold text-cyan-400">${price}</span>
+          </div>
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-muted-foreground">{t("pricing.cycleLabel")}:</span>
+            <span className="text-foreground">{cycleText}</span>
+          </div>
+        </div>
+      </SemanticConfirmDialog>
     </>
   );
 }
@@ -200,47 +182,44 @@ function TapCheckoutButton({
         {isLoading ? t("common.processing") : (language === 'ar' ? "الدفع بالبطاقة (Visa/Mastercard)" : "Pay with Card (Visa/Mastercard)")}
       </Button>
 
-      <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
-        <AlertDialogContent className="bg-slate-800 border-slate-700" dir={language === 'ar' ? 'rtl' : 'ltr'}>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-white text-xl">
-              {t('pricing.confirmSubscription')}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-cyan-300 text-base space-y-3">
-              <p>{t('pricing.confirmMessage')}</p>
-              <div className="bg-slate-900/50 rounded-lg p-4 border border-slate-700 space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-400">{t('pricing.planLabel')}:</span>
-                  <span className="text-white font-semibold">{planName}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-400">{t('pricing.priceLabel')}:</span>
-                  <span className="text-cyan-400 font-bold">${price}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-400">{t('pricing.cycleLabel')}:</span>
-                  <span className="text-white">{cycleText}</span>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-slate-400 mt-2">
-                <CreditCard className="w-4 h-4" />
-                <span>{language === 'ar' ? "ستتم إعادة توجيهك إلى صفحة الدفع الآمنة" : "You will be redirected to a secure payment page"}</span>
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className={language === 'ar' ? 'flex-row-reverse gap-2' : ''}>
-            <AlertDialogCancel className="bg-slate-700 text-white border-slate-600 hover:bg-slate-600">
-              {t('common.cancel')}
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleConfirm}
-              className="bg-gradient-to-r from-cyan-500 to-cyan-400 text-slate-900 font-bold hover:from-cyan-600 hover:to-cyan-500"
-            >
-              {t('pricing.confirmAndPay')}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <SemanticConfirmDialog
+        open={showConfirm}
+        onOpenChange={setShowConfirm}
+        kind="information"
+        icon="information"
+        dir={language === "ar" ? "rtl" : "ltr"}
+        title={t("pricing.confirmSubscription")}
+        description={t("pricing.confirmMessage")}
+        cancelLabel={t("common.cancel")}
+        confirmLabel={t("pricing.confirmAndPay")}
+        onConfirm={handleConfirm}
+        loading={isLoading}
+      >
+        <div className="space-y-3">
+          <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-2">
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-muted-foreground">{t("pricing.planLabel")}:</span>
+              <span className="font-semibold text-foreground">{planName}</span>
+            </div>
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-muted-foreground">{t("pricing.priceLabel")}:</span>
+              <span className="font-bold text-cyan-400">${price}</span>
+            </div>
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-muted-foreground">{t("pricing.cycleLabel")}:</span>
+              <span className="text-foreground">{cycleText}</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <CreditCard className="w-4 h-4" aria-hidden />
+            <span>
+              {language === "ar"
+                ? "ستتم إعادة توجيهك إلى صفحة الدفع الآمنة"
+                : "You will be redirected to a secure payment page"}
+            </span>
+          </div>
+        </div>
+      </SemanticConfirmDialog>
     </>
   );
 }
