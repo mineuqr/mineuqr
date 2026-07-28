@@ -1,7 +1,9 @@
 /**
- * REPORTING-PRODUCT-POLISH-1 — Shared empty / error states for restaurant dashboards.
+ * REPORTING-PRODUCT-POLISH-1 + SEMANTIC-CARD-DESIGN-SYSTEM-1
+ * Shared empty / error states — empty owned by Semantic Card DS.
  */
 import { Button } from "@/components/ui/button";
+import { SemanticEmptyState } from "@/design-system/semantic-card";
 import { cn } from "@/lib/utils";
 import { AlertTriangle, Inbox, Loader2, type LucideIcon } from "lucide-react";
 import { restaurantDash, restaurantSemantic } from "./restaurantDashStyles";
@@ -18,24 +20,13 @@ export function RestaurantSectionEmpty({
   className?: string;
 }) {
   return (
-    <div
-      className={cn(restaurantDash.emptyPanel, "rounded-2xl", className)}
-      role="status"
-      aria-live="polite"
-    >
-      <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-600/40 bg-slate-900/60">
-        <Icon
-          className={cn("h-6 w-6", restaurantSemantic.iconNeutral)}
-          aria-hidden
-        />
-      </div>
-      {title ? (
-        <p className="mb-1 text-sm font-semibold text-slate-200">{title}</p>
-      ) : null}
-      <p className="mx-auto max-w-md text-sm leading-relaxed text-slate-400">
-        {message}
-      </p>
-    </div>
+    <SemanticEmptyState
+      title={title}
+      message={message}
+      icon={Icon}
+      className={className}
+      variant="panel"
+    />
   );
 }
 

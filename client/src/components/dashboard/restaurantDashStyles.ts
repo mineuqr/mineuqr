@@ -1,21 +1,31 @@
 /**
  * UX-DASHBOARD-REFACTOR-1B/1C + UX-DASHBOARD-AUDIT-1A + UX-DASHBOARD-REFACTOR-1D
- * Restaurant dashboard visual tokens — Admin Console shell inheritance.
+ * + SEMANTIC-CARD-DESIGN-SYSTEM-1
+ * Restaurant dashboard visual tokens — panel/tone owned by design-system.
  */
+import {
+  SEMANTIC_HOVER_GLOW,
+  SEMANTIC_MOTION,
+  SEMANTIC_PANEL_BASE,
+  SEMANTIC_SHELL,
+  SEMANTIC_TONE,
+  SEMANTIC_VALUE,
+  legacyToneToSemanticTone,
+  semanticToneIconClass,
+  type SemanticTone,
+} from "@/design-system/semantic-card";
 import { cn } from "@/lib/utils";
 
 /** Restaurant workspace uses LTR shell geometry like Admin (sidebar physical left). */
 export const RESTAURANT_WORKSPACE_DIR = "ltr" as const;
 
-const pricingPanelBase =
-  "rounded-xl border border-cyan-500/30 bg-gradient-to-b from-slate-800/50 to-slate-900/50 shadow-none";
+const pricingPanelBase = SEMANTIC_PANEL_BASE;
 
 /** Subtle cyan hover glow — Pricing / Admin reference (I-03, I-08). */
-export const restaurantHoverGlow =
-  "transition-all duration-200 hover:border-cyan-400/30 hover:shadow-sm hover:shadow-cyan-500/10";
+export const restaurantHoverGlow = SEMANTIC_HOVER_GLOW;
 
 /** Shared motion timing (I-05). */
-export const restaurantMotion = "transition-all duration-200";
+export const restaurantMotion = SEMANTIC_MOTION;
 
 /** Icon color hierarchy (I-06). */
 export const restaurantIconColor = {
@@ -31,18 +41,16 @@ const iconContainerBase = cn(
 );
 
 /** Pricing-page revenue emphasis (vertical orange gradient). */
-export const restaurantRevenueValueClass =
-  "bg-gradient-to-b from-amber-300 via-orange-400 to-orange-500 bg-clip-text text-transparent";
+export const restaurantRevenueValueClass = SEMANTIC_VALUE.revenue;
 
-export const restaurantOperationalValueClass = "text-white";
+export const restaurantOperationalValueClass = SEMANTIC_VALUE.operational;
 
 /** REPORTING-VISUAL-HIERARCHY-1 — Executive primary value size. */
-export const restaurantRevenueValueClassPrimary =
-  "bg-gradient-to-b from-amber-300 via-orange-400 to-orange-500 bg-clip-text text-transparent text-2xl sm:text-3xl lg:text-4xl font-bold tabular-nums";
+export const restaurantRevenueValueClassPrimary = SEMANTIC_VALUE.revenuePrimary;
 
 export const restaurantDash = {
   /** Admin OperationsShell background */
-  shell: "min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900",
+  shell: SEMANTIC_SHELL,
   /** Admin-aligned main content container */
   main: "mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8",
   stack: "flex flex-col gap-6 sm:gap-8",
@@ -137,25 +145,25 @@ export const restaurantDash = {
   ),
 } as const;
 
-/** Semantic accents — admin palette. */
+/** Semantic accents — owned by design-system SEMANTIC_TONE (compatibility mirror). */
 export const restaurantSemantic = {
-  iconMuted: "text-slate-400",
-  iconNeutral: "text-slate-400",
-  iconInfo: "text-cyan-400",
-  iconSuccess: "text-green-400",
-  iconWarning: "text-orange-400",
-  iconAccent: "text-violet-400",
-  iconDanger: "text-red-400",
-  rowWarning: "border-orange-500/25 bg-orange-500/5",
-  rowSuccess: "border-green-500/25 bg-green-500/5",
-  rowNeutral: "border-slate-700/40 bg-slate-900/30",
-  badgeOccupied: "border-green-500/30 bg-green-500/10 text-green-400",
-  badgeAvailable: "border-slate-600/40 bg-slate-800/50 text-slate-300",
-  valuePositive: "text-green-400",
-  valueMuted: "text-slate-400",
+  iconMuted: SEMANTIC_TONE.icon.neutral,
+  iconNeutral: SEMANTIC_TONE.icon.neutral,
+  iconInfo: SEMANTIC_TONE.icon.info,
+  iconSuccess: SEMANTIC_TONE.icon.success,
+  iconWarning: SEMANTIC_TONE.icon.warning,
+  iconAccent: SEMANTIC_TONE.icon.accent,
+  iconDanger: SEMANTIC_TONE.icon.danger,
+  rowWarning: SEMANTIC_TONE.row.warning,
+  rowSuccess: SEMANTIC_TONE.row.success,
+  rowNeutral: SEMANTIC_TONE.row.neutral,
+  badgeOccupied: SEMANTIC_TONE.badge.success,
+  badgeAvailable: SEMANTIC_TONE.badge.neutral,
+  valuePositive: SEMANTIC_TONE.value.success,
+  valueMuted: SEMANTIC_TONE.value.neutral,
 } as const;
 
-export type RestaurantKpiTone = "neutral" | "info" | "success" | "warning" | "accent";
+export type RestaurantKpiTone = Exclude<SemanticTone, "danger"> | "neutral" | "info" | "success" | "warning" | "accent";
 
 export type RestaurantKpiValueVariant = "operational" | "revenue";
 
@@ -166,32 +174,21 @@ export function restaurantActivityIconClass(
   variant: RestaurantActivityIconVariant = "neutral"
 ): string {
   const tone: Record<RestaurantActivityIconVariant, string> = {
-    success: "border-green-500/30 bg-green-500/10 text-green-400",
+    success: SEMANTIC_TONE.badge.success,
     info: "border-cyan-500/20 bg-cyan-500/10 text-cyan-400",
-    neutral: "border-slate-600/40 bg-slate-800/50 text-slate-300",
-    accent: "border-violet-500/30 bg-violet-500/10 text-violet-400",
+    neutral: SEMANTIC_TONE.badge.neutral,
+    accent: SEMANTIC_TONE.badge.accent,
     muted: "border-slate-700/40 bg-slate-900/40 text-slate-400",
   };
   return cn(restaurantDash.iconContainerSm, tone[variant]);
 }
 
 export function restaurantKpiIconClass(tone: RestaurantKpiTone = "neutral"): string {
-  const map: Record<RestaurantKpiTone, string> = {
-    neutral: restaurantSemantic.iconNeutral,
-    info: restaurantSemantic.iconInfo,
-    success: restaurantSemantic.iconSuccess,
-    warning: restaurantSemantic.iconWarning,
-    accent: restaurantSemantic.iconAccent,
-  };
-  return map[tone];
+  return semanticToneIconClass(tone);
 }
 
 export function legacyToneToSemantic(
   tone: "default" | "primary" | "accent" | "emerald" | "amber"
 ): RestaurantKpiTone {
-  if (tone === "primary") return "info";
-  if (tone === "accent") return "accent";
-  if (tone === "emerald") return "success";
-  if (tone === "amber") return "warning";
-  return "neutral";
+  return legacyToneToSemanticTone(tone);
 }

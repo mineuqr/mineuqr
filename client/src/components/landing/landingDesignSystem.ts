@@ -1,9 +1,9 @@
 /**
- * LANDING-DESIGN-SYSTEM-ALIGNMENT-1
- * Bridge: landing surfaces inherit production restaurantDash recipes.
- * Single source of truth remains restaurantDashStyles.ts.
+ * LANDING-DESIGN-SYSTEM-ALIGNMENT-1 + SEMANTIC-CARD-DESIGN-SYSTEM-1
+ * Bridge: landing surfaces inherit semantic panel recipes via restaurantDash facade.
+ * Panel/tone SSOT: @/design-system/semantic-card
  *
- * Category accents (data-accent) map to ExecutivePeriodDashboard semantics:
+ * Category accents (data-accent) map to SEMANTIC_CATEGORY_SURFACE:
  *   qr        → orders (orange)
  *   ordering  → card/sky
  *   kitchen   → tax/violet

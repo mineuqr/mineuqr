@@ -1,18 +1,23 @@
 /**
  * Admin dashboard presentation tokens (UX-REFINE-1B).
+ * + SEMANTIC-CARD-DESIGN-SYSTEM-1 — panel chrome owned by design-system.
  * Visual authority: Pricing page (`pages/Pricing.tsx`) — reuse only, no new language.
  */
+import {
+  SEMANTIC_PANEL_BASE,
+  SEMANTIC_SHELL,
+  SEMANTIC_TONE,
+} from "@/design-system/semantic-card";
 import { cn } from "@/lib/utils";
 
 /** ADMIN-RTL-WORKSPACE — operator console LTR geometry (shell + portaled modals). */
 export const ADMIN_WORKSPACE_DIR = "ltr" as const;
 
-const pricingCardBase =
-  "rounded-xl border border-cyan-500/30 bg-gradient-to-b from-slate-800/50 to-slate-900/50 shadow-none";
+const pricingCardBase = SEMANTIC_PANEL_BASE;
 
 export const adminDash = {
   /** Pricing page shell background */
-  shell: "min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900",
+  shell: SEMANTIC_SHELL,
   /** Pricing page nav */
   nav: "sticky top-0 z-50 border-b border-border/30 bg-background/60 backdrop-blur-xl",
   navInner:
@@ -75,22 +80,25 @@ export const adminDash = {
     "bg-slate-800 border-slate-700 max-w-md w-[calc(100vw-2rem)] sm:w-full max-h-[min(90vh,720px)] overflow-y-auto",
 } as const;
 
-/** Semantic accents — Pricing palette only (cyan, orange, green, red, slate). */
+/**
+ * Admin status accents — icons/rows derive from SEMANTIC_TONE;
+ * filled status pills remain admin-console specific (dense ops chrome).
+ */
 export const adminSemantic = {
   statusActive: "bg-green-600/90 text-white border-transparent",
   statusTrial: "bg-cyan-500 text-slate-900 border-transparent",
   statusWarning: "bg-orange-500/90 text-white border-transparent",
   statusDanger: "bg-red-600/90 text-white border-transparent",
-  cardAccentActive: "border-green-500/30 bg-green-500/5",
-  cardAccentTrial: "border-cyan-500/30 bg-cyan-500/5",
-  cardAccentWarning: "border-orange-500/30 bg-orange-500/5",
-  cardAccentDanger: "border-red-500/30 bg-red-500/5",
+  cardAccentActive: SEMANTIC_TONE.row.success,
+  cardAccentTrial: SEMANTIC_TONE.row.info,
+  cardAccentWarning: SEMANTIC_TONE.row.warning,
+  cardAccentDanger: SEMANTIC_TONE.row.danger,
   cardAccentNeutral: "border-cyan-500/20 bg-slate-800/30",
-  iconActive: "text-green-400",
-  iconTrial: "text-cyan-400",
-  iconWarning: "text-orange-400",
-  iconDanger: "text-red-400",
-  iconMuted: "text-slate-400",
+  iconActive: SEMANTIC_TONE.icon.success,
+  iconTrial: SEMANTIC_TONE.icon.info,
+  iconWarning: SEMANTIC_TONE.icon.warning,
+  iconDanger: SEMANTIC_TONE.icon.danger,
+  iconMuted: SEMANTIC_TONE.icon.neutral,
 } as const;
 
 /** Outline action buttons — Pricing cyan primary, semantic status colors only. */
