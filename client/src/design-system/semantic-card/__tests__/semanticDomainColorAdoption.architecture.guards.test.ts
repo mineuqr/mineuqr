@@ -1,5 +1,7 @@
 /**
  * SEMANTIC-DOMAIN-COLOR-ADOPTION-1 — architecture guards.
+ * REPORTING-SEMANTIC-SURFACE-PLATFORM-ADOPTION-1 — business cards use Reporting
+ * full surfaces; soft accents remain deprecated helpers only.
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync, existsSync } from "node:fs";
@@ -7,7 +9,9 @@ import { resolve } from "node:path";
 import {
   SEMANTIC_DOMAIN_ACCENT,
   SEMANTIC_DOMAIN_HEX,
+  SEMANTIC_DOMAIN_SURFACE,
   semanticDomainAccentClass,
+  semanticDomainReportingSurfaceClass,
   semanticDomainToTone,
 } from "@/design-system/semantic-card";
 
@@ -28,9 +32,10 @@ describe("SEMANTIC-DOMAIN-COLOR-ADOPTION-1", () => {
     expect(SEMANTIC_DOMAIN_HEX.growth).toBe("#2dd4bf");
     expect(SEMANTIC_DOMAIN_HEX.information).toBe("#38bdf8");
     expect(Object.keys(SEMANTIC_DOMAIN_ACCENT).length).toBe(11);
+    expect(Object.keys(SEMANTIC_DOMAIN_SURFACE).length).toBe(11);
   });
 
-  it("soft accent affects border/glow only (no bg-gradient flood helpers)", () => {
+  it("deprecated soft accent affects border/glow only (no bg-gradient flood helpers)", () => {
     const accent = semanticDomainAccentClass("kitchen");
     expect(accent).toContain("border-violet");
     expect(accent).toContain("hover:shadow-");
@@ -40,12 +45,20 @@ describe("SEMANTIC-DOMAIN-COLOR-ADOPTION-1", () => {
     expect(semanticDomainToTone("revenue")).toBe("success");
   });
 
-  it("SemanticKpiCard accepts domain prop", () => {
+  it("Reporting domain surfaces tint the full shell", () => {
+    const surface = semanticDomainReportingSurfaceClass("kitchen");
+    expect(surface).toContain("bg-gradient-to-b");
+    expect(surface).toContain("from-violet-950");
+    expect(surface).toContain("border-violet");
+    expect(surface).toContain("hover:shadow-");
+  });
+
+  it("SemanticKpiCard accepts domain prop and uses Reporting surface", () => {
     const src = read(
       "client/src/design-system/semantic-card/components/SemanticKpiCard.tsx"
     );
     expect(src).toContain("domain?: SemanticDomain");
-    expect(src).toContain("semanticDomainAccentClass");
+    expect(src).toContain("semanticDomainReportingSurfaceClass");
     expect(src).toContain("data-domain={domain}");
   });
 
@@ -67,15 +80,15 @@ describe("SEMANTIC-DOMAIN-COLOR-ADOPTION-1", () => {
     ).toContain('domain="analytics"');
   });
 
-  it("ops tickets inherit soft domain accents", () => {
+  it("ops tickets inherit Reporting domain surfaces", () => {
     expect(read("client/src/components/kitchen/KitchenExecutionCard.tsx")).toContain(
-      'semanticDomainAccentClass("kitchen")'
+      'semanticDomainReportingSurfaceClass("kitchen")'
     );
     expect(read("client/src/components/operational-workspace/OperationalCard.tsx")).toContain(
-      'semanticDomainAccentClass("orders")'
+      'semanticDomainReportingSurfaceClass("orders")'
     );
     expect(read("client/src/components/screen-management/FleetScreenCard.tsx")).toContain(
-      'semanticDomainAccentClass("analytics")'
+      'semanticDomainReportingSurfaceClass("analytics")'
     );
   });
 

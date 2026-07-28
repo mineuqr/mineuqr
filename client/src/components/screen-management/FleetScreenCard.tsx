@@ -4,10 +4,10 @@ import { FleetScreenActions } from "@/components/screen-management/FleetScreenAc
 import { type FleetScreenManageAction } from "@/components/screen-management/FleetScreenManageMenu";
 import { screenTypeLabel } from "@/lib/operational-screen/screenLabels";
 import {
-  SEMANTIC_HOVER_GLOW,
-  SEMANTIC_PANEL_BASE,
+  SEMANTIC_MOTION_PREMIUM,
+  SEMANTIC_SURFACE_PREMIUM,
   SEMANTIC_TONE,
-  semanticDomainAccentClass,
+  semanticDomainReportingSurfaceClass,
 } from "@/design-system/semantic-card";
 import { cn } from "@/lib/utils";
 import { AlertTriangle } from "lucide-react";
@@ -51,9 +51,10 @@ export function FleetScreenCard({
   return (
     <article
       className={cn(
-        SEMANTIC_PANEL_BASE,
-        semanticDomainAccentClass("analytics"),
-        SEMANTIC_HOVER_GLOW,
+        SEMANTIC_SURFACE_PREMIUM,
+        "rounded-xl",
+        semanticDomainReportingSurfaceClass("analytics"),
+        SEMANTIC_MOTION_PREMIUM,
         "flex w-full flex-col p-4 min-h-[188px]",
         statusShell,
         isDisabled && "opacity-70"

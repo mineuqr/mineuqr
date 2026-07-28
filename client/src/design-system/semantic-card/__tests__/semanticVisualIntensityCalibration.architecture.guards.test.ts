@@ -23,8 +23,10 @@ describe("SEMANTIC-VISUAL-INTENSITY-CALIBRATION-1", () => {
     expect(SEMANTIC_HOVER_PREMIUM).toContain("brightness-[1.05]");
     expect(SEMANTIC_HOVER_PREMIUM).toContain("border-cyan-400/60");
     expect(SEMANTIC_ICON_HOVER).toContain("0.62");
-    expect(SEMANTIC_DOMAIN_ACCENT.kitchen.border).toContain("/52");
-    expect(SEMANTIC_DOMAIN_ACCENT.revenue.border).toContain("/58");
+    // Domain borders follow Reporting SSOT (/45) — REPORTING-SEMANTIC-SURFACE-PLATFORM-ADOPTION-1
+    expect(SEMANTIC_DOMAIN_ACCENT.kitchen.border).toContain("/45");
+    expect(SEMANTIC_DOMAIN_ACCENT.revenue.border).toContain("/45");
+    expect(SEMANTIC_DOMAIN_ACCENT.kitchen.border).toContain("border-violet");
   });
 
   it("CSS ambient light alphas are calibrated (~0.16–0.20 range)", () => {

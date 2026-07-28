@@ -2,6 +2,7 @@
  * SEMANTIC-CARD-DESIGN-SYSTEM-1 + SEMANTIC-CARD-VISUAL-CONSISTENCY-1
  * + SEMANTIC-CARD-PREMIUM-INTERACTION-1
  * + SEMANTIC-DOMAIN-COLOR-ADOPTION-1
+ * + REPORTING-SEMANTIC-SURFACE-PLATFORM-ADOPTION-1
  * Platform-reusable KPI card — Reporting golden visual language.
  * Presentation only — values and labels come from callers.
  *
@@ -10,7 +11,7 @@
  * - Compact is an API alias of secondary (no separate visual language).
  * - Supporting is lighter shell weight only; same type/padding as secondary.
  * - Primary is reserved for rare hero KPIs (amber border); Reporting FlowStrip is preferred.
- * - `domain` applies soft border / ambient / icon identity (never floods the body).
+ * - `domain` applies Reporting tinted surface (shell + glow) — not border-only accents.
  */
 import type { ComponentType } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,11 +20,13 @@ import { cn } from "@/lib/utils";
 import { semanticPanel } from "../tokens/panel";
 import {
   SEMANTIC_ICON_HOVER,
+  SEMANTIC_MOTION_PREMIUM,
+  SEMANTIC_SURFACE_PREMIUM,
   SEMANTIC_VALUE_HOVER,
 } from "../tokens/interaction";
 import {
-  semanticDomainAccentClass,
   semanticDomainIconClass,
+  semanticDomainReportingSurfaceClass,
   semanticDomainToTone,
   type SemanticDomain,
 } from "../tokens/domain";
@@ -42,8 +45,7 @@ export type SemanticKpiCardProps = {
   icon: ComponentType<{ className?: string }>;
   tone?: SemanticTone | "default" | "primary" | "accent" | "emerald" | "amber";
   /**
-   * Business domain identity — soft border / ambient / icon.
-   * When set, owns icon color; tone remains for status semantics if needed.
+   * Business domain — Reporting tinted semantic surface (shell + glow + icon).
    */
   domain?: SemanticDomain;
   valueVariant?: SemanticValueVariant;
@@ -55,6 +57,8 @@ export type SemanticKpiCardProps = {
   /** Isolate numbers in LTR for RTL layouts. */
   valueDir?: "ltr" | "rtl" | "auto";
 };
+
+const KPI_CARD_RESET = "gap-0 py-0 shadow-none";
 
 function resolveTone(
   tone: SemanticKpiCardProps["tone"],
@@ -68,7 +72,6 @@ function resolveTone(
 }
 
 function resolveEmphasis(emphasis: SemanticCardEmphasis): Exclude<SemanticCardEmphasis, "compact"> {
-  // VISUAL-CONSISTENCY-1 — compact aliases secondary (Reporting golden).
   if (emphasis === "compact") return "secondary";
   return emphasis;
 }
@@ -77,6 +80,21 @@ function shellForEmphasis(emphasis: Exclude<SemanticCardEmphasis, "compact">): s
   if (emphasis === "primary") return semanticPanel.kpiPrimary;
   if (emphasis === "supporting") return semanticPanel.kpiSupporting;
   return semanticPanel.kpi;
+}
+
+/** Reporting surface shell for domain KPIs — replaces neutral cyan panel. */
+function shellForDomain(
+  domain: SemanticDomain,
+  emphasis: Exclude<SemanticCardEmphasis, "compact">
+): string {
+  return cn(
+    SEMANTIC_SURFACE_PREMIUM,
+    "group rounded-xl overflow-hidden",
+    KPI_CARD_RESET,
+    SEMANTIC_MOTION_PREMIUM,
+    semanticDomainReportingSurfaceClass(domain),
+    emphasis === "supporting" && "opacity-95"
+  );
 }
 
 function valueClassFor(
@@ -114,17 +132,17 @@ export function SemanticKpiCard({
     ? semanticDomainIconClass(domain)
     : semanticToneIconClass(semanticTone);
 
+  const shell =
+    domain && !primary
+      ? shellForDomain(domain, visual)
+      : shellForEmphasis(visual);
+
   return (
     <Card
       data-slot="semantic-kpi-card"
       data-emphasis={visual}
       data-domain={domain}
-      className={cn(
-        shellForEmphasis(visual),
-        // Soft domain accent — skip primary (amber hero owns border).
-        domain && !primary && semanticDomainAccentClass(domain),
-        className
-      )}
+      className={cn(shell, className)}
     >
       <CardHeader
         className={cn(

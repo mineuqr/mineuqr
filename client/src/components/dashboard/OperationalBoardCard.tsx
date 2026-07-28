@@ -4,12 +4,17 @@ import {
   mapTableSessionStatusToBadgeTone,
   resolveBadgeBaseTone,
 } from "@/design-system/semantic-badge";
-import { semanticToneRowClass, SEMANTIC_PANEL_BASE, semanticDomainAccentClass } from "@/design-system/semantic-card";
+import {
+  semanticToneRowClass,
+  SEMANTIC_MOTION_PREMIUM,
+  SEMANTIC_SURFACE_PREMIUM,
+  semanticDomainReportingSurfaceClass,
+} from "@/design-system/semantic-card";
 import type { OperationalTableRow } from "@/lib/sessionWorkspaceOps";
 import { tableStatusDisplayLabel } from "@/lib/sessionWorkspaceOps";
 import { cn } from "@/lib/utils";
 import { SessionRowQuickActions } from "./SessionRowQuickActions";
-import { restaurantDash, restaurantHoverGlow } from "./restaurantDashStyles";
+import { restaurantDash } from "./restaurantDashStyles";
 
 function formatDuration(minutes: number, isAr: boolean): string {
   if (minutes <= 0) return isAr ? "—" : "—";
@@ -43,10 +48,11 @@ export function OperationalBoardCard({
     <article
       data-domain="orders"
       className={cn(
-        SEMANTIC_PANEL_BASE,
-        semanticDomainAccentClass("orders"),
+        SEMANTIC_SURFACE_PREMIUM,
+        "rounded-xl",
+        semanticDomainReportingSurfaceClass("orders"),
         "flex flex-col p-4 sm:p-5",
-        restaurantHoverGlow,
+        SEMANTIC_MOTION_PREMIUM,
         cardClass,
         hasSession && "cursor-pointer"
       )}

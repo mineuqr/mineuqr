@@ -32,7 +32,7 @@ describe("SEMANTIC-CARD-PREMIUM-INTERACTION-1", () => {
     ).toBe(true);
     expect(SEMANTIC_SURFACE_PREMIUM).toBe("semantic-card");
     expect(SEMANTIC_PANEL_BASE).toContain("semantic-card");
-    expect(SEMANTIC_PANEL_BASE).toContain("border-cyan-500/30");
+    expect(SEMANTIC_PANEL_BASE).toContain("border-cyan-500/40");
     expect(SEMANTIC_HOVER_GLOW).toBe(SEMANTIC_HOVER_PREMIUM);
     expect(SEMANTIC_MOTION).toBe(SEMANTIC_MOTION_PREMIUM);
     expect(SEMANTIC_INTERACTION.hover).toContain("translate-y");

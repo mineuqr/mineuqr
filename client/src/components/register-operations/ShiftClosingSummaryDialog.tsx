@@ -30,6 +30,10 @@ import {
   type RegisterOperationsLang,
   type ShiftClosingReportVm,
 } from "@/lib/register-operations-presentation";
+import {
+  SEMANTIC_SURFACE_PREMIUM,
+  semanticDomainReportingSurfaceClass,
+} from "@/design-system/semantic-card";
 import { cn } from "@/lib/utils";
 import { Loader2, Printer } from "lucide-react";
 
@@ -247,7 +251,12 @@ export function ShiftClosingSummaryDialog({
                 "closingTenderSection",
                 language
               )}
-              className="flex min-h-0 min-w-0 flex-col rounded-lg border border-sky-500/25 bg-sky-950/20 p-3.5 sm:p-4"
+              data-domain="orders"
+              className={cn(
+                SEMANTIC_SURFACE_PREMIUM,
+                "flex min-h-0 min-w-0 flex-col rounded-lg p-3.5 sm:p-4",
+                semanticDomainReportingSurfaceClass("orders")
+              )}
             >
               <h3 className="text-xs font-semibold uppercase tracking-wide text-sky-200/90 sm:text-sm sm:normal-case sm:tracking-normal sm:font-medium sm:text-sky-100">
                 {registerOperationsUiLabel("closingTenderSection", language)}
@@ -303,7 +312,12 @@ export function ShiftClosingSummaryDialog({
                 "closingDrawerSection",
                 language
               )}
-              className="flex min-h-0 min-w-0 flex-col gap-3 rounded-lg border border-emerald-500/25 bg-emerald-950/15 p-3.5 sm:p-4"
+              data-domain="payments"
+              className={cn(
+                SEMANTIC_SURFACE_PREMIUM,
+                "flex min-h-0 min-w-0 flex-col gap-3 rounded-lg p-3.5 sm:p-4",
+                semanticDomainReportingSurfaceClass("payments")
+              )}
             >
               <h3 className="text-xs font-semibold uppercase tracking-wide text-emerald-200/90 sm:text-sm sm:normal-case sm:tracking-normal sm:font-medium sm:text-emerald-100">
                 {registerOperationsUiLabel("closingDrawerSection", language)}

@@ -35,7 +35,7 @@ export type SemanticCardType =
   | "empty";
 
 export type SemanticCardTypeOptions = {
-  /** Optional domain accent shell (feature / summary / status). */
+  /** Optional domain — Reporting tinted surface replaces cyan panel base. */
   domain?: SemanticDomain;
   /** Apply hover glow (default true for interactive types). */
   interactive?: boolean;
@@ -45,7 +45,8 @@ const CONTENT_RESET = "gap-0 py-0 shadow-none";
 
 /**
  * Resolve shell classes for a card type.
- * Always starts from SEMANTIC_PANEL_BASE — no custom shadows/borders/radius forks.
+ * Domain cards use Reporting tinted surfaces (REPORTING-SEMANTIC-SURFACE-PLATFORM-ADOPTION-1).
+ * Non-domain types keep the cyan panel base.
  */
 export function semanticCardTypeClass(
   type: SemanticCardType = "standard",
@@ -56,71 +57,89 @@ export function semanticCardTypeClass(
     (type !== "empty" && type !== "information" && type !== "settings");
 
   const glow = interactive ? SEMANTIC_HOVER_GLOW : SEMANTIC_MOTION;
-  const domainShell = options.domain
-    ? SEMANTIC_DOMAIN_SURFACE[options.domain].shell
+  const domainSurface = options.domain
+    ? cn(
+        SEMANTIC_DOMAIN_SURFACE[options.domain].shell,
+        interactive
+          ? SEMANTIC_DOMAIN_SURFACE[options.domain].glow
+          : SEMANTIC_MOTION
+      )
     : null;
-  const domainGlow =
-    options.domain && interactive
-      ? SEMANTIC_DOMAIN_SURFACE[options.domain].glow
-      : null;
+
+  // When domain is set, Reporting surface replaces cyan panel base.
+  const base = domainSurface ?? SEMANTIC_PANEL_BASE;
+  const baseMotion = domainSurface ? null : glow;
 
   switch (type) {
     case "executive-kpi":
-      // Prefer SemanticKpiCard — this is a shell alias for rare custom KPI layouts.
-      return cn(semanticPanel.kpi, domainShell, domainGlow);
+      return cn(
+        domainSurface
+          ? cn("group rounded-xl overflow-hidden", CONTENT_RESET, domainSurface)
+          : semanticPanel.kpi
+      );
     case "feature":
       return cn(
-        SEMANTIC_PANEL_BASE,
+        domainSurface ? "semantic-card" : base,
         "overflow-hidden rounded-2xl",
         CONTENT_RESET,
-        glow,
-        domainShell,
-        domainGlow
+        baseMotion,
+        domainSurface
       );
     case "summary":
       return cn(
-        SEMANTIC_PANEL_BASE,
+        domainSurface ? "semantic-card" : base,
         "overflow-hidden p-4 sm:p-5",
         CONTENT_RESET,
-        glow,
-        domainShell,
-        domainGlow
+        baseMotion,
+        domainSurface
       );
     case "analytics":
-      return cn(semanticPanel.card, domainShell ?? "border-cyan-500/30", domainGlow);
+      return cn(
+        domainSurface ? cn("semantic-card rounded-xl overflow-hidden", domainSurface) : semanticPanel.card
+      );
     case "status":
       return cn(
-        SEMANTIC_PANEL_BASE,
+        domainSurface ? "semantic-card" : base,
         "overflow-hidden p-4 sm:p-5",
         CONTENT_RESET,
-        glow,
-        domainShell,
-        domainGlow
+        baseMotion,
+        domainSurface
       );
     case "information":
       return cn(semanticPanel.inset, "p-4 sm:p-5", CONTENT_RESET);
     case "navigation":
-      return cn(semanticPanel.card, "cursor-pointer", domainShell, domainGlow);
+      return cn(
+        domainSurface
+          ? cn("semantic-card rounded-xl overflow-hidden cursor-pointer", domainSurface)
+          : cn(semanticPanel.card, "cursor-pointer")
+      );
     case "settings":
       return cn(semanticPanel.card, CONTENT_RESET);
     case "preview":
       return cn(semanticPanel.hero, CONTENT_RESET, glow);
     case "action":
-      return cn(semanticPanel.card, "cursor-pointer", glow, domainShell, domainGlow);
+      return cn(
+        domainSurface
+          ? cn("semantic-card rounded-xl overflow-hidden cursor-pointer", domainSurface)
+          : cn(semanticPanel.card, "cursor-pointer", glow)
+      );
     case "selection":
       return cn(
-        SEMANTIC_PANEL_BASE,
+        domainSurface ? "semantic-card" : base,
         "overflow-hidden cursor-pointer",
         CONTENT_RESET,
-        glow,
+        baseMotion,
         "data-[selected=true]:border-cyan-400/50 data-[selected=true]:shadow-sm data-[selected=true]:shadow-cyan-500/15",
-        domainShell,
-        domainGlow
+        domainSurface
       );
     case "empty":
       return cn(semanticPanel.empty, CONTENT_RESET);
     case "standard":
     default:
-      return cn(semanticPanel.card, domainShell, domainGlow);
+      return cn(
+        domainSurface
+          ? cn("semantic-card rounded-xl overflow-hidden", domainSurface)
+          : semanticPanel.card
+      );
   }
 }

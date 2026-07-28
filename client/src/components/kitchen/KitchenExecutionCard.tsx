@@ -3,8 +3,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   SEMANTIC_MOTION,
-  SEMANTIC_PANEL_BASE,
-  semanticDomainAccentClass,
+  SEMANTIC_SURFACE_PREMIUM,
+  semanticDomainReportingSurfaceClass,
 } from "@/design-system/semantic-card";
 import type { PresentationDensityModel } from "@/lib/operational-screen/density/runtimeDisplayDensityContract";
 import {
@@ -190,8 +190,9 @@ function KitchenExecutionCardImpl({
       data-domain="kitchen"
       className={cn(
         "group relative flex h-full w-full flex-col overflow-hidden",
-        SEMANTIC_PANEL_BASE,
-        semanticDomainAccentClass("kitchen"),
+        SEMANTIC_SURFACE_PREMIUM,
+        "rounded-xl",
+        semanticDomainReportingSurfaceClass("kitchen"),
         SEMANTIC_MOTION,
         densityModel.cardRadius,
         densityModel.cardPadding,

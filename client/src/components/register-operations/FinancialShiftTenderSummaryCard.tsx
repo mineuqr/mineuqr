@@ -1,7 +1,8 @@
 /**
  * FINANCIAL-SHIFT-SUMMARIES-ADOPTION-1 — payment methods summary card.
  * Displays certified tender summary DTO only — no calculations.
- * PLATFORM-CARD-DESIGN-SYSTEM-UNIFICATION-1 — payments/card domain shell.
+ * PLATFORM-CARD-DESIGN-SYSTEM-UNIFICATION-1 — orders domain Reporting surface.
+ * REPORTING-SEMANTIC-SURFACE-PLATFORM-ADOPTION-1 — full tinted shell (not panel+accent stack).
  */
 
 import {
@@ -11,9 +12,9 @@ import {
   type RegisterOperationsLang,
 } from "@/lib/register-operations-presentation";
 import {
-  SEMANTIC_CATEGORY_SURFACE,
   SEMANTIC_MOTION,
-  SEMANTIC_PANEL_BASE,
+  SEMANTIC_SURFACE_PREMIUM,
+  semanticDomainReportingSurfaceClass,
 } from "@/design-system/semantic-card";
 import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
@@ -49,11 +50,13 @@ export function FinancialShiftTenderSummaryCard({
   return (
     <section
       aria-label={registerOperationsUiLabel("tenderSummarySection", language)}
+      data-domain="orders"
       className={cn(
-        SEMANTIC_PANEL_BASE,
+        SEMANTIC_SURFACE_PREMIUM,
+        "rounded-xl",
+        semanticDomainReportingSurfaceClass("orders"),
         SEMANTIC_MOTION,
-        "min-w-0 overflow-hidden p-4 sm:p-5 shadow-none",
-        SEMANTIC_CATEGORY_SURFACE.card.shell
+        "min-w-0 overflow-hidden p-4 sm:p-5 shadow-none"
       )}
     >
       <h3 className="text-sm font-medium text-sky-100/90 sm:text-base">

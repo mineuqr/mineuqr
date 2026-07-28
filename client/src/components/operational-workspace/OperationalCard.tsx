@@ -3,9 +3,9 @@ import { Button } from "@/components/ui/button";
 import { DelayExplanation } from "@/components/operational-workspace/DelayExplanation";
 import { SemanticBadge } from "@/design-system/semantic-badge";
 import {
-  SEMANTIC_HOVER_GLOW,
-  SEMANTIC_PANEL_BASE,
-  semanticDomainAccentClass,
+  SEMANTIC_MOTION_PREMIUM,
+  SEMANTIC_SURFACE_PREMIUM,
+  semanticDomainReportingSurfaceClass,
   semanticPanel,
 } from "@/design-system/semantic-card";
 import type { OperationalActionId } from "@/lib/operational-workspace/operationalActions";
@@ -81,10 +81,10 @@ function OperationalCardImpl({
     <article
       data-domain="orders"
       className={cn(
-        SEMANTIC_PANEL_BASE,
-        semanticDomainAccentClass("orders"),
+        SEMANTIC_SURFACE_PREMIUM,
         semanticPanel.radius.executive,
-        SEMANTIC_HOVER_GLOW,
+        semanticDomainReportingSurfaceClass("orders"),
+        SEMANTIC_MOTION_PREMIUM,
         "p-5 touch-manipulation min-h-[140px]",
         presentation.emphasis.cardBorderClass,
         fading && "opacity-60",

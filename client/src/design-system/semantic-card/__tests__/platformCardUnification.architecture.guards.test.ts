@@ -67,7 +67,7 @@ describe("PLATFORM-CARD-DESIGN-SYSTEM-UNIFICATION-1", () => {
     expect(session).toContain("semanticPanel.inset");
   });
 
-  it("register summary Cards use domain / category surfaces", () => {
+  it("register summary Cards use domain / Reporting surfaces", () => {
     const cash = read(
       "client/src/components/register-operations/CashDrawerSummaryCard.tsx"
     );
@@ -76,11 +76,12 @@ describe("PLATFORM-CARD-DESIGN-SYSTEM-UNIFICATION-1", () => {
     );
     expect(cash).toContain('domain: "payments"');
     expect(cash).not.toContain("border-emerald-500/25 bg-emerald-950/15");
-    expect(tender).toContain("SEMANTIC_CATEGORY_SURFACE.card");
+    expect(tender).toContain('semanticDomainReportingSurfaceClass("orders")');
+    expect(tender).not.toContain("SEMANTIC_PANEL_BASE");
     expect(tender).not.toContain("border-sky-500/25 bg-sky-950/15");
   });
 
-  it("ops / fleet / kitchen tickets inherit SEMANTIC_PANEL_BASE", () => {
+  it("ops / fleet / kitchen tickets inherit Reporting domain surfaces", () => {
     const kitchen = read(
       "client/src/components/kitchen/KitchenExecutionCard.tsx"
     );
@@ -90,11 +91,11 @@ describe("PLATFORM-CARD-DESIGN-SYSTEM-UNIFICATION-1", () => {
     const fleet = read(
       "client/src/components/screen-management/FleetScreenCard.tsx"
     );
-    expect(kitchen).toContain("SEMANTIC_PANEL_BASE");
+    expect(kitchen).toContain('semanticDomainReportingSurfaceClass("kitchen")');
     expect(kitchen).not.toContain("shadow-[0_1px_2px");
-    expect(ops).toContain("SEMANTIC_PANEL_BASE");
+    expect(ops).toContain('semanticDomainReportingSurfaceClass("orders")');
     expect(ops).not.toContain("shadow-sm transition-all");
-    expect(fleet).toContain("SEMANTIC_PANEL_BASE");
+    expect(fleet).toContain('semanticDomainReportingSurfaceClass("analytics")');
     expect(fleet).toContain("SEMANTIC_TONE.row");
   });
 

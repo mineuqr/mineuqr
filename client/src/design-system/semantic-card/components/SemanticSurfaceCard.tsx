@@ -33,7 +33,7 @@ import {
 } from "../tokens/interaction";
 
 export type SemanticSurfaceCardProps = React.ComponentProps<"div"> & {
-  /** Card type recipe — all inherit SEMANTIC_PANEL_BASE. */
+  /** Card type recipe — domain cards use Reporting surfaces; others use panel base. */
   cardType?: SemanticCardType;
   /** Optional domain accent (Analytics, Payments, Kitchen, …). */
   domain?: SemanticDomain;
