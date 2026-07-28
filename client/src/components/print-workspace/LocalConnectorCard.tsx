@@ -1,7 +1,16 @@
+/**
+ * PLATFORM-CARD-DESIGN-SYSTEM-UNIFICATION-1
+ * Local connector status — semantic status shell.
+ */
 import { HealthStatusBadge } from "@/components/print-workspace/HealthStatusBadge";
 import { Button } from "@/components/ui/button";
+import {
+  SEMANTIC_ICON,
+  semanticCardTypeClass,
+} from "@/design-system/semantic-card";
 import { connectorOperatorCopy } from "@/lib/print-workspace/operationalViewModels";
 import type { RouterOutputs } from "@/lib/trpc";
+import { cn } from "@/lib/utils";
 import { Activity, Loader2 } from "lucide-react";
 
 type LocalConnectorStatus = RouterOutputs["printWorkspace"]["read"]["getLocalConnectorStatus"];
@@ -17,9 +26,11 @@ export function LocalConnectorCard({
   isLoading: boolean;
   onRefresh?: () => void;
 }) {
+  const shell = semanticCardTypeClass("status", { interactive: false });
+
   if (isLoading) {
     return (
-      <div className="flex justify-center rounded-xl border border-slate-800 bg-slate-900/40 py-10">
+      <div className={cn(shell, "flex justify-center py-10")}>
         <Loader2 className="h-6 w-6 animate-spin text-slate-500" />
       </div>
     );
@@ -30,10 +41,10 @@ export function LocalConnectorCard({
   const online = connectionStatus === "healthy" || connectionStatus === "connected";
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 sm:p-5">
+    <div className={cn(shell, "p-4 sm:p-5")}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="rounded-lg bg-slate-800 p-2.5 text-slate-300">
+          <div className={cn(SEMANTIC_ICON.md, "text-slate-300")}>
             <Activity className="h-5 w-5" />
           </div>
           <div>

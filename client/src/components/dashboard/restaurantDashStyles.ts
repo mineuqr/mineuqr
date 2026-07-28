@@ -1,10 +1,11 @@
 /**
  * UX-DASHBOARD-REFACTOR-1B/1C + UX-DASHBOARD-AUDIT-1A + UX-DASHBOARD-REFACTOR-1D
- * + SEMANTIC-CARD-DESIGN-SYSTEM-1
- * Restaurant dashboard visual tokens — panel/tone owned by design-system.
+ * + SEMANTIC-CARD-DESIGN-SYSTEM-1 + PLATFORM-CARD-DESIGN-SYSTEM-UNIFICATION-1
+ * Restaurant dashboard visual tokens — panel/tone/icon owned by design-system.
  */
 import {
   SEMANTIC_HOVER_GLOW,
+  SEMANTIC_ICON,
   SEMANTIC_KPI_GRID,
   SEMANTIC_MOTION,
   SEMANTIC_PANEL_BASE,
@@ -34,12 +35,6 @@ export const restaurantIconColor = {
   hover: "group-hover:text-cyan-400",
   active: "text-white",
 } as const;
-
-/** Admin-aligned icon container base (I-02). */
-const iconContainerBase = cn(
-  "flex shrink-0 items-center justify-center rounded-xl border bg-slate-900/60",
-  restaurantMotion
-);
 
 /** Pricing-page revenue emphasis (vertical orange gradient). */
 export const restaurantRevenueValueClass = SEMANTIC_VALUE.revenue;
@@ -105,12 +100,11 @@ export const restaurantDash = {
     restaurantMotion,
     "hover:border-cyan-400/25 hover:shadow-sm hover:shadow-cyan-500/10"
   ),
-  /** Pricing feature-icon treatment (I-01). */
-  iconContainer: cn(iconContainerBase, "h-9 w-9 border-cyan-500/20 text-cyan-400 [&_svg]:size-4"),
-  iconContainerSm: cn(iconContainerBase, "h-8 w-8 border-cyan-500/20 [&_svg]:size-4"),
-  iconContainerLg: cn(iconContainerBase, "h-10 w-10 border-cyan-500/20 [&_svg]:size-5"),
-  brandIcon:
-    "flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-r from-cyan-500 to-cyan-400 text-slate-900 [&_svg]:size-4",
+  /** Facade → SEMANTIC_ICON (UNIFICATION-1). */
+  iconContainer: SEMANTIC_ICON.md,
+  iconContainerSm: SEMANTIC_ICON.sm,
+  iconContainerLg: SEMANTIC_ICON.lg,
+  brandIcon: SEMANTIC_ICON.brand,
   toolbarBtn: cn(
     "border-cyan-500/30 bg-slate-900/50 text-slate-200",
     restaurantHoverGlow,

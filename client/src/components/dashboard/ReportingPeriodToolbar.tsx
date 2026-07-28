@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { restaurantDash } from "./restaurantDashStyles";
 
 export const reportingPeriodSelectClass =
-  "min-h-10 rounded-xl border border-slate-600/60 bg-slate-900/70 px-3 py-2 text-xs font-medium text-slate-100 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/40";
+  "min-h-10 rounded-xl border border-cyan-500/30 bg-slate-900/70 px-3 py-2 text-xs font-medium text-slate-100 shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60";
 
 export function ReportingPeriodToolbar({
   title,
@@ -32,7 +32,8 @@ export function ReportingPeriodToolbar({
   return (
     <Card
       className={cn(
-        "border-slate-700/50 bg-slate-900/40 shadow-none",
+        restaurantDash.card,
+        "gap-0 py-0 shadow-none",
         className
       )}
     >

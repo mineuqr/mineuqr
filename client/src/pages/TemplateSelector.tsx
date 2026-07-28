@@ -170,7 +170,7 @@ export default function TemplateSelector() {
       </header>
 
       <div className="container py-6">
-        <div className="cinematic-card rounded-xl p-4 mb-8 flex items-center gap-4">
+        <div className="landing-card rounded-xl p-4 mb-8 flex items-center gap-4">
           {resolveImageUrl((restaurant as any).logoUrl) ? (
             <img src={resolveImageUrl((restaurant as any).logoUrl)} alt="" className="w-12 h-12 rounded-xl object-cover" />
           ) : (
@@ -295,7 +295,7 @@ export default function TemplateSelector() {
 
         {/* Live Preview Section */}
         {selectedTemplate && selectedTemplate !== ((restaurant as any).menuTemplate || "classic") && (
-          <div className="mt-8 cinematic-card rounded-2xl p-6 border border-primary/20 bg-primary/5">
+          <div className="mt-8 landing-card rounded-2xl p-6 border border-primary/20 bg-primary/5">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
                 <Eye className="w-5 h-5 text-primary" />

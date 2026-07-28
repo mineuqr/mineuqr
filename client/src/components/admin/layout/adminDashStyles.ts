@@ -6,6 +6,7 @@
  */
 import {
   SEMANTIC_HOVER_GLOW,
+  SEMANTIC_ICON,
   SEMANTIC_PANEL_BASE,
   SEMANTIC_SHELL,
   SEMANTIC_TONE,
@@ -72,12 +73,10 @@ export const adminDash = {
   kpiCard: cn(pricingCardBase, "gap-0 py-0", SEMANTIC_HOVER_GLOW),
   /** Pricing plan-card pattern — static container */
   operationsCard: cn(pricingCardBase, "overflow-hidden"),
-  /** Pricing feature-icon treatment */
-  iconContainer:
-    "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-400",
+  /** Facade → SEMANTIC_ICON (UNIFICATION-1). */
+  iconContainer: SEMANTIC_ICON.md,
   /** Pricing current-plan badge gradient */
-  brandIcon:
-    "flex aspect-square size-8 items-center justify-center rounded-lg bg-gradient-to-r from-cyan-500 to-cyan-400 text-slate-900",
+  brandIcon: SEMANTIC_ICON.brand,
   opBtn: "h-8 min-h-8 shrink-0 text-xs",
   opIconBtn: "h-6 w-6 min-h-6 shrink-0 p-0 text-xs",
   actionPrimary: "",

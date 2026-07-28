@@ -1,6 +1,6 @@
 /**
- * SEMANTIC-CARD-PLATFORM-ADOPTION-1
- * Current printer ops surface — status via SemanticBadge.
+ * SEMANTIC-CARD-PLATFORM-ADOPTION-1 + PLATFORM-CARD-DESIGN-SYSTEM-UNIFICATION-1
+ * Current printer ops surface — status via SemanticBadge; shell via semantic panel.
  */
 import { Button } from "@/components/ui/button";
 import {
@@ -8,11 +8,16 @@ import {
   mapHealthToneToBadgeTone,
 } from "@/design-system/semantic-badge";
 import {
+  SEMANTIC_ICON,
+  semanticCardTypeClass,
+} from "@/design-system/semantic-card";
+import {
   derivePrinterOperationalState,
   printerStateGuidance,
   printerStateLabel,
 } from "@/lib/print-workspace/operationalViewModels";
 import type { RouterOutputs } from "@/lib/trpc";
+import { cn } from "@/lib/utils";
 import { Loader2, Printer, Settings2 } from "lucide-react";
 
 type CurrentPrinter = RouterOutputs["printWorkspace"]["read"]["getCurrentPrinter"];
@@ -55,10 +60,11 @@ export function CurrentPrinterCard({
   onOpenManagement: () => void;
 }) {
   const isAr = language === "ar";
+  const shell = semanticCardTypeClass("status", { interactive: false });
 
   if (isLoading) {
     return (
-      <div className="flex justify-center rounded-xl border border-slate-800 bg-slate-900/40 py-8">
+      <div className={cn(shell, "flex justify-center py-8")}>
         <Loader2 className="h-6 w-6 animate-spin text-slate-500" />
       </div>
     );
@@ -71,9 +77,9 @@ export function CurrentPrinterCard({
   const canTest = printerState === "ready" && connectorOnline;
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 sm:p-5">
+    <div className={cn(shell, "p-4 sm:p-5")}>
       <div className="flex items-start gap-3">
-        <div className="rounded-lg bg-primary/10 p-2.5 text-primary">
+        <div className={cn(SEMANTIC_ICON.md, "text-cyan-400")}>
           <Printer className="h-5 w-5" />
         </div>
         <div className="min-w-0 flex-1">

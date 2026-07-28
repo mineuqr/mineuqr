@@ -2,6 +2,11 @@ import { memo } from "react";
 import { Button } from "@/components/ui/button";
 import { DelayExplanation } from "@/components/operational-workspace/DelayExplanation";
 import { SemanticBadge } from "@/design-system/semantic-badge";
+import {
+  SEMANTIC_HOVER_GLOW,
+  SEMANTIC_PANEL_BASE,
+  semanticPanel,
+} from "@/design-system/semantic-card";
 import type { OperationalActionId } from "@/lib/operational-workspace/operationalActions";
 import {
   pickLocalizedLabel,
@@ -74,7 +79,10 @@ function OperationalCardImpl({
   return (
     <article
       className={cn(
-        "rounded-2xl border p-5 shadow-sm transition-all touch-manipulation min-h-[140px]",
+        SEMANTIC_PANEL_BASE,
+        semanticPanel.radius.executive,
+        SEMANTIC_HOVER_GLOW,
+        "p-5 touch-manipulation min-h-[140px]",
         presentation.emphasis.cardBorderClass,
         fading && "opacity-60",
         className

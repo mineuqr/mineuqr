@@ -3,6 +3,11 @@ import { FleetOperatorStatusPill } from "@/components/screen-management/FleetOpe
 import { FleetScreenActions } from "@/components/screen-management/FleetScreenActions";
 import { type FleetScreenManageAction } from "@/components/screen-management/FleetScreenManageMenu";
 import { screenTypeLabel } from "@/lib/operational-screen/screenLabels";
+import {
+  SEMANTIC_HOVER_GLOW,
+  SEMANTIC_PANEL_BASE,
+  SEMANTIC_TONE,
+} from "@/design-system/semantic-card";
 import { cn } from "@/lib/utils";
 import { AlertTriangle } from "lucide-react";
 import {
@@ -15,6 +20,7 @@ export type { FleetScreenManageAction };
 
 /**
  * Fleet card — operator-first presentation (SCREEN-MANAGEMENT-UX-1A/1B/1E).
+ * PLATFORM-CARD-DESIGN-SYSTEM-UNIFICATION-1 — semantic panel + tone status.
  */
 export function FleetScreenCard({
   screen,
@@ -34,13 +40,20 @@ export function FleetScreenCard({
   const statusKind = resolveOperatorFleetStatus(screen);
   const isDisabled = screen.canonicalState.maintenanceState === "maintenance";
 
+  const statusShell =
+    statusKind === "online"
+      ? SEMANTIC_TONE.row.success
+      : statusKind === "needs_attention" || statusKind === "never_seen"
+        ? SEMANTIC_TONE.row.warning
+        : undefined;
+
   return (
     <article
       className={cn(
-        "flex w-full flex-col rounded-xl border p-4 shadow-sm min-h-[188px]",
-        statusKind === "online" && "border-emerald-500/40 bg-emerald-500/5",
-        (statusKind === "needs_attention" || statusKind === "never_seen") &&
-          "border-amber-500/40 bg-amber-500/5",
+        SEMANTIC_PANEL_BASE,
+        SEMANTIC_HOVER_GLOW,
+        "flex w-full flex-col p-4 min-h-[188px]",
+        statusShell,
         isDisabled && "opacity-70"
       )}
       data-screen-id={screen.screenId}

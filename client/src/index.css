@@ -262,13 +262,25 @@
     );
   }
 
+  /*
+   * PLATFORM-CARD-DESIGN-SYSTEM-UNIFICATION-1
+   * Legacy cinematic glass — aliased to landing-card language.
+   * Prefer .landing-card or semanticPanel / SemanticSurfaceCard in new code.
+   */
   .cinematic-card {
-    background: linear-gradient(145deg, 
-      oklch(0.18 0.03 220 / 80%) 0%, 
-      oklch(0.16 0.025 200 / 60%) 100%
+    background: linear-gradient(
+      to bottom,
+      rgb(30 41 59 / 0.55),
+      rgb(15 23 42 / 0.55)
     );
-    backdrop-filter: blur(20px);
-    border: 1px solid oklch(0.35 0.04 195 / 30%);
+    border: 1px solid rgb(6 182 212 / 0.3);
+    box-shadow: none;
+    transition: all 200ms ease;
+  }
+
+  .cinematic-card:hover {
+    border-color: rgb(34 211 238 / 0.3);
+    box-shadow: 0 1px 2px 0 rgb(6 182 212 / 0.1);
   }
 
   .glow-teal {
@@ -280,20 +292,20 @@
   }
 
   /*
-   * LANDING-DESIGN-SYSTEM-ALIGNMENT-1
-   * Surfaces mirror restaurantDashStyles (slate + cyan panel language).
-   * Category accents mirror ExecutivePeriodDashboard semantic shells.
+   * LANDING-DESIGN-SYSTEM-ALIGNMENT-1 + PLATFORM-CARD-DESIGN-SYSTEM-UNIFICATION-1
+   * Surfaces mirror SEMANTIC_PANEL_BASE (slate + cyan panel language).
+   * Domain accents derive from SEMANTIC_DOMAIN_HEX / SEMANTIC_CATEGORY_HEX.
    */
   .landing-page {
-    --landing-accent-qr: #fb923c; /* orange-400 — orders */
-    --landing-accent-ordering: #38bdf8; /* sky-400 */
-    --landing-accent-kitchen: #a78bfa; /* violet-400 */
-    --landing-accent-payments: #4ade80; /* green-400 — cash/success */
-    --landing-accent-analytics: #22d3ee; /* cyan-400 — info */
-    --landing-accent-tables: #38bdf8; /* sky-400 */
-    --landing-accent-mgmt: #22d3ee; /* cyan-400 */
-    --landing-accent-growth: #2dd4bf; /* teal-400 */
-    --landing-accent-lang: #22d3ee;
+    --landing-accent-qr: #fb923c; /* SEMANTIC_DOMAIN_HEX.qr */
+    --landing-accent-ordering: #38bdf8; /* SEMANTIC_CATEGORY_HEX.card */
+    --landing-accent-kitchen: #a78bfa; /* SEMANTIC_DOMAIN_HEX.kitchen */
+    --landing-accent-payments: #34d399; /* SEMANTIC_DOMAIN_HEX.payments */
+    --landing-accent-analytics: #22d3ee; /* SEMANTIC_DOMAIN_HEX.analytics */
+    --landing-accent-tables: #38bdf8; /* SEMANTIC_CATEGORY_HEX.card */
+    --landing-accent-mgmt: #22d3ee; /* SEMANTIC_DOMAIN_HEX.analytics */
+    --landing-accent-growth: #2dd4bf; /* SEMANTIC_DOMAIN_HEX.growth */
+    --landing-accent-lang: #22d3ee; /* SEMANTIC_DOMAIN_HEX.information */
     background-color: #0f172a;
     background-image: linear-gradient(
       to bottom right,

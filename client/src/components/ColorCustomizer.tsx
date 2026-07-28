@@ -274,7 +274,7 @@ export default function ColorCustomizer({
 
   if (!customColorsEnabled) {
     return (
-      <div className="mt-8 cinematic-card rounded-2xl p-6 border border-accent/20">
+      <div className="mt-8 landing-card rounded-2xl p-6 border border-accent/20">
         <div className="flex items-center gap-3 mb-3">
           <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
             <Lock className="w-5 h-5 text-accent" />
@@ -302,7 +302,7 @@ export default function ColorCustomizer({
       {/* Toggle Header */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full cinematic-card rounded-2xl p-5 flex items-center justify-between hover:border-primary/30 transition-all border border-border/30"
+        className="w-full landing-card rounded-2xl p-5 flex items-center justify-between hover:border-primary/30 transition-all border border-border/30"
       >
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">

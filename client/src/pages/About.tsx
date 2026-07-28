@@ -204,7 +204,7 @@ export default function About() {
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6 }}
-              className="cinematic-card rounded-2xl p-8 hover:border-primary/40 transition-all duration-300"
+              className="landing-card rounded-2xl p-8 hover:border-primary/40 transition-all duration-300"
             >
               <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center mb-6">
                 <Eye className="w-7 h-7 text-primary" />
@@ -220,7 +220,7 @@ export default function About() {
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6, delay: 0.15 }}
-              className="cinematic-card rounded-2xl p-8 hover:border-accent/40 transition-all duration-300"
+              className="landing-card rounded-2xl p-8 hover:border-accent/40 transition-all duration-300"
             >
               <div className="w-14 h-14 rounded-xl bg-accent/10 flex items-center justify-center mb-6">
                 <Target className="w-7 h-7 text-accent" />
@@ -287,7 +287,7 @@ export default function About() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
-                className="cinematic-card rounded-xl p-6 text-center hover:border-primary/30 transition-all duration-300 group"
+                className="landing-card rounded-xl p-6 text-center hover:border-primary/30 transition-all duration-300 group"
               >
                 <div className={`w-14 h-14 rounded-xl ${value.bgColor} flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform`}>
                   <value.icon className={`w-7 h-7 ${value.color}`} />
@@ -335,7 +335,7 @@ export default function About() {
                 <div className="absolute right-[15px] md:right-1/2 w-4 h-4 rounded-full bg-primary border-4 border-background transform md:-translate-x-1/2 mt-1.5 z-10" />
 
                 {/* Content */}
-                <div className="flex-1 cinematic-card rounded-xl p-6">
+                <div className="flex-1 landing-card rounded-xl p-6">
                   <div className="text-sm font-bold text-primary mb-2">{milestone.year}</div>
                   <h3 className="text-xl font-bold text-white mb-2">{t(milestone.titleKey)}</h3>
                   <p className="text-muted-foreground">{t(milestone.descKey)}</p>
@@ -374,7 +374,7 @@ export default function About() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5 }}
-              className="cinematic-card rounded-xl p-6 text-center hover:border-[#25D366]/40 transition-all duration-300 group cursor-pointer"
+              className="landing-card rounded-xl p-6 text-center hover:border-[#25D366]/40 transition-all duration-300 group cursor-pointer"
             >
               <div className="w-14 h-14 rounded-xl bg-[#25D366]/10 flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-7 h-7 text-[#25D366]">
@@ -391,7 +391,7 @@ export default function About() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: 0.2 }}
-              className="cinematic-card rounded-xl p-6 text-center hover:border-accent/40 transition-all duration-300 group cursor-pointer"
+              className="landing-card rounded-xl p-6 text-center hover:border-accent/40 transition-all duration-300 group cursor-pointer"
             >
               <div className="w-14 h-14 rounded-xl bg-accent/10 flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7 text-accent">

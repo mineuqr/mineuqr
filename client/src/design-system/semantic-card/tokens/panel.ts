@@ -1,6 +1,7 @@
 /**
  * SEMANTIC-CARD-DESIGN-SYSTEM-1 + SEMANTIC-CARD-VISUAL-CONSISTENCY-1
- * Panel chrome + KPI grid SSOT — Reporting is the golden visual reference.
+ * + PLATFORM-CARD-DESIGN-SYSTEM-UNIFICATION-1
+ * Panel chrome + KPI grid SSOT — Landing / Dashboard golden visual reference.
  * Presentation only. Do not invent a second cyan-panel language.
  */
 import { cn } from "@/lib/utils";

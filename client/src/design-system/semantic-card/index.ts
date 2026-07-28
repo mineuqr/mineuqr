@@ -1,5 +1,5 @@
 /**
- * SEMANTIC-CARD-DESIGN-SYSTEM-1
+ * SEMANTIC-CARD-DESIGN-SYSTEM-1 + PLATFORM-CARD-DESIGN-SYSTEM-UNIFICATION-1
  * Official MineuQR Semantic Card Design System — public barrel.
  *
  * Data authority (unchanged):
@@ -7,7 +7,7 @@
  *   shared/reporting-platform/productSemantics.ts
  *
  * Presentation authority (this package):
- *   tokens + components below
+ *   tokens + components below — Single Source of Truth for all platform cards.
  */
 export {
   SEMANTIC_PANEL_BASE,
@@ -38,6 +38,28 @@ export {
 } from "./tokens/category";
 
 export {
+  SEMANTIC_DOMAIN_HEX,
+  SEMANTIC_DOMAIN_SURFACE,
+  LANDING_ACCENT_TO_DOMAIN,
+  semanticDomainFill,
+  semanticDomainHex,
+  semanticDomainSurface,
+  type SemanticDomain,
+  type SemanticDomainSurface,
+} from "./tokens/domain";
+
+export {
+  SEMANTIC_ICON,
+  semanticIconContainerClass,
+} from "./tokens/icon";
+
+export {
+  semanticCardTypeClass,
+  type SemanticCardType,
+  type SemanticCardTypeOptions,
+} from "./tokens/cardType";
+
+export {
   SEMANTIC_VALUE,
   type SemanticValueVariant,
 } from "./tokens/value";
@@ -63,3 +85,14 @@ export {
   SemanticEmptyState,
   SemanticExecutiveEmptyState,
 } from "./components/SemanticEmptyState";
+
+export {
+  SemanticSurfaceCard,
+  SemanticSurfaceCardHeader,
+  SemanticSurfaceCardTitle,
+  SemanticSurfaceCardDescription,
+  SemanticSurfaceCardAction,
+  SemanticSurfaceCardContent,
+  SemanticSurfaceCardFooter,
+  type SemanticSurfaceCardProps,
+} from "./components/SemanticSurfaceCard";

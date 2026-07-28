@@ -1249,7 +1249,7 @@ function CategoriesTab({
       {isLoading ? (
         <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
       ) : !categories.length ? (
-        <Card className="bg-card border-border">
+        <Card className={dash.card}>
           <CardContent className="p-8 text-center">
             <LayoutGrid className="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-50" />
             <p className="text-muted-foreground mb-4">{t('dashboard.noCategories')}</p>
@@ -1264,7 +1264,7 @@ function CategoriesTab({
           {categories.map((cat) => (
             <Card
               key={cat.id}
-              className="bg-card border-border hover:border-primary/30 transition cursor-pointer group"
+              className={cn(dash.card, "cursor-pointer group")}
               onClick={() => onSelectCategory(cat.id)}
             >
               <CardContent className="p-4 flex items-center justify-between">
@@ -1483,7 +1483,7 @@ function ItemsView({
       {isLoading ? (
         <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
       ) : !items?.length ? (
-        <Card className="bg-card border-border">
+        <Card className={dash.card}>
           <CardContent className="p-8 text-center">
             <UtensilsCrossed className="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-50" />
             <p className="text-muted-foreground mb-4">{t('dashboard.noItems')}</p>
@@ -1498,7 +1498,7 @@ function ItemsView({
           {items.map((item) => {
             const itemImageSrc = resolveImageUrl(item.imageUrl);
             return (
-            <Card key={item.id} className="bg-card border-border">
+            <Card key={item.id} className={dash.card}>
               <CardContent className="p-4">
                 <div className="flex items-start gap-4">
                   {itemImageSrc ? (
@@ -1856,7 +1856,7 @@ function QRTab({ restaurant }: { restaurant: any }) {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       {/* QR Preview */}
-      <Card className="bg-card border-border">
+      <Card className={dash.card}>
         <CardContent className="p-8 text-center">
           <h3 className="text-lg font-bold text-foreground mb-2">{t('dashboard.qrCodeForMenu')}</h3>
           <p className="text-sm text-muted-foreground mb-6">
@@ -1911,7 +1911,7 @@ function QRTab({ restaurant }: { restaurant: any }) {
       </Card>
 
       {/* QR Size */}
-      <Card className="bg-card border-border">
+      <Card className={dash.card}>
         <CardContent className="p-6">
           <h4 className="text-md font-bold text-foreground mb-4 flex items-center gap-2">
             <Settings className="w-4 h-4" />
@@ -1936,7 +1936,7 @@ function QRTab({ restaurant }: { restaurant: any }) {
       </Card>
 
       {/* Color Presets */}
-      <Card className="bg-card border-border">
+      <Card className={dash.card}>
         <CardContent className="p-6">
           <h4 className="text-md font-bold text-foreground mb-4 flex items-center gap-2">
             <Palette className="w-4 h-4" />
@@ -2059,7 +2059,7 @@ function QRTab({ restaurant }: { restaurant: any }) {
 
       {/* Logo Toggle */}
       {restaurant?.logoUrl && (
-        <Card className="bg-card border-border">
+        <Card className={dash.card}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -2082,7 +2082,7 @@ function QRTab({ restaurant }: { restaurant: any }) {
 
       {/* Logo Customization */}
       {restaurant?.logoUrl && showLogoInQR && (
-        <Card className="bg-card border-border">
+        <Card className={dash.card}>
           <CardContent className="p-6">
             <h4 className="text-md font-bold text-foreground mb-4 flex items-center gap-2">
               <ImageIcon className="w-4 h-4" />
@@ -2252,7 +2252,7 @@ function OffersTab({ restaurantId, currencySymbol }: { restaurantId: number; cur
       </div>
 
       {(!offers || offers.length === 0) ? (
-        <div className="text-center py-16 cinematic-card rounded-xl">
+        <div className={cn(dash.emptyPanel, "text-center")}>
           <Tag className="w-16 h-16 text-primary/30 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-foreground mb-2">{t('dashboard.noOffersYet')}</h3>
           <p className="text-muted-foreground mb-6">{t('dashboard.addOfferAttract')}</p>
@@ -2824,7 +2824,7 @@ function SettingsTab({ restaurant, onBack }: { restaurant: any; onBack: () => vo
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       {/* Images */}
-      <Card className="bg-card border-border">
+      <Card className={dash.card}>
         <CardHeader>
           <CardTitle className="text-foreground text-lg">{t('dashboard.restaurantImages')}</CardTitle>
         </CardHeader>
@@ -3186,7 +3186,7 @@ function SettingsTab({ restaurant, onBack }: { restaurant: any; onBack: () => vo
       </Card>
 
       {/* Temporary Closure */}
-      <Card className={`bg-card border-border ${tempClosed ? 'border-amber-500/50' : ''}`}>
+      <Card className={cn(dash.card, tempClosed && "border-amber-500/50")}>
         <CardContent className="p-6 space-y-4">
           <div className="flex items-center gap-2 mb-2">
             <AlertTriangle className={`w-5 h-5 ${tempClosed ? 'text-amber-500' : 'text-muted-foreground'}`} />
@@ -3217,7 +3217,7 @@ function SettingsTab({ restaurant, onBack }: { restaurant: any; onBack: () => vo
       </Card>
 
       {/* Holidays */}
-      <Card className="bg-card border-border">
+      <Card className={dash.card}>
         <CardContent className="p-6 space-y-4">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
@@ -3325,7 +3325,7 @@ function SettingsTab({ restaurant, onBack }: { restaurant: any; onBack: () => vo
       </Card>
 
       {/* Danger Zone */}
-      <Card className="bg-card border-destructive/30">
+      <Card className={cn(dash.card, "border-destructive/40")}>
         <CardContent className="p-6">
           <h3 className="text-lg font-bold text-destructive mb-2">{t('dashboard.dangerZone')}</h3>
           <p className="text-sm text-muted-foreground mb-4">{t('dashboard.dangerZoneDescription')}</p>
@@ -3729,7 +3729,7 @@ function TablesTab({ restaurantId, restaurant }: { restaurantId: number; restaur
   return (
     <div className="space-y-6">
       {/* Create Tables */}
-      <Card className="border-border/50">
+      <Card className={dash.card}>
         <CardHeader>
           <CardTitle className="text-base">
             {language === "ar" ? `إنشاء ${unitLabelPluralAr}` : `Create ${unitLabelPluralEn}`}
@@ -3769,7 +3769,7 @@ function TablesTab({ restaurantId, restaurant }: { restaurantId: number; restaur
       </Card>
 
       {/* Table QR Customization */}
-      <Card className="border-border/50">
+      <Card className={dash.card}>
         <CardHeader>
           <CardTitle className="text-base flex items-center justify-between">
             <span>{language === "ar" ? "تخصيص رموز QR" : "Customize QR Codes"}</span>
@@ -3935,7 +3935,7 @@ function TablesTab({ restaurantId, restaurant }: { restaurantId: number; restaur
 
       {/* Tables List with QR */}
       {tables && tables.length > 0 && (
-        <Card className="border-border/50">
+        <Card className={dash.card}>
           <CardHeader>
             <CardTitle className="text-base flex items-center justify-between">
               <span>{language === "ar" ? `${unitLabelPluralAr} الحالية` : `Current ${unitLabelPluralEn}`}</span>
@@ -4026,7 +4026,7 @@ function TableQRCard({ table, menuUrl, language, onDelete, unitLabelAr, unitLabe
   };
 
   return (
-    <div className="relative bg-card border border-border/50 rounded-xl p-4 text-center group hover:border-primary/50 transition-colors">
+    <div className={cn(dash.card, "relative p-4 text-center group")}>
       <button
         onClick={onDelete}
         className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-full hover:bg-red-500/10"

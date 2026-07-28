@@ -1,5 +1,6 @@
 /**
  * FINANCIAL-SHIFT-SUMMARIES-ADOPTION-1 — Cash Drawer card (custody only).
+ * PLATFORM-CARD-DESIGN-SYSTEM-UNIFICATION-1 — payments domain shell.
  */
 
 import {
@@ -8,6 +9,8 @@ import {
   registerOperationsUiLabel,
   type RegisterOperationsLang,
 } from "@/lib/register-operations-presentation";
+import { semanticCardTypeClass } from "@/design-system/semantic-card";
+import { cn } from "@/lib/utils";
 import { ShiftBadge } from "./RegisterStatusBadges";
 
 type Props = {
@@ -36,7 +39,10 @@ export function CashDrawerSummaryCard({
   return (
     <section
       aria-label={registerOperationsUiLabel("cashDrawerSection", language)}
-      className="min-w-0 overflow-hidden rounded-xl border border-emerald-500/25 bg-emerald-950/15 p-4 sm:p-5"
+      className={cn(
+        semanticCardTypeClass("summary", { domain: "payments", interactive: false }),
+        "min-w-0"
+      )}
     >
       <h3 className="text-sm font-medium text-emerald-100/90 sm:text-base">
         {registerOperationsUiLabel("cashDrawerSection", language)}

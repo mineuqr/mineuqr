@@ -1,6 +1,10 @@
 import { memo } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import {
+  SEMANTIC_MOTION,
+  SEMANTIC_PANEL_BASE,
+} from "@/design-system/semantic-card";
 import type { PresentationDensityModel } from "@/lib/operational-screen/density/runtimeDisplayDensityContract";
 import {
   formatOperationalItemOverflow,
@@ -183,14 +187,14 @@ function KitchenExecutionCardImpl({
   return (
     <article
       className={cn(
-        "group relative flex h-full w-full flex-col overflow-hidden bg-card",
-        "rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.05),0_4px_14px_rgba(0,0,0,0.06)]",
-        "ring-1 ring-border/40 transition-[box-shadow,ring-color] duration-150 touch-manipulation",
+        "group relative flex h-full w-full flex-col overflow-hidden",
+        SEMANTIC_PANEL_BASE,
+        SEMANTIC_MOTION,
         densityModel.cardRadius,
         densityModel.cardPadding,
         densityModel.cardMinHeight,
         presentation.emphasis.cardBorderClass,
-        selected && "ring-2 ring-primary/55 shadow-[0_6px_22px_rgba(0,0,0,0.1)]",
+        selected && "border-cyan-400/50 shadow-sm shadow-cyan-500/15",
         fading && "opacity-60",
         className
       )}
