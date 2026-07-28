@@ -1,19 +1,32 @@
 /**
  * SEMANTIC-CARD-DESIGN-SYSTEM-1 + SEMANTIC-CARD-VISUAL-CONSISTENCY-1
  * + PLATFORM-CARD-DESIGN-SYSTEM-UNIFICATION-1
+ * + SEMANTIC-CARD-PREMIUM-INTERACTION-1
  * Panel chrome + KPI grid SSOT — Landing / Dashboard golden visual reference.
  * Presentation only. Do not invent a second cyan-panel language.
  */
 import { cn } from "@/lib/utils";
+import {
+  SEMANTIC_FOCUS_PREMIUM,
+  SEMANTIC_HOVER_PREMIUM,
+  SEMANTIC_MOTION_PREMIUM,
+  SEMANTIC_SURFACE_PREMIUM,
+} from "./interaction";
 
-/** Pricing / Admin / Restaurant cyan panel base (one string, one owner). */
-export const SEMANTIC_PANEL_BASE =
-  "rounded-xl border border-cyan-500/30 bg-gradient-to-b from-slate-800/50 to-slate-900/50 shadow-none";
+/**
+ * Pricing / Admin / Restaurant cyan panel base (one string, one owner).
+ * `.semantic-card` opts into premium lighting layers (index.css).
+ */
+export const SEMANTIC_PANEL_BASE = cn(
+  SEMANTIC_SURFACE_PREMIUM,
+  "rounded-xl border border-cyan-500/30 bg-gradient-to-b from-slate-800/50 to-slate-900/50 shadow-none"
+);
 
-export const SEMANTIC_HOVER_GLOW =
-  "transition-all duration-200 hover:border-cyan-400/30 hover:shadow-sm hover:shadow-cyan-500/10";
+/** @deprecated Prefer SEMANTIC_HOVER_PREMIUM — kept as facade alias. */
+export const SEMANTIC_HOVER_GLOW = SEMANTIC_HOVER_PREMIUM;
 
-export const SEMANTIC_MOTION = "transition-all duration-200";
+/** @deprecated Prefer SEMANTIC_MOTION_PREMIUM — kept as facade alias. */
+export const SEMANTIC_MOTION = SEMANTIC_MOTION_PREMIUM;
 
 export const SEMANTIC_SHELL =
   "min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900";
@@ -50,16 +63,18 @@ export const semanticPanel = {
   hoverGlow: SEMANTIC_HOVER_GLOW,
   motion: SEMANTIC_MOTION,
   shell: SEMANTIC_SHELL,
-  card: cn(SEMANTIC_PANEL_BASE, "overflow-hidden", SEMANTIC_HOVER_GLOW),
-  kpi: cn(SEMANTIC_PANEL_BASE, SEMANTIC_HOVER_GLOW, KPI_CARD_RESET),
+  card: cn(SEMANTIC_PANEL_BASE, "group overflow-hidden", SEMANTIC_HOVER_GLOW),
+  kpi: cn(SEMANTIC_PANEL_BASE, "group", SEMANTIC_HOVER_GLOW, KPI_CARD_RESET),
   kpiPrimary: cn(
     SEMANTIC_PANEL_BASE,
+    "group semantic-card-kpi-primary",
     SEMANTIC_HOVER_GLOW,
     KPI_CARD_RESET,
     "border-amber-500/35 bg-gradient-to-b from-slate-800/70 to-slate-900/80 sm:min-h-[7.5rem]"
   ),
   kpiSupporting: cn(
-    "rounded-xl border border-cyan-500/20 bg-slate-900/40 shadow-none",
+    SEMANTIC_SURFACE_PREMIUM,
+    "group rounded-xl border border-cyan-500/20 bg-slate-900/40 shadow-none",
     SEMANTIC_HOVER_GLOW,
     KPI_CARD_RESET
   ),
@@ -68,15 +83,18 @@ export const semanticPanel = {
     SEMANTIC_PANEL_BASE,
     "flex flex-col items-center gap-3 px-4 py-10 text-center sm:px-8"
   ),
-  inset: "rounded-xl border border-cyan-500/15 bg-slate-900/40",
+  inset: cn(
+    SEMANTIC_SURFACE_PREMIUM,
+    "rounded-xl border border-cyan-500/15 bg-slate-900/40"
+  ),
   hero: cn(
     SEMANTIC_PANEL_BASE,
-    "border-cyan-500/25 bg-gradient-to-br from-slate-800/60 via-slate-900/70 to-slate-900/90 p-4 sm:p-5"
+    "group border-cyan-500/25 bg-gradient-to-br from-slate-800/60 via-slate-900/70 to-slate-900/90 p-4 sm:p-5",
+    SEMANTIC_HOVER_GLOW
   ),
   radius: {
     card: "rounded-xl",
     executive: "rounded-2xl",
   },
-  focusRing:
-    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950",
+  focusRing: SEMANTIC_FOCUS_PREMIUM,
 } as const;

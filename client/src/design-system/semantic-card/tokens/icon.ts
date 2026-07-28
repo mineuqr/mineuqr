@@ -1,10 +1,14 @@
 /**
  * PLATFORM-CARD-DESIGN-SYSTEM-UNIFICATION-1
+ * + SEMANTIC-CARD-PREMIUM-INTERACTION-1
  * Icon container SSOT — Landing / Dashboard / Admin share one recipe.
  * Presentation only.
  */
 import { cn } from "@/lib/utils";
-import { SEMANTIC_MOTION } from "./panel";
+import {
+  SEMANTIC_ICON_WELL_HOVER,
+  SEMANTIC_MOTION_PREMIUM,
+} from "./interaction";
 import {
   SEMANTIC_DOMAIN_SURFACE,
   type SemanticDomain,
@@ -13,7 +17,8 @@ import { semanticToneIconClass, type SemanticTone } from "./semanticTone";
 
 const ICON_WELL_BASE = cn(
   "flex shrink-0 items-center justify-center rounded-xl border bg-slate-900/60",
-  SEMANTIC_MOTION
+  SEMANTIC_MOTION_PREMIUM,
+  SEMANTIC_ICON_WELL_HOVER
 );
 
 export const SEMANTIC_ICON = {

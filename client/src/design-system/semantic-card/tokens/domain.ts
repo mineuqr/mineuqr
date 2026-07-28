@@ -56,77 +56,77 @@ export const SEMANTIC_DOMAIN_SURFACE = Object.freeze({
       "border-cyan-500/35 bg-gradient-to-b from-cyan-950/45 to-slate-900/90",
     icon: "text-cyan-400",
     title: "text-cyan-100/90",
-    glow: "hover:shadow-cyan-500/20",
+    glow: "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.07),0_12px_28px_-8px_rgba(34,211,238,0.26)]",
   },
   payments: {
     shell:
       "border-emerald-500/35 bg-gradient-to-b from-emerald-950/40 to-slate-900/90",
     icon: "text-emerald-400",
     title: "text-emerald-100/90",
-    glow: "hover:shadow-emerald-500/20",
+    glow: "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.07),0_12px_28px_-8px_rgba(52,211,153,0.26)]",
   },
   revenue: {
     shell:
       "border-amber-500/35 bg-gradient-to-b from-amber-950/35 to-slate-900/90",
     icon: "text-amber-400",
     title: "text-amber-100/90",
-    glow: "hover:shadow-amber-500/20",
+    glow: "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.07),0_12px_28px_-8px_rgba(251,191,36,0.26)]",
   },
   kitchen: {
     shell:
       "border-violet-500/35 bg-gradient-to-b from-violet-950/40 to-slate-900/90",
     icon: "text-violet-400",
     title: "text-violet-100/90",
-    glow: "hover:shadow-violet-500/20",
+    glow: "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.07),0_12px_28px_-8px_rgba(167,139,250,0.26)]",
   },
   orders: {
     shell:
       "border-orange-500/35 bg-gradient-to-b from-orange-950/35 to-slate-900/90",
     icon: "text-orange-400",
     title: "text-orange-100/90",
-    glow: "hover:shadow-orange-500/20",
+    glow: "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.07),0_12px_28px_-8px_rgba(251,146,60,0.26)]",
   },
   qr: {
     shell:
       "border-orange-500/35 bg-gradient-to-b from-orange-950/35 to-slate-900/90",
     icon: "text-orange-400",
     title: "text-orange-100/90",
-    glow: "hover:shadow-orange-500/20",
+    glow: "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.07),0_12px_28px_-8px_rgba(251,146,60,0.26)]",
   },
   growth: {
     shell:
       "border-teal-500/40 bg-gradient-to-b from-teal-950/50 to-slate-900/90",
     icon: "text-teal-300",
     title: "text-teal-100/90",
-    glow: "hover:shadow-teal-500/25",
+    glow: "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08),0_14px_32px_-8px_rgba(45,212,191,0.30)]",
   },
   success: {
     shell:
       "border-green-500/35 bg-gradient-to-b from-green-950/35 to-slate-900/90",
     icon: SEMANTIC_TONE.icon.success,
     title: "text-green-100/90",
-    glow: "hover:shadow-green-500/20",
+    glow: "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.07),0_12px_28px_-8px_rgba(74,222,128,0.24)]",
   },
   warning: {
     shell:
       "border-orange-500/35 bg-gradient-to-b from-orange-950/35 to-slate-900/90",
     icon: SEMANTIC_TONE.icon.warning,
     title: "text-orange-100/90",
-    glow: "hover:shadow-orange-500/20",
+    glow: "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.07),0_12px_28px_-8px_rgba(251,146,60,0.24)]",
   },
   danger: {
     shell:
       "border-red-500/35 bg-gradient-to-b from-red-950/35 to-slate-900/90",
     icon: SEMANTIC_TONE.icon.danger,
     title: "text-red-100/90",
-    glow: "hover:shadow-red-500/20",
+    glow: "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.07),0_12px_28px_-8px_rgba(248,113,113,0.24)]",
   },
   information: {
     shell:
       "border-cyan-500/35 bg-gradient-to-b from-cyan-950/40 to-slate-900/90",
     icon: SEMANTIC_TONE.icon.info,
     title: "text-cyan-100/90",
-    glow: "hover:shadow-cyan-500/20",
+    glow: "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.07),0_12px_28px_-8px_rgba(34,211,238,0.26)]",
   },
 } as const satisfies Record<SemanticDomain, SemanticDomainSurface>);
 

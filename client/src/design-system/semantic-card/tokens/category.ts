@@ -44,6 +44,7 @@ export type SemanticCategorySurface = {
 /**
  * Tailwind surface SSOT — interactive executive cards.
  * Must stay visually aligned with SEMANTIC_CATEGORY_HEX families.
+ * PREMIUM-INTERACTION-1 — richer glow depth without raising saturation.
  */
 export const SEMANTIC_CATEGORY_SURFACE = Object.freeze({
   cash: {
@@ -51,35 +52,35 @@ export const SEMANTIC_CATEGORY_SURFACE = Object.freeze({
       "border-emerald-500/35 bg-gradient-to-b from-emerald-950/45 to-slate-900/85",
     icon: "text-emerald-400",
     value: "text-emerald-300",
-    glow: "hover:shadow-emerald-500/25",
+    glow: "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.07),0_0_0_1px_rgba(52,211,153,0.12),0_14px_36px_-10px_rgba(52,211,153,0.32)]",
   },
   card: {
     shell:
       "border-sky-500/35 bg-gradient-to-b from-sky-950/40 to-slate-900/85",
     icon: "text-sky-400",
     value: "text-sky-300",
-    glow: "hover:shadow-sky-500/25",
+    glow: "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.07),0_0_0_1px_rgba(56,189,248,0.12),0_14px_36px_-10px_rgba(56,189,248,0.32)]",
   },
   refund: {
     shell:
       "border-rose-500/35 bg-gradient-to-b from-rose-950/40 to-slate-900/85",
     icon: "text-rose-400",
     value: "text-rose-300",
-    glow: "hover:shadow-rose-500/25",
+    glow: "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.07),0_0_0_1px_rgba(251,113,133,0.12),0_14px_36px_-10px_rgba(251,113,133,0.30)]",
   },
   tax: {
     shell:
       "border-violet-500/35 bg-gradient-to-b from-violet-950/40 to-slate-900/85",
     icon: "text-violet-400",
     value: "text-violet-300",
-    glow: "hover:shadow-violet-500/25",
+    glow: "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.07),0_0_0_1px_rgba(167,139,250,0.12),0_14px_36px_-10px_rgba(167,139,250,0.30)]",
   },
   orders: {
     shell:
       "border-orange-500/35 bg-gradient-to-b from-orange-950/35 to-slate-900/85",
     icon: "text-orange-400",
     value: "text-orange-300",
-    glow: "hover:shadow-orange-500/25",
+    glow: "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.07),0_0_0_1px_rgba(251,146,60,0.12),0_14px_36px_-10px_rgba(251,146,60,0.30)]",
   },
   net: {
     shell:
@@ -87,14 +88,14 @@ export const SEMANTIC_CATEGORY_SURFACE = Object.freeze({
     icon: "text-teal-300",
     value:
       "bg-gradient-to-b from-teal-200 via-emerald-300 to-teal-400 bg-clip-text text-transparent",
-    glow: "hover:shadow-teal-500/30",
+    glow: "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08),0_0_0_1px_rgba(45,212,191,0.16),0_16px_40px_-10px_rgba(45,212,191,0.36)]",
   },
   neutral: {
     shell:
       "border-cyan-500/30 bg-gradient-to-b from-slate-800/50 to-slate-900/50",
     icon: "text-slate-400",
     value: "text-white",
-    glow: "hover:shadow-cyan-500/10",
+    glow: "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06),0_0_0_1px_rgba(34,211,238,0.10),0_12px_28px_-8px_rgba(6,182,212,0.22)]",
   },
 } as const satisfies Record<SemanticExecutiveCategory, SemanticCategorySurface>);
 

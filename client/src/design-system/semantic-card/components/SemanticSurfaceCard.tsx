@@ -1,5 +1,6 @@
 /**
  * PLATFORM-CARD-DESIGN-SYSTEM-UNIFICATION-1
+ * + SEMANTIC-CARD-PREMIUM-INTERACTION-1
  * Canonical content-card shell — Landing / Dashboard visual language.
  *
  * Use for settings, feature, summary, analytics, navigation, action, etc.
@@ -25,6 +26,11 @@ import {
   type SemanticCardTypeOptions,
 } from "../tokens/cardType";
 import type { SemanticDomain } from "../tokens/domain";
+import {
+  SEMANTIC_DISABLED,
+  SEMANTIC_PRESSED,
+  SEMANTIC_SELECTED,
+} from "../tokens/interaction";
 
 export type SemanticSurfaceCardProps = React.ComponentProps<"div"> & {
   /** Card type recipe — all inherit SEMANTIC_PANEL_BASE. */
@@ -33,23 +39,39 @@ export type SemanticSurfaceCardProps = React.ComponentProps<"div"> & {
   domain?: SemanticDomain;
   /** Override default interactivity for the type. */
   interactive?: boolean;
+  /** Selected state (selection / navigation cards). */
+  selected?: boolean;
 };
 
 export function SemanticSurfaceCard({
   cardType = "standard",
   domain,
   interactive,
+  selected,
   className,
   ...props
 }: SemanticSurfaceCardProps) {
   const options: SemanticCardTypeOptions = { domain, interactive };
+  const isInteractive =
+    interactive ??
+    (cardType !== "empty" &&
+      cardType !== "information" &&
+      cardType !== "settings");
 
   return (
     <Card
       data-slot="semantic-surface-card"
       data-card-type={cardType}
       data-domain={domain}
-      className={cn(semanticCardTypeClass(cardType, options), className)}
+      data-selected={selected ? "true" : undefined}
+      className={cn(
+        semanticCardTypeClass(cardType, options),
+        "group",
+        isInteractive && SEMANTIC_PRESSED,
+        SEMANTIC_SELECTED,
+        SEMANTIC_DISABLED,
+        className
+      )}
       {...props}
     />
   );

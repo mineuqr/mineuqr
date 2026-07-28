@@ -1,5 +1,6 @@
 /**
  * SEMANTIC-CARD-DESIGN-SYSTEM-1 + SEMANTIC-CARD-VISUAL-CONSISTENCY-1
+ * + SEMANTIC-CARD-PREMIUM-INTERACTION-1
  * Platform-reusable KPI card — Reporting golden visual language.
  * Presentation only — values and labels come from callers.
  *
@@ -14,6 +15,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { semanticPanel } from "../tokens/panel";
+import {
+  SEMANTIC_ICON_HOVER,
+  SEMANTIC_VALUE_HOVER,
+} from "../tokens/interaction";
 import {
   legacyToneToSemanticTone,
   semanticToneIconClass,
@@ -87,7 +92,11 @@ export function SemanticKpiCard({
   const primary = visual === "primary";
 
   return (
-    <Card className={cn(shellForEmphasis(visual), className)}>
+    <Card
+      data-slot="semantic-kpi-card"
+      data-emphasis={visual}
+      className={cn(shellForEmphasis(visual), className)}
+    >
       <CardHeader
         className={cn(
           "flex flex-row items-center justify-between gap-0 space-y-0",
@@ -107,9 +116,10 @@ export function SemanticKpiCard({
         </CardTitle>
         <Icon
           className={cn(
-            "shrink-0",
+            "shrink-0 origin-center",
             primary ? "h-4 w-4 sm:h-5 sm:w-5" : "h-3.5 w-3.5 sm:h-4 sm:w-4",
-            semanticToneIconClass(semanticTone)
+            semanticToneIconClass(semanticTone),
+            SEMANTIC_ICON_HOVER
           )}
           aria-hidden
         />
@@ -127,7 +137,8 @@ export function SemanticKpiCard({
             className={cn(
               "text-end font-bold tabular-nums sm:text-start",
               !primary && "text-lg sm:text-xl",
-              valueClassFor(valueVariant, visual)
+              valueClassFor(valueVariant, visual),
+              SEMANTIC_VALUE_HOVER
             )}
           >
             {value}
