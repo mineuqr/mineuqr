@@ -58,12 +58,32 @@ export async function executeDeviceOrderAction(
   const targetStatus = targetStatusForDeviceAction(action);
   const actor = resolveOrderActorFromDeviceSession(session);
 
-  const result = await runOrderCommand(() =>
-    advanceOrderStatusService.execute({
+  const { withOrderLifecycleLatency, markOrderLifecycleLatency } = await import(
+    "../../order/observability/orderLifecycleLatency"
+  );
+  const { createOrderLifecycleTraceId } = await import(
+    "@shared/order-lifecycle-latency"
+  );
+
+  const result = await withOrderLifecycleLatency(
+    {
+      traceId: correlationId ?? createOrderLifecycleTraceId(),
       orderId,
-      targetStatus,
-      actor,
-    })
+      restaurantId: session.restaurantId,
+      transition: `${orderStatus}->${targetStatus}`,
+      previousStatus: orderStatus,
+      surface: "operationalDevice.runtime.executeOrderAction",
+    },
+    async () => {
+      markOrderLifecycleLatency("authz");
+      return runOrderCommand(() =>
+        advanceOrderStatusService.execute({
+          orderId,
+          targetStatus,
+          actor,
+        })
+      );
+    }
   );
 
   opsLog({
@@ -81,6 +101,7 @@ export async function executeDeviceOrderAction(
       orderId,
       previousStatus: result.previousStatus,
       newStatus: result.newStatus,
+      lifecycleTraceId: correlationId ?? null,
     },
   });
 

@@ -2720,20 +2720,40 @@ const orderRouter = router({
         restaurant?.userId ?? ctx.user.id
       );
 
-      const result = await runOrderCommand(() =>
-        advanceOrderStatusService.execute({
-          orderId: input.id,
-          targetStatus: input.status,
-          actor,
-        })
+      const { withOrderLifecycleLatency, markOrderLifecycleLatency } = await import(
+        "./order/observability/orderLifecycleLatency"
+      );
+      const { createOrderLifecycleTraceId } = await import(
+        "@shared/order-lifecycle-latency"
       );
 
-      return {
-        success: true,
-        orderId: input.id,
-        previousStatus: result.previousStatus,
-        newStatus: result.newStatus,
-      };
+      return withOrderLifecycleLatency(
+        {
+          traceId: ctx.correlationId ?? createOrderLifecycleTraceId(),
+          orderId: input.id,
+          restaurantId: order.restaurantId,
+          transition: `${order.status}->${input.status}`,
+          previousStatus: order.status,
+          surface: "order.updateStatus",
+        },
+        async () => {
+          markOrderLifecycleLatency("authz");
+          const result = await runOrderCommand(() =>
+            advanceOrderStatusService.execute({
+              orderId: input.id,
+              targetStatus: input.status,
+              actor,
+            })
+          );
+
+          return {
+            success: true,
+            orderId: input.id,
+            previousStatus: result.previousStatus,
+            newStatus: result.newStatus,
+          };
+        }
+      );
     }),
   activeCount: verifiedProcedure
     .input(z.object({ restaurantId: z.number() }))

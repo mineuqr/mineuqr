@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { DATA_POLL_INTERVAL_MS } from "../bootstrapLogic";
 import { screenTrpc } from "../screenTrpc";
 import { useScreenRuntime } from "@/components/operational-screen/OperationalScreenRuntimeProvider";
@@ -9,6 +9,7 @@ import {
   type KitchenRuntimeStream,
 } from "./buildKitchenRuntimeStream";
 import { useKitchenArrivalNotifications } from "./useKitchenArrivalNotifications";
+import { noteOrderLifecycleObserverRefresh } from "@/lib/order-lifecycle-latency";
 
 export type { KitchenProjectionDiagnostics, KitchenRuntimeStream };
 
@@ -40,6 +41,19 @@ export function useKitchenRuntimeStream(): KitchenRuntimeStream & {
       placeholderData: (prev) => prev,
     }
   );
+
+  useEffect(() => {
+    if (!queueQuery.isSuccess || queueQuery.isFetching) return;
+    noteOrderLifecycleObserverRefresh({
+      surface: "kitchen-runtime-stream",
+      restaurantId: context?.identity.restaurantId,
+    });
+  }, [
+    queueQuery.dataUpdatedAt,
+    queueQuery.isSuccess,
+    queueQuery.isFetching,
+    context?.identity.restaurantId,
+  ]);
 
   const stream = useMemo(
     () =>

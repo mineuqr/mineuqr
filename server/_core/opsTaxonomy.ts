@@ -118,6 +118,11 @@ export const OPS_EVENT = {
   order_outbox_queue_depth: "order_outbox_queue_depth",
   order_outbox_relay_batch: "order_outbox_relay_batch",
 
+  // ORDER-LIFECYCLE-LATENCY-INSTRUMENTATION-1
+  order_lifecycle_latency_summary: "order_lifecycle_latency_summary",
+  order_lifecycle_latency_span: "order_lifecycle_latency_span",
+  order_lifecycle_latency_observer: "order_lifecycle_latency_observer",
+
   // ORDER-EVENTS-1B — event consumers
   order_consumer_executed: "order_consumer_executed",
   order_consumer_failed: "order_consumer_failed",

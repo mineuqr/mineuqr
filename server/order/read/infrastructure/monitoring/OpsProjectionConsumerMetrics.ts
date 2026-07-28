@@ -1,5 +1,6 @@
 import { opsLog } from "../../../../_core/opsLog";
 import { OPS_EVENT } from "../../../../_core/opsTaxonomy";
+import { getOrderLifecycleLatencyContext } from "../../../observability/orderLifecycleLatency";
 import type {
   ProjectionConsumerFailureMetric,
   ProjectionConsumerMetrics,
@@ -14,6 +15,7 @@ export class OpsProjectionConsumerMetrics implements ProjectionConsumerMetrics {
       category: "ORDER",
       severity: "debug",
       ts: new Date().toISOString(),
+      correlationId: getOrderLifecycleLatencyContext()?.traceId,
       restaurantId: undefined,
       metadata: {
         consumerName: metric.consumerName,
@@ -22,6 +24,7 @@ export class OpsProjectionConsumerMetrics implements ProjectionConsumerMetrics {
         eventId: metric.eventId,
         latencyMs: metric.latencyMs,
         outcome: "success",
+        program: "ORDER-LIFECYCLE-LATENCY-INSTRUMENTATION-1",
       },
     });
   }

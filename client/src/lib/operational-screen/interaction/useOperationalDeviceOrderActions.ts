@@ -3,14 +3,19 @@ import { screenTrpc } from "@/lib/operational-screen/screenTrpc";
 import type { DeviceOrderActionId } from "../../../../../server/operational-device/domain/deviceOrderExecution";
 import type { OperationalActionId } from "@/lib/operational-workspace/operationalActions";
 import { useRuntimeRole } from "@/components/operational-screen/OperationalScreenRuntimeProvider";
+import {
+  beginOrderLifecycleClientTrace,
+  endOrderLifecycleClientTrace,
+  getActiveOrderLifecycleClientTrace,
+  markOrderLifecycleClient,
+  noteOrderLifecycleClientPhase,
+  createOrderLifecycleTraceId,
+} from "@/lib/order-lifecycle-latency";
+import { orderLifecycleNowMs } from "@shared/order-lifecycle-latency";
 
 /**
  * ORDER-INTERACTION-PERFORMANCE-1 — device order execution.
- *
- * `executeAction` keeps a stable identity across renders (it reads the latest
- * mutation and permission via refs), so memoized cards are not invalidated by
- * unrelated runtime re-renders. Pending/success state is exposed as order ids
- * so callers derive per-card booleans without recreating callbacks.
+ * ORDER-LIFECYCLE-LATENCY-INSTRUMENTATION-1 — client latency marks (no behavior change).
  */
 export function useOperationalDeviceOrderActions() {
   const role = useRuntimeRole();
@@ -22,7 +27,24 @@ export function useOperationalDeviceOrderActions() {
 
   const mutation = screenTrpc.operationalDevice.runtime.executeOrderAction.useMutation({
     onSuccess: async () => {
+      const active = getActiveOrderLifecycleClientTrace();
+      markOrderLifecycleClient(active, "mutation_success");
+      markOrderLifecycleClient(active, "invalidate_start");
+      const invStarted = orderLifecycleNowMs();
       await utils.operationalDevice.runtime.getKitchenQueue.invalidate();
+      noteOrderLifecycleClientPhase(
+        active,
+        "invalidate_ms",
+        orderLifecycleNowMs() - invStarted
+      );
+      markOrderLifecycleClient(active, "invalidate_end");
+      markOrderLifecycleClient(active, "visible_update");
+      endOrderLifecycleClientTrace(active, "ok");
+    },
+    onError: () => {
+      const active = getActiveOrderLifecycleClientTrace();
+      markOrderLifecycleClient(active, "mutation_error");
+      endOrderLifecycleClientTrace(active, "error");
     },
   });
 
@@ -44,11 +66,24 @@ export function useOperationalDeviceOrderActions() {
       clearSuccessTimer();
       setSuccessOrderId(null);
       setPendingOrderId(orderId);
+      const traceId = createOrderLifecycleTraceId();
+      const trace = beginOrderLifecycleClientTrace({
+        traceId,
+        orderId,
+        transition: actionId,
+        surface: "operational-device",
+      });
+      markOrderLifecycleClient(trace, "mutation_start");
       try {
-        await mutateAsyncRef.current({
-          orderId,
-          action: actionId as DeviceOrderActionId,
-        });
+        await mutateAsyncRef.current(
+          {
+            orderId,
+            action: actionId as DeviceOrderActionId,
+          },
+          {
+            trpc: { context: { lifecycleTraceId: traceId } },
+          } as never
+        );
         setSuccessOrderId(orderId);
         successTimerRef.current = window.setTimeout(() => {
           setSuccessOrderId((current) => (current === orderId ? null : current));

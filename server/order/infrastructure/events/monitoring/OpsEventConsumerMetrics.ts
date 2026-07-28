@@ -1,5 +1,6 @@
 import { opsLog } from "../../../../_core/opsLog";
 import { OPS_EVENT } from "../../../../_core/opsTaxonomy";
+import { getOrderLifecycleLatencyContext } from "../../../observability/orderLifecycleLatency";
 import type {
   ConsumerFailureMetric,
   ConsumerRetryMetric,
@@ -15,12 +16,14 @@ export class OpsEventConsumerMetrics implements EventConsumerMetrics {
       category: "ORDER",
       severity: "debug",
       ts: new Date().toISOString(),
+      correlationId: getOrderLifecycleLatencyContext()?.traceId,
       metadata: {
         consumerName: metric.consumerName,
         eventType: metric.eventType,
         eventId: metric.eventId,
         latencyMs: metric.latencyMs,
         outcome: "success",
+        program: "ORDER-LIFECYCLE-LATENCY-INSTRUMENTATION-1",
       },
     });
   }
