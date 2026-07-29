@@ -1,7 +1,6 @@
 /**
- * COMMERCIAL-CATALOG-PLATFORM-FOUNDATION-1
- * Platform Operations Commercial Catalog workspace.
- * Uses platform-ops-ui exclusively. Wired to commercialCatalog tRPC.
+ * COMMERCIAL-CATALOG-MANAGEMENT-UI-1
+ * Full Commercial Catalog management workspace (replaces read-only dashboard).
  */
 
 import { useMemo, useState } from "react";
@@ -10,89 +9,49 @@ import {
   CheckCircle2,
   Globe2,
   Layers,
-  ShieldAlert,
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { trpc } from "@/lib/trpc";
 import {
-  COMMERCIAL_CATALOG_ARCHITECTURE_PRINCIPLES,
   COMMERCIAL_CATALOG_DASHBOARD_HOST_PATH,
   COMMERCIAL_CATALOG_DASHBOARD_SECTIONS,
   COMMERCIAL_CATALOG_FOUNDATION_PROGRAM,
-  COMMERCIAL_CATALOG_PLATFORM_DOES_NOT_OWN,
-  COMMERCIAL_CATALOG_PLATFORM_OWNS,
+  type CommercialCatalogDashboardSection,
 } from "@shared/commercial-catalog";
 import {
-  PlatformOpsEmptyState,
   PlatformOpsErrorState,
   PlatformOpsHeroSummary,
   PlatformOpsLoadingState,
   PlatformOpsMetricCard,
-  PlatformOpsModuleGrid,
-  PlatformOpsModuleTile,
-  PlatformOpsOwnershipList,
-  PlatformOpsSection,
-  PlatformOpsStatusBadge,
-  PlatformOpsTable,
-  PlatformOpsTableBody,
-  PlatformOpsTableCell,
-  PlatformOpsTableHead,
-  PlatformOpsTableHeader,
-  PlatformOpsTableRow,
   PLATFORM_OPS_UI,
 } from "@/design-system/platform-ops-ui";
-
-const SECTION_LABELS: Record<
-  (typeof COMMERCIAL_CATALOG_DASHBOARD_SECTIONS)[number],
-  string
-> = {
-  plans: "Plans",
-  plan_versions: "Plan Versions",
-  pricing: "Pricing",
-  billing_cycles: "Billing Cycles",
-  feature_bundles: "Feature Bundles",
-  limit_profiles: "Limit Profiles",
-  regional_policies: "Regional Policies",
-  trial_policies: "Trial Policies",
-  promotions: "Promotion Definitions",
-  migration_policies: "Migration Policies",
-  retirement_policies: "Retirement Policies",
-  publication_status: "Publication Status",
-  commercial_health: "Commercial Health",
-  commercial_validation: "Commercial Validation",
-};
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { MANAGEMENT_SECTION_LABELS } from "./commercial-catalog/catalogUiHelpers";
+import { useCatalogManagementData } from "./commercial-catalog/useCatalogManagementData";
+import {
+  BillingCyclesManagementPanel,
+  FeatureBundlesManagementPanel,
+  HealthManagementPanel,
+  LimitProfilesManagementPanel,
+  MigrationPoliciesManagementPanel,
+  PlansManagementPanel,
+  PricingManagementPanel,
+  PromotionsManagementPanel,
+  PublicationManagementPanel,
+  RegionsManagementPanel,
+  RetirementPoliciesManagementPanel,
+  TrialPoliciesManagementPanel,
+  ValidationManagementPanel,
+  VersionsManagementPanel,
+} from "./commercial-catalog/CatalogManagementPanels";
 
 export function PlatformOpsCommercialCatalogComposition() {
   const { t } = useLanguage();
-  const [selectedVersionId, setSelectedVersionId] = useState<string | null>(
-    null
-  );
+  const [section, setSection] =
+    useState<CommercialCatalogDashboardSection>("plans");
+  const data = useCatalogManagementData();
 
-  const healthQuery = trpc.commercialCatalog.health.useQuery(undefined, {
-    refetchInterval: 15_000,
-  });
-  const plansQuery = trpc.commercialCatalog.listPlans.useQuery();
-  const versionsQuery = trpc.commercialCatalog.listVersions.useQuery();
-  const regionsQuery = trpc.commercialCatalog.listRegions.useQuery();
-  const promotionsQuery = trpc.commercialCatalog.listPromotions.useQuery();
-  const cyclesQuery = trpc.commercialCatalog.listBillingCycles.useQuery();
-  const bundlesQuery = trpc.commercialCatalog.listFeatureBundles.useQuery();
-  const limitsQuery = trpc.commercialCatalog.listLimitProfiles.useQuery();
-  const trialsQuery = trpc.commercialCatalog.listTrialPolicies.useQuery();
-  const migrationQuery = trpc.commercialCatalog.listMigrationPolicies.useQuery();
-  const retirementQuery =
-    trpc.commercialCatalog.listRetirementPolicies.useQuery();
-  const pricesQuery = trpc.commercialCatalog.listPrices.useQuery(
-    selectedVersionId ? { planVersionId: selectedVersionId } : undefined
-  );
-  const validationQuery = trpc.commercialCatalog.validatePublication.useQuery(
-    { versionId: selectedVersionId! },
-    { enabled: Boolean(selectedVersionId) }
-  );
-
-  const health = healthQuery.data;
-  const versions = versionsQuery.data ?? [];
-
+  const health = data.healthQuery.data;
   const healthTone =
     health?.status === "healthy"
       ? ("healthy" as const)
@@ -102,35 +61,35 @@ export function PlatformOpsCommercialCatalogComposition() {
           ? ("degraded" as const)
           : ("unknown" as const);
 
-  const loading =
-    healthQuery.isLoading || plansQuery.isLoading || versionsQuery.isLoading;
-
   const moduleCounts = useMemo(
     () => ({
-      plans: plansQuery.data?.length ?? 0,
-      versions: versions.length,
+      plans: data.plansQuery.data?.length ?? 0,
+      versions: data.versionsQuery.data?.length ?? 0,
       published: health?.versions.published ?? 0,
-      regions: regionsQuery.data?.length ?? 0,
-      promotions: promotionsQuery.data?.length ?? 0,
+      regions: data.regionsQuery.data?.length ?? 0,
     }),
     [
-      plansQuery.data,
-      versions.length,
+      data.plansQuery.data,
+      data.versionsQuery.data,
       health,
-      regionsQuery.data,
-      promotionsQuery.data,
+      data.regionsQuery.data,
     ]
   );
+
+  const loading =
+    data.healthQuery.isLoading ||
+    data.plansQuery.isLoading ||
+    data.versionsQuery.isLoading;
 
   if (loading) {
     return <PlatformOpsLoadingState />;
   }
 
-  if (healthQuery.isError) {
+  if (data.healthQuery.isError) {
     return (
       <PlatformOpsErrorState
         title={t("admin.platformOps.commercialCatalog.loadError")}
-        message={healthQuery.error.message}
+        message={data.healthQuery.error.message}
       />
     );
   }
@@ -138,15 +97,16 @@ export function PlatformOpsCommercialCatalogComposition() {
   return (
     <div
       data-slot="platform-ops-commercial-catalog"
-      data-program={COMMERCIAL_CATALOG_FOUNDATION_PROGRAM}
+      data-program="COMMERCIAL-CATALOG-MANAGEMENT-UI-1"
+      data-foundation={COMMERCIAL_CATALOG_FOUNDATION_PROGRAM}
       data-host-path={COMMERCIAL_CATALOG_DASHBOARD_HOST_PATH}
       className={PLATFORM_OPS_UI.workspace}
     >
       <PlatformOpsHeroSummary
         title={t("admin.platformOps.commercialCatalog.title")}
-        description={t("admin.platformOps.commercialCatalog.body")}
+        description="Production-grade Commercial Catalog management — create, edit, validate, publish, deprecate, and retire offerings without database access."
         health={healthTone}
-        healthLabel={t("admin.platformOps.commercialCatalog.foundationLive")}
+        healthLabel="Management live"
         columns={4}
       >
         <PlatformOpsMetricCard
@@ -179,215 +139,64 @@ export function PlatformOpsCommercialCatalogComposition() {
         />
       </PlatformOpsHeroSummary>
 
-      <PlatformOpsSection
-        title={t("admin.platformOps.commercialCatalog.modulesTitle")}
-        description={t("admin.platformOps.commercialCatalog.modulesBody")}
+      <nav
+        aria-label="Commercial Catalog modules"
+        className="flex flex-wrap gap-2 border-b pb-3"
       >
-        <PlatformOpsModuleGrid>
-          {COMMERCIAL_CATALOG_DASHBOARD_SECTIONS.map((id) => (
-            <PlatformOpsModuleTile
-              key={id}
-              href={COMMERCIAL_CATALOG_DASHBOARD_HOST_PATH}
-              title={SECTION_LABELS[id]}
-              description={t(
-                `admin.platformOps.commercialCatalog.section.${id}`
-              )}
-              statusTone="healthy"
-              statusLabel={t(
-                "admin.platformOps.commercialCatalog.foundationLive"
-              )}
-              live
-            />
-          ))}
-        </PlatformOpsModuleGrid>
-      </PlatformOpsSection>
+        {COMMERCIAL_CATALOG_DASHBOARD_SECTIONS.map((id) => (
+          <Button
+            key={id}
+            type="button"
+            size="sm"
+            variant={section === id ? "default" : "outline"}
+            className={cn(section === id && "shadow-sm")}
+            onClick={() => setSection(id)}
+          >
+            {MANAGEMENT_SECTION_LABELS[id]}
+          </Button>
+        ))}
+      </nav>
 
-      <PlatformOpsSection
-        title={t("admin.platformOps.commercialCatalog.publicationTitle")}
-        description={t("admin.platformOps.commercialCatalog.publicationBody")}
-      >
-        {versions.length === 0 ? (
-          <PlatformOpsEmptyState
-            title={t("admin.platformOps.commercialCatalog.noVersions")}
-            description={t(
-              "admin.platformOps.commercialCatalog.noVersionsBody"
-            )}
-          />
-        ) : (
-          <PlatformOpsTable>
-            <PlatformOpsTableHeader>
-              <PlatformOpsTableRow>
-                <PlatformOpsTableHead>Version</PlatformOpsTableHead>
-                <PlatformOpsTableHead>State</PlatformOpsTableHead>
-                <PlatformOpsTableHead>Plan</PlatformOpsTableHead>
-                <PlatformOpsTableHead>Select</PlatformOpsTableHead>
-              </PlatformOpsTableRow>
-            </PlatformOpsTableHeader>
-            <PlatformOpsTableBody>
-              {versions.map((v) => (
-                <PlatformOpsTableRow key={v.id}>
-                  <PlatformOpsTableCell>
-                    {v.versionName} ({v.versionCode})
-                  </PlatformOpsTableCell>
-                  <PlatformOpsTableCell>
-                    <PlatformOpsStatusBadge
-                      status={
-                        v.state === "published"
-                          ? "healthy"
-                          : v.state === "draft"
-                            ? "warning"
-                            : v.state === "retired"
-                              ? "unavailable"
-                              : "degraded"
-                      }
-                      label={v.state}
-                    />
-                  </PlatformOpsTableCell>
-                  <PlatformOpsTableCell className="font-mono text-xs">
-                    {v.planId.slice(0, 8)}…
-                  </PlatformOpsTableCell>
-                  <PlatformOpsTableCell>
-                    <button
-                      type="button"
-                      className="text-sm underline"
-                      onClick={() => setSelectedVersionId(v.id)}
-                    >
-                      {selectedVersionId === v.id ? "Selected" : "Validate"}
-                    </button>
-                  </PlatformOpsTableCell>
-                </PlatformOpsTableRow>
-              ))}
-            </PlatformOpsTableBody>
-          </PlatformOpsTable>
-        )}
-
-        {selectedVersionId ? (
-          <div className="mt-4 space-y-2">
-            <div className="flex flex-wrap gap-2">
-              <PlatformOpsStatusBadge
-                status={
-                  validationQuery.data?.ok
-                    ? "healthy"
-                    : validationQuery.data
-                      ? "degraded"
-                      : "unknown"
-                }
-                label={
-                  validationQuery.data?.ok
-                    ? "CC-16 Valid"
-                    : validationQuery.data
-                      ? "CC-16 Incomplete"
-                      : "Validating…"
-                }
-              />
-              <span className="text-sm text-muted-foreground">
-                Prices for selection: {pricesQuery.data?.length ?? 0}
-              </span>
-            </div>
-            {validationQuery.data && !validationQuery.data.ok ? (
-              <ul className="list-disc pl-5 text-sm text-muted-foreground">
-                {validationQuery.data.issues.map((issue) => (
-                  <li key={`${issue.code}-${issue.message}`}>
-                    {issue.code}: {issue.message}
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-          </div>
+      <div className="pt-2">
+        {section === "plans" ? <PlansManagementPanel data={data} /> : null}
+        {section === "plan_versions" ? (
+          <VersionsManagementPanel data={data} />
         ) : null}
-      </PlatformOpsSection>
-
-      <PlatformOpsSection
-        title={t("admin.platformOps.commercialCatalog.catalogCountsTitle")}
-        description={t("admin.platformOps.commercialCatalog.catalogCountsBody")}
-      >
-        <div className="flex flex-wrap gap-2">
-          <PlatformOpsStatusBadge
-            status="healthy"
-            label={`Cycles ${cyclesQuery.data?.length ?? 0}`}
-          />
-          <PlatformOpsStatusBadge
-            status="healthy"
-            label={`Bundles ${bundlesQuery.data?.length ?? 0}`}
-          />
-          <PlatformOpsStatusBadge
-            status="healthy"
-            label={`Limits ${limitsQuery.data?.length ?? 0}`}
-          />
-          <PlatformOpsStatusBadge
-            status="healthy"
-            label={`Trials ${trialsQuery.data?.length ?? 0}`}
-          />
-          <PlatformOpsStatusBadge
-            status="healthy"
-            label={`Migrations ${migrationQuery.data?.length ?? 0}`}
-          />
-          <PlatformOpsStatusBadge
-            status="healthy"
-            label={`Retirement ${retirementQuery.data?.length ?? 0}`}
-          />
-          <PlatformOpsStatusBadge
-            status="healthy"
-            label={`Promotions ${moduleCounts.promotions}`}
-          />
-        </div>
-      </PlatformOpsSection>
-
-      <PlatformOpsSection
-        title={t("admin.platformOps.commercialCatalog.errorsTitle")}
-        description={t("admin.platformOps.commercialCatalog.errorsBody")}
-      >
-        <div className="flex flex-wrap gap-2 items-center">
-          <ShieldAlert className="h-4 w-4" />
-          <PlatformOpsStatusBadge
-            status={
-              (health?.publicationErrors ?? 0) > 0 ? "warning" : "healthy"
-            }
-            label={`Publication errors ${health?.publicationErrors ?? 0}`}
-          />
-          <PlatformOpsStatusBadge
-            status={(health?.validationErrors ?? 0) > 0 ? "warning" : "healthy"}
-            label={`Validation errors ${health?.validationErrors ?? 0}`}
-          />
-        </div>
-        {health?.lastPublicationError ? (
-          <p className="mt-2 text-sm text-muted-foreground">
-            Last publication: {health.lastPublicationError}
-          </p>
+        {section === "pricing" ? <PricingManagementPanel data={data} /> : null}
+        {section === "billing_cycles" ? (
+          <BillingCyclesManagementPanel data={data} />
         ) : null}
-        {health?.lastValidationError ? (
-          <p className="mt-2 text-sm text-muted-foreground">
-            Last validation: {health.lastValidationError}
-          </p>
+        {section === "feature_bundles" ? (
+          <FeatureBundlesManagementPanel data={data} />
         ) : null}
-      </PlatformOpsSection>
-
-      <PlatformOpsSection
-        title={t("admin.platformOps.commercialCatalog.ownsTitle")}
-        description={t("admin.platformOps.commercialCatalog.ownsBody")}
-      >
-        <PlatformOpsOwnershipList
-          items={COMMERCIAL_CATALOG_PLATFORM_OWNS.map((id) => id)}
-        />
-      </PlatformOpsSection>
-
-      <PlatformOpsSection
-        title={t("admin.platformOps.commercialCatalog.doesNotOwnTitle")}
-        description={t("admin.platformOps.commercialCatalog.doesNotOwnBody")}
-      >
-        <PlatformOpsOwnershipList
-          items={COMMERCIAL_CATALOG_PLATFORM_DOES_NOT_OWN.map((id) => id)}
-        />
-      </PlatformOpsSection>
-
-      <PlatformOpsSection
-        title={t("admin.platformOps.commercialCatalog.principlesTitle")}
-        description={t("admin.platformOps.commercialCatalog.principlesBody")}
-      >
-        <PlatformOpsOwnershipList
-          items={COMMERCIAL_CATALOG_ARCHITECTURE_PRINCIPLES.map((id) => id)}
-        />
-      </PlatformOpsSection>
+        {section === "limit_profiles" ? (
+          <LimitProfilesManagementPanel data={data} />
+        ) : null}
+        {section === "trial_policies" ? (
+          <TrialPoliciesManagementPanel data={data} />
+        ) : null}
+        {section === "regional_policies" ? (
+          <RegionsManagementPanel data={data} />
+        ) : null}
+        {section === "promotions" ? (
+          <PromotionsManagementPanel data={data} />
+        ) : null}
+        {section === "migration_policies" ? (
+          <MigrationPoliciesManagementPanel data={data} />
+        ) : null}
+        {section === "retirement_policies" ? (
+          <RetirementPoliciesManagementPanel data={data} />
+        ) : null}
+        {section === "publication_status" ? (
+          <PublicationManagementPanel data={data} />
+        ) : null}
+        {section === "commercial_validation" ? (
+          <ValidationManagementPanel data={data} />
+        ) : null}
+        {section === "commercial_health" ? (
+          <HealthManagementPanel data={data} />
+        ) : null}
+      </div>
     </div>
   );
 }

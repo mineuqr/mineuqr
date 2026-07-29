@@ -476,6 +476,28 @@ export const commercialCatalogRouter = router({
       }
     }),
 
+  updateMigrationPolicy: protectedProcedure
+    .input(
+      z.object({
+        id: z.string().uuid(),
+        name: z.string().min(1).max(255).optional(),
+        description: z.string().nullable().optional(),
+        requiresExplicitAction: z.boolean().optional(),
+      })
+    )
+    .mutation(({ ctx, input }) => {
+      assertAdminAccess(ctx, "commercialCatalog.updateMigrationPolicy");
+      try {
+        const { id, ...patch } = input;
+        return migrationPolicyService.update(id, patch, {
+          ...actorFromCtx(ctx),
+          procedure: "commercialCatalog.updateMigrationPolicy",
+        });
+      } catch (e) {
+        mapError(e);
+      }
+    }),
+
   listRetirementPolicies: protectedProcedure.query(({ ctx }) => {
     assertAdminAccess(ctx, "commercialCatalog.listRetirementPolicies");
     return migrationPolicyService.listRetirementPolicies();
