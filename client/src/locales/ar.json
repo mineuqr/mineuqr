@@ -1921,6 +1921,201 @@
         "seo": {
           "pricingTitle": "الأسعار — خطط MineuQR التجارية",
           "pricingDescription": "قارن خطط MineuQR. الأسعار بالدولار وعملتك المحلية."
+        },
+        "features": {
+          "qrMenu": {
+            "name": "منيو QR",
+            "description": "منيو رقمي عبر رمز QR للضيوف",
+            "tooltip": "يفتح الضيوف المنيو بالمسح",
+            "category": "المنيو",
+            "keywords": "منيو qr"
+          },
+          "categories": {
+            "name": "الفئات",
+            "description": "تنظيم فئات المنيو",
+            "tooltip": "هيكلة المنيو",
+            "category": "المنيو",
+            "keywords": "فئات"
+          },
+          "menuImages": {
+            "name": "صور المنيو",
+            "description": "عرض صور الأصناف",
+            "tooltip": "أصناف مرئية",
+            "category": "المنيو",
+            "keywords": "صور"
+          },
+          "search": {
+            "name": "البحث",
+            "description": "بحث الضيوف في المنيو",
+            "tooltip": "العثور على الأصناف بسرعة",
+            "category": "المنيو",
+            "keywords": "بحث"
+          },
+          "ordering": {
+            "name": "الطلب",
+            "description": "الطلب داخل المكان",
+            "tooltip": "اطلب من المنيو",
+            "category": "الطلبات",
+            "keywords": "طلب"
+          },
+          "cart": {
+            "name": "السلة",
+            "description": "سلة تسوق الضيف",
+            "tooltip": "جمع الأصناف قبل الإتمام",
+            "category": "الطلبات",
+            "keywords": "سلة"
+          },
+          "checkout": {
+            "name": "إتمام الطلب",
+            "description": "إكمال طلبات الضيوف",
+            "tooltip": "إنهاء الطلب",
+            "category": "الطلبات",
+            "keywords": "إتمام"
+          },
+          "requestBill": {
+            "name": "طلب الفاتورة",
+            "description": "طلب الفاتورة من الضيف",
+            "tooltip": "طلب فاتورة من الطاولة",
+            "category": "الخدمة",
+            "keywords": "فاتورة"
+          },
+          "callWaiter": {
+            "name": "استدعاء النادل",
+            "description": "استدعاء الموظفين",
+            "tooltip": "مساعدة على الطاولة",
+            "category": "الخدمة",
+            "keywords": "نادل"
+          },
+          "orderTracking": {
+            "name": "تتبع الطلب",
+            "description": "تتبع حالة الطلب",
+            "tooltip": "تقدم الطلب مباشرة",
+            "category": "الطلبات",
+            "keywords": "تتبع"
+          },
+          "reports": {
+            "name": "التقارير",
+            "description": "تقارير تشغيلية",
+            "tooltip": "رؤى الأعمال",
+            "category": "التحليلات",
+            "keywords": "تقارير"
+          },
+          "excelExport": {
+            "name": "تصدير Excel",
+            "description": "تصدير البيانات إلى Excel",
+            "tooltip": "تصدير جداول",
+            "category": "التحليلات",
+            "keywords": "excel"
+          },
+          "hotelMode": {
+            "name": "وضع الفندق",
+            "description": "وضع خدمة الغرف",
+            "tooltip": "عمليات الضيافة",
+            "category": "الضيافة",
+            "keywords": "فندق"
+          },
+          "roomQr": {
+            "name": "QR الغرف",
+            "description": "رموز QR لكل غرفة",
+            "tooltip": "وصول على مستوى الغرفة",
+            "category": "الضيافة",
+            "keywords": "غرفة"
+          },
+          "dynamicServiceCatalog": {
+            "name": "العروض الديناميكية",
+            "description": "كتالوج خدمات ديناميكي",
+            "tooltip": "عروض مرنة",
+            "category": "الضيافة",
+            "keywords": "عروض"
+          },
+          "templates": {
+            "name": "القوالب",
+            "description": "قوالب المنيو",
+            "tooltip": "ابدأ أسرع",
+            "category": "الهوية",
+            "keywords": "قوالب"
+          },
+          "customColors": {
+            "name": "ألوان مخصصة",
+            "description": "تخصيص ألوان العلامة",
+            "tooltip": "طابق علامتك",
+            "category": "الهوية",
+            "keywords": "ألوان"
+          },
+          "customFonts": {
+            "name": "خطوط مخصصة",
+            "description": "تخصيص خطوط العلامة",
+            "tooltip": "التحكم بالطباعة",
+            "category": "الهوية",
+            "keywords": "خطوط"
+          }
+        },
+        "limits": {
+          "restaurants": {
+            "name": "عدد المطاعم",
+            "description": "المواقع التي يمكنك تشغيلها"
+          },
+          "items": {
+            "name": "عدد أصناف المنيو",
+            "description": "الأصناف لكل موقع"
+          },
+          "categories": {
+            "name": "عدد الفئات",
+            "description": "فئات المنيو لكل موقع"
+          },
+          "ordersPerMonth": {
+            "name": "الطلبات شهرياً",
+            "description": "حد الطلبات الشهري"
+          },
+          "qrCodes": {
+            "name": "رموز QR",
+            "description": "حد رموز QR النشطة"
+          },
+          "storage": {
+            "name": "التخزين",
+            "description": "حد تخزين الوسائط"
+          },
+          "images": {
+            "name": "الصور",
+            "description": "حد رفع الصور"
+          },
+          "staffAccounts": {
+            "name": "حسابات الموظفين",
+            "description": "مقاعد أعضاء الفريق"
+          },
+          "branches": {
+            "name": "الفروع",
+            "description": "مواقع الفروع"
+          },
+          "devices": {
+            "name": "الأجهزة",
+            "description": "الأجهزة المتصلة"
+          }
+        },
+        "polish": {
+          "countrySearchPlaceholder": "ابحث عن دولة…",
+          "countrySearchAria": "بحث الدول",
+          "countrySelectPlaceholder": "اختر الدولة",
+          "countrySelectAria": "الدولة",
+          "currencyAuto": "العملة (من الدولة)",
+          "monthlyUsd": "السعر الشهري (دولار)",
+          "yearlyUsd": "السعر السنوي (دولار)",
+          "billingBoth": "الأسعار الشهرية والسنوية (دولار)",
+          "savings": "وفّر {percent}%",
+          "popular": "الأكثر شيوعاً",
+          "regionalOverrideOptional": "سعر قائمة إقليمي (تجاوز اختياري)",
+          "summaryTitle": "الملخص التجاري",
+          "summaryReady": "اللقطة التجارية جاهزة",
+          "summaryBilling": "الفوترة",
+          "summaryRegion": "المنطقة",
+          "summaryCanonical": "الدولار المعياري",
+          "summaryLocal": "السعر المحلي",
+          "dualSourceRegional": "سعر إقليمي",
+          "dualSourceFx": "محوّل من الدولار",
+          "noTechnicalIds": "عرض تجاري — المعرّفات التقنية مخفية",
+          "previewCycle": "دورة الفوترة للمعاينة",
+          "fxSource": "مصدر التحويل",
+          "overrideSource": "تجاوز إقليمي"
         }
       },
       "runtime": {

@@ -1921,6 +1921,201 @@
         "seo": {
           "pricingTitle": "Pricing — MineuQR Commercial Plans",
           "pricingDescription": "Compare MineuQR plans. Prices shown in USD and your local currency."
+        },
+        "features": {
+          "qrMenu": {
+            "name": "QR Menu",
+            "description": "Digital QR menu for guests",
+            "tooltip": "Guests scan to open the menu",
+            "category": "Menu",
+            "keywords": "qr menu digital"
+          },
+          "categories": {
+            "name": "Categories",
+            "description": "Organize menu categories",
+            "tooltip": "Structure your menu",
+            "category": "Menu",
+            "keywords": "categories"
+          },
+          "menuImages": {
+            "name": "Menu Images",
+            "description": "Show images on menu items",
+            "tooltip": "Visual menu items",
+            "category": "Menu",
+            "keywords": "images photos"
+          },
+          "search": {
+            "name": "Search",
+            "description": "Guest menu search",
+            "tooltip": "Find items quickly",
+            "category": "Menu",
+            "keywords": "search"
+          },
+          "ordering": {
+            "name": "Ordering",
+            "description": "In-venue ordering",
+            "tooltip": "Place orders from the menu",
+            "category": "Ordering",
+            "keywords": "order"
+          },
+          "cart": {
+            "name": "Cart",
+            "description": "Guest shopping cart",
+            "tooltip": "Collect items before checkout",
+            "category": "Ordering",
+            "keywords": "cart"
+          },
+          "checkout": {
+            "name": "Checkout",
+            "description": "Complete guest orders",
+            "tooltip": "Finalize the order",
+            "category": "Ordering",
+            "keywords": "checkout"
+          },
+          "requestBill": {
+            "name": "Request Bill",
+            "description": "Guests request the bill",
+            "tooltip": "Bill request from table",
+            "category": "Service",
+            "keywords": "bill"
+          },
+          "callWaiter": {
+            "name": "Call Waiter",
+            "description": "Guests call staff",
+            "tooltip": "Assistance at the table",
+            "category": "Service",
+            "keywords": "waiter"
+          },
+          "orderTracking": {
+            "name": "Order Tracking",
+            "description": "Track order status",
+            "tooltip": "Live order progress",
+            "category": "Ordering",
+            "keywords": "tracking"
+          },
+          "reports": {
+            "name": "Reports",
+            "description": "Operational reports",
+            "tooltip": "Business insights",
+            "category": "Analytics",
+            "keywords": "reports"
+          },
+          "excelExport": {
+            "name": "Excel Export",
+            "description": "Export data to Excel",
+            "tooltip": "Spreadsheet export",
+            "category": "Analytics",
+            "keywords": "excel export"
+          },
+          "hotelMode": {
+            "name": "Hotel Mode",
+            "description": "Hotel room service mode",
+            "tooltip": "Hospitality workflows",
+            "category": "Hospitality",
+            "keywords": "hotel"
+          },
+          "roomQr": {
+            "name": "Room QR",
+            "description": "Per-room QR codes",
+            "tooltip": "Room-level access",
+            "category": "Hospitality",
+            "keywords": "room qr"
+          },
+          "dynamicServiceCatalog": {
+            "name": "Dynamic Offers",
+            "description": "Dynamic service catalog",
+            "tooltip": "Flexible offers",
+            "category": "Hospitality",
+            "keywords": "offers"
+          },
+          "templates": {
+            "name": "Templates",
+            "description": "Menu templates",
+            "tooltip": "Start faster",
+            "category": "Branding",
+            "keywords": "templates"
+          },
+          "customColors": {
+            "name": "Custom Colors",
+            "description": "Brand color customization",
+            "tooltip": "Match your brand",
+            "category": "Branding",
+            "keywords": "colors"
+          },
+          "customFonts": {
+            "name": "Custom Fonts",
+            "description": "Brand font customization",
+            "tooltip": "Typography control",
+            "category": "Branding",
+            "keywords": "fonts"
+          }
+        },
+        "limits": {
+          "restaurants": {
+            "name": "Number of Restaurants",
+            "description": "Locations you can operate"
+          },
+          "items": {
+            "name": "Number of Menu Items",
+            "description": "Menu items per location"
+          },
+          "categories": {
+            "name": "Number of Categories",
+            "description": "Menu categories per location"
+          },
+          "ordersPerMonth": {
+            "name": "Orders per Month",
+            "description": "Monthly order volume allowance"
+          },
+          "qrCodes": {
+            "name": "QR Codes",
+            "description": "Active QR codes allowance"
+          },
+          "storage": {
+            "name": "Storage",
+            "description": "Media storage allowance"
+          },
+          "images": {
+            "name": "Images",
+            "description": "Image uploads allowance"
+          },
+          "staffAccounts": {
+            "name": "Staff Accounts",
+            "description": "Team member seats"
+          },
+          "branches": {
+            "name": "Branches",
+            "description": "Branch locations"
+          },
+          "devices": {
+            "name": "Devices",
+            "description": "Connected devices"
+          }
+        },
+        "polish": {
+          "countrySearchPlaceholder": "Search country…",
+          "countrySearchAria": "Search countries",
+          "countrySelectPlaceholder": "Select country",
+          "countrySelectAria": "Country",
+          "currencyAuto": "Currency (from country)",
+          "monthlyUsd": "Monthly price (USD)",
+          "yearlyUsd": "Yearly price (USD)",
+          "billingBoth": "Monthly and Yearly prices (USD)",
+          "savings": "Save {percent}%",
+          "popular": "Most popular",
+          "regionalOverrideOptional": "Regional list price (optional override)",
+          "summaryTitle": "Commercial summary",
+          "summaryReady": "Commercial snapshot ready",
+          "summaryBilling": "Billing",
+          "summaryRegion": "Region",
+          "summaryCanonical": "Canonical USD",
+          "summaryLocal": "Localized price",
+          "dualSourceRegional": "Regional Price",
+          "dualSourceFx": "Converted from USD",
+          "noTechnicalIds": "Commercial view — technical identifiers hidden",
+          "previewCycle": "Preview billing cycle",
+          "fxSource": "FX source",
+          "overrideSource": "Regional override"
         }
       },
       "runtime": {

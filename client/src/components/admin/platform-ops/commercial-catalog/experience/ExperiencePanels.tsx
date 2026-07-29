@@ -52,6 +52,11 @@ import {
 } from "./dependencyGraph";
 import type { ExperienceNavigate } from "./experienceNav";
 import { catalogManagementUiObservability } from "../catalogManagementObservability";
+import {
+  catalogFeatureNameKey,
+  catalogLimitNameKey,
+  resolveCatalogLabel,
+} from "../catalogCommercialDisplay";
 
 function diffKindLabel(cc: (key: string) => string, kind: FieldDiff["kind"]) {
   const map: Record<FieldDiff["kind"], string> = {
@@ -637,7 +642,7 @@ export function VersionComparePanel(props: { data: CatalogManagementData }) {
 }
 
 export function PricingPreviewPanel(props: { data: CatalogManagementData }) {
-  const { cc, language } = useCatalogI18n();
+  const { cc, t, language } = useCatalogI18n();
   const [versionId, setVersionId] = useState("");
   const [cycle, setCycle] = useState<"monthly" | "yearly">("monthly");
   const version = (props.data.versionsQuery.data ?? []).find(
@@ -668,6 +673,18 @@ export function PricingPreviewPanel(props: { data: CatalogManagementData }) {
     currency: p.currency,
     regionId: p.regionId,
   }));
+  const monthlyCycleIds = (props.data.cyclesQuery.data ?? [])
+    .filter(
+      (c) =>
+        c.intervalUnit === "month" || c.code.toLowerCase().includes("month")
+    )
+    .map((c) => c.id);
+  const yearlyCycleIds = (props.data.cyclesQuery.data ?? [])
+    .filter(
+      (c) =>
+        c.intervalUnit === "year" || c.code.toLowerCase().includes("year")
+    )
+    .map((c) => c.id);
 
   useEffect(() => {
     if (versionId) catalogExperienceObservability.recordPreview();
@@ -724,6 +741,11 @@ export function PricingPreviewPanel(props: { data: CatalogManagementData }) {
               <AdminLocalizedPricePreview
                 prices={priceRows}
                 regions={regions}
+                priceCycleHints={prices.map((p) => ({
+                  billingCycleId: p.billingCycleId,
+                }))}
+                monthlyBillingCycleIds={monthlyCycleIds}
+                yearlyBillingCycleIds={yearlyCycleIds}
               />
               {trial ? (
                 <p className="mt-2 text-sm text-muted-foreground">
@@ -735,12 +757,22 @@ export function PricingPreviewPanel(props: { data: CatalogManagementData }) {
                   .filter((f) => f.included)
                   .slice(0, 8)
                   .map((f) => (
-                    <li key={f.featureKey}>✓ {f.featureKey}</li>
+                    <li key={f.featureKey}>
+                      ✓{" "}
+                      {resolveCatalogLabel(
+                        t,
+                        catalogFeatureNameKey(f.featureKey),
+                        f.featureKey
+                      )}
+                    </li>
                   ))}
               </ul>
               <div className="mt-4 text-xs text-muted-foreground">
                 {(limits?.values ?? [])
-                  .map((v) => `${v.limitKey}=${v.value ?? cc("common.infinity")}`)
+                  .map(
+                    (v) =>
+                      `${resolveCatalogLabel(t, catalogLimitNameKey(v.limitKey), v.limitKey)}=${v.value ?? cc("common.infinity")}`
+                  )
                   .join(", ") || cc("common.emDash")}
               </div>
             </div>

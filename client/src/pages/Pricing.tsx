@@ -21,6 +21,7 @@ import {
   getFxService,
   resolveDualPricePresentation,
 } from "@shared/commercial-catalog";
+import { yearlySavingsPercent } from "@/components/admin/platform-ops/commercial-catalog/catalogCommercialDisplay";
 
 function PayPalCheckoutButton({
   planId,
@@ -376,6 +377,7 @@ export default function Pricing() {
         <div className="flex justify-center mb-12">
           <div className="bg-slate-800/50 border border-cyan-500/30 rounded-lg p-1 flex gap-2">
             <button
+              type="button"
               onClick={() => setSelectedCycle("monthly")}
               className={`px-6 py-2 rounded transition-all ${
                 selectedCycle === "monthly"
@@ -386,6 +388,7 @@ export default function Pricing() {
               {t("pricing.monthly")}
             </button>
             <button
+              type="button"
               onClick={() => setSelectedCycle("yearly")}
               className={`px-6 py-2 rounded transition-all ${
                 selectedCycle === "yearly"
@@ -394,18 +397,22 @@ export default function Pricing() {
               }`}
             >
               {t("pricing.yearly")}
-              <span className="text-xs mr-2 bg-orange-600/50 px-2 py-1 rounded">{t("pricing.save")} 20%</span>
             </button>
           </div>
         </div>
 
         {/* Plans Grid */}
         <div className="grid md:grid-cols-3 gap-8 mb-12">
-          {plans && plans.length > 0 ? plans.map((plan) => {
+          {plans && plans.length > 0 ? plans.map((plan, planIndex) => {
             const price =
               selectedCycle === "yearly" ? plan.priceYearly : plan.priceMonthly;
+            const savings = yearlySavingsPercent(
+              Number(plan.priceMonthly),
+              Number(plan.priceYearly)
+            );
             const isCurrentPlan =
               isAuthenticated && entitlementsReady && isCurrentCatalogPlan(plan.id);
+            const isPopular = planIndex === 1;
             const features = language === 'ar' && plan.featuresAr 
               ? JSON.parse(plan.featuresAr as string) 
               : plan.features ? JSON.parse(plan.features as string) : [];
@@ -414,13 +421,18 @@ export default function Pricing() {
               <Card
                 key={plan.id}
                 className={`relative overflow-hidden transition-all duration-300 ${
-                  isCurrentPlan
-                    ? "border-2 border-cyan-400 shadow-lg shadow-cyan-500/50"
+                  isCurrentPlan || isPopular
+                    ? "border-2 border-cyan-400 shadow-lg shadow-cyan-500/40"
                     : "border border-cyan-500/30 hover:border-cyan-400"
                 }`}
               >
+                {isPopular && !isCurrentPlan ? (
+                  <div className="absolute top-0 inset-inline-end-0 bg-gradient-to-r from-orange-500 to-orange-400 text-slate-900 px-4 py-1 text-sm font-bold rounded-bl-lg">
+                    {t("admin.platformOps.commercialCatalog.polish.popular")}
+                  </div>
+                ) : null}
                 {isCurrentPlan && (
-                  <div className="absolute top-0 right-0 bg-gradient-to-r from-cyan-500 to-cyan-400 text-slate-900 px-4 py-1 text-sm font-bold rounded-bl-lg">
+                  <div className="absolute top-0 inset-inline-end-0 bg-gradient-to-r from-cyan-500 to-cyan-400 text-slate-900 px-4 py-1 text-sm font-bold rounded-bl-lg">
                     {t('pricing.currentPlan')}
                   </div>
                 )}
@@ -429,8 +441,7 @@ export default function Pricing() {
                   <h3 className="text-2xl font-bold text-white mb-2">{language === 'ar' ? plan.nameAr : plan.nameEn}</h3>
                   <p className="text-cyan-300 text-sm mb-6">{language === 'ar' ? plan.descriptionAr : plan.descriptionEn}</p>
 
-                  {/* Price — dual USD + local (presentation only; checkout unchanged) */}
-                  <div className="mb-8 text-white">
+                  <div className="mb-4 text-white">
                     <CommercialDualPrice
                       presentation={resolveDualPricePresentation({
                         prices: [
@@ -452,20 +463,28 @@ export default function Pricing() {
                       }
                       showSource
                     />
+                    {selectedCycle === "yearly" && savings != null ? (
+                      <p className="mt-2 text-sm font-semibold text-orange-300">
+                        {t("admin.platformOps.commercialCatalog.polish.savings").replace(
+                          "{percent}",
+                          String(savings)
+                        )}
+                      </p>
+                    ) : null}
                   </div>
 
-                  {/* Features */}
                   <ul className="space-y-4 mb-8">
-                    {/* Display features from database */}
                     {features && features.length > 0 ? (
                       features.map((feature: string, idx: number) => (
                         <li key={idx} className="flex items-center gap-3 text-cyan-200">
-                          <Check className="w-5 h-5 text-cyan-400" />
+                          <Check className="w-5 h-5 text-cyan-400 shrink-0" />
                           <span>{feature}</span>
                         </li>
                       ))
                     ) : (
-                      <li className="text-cyan-200">No features listed</li>
+                      <li className="text-cyan-200/70 text-sm">
+                        {t("pricing.dualCurrencyNote")}
+                      </li>
                     )}
                   </ul>
 

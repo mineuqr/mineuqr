@@ -99,10 +99,29 @@ const DEFAULT_LIMITS: Record<string, { key: string; value: number }[]> = {
   ],
 };
 
-const DEFAULT_PRICES: Record<string, { monthly: string; yearly: string }> = {
-  basic: { monthly: "0.00", yearly: "0.00" },
-  professional: { monthly: "99.00", yearly: "990.00" },
-  enterprise: { monthly: "299.00", yearly: "2990.00" },
+/** Canonical Catalog prices are USD; SAR amounts are regional overrides only. */
+const DEFAULT_PRICES: Record<
+  string,
+  {
+    monthlyUsd: string;
+    yearlyUsd: string;
+    monthlySar?: string;
+    yearlySar?: string;
+  }
+> = {
+  basic: { monthlyUsd: "0.00", yearlyUsd: "0.00" },
+  professional: {
+    monthlyUsd: "26.40",
+    yearlyUsd: "264.00",
+    monthlySar: "99.00",
+    yearlySar: "990.00",
+  },
+  enterprise: {
+    monthlyUsd: "79.73",
+    yearlyUsd: "797.33",
+    monthlySar: "299.00",
+    yearlySar: "2990.00",
+  },
 };
 
 async function persistFullStore(): Promise<void> {
@@ -371,7 +390,7 @@ export async function ensureCommercialCatalogAdoptionSeed(): Promise<{
     name: "No renewals when retired",
     allowRenewals: false,
   });
-  regions.create({
+  const saRegion = regions.create({
     code: "sa",
     name: "Saudi Arabia",
     countryCode: "SA",
@@ -421,21 +440,41 @@ export async function ensureCommercialCatalogAdoptionSeed(): Promise<{
       },
     });
     const amounts = DEFAULT_PRICES[bridge.catalogPlanCode] ?? {
-      monthly: "0.00",
-      yearly: "0.00",
+      monthlyUsd: "0.00",
+      yearlyUsd: "0.00",
     };
     pricing.create({
       planVersionId: version.id,
       billingCycleId: monthly.id,
-      currency: "SAR",
-      amount: amounts.monthly,
+      currency: "USD",
+      amount: amounts.monthlyUsd,
+      regionId: null,
     });
     pricing.create({
       planVersionId: version.id,
       billingCycleId: yearly.id,
-      currency: "SAR",
-      amount: amounts.yearly,
+      currency: "USD",
+      amount: amounts.yearlyUsd,
+      regionId: null,
     });
+    if (amounts.monthlySar) {
+      pricing.create({
+        planVersionId: version.id,
+        billingCycleId: monthly.id,
+        currency: "SAR",
+        amount: amounts.monthlySar,
+        regionId: saRegion.id,
+      });
+    }
+    if (amounts.yearlySar) {
+      pricing.create({
+        planVersionId: version.id,
+        billingCycleId: yearly.id,
+        currency: "SAR",
+        amount: amounts.yearlySar,
+        regionId: saRegion.id,
+      });
+    }
     publication.publish(version.id);
   }
 

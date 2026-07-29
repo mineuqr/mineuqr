@@ -26,10 +26,18 @@ export const CATALOG_FEATURE_KEYS = [
   "customFonts",
 ] as const;
 
+/** Commercial Catalog limit vocabulary (presentation + catalog profiles). */
 export const CATALOG_LIMIT_KEYS = [
   "restaurants",
   "items",
   "categories",
+  "ordersPerMonth",
+  "qrCodes",
+  "storage",
+  "images",
+  "staffAccounts",
+  "branches",
+  "devices",
 ] as const;
 
 export const MANAGEMENT_SECTION_I18N_KEYS: Record<

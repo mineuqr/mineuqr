@@ -4,6 +4,7 @@
  */
 
 import {
+  COMMERCIAL_CANONICAL_CURRENCY,
   COMMERCIAL_CATALOG_ADOPTION_CONSUMERS,
   type CommercialSnapshotDefinition,
 } from "@shared/commercial-catalog";
@@ -122,7 +123,8 @@ export async function listPublishedPlanOfferings(): Promise<
       versionCode: version.versionCode,
       versionName: version.versionName,
       state: "published",
-      currency: monthly?.currency ?? yearly?.currency ?? "SAR",
+      currency:
+        monthly?.currency ?? yearly?.currency ?? COMMERCIAL_CANONICAL_CURRENCY,
       priceMonthly: monthly?.amount ?? null,
       priceYearly: yearly?.amount ?? null,
       featureKeys: features.map((f) => f.featureKey),

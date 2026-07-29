@@ -1,5 +1,6 @@
 /**
  * COMMERCIAL-CATALOG-ADMIN-EXPERIENCE-1 — Plan Creation Wizard.
+ * COMMERCIAL-CATALOG-PRODUCTION-POLISH-1 — dual USD pricing, country selector, localized labels.
  * Orchestrates existing commercialCatalog mutations; never bypasses CC-16.
  */
 
@@ -8,13 +9,6 @@ import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   PlatformOpsAlert,
   PlatformOpsSection,
@@ -35,6 +29,14 @@ import {
   type ResolvedSmartValidationAction,
 } from "./smartValidation";
 import type { ExperienceNavigate } from "./experienceNav";
+import { CatalogCountrySelect } from "../CatalogCountrySelect";
+import {
+  catalogFeatureNameKey,
+  catalogLimitNameKey,
+  resolveCatalogLabel,
+  yearlySavingsPercent,
+} from "../catalogCommercialDisplay";
+import { COMMERCIAL_CANONICAL_CURRENCY } from "@shared/commercial-catalog";
 
 const WIZARD_STEP_KEYS = [
   "wizard.steps.planInfo",
@@ -52,6 +54,19 @@ const WIZARD_STEP_KEYS = [
 
 const DRAFT_ID = "plan-wizard-default";
 
+const DEFAULT_LIMITS: Record<string, string> = {
+  restaurants: "1",
+  items: "100",
+  categories: "10",
+  ordersPerMonth: "500",
+  qrCodes: "10",
+  storage: "1024",
+  images: "50",
+  staffAccounts: "5",
+  branches: "1",
+  devices: "3",
+};
+
 type WizardState = {
   step: number;
   planCode: string;
@@ -59,12 +74,8 @@ type WizardState = {
   planDescription: string;
   versionCode: string;
   versionName: string;
-  amount: string;
-  currency: string;
-  cycleCode: string;
-  cycleName: string;
-  intervalCount: string;
-  intervalUnit: "month" | "year" | "week" | "day";
+  monthlyAmountUsd: string;
+  yearlyAmountUsd: string;
   bundleCode: string;
   bundleName: string;
   features: Record<string, boolean>;
@@ -79,6 +90,7 @@ type WizardState = {
   regionName: string;
   countryCode: string;
   regionCurrency: string;
+  regionalOverrideMonthly: string;
   promoCode: string;
   promoName: string;
   promoEffect: string;
@@ -98,26 +110,23 @@ const DEFAULT: WizardState = {
   planDescription: "",
   versionCode: "v1",
   versionName: "Initial",
-  amount: "99.00",
-  currency: "USD",
-  cycleCode: "monthly",
-  cycleName: "Monthly",
-  intervalCount: "1",
-  intervalUnit: "month",
+  monthlyAmountUsd: "19.00",
+  yearlyAmountUsd: "190.00",
   bundleCode: "",
   bundleName: "",
   features: Object.fromEntries(CATALOG_FEATURE_KEYS.map((k) => [k, false])),
   limitCode: "",
   limitName: "",
-  limits: { restaurants: "1", items: "100", categories: "10" },
+  limits: { ...DEFAULT_LIMITS },
   unlimited: {},
   trialCode: "",
   trialName: "",
   trialDays: "14",
   regionCode: "",
   regionName: "",
-  countryCode: "SA",
-  regionCurrency: "SAR",
+  countryCode: "US",
+  regionCurrency: "USD",
+  regionalOverrideMonthly: "",
   promoCode: "",
   promoName: "",
   promoEffect: "",
@@ -128,15 +137,29 @@ const DEFAULT: WizardState = {
   retirementName: "",
 };
 
+function hydrateWizardDraft(
+  draft: Record<string, unknown> | undefined
+): WizardState {
+  if (!draft) return { ...DEFAULT };
+  const legacy = draft as WizardState & { amount?: string };
+  return {
+    ...DEFAULT,
+    ...(draft as WizardState),
+    monthlyAmountUsd:
+      legacy.monthlyAmountUsd ?? legacy.amount ?? DEFAULT.monthlyAmountUsd,
+    yearlyAmountUsd: legacy.yearlyAmountUsd ?? DEFAULT.yearlyAmountUsd,
+    limits: { ...DEFAULT_LIMITS, ...(legacy.limits ?? {}) },
+  };
+}
+
 export function PlanCreationWizard(props: {
   data: CatalogManagementData;
   onNavigate: ExperienceNavigate;
 }) {
   const { cc, t } = useCatalogI18n();
-  const [state, setState] = useState<WizardState>(() => {
-    const draft = catalogProductivityStore.get().wizardDrafts[DRAFT_ID];
-    return draft ? { ...DEFAULT, ...(draft as WizardState) } : { ...DEFAULT };
-  });
+  const [state, setState] = useState<WizardState>(() =>
+    hydrateWizardDraft(catalogProductivityStore.get().wizardDrafts[DRAFT_ID])
+  );
   const [busy, setBusy] = useState(false);
   const [publishIssues, setPublishIssues] = useState<
     ResolvedSmartValidationAction[]
@@ -174,6 +197,32 @@ export function PlanCreationWizard(props: {
     [state.step]
   );
 
+  const savingsPercent = useMemo(
+    () =>
+      yearlySavingsPercent(
+        Number.parseFloat(state.monthlyAmountUsd),
+        Number.parseFloat(state.yearlyAmountUsd)
+      ),
+    [state.monthlyAmountUsd, state.yearlyAmountUsd]
+  );
+
+  async function findOrCreateCycle(
+    intervalUnit: "month" | "year",
+    suffix: string,
+    name: string
+  ) {
+    const existing = (props.data.cyclesQuery.data ?? []).find(
+      (c) => c.intervalUnit === intervalUnit && c.intervalCount === 1
+    );
+    if (existing) return existing;
+    return createCycle.mutateAsync({
+      code: `${state.planCode}-${suffix}`,
+      name,
+      intervalCount: 1,
+      intervalUnit,
+    });
+  }
+
   async function runCreatePipeline(publishAtEnd: boolean) {
     setBusy(true);
     const started = Date.now();
@@ -187,12 +236,16 @@ export function PlanCreationWizard(props: {
               description: state.planDescription || null,
             });
 
-      const cycle = await createCycle.mutateAsync({
-        code: `${state.cycleCode}-${Date.now().toString(36).slice(-4)}`,
-        name: state.cycleName,
-        intervalCount: Number(state.intervalCount) || 1,
-        intervalUnit: state.intervalUnit,
-      });
+      const monthlyCycle = await findOrCreateCycle(
+        "month",
+        "monthly",
+        cc("intervalUnits.month")
+      );
+      const yearlyCycle = await findOrCreateCycle(
+        "year",
+        "yearly",
+        cc("intervalUnits.year")
+      );
 
       const bundle = await createBundle.mutateAsync({
         code: state.bundleCode || `${state.planCode}-bundle`,
@@ -266,11 +319,29 @@ export function PlanCreationWizard(props: {
 
       await createPrice.mutateAsync({
         planVersionId: version.id,
-        billingCycleId: cycle.id,
-        currency: state.currency,
-        amount: state.amount,
-        regionId: region.id,
+        billingCycleId: monthlyCycle.id,
+        currency: COMMERCIAL_CANONICAL_CURRENCY,
+        amount: state.monthlyAmountUsd,
+        regionId: null,
       });
+
+      await createPrice.mutateAsync({
+        planVersionId: version.id,
+        billingCycleId: yearlyCycle.id,
+        currency: COMMERCIAL_CANONICAL_CURRENCY,
+        amount: state.yearlyAmountUsd,
+        regionId: null,
+      });
+
+      if (state.regionalOverrideMonthly.trim()) {
+        await createPrice.mutateAsync({
+          planVersionId: version.id,
+          billingCycleId: monthlyCycle.id,
+          currency: state.regionCurrency,
+          amount: state.regionalOverrideMonthly.trim(),
+          regionId: region.id,
+        });
+      }
 
       patch({ createdPlanId: plan.id, createdVersionId: version.id });
       await props.data.invalidateAll();
@@ -376,57 +447,36 @@ export function PlanCreationWizard(props: {
 
       {state.step === 2 ? (
         <div className="grid gap-3 max-w-lg">
-          <CatalogField label={cc("fields.amount")}>
+          <CatalogField label={cc("polish.monthlyUsd")}>
             <Input
-              value={state.amount}
-              onChange={(e) => patch({ amount: e.target.value })}
+              value={state.monthlyAmountUsd}
+              onChange={(e) => patch({ monthlyAmountUsd: e.target.value })}
             />
           </CatalogField>
-          <CatalogField label={cc("fields.currency")}>
+          <CatalogField label={cc("polish.yearlyUsd")}>
             <Input
-              value={state.currency}
-              onChange={(e) =>
-                patch({ currency: e.target.value.toUpperCase() })
-              }
+              value={state.yearlyAmountUsd}
+              onChange={(e) => patch({ yearlyAmountUsd: e.target.value })}
             />
           </CatalogField>
+          <CatalogField label={cc("manage.currencyUsdOnly")}>
+            <Input value={COMMERCIAL_CANONICAL_CURRENCY} readOnly disabled />
+          </CatalogField>
+          {savingsPercent != null ? (
+            <p className="text-sm text-muted-foreground">
+              {cc("polish.savings").replace("{percent}", String(savingsPercent))}
+            </p>
+          ) : null}
         </div>
       ) : null}
 
       {state.step === 3 ? (
-        <div className="grid gap-3 max-w-lg">
-          <CatalogField label={cc("fields.cycleCode")}>
-            <Input
-              value={state.cycleCode}
-              onChange={(e) => patch({ cycleCode: e.target.value })}
-            />
-          </CatalogField>
-          <CatalogField label={cc("fields.cycleName")}>
-            <Input
-              value={state.cycleName}
-              onChange={(e) => patch({ cycleName: e.target.value })}
-            />
-          </CatalogField>
-          <CatalogField label={cc("fields.intervalUnit")}>
-            <Select
-              value={state.intervalUnit}
-              onValueChange={(v) =>
-                patch({
-                  intervalUnit: v as WizardState["intervalUnit"],
-                })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="month">{cc("intervalUnits.month")}</SelectItem>
-                <SelectItem value="year">{cc("intervalUnits.year")}</SelectItem>
-                <SelectItem value="week">{cc("intervalUnits.week")}</SelectItem>
-                <SelectItem value="day">{cc("intervalUnits.day")}</SelectItem>
-              </SelectContent>
-            </Select>
-          </CatalogField>
+        <div className="max-w-lg space-y-3">
+          <PlatformOpsAlert
+            severity="info"
+            title={cc("polish.billingBoth")}
+            detail={`${state.monthlyAmountUsd} ${COMMERCIAL_CANONICAL_CURRENCY} / ${cc("intervalUnits.month")} · ${state.yearlyAmountUsd} ${COMMERCIAL_CANONICAL_CURRENCY} / ${cc("intervalUnits.year")}`}
+          />
         </div>
       ) : null}
 
@@ -453,7 +503,7 @@ export function PlanCreationWizard(props: {
                     })
                   }
                 />
-                {key}
+                {t(catalogFeatureNameKey(key))}
               </label>
             ))}
           </div>
@@ -463,7 +513,14 @@ export function PlanCreationWizard(props: {
       {state.step === 5 ? (
         <div className="grid gap-3 max-w-lg">
           {CATALOG_LIMIT_KEYS.map((key) => (
-            <CatalogField key={key} label={key}>
+            <CatalogField
+              key={key}
+              label={resolveCatalogLabel(
+                t,
+                catalogLimitNameKey(key),
+                cc("common.emDash")
+              )}
+            >
               <div className="flex items-center gap-2">
                 <Input
                   type="number"
@@ -510,19 +567,27 @@ export function PlanCreationWizard(props: {
       {state.step === 7 ? (
         <div className="grid gap-3 max-w-lg">
           <CatalogField label={cc("fields.country")}>
-            <Input
+            <CatalogCountrySelect
               value={state.countryCode}
-              onChange={(e) =>
-                patch({ countryCode: e.target.value.toUpperCase() })
+              onChange={({ countryCode, currency, countryName }) =>
+                patch({
+                  countryCode,
+                  regionCurrency: currency,
+                  regionName: countryName,
+                })
               }
             />
           </CatalogField>
-          <CatalogField label={cc("fields.currency")}>
+          <CatalogField label={cc("polish.currencyAuto")}>
+            <Input value={state.regionCurrency} readOnly disabled />
+          </CatalogField>
+          <CatalogField label={cc("polish.regionalOverrideOptional")}>
             <Input
-              value={state.regionCurrency}
+              value={state.regionalOverrideMonthly}
               onChange={(e) =>
-                patch({ regionCurrency: e.target.value.toUpperCase() })
+                patch({ regionalOverrideMonthly: e.target.value })
               }
+              placeholder={cc("common.emDash")}
             />
           </CatalogField>
         </div>
@@ -557,29 +622,48 @@ export function PlanCreationWizard(props: {
       ) : null}
 
       {state.step === 9 ? (
-        <div className="space-y-2 text-sm">
+        <div className="space-y-3 text-sm">
+          <p className="font-medium">{cc("polish.summaryTitle")}</p>
+          <p className="text-muted-foreground">{cc("polish.summaryReady")}</p>
+          <p className="text-base font-semibold">{state.planName}</p>
+          <div>
+            <p className="text-muted-foreground">{cc("polish.summaryBilling")}</p>
+            <p>
+              {cc("polish.summaryCanonical")}: {state.monthlyAmountUsd}{" "}
+              {COMMERCIAL_CANONICAL_CURRENCY} / {cc("intervalUnits.month")}
+            </p>
+            <p>
+              {cc("polish.summaryCanonical")}: {state.yearlyAmountUsd}{" "}
+              {COMMERCIAL_CANONICAL_CURRENCY} / {cc("intervalUnits.year")}
+            </p>
+            {savingsPercent != null ? (
+              <p>{cc("polish.savings").replace("{percent}", String(savingsPercent))}</p>
+            ) : null}
+          </div>
+          <div>
+            <p className="text-muted-foreground">{cc("polish.summaryRegion")}</p>
+            <p>
+              {state.regionName || state.countryCode || cc("common.emDash")}
+              {state.regionCurrency
+                ? ` · ${state.regionCurrency}`
+                : null}
+            </p>
+            {state.regionalOverrideMonthly.trim() ? (
+              <p>
+                {cc("polish.summaryLocal")}: {state.regionalOverrideMonthly}{" "}
+                {state.regionCurrency} / {cc("intervalUnits.month")}
+              </p>
+            ) : null}
+          </div>
           <p>
-            <strong>{cc("wizard.reviewPlan")}</strong> {state.planName} (
-            {state.planCode})
-          </p>
-          <p>
-            <strong>{cc("wizard.reviewVersion")}</strong> {state.versionName} (
-            {state.versionCode})
-          </p>
-          <p>
-            <strong>{cc("wizard.reviewPrice")}</strong> {state.amount}{" "}
-            {state.currency} / {state.cycleName}
-          </p>
-          <p>
-            <strong>{cc("wizard.reviewFeatures")}</strong>{" "}
+            {cc("wizard.reviewFeatures")}{" "}
             {cc("wizard.reviewFeaturesSelected").replace(
               "{count}",
               String(Object.values(state.features).filter(Boolean).length)
             )}
           </p>
-          <p>
-            <strong>{cc("wizard.reviewRegion")}</strong> {state.countryCode} /{" "}
-            {state.regionCurrency}
+          <p className="text-xs text-muted-foreground">
+            {cc("polish.noTechnicalIds")}
           </p>
           <PlatformOpsAlert
             severity="info"

@@ -133,7 +133,8 @@ export function PlatformOpsCommercialCatalogComposition() {
   return (
     <div
       data-slot="platform-ops-commercial-catalog"
-      data-program="COMMERCIAL-CATALOG-LOCALIZATION-LITERAL-SWEEP-1"
+      data-program="COMMERCIAL-CATALOG-PRODUCTION-POLISH-1"
+      data-localization-sweep="COMMERCIAL-CATALOG-LOCALIZATION-LITERAL-SWEEP-1"
       data-localization="COMMERCIAL-CATALOG-LOCALIZATION-IMPLEMENTATION-1"
       data-experience="COMMERCIAL-CATALOG-ADMIN-EXPERIENCE-1"
       data-management="COMMERCIAL-CATALOG-MANAGEMENT-UI-1"

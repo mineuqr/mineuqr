@@ -40,6 +40,12 @@ import {
   filterByQuery,
   versionStateTone,
 } from "./catalogUiHelpers";
+import {
+  catalogFeatureNameKey,
+  catalogLimitNameKey,
+  resolveCatalogLabel,
+} from "./catalogCommercialDisplay";
+import { CatalogCountrySelect } from "./CatalogCountrySelect";
 import { catalogManagementUiObservability } from "./catalogManagementObservability";
 import type { CatalogManagementData } from "./useCatalogManagementData";
 
@@ -733,6 +739,23 @@ export function PricingManagementPanel({ data }: Props) {
             countryCode: r.countryCode,
             currency: r.currency,
           }))}
+          priceCycleHints={(data.pricesQuery.data ?? []).map((p) => ({
+            billingCycleId: p.billingCycleId,
+          }))}
+          monthlyBillingCycleIds={(data.cyclesQuery.data ?? [])
+            .filter(
+              (c) =>
+                c.intervalUnit === "month" ||
+                c.code.toLowerCase().includes("month")
+            )
+            .map((c) => c.id)}
+          yearlyBillingCycleIds={(data.cyclesQuery.data ?? [])
+            .filter(
+              (c) =>
+                c.intervalUnit === "year" ||
+                c.code.toLowerCase().includes("year")
+            )
+            .map((c) => c.id)}
         />
       </div>
       <CatalogFormDialog
@@ -931,7 +954,7 @@ export function BillingCyclesManagementPanel({ data }: Props) {
 }
 
 export function FeatureBundlesManagementPanel({ data }: Props) {
-  const { cc } = useCatalogI18n();
+  const { cc, t } = useCatalogI18n();
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [code, setCode] = useState("");
@@ -1030,12 +1053,13 @@ export function FeatureBundlesManagementPanel({ data }: Props) {
               <label
                 key={key}
                 className="flex items-center gap-2 text-sm"
+                title={t(catalogFeatureNameKey(key))}
               >
                 <Checkbox
                   checked={Boolean(selected[key])}
                   onCheckedChange={() => toggle(key)}
                 />
-                {key}
+                {resolveCatalogLabel(t, catalogFeatureNameKey(key), key)}
               </label>
             ))}
           </div>
@@ -1046,7 +1070,7 @@ export function FeatureBundlesManagementPanel({ data }: Props) {
 }
 
 export function LimitProfilesManagementPanel({ data }: Props) {
-  const { cc } = useCatalogI18n();
+  const { cc, t } = useCatalogI18n();
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [code, setCode] = useState("");
@@ -1055,6 +1079,13 @@ export function LimitProfilesManagementPanel({ data }: Props) {
     restaurants: "1",
     items: "100",
     categories: "10",
+    ordersPerMonth: "500",
+    qrCodes: "10",
+    storage: "1024",
+    images: "50",
+    staffAccounts: "5",
+    branches: "1",
+    devices: "3",
   });
   const [unlimited, setUnlimited] = useState<Record<string, boolean>>({});
 
@@ -1137,7 +1168,10 @@ export function LimitProfilesManagementPanel({ data }: Props) {
           <Input value={name} onChange={(e) => setName(e.target.value)} />
         </CatalogField>
         {CATALOG_LIMIT_KEYS.map((key) => (
-          <CatalogField key={key} label={key}>
+          <CatalogField
+            key={key}
+            label={resolveCatalogLabel(t, catalogLimitNameKey(key), key)}
+          >
             <div className="flex items-center gap-2">
               <Input
                 type="number"
@@ -1324,8 +1358,8 @@ export function RegionsManagementPanel({ data }: Props) {
   const [editId, setEditId] = useState<string | null>(null);
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
-  const [countryCode, setCountryCode] = useState("");
-  const [currency, setCurrency] = useState("SAR");
+  const [countryCode, setCountryCode] = useState("US");
+  const [currency, setCurrency] = useState(COMMERCIAL_CANONICAL_CURRENCY);
   const [taxPolicyRef, setTaxPolicyRef] = useState("");
 
   const createMut = trpc.commercialCatalog.createRegion.useMutation(
@@ -1350,8 +1384,8 @@ export function RegionsManagementPanel({ data }: Props) {
     setEditId(null);
     setCode("");
     setName("");
-    setCountryCode("");
-    setCurrency("SAR");
+    setCountryCode("US");
+    setCurrency(COMMERCIAL_CANONICAL_CURRENCY);
     setTaxPolicyRef("");
   }
 
@@ -1446,16 +1480,17 @@ export function RegionsManagementPanel({ data }: Props) {
           <Input value={name} onChange={(e) => setName(e.target.value)} />
         </CatalogField>
         <CatalogField label={cc("fields.countryCode")}>
-          <Input
+          <CatalogCountrySelect
             value={countryCode}
-            onChange={(e) => setCountryCode(e.target.value.toUpperCase())}
+            onChange={({ countryCode: nextCode, currency: nextCurrency, countryName }) => {
+              setCountryCode(nextCode);
+              setCurrency(nextCurrency);
+              if (!name.trim()) setName(countryName);
+            }}
           />
         </CatalogField>
-        <CatalogField label={cc("fields.currency")}>
-          <Input
-            value={currency}
-            onChange={(e) => setCurrency(e.target.value.toUpperCase())}
-          />
+        <CatalogField label={cc("polish.currencyAuto")}>
+          <Input value={currency} readOnly disabled />
         </CatalogField>
         <CatalogField label={cc("fields.taxPolicyRef")}>
           <Input
