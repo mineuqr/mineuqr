@@ -76,6 +76,7 @@ describe("PLATFORM-P0-PRODUCTION-READINESS-1", () => {
     expect(getPlatformOpsSection("health").status).toBe("architecture");
     expect(getPlatformOpsSection("performance").status).toBe("architecture");
     expect(getPlatformOpsSection("devices").status).toBe("architecture");
+    expect(getPlatformOpsSection("subscription").status).toBe("architecture");
     expect(getPlatformOpsSection("jobs").status).toBe("architecture");
     expect(getPlatformOpsSection("events").status).toBe("architecture");
     expect(getPlatformOpsSection("diagnostics").status).toBe("architecture");

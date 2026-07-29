@@ -73,7 +73,7 @@ describe("OPERATIONS-INFORMATION-ARCHITECTURE-1 routes", () => {
       "realtime"
     );
     expect(isPlatformOpsPath("/admin/platform/jobs")).toBe(true);
-    expect(PLATFORM_OPS_SECTION_DEFINITIONS.length).toBe(9);
+    expect(PLATFORM_OPS_SECTION_DEFINITIONS.length).toBe(10);
   });
 
   it("redirects legacy /admin/health bookmark", () => {

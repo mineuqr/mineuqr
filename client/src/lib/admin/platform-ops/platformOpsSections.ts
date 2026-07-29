@@ -17,6 +17,7 @@ export const PLATFORM_OPS_SECTIONS = [
   "health",
   "performance",
   "devices",
+  "subscription",
   "jobs",
   "events",
   "audit",
@@ -75,6 +76,13 @@ export const PLATFORM_OPS_SECTION_DEFINITIONS: readonly PlatformOpsSectionDef[] 
       path: `${PLATFORM_OPS_BASE}/devices`,
       labelKey: "admin.platformOps.sections.devices",
       descriptionKey: "admin.platformOps.sections.devicesDesc",
+      status: "architecture",
+    },
+    {
+      id: "subscription",
+      path: `${PLATFORM_OPS_BASE}/subscription`,
+      labelKey: "admin.platformOps.sections.subscription",
+      descriptionKey: "admin.platformOps.sections.subscriptionDesc",
       status: "architecture",
     },
     {
