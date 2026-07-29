@@ -12,7 +12,11 @@ import { trpc } from "@/lib/trpc";
 import { adminQueriesEnabled } from "@/lib/queryRuntime";
 import { useAuthGate } from "@/_core/hooks/useAuthGate";
 import {
-  normalizePlatformOpsHealth,
+  mapRealtimePresentationToOpsHealth,
+  presentRealtimeOpsAlerts,
+  resolveRealtimePlatformPresentationState,
+} from "@/lib/admin/platform-ops/realtimePlatformPresentation";
+import {
   PlatformOpsAlert,
   PlatformOpsAlertList,
   PlatformOpsDataTable,
@@ -94,8 +98,28 @@ export function PlatformOpsRealtimeComposition() {
   }
 
   const latency = dash.latency.publishToDeliver;
-  const health = normalizePlatformOpsHealth(dash.platform.overallHealth);
+  const presentation = resolveRealtimePlatformPresentationState({
+    platformEnabled: dash.platform.enabled,
+    overallHealth: String(dash.platform.overallHealth),
+  });
+  const health = mapRealtimePresentationToOpsHealth(presentation);
+  const healthLabel =
+    presentation === "disabled_by_configuration"
+      ? t("admin.platformOps.realtime.stateDisabled")
+      : presentation === "unavailable"
+        ? t("admin.platformOps.realtime.stateUnavailable")
+        : presentation === "degraded"
+          ? t("admin.platformOps.realtime.stateDegraded")
+          : presentation === "healthy"
+            ? t("admin.platformOps.realtime.stateHealthy")
+            : String(dash.platform.overallHealth);
+  const presentedAlerts = presentRealtimeOpsAlerts(alerts, dash.platform.enabled);
   const updated = formatUpdatedAt(dash.generatedAt);
+
+  const heroDescription =
+    presentation === "disabled_by_configuration"
+      ? t("admin.platformOps.realtime.disabledDesc")
+      : t("admin.platformOps.realtime.overviewDesc");
 
   return (
     <div className={PLATFORM_OPS_UI.workspace} data-slot="platform-ops-realtime">
@@ -123,22 +147,38 @@ export function PlatformOpsRealtimeComposition() {
       />
 
       <PlatformOpsHeroSummary
-        title={t("admin.platformOps.realtime.overview")}
-        description={t("admin.platformOps.realtime.overviewDesc")}
+        title={
+          presentation === "disabled_by_configuration"
+            ? t("admin.platformOps.realtime.disabledTitle")
+            : t("admin.platformOps.realtime.overview")
+        }
+        description={heroDescription}
         health={health}
-        healthLabel={String(dash.platform.overallHealth)}
+        healthLabel={healthLabel}
         lastUpdated={updated}
         lastUpdatedLabel={t("admin.platformOps.realtime.lastUpdated")}
         columns={4}
         alerts={
-          alerts.length > 0 ? (
+          presentedAlerts.length > 0 ? (
             <PlatformOpsAlertList>
-              {alerts.slice(0, 3).map((alert) => (
+              {presentedAlerts.slice(0, 3).map((alert) => (
                 <PlatformOpsAlert
                   key={alert.id}
                   severity={alert.severity}
-                  title={alert.title}
-                  detail={alert.detail}
+                  title={
+                    alert.id === "platform_disabled"
+                      ? t("admin.platformOps.realtime.disabledTitle")
+                      : alert.id === "gateway_unavailable"
+                        ? t("admin.platformOps.realtime.gatewayUnavailableTitle")
+                        : alert.title
+                  }
+                  detail={
+                    alert.id === "platform_disabled"
+                      ? t("admin.platformOps.realtime.disabledDetail")
+                      : alert.id === "gateway_unavailable"
+                        ? t("admin.platformOps.realtime.gatewayUnavailableDetail")
+                        : alert.detail
+                  }
                 />
               ))}
             </PlatformOpsAlertList>
@@ -147,7 +187,7 @@ export function PlatformOpsRealtimeComposition() {
       >
         <PlatformOpsMetricCard
           label={t("admin.platformOps.realtime.kpiHealth")}
-          value={String(dash.platform.overallHealth)}
+          value={healthLabel}
           tone="info"
           domain="information"
         />
@@ -374,12 +414,24 @@ export function PlatformOpsRealtimeComposition() {
             />
           }
         >
-          {alerts.map((alert) => (
+          {presentedAlerts.map((alert) => (
             <PlatformOpsAlert
               key={alert.id}
               severity={alert.severity}
-              title={alert.title}
-              detail={alert.detail}
+              title={
+                alert.id === "platform_disabled"
+                  ? t("admin.platformOps.realtime.disabledTitle")
+                  : alert.id === "gateway_unavailable"
+                    ? t("admin.platformOps.realtime.gatewayUnavailableTitle")
+                    : alert.title
+              }
+              detail={
+                alert.id === "platform_disabled"
+                  ? t("admin.platformOps.realtime.disabledDetail")
+                  : alert.id === "gateway_unavailable"
+                    ? t("admin.platformOps.realtime.gatewayUnavailableDetail")
+                    : alert.detail
+              }
             />
           ))}
         </PlatformOpsAlertList>

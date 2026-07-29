@@ -117,7 +117,8 @@ export const realtimePlatformRouter = router({
       dropped: metrics.dropped,
       fallbackActivations: metrics.fallbackActivations,
       platformEnabled: isRealtimePlatformEnabled(),
-      gatewayUnavailable: !isRealtimePlatformEnabled(),
+      // Runtime failure signal only — do not equate configuration disable with gateway crash.
+      gatewayUnavailable: false,
     });
   }),
 

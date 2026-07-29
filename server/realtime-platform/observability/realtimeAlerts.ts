@@ -1,5 +1,6 @@
 /**
  * REALTIME-PLATFORM-OBSERVABILITY-1
+ * + REALTIME-PRODUCTION-ENABLEMENT-1
  * Alert evaluation — operational thresholds only.
  */
 
@@ -33,12 +34,21 @@ export function evaluateRealtimeAlerts(input: RealtimeAlertInput): RealtimeAlert
   const firedAt = new Date().toISOString();
   const alerts: RealtimeAlert[] = [];
 
-  if (input.gatewayUnavailable || !input.platformEnabled) {
+  // REALTIME-PRODUCTION-ENABLEMENT-1 — disabled-by-config ≠ gateway failure
+  if (!input.platformEnabled) {
+    alerts.push({
+      id: "platform_disabled",
+      severity: "info",
+      title: "Realtime Platform Disabled",
+      detail: "platform_disabled",
+      firedAt,
+    });
+  } else if (input.gatewayUnavailable) {
     alerts.push({
       id: "gateway_unavailable",
       severity: "critical",
-      title: "Realtime gateway unavailable",
-      detail: input.platformEnabled ? "gateway_shutdown" : "platform_disabled",
+      title: "Realtime Gateway Unavailable",
+      detail: "gateway_shutdown",
       firedAt,
     });
   }

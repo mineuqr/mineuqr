@@ -144,6 +144,57 @@ describe("REALTIME-PLATFORM-OBSERVABILITY-1 health + alerts", () => {
     expect(ids).toContain("authorization_failures");
     expect(ids).toContain("fallback_spike");
   });
+
+  it("REALTIME-PRODUCTION-ENABLEMENT-1: disabled config is informational, not gateway critical", () => {
+    const disabled = evaluateRealtimeAlerts({
+      activeConnections: 0,
+      reconnects: 0,
+      publishToDeliverP95Ms: 0,
+      authFailures: 0,
+      authDenied: 0,
+      channelAuthFailures: 0,
+      registryLookups: 0,
+      registryLookupFailuresApprox: 0,
+      deliveries: 0,
+      dropped: 0,
+      fallbackActivations: 0,
+      platformEnabled: false,
+      gatewayUnavailable: true,
+    });
+    expect(disabled).toEqual([
+      expect.objectContaining({
+        id: "platform_disabled",
+        severity: "info",
+        title: "Realtime Platform Disabled",
+        detail: "platform_disabled",
+      }),
+    ]);
+    expect(disabled.some((a) => a.id === "gateway_unavailable")).toBe(false);
+
+    const runtimeFail = evaluateRealtimeAlerts({
+      activeConnections: 0,
+      reconnects: 0,
+      publishToDeliverP95Ms: 0,
+      authFailures: 0,
+      authDenied: 0,
+      channelAuthFailures: 0,
+      registryLookups: 0,
+      registryLookupFailuresApprox: 0,
+      deliveries: 0,
+      dropped: 0,
+      fallbackActivations: 0,
+      platformEnabled: true,
+      gatewayUnavailable: true,
+    });
+    expect(runtimeFail).toEqual([
+      expect.objectContaining({
+        id: "gateway_unavailable",
+        severity: "critical",
+        title: "Realtime Gateway Unavailable",
+        detail: "gateway_shutdown",
+      }),
+    ]);
+  });
 });
 
 describe("REALTIME-PLATFORM-OBSERVABILITY-1 privacy", () => {

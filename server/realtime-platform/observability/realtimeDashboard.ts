@@ -82,7 +82,8 @@ export function buildRealtimeObservabilityDashboard() {
     dropped: metrics.dropped,
     fallbackActivations: metrics.fallbackActivations,
     platformEnabled: enabled,
-    gatewayUnavailable: !enabled,
+    // Runtime failure only when platform is expected to run.
+    gatewayUnavailable: false,
   });
 
   const adoption: RealtimeAdoptionRow[] = listMigratedRealtimeSurfaces().map(
