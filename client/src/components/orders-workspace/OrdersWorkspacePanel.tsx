@@ -44,6 +44,8 @@ import {
   useDevQueryRuntimeLog,
 } from "@/lib/queryRuntime";
 import { subscribeOrderLifecycleUpdates } from "@/lib/order-lifecycle-latency/orderLifecycleBroadcast";
+import { scheduleOrdersListActiveInvalidation } from "@/lib/orders-workspace/ordersListActiveInvalidationCoordinator";
+import { useOrdersWorkspaceRealtime } from "@/lib/orders-workspace/useOrdersWorkspaceRealtime";
 import { isEmailNotVerifiedError } from "@/lib/trpcErrors";
 import { trpc } from "@/lib/trpc";
 import type { StaffSettlementLineInput } from "@shared/operational-session";
@@ -75,6 +77,9 @@ export function OrdersWorkspacePanel({
   const [settleAmount, setSettleAmount] = useState("0.00");
   const utils = trpc.useUtils();
 
+  // REALTIME-ORDERS-ADOPTION-1 — SSE primary discovery; poll is recovery when live.
+  const { realtimePrimary } = useOrdersWorkspaceRealtime(restaurantId, enabled);
+
   const activeRegisterId = readActiveRegister(restaurantId)?.trim() || "";
   const shiftQuery = useFinancialShiftCurrent(
     { restaurantId, registerId: activeRegisterId },
@@ -86,7 +91,7 @@ export function OrdersWorkspacePanel({
     enabled,
     authPending,
     isAuthenticated,
-    pollMs: enabled ? 3_000 : undefined,
+    pollMs: enabled ? (realtimePrimary ? 15_000 : 3_000) : undefined,
   });
 
   const listQuery = trpc.order.read.listActive.useQuery(
@@ -98,13 +103,20 @@ export function OrdersWorkspacePanel({
           : (active?.status as "pending" | "preparing" | "ready" | undefined),
       limit: 100,
     },
-    orderReadListQueryOptions(enabled)
+    orderReadListQueryOptions(enabled, { realtimePrimary })
   );
 
   useEffect(() => {
     if (!enabled || restaurantId <= 0) return;
     return subscribeOrderLifecycleUpdates(restaurantId, () => {
-      void utils.order.read.listActive.invalidate({ restaurantId });
+      // Coexist with SSE — debounced shared invalidation (no storm).
+      scheduleOrdersListActiveInvalidation({
+        restaurantId,
+        invalidate: () => {
+          void utils.order.read.listActive.invalidate({ restaurantId });
+        },
+        dedupeKey: "broadcast",
+      });
     });
   }, [enabled, restaurantId, utils.order.read.listActive]);
 

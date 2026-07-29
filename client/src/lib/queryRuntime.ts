@@ -7,8 +7,13 @@ export const DASHBOARD_ORDER_LIST_POLL_MS = 10_000;
 /**
  * ORDER-LIFECYCLE-LATENCY-REMEDIATION-1 — Mode A fallback for active lifecycle lists.
  * Cross-device observers; BroadcastChannel covers same-origin tabs faster.
+ *
+ * REALTIME-ORDERS-ADOPTION-1 — when realtime is live, poll becomes recovery cadence.
  */
 export const OPERATIONAL_LIFECYCLE_POLL_MS = 3_000;
+
+/** Recovery poll while Orders realtime connection is live (primary = SSE). */
+export const OPERATIONAL_LIFECYCLE_REALTIME_RECOVERY_POLL_MS = 15_000;
 
 /**
  * Customer order status page (PR-CUX-1B).
@@ -102,10 +107,16 @@ export function printWorkspaceListQueryOptions(enabled: boolean) {
   } as const;
 }
 
-export function orderReadListQueryOptions(enabled: boolean) {
+export function orderReadListQueryOptions(
+  enabled: boolean,
+  options?: { realtimePrimary?: boolean }
+) {
+  const pollMs = options?.realtimePrimary
+    ? OPERATIONAL_LIFECYCLE_REALTIME_RECOVERY_POLL_MS
+    : OPERATIONAL_LIFECYCLE_POLL_MS;
   return {
     enabled,
-    refetchInterval: enabled ? OPERATIONAL_LIFECYCLE_POLL_MS : false,
+    refetchInterval: enabled ? pollMs : false,
     staleTime: 0,
     structuralSharing: activeOrderListStructuralSharing,
   } as const;

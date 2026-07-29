@@ -39,19 +39,12 @@ describe("REALTIME-PLATFORM-FOUNDATION-1", () => {
     expect(gateway).toContain("text/event-stream");
   });
 
-  it("client platform encapsulates EventSource; features not migrated", () => {
+  it("client platform encapsulates EventSource; kitchen not migrated", () => {
     const client = read(
       "client/src/lib/realtime-platform/RealtimePlatformClient.ts"
     );
     expect(client).toContain("EventSource");
     expect(client).toContain("RealtimeBroadcastBridge");
-
-    // No feature wiring in this program
-    const orders = read(
-      "client/src/lib/operational-workspace/useOrderStatusActions.ts"
-    );
-    expect(orders).not.toContain("realtime-platform");
-    expect(orders).not.toContain("getRealtimePlatform");
 
     const kitchen = read(
       "client/src/lib/operational-screen/kitchen/useKitchenRuntimeStream.ts"
@@ -69,10 +62,13 @@ describe("REALTIME-PLATFORM-FOUNDATION-1", () => {
     expect(publisher).toContain("assertHintIsMetadataOnly");
   });
 
-  it("surface capability registry marks migrated=false", () => {
+  it("surface capability registry tracks migration per surface", () => {
     const caps = read("shared/realtime-platform/capabilities.ts");
-    expect(caps).toContain("migrated: false");
-    expect(caps).not.toMatch(/migrated:\s*true/);
+    expect(caps).toContain('surfaceId: "orders-workspace"');
+    expect(caps).toContain("migrated: true");
+    // Non-orders surfaces remain unmigrated in foundation era
+    expect(caps).toContain('surfaceId: "kitchen-screen"');
+    expect(caps).toMatch(/surfaceId: "kitchen-screen"[\s\S]*?migrated: false/);
   });
 
   it("program docs exist", () => {

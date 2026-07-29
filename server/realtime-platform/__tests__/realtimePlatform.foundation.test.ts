@@ -86,8 +86,13 @@ describe("channel + surface registries", () => {
     }
   });
 
-  it("keeps all surfaces unmigrated in foundation", () => {
+  it("orders-workspace may be migrated; others stay false until adoption", () => {
+    const orders = REALTIME_SURFACE_CAPABILITY_REGISTRY.find(
+      (s) => s.surfaceId === "orders-workspace"
+    );
+    expect(orders?.migrated).toBe(true);
     for (const surface of REALTIME_SURFACE_CAPABILITY_REGISTRY) {
+      if (surface.surfaceId === "orders-workspace") continue;
       expect(surface.migrated).toBe(false);
     }
   });

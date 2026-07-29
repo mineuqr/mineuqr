@@ -5,6 +5,7 @@ import type {
 } from "../consumers/contracts/OrderProjectionConsumer";
 import type { ProjectionId } from "../../domain/contracts/projectionIds";
 import type { OrderReadProjectionMaterializer } from "../materializers/OrderReadProjectionMaterializer";
+import { publishOrdersRealtimeHintAfterProjection } from "../../realtime/publishOrdersRealtimeHintAfterProjection";
 
 type ConsumerSpec = {
   name: OrderProjectionConsumerName;
@@ -44,6 +45,8 @@ const CONSUMER_SPECS: ConsumerSpec[] = [
     ],
     handle: async (m, e) => {
       await m.syncOrderProjections(resolveOrderId(e), e.eventId);
+      // REALTIME-ORDERS-ADOPTION-1 — hint after durable P-02 sync only.
+      await publishOrdersRealtimeHintAfterProjection(e);
     },
   },
   {

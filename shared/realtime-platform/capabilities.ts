@@ -1,7 +1,6 @@
 /**
- * REALTIME-PLATFORM-FOUNDATION-1
- * Surface capability registry — SSOT for future feature adoption.
- * Foundation registers surfaces; features must not declare ad-hoc caps.
+ * REALTIME-PLATFORM-FOUNDATION-1 / REALTIME-ORDERS-ADOPTION-1
+ * Surface capability registry — SSOT for feature adoption.
  */
 
 import type { RealtimeAuthMode, RealtimeChannel } from "./channels";
@@ -11,20 +10,18 @@ export type RealtimeFallbackStrategy = "poll" | "poll_then_broadcast" | "none";
 export type RealtimeSurfaceCapability = {
   surfaceId: string;
   supportsRealtime: boolean;
-  /** Empty until feature migration programs opt in. */
   channels: readonly RealtimeChannel[];
   fallback: RealtimeFallbackStrategy;
   reconnect: boolean;
   visibilityAware: boolean;
   readFreshness: boolean;
   authMode: RealtimeAuthMode;
-  /** Foundation: no surface is migrated yet. */
-  migrated: false;
+  /** True only after a certified adoption program. */
+  migrated: boolean;
 };
 
 /**
- * Canonical registry. All surfaces start with supportsRealtime readiness
- * metadata but migrated=false until a dedicated migration program.
+ * Canonical registry. Surfaces start migrated=false until adoption programs certify.
  */
 export const REALTIME_SURFACE_CAPABILITY_REGISTRY: readonly RealtimeSurfaceCapability[] =
   [
@@ -37,7 +34,7 @@ export const REALTIME_SURFACE_CAPABILITY_REGISTRY: readonly RealtimeSurfaceCapab
       visibilityAware: true,
       readFreshness: true,
       authMode: "staff_session",
-      migrated: false,
+      migrated: true, // REALTIME-ORDERS-ADOPTION-1
     },
     {
       surfaceId: "kitchen-screen",
@@ -148,4 +145,8 @@ export function getRealtimeSurfaceCapability(
 
 export function listRealtimeSurfacesReadyForMigration(): readonly RealtimeSurfaceCapability[] {
   return REALTIME_SURFACE_CAPABILITY_REGISTRY.filter((s) => s.supportsRealtime);
+}
+
+export function listMigratedRealtimeSurfaces(): readonly RealtimeSurfaceCapability[] {
+  return REALTIME_SURFACE_CAPABILITY_REGISTRY.filter((s) => s.migrated);
 }
