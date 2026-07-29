@@ -76,9 +76,9 @@ export const REALTIME_SURFACE_CAPABILITY_REGISTRY: readonly RealtimeSurfaceCapab
       fallback: "poll",
       reconnect: true,
       visibilityAware: true,
-      readFreshness: false,
+      readFreshness: true,
       authMode: "customer_tracking",
-      migrated: false,
+      migrated: true, // REALTIME-CUSTOMER-TRACKING-ADOPTION-1
     },
     {
       surfaceId: "dashboard",

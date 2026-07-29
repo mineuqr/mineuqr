@@ -58,6 +58,8 @@ export class RealtimePlatformClient {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private options: RealtimeConnectOptions | null = null;
   private readonly boundVisibility = () => this.onVisibility();
+  /** Dedup window for public customer hints (no seq). */
+  private readonly recentPublicHintKeys = new Set<string>();
 
   get connectionState(): RealtimeConnectionState {
     return this.state;
@@ -108,6 +110,7 @@ export class RealtimePlatformClient {
       this.source = null;
     }
     this.seq.clear();
+    this.recentPublicHintKeys.clear();
     this.state = "closed";
     emitState(this.options?.handlers, "closed");
   }
@@ -169,8 +172,25 @@ export class RealtimePlatformClient {
   }
 
   private handleEventData(raw: string): void {
-    const hint = safeParse(raw) as RealtimeHint | null;
-    if (!hint || typeof hint.seq !== "number" || !hint.channel) return;
+    const data = safeParse(raw);
+    if (!data) return;
+
+    // REALTIME-CUSTOMER-TRACKING-ADOPTION-1 — public customer hints omit
+    // restaurantId/seq/channel/aggregateId. Invalidate only; no seq tracking.
+    if (isPublicCustomerHint(data)) {
+      const dedupeKey = `${data.trackingRef}:${data.type}:${data.ts}:${data.correlationId ?? ""}`;
+      if (this.recentPublicHintKeys.has(dedupeKey)) return;
+      this.recentPublicHintKeys.add(dedupeKey);
+      if (this.recentPublicHintKeys.size > 200) {
+        const first = this.recentPublicHintKeys.values().next().value;
+        if (first) this.recentPublicHintKeys.delete(first);
+      }
+      this.options?.handlers?.onHint?.(data as unknown as RealtimeHint);
+      return;
+    }
+
+    const hint = data as unknown as RealtimeHint;
+    if (typeof hint.seq !== "number" || !hint.channel) return;
 
     const decision = this.seq.observe(
       hint.restaurantId,
@@ -272,6 +292,17 @@ function safeParse(ev: { data?: string } | string): Record<string, unknown> | nu
   } catch {
     return null;
   }
+}
+
+function isPublicCustomerHint(data: Record<string, unknown>): boolean {
+  return (
+    typeof data.type === "string" &&
+    typeof data.trackingRef === "string" &&
+    typeof data.ts === "string" &&
+    data.restaurantId === undefined &&
+    data.aggregateId === undefined &&
+    data.seq === undefined
+  );
 }
 
 /** Build SSE URL from mintTicket result — features use this helper only. */

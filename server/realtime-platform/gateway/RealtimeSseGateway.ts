@@ -15,6 +15,7 @@ import {
   incRealtimeMetric,
   noteRealtimeEvent,
 } from "../observability/realtimeMetrics";
+import { toPublicCustomerRealtimeHint } from "../privacy/publicCustomerHint";
 
 export type RealtimeConnection = {
   id: string;
@@ -143,12 +144,24 @@ export class RealtimeSseGateway {
       lastEventId: input.lastEventId ?? null,
     });
 
-    writeSse(res, "platform.ready", {
-      connectionId: connection.id,
-      restaurantId: verified.claims.restaurantId,
-      channels: requested,
-      protocolVersion: verified.claims.protocolVersion,
-    });
+    const isCustomer = verified.claims.authMode === "customer_tracking";
+    writeSse(
+      res,
+      "platform.ready",
+      isCustomer
+        ? {
+            connectionId: connection.id,
+            channels: requested,
+            protocolVersion: verified.claims.protocolVersion,
+            trackingRef: verified.claims.trackingRef,
+          }
+        : {
+            connectionId: connection.id,
+            restaurantId: verified.claims.restaurantId,
+            channels: requested,
+            protocolVersion: verified.claims.protocolVersion,
+          }
+    );
 
     // Resume does not replay domain history — instruct catch-up refetch.
     if (input.lastEventId) {
@@ -186,8 +199,18 @@ export class RealtimeSseGateway {
     }
 
     try {
-      const eventId = `${hint.channel}:${hint.aggregateId ?? "_"}:${hint.seq}`;
-      writeSse(connection.res, hint.type, hint, eventId);
+      const isCustomer = connection.claims.authMode === "customer_tracking";
+      const trackingRef =
+        connection.claims.trackingRef ??
+        connection.claims.sub.replace(/^th:/, "");
+      // Public event ids must not embed order/restaurant identifiers.
+      const eventId = isCustomer
+        ? `customer:${trackingRef}:${hint.seq}`
+        : `${hint.channel}:${hint.aggregateId ?? "_"}:${hint.seq}`;
+      const payload = isCustomer
+        ? toPublicCustomerRealtimeHint(hint, trackingRef)
+        : hint;
+      writeSse(connection.res, hint.type, payload, eventId);
       incRealtimeMetric("deliveries");
       noteRealtimeEvent("realtime_hint_delivered", {
         connectionId: connection.id,
@@ -195,6 +218,7 @@ export class RealtimeSseGateway {
         restaurantId: hint.restaurantId,
         seq: hint.seq,
         type: hint.type,
+        public: connection.claims.authMode === "customer_tracking",
       });
     } catch {
       this.close(connection.id);

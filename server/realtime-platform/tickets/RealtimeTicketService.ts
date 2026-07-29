@@ -65,6 +65,8 @@ export type MintRealtimeTicketInput = {
   clientCapabilities?: Partial<RealtimeClientCapabilities>;
   deviceId?: string;
   orderId?: number;
+  /** Opaque tracking token hash for customer_tracking tickets. */
+  trackingRef?: string;
   ttlSeconds?: number;
 };
 
@@ -96,6 +98,7 @@ export function mintRealtimeTicket(
     sub: input.sub,
     deviceId: input.deviceId,
     orderId: input.orderId,
+    trackingRef: input.trackingRef,
     iat: now,
     exp: now + ttl,
     capabilities: {

@@ -117,13 +117,13 @@ describe("REALTIME-EXPO-ADOPTION-1 architecture", () => {
     expect(runtime).toContain('allowedChannel = "expo"');
   });
 
-  it("marks expo-screen migrated; customer remains false", () => {
+  it("marks expo-screen migrated; customer-tracking also migrated", () => {
     expect(getRealtimeSurfaceCapability("expo-screen")?.migrated).toBe(true);
     expect(getRealtimeSurfaceCapability("expo-screen")?.channels).toEqual([
       "expo",
     ]);
     expect(getRealtimeSurfaceCapability("customer-tracking")?.migrated).toBe(
-      false
+      true
     );
   });
 

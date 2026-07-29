@@ -21,7 +21,7 @@ import {
   buildWhatsAppOrderMessage,
   openWhatsAppOrderMessage,
 } from "@/lib/orderWhatsApp";
-import { CUSTOMER_ORDER_STATUS_POLL_MS } from "@/lib/queryRuntime";
+import { CUSTOMER_ORDER_STATUS_POLL_MS, CUSTOMER_ORDER_STATUS_REALTIME_RECOVERY_POLL_MS } from "@/lib/queryRuntime";
 import { markSessionTokenOrderingBlocked } from "@/lib/diningSessionOrderingBlocked";
 import {
   clearCustomerJourney,
@@ -29,6 +29,7 @@ import {
 } from "@/lib/customerJourneyStorage";
 import { attachDiningSessionRevalidationListeners } from "@/lib/diningSessionRevalidation";
 import { useReadyStatusAlerts } from "@/hooks/useReadyStatusAlerts";
+import { useCustomerTrackingRealtime } from "@/hooks/useCustomerTrackingRealtime";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 
@@ -51,6 +52,13 @@ export default function OrderStatusPage() {
     { enabled: !!slug }
   );
 
+  const realtimeEnabled = !!trackingToken && !!slug;
+  const { realtimePrimary } = useCustomerTrackingRealtime(
+    trackingToken,
+    slug,
+    realtimeEnabled
+  );
+
   const { data, isLoading, isError, isFetching, refetch } =
     trpc.order.getPublicStatus.useQuery(
       { trackingToken, slug },
@@ -61,7 +69,9 @@ export default function OrderStatusPage() {
           if (payload?.trackingExpired) return false;
           const status = payload?.status;
           if (status === "served" || status === "cancelled") return false;
-          return CUSTOMER_ORDER_STATUS_POLL_MS;
+          return realtimePrimary
+            ? CUSTOMER_ORDER_STATUS_REALTIME_RECOVERY_POLL_MS
+            : CUSTOMER_ORDER_STATUS_POLL_MS;
         },
       }
     );

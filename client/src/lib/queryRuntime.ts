@@ -19,18 +19,27 @@ export const OPERATIONAL_LIFECYCLE_REALTIME_RECOVERY_POLL_MS = 15_000;
  * Customer order status page (PR-CUX-1B).
  * ORDER-STATE-PROPAGATION-REMEDIATION-1 — tightened from 8s (write-model poll;
  * independent of operational projection freshness governance).
+ *
+ * REALTIME-CUSTOMER-TRACKING-ADOPTION-1 — when realtime is live, poll is recovery.
  */
 export const CUSTOMER_ORDER_STATUS_POLL_MS = 3_000;
 
+/** Recovery poll while Customer Tracking realtime connection is live. */
+export const CUSTOMER_ORDER_STATUS_REALTIME_RECOVERY_POLL_MS = 15_000;
+
 export function customerOrderStatusQueryOptions(
   enabled: boolean,
-  status?: string | null
+  status?: string | null,
+  options?: { realtimePrimary?: boolean }
 ) {
   const terminal = status === "served" || status === "cancelled";
+  const pollMs = options?.realtimePrimary
+    ? CUSTOMER_ORDER_STATUS_REALTIME_RECOVERY_POLL_MS
+    : CUSTOMER_ORDER_STATUS_POLL_MS;
   return {
     enabled,
     refetchInterval:
-      enabled && !terminal ? CUSTOMER_ORDER_STATUS_POLL_MS : false,
+      enabled && !terminal ? pollMs : false,
   } as const;
 }
 

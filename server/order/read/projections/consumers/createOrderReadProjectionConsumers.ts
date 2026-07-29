@@ -8,6 +8,7 @@ import type { OrderReadProjectionMaterializer } from "../materializers/OrderRead
 import { publishOrdersRealtimeHintAfterProjection } from "../../realtime/publishOrdersRealtimeHintAfterProjection";
 import { publishKitchenRealtimeHintAfterProjection } from "../../realtime/publishKitchenRealtimeHintAfterProjection";
 import { publishExpoRealtimeHintAfterProjection } from "../../realtime/publishExpoRealtimeHintAfterProjection";
+import { publishCustomerRealtimeHintAfterProjection } from "../../realtime/publishCustomerRealtimeHintAfterProjection";
 
 type ConsumerSpec = {
   name: OrderProjectionConsumerName;
@@ -113,6 +114,8 @@ const CONSUMER_SPECS: ConsumerSpec[] = [
     ],
     handle: async (m, e) => {
       await m.syncOrderProjections(resolveOrderId(e), e.eventId);
+      // REALTIME-CUSTOMER-TRACKING-ADOPTION-1 — customer channel after durable P-11 sync.
+      await publishCustomerRealtimeHintAfterProjection(e);
     },
   },
 ];

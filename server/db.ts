@@ -1141,6 +1141,7 @@ export async function getOrderByTrackingToken(
   const [row] = await db
     .select({
       orderId: orders.id,
+      restaurantId: restaurants.id,
       sessionId: orders.sessionId,
       orderNumber: orders.orderNumber,
       businessDay: orders.businessDay,

@@ -1,12 +1,12 @@
 /**
- * REALTIME-PLATFORM-FOUNDATION-1
+ * REALTIME-PLATFORM-FOUNDATION-1 / REALTIME-CUSTOMER-TRACKING-ADOPTION-1
  * tRPC surface — mint/refresh/revoke tickets + capability introspection.
- * No feature subscriptions here.
+ * Customer mint is public (tracking token + slug); staff mint remains protected.
  */
 
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { protectedProcedure, router } from "../_core/trpc";
+import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { assertRestaurantAccess } from "../restaurantAccess";
 import {
   DEFAULT_CLIENT_CAPABILITIES,
@@ -16,6 +16,8 @@ import {
   REALTIME_CHANNEL_REGISTRY,
   type RealtimeChannel,
 } from "@shared/realtime-platform";
+import { getOrderByTrackingToken } from "../db";
+import { hashTrackingToken } from "./privacy/publicCustomerHint";
 
 const realtimeChannelEnum = z.enum(
   REALTIME_CHANNELS as unknown as [RealtimeChannel, ...RealtimeChannel[]]
@@ -164,5 +166,84 @@ export const realtimePlatformRouter = router({
       }
       revokeRealtimeTicket(verified.claims.jti);
       return { success: true as const };
+    }),
+
+  /**
+   * REALTIME-CUSTOMER-TRACKING-ADOPTION-1
+   * Public mint — tracking token + slug only. Never returns restaurantId/orderId claims.
+   * Channel locked to `customer`. Independent of staff/device auth.
+   */
+  mintCustomerTicket: publicProcedure
+    .input(
+      z.object({
+        trackingToken: z
+          .string()
+          .min(16)
+          .max(64)
+          .regex(/^[A-Za-z0-9_-]+$/),
+        slug: z.string().min(1).max(128),
+        clientCapabilities: clientCapabilitiesSchema,
+      })
+    )
+    .mutation(async ({ input }) => {
+      if (!isRealtimePlatformEnabled()) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Realtime platform disabled",
+        });
+      }
+
+      const row = await getOrderByTrackingToken(
+        input.trackingToken,
+        input.slug
+      );
+      if (!row) {
+        // Uniform denial — no enumeration of valid tokens vs wrong slug.
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Tracking credentials invalid",
+        });
+      }
+
+      const trackingRef = hashTrackingToken(input.trackingToken);
+
+      try {
+        const minted = mintRealtimeTicket({
+          restaurantId: row.restaurantId,
+          authMode: "customer_tracking",
+          sub: `th:${trackingRef}`,
+          channels: ["customer"],
+          orderId: row.orderId,
+          trackingRef,
+          clientCapabilities: {
+            ...DEFAULT_CLIENT_CAPABILITIES,
+            ...input.clientCapabilities,
+          },
+        });
+
+        // Public response — no restaurantId, orderId, jti, or raw claims dump.
+        return {
+          token: minted.token,
+          expiresAt: minted.expiresAt,
+          ssePath: minted.ssePath,
+          trackingRef,
+          channels: minted.claims.channels,
+          protocolVersion: minted.claims.protocolVersion,
+          negotiated: {
+            heartbeat: minted.negotiated.heartbeat,
+            reconnect: minted.negotiated.reconnect,
+            pollFallback: minted.negotiated.pollFallback,
+            broadcastBridge: minted.negotiated.broadcastBridge,
+            lastEventIdResume: minted.negotiated.lastEventIdResume,
+            ticketTtlSeconds: minted.negotiated.ticketTtlSeconds,
+            protocolVersion: minted.negotiated.protocolVersion,
+          },
+        };
+      } catch (err) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: err instanceof Error ? err.message : "Ticket mint failed",
+        });
+      }
     }),
 });

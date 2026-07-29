@@ -72,8 +72,10 @@ describe("REALTIME-PLATFORM-FOUNDATION-1", () => {
     expect(caps).toContain('surfaceId: "orders-workspace"');
     expect(caps).toContain('surfaceId: "kitchen-screen"');
     expect(caps).toContain('surfaceId: "expo-screen"');
+    expect(caps).toContain('surfaceId: "customer-tracking"');
     expect(caps).toContain("migrated: true");
-    expect(caps).toMatch(/surfaceId: "customer-tracking"[\s\S]*?migrated: false/);
+    // Non-customer surfaces not yet adopted remain false
+    expect(caps).toMatch(/surfaceId: "dashboard"[\s\S]*?migrated: false/);
   });
 
   it("program docs exist", () => {

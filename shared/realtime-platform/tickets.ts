@@ -18,8 +18,13 @@ export type RealtimeTicketClaims = {
   sub: string;
   /** Optional device bind. */
   deviceId?: string;
-  /** Optional customer tracking scope (order id). */
+  /** Optional customer tracking scope (order id) — server ACL only. */
   orderId?: number;
+  /**
+   * REALTIME-CUSTOMER-TRACKING-ADOPTION-1 — opaque tracking token hash.
+   * Present only for customer_tracking; used to sanitize public SSE payloads.
+   */
+  trackingRef?: string;
   iat: number;
   exp: number;
   capabilities: Pick<
