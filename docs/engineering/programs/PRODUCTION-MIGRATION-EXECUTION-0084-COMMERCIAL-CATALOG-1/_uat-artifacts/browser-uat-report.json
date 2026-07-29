@@ -1,0 +1,89 @@
+{
+  "program": "PRODUCTION-MIGRATION-EXECUTION-0084-COMMERCIAL-CATALOG-1",
+  "baseUrl": "http://127.0.0.1:3000",
+  "verdict": "PASS",
+  "passCount": 14,
+  "failCount": 0,
+  "checks": [
+    {
+      "id": "login",
+      "status": "pass",
+      "notes": "Minted admin session (adminId=1)"
+    },
+    {
+      "id": "platform_admin_loads",
+      "status": "pass",
+      "notes": "Platform Ops shell + catalog root"
+    },
+    {
+      "id": "catalog_page_renders",
+      "status": "pass",
+      "notes": "data-slot platform-ops-commercial-catalog"
+    },
+    {
+      "id": "navigation",
+      "status": "pass",
+      "notes": "Platform Ops navigation / catalog link present"
+    },
+    {
+      "id": "plans_list",
+      "status": "pass",
+      "notes": "Visible on catalog surface"
+    },
+    {
+      "id": "versions_list",
+      "status": "pass",
+      "notes": "Visible on catalog surface"
+    },
+    {
+      "id": "pricing_page",
+      "status": "pass",
+      "notes": "Visible on catalog surface"
+    },
+    {
+      "id": "feature_bundles",
+      "status": "pass",
+      "notes": "Visible on catalog surface"
+    },
+    {
+      "id": "limit_profiles",
+      "status": "pass",
+      "notes": "Visible on catalog surface"
+    },
+    {
+      "id": "regional_policies",
+      "status": "pass",
+      "notes": "Visible on catalog surface"
+    },
+    {
+      "id": "publication_page",
+      "status": "pass",
+      "notes": "Visible on catalog surface"
+    },
+    {
+      "id": "validation_messages",
+      "status": "pass",
+      "notes": "Visible on catalog surface"
+    },
+    {
+      "id": "no_react_errors",
+      "status": "pass",
+      "notes": "No React pageerrors captured"
+    },
+    {
+      "id": "no_failed_network",
+      "status": "pass",
+      "notes": "No commercialCatalog/trpc 5xx"
+    }
+  ],
+  "consoleErrors": [
+    "WebSocket connection to 'ws://127.0.0.1:3000/?token=aMlzZq_e0yoM' failed: Error during WebSocket handshake: Unexpected response code: 400",
+    "WebSocket connection to 'ws://localhost:5173/?token=aMlzZq_e0yoM' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED",
+    "[vite] failed to connect to websocket.\nyour current setup:\n  (browser) 127.0.0.1:3000/ <--[HTTP]--> localhost:5173/ (server)\n  (browser) 127.0.0.1:3000/ <--[WebSocket (failing)]--> localhost:5173/ (server)\nCheck out your Vite / network configuration and https://vite.dev/config/server-options.html#server-hmr .",
+    "WebSocket connection to 'ws://127.0.0.1:3000/?token=aMlzZq_e0yoM' failed: Error during WebSocket handshake: Unexpected response code: 400",
+    "WebSocket connection to 'ws://localhost:5173/?token=aMlzZq_e0yoM' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED",
+    "[vite] failed to connect to websocket.\nyour current setup:\n  (browser) 127.0.0.1:3000/ <--[HTTP]--> localhost:5173/ (server)\n  (browser) 127.0.0.1:3000/ <--[WebSocket (failing)]--> localhost:5173/ (server)\nCheck out your Vite / network configuration and https://vite.dev/config/server-options.html#server-hmr ."
+  ],
+  "failedRequests": [],
+  "artifactsDir": "C:\\mineuqr\\docs\\engineering\\programs\\PRODUCTION-MIGRATION-EXECUTION-0084-COMMERCIAL-CATALOG-1\\_uat-artifacts"
+}

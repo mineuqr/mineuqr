@@ -20,5 +20,6 @@
 
 ## Warnings
 
-- Full HTTP browser load of Admin UI and authenticated tRPC against production process was **not** run in this schema-only program.  
-- Foundation Catalog store remains **in-process**; DB tables are synchronized for persistence adoption.
+- Browser UAT: **PASS** (14/14) against local foundation — see [BROWSER-UAT-REPORT.md](./BROWSER-UAT-REPORT.md).  
+- Foundation Catalog store remains **in-process**; DB tables are synchronized for persistence adoption.  
+- Application code was **not** deployed to production hosting in this program (schema-only + local UAT).
