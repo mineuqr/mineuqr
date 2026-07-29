@@ -11,6 +11,7 @@ import { protectedProcedure, router } from "../../_core/trpc";
 import {
   COMMERCIAL_CATALOG_FOUNDATION_PROGRAM,
   COMMERCIAL_CATALOG_ADR,
+  COMMERCIAL_CANONICAL_CURRENCY,
 } from "@shared/commercial-catalog";
 import {
   CommercialCatalogError,
@@ -27,6 +28,7 @@ import {
   regionalPolicyService,
   trialPolicyCatalogService,
 } from "../../services/commercial-catalog";
+import { commercialCatalogLocalizationRouter } from "./commercialCatalogLocalizationRouter";
 
 const compatibilitySchema = z.object({
   upgradeTargets: z.array(z.string()),
@@ -221,18 +223,38 @@ export const commercialCatalogRouter = router({
       z.object({
         planVersionId: z.string().uuid(),
         billingCycleId: z.string().uuid(),
-        currency: z.string().min(3).max(8),
+        /** Canonical commercial currency is USD. Regional overrides may use local currency when regionId is set. */
+        currency: z.string().min(3).max(8).default(COMMERCIAL_CANONICAL_CURRENCY),
         amount: z.string().regex(/^\d+(\.\d{1,2})?$/),
         regionId: z.string().uuid().nullable().optional(),
       })
     )
     .mutation(({ ctx, input }) => {
       assertAdminAccess(ctx, "commercialCatalog.createPrice");
-      try {
-        return pricingService.create(input, {
-          ...actorFromCtx(ctx),
-          procedure: "commercialCatalog.createPrice",
+      const isRegionalOverride = Boolean(input.regionId);
+      const currency = isRegionalOverride
+        ? input.currency.toUpperCase()
+        : COMMERCIAL_CANONICAL_CURRENCY;
+      if (!isRegionalOverride && input.currency.toUpperCase() !== COMMERCIAL_CANONICAL_CURRENCY) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Canonical Catalog prices must be USD. Use regionId for local overrides.",
         });
+      }
+      try {
+        return pricingService.create(
+          {
+            planVersionId: input.planVersionId,
+            billingCycleId: input.billingCycleId,
+            currency,
+            amount: input.amount,
+            regionId: input.regionId ?? null,
+          },
+          {
+            ...actorFromCtx(ctx),
+            procedure: "commercialCatalog.createPrice",
+          }
+        );
       } catch (e) {
         mapError(e);
       }
@@ -619,4 +641,7 @@ export const commercialCatalogRouter = router({
         mapError(e);
       }
     }),
+
+  /** Presentation-only localization (country, FX, dual price). Nested under Catalog API. */
+  localization: commercialCatalogLocalizationRouter,
 });

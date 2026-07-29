@@ -11,7 +11,7 @@ import {
   Globe2,
   Layers,
 } from "lucide-react";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useCatalogI18n } from "./commercial-catalog/useCatalogI18n";
 import {
   COMMERCIAL_CATALOG_DASHBOARD_HOST_PATH,
   COMMERCIAL_CATALOG_DASHBOARD_SECTIONS,
@@ -27,7 +27,9 @@ import {
 } from "@/design-system/platform-ops-ui";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { MANAGEMENT_SECTION_LABELS } from "./commercial-catalog/catalogUiHelpers";
+import {
+  MANAGEMENT_SECTION_I18N_KEYS,
+} from "./commercial-catalog/catalogUiHelpers";
 import { useCatalogManagementData } from "./commercial-catalog/useCatalogManagementData";
 import {
   BillingCyclesManagementPanel,
@@ -47,7 +49,7 @@ import {
 } from "./commercial-catalog/CatalogManagementPanels";
 import {
   EXPERIENCE_TABS,
-  EXPERIENCE_TAB_LABELS,
+  EXPERIENCE_TAB_I18N_KEYS,
   type ExperienceTab,
 } from "./commercial-catalog/experience/experienceNav";
 import { PlanCreationWizard } from "./commercial-catalog/experience/PlanCreationWizard";
@@ -68,7 +70,7 @@ import {
 } from "./commercial-catalog/experience/ExperiencePanels";
 
 export function PlatformOpsCommercialCatalogComposition() {
-  const { t } = useLanguage();
+  const { t, cc, language } = useCatalogI18n();
   const [experienceTab, setExperienceTab] = useState<ExperienceTab>("dashboard");
   const [section, setSection] =
     useState<CommercialCatalogDashboardSection>("plans");
@@ -131,16 +133,20 @@ export function PlatformOpsCommercialCatalogComposition() {
   return (
     <div
       data-slot="platform-ops-commercial-catalog"
-      data-program="COMMERCIAL-CATALOG-ADMIN-EXPERIENCE-1"
+      data-program="COMMERCIAL-CATALOG-LOCALIZATION-LITERAL-SWEEP-1"
+      data-localization="COMMERCIAL-CATALOG-LOCALIZATION-IMPLEMENTATION-1"
+      data-experience="COMMERCIAL-CATALOG-ADMIN-EXPERIENCE-1"
+      data-management="COMMERCIAL-CATALOG-MANAGEMENT-UI-1"
       data-foundation={COMMERCIAL_CATALOG_FOUNDATION_PROGRAM}
       data-host-path={COMMERCIAL_CATALOG_DASHBOARD_HOST_PATH}
       className={cn(PLATFORM_OPS_UI.workspace, "dark:bg-background")}
+      dir={language === "ar" ? "rtl" : "ltr"}
     >
       <PlatformOpsHeroSummary
         title={t("admin.platformOps.commercialCatalog.title")}
-        description="Enterprise Commercial Catalog workspace — wizard, smart validation, clone, compare, previews, bulk ops, and search. Domain rules unchanged."
+        description={t("admin.platformOps.commercialCatalog.heroDescription")}
         health={healthTone}
-        healthLabel="Experience live"
+        healthLabel={t("admin.platformOps.commercialCatalog.experienceLive")}
         columns={4}
       >
         <PlatformOpsMetricCard
@@ -176,7 +182,7 @@ export function PlatformOpsCommercialCatalogComposition() {
       <div className="grid gap-4 lg:grid-cols-[1fr_240px]">
         <div>
           <nav
-            aria-label="Commercial Catalog experience"
+            aria-label={cc("a11y.experienceNav")}
             className="flex flex-wrap gap-2 border-b pb-3"
           >
             {EXPERIENCE_TABS.map((id) => (
@@ -188,7 +194,7 @@ export function PlatformOpsCommercialCatalogComposition() {
                 className={cn(experienceTab === id && "shadow-sm")}
                 onClick={() => setExperienceTab(id)}
               >
-                {EXPERIENCE_TAB_LABELS[id]}
+                {t(EXPERIENCE_TAB_I18N_KEYS[id])}
               </Button>
             ))}
           </nav>
@@ -238,7 +244,7 @@ export function PlatformOpsCommercialCatalogComposition() {
             {experienceTab === "manage" ? (
               <div>
                 <nav
-                  aria-label="Catalog manage modules"
+                  aria-label={cc("a11y.manageModules")}
                   className="mb-3 flex flex-wrap gap-2"
                 >
                   {COMMERCIAL_CATALOG_DASHBOARD_SECTIONS.map((id) => (
@@ -249,7 +255,7 @@ export function PlatformOpsCommercialCatalogComposition() {
                       variant={section === id ? "default" : "outline"}
                       onClick={() => setSection(id)}
                     >
-                      {MANAGEMENT_SECTION_LABELS[id]}
+                      {t(MANAGEMENT_SECTION_I18N_KEYS[id])}
                     </Button>
                   ))}
                 </nav>

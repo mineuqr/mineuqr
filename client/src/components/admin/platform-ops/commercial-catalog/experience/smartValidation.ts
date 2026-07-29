@@ -8,60 +8,67 @@ import type { PublicationValidationIssue } from "@shared/commercial-catalog";
 
 export type SmartValidationAction = {
   code: string;
-  title: string;
+  titleKey: string;
   description: string;
-  ctaLabel: string;
+  ctaKey: string;
   navigateTo: CommercialCatalogDashboardSection;
   severity: "blocking" | "warning";
 };
+
+export type ResolvedSmartValidationAction = SmartValidationAction & {
+  title: string;
+  ctaLabel: string;
+};
+
+const PREFIX = "admin.platformOps.commercialCatalog.";
 
 const MAP: Record<
   string,
   Omit<SmartValidationAction, "code" | "description" | "severity">
 > = {
   pricing_exists: {
-    title: "Missing Pricing",
-    ctaLabel: "Create Pricing",
+    titleKey: "validation.pricingExists.title",
+    ctaKey: "validation.pricingExists.cta",
     navigateTo: "pricing",
   },
   billing_cycle_exists: {
-    title: "Missing Billing Cycle",
-    ctaLabel: "Create Cycle",
+    titleKey: "validation.billingCycleExists.title",
+    ctaKey: "validation.billingCycleExists.cta",
     navigateTo: "billing_cycles",
   },
   feature_bundle_exists: {
-    title: "Missing Feature Bundle",
-    ctaLabel: "Create Bundle",
+    titleKey: "validation.featureBundleExists.title",
+    ctaKey: "validation.featureBundleExists.cta",
     navigateTo: "feature_bundles",
   },
   limit_profile_exists: {
-    title: "Missing Limits",
-    ctaLabel: "Create Limits",
+    titleKey: "validation.limitProfileExists.title",
+    ctaKey: "validation.limitProfileExists.cta",
     navigateTo: "limit_profiles",
   },
   migration_policy_exists: {
-    title: "Missing Migration Policy",
-    ctaLabel: "Create Policy",
+    titleKey: "validation.migrationPolicyExists.title",
+    ctaKey: "validation.migrationPolicyExists.cta",
     navigateTo: "migration_policies",
   },
   retirement_policy_exists: {
-    title: "Missing Retirement Policy",
-    ctaLabel: "Create Policy",
+    titleKey: "validation.retirementPolicyExists.title",
+    ctaKey: "validation.retirementPolicyExists.cta",
     navigateTo: "retirement_policies",
   },
   regional_pricing: {
-    title: "Missing Regional Policy / Pricing",
-    ctaLabel: "Create Policy",
+    titleKey: "validation.regionalPricing.title",
+    ctaKey: "validation.regionalPricing.cta",
     navigateTo: "regional_policies",
   },
   compatibility_defined: {
-    title: "Missing Compatibility",
-    ctaLabel: "Open Versions",
+    titleKey: "validation.compatibilityDefined.title",
+    ctaKey: "validation.compatibilityDefined.cta",
     navigateTo: "plan_versions",
   },
   invalid_state: {
-    title: "Invalid Version State",
-    ctaLabel: "Open Versions",
+    titleKey: "validation.invalidState.title",
+    ctaKey: "validation.invalidState.cta",
     navigateTo: "plan_versions",
   },
 };
@@ -78,25 +85,35 @@ export function toSmartValidationActions(
     if (mapped) {
       actions.push({
         code: issue.code,
-        title: mapped.title,
+        titleKey: mapped.titleKey,
         description: issue.message,
-        ctaLabel: mapped.ctaLabel,
+        ctaKey: mapped.ctaKey,
         navigateTo: mapped.navigateTo,
         severity: "blocking",
       });
     } else {
       actions.push({
         code: issue.code,
-        title: issue.code,
+        titleKey: "validation.fallback.title",
         description: issue.message,
-        ctaLabel: "Open Validation",
+        ctaKey: "validation.fallback.cta",
         navigateTo: "commercial_validation",
         severity: "warning",
       });
     }
   }
-  // Soft hint for trial (optional in CC-16 but requested by experience)
   return actions;
+}
+
+export function resolveSmartValidationActions(
+  issues: PublicationValidationIssue[],
+  t: (key: string) => string
+): ResolvedSmartValidationAction[] {
+  return toSmartValidationActions(issues).map((action) => ({
+    ...action,
+    title: t(PREFIX + action.titleKey),
+    ctaLabel: t(PREFIX + action.ctaKey),
+  }));
 }
 
 export function uniqueSlug(base: string): string {

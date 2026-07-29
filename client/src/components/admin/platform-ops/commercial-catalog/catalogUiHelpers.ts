@@ -32,25 +32,39 @@ export const CATALOG_LIMIT_KEYS = [
   "categories",
 ] as const;
 
-export const MANAGEMENT_SECTION_LABELS: Record<
+export const MANAGEMENT_SECTION_I18N_KEYS: Record<
   CommercialCatalogDashboardSection,
   string
 > = {
-  plans: "Plans",
-  plan_versions: "Plan Versions",
-  pricing: "Pricing",
-  billing_cycles: "Billing Cycles",
-  feature_bundles: "Feature Bundles",
-  limit_profiles: "Limit Profiles",
-  regional_policies: "Regional Policies",
-  trial_policies: "Trial Policies",
-  promotions: "Promotions",
-  migration_policies: "Migration Policies",
-  retirement_policies: "Retirement Policies",
-  publication_status: "Publication",
-  commercial_health: "Commercial Health",
-  commercial_validation: "Commercial Validation",
+  plans: "admin.platformOps.commercialCatalog.manage.sections.plans",
+  plan_versions:
+    "admin.platformOps.commercialCatalog.manage.sections.plan_versions",
+  pricing: "admin.platformOps.commercialCatalog.manage.sections.pricing",
+  billing_cycles:
+    "admin.platformOps.commercialCatalog.manage.sections.billing_cycles",
+  feature_bundles:
+    "admin.platformOps.commercialCatalog.manage.sections.feature_bundles",
+  limit_profiles:
+    "admin.platformOps.commercialCatalog.manage.sections.limit_profiles",
+  regional_policies:
+    "admin.platformOps.commercialCatalog.manage.sections.regional_policies",
+  trial_policies:
+    "admin.platformOps.commercialCatalog.manage.sections.trial_policies",
+  promotions: "admin.platformOps.commercialCatalog.manage.sections.promotions",
+  migration_policies:
+    "admin.platformOps.commercialCatalog.manage.sections.migration_policies",
+  retirement_policies:
+    "admin.platformOps.commercialCatalog.manage.sections.retirement_policies",
+  publication_status:
+    "admin.platformOps.commercialCatalog.manage.sections.publication_status",
+  commercial_health:
+    "admin.platformOps.commercialCatalog.manage.sections.commercial_health",
+  commercial_validation:
+    "admin.platformOps.commercialCatalog.manage.sections.commercial_validation",
 };
+
+/** @deprecated Use MANAGEMENT_SECTION_I18N_KEYS + t() */
+export const MANAGEMENT_SECTION_LABELS = MANAGEMENT_SECTION_I18N_KEYS;
 
 export function versionStateTone(
   state: string

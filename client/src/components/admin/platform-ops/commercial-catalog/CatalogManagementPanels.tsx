@@ -6,6 +6,9 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
+import { useCatalogI18n } from "./useCatalogI18n";
+import { AdminLocalizedPricePreview } from "@/components/commercial/AdminLocalizedPricePreview";
+import { COMMERCIAL_CANONICAL_CURRENCY } from "@shared/commercial-catalog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -44,7 +47,8 @@ type Props = { data: CatalogManagementData };
 
 function useMutationToast(
   data: CatalogManagementData,
-  successMessage: string
+  successMessage: string,
+  errorFallback: string
 ) {
   return {
     onSuccess: async () => {
@@ -54,12 +58,25 @@ function useMutationToast(
     },
     onError: (err: { message?: string }) => {
       data.trackCrud(false, err.message);
-      toast.error(err.message ?? "Operation failed");
+      toast.error(err.message ?? errorFallback);
     },
   };
 }
 
+function stateLabel(cc: (key: string) => string, state: string) {
+  const map: Record<string, string> = {
+    draft: "states.draft",
+    published: "states.published",
+    deprecated: "states.deprecated",
+    retired: "states.retired",
+    active: "states.active",
+    archived: "states.archived",
+  };
+  return cc(map[state] ?? "states.unknown");
+}
+
 export function PlansManagementPanel({ data }: Props) {
+  const { cc } = useCatalogI18n();
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -69,10 +86,10 @@ export function PlansManagementPanel({ data }: Props) {
   const [sortOrder, setSortOrder] = useState("0");
 
   const createMut = trpc.commercialCatalog.createPlan.useMutation(
-    useMutationToast(data, "Plan created")
+    useMutationToast(data, cc("toasts.planCreated"), cc("toasts.operationFailed"))
   );
   const updateMut = trpc.commercialCatalog.updatePlan.useMutation(
-    useMutationToast(data, "Plan updated")
+    useMutationToast(data, cc("toasts.planUpdated"), cc("toasts.operationFailed"))
   );
 
   const rows = useMemo(
@@ -148,22 +165,22 @@ export function PlansManagementPanel({ data }: Props) {
   return (
     <>
       <CatalogEntityPanel
-        title="Plans"
-        description="Create and manage Commercial Plan Identities. Archive hides a plan from selection; hard delete is not supported for historical identity integrity."
+        title={cc("manage.plansTitle")}
+        description={cc("manage.plansBody")}
         search={search}
         onSearchChange={setSearch}
-        primaryActionLabel="Create Plan"
+        primaryActionLabel={cc("manage.createPlan")}
         onPrimaryAction={openCreate}
-        emptyTitle="No plans"
-        emptyDescription="Create the first Commercial Plan Identity."
+        emptyTitle={cc("manage.noPlans")}
+        emptyDescription={cc("manage.noPlansBody")}
         isEmpty={rows.length === 0}
         headers={[
-          "Code",
-          "Name",
-          "Versions",
-          "Status",
-          "Updated",
-          "Actions",
+          cc("headers.code"),
+          cc("headers.name"),
+          cc("headers.versions"),
+          cc("headers.status"),
+          cc("headers.updated"),
+          cc("headers.actions"),
         ]}
       >
         {rows.map((p) => (
@@ -178,7 +195,9 @@ export function PlansManagementPanel({ data }: Props) {
             <PlatformOpsTableCell>
               <PlatformOpsStatusBadge
                 status={p.isHidden ? "unavailable" : "healthy"}
-                label={p.isHidden ? "Archived" : "Active"}
+                label={
+                  p.isHidden ? cc("states.archived") : cc("states.active")
+                }
               />
             </PlatformOpsTableCell>
             <PlatformOpsTableCell className="text-xs text-muted-foreground">
@@ -192,7 +211,7 @@ export function PlansManagementPanel({ data }: Props) {
                   variant="outline"
                   onClick={() => openEdit(p)}
                 >
-                  Edit
+                  {cc("actions.edit")}
                 </Button>
                 {!p.isHidden ? (
                   <Button
@@ -201,7 +220,7 @@ export function PlansManagementPanel({ data }: Props) {
                     variant="outline"
                     onClick={() => void archive(p.id)}
                   >
-                    Archive
+                    {cc("actions.archive")}
                   </Button>
                 ) : null}
               </div>
@@ -216,30 +235,32 @@ export function PlansManagementPanel({ data }: Props) {
           setOpen(v);
           if (!v) reset();
         }}
-        title={editId ? "Edit Plan" : "Create Plan"}
-        description="Catalog owns plan identity. Code is immutable after create."
+        title={
+          editId ? cc("manage.editPlan") : cc("manage.createPlan")
+        }
+        description={cc("manage.planIdentityHint")}
         pending={createMut.isPending || updateMut.isPending}
         onSubmit={() => void submit()}
       >
         {!editId ? (
-          <CatalogField label="Code">
+          <CatalogField label={cc("fields.code")}>
             <Input value={code} onChange={(e) => setCode(e.target.value)} />
           </CatalogField>
         ) : (
-          <CatalogField label="Code" hint="Immutable">
+          <CatalogField label={cc("fields.code")} hint={cc("common.immutable")}>
             <Input value={code} disabled />
           </CatalogField>
         )}
-        <CatalogField label="Name">
+        <CatalogField label={cc("fields.name")}>
           <Input value={name} onChange={(e) => setName(e.target.value)} />
         </CatalogField>
-        <CatalogField label="Description">
+        <CatalogField label={cc("fields.description")}>
           <Textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
         </CatalogField>
-        <CatalogField label="Sort order">
+        <CatalogField label={cc("fields.sortOrder")}>
           <Input
             type="number"
             value={sortOrder}
@@ -252,6 +273,7 @@ export function PlansManagementPanel({ data }: Props) {
 }
 
 export function VersionsManagementPanel({ data }: Props) {
+  const { cc } = useCatalogI18n();
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [planId, setPlanId] = useState("");
@@ -264,15 +286,15 @@ export function VersionsManagementPanel({ data }: Props) {
   const [retirementPolicyId, setRetirementPolicyId] = useState<string>("");
 
   const createMut = trpc.commercialCatalog.createVersion.useMutation(
-    useMutationToast(data, "Version created")
+    useMutationToast(data, cc("toasts.versionCreated"), cc("toasts.operationFailed"))
   );
   const updateMut = trpc.commercialCatalog.updateDraftVersion.useMutation(
-    useMutationToast(data, "Draft version updated")
+    useMutationToast(data, cc("toasts.draftVersionUpdated"), cc("toasts.operationFailed"))
   );
   const publishMut = trpc.commercialCatalog.publishVersion.useMutation({
     onSuccess: async () => {
       catalogManagementUiObservability.recordPublication(true);
-      toast.success("Version published");
+      toast.success(cc("toasts.versionPublished"));
       await data.invalidateAll();
     },
     onError: (err) => {
@@ -281,10 +303,10 @@ export function VersionsManagementPanel({ data }: Props) {
     },
   });
   const deprecateMut = trpc.commercialCatalog.deprecateVersion.useMutation(
-    useMutationToast(data, "Version deprecated")
+    useMutationToast(data, cc("toasts.versionDeprecated"), cc("toasts.operationFailed"))
   );
   const retireMut = trpc.commercialCatalog.retireVersion.useMutation(
-    useMutationToast(data, "Version retired")
+    useMutationToast(data, cc("toasts.versionRetired"), cc("toasts.operationFailed"))
   );
 
   const plansById = useMemo(() => {
@@ -357,7 +379,7 @@ export function VersionsManagementPanel({ data }: Props) {
     await createMut.mutateAsync({
       planId: v.planId,
       versionCode: nextCode,
-      versionName: `${v.versionName} (clone)`,
+      versionName: `${v.versionName} ${cc("manage.cloneSuffix")}`,
       featureBundleId: v.featureBundleId,
       limitProfileId: v.limitProfileId,
       trialPolicyId: v.trialPolicyId,
@@ -370,25 +392,25 @@ export function VersionsManagementPanel({ data }: Props) {
   return (
     <>
       <CatalogEntityPanel
-        title="Plan Versions"
-        description="Draft → Publish → Deprecate → Retire. Clone creates a new draft from an existing version."
+        title={cc("manage.versionsTitle")}
+        description={cc("manage.versionsBody")}
         search={search}
         onSearchChange={setSearch}
-        primaryActionLabel="Create Version"
+        primaryActionLabel={cc("manage.createVersion")}
         onPrimaryAction={() => {
           reset();
           setOpen(true);
         }}
-        emptyTitle="No versions"
-        emptyDescription="Create a draft Plan Version for a plan."
+        emptyTitle={cc("manage.noVersions")}
+        emptyDescription={cc("manage.noVersionsBody")}
         isEmpty={rows.length === 0}
         headers={[
-          "Version",
-          "Plan",
-          "State",
-          "Snapshots",
-          "Updated",
-          "Actions",
+          cc("headers.version"),
+          cc("headers.plan"),
+          cc("headers.state"),
+          cc("headers.snapshots"),
+          cc("headers.updated"),
+          cc("headers.actions"),
         ]}
       >
         {rows.map((v) => (
@@ -405,7 +427,7 @@ export function VersionsManagementPanel({ data }: Props) {
             <PlatformOpsTableCell>
               <PlatformOpsStatusBadge
                 status={versionStateTone(v.state)}
-                label={v.state}
+                label={stateLabel(cc, v.state)}
               />
             </PlatformOpsTableCell>
             <PlatformOpsTableCell>
@@ -422,7 +444,7 @@ export function VersionsManagementPanel({ data }: Props) {
                   variant="outline"
                   onClick={() => void cloneVersion(v)}
                 >
-                  Clone
+                  {cc("actions.clone")}
                 </Button>
                 {v.state === "draft" ? (
                   <Button
@@ -430,7 +452,7 @@ export function VersionsManagementPanel({ data }: Props) {
                     size="sm"
                     onClick={() => void publishMut.mutateAsync({ versionId: v.id })}
                   >
-                    Publish
+                    {cc("actions.publish")}
                   </Button>
                 ) : null}
                 {v.state === "published" ? (
@@ -442,7 +464,7 @@ export function VersionsManagementPanel({ data }: Props) {
                       void deprecateMut.mutateAsync({ versionId: v.id })
                     }
                   >
-                    Deprecate
+                    {cc("actions.deprecate")}
                   </Button>
                 ) : null}
                 {v.state === "deprecated" ? (
@@ -454,7 +476,7 @@ export function VersionsManagementPanel({ data }: Props) {
                       void retireMut.mutateAsync({ versionId: v.id })
                     }
                   >
-                    Retire
+                    {cc("actions.retire")}
                   </Button>
                 ) : null}
                 {v.state === "draft" ? (
@@ -474,7 +496,7 @@ export function VersionsManagementPanel({ data }: Props) {
                       })
                     }
                   >
-                    Touch Draft
+                    {cc("actions.touchDraft")}
                   </Button>
                 ) : null}
               </div>
@@ -489,14 +511,14 @@ export function VersionsManagementPanel({ data }: Props) {
           setOpen(v);
           if (!v) reset();
         }}
-        title="Create Plan Version"
+        title={cc("manage.createVersionTitle")}
         pending={createMut.isPending}
         onSubmit={() => void submitCreate()}
       >
-        <CatalogField label="Plan">
+        <CatalogField label={cc("fields.plan")}>
           <Select value={planId} onValueChange={setPlanId}>
             <SelectTrigger>
-              <SelectValue placeholder="Select plan" />
+              <SelectValue placeholder={cc("placeholders.selectPlan")} />
             </SelectTrigger>
             <SelectContent>
               {(data.plansQuery.data ?? []).map((p) => (
@@ -507,28 +529,28 @@ export function VersionsManagementPanel({ data }: Props) {
             </SelectContent>
           </Select>
         </CatalogField>
-        <CatalogField label="Version code">
+        <CatalogField label={cc("fields.versionCode")}>
           <Input
             value={versionCode}
             onChange={(e) => setVersionCode(e.target.value)}
           />
         </CatalogField>
-        <CatalogField label="Version name">
+        <CatalogField label={cc("fields.versionName")}>
           <Input
             value={versionName}
             onChange={(e) => setVersionName(e.target.value)}
           />
         </CatalogField>
-        <CatalogField label="Feature bundle">
+        <CatalogField label={cc("fields.featureBundle")}>
           <Select
             value={featureBundleId || "__none"}
             onValueChange={(v) => setFeatureBundleId(v === "__none" ? "" : v)}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Optional" />
+              <SelectValue placeholder={cc("placeholders.optional")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="__none">None</SelectItem>
+              <SelectItem value="__none">{cc("common.none")}</SelectItem>
               {(data.bundlesQuery.data ?? []).map((b) => (
                 <SelectItem key={b.id} value={b.id}>
                   {b.name}
@@ -537,16 +559,16 @@ export function VersionsManagementPanel({ data }: Props) {
             </SelectContent>
           </Select>
         </CatalogField>
-        <CatalogField label="Limit profile">
+        <CatalogField label={cc("fields.limitProfile")}>
           <Select
             value={limitProfileId || "__none"}
             onValueChange={(v) => setLimitProfileId(v === "__none" ? "" : v)}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Optional" />
+              <SelectValue placeholder={cc("placeholders.optional")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="__none">None</SelectItem>
+              <SelectItem value="__none">{cc("common.none")}</SelectItem>
               {(data.limitsQuery.data ?? []).map((b) => (
                 <SelectItem key={b.id} value={b.id}>
                   {b.name}
@@ -555,16 +577,16 @@ export function VersionsManagementPanel({ data }: Props) {
             </SelectContent>
           </Select>
         </CatalogField>
-        <CatalogField label="Trial policy">
+        <CatalogField label={cc("fields.trialPolicy")}>
           <Select
             value={trialPolicyId || "__none"}
             onValueChange={(v) => setTrialPolicyId(v === "__none" ? "" : v)}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Optional" />
+              <SelectValue placeholder={cc("placeholders.optional")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="__none">None</SelectItem>
+              <SelectItem value="__none">{cc("common.none")}</SelectItem>
               {(data.trialsQuery.data ?? []).map((b) => (
                 <SelectItem key={b.id} value={b.id}>
                   {b.name}
@@ -573,7 +595,7 @@ export function VersionsManagementPanel({ data }: Props) {
             </SelectContent>
           </Select>
         </CatalogField>
-        <CatalogField label="Migration policy">
+        <CatalogField label={cc("fields.migrationPolicy")}>
           <Select
             value={migrationPolicyId || "__none"}
             onValueChange={(v) =>
@@ -581,10 +603,10 @@ export function VersionsManagementPanel({ data }: Props) {
             }
           >
             <SelectTrigger>
-              <SelectValue placeholder="Optional" />
+              <SelectValue placeholder={cc("placeholders.optional")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="__none">None</SelectItem>
+              <SelectItem value="__none">{cc("common.none")}</SelectItem>
               {(data.migrationQuery.data ?? []).map((b) => (
                 <SelectItem key={b.id} value={b.id}>
                   {b.name}
@@ -593,7 +615,7 @@ export function VersionsManagementPanel({ data }: Props) {
             </SelectContent>
           </Select>
         </CatalogField>
-        <CatalogField label="Retirement policy">
+        <CatalogField label={cc("fields.retirementPolicy")}>
           <Select
             value={retirementPolicyId || "__none"}
             onValueChange={(v) =>
@@ -601,10 +623,10 @@ export function VersionsManagementPanel({ data }: Props) {
             }
           >
             <SelectTrigger>
-              <SelectValue placeholder="Optional" />
+              <SelectValue placeholder={cc("placeholders.optional")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="__none">None</SelectItem>
+              <SelectItem value="__none">{cc("common.none")}</SelectItem>
               {(data.retirementQuery.data ?? []).map((b) => (
                 <SelectItem key={b.id} value={b.id}>
                   {b.name}
@@ -619,16 +641,17 @@ export function VersionsManagementPanel({ data }: Props) {
 }
 
 export function PricingManagementPanel({ data }: Props) {
+  const { cc } = useCatalogI18n();
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [planVersionId, setPlanVersionId] = useState("");
   const [billingCycleId, setBillingCycleId] = useState("");
-  const [currency, setCurrency] = useState("SAR");
+  const [currency, setCurrency] = useState(COMMERCIAL_CANONICAL_CURRENCY);
   const [amount, setAmount] = useState("");
   const [regionId, setRegionId] = useState("");
 
   const createMut = trpc.commercialCatalog.createPrice.useMutation(
-    useMutationToast(data, "Price created")
+    useMutationToast(data, cc("toasts.priceCreated"), cc("toasts.operationFailed"))
   );
 
   const rows = useMemo(
@@ -642,29 +665,40 @@ export function PricingManagementPanel({ data }: Props) {
   );
 
   async function submit() {
+    const isOverride = Boolean(regionId);
     await createMut.mutateAsync({
       planVersionId,
       billingCycleId,
-      currency,
+      currency: isOverride ? currency : COMMERCIAL_CANONICAL_CURRENCY,
       amount,
       regionId: regionId || null,
     });
     setOpen(false);
+    setCurrency(COMMERCIAL_CANONICAL_CURRENCY);
+    setRegionId("");
+    setAmount("");
   }
 
   return (
     <>
       <CatalogEntityPanel
-        title="Pricing"
-        description="Create version prices. Price rows are immutable commercial facts — create a new price for changes (no silent rewrite)."
+        title={cc("manage.pricingTitle")}
+        description={cc("manage.pricingBody")}
         search={search}
         onSearchChange={setSearch}
-        primaryActionLabel="Create Price"
+        primaryActionLabel={cc("manage.createPrice")}
         onPrimaryAction={() => setOpen(true)}
-        emptyTitle="No prices"
-        emptyDescription="Attach pricing to a Plan Version."
+        emptyTitle={cc("manage.noPrices")}
+        emptyDescription={cc("manage.noPricesBody")}
         isEmpty={rows.length === 0}
-        headers={["Version", "Cycle", "Amount", "Currency", "Region", "Created"]}
+        headers={[
+          cc("headers.version"),
+          cc("headers.cycle"),
+          cc("headers.amount"),
+          cc("headers.currency"),
+          cc("headers.region"),
+          cc("headers.created"),
+        ]}
       >
         {rows.map((p) => (
           <PlatformOpsTableRow key={p.id}>
@@ -677,7 +711,9 @@ export function PricingManagementPanel({ data }: Props) {
             <PlatformOpsTableCell>{p.amount}</PlatformOpsTableCell>
             <PlatformOpsTableCell>{p.currency}</PlatformOpsTableCell>
             <PlatformOpsTableCell>
-              {p.regionId ? p.regionId.slice(0, 8) + "…" : "—"}
+              {p.regionId
+                ? p.regionId.slice(0, 8) + "…"
+                : cc("common.emDash")}
             </PlatformOpsTableCell>
             <PlatformOpsTableCell className="text-xs text-muted-foreground">
               {p.createdAt}
@@ -685,31 +721,45 @@ export function PricingManagementPanel({ data }: Props) {
           </PlatformOpsTableRow>
         ))}
       </CatalogEntityPanel>
+      <div className="mt-4">
+        <AdminLocalizedPricePreview
+          prices={(data.pricesQuery.data ?? []).map((p) => ({
+            amount: p.amount,
+            currency: p.currency,
+            regionId: p.regionId,
+          }))}
+          regions={(data.regionsQuery.data ?? []).map((r) => ({
+            id: r.id,
+            countryCode: r.countryCode,
+            currency: r.currency,
+          }))}
+        />
+      </div>
       <CatalogFormDialog
         open={open}
         onOpenChange={setOpen}
-        title="Create Price"
+        title={cc("manage.createPrice")}
         pending={createMut.isPending}
         onSubmit={() => void submit()}
       >
-        <CatalogField label="Plan version">
+        <CatalogField label={cc("fields.planVersion")}>
           <Select value={planVersionId} onValueChange={setPlanVersionId}>
             <SelectTrigger>
-              <SelectValue placeholder="Select version" />
+              <SelectValue placeholder={cc("placeholders.selectVersion")} />
             </SelectTrigger>
             <SelectContent>
               {(data.versionsQuery.data ?? []).map((v) => (
                 <SelectItem key={v.id} value={v.id}>
-                  {v.versionName} ({v.state})
+                  {v.versionName} ({stateLabel(cc, v.state)})
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </CatalogField>
-        <CatalogField label="Billing cycle">
+        <CatalogField label={cc("fields.billingCycle")}>
           <Select value={billingCycleId} onValueChange={setBillingCycleId}>
             <SelectTrigger>
-              <SelectValue placeholder="Select cycle" />
+              <SelectValue placeholder={cc("placeholders.selectCycle")} />
             </SelectTrigger>
             <SelectContent>
               {(data.cyclesQuery.data ?? []).map((c) => (
@@ -720,25 +770,33 @@ export function PricingManagementPanel({ data }: Props) {
             </SelectContent>
           </Select>
         </CatalogField>
-        <CatalogField label="Amount">
+        <CatalogField label={cc("fields.amount")}>
           <Input value={amount} onChange={(e) => setAmount(e.target.value)} />
         </CatalogField>
-        <CatalogField label="Currency">
-          <Input
-            value={currency}
-            onChange={(e) => setCurrency(e.target.value.toUpperCase())}
-          />
+        <CatalogField label={cc("manage.currencyUsdOnly")}>
+          {regionId ? (
+            <Input
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value.toUpperCase())}
+            />
+          ) : (
+            <Input value={COMMERCIAL_CANONICAL_CURRENCY} readOnly disabled />
+          )}
         </CatalogField>
-        <CatalogField label="Region (optional)">
+        <CatalogField label={cc("fields.regionOptional")}>
           <Select
             value={regionId || "__none"}
-            onValueChange={(v) => setRegionId(v === "__none" ? "" : v)}
+            onValueChange={(v) => {
+              const next = v === "__none" ? "" : v;
+              setRegionId(next);
+              if (!next) setCurrency(COMMERCIAL_CANONICAL_CURRENCY);
+            }}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Global / none" />
+              <SelectValue placeholder={cc("placeholders.globalNone")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="__none">None</SelectItem>
+              <SelectItem value="__none">{cc("common.none")}</SelectItem>
               {(data.regionsQuery.data ?? []).map((r) => (
                 <SelectItem key={r.id} value={r.id}>
                   {r.name} ({r.countryCode})
@@ -753,6 +811,7 @@ export function PricingManagementPanel({ data }: Props) {
 }
 
 export function BillingCyclesManagementPanel({ data }: Props) {
+  const { cc } = useCatalogI18n();
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [code, setCode] = useState("");
@@ -763,7 +822,7 @@ export function BillingCyclesManagementPanel({ data }: Props) {
   >("month");
 
   const createMut = trpc.commercialCatalog.createBillingCycle.useMutation(
-    useMutationToast(data, "Billing cycle created")
+    useMutationToast(data, cc("toasts.billingCycleCreated"), cc("toasts.operationFailed"))
   );
 
   const rows = useMemo(
@@ -779,16 +838,21 @@ export function BillingCyclesManagementPanel({ data }: Props) {
   return (
     <>
       <CatalogEntityPanel
-        title="Billing Cycles"
-        description="Monthly, quarterly, annual, and custom interval definitions."
+        title={cc("manage.billingCyclesTitle")}
+        description={cc("manage.billingCyclesBody")}
         search={search}
         onSearchChange={setSearch}
-        primaryActionLabel="Create Cycle"
+        primaryActionLabel={cc("manage.createCycle")}
         onPrimaryAction={() => setOpen(true)}
-        emptyTitle="No billing cycles"
-        emptyDescription="Define at least one billing cycle before pricing."
+        emptyTitle={cc("manage.noBillingCycles")}
+        emptyDescription={cc("manage.noBillingCyclesBody")}
         isEmpty={rows.length === 0}
-        headers={["Code", "Name", "Interval", "Created"]}
+        headers={[
+          cc("headers.code"),
+          cc("headers.name"),
+          cc("headers.interval"),
+          cc("headers.created"),
+        ]}
       >
         {rows.map((c) => (
           <PlatformOpsTableRow key={c.id}>
@@ -797,7 +861,16 @@ export function BillingCyclesManagementPanel({ data }: Props) {
             </PlatformOpsTableCell>
             <PlatformOpsTableCell>{c.name}</PlatformOpsTableCell>
             <PlatformOpsTableCell>
-              {c.intervalCount} {c.intervalUnit}
+              {c.intervalCount}{" "}
+              {cc(
+                c.intervalUnit === "day"
+                  ? "intervalUnits.day"
+                  : c.intervalUnit === "week"
+                    ? "intervalUnits.week"
+                    : c.intervalUnit === "year"
+                      ? "intervalUnits.year"
+                      : "intervalUnits.month"
+              )}
             </PlatformOpsTableCell>
             <PlatformOpsTableCell className="text-xs text-muted-foreground">
               {c.createdAt}
@@ -808,7 +881,7 @@ export function BillingCyclesManagementPanel({ data }: Props) {
       <CatalogFormDialog
         open={open}
         onOpenChange={setOpen}
-        title="Create Billing Cycle"
+        title={cc("manage.createBillingCycleTitle")}
         pending={createMut.isPending}
         onSubmit={() =>
           void createMut
@@ -821,20 +894,20 @@ export function BillingCyclesManagementPanel({ data }: Props) {
             .then(() => setOpen(false))
         }
       >
-        <CatalogField label="Code">
+        <CatalogField label={cc("fields.code")}>
           <Input value={code} onChange={(e) => setCode(e.target.value)} />
         </CatalogField>
-        <CatalogField label="Name">
+        <CatalogField label={cc("fields.name")}>
           <Input value={name} onChange={(e) => setName(e.target.value)} />
         </CatalogField>
-        <CatalogField label="Interval count">
+        <CatalogField label={cc("fields.intervalCount")}>
           <Input
             type="number"
             value={intervalCount}
             onChange={(e) => setIntervalCount(e.target.value)}
           />
         </CatalogField>
-        <CatalogField label="Interval unit">
+        <CatalogField label={cc("fields.intervalUnit")}>
           <Select
             value={intervalUnit}
             onValueChange={(v) =>
@@ -845,10 +918,10 @@ export function BillingCyclesManagementPanel({ data }: Props) {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="day">Day</SelectItem>
-              <SelectItem value="week">Week</SelectItem>
-              <SelectItem value="month">Month</SelectItem>
-              <SelectItem value="year">Year</SelectItem>
+              <SelectItem value="day">{cc("intervalUnits.day")}</SelectItem>
+              <SelectItem value="week">{cc("intervalUnits.week")}</SelectItem>
+              <SelectItem value="month">{cc("intervalUnits.month")}</SelectItem>
+              <SelectItem value="year">{cc("intervalUnits.year")}</SelectItem>
             </SelectContent>
           </Select>
         </CatalogField>
@@ -858,6 +931,7 @@ export function BillingCyclesManagementPanel({ data }: Props) {
 }
 
 export function FeatureBundlesManagementPanel({ data }: Props) {
+  const { cc } = useCatalogI18n();
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [code, setCode] = useState("");
@@ -866,7 +940,7 @@ export function FeatureBundlesManagementPanel({ data }: Props) {
   const [selected, setSelected] = useState<Record<string, boolean>>({});
 
   const createMut = trpc.commercialCatalog.createFeatureBundle.useMutation(
-    useMutationToast(data, "Feature bundle created")
+    useMutationToast(data, cc("toasts.featureBundleCreated"), cc("toasts.operationFailed"))
   );
 
   const rows = useMemo(
@@ -885,16 +959,21 @@ export function FeatureBundlesManagementPanel({ data }: Props) {
   return (
     <>
       <CatalogEntityPanel
-        title="Feature Bundles"
-        description="Visual feature editor — assign normative feature keys included in a bundle."
+        title={cc("manage.featureBundlesTitle")}
+        description={cc("manage.featureBundlesBody")}
         search={search}
         onSearchChange={setSearch}
-        primaryActionLabel="Create Bundle"
+        primaryActionLabel={cc("manage.createBundle")}
         onPrimaryAction={() => setOpen(true)}
-        emptyTitle="No feature bundles"
-        emptyDescription="Create a bundle before attaching it to a Plan Version."
+        emptyTitle={cc("manage.noFeatureBundles")}
+        emptyDescription={cc("manage.noFeatureBundlesBody")}
         isEmpty={rows.length === 0}
-        headers={["Code", "Name", "Features", "Created"]}
+        headers={[
+          cc("headers.code"),
+          cc("headers.name"),
+          cc("headers.features"),
+          cc("headers.created"),
+        ]}
       >
         {rows.map((b) => (
           <PlatformOpsTableRow key={b.id}>
@@ -903,7 +982,10 @@ export function FeatureBundlesManagementPanel({ data }: Props) {
             </PlatformOpsTableCell>
             <PlatformOpsTableCell>{b.name}</PlatformOpsTableCell>
             <PlatformOpsTableCell>
-              {(b.features ?? []).filter((f) => f.included).length} included
+              {cc("manage.includedCount").replace(
+                "{count}",
+                String((b.features ?? []).filter((f) => f.included).length)
+              )}
             </PlatformOpsTableCell>
             <PlatformOpsTableCell className="text-xs text-muted-foreground">
               {b.createdAt}
@@ -914,7 +996,7 @@ export function FeatureBundlesManagementPanel({ data }: Props) {
       <CatalogFormDialog
         open={open}
         onOpenChange={setOpen}
-        title="Create Feature Bundle"
+        title={cc("manage.createFeatureBundleTitle")}
         pending={createMut.isPending}
         onSubmit={() =>
           void createMut
@@ -930,19 +1012,19 @@ export function FeatureBundlesManagementPanel({ data }: Props) {
             .then(() => setOpen(false))
         }
       >
-        <CatalogField label="Code">
+        <CatalogField label={cc("fields.code")}>
           <Input value={code} onChange={(e) => setCode(e.target.value)} />
         </CatalogField>
-        <CatalogField label="Name">
+        <CatalogField label={cc("fields.name")}>
           <Input value={name} onChange={(e) => setName(e.target.value)} />
         </CatalogField>
-        <CatalogField label="Description">
+        <CatalogField label={cc("fields.description")}>
           <Textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
         </CatalogField>
-        <CatalogField label="Features">
+        <CatalogField label={cc("fields.features")}>
           <div className="grid max-h-48 grid-cols-2 gap-2 overflow-y-auto rounded border p-2">
             {CATALOG_FEATURE_KEYS.map((key) => (
               <label
@@ -964,6 +1046,7 @@ export function FeatureBundlesManagementPanel({ data }: Props) {
 }
 
 export function LimitProfilesManagementPanel({ data }: Props) {
+  const { cc } = useCatalogI18n();
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [code, setCode] = useState("");
@@ -976,7 +1059,7 @@ export function LimitProfilesManagementPanel({ data }: Props) {
   const [unlimited, setUnlimited] = useState<Record<string, boolean>>({});
 
   const createMut = trpc.commercialCatalog.createLimitProfile.useMutation(
-    useMutationToast(data, "Limit profile created")
+    useMutationToast(data, cc("toasts.limitProfileCreated"), cc("toasts.operationFailed"))
   );
 
   const rows = useMemo(
@@ -991,16 +1074,21 @@ export function LimitProfilesManagementPanel({ data }: Props) {
   return (
     <>
       <CatalogEntityPanel
-        title="Limit Profiles"
-        description="Numeric or unlimited usage limits. Null value = unlimited."
+        title={cc("manage.limitProfilesTitle")}
+        description={cc("manage.limitProfilesBody")}
         search={search}
         onSearchChange={setSearch}
-        primaryActionLabel="Create Profile"
+        primaryActionLabel={cc("manage.createProfile")}
         onPrimaryAction={() => setOpen(true)}
-        emptyTitle="No limit profiles"
-        emptyDescription="Create a limit profile for Plan Versions."
+        emptyTitle={cc("manage.noLimitProfiles")}
+        emptyDescription={cc("manage.noLimitProfilesBody")}
         isEmpty={rows.length === 0}
-        headers={["Code", "Name", "Limits", "Created"]}
+        headers={[
+          cc("headers.code"),
+          cc("headers.name"),
+          cc("headers.limits"),
+          cc("headers.created"),
+        ]}
       >
         {rows.map((p) => (
           <PlatformOpsTableRow key={p.id}>
@@ -1010,7 +1098,10 @@ export function LimitProfilesManagementPanel({ data }: Props) {
             <PlatformOpsTableCell>{p.name}</PlatformOpsTableCell>
             <PlatformOpsTableCell className="text-xs">
               {(p.values ?? [])
-                .map((v) => `${v.limitKey}=${v.value ?? "∞"}`)
+                .map(
+                  (v) =>
+                    `${v.limitKey}=${v.value ?? cc("common.infinity")}`
+                )
                 .join(", ")}
             </PlatformOpsTableCell>
             <PlatformOpsTableCell className="text-xs text-muted-foreground">
@@ -1022,7 +1113,7 @@ export function LimitProfilesManagementPanel({ data }: Props) {
       <CatalogFormDialog
         open={open}
         onOpenChange={setOpen}
-        title="Create Limit Profile"
+        title={cc("manage.createLimitProfileTitle")}
         pending={createMut.isPending}
         onSubmit={() =>
           void createMut
@@ -1039,10 +1130,10 @@ export function LimitProfilesManagementPanel({ data }: Props) {
             .then(() => setOpen(false))
         }
       >
-        <CatalogField label="Code">
+        <CatalogField label={cc("fields.code")}>
           <Input value={code} onChange={(e) => setCode(e.target.value)} />
         </CatalogField>
-        <CatalogField label="Name">
+        <CatalogField label={cc("fields.name")}>
           <Input value={name} onChange={(e) => setName(e.target.value)} />
         </CatalogField>
         {CATALOG_LIMIT_KEYS.map((key) => (
@@ -1063,7 +1154,7 @@ export function LimitProfilesManagementPanel({ data }: Props) {
                     setUnlimited((prev) => ({ ...prev, [key]: Boolean(c) }))
                   }
                 />
-                Unlimited
+                {cc("common.unlimited")}
               </label>
             </div>
           </CatalogField>
@@ -1100,6 +1191,7 @@ export function SimplePolicyCreatePanel(props: {
     extra?: string;
   }) => Array<string | null | undefined>;
 }) {
+  const { cc } = useCatalogI18n();
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [code, setCode] = useState("");
@@ -1123,12 +1215,20 @@ export function SimplePolicyCreatePanel(props: {
         description={props.description}
         search={search}
         onSearchChange={setSearch}
-        primaryActionLabel="Create"
+        primaryActionLabel={cc("actions.create")}
         onPrimaryAction={() => setOpen(true)}
         emptyTitle={props.emptyTitle}
-        emptyDescription={`Create the first ${props.title.toLowerCase()} entry.`}
+        emptyDescription={cc("manage.createFirstEntry").replace(
+          "{entity}",
+          props.title
+        )}
         isEmpty={rows.length === 0}
-        headers={["Code", "Name", "Details", "Created"]}
+        headers={[
+          cc("headers.code"),
+          cc("headers.name"),
+          cc("headers.details"),
+          cc("headers.created"),
+        ]}
       >
         {rows.map((r) => (
           <PlatformOpsTableRow key={r.id}>
@@ -1137,7 +1237,7 @@ export function SimplePolicyCreatePanel(props: {
             </PlatformOpsTableCell>
             <PlatformOpsTableCell>{r.name}</PlatformOpsTableCell>
             <PlatformOpsTableCell className="text-xs text-muted-foreground">
-              {r.extra ?? "—"}
+              {r.extra ?? cc("common.emDash")}
             </PlatformOpsTableCell>
             <PlatformOpsTableCell className="text-xs text-muted-foreground">
               {r.createdAt}
@@ -1148,7 +1248,7 @@ export function SimplePolicyCreatePanel(props: {
       <CatalogFormDialog
         open={open}
         onOpenChange={setOpen}
-        title={`Create ${props.title}`}
+        title={cc("manage.createEntityTitle").replace("{entity}", props.title)}
         pending={props.pending}
         onSubmit={() =>
           void props
@@ -1161,13 +1261,13 @@ export function SimplePolicyCreatePanel(props: {
             .then(() => setOpen(false))
         }
       >
-        <CatalogField label="Code">
+        <CatalogField label={cc("fields.code")}>
           <Input value={code} onChange={(e) => setCode(e.target.value)} />
         </CatalogField>
-        <CatalogField label="Name">
+        <CatalogField label={cc("fields.name")}>
           <Input value={name} onChange={(e) => setName(e.target.value)} />
         </CatalogField>
-        <CatalogField label="Description">
+        <CatalogField label={cc("fields.description")}>
           <Textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -1180,28 +1280,32 @@ export function SimplePolicyCreatePanel(props: {
 }
 
 export function TrialPoliciesManagementPanel({ data }: Props) {
+  const { cc } = useCatalogI18n();
   const [days, setDays] = useState("14");
   const createMut = trpc.commercialCatalog.createTrialPolicy.useMutation(
-    useMutationToast(data, "Trial policy created")
+    useMutationToast(data, cc("toasts.trialPolicyCreated"), cc("toasts.operationFailed"))
   );
   return (
     <SimplePolicyCreatePanel
       data={data}
-      title="Trial Policies"
-      description="Trial duration and eligibility policy definitions."
-      emptyTitle="No trial policies"
+      title={cc("manage.trialPoliciesTitle")}
+      description={cc("manage.trialPoliciesBody")}
+      emptyTitle={cc("manage.noTrialPolicies")}
       pending={createMut.isPending}
       rows={(data.trialsQuery.data ?? []).map((t) => ({
         id: t.id,
         code: t.code,
         name: t.name,
         createdAt: t.createdAt,
-        extra: `${t.durationDays} days`,
+        extra: cc("manage.daysCount").replace(
+          "{count}",
+          String(t.durationDays)
+        ),
       }))}
       buildExtra={() => ({ durationDays: Number(days) || 14 })}
       onCreate={(input) => createMut.mutateAsync(input as never)}
       extraFields={
-        <CatalogField label="Duration (days)">
+        <CatalogField label={cc("fields.durationDays")}>
           <Input
             type="number"
             value={days}
@@ -1214,6 +1318,7 @@ export function TrialPoliciesManagementPanel({ data }: Props) {
 }
 
 export function RegionsManagementPanel({ data }: Props) {
+  const { cc } = useCatalogI18n();
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -1224,10 +1329,10 @@ export function RegionsManagementPanel({ data }: Props) {
   const [taxPolicyRef, setTaxPolicyRef] = useState("");
 
   const createMut = trpc.commercialCatalog.createRegion.useMutation(
-    useMutationToast(data, "Region created")
+    useMutationToast(data, cc("toasts.regionCreated"), cc("toasts.operationFailed"))
   );
   const updateMut = trpc.commercialCatalog.updateRegion.useMutation(
-    useMutationToast(data, "Region updated")
+    useMutationToast(data, cc("toasts.regionUpdated"), cc("toasts.operationFailed"))
   );
 
   const rows = useMemo(
@@ -1253,19 +1358,25 @@ export function RegionsManagementPanel({ data }: Props) {
   return (
     <>
       <CatalogEntityPanel
-        title="Regional Policies"
-        description="Country, currency, tax reference, and regional availability."
+        title={cc("manage.regionalPoliciesTitle")}
+        description={cc("manage.regionalPoliciesBody")}
         search={search}
         onSearchChange={setSearch}
-        primaryActionLabel="Create Region"
+        primaryActionLabel={cc("manage.createRegion")}
         onPrimaryAction={() => {
           reset();
           setOpen(true);
         }}
-        emptyTitle="No regions"
-        emptyDescription="Create regional commercial policies."
+        emptyTitle={cc("manage.noRegions")}
+        emptyDescription={cc("manage.noRegionsBody")}
         isEmpty={rows.length === 0}
-        headers={["Code", "Name", "Country", "Currency", "Actions"]}
+        headers={[
+          cc("headers.code"),
+          cc("headers.name"),
+          cc("headers.country"),
+          cc("headers.currency"),
+          cc("headers.actions"),
+        ]}
       >
         {rows.map((r) => (
           <PlatformOpsTableRow key={r.id}>
@@ -1290,7 +1401,7 @@ export function RegionsManagementPanel({ data }: Props) {
                   setOpen(true);
                 }}
               >
-                Edit
+                {cc("actions.edit")}
               </Button>
             </PlatformOpsTableCell>
           </PlatformOpsTableRow>
@@ -1302,7 +1413,7 @@ export function RegionsManagementPanel({ data }: Props) {
           setOpen(v);
           if (!v) reset();
         }}
-        title={editId ? "Edit Region" : "Create Region"}
+        title={editId ? cc("manage.editRegionTitle") : cc("manage.createRegionTitle")}
         pending={createMut.isPending || updateMut.isPending}
         onSubmit={() =>
           void (editId
@@ -1327,26 +1438,26 @@ export function RegionsManagementPanel({ data }: Props) {
         }
       >
         {!editId ? (
-          <CatalogField label="Code">
+          <CatalogField label={cc("fields.code")}>
             <Input value={code} onChange={(e) => setCode(e.target.value)} />
           </CatalogField>
         ) : null}
-        <CatalogField label="Name">
+        <CatalogField label={cc("fields.name")}>
           <Input value={name} onChange={(e) => setName(e.target.value)} />
         </CatalogField>
-        <CatalogField label="Country code">
+        <CatalogField label={cc("fields.countryCode")}>
           <Input
             value={countryCode}
             onChange={(e) => setCountryCode(e.target.value.toUpperCase())}
           />
         </CatalogField>
-        <CatalogField label="Currency">
+        <CatalogField label={cc("fields.currency")}>
           <Input
             value={currency}
             onChange={(e) => setCurrency(e.target.value.toUpperCase())}
           />
         </CatalogField>
-        <CatalogField label="Tax policy ref">
+        <CatalogField label={cc("fields.taxPolicyRef")}>
           <Input
             value={taxPolicyRef}
             onChange={(e) => setTaxPolicyRef(e.target.value)}
@@ -1358,32 +1469,33 @@ export function RegionsManagementPanel({ data }: Props) {
 }
 
 export function PromotionsManagementPanel({ data }: Props) {
+  const { cc } = useCatalogI18n();
   const [effectSummary, setEffectSummary] = useState("");
   const createMut = trpc.commercialCatalog.createPromotion.useMutation(
-    useMutationToast(data, "Promotion created")
+    useMutationToast(data, cc("toasts.promotionCreated"), cc("toasts.operationFailed"))
   );
   return (
     <SimplePolicyCreatePanel
       data={data}
-      title="Promotions"
-      description="Promotion definitions (discount summary, eligibility, validity)."
-      emptyTitle="No promotions"
+      title={cc("manage.promotionsTitle")}
+      description={cc("manage.promotionsBody")}
+      emptyTitle={cc("manage.noPromotions")}
       pending={createMut.isPending}
       rows={(data.promotionsQuery.data ?? []).map((p) => ({
         id: p.id,
         code: p.code,
         name: p.name,
         createdAt: p.createdAt,
-        extra: `${p.isActive ? "active" : "inactive"} · ${p.effectSummary}`,
+        extra: `${p.isActive ? cc("manage.promotionActive") : cc("manage.promotionInactive")} · ${p.effectSummary}`,
       }))}
       buildExtra={() => ({ effectSummary })}
       onCreate={(input) => createMut.mutateAsync(input as never)}
       extraFields={
-        <CatalogField label="Effect summary">
+        <CatalogField label={cc("fields.effectSummary")}>
           <Input
             value={effectSummary}
             onChange={(e) => setEffectSummary(e.target.value)}
-            placeholder="e.g. 20% off first month"
+            placeholder={cc("placeholders.effectSummaryExample")}
           />
         </CatalogField>
       }
@@ -1392,6 +1504,7 @@ export function PromotionsManagementPanel({ data }: Props) {
 }
 
 export function MigrationPoliciesManagementPanel({ data }: Props) {
+  const { cc } = useCatalogI18n();
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -1401,10 +1514,10 @@ export function MigrationPoliciesManagementPanel({ data }: Props) {
   const [requiresExplicitAction, setRequiresExplicitAction] = useState(true);
 
   const createMut = trpc.commercialCatalog.createMigrationPolicy.useMutation(
-    useMutationToast(data, "Migration policy created")
+    useMutationToast(data, cc("toasts.migrationPolicyCreated"), cc("toasts.operationFailed"))
   );
   const updateMut = trpc.commercialCatalog.updateMigrationPolicy.useMutation(
-    useMutationToast(data, "Migration policy updated")
+    useMutationToast(data, cc("toasts.migrationPolicyUpdated"), cc("toasts.operationFailed"))
   );
 
   const rows = useMemo(
@@ -1419,19 +1532,24 @@ export function MigrationPoliciesManagementPanel({ data }: Props) {
   return (
     <>
       <CatalogEntityPanel
-        title="Migration Policies"
-        description="Upgrade/downgrade compatibility and explicit-action requirements."
+        title={cc("manage.migrationPoliciesTitle")}
+        description={cc("manage.migrationPoliciesBody")}
         search={search}
         onSearchChange={setSearch}
-        primaryActionLabel="Create Policy"
+        primaryActionLabel={cc("manage.createPolicy")}
         onPrimaryAction={() => {
           setEditId(null);
           setOpen(true);
         }}
-        emptyTitle="No migration policies"
-        emptyDescription="Create migration policies for Plan Versions."
+        emptyTitle={cc("manage.noMigrationPolicies")}
+        emptyDescription={cc("manage.noMigrationPoliciesBody")}
         isEmpty={rows.length === 0}
-        headers={["Code", "Name", "Explicit action", "Actions"]}
+        headers={[
+          cc("headers.code"),
+          cc("headers.name"),
+          cc("fields.explicitAction"),
+          cc("headers.actions"),
+        ]}
       >
         {rows.map((p) => (
           <PlatformOpsTableRow key={p.id}>
@@ -1440,7 +1558,9 @@ export function MigrationPoliciesManagementPanel({ data }: Props) {
             </PlatformOpsTableCell>
             <PlatformOpsTableCell>{p.name}</PlatformOpsTableCell>
             <PlatformOpsTableCell>
-              {p.requiresExplicitAction ? "Required" : "Optional"}
+              {p.requiresExplicitAction
+                ? cc("manage.explicitActionRequired")
+                : cc("manage.explicitActionOptional")}
             </PlatformOpsTableCell>
             <PlatformOpsTableCell>
               <Button
@@ -1456,7 +1576,7 @@ export function MigrationPoliciesManagementPanel({ data }: Props) {
                   setOpen(true);
                 }}
               >
-                Edit
+                {cc("actions.edit")}
               </Button>
             </PlatformOpsTableCell>
           </PlatformOpsTableRow>
@@ -1465,7 +1585,11 @@ export function MigrationPoliciesManagementPanel({ data }: Props) {
       <CatalogFormDialog
         open={open}
         onOpenChange={setOpen}
-        title={editId ? "Edit Migration Policy" : "Create Migration Policy"}
+        title={
+          editId
+            ? cc("manage.editMigrationPolicyTitle")
+            : cc("manage.createMigrationPolicyTitle")
+        }
         pending={createMut.isPending || updateMut.isPending}
         onSubmit={() =>
           void (editId
@@ -1485,14 +1609,14 @@ export function MigrationPoliciesManagementPanel({ data }: Props) {
         }
       >
         {!editId ? (
-          <CatalogField label="Code">
+          <CatalogField label={cc("fields.code")}>
             <Input value={code} onChange={(e) => setCode(e.target.value)} />
           </CatalogField>
         ) : null}
-        <CatalogField label="Name">
+        <CatalogField label={cc("fields.name")}>
           <Input value={name} onChange={(e) => setName(e.target.value)} />
         </CatalogField>
-        <CatalogField label="Description">
+        <CatalogField label={cc("fields.description")}>
           <Textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -1503,7 +1627,7 @@ export function MigrationPoliciesManagementPanel({ data }: Props) {
             checked={requiresExplicitAction}
             onCheckedChange={(c) => setRequiresExplicitAction(Boolean(c))}
           />
-          Requires explicit action
+          {cc("manage.requiresExplicitAction")}
         </label>
       </CatalogFormDialog>
     </>
@@ -1511,23 +1635,26 @@ export function MigrationPoliciesManagementPanel({ data }: Props) {
 }
 
 export function RetirementPoliciesManagementPanel({ data }: Props) {
+  const { cc } = useCatalogI18n();
   const [allowRenewals, setAllowRenewals] = useState(false);
   const createMut = trpc.commercialCatalog.createRetirementPolicy.useMutation(
-    useMutationToast(data, "Retirement policy created")
+    useMutationToast(data, cc("toasts.retirementPolicyCreated"), cc("toasts.operationFailed"))
   );
   return (
     <SimplePolicyCreatePanel
       data={data}
-      title="Retirement Policies"
-      description="Retirement visibility, renewals, and replacement guidance."
-      emptyTitle="No retirement policies"
+      title={cc("manage.retirementPoliciesTitle")}
+      description={cc("manage.retirementPoliciesBody")}
+      emptyTitle={cc("manage.noRetirementPolicies")}
       pending={createMut.isPending}
       rows={(data.retirementQuery.data ?? []).map((p) => ({
         id: p.id,
         code: p.code,
         name: p.name,
         createdAt: p.createdAt,
-        extra: p.allowRenewals ? "renewals allowed" : "renewals blocked",
+        extra: p.allowRenewals
+          ? cc("manage.renewalsAllowed")
+          : cc("manage.renewalsBlocked"),
       }))}
       buildExtra={() => ({ allowRenewals })}
       onCreate={(input) => createMut.mutateAsync(input as never)}
@@ -1537,7 +1664,7 @@ export function RetirementPoliciesManagementPanel({ data }: Props) {
             checked={allowRenewals}
             onCheckedChange={(c) => setAllowRenewals(Boolean(c))}
           />
-          Allow renewals after retirement
+          {cc("manage.allowRenewalsAfterRetirement")}
         </label>
       }
     />
@@ -1545,6 +1672,7 @@ export function RetirementPoliciesManagementPanel({ data }: Props) {
 }
 
 export function PublicationManagementPanel({ data }: Props) {
+  const { cc } = useCatalogI18n();
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(
     null
   );
@@ -1555,7 +1683,7 @@ export function PublicationManagementPanel({ data }: Props) {
   const publishMut = trpc.commercialCatalog.publishVersion.useMutation({
     onSuccess: async () => {
       catalogManagementUiObservability.recordPublication(true);
-      toast.success("Published");
+      toast.success(cc("toasts.published"));
       await data.invalidateAll();
     },
     onError: (err) => {
@@ -1564,10 +1692,10 @@ export function PublicationManagementPanel({ data }: Props) {
     },
   });
   const deprecateMut = trpc.commercialCatalog.deprecateVersion.useMutation(
-    useMutationToast(data, "Deprecated")
+    useMutationToast(data, cc("toasts.deprecated"), cc("toasts.operationFailed"))
   );
   const retireMut = trpc.commercialCatalog.retireVersion.useMutation(
-    useMutationToast(data, "Retired")
+    useMutationToast(data, cc("toasts.retired"), cc("toasts.operationFailed"))
   );
 
   const versions = data.versionsQuery.data ?? [];
@@ -1578,23 +1706,23 @@ export function PublicationManagementPanel({ data }: Props) {
     retired: versions.filter((v) => v.state === "retired"),
   };
 
+  const metricLabels = [
+    ["draft", byState.draft.length],
+    ["published", byState.published.length],
+    ["deprecated", byState.deprecated.length],
+    ["retired", byState.retired.length],
+  ] as const;
+
   return (
     <PlatformOpsSection
-      title="Publication Workspace"
-      description="Lifecycle lanes for draft, published, deprecated, and retired versions with CC-16 gate."
+      title={cc("manage.publicationWorkspaceTitle")}
+      description={cc("manage.publicationWorkspaceBody")}
     >
       <PlatformOpsMetricGrid>
-        {(
-          [
-            ["Draft", byState.draft.length],
-            ["Published", byState.published.length],
-            ["Deprecated", byState.deprecated.length],
-            ["Retired", byState.retired.length],
-          ] as const
-        ).map(([label, value]) => (
+        {metricLabels.map(([label, value]) => (
           <PlatformOpsMetricCard
             key={label}
-            label={label}
+            label={stateLabel(cc, label)}
             value={String(value)}
             tone="info"
             domain="information"
@@ -1617,7 +1745,7 @@ export function PublicationManagementPanel({ data }: Props) {
               </div>
               <PlatformOpsStatusBadge
                 status={versionStateTone(v.state)}
-                label={v.state}
+                label={stateLabel(cc, v.state)}
               />
             </div>
             <div className="flex flex-wrap gap-2">
@@ -1627,7 +1755,7 @@ export function PublicationManagementPanel({ data }: Props) {
                 variant="outline"
                 onClick={() => setSelectedVersionId(v.id)}
               >
-                Validate
+                {cc("actions.validate")}
               </Button>
               {v.state === "draft" ? (
                 <Button
@@ -1637,7 +1765,7 @@ export function PublicationManagementPanel({ data }: Props) {
                     void publishMut.mutateAsync({ versionId: v.id })
                   }
                 >
-                  Publish
+                  {cc("actions.publish")}
                 </Button>
               ) : null}
               {v.state === "published" ? (
@@ -1649,7 +1777,7 @@ export function PublicationManagementPanel({ data }: Props) {
                     void deprecateMut.mutateAsync({ versionId: v.id })
                   }
                 >
-                  Deprecate
+                  {cc("actions.deprecate")}
                 </Button>
               ) : null}
               {v.state === "deprecated" ? (
@@ -1661,7 +1789,7 @@ export function PublicationManagementPanel({ data }: Props) {
                     void retireMut.mutateAsync({ versionId: v.id })
                   }
                 >
-                  Retire
+                  {cc("actions.retire")}
                 </Button>
               ) : null}
             </div>
@@ -1675,10 +1803,13 @@ export function PublicationManagementPanel({ data }: Props) {
             severity={validationQuery.data.ok ? "info" : "warning"}
             title={
               validationQuery.data.ok
-                ? "CC-16 publication ready"
-                : "CC-16 blocking issues"
+                ? cc("manage.cc16Ready")
+                : cc("manage.cc16Blocking")
             }
-            detail={`${validationQuery.data.issues.length} issue(s)`}
+            detail={cc("manage.issueCount").replace(
+              "{count}",
+              String(validationQuery.data.issues.length)
+            )}
           />
           <ul className="list-disc pl-5 text-sm text-muted-foreground">
             {validationQuery.data.issues.map((issue) => (
@@ -1694,6 +1825,7 @@ export function PublicationManagementPanel({ data }: Props) {
 }
 
 export function ValidationManagementPanel({ data }: Props) {
+  const { cc } = useCatalogI18n();
   const [versionId, setVersionId] = useState<string>("");
   const validationQuery = trpc.commercialCatalog.validatePublication.useQuery(
     { versionId },
@@ -1702,18 +1834,18 @@ export function ValidationManagementPanel({ data }: Props) {
 
   return (
     <PlatformOpsSection
-      title="Commercial Validation"
-      description="CC-16 publication readiness — blocking errors, missing pricing, limits, features, and policies."
+      title={cc("manage.commercialValidationTitle")}
+      description={cc("manage.commercialValidationBody")}
     >
-      <CatalogField label="Plan version">
+      <CatalogField label={cc("fields.planVersion")}>
         <Select value={versionId} onValueChange={setVersionId}>
           <SelectTrigger className="max-w-md">
-            <SelectValue placeholder="Select version to validate" />
+            <SelectValue placeholder={cc("placeholders.selectVersionToValidate")} />
           </SelectTrigger>
           <SelectContent>
             {(data.versionsQuery.data ?? []).map((v) => (
               <SelectItem key={v.id} value={v.id}>
-                {v.versionName} ({v.state})
+                {v.versionName} ({stateLabel(cc, v.state)})
               </SelectItem>
             ))}
           </SelectContent>
@@ -1725,12 +1857,14 @@ export function ValidationManagementPanel({ data }: Props) {
           <PlatformOpsStatusBadge
             status={validationQuery.data.ok ? "healthy" : "degraded"}
             label={
-              validationQuery.data.ok ? "Ready to publish" : "Not ready"
+              validationQuery.data.ok
+                ? cc("manage.readyToPublish")
+                : cc("manage.notReady")
             }
           />
           {validationQuery.data.issues.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No blocking issues.
+              {cc("manage.noBlockingIssues")}
             </p>
           ) : (
             <ul className="list-disc pl-5 text-sm">
@@ -1749,84 +1883,85 @@ export function ValidationManagementPanel({ data }: Props) {
 }
 
 export function HealthManagementPanel({ data }: Props) {
+  const { cc } = useCatalogI18n();
   const health = data.healthQuery.data;
   const adoption = data.adoptionQuery.data;
   const uiMetrics = catalogManagementUiObservability.snapshot();
 
   return (
     <PlatformOpsSection
-      title="Commercial Health"
-      description="Catalog growth, lifecycle distribution, snapshots, adoption, and management UX metrics."
+      title={cc("manage.commercialHealthTitle")}
+      description={cc("manage.commercialHealthBody")}
     >
       <PlatformOpsMetricGrid>
         <PlatformOpsMetricCard
-          label="Plans"
+          label={cc("metricPlans")}
           value={String(health?.plans ?? data.plansQuery.data?.length ?? 0)}
           tone="info"
           domain="information"
         />
         <PlatformOpsMetricCard
-          label="Versions"
+          label={cc("metricVersions")}
           value={String(health?.versions.total ?? 0)}
           tone="info"
           domain="information"
         />
         <PlatformOpsMetricCard
-          label="Published"
+          label={cc("metricPublished")}
           value={String(health?.versions.published ?? 0)}
           tone="info"
           domain="information"
         />
         <PlatformOpsMetricCard
-          label="Draft"
+          label={stateLabel(cc, "draft")}
           value={String(health?.versions.draft ?? 0)}
           tone="info"
           domain="information"
         />
         <PlatformOpsMetricCard
-          label="Deprecated"
+          label={stateLabel(cc, "deprecated")}
           value={String(health?.versions.deprecated ?? 0)}
           tone="info"
           domain="information"
         />
         <PlatformOpsMetricCard
-          label="Retired"
+          label={stateLabel(cc, "retired")}
           value={String(health?.versions.retired ?? 0)}
           tone="info"
           domain="information"
         />
         <PlatformOpsMetricCard
-          label="Snapshots"
+          label={cc("headers.snapshots")}
           value={String(data.snapshotsQuery.data?.length ?? 0)}
           tone="info"
           domain="information"
         />
         <PlatformOpsMetricCard
-          label="Regions"
+          label={cc("metricRegions")}
           value={String(data.regionsQuery.data?.length ?? 0)}
           tone="info"
           domain="information"
         />
         <PlatformOpsMetricCard
-          label="Promotions"
+          label={cc("manage.promotionsTitle")}
           value={String(data.promotionsQuery.data?.length ?? 0)}
           tone="info"
           domain="information"
         />
         <PlatformOpsMetricCard
-          label="Validation errors"
+          label={cc("manage.validationErrors")}
           value={String(health?.validationErrors ?? 0)}
           tone={(health?.validationErrors ?? 0) > 0 ? "amber" : "info"}
           domain="information"
         />
         <PlatformOpsMetricCard
-          label="CRUD success rate"
+          label={cc("manage.crudSuccessRate")}
           value={`${Math.round(uiMetrics.crudSuccessRate * 100)}%`}
           tone="info"
           domain="information"
         />
         <PlatformOpsMetricCard
-          label="Adoption snapshot creates"
+          label={cc("manage.adoptionSnapshotCreates")}
           value={String(adoption?.snapshotCreations ?? 0)}
           tone="info"
           domain="information"
@@ -1834,12 +1969,18 @@ export function HealthManagementPanel({ data }: Props) {
       </PlatformOpsMetricGrid>
       {health?.lastValidationError ? (
         <p className="mt-3 text-sm text-muted-foreground">
-          Last validation error: {health.lastValidationError}
+          {cc("manage.lastValidationError").replace(
+            "{message}",
+            health.lastValidationError
+          )}
         </p>
       ) : null}
       {health?.lastPublicationError ? (
         <p className="mt-1 text-sm text-muted-foreground">
-          Last publication error: {health.lastPublicationError}
+          {cc("manage.lastPublicationError").replace(
+            "{message}",
+            health.lastPublicationError
+          )}
         </p>
       ) : null}
       {adoption &&
@@ -1847,14 +1988,16 @@ export function HealthManagementPanel({ data }: Props) {
       "runtimeAuthority" in adoption &&
       adoption.runtimeAuthority ? (
         <p className="mt-1 text-sm text-muted-foreground">
-          Runtime mixedResolutionCount={" "}
-          {
-            (
-              adoption.runtimeAuthority as {
-                mixedResolutionCount: number;
-              }
-            ).mixedResolutionCount
-          }
+          {cc("manage.runtimeMixedResolution").replace(
+            "{count}",
+            String(
+              (
+                adoption.runtimeAuthority as {
+                  mixedResolutionCount: number;
+                }
+              ).mixedResolutionCount
+            )
+          )}
         </p>
       ) : null}
     </PlatformOpsSection>

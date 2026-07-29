@@ -3,6 +3,7 @@
  */
 
 import type { ReactNode } from "react";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -26,6 +27,12 @@ export function CatalogFormDialog(props: {
   onSubmit: () => void;
   children: ReactNode;
 }) {
+  const { t } = useLanguage();
+  const cancelLabel = t("admin.platformOps.commercialCatalog.actions.cancel");
+  const savingLabel = t("admin.platformOps.commercialCatalog.actions.saving");
+  const saveLabel =
+    props.submitLabel ?? t("admin.platformOps.commercialCatalog.actions.save");
+
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
@@ -43,14 +50,14 @@ export function CatalogFormDialog(props: {
             onClick={() => props.onOpenChange(false)}
             disabled={props.pending}
           >
-            Cancel
+            {cancelLabel}
           </Button>
           <Button
             type="button"
             onClick={props.onSubmit}
             disabled={props.pending}
           >
-            {props.pending ? "Saving…" : (props.submitLabel ?? "Save")}
+            {props.pending ? savingLabel : saveLabel}
           </Button>
         </DialogFooter>
       </DialogContent>

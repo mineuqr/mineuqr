@@ -53,9 +53,9 @@ describe("COMMERCIAL-CATALOG-ADMIN-EXPERIENCE-1", () => {
         field: "featureBundleId",
       },
     ]);
-    expect(actions[0]?.title).toBe("Missing Pricing");
+    expect(actions[0]?.titleKey).toBe("validation.pricingExists.title");
     expect(actions[0]?.navigateTo).toBe("pricing");
-    expect(actions[1]?.ctaLabel).toBe("Create Bundle");
+    expect(actions[1]?.ctaKey).toBe("validation.featureBundleExists.cta");
     expect(uniqueSlug("basic")).toMatch(/^basic-copy-/);
   });
 
@@ -103,6 +103,6 @@ describe("COMMERCIAL-CATALOG-ADMIN-EXPERIENCE-1", () => {
     expect(wizard).toContain("publishVersion");
     expect(wizard).toContain("createPlan");
     expect(wizard).not.toMatch(/skipValidation/i);
-    expect(wizard).toContain("Always runs validation before publish");
+    expect(wizard).toContain("validation.publishRequiresCc16Detail");
   });
 });

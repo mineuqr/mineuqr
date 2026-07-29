@@ -26,24 +26,28 @@ import {
   Textarea,
 } from "../CatalogFormDialog";
 import { CATALOG_FEATURE_KEYS, CATALOG_LIMIT_KEYS } from "../catalogUiHelpers";
-import type { CatalogManagementData } from "../useCatalogManagementData";
+import { useCatalogI18n } from "../useCatalogI18n";
 import { catalogExperienceObservability } from "./experienceObservability";
 import { catalogProductivityStore } from "./productivityStore";
-import { toSmartValidationActions } from "./smartValidation";
+import type { CatalogManagementData } from "../useCatalogManagementData";
+import {
+  resolveSmartValidationActions,
+  type ResolvedSmartValidationAction,
+} from "./smartValidation";
 import type { ExperienceNavigate } from "./experienceNav";
 
-const STEPS = [
-  "Plan information",
-  "Plan Version",
-  "Pricing",
-  "Billing Cycle",
-  "Feature Bundle",
-  "Limit Profile",
-  "Trial Policy",
-  "Regional Policy",
-  "Promotion (optional)",
-  "Review",
-  "Publish",
+const WIZARD_STEP_KEYS = [
+  "wizard.steps.planInfo",
+  "wizard.steps.planVersion",
+  "wizard.steps.pricing",
+  "wizard.steps.billingCycle",
+  "wizard.steps.featureBundle",
+  "wizard.steps.limitProfile",
+  "wizard.steps.trialPolicy",
+  "wizard.steps.regionalPolicy",
+  "wizard.steps.promotionOptional",
+  "wizard.steps.review",
+  "wizard.steps.publish",
 ] as const;
 
 const DRAFT_ID = "plan-wizard-default";
@@ -95,7 +99,7 @@ const DEFAULT: WizardState = {
   versionCode: "v1",
   versionName: "Initial",
   amount: "99.00",
-  currency: "SAR",
+  currency: "USD",
   cycleCode: "monthly",
   cycleName: "Monthly",
   intervalCount: "1",
@@ -128,13 +132,14 @@ export function PlanCreationWizard(props: {
   data: CatalogManagementData;
   onNavigate: ExperienceNavigate;
 }) {
+  const { cc, t } = useCatalogI18n();
   const [state, setState] = useState<WizardState>(() => {
     const draft = catalogProductivityStore.get().wizardDrafts[DRAFT_ID];
     return draft ? { ...DEFAULT, ...(draft as WizardState) } : { ...DEFAULT };
   });
   const [busy, setBusy] = useState(false);
   const [publishIssues, setPublishIssues] = useState<
-    ReturnType<typeof toSmartValidationActions>
+    ResolvedSmartValidationAction[]
   >([]);
 
   const createPlan = trpc.commercialCatalog.createPlan.useMutation();
@@ -165,7 +170,7 @@ export function PlanCreationWizard(props: {
     setState((s) => ({ ...s, ...p }));
 
   const progress = useMemo(
-    () => Math.round(((state.step + 1) / STEPS.length) * 100),
+    () => Math.round(((state.step + 1) / WIZARD_STEP_KEYS.length) * 100),
     [state.step]
   );
 
@@ -226,7 +231,7 @@ export function PlanCreationWizard(props: {
         await createPromo.mutateAsync({
           code: state.promoCode,
           name: state.promoName || state.promoCode,
-          effectSummary: state.promoEffect || "Promotion",
+          effectSummary: state.promoEffect || cc("manage.promotionDefault"),
         });
       }
 
@@ -276,8 +281,10 @@ export function PlanCreationWizard(props: {
         });
         if (!validation.ok) {
           catalogExperienceObservability.recordValidationFailure();
-          setPublishIssues(toSmartValidationActions(validation.issues));
-          toast.error("Validation blocked publish — fix issues below");
+          setPublishIssues(
+            resolveSmartValidationActions(validation.issues, t)
+          );
+          toast.error(cc("toasts.validationBlockedPublish"));
           patch({ step: 10 });
           return;
         }
@@ -286,15 +293,15 @@ export function PlanCreationWizard(props: {
         catalogExperienceObservability.recordPublishDuration(Date.now() - started);
         catalogExperienceObservability.recordWizardComplete();
         catalogProductivityStore.clearWizardDraft(DRAFT_ID);
-        toast.success("Plan published");
+        toast.success(cc("toasts.planPublished"));
         await props.data.invalidateAll();
       } else {
-        toast.success("Draft catalog graph created");
+        toast.success(cc("toasts.draftGraphCreated"));
         catalogExperienceObservability.recordWizardComplete();
       }
     } catch (e) {
       catalogExperienceObservability.recordPublication(false);
-      toast.error(e instanceof Error ? e.message : "Wizard failed");
+      toast.error(e instanceof Error ? e.message : cc("toasts.wizardFailed"));
     } finally {
       setBusy(false);
     }
@@ -302,15 +309,17 @@ export function PlanCreationWizard(props: {
 
   return (
     <PlatformOpsSection
-      title="Plan Creation Wizard"
-      description="Guided draft → review → CC-16 publish. Autosaves locally. Always runs validation before publish."
+      title={cc("wizard.title")}
+      description={cc("wizard.body")}
     >
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <PlatformOpsStatusBadge
           status="healthy"
-          label={`Step ${state.step + 1}/${STEPS.length}: ${STEPS[state.step]}`}
+          label={`${cc("wizard.stepLabel")} ${state.step + 1}/${WIZARD_STEP_KEYS.length}: ${cc(WIZARD_STEP_KEYS[state.step])}`}
         />
-        <span className="text-sm text-muted-foreground">{progress}% · autosaved</span>
+        <span className="text-sm text-muted-foreground">
+          {cc("wizard.autosaved").replace("{percent}", String(progress))}
+        </span>
       </div>
       <div
         className="mb-4 h-2 w-full rounded bg-muted"
@@ -327,19 +336,19 @@ export function PlanCreationWizard(props: {
 
       {state.step === 0 ? (
         <div className="grid gap-3 max-w-lg">
-          <CatalogField label="Plan code">
+          <CatalogField label={cc("fields.planCode")}>
             <Input
               value={state.planCode}
               onChange={(e) => patch({ planCode: e.target.value })}
             />
           </CatalogField>
-          <CatalogField label="Plan name">
+          <CatalogField label={cc("fields.planName")}>
             <Input
               value={state.planName}
               onChange={(e) => patch({ planName: e.target.value })}
             />
           </CatalogField>
-          <CatalogField label="Description">
+          <CatalogField label={cc("fields.description")}>
             <Textarea
               value={state.planDescription}
               onChange={(e) => patch({ planDescription: e.target.value })}
@@ -350,13 +359,13 @@ export function PlanCreationWizard(props: {
 
       {state.step === 1 ? (
         <div className="grid gap-3 max-w-lg">
-          <CatalogField label="Version code">
+          <CatalogField label={cc("fields.versionCode")}>
             <Input
               value={state.versionCode}
               onChange={(e) => patch({ versionCode: e.target.value })}
             />
           </CatalogField>
-          <CatalogField label="Version name">
+          <CatalogField label={cc("fields.versionName")}>
             <Input
               value={state.versionName}
               onChange={(e) => patch({ versionName: e.target.value })}
@@ -367,13 +376,13 @@ export function PlanCreationWizard(props: {
 
       {state.step === 2 ? (
         <div className="grid gap-3 max-w-lg">
-          <CatalogField label="Amount">
+          <CatalogField label={cc("fields.amount")}>
             <Input
               value={state.amount}
               onChange={(e) => patch({ amount: e.target.value })}
             />
           </CatalogField>
-          <CatalogField label="Currency">
+          <CatalogField label={cc("fields.currency")}>
             <Input
               value={state.currency}
               onChange={(e) =>
@@ -386,19 +395,19 @@ export function PlanCreationWizard(props: {
 
       {state.step === 3 ? (
         <div className="grid gap-3 max-w-lg">
-          <CatalogField label="Cycle code">
+          <CatalogField label={cc("fields.cycleCode")}>
             <Input
               value={state.cycleCode}
               onChange={(e) => patch({ cycleCode: e.target.value })}
             />
           </CatalogField>
-          <CatalogField label="Cycle name">
+          <CatalogField label={cc("fields.cycleName")}>
             <Input
               value={state.cycleName}
               onChange={(e) => patch({ cycleName: e.target.value })}
             />
           </CatalogField>
-          <CatalogField label="Interval unit">
+          <CatalogField label={cc("fields.intervalUnit")}>
             <Select
               value={state.intervalUnit}
               onValueChange={(v) =>
@@ -411,10 +420,10 @@ export function PlanCreationWizard(props: {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="month">Month</SelectItem>
-                <SelectItem value="year">Year</SelectItem>
-                <SelectItem value="week">Week</SelectItem>
-                <SelectItem value="day">Day</SelectItem>
+                <SelectItem value="month">{cc("intervalUnits.month")}</SelectItem>
+                <SelectItem value="year">{cc("intervalUnits.year")}</SelectItem>
+                <SelectItem value="week">{cc("intervalUnits.week")}</SelectItem>
+                <SelectItem value="day">{cc("intervalUnits.day")}</SelectItem>
               </SelectContent>
             </Select>
           </CatalogField>
@@ -423,11 +432,14 @@ export function PlanCreationWizard(props: {
 
       {state.step === 4 ? (
         <div className="grid gap-3">
-          <CatalogField label="Bundle code">
+          <CatalogField label={cc("fields.bundleCode")}>
             <Input
               value={state.bundleCode}
               onChange={(e) => patch({ bundleCode: e.target.value })}
-              placeholder={`${state.planCode}-bundle`}
+              placeholder={cc("placeholders.bundleCodeDefault").replace(
+                "{code}",
+                state.planCode
+              )}
             />
           </CatalogField>
           <div className="grid max-h-48 grid-cols-2 gap-2 overflow-y-auto rounded border p-2">
@@ -475,7 +487,7 @@ export function PlanCreationWizard(props: {
                       })
                     }
                   />
-                  ∞
+                  {cc("common.infinity")}
                 </label>
               </div>
             </CatalogField>
@@ -485,7 +497,7 @@ export function PlanCreationWizard(props: {
 
       {state.step === 6 ? (
         <div className="grid gap-3 max-w-lg">
-          <CatalogField label="Trial days">
+          <CatalogField label={cc("fields.trialDays")}>
             <Input
               type="number"
               value={state.trialDays}
@@ -497,7 +509,7 @@ export function PlanCreationWizard(props: {
 
       {state.step === 7 ? (
         <div className="grid gap-3 max-w-lg">
-          <CatalogField label="Country">
+          <CatalogField label={cc("fields.country")}>
             <Input
               value={state.countryCode}
               onChange={(e) =>
@@ -505,7 +517,7 @@ export function PlanCreationWizard(props: {
               }
             />
           </CatalogField>
-          <CatalogField label="Currency">
+          <CatalogField label={cc("fields.currency")}>
             <Input
               value={state.regionCurrency}
               onChange={(e) =>
@@ -523,17 +535,17 @@ export function PlanCreationWizard(props: {
               checked={state.includePromo}
               onCheckedChange={(c) => patch({ includePromo: Boolean(c) })}
             />
-            Include promotion (optional)
+            {cc("wizard.includePromotion")}
           </label>
           {state.includePromo ? (
             <>
-              <CatalogField label="Promo code">
+              <CatalogField label={cc("fields.promoCode")}>
                 <Input
                   value={state.promoCode}
                   onChange={(e) => patch({ promoCode: e.target.value })}
                 />
               </CatalogField>
-              <CatalogField label="Effect">
+              <CatalogField label={cc("fields.effect")}>
                 <Input
                   value={state.promoEffect}
                   onChange={(e) => patch({ promoEffect: e.target.value })}
@@ -547,26 +559,32 @@ export function PlanCreationWizard(props: {
       {state.step === 9 ? (
         <div className="space-y-2 text-sm">
           <p>
-            <strong>Plan:</strong> {state.planName} ({state.planCode})
+            <strong>{cc("wizard.reviewPlan")}</strong> {state.planName} (
+            {state.planCode})
           </p>
           <p>
-            <strong>Version:</strong> {state.versionName} ({state.versionCode})
+            <strong>{cc("wizard.reviewVersion")}</strong> {state.versionName} (
+            {state.versionCode})
           </p>
           <p>
-            <strong>Price:</strong> {state.amount} {state.currency} /{" "}
-            {state.cycleName}
+            <strong>{cc("wizard.reviewPrice")}</strong> {state.amount}{" "}
+            {state.currency} / {state.cycleName}
           </p>
           <p>
-            <strong>Features:</strong>{" "}
-            {Object.values(state.features).filter(Boolean).length} selected
+            <strong>{cc("wizard.reviewFeatures")}</strong>{" "}
+            {cc("wizard.reviewFeaturesSelected").replace(
+              "{count}",
+              String(Object.values(state.features).filter(Boolean).length)
+            )}
           </p>
           <p>
-            <strong>Region:</strong> {state.countryCode} / {state.regionCurrency}
+            <strong>{cc("wizard.reviewRegion")}</strong> {state.countryCode} /{" "}
+            {state.regionCurrency}
           </p>
           <PlatformOpsAlert
             severity="info"
-            title="Draft save available"
-            detail="Create draft graph without publishing, or continue to Publish step."
+            title={cc("wizard.draftSaveTitle")}
+            detail={cc("wizard.draftSaveDetail")}
           />
         </div>
       ) : null}
@@ -575,8 +593,8 @@ export function PlanCreationWizard(props: {
         <div className="space-y-3">
           <PlatformOpsAlert
             severity="warning"
-            title="Publish requires CC-16"
-            detail="Wizard will validate before publish. Failures navigate to the missing module."
+            title={cc("validation.publishRequiresCc16")}
+            detail={cc("validation.publishRequiresCc16Detail")}
           />
           {publishIssues.length > 0 ? (
             <ul className="space-y-2">
@@ -613,17 +631,19 @@ export function PlanCreationWizard(props: {
           disabled={state.step === 0 || busy}
           onClick={() => patch({ step: Math.max(0, state.step - 1) })}
         >
-          Back
+          {cc("wizard.back")}
         </Button>
         {state.step < 9 ? (
           <Button
             type="button"
             disabled={busy}
             onClick={() =>
-              patch({ step: Math.min(STEPS.length - 1, state.step + 1) })
+              patch({
+                step: Math.min(WIZARD_STEP_KEYS.length - 1, state.step + 1),
+              })
             }
           >
-            Next
+            {cc("wizard.next")}
           </Button>
         ) : null}
         {state.step === 9 ? (
@@ -634,14 +654,14 @@ export function PlanCreationWizard(props: {
               disabled={busy}
               onClick={() => void runCreatePipeline(false)}
             >
-              Save Draft Graph
+              {cc("actions.saveDraftGraph")}
             </Button>
             <Button
               type="button"
               disabled={busy}
               onClick={() => patch({ step: 10 })}
             >
-              Continue to Publish
+              {cc("actions.continueToPublish")}
             </Button>
           </>
         ) : null}
@@ -651,7 +671,7 @@ export function PlanCreationWizard(props: {
             disabled={busy}
             onClick={() => void runCreatePipeline(true)}
           >
-            {busy ? "Working…" : "Validate & Publish"}
+            {busy ? cc("actions.working") : cc("actions.validateAndPublish")}
           </Button>
         ) : null}
         <Button
@@ -662,10 +682,10 @@ export function PlanCreationWizard(props: {
             catalogExperienceObservability.recordWizardAbandon();
             catalogProductivityStore.clearWizardDraft(DRAFT_ID);
             setState({ ...DEFAULT });
-            toast.message("Wizard reset");
+            toast.message(cc("toasts.wizardReset"));
           }}
         >
-          Reset
+          {cc("wizard.reset")}
         </Button>
       </div>
     </PlatformOpsSection>

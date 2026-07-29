@@ -6,7 +6,7 @@ import { trpc } from "@/lib/trpc";
 import { Check, Mail, MessageCircle, CreditCard } from "lucide-react";
 import { useLocation } from "wouter";
 import { getLoginUrl } from "@/const";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
@@ -16,6 +16,11 @@ import { useCommercialFeatureVisibility } from "@/hooks/useCommercialFeatureVisi
 import { MINEUQR_PUBLIC_SUPPORT_EMAIL } from "@/const/publicContact";
 import { SemanticConfirmDialog } from "@/design-system/semantic-confirm-dialog";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { CommercialDualPrice } from "@/components/commercial/CommercialDualPrice";
+import {
+  getFxService,
+  resolveDualPricePresentation,
+} from "@shared/commercial-catalog";
 
 function PayPalCheckoutButton({
   planId,
@@ -229,6 +234,8 @@ export default function Pricing() {
   const [, setLocation] = useLocation();
   const { t, language } = useLanguage();
   const { data: plans, isLoading } = trpc.subscription.listPlans.useQuery();
+  const { data: visitor } =
+    trpc.commercialCatalog.localization.resolveVisitorContext.useQuery();
   const {
     context,
     entitlements,
@@ -241,11 +248,18 @@ export default function Pricing() {
   });
 
   const [selectedCycle, setSelectedCycle] = useState<"monthly" | "yearly">("yearly");
+  const fx = useMemo(() => getFxService(), []);
 
   useMarketingDocumentMeta({
-    title: t("common.pricing"),
-    description: t("pricing.faqPaymentAnswer"),
+    title: t("pricing.localizedMetaTitle"),
+    description: t("pricing.localizedMetaDescription"),
     path: "/pricing",
+    locale: language,
+    hreflang: [
+      { lang: "ar", path: "/pricing" },
+      { lang: "en", path: "/pricing" },
+      { lang: "x-default", path: "/pricing" },
+    ],
   });
 
   if (isLoading) {
@@ -260,7 +274,10 @@ export default function Pricing() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 py-12 px-4">
+    <div
+      className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 py-12 px-4"
+      dir={language === "ar" ? "rtl" : "ltr"}
+    >
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/30 bg-background/60 backdrop-blur-xl">
         <div className="container flex items-center justify-between h-16">
@@ -321,8 +338,14 @@ export default function Pricing() {
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
             {t("pricing.title")}
           </h1>
-          <p className="text-xl text-cyan-300 mb-8">
+          <p className="text-xl text-cyan-300 mb-4">
             {t("pricing.subtitle")}
+          </p>
+          <p className="text-sm text-cyan-200/80 mb-8">
+            {t("pricing.dualCurrencyNote")}
+            {visitor?.countryCode
+              ? ` · ${t("admin.platformOps.commercialCatalog.publicPricing.detectedCountry")}: ${visitor.countryCode}`
+              : null}
           </p>
 
           {/* Trial Status */}
@@ -406,16 +429,29 @@ export default function Pricing() {
                   <h3 className="text-2xl font-bold text-white mb-2">{language === 'ar' ? plan.nameAr : plan.nameEn}</h3>
                   <p className="text-cyan-300 text-sm mb-6">{language === 'ar' ? plan.descriptionAr : plan.descriptionEn}</p>
 
-                  {/* Price */}
-                  <div className="mb-8">
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-orange-400">
-                        ${price}
-                      </span>
-                      <span className="text-cyan-300">
-                        {selectedCycle === "yearly" ? t('pricing.year') : t('pricing.month')}
-                      </span>
-                    </div>
+                  {/* Price — dual USD + local (presentation only; checkout unchanged) */}
+                  <div className="mb-8 text-white">
+                    <CommercialDualPrice
+                      presentation={resolveDualPricePresentation({
+                        prices: [
+                          {
+                            amount: String(price ?? 0),
+                            currency: "USD",
+                          },
+                        ],
+                        regions: [],
+                        countryCode: visitor?.countryCode ?? "US",
+                        countrySource: visitor?.source,
+                        convert: (amount, from, to) =>
+                          fx.convertSync(amount, from, to),
+                      })}
+                      cycleLabel={
+                        selectedCycle === "yearly"
+                          ? t("pricing.year")
+                          : t("pricing.month")
+                      }
+                      showSource
+                    />
                   </div>
 
                   {/* Features */}
