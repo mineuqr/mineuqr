@@ -160,7 +160,7 @@ describe("DEVICE-MANAGEMENT-PLATFORM-ARCHITECTURE-2", () => {
 
   it("hosts Devices on existing Platform Ops path and marks section live", () => {
     expect(DEVICE_DASHBOARD_HOST_PATH).toBe("/admin/platform/devices");
-    expect(getPlatformOpsSection("devices").status).toBe("live");
+    expect(getPlatformOpsSection("devices").status).toBe("architecture");
     const app = read("client/src/App.tsx");
     expect(app).toContain('path="/admin/platform/devices"');
   });

@@ -929,7 +929,8 @@
       "reviewCommunications": "Review Communications",
       "reviewCommercialHealth": "Review Commercial Health",
       "openAnalytics": "Open Analytics",
-      "openPlatformOps": "Open Platform Operations"
+      "openPlatformOps": "Open Platform Operations",
+      "openReportsHub": "Open Reports Hub"
     },
     "commercial": {
       "pageSubtitle": "Executive commercial summary for platform operators",
@@ -1161,11 +1162,18 @@
       "sectionNavLabel": "Operations sections",
       "reserved": "Soon",
       "live": "Live",
+      "status": {
+        "live": "Live",
+        "architecture": "Architecture",
+        "reserved": "Reserved",
+        "preview": "Preview",
+        "deprecated": "Deprecated"
+      },
       "reservedBody": "Architecture reserved for future ownership. No runtime implementation in this program.",
       "architectureOnly": "Architecture placeholder only — no business logic.",
       "overview": {
         "title": "Operations overview",
-        "body": "Platform operational capabilities live in one workspace. Business management remains under Tenants and Accounts."
+        "body": "Platform operational capabilities live in one workspace. Business management remains under Tenants and Accounts. Section badges show truthful Live / Architecture / Reserved status."
       },
       "sections": {
         "overview": "Overview",
@@ -1188,7 +1196,27 @@
         "diagnosticsDesc": "Runtime probes and configuration checks"
       },
       "health": {
-        "migratedNote": "Previously a top-level Health Center entry. Content unchanged — navigation only."
+        "migratedNote": "Previously a top-level Health Center entry. Path migrated under Platform Operations — panel is Architecture status until an operational health surface is wired."
+      },
+      "reportsHub": {
+        "title": "Reports",
+        "body": "Canonical entry for platform reporting. Commercial and Analytics remain destinations — ownership and KPI logic unchanged.",
+        "destinations": "Destinations",
+        "canonicalEntry": "Canonical entry",
+        "destinationsTitle": "Report destinations",
+        "destinationsBody": "Open Commercial or Analytics from this hub. Primary navigation lists Reports only.",
+        "commercialTitle": "Commercial",
+        "commercialBody": "Executive commercial summary for platform operators.",
+        "analyticsTitle": "Analytics",
+        "analyticsBody": "Platform analytics and statistics.",
+        "ownershipTitle": "Ownership",
+        "ownershipBody": "Reports Hub owns navigation entry only. Reporting platforms keep calculation ownership.",
+        "ownershipReports": "Reports Hub — canonical navigation entry",
+        "ownershipCommercial": "Commercial — commercial reporting destination",
+        "ownershipAnalytics": "Analytics — analytics destination",
+        "ownershipUnchanged": "No KPI / reporting logic changes in this program",
+        "noteTitle": "No duplicate reporting",
+        "noteBody": "Commercial and Analytics stay reachable via this hub and bookmarks — not as separate primary nav items."
       },
       "performance": {
         "architectureTitle": "Performance Platform architecture",

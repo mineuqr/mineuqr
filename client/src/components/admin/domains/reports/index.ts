@@ -9,3 +9,4 @@ export { ReportsCommercialBody } from "./ReportsCommercialBody";
 export { ReportsCommercialPageContent } from "./ReportsCommercialPageContent";
 export { ReportsExportActions } from "./ReportsExportActions";
 export { ReportsAnalyticsSection } from "./ReportsAnalyticsSection";
+export { AdminReportsHubComposition } from "./AdminReportsHubComposition";

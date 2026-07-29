@@ -5,7 +5,6 @@ import {
   BarChart3,
   Bell,
   Building2,
-  LineChart,
   Users,
 } from "lucide-react";
 import { Link } from "wouter";
@@ -38,19 +37,14 @@ const QUICK_ACTIONS: QuickAction[] = [
     icon: Bell,
   },
   {
+    href: "/admin/reports",
+    labelKey: "admin.commandCenter.openReportsHub",
+    icon: BarChart3,
+  },
+  {
     href: "/admin/platform",
     labelKey: "admin.commandCenter.openPlatformOps",
     icon: Activity,
-  },
-  {
-    href: "/admin/commercial",
-    labelKey: "admin.commandCenter.reviewCommercialHealth",
-    icon: LineChart,
-  },
-  {
-    href: "/admin/analytics",
-    labelKey: "admin.commandCenter.openAnalytics",
-    icon: BarChart3,
   },
 ];
 

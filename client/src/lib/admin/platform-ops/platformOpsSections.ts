@@ -1,7 +1,15 @@
 /**
  * OPERATIONS-INFORMATION-ARCHITECTURE-1
- * Platform Operations workspace section registry (navigation only).
+ * + PLATFORM-P0-PRODUCTION-READINESS-1
+ * Platform Operations workspace section registry (navigation + status semantics).
  */
+
+import {
+  type PlatformOpsProductStatus,
+  isPlatformOpsOperationallyLive,
+  platformOpsStatusBadgeTone,
+  platformOpsStatusLabelKey,
+} from "./platformOpsStatusSemantics";
 
 export const PLATFORM_OPS_SECTIONS = [
   "overview",
@@ -22,8 +30,11 @@ export type PlatformOpsSectionDef = {
   path: string;
   labelKey: string;
   descriptionKey: string;
-  /** Implemented vs reserved architecture slot. */
-  status: "live" | "reserved";
+  /**
+   * Product status — never present Architecture/Reserved as operational Live.
+   * PLATFORM-P0-PRODUCTION-READINESS-1
+   */
+  status: PlatformOpsProductStatus;
 };
 
 export const PLATFORM_OPS_BASE = "/admin/platform";
@@ -49,35 +60,36 @@ export const PLATFORM_OPS_SECTION_DEFINITIONS: readonly PlatformOpsSectionDef[] 
       path: `${PLATFORM_OPS_BASE}/health`,
       labelKey: "admin.platformOps.sections.health",
       descriptionKey: "admin.platformOps.sections.healthDesc",
-      status: "live",
+      /** Path migrated; panel not yet an operational control surface. */
+      status: "architecture",
     },
     {
       id: "performance",
       path: `${PLATFORM_OPS_BASE}/performance`,
       labelKey: "admin.platformOps.sections.performance",
       descriptionKey: "admin.platformOps.sections.performanceDesc",
-      status: "live",
+      status: "architecture",
     },
     {
       id: "devices",
       path: `${PLATFORM_OPS_BASE}/devices`,
       labelKey: "admin.platformOps.sections.devices",
       descriptionKey: "admin.platformOps.sections.devicesDesc",
-      status: "live",
+      status: "architecture",
     },
     {
       id: "jobs",
       path: `${PLATFORM_OPS_BASE}/jobs`,
       labelKey: "admin.platformOps.sections.jobs",
       descriptionKey: "admin.platformOps.sections.jobsDesc",
-      status: "live",
+      status: "architecture",
     },
     {
       id: "events",
       path: `${PLATFORM_OPS_BASE}/events`,
       labelKey: "admin.platformOps.sections.events",
       descriptionKey: "admin.platformOps.sections.eventsDesc",
-      status: "live",
+      status: "architecture",
     },
     {
       id: "audit",
@@ -91,7 +103,7 @@ export const PLATFORM_OPS_SECTION_DEFINITIONS: readonly PlatformOpsSectionDef[] 
       path: `${PLATFORM_OPS_BASE}/diagnostics`,
       labelKey: "admin.platformOps.sections.diagnostics",
       descriptionKey: "admin.platformOps.sections.diagnosticsDesc",
-      status: "live",
+      status: "architecture",
     },
   ] as const;
 
@@ -127,3 +139,10 @@ export function isPlatformOpsPath(pathname: string): boolean {
     pathname.startsWith(`${PLATFORM_OPS_BASE}/`)
   );
 }
+
+export {
+  type PlatformOpsProductStatus,
+  isPlatformOpsOperationallyLive,
+  platformOpsStatusBadgeTone,
+  platformOpsStatusLabelKey,
+};

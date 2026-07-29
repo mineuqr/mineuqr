@@ -103,7 +103,7 @@ describe("PERFORMANCE-PLATFORM-ARCHITECTURE-1", () => {
     expect(getPlatformOpsSection("performance").path).toBe(
       "/admin/platform/performance"
     );
-    expect(getPlatformOpsSection("performance").status).toBe("live");
+    expect(getPlatformOpsSection("performance").status).toBe("architecture");
     const app = read("client/src/App.tsx");
     expect(app).toContain('path="/admin/platform/performance"');
     expect(app).not.toContain('path="/admin/platform/performance/api"');

@@ -115,9 +115,9 @@ describe("OPERATIONS-RUNTIME-PLATFORM-ARCHITECTURE-1", () => {
     expect(RUNTIME_DASHBOARD_HOST_PATHS.diagnostics).toBe(
       "/admin/platform/diagnostics"
     );
-    expect(getPlatformOpsSection("jobs").status).toBe("live");
-    expect(getPlatformOpsSection("events").status).toBe("live");
-    expect(getPlatformOpsSection("diagnostics").status).toBe("live");
+    expect(getPlatformOpsSection("jobs").status).toBe("architecture");
+    expect(getPlatformOpsSection("events").status).toBe("architecture");
+    expect(getPlatformOpsSection("diagnostics").status).toBe("architecture");
     const app = read("client/src/App.tsx");
     expect(app).toContain('path="/admin/platform/jobs"');
     expect(app).not.toContain('path="/admin/platform/runtime"');

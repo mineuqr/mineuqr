@@ -41,8 +41,11 @@ export const ADMIN_ROUTE_DEFINITIONS: AdminRouteDefinition[] = [
     descriptionKey: "admin.nav.commercialDesc",
     pageSubtitleKey: "admin.commercial.pageSubtitle",
     icon: TrendingUp,
+    /** PLATFORM-P0 — grouped under Reports Hub; not primary nav. */
+    showInNav: false,
     breadcrumbs: [
       { routeId: "overview", href: "/admin" },
+      { routeId: "reports", href: "/admin/reports" },
       { routeId: "commercial" },
     ],
   },
@@ -54,8 +57,11 @@ export const ADMIN_ROUTE_DEFINITIONS: AdminRouteDefinition[] = [
     descriptionKey: "admin.nav.analyticsDesc",
     pageSubtitleKey: "admin.nav.analyticsPageSubtitle",
     icon: BarChart3,
+    /** PLATFORM-P0 — grouped under Reports Hub; not primary nav. */
+    showInNav: false,
     breadcrumbs: [
       { routeId: "overview", href: "/admin" },
+      { routeId: "reports", href: "/admin/reports" },
       { routeId: "analytics" },
     ],
   },
@@ -78,6 +84,8 @@ export const ADMIN_ROUTE_DEFINITIONS: AdminRouteDefinition[] = [
     labelKey: "admin.nav.customerSuccess",
     descriptionKey: "admin.nav.customerSuccessDesc",
     icon: Users,
+    /** PLATFORM-P0 — Coming Soon shell removed from primary nav; redirects to ops. */
+    showInNav: false,
     breadcrumbs: [
       { routeId: "overview", href: "/admin" },
       { routeId: "customer-success" },
@@ -116,6 +124,8 @@ export const ADMIN_ROUTE_DEFINITIONS: AdminRouteDefinition[] = [
     category: "reports",
     labelKey: "admin.nav.reports",
     descriptionKey: "admin.nav.reportsDesc",
+    pageTitleKey: "admin.reportsHub.title",
+    pageSubtitleKey: "admin.reportsHub.body",
     icon: FileText,
     breadcrumbs: [
       { routeId: "overview", href: "/admin" },
@@ -129,6 +139,8 @@ export const ADMIN_ROUTE_DEFINITIONS: AdminRouteDefinition[] = [
     labelKey: "admin.nav.launchReadiness",
     descriptionKey: "admin.nav.launchReadinessDesc",
     icon: Rocket,
+    /** PLATFORM-P0 — Coming Soon; hidden from primary nav. */
+    showInNav: false,
     breadcrumbs: [
       { routeId: "overview", href: "/admin" },
       { routeId: "launch-readiness" },
@@ -175,13 +187,9 @@ export const ADMIN_ROUTE_NAV_GROUP_LAYOUT: AdminRouteNavGroupLayout[] = [
     id: "main",
     routeIds: [
       "overview",
-      "commercial",
-      "analytics",
-      "tenants",
-      "customer-success",
-      "security",
       "reports",
-      "launch-readiness",
+      "tenants",
+      "security",
       "platform-operations",
     ],
   },

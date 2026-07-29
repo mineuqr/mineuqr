@@ -1,11 +1,17 @@
 /**
  * OPERATIONS-INFORMATION-ARCHITECTURE-1
  * + PLATFORM-OPERATIONS-UI-ADOPTION-1
+ * + PLATFORM-P0-PRODUCTION-READINESS-1
  * Platform Operations — Overview section.
  */
 
 import { useLanguage } from "@/contexts/LanguageContext";
-import { PLATFORM_OPS_SECTION_DEFINITIONS } from "@/lib/admin/platform-ops/platformOpsSections";
+import {
+  PLATFORM_OPS_SECTION_DEFINITIONS,
+  isPlatformOpsOperationallyLive,
+  platformOpsStatusBadgeTone,
+  platformOpsStatusLabelKey,
+} from "@/lib/admin/platform-ops/platformOpsSections";
 import {
   PlatformOpsHeroSummary,
   PlatformOpsMetricCard,
@@ -19,7 +25,12 @@ export function PlatformOpsOverviewComposition() {
   const modules = PLATFORM_OPS_SECTION_DEFINITIONS.filter(
     (s) => s.id !== "overview"
   );
-  const liveCount = modules.filter((s) => s.status === "live").length;
+  const liveCount = modules.filter((s) =>
+    isPlatformOpsOperationallyLive(s.status)
+  ).length;
+  const architectureCount = modules.filter(
+    (s) => s.status === "architecture"
+  ).length;
   const reservedCount = modules.filter((s) => s.status === "reserved").length;
 
   return (
@@ -28,19 +39,19 @@ export function PlatformOpsOverviewComposition() {
         title={t("admin.platformOps.overview.title")}
         description={t("admin.platformOps.overview.body")}
         health="healthy"
-        healthLabel={t("admin.platformOps.live")}
+        healthLabel={t("admin.platformOps.status.live")}
         columns={2}
       >
         <PlatformOpsMetricCard
-          label={t("admin.platformOps.live")}
+          label={t("admin.platformOps.status.live")}
           value={String(liveCount)}
           tone="success"
           domain="information"
         />
         <PlatformOpsMetricCard
-          label={t("admin.platformOps.reserved")}
-          value={String(reservedCount)}
-          tone="info"
+          label={t("admin.platformOps.status.architecture")}
+          value={String(architectureCount + reservedCount)}
+          tone="warning"
           domain="information"
         />
       </PlatformOpsHeroSummary>
@@ -56,12 +67,8 @@ export function PlatformOpsOverviewComposition() {
               href={section.path}
               title={t(section.labelKey)}
               description={t(section.descriptionKey)}
-              live={section.status === "live"}
-              statusLabel={
-                section.status === "live"
-                  ? t("admin.platformOps.live")
-                  : t("admin.platformOps.reserved")
-              }
+              statusTone={platformOpsStatusBadgeTone(section.status)}
+              statusLabel={t(platformOpsStatusLabelKey(section.status))}
             />
           ))}
         </PlatformOpsModuleGrid>

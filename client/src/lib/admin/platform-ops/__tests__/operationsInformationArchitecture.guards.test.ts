@@ -53,18 +53,14 @@ describe("OPERATIONS-INFORMATION-ARCHITECTURE-1 navigation", () => {
     expect(isAdminNavItemActive(item, "/admin/security")).toBe(false);
   });
 
-  it("sidebar order matches IA (no health; platform ops last)", () => {
+  it("sidebar order matches P0 honest IA", () => {
     const main = ADMIN_NAV_GROUPS.find((g) => g.id === "main")!;
     const ids = main.items.map((i) => i.id);
     expect(ids).toEqual([
       "overview",
-      "commercial",
-      "analytics",
-      "tenants",
-      "customer-success",
-      "security",
       "reports",
-      "launch-readiness",
+      "tenants",
+      "security",
       "platform-operations",
     ]);
   });

@@ -3,6 +3,7 @@
  * + PLATFORM-OPERATIONS-UI-ADOPTION-1
  * Secondary nav for Platform Operations workspace.
  * Link targets / section order unchanged — presentation tokens + status badge only.
+ * PLATFORM-P0-PRODUCTION-READINESS-1 — truthful status badges for every section.
  */
 
 import { Link } from "wouter";
@@ -10,6 +11,8 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { cn } from "@/lib/utils";
 import {
   PLATFORM_OPS_SECTION_DEFINITIONS,
+  platformOpsStatusBadgeTone,
+  platformOpsStatusLabelKey,
   type PlatformOpsSectionId,
 } from "@/lib/admin/platform-ops/platformOpsSections";
 import {
@@ -43,12 +46,10 @@ export function PlatformOpsSectionNav({ active }: PlatformOpsSectionNavProps) {
             )}
           >
             {t(section.labelKey)}
-            {section.status === "reserved" ? (
-              <PlatformOpsStatusBadge
-                status="unknown"
-                label={t("admin.platformOps.reserved")}
-              />
-            ) : null}
+            <PlatformOpsStatusBadge
+              status={platformOpsStatusBadgeTone(section.status)}
+              label={t(platformOpsStatusLabelKey(section.status))}
+            />
           </Link>
         );
       })}

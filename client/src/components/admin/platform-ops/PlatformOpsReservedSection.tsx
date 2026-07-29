@@ -65,18 +65,18 @@ export function PlatformOpsReservedSection({
         title={t(section.labelKey)}
         description={t("admin.platformOps.reservedBody")}
         health="unknown"
-        healthLabel={t("admin.platformOps.reserved")}
+        healthLabel={t("admin.platformOps.status.reserved")}
         columns={2}
       >
         <PlatformOpsMetricCard
-          label={t("admin.platformOps.reserved")}
+          label={t("admin.platformOps.status.reserved")}
           value={String(ownership.length)}
           tone="info"
           domain="information"
         />
         <PlatformOpsMetricCard
           label={t(section.labelKey)}
-          value={t("admin.platformOps.architectureOnly")}
+          value={t("admin.platformOps.status.reserved")}
           tone="info"
           domain="information"
         />
@@ -88,7 +88,7 @@ export function PlatformOpsReservedSection({
       >
         <PlatformOpsEmptyState
           icon={Inbox}
-          title={t("admin.platformOps.reserved")}
+          title={t("admin.platformOps.status.reserved")}
           description={t("admin.platformOps.architectureOnly")}
         />
         <PlatformOpsOwnershipList items={ownership.map((key) => t(key))} />

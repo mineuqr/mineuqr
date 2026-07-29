@@ -23,18 +23,18 @@ export function PlatformOpsHealthComposition() {
         title={t("admin.platformOps.sections.health")}
         description={t("admin.platformOps.health.migratedNote")}
         health="unknown"
-        healthLabel={t("admin.platformOps.reserved")}
+        healthLabel={t("admin.platformOps.status.architecture")}
         columns={2}
       >
         <PlatformOpsMetricCard
           label={t("admin.platformOps.sections.health")}
-          value={t("admin.platformOps.reserved")}
+          value={t("admin.platformOps.status.architecture")}
           tone="info"
           domain="information"
         />
         <PlatformOpsMetricCard
           label={t("admin.platformOps.sections.diagnostics")}
-          value={t("admin.platformOps.architectureOnly")}
+          value={t("admin.platformOps.status.architecture")}
           tone="info"
           domain="information"
         />
