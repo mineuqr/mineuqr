@@ -1,5 +1,16 @@
+/**
+ * Kitchen runtime stream — fetch read model, apply category filter in runtime layer.
+ * Presentation consumes the filtered stream only.
+ *
+ * REALTIME-KITCHEN-ADOPTION-1 — kitchen_display uses Realtime Platform as primary
+ * discovery; Expo keeps poll + broadcast only (out of scope).
+ */
+
 import { useEffect, useMemo } from "react";
-import { DATA_POLL_INTERVAL_MS } from "../bootstrapLogic";
+import {
+  DATA_POLL_INTERVAL_MS,
+  DATA_POLL_REALTIME_RECOVERY_MS,
+} from "../bootstrapLogic";
 import { screenTrpc } from "../screenTrpc";
 import { useScreenRuntime } from "@/components/operational-screen/OperationalScreenRuntimeProvider";
 import { isCapabilitySupported } from "@/lib/operational-screen/capability/resolveCapabilityPresentation";
@@ -12,6 +23,8 @@ import { useKitchenArrivalNotifications } from "./useKitchenArrivalNotifications
 import { noteOrderLifecycleObserverRefresh } from "@/lib/order-lifecycle-latency";
 import { subscribeOrderLifecycleUpdates } from "@/lib/order-lifecycle-latency/orderLifecycleBroadcast";
 import { kitchenQueueStructuralSharing } from "@/lib/read-freshness/queryStructuralSharing";
+import { scheduleKitchenQueueInvalidation } from "./kitchenQueueInvalidationCoordinator";
+import { useKitchenRuntimeRealtime } from "./useKitchenRuntimeRealtime";
 
 export type { KitchenProjectionDiagnostics, KitchenRuntimeStream };
 
@@ -20,10 +33,6 @@ function useVisiblePollingEnabled(): boolean {
   return document.visibilityState === "visible";
 }
 
-/**
- * Kitchen runtime stream — fetch read model, apply category filter in runtime layer.
- * Presentation consumes the filtered stream only.
- */
 export function useKitchenRuntimeStream(): KitchenRuntimeStream & {
   retry: () => void;
   isRefetching: boolean;
@@ -33,12 +42,27 @@ export function useKitchenRuntimeStream(): KitchenRuntimeStream & {
   const visible = useVisiblePollingEnabled();
   const kitchenQueueSupported = isCapabilitySupported(context?.runtimeCapabilities, "kitchen_queue");
   const language = context?.presentation.language ?? "en";
+  const restaurantId = context?.identity.restaurantId;
+  const role = context?.identity.role;
+
+  const utils = screenTrpc.useUtils();
+
+  const { realtimePrimary } = useKitchenRuntimeRealtime({
+    restaurantId,
+    enabled: kitchenQueueSupported,
+    role,
+    onInvalidate: () => {
+      void utils.operationalDevice.runtime.getKitchenQueue.invalidate();
+    },
+  });
+
+  const pollMs = realtimePrimary ? DATA_POLL_REALTIME_RECOVERY_MS : DATA_POLL_INTERVAL_MS;
 
   const queueQuery = screenTrpc.operationalDevice.runtime.getKitchenQueue.useQuery(
     { status: "all", limit: 200 },
     {
       enabled: kitchenQueueSupported,
-      refetchInterval: visible && kitchenQueueSupported ? DATA_POLL_INTERVAL_MS : false,
+      refetchInterval: visible && kitchenQueueSupported ? pollMs : false,
       refetchOnWindowFocus: true,
       placeholderData: (prev) => prev,
       structuralSharing: kitchenQueueStructuralSharing,
@@ -49,22 +73,26 @@ export function useKitchenRuntimeStream(): KitchenRuntimeStream & {
     if (!queueQuery.isSuccess || queueQuery.isFetching) return;
     noteOrderLifecycleObserverRefresh({
       surface: "kitchen-runtime-stream",
-      restaurantId: context?.identity.restaurantId,
+      restaurantId,
     });
   }, [
     queueQuery.dataUpdatedAt,
     queueQuery.isSuccess,
     queueQuery.isFetching,
-    context?.identity.restaurantId,
+    restaurantId,
   ]);
 
   useEffect(() => {
-    const restaurantId = context?.identity.restaurantId;
     if (!restaurantId || !kitchenQueueSupported) return;
     return subscribeOrderLifecycleUpdates(restaurantId, () => {
-      void queueQuery.refetch();
+      scheduleKitchenQueueInvalidation({
+        restaurantId,
+        invalidate: () => {
+          void queueQuery.refetch();
+        },
+      });
     });
-  }, [context?.identity.restaurantId, kitchenQueueSupported, queueQuery.refetch]);
+  }, [restaurantId, kitchenQueueSupported, queueQuery.refetch]);
 
   const stream = useMemo(
     () =>
@@ -89,6 +117,7 @@ export function useKitchenRuntimeStream(): KitchenRuntimeStream & {
     ]
   );
 
+  // KITCHEN-NOTIFICATION-ARCHITECTURE-1 — unchanged; runs after queue refresh only.
   useKitchenArrivalNotifications({
     enabled: kitchenQueueSupported,
     queue: stream.queue,

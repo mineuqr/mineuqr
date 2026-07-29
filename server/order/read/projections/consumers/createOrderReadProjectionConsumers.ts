@@ -6,6 +6,7 @@ import type {
 import type { ProjectionId } from "../../domain/contracts/projectionIds";
 import type { OrderReadProjectionMaterializer } from "../materializers/OrderReadProjectionMaterializer";
 import { publishOrdersRealtimeHintAfterProjection } from "../../realtime/publishOrdersRealtimeHintAfterProjection";
+import { publishKitchenRealtimeHintAfterProjection } from "../../realtime/publishKitchenRealtimeHintAfterProjection";
 
 type ConsumerSpec = {
   name: OrderProjectionConsumerName;
@@ -45,8 +46,10 @@ const CONSUMER_SPECS: ConsumerSpec[] = [
     ],
     handle: async (m, e) => {
       await m.syncOrderProjections(resolveOrderId(e), e.eventId);
-      // REALTIME-ORDERS-ADOPTION-1 — hint after durable P-02 sync only.
+      // REALTIME-ORDERS-ADOPTION-1 — orders channel after durable P-02 sync.
       await publishOrdersRealtimeHintAfterProjection(e);
+      // REALTIME-KITCHEN-ADOPTION-1 — kitchen channel after same durable sync.
+      await publishKitchenRealtimeHintAfterProjection(e);
     },
   },
   {

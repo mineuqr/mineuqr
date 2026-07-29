@@ -18,6 +18,8 @@ export const HEARTBEAT_RETRY_MAX_MS = 30_000;
 export const STATUS_POLL_INTERVAL_MS = 60_000;
 /** ORDER-LIFECYCLE-LATENCY-REMEDIATION-1 — Mode A observer fallback (was 10s). */
 export const DATA_POLL_INTERVAL_MS = 3_000;
+/** REALTIME-KITCHEN-ADOPTION-1 — recovery poll while kitchen realtime is live. */
+export const DATA_POLL_REALTIME_RECOVERY_MS = 15_000;
 
 export function isDeviceAuthError(error: unknown): boolean {
   if (!(error instanceof TRPCClientError)) return false;

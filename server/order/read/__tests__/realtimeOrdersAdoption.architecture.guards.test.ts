@@ -127,9 +127,6 @@ describe("REALTIME-ORDERS-ADOPTION-1 architecture", () => {
     const surface = getRealtimeSurfaceCapability("orders-workspace");
     expect(surface?.migrated).toBe(true);
     expect(surface?.channels).toEqual(["orders"]);
-    expect(getRealtimeSurfaceCapability("kitchen-screen")?.migrated).toBe(
-      false
-    );
   });
 
   it("program docs exist", () => {

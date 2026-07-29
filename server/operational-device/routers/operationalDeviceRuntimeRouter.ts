@@ -10,6 +10,13 @@ import {
 import { DEVICE_ORDER_ACTION_IDS } from "../domain/deviceOrderExecution";
 import { executeDeviceOrderAction } from "../services/DeviceOrderExecutionService";
 import {
+  DEFAULT_CLIENT_CAPABILITIES,
+  REALTIME_CHANNELS,
+  type RealtimeChannel,
+} from "@shared/realtime-platform";
+import { mintRealtimeTicket } from "../../realtime-platform/tickets/RealtimeTicketService";
+import { isRealtimePlatformEnabled } from "../../realtime-platform/composition";
+import {
   attachWaiterTableForDevice,
   getWaiterTableWorkspaceForDevice,
   listWaiterFloorTablesForDevice,
@@ -186,6 +193,80 @@ export const operationalDeviceRuntimeRouter = router({
       limit: input.limit,
     });
   }),
+
+  /**
+   * REALTIME-KITCHEN-ADOPTION-1 — device-scoped realtime ticket (kitchen channel only).
+   * Expo and other roles are excluded from this adoption program.
+   */
+  mintRealtimeTicket: deviceProcedure
+    .input(
+      z.object({
+        channels: z
+          .array(
+            z.enum(
+              REALTIME_CHANNELS as unknown as [RealtimeChannel, ...RealtimeChannel[]]
+            )
+          )
+          .min(1)
+          .max(4),
+        clientCapabilities: z
+          .object({
+            protocolVersion: z.number().int().min(1).max(32).optional(),
+            heartbeat: z.boolean().optional(),
+            broadcastBridge: z.boolean().optional(),
+            reconnect: z.boolean().optional(),
+            pollFallback: z.boolean().optional(),
+            compression: z.boolean().optional(),
+            lastEventIdResume: z.boolean().optional(),
+          })
+          .optional(),
+      })
+    )
+    .mutation(({ ctx, input }) => {
+      if (!isRealtimePlatformEnabled()) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Realtime platform disabled",
+        });
+      }
+      const session = ctx.deviceSession!;
+      if (session.role !== "kitchen_display") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Realtime kitchen adoption is kitchen_display only",
+        });
+      }
+      if (!rolePermitsKitchenQueue(session.role)) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Role cannot access kitchen queue",
+        });
+      }
+      if (input.channels.some((c) => c !== "kitchen")) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Device kitchen realtime may only request kitchen channel",
+        });
+      }
+      try {
+        return mintRealtimeTicket({
+          restaurantId: session.restaurantId,
+          authMode: "device_session",
+          sub: `device:${session.deviceId}`,
+          channels: ["kitchen"],
+          deviceId: session.deviceId,
+          clientCapabilities: {
+            ...DEFAULT_CLIENT_CAPABILITIES,
+            ...input.clientCapabilities,
+          },
+        });
+      } catch (err) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: err instanceof Error ? err.message : "Ticket mint failed",
+        });
+      }
+    }),
 
   getPrintMonitorSummary: deviceProcedure.query(async ({ ctx }) => {
     const session = ctx.deviceSession!;

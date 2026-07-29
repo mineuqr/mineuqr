@@ -86,13 +86,16 @@ describe("channel + surface registries", () => {
     }
   });
 
-  it("orders-workspace may be migrated; others stay false until adoption", () => {
-    const orders = REALTIME_SURFACE_CAPABILITY_REGISTRY.find(
-      (s) => s.surfaceId === "orders-workspace"
+  it("orders-workspace and kitchen-screen may be migrated; others stay false", () => {
+    const migrated = new Set(
+      REALTIME_SURFACE_CAPABILITY_REGISTRY.filter((s) => s.migrated).map(
+        (s) => s.surfaceId
+      )
     );
-    expect(orders?.migrated).toBe(true);
+    expect(migrated.has("orders-workspace")).toBe(true);
+    expect(migrated.has("kitchen-screen")).toBe(true);
     for (const surface of REALTIME_SURFACE_CAPABILITY_REGISTRY) {
-      if (surface.surfaceId === "orders-workspace") continue;
+      if (migrated.has(surface.surfaceId)) continue;
       expect(surface.migrated).toBe(false);
     }
   });

@@ -40,12 +40,12 @@ export const REALTIME_SURFACE_CAPABILITY_REGISTRY: readonly RealtimeSurfaceCapab
       surfaceId: "kitchen-screen",
       supportsRealtime: true,
       channels: ["kitchen"],
-      fallback: "poll",
+      fallback: "poll_then_broadcast",
       reconnect: true,
       visibilityAware: true,
       readFreshness: true,
       authMode: "device_session",
-      migrated: false,
+      migrated: true, // REALTIME-KITCHEN-ADOPTION-1
     },
     {
       surfaceId: "expo-screen",
