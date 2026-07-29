@@ -1190,6 +1190,30 @@
       "health": {
         "migratedNote": "Previously a top-level Health Center entry. Content unchanged — navigation only."
       },
+      "performance": {
+        "architectureTitle": "Performance Platform architecture",
+        "architectureBody": "Single source of truth for platform performance presentation and future aggregation. Architecture only — no collectors or runtime changes in this program.",
+        "architectureOnly": "Architecture",
+        "domainsReady": "Domains defined",
+        "domainsReserved": "Reserved / deferred",
+        "dashboardSections": "Dashboard sections",
+        "dashboardSectionsBody": "Nested Performance routes are deferred; section ownership is defined here.",
+        "domainOwnership": "Domain ownership",
+        "domainOwnershipBody": "Each domain has a single owner. Realtime is SSOT-consumed only.",
+        "realtimeSsot": "Realtime metrics (SSOT)",
+        "realtimeSsotBody": "Projections of Realtime Observability catalog ids — never duplicated.",
+        "ssotConsumer": "SSOT consumer",
+        "noDuplicateMetrics": "No parallel Realtime collectors.",
+        "healthModel": "Performance health",
+        "healthModelBody": "Threshold-driven statuses — configurable; evaluation deferred.",
+        "scoreArchitecture": "Performance Score",
+        "scoreArchitectureBody": "Score dimensions defined; scoring implementation deferred.",
+        "trends": "Trend analysis",
+        "trendsBody": "Last hour, 24h, 7d, 30d — trend / regression / improvement.",
+        "capacity": "Capacity planning",
+        "capacityBody": "Reserved architecture for peak, growth, and forecasts.",
+        "capacityReserved": "Capacity planning reserved"
+      },
       "realtime": {
         "loading": "Loading realtime observability…",
         "loadError": "Unable to load realtime dashboard",

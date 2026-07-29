@@ -17,17 +17,9 @@ import {
 } from "@/design-system/platform-ops-ui";
 
 const FUTURE_OWNERSHIP: Record<
-  Exclude<PlatformOpsSectionId, "overview" | "realtime" | "health">,
+  Exclude<PlatformOpsSectionId, "overview" | "realtime" | "health" | "performance">,
   string[]
 > = {
-  performance: [
-    "admin.platformOps.future.performance.cpu",
-    "admin.platformOps.future.performance.memory",
-    "admin.platformOps.future.performance.api",
-    "admin.platformOps.future.performance.db",
-    "admin.platformOps.future.performance.realtime",
-    "admin.platformOps.future.performance.queue",
-  ],
   devices: [
     "admin.platformOps.future.devices.fleet",
     "admin.platformOps.future.devices.presence",
@@ -65,7 +57,7 @@ const FUTURE_OWNERSHIP: Record<
 type PlatformOpsReservedSectionProps = {
   sectionId: Exclude<
     PlatformOpsSectionId,
-    "overview" | "realtime" | "health"
+    "overview" | "realtime" | "health" | "performance"
   >;
 };
 

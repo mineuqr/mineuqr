@@ -7,6 +7,7 @@ import { PlatformOpsWorkspaceShell } from "@/components/admin/platform-ops/Platf
 import { PlatformOpsOverviewComposition } from "@/components/admin/platform-ops/PlatformOpsOverviewComposition";
 import { PlatformOpsRealtimeComposition } from "@/components/admin/platform-ops/PlatformOpsRealtimeComposition";
 import { PlatformOpsHealthComposition } from "@/components/admin/platform-ops/PlatformOpsHealthComposition";
+import { PlatformOpsPerformanceComposition } from "@/components/admin/platform-ops/PlatformOpsPerformanceComposition";
 import { PlatformOpsReservedSection } from "@/components/admin/platform-ops/PlatformOpsReservedSection";
 import type { PlatformOpsSectionId } from "@/lib/admin/platform-ops/platformOpsSections";
 
@@ -17,7 +18,7 @@ function PlatformOpsPage({ sectionId }: { sectionId: PlatformOpsSectionId }) {
       {sectionId === "realtime" ? <PlatformOpsRealtimeComposition /> : null}
       {sectionId === "health" ? <PlatformOpsHealthComposition /> : null}
       {sectionId === "performance" ? (
-        <PlatformOpsReservedSection sectionId="performance" />
+        <PlatformOpsPerformanceComposition />
       ) : null}
       {sectionId === "devices" ? (
         <PlatformOpsReservedSection sectionId="devices" />

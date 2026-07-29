@@ -56,7 +56,7 @@ export const PLATFORM_OPS_SECTION_DEFINITIONS: readonly PlatformOpsSectionDef[] 
       path: `${PLATFORM_OPS_BASE}/performance`,
       labelKey: "admin.platformOps.sections.performance",
       descriptionKey: "admin.platformOps.sections.performanceDesc",
-      status: "reserved",
+      status: "live",
     },
     {
       id: "devices",
