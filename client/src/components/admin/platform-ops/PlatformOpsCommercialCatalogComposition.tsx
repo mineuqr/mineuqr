@@ -1,9 +1,10 @@
 /**
- * COMMERCIAL-CATALOG-MANAGEMENT-UI-1
- * Full Commercial Catalog management workspace (replaces read-only dashboard).
+ * COMMERCIAL-CATALOG-ADMIN-EXPERIENCE-1
+ * Elevates Catalog management into an enterprise SaaS admin workspace.
+ * Orchestrates existing commercialCatalog services — no domain duplication.
  */
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   BookOpen,
   CheckCircle2,
@@ -44,12 +45,45 @@ import {
   ValidationManagementPanel,
   VersionsManagementPanel,
 } from "./commercial-catalog/CatalogManagementPanels";
+import {
+  EXPERIENCE_TABS,
+  EXPERIENCE_TAB_LABELS,
+  type ExperienceTab,
+} from "./commercial-catalog/experience/experienceNav";
+import { PlanCreationWizard } from "./commercial-catalog/experience/PlanCreationWizard";
+import {
+  BulkOperationsPanel,
+  CommercialTimelinePanel,
+  CustomerPreviewPanel,
+  DeepClonePanel,
+  DependencyGraphPanel,
+  ExperienceDashboard,
+  GlobalCatalogSearch,
+  PricingPreviewPanel,
+  ProductivityRail,
+  PublicationDiffPanel,
+  SmartValidationEnhancer,
+  useCatalogExperienceShortcuts,
+  VersionComparePanel,
+} from "./commercial-catalog/experience/ExperiencePanels";
 
 export function PlatformOpsCommercialCatalogComposition() {
   const { t } = useLanguage();
+  const [experienceTab, setExperienceTab] = useState<ExperienceTab>("dashboard");
   const [section, setSection] =
     useState<CommercialCatalogDashboardSection>("plans");
   const data = useCatalogManagementData();
+
+  const navigateSection = useCallback((s: CommercialCatalogDashboardSection) => {
+    setExperienceTab("manage");
+    setSection(s);
+  }, []);
+
+  useCatalogExperienceShortcuts({
+    onSearch: () => setExperienceTab("search"),
+    onWizard: () => setExperienceTab("wizard"),
+    onDashboard: () => setExperienceTab("dashboard"),
+  });
 
   const health = data.healthQuery.data;
   const healthTone =
@@ -97,16 +131,16 @@ export function PlatformOpsCommercialCatalogComposition() {
   return (
     <div
       data-slot="platform-ops-commercial-catalog"
-      data-program="COMMERCIAL-CATALOG-MANAGEMENT-UI-1"
+      data-program="COMMERCIAL-CATALOG-ADMIN-EXPERIENCE-1"
       data-foundation={COMMERCIAL_CATALOG_FOUNDATION_PROGRAM}
       data-host-path={COMMERCIAL_CATALOG_DASHBOARD_HOST_PATH}
-      className={PLATFORM_OPS_UI.workspace}
+      className={cn(PLATFORM_OPS_UI.workspace, "dark:bg-background")}
     >
       <PlatformOpsHeroSummary
         title={t("admin.platformOps.commercialCatalog.title")}
-        description="Production-grade Commercial Catalog management — create, edit, validate, publish, deprecate, and retire offerings without database access."
+        description="Enterprise Commercial Catalog workspace — wizard, smart validation, clone, compare, previews, bulk ops, and search. Domain rules unchanged."
         health={healthTone}
-        healthLabel="Management live"
+        healthLabel="Experience live"
         columns={4}
       >
         <PlatformOpsMetricCard
@@ -139,63 +173,133 @@ export function PlatformOpsCommercialCatalogComposition() {
         />
       </PlatformOpsHeroSummary>
 
-      <nav
-        aria-label="Commercial Catalog modules"
-        className="flex flex-wrap gap-2 border-b pb-3"
-      >
-        {COMMERCIAL_CATALOG_DASHBOARD_SECTIONS.map((id) => (
-          <Button
-            key={id}
-            type="button"
-            size="sm"
-            variant={section === id ? "default" : "outline"}
-            className={cn(section === id && "shadow-sm")}
-            onClick={() => setSection(id)}
+      <div className="grid gap-4 lg:grid-cols-[1fr_240px]">
+        <div>
+          <nav
+            aria-label="Commercial Catalog experience"
+            className="flex flex-wrap gap-2 border-b pb-3"
           >
-            {MANAGEMENT_SECTION_LABELS[id]}
-          </Button>
-        ))}
-      </nav>
+            {EXPERIENCE_TABS.map((id) => (
+              <Button
+                key={id}
+                type="button"
+                size="sm"
+                variant={experienceTab === id ? "default" : "outline"}
+                className={cn(experienceTab === id && "shadow-sm")}
+                onClick={() => setExperienceTab(id)}
+              >
+                {EXPERIENCE_TAB_LABELS[id]}
+              </Button>
+            ))}
+          </nav>
 
-      <div className="pt-2">
-        {section === "plans" ? <PlansManagementPanel data={data} /> : null}
-        {section === "plan_versions" ? (
-          <VersionsManagementPanel data={data} />
-        ) : null}
-        {section === "pricing" ? <PricingManagementPanel data={data} /> : null}
-        {section === "billing_cycles" ? (
-          <BillingCyclesManagementPanel data={data} />
-        ) : null}
-        {section === "feature_bundles" ? (
-          <FeatureBundlesManagementPanel data={data} />
-        ) : null}
-        {section === "limit_profiles" ? (
-          <LimitProfilesManagementPanel data={data} />
-        ) : null}
-        {section === "trial_policies" ? (
-          <TrialPoliciesManagementPanel data={data} />
-        ) : null}
-        {section === "regional_policies" ? (
-          <RegionsManagementPanel data={data} />
-        ) : null}
-        {section === "promotions" ? (
-          <PromotionsManagementPanel data={data} />
-        ) : null}
-        {section === "migration_policies" ? (
-          <MigrationPoliciesManagementPanel data={data} />
-        ) : null}
-        {section === "retirement_policies" ? (
-          <RetirementPoliciesManagementPanel data={data} />
-        ) : null}
-        {section === "publication_status" ? (
-          <PublicationManagementPanel data={data} />
-        ) : null}
-        {section === "commercial_validation" ? (
-          <ValidationManagementPanel data={data} />
-        ) : null}
-        {section === "commercial_health" ? (
-          <HealthManagementPanel data={data} />
-        ) : null}
+          <div className="pt-3">
+            {experienceTab === "dashboard" ? (
+              <ExperienceDashboard data={data} />
+            ) : null}
+            {experienceTab === "wizard" ? (
+              <PlanCreationWizard data={data} onNavigate={navigateSection} />
+            ) : null}
+            {experienceTab === "search" ? (
+              <GlobalCatalogSearch
+                data={data}
+                onNavigate={navigateSection}
+              />
+            ) : null}
+            {experienceTab === "compare" ? (
+              <div className="space-y-6">
+                <VersionComparePanel data={data} />
+                <DeepClonePanel data={data} />
+                <PublicationDiffPanel data={data} />
+                <SmartValidationEnhancer
+                  data={data}
+                  onNavigate={navigateSection}
+                />
+              </div>
+            ) : null}
+            {experienceTab === "preview" ? (
+              <PricingPreviewPanel data={data} />
+            ) : null}
+            {experienceTab === "customer_preview" ? (
+              <CustomerPreviewPanel data={data} />
+            ) : null}
+            {experienceTab === "graph" ? (
+              <DependencyGraphPanel
+                data={data}
+                onNavigate={navigateSection}
+              />
+            ) : null}
+            {experienceTab === "timeline" ? (
+              <CommercialTimelinePanel data={data} />
+            ) : null}
+            {experienceTab === "bulk" ? (
+              <BulkOperationsPanel data={data} />
+            ) : null}
+            {experienceTab === "manage" ? (
+              <div>
+                <nav
+                  aria-label="Catalog manage modules"
+                  className="mb-3 flex flex-wrap gap-2"
+                >
+                  {COMMERCIAL_CATALOG_DASHBOARD_SECTIONS.map((id) => (
+                    <Button
+                      key={id}
+                      type="button"
+                      size="sm"
+                      variant={section === id ? "default" : "outline"}
+                      onClick={() => setSection(id)}
+                    >
+                      {MANAGEMENT_SECTION_LABELS[id]}
+                    </Button>
+                  ))}
+                </nav>
+                {section === "plans" ? (
+                  <PlansManagementPanel data={data} />
+                ) : null}
+                {section === "plan_versions" ? (
+                  <VersionsManagementPanel data={data} />
+                ) : null}
+                {section === "pricing" ? (
+                  <PricingManagementPanel data={data} />
+                ) : null}
+                {section === "billing_cycles" ? (
+                  <BillingCyclesManagementPanel data={data} />
+                ) : null}
+                {section === "feature_bundles" ? (
+                  <FeatureBundlesManagementPanel data={data} />
+                ) : null}
+                {section === "limit_profiles" ? (
+                  <LimitProfilesManagementPanel data={data} />
+                ) : null}
+                {section === "trial_policies" ? (
+                  <TrialPoliciesManagementPanel data={data} />
+                ) : null}
+                {section === "regional_policies" ? (
+                  <RegionsManagementPanel data={data} />
+                ) : null}
+                {section === "promotions" ? (
+                  <PromotionsManagementPanel data={data} />
+                ) : null}
+                {section === "migration_policies" ? (
+                  <MigrationPoliciesManagementPanel data={data} />
+                ) : null}
+                {section === "retirement_policies" ? (
+                  <RetirementPoliciesManagementPanel data={data} />
+                ) : null}
+                {section === "publication_status" ? (
+                  <PublicationManagementPanel data={data} />
+                ) : null}
+                {section === "commercial_validation" ? (
+                  <ValidationManagementPanel data={data} />
+                ) : null}
+                {section === "commercial_health" ? (
+                  <HealthManagementPanel data={data} />
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        </div>
+        <ProductivityRail data={data} />
       </div>
     </div>
   );

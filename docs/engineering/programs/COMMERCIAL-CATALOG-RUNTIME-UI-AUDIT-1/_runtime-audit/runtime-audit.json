@@ -1,0 +1,239 @@
+{
+  "base": "http://127.0.0.1:3000",
+  "route": "/admin/platform/commercial-catalog",
+  "steps": [
+    {
+      "id": "hub_access",
+      "ok": true,
+      "notes": "Admin hub reachable"
+    },
+    {
+      "id": "nav_link",
+      "ok": true,
+      "notes": "Nav link present"
+    },
+    {
+      "id": "catalog_url",
+      "ok": true,
+      "notes": "URL=http://127.0.0.1:3000/admin/platform/commercial-catalog"
+    },
+    {
+      "id": "catalog_shell",
+      "ok": true,
+      "notes": "Experience shell rendered"
+    },
+    {
+      "id": "create_plan_on_default",
+      "ok": true,
+      "notes": "Create Plan NOT on default (Dashboard) — behind Manage"
+    },
+    {
+      "id": "plans_metric_clickable",
+      "ok": true,
+      "notes": "Hero Plans metric is NOT a nav link"
+    },
+    {
+      "id": "manage_tab",
+      "ok": true,
+      "notes": "Manage tab present"
+    },
+    {
+      "id": "create_plan_button",
+      "ok": true,
+      "notes": "Create Plan under Manage/Plans"
+    },
+    {
+      "id": "create_plan_dialog",
+      "ok": true,
+      "notes": "Create Plan dialog opened"
+    }
+  ],
+  "capabilities": {
+    "createPlan": {
+      "yes": true,
+      "route": "/admin/platform/commercial-catalog",
+      "button": "Create Plan",
+      "path": "Platform Ops → Commercial Catalog → Manage → Plans"
+    },
+    "editPlan": {
+      "yes": false,
+      "route": "/admin/platform/commercial-catalog",
+      "button": "Edit",
+      "note": "Row action under Manage → Plans"
+    },
+    "archivePlan": {
+      "yes": false,
+      "route": "/admin/platform/commercial-catalog",
+      "button": "Archive",
+      "renderedNow": false
+    },
+    "createVersion": {
+      "yes": true,
+      "route": "/admin/platform/commercial-catalog",
+      "button": "Create Version"
+    },
+    "cloneVersion": {
+      "yes": false,
+      "route": "/admin/platform/commercial-catalog",
+      "button": "Clone",
+      "renderedNow": false
+    },
+    "publishVersion": {
+      "yes": false,
+      "route": "/admin/platform/commercial-catalog",
+      "button": "Publish",
+      "renderedNow": false
+    },
+    "compareVersions": {
+      "yes": true,
+      "route": "/admin/platform/commercial-catalog",
+      "button": "Compare"
+    },
+    "createPricing": {
+      "yes": true,
+      "route": "/admin/platform/commercial-catalog",
+      "button": "Create Price"
+    },
+    "createBundle": {
+      "yes": true,
+      "route": "/admin/platform/commercial-catalog",
+      "button": "Create Bundle"
+    },
+    "createLimitProfile": {
+      "yes": true,
+      "route": "/admin/platform/commercial-catalog",
+      "button": "Create Profile"
+    },
+    "createTrialPolicy": {
+      "yes": true,
+      "route": "/admin/platform/commercial-catalog",
+      "button": "Create"
+    },
+    "createRegionalPolicy": {
+      "yes": true,
+      "route": "/admin/platform/commercial-catalog",
+      "button": "Create Region"
+    },
+    "createPromotion": {
+      "yes": true,
+      "route": "/admin/platform/commercial-catalog",
+      "button": "Create"
+    },
+    "publicationWizard": {
+      "yes": true,
+      "route": "/admin/platform/commercial-catalog",
+      "button": "Plan Wizard"
+    },
+    "customerPreview": {
+      "yes": true,
+      "route": "/admin/platform/commercial-catalog",
+      "button": "Customer Preview"
+    },
+    "pricingPreview": {
+      "yes": true,
+      "route": "/admin/platform/commercial-catalog",
+      "button": "Pricing Preview"
+    },
+    "bulkOperations": {
+      "yes": true,
+      "route": "/admin/platform/commercial-catalog",
+      "button": "Bulk Ops"
+    }
+  },
+  "buttonsFound": [
+    {
+      "context": "default_load",
+      "buttons": [
+        "Toggle Sidebar",
+        "Dashboard",
+        "Plan Wizard",
+        "Search",
+        "Compare",
+        "Pricing Preview",
+        "Customer Preview",
+        "Dependencies",
+        "Timeline",
+        "Bulk Ops",
+        "Manage"
+      ]
+    },
+    {
+      "context": "manage_default",
+      "buttons": [
+        "Toggle Sidebar",
+        "Dashboard",
+        "Plan Wizard",
+        "Search",
+        "Compare",
+        "Pricing Preview",
+        "Customer Preview",
+        "Dependencies",
+        "Timeline",
+        "Bulk Ops",
+        "Manage",
+        "Plans",
+        "Plan Versions",
+        "Pricing",
+        "Billing Cycles",
+        "Feature Bundles",
+        "Limit Profiles",
+        "Regional Policies",
+        "Trial Policies",
+        "Promotions",
+        "Migration Policies",
+        "Retirement Policies",
+        "Publication",
+        "Commercial Health",
+        "Commercial Validation",
+        "Create Plan"
+      ]
+    },
+    {
+      "context": "manage_versions",
+      "buttons": [
+        "Toggle Sidebar",
+        "Dashboard",
+        "Plan Wizard",
+        "Search",
+        "Compare",
+        "Pricing Preview",
+        "Customer Preview",
+        "Dependencies",
+        "Timeline",
+        "Bulk Ops",
+        "Manage",
+        "Plans",
+        "Plan Versions",
+        "Pricing",
+        "Billing Cycles",
+        "Feature Bundles",
+        "Limit Profiles",
+        "Regional Policies",
+        "Trial Policies",
+        "Promotions",
+        "Migration Policies",
+        "Retirement Policies",
+        "Publication",
+        "Commercial Health",
+        "Commercial Validation",
+        "Create Version"
+      ]
+    }
+  ],
+  "screenshots": [
+    "01-platform-ops.png",
+    "02-catalog-default.png",
+    "03-manage-plans.png",
+    "04-create-plan-dialog.png",
+    "05-manage-versions.png",
+    "06-compare.png",
+    "07-wizard.png",
+    "08-customer-preview.png",
+    "09-pricing-preview.png",
+    "10-bulk.png",
+    "11-nested-plans-attempt.png"
+  ],
+  "verdictNotes": [
+    "Nested /plans URL stayed: http://127.0.0.1:3000/admin/platform/commercial-catalog/plans (SPA may not 404)"
+  ]
+}
