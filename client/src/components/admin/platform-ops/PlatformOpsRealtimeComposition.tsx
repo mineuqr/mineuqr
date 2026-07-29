@@ -1,25 +1,50 @@
 /**
  * OPERATIONS-INFORMATION-ARCHITECTURE-1
+ * + PLATFORM-OPERATIONS-UI-FOUNDATION-1
  * Realtime Platform admin view — consumes observability APIs only (SSOT).
+ * Presentation unified via platform-ops-ui foundation.
  */
 
 import { Activity, AlertTriangle, Radio, Shield } from "lucide-react";
-import { AdminSection } from "@/components/admin/layout/AdminSection";
-import { AdminPageSection } from "@/components/admin/sections/AdminPageSection";
-import { adminDash } from "@/components/admin/layout/adminDashStyles";
-import {
-  SemanticKpiCard,
-  SEMANTIC_KPI_GRID,
-} from "@/design-system/semantic-card";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { trpc } from "@/lib/trpc";
 import { adminQueriesEnabled } from "@/lib/queryRuntime";
 import { useAuthGate } from "@/_core/hooks/useAuthGate";
-import { cn } from "@/lib/utils";
+import {
+  normalizePlatformOpsHealth,
+  PlatformOpsAlert,
+  PlatformOpsAlertList,
+  PlatformOpsDataTable,
+  PlatformOpsEmptyState,
+  PlatformOpsErrorState,
+  PlatformOpsHeaderMeta,
+  PlatformOpsHeroSummary,
+  PlatformOpsLoadingState,
+  PlatformOpsMetricCard,
+  PlatformOpsMetricGrid,
+  PlatformOpsSection,
+  PlatformOpsStatusBadge,
+  PlatformOpsTableBody,
+  PlatformOpsTableCell,
+  PlatformOpsTableHead,
+  PlatformOpsTableHeader,
+  PlatformOpsTableRoot,
+  PlatformOpsTableRow,
+  PLATFORM_OPS_UI,
+} from "@/design-system/platform-ops-ui";
 
 function formatMs(value: number | undefined): string {
   if (value == null || !Number.isFinite(value)) return "—";
   return `${Math.round(value)} ms`;
+}
+
+function formatUpdatedAt(iso: string | undefined): string {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleString();
+  } catch {
+    return iso;
+  }
 }
 
 export function PlatformOpsRealtimeComposition() {
@@ -45,318 +70,354 @@ export function PlatformOpsRealtimeComposition() {
 
   if (dashboardQuery.isLoading) {
     return (
-      <p className="animate-pulse text-sm text-cyan-300/80">
-        {t("admin.platformOps.realtime.loading")}
-      </p>
+      <PlatformOpsLoadingState
+        variant="kpi"
+        count={4}
+        label={t("admin.platformOps.realtime.loading")}
+      />
     );
   }
 
   if (dashboardQuery.isError || !dash) {
     return (
-      <AdminPageSection
+      <PlatformOpsErrorState
         title={t("admin.platformOps.realtime.loadError")}
-        description={t("admin.platformOps.realtime.loadErrorDesc")}
-      >
-        <p className="text-sm text-cyan-200/70">
-          {t("admin.platformOps.realtime.ssotHint")}
-        </p>
-      </AdminPageSection>
+        message={t("admin.platformOps.realtime.loadErrorDesc")}
+        retryLabel={t("admin.platformOps.realtime.retry")}
+        onRetry={() => void dashboardQuery.refetch()}
+        isFetching={dashboardQuery.isFetching}
+        diagnosticHref="/admin/platform/diagnostics"
+        diagnosticLabel={t("admin.platformOps.sections.diagnostics")}
+      />
     );
   }
 
   const latency = dash.latency.publishToDeliver;
+  const health = normalizePlatformOpsHealth(dash.platform.overallHealth);
+  const updated = formatUpdatedAt(dash.generatedAt);
 
   return (
-    <div className={adminDash.opsWorkspace}>
-      <AdminSection
+    <div className={PLATFORM_OPS_UI.workspace} data-slot="platform-ops-realtime">
+      <PlatformOpsHeaderMeta
+        health={health}
+        healthLabel={String(dash.platform.overallHealth)}
+        lastUpdated={updated}
+        lastUpdatedLabel={t("admin.platformOps.realtime.lastUpdated")}
+        className="mb-1"
+      />
+
+      <PlatformOpsHeroSummary
         title={t("admin.platformOps.realtime.overview")}
         description={t("admin.platformOps.realtime.overviewDesc")}
-        icon={Radio}
-        density="console"
+        health={health}
+        healthLabel={String(dash.platform.overallHealth)}
+        lastUpdated={updated}
+        columns={4}
+        alerts={
+          alerts.length > 0 ? (
+            <PlatformOpsAlertList>
+              {alerts.slice(0, 3).map((alert) => (
+                <PlatformOpsAlert
+                  key={alert.id}
+                  severity={alert.severity}
+                  title={alert.title}
+                  detail={alert.detail}
+                />
+              ))}
+            </PlatformOpsAlertList>
+          ) : null
+        }
       >
-        <div className={SEMANTIC_KPI_GRID.quad}>
-          <SemanticKpiCard
-            label={t("admin.platformOps.realtime.kpiHealth")}
-            value={String(dash.platform.overallHealth)}
-            tone="info"
-            domain="information"
-          />
-          <SemanticKpiCard
-            label={t("admin.platformOps.realtime.kpiEnabled")}
-            value={
-              dash.platform.enabled
-                ? t("admin.platformOps.realtime.yes")
-                : t("admin.platformOps.realtime.no")
-            }
-            tone="info"
-            domain="information"
-          />
-          <SemanticKpiCard
-            label={t("admin.platformOps.realtime.kpiConnections")}
-            value={String(dash.connections.active)}
-            tone="info"
-            domain="analytics"
-          />
-          <SemanticKpiCard
-            label={t("admin.platformOps.realtime.kpiPeak")}
-            value={String(dash.connections.peak)}
-            tone="info"
-            domain="analytics"
-          />
-        </div>
-      </AdminSection>
+        <PlatformOpsMetricCard
+          label={t("admin.platformOps.realtime.kpiHealth")}
+          value={String(dash.platform.overallHealth)}
+          tone="info"
+          domain="information"
+        />
+        <PlatformOpsMetricCard
+          label={t("admin.platformOps.realtime.kpiEnabled")}
+          value={
+            dash.platform.enabled
+              ? t("admin.platformOps.realtime.yes")
+              : t("admin.platformOps.realtime.no")
+          }
+          tone="info"
+          domain="information"
+        />
+        <PlatformOpsMetricCard
+          label={t("admin.platformOps.realtime.kpiConnections")}
+          value={String(dash.connections.active)}
+          tone="info"
+          domain="analytics"
+        />
+        <PlatformOpsMetricCard
+          label={t("admin.platformOps.realtime.kpiPeak")}
+          value={String(dash.connections.peak)}
+          tone="info"
+          domain="analytics"
+        />
+      </PlatformOpsHeroSummary>
 
-      <AdminSection
+      <PlatformOpsSection
         title={t("admin.platformOps.realtime.connections")}
         icon={Activity}
-        density="console"
       >
-        <div className={SEMANTIC_KPI_GRID.quad}>
-          <SemanticKpiCard
+        <PlatformOpsMetricGrid columns={4}>
+          <PlatformOpsMetricCard
             label={t("admin.platformOps.realtime.opened")}
             value={String(dash.connections.opened)}
             tone="info"
             domain="analytics"
           />
-          <SemanticKpiCard
+          <PlatformOpsMetricCard
             label={t("admin.platformOps.realtime.closed")}
             value={String(dash.connections.closed)}
             tone="info"
             domain="analytics"
           />
-          <SemanticKpiCard
+          <PlatformOpsMetricCard
             label={t("admin.platformOps.realtime.rejected")}
             value={String(dash.connections.rejected)}
             tone="warning"
             domain="analytics"
           />
-          <SemanticKpiCard
+          <PlatformOpsMetricCard
             label={t("admin.platformOps.realtime.avgDuration")}
             value={formatMs(dash.connections.avgDurationMs)}
             tone="info"
             domain="analytics"
           />
-        </div>
-      </AdminSection>
+        </PlatformOpsMetricGrid>
+      </PlatformOpsSection>
 
-      <AdminSection
-        title={t("admin.platformOps.realtime.channels")}
-        density="console"
-      >
-        <div className={cn(adminDash.opsTableWrap, "overflow-x-auto")}>
-          <table className={adminDash.opsTable}>
-            <thead>
-              <tr>
-                <th className={adminDash.opsTableHead}>
+      <PlatformOpsSection title={t("admin.platformOps.realtime.channels")}>
+        <PlatformOpsDataTable
+          empty={
+            dash.channels.length === 0 ? (
+              <PlatformOpsEmptyState
+                icon={Radio}
+                title={t("admin.platformOps.realtime.noChannels")}
+              />
+            ) : undefined
+          }
+        >
+          <PlatformOpsTableRoot>
+            <PlatformOpsTableHeader>
+              <PlatformOpsTableRow>
+                <PlatformOpsTableHead>
                   {t("admin.platformOps.realtime.colChannel")}
-                </th>
-                <th className={adminDash.opsTableHead}>
+                </PlatformOpsTableHead>
+                <PlatformOpsTableHead>
                   {t("admin.platformOps.realtime.colSubs")}
-                </th>
-                <th className={adminDash.opsTableHead}>
+                </PlatformOpsTableHead>
+                <PlatformOpsTableHead>
                   {t("admin.platformOps.realtime.colPublish")}
-                </th>
-                <th className={adminDash.opsTableHead}>
+                </PlatformOpsTableHead>
+                <PlatformOpsTableHead>
                   {t("admin.platformOps.realtime.colDeliver")}
-                </th>
-                <th className={adminDash.opsTableHead}>
+                </PlatformOpsTableHead>
+                <PlatformOpsTableHead>
                   {t("admin.platformOps.realtime.colP95")}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
+                </PlatformOpsTableHead>
+              </PlatformOpsTableRow>
+            </PlatformOpsTableHeader>
+            <PlatformOpsTableBody>
               {dash.channels.map((ch) => (
-                <tr key={ch.channel}>
-                  <td className={adminDash.opsTableCell}>{ch.channel}</td>
-                  <td className={adminDash.opsTableCell}>{ch.subscribers}</td>
-                  <td className={adminDash.opsTableCell}>{ch.publishes}</td>
-                  <td className={adminDash.opsTableCell}>{ch.deliveries}</td>
-                  <td className={adminDash.opsTableCell}>
+                <PlatformOpsTableRow key={ch.channel}>
+                  <PlatformOpsTableCell>{ch.channel}</PlatformOpsTableCell>
+                  <PlatformOpsTableCell>{ch.subscribers}</PlatformOpsTableCell>
+                  <PlatformOpsTableCell>{ch.publishes}</PlatformOpsTableCell>
+                  <PlatformOpsTableCell>{ch.deliveries}</PlatformOpsTableCell>
+                  <PlatformOpsTableCell>
                     {formatMs(ch.publishToDeliver.p95)}
-                  </td>
-                </tr>
+                  </PlatformOpsTableCell>
+                </PlatformOpsTableRow>
               ))}
-            </tbody>
-          </table>
-        </div>
-      </AdminSection>
+            </PlatformOpsTableBody>
+          </PlatformOpsTableRoot>
+        </PlatformOpsDataTable>
+      </PlatformOpsSection>
 
-      <AdminSection
-        title={t("admin.platformOps.realtime.latency")}
-        density="console"
-      >
-        <div className={SEMANTIC_KPI_GRID.quad}>
-          <SemanticKpiCard label="P50" value={formatMs(latency.p50)} tone="info" domain="analytics" />
-          <SemanticKpiCard label="P95" value={formatMs(latency.p95)} tone="info" domain="analytics" />
-          <SemanticKpiCard label="P99" value={formatMs(latency.p99)} tone="info" domain="analytics" />
-          <SemanticKpiCard
+      <PlatformOpsSection title={t("admin.platformOps.realtime.latency")}>
+        <PlatformOpsMetricGrid columns={4}>
+          <PlatformOpsMetricCard
+            label="P50"
+            value={formatMs(latency.p50)}
+            tone="info"
+            domain="analytics"
+          />
+          <PlatformOpsMetricCard
+            label="P95"
+            value={formatMs(latency.p95)}
+            tone="info"
+            domain="analytics"
+          />
+          <PlatformOpsMetricCard
+            label="P99"
+            value={formatMs(latency.p99)}
+            tone="info"
+            domain="analytics"
+          />
+          <PlatformOpsMetricCard
             label={t("admin.platformOps.realtime.worst")}
             value={formatMs(latency.worst)}
             tone="warning"
             domain="analytics"
           />
-        </div>
-      </AdminSection>
+        </PlatformOpsMetricGrid>
+      </PlatformOpsSection>
 
-      <AdminSection
+      <PlatformOpsSection
         title={t("admin.platformOps.realtime.authorization")}
         icon={Shield}
-        density="console"
       >
-        <div className={SEMANTIC_KPI_GRID.quad}>
-          <SemanticKpiCard
+        <PlatformOpsMetricGrid columns={4}>
+          <PlatformOpsMetricCard
             label={t("admin.platformOps.realtime.authSuccess")}
             value={String(dash.authorization.success)}
             tone="success"
             domain="information"
           />
-          <SemanticKpiCard
+          <PlatformOpsMetricCard
             label={t("admin.platformOps.realtime.authDenied")}
             value={String(dash.authorization.denied)}
             tone="warning"
             domain="information"
           />
-          <SemanticKpiCard
+          <PlatformOpsMetricCard
             label={t("admin.platformOps.realtime.ticketsIssued")}
             value={String(dash.authorization.ticketsIssued)}
             tone="info"
             domain="information"
           />
-          <SemanticKpiCard
+          <PlatformOpsMetricCard
             label={t("admin.platformOps.realtime.ticketsRevoked")}
             value={String(dash.authorization.ticketsRevoked)}
             tone="info"
             domain="information"
           />
-        </div>
-      </AdminSection>
+        </PlatformOpsMetricGrid>
+      </PlatformOpsSection>
 
-      <AdminSection
-        title={t("admin.platformOps.realtime.registry")}
-        density="console"
-      >
-        <div className={SEMANTIC_KPI_GRID.quad}>
-          <SemanticKpiCard
+      <PlatformOpsSection title={t("admin.platformOps.realtime.registry")}>
+        <PlatformOpsMetricGrid columns={4}>
+          <PlatformOpsMetricCard
             label={t("admin.platformOps.realtime.registrySize")}
             value={String(dash.registry.size)}
             tone="info"
             domain="analytics"
           />
-          <SemanticKpiCard
+          <PlatformOpsMetricCard
             label={t("admin.platformOps.realtime.registryActive")}
             value={String(dash.registry.active)}
             tone="info"
             domain="analytics"
           />
-          <SemanticKpiCard
+          <PlatformOpsMetricCard
             label={t("admin.platformOps.realtime.registryLookups")}
             value={String(dash.registry.lookups)}
             tone="info"
             domain="analytics"
           />
-          <SemanticKpiCard
+          <PlatformOpsMetricCard
             label={t("admin.platformOps.realtime.avgLookup")}
             value={`${Math.round(dash.registry.avgLookupMicros)} µs`}
             tone="info"
             domain="analytics"
           />
-        </div>
-      </AdminSection>
+        </PlatformOpsMetricGrid>
+      </PlatformOpsSection>
 
-      <AdminSection
-        title={t("admin.platformOps.realtime.fallback")}
-        density="console"
-      >
-        <div className={SEMANTIC_KPI_GRID.quad}>
-          <SemanticKpiCard
+      <PlatformOpsSection title={t("admin.platformOps.realtime.fallback")}>
+        <PlatformOpsMetricGrid columns={2}>
+          <PlatformOpsMetricCard
             label={t("admin.platformOps.realtime.fallbackActivations")}
             value={String(dash.fallback.activations)}
             tone="warning"
             domain="analytics"
           />
-          <SemanticKpiCard
+          <PlatformOpsMetricCard
             label={t("admin.platformOps.realtime.reconnects")}
             value={String(dash.fallback.reconnects)}
             tone="info"
             domain="analytics"
           />
-        </div>
-      </AdminSection>
+        </PlatformOpsMetricGrid>
+      </PlatformOpsSection>
 
-      <AdminSection
+      <PlatformOpsSection
         title={t("admin.platformOps.realtime.alerts")}
         icon={AlertTriangle}
-        density="console"
       >
-        {alerts.length === 0 ? (
-          <p className="text-sm text-cyan-200/70">
-            {t("admin.platformOps.realtime.noAlerts")}
-          </p>
-        ) : (
-          <ul className="space-y-2">
-            {alerts.map((alert) => (
-              <li
-                key={alert.id}
-                className="rounded-lg border border-cyan-500/20 bg-slate-800/40 px-3 py-2"
-              >
-                <p className="text-sm font-semibold text-white">
-                  [{alert.severity}] {alert.title}
-                </p>
-                <p className="text-xs text-cyan-300/80">{alert.detail}</p>
-              </li>
-            ))}
-          </ul>
-        )}
-      </AdminSection>
+        <PlatformOpsAlertList
+          empty={
+            <PlatformOpsEmptyState
+              icon={AlertTriangle}
+              title={t("admin.platformOps.realtime.noAlerts")}
+            />
+          }
+        >
+          {alerts.map((alert) => (
+            <PlatformOpsAlert
+              key={alert.id}
+              severity={alert.severity}
+              title={alert.title}
+              detail={alert.detail}
+            />
+          ))}
+        </PlatformOpsAlertList>
+      </PlatformOpsSection>
 
-      <AdminSection
-        title={t("admin.platformOps.realtime.adoption")}
-        density="console"
-      >
-        <div className={cn(adminDash.opsTableWrap, "overflow-x-auto")}>
-          <table className={adminDash.opsTable}>
-            <thead>
-              <tr>
-                <th className={adminDash.opsTableHead}>
+      <PlatformOpsSection title={t("admin.platformOps.realtime.adoption")}>
+        <PlatformOpsDataTable>
+          <PlatformOpsTableRoot>
+            <PlatformOpsTableHeader>
+              <PlatformOpsTableRow>
+                <PlatformOpsTableHead>
                   {t("admin.platformOps.realtime.colSurface")}
-                </th>
-                <th className={adminDash.opsTableHead}>
+                </PlatformOpsTableHead>
+                <PlatformOpsTableHead>
                   {t("admin.platformOps.realtime.colState")}
-                </th>
-                <th className={adminDash.opsTableHead}>
+                </PlatformOpsTableHead>
+                <PlatformOpsTableHead>
                   {t("admin.platformOps.realtime.colSubs")}
-                </th>
-                <th className={adminDash.opsTableHead}>
+                </PlatformOpsTableHead>
+                <PlatformOpsTableHead>
                   {t("admin.platformOps.realtime.colHealth")}
-                </th>
-                <th className={adminDash.opsTableHead}>
+                </PlatformOpsTableHead>
+                <PlatformOpsTableHead>
                   {t("admin.platformOps.realtime.colP95")}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
+                </PlatformOpsTableHead>
+              </PlatformOpsTableRow>
+            </PlatformOpsTableHeader>
+            <PlatformOpsTableBody>
               {dash.adoption.map((row) => (
-                <tr key={row.surfaceId}>
-                  <td className={adminDash.opsTableCell}>{row.surfaceId}</td>
-                  <td className={adminDash.opsTableCell}>
+                <PlatformOpsTableRow key={row.surfaceId}>
+                  <PlatformOpsTableCell>{row.surfaceId}</PlatformOpsTableCell>
+                  <PlatformOpsTableCell>
                     {row.migrationState}
-                  </td>
-                  <td className={adminDash.opsTableCell}>
+                  </PlatformOpsTableCell>
+                  <PlatformOpsTableCell>
                     {row.activeSubscribers}
-                  </td>
-                  <td className={adminDash.opsTableCell}>{row.health}</td>
-                  <td className={adminDash.opsTableCell}>
+                  </PlatformOpsTableCell>
+                  <PlatformOpsTableCell>
+                    <PlatformOpsStatusBadge
+                      status={normalizePlatformOpsHealth(row.health)}
+                      label={row.health}
+                    />
+                  </PlatformOpsTableCell>
+                  <PlatformOpsTableCell>
                     {formatMs(row.latencyP95Ms)}
-                  </td>
-                </tr>
+                  </PlatformOpsTableCell>
+                </PlatformOpsTableRow>
               ))}
-            </tbody>
-          </table>
-        </div>
-        <p className="mt-2 text-[11px] text-cyan-400/70">
+            </PlatformOpsTableBody>
+          </PlatformOpsTableRoot>
+        </PlatformOpsDataTable>
+        <p className={`mt-2 ${PLATFORM_OPS_UI.metaText}`}>
           {t("admin.platformOps.realtime.ssotHint")}
         </p>
-      </AdminSection>
+      </PlatformOpsSection>
     </div>
   );
 }

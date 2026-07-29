@@ -1,12 +1,17 @@
 /**
  * OPERATIONS-INFORMATION-ARCHITECTURE-1
- * Reserved architecture slot — no business implementation.
+ * + PLATFORM-OPERATIONS-UI-FOUNDATION-1
+ * Reserved architecture slot — presentation only.
  */
 
-import { AdminSection } from "@/components/admin/layout/AdminSection";
+import { Inbox } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import type { PlatformOpsSectionId } from "@/lib/admin/platform-ops/platformOpsSections";
 import { getPlatformOpsSection } from "@/lib/admin/platform-ops/platformOpsSections";
+import {
+  PlatformOpsEmptyState,
+  PlatformOpsSection,
+} from "@/design-system/platform-ops-ui";
 
 const FUTURE_OWNERSHIP: Record<
   Exclude<PlatformOpsSectionId, "overview" | "realtime" | "health">,
@@ -69,18 +74,20 @@ export function PlatformOpsReservedSection({
   const ownership = FUTURE_OWNERSHIP[sectionId];
 
   return (
-    <AdminSection
+    <PlatformOpsSection
       title={t(section.labelKey)}
       description={t("admin.platformOps.reservedBody")}
     >
+      <PlatformOpsEmptyState
+        icon={Inbox}
+        title={t("admin.platformOps.reserved")}
+        description={t("admin.platformOps.architectureOnly")}
+      />
       <ul className="mt-3 list-disc space-y-1 ps-5 text-sm text-cyan-200/80">
         {ownership.map((key) => (
           <li key={key}>{t(key)}</li>
         ))}
       </ul>
-      <p className="mt-4 text-xs text-cyan-400/70">
-        {t("admin.platformOps.architectureOnly")}
-      </p>
-    </AdminSection>
+    </PlatformOpsSection>
   );
 }

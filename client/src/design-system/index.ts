@@ -33,3 +33,6 @@ export {
   type SemanticEmptyVariant,
   type SemanticErrorVariant,
 } from "./semantic-section-state";
+
+/** PLATFORM-OPERATIONS-UI-FOUNDATION-1 — Platform Ops presentation facades */
+export * from "./platform-ops-ui";

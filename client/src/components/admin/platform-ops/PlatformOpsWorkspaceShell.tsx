@@ -1,6 +1,9 @@
 /**
  * OPERATIONS-INFORMATION-ARCHITECTURE-1
+ * + PLATFORM-OPERATIONS-UI-FOUNDATION-1
  * Shared shell for Platform Operations sections.
+ * Presentation: shared workspace + section density tokens only.
+ * Does not alter routing, permissions, or section navigation ownership.
  */
 
 import type { ReactNode } from "react";
@@ -8,13 +11,13 @@ import { useAuthGate } from "@/_core/hooks/useAuthGate";
 import { AdminAccessDenied, AuthGatePending } from "@/components/AuthGate";
 import { AdminOperationsShell } from "@/components/admin/layout/AdminOperationsShell";
 import { PlatformOpsSectionNav } from "@/components/admin/platform-ops/PlatformOpsSectionNav";
-import { adminDash } from "@/components/admin/layout/adminDashStyles";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { resolveAdminPageShell } from "@/lib/admin/routes/adminRouteRegistry";
 import {
   getPlatformOpsSection,
   type PlatformOpsSectionId,
 } from "@/lib/admin/platform-ops/platformOpsSections";
+import { PLATFORM_OPS_UI } from "@/design-system/platform-ops-ui";
 
 type PlatformOpsWorkspaceShellProps = {
   sectionId: PlatformOpsSectionId;
@@ -62,7 +65,12 @@ export function PlatformOpsWorkspaceShell({
       statusIndicator={statusIndicator}
       headerFooter={<PlatformOpsSectionNav active={sectionId} />}
     >
-      <div className={adminDash.consoleSections}>{children}</div>
+      <div
+        data-slot="platform-ops-workspace"
+        className={PLATFORM_OPS_UI.sections}
+      >
+        {children}
+      </div>
     </AdminOperationsShell>
   );
 }
