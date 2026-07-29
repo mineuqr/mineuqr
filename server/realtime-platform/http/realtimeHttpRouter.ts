@@ -8,7 +8,7 @@ import { randomUUID } from "node:crypto";
 import {
   getRealtimeSseGateway,
   isRealtimePlatformEnabled,
-} from "./composition";
+} from "../composition";
 
 export const realtimeHttpRouter = Router();
 
