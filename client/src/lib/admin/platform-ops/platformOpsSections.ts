@@ -70,14 +70,14 @@ export const PLATFORM_OPS_SECTION_DEFINITIONS: readonly PlatformOpsSectionDef[] 
       path: `${PLATFORM_OPS_BASE}/jobs`,
       labelKey: "admin.platformOps.sections.jobs",
       descriptionKey: "admin.platformOps.sections.jobsDesc",
-      status: "reserved",
+      status: "live",
     },
     {
       id: "events",
       path: `${PLATFORM_OPS_BASE}/events`,
       labelKey: "admin.platformOps.sections.events",
       descriptionKey: "admin.platformOps.sections.eventsDesc",
-      status: "reserved",
+      status: "live",
     },
     {
       id: "audit",
@@ -91,7 +91,7 @@ export const PLATFORM_OPS_SECTION_DEFINITIONS: readonly PlatformOpsSectionDef[] 
       path: `${PLATFORM_OPS_BASE}/diagnostics`,
       labelKey: "admin.platformOps.sections.diagnostics",
       descriptionKey: "admin.platformOps.sections.diagnosticsDesc",
-      status: "reserved",
+      status: "live",
     },
   ] as const;
 
