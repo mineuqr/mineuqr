@@ -195,8 +195,8 @@ export const operationalDeviceRuntimeRouter = router({
   }),
 
   /**
-   * REALTIME-KITCHEN-ADOPTION-1 — device-scoped realtime ticket (kitchen channel only).
-   * Expo and other roles are excluded from this adoption program.
+   * REALTIME-KITCHEN-ADOPTION-1 / REALTIME-EXPO-ADOPTION-1
+   * Device-scoped realtime ticket — kitchen_display→kitchen or expo_display→expo.
    */
   mintRealtimeTicket: deviceProcedure
     .input(
@@ -230,22 +230,29 @@ export const operationalDeviceRuntimeRouter = router({
         });
       }
       const session = ctx.deviceSession!;
-      if (session.role !== "kitchen_display") {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Realtime kitchen adoption is kitchen_display only",
-        });
-      }
       if (!rolePermitsKitchenQueue(session.role)) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "Role cannot access kitchen queue",
         });
       }
-      if (input.channels.some((c) => c !== "kitchen")) {
+
+      let allowedChannel: "kitchen" | "expo";
+      if (session.role === "kitchen_display") {
+        allowedChannel = "kitchen";
+      } else if (session.role === "expo_display") {
+        allowedChannel = "expo";
+      } else {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Realtime device adoption is kitchen_display or expo_display only",
+        });
+      }
+
+      if (input.channels.some((c) => c !== allowedChannel)) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "Device kitchen realtime may only request kitchen channel",
+          message: `Device realtime may only request ${allowedChannel} channel`,
         });
       }
       try {
@@ -253,7 +260,7 @@ export const operationalDeviceRuntimeRouter = router({
           restaurantId: session.restaurantId,
           authMode: "device_session",
           sub: `device:${session.deviceId}`,
-          channels: ["kitchen"],
+          channels: [allowedChannel],
           deviceId: session.deviceId,
           clientCapabilities: {
             ...DEFAULT_CLIENT_CAPABILITIES,

@@ -17,6 +17,7 @@ export const REALTIME_HINT_TYPES = [
   "check.paid",
   "check.voided",
   "kitchen.queue_changed",
+  "expo.queue_changed",
   "notification.raised",
   "notification.cleared",
   "device.connected",

@@ -39,7 +39,7 @@ describe("REALTIME-PLATFORM-FOUNDATION-1", () => {
     expect(gateway).toContain("text/event-stream");
   });
 
-  it("client platform encapsulates EventSource; expo not migrated", () => {
+  it("client platform encapsulates EventSource; role-gated device channels", () => {
     const client = read(
       "client/src/lib/realtime-platform/RealtimePlatformClient.ts"
     );
@@ -50,7 +50,12 @@ describe("REALTIME-PLATFORM-FOUNDATION-1", () => {
       "client/src/lib/operational-screen/kitchen/useKitchenRuntimeRealtime.ts"
     );
     expect(kitchenHook).toContain('role === "kitchen_display"');
-    expect(kitchenHook).not.toContain("expo_display");
+
+    const expoHook = read(
+      "client/src/lib/operational-screen/kitchen/useExpoRuntimeRealtime.ts"
+    );
+    expect(expoHook).toContain('role === "expo_display"');
+    expect(expoHook).toContain('channels: ["expo"]');
   });
 
   it("publisher does not query database", () => {
@@ -66,8 +71,9 @@ describe("REALTIME-PLATFORM-FOUNDATION-1", () => {
     const caps = read("shared/realtime-platform/capabilities.ts");
     expect(caps).toContain('surfaceId: "orders-workspace"');
     expect(caps).toContain('surfaceId: "kitchen-screen"');
+    expect(caps).toContain('surfaceId: "expo-screen"');
     expect(caps).toContain("migrated: true");
-    expect(caps).toMatch(/surfaceId: "expo-screen"[\s\S]*?migrated: false/);
+    expect(caps).toMatch(/surfaceId: "customer-tracking"[\s\S]*?migrated: false/);
   });
 
   it("program docs exist", () => {

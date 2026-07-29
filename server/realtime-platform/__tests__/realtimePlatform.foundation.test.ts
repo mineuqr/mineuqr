@@ -86,7 +86,7 @@ describe("channel + surface registries", () => {
     }
   });
 
-  it("orders-workspace and kitchen-screen may be migrated; others stay false", () => {
+  it("orders-workspace, kitchen-screen, and expo-screen may be migrated; others stay false", () => {
     const migrated = new Set(
       REALTIME_SURFACE_CAPABILITY_REGISTRY.filter((s) => s.migrated).map(
         (s) => s.surfaceId
@@ -94,6 +94,7 @@ describe("channel + surface registries", () => {
     );
     expect(migrated.has("orders-workspace")).toBe(true);
     expect(migrated.has("kitchen-screen")).toBe(true);
+    expect(migrated.has("expo-screen")).toBe(true);
     for (const surface of REALTIME_SURFACE_CAPABILITY_REGISTRY) {
       if (migrated.has(surface.surfaceId)) continue;
       expect(surface.migrated).toBe(false);

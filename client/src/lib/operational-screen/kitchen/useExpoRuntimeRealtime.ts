@@ -1,7 +1,7 @@
 /**
- * REALTIME-KITCHEN-ADOPTION-1
- * Kitchen Runtime realtime adoption — platform API only (no EventSource).
- * Gated to kitchen_display — channel `kitchen` only.
+ * REALTIME-EXPO-ADOPTION-1
+ * Expo Runtime realtime adoption — platform API only (no EventSource).
+ * Gated to expo_display — channel `expo` only.
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -14,29 +14,29 @@ import {
 import { scheduleKitchenQueueInvalidation } from "./kitchenQueueInvalidationCoordinator";
 import { DEFAULT_CLIENT_CAPABILITIES } from "@shared/realtime-platform";
 
-const KITCHEN_HINT_TYPES = new Set([
-  "kitchen.queue_changed",
-  "order.created",
-  "order.status_changed",
+const EXPO_HINT_TYPES = new Set([
+  "expo.queue_changed",
+  "order.ready",
+  "order.served",
   "order.cancelled",
 ]);
 
-export type KitchenRuntimeRealtimeState = {
+export type ExpoRuntimeRealtimeState = {
   connectionState: RealtimeConnectionState | "disabled";
   realtimePrimary: boolean;
 };
 
 /**
- * Subscribes to `kitchen` channel via Realtime Platform.
- * On hint → debounced queue refetch → existing notification rules run on new data.
+ * Subscribes to `expo` channel via Realtime Platform.
+ * On hint → debounced queue refetch (shared coordinator with kitchen BC path).
  */
-export function useKitchenRuntimeRealtime(input: {
+export function useExpoRuntimeRealtime(input: {
   restaurantId: number | undefined;
   enabled: boolean;
-  /** Must be kitchen_display for this adoption program. */
+  /** Must be expo_display for this adoption program. */
   role: string | undefined;
   onInvalidate: () => void;
-}): KitchenRuntimeRealtimeState {
+}): ExpoRuntimeRealtimeState {
   const mintTicket =
     screenTrpc.operationalDevice.runtime.mintRealtimeTicket.useMutation();
   const [connectionState, setConnectionState] = useState<
@@ -47,14 +47,14 @@ export function useKitchenRuntimeRealtime(input: {
   const invalidateRef = useRef(input.onInvalidate);
   invalidateRef.current = input.onInvalidate;
 
-  const kitchenOnly =
+  const expoOnly =
     input.enabled &&
     !!input.restaurantId &&
     input.restaurantId > 0 &&
-    input.role === "kitchen_display";
+    input.role === "expo_display";
 
   useEffect(() => {
-    if (!kitchenOnly || !input.restaurantId) {
+    if (!expoOnly || !input.restaurantId) {
       setConnectionState("disabled");
       return;
     }
@@ -70,7 +70,7 @@ export function useKitchenRuntimeRealtime(input: {
     async function start() {
       try {
         const ticket = await mintRef.current({
-          channels: ["kitchen"],
+          channels: ["expo"],
           clientCapabilities: {
             ...DEFAULT_CLIENT_CAPABILITIES,
             protocolVersion: 1,
@@ -81,12 +81,12 @@ export function useKitchenRuntimeRealtime(input: {
         const sseUrl = buildRealtimeSseUrl({
           ssePath: ticket.ssePath,
           token: ticket.token,
-          channels: ["kitchen"],
+          channels: ["expo"],
         });
 
         platform.connect({
           sseUrl,
-          channels: ["kitchen"],
+          channels: ["expo"],
           clientCapabilities: DEFAULT_CLIENT_CAPABILITIES,
           handlers: {
             onStateChange: (state) => {
@@ -97,8 +97,8 @@ export function useKitchenRuntimeRealtime(input: {
             },
             onHint: (hint) => {
               if (hint.restaurantId !== restaurantId) return;
-              if (hint.channel !== "kitchen") return;
-              if (!KITCHEN_HINT_TYPES.has(hint.type)) return;
+              if (hint.channel !== "expo") return;
+              if (!EXPO_HINT_TYPES.has(hint.type)) return;
               scheduleKitchenQueueInvalidation({
                 restaurantId,
                 invalidate,
@@ -125,7 +125,7 @@ export function useKitchenRuntimeRealtime(input: {
       platform.disconnect();
       setConnectionState("disabled");
     };
-  }, [kitchenOnly, input.restaurantId, input.role]);
+  }, [expoOnly, input.restaurantId, input.role]);
 
   return {
     connectionState,

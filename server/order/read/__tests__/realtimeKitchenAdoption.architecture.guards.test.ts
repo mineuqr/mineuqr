@@ -115,12 +115,11 @@ describe("REALTIME-KITCHEN-ADOPTION-1 architecture", () => {
       "server/operational-device/routers/operationalDeviceRuntimeRouter.ts"
     );
     expect(runtime).toContain("mintRealtimeTicket");
-    expect(runtime).toContain('kitchen_display');
-    expect(runtime).toContain('c !== "kitchen"');
+    expect(runtime).toContain("kitchen_display");
+    expect(runtime).toContain("expo_display");
   });
 
   it("does not migrate expo capability or customer", () => {
-    expect(getRealtimeSurfaceCapability("expo-screen")?.migrated).toBe(false);
     expect(getRealtimeSurfaceCapability("kitchen-screen")?.migrated).toBe(true);
     const customer = read("client/src/pages/OrderStatusPage.tsx");
     expect(customer).not.toContain("getRealtimePlatform");

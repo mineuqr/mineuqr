@@ -51,12 +51,12 @@ export const REALTIME_SURFACE_CAPABILITY_REGISTRY: readonly RealtimeSurfaceCapab
       surfaceId: "expo-screen",
       supportsRealtime: true,
       channels: ["expo"],
-      fallback: "poll",
+      fallback: "poll_then_broadcast",
       reconnect: true,
       visibilityAware: true,
       readFreshness: true,
       authMode: "device_session",
-      migrated: false,
+      migrated: true, // REALTIME-EXPO-ADOPTION-1
     },
     {
       surfaceId: "waiter",

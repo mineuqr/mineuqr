@@ -7,6 +7,7 @@ import type { ProjectionId } from "../../domain/contracts/projectionIds";
 import type { OrderReadProjectionMaterializer } from "../materializers/OrderReadProjectionMaterializer";
 import { publishOrdersRealtimeHintAfterProjection } from "../../realtime/publishOrdersRealtimeHintAfterProjection";
 import { publishKitchenRealtimeHintAfterProjection } from "../../realtime/publishKitchenRealtimeHintAfterProjection";
+import { publishExpoRealtimeHintAfterProjection } from "../../realtime/publishExpoRealtimeHintAfterProjection";
 
 type ConsumerSpec = {
   name: OrderProjectionConsumerName;
@@ -50,6 +51,8 @@ const CONSUMER_SPECS: ConsumerSpec[] = [
       await publishOrdersRealtimeHintAfterProjection(e);
       // REALTIME-KITCHEN-ADOPTION-1 — kitchen channel after same durable sync.
       await publishKitchenRealtimeHintAfterProjection(e);
+      // REALTIME-EXPO-ADOPTION-1 — expo channel after same durable sync.
+      await publishExpoRealtimeHintAfterProjection(e);
     },
   },
   {

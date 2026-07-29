@@ -251,6 +251,7 @@ const HINT_EVENT_TYPES: RealtimeHintType[] = [
   "check.paid",
   "check.voided",
   "kitchen.queue_changed",
+  "expo.queue_changed",
   "notification.raised",
   "notification.cleared",
   "device.connected",

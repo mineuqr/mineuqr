@@ -1,9 +1,9 @@
 /**
- * Kitchen runtime stream — fetch read model, apply category filter in runtime layer.
+ * Kitchen / Expo runtime stream — fetch read model, apply category filter in runtime layer.
  * Presentation consumes the filtered stream only.
  *
- * REALTIME-KITCHEN-ADOPTION-1 — kitchen_display uses Realtime Platform as primary
- * discovery; Expo keeps poll + broadcast only (out of scope).
+ * REALTIME-KITCHEN-ADOPTION-1 — kitchen_display → kitchen channel
+ * REALTIME-EXPO-ADOPTION-1 — expo_display → expo channel
  */
 
 import { useEffect, useMemo } from "react";
@@ -25,6 +25,7 @@ import { subscribeOrderLifecycleUpdates } from "@/lib/order-lifecycle-latency/or
 import { kitchenQueueStructuralSharing } from "@/lib/read-freshness/queryStructuralSharing";
 import { scheduleKitchenQueueInvalidation } from "./kitchenQueueInvalidationCoordinator";
 import { useKitchenRuntimeRealtime } from "./useKitchenRuntimeRealtime";
+import { useExpoRuntimeRealtime } from "./useExpoRuntimeRealtime";
 
 export type { KitchenProjectionDiagnostics, KitchenRuntimeStream };
 
@@ -47,14 +48,23 @@ export function useKitchenRuntimeStream(): KitchenRuntimeStream & {
 
   const utils = screenTrpc.useUtils();
 
-  const { realtimePrimary } = useKitchenRuntimeRealtime({
+  const onInvalidate = () => {
+    void utils.operationalDevice.runtime.getKitchenQueue.invalidate();
+  };
+
+  const kitchenRt = useKitchenRuntimeRealtime({
     restaurantId,
     enabled: kitchenQueueSupported,
     role,
-    onInvalidate: () => {
-      void utils.operationalDevice.runtime.getKitchenQueue.invalidate();
-    },
+    onInvalidate,
   });
+  const expoRt = useExpoRuntimeRealtime({
+    restaurantId,
+    enabled: kitchenQueueSupported,
+    role,
+    onInvalidate,
+  });
+  const realtimePrimary = kitchenRt.realtimePrimary || expoRt.realtimePrimary;
 
   const pollMs = realtimePrimary ? DATA_POLL_REALTIME_RECOVERY_MS : DATA_POLL_INTERVAL_MS;
 
