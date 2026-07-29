@@ -33,6 +33,16 @@ vi.mock("../db", () => ({
   }),
 }));
 
+vi.mock("../services/commercial-catalog", () => ({
+  getSubscriptionCommercialBinding: vi.fn(async () => null),
+  resolveCommercialFactsFromSnapshot: vi.fn(async () => ({
+    source: "missing",
+    snapshot: null,
+    featureKeys: [],
+    limits: [],
+  })),
+}));
+
 import { getTrialEndDate, isSubscriptionActive } from "../db";
 import { resolveTrialStatusRead } from "./wave1ReadAuthority";
 import { resolveGuestOrderingAllowed } from "./guestOrderingAuthority";

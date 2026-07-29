@@ -1,3 +1,11 @@
+/**
+ * PG-1C entitlement evaluation matrix.
+ *
+ * COMMERCIAL-SNAPSHOT-RUNTIME-AUTHORITY-1:
+ * Used ONLY by the Legacy Bridge path for unbound subscriptions.
+ * Bound subscriptions resolve exclusively from Commercial Snapshot —
+ * this matrix must never execute after a SubscriptionBinding exists.
+ */
 import { FEATURE_KEYS, type FeatureKey } from "./featureKeys";
 import type { CommercialPlan } from "./planTypes";
 import type { CommercialFeatures, CommercialFlags, CommercialLimits } from "./types";

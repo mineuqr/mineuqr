@@ -66,6 +66,26 @@ vi.mock("./owner-email-notifications", () => ({
   notifyOwnerNewSubscription: vi.fn(async () => true),
 }));
 
+vi.mock("./services/commercial-catalog", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("./services/commercial-catalog")>();
+  return {
+    ...actual,
+    ensureCommercialSnapshotBoundForSubscription: vi.fn(async () => ({
+      snapshotId: "snap-webhook-test",
+    })),
+    createImmutableCommercialSnapshotForSubscription: vi.fn(async () => ({
+      snapshotId: "snap-trial-test",
+      payload: {},
+    })),
+    ensureCatalogReady: vi.fn(async () => {}),
+    resolveTrialPolicyFromCatalog: vi.fn(async () => ({
+      professionalPlanVersionId: null,
+      durationDays: 14,
+    })),
+  };
+});
+
 describe("Trial Subscription", () => {
   beforeEach(() => {
     vi.clearAllMocks();

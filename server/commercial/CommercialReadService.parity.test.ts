@@ -24,6 +24,16 @@ vi.mock("../db", () => ({
   getTrialEndDate: vi.fn(),
 }));
 
+vi.mock("../services/commercial-catalog", () => ({
+  getSubscriptionCommercialBinding: vi.fn(async () => null),
+  resolveCommercialFactsFromSnapshot: vi.fn(async () => ({
+    source: "missing",
+    snapshot: null,
+    featureKeys: [],
+    limits: [],
+  })),
+}));
+
 import {
   getRestaurantById,
   getSubscriptionPlanById,

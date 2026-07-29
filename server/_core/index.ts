@@ -37,6 +37,16 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
+    void import("../services/commercial-catalog")
+      .then(({ ensureCatalogReady }) => ensureCatalogReady())
+      .then((r) => {
+        console.log(
+          `[CommercialCatalog] adoption ready (${JSON.stringify(r)})`
+        );
+      })
+      .catch((e) => {
+        console.warn("[CommercialCatalog] adoption seed skipped:", e);
+      });
   });
 }
 

@@ -877,6 +877,14 @@ const offerRouter = router({
 
 const subscriptionRouter = router({
   listPlans: publicProcedure.query(async () => {
+    const {
+      listPlansForSelectionLegacyShape,
+    } = await import("./services/commercial-catalog");
+    const adopted = await listPlansForSelectionLegacyShape();
+    if (adopted.source === "catalog") {
+      return adopted.plans;
+    }
+    const { getSubscriptionPlans } = await import("./db");
     return getSubscriptionPlans();
   }),
 

@@ -12,6 +12,7 @@ import { getCorrelationId } from "./_core/requestContext";
 import { opsLog } from "./_core/opsLog";
 import { OPS_EVENT } from "./_core/opsTaxonomy";
 import { noteWebhookEvent } from "./_core/webhookDedup";
+import { ensureCommercialSnapshotBoundForSubscription } from "./services/commercial-catalog";
 
 export async function handlePayPalWebhook(req: Request, res: Response) {
   const correlationId = getCorrelationId(req);
@@ -138,6 +139,13 @@ export async function handlePayPalWebhook(req: Request, res: Response) {
           });
           return res.json({ status: "error", message: "No subscription row to activate" });
         }
+
+        await ensureCommercialSnapshotBoundForSubscription({
+          subscriptionId: activatedId,
+          legacyPlanId: planId,
+          event: "plan_selected",
+          actorId: userId,
+        });
 
         opsLog({
           type: OPS_EVENT.payment_subscription_activated,

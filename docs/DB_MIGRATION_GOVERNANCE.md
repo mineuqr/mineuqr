@@ -4,7 +4,7 @@ Official workflow for **deployment-safe** schema changes.
 
 **Source of truth:** `drizzle/meta/_journal.json` — only tagged migrations run via `drizzle-kit migrate`.
 
-**Current canonical lineage:** `0000_shiny_blizzard` → `0084_commercial_catalog_foundation` (85 journal entries).
+**Current canonical lineage:** `0000_shiny_blizzard` → `0085_commercial_catalog_adoption_bindings` (86 journal entries).
 
 ---
 
@@ -12,7 +12,7 @@ Official workflow for **deployment-safe** schema changes.
 
 | Fact | Status |
 |------|--------|
-| Journal defines order `0000` → `0084` | **Canonical** — terminus `0084_commercial_catalog_foundation` (85 entries) |
+| Journal defines order `0000` → `0085` | **Canonical** — terminus `0085_commercial_catalog_adoption_bindings` (86 entries) |
 | Tail migrations `0054`–`0057` | **Journalized** — operational devices, screen config, category projection, config revision |
 | Migrations `0058`–`0083` | **Journalized** — through order ordering channel |
 | Duplicate `0000`–`0008` SQL files on disk | **Legacy orphan** — not in journal; never execute |

@@ -1,3 +1,9 @@
+/**
+ * @deprecated COMMERCIAL-CATALOG-PLATFORM-ADOPTION-1
+ * Do not use as Commercial SSOT. Commercial Catalog (`commercial_*` tables +
+ * Platform Ops Commercial Catalog) owns plans/pricing/features/limits.
+ * This script mutates legacy `subscription_plans` only for emergency bridge repair.
+ */
 import dotenv from 'dotenv';
 import { createAuditReadonlyConnection } from '../scripts/lib/tidb-audit-connection.mjs';
 

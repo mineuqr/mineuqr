@@ -24,3 +24,5 @@ export {
   type InsertCommercialPlanVersion,
   type SelectCommercialPlanVersion,
 } from "./tables";
+
+export { commercialSubscriptionBindings } from "./bindings";

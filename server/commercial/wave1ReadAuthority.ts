@@ -9,11 +9,11 @@ export type LegacyTrialStatusRead = {
 };
 
 /**
- * PG-1C.4C Wave 1 — trial status read via CommercialContext authority.
+ * PG-1C.4C Wave 1 — trial status read via commercial entitlement authority.
  *
- * Primary: getCommercialEntitlements → context dates + plan resolution.
- * Parity fallback: when account-level context is NONE but restaurant-scoped
- * rows exist (self-service register), legacy helpers preserve behavior.
+ * COMMERCIAL-SNAPSHOT-RUNTIME-AUTHORITY-1:
+ * Uses branch resolver (Snapshot | Legacy). Lifecycle fallbacks remain only
+ * when account-level context is NONE (restaurant-scoped historical rows).
  */
 export async function resolveTrialStatusRead(
   userId: number,

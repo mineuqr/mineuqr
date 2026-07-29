@@ -15,6 +15,7 @@ export function buildCommercialSnapshotDefinition(
     snapshotSchemaVersion: 1,
     planIdentityId: input.planIdentityId,
     planVersionId: input.planVersionId,
+    catalogPlanCode: input.catalogPlanCode,
     commercialName: input.commercialName,
     versionName: input.versionName,
     currency: input.currency,

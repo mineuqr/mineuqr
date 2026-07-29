@@ -25,6 +25,13 @@ vi.mock("./db", () => ({
   updateSubscriptionById: vi.fn(),
 }));
 
+vi.mock("./services/commercial-catalog", () => ({
+  ensureCommercialSnapshotBoundForSubscription: vi.fn(async () => ({
+    snapshotId: "snap-test",
+  })),
+  classifyPlanTransitionEvent: vi.fn(() => "plan_selected"),
+}));
+
 vi.mock("./commercial/ownerAccountSubscriptionAuthority", () => ({
   ownerHasEntitledAccountSubscription: vi.fn(),
   getOwnerAccountSubscriptionRow: vi.fn(),

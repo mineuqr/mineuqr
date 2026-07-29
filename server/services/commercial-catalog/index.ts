@@ -857,6 +857,7 @@ export class CommercialSnapshotService {
       buildCommercialSnapshotDefinition({
         planIdentityId: plan.id,
         planVersionId: version.id,
+        catalogPlanCode: plan.code,
         commercialName: plan.name,
         versionName: version.versionName,
         currency: price.currency,
@@ -972,3 +973,29 @@ export {
   newCommercialId,
   nowIso,
 } from "./CatalogStore";
+
+export {
+  listPublishedPlanOfferings,
+  listPlansForSelectionLegacyShape,
+  resolveTrialPolicyFromCatalog,
+  resolveRegionFromCatalog,
+  resolvePromotionFromCatalog,
+  createImmutableCommercialSnapshotForSubscription,
+  ensureCommercialSnapshotBoundForSubscription,
+  classifyPlanTransitionEvent,
+  getSubscriptionCommercialBinding,
+  resolveCommercialFactsFromSnapshot,
+  getAdoptionObservability,
+  ensureCatalogReady,
+  resolveLegacyPlanIdFromVersion,
+  resolvePlanVersionIdFromLegacyPlanId,
+} from "./adoptionService";
+
+export { ensureCommercialCatalogAdoptionSeed } from "./seedAdoptionCatalog";
+export {
+  hydrateCommercialCatalogFromDb,
+  hydrateCommercialSnapshotById,
+} from "./drizzleCatalogPersistence";
+export { commercialAdoptionObservability } from "./adoptionObservability";
+export { commercialRuntimeAuthorityObservability } from "./runtimeAuthorityObservability";
+export { LEGACY_PLAN_BRIDGE, bridgeByLegacyPlanId } from "./legacyPlanBridge";

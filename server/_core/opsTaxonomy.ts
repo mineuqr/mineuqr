@@ -201,6 +201,19 @@ export const OPS_EVENT = {
   commercial_promotion_created: "commercial_promotion_created",
   commercial_migration_policy_changed: "commercial_migration_policy_changed",
   commercial_regional_policy_changed: "commercial_regional_policy_changed",
+  commercial_snapshot_created: "commercial_snapshot_created",
+  commercial_snapshot_bound: "commercial_snapshot_bound",
+  commercial_snapshot_activated: "commercial_snapshot_activated",
+  commercial_snapshot_resolved: "commercial_snapshot_resolved",
+  commercial_legacy_bridge_used: "commercial_legacy_bridge_used",
+  commercial_upgrade_snapshot_created: "commercial_upgrade_snapshot_created",
+  commercial_downgrade_snapshot_created: "commercial_downgrade_snapshot_created",
+  commercial_renewal_snapshot_created: "commercial_renewal_snapshot_created",
+  commercial_plan_selected: "commercial_plan_selected",
+  commercial_upgrade: "commercial_upgrade",
+  commercial_downgrade: "commercial_downgrade",
+  commercial_renewal: "commercial_renewal",
+  commercial_promotion_applied: "commercial_promotion_applied",
 } as const;
 
 export type OpsEventType = (typeof OPS_EVENT)[keyof typeof OPS_EVENT];

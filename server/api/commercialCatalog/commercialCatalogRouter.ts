@@ -75,6 +75,23 @@ export const commercialCatalogRouter = router({
     };
   }),
 
+  adoptionStatus: protectedProcedure.query(async ({ ctx }) => {
+    assertAdminAccess(ctx, "commercialCatalog.adoptionStatus");
+    const { ensureCatalogReady, getAdoptionObservability } = await import(
+      "../../services/commercial-catalog"
+    );
+    await ensureCatalogReady();
+    return getAdoptionObservability();
+  }),
+
+  listPublishedOfferings: protectedProcedure.query(async ({ ctx }) => {
+    assertAdminAccess(ctx, "commercialCatalog.listPublishedOfferings");
+    const { listPublishedPlanOfferings } = await import(
+      "../../services/commercial-catalog"
+    );
+    return listPublishedPlanOfferings();
+  }),
+
   health: protectedProcedure.query(({ ctx }) => {
     assertAdminAccess(ctx, "commercialCatalog.health");
     return getCommercialCatalogHealth();

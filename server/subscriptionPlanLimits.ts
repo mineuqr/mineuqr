@@ -12,6 +12,12 @@ import {
   pickCanonicalSubscription,
   resolveOrderingSubscriptionRow,
 } from "./subscriptionResolver";
+import {
+  getSubscriptionCommercialBinding,
+  resolveCommercialFactsFromSnapshot,
+} from "./services/commercial-catalog";
+import { commercialRuntimeAuthorityObservability } from "./services/commercial-catalog/runtimeAuthorityObservability";
+import { snapshotQuotaLimits } from "./commercial/snapshotRuntimeAuthority";
 
 export type PlanLimits = Pick<
   SelectSubscriptionPlan,
@@ -38,10 +44,9 @@ async function getFallbackBasicLimits(): Promise<PlanLimits> {
 }
 
 /**
- * Canonical plan limits for quota enforcement.
- * Account-wide: pickCanonicalSubscription across all user rows.
- * Restaurant-scoped: resolveOrderingSubscriptionRow (restaurant row, then account-level).
- * Falls back to Basic-tier limits when no entitled subscription/plan is found.
+ * COMMERCIAL-SNAPSHOT-RUNTIME-AUTHORITY-1
+ * Bound subscription → Snapshot limits ONLY.
+ * Unbound → Legacy subscription_plans bridge ONLY.
  */
 export async function resolvePlanLimitsForUser(
   userId: number,
@@ -54,6 +59,23 @@ export async function resolvePlanLimitsForUser(
       : pickCanonicalSubscription(rows);
 
   if (sub && resolveSubscriptionEntitlement(sub).isEntitled) {
+    const binding = await getSubscriptionCommercialBinding(sub.id);
+    if (binding) {
+      const facts = await resolveCommercialFactsFromSnapshot(sub.id);
+      if (facts.source === "snapshot" && facts.snapshot) {
+        commercialRuntimeAuthorityObservability.recordSnapshotResolved(sub.id);
+        return snapshotQuotaLimits(facts.snapshot);
+      }
+      // Fail closed for bound + unreadable snapshot — deny growth.
+      commercialRuntimeAuthorityObservability.recordSnapshotCreationFailure(
+        `quota_bound_snapshot_unreadable:${binding.snapshotId}`
+      );
+      return { maxRestaurants: 0, maxItemsPerRestaurant: 0, maxCategories: 0 };
+    }
+
+    commercialRuntimeAuthorityObservability.recordLegacyBridgeUsed(
+      "resolvePlanLimitsForUser"
+    );
     const plan = await getSubscriptionPlanById(sub.planId);
     if (plan) {
       return {
@@ -64,6 +86,9 @@ export async function resolvePlanLimitsForUser(
     }
   }
 
+  commercialRuntimeAuthorityObservability.recordLegacyBridgeUsed(
+    "resolvePlanLimitsForUser:fallback"
+  );
   return getFallbackBasicLimits();
 }
 

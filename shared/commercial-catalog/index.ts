@@ -13,5 +13,6 @@ export const COMMERCIAL_CATALOG_ADR = "ADR-ARCH-037" as const;
 
 export * from "./ownership";
 export * from "./dashboard";
+export * from "./adoption";
 export * from "./types";
 export * from "./contracts";

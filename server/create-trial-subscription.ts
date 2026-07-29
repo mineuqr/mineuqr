@@ -1,22 +1,44 @@
+/**
+ * Create a trial subscription for a new user.
+ * COMMERCIAL-CATALOG-PLATFORM-ADOPTION-1 — trial duration + plan from Catalog SSOT.
+ * Legacy planId retained for payment/activation compatibility bridge only.
+ */
 import {
   createUserSubscription,
   getSubscriptionPlans,
 } from "./db";
 import { InsertUserSubscription } from "../drizzle/schema";
+import {
+  resolveTrialPolicyFromCatalog,
+  createImmutableCommercialSnapshotForSubscription,
+  ensureCatalogReady,
+} from "./services/commercial-catalog";
+import { commercialAdoptionObservability } from "./services/commercial-catalog/adoptionObservability";
 
+/** @deprecated Catalog trial policy is SSOT — kept as fallback only. */
 export const TRIAL_DAYS = 14;
 
-/** Professional tier in seeded catalog (Basic=1, Professional=2, Enterprise=3). */
+/** @deprecated Prefer Catalog professional plan version. */
 export const TRIAL_PLAN_SORT_ORDER = 2;
 
 /** Free ordering-only tier — never used for self-service trials. */
 const ORDERING_FREE_PLAN_ID = 30001;
 
 /**
- * Plan for new trials (LAUNCH-5B): Professional tier limits/features, 14-day lifecycle.
- * Falls back to second paid catalog row if sortOrder 2 is absent.
+ * Plan for new trials — Catalog SSOT with legacy bridge fallback.
  */
 export async function resolveTrialPlanId(): Promise<number> {
+  try {
+    await ensureCatalogReady();
+    const policy = await resolveTrialPolicyFromCatalog();
+    if (policy.legacyPlanId) return policy.legacyPlanId;
+  } catch {
+    commercialAdoptionObservability.recordLegacyLookup("resolveTrialPlanId");
+  }
+
+  commercialAdoptionObservability.recordLegacyLookup(
+    "resolveTrialPlanId:subscription_plans"
+  );
   const plans = await getSubscriptionPlans();
   const paid = plans.filter((p) => p.id !== ORDERING_FREE_PLAN_ID);
   const professional = paid.find((p) => p.sortOrder === TRIAL_PLAN_SORT_ORDER);
@@ -26,16 +48,27 @@ export async function resolveTrialPlanId(): Promise<number> {
   return 1;
 }
 
+export async function resolveTrialDurationDays(): Promise<number> {
+  try {
+    const policy = await resolveTrialPolicyFromCatalog();
+    return policy.durationDays;
+  } catch {
+    commercialAdoptionObservability.recordLegacyLookup("resolveTrialDurationDays");
+    return TRIAL_DAYS;
+  }
+}
+
 export function buildTrialSubscriptionPayload(
   userId: number,
   planId: number,
-  restaurantId = 0
+  restaurantId = 0,
+  trialDays = TRIAL_DAYS
 ): InsertUserSubscription {
   const now = new Date();
   const trialEndsAt = new Date();
-  trialEndsAt.setDate(trialEndsAt.getDate() + TRIAL_DAYS);
+  trialEndsAt.setDate(trialEndsAt.getDate() + trialDays);
   const currentPeriodEnd = new Date();
-  currentPeriodEnd.setDate(currentPeriodEnd.getDate() + TRIAL_DAYS);
+  currentPeriodEnd.setDate(currentPeriodEnd.getDate() + trialDays);
 
   return {
     userId,
@@ -55,12 +88,13 @@ export async function buildTrialSubscriptionForUser(
   restaurantId = 0
 ): Promise<InsertUserSubscription> {
   const planId = await resolveTrialPlanId();
-  return buildTrialSubscriptionPayload(userId, planId, restaurantId);
+  const days = await resolveTrialDurationDays();
+  return buildTrialSubscriptionPayload(userId, planId, restaurantId, days);
 }
 
 /**
- * Create a 14-day trial subscription for a new user (account-scoped by default).
- * @param restaurantId — optional scope tag; self-service register uses 0 (ASN-5 R1).
+ * Create a trial subscription for a new user (account-scoped by default).
+ * Captures immutable Commercial Snapshot from Catalog when possible.
  */
 export async function createTrialSubscription(
   userId: number,
@@ -72,8 +106,29 @@ export async function createTrialSubscription(
     restaurantId
   );
 
-  await createUserSubscription(trialSubscription);
+  const created = await createUserSubscription(trialSubscription);
+  const subscriptionId = created?.id ?? null;
+
+  try {
+    await ensureCatalogReady();
+    const policy = await resolveTrialPolicyFromCatalog();
+    if (subscriptionId && policy.professionalPlanVersionId) {
+      await createImmutableCommercialSnapshotForSubscription({
+        subscriptionId,
+        planVersionId: policy.professionalPlanVersionId,
+        legacyPlanId: trialSubscription.planId,
+        event: "trial_activated",
+        actorId: userId,
+      });
+    }
+  } catch {
+    commercialAdoptionObservability.recordResolutionError(
+      "trial_snapshot_capture_failed"
+    );
+  }
+
+  const days = await resolveTrialDurationDays();
   console.log(
-    `[Trial] Created ${TRIAL_DAYS}-day trial for user ${userId} (restaurant ${restaurantId}, plan ${trialSubscription.planId})`
+    `[Trial] Created ${days}-day trial for user ${userId} (restaurant ${restaurantId}, plan ${trialSubscription.planId})`
   );
 }

@@ -1821,4 +1821,5 @@ export {
   type SelectCommercialPlan,
   type InsertCommercialPlanVersion,
   type SelectCommercialPlanVersion,
+  commercialSubscriptionBindings,
 } from "../server/db/schema/commercial";

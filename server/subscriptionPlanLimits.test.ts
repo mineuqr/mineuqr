@@ -15,6 +15,16 @@ vi.mock("./db", () => ({
   getSubscriptionPlans: vi.fn(),
 }));
 
+vi.mock("./services/commercial-catalog", () => ({
+  getSubscriptionCommercialBinding: vi.fn(async () => null),
+  resolveCommercialFactsFromSnapshot: vi.fn(async () => ({
+    source: "missing",
+    snapshot: null,
+    featureKeys: [],
+    limits: [],
+  })),
+}));
+
 vi.mock("./subscriptionEntitlement", () => ({
   resolveSubscriptionEntitlement: vi.fn(() => ({ isEntitled: true })),
 }));

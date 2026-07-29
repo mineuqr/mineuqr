@@ -42,6 +42,8 @@ export type CommercialSnapshotDefinition = {
   snapshotSchemaVersion: 1;
   planIdentityId: string;
   planVersionId: string;
+  /** Catalog plan code captured at bind time (e.g. professional) — no live Catalog read at resolve. */
+  catalogPlanCode?: string;
   commercialName: string;
   versionName: string;
   currency: string;
@@ -70,6 +72,7 @@ export type CommercialSnapshotDefinition = {
 export type CommercialSnapshotBuildInput = {
   planIdentityId: string;
   planVersionId: string;
+  catalogPlanCode?: string;
   commercialName: string;
   versionName: string;
   currency: string;

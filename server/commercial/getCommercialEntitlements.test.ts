@@ -5,6 +5,16 @@ vi.mock("../db", () => ({
   getSubscriptionsByUser: vi.fn(),
 }));
 
+vi.mock("../services/commercial-catalog", () => ({
+  getSubscriptionCommercialBinding: vi.fn(async () => null),
+  resolveCommercialFactsFromSnapshot: vi.fn(async () => ({
+    source: "missing",
+    snapshot: null,
+    featureKeys: [],
+    limits: [],
+  })),
+}));
+
 import { getUserById, getSubscriptionsByUser } from "../db";
 import { getCommercialEntitlements } from "./getCommercialEntitlements";
 import {

@@ -18,6 +18,10 @@ import {
   createSubscriptionForRestaurant,
   updateSubscriptionById,
 } from "./db";
+import {
+  classifyPlanTransitionEvent,
+  ensureCommercialSnapshotBoundForSubscription,
+} from "./services/commercial-catalog";
 import { cascadeAuditFromTrpc } from "./db/cascadeAudit";
 import {
   assertProtectedUserSubscriptionModifiable,
@@ -180,6 +184,13 @@ export async function applyAdminUserSubscriptionCreate(params: {
     snapshot,
   });
 
+  await ensureCommercialSnapshotBoundForSubscription({
+    subscriptionId: result.id,
+    legacyPlanId: planId,
+    event: "plan_selected",
+    actorId: ctx.user?.id ?? null,
+  });
+
   const periodEnd = computeAdminSubscriptionPeriodEnd({
     billingCycle,
     subscriptionEndDate,
@@ -258,6 +269,30 @@ export async function applyAdminUserSubscriptionUpdate(params: {
     before,
     after,
   });
+
+  const nextPlanId =
+    typeof updateData.planId === "number" ? updateData.planId : existing.planId;
+  const planChanged =
+    typeof updateData.planId === "number" && updateData.planId !== existing.planId;
+  const periodChanged =
+    typeof updateData.currentPeriodEnd === "string" &&
+    updateData.currentPeriodEnd !== existing.currentPeriodEnd;
+  const statusActivated =
+    updateData.status === "active" && existing.status !== "active";
+
+  if (planChanged || periodChanged || statusActivated) {
+    const event = planChanged
+      ? classifyPlanTransitionEvent(existing.planId, nextPlanId)
+      : periodChanged
+        ? "renewal"
+        : "plan_selected";
+    await ensureCommercialSnapshotBoundForSubscription({
+      subscriptionId: existing.id,
+      legacyPlanId: nextPlanId,
+      event,
+      actorId: ctx.user?.id ?? null,
+    });
+  }
 
   return { success: true as const, changed: true, subscriptionId: existing.id };
 }

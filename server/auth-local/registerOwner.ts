@@ -188,6 +188,29 @@ export async function registerLocalOwner(
   });
   setSessionCookie(res, req, sessionToken);
 
+  try {
+    const { getCanonicalUserSubscription } = await import("../db");
+    const {
+      resolveTrialPolicyFromCatalog,
+      createImmutableCommercialSnapshotForSubscription,
+      ensureCatalogReady,
+    } = await import("../services/commercial-catalog");
+    await ensureCatalogReady();
+    const sub = await getCanonicalUserSubscription(userId);
+    const policy = await resolveTrialPolicyFromCatalog();
+    if (sub?.id && policy.professionalPlanVersionId) {
+      await createImmutableCommercialSnapshotForSubscription({
+        subscriptionId: sub.id,
+        planVersionId: policy.professionalPlanVersionId,
+        legacyPlanId: sub.planId,
+        event: "trial_activated",
+        actorId: userId,
+      });
+    }
+  } catch (e) {
+    console.warn("[Auth Register] Commercial snapshot capture skipped:", e);
+  }
+
   authOpsLog({
     type: OPS_EVENT.email_verification_requested,
     severity: "info",

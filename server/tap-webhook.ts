@@ -12,6 +12,7 @@ import {
 } from "./db";
 import { updateSubscriptionForActivation } from "./db";
 import { notifyOwnerNewSubscription } from "./owner-email-notifications";
+import { ensureCommercialSnapshotBoundForSubscription } from "./services/commercial-catalog";
 
 export async function handleTapWebhook(req: Request, res: Response) {
   const correlationId = getCorrelationId(req);
@@ -121,6 +122,19 @@ export async function handleTapWebhook(req: Request, res: Response) {
       }
 
       if (activatedId != null) {
+        const boundPlanId =
+          planIdOpt ??
+          (await getSubscriptionById(activatedId))?.planId ??
+          null;
+        if (boundPlanId != null) {
+          await ensureCommercialSnapshotBoundForSubscription({
+            subscriptionId: activatedId,
+            legacyPlanId: boundPlanId,
+            event: "plan_selected",
+            actorId: uid ?? null,
+          });
+        }
+
         opsLog({
           type: OPS_EVENT.payment_subscription_activated,
           category: "PAYMENT",

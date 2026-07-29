@@ -12,10 +12,10 @@ import {
 /**
  * EXEC-1 — read-only canonical commercial authority facade.
  *
- * Resolves: Owner → account subscription (restaurantId = 0) → plan → entitlements
- * via getCommercialEntitlements only. No legacy authority paths. No writes.
- *
- * Not wired to routers or dashboard consumers in EXEC-1.
+ * COMMERCIAL-SNAPSHOT-RUNTIME-AUTHORITY-1:
+ * Entitlements via getCommercialEntitlements (branch Snapshot | Legacy).
+ * Bound path does not use subscription_plans for commercial name —
+ * Snapshot meta.commercialName is authoritative when present.
  */
 export class CommercialReadService {
   /**
@@ -38,12 +38,30 @@ export class CommercialReadService {
     const rows = await getSubscriptionsByUser(ownerId);
     const canonicalRow = pickUserLevelSubscription(rows, now);
 
+    const meta = (result as { meta?: { commercialName?: string; commercialResolutionSource?: string } })
+      .meta;
+    const snapshotName =
+      meta?.commercialResolutionSource === "snapshot" ||
+      meta?.commercialResolutionSource === "snapshot_fail_closed"
+        ? meta.commercialName ?? null
+        : null;
+
+    // Unbound only — Legacy plan display name. Bound uses Snapshot commercialName.
     const catalogPlan =
-      canonicalRow != null
+      snapshotName == null && canonicalRow != null
         ? await getSubscriptionPlanById(canonicalRow.planId)
         : null;
 
-    return mapToCommercialAuthority(result, canonicalRow, catalogPlan, now);
+    const authority = mapToCommercialAuthority(
+      result,
+      canonicalRow,
+      catalogPlan,
+      now
+    );
+    if (snapshotName) {
+      return { ...authority, planName: snapshotName };
+    }
+    return authority;
   }
 
   /** AR-4 Category A — batch read (same semantics as single). */
