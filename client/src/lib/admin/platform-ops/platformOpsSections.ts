@@ -63,7 +63,7 @@ export const PLATFORM_OPS_SECTION_DEFINITIONS: readonly PlatformOpsSectionDef[] 
       path: `${PLATFORM_OPS_BASE}/devices`,
       labelKey: "admin.platformOps.sections.devices",
       descriptionKey: "admin.platformOps.sections.devicesDesc",
-      status: "reserved",
+      status: "live",
     },
     {
       id: "jobs",

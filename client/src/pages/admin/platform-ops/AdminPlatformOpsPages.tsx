@@ -9,6 +9,7 @@ import { PlatformOpsRealtimeComposition } from "@/components/admin/platform-ops/
 import { PlatformOpsHealthComposition } from "@/components/admin/platform-ops/PlatformOpsHealthComposition";
 import { PlatformOpsPerformanceComposition } from "@/components/admin/platform-ops/PlatformOpsPerformanceComposition";
 import { PlatformOpsRuntimeComposition } from "@/components/admin/platform-ops/PlatformOpsRuntimeComposition";
+import { PlatformOpsDevicesComposition } from "@/components/admin/platform-ops/PlatformOpsDevicesComposition";
 import { PlatformOpsReservedSection } from "@/components/admin/platform-ops/PlatformOpsReservedSection";
 import type { PlatformOpsSectionId } from "@/lib/admin/platform-ops/platformOpsSections";
 
@@ -21,9 +22,7 @@ function PlatformOpsPage({ sectionId }: { sectionId: PlatformOpsSectionId }) {
       {sectionId === "performance" ? (
         <PlatformOpsPerformanceComposition />
       ) : null}
-      {sectionId === "devices" ? (
-        <PlatformOpsReservedSection sectionId="devices" />
-      ) : null}
+      {sectionId === "devices" ? <PlatformOpsDevicesComposition /> : null}
       {sectionId === "jobs" ? (
         <PlatformOpsRuntimeComposition surface="jobs" />
       ) : null}

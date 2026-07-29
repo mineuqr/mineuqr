@@ -23,17 +23,13 @@ const FUTURE_OWNERSHIP: Record<
     | "realtime"
     | "health"
     | "performance"
+    | "devices"
     | "jobs"
     | "events"
     | "diagnostics"
   >,
   string[]
 > = {
-  devices: [
-    "admin.platformOps.future.devices.fleet",
-    "admin.platformOps.future.devices.presence",
-    "admin.platformOps.future.devices.config",
-  ],
   audit: [
     "admin.platformOps.future.audit.platform",
     "admin.platformOps.future.audit.admin",
@@ -49,6 +45,7 @@ type PlatformOpsReservedSectionProps = {
     | "realtime"
     | "health"
     | "performance"
+    | "devices"
     | "jobs"
     | "events"
     | "diagnostics"
