@@ -5,7 +5,8 @@
  * Presentation unified via platform-ops-ui foundation.
  */
 
-import { Activity, AlertTriangle, Radio, Shield } from "lucide-react";
+import { Activity, AlertTriangle, Radio, RefreshCw, Shield } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { trpc } from "@/lib/trpc";
 import { adminQueriesEnabled } from "@/lib/queryRuntime";
@@ -17,7 +18,6 @@ import {
   PlatformOpsDataTable,
   PlatformOpsEmptyState,
   PlatformOpsErrorState,
-  PlatformOpsHeaderMeta,
   PlatformOpsHeroSummary,
   PlatformOpsLoadingState,
   PlatformOpsMetricCard,
@@ -30,6 +30,7 @@ import {
   PlatformOpsTableHeader,
   PlatformOpsTableRoot,
   PlatformOpsTableRow,
+  PlatformOpsToolbar,
   PLATFORM_OPS_UI,
 } from "@/design-system/platform-ops-ui";
 
@@ -98,12 +99,27 @@ export function PlatformOpsRealtimeComposition() {
 
   return (
     <div className={PLATFORM_OPS_UI.workspace} data-slot="platform-ops-realtime">
-      <PlatformOpsHeaderMeta
-        health={health}
-        healthLabel={String(dash.platform.overallHealth)}
-        lastUpdated={updated}
-        lastUpdatedLabel={t("admin.platformOps.realtime.lastUpdated")}
-        className="mb-1"
+      <PlatformOpsToolbar
+        actions={
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={dashboardQuery.isFetching}
+            onClick={() => {
+              void dashboardQuery.refetch();
+              void alertsQuery.refetch();
+            }}
+          >
+            <RefreshCw
+              className={
+                dashboardQuery.isFetching ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"
+              }
+              aria-hidden
+            />
+            {t("admin.platformOps.realtime.retry")}
+          </Button>
+        }
       />
 
       <PlatformOpsHeroSummary
@@ -112,6 +128,7 @@ export function PlatformOpsRealtimeComposition() {
         health={health}
         healthLabel={String(dash.platform.overallHealth)}
         lastUpdated={updated}
+        lastUpdatedLabel={t("admin.platformOps.realtime.lastUpdated")}
         columns={4}
         alerts={
           alerts.length > 0 ? (

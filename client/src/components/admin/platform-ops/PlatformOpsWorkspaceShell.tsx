@@ -1,15 +1,13 @@
 /**
  * OPERATIONS-INFORMATION-ARCHITECTURE-1
- * + PLATFORM-OPERATIONS-UI-FOUNDATION-1
+ * + PLATFORM-OPERATIONS-UI-ADOPTION-1
  * Shared shell for Platform Operations sections.
- * Presentation: shared workspace + section density tokens only.
- * Does not alter routing, permissions, or section navigation ownership.
+ * Presentation via PlatformOpsHeader only; routes/nav ownership unchanged.
  */
 
 import type { ReactNode } from "react";
 import { useAuthGate } from "@/_core/hooks/useAuthGate";
 import { AdminAccessDenied, AuthGatePending } from "@/components/AuthGate";
-import { AdminOperationsShell } from "@/components/admin/layout/AdminOperationsShell";
 import { PlatformOpsSectionNav } from "@/components/admin/platform-ops/PlatformOpsSectionNav";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { resolveAdminPageShell } from "@/lib/admin/routes/adminRouteRegistry";
@@ -17,20 +15,34 @@ import {
   getPlatformOpsSection,
   type PlatformOpsSectionId,
 } from "@/lib/admin/platform-ops/platformOpsSections";
-import { PLATFORM_OPS_UI } from "@/design-system/platform-ops-ui";
+import {
+  PlatformOpsHeader,
+  PLATFORM_OPS_UI,
+  type PlatformOpsHealthStatus,
+} from "@/design-system/platform-ops-ui";
 
 type PlatformOpsWorkspaceShellProps = {
   sectionId: PlatformOpsSectionId;
   children: ReactNode;
   headerActions?: ReactNode;
+  secondaryActions?: ReactNode;
   statusIndicator?: ReactNode;
+  health?: PlatformOpsHealthStatus | string;
+  healthLabel?: string;
+  lastUpdated?: string;
+  lastUpdatedLabel?: string;
 };
 
 export function PlatformOpsWorkspaceShell({
   sectionId,
   children,
   headerActions,
+  secondaryActions,
   statusIndicator,
+  health,
+  healthLabel,
+  lastUpdated,
+  lastUpdatedLabel,
 }: PlatformOpsWorkspaceShellProps) {
   const { t } = useLanguage();
   const gate = useAuthGate();
@@ -48,7 +60,7 @@ export function PlatformOpsWorkspaceShell({
   const sectionLabel = t(section.labelKey);
 
   return (
-    <AdminOperationsShell
+    <PlatformOpsHeader
       title={shell.title}
       subtitle={t(section.descriptionKey)}
       breadcrumbs={[
@@ -59,10 +71,13 @@ export function PlatformOpsWorkspaceShell({
         },
         { label: sectionLabel },
       ]}
-      compact
-      narrowContent={false}
-      headerActions={headerActions}
+      primaryActions={headerActions}
+      secondaryActions={secondaryActions}
       statusIndicator={statusIndicator}
+      health={health}
+      healthLabel={healthLabel}
+      lastUpdated={lastUpdated}
+      lastUpdatedLabel={lastUpdatedLabel}
       headerFooter={<PlatformOpsSectionNav active={sectionId} />}
     >
       <div
@@ -71,6 +86,6 @@ export function PlatformOpsWorkspaceShell({
       >
         {children}
       </div>
-    </AdminOperationsShell>
+    </PlatformOpsHeader>
   );
 }

@@ -1,7 +1,7 @@
 /**
  * OPERATIONS-INFORMATION-ARCHITECTURE-1
- * + PLATFORM-OPERATIONS-UI-FOUNDATION-1
- * Reserved architecture slot — presentation only.
+ * + PLATFORM-OPERATIONS-UI-ADOPTION-1
+ * Reserved architecture slot — foundation presentation only.
  */
 
 import { Inbox } from "lucide-react";
@@ -10,6 +10,9 @@ import type { PlatformOpsSectionId } from "@/lib/admin/platform-ops/platformOpsS
 import { getPlatformOpsSection } from "@/lib/admin/platform-ops/platformOpsSections";
 import {
   PlatformOpsEmptyState,
+  PlatformOpsHeroSummary,
+  PlatformOpsMetricCard,
+  PlatformOpsOwnershipList,
   PlatformOpsSection,
 } from "@/design-system/platform-ops-ui";
 
@@ -74,20 +77,39 @@ export function PlatformOpsReservedSection({
   const ownership = FUTURE_OWNERSHIP[sectionId];
 
   return (
-    <PlatformOpsSection
-      title={t(section.labelKey)}
-      description={t("admin.platformOps.reservedBody")}
-    >
-      <PlatformOpsEmptyState
-        icon={Inbox}
-        title={t("admin.platformOps.reserved")}
-        description={t("admin.platformOps.architectureOnly")}
-      />
-      <ul className="mt-3 list-disc space-y-1 ps-5 text-sm text-cyan-200/80">
-        {ownership.map((key) => (
-          <li key={key}>{t(key)}</li>
-        ))}
-      </ul>
-    </PlatformOpsSection>
+    <div data-slot="platform-ops-reserved">
+      <PlatformOpsHeroSummary
+        title={t(section.labelKey)}
+        description={t("admin.platformOps.reservedBody")}
+        health="unknown"
+        healthLabel={t("admin.platformOps.reserved")}
+        columns={2}
+      >
+        <PlatformOpsMetricCard
+          label={t("admin.platformOps.reserved")}
+          value={String(ownership.length)}
+          tone="info"
+          domain="information"
+        />
+        <PlatformOpsMetricCard
+          label={t(section.labelKey)}
+          value={t("admin.platformOps.architectureOnly")}
+          tone="info"
+          domain="information"
+        />
+      </PlatformOpsHeroSummary>
+
+      <PlatformOpsSection
+        title={t(section.labelKey)}
+        description={t("admin.platformOps.reservedBody")}
+      >
+        <PlatformOpsEmptyState
+          icon={Inbox}
+          title={t("admin.platformOps.reserved")}
+          description={t("admin.platformOps.architectureOnly")}
+        />
+        <PlatformOpsOwnershipList items={ownership.map((key) => t(key))} />
+      </PlatformOpsSection>
+    </div>
   );
 }

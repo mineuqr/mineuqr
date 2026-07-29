@@ -27,6 +27,11 @@ export type { PlatformOpsMetricCardProps } from "./PlatformOpsMetricCard";
 export { PlatformOpsSection } from "./PlatformOpsSection";
 export { PlatformOpsHeroSummary } from "./PlatformOpsHeroSummary";
 export { PlatformOpsHeaderMeta } from "./PlatformOpsHeaderMeta";
+export { PlatformOpsHeader } from "./PlatformOpsHeader";
+export {
+  PlatformOpsModuleGrid,
+  PlatformOpsOwnershipList,
+} from "./PlatformOpsModuleGrid";
 export {
   PlatformOpsTable,
   PlatformOpsTableFrame,
@@ -61,3 +66,20 @@ export {
 } from "./PlatformOpsStates";
 export { PlatformOpsChartFrame } from "./PlatformOpsChartFrame";
 export { PlatformOpsModuleTile } from "./PlatformOpsModuleTile";
+
+/** PLATFORM-OPERATIONS-UI-ADOPTION-1 — program aliases (no new visuals) */
+export {
+  PlatformOperationsHeader,
+  PlatformOperationsHero,
+  PlatformOperationsMetricCard,
+  PlatformOperationsMetricGrid,
+  PlatformOperationsSection,
+  PlatformOperationsStatusBadge,
+  PlatformOperationsToolbar,
+  PlatformOperationsAlert,
+  PlatformOperationsEmptyState,
+  PlatformOperationsLoadingState,
+  PlatformOperationsErrorState,
+  PlatformOperationsChartFrame,
+  PlatformOperationsTable,
+} from "./aliases";
