@@ -131,6 +131,10 @@ export const OPS_EVENT = {
   realtime_auth_failed: "realtime_auth_failed",
   realtime_gap_detected: "realtime_gap_detected",
   realtime_fallback_activated: "realtime_fallback_activated",
+  // REALTIME-PUBLIC-TICKET-HARDENING-1
+  realtime_ticket_issued: "realtime_ticket_issued",
+  realtime_ticket_revoked: "realtime_ticket_revoked",
+  realtime_ticket_cleanup: "realtime_ticket_cleanup",
 
   // ORDER-EVENTS-1B — event consumers
   order_consumer_executed: "order_consumer_executed",

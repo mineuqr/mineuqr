@@ -7,10 +7,11 @@ import type { Response } from "express";
 import type { RealtimeHint, RealtimeTicketClaims } from "@shared/realtime-platform";
 import { DEFAULT_SERVER_CAPABILITIES } from "@shared/realtime-platform";
 import type { RealtimePubSub } from "../pubsub/RealtimePubSub";
+import { authorizeRealtimeCredential } from "../tickets/authorizeRealtimeCredential";
 import {
-  isRealtimeTicketRevoked,
-  verifyRealtimeTicket,
-} from "../tickets/RealtimeTicketService";
+  bindOpaqueTicketConnection,
+  isOpaqueRealtimeTicket,
+} from "../tickets/RealtimeOpaqueTicketRegistry";
 import {
   incRealtimeMetric,
   noteRealtimeEvent,
@@ -59,21 +60,18 @@ export class RealtimeSseGateway {
       return { ok: false, status: 503, message: "Realtime gateway shutting down" };
     }
 
-    const verified = verifyRealtimeTicket(input.token);
+    const verified = authorizeRealtimeCredential(input.token);
     if (!verified.ok) {
       incRealtimeMetric("authFailures");
       noteRealtimeEvent("realtime_auth_failed", { code: verified.code });
       return {
         ok: false,
-        status: verified.code === "expired" ? 401 : 403,
+        status:
+          verified.code === "expired" || verified.code === "revoked"
+            ? 401
+            : 403,
         message: `Realtime ticket ${verified.code}`,
       };
-    }
-
-    if (isRealtimeTicketRevoked(verified.claims.jti)) {
-      incRealtimeMetric("authFailures");
-      noteRealtimeEvent("realtime_auth_failed", { code: "revoked" });
-      return { ok: false, status: 401, message: "Realtime ticket revoked" };
     }
 
     const allowed = new Set(verified.claims.channels);
@@ -83,6 +81,7 @@ export class RealtimeSseGateway {
         : verified.claims.channels;
 
     if (requested.length === 0) {
+      incRealtimeMetric("channelAuthFailures");
       return { ok: false, status: 403, message: "No permitted channels" };
     }
 
@@ -105,6 +104,10 @@ export class RealtimeSseGateway {
       heartbeat: null,
       closed: false,
     };
+
+    if (isOpaqueRealtimeTicket(input.token)) {
+      bindOpaqueTicketConnection(input.token, connection.id);
+    }
 
     for (const channel of requested) {
       const unsub = this.bus.subscribe(
@@ -153,7 +156,6 @@ export class RealtimeSseGateway {
             connectionId: connection.id,
             channels: requested,
             protocolVersion: verified.claims.protocolVersion,
-            trackingRef: verified.claims.trackingRef,
           }
         : {
             connectionId: connection.id,
@@ -203,9 +205,9 @@ export class RealtimeSseGateway {
       const trackingRef =
         connection.claims.trackingRef ??
         connection.claims.sub.replace(/^th:/, "");
-      // Public event ids must not embed order/restaurant identifiers.
+      // Public event ids: connection-scoped only (no tracking/order identifiers).
       const eventId = isCustomer
-        ? `customer:${trackingRef}:${hint.seq}`
+        ? `customer:${connection.id}:${hint.seq}`
         : `${hint.channel}:${hint.aggregateId ?? "_"}:${hint.seq}`;
       const payload = isCustomer
         ? toPublicCustomerRealtimeHint(hint, trackingRef)

@@ -12,6 +12,12 @@ export {
   isRealtimePlatformEnabled,
 } from "./composition";
 export { mintRealtimeTicket, verifyRealtimeTicket } from "./tickets/RealtimeTicketService";
+export { authorizeRealtimeCredential } from "./tickets/authorizeRealtimeCredential";
+export {
+  issueOpaqueCustomerTicket,
+  lookupOpaqueRealtimeTicket,
+  isOpaqueRealtimeTicket,
+} from "./tickets/RealtimeOpaqueTicketRegistry";
 export type { RealtimePubSub } from "./pubsub/RealtimePubSub";
 export { InMemoryRealtimePubSub } from "./pubsub/RealtimePubSub";
 export { RealtimeHintPublisher } from "./publisher/RealtimeHintPublisher";

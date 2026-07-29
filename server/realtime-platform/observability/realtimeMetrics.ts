@@ -1,5 +1,5 @@
 /**
- * REALTIME-PLATFORM-FOUNDATION-1
+ * REALTIME-PLATFORM-FOUNDATION-1 / REALTIME-PUBLIC-TICKET-HARDENING-1
  * Platform observability counters + opsLog hooks.
  */
 
@@ -17,6 +17,15 @@ export type RealtimeMetricsSnapshot = {
   fallbackActivations: number;
   authFailures: number;
   heartbeats: number;
+  /** Opaque ticket lifecycle (REALTIME-PUBLIC-TICKET-HARDENING-1). */
+  ticketsIssued: number;
+  ticketsRenewed: number;
+  ticketsExpired: number;
+  ticketsRevoked: number;
+  registryLookups: number;
+  /** Sum of lookup latencies in microseconds (divide by registryLookups for avg). */
+  registryLookupLatencyMicros: number;
+  channelAuthFailures: number;
 };
 
 const metrics: RealtimeMetricsSnapshot = {
@@ -30,6 +39,13 @@ const metrics: RealtimeMetricsSnapshot = {
   fallbackActivations: 0,
   authFailures: 0,
   heartbeats: 0,
+  ticketsIssued: 0,
+  ticketsRenewed: 0,
+  ticketsExpired: 0,
+  ticketsRevoked: 0,
+  registryLookups: 0,
+  registryLookupLatencyMicros: 0,
+  channelAuthFailures: 0,
 };
 
 export function getRealtimeMetrics(): Readonly<RealtimeMetricsSnapshot> {
@@ -49,20 +65,26 @@ export function incRealtimeMetric(
   metrics[key] += by;
 }
 
+export type RealtimeOpsEventType =
+  | "realtime_connection_opened"
+  | "realtime_connection_closed"
+  | "realtime_hint_published"
+  | "realtime_hint_delivered"
+  | "realtime_auth_failed"
+  | "realtime_gap_detected"
+  | "realtime_fallback_activated"
+  | "realtime_ticket_issued"
+  | "realtime_ticket_revoked"
+  | "realtime_ticket_cleanup";
+
 export function noteRealtimeEvent(
-  type:
-    | "realtime_connection_opened"
-    | "realtime_connection_closed"
-    | "realtime_hint_published"
-    | "realtime_hint_delivered"
-    | "realtime_auth_failed"
-    | "realtime_gap_detected"
-    | "realtime_fallback_activated",
+  type: RealtimeOpsEventType,
   metadata: Record<string, unknown>
 ): void {
   try {
+    const known = type in OPS_EVENT ? OPS_EVENT[type as keyof typeof OPS_EVENT] : type;
     opsLog({
-      type: OPS_EVENT[type],
+      type: known as (typeof OPS_EVENT)[keyof typeof OPS_EVENT],
       category: "RUNTIME",
       severity: type.includes("failed") ? "warn" : "info",
       ts: new Date().toISOString(),

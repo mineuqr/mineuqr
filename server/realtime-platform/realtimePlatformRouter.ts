@@ -27,6 +27,13 @@ import {
   revokeRealtimeTicket,
   verifyRealtimeTicket,
 } from "./tickets/RealtimeTicketService";
+import {
+  issueOpaqueCustomerTicket,
+  isOpaqueCustomerTicketsEnabled,
+  isOpaqueRealtimeTicket,
+  renewOpaqueCustomerTicket,
+  revokeOpaqueRealtimeTicket,
+} from "./tickets/RealtimeOpaqueTicketRegistry";
 import { isRealtimePlatformEnabled } from "./composition";
 import { getRealtimeMetrics } from "./observability/realtimeMetrics";
 
@@ -169,9 +176,11 @@ export const realtimePlatformRouter = router({
     }),
 
   /**
-   * REALTIME-CUSTOMER-TRACKING-ADOPTION-1
-   * Public mint — tracking token + slug only. Never returns restaurantId/orderId claims.
-   * Channel locked to `customer`. Independent of staff/device auth.
+   * REALTIME-CUSTOMER-TRACKING-ADOPTION-1 / REALTIME-PUBLIC-TICKET-HARDENING-1
+   * Public mint — tracking token + slug only.
+   * Default: opaque `rt_live_…` ticket (no JWT claims on the wire).
+   * Rollback: REALTIME_OPAQUE_CUSTOMER_TICKETS=false → legacy signed ticket
+   * (still omits claims from API JSON).
    */
   mintCustomerTicket: publicProcedure
     .input(
@@ -198,7 +207,6 @@ export const realtimePlatformRouter = router({
         input.slug
       );
       if (!row) {
-        // Uniform denial — no enumeration of valid tokens vs wrong slug.
         throw new TRPCError({
           code: "UNAUTHORIZED",
           message: "Tracking credentials invalid",
@@ -206,8 +214,38 @@ export const realtimePlatformRouter = router({
       }
 
       const trackingRef = hashTrackingToken(input.trackingToken);
+      const caps = {
+        ...DEFAULT_CLIENT_CAPABILITIES,
+        ...input.clientCapabilities,
+      };
 
       try {
+        if (isOpaqueCustomerTicketsEnabled()) {
+          const minted = issueOpaqueCustomerTicket({
+            restaurantId: row.restaurantId,
+            orderId: row.orderId,
+            trackingTokenHash: trackingRef,
+            clientCapabilities: caps,
+          });
+          return {
+            token: minted.token,
+            expiresAt: minted.expiresAt,
+            ssePath: minted.ssePath,
+            channels: minted.channels,
+            protocolVersion: minted.protocolVersion,
+            negotiated: {
+              heartbeat: minted.negotiated.heartbeat,
+              reconnect: minted.negotiated.reconnect,
+              pollFallback: minted.negotiated.pollFallback,
+              broadcastBridge: minted.negotiated.broadcastBridge,
+              lastEventIdResume: minted.negotiated.lastEventIdResume,
+              ticketTtlSeconds: minted.negotiated.ticketTtlSeconds,
+              protocolVersion: minted.negotiated.protocolVersion,
+            },
+          };
+        }
+
+        // Rollback path — signed ticket; API still omits business claims JSON.
         const minted = mintRealtimeTicket({
           restaurantId: row.restaurantId,
           authMode: "customer_tracking",
@@ -215,18 +253,13 @@ export const realtimePlatformRouter = router({
           channels: ["customer"],
           orderId: row.orderId,
           trackingRef,
-          clientCapabilities: {
-            ...DEFAULT_CLIENT_CAPABILITIES,
-            ...input.clientCapabilities,
-          },
+          clientCapabilities: caps,
         });
 
-        // Public response — no restaurantId, orderId, jti, or raw claims dump.
         return {
           token: minted.token,
           expiresAt: minted.expiresAt,
           ssePath: minted.ssePath,
-          trackingRef,
           channels: minted.claims.channels,
           protocolVersion: minted.claims.protocolVersion,
           negotiated: {
@@ -245,5 +278,68 @@ export const realtimePlatformRouter = router({
           message: err instanceof Error ? err.message : "Ticket mint failed",
         });
       }
+    }),
+
+  /**
+   * REALTIME-PUBLIC-TICKET-HARDENING-1
+   * Rotate a still-valid opaque customer ticket without re-sending tracking token.
+   * Expired tickets must remint via mintCustomerTicket.
+   */
+  renewCustomerTicket: publicProcedure
+    .input(
+      z.object({
+        token: z.string().min(16),
+        clientCapabilities: clientCapabilitiesSchema,
+      })
+    )
+    .mutation(({ input }) => {
+      if (!isRealtimePlatformEnabled()) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Realtime platform disabled",
+        });
+      }
+      if (!isOpaqueRealtimeTicket(input.token)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Opaque ticket required",
+        });
+      }
+      const renewed = renewOpaqueCustomerTicket(
+        input.token,
+        input.clientCapabilities
+      );
+      if (!renewed) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Ticket expired or invalid",
+        });
+      }
+      return {
+        token: renewed.token,
+        expiresAt: renewed.expiresAt,
+        ssePath: renewed.ssePath,
+        channels: renewed.channels,
+        protocolVersion: renewed.protocolVersion,
+        negotiated: {
+          heartbeat: renewed.negotiated.heartbeat,
+          reconnect: renewed.negotiated.reconnect,
+          pollFallback: renewed.negotiated.pollFallback,
+          broadcastBridge: renewed.negotiated.broadcastBridge,
+          lastEventIdResume: renewed.negotiated.lastEventIdResume,
+          ticketTtlSeconds: renewed.negotiated.ticketTtlSeconds,
+          protocolVersion: renewed.negotiated.protocolVersion,
+        },
+      };
+    }),
+
+  /** Public revoke for opaque customer tickets (best-effort; idempotent). */
+  revokeCustomerTicket: publicProcedure
+    .input(z.object({ token: z.string().min(16) }))
+    .mutation(({ input }) => {
+      if (isOpaqueRealtimeTicket(input.token)) {
+        revokeOpaqueRealtimeTicket(input.token, "client_revoke");
+      }
+      return { success: true as const };
     }),
 });
