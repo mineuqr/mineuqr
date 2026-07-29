@@ -1,9 +1,15 @@
 /**
  * PLATFORM-OPERATIONS-UI-FOUNDATION-1
+ * + REACT-130-REALTIME-FORENSICS-1
  * Metric card / grid — SemanticKpiCard SSOT.
+ *
+ * SemanticKpiCard requires `icon` and renders `<Icon />`. Omitting it yields
+ * React #130 (element type undefined). Platform Ops call sites often omit
+ * icons; the facade supplies a neutral default so presentation stays valid.
  */
 
-import type { ComponentProps, ReactNode } from "react";
+import type { ComponentProps, ComponentType, ReactNode } from "react";
+import { Activity } from "lucide-react";
 import {
   SemanticKpiCard,
   SEMANTIC_KPI_GRID,
@@ -11,10 +17,19 @@ import {
 import { PLATFORM_OPS_UI, type PlatformOpsHeroColumns } from "./tokens";
 import { cn } from "@/lib/utils";
 
-export type PlatformOpsMetricCardProps = ComponentProps<typeof SemanticKpiCard>;
+type SemanticKpiProps = ComponentProps<typeof SemanticKpiCard>;
 
-export function PlatformOpsMetricCard(props: PlatformOpsMetricCardProps) {
-  return <SemanticKpiCard {...props} />;
+export type PlatformOpsMetricCardProps = Omit<SemanticKpiProps, "icon"> & {
+  icon?: ComponentType<{ className?: string }>;
+};
+
+const DEFAULT_METRIC_ICON = Activity;
+
+export function PlatformOpsMetricCard({
+  icon = DEFAULT_METRIC_ICON,
+  ...props
+}: PlatformOpsMetricCardProps) {
+  return <SemanticKpiCard {...props} icon={icon} />;
 }
 
 type PlatformOpsMetricGridProps = {
