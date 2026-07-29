@@ -928,7 +928,8 @@
       "reviewTenants": "مراجعة المستأجرين",
       "reviewCommunications": "مراجعة الاتصالات",
       "reviewCommercialHealth": "مراجعة الصحة التجارية",
-      "openAnalytics": "فتح التحليلات"
+      "openAnalytics": "فتح التحليلات",
+      "openPlatformOps": "فتح عمليات المنصة"
     },
     "commercial": {
       "pageSubtitle": "ملخص تجاري تنفيذي لمشغلي المنصة",
@@ -1011,6 +1012,9 @@
       "launchReadinessDesc": "الجاهزية التجارية والأمنية والبيانات",
       "operations": "العمليات",
       "operationsDesc": "الحسابات والمستأجرون والاتصالات",
+      "businessOperations": "الحسابات",
+      "businessOperationsDesc": "الحسابات والمستأجرون والاتصالات",
+      "platformOperationsDesc": "صحة المنصة والوقت الفعلي والأدوات التشغيلية",
       "operationsGroup": "العمليات",
       "footerHint": "مسارات الإدارة الموحدة — أساس EXEC-7B",
       "homeTitle": "مركز العمليات",
@@ -1147,7 +1151,133 @@
       "superAdmin": "/super-admin",
       "superAdminNote": "إعادة توجيه إلى الصفحة الرئيسية /admin",
       "tenants": "/admin/tenants",
-      "tenantsNote": "إعادة توجيه مؤقتة إلى /admin/operations?tab=tenants حتى REBUILD-3B"
+      "tenantsNote": "إعادة توجيه مؤقتة إلى /admin/operations?tab=tenants حتى REBUILD-3B",
+      "health": "/admin/health",
+      "healthNote": "إعادة توجيه إلى /admin/platform/health — مركز الصحة ضمن عمليات المنصة"
+    },
+    "platformOps": {
+      "workspaceTitle": "عمليات المنصة",
+      "workspaceSubtitle": "مساحة تشغيل موحّدة لأدوات المنصة",
+      "sectionNavLabel": "أقسام العمليات",
+      "reserved": "قريباً",
+      "live": "نشط",
+      "reservedBody": "بنية محجوزة للملكية المستقبلية. لا تنفيذ تشغيلي في هذا البرنامج.",
+      "architectureOnly": "عنصر معماري فقط — بلا منطق أعمال.",
+      "overview": {
+        "title": "نظرة عامة على العمليات",
+        "body": "قدرات تشغيل المنصة في مساحة واحدة. إدارة الأعمال تبقى تحت المستأجرين والحسابات."
+      },
+      "sections": {
+        "overview": "نظرة عامة",
+        "overviewDesc": "مدخل المساحة وخريطة الأقسام",
+        "realtime": "منصة الوقت الفعلي",
+        "realtimeDesc": "الاتصالات والقنوات والكمون والتذاكر",
+        "health": "صحة النظام",
+        "healthDesc": "إشارات صحة المنصة (من مركز الصحة)",
+        "performance": "الأداء",
+        "performanceDesc": "بنية المعالج والذاكرة والكمون",
+        "devices": "الأجهزة",
+        "devicesDesc": "بنية الأسطول وحضور الأجهزة",
+        "jobs": "المهام الخلفية",
+        "jobsDesc": "العمال والطوابير والجداول",
+        "events": "خط الأحداث",
+        "eventsDesc": "أحداث المجال والمستهلكون",
+        "audit": "سجلات التدقيق",
+        "auditDesc": "بنية تدقيق المنصة والإدارة",
+        "diagnostics": "التشخيص",
+        "diagnosticsDesc": "فحوصات التشغيل والتهيئة"
+      },
+      "health": {
+        "migratedNote": "كان سابقاً عنصراً أعلى في الشريط الجانبي. المحتوى دون تغيير — تنقل فقط."
+      },
+      "realtime": {
+        "loading": "جاري تحميل مراقبة الوقت الفعلي…",
+        "loadError": "تعذر تحميل لوحة الوقت الفعلي",
+        "loadErrorDesc": "تحقق من المصادقة وأن منصة الوقت الفعلي مفعّلة.",
+        "ssotHint": "المقاييس من واجهات مراقبة منصة الوقت الفعلي فقط — بلا جامعات مكررة.",
+        "overview": "نظرة عامة",
+        "overviewDesc": "صحة المنصة ووضع الاتصالات",
+        "kpiHealth": "الصحة العامة",
+        "kpiEnabled": "المنصة مفعّلة",
+        "kpiConnections": "اتصالات نشطة",
+        "kpiPeak": "ذروة الاتصالات",
+        "yes": "نعم",
+        "no": "لا",
+        "connections": "الاتصالات",
+        "opened": "مفتوحة",
+        "closed": "مغلقة",
+        "rejected": "مرفوضة",
+        "avgDuration": "متوسط المدة",
+        "channels": "القنوات",
+        "colChannel": "القناة",
+        "colSubs": "المشتركون",
+        "colPublish": "منشور",
+        "colDeliver": "مُسلَّم",
+        "colP95": "P95",
+        "colSurface": "السطح",
+        "colState": "الترحيل",
+        "colHealth": "الصحة",
+        "latency": "الكمون",
+        "worst": "الأسوأ",
+        "authorization": "التفويض",
+        "authSuccess": "نجاح التفويض",
+        "authDenied": "رفض التفويض",
+        "ticketsIssued": "تذاكر صادرة",
+        "ticketsRevoked": "تذاكر ملغاة",
+        "registry": "سجل التذاكر",
+        "registrySize": "الحجم",
+        "registryActive": "نشط",
+        "registryLookups": "عمليات البحث",
+        "avgLookup": "متوسط البحث",
+        "fallback": "البديل",
+        "fallbackActivations": "تفعيلات البديل",
+        "reconnects": "إعادة الاتصال",
+        "alerts": "التنبيهات",
+        "noAlerts": "لا تنبيهات نشطة",
+        "adoption": "تبني الوقت الفعلي"
+      },
+      "future": {
+        "performance": {
+          "cpu": "استخدام المعالج",
+          "memory": "استخدام الذاكرة",
+          "api": "كمون واجهة البرمجة",
+          "db": "كمون قاعدة البيانات",
+          "realtime": "كمون الوقت الفعلي",
+          "queue": "كمون الطابور"
+        },
+        "devices": {
+          "fleet": "جرد أسطول الأجهزة",
+          "presence": "حضور الأجهزة",
+          "config": "تهيئة الأجهزة"
+        },
+        "jobs": {
+          "workers": "العمال",
+          "schedulers": "الجداول",
+          "retries": "إعادة المحاولة",
+          "queues": "الطوابير",
+          "history": "سجل التنفيذ"
+        },
+        "events": {
+          "domain": "أحداث المجال",
+          "consumers": "المستهلكون",
+          "deadLetters": "الرسائل الميتة",
+          "retries": "إعادة المحاولة",
+          "throughput": "معدل الأحداث"
+        },
+        "audit": {
+          "platform": "تدقيق المنصة",
+          "admin": "نشاط الإدارة",
+          "security": "أحداث الأمان",
+          "ops": "تغييرات التشغيل"
+        },
+        "diagnostics": {
+          "runtime": "تشخيص وقت التشغيل",
+          "probes": "فحوصات الصحة",
+          "env": "البيئة",
+          "config": "التحقق من التهيئة",
+          "connectivity": "الاتصال"
+        }
+      }
     }
   },
   "template": {

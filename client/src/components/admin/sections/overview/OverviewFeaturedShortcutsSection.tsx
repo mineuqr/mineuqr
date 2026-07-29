@@ -1,4 +1,4 @@
-import { BarChart3, Store, TrendingUp } from "lucide-react";
+import { Activity, BarChart3, Store, TrendingUp } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { operationsTabHref } from "@/pages/admin/operations/operationsTab";
 import { AdminPageSection } from "../AdminPageSection";
@@ -12,9 +12,15 @@ const FEATURED_SHORTCUTS: NavShortcutCardItem[] = [
     icon: BarChart3,
   },
   {
-    path: operationsTabHref("accounts"),
+    path: "/admin/platform",
     labelKey: "admin.nav.operations",
-    descriptionKey: "admin.nav.operationsDesc",
+    descriptionKey: "admin.nav.platformOperationsDesc",
+    icon: Activity,
+  },
+  {
+    path: operationsTabHref("accounts"),
+    labelKey: "admin.nav.businessOperations",
+    descriptionKey: "admin.nav.businessOperationsDesc",
     icon: Store,
   },
   {

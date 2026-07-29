@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
+  Activity,
   ArrowRight,
   BarChart3,
   Bell,
@@ -35,6 +36,11 @@ const QUICK_ACTIONS: QuickAction[] = [
     href: operationsTabHref("communications"),
     labelKey: "admin.commandCenter.reviewCommunications",
     icon: Bell,
+  },
+  {
+    href: "/admin/platform",
+    labelKey: "admin.commandCenter.openPlatformOps",
+    icon: Activity,
   },
   {
     href: "/admin/commercial",

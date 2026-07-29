@@ -1,4 +1,5 @@
 import {
+  Activity,
   BarChart3,
   Building2,
   FileText,
@@ -11,13 +12,14 @@ import {
   Users,
 } from "lucide-react";
 import { operationsTabHref } from "@/pages/admin/operations/operationsTab";
+import { PLATFORM_OPS_BASE } from "@/lib/admin/platform-ops/platformOpsSections";
 import type {
   AdminLegacyRoute,
   AdminRouteDefinition,
   AdminRouteNavGroupLayout,
 } from "./adminRouteTypes";
 
-/** REBUILD-3B — canonical admin route metadata (paths, titles, breadcrumbs, ownership). */
+/** REBUILD-3B / OPERATIONS-INFORMATION-ARCHITECTURE-1 — canonical admin route metadata. */
 export const ADMIN_ROUTE_DEFINITIONS: AdminRouteDefinition[] = [
   {
     id: "overview",
@@ -83,13 +85,16 @@ export const ADMIN_ROUTE_DEFINITIONS: AdminRouteDefinition[] = [
   },
   {
     id: "health",
-    path: "/admin/health",
+    path: `${PLATFORM_OPS_BASE}/health`,
     category: "health",
     labelKey: "admin.nav.health",
     descriptionKey: "admin.nav.healthDesc",
     icon: HeartPulse,
+    /** OPERATIONS-INFORMATION-ARCHITECTURE-1 — moved under Platform Operations. */
+    showInNav: false,
     breadcrumbs: [
       { routeId: "overview", href: "/admin" },
+      { routeId: "platform-operations", href: PLATFORM_OPS_BASE },
       { routeId: "health" },
     ],
   },
@@ -133,13 +138,33 @@ export const ADMIN_ROUTE_DEFINITIONS: AdminRouteDefinition[] = [
     id: "operations",
     path: "/admin/operations",
     category: "operations",
-    labelKey: "admin.nav.operations",
-    descriptionKey: "admin.nav.operationsDesc",
+    labelKey: "admin.nav.businessOperations",
+    descriptionKey: "admin.nav.businessOperationsDesc",
     pageTitleKey: "admin.operations.workspaceTitle",
     icon: Store,
+    /**
+     * OPERATIONS-INFORMATION-ARCHITECTURE-1 —
+     * Business management stays at this URL; sidebar uses Platform Operations.
+     * Reachable via Tenants + deep links / bookmarks.
+     */
+    showInNav: false,
     breadcrumbs: [
       { routeId: "overview", href: "/admin" },
       { routeId: "operations" },
+    ],
+  },
+  {
+    id: "platform-operations",
+    path: PLATFORM_OPS_BASE,
+    category: "platform-operations",
+    labelKey: "admin.nav.operations",
+    descriptionKey: "admin.nav.platformOperationsDesc",
+    pageTitleKey: "admin.platformOps.workspaceTitle",
+    pageSubtitleKey: "admin.platformOps.workspaceSubtitle",
+    icon: Activity,
+    breadcrumbs: [
+      { routeId: "overview", href: "/admin" },
+      { routeId: "platform-operations" },
     ],
   },
 ];
@@ -154,11 +179,10 @@ export const ADMIN_ROUTE_NAV_GROUP_LAYOUT: AdminRouteNavGroupLayout[] = [
       "analytics",
       "tenants",
       "customer-success",
-      "health",
       "security",
       "reports",
       "launch-readiness",
-      "operations",
+      "platform-operations",
     ],
   },
 ];
@@ -191,6 +215,13 @@ export const ADMIN_LEGACY_ROUTES: AdminLegacyRoute[] = [
     canonicalPath: operationsTabHref("tenants"),
     labelKey: "admin.legacy.tenants",
     noteKey: "admin.legacy.tenantsNote",
+    transitional: true,
+  },
+  {
+    path: "/admin/health",
+    canonicalPath: `${PLATFORM_OPS_BASE}/health`,
+    labelKey: "admin.legacy.health",
+    noteKey: "admin.legacy.healthNote",
     transitional: true,
   },
 ];

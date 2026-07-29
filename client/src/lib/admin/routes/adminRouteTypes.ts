@@ -11,7 +11,8 @@ export type AdminRouteId =
   | "security"
   | "reports"
   | "launch-readiness"
-  | "operations";
+  | "operations"
+  | "platform-operations";
 
 export type AdminRouteCategory =
   | "dashboard"
@@ -22,7 +23,8 @@ export type AdminRouteCategory =
   | "health"
   | "security"
   | "reports"
-  | "launch-readiness";
+  | "launch-readiness"
+  | "platform-operations";
 
 export type AdminRouteBreadcrumbDef = {
   /** Route whose labelKey supplies the breadcrumb text. */

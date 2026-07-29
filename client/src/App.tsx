@@ -34,6 +34,17 @@ import {
   AdminTenantsPage,
 } from "./pages/admin/placeholderPages";
 import AdminSecurityPage from "./pages/admin/AdminSecurityPage";
+import {
+  AdminPlatformOpsOverviewPage,
+  AdminPlatformOpsRealtimePage,
+  AdminPlatformOpsHealthPage,
+  AdminPlatformOpsPerformancePage,
+  AdminPlatformOpsDevicesPage,
+  AdminPlatformOpsJobsPage,
+  AdminPlatformOpsEventsPage,
+  AdminPlatformOpsAuditPage,
+  AdminPlatformOpsDiagnosticsPage,
+} from "./pages/admin/platform-ops/AdminPlatformOpsPages";
 import SuperAdminDashboard from "./pages/SuperAdminDashboard";
 import Statistics from "./pages/Statistics";
 import Users from "./pages/Users";
@@ -123,6 +134,15 @@ function Router() {
         <Route path="/admin/tenants" component={AdminTenantsPage} />
         <Route path="/admin/customer-success" component={AdminCustomerSuccessPage} />
         <Route path="/admin/health" component={AdminHealthPage} />
+        <Route path="/admin/platform/realtime" component={AdminPlatformOpsRealtimePage} />
+        <Route path="/admin/platform/health" component={AdminPlatformOpsHealthPage} />
+        <Route path="/admin/platform/performance" component={AdminPlatformOpsPerformancePage} />
+        <Route path="/admin/platform/devices" component={AdminPlatformOpsDevicesPage} />
+        <Route path="/admin/platform/jobs" component={AdminPlatformOpsJobsPage} />
+        <Route path="/admin/platform/events" component={AdminPlatformOpsEventsPage} />
+        <Route path="/admin/platform/audit" component={AdminPlatformOpsAuditPage} />
+        <Route path="/admin/platform/diagnostics" component={AdminPlatformOpsDiagnosticsPage} />
+        <Route path="/admin/platform" component={AdminPlatformOpsOverviewPage} />
         <Route path="/admin/security" component={AdminSecurityPage} />
         <Route path="/admin/reports" component={AdminReportsPage} />
         <Route path="/admin/launch-readiness" component={AdminLaunchReadinessPage} />

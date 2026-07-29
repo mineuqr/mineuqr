@@ -1,6 +1,7 @@
 import {
   parseOperationsTab,
 } from "@/pages/admin/operations/operationsTab";
+import { isPlatformOpsPath } from "@/lib/admin/platform-ops/platformOpsSections";
 import {
   ADMIN_LEGACY_NAV_ROUTE_IDS,
   ADMIN_LEGACY_ROUTES,
@@ -96,6 +97,9 @@ export function isAdminNavItemActive(
     const tab = parseOperationsTab(search);
     return tab === "accounts" || tab === "communications";
   }
+  if (item.id === "platform-operations") {
+    return isPlatformOpsPath(pathname);
+  }
   if (item.exact) {
     return pathname === item.path;
   }
@@ -104,6 +108,9 @@ export function isAdminNavItemActive(
 
 export function findAdminNavItemByPath(pathname: string): AdminNavItem | undefined {
   const all = [...ADMIN_NAV_ITEMS, ...ADMIN_LEGACY_NAV];
+  if (isPlatformOpsPath(pathname)) {
+    return all.find((item) => item.id === "platform-operations");
+  }
   const exact = all.find((item) => item.path === pathname);
   if (exact) return exact;
   return all.find(
@@ -112,6 +119,9 @@ export function findAdminNavItemByPath(pathname: string): AdminNavItem | undefin
 }
 
 export function getAdminRouteByPath(pathname: string): AdminRouteDefinition | undefined {
+  if (isPlatformOpsPath(pathname)) {
+    return getAdminRoute("platform-operations");
+  }
   return ADMIN_ROUTE_DEFINITIONS.find((route) => {
     if (route.exact) {
       return pathname === route.path;

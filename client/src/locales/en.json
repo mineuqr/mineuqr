@@ -928,7 +928,8 @@
       "reviewTenants": "Review Tenants",
       "reviewCommunications": "Review Communications",
       "reviewCommercialHealth": "Review Commercial Health",
-      "openAnalytics": "Open Analytics"
+      "openAnalytics": "Open Analytics",
+      "openPlatformOps": "Open Platform Operations"
     },
     "commercial": {
       "pageSubtitle": "Executive commercial summary for platform operators",
@@ -1011,6 +1012,9 @@
       "launchReadinessDesc": "Commercial, security, and data readiness",
       "operations": "Operations",
       "operationsDesc": "Accounts, tenants, and communications",
+      "businessOperations": "Accounts",
+      "businessOperationsDesc": "Accounts, tenants, and communications",
+      "platformOperationsDesc": "Platform health, realtime, and operational tooling",
       "operationsGroup": "Operations",
       "footerHint": "Canonical admin routes — EXEC-7B foundation",
       "homeTitle": "Operations Center",
@@ -1147,7 +1151,133 @@
       "superAdmin": "/super-admin",
       "superAdminNote": "Redirects to /admin executive home",
       "tenants": "/admin/tenants",
-      "tenantsNote": "Temporary redirect to /admin/operations?tab=tenants until REBUILD-3B"
+      "tenantsNote": "Temporary redirect to /admin/operations?tab=tenants until REBUILD-3B",
+      "health": "/admin/health",
+      "healthNote": "Redirects to /admin/platform/health — Health Center under Platform Operations"
+    },
+    "platformOps": {
+      "workspaceTitle": "Platform Operations",
+      "workspaceSubtitle": "Unified operational workspace for platform tooling",
+      "sectionNavLabel": "Operations sections",
+      "reserved": "Soon",
+      "live": "Live",
+      "reservedBody": "Architecture reserved for future ownership. No runtime implementation in this program.",
+      "architectureOnly": "Architecture placeholder only — no business logic.",
+      "overview": {
+        "title": "Operations overview",
+        "body": "Platform operational capabilities live in one workspace. Business management remains under Tenants and Accounts."
+      },
+      "sections": {
+        "overview": "Overview",
+        "overviewDesc": "Workspace entry and section map",
+        "realtime": "Realtime Platform",
+        "realtimeDesc": "Connections, channels, latency, and tickets",
+        "health": "System Health",
+        "healthDesc": "Platform health signals (migrated from Health Center)",
+        "performance": "Performance",
+        "performanceDesc": "CPU, memory, and latency architecture",
+        "devices": "Devices",
+        "devicesDesc": "Fleet and device presence architecture",
+        "jobs": "Background Jobs",
+        "jobsDesc": "Workers, queues, and schedulers",
+        "events": "Event Pipeline",
+        "eventsDesc": "Domain events and consumers",
+        "audit": "Audit Logs",
+        "auditDesc": "Platform and admin audit architecture",
+        "diagnostics": "Diagnostics",
+        "diagnosticsDesc": "Runtime probes and configuration checks"
+      },
+      "health": {
+        "migratedNote": "Previously a top-level Health Center entry. Content unchanged — navigation only."
+      },
+      "realtime": {
+        "loading": "Loading realtime observability…",
+        "loadError": "Unable to load realtime dashboard",
+        "loadErrorDesc": "Check authentication and that the realtime platform is enabled.",
+        "ssotHint": "Metrics from Realtime Platform Observability APIs only — no duplicated collectors.",
+        "overview": "Overview",
+        "overviewDesc": "Platform health and connection posture",
+        "kpiHealth": "Overall health",
+        "kpiEnabled": "Platform enabled",
+        "kpiConnections": "Active connections",
+        "kpiPeak": "Peak connections",
+        "yes": "Yes",
+        "no": "No",
+        "connections": "Connections",
+        "opened": "Opened",
+        "closed": "Closed",
+        "rejected": "Rejected",
+        "avgDuration": "Avg duration",
+        "channels": "Channels",
+        "colChannel": "Channel",
+        "colSubs": "Subscribers",
+        "colPublish": "Published",
+        "colDeliver": "Delivered",
+        "colP95": "P95",
+        "colSurface": "Surface",
+        "colState": "Migration",
+        "colHealth": "Health",
+        "latency": "Latency",
+        "worst": "Worst",
+        "authorization": "Authorization",
+        "authSuccess": "Auth success",
+        "authDenied": "Auth denied",
+        "ticketsIssued": "Tickets issued",
+        "ticketsRevoked": "Tickets revoked",
+        "registry": "Ticket registry",
+        "registrySize": "Size",
+        "registryActive": "Active",
+        "registryLookups": "Lookups",
+        "avgLookup": "Avg lookup",
+        "fallback": "Fallback",
+        "fallbackActivations": "Fallback activations",
+        "reconnects": "Reconnects",
+        "alerts": "Alerts",
+        "noAlerts": "No active alerts",
+        "adoption": "Realtime adoption"
+      },
+      "future": {
+        "performance": {
+          "cpu": "CPU utilization",
+          "memory": "Memory utilization",
+          "api": "API latency",
+          "db": "Database latency",
+          "realtime": "Realtime latency",
+          "queue": "Queue latency"
+        },
+        "devices": {
+          "fleet": "Device fleet inventory",
+          "presence": "Device presence",
+          "config": "Device configuration"
+        },
+        "jobs": {
+          "workers": "Workers",
+          "schedulers": "Schedulers",
+          "retries": "Retries",
+          "queues": "Queues",
+          "history": "Execution history"
+        },
+        "events": {
+          "domain": "Domain events",
+          "consumers": "Consumers",
+          "deadLetters": "Dead letters",
+          "retries": "Retries",
+          "throughput": "Event throughput"
+        },
+        "audit": {
+          "platform": "Platform audit",
+          "admin": "Admin activity",
+          "security": "Security events",
+          "ops": "Operational changes"
+        },
+        "diagnostics": {
+          "runtime": "Runtime diagnostics",
+          "probes": "Health probes",
+          "env": "Environment",
+          "config": "Configuration validation",
+          "connectivity": "Connectivity"
+        }
+      }
     }
   },
   "template": {
