@@ -34,8 +34,18 @@ import {
   renewOpaqueCustomerTicket,
   revokeOpaqueRealtimeTicket,
 } from "./tickets/RealtimeOpaqueTicketRegistry";
-import { isRealtimePlatformEnabled } from "./composition";
+import { isRealtimePlatformEnabled, getRealtimeSseGateway } from "./composition";
 import { getRealtimeMetrics } from "./observability/realtimeMetrics";
+import { buildRealtimeObservabilityDashboard } from "./observability/realtimeDashboard";
+import { REALTIME_METRICS_CATALOG } from "./observability/realtimeMetricsCatalog";
+import { evaluateRealtimeHealth } from "./observability/realtimeHealth";
+import { evaluateRealtimeAlerts } from "./observability/realtimeAlerts";
+import {
+  getChannelObservabilitySnapshots,
+  getObservabilityAuthStats,
+  getObservabilityLatencyStats,
+} from "./observability/realtimeObservabilityStore";
+import { getOpaqueTicketRegistrySize } from "./tickets/RealtimeOpaqueTicketRegistry";
 
 const clientCapabilitiesSchema = z
   .object({
@@ -56,6 +66,64 @@ export const realtimePlatformRouter = router({
     protocolVersion: REALTIME_PROTOCOL_VERSION,
     channels: REALTIME_CHANNELS,
     metrics: getRealtimeMetrics(),
+  })),
+
+  /**
+   * REALTIME-PLATFORM-OBSERVABILITY-1 — unified operational dashboard aggregate.
+   * Visibility only; no business payloads.
+   */
+  observabilityDashboard: protectedProcedure.query(() =>
+    buildRealtimeObservabilityDashboard()
+  ),
+
+  observabilityHealth: protectedProcedure.query(() => {
+    const metrics = getRealtimeMetrics();
+    const auth = getObservabilityAuthStats();
+    const latency = getObservabilityLatencyStats();
+    const channels = getChannelObservabilitySnapshots();
+    const authTotal = auth.success + auth.denied;
+    return evaluateRealtimeHealth({
+      platformEnabled: isRealtimePlatformEnabled(),
+      activeConnections: getRealtimeSseGateway().connectionCount,
+      authFailureRate: authTotal > 0 ? auth.denied / authTotal : 0,
+      channelAuthFailures: metrics.channelAuthFailures,
+      publishToDeliverP95Ms: latency.publishToDeliver.p95,
+      fallbackActivations: metrics.fallbackActivations,
+      registrySize: getOpaqueTicketRegistrySize(),
+      recentAuthDenied: auth.denied,
+      publisherPublishes: metrics.publishes,
+      channelSubscriberGaps: channels.map((c) => ({
+        channel: c.channel,
+        subscribers: c.subscribers,
+        publishes: c.publishes,
+      })),
+    });
+  }),
+
+  observabilityAlerts: protectedProcedure.query(() => {
+    const metrics = getRealtimeMetrics();
+    const auth = getObservabilityAuthStats();
+    const latency = getObservabilityLatencyStats();
+    return evaluateRealtimeAlerts({
+      activeConnections: getRealtimeSseGateway().connectionCount,
+      reconnects: metrics.reconnects,
+      publishToDeliverP95Ms: latency.publishToDeliver.p95,
+      authFailures: metrics.authFailures,
+      authDenied: auth.denied,
+      channelAuthFailures: metrics.channelAuthFailures,
+      registryLookups: metrics.registryLookups,
+      registryLookupFailuresApprox: auth.denied,
+      deliveries: metrics.deliveries,
+      dropped: metrics.dropped,
+      fallbackActivations: metrics.fallbackActivations,
+      platformEnabled: isRealtimePlatformEnabled(),
+      gatewayUnavailable: !isRealtimePlatformEnabled(),
+    });
+  }),
+
+  observabilityCatalog: protectedProcedure.query(() => ({
+    program: "REALTIME-PLATFORM-OBSERVABILITY-1" as const,
+    metrics: REALTIME_METRICS_CATALOG,
   })),
 
   listChannels: protectedProcedure.query(() =>

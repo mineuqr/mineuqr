@@ -38,6 +38,7 @@ export class RealtimeHintPublisher {
       type: hint.type,
       seq: hint.seq,
       correlationId: hint.correlationId,
+      ts: hint.ts,
     });
     return hint;
   }

@@ -11,6 +11,13 @@ import {
   type RealtimeHint,
   type RealtimeHintType,
 } from "@shared/realtime-platform";
+import {
+  noteRealtimeClientCatchUp,
+  noteRealtimeClientFallback,
+  noteRealtimeClientHintReceived,
+  noteRealtimeClientReconnectAttempt,
+  noteRealtimeClientReconnectSuccess,
+} from "./realtimeClientObservability";
 
 export type RealtimeConnectionState =
   | "idle"
@@ -141,11 +148,13 @@ export class RealtimePlatformClient {
 
     source.addEventListener("platform.ready", () => {
       this.reconnectAttempts = 0;
+      noteRealtimeClientReconnectSuccess();
       this.setState("live");
     });
 
     source.addEventListener("platform.catch_up", (ev) => {
       const data = safeParse(ev);
+      noteRealtimeClientCatchUp();
       this.options?.handlers?.onCatchUp?.({
         reason: (data?.reason as string) ?? "catch_up",
       });
@@ -185,6 +194,7 @@ export class RealtimePlatformClient {
         const first = this.recentPublicHintKeys.values().next().value;
         if (first) this.recentPublicHintKeys.delete(first);
       }
+      noteRealtimeClientHintReceived();
       this.options?.handlers?.onHint?.(data as unknown as RealtimeHint);
       return;
     }
@@ -209,6 +219,7 @@ export class RealtimePlatformClient {
     }
 
     // Hints never write cache — only notify. Features invalidate/refetch.
+    noteRealtimeClientHintReceived();
     this.options?.handlers?.onHint?.(hint);
   }
 
@@ -225,6 +236,7 @@ export class RealtimePlatformClient {
 
     const max = this.options.maxReconnectAttempts ?? 8;
     this.reconnectAttempts += 1;
+    noteRealtimeClientReconnectAttempt();
     if (this.reconnectAttempts > max) {
       this.activateFallback("max_reconnects");
       return;
@@ -244,6 +256,7 @@ export class RealtimePlatformClient {
       ...this.options?.clientCapabilities,
     };
     if (caps.pollFallback) {
+      noteRealtimeClientFallback(reason);
       this.setState("poll_only");
       this.options?.handlers?.onFallback?.(reason);
     } else {

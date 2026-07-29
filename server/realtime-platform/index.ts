@@ -18,6 +18,10 @@ export {
   lookupOpaqueRealtimeTicket,
   isOpaqueRealtimeTicket,
 } from "./tickets/RealtimeOpaqueTicketRegistry";
+export { buildRealtimeObservabilityDashboard } from "./observability/realtimeDashboard";
+export { evaluateRealtimeHealth } from "./observability/realtimeHealth";
+export { evaluateRealtimeAlerts } from "./observability/realtimeAlerts";
+export { REALTIME_METRICS_CATALOG } from "./observability/realtimeMetricsCatalog";
 export type { RealtimePubSub } from "./pubsub/RealtimePubSub";
 export { InMemoryRealtimePubSub } from "./pubsub/RealtimePubSub";
 export { RealtimeHintPublisher } from "./publisher/RealtimeHintPublisher";

@@ -16,6 +16,12 @@ export {
 } from "./RealtimePlatformClient";
 
 export {
+  getRealtimeClientObservability,
+  resetRealtimeClientObservability,
+  type RealtimeClientObservabilitySnapshot,
+} from "./realtimeClientObservability";
+
+export {
   REALTIME_CHANNELS,
   REALTIME_PROTOCOL_VERSION,
   REALTIME_SURFACE_CAPABILITY_REGISTRY,

@@ -16,6 +16,7 @@ import {
   incRealtimeMetric,
   noteRealtimeEvent,
 } from "../observability/realtimeMetrics";
+import { observeAuthSuccess, observeHintDropped } from "../observability/realtimeObservabilityStore";
 import { toPublicCustomerRealtimeHint } from "../privacy/publicCustomerHint";
 
 export type RealtimeConnection = {
@@ -73,6 +74,9 @@ export class RealtimeSseGateway {
         message: `Realtime ticket ${verified.code}`,
       };
     }
+
+    // Observability only — does not alter authorization outcome.
+    observeAuthSuccess();
 
     const allowed = new Set(verified.claims.channels);
     const requested =
@@ -183,10 +187,12 @@ export class RealtimeSseGateway {
     // Hard tenant isolation
     if (hint.restaurantId !== connection.claims.restaurantId) {
       incRealtimeMetric("dropped");
+      observeHintDropped(hint.channel);
       return;
     }
     if (!connection.channels.includes(hint.channel)) {
       incRealtimeMetric("dropped");
+      observeHintDropped(hint.channel);
       return;
     }
     // Customer token scope: only own aggregate when orderId bound
@@ -197,6 +203,7 @@ export class RealtimeSseGateway {
       hint.aggregateId !== String(connection.claims.orderId)
     ) {
       incRealtimeMetric("dropped");
+      observeHintDropped(hint.channel);
       return;
     }
 
@@ -220,6 +227,7 @@ export class RealtimeSseGateway {
         restaurantId: hint.restaurantId,
         seq: hint.seq,
         type: hint.type,
+        correlationId: hint.correlationId,
         public: connection.claims.authMode === "customer_tracking",
       });
     } catch {
@@ -244,6 +252,8 @@ export class RealtimeSseGateway {
     noteRealtimeEvent("realtime_connection_closed", {
       connectionId,
       restaurantId: connection.claims.restaurantId,
+      channels: connection.channels,
+      reason: "client_close",
     });
     try {
       connection.res.end();

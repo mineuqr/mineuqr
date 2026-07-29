@@ -272,6 +272,7 @@ export function bindOpaqueTicketConnection(
  * Revoked tickets use lastAccessAt as cleanup pivot; expired use expiresAt.
  */
 export function cleanupOpaqueRealtimeTickets(graceSeconds = 60): number {
+  const started = performance.now();
   const now = Math.floor(Date.now() / 1000);
   let removed = 0;
   for (const [id, record] of registry) {
@@ -290,6 +291,7 @@ export function cleanupOpaqueRealtimeTickets(graceSeconds = 60): number {
     noteRealtimeEvent("realtime_ticket_cleanup", {
       removed,
       size: registry.size,
+      durationMs: Math.round(performance.now() - started),
     });
   }
   return removed;
@@ -311,6 +313,25 @@ function ensureCleanupTimer(): void {
 
 export function getOpaqueTicketRegistrySize(): number {
   return registry.size;
+}
+
+/** Read-only registry stats for observability (does not mutate). */
+export function getOpaqueTicketRegistryStats(): {
+  size: number;
+  active: number;
+  expired: number;
+  revoked: number;
+} {
+  let active = 0;
+  let expired = 0;
+  let revoked = 0;
+  const now = Math.floor(Date.now() / 1000);
+  for (const record of registry.values()) {
+    if (record.status === "revoked") revoked += 1;
+    else if (record.status === "expired" || record.expiresAt < now) expired += 1;
+    else active += 1;
+  }
+  return { size: registry.size, active, expired, revoked };
 }
 
 /** Test helper — clears registry + stops cleanup timer. */
