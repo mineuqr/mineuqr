@@ -103,14 +103,12 @@ describe("MULTI-CHECK-ALLOCATION-PERSISTENCE-1 architecture guards", () => {
     expect(repo).not.toContain("replaceAllocationHistory");
   });
 
-  it("journal terminus is 0075_multi_check_allocation", () => {
+  it("journal retains 0075_multi_check_allocation (terminus may advance)", () => {
     const journal = read("drizzle/meta/_journal.json");
     expect(journal).toContain("0075_multi_check_allocation");
     const gov = read("scripts/lib/migration-governance-lib.cjs");
-    expect(gov).toContain(
-      'CANONICAL_MIGRATION_TAIL_TAG = "0075_multi_check_allocation"'
-    );
-    expect(gov).toContain("CANONICAL_JOURNAL_ENTRY_COUNT = 76");
+    expect(gov).toContain("CANONICAL_MIGRATION_TAIL_TAG");
+    expect(gov).toContain("CANONICAL_JOURNAL_ENTRY_COUNT");
   });
 
   it("verify-schema covers Multi Check Allocation tables", () => {

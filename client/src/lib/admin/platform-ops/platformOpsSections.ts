@@ -18,6 +18,7 @@ export const PLATFORM_OPS_SECTIONS = [
   "performance",
   "devices",
   "subscription",
+  "commercialCatalog",
   "jobs",
   "events",
   "audit",
@@ -84,6 +85,13 @@ export const PLATFORM_OPS_SECTION_DEFINITIONS: readonly PlatformOpsSectionDef[] 
       labelKey: "admin.platformOps.sections.subscription",
       descriptionKey: "admin.platformOps.sections.subscriptionDesc",
       status: "architecture",
+    },
+    {
+      id: "commercialCatalog",
+      path: `${PLATFORM_OPS_BASE}/commercial-catalog`,
+      labelKey: "admin.platformOps.sections.commercialCatalog",
+      descriptionKey: "admin.platformOps.sections.commercialCatalogDesc",
+      status: "live",
     },
     {
       id: "jobs",

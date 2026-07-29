@@ -41,6 +41,7 @@ import {
   AdminPlatformOpsPerformancePage,
   AdminPlatformOpsDevicesPage,
   AdminPlatformOpsSubscriptionPage,
+  AdminPlatformOpsCommercialCatalogPage,
   AdminPlatformOpsJobsPage,
   AdminPlatformOpsEventsPage,
   AdminPlatformOpsAuditPage,
@@ -140,6 +141,7 @@ function Router() {
         <Route path="/admin/platform/performance" component={AdminPlatformOpsPerformancePage} />
         <Route path="/admin/platform/devices" component={AdminPlatformOpsDevicesPage} />
         <Route path="/admin/platform/subscription" component={AdminPlatformOpsSubscriptionPage} />
+        <Route path="/admin/platform/commercial-catalog" component={AdminPlatformOpsCommercialCatalogPage} />
         <Route path="/admin/platform/jobs" component={AdminPlatformOpsJobsPage} />
         <Route path="/admin/platform/events" component={AdminPlatformOpsEventsPage} />
         <Route path="/admin/platform/audit" component={AdminPlatformOpsAuditPage} />

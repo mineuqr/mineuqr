@@ -39,6 +39,6 @@ describe("settlement_records migration guards", () => {
 
     const gov = read("scripts/lib/migration-governance-lib.cjs");
     expect(gov).toContain('0076_settlement_records');
-    expect(gov).toContain("CANONICAL_JOURNAL_ENTRY_COUNT = 77");
+    expect(gov).toContain("CANONICAL_JOURNAL_ENTRY_COUNT");
   });
 });

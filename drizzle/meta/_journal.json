@@ -589,6 +589,13 @@
       "when": 1784690000000,
       "tag": "0083_order_ordering_channel",
       "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "5",
+      "when": 1784700000000,
+      "tag": "0084_commercial_catalog_foundation",
+      "breakpoints": true
     }
   ]
 }

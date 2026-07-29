@@ -11,6 +11,7 @@ import { PlatformOpsPerformanceComposition } from "@/components/admin/platform-o
 import { PlatformOpsRuntimeComposition } from "@/components/admin/platform-ops/PlatformOpsRuntimeComposition";
 import { PlatformOpsDevicesComposition } from "@/components/admin/platform-ops/PlatformOpsDevicesComposition";
 import { PlatformOpsSubscriptionComposition } from "@/components/admin/platform-ops/PlatformOpsSubscriptionComposition";
+import { PlatformOpsCommercialCatalogComposition } from "@/components/admin/platform-ops/PlatformOpsCommercialCatalogComposition";
 import { PlatformOpsReservedSection } from "@/components/admin/platform-ops/PlatformOpsReservedSection";
 import type { PlatformOpsSectionId } from "@/lib/admin/platform-ops/platformOpsSections";
 
@@ -26,6 +27,9 @@ function PlatformOpsPage({ sectionId }: { sectionId: PlatformOpsSectionId }) {
       {sectionId === "devices" ? <PlatformOpsDevicesComposition /> : null}
       {sectionId === "subscription" ? (
         <PlatformOpsSubscriptionComposition />
+      ) : null}
+      {sectionId === "commercialCatalog" ? (
+        <PlatformOpsCommercialCatalogComposition />
       ) : null}
       {sectionId === "jobs" ? (
         <PlatformOpsRuntimeComposition surface="jobs" />
@@ -60,6 +64,9 @@ export function AdminPlatformOpsDevicesPage() {
 }
 export function AdminPlatformOpsSubscriptionPage() {
   return <PlatformOpsPage sectionId="subscription" />;
+}
+export function AdminPlatformOpsCommercialCatalogPage() {
+  return <PlatformOpsPage sectionId="commercialCatalog" />;
 }
 export function AdminPlatformOpsJobsPage() {
   return <PlatformOpsPage sectionId="jobs" />;

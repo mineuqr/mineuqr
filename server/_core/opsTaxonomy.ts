@@ -191,6 +191,16 @@ export const OPS_EVENT = {
   pairing_screen_deleted: "pairing_screen_deleted",
   pairing_revoked: "pairing_revoked",
   operational_screen_created: "operational_screen_created",
+
+  // COMMERCIAL-CATALOG-PLATFORM-FOUNDATION-1
+  commercial_catalog_created: "commercial_catalog_created",
+  commercial_catalog_updated: "commercial_catalog_updated",
+  commercial_catalog_published: "commercial_catalog_published",
+  commercial_catalog_deprecated: "commercial_catalog_deprecated",
+  commercial_catalog_retired: "commercial_catalog_retired",
+  commercial_promotion_created: "commercial_promotion_created",
+  commercial_migration_policy_changed: "commercial_migration_policy_changed",
+  commercial_regional_policy_changed: "commercial_regional_policy_changed",
 } as const;
 
 export type OpsEventType = (typeof OPS_EVENT)[keyof typeof OPS_EVENT];

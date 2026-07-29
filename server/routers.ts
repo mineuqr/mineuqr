@@ -86,6 +86,7 @@ import { notifyOwnerNewRestaurant, notifyOwnerNewSubscription, notifyOwnerSubscr
 import { generateInvoicePDFBuffer } from "./invoice-pdf";
 import { mergeRouters } from "./_core/trpc";
 import { realtimePlatformRouter } from "./realtime-platform/realtimePlatformRouter";
+import { commercialCatalogRouter } from "./api/commercialCatalog";
 import { ENV } from "./_core/env";
 import { opsLog } from "./_core/opsLog";
 import { OPS_EVENT } from "./_core/opsTaxonomy";
@@ -2828,6 +2829,7 @@ const orderRouter = router({
 export const appRouter = router({
   system: systemRouter,
   realtime: realtimePlatformRouter,
+  commercialCatalog: commercialCatalogRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(async ({ ctx }) => {
