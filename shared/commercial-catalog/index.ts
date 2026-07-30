@@ -17,3 +17,4 @@ export * from "./adoption";
 export * from "./types";
 export * from "./contracts";
 export * from "./localization";
+export * from "./publishing";

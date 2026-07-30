@@ -29,6 +29,11 @@ import {
   trialPolicyCatalogService,
 } from "../../services/commercial-catalog";
 import { commercialCatalogLocalizationRouter } from "./commercialCatalogLocalizationRouter";
+import {
+  commercialCatalogPublicRouter,
+  commercialCatalogPublishingRouter,
+} from "./commercialCatalogPublicRouter";
+import { catalogPublishingService } from "../../commercial-catalog/publishing";
 
 const compatibilitySchema = z.object({
   upgradeTargets: z.array(z.string()),
@@ -571,14 +576,19 @@ export const commercialCatalogRouter = router({
     .mutation(({ ctx, input }) => {
       assertAdminAccess(ctx, "commercialCatalog.publishVersion");
       try {
-        return publicationService.publish(
+        // Compat: direct draft→published allowed; clears publishing overlay + cache.
+        const result = catalogPublishingService.publish(
           input.versionId,
           {
             ...actorFromCtx(ctx),
             procedure: "commercialCatalog.publishVersion",
           },
-          { requiresRegionalPricing: input.requiresRegionalPricing }
+          {
+            requiresRegionalPricing: input.requiresRegionalPricing,
+            enforceWorkflow: false,
+          }
         );
+        return result.version;
       } catch (e) {
         mapError(e);
       }
@@ -589,10 +599,10 @@ export const commercialCatalogRouter = router({
     .mutation(({ ctx, input }) => {
       assertAdminAccess(ctx, "commercialCatalog.deprecateVersion");
       try {
-        return publicationService.deprecate(input.versionId, {
+        return catalogPublishingService.deprecate(input.versionId, {
           ...actorFromCtx(ctx),
           procedure: "commercialCatalog.deprecateVersion",
-        });
+        }).version;
       } catch (e) {
         mapError(e);
       }
@@ -603,14 +613,20 @@ export const commercialCatalogRouter = router({
     .mutation(({ ctx, input }) => {
       assertAdminAccess(ctx, "commercialCatalog.retireVersion");
       try {
-        return publicationService.retire(input.versionId, {
+        return catalogPublishingService.retire(input.versionId, {
           ...actorFromCtx(ctx),
           procedure: "commercialCatalog.retireVersion",
-        });
+        }).version;
       } catch (e) {
         mapError(e);
       }
     }),
+
+  /** Public browse surface — published offerings only (no auth). */
+  public: commercialCatalogPublicRouter,
+
+  /** Admin governance workflow — approve / schedule / archive. */
+  publishing: commercialCatalogPublishingRouter,
 
   // ── Snapshots (definitions only) ───────────────────────
   listSnapshots: protectedProcedure
