@@ -18,14 +18,19 @@ import {
   decimal,
 } from "drizzle-orm/mysql-core";
 
-const lifecycleEnum = mysqlEnum("cc_plan_version_state", [
+/**
+ * Enum first arg must match the physical column name.
+ * Using a separate type label (e.g. cc_billing_interval_unit) caused Drizzle to
+ * SELECT/INSERT that label instead of `intervalUnit` / `state` (ER_BAD_FIELD_ERROR).
+ */
+const lifecycleEnum = mysqlEnum("state", [
   "draft",
   "published",
   "deprecated",
   "retired",
 ]);
 
-const intervalUnitEnum = mysqlEnum("cc_billing_interval_unit", [
+const intervalUnitEnum = mysqlEnum("intervalUnit", [
   "day",
   "week",
   "month",

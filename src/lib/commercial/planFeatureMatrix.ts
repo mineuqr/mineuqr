@@ -187,6 +187,22 @@ export const PLAN_COMMERCIAL_PARTICIPATION: Record<
   },
 };
 
+/**
+ * COMMERCIAL-PERSISTENT-CATALOG-BOOTSTRAP-1
+ * Projection IDs enabled for a catalog bridge plan key — from existing matrix SSOT.
+ */
+export function listProjectionIdsForCommercialPlan(
+  plan: "BASIC" | "PROFESSIONAL" | "ENTERPRISE"
+): CommercialProjectionId[] {
+  const set =
+    plan === "BASIC"
+      ? BASIC_PROJECTIONS
+      : plan === "PROFESSIONAL"
+        ? PROFESSIONAL_PROJECTIONS
+        : ALL;
+  return COMMERCIAL_PROJECTION_IDS.filter((id) => set.has(id));
+}
+
 export function getLimitsForPlan(plan: CommercialPlan): CommercialLimits {
   return { ...PLAN_LIMITS[plan] };
 }

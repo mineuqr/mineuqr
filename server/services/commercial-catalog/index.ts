@@ -1016,6 +1016,11 @@ export {
 
 export { ensureCommercialCatalogAdoptionSeed } from "./seedAdoptionCatalog";
 export {
+  COMMERCIAL_PERSISTENT_CATALOG_BOOTSTRAP_PROGRAM,
+  bootstrapPersistentCommercialCatalog,
+  projectionFeatureKeysForBridgePlan,
+} from "./persistentCatalogBootstrap";
+export {
   hydrateCommercialCatalogFromDb,
   hydrateCommercialSnapshotById,
 } from "./drizzleCatalogPersistence";
