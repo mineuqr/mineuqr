@@ -48,15 +48,8 @@ import {
   type CommercialCatalogAuditActor,
 } from "./commercialCatalogAudit";
 
-export class CommercialCatalogError extends Error {
-  constructor(
-    message: string,
-    public readonly code: string
-  ) {
-    super(message);
-    this.name = "CommercialCatalogError";
-  }
-}
+export { CommercialCatalogError } from "./commercialCatalogError";
+import { CommercialCatalogError } from "./commercialCatalogError";
 
 function requireDraftMutable(version: CommercialPlanVersion) {
   if (isPlanVersionImmutable(version.state)) {
@@ -1016,6 +1009,7 @@ export {
   resolveCommercialFactsFromSnapshot,
   getAdoptionObservability,
   ensureCatalogReady,
+  invalidateCatalogReadyGate,
   resolveLegacyPlanIdFromVersion,
   resolvePlanVersionIdFromLegacyPlanId,
 } from "./adoptionService";
@@ -1025,6 +1019,15 @@ export {
   hydrateCommercialCatalogFromDb,
   hydrateCommercialSnapshotById,
 } from "./drizzleCatalogPersistence";
+export {
+  COMMERCIAL_PUBLICATION_PERSISTENCE_PROGRAM,
+  InMemoryDurableCatalogBackend,
+  persistPublishedVersionPublication,
+  persistVersionLifecyclePublication,
+  hydrateRuntimeCatalogFromDurableAuthority,
+  setDurablePublicationBackendForTests,
+  getDurablePublicationBackend,
+} from "./publicationPersistence";
 export { commercialAdoptionObservability } from "./adoptionObservability";
 export { commercialRuntimeAuthorityObservability } from "./runtimeAuthorityObservability";
 export { LEGACY_PLAN_BRIDGE, bridgeByLegacyPlanId } from "./legacyPlanBridge";

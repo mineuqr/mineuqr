@@ -80,6 +80,15 @@ export async function ensureCatalogReady() {
   return ensurePromise;
 }
 
+/**
+ * COMMERCIAL-PUBLICATION-PERSISTENCE-ARCHITECTURE-1
+ * Invalidate the ready gate so the next ensureCatalogReady rehydrates from
+ * durable publication authority (memory is cache only).
+ */
+export function invalidateCatalogReadyGate(): void {
+  ensurePromise = null;
+}
+
 /** Plan selection — published only (draft/deprecated/retired excluded). */
 export async function listPublishedPlanOfferings(): Promise<
   PublishedPlanOffering[]

@@ -17,8 +17,11 @@ import {
   commercialCatalogStore,
 } from "./index";
 import { LEGACY_PLAN_BRIDGE } from "./legacyPlanBridge";
-import { hydrateCommercialCatalogFromDb } from "./drizzleCatalogPersistence";
 import { getDb } from "../../db";
+import {
+  getDurablePublicationBackend,
+  persistPublishedVersionPublication,
+} from "./publicationPersistence";
 import {
   commercialPlans,
   commercialPlanVersions,
@@ -328,13 +331,14 @@ export async function ensureCommercialCatalogAdoptionSeed(): Promise<{
   source: "db" | "seeded" | "memory";
   publishedVersions: number;
 }> {
-  const hydrated = await hydrateCommercialCatalogFromDb();
+  const backend = getDurablePublicationBackend();
+  await backend.hydrateInto(commercialCatalogStore);
   const published = [...commercialCatalogStore.versions.values()].filter(
     (v) => v.state === "published"
   );
   if (published.length > 0) {
     return {
-      source: hydrated.hydrated ? "db" : "memory",
+      source: backend.kind === "db" ? "db" : "memory",
       publishedVersions: published.length,
     };
   }
@@ -461,8 +465,10 @@ export async function ensureCommercialCatalogAdoptionSeed(): Promise<{
       });
     }
     publication.publish(version.id);
+    await persistPublishedVersionPublication(version.id);
   }
 
+  // Full-graph upsert for DB environments (billing cycles / shared policies).
   await persistFullStore();
   return {
     source: "seeded",

@@ -59,7 +59,8 @@ function mapError(err: unknown): never {
       code:
         err.code === "not_found"
           ? "NOT_FOUND"
-          : err.code === "publication_validation_failed"
+          : err.code === "publication_validation_failed" ||
+              err.code === "publication_persistence_failed"
             ? "BAD_REQUEST"
             : err.code === "immutable_version" || err.code === "invalid_transition"
               ? "FORBIDDEN"
@@ -71,8 +72,12 @@ function mapError(err: unknown): never {
 }
 
 export const commercialCatalogRouter = router({
-  status: protectedProcedure.query(({ ctx }) => {
+  status: protectedProcedure.query(async ({ ctx }) => {
     assertAdminAccess(ctx, "commercialCatalog.status");
+    const { ensureCatalogReady } = await import(
+      "../../services/commercial-catalog"
+    );
+    await ensureCatalogReady();
     return {
       program: COMMERCIAL_CATALOG_FOUNDATION_PROGRAM,
       adr: COMMERCIAL_CATALOG_ADR,
@@ -99,14 +104,22 @@ export const commercialCatalogRouter = router({
     return listPublishedPlanOfferings();
   }),
 
-  health: protectedProcedure.query(({ ctx }) => {
+  health: protectedProcedure.query(async ({ ctx }) => {
     assertAdminAccess(ctx, "commercialCatalog.health");
+    const { ensureCatalogReady } = await import(
+      "../../services/commercial-catalog"
+    );
+    await ensureCatalogReady();
     return getCommercialCatalogHealth();
   }),
 
   // ── Plans ──────────────────────────────────────────────
-  listPlans: protectedProcedure.query(({ ctx }) => {
+  listPlans: protectedProcedure.query(async ({ ctx }) => {
     assertAdminAccess(ctx, "commercialCatalog.listPlans");
+    const { ensureCatalogReady } = await import(
+      "../../services/commercial-catalog"
+    );
+    await ensureCatalogReady();
     return planService.list();
   }),
 
@@ -158,8 +171,12 @@ export const commercialCatalogRouter = router({
   // ── Versions ───────────────────────────────────────────
   listVersions: protectedProcedure
     .input(z.object({ planId: z.string().uuid().optional() }).optional())
-    .query(({ ctx, input }) => {
+    .query(async ({ ctx, input }) => {
       assertAdminAccess(ctx, "commercialCatalog.listVersions");
+      const { ensureCatalogReady } = await import(
+        "../../services/commercial-catalog"
+      );
+      await ensureCatalogReady();
       return planVersionService.list(input?.planId);
     }),
 
@@ -573,11 +590,11 @@ export const commercialCatalogRouter = router({
         requiresRegionalPricing: z.boolean().optional(),
       })
     )
-    .mutation(({ ctx, input }) => {
+    .mutation(async ({ ctx, input }) => {
       assertAdminAccess(ctx, "commercialCatalog.publishVersion");
       try {
-        // Compat: direct draft→published allowed; clears publishing overlay + cache.
-        const result = catalogPublishingService.publish(
+        // Compat: direct draft→published allowed; durable persist required for success.
+        const result = await catalogPublishingService.publish(
           input.versionId,
           {
             ...actorFromCtx(ctx),
@@ -596,13 +613,14 @@ export const commercialCatalogRouter = router({
 
   deprecateVersion: protectedProcedure
     .input(z.object({ versionId: z.string().uuid() }))
-    .mutation(({ ctx, input }) => {
+    .mutation(async ({ ctx, input }) => {
       assertAdminAccess(ctx, "commercialCatalog.deprecateVersion");
       try {
-        return catalogPublishingService.deprecate(input.versionId, {
+        const result = await catalogPublishingService.deprecate(input.versionId, {
           ...actorFromCtx(ctx),
           procedure: "commercialCatalog.deprecateVersion",
-        }).version;
+        });
+        return result.version;
       } catch (e) {
         mapError(e);
       }
@@ -610,13 +628,14 @@ export const commercialCatalogRouter = router({
 
   retireVersion: protectedProcedure
     .input(z.object({ versionId: z.string().uuid() }))
-    .mutation(({ ctx, input }) => {
+    .mutation(async ({ ctx, input }) => {
       assertAdminAccess(ctx, "commercialCatalog.retireVersion");
       try {
-        return catalogPublishingService.retire(input.versionId, {
+        const result = await catalogPublishingService.retire(input.versionId, {
           ...actorFromCtx(ctx),
           procedure: "commercialCatalog.retireVersion",
-        }).version;
+        });
+        return result.version;
       } catch (e) {
         mapError(e);
       }

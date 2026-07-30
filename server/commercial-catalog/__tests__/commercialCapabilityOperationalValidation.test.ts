@@ -23,6 +23,8 @@ import {
   migrationPolicyService,
   commercialSnapshotService,
   CommercialCatalogError,
+  setDurablePublicationBackendForTests,
+  invalidateCatalogReadyGate,
 } from "../../services/commercial-catalog";
 import {
   catalogPublishingService,
@@ -132,6 +134,8 @@ describe("COMMERCIAL-CAPABILITY-PLATFORM-ADOPTION-1 Operational Validation", () 
     clearAllPublicationOverlays();
     setPublicCatalogCacheEnabled(false);
     invalidatePublicCatalogCache();
+    setDurablePublicationBackendForTests(null);
+    invalidateCatalogReadyGate();
   });
 
   it("1. Capability Registry — Projection SSOT loaded, unique, no unknown keys", () => {
@@ -178,7 +182,7 @@ describe("COMMERCIAL-CAPABILITY-PLATFORM-ADOPTION-1 Operational Validation", () 
     );
   });
 
-  it("3–5. Approve → draft private; Publish → public offering drives pricing projection", () => {
+  it("3–5. Approve → draft private; Publish → public offering drives pricing projection", async () => {
     const { version, plan } = seedOperationalPlan("price-plan");
 
     catalogPublishingService.approveVersion(version.id);
@@ -190,7 +194,7 @@ describe("COMMERCIAL-CAPABILITY-PLATFORM-ADOPTION-1 Operational Validation", () 
       /not publicly accessible/i
     );
 
-    const { version: published } = catalogPublishingService.publish(
+    const { version: published } = await catalogPublishingService.publish(
       version.id,
       {},
       { enforceWorkflow: true }
@@ -219,23 +223,23 @@ describe("COMMERCIAL-CAPABILITY-PLATFORM-ADOPTION-1 Operational Validation", () 
     ).toBe(true);
   });
 
-  it("6–7. Retire removes from Pricing; Archive inaccessible; snapshots untouched", () => {
+  it("6–7. Retire removes from Pricing; Archive inaccessible; snapshots untouched", async () => {
     const { version } = seedOperationalPlan("retire-plan");
-    catalogPublishingService.publish(version.id);
+    await catalogPublishingService.publish(version.id);
 
     const snap = commercialSnapshotService.captureFromVersion(version.id);
     const snapshotId = snap.id;
     const before = commercialSnapshotService.get(snapshotId);
     expect(before).toBeTruthy();
 
-    catalogPublishingService.deprecate(version.id);
+    await catalogPublishingService.deprecate(version.id);
     expect(projectPublicCatalogOfferings()).toHaveLength(0);
     // Historically addressable while deprecated
     expect(projectPublicCatalogOffering(version.id).workflowState).toBe(
       "deprecated"
     );
 
-    catalogPublishingService.retire(version.id);
+    await catalogPublishingService.retire(version.id);
     expect(projectPublicCatalogOfferings()).toHaveLength(0);
     expect(() => projectPublicCatalogOffering(version.id)).toThrow(
       /not publicly accessible/i
@@ -256,10 +260,10 @@ describe("COMMERCIAL-CAPABILITY-PLATFORM-ADOPTION-1 Operational Validation", () 
     expect(commercialSnapshotService.get(snapshotId)).toEqual(before);
   });
 
-  it("8. Subscription Runtime — enabled/disabled from Snapshot; vocabulary = Feature Registry", () => {
+  it("8. Subscription Runtime — enabled/disabled from Snapshot; vocabulary = Feature Registry", async () => {
     // Use bridgeable catalog plan code so Runtime can resolve commercial plan identity
     const { version } = seedOperationalPlan("professional");
-    catalogPublishingService.publish(version.id);
+    await catalogPublishingService.publish(version.id);
     const { payload } = commercialSnapshotService.captureFromVersion(version.id);
     const NOW = new Date("2026-07-30T12:00:00.000Z");
     const lifecycle = syncCommercialLifecycle({
@@ -355,11 +359,12 @@ describe("COMMERCIAL-CAPABILITY-PLATFORM-ADOPTION-1 Operational Validation", () 
     );
     expect(wizard).toContain("CapabilityFilterPicker");
     expect(panels).toContain("CATALOG_FEATURE_KEYS");
-    expect(picker).toContain("catalogFeatureNameKey");
+    expect(picker).toContain("presentationNameI18nKey");
+    expect(picker).toContain("COMMERCIAL-CATALOG-RATIONALIZATION-1");
 
     const pricing = read("client/src/pages/Pricing.tsx");
     expect(pricing).not.toMatch(/DISCOVERY_CAPABILITY|COMMERCIAL_CAPABILITY_FILTER_KEYS/);
     expect(pricing).toContain("offering.featureKeys");
-    expect(pricing).toContain("catalogFeatureNameKey");
+    expect(pricing).toContain("presentationNameI18nKey");
   });
 });

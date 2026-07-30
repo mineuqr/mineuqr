@@ -28,7 +28,8 @@ function mapError(err: unknown): never {
       code:
         err.code === "not_found"
           ? "NOT_FOUND"
-          : err.code === "publication_validation_failed"
+          : err.code === "publication_validation_failed" ||
+              err.code === "publication_persistence_failed"
             ? "BAD_REQUEST"
             : err.code === "immutable_version" || err.code === "invalid_transition"
               ? "FORBIDDEN"
@@ -173,10 +174,10 @@ export const commercialCatalogPublishingRouter = router({
         requiresRegionalPricing: z.boolean().optional(),
       })
     )
-    .mutation(({ ctx, input }) => {
+    .mutation(async ({ ctx, input }) => {
       assertAdminAccess(ctx, "commercialCatalog.publishing.publishVersion");
       try {
-        return catalogPublishingService.publish(
+        return await catalogPublishingService.publish(
           input.versionId,
           {
             ...actorFromCtx(ctx),
@@ -192,7 +193,7 @@ export const commercialCatalogPublishingRouter = router({
       }
     }),
 
-  applyDueSchedules: protectedProcedure.mutation(({ ctx }) => {
+  applyDueSchedules: protectedProcedure.mutation(async ({ ctx }) => {
     assertAdminAccess(ctx, "commercialCatalog.publishing.applyDueSchedules");
     return catalogPublishingService.applyDueSchedules({
       ...actorFromCtx(ctx),
@@ -202,10 +203,10 @@ export const commercialCatalogPublishingRouter = router({
 
   deprecateVersion: protectedProcedure
     .input(z.object({ versionId: z.string().uuid() }))
-    .mutation(({ ctx, input }) => {
+    .mutation(async ({ ctx, input }) => {
       assertAdminAccess(ctx, "commercialCatalog.publishing.deprecateVersion");
       try {
-        return catalogPublishingService.deprecate(input.versionId, {
+        return await catalogPublishingService.deprecate(input.versionId, {
           ...actorFromCtx(ctx),
           procedure: "commercialCatalog.publishing.deprecateVersion",
         });
@@ -216,10 +217,10 @@ export const commercialCatalogPublishingRouter = router({
 
   retireVersion: protectedProcedure
     .input(z.object({ versionId: z.string().uuid() }))
-    .mutation(({ ctx, input }) => {
+    .mutation(async ({ ctx, input }) => {
       assertAdminAccess(ctx, "commercialCatalog.publishing.retireVersion");
       try {
-        return catalogPublishingService.retire(input.versionId, {
+        return await catalogPublishingService.retire(input.versionId, {
           ...actorFromCtx(ctx),
           procedure: "commercialCatalog.publishing.retireVersion",
         });

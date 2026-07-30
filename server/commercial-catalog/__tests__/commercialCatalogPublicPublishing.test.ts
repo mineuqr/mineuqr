@@ -19,6 +19,8 @@ import {
   limitProfileService,
   migrationPolicyService,
   CommercialCatalogError,
+  setDurablePublicationBackendForTests,
+  invalidateCatalogReadyGate,
 } from "../../services/commercial-catalog";
 import {
   catalogPublishingService,
@@ -194,9 +196,11 @@ describe("CatalogPublishingService + public read model", () => {
     clearAllPublicationOverlays();
     setPublicCatalogCacheEnabled(false);
     invalidatePublicCatalogCache();
+    setDurablePublicationBackendForTests(null);
+    invalidateCatalogReadyGate();
   });
 
-  it("keeps drafts private and publishes for public browse", () => {
+  it("keeps drafts private and publishes for public browse", async () => {
     const { version } = seedPublishableVersion("alpha");
     expect(catalogPublishingService.getStatus(version.id).workflowState).toBe(
       "draft"
@@ -212,7 +216,7 @@ describe("CatalogPublishingService + public read model", () => {
     );
     expect(projectPublicCatalogOfferings()).toHaveLength(0);
 
-    const { version: published } = catalogPublishingService.publish(
+    const { version: published } = await catalogPublishingService.publish(
       version.id,
       {},
       { enforceWorkflow: true }
@@ -245,10 +249,10 @@ describe("CatalogPublishingService + public read model", () => {
     expect(projectPublicCatalogOfferings()).toHaveLength(0);
   });
 
-  it("exposes deprecated historically but not for browse/adoption; archives hide retired", () => {
+  it("exposes deprecated historically but not for browse/adoption; archives hide retired", async () => {
     const { version } = seedPublishableVersion("hist");
-    catalogPublishingService.publish(version.id);
-    catalogPublishingService.deprecate(version.id);
+    await catalogPublishingService.publish(version.id);
+    await catalogPublishingService.deprecate(version.id);
 
     expect(projectPublicCatalogOfferings()).toHaveLength(0);
     const hist = projectPublicCatalogOffering(version.id);
@@ -256,7 +260,7 @@ describe("CatalogPublishingService + public read model", () => {
     expect(hist.visibility.historicallyAddressable).toBe(true);
     expect(hist.visibility.openForNewAdoption).toBe(false);
 
-    catalogPublishingService.retire(version.id);
+    await catalogPublishingService.retire(version.id);
     expect(() => projectPublicCatalogOffering(version.id)).toThrow(
       /not publicly accessible/i
     );

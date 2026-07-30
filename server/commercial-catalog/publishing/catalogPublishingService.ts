@@ -1,6 +1,7 @@
 /**
  * COMMERCIAL-CATALOG-PUBLIC-PUBLISHING-1
  * Canonical Catalog publishing authority — wraps PublicationService + workflow overlay.
+ * COMMERCIAL-PUBLICATION-PERSISTENCE-ARCHITECTURE-1 — publish is durable (not memory-only).
  * NEVER participates in entitlement decisions. NEVER mutates Subscription Snapshots.
  */
 
@@ -16,6 +17,10 @@ import {
   CommercialCatalogError,
   publicationService,
   planVersionService,
+  commercialCatalogStore,
+  persistPublishedVersionPublication,
+  persistVersionLifecyclePublication,
+  invalidateCatalogReadyGate,
 } from "../../services/commercial-catalog";
 import type { CommercialCatalogAuditActor } from "../../services/commercial-catalog/commercialCatalogAudit";
 import {
@@ -167,10 +172,12 @@ export class CatalogPublishingService {
   }
 
   /**
-   * Publish — foundation draft → published via PublicationService (CC-16).
-   * Clears governance overlay. Does not touch Subscription Runtime / Snapshots.
+   * Publish — durable authority.
+   * Memory update is provisional; success only after persistent publication.
+   * On persistence failure, memory is rolled back to pre-publish state.
+   * Does not touch Subscription Runtime / Snapshots.
    */
-  publish(
+  async publish(
     versionId: string,
     actor: CommercialCatalogAuditActor = {},
     options?: {
@@ -178,7 +185,10 @@ export class CatalogPublishingService {
       /** When true, require Approved or Scheduled before publish. */
       enforceWorkflow?: boolean;
     }
-  ): { version: CommercialPlanVersion; status: VersionPublicationStatus } {
+  ): Promise<{
+    version: CommercialPlanVersion;
+    status: VersionPublicationStatus;
+  }> {
     const version = planVersionService.get(versionId);
     if (!version) {
       throw new CommercialCatalogError("Version not found", "not_found");
@@ -195,21 +205,48 @@ export class CatalogPublishingService {
         );
       }
     }
+
+    const before = { ...version };
+    const overlayBefore = getPublicationOverlay(versionId);
+
     const published = publicationService.publish(versionId, actor, {
       requiresRegionalPricing: options?.requiresRegionalPricing,
     });
+
+    try {
+      await persistPublishedVersionPublication(versionId);
+    } catch (e) {
+      commercialCatalogStore.versions.set(versionId, before);
+      if (overlayBefore) {
+        setPublicationOverlay(versionId, overlayBefore);
+      }
+      const msg = e instanceof Error ? e.message : "publication_persistence_failed";
+      commercialCatalogStore.recordPublicationError(msg);
+      throw new CommercialCatalogError(
+        `Persistent publication failed: ${msg}`,
+        "publication_persistence_failed"
+      );
+    }
+
     clearPublicationOverlay(versionId);
+    // Cache invalidation only after durable success; ready gate rehydrates from authority.
+    invalidateCatalogReadyGate();
     invalidatePublicCatalogCache();
-    return { version: published, status: statusForVersion(published) };
+    return {
+      version: planVersionService.get(versionId) ?? published,
+      status: statusForVersion(planVersionService.get(versionId) ?? published),
+    };
   }
 
   /**
    * Apply due schedules: Scheduled versions whose effectiveAt ≤ now → publish.
    * Catalog-owned only; no entitlement side effects.
    */
-  applyDueSchedules(
+  async applyDueSchedules(
     actor: CommercialCatalogAuditActor = {}
-  ): Array<{ planVersionId: string; published: boolean; reason?: string }> {
+  ): Promise<
+    Array<{ planVersionId: string; published: boolean; reason?: string }>
+  > {
     const results: Array<{
       planVersionId: string;
       published: boolean;
@@ -223,7 +260,7 @@ export class CatalogPublishingService {
       const at = new Date(overlay.scheduledEffectiveAt);
       if (Number.isNaN(at.getTime()) || at > now) continue;
       try {
-        this.publish(version.id, actor, { enforceWorkflow: true });
+        await this.publish(version.id, actor, { enforceWorkflow: true });
         results.push({ planVersionId: version.id, published: true });
       } catch (e) {
         results.push({
@@ -236,26 +273,63 @@ export class CatalogPublishingService {
     return results;
   }
 
-  deprecate(
+  async deprecate(
     versionId: string,
     actor: CommercialCatalogAuditActor = {}
-  ): { version: CommercialPlanVersion; status: VersionPublicationStatus } {
+  ): Promise<{
+    version: CommercialPlanVersion;
+    status: VersionPublicationStatus;
+  }> {
+    const before = planVersionService.get(versionId);
+    if (!before) {
+      throw new CommercialCatalogError("Version not found", "not_found");
+    }
+    const prior = { ...before };
     const updated = publicationService.deprecate(versionId, actor);
+    try {
+      await persistVersionLifecyclePublication(versionId);
+    } catch (e) {
+      commercialCatalogStore.versions.set(versionId, prior);
+      const msg = e instanceof Error ? e.message : "publication_persistence_failed";
+      throw new CommercialCatalogError(
+        `Persistent deprecate failed: ${msg}`,
+        "publication_persistence_failed"
+      );
+    }
     clearPublicationOverlay(versionId);
+    invalidateCatalogReadyGate();
     invalidatePublicCatalogCache();
     return { version: updated, status: statusForVersion(updated) };
   }
 
-  retire(
+  async retire(
     versionId: string,
     actor: CommercialCatalogAuditActor = {}
-  ): { version: CommercialPlanVersion; status: VersionPublicationStatus } {
+  ): Promise<{
+    version: CommercialPlanVersion;
+    status: VersionPublicationStatus;
+  }> {
+    const before = planVersionService.get(versionId);
+    if (!before) {
+      throw new CommercialCatalogError("Version not found", "not_found");
+    }
+    const prior = { ...before };
     const updated = publicationService.retire(versionId, actor);
-    // Preserve archived flag only if already set (normally cleared)
+    try {
+      await persistVersionLifecyclePublication(versionId);
+    } catch (e) {
+      commercialCatalogStore.versions.set(versionId, prior);
+      const msg = e instanceof Error ? e.message : "publication_persistence_failed";
+      throw new CommercialCatalogError(
+        `Persistent retire failed: ${msg}`,
+        "publication_persistence_failed"
+      );
+    }
     const overlay = getPublicationOverlay(versionId);
     if (!overlay?.archived) {
       clearPublicationOverlay(versionId);
     }
+    invalidateCatalogReadyGate();
     invalidatePublicCatalogCache();
     return { version: updated, status: statusForVersion(updated) };
   }
