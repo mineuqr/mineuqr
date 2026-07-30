@@ -1413,8 +1413,8 @@
           "billingCyclesBody": "تعريفات شهرية وربع سنوية وسنوية وفترات مخصصة.",
           "noBillingCycles": "لا دورات فوترة",
           "noBillingCyclesBody": "عرّف دورة فوترة واحدة على الأقل قبل التسعير.",
-          "featureBundlesTitle": "حزم الميزات",
-          "featureBundlesBody": "محرّر ميزات مرئي — عيّن مفاتيح الميزات المعيارية المضمنة في الحزمة.",
+          "featureBundlesTitle": "حزم مرشّح القدرات",
+          "featureBundlesBody": "تفعيل أو تعطيل قدرات المنصة كمرشّحات لخطة تجارية — مجمّعة حسب النطاق.",
           "noFeatureBundles": "لا حزم ميزات",
           "noFeatureBundlesBody": "أنشئ حزمة قبل ربطها بإصدار خطة.",
           "includedCount": "{count} مضمّنة",
@@ -1906,6 +1906,52 @@
           "us": "الولايات المتحدة",
           "jp": "اليابان",
           "gb": "المملكة المتحدة"
+        },
+        "capabilityExperience": {
+          "filterMetaphor": "قدرات المنصة تُفعَّل عبر هذه الخطة كمرشّح — الخطة لا تنشئ وظائف المنتج.",
+          "planIsFilter": "هذه الخطة تُمكّن قدرات منصة محددة للعملاء. وهي لا تخترع وظائف منتج جديدة.",
+          "searchPlaceholder": "ابحث في القدرات…",
+          "allDomains": "كل النطاقات",
+          "bulkEnableVisible": "تفعيل الظاهر",
+          "bulkDisableVisible": "تعطيل الظاهر",
+          "enableDomain": "تفعيل النطاق",
+          "disableDomain": "تعطيل النطاق",
+          "showRegistryKeys": "للمطوّر: مفاتيح السجل",
+          "noMatches": "لا توجد قدرات مطابقة للمرشحات.",
+          "commercializable": "قابلة للتسعير",
+          "enabled": "مفعّلة في الخطة",
+          "disabled": "معطّلة في الخطة",
+          "defaultDescription": "مرشّح قدرة منصّة",
+          "metrics": {
+            "total": "إجمالي القدرات",
+            "enabled": "مفعّلة",
+            "disabled": "معطّلة"
+          },
+          "domains": {
+            "orders": "الطلبات",
+            "qr_menu": "قائمة QR",
+            "waiter": "النادل",
+            "hotel": "الفندق",
+            "reports": "التقارير",
+            "branding": "الهوية",
+            "platform": "المنصة"
+          },
+          "lifecycle": {
+            "label": "دورة النشر",
+            "legend": "الدورة: مسودة → معتمدة → منشورة → متقاعدة → مؤرشفة",
+            "current": "الحالة الحالية: {state}",
+            "draft": "مسودة",
+            "approved": "معتمدة",
+            "published": "منشورة",
+            "retired": "متقاعدة",
+            "archived": "مؤرشفة"
+          },
+          "pricingPreview": {
+            "eyebrow": "معاينة التسعير العامة",
+            "publicCard": "بطاقة عامة",
+            "noCapabilities": "لا توجد قدرات مفعّلة للعرض العام.",
+            "matchesPublic": "التخطيط يطابق صفحة التسعير العامة (العروض المنشورة)."
+          }
         },
         "preview": {
           "pricingTitle": "معاينة التسعير العامة",

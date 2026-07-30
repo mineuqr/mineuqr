@@ -50,6 +50,8 @@ import {
 import { CatalogCountrySelect } from "./CatalogCountrySelect";
 import { catalogManagementUiObservability } from "./catalogManagementObservability";
 import { useCatalogPublishingMutations } from "./useCatalogPublishingMutations";
+import { CapabilityFilterPicker } from "./experience/CapabilityFilterPicker";
+import { CapabilityLifecycleRail } from "./experience/CapabilityLifecycleRail";
 import type { CatalogManagementData } from "./useCatalogManagementData";
 
 type Props = { data: CatalogManagementData };
@@ -1041,10 +1043,6 @@ export function FeatureBundlesManagementPanel({ data }: Props) {
     [data.bundlesQuery.data, search]
   );
 
-  function toggle(key: string) {
-    setSelected((prev) => ({ ...prev, [key]: !prev[key] }));
-  }
-
   return (
     <>
       <CatalogEntityPanel
@@ -1114,21 +1112,11 @@ export function FeatureBundlesManagementPanel({ data }: Props) {
           />
         </CatalogField>
         <CatalogField label={cc("fields.features")}>
-          <div className="grid max-h-48 grid-cols-2 gap-2 overflow-y-auto rounded border p-2">
-            {CATALOG_FEATURE_KEYS.map((key) => (
-              <label
-                key={key}
-                className="flex items-center gap-2 text-sm"
-                title={t(catalogFeatureNameKey(key))}
-              >
-                <Checkbox
-                  checked={Boolean(selected[key])}
-                  onCheckedChange={() => toggle(key)}
-                />
-                {resolveCatalogLabel(t, catalogFeatureNameKey(key), key)}
-              </label>
-            ))}
-          </div>
+          <CapabilityFilterPicker
+            compact
+            value={selected}
+            onChange={setSelected}
+          />
         </CatalogField>
       </CatalogFormDialog>
     </>
@@ -1840,6 +1828,11 @@ export function PublicationManagementPanel({ data }: Props) {
         ))}
       </PlatformOpsMetricGrid>
 
+      <p className="mt-3 text-sm text-muted-foreground">
+        {cc("capabilityExperience.lifecycle.legend")}
+      </p>
+      <CapabilityLifecycleRail foundationState="draft" workflowState="draft" />
+
       <div className="mt-4 space-y-3">
         {versions.map((v) => (
           <div
@@ -1856,6 +1849,14 @@ export function PublicationManagementPanel({ data }: Props) {
               <PlatformOpsStatusBadge
                 status={versionStateTone(v.state)}
                 label={stateLabel(cc, v.state)}
+              />
+              <CapabilityLifecycleRail
+                className="mt-2"
+                foundationState={v.state}
+                workflowState={
+                  workflowStatuses.data?.find((s) => s.planVersionId === v.id)
+                    ?.workflowState
+                }
               />
             </div>
             <div className="flex flex-wrap gap-2">

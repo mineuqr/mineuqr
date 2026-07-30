@@ -1413,8 +1413,8 @@
           "billingCyclesBody": "Monthly, quarterly, annual, and custom interval definitions.",
           "noBillingCycles": "No billing cycles",
           "noBillingCyclesBody": "Define at least one billing cycle before pricing.",
-          "featureBundlesTitle": "Feature Bundles",
-          "featureBundlesBody": "Visual feature editor — assign normative feature keys included in a bundle.",
+          "featureBundlesTitle": "Capability Filter Bundles",
+          "featureBundlesBody": "Enable or disable platform capabilities as filters for a Commercial Plan — grouped by domain.",
           "noFeatureBundles": "No feature bundles",
           "noFeatureBundlesBody": "Create a bundle before attaching it to a Plan Version.",
           "includedCount": "{count} included",
@@ -1906,6 +1906,52 @@
           "us": "United States",
           "jp": "Japan",
           "gb": "United Kingdom"
+        },
+        "capabilityExperience": {
+          "filterMetaphor": "Platform capabilities are filtered by this plan — the plan does not create product features.",
+          "planIsFilter": "This plan enables selected platform capabilities for customers. It does not invent new product functionality.",
+          "searchPlaceholder": "Search capabilities…",
+          "allDomains": "All domains",
+          "bulkEnableVisible": "Enable visible",
+          "bulkDisableVisible": "Disable visible",
+          "enableDomain": "Enable domain",
+          "disableDomain": "Disable domain",
+          "showRegistryKeys": "Developer: registry keys",
+          "noMatches": "No capabilities match your filters.",
+          "commercializable": "Commercializable",
+          "enabled": "Enabled in plan",
+          "disabled": "Disabled in plan",
+          "defaultDescription": "Platform capability filter",
+          "metrics": {
+            "total": "Total capabilities",
+            "enabled": "Enabled",
+            "disabled": "Disabled"
+          },
+          "domains": {
+            "orders": "Orders",
+            "qr_menu": "QR Menu",
+            "waiter": "Waiter",
+            "hotel": "Hotel",
+            "reports": "Reports",
+            "branding": "Branding",
+            "platform": "Platform"
+          },
+          "lifecycle": {
+            "label": "Publication lifecycle",
+            "legend": "Lifecycle: Draft → Approved → Published → Retired → Archived",
+            "current": "Current state: {state}",
+            "draft": "Draft",
+            "approved": "Approved",
+            "published": "Published",
+            "retired": "Retired",
+            "archived": "Archived"
+          },
+          "pricingPreview": {
+            "eyebrow": "Public pricing preview",
+            "publicCard": "Public card",
+            "noCapabilities": "No capabilities enabled for public display.",
+            "matchesPublic": "Layout mirrors the public Pricing page (Published Offerings)."
+          }
         },
         "preview": {
           "pricingTitle": "Public Pricing Preview",

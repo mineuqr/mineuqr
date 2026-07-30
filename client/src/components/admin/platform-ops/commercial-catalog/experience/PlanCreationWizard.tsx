@@ -31,13 +31,15 @@ import {
 import type { ExperienceNavigate } from "./experienceNav";
 import { CatalogCountrySelect } from "../CatalogCountrySelect";
 import {
-  catalogFeatureNameKey,
   catalogLimitNameKey,
   resolveCatalogLabel,
   yearlySavingsPercent,
 } from "../catalogCommercialDisplay";
 import { COMMERCIAL_CANONICAL_CURRENCY } from "@shared/commercial-catalog";
 import { useCatalogPublishingMutations } from "../useCatalogPublishingMutations";
+import { CapabilityFilterPicker } from "./CapabilityFilterPicker";
+import { CapabilityLifecycleRail } from "./CapabilityLifecycleRail";
+import { CapabilityPricingPreview } from "./CapabilityPricingPreview";
 
 const WIZARD_STEP_KEYS = [
   "wizard.steps.planInfo",
@@ -493,21 +495,10 @@ export function PlanCreationWizard(props: {
               )}
             />
           </CatalogField>
-          <div className="grid max-h-48 grid-cols-2 gap-2 overflow-y-auto rounded border p-2">
-            {CATALOG_FEATURE_KEYS.map((key) => (
-              <label key={key} className="flex items-center gap-2 text-sm">
-                <Checkbox
-                  checked={Boolean(state.features[key])}
-                  onCheckedChange={(c) =>
-                    patch({
-                      features: { ...state.features, [key]: Boolean(c) },
-                    })
-                  }
-                />
-                {t(catalogFeatureNameKey(key))}
-              </label>
-            ))}
-          </div>
+          <CapabilityFilterPicker
+            value={state.features}
+            onChange={(features) => patch({ features })}
+          />
         </div>
       ) : null}
 
@@ -623,24 +614,20 @@ export function PlanCreationWizard(props: {
       ) : null}
 
       {state.step === 9 ? (
-        <div className="space-y-3 text-sm">
+        <div className="space-y-4 text-sm">
           <p className="font-medium">{cc("polish.summaryTitle")}</p>
-          <p className="text-muted-foreground">{cc("polish.summaryReady")}</p>
-          <p className="text-base font-semibold">{state.planName}</p>
-          <div>
-            <p className="text-muted-foreground">{cc("polish.summaryBilling")}</p>
-            <p>
-              {cc("polish.summaryCanonical")}: {state.monthlyAmountUsd}{" "}
-              {COMMERCIAL_CANONICAL_CURRENCY} / {cc("intervalUnits.month")}
-            </p>
-            <p>
-              {cc("polish.summaryCanonical")}: {state.yearlyAmountUsd}{" "}
-              {COMMERCIAL_CANONICAL_CURRENCY} / {cc("intervalUnits.year")}
-            </p>
-            {savingsPercent != null ? (
-              <p>{cc("polish.savings").replace("{percent}", String(savingsPercent))}</p>
-            ) : null}
-          </div>
+          <p className="text-muted-foreground">
+            {cc("capabilityExperience.planIsFilter")}
+          </p>
+          <CapabilityLifecycleRail foundationState="draft" workflowState="draft" />
+          <CapabilityPricingPreview
+            planName={state.planName || cc("common.emDash")}
+            versionLabel={state.versionName || state.versionCode}
+            monthlyAmount={state.monthlyAmountUsd}
+            yearlyAmount={state.yearlyAmountUsd}
+            currency={COMMERCIAL_CANONICAL_CURRENCY}
+            enabledFeatures={state.features}
+          />
           <div>
             <p className="text-muted-foreground">{cc("polish.summaryRegion")}</p>
             <p>
@@ -656,16 +643,6 @@ export function PlanCreationWizard(props: {
               </p>
             ) : null}
           </div>
-          <p>
-            {cc("wizard.reviewFeatures")}{" "}
-            {cc("wizard.reviewFeaturesSelected").replace(
-              "{count}",
-              String(Object.values(state.features).filter(Boolean).length)
-            )}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {cc("polish.noTechnicalIds")}
-          </p>
           <PlatformOpsAlert
             severity="info"
             title={cc("wizard.draftSaveTitle")}

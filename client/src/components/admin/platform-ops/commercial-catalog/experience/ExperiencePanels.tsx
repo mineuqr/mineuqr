@@ -58,6 +58,7 @@ import {
   resolveCatalogLabel,
 } from "../catalogCommercialDisplay";
 import { useCatalogPublishingMutations } from "../useCatalogPublishingMutations";
+import { CapabilityPricingPreview } from "./CapabilityPricingPreview";
 
 function diffKindLabel(cc: (key: string) => string, kind: FieldDiff["kind"]) {
   const map: Record<FieldDiff["kind"], string> = {
@@ -709,74 +710,51 @@ export function PricingPreviewPanel(props: { data: CatalogManagementData }) {
             ))}
           </SelectContent>
         </Select>
-        <div className="flex rounded border p-1">
-          <Button
-            type="button"
-            size="sm"
-            variant={cycle === "monthly" ? "default" : "ghost"}
-            onClick={() => setCycle("monthly")}
-          >
-            {cc("preview.monthly")}
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={cycle === "yearly" ? "default" : "ghost"}
-            onClick={() => setCycle("yearly")}
-          >
-            {cc("preview.yearly")}
-          </Button>
-        </div>
       </div>
       {version && plan ? (
         <div className="mt-6 space-y-6" dir={language === "ar" ? "rtl" : "ltr"}>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <div className="rounded-2xl border bg-card p-6 shadow-sm">
-              <div className="mb-2 flex items-center justify-between">
-                <h3 className="text-xl font-semibold">{plan.name}</h3>
-                <PlatformOpsStatusBadge
-                  status={version.state === "published" ? "healthy" : "warning"}
-                  label={version.state}
-                />
-              </div>
-              <AdminLocalizedPricePreview
-                prices={priceRows}
-                regions={regions}
-                priceCycleHints={prices.map((p) => ({
-                  billingCycleId: p.billingCycleId,
-                }))}
-                monthlyBillingCycleIds={monthlyCycleIds}
-                yearlyBillingCycleIds={yearlyCycleIds}
-              />
-              {trial ? (
-                <p className="mt-2 text-sm text-muted-foreground">
-                  {trial.durationDays}
-                </p>
-              ) : null}
-              <ul className="mt-4 space-y-1 text-sm">
-                {(bundle?.features ?? [])
-                  .filter((f) => f.included)
-                  .slice(0, 8)
-                  .map((f) => (
-                    <li key={f.featureKey}>
-                      ✓{" "}
-                      {resolveCatalogLabel(
-                        t,
-                        catalogFeatureNameKey(f.featureKey),
-                        f.featureKey
-                      )}
-                    </li>
-                  ))}
-              </ul>
-              <div className="mt-4 text-xs text-muted-foreground">
-                {(limits?.values ?? [])
-                  .map(
-                    (v) =>
-                      `${resolveCatalogLabel(t, catalogLimitNameKey(v.limitKey), v.limitKey)}=${v.value ?? cc("common.infinity")}`
-                  )
-                  .join(", ") || cc("common.emDash")}
-              </div>
-            </div>
+          <CapabilityPricingPreview
+            planName={plan.name}
+            versionLabel={`${version.versionName} (${version.versionCode})`}
+            monthlyAmount={
+              prices.find((p) => monthlyCycleIds.includes(p.billingCycleId))
+                ?.amount ?? "0"
+            }
+            yearlyAmount={
+              prices.find((p) => yearlyCycleIds.includes(p.billingCycleId))
+                ?.amount ?? "0"
+            }
+            currency={prices[0]?.currency ?? "USD"}
+            enabledFeatures={Object.fromEntries(
+              (bundle?.features ?? []).map((f) => [
+                f.featureKey,
+                Boolean(f.included),
+              ])
+            )}
+            cycle={cycle}
+            onCycleChange={setCycle}
+          />
+          <AdminLocalizedPricePreview
+            prices={priceRows}
+            regions={regions}
+            priceCycleHints={prices.map((p) => ({
+              billingCycleId: p.billingCycleId,
+            }))}
+            monthlyBillingCycleIds={monthlyCycleIds}
+            yearlyBillingCycleIds={yearlyCycleIds}
+          />
+          {trial ? (
+            <p className="text-sm text-muted-foreground">
+              {trial.durationDays} {cc("fields.trialDays")}
+            </p>
+          ) : null}
+          <div className="text-xs text-muted-foreground">
+            {(limits?.values ?? [])
+              .map(
+                (v) =>
+                  `${resolveCatalogLabel(t, catalogLimitNameKey(v.limitKey), v.limitKey)}=${v.value ?? cc("common.infinity")}`
+              )
+              .join(", ") || cc("common.emDash")}
           </div>
         </div>
       ) : (
