@@ -1,10 +1,14 @@
 /**
- * PG-1C.1B §3.1 — normative feature keys for `features.<key>`.
- * COMMERCIAL-CAPABILITY-PLATFORM-ADOPTION-1: SSOT is Capability Filter Registry
- * (adopts PLATFORM-CAPABILITY-DISCOVERY-1). Plans are Capability Filters only.
+ * COMMERCIAL-PROJECTION-GENERATION-1
+ * FEATURE_KEYS = Runtime entitlement vocabulary (Projection ∪ Legacy Compat).
+ * Catalog Plan filters = COMMERCIAL_CAPABILITY_FILTER_KEYS (Projection only).
  */
 
 export {
-  COMMERCIAL_CAPABILITY_FILTER_KEYS as FEATURE_KEYS,
-  type CommercialCapabilityFilterKey as FeatureKey,
+  RUNTIME_ENTITLEMENT_FEATURE_KEYS as FEATURE_KEYS,
+  type RuntimeEntitlementFeatureKey as FeatureKey,
+  COMMERCIAL_CAPABILITY_FILTER_KEYS,
+  type CommercialCapabilityFilterKey,
+  isCommercialCapabilityFilterKey,
+  isRuntimeEntitlementFeatureKey,
 } from "@shared/commercial-capability";

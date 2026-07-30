@@ -1,7 +1,6 @@
 /**
- * COMMERCIAL-CAPABILITY-EXPERIENCE-1
- * Presentation helpers — Capability Filters as first-class UX objects.
- * Does NOT modify Capability Registry / Catalog / Runtime.
+ * COMMERCIAL-CAPABILITY-EXPERIENCE-1 + COMMERCIAL-PROJECTION-GENERATION-1
+ * Presentation helpers — Commercial Projection filters as UX objects.
  */
 
 import {
@@ -10,48 +9,54 @@ import {
   type CommercialCapabilityFilterRow,
 } from "@shared/commercial-capability";
 
-/** Experience domain ids for grouping (presentation map over registry ownerDomain). */
+/** Experience domain ids for grouping (presentation map over registry category). */
 export const CAPABILITY_EXPERIENCE_DOMAIN_ORDER = [
   "orders",
-  "qr_menu",
-  "waiter",
-  "hotel",
+  "settlement",
+  "register",
+  "ops_display",
+  "printing",
+  "devices",
   "reports",
-  "branding",
   "platform",
 ] as const;
 
 export type CapabilityExperienceDomainId =
   (typeof CAPABILITY_EXPERIENCE_DOMAIN_ORDER)[number];
 
-const OWNER_TO_DOMAIN: Record<string, CapabilityExperienceDomainId> = {
-  "Ordering Platform": "orders",
-  "Ordering Client": "orders",
-  "Order Read / Notifications": "orders",
-  "Menu/Restaurant": "qr_menu",
-  Table: "qr_menu",
-  Waiter: "waiter",
-  "Settlement / Waiter": "waiter",
-  "Menu/Hotel": "hotel",
-  "Menu/Offers": "hotel",
-  Reporting: "reports",
-  "Menu/Branding": "branding",
+const CATEGORY_TO_DOMAIN: Record<string, CapabilityExperienceDomainId> = {
+  ordering: "orders",
+  settlement: "settlement",
+  register: "register",
+  ops_display: "ops_display",
+  printing: "printing",
+  devices: "devices",
+  reporting: "reports",
+  infrastructure: "platform",
 };
 
 export type CapabilityExperienceCard = CommercialCapabilityFilterRow & {
   experienceDomain: CapabilityExperienceDomainId;
 };
 
+export function experienceDomainForCategory(
+  category: string
+): CapabilityExperienceDomainId {
+  return CATEGORY_TO_DOMAIN[category] ?? "platform";
+}
+
+/** @deprecated Prefer experienceDomainForCategory — kept for call-site stability. */
 export function experienceDomainForOwner(
   ownerDomain: string
 ): CapabilityExperienceDomainId {
-  return OWNER_TO_DOMAIN[ownerDomain] ?? "platform";
+  void ownerDomain;
+  return "platform";
 }
 
 export function listCapabilityExperienceCards(): CapabilityExperienceCard[] {
   return COMMERCIAL_CAPABILITY_FILTER_REGISTRY.map((row) => ({
     ...row,
-    experienceDomain: experienceDomainForOwner(row.ownerDomain),
+    experienceDomain: experienceDomainForCategory(row.category),
   }));
 }
 
@@ -114,7 +119,7 @@ export function resolveLifecycleStage(input: {
   if (w === "archived" || input.foundationState === "archived") return "archived";
   if (w === "retired" || input.foundationState === "retired") return "retired";
   if (w === "published" || input.foundationState === "published") return "published";
-  if (w === "deprecated") return "published"; // still commercially known; rail emphasizes published→retired
+  if (w === "deprecated") return "published";
   if (w === "approved" || w === "scheduled") return "approved";
   return "draft";
 }

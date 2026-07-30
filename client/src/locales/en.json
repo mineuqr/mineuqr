@@ -1929,12 +1929,17 @@
           },
           "domains": {
             "orders": "Orders",
+            "settlement": "Settlement",
+            "register": "Register",
+            "ops_display": "Ops Displays",
+            "printing": "Printing",
+            "devices": "Devices",
+            "reports": "Reports",
+            "platform": "Platform",
             "qr_menu": "QR Menu",
             "waiter": "Waiter",
             "hotel": "Hotel",
-            "reports": "Reports",
-            "branding": "Branding",
-            "platform": "Platform"
+            "branding": "Branding"
           },
           "lifecycle": {
             "label": "Publication lifecycle",
@@ -2099,6 +2104,104 @@
             "tooltip": "Typography control",
             "category": "Branding",
             "keywords": "fonts"
+          },
+          "checkManagement": {
+            "name": "Check Management",
+            "description": "Financial check and settlement plane",
+            "tooltip": "Settle guest checks",
+            "category": "Settlement",
+            "keywords": "check settlement"
+          },
+          "splitPayment": {
+            "name": "Split Payment",
+            "description": "Multi-tender payments under a check",
+            "tooltip": "Split tenders",
+            "category": "Settlement",
+            "keywords": "split payment"
+          },
+          "multiCheckAllocation": {
+            "name": "Multi-Check Allocation",
+            "description": "Allocate across checks",
+            "tooltip": "Cross-check allocation",
+            "category": "Settlement",
+            "keywords": "allocation"
+          },
+          "refund": {
+            "name": "Refunds",
+            "description": "Compensating settlement refunds",
+            "tooltip": "Issue refunds",
+            "category": "Settlement",
+            "keywords": "refund"
+          },
+          "register": {
+            "name": "Register Operations",
+            "description": "Cash register and financial shifts",
+            "tooltip": "CRMP register & shifts",
+            "category": "Register",
+            "keywords": "register crmp"
+          },
+          "reporting": {
+            "name": "Reporting",
+            "description": "Restaurant KPI reporting and exports",
+            "tooltip": "Business reports",
+            "category": "Analytics",
+            "keywords": "reports analytics"
+          },
+          "kitchen": {
+            "name": "Kitchen Display",
+            "description": "Kitchen queue display",
+            "tooltip": "Kitchen screen",
+            "category": "Operations",
+            "keywords": "kitchen kds"
+          },
+          "printing": {
+            "name": "Printing",
+            "description": "Order printing and printer management",
+            "tooltip": "Print tickets",
+            "category": "Printing",
+            "keywords": "print"
+          },
+          "realtime": {
+            "name": "Realtime",
+            "description": "Live updates for ops and guests",
+            "tooltip": "Realtime platform",
+            "category": "Platform",
+            "keywords": "realtime"
+          },
+          "devices": {
+            "name": "Devices & Screens",
+            "description": "Operational device and screen management",
+            "tooltip": "Fleet & pairing",
+            "category": "Devices",
+            "keywords": "devices screens"
+          },
+          "waiter": {
+            "name": "Waiter Ordering",
+            "description": "Staff floor ordering workspace",
+            "tooltip": "Waiter app",
+            "category": "Ordering",
+            "keywords": "waiter"
+          },
+          "kiosk": {
+            "name": "Self-Ordering Kiosk",
+            "description": "Guest kiosk ordering channel",
+            "tooltip": "Kiosk shell",
+            "category": "Ordering",
+            "keywords": "kiosk"
+          },
+          "counterPickup": {
+            "name": "Counter Pickup",
+            "description": "Staff counter pickup settlement",
+            "tooltip": "Counter settle",
+            "category": "Ordering",
+            "keywords": "pickup counter"
+          },
+          "expo": {
+            "name": "Expo Display",
+            "description": "Expo coordination and Ready workspace",
+            "tooltip": "Expo screen",
+            "category": "Operations",
+            "keywords": "expo"
           }
         },
         "limits": {

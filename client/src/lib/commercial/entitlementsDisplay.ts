@@ -1,5 +1,9 @@
 import { FEATURE_KEYS, type FeatureKey } from "@commercial/featureKeys";
 import type { CommercialEntitlements } from "@commercial/types";
+import {
+  COMMERCIAL_PROJECTION_REGISTRY,
+  LEGACY_COMPAT_FEATURE_KEYS,
+} from "@shared/commercial-projection";
 
 export type CommercialUiLanguage = "ar" | "en";
 
@@ -19,12 +23,19 @@ const ACCOUNT_TYPE_LABELS: Record<string, Record<CommercialUiLanguage, string>> 
   ADMIN: { en: "Admin", ar: "مسؤول" },
 };
 
-const FEATURE_LABELS: Record<FeatureKey, Record<CommercialUiLanguage, string>> = {
+const PROJECTION_LABELS: Record<string, Record<CommercialUiLanguage, string>> =
+  Object.fromEntries(
+    COMMERCIAL_PROJECTION_REGISTRY.map((r) => [
+      r.projectionId,
+      { en: r.capabilityName, ar: r.capabilityName },
+    ])
+  );
+
+const LEGACY_LABELS: Record<string, Record<CommercialUiLanguage, string>> = {
   qrMenu: { en: "QR Menu", ar: "منيو QR" },
   categories: { en: "Categories", ar: "الفئات" },
   menuImages: { en: "Menu images", ar: "صور المنيو" },
   search: { en: "Search", ar: "البحث" },
-  ordering: { en: "Ordering", ar: "الطلب" },
   cart: { en: "Cart", ar: "السلة" },
   checkout: { en: "Checkout", ar: "إتمام الطلب" },
   requestBill: { en: "Request bill", ar: "طلب الفاتورة" },
@@ -39,6 +50,20 @@ const FEATURE_LABELS: Record<FeatureKey, Record<CommercialUiLanguage, string>> =
   customColors: { en: "Custom colors", ar: "ألوان مخصصة" },
   customFonts: { en: "Custom fonts", ar: "خطوط مخصصة" },
 };
+
+const FEATURE_LABELS = {
+  ...PROJECTION_LABELS,
+  ...LEGACY_LABELS,
+} as Record<FeatureKey, Record<CommercialUiLanguage, string>>;
+
+// Ensure every FEATURE_KEYS entry has a label (fallback to key).
+for (const key of FEATURE_KEYS) {
+  if (!FEATURE_LABELS[key]) {
+    FEATURE_LABELS[key] = { en: key, ar: key };
+  }
+}
+
+void LEGACY_COMPAT_FEATURE_KEYS;
 
 const LIMIT_LABELS = {
   restaurants: { en: "Restaurants", ar: "المطاعم" },
@@ -73,7 +98,7 @@ export function getFeatureDisplayName(
   key: FeatureKey,
   language: CommercialUiLanguage
 ): string {
-  return FEATURE_LABELS[key][language];
+  return FEATURE_LABELS[key]?.[language] ?? key;
 }
 
 export function formatCommercialLimit(

@@ -1929,12 +1929,17 @@
           },
           "domains": {
             "orders": "الطلبات",
+            "settlement": "التسوية",
+            "register": "الصندوق",
+            "ops_display": "شاشات التشغيل",
+            "printing": "الطباعة",
+            "devices": "الأجهزة",
+            "reports": "التقارير",
+            "platform": "المنصة",
             "qr_menu": "قائمة QR",
             "waiter": "النادل",
             "hotel": "الفندق",
-            "reports": "التقارير",
-            "branding": "الهوية",
-            "platform": "المنصة"
+            "branding": "الهوية"
           },
           "lifecycle": {
             "label": "دورة النشر",
@@ -2099,6 +2104,104 @@
             "tooltip": "التحكم بالطباعة",
             "category": "الهوية",
             "keywords": "خطوط"
+          },
+          "checkManagement": {
+            "name": "إدارة الشيك",
+            "description": "مستوى الشيك المالي والتسوية",
+            "tooltip": "تسوية شيكات الضيوف",
+            "category": "التسوية",
+            "keywords": "شيك تسوية"
+          },
+          "splitPayment": {
+            "name": "تقسيم الدفع",
+            "description": "مدفوعات متعددة تحت الشيك",
+            "tooltip": "تقسيم طرق الدفع",
+            "category": "التسوية",
+            "keywords": "تقسيم دفع"
+          },
+          "multiCheckAllocation": {
+            "name": "توزيع متعدد الشيكات",
+            "description": "توزيع عبر الشيكات",
+            "tooltip": "توزيع عبر الشيكات",
+            "category": "التسوية",
+            "keywords": "توزيع"
+          },
+          "refund": {
+            "name": "المرتجعات",
+            "description": "مرتجعات التسوية التعويضية",
+            "tooltip": "إصدار مرتجعات",
+            "category": "التسوية",
+            "keywords": "مرتجع"
+          },
+          "register": {
+            "name": "عمليات الصندوق",
+            "description": "الصندوق الوردي والنوبات المالية",
+            "tooltip": "صندوق CRMP والنوبات",
+            "category": "الصندوق",
+            "keywords": "صندوق"
+          },
+          "reporting": {
+            "name": "التقارير",
+            "description": "تقارير مؤشرات أداء المطعم والتصدير",
+            "tooltip": "تقارير الأعمال",
+            "category": "التحليلات",
+            "keywords": "تقارير"
+          },
+          "kitchen": {
+            "name": "شاشة المطبخ",
+            "description": "عرض طابور المطبخ",
+            "tooltip": "شاشة المطبخ",
+            "category": "التشغيل",
+            "keywords": "مطبخ"
+          },
+          "printing": {
+            "name": "الطباعة",
+            "description": "طباعة الطلبات وإدارة الطابعات",
+            "tooltip": "طباعة التذاكر",
+            "category": "الطباعة",
+            "keywords": "طباعة"
+          },
+          "realtime": {
+            "name": "الزمن الحقيقي",
+            "description": "تحديثات مباشرة للتشغيل والضيوف",
+            "tooltip": "منصة الزمن الحقيقي",
+            "category": "المنصة",
+            "keywords": "realtime"
+          },
+          "devices": {
+            "name": "الأجهزة والشاشات",
+            "description": "إدارة الأجهزة والشاشات التشغيلية",
+            "tooltip": "الأسطول والاقتران",
+            "category": "الأجهزة",
+            "keywords": "أجهزة شاشات"
+          },
+          "waiter": {
+            "name": "طلب النادل",
+            "description": "مساحة طلبات الطاقم في الصالة",
+            "tooltip": "تطبيق النادل",
+            "category": "الطلب",
+            "keywords": "نادل"
+          },
+          "kiosk": {
+            "name": "كiosk للطلب الذاتي",
+            "description": "قناة طلب الضيف عبر الكiosk",
+            "tooltip": "واجهة الكiosk",
+            "category": "الطلب",
+            "keywords": "كiosk"
+          },
+          "counterPickup": {
+            "name": "استلام العداد",
+            "description": "تسوية استلام العداد للطاقم",
+            "tooltip": "تسوية العداد",
+            "category": "الطلب",
+            "keywords": "استلام عداد"
+          },
+          "expo": {
+            "name": "شاشة الإكسبو",
+            "description": "تنسيق الإكسبو ومساحة Ready",
+            "tooltip": "شاشة الإكسبو",
+            "category": "التشغيل",
+            "keywords": "إكسبو"
           }
         },
         "limits": {

@@ -1,10 +1,16 @@
 /**
  * SUBSCRIPTION-RUNTIME-ENTITLEMENT-ENFORCEMENT-1
- * Capability → entitlement key matrix (single canonical mapping).
+ * COMMERCIAL-PROJECTION-GENERATION-1
+ * Capability → entitlement key matrix (Projection IDs + Legacy Compat).
  */
 
 import type { FeatureKey } from "@commercial/featureKeys";
 import { FEATURE_KEYS } from "@commercial/featureKeys";
+import {
+  COMMERCIAL_PROJECTION_REGISTRY,
+  LEGACY_COMPAT_FEATURE_KEYS,
+  type LegacyCompatFeatureKey,
+} from "@shared/commercial-projection";
 
 export type LimitEntitlementKey =
   | "restaurants"
@@ -27,26 +33,27 @@ export type CapabilityEntitlement = {
   description: string;
 };
 
+/** Legacy runtime capability IDs retained for bound-snapshot / UI-gate continuity. */
+const LEGACY_COMPAT_MATRIX: readonly CapabilityEntitlement[] =
+  LEGACY_COMPAT_FEATURE_KEYS.map((key) => ({
+    capabilityId: `cap.legacy.${key}`,
+    kind: "feature" as const,
+    entitlementKey: key as LegacyCompatFeatureKey,
+    description: `Legacy compat: ${key}`,
+  }));
+
+const PROJECTION_MATRIX: readonly CapabilityEntitlement[] =
+  COMMERCIAL_PROJECTION_REGISTRY.map((row) => ({
+    capabilityId: row.runtimeCapabilityId,
+    kind: "feature" as const,
+    entitlementKey: row.projectionId,
+    description: row.capabilityName,
+  }));
+
 /** Every protected commercial capability maps to exactly one entitlement key. */
 export const CAPABILITY_ENTITLEMENT_MATRIX: readonly CapabilityEntitlement[] = [
-  { capabilityId: "cap.menu.qr", kind: "feature", entitlementKey: "qrMenu", description: "QR menu" },
-  { capabilityId: "cap.menu.categories", kind: "feature", entitlementKey: "categories", description: "Menu categories" },
-  { capabilityId: "cap.menu.images", kind: "feature", entitlementKey: "menuImages", description: "Menu images" },
-  { capabilityId: "cap.menu.search", kind: "feature", entitlementKey: "search", description: "Menu search" },
-  { capabilityId: "cap.ordering.core", kind: "feature", entitlementKey: "ordering", description: "Guest/staff ordering" },
-  { capabilityId: "cap.ordering.cart", kind: "feature", entitlementKey: "cart", description: "Cart" },
-  { capabilityId: "cap.ordering.checkout", kind: "feature", entitlementKey: "checkout", description: "Checkout" },
-  { capabilityId: "cap.ordering.requestBill", kind: "feature", entitlementKey: "requestBill", description: "Request bill" },
-  { capabilityId: "cap.ordering.callWaiter", kind: "feature", entitlementKey: "callWaiter", description: "Call waiter" },
-  { capabilityId: "cap.ordering.tracking", kind: "feature", entitlementKey: "orderTracking", description: "Order tracking" },
-  { capabilityId: "cap.reporting.reports", kind: "feature", entitlementKey: "reports", description: "Reports" },
-  { capabilityId: "cap.reporting.excel", kind: "feature", entitlementKey: "excelExport", description: "Excel export" },
-  { capabilityId: "cap.hotel.mode", kind: "feature", entitlementKey: "hotelMode", description: "Hotel mode" },
-  { capabilityId: "cap.hotel.roomQr", kind: "feature", entitlementKey: "roomQr", description: "Room QR" },
-  { capabilityId: "cap.hotel.services", kind: "feature", entitlementKey: "dynamicServiceCatalog", description: "Dynamic services" },
-  { capabilityId: "cap.branding.templates", kind: "feature", entitlementKey: "templates", description: "Templates" },
-  { capabilityId: "cap.branding.colors", kind: "feature", entitlementKey: "customColors", description: "Custom colors" },
-  { capabilityId: "cap.branding.fonts", kind: "feature", entitlementKey: "customFonts", description: "Custom fonts" },
+  ...PROJECTION_MATRIX,
+  ...LEGACY_COMPAT_MATRIX,
   { capabilityId: "cap.limit.restaurants", kind: "limit", entitlementKey: "restaurants", description: "Restaurant quota" },
   { capabilityId: "cap.limit.categories", kind: "limit", entitlementKey: "categories", description: "Category quota" },
   { capabilityId: "cap.limit.items", kind: "limit", entitlementKey: "items", description: "Item quota" },

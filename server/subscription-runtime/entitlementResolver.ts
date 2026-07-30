@@ -4,6 +4,7 @@
  */
 
 import { FEATURE_KEYS, type FeatureKey } from "@commercial/featureKeys";
+import { expandFeatureKeysForRuntime } from "@shared/commercial-projection";
 import type { CommercialContext } from "@commercial/commercialContext";
 import type { CommercialEntitlementsResult } from "@commercial/getCommercialEntitlements";
 import type {
@@ -40,12 +41,13 @@ function deniedFeatures(): CommercialFeatures {
 function featuresFromSnapshot(
   snapshot: CommercialSnapshotDefinition
 ): CommercialFeatures {
-  const included = new Set(
-    snapshot.includedFeatures.filter((f) => f.included).map((f) => f.featureKey)
-  );
+  const raw = snapshot.includedFeatures
+    .filter((f) => f.included)
+    .map((f) => f.featureKey);
+  const enabled = expandFeatureKeysForRuntime(raw);
   const features = {} as CommercialFeatures;
   for (const key of FEATURE_KEYS) {
-    features[key] = included.has(key);
+    features[key] = enabled.has(key);
   }
   return features;
 }

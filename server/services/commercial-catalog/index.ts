@@ -344,19 +344,31 @@ export class FeatureBundleService {
       updatedAt: now,
     };
     this.store.featureBundles.set(bundle.id, bundle);
-    for (const f of input.features ?? []) {
-      const check = assertCommercialCapabilityFilterKeys([f.featureKey]);
-      if (!check.ok) {
-        throw new CommercialCatalogError(
-          `Unknown commercial capability filter key(s): ${check.invalid.join(", ")} — Plans are Capability Filters over Capability Catalog only`,
-          "invalid_capability_filter"
-        );
+    const featureInputs = input.features ?? [];
+    const check = assertCommercialCapabilityFilterKeys(
+      featureInputs.map((f) => f.featureKey)
+    );
+    if (!check.ok) {
+      throw new CommercialCatalogError(
+        `Unknown commercial capability filter key(s): ${check.invalid.join(", ")} — Plans are Capability Filters over Commercial Projection only`,
+        "invalid_capability_filter"
+      );
+    }
+    const includedByKey = new Map<string, boolean>();
+    for (const f of featureInputs) {
+      const mapped = assertCommercialCapabilityFilterKeys([f.featureKey]);
+      if (mapped.ok) {
+        for (const k of mapped.normalized) {
+          includedByKey.set(k, f.included ?? true);
+        }
       }
+    }
+    for (const featureKey of check.normalized) {
       const row = {
         id: newCommercialId(),
         bundleId: bundle.id,
-        featureKey: f.featureKey,
-        included: f.included ?? true,
+        featureKey,
+        included: includedByKey.get(featureKey) ?? true,
       };
       this.store.bundleFeatures.set(row.id, row);
     }

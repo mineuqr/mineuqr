@@ -61,14 +61,14 @@ function ensureCycles() {
   return { monthly, yearly };
 }
 
-/** Enabled: ordering + reports; all other registry keys present as disabled. */
+/** Enabled: ordering + reporting; all other projection keys present as disabled. */
 function buildFilterBundle(code: string) {
   return featureBundleService.create({
     code: `${code}-feat`,
     name: "Filter Bundle",
     features: COMMERCIAL_CAPABILITY_FILTER_KEYS.map((featureKey) => ({
       featureKey,
-      included: featureKey === "ordering" || featureKey === "reports",
+      included: featureKey === "ordering" || featureKey === "reporting",
     })),
   });
 }
@@ -134,12 +134,14 @@ describe("COMMERCIAL-CAPABILITY-PLATFORM-ADOPTION-1 Operational Validation", () 
     invalidatePublicCatalogCache();
   });
 
-  it("1. Capability Registry — loaded, unique, no unknown keys", () => {
-    expect(COMMERCIAL_CAPABILITY_FILTER_KEYS).toHaveLength(18);
-    expect(new Set(COMMERCIAL_CAPABILITY_FILTER_KEYS).size).toBe(18);
-    expect(COMMERCIAL_CAPABILITY_FILTER_REGISTRY).toHaveLength(18);
-    expect([...FEATURE_KEYS]).toEqual([...COMMERCIAL_CAPABILITY_FILTER_KEYS]);
-    expect(DISCOVERY_CAPABILITY_CLASSIFICATION).toHaveLength(46);
+  it("1. Capability Registry — Projection SSOT loaded, unique, no unknown keys", () => {
+    expect(COMMERCIAL_CAPABILITY_FILTER_KEYS).toHaveLength(15);
+    expect(new Set(COMMERCIAL_CAPABILITY_FILTER_KEYS).size).toBe(15);
+    expect(COMMERCIAL_CAPABILITY_FILTER_REGISTRY).toHaveLength(15);
+    for (const key of COMMERCIAL_CAPABILITY_FILTER_KEYS) {
+      expect(FEATURE_KEYS).toContain(key);
+    }
+    expect(DISCOVERY_CAPABILITY_CLASSIFICATION).toHaveLength(17);
     for (const row of COMMERCIAL_CAPABILITY_FILTER_REGISTRY) {
       expect(isCommercialCapabilityFilterKey(row.filterKey)).toBe(true);
       expect(row.productionImplemented).toBe(true);
@@ -149,7 +151,7 @@ describe("COMMERCIAL-CAPABILITY-PLATFORM-ADOPTION-1 Operational Validation", () 
     ).toBe(false);
   });
 
-  it("2. Commercial Plan — registry-only selection; unknown keys rejected", () => {
+  it("2. Commercial Plan — projection-only selection; unknown keys rejected", () => {
     expect(() =>
       featureBundleService.create({
         code: "bad-bundle",
@@ -168,11 +170,11 @@ describe("COMMERCIAL-CAPABILITY-PLATFORM-ADOPTION-1 Operational Validation", () 
 
     const { bundle } = seedOperationalPlan("cap-plan");
     const features = featureBundleService.listFeatures(bundle.id);
-    expect(features).toHaveLength(18);
+    expect(features).toHaveLength(15);
     expect(features.every((f) => isCommercialCapabilityFilterKey(f.featureKey)))
       .toBe(true);
     expect(features.filter((f) => f.included).map((f) => f.featureKey).sort()).toEqual(
-      ["ordering", "reports"]
+      ["ordering", "reporting"]
     );
   });
 
@@ -206,7 +208,7 @@ describe("COMMERCIAL-CAPABILITY-PLATFORM-ADOPTION-1 Operational Validation", () 
     expect(offering.priceMonthly).toBe("19.00");
     expect(offering.priceYearly).toBe("190.00");
     expect(offering.currency).toBe("USD");
-    expect(offering.featureKeys.sort()).toEqual(["ordering", "reports"]);
+    expect(offering.featureKeys.sort()).toEqual(["ordering", "reporting"]);
     expect(offering.workflowState).toBe("published");
     expect(offering.visibility.publiclyBrowsable).toBe(true);
     expect(offering.visibility.openForNewAdoption).toBe(true);
@@ -284,14 +286,15 @@ describe("COMMERCIAL-CAPABILITY-PLATFORM-ADOPTION-1 Operational Validation", () 
       [...FEATURE_KEYS].sort()
     );
     expect(resolved.entitlements.features.ordering).toBe(true);
-    expect(resolved.entitlements.features.reports).toBe(true);
+    expect(resolved.entitlements.features.reporting).toBe(true);
     expect(resolved.entitlements.features.hotelMode).toBe(false);
     expect(resolved.entitlements.features.templates).toBe(false);
     expect(resolved.entitlements.features.cart).toBe(false);
     expect(resolved.entitlements.plan).toBe("PROFESSIONAL");
 
-    for (const key of FEATURE_KEYS) {
+    for (const key of COMMERCIAL_CAPABILITY_FILTER_KEYS) {
       expect(isCommercialCapabilityFilterKey(key)).toBe(true);
+      expect(FEATURE_KEYS).toContain(key);
     }
   });
 
@@ -340,16 +343,19 @@ describe("COMMERCIAL-CAPABILITY-PLATFORM-ADOPTION-1 Operational Validation", () 
     expect(helpers).not.toMatch(/"qrMenu",\s*"categories"/);
   });
 
-  it("UI wiring — Plan Builder/Editor use registry; Pricing not Capability Catalog", () => {
+  it("UI wiring — Plan Builder/Editor use Projection picker; Pricing not Capability Catalog", () => {
     const wizard = read(
       "client/src/components/admin/platform-ops/commercial-catalog/experience/PlanCreationWizard.tsx"
     );
     const panels = read(
       "client/src/components/admin/platform-ops/commercial-catalog/CatalogManagementPanels.tsx"
     );
-    expect(wizard).toContain("CATALOG_FEATURE_KEYS");
+    const picker = read(
+      "client/src/components/admin/platform-ops/commercial-catalog/experience/CapabilityFilterPicker.tsx"
+    );
+    expect(wizard).toContain("CapabilityFilterPicker");
     expect(panels).toContain("CATALOG_FEATURE_KEYS");
-    expect(wizard).toContain("catalogFeatureNameKey");
+    expect(picker).toContain("catalogFeatureNameKey");
 
     const pricing = read("client/src/pages/Pricing.tsx");
     expect(pricing).not.toMatch(/DISCOVERY_CAPABILITY|COMMERCIAL_CAPABILITY_FILTER_KEYS/);

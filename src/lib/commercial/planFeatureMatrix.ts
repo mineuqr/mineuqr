@@ -5,10 +5,21 @@
  * Used ONLY by the Legacy Bridge path for unbound subscriptions.
  * Bound subscriptions resolve exclusively from Commercial Snapshot —
  * this matrix must never execute after a SubscriptionBinding exists.
+ *
+ * COMMERCIAL-PROJECTION-GENERATION-1:
+ * Rows cover Projection IDs ∪ Legacy Compat keys (Runtime FeatureKey).
  */
+
 import { FEATURE_KEYS, type FeatureKey } from "./featureKeys";
 import type { CommercialPlan } from "./planTypes";
 import type { CommercialFeatures, CommercialFlags, CommercialLimits } from "./types";
+import {
+  COMMERCIAL_PROJECTION_IDS,
+  LEGACY_COMPAT_FEATURE_KEYS,
+  LEGACY_TO_PROJECTION,
+  type CommercialProjectionId,
+  type LegacyCompatFeatureKey,
+} from "@shared/commercial-projection";
 
 /** PG-1C.1B §2.2 — limits by resolved commercial plan. */
 export const PLAN_LIMITS: Record<CommercialPlan, CommercialLimits> = {
@@ -22,128 +33,98 @@ export const PLAN_LIMITS: Record<CommercialPlan, CommercialLimits> = {
 
 type FeatureMatrixRow = Record<FeatureKey, boolean>;
 
+function buildFeatureRow(
+  enabled: ReadonlySet<CommercialProjectionId>,
+  legacyExtras: Partial<Record<LegacyCompatFeatureKey, boolean>> = {}
+): FeatureMatrixRow {
+  const row = {} as FeatureMatrixRow;
+  for (const id of COMMERCIAL_PROJECTION_IDS) {
+    row[id] = enabled.has(id);
+  }
+  for (const key of LEGACY_COMPAT_FEATURE_KEYS) {
+    if (Object.prototype.hasOwnProperty.call(legacyExtras, key)) {
+      row[key] = legacyExtras[key]!;
+      continue;
+    }
+    const mapped = LEGACY_TO_PROJECTION[key];
+    if (mapped) {
+      row[key] = enabled.has(mapped);
+    } else {
+      // Deprecated always-on menu facets (historical deniedFeatures defaults).
+      row[key] = key === "qrMenu" || key === "search";
+    }
+  }
+  return row;
+}
+
+const ALL = new Set<CommercialProjectionId>(COMMERCIAL_PROJECTION_IDS);
+
+const BASIC_PROJECTIONS = new Set<CommercialProjectionId>(["ordering"]);
+
+const PROFESSIONAL_PROJECTIONS = new Set<CommercialProjectionId>([
+  "ordering",
+  "checkManagement",
+  "waiter",
+  "kiosk",
+  "reporting",
+  "kitchen",
+  "printing",
+  "devices",
+  "counterPickup",
+]);
+
 /** PG-1C.1B §3.2 — availability matrix (Y/N). */
 const FEATURE_MATRIX: Record<CommercialPlan, FeatureMatrixRow> = {
-  TRIAL: {
-    qrMenu: true,
-    categories: true,
-    menuImages: true,
-    search: true,
-    ordering: true,
-    cart: true,
-    checkout: true,
-    requestBill: true,
-    callWaiter: true,
-    orderTracking: true,
-    reports: true,
-    excelExport: true,
-    hotelMode: true,
-    roomQr: true,
-    dynamicServiceCatalog: true,
+  TRIAL: buildFeatureRow(ALL, {
     templates: true,
     customColors: true,
     customFonts: true,
-  },
-  BASIC: {
-    qrMenu: true,
-    categories: true,
     menuImages: true,
-    search: true,
-    ordering: false,
-    cart: false,
-    checkout: false,
-    requestBill: false,
-    callWaiter: false,
-    orderTracking: false,
-    reports: false,
-    excelExport: false,
-    hotelMode: false,
-    roomQr: false,
-    dynamicServiceCatalog: false,
+    categories: true,
+  }),
+  BASIC: buildFeatureRow(BASIC_PROJECTIONS, {
     templates: true,
-    customColors: false,
-    customFonts: false,
-  },
-  PROFESSIONAL: {
-    qrMenu: true,
     categories: true,
     menuImages: true,
-    search: true,
-    ordering: true,
-    cart: true,
-    checkout: true,
-    requestBill: true,
-    callWaiter: true,
-    orderTracking: true,
-    reports: true,
-    excelExport: true,
+  }),
+  PROFESSIONAL: buildFeatureRow(PROFESSIONAL_PROJECTIONS, {
+    templates: true,
+    customColors: true,
+    categories: true,
+    menuImages: true,
     hotelMode: true,
     roomQr: true,
     dynamicServiceCatalog: true,
+  }),
+  ENTERPRISE: buildFeatureRow(ALL, {
     templates: true,
     customColors: true,
     customFonts: true,
-  },
-  ENTERPRISE: {
-    qrMenu: true,
     categories: true,
     menuImages: true,
-    search: true,
-    ordering: true,
-    cart: true,
-    checkout: true,
-    requestBill: true,
-    callWaiter: true,
-    orderTracking: true,
-    reports: true,
-    excelExport: true,
     hotelMode: true,
     roomQr: true,
     dynamicServiceCatalog: true,
+  }),
+  ADMIN: buildFeatureRow(ALL, {
     templates: true,
     customColors: true,
     customFonts: true,
-  },
-  ADMIN: {
-    qrMenu: true,
     categories: true,
     menuImages: true,
-    search: true,
-    ordering: true,
-    cart: true,
-    checkout: true,
-    requestBill: true,
-    callWaiter: true,
-    orderTracking: true,
-    reports: true,
-    excelExport: true,
     hotelMode: true,
     roomQr: true,
     dynamicServiceCatalog: true,
-    templates: true,
-    customColors: true,
-    customFonts: true,
-  },
-  NONE: {
+  }),
+  NONE: buildFeatureRow(new Set(), {
     qrMenu: true,
-    categories: false,
-    menuImages: false,
     search: true,
-    ordering: false,
-    cart: false,
-    checkout: false,
-    requestBill: false,
-    callWaiter: false,
-    orderTracking: false,
-    reports: false,
-    excelExport: false,
-    hotelMode: false,
-    roomQr: false,
-    dynamicServiceCatalog: false,
     templates: false,
     customColors: false,
     customFonts: false,
-  },
+    categories: false,
+    menuImages: false,
+  }),
 };
 
 /** PG-1C.1B §4.2 — primary commercial flags by resolved plan. */

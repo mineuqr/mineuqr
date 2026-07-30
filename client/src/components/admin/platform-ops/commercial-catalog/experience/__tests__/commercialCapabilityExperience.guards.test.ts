@@ -4,6 +4,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { COMMERCIAL_CAPABILITY_FILTER_KEYS } from "@shared/commercial-capability";
 import {
   countEnabledCapabilities,
   groupCapabilitiesByExperienceDomain,
@@ -19,14 +20,14 @@ function read(rel: string) {
 describe("COMMERCIAL-CAPABILITY-EXPERIENCE-1", () => {
   it("groups registry capabilities by experience domain without mutating registry", () => {
     const cards = listCapabilityExperienceCards();
-    expect(cards.length).toBe(18);
+    expect(cards.length).toBe(COMMERCIAL_CAPABILITY_FILTER_KEYS.length);
     const groups = groupCapabilitiesByExperienceDomain(cards);
     expect(groups.every((g) => g.capabilities.length > 0)).toBe(true);
     expect(groups.some((g) => g.domainId === "orders")).toBe(true);
-    const counts = countEnabledCapabilities({ ordering: true, reports: true });
-    expect(counts.total).toBe(18);
+    const counts = countEnabledCapabilities({ ordering: true, reporting: true });
+    expect(counts.total).toBe(COMMERCIAL_CAPABILITY_FILTER_KEYS.length);
     expect(counts.enabled).toBe(2);
-    expect(counts.disabled).toBe(16);
+    expect(counts.disabled).toBe(COMMERCIAL_CAPABILITY_FILTER_KEYS.length - 2);
   });
 
   it("resolves publish lifecycle stages for UX rail", () => {
