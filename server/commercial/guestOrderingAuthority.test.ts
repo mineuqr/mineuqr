@@ -4,12 +4,12 @@ vi.mock("../db", () => ({
   getRestaurantById: vi.fn(),
 }));
 
-vi.mock("./getCommercialEntitlements", () => ({
-  getCommercialEntitlements: vi.fn(),
+vi.mock("../subscription-runtime", () => ({
+  hasFeature: vi.fn(),
 }));
 
 import { getRestaurantById } from "../db";
-import { getCommercialEntitlements } from "./getCommercialEntitlements";
+import { hasFeature } from "../subscription-runtime";
 import { resolveGuestOrderingAllowed } from "./guestOrderingAuthority";
 
 const FIXED_NOW = new Date("2026-06-01T12:00:00.000Z");
@@ -24,14 +24,12 @@ describe("resolveGuestOrderingAllowed (ASN-5 Wave A)", () => {
       id: 10,
       userId: 5,
     });
-    (getCommercialEntitlements as ReturnType<typeof vi.fn>).mockResolvedValue({
-      entitlements: { plan: "PROFESSIONAL", features: { ordering: true } },
-    });
+    (hasFeature as ReturnType<typeof vi.fn>).mockResolvedValue(true);
 
     const result = await resolveGuestOrderingAllowed(10, FIXED_NOW);
 
     expect(result.canOrder).toBe(true);
-    expect(getCommercialEntitlements).toHaveBeenCalledWith(5, FIXED_NOW);
+    expect(hasFeature).toHaveBeenCalledWith(5, "ordering", FIXED_NOW);
   });
 
   it("denies ordering when features.ordering is false", async () => {
@@ -39,9 +37,7 @@ describe("resolveGuestOrderingAllowed (ASN-5 Wave A)", () => {
       id: 10,
       userId: 5,
     });
-    (getCommercialEntitlements as ReturnType<typeof vi.fn>).mockResolvedValue({
-      entitlements: { plan: "BASIC", features: { ordering: false } },
-    });
+    (hasFeature as ReturnType<typeof vi.fn>).mockResolvedValue(false);
 
     expect((await resolveGuestOrderingAllowed(10, FIXED_NOW)).canOrder).toBe(false);
   });
@@ -51,9 +47,7 @@ describe("resolveGuestOrderingAllowed (ASN-5 Wave A)", () => {
       id: 10,
       userId: 5,
     });
-    (getCommercialEntitlements as ReturnType<typeof vi.fn>).mockResolvedValue({
-      entitlements: { plan: "NONE", features: { ordering: false } },
-    });
+    (hasFeature as ReturnType<typeof vi.fn>).mockResolvedValue(false);
 
     expect((await resolveGuestOrderingAllowed(10, FIXED_NOW)).canOrder).toBe(false);
   });
@@ -62,6 +56,6 @@ describe("resolveGuestOrderingAllowed (ASN-5 Wave A)", () => {
     (getRestaurantById as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
 
     expect((await resolveGuestOrderingAllowed(999, FIXED_NOW)).canOrder).toBe(false);
-    expect(getCommercialEntitlements).not.toHaveBeenCalled();
+    expect(hasFeature).not.toHaveBeenCalled();
   });
 });

@@ -1,5 +1,5 @@
 import { getRestaurantById } from "../db";
-import { getCommercialEntitlements } from "./getCommercialEntitlements";
+import { hasFeature } from "../subscription-runtime";
 
 /** Guest ordering probe shape (order.canOrder). */
 export type GuestOrderingAllowed = {
@@ -9,7 +9,7 @@ export type GuestOrderingAllowed = {
 /**
  * ASN-5 Wave A — single canonical guest ordering authority.
  *
- * restaurantId → ownerId → getCommercialEntitlements → features.ordering
+ * restaurantId → ownerId → Subscription Runtime hasFeature("ordering")
  */
 export async function resolveGuestOrderingAllowed(
   restaurantId: number,
@@ -20,6 +20,6 @@ export async function resolveGuestOrderingAllowed(
     return { canOrder: false };
   }
 
-  const { entitlements } = await getCommercialEntitlements(restaurant.userId, now);
-  return { canOrder: entitlements.features.ordering === true };
+  const canOrder = await hasFeature(restaurant.userId, "ordering", now);
+  return { canOrder };
 }

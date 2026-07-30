@@ -1,0 +1,11 @@
+{
+  "featureKeys": 18,
+  "matrixFeatures": 18,
+  "matrixLimits": 10,
+  "uniqueCapabilities": 28,
+  "duplicateCapabilities": [],
+  "orphanFeatures": [],
+  "orphanLimits": [],
+  "extraFeatures": [],
+  "complete": true
+}
