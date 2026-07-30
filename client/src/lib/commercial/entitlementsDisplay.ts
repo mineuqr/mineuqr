@@ -1,9 +1,6 @@
 import { FEATURE_KEYS, type FeatureKey } from "@commercial/featureKeys";
 import type { CommercialEntitlements } from "@commercial/types";
-import {
-  COMMERCIAL_PROJECTION_REGISTRY,
-  LEGACY_COMPAT_FEATURE_KEYS,
-} from "@shared/commercial-projection";
+import { COMMERCIAL_PROJECTION_REGISTRY } from "@shared/commercial-projection";
 
 export type CommercialUiLanguage = "ar" | "en";
 
@@ -62,8 +59,6 @@ for (const key of FEATURE_KEYS) {
     FEATURE_LABELS[key] = { en: key, ar: key };
   }
 }
-
-void LEGACY_COMPAT_FEATURE_KEYS;
 
 const LIMIT_LABELS = {
   restaurants: { en: "Restaurants", ar: "المطاعم" },

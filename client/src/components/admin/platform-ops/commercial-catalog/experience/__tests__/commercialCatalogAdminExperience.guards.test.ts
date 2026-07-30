@@ -60,7 +60,7 @@ describe("COMMERCIAL-CATALOG-ADMIN-EXPERIENCE-1", () => {
   });
 
   it("computes version diffs and dependency impact", () => {
-    const features = diffFeatureSets(["ordering"], ["ordering", "reports"]);
+    const features = diffFeatureSets(["ordering"], ["ordering", "reporting"]);
     expect(summarizeDiffs(features).added).toBe(1);
     expect(diffScalar("a", 1, 2).kind).toBe("modified");
 

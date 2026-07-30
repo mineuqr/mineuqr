@@ -119,3 +119,15 @@ export {
 };
 export { generateCommercialProjectionRegistry } from "./packaging";
 export { COMMERCIAL_PROJECTION_VERSION } from "./schema";
+export {
+  LEGACY_COMPATIBILITY_RETIREMENT_PROGRAM,
+  LEGACY_COMPAT_KEY_RETIREMENT,
+  LEGACY_COMPAT_STRUCTURE_RETIREMENT,
+  listLegacyCompatKeysByAction,
+  assertLegacyCompatKeyClassificationComplete,
+} from "./legacyRetirement";
+export type {
+  LegacyCompatUsageClass,
+  LegacyRetirementAction,
+  LegacyCompatArtifactRecord,
+} from "./legacyRetirement";

@@ -1,7 +1,10 @@
 /**
  * COMMERCIAL-PROJECTION-GENERATION-1
- * Legacy FEATURE_KEYS compatibility (Runtime / bound snapshots / UI gates only).
+ * LEGACY-COMPATIBILITY-RETIREMENT-1 — transitional Runtime / snapshot / UI-gate compat.
+ *
  * NOT Commercial Projection. NOT Catalog Plan vocabulary.
+ * Classification SSOT: ./legacyRetirement.ts
+ * Do NOT add keys without ACTIVE/TRANSITIONAL evidence + retirement condition.
  */
 
 import type { CommercialProjectionId } from "./schema";
@@ -56,9 +59,6 @@ export const LEGACY_TO_PROJECTION: Readonly<
   customFonts: null,
 };
 
-/** Same-string legacy keys that remain as projection IDs (`ordering` was both). */
-export const LEGACY_DIRECT_PROJECTION_KEYS = ["ordering"] as const;
-
 export function isLegacyCompatFeatureKey(
   key: string
 ): key is LegacyCompatFeatureKey {
@@ -73,7 +73,6 @@ export function normalizeToProjectionId(
   key: string
 ): CommercialProjectionId | null {
   if (key === "ordering") return "ordering";
-  // Projection IDs are checked by caller via isCommercialProjectionId
   if (isLegacyCompatFeatureKey(key)) {
     return LEGACY_TO_PROJECTION[key];
   }
