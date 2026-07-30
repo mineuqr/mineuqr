@@ -1017,8 +1017,11 @@ export {
 export { ensureCommercialCatalogAdoptionSeed } from "./seedAdoptionCatalog";
 export {
   COMMERCIAL_PERSISTENT_CATALOG_BOOTSTRAP_PROGRAM,
+  COMMERCIAL_BOOTSTRAP_LIFECYCLE_GOVERNANCE_PROGRAM,
+  BOOTSTRAP_01_INFRASTRUCTURE_INITIALIZATION_BOUNDARY,
   bootstrapPersistentCommercialCatalog,
   projectionFeatureKeysForBridgePlan,
+  isPersistentCatalogUninitialized,
 } from "./persistentCatalogBootstrap";
 export {
   hydrateCommercialCatalogFromDb,

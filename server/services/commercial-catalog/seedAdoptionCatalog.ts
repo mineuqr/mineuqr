@@ -1,9 +1,9 @@
 /**
  * COMMERCIAL-CATALOG-PLATFORM-ADOPTION-1
- * Ready gate entry — delegates empty-catalog initialization to
- * COMMERCIAL-PERSISTENT-CATALOG-BOOTSTRAP-1 (Projection-backed durable bootstrap).
+ * COMMERCIAL-BOOTSTRAP-LIFECYCLE-GOVERNANCE-1
  *
- * Idempotent: skips when published versions already exist.
+ * Ready gate: hydrate durable catalog; bootstrap ONLY when uninitialized.
+ * Initialized catalogs (published / draft / retired / deprecated) never republish.
  */
 
 import {
@@ -18,7 +18,7 @@ export async function ensureCommercialCatalogAdoptionSeed(): Promise<{
   publishedVersions: number;
 }> {
   const result = await bootstrapPersistentCommercialCatalog();
-  if (result.reason === "already_published") {
+  if (result.reason === "already_initialized") {
     return {
       source: result.source === "bootstrap" ? "memory" : result.source,
       publishedVersions: result.publishedVersions,

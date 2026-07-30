@@ -1,12 +1,17 @@
 /**
  * COMMERCIAL-PERSISTENT-CATALOG-BOOTSTRAP-1
+ * COMMERCIAL-BOOTSTRAP-LIFECYCLE-GOVERNANCE-1
  *
- * One-time architecture adoption: empty durable catalog ← canonical Projection
+ * One-time architecture adoption: uninitialized durable catalog ← Projection
  * (+ existing LEGACY_PLAN_BRIDGE identities / commercial terms).
  *
- * NOT a fake seed. Does NOT invent commercial capability logic.
+ * Bootstrap runs ONLY when the persistent catalog has never been initialized.
+ * "No published versions" is NOT emptiness — retired/deprecated/draft catalogs
+ * are initialized and MUST NOT trigger republish.
+ *
  * Capability keys come from Commercial Projection via planFeatureMatrix +
  * Presentation overlay rules. Publication uses CatalogPublishingService.
+ * Bootstrap publishes Draft versions only (CC-16 unchanged).
  */
 
 import { COMMERCIAL_PROJECTION_IDS } from "@shared/commercial-projection";
@@ -29,10 +34,7 @@ import {
 } from "./index";
 import { LEGACY_PLAN_BRIDGE } from "./legacyPlanBridge";
 import { priceTermsForCatalogPlanCode } from "./legacyPlanCommercialTerms";
-import {
-  getDurablePublicationBackend,
-  persistPublishedVersionPublication,
-} from "./publicationPersistence";
+import { getDurablePublicationBackend } from "./publicationPersistence";
 import {
   catalogPublishingService,
   invalidatePublicCatalogCache,
@@ -56,20 +58,51 @@ import {
 export const COMMERCIAL_PERSISTENT_CATALOG_BOOTSTRAP_PROGRAM =
   "COMMERCIAL-PERSISTENT-CATALOG-BOOTSTRAP-1" as const;
 
+export const COMMERCIAL_BOOTSTRAP_LIFECYCLE_GOVERNANCE_PROGRAM =
+  "COMMERCIAL-BOOTSTRAP-LIFECYCLE-GOVERNANCE-1" as const;
+
+/**
+ * BOOTSTRAP-01 — Infrastructure Initialization Boundary.
+ * Bootstrap initializes infrastructure only; never repairs business lifecycle state.
+ */
+export const BOOTSTRAP_01_INFRASTRUCTURE_INITIALIZATION_BOUNDARY =
+  "BOOTSTRAP-01" as const;
+
 export type PersistentCatalogBootstrapResult = {
   program: typeof COMMERCIAL_PERSISTENT_CATALOG_BOOTSTRAP_PROGRAM;
+  governanceProgram: typeof COMMERCIAL_BOOTSTRAP_LIFECYCLE_GOVERNANCE_PROGRAM;
   bootstrapped: boolean;
   reason:
-    | "already_published"
+    | "already_initialized"
     | "bootstrapped"
     | "noop_empty_after_hydrate";
   source: "db" | "memory" | "bootstrap";
   publishedVersions: number;
   planCount: number;
+  versionCount: number;
   billingCycleCount: number;
   priceCount: number;
   capabilityMappingCount: number;
 };
+
+/**
+ * BOOTSTRAP-01: canonical uninitialized persistent catalog.
+ * Infrastructure existence only — NOT business lifecycle (published/retired/draft).
+ */
+export function isPersistentCatalogUninitialized(
+  store: typeof commercialCatalogStore = commercialCatalogStore
+): boolean {
+  return (
+    store.plans.size === 0 &&
+    store.versions.size === 0 &&
+    store.prices.size === 0 &&
+    store.billingCycles.size === 0 &&
+    store.featureBundles.size === 0 &&
+    store.bundleFeatures.size === 0 &&
+    store.limitProfiles.size === 0 &&
+    store.limitValues.size === 0
+  );
+}
 
 /**
  * Projection IDs for a bridge plan, then Presentation foundation/dependency rules.
@@ -305,6 +338,7 @@ function snapshotCounts() {
   return {
     publishedVersions,
     planCount: commercialCatalogStore.plans.size,
+    versionCount: commercialCatalogStore.versions.size,
     billingCycleCount: commercialCatalogStore.billingCycles.size,
     priceCount: commercialCatalogStore.prices.size,
     capabilityMappingCount: [...commercialCatalogStore.bundleFeatures.values()]
@@ -312,25 +346,36 @@ function snapshotCounts() {
   };
 }
 
+function bootstrapResult(
+  partial: Omit<
+    PersistentCatalogBootstrapResult,
+    "program" | "governanceProgram"
+  >
+): PersistentCatalogBootstrapResult {
+  return {
+    program: COMMERCIAL_PERSISTENT_CATALOG_BOOTSTRAP_PROGRAM,
+    governanceProgram: COMMERCIAL_BOOTSTRAP_LIFECYCLE_GOVERNANCE_PROGRAM,
+    ...partial,
+  };
+}
+
 /**
- * Idempotent bootstrap of durable Commercial Catalog when empty.
+ * Idempotent bootstrap — ONLY when persistent catalog is uninitialized.
+ * Initialized catalogs (including all-retired) hydrate only; never republish.
  */
 export async function bootstrapPersistentCommercialCatalog(): Promise<PersistentCatalogBootstrapResult> {
   const backend = getDurablePublicationBackend();
   await backend.hydrateInto(commercialCatalogStore);
 
-  const existingPublished = [...commercialCatalogStore.versions.values()].filter(
-    (v) => v.state === "published"
-  );
-  if (existingPublished.length > 0) {
+  // BOOTSTRAP-01: initialized = catalog artifacts exist (any lifecycle).
+  if (!isPersistentCatalogUninitialized(commercialCatalogStore)) {
     const counts = snapshotCounts();
-    return {
-      program: COMMERCIAL_PERSISTENT_CATALOG_BOOTSTRAP_PROGRAM,
+    return bootstrapResult({
       bootstrapped: false,
-      reason: "already_published",
+      reason: "already_initialized",
       source: backend.kind === "db" ? "db" : "memory",
       ...counts,
-    };
+    });
   }
 
   const plans = new PlanService();
@@ -465,7 +510,8 @@ export async function bootstrapPersistentCommercialCatalog(): Promise<Persistent
         },
       });
 
-    if (version.state !== "published") {
+    // Lifecycle governance: publish Draft only. Never retired/deprecated/published.
+    if (version.state === "draft") {
       const amounts = priceTermsForCatalogPlanCode(bridge.catalogPlanCode);
       const existingPrices = pricing.list(version.id);
       if (existingPrices.length === 0) {
@@ -506,8 +552,6 @@ export async function bootstrapPersistentCommercialCatalog(): Promise<Persistent
       await catalogPublishingService.publish(version.id, {
         procedure: "persistentCatalogBootstrap.publish",
       });
-    } else {
-      await persistPublishedVersionPublication(version.id);
     }
   }
 
@@ -518,12 +562,11 @@ export async function bootstrapPersistentCommercialCatalog(): Promise<Persistent
   await backend.hydrateInto(commercialCatalogStore);
 
   const counts = snapshotCounts();
-  return {
-    program: COMMERCIAL_PERSISTENT_CATALOG_BOOTSTRAP_PROGRAM,
+  return bootstrapResult({
     bootstrapped: counts.publishedVersions > 0,
     reason:
       counts.publishedVersions > 0 ? "bootstrapped" : "noop_empty_after_hydrate",
     source: "bootstrap",
     ...counts,
-  };
+  });
 }

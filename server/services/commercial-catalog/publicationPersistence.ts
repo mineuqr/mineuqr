@@ -274,6 +274,24 @@ export class InMemoryDurableCatalogBackend implements DurablePublicationBackend 
     applySnapshotToStore(this.data, store);
   }
 
+  /** Test helper — mirror a runtime store into durable authority (any lifecycle). */
+  replaceFromStore(store: CommercialCatalogStore): void {
+    const next = emptySnapshot();
+    next.plans = [...store.plans.values()];
+    next.versions = [...store.versions.values()];
+    next.prices = [...store.prices.values()];
+    next.billingCycles = [...store.billingCycles.values()];
+    next.featureBundles = [...store.featureBundles.values()];
+    next.bundleFeatures = [...store.bundleFeatures.values()];
+    next.limitProfiles = [...store.limitProfiles.values()];
+    next.limitValues = [...store.limitValues.values()];
+    next.trialPolicies = [...store.trialPolicies.values()];
+    next.regions = [...store.regions.values()];
+    next.migrationPolicies = [...store.migrationPolicies.values()];
+    next.retirementPolicies = [...store.retirementPolicies.values()];
+    this.data = next;
+  }
+
   snapshot(): DurableCatalogSnapshot {
     return structuredClone(this.data);
   }

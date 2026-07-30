@@ -63,7 +63,7 @@ describe("COMMERCIAL-PERSISTENT-CATALOG-BOOTSTRAP-1", () => {
     expect(src).not.toMatch(/DEFAULT_FEATURES/);
   });
 
-  it("bootstraps only when durable catalog has no published versions", async () => {
+  it("bootstraps only when durable catalog is uninitialized", async () => {
     const first = await bootstrapPersistentCommercialCatalog();
     expect(first.bootstrapped).toBe(true);
     expect(first.reason).toBe("bootstrapped");
@@ -75,7 +75,7 @@ describe("COMMERCIAL-PERSISTENT-CATALOG-BOOTSTRAP-1", () => {
 
     const second = await bootstrapPersistentCommercialCatalog();
     expect(second.bootstrapped).toBe(false);
-    expect(second.reason).toBe("already_published");
+    expect(second.reason).toBe("already_initialized");
     expect(second.publishedVersions).toBe(first.publishedVersions);
     expect(second.planCount).toBe(first.planCount);
   });
