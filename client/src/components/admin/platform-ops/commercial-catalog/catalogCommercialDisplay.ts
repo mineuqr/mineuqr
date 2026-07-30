@@ -1,47 +1,21 @@
 /**
  * COMMERCIAL-CATALOG-PRODUCTION-POLISH-1
  * Localized commercial display for feature/limit keys (never show raw identifiers).
+ * COMMERCIAL-CAPABILITY-PLATFORM-ADOPTION-1 — display keys = Capability Filter SSOT.
  */
 
 import type { Language } from "@/contexts/LanguageContext";
+import {
+  COMMERCIAL_CAPABILITY_FILTER_KEYS,
+  COMMERCIAL_LIMIT_FILTER_KEYS,
+} from "@shared/commercial-capability";
 
-export const CATALOG_FEATURE_DISPLAY_KEYS = [
-  "qrMenu",
-  "categories",
-  "menuImages",
-  "search",
-  "ordering",
-  "cart",
-  "checkout",
-  "requestBill",
-  "callWaiter",
-  "orderTracking",
-  "reports",
-  "excelExport",
-  "hotelMode",
-  "roomQr",
-  "dynamicServiceCatalog",
-  "templates",
-  "customColors",
-  "customFonts",
-] as const;
+export const CATALOG_FEATURE_DISPLAY_KEYS = COMMERCIAL_CAPABILITY_FILTER_KEYS;
 
 export type CatalogFeatureDisplayKey =
   (typeof CATALOG_FEATURE_DISPLAY_KEYS)[number];
 
-/** Expanded commercial limit vocabulary (catalog presentation; entitlement keys unchanged). */
-export const CATALOG_LIMIT_DISPLAY_KEYS = [
-  "restaurants",
-  "items",
-  "categories",
-  "ordersPerMonth",
-  "qrCodes",
-  "storage",
-  "images",
-  "staffAccounts",
-  "branches",
-  "devices",
-] as const;
+export const CATALOG_LIMIT_DISPLAY_KEYS = COMMERCIAL_LIMIT_FILTER_KEYS;
 
 export type CatalogLimitDisplayKey =
   (typeof CATALOG_LIMIT_DISPLAY_KEYS)[number];

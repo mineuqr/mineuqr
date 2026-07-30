@@ -11,6 +11,7 @@ import {
   type PublicationWorkflowState,
   COMMERCIAL_CANONICAL_CURRENCY,
 } from "@shared/commercial-catalog";
+import { isCommercialCapabilityFilterKey } from "@shared/commercial-capability";
 import {
   CommercialCatalogError,
   planService,
@@ -71,7 +72,9 @@ function buildOffering(
       monthly?.currency ?? yearly?.currency ?? COMMERCIAL_CANONICAL_CURRENCY,
     priceMonthly: monthly?.amount ?? null,
     priceYearly: yearly?.amount ?? null,
-    featureKeys: features.map((f) => f.featureKey),
+    featureKeys: features
+      .map((f) => f.featureKey)
+      .filter(isCommercialCapabilityFilterKey),
     limits: limits.map((l) => ({
       limitKey: l.limitKey,
       value: l.value,

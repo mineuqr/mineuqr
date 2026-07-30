@@ -1,44 +1,19 @@
 /**
  * COMMERCIAL-CATALOG-MANAGEMENT-UI-1 — shared UI helpers.
+ * COMMERCIAL-CAPABILITY-PLATFORM-ADOPTION-1 — capability filter keys from SSOT registry.
  */
 
 import type { CommercialCatalogDashboardSection } from "@shared/commercial-catalog";
+import {
+  COMMERCIAL_CAPABILITY_FILTER_KEYS,
+  COMMERCIAL_LIMIT_FILTER_KEYS,
+} from "@shared/commercial-capability";
 
-/** Normative feature keys for visual bundle editor (aligned with entitlement FEATURE_KEYS). */
-export const CATALOG_FEATURE_KEYS = [
-  "qrMenu",
-  "categories",
-  "menuImages",
-  "search",
-  "ordering",
-  "cart",
-  "checkout",
-  "requestBill",
-  "callWaiter",
-  "orderTracking",
-  "reports",
-  "excelExport",
-  "hotelMode",
-  "roomQr",
-  "dynamicServiceCatalog",
-  "templates",
-  "customColors",
-  "customFonts",
-] as const;
+/** Plan Builder / Editor toggles — Capability Filter SSOT (not a local feature list). */
+export const CATALOG_FEATURE_KEYS = COMMERCIAL_CAPABILITY_FILTER_KEYS;
 
-/** Commercial Catalog limit vocabulary (presentation + catalog profiles). */
-export const CATALOG_LIMIT_KEYS = [
-  "restaurants",
-  "items",
-  "categories",
-  "ordersPerMonth",
-  "qrCodes",
-  "storage",
-  "images",
-  "staffAccounts",
-  "branches",
-  "devices",
-] as const;
+/** Limit profile vocabulary — Capability Filter SSOT. */
+export const CATALOG_LIMIT_KEYS = COMMERCIAL_LIMIT_FILTER_KEYS;
 
 export const MANAGEMENT_SECTION_I18N_KEYS: Record<
   CommercialCatalogDashboardSection,

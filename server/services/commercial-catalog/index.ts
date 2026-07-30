@@ -27,6 +27,10 @@ import {
   COMMERCIAL_CATALOG_FOUNDATION_PROGRAM,
 } from "@shared/commercial-catalog";
 import {
+  assertCommercialCapabilityFilterKeys,
+  isCommercialLimitFilterKey,
+} from "@shared/commercial-capability";
+import {
   commercialCatalogStore,
   newCommercialId,
   nowIso,
@@ -341,6 +345,13 @@ export class FeatureBundleService {
     };
     this.store.featureBundles.set(bundle.id, bundle);
     for (const f of input.features ?? []) {
+      const check = assertCommercialCapabilityFilterKeys([f.featureKey]);
+      if (!check.ok) {
+        throw new CommercialCatalogError(
+          `Unknown commercial capability filter key(s): ${check.invalid.join(", ")} — Plans are Capability Filters over Capability Catalog only`,
+          "invalid_capability_filter"
+        );
+      }
       const row = {
         id: newCommercialId(),
         bundleId: bundle.id,
@@ -392,6 +403,12 @@ export class LimitProfileService {
     };
     this.store.limitProfiles.set(profile.id, profile);
     for (const v of input.values ?? []) {
+      if (!isCommercialLimitFilterKey(v.limitKey)) {
+        throw new CommercialCatalogError(
+          `Unknown commercial limit filter key: ${v.limitKey}`,
+          "invalid_capability_filter"
+        );
+      }
       const row = {
         id: newCommercialId(),
         profileId: profile.id,

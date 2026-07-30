@@ -1,23 +1,10 @@
-/** PG-1C.1B §3.1 — normative feature keys for `features.<key>`. */
-export const FEATURE_KEYS = [
-  "qrMenu",
-  "categories",
-  "menuImages",
-  "search",
-  "ordering",
-  "cart",
-  "checkout",
-  "requestBill",
-  "callWaiter",
-  "orderTracking",
-  "reports",
-  "excelExport",
-  "hotelMode",
-  "roomQr",
-  "dynamicServiceCatalog",
-  "templates",
-  "customColors",
-  "customFonts",
-] as const;
+/**
+ * PG-1C.1B §3.1 — normative feature keys for `features.<key>`.
+ * COMMERCIAL-CAPABILITY-PLATFORM-ADOPTION-1: SSOT is Capability Filter Registry
+ * (adopts PLATFORM-CAPABILITY-DISCOVERY-1). Plans are Capability Filters only.
+ */
 
-export type FeatureKey = (typeof FEATURE_KEYS)[number];
+export {
+  COMMERCIAL_CAPABILITY_FILTER_KEYS as FEATURE_KEYS,
+  type CommercialCapabilityFilterKey as FeatureKey,
+} from "@shared/commercial-capability";
