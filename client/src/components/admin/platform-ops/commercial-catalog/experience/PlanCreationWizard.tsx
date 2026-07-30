@@ -37,6 +37,7 @@ import {
   yearlySavingsPercent,
 } from "../catalogCommercialDisplay";
 import { COMMERCIAL_CANONICAL_CURRENCY } from "@shared/commercial-catalog";
+import { useCatalogPublishingMutations } from "../useCatalogPublishingMutations";
 
 const WIZARD_STEP_KEYS = [
   "wizard.steps.planInfo",
@@ -178,7 +179,7 @@ export function PlanCreationWizard(props: {
   const createRetirement =
     trpc.commercialCatalog.createRetirementPolicy.useMutation();
   const createPrice = trpc.commercialCatalog.createPrice.useMutation();
-  const publish = trpc.commercialCatalog.publishVersion.useMutation();
+  const { publishVersion } = useCatalogPublishingMutations();
   const utils = trpc.useUtils();
 
   useEffect(() => {
@@ -360,7 +361,7 @@ export function PlanCreationWizard(props: {
           return;
         }
         catalogExperienceObservability.recordPublication(true);
-        await publish.mutateAsync({ versionId: version.id });
+        await publishVersion(version.id);
         catalogExperienceObservability.recordPublishDuration(Date.now() - started);
         catalogExperienceObservability.recordWizardComplete();
         catalogProductivityStore.clearWizardDraft(DRAFT_ID);

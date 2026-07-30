@@ -100,8 +100,10 @@ describe("COMMERCIAL-CATALOG-ADMIN-EXPERIENCE-1", () => {
       "client/src/components/admin/platform-ops/commercial-catalog/experience/PlanCreationWizard.tsx"
     );
     expect(wizard).toContain("validatePublication");
+    expect(wizard).toContain("useCatalogPublishingMutations");
     expect(wizard).toContain("publishVersion");
     expect(wizard).toContain("createPlan");
+    expect(wizard).not.toMatch(/commercialCatalog\.publishVersion\.useMutation/);
     expect(wizard).not.toMatch(/skipValidation/i);
     expect(wizard).toContain("validation.publishRequiresCc16Detail");
   });

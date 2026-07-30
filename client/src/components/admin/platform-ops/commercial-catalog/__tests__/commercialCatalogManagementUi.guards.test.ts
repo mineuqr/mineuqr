@@ -30,9 +30,14 @@ describe("COMMERCIAL-CATALOG-MANAGEMENT-UI-1", () => {
     expect(panels).toContain("commercialCatalog.createPlan");
     expect(panels).toContain("commercialCatalog.updatePlan");
     expect(panels).toContain("commercialCatalog.createVersion");
-    expect(panels).toContain("commercialCatalog.publishVersion");
-    expect(panels).toContain("commercialCatalog.deprecateVersion");
-    expect(panels).toContain("commercialCatalog.retireVersion");
+    expect(panels).toContain("useCatalogPublishingMutations");
+    expect(panels).toContain("publishing.listStatuses");
+    expect(panels).toContain("actions.approve");
+    expect(panels).toContain("actions.schedule");
+    expect(panels).toContain("actions.archive");
+    expect(panels).not.toMatch(/commercialCatalog\.publishVersion\.useMutation/);
+    expect(panels).not.toMatch(/commercialCatalog\.deprecateVersion\.useMutation/);
+    expect(panels).not.toMatch(/commercialCatalog\.retireVersion\.useMutation/);
     expect(panels).toContain("commercialCatalog.createPrice");
     expect(panels).toContain("commercialCatalog.createFeatureBundle");
     expect(panels).toContain("commercialCatalog.createLimitProfile");

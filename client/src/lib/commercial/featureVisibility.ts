@@ -92,6 +92,29 @@ export function isCanonicalCurrentPlan(
   return entitlements.plan === catalog;
 }
 
+/**
+ * COMMERCIAL-PLATFORM-ADOPTION-1 — match by Catalog plan code (public offerings).
+ * Presentation only; does not evaluate entitlements beyond comparing plan identity.
+ */
+export function isCanonicalCurrentPlanByCode(
+  entitlements: CommercialEntitlements | null | undefined,
+  planCode: string
+): boolean {
+  if (!entitlements || !planCode) return false;
+  const key = planCode.trim().toUpperCase();
+  const catalog =
+    key === "BASIC" || key === "PROFESSIONAL" || key === "ENTERPRISE"
+      ? key
+      : key === "PRO"
+        ? "PROFESSIONAL"
+        : null;
+  if (!catalog) return false;
+  if (entitlements.plan === "TRIAL") {
+    return catalog === "PROFESSIONAL";
+  }
+  return entitlements.plan === catalog;
+}
+
 /** Canonical subscription expiry warning from CommercialContext. */
 export function getSubscriptionExpiryWarning(
   context: CommercialContext | null | undefined

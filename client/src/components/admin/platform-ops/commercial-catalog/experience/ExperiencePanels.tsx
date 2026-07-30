@@ -57,6 +57,7 @@ import {
   catalogLimitNameKey,
   resolveCatalogLabel,
 } from "../catalogCommercialDisplay";
+import { useCatalogPublishingMutations } from "../useCatalogPublishingMutations";
 
 function diffKindLabel(cc: (key: string) => string, kind: FieldDiff["kind"]) {
   const map: Record<FieldDiff["kind"], string> = {
@@ -1206,9 +1207,10 @@ export function BulkOperationsPanel(props: { data: CatalogManagementData }) {
     null
   );
   const [results, setResults] = useState<string[]>([]);
-  const publish = trpc.commercialCatalog.publishVersion.useMutation();
-  const deprecate = trpc.commercialCatalog.deprecateVersion.useMutation();
-  const retire = trpc.commercialCatalog.retireVersion.useMutation();
+  const { publishVersion, deprecateMut, retireMut } =
+    useCatalogPublishingMutations();
+  const deprecate = deprecateMut;
+  const retire = retireMut;
   const updatePlan = trpc.commercialCatalog.updatePlan.useMutation();
   const utils = trpc.useUtils();
 
@@ -1233,7 +1235,7 @@ export function BulkOperationsPanel(props: { data: CatalogManagementData }) {
             );
             continue;
           }
-          await publish.mutateAsync({ versionId: id });
+          await publishVersion(id);
           out.push(
             cc("experience.bulk.resultPublished").replace(
               "{id}",
@@ -1565,7 +1567,7 @@ export function PublicationDiffPanel(props: { data: CatalogManagementData }) {
     (v) => v.planId === draft?.planId && v.state === "published"
   );
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const publish = trpc.commercialCatalog.publishVersion.useMutation();
+  const { publishVersion } = useCatalogPublishingMutations();
   const validation = trpc.commercialCatalog.validatePublication.useQuery(
     { versionId: draftId },
     { enabled: Boolean(draftId) }
@@ -1655,8 +1657,7 @@ export function PublicationDiffPanel(props: { data: CatalogManagementData }) {
         confirmLabel={cc("actions.publish")}
         onConfirm={() => {
           const started = Date.now();
-          void publish
-            .mutateAsync({ versionId: draftId })
+          void publishVersion(draftId)
             .then(async () => {
               catalogExperienceObservability.recordPublication(true);
               catalogExperienceObservability.recordPublishDuration(

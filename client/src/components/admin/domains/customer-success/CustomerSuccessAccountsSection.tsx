@@ -78,7 +78,21 @@ export function CustomerSuccessAccountsSection() {
     });
   const { data: restaurantListData, refetch: refetchRestaurantList } =
     trpc.admin.listRestaurants.useQuery();
-  const { data: plans } = trpc.subscription.listPlans.useQuery();
+  const { data: publishedOfferings } =
+    trpc.commercialCatalog.listPublishedOfferings.useQuery();
+  const plans = useMemo(
+    () =>
+      (publishedOfferings ?? [])
+        .filter((o) => o.legacyPlanId != null)
+        .map((o) => ({
+          id: o.legacyPlanId as number,
+          nameEn: o.planName,
+          nameAr: o.planName,
+          priceMonthly: o.priceMonthly,
+          priceYearly: o.priceYearly,
+        })),
+    [publishedOfferings]
+  );
 
   const allUsers = useMemo(() => {
     const restaurantsByUser = new Map<number, { id: number }[]>();

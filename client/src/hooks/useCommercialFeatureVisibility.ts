@@ -3,6 +3,7 @@ import {
   getSubscriptionExpiryWarning,
   hasCommercialFeature,
   isCanonicalCurrentPlan,
+  isCanonicalCurrentPlanByCode,
   isPremiumTemplateLocked,
   isTrialActiveForMessaging,
   isTrialExpiredForMessaging,
@@ -45,6 +46,8 @@ export function useCommercialFeatureVisibility(
       : null,
     isCurrentCatalogPlan: (catalogPlanId: number) =>
       isReady && isCanonicalCurrentPlan(entitlements, catalogPlanId),
+    isCurrentCatalogPlanByCode: (planCode: string) =>
+      isReady && isCanonicalCurrentPlanByCode(entitlements, planCode),
     isTrialActive:
       isReady && isTrialActiveForMessaging(entitlements),
     isTrialExpired:

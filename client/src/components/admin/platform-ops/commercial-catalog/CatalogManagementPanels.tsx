@@ -38,6 +38,8 @@ import {
   CATALOG_FEATURE_KEYS,
   CATALOG_LIMIT_KEYS,
   filterByQuery,
+  stateLabel,
+  useMutationToast,
   versionStateTone,
 } from "./catalogUiHelpers";
 import {
@@ -47,6 +49,7 @@ import {
 } from "./catalogCommercialDisplay";
 import { CatalogCountrySelect } from "./CatalogCountrySelect";
 import { catalogManagementUiObservability } from "./catalogManagementObservability";
+import { useCatalogPublishingMutations } from "./useCatalogPublishingMutations";
 import type { CatalogManagementData } from "./useCatalogManagementData";
 
 type Props = { data: CatalogManagementData };
@@ -297,23 +300,28 @@ export function VersionsManagementPanel({ data }: Props) {
   const updateMut = trpc.commercialCatalog.updateDraftVersion.useMutation(
     useMutationToast(data, cc("toasts.draftVersionUpdated"), cc("toasts.operationFailed"))
   );
-  const publishMut = trpc.commercialCatalog.publishVersion.useMutation({
-    onSuccess: async () => {
+  const {
+    publishVersion,
+    deprecateMut,
+    retireMut,
+    archiveMut,
+    approveMut,
+    scheduleMut,
+  } = useCatalogPublishingMutations({
+    onPublishSuccess: async () => {
       catalogManagementUiObservability.recordPublication(true);
       toast.success(cc("toasts.versionPublished"));
       await data.invalidateAll();
     },
-    onError: (err) => {
-      catalogManagementUiObservability.recordPublication(false, err.message);
-      toast.error(err.message);
+    onPublishError: (message) => {
+      catalogManagementUiObservability.recordPublication(false, message);
+      toast.error(message);
     },
+    onLifecycleSuccess: async () => {
+      await data.invalidateAll();
+    },
+    onLifecycleError: (message) => toast.error(message),
   });
-  const deprecateMut = trpc.commercialCatalog.deprecateVersion.useMutation(
-    useMutationToast(data, cc("toasts.versionDeprecated"), cc("toasts.operationFailed"))
-  );
-  const retireMut = trpc.commercialCatalog.retireVersion.useMutation(
-    useMutationToast(data, cc("toasts.versionRetired"), cc("toasts.operationFailed"))
-  );
 
   const plansById = useMemo(() => {
     const m = new Map((data.plansQuery.data ?? []).map((p) => [p.id, p]));
@@ -453,13 +461,51 @@ export function VersionsManagementPanel({ data }: Props) {
                   {cc("actions.clone")}
                 </Button>
                 {v.state === "draft" ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={() => void publishMut.mutateAsync({ versionId: v.id })}
-                  >
-                    {cc("actions.publish")}
-                  </Button>
+                  <>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        void approveMut
+                          .mutateAsync({ versionId: v.id })
+                          .then(() => toast.success(cc("toasts.versionApproved")))
+                      }
+                    >
+                      {cc("actions.approve")}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        const effectiveAt = new Date(
+                          Date.now() + 24 * 60 * 60 * 1000
+                        ).toISOString();
+                        void approveMut
+                          .mutateAsync({ versionId: v.id })
+                          .catch(() => undefined)
+                          .then(() =>
+                            scheduleMut.mutateAsync({
+                              versionId: v.id,
+                              effectiveAt,
+                            })
+                          )
+                          .then(() =>
+                            toast.success(cc("toasts.versionScheduled"))
+                          );
+                      }}
+                    >
+                      {cc("actions.schedule")}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => void publishVersion(v.id)}
+                    >
+                      {cc("actions.publish")}
+                    </Button>
+                  </>
                 ) : null}
                 {v.state === "published" ? (
                   <Button
@@ -467,7 +513,11 @@ export function VersionsManagementPanel({ data }: Props) {
                     size="sm"
                     variant="outline"
                     onClick={() =>
-                      void deprecateMut.mutateAsync({ versionId: v.id })
+                      void deprecateMut
+                        .mutateAsync({ versionId: v.id })
+                        .then(() =>
+                          toast.success(cc("toasts.versionDeprecated"))
+                        )
                     }
                   >
                     {cc("actions.deprecate")}
@@ -479,10 +529,26 @@ export function VersionsManagementPanel({ data }: Props) {
                     size="sm"
                     variant="outline"
                     onClick={() =>
-                      void retireMut.mutateAsync({ versionId: v.id })
+                      void retireMut
+                        .mutateAsync({ versionId: v.id })
+                        .then(() => toast.success(cc("toasts.versionRetired")))
                     }
                   >
                     {cc("actions.retire")}
+                  </Button>
+                ) : null}
+                {v.state === "retired" ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      void archiveMut
+                        .mutateAsync({ versionId: v.id })
+                        .then(() => toast.success(cc("toasts.versionArchived")))
+                    }
+                  >
+                    {cc("actions.archive")}
                   </Button>
                 ) : null}
                 {v.state === "draft" ? (
@@ -1715,23 +1781,32 @@ export function PublicationManagementPanel({ data }: Props) {
     { versionId: selectedVersionId! },
     { enabled: Boolean(selectedVersionId) }
   );
-  const publishMut = trpc.commercialCatalog.publishVersion.useMutation({
-    onSuccess: async () => {
+  const workflowStatuses =
+    trpc.commercialCatalog.publishing.listStatuses.useQuery();
+  const {
+    publishVersion,
+    deprecateMut,
+    retireMut,
+    archiveMut,
+    approveMut,
+    scheduleMut,
+  } = useCatalogPublishingMutations({
+    onPublishSuccess: async () => {
       catalogManagementUiObservability.recordPublication(true);
       toast.success(cc("toasts.published"));
       await data.invalidateAll();
+      await workflowStatuses.refetch();
     },
-    onError: (err) => {
-      catalogManagementUiObservability.recordPublication(false, err.message);
-      toast.error(err.message);
+    onPublishError: (message) => {
+      catalogManagementUiObservability.recordPublication(false, message);
+      toast.error(message);
     },
+    onLifecycleSuccess: async () => {
+      await data.invalidateAll();
+      await workflowStatuses.refetch();
+    },
+    onLifecycleError: (message) => toast.error(message),
   });
-  const deprecateMut = trpc.commercialCatalog.deprecateVersion.useMutation(
-    useMutationToast(data, cc("toasts.deprecated"), cc("toasts.operationFailed"))
-  );
-  const retireMut = trpc.commercialCatalog.retireVersion.useMutation(
-    useMutationToast(data, cc("toasts.retired"), cc("toasts.operationFailed"))
-  );
 
   const versions = data.versionsQuery.data ?? [];
   const byState = {
@@ -1793,15 +1868,55 @@ export function PublicationManagementPanel({ data }: Props) {
                 {cc("actions.validate")}
               </Button>
               {v.state === "draft" ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() =>
-                    void publishMut.mutateAsync({ versionId: v.id })
-                  }
-                >
-                  {cc("actions.publish")}
-                </Button>
+                <>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      void approveMut
+                        .mutateAsync({ versionId: v.id })
+                        .then(() => {
+                          toast.success(cc("toasts.versionApproved"));
+                          return workflowStatuses.refetch();
+                        })
+                    }
+                  >
+                    {cc("actions.approve")}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      const effectiveAt = new Date(
+                        Date.now() + 24 * 60 * 60 * 1000
+                      ).toISOString();
+                      void approveMut
+                        .mutateAsync({ versionId: v.id })
+                        .catch(() => undefined)
+                        .then(() =>
+                          scheduleMut.mutateAsync({
+                            versionId: v.id,
+                            effectiveAt,
+                          })
+                        )
+                        .then(() => {
+                          toast.success(cc("toasts.versionScheduled"));
+                          return workflowStatuses.refetch();
+                        });
+                    }}
+                  >
+                    {cc("actions.schedule")}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => void publishVersion(v.id)}
+                  >
+                    {cc("actions.publish")}
+                  </Button>
+                </>
               ) : null}
               {v.state === "published" ? (
                 <Button
@@ -1809,7 +1924,9 @@ export function PublicationManagementPanel({ data }: Props) {
                   size="sm"
                   variant="outline"
                   onClick={() =>
-                    void deprecateMut.mutateAsync({ versionId: v.id })
+                    void deprecateMut
+                      .mutateAsync({ versionId: v.id })
+                      .then(() => toast.success(cc("toasts.deprecated")))
                   }
                 >
                   {cc("actions.deprecate")}
@@ -1821,10 +1938,26 @@ export function PublicationManagementPanel({ data }: Props) {
                   size="sm"
                   variant="outline"
                   onClick={() =>
-                    void retireMut.mutateAsync({ versionId: v.id })
+                    void retireMut
+                      .mutateAsync({ versionId: v.id })
+                      .then(() => toast.success(cc("toasts.retired")))
                   }
                 >
                   {cc("actions.retire")}
+                </Button>
+              ) : null}
+              {v.state === "retired" ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    void archiveMut
+                      .mutateAsync({ versionId: v.id })
+                      .then(() => toast.success(cc("toasts.versionArchived")))
+                  }
+                >
+                  {cc("actions.archive")}
                 </Button>
               ) : null}
             </div>

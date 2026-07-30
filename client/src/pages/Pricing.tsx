@@ -21,7 +21,11 @@ import {
   getFxService,
   resolveDualPricePresentation,
 } from "@shared/commercial-catalog";
-import { yearlySavingsPercent } from "@/components/admin/platform-ops/commercial-catalog/catalogCommercialDisplay";
+import {
+  yearlySavingsPercent,
+  catalogFeatureNameKey,
+  resolveCatalogLabel,
+} from "@/components/admin/platform-ops/commercial-catalog/catalogCommercialDisplay";
 
 function PayPalCheckoutButton({
   planId,
@@ -234,7 +238,9 @@ export default function Pricing() {
   const { isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
   const { t, language } = useLanguage();
-  const { data: plans, isLoading } = trpc.subscription.listPlans.useQuery();
+  /** Public Catalog only — published offerings (I-CPP-01 presentation surface). */
+  const { data: offerings, isLoading } =
+    trpc.commercialCatalog.public.listOfferings.useQuery();
   const { data: visitor } =
     trpc.commercialCatalog.localization.resolveVisitorContext.useQuery();
   const {
@@ -243,7 +249,7 @@ export default function Pricing() {
     isReady: entitlementsReady,
     isTrialActive,
     isTrialExpired,
-    isCurrentCatalogPlan,
+    isCurrentCatalogPlanByCode,
   } = useCommercialFeatureVisibility({
     enabled: isAuthenticated,
   });
@@ -403,23 +409,28 @@ export default function Pricing() {
 
         {/* Plans Grid */}
         <div className="grid md:grid-cols-3 gap-8 mb-12">
-          {plans && plans.length > 0 ? plans.map((plan, planIndex) => {
+          {offerings && offerings.length > 0 ? offerings.map((offering, planIndex) => {
             const price =
-              selectedCycle === "yearly" ? plan.priceYearly : plan.priceMonthly;
+              selectedCycle === "yearly"
+                ? offering.priceYearly
+                : offering.priceMonthly;
             const savings = yearlySavingsPercent(
-              Number(plan.priceMonthly),
-              Number(plan.priceYearly)
+              Number(offering.priceMonthly),
+              Number(offering.priceYearly)
             );
             const isCurrentPlan =
-              isAuthenticated && entitlementsReady && isCurrentCatalogPlan(plan.id);
+              isAuthenticated &&
+              entitlementsReady &&
+              isCurrentCatalogPlanByCode(offering.planCode);
             const isPopular = planIndex === 1;
-            const features = language === 'ar' && plan.featuresAr 
-              ? JSON.parse(plan.featuresAr as string) 
-              : plan.features ? JSON.parse(plan.features as string) : [];
+            const features = offering.featureKeys;
+            const legacyPlanId = offering.legacyPlanId;
+            const displayName = offering.planName;
+            const versionLabel = `${offering.versionName} (${offering.versionCode})`;
 
             return (
               <Card
-                key={plan.id}
+                key={offering.planVersionId}
                 className={`relative overflow-hidden transition-all duration-300 ${
                   isCurrentPlan || isPopular
                     ? "border-2 border-cyan-400 shadow-lg shadow-cyan-500/40"
@@ -438,8 +449,8 @@ export default function Pricing() {
                 )}
 
                 <div className="bg-gradient-to-b from-slate-800/50 to-slate-900/50 p-8">
-                  <h3 className="text-2xl font-bold text-white mb-2">{language === 'ar' ? plan.nameAr : plan.nameEn}</h3>
-                  <p className="text-cyan-300 text-sm mb-6">{language === 'ar' ? plan.descriptionAr : plan.descriptionEn}</p>
+                  <h3 className="text-2xl font-bold text-white mb-2">{displayName}</h3>
+                  <p className="text-cyan-300 text-sm mb-6">{versionLabel}</p>
 
                   <div className="mb-4 text-white">
                     <CommercialDualPrice
@@ -447,7 +458,7 @@ export default function Pricing() {
                         prices: [
                           {
                             amount: String(price ?? 0),
-                            currency: "USD",
+                            currency: offering.currency || "USD",
                           },
                         ],
                         regions: [],
@@ -475,10 +486,16 @@ export default function Pricing() {
 
                   <ul className="space-y-4 mb-8">
                     {features && features.length > 0 ? (
-                      features.map((feature: string, idx: number) => (
-                        <li key={idx} className="flex items-center gap-3 text-cyan-200">
+                      features.map((featureKey) => (
+                        <li key={featureKey} className="flex items-center gap-3 text-cyan-200">
                           <Check className="w-5 h-5 text-cyan-400 shrink-0" />
-                          <span>{feature}</span>
+                          <span>
+                            {resolveCatalogLabel(
+                              t,
+                              catalogFeatureNameKey(featureKey),
+                              featureKey
+                            )}
+                          </span>
                         </li>
                       ))
                     ) : (
@@ -493,31 +510,51 @@ export default function Pricing() {
                     <Button disabled className="w-full bg-slate-700 text-slate-400">
                       {t('pricing.currentPlan')}
                     </Button>
+                  ) : legacyPlanId == null ? (
+                    <a
+                      href={language === 'ar' 
+                        ? `mailto:${MINEUQR_PUBLIC_SUPPORT_EMAIL}?subject=طلب اشتراك - ${displayName}&body=مرحباً،%0A%0Aأرغب في الاشتراك في ${displayName} (الدورة: ${selectedCycle === "yearly" ? "سنوية" : "شهرية"} - $${price}).%0A%0Aالاسم: %0Aاسم المطعم: %0Aرقم الهاتف: %0A%0Aشكراً`
+                        : `mailto:${MINEUQR_PUBLIC_SUPPORT_EMAIL}?subject=Subscription Request - ${displayName}&body=Hello,%0A%0AI would like to subscribe to ${displayName} (Cycle: ${selectedCycle} - $${price}).%0A%0AName: %0ARestaurant Name: %0APhone: %0A%0AThank you`
+                      }
+                      className="w-full flex items-center justify-center gap-2 border border-cyan-500/50 text-cyan-300 hover:bg-cyan-500/10 hover:text-cyan-200 rounded-md px-4 py-2 text-sm font-medium transition-all"
+                    >
+                      <Mail className="w-4 h-4" />
+                      {t('pricing.contactViaEmail')}
+                    </a>
                   ) : (
                     <div className="space-y-3">
-                      {/* Tap Payments - الدفع بالبطاقة (الزر الرئيسي) */}
                       <TapCheckoutButton
-                        planId={plan.id}
+                        planId={legacyPlanId}
                         billingCycle={selectedCycle}
                         isAuthenticated={isAuthenticated}
                         setLocation={setLocation}
-                        planName={language === 'ar' ? plan.nameAr : plan.nameEn}
-                        price={selectedCycle === 'yearly' ? (plan.priceYearly || plan.priceMonthly) : plan.priceMonthly}
+                        planName={displayName}
+                        price={
+                          selectedCycle === "yearly"
+                            ? offering.priceYearly ||
+                              offering.priceMonthly ||
+                              "0"
+                            : offering.priceMonthly || "0"
+                        }
                       />
-                      {/* PayPal */}
                       <PayPalCheckoutButton
-                        planId={plan.id}
+                        planId={legacyPlanId}
                         billingCycle={selectedCycle}
                         isAuthenticated={isAuthenticated}
                         setLocation={setLocation}
-                        planName={language === 'ar' ? plan.nameAr : plan.nameEn}
-                        price={selectedCycle === 'yearly' ? (plan.priceYearly || plan.priceMonthly) : plan.priceMonthly}
+                        planName={displayName}
+                        price={
+                          selectedCycle === "yearly"
+                            ? offering.priceYearly ||
+                              offering.priceMonthly ||
+                              "0"
+                            : offering.priceMonthly || "0"
+                        }
                       />
-                      {/* Email */}
                       <a
                         href={language === 'ar' 
-                          ? `mailto:${MINEUQR_PUBLIC_SUPPORT_EMAIL}?subject=طلب اشتراك - ${plan.nameAr}&body=مرحباً،%0A%0Aأرغب في الاشتراك في ${plan.nameAr} (الدورة: ${selectedCycle === "yearly" ? "سنوية" : "شهرية"} - $${price}).%0A%0Aالاسم: %0Aاسم المطعم: %0Aرقم الهاتف: %0A%0Aشكراً`
-                          : `mailto:${MINEUQR_PUBLIC_SUPPORT_EMAIL}?subject=Subscription Request - ${plan.nameEn}&body=Hello,%0A%0AI would like to subscribe to ${plan.nameEn} (Cycle: ${selectedCycle} - $${price}).%0A%0AName: %0ARestaurant Name: %0APhone: %0A%0AThank you`
+                          ? `mailto:${MINEUQR_PUBLIC_SUPPORT_EMAIL}?subject=طلب اشتراك - ${displayName}&body=مرحباً،%0A%0Aأرغب في الاشتراك في ${displayName} (الدورة: ${selectedCycle === "yearly" ? "سنوية" : "شهرية"} - $${price}).%0A%0Aالاسم: %0Aاسم المطعم: %0Aرقم الهاتف: %0A%0Aشكراً`
+                          : `mailto:${MINEUQR_PUBLIC_SUPPORT_EMAIL}?subject=Subscription Request - ${displayName}&body=Hello,%0A%0AI would like to subscribe to ${displayName} (Cycle: ${selectedCycle} - $${price}).%0A%0AName: %0ARestaurant Name: %0APhone: %0A%0AThank you`
                         }
                         className="w-full flex items-center justify-center gap-2 border border-cyan-500/50 text-cyan-300 hover:bg-cyan-500/10 hover:text-cyan-200 rounded-md px-4 py-2 text-sm font-medium transition-all"
                       >
