@@ -16,14 +16,13 @@ import {
   SemanticSurfaceCardTitle,
 } from "@/design-system/semantic-card";
 import { useCatalogI18n } from "../useCatalogI18n";
-import {
-  catalogFeatureNameKey,
-  resolveCatalogLabel,
-  yearlySavingsPercent,
-} from "../catalogCommercialDisplay";
+import { resolveCatalogLabel, yearlySavingsPercent } from "../catalogCommercialDisplay";
+import { presentationNameI18nKey } from "@shared/commercial-catalog-presentation";
 import {
   groupCapabilitiesByExperienceDomain,
-  listCapabilityExperienceCards,
+  isPresentationCardEnabled,
+  listComparisonExperienceCards,
+  normalizePlanFeatures,
 } from "./capabilityExperienceModel";
 import { cn } from "@/lib/utils";
 
@@ -58,8 +57,9 @@ export function CapabilityPricingPreview({
     Number(yearlyAmount)
   );
 
-  const enabledCards = listCapabilityExperienceCards().filter(
-    (c) => enabledFeatures[c.filterKey]
+  const features = normalizePlanFeatures(enabledFeatures);
+  const enabledCards = listComparisonExperienceCards().filter((c) =>
+    isPresentationCardEnabled(c, features)
   );
   const groups = groupCapabilitiesByExperienceDomain(enabledCards);
 
@@ -67,7 +67,7 @@ export function CapabilityPricingPreview({
     <div
       className={cn("space-y-3", className)}
       data-slot="capability-pricing-preview"
-      data-program="COMMERCIAL-CAPABILITY-EXPERIENCE-1"
+      data-program="COMMERCIAL-CATALOG-RATIONALIZATION-1"
       dir={language === "ar" ? "rtl" : "ltr"}
     >
       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -145,14 +145,14 @@ export function CapabilityPricingPreview({
                 <ul className="space-y-1.5">
                   {g.capabilities.map((c) => (
                     <li
-                      key={c.filterKey}
+                      key={c.presentationId}
                       className="flex items-center gap-2 text-sm"
                     >
                       <Check className="h-4 w-4 shrink-0 text-cyan-600" />
                       {resolveCatalogLabel(
                         t,
-                        catalogFeatureNameKey(c.filterKey),
-                        c.filterKey
+                        presentationNameI18nKey(c.presentationId),
+                        c.presentationId
                       )}
                     </li>
                   ))}

@@ -23,9 +23,12 @@ import {
 } from "@shared/commercial-catalog";
 import {
   yearlySavingsPercent,
-  catalogFeatureNameKey,
   resolveCatalogLabel,
 } from "@/components/admin/platform-ops/commercial-catalog/catalogCommercialDisplay";
+import {
+  presentationNameI18nKey,
+  projectFeatureKeysForCommercialDisplay,
+} from "@shared/commercial-catalog-presentation";
 
 function PayPalCheckoutButton({
   planId,
@@ -423,7 +426,9 @@ export default function Pricing() {
               entitlementsReady &&
               isCurrentCatalogPlanByCode(offering.planCode);
             const isPopular = planIndex === 1;
-            const features = offering.featureKeys;
+            const features = projectFeatureKeysForCommercialDisplay(
+              offering.featureKeys
+            );
             const legacyPlanId = offering.legacyPlanId;
             const displayName = offering.planName;
             const versionLabel = `${offering.versionName} (${offering.versionCode})`;
@@ -492,7 +497,7 @@ export default function Pricing() {
                           <span>
                             {resolveCatalogLabel(
                               t,
-                              catalogFeatureNameKey(featureKey),
+                              presentationNameI18nKey(featureKey),
                               featureKey
                             )}
                           </span>

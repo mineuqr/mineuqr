@@ -1,7 +1,7 @@
 /**
- * COMMERCIAL-CAPABILITY-EXPERIENCE-1
- * Capability Filter picker — domain-grouped, searchable, bulk enable/disable.
- * Presentation only — controlled value mirrors prior checkbox Record.
+ * COMMERCIAL-CAPABILITY-EXPERIENCE-1 + COMMERCIAL-CATALOG-RATIONALIZATION-1
+ * Capability Filter picker — customer-oriented commercial presentation.
+ * Persists Projection keys only; presentation overlay applies AA rules.
  */
 
 import { useMemo, useState } from "react";
@@ -28,16 +28,20 @@ import {
   SemanticSurfaceCardTitle,
 } from "@/design-system/semantic-card";
 import { useCatalogI18n } from "../useCatalogI18n";
+import { resolveCatalogLabel } from "../catalogCommercialDisplay";
 import {
-  catalogFeatureDescriptionKey,
-  catalogFeatureNameKey,
-  resolveCatalogLabel,
-} from "../catalogCommercialDisplay";
+  presentationDescriptionI18nKey,
+  presentationDetailI18nKey,
+  presentationNameI18nKey,
+} from "@shared/commercial-catalog-presentation";
 import {
   CAPABILITY_EXPERIENCE_DOMAIN_ORDER,
+  applyPickerChange,
   countEnabledCapabilities,
   groupCapabilitiesByExperienceDomain,
+  isPresentationCardEnabled,
   listCapabilityExperienceCards,
+  normalizePlanFeatures,
   type CapabilityExperienceDomainId,
 } from "./capabilityExperienceModel";
 import { cn } from "@/lib/utils";
@@ -46,7 +50,6 @@ export type CapabilityFilterPickerProps = {
   value: Record<string, boolean>;
   onChange: (next: Record<string, boolean>) => void;
   className?: string;
-  /** Compact mode for dialogs */
   compact?: boolean;
 };
 
@@ -61,7 +64,8 @@ export function CapabilityFilterPicker({
   const [domainFilter, setDomainFilter] = useState<string>("all");
   const [showRegistryKeys, setShowRegistryKeys] = useState(false);
 
-  const counts = useMemo(() => countEnabledCapabilities(value), [value]);
+  const features = useMemo(() => normalizePlanFeatures(value), [value]);
+  const counts = useMemo(() => countEnabledCapabilities(features), [features]);
 
   const groups = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -72,27 +76,31 @@ export function CapabilityFilterPicker({
       if (!q) return true;
       const name = resolveCatalogLabel(
         t,
-        catalogFeatureNameKey(card.filterKey),
-        card.filterKey
+        presentationNameI18nKey(card.presentationId),
+        card.presentationId
       ).toLowerCase();
-      const desc = t(catalogFeatureDescriptionKey(card.filterKey)).toLowerCase();
+      const desc = t(
+        presentationDescriptionI18nKey(card.presentationId)
+      ).toLowerCase();
       return (
         name.includes(q) ||
         desc.includes(q) ||
-        card.filterKey.toLowerCase().includes(q) ||
-        card.ownerDomain.toLowerCase().includes(q)
+        card.presentationId.toLowerCase().includes(q) ||
+        card.projectionKeys.some((k) => k.toLowerCase().includes(q))
       );
     });
     return groupCapabilitiesByExperienceDomain(cards);
   }, [query, domainFilter, t]);
 
-  function setKey(key: string, enabled: boolean) {
-    onChange({ ...value, [key]: enabled });
+  function setPresentation(presentationId: string, enabled: boolean) {
+    onChange(applyPickerChange(features, presentationId, enabled));
   }
 
-  function bulk(enable: boolean, keys: string[]) {
-    const next = { ...value };
-    for (const k of keys) next[k] = enable;
+  function bulk(enable: boolean, presentationIds: string[]) {
+    let next = { ...features };
+    for (const id of presentationIds) {
+      next = applyPickerChange(next, id, enable);
+    }
     onChange(next);
   }
 
@@ -103,7 +111,7 @@ export function CapabilityFilterPicker({
   return (
     <div
       className={cn("space-y-4", className)}
-      data-program="COMMERCIAL-CAPABILITY-EXPERIENCE-1"
+      data-program="COMMERCIAL-CATALOG-RATIONALIZATION-1"
       data-slot="capability-filter-picker"
     >
       <PlatformOpsMetricGrid>
@@ -129,6 +137,9 @@ export function CapabilityFilterPicker({
 
       <p className="text-sm text-muted-foreground">
         {cc("capabilityExperience.filterMetaphor")}
+      </p>
+      <p className="text-xs text-muted-foreground">
+        {cc("capabilityExperience.foundationNote")}
       </p>
 
       <div className="flex flex-wrap items-end gap-2">
@@ -164,7 +175,11 @@ export function CapabilityFilterPicker({
           onClick={() =>
             bulk(
               true,
-              groups.flatMap((g) => g.capabilities.map((c) => c.filterKey))
+              groups.flatMap((g) =>
+                g.capabilities
+                  .filter((c) => !c.alwaysEnabled)
+                  .map((c) => c.presentationId)
+              )
             )
           }
         >
@@ -177,7 +192,11 @@ export function CapabilityFilterPicker({
           onClick={() =>
             bulk(
               false,
-              groups.flatMap((g) => g.capabilities.map((c) => c.filterKey))
+              groups.flatMap((g) =>
+                g.capabilities
+                  .filter((c) => !c.alwaysEnabled)
+                  .map((c) => c.presentationId)
+              )
             )
           }
         >
@@ -217,7 +236,9 @@ export function CapabilityFilterPicker({
                     onClick={() =>
                       bulk(
                         true,
-                        group.capabilities.map((c) => c.filterKey)
+                        group.capabilities
+                          .filter((c) => !c.alwaysEnabled)
+                          .map((c) => c.presentationId)
                       )
                     }
                   >
@@ -230,7 +251,9 @@ export function CapabilityFilterPicker({
                     onClick={() =>
                       bulk(
                         false,
-                        group.capabilities.map((c) => c.filterKey)
+                        group.capabilities
+                          .filter((c) => !c.alwaysEnabled)
+                          .map((c) => c.presentationId)
                       )
                     }
                   >
@@ -240,20 +263,22 @@ export function CapabilityFilterPicker({
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
                 {group.capabilities.map((card) => {
-                  const enabled = Boolean(value[card.filterKey]);
+                  const enabled = isPresentationCardEnabled(card, features);
+                  const locked = card.alwaysEnabled;
                   const name = resolveCatalogLabel(
                     t,
-                    catalogFeatureNameKey(card.filterKey),
-                    card.filterKey
+                    presentationNameI18nKey(card.presentationId),
+                    card.presentationId
                   );
                   const description = resolveCatalogLabel(
                     t,
-                    catalogFeatureDescriptionKey(card.filterKey),
+                    presentationDescriptionI18nKey(card.presentationId),
                     cc("capabilityExperience.defaultDescription")
                   );
+                  const details = card.detailProjectionKeys ?? [];
                   return (
                     <SemanticSurfaceCard
-                      key={card.filterKey}
+                      key={card.presentationId}
                       cardType="feature"
                       className={cn(
                         "transition-colors",
@@ -267,8 +292,12 @@ export function CapabilityFilterPicker({
                           </SemanticSurfaceCardTitle>
                           <Checkbox
                             checked={enabled}
+                            disabled={locked}
                             onCheckedChange={(c) =>
-                              setKey(card.filterKey, Boolean(c))
+                              setPresentation(
+                                card.presentationId,
+                                Boolean(c)
+                              )
                             }
                             aria-label={name}
                           />
@@ -277,30 +306,54 @@ export function CapabilityFilterPicker({
                           {description}
                         </SemanticSurfaceCardDescription>
                       </SemanticSurfaceCardHeader>
-                      <SemanticSurfaceCardContent className="flex flex-wrap gap-1 p-3 pt-0">
-                        <PlatformOpsStatusBadge
-                          status="unknown"
-                          label={card.ownerDomain}
-                        />
-                        <PlatformOpsStatusBadge
-                          status="healthy"
-                          label={cc(
-                            "capabilityExperience.commercializable"
-                          )}
-                        />
-                        <PlatformOpsStatusBadge
-                          status={enabled ? "healthy" : "warning"}
-                          label={
-                            enabled
-                              ? cc("capabilityExperience.enabled")
-                              : cc("capabilityExperience.disabled")
-                          }
-                        />
-                        {showRegistryKeys ? (
-                          <span className="font-mono text-[10px] text-muted-foreground">
-                            {card.filterKey}
-                          </span>
+                      <SemanticSurfaceCardContent className="space-y-2 p-3 pt-0">
+                        {details.length > 0 ? (
+                          <ul className="list-inside list-disc text-[11px] text-muted-foreground">
+                            {details.map((detailKey) => (
+                              <li key={detailKey}>
+                                {resolveCatalogLabel(
+                                  t,
+                                  presentationDetailI18nKey(
+                                    "financialSettlement",
+                                    detailKey
+                                  ),
+                                  detailKey
+                                )}
+                              </li>
+                            ))}
+                          </ul>
                         ) : null}
+                        <div className="flex flex-wrap gap-1">
+                          <PlatformOpsStatusBadge
+                            status="healthy"
+                            label={cc(
+                              card.class === "commercial"
+                                ? "capabilityExperience.commercializable"
+                                : "capabilityExperience.foundationBadge"
+                            )}
+                          />
+                          {locked ? (
+                            <PlatformOpsStatusBadge
+                              status="unknown"
+                              label={cc("capabilityExperience.alwaysIncluded")}
+                            />
+                          ) : (
+                            <PlatformOpsStatusBadge
+                              status={enabled ? "healthy" : "warning"}
+                              label={
+                                enabled
+                                  ? cc("capabilityExperience.enabled")
+                                  : cc("capabilityExperience.disabled")
+                              }
+                            />
+                          )}
+                          {showRegistryKeys ? (
+                            <span className="font-mono text-[10px] text-muted-foreground">
+                              {card.projectionKeys.join(", ") ||
+                                card.presentationId}
+                            </span>
+                          ) : null}
+                        </div>
                       </SemanticSurfaceCardContent>
                     </SemanticSurfaceCard>
                   );

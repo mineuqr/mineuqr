@@ -21,6 +21,7 @@ import {
 } from "../CatalogFormDialog";
 import { CATALOG_FEATURE_KEYS, CATALOG_LIMIT_KEYS } from "../catalogUiHelpers";
 import { useCatalogI18n } from "../useCatalogI18n";
+import { normalizePlanFeatures } from "./capabilityExperienceModel";
 import { catalogExperienceObservability } from "./experienceObservability";
 import { catalogProductivityStore } from "./productivityStore";
 import type { CatalogManagementData } from "../useCatalogManagementData";
@@ -250,12 +251,13 @@ export function PlanCreationWizard(props: {
         cc("intervalUnits.year")
       );
 
+      const planFeatures = normalizePlanFeatures(state.features);
       const bundle = await createBundle.mutateAsync({
         code: state.bundleCode || `${state.planCode}-bundle`,
         name: state.bundleName || `${state.planName} Bundle`,
         features: CATALOG_FEATURE_KEYS.map((featureKey) => ({
           featureKey,
-          included: Boolean(state.features[featureKey]),
+          included: Boolean(planFeatures[featureKey]),
         })),
       });
 

@@ -1928,19 +1928,26 @@
             "disabled": "Disabled"
           },
           "domains": {
-            "orders": "Orders",
-            "settlement": "Settlement",
-            "register": "Register",
-            "ops_display": "Ops Displays",
+            "orders": "Ordering channels",
+            "settlement": "Financial settlement",
+            "register": "Register & shifts",
+            "ops_display": "Ops displays",
+            "sessions": "Sessions & tables",
+            "menu": "Menu",
+            "design": "Menu design",
+            "qr": "Smart QR",
+            "reports": "Reports & analytics",
+            "platform": "Platform foundation",
             "printing": "Printing",
             "devices": "Devices",
-            "reports": "Reports",
-            "platform": "Platform",
             "qr_menu": "QR Menu",
             "waiter": "Waiter",
             "hotel": "Hotel",
             "branding": "Branding"
           },
+          "foundationNote": "Printing and Realtime are always included as platform foundations and are not sold as separate differentiators. Devices enable automatically with operational screens.",
+          "foundationBadge": "Foundation",
+          "alwaysIncluded": "Always included",
           "lifecycle": {
             "label": "Publication lifecycle",
             "legend": "Lifecycle: Draft → Approved → Published → Retired → Archived",
@@ -2008,11 +2015,11 @@
             "keywords": "search"
           },
           "ordering": {
-            "name": "Ordering",
-            "description": "In-venue ordering",
-            "tooltip": "Place orders from the menu",
+            "name": "Table Ordering",
+            "description": "Guest ordering via tables and QR",
+            "tooltip": "Order from the table",
             "category": "Ordering",
-            "keywords": "order"
+            "keywords": "table ordering"
           },
           "cart": {
             "name": "Cart",
@@ -2134,16 +2141,16 @@
             "keywords": "refund"
           },
           "register": {
-            "name": "Register Operations",
-            "description": "Cash register and financial shifts",
-            "tooltip": "CRMP register & shifts",
+            "name": "Shift & Register Settlement",
+            "description": "Shift open/close, cash balancing, register settlement, cashier ops",
+            "tooltip": "Shifts and register settlement",
             "category": "Register",
-            "keywords": "register crmp"
+            "keywords": "register shifts"
           },
           "reporting": {
-            "name": "Reporting",
-            "description": "Restaurant KPI reporting and exports",
-            "tooltip": "Business reports",
+            "name": "Reports & Analytics",
+            "description": "Restaurant KPI reports, analytics, and exports",
+            "tooltip": "Reports and analytics",
             "category": "Analytics",
             "keywords": "reports analytics"
           },
@@ -2183,18 +2190,18 @@
             "keywords": "waiter"
           },
           "kiosk": {
-            "name": "Self-Ordering Kiosk",
-            "description": "Guest kiosk ordering channel",
-            "tooltip": "Kiosk shell",
+            "name": "Self-Ordering Screen",
+            "description": "Guest self-ordering screen channel",
+            "tooltip": "Self-ordering screen",
             "category": "Ordering",
-            "keywords": "kiosk"
+            "keywords": "self ordering screen"
           },
           "counterPickup": {
             "name": "Counter Pickup",
             "description": "Staff counter pickup settlement",
-            "tooltip": "Counter settle",
+            "tooltip": "Pickup from counter",
             "category": "Ordering",
-            "keywords": "pickup counter"
+            "keywords": "counter pickup"
           },
           "expo": {
             "name": "Expo Display",
@@ -2202,6 +2209,62 @@
             "tooltip": "Expo screen",
             "category": "Operations",
             "keywords": "expo"
+          }
+        },
+        "presentation": {
+          "sessionTableManagement": {
+            "name": "Session & Table Management",
+            "description": "Operational lifecycle of restaurant tables and guest sessions — open, occupy, move, merge, close, and check association"
+          },
+          "menuManagement": {
+            "name": "Menu & Item Management",
+            "description": "Complete menu management — categories, items, pricing, modifiers, options, availability, and organization"
+          },
+          "menuDesign": {
+            "name": "Menu Design",
+            "description": "Customer-facing menu presentation — templates, branding, colors, typography, and layout"
+          },
+          "smartQr": {
+            "name": "Smart QR Codes",
+            "description": "Platform QR system — generation, table QR, branch QR, regeneration, and management"
+          },
+          "ordering": {
+            "name": "Table Ordering",
+            "description": "Guest ordering channel via tables and QR"
+          },
+          "waiter": {
+            "name": "Waiter Ordering",
+            "description": "Staff floor ordering workspace"
+          },
+          "kiosk": {
+            "name": "Self-Ordering Screen",
+            "description": "Guest self-ordering screen channel"
+          },
+          "counterPickup": {
+            "name": "Counter Pickup",
+            "description": "Counter pickup settlement for staff"
+          },
+          "financialSettlement": {
+            "name": "Financial Settlement",
+            "description": "Unified financial settlement for checks, payments, allocation, and refunds",
+            "details": {
+              "checkManagement": "Check management",
+              "splitPayment": "Split payment",
+              "multiCheckAllocation": "Multi-check allocation",
+              "refund": "Refunds"
+            }
+          },
+          "register": {
+            "name": "Shift & Register Settlement",
+            "description": "Shift open/close, cash balancing, register settlement, and cashier operations"
+          },
+          "kitchen": {
+            "name": "Kitchen Display",
+            "description": "Operational kitchen queue display"
+          },
+          "reporting": {
+            "name": "Reports & Analytics",
+            "description": "Restaurant KPI reports, analytics, and exports"
           }
         },
         "limits": {

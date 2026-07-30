@@ -51,6 +51,7 @@ import { CatalogCountrySelect } from "./CatalogCountrySelect";
 import { catalogManagementUiObservability } from "./catalogManagementObservability";
 import { useCatalogPublishingMutations } from "./useCatalogPublishingMutations";
 import { CapabilityFilterPicker } from "./experience/CapabilityFilterPicker";
+import { normalizePlanFeatures } from "./experience/capabilityExperienceModel";
 import { CapabilityLifecycleRail } from "./experience/CapabilityLifecycleRail";
 import type { CatalogManagementData } from "./useCatalogManagementData";
 
@@ -1093,7 +1094,9 @@ export function FeatureBundlesManagementPanel({ data }: Props) {
               description: description || null,
               features: CATALOG_FEATURE_KEYS.map((featureKey) => ({
                 featureKey,
-                included: Boolean(selected[featureKey]),
+                included: Boolean(
+                  normalizePlanFeatures(selected)[featureKey]
+                ),
               })),
             })
             .then(() => setOpen(false))
