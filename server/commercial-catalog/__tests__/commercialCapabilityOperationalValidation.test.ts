@@ -1,6 +1,6 @@
 /**
- * COMMERCIAL-CAPABILITY-PLATFORM-ADOPTION-1 — Operational Validation (E2E)
- * Docs/tests only — no architecture/product redesign.
+ * COMMERCIAL-CAPABILITY-PLATFORM-ADOPTION-1 — Operational Validation
+ * COMMERCIAL-LIVE-PLANS-SIMPLIFICATION-1 — live plan save / public catalog / runtime.
  */
 import { beforeEach, describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
@@ -16,27 +16,22 @@ import { FEATURE_KEYS } from "@commercial/featureKeys";
 import {
   commercialCatalogStore,
   planService,
-  planVersionService,
   pricingService,
   featureBundleService,
   limitProfileService,
-  migrationPolicyService,
-  commercialSnapshotService,
   CommercialCatalogError,
-  setDurablePublicationBackendForTests,
+  setDurableLivePlanBackendForTests,
+  InMemoryDurableCatalogBackend,
   invalidateCatalogReadyGate,
 } from "../../services/commercial-catalog";
 import {
-  catalogPublishingService,
-  clearAllPublicationOverlays,
   invalidatePublicCatalogCache,
   setPublicCatalogCacheEnabled,
   projectPublicCatalogOfferings,
   projectPublicCatalogOffering,
 } from "../publishing";
-import { resolveEntitlementsFromSnapshot } from "../../subscription-runtime/entitlementResolver";
+import { resolveEntitlementsFromLivePlan } from "../../subscription-runtime/entitlementResolver";
 import { syncCommercialLifecycle } from "../../subscription-runtime/lifecycleSync";
-import type { CommercialSnapshotDefinition } from "@shared/commercial-catalog";
 
 const root = process.cwd();
 function read(rel: string) {
@@ -63,7 +58,6 @@ function ensureCycles() {
   return { monthly, yearly };
 }
 
-/** Enabled: ordering + reporting; all other projection keys present as disabled. */
 function buildFilterBundle(code: string) {
   return featureBundleService.create({
     code: `${code}-feat`,
@@ -75,17 +69,12 @@ function buildFilterBundle(code: string) {
   });
 }
 
-function seedOperationalPlan(code: string) {
+async function seedOperationalPlan(code: string) {
   const { monthly, yearly } = ensureCycles();
   const plan = planService.create({
     code,
     name: `Operational ${code}`,
     description: "E2E operational validation plan",
-  });
-  const version = planVersionService.create({
-    planId: plan.id,
-    versionCode: "v1",
-    versionName: `${code} Published Name`,
   });
   const bundle = buildFilterBundle(code);
   const profile = limitProfileService.create({
@@ -93,48 +82,32 @@ function seedOperationalPlan(code: string) {
     name: "Limits",
     values: [{ limitKey: "restaurants", value: 2 }],
   });
-  const mig = migrationPolicyService.create({
-    code: `${code}-mig`,
-    name: "Mig",
-  });
-  const ret = migrationPolicyService.createRetirementPolicy({
-    code: `${code}-ret`,
-    name: "Ret",
-  });
-  planVersionService.updateDraft(version.id, {
-    featureBundleId: bundle.id,
-    limitProfileId: profile.id,
-    migrationPolicyId: mig.id,
-    retirementPolicyId: ret.id,
-    compatibility: {
-      upgradeTargets: [],
-      downgradeTargets: [],
-      migrationRequirements: [],
-      breakingCommercialChanges: [],
-    },
-  });
   pricingService.create({
-    planVersionId: version.id,
+    planId: plan.id,
     billingCycleId: monthly.id,
     currency: "USD",
     amount: "19.00",
   });
   pricingService.create({
-    planVersionId: version.id,
+    planId: plan.id,
     billingCycleId: yearly.id,
     currency: "USD",
     amount: "190.00",
   });
-  return { plan, version, bundle };
+  const saved = await planService.saveLive(plan.id, {
+    featureBundleId: bundle.id,
+    limitProfileId: profile.id,
+  });
+  invalidatePublicCatalogCache();
+  return { plan: saved, bundle };
 }
 
 describe("COMMERCIAL-CAPABILITY-PLATFORM-ADOPTION-1 Operational Validation", () => {
   beforeEach(() => {
     commercialCatalogStore.clear();
-    clearAllPublicationOverlays();
     setPublicCatalogCacheEnabled(false);
     invalidatePublicCatalogCache();
-    setDurablePublicationBackendForTests(null);
+    setDurableLivePlanBackendForTests(new InMemoryDurableCatalogBackend());
     invalidateCatalogReadyGate();
   });
 
@@ -150,12 +123,12 @@ describe("COMMERCIAL-CAPABILITY-PLATFORM-ADOPTION-1 Operational Validation", () 
       expect(isCommercialCapabilityFilterKey(row.filterKey)).toBe(true);
       expect(row.productionImplemented).toBe(true);
     }
-    expect(
-      assertCommercialCapabilityFilterKeys(["ghostCapability"]).ok
-    ).toBe(false);
+    expect(assertCommercialCapabilityFilterKeys(["ghostCapability"]).ok).toBe(
+      false
+    );
   });
 
-  it("2. Commercial Plan — projection-only selection; unknown keys rejected", () => {
+  it("2. Commercial Plan — projection-only selection; unknown keys rejected", async () => {
     expect(() =>
       featureBundleService.create({
         code: "bad-bundle",
@@ -172,7 +145,7 @@ describe("COMMERCIAL-CAPABILITY-PLATFORM-ADOPTION-1 Operational Validation", () 
       })
     ).toThrow(CommercialCatalogError);
 
-    const { bundle } = seedOperationalPlan("cap-plan");
+    const { bundle } = await seedOperationalPlan("cap-plan");
     const features = featureBundleService.listFeatures(bundle.id);
     expect(features).toHaveLength(15);
     expect(features.every((f) => isCommercialCapabilityFilterKey(f.featureKey)))
@@ -182,89 +155,34 @@ describe("COMMERCIAL-CAPABILITY-PLATFORM-ADOPTION-1 Operational Validation", () 
     );
   });
 
-  it("3–5. Approve → draft private; Publish → public offering drives pricing projection", async () => {
-    const { version, plan } = seedOperationalPlan("price-plan");
-
-    catalogPublishingService.approveVersion(version.id);
-    expect(catalogPublishingService.getStatus(version.id).workflowState).toBe(
-      "approved"
-    );
-    expect(projectPublicCatalogOfferings()).toHaveLength(0);
-    expect(() => projectPublicCatalogOffering(version.id)).toThrow(
-      /not publicly accessible/i
-    );
-
-    const { version: published } = await catalogPublishingService.publish(
-      version.id,
-      {},
-      { enforceWorkflow: true }
-    );
-    expect(published.state).toBe("published");
-
+  it("3. Atomic live save exposes the plan on the public catalog", async () => {
+    const { plan } = await seedOperationalPlan("price-plan");
     const offerings = projectPublicCatalogOfferings();
     expect(offerings).toHaveLength(1);
     const offering = offerings[0]!;
-    expect(offering.planVersionId).toBe(version.id);
     expect(offering.planId).toBe(plan.id);
     expect(offering.planName).toBe("Operational price-plan");
-    expect(offering.versionName).toContain("Published Name");
-    expect(offering.versionCode).toBe("v1");
     expect(offering.priceMonthly).toBe("19.00");
     expect(offering.priceYearly).toBe("190.00");
     expect(offering.currency).toBe("USD");
     expect(offering.featureKeys.sort()).toEqual(["ordering", "reporting"]);
-    expect(offering.workflowState).toBe("published");
     expect(offering.visibility.publiclyBrowsable).toBe(true);
     expect(offering.visibility.openForNewAdoption).toBe(true);
-
-    // Public source exclusivity: only published browse projection
-    expect(
-      offerings.every((o) => o.workflowState === "published")
-    ).toBe(true);
   });
 
-  it("6–7. Retire removes from Pricing; Archive inaccessible; snapshots untouched", async () => {
-    const { version } = seedOperationalPlan("retire-plan");
-    await catalogPublishingService.publish(version.id);
-
-    const snap = commercialSnapshotService.captureFromVersion(version.id);
-    const snapshotId = snap.id;
-    const before = commercialSnapshotService.get(snapshotId);
-    expect(before).toBeTruthy();
-
-    await catalogPublishingService.deprecate(version.id);
+  it("4. Hiding a live plan removes it from Pricing immediately", async () => {
+    const { plan } = await seedOperationalPlan("retire-plan");
+    expect(projectPublicCatalogOfferings()).toHaveLength(1);
+    await planService.saveLive(plan.id, { isHidden: true });
+    invalidatePublicCatalogCache();
     expect(projectPublicCatalogOfferings()).toHaveLength(0);
-    // Historically addressable while deprecated
-    expect(projectPublicCatalogOffering(version.id).workflowState).toBe(
-      "deprecated"
-    );
-
-    await catalogPublishingService.retire(version.id);
-    expect(projectPublicCatalogOfferings()).toHaveLength(0);
-    expect(() => projectPublicCatalogOffering(version.id)).toThrow(
+    expect(() => projectPublicCatalogOffering(plan.id)).toThrow(
       /not publicly accessible/i
     );
-
-    // Existing snapshot identity preserved (I-CPL-13 companion: no mutate)
-    const afterRetire = commercialSnapshotService.get(snapshotId);
-    expect(afterRetire).toEqual(before);
-
-    catalogPublishingService.archiveVersion(version.id);
-    expect(catalogPublishingService.getStatus(version.id).workflowState).toBe(
-      "archived"
-    );
-    expect(projectPublicCatalogOfferings()).toHaveLength(0);
-    expect(() => projectPublicCatalogOffering(version.id)).toThrow(
-      /not publicly accessible/i
-    );
-    expect(commercialSnapshotService.get(snapshotId)).toEqual(before);
   });
 
-  it("8. Subscription Runtime — enabled/disabled from Snapshot; vocabulary = Feature Registry", async () => {
-    // Use bridgeable catalog plan code so Runtime can resolve commercial plan identity
-    const { version } = seedOperationalPlan("professional");
-    await catalogPublishingService.publish(version.id);
-    const { payload } = commercialSnapshotService.captureFromVersion(version.id);
+  it("5. Subscription Runtime — enabled/disabled from live plan; vocabulary = Feature Registry", async () => {
+    const { plan } = await seedOperationalPlan("professional");
     const NOW = new Date("2026-07-30T12:00:00.000Z");
     const lifecycle = syncCommercialLifecycle({
       dbStatus: "active",
@@ -272,12 +190,29 @@ describe("COMMERCIAL-CAPABILITY-PLATFORM-ADOPTION-1 Operational Validation", () 
       currentPeriodEnd: "2026-12-01T00:00:00.000Z",
       now: NOW,
     });
+    const features = featureBundleService.listFeatures(plan.featureBundleId!);
+    const limits = limitProfileService.listValues(plan.limitProfileId!);
 
-    const resolved = resolveEntitlementsFromSnapshot({
+    const resolved = resolveEntitlementsFromLivePlan({
       ownerId: 42,
       role: "user",
-      snapshot: payload as CommercialSnapshotDefinition,
-      snapshotId: "op-val-snap",
+      planId: plan.id,
+      catalogPlanCode: plan.code,
+      featureKeys: features.filter((f) => f.included).map((f) => f.featureKey),
+      limits,
+      chargedTerms: {
+        planId: plan.id,
+        catalogPlanCode: plan.code,
+        commercialName: plan.name,
+        chargedAmount: "19.00",
+        chargedCurrency: "USD",
+        billingCycleId: "bc",
+        billingCycleCode: "monthly",
+        intervalCount: 1,
+        intervalUnit: "month",
+        periodStart: null,
+        periodEnd: null,
+      },
       legacyPlanId: 30002,
       lifecycle,
       dbStatus: "active",
@@ -302,7 +237,7 @@ describe("COMMERCIAL-CAPABILITY-PLATFORM-ADOPTION-1 Operational Validation", () 
     }
   });
 
-  it("9. Runtime enforcement surfaces (source / architecture evidence)", () => {
+  it("6. Runtime enforcement surfaces (source / architecture evidence)", () => {
     const enforcement = read("server/subscription-runtime/enforcement.ts");
     expect(enforcement).toContain("export async function hasFeature");
     expect(enforcement).toContain("export async function requireFeature");
@@ -310,22 +245,23 @@ describe("COMMERCIAL-CAPABILITY-PLATFORM-ADOPTION-1 Operational Validation", () 
     expect(enforcement).toContain("export async function checkLimit");
 
     const guest = read("server/commercial/guestOrderingAuthority.ts");
-    expect(guest).toContain('hasFeature');
+    expect(guest).toContain("hasFeature");
     expect(guest).toContain('"ordering"');
 
     const visibility = read("client/src/lib/commercial/featureVisibility.ts");
     expect(visibility).toContain("hasCommercialFeature");
     expect(visibility).toContain("entitlements.features");
 
-    // Device/Screen commercial gating not in filter plane — residual (not UI-hide-as-enforcement for ordering)
     const deviceHits = [
       "client/src/lib/commercial/clientGateRegistry.ts",
       "server/subscription-runtime/enforcement.ts",
-    ].map(read).join("\n");
+    ]
+      .map(read)
+      .join("\n");
     expect(deviceHits).not.toMatch(/cap\.device|deviceRegistrationFeature/);
   });
 
-  it("10. Regression boundaries — no billing/discovery redesign in capability SSOT", () => {
+  it("7. Regression boundaries — no billing/discovery redesign in capability SSOT", () => {
     const pricing = read("client/src/pages/Pricing.tsx");
     expect(pricing).toContain("commercialCatalog.public.listOfferings");
     expect(pricing).toContain("createCheckoutSession");
@@ -347,7 +283,7 @@ describe("COMMERCIAL-CAPABILITY-PLATFORM-ADOPTION-1 Operational Validation", () 
     expect(helpers).not.toMatch(/"qrMenu",\s*"categories"/);
   });
 
-  it("UI wiring — Plan Builder/Editor use Projection picker; Pricing not Capability Catalog", () => {
+  it("UI wiring — Plan Editor uses Projection picker; Pricing not Capability Catalog", () => {
     const wizard = read(
       "client/src/components/admin/platform-ops/commercial-catalog/experience/PlanCreationWizard.tsx"
     );
@@ -357,13 +293,15 @@ describe("COMMERCIAL-CAPABILITY-PLATFORM-ADOPTION-1 Operational Validation", () 
     const picker = read(
       "client/src/components/admin/platform-ops/commercial-catalog/experience/CapabilityFilterPicker.tsx"
     );
-    expect(wizard).toContain("CapabilityFilterPicker");
+    expect(wizard).toContain("saveLivePlan");
     expect(panels).toContain("CATALOG_FEATURE_KEYS");
     expect(picker).toContain("presentationNameI18nKey");
     expect(picker).toContain("COMMERCIAL-CATALOG-RATIONALIZATION-1");
 
     const pricing = read("client/src/pages/Pricing.tsx");
-    expect(pricing).not.toMatch(/DISCOVERY_CAPABILITY|COMMERCIAL_CAPABILITY_FILTER_KEYS/);
+    expect(pricing).not.toMatch(
+      /DISCOVERY_CAPABILITY|COMMERCIAL_CAPABILITY_FILTER_KEYS/
+    );
     expect(pricing).toContain("offering.featureKeys");
     expect(pricing).toContain("presentationNameI18nKey");
   });

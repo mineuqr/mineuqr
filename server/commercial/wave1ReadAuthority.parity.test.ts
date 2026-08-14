@@ -35,11 +35,13 @@ vi.mock("../db", () => ({
 
 vi.mock("../services/commercial-catalog", () => ({
   getSubscriptionCommercialBinding: vi.fn(async () => null),
-  resolveCommercialFactsFromSnapshot: vi.fn(async () => ({
+  resolveLivePlanCapabilities: vi.fn(async () => ({
     source: "missing",
-    snapshot: null,
+    planId: null,
+    catalogPlanCode: null,
     featureKeys: [],
     limits: [],
+    chargedTerms: null,
   })),
 }));
 
@@ -112,7 +114,7 @@ describe("ASN-5 authority integration", () => {
     );
   });
 
-  it("account-level BASIC: resolveGuestOrderingAllowed denies ordering", async () => {
+  it("account-level BASIC: resolveGuestOrderingAllowed follows live/legacy entitlements", async () => {
     const userId = 9;
     const restaurantId = 10;
     subscriptionRowsByUser.set(userId, [
@@ -127,8 +129,9 @@ describe("ASN-5 authority integration", () => {
     ]);
     restaurantsById.set(restaurantId, { id: restaurantId, userId });
 
+    // Unbound BASIC uses the Legacy Bridge matrix (ordering is a Basic projection).
     expect((await resolveGuestOrderingAllowed(restaurantId, FIXED_NOW)).canOrder).toBe(
-      false
+      true
     );
   });
 

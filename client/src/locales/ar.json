@@ -1315,6 +1315,8 @@
         "foundationLive": "إدارة",
         "loadError": "تعذر تحميل صحة الكتالوج التجاري",
         "metricPlans": "الخطط",
+        "metricLive": "خطط حية",
+        "metricPrices": "الأسعار",
         "metricVersions": "الإصدارات",
         "metricPublished": "منشور",
         "metricRegions": "المناطق",
@@ -1466,6 +1468,8 @@
           "cc16Blocking": "مشكلات CC-16 الحاجزة",
           "issueCount": "{count} مشكلة/مشكلات",
           "readyToPublish": "جاهز للنشر",
+          "readyToSave": "جاهز للحفظ",
+          "hiddenPlans": "خطط مخفية",
           "notReady": "غير جاهز",
           "noBlockingIssues": "لا مشكلات حاجزة.",
           "lastValidationError": "آخر خطأ تحقق: {message}",
@@ -1537,7 +1541,8 @@
           "kind": "النوع",
           "title": "العنوان",
           "detail": "التفاصيل",
-          "open": "فتح"
+          "open": "فتح",
+          "prices": "الأسعار"
         },
         "actions": {
           "edit": "تعديل",
@@ -1572,6 +1577,8 @@
         },
         "placeholders": {
           "selectPlan": "اختر خطة",
+          "selectBundle": "اختر حزمة ميزات",
+          "selectLimits": "اختر ملف حدود",
           "selectVersion": "اختر إصداراً",
           "selectCycle": "اختر دورة",
           "selectVersionToValidate": "اختر إصداراً للتحقق",
@@ -1719,6 +1726,36 @@
           "smartBody": "معالجة قابلة للتنفيذ لحاجبات CC-16 مع تنقل بنقرة واحدة."
         },
         "experience": {
+          "livePlans": {
+            "editHint": "عدّل تعريف الخطة الحية. القدرات الجديدة تُتاح فوراً لجميع المشتركين. التجديد يستخدم السعر المنشور الحالي.",
+            "noVersionCompare": "الخطط الحية ليست مُصدَّرة. عدّل كل خطة بشكل مستقل.",
+            "editIndividually": "عدّل كل خطة حية على حدة. أزيلت عمليات دورة حياة الإصدارات الجماعية.",
+            "noVersionClone": "لا تُستنسخ الخطط الحية كإصدارات. أعد استخدام حزم الميزات وملفات الحدود.",
+            "noPublicationDiff": "لا توجد مسار نشر. الحفظ يحدّث الخطة الحية ذرياً."
+          },
+          "wizard": {
+            "title": "تعديل الخطة الحية"
+          },
+          "preview": {
+            "title": "معاينة التسعير"
+          },
+          "graph": {
+            "title": "تركيب الخطة"
+          },
+          "clone": {
+            "title": "استنساخ"
+          },
+          "diff": {
+            "title": "التغييرات"
+          },
+          "validation": {
+            "title": "تحقق الخطة الحية"
+          },
+          "rail": {
+            "title": "مساحة العمل",
+            "recent": "الأخيرة",
+            "wizardCompletions": "حفظ"
+          },
           "tabs": {
             "dashboard": "لوحة التحكم",
             "wizard": "معالج الخطة",

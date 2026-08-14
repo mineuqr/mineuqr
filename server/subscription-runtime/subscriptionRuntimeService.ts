@@ -17,11 +17,11 @@ import {
 } from "./cache";
 import {
   denyEntitlementsFailClosed,
-  resolveEntitlementsFromSnapshot,
+  resolveEntitlementsFromLivePlan,
 } from "./entitlementResolver";
 import { syncCommercialLifecycle } from "./lifecycleSync";
 import { getLifecycleSignals } from "./lifecycleOverlay";
-import { loadBoundCommercialSnapshot } from "./snapshotLoader";
+import { loadBoundLivePlan } from "./snapshotLoader";
 
 export type SubscriptionRuntimeResolveOptions = {
   now?: Date;
@@ -33,7 +33,7 @@ export type SubscriptionRuntimeResolveOptions = {
 
 /**
  * Canonical runtime owner for commercial entitlements.
- * Bound → Snapshot only. Unbound → Legacy Bridge only. Never mutable Catalog.
+ * Bound → live plan capabilities. Unbound → Legacy Bridge only.
  */
 export async function resolveOwnerEntitlements(
   ownerId: number,
@@ -65,7 +65,7 @@ export async function resolveOwnerEntitlements(
     return result;
   }
 
-  const loaded = await loadBoundCommercialSnapshot(canonical.id);
+  const loaded = await loadBoundLivePlan(canonical.id);
   commercialRuntimeAuthorityObservability.recordBindingCoverage(loaded.binding);
 
   const user = await getUserById(ownerId);
@@ -84,11 +84,14 @@ export async function resolveOwnerEntitlements(
       signals,
     });
 
-    const result = resolveEntitlementsFromSnapshot({
+    const result = resolveEntitlementsFromLivePlan({
       ownerId,
       role,
-      snapshot: loaded.data.snapshot,
-      snapshotId: loaded.data.snapshotId,
+      planId: loaded.data.planId,
+      catalogPlanCode: loaded.data.catalogPlanCode,
+      featureKeys: loaded.data.featureKeys,
+      limits: loaded.data.limits,
+      chargedTerms: loaded.data.chargedTerms,
       legacyPlanId: loaded.data.legacyPlanId ?? canonical.planId,
       lifecycle,
       dbStatus,
@@ -97,20 +100,19 @@ export async function resolveOwnerEntitlements(
       now,
     });
 
-    commercialRuntimeAuthorityObservability.recordSnapshotResolved(canonical.id);
+    commercialRuntimeAuthorityObservability.recordLivePlanResolved(canonical.id);
     if (useCache) setCachedEntitlements(ownerId, result, now);
     return result;
   }
 
-  if (loaded.binding && loaded.reason === "snapshot_unreadable") {
+  if (loaded.binding && loaded.reason === "live_plan_unreadable") {
     commercialRuntimeAuthorityObservability.recordSnapshotCreationFailure(
-      `bound_snapshot_unreadable:${loaded.snapshotId}`
+      `bound_live_plan_unreadable:${loaded.planId}`
     );
     const denied = denyEntitlementsFailClosed({
       ownerId,
       role,
-      snapshotId: loaded.snapshotId,
-      planVersionId: loaded.planVersionId,
+      planId: loaded.planId,
       legacyPlanId: loaded.legacyPlanId,
       now,
     });

@@ -1,0 +1,374 @@
+{
+  "queriedAt": "2026-08-14T21:59:12.582Z",
+  "gate": "PASS",
+  "stop": [],
+  "terminus": [
+    {
+      "id": 6024102,
+      "hashPrefix": "cfaec30e54892eaf",
+      "created_at": 1784720000000
+    },
+    {
+      "id": 5994103,
+      "hashPrefix": "c104e894606f2921",
+      "created_at": 1784710000000
+    },
+    {
+      "id": 5994102,
+      "hashPrefix": "9d585e21e43fbd15",
+      "created_at": 1784700000000
+    }
+  ],
+  "obsolete": {
+    "commercial_plan_versions": false,
+    "commercial_snapshot_definitions": false,
+    "commercial_publication_rules": false,
+    "commercial_retirement_policies": false
+  },
+  "counts": {
+    "commercial_plans": 3,
+    "commercial_prices": 10,
+    "commercial_feature_bundles": 3,
+    "commercial_bundle_features": 35,
+    "users": 3,
+    "restaurants": 6,
+    "user_subscriptions": 5,
+    "subscription_plans": 3,
+    "invoices": 7,
+    "payments": 5,
+    "subscription_history": 2,
+    "orders": 42,
+    "settlement_records": 39
+  },
+  "plans": [
+    {
+      "id": "79cf7bf7-c3b6-45de-8f20-42897cd493ac",
+      "code": "basic",
+      "name": "Basic",
+      "isHidden": 0,
+      "featureBundleId": "f5707a05-3a5a-4b35-a3db-4234ba856739",
+      "limitProfileId": "63a49057-06d3-4dba-8e36-7bd15a632693",
+      "trialPolicyId": null
+    },
+    {
+      "id": "d836bd10-9d9f-4408-a076-f921354d785a",
+      "code": "enterprise",
+      "name": "Enterprise",
+      "isHidden": 0,
+      "featureBundleId": "4e091048-879a-4aec-823a-4f16590bc867",
+      "limitProfileId": "8e4e791b-2391-4044-9baf-64354e4a2184",
+      "trialPolicyId": null
+    },
+    {
+      "id": "0ade795a-02fa-4d3e-b9b5-262515bade09",
+      "code": "professional",
+      "name": "Professional",
+      "isHidden": 0,
+      "featureBundleId": "9f459189-7091-4928-84b3-65f60c6591dc",
+      "limitProfileId": "c0e3f640-bede-4a67-93a5-91f6a8d69750",
+      "trialPolicyId": "3b509906-6d0f-45f8-a05c-2a6c260b0319"
+    }
+  ],
+  "prices": [
+    {
+      "planCode": "basic",
+      "currency": "USD",
+      "cycle": "monthly",
+      "amount": "0.00",
+      "region": null
+    },
+    {
+      "planCode": "basic",
+      "currency": "USD",
+      "cycle": "yearly",
+      "amount": "0.00",
+      "region": null
+    },
+    {
+      "planCode": "enterprise",
+      "currency": "SAR",
+      "cycle": "monthly",
+      "amount": "299.00",
+      "region": "sa"
+    },
+    {
+      "planCode": "enterprise",
+      "currency": "SAR",
+      "cycle": "yearly",
+      "amount": "2990.00",
+      "region": "sa"
+    },
+    {
+      "planCode": "enterprise",
+      "currency": "USD",
+      "cycle": "monthly",
+      "amount": "79.73",
+      "region": null
+    },
+    {
+      "planCode": "enterprise",
+      "currency": "USD",
+      "cycle": "yearly",
+      "amount": "797.33",
+      "region": null
+    },
+    {
+      "planCode": "professional",
+      "currency": "SAR",
+      "cycle": "monthly",
+      "amount": "99.00",
+      "region": "sa"
+    },
+    {
+      "planCode": "professional",
+      "currency": "SAR",
+      "cycle": "yearly",
+      "amount": "990.00",
+      "region": "sa"
+    },
+    {
+      "planCode": "professional",
+      "currency": "USD",
+      "cycle": "monthly",
+      "amount": "26.40",
+      "region": null
+    },
+    {
+      "planCode": "professional",
+      "currency": "USD",
+      "cycle": "yearly",
+      "amount": "264.00",
+      "region": null
+    }
+  ],
+  "priceKeys": [
+    {
+      "key": "basic|USD|monthly|",
+      "amount": "0.00",
+      "expected": "0.00"
+    },
+    {
+      "key": "basic|USD|yearly|",
+      "amount": "0.00",
+      "expected": "0.00"
+    },
+    {
+      "key": "enterprise|SAR|monthly|sa",
+      "amount": "299.00",
+      "expected": "299.00"
+    },
+    {
+      "key": "enterprise|SAR|yearly|sa",
+      "amount": "2990.00",
+      "expected": "2990.00"
+    },
+    {
+      "key": "enterprise|USD|monthly|",
+      "amount": "79.73",
+      "expected": "79.73"
+    },
+    {
+      "key": "enterprise|USD|yearly|",
+      "amount": "797.33",
+      "expected": "797.33"
+    },
+    {
+      "key": "professional|SAR|monthly|sa",
+      "amount": "99.00",
+      "expected": "99.00"
+    },
+    {
+      "key": "professional|SAR|yearly|sa",
+      "amount": "990.00",
+      "expected": "990.00"
+    },
+    {
+      "key": "professional|USD|monthly|",
+      "amount": "26.40",
+      "expected": "26.40"
+    },
+    {
+      "key": "professional|USD|yearly|",
+      "amount": "264.00",
+      "expected": "264.00"
+    }
+  ],
+  "includedByPlan": {
+    "basic": [
+      "checkManagement",
+      "multiCheckAllocation",
+      "ordering",
+      "printing",
+      "realtime",
+      "refund",
+      "splitPayment"
+    ],
+    "enterprise": [
+      "checkManagement",
+      "counterPickup",
+      "devices",
+      "expo",
+      "kiosk",
+      "kitchen",
+      "multiCheckAllocation",
+      "ordering",
+      "printing",
+      "realtime",
+      "refund",
+      "register",
+      "reporting",
+      "splitPayment",
+      "waiter"
+    ],
+    "professional": [
+      "checkManagement",
+      "counterPickup",
+      "devices",
+      "kiosk",
+      "kitchen",
+      "multiCheckAllocation",
+      "ordering",
+      "printing",
+      "realtime",
+      "refund",
+      "reporting",
+      "splitPayment",
+      "waiter"
+    ]
+  },
+  "includedCounts": {
+    "basic": 7,
+    "enterprise": 15,
+    "professional": 13
+  },
+  "limits": [
+    {
+      "planCode": "basic",
+      "limitKey": "categories",
+      "value": 10
+    },
+    {
+      "planCode": "basic",
+      "limitKey": "items",
+      "value": 100
+    },
+    {
+      "planCode": "basic",
+      "limitKey": "restaurants",
+      "value": 1
+    },
+    {
+      "planCode": "enterprise",
+      "limitKey": "categories",
+      "value": null
+    },
+    {
+      "planCode": "enterprise",
+      "limitKey": "items",
+      "value": null
+    },
+    {
+      "planCode": "enterprise",
+      "limitKey": "restaurants",
+      "value": null
+    },
+    {
+      "planCode": "professional",
+      "limitKey": "categories",
+      "value": 25
+    },
+    {
+      "planCode": "professional",
+      "limitKey": "items",
+      "value": 500
+    },
+    {
+      "planCode": "professional",
+      "limitKey": "restaurants",
+      "value": 5
+    }
+  ],
+  "dupPlans": [],
+  "dupFeatures": [],
+  "dupPrices": [],
+  "orphanMappings": [],
+  "bindings": {
+    "n": 0
+  },
+  "owner": [
+    {
+      "id": 600001,
+      "userId": 1,
+      "restaurantId": 0,
+      "planId": 30002,
+      "status": "active",
+      "billingCycle": "monthly",
+      "currentPeriodStart": "2026-06-08T03:08:15.000Z",
+      "currentPeriodEnd": "2026-08-07T21:00:00.000Z",
+      "trialEndsAt": null,
+      "canceledAt": null,
+      "createdAt": "2026-06-08T03:08:15.000Z",
+      "updatedAt": "2026-06-09T18:28:40.000Z"
+    }
+  ],
+  "ownerUser": [
+    {
+      "id": 1,
+      "name": "Khaled Sh",
+      "email": "k.sh61@yahoo.com",
+      "role": "admin",
+      "openId": "j4Ztx2Wi3et3TD5zYNG5fy"
+    }
+  ],
+  "ownerRestaurants": [
+    {
+      "id": 720007,
+      "userId": 1,
+      "slug": "خالد-Zx0OcD",
+      "nameEn": "khaled"
+    },
+    {
+      "id": 870001,
+      "userId": 1,
+      "slug": "فندق-خالد-MdAJTg",
+      "nameEn": null
+    }
+  ],
+  "tap": [
+    {
+      "id": 60001,
+      "userId": 2700049,
+      "subscriptionId": null,
+      "invoiceId": null,
+      "amount": "349.00",
+      "currency": "SAR",
+      "status": "captured",
+      "paidAt": "2026-05-19T09:39:13.000Z",
+      "createdAt": "2026-05-19T09:39:09.000Z",
+      "updatedAt": "2026-05-19T09:39:12.000Z"
+    }
+  ],
+  "subscriptionPlans": [
+    {
+      "id": 30001,
+      "nameEn": "Basic Plan",
+      "priceMonthly": "19.00",
+      "priceYearly": "175.00",
+      "isActive": 1
+    },
+    {
+      "id": 30002,
+      "nameEn": "Professional Plan",
+      "priceMonthly": "39.00",
+      "priceYearly": "349.00",
+      "isActive": 1
+    },
+    {
+      "id": 30003,
+      "nameEn": "Enterprise Plan",
+      "priceMonthly": "99.00",
+      "priceYearly": "899.00",
+      "isActive": 1
+    }
+  ]
+}

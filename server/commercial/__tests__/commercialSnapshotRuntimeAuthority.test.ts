@@ -1,14 +1,12 @@
 /**
- * COMMERCIAL-SNAPSHOT-RUNTIME-AUTHORITY-1 — branch resolution + architecture guards.
+ * COMMERCIAL-LIVE-PLANS-SIMPLIFICATION-1 — runtime authority guards.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { buildEntitlementsFromCommercialSnapshot } from "../snapshotRuntimeAuthority";
 import {
   commercialRuntimeAuthorityObservability,
 } from "../../services/commercial-catalog/runtimeAuthorityObservability";
-import type { CommercialSnapshotDefinition } from "@shared/commercial-catalog";
 import {
   COMMERCIAL_TEST_NOW,
   commercialTestSubRow,
@@ -28,83 +26,36 @@ vi.mock("../../db", () => ({
 
 vi.mock("../../services/commercial-catalog", () => ({
   getSubscriptionCommercialBinding: vi.fn(),
-  resolveCommercialFactsFromSnapshot: vi.fn(),
+  resolveLivePlanCapabilities: vi.fn(),
+  ensureCatalogReady: vi.fn(async () => {}),
 }));
 
 import { getUserById, getSubscriptionsByUser } from "../../db";
 import {
   getSubscriptionCommercialBinding,
-  resolveCommercialFactsFromSnapshot,
+  resolveLivePlanCapabilities,
 } from "../../services/commercial-catalog";
 import { getCommercialEntitlements } from "../getCommercialEntitlements";
 
 const FIXED_NOW = COMMERCIAL_TEST_NOW;
 
-function proSnapshot(): CommercialSnapshotDefinition {
-  return {
-    snapshotSchemaVersion: 1,
-    planIdentityId: "plan-pro",
-    planVersionId: "ver-pro",
-    catalogPlanCode: "professional",
-    commercialName: "Professional",
-    versionName: "v1",
-    currency: "SAR",
-    billingCycle: {
-      id: "bc",
-      code: "monthly",
-      intervalCount: 1,
-      intervalUnit: "month",
-    },
-    pricing: {
-      amount: "99.00",
-      currency: "SAR",
-      billingCycleId: "bc",
-      billingCycleCode: "monthly",
-    },
-    includedFeatures: [
-      { featureKey: "ordering", included: true },
-      { featureKey: "reports", included: true },
-      { featureKey: "qrMenu", included: true },
-      { featureKey: "search", included: true },
-    ],
-    usageLimits: [
-      { limitKey: "restaurants", value: 5 },
-      { limitKey: "items", value: 500 },
-      { limitKey: "categories", value: 50 },
-    ],
-    trialPolicy: {
-      trialPolicyId: "t",
-      durationDays: 14,
-      name: "Trial",
-    },
-    promotionApplied: null,
-    effectiveDate: FIXED_NOW.toISOString(),
-    region: null,
-  };
-}
-
-describe("COMMERCIAL-SNAPSHOT-RUNTIME-AUTHORITY-1 architecture guards", () => {
-  it("removes overlay / prefer-snapshot patterns from entitlement hub", () => {
+describe("Live plan runtime authority architecture guards", () => {
+  it("entitlement hub uses live plan / legacy bridge", () => {
     const src = read("server/commercial/getCommercialEntitlements.ts");
     expect(src).not.toMatch(/\.\.\.base/);
-    expect(src).not.toMatch(/prefer snapshot/i);
-    expect(src).not.toMatch(/overlay onto/i);
     expect(src).toContain("Legacy Bridge ONLY");
-    expect(src).toContain("Snapshot ONLY");
+    expect(src).toContain("Live Plan");
   });
 
-  it("wires Snapshot bind on payment + admin activation paths", () => {
+  it("wires live plan bind on payment + admin activation paths", () => {
     expect(read("server/paypal-webhook.ts")).toContain(
-      "ensureCommercialSnapshotBoundForSubscription"
+      "ensureLivePlanBoundForSubscription"
     );
     expect(read("server/tap-webhook.ts")).toContain(
-      "ensureCommercialSnapshotBoundForSubscription"
+      "ensureLivePlanBoundForSubscription"
     );
     expect(read("server/subscriptionAudit.ts")).toContain(
-      "ensureCommercialSnapshotBoundForSubscription"
-    );
-    expect(read("server/subscriptionPlanLimits.ts")).toContain(
-      "snapshotQuotaLimits"
+      "ensureLivePlanBoundForSubscription"
     );
   });
 
@@ -115,29 +66,7 @@ describe("COMMERCIAL-SNAPSHOT-RUNTIME-AUTHORITY-1 architecture guards", () => {
   });
 });
 
-describe("buildEntitlementsFromCommercialSnapshot", () => {
-  it("resolves features and limits only from snapshot", () => {
-    const result = buildEntitlementsFromCommercialSnapshot(proSnapshot(), {
-      ownerId: 10,
-      role: "user",
-      status: "active",
-      trialEndsAt: null,
-      currentPeriodEnd: isoPlusDaysFromCommercialTestNow(30),
-      legacyPlanId: 30002,
-      now: FIXED_NOW,
-    });
-    expect(result.entitlements.plan).toBe("PROFESSIONAL");
-    expect(result.entitlements.features.ordering).toBe(true);
-    expect(result.entitlements.features.excelExport).toBe(false);
-    expect(result.entitlements.limits.restaurants).toBe(5);
-    expect(
-      (result as { meta?: { commercialResolutionSource?: string } }).meta
-        ?.commercialResolutionSource
-    ).toBe("snapshot");
-  });
-});
-
-describe("getCommercialEntitlements branch resolution", () => {
+describe("getCommercialEntitlements live plan resolution", () => {
   installCommercialTestClock();
 
   beforeEach(() => {
@@ -145,7 +74,7 @@ describe("getCommercialEntitlements branch resolution", () => {
     commercialRuntimeAuthorityObservability.resetForTests();
   });
 
-  it("bound subscription resolves Snapshot only (no Legacy matrix plan)", async () => {
+  it("bound subscription resolves current live plan capabilities", async () => {
     (getUserById as ReturnType<typeof vi.fn>).mockResolvedValue({
       id: 42,
       role: "user",
@@ -157,20 +86,42 @@ describe("getCommercialEntitlements branch resolution", () => {
         restaurantId: 0,
         planId: 30001,
         status: "active",
+        currentPeriodEnd: isoPlusDaysFromCommercialTestNow(30),
       }),
     ]);
     (getSubscriptionCommercialBinding as ReturnType<typeof vi.fn>).mockResolvedValue({
       subscriptionId: 99,
-      planVersionId: "ver-pro",
-      snapshotId: "snap-1",
+      planId: "plan-pro",
+      chargedAmount: "26.40",
+      chargedCurrency: "USD",
+      billingCycleId: "bc",
+      billingCycleCode: "monthly",
       legacyPlanId: 30002,
       createdAt: FIXED_NOW.toISOString(),
     });
-    (resolveCommercialFactsFromSnapshot as ReturnType<typeof vi.fn>).mockResolvedValue({
-      source: "snapshot",
-      snapshot: proSnapshot(),
+    (resolveLivePlanCapabilities as ReturnType<typeof vi.fn>).mockResolvedValue({
+      source: "live_plan",
+      planId: "plan-pro",
+      catalogPlanCode: "professional",
       featureKeys: ["ordering", "reports", "qrMenu", "search"],
-      limits: proSnapshot().usageLimits,
+      limits: [
+        { limitKey: "restaurants", value: 5, unit: "count" },
+        { limitKey: "items", value: 500, unit: "count" },
+        { limitKey: "categories", value: 50, unit: "count" },
+      ],
+      chargedTerms: {
+        planId: "plan-pro",
+        catalogPlanCode: "professional",
+        commercialName: "Professional",
+        chargedAmount: "26.40",
+        chargedCurrency: "USD",
+        billingCycleId: "bc",
+        billingCycleCode: "monthly",
+        intervalCount: 1,
+        intervalUnit: "month",
+        periodStart: null,
+        periodEnd: null,
+      },
     });
 
     const result = await getCommercialEntitlements(42, FIXED_NOW);
@@ -180,16 +131,13 @@ describe("getCommercialEntitlements branch resolution", () => {
     expect(
       (result as { meta?: { commercialResolutionSource?: string } }).meta
         ?.commercialResolutionSource
-    ).toBe("snapshot");
+    ).toBe("live_plan");
     expect(
       commercialRuntimeAuthorityObservability.snapshot().mixedResolutionCount
     ).toBe(0);
-    expect(
-      commercialRuntimeAuthorityObservability.snapshot().snapshotResolutionCount
-    ).toBe(1);
   });
 
-  it("bound + missing snapshot fails closed (no Legacy)", async () => {
+  it("bound + missing live plan fails closed", async () => {
     (getUserById as ReturnType<typeof vi.fn>).mockResolvedValue({
       id: 43,
       role: "user",
@@ -205,16 +153,21 @@ describe("getCommercialEntitlements branch resolution", () => {
     ]);
     (getSubscriptionCommercialBinding as ReturnType<typeof vi.fn>).mockResolvedValue({
       subscriptionId: 100,
-      planVersionId: "ver-pro",
-      snapshotId: "snap-missing",
+      planId: "missing-plan",
+      chargedAmount: null,
+      chargedCurrency: null,
+      billingCycleId: null,
+      billingCycleCode: null,
       legacyPlanId: 30002,
       createdAt: FIXED_NOW.toISOString(),
     });
-    (resolveCommercialFactsFromSnapshot as ReturnType<typeof vi.fn>).mockResolvedValue({
+    (resolveLivePlanCapabilities as ReturnType<typeof vi.fn>).mockResolvedValue({
       source: "missing",
-      snapshot: null,
+      planId: "missing-plan",
+      catalogPlanCode: null,
       featureKeys: [],
       limits: [],
+      chargedTerms: null,
     });
 
     const result = await getCommercialEntitlements(43, FIXED_NOW);
@@ -223,6 +176,6 @@ describe("getCommercialEntitlements branch resolution", () => {
     expect(
       (result as { meta?: { commercialResolutionSource?: string } }).meta
         ?.commercialResolutionSource
-    ).toBe("snapshot_fail_closed");
+    ).toBe("live_plan_fail_closed");
   });
 });

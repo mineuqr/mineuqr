@@ -4,7 +4,7 @@
  */
 
 import type { CommercialCatalogDashboardSection } from "@shared/commercial-catalog";
-import type { PublicationValidationIssue } from "@shared/commercial-catalog";
+import type { PlanSaveValidationIssue } from "@shared/commercial-catalog";
 
 export type SmartValidationAction = {
   code: string;
@@ -46,35 +46,15 @@ const MAP: Record<
     ctaKey: "validation.limitProfileExists.cta",
     navigateTo: "limit_profiles",
   },
-  migration_policy_exists: {
-    titleKey: "validation.migrationPolicyExists.title",
-    ctaKey: "validation.migrationPolicyExists.cta",
-    navigateTo: "migration_policies",
-  },
-  retirement_policy_exists: {
-    titleKey: "validation.retirementPolicyExists.title",
-    ctaKey: "validation.retirementPolicyExists.cta",
-    navigateTo: "retirement_policies",
-  },
   regional_pricing: {
     titleKey: "validation.regionalPricing.title",
     ctaKey: "validation.regionalPricing.cta",
     navigateTo: "regional_policies",
   },
-  compatibility_defined: {
-    titleKey: "validation.compatibilityDefined.title",
-    ctaKey: "validation.compatibilityDefined.cta",
-    navigateTo: "plan_versions",
-  },
-  invalid_state: {
-    titleKey: "validation.invalidState.title",
-    ctaKey: "validation.invalidState.cta",
-    navigateTo: "plan_versions",
-  },
 };
 
 export function toSmartValidationActions(
-  issues: PublicationValidationIssue[]
+  issues: PlanSaveValidationIssue[]
 ): SmartValidationAction[] {
   const seen = new Set<string>();
   const actions: SmartValidationAction[] = [];
@@ -106,7 +86,7 @@ export function toSmartValidationActions(
 }
 
 export function resolveSmartValidationActions(
-  issues: PublicationValidationIssue[],
+  issues: PlanSaveValidationIssue[],
   t: (key: string) => string
 ): ResolvedSmartValidationAction[] {
   return toSmartValidationActions(issues).map((action) => ({

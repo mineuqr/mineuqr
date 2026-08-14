@@ -1,10 +1,10 @@
 /**
- * COMMERCIAL-CATALOG-PLATFORM-FOUNDATION-1 — ownership boundaries.
+ * COMMERCIAL-LIVE-PLANS-SIMPLIFICATION-1 — ownership boundaries.
  */
 
 export const COMMERCIAL_CATALOG_PLATFORM_OWNS = [
   "plan_identity",
-  "plan_version",
+  "live_commercial_plans",
   "pricing_catalog",
   "billing_cycles",
   "feature_bundles",
@@ -12,11 +12,8 @@ export const COMMERCIAL_CATALOG_PLATFORM_OWNS = [
   "trial_policies",
   "promotion_definitions",
   "migration_policies",
-  "retirement_policies",
   "regional_commercial_policies",
-  "commercial_snapshot_definitions",
-  "publication_validation",
-  "version_compatibility",
+  "plan_save_validation",
 ] as const;
 
 export const COMMERCIAL_CATALOG_PLATFORM_DOES_NOT_OWN = [
@@ -38,11 +35,13 @@ export const COMMERCIAL_CATALOG_PLATFORM_DOES_NOT_OWN = [
 
 export const COMMERCIAL_CATALOG_ARCHITECTURE_PRINCIPLES = [
   "catalog_ssot",
-  "published_versions_immutable",
-  "commercial_snapshot_integrity",
-  "version_compatibility_governance",
+  "live_plans",
+  "atomic_plan_save",
+  "immediate_capability_propagation",
+  "immutable_billing_history",
+  "immutable_invoice_history",
+  "renewal_uses_current_price",
   "regional_policies_in_catalog",
-  "publication_validation_gate",
   "no_payment_logic",
   "no_subscription_runtime",
   "platform_ops_ui_reuse",

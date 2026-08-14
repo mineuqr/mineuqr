@@ -134,9 +134,9 @@ describe("COMMERCIAL-PROJECTION-GENERATION-1", () => {
   });
 
   it("seed adoption uses Projection IDs", () => {
-    const seed = read("server/services/commercial-catalog/seedAdoptionCatalog.ts");
-    expect(seed).toContain('"ordering"');
-    expect(seed).toContain('"kitchen"');
+    const seed = read("server/services/commercial-catalog/persistentCatalogBootstrap.ts");
+    expect(seed).toContain("listProjectionIdsForCommercialPlan");
+    expect(seed).toContain("COMMERCIAL_PROJECTION_IDS");
     expect(seed).not.toMatch(/DEFAULT_FEATURES[\s\S]*"qrMenu"/);
   });
 });

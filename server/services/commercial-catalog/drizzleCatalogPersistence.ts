@@ -1,13 +1,11 @@
 /**
- * COMMERCIAL-CATALOG-PLATFORM-ADOPTION-1
- * Persist / hydrate Commercial Catalog from production commercial_* tables.
+ * COMMERCIAL-LIVE-PLANS-SIMPLIFICATION-1
+ * Persist / hydrate Live Commercial Plans from production commercial_* tables.
  */
 
-import { eq } from "drizzle-orm";
 import { getDb } from "../../db";
 import {
   commercialPlans,
-  commercialPlanVersions,
   commercialPrices,
   commercialBillingCycles,
   commercialFeatureBundles,
@@ -18,13 +16,10 @@ import {
   commercialPromotions,
   commercialRegions,
   commercialMigrationPolicies,
-  commercialRetirementPolicies,
-  commercialSnapshotDefinitions,
 } from "../../db/schema/commercial";
 import {
   commercialCatalogStore,
   type CommercialCatalogStore,
-  type StoredSnapshot,
 } from "./CatalogStore";
 import type {
   CommercialBillingCycle,
@@ -32,50 +27,23 @@ import type {
   CommercialFeatureBundle,
   CommercialLimitProfile,
   CommercialLimitValue,
+  CommercialLivePlan,
   CommercialMigrationPolicy,
-  CommercialPlanIdentity,
-  CommercialPlanVersion,
   CommercialPrice,
   CommercialPromotion,
   CommercialRegion,
-  CommercialRetirementPolicy,
-  CommercialSnapshotDefinition,
   CommercialTrialPolicy,
-  PlanVersionLifecycleState,
-  VersionCompatibility,
 } from "@shared/commercial-catalog";
 
-function asState(v: string): PlanVersionLifecycleState {
-  if (
-    v === "draft" ||
-    v === "published" ||
-    v === "deprecated" ||
-    v === "retired"
-  ) {
-    return v;
-  }
-  return "draft";
-}
-
-function emptyCompat(): VersionCompatibility {
-  return {
-    upgradeTargets: [],
-    downgradeTargets: [],
-    migrationRequirements: [],
-    breakingCommercialChanges: [],
-  };
-}
-
-/** Load all catalog aggregates from DB into the in-process store. */
+/** Load all live catalog aggregates from DB into the in-process store. */
 export async function hydrateCommercialCatalogFromDb(
   store: CommercialCatalogStore = commercialCatalogStore
-): Promise<{ hydrated: boolean; plans: number; versions: number }> {
+): Promise<{ hydrated: boolean; plans: number }> {
   const db = await getDb();
-  if (!db) return { hydrated: false, plans: 0, versions: 0 };
+  if (!db) return { hydrated: false, plans: 0 };
 
   const [
     plans,
-    versions,
     prices,
     cycles,
     bundles,
@@ -86,11 +54,8 @@ export async function hydrateCommercialCatalogFromDb(
     promos,
     regions,
     migrations,
-    retirements,
-    snapshots,
   ] = await Promise.all([
     db.select().from(commercialPlans),
-    db.select().from(commercialPlanVersions),
     db.select().from(commercialPrices),
     db.select().from(commercialBillingCycles),
     db.select().from(commercialFeatureBundles),
@@ -101,53 +66,25 @@ export async function hydrateCommercialCatalogFromDb(
     db.select().from(commercialPromotions),
     db.select().from(commercialRegions),
     db.select().from(commercialMigrationPolicies),
-    db.select().from(commercialRetirementPolicies),
-    db.select().from(commercialSnapshotDefinitions),
   ]);
 
   store.clear();
 
   for (const p of plans) {
-    const row: CommercialPlanIdentity = {
+    const row: CommercialLivePlan = {
       id: p.id,
       code: p.code,
       name: p.name,
       description: p.description ?? null,
       sortOrder: p.sortOrder,
       isHidden: p.isHidden,
+      featureBundleId: p.featureBundleId ?? null,
+      limitProfileId: p.limitProfileId ?? null,
+      trialPolicyId: p.trialPolicyId ?? null,
       createdAt: String(p.createdAt),
       updatedAt: String(p.updatedAt),
     };
     store.plans.set(row.id, row);
-  }
-
-  for (const v of versions) {
-    const compat =
-      (v.compatibility as VersionCompatibility | null) ?? emptyCompat();
-    const row: CommercialPlanVersion = {
-      id: v.id,
-      planId: v.planId,
-      versionCode: v.versionCode,
-      versionName: v.versionName,
-      state: asState(v.state),
-      featureBundleId: v.featureBundleId ?? null,
-      limitProfileId: v.limitProfileId ?? null,
-      trialPolicyId: v.trialPolicyId ?? null,
-      migrationPolicyId: v.migrationPolicyId ?? null,
-      retirementPolicyId: v.retirementPolicyId ?? null,
-      compatibility: {
-        upgradeTargets: compat.upgradeTargets ?? [],
-        downgradeTargets: compat.downgradeTargets ?? [],
-        migrationRequirements: compat.migrationRequirements ?? [],
-        breakingCommercialChanges: compat.breakingCommercialChanges ?? [],
-      },
-      publishedAt: v.publishedAt ? String(v.publishedAt) : null,
-      deprecatedAt: v.deprecatedAt ? String(v.deprecatedAt) : null,
-      retiredAt: v.retiredAt ? String(v.retiredAt) : null,
-      createdAt: String(v.createdAt),
-      updatedAt: String(v.updatedAt),
-    };
-    store.versions.set(row.id, row);
   }
 
   for (const c of cycles) {
@@ -166,7 +103,7 @@ export async function hydrateCommercialCatalogFromDb(
   for (const p of prices) {
     const row: CommercialPrice = {
       id: p.id,
-      planVersionId: p.planVersionId,
+      planId: p.planId,
       billingCycleId: p.billingCycleId,
       currency: p.currency,
       amount: String(p.amount),
@@ -241,7 +178,7 @@ export async function hydrateCommercialCatalogFromDb(
       code: p.code,
       name: p.name,
       effectSummary: p.effectSummary,
-      eligiblePlanVersionIds: (p.eligiblePlanVersionIds as string[]) ?? [],
+      eligiblePlanIds: (p.eligiblePlanIds as string[]) ?? [],
       startsAt: p.startsAt ? String(p.startsAt) : null,
       endsAt: p.endsAt ? String(p.endsAt) : null,
       isActive: p.isActive,
@@ -280,167 +217,8 @@ export async function hydrateCommercialCatalogFromDb(
     store.migrationPolicies.set(row.id, row);
   }
 
-  for (const r of retirements) {
-    const row: CommercialRetirementPolicy = {
-      id: r.id,
-      code: r.code,
-      name: r.name,
-      description: r.description ?? null,
-      allowRenewals: r.allowRenewals,
-      createdAt: String(r.createdAt),
-      updatedAt: String(r.updatedAt),
-    };
-    store.retirementPolicies.set(row.id, row);
-  }
-
-  for (const s of snapshots) {
-    const row: StoredSnapshot = {
-      id: s.id,
-      planVersionId: s.planVersionId,
-      schemaVersion: s.schemaVersion,
-      payload: s.payload as CommercialSnapshotDefinition,
-      effectiveDate: String(s.effectiveDate),
-      createdAt: String(s.createdAt),
-    };
-    store.snapshots.set(row.id, row);
-  }
-
   return {
     hydrated: true,
     plans: store.plans.size,
-    versions: store.versions.size,
   };
-}
-
-/** Load a single snapshot definition into memory (fail-closed resolve support). */
-export async function hydrateCommercialSnapshotById(
-  snapshotId: string,
-  store: CommercialCatalogStore = commercialCatalogStore
-): Promise<boolean> {
-  if (store.snapshots.has(snapshotId)) return true;
-  const db = await getDb();
-  if (!db) return false;
-  try {
-    const rows = await db
-      .select()
-      .from(commercialSnapshotDefinitions)
-      .where(eq(commercialSnapshotDefinitions.id, snapshotId))
-      .limit(1);
-    const s = rows[0];
-    if (!s) return false;
-    const row: StoredSnapshot = {
-      id: s.id,
-      planVersionId: s.planVersionId,
-      schemaVersion: s.schemaVersion,
-      payload: s.payload as CommercialSnapshotDefinition,
-      effectiveDate: String(s.effectiveDate),
-      createdAt: String(s.createdAt),
-    };
-    store.snapshots.set(row.id, row);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/** Persist a single plan aggregate graph currently in the store (best-effort upsert). */
-export async function persistCommercialCatalogEntity(
-  kind:
-    | "plan"
-    | "version"
-    | "price"
-    | "billing_cycle"
-    | "feature_bundle"
-    | "limit_profile"
-    | "trial_policy"
-    | "promotion"
-    | "region"
-    | "migration_policy"
-    | "retirement_policy"
-    | "snapshot",
-  id: string,
-  store: CommercialCatalogStore = commercialCatalogStore
-): Promise<boolean> {
-  const db = await getDb();
-  if (!db) return false;
-
-  try {
-    switch (kind) {
-      case "plan": {
-        const p = store.plans.get(id);
-        if (!p) return false;
-        await db
-          .insert(commercialPlans)
-          .values({
-            id: p.id,
-            code: p.code,
-            name: p.name,
-            description: p.description,
-            sortOrder: p.sortOrder,
-            isHidden: p.isHidden,
-            createdAt: p.createdAt,
-            updatedAt: p.updatedAt,
-          })
-          .onDuplicateKeyUpdate({
-            set: {
-              name: p.name,
-              description: p.description,
-              sortOrder: p.sortOrder,
-              isHidden: p.isHidden,
-              updatedAt: p.updatedAt,
-            },
-          });
-        return true;
-      }
-      case "billing_cycle": {
-        const c = store.billingCycles.get(id);
-        if (!c) return false;
-        await db
-          .insert(commercialBillingCycles)
-          .values({
-            id: c.id,
-            code: c.code,
-            name: c.name,
-            intervalCount: c.intervalCount,
-            intervalUnit: c.intervalUnit,
-            createdAt: c.createdAt,
-            updatedAt: c.updatedAt,
-          })
-          .onDuplicateKeyUpdate({
-            set: {
-              name: c.name,
-              intervalCount: c.intervalCount,
-              intervalUnit: c.intervalUnit,
-              updatedAt: c.updatedAt,
-            },
-          });
-        return true;
-      }
-      case "snapshot": {
-        const s = store.snapshots.get(id);
-        if (!s) return false;
-        await db
-          .insert(commercialSnapshotDefinitions)
-          .values({
-            id: s.id,
-            planVersionId: s.planVersionId,
-            schemaVersion: s.schemaVersion,
-            payload: s.payload,
-            effectiveDate: s.effectiveDate,
-            createdAt: s.createdAt,
-          })
-          .onDuplicateKeyUpdate({
-            set: {
-              payload: s.payload,
-            },
-          });
-        return true;
-      }
-      default:
-        // Full graph persist is handled by seedAdoptionCatalog
-        return false;
-    }
-  } catch {
-    return false;
-  }
 }

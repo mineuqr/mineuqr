@@ -1,8 +1,9 @@
 /**
  * SUBSCRIPTION-RUNTIME-ENTITLEMENT-ENFORCEMENT-1 — runtime tests.
+ * COMMERCIAL-LIVE-PLANS-SIMPLIFICATION-1 — live plan capabilities (no snapshot freeze).
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { CommercialSnapshotDefinition } from "@shared/commercial-catalog";
+import type { ResolveFromLivePlanInput } from "../entitlementResolver";
 import {
   clearAllLifecycleSignals,
   enterGrace,
@@ -11,7 +12,7 @@ import {
   clearSuspended,
   getLifecycleSignals,
   syncCommercialLifecycle,
-  resolveEntitlementsFromSnapshot,
+  resolveEntitlementsFromLivePlan,
   checkEntitlement,
   checkLimit,
   hasFeature,
@@ -21,42 +22,42 @@ import {
 
 const NOW = new Date("2026-07-30T12:00:00.000Z");
 
-function proSnapshot(overrides?: Partial<CommercialSnapshotDefinition>): CommercialSnapshotDefinition {
-  return {
-    snapshotSchemaVersion: 1,
-    planIdentityId: "plan-pro",
-    planVersionId: "ver-pro",
+const PRO_LIVE = {
+  planId: "plan-pro",
+  catalogPlanCode: "professional",
+  featureKeys: ["ordering", "reports", "qrMenu", "search"],
+  limits: [
+    { limitKey: "restaurants", value: 5, unit: "count" },
+    { limitKey: "items", value: 500, unit: "count" },
+    { limitKey: "categories", value: 50, unit: "count" },
+  ],
+  chargedTerms: {
+    planId: "plan-pro",
     catalogPlanCode: "professional",
     commercialName: "Professional",
-    versionName: "v1",
-    currency: "USD",
-    billingCycle: {
-      id: "bc",
-      code: "monthly",
-      intervalCount: 1,
-      intervalUnit: "month",
-    },
-    pricing: {
-      amount: "26.40",
-      currency: "USD",
-      billingCycleId: "bc",
-      billingCycleCode: "monthly",
-    },
-    includedFeatures: [
-      { featureKey: "ordering", included: true },
-      { featureKey: "reports", included: true },
-      { featureKey: "qrMenu", included: true },
-      { featureKey: "search", included: true },
-    ],
-    usageLimits: [
-      { limitKey: "restaurants", value: 5 },
-      { limitKey: "items", value: 500 },
-      { limitKey: "categories", value: 50 },
-    ],
-    trialPolicy: null,
-    promotionApplied: null,
-    effectiveDate: NOW.toISOString(),
-    region: null,
+    chargedAmount: "26.40",
+    chargedCurrency: "USD",
+    billingCycleId: "bc",
+    billingCycleCode: "monthly",
+    intervalCount: 1,
+    intervalUnit: "month" as const,
+    periodStart: null,
+    periodEnd: null,
+  },
+};
+
+function liveInput(
+  overrides: Partial<ResolveFromLivePlanInput> &
+    Pick<ResolveFromLivePlanInput, "lifecycle" | "dbStatus">
+): ResolveFromLivePlanInput {
+  return {
+    ownerId: 1,
+    role: "user",
+    ...PRO_LIVE,
+    legacyPlanId: 2,
+    trialEndsAt: null,
+    currentPeriodEnd: "2026-08-01T00:00:00.000Z",
+    now: NOW,
     ...overrides,
   };
 }
@@ -123,7 +124,7 @@ describe("lifecycle sync", () => {
   });
 });
 
-describe("entitlement resolver from snapshot", () => {
+describe("entitlement resolver from live plan", () => {
   it("grants features for active", () => {
     const lifecycle = syncCommercialLifecycle({
       dbStatus: "active",
@@ -131,18 +132,9 @@ describe("entitlement resolver from snapshot", () => {
       currentPeriodEnd: "2026-08-01T00:00:00.000Z",
       now: NOW,
     });
-    const result = resolveEntitlementsFromSnapshot({
-      ownerId: 1,
-      role: "user",
-      snapshot: proSnapshot(),
-      snapshotId: "snap-1",
-      legacyPlanId: 2,
-      lifecycle,
-      dbStatus: "active",
-      trialEndsAt: null,
-      currentPeriodEnd: "2026-08-01T00:00:00.000Z",
-      now: NOW,
-    });
+    const result = resolveEntitlementsFromLivePlan(
+      liveInput({ lifecycle, dbStatus: "active" })
+    );
     expect(result.entitlements.features.ordering).toBe(true);
     expect(result.entitlements.features.reports).toBe(true);
     expect(result.entitlements.plan).toBe("PROFESSIONAL");
@@ -150,76 +142,69 @@ describe("entitlement resolver from snapshot", () => {
   });
 
   it("grants for trial and grace; denies expired suspended cancelled", () => {
-    const snap = proSnapshot();
-    const base = {
-      ownerId: 1,
-      role: "user" as const,
-      snapshot: snap,
-      snapshotId: "snap-1",
-      legacyPlanId: 2,
-      trialEndsAt: "2026-08-01T00:00:00.000Z" as string | null,
-      currentPeriodEnd: "2026-08-01T00:00:00.000Z" as string | null,
-      now: NOW,
-    };
-
-    const trial = resolveEntitlementsFromSnapshot({
-      ...base,
-      lifecycle: syncCommercialLifecycle({
+    const trial = resolveEntitlementsFromLivePlan(
+      liveInput({
+        lifecycle: syncCommercialLifecycle({
+          dbStatus: "trial",
+          trialEndsAt: "2026-08-01T00:00:00.000Z",
+          currentPeriodEnd: null,
+          now: NOW,
+        }),
         dbStatus: "trial",
-        trialEndsAt: base.trialEndsAt,
-        currentPeriodEnd: null,
-        now: NOW,
-      }),
-      dbStatus: "trial",
-    });
+        trialEndsAt: "2026-08-01T00:00:00.000Z",
+      })
+    );
     expect(trial.entitlements.plan).toBe("TRIAL");
     expect(trial.entitlements.features.ordering).toBe(true);
 
-    const grace = resolveEntitlementsFromSnapshot({
-      ...base,
-      lifecycle: syncCommercialLifecycle({
+    const grace = resolveEntitlementsFromLivePlan(
+      liveInput({
+        lifecycle: syncCommercialLifecycle({
+          dbStatus: "active",
+          trialEndsAt: null,
+          currentPeriodEnd: "2026-01-01T00:00:00.000Z",
+          now: NOW,
+          signals: { graceUntil: "2026-08-15T00:00:00.000Z" },
+        }),
         dbStatus: "active",
-        trialEndsAt: null,
-        currentPeriodEnd: "2026-01-01T00:00:00.000Z",
-        now: NOW,
-        signals: { graceUntil: "2026-08-15T00:00:00.000Z" },
-      }),
-      dbStatus: "active",
-    });
+      })
+    );
     expect(grace.meta.commercialLifecycleState).toBe("grace");
     expect(grace.entitlements.features.ordering).toBe(true);
 
     for (const dbStatus of ["expired", "canceled"] as const) {
-      const denied = resolveEntitlementsFromSnapshot({
-        ...base,
-        lifecycle: syncCommercialLifecycle({
+      const denied = resolveEntitlementsFromLivePlan(
+        liveInput({
+          lifecycle: syncCommercialLifecycle({
+            dbStatus,
+            trialEndsAt: null,
+            currentPeriodEnd: "2026-01-01T00:00:00.000Z",
+            now: NOW,
+          }),
           dbStatus,
-          trialEndsAt: null,
-          currentPeriodEnd: "2026-01-01T00:00:00.000Z",
-          now: NOW,
-        }),
-        dbStatus,
-      });
+        })
+      );
       expect(denied.entitlements.plan).toBe("NONE");
       expect(denied.entitlements.features.ordering).toBe(false);
     }
 
-    const suspended = resolveEntitlementsFromSnapshot({
-      ...base,
-      lifecycle: syncCommercialLifecycle({
+    const suspended = resolveEntitlementsFromLivePlan(
+      liveInput({
+        lifecycle: syncCommercialLifecycle({
+          dbStatus: "active",
+          trialEndsAt: null,
+          currentPeriodEnd: "2026-08-01T00:00:00.000Z",
+          now: NOW,
+          signals: { suspended: true },
+        }),
         dbStatus: "active",
-        trialEndsAt: null,
-        currentPeriodEnd: "2026-08-01T00:00:00.000Z",
-        now: NOW,
-        signals: { suspended: true },
-      }),
-      dbStatus: "active",
-    });
+      })
+    );
     expect(suspended.meta.commercialLifecycleState).toBe("suspended");
     expect(suspended.entitlements.plan).toBe("NONE");
   });
 
-  it("marks grandfathered without changing Snapshot payload", () => {
+  it("marks grandfathered without freezing live capabilities", () => {
     const lifecycle = syncCommercialLifecycle({
       dbStatus: "active",
       trialEndsAt: null,
@@ -227,18 +212,9 @@ describe("entitlement resolver from snapshot", () => {
       now: NOW,
       signals: { grandfathered: true },
     });
-    const result = resolveEntitlementsFromSnapshot({
-      ownerId: 1,
-      role: "user",
-      snapshot: proSnapshot(),
-      snapshotId: "snap-gf",
-      legacyPlanId: 2,
-      lifecycle,
-      dbStatus: "active",
-      trialEndsAt: null,
-      currentPeriodEnd: "2026-08-01T00:00:00.000Z",
-      now: NOW,
-    });
+    const result = resolveEntitlementsFromLivePlan(
+      liveInput({ lifecycle, dbStatus: "active" })
+    );
     expect(result.meta.grandfathered).toBe(true);
     expect(result.entitlements.features.ordering).toBe(true);
   });
@@ -277,7 +253,7 @@ vi.mock("../../db", () => ({
 
 vi.mock("../../services/commercial-catalog", () => ({
   getSubscriptionCommercialBinding: vi.fn(),
-  resolveCommercialFactsFromSnapshot: vi.fn(),
+  resolveLivePlanCapabilities: vi.fn(),
 }));
 
 vi.mock("../../commercial/buildCommercialContextFromDb", () => ({
@@ -285,29 +261,40 @@ vi.mock("../../commercial/buildCommercialContextFromDb", () => ({
 }));
 
 vi.mock("@commercial/getCommercialEntitlements", async () => {
-  const actual = await vi.importActual<typeof import("@commercial/getCommercialEntitlements")>(
-    "@commercial/getCommercialEntitlements"
-  );
+  const actual = await vi.importActual<
+    typeof import("@commercial/getCommercialEntitlements")
+  >("@commercial/getCommercialEntitlements");
   return actual;
 });
 
 import { getSubscriptionsByUser } from "../../db";
 import {
   getSubscriptionCommercialBinding,
-  resolveCommercialFactsFromSnapshot,
+  resolveLivePlanCapabilities,
 } from "../../services/commercial-catalog";
 import { resolveOwnerEntitlements } from "../subscriptionRuntimeService";
 import { commercialTestSubRow } from "../../commercial/__tests__/commercialTestFixtures";
+
+function livePlanFacts(featureKeys = ["ordering", "reports"]) {
+  return {
+    source: "live_plan" as const,
+    planId: "plan-pro",
+    catalogPlanCode: "professional",
+    featureKeys,
+    limits: PRO_LIVE.limits,
+    chargedTerms: PRO_LIVE.chargedTerms,
+  };
+}
 
 describe("subscription runtime service integration", () => {
   beforeEach(() => {
     clearAllLifecycleSignals();
     vi.mocked(getSubscriptionsByUser).mockReset();
     vi.mocked(getSubscriptionCommercialBinding).mockReset();
-    vi.mocked(resolveCommercialFactsFromSnapshot).mockReset();
+    vi.mocked(resolveLivePlanCapabilities).mockReset();
   });
 
-  it("resolves exclusively from snapshot when bound", async () => {
+  it("resolves exclusively from the current live plan when bound", async () => {
     vi.mocked(getSubscriptionsByUser).mockResolvedValue([
       commercialTestSubRow({
         id: 10,
@@ -319,17 +306,15 @@ describe("subscription runtime service integration", () => {
     ] as never);
     vi.mocked(getSubscriptionCommercialBinding).mockResolvedValue({
       subscriptionId: 10,
-      planVersionId: "ver-pro",
-      snapshotId: "snap-1",
+      planId: "plan-pro",
+      chargedAmount: "26.40",
+      chargedCurrency: "USD",
+      billingCycleId: "bc",
+      billingCycleCode: "monthly",
       legacyPlanId: 2,
       createdAt: NOW.toISOString(),
     });
-    vi.mocked(resolveCommercialFactsFromSnapshot).mockResolvedValue({
-      source: "snapshot",
-      snapshot: proSnapshot(),
-      featureKeys: ["ordering", "reports"],
-      limits: [],
-    });
+    vi.mocked(resolveLivePlanCapabilities).mockResolvedValue(livePlanFacts());
 
     const result = await resolveOwnerEntitlements(7, {
       now: NOW,
@@ -339,7 +324,7 @@ describe("subscription runtime service integration", () => {
     expect(
       (result as { meta?: { commercialResolutionSource?: string } }).meta
         ?.commercialResolutionSource
-    ).toBe("snapshot");
+    ).toBe("live_plan");
 
     expect(await hasFeature(7, "ordering", NOW)).toBe(true);
     expect(await hasFeature(7, "hotelMode", NOW)).toBe(false);
@@ -366,10 +351,10 @@ describe("subscription runtime service integration", () => {
       now: NOW,
     });
     expect(decision.entitled).toBe(true);
-    expect(decision.snapshotId).toBe("snap-1");
+    expect(decision.planId).toBe("plan-pro");
   });
 
-  it("fail-closes when binding exists but snapshot unreadable", async () => {
+  it("fail-closes when binding exists but live plan is unreadable", async () => {
     vi.mocked(getSubscriptionsByUser).mockResolvedValue([
       commercialTestSubRow({
         id: 11,
@@ -381,16 +366,21 @@ describe("subscription runtime service integration", () => {
     ] as never);
     vi.mocked(getSubscriptionCommercialBinding).mockResolvedValue({
       subscriptionId: 11,
-      planVersionId: "ver-x",
-      snapshotId: "snap-missing",
+      planId: "missing-plan",
+      chargedAmount: null,
+      chargedCurrency: null,
+      billingCycleId: null,
+      billingCycleCode: null,
       legacyPlanId: 2,
       createdAt: NOW.toISOString(),
     });
-    vi.mocked(resolveCommercialFactsFromSnapshot).mockResolvedValue({
+    vi.mocked(resolveLivePlanCapabilities).mockResolvedValue({
       source: "missing",
-      snapshot: null,
+      planId: "missing-plan",
+      catalogPlanCode: null,
       featureKeys: [],
       limits: [],
+      chargedTerms: null,
     });
 
     const result = await resolveOwnerEntitlements(7, {
@@ -401,10 +391,10 @@ describe("subscription runtime service integration", () => {
     expect(
       (result as { meta?: { commercialResolutionSource?: string } }).meta
         ?.commercialResolutionSource
-    ).toBe("snapshot_fail_closed");
+    ).toBe("live_plan_fail_closed");
   });
 
-  it("applies suspend / grace overlays on bound snapshot path", async () => {
+  it("applies suspend / grace overlays on bound live plan path", async () => {
     vi.mocked(getSubscriptionsByUser).mockResolvedValue([
       commercialTestSubRow({
         id: 12,
@@ -416,17 +406,17 @@ describe("subscription runtime service integration", () => {
     ] as never);
     vi.mocked(getSubscriptionCommercialBinding).mockResolvedValue({
       subscriptionId: 12,
-      planVersionId: "ver-pro",
-      snapshotId: "snap-1",
+      planId: "plan-pro",
+      chargedAmount: "26.40",
+      chargedCurrency: "USD",
+      billingCycleId: "bc",
+      billingCycleCode: "monthly",
       legacyPlanId: 2,
       createdAt: NOW.toISOString(),
     });
-    vi.mocked(resolveCommercialFactsFromSnapshot).mockResolvedValue({
-      source: "snapshot",
-      snapshot: proSnapshot(),
-      featureKeys: ["ordering"],
-      limits: [],
-    });
+    vi.mocked(resolveLivePlanCapabilities).mockResolvedValue(
+      livePlanFacts(["ordering"])
+    );
 
     markSuspended(12);
     const suspended = await resolveOwnerEntitlements(7, {

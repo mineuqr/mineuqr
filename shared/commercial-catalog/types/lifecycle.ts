@@ -1,41 +1,18 @@
 /**
- * COMMERCIAL-CATALOG-PLATFORM-FOUNDATION-1
- * Plan Version publication lifecycle (CC-02 · CC-16).
+ * COMMERCIAL-LIVE-PLANS-SIMPLIFICATION-1
+ * Live Commercial Plans — no version lifecycle.
  */
 
-export const PLAN_VERSION_LIFECYCLE_STATES = [
-  "draft",
-  "published",
-  "deprecated",
-  "retired",
+export const STANDARD_LIVE_PLAN_CODES = [
+  "basic",
+  "professional",
+  "enterprise",
 ] as const;
 
-export type PlanVersionLifecycleState =
-  (typeof PLAN_VERSION_LIFECYCLE_STATES)[number];
+export type StandardLivePlanCode = (typeof STANDARD_LIVE_PLAN_CODES)[number];
 
-/** States in which the commercial payload is immutable. */
-export const IMMUTABLE_PLAN_VERSION_STATES: readonly PlanVersionLifecycleState[] =
-  ["published", "deprecated", "retired"] as const;
-
-export const ALLOWED_PLAN_VERSION_TRANSITIONS: Record<
-  PlanVersionLifecycleState,
-  readonly PlanVersionLifecycleState[]
-> = {
-  draft: ["published"],
-  published: ["deprecated", "retired"],
-  deprecated: ["retired"],
-  retired: [],
-};
-
-export function isPlanVersionImmutable(
-  state: PlanVersionLifecycleState
-): boolean {
-  return (IMMUTABLE_PLAN_VERSION_STATES as readonly string[]).includes(state);
-}
-
-export function canTransitionPlanVersion(
-  from: PlanVersionLifecycleState,
-  to: PlanVersionLifecycleState
-): boolean {
-  return ALLOWED_PLAN_VERSION_TRANSITIONS[from].includes(to);
+export function isStandardLivePlanCode(code: string): code is StandardLivePlanCode {
+  return (STANDARD_LIVE_PLAN_CODES as readonly string[]).includes(
+    code.toLowerCase()
+  );
 }

@@ -1,7 +1,7 @@
 /**
- * COMMERCIAL-CATALOG-PLATFORM-FOUNDATION-1
- * Internal tRPC surface — Commercial Catalog CRUD + publication.
- * No Subscription APIs. No payment APIs.
+ * COMMERCIAL-LIVE-PLANS-SIMPLIFICATION-1
+ * Internal tRPC surface — Live Commercial Plans CRUD + atomic save.
+ * No Subscription APIs. No payment APIs. No version lifecycle.
  */
 
 import { z } from "zod";
@@ -9,38 +9,25 @@ import { TRPCError } from "@trpc/server";
 import { assertAdminAccess } from "../../_core/assertAdminAccess";
 import { protectedProcedure, router } from "../../_core/trpc";
 import {
-  COMMERCIAL_CATALOG_FOUNDATION_PROGRAM,
+  COMMERCIAL_LIVE_PLANS_PROGRAM,
   COMMERCIAL_CATALOG_ADR,
   COMMERCIAL_CANONICAL_CURRENCY,
 } from "@shared/commercial-catalog";
 import {
   CommercialCatalogError,
-  commercialSnapshotService,
   featureBundleService,
   getCommercialCatalogHealth,
   limitProfileService,
   migrationPolicyService,
   planService,
-  planVersionService,
   pricingService,
   promotionService,
-  publicationService,
   regionalPolicyService,
   trialPolicyCatalogService,
+  planSaveValidator,
 } from "../../services/commercial-catalog";
 import { commercialCatalogLocalizationRouter } from "./commercialCatalogLocalizationRouter";
-import {
-  commercialCatalogPublicRouter,
-  commercialCatalogPublishingRouter,
-} from "./commercialCatalogPublicRouter";
-import { catalogPublishingService } from "../../commercial-catalog/publishing";
-
-const compatibilitySchema = z.object({
-  upgradeTargets: z.array(z.string()),
-  downgradeTargets: z.array(z.string()),
-  migrationRequirements: z.array(z.string()),
-  breakingCommercialChanges: z.array(z.string()),
-});
+import { commercialCatalogPublicRouter } from "./commercialCatalogPublicRouter";
 
 function actorFromCtx(ctx: {
   user?: { id?: number; role?: string } | null;
@@ -62,9 +49,7 @@ function mapError(err: unknown): never {
           : err.code === "publication_validation_failed" ||
               err.code === "publication_persistence_failed"
             ? "BAD_REQUEST"
-            : err.code === "immutable_version" || err.code === "invalid_transition"
-              ? "FORBIDDEN"
-              : "BAD_REQUEST",
+            : "BAD_REQUEST",
       message: err.message,
     });
   }
@@ -79,7 +64,7 @@ export const commercialCatalogRouter = router({
     );
     await ensureCatalogReady();
     return {
-      program: COMMERCIAL_CATALOG_FOUNDATION_PROGRAM,
+      program: COMMERCIAL_LIVE_PLANS_PROGRAM,
       adr: COMMERCIAL_CATALOG_ADR,
       paymentProviders: false,
       subscriptionRuntime: false,
@@ -98,10 +83,10 @@ export const commercialCatalogRouter = router({
 
   listPublishedOfferings: protectedProcedure.query(async ({ ctx }) => {
     assertAdminAccess(ctx, "commercialCatalog.listPublishedOfferings");
-    const { listPublishedPlanOfferings } = await import(
+    const { listLivePlanOfferings } = await import(
       "../../services/commercial-catalog"
     );
-    return listPublishedPlanOfferings();
+    return listLivePlanOfferings();
   }),
 
   health: protectedProcedure.query(async ({ ctx }) => {
@@ -113,7 +98,6 @@ export const commercialCatalogRouter = router({
     return getCommercialCatalogHealth();
   }),
 
-  // ── Plans ──────────────────────────────────────────────
   listPlans: protectedProcedure.query(async ({ ctx }) => {
     assertAdminAccess(ctx, "commercialCatalog.listPlans");
     const { ensureCatalogReady } = await import(
@@ -131,6 +115,9 @@ export const commercialCatalogRouter = router({
         description: z.string().nullable().optional(),
         sortOrder: z.number().int().optional(),
         isHidden: z.boolean().optional(),
+        featureBundleId: z.string().uuid().nullable().optional(),
+        limitProfileId: z.string().uuid().nullable().optional(),
+        trialPolicyId: z.string().uuid().nullable().optional(),
       })
     )
     .mutation(({ ctx, input }) => {
@@ -153,13 +140,16 @@ export const commercialCatalogRouter = router({
         description: z.string().nullable().optional(),
         sortOrder: z.number().int().optional(),
         isHidden: z.boolean().optional(),
+        featureBundleId: z.string().uuid().nullable().optional(),
+        limitProfileId: z.string().uuid().nullable().optional(),
+        trialPolicyId: z.string().uuid().nullable().optional(),
       })
     )
-    .mutation(({ ctx, input }) => {
+    .mutation(async ({ ctx, input }) => {
       assertAdminAccess(ctx, "commercialCatalog.updatePlan");
       try {
         const { id, ...patch } = input;
-        return planService.update(id, patch, {
+        return await planService.saveLive(id, patch, {
           ...actorFromCtx(ctx),
           procedure: "commercialCatalog.updatePlan",
         });
@@ -168,90 +158,91 @@ export const commercialCatalogRouter = router({
       }
     }),
 
-  // ── Versions ───────────────────────────────────────────
-  listVersions: protectedProcedure
-    .input(z.object({ planId: z.string().uuid().optional() }).optional())
-    .query(async ({ ctx, input }) => {
-      assertAdminAccess(ctx, "commercialCatalog.listVersions");
-      const { ensureCatalogReady } = await import(
-        "../../services/commercial-catalog"
-      );
-      await ensureCatalogReady();
-      return planVersionService.list(input?.planId);
-    }),
-
-  createVersion: protectedProcedure
+  validatePlanSave: protectedProcedure
     .input(
       z.object({
         planId: z.string().uuid(),
-        versionCode: z.string().min(1).max(64),
-        versionName: z.string().min(1).max(255),
-        featureBundleId: z.string().uuid().nullable().optional(),
-        limitProfileId: z.string().uuid().nullable().optional(),
-        trialPolicyId: z.string().uuid().nullable().optional(),
-        migrationPolicyId: z.string().uuid().nullable().optional(),
-        retirementPolicyId: z.string().uuid().nullable().optional(),
-        compatibility: compatibilitySchema.optional(),
+        requiresRegionalPricing: z.boolean().optional(),
       })
     )
-    .mutation(({ ctx, input }) => {
-      assertAdminAccess(ctx, "commercialCatalog.createVersion");
-      try {
-        return planVersionService.create(input, {
-          ...actorFromCtx(ctx),
-          procedure: "commercialCatalog.createVersion",
-        });
-      } catch (e) {
-        mapError(e);
-      }
+    .query(({ ctx, input }) => {
+      assertAdminAccess(ctx, "commercialCatalog.validatePlanSave");
+      return planSaveValidator.validate(input.planId, {
+        requiresRegionalPricing: input.requiresRegionalPricing,
+      });
     }),
 
-  updateDraftVersion: protectedProcedure
+  saveLivePlan: protectedProcedure
     .input(
       z.object({
         id: z.string().uuid(),
-        versionName: z.string().min(1).max(255).optional(),
+        name: z.string().min(1).max(255).optional(),
+        description: z.string().nullable().optional(),
+        sortOrder: z.number().int().optional(),
+        isHidden: z.boolean().optional(),
         featureBundleId: z.string().uuid().nullable().optional(),
         limitProfileId: z.string().uuid().nullable().optional(),
         trialPolicyId: z.string().uuid().nullable().optional(),
-        migrationPolicyId: z.string().uuid().nullable().optional(),
-        retirementPolicyId: z.string().uuid().nullable().optional(),
-        compatibility: compatibilitySchema.optional(),
+        requiresRegionalPricing: z.boolean().optional(),
+        prices: z
+          .array(
+            z.object({
+              billingCycleId: z.string().uuid(),
+              currency: z.string().min(3).max(8),
+              amount: z.string().regex(/^\d+(\.\d{1,2})?$/),
+              regionId: z.string().uuid().nullable().optional(),
+            })
+          )
+          .optional(),
       })
     )
-    .mutation(({ ctx, input }) => {
-      assertAdminAccess(ctx, "commercialCatalog.updateDraftVersion");
+    .mutation(async ({ ctx, input }) => {
+      assertAdminAccess(ctx, "commercialCatalog.saveLivePlan");
       try {
-        const { id, ...patch } = input;
-        return planVersionService.updateDraft(id, patch, {
+        const actor = {
           ...actorFromCtx(ctx),
-          procedure: "commercialCatalog.updateDraftVersion",
-        });
+          procedure: "commercialCatalog.saveLivePlan",
+        };
+        return await planService.saveLive(
+          input.id,
+          {
+            name: input.name,
+            description: input.description,
+            sortOrder: input.sortOrder,
+            isHidden: input.isHidden,
+            featureBundleId: input.featureBundleId,
+            limitProfileId: input.limitProfileId,
+            trialPolicyId: input.trialPolicyId,
+          },
+          actor,
+          {
+            requiresRegionalPricing: input.requiresRegionalPricing,
+            prices: input.prices,
+          }
+        );
       } catch (e) {
         mapError(e);
       }
     }),
 
-  // ── Pricing / cycles ───────────────────────────────────
   listPrices: protectedProcedure
-    .input(z.object({ planVersionId: z.string().uuid().optional() }).optional())
+    .input(z.object({ planId: z.string().uuid().optional() }).optional())
     .query(({ ctx, input }) => {
       assertAdminAccess(ctx, "commercialCatalog.listPrices");
-      return pricingService.list(input?.planVersionId);
+      return pricingService.list(input?.planId);
     }),
 
   createPrice: protectedProcedure
     .input(
       z.object({
-        planVersionId: z.string().uuid(),
+        planId: z.string().uuid(),
         billingCycleId: z.string().uuid(),
-        /** Canonical commercial currency is USD. Regional overrides may use local currency when regionId is set. */
         currency: z.string().min(3).max(8).default(COMMERCIAL_CANONICAL_CURRENCY),
         amount: z.string().regex(/^\d+(\.\d{1,2})?$/),
         regionId: z.string().uuid().nullable().optional(),
       })
     )
-    .mutation(({ ctx, input }) => {
+    .mutation(async ({ ctx, input }) => {
       assertAdminAccess(ctx, "commercialCatalog.createPrice");
       const isRegionalOverride = Boolean(input.regionId);
       const currency = isRegionalOverride
@@ -264,9 +255,9 @@ export const commercialCatalogRouter = router({
         });
       }
       try {
-        return pricingService.create(
+        const price = pricingService.create(
           {
-            planVersionId: input.planVersionId,
+            planId: input.planId,
             billingCycleId: input.billingCycleId,
             currency,
             amount: input.amount,
@@ -277,6 +268,15 @@ export const commercialCatalogRouter = router({
             procedure: "commercialCatalog.createPrice",
           }
         );
+        const { persistLivePlan } = await import(
+          "../../services/commercial-catalog/livePlanPersistence"
+        );
+        await persistLivePlan(input.planId);
+        const { invalidatePublicCatalogCache } = await import(
+          "../../commercial-catalog/publishing"
+        );
+        invalidatePublicCatalogCache();
+        return price;
       } catch (e) {
         mapError(e);
       }
@@ -308,7 +308,6 @@ export const commercialCatalogRouter = router({
       }
     }),
 
-  // ── Bundles / limits / trials ──────────────────────────
   listFeatureBundles: protectedProcedure.query(({ ctx }) => {
     assertAdminAccess(ctx, "commercialCatalog.listFeatureBundles");
     return featureBundleService.list().map((b) => ({
@@ -408,7 +407,6 @@ export const commercialCatalogRouter = router({
       }
     }),
 
-  // ── Promotions ─────────────────────────────────────────
   listPromotions: protectedProcedure.query(({ ctx }) => {
     assertAdminAccess(ctx, "commercialCatalog.listPromotions");
     return promotionService.list();
@@ -420,7 +418,7 @@ export const commercialCatalogRouter = router({
         code: z.string().min(1).max(64),
         name: z.string().min(1).max(255),
         effectSummary: z.string().min(1),
-        eligiblePlanVersionIds: z.array(z.string().uuid()).optional(),
+        eligiblePlanIds: z.array(z.string().uuid()).optional(),
         startsAt: z.string().nullable().optional(),
         endsAt: z.string().nullable().optional(),
         isActive: z.boolean().optional(),
@@ -438,7 +436,6 @@ export const commercialCatalogRouter = router({
       }
     }),
 
-  // ── Regions ────────────────────────────────────────────
   listRegions: protectedProcedure.query(({ ctx }) => {
     assertAdminAccess(ctx, "commercialCatalog.listRegions");
     return regionalPolicyService.list();
@@ -493,7 +490,6 @@ export const commercialCatalogRouter = router({
       }
     }),
 
-  // ── Migration / retirement ─────────────────────────────
   listMigrationPolicies: protectedProcedure.query(({ ctx }) => {
     assertAdminAccess(ctx, "commercialCatalog.listMigrationPolicies");
     return migrationPolicyService.list();
@@ -542,141 +538,6 @@ export const commercialCatalogRouter = router({
       }
     }),
 
-  listRetirementPolicies: protectedProcedure.query(({ ctx }) => {
-    assertAdminAccess(ctx, "commercialCatalog.listRetirementPolicies");
-    return migrationPolicyService.listRetirementPolicies();
-  }),
-
-  createRetirementPolicy: protectedProcedure
-    .input(
-      z.object({
-        code: z.string().min(1).max(64),
-        name: z.string().min(1).max(255),
-        description: z.string().nullable().optional(),
-        allowRenewals: z.boolean().optional(),
-      })
-    )
-    .mutation(({ ctx, input }) => {
-      assertAdminAccess(ctx, "commercialCatalog.createRetirementPolicy");
-      try {
-        return migrationPolicyService.createRetirementPolicy(input, {
-          ...actorFromCtx(ctx),
-          procedure: "commercialCatalog.createRetirementPolicy",
-        });
-      } catch (e) {
-        mapError(e);
-      }
-    }),
-
-  // ── Publication ────────────────────────────────────────
-  validatePublication: protectedProcedure
-    .input(
-      z.object({
-        versionId: z.string().uuid(),
-        requiresRegionalPricing: z.boolean().optional(),
-      })
-    )
-    .query(({ ctx, input }) => {
-      assertAdminAccess(ctx, "commercialCatalog.validatePublication");
-      return publicationService.validate(input.versionId, {
-        requiresRegionalPricing: input.requiresRegionalPricing,
-      });
-    }),
-
-  publishVersion: protectedProcedure
-    .input(
-      z.object({
-        versionId: z.string().uuid(),
-        requiresRegionalPricing: z.boolean().optional(),
-      })
-    )
-    .mutation(async ({ ctx, input }) => {
-      assertAdminAccess(ctx, "commercialCatalog.publishVersion");
-      try {
-        // Compat: direct draft→published allowed; durable persist required for success.
-        const result = await catalogPublishingService.publish(
-          input.versionId,
-          {
-            ...actorFromCtx(ctx),
-            procedure: "commercialCatalog.publishVersion",
-          },
-          {
-            requiresRegionalPricing: input.requiresRegionalPricing,
-            enforceWorkflow: false,
-          }
-        );
-        return result.version;
-      } catch (e) {
-        mapError(e);
-      }
-    }),
-
-  deprecateVersion: protectedProcedure
-    .input(z.object({ versionId: z.string().uuid() }))
-    .mutation(async ({ ctx, input }) => {
-      assertAdminAccess(ctx, "commercialCatalog.deprecateVersion");
-      try {
-        const result = await catalogPublishingService.deprecate(input.versionId, {
-          ...actorFromCtx(ctx),
-          procedure: "commercialCatalog.deprecateVersion",
-        });
-        return result.version;
-      } catch (e) {
-        mapError(e);
-      }
-    }),
-
-  retireVersion: protectedProcedure
-    .input(z.object({ versionId: z.string().uuid() }))
-    .mutation(async ({ ctx, input }) => {
-      assertAdminAccess(ctx, "commercialCatalog.retireVersion");
-      try {
-        const result = await catalogPublishingService.retire(input.versionId, {
-          ...actorFromCtx(ctx),
-          procedure: "commercialCatalog.retireVersion",
-        });
-        return result.version;
-      } catch (e) {
-        mapError(e);
-      }
-    }),
-
-  /** Public browse surface — published offerings only (no auth). */
   public: commercialCatalogPublicRouter,
-
-  /** Admin governance workflow — approve / schedule / archive. */
-  publishing: commercialCatalogPublishingRouter,
-
-  // ── Snapshots (definitions only) ───────────────────────
-  listSnapshots: protectedProcedure
-    .input(z.object({ planVersionId: z.string().uuid().optional() }).optional())
-    .query(({ ctx, input }) => {
-      assertAdminAccess(ctx, "commercialCatalog.listSnapshots");
-      return commercialSnapshotService.list(input?.planVersionId);
-    }),
-
-  captureSnapshotDefinition: protectedProcedure
-    .input(
-      z.object({
-        planVersionId: z.string().uuid(),
-        effectiveDate: z.string().optional(),
-        promotionId: z.string().uuid().nullable().optional(),
-        regionId: z.string().uuid().nullable().optional(),
-      })
-    )
-    .mutation(({ ctx, input }) => {
-      assertAdminAccess(ctx, "commercialCatalog.captureSnapshotDefinition");
-      try {
-        return commercialSnapshotService.captureFromVersion(input.planVersionId, {
-          effectiveDate: input.effectiveDate,
-          promotionId: input.promotionId,
-          regionId: input.regionId,
-        });
-      } catch (e) {
-        mapError(e);
-      }
-    }),
-
-  /** Presentation-only localization (country, FX, dual price). Nested under Catalog API. */
   localization: commercialCatalogLocalizationRouter,
 });

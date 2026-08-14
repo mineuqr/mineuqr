@@ -1,11 +1,10 @@
 /**
- * COMMERCIAL-CATALOG-PLATFORM-FOUNDATION-1
- * Commercial Catalog schema barrel — re-exported into drizzle/schema.ts.
+ * COMMERCIAL-LIVE-PLANS-SIMPLIFICATION-1
+ * Live Commercial Plans schema barrel — re-exported into drizzle/schema.ts.
  */
 
 export {
   commercialPlans,
-  commercialPlanVersions,
   commercialPrices,
   commercialBillingCycles,
   commercialFeatureBundles,
@@ -16,13 +15,8 @@ export {
   commercialPromotions,
   commercialRegions,
   commercialMigrationPolicies,
-  commercialRetirementPolicies,
-  commercialSnapshotDefinitions,
-  commercialPublicationRules,
   type InsertCommercialPlan,
   type SelectCommercialPlan,
-  type InsertCommercialPlanVersion,
-  type SelectCommercialPlanVersion,
 } from "./tables";
 
 export { commercialSubscriptionBindings } from "./bindings";

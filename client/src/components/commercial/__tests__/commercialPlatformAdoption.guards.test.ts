@@ -15,24 +15,21 @@ describe("COMMERCIAL-PLATFORM-ADOPTION-1", () => {
     const pricing = read("client/src/pages/Pricing.tsx");
     expect(pricing).toContain("commercialCatalog.public.listOfferings");
     expect(pricing).not.toMatch(/subscription\.listPlans/);
-    expect(pricing).toContain("catalogFeatureNameKey");
+    expect(pricing).toContain("presentationNameI18nKey");
     expect(pricing).toContain("isCurrentCatalogPlanByCode");
   });
 
-  it("admin publishing UI uses commercialCatalog.publishing via shared hook", () => {
-    const hook = read(
-      "client/src/components/admin/platform-ops/commercial-catalog/useCatalogPublishingMutations.ts"
+  it("admin live-plan UI uses atomic save, not a publication workflow", () => {
+    const wizard = read(
+      "client/src/components/admin/platform-ops/commercial-catalog/experience/PlanCreationWizard.tsx"
     );
-    expect(hook).toContain("commercialCatalog.publishing");
-    expect(hook).toContain("approveVersion");
-    expect(hook).toContain("schedulePublish");
-    expect(hook).toContain("archiveVersion");
-    expect(hook).not.toMatch(/hasFeature|checkEntitlement/);
+    expect(wizard).toContain("saveLivePlan");
+    expect(wizard).not.toMatch(/hasFeature|checkEntitlement/);
 
     const panels = read(
       "client/src/components/admin/platform-ops/commercial-catalog/CatalogManagementPanels.tsx"
     );
-    expect(panels).toContain("useCatalogPublishingMutations");
+    expect(panels).not.toContain("useCatalogPublishingMutations");
     expect(panels).not.toMatch(
       /commercialCatalog\.publishVersion\.useMutation/
     );

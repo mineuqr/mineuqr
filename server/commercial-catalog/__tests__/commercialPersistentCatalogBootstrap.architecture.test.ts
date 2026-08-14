@@ -1,135 +1,96 @@
 /**
- * COMMERCIAL-PERSISTENT-CATALOG-BOOTSTRAP-1 — architecture tests.
+ * COMMERCIAL-LIVE-PLANS-SIMPLIFICATION-1 — bootstrap + public catalog + save.
  */
 import { beforeEach, describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { COMMERCIAL_PROJECTION_IDS } from "@shared/commercial-projection";
 import {
   commercialCatalogStore,
-  setDurablePublicationBackendForTests,
-  invalidateCatalogReadyGate,
-  InMemoryDurableCatalogBackend,
   bootstrapPersistentCommercialCatalog,
-  projectionFeatureKeysForBridgePlan,
-  COMMERCIAL_PERSISTENT_CATALOG_BOOTSTRAP_PROGRAM,
-  ensureCatalogReady,
-  getCommercialCatalogHealth,
+  InMemoryDurableCatalogBackend,
+  setDurableLivePlanBackendForTests,
+  invalidateCatalogReadyGate,
+  planService,
+  pricingService,
+  isPersistentCatalogUninitialized,
 } from "../../services/commercial-catalog";
 import {
-  clearAllPublicationOverlays,
-  invalidatePublicCatalogCache,
-  setPublicCatalogCacheEnabled,
   projectPublicCatalogOfferings,
-  listPublicCatalogOfferings,
+  invalidatePublicCatalogCache,
 } from "../publishing";
 
 const root = process.cwd();
 
-describe("COMMERCIAL-PERSISTENT-CATALOG-BOOTSTRAP-1", () => {
+describe("Live Commercial Plans bootstrap and public catalog", () => {
   let durable: InMemoryDurableCatalogBackend;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     commercialCatalogStore.clear();
-    clearAllPublicationOverlays();
-    setPublicCatalogCacheEnabled(false);
-    invalidatePublicCatalogCache();
     invalidateCatalogReadyGate();
+    invalidatePublicCatalogCache();
     durable = new InMemoryDurableCatalogBackend();
-    setDurablePublicationBackendForTests(durable);
+    setDurableLivePlanBackendForTests(durable);
   });
 
-  it("exports program and derives capability keys from Projection + Presentation", () => {
-    expect(COMMERCIAL_PERSISTENT_CATALOG_BOOTSTRAP_PROGRAM).toBe(
-      "COMMERCIAL-PERSISTENT-CATALOG-BOOTSTRAP-1"
-    );
-    const basic = projectionFeatureKeysForBridgePlan("BASIC");
-    expect(basic).toContain("ordering");
-    expect(basic).toContain("printing");
-    expect(basic).toContain("realtime");
-    for (const key of basic) {
-      expect(COMMERCIAL_PROJECTION_IDS).toContain(key);
-    }
+  it("bootstraps three live standard plans without publication", async () => {
     const src = readFileSync(
-      resolve(
-        root,
-        "server/services/commercial-catalog/persistentCatalogBootstrap.ts"
-      ),
+      resolve(root, "server/services/commercial-catalog/persistentCatalogBootstrap.ts"),
       "utf8"
     );
-    expect(src).toContain("listProjectionIdsForCommercialPlan");
-    expect(src).toContain("applyCommercialPresentationRules");
-    expect(src).toContain("catalogPublishingService.publish");
-    expect(src).not.toMatch(/DEFAULT_FEATURES/);
-  });
+    expect(src).not.toContain("catalogPublishingService.publish");
+    expect(src).toContain("persistFullCatalog");
 
-  it("bootstraps only when durable catalog is uninitialized", async () => {
     const first = await bootstrapPersistentCommercialCatalog();
     expect(first.bootstrapped).toBe(true);
-    expect(first.reason).toBe("bootstrapped");
-    expect(first.publishedVersions).toBeGreaterThan(0);
-    expect(first.planCount).toBeGreaterThan(0);
-    expect(first.billingCycleCount).toBeGreaterThan(0);
-    expect(first.priceCount).toBeGreaterThan(0);
-    expect(first.capabilityMappingCount).toBeGreaterThan(0);
+    expect(first.livePlans).toBe(3);
+    expect(planService.list().map((p) => p.code).sort()).toEqual([
+      "basic",
+      "enterprise",
+      "professional",
+    ]);
 
     const second = await bootstrapPersistentCommercialCatalog();
     expect(second.bootstrapped).toBe(false);
     expect(second.reason).toBe("already_initialized");
-    expect(second.publishedVersions).toBe(first.publishedVersions);
-    expect(second.planCount).toBe(first.planCount);
+    expect(second.livePlans).toBe(first.livePlans);
   });
 
-  it("is idempotent — no duplicate plans, versions, cycles, or prices", async () => {
+  it("does not republish when catalog already initialized", async () => {
     await bootstrapPersistentCommercialCatalog();
-    const plans1 = commercialCatalogStore.plans.size;
-    const versions1 = commercialCatalogStore.versions.size;
-    const cycles1 = commercialCatalogStore.billingCycles.size;
-    const prices1 = commercialCatalogStore.prices.size;
-    const codes = [...commercialCatalogStore.plans.values()].map((p) => p.code);
-
-    await bootstrapPersistentCommercialCatalog();
-    expect(commercialCatalogStore.plans.size).toBe(plans1);
-    expect(commercialCatalogStore.versions.size).toBe(versions1);
-    expect(commercialCatalogStore.billingCycles.size).toBe(cycles1);
-    expect(commercialCatalogStore.prices.size).toBe(prices1);
-    expect(
-      [...commercialCatalogStore.plans.values()].map((p) => p.code).sort()
-    ).toEqual([...codes].sort());
-    expect(new Set(codes).size).toBe(codes.length);
-  });
-
-  it("survives restart hydrate and exposes identical admin/public published data", async () => {
-    await bootstrapPersistentCommercialCatalog();
-    const before = projectPublicCatalogOfferings().map((o) => o.planVersionId).sort();
-    expect(before.length).toBeGreaterThan(0);
-
+    const before = projectPublicCatalogOfferings().map((o) => o.planId).sort();
     commercialCatalogStore.clear();
     invalidateCatalogReadyGate();
-    invalidatePublicCatalogCache();
-    await ensureCatalogReady();
-
-    expect(getCommercialCatalogHealth().versions.published).toBe(before.length);
-    const after = (await listPublicCatalogOfferings())
-      .map((o) => o.planVersionId)
-      .sort();
-    expect(after).toEqual(before);
-    expect(projectPublicCatalogOfferings().map((o) => o.planVersionId).sort()).toEqual(
+    await durable.hydrateInto(commercialCatalogStore);
+    expect(isPersistentCatalogUninitialized()).toBe(false);
+    const again = await bootstrapPersistentCommercialCatalog();
+    expect(again.bootstrapped).toBe(false);
+    expect(projectPublicCatalogOfferings().map((o) => o.planId).sort()).toEqual(
       before
     );
   });
 
-  it("ensureCatalogReady delegates empty catalog to bootstrap (no DEFAULT_FEATURES seed)", async () => {
-    const seed = readFileSync(
-      resolve(root, "server/services/commercial-catalog/seedAdoptionCatalog.ts"),
-      "utf8"
-    );
-    expect(seed).toContain("bootstrapPersistentCommercialCatalog");
-    expect(seed).not.toContain("DEFAULT_FEATURES");
-    expect(seed).not.toContain("DEFAULT_PRICES");
+  it("exposes live plans on the public catalog immediately", async () => {
+    await bootstrapPersistentCommercialCatalog();
+    const offerings = projectPublicCatalogOfferings();
+    expect(offerings.length).toBe(3);
+    expect(offerings.every((o) => o.planId && o.planCode)).toBe(true);
+    expect(offerings.some((o) => o.planCode === "professional")).toBe(true);
+    const pro = offerings.find((o) => o.planCode === "professional")!;
+    expect(pro.priceMonthly).toBeTruthy();
+    expect(pro.featureKeys.length).toBeGreaterThan(0);
+  });
 
-    await ensureCatalogReady();
-    expect(getCommercialCatalogHealth().versions.published).toBeGreaterThan(0);
-    expect(projectPublicCatalogOfferings().length).toBeGreaterThan(0);
+  it("propagates live plan edits to public catalog after save", async () => {
+    await bootstrapPersistentCommercialCatalog();
+    const pro = planService.getByCode("professional")!;
+    await planService.saveLive(pro.id, { name: "Professional Plus" });
+    invalidatePublicCatalogCache();
+    const offerings = projectPublicCatalogOfferings();
+    expect(offerings.find((o) => o.planId === pro.id)?.planName).toBe(
+      "Professional Plus"
+    );
+    expect(pricingService.currentPriceForPlan(pro.id, "monthly")?.amount).toBe(
+      "26.40"
+    );
   });
 });

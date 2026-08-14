@@ -1,17 +1,7 @@
 /**
- * COMMERCIAL-PERSISTENT-CATALOG-BOOTSTRAP-1
- * COMMERCIAL-BOOTSTRAP-LIFECYCLE-GOVERNANCE-1
- *
- * One-time architecture adoption: uninitialized durable catalog ← Projection
- * (+ existing LEGACY_PLAN_BRIDGE identities / commercial terms).
- *
- * Bootstrap runs ONLY when the persistent catalog has never been initialized.
- * "No published versions" is NOT emptiness — retired/deprecated/draft catalogs
- * are initialized and MUST NOT trigger republish.
- *
- * Capability keys come from Commercial Projection via planFeatureMatrix +
- * Presentation overlay rules. Publication uses CatalogPublishingService.
- * Bootstrap publishes Draft versions only (CC-16 unchanged).
+ * COMMERCIAL-LIVE-PLANS-SIMPLIFICATION-1
+ * One-time architecture adoption: uninitialized durable catalog ← Projection.
+ * Bootstrap seeds LIVE plans. It never publishes versions.
  */
 
 import { COMMERCIAL_PROJECTION_IDS } from "@shared/commercial-projection";
@@ -22,7 +12,6 @@ import {
 } from "@commercial/planFeatureMatrix";
 import {
   PlanService,
-  PlanVersionService,
   PricingService,
   FeatureBundleService,
   LimitProfileService,
@@ -34,26 +23,8 @@ import {
 } from "./index";
 import { LEGACY_PLAN_BRIDGE } from "./legacyPlanBridge";
 import { priceTermsForCatalogPlanCode } from "./legacyPlanCommercialTerms";
-import { getDurablePublicationBackend } from "./publicationPersistence";
-import {
-  catalogPublishingService,
-  invalidatePublicCatalogCache,
-} from "../../commercial-catalog/publishing";
-import { getDb } from "../../db";
-import {
-  commercialPlans,
-  commercialPlanVersions,
-  commercialPrices,
-  commercialBillingCycles,
-  commercialFeatureBundles,
-  commercialBundleFeatures,
-  commercialLimitProfiles,
-  commercialLimitValues,
-  commercialTrialPolicies,
-  commercialMigrationPolicies,
-  commercialRetirementPolicies,
-  commercialRegions,
-} from "../../db/schema/commercial";
+import { getDurableLivePlanBackend } from "./livePlanPersistence";
+import { invalidatePublicCatalogCache } from "../../commercial-catalog/publishing";
 
 export const COMMERCIAL_PERSISTENT_CATALOG_BOOTSTRAP_PROGRAM =
   "COMMERCIAL-PERSISTENT-CATALOG-BOOTSTRAP-1" as const;
@@ -61,10 +32,6 @@ export const COMMERCIAL_PERSISTENT_CATALOG_BOOTSTRAP_PROGRAM =
 export const COMMERCIAL_BOOTSTRAP_LIFECYCLE_GOVERNANCE_PROGRAM =
   "COMMERCIAL-BOOTSTRAP-LIFECYCLE-GOVERNANCE-1" as const;
 
-/**
- * BOOTSTRAP-01 — Infrastructure Initialization Boundary.
- * Bootstrap initializes infrastructure only; never repairs business lifecycle state.
- */
 export const BOOTSTRAP_01_INFRASTRUCTURE_INITIALIZATION_BOUNDARY =
   "BOOTSTRAP-01" as const;
 
@@ -72,29 +39,20 @@ export type PersistentCatalogBootstrapResult = {
   program: typeof COMMERCIAL_PERSISTENT_CATALOG_BOOTSTRAP_PROGRAM;
   governanceProgram: typeof COMMERCIAL_BOOTSTRAP_LIFECYCLE_GOVERNANCE_PROGRAM;
   bootstrapped: boolean;
-  reason:
-    | "already_initialized"
-    | "bootstrapped"
-    | "noop_empty_after_hydrate";
+  reason: "already_initialized" | "bootstrapped" | "noop_empty_after_hydrate";
   source: "db" | "memory" | "bootstrap";
-  publishedVersions: number;
+  livePlans: number;
   planCount: number;
-  versionCount: number;
   billingCycleCount: number;
   priceCount: number;
   capabilityMappingCount: number;
 };
 
-/**
- * BOOTSTRAP-01: canonical uninitialized persistent catalog.
- * Infrastructure existence only — NOT business lifecycle (published/retired/draft).
- */
 export function isPersistentCatalogUninitialized(
   store: typeof commercialCatalogStore = commercialCatalogStore
 ): boolean {
   return (
     store.plans.size === 0 &&
-    store.versions.size === 0 &&
     store.prices.size === 0 &&
     store.billingCycles.size === 0 &&
     store.featureBundles.size === 0 &&
@@ -104,9 +62,6 @@ export function isPersistentCatalogUninitialized(
   );
 }
 
-/**
- * Projection IDs for a bridge plan, then Presentation foundation/dependency rules.
- */
 export function projectionFeatureKeysForBridgePlan(
   catalogPlanKey: "BASIC" | "PROFESSIONAL" | "ENTERPRISE"
 ): string[] {
@@ -119,230 +74,15 @@ export function projectionFeatureKeysForBridgePlan(
   return COMMERCIAL_PROJECTION_IDS.filter((id) => Boolean(next[id]));
 }
 
-async function persistFullCatalogStore(): Promise<void> {
-  const db = await getDb();
-  if (!db) return;
-  const s = commercialCatalogStore;
-
-  for (const p of s.plans.values()) {
-    await db
-      .insert(commercialPlans)
-      .values({
-        id: p.id,
-        code: p.code,
-        name: p.name,
-        description: p.description,
-        sortOrder: p.sortOrder,
-        isHidden: p.isHidden,
-        createdAt: p.createdAt,
-        updatedAt: p.updatedAt,
-      })
-      .onDuplicateKeyUpdate({
-        set: { name: p.name, updatedAt: p.updatedAt },
-      });
-  }
-  for (const c of s.billingCycles.values()) {
-    await db
-      .insert(commercialBillingCycles)
-      .values({
-        id: c.id,
-        code: c.code,
-        name: c.name,
-        intervalCount: c.intervalCount,
-        intervalUnit: c.intervalUnit,
-        createdAt: c.createdAt,
-        updatedAt: c.updatedAt,
-      })
-      .onDuplicateKeyUpdate({
-        set: { name: c.name, updatedAt: c.updatedAt },
-      });
-  }
-  for (const b of s.featureBundles.values()) {
-    await db
-      .insert(commercialFeatureBundles)
-      .values({
-        id: b.id,
-        code: b.code,
-        name: b.name,
-        description: b.description,
-        createdAt: b.createdAt,
-        updatedAt: b.updatedAt,
-      })
-      .onDuplicateKeyUpdate({
-        set: { name: b.name, updatedAt: b.updatedAt },
-      });
-  }
-  for (const f of s.bundleFeatures.values()) {
-    await db
-      .insert(commercialBundleFeatures)
-      .values({
-        id: f.id,
-        bundleId: f.bundleId,
-        featureKey: f.featureKey,
-        included: f.included,
-      })
-      .onDuplicateKeyUpdate({ set: { included: f.included } });
-  }
-  for (const p of s.limitProfiles.values()) {
-    await db
-      .insert(commercialLimitProfiles)
-      .values({
-        id: p.id,
-        code: p.code,
-        name: p.name,
-        description: p.description,
-        createdAt: p.createdAt,
-        updatedAt: p.updatedAt,
-      })
-      .onDuplicateKeyUpdate({
-        set: { name: p.name, updatedAt: p.updatedAt },
-      });
-  }
-  for (const v of s.limitValues.values()) {
-    await db
-      .insert(commercialLimitValues)
-      .values({
-        id: v.id,
-        profileId: v.profileId,
-        limitKey: v.limitKey,
-        value: v.value,
-        unit: v.unit,
-      })
-      .onDuplicateKeyUpdate({ set: { value: v.value, unit: v.unit } });
-  }
-  for (const t of s.trialPolicies.values()) {
-    await db
-      .insert(commercialTrialPolicies)
-      .values({
-        id: t.id,
-        code: t.code,
-        name: t.name,
-        durationDays: t.durationDays,
-        description: t.description,
-        createdAt: t.createdAt,
-        updatedAt: t.updatedAt,
-      })
-      .onDuplicateKeyUpdate({
-        set: { durationDays: t.durationDays, updatedAt: t.updatedAt },
-      });
-  }
-  for (const m of s.migrationPolicies.values()) {
-    await db
-      .insert(commercialMigrationPolicies)
-      .values({
-        id: m.id,
-        code: m.code,
-        name: m.name,
-        description: m.description,
-        requiresExplicitAction: m.requiresExplicitAction,
-        createdAt: m.createdAt,
-        updatedAt: m.updatedAt,
-      })
-      .onDuplicateKeyUpdate({
-        set: { name: m.name, updatedAt: m.updatedAt },
-      });
-  }
-  for (const r of s.retirementPolicies.values()) {
-    await db
-      .insert(commercialRetirementPolicies)
-      .values({
-        id: r.id,
-        code: r.code,
-        name: r.name,
-        description: r.description,
-        allowRenewals: r.allowRenewals,
-        createdAt: r.createdAt,
-        updatedAt: r.updatedAt,
-      })
-      .onDuplicateKeyUpdate({
-        set: { name: r.name, updatedAt: r.updatedAt },
-      });
-  }
-  for (const r of s.regions.values()) {
-    await db
-      .insert(commercialRegions)
-      .values({
-        id: r.id,
-        code: r.code,
-        name: r.name,
-        countryCode: r.countryCode,
-        currency: r.currency,
-        taxPolicyRef: r.taxPolicyRef,
-        distributionPartner: r.distributionPartner,
-        regulatoryNotes: r.regulatoryNotes,
-        createdAt: r.createdAt,
-        updatedAt: r.updatedAt,
-      })
-      .onDuplicateKeyUpdate({
-        set: { name: r.name, currency: r.currency, updatedAt: r.updatedAt },
-      });
-  }
-  for (const v of s.versions.values()) {
-    await db
-      .insert(commercialPlanVersions)
-      .values({
-        id: v.id,
-        planId: v.planId,
-        versionCode: v.versionCode,
-        versionName: v.versionName,
-        state: v.state,
-        featureBundleId: v.featureBundleId,
-        limitProfileId: v.limitProfileId,
-        trialPolicyId: v.trialPolicyId,
-        migrationPolicyId: v.migrationPolicyId,
-        retirementPolicyId: v.retirementPolicyId,
-        compatibility: v.compatibility,
-        publishedAt: v.publishedAt,
-        deprecatedAt: v.deprecatedAt,
-        retiredAt: v.retiredAt,
-        createdAt: v.createdAt,
-        updatedAt: v.updatedAt,
-      })
-      .onDuplicateKeyUpdate({
-        set: {
-          state: v.state,
-          featureBundleId: v.featureBundleId,
-          limitProfileId: v.limitProfileId,
-          trialPolicyId: v.trialPolicyId,
-          migrationPolicyId: v.migrationPolicyId,
-          retirementPolicyId: v.retirementPolicyId,
-          compatibility: v.compatibility,
-          publishedAt: v.publishedAt,
-          updatedAt: v.updatedAt,
-        },
-      });
-  }
-  for (const p of s.prices.values()) {
-    await db
-      .insert(commercialPrices)
-      .values({
-        id: p.id,
-        planVersionId: p.planVersionId,
-        billingCycleId: p.billingCycleId,
-        currency: p.currency,
-        amount: p.amount,
-        regionId: p.regionId,
-        createdAt: p.createdAt,
-        updatedAt: p.updatedAt,
-      })
-      .onDuplicateKeyUpdate({
-        set: { amount: p.amount, currency: p.currency, updatedAt: p.updatedAt },
-      });
-  }
-}
-
 function snapshotCounts() {
-  const publishedVersions = [...commercialCatalogStore.versions.values()].filter(
-    (v) => v.state === "published"
-  ).length;
   return {
-    publishedVersions,
+    livePlans: commercialCatalogStore.plans.size,
     planCount: commercialCatalogStore.plans.size,
-    versionCount: commercialCatalogStore.versions.size,
     billingCycleCount: commercialCatalogStore.billingCycles.size,
     priceCount: commercialCatalogStore.prices.size,
-    capabilityMappingCount: [...commercialCatalogStore.bundleFeatures.values()]
-      .filter((f) => f.included).length,
+    capabilityMappingCount: [...commercialCatalogStore.bundleFeatures.values()].filter(
+      (f) => f.included
+    ).length,
   };
 }
 
@@ -361,13 +101,12 @@ function bootstrapResult(
 
 /**
  * Idempotent bootstrap — ONLY when persistent catalog is uninitialized.
- * Initialized catalogs (including all-retired) hydrate only; never republish.
+ * Seeds three live standard plans. Never publishes versions.
  */
 export async function bootstrapPersistentCommercialCatalog(): Promise<PersistentCatalogBootstrapResult> {
-  const backend = getDurablePublicationBackend();
+  const backend = getDurableLivePlanBackend();
   await backend.hydrateInto(commercialCatalogStore);
 
-  // BOOTSTRAP-01: initialized = catalog artifacts exist (any lifecycle).
   if (!isPersistentCatalogUninitialized(commercialCatalogStore)) {
     const counts = snapshotCounts();
     return bootstrapResult({
@@ -379,7 +118,6 @@ export async function bootstrapPersistentCommercialCatalog(): Promise<Persistent
   }
 
   const plans = new PlanService();
-  const versions = new PlanVersionService();
   const pricing = new PricingService();
   const bundles = new FeatureBundleService();
   const limits = new LimitProfileService();
@@ -411,19 +149,12 @@ export async function bootstrapPersistentCommercialCatalog(): Promise<Persistent
       name: "Default 14-day trial",
       durationDays: 14,
     });
-  const mig =
-    migration.list().find((m) => m.code === "explicit-admin") ??
+  if (!migration.list().find((m) => m.code === "explicit-admin")) {
     migration.create({
       code: "explicit-admin",
       name: "Explicit admin migration",
     });
-  const ret =
-    migration.listRetirementPolicies().find((r) => r.code === "no-renew-retired") ??
-    migration.createRetirementPolicy({
-      code: "no-renew-retired",
-      name: "No renewals when retired",
-      allowRenewals: false,
-    });
+  }
   const saRegion =
     regions.list().find((r) => r.code === "sa") ??
     regions.create({
@@ -437,25 +168,6 @@ export async function bootstrapPersistentCommercialCatalog(): Promise<Persistent
   let sort = 1;
   for (const bridge of LEGACY_PLAN_BRIDGE) {
     const existingPlan = plans.list().find((p) => p.code === bridge.catalogPlanCode);
-    if (existingPlan) {
-      const existingVersion = versions
-        .list(existingPlan.id)
-        .find((v) => v.versionCode === bridge.versionCode);
-      if (existingVersion?.state === "published") {
-        continue;
-      }
-    }
-
-    const plan =
-      existingPlan ??
-      plans.create({
-        code: bridge.catalogPlanCode,
-        name: bridge.catalogPlanName,
-        sortOrder: sort,
-        isHidden: false,
-      });
-    sort += 1;
-
     const featureKeys = projectionFeatureKeysForBridgePlan(bridge.catalogPlanKey);
     const bundleCode = `${bridge.catalogPlanCode}-features`;
     const existingBundle = bundles.list().find((b) => b.code === bundleCode);
@@ -487,75 +199,67 @@ export async function bootstrapPersistentCommercialCatalog(): Promise<Persistent
         })),
       });
 
-    const existingVersion = versions
-      .list(plan.id)
-      .find((v) => v.versionCode === bridge.versionCode);
-    const version =
-      existingVersion ??
-      versions.create({
-        planId: plan.id,
-        versionCode: bridge.versionCode,
-        versionName: `${bridge.catalogPlanName} ${bridge.versionCode}`,
+    const plan =
+      existingPlan ??
+      plans.create({
+        code: bridge.catalogPlanCode,
+        name: bridge.catalogPlanName,
+        sortOrder: sort,
+        isHidden: false,
         featureBundleId: bundle.id,
         limitProfileId: profile.id,
         trialPolicyId:
           bridge.catalogPlanCode === "professional" ? trial.id : null,
-        migrationPolicyId: mig.id,
-        retirementPolicyId: ret.id,
-        compatibility: {
-          upgradeTargets: [],
-          downgradeTargets: [],
-          migrationRequirements: ["admin_approval"],
-          breakingCommercialChanges: [],
-        },
       });
+    if (existingPlan) {
+      plans.update(existingPlan.id, {
+        featureBundleId: bundle.id,
+        limitProfileId: profile.id,
+        trialPolicyId:
+          bridge.catalogPlanCode === "professional" ? trial.id : existingPlan.trialPolicyId,
+      });
+    }
+    sort += 1;
 
-    // Lifecycle governance: publish Draft only. Never retired/deprecated/published.
-    if (version.state === "draft") {
-      const amounts = priceTermsForCatalogPlanCode(bridge.catalogPlanCode);
-      const existingPrices = pricing.list(version.id);
-      if (existingPrices.length === 0) {
+    const amounts = priceTermsForCatalogPlanCode(bridge.catalogPlanCode);
+    const existingPrices = pricing.list(plan.id);
+    if (existingPrices.length === 0) {
+      pricing.create({
+        planId: plan.id,
+        billingCycleId: monthly.id,
+        currency: "USD",
+        amount: amounts.monthlyUsd,
+        regionId: null,
+      });
+      pricing.create({
+        planId: plan.id,
+        billingCycleId: yearly.id,
+        currency: "USD",
+        amount: amounts.yearlyUsd,
+        regionId: null,
+      });
+      if (amounts.monthlySar) {
         pricing.create({
-          planVersionId: version.id,
+          planId: plan.id,
           billingCycleId: monthly.id,
-          currency: "USD",
-          amount: amounts.monthlyUsd,
-          regionId: null,
+          currency: "SAR",
+          amount: amounts.monthlySar,
+          regionId: saRegion.id,
         });
-        pricing.create({
-          planVersionId: version.id,
-          billingCycleId: yearly.id,
-          currency: "USD",
-          amount: amounts.yearlyUsd,
-          regionId: null,
-        });
-        if (amounts.monthlySar) {
-          pricing.create({
-            planVersionId: version.id,
-            billingCycleId: monthly.id,
-            currency: "SAR",
-            amount: amounts.monthlySar,
-            regionId: saRegion.id,
-          });
-        }
-        if (amounts.yearlySar) {
-          pricing.create({
-            planVersionId: version.id,
-            billingCycleId: yearly.id,
-            currency: "SAR",
-            amount: amounts.yearlySar,
-            regionId: saRegion.id,
-          });
-        }
       }
-
-      await catalogPublishingService.publish(version.id, {
-        procedure: "persistentCatalogBootstrap.publish",
-      });
+      if (amounts.yearlySar) {
+        pricing.create({
+          planId: plan.id,
+          billingCycleId: yearly.id,
+          currency: "SAR",
+          amount: amounts.yearlySar,
+          regionId: saRegion.id,
+        });
+      }
     }
   }
 
-  await persistFullCatalogStore();
+  await backend.persistFullCatalog(commercialCatalogStore);
 
   invalidateCatalogReadyGate();
   invalidatePublicCatalogCache();
@@ -563,9 +267,8 @@ export async function bootstrapPersistentCommercialCatalog(): Promise<Persistent
 
   const counts = snapshotCounts();
   return bootstrapResult({
-    bootstrapped: counts.publishedVersions > 0,
-    reason:
-      counts.publishedVersions > 0 ? "bootstrapped" : "noop_empty_after_hydrate",
+    bootstrapped: counts.livePlans > 0,
+    reason: counts.livePlans > 0 ? "bootstrapped" : "noop_empty_after_hydrate",
     source: "bootstrap",
     ...counts,
   });

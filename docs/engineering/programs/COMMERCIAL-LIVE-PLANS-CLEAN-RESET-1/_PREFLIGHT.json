@@ -1,0 +1,164 @@
+{
+  "queriedAt": "2026-08-14T21:13:14.275Z",
+  "bindings": 0,
+  "snapshots": 0,
+  "versions": 5,
+  "plans": [
+    {
+      "code": "001",
+      "name": "الخطة الاساسية "
+    },
+    {
+      "code": "002",
+      "name": "الخطة الاحترافية "
+    },
+    {
+      "code": "basic",
+      "name": "Basic"
+    },
+    {
+      "code": "enterprise",
+      "name": "Enterprise"
+    },
+    {
+      "code": "professional",
+      "name": "Professional"
+    }
+  ],
+  "subscriptionPlanIds": [
+    30002,
+    30003
+  ],
+  "invoiceColumns": [
+    "id",
+    "userId",
+    "subscriptionId",
+    "amount",
+    "currency",
+    "status",
+    "invoiceNumber",
+    "pdfUrl",
+    "issuedAt",
+    "dueAt",
+    "paidAt",
+    "createdAt",
+    "updatedAt"
+  ],
+  "paymentColumns": [
+    "id",
+    "userId",
+    "subscriptionId",
+    "invoiceId",
+    "tapChargeId",
+    "tapCustomerId",
+    "amount",
+    "currency",
+    "status",
+    "paymentMethod",
+    "cardBrand",
+    "cardLastFour",
+    "descriptionAr",
+    "descriptionEn",
+    "metadata",
+    "failureReason",
+    "failureCode",
+    "paidAt",
+    "refundedAt",
+    "createdAt",
+    "updatedAt"
+  ],
+  "restaurantColumns": [
+    "id",
+    "userId",
+    "slug",
+    "nameAr",
+    "nameEn",
+    "descriptionAr",
+    "descriptionEn",
+    "logoUrl",
+    "coverUrl",
+    "phone",
+    "address",
+    "isActive",
+    "viewCount",
+    "createdAt",
+    "updatedAt",
+    "menuTemplate",
+    "customColors",
+    "countryCode",
+    "currencyCode",
+    "currencySymbol",
+    "customFonts",
+    "ownerEmail",
+    "whatsapp",
+    "snapchat",
+    "instagram",
+    "xTwitter",
+    "locationUrl",
+    "workingHours",
+    "temporaryClosure",
+    "table_label",
+    "taxEnabled",
+    "taxMode",
+    "taxPolicyJson"
+  ],
+  "subscriptionColumns": [
+    "id",
+    "userId",
+    "restaurantId",
+    "planId",
+    "status",
+    "billingCycle",
+    "stripeSubscriptionId",
+    "stripeCustomerId",
+    "currentPeriodStart",
+    "currentPeriodEnd",
+    "trialEndsAt",
+    "canceledAt",
+    "createdAt",
+    "updatedAt"
+  ],
+  "forbiddenColumnHits": [],
+  "owner600001": [
+    {
+      "id": 600001,
+      "userId": 1,
+      "restaurantId": 0,
+      "planId": 30002,
+      "status": "active",
+      "currentPeriodStart": "2026-06-08T03:08:15.000Z",
+      "currentPeriodEnd": "2026-08-07T21:00:00.000Z",
+      "updatedAt": "2026-06-09T18:28:40.000Z"
+    }
+  ],
+  "tapPayment60001": [
+    {
+      "id": 60001,
+      "userId": 2700049,
+      "amount": "349.00",
+      "currency": "SAR",
+      "status": "captured",
+      "paidAt": "2026-05-19T09:39:13.000Z"
+    }
+  ],
+  "terminus": [
+    {
+      "id": 5994103,
+      "hashPrefix": "c104e894606f",
+      "created_at": 1784710000000
+    },
+    {
+      "id": 5994102,
+      "hashPrefix": "9d585e21e43f",
+      "created_at": 1784700000000
+    },
+    {
+      "id": 5964102,
+      "hashPrefix": "0f4df950d48b",
+      "created_at": 1784690000000
+    }
+  ],
+  "livePlanColumns": [],
+  "stop": [],
+  "preflight": "PASS"
+}

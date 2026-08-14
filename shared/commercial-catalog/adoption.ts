@@ -1,10 +1,10 @@
 /**
- * COMMERCIAL-CATALOG-PLATFORM-ADOPTION-1
+ * COMMERCIAL-LIVE-PLANS-SIMPLIFICATION-1
  * Consumer inventory + SSOT adoption contracts.
  */
 
 export const COMMERCIAL_CATALOG_ADOPTION_PROGRAM =
-  "COMMERCIAL-CATALOG-PLATFORM-ADOPTION-1" as const;
+  "COMMERCIAL-LIVE-PLANS-SIMPLIFICATION-1" as const;
 
 /** Modules that must consume Catalog (configuration SSOT). */
 export const COMMERCIAL_CATALOG_ADOPTION_CONSUMERS = [
@@ -19,7 +19,6 @@ export const COMMERCIAL_CATALOG_ADOPTION_CONSUMERS = [
   "downgrade_flow",
   "renewal_flow",
   "plan_selection",
-  "commercial_snapshot_creation",
   "feature_resolution",
   "limit_resolution",
   "regional_availability",
@@ -52,12 +51,4 @@ export const LEGACY_RUNTIME_ALLOWED_TO_REMAIN = [
   "user_subscriptions_instance_lifecycle",
   "payment_webhook_activation",
   "subscription_period_status_checks",
-] as const;
-
-/** Published-only plan selection states. */
-export const PLAN_SELECTION_VISIBLE_STATES = ["published"] as const;
-export const PLAN_SELECTION_HIDDEN_STATES = [
-  "draft",
-  "deprecated",
-  "retired",
 ] as const;

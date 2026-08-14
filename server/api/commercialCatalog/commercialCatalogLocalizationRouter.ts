@@ -180,7 +180,7 @@ export const commercialCatalogLocalizationRouter = router({
   presentCatalogPrices: publicProcedure
     .input(
       z.object({
-        planVersionId: z.string().uuid(),
+        planId: z.string().uuid(),
         manualCountry: z.string().length(2).optional(),
       })
     )
@@ -189,7 +189,7 @@ export const commercialCatalogLocalizationRouter = router({
         ctx.req,
         input.manualCountry ?? null
       );
-      const prices = pricingService.list(input.planVersionId).map((p) => ({
+      const prices = pricingService.list(input.planId).map((p) => ({
         amount: p.amount,
         currency: p.currency,
         regionId: p.regionId,

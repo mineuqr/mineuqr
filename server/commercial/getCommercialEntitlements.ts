@@ -4,7 +4,7 @@
  *
  * Branch-only commercial entitlement resolution via Subscription Runtime.
  *
- * IF SubscriptionBinding exists → Snapshot ONLY (no Legacy, no Catalog, no merge)
+ * IF SubscriptionBinding exists → Live Plan capabilities (no freeze)
  * ELSE → Legacy Bridge ONLY
  */
 

@@ -1800,10 +1800,9 @@ export type SelectCrmpRegister = typeof crmpRegisters.$inferSelect;
 export type InsertCrmpFinancialShift = typeof crmpFinancialShifts.$inferInsert;
 export type SelectCrmpFinancialShift = typeof crmpFinancialShifts.$inferSelect;
 
-// ─── Commercial Catalog Platform (COMMERCIAL-CATALOG-PLATFORM-FOUNDATION-1) ───
+// ─── Live Commercial Plans (COMMERCIAL-LIVE-PLANS-SIMPLIFICATION-1) ───
 export {
   commercialPlans,
-  commercialPlanVersions,
   commercialPrices,
   commercialBillingCycles,
   commercialFeatureBundles,
@@ -1814,12 +1813,7 @@ export {
   commercialPromotions,
   commercialRegions,
   commercialMigrationPolicies,
-  commercialRetirementPolicies,
-  commercialSnapshotDefinitions,
-  commercialPublicationRules,
   type InsertCommercialPlan,
   type SelectCommercialPlan,
-  type InsertCommercialPlanVersion,
-  type SelectCommercialPlanVersion,
   commercialSubscriptionBindings,
 } from "../server/db/schema/commercial";

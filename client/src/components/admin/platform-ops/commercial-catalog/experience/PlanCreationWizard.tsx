@@ -1,14 +1,12 @@
 /**
- * COMMERCIAL-CATALOG-ADMIN-EXPERIENCE-1 — Plan Creation Wizard.
- * COMMERCIAL-CATALOG-PRODUCTION-POLISH-1 — dual USD pricing, country selector, localized labels.
- * Orchestrates existing commercialCatalog mutations; never bypasses CC-16.
+ * COMMERCIAL-LIVE-PLANS-SIMPLIFICATION-1 — live plan editor.
+ * Edit → Validate → Atomic Save.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   PlatformOpsAlert,
   PlatformOpsSection,
@@ -19,738 +17,236 @@ import {
   Input,
   Textarea,
 } from "../CatalogFormDialog";
-import { CATALOG_FEATURE_KEYS, CATALOG_LIMIT_KEYS } from "../catalogUiHelpers";
 import { useCatalogI18n } from "../useCatalogI18n";
-import { normalizePlanFeatures } from "./capabilityExperienceModel";
-import { catalogExperienceObservability } from "./experienceObservability";
-import { catalogProductivityStore } from "./productivityStore";
 import type { CatalogManagementData } from "../useCatalogManagementData";
-import {
-  resolveSmartValidationActions,
-  type ResolvedSmartValidationAction,
-} from "./smartValidation";
 import type { ExperienceNavigate } from "./experienceNav";
-import { CatalogCountrySelect } from "../CatalogCountrySelect";
-import {
-  catalogLimitNameKey,
-  resolveCatalogLabel,
-  yearlySavingsPercent,
-} from "../catalogCommercialDisplay";
 import { COMMERCIAL_CANONICAL_CURRENCY } from "@shared/commercial-catalog";
-import { useCatalogPublishingMutations } from "../useCatalogPublishingMutations";
-import { CapabilityFilterPicker } from "./CapabilityFilterPicker";
-import { CapabilityLifecycleRail } from "./CapabilityLifecycleRail";
-import { CapabilityPricingPreview } from "./CapabilityPricingPreview";
-
-const WIZARD_STEP_KEYS = [
-  "wizard.steps.planInfo",
-  "wizard.steps.planVersion",
-  "wizard.steps.pricing",
-  "wizard.steps.billingCycle",
-  "wizard.steps.featureBundle",
-  "wizard.steps.limitProfile",
-  "wizard.steps.trialPolicy",
-  "wizard.steps.regionalPolicy",
-  "wizard.steps.promotionOptional",
-  "wizard.steps.review",
-  "wizard.steps.publish",
-] as const;
-
-const DRAFT_ID = "plan-wizard-default";
-
-const DEFAULT_LIMITS: Record<string, string> = {
-  restaurants: "1",
-  items: "100",
-  categories: "10",
-  ordersPerMonth: "500",
-  qrCodes: "10",
-  storage: "1024",
-  images: "50",
-  staffAccounts: "5",
-  branches: "1",
-  devices: "3",
-};
-
-type WizardState = {
-  step: number;
-  planCode: string;
-  planName: string;
-  planDescription: string;
-  versionCode: string;
-  versionName: string;
-  monthlyAmountUsd: string;
-  yearlyAmountUsd: string;
-  bundleCode: string;
-  bundleName: string;
-  features: Record<string, boolean>;
-  limitCode: string;
-  limitName: string;
-  limits: Record<string, string>;
-  unlimited: Record<string, boolean>;
-  trialCode: string;
-  trialName: string;
-  trialDays: string;
-  regionCode: string;
-  regionName: string;
-  countryCode: string;
-  regionCurrency: string;
-  regionalOverrideMonthly: string;
-  promoCode: string;
-  promoName: string;
-  promoEffect: string;
-  includePromo: boolean;
-  migrationCode: string;
-  migrationName: string;
-  retirementCode: string;
-  retirementName: string;
-  createdPlanId?: string;
-  createdVersionId?: string;
-};
-
-const DEFAULT: WizardState = {
-  step: 0,
-  planCode: "",
-  planName: "",
-  planDescription: "",
-  versionCode: "v1",
-  versionName: "Initial",
-  monthlyAmountUsd: "19.00",
-  yearlyAmountUsd: "190.00",
-  bundleCode: "",
-  bundleName: "",
-  features: Object.fromEntries(CATALOG_FEATURE_KEYS.map((k) => [k, false])),
-  limitCode: "",
-  limitName: "",
-  limits: { ...DEFAULT_LIMITS },
-  unlimited: {},
-  trialCode: "",
-  trialName: "",
-  trialDays: "14",
-  regionCode: "",
-  regionName: "",
-  countryCode: "US",
-  regionCurrency: "USD",
-  regionalOverrideMonthly: "",
-  promoCode: "",
-  promoName: "",
-  promoEffect: "",
-  includePromo: false,
-  migrationCode: "",
-  migrationName: "",
-  retirementCode: "",
-  retirementName: "",
-};
-
-function hydrateWizardDraft(
-  draft: Record<string, unknown> | undefined
-): WizardState {
-  if (!draft) return { ...DEFAULT };
-  const legacy = draft as WizardState & { amount?: string };
-  return {
-    ...DEFAULT,
-    ...(draft as WizardState),
-    monthlyAmountUsd:
-      legacy.monthlyAmountUsd ?? legacy.amount ?? DEFAULT.monthlyAmountUsd,
-    yearlyAmountUsd: legacy.yearlyAmountUsd ?? DEFAULT.yearlyAmountUsd,
-    limits: { ...DEFAULT_LIMITS, ...(legacy.limits ?? {}) },
-  };
-}
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export function PlanCreationWizard(props: {
   data: CatalogManagementData;
   onNavigate: ExperienceNavigate;
 }) {
-  const { cc, t } = useCatalogI18n();
-  const [state, setState] = useState<WizardState>(() =>
-    hydrateWizardDraft(catalogProductivityStore.get().wizardDrafts[DRAFT_ID])
+  const { cc } = useCatalogI18n();
+  const plans = props.data.plansQuery.data ?? [];
+  const [planId, setPlanId] = useState(plans[0]?.id ?? "");
+  const selected = plans.find((p) => p.id === planId) ?? plans[0];
+  const [name, setName] = useState(selected?.name ?? "");
+  const [description, setDescription] = useState(selected?.description ?? "");
+  const [bundleId, setBundleId] = useState(selected?.featureBundleId ?? "");
+  const [limitId, setLimitId] = useState(selected?.limitProfileId ?? "");
+  const [trialId, setTrialId] = useState(selected?.trialPolicyId ?? "");
+
+  const validation = trpc.commercialCatalog.validatePlanSave.useQuery(
+    { planId: selected?.id ?? "" },
+    { enabled: Boolean(selected?.id) }
   );
-  const [busy, setBusy] = useState(false);
-  const [publishIssues, setPublishIssues] = useState<
-    ResolvedSmartValidationAction[]
-  >([]);
-
-  const createPlan = trpc.commercialCatalog.createPlan.useMutation();
-  const createVersion = trpc.commercialCatalog.createVersion.useMutation();
-  const createCycle = trpc.commercialCatalog.createBillingCycle.useMutation();
-  const createBundle = trpc.commercialCatalog.createFeatureBundle.useMutation();
-  const createLimits = trpc.commercialCatalog.createLimitProfile.useMutation();
-  const createTrial = trpc.commercialCatalog.createTrialPolicy.useMutation();
-  const createRegion = trpc.commercialCatalog.createRegion.useMutation();
-  const createPromo = trpc.commercialCatalog.createPromotion.useMutation();
-  const createMigration =
-    trpc.commercialCatalog.createMigrationPolicy.useMutation();
-  const createRetirement =
-    trpc.commercialCatalog.createRetirementPolicy.useMutation();
-  const createPrice = trpc.commercialCatalog.createPrice.useMutation();
-  const { publishVersion } = useCatalogPublishingMutations();
-  const utils = trpc.useUtils();
-
-  useEffect(() => {
-    catalogExperienceObservability.recordWizardStart();
-  }, []);
-
-  useEffect(() => {
-    catalogProductivityStore.saveWizardDraft(DRAFT_ID, state);
-  }, [state]);
-
-  const patch = (p: Partial<WizardState>) =>
-    setState((s) => ({ ...s, ...p }));
-
-  const progress = useMemo(
-    () => Math.round(((state.step + 1) / WIZARD_STEP_KEYS.length) * 100),
-    [state.step]
-  );
-
-  const savingsPercent = useMemo(
-    () =>
-      yearlySavingsPercent(
-        Number.parseFloat(state.monthlyAmountUsd),
-        Number.parseFloat(state.yearlyAmountUsd)
-      ),
-    [state.monthlyAmountUsd, state.yearlyAmountUsd]
-  );
-
-  async function findOrCreateCycle(
-    intervalUnit: "month" | "year",
-    suffix: string,
-    name: string
-  ) {
-    const existing = (props.data.cyclesQuery.data ?? []).find(
-      (c) => c.intervalUnit === intervalUnit && c.intervalCount === 1
-    );
-    if (existing) return existing;
-    return createCycle.mutateAsync({
-      code: `${state.planCode}-${suffix}`,
-      name,
-      intervalCount: 1,
-      intervalUnit,
-    });
-  }
-
-  async function runCreatePipeline(publishAtEnd: boolean) {
-    setBusy(true);
-    const started = Date.now();
-    try {
-      const plan =
-        state.createdPlanId != null
-          ? { id: state.createdPlanId }
-          : await createPlan.mutateAsync({
-              code: state.planCode,
-              name: state.planName,
-              description: state.planDescription || null,
-            });
-
-      const monthlyCycle = await findOrCreateCycle(
-        "month",
-        "monthly",
-        cc("intervalUnits.month")
-      );
-      const yearlyCycle = await findOrCreateCycle(
-        "year",
-        "yearly",
-        cc("intervalUnits.year")
-      );
-
-      const planFeatures = normalizePlanFeatures(state.features);
-      const bundle = await createBundle.mutateAsync({
-        code: state.bundleCode || `${state.planCode}-bundle`,
-        name: state.bundleName || `${state.planName} Bundle`,
-        features: CATALOG_FEATURE_KEYS.map((featureKey) => ({
-          featureKey,
-          included: Boolean(planFeatures[featureKey]),
-        })),
-      });
-
-      const limits = await createLimits.mutateAsync({
-        code: state.limitCode || `${state.planCode}-limits`,
-        name: state.limitName || `${state.planName} Limits`,
-        values: CATALOG_LIMIT_KEYS.map((limitKey) => ({
-          limitKey,
-          value: state.unlimited[limitKey]
-            ? null
-            : Number(state.limits[limitKey] ?? 0),
-        })),
-      });
-
-      const trial = await createTrial.mutateAsync({
-        code: state.trialCode || `${state.planCode}-trial`,
-        name: state.trialName || `${state.planName} Trial`,
-        durationDays: Number(state.trialDays) || 14,
-      });
-
-      const region = await createRegion.mutateAsync({
-        code: state.regionCode || `${state.planCode}-region`,
-        name: state.regionName || state.countryCode,
-        countryCode: state.countryCode,
-        currency: state.regionCurrency,
-      });
-
-      if (state.includePromo && state.promoCode) {
-        await createPromo.mutateAsync({
-          code: state.promoCode,
-          name: state.promoName || state.promoCode,
-          effectSummary: state.promoEffect || cc("manage.promotionDefault"),
-        });
-      }
-
-      const migration = await createMigration.mutateAsync({
-        code: state.migrationCode || `${state.planCode}-mig`,
-        name: state.migrationName || `${state.planName} Migration`,
-      });
-      const retirement = await createRetirement.mutateAsync({
-        code: state.retirementCode || `${state.planCode}-ret`,
-        name: state.retirementName || `${state.planName} Retirement`,
-      });
-
-      const version =
-        state.createdVersionId != null
-          ? { id: state.createdVersionId }
-          : await createVersion.mutateAsync({
-              planId: plan.id,
-              versionCode: state.versionCode,
-              versionName: state.versionName,
-              featureBundleId: bundle.id,
-              limitProfileId: limits.id,
-              trialPolicyId: trial.id,
-              migrationPolicyId: migration.id,
-              retirementPolicyId: retirement.id,
-              compatibility: {
-                upgradeTargets: [],
-                downgradeTargets: [],
-                migrationRequirements: [],
-                breakingCommercialChanges: [],
-              },
-            });
-
-      await createPrice.mutateAsync({
-        planVersionId: version.id,
-        billingCycleId: monthlyCycle.id,
-        currency: COMMERCIAL_CANONICAL_CURRENCY,
-        amount: state.monthlyAmountUsd,
-        regionId: null,
-      });
-
-      await createPrice.mutateAsync({
-        planVersionId: version.id,
-        billingCycleId: yearlyCycle.id,
-        currency: COMMERCIAL_CANONICAL_CURRENCY,
-        amount: state.yearlyAmountUsd,
-        regionId: null,
-      });
-
-      if (state.regionalOverrideMonthly.trim()) {
-        await createPrice.mutateAsync({
-          planVersionId: version.id,
-          billingCycleId: monthlyCycle.id,
-          currency: state.regionCurrency,
-          amount: state.regionalOverrideMonthly.trim(),
-          regionId: region.id,
-        });
-      }
-
-      patch({ createdPlanId: plan.id, createdVersionId: version.id });
+  const saveMut = trpc.commercialCatalog.saveLivePlan.useMutation({
+    onSuccess: async () => {
+      toast.success(cc("toasts.planUpdated"));
       await props.data.invalidateAll();
+    },
+    onError: (err) => toast.error(err.message),
+  });
 
-      if (publishAtEnd) {
-        const validation = await utils.commercialCatalog.validatePublication.fetch({
-          versionId: version.id,
-        });
-        if (!validation.ok) {
-          catalogExperienceObservability.recordValidationFailure();
-          setPublishIssues(
-            resolveSmartValidationActions(validation.issues, t)
-          );
-          toast.error(cc("toasts.validationBlockedPublish"));
-          patch({ step: 10 });
-          return;
-        }
-        catalogExperienceObservability.recordPublication(true);
-        await publishVersion(version.id);
-        catalogExperienceObservability.recordPublishDuration(Date.now() - started);
-        catalogExperienceObservability.recordWizardComplete();
-        catalogProductivityStore.clearWizardDraft(DRAFT_ID);
-        toast.success(cc("toasts.planPublished"));
-        await props.data.invalidateAll();
-      } else {
-        toast.success(cc("toasts.draftGraphCreated"));
-        catalogExperienceObservability.recordWizardComplete();
-      }
-    } catch (e) {
-      catalogExperienceObservability.recordPublication(false);
-      toast.error(e instanceof Error ? e.message : cc("toasts.wizardFailed"));
-    } finally {
-      setBusy(false);
-    }
+  const monthlyCycle = props.data.cyclesQuery.data?.find((c) => c.code === "monthly");
+  const yearlyCycle = props.data.cyclesQuery.data?.find((c) => c.code === "yearly");
+  const currentMonthly = props.data.pricesQuery.data?.find(
+    (p) =>
+      p.planId === selected?.id &&
+      p.billingCycleId === monthlyCycle?.id &&
+      !p.regionId
+  );
+  const currentYearly = props.data.pricesQuery.data?.find(
+    (p) =>
+      p.planId === selected?.id &&
+      p.billingCycleId === yearlyCycle?.id &&
+      !p.regionId
+  );
+  const [monthlyAmountUsd, setMonthlyAmountUsd] = useState(currentMonthly?.amount ?? "");
+  const [yearlyAmountUsd, setYearlyAmountUsd] = useState(currentYearly?.amount ?? "");
+
+  useEffect(() => {
+    if (!selected) return;
+    setName(selected.name);
+    setDescription(selected.description ?? "");
+    setBundleId(selected.featureBundleId ?? "");
+    setLimitId(selected.limitProfileId ?? "");
+    setTrialId(selected.trialPolicyId ?? "");
+    setMonthlyAmountUsd(currentMonthly?.amount ?? "");
+    setYearlyAmountUsd(currentYearly?.amount ?? "");
+  }, [selected?.id, currentMonthly?.amount, currentYearly?.amount]);
+
+  async function save() {
+    if (!selected) return;
+    const regional = (props.data.pricesQuery.data ?? []).filter(
+      (p) => p.planId === selected.id && p.regionId
+    );
+    const prices = [
+      ...(monthlyCycle && monthlyAmountUsd
+        ? [
+            {
+              billingCycleId: monthlyCycle.id,
+              currency: COMMERCIAL_CANONICAL_CURRENCY,
+              amount: monthlyAmountUsd,
+              regionId: null,
+            },
+          ]
+        : []),
+      ...(yearlyCycle && yearlyAmountUsd
+        ? [
+            {
+              billingCycleId: yearlyCycle.id,
+              currency: COMMERCIAL_CANONICAL_CURRENCY,
+              amount: yearlyAmountUsd,
+              regionId: null,
+            },
+          ]
+        : []),
+      ...regional.map((p) => ({
+        billingCycleId: p.billingCycleId,
+        currency: p.currency,
+        amount: p.amount,
+        regionId: p.regionId,
+      })),
+    ];
+    await saveMut.mutateAsync({
+      id: selected.id,
+      name,
+      description: description || null,
+      featureBundleId: bundleId || null,
+      limitProfileId: limitId || null,
+      trialPolicyId: trialId || null,
+      prices: prices.length ? prices : undefined,
+    });
   }
 
   return (
     <PlatformOpsSection
-      title={cc("wizard.title")}
-      description={cc("wizard.body")}
+      title={cc("experience.wizard.title")}
+      description={cc("experience.livePlans.editHint")}
     >
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <PlatformOpsStatusBadge
-          status="healthy"
-          label={`${cc("wizard.stepLabel")} ${state.step + 1}/${WIZARD_STEP_KEYS.length}: ${cc(WIZARD_STEP_KEYS[state.step])}`}
-        />
-        <span className="text-sm text-muted-foreground">
-          {cc("wizard.autosaved").replace("{percent}", String(progress))}
-        </span>
-      </div>
-      <div
-        className="mb-4 h-2 w-full rounded bg-muted"
-        role="progressbar"
-        aria-valuenow={progress}
-        aria-valuemin={0}
-        aria-valuemax={100}
-      >
-        <div
-          className="h-2 rounded bg-primary transition-all"
-          style={{ width: `${progress}%` }}
-        />
-      </div>
-
-      {state.step === 0 ? (
-        <div className="grid gap-3 max-w-lg">
-          <CatalogField label={cc("fields.planCode")}>
-            <Input
-              value={state.planCode}
-              onChange={(e) => patch({ planCode: e.target.value })}
-            />
-          </CatalogField>
-          <CatalogField label={cc("fields.planName")}>
-            <Input
-              value={state.planName}
-              onChange={(e) => patch({ planName: e.target.value })}
-            />
-          </CatalogField>
-          <CatalogField label={cc("fields.description")}>
-            <Textarea
-              value={state.planDescription}
-              onChange={(e) => patch({ planDescription: e.target.value })}
-            />
-          </CatalogField>
-        </div>
-      ) : null}
-
-      {state.step === 1 ? (
-        <div className="grid gap-3 max-w-lg">
-          <CatalogField label={cc("fields.versionCode")}>
-            <Input
-              value={state.versionCode}
-              onChange={(e) => patch({ versionCode: e.target.value })}
-            />
-          </CatalogField>
-          <CatalogField label={cc("fields.versionName")}>
-            <Input
-              value={state.versionName}
-              onChange={(e) => patch({ versionName: e.target.value })}
-            />
-          </CatalogField>
-        </div>
-      ) : null}
-
-      {state.step === 2 ? (
-        <div className="grid gap-3 max-w-lg">
-          <CatalogField label={cc("polish.monthlyUsd")}>
-            <Input
-              value={state.monthlyAmountUsd}
-              onChange={(e) => patch({ monthlyAmountUsd: e.target.value })}
-            />
-          </CatalogField>
-          <CatalogField label={cc("polish.yearlyUsd")}>
-            <Input
-              value={state.yearlyAmountUsd}
-              onChange={(e) => patch({ yearlyAmountUsd: e.target.value })}
-            />
-          </CatalogField>
-          <CatalogField label={cc("manage.currencyUsdOnly")}>
-            <Input value={COMMERCIAL_CANONICAL_CURRENCY} readOnly disabled />
-          </CatalogField>
-          {savingsPercent != null ? (
-            <p className="text-sm text-muted-foreground">
-              {cc("polish.savings").replace("{percent}", String(savingsPercent))}
-            </p>
-          ) : null}
-        </div>
-      ) : null}
-
-      {state.step === 3 ? (
-        <div className="max-w-lg space-y-3">
-          <PlatformOpsAlert
-            severity="info"
-            title={cc("polish.billingBoth")}
-            detail={`${state.monthlyAmountUsd} ${COMMERCIAL_CANONICAL_CURRENCY} / ${cc("intervalUnits.month")} · ${state.yearlyAmountUsd} ${COMMERCIAL_CANONICAL_CURRENCY} / ${cc("intervalUnits.year")}`}
+      <div className="space-y-4 max-w-xl">
+        <CatalogField label={cc("fields.plan")}>
+          <Select
+            value={selected?.id ?? ""}
+            onValueChange={(id) => {
+              setPlanId(id);
+            }}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {plans.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.name} ({p.code})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </CatalogField>
+        <CatalogField label={cc("fields.name")}>
+          <Input value={name} onChange={(e) => setName(e.target.value)} />
+        </CatalogField>
+        <CatalogField label={cc("fields.description")}>
+          <Textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
           />
-        </div>
-      ) : null}
-
-      {state.step === 4 ? (
-        <div className="grid gap-3">
-          <CatalogField label={cc("fields.bundleCode")}>
-            <Input
-              value={state.bundleCode}
-              onChange={(e) => patch({ bundleCode: e.target.value })}
-              placeholder={cc("placeholders.bundleCodeDefault").replace(
-                "{code}",
-                state.planCode
-              )}
-            />
-          </CatalogField>
-          <CapabilityFilterPicker
-            value={state.features}
-            onChange={(features) => patch({ features })}
+        </CatalogField>
+        <CatalogField label={cc("fields.featureBundle")}>
+          <Select value={bundleId} onValueChange={setBundleId}>
+            <SelectTrigger>
+              <SelectValue placeholder={cc("placeholders.selectBundle")} />
+            </SelectTrigger>
+            <SelectContent>
+              {(props.data.bundlesQuery.data ?? []).map((b) => (
+                <SelectItem key={b.id} value={b.id}>
+                  {b.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </CatalogField>
+        <CatalogField label={cc("fields.limitProfile")}>
+          <Select value={limitId} onValueChange={setLimitId}>
+            <SelectTrigger>
+              <SelectValue placeholder={cc("placeholders.selectLimits")} />
+            </SelectTrigger>
+            <SelectContent>
+              {(props.data.limitsQuery.data ?? []).map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </CatalogField>
+        <CatalogField label={cc("fields.trialPolicy")}>
+          <Select value={trialId || "__none"} onValueChange={(v) => setTrialId(v === "__none" ? "" : v)}>
+            <SelectTrigger>
+              <SelectValue placeholder={cc("common.none")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none">{cc("common.none")}</SelectItem>
+              {(props.data.trialsQuery.data ?? []).map((t) => (
+                <SelectItem key={t.id} value={t.id}>
+                  {t.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </CatalogField>
+        <CatalogField label={cc("polish.monthlyUsd")}>
+          <Input
+            value={monthlyAmountUsd}
+            onChange={(e) => setMonthlyAmountUsd(e.target.value)}
           />
-        </div>
-      ) : null}
-
-      {state.step === 5 ? (
-        <div className="grid gap-3 max-w-lg">
-          {CATALOG_LIMIT_KEYS.map((key) => (
-            <CatalogField
-              key={key}
-              label={resolveCatalogLabel(
-                t,
-                catalogLimitNameKey(key),
-                cc("common.emDash")
-              )}
-            >
-              <div className="flex items-center gap-2">
-                <Input
-                  type="number"
-                  disabled={Boolean(state.unlimited[key])}
-                  value={state.limits[key] ?? ""}
-                  onChange={(e) =>
-                    patch({
-                      limits: { ...state.limits, [key]: e.target.value },
-                    })
-                  }
-                />
-                <label className="flex items-center gap-1 text-xs">
-                  <Checkbox
-                    checked={Boolean(state.unlimited[key])}
-                    onCheckedChange={(c) =>
-                      patch({
-                        unlimited: {
-                          ...state.unlimited,
-                          [key]: Boolean(c),
-                        },
-                      })
-                    }
-                  />
-                  {cc("common.infinity")}
-                </label>
-              </div>
-            </CatalogField>
-          ))}
-        </div>
-      ) : null}
-
-      {state.step === 6 ? (
-        <div className="grid gap-3 max-w-lg">
-          <CatalogField label={cc("fields.trialDays")}>
-            <Input
-              type="number"
-              value={state.trialDays}
-              onChange={(e) => patch({ trialDays: e.target.value })}
-            />
-          </CatalogField>
-        </div>
-      ) : null}
-
-      {state.step === 7 ? (
-        <div className="grid gap-3 max-w-lg">
-          <CatalogField label={cc("fields.country")}>
-            <CatalogCountrySelect
-              value={state.countryCode}
-              onChange={({ countryCode, currency, countryName }) =>
-                patch({
-                  countryCode,
-                  regionCurrency: currency,
-                  regionName: countryName,
-                })
-              }
-            />
-          </CatalogField>
-          <CatalogField label={cc("polish.currencyAuto")}>
-            <Input value={state.regionCurrency} readOnly disabled />
-          </CatalogField>
-          <CatalogField label={cc("polish.regionalOverrideOptional")}>
-            <Input
-              value={state.regionalOverrideMonthly}
-              onChange={(e) =>
-                patch({ regionalOverrideMonthly: e.target.value })
-              }
-              placeholder={cc("common.emDash")}
-            />
-          </CatalogField>
-        </div>
-      ) : null}
-
-      {state.step === 8 ? (
-        <div className="grid gap-3 max-w-lg">
-          <label className="flex items-center gap-2 text-sm">
-            <Checkbox
-              checked={state.includePromo}
-              onCheckedChange={(c) => patch({ includePromo: Boolean(c) })}
-            />
-            {cc("wizard.includePromotion")}
-          </label>
-          {state.includePromo ? (
-            <>
-              <CatalogField label={cc("fields.promoCode")}>
-                <Input
-                  value={state.promoCode}
-                  onChange={(e) => patch({ promoCode: e.target.value })}
-                />
-              </CatalogField>
-              <CatalogField label={cc("fields.effect")}>
-                <Input
-                  value={state.promoEffect}
-                  onChange={(e) => patch({ promoEffect: e.target.value })}
-                />
-              </CatalogField>
-            </>
-          ) : null}
-        </div>
-      ) : null}
-
-      {state.step === 9 ? (
-        <div className="space-y-4 text-sm">
-          <p className="font-medium">{cc("polish.summaryTitle")}</p>
-          <p className="text-muted-foreground">
-            {cc("capabilityExperience.planIsFilter")}
-          </p>
-          <CapabilityLifecycleRail foundationState="draft" workflowState="draft" />
-          <CapabilityPricingPreview
-            planName={state.planName || cc("common.emDash")}
-            versionLabel={state.versionName || state.versionCode}
-            monthlyAmount={state.monthlyAmountUsd}
-            yearlyAmount={state.yearlyAmountUsd}
-            currency={COMMERCIAL_CANONICAL_CURRENCY}
-            enabledFeatures={state.features}
+        </CatalogField>
+        <CatalogField label={cc("polish.yearlyUsd")}>
+          <Input
+            value={yearlyAmountUsd}
+            onChange={(e) => setYearlyAmountUsd(e.target.value)}
           />
-          <div>
-            <p className="text-muted-foreground">{cc("polish.summaryRegion")}</p>
-            <p>
-              {state.regionName || state.countryCode || cc("common.emDash")}
-              {state.regionCurrency
-                ? ` · ${state.regionCurrency}`
-                : null}
-            </p>
-            {state.regionalOverrideMonthly.trim() ? (
-              <p>
-                {cc("polish.summaryLocal")}: {state.regionalOverrideMonthly}{" "}
-                {state.regionCurrency} / {cc("intervalUnits.month")}
-              </p>
-            ) : null}
-          </div>
-          <PlatformOpsAlert
-            severity="info"
-            title={cc("wizard.draftSaveTitle")}
-            detail={cc("wizard.draftSaveDetail")}
+        </CatalogField>
+        {validation.data ? (
+          <PlatformOpsStatusBadge
+            status={validation.data.ok ? "healthy" : "degraded"}
+            label={
+              validation.data.ok ? cc("manage.readyToSave") : cc("manage.notReady")
+            }
           />
-        </div>
-      ) : null}
-
-      {state.step === 10 ? (
-        <div className="space-y-3">
+        ) : null}
+        {!validation.data?.ok && validation.data?.issues.length ? (
           <PlatformOpsAlert
             severity="warning"
-            title={cc("validation.publishRequiresCc16")}
-            detail={cc("validation.publishRequiresCc16Detail")}
+            title={cc("manage.notReady")}
+            detail={validation.data.issues.map((i) => i.message).join("; ")}
           />
-          {publishIssues.length > 0 ? (
-            <ul className="space-y-2">
-              {publishIssues.map((a) => (
-                <li
-                  key={a.code}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded border p-2"
-                >
-                  <div>
-                    <div className="font-medium">{a.title}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {a.description}
-                    </div>
-                  </div>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => props.onNavigate(a.navigateTo)}
-                  >
-                    {a.ctaLabel}
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          ) : null}
+        ) : null}
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            onClick={() => void save()}
+            disabled={saveMut.isPending || !selected}
+          >
+            {cc("actions.save")}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => props.onNavigate("plans")}
+          >
+            {cc("actions.back")}
+          </Button>
         </div>
-      ) : null}
-
-      <div className="mt-6 flex flex-wrap gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          disabled={state.step === 0 || busy}
-          onClick={() => patch({ step: Math.max(0, state.step - 1) })}
-        >
-          {cc("wizard.back")}
-        </Button>
-        {state.step < 9 ? (
-          <Button
-            type="button"
-            disabled={busy}
-            onClick={() =>
-              patch({
-                step: Math.min(WIZARD_STEP_KEYS.length - 1, state.step + 1),
-              })
-            }
-          >
-            {cc("wizard.next")}
-          </Button>
-        ) : null}
-        {state.step === 9 ? (
-          <>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={busy}
-              onClick={() => void runCreatePipeline(false)}
-            >
-              {cc("actions.saveDraftGraph")}
-            </Button>
-            <Button
-              type="button"
-              disabled={busy}
-              onClick={() => patch({ step: 10 })}
-            >
-              {cc("actions.continueToPublish")}
-            </Button>
-          </>
-        ) : null}
-        {state.step === 10 ? (
-          <Button
-            type="button"
-            disabled={busy}
-            onClick={() => void runCreatePipeline(true)}
-          >
-            {busy ? cc("actions.working") : cc("actions.validateAndPublish")}
-          </Button>
-        ) : null}
-        <Button
-          type="button"
-          variant="ghost"
-          disabled={busy}
-          onClick={() => {
-            catalogExperienceObservability.recordWizardAbandon();
-            catalogProductivityStore.clearWizardDraft(DRAFT_ID);
-            setState({ ...DEFAULT });
-            toast.message(cc("toasts.wizardReset"));
-          }}
-        >
-          {cc("wizard.reset")}
-        </Button>
       </div>
     </PlatformOpsSection>
   );

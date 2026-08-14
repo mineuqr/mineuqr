@@ -71,17 +71,19 @@ vi.mock("./services/commercial-catalog", async (importOriginal) => {
     await importOriginal<typeof import("./services/commercial-catalog")>();
   return {
     ...actual,
-    ensureCommercialSnapshotBoundForSubscription: vi.fn(async () => ({
-      snapshotId: "snap-webhook-test",
+    ensureLivePlanBoundForSubscription: vi.fn(async () => ({
+      planId: "plan-webhook-test",
     })),
-    createImmutableCommercialSnapshotForSubscription: vi.fn(async () => ({
-      snapshotId: "snap-trial-test",
-      payload: {},
+    bindSubscriptionToLivePlan: vi.fn(async () => ({
+      planId: "plan-trial-test",
+      chargedTerms: null,
     })),
     ensureCatalogReady: vi.fn(async () => {}),
     resolveTrialPolicyFromCatalog: vi.fn(async () => ({
-      professionalPlanVersionId: null,
+      professionalPlanId: null,
       durationDays: 14,
+      trialPolicyId: null,
+      legacyPlanId: 102,
     })),
   };
 });

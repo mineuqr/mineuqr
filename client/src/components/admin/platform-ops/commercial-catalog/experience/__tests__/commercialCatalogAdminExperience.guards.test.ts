@@ -95,16 +95,16 @@ describe("COMMERCIAL-CATALOG-ADMIN-EXPERIENCE-1", () => {
     expect(impact.dependencies.length).toBeGreaterThan(0);
   });
 
-  it("wizard orchestrates existing tRPC mutations only", () => {
+  it("wizard orchestrates live plan validate + atomic save", () => {
     const wizard = read(
       "client/src/components/admin/platform-ops/commercial-catalog/experience/PlanCreationWizard.tsx"
     );
-    expect(wizard).toContain("validatePublication");
-    expect(wizard).toContain("useCatalogPublishingMutations");
-    expect(wizard).toContain("publishVersion");
-    expect(wizard).toContain("createPlan");
+    expect(wizard).toContain("validatePlanSave");
+    expect(wizard).toContain("saveLivePlan");
+    expect(wizard).not.toContain("validatePublication");
+    expect(wizard).not.toContain("useCatalogPublishingMutations");
+    expect(wizard).not.toContain("publishVersion");
     expect(wizard).not.toMatch(/commercialCatalog\.publishVersion\.useMutation/);
     expect(wizard).not.toMatch(/skipValidation/i);
-    expect(wizard).toContain("validation.publishRequiresCc16Detail");
   });
 });

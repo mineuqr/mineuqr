@@ -1,0 +1,213 @@
+{
+  "label": "pre",
+  "queriedAt": "2026-08-14T21:28:41.082Z",
+  "terminus": [
+    {
+      "id": 5994103,
+      "hashPrefix": "c104e894606f2921",
+      "created_at": 1784710000000
+    },
+    {
+      "id": 5994102,
+      "hashPrefix": "9d585e21e43fbd15",
+      "created_at": 1784700000000
+    },
+    {
+      "id": 5964102,
+      "hashPrefix": "0f4df950d48b4b01",
+      "created_at": 1784690000000
+    },
+    {
+      "id": 5934102,
+      "hashPrefix": "52d7c5f2c8249579",
+      "created_at": 1784680000000
+    },
+    {
+      "id": 5904102,
+      "hashPrefix": "4dcecdc264906367",
+      "created_at": 1784670000000
+    }
+  ],
+  "exists": {
+    "commercial_plans": true,
+    "commercial_plan_versions": true,
+    "commercial_snapshot_definitions": true,
+    "commercial_publication_rules": true,
+    "commercial_retirement_policies": true,
+    "commercial_prices": true,
+    "commercial_subscription_bindings": true,
+    "commercial_feature_bundles": true,
+    "commercial_bundle_features": true,
+    "commercial_limit_profiles": true,
+    "commercial_limit_values": true,
+    "commercial_billing_cycles": true,
+    "commercial_trial_policies": true,
+    "commercial_migration_policies": true,
+    "commercial_regions": true,
+    "commercial_promotions": true
+  },
+  "counts": {
+    "commercial_plans": 5,
+    "commercial_plan_versions": 5,
+    "commercial_snapshot_definitions": 0,
+    "commercial_publication_rules": 0,
+    "commercial_retirement_policies": 3,
+    "commercial_prices": 14,
+    "commercial_subscription_bindings": 0,
+    "commercial_feature_bundles": 5,
+    "commercial_bundle_features": 65,
+    "commercial_limit_profiles": 5,
+    "commercial_limit_values": 29,
+    "commercial_billing_cycles": 2,
+    "commercial_trial_policies": 3,
+    "commercial_migration_policies": 3,
+    "commercial_regions": 1,
+    "commercial_promotions": 0,
+    "users": 3,
+    "restaurants": 6,
+    "user_subscriptions": 5,
+    "subscription_plans": 3,
+    "invoices": 7,
+    "payments": 5,
+    "subscription_history": 2,
+    "orders": 42,
+    "settlement_records": 39
+  },
+  "commercialPlanColumns": [
+    "id",
+    "code",
+    "name",
+    "description",
+    "sortOrder",
+    "isHidden",
+    "createdAt",
+    "updatedAt"
+  ],
+  "priceColumns": [
+    "id",
+    "planVersionId",
+    "billingCycleId",
+    "currency",
+    "amount",
+    "regionId",
+    "createdAt",
+    "updatedAt"
+  ],
+  "bindingColumns": [
+    "id",
+    "subscriptionId",
+    "planVersionId",
+    "snapshotId",
+    "legacyPlanId",
+    "createdAt"
+  ],
+  "plans": [
+    {
+      "id": "8569e399-aa18-4219-847b-0cabb1bdbdfb",
+      "code": "001",
+      "name": "الخطة الاساسية ",
+      "isHidden": 0
+    },
+    {
+      "id": "d5fea7b5-9cad-4a2a-b3e3-5a7899f2f456",
+      "code": "002",
+      "name": "الخطة الاحترافية ",
+      "isHidden": 0
+    },
+    {
+      "id": "5a20644f-e5af-4d54-9f83-615a80b21ab0",
+      "code": "basic",
+      "name": "Basic",
+      "isHidden": 0
+    },
+    {
+      "id": "4796e810-f806-4c51-8c15-3cb84c978fc8",
+      "code": "enterprise",
+      "name": "Enterprise",
+      "isHidden": 0
+    },
+    {
+      "id": "a8ae706c-bdb4-4c04-8ab7-4b988c6c476f",
+      "code": "professional",
+      "name": "Professional",
+      "isHidden": 0
+    }
+  ],
+  "prices": [
+    {
+      "note": "planId join failed (pre-0086)"
+    }
+  ],
+  "subscriptionPlans": [
+    {
+      "id": 30001,
+      "nameEn": "Basic Plan",
+      "priceMonthly": "19.00",
+      "priceYearly": "175.00",
+      "isActive": 1
+    },
+    {
+      "id": 30002,
+      "nameEn": "Professional Plan",
+      "priceMonthly": "39.00",
+      "priceYearly": "349.00",
+      "isActive": 1
+    },
+    {
+      "id": 30003,
+      "nameEn": "Enterprise Plan",
+      "priceMonthly": "99.00",
+      "priceYearly": "899.00",
+      "isActive": 1
+    }
+  ],
+  "owner600001": [
+    {
+      "id": 600001,
+      "userId": 1,
+      "restaurantId": 0,
+      "planId": 30002,
+      "status": "active",
+      "billingCycle": "monthly",
+      "currentPeriodStart": "2026-06-08T03:08:15.000Z",
+      "currentPeriodEnd": "2026-08-07T21:00:00.000Z",
+      "trialEndsAt": null,
+      "canceledAt": null,
+      "createdAt": "2026-06-08T03:08:15.000Z",
+      "updatedAt": "2026-06-09T18:28:40.000Z"
+    }
+  ],
+  "tap60001": [
+    {
+      "id": 60001,
+      "userId": 2700049,
+      "subscriptionId": null,
+      "invoiceId": null,
+      "amount": "349.00",
+      "currency": "SAR",
+      "status": "captured",
+      "paidAt": "2026-05-19T09:39:13.000Z",
+      "createdAt": "2026-05-19T09:39:09.000Z",
+      "updatedAt": "2026-05-19T09:39:12.000Z"
+    }
+  ],
+  "subPlanIds": [
+    {
+      "planId": 30002
+    },
+    {
+      "planId": 30003
+    }
+  ],
+  "bindings": [
+    {
+      "n": 0
+    }
+  ],
+  "invoiceCatalogCols": [],
+  "paymentCatalogCols": [],
+  "restaurantCatalogCols": [],
+  "subCatalogCols": [],
+  "stop": [],
+  "gate": "PASS"
+}

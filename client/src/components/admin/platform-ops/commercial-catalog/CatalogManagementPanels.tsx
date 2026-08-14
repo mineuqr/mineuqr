@@ -19,7 +19,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  PlatformOpsAlert,
   PlatformOpsMetricCard,
   PlatformOpsMetricGrid,
   PlatformOpsSection,
@@ -38,9 +37,6 @@ import {
   CATALOG_FEATURE_KEYS,
   CATALOG_LIMIT_KEYS,
   filterByQuery,
-  stateLabel,
-  useMutationToast,
-  versionStateTone,
 } from "./catalogUiHelpers";
 import {
   catalogFeatureNameKey,
@@ -49,10 +45,8 @@ import {
 } from "./catalogCommercialDisplay";
 import { CatalogCountrySelect } from "./CatalogCountrySelect";
 import { catalogManagementUiObservability } from "./catalogManagementObservability";
-import { useCatalogPublishingMutations } from "./useCatalogPublishingMutations";
 import { CapabilityFilterPicker } from "./experience/CapabilityFilterPicker";
 import { normalizePlanFeatures } from "./experience/capabilityExperienceModel";
-import { CapabilityLifecycleRail } from "./experience/CapabilityLifecycleRail";
 import type { CatalogManagementData } from "./useCatalogManagementData";
 
 type Props = { data: CatalogManagementData };
@@ -100,7 +94,7 @@ export function PlansManagementPanel({ data }: Props) {
   const createMut = trpc.commercialCatalog.createPlan.useMutation(
     useMutationToast(data, cc("toasts.planCreated"), cc("toasts.operationFailed"))
   );
-  const updateMut = trpc.commercialCatalog.updatePlan.useMutation(
+  const updateMut = trpc.commercialCatalog.saveLivePlan.useMutation(
     useMutationToast(data, cc("toasts.planUpdated"), cc("toasts.operationFailed"))
   );
 
@@ -113,14 +107,6 @@ export function PlansManagementPanel({ data }: Props) {
       ]),
     [data.plansQuery.data, search]
   );
-
-  const versionCountByPlan = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const v of data.versionsQuery.data ?? []) {
-      map.set(v.planId, (map.get(v.planId) ?? 0) + 1);
-    }
-    return map;
-  }, [data.versionsQuery.data]);
 
   function reset() {
     setEditId(null);
@@ -189,7 +175,6 @@ export function PlansManagementPanel({ data }: Props) {
         headers={[
           cc("headers.code"),
           cc("headers.name"),
-          cc("headers.versions"),
           cc("headers.status"),
           cc("headers.updated"),
           cc("headers.actions"),
@@ -201,9 +186,6 @@ export function PlansManagementPanel({ data }: Props) {
               {p.code}
             </PlatformOpsTableCell>
             <PlatformOpsTableCell>{p.name}</PlatformOpsTableCell>
-            <PlatformOpsTableCell>
-              {versionCountByPlan.get(p.id) ?? 0}
-            </PlatformOpsTableCell>
             <PlatformOpsTableCell>
               <PlatformOpsStatusBadge
                 status={p.isHidden ? "unavailable" : "healthy"}
@@ -284,442 +266,13 @@ export function PlansManagementPanel({ data }: Props) {
   );
 }
 
-export function VersionsManagementPanel({ data }: Props) {
-  const { cc } = useCatalogI18n();
-  const [search, setSearch] = useState("");
-  const [open, setOpen] = useState(false);
-  const [planId, setPlanId] = useState("");
-  const [versionCode, setVersionCode] = useState("");
-  const [versionName, setVersionName] = useState("");
-  const [featureBundleId, setFeatureBundleId] = useState<string>("");
-  const [limitProfileId, setLimitProfileId] = useState<string>("");
-  const [trialPolicyId, setTrialPolicyId] = useState<string>("");
-  const [migrationPolicyId, setMigrationPolicyId] = useState<string>("");
-  const [retirementPolicyId, setRetirementPolicyId] = useState<string>("");
-
-  const createMut = trpc.commercialCatalog.createVersion.useMutation(
-    useMutationToast(data, cc("toasts.versionCreated"), cc("toasts.operationFailed"))
-  );
-  const updateMut = trpc.commercialCatalog.updateDraftVersion.useMutation(
-    useMutationToast(data, cc("toasts.draftVersionUpdated"), cc("toasts.operationFailed"))
-  );
-  const {
-    publishVersion,
-    deprecateMut,
-    retireMut,
-    archiveMut,
-    approveMut,
-    scheduleMut,
-  } = useCatalogPublishingMutations({
-    onPublishSuccess: async () => {
-      catalogManagementUiObservability.recordPublication(true);
-      toast.success(cc("toasts.versionPublished"));
-      await data.invalidateAll();
-    },
-    onPublishError: (message) => {
-      catalogManagementUiObservability.recordPublication(false, message);
-      toast.error(message);
-    },
-    onLifecycleSuccess: async () => {
-      await data.invalidateAll();
-    },
-    onLifecycleError: (message) => toast.error(message),
-  });
-
-  const plansById = useMemo(() => {
-    const m = new Map((data.plansQuery.data ?? []).map((p) => [p.id, p]));
-    return m;
-  }, [data.plansQuery.data]);
-
-  const snapshotCountByVersion = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const s of data.snapshotsQuery.data ?? []) {
-      m.set(s.planVersionId, (m.get(s.planVersionId) ?? 0) + 1);
-    }
-    return m;
-  }, [data.snapshotsQuery.data]);
-
-  const rows = useMemo(
-    () =>
-      filterByQuery(data.versionsQuery.data ?? [], search, (v) => [
-        v.versionCode,
-        v.versionName,
-        v.state,
-        plansById.get(v.planId)?.code,
-      ]),
-    [data.versionsQuery.data, search, plansById]
-  );
-
-  function reset() {
-    setPlanId("");
-    setVersionCode("");
-    setVersionName("");
-    setFeatureBundleId("");
-    setLimitProfileId("");
-    setTrialPolicyId("");
-    setMigrationPolicyId("");
-    setRetirementPolicyId("");
-  }
-
-  async function submitCreate() {
-    await createMut.mutateAsync({
-      planId,
-      versionCode,
-      versionName,
-      featureBundleId: featureBundleId || null,
-      limitProfileId: limitProfileId || null,
-      trialPolicyId: trialPolicyId || null,
-      migrationPolicyId: migrationPolicyId || null,
-      retirementPolicyId: retirementPolicyId || null,
-    });
-    setOpen(false);
-    reset();
-  }
-
-  async function cloneVersion(v: {
-    planId: string;
-    versionCode: string;
-    versionName: string;
-    featureBundleId: string | null;
-    limitProfileId: string | null;
-    trialPolicyId: string | null;
-    migrationPolicyId: string | null;
-    retirementPolicyId: string | null;
-    compatibility?: {
-      upgradeTargets: string[];
-      downgradeTargets: string[];
-      migrationRequirements: string[];
-      breakingCommercialChanges: string[];
-    };
-  }) {
-    const nextCode = `${v.versionCode}-clone-${Date.now().toString(36).slice(-4)}`;
-    await createMut.mutateAsync({
-      planId: v.planId,
-      versionCode: nextCode,
-      versionName: `${v.versionName} ${cc("manage.cloneSuffix")}`,
-      featureBundleId: v.featureBundleId,
-      limitProfileId: v.limitProfileId,
-      trialPolicyId: v.trialPolicyId,
-      migrationPolicyId: v.migrationPolicyId,
-      retirementPolicyId: v.retirementPolicyId,
-      compatibility: v.compatibility,
-    });
-  }
-
-  return (
-    <>
-      <CatalogEntityPanel
-        title={cc("manage.versionsTitle")}
-        description={cc("manage.versionsBody")}
-        search={search}
-        onSearchChange={setSearch}
-        primaryActionLabel={cc("manage.createVersion")}
-        onPrimaryAction={() => {
-          reset();
-          setOpen(true);
-        }}
-        emptyTitle={cc("manage.noVersions")}
-        emptyDescription={cc("manage.noVersionsBody")}
-        isEmpty={rows.length === 0}
-        headers={[
-          cc("headers.version"),
-          cc("headers.plan"),
-          cc("headers.state"),
-          cc("headers.snapshots"),
-          cc("headers.updated"),
-          cc("headers.actions"),
-        ]}
-      >
-        {rows.map((v) => (
-          <PlatformOpsTableRow key={v.id}>
-            <PlatformOpsTableCell>
-              {v.versionName}
-              <div className="font-mono text-xs text-muted-foreground">
-                {v.versionCode}
-              </div>
-            </PlatformOpsTableCell>
-            <PlatformOpsTableCell>
-              {plansById.get(v.planId)?.name ?? v.planId.slice(0, 8)}
-            </PlatformOpsTableCell>
-            <PlatformOpsTableCell>
-              <PlatformOpsStatusBadge
-                status={versionStateTone(v.state)}
-                label={stateLabel(cc, v.state)}
-              />
-            </PlatformOpsTableCell>
-            <PlatformOpsTableCell>
-              {snapshotCountByVersion.get(v.id) ?? 0}
-            </PlatformOpsTableCell>
-            <PlatformOpsTableCell className="text-xs text-muted-foreground">
-              {v.updatedAt}
-            </PlatformOpsTableCell>
-            <PlatformOpsTableCell>
-              <div className="flex flex-wrap gap-1">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => void cloneVersion(v)}
-                >
-                  {cc("actions.clone")}
-                </Button>
-                {v.state === "draft" ? (
-                  <>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() =>
-                        void approveMut
-                          .mutateAsync({ versionId: v.id })
-                          .then(() => toast.success(cc("toasts.versionApproved")))
-                      }
-                    >
-                      {cc("actions.approve")}
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        const effectiveAt = new Date(
-                          Date.now() + 24 * 60 * 60 * 1000
-                        ).toISOString();
-                        void approveMut
-                          .mutateAsync({ versionId: v.id })
-                          .catch(() => undefined)
-                          .then(() =>
-                            scheduleMut.mutateAsync({
-                              versionId: v.id,
-                              effectiveAt,
-                            })
-                          )
-                          .then(() =>
-                            toast.success(cc("toasts.versionScheduled"))
-                          );
-                      }}
-                    >
-                      {cc("actions.schedule")}
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={() => void publishVersion(v.id)}
-                    >
-                      {cc("actions.publish")}
-                    </Button>
-                  </>
-                ) : null}
-                {v.state === "published" ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() =>
-                      void deprecateMut
-                        .mutateAsync({ versionId: v.id })
-                        .then(() =>
-                          toast.success(cc("toasts.versionDeprecated"))
-                        )
-                    }
-                  >
-                    {cc("actions.deprecate")}
-                  </Button>
-                ) : null}
-                {v.state === "deprecated" ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() =>
-                      void retireMut
-                        .mutateAsync({ versionId: v.id })
-                        .then(() => toast.success(cc("toasts.versionRetired")))
-                    }
-                  >
-                    {cc("actions.retire")}
-                  </Button>
-                ) : null}
-                {v.state === "retired" ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() =>
-                      void archiveMut
-                        .mutateAsync({ versionId: v.id })
-                        .then(() => toast.success(cc("toasts.versionArchived")))
-                    }
-                  >
-                    {cc("actions.archive")}
-                  </Button>
-                ) : null}
-                {v.state === "draft" ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() =>
-                      void updateMut.mutateAsync({
-                        id: v.id,
-                        versionName: `${v.versionName}`,
-                        featureBundleId: v.featureBundleId,
-                        limitProfileId: v.limitProfileId,
-                        trialPolicyId: v.trialPolicyId,
-                        migrationPolicyId: v.migrationPolicyId,
-                        retirementPolicyId: v.retirementPolicyId,
-                      })
-                    }
-                  >
-                    {cc("actions.touchDraft")}
-                  </Button>
-                ) : null}
-              </div>
-            </PlatformOpsTableCell>
-          </PlatformOpsTableRow>
-        ))}
-      </CatalogEntityPanel>
-
-      <CatalogFormDialog
-        open={open}
-        onOpenChange={(v) => {
-          setOpen(v);
-          if (!v) reset();
-        }}
-        title={cc("manage.createVersionTitle")}
-        pending={createMut.isPending}
-        onSubmit={() => void submitCreate()}
-      >
-        <CatalogField label={cc("fields.plan")}>
-          <Select value={planId} onValueChange={setPlanId}>
-            <SelectTrigger>
-              <SelectValue placeholder={cc("placeholders.selectPlan")} />
-            </SelectTrigger>
-            <SelectContent>
-              {(data.plansQuery.data ?? []).map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.name} ({p.code})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </CatalogField>
-        <CatalogField label={cc("fields.versionCode")}>
-          <Input
-            value={versionCode}
-            onChange={(e) => setVersionCode(e.target.value)}
-          />
-        </CatalogField>
-        <CatalogField label={cc("fields.versionName")}>
-          <Input
-            value={versionName}
-            onChange={(e) => setVersionName(e.target.value)}
-          />
-        </CatalogField>
-        <CatalogField label={cc("fields.featureBundle")}>
-          <Select
-            value={featureBundleId || "__none"}
-            onValueChange={(v) => setFeatureBundleId(v === "__none" ? "" : v)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder={cc("placeholders.optional")} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__none">{cc("common.none")}</SelectItem>
-              {(data.bundlesQuery.data ?? []).map((b) => (
-                <SelectItem key={b.id} value={b.id}>
-                  {b.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </CatalogField>
-        <CatalogField label={cc("fields.limitProfile")}>
-          <Select
-            value={limitProfileId || "__none"}
-            onValueChange={(v) => setLimitProfileId(v === "__none" ? "" : v)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder={cc("placeholders.optional")} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__none">{cc("common.none")}</SelectItem>
-              {(data.limitsQuery.data ?? []).map((b) => (
-                <SelectItem key={b.id} value={b.id}>
-                  {b.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </CatalogField>
-        <CatalogField label={cc("fields.trialPolicy")}>
-          <Select
-            value={trialPolicyId || "__none"}
-            onValueChange={(v) => setTrialPolicyId(v === "__none" ? "" : v)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder={cc("placeholders.optional")} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__none">{cc("common.none")}</SelectItem>
-              {(data.trialsQuery.data ?? []).map((b) => (
-                <SelectItem key={b.id} value={b.id}>
-                  {b.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </CatalogField>
-        <CatalogField label={cc("fields.migrationPolicy")}>
-          <Select
-            value={migrationPolicyId || "__none"}
-            onValueChange={(v) =>
-              setMigrationPolicyId(v === "__none" ? "" : v)
-            }
-          >
-            <SelectTrigger>
-              <SelectValue placeholder={cc("placeholders.optional")} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__none">{cc("common.none")}</SelectItem>
-              {(data.migrationQuery.data ?? []).map((b) => (
-                <SelectItem key={b.id} value={b.id}>
-                  {b.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </CatalogField>
-        <CatalogField label={cc("fields.retirementPolicy")}>
-          <Select
-            value={retirementPolicyId || "__none"}
-            onValueChange={(v) =>
-              setRetirementPolicyId(v === "__none" ? "" : v)
-            }
-          >
-            <SelectTrigger>
-              <SelectValue placeholder={cc("placeholders.optional")} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__none">{cc("common.none")}</SelectItem>
-              {(data.retirementQuery.data ?? []).map((b) => (
-                <SelectItem key={b.id} value={b.id}>
-                  {b.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </CatalogField>
-      </CatalogFormDialog>
-    </>
-  );
-}
+export function VersionsManagementPanel(_props: Props) { return null; }
 
 export function PricingManagementPanel({ data }: Props) {
   const { cc } = useCatalogI18n();
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
-  const [planVersionId, setPlanVersionId] = useState("");
+  const [planId, setPlanId] = useState("");
   const [billingCycleId, setBillingCycleId] = useState("");
   const [currency, setCurrency] = useState(COMMERCIAL_CANONICAL_CURRENCY);
   const [amount, setAmount] = useState("");
@@ -734,7 +287,7 @@ export function PricingManagementPanel({ data }: Props) {
       filterByQuery(data.pricesQuery.data ?? [], search, (p) => [
         p.currency,
         p.amount,
-        p.planVersionId,
+        p.planId,
       ]),
     [data.pricesQuery.data, search]
   );
@@ -742,7 +295,7 @@ export function PricingManagementPanel({ data }: Props) {
   async function submit() {
     const isOverride = Boolean(regionId);
     await createMut.mutateAsync({
-      planVersionId,
+      planId,
       billingCycleId,
       currency: isOverride ? currency : COMMERCIAL_CANONICAL_CURRENCY,
       amount,
@@ -767,7 +320,7 @@ export function PricingManagementPanel({ data }: Props) {
         emptyDescription={cc("manage.noPricesBody")}
         isEmpty={rows.length === 0}
         headers={[
-          cc("headers.version"),
+          cc("headers.plan"),
           cc("headers.cycle"),
           cc("headers.amount"),
           cc("headers.currency"),
@@ -778,7 +331,7 @@ export function PricingManagementPanel({ data }: Props) {
         {rows.map((p) => (
           <PlatformOpsTableRow key={p.id}>
             <PlatformOpsTableCell className="font-mono text-xs">
-              {p.planVersionId.slice(0, 8)}…
+              {p.planId.slice(0, 8)}…
             </PlatformOpsTableCell>
             <PlatformOpsTableCell className="font-mono text-xs">
               {p.billingCycleId.slice(0, 8)}…
@@ -834,15 +387,15 @@ export function PricingManagementPanel({ data }: Props) {
         pending={createMut.isPending}
         onSubmit={() => void submit()}
       >
-        <CatalogField label={cc("fields.planVersion")}>
-          <Select value={planVersionId} onValueChange={setPlanVersionId}>
+        <CatalogField label={cc("fields.plan")}>
+          <Select value={planId} onValueChange={setPlanId}>
             <SelectTrigger>
-              <SelectValue placeholder={cc("placeholders.selectVersion")} />
+              <SelectValue placeholder={cc("placeholders.selectPlan")} />
             </SelectTrigger>
             <SelectContent>
-              {(data.versionsQuery.data ?? []).map((v) => (
+              {(data.plansQuery.data ?? []).map((v) => (
                 <SelectItem key={v.id} value={v.id}>
-                  {v.versionName} ({stateLabel(cc, v.state)})
+                  {v.name} ({v.code})
                 </SelectItem>
               ))}
             </SelectContent>
@@ -1726,282 +1279,16 @@ export function MigrationPoliciesManagementPanel({ data }: Props) {
   );
 }
 
-export function RetirementPoliciesManagementPanel({ data }: Props) {
-  const { cc } = useCatalogI18n();
-  const [allowRenewals, setAllowRenewals] = useState(false);
-  const createMut = trpc.commercialCatalog.createRetirementPolicy.useMutation(
-    useMutationToast(data, cc("toasts.retirementPolicyCreated"), cc("toasts.operationFailed"))
-  );
-  return (
-    <SimplePolicyCreatePanel
-      data={data}
-      title={cc("manage.retirementPoliciesTitle")}
-      description={cc("manage.retirementPoliciesBody")}
-      emptyTitle={cc("manage.noRetirementPolicies")}
-      pending={createMut.isPending}
-      rows={(data.retirementQuery.data ?? []).map((p) => ({
-        id: p.id,
-        code: p.code,
-        name: p.name,
-        createdAt: p.createdAt,
-        extra: p.allowRenewals
-          ? cc("manage.renewalsAllowed")
-          : cc("manage.renewalsBlocked"),
-      }))}
-      buildExtra={() => ({ allowRenewals })}
-      onCreate={(input) => createMut.mutateAsync(input as never)}
-      extraFields={
-        <label className="flex items-center gap-2 text-sm">
-          <Checkbox
-            checked={allowRenewals}
-            onCheckedChange={(c) => setAllowRenewals(Boolean(c))}
-          />
-          {cc("manage.allowRenewalsAfterRetirement")}
-        </label>
-      }
-    />
-  );
-}
+export function RetirementPoliciesManagementPanel(_props: Props) { return null; }
 
-export function PublicationManagementPanel({ data }: Props) {
-  const { cc } = useCatalogI18n();
-  const [selectedVersionId, setSelectedVersionId] = useState<string | null>(
-    null
-  );
-  const validationQuery = trpc.commercialCatalog.validatePublication.useQuery(
-    { versionId: selectedVersionId! },
-    { enabled: Boolean(selectedVersionId) }
-  );
-  const workflowStatuses =
-    trpc.commercialCatalog.publishing.listStatuses.useQuery();
-  const {
-    publishVersion,
-    deprecateMut,
-    retireMut,
-    archiveMut,
-    approveMut,
-    scheduleMut,
-  } = useCatalogPublishingMutations({
-    onPublishSuccess: async () => {
-      catalogManagementUiObservability.recordPublication(true);
-      toast.success(cc("toasts.published"));
-      await data.invalidateAll();
-      await workflowStatuses.refetch();
-    },
-    onPublishError: (message) => {
-      catalogManagementUiObservability.recordPublication(false, message);
-      toast.error(message);
-    },
-    onLifecycleSuccess: async () => {
-      await data.invalidateAll();
-      await workflowStatuses.refetch();
-    },
-    onLifecycleError: (message) => toast.error(message),
-  });
-
-  const versions = data.versionsQuery.data ?? [];
-  const byState = {
-    draft: versions.filter((v) => v.state === "draft"),
-    published: versions.filter((v) => v.state === "published"),
-    deprecated: versions.filter((v) => v.state === "deprecated"),
-    retired: versions.filter((v) => v.state === "retired"),
-  };
-
-  const metricLabels = [
-    ["draft", byState.draft.length],
-    ["published", byState.published.length],
-    ["deprecated", byState.deprecated.length],
-    ["retired", byState.retired.length],
-  ] as const;
-
-  return (
-    <PlatformOpsSection
-      title={cc("manage.publicationWorkspaceTitle")}
-      description={cc("manage.publicationWorkspaceBody")}
-    >
-      <PlatformOpsMetricGrid>
-        {metricLabels.map(([label, value]) => (
-          <PlatformOpsMetricCard
-            key={label}
-            label={stateLabel(cc, label)}
-            value={String(value)}
-            tone="info"
-            domain="information"
-          />
-        ))}
-      </PlatformOpsMetricGrid>
-
-      <p className="mt-3 text-sm text-muted-foreground">
-        {cc("capabilityExperience.lifecycle.legend")}
-      </p>
-      <CapabilityLifecycleRail foundationState="draft" workflowState="draft" />
-
-      <div className="mt-4 space-y-3">
-        {versions.map((v) => (
-          <div
-            key={v.id}
-            className="flex flex-wrap items-center justify-between gap-2 rounded border p-3"
-          >
-            <div>
-              <div className="font-medium">
-                {v.versionName}{" "}
-                <span className="font-mono text-xs text-muted-foreground">
-                  {v.versionCode}
-                </span>
-              </div>
-              <PlatformOpsStatusBadge
-                status={versionStateTone(v.state)}
-                label={stateLabel(cc, v.state)}
-              />
-              <CapabilityLifecycleRail
-                className="mt-2"
-                foundationState={v.state}
-                workflowState={
-                  workflowStatuses.data?.find((s) => s.planVersionId === v.id)
-                    ?.workflowState
-                }
-              />
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => setSelectedVersionId(v.id)}
-              >
-                {cc("actions.validate")}
-              </Button>
-              {v.state === "draft" ? (
-                <>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() =>
-                      void approveMut
-                        .mutateAsync({ versionId: v.id })
-                        .then(() => {
-                          toast.success(cc("toasts.versionApproved"));
-                          return workflowStatuses.refetch();
-                        })
-                    }
-                  >
-                    {cc("actions.approve")}
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      const effectiveAt = new Date(
-                        Date.now() + 24 * 60 * 60 * 1000
-                      ).toISOString();
-                      void approveMut
-                        .mutateAsync({ versionId: v.id })
-                        .catch(() => undefined)
-                        .then(() =>
-                          scheduleMut.mutateAsync({
-                            versionId: v.id,
-                            effectiveAt,
-                          })
-                        )
-                        .then(() => {
-                          toast.success(cc("toasts.versionScheduled"));
-                          return workflowStatuses.refetch();
-                        });
-                    }}
-                  >
-                    {cc("actions.schedule")}
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={() => void publishVersion(v.id)}
-                  >
-                    {cc("actions.publish")}
-                  </Button>
-                </>
-              ) : null}
-              {v.state === "published" ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() =>
-                    void deprecateMut
-                      .mutateAsync({ versionId: v.id })
-                      .then(() => toast.success(cc("toasts.deprecated")))
-                  }
-                >
-                  {cc("actions.deprecate")}
-                </Button>
-              ) : null}
-              {v.state === "deprecated" ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() =>
-                    void retireMut
-                      .mutateAsync({ versionId: v.id })
-                      .then(() => toast.success(cc("toasts.retired")))
-                  }
-                >
-                  {cc("actions.retire")}
-                </Button>
-              ) : null}
-              {v.state === "retired" ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() =>
-                    void archiveMut
-                      .mutateAsync({ versionId: v.id })
-                      .then(() => toast.success(cc("toasts.versionArchived")))
-                  }
-                >
-                  {cc("actions.archive")}
-                </Button>
-              ) : null}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {selectedVersionId && validationQuery.data ? (
-        <div className="mt-4 space-y-2">
-          <PlatformOpsAlert
-            severity={validationQuery.data.ok ? "info" : "warning"}
-            title={
-              validationQuery.data.ok
-                ? cc("manage.cc16Ready")
-                : cc("manage.cc16Blocking")
-            }
-            detail={cc("manage.issueCount").replace(
-              "{count}",
-              String(validationQuery.data.issues.length)
-            )}
-          />
-          <ul className="list-disc pl-5 text-sm text-muted-foreground">
-            {validationQuery.data.issues.map((issue) => (
-              <li key={`${issue.code}-${issue.message}`}>
-                <strong>{issue.code}</strong>: {issue.message}
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-    </PlatformOpsSection>
-  );
-}
+export function PublicationManagementPanel(_props: Props) { return null; }
 
 export function ValidationManagementPanel({ data }: Props) {
   const { cc } = useCatalogI18n();
-  const [versionId, setVersionId] = useState<string>("");
-  const validationQuery = trpc.commercialCatalog.validatePublication.useQuery(
-    { versionId },
-    { enabled: Boolean(versionId) }
+  const [planId, setPlanId] = useState<string>("");
+  const validationQuery = trpc.commercialCatalog.validatePlanSave.useQuery(
+    { planId },
+    { enabled: Boolean(planId) }
   );
 
   return (
@@ -2009,15 +1296,15 @@ export function ValidationManagementPanel({ data }: Props) {
       title={cc("manage.commercialValidationTitle")}
       description={cc("manage.commercialValidationBody")}
     >
-      <CatalogField label={cc("fields.planVersion")}>
-        <Select value={versionId} onValueChange={setVersionId}>
+      <CatalogField label={cc("fields.plan")}>
+        <Select value={planId} onValueChange={setPlanId}>
           <SelectTrigger className="max-w-md">
-            <SelectValue placeholder={cc("placeholders.selectVersionToValidate")} />
+            <SelectValue placeholder={cc("placeholders.selectPlan")} />
           </SelectTrigger>
           <SelectContent>
-            {(data.versionsQuery.data ?? []).map((v) => (
+            {(data.plansQuery.data ?? []).map((v) => (
               <SelectItem key={v.id} value={v.id}>
-                {v.versionName} ({stateLabel(cc, v.state)})
+                {v.name} ({v.code})
               </SelectItem>
             ))}
           </SelectContent>
@@ -2030,7 +1317,7 @@ export function ValidationManagementPanel({ data }: Props) {
             status={validationQuery.data.ok ? "healthy" : "degraded"}
             label={
               validationQuery.data.ok
-                ? cc("manage.readyToPublish")
+                ? cc("manage.readyToSave")
                 : cc("manage.notReady")
             }
           />
@@ -2057,7 +1344,6 @@ export function ValidationManagementPanel({ data }: Props) {
 export function HealthManagementPanel({ data }: Props) {
   const { cc } = useCatalogI18n();
   const health = data.healthQuery.data;
-  const adoption = data.adoptionQuery.data;
   const uiMetrics = catalogManagementUiObservability.snapshot();
 
   return (
@@ -2073,38 +1359,14 @@ export function HealthManagementPanel({ data }: Props) {
           domain="information"
         />
         <PlatformOpsMetricCard
-          label={cc("metricVersions")}
-          value={String(health?.versions.total ?? 0)}
+          label={cc("manage.hiddenPlans")}
+          value={String(health?.hiddenPlans ?? 0)}
           tone="info"
           domain="information"
         />
         <PlatformOpsMetricCard
-          label={cc("metricPublished")}
-          value={String(health?.versions.published ?? 0)}
-          tone="info"
-          domain="information"
-        />
-        <PlatformOpsMetricCard
-          label={stateLabel(cc, "draft")}
-          value={String(health?.versions.draft ?? 0)}
-          tone="info"
-          domain="information"
-        />
-        <PlatformOpsMetricCard
-          label={stateLabel(cc, "deprecated")}
-          value={String(health?.versions.deprecated ?? 0)}
-          tone="info"
-          domain="information"
-        />
-        <PlatformOpsMetricCard
-          label={stateLabel(cc, "retired")}
-          value={String(health?.versions.retired ?? 0)}
-          tone="info"
-          domain="information"
-        />
-        <PlatformOpsMetricCard
-          label={cc("headers.snapshots")}
-          value={String(data.snapshotsQuery.data?.length ?? 0)}
+          label={cc("headers.prices")}
+          value={String(health?.prices ?? 0)}
           tone="info"
           domain="information"
         />
@@ -2132,12 +1394,6 @@ export function HealthManagementPanel({ data }: Props) {
           tone="info"
           domain="information"
         />
-        <PlatformOpsMetricCard
-          label={cc("manage.adoptionSnapshotCreates")}
-          value={String(adoption?.snapshotCreations ?? 0)}
-          tone="info"
-          domain="information"
-        />
       </PlatformOpsMetricGrid>
       {health?.lastValidationError ? (
         <p className="mt-3 text-sm text-muted-foreground">
@@ -2147,31 +1403,7 @@ export function HealthManagementPanel({ data }: Props) {
           )}
         </p>
       ) : null}
-      {health?.lastPublicationError ? (
-        <p className="mt-1 text-sm text-muted-foreground">
-          {cc("manage.lastPublicationError").replace(
-            "{message}",
-            health.lastPublicationError
-          )}
-        </p>
-      ) : null}
-      {adoption &&
-      typeof adoption === "object" &&
-      "runtimeAuthority" in adoption &&
-      adoption.runtimeAuthority ? (
-        <p className="mt-1 text-sm text-muted-foreground">
-          {cc("manage.runtimeMixedResolution").replace(
-            "{count}",
-            String(
-              (
-                adoption.runtimeAuthority as {
-                  mixedResolutionCount: number;
-                }
-              ).mixedResolutionCount
-            )
-          )}
-        </p>
-      ) : null}
     </PlatformOpsSection>
   );
 }
+

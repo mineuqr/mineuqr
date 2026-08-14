@@ -68,7 +68,7 @@ describe("COMMERCIAL-CATALOG-PRODUCTION-POLISH-1", () => {
     expect(display).toContain("resolveCatalogLabel");
 
     const experience = read(
-      "client/src/components/admin/platform-ops/commercial-catalog/experience/ExperiencePanels.tsx"
+      "client/src/components/admin/platform-ops/commercial-catalog/CatalogManagementPanels.tsx"
     );
     expect(experience).toContain("catalogFeatureNameKey");
     expect(experience).toContain("catalogLimitNameKey");
@@ -109,7 +109,7 @@ describe("COMMERCIAL-CATALOG-PRODUCTION-POLISH-1", () => {
 
   it("adoption seed stores canonical USD with SAR as regional override only", () => {
     const seed = read(
-      "server/services/commercial-catalog/seedAdoptionCatalog.ts"
+      "server/services/commercial-catalog/persistentCatalogBootstrap.ts"
     );
     expect(seed).toContain('currency: "USD"');
     expect(seed).toContain("regionId: saRegion.id");

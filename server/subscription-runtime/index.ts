@@ -38,11 +38,11 @@ export {
   enterGrace,
 } from "./lifecycleOverlay";
 
-export { loadBoundCommercialSnapshot } from "./snapshotLoader";
-export type { LoadedSnapshot, SnapshotLoadResult } from "./snapshotLoader";
+export { loadBoundLivePlan } from "./snapshotLoader";
+export type { LoadedLivePlan, LivePlanLoadResult } from "./snapshotLoader";
 
 export {
-  resolveEntitlementsFromSnapshot,
+  resolveEntitlementsFromLivePlan,
   denyEntitlementsFailClosed,
   hasFeatureInEntitlements,
   readLimitValue,

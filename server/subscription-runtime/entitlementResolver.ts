@@ -1,6 +1,6 @@
 /**
- * SUBSCRIPTION-RUNTIME-ENTITLEMENT-ENFORCEMENT-1
- * Canonical entitlement resolver — Snapshot facts + lifecycle only.
+ * COMMERCIAL-LIVE-PLANS-SIMPLIFICATION-1
+ * Canonical entitlement resolver — live plan capabilities + lifecycle + charged terms.
  */
 
 import { FEATURE_KEYS, type FeatureKey } from "@commercial/featureKeys";
@@ -19,7 +19,7 @@ import type {
   CommercialFlags,
   CommercialLimits,
 } from "@commercial/types";
-import type { CommercialSnapshotDefinition } from "@shared/commercial-catalog";
+import type { CommercialChargedTerms } from "@shared/commercial-catalog";
 import {
   bridgeByCatalogPlanCode,
   bridgeByLegacyPlanId,
@@ -38,12 +38,7 @@ function deniedFeatures(): CommercialFeatures {
   return features;
 }
 
-function featuresFromSnapshot(
-  snapshot: CommercialSnapshotDefinition
-): CommercialFeatures {
-  const raw = snapshot.includedFeatures
-    .filter((f) => f.included)
-    .map((f) => f.featureKey);
+function featuresFromKeys(raw: string[]): CommercialFeatures {
   const enabled = expandFeatureKeysForRuntime(raw);
   const features = {} as CommercialFeatures;
   for (const key of FEATURE_KEYS) {
@@ -52,12 +47,10 @@ function featuresFromSnapshot(
   return features;
 }
 
-function limitsFromSnapshot(
-  snapshot: CommercialSnapshotDefinition
+function limitsFromRows(
+  rows: { limitKey: string; value: number | null }[]
 ): CommercialLimits {
-  const map = new Map(
-    snapshot.usageLimits.map((l) => [l.limitKey, l.value] as const)
-  );
+  const map = new Map(rows.map((l) => [l.limitKey, l.value] as const));
   return {
     restaurants: map.has("restaurants") ? (map.get("restaurants") ?? null) : 0,
     categories: map.has("categories") ? (map.get("categories") ?? null) : 0,
@@ -65,12 +58,12 @@ function limitsFromSnapshot(
   };
 }
 
-function catalogPlanFromSnapshot(
-  snapshot: CommercialSnapshotDefinition,
+function catalogPlanFromCode(
+  catalogPlanCode: string | null,
   legacyPlanId: number | null | undefined
 ): CatalogPlan | null {
-  if (snapshot.catalogPlanCode) {
-    const bridge = bridgeByCatalogPlanCode(snapshot.catalogPlanCode);
+  if (catalogPlanCode) {
+    const bridge = bridgeByCatalogPlanCode(catalogPlanCode);
     if (bridge) return bridge.catalogPlanKey;
   }
   if (legacyPlanId != null) {
@@ -146,7 +139,6 @@ function accountTypeForPlan(
   return "NONE";
 }
 
-/** Map commercial lifecycle → legacy SubscriptionStatus for DTO compat. */
 export function lifecycleToSubscriptionStatus(
   state: CommercialLifecycleState
 ): SubscriptionStatus | null {
@@ -168,11 +160,14 @@ export function lifecycleToSubscriptionStatus(
   }
 }
 
-export type ResolveFromSnapshotInput = {
+export type ResolveFromLivePlanInput = {
   ownerId: number;
   role: UserRole;
-  snapshot: CommercialSnapshotDefinition;
-  snapshotId: string;
+  planId: string;
+  catalogPlanCode: string;
+  featureKeys: string[];
+  limits: { limitKey: string; value: number | null; unit?: string | null }[];
+  chargedTerms: CommercialChargedTerms | null;
   legacyPlanId: number | null;
   lifecycle: LifecycleSyncResult;
   dbStatus: SubscriptionStatus;
@@ -182,30 +177,21 @@ export type ResolveFromSnapshotInput = {
 };
 
 export type EntitlementResolveMeta = {
-  commercialResolutionSource: "snapshot" | "snapshot_fail_closed";
-  commercialSnapshotId: string;
+  commercialResolutionSource: "live_plan" | "live_plan_fail_closed";
+  commercialPlanId: string;
   commercialLifecycleState: CommercialLifecycleState;
   commercialLifecycleReason: string;
   grandfathered: boolean;
-  commercialSnapshotPlanVersionId?: string;
   commercialName?: string;
-  billingCycle?: CommercialSnapshotDefinition["billingCycle"];
-  pricing?: CommercialSnapshotDefinition["pricing"];
-  trialPolicy?: CommercialSnapshotDefinition["trialPolicy"];
-  promotionApplied?: CommercialSnapshotDefinition["promotionApplied"];
-  region?: CommercialSnapshotDefinition["region"];
+  chargedTerms?: CommercialChargedTerms | null;
   catalogPlanCode?: string | null;
 };
 
-/**
- * Canonical Snapshot entitlement assembly.
- * MUST NOT import live Catalog feature matrix modules.
- */
-export function resolveEntitlementsFromSnapshot(
-  input: ResolveFromSnapshotInput
+export function resolveEntitlementsFromLivePlan(
+  input: ResolveFromLivePlanInput
 ): CommercialEntitlementsResult & { meta: EntitlementResolveMeta } {
-  const catalogPlan = catalogPlanFromSnapshot(
-    input.snapshot,
+  const catalogPlan = catalogPlanFromCode(
+    input.catalogPlanCode,
     input.legacyPlanId
   );
   const enabled = lifecycleEnablesEntitlements(input.lifecycle.state);
@@ -226,10 +212,10 @@ export function resolveEntitlementsFromSnapshot(
     plan: commercialPlan,
     status: lifecycleToSubscriptionStatus(input.lifecycle.state),
     limits: effectivelyEntitled
-      ? limitsFromSnapshot(input.snapshot)
+      ? limitsFromRows(input.limits)
       : { restaurants: 0, categories: 0, items: 0 },
     features: effectivelyEntitled
-      ? featuresFromSnapshot(input.snapshot)
+      ? featuresFromKeys(input.featureKeys)
       : deniedFeatures(),
     commercial: flagsForResolvedPlan(commercialPlan),
   };
@@ -253,19 +239,14 @@ export function resolveEntitlementsFromSnapshot(
     context,
     entitlements,
     meta: {
-      commercialResolutionSource: "snapshot",
-      commercialSnapshotId: input.snapshotId,
+      commercialResolutionSource: "live_plan",
+      commercialPlanId: input.planId,
       commercialLifecycleState: input.lifecycle.state,
       commercialLifecycleReason: input.lifecycle.reason,
       grandfathered: input.lifecycle.grandfathered,
-      commercialSnapshotPlanVersionId: input.snapshot.planVersionId,
-      commercialName: input.snapshot.commercialName,
-      billingCycle: input.snapshot.billingCycle,
-      pricing: input.snapshot.pricing,
-      trialPolicy: input.snapshot.trialPolicy,
-      promotionApplied: input.snapshot.promotionApplied,
-      region: input.snapshot.region ?? null,
-      catalogPlanCode: input.snapshot.catalogPlanCode ?? null,
+      commercialName: input.chargedTerms?.commercialName,
+      chargedTerms: input.chargedTerms,
+      catalogPlanCode: input.catalogPlanCode,
     },
   };
 }
@@ -273,8 +254,7 @@ export function resolveEntitlementsFromSnapshot(
 export function denyEntitlementsFailClosed(input: {
   ownerId: number;
   role: UserRole;
-  snapshotId: string;
-  planVersionId: string;
+  planId: string;
   legacyPlanId: number | null;
   now: Date;
 }): CommercialEntitlementsResult & { meta: EntitlementResolveMeta } {
@@ -295,12 +275,11 @@ export function denyEntitlementsFailClosed(input: {
     },
     entitlements,
     meta: {
-      commercialResolutionSource: "snapshot_fail_closed",
-      commercialSnapshotId: input.snapshotId,
+      commercialResolutionSource: "live_plan_fail_closed",
+      commercialPlanId: input.planId,
       commercialLifecycleState: "expired",
-      commercialLifecycleReason: "snapshot_unreadable",
+      commercialLifecycleReason: "live_plan_unreadable",
       grandfathered: false,
-      commercialSnapshotPlanVersionId: input.planVersionId,
     },
   };
 }

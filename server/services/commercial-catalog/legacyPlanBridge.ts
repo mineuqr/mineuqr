@@ -1,6 +1,6 @@
 /**
- * COMMERCIAL-CATALOG-PLATFORM-ADOPTION-1
- * Bridge: legacy subscription_plans.id ↔ Catalog Plan Identity / Version.
+ * COMMERCIAL-LIVE-PLANS-SIMPLIFICATION-1
+ * Bridge: legacy subscription_plans.id ↔ Live Plan Identity.
  * Catalog is SSOT; legacy IDs remain for payment/activation compatibility only.
  */
 
@@ -8,7 +8,6 @@ export type LegacyPlanBridgeEntry = {
   legacyPlanId: number;
   catalogPlanCode: string;
   catalogPlanName: string;
-  versionCode: string;
   catalogPlanKey: "BASIC" | "PROFESSIONAL" | "ENTERPRISE";
 };
 
@@ -18,21 +17,18 @@ export const LEGACY_PLAN_BRIDGE: readonly LegacyPlanBridgeEntry[] = [
     legacyPlanId: 30001,
     catalogPlanCode: "basic",
     catalogPlanName: "Basic",
-    versionCode: "v1",
     catalogPlanKey: "BASIC",
   },
   {
     legacyPlanId: 30002,
     catalogPlanCode: "professional",
     catalogPlanName: "Professional",
-    versionCode: "v1",
     catalogPlanKey: "PROFESSIONAL",
   },
   {
     legacyPlanId: 30003,
     catalogPlanCode: "enterprise",
     catalogPlanName: "Enterprise",
-    versionCode: "v1",
     catalogPlanKey: "ENTERPRISE",
   },
 ] as const;

@@ -26,8 +26,8 @@ vi.mock("./db", () => ({
 }));
 
 vi.mock("./services/commercial-catalog", () => ({
-  ensureCommercialSnapshotBoundForSubscription: vi.fn(async () => ({
-    snapshotId: "snap-test",
+  ensureLivePlanBoundForSubscription: vi.fn(async () => ({
+    planId: "plan-test",
   })),
   classifyPlanTransitionEvent: vi.fn(() => "plan_selected"),
 }));

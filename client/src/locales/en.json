@@ -1315,6 +1315,8 @@
         "foundationLive": "Management",
         "loadError": "Unable to load Commercial Catalog health",
         "metricPlans": "Plans",
+        "metricLive": "Live plans",
+        "metricPrices": "Prices",
         "metricVersions": "Versions",
         "metricPublished": "Published",
         "metricRegions": "Regions",
@@ -1466,6 +1468,8 @@
           "cc16Blocking": "CC-16 blocking issues",
           "issueCount": "{count} issue(s)",
           "readyToPublish": "Ready to publish",
+          "readyToSave": "Ready to save",
+          "hiddenPlans": "Hidden plans",
           "notReady": "Not ready",
           "noBlockingIssues": "No blocking issues.",
           "lastValidationError": "Last validation error: {message}",
@@ -1537,7 +1541,8 @@
           "kind": "Kind",
           "title": "Title",
           "detail": "Detail",
-          "open": "Open"
+          "open": "Open",
+          "prices": "Prices"
         },
         "actions": {
           "edit": "Edit",
@@ -1572,6 +1577,8 @@
         },
         "placeholders": {
           "selectPlan": "Select plan",
+          "selectBundle": "Select feature bundle",
+          "selectLimits": "Select limit profile",
           "selectVersion": "Select version",
           "selectCycle": "Select cycle",
           "selectVersionToValidate": "Select version to validate",
@@ -1719,6 +1726,36 @@
           "smartBody": "Actionable remediation for CC-16 blockers with one-click navigation."
         },
         "experience": {
+          "livePlans": {
+            "editHint": "Edit the live plan definition. New capabilities apply immediately to all subscribers. Renewal uses the current published price.",
+            "noVersionCompare": "Live plans are not versioned. Edit each plan independently.",
+            "editIndividually": "Edit each live plan individually. Version lifecycle bulk actions are removed.",
+            "noVersionClone": "Live plans are not cloned as versions. Reuse feature bundles and limit profiles.",
+            "noPublicationDiff": "There is no publication pipeline. Saving updates the live plan atomically."
+          },
+          "wizard": {
+            "title": "Edit live plan"
+          },
+          "preview": {
+            "title": "Pricing Preview"
+          },
+          "graph": {
+            "title": "Plan composition"
+          },
+          "clone": {
+            "title": "Clone"
+          },
+          "diff": {
+            "title": "Changes"
+          },
+          "validation": {
+            "title": "Live plan validation"
+          },
+          "rail": {
+            "title": "Workspace",
+            "recent": "Recent",
+            "wizardCompletions": "saves"
+          },
           "tabs": {
             "dashboard": "Dashboard",
             "wizard": "Plan Wizard",

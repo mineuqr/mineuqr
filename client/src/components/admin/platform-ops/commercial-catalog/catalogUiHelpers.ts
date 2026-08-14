@@ -20,8 +20,6 @@ export const MANAGEMENT_SECTION_I18N_KEYS: Record<
   string
 > = {
   plans: "admin.platformOps.commercialCatalog.manage.sections.plans",
-  plan_versions:
-    "admin.platformOps.commercialCatalog.manage.sections.plan_versions",
   pricing: "admin.platformOps.commercialCatalog.manage.sections.pricing",
   billing_cycles:
     "admin.platformOps.commercialCatalog.manage.sections.billing_cycles",
@@ -36,10 +34,6 @@ export const MANAGEMENT_SECTION_I18N_KEYS: Record<
   promotions: "admin.platformOps.commercialCatalog.manage.sections.promotions",
   migration_policies:
     "admin.platformOps.commercialCatalog.manage.sections.migration_policies",
-  retirement_policies:
-    "admin.platformOps.commercialCatalog.manage.sections.retirement_policies",
-  publication_status:
-    "admin.platformOps.commercialCatalog.manage.sections.publication_status",
   commercial_health:
     "admin.platformOps.commercialCatalog.manage.sections.commercial_health",
   commercial_validation:

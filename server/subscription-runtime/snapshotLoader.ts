@@ -1,47 +1,50 @@
 /**
- * SUBSCRIPTION-RUNTIME-ENTITLEMENT-ENFORCEMENT-1
- * Loads the immutable bound Commercial Snapshot only (I-CPL Snapshot Invariant).
- * NEVER reads mutable Catalog definitions for entitlement facts.
+ * COMMERCIAL-LIVE-PLANS-SIMPLIFICATION-1
+ * Loads the bound live plan + charged terms. Capabilities come from the live plan.
  */
 
-import type { CommercialSnapshotDefinition } from "@shared/commercial-catalog";
+import type { CommercialChargedTerms } from "@shared/commercial-catalog";
 import {
   getSubscriptionCommercialBinding,
-  resolveCommercialFactsFromSnapshot,
+  resolveLivePlanCapabilities,
 } from "../services/commercial-catalog";
 
-export type LoadedSnapshot = {
+export type LoadedLivePlan = {
   subscriptionId: number;
-  snapshotId: string;
-  planVersionId: string;
+  planId: string;
+  catalogPlanCode: string;
   legacyPlanId: number | null;
-  snapshot: CommercialSnapshotDefinition;
+  featureKeys: string[];
+  limits: { limitKey: string; value: number | null; unit: string | null }[];
+  chargedTerms: CommercialChargedTerms | null;
 };
 
-export type SnapshotLoadResult =
-  | { ok: true; binding: true; data: LoadedSnapshot }
+export type LivePlanLoadResult =
+  | { ok: true; binding: true; data: LoadedLivePlan }
   | { ok: false; binding: false; reason: "no_binding" }
-  | { ok: false; binding: true; reason: "snapshot_unreadable"; snapshotId: string; planVersionId: string; legacyPlanId: number | null };
+  | {
+      ok: false;
+      binding: true;
+      reason: "live_plan_unreadable";
+      planId: string;
+      legacyPlanId: number | null;
+    };
 
-/**
- * Load the single active bound Snapshot for a subscription (I-CPL-13).
- */
-export async function loadBoundCommercialSnapshot(
+export async function loadBoundLivePlan(
   subscriptionId: number
-): Promise<SnapshotLoadResult> {
+): Promise<LivePlanLoadResult> {
   const binding = await getSubscriptionCommercialBinding(subscriptionId);
   if (!binding) {
     return { ok: false, binding: false, reason: "no_binding" };
   }
 
-  const facts = await resolveCommercialFactsFromSnapshot(subscriptionId);
-  if (facts.source !== "snapshot" || !facts.snapshot) {
+  const facts = await resolveLivePlanCapabilities(subscriptionId);
+  if (facts.source !== "live_plan" || !facts.planId || !facts.catalogPlanCode) {
     return {
       ok: false,
       binding: true,
-      reason: "snapshot_unreadable",
-      snapshotId: binding.snapshotId,
-      planVersionId: binding.planVersionId,
+      reason: "live_plan_unreadable",
+      planId: binding.planId,
       legacyPlanId: binding.legacyPlanId,
     };
   }
@@ -51,10 +54,12 @@ export async function loadBoundCommercialSnapshot(
     binding: true,
     data: {
       subscriptionId,
-      snapshotId: binding.snapshotId,
-      planVersionId: binding.planVersionId,
+      planId: facts.planId,
+      catalogPlanCode: facts.catalogPlanCode,
       legacyPlanId: binding.legacyPlanId,
-      snapshot: facts.snapshot,
+      featureKeys: facts.featureKeys,
+      limits: facts.limits,
+      chargedTerms: facts.chargedTerms,
     },
   };
 }

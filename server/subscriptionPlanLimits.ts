@@ -14,10 +14,9 @@ import {
 } from "./subscriptionResolver";
 import {
   getSubscriptionCommercialBinding,
-  resolveCommercialFactsFromSnapshot,
+  resolveLivePlanCapabilities,
 } from "./services/commercial-catalog";
 import { commercialRuntimeAuthorityObservability } from "./services/commercial-catalog/runtimeAuthorityObservability";
-import { snapshotQuotaLimits } from "./commercial/snapshotRuntimeAuthority";
 
 export type PlanLimits = Pick<
   SelectSubscriptionPlan,
@@ -29,6 +28,17 @@ const DEFAULT_LIMITS: PlanLimits = {
   maxItemsPerRestaurant: 100,
   maxCategories: 10,
 };
+
+function livePlanQuotaLimits(
+  limits: { limitKey: string; value: number | null }[]
+): PlanLimits {
+  const map = new Map(limits.map((l) => [l.limitKey, l.value] as const));
+  return {
+    maxRestaurants: map.get("restaurants") ?? 0,
+    maxItemsPerRestaurant: map.get("items") ?? 0,
+    maxCategories: map.get("categories") ?? 0,
+  };
+}
 
 async function getFallbackBasicLimits(): Promise<PlanLimits> {
   const plans = await getSubscriptionPlans();
@@ -44,8 +54,8 @@ async function getFallbackBasicLimits(): Promise<PlanLimits> {
 }
 
 /**
- * COMMERCIAL-SNAPSHOT-RUNTIME-AUTHORITY-1
- * Bound subscription → Snapshot limits ONLY.
+ * COMMERCIAL-LIVE-PLANS-SIMPLIFICATION-1
+ * Bound subscription → current live plan limits.
  * Unbound → Legacy subscription_plans bridge ONLY.
  */
 export async function resolvePlanLimitsForUser(
@@ -61,14 +71,13 @@ export async function resolvePlanLimitsForUser(
   if (sub && resolveSubscriptionEntitlement(sub).isEntitled) {
     const binding = await getSubscriptionCommercialBinding(sub.id);
     if (binding) {
-      const facts = await resolveCommercialFactsFromSnapshot(sub.id);
-      if (facts.source === "snapshot" && facts.snapshot) {
-        commercialRuntimeAuthorityObservability.recordSnapshotResolved(sub.id);
-        return snapshotQuotaLimits(facts.snapshot);
+      const facts = await resolveLivePlanCapabilities(sub.id);
+      if (facts.source === "live_plan") {
+        commercialRuntimeAuthorityObservability.recordLivePlanResolved(sub.id);
+        return livePlanQuotaLimits(facts.limits);
       }
-      // Fail closed for bound + unreadable snapshot — deny growth.
       commercialRuntimeAuthorityObservability.recordSnapshotCreationFailure(
-        `quota_bound_snapshot_unreadable:${binding.snapshotId}`
+        `quota_bound_live_plan_unreadable:${binding.planId}`
       );
       return { maxRestaurants: 0, maxItemsPerRestaurant: 0, maxCategories: 0 };
     }

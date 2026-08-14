@@ -1,30 +1,22 @@
 /**
- * COMMERCIAL-CATALOG-PLATFORM-FOUNDATION-1 — domain services.
+ * COMMERCIAL-LIVE-PLANS-SIMPLIFICATION-1 — domain services.
+ * Live plans: Edit → Validate → Atomic Save → Cache invalidation.
  */
 
 import {
-  canTransitionPlanVersion,
-  isPlanVersionImmutable,
-  validatePublication,
-  buildCommercialSnapshotDefinition,
-  freezeCommercialSnapshot,
+  validateLivePlanSave,
   type CommercialBillingCycle,
   type CommercialCatalogHealth,
   type CommercialFeatureBundle,
   type CommercialLimitProfile,
+  type CommercialLivePlan,
   type CommercialMigrationPolicy,
-  type CommercialPlanIdentity,
-  type CommercialPlanVersion,
   type CommercialPrice,
   type CommercialPromotion,
   type CommercialRegion,
-  type CommercialRetirementPolicy,
-  type CommercialSnapshotDefinition,
   type CommercialTrialPolicy,
-  type PlanVersionLifecycleState,
-  type PublicationValidationResult,
-  type VersionCompatibility,
-  COMMERCIAL_CATALOG_FOUNDATION_PROGRAM,
+  type PlanSaveValidationResult,
+  COMMERCIAL_LIVE_PLANS_PROGRAM,
 } from "@shared/commercial-catalog";
 import {
   assertCommercialCapabilityFilterKeys,
@@ -38,9 +30,6 @@ import {
 } from "./CatalogStore";
 import {
   auditCommercialCreated,
-  auditCommercialDeprecated,
-  auditCommercialPublished,
-  auditCommercialRetired,
   auditCommercialUpdated,
   auditMigrationPolicyChanged,
   auditPromotionCreated,
@@ -50,25 +39,25 @@ import {
 
 export { CommercialCatalogError } from "./commercialCatalogError";
 import { CommercialCatalogError } from "./commercialCatalogError";
-
-function requireDraftMutable(version: CommercialPlanVersion) {
-  if (isPlanVersionImmutable(version.state)) {
-    throw new CommercialCatalogError(
-      `Plan Version ${version.id} is ${version.state} and immutable (CC-02)`,
-      "immutable_version"
-    );
-  }
-}
+import { persistLivePlan } from "./livePlanPersistence";
 
 export class PlanService {
   constructor(private readonly store: CommercialCatalogStore = commercialCatalogStore) {}
 
-  list(): CommercialPlanIdentity[] {
+  list(): CommercialLivePlan[] {
     return [...this.store.plans.values()].sort((a, b) => a.sortOrder - b.sortOrder);
   }
 
-  get(id: string): CommercialPlanIdentity | null {
+  get(id: string): CommercialLivePlan | null {
     return this.store.plans.get(id) ?? null;
+  }
+
+  getByCode(code: string): CommercialLivePlan | null {
+    return (
+      [...this.store.plans.values()].find(
+        (p) => p.code.toLowerCase() === code.toLowerCase()
+      ) ?? null
+    );
   }
 
   create(
@@ -78,20 +67,26 @@ export class PlanService {
       description?: string | null;
       sortOrder?: number;
       isHidden?: boolean;
+      featureBundleId?: string | null;
+      limitProfileId?: string | null;
+      trialPolicyId?: string | null;
     },
     actor: CommercialCatalogAuditActor = {}
-  ): CommercialPlanIdentity {
+  ): CommercialLivePlan {
     if ([...this.store.plans.values()].some((p) => p.code === input.code)) {
       throw new CommercialCatalogError(`Plan code ${input.code} already exists`, "duplicate_code");
     }
     const now = nowIso();
-    const plan: CommercialPlanIdentity = {
+    const plan: CommercialLivePlan = {
       id: newCommercialId(),
       code: input.code,
       name: input.name,
       description: input.description ?? null,
       sortOrder: input.sortOrder ?? 0,
       isHidden: input.isHidden ?? false,
+      featureBundleId: input.featureBundleId ?? null,
+      limitProfileId: input.limitProfileId ?? null,
+      trialPolicyId: input.trialPolicyId ?? null,
       createdAt: now,
       updatedAt: now,
     };
@@ -100,15 +95,135 @@ export class PlanService {
     return plan;
   }
 
-  update(
+  /**
+   * Atomic live-plan save. Validates, writes all fields, persists, then invalidates caches.
+   * Rolls back in-memory state if validation or persistence fails.
+   */
+  async saveLive(
     id: string,
-    patch: Partial<Pick<CommercialPlanIdentity, "name" | "description" | "sortOrder" | "isHidden">>,
-    actor: CommercialCatalogAuditActor = {}
-  ): CommercialPlanIdentity {
+    patch: Partial<
+      Pick<
+        CommercialLivePlan,
+        | "name"
+        | "description"
+        | "sortOrder"
+        | "isHidden"
+        | "featureBundleId"
+        | "limitProfileId"
+        | "trialPolicyId"
+      >
+    >,
+    actor: CommercialCatalogAuditActor = {},
+    options?: {
+      requiresRegionalPricing?: boolean;
+      skipPersist?: boolean;
+      prices?: Array<{
+        billingCycleId: string;
+        currency: string;
+        amount: string;
+        regionId?: string | null;
+      }>;
+    }
+  ): Promise<CommercialLivePlan> {
     const existing = this.store.plans.get(id);
     if (!existing) throw new CommercialCatalogError(`Plan ${id} not found`, "not_found");
     const before = { ...existing };
-    const updated: CommercialPlanIdentity = {
+    const previousPrices = [...this.store.prices.entries()].filter(
+      ([, p]) => p.planId === id
+    );
+    const restore = () => {
+      this.store.plans.set(id, before);
+      for (const [priceId, price] of [...this.store.prices.entries()]) {
+        if (price.planId === id) this.store.prices.delete(priceId);
+      }
+      for (const [priceId, price] of previousPrices) {
+        this.store.prices.set(priceId, price);
+      }
+    };
+    const updated: CommercialLivePlan = {
+      ...existing,
+      ...patch,
+      code: existing.code,
+      id: existing.id,
+      updatedAt: nowIso(),
+    };
+    this.store.plans.set(id, updated);
+
+    try {
+      if (options?.prices) {
+        new PricingService(this.store).replacePlanPrices(id, options.prices, actor);
+      }
+    } catch (e) {
+      restore();
+      throw e;
+    }
+
+    const validator = new PlanSaveValidator(this.store);
+    const validation = validator.validate(id, {
+      requiresRegionalPricing: options?.requiresRegionalPricing,
+    });
+    if (!validation.ok) {
+      restore();
+      const msg = validation.issues.map((i) => i.message).join("; ");
+      throw new CommercialCatalogError(
+        `Live plan save validation failed: ${msg}`,
+        "publication_validation_failed"
+      );
+    }
+
+    if (!options?.skipPersist) {
+      try {
+        await persistLivePlan(id, this.store);
+      } catch (e) {
+        restore();
+        throw e;
+      }
+    }
+
+    auditCommercialUpdated(actor, "plan", id, before, { ...updated });
+
+    const { invalidateCatalogReadyGate } = await import("./adoptionService");
+    invalidateCatalogReadyGate();
+    try {
+      const { invalidatePublicCatalogCache } = await import(
+        "../../commercial-catalog/publishing"
+      );
+      invalidatePublicCatalogCache();
+    } catch {
+      /* public cache optional in unit tests */
+    }
+    try {
+      const { invalidateEntitlementCache } = await import(
+        "../../subscription-runtime/cache"
+      );
+      invalidateEntitlementCache();
+    } catch {
+      /* runtime cache optional in unit tests */
+    }
+
+    return updated;
+  }
+
+  update(
+    id: string,
+    patch: Partial<
+      Pick<
+        CommercialLivePlan,
+        | "name"
+        | "description"
+        | "sortOrder"
+        | "isHidden"
+        | "featureBundleId"
+        | "limitProfileId"
+        | "trialPolicyId"
+      >
+    >,
+    actor: CommercialCatalogAuditActor = {}
+  ): CommercialLivePlan {
+    const existing = this.store.plans.get(id);
+    if (!existing) throw new CommercialCatalogError(`Plan ${id} not found`, "not_found");
+    const before = { ...existing };
+    const updated: CommercialLivePlan = {
       ...existing,
       ...patch,
       code: existing.code,
@@ -121,121 +236,17 @@ export class PlanService {
   }
 }
 
-export class PlanVersionService {
+export class PricingService {
   constructor(private readonly store: CommercialCatalogStore = commercialCatalogStore) {}
 
-  list(planId?: string): CommercialPlanVersion[] {
-    const all = [...this.store.versions.values()];
-    return (planId ? all.filter((v) => v.planId === planId) : all).sort((a, b) =>
-      a.versionCode.localeCompare(b.versionCode)
-    );
-  }
-
-  get(id: string): CommercialPlanVersion | null {
-    return this.store.versions.get(id) ?? null;
+  list(planId?: string): CommercialPrice[] {
+    const all = [...this.store.prices.values()];
+    return planId ? all.filter((p) => p.planId === planId) : all;
   }
 
   create(
     input: {
       planId: string;
-      versionCode: string;
-      versionName: string;
-      featureBundleId?: string | null;
-      limitProfileId?: string | null;
-      trialPolicyId?: string | null;
-      migrationPolicyId?: string | null;
-      retirementPolicyId?: string | null;
-      compatibility?: VersionCompatibility;
-    },
-    actor: CommercialCatalogAuditActor = {}
-  ): CommercialPlanVersion {
-    if (!this.store.plans.has(input.planId)) {
-      throw new CommercialCatalogError(`Plan ${input.planId} not found`, "not_found");
-    }
-    const dup = [...this.store.versions.values()].some(
-      (v) => v.planId === input.planId && v.versionCode === input.versionCode
-    );
-    if (dup) {
-      throw new CommercialCatalogError(
-        `Version code ${input.versionCode} already exists for plan`,
-        "duplicate_code"
-      );
-    }
-    const now = nowIso();
-    const version: CommercialPlanVersion = {
-      id: newCommercialId(),
-      planId: input.planId,
-      versionCode: input.versionCode,
-      versionName: input.versionName,
-      state: "draft",
-      featureBundleId: input.featureBundleId ?? null,
-      limitProfileId: input.limitProfileId ?? null,
-      trialPolicyId: input.trialPolicyId ?? null,
-      migrationPolicyId: input.migrationPolicyId ?? null,
-      retirementPolicyId: input.retirementPolicyId ?? null,
-      compatibility: input.compatibility ?? {
-        upgradeTargets: [],
-        downgradeTargets: [],
-        migrationRequirements: [],
-        breakingCommercialChanges: [],
-      },
-      publishedAt: null,
-      deprecatedAt: null,
-      retiredAt: null,
-      createdAt: now,
-      updatedAt: now,
-    };
-    this.store.versions.set(version.id, version);
-    auditCommercialCreated(actor, "plan_version", version.id, { ...version });
-    return version;
-  }
-
-  updateDraft(
-    id: string,
-    patch: Partial<
-      Pick<
-        CommercialPlanVersion,
-        | "versionName"
-        | "featureBundleId"
-        | "limitProfileId"
-        | "trialPolicyId"
-        | "migrationPolicyId"
-        | "retirementPolicyId"
-        | "compatibility"
-      >
-    >,
-    actor: CommercialCatalogAuditActor = {}
-  ): CommercialPlanVersion {
-    const existing = this.store.versions.get(id);
-    if (!existing) throw new CommercialCatalogError(`Version ${id} not found`, "not_found");
-    requireDraftMutable(existing);
-    const before = { ...existing };
-    const updated: CommercialPlanVersion = {
-      ...existing,
-      ...patch,
-      id: existing.id,
-      planId: existing.planId,
-      versionCode: existing.versionCode,
-      state: "draft",
-      updatedAt: nowIso(),
-    };
-    this.store.versions.set(id, updated);
-    auditCommercialUpdated(actor, "plan_version", id, before, { ...updated });
-    return updated;
-  }
-}
-
-export class PricingService {
-  constructor(private readonly store: CommercialCatalogStore = commercialCatalogStore) {}
-
-  list(planVersionId?: string): CommercialPrice[] {
-    const all = [...this.store.prices.values()];
-    return planVersionId ? all.filter((p) => p.planVersionId === planVersionId) : all;
-  }
-
-  create(
-    input: {
-      planVersionId: string;
       billingCycleId: string;
       currency: string;
       amount: string;
@@ -243,9 +254,8 @@ export class PricingService {
     },
     actor: CommercialCatalogAuditActor = {}
   ): CommercialPrice {
-    const version = this.store.versions.get(input.planVersionId);
-    if (!version) throw new CommercialCatalogError("Plan Version not found", "not_found");
-    requireDraftMutable(version);
+    const plan = this.store.plans.get(input.planId);
+    if (!plan) throw new CommercialCatalogError("Plan not found", "not_found");
     if (!this.store.billingCycles.has(input.billingCycleId)) {
       throw new CommercialCatalogError("Billing cycle not found", "not_found");
     }
@@ -255,7 +265,7 @@ export class PricingService {
     const now = nowIso();
     const price: CommercialPrice = {
       id: newCommercialId(),
-      planVersionId: input.planVersionId,
+      planId: input.planId,
       billingCycleId: input.billingCycleId,
       currency: input.currency,
       amount: input.amount,
@@ -266,6 +276,44 @@ export class PricingService {
     this.store.prices.set(price.id, price);
     auditCommercialCreated(actor, "price", price.id, { ...price });
     return price;
+  }
+
+  replacePlanPrices(
+    planId: string,
+    prices: Array<{
+      billingCycleId: string;
+      currency: string;
+      amount: string;
+      regionId?: string | null;
+    }>,
+    actor: CommercialCatalogAuditActor = {}
+  ): CommercialPrice[] {
+    if (!this.store.plans.has(planId)) {
+      throw new CommercialCatalogError("Plan not found", "not_found");
+    }
+    for (const [id, p] of [...this.store.prices.entries()]) {
+      if (p.planId === planId) this.store.prices.delete(id);
+    }
+    return prices.map((input) =>
+      this.create({ planId, ...input }, actor)
+    );
+  }
+
+  currentPriceForPlan(
+    planId: string,
+    billingCycleCode: string,
+    regionId?: string | null
+  ): CommercialPrice | null {
+    const cycle = [...this.store.billingCycles.values()].find(
+      (c) => c.code === billingCycleCode
+    );
+    if (!cycle) return null;
+    const prices = this.list(planId).filter((p) => p.billingCycleId === cycle.id);
+    if (regionId) {
+      const regional = prices.find((p) => p.regionId === regionId);
+      if (regional) return regional;
+    }
+    return prices.find((p) => p.regionId == null) ?? prices[0] ?? null;
   }
 
   listBillingCycles(): CommercialBillingCycle[] {
@@ -440,7 +488,7 @@ export class PromotionService {
       code: string;
       name: string;
       effectSummary: string;
-      eligiblePlanVersionIds?: string[];
+      eligiblePlanIds?: string[];
       startsAt?: string | null;
       endsAt?: string | null;
       isActive?: boolean;
@@ -456,7 +504,7 @@ export class PromotionService {
       code: input.code,
       name: input.name,
       effectSummary: input.effectSummary,
-      eligiblePlanVersionIds: input.eligiblePlanVersionIds ?? [],
+      eligiblePlanIds: input.eligiblePlanIds ?? [],
       startsAt: input.startsAt ?? null,
       endsAt: input.endsAt ?? null,
       isActive: input.isActive ?? true,
@@ -519,41 +567,6 @@ export class MigrationPolicyService {
     this.store.migrationPolicies.set(id, updated);
     auditMigrationPolicyChanged(actor, id, before, { ...updated });
     return updated;
-  }
-
-  createRetirementPolicy(
-    input: {
-      code: string;
-      name: string;
-      description?: string | null;
-      allowRenewals?: boolean;
-    },
-    actor: CommercialCatalogAuditActor = {}
-  ): CommercialRetirementPolicy {
-    if ([...this.store.retirementPolicies.values()].some((p) => p.code === input.code)) {
-      throw new CommercialCatalogError(`Retirement policy ${input.code} exists`, "duplicate_code");
-    }
-    const now = nowIso();
-    const policy: CommercialRetirementPolicy = {
-      id: newCommercialId(),
-      code: input.code,
-      name: input.name,
-      description: input.description ?? null,
-      allowRenewals: input.allowRenewals ?? false,
-      createdAt: now,
-      updatedAt: now,
-    };
-    this.store.retirementPolicies.set(policy.id, policy);
-    auditCommercialCreated(actor, "retirement_policy", policy.id, { ...policy });
-    return policy;
-  }
-
-  listRetirementPolicies() {
-    return [...this.store.retirementPolicies.values()];
-  }
-
-  getRetirementPolicy(id: string) {
-    return this.store.retirementPolicies.get(id) ?? null;
   }
 }
 
@@ -665,39 +678,30 @@ export class TrialPolicyCatalogService {
   }
 }
 
-/** Reusable CC-16 publication validator service. */
-export class PublicationValidator {
+export class PlanSaveValidator {
   constructor(private readonly store: CommercialCatalogStore = commercialCatalogStore) {}
 
   validate(
-    versionId: string,
+    planId: string,
     options?: { requiresRegionalPricing?: boolean }
-  ): PublicationValidationResult {
-    const version = this.store.versions.get(versionId);
-    if (!version) {
+  ): PlanSaveValidationResult {
+    const plan = this.store.plans.get(planId);
+    if (!plan) {
       return {
         ok: false,
-        issues: [{ code: "not_found", message: `Version ${versionId} not found` }],
+        issues: [{ code: "not_found", message: `Plan ${planId} not found` }],
       };
     }
-    const prices = [...this.store.prices.values()].filter(
-      (p) => p.planVersionId === versionId
-    );
-    const result = validatePublication({
-      version,
+    const prices = [...this.store.prices.values()].filter((p) => p.planId === planId);
+    const result = validateLivePlanSave({
+      plan,
       prices,
       billingCycles: [...this.store.billingCycles.values()],
-      featureBundle: version.featureBundleId
-        ? this.store.featureBundles.get(version.featureBundleId) ?? null
+      featureBundle: plan.featureBundleId
+        ? this.store.featureBundles.get(plan.featureBundleId) ?? null
         : null,
-      limitProfile: version.limitProfileId
-        ? this.store.limitProfiles.get(version.limitProfileId) ?? null
-        : null,
-      migrationPolicy: version.migrationPolicyId
-        ? this.store.migrationPolicies.get(version.migrationPolicyId) ?? null
-        : null,
-      retirementPolicy: version.retirementPolicyId
-        ? this.store.retirementPolicies.get(version.retirementPolicyId) ?? null
+      limitProfile: plan.limitProfileId
+        ? this.store.limitProfiles.get(plan.limitProfileId) ?? null
         : null,
       requiresRegionalPricing: options?.requiresRegionalPricing,
     });
@@ -710,274 +714,28 @@ export class PublicationValidator {
   }
 }
 
-export class PublicationService {
-  private readonly validator: PublicationValidator;
-
-  constructor(private readonly store: CommercialCatalogStore = commercialCatalogStore) {
-    this.validator = new PublicationValidator(store);
-  }
-
-  validate(versionId: string, options?: { requiresRegionalPricing?: boolean }) {
-    return this.validator.validate(versionId, options);
-  }
-
-  publish(
-    versionId: string,
-    actor: CommercialCatalogAuditActor = {},
-    options?: { requiresRegionalPricing?: boolean }
-  ): CommercialPlanVersion {
-    const version = this.store.versions.get(versionId);
-    if (!version) throw new CommercialCatalogError("Version not found", "not_found");
-    const validation = this.validator.validate(versionId, options);
-    if (!validation.ok) {
-      const msg = validation.issues.map((i) => i.message).join("; ");
-      this.store.recordPublicationError(msg);
-      throw new CommercialCatalogError(
-        `Publication validation failed (CC-16): ${msg}`,
-        "publication_validation_failed"
-      );
-    }
-    if (!canTransitionPlanVersion(version.state, "published")) {
-      throw new CommercialCatalogError(
-        `Cannot transition ${version.state} → published`,
-        "invalid_transition"
-      );
-    }
-    const before = { ...version };
-    const now = nowIso();
-    const updated: CommercialPlanVersion = {
-      ...version,
-      state: "published",
-      publishedAt: now,
-      updatedAt: now,
-    };
-    this.store.versions.set(versionId, updated);
-    auditCommercialPublished(actor, versionId, before, { ...updated });
-    return updated;
-  }
-
-  deprecate(versionId: string, actor: CommercialCatalogAuditActor = {}): CommercialPlanVersion {
-    return this.transition(versionId, "deprecated", actor, (v, now) => ({
-      ...v,
-      state: "deprecated",
-      deprecatedAt: now,
-      updatedAt: now,
-    }));
-  }
-
-  retire(versionId: string, actor: CommercialCatalogAuditActor = {}): CommercialPlanVersion {
-    return this.transition(versionId, "retired", actor, (v, now) => ({
-      ...v,
-      state: "retired",
-      retiredAt: now,
-      updatedAt: now,
-    }));
-  }
-
-  private transition(
-    versionId: string,
-    to: PlanVersionLifecycleState,
-    actor: CommercialCatalogAuditActor,
-    apply: (v: CommercialPlanVersion, now: string) => CommercialPlanVersion
-  ): CommercialPlanVersion {
-    const version = this.store.versions.get(versionId);
-    if (!version) throw new CommercialCatalogError("Version not found", "not_found");
-    if (!canTransitionPlanVersion(version.state, to)) {
-      throw new CommercialCatalogError(
-        `Cannot transition ${version.state} → ${to}`,
-        "invalid_transition"
-      );
-    }
-    const before = { ...version };
-    const updated = apply(version, nowIso());
-    this.store.versions.set(versionId, updated);
-    if (to === "deprecated") {
-      auditCommercialDeprecated(actor, versionId, before, { ...updated });
-    } else if (to === "retired") {
-      auditCommercialRetired(actor, versionId, before, { ...updated });
-    }
-    return updated;
-  }
-}
-
-/**
- * Builds immutable Commercial Snapshot definitions from Catalog (CC-13).
- * Subscription Platform persists snapshots on activation; Catalog owns the contract.
- */
-export class CommercialSnapshotService {
-  constructor(private readonly store: CommercialCatalogStore = commercialCatalogStore) {}
-
-  list(planVersionId?: string) {
-    const all = [...this.store.snapshots.values()];
-    return planVersionId ? all.filter((s) => s.planVersionId === planVersionId) : all;
-  }
-
-  get(id: string) {
-    return this.store.snapshots.get(id) ?? null;
-  }
-
-  /**
-   * Materialize a snapshot definition from a Published (or later) Plan Version.
-   * Does not bind to a Subscription — definition only.
-   */
-  captureFromVersion(
-    planVersionId: string,
-    input?: {
-      effectiveDate?: string;
-      promotionId?: string | null;
-      regionId?: string | null;
-    }
-  ): { id: string; payload: Readonly<CommercialSnapshotDefinition> } {
-    const version = this.store.versions.get(planVersionId);
-    if (!version) throw new CommercialCatalogError("Version not found", "not_found");
-    if (version.state === "draft") {
-      throw new CommercialCatalogError(
-        "Cannot snapshot a draft version",
-        "invalid_state"
-      );
-    }
-    const plan = this.store.plans.get(version.planId);
-    if (!plan) throw new CommercialCatalogError("Plan not found", "not_found");
-
-    const prices = [...this.store.prices.values()].filter(
-      (p) => p.planVersionId === planVersionId
-    );
-    if (!prices.length) {
-      throw new CommercialCatalogError("No pricing for version", "incomplete");
-    }
-    const price =
-      (input?.regionId
-        ? prices.find((p) => p.regionId === input.regionId)
-        : null) ?? prices[0]!;
-    const cycle = this.store.billingCycles.get(price.billingCycleId);
-    if (!cycle) throw new CommercialCatalogError("Billing cycle missing", "incomplete");
-
-    const features = version.featureBundleId
-      ? [...this.store.bundleFeatures.values()].filter(
-          (f) => f.bundleId === version.featureBundleId
-        )
-      : [];
-    const limits = version.limitProfileId
-      ? [...this.store.limitValues.values()].filter(
-          (l) => l.profileId === version.limitProfileId
-        )
-      : [];
-    const trial = version.trialPolicyId
-      ? this.store.trialPolicies.get(version.trialPolicyId) ?? null
-      : null;
-    const promo = input?.promotionId
-      ? this.store.promotions.get(input.promotionId) ?? null
-      : null;
-    const region = input?.regionId
-      ? this.store.regions.get(input.regionId) ?? null
-      : price.regionId
-        ? this.store.regions.get(price.regionId) ?? null
-        : null;
-
-    const effectiveDate = input?.effectiveDate ?? nowIso();
-    const payload = freezeCommercialSnapshot(
-      buildCommercialSnapshotDefinition({
-        planIdentityId: plan.id,
-        planVersionId: version.id,
-        catalogPlanCode: plan.code,
-        commercialName: plan.name,
-        versionName: version.versionName,
-        currency: price.currency,
-        billingCycle: {
-          id: cycle.id,
-          code: cycle.code,
-          intervalCount: cycle.intervalCount,
-          intervalUnit: cycle.intervalUnit,
-        },
-        pricing: {
-          amount: price.amount,
-          currency: price.currency,
-          billingCycleId: cycle.id,
-          billingCycleCode: cycle.code,
-        },
-        includedFeatures: features.map((f) => ({
-          featureKey: f.featureKey,
-          included: f.included,
-        })),
-        usageLimits: limits.map((l) => ({
-          limitKey: l.limitKey,
-          value: l.value,
-          unit: l.unit,
-        })),
-        trialPolicy: trial
-          ? {
-              trialPolicyId: trial.id,
-              durationDays: trial.durationDays,
-              name: trial.name,
-            }
-          : null,
-        promotionApplied: promo
-          ? {
-              promotionId: promo.id,
-              code: promo.code,
-              effectSummary: promo.effectSummary,
-            }
-          : null,
-        effectiveDate,
-        region: region
-          ? {
-              regionId: region.id,
-              countryCode: region.countryCode,
-              currency: region.currency,
-              taxPolicyRef: region.taxPolicyRef,
-              distributionPartner: region.distributionPartner,
-            }
-          : null,
-      })
-    );
-
-    const id = newCommercialId();
-    this.store.snapshots.set(id, {
-      id,
-      planVersionId,
-      schemaVersion: 1,
-      payload: payload as CommercialSnapshotDefinition,
-      effectiveDate,
-      createdAt: nowIso(),
-    });
-    return { id, payload };
-  }
-}
-
 export function getCommercialCatalogHealth(
   store: CommercialCatalogStore = commercialCatalogStore
 ): CommercialCatalogHealth {
-  const versions = [...store.versions.values()];
-  const byState = {
-    draft: versions.filter((v) => v.state === "draft").length,
-    published: versions.filter((v) => v.state === "published").length,
-    deprecated: versions.filter((v) => v.state === "deprecated").length,
-    retired: versions.filter((v) => v.state === "retired").length,
-    total: versions.length,
-  };
+  const plans = [...store.plans.values()];
   let status: CommercialCatalogHealth["status"] = "healthy";
-  if (store.publicationErrorCount > 0 || store.validationErrorCount > 0) {
-    status = "warning";
-  }
-  if (store.publicationErrorCount > 10) status = "degraded";
+  if (store.validationErrorCount > 0) status = "warning";
+  if (store.validationErrorCount > 10) status = "degraded";
 
   return {
-    program: COMMERCIAL_CATALOG_FOUNDATION_PROGRAM,
+    program: COMMERCIAL_LIVE_PLANS_PROGRAM,
     status,
-    plans: store.plans.size,
-    versions: byState,
+    plans: plans.length,
+    hiddenPlans: plans.filter((p) => p.isHidden).length,
     prices: store.prices.size,
     regions: store.regions.size,
     promotions: store.promotions.size,
-    publicationErrors: store.publicationErrorCount,
     validationErrors: store.validationErrorCount,
-    lastPublicationError: store.lastPublicationError,
     lastValidationError: store.lastValidationError,
   };
 }
 
 export const planService = new PlanService();
-export const planVersionService = new PlanVersionService();
 export const pricingService = new PricingService();
 export const featureBundleService = new FeatureBundleService();
 export const limitProfileService = new LimitProfileService();
@@ -985,9 +743,7 @@ export const promotionService = new PromotionService();
 export const migrationPolicyService = new MigrationPolicyService();
 export const regionalPolicyService = new RegionalPolicyService();
 export const trialPolicyCatalogService = new TrialPolicyCatalogService();
-export const publicationService = new PublicationService();
-export const commercialSnapshotService = new CommercialSnapshotService();
-export const publicationValidator = new PublicationValidator();
+export const planSaveValidator = new PlanSaveValidator();
 
 export {
   CommercialCatalogStore,
@@ -997,21 +753,22 @@ export {
 } from "./CatalogStore";
 
 export {
+  listLivePlanOfferings,
   listPublishedPlanOfferings,
   listPlansForSelectionLegacyShape,
   resolveTrialPolicyFromCatalog,
   resolveRegionFromCatalog,
   resolvePromotionFromCatalog,
-  createImmutableCommercialSnapshotForSubscription,
-  ensureCommercialSnapshotBoundForSubscription,
+  bindSubscriptionToLivePlan,
+  ensureLivePlanBoundForSubscription,
   classifyPlanTransitionEvent,
   getSubscriptionCommercialBinding,
-  resolveCommercialFactsFromSnapshot,
+  resolveLivePlanCapabilities,
   getAdoptionObservability,
   ensureCatalogReady,
   invalidateCatalogReadyGate,
-  resolveLegacyPlanIdFromVersion,
-  resolvePlanVersionIdFromLegacyPlanId,
+  resolveLegacyPlanIdFromPlan,
+  resolvePlanIdFromLegacyPlanId,
 } from "./adoptionService";
 
 export { ensureCommercialCatalogAdoptionSeed } from "./seedAdoptionCatalog";
@@ -1023,19 +780,16 @@ export {
   projectionFeatureKeysForBridgePlan,
   isPersistentCatalogUninitialized,
 } from "./persistentCatalogBootstrap";
+export { hydrateCommercialCatalogFromDb } from "./drizzleCatalogPersistence";
 export {
-  hydrateCommercialCatalogFromDb,
-  hydrateCommercialSnapshotById,
-} from "./drizzleCatalogPersistence";
-export {
-  COMMERCIAL_PUBLICATION_PERSISTENCE_PROGRAM,
+  COMMERCIAL_LIVE_PLAN_PERSISTENCE_PROGRAM,
   InMemoryDurableCatalogBackend,
-  persistPublishedVersionPublication,
-  persistVersionLifecyclePublication,
+  persistLivePlan,
+  persistFullLiveCatalog,
   hydrateRuntimeCatalogFromDurableAuthority,
-  setDurablePublicationBackendForTests,
-  getDurablePublicationBackend,
-} from "./publicationPersistence";
+  setDurableLivePlanBackendForTests,
+  getDurableLivePlanBackend,
+} from "./livePlanPersistence";
 export { commercialAdoptionObservability } from "./adoptionObservability";
 export { commercialRuntimeAuthorityObservability } from "./runtimeAuthorityObservability";
 export { LEGACY_PLAN_BRIDGE, bridgeByLegacyPlanId } from "./legacyPlanBridge";

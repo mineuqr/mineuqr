@@ -1,7 +1,7 @@
 /**
- * COMMERCIAL-CATALOG-PLATFORM-FOUNDATION-1
- * In-process Commercial Catalog store (foundation runtime).
- * Schema contract is drizzle `commercial_*` tables; DB migrate is separate from deploy.
+ * COMMERCIAL-LIVE-PLANS-SIMPLIFICATION-1
+ * In-process Live Commercial Plans store (runtime cache).
+ * Durable authority is DB; memory is never publication state.
  */
 
 import { randomUUID } from "node:crypto";
@@ -11,14 +11,11 @@ import type {
   CommercialFeatureBundle,
   CommercialLimitProfile,
   CommercialLimitValue,
+  CommercialLivePlan,
   CommercialMigrationPolicy,
-  CommercialPlanIdentity,
-  CommercialPlanVersion,
   CommercialPrice,
   CommercialPromotion,
   CommercialRegion,
-  CommercialRetirementPolicy,
-  CommercialSnapshotDefinition,
   CommercialTrialPolicy,
 } from "@shared/commercial-catalog";
 
@@ -30,18 +27,8 @@ export function nowIso(): string {
   return new Date().toISOString();
 }
 
-export type StoredSnapshot = {
-  id: string;
-  planVersionId: string;
-  schemaVersion: number;
-  payload: CommercialSnapshotDefinition;
-  effectiveDate: string;
-  createdAt: string;
-};
-
 export class CommercialCatalogStore {
-  plans = new Map<string, CommercialPlanIdentity>();
-  versions = new Map<string, CommercialPlanVersion>();
+  plans = new Map<string, CommercialLivePlan>();
   prices = new Map<string, CommercialPrice>();
   billingCycles = new Map<string, CommercialBillingCycle>();
   featureBundles = new Map<string, CommercialFeatureBundle>();
@@ -52,18 +39,9 @@ export class CommercialCatalogStore {
   promotions = new Map<string, CommercialPromotion>();
   regions = new Map<string, CommercialRegion>();
   migrationPolicies = new Map<string, CommercialMigrationPolicy>();
-  retirementPolicies = new Map<string, CommercialRetirementPolicy>();
-  snapshots = new Map<string, StoredSnapshot>();
 
-  publicationErrorCount = 0;
   validationErrorCount = 0;
-  lastPublicationError: string | null = null;
   lastValidationError: string | null = null;
-
-  recordPublicationError(message: string) {
-    this.publicationErrorCount += 1;
-    this.lastPublicationError = message;
-  }
 
   recordValidationError(message: string) {
     this.validationErrorCount += 1;
@@ -72,7 +50,6 @@ export class CommercialCatalogStore {
 
   clear() {
     this.plans.clear();
-    this.versions.clear();
     this.prices.clear();
     this.billingCycles.clear();
     this.featureBundles.clear();
@@ -83,14 +60,10 @@ export class CommercialCatalogStore {
     this.promotions.clear();
     this.regions.clear();
     this.migrationPolicies.clear();
-    this.retirementPolicies.clear();
-    this.snapshots.clear();
-    this.publicationErrorCount = 0;
     this.validationErrorCount = 0;
-    this.lastPublicationError = null;
     this.lastValidationError = null;
   }
 }
 
-/** Process-wide foundation store (singleton). */
+/** Process-wide live catalog store (singleton). */
 export const commercialCatalogStore = new CommercialCatalogStore();

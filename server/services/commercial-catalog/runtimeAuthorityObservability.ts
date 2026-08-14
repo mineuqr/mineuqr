@@ -4,7 +4,8 @@
  */
 
 export type CommercialRuntimeAuthorityMetrics = {
-  program: "COMMERCIAL-SNAPSHOT-RUNTIME-AUTHORITY-1";
+  program: "COMMERCIAL-LIVE-PLANS-SIMPLIFICATION-1";
+  livePlanResolutionCount: number;
   snapshotResolutionCount: number;
   legacyBridgeCount: number;
   /** Architecture invariant — must always be 0. */
@@ -19,6 +20,7 @@ export type CommercialRuntimeAuthorityMetrics = {
 };
 
 class CommercialRuntimeAuthorityObservability {
+  livePlanResolutionCount = 0;
   snapshotResolutionCount = 0;
   legacyBridgeCount = 0;
   /** Never incremented — overlay path removed. */
@@ -31,9 +33,14 @@ class CommercialRuntimeAuthorityObservability {
   lastSnapshotResolve: string | null = null;
   lastCreationFailure: string | null = null;
 
-  recordSnapshotResolved(subscriptionId: number) {
+  recordLivePlanResolved(subscriptionId: number) {
+    this.livePlanResolutionCount += 1;
     this.snapshotResolutionCount += 1;
     this.lastSnapshotResolve = `subscription:${subscriptionId}`;
+  }
+
+  recordSnapshotResolved(subscriptionId: number) {
+    this.recordLivePlanResolved(subscriptionId);
   }
 
   recordLegacyBridgeUsed(consumer: string) {
@@ -54,7 +61,8 @@ class CommercialRuntimeAuthorityObservability {
 
   snapshot(): CommercialRuntimeAuthorityMetrics {
     return {
-      program: "COMMERCIAL-SNAPSHOT-RUNTIME-AUTHORITY-1",
+      program: "COMMERCIAL-LIVE-PLANS-SIMPLIFICATION-1",
+      livePlanResolutionCount: this.livePlanResolutionCount,
       snapshotResolutionCount: this.snapshotResolutionCount,
       legacyBridgeCount: this.legacyBridgeCount,
       mixedResolutionCount: this.mixedResolutionCount,
@@ -69,6 +77,7 @@ class CommercialRuntimeAuthorityObservability {
   }
 
   resetForTests() {
+    this.livePlanResolutionCount = 0;
     this.snapshotResolutionCount = 0;
     this.legacyBridgeCount = 0;
     this.snapshotBindingCoverageChecks = 0;

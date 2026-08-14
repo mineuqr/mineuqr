@@ -1,5 +1,5 @@
 /**
- * COMMERCIAL-CATALOG-MANAGEMENT-UI-1 — architecture guards.
+ * COMMERCIAL-LIVE-PLANS-SIMPLIFICATION-1 — management UI guards.
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
@@ -10,65 +10,29 @@ function read(rel: string) {
   return readFileSync(resolve(root, rel), "utf8");
 }
 
-describe("COMMERCIAL-CATALOG-MANAGEMENT-UI-1", () => {
-  it("replaces read-only dashboard with management workspace", () => {
+describe("Live Commercial Plans management UI", () => {
+  it("hosts live plan management without version lifecycle panels", () => {
     const composition = read(
       "client/src/components/admin/platform-ops/PlatformOpsCommercialCatalogComposition.tsx"
     );
-    expect(composition).toContain("COMMERCIAL-CATALOG-MANAGEMENT-UI-1");
     expect(composition).toContain("PlansManagementPanel");
-    expect(composition).toContain("PublicationManagementPanel");
     expect(composition).toContain("ValidationManagementPanel");
     expect(composition).toContain("HealthManagementPanel");
-    expect(composition).not.toMatch(/Create plans and draft versions via commercialCatalog APIs/);
+    expect(composition).not.toContain("PublicationManagementPanel");
+    expect(composition).not.toContain("VersionsManagementPanel");
   });
 
-  it("wires create/update/publish mutations through existing tRPC", () => {
+  it("wires edit/validate/save through existing tRPC", () => {
     const panels = read(
       "client/src/components/admin/platform-ops/commercial-catalog/CatalogManagementPanels.tsx"
     );
     expect(panels).toContain("commercialCatalog.createPlan");
-    expect(panels).toContain("commercialCatalog.updatePlan");
-    expect(panels).toContain("commercialCatalog.createVersion");
-    expect(panels).toContain("useCatalogPublishingMutations");
-    expect(panels).toContain("publishing.listStatuses");
-    expect(panels).toContain("actions.approve");
-    expect(panels).toContain("actions.schedule");
-    expect(panels).toContain("actions.archive");
-    expect(panels).not.toMatch(/commercialCatalog\.publishVersion\.useMutation/);
-    expect(panels).not.toMatch(/commercialCatalog\.deprecateVersion\.useMutation/);
-    expect(panels).not.toMatch(/commercialCatalog\.retireVersion\.useMutation/);
-    expect(panels).toContain("commercialCatalog.createPrice");
-    expect(panels).toContain("commercialCatalog.createFeatureBundle");
-    expect(panels).toContain("commercialCatalog.createLimitProfile");
-    expect(panels).toContain("commercialCatalog.createTrialPolicy");
-    expect(panels).toContain("commercialCatalog.createRegion");
-    expect(panels).toContain("commercialCatalog.updateRegion");
-    expect(panels).toContain("commercialCatalog.createPromotion");
-    expect(panels).toContain("commercialCatalog.createMigrationPolicy");
-    expect(panels).toContain("commercialCatalog.updateMigrationPolicy");
-    expect(panels).toContain("commercialCatalog.createRetirementPolicy");
-    expect(panels).toContain("commercialCatalog.validatePublication");
-    expect(panels).not.toMatch(/drizzle|mysql|getDb\(/i);
-  });
-
-  it("exposes updateMigrationPolicy on commercialCatalog router", () => {
-    const router = read(
-      "server/api/commercialCatalog/commercialCatalogRouter.ts"
-    );
-    expect(router).toContain("updateMigrationPolicy");
-  });
-
-  it("keeps management modules under platform-ops commercial-catalog", () => {
-    expect(
-      read(
-        "client/src/components/admin/platform-ops/commercial-catalog/CatalogEntityPanel.tsx"
-      )
-    ).toContain("PlatformOpsToolbar");
-    expect(
-      read(
-        "client/src/components/admin/platform-ops/commercial-catalog/CatalogFormDialog.tsx"
-      )
-    ).toContain("Dialog");
+    expect(panels).toContain("commercialCatalog.saveLivePlan");
+    expect(panels).toContain("commercialCatalog.validatePlanSave");
+    expect(panels).not.toContain("commercialCatalog.createVersion");
+    expect(panels).not.toContain("useCatalogPublishingMutations");
+    expect(panels).not.toMatch(/commercialCatalog\.publishVersion/);
+    expect(panels).not.toMatch(/commercialCatalog\.deprecateVersion/);
+    expect(panels).not.toMatch(/commercialCatalog\.retireVersion/);
   });
 });

@@ -42,7 +42,8 @@ export class CommercialReadService {
       .meta;
     const snapshotName =
       meta?.commercialResolutionSource === "snapshot" ||
-      meta?.commercialResolutionSource === "snapshot_fail_closed"
+      meta?.commercialResolutionSource === "snapshot_fail_closed" ||
+      meta?.commercialResolutionSource === "live_plan"
         ? meta.commercialName ?? null
         : null;
 

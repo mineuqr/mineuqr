@@ -2,7 +2,7 @@
  * COMMERCIAL-CATALOG-PLATFORM-ADOPTION-1 / COMMERCIAL-PERSISTENT-CATALOG-BOOTSTRAP-1
  *
  * Existing commercial terms for LEGACY_PLAN_BRIDGE plan codes.
- * Not invented by bootstrap — required CC-16 pricing facts for durable publication.
+ * Not invented by bootstrap — required pricing facts for live plan seed.
  * Canonical Catalog currency is USD; SAR amounts are regional overrides.
  */
 

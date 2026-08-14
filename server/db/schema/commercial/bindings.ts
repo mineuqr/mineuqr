@@ -1,9 +1,11 @@
 /**
- * COMMERCIAL-CATALOG-PLATFORM-ADOPTION-1
- * Catalog-owned subscription → snapshot bindings (no mutation of legacy plan config).
+ * COMMERCIAL-LIVE-PLANS-SIMPLIFICATION-1
+ * Catalog-owned subscription → live plan bindings.
+ * Charged terms are immutable for the current period; invoices remain the financial SSOT.
  */
 
 import {
+  decimal,
   int,
   mysqlTable,
   timestamp,
@@ -17,14 +19,17 @@ export const commercialSubscriptionBindings = mysqlTable(
   {
     id: varchar({ length: 36 }).primaryKey(),
     subscriptionId: int().notNull(),
-    planVersionId: varchar({ length: 36 }).notNull(),
-    snapshotId: varchar({ length: 36 }).notNull(),
+    planId: varchar({ length: 36 }).notNull(),
+    chargedAmount: decimal({ precision: 12, scale: 2 }),
+    chargedCurrency: varchar({ length: 8 }),
+    billingCycleId: varchar({ length: 36 }),
+    billingCycleCode: varchar({ length: 64 }),
     legacyPlanId: int(),
     createdAt: timestamp({ mode: "string" }).defaultNow().notNull(),
+    updatedAt: timestamp({ mode: "string" }).defaultNow().onUpdateNow().notNull(),
   },
   (t) => [
     uniqueIndex("commercial_subscription_bindings_sub_uq").on(t.subscriptionId),
-    index("commercial_subscription_bindings_version_idx").on(t.planVersionId),
-    index("commercial_subscription_bindings_snapshot_idx").on(t.snapshotId),
+    index("commercial_subscription_bindings_plan_idx").on(t.planId),
   ]
 );

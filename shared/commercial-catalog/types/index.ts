@@ -1,50 +1,35 @@
 /**
- * COMMERCIAL-CATALOG-PLATFORM-FOUNDATION-1 — domain types.
+ * COMMERCIAL-LIVE-PLANS-SIMPLIFICATION-1 — domain types.
+ * A Plan is a live business entity. Editing updates the live definition.
  */
 
 export * from "./lifecycle";
-export * from "./snapshot";
+export * from "./chargedTerms";
 
 export type CommercialId = string;
 
 export type BillingCycleIntervalUnit = "day" | "week" | "month" | "year";
 
-export type CommercialPlanIdentity = {
+/**
+ * Live Commercial Plan — identity + current composition.
+ * There is no version layer. Feature/limit/trial refs are live.
+ */
+export type CommercialLivePlan = {
   id: CommercialId;
   code: string;
   name: string;
   description: string | null;
   sortOrder: number;
   isHidden: boolean;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type VersionCompatibility = {
-  upgradeTargets: string[];
-  downgradeTargets: string[];
-  migrationRequirements: string[];
-  breakingCommercialChanges: string[];
-};
-
-export type CommercialPlanVersion = {
-  id: CommercialId;
-  planId: CommercialId;
-  versionCode: string;
-  versionName: string;
-  state: import("./lifecycle").PlanVersionLifecycleState;
   featureBundleId: string | null;
   limitProfileId: string | null;
   trialPolicyId: string | null;
-  migrationPolicyId: string | null;
-  retirementPolicyId: string | null;
-  compatibility: VersionCompatibility;
-  publishedAt: string | null;
-  deprecatedAt: string | null;
-  retiredAt: string | null;
   createdAt: string;
   updatedAt: string;
 };
+
+/** Plan Identity is the live plan (CC-01 preserved; versioning removed). */
+export type CommercialPlanIdentity = CommercialLivePlan;
 
 export type CommercialBillingCycle = {
   id: CommercialId;
@@ -58,7 +43,7 @@ export type CommercialBillingCycle = {
 
 export type CommercialPrice = {
   id: CommercialId;
-  planVersionId: CommercialId;
+  planId: CommercialId;
   billingCycleId: CommercialId;
   currency: string;
   amount: string;
@@ -115,7 +100,7 @@ export type CommercialPromotion = {
   code: string;
   name: string;
   effectSummary: string;
-  eligiblePlanVersionIds: string[];
+  eligiblePlanIds: string[];
   startsAt: string | null;
   endsAt: string | null;
   isActive: boolean;
@@ -146,43 +131,25 @@ export type CommercialMigrationPolicy = {
   updatedAt: string;
 };
 
-export type CommercialRetirementPolicy = {
-  id: CommercialId;
-  code: string;
-  name: string;
-  description: string | null;
-  allowRenewals: boolean;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type PublicationValidationIssue = {
+export type PlanSaveValidationIssue = {
   code: string;
   message: string;
   field?: string;
 };
 
-export type PublicationValidationResult = {
+export type PlanSaveValidationResult = {
   ok: boolean;
-  issues: PublicationValidationIssue[];
+  issues: PlanSaveValidationIssue[];
 };
 
 export type CommercialCatalogHealth = {
-  program: "COMMERCIAL-CATALOG-PLATFORM-FOUNDATION-1";
+  program: "COMMERCIAL-LIVE-PLANS-SIMPLIFICATION-1";
   status: "healthy" | "warning" | "degraded";
   plans: number;
-  versions: {
-    draft: number;
-    published: number;
-    deprecated: number;
-    retired: number;
-    total: number;
-  };
+  hiddenPlans: number;
   prices: number;
   regions: number;
   promotions: number;
-  publicationErrors: number;
   validationErrors: number;
-  lastPublicationError: string | null;
   lastValidationError: string | null;
 };

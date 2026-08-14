@@ -1,5 +1,5 @@
 /**
- * COMMERCIAL-CATALOG-MANAGEMENT-UI-1
+ * COMMERCIAL-LIVE-PLANS-SIMPLIFICATION-1
  * Shared catalog query bundle + invalidation for management panels.
  */
 
@@ -14,7 +14,6 @@ export function useCatalogManagementData() {
   });
   const adoptionQuery = trpc.commercialCatalog.adoptionStatus.useQuery();
   const plansQuery = trpc.commercialCatalog.listPlans.useQuery();
-  const versionsQuery = trpc.commercialCatalog.listVersions.useQuery();
   const pricesQuery = trpc.commercialCatalog.listPrices.useQuery();
   const cyclesQuery = trpc.commercialCatalog.listBillingCycles.useQuery();
   const bundlesQuery = trpc.commercialCatalog.listFeatureBundles.useQuery();
@@ -23,16 +22,12 @@ export function useCatalogManagementData() {
   const regionsQuery = trpc.commercialCatalog.listRegions.useQuery();
   const promotionsQuery = trpc.commercialCatalog.listPromotions.useQuery();
   const migrationQuery = trpc.commercialCatalog.listMigrationPolicies.useQuery();
-  const retirementQuery =
-    trpc.commercialCatalog.listRetirementPolicies.useQuery();
-  const snapshotsQuery = trpc.commercialCatalog.listSnapshots.useQuery();
 
   async function invalidateAll() {
     await Promise.all([
       utils.commercialCatalog.health.invalidate(),
       utils.commercialCatalog.adoptionStatus.invalidate(),
       utils.commercialCatalog.listPlans.invalidate(),
-      utils.commercialCatalog.listVersions.invalidate(),
       utils.commercialCatalog.listPrices.invalidate(),
       utils.commercialCatalog.listBillingCycles.invalidate(),
       utils.commercialCatalog.listFeatureBundles.invalidate(),
@@ -41,8 +36,6 @@ export function useCatalogManagementData() {
       utils.commercialCatalog.listRegions.invalidate(),
       utils.commercialCatalog.listPromotions.invalidate(),
       utils.commercialCatalog.listMigrationPolicies.invalidate(),
-      utils.commercialCatalog.listRetirementPolicies.invalidate(),
-      utils.commercialCatalog.listSnapshots.invalidate(),
     ]);
   }
 
@@ -57,7 +50,6 @@ export function useCatalogManagementData() {
     healthQuery,
     adoptionQuery,
     plansQuery,
-    versionsQuery,
     pricesQuery,
     cyclesQuery,
     bundlesQuery,
@@ -66,8 +58,6 @@ export function useCatalogManagementData() {
     regionsQuery,
     promotionsQuery,
     migrationQuery,
-    retirementQuery,
-    snapshotsQuery,
   };
 }
 

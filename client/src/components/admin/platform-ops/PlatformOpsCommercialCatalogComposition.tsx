@@ -40,12 +40,9 @@ import {
   PlansManagementPanel,
   PricingManagementPanel,
   PromotionsManagementPanel,
-  PublicationManagementPanel,
   RegionsManagementPanel,
-  RetirementPoliciesManagementPanel,
   TrialPoliciesManagementPanel,
   ValidationManagementPanel,
-  VersionsManagementPanel,
 } from "./commercial-catalog/CatalogManagementPanels";
 import {
   EXPERIENCE_TABS,
@@ -100,22 +97,20 @@ export function PlatformOpsCommercialCatalogComposition() {
   const moduleCounts = useMemo(
     () => ({
       plans: data.plansQuery.data?.length ?? 0,
-      versions: data.versionsQuery.data?.length ?? 0,
-      published: health?.versions.published ?? 0,
+      live: (data.plansQuery.data ?? []).filter((p) => !p.isHidden).length,
+      prices: data.pricesQuery.data?.length ?? 0,
       regions: data.regionsQuery.data?.length ?? 0,
     }),
     [
       data.plansQuery.data,
-      data.versionsQuery.data,
-      health,
+      data.pricesQuery.data,
       data.regionsQuery.data,
     ]
   );
 
   const loading =
     data.healthQuery.isLoading ||
-    data.plansQuery.isLoading ||
-    data.versionsQuery.isLoading;
+    data.plansQuery.isLoading;
 
   if (loading) {
     return <PlatformOpsLoadingState />;
@@ -158,18 +153,18 @@ export function PlatformOpsCommercialCatalogComposition() {
           icon={BookOpen}
         />
         <PlatformOpsMetricCard
-          label={t("admin.platformOps.commercialCatalog.metricVersions")}
-          value={String(moduleCounts.versions)}
-          tone="info"
-          domain="information"
-          icon={Layers}
-        />
-        <PlatformOpsMetricCard
-          label={t("admin.platformOps.commercialCatalog.metricPublished")}
-          value={String(moduleCounts.published)}
+          label={t("admin.platformOps.commercialCatalog.metricLive")}
+          value={String(moduleCounts.live)}
           tone="info"
           domain="information"
           icon={CheckCircle2}
+        />
+        <PlatformOpsMetricCard
+          label={t("admin.platformOps.commercialCatalog.metricPrices")}
+          value={String(moduleCounts.prices)}
+          tone="info"
+          domain="information"
+          icon={Layers}
         />
         <PlatformOpsMetricCard
           label={t("admin.platformOps.commercialCatalog.metricRegions")}
@@ -263,9 +258,6 @@ export function PlatformOpsCommercialCatalogComposition() {
                 {section === "plans" ? (
                   <PlansManagementPanel data={data} />
                 ) : null}
-                {section === "plan_versions" ? (
-                  <VersionsManagementPanel data={data} />
-                ) : null}
                 {section === "pricing" ? (
                   <PricingManagementPanel data={data} />
                 ) : null}
@@ -289,12 +281,6 @@ export function PlatformOpsCommercialCatalogComposition() {
                 ) : null}
                 {section === "migration_policies" ? (
                   <MigrationPoliciesManagementPanel data={data} />
-                ) : null}
-                {section === "retirement_policies" ? (
-                  <RetirementPoliciesManagementPanel data={data} />
-                ) : null}
-                {section === "publication_status" ? (
-                  <PublicationManagementPanel data={data} />
                 ) : null}
                 {section === "commercial_validation" ? (
                   <ValidationManagementPanel data={data} />

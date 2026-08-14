@@ -20,7 +20,7 @@ import {
 } from "./db";
 import {
   classifyPlanTransitionEvent,
-  ensureCommercialSnapshotBoundForSubscription,
+  ensureLivePlanBoundForSubscription,
 } from "./services/commercial-catalog";
 import { cascadeAuditFromTrpc } from "./db/cascadeAudit";
 import {
@@ -184,7 +184,7 @@ export async function applyAdminUserSubscriptionCreate(params: {
     snapshot,
   });
 
-  await ensureCommercialSnapshotBoundForSubscription({
+  await ensureLivePlanBoundForSubscription({
     subscriptionId: result.id,
     legacyPlanId: planId,
     event: "plan_selected",
@@ -286,7 +286,7 @@ export async function applyAdminUserSubscriptionUpdate(params: {
       : periodChanged
         ? "renewal"
         : "plan_selected";
-    await ensureCommercialSnapshotBoundForSubscription({
+    await ensureLivePlanBoundForSubscription({
       subscriptionId: existing.id,
       legacyPlanId: nextPlanId,
       event,

@@ -10,7 +10,7 @@ import {
 import { InsertUserSubscription } from "../drizzle/schema";
 import {
   resolveTrialPolicyFromCatalog,
-  createImmutableCommercialSnapshotForSubscription,
+  bindSubscriptionToLivePlan,
   ensureCatalogReady,
 } from "./services/commercial-catalog";
 import { commercialAdoptionObservability } from "./services/commercial-catalog/adoptionObservability";
@@ -94,7 +94,7 @@ export async function buildTrialSubscriptionForUser(
 
 /**
  * Create a trial subscription for a new user (account-scoped by default).
- * Captures immutable Commercial Snapshot from Catalog when possible.
+ * Binds the trial subscription to the live Professional plan.
  */
 export async function createTrialSubscription(
   userId: number,
@@ -112,10 +112,10 @@ export async function createTrialSubscription(
   try {
     await ensureCatalogReady();
     const policy = await resolveTrialPolicyFromCatalog();
-    if (subscriptionId && policy.professionalPlanVersionId) {
-      await createImmutableCommercialSnapshotForSubscription({
+    if (subscriptionId && policy.professionalPlanId) {
+      await bindSubscriptionToLivePlan({
         subscriptionId,
-        planVersionId: policy.professionalPlanVersionId,
+        planId: policy.professionalPlanId,
         legacyPlanId: trialSubscription.planId,
         event: "trial_activated",
         actorId: userId,

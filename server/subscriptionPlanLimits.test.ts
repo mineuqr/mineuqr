@@ -17,11 +17,13 @@ vi.mock("./db", () => ({
 
 vi.mock("./services/commercial-catalog", () => ({
   getSubscriptionCommercialBinding: vi.fn(async () => null),
-  resolveCommercialFactsFromSnapshot: vi.fn(async () => ({
+  resolveLivePlanCapabilities: vi.fn(async () => ({
     source: "missing",
-    snapshot: null,
+    planId: null,
+    catalogPlanCode: null,
     featureKeys: [],
     limits: [],
+    chargedTerms: null,
   })),
 }));
 

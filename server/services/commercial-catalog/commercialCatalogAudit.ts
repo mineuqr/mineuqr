@@ -63,33 +63,6 @@ export function auditCommercialUpdated(
   });
 }
 
-export function auditCommercialPublished(
-  actor: CommercialCatalogAuditActor,
-  id: string,
-  before: Record<string, unknown>,
-  after: Record<string, unknown>
-) {
-  emit(OPS_EVENT.commercial_catalog_published, actor, id, before, after);
-}
-
-export function auditCommercialDeprecated(
-  actor: CommercialCatalogAuditActor,
-  id: string,
-  before: Record<string, unknown>,
-  after: Record<string, unknown>
-) {
-  emit(OPS_EVENT.commercial_catalog_deprecated, actor, id, before, after);
-}
-
-export function auditCommercialRetired(
-  actor: CommercialCatalogAuditActor,
-  id: string,
-  before: Record<string, unknown>,
-  after: Record<string, unknown>
-) {
-  emit(OPS_EVENT.commercial_catalog_retired, actor, id, before, after);
-}
-
 export function auditPromotionCreated(
   actor: CommercialCatalogAuditActor,
   id: string,

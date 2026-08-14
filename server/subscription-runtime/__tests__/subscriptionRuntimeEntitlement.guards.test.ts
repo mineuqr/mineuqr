@@ -34,29 +34,27 @@ describe("SUBSCRIPTION-RUNTIME-ENTITLEMENT-ENFORCEMENT-1 guards", () => {
     ).toBe(true);
   });
 
-  it("hub delegates to Subscription Runtime (Snapshot ONLY / Legacy Bridge ONLY)", () => {
+  it("hub delegates to Subscription Runtime (Live Plan / Legacy Bridge)", () => {
     const hub = read("server/commercial/getCommercialEntitlements.ts");
     expect(hub).toContain("resolveOwnerEntitlements");
-    expect(hub).toContain("Snapshot ONLY");
+    expect(hub).toContain("Live Plan");
     expect(hub).toContain("Legacy Bridge ONLY");
     expect(hub).not.toMatch(/planFeatureMatrix/);
     expect(hub).not.toMatch(/buildCommercialContextFromDb/);
   });
 
-  it("resolver must not import live Catalog or planFeatureMatrix", () => {
+  it("resolver must not import planFeatureMatrix", () => {
     const resolver = read(
       "server/subscription-runtime/entitlementResolver.ts"
     );
     expect(resolver).not.toMatch(/from ["']@commercial\/planFeatureMatrix["']/);
-    expect(resolver).not.toMatch(/commercialCatalog\.(get|list)/);
-    expect(resolver).toContain("MUST NOT import live Catalog feature matrix");
+    expect(resolver).toContain("live plan capabilities");
   });
 
-  it("snapshot loader uses binding hydrate only", () => {
+  it("loader binds subscription to current live plan", () => {
     const loader = read("server/subscription-runtime/snapshotLoader.ts");
-    expect(loader).toContain("resolveCommercialFactsFromSnapshot");
+    expect(loader).toContain("resolveLivePlanCapabilities");
     expect(loader).toContain("getSubscriptionCommercialBinding");
-    expect(loader).toContain("NEVER reads mutable Catalog");
   });
 
   it("guest ordering uses canonical hasFeature enforcement", () => {

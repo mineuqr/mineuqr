@@ -192,16 +192,16 @@ export async function registerLocalOwner(
     const { getCanonicalUserSubscription } = await import("../db");
     const {
       resolveTrialPolicyFromCatalog,
-      createImmutableCommercialSnapshotForSubscription,
+      bindSubscriptionToLivePlan,
       ensureCatalogReady,
     } = await import("../services/commercial-catalog");
     await ensureCatalogReady();
     const sub = await getCanonicalUserSubscription(userId);
     const policy = await resolveTrialPolicyFromCatalog();
-    if (sub?.id && policy.professionalPlanVersionId) {
-      await createImmutableCommercialSnapshotForSubscription({
+    if (sub?.id && policy.professionalPlanId) {
+      await bindSubscriptionToLivePlan({
         subscriptionId: sub.id,
-        planVersionId: policy.professionalPlanVersionId,
+        planId: policy.professionalPlanId,
         legacyPlanId: sub.planId,
         event: "trial_activated",
         actorId: userId,

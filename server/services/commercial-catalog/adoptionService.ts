@@ -1,18 +1,17 @@
 /**
- * COMMERCIAL-CATALOG-PLATFORM-ADOPTION-1
- * Consumer-facing adoption APIs — Catalog SSOT, Subscription consumes only.
+ * COMMERCIAL-LIVE-PLANS-SIMPLIFICATION-1
+ * Consumer-facing adoption APIs — live Catalog SSOT.
+ * Capabilities resolve from the current plan. Charged terms freeze billed price.
  */
 
 import {
   COMMERCIAL_CANONICAL_CURRENCY,
   COMMERCIAL_CATALOG_ADOPTION_CONSUMERS,
-  type CommercialSnapshotDefinition,
+  type CommercialChargedTerms,
 } from "@shared/commercial-catalog";
 import { commercialCatalogStore } from "./CatalogStore";
 import {
-  commercialSnapshotService,
   planService,
-  planVersionService,
   pricingService,
   trialPolicyCatalogService,
   regionalPolicyService,
@@ -32,25 +31,19 @@ import { getDb } from "../../db";
 import { commercialSubscriptionBindings } from "../../db/schema/commercial/bindings";
 import { eq } from "drizzle-orm";
 import { newCommercialId, nowIso } from "./CatalogStore";
-import { hydrateCommercialSnapshotById } from "./drizzleCatalogPersistence";
 
-export type CommercialSnapshotBindEvent =
+export type CommercialPlanBindEvent =
   | "plan_selected"
   | "trial_activated"
   | "upgrade"
   | "downgrade"
   | "renewal";
 
-export type PublishedPlanOffering = {
-  /** Legacy plan id for payment/activation compatibility bridge */
+export type LivePlanOffering = {
   legacyPlanId: number | null;
   planId: string;
   planCode: string;
   planName: string;
-  planVersionId: string;
-  versionCode: string;
-  versionName: string;
-  state: "published";
   currency: string;
   priceMonthly: string | null;
   priceYearly: string | null;
@@ -62,8 +55,11 @@ export type PublishedPlanOffering = {
 
 export type SubscriptionCatalogBinding = {
   subscriptionId: number;
-  planVersionId: string;
-  snapshotId: string;
+  planId: string;
+  chargedAmount: string | null;
+  chargedCurrency: string | null;
+  billingCycleId: string | null;
+  billingCycleCode: string | null;
   legacyPlanId: number | null;
   createdAt: string;
 };
@@ -80,81 +76,77 @@ export async function ensureCatalogReady() {
   return ensurePromise;
 }
 
-/**
- * COMMERCIAL-PUBLICATION-PERSISTENCE-ARCHITECTURE-1
- * Invalidate the ready gate so the next ensureCatalogReady rehydrates from
- * durable publication authority (memory is cache only).
- */
 export function invalidateCatalogReadyGate(): void {
   ensurePromise = null;
 }
 
-/** Plan selection — published only (draft/deprecated/retired excluded). */
-export async function listPublishedPlanOfferings(): Promise<
-  PublishedPlanOffering[]
-> {
+function offeringFromPlan(plan: {
+  id: string;
+  code: string;
+  name: string;
+  isHidden: boolean;
+  featureBundleId: string | null;
+  limitProfileId: string | null;
+  trialPolicyId: string | null;
+}): LivePlanOffering | null {
+  if (plan.isHidden) return null;
+  const prices = pricingService.list(plan.id);
+  const cycles = pricingService.listBillingCycles();
+  const monthlyCycle = cycles.find((c) => c.code === "monthly");
+  const yearlyCycle = cycles.find((c) => c.code === "yearly");
+  const monthly = prices.find((p) => p.billingCycleId === monthlyCycle?.id && !p.regionId);
+  const yearly = prices.find((p) => p.billingCycleId === yearlyCycle?.id && !p.regionId);
+  const features = plan.featureBundleId
+    ? [...commercialCatalogStore.bundleFeatures.values()].filter(
+        (f) => f.bundleId === plan.featureBundleId && f.included
+      )
+    : [];
+  const limits = plan.limitProfileId
+    ? [...commercialCatalogStore.limitValues.values()].filter(
+        (l) => l.profileId === plan.limitProfileId
+      )
+    : [];
+  const trial = plan.trialPolicyId
+    ? trialPolicyCatalogService.get(plan.trialPolicyId)
+    : null;
+  const bridge = bridgeByCatalogPlanCode(plan.code);
+
+  return {
+    legacyPlanId: bridge?.legacyPlanId ?? null,
+    planId: plan.id,
+    planCode: plan.code,
+    planName: plan.name,
+    currency:
+      monthly?.currency ?? yearly?.currency ?? COMMERCIAL_CANONICAL_CURRENCY,
+    priceMonthly: monthly?.amount ?? null,
+    priceYearly: yearly?.amount ?? null,
+    featureKeys: features.map((f) => f.featureKey),
+    limits: limits.map((l) => ({
+      limitKey: l.limitKey,
+      value: l.value,
+      unit: l.unit,
+    })),
+    trialPolicyId: trial?.id ?? null,
+    trialDurationDays: trial?.durationDays ?? null,
+  };
+}
+
+export async function listLivePlanOfferings(): Promise<LivePlanOffering[]> {
   await ensureCatalogReady();
-  const offerings: PublishedPlanOffering[] = [];
-  const versions = planVersionService
-    .list()
-    .filter((v) => v.state === "published");
-
-  for (const version of versions) {
-    const plan = planService.get(version.planId);
-    if (!plan || plan.isHidden) continue;
-    const prices = pricingService.list(version.id);
-    const cycles = pricingService.listBillingCycles();
-    const monthlyCycle = cycles.find((c) => c.code === "monthly");
-    const yearlyCycle = cycles.find((c) => c.code === "yearly");
-    const monthly = prices.find((p) => p.billingCycleId === monthlyCycle?.id);
-    const yearly = prices.find((p) => p.billingCycleId === yearlyCycle?.id);
-    const features = version.featureBundleId
-      ? [...commercialCatalogStore.bundleFeatures.values()].filter(
-          (f) => f.bundleId === version.featureBundleId && f.included
-        )
-      : [];
-    const limits = version.limitProfileId
-      ? [...commercialCatalogStore.limitValues.values()].filter(
-          (l) => l.profileId === version.limitProfileId
-        )
-      : [];
-    const trial = version.trialPolicyId
-      ? trialPolicyCatalogService.get(version.trialPolicyId)
-      : null;
-    const bridge = bridgeByCatalogPlanCode(plan.code);
-
-    offerings.push({
-      legacyPlanId: bridge?.legacyPlanId ?? null,
-      planId: plan.id,
-      planCode: plan.code,
-      planName: plan.name,
-      planVersionId: version.id,
-      versionCode: version.versionCode,
-      versionName: version.versionName,
-      state: "published",
-      currency:
-        monthly?.currency ?? yearly?.currency ?? COMMERCIAL_CANONICAL_CURRENCY,
-      priceMonthly: monthly?.amount ?? null,
-      priceYearly: yearly?.amount ?? null,
-      featureKeys: features.map((f) => f.featureKey),
-      limits: limits.map((l) => ({
-        limitKey: l.limitKey,
-        value: l.value,
-        unit: l.unit,
-      })),
-      trialPolicyId: trial?.id ?? null,
-      trialDurationDays: trial?.durationDays ?? null,
-    });
-    commercialAdoptionObservability.recordPlanAdoption();
+  const offerings: LivePlanOffering[] = [];
+  for (const plan of planService.list()) {
+    const offering = offeringFromPlan(plan);
+    if (offering) {
+      offerings.push(offering);
+      commercialAdoptionObservability.recordPlanAdoption();
+    }
   }
-
   return offerings.sort((a, b) => a.planCode.localeCompare(b.planCode));
 }
 
-/**
- * Legacy-compatible plan list for Pricing / checkout bridges.
- * Catalog primary; if empty, records legacy lookup for caller fallback.
- */
+/** Alias — live plans are the selectable catalog. */
+export const listPublishedPlanOfferings = listLivePlanOfferings;
+
 export async function listPlansForSelectionLegacyShape(): Promise<
   | {
       source: "catalog";
@@ -173,13 +165,12 @@ export async function listPlansForSelectionLegacyShape(): Promise<
         featuresAr: string | null;
         isActive: boolean;
         sortOrder: number;
-        planVersionId: string;
         catalogPlanId: string;
       }>;
     }
   | { source: "legacy_required" }
 > {
-  const offerings = await listPublishedPlanOfferings();
+  const offerings = await listLivePlanOfferings();
   const withLegacy = offerings.filter((o) => o.legacyPlanId != null);
   if (!withLegacy.length) {
     commercialAdoptionObservability.recordLegacyLookup(
@@ -200,8 +191,8 @@ export async function listPlansForSelectionLegacyShape(): Promise<
         id: o.legacyPlanId!,
         nameEn: o.planName,
         nameAr: o.planName,
-        descriptionEn: o.versionName,
-        descriptionAr: o.versionName,
+        descriptionEn: o.planName,
+        descriptionAr: o.planName,
         priceMonthly: o.priceMonthly ?? "0.00",
         priceYearly: o.priceYearly,
         maxRestaurants: restaurants ?? 1,
@@ -211,7 +202,6 @@ export async function listPlansForSelectionLegacyShape(): Promise<
         featuresAr: JSON.stringify(o.featureKeys),
         isActive: true,
         sortOrder: idx + 1,
-        planVersionId: o.planVersionId,
         catalogPlanId: o.planId,
       };
     }),
@@ -221,11 +211,11 @@ export async function listPlansForSelectionLegacyShape(): Promise<
 export async function resolveTrialPolicyFromCatalog(): Promise<{
   durationDays: number;
   trialPolicyId: string | null;
-  professionalPlanVersionId: string | null;
+  professionalPlanId: string | null;
   legacyPlanId: number;
 }> {
   await ensureCatalogReady();
-  const offerings = await listPublishedPlanOfferings();
+  const offerings = await listLivePlanOfferings();
   const professional =
     offerings.find((o) => o.planCode === "professional") ??
     offerings.find((o) => o.trialDurationDays != null) ??
@@ -243,7 +233,7 @@ export async function resolveTrialPolicyFromCatalog(): Promise<{
   return {
     durationDays: duration,
     trialPolicyId: professional?.trialPolicyId ?? null,
-    professionalPlanVersionId: professional?.planVersionId ?? null,
+    professionalPlanId: professional?.planId ?? null,
     legacyPlanId: bridge.legacyPlanId,
   };
 }
@@ -274,11 +264,40 @@ export async function resolvePromotionFromCatalog(code: string) {
   return promo ?? null;
 }
 
-/**
- * Create immutable Commercial Snapshot at subscription bind / upgrade / downgrade.
- * Persists definition + subscription binding (Catalog-owned).
- */
-function auditEventForBind(event: CommercialSnapshotBindEvent) {
+function chargedTermsForPlan(
+  planId: string,
+  billingCycleCode = "monthly",
+  regionId?: string | null
+): CommercialChargedTerms | null {
+  const plan = planService.get(planId);
+  if (!plan) return null;
+  const price = pricingService.currentPriceForPlan(
+    planId,
+    billingCycleCode,
+    regionId
+  );
+  const cycle =
+    pricingService.listBillingCycles().find((c) => c.code === billingCycleCode) ??
+    (price
+      ? pricingService.listBillingCycles().find((c) => c.id === price.billingCycleId)
+      : null);
+  if (!price || !cycle) return null;
+  return {
+    planId: plan.id,
+    catalogPlanCode: plan.code,
+    commercialName: plan.name,
+    chargedAmount: price.amount,
+    chargedCurrency: price.currency,
+    billingCycleId: cycle.id,
+    billingCycleCode: cycle.code,
+    intervalCount: cycle.intervalCount,
+    intervalUnit: cycle.intervalUnit,
+    periodStart: null,
+    periodEnd: null,
+  };
+}
+
+function auditEventForBind(event: CommercialPlanBindEvent) {
   switch (event) {
     case "upgrade":
       return OPS_EVENT.commercial_upgrade_snapshot_created;
@@ -291,30 +310,38 @@ function auditEventForBind(event: CommercialSnapshotBindEvent) {
   }
 }
 
-export async function createImmutableCommercialSnapshotForSubscription(input: {
+/**
+ * Bind a subscription to a live plan.
+ * Renewal (event=renewal) records CURRENT plan price as charged terms.
+ * Other events also capture current price at bind time; later price edits do not rewrite it.
+ */
+export async function bindSubscriptionToLivePlan(input: {
   subscriptionId: number;
-  planVersionId: string;
+  planId: string;
   legacyPlanId?: number | null;
   regionId?: string | null;
-  promotionId?: string | null;
+  billingCycleCode?: string;
   actorId?: number | null;
-  event: CommercialSnapshotBindEvent;
-}): Promise<{ snapshotId: string; payload: CommercialSnapshotDefinition }> {
+  event: CommercialPlanBindEvent;
+}): Promise<{ planId: string; chargedTerms: CommercialChargedTerms | null }> {
   await ensureCatalogReady();
-  const captured = commercialSnapshotService.captureFromVersion(
-    input.planVersionId,
-    {
-      regionId: input.regionId,
-      promotionId: input.promotionId,
-    }
+  const plan = planService.get(input.planId);
+  if (!plan) {
+    throw new Error(`Live plan ${input.planId} not found`);
+  }
+  const charged = chargedTermsForPlan(
+    input.planId,
+    input.billingCycleCode ?? "monthly",
+    input.regionId
   );
 
-  // Snapshots are immutable — freeze already applied in service.
-  // Historical snapshot rows are preserved; binding points at the latest.
   const binding: SubscriptionCatalogBinding = {
     subscriptionId: input.subscriptionId,
-    planVersionId: input.planVersionId,
-    snapshotId: captured.id,
+    planId: input.planId,
+    chargedAmount: charged?.chargedAmount ?? null,
+    chargedCurrency: charged?.chargedCurrency ?? null,
+    billingCycleId: charged?.billingCycleId ?? null,
+    billingCycleCode: charged?.billingCycleCode ?? null,
     legacyPlanId: input.legacyPlanId ?? null,
     createdAt: nowIso(),
   };
@@ -327,22 +354,26 @@ export async function createImmutableCommercialSnapshotForSubscription(input: {
         .values({
           id: newCommercialId(),
           subscriptionId: binding.subscriptionId,
-          planVersionId: binding.planVersionId,
-          snapshotId: binding.snapshotId,
+          planId: binding.planId,
+          chargedAmount: binding.chargedAmount,
+          chargedCurrency: binding.chargedCurrency,
+          billingCycleId: binding.billingCycleId,
+          billingCycleCode: binding.billingCycleCode,
           legacyPlanId: binding.legacyPlanId,
           createdAt: binding.createdAt,
+          updatedAt: nowIso(),
         })
         .onDuplicateKeyUpdate({
           set: {
-            planVersionId: binding.planVersionId,
-            snapshotId: binding.snapshotId,
+            planId: binding.planId,
+            chargedAmount: binding.chargedAmount,
+            chargedCurrency: binding.chargedCurrency,
+            billingCycleId: binding.billingCycleId,
+            billingCycleCode: binding.billingCycleCode,
             legacyPlanId: binding.legacyPlanId,
+            updatedAt: nowIso(),
           },
         });
-      const { persistCommercialCatalogEntity } = await import(
-        "./drizzleCatalogPersistence"
-      );
-      await persistCommercialCatalogEntity("snapshot", captured.id);
     } catch (e) {
       commercialAdoptionObservability.recordResolutionError(
         e instanceof Error ? e.message : String(e)
@@ -363,78 +394,41 @@ export async function createImmutableCommercialSnapshotForSubscription(input: {
     targetType: "subscription",
     targetId: input.subscriptionId,
     after: {
-      snapshotId: captured.id,
-      planVersionId: input.planVersionId,
+      planId: input.planId,
       event: input.event,
-    },
-    metadata: { event: input.event },
-  });
-  emitAuditEvent({
-    eventType: OPS_EVENT.commercial_snapshot_bound,
-    category: "COMMERCIAL",
-    severity: "info",
-    opsCategory: "ADMIN",
-    actorId: input.actorId ?? null,
-    targetType: "subscription",
-    targetId: input.subscriptionId,
-    after: {
-      snapshotId: captured.id,
-      planVersionId: input.planVersionId,
-    },
-    metadata: { event: input.event },
-  });
-  emitAuditEvent({
-    eventType: OPS_EVENT.commercial_snapshot_activated,
-    category: "COMMERCIAL",
-    severity: "info",
-    opsCategory: "ADMIN",
-    actorId: input.actorId ?? null,
-    targetType: "subscription",
-    targetId: input.subscriptionId,
-    after: {
-      snapshotId: captured.id,
-      planVersionId: input.planVersionId,
+      chargedAmount: charged?.chargedAmount ?? null,
     },
     metadata: { event: input.event },
   });
 
-  return {
-    snapshotId: captured.id,
-    payload: captured.payload as CommercialSnapshotDefinition,
-  };
+  return { planId: input.planId, chargedTerms: charged };
 }
 
-/**
- * Bind Snapshot + SubscriptionBinding from a legacy plan id (activation / transition).
- * Best-effort: records failure metrics; does not throw into payment paths.
- */
-export async function ensureCommercialSnapshotBoundForSubscription(input: {
+export async function ensureLivePlanBoundForSubscription(input: {
   subscriptionId: number;
   legacyPlanId: number;
-  event: CommercialSnapshotBindEvent;
+  event: CommercialPlanBindEvent;
   actorId?: number | null;
   regionId?: string | null;
-  promotionId?: string | null;
-}): Promise<{ snapshotId: string } | null> {
+}): Promise<{ planId: string } | null> {
   try {
     await ensureCatalogReady();
-    const planVersionId = resolvePlanVersionIdFromLegacyPlanId(input.legacyPlanId);
-    if (!planVersionId) {
+    const planId = resolvePlanIdFromLegacyPlanId(input.legacyPlanId);
+    if (!planId) {
       commercialRuntimeAuthorityObservability.recordSnapshotCreationFailure(
-        `no_plan_version:${input.legacyPlanId}`
+        `no_live_plan:${input.legacyPlanId}`
       );
       return null;
     }
-    const created = await createImmutableCommercialSnapshotForSubscription({
+    const created = await bindSubscriptionToLivePlan({
       subscriptionId: input.subscriptionId,
-      planVersionId,
+      planId,
       legacyPlanId: input.legacyPlanId,
       regionId: input.regionId,
-      promotionId: input.promotionId,
       actorId: input.actorId,
       event: input.event,
     });
-    return { snapshotId: created.snapshotId };
+    return { planId: created.planId };
   } catch (e) {
     commercialRuntimeAuthorityObservability.recordSnapshotCreationFailure(
       e instanceof Error ? e.message : String(e)
@@ -446,7 +440,7 @@ export async function ensureCommercialSnapshotBoundForSubscription(input: {
 export function classifyPlanTransitionEvent(
   previousPlanId: number | null | undefined,
   nextPlanId: number
-): CommercialSnapshotBindEvent {
+): CommercialPlanBindEvent {
   if (previousPlanId == null || previousPlanId === nextPlanId) {
     return "renewal";
   }
@@ -480,8 +474,11 @@ export async function getSubscriptionCommercialBinding(
     if (!row) return null;
     return {
       subscriptionId: row.subscriptionId,
-      planVersionId: row.planVersionId,
-      snapshotId: row.snapshotId,
+      planId: row.planId,
+      chargedAmount: row.chargedAmount != null ? String(row.chargedAmount) : null,
+      chargedCurrency: row.chargedCurrency ?? null,
+      billingCycleId: row.billingCycleId ?? null,
+      billingCycleCode: row.billingCycleCode ?? null,
       legacyPlanId: row.legacyPlanId ?? null,
       createdAt: String(row.createdAt),
     };
@@ -491,54 +488,89 @@ export async function getSubscriptionCommercialBinding(
 }
 
 /**
- * Runtime commercial facts from Commercial Snapshot (CC-13).
- * Hydrates snapshot from DB when missing in-process. Never reads live Catalog facts.
+ * Runtime capabilities from the LIVE plan bound to the subscription.
  */
-export async function resolveCommercialFactsFromSnapshot(
-  subscriptionId: number
-): Promise<{
-  source: "snapshot" | "missing";
-  snapshot: CommercialSnapshotDefinition | null;
+export async function resolveLivePlanCapabilities(subscriptionId: number): Promise<{
+  source: "live_plan" | "missing";
+  planId: string | null;
+  catalogPlanCode: string | null;
   featureKeys: string[];
-  limits: CommercialSnapshotDefinition["usageLimits"];
+  limits: { limitKey: string; value: number | null; unit: string | null }[];
+  chargedTerms: CommercialChargedTerms | null;
 }> {
+  await ensureCatalogReady();
   const binding = await getSubscriptionCommercialBinding(subscriptionId);
   if (!binding) {
     commercialAdoptionObservability.recordLegacyLookup(
-      `snapshot_missing:${subscriptionId}`
+      `binding_missing:${subscriptionId}`
     );
     return {
       source: "missing",
-      snapshot: null,
+      planId: null,
+      catalogPlanCode: null,
       featureKeys: [],
       limits: [],
+      chargedTerms: null,
     };
   }
 
-  let stored = commercialSnapshotService.get(binding.snapshotId);
-  if (!stored) {
-    await hydrateCommercialSnapshotById(binding.snapshotId);
-    stored = commercialSnapshotService.get(binding.snapshotId);
-  }
-  if (!stored) {
+  const plan = planService.get(binding.planId);
+  if (!plan) {
     commercialAdoptionObservability.recordLegacyLookup(
-      `snapshot_row_missing:${binding.snapshotId}`
+      `live_plan_missing:${binding.planId}`
     );
     return {
       source: "missing",
-      snapshot: null,
+      planId: binding.planId,
+      catalogPlanCode: null,
       featureKeys: [],
       limits: [],
+      chargedTerms: null,
     };
   }
-  const payload = stored.payload;
+
+  const features = plan.featureBundleId
+    ? [...commercialCatalogStore.bundleFeatures.values()].filter(
+        (f) => f.bundleId === plan.featureBundleId && f.included
+      )
+    : [];
+  const limits = plan.limitProfileId
+    ? [...commercialCatalogStore.limitValues.values()].filter(
+        (l) => l.profileId === plan.limitProfileId
+      )
+    : [];
+  const cycle = binding.billingCycleId
+    ? pricingService.listBillingCycles().find((c) => c.id === binding.billingCycleId)
+    : pricingService.listBillingCycles().find((c) => c.code === (binding.billingCycleCode ?? "monthly"));
+
+  const chargedTerms: CommercialChargedTerms | null =
+    binding.chargedAmount && binding.chargedCurrency && cycle
+      ? {
+          planId: plan.id,
+          catalogPlanCode: plan.code,
+          commercialName: plan.name,
+          chargedAmount: binding.chargedAmount,
+          chargedCurrency: binding.chargedCurrency,
+          billingCycleId: cycle.id,
+          billingCycleCode: cycle.code,
+          intervalCount: cycle.intervalCount,
+          intervalUnit: cycle.intervalUnit,
+          periodStart: null,
+          periodEnd: null,
+        }
+      : null;
+
   return {
-    source: "snapshot",
-    snapshot: payload,
-    featureKeys: payload.includedFeatures
-      .filter((f) => f.included)
-      .map((f) => f.featureKey),
-    limits: payload.usageLimits,
+    source: "live_plan",
+    planId: plan.id,
+    catalogPlanCode: plan.code,
+    featureKeys: features.map((f) => f.featureKey),
+    limits: limits.map((l) => ({
+      limitKey: l.limitKey,
+      value: l.value,
+      unit: l.unit,
+    })),
+    chargedTerms,
   };
 }
 
@@ -551,30 +583,16 @@ export function getAdoptionObservability() {
   };
 }
 
-export function resolveLegacyPlanIdFromVersion(
-  planVersionId: string
-): number | null {
-  const version = planVersionService.get(planVersionId);
-  if (!version) return null;
-  const plan = planService.get(version.planId);
+export function resolveLegacyPlanIdFromPlan(planId: string): number | null {
+  const plan = planService.get(planId);
   if (!plan) return null;
   return bridgeByCatalogPlanCode(plan.code)?.legacyPlanId ?? null;
 }
 
-export function resolvePlanVersionIdFromLegacyPlanId(
+export function resolvePlanIdFromLegacyPlanId(
   legacyPlanId: number
 ): string | null {
   const bridge = bridgeByLegacyPlanId(legacyPlanId);
   if (!bridge) return null;
-  const plan = planService
-    .list()
-    .find((p) => p.code === bridge.catalogPlanCode);
-  if (!plan) return null;
-  const version = planVersionService
-    .list(plan.id)
-    .find(
-      (v) =>
-        v.state === "published" && v.versionCode === bridge.versionCode
-    );
-  return version?.id ?? null;
+  return planService.getByCode(bridge.catalogPlanCode)?.id ?? null;
 }

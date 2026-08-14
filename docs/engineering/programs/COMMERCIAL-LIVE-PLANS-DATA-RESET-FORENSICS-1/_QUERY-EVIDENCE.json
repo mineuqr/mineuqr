@@ -1,0 +1,2197 @@
+{
+  "queriedAt": "2026-08-14T21:03:26.230Z",
+  "database": "mineuqr",
+  "hostKind": "tidb_cloud",
+  "statements": "SELECT_AND_INFORMATION_SCHEMA_ONLY",
+  "ownerOpenIdConfigured": false,
+  "databaseConfirmed": "mineuqr",
+  "discoveredRelatedTables": [
+    "check_split_payment_allocations",
+    "check_split_payment_attempts",
+    "check_split_payment_tender_allocations",
+    "check_split_payment_tenders",
+    "check_split_payments",
+    "commercial_billing_cycles",
+    "commercial_bundle_features",
+    "commercial_feature_bundles",
+    "commercial_limit_profiles",
+    "commercial_limit_values",
+    "commercial_migration_policies",
+    "commercial_plan_versions",
+    "commercial_plans",
+    "commercial_prices",
+    "commercial_promotions",
+    "commercial_publication_rules",
+    "commercial_regions",
+    "commercial_retirement_policies",
+    "commercial_snapshot_definitions",
+    "commercial_subscription_bindings",
+    "commercial_trial_policies",
+    "customer_push_subscriptions",
+    "invoices",
+    "payments",
+    "subscription_history",
+    "subscription_plans",
+    "user_subscriptions"
+  ],
+  "inventory": {
+    "commercial_plans": {
+      "exists": true,
+      "count": 5,
+      "oldest": "2026-07-30T18:14:28.000Z",
+      "newest": "2026-08-02T07:35:06.000Z",
+      "timeColumn": "createdAt",
+      "columns": [
+        "id",
+        "code",
+        "name",
+        "description",
+        "sortOrder",
+        "isHidden",
+        "createdAt",
+        "updatedAt"
+      ],
+      "engineMeta": {
+        "TABLE_NAME": "commercial_plans",
+        "TABLE_ROWS": 5,
+        "CREATE_TIME": "2026-07-29T09:43:51.024Z",
+        "UPDATE_TIME": null,
+        "TABLE_COMMENT": ""
+      }
+    },
+    "commercial_plan_versions": {
+      "exists": true,
+      "count": 5,
+      "oldest": "2026-07-30T18:14:28.000Z",
+      "newest": "2026-08-02T07:35:09.000Z",
+      "timeColumn": "createdAt",
+      "columns": [
+        "id",
+        "planId",
+        "versionCode",
+        "versionName",
+        "state",
+        "featureBundleId",
+        "limitProfileId",
+        "trialPolicyId",
+        "migrationPolicyId",
+        "retirementPolicyId",
+        "compatibility",
+        "publishedAt",
+        "deprecatedAt",
+        "retiredAt",
+        "createdAt",
+        "updatedAt"
+      ],
+      "engineMeta": {
+        "TABLE_NAME": "commercial_plan_versions",
+        "TABLE_ROWS": 5,
+        "CREATE_TIME": "2026-07-29T09:43:56.024Z",
+        "UPDATE_TIME": null,
+        "TABLE_COMMENT": ""
+      }
+    },
+    "commercial_snapshot_definitions": {
+      "exists": true,
+      "count": 0,
+      "oldest": null,
+      "newest": null,
+      "timeColumn": "createdAt",
+      "columns": [
+        "id",
+        "planVersionId",
+        "schemaVersion",
+        "payload",
+        "effectiveDate",
+        "createdAt"
+      ],
+      "engineMeta": {
+        "TABLE_NAME": "commercial_snapshot_definitions",
+        "TABLE_ROWS": 0,
+        "CREATE_TIME": "2026-07-29T09:43:59.074Z",
+        "UPDATE_TIME": null,
+        "TABLE_COMMENT": ""
+      }
+    },
+    "commercial_snapshots": {
+      "exists": false,
+      "count": 0
+    },
+    "commercial_publications": {
+      "exists": false,
+      "count": 0
+    },
+    "commercial_retirements": {
+      "exists": false,
+      "count": 0
+    },
+    "commercial_bindings": {
+      "exists": false,
+      "count": 0
+    },
+    "commercial_prices": {
+      "exists": true,
+      "count": 14,
+      "oldest": "2026-07-30T18:14:28.000Z",
+      "newest": "2026-08-02T07:35:10.000Z",
+      "timeColumn": "createdAt",
+      "columns": [
+        "id",
+        "planVersionId",
+        "billingCycleId",
+        "currency",
+        "amount",
+        "regionId",
+        "createdAt",
+        "updatedAt"
+      ],
+      "engineMeta": {
+        "TABLE_NAME": "commercial_prices",
+        "TABLE_ROWS": 14,
+        "CREATE_TIME": "2026-07-29T09:43:57.724Z",
+        "UPDATE_TIME": null,
+        "TABLE_COMMENT": ""
+      }
+    },
+    "commercial_billing_cycles": {
+      "exists": true,
+      "count": 2,
+      "oldest": "2026-07-30T18:14:28.000Z",
+      "newest": "2026-07-30T18:14:28.000Z",
+      "timeColumn": "createdAt",
+      "columns": [
+        "id",
+        "code",
+        "name",
+        "intervalCount",
+        "intervalUnit",
+        "createdAt",
+        "updatedAt"
+      ],
+      "engineMeta": {
+        "TABLE_NAME": "commercial_billing_cycles",
+        "TABLE_ROWS": 2,
+        "CREATE_TIME": "2026-07-29T09:43:51.324Z",
+        "UPDATE_TIME": null,
+        "TABLE_COMMENT": ""
+      }
+    },
+    "commercial_capability_mappings": {
+      "exists": false,
+      "count": 0
+    },
+    "commercial_feature_bundles": {
+      "exists": true,
+      "count": 5,
+      "oldest": "2026-07-30T18:14:28.000Z",
+      "newest": "2026-08-02T07:35:06.000Z",
+      "timeColumn": "createdAt",
+      "columns": [
+        "id",
+        "code",
+        "name",
+        "description",
+        "createdAt",
+        "updatedAt"
+      ],
+      "engineMeta": {
+        "TABLE_NAME": "commercial_feature_bundles",
+        "TABLE_ROWS": 5,
+        "CREATE_TIME": "2026-07-29T09:43:51.674Z",
+        "UPDATE_TIME": null,
+        "TABLE_COMMENT": ""
+      }
+    },
+    "commercial_bundle_features": {
+      "exists": true,
+      "count": 65,
+      "oldest": null,
+      "newest": null,
+      "timeColumn": null,
+      "columns": [
+        "id",
+        "bundleId",
+        "featureKey",
+        "included"
+      ],
+      "engineMeta": {
+        "TABLE_NAME": "commercial_bundle_features",
+        "TABLE_ROWS": 65,
+        "CREATE_TIME": "2026-07-29T09:43:52.574Z",
+        "UPDATE_TIME": null,
+        "TABLE_COMMENT": ""
+      }
+    },
+    "commercial_plan_limits": {
+      "exists": false,
+      "count": 0
+    },
+    "commercial_limit_profiles": {
+      "exists": true,
+      "count": 5,
+      "oldest": "2026-07-30T18:14:28.000Z",
+      "newest": "2026-08-02T07:35:07.000Z",
+      "timeColumn": "createdAt",
+      "columns": [
+        "id",
+        "code",
+        "name",
+        "description",
+        "createdAt",
+        "updatedAt"
+      ],
+      "engineMeta": {
+        "TABLE_NAME": "commercial_limit_profiles",
+        "TABLE_ROWS": 5,
+        "CREATE_TIME": "2026-07-29T09:43:52.924Z",
+        "UPDATE_TIME": null,
+        "TABLE_COMMENT": ""
+      }
+    },
+    "commercial_limit_values": {
+      "exists": true,
+      "count": 29,
+      "oldest": null,
+      "newest": null,
+      "timeColumn": null,
+      "columns": [
+        "id",
+        "profileId",
+        "limitKey",
+        "value",
+        "unit"
+      ],
+      "engineMeta": {
+        "TABLE_NAME": "commercial_limit_values",
+        "TABLE_ROWS": 29,
+        "CREATE_TIME": "2026-07-29T09:43:53.724Z",
+        "UPDATE_TIME": null,
+        "TABLE_COMMENT": ""
+      }
+    },
+    "commercial_trial_policies": {
+      "exists": true,
+      "count": 3,
+      "oldest": "2026-07-30T18:14:28.000Z",
+      "newest": "2026-08-02T07:35:07.000Z",
+      "timeColumn": "createdAt",
+      "columns": [
+        "id",
+        "code",
+        "name",
+        "durationDays",
+        "description",
+        "createdAt",
+        "updatedAt"
+      ],
+      "engineMeta": {
+        "TABLE_NAME": "commercial_trial_policies",
+        "TABLE_ROWS": 3,
+        "CREATE_TIME": "2026-07-29T09:43:54.074Z",
+        "UPDATE_TIME": null,
+        "TABLE_COMMENT": ""
+      }
+    },
+    "commercial_migration_policies": {
+      "exists": true,
+      "count": 3,
+      "oldest": "2026-07-30T18:14:28.000Z",
+      "newest": "2026-08-02T07:35:08.000Z",
+      "timeColumn": "createdAt",
+      "columns": [
+        "id",
+        "code",
+        "name",
+        "description",
+        "requiresExplicitAction",
+        "createdAt",
+        "updatedAt"
+      ],
+      "engineMeta": {
+        "TABLE_NAME": "commercial_migration_policies",
+        "TABLE_ROWS": 3,
+        "CREATE_TIME": "2026-07-29T09:43:54.374Z",
+        "UPDATE_TIME": null,
+        "TABLE_COMMENT": ""
+      }
+    },
+    "commercial_retirement_policies": {
+      "exists": true,
+      "count": 3,
+      "oldest": "2026-07-30T18:14:28.000Z",
+      "newest": "2026-08-02T07:35:08.000Z",
+      "timeColumn": "createdAt",
+      "columns": [
+        "id",
+        "code",
+        "name",
+        "description",
+        "allowRenewals",
+        "createdAt",
+        "updatedAt"
+      ],
+      "engineMeta": {
+        "TABLE_NAME": "commercial_retirement_policies",
+        "TABLE_ROWS": 3,
+        "CREATE_TIME": "2026-07-29T09:43:54.724Z",
+        "UPDATE_TIME": null,
+        "TABLE_COMMENT": ""
+      }
+    },
+    "commercial_regions": {
+      "exists": true,
+      "count": 1,
+      "oldest": "2026-07-30T18:14:28.000Z",
+      "newest": "2026-07-30T18:14:28.000Z",
+      "timeColumn": "createdAt",
+      "columns": [
+        "id",
+        "code",
+        "name",
+        "countryCode",
+        "currency",
+        "taxPolicyRef",
+        "distributionPartner",
+        "regulatoryNotes",
+        "createdAt",
+        "updatedAt"
+      ],
+      "engineMeta": {
+        "TABLE_NAME": "commercial_regions",
+        "TABLE_ROWS": 1,
+        "CREATE_TIME": "2026-07-29T09:43:55.074Z",
+        "UPDATE_TIME": null,
+        "TABLE_COMMENT": ""
+      }
+    },
+    "commercial_promotions": {
+      "exists": true,
+      "count": 0,
+      "oldest": null,
+      "newest": null,
+      "timeColumn": "createdAt",
+      "columns": [
+        "id",
+        "code",
+        "name",
+        "effectSummary",
+        "eligiblePlanVersionIds",
+        "startsAt",
+        "endsAt",
+        "isActive",
+        "createdAt",
+        "updatedAt"
+      ],
+      "engineMeta": {
+        "TABLE_NAME": "commercial_promotions",
+        "TABLE_ROWS": 0,
+        "CREATE_TIME": "2026-07-29T09:43:58.074Z",
+        "UPDATE_TIME": null,
+        "TABLE_COMMENT": ""
+      }
+    },
+    "commercial_publication_rules": {
+      "exists": true,
+      "count": 0,
+      "oldest": null,
+      "newest": null,
+      "timeColumn": "createdAt",
+      "columns": [
+        "id",
+        "code",
+        "name",
+        "mandatoryChecks",
+        "createdAt",
+        "updatedAt"
+      ],
+      "engineMeta": {
+        "TABLE_NAME": "commercial_publication_rules",
+        "TABLE_ROWS": 0,
+        "CREATE_TIME": "2026-07-29T09:43:59.374Z",
+        "UPDATE_TIME": null,
+        "TABLE_COMMENT": ""
+      }
+    },
+    "commercial_subscription_bindings": {
+      "exists": true,
+      "count": 0,
+      "oldest": null,
+      "newest": null,
+      "timeColumn": "createdAt",
+      "columns": [
+        "id",
+        "subscriptionId",
+        "planVersionId",
+        "snapshotId",
+        "legacyPlanId",
+        "createdAt"
+      ],
+      "engineMeta": {
+        "TABLE_NAME": "commercial_subscription_bindings",
+        "TABLE_ROWS": 0,
+        "CREATE_TIME": "2026-07-29T11:29:45.174Z",
+        "UPDATE_TIME": null,
+        "TABLE_COMMENT": ""
+      }
+    },
+    "subscription_plans": {
+      "exists": true,
+      "count": 3,
+      "oldest": "2026-04-30T00:45:08.000Z",
+      "newest": "2026-04-30T00:45:08.000Z",
+      "timeColumn": "createdAt",
+      "columns": [
+        "id",
+        "nameAr",
+        "nameEn",
+        "descriptionAr",
+        "descriptionEn",
+        "priceMonthly",
+        "priceYearly",
+        "maxRestaurants",
+        "maxItemsPerRestaurant",
+        "maxCategories",
+        "features",
+        "stripePriceIdMonthly",
+        "stripePriceIdYearly",
+        "isActive",
+        "sortOrder",
+        "createdAt",
+        "updatedAt",
+        "featuresAr"
+      ],
+      "engineMeta": {
+        "TABLE_NAME": "subscription_plans",
+        "TABLE_ROWS": 3,
+        "CREATE_TIME": "2026-06-03T18:27:19.824Z",
+        "UPDATE_TIME": null,
+        "TABLE_COMMENT": ""
+      }
+    },
+    "user_subscriptions": {
+      "exists": true,
+      "count": 5,
+      "oldest": "2026-06-08T03:08:15.000Z",
+      "newest": "2026-06-21T10:47:35.000Z",
+      "timeColumn": "createdAt",
+      "columns": [
+        "id",
+        "userId",
+        "restaurantId",
+        "planId",
+        "status",
+        "billingCycle",
+        "stripeSubscriptionId",
+        "stripeCustomerId",
+        "currentPeriodStart",
+        "currentPeriodEnd",
+        "trialEndsAt",
+        "canceledAt",
+        "createdAt",
+        "updatedAt"
+      ],
+      "engineMeta": {
+        "TABLE_NAME": "user_subscriptions",
+        "TABLE_ROWS": 5,
+        "CREATE_TIME": "2026-06-03T18:27:21.724Z",
+        "UPDATE_TIME": null,
+        "TABLE_COMMENT": ""
+      }
+    },
+    "invoices": {
+      "exists": true,
+      "count": 7,
+      "oldest": "2026-06-09T12:56:58.000Z",
+      "newest": "2026-08-03T18:29:06.000Z",
+      "timeColumn": "createdAt",
+      "columns": [
+        "id",
+        "userId",
+        "subscriptionId",
+        "amount",
+        "currency",
+        "status",
+        "invoiceNumber",
+        "pdfUrl",
+        "issuedAt",
+        "dueAt",
+        "paidAt",
+        "createdAt",
+        "updatedAt"
+      ],
+      "engineMeta": {
+        "TABLE_NAME": "invoices",
+        "TABLE_ROWS": 7,
+        "CREATE_TIME": "2026-06-03T18:27:09.074Z",
+        "UPDATE_TIME": null,
+        "TABLE_COMMENT": ""
+      }
+    },
+    "renewal_notifications": {
+      "exists": true,
+      "count": 47,
+      "oldest": "2026-07-19T15:04:03.000Z",
+      "newest": "2026-08-03T18:13:44.000Z",
+      "timeColumn": "createdAt",
+      "columns": [
+        "id",
+        "userId",
+        "subscriptionId",
+        "notificationType",
+        "isRead",
+        "isSent",
+        "sentAt",
+        "createdAt",
+        "updatedAt",
+        "message"
+      ],
+      "engineMeta": {
+        "TABLE_NAME": "renewal_notifications",
+        "TABLE_ROWS": 47,
+        "CREATE_TIME": "2026-06-03T18:27:14.924Z",
+        "UPDATE_TIME": null,
+        "TABLE_COMMENT": ""
+      }
+    },
+    "settlement_records": {
+      "exists": true,
+      "count": 39,
+      "oldest": "2026-07-24T06:31:25.000Z",
+      "newest": "2026-08-03T18:18:01.000Z",
+      "timeColumn": "createdAt",
+      "columns": [
+        "id",
+        "settlementRecordId",
+        "restaurantId",
+        "recordKind",
+        "schemaVersion",
+        "recordGeneration",
+        "checkId",
+        "sessionId",
+        "financialReference",
+        "priorSettlementRecordId",
+        "orderRefsJson",
+        "orderSettlementRefsJson",
+        "subtotal",
+        "discountAmount",
+        "taxAmount",
+        "grandTotal",
+        "outcome",
+        "currencySnapshotJson",
+        "taxPolicySnapshotJson",
+        "taxBreakdownJson",
+        "paymentSnapshotJson",
+        "businessDay",
+        "settledAt",
+        "createdAt",
+        "createdByActorType",
+        "createdByActorId",
+        "producer"
+      ],
+      "engineMeta": {
+        "TABLE_NAME": "settlement_records",
+        "TABLE_ROWS": 39,
+        "CREATE_TIME": "2026-07-23T16:00:48.624Z",
+        "UPDATE_TIME": null,
+        "TABLE_COMMENT": ""
+      }
+    },
+    "users": {
+      "exists": true,
+      "count": 3,
+      "oldest": "2026-04-01T19:12:37.000Z",
+      "newest": "2026-06-21T10:44:03.000Z",
+      "timeColumn": "createdAt",
+      "columns": [
+        "id",
+        "openId",
+        "name",
+        "email",
+        "loginMethod",
+        "role",
+        "createdAt",
+        "updatedAt",
+        "lastSignedIn",
+        "passwordHash",
+        "reset_token",
+        "reset_token_expires",
+        "auth_provider",
+        "emailVerifiedAt",
+        "passwordChangedAt",
+        "sessionValidAfter",
+        "accountClassification"
+      ],
+      "engineMeta": {
+        "TABLE_NAME": "users",
+        "TABLE_ROWS": 3,
+        "CREATE_TIME": "2026-06-18T14:11:18.374Z",
+        "UPDATE_TIME": null,
+        "TABLE_COMMENT": ""
+      }
+    },
+    "restaurants": {
+      "exists": true,
+      "count": 6,
+      "oldest": "2026-06-07T16:45:56.000Z",
+      "newest": "2026-06-21T15:46:44.000Z",
+      "timeColumn": "createdAt",
+      "columns": [
+        "id",
+        "userId",
+        "slug",
+        "nameAr",
+        "nameEn",
+        "descriptionAr",
+        "descriptionEn",
+        "logoUrl",
+        "coverUrl",
+        "phone",
+        "address",
+        "isActive",
+        "viewCount",
+        "createdAt",
+        "updatedAt",
+        "menuTemplate",
+        "customColors",
+        "countryCode",
+        "currencyCode",
+        "currencySymbol",
+        "customFonts",
+        "ownerEmail",
+        "whatsapp",
+        "snapchat",
+        "instagram",
+        "xTwitter",
+        "locationUrl",
+        "workingHours",
+        "temporaryClosure",
+        "table_label",
+        "taxEnabled",
+        "taxMode",
+        "taxPolicyJson"
+      ],
+      "engineMeta": {
+        "TABLE_NAME": "restaurants",
+        "TABLE_ROWS": 6,
+        "CREATE_TIME": "2026-07-16T12:26:26.624Z",
+        "UPDATE_TIME": null,
+        "TABLE_COMMENT": ""
+      }
+    },
+    "orders": {
+      "exists": true,
+      "count": 42,
+      "oldest": "2026-07-24T06:30:30.000Z",
+      "newest": "2026-08-03T18:13:41.000Z",
+      "timeColumn": "createdAt",
+      "columns": [
+        "id",
+        "restaurantId",
+        "tableId",
+        "tableNumber",
+        "customerName",
+        "customerPhone",
+        "status",
+        "lifecycleStage",
+        "notes",
+        "totalAmount",
+        "orderNumber",
+        "businessDay",
+        "daily_display_number",
+        "identityScope",
+        "ordering_channel",
+        "whatsappSent",
+        "createdAt",
+        "updatedAt",
+        "trackingToken",
+        "readyPushSentAt",
+        "readyAt",
+        "sessionId",
+        "serviceMode",
+        "fulfilmentAnchorType",
+        "fulfilmentLabel"
+      ],
+      "engineMeta": {
+        "TABLE_NAME": "orders",
+        "TABLE_ROWS": 42,
+        "CREATE_TIME": "2026-07-27T18:20:59.974Z",
+        "UPDATE_TIME": null,
+        "TABLE_COMMENT": ""
+      }
+    },
+    "check_split_payment_allocations": {
+      "exists": true,
+      "count": 0,
+      "oldest": null,
+      "newest": null,
+      "timeColumn": "createdAt",
+      "columns": [
+        "id",
+        "restaurantId",
+        "checkId",
+        "paymentId",
+        "allocationId",
+        "orderId",
+        "amount",
+        "createdAt"
+      ],
+      "engineMeta": {
+        "TABLE_NAME": "check_split_payment_allocations",
+        "TABLE_ROWS": 0,
+        "CREATE_TIME": "2026-07-22T19:01:32.974Z",
+        "UPDATE_TIME": null,
+        "TABLE_COMMENT": ""
+      }
+    },
+    "check_split_payment_attempts": {
+      "exists": true,
+      "count": 0,
+      "oldest": null,
+      "newest": null,
+      "timeColumn": "createdAt",
+      "columns": [
+        "id",
+        "restaurantId",
+        "checkId",
+        "attemptId",
+        "paymentId",
+        "status",
+        "amount",
+        "method",
+        "externalProviderReference",
+        "createdAt",
+        "updatedAt"
+      ],
+      "engineMeta": {
+        "TABLE_NAME": "check_split_payment_attempts",
+        "TABLE_ROWS": 0,
+        "CREATE_TIME": "2026-07-22T19:01:35.624Z",
+        "UPDATE_TIME": null,
+        "TABLE_COMMENT": ""
+      }
+    },
+    "check_split_payment_tender_allocations": {
+      "exists": true,
+      "count": 0,
+      "oldest": null,
+      "newest": null,
+      "timeColumn": "createdAt",
+      "columns": [
+        "id",
+        "restaurantId",
+        "checkId",
+        "paymentId",
+        "tenderAllocationId",
+        "tenderId",
+        "amount",
+        "createdAt"
+      ],
+      "engineMeta": {
+        "TABLE_NAME": "check_split_payment_tender_allocations",
+        "TABLE_ROWS": 0,
+        "CREATE_TIME": "2026-07-22T19:01:30.424Z",
+        "UPDATE_TIME": null,
+        "TABLE_COMMENT": ""
+      }
+    },
+    "check_split_payment_tenders": {
+      "exists": true,
+      "count": 0,
+      "oldest": null,
+      "newest": null,
+      "timeColumn": "createdAt",
+      "columns": [
+        "id",
+        "restaurantId",
+        "checkId",
+        "paymentId",
+        "tenderId",
+        "method",
+        "amount",
+        "createdAt"
+      ],
+      "engineMeta": {
+        "TABLE_NAME": "check_split_payment_tenders",
+        "TABLE_ROWS": 0,
+        "CREATE_TIME": "2026-07-22T19:01:28.424Z",
+        "UPDATE_TIME": null,
+        "TABLE_COMMENT": ""
+      }
+    },
+    "check_split_payments": {
+      "exists": true,
+      "count": 0,
+      "oldest": null,
+      "newest": null,
+      "timeColumn": "createdAt",
+      "columns": [
+        "id",
+        "restaurantId",
+        "checkId",
+        "paymentId",
+        "paymentReference",
+        "financialReference",
+        "status",
+        "amount",
+        "allocatedAmount",
+        "unallocatedAmount",
+        "version",
+        "createdAt",
+        "updatedAt"
+      ],
+      "engineMeta": {
+        "TABLE_NAME": "check_split_payments",
+        "TABLE_ROWS": 0,
+        "CREATE_TIME": "2026-07-22T19:01:25.774Z",
+        "UPDATE_TIME": null,
+        "TABLE_COMMENT": ""
+      }
+    },
+    "customer_push_subscriptions": {
+      "exists": true,
+      "count": 0,
+      "oldest": null,
+      "newest": null,
+      "timeColumn": "createdAt",
+      "columns": [
+        "id",
+        "orderId",
+        "trackingToken",
+        "endpoint",
+        "endpointHash",
+        "p256dh",
+        "auth",
+        "createdAt",
+        "updatedAt",
+        "expiresAt",
+        "lastUsedAt"
+      ],
+      "engineMeta": {
+        "TABLE_NAME": "customer_push_subscriptions",
+        "TABLE_ROWS": 0,
+        "CREATE_TIME": "2026-06-13T17:27:28.324Z",
+        "UPDATE_TIME": null,
+        "TABLE_COMMENT": ""
+      }
+    },
+    "payments": {
+      "exists": true,
+      "count": 5,
+      "oldest": "2026-05-19T05:25:47.000Z",
+      "newest": "2026-05-19T09:39:09.000Z",
+      "timeColumn": "createdAt",
+      "columns": [
+        "id",
+        "userId",
+        "subscriptionId",
+        "invoiceId",
+        "tapChargeId",
+        "tapCustomerId",
+        "amount",
+        "currency",
+        "status",
+        "paymentMethod",
+        "cardBrand",
+        "cardLastFour",
+        "descriptionAr",
+        "descriptionEn",
+        "metadata",
+        "failureReason",
+        "failureCode",
+        "paidAt",
+        "refundedAt",
+        "createdAt",
+        "updatedAt"
+      ],
+      "engineMeta": {
+        "TABLE_NAME": "payments",
+        "TABLE_ROWS": 5,
+        "CREATE_TIME": "2026-06-03T18:27:13.924Z",
+        "UPDATE_TIME": null,
+        "TABLE_COMMENT": ""
+      }
+    },
+    "subscription_history": {
+      "exists": true,
+      "count": 2,
+      "oldest": "2026-05-19T09:39:09.000Z",
+      "newest": "2026-05-19T09:39:12.000Z",
+      "timeColumn": "createdAt",
+      "columns": [
+        "id",
+        "subscriptionId",
+        "userId",
+        "paymentId",
+        "action",
+        "planId",
+        "billingCycle",
+        "status",
+        "amount",
+        "currency",
+        "periodStart",
+        "periodEnd",
+        "notes",
+        "metadata",
+        "createdAt"
+      ],
+      "engineMeta": {
+        "TABLE_NAME": "subscription_history",
+        "TABLE_ROWS": 2,
+        "CREATE_TIME": "2026-06-03T18:27:18.774Z",
+        "UPDATE_TIME": null,
+        "TABLE_COMMENT": ""
+      }
+    }
+  },
+  "migrationsRecent": [
+    {
+      "id": 5994103,
+      "hashPrefix": "c104e894606f…",
+      "created_at": 1784710000000
+    },
+    {
+      "id": 5994102,
+      "hashPrefix": "9d585e21e43f…",
+      "created_at": 1784700000000
+    },
+    {
+      "id": 5964102,
+      "hashPrefix": "0f4df950d48b…",
+      "created_at": 1784690000000
+    },
+    {
+      "id": 5934102,
+      "hashPrefix": "52d7c5f2c824…",
+      "created_at": 1784680000000
+    },
+    {
+      "id": 5904102,
+      "hashPrefix": "4dcecdc26490…",
+      "created_at": 1784670000000
+    },
+    {
+      "id": 5874102,
+      "hashPrefix": "9d93a2c23a8a…",
+      "created_at": 1784660000000
+    },
+    {
+      "id": 5844102,
+      "hashPrefix": "89f6ee1849da…",
+      "created_at": 1784650000000
+    },
+    {
+      "id": 5814102,
+      "hashPrefix": "182636ff4099…",
+      "created_at": 1784640000000
+    },
+    {
+      "id": 5784102,
+      "hashPrefix": "e226968d0503…",
+      "created_at": 1784630000000
+    },
+    {
+      "id": 5754102,
+      "hashPrefix": "c9e85e8d25f3…",
+      "created_at": 1784620000000
+    },
+    {
+      "id": 5724102,
+      "hashPrefix": "9cc0b24a9731…",
+      "created_at": 1784610000000
+    },
+    {
+      "id": 5694102,
+      "hashPrefix": "10fd50365bae…",
+      "created_at": 1784600000000
+    }
+  ],
+  "migration0084_0085": [
+    {
+      "id": 5994102,
+      "hashPrefix": "9d585e21e43f…",
+      "created_at": 1784700000000
+    },
+    {
+      "id": 5994103,
+      "hashPrefix": "c104e894606f…",
+      "created_at": 1784710000000
+    }
+  ],
+  "migrationRowCount": 90,
+  "schemaFlags": {
+    "commercial_plans": {
+      "featureBundleId": false,
+      "limitProfileId": false,
+      "trialPolicyId": false
+    },
+    "commercial_prices": {
+      "planId": false,
+      "planVersionId": true
+    },
+    "commercial_subscription_bindings": {
+      "planId": false,
+      "planVersionId": true,
+      "snapshotId": true,
+      "chargedAmount": false
+    },
+    "commercial_promotions": {
+      "eligiblePlanIds": false,
+      "eligiblePlanVersionIds": true
+    }
+  },
+  "livePlanColumnsPresent": false,
+  "plans": [
+    {
+      "id": "8569e399-aa18-4219-847b-0cabb1bdbdfb",
+      "code": "001",
+      "name": "الخطة الاساسية ",
+      "description": null,
+      "sortOrder": 0,
+      "isHidden": 0,
+      "createdAt": "2026-08-02T07:29:42.000Z",
+      "updatedAt": "2026-08-02T07:29:42.000Z"
+    },
+    {
+      "id": "d5fea7b5-9cad-4a2a-b3e3-5a7899f2f456",
+      "code": "002",
+      "name": "الخطة الاحترافية ",
+      "description": null,
+      "sortOrder": 0,
+      "isHidden": 0,
+      "createdAt": "2026-08-02T07:35:06.000Z",
+      "updatedAt": "2026-08-02T07:35:06.000Z"
+    },
+    {
+      "id": "5a20644f-e5af-4d54-9f83-615a80b21ab0",
+      "code": "basic",
+      "name": "Basic",
+      "description": null,
+      "sortOrder": 1,
+      "isHidden": 0,
+      "createdAt": "2026-07-30T18:14:28.000Z",
+      "updatedAt": "2026-07-30T18:14:28.000Z"
+    },
+    {
+      "id": "a8ae706c-bdb4-4c04-8ab7-4b988c6c476f",
+      "code": "professional",
+      "name": "Professional",
+      "description": null,
+      "sortOrder": 2,
+      "isHidden": 0,
+      "createdAt": "2026-07-30T18:14:32.000Z",
+      "updatedAt": "2026-07-30T18:14:32.000Z"
+    },
+    {
+      "id": "4796e810-f806-4c51-8c15-3cb84c978fc8",
+      "code": "enterprise",
+      "name": "Enterprise",
+      "description": null,
+      "sortOrder": 3,
+      "isHidden": 0,
+      "createdAt": "2026-07-30T18:14:39.000Z",
+      "updatedAt": "2026-07-30T18:14:39.000Z"
+    }
+  ],
+  "planVersions": [
+    {
+      "id": "7a5ed8e5-8b8e-45b8-b1a0-db684ea56f8c",
+      "planId": "8569e399-aa18-4219-847b-0cabb1bdbdfb",
+      "planCode": "001",
+      "versionCode": "v2",
+      "versionName": "الاساسي",
+      "state": "published",
+      "featureBundleId": "794bd428-fa0c-4914-9578-b9b3d631375d",
+      "limitProfileId": "387e6953-26af-41f0-af9f-7aa6f693a1e1",
+      "trialPolicyId": "f71bd650-e968-4944-9dff-8d213769e591",
+      "publishedAt": "2026-08-02T07:29:47.000Z",
+      "deprecatedAt": null,
+      "retiredAt": null,
+      "createdAt": "2026-08-02T07:29:45.000Z",
+      "updatedAt": "2026-08-02T07:29:47.000Z"
+    },
+    {
+      "id": "f1b5ae11-868f-4aab-b185-af70bb76db78",
+      "planId": "d5fea7b5-9cad-4a2a-b3e3-5a7899f2f456",
+      "planCode": "002",
+      "versionCode": "v2",
+      "versionName": "الاحترافية ",
+      "state": "published",
+      "featureBundleId": "51ed9077-0425-4eeb-8b74-40be2b9c5c20",
+      "limitProfileId": "61c0538c-b937-4c2a-a7ce-8aaaed1d76c4",
+      "trialPolicyId": "9ce22218-4894-4dae-9ed8-c9a50785080c",
+      "publishedAt": "2026-08-02T07:35:11.000Z",
+      "deprecatedAt": null,
+      "retiredAt": null,
+      "createdAt": "2026-08-02T07:35:09.000Z",
+      "updatedAt": "2026-08-02T07:35:11.000Z"
+    },
+    {
+      "id": "6ddf7b45-6900-4a18-a441-8b6ff8782fe0",
+      "planId": "5a20644f-e5af-4d54-9f83-615a80b21ab0",
+      "planCode": "basic",
+      "versionCode": "v1",
+      "versionName": "Basic v1",
+      "state": "retired",
+      "featureBundleId": "3bfece13-f5bb-4258-95e4-db3ecbd0cb45",
+      "limitProfileId": "177c2988-aba5-42aa-8807-884b6fc55c7d",
+      "trialPolicyId": null,
+      "publishedAt": "2026-07-30T18:14:28.000Z",
+      "deprecatedAt": null,
+      "retiredAt": "2026-07-30T18:26:50.000Z",
+      "createdAt": "2026-07-30T18:14:28.000Z",
+      "updatedAt": "2026-07-30T18:26:50.000Z"
+    },
+    {
+      "id": "6376f13f-f847-4e1d-a8b7-9c3d5cd05ac8",
+      "planId": "4796e810-f806-4c51-8c15-3cb84c978fc8",
+      "planCode": "enterprise",
+      "versionCode": "v1",
+      "versionName": "Enterprise v1",
+      "state": "retired",
+      "featureBundleId": "d195ba4a-48de-4e0c-842f-43e5f96e9d24",
+      "limitProfileId": "c359dc1d-515a-47a0-bf04-0d2647f23521",
+      "trialPolicyId": null,
+      "publishedAt": "2026-07-30T18:14:39.000Z",
+      "deprecatedAt": null,
+      "retiredAt": "2026-07-30T18:26:49.000Z",
+      "createdAt": "2026-07-30T18:14:39.000Z",
+      "updatedAt": "2026-07-30T18:26:49.000Z"
+    },
+    {
+      "id": "72b09c0c-7f9e-4076-8186-77f92c5c20b1",
+      "planId": "a8ae706c-bdb4-4c04-8ab7-4b988c6c476f",
+      "planCode": "professional",
+      "versionCode": "v1",
+      "versionName": "Professional v1",
+      "state": "retired",
+      "featureBundleId": "cc0ee6ce-27b0-4ebd-af5a-c888aed312b7",
+      "limitProfileId": "c2700a14-091b-4231-98a6-2017945032a7",
+      "trialPolicyId": "c3861661-8727-4530-a652-1d9d9d4e595b",
+      "publishedAt": "2026-07-30T18:14:32.000Z",
+      "deprecatedAt": null,
+      "retiredAt": "2026-07-30T18:26:51.000Z",
+      "createdAt": "2026-07-30T18:14:32.000Z",
+      "updatedAt": "2026-07-30T18:26:51.000Z"
+    }
+  ],
+  "planVersionStateCounts": [
+    {
+      "state": "retired",
+      "n": 3
+    },
+    {
+      "state": "published",
+      "n": 2
+    }
+  ],
+  "snapshots": [],
+  "prices": [
+    {
+      "id": "a68da942-f674-489d-b0f6-e25e0fbace94",
+      "planVersionId": "7a5ed8e5-8b8e-45b8-b1a0-db684ea56f8c",
+      "planId": "8569e399-aa18-4219-847b-0cabb1bdbdfb",
+      "planCode": "001",
+      "versionState": "published",
+      "billingCycleId": "03e67fcc-3905-4df3-879f-605f000466db",
+      "cycleCode": "monthly",
+      "currency": "USD",
+      "amount": "19.00",
+      "regionId": null,
+      "createdAt": "2026-08-02T07:29:45.000Z"
+    },
+    {
+      "id": "94adf6f6-8c6b-4269-8cea-b39ef57b75a8",
+      "planVersionId": "7a5ed8e5-8b8e-45b8-b1a0-db684ea56f8c",
+      "planId": "8569e399-aa18-4219-847b-0cabb1bdbdfb",
+      "planCode": "001",
+      "versionState": "published",
+      "billingCycleId": "0371b8dd-0837-41fb-bb4d-e5c278ca4425",
+      "cycleCode": "yearly",
+      "currency": "USD",
+      "amount": "190.00",
+      "regionId": null,
+      "createdAt": "2026-08-02T07:29:46.000Z"
+    },
+    {
+      "id": "38951630-0e5a-4d0b-8155-c8ff2f6d57ae",
+      "planVersionId": "f1b5ae11-868f-4aab-b185-af70bb76db78",
+      "planId": "d5fea7b5-9cad-4a2a-b3e3-5a7899f2f456",
+      "planCode": "002",
+      "versionState": "published",
+      "billingCycleId": "03e67fcc-3905-4df3-879f-605f000466db",
+      "cycleCode": "monthly",
+      "currency": "USD",
+      "amount": "39.00",
+      "regionId": null,
+      "createdAt": "2026-08-02T07:35:09.000Z"
+    },
+    {
+      "id": "4ca21e72-bb00-446b-affd-1f42616609ad",
+      "planVersionId": "f1b5ae11-868f-4aab-b185-af70bb76db78",
+      "planId": "d5fea7b5-9cad-4a2a-b3e3-5a7899f2f456",
+      "planCode": "002",
+      "versionState": "published",
+      "billingCycleId": "0371b8dd-0837-41fb-bb4d-e5c278ca4425",
+      "cycleCode": "yearly",
+      "currency": "USD",
+      "amount": "390.00",
+      "regionId": null,
+      "createdAt": "2026-08-02T07:35:10.000Z"
+    },
+    {
+      "id": "f6aa8d97-ef30-4cc2-be77-dc0dfff7c5a4",
+      "planVersionId": "6ddf7b45-6900-4a18-a441-8b6ff8782fe0",
+      "planId": "5a20644f-e5af-4d54-9f83-615a80b21ab0",
+      "planCode": "basic",
+      "versionState": "retired",
+      "billingCycleId": "0371b8dd-0837-41fb-bb4d-e5c278ca4425",
+      "cycleCode": "yearly",
+      "currency": "USD",
+      "amount": "0.00",
+      "regionId": null,
+      "createdAt": "2026-07-30T18:14:28.000Z"
+    },
+    {
+      "id": "b796d4c0-f93e-483a-91cb-4e9273588c4b",
+      "planVersionId": "6ddf7b45-6900-4a18-a441-8b6ff8782fe0",
+      "planId": "5a20644f-e5af-4d54-9f83-615a80b21ab0",
+      "planCode": "basic",
+      "versionState": "retired",
+      "billingCycleId": "03e67fcc-3905-4df3-879f-605f000466db",
+      "cycleCode": "monthly",
+      "currency": "USD",
+      "amount": "0.00",
+      "regionId": null,
+      "createdAt": "2026-07-30T18:14:28.000Z"
+    },
+    {
+      "id": "897d06d1-b2b7-4800-b806-f7531c886f79",
+      "planVersionId": "6376f13f-f847-4e1d-a8b7-9c3d5cd05ac8",
+      "planId": "4796e810-f806-4c51-8c15-3cb84c978fc8",
+      "planCode": "enterprise",
+      "versionState": "retired",
+      "billingCycleId": "03e67fcc-3905-4df3-879f-605f000466db",
+      "cycleCode": "monthly",
+      "currency": "SAR",
+      "amount": "299.00",
+      "regionId": "affa27e5-68cf-4de5-9f30-4a8eb26bd984",
+      "createdAt": "2026-07-30T18:14:39.000Z"
+    },
+    {
+      "id": "586d45ab-1375-4a5b-9b11-2fb83aa5ce56",
+      "planVersionId": "6376f13f-f847-4e1d-a8b7-9c3d5cd05ac8",
+      "planId": "4796e810-f806-4c51-8c15-3cb84c978fc8",
+      "planCode": "enterprise",
+      "versionState": "retired",
+      "billingCycleId": "0371b8dd-0837-41fb-bb4d-e5c278ca4425",
+      "cycleCode": "yearly",
+      "currency": "SAR",
+      "amount": "2990.00",
+      "regionId": "affa27e5-68cf-4de5-9f30-4a8eb26bd984",
+      "createdAt": "2026-07-30T18:14:39.000Z"
+    },
+    {
+      "id": "f029158e-71bf-4496-a21b-395bc40029c3",
+      "planVersionId": "6376f13f-f847-4e1d-a8b7-9c3d5cd05ac8",
+      "planId": "4796e810-f806-4c51-8c15-3cb84c978fc8",
+      "planCode": "enterprise",
+      "versionState": "retired",
+      "billingCycleId": "03e67fcc-3905-4df3-879f-605f000466db",
+      "cycleCode": "monthly",
+      "currency": "USD",
+      "amount": "79.73",
+      "regionId": null,
+      "createdAt": "2026-07-30T18:14:39.000Z"
+    },
+    {
+      "id": "3ae4e72f-c60e-415b-b633-9c3a88022a35",
+      "planVersionId": "6376f13f-f847-4e1d-a8b7-9c3d5cd05ac8",
+      "planId": "4796e810-f806-4c51-8c15-3cb84c978fc8",
+      "planCode": "enterprise",
+      "versionState": "retired",
+      "billingCycleId": "0371b8dd-0837-41fb-bb4d-e5c278ca4425",
+      "cycleCode": "yearly",
+      "currency": "USD",
+      "amount": "797.33",
+      "regionId": null,
+      "createdAt": "2026-07-30T18:14:39.000Z"
+    },
+    {
+      "id": "a4179776-6113-4253-af29-b4966e7a742c",
+      "planVersionId": "72b09c0c-7f9e-4076-8186-77f92c5c20b1",
+      "planId": "a8ae706c-bdb4-4c04-8ab7-4b988c6c476f",
+      "planCode": "professional",
+      "versionState": "retired",
+      "billingCycleId": "03e67fcc-3905-4df3-879f-605f000466db",
+      "cycleCode": "monthly",
+      "currency": "SAR",
+      "amount": "99.00",
+      "regionId": "affa27e5-68cf-4de5-9f30-4a8eb26bd984",
+      "createdAt": "2026-07-30T18:14:32.000Z"
+    },
+    {
+      "id": "6c48a36a-b065-4d18-beaa-397f89349e40",
+      "planVersionId": "72b09c0c-7f9e-4076-8186-77f92c5c20b1",
+      "planId": "a8ae706c-bdb4-4c04-8ab7-4b988c6c476f",
+      "planCode": "professional",
+      "versionState": "retired",
+      "billingCycleId": "0371b8dd-0837-41fb-bb4d-e5c278ca4425",
+      "cycleCode": "yearly",
+      "currency": "SAR",
+      "amount": "990.00",
+      "regionId": "affa27e5-68cf-4de5-9f30-4a8eb26bd984",
+      "createdAt": "2026-07-30T18:14:32.000Z"
+    },
+    {
+      "id": "058a4099-a324-4013-b174-ed6dcf9cc2e2",
+      "planVersionId": "72b09c0c-7f9e-4076-8186-77f92c5c20b1",
+      "planId": "a8ae706c-bdb4-4c04-8ab7-4b988c6c476f",
+      "planCode": "professional",
+      "versionState": "retired",
+      "billingCycleId": "03e67fcc-3905-4df3-879f-605f000466db",
+      "cycleCode": "monthly",
+      "currency": "USD",
+      "amount": "26.40",
+      "regionId": null,
+      "createdAt": "2026-07-30T18:14:32.000Z"
+    },
+    {
+      "id": "001f380e-67ca-49a9-acdd-f6719eff6cc9",
+      "planVersionId": "72b09c0c-7f9e-4076-8186-77f92c5c20b1",
+      "planId": "a8ae706c-bdb4-4c04-8ab7-4b988c6c476f",
+      "planCode": "professional",
+      "versionState": "retired",
+      "billingCycleId": "0371b8dd-0837-41fb-bb4d-e5c278ca4425",
+      "cycleCode": "yearly",
+      "currency": "USD",
+      "amount": "264.00",
+      "regionId": null,
+      "createdAt": "2026-07-30T18:14:32.000Z"
+    }
+  ],
+  "billingCycles": [
+    {
+      "id": "0371b8dd-0837-41fb-bb4d-e5c278ca4425",
+      "code": "yearly",
+      "name": "Yearly",
+      "intervalCount": 1,
+      "intervalUnit": "year",
+      "createdAt": "2026-07-30T18:14:28.000Z"
+    },
+    {
+      "id": "03e67fcc-3905-4df3-879f-605f000466db",
+      "code": "monthly",
+      "name": "Monthly",
+      "intervalCount": 1,
+      "intervalUnit": "month",
+      "createdAt": "2026-07-30T18:14:28.000Z"
+    }
+  ],
+  "featureBundles": [
+    {
+      "id": "3bfece13-f5bb-4258-95e4-db3ecbd0cb45",
+      "code": "basic-features",
+      "name": "Basic Features",
+      "createdAt": "2026-07-30T18:14:28.000Z"
+    },
+    {
+      "id": "51ed9077-0425-4eeb-8b74-40be2b9c5c20",
+      "code": "002-bundle",
+      "name": "الخطة الاحترافية  Bundle",
+      "createdAt": "2026-08-02T07:35:06.000Z"
+    },
+    {
+      "id": "794bd428-fa0c-4914-9578-b9b3d631375d",
+      "code": "001-bundle",
+      "name": "الخطة الاساسية  Bundle",
+      "createdAt": "2026-08-02T07:29:42.000Z"
+    },
+    {
+      "id": "cc0ee6ce-27b0-4ebd-af5a-c888aed312b7",
+      "code": "professional-features",
+      "name": "Professional Features",
+      "createdAt": "2026-07-30T18:14:32.000Z"
+    },
+    {
+      "id": "d195ba4a-48de-4e0c-842f-43e5f96e9d24",
+      "code": "enterprise-features",
+      "name": "Enterprise Features",
+      "createdAt": "2026-07-30T18:14:39.000Z"
+    }
+  ],
+  "bundleFeatureCounts": [
+    {
+      "bundleCode": "001-bundle",
+      "n": 15,
+      "included": "12"
+    },
+    {
+      "bundleCode": "002-bundle",
+      "n": 15,
+      "included": "14"
+    },
+    {
+      "bundleCode": "basic-features",
+      "n": 7,
+      "included": "7"
+    },
+    {
+      "bundleCode": "enterprise-features",
+      "n": 15,
+      "included": "15"
+    },
+    {
+      "bundleCode": "professional-features",
+      "n": 13,
+      "included": "13"
+    }
+  ],
+  "limitProfiles": [
+    {
+      "id": "177c2988-aba5-42aa-8807-884b6fc55c7d",
+      "code": "basic-limits",
+      "name": "Basic Limits",
+      "createdAt": "2026-07-30T18:14:28.000Z"
+    },
+    {
+      "id": "387e6953-26af-41f0-af9f-7aa6f693a1e1",
+      "code": "001-limits",
+      "name": "الخطة الاساسية  Limits",
+      "createdAt": "2026-08-02T07:29:43.000Z"
+    },
+    {
+      "id": "61c0538c-b937-4c2a-a7ce-8aaaed1d76c4",
+      "code": "002-limits",
+      "name": "الخطة الاحترافية  Limits",
+      "createdAt": "2026-08-02T07:35:07.000Z"
+    },
+    {
+      "id": "c2700a14-091b-4231-98a6-2017945032a7",
+      "code": "professional-limits",
+      "name": "Professional Limits",
+      "createdAt": "2026-07-30T18:14:32.000Z"
+    },
+    {
+      "id": "c359dc1d-515a-47a0-bf04-0d2647f23521",
+      "code": "enterprise-limits",
+      "name": "Enterprise Limits",
+      "createdAt": "2026-07-30T18:14:39.000Z"
+    }
+  ],
+  "limitValueCounts": [
+    {
+      "profileCode": "001-limits",
+      "n": 10
+    },
+    {
+      "profileCode": "002-limits",
+      "n": 10
+    },
+    {
+      "profileCode": "basic-limits",
+      "n": 3
+    },
+    {
+      "profileCode": "enterprise-limits",
+      "n": 3
+    },
+    {
+      "profileCode": "professional-limits",
+      "n": 3
+    }
+  ],
+  "commercial_trial_policies": [
+    {
+      "id": "9ce22218-4894-4dae-9ed8-c9a50785080c",
+      "code": "002-trial",
+      "name": "الخطة الاحترافية  Trial",
+      "durationDays": 14,
+      "description": null,
+      "createdAt": "2026-08-02T07:35:07.000Z",
+      "updatedAt": "2026-08-02T07:35:07.000Z"
+    },
+    {
+      "id": "c3861661-8727-4530-a652-1d9d9d4e595b",
+      "code": "default-trial-14",
+      "name": "Default 14-day trial",
+      "durationDays": 14,
+      "description": null,
+      "createdAt": "2026-07-30T18:14:28.000Z",
+      "updatedAt": "2026-07-30T18:14:28.000Z"
+    },
+    {
+      "id": "f71bd650-e968-4944-9dff-8d213769e591",
+      "code": "001-trial",
+      "name": "الخطة الاساسية  Trial",
+      "durationDays": 14,
+      "description": null,
+      "createdAt": "2026-08-02T07:29:43.000Z",
+      "updatedAt": "2026-08-02T07:29:43.000Z"
+    }
+  ],
+  "commercial_migration_policies": [
+    {
+      "id": "34d1fd8d-ff4f-40be-bf6e-3e45a4c9b3d0",
+      "code": "002-mig",
+      "name": "الخطة الاحترافية  Migration",
+      "description": null,
+      "requiresExplicitAction": 1,
+      "createdAt": "2026-08-02T07:35:08.000Z",
+      "updatedAt": "2026-08-02T07:35:08.000Z"
+    },
+    {
+      "id": "760554c9-1c5d-4699-bc42-e107ddef638c",
+      "code": "001-mig",
+      "name": "الخطة الاساسية  Migration",
+      "description": null,
+      "requiresExplicitAction": 1,
+      "createdAt": "2026-08-02T07:29:44.000Z",
+      "updatedAt": "2026-08-02T07:29:44.000Z"
+    },
+    {
+      "id": "e26c501c-ffb9-4214-86cb-fbad61186cc0",
+      "code": "explicit-admin",
+      "name": "Explicit admin migration",
+      "description": null,
+      "requiresExplicitAction": 1,
+      "createdAt": "2026-07-30T18:14:28.000Z",
+      "updatedAt": "2026-07-30T18:14:28.000Z"
+    }
+  ],
+  "commercial_retirement_policies": [
+    {
+      "id": "057c8c40-1420-4f78-9976-37262ed40b04",
+      "code": "no-renew-retired",
+      "name": "No renewals when retired",
+      "description": null,
+      "allowRenewals": 0,
+      "createdAt": "2026-07-30T18:14:28.000Z",
+      "updatedAt": "2026-07-30T18:14:28.000Z"
+    },
+    {
+      "id": "17b9b31e-c051-4707-a60b-cca71494f9a7",
+      "code": "001-ret",
+      "name": "الخطة الاساسية  Retirement",
+      "description": null,
+      "allowRenewals": 0,
+      "createdAt": "2026-08-02T07:29:45.000Z",
+      "updatedAt": "2026-08-02T07:29:45.000Z"
+    },
+    {
+      "id": "bec6e7d4-9069-4d18-8ae4-505b3f6f8778",
+      "code": "002-ret",
+      "name": "الخطة الاحترافية  Retirement",
+      "description": null,
+      "allowRenewals": 0,
+      "createdAt": "2026-08-02T07:35:08.000Z",
+      "updatedAt": "2026-08-02T07:35:08.000Z"
+    }
+  ],
+  "commercial_regions": [
+    {
+      "id": "affa27e5-68cf-4de5-9f30-4a8eb26bd984",
+      "code": "sa",
+      "name": "Saudi Arabia",
+      "countryCode": "SA",
+      "currency": "SAR",
+      "taxPolicyRef": "sa-vat",
+      "distributionPartner": null,
+      "regulatoryNotes": null,
+      "createdAt": "2026-07-30T18:14:28.000Z",
+      "updatedAt": "2026-07-30T18:14:28.000Z"
+    }
+  ],
+  "commercial_promotions": [],
+  "commercial_publication_rules": [],
+  "legacyPlans": [
+    {
+      "id": 30001,
+      "nameEn": "Basic Plan",
+      "nameAr": "الخطة الأساسية",
+      "priceMonthly": "19.00",
+      "priceYearly": "175.00",
+      "isActive": 1,
+      "sortOrder": 1,
+      "maxRestaurants": 1,
+      "maxItemsPerRestaurant": 100,
+      "maxCategories": 10,
+      "createdAt": "2026-04-30T00:45:08.000Z"
+    },
+    {
+      "id": 30002,
+      "nameEn": "Professional Plan",
+      "nameAr": "الخطة الاحترافية",
+      "priceMonthly": "39.00",
+      "priceYearly": "349.00",
+      "isActive": 1,
+      "sortOrder": 2,
+      "maxRestaurants": 5,
+      "maxItemsPerRestaurant": 500,
+      "maxCategories": 25,
+      "createdAt": "2026-04-30T00:45:08.000Z"
+    },
+    {
+      "id": 30003,
+      "nameEn": "Enterprise Plan",
+      "nameAr": "الخطة المؤسسية",
+      "priceMonthly": "99.00",
+      "priceYearly": "899.00",
+      "isActive": 1,
+      "sortOrder": 3,
+      "maxRestaurants": 999,
+      "maxItemsPerRestaurant": 9999,
+      "maxCategories": 100,
+      "createdAt": "2026-04-30T00:45:08.000Z"
+    }
+  ],
+  "users": [
+    {
+      "id": 1,
+      "openIdPrefix": "j4Ztx2Wi…",
+      "isOwner": false,
+      "name": "Khaled Sh",
+      "emailRedacted": "k.…@yahoo.com",
+      "role": "admin",
+      "accountClassification": "INTERNAL",
+      "loginMethod": "email",
+      "createdAt": "2026-04-01T19:12:37.000Z",
+      "lastSignedIn": "2026-08-13T05:50:20.000Z"
+    },
+    {
+      "id": 14760004,
+      "openIdPrefix": "local_sa…",
+      "isOwner": false,
+      "name": "مطعم sam",
+      "emailRedacted": "sa…@windowslive.com",
+      "role": "user",
+      "accountClassification": "COMMERCIAL",
+      "loginMethod": "email",
+      "createdAt": "2026-06-07T16:45:56.000Z",
+      "lastSignedIn": "2026-06-28T06:42:07.000Z"
+    },
+    {
+      "id": 21630002,
+      "openIdPrefix": "internal…",
+      "isOwner": false,
+      "name": "سليمان",
+      "emailRedacted": "un…@gmail.com",
+      "role": "admin",
+      "accountClassification": "INTERNAL",
+      "loginMethod": "email",
+      "createdAt": "2026-06-21T10:44:03.000Z",
+      "lastSignedIn": "2026-07-24T18:12:45.000Z"
+    }
+  ],
+  "userClassificationCounts": [
+    {
+      "accountClassification": "INTERNAL",
+      "role": "admin",
+      "n": 2
+    },
+    {
+      "accountClassification": "COMMERCIAL",
+      "role": "user",
+      "n": 1
+    }
+  ],
+  "restaurants": [
+    {
+      "id": 720002,
+      "userId": 14760004,
+      "nameAr": "sam672",
+      "nameEn": null,
+      "slug": "sam672-Y7Y0ac",
+      "isActive": 1,
+      "createdAt": "2026-06-07T16:45:56.000Z",
+      "orderCount": 0
+    },
+    {
+      "id": 720006,
+      "userId": 14760004,
+      "nameAr": "saaa",
+      "nameEn": null,
+      "slug": "saaa-Ei7D02",
+      "isActive": 1,
+      "createdAt": "2026-06-07T16:51:57.000Z",
+      "orderCount": 0
+    },
+    {
+      "id": 720007,
+      "userId": 1,
+      "nameAr": "خالد",
+      "nameEn": "khaled",
+      "slug": "خالد-Zx0OcD",
+      "isActive": 1,
+      "createdAt": "2026-06-07T16:53:00.000Z",
+      "orderCount": 42
+    },
+    {
+      "id": 780001,
+      "userId": 14760004,
+      "nameAr": "يييي",
+      "nameEn": null,
+      "slug": "يييي-CRIfew",
+      "isActive": 1,
+      "createdAt": "2026-06-08T16:37:18.000Z",
+      "orderCount": 0
+    },
+    {
+      "id": 870001,
+      "userId": 1,
+      "nameAr": "فندق خالد ",
+      "nameEn": null,
+      "slug": "فندق-خالد-MdAJTg",
+      "isActive": 1,
+      "createdAt": "2026-06-12T17:05:55.000Z",
+      "orderCount": 0
+    },
+    {
+      "id": 900001,
+      "userId": 21630002,
+      "nameAr": "سليمان",
+      "nameEn": "سليمان شاورما",
+      "slug": "سليمان-n0Uv2h",
+      "isActive": 1,
+      "createdAt": "2026-06-21T15:46:44.000Z",
+      "orderCount": 0
+    }
+  ],
+  "subscriptions": [
+    {
+      "id": 600001,
+      "userId": 1,
+      "restaurantId": 0,
+      "planId": 30002,
+      "status": "active",
+      "billingCycle": "monthly",
+      "hasStripeSub": 0,
+      "hasStripeCustomer": 0,
+      "stripeSubPrefix": "",
+      "stripeCustPrefix": "",
+      "currentPeriodStart": "2026-06-08T03:08:15.000Z",
+      "currentPeriodEnd": "2026-08-07T21:00:00.000Z",
+      "trialEndsAt": null,
+      "canceledAt": null,
+      "createdAt": "2026-06-08T03:08:15.000Z",
+      "updatedAt": "2026-06-09T18:28:40.000Z"
+    },
+    {
+      "id": 600002,
+      "userId": 14760004,
+      "restaurantId": 720006,
+      "planId": 30002,
+      "status": "expired",
+      "billingCycle": "monthly",
+      "hasStripeSub": 0,
+      "hasStripeCustomer": 0,
+      "stripeSubPrefix": "",
+      "stripeCustPrefix": "",
+      "currentPeriodStart": "2026-06-08T03:08:18.000Z",
+      "currentPeriodEnd": "2026-07-07T21:00:00.000Z",
+      "trialEndsAt": null,
+      "canceledAt": null,
+      "createdAt": "2026-06-08T03:08:18.000Z",
+      "updatedAt": "2026-06-08T16:07:39.000Z"
+    },
+    {
+      "id": 690001,
+      "userId": 14760004,
+      "restaurantId": 0,
+      "planId": 30002,
+      "status": "active",
+      "billingCycle": "monthly",
+      "hasStripeSub": 0,
+      "hasStripeCustomer": 0,
+      "stripeSubPrefix": "",
+      "stripeCustPrefix": "",
+      "currentPeriodStart": "2026-06-09T14:08:19.000Z",
+      "currentPeriodEnd": "2026-06-13T21:00:00.000Z",
+      "trialEndsAt": null,
+      "canceledAt": null,
+      "createdAt": "2026-06-09T14:08:18.000Z",
+      "updatedAt": "2026-06-13T02:27:33.000Z"
+    },
+    {
+      "id": 750001,
+      "userId": 14760004,
+      "restaurantId": 0,
+      "planId": 30002,
+      "status": "active",
+      "billingCycle": "monthly",
+      "hasStripeSub": 0,
+      "hasStripeCustomer": 0,
+      "stripeSubPrefix": "",
+      "stripeCustPrefix": "",
+      "currentPeriodStart": "2026-06-16T18:26:17.000Z",
+      "currentPeriodEnd": "2026-07-16T21:00:00.000Z",
+      "trialEndsAt": null,
+      "canceledAt": null,
+      "createdAt": "2026-06-16T18:26:16.000Z",
+      "updatedAt": "2026-06-16T18:26:16.000Z"
+    },
+    {
+      "id": 780001,
+      "userId": 21630002,
+      "restaurantId": 0,
+      "planId": 30003,
+      "status": "active",
+      "billingCycle": "yearly",
+      "hasStripeSub": 0,
+      "hasStripeCustomer": 0,
+      "stripeSubPrefix": "",
+      "stripeCustPrefix": "",
+      "currentPeriodStart": "2026-06-21T10:47:36.000Z",
+      "currentPeriodEnd": "2027-06-21T10:47:36.000Z",
+      "trialEndsAt": null,
+      "canceledAt": null,
+      "createdAt": "2026-06-21T10:47:35.000Z",
+      "updatedAt": "2026-06-21T10:47:35.000Z"
+    }
+  ],
+  "subscriptionStatusCounts": [
+    {
+      "status": "active",
+      "n": 4
+    },
+    {
+      "status": "expired",
+      "n": 1
+    }
+  ],
+  "subscriptionScopeCounts": [
+    {
+      "accountLevel": "4",
+      "restaurantLevel": "1"
+    }
+  ],
+  "bindings": [],
+  "bindingJoinability": [
+    {
+      "total": 0,
+      "joinsVersion": null,
+      "unmatchedVersion": null,
+      "joinsPlan": null,
+      "joinsSnapshot": null
+    }
+  ],
+  "invoices": [
+    {
+      "id": 930001,
+      "userId": 1,
+      "subscriptionId": 600001,
+      "amount": "19.00",
+      "currency": "USD",
+      "status": "pending",
+      "invoiceNumber": "INV-1781020618006-1",
+      "issuedAt": "2026-06-09T12:56:58.000Z",
+      "dueAt": "2026-07-09T12:56:58.000Z",
+      "paidAt": null,
+      "createdAt": "2026-06-09T12:56:58.000Z",
+      "hasPdf": 1
+    },
+    {
+      "id": 960001,
+      "userId": 1,
+      "subscriptionId": 600001,
+      "amount": "19.00",
+      "currency": "USD",
+      "status": "pending",
+      "invoiceNumber": "INV-1781034000418-1",
+      "issuedAt": "2026-06-09T16:40:00.000Z",
+      "dueAt": "2026-07-09T16:40:00.000Z",
+      "paidAt": null,
+      "createdAt": "2026-06-09T16:40:00.000Z",
+      "hasPdf": 1
+    },
+    {
+      "id": 990001,
+      "userId": 14760004,
+      "subscriptionId": 690001,
+      "amount": "39.00",
+      "currency": "USD",
+      "status": "pending",
+      "invoiceNumber": "INV-1781089046331-14760004",
+      "issuedAt": "2026-06-10T07:57:26.000Z",
+      "dueAt": "2026-07-10T07:57:26.000Z",
+      "paidAt": null,
+      "createdAt": "2026-06-10T07:57:26.000Z",
+      "hasPdf": 1
+    },
+    {
+      "id": 1020001,
+      "userId": 14760004,
+      "subscriptionId": 690001,
+      "amount": "39.00",
+      "currency": "USD",
+      "status": "pending",
+      "invoiceNumber": "INV-1781372038296-14760004",
+      "issuedAt": "2026-06-13T14:33:58.000Z",
+      "dueAt": "2026-07-13T14:33:58.000Z",
+      "paidAt": null,
+      "createdAt": "2026-06-13T14:33:58.000Z",
+      "hasPdf": 1
+    },
+    {
+      "id": 1050001,
+      "userId": 14760004,
+      "subscriptionId": 750001,
+      "amount": "39.00",
+      "currency": "USD",
+      "status": "pending",
+      "invoiceNumber": "INV-1781645181760-14760004",
+      "issuedAt": "2026-06-16T18:26:22.000Z",
+      "dueAt": "2026-07-16T18:26:22.000Z",
+      "paidAt": null,
+      "createdAt": "2026-06-16T18:26:21.000Z",
+      "hasPdf": 1
+    },
+    {
+      "id": 1080001,
+      "userId": 21630002,
+      "subscriptionId": 780001,
+      "amount": "899.00",
+      "currency": "USD",
+      "status": "pending",
+      "invoiceNumber": "INV-1785666984168-21630002",
+      "issuedAt": "2026-08-02T07:36:24.000Z",
+      "dueAt": "2026-09-01T07:36:24.000Z",
+      "paidAt": null,
+      "createdAt": "2026-08-02T07:36:24.000Z",
+      "hasPdf": 1
+    },
+    {
+      "id": 1110001,
+      "userId": 21630002,
+      "subscriptionId": 780001,
+      "amount": "899.00",
+      "currency": "USD",
+      "status": "pending",
+      "invoiceNumber": "INV-1785792546763-21630002",
+      "issuedAt": "2026-08-03T18:29:07.000Z",
+      "dueAt": "2026-09-02T18:29:07.000Z",
+      "paidAt": null,
+      "createdAt": "2026-08-03T18:29:06.000Z",
+      "hasPdf": 1
+    }
+  ],
+  "invoiceStatusCounts": [
+    {
+      "status": "pending",
+      "currency": "USD",
+      "n": 7,
+      "sumAmount": "1953.00"
+    }
+  ],
+  "renewalNotificationCounts": [
+    {
+      "notificationType": "new_order",
+      "n": 47
+    }
+  ],
+  "platformOperationalCounts": {
+    "orders": 42,
+    "settlement_records": 39,
+    "check_settlement_transactions": 35
+  },
+  "planRollup": [
+    {
+      "id": "8569e399-aa18-4219-847b-0cabb1bdbdfb",
+      "code": "001",
+      "name": "الخطة الاساسية ",
+      "isHidden": 0,
+      "versionCount": 1,
+      "publishedCount": 1,
+      "snapshotCount": 0,
+      "priceCount": 2,
+      "includedCapabilityCount": 12
+    },
+    {
+      "id": "d5fea7b5-9cad-4a2a-b3e3-5a7899f2f456",
+      "code": "002",
+      "name": "الخطة الاحترافية ",
+      "isHidden": 0,
+      "versionCount": 1,
+      "publishedCount": 1,
+      "snapshotCount": 0,
+      "priceCount": 2,
+      "includedCapabilityCount": 14
+    },
+    {
+      "id": "5a20644f-e5af-4d54-9f83-615a80b21ab0",
+      "code": "basic",
+      "name": "Basic",
+      "isHidden": 0,
+      "versionCount": 1,
+      "publishedCount": 0,
+      "snapshotCount": 0,
+      "priceCount": 2,
+      "includedCapabilityCount": 0
+    },
+    {
+      "id": "a8ae706c-bdb4-4c04-8ab7-4b988c6c476f",
+      "code": "professional",
+      "name": "Professional",
+      "isHidden": 0,
+      "versionCount": 1,
+      "publishedCount": 0,
+      "snapshotCount": 0,
+      "priceCount": 4,
+      "includedCapabilityCount": 0
+    },
+    {
+      "id": "4796e810-f806-4c51-8c15-3cb84c978fc8",
+      "code": "enterprise",
+      "name": "Enterprise",
+      "isHidden": 0,
+      "versionCount": 1,
+      "publishedCount": 0,
+      "snapshotCount": 0,
+      "priceCount": 4,
+      "includedCapabilityCount": 0
+    }
+  ],
+  "subscribersByPlan": [
+    {
+      "code": "001",
+      "subscriberCount": 0,
+      "activeCount": null,
+      "trialCount": null,
+      "expiredCount": null,
+      "canceledCount": null
+    },
+    {
+      "code": "002",
+      "subscriberCount": 0,
+      "activeCount": null,
+      "trialCount": null,
+      "expiredCount": null,
+      "canceledCount": null
+    },
+    {
+      "code": "basic",
+      "subscriberCount": 0,
+      "activeCount": null,
+      "trialCount": null,
+      "expiredCount": null,
+      "canceledCount": null
+    },
+    {
+      "code": "enterprise",
+      "subscriberCount": 0,
+      "activeCount": null,
+      "trialCount": null,
+      "expiredCount": null,
+      "canceledCount": null
+    },
+    {
+      "code": "professional",
+      "subscriberCount": 0,
+      "activeCount": null,
+      "trialCount": null,
+      "expiredCount": null,
+      "canceledCount": null
+    }
+  ],
+  "indexes": {
+    "commercial_plans": [
+      {
+        "INDEX_NAME": "PRIMARY",
+        "NON_UNIQUE": "0",
+        "COLUMN_NAME": "id",
+        "SEQ_IN_INDEX": 1
+      },
+      {
+        "INDEX_NAME": "commercial_plans_code_uq",
+        "NON_UNIQUE": "0",
+        "COLUMN_NAME": "code",
+        "SEQ_IN_INDEX": 1
+      }
+    ],
+    "commercial_plan_versions": [
+      {
+        "INDEX_NAME": "PRIMARY",
+        "NON_UNIQUE": "0",
+        "COLUMN_NAME": "id",
+        "SEQ_IN_INDEX": 1
+      },
+      {
+        "INDEX_NAME": "commercial_plan_versions_plan_code_uq",
+        "NON_UNIQUE": "0",
+        "COLUMN_NAME": "planId",
+        "SEQ_IN_INDEX": 1
+      },
+      {
+        "INDEX_NAME": "commercial_plan_versions_plan_code_uq",
+        "NON_UNIQUE": "0",
+        "COLUMN_NAME": "versionCode",
+        "SEQ_IN_INDEX": 2
+      },
+      {
+        "INDEX_NAME": "commercial_plan_versions_plan_idx",
+        "NON_UNIQUE": "1",
+        "COLUMN_NAME": "planId",
+        "SEQ_IN_INDEX": 1
+      }
+    ],
+    "commercial_prices": [
+      {
+        "INDEX_NAME": "PRIMARY",
+        "NON_UNIQUE": "0",
+        "COLUMN_NAME": "id",
+        "SEQ_IN_INDEX": 1
+      },
+      {
+        "INDEX_NAME": "commercial_prices_region_idx",
+        "NON_UNIQUE": "1",
+        "COLUMN_NAME": "regionId",
+        "SEQ_IN_INDEX": 1
+      },
+      {
+        "INDEX_NAME": "commercial_prices_version_idx",
+        "NON_UNIQUE": "1",
+        "COLUMN_NAME": "planVersionId",
+        "SEQ_IN_INDEX": 1
+      }
+    ],
+    "commercial_subscription_bindings": [
+      {
+        "INDEX_NAME": "PRIMARY",
+        "NON_UNIQUE": "0",
+        "COLUMN_NAME": "id",
+        "SEQ_IN_INDEX": 1
+      },
+      {
+        "INDEX_NAME": "commercial_subscription_bindings_snapshot_idx",
+        "NON_UNIQUE": "1",
+        "COLUMN_NAME": "snapshotId",
+        "SEQ_IN_INDEX": 1
+      },
+      {
+        "INDEX_NAME": "commercial_subscription_bindings_sub_uq",
+        "NON_UNIQUE": "0",
+        "COLUMN_NAME": "subscriptionId",
+        "SEQ_IN_INDEX": 1
+      },
+      {
+        "INDEX_NAME": "commercial_subscription_bindings_version_idx",
+        "NON_UNIQUE": "1",
+        "COLUMN_NAME": "planVersionId",
+        "SEQ_IN_INDEX": 1
+      }
+    ],
+    "commercial_snapshot_definitions": [
+      {
+        "INDEX_NAME": "PRIMARY",
+        "NON_UNIQUE": "0",
+        "COLUMN_NAME": "id",
+        "SEQ_IN_INDEX": 1
+      },
+      {
+        "INDEX_NAME": "commercial_snapshot_definitions_version_idx",
+        "NON_UNIQUE": "1",
+        "COLUMN_NAME": "planVersionId",
+        "SEQ_IN_INDEX": 1
+      }
+    ]
+  }
+}

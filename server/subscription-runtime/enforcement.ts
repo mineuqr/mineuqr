@@ -24,7 +24,7 @@ export type EntitlementDecision = {
   source: string;
   lifecycleState?: string;
   grandfathered?: boolean;
-  snapshotId?: string;
+  planId?: string;
 };
 
 export type LimitDecision = {
@@ -66,9 +66,7 @@ export async function checkEntitlement(input: {
       ? String(meta.commercialLifecycleState)
       : undefined,
     grandfathered: meta.grandfathered === true,
-    snapshotId: meta.commercialSnapshotId
-      ? String(meta.commercialSnapshotId)
-      : undefined,
+    planId: meta.commercialPlanId ? String(meta.commercialPlanId) : undefined,
   };
 }
 

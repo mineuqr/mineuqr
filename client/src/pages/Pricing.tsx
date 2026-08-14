@@ -431,11 +431,11 @@ export default function Pricing() {
             );
             const legacyPlanId = offering.legacyPlanId;
             const displayName = offering.planName;
-            const versionLabel = `${offering.versionName} (${offering.versionCode})`;
+            const versionLabel = offering.planCode;
 
             return (
               <Card
-                key={offering.planVersionId}
+                key={offering.planId}
                 className={`relative overflow-hidden transition-all duration-300 ${
                   isCurrentPlan || isPopular
                     ? "border-2 border-cyan-400 shadow-lg shadow-cyan-500/40"

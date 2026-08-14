@@ -1,55 +1,43 @@
 /**
- * COMMERCIAL-CATALOG-PLATFORM-FOUNDATION-1 — service behavior tests.
+ * COMMERCIAL-LIVE-PLANS-SIMPLIFICATION-1 — service behavior tests.
  */
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   CommercialCatalogStore,
   PlanService,
-  PlanVersionService,
   PricingService,
   FeatureBundleService,
   LimitProfileService,
-  MigrationPolicyService,
-  RegionalPolicyService,
-  PublicationService,
-  CommercialSnapshotService,
+  PlanSaveValidator,
   CommercialCatalogError,
 } from "../../services/commercial-catalog";
 
-describe("Commercial Catalog services", () => {
+describe("Live Commercial Plan services", () => {
   let store: CommercialCatalogStore;
   let plans: PlanService;
-  let versions: PlanVersionService;
   let pricing: PricingService;
   let bundles: FeatureBundleService;
   let limits: LimitProfileService;
-  let migration: MigrationPolicyService;
-  let regions: RegionalPolicyService;
-  let publication: PublicationService;
-  let snapshots: CommercialSnapshotService;
+  let validator: PlanSaveValidator;
 
   beforeEach(() => {
     store = new CommercialCatalogStore();
     plans = new PlanService(store);
-    versions = new PlanVersionService(store);
     pricing = new PricingService(store);
     bundles = new FeatureBundleService(store);
     limits = new LimitProfileService(store);
-    migration = new MigrationPolicyService(store);
-    regions = new RegionalPolicyService(store);
-    publication = new PublicationService(store);
-    snapshots = new CommercialSnapshotService(store);
+    validator = new PlanSaveValidator(store);
   });
 
-  it("publishes only when CC-16 mandatory metadata is complete", () => {
-    const plan = plans.create({ code: "business", name: "Business" });
-    const version = versions.create({
-      planId: plan.id,
-      versionCode: "v1",
-      versionName: "Business v1",
-    });
-    expect(() => publication.publish(version.id)).toThrow(CommercialCatalogError);
+  it("refuses incomplete live-plan save", async () => {
+    const plan = plans.create({ code: "basic", name: "Basic" });
+    await expect(plans.saveLive(plan.id, { name: "Basic+" }, {}, { skipPersist: true })).rejects.toThrow(
+      CommercialCatalogError
+    );
+  });
 
+  it("saves atomically when pricing, bundle, and limits exist", async () => {
+    const plan = plans.create({ code: "professional", name: "Professional" });
     const cycle = pricing.createBillingCycle({
       code: "monthly",
       name: "Monthly",
@@ -57,97 +45,76 @@ describe("Commercial Catalog services", () => {
       intervalUnit: "month",
     });
     const bundle = bundles.create({
-      code: "biz-features",
-      name: "Business Features",
-      features: [{ featureKey: "orders" }],
+      code: "pro-features",
+      name: "Pro Features",
+      features: [{ featureKey: "ordering" }],
     });
     const profile = limits.create({
-      code: "biz-limits",
-      name: "Business Limits",
+      code: "pro-limits",
+      name: "Pro Limits",
       values: [{ limitKey: "restaurants", value: 5 }],
     });
-    const mig = migration.create({ code: "explicit", name: "Explicit migrate" });
-    const ret = migration.createRetirementPolicy({
-      code: "no-renew",
-      name: "No renewals",
-    });
-    versions.updateDraft(version.id, {
-      featureBundleId: bundle.id,
-      limitProfileId: profile.id,
-      migrationPolicyId: mig.id,
-      retirementPolicyId: ret.id,
-      compatibility: {
-        upgradeTargets: [],
-        downgradeTargets: [],
-        migrationRequirements: ["admin_approval"],
-        breakingCommercialChanges: [],
-      },
-    });
     pricing.create({
-      planVersionId: version.id,
+      planId: plan.id,
       billingCycleId: cycle.id,
-      currency: "SAR",
-      amount: "349.00",
+      currency: "USD",
+      amount: "26.40",
     });
-
-    const published = publication.publish(version.id);
-    expect(published.state).toBe("published");
-    expect(() =>
-      versions.updateDraft(version.id, { versionName: "hack" })
-    ).toThrow(/immutable/i);
+    const saved = await plans.saveLive(
+      plan.id,
+      { featureBundleId: bundle.id, limitProfileId: profile.id },
+      {},
+      { skipPersist: true }
+    );
+    expect(saved.featureBundleId).toBe(bundle.id);
+    expect(validator.validate(plan.id).ok).toBe(true);
+    expect(pricing.currentPriceForPlan(plan.id, "monthly")?.amount).toBe("26.40");
   });
 
-  it("captures immutable commercial snapshot definitions", () => {
-    const plan = plans.create({ code: "starter", name: "Starter" });
-    const version = versions.create({
-      planId: plan.id,
-      versionCode: "v1",
-      versionName: "Starter v1",
+  it("rolls back in-memory plan when validation fails", async () => {
+    const plan = plans.create({
+      code: "enterprise",
+      name: "Enterprise",
+      featureBundleId: null,
     });
+    await expect(
+      plans.saveLive(plan.id, { name: "Enterprise Cloud" }, {}, { skipPersist: true })
+    ).rejects.toThrow(CommercialCatalogError);
+    expect(plans.get(plan.id)?.name).toBe("Enterprise");
+  });
+
+  it("rolls back prices when live save validation fails", async () => {
+    const plan = plans.create({ code: "basic", name: "Basic" });
     const cycle = pricing.createBillingCycle({
-      code: "yearly",
-      name: "Yearly",
+      code: "monthly",
+      name: "Monthly",
       intervalCount: 1,
-      intervalUnit: "year",
-    });
-    const region = regions.create({
-      code: "sa",
-      name: "Saudi Arabia",
-      countryCode: "SA",
-      currency: "SAR",
-    });
-    const bundle = bundles.create({
-      code: "st-features",
-      name: "Starter Features",
-      features: [{ featureKey: "menu" }],
-    });
-    const profile = limits.create({
-      code: "st-limits",
-      name: "Starter Limits",
-      values: [{ limitKey: "items", value: 100 }],
-    });
-    const mig = migration.create({ code: "m1", name: "M1" });
-    const ret = migration.createRetirementPolicy({ code: "r1", name: "R1" });
-    versions.updateDraft(version.id, {
-      featureBundleId: bundle.id,
-      limitProfileId: profile.id,
-      migrationPolicyId: mig.id,
-      retirementPolicyId: ret.id,
+      intervalUnit: "month",
     });
     pricing.create({
-      planVersionId: version.id,
+      planId: plan.id,
       billingCycleId: cycle.id,
-      currency: "SAR",
-      amount: "99.00",
-      regionId: region.id,
+      currency: "USD",
+      amount: "0.00",
     });
-    publication.publish(version.id);
-
-    const captured = snapshots.captureFromVersion(version.id, {
-      regionId: region.id,
-    });
-    expect(captured.payload.commercialName).toBe("Starter");
-    expect(captured.payload.currency).toBe("SAR");
-    expect(Object.isFrozen(captured.payload)).toBe(true);
+    await expect(
+      plans.saveLive(
+        plan.id,
+        { name: "Basic+" },
+        {},
+        {
+          skipPersist: true,
+          prices: [
+            {
+              billingCycleId: cycle.id,
+              currency: "USD",
+              amount: "9.00",
+            },
+          ],
+        }
+      )
+    ).rejects.toThrow(CommercialCatalogError);
+    expect(pricing.currentPriceForPlan(plan.id, "monthly")?.amount).toBe("0.00");
+    expect(plans.get(plan.id)?.name).toBe("Basic");
   });
 });

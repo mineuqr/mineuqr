@@ -12,7 +12,7 @@ import {
 } from "./db";
 import { updateSubscriptionForActivation } from "./db";
 import { notifyOwnerNewSubscription } from "./owner-email-notifications";
-import { ensureCommercialSnapshotBoundForSubscription } from "./services/commercial-catalog";
+import { ensureLivePlanBoundForSubscription } from "./services/commercial-catalog";
 
 export async function handleTapWebhook(req: Request, res: Response) {
   const correlationId = getCorrelationId(req);
@@ -127,7 +127,7 @@ export async function handleTapWebhook(req: Request, res: Response) {
           (await getSubscriptionById(activatedId))?.planId ??
           null;
         if (boundPlanId != null) {
-          await ensureCommercialSnapshotBoundForSubscription({
+          await ensureLivePlanBoundForSubscription({
             subscriptionId: activatedId,
             legacyPlanId: boundPlanId,
             event: "plan_selected",

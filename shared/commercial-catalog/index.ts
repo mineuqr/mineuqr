@@ -1,6 +1,6 @@
 /**
- * COMMERCIAL-CATALOG-PLATFORM-FOUNDATION-1
- * Shared Commercial Catalog Platform SSOT (contracts + ownership).
+ * COMMERCIAL-LIVE-PLANS-SIMPLIFICATION-1
+ * Shared Live Commercial Plans SSOT (contracts + ownership).
  */
 
 export const COMMERCIAL_CATALOG_FOUNDATION_PROGRAM =
@@ -8,6 +8,9 @@ export const COMMERCIAL_CATALOG_FOUNDATION_PROGRAM =
 
 export const COMMERCIAL_CATALOG_ARCHITECTURE_PROGRAM =
   "COMMERCIAL-CATALOG-PLATFORM-ARCHITECTURE-1" as const;
+
+export const COMMERCIAL_LIVE_PLANS_PROGRAM =
+  "COMMERCIAL-LIVE-PLANS-SIMPLIFICATION-1" as const;
 
 export const COMMERCIAL_CATALOG_ADR = "ADR-ARCH-037" as const;
 
