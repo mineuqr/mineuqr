@@ -68,4 +68,6 @@ export {
   getCachedEntitlements,
   setCachedEntitlements,
   invalidateEntitlementCache,
+  entitlementCacheKey,
 } from "./cache";
+export type { EntitlementCacheScope } from "./cache";

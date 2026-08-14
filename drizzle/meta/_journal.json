@@ -610,6 +610,13 @@
       "when": 1784720000000,
       "tag": "0086_commercial_live_plans",
       "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "5",
+      "when": 1784730000000,
+      "tag": "0087_platform_owner_access_mode",
+      "breakpoints": true
     }
   ]
 }

@@ -2963,6 +2963,16 @@
     "forward": "Enterprise customers may request a private roadmap discussion based on their operational priorities. We only commit publicly to work that is already shipping or contractually agreed.",
     "externalLink": "Open external roadmap"
   },
+  "ownerAccess": {
+    "title": "Owner Access",
+    "fullPlatform": "Full Platform",
+    "simulating": "Simulating {plan}",
+    "simulateAPlan": "Simulate a Plan",
+    "returnToFullPlatform": "Return to Full Platform",
+    "simulationNoCharge": "Simulation — No Charge",
+    "simulationUnavailable": "This Live Plan is unavailable. Return to Full Platform to restore access.",
+    "unavailable": "Owner access is unavailable. Do not assume Full Platform."
+  },
   "statusPage": {
     "metaTitle": "Service Status",
     "metaDescription": "MineuQR service status communication.",

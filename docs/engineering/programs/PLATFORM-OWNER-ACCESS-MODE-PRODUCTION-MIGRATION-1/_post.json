@@ -1,0 +1,255 @@
+{
+  "label": "post",
+  "queriedAt": "2026-08-14T23:30:15.580Z",
+  "database": "mineuqr",
+  "hostKind": "tidb-cloud",
+  "hashes": {
+    "0086": "cfaec30e54892eaf44222e15cd327fb4e7f67c106a544c0ded2ce65463908413",
+    "0087": "d1d9b161c405cc8e448fbf74d3e40b99618d88d388f65479a43e8115fb4cc595"
+  },
+  "terminus": [
+    {
+      "id": 6054102,
+      "hash": "d1d9b161c405cc8e448fbf74d3e40b99618d88d388f65479a43e8115fb4cc595",
+      "hashPrefix": "d1d9b161c405cc8e",
+      "created_at": 1784730000000
+    },
+    {
+      "id": 6024102,
+      "hash": "cfaec30e54892eaf44222e15cd327fb4e7f67c106a544c0ded2ce65463908413",
+      "hashPrefix": "cfaec30e54892eaf",
+      "created_at": 1784720000000
+    },
+    {
+      "id": 5994103,
+      "hash": "c104e894606f292173e9f133f575980441d77bc9a650d1251760e988c102c81a",
+      "hashPrefix": "c104e894606f2921",
+      "created_at": 1784710000000
+    },
+    {
+      "id": 5994102,
+      "hash": "9d585e21e43fbd152a4a810e84331866a02bdfbab8a02bc7616c0d5ee4383e28",
+      "hashPrefix": "9d585e21e43fbd15",
+      "created_at": 1784700000000
+    },
+    {
+      "id": 5964102,
+      "hash": "0f4df950d48b4b0116330a5be1243cead2c9dd42b1848982c4e77ec3ea04b657",
+      "hashPrefix": "0f4df950d48b4b01",
+      "created_at": 1784690000000
+    },
+    {
+      "id": 5934102,
+      "hash": "52d7c5f2c824957914cc2754285116214a0a6455631e7fc91ba5303fcc066703",
+      "hashPrefix": "52d7c5f2c8249579",
+      "created_at": 1784680000000
+    },
+    {
+      "id": 5904102,
+      "hash": "4dcecdc26490636715c4ef5bf1203c944e8e3fd560a68bffa3c66e18c9547b67",
+      "hashPrefix": "4dcecdc264906367",
+      "created_at": 1784670000000
+    },
+    {
+      "id": 5874102,
+      "hash": "9d93a2c23a8a84b19c146482bf33805474f4eb2ed5cb040b2853e7e08e414bae",
+      "hashPrefix": "9d93a2c23a8a84b1",
+      "created_at": 1784660000000
+    }
+  ],
+  "applied0086": true,
+  "applied0087": true,
+  "ownerTableExists": true,
+  "ownerAccessColumns": [
+    {
+      "COLUMN_NAME": "ownerOpenId",
+      "COLUMN_TYPE": "varchar(64)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": null,
+      "COLUMN_KEY": "PRI",
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "mode",
+      "COLUMN_TYPE": "enum('FULL_PLATFORM','SIMULATED_PLAN')",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": null,
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "simulatedPlanCode",
+      "COLUMN_TYPE": "varchar(64)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_DEFAULT": null,
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "createdAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "COLUMN_NAME": "updatedAt",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP",
+      "COLUMN_KEY": "",
+      "EXTRA": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP"
+    }
+  ],
+  "ownerAccessConstraints": [
+    {
+      "CONSTRAINT_NAME": "PRIMARY",
+      "CONSTRAINT_TYPE": "PRIMARY KEY"
+    }
+  ],
+  "ownerAccessChecks": [],
+  "ownerAccessRows": [],
+  "counts": {
+    "commercial_plans": 3,
+    "commercial_prices": 10,
+    "commercial_subscription_bindings": 0,
+    "commercial_feature_bundles": 3,
+    "commercial_bundle_features": 34,
+    "commercial_limit_profiles": 3,
+    "commercial_limit_values": 9,
+    "commercial_billing_cycles": 2,
+    "users": 3,
+    "restaurants": 6,
+    "user_subscriptions": 5,
+    "subscription_plans": 3,
+    "invoices": 7,
+    "payments": 5,
+    "subscription_history": 2,
+    "orders": 42,
+    "settlement_records": 39
+  },
+  "livePlans": [
+    {
+      "id": "79cf7bf7-c3b6-45de-8f20-42897cd493ac",
+      "code": "basic",
+      "name": "Basic",
+      "isHidden": 0
+    },
+    {
+      "id": "d836bd10-9d9f-4408-a076-f921354d785a",
+      "code": "enterprise",
+      "name": "Enterprise",
+      "isHidden": 0
+    },
+    {
+      "id": "0ade795a-02fa-4d3e-b9b5-262515bade09",
+      "code": "professional",
+      "name": "Professional",
+      "isHidden": 0
+    }
+  ],
+  "livePrices": [
+    {
+      "planCode": "basic",
+      "amount": "19.00",
+      "currency": "USD",
+      "cycle": "monthly"
+    },
+    {
+      "planCode": "basic",
+      "amount": "199.00",
+      "currency": "USD",
+      "cycle": "yearly"
+    },
+    {
+      "planCode": "enterprise",
+      "amount": "299.00",
+      "currency": "SAR",
+      "cycle": "monthly"
+    },
+    {
+      "planCode": "enterprise",
+      "amount": "2990.00",
+      "currency": "SAR",
+      "cycle": "yearly"
+    },
+    {
+      "planCode": "enterprise",
+      "amount": "99.00",
+      "currency": "USD",
+      "cycle": "monthly"
+    },
+    {
+      "planCode": "enterprise",
+      "amount": "999.00",
+      "currency": "USD",
+      "cycle": "yearly"
+    },
+    {
+      "planCode": "professional",
+      "amount": "99.00",
+      "currency": "SAR",
+      "cycle": "monthly"
+    },
+    {
+      "planCode": "professional",
+      "amount": "990.00",
+      "currency": "SAR",
+      "cycle": "yearly"
+    },
+    {
+      "planCode": "professional",
+      "amount": "29.00",
+      "currency": "USD",
+      "cycle": "monthly"
+    },
+    {
+      "planCode": "professional",
+      "amount": "349.00",
+      "currency": "USD",
+      "cycle": "yearly"
+    }
+  ],
+  "ownerUser": [
+    {
+      "id": 1,
+      "role": "admin",
+      "accountClassification": "INTERNAL",
+      "openIdPrefix": "j4Ztx2Wi"
+    }
+  ],
+  "owner600001": [
+    {
+      "id": 600001,
+      "userId": 1,
+      "restaurantId": 0,
+      "planId": 30002,
+      "status": "active",
+      "billingCycle": "monthly",
+      "currentPeriodStart": "2026-06-08T03:08:15.000Z",
+      "currentPeriodEnd": "2026-08-07T21:00:00.000Z",
+      "trialEndsAt": null,
+      "canceledAt": null,
+      "createdAt": "2026-06-08T03:08:15.000Z",
+      "updatedAt": "2026-06-09T18:28:40.000Z"
+    }
+  ],
+  "tap60001": [
+    {
+      "id": 60001,
+      "userId": 2700049,
+      "subscriptionId": null,
+      "invoiceId": null,
+      "amount": "349.00",
+      "currency": "SAR",
+      "status": "captured",
+      "paidAt": "2026-05-19T09:39:13.000Z",
+      "createdAt": "2026-05-19T09:39:09.000Z",
+      "updatedAt": "2026-05-19T09:39:12.000Z"
+    }
+  ],
+  "bindings": [],
+  "stop": [],
+  "gate": "PASS"
+}

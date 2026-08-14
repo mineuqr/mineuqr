@@ -8,12 +8,16 @@ import type { CommercialEntitlementsResult } from "@commercial/getCommercialEnti
 import type { SubscriptionStatus, UserRole } from "@commercial/planTypes";
 import { buildCommercialContextFromDb } from "../commercial/buildCommercialContextFromDb";
 import { getSubscriptionsByUser, getUserById } from "../db";
+import { isPlatformOwner } from "../platform-owner-access/identity";
+import { resolvePlatformOwnerEntitlements } from "../platform-owner-access/entitlements";
+import { loadOwnerAccessMode } from "../platform-owner-access/service";
 import { pickUserLevelSubscription } from "../subscriptionResolver";
 import { commercialRuntimeAuthorityObservability } from "../services/commercial-catalog/runtimeAuthorityObservability";
 import {
   getCachedEntitlements,
   invalidateEntitlementCache,
   setCachedEntitlements,
+  type EntitlementCacheScope,
 } from "./cache";
 import {
   denyEntitlementsFailClosed,
@@ -31,8 +35,21 @@ export type SubscriptionRuntimeResolveOptions = {
   useCache?: boolean;
 };
 
+function cacheScopeForOwnerState(state: {
+  ok: boolean;
+  mode?: string;
+  simulatedPlanCode?: string | null;
+}): EntitlementCacheScope {
+  return {
+    kind: "platform_owner",
+    mode: state.ok ? state.mode : "invalid",
+    simulatedPlanCode: state.simulatedPlanCode ?? null,
+  };
+}
+
 /**
  * Canonical runtime owner for commercial entitlements.
+ * Platform Owner (ENV.ownerOpenId) is evaluated before customer subscription.
  * Bound → live plan capabilities. Unbound → Legacy Bridge only.
  */
 export async function resolveOwnerEntitlements(
@@ -41,9 +58,29 @@ export async function resolveOwnerEntitlements(
 ): Promise<CommercialEntitlementsResult> {
   const now = options.now ?? new Date();
   const useCache = options.useCache === true && options.bypassCache !== true;
+  const user = await getUserById(ownerId);
+  const role = (user?.role ?? "user") as UserRole;
 
+  if (user && isPlatformOwner(user)) {
+    const state = await loadOwnerAccessMode(user.openId);
+    const scope = cacheScopeForOwnerState(state);
+    if (useCache) {
+      const cached = getCachedEntitlements(ownerId, now, scope);
+      if (cached) return cached;
+    }
+    const result = await resolvePlatformOwnerEntitlements({
+      ownerId,
+      role,
+      now,
+      state,
+    });
+    if (useCache) setCachedEntitlements(ownerId, result, now, undefined, scope);
+    return result;
+  }
+
+  const customerScope: EntitlementCacheScope = { kind: "customer" };
   if (useCache) {
-    const cached = getCachedEntitlements(ownerId, now);
+    const cached = getCachedEntitlements(ownerId, now, customerScope);
     if (cached) return cached;
   }
 
@@ -61,15 +98,13 @@ export async function resolveOwnerEntitlements(
       ...legacy,
       meta: { commercialResolutionSource: "legacy_bridge" },
     } as CommercialEntitlementsResult;
-    if (useCache) setCachedEntitlements(ownerId, result, now);
+    if (useCache) setCachedEntitlements(ownerId, result, now, undefined, customerScope);
     return result;
   }
 
   const loaded = await loadBoundLivePlan(canonical.id);
   commercialRuntimeAuthorityObservability.recordBindingCoverage(loaded.binding);
 
-  const user = await getUserById(ownerId);
-  const role = (user?.role ?? "user") as UserRole;
   const dbStatus = canonical.status as SubscriptionStatus;
   const trialEndsAt = canonical.trialEndsAt ?? null;
   const currentPeriodEnd = canonical.currentPeriodEnd ?? null;
@@ -101,7 +136,7 @@ export async function resolveOwnerEntitlements(
     });
 
     commercialRuntimeAuthorityObservability.recordLivePlanResolved(canonical.id);
-    if (useCache) setCachedEntitlements(ownerId, result, now);
+    if (useCache) setCachedEntitlements(ownerId, result, now, undefined, customerScope);
     return result;
   }
 
@@ -116,7 +151,7 @@ export async function resolveOwnerEntitlements(
       legacyPlanId: loaded.legacyPlanId,
       now,
     });
-    if (useCache) setCachedEntitlements(ownerId, denied, now);
+    if (useCache) setCachedEntitlements(ownerId, denied, now, undefined, customerScope);
     return denied;
   }
 
@@ -130,7 +165,7 @@ export async function resolveOwnerEntitlements(
     ...legacy,
     meta: { commercialResolutionSource: "legacy_bridge" },
   } as CommercialEntitlementsResult;
-  if (useCache) setCachedEntitlements(ownerId, result, now);
+  if (useCache) setCachedEntitlements(ownerId, result, now, undefined, customerScope);
   return result;
 }
 

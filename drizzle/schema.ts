@@ -1817,3 +1817,9 @@ export {
   type SelectCommercialPlan,
   commercialSubscriptionBindings,
 } from "../server/db/schema/commercial";
+
+export {
+  platformOwnerAccessMode,
+  PLATFORM_OWNER_ACCESS_MODES,
+  type PlatformOwnerAccessMode,
+} from "../server/db/schema/platformOwnerAccess";

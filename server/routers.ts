@@ -48,6 +48,7 @@ import {
 import {
   getOwnerAccountSubscriptionRow,
 } from "./commercial/ownerAccountSubscriptionAuthority";
+import { ownerAccessRouter } from "./platform-owner-access";
 import { assertRestaurantScopedSubscriptionRetired } from "./commercial/retiredRestaurantSubscriptionApi";
 import {
   ACCOUNT_CLASSIFICATIONS,
@@ -2857,6 +2858,7 @@ export const appRouter = router({
   offer: offerRouter,
   subscription: subscriptionRouter,
   commercial: commercialRouter,
+  ownerAccess: ownerAccessRouter,
   analytics: analyticsRouter,
   invoice: invoiceRouter,
   notification: notificationRouter,

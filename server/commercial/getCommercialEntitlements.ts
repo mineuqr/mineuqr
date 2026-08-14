@@ -1,10 +1,12 @@
 /**
  * COMMERCIAL-SNAPSHOT-RUNTIME-AUTHORITY-1
  * SUBSCRIPTION-RUNTIME-ENTITLEMENT-ENFORCEMENT-1
+ * PLATFORM-OWNER-ACCESS-MODE-IMPLEMENTATION-1
  *
  * Branch-only commercial entitlement resolution via Subscription Runtime.
  *
- * IF SubscriptionBinding exists → Live Plan capabilities (no freeze)
+ * IF Platform Owner (ENV.ownerOpenId) → owner access mode
+ * ELSE IF SubscriptionBinding exists → Live Plan capabilities (no freeze)
  * ELSE → Legacy Bridge ONLY
  */
 

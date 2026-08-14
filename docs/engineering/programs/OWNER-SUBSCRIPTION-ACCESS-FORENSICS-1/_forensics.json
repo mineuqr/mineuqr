@@ -1,0 +1,525 @@
+{
+  "queriedAt": "2026-08-14T22:55:13.181Z",
+  "readOnly": true,
+  "terminus": [
+    {
+      "id": 6024102,
+      "hashPrefix": "cfaec30e54892eaf",
+      "created_at": 1784720000000
+    }
+  ],
+  "obsolete": {
+    "commercial_plan_versions": false,
+    "commercial_snapshot_definitions": false,
+    "commercial_publication_rules": false,
+    "commercial_retirement_policies": false
+  },
+  "ownerUser": [
+    {
+      "id": 1,
+      "name": "Khaled Sh",
+      "email": "k.sh61@yahoo.com",
+      "role": "admin",
+      "openId": "j4Ztx2Wi3et3TD5zYNG5fy",
+      "loginMethod": "email",
+      "accountClassification": "INTERNAL",
+      "emailVerifiedAt": "2026-05-31T04:46:36.000Z",
+      "lastSignedIn": "2026-08-14T19:42:38.000Z",
+      "createdAt": "2026-04-01T19:12:37.000Z",
+      "updatedAt": "2026-08-14T19:42:37.000Z"
+    }
+  ],
+  "ownerSubs": [
+    {
+      "id": 600001,
+      "userId": 1,
+      "restaurantId": 0,
+      "planId": 30002,
+      "status": "active",
+      "billingCycle": "monthly",
+      "currentPeriodStart": "2026-06-08T03:08:15.000Z",
+      "currentPeriodEnd": "2026-08-07T21:00:00.000Z",
+      "trialEndsAt": null,
+      "canceledAt": null,
+      "stripeSubscriptionId": null,
+      "createdAt": "2026-06-08T03:08:15.000Z",
+      "updatedAt": "2026-06-09T18:28:40.000Z"
+    }
+  ],
+  "sub600001": [
+    {
+      "id": 600001,
+      "userId": 1,
+      "restaurantId": 0,
+      "planId": 30002,
+      "status": "active",
+      "billingCycle": "monthly",
+      "stripeSubscriptionId": null,
+      "stripeCustomerId": null,
+      "currentPeriodStart": "2026-06-08T03:08:15.000Z",
+      "currentPeriodEnd": "2026-08-07T21:00:00.000Z",
+      "trialEndsAt": null,
+      "canceledAt": null,
+      "createdAt": "2026-06-08T03:08:15.000Z",
+      "updatedAt": "2026-06-09T18:28:40.000Z"
+    }
+  ],
+  "periodEndIso": "2026-08-07T21:00:00.000Z",
+  "periodExpired": true,
+  "restaurants": [
+    {
+      "id": 720007,
+      "userId": 1,
+      "slug": "خالد-Zx0OcD",
+      "nameEn": "khaled",
+      "nameAr": "خالد",
+      "createdAt": "2026-06-07T16:53:00.000Z",
+      "updatedAt": "2026-08-09T22:51:42.000Z"
+    },
+    {
+      "id": 870001,
+      "userId": 1,
+      "slug": "فندق-خالد-MdAJTg",
+      "nameEn": null,
+      "nameAr": "فندق خالد ",
+      "createdAt": "2026-06-12T17:05:55.000Z",
+      "updatedAt": "2026-06-12T17:06:35.000Z"
+    }
+  ],
+  "restaurantCount": 2,
+  "bindingCols": [
+    "id",
+    "subscriptionId",
+    "legacyPlanId",
+    "createdAt",
+    "planId",
+    "chargedAmount",
+    "chargedCurrency",
+    "billingCycleId",
+    "billingCycleCode",
+    "updatedAt"
+  ],
+  "bindingsAllCount": 0,
+  "allBindings": [],
+  "bindingsOwner": [],
+  "livePlans": [
+    {
+      "id": "79cf7bf7-c3b6-45de-8f20-42897cd493ac",
+      "code": "basic",
+      "name": "Basic",
+      "isHidden": 0,
+      "featureBundleId": "f5707a05-3a5a-4b35-a3db-4234ba856739"
+    },
+    {
+      "id": "d836bd10-9d9f-4408-a076-f921354d785a",
+      "code": "enterprise",
+      "name": "Enterprise",
+      "isHidden": 0,
+      "featureBundleId": "4e091048-879a-4aec-823a-4f16590bc867"
+    },
+    {
+      "id": "0ade795a-02fa-4d3e-b9b5-262515bade09",
+      "code": "professional",
+      "name": "Professional",
+      "isHidden": 0,
+      "featureBundleId": "9f459189-7091-4928-84b3-65f60c6591dc"
+    }
+  ],
+  "invoicesUser": [
+    {
+      "id": 930001,
+      "userId": 1,
+      "subscriptionId": 600001,
+      "amount": "19.00",
+      "currency": "USD",
+      "status": "pending",
+      "createdAt": "2026-06-09T12:56:58.000Z",
+      "updatedAt": "2026-06-09T12:56:58.000Z"
+    },
+    {
+      "id": 960001,
+      "userId": 1,
+      "subscriptionId": 600001,
+      "amount": "19.00",
+      "currency": "USD",
+      "status": "pending",
+      "createdAt": "2026-06-09T16:40:00.000Z",
+      "updatedAt": "2026-06-09T16:40:01.000Z"
+    }
+  ],
+  "paymentsUser": [
+    {
+      "id": 1,
+      "userId": 1,
+      "subscriptionId": 30001,
+      "invoiceId": null,
+      "amount": "175.00",
+      "currency": "SAR",
+      "status": "declined",
+      "paidAt": null,
+      "createdAt": "2026-05-19T05:25:47.000Z"
+    },
+    {
+      "id": 2,
+      "userId": 1,
+      "subscriptionId": 30001,
+      "invoiceId": null,
+      "amount": "175.00",
+      "currency": "SAR",
+      "status": "declined",
+      "paidAt": null,
+      "createdAt": "2026-05-19T05:29:08.000Z"
+    },
+    {
+      "id": 3,
+      "userId": 1,
+      "subscriptionId": 30001,
+      "invoiceId": null,
+      "amount": "175.00",
+      "currency": "SAR",
+      "status": "declined",
+      "paidAt": null,
+      "createdAt": "2026-05-19T05:40:25.000Z"
+    }
+  ],
+  "tap": [
+    {
+      "id": 60001,
+      "userId": 2700049,
+      "subscriptionId": null,
+      "invoiceId": null,
+      "amount": "349.00",
+      "currency": "SAR",
+      "status": "captured",
+      "paidAt": "2026-05-19T09:39:13.000Z",
+      "createdAt": "2026-05-19T09:39:09.000Z",
+      "updatedAt": "2026-05-19T09:39:12.000Z"
+    }
+  ],
+  "tapUser": [],
+  "checkoutPlans": [
+    {
+      "id": 30001,
+      "nameEn": "Basic Plan",
+      "priceMonthly": "19.00",
+      "priceYearly": "175.00",
+      "isActive": 1
+    },
+    {
+      "id": 30002,
+      "nameEn": "Professional Plan",
+      "priceMonthly": "39.00",
+      "priceYearly": "349.00",
+      "isActive": 1
+    },
+    {
+      "id": 30003,
+      "nameEn": "Enterprise Plan",
+      "priceMonthly": "99.00",
+      "priceYearly": "899.00",
+      "isActive": 1
+    }
+  ],
+  "catalogPrices": [
+    {
+      "planCode": "basic",
+      "currency": "USD",
+      "cycle": "monthly",
+      "amount": "19.00",
+      "region": null
+    },
+    {
+      "planCode": "basic",
+      "currency": "USD",
+      "cycle": "yearly",
+      "amount": "199.00",
+      "region": null
+    },
+    {
+      "planCode": "enterprise",
+      "currency": "SAR",
+      "cycle": "monthly",
+      "amount": "299.00",
+      "region": "sa"
+    },
+    {
+      "planCode": "enterprise",
+      "currency": "SAR",
+      "cycle": "yearly",
+      "amount": "2990.00",
+      "region": "sa"
+    },
+    {
+      "planCode": "enterprise",
+      "currency": "USD",
+      "cycle": "monthly",
+      "amount": "99.00",
+      "region": null
+    },
+    {
+      "planCode": "enterprise",
+      "currency": "USD",
+      "cycle": "yearly",
+      "amount": "999.00",
+      "region": null
+    },
+    {
+      "planCode": "professional",
+      "currency": "SAR",
+      "cycle": "monthly",
+      "amount": "99.00",
+      "region": "sa"
+    },
+    {
+      "planCode": "professional",
+      "currency": "SAR",
+      "cycle": "yearly",
+      "amount": "990.00",
+      "region": "sa"
+    },
+    {
+      "planCode": "professional",
+      "currency": "USD",
+      "cycle": "monthly",
+      "amount": "29.00",
+      "region": null
+    },
+    {
+      "planCode": "professional",
+      "currency": "USD",
+      "cycle": "yearly",
+      "amount": "349.00",
+      "region": null
+    }
+  ],
+  "history": [],
+  "historyExists": true,
+  "renewals": [
+    {
+      "id": 6750003,
+      "userId": 1,
+      "subscriptionId": null,
+      "notificationType": "new_order",
+      "isRead": 0,
+      "isSent": 1,
+      "createdAt": "2026-08-03T18:13:44.000Z"
+    },
+    {
+      "id": 6750002,
+      "userId": 1,
+      "subscriptionId": null,
+      "notificationType": "new_order",
+      "isRead": 0,
+      "isSent": 1,
+      "createdAt": "2026-08-03T18:10:36.000Z"
+    },
+    {
+      "id": 6750001,
+      "userId": 1,
+      "subscriptionId": null,
+      "notificationType": "new_order",
+      "isRead": 0,
+      "isSent": 1,
+      "createdAt": "2026-08-03T18:09:17.000Z"
+    },
+    {
+      "id": 6720003,
+      "userId": 1,
+      "subscriptionId": null,
+      "notificationType": "new_order",
+      "isRead": 0,
+      "isSent": 1,
+      "createdAt": "2026-08-01T17:16:58.000Z"
+    },
+    {
+      "id": 6720002,
+      "userId": 1,
+      "subscriptionId": null,
+      "notificationType": "new_order",
+      "isRead": 0,
+      "isSent": 1,
+      "createdAt": "2026-08-01T17:12:57.000Z"
+    },
+    {
+      "id": 6720001,
+      "userId": 1,
+      "subscriptionId": null,
+      "notificationType": "new_order",
+      "isRead": 0,
+      "isSent": 1,
+      "createdAt": "2026-08-01T17:09:53.000Z"
+    },
+    {
+      "id": 6690003,
+      "userId": 1,
+      "subscriptionId": null,
+      "notificationType": "new_order",
+      "isRead": 0,
+      "isSent": 1,
+      "createdAt": "2026-08-01T14:04:26.000Z"
+    },
+    {
+      "id": 6690002,
+      "userId": 1,
+      "subscriptionId": null,
+      "notificationType": "new_order",
+      "isRead": 0,
+      "isSent": 1,
+      "createdAt": "2026-08-01T14:01:27.000Z"
+    },
+    {
+      "id": 6690001,
+      "userId": 1,
+      "subscriptionId": null,
+      "notificationType": "new_order",
+      "isRead": 0,
+      "isSent": 1,
+      "createdAt": "2026-08-01T13:59:38.000Z"
+    },
+    {
+      "id": 6660006,
+      "userId": 1,
+      "subscriptionId": null,
+      "notificationType": "new_order",
+      "isRead": 0,
+      "isSent": 1,
+      "createdAt": "2026-07-29T07:22:16.000Z"
+    },
+    {
+      "id": 6660005,
+      "userId": 1,
+      "subscriptionId": null,
+      "notificationType": "new_order",
+      "isRead": 0,
+      "isSent": 1,
+      "createdAt": "2026-07-29T06:57:43.000Z"
+    },
+    {
+      "id": 6660004,
+      "userId": 1,
+      "subscriptionId": null,
+      "notificationType": "new_order",
+      "isRead": 0,
+      "isSent": 1,
+      "createdAt": "2026-07-29T05:44:32.000Z"
+    },
+    {
+      "id": 6660003,
+      "userId": 1,
+      "subscriptionId": null,
+      "notificationType": "new_order",
+      "isRead": 0,
+      "isSent": 1,
+      "createdAt": "2026-07-29T04:58:35.000Z"
+    },
+    {
+      "id": 6660002,
+      "userId": 1,
+      "subscriptionId": null,
+      "notificationType": "new_order",
+      "isRead": 0,
+      "isSent": 1,
+      "createdAt": "2026-07-29T04:44:50.000Z"
+    },
+    {
+      "id": 6660001,
+      "userId": 1,
+      "subscriptionId": null,
+      "notificationType": "new_order",
+      "isRead": 0,
+      "isSent": 1,
+      "createdAt": "2026-07-29T04:38:39.000Z"
+    },
+    {
+      "id": 6630001,
+      "userId": 1,
+      "subscriptionId": null,
+      "notificationType": "new_order",
+      "isRead": 0,
+      "isSent": 1,
+      "createdAt": "2026-07-28T19:58:46.000Z"
+    },
+    {
+      "id": 6600002,
+      "userId": 1,
+      "subscriptionId": null,
+      "notificationType": "new_order",
+      "isRead": 0,
+      "isSent": 1,
+      "createdAt": "2026-07-28T19:46:59.000Z"
+    },
+    {
+      "id": 6600001,
+      "userId": 1,
+      "subscriptionId": null,
+      "notificationType": "new_order",
+      "isRead": 0,
+      "isSent": 1,
+      "createdAt": "2026-07-28T19:31:09.000Z"
+    },
+    {
+      "id": 6570002,
+      "userId": 1,
+      "subscriptionId": null,
+      "notificationType": "new_order",
+      "isRead": 0,
+      "isSent": 1,
+      "createdAt": "2026-07-28T17:53:30.000Z"
+    },
+    {
+      "id": 6570001,
+      "userId": 1,
+      "subscriptionId": null,
+      "notificationType": "new_order",
+      "isRead": 0,
+      "isSent": 1,
+      "createdAt": "2026-07-28T17:52:45.000Z"
+    }
+  ],
+  "platformCounts": {
+    "users": 3,
+    "user_subscriptions": 5
+  },
+  "allSubs": [
+    {
+      "id": 600001,
+      "userId": 1,
+      "restaurantId": 0,
+      "planId": 30002,
+      "status": "active",
+      "currentPeriodEnd": "2026-08-07T21:00:00.000Z"
+    },
+    {
+      "id": 600002,
+      "userId": 14760004,
+      "restaurantId": 720006,
+      "planId": 30002,
+      "status": "expired",
+      "currentPeriodEnd": "2026-07-07T21:00:00.000Z"
+    },
+    {
+      "id": 690001,
+      "userId": 14760004,
+      "restaurantId": 0,
+      "planId": 30002,
+      "status": "active",
+      "currentPeriodEnd": "2026-06-13T21:00:00.000Z"
+    },
+    {
+      "id": 750001,
+      "userId": 14760004,
+      "restaurantId": 0,
+      "planId": 30002,
+      "status": "active",
+      "currentPeriodEnd": "2026-07-16T21:00:00.000Z"
+    },
+    {
+      "id": 780001,
+      "userId": 21630002,
+      "restaurantId": 0,
+      "planId": 30003,
+      "status": "active",
+      "currentPeriodEnd": "2027-06-21T10:47:36.000Z"
+    }
+  ]
+}

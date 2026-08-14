@@ -6,7 +6,10 @@ import {
   getSubscriptionPlanById,
   getSubscriptionPlans,
   getSubscriptionsByUser,
+  getUserById,
 } from "./db";
+import { isPlatformOwner } from "./platform-owner-access/identity";
+import { resolveOwnerEntitlements } from "./subscription-runtime";
 import { resolveSubscriptionEntitlement } from "./subscriptionEntitlement";
 import {
   pickCanonicalSubscription,
@@ -28,6 +31,12 @@ const DEFAULT_LIMITS: PlanLimits = {
   maxItemsPerRestaurant: 100,
   maxCategories: 10,
 };
+
+const UNLIMITED_QUOTA = Number.MAX_SAFE_INTEGER;
+
+function commercialLimitToQuota(value: number | null | undefined): number {
+  return value == null ? UNLIMITED_QUOTA : value;
+}
 
 function livePlanQuotaLimits(
   limits: { limitKey: string; value: number | null }[]
@@ -62,6 +71,27 @@ export async function resolvePlanLimitsForUser(
   userId: number,
   restaurantId?: number
 ): Promise<PlanLimits> {
+  const user = await getUserById(userId);
+  if (isPlatformOwner(user)) {
+    const result = await resolveOwnerEntitlements(userId);
+    const source = result.meta?.commercialResolutionSource;
+    if (source === "platform_owner_full_platform") {
+      return {
+        maxRestaurants: UNLIMITED_QUOTA,
+        maxItemsPerRestaurant: UNLIMITED_QUOTA,
+        maxCategories: UNLIMITED_QUOTA,
+      };
+    }
+    if (source === "platform_owner_simulated_plan") {
+      return {
+        maxRestaurants: commercialLimitToQuota(result.entitlements.limits.restaurants),
+        maxItemsPerRestaurant: commercialLimitToQuota(result.entitlements.limits.items),
+        maxCategories: commercialLimitToQuota(result.entitlements.limits.categories),
+      };
+    }
+    return { maxRestaurants: 0, maxItemsPerRestaurant: 0, maxCategories: 0 };
+  }
+
   const rows = await getSubscriptionsByUser(userId);
   const sub =
     restaurantId != null

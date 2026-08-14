@@ -26,6 +26,7 @@ export function useCommercialEntitlements(options?: UseCommercialEntitlementsOpt
   return {
     context: query.data?.context ?? null,
     entitlements: query.data?.entitlements ?? null,
+    meta: query.data?.meta ?? null,
     isLoading: query.isLoading,
     isFetching: query.isFetching,
     isError: query.isError,

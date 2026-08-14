@@ -56,6 +56,7 @@ import {
 } from "@/lib/queryRuntime";
 import { useDashboardNavigation } from "@/lib/useDashboardNavigation";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { OwnerAccessControl } from "@/components/owner-access/OwnerAccessControl";
 import {
   Plus, Store, LayoutGrid, UtensilsCrossed,
   BarChart3, Eye, Trash2, Pencil, ArrowRight,
@@ -406,6 +407,7 @@ function RestaurantsList({
 
   return (
     <div className={dash.stack}>
+      <OwnerAccessControl />
       <div className={cn(dash.hero)}>
         <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0 flex-1 space-y-3">
@@ -992,6 +994,7 @@ function RestaurantDetail({
 
   return (
     <div className={dash.stack}>
+      <OwnerAccessControl />
       {subscriptionWarning && (
         <div
           className={cn(

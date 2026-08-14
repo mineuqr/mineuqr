@@ -2963,6 +2963,16 @@
     "forward": "يمكن لعملاء المؤسسات طلب نقاش خاص حول الخارطة وفق أولوياتهم التشغيلية. نلتزم علناً فقط بما يعمل بالفعل أو بما يُتفق عليه تعاقدياً.",
     "externalLink": "فتح خارطة خارجية"
   },
+  "ownerAccess": {
+    "title": "وصول المالك",
+    "fullPlatform": "المنصة كاملة",
+    "simulating": "محاكاة {plan}",
+    "simulateAPlan": "محاكاة خطة",
+    "returnToFullPlatform": "العودة إلى المنصة الكاملة",
+    "simulationNoCharge": "محاكاة — بدون رسوم",
+    "simulationUnavailable": "خطة لايف غير متاحة. ارجع إلى المنصة الكاملة لاستعادة الوصول.",
+    "unavailable": "وصول المالك غير متاح. لا تفترض المنصة الكاملة."
+  },
   "statusPage": {
     "metaTitle": "حالة الخدمة",
     "metaDescription": "تواصل حالة خدمة MineuQR.",

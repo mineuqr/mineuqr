@@ -214,6 +214,7 @@ export const OPS_EVENT = {
   commercial_downgrade: "commercial_downgrade",
   commercial_renewal: "commercial_renewal",
   commercial_promotion_applied: "commercial_promotion_applied",
+  owner_access_mode_changed: "owner_access_mode_changed",
 } as const;
 
 export type OpsEventType = (typeof OPS_EVENT)[keyof typeof OPS_EVENT];

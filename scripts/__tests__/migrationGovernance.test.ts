@@ -15,7 +15,7 @@ import {
 const repoRoot = join(__dirname, "../..");
 
 describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
-  it("journal contains canonical migrations 0000–0086 contiguously", () => {
+  it("journal contains canonical migrations 0000–0087 contiguously", () => {
     const journal = loadJournal();
     expect(journal.entries).toHaveLength(CANONICAL_JOURNAL_ENTRY_COUNT);
     expect(journal.entries[0]?.tag).toBe("0000_shiny_blizzard");
@@ -46,13 +46,14 @@ describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
     expect(journal.entries[83]?.tag).toBe("0083_order_ordering_channel");
     expect(journal.entries[84]?.tag).toBe("0084_commercial_catalog_foundation");
     expect(journal.entries[85]?.tag).toBe("0085_commercial_catalog_adoption_bindings");
-    expect(journal.entries[86]?.tag).toBe(CANONICAL_MIGRATION_TAIL_TAG);
+    expect(journal.entries[86]?.tag).toBe("0086_commercial_live_plans");
+    expect(journal.entries[87]?.tag).toBe(CANONICAL_MIGRATION_TAIL_TAG);
     expect(validateJournalOrdering()).toEqual([]);
   });
 
   it("exports certified migration tail constant", () => {
-    expect(CANONICAL_MIGRATION_TAIL_TAG).toBe("0086_commercial_live_plans");
-    expect(CANONICAL_JOURNAL_ENTRY_COUNT).toBe(87);
+    expect(CANONICAL_MIGRATION_TAIL_TAG).toBe("0087_platform_owner_access_mode");
+    expect(CANONICAL_JOURNAL_ENTRY_COUNT).toBe(88);
     const tags = loadJournal().entries.map((e) => e.tag);
     expect(tags[tags.length - 1]).toBe(CANONICAL_MIGRATION_TAIL_TAG);
   });

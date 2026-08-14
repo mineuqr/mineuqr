@@ -13,6 +13,7 @@ vi.mock("./db", () => ({
   getSubscriptionsByUser: vi.fn(),
   getSubscriptionPlanById: vi.fn(),
   getSubscriptionPlans: vi.fn(),
+  getUserById: vi.fn(async () => ({ id: 9, role: "user", openId: "customer-9" })),
 }));
 
 vi.mock("./services/commercial-catalog", () => ({

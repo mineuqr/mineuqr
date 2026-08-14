@@ -1,6 +1,7 @@
 /**
  * SUBSCRIPTION-RUNTIME-ENTITLEMENT-ENFORCEMENT-1
- * Short-lived entitlement decision cache (optional). Snapshot payload never mutated.
+ * + PLATFORM-OWNER-ACCESS-MODE-IMPLEMENTATION-1
+ * Short-lived entitlement decision cache. Owner mode is part of cache identity.
  */
 
 import type { CommercialEntitlementsResult } from "@commercial/getCommercialEntitlements";
@@ -10,19 +11,33 @@ type CacheEntry = {
   value: CommercialEntitlementsResult;
 };
 
+export type EntitlementCacheScope = {
+  kind: "customer" | "platform_owner";
+  mode?: string;
+  simulatedPlanCode?: string | null;
+};
+
 const DEFAULT_TTL_MS = 5_000;
 const cache = new Map<string, CacheEntry>();
 
-export function entitlementCacheKey(ownerId: number, nowMs: number): string {
-  // Bucket by second so clock skew within TTL still hits.
-  return `${ownerId}:${Math.floor(nowMs / 1000)}`;
+export function entitlementCacheKey(
+  ownerId: number,
+  nowMs: number,
+  scope: EntitlementCacheScope = { kind: "customer" }
+): string {
+  const second = Math.floor(nowMs / 1000);
+  if (scope.kind === "platform_owner") {
+    return `platform_owner:${ownerId}:${scope.mode ?? "unknown"}:${scope.simulatedPlanCode ?? "-"}:${second}`;
+  }
+  return `customer:${ownerId}:${second}`;
 }
 
 export function getCachedEntitlements(
   ownerId: number,
-  now: Date = new Date()
+  now: Date = new Date(),
+  scope: EntitlementCacheScope = { kind: "customer" }
 ): CommercialEntitlementsResult | null {
-  const key = entitlementCacheKey(ownerId, now.getTime());
+  const key = entitlementCacheKey(ownerId, now.getTime(), scope);
   const hit = cache.get(key);
   if (!hit) return null;
   if (Date.now() > hit.expiresAt) {
@@ -36,9 +51,10 @@ export function setCachedEntitlements(
   ownerId: number,
   value: CommercialEntitlementsResult,
   now: Date = new Date(),
-  ttlMs: number = DEFAULT_TTL_MS
+  ttlMs: number = DEFAULT_TTL_MS,
+  scope: EntitlementCacheScope = { kind: "customer" }
 ): void {
-  const key = entitlementCacheKey(ownerId, now.getTime());
+  const key = entitlementCacheKey(ownerId, now.getTime(), scope);
   cache.set(key, { value, expiresAt: Date.now() + ttlMs });
 }
 
@@ -47,7 +63,8 @@ export function invalidateEntitlementCache(ownerId?: number): void {
     cache.clear();
     return;
   }
-  for (const key of cache.keys()) {
-    if (key.startsWith(`${ownerId}:`)) cache.delete(key);
+  const needles = [`customer:${ownerId}:`, `platform_owner:${ownerId}:`];
+  for (const key of Array.from(cache.keys())) {
+    if (needles.some((n) => key.startsWith(n))) cache.delete(key);
   }
 }

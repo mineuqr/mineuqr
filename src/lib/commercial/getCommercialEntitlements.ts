@@ -9,6 +9,16 @@ import type { CommercialEntitlements } from "./types";
 export type CommercialEntitlementsResult = {
   context: CommercialContext;
   entitlements: CommercialEntitlements;
+  meta?: {
+    commercialResolutionSource?: string;
+    commercialPlanId?: string;
+    commercialLifecycleState?: string;
+    commercialLifecycleReason?: string;
+    grandfathered?: boolean;
+    commercialName?: string;
+    catalogPlanCode?: string | null;
+    chargedTerms?: unknown;
+  };
 };
 
 /**

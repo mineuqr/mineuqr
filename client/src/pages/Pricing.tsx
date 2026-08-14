@@ -13,6 +13,10 @@ import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { QrCode } from "lucide-react";
 import { formatRiyadhDate } from "@/lib/datetime";
 import { useCommercialFeatureVisibility } from "@/hooks/useCommercialFeatureVisibility";
+import {
+  OwnerAccessPricingNote,
+  useOwnerAccessSuppressesCheckout,
+} from "@/components/owner-access/OwnerAccessPricingNote";
 import { MINEUQR_PUBLIC_SUPPORT_EMAIL } from "@/const/publicContact";
 import { SemanticConfirmDialog } from "@/design-system/semantic-confirm-dialog";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -256,6 +260,7 @@ export default function Pricing() {
   } = useCommercialFeatureVisibility({
     enabled: isAuthenticated,
   });
+  const ownerSuppressesCheckout = useOwnerAccessSuppressesCheckout();
 
   const [selectedCycle, setSelectedCycle] = useState<"monthly" | "yearly">("yearly");
   const fx = useMemo(() => getFxService(), []);
@@ -410,6 +415,8 @@ export default function Pricing() {
           </div>
         </div>
 
+        <OwnerAccessPricingNote />
+
         {/* Plans Grid */}
         <div className="grid md:grid-cols-3 gap-8 mb-12">
           {offerings && offerings.length > 0 ? offerings.map((offering, planIndex) => {
@@ -511,7 +518,11 @@ export default function Pricing() {
                   </ul>
 
                   {/* CTA Buttons */}
-                  {isCurrentPlan ? (
+                  {ownerSuppressesCheckout ? (
+                    <Button disabled className="w-full bg-slate-700 text-slate-400">
+                      {t("ownerAccess.simulationNoCharge")}
+                    </Button>
+                  ) : isCurrentPlan ? (
                     <Button disabled className="w-full bg-slate-700 text-slate-400">
                       {t('pricing.currentPlan')}
                     </Button>
