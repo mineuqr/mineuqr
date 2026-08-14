@@ -27,6 +27,7 @@ import {
   SemanticSurfaceCardHeader,
   SemanticSurfaceCardTitle,
 } from "@/design-system/semantic-card";
+import { translateIn } from "@/contexts/LanguageContext";
 import { useCatalogI18n } from "../useCatalogI18n";
 import { resolveCatalogLabel } from "../catalogCommercialDisplay";
 import {
@@ -59,7 +60,7 @@ export function CapabilityFilterPicker({
   className,
   compact = false,
 }: CapabilityFilterPickerProps) {
-  const { cc, t } = useCatalogI18n();
+  const { cc, t, language } = useCatalogI18n();
   const [query, setQuery] = useState("");
   const [domainFilter, setDomainFilter] = useState<string>("all");
   const [showRegistryKeys, setShowRegistryKeys] = useState(false);
@@ -74,16 +75,20 @@ export function CapabilityFilterPicker({
         return false;
       }
       if (!q) return true;
-      const name = resolveCatalogLabel(
-        t,
-        presentationNameI18nKey(card.presentationId),
-        card.presentationId
+      const nameAr = translateIn(
+        "ar",
+        presentationNameI18nKey(card.presentationId)
+      ).toLowerCase();
+      const nameEn = translateIn(
+        "en",
+        presentationNameI18nKey(card.presentationId)
       ).toLowerCase();
       const desc = t(
         presentationDescriptionI18nKey(card.presentationId)
       ).toLowerCase();
       return (
-        name.includes(q) ||
+        nameAr.includes(q) ||
+        nameEn.includes(q) ||
         desc.includes(q) ||
         card.presentationId.toLowerCase().includes(q) ||
         card.projectionKeys.some((k) => k.toLowerCase().includes(q))
@@ -265,17 +270,23 @@ export function CapabilityFilterPicker({
                 {group.capabilities.map((card) => {
                   const enabled = isPresentationCardEnabled(card, features);
                   const locked = card.alwaysEnabled;
-                  const name = resolveCatalogLabel(
-                    t,
-                    presentationNameI18nKey(card.presentationId),
-                    card.presentationId
+                  const nameAr = translateIn(
+                    "ar",
+                    presentationNameI18nKey(card.presentationId)
                   );
+                  const nameEn = translateIn(
+                    "en",
+                    presentationNameI18nKey(card.presentationId)
+                  );
+                  const name = language === "ar" ? nameAr : nameEn;
                   const description = resolveCatalogLabel(
                     t,
                     presentationDescriptionI18nKey(card.presentationId),
                     cc("capabilityExperience.defaultDescription")
                   );
                   const details = card.detailProjectionKeys ?? [];
+                  const identity =
+                    card.projectionKeys.join(", ") || card.presentationId;
                   return (
                     <SemanticSurfaceCard
                       key={card.presentationId}
@@ -288,7 +299,10 @@ export function CapabilityFilterPicker({
                       <SemanticSurfaceCardHeader className="space-y-1 p-3 pb-1">
                         <div className="flex items-start justify-between gap-2">
                           <SemanticSurfaceCardTitle className="text-sm">
-                            {name}
+                            <span className="block">{nameAr}</span>
+                            <span className="block text-[11px] font-normal text-muted-foreground">
+                              {nameEn}
+                            </span>
                           </SemanticSurfaceCardTitle>
                           <Checkbox
                             checked={enabled}
@@ -305,6 +319,13 @@ export function CapabilityFilterPicker({
                         <SemanticSurfaceCardDescription className="text-xs">
                           {description}
                         </SemanticSurfaceCardDescription>
+                        {locked ? (
+                          <p className="text-[11px] text-muted-foreground">
+                            {card.projectionKeys.length === 0
+                              ? cc("capabilityExperience.alwaysOnProductNote")
+                              : cc("capabilityExperience.foundationNote")}
+                          </p>
+                        ) : null}
                       </SemanticSurfaceCardHeader>
                       <SemanticSurfaceCardContent className="space-y-2 p-3 pt-0">
                         {details.length > 0 ? (
@@ -347,10 +368,13 @@ export function CapabilityFilterPicker({
                               }
                             />
                           )}
-                          {showRegistryKeys ? (
+                          <span className="font-mono text-[10px] text-muted-foreground">
+                            {identity}
+                          </span>
+                          {showRegistryKeys &&
+                          identity !== card.presentationId ? (
                             <span className="font-mono text-[10px] text-muted-foreground">
-                              {card.projectionKeys.join(", ") ||
-                                card.presentationId}
+                              {card.presentationId}
                             </span>
                           ) : null}
                         </div>

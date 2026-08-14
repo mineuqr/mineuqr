@@ -28,6 +28,8 @@ import {
   nowIso,
   type CommercialCatalogStore,
 } from "./CatalogStore";
+import { COMMERCIAL_PROJECTION_IDS } from "@shared/commercial-projection";
+import { applyCommercialPresentationRules } from "@shared/commercial-catalog-presentation";
 import {
   auditCommercialCreated,
   auditCommercialUpdated,
@@ -123,14 +125,17 @@ export class PlanService {
         amount: string;
         regionId?: string | null;
       }>;
+      capabilities?: Array<{ featureKey: string; included?: boolean }>;
     }
   ): Promise<CommercialLivePlan> {
     const existing = this.store.plans.get(id);
     if (!existing) throw new CommercialCatalogError(`Plan ${id} not found`, "not_found");
     const before = { ...existing };
-    const previousPrices = [...this.store.prices.entries()].filter(
+    const previousPrices = Array.from(this.store.prices.entries()).filter(
       ([, p]) => p.planId === id
     );
+    const previousBundles = Array.from(this.store.featureBundles.entries());
+    const previousFeatures = Array.from(this.store.bundleFeatures.entries());
     const restore = () => {
       this.store.plans.set(id, before);
       for (const [priceId, price] of [...this.store.prices.entries()]) {
@@ -139,8 +144,16 @@ export class PlanService {
       for (const [priceId, price] of previousPrices) {
         this.store.prices.set(priceId, price);
       }
+      this.store.featureBundles.clear();
+      for (const [bundleId, bundle] of previousBundles) {
+        this.store.featureBundles.set(bundleId, bundle);
+      }
+      this.store.bundleFeatures.clear();
+      for (const [featureId, feature] of previousFeatures) {
+        this.store.bundleFeatures.set(featureId, feature);
+      }
     };
-    const updated: CommercialLivePlan = {
+    let updated: CommercialLivePlan = {
       ...existing,
       ...patch,
       code: existing.code,
@@ -152,6 +165,31 @@ export class PlanService {
     try {
       if (options?.prices) {
         new PricingService(this.store).replacePlanPrices(id, options.prices, actor);
+      }
+      if (options?.capabilities) {
+        const map: Record<string, boolean> = {};
+        for (const row of options.capabilities) {
+          map[row.featureKey] = row.included !== false;
+        }
+        const next = applyCommercialPresentationRules(map);
+        const included = COMMERCIAL_PROJECTION_IDS.filter((key) => Boolean(next[key]));
+        const bundles = new FeatureBundleService(this.store);
+        let bundleId = updated.featureBundleId;
+        if (!bundleId) {
+          const created = bundles.create(
+            {
+              code: `${updated.code}-features`,
+              name: `${updated.name} Features`,
+              features: included.map((featureKey) => ({ featureKey, included: true })),
+            },
+            actor
+          );
+          bundleId = created.id;
+          updated = { ...updated, featureBundleId: bundleId };
+          this.store.plans.set(id, updated);
+        } else {
+          bundles.replaceIncludedFeatures(bundleId, included);
+        }
       }
     } catch (e) {
       restore();
@@ -415,6 +453,33 @@ export class FeatureBundleService {
     }
     auditCommercialCreated(actor, "feature_bundle", bundle.id, { ...bundle });
     return bundle;
+  }
+
+  /** Replace included Projection keys on a live-plan bundle. Atomic with saveLive. */
+  replaceIncludedFeatures(bundleId: string, featureKeys: string[]): void {
+    if (!this.store.featureBundles.get(bundleId)) {
+      throw new CommercialCatalogError(`Bundle ${bundleId} not found`, "not_found");
+    }
+    const check = assertCommercialCapabilityFilterKeys(featureKeys);
+    if (!check.ok) {
+      throw new CommercialCatalogError(
+        `Unknown commercial capability filter key(s): ${check.invalid.join(", ")} — Plans are Capability Filters over Commercial Projection only`,
+        "invalid_capability_filter"
+      );
+    }
+    for (const [rowId, row] of Array.from(this.store.bundleFeatures.entries())) {
+      if (row.bundleId === bundleId) this.store.bundleFeatures.delete(rowId);
+    }
+    const unique = Array.from(new Set(check.normalized));
+    for (const featureKey of unique) {
+      const row = {
+        id: newCommercialId(),
+        bundleId,
+        featureKey,
+        included: true,
+      };
+      this.store.bundleFeatures.set(row.id, row);
+    }
   }
 }
 

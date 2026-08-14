@@ -1,0 +1,230 @@
+{
+  "queriedAt": "2026-08-14T22:32:43.259Z",
+  "readOnly": true,
+  "terminus": [
+    {
+      "id": 6024102,
+      "hashPrefix": "cfaec30e54892eaf",
+      "created_at": 1784720000000
+    }
+  ],
+  "obsolete": {
+    "commercial_plan_versions": false,
+    "commercial_snapshot_definitions": false,
+    "commercial_publication_rules": false,
+    "commercial_retirement_policies": false
+  },
+  "plans": [
+    {
+      "id": "79cf7bf7-c3b6-45de-8f20-42897cd493ac",
+      "code": "basic",
+      "name": "Basic",
+      "featureBundleId": "f5707a05-3a5a-4b35-a3db-4234ba856739",
+      "limitProfileId": "63a49057-06d3-4dba-8e36-7bd15a632693",
+      "trialPolicyId": "3b509906-6d0f-45f8-a05c-2a6c260b0319"
+    },
+    {
+      "id": "d836bd10-9d9f-4408-a076-f921354d785a",
+      "code": "enterprise",
+      "name": "Enterprise",
+      "featureBundleId": "4e091048-879a-4aec-823a-4f16590bc867",
+      "limitProfileId": "8e4e791b-2391-4044-9baf-64354e4a2184",
+      "trialPolicyId": null
+    },
+    {
+      "id": "0ade795a-02fa-4d3e-b9b5-262515bade09",
+      "code": "professional",
+      "name": "Professional",
+      "featureBundleId": "9f459189-7091-4928-84b3-65f60c6591dc",
+      "limitProfileId": "c0e3f640-bede-4a67-93a5-91f6a8d69750",
+      "trialPolicyId": "3b509906-6d0f-45f8-a05c-2a6c260b0319"
+    }
+  ],
+  "includedCounts": {
+    "basic": 7,
+    "enterprise": 15,
+    "professional": 13
+  },
+  "includedByPlan": {
+    "basic": [
+      "checkManagement",
+      "multiCheckAllocation",
+      "ordering",
+      "printing",
+      "realtime",
+      "refund",
+      "splitPayment"
+    ],
+    "enterprise": [
+      "checkManagement",
+      "counterPickup",
+      "devices",
+      "expo",
+      "kiosk",
+      "kitchen",
+      "multiCheckAllocation",
+      "ordering",
+      "printing",
+      "realtime",
+      "refund",
+      "register",
+      "reporting",
+      "splitPayment",
+      "waiter"
+    ],
+    "professional": [
+      "checkManagement",
+      "counterPickup",
+      "devices",
+      "kiosk",
+      "kitchen",
+      "multiCheckAllocation",
+      "ordering",
+      "printing",
+      "realtime",
+      "refund",
+      "reporting",
+      "splitPayment",
+      "waiter"
+    ]
+  },
+  "prices": [
+    {
+      "planCode": "basic",
+      "currency": "USD",
+      "cycle": "monthly",
+      "amount": "19.00",
+      "region": null
+    },
+    {
+      "planCode": "basic",
+      "currency": "USD",
+      "cycle": "yearly",
+      "amount": "199.00",
+      "region": null
+    },
+    {
+      "planCode": "enterprise",
+      "currency": "SAR",
+      "cycle": "monthly",
+      "amount": "299.00",
+      "region": "sa"
+    },
+    {
+      "planCode": "enterprise",
+      "currency": "SAR",
+      "cycle": "yearly",
+      "amount": "2990.00",
+      "region": "sa"
+    },
+    {
+      "planCode": "enterprise",
+      "currency": "USD",
+      "cycle": "monthly",
+      "amount": "79.73",
+      "region": null
+    },
+    {
+      "planCode": "enterprise",
+      "currency": "USD",
+      "cycle": "yearly",
+      "amount": "797.33",
+      "region": null
+    },
+    {
+      "planCode": "professional",
+      "currency": "SAR",
+      "cycle": "monthly",
+      "amount": "99.00",
+      "region": "sa"
+    },
+    {
+      "planCode": "professional",
+      "currency": "SAR",
+      "cycle": "yearly",
+      "amount": "990.00",
+      "region": "sa"
+    },
+    {
+      "planCode": "professional",
+      "currency": "USD",
+      "cycle": "monthly",
+      "amount": "26.40",
+      "region": null
+    },
+    {
+      "planCode": "professional",
+      "currency": "USD",
+      "cycle": "yearly",
+      "amount": "264.00",
+      "region": null
+    }
+  ],
+  "limits": [
+    {
+      "planCode": "basic",
+      "limitKey": "categories",
+      "value": 10
+    },
+    {
+      "planCode": "basic",
+      "limitKey": "items",
+      "value": 100
+    },
+    {
+      "planCode": "basic",
+      "limitKey": "restaurants",
+      "value": 1
+    },
+    {
+      "planCode": "enterprise",
+      "limitKey": "categories",
+      "value": null
+    },
+    {
+      "planCode": "enterprise",
+      "limitKey": "items",
+      "value": null
+    },
+    {
+      "planCode": "enterprise",
+      "limitKey": "restaurants",
+      "value": null
+    },
+    {
+      "planCode": "professional",
+      "limitKey": "categories",
+      "value": 25
+    },
+    {
+      "planCode": "professional",
+      "limitKey": "items",
+      "value": 500
+    },
+    {
+      "planCode": "professional",
+      "limitKey": "restaurants",
+      "value": 5
+    }
+  ],
+  "checkout": [
+    {
+      "id": 30001,
+      "nameEn": "Basic Plan",
+      "priceMonthly": "19.00",
+      "priceYearly": "175.00"
+    },
+    {
+      "id": 30002,
+      "nameEn": "Professional Plan",
+      "priceMonthly": "39.00",
+      "priceYearly": "349.00"
+    },
+    {
+      "id": 30003,
+      "nameEn": "Enterprise Plan",
+      "priceMonthly": "99.00",
+      "priceYearly": "899.00"
+    }
+  ]
+}

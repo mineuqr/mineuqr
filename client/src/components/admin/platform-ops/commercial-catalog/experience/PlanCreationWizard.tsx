@@ -1,9 +1,9 @@
 /**
- * COMMERCIAL-LIVE-PLANS-SIMPLIFICATION-1 — live plan editor.
- * Edit → Validate → Atomic Save.
+ * COMMERCIAL-LIVE-PLANS-CAPABILITY-EDITOR-REPAIR-1 — live plan editor.
+ * Edit → Validate → Atomic Save, including individual capability composition.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { CapabilityFilterPicker } from "./CapabilityFilterPicker";
+import { normalizePlanFeatures } from "./capabilityExperienceModel";
+
+function featuresFromBundle(
+  bundle:
+    | {
+        features?: Array<{ featureKey: string; included?: boolean }>;
+      }
+    | undefined
+): Record<string, boolean> {
+  const next: Record<string, boolean> = {};
+  for (const row of bundle?.features ?? []) {
+    next[row.featureKey] = Boolean(row.included);
+  }
+  return normalizePlanFeatures(next);
+}
 
 export function PlanCreationWizard(props: {
   data: CatalogManagementData;
@@ -39,9 +55,13 @@ export function PlanCreationWizard(props: {
   const selected = plans.find((p) => p.id === planId) ?? plans[0];
   const [name, setName] = useState(selected?.name ?? "");
   const [description, setDescription] = useState(selected?.description ?? "");
-  const [bundleId, setBundleId] = useState(selected?.featureBundleId ?? "");
   const [limitId, setLimitId] = useState(selected?.limitProfileId ?? "");
   const [trialId, setTrialId] = useState(selected?.trialPolicyId ?? "");
+  const [capabilities, setCapabilities] = useState<Record<string, boolean>>({});
+
+  const selectedBundle = (props.data.bundlesQuery.data ?? []).find(
+    (b) => b.id === selected?.featureBundleId
+  );
 
   const validation = trpc.commercialCatalog.validatePlanSave.useQuery(
     { planId: selected?.id ?? "" },
@@ -76,12 +96,28 @@ export function PlanCreationWizard(props: {
     if (!selected) return;
     setName(selected.name);
     setDescription(selected.description ?? "");
-    setBundleId(selected.featureBundleId ?? "");
     setLimitId(selected.limitProfileId ?? "");
     setTrialId(selected.trialPolicyId ?? "");
     setMonthlyAmountUsd(currentMonthly?.amount ?? "");
     setYearlyAmountUsd(currentYearly?.amount ?? "");
-  }, [selected?.id, currentMonthly?.amount, currentYearly?.amount]);
+    setCapabilities(featuresFromBundle(selectedBundle));
+  }, [
+    selected?.id,
+    selectedBundle?.id,
+    currentMonthly?.amount,
+    currentYearly?.amount,
+  ]);
+
+  const capabilityPayload = useMemo(
+    () =>
+      Object.entries(normalizePlanFeatures(capabilities)).map(
+        ([featureKey, included]) => ({
+          featureKey,
+          included: Boolean(included),
+        })
+      ),
+    [capabilities]
+  );
 
   async function save() {
     if (!selected) return;
@@ -120,10 +156,11 @@ export function PlanCreationWizard(props: {
       id: selected.id,
       name,
       description: description || null,
-      featureBundleId: bundleId || null,
+      featureBundleId: selected.featureBundleId ?? null,
       limitProfileId: limitId || null,
       trialPolicyId: trialId || null,
       prices: prices.length ? prices : undefined,
+      capabilities: capabilityPayload,
     });
   }
 
@@ -132,7 +169,7 @@ export function PlanCreationWizard(props: {
       title={cc("experience.wizard.title")}
       description={cc("experience.livePlans.editHint")}
     >
-      <div className="space-y-4 max-w-xl">
+      <div className="space-y-4 max-w-4xl">
         <CatalogField label={cc("fields.plan")}>
           <Select
             value={selected?.id ?? ""}
@@ -161,19 +198,14 @@ export function PlanCreationWizard(props: {
             onChange={(e) => setDescription(e.target.value)}
           />
         </CatalogField>
-        <CatalogField label={cc("fields.featureBundle")}>
-          <Select value={bundleId} onValueChange={setBundleId}>
-            <SelectTrigger>
-              <SelectValue placeholder={cc("placeholders.selectBundle")} />
-            </SelectTrigger>
-            <SelectContent>
-              {(props.data.bundlesQuery.data ?? []).map((b) => (
-                <SelectItem key={b.id} value={b.id}>
-                  {b.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <CatalogField label={cc("fields.features")}>
+          <p className="text-sm text-muted-foreground mb-2">
+            {cc("experience.livePlans.capabilitiesHint")}
+          </p>
+          <CapabilityFilterPicker
+            value={capabilities}
+            onChange={setCapabilities}
+          />
         </CatalogField>
         <CatalogField label={cc("fields.limitProfile")}>
           <Select value={limitId} onValueChange={setLimitId}>
@@ -231,7 +263,7 @@ export function PlanCreationWizard(props: {
             detail={validation.data.issues.map((i) => i.message).join("; ")}
           />
         ) : null}
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             type="button"
             onClick={() => void save()}

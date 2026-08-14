@@ -194,6 +194,14 @@ export const commercialCatalogRouter = router({
             })
           )
           .optional(),
+        capabilities: z
+          .array(
+            z.object({
+              featureKey: z.string().min(1).max(128),
+              included: z.boolean().optional(),
+            })
+          )
+          .optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -218,6 +226,7 @@ export const commercialCatalogRouter = router({
           {
             requiresRegionalPricing: input.requiresRegionalPricing,
             prices: input.prices,
+            capabilities: input.capabilities,
           }
         );
       } catch (e) {

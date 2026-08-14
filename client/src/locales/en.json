@@ -1728,6 +1728,7 @@
         "experience": {
           "livePlans": {
             "editHint": "Edit the live plan definition. New capabilities apply immediately to all subscribers. Renewal uses the current published price.",
+            "capabilitiesHint": "Enable or disable individual commercial capabilities for this live plan. Saving updates the live plan immediately — there is no publish step.",
             "noVersionCompare": "Live plans are not versioned. Edit each plan independently.",
             "editIndividually": "Edit each live plan individually. Version lifecycle bulk actions are removed.",
             "noVersionClone": "Live plans are not cloned as versions. Reuse feature bundles and limit profiles.",
@@ -1985,6 +1986,7 @@
           "foundationNote": "Printing and Realtime are always included as platform foundations and are not sold as separate differentiators. Devices enable automatically with operational screens.",
           "foundationBadge": "Foundation",
           "alwaysIncluded": "Always included",
+          "alwaysOnProductNote": "Included in every Live Plan as core product value. Visible here so it is not hidden; it is not a separately stored Projection key.",
           "lifecycle": {
             "label": "Publication lifecycle",
             "legend": "Lifecycle: Draft → Approved → Published → Retired → Archived",

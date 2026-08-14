@@ -101,6 +101,8 @@ describe("COMMERCIAL-CATALOG-ADMIN-EXPERIENCE-1", () => {
     );
     expect(wizard).toContain("validatePlanSave");
     expect(wizard).toContain("saveLivePlan");
+    expect(wizard).toContain("CapabilityFilterPicker");
+    expect(wizard).toContain("capabilities: capabilityPayload");
     expect(wizard).not.toContain("validatePublication");
     expect(wizard).not.toContain("useCatalogPublishingMutations");
     expect(wizard).not.toContain("publishVersion");

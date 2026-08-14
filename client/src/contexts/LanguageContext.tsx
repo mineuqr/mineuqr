@@ -22,6 +22,10 @@ const translations = {
  * Helper function to get nested translation values using dot notation
  * e.g., "common.save" -> translations[language]["common"]["save"]
  */
+export function translateIn(lang: Language, key: string): string {
+  return getNestedTranslation(translations[lang], key);
+}
+
 function getNestedTranslation(obj: any, path: string): string {
   const keys = path.split(".");
   let current = obj;

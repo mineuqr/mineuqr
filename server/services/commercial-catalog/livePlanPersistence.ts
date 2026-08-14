@@ -168,7 +168,13 @@ export class InMemoryDurableCatalogBackend implements DurableLivePlanBackend {
       prices: [...keepPrices, ...sub.prices],
       billingCycles: mergeById(this.data.billingCycles, sub.billingCycles),
       featureBundles: mergeById(this.data.featureBundles, sub.featureBundles),
-      bundleFeatures: mergeById(this.data.bundleFeatures, sub.bundleFeatures),
+      bundleFeatures: [
+        ...this.data.bundleFeatures.filter((f) => {
+          const bundleIds = new Set(sub.featureBundles.map((b) => b.id));
+          return !bundleIds.has(f.bundleId);
+        }),
+        ...sub.bundleFeatures,
+      ],
       limitProfiles: mergeById(this.data.limitProfiles, sub.limitProfiles),
       limitValues: mergeById(this.data.limitValues, sub.limitValues),
       trialPolicies: mergeById(this.data.trialPolicies, sub.trialPolicies),
@@ -497,6 +503,43 @@ class DbDurableLivePlanBackend implements DurableLivePlanBackend {
           createdAt: p.createdAt,
           updatedAt: p.updatedAt,
         });
+      }
+
+      if (plan.featureBundleId) {
+        const bundle = store.featureBundles.get(plan.featureBundleId);
+        if (bundle) {
+          await tx
+            .insert(commercialFeatureBundles)
+            .values({
+              id: bundle.id,
+              code: bundle.code,
+              name: bundle.name,
+              description: bundle.description,
+              createdAt: bundle.createdAt,
+              updatedAt: bundle.updatedAt,
+            })
+            .onDuplicateKeyUpdate({
+              set: {
+                name: bundle.name,
+                description: bundle.description,
+                updatedAt: bundle.updatedAt,
+              },
+            });
+        }
+        await tx
+          .delete(commercialBundleFeatures)
+          .where(eq(commercialBundleFeatures.bundleId, plan.featureBundleId));
+        const features = Array.from(store.bundleFeatures.values()).filter(
+          (f) => f.bundleId === plan.featureBundleId
+        );
+        for (const f of features) {
+          await tx.insert(commercialBundleFeatures).values({
+            id: f.id,
+            bundleId: f.bundleId,
+            featureKey: f.featureKey,
+            included: f.included,
+          });
+        }
       }
     });
   }
