@@ -9,6 +9,10 @@ import { OPS_EVENT } from "./opsTaxonomy";
 import { trackTrpcProcedurePressure } from "./healthSignals";
 import type { OperationalDeviceSession } from "../operational-device/domain/deviceContracts";
 import { resolveDeviceSessionFromRequest } from "../operational-device/middleware/resolveDeviceSession";
+import {
+  assertCommercialAccountActive,
+  isFrozenBlockedCommercialMutation,
+} from "../commercial/assertCommercialAccountActive";
 
 const t = initTRPC.context<TrpcContext>().create({
   transformer: superjson,
@@ -121,8 +125,21 @@ const requireVerifiedEmail = t.middleware(async opts => {
   });
 });
 
-/** Session + verified email (when AUTH_REQUIRE_VERIFIED_EMAIL=1). Not wired to routers until Slice 2. */
-export const verifiedProcedure = protectedProcedure.use(requireVerifiedEmail);
+const enforceFrozenCommercialMutations = t.middleware(async (opts) => {
+  if (
+    opts.type === "mutation" &&
+    opts.ctx.user &&
+    isFrozenBlockedCommercialMutation(opts.path)
+  ) {
+    await assertCommercialAccountActive(opts.ctx.user.id);
+  }
+  return opts.next();
+});
+
+/** Session + verified email. Commercial management mutations also require non-FROZEN account state. */
+export const verifiedProcedure = protectedProcedure
+  .use(requireVerifiedEmail)
+  .use(enforceFrozenCommercialMutations);
 
 export const adminProcedure = baseProcedure.use(
   t.middleware(async opts => {

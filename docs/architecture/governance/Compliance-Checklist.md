@@ -31,6 +31,10 @@ Use per implementation program before exit certification.
 - [ ] Integration tests for critical paths
 - [ ] No cross-context router writes
 
+## Commercial entitlement (when the program touches commercial capabilities)
+
+Complete [Commercial Entitlement Enforcement Checklist](../../engineering/governance/COMMERCIAL-ENTITLEMENT-ENFORCEMENT-CHECKLIST.md). Architecture Authority MUST reject missing server enforcement, UI-only gates, plan-name authorization, or missing negative tests (CE-29).
+
 ## Governance
 
 - [ ] Exit review scheduled

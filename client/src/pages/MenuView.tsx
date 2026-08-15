@@ -13,6 +13,7 @@ import {
 import { useDiningSessionRecovery } from "@/hooks/useDiningSessionRecovery";
 import { usePostSubmissionGuard } from "@/hooks/usePostSubmissionGuard";
 import { PostSubmissionLockedScreen } from "@/components/customer/PostSubmissionLockedScreen";
+import { FrozenPublicMenuExperience } from "@/components/commercial";
 import {
   QrBrowseOnlyHost,
   useOrderingBrowse,
@@ -155,6 +156,15 @@ function QrMenuChannelShell() {
       <div className="min-h-screen bg-[#0a1628] flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-[#14b8a6]" />
       </div>
+    );
+  }
+
+  if (browse.gates.commercialFrozen) {
+    return (
+      <FrozenPublicMenuExperience
+        language={language}
+        restaurantName={restaurant?.nameAr}
+      />
     );
   }
 

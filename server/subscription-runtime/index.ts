@@ -56,6 +56,16 @@ export {
 } from "./subscriptionRuntimeService";
 
 export {
+  deriveCommercialAccountState,
+  isFrozenCommercialAccountState,
+  COMMERCIAL_ACCOUNT_STATES,
+} from "./commercialAccountState";
+export type {
+  CommercialAccountState,
+  CommercialAccountStateDecision,
+} from "./commercialAccountState";
+
+export {
   checkEntitlement,
   hasFeature,
   requireFeature,

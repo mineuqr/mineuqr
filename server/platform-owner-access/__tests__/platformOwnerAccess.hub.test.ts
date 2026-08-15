@@ -117,6 +117,8 @@ describe("resolveOwnerEntitlements platform owner precedence", () => {
       "platform_owner_full_platform"
     );
     expect(result.entitlements.plan).toBe("ADMIN");
+    expect(result.meta?.commercialAccountState).toBe("ACTIVE");
+    expect(result.meta?.commercialAccountStateReason).toBe("platform_owner_exempt");
     expect(getSubscriptionsByUser).not.toHaveBeenCalled();
   });
 
@@ -157,6 +159,8 @@ describe("resolveOwnerEntitlements platform owner precedence", () => {
     const basic = await resolveOwnerEntitlements(1, { now: NOW, bypassCache: true });
     expect(basic.entitlements.plan).toBe("BASIC");
     expect(basic.entitlements.features.ordering).toBe(false);
+    expect(basic.meta?.commercialAccountState).toBe("ACTIVE");
+    expect(basic.meta?.commercialAccountStateReason).toBe("platform_owner_exempt");
   });
 
   it("does not change customer Professional resolution", async () => {

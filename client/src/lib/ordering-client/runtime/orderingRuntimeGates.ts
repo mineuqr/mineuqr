@@ -11,6 +11,7 @@ export type OrderingClientRuntimeGates = {
   orderingAllowed: boolean;
   platformCanPlaceOrder: boolean;
   canBrowse: boolean;
+  commercialFrozen: boolean;
   notes: OrderingNotesCapabilities;
 };
 
@@ -30,6 +31,7 @@ export function deriveOrderingRuntimeGates(
       orderingAllowed: false,
       platformCanPlaceOrder: false,
       canBrowse: false,
+      commercialFrozen: false,
       notes: DISABLED_NOTES,
     };
   }
@@ -40,6 +42,7 @@ export function deriveOrderingRuntimeGates(
       runtime.business.hours.isOpenNow && !runtime.business.closureActive,
     platformCanPlaceOrder: runtime.availability.canPlaceOrder,
     canBrowse: runtime.availability.canBrowse,
+    commercialFrozen: runtime.featureFlags.commercial_frozen === true,
     notes: runtime.capabilities.notes,
   };
 }

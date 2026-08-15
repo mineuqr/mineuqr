@@ -28,6 +28,15 @@ Every constitution MUST appear here. Deletion prohibited — use Deprecated / Ar
 
 ---
 
+## Commercial Entitlement Constitution
+
+| Unique Name | Ver | Status | Domain | Owner | Dependencies | Related ADRs / Programs | Path |
+|-------------|-----|--------|--------|-------|--------------|-------------------------|------|
+| Commercial Entitlement Enforcement Constitution | 1.0.0 | **Pending Review** | Commercial Entitlement | Architecture Authority / TDA | Architecture Constitution | COMMERCIAL-ENTITLEMENT-ENFORCEMENT-GOVERNANCE-1 · FORENSICS-1 · REPAIR-1 | [Commercial-Entitlement-Enforcement-Constitution-v1.0.md](./Commercial-Entitlement-Enforcement-Constitution-v1.0.md) |
+| Commercial Entitlement Invariants | 1.0.0 | **Pending Review** | Commercial Entitlement | Architecture Authority | Commercial Entitlement Enforcement Constitution | I-CE-01…18 | [Commercial-Entitlement-Invariants.md](./Commercial-Entitlement-Invariants.md) |
+
+---
+
 ## Reporting Governance Constitutions
 
 | Unique Name | Ver | Status | Domain | Owner | Dependencies | Related ADRs / Programs | Path |

@@ -13,6 +13,8 @@ import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { QrCode } from "lucide-react";
 import { formatRiyadhDate } from "@/lib/datetime";
 import { useCommercialFeatureVisibility } from "@/hooks/useCommercialFeatureVisibility";
+import { FrozenAccountBanner } from "@/components/commercial";
+import { isFrozenCommercialAccount } from "@/lib/commercial/commercialAccountState";
 import {
   OwnerAccessPricingNote,
   useOwnerAccessSuppressesCheckout,
@@ -253,6 +255,7 @@ export default function Pricing() {
   const {
     context,
     entitlements,
+    meta,
     isReady: entitlementsReady,
     isTrialActive,
     isTrialExpired,
@@ -260,6 +263,7 @@ export default function Pricing() {
   } = useCommercialFeatureVisibility({
     enabled: isAuthenticated,
   });
+  const isFrozenAccount = entitlementsReady && isFrozenCommercialAccount(meta);
   const ownerSuppressesCheckout = useOwnerAccessSuppressesCheckout();
 
   const [selectedCycle, setSelectedCycle] = useState<"monthly" | "yearly">("yearly");
@@ -337,8 +341,9 @@ export default function Pricing() {
             <LanguageSwitcher />
             <Button
               onClick={() => {
-                if (isAuthenticated) setLocation("/dashboard");
-                else setLocation(getLoginUrl());
+                if (isAuthenticated) {
+                  setLocation(isFrozenAccount ? "/pricing" : "/dashboard");
+                } else setLocation(getLoginUrl());
               }}
               className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
             >
@@ -356,6 +361,12 @@ export default function Pricing() {
           <p className="text-xl text-cyan-300 mb-4">
             {t("pricing.subtitle")}
           </p>
+          {isFrozenAccount ? (
+            <div className="mx-auto mb-8 max-w-2xl text-start">
+              <FrozenAccountBanner language={language === "ar" ? "ar" : "en"} />
+            </div>
+          ) : null}
+
           <p className="text-sm text-cyan-200/80 mb-8">
             {t("pricing.dualCurrencyNote")}
             {visitor?.countryCode

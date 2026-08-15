@@ -18,6 +18,8 @@ export type CommercialEntitlementsResult = {
     commercialName?: string;
     catalogPlanCode?: string | null;
     chargedTerms?: unknown;
+    commercialAccountState?: "ACTIVE" | "FROZEN" | "NONE";
+    commercialAccountStateReason?: string;
   };
 };
 

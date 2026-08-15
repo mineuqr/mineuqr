@@ -8,6 +8,8 @@ import {
 } from "@shared/utils/restaurantHours";
 import { todayYmd } from "@shared/utils/timezone";
 import { resolveGuestOrderingAllowed } from "../commercial/guestOrderingAuthority";
+import { resolveOwnerEntitlements } from "../subscription-runtime";
+import { isFrozenCommercialAccountState } from "../subscription-runtime/commercialAccountState";
 import {
   getActiveOffersByRestaurant,
   getCategoriesByRestaurant,
@@ -54,13 +56,19 @@ export async function loadQrOrderingRuntimeSources(params: {
   }
 
   const restaurantId = restaurant.id;
-  const [categories, products, offers, holidays, guest] = await Promise.all([
-    getCategoriesByRestaurant(restaurantId),
-    getMenuItemsByRestaurant(restaurantId),
-    getActiveOffersByRestaurant(restaurantId),
-    getHolidaysByRestaurant(restaurantId),
-    resolveGuestOrderingAllowed(restaurantId, now),
-  ]);
+  const [categories, products, offers, holidays, guest, ownerEntitlements] =
+    await Promise.all([
+      getCategoriesByRestaurant(restaurantId),
+      getMenuItemsByRestaurant(restaurantId),
+      getActiveOffersByRestaurant(restaurantId),
+      getHolidaysByRestaurant(restaurantId),
+      resolveGuestOrderingAllowed(restaurantId, now),
+      resolveOwnerEntitlements(restaurant.userId, { now }),
+    ]);
+  const commerciallyFrozen = isFrozenCommercialAccountState(
+    (ownerEntitlements.meta as { commercialAccountState?: string } | undefined)
+      ?.commercialAccountState
+  );
 
   const today = todayYmd(now);
   const upcomingHolidays = holidays.filter((h) => h.date >= today);
@@ -81,8 +89,8 @@ export async function loadQrOrderingRuntimeSources(params: {
     : todayYmd(now);
 
   const currency = (restaurant.currencyCode || "SAR").trim() || "SAR";
-  const isActive = restaurant.isActive !== false;
-  const guestOrderingEnabled = guest.canOrder === true;
+  const isActive = restaurant.isActive !== false && !commerciallyFrozen;
+  const guestOrderingEnabled = guest.canOrder === true && !commerciallyFrozen;
 
   const request: OrderingRuntimeMaterializationRequest = {
     channel: ORDERING_CHANNEL_QR,
@@ -108,7 +116,7 @@ export async function loadQrOrderingRuntimeSources(params: {
     availability: {
       canBrowse: isActive,
       canPlaceOrder: guestOrderingEnabled,
-      reasons: [],
+      reasons: commerciallyFrozen ? ["commercial_account_frozen"] : [],
     },
     locale: {
       language: "ar",
@@ -117,11 +125,11 @@ export async function loadQrOrderingRuntimeSources(params: {
     },
     menu: {
       projectionVersion: `qr-${restaurant.id}-${restaurant.updatedAt}`,
-      categories,
-      products,
+      categories: commerciallyFrozen ? [] : categories,
+      products: commerciallyFrozen ? [] : products,
       modifiers: [],
-      offers,
-      availability: upcomingHolidays,
+      offers: commerciallyFrozen ? [] : offers,
+      availability: commerciallyFrozen ? [] : upcomingHolidays,
     },
     policies: {
       cartConstraints: {},
@@ -144,6 +152,7 @@ export async function loadQrOrderingRuntimeSources(params: {
     },
     featureFlags: {
       guest_ordering: guestOrderingEnabled,
+      commercial_frozen: commerciallyFrozen,
     },
     now,
   };

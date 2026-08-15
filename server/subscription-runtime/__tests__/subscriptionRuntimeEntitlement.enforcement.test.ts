@@ -450,5 +450,158 @@ describe("subscription runtime service integration", () => {
         ?.commercialLifecycleState
     ).toBe("grace");
     expect(grace.entitlements.features.ordering).toBe(true);
+    expect(grace.meta?.commercialAccountState).toBe("ACTIVE");
+  });
+
+  it("stamps ACTIVE for a current paid subscription", async () => {
+    vi.mocked(getSubscriptionsByUser).mockResolvedValue([
+      commercialTestSubRow({
+        id: 10,
+        userId: 7,
+        restaurantId: 0,
+        status: "active",
+        currentPeriodEnd: "2026-08-01T00:00:00.000Z",
+      }),
+    ] as never);
+    vi.mocked(getSubscriptionCommercialBinding).mockResolvedValue({
+      subscriptionId: 10,
+      planId: "plan-pro",
+      chargedAmount: "26.40",
+      chargedCurrency: "USD",
+      billingCycleId: "bc",
+      billingCycleCode: "monthly",
+      legacyPlanId: 2,
+      createdAt: NOW.toISOString(),
+    });
+    vi.mocked(resolveLivePlanCapabilities).mockResolvedValue(livePlanFacts());
+
+    const result = await resolveOwnerEntitlements(7, {
+      now: NOW,
+      bypassCache: true,
+    });
+    expect(result.meta?.commercialAccountState).toBe("ACTIVE");
+    expect(result.entitlements.features.ordering).toBe(true);
+  });
+
+  it("stamps FROZEN when the paid period has ended", async () => {
+    vi.mocked(getSubscriptionsByUser).mockResolvedValue([
+      commercialTestSubRow({
+        id: 13,
+        userId: 7,
+        restaurantId: 0,
+        status: "active",
+        currentPeriodEnd: "2026-07-01T00:00:00.000Z",
+      }),
+    ] as never);
+    vi.mocked(getSubscriptionCommercialBinding).mockResolvedValue({
+      subscriptionId: 13,
+      planId: "plan-pro",
+      chargedAmount: "26.40",
+      chargedCurrency: "USD",
+      billingCycleId: "bc",
+      billingCycleCode: "monthly",
+      legacyPlanId: 2,
+      createdAt: NOW.toISOString(),
+    });
+    vi.mocked(resolveLivePlanCapabilities).mockResolvedValue(livePlanFacts());
+
+    const result = await resolveOwnerEntitlements(7, {
+      now: NOW,
+      bypassCache: true,
+    });
+    expect(result.meta?.commercialAccountState).toBe("FROZEN");
+    expect(result.meta?.commercialAccountStateReason).toBe("commercial_access_expired");
+    expect(result.entitlements.features.ordering).toBe(false);
+  });
+
+  it("stamps ACTIVE for a current trial and FROZEN after trial end", async () => {
+    vi.mocked(getSubscriptionCommercialBinding).mockResolvedValue({
+      subscriptionId: 14,
+      planId: "plan-pro",
+      chargedAmount: null,
+      chargedCurrency: null,
+      billingCycleId: "bc",
+      billingCycleCode: "monthly",
+      legacyPlanId: 2,
+      createdAt: NOW.toISOString(),
+    });
+    vi.mocked(resolveLivePlanCapabilities).mockResolvedValue(livePlanFacts());
+
+    vi.mocked(getSubscriptionsByUser).mockResolvedValue([
+      commercialTestSubRow({
+        id: 14,
+        userId: 7,
+        restaurantId: 0,
+        status: "trial",
+        trialEndsAt: "2026-08-01T00:00:00.000Z",
+        currentPeriodEnd: "2026-08-01T00:00:00.000Z",
+      }),
+    ] as never);
+    const activeTrial = await resolveOwnerEntitlements(7, {
+      now: NOW,
+      bypassCache: true,
+    });
+    expect(activeTrial.meta?.commercialAccountState).toBe("ACTIVE");
+
+    vi.mocked(getSubscriptionsByUser).mockResolvedValue([
+      commercialTestSubRow({
+        id: 14,
+        userId: 7,
+        restaurantId: 0,
+        status: "trial",
+        trialEndsAt: "2026-07-01T00:00:00.000Z",
+        currentPeriodEnd: "2026-07-01T00:00:00.000Z",
+      }),
+    ] as never);
+    const expiredTrial = await resolveOwnerEntitlements(7, {
+      now: NOW,
+      bypassCache: true,
+    });
+    expect(expiredTrial.meta?.commercialAccountState).toBe("FROZEN");
+  });
+
+  it("restores ACTIVE when a later valid paid period replaces expiry", async () => {
+    vi.mocked(getSubscriptionCommercialBinding).mockResolvedValue({
+      subscriptionId: 15,
+      planId: "plan-pro",
+      chargedAmount: "26.40",
+      chargedCurrency: "USD",
+      billingCycleId: "bc",
+      billingCycleCode: "monthly",
+      legacyPlanId: 2,
+      createdAt: NOW.toISOString(),
+    });
+    vi.mocked(resolveLivePlanCapabilities).mockResolvedValue(livePlanFacts());
+
+    vi.mocked(getSubscriptionsByUser).mockResolvedValue([
+      commercialTestSubRow({
+        id: 15,
+        userId: 7,
+        restaurantId: 0,
+        status: "expired",
+        currentPeriodEnd: "2026-07-01T00:00:00.000Z",
+      }),
+    ] as never);
+    const frozen = await resolveOwnerEntitlements(7, {
+      now: NOW,
+      bypassCache: true,
+    });
+    expect(frozen.meta?.commercialAccountState).toBe("FROZEN");
+
+    vi.mocked(getSubscriptionsByUser).mockResolvedValue([
+      commercialTestSubRow({
+        id: 15,
+        userId: 7,
+        restaurantId: 0,
+        status: "active",
+        currentPeriodEnd: "2026-09-01T00:00:00.000Z",
+      }),
+    ] as never);
+    const renewed = await resolveOwnerEntitlements(7, {
+      now: NOW,
+      bypassCache: true,
+    });
+    expect(renewed.meta?.commercialAccountState).toBe("ACTIVE");
+    expect(renewed.entitlements.features.ordering).toBe(true);
   });
 });

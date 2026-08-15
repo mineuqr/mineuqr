@@ -1,0 +1,20 @@
+---
+description: Commercial entitlement is a server-side authorization boundary. Use the hub; never plan-name gates or UI-only enforcement.
+alwaysApply: true
+---
+
+# Commercial entitlement (CE-01…30)
+
+A capability in Pricing or the Plan Editor is **not** implemented until server enforcement and negative tests exist.
+
+- Authority: `getCommercialEntitlements` → `requireFeature(userId, "<canonical-key>")`
+- Order: auth → restaurant/RBAC → commercial entitlement → persist
+- RBAC / admin / owner role does **not** grant commercial capabilities
+- FULL_PLATFORM and SIMULATED_PLAN resolve only through owner access entitlements
+- Fail closed. No `if (plan === "basic")`, no second matrix, no `if (isOwner) return true`
+- UI `hasFeature` is presentation only
+
+Checklist: `docs/engineering/governance/COMMERCIAL-ENTITLEMENT-ENFORCEMENT-CHECKLIST.md`  
+Constitution: `docs/architecture/constitution/Commercial-Entitlement-Enforcement-Constitution-v1.0.md`
+
+If a commercial mutation's required capability is unknown: STOP. Do not certify.

@@ -25,6 +25,7 @@ import {
   EyeOff,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { resolvePostAuthPath } from "@/lib/commercial/commercialAccountState";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -163,7 +164,18 @@ export default function SubscriberLogin() {
         !returnTo.includes("://")
           ? returnTo
           : "/dashboard";
-      setLocation(safeReturnTo);
+      let accountState: "ACTIVE" | "FROZEN" | "NONE" | null = null;
+      try {
+        const entitlements = await utils.commercial.getEntitlements.fetch();
+        const raw = (entitlements.meta as { commercialAccountState?: string } | undefined)
+          ?.commercialAccountState;
+        if (raw === "ACTIVE" || raw === "FROZEN" || raw === "NONE") {
+          accountState = raw;
+        }
+      } catch {
+        accountState = null;
+      }
+      setLocation(resolvePostAuthPath({ accountState, requestedPath: safeReturnTo }));
     } catch {
       setFormError(t("auth.loginNetworkError"));
     } finally {

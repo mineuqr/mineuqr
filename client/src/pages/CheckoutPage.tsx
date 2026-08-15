@@ -15,6 +15,7 @@ import { markCustomerJourneyTracking } from "@/lib/customerJourneyStorage";
 import { trpc } from "@/lib/trpc";
 import { usePostSubmissionGuard } from "@/hooks/usePostSubmissionGuard";
 import { PostSubmissionLockedScreen } from "@/components/customer/PostSubmissionLockedScreen";
+import { FrozenPublicMenuExperience } from "@/components/commercial";
 import { isDiningSessionOrderingEnabled } from "@/lib/diningSessionRecovery";
 import {
   useOrderingCheckout,
@@ -189,6 +190,15 @@ export default function CheckoutPage() {
       toast.error(outcome.error.message);
     }
   };
+
+  if (gates.commercialFrozen) {
+    return (
+      <FrozenPublicMenuExperience
+        language={language}
+        restaurantName={restaurantName}
+      />
+    );
+  }
 
   if (restaurantLoading || !recoveryDone) {
     return (

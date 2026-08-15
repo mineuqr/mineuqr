@@ -68,6 +68,8 @@ The [Architecture Constitution v1.0](./constitution/Architecture-Constitution-v1
 - [Architecture Constitution Versioning Framework v1.0](./constitution/Architecture-Constitution-Versioning-Framework-v1.0.md) — CV-01…06 (pending review)
 - [Constitution Registry](./constitution/Constitution-Registry.md) — authoritative index of all constitutions
 - [Enterprise Architecture Governance Framework v1.0](./constitution/Enterprise-Architecture-Governance-Framework-v1.0.md) — CD-01…06 cross-domain (pending review)
+- [Commercial Entitlement Enforcement Constitution v1.0](./constitution/Commercial-Entitlement-Enforcement-Constitution-v1.0.md) — CE-01…30 (pending review)
+- [Commercial Entitlement Invariants](./constitution/Commercial-Entitlement-Invariants.md) — I-CE-01…18
 
 ## Architecture Ops
 

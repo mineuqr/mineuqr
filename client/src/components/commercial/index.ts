@@ -1,5 +1,7 @@
 export { CommercialEntitlementsDiagnostics } from "./CommercialEntitlementsDiagnostics";
 export { CommercialUpgradeBanner } from "./CommercialUpgradeBanner";
+export { FrozenAccountBanner } from "./FrozenAccountBanner";
+export { FrozenPublicMenuExperience } from "./FrozenPublicMenuExperience";
 export { CommercialVisibilityDiagnostics } from "./CommercialVisibilityDiagnostics";
 export { CommercialGateConsolidationDiagnostics } from "./CommercialGateConsolidationDiagnostics";
 export { CommercialFeaturesDisplay } from "./CommercialFeaturesDisplay";

@@ -96,7 +96,15 @@ describe("ORDERING-CLIENT-RUNTIME-1", () => {
     expect(gates.orderingAllowed).toBe(true);
     expect(gates.platformCanPlaceOrder).toBe(true);
     expect(gates.canBrowse).toBe(true);
+    expect(gates.commercialFrozen).toBe(false);
     expect(gates.notes.supportsOrderNotes).toBe(true);
+  });
+
+  it("maps commercial_frozen feature flag to the shared gate", () => {
+    const gates = deriveOrderingRuntimeGates(
+      sampleRuntime({ featureFlags: { commercial_frozen: true } })
+    );
+    expect(gates.commercialFrozen).toBe(true);
   });
 
   it("QR cart scope adapter uses table storage key", () => {

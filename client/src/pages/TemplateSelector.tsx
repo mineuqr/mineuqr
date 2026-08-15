@@ -17,6 +17,7 @@ import { trpc } from "@/lib/trpc";
 import { resolveImageUrl } from "@/lib/utils";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useCommercialFeatureVisibility } from "@/hooks/useCommercialFeatureVisibility";
+import { useFrozenCommercialRouteGuard } from "@/hooks/useFrozenCommercialRouteGuard";
 import { CommercialPlanName } from "@/components/commercial";
 
 export default function TemplateSelector() {
@@ -40,6 +41,7 @@ export default function TemplateSelector() {
     showCustomFonts,
     isTemplateLocked,
   } = useCommercialFeatureVisibility();
+  const frozenGuard = useFrozenCommercialRouteGuard();
 
   const utils = trpc.useUtils();
   const updateTemplateMutation = trpc.restaurant.updateTemplate.useMutation({
@@ -83,7 +85,7 @@ export default function TemplateSelector() {
     });
   };
 
-  if (gate.isPending) {
+  if (gate.isPending || frozenGuard.isFrozen) {
     return <AuthGatePending />;
   }
 

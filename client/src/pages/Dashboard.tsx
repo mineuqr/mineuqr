@@ -111,6 +111,7 @@ import {
 import { QRCodeSVG } from "qrcode.react";
 import { QRWithLogo } from "@/components/QRWithLogo";
 import { useCommercialFeatureVisibility } from "@/hooks/useCommercialFeatureVisibility";
+import { useFrozenCommercialRouteGuard } from "@/hooks/useFrozenCommercialRouteGuard";
 import { CommercialUpgradeBanner } from "@/components/commercial";
 import {
   RestaurantBasicInfoSection,
@@ -222,6 +223,7 @@ function DashboardMainSkeleton() {
 export default function Dashboard() {
   const gate = useAuthGate();
   const { user, authPending, authResolved, isAuthenticated, logout } = gate;
+  const frozenGuard = useFrozenCommercialRouteGuard();
   const { t, language, dir } = useLanguage();
 
   const {
@@ -288,6 +290,10 @@ export default function Dashboard() {
     sidebarRestaurant,
     t,
   ]);
+
+  if (frozenGuard.isFrozen) {
+    return <AppLoadingState label={t("uiState.loading")} />;
+  }
 
   if (gate.showLoginRequired) {
     return (

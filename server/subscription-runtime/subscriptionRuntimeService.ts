@@ -23,6 +23,7 @@ import {
   denyEntitlementsFailClosed,
   resolveEntitlementsFromLivePlan,
 } from "./entitlementResolver";
+import { deriveCommercialAccountState } from "./commercialAccountState";
 import { syncCommercialLifecycle } from "./lifecycleSync";
 import { getLifecycleSignals } from "./lifecycleOverlay";
 import { loadBoundLivePlan } from "./snapshotLoader";
@@ -34,6 +35,25 @@ export type SubscriptionRuntimeResolveOptions = {
   /** Opt-in decision cache (default off — prefer correctness + lifecycle signal freshness). */
   useCache?: boolean;
 };
+
+function withAccountState(
+  result: CommercialEntitlementsResult,
+  input: {
+    ownerExempt: boolean;
+    hasCanonicalCustomerSubscription: boolean;
+    entitlementsEnabled: boolean;
+  }
+): CommercialEntitlementsResult {
+  const derived = deriveCommercialAccountState(input);
+  return {
+    ...result,
+    meta: {
+      ...(result.meta ?? {}),
+      commercialAccountState: derived.state,
+      commercialAccountStateReason: derived.reason,
+    },
+  };
+}
 
 function cacheScopeForOwnerState(state: {
   ok: boolean;
@@ -68,12 +88,19 @@ export async function resolveOwnerEntitlements(
       const cached = getCachedEntitlements(ownerId, now, scope);
       if (cached) return cached;
     }
-    const result = await resolvePlatformOwnerEntitlements({
-      ownerId,
-      role,
-      now,
-      state,
-    });
+    const result = withAccountState(
+      await resolvePlatformOwnerEntitlements({
+        ownerId,
+        role,
+        now,
+        state,
+      }),
+      {
+        ownerExempt: true,
+        hasCanonicalCustomerSubscription: false,
+        entitlementsEnabled: true,
+      }
+    );
     if (useCache) setCachedEntitlements(ownerId, result, now, undefined, scope);
     return result;
   }
@@ -94,10 +121,17 @@ export async function resolveOwnerEntitlements(
     commercialRuntimeAuthorityObservability.recordBindingCoverage(false);
     const context = await buildCommercialContextFromDb(ownerId, now);
     const legacy = getCommercialEntitlementsFromContext(context);
-    const result = {
-      ...legacy,
-      meta: { commercialResolutionSource: "legacy_bridge" },
-    } as CommercialEntitlementsResult;
+    const result = withAccountState(
+      {
+        ...legacy,
+        meta: { commercialResolutionSource: "legacy_bridge" },
+      } as CommercialEntitlementsResult,
+      {
+        ownerExempt: false,
+        hasCanonicalCustomerSubscription: false,
+        entitlementsEnabled: legacy.entitlements.plan !== "NONE",
+      }
+    );
     if (useCache) setCachedEntitlements(ownerId, result, now, undefined, customerScope);
     return result;
   }
@@ -136,8 +170,13 @@ export async function resolveOwnerEntitlements(
     });
 
     commercialRuntimeAuthorityObservability.recordLivePlanResolved(canonical.id);
-    if (useCache) setCachedEntitlements(ownerId, result, now, undefined, customerScope);
-    return result;
+    const stamped = withAccountState(result, {
+      ownerExempt: false,
+      hasCanonicalCustomerSubscription: true,
+      entitlementsEnabled: lifecycle.entitlementsEnabled,
+    });
+    if (useCache) setCachedEntitlements(ownerId, stamped, now, undefined, customerScope);
+    return stamped;
   }
 
   if (loaded.binding && loaded.reason === "live_plan_unreadable") {
@@ -151,8 +190,13 @@ export async function resolveOwnerEntitlements(
       legacyPlanId: loaded.legacyPlanId,
       now,
     });
-    if (useCache) setCachedEntitlements(ownerId, denied, now, undefined, customerScope);
-    return denied;
+    const stampedDenied = withAccountState(denied, {
+      ownerExempt: false,
+      hasCanonicalCustomerSubscription: true,
+      entitlementsEnabled: false,
+    });
+    if (useCache) setCachedEntitlements(ownerId, stampedDenied, now, undefined, customerScope);
+    return stampedDenied;
   }
 
   // Unbound — Legacy Bridge ONLY
@@ -160,13 +204,20 @@ export async function resolveOwnerEntitlements(
     "subscriptionRuntime:unbound"
   );
   const context = await buildCommercialContextFromDb(ownerId, now);
-  const legacy = getCommercialEntitlementsFromContext(context);
-  const result = {
-    ...legacy,
-    meta: { commercialResolutionSource: "legacy_bridge" },
-  } as CommercialEntitlementsResult;
-  if (useCache) setCachedEntitlements(ownerId, result, now, undefined, customerScope);
-  return result;
+  const legacyUnbound = getCommercialEntitlementsFromContext(context);
+  const unboundResult = withAccountState(
+    {
+      ...legacyUnbound,
+      meta: { commercialResolutionSource: "legacy_bridge" },
+    } as CommercialEntitlementsResult,
+    {
+      ownerExempt: false,
+      hasCanonicalCustomerSubscription: true,
+      entitlementsEnabled: legacyUnbound.entitlements.plan !== "NONE",
+    }
+  );
+  if (useCache) setCachedEntitlements(ownerId, unboundResult, now, undefined, customerScope);
+  return unboundResult;
 }
 
 export function notifySubscriptionLifecycleChanged(ownerId: number): void {
