@@ -1,0 +1,18 @@
+{
+  "queriedAt": "2026-08-15T14:43:59.042Z",
+  "access": "PRODUCTION",
+  "mutation": "NONE",
+  "providerApisCalled": "NONE",
+  "plans": [
+    { "id": "79cf7bf7-c3b6-45de-8f20-42897cd493ac", "code": "basic", "isHidden": 0, "has_trial": 1 },
+    { "id": "0ade795a-02fa-4d3e-b9b5-262515bade09", "code": "professional", "isHidden": 0, "has_trial": 1 },
+    { "id": "d836bd10-9d9f-4408-a076-f921354d785a", "code": "enterprise", "isHidden": 0, "has_trial": 0 }
+  ],
+  "duplicate_codes": [],
+  "orphan_subscriptions": 0,
+  "subscription_uuid": 6,
+  "bindings": 2,
+  "binding_disagreement": 0,
+  "subscription_plans_ids": [30001, 30002, 30003],
+  "subscription_plans_fks": []
+}
