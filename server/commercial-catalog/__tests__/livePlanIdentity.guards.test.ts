@@ -36,12 +36,13 @@ describe("GUARD-IDENTITY Live Plan canonical identity", () => {
 
   it("GUARD-IDENTITY-03 legacyPlanId cannot determine checkout price", () => {
     const offer = read("server/services/commercial-catalog/adoptionService.ts");
-    expect(offer).toContain("compatibility handle, not a price authority");
     const fn = offer.slice(
       offer.indexOf("export async function resolveCheckoutOfferFromLivePlan")
     );
     expect(fn).toContain("currentPriceForPlan");
     expect(fn).not.toContain("getSubscriptionPlanById");
+    expect(fn).not.toContain("legacyPlanId");
+    expect(fn).not.toContain("priceMonthly");
   });
 
   it("GUARD-IDENTITY-04/05 entitlements resolve from Live Plan, not legacy price/limits columns", () => {
