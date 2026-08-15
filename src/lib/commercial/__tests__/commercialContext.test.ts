@@ -21,7 +21,8 @@ describe("buildCommercialContext", () => {
       ownerId: 1,
       role: "admin",
       subscriptionRow: {
-        planId: 30001,
+        planId: "79cf7bf7-c3b6-45de-8f20-42897cd493ac",
+        catalogPlan: "BASIC",
         status: "active",
         trialEndsAt: null,
         currentPeriodEnd: isoPlusDays(30),
@@ -69,7 +70,8 @@ describe("getCommercialEntitlementsFromContext", () => {
       ownerId: 10,
       role: "user",
       subscriptionRow: {
-        planId: 30001,
+        planId: "79cf7bf7-c3b6-45de-8f20-42897cd493ac",
+        catalogPlan: "BASIC",
         status: "active",
         trialEndsAt: null,
         currentPeriodEnd: isoPlusDays(30),
@@ -95,7 +97,8 @@ describe("getCommercialEntitlementsFromContext", () => {
       ownerId: 11,
       role: "user",
       subscriptionRow: {
-        planId: 30002,
+        planId: "0ade795a-02fa-4d3e-b9b5-262515bade09",
+        catalogPlan: "PROFESSIONAL",
         status: "trial",
         trialEndsAt: isoPlusDays(7),
         currentPeriodEnd: isoPlusDays(7),
@@ -117,7 +120,8 @@ describe("getCommercialEntitlementsFromContext", () => {
       ownerId: 12,
       role: "user",
       subscriptionRow: {
-        planId: 30003,
+        planId: "d836bd10-9d9f-4408-a076-f921354d785a",
+        catalogPlan: "ENTERPRISE",
         status: "active",
         trialEndsAt: null,
         currentPeriodEnd: isoPlusDays(30),
@@ -155,7 +159,8 @@ describe("getCommercialEntitlementsFromContext", () => {
       ownerId: 14,
       role: "user",
       subscriptionRow: {
-        planId: 30002,
+        planId: "0ade795a-02fa-4d3e-b9b5-262515bade09",
+        catalogPlan: "PROFESSIONAL",
         status: "active",
         trialEndsAt: null,
         currentPeriodEnd: isoMinusDays(1),
@@ -176,7 +181,8 @@ describe("getCommercialEntitlementsFromContext", () => {
       ownerId: 15,
       role: "user",
       subscriptionRow: {
-        planId: 30002,
+        planId: "0ade795a-02fa-4d3e-b9b5-262515bade09",
+        catalogPlan: "PROFESSIONAL",
         status: "trial",
         trialEndsAt: isoMinusDays(1),
         currentPeriodEnd: isoMinusDays(1),
@@ -195,7 +201,8 @@ describe("getCommercialEntitlementsFromContext", () => {
       ownerId: 16,
       role: "user",
       subscriptionRow: {
-        planId: 30002,
+        planId: "0ade795a-02fa-4d3e-b9b5-262515bade09",
+        catalogPlan: "PROFESSIONAL",
         status: "canceled",
         trialEndsAt: null,
         currentPeriodEnd: isoPlusDays(30),
@@ -216,7 +223,8 @@ describe("commercialContextToResolverInput", () => {
       ownerId: 20,
       role: "user",
       subscriptionRow: {
-        planId: 30002,
+        planId: "0ade795a-02fa-4d3e-b9b5-262515bade09",
+        catalogPlan: "PROFESSIONAL",
         status: "active",
         trialEndsAt: null,
         currentPeriodEnd: isoPlusDays(30),

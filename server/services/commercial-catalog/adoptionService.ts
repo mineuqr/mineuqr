@@ -41,7 +41,6 @@ export type CommercialPlanBindEvent =
   | "renewal";
 
 export type LivePlanOffering = {
-  legacyPlanId: number | null;
   planId: string;
   planCode: string;
   planName: string;
@@ -110,10 +109,8 @@ function offeringFromPlan(plan: {
   const trial = plan.trialPolicyId
     ? trialPolicyCatalogService.get(plan.trialPolicyId)
     : null;
-  const bridge = bridgeByCatalogPlanCode(plan.code);
 
   return {
-    legacyPlanId: bridge?.legacyPlanId ?? null,
     planId: plan.id,
     planCode: plan.code,
     planName: plan.name,
@@ -211,7 +208,6 @@ export async function resolveTrialPolicyFromCatalog(): Promise<{
   durationDays: number;
   trialPolicyId: string | null;
   professionalPlanId: string | null;
-  legacyPlanId: number;
 }> {
   await ensureCatalogReady();
   const offerings = await listLivePlanOfferings();
@@ -219,9 +215,6 @@ export async function resolveTrialPolicyFromCatalog(): Promise<{
     offerings.find((o) => o.planCode === "professional") ??
     offerings.find((o) => o.trialDurationDays != null) ??
     offerings[0];
-  const bridge =
-    bridgeByCatalogPlanCode(professional?.planCode ?? "professional") ??
-    LEGACY_PLAN_BRIDGE.find((b) => b.catalogPlanCode === "professional")!;
 
   const duration =
     professional?.trialDurationDays ??
@@ -233,7 +226,6 @@ export async function resolveTrialPolicyFromCatalog(): Promise<{
     durationDays: duration,
     trialPolicyId: professional?.trialPolicyId ?? null,
     professionalPlanId: professional?.planId ?? null,
-    legacyPlanId: bridge.legacyPlanId,
   };
 }
 
@@ -405,24 +397,23 @@ export async function bindSubscriptionToLivePlan(input: {
 
 export async function ensureLivePlanBoundForSubscription(input: {
   subscriptionId: number;
-  legacyPlanId: number;
+  planId: string;
   event: CommercialPlanBindEvent;
   actorId?: number | null;
   regionId?: string | null;
 }): Promise<{ planId: string } | null> {
   try {
     await ensureCatalogReady();
-    const planId = resolvePlanIdFromLegacyPlanId(input.legacyPlanId);
-    if (!planId) {
+    if (!isLivePlanUuid(input.planId) || !planService.get(input.planId)) {
       commercialRuntimeAuthorityObservability.recordSnapshotCreationFailure(
-        `no_live_plan:${input.legacyPlanId}`
+        `no_live_plan:${input.planId}`
       );
       return null;
     }
     const created = await bindSubscriptionToLivePlan({
       subscriptionId: input.subscriptionId,
-      planId,
-      legacyPlanId: input.legacyPlanId,
+      planId: input.planId,
+      legacyPlanId: null,
       regionId: input.regionId,
       actorId: input.actorId,
       event: input.event,
@@ -440,10 +431,6 @@ function catalogCodeFromPlanRef(
   planRef: number | string | null | undefined
 ): string | null {
   if (planRef == null) return null;
-  const legacy = parseLegacyPlanInteger(planRef);
-  if (legacy != null) {
-    return bridgeByLegacyPlanId(legacy)?.catalogPlanCode ?? null;
-  }
   if (typeof planRef === "string" && isLivePlanUuid(planRef)) {
     return planService.get(planRef)?.code ?? null;
   }
@@ -582,6 +569,57 @@ export async function resolveLivePlanCapabilities(subscriptionId: number): Promi
       unit: l.unit,
     })),
     chargedTerms,
+  };
+}
+
+/** Unbound UUID path — Live Plan capabilities without a binding. */
+export async function resolveLivePlanCapabilitiesByPlanId(planId: string): Promise<{
+  source: "live_plan" | "missing";
+  planId: string | null;
+  catalogPlanCode: string | null;
+  featureKeys: string[];
+  limits: { limitKey: string; value: number | null; unit: string | null }[];
+}> {
+  await ensureCatalogReady();
+  if (!isLivePlanUuid(planId)) {
+    return {
+      source: "missing",
+      planId: null,
+      catalogPlanCode: null,
+      featureKeys: [],
+      limits: [],
+    };
+  }
+  const plan = planService.get(planId);
+  if (!plan) {
+    return {
+      source: "missing",
+      planId,
+      catalogPlanCode: null,
+      featureKeys: [],
+      limits: [],
+    };
+  }
+  const features = plan.featureBundleId
+    ? [...commercialCatalogStore.bundleFeatures.values()].filter(
+        (f) => f.bundleId === plan.featureBundleId && f.included
+      )
+    : [];
+  const limits = plan.limitProfileId
+    ? [...commercialCatalogStore.limitValues.values()].filter(
+        (l) => l.profileId === plan.limitProfileId
+      )
+    : [];
+  return {
+    source: "live_plan",
+    planId: plan.id,
+    catalogPlanCode: plan.code,
+    featureKeys: features.map((f) => f.featureKey),
+    limits: limits.map((l) => ({
+      limitKey: l.limitKey,
+      value: l.value,
+      unit: l.unit,
+    })),
   };
 }
 
@@ -737,16 +775,25 @@ export function parseLegacyPlanInteger(
  * COMMERCIAL-OD-2 — resolve a checkout/admin/trial handle to commercial_plans.id.
  * Accepts a Live Plan UUID or a bridged legacy integer. Fail closed otherwise.
  */
+export async function resolveLivePlanById(planId: string): Promise<string> {
+  await ensureCatalogReady();
+  if (!isLivePlanUuid(planId)) {
+    throw new Error("invalid_live_plan_id");
+  }
+  const plan = planService.get(planId);
+  if (!plan) {
+    throw new Error(`unknown_live_plan:${planId}`);
+  }
+  return plan.id;
+}
+
+/** Webhook dual-read only. Public/admin/checkout must use resolveLivePlanById. */
 export async function resolveCanonicalLivePlanId(
   planRef: number | string
 ): Promise<string> {
   await ensureCatalogReady();
   if (typeof planRef === "string" && isLivePlanUuid(planRef)) {
-    const plan = planService.get(planRef);
-    if (!plan) {
-      throw new Error(`unknown_live_plan:${planRef}`);
-    }
-    return plan.id;
+    return resolveLivePlanById(planRef);
   }
   const legacy = parseLegacyPlanInteger(planRef);
   if (legacy == null) {
@@ -783,10 +830,9 @@ export async function resolveLivePlanDisplayByPlanRef(
 /**
  * COMMERCIAL-SUBSCRIPTION-PLANS-CONSOLIDATION-1
  * Checkout offer from Live Plan only. Does not read subscription_plans.
- * `legacyPlanId` is a compatibility handle, not a price authority.
+ * Public identity is the Live Plan UUID.
  */
 export type LivePlanCheckoutOffer = {
-  legacyPlanId: number;
   planId: string;
   planCode: string;
   commercialName: string;
@@ -796,13 +842,13 @@ export type LivePlanCheckoutOffer = {
 };
 
 export async function resolveCheckoutOfferFromLivePlan(
-  planRef: number | string,
+  planRef: string,
   billingCycle: "monthly" | "yearly"
 ): Promise<LivePlanCheckoutOffer | null> {
   await ensureCatalogReady();
   let planId: string;
   try {
-    planId = await resolveCanonicalLivePlanId(planRef);
+    planId = await resolveLivePlanById(planRef);
   } catch {
     return null;
   }
@@ -811,7 +857,6 @@ export async function resolveCheckoutOfferFromLivePlan(
   const price = pricingService.currentPriceForPlan(planId, billingCycle);
   if (!price?.amount) return null;
   return {
-    legacyPlanId: bridgeByCatalogPlanCode(plan.code)?.legacyPlanId ?? 0,
     planId: plan.id,
     planCode: plan.code,
     commercialName: plan.name,
@@ -820,3 +865,4 @@ export async function resolveCheckoutOfferFromLivePlan(
     billingCycleCode: billingCycle,
   };
 }
+

@@ -907,6 +907,8 @@ export {
   resolveLegacyPlanIdFromPlan,
   resolvePlanIdFromLegacyPlanId,
   resolveCanonicalLivePlanId,
+  resolveLivePlanById,
+  resolveLivePlanCapabilitiesByPlanId,
   resolveLivePlanDisplayByPlanRef,
   resolveCheckoutOfferFromLivePlan,
   resolveLivePlanDisplayByLegacyId,

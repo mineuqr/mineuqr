@@ -9,7 +9,6 @@ import {
   resolveTrialPolicyFromCatalog,
   bindSubscriptionToLivePlan,
   ensureCatalogReady,
-  resolveLegacyPlanIdFromPlan,
 } from "./services/commercial-catalog";
 import { commercialAdoptionObservability } from "./services/commercial-catalog/adoptionObservability";
 
@@ -99,7 +98,6 @@ export async function createTrialSubscription(
       await bindSubscriptionToLivePlan({
         subscriptionId,
         planId: policy.professionalPlanId,
-        legacyPlanId: resolveLegacyPlanIdFromPlan(trialSubscription.planId),
         event: "trial_activated",
         actorId: userId,
       });

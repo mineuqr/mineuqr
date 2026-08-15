@@ -201,23 +201,71 @@ export async function resolveOwnerEntitlements(
     return stampedDenied;
   }
 
-  // Unbound — Legacy Bridge ONLY
-  commercialRuntimeAuthorityObservability.recordLegacyBridgeUsed(
-    "subscriptionRuntime:unbound"
-  );
-  const context = await buildCommercialContextFromDb(ownerId, now);
-  const legacyUnbound = getCommercialEntitlementsFromContext(context);
-  const unboundResult = withAccountState(
-    {
-      ...legacyUnbound,
-      meta: { commercialResolutionSource: "legacy_bridge" },
-    } as CommercialEntitlementsResult,
-    {
+  // Unbound — Live Plan UUID only. Integer identity fails closed.
+  const { isLivePlanUuid, resolveLivePlanCapabilitiesByPlanId, ensureCatalogReady } =
+    await import("../services/commercial-catalog");
+  const storedPlanId = String(canonical.planId);
+  if (!isLivePlanUuid(storedPlanId)) {
+    const denied = denyEntitlementsFailClosed({
+      ownerId,
+      role,
+      planId: storedPlanId,
+      legacyPlanId: null,
+      now,
+    });
+    const stampedDenied = withAccountState(denied, {
       ownerExempt: false,
       hasCanonicalCustomerSubscription: true,
-      entitlementsEnabled: legacyUnbound.entitlements.plan !== "NONE",
-    }
-  );
+      entitlementsEnabled: false,
+    });
+    if (useCache) setCachedEntitlements(ownerId, stampedDenied, now, undefined, customerScope);
+    return stampedDenied;
+  }
+  await ensureCatalogReady();
+  const unboundFacts = await resolveLivePlanCapabilitiesByPlanId(storedPlanId);
+  if (unboundFacts.source !== "live_plan" || !unboundFacts.planId || !unboundFacts.catalogPlanCode) {
+    const denied = denyEntitlementsFailClosed({
+      ownerId,
+      role,
+      planId: storedPlanId,
+      legacyPlanId: null,
+      now,
+    });
+    const stampedDenied = withAccountState(denied, {
+      ownerExempt: false,
+      hasCanonicalCustomerSubscription: true,
+      entitlementsEnabled: false,
+    });
+    if (useCache) setCachedEntitlements(ownerId, stampedDenied, now, undefined, customerScope);
+    return stampedDenied;
+  }
+  const unboundLifecycle = syncCommercialLifecycle({
+    dbStatus,
+    trialEndsAt,
+    currentPeriodEnd,
+    now,
+    signals,
+  });
+  const unboundLive = resolveEntitlementsFromLivePlan({
+    ownerId,
+    role,
+    planId: unboundFacts.planId,
+    catalogPlanCode: unboundFacts.catalogPlanCode,
+    featureKeys: unboundFacts.featureKeys,
+    limits: unboundFacts.limits,
+    chargedTerms: null,
+    legacyPlanId: null,
+    lifecycle: unboundLifecycle,
+    dbStatus,
+    trialEndsAt,
+    currentPeriodEnd,
+    now,
+  });
+  const unboundResult = withAccountState(unboundLive, {
+    ownerExempt: false,
+    hasCanonicalCustomerSubscription: true,
+    entitlementsEnabled: unboundLifecycle.entitlementsEnabled,
+  });
   if (useCache) setCachedEntitlements(ownerId, unboundResult, now, undefined, customerScope);
   return unboundResult;
 }

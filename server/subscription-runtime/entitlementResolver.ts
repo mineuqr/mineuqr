@@ -20,10 +20,7 @@ import type {
   CommercialLimits,
 } from "@commercial/types";
 import type { CommercialChargedTerms } from "@shared/commercial-catalog";
-import {
-  bridgeByCatalogPlanCode,
-  bridgeByLegacyPlanId,
-} from "../services/commercial-catalog/legacyPlanBridge";
+import { catalogPlanKeyFromCode } from "@commercial/catalogPlanKey";
 import {
   lifecycleEnablesEntitlements,
   type CommercialLifecycleState,
@@ -60,16 +57,9 @@ function limitsFromRows(
 
 function catalogPlanFromCode(
   catalogPlanCode: string | null,
-  legacyPlanId: number | null | undefined
+  _legacyPlanId?: number | null
 ): CatalogPlan | null {
-  if (catalogPlanCode) {
-    const bridge = bridgeByCatalogPlanCode(catalogPlanCode);
-    if (bridge) return bridge.catalogPlanKey;
-  }
-  if (legacyPlanId != null) {
-    return bridgeByLegacyPlanId(legacyPlanId)?.catalogPlanKey ?? null;
-  }
-  return null;
+  return catalogPlanKeyFromCode(catalogPlanCode);
 }
 
 function flagsForResolvedPlan(plan: CommercialPlan): CommercialFlags {

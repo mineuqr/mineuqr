@@ -2,13 +2,13 @@ import {
   buildCommercialContext,
   type CommercialContext,
 } from "@commercial/commercialContext";
-import { mapPlanIdToCatalogPlan } from "@commercial/planIdMapping";
+import { catalogPlanKeyFromCode } from "@commercial/catalogPlanKey";
 import { getSubscriptionsByUser, getUserById } from "../db";
 import { pickUserLevelSubscription } from "../subscriptionResolver";
 
 /**
- * Loads runtime records and builds CommercialContext per PG-1C.2D §3.5.
- * Read-only — no writes.
+ * Loads runtime records and builds CommercialContext from Live Plan UUID.
+ * Integer leftover identity fails closed. Read-only — no writes.
  */
 export async function buildCommercialContextFromDb(
   ownerId: number,
@@ -24,22 +24,15 @@ export async function buildCommercialContextFromDb(
     return buildCommercialContext({ ownerId, role, subscriptionRow: null, now });
   }
 
-  const legacyPlanId =
-    typeof canonicalRow.planId === "number"
-      ? canonicalRow.planId
-      : /^\d+$/.test(String(canonicalRow.planId))
-        ? Number(canonicalRow.planId)
-        : null;
-  let catalogPlan = legacyPlanId != null ? mapPlanIdToCatalogPlan(legacyPlanId) : null;
-  if (!catalogPlan && typeof canonicalRow.planId === "string") {
-    const { planService, ensureCatalogReady, bridgeByCatalogPlanCode } = await import(
-      "../services/commercial-catalog"
-    );
+  const planId = String(canonicalRow.planId);
+  const { planService, ensureCatalogReady, isLivePlanUuid } = await import(
+    "../services/commercial-catalog"
+  );
+  let catalogPlan = catalogPlanKeyFromCode(planId);
+  if (!catalogPlan && isLivePlanUuid(planId)) {
     await ensureCatalogReady();
-    const live = planService.get(canonicalRow.planId);
-    catalogPlan = live
-      ? (bridgeByCatalogPlanCode(live.code)?.catalogPlanKey ?? null)
-      : null;
+    const live = planService.get(planId);
+    catalogPlan = live ? catalogPlanKeyFromCode(live.code) : null;
   }
   if (!catalogPlan) {
     console.warn(
@@ -53,6 +46,7 @@ export async function buildCommercialContextFromDb(
     role,
     subscriptionRow: {
       planId: canonicalRow.planId,
+      catalogPlan,
       status: canonicalRow.status,
       trialEndsAt: canonicalRow.trialEndsAt,
       currentPeriodEnd: canonicalRow.currentPeriodEnd,

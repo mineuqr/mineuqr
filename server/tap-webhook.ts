@@ -132,15 +132,12 @@ export async function handleTapWebhook(req: Request, res: Response) {
 
       if (activatedId != null) {
         if (livePlanId) {
-          const boundLegacy = resolveLegacyPlanIdFromPlan(livePlanId);
-          if (boundLegacy != null) {
-            await ensureLivePlanBoundForSubscription({
-              subscriptionId: activatedId,
-              legacyPlanId: boundLegacy,
-              event: "plan_selected",
-              actorId: uid ?? null,
-            });
-          }
+          await ensureLivePlanBoundForSubscription({
+            subscriptionId: activatedId,
+            planId: livePlanId,
+            event: "plan_selected",
+            actorId: uid ?? null,
+          });
         }
 
         opsLog({

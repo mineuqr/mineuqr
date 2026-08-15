@@ -186,16 +186,12 @@ export async function applyAdminUserSubscriptionCreate(params: {
     snapshot,
   });
 
-  const { resolveLegacyPlanIdFromPlan } = await import("./services/commercial-catalog");
-  const legacyForBind = resolveLegacyPlanIdFromPlan(livePlanId);
-  if (legacyForBind != null) {
-    await ensureLivePlanBoundForSubscription({
-      subscriptionId: result.id,
-      legacyPlanId: legacyForBind,
-      event: "plan_selected",
-      actorId: ctx.user?.id ?? null,
-    });
-  }
+  await ensureLivePlanBoundForSubscription({
+    subscriptionId: result.id,
+    planId: livePlanId,
+    event: "plan_selected",
+    actorId: ctx.user?.id ?? null,
+  });
 
   const periodEnd = computeAdminSubscriptionPeriodEnd({
     billingCycle,
@@ -299,18 +295,14 @@ export async function applyAdminUserSubscriptionUpdate(params: {
       : periodChanged
         ? "renewal"
         : "plan_selected";
-    const { resolveLegacyPlanIdFromPlan } = await import("./services/commercial-catalog");
     const liveForBind =
       typeof updateData.planId === "string" ? updateData.planId : String(nextPlanId);
-    const legacyForBind = resolveLegacyPlanIdFromPlan(liveForBind);
-    if (legacyForBind != null) {
-      await ensureLivePlanBoundForSubscription({
-        subscriptionId: existing.id,
-        legacyPlanId: legacyForBind,
-        event,
-        actorId: ctx.user?.id ?? null,
-      });
-    }
+    await ensureLivePlanBoundForSubscription({
+      subscriptionId: existing.id,
+      planId: liveForBind,
+      event,
+      actorId: ctx.user?.id ?? null,
+    });
   }
 
   return { success: true as const, changed: true, subscriptionId: existing.id };

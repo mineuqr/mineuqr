@@ -50,10 +50,11 @@ describe("resolveCheckoutOfferFromLivePlan", () => {
     });
   });
 
-  it("returns Live Plan offer price for the legacy compatibility handle", async () => {
-    const offer = await resolveCheckoutOfferFromLivePlan(30002, "monthly");
+  it("returns Live Plan offer price for the canonical UUID", async () => {
+    const professional = planService.getByCode("professional");
+    const offer = await resolveCheckoutOfferFromLivePlan(professional!.id, "monthly");
     expect(offer).toMatchObject({
-      legacyPlanId: 30002,
+      planId: professional!.id,
       planCode: "professional",
       commercialName: "Professional",
       amount: "26.40",
@@ -63,22 +64,23 @@ describe("resolveCheckoutOfferFromLivePlan", () => {
   });
 
   it("returns yearly Live Plan offer price", async () => {
-    const offer = await resolveCheckoutOfferFromLivePlan(30002, "yearly");
+    const professional = planService.getByCode("professional");
+    const offer = await resolveCheckoutOfferFromLivePlan(professional!.id, "yearly");
     expect(offer?.amount).toBe("264.00");
   });
 
-  it("fails closed for unknown legacy ids", async () => {
-    await expect(resolveCheckoutOfferFromLivePlan(999, "monthly")).resolves.toBeNull();
+  it("fails closed for integer leftover identity", async () => {
+    await expect(
+      resolveCheckoutOfferFromLivePlan("30002" as string, "monthly")
+    ).resolves.toBeNull();
   });
 
-  it("returns the same Live Plan offer price for the canonical UUID", async () => {
-    const { planService } = await import("../../services/commercial-catalog");
-    const professional = planService.getByCode("professional");
-    expect(professional).toBeTruthy();
-    const byUuid = await resolveCheckoutOfferFromLivePlan(professional!.id, "monthly");
-    const byLegacy = await resolveCheckoutOfferFromLivePlan(30002, "monthly");
-    expect(byUuid?.amount).toBe("26.40");
-    expect(byUuid?.amount).toBe(byLegacy?.amount);
-    expect(byUuid?.planId).toBe(professional!.id);
+  it("fails closed for unknown UUID", async () => {
+    await expect(
+      resolveCheckoutOfferFromLivePlan(
+        "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "monthly"
+      )
+    ).resolves.toBeNull();
   });
 });

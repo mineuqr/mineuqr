@@ -1,4 +1,4 @@
-import { mapPlanIdToCatalogPlan } from "./planIdMapping";
+import { catalogPlanKeyFromCode } from "./catalogPlanKey";
 import type { CatalogPlan, SubscriptionStatus, UserRole } from "./planTypes";
 import type { ResolveCommercialEntitlementsInput } from "./types";
 
@@ -21,6 +21,9 @@ export type CommercialContext = {
 /** Minimal subscription row fields required to build CommercialContext. */
 export type SubscriptionRowForCommercialContext = {
   planId: number | string;
+  /** Resolved Live Plan tier. Required for UUID rows; integers fail closed. */
+  catalogPlan?: CatalogPlan | null;
+  catalogPlanCode?: string | null;
   status: SubscriptionStatus;
   trialEndsAt: string | null;
   currentPeriodEnd: string | null;
@@ -47,14 +50,12 @@ export function buildCommercialContext(input: {
     };
   }
 
-  const legacyPlanId =
-    typeof input.subscriptionRow.planId === "number"
-      ? input.subscriptionRow.planId
-      : /^\d+$/.test(input.subscriptionRow.planId)
-        ? Number(input.subscriptionRow.planId)
-        : null;
   const catalogPlan =
-    legacyPlanId != null ? mapPlanIdToCatalogPlan(legacyPlanId) : null;
+    input.subscriptionRow.catalogPlan ??
+    catalogPlanKeyFromCode(input.subscriptionRow.catalogPlanCode) ??
+    (typeof input.subscriptionRow.planId === "string"
+      ? catalogPlanKeyFromCode(input.subscriptionRow.planId)
+      : null);
   if (!catalogPlan) {
     return {
       ownerId: input.ownerId,

@@ -162,15 +162,12 @@ export async function handlePayPalWebhook(req: Request, res: Response) {
           return res.json({ status: "error", message: "No subscription row to activate" });
         }
 
-        const legacyForBind = resolveLegacyPlanIdFromPlan(livePlanId);
-        if (legacyForBind != null) {
-          await ensureLivePlanBoundForSubscription({
-            subscriptionId: activatedId,
-            legacyPlanId: legacyForBind,
-            event: "plan_selected",
-            actorId: userId,
-          });
-        }
+        await ensureLivePlanBoundForSubscription({
+          subscriptionId: activatedId,
+          planId: livePlanId,
+          event: "plan_selected",
+          actorId: userId,
+        });
 
         opsLog({
           type: OPS_EVENT.payment_subscription_activated,
