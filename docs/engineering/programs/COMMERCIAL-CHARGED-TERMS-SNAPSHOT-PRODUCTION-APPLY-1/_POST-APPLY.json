@@ -1,0 +1,133 @@
+{
+  "label": "after",
+  "queriedAt": "2026-08-15T17:52:30.650Z",
+  "mutation": "NONE",
+  "target": {
+    "database": "mineuqr",
+    "port": 4000,
+    "tls": true
+  },
+  "session": {
+    "db": "mineuqr",
+    "server_ts": "2026-08-15T14:52:27.000Z"
+  },
+  "hash0088": "0836fac35ca3515db9958e232320dd9e0f5d44bf60684d74badff8661daa243b",
+  "hash0089": "45dd198fe62f78746ef245e5091fc146ee383235f6d5a01b5d2b590b06c37e6d",
+  "latest_hash": "45dd198fe62f78746ef245e5091fc146ee383235f6d5a01b5d2b590b06c37e6d",
+  "count_hash_0088": 1,
+  "count_hash_0089": 1,
+  "snapshot_table_exists": true,
+  "snapshot_count": 0,
+  "snapshot_columns": [
+    "id",
+    "subscriptionId",
+    "planId",
+    "chargedAmount",
+    "chargedCurrency",
+    "billingCycleId",
+    "billingCycleCode",
+    "effectiveFrom",
+    "version",
+    "source",
+    "actorId",
+    "createdAt"
+  ],
+  "snapshot_indexes": [
+    {
+      "INDEX_NAME": "PRIMARY",
+      "NON_UNIQUE": "0",
+      "cols": "id"
+    },
+    {
+      "INDEX_NAME": "commercial_charged_terms_sub_version_uq",
+      "NON_UNIQUE": "0",
+      "cols": "subscriptionId,version"
+    },
+    {
+      "INDEX_NAME": "commercial_charged_terms_sub_effective_idx",
+      "NON_UNIQUE": "1",
+      "cols": "subscriptionId,effectiveFrom"
+    }
+  ],
+  "counts": {
+    "subscriptions": 7,
+    "bindings": 3,
+    "plans": 3,
+    "prices": 10
+  },
+  "subscriptions": [
+    {
+      "id": 600001,
+      "status": "active",
+      "billingCycle": "monthly",
+      "planId": "0ade795a-02fa-4d3e-b9b5-262515bade09"
+    },
+    {
+      "id": 690001,
+      "status": "active",
+      "billingCycle": "monthly",
+      "planId": "0ade795a-02fa-4d3e-b9b5-262515bade09"
+    },
+    {
+      "id": 750001,
+      "status": "active",
+      "billingCycle": "monthly",
+      "planId": "0ade795a-02fa-4d3e-b9b5-262515bade09"
+    },
+    {
+      "id": 780001,
+      "status": "active",
+      "billingCycle": "yearly",
+      "planId": "d836bd10-9d9f-4408-a076-f921354d785a"
+    },
+    {
+      "id": 810001,
+      "status": "expired",
+      "billingCycle": "monthly",
+      "planId": "79cf7bf7-c3b6-45de-8f20-42897cd493ac"
+    },
+    {
+      "id": 840001,
+      "status": "canceled",
+      "billingCycle": "monthly",
+      "planId": "79cf7bf7-c3b6-45de-8f20-42897cd493ac"
+    },
+    {
+      "id": 870001,
+      "status": "canceled",
+      "billingCycle": "monthly",
+      "planId": "0ade795a-02fa-4d3e-b9b5-262515bade09"
+    }
+  ],
+  "bindings": [
+    {
+      "subscriptionId": 810001,
+      "planId": "79cf7bf7-c3b6-45de-8f20-42897cd493ac",
+      "chargedAmount": "19.00",
+      "chargedCurrency": "USD",
+      "billingCycleCode": "monthly"
+    },
+    {
+      "subscriptionId": 840001,
+      "planId": "79cf7bf7-c3b6-45de-8f20-42897cd493ac",
+      "chargedAmount": "19.00",
+      "chargedCurrency": "USD",
+      "billingCycleCode": "monthly"
+    },
+    {
+      "subscriptionId": 870001,
+      "planId": "0ade795a-02fa-4d3e-b9b5-262515bade09",
+      "chargedAmount": "29.00",
+      "chargedCurrency": "USD",
+      "billingCycleCode": "monthly"
+    }
+  ],
+  "subscription_780001": [
+    {
+      "id": 780001,
+      "status": "active",
+      "billingCycle": "yearly",
+      "planId": "d836bd10-9d9f-4408-a076-f921354d785a"
+    }
+  ]
+}

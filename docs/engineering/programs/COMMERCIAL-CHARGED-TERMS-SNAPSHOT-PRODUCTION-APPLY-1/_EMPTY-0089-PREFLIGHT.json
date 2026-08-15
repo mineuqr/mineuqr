@@ -1,0 +1,65 @@
+{
+  "queriedAt": "2026-08-15T17:35:08.441Z",
+  "access": "PRODUCTION",
+  "mutation": "NONE",
+  "target": {
+    "hostKind": "tidb_cloud",
+    "database": "mineuqr",
+    "tls": true,
+    "port": 4000,
+    "hostPattern": "tidbcloud_prod",
+    "matchesKnownProductionShape": true
+  },
+  "session": {
+    "db": "mineuqr",
+    "server_ts": "2026-08-15T14:35:10.000Z"
+  },
+  "sqlIntegrity": {
+    "hash0089": "45dd198fe62f78746ef245e5091fc146ee383235f6d5a01b5d2b590b06c37e6d",
+    "hash0088": "0836fac35ca3515db9958e232320dd9e0f5d44bf60684d74badff8661daa243b",
+    "creates_table": true,
+    "creates_index": true,
+    "unique_version": true,
+    "has_insert": false,
+    "has_update": false,
+    "has_delete": false,
+    "has_drop": false,
+    "has_alter": false,
+    "copies_bindings": false,
+    "mentions_780001": false
+  },
+  "journal_latest": {
+    "id": 6084102,
+    "hash": "0836fac35ca3515db9958e232320dd9e0f5d44bf60684d74badff8661daa243b",
+    "created_at": 1784740000000
+  },
+  "count_hash_0088": 1,
+  "count_hash_0089": 0,
+  "snapshot_table_exists": false,
+  "planId_column": {
+    "DATA_TYPE": "varchar",
+    "COLUMN_TYPE": "varchar(36)",
+    "CHARACTER_MAXIMUM_LENGTH": 36,
+    "IS_NULLABLE": "NO"
+  },
+  "counts": {
+    "subscriptions": 7,
+    "bindings": 3,
+    "plans": 3,
+    "prices": 10
+  },
+  "uuid_integrity": {
+    "uuid_ok": "7",
+    "unknown_live_plan": "0",
+    "n": 7
+  },
+  "subscription_780001": [
+    {
+      "id": 780001,
+      "status": "active",
+      "billingCycle": "yearly",
+      "planId": "d836bd10-9d9f-4408-a076-f921354d785a",
+      "bindingId": null
+    }
+  ]
+}
