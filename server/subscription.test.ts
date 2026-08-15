@@ -7,8 +7,29 @@ vi.mock("./services/commercial-catalog", async (importOriginal) => {
   return {
     ...actual,
     listPlansForSelectionLegacyShape: vi.fn(async () => ({
-      source: "legacy_required" as const,
+      source: "catalog" as const,
+      plans: [
+        {
+          id: 1,
+          nameAr: "الخطة الأساسية",
+          nameEn: "Basic Plan",
+          priceMonthly: 29,
+          priceYearly: 150,
+          catalogPlanId: "live-basic",
+        },
+      ],
     })),
+    resolveSubscriptionPlanView: vi.fn(async (planId: number) =>
+      planId === 1
+        ? {
+            id: 1,
+            nameAr: "الخطة الأساسية",
+            nameEn: "Basic Plan",
+            priceMonthly: "29",
+            priceYearly: "150",
+          }
+        : null
+    ),
     resolveCheckoutOfferFromLivePlan: vi.fn(
       async (planId: number, billingCycle: "monthly" | "yearly") => {
         if (planId !== 1) return null;

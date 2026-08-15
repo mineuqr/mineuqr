@@ -2,7 +2,10 @@ import type { CommercialEntitlementsResult } from "./getCommercialEntitlements";
 import type { CommercialAuthority } from "./dto/commercialAuthority";
 import { COMMERCIAL_AUTHORITY_SOURCE } from "./dto/commercialAuthority";
 import type { UserSubscriptionRow } from "../subscriptionResolver";
-import type { SelectSubscriptionPlan } from "../../drizzle/schema";
+export type PlanDisplayName = {
+  nameEn?: string | null;
+  nameAr?: string | null;
+};
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -21,7 +24,7 @@ function computeDaysRemaining(trialEndsAt: string | null, now: Date): number | n
   return Math.ceil(diff / MS_PER_DAY);
 }
 
-function resolvePlanName(plan: SelectSubscriptionPlan | null | undefined): string | null {
+function resolvePlanName(plan: PlanDisplayName | null | undefined): string | null {
   if (!plan) return null;
   return plan.nameEn || plan.nameAr || null;
 }
@@ -33,7 +36,7 @@ function resolvePlanName(plan: SelectSubscriptionPlan | null | undefined): strin
 export function mapToCommercialAuthority(
   result: CommercialEntitlementsResult,
   canonicalRow: UserSubscriptionRow | undefined,
-  catalogPlan: SelectSubscriptionPlan | null | undefined,
+  catalogPlan: PlanDisplayName | null | undefined,
   now: Date
 ): CommercialAuthority {
   const { context, entitlements } = result;

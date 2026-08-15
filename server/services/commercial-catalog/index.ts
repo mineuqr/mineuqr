@@ -907,7 +907,11 @@ export {
   resolveLegacyPlanIdFromPlan,
   resolvePlanIdFromLegacyPlanId,
   resolveCheckoutOfferFromLivePlan,
+  resolveLivePlanDisplayByLegacyId,
+  resolveSubscriptionPlanView,
+  isKnownLegacyPlanId,
   type LivePlanCheckoutOffer,
+  type LivePlanDisplay,
 } from "./adoptionService";
 
 export { ensureCommercialCatalogAdoptionSeed } from "./seedAdoptionCatalog";

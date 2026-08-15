@@ -3,16 +3,14 @@
  * COMMERCIAL-CATALOG-PLATFORM-ADOPTION-1 — trial duration + plan from Catalog SSOT.
  * Legacy planId retained for payment/activation compatibility bridge only.
  */
-import {
-  createUserSubscription,
-  getSubscriptionPlans,
-} from "./db";
+import { createUserSubscription } from "./db";
 import { InsertUserSubscription } from "../drizzle/schema";
 import {
   resolveTrialPolicyFromCatalog,
   bindSubscriptionToLivePlan,
   ensureCatalogReady,
 } from "./services/commercial-catalog";
+import { LEGACY_PLAN_BRIDGE } from "./services/commercial-catalog/legacyPlanBridge";
 import { commercialAdoptionObservability } from "./services/commercial-catalog/adoptionObservability";
 
 /** @deprecated Catalog trial policy is SSOT — kept as fallback only. */
@@ -20,9 +18,6 @@ export const TRIAL_DAYS = 14;
 
 /** @deprecated Prefer Catalog professional plan version. */
 export const TRIAL_PLAN_SORT_ORDER = 2;
-
-/** Free ordering-only tier — never used for self-service trials. */
-const ORDERING_FREE_PLAN_ID = 30001;
 
 /**
  * Plan for new trials — Catalog SSOT with legacy bridge fallback.
@@ -37,15 +32,12 @@ export async function resolveTrialPlanId(): Promise<number> {
   }
 
   commercialAdoptionObservability.recordLegacyLookup(
-    "resolveTrialPlanId:subscription_plans"
+    "resolveTrialPlanId:legacy_plan_bridge"
   );
-  const plans = await getSubscriptionPlans();
-  const paid = plans.filter((p) => p.id !== ORDERING_FREE_PLAN_ID);
-  const professional = paid.find((p) => p.sortOrder === TRIAL_PLAN_SORT_ORDER);
-  if (professional) return professional.id;
-  if (paid[1]) return paid[1].id;
-  if (paid[0]) return paid[0].id;
-  return 1;
+  return (
+    LEGACY_PLAN_BRIDGE.find((b) => b.catalogPlanCode === "professional")
+      ?.legacyPlanId ?? 30002
+  );
 }
 
 export async function resolveTrialDurationDays(): Promise<number> {

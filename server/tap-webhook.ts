@@ -8,7 +8,6 @@ import {
   updateSubscriptionById,
   getSubscriptionById,
   getUserById,
-  getSubscriptionPlanById,
 } from "./db";
 import { updateSubscriptionForActivation } from "./db";
 import { notifyOwnerNewSubscription } from "./owner-email-notifications";
@@ -170,8 +169,11 @@ export async function handleTapWebhook(req: Request, res: Response) {
         }
         const planId = metadata.plan_id;
         if (planId) {
-          const plan = await getSubscriptionPlanById(parseInt(planId));
-          if (plan) planName = plan.nameAr;
+          const { resolveLivePlanDisplayByLegacyId } = await import(
+            "./services/commercial-catalog"
+          );
+          const plan = await resolveLivePlanDisplayByLegacyId(parseInt(planId, 10));
+          if (plan) planName = plan.nameAr || plan.nameEn;
         }
         await notifyOwnerNewSubscription({
           userName,

@@ -583,6 +583,72 @@ export function getAdoptionObservability() {
   };
 }
 
+export type LivePlanDisplay = {
+  id: number;
+  nameEn: string;
+  nameAr: string;
+};
+
+/**
+ * COMMERCIAL-SUBSCRIPTION-PLANS-LEGACY-RESIDUAL-CLEANUP-1
+ * Display name from Live Plan (or bridge identity label). Never reads the legacy plan table.
+ */
+export async function resolveLivePlanDisplayByLegacyId(
+  legacyPlanId: number
+): Promise<LivePlanDisplay | null> {
+  const bridge = bridgeByLegacyPlanId(legacyPlanId);
+  if (!bridge) return null;
+  try {
+    await ensureCatalogReady();
+    const plan = planService.getByCode(bridge.catalogPlanCode);
+    if (plan?.name) {
+      return { id: legacyPlanId, nameEn: plan.name, nameAr: plan.name };
+    }
+  } catch {
+    /* catalog unavailable — identity label only */
+  }
+  return {
+    id: legacyPlanId,
+    nameEn: bridge.catalogPlanName,
+    nameAr: bridge.catalogPlanName,
+  };
+}
+
+/**
+ * Compatibility plan view for subscription DTOs. Live Plan catalog only.
+ * Returns null when the integer id is unknown — no legacy table fallback.
+ */
+export async function resolveSubscriptionPlanView(legacyPlanId: number) {
+  const adopted = await listPlansForSelectionLegacyShape();
+  if (adopted.source === "catalog") {
+    const match = adopted.plans.find((p) => p.id === legacyPlanId);
+    if (match) return match;
+  }
+  const display = await resolveLivePlanDisplayByLegacyId(legacyPlanId);
+  if (!display) return null;
+  return {
+    id: display.id,
+    nameEn: display.nameEn,
+    nameAr: display.nameAr,
+    descriptionEn: display.nameEn,
+    descriptionAr: display.nameAr,
+    priceMonthly: null as string | null,
+    priceYearly: null as string | null,
+    maxRestaurants: null as number | null,
+    maxItemsPerRestaurant: null as number | null,
+    maxCategories: null as number | null,
+    features: null as string | null,
+    featuresAr: null as string | null,
+    isActive: true,
+    sortOrder: 0,
+    catalogPlanId: null as string | null,
+  };
+}
+
+export function isKnownLegacyPlanId(legacyPlanId: number): boolean {
+  return bridgeByLegacyPlanId(legacyPlanId) != null;
+}
+
 export function resolveLegacyPlanIdFromPlan(planId: string): number | null {
   const plan = planService.get(planId);
   if (!plan) return null;

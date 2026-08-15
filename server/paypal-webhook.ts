@@ -1,7 +1,6 @@
 import { Request, Response } from "express";
 import { capturePayPalOrder } from "./paypal";
 import {
-  getSubscriptionPlanById,
   getRestaurantsByUser,
   getUserById,
   updateSubscriptionForActivation,
@@ -87,8 +86,9 @@ export async function handlePayPalWebhook(req: Request, res: Response) {
 
       if (capturedOrder.status === "COMPLETED") {
         // Update user subscription
-        const plan = await getSubscriptionPlanById(planId);
-        if (!plan) {
+        const { isKnownLegacyPlanId, resolveLivePlanDisplayByLegacyId } =
+          await import("./services/commercial-catalog");
+        if (!isKnownLegacyPlanId(planId)) {
           opsLog({
             type: OPS_EVENT.webhook_processing_failed,
             category: "WEBHOOK",
@@ -101,6 +101,7 @@ export async function handlePayPalWebhook(req: Request, res: Response) {
           });
           return res.json({ status: "error", message: "Plan not found" });
         }
+        const plan = await resolveLivePlanDisplayByLegacyId(planId);
 
         const now = new Date();
         const periodEnd = new Date();
@@ -181,14 +182,12 @@ export async function handlePayPalWebhook(req: Request, res: Response) {
           const amount =
             amountValue != null
               ? `${amountValue} ${currencyCode}`
-              : plan.priceMonthly != null
-                ? `${plan.priceMonthly} USD`
-                : "غير محدد";
+              : "غير محدد";
 
           await notifyOwnerNewSubscription({
             userName,
             userEmail,
-            planName: plan.nameAr,
+            planName: plan?.nameAr || plan?.nameEn || "غير محدد",
             billingCycle: "monthly",
             amount,
           });

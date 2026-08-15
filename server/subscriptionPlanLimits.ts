@@ -1,12 +1,12 @@
 import { TRPCError } from "@trpc/server";
-import type { SelectSubscriptionPlan } from "../drizzle/schema";
 import { getRestaurantStats, getRestaurantsByUser } from "./db";
 import { checkLimit, resolveOwnerEntitlements } from "./subscription-runtime";
 
-export type PlanLimits = Pick<
-  SelectSubscriptionPlan,
-  "maxRestaurants" | "maxItemsPerRestaurant" | "maxCategories"
->;
+export type PlanLimits = {
+  maxRestaurants: number;
+  maxItemsPerRestaurant: number;
+  maxCategories: number;
+};
 
 const UNLIMITED_QUOTA = Number.MAX_SAFE_INTEGER;
 

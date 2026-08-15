@@ -7,6 +7,11 @@ vi.mock("../db", () => ({
 
 vi.mock("../services/commercial-catalog", () => ({
   getSubscriptionCommercialBinding: vi.fn(async () => null),
+  resolveLivePlanDisplayByLegacyId: vi.fn(async (id: number) => ({
+    id,
+    nameEn: "Professional",
+    nameAr: "احترافي",
+  })),
   resolveLivePlanCapabilities: vi.fn(async () => ({
     source: "missing",
     planId: null,

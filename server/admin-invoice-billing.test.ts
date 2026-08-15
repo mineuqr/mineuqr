@@ -15,6 +15,28 @@ vi.mock("./db", () => ({
   createNotification: vi.fn(),
 }));
 
+vi.mock("./services/commercial-catalog", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./services/commercial-catalog")>();
+  return {
+    ...actual,
+    getSubscriptionCommercialBinding: vi.fn(async () => ({
+      subscriptionId: 10,
+      planId: "live-pro",
+      chargedAmount: "39.00",
+      chargedCurrency: "USD",
+      billingCycleId: null,
+      billingCycleCode: "monthly",
+      legacyPlanId: 30002,
+      createdAt: new Date().toISOString(),
+    })),
+    resolveLivePlanDisplayByLegacyId: vi.fn(async (id: number) => ({
+      id,
+      nameEn: "Plan",
+      nameAr: "باقة",
+    })),
+  };
+});
+
 vi.mock("./local-uploads", () => ({
   putUploadedFile: vi.fn(async () => ({ url: "https://example.com/invoice.pdf" })),
 }));

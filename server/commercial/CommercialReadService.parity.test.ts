@@ -4,7 +4,6 @@
  * Documents expected MATCH and MISMATCH — does not fix mismatches.
  */
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { computeAdminMrr } from "../adminKpiCalculations";
 import { isSubscriptionActive } from "../db";
 import { resolvePlanLimitsForUser } from "../subscriptionPlanLimits";
 import type { UserSubscriptionRow } from "../subscriptionResolver";
@@ -26,6 +25,11 @@ vi.mock("../db", () => ({
 
 vi.mock("../services/commercial-catalog", () => ({
   getSubscriptionCommercialBinding: vi.fn(async () => null),
+  resolveLivePlanDisplayByLegacyId: vi.fn(async (id: number) => ({
+    id,
+    nameEn: "Professional",
+    nameAr: "احترافي",
+  })),
   resolveLivePlanCapabilities: vi.fn(async () => ({
     source: "missing",
     planId: null,
@@ -266,7 +270,7 @@ describe("EXEC-2 CommercialReadService parity — MISMATCH (legacy consumers)", 
     expect(authority.planCode).toBe("NONE");
   });
 
-  it("S6 MRR: computeAdminMrr counts rows, CRS counts zero entitled owners for scoped-only", async () => {
+  it("scoped-only rows do not make CRS countsInMrr", async () => {
     const userId = 14760004;
     const rows = [
       subRow({ id: 630001, userId, restaurantId: 720003, planId: 30001 }),
@@ -276,21 +280,9 @@ describe("EXEC-2 CommercialReadService parity — MISMATCH (legacy consumers)", 
     setupUserSubs(userId, rows);
 
     const authority = await commercialReadService.getAuthorityForOwner(userId, FIXED_NOW);
-    const legacyMrr = computeAdminMrr(
-      rows,
-      Object.values(PLAN_CATALOG).map((p) => ({
-        id: p.id,
-        priceMonthly: p.priceMonthly,
-        priceYearly: p.priceYearly,
-      }))
-    );
-    const canonicalMrr =
-      authority.commercialStatus.countsInMrr && authority.planCode !== "NONE"
-        ? parseFloat(PLAN_CATALOG[30002 as keyof typeof PLAN_CATALOG]?.priceMonthly ?? "0")
-        : 0;
 
-    expect(legacyMrr).toBeGreaterThan(0);
-    expect(canonicalMrr).toBe(0);
+    expect(authority.commercialStatus.countsInMrr).toBe(false);
+    expect(authority.planCode).toBe("NONE");
     expect(rows.filter((r) => r.status === "active").length).toBe(3);
   });
 });

@@ -53,8 +53,8 @@ describe("create-trial-subscription (LAUNCH-5B)", () => {
   });
 
   describe("resolveTrialPlanId", () => {
-    it("assigns Professional plan (sortOrder 2), not Basic", async () => {
-      await expect(resolveTrialPlanId()).resolves.toBe(102);
+    it("assigns Professional compatibility id, not Basic", async () => {
+      await expect(resolveTrialPlanId()).resolves.toBe(30002);
     });
   });
 

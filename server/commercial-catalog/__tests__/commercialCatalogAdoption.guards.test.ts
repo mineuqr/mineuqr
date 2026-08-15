@@ -38,6 +38,15 @@ describe("Live plan adoption contracts", () => {
     expect(trial).not.toContain("createImmutableCommercialSnapshotForSubscription");
   });
 
+  it("listPlans does not fall back to the legacy plan table", () => {
+    const routers = read("server/routers.ts");
+    const start = routers.indexOf("listPlans: publicProcedure");
+    const end = routers.indexOf("getCurrentSubscription:", start);
+    const block = routers.slice(start, end > start ? end : start + 800);
+    expect(block).toContain("listPlansForSelectionLegacyShape");
+    expect(block).not.toContain("getSubscriptionPlans");
+  });
+
   it("charges Checkout from Live Plan offer, not subscription_plans", () => {
     const routers = read("server/routers.ts");
     const checkoutStart = routers.indexOf("createCheckoutSession:");

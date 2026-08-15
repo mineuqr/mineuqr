@@ -43,10 +43,8 @@ import {
   type ActivationTargetOptions,
 } from "./subscriptionActivation";
 import {
-  computeAdminMrr,
   computeChurnRate,
   computeRenewalRate,
-  subscriptionContributesToCommercialRevenue,
 } from "./adminKpiCalculations";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -418,7 +416,7 @@ export async function getRestaurantStats(restaurantId: number) {
 }
 
 
-// ─── Subscription Plan helpers ──────────────────────────────
+// ─── Subscription Plan helpers (ORM residual — not commercial authority) ──
 
 export async function getSubscriptionPlans() {
   const db = await getDb();
@@ -750,14 +748,12 @@ export async function getAdminStatistics() {
   if (!db) return null;
 
   const allSubs = await db.select().from(userSubscriptions);
-  const allPlans = await db.select().from(subscriptionPlans);
-  
+
   const activeSubscriptions = allSubs.filter(s => s.status === 'active' || s.status === 'trial');
   const trialSubscriptions = allSubs.filter(s => s.status === 'trial');
   const expiredSubscriptions = allSubs.filter(s => s.status === 'expired');
   const canceledSubscriptions = allSubs.filter(s => s.status === 'canceled');
 
-  const totalRevenue = computeAdminMrr(allSubs, allPlans);
   const renewalRate = computeRenewalRate(allSubs.length, activeSubscriptions.length);
   const churnRate = computeChurnRate(
     allSubs.length,
@@ -765,19 +761,27 @@ export async function getAdminStatistics() {
     expiredSubscriptions.length
   );
 
+  const { bridgeByLegacyPlanId } = await import(
+    "./services/commercial-catalog/legacyPlanBridge"
+  );
+  const byPlan = new Map<number, number>();
+  for (const sub of activeSubscriptions) {
+    byPlan.set(sub.planId, (byPlan.get(sub.planId) ?? 0) + 1);
+  }
+
   return {
     totalSubscribers: allSubs.length,
     activeSubscribers: activeSubscriptions.length,
     trialSubscribers: trialSubscriptions.length,
     expiredSubscribers: expiredSubscriptions.length,
     canceledSubscribers: canceledSubscriptions.length,
-    totalRevenue,
+    totalRevenue: 0,
     renewalRate,
     churnRate,
-    subscriptionsByPlan: allPlans.map(plan => ({
-      planId: plan.id,
-      planName: plan.nameAr,
-      count: allSubs.filter(s => s.planId === plan.id && (s.status === 'active' || s.status === 'trial')).length,
+    subscriptionsByPlan: [...byPlan.entries()].map(([planId, count]) => ({
+      planId,
+      planName: bridgeByLegacyPlanId(planId)?.catalogPlanName ?? `plan:${planId}`,
+      count,
     })),
   };
 }
@@ -791,31 +795,16 @@ export async function getRevenueByMonth(months: number = 12) {
   const db = await getDb();
   if (!db) return [];
 
-  const allSubs = await db.select().from(userSubscriptions);
-  const allPlans = await db.select().from(subscriptionPlans);
-
   const revenueData: { month: string; revenue: number }[] = [];
 
-  // Business-calendar buckets in APP_TIMEZONE (aligned with getExtendedAdminStats.userGrowth).
+  // Soft-sunset. Not Check Revenue. Not canonical MRR. Does not read the legacy plan table.
   for (let i = months - 1; i >= 0; i--) {
     const bucket = businessYearMonthMonthsAgo(i);
     const monthStr = formatBusinessYearMonthLabel(bucket.year, bucket.month);
 
-    const monthRevenue = allSubs
-      .filter((s) => {
-        if (!subscriptionContributesToCommercialRevenue(s.status)) return false;
-        return isInBusinessYearMonth(s.createdAt, bucket.year, bucket.month);
-      })
-      .reduce((sum, sub) => {
-        const plan = allPlans.find(p => p.id === sub.planId);
-        if (!plan) return sum;
-        const monthlyPrice = sub.billingCycle === 'yearly' ? (parseFloat(plan.priceYearly || '0') / 12) : parseFloat(plan.priceMonthly || '0');
-        return sum + monthlyPrice;
-      }, 0);
-
     revenueData.push({
       month: monthStr,
-      revenue: Math.round(monthRevenue * 100) / 100,
+      revenue: 0,
     });
   }
 

@@ -1,4 +1,4 @@
-import { getAllUsers, getSubscriptionPlanById, getSubscriptionsByUser } from "../db";
+import { getAllUsers, getSubscriptionsByUser } from "../db";
 import { pickUserLevelSubscription } from "../subscriptionResolver";
 import type { CommercialAuthority } from "./dto/commercialAuthority";
 import type { OwnerCommercialState } from "./commercialReadSlices";
@@ -14,8 +14,8 @@ import {
  *
  * COMMERCIAL-SNAPSHOT-RUNTIME-AUTHORITY-1:
  * Entitlements via getCommercialEntitlements (branch Snapshot | Legacy).
- * Bound path does not use subscription_plans for commercial name —
- * Snapshot meta.commercialName is authoritative when present.
+ * Bound path uses Live Plan commercialName.
+ * Unbound display name resolves from Live Plan / identity bridge — never the legacy plan table.
  */
 export class CommercialReadService {
   /**
@@ -47,10 +47,12 @@ export class CommercialReadService {
         ? meta.commercialName ?? null
         : null;
 
-    // Unbound only — Legacy plan display name. Bound uses Snapshot commercialName.
+    const { resolveLivePlanDisplayByLegacyId } = await import(
+      "../services/commercial-catalog"
+    );
     const catalogPlan =
       snapshotName == null && canonicalRow != null
-        ? await getSubscriptionPlanById(canonicalRow.planId)
+        ? await resolveLivePlanDisplayByLegacyId(canonicalRow.planId)
         : null;
 
     const authority = mapToCommercialAuthority(

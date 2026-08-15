@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import type { UserSubscriptionRow } from "../subscriptionResolver";
 
 vi.mock("../db", () => ({
+  getDb: vi.fn(async () => null),
   getUserById: vi.fn(),
   getSubscriptionsByUser: vi.fn(),
   getSubscriptionPlanById: vi.fn(),

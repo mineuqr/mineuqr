@@ -71,6 +71,12 @@ vi.mock("./services/commercial-catalog", async (importOriginal) => {
     await importOriginal<typeof import("./services/commercial-catalog")>();
   return {
     ...actual,
+    isKnownLegacyPlanId: vi.fn((id: number) => id === 30002 || id === 102),
+    resolveLivePlanDisplayByLegacyId: vi.fn(async (id: number) =>
+      id === 30002 || id === 1 || id === 102
+        ? { id, nameAr: "الخطة الأساسية", nameEn: "Basic Plan" }
+        : null
+    ),
     ensureLivePlanBoundForSubscription: vi.fn(async () => ({
       planId: "plan-webhook-test",
     })),
@@ -160,7 +166,7 @@ describe("PayPal Webhook", () => {
               {
                 custom_id: JSON.stringify({
                   userId: 789,
-                  planId: 1,
+                  planId: 30002,
                 }),
                 amount: { currency_code: "USD", value: "29.00" },
               },
@@ -183,11 +189,11 @@ describe("PayPal Webhook", () => {
       expect(updateSubscriptionForActivation).toHaveBeenCalledWith(
         789,
         expect.objectContaining({
-          planId: 1,
+          planId: 30002,
           status: "active",
           stripeSubscriptionId: "PAYPAL-ORDER-123",
         }),
-        { planId: 1 }
+        { planId: 30002 }
       );
 
       expect(notifyOwnerNewSubscription).toHaveBeenCalledWith(

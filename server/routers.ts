@@ -10,7 +10,7 @@ import {
   getCategoriesByRestaurant, getCategoryById, createCategory, updateCategory, deleteCategory,
   getMenuItemsByCategory, getMenuItemsByRestaurant, getMenuItemById,
   createMenuItem, updateMenuItem, deleteMenuItem, getRestaurantStats,
-  getSubscriptionPlans, getSubscriptionPlanById, createUserSubscription, getCanonicalUserSubscription,
+  createUserSubscription, getCanonicalUserSubscription,
   isSubscriptionActive,
   getOffersByRestaurant, getActiveOffersByRestaurant, getOfferById, createOffer, updateOffer, deleteOffer,
   getInvoicesByUser, getInvoiceById, getUnpaidInvoices,
@@ -883,14 +883,16 @@ const subscriptionRouter = router({
     if (adopted.source === "catalog") {
       return adopted.plans;
     }
-    const { getSubscriptionPlans } = await import("./db");
-    return getSubscriptionPlans();
+    return [];
   }),
 
   getCurrentSubscription: verifiedProcedure.query(async ({ ctx }) => {
     const subscription = await getCanonicalUserSubscription(ctx.user.id);
     if (!subscription) return null;
-    const plan = await getSubscriptionPlanById(subscription.planId);
+    const { resolveSubscriptionPlanView } = await import(
+      "./services/commercial-catalog"
+    );
+    const plan = await resolveSubscriptionPlanView(subscription.planId);
     return { subscription, plan };
   }),
 
@@ -900,7 +902,10 @@ const subscriptionRouter = router({
       await assertRestaurantAccess(ctx, input.restaurantId);
       const subscription = await getSubscriptionForRestaurant(input.restaurantId);
       if (!subscription) return null;
-      const plan = await getSubscriptionPlanById(subscription.planId);
+      const { resolveSubscriptionPlanView } = await import(
+        "./services/commercial-catalog"
+      );
+      const plan = await resolveSubscriptionPlanView(subscription.planId);
       return { subscription, plan };
     }),
 
@@ -1151,7 +1156,13 @@ const adminCoreRouter = router({
   getStatistics: protectedProcedure
     .query(async ({ ctx }) => {
       assertAdminAccess(ctx, "admin.getStatistics");
-      return getAdminStatistics();
+      const stats = await getAdminStatistics();
+      if (!stats) return null;
+      const { canonicalMetricsService } = await import(
+        "./commercial/metrics/CanonicalMetricsService"
+      );
+      const { mrr } = await canonicalMetricsService.getMRR();
+      return { ...stats, totalRevenue: mrr };
     }),
 
   /**
@@ -1329,8 +1340,11 @@ const adminCoreRouter = router({
         subscriptionEndDate: input.subscriptionEndDate,
         status: input.status,
       });
-      const plan = await getSubscriptionPlanById(input.planId);
-      const planName = plan?.nameAr || "غير معروف";
+      const { resolveLivePlanDisplayByLegacyId } = await import(
+        "./services/commercial-catalog"
+      );
+      const plan = await resolveLivePlanDisplayByLegacyId(input.planId);
+      const planName = plan?.nameAr || plan?.nameEn || "غير معروف";
       const statusLabel =
         result.subscriptionStatus === "active"
           ? "فعال"
@@ -1375,9 +1389,14 @@ const adminCoreRouter = router({
         return { success: true };
       }
       const subscriptionId = result.subscriptionId;
-      const updatedPlan = input.planId ? await getSubscriptionPlanById(input.planId) : null;
+      const { resolveLivePlanDisplayByLegacyId } = await import(
+        "./services/commercial-catalog"
+      );
+      const updatedPlan = input.planId
+        ? await resolveLivePlanDisplayByLegacyId(input.planId)
+        : null;
       const changes: string[] = [];
-      if (updatedPlan) changes.push(`الباقة: ${updatedPlan.nameAr}`);
+      if (updatedPlan) changes.push(`الباقة: ${updatedPlan.nameAr || updatedPlan.nameEn}`);
       if (input.billingCycle) changes.push(`دورة الفوترة: ${input.billingCycle === "yearly" ? "سنوي" : "شهري"}`);
       if (input.status) {
         const statusMap: Record<string, string> = { active: "فعال", canceled: "ملغي", expired: "منتهي", trial: "تجريبي" };
@@ -1494,15 +1513,19 @@ const adminCoreRouter = router({
         });
       }
       assertSubscriptionEligibleForAdminInvoice(sub.status);
-      // Get plan info
-      const plan = await getSubscriptionPlanById(sub.planId);
-      if (!plan) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "الباقة غير موجودة" });
+      const {
+        getSubscriptionCommercialBinding,
+        resolveLivePlanDisplayByLegacyId,
+      } = await import("./services/commercial-catalog");
+      const binding = await getSubscriptionCommercialBinding(sub.id);
+      if (!binding?.chargedAmount) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "لا توجد شروط تجارية مسجلة لهذا الاشتراك",
+        });
       }
-      // Calculate amount
-      const amount = sub.billingCycle === "yearly"
-        ? (plan.priceYearly || plan.priceMonthly)
-        : plan.priceMonthly;
+      const amount = binding.chargedAmount;
+      const plan = await resolveLivePlanDisplayByLegacyId(sub.planId);
       // Generate invoice number
       const invoiceNumber = `INV-${Date.now()}-${input.userId}`;
       const now = new Date();
@@ -1526,7 +1549,7 @@ const adminCoreRouter = router({
       const pdfBuffer = await generateInvoicePDFBuffer({
         invoiceNumber,
         customerName: targetUser.name || targetUser.email || "Customer",
-        planName: plan.nameEn || plan.nameAr,
+        planName: plan?.nameEn || plan?.nameAr || "غير معروف",
         amount: amount.toString(),
         currency: "USD",
         issuedAt: now.toISOString(),
