@@ -1,0 +1,616 @@
+{
+  "queriedAt": "2026-08-15T15:17:10.073Z",
+  "access": "PRODUCTION",
+  "mutation": "NONE",
+  "target": {
+    "hostKind": "tidb_cloud",
+    "database": "mineuqr",
+    "tls": true,
+    "port": 4000,
+    "hostPattern": "tidbcloud_prod",
+    "matchesKnownProductionShape": true
+  },
+  "session": {
+    "db": "mineuqr",
+    "server_ts": "2026-08-15T12:17:11.000Z"
+  },
+  "user_subscriptions_columns": [
+    {
+      "COLUMN_NAME": "id",
+      "DATA_TYPE": "int",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO"
+    },
+    {
+      "COLUMN_NAME": "userId",
+      "DATA_TYPE": "int",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO"
+    },
+    {
+      "COLUMN_NAME": "restaurantId",
+      "DATA_TYPE": "int",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO"
+    },
+    {
+      "COLUMN_NAME": "status",
+      "DATA_TYPE": "enum",
+      "COLUMN_TYPE": "enum('active','canceled','expired','trial')",
+      "IS_NULLABLE": "NO"
+    },
+    {
+      "COLUMN_NAME": "billingCycle",
+      "DATA_TYPE": "enum",
+      "COLUMN_TYPE": "enum('monthly','yearly')",
+      "IS_NULLABLE": "NO"
+    },
+    {
+      "COLUMN_NAME": "stripeSubscriptionId",
+      "DATA_TYPE": "varchar",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "YES"
+    },
+    {
+      "COLUMN_NAME": "stripeCustomerId",
+      "DATA_TYPE": "varchar",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "YES"
+    },
+    {
+      "COLUMN_NAME": "currentPeriodStart",
+      "DATA_TYPE": "timestamp",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO"
+    },
+    {
+      "COLUMN_NAME": "currentPeriodEnd",
+      "DATA_TYPE": "timestamp",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO"
+    },
+    {
+      "COLUMN_NAME": "trialEndsAt",
+      "DATA_TYPE": "timestamp",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES"
+    },
+    {
+      "COLUMN_NAME": "canceledAt",
+      "DATA_TYPE": "timestamp",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES"
+    },
+    {
+      "COLUMN_NAME": "createdAt",
+      "DATA_TYPE": "timestamp",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO"
+    },
+    {
+      "COLUMN_NAME": "updatedAt",
+      "DATA_TYPE": "timestamp",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO"
+    },
+    {
+      "COLUMN_NAME": "planId",
+      "DATA_TYPE": "varchar",
+      "COLUMN_TYPE": "varchar(36)",
+      "IS_NULLABLE": "NO"
+    }
+  ],
+  "commercial_subscription_bindings_columns": [
+    {
+      "COLUMN_NAME": "id",
+      "DATA_TYPE": "varchar",
+      "COLUMN_TYPE": "varchar(36)",
+      "IS_NULLABLE": "NO"
+    },
+    {
+      "COLUMN_NAME": "subscriptionId",
+      "DATA_TYPE": "int",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO"
+    },
+    {
+      "COLUMN_NAME": "legacyPlanId",
+      "DATA_TYPE": "int",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "YES"
+    },
+    {
+      "COLUMN_NAME": "createdAt",
+      "DATA_TYPE": "timestamp",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO"
+    },
+    {
+      "COLUMN_NAME": "planId",
+      "DATA_TYPE": "varchar",
+      "COLUMN_TYPE": "varchar(36)",
+      "IS_NULLABLE": "NO"
+    },
+    {
+      "COLUMN_NAME": "chargedAmount",
+      "DATA_TYPE": "decimal",
+      "COLUMN_TYPE": "decimal(12,2)",
+      "IS_NULLABLE": "YES"
+    },
+    {
+      "COLUMN_NAME": "chargedCurrency",
+      "DATA_TYPE": "varchar",
+      "COLUMN_TYPE": "varchar(8)",
+      "IS_NULLABLE": "YES"
+    },
+    {
+      "COLUMN_NAME": "billingCycleId",
+      "DATA_TYPE": "varchar",
+      "COLUMN_TYPE": "varchar(36)",
+      "IS_NULLABLE": "YES"
+    },
+    {
+      "COLUMN_NAME": "billingCycleCode",
+      "DATA_TYPE": "varchar",
+      "COLUMN_TYPE": "varchar(64)",
+      "IS_NULLABLE": "YES"
+    },
+    {
+      "COLUMN_NAME": "updatedAt",
+      "DATA_TYPE": "timestamp",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO"
+    }
+  ],
+  "subscription_780001": {
+    "id": 780001,
+    "userId": 21630002,
+    "restaurantId": 0,
+    "planId": "d836bd10-9d9f-4408-a076-f921354d785a",
+    "status": "active",
+    "billingCycle": "yearly",
+    "currentPeriodStart": "2026-06-21T10:47:36.000Z",
+    "currentPeriodEnd": "2027-06-21T10:47:36.000Z",
+    "trialEndsAt": null,
+    "canceledAt": null,
+    "stripeSubscriptionId": null,
+    "stripeCustomerId": null,
+    "createdAt": "2026-06-21T10:47:35.000Z",
+    "updatedAt": "2026-08-15T09:37:49.000Z",
+    "planCode": "enterprise",
+    "planName": "Enterprise",
+    "role": "admin",
+    "accountClassification": "INTERNAL"
+  },
+  "bindings_780001": [],
+  "audit_events_780001": [
+    {
+      "id": 4950004,
+      "eventType": "subscription_created_by_admin",
+      "category": "SUBSCRIPTION",
+      "occurredAt": "2026-06-21T10:47:36.000Z",
+      "actorId": 21630002,
+      "actorRole": "admin",
+      "targetType": "subscription",
+      "targetId": 780001,
+      "procedure": "admin.createUserSubscriptionByAdmin",
+      "after": {
+        "expiration": "2027-06-21T13:47:35.663Z",
+        "plan": 30003,
+        "startDate": "2026-06-21T13:47:35.663Z",
+        "status": "active"
+      },
+      "metadata": {
+        "actorRole": "admin",
+        "actorUserId": 21630002,
+        "endDate": "2027-06-21T13:47:35.663Z",
+        "plan": 30003,
+        "procedure": "admin.createUserSubscriptionByAdmin",
+        "startDate": "2026-06-21T13:47:35.663Z",
+        "status": "active",
+        "subscriptionId": 780001,
+        "targetUserId": 21630002
+      }
+    },
+    {
+      "id": 20070009,
+      "eventType": "cascade_restaurant_deleted",
+      "category": "COMMERCIAL",
+      "occurredAt": "2026-08-15T11:09:29.000Z",
+      "actorId": 14760004,
+      "actorRole": "user",
+      "targetType": "restaurant",
+      "targetId": 780001,
+      "procedure": "restaurant.delete",
+      "after": null,
+      "metadata": {
+        "legacyPrefix": "CascadeDelete",
+        "phase": "start",
+        "restaurantId": 780001
+      }
+    },
+    {
+      "id": 20070010,
+      "eventType": "cascade_restaurant_deleted",
+      "category": "COMMERCIAL",
+      "occurredAt": "2026-08-15T11:09:30.000Z",
+      "actorId": 14760004,
+      "actorRole": "user",
+      "targetType": "restaurant",
+      "targetId": 780001,
+      "procedure": "restaurant.delete",
+      "after": null,
+      "metadata": {
+        "legacyPrefix": "CascadeDelete",
+        "phase": "completed",
+        "restaurantId": 780001
+      }
+    }
+  ],
+  "audit_events_user_21630002": [
+    {
+      "id": 4950004,
+      "eventType": "subscription_created_by_admin",
+      "category": "SUBSCRIPTION",
+      "occurredAt": "2026-06-21T10:47:36.000Z",
+      "actorId": 21630002,
+      "targetType": "subscription",
+      "targetId": 780001,
+      "procedure": "admin.createUserSubscriptionByAdmin"
+    }
+  ],
+  "enterprise_catalog_prices": [
+    {
+      "amount": "99.00",
+      "currency": "USD",
+      "cycle": "monthly",
+      "regional": 0
+    },
+    {
+      "amount": "299.00",
+      "currency": "SAR",
+      "cycle": "monthly",
+      "regional": 1
+    },
+    {
+      "amount": "999.00",
+      "currency": "USD",
+      "cycle": "yearly",
+      "regional": 0
+    },
+    {
+      "amount": "2990.00",
+      "currency": "SAR",
+      "cycle": "yearly",
+      "regional": 1
+    }
+  ],
+  "all_subscriptions": [
+    {
+      "id": 600001,
+      "userId": 1,
+      "restaurantId": 0,
+      "planId": "0ade795a-02fa-4d3e-b9b5-262515bade09",
+      "status": "active",
+      "billingCycle": "monthly",
+      "currentPeriodStart": "2026-06-08T03:08:15.000Z",
+      "currentPeriodEnd": "2026-08-07T21:00:00.000Z",
+      "createdAt": "2026-06-08T03:08:15.000Z",
+      "updatedAt": "2026-08-15T09:37:49.000Z",
+      "planCode": "professional",
+      "role": "admin",
+      "accountClassification": "INTERNAL",
+      "bindingId": null,
+      "chargedAmount": null,
+      "chargedCurrency": null,
+      "billingCycleCode": null,
+      "restaurant_n": 2
+    },
+    {
+      "id": 690001,
+      "userId": 14760004,
+      "restaurantId": 0,
+      "planId": "0ade795a-02fa-4d3e-b9b5-262515bade09",
+      "status": "active",
+      "billingCycle": "monthly",
+      "currentPeriodStart": "2026-06-09T14:08:19.000Z",
+      "currentPeriodEnd": "2026-06-13T21:00:00.000Z",
+      "createdAt": "2026-06-09T14:08:18.000Z",
+      "updatedAt": "2026-08-15T09:37:49.000Z",
+      "planCode": "professional",
+      "role": "user",
+      "accountClassification": "COMMERCIAL",
+      "bindingId": null,
+      "chargedAmount": null,
+      "chargedCurrency": null,
+      "billingCycleCode": null,
+      "restaurant_n": 1
+    },
+    {
+      "id": 750001,
+      "userId": 14760004,
+      "restaurantId": 0,
+      "planId": "0ade795a-02fa-4d3e-b9b5-262515bade09",
+      "status": "active",
+      "billingCycle": "monthly",
+      "currentPeriodStart": "2026-06-16T18:26:17.000Z",
+      "currentPeriodEnd": "2026-07-16T21:00:00.000Z",
+      "createdAt": "2026-06-16T18:26:16.000Z",
+      "updatedAt": "2026-08-15T09:37:49.000Z",
+      "planCode": "professional",
+      "role": "user",
+      "accountClassification": "COMMERCIAL",
+      "bindingId": null,
+      "chargedAmount": null,
+      "chargedCurrency": null,
+      "billingCycleCode": null,
+      "restaurant_n": 1
+    },
+    {
+      "id": 810001,
+      "userId": 14760004,
+      "restaurantId": 0,
+      "planId": "79cf7bf7-c3b6-45de-8f20-42897cd493ac",
+      "status": "expired",
+      "billingCycle": "monthly",
+      "currentPeriodStart": "2026-08-15T00:01:22.000Z",
+      "currentPeriodEnd": "2026-09-14T21:00:00.000Z",
+      "createdAt": "2026-08-15T00:01:21.000Z",
+      "updatedAt": "2026-08-15T09:37:49.000Z",
+      "planCode": "basic",
+      "role": "user",
+      "accountClassification": "COMMERCIAL",
+      "bindingId": "7f2a2c6b-f946-4337-8642-911cb30853f5",
+      "chargedAmount": "19.00",
+      "chargedCurrency": "USD",
+      "billingCycleCode": "monthly",
+      "restaurant_n": 1
+    },
+    {
+      "id": 840001,
+      "userId": 14760004,
+      "restaurantId": 0,
+      "planId": "d836bd10-9d9f-4408-a076-f921354d785a",
+      "status": "active",
+      "billingCycle": "monthly",
+      "currentPeriodStart": "2026-08-15T00:26:46.000Z",
+      "currentPeriodEnd": "2026-09-15T00:26:46.000Z",
+      "createdAt": "2026-08-15T00:26:45.000Z",
+      "updatedAt": "2026-08-15T09:37:49.000Z",
+      "planCode": "enterprise",
+      "role": "user",
+      "accountClassification": "COMMERCIAL",
+      "bindingId": "dbf91042-5556-4dbf-bf14-b21af0b6a706",
+      "chargedAmount": "99.00",
+      "chargedCurrency": "USD",
+      "billingCycleCode": "monthly",
+      "restaurant_n": 1
+    },
+    {
+      "id": 780001,
+      "userId": 21630002,
+      "restaurantId": 0,
+      "planId": "d836bd10-9d9f-4408-a076-f921354d785a",
+      "status": "active",
+      "billingCycle": "yearly",
+      "currentPeriodStart": "2026-06-21T10:47:36.000Z",
+      "currentPeriodEnd": "2027-06-21T10:47:36.000Z",
+      "createdAt": "2026-06-21T10:47:35.000Z",
+      "updatedAt": "2026-08-15T09:37:49.000Z",
+      "planCode": "enterprise",
+      "role": "admin",
+      "accountClassification": "INTERNAL",
+      "bindingId": null,
+      "chargedAmount": null,
+      "chargedCurrency": null,
+      "billingCycleCode": null,
+      "restaurant_n": 1
+    }
+  ],
+  "admin_subscription_audit_events": [
+    {
+      "id": 720003,
+      "eventType": "subscription_updated_by_admin",
+      "occurredAt": "2026-06-13T02:27:33.000Z",
+      "actorId": 1,
+      "targetId": 690001,
+      "procedure": "admin.updateUserSubscriptionByAdmin",
+      "targetUserId": "14760004",
+      "plan": null,
+      "status": null,
+      "startDate": null,
+      "endDate": null,
+      "before": {
+        "expiration": "2026-07-09 00:00:00",
+        "plan": 30002,
+        "status": "active"
+      },
+      "after": {
+        "expiration": "2026-06-14T00:00:00.000Z",
+        "plan": 30002,
+        "status": "active"
+      },
+      "metadata": {
+        "actorRole": "admin",
+        "actorUserId": 1,
+        "after": {
+          "expiration": "2026-06-14T00:00:00.000Z",
+          "plan": 30002,
+          "status": "active"
+        },
+        "before": {
+          "expiration": "2026-07-09 00:00:00",
+          "plan": 30002,
+          "status": "active"
+        },
+        "procedure": "admin.updateUserSubscriptionByAdmin",
+        "subscriptionId": 690001,
+        "targetUserId": 14760004
+      }
+    },
+    {
+      "id": 2310003,
+      "eventType": "subscription_created_by_admin",
+      "occurredAt": "2026-06-16T18:26:17.000Z",
+      "actorId": 1,
+      "targetId": 750001,
+      "procedure": "admin.createUserSubscriptionByAdmin",
+      "targetUserId": "14760004",
+      "plan": "30002",
+      "status": "active",
+      "startDate": "2026-06-16T21:26:16.714Z",
+      "endDate": "2026-07-17T00:00:00.000Z",
+      "before": null,
+      "after": {
+        "expiration": "2026-07-17T00:00:00.000Z",
+        "plan": 30002,
+        "startDate": "2026-06-16T21:26:16.714Z",
+        "status": "active"
+      },
+      "metadata": {
+        "actorRole": "admin",
+        "actorUserId": 1,
+        "endDate": "2026-07-17T00:00:00.000Z",
+        "plan": 30002,
+        "procedure": "admin.createUserSubscriptionByAdmin",
+        "startDate": "2026-06-16T21:26:16.714Z",
+        "status": "active",
+        "subscriptionId": 750001,
+        "targetUserId": 14760004
+      }
+    },
+    {
+      "id": 4950004,
+      "eventType": "subscription_created_by_admin",
+      "occurredAt": "2026-06-21T10:47:36.000Z",
+      "actorId": 21630002,
+      "targetId": 780001,
+      "procedure": "admin.createUserSubscriptionByAdmin",
+      "targetUserId": "21630002",
+      "plan": "30003",
+      "status": "active",
+      "startDate": "2026-06-21T13:47:35.663Z",
+      "endDate": "2027-06-21T13:47:35.663Z",
+      "before": null,
+      "after": {
+        "expiration": "2027-06-21T13:47:35.663Z",
+        "plan": 30003,
+        "startDate": "2026-06-21T13:47:35.663Z",
+        "status": "active"
+      },
+      "metadata": {
+        "actorRole": "admin",
+        "actorUserId": 21630002,
+        "endDate": "2027-06-21T13:47:35.663Z",
+        "plan": 30003,
+        "procedure": "admin.createUserSubscriptionByAdmin",
+        "startDate": "2026-06-21T13:47:35.663Z",
+        "status": "active",
+        "subscriptionId": 780001,
+        "targetUserId": 21630002
+      }
+    },
+    {
+      "id": 19830006,
+      "eventType": "subscription_created_by_admin",
+      "occurredAt": "2026-08-15T00:01:22.000Z",
+      "actorId": 1,
+      "targetId": 810001,
+      "procedure": "admin.createUserSubscriptionByAdmin",
+      "targetUserId": "14760004",
+      "plan": "30001",
+      "status": "active",
+      "startDate": "2026-08-15T03:01:21.656Z",
+      "endDate": "2026-09-15T03:01:21.657Z",
+      "before": null,
+      "after": {
+        "expiration": "2026-09-15T03:01:21.657Z",
+        "plan": 30001,
+        "startDate": "2026-08-15T03:01:21.656Z",
+        "status": "active"
+      },
+      "metadata": {
+        "actorRole": "admin",
+        "actorUserId": 1,
+        "endDate": "2026-09-15T03:01:21.657Z",
+        "plan": 30001,
+        "procedure": "admin.createUserSubscriptionByAdmin",
+        "startDate": "2026-08-15T03:01:21.656Z",
+        "status": "active",
+        "subscriptionId": 810001,
+        "targetUserId": 14760004
+      }
+    },
+    {
+      "id": 19890002,
+      "eventType": "subscription_updated_by_admin",
+      "occurredAt": "2026-08-15T00:24:32.000Z",
+      "actorId": 1,
+      "targetId": 810001,
+      "procedure": "admin.updateUserSubscriptionByAdmin",
+      "targetUserId": "14760004",
+      "plan": null,
+      "status": null,
+      "startDate": null,
+      "endDate": null,
+      "before": {
+        "expiration": "2026-09-15 03:01:22",
+        "plan": 30001,
+        "status": "active"
+      },
+      "after": {
+        "expiration": "2026-09-15T00:00:00.000Z",
+        "plan": 30001,
+        "status": "expired"
+      },
+      "metadata": {
+        "actorRole": "admin",
+        "actorUserId": 1,
+        "after": {
+          "expiration": "2026-09-15T00:00:00.000Z",
+          "plan": 30001,
+          "status": "expired"
+        },
+        "before": {
+          "expiration": "2026-09-15 03:01:22",
+          "plan": 30001,
+          "status": "active"
+        },
+        "procedure": "admin.updateUserSubscriptionByAdmin",
+        "subscriptionId": 810001,
+        "targetUserId": 14760004
+      }
+    },
+    {
+      "id": 19890004,
+      "eventType": "subscription_created_by_admin",
+      "occurredAt": "2026-08-15T00:26:46.000Z",
+      "actorId": 1,
+      "targetId": 840001,
+      "procedure": "admin.createUserSubscriptionByAdmin",
+      "targetUserId": "14760004",
+      "plan": "30003",
+      "status": "active",
+      "startDate": "2026-08-15T03:26:45.555Z",
+      "endDate": "2026-09-15T03:26:45.555Z",
+      "before": null,
+      "after": {
+        "expiration": "2026-09-15T03:26:45.555Z",
+        "plan": 30003,
+        "startDate": "2026-08-15T03:26:45.555Z",
+        "status": "active"
+      },
+      "metadata": {
+        "actorRole": "admin",
+        "actorUserId": 1,
+        "endDate": "2026-09-15T03:26:45.555Z",
+        "plan": 30003,
+        "procedure": "admin.createUserSubscriptionByAdmin",
+        "startDate": "2026-08-15T03:26:45.555Z",
+        "status": "active",
+        "subscriptionId": 840001,
+        "targetUserId": 14760004
+      }
+    }
+  ]
+}
