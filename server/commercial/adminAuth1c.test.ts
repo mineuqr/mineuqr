@@ -165,7 +165,7 @@ describe("ADMIN-AUTH-1C commercial population", () => {
     );
 
     expect(snapshot.executive.commercialSubscribers).toBe(1);
-    expect(snapshot.executive.mrr).toBe(79);
+    expect(snapshot.executive.mrr).toBe(0);
     expect(snapshot.planDistribution.entries.find((e) => e.planCode === "ADMIN")).toBeUndefined();
   });
 

@@ -173,7 +173,7 @@ describe("EXEC-3 dashboard API layer", () => {
     const summary = await caller.admin.getDashboardSummary();
 
     expect(summary.metricsSource).toBe("CANONICAL_OWNER");
-    expect(summary.mrr).toBe(79);
+    expect(summary.mrr).toBe(0);
     expect(summary.activeSubscriptions).toBe(1);
     expect(summary.totalUsers).toBe(2);
     expect(summary.activeRestaurants).toBe(2);

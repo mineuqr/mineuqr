@@ -1,9 +1,12 @@
-import { monthlyEquivalentPlanPrice } from "../../adminKpiCalculations";
-import { getSubscriptionPlanById, getSubscriptionPlans } from "../../db";
 import { commercialReadService } from "../CommercialReadService";
 import { COMMERCIAL_AUTHORITY_SOURCE } from "../dto/commercialAuthority";
 import type { OwnerCommercialState } from "../commercialReadSlices";
 import type { CommercialPlan } from "@commercial/planTypes";
+import {
+  computeMrrFromChargedTerms,
+  loadChargedTermsForMrr,
+  type ChargedTermsMrrRow,
+} from "./chargedTermsMrr";
 import {
   COMMERCIAL_OVERVIEW_ASSEMBLER,
   COMMERCIAL_OVERVIEW_SCHEMA_VERSION,
@@ -63,9 +66,14 @@ export type DashboardSummaryResult = {
  * EXEC-3 / AR-4 Category C — canonical owner-based metrics.
  * Never reads raw subscription row aggregates for product truth.
  */
+export type LoadChargedTermsForMrr = (
+  subscriptionIds: number[]
+) => Promise<ChargedTermsMrrRow[]>;
+
 export class CanonicalMetricsService {
   constructor(
-    private readonly readService = commercialReadService
+    private readonly readService = commercialReadService,
+    private readonly loadChargedTerms: LoadChargedTermsForMrr = loadChargedTermsForMrr
   ) {}
 
   async loadOwnerStates(now: Date = new Date()): Promise<OwnerCommercialState[]> {
@@ -267,30 +275,19 @@ export class CanonicalMetricsService {
   }
 
   private async computeMrrFromStates(states: OwnerCommercialState[]): Promise<number> {
-    const plans = await getSubscriptionPlans();
-    const planRows = plans.map((p) => ({
-      id: p.id,
-      priceMonthly: p.priceMonthly,
-      priceYearly: p.priceYearly,
-    }));
-
-    let total = 0;
-    for (const state of states) {
-      if (!state.commercialStatus.countsInMrr || state.planId == null) continue;
-      const plan =
-        planRows.find((p) => p.id === state.planId) ??
-        (await getSubscriptionPlanById(state.planId));
-      if (!plan) continue;
-      total += monthlyEquivalentPlanPrice(
-        { billingCycle: state.billingCycle ?? "monthly" },
-        {
-          id: plan.id,
-          priceMonthly: plan.priceMonthly,
-          priceYearly: plan.priceYearly ?? null,
-        }
-      );
+    const subscriptionIds = [
+      ...new Set(
+        states
+          .filter((state) => state.commercialStatus.countsInMrr && state.subscriptionId != null)
+          .map((state) => state.subscriptionId as number)
+      ),
+    ];
+    const rows = await this.loadChargedTerms(subscriptionIds);
+    const termsBySubscriptionId = new Map<number, ChargedTermsMrrRow>();
+    for (const row of rows) {
+      termsBySubscriptionId.set(row.subscriptionId, row);
     }
-    return Math.round(total * 100) / 100;
+    return computeMrrFromChargedTerms(states, termsBySubscriptionId);
   }
 }
 
