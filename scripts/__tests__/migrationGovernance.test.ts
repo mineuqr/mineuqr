@@ -15,7 +15,7 @@ import {
 const repoRoot = join(__dirname, "../..");
 
 describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
-  it("journal contains canonical migrations 0000–0089 contiguously", () => {
+  it("journal contains canonical migrations 0000–0090 contiguously", () => {
     const journal = loadJournal();
     expect(journal.entries).toHaveLength(CANONICAL_JOURNAL_ENTRY_COUNT);
     expect(journal.entries[0]?.tag).toBe("0000_shiny_blizzard");
@@ -49,13 +49,14 @@ describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
     expect(journal.entries[86]?.tag).toBe("0086_commercial_live_plans");
     expect(journal.entries[87]?.tag).toBe("0087_platform_owner_access_mode");
     expect(journal.entries[88]?.tag).toBe("0088_user_subscriptions_live_plan_identity");
-    expect(journal.entries[89]?.tag).toBe(CANONICAL_MIGRATION_TAIL_TAG);
+    expect(journal.entries[89]?.tag).toBe("0089_commercial_charged_terms_snapshots");
+    expect(journal.entries[90]?.tag).toBe(CANONICAL_MIGRATION_TAIL_TAG);
     expect(validateJournalOrdering()).toEqual([]);
   });
 
   it("exports certified migration tail constant", () => {
-    expect(CANONICAL_MIGRATION_TAIL_TAG).toBe("0089_commercial_charged_terms_snapshots");
-    expect(CANONICAL_JOURNAL_ENTRY_COUNT).toBe(90);
+    expect(CANONICAL_MIGRATION_TAIL_TAG).toBe("0090_commercial_subscription_concessions");
+    expect(CANONICAL_JOURNAL_ENTRY_COUNT).toBe(91);
     const tags = loadJournal().entries.map((e) => e.tag);
     expect(tags[tags.length - 1]).toBe(CANONICAL_MIGRATION_TAIL_TAG);
   });
@@ -125,6 +126,22 @@ describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
     expect(sql).not.toContain("subscription_plans");
     expect(sql).not.toContain("commercial_prices");
     expect(sql).not.toContain("priceMonthly");
+  });
+
+  it("0090 is additive concession table and does not backfill or touch prices", () => {
+    const sql = readFileSync(
+      join(repoRoot, "drizzle/0090_commercial_subscription_concessions.sql"),
+      "utf8"
+    );
+    expect(sql).toContain("CREATE TABLE `commercial_subscription_concessions`");
+    expect(sql).toContain("CREATE INDEX `commercial_concessions_sub_status_ends_idx`");
+    expect(sql).not.toMatch(/INSERT\s+INTO/i);
+    expect(sql).not.toMatch(/UPDATE\s+/i);
+    expect(sql).not.toMatch(/DELETE\s+/i);
+    expect(sql).not.toMatch(/DROP\s+/i);
+    expect(sql).not.toContain("780001");
+    expect(sql).not.toContain("subscription_plans");
+    expect(sql).not.toContain("chargedAmount");
   });
 
   it("0088 validates conversion before dropping integer planId", () => {

@@ -12,8 +12,11 @@ import type { BillingCycle, SubscriptionPlanLike, SubscriptionStatus } from "@/l
 import { formatAdminSubscriptionPrice } from "@/lib/admin/formatAdminCurrency";
 import { formatSubscriptionPlanName } from "@/lib/subscription";
 import { useSubscriptionFormPreview } from "@/lib/subscription";
+import { computeConcessionEndsAt, type ConcessionUnit } from "@shared/commercial-concession";
 import { SubscriptionCycleSelector } from "./SubscriptionCycleSelector";
 import { SubscriptionSummaryPreview } from "./SubscriptionSummaryPreview";
+
+export type AdminFreePeriodMode = "none" | ConcessionUnit;
 
 type SubscriptionAdminFormFieldsProps = {
   plans: SubscriptionPlanLike[] | undefined;
@@ -31,6 +34,13 @@ type SubscriptionAdminFormFieldsProps = {
   onStatusChange?: (status: SubscriptionStatus) => void;
   statusLabel?: string;
   showStatus?: boolean;
+  freePeriodMode?: AdminFreePeriodMode;
+  onFreePeriodModeChange?: (mode: AdminFreePeriodMode) => void;
+  freePeriodDuration?: string;
+  onFreePeriodDurationChange?: (value: string) => void;
+  freePeriodReason?: string;
+  onFreePeriodReasonChange?: (value: string) => void;
+  showFreePeriod?: boolean;
 };
 
 export function SubscriptionAdminFormFields({
@@ -49,6 +59,13 @@ export function SubscriptionAdminFormFields({
   onStatusChange,
   statusLabel: statusFieldLabel,
   showStatus = false,
+  freePeriodMode = "none",
+  onFreePeriodModeChange,
+  freePeriodDuration = "",
+  onFreePeriodDurationChange,
+  freePeriodReason = "",
+  onFreePeriodReasonChange,
+  showFreePeriod = false,
 }: SubscriptionAdminFormFieldsProps) {
   const isAr = locale === "ar";
 
@@ -61,6 +78,13 @@ export function SubscriptionAdminFormFields({
       })),
     [plans, billingCycle, locale]
   );
+
+  const freeUntil = useMemo(() => {
+    if (freePeriodMode === "none") return null;
+    const duration = Number.parseInt(freePeriodDuration, 10);
+    if (!Number.isInteger(duration) || duration <= 0) return null;
+    return computeConcessionEndsAt(new Date(), freePeriodMode, duration);
+  }, [freePeriodMode, freePeriodDuration]);
 
   const preview = useSubscriptionFormPreview({
     plans,
@@ -143,6 +167,60 @@ export function SubscriptionAdminFormFields({
           {isAr ? "اتركه فارغاً لاستخدام المدة الافتراضية عند الحفظ." : "Leave empty to use server default on save."}
         </p>
       </div>
+
+      {showFreePeriod && onFreePeriodModeChange ? (
+        <div className="space-y-3 rounded-lg border border-border/60 p-3">
+          <div>
+            <Label className="text-foreground">{isAr ? "الفترة المجانية" : "Free period"}</Label>
+            <Select
+              value={freePeriodMode}
+              onValueChange={(v) => onFreePeriodModeChange(v as AdminFreePeriodMode)}
+            >
+              <SelectTrigger className="mt-2 bg-background border-border">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">{isAr ? "بدون" : "None"}</SelectItem>
+                <SelectItem value="day">{isAr ? "أيام" : "Days"}</SelectItem>
+                <SelectItem value="month">{isAr ? "أشهر تقويمية" : "Calendar months"}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {freePeriodMode !== "none" ? (
+            <>
+              <div>
+                <Label className="text-foreground">{isAr ? "المدة" : "Duration"}</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={freePeriodDuration}
+                  onChange={(e) => onFreePeriodDurationChange?.(e.target.value)}
+                  className="mt-2 bg-background border-border tabular-nums"
+                />
+              </div>
+              <div>
+                <Label className="text-foreground">{isAr ? "السبب" : "Reason"}</Label>
+                <Input
+                  value={freePeriodReason}
+                  onChange={(e) => onFreePeriodReasonChange?.(e.target.value)}
+                  className="mt-2 bg-background border-border"
+                />
+              </div>
+              <p className="text-sm text-foreground">
+                {isAr ? "مجاني حتى" : "Free until"}:{" "}
+                <span dir="ltr" className="tabular-nums">
+                  {freeUntil ? freeUntil.toISOString().slice(0, 10) : "—"}
+                </span>
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {isAr
+                  ? "سعر الباقة للعرض فقط. الفترة المجانية ليست اشتراكاً مدفوعاً وليست تجريبية."
+                  : "Plan price is display-only. A free period is not a paid commitment and is not a trial."}
+              </p>
+            </>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

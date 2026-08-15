@@ -122,6 +122,12 @@ export function logSubscriptionUpdatedByAdmin(params: {
   });
 }
 
+export type AdminFreePeriodInput = {
+  unit: "day" | "month";
+  duration: number;
+  reason: string;
+};
+
 export async function applyAdminUserSubscriptionCreate(params: {
   ctx: TrpcContext;
   procedure: string;
@@ -131,6 +137,7 @@ export async function applyAdminUserSubscriptionCreate(params: {
   billingCycle: BillingCycle;
   subscriptionEndDate?: string;
   status?: SubscriptionAuditStatus;
+  freePeriod?: AdminFreePeriodInput;
 }) {
   const { ctx, procedure, userId, planId, billingCycle, subscriptionEndDate, status } = params;
 
@@ -158,7 +165,17 @@ export async function applyAdminUserSubscriptionCreate(params: {
     });
   }
 
-  const subscriptionStatus = status || "active";
+  const freePeriod = params.freePeriod;
+  if (freePeriod) {
+    if (status && status !== "active") {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "trial_conflict" });
+    }
+    if (subscriptionEndDate) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "conflicting_period_end" });
+    }
+  }
+
+  const subscriptionStatus = freePeriod ? "active" : status || "active";
   const now = new Date();
   const { resolveLivePlanById } = await import("./services/commercial-catalog");
   let livePlanId: string;
@@ -178,6 +195,16 @@ export async function applyAdminUserSubscriptionCreate(params: {
     rethrowAdminChargedTermsAsTrpc(error);
   }
 
+  let concessionEndsAt: string | undefined;
+  if (freePeriod) {
+    const { computeConcessionEndsAt } = await import("@shared/commercial-concession");
+    concessionEndsAt = computeConcessionEndsAt(
+      now,
+      freePeriod.unit,
+      freePeriod.duration
+    ).toISOString();
+  }
+
   const insert = buildAdminSubscriptionInsert(
     {
       userId,
@@ -185,25 +212,48 @@ export async function applyAdminUserSubscriptionCreate(params: {
       planId: livePlanId,
       status: subscriptionStatus,
       billingCycle,
-      subscriptionEndDate,
+      subscriptionEndDate: concessionEndsAt ?? subscriptionEndDate,
     },
     now
   );
   const result = await createSubscriptionForRestaurant(insert);
 
-  try {
-    await persistAdminCreateChargedTerms({
-      subscriptionId: result.id,
-      offer,
-      actorId: ctx.user?.id ?? null,
-    });
-  } catch (error) {
+  if (freePeriod) {
     try {
-      await deleteUserSubscriptionById(result.id);
-    } catch {
-      /* still fail closed; do not return a financially incomplete success */
+      const { persistAdminFreeFirstConcession } = await import("./commercial/concessions");
+      await persistAdminFreeFirstConcession({
+        subscriptionId: result.id,
+        planId: livePlanId,
+        billingCycleCode: billingCycle,
+        unit: freePeriod.unit,
+        duration: freePeriod.duration,
+        reason: freePeriod.reason,
+        actorId: ctx.user?.id ?? null,
+      });
+    } catch (error) {
+      try {
+        await deleteUserSubscriptionById(result.id);
+      } catch {
+        /* still fail closed */
+      }
+      const { rethrowConcessionAsTrpc } = await import("./commercial/concessions");
+      rethrowConcessionAsTrpc(error);
     }
-    rethrowAdminChargedTermsAsTrpc(error);
+  } else {
+    try {
+      await persistAdminCreateChargedTerms({
+        subscriptionId: result.id,
+        offer,
+        actorId: ctx.user?.id ?? null,
+      });
+    } catch (error) {
+      try {
+        await deleteUserSubscriptionById(result.id);
+      } catch {
+        /* still fail closed; do not return a financially incomplete success */
+      }
+      rethrowAdminChargedTermsAsTrpc(error);
+    }
   }
 
   const snapshot = subscriptionAuditSnapshotFromInsert({
@@ -293,6 +343,19 @@ export async function applyAdminUserSubscriptionUpdate(params: {
     typeof updateData.billingCycle === "string" &&
     updateData.billingCycle !== existing.billingCycle;
 
+  if (input.status === "canceled") {
+    try {
+      const { cancelCommercialConcession } = await import("./commercial/concessions");
+      await cancelCommercialConcession({
+        subscriptionId: existing.id,
+        reason: "subscription_canceled",
+        actorId: ctx.user?.id ?? null,
+      });
+    } catch {
+      /* cancel is best-effort when already inactive */
+    }
+  }
+
   if (commercialPlanChanged || commercialCycleChanged) {
     const nextPlanId =
       typeof updateData.planId === "string" ? updateData.planId : String(existing.planId);
@@ -300,6 +363,32 @@ export async function applyAdminUserSubscriptionUpdate(params: {
       typeof updateData.billingCycle === "string"
         ? updateData.billingCycle
         : existing.billingCycle;
+    const { loadCurrentCommercialConcession, updateEnrollmentPlanIdOnly } = await import(
+      "./commercial/concessions"
+    );
+    const currentConcession = await loadCurrentCommercialConcession(existing.id);
+    if (currentConcession) {
+      if (Object.keys(updateData).length === 0) {
+        return { success: true as const, changed: false, subscriptionId: existing.id };
+      }
+      const before = subscriptionAuditSnapshotFromRow(existing);
+      const after = projectSubscriptionAuditSnapshot(existing, updateData);
+      if (subscriptionAuditSnapshotsEqual(before, after)) {
+        return { success: true as const, changed: false, subscriptionId: existing.id };
+      }
+      await updateSubscriptionById(existing.id, updateData);
+      await updateEnrollmentPlanIdOnly(existing.id, nextPlanId);
+      logSubscriptionUpdatedByAdmin({
+        ctx,
+        procedure,
+        targetUserId: userId,
+        subscriptionId: existing.id,
+        before,
+        after,
+      });
+      return { success: true as const, changed: true, subscriptionId: existing.id };
+    }
+
     let offer;
     try {
       offer = await resolveChargedTermsForAdminCreate({
@@ -396,6 +485,17 @@ export async function applyAdminUserSubscriptionDelete(params: {
   const before = subscriptionAuditSnapshotToChangeFields(
     subscriptionAuditSnapshotFromRow(existing)
   );
+
+  try {
+    const { cancelCommercialConcession } = await import("./commercial/concessions");
+    await cancelCommercialConcession({
+      subscriptionId: existing.id,
+      reason: "subscription_deleted",
+      actorId: ctx.user?.id ?? null,
+    });
+  } catch {
+    /* historical concession remains if already inactive */
+  }
 
   await deleteSubscriptionCascade(existing.id, {
     ...cascadeAuditFromTrpc(ctx, procedure, "delete_subscription"),

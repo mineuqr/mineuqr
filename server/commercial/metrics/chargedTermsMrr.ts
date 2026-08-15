@@ -79,12 +79,14 @@ export function monthlyEquivalentFromChargedTerms(
 
 export function computeMrrFromChargedTerms(
   states: MrrEligibleState[],
-  termsBySubscriptionId: ReadonlyMap<number, ChargedTermsMrrRow>
+  termsBySubscriptionId: ReadonlyMap<number, ChargedTermsMrrRow>,
+  suppressedSubscriptionIds?: ReadonlySet<number>
 ): number {
   let total = 0;
   for (const state of states) {
     if (!state.commercialStatus.countsInMrr) continue;
     if (state.subscriptionId == null) continue;
+    if (suppressedSubscriptionIds?.has(state.subscriptionId)) continue;
     const terms = termsBySubscriptionId.get(state.subscriptionId);
     if (!terms) continue;
     const { value } = monthlyEquivalentFromChargedTerms(
@@ -102,7 +104,11 @@ export async function loadChargedTermsForMrr(
   subscriptionIds: number[]
 ): Promise<ChargedTermsMrrRow[]> {
   if (subscriptionIds.length === 0) return [];
-  const snapshots = await loadCurrentChargedTermsForSubscriptions(subscriptionIds);
+  const { loadSubscriptionIdsWithCurrentConcession } = await import("../concessions");
+  const suppressed = await loadSubscriptionIdsWithCurrentConcession(subscriptionIds);
+  const eligibleIds = subscriptionIds.filter((id) => !suppressed.has(id));
+  if (eligibleIds.length === 0) return [];
+  const snapshots = await loadCurrentChargedTermsForSubscriptions(eligibleIds);
   return snapshots.map((row) => ({
     subscriptionId: row.subscriptionId,
     chargedAmount: row.chargedAmount,

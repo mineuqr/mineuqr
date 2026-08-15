@@ -27,7 +27,10 @@ import {
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { Plus, Trash2, Loader2, Search, Users, FileText, CreditCard } from "lucide-react";
-import { SubscriptionAdminFormFields } from "@/components/admin/subscription/SubscriptionAdminFormFields";
+import {
+  SubscriptionAdminFormFields,
+  type AdminFreePeriodMode,
+} from "@/components/admin/subscription/SubscriptionAdminFormFields";
 import { ADMIN_WORKSPACE_DIR, adminActionBtn, adminDash } from "@/components/admin/layout";
 import {
   AdminActionGroup,
@@ -69,6 +72,9 @@ export function CustomerSuccessAccountsSection() {
   const [subBillingCycle, setSubBillingCycle] = useState<"monthly" | "yearly">("monthly");
   const [subStatus, setSubStatus] = useState<"active" | "canceled" | "expired" | "trial">("active");
   const [subEndDate, setSubEndDate] = useState("");
+  const [freePeriodMode, setFreePeriodMode] = useState<AdminFreePeriodMode>("none");
+  const [freePeriodDuration, setFreePeriodDuration] = useState("");
+  const [freePeriodReason, setFreePeriodReason] = useState("");
   const [deleteSubUserId, setDeleteSubUserId] = useState<number | null>(null);
 
   const { data: overviewData, isLoading: overviewLoading, refetch: refetchOverview } =
@@ -136,6 +142,36 @@ export function CustomerSuccessAccountsSection() {
     },
   });
 
+  const grantConcessionMutation = trpc.admin.grantCommercialConcession.useMutation({
+    onSuccess: () => {
+      toast.success(language === "ar" ? "تم منح الفترة المجانية" : "Free period granted");
+      setSubDialogUser(null);
+      refetchUsers();
+    },
+    onError: (error: any) => toast.error(error.message || "حدث خطأ"),
+  });
+  const reviseConcessionMutation = trpc.admin.reviseCommercialConcession.useMutation({
+    onSuccess: () => {
+      toast.success(language === "ar" ? "تم تعديل الفترة المجانية" : "Free period revised");
+      setSubDialogUser(null);
+      refetchUsers();
+    },
+    onError: (error: any) => toast.error(error.message || "حدث خطأ"),
+  });
+  const cancelConcessionMutation = trpc.admin.cancelCommercialConcession.useMutation({
+    onSuccess: () => {
+      toast.success(language === "ar" ? "تم إلغاء الفترة المجانية" : "Free period cancelled");
+      setSubDialogUser(null);
+      refetchUsers();
+    },
+    onError: (error: any) => toast.error(error.message || "حدث خطأ"),
+  });
+
+  const currentConcessionQuery = trpc.admin.getCommercialConcession.useQuery(
+    { userId: subDialogUser?.id ?? 0 },
+    { enabled: subDialogMode === "edit" && subDialogUser?.id != null }
+  );
+
   const deleteSubMutation = trpc.admin.deleteUserSubscriptionByAdmin.useMutation({
     onSuccess: () => {
       toast.success('تم حذف الاشتراك بنجاح');
@@ -172,6 +208,9 @@ export function CustomerSuccessAccountsSection() {
     setSubBillingCycle("monthly");
     setSubStatus("active");
     setSubEndDate("");
+    setFreePeriodMode("none");
+    setFreePeriodDuration("");
+    setFreePeriodReason("");
   };
 
   const openEditSubDialog = (u: any) => {
@@ -182,28 +221,61 @@ export function CustomerSuccessAccountsSection() {
     setSubBillingCycle(c?.billingCycle || "monthly");
     setSubStatus(c?.subscriptionStatus || "active");
     setSubEndDate(c?.currentPeriodEnd ? c.currentPeriodEnd.split("T")[0] : "");
+    setFreePeriodMode("none");
+    setFreePeriodDuration("");
+    setFreePeriodReason("");
   };
 
   const handleSubSubmit = () => {
     if (!subDialogUser) return;
+    const duration = Number.parseInt(freePeriodDuration, 10);
+    const wantsFreePeriod = freePeriodMode !== "none";
+    if (wantsFreePeriod) {
+      if (!Number.isInteger(duration) || duration <= 0) {
+        toast.error(language === "ar" ? "أدخل مدة صحيحة" : "Enter a valid duration");
+        return;
+      }
+      if (!freePeriodReason.trim()) {
+        toast.error(language === "ar" ? "السبب مطلوب" : "Reason is required");
+        return;
+      }
+    }
     if (subDialogMode === "create") {
       if (!subPlanId) { toast.error('يرجى اختيار باقة'); return; }
       createSubMutation.mutate({
         userId: subDialogUser.id,
         planId: subPlanId,
         billingCycle: subBillingCycle,
-        status: subStatus,
-        subscriptionEndDate: subEndDate || undefined,
+        status: wantsFreePeriod ? "active" : subStatus,
+        subscriptionEndDate: wantsFreePeriod ? undefined : (subEndDate || undefined),
+        freePeriod: wantsFreePeriod
+          ? { unit: freePeriodMode, duration, reason: freePeriodReason.trim() }
+          : undefined,
       });
-    } else {
-      updateSubMutation.mutate({
-        userId: subDialogUser.id,
-        planId: subPlanId || undefined,
-        billingCycle: subBillingCycle,
-        status: subStatus,
-        subscriptionEndDate: subEndDate || undefined,
-      });
+      return;
     }
+    if (wantsFreePeriod) {
+      const existing = currentConcessionQuery.data;
+      const payload = {
+        userId: subDialogUser.id,
+        unit: freePeriodMode,
+        duration,
+        reason: freePeriodReason.trim(),
+      };
+      if (existing) {
+        reviseConcessionMutation.mutate(payload);
+      } else {
+        grantConcessionMutation.mutate(payload);
+      }
+      return;
+    }
+    updateSubMutation.mutate({
+      userId: subDialogUser.id,
+      planId: subPlanId || undefined,
+      billingCycle: subBillingCycle,
+      status: subStatus,
+      subscriptionEndDate: subEndDate || undefined,
+    });
   };
 
   const getStatusBadge = (status: string) => (
@@ -539,12 +611,39 @@ export function CustomerSuccessAccountsSection() {
             status={subStatus}
             onStatusChange={setSubStatus}
             showStatus
+            showFreePeriod
+            freePeriodMode={freePeriodMode}
+            onFreePeriodModeChange={setFreePeriodMode}
+            freePeriodDuration={freePeriodDuration}
+            onFreePeriodDurationChange={setFreePeriodDuration}
+            freePeriodReason={freePeriodReason}
+            onFreePeriodReasonChange={setFreePeriodReason}
           />
           <DialogFooter>
             <Button variant="outline" onClick={() => setSubDialogUser(null)}>إلغاء</Button>
+            {subDialogMode === "edit" && currentConcessionQuery.data ? (
+              <Button
+                variant="outline"
+                onClick={() =>
+                  subDialogUser &&
+                  cancelConcessionMutation.mutate({
+                    userId: subDialogUser.id,
+                    reason: freePeriodReason.trim() || "admin_cancel",
+                  })
+                }
+                disabled={cancelConcessionMutation.isPending}
+              >
+                {language === "ar" ? "إلغاء الفترة المجانية" : "Cancel free period"}
+              </Button>
+            ) : null}
             <Button
               onClick={handleSubSubmit}
-              disabled={createSubMutation.isPending || updateSubMutation.isPending}
+              disabled={
+                createSubMutation.isPending ||
+                updateSubMutation.isPending ||
+                grantConcessionMutation.isPending ||
+                reviseConcessionMutation.isPending
+              }
             >
               {(createSubMutation.isPending || updateSubMutation.isPending) ? (
                 <Loader2 className="w-4 h-4 animate-spin" />

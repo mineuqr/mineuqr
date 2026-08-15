@@ -1817,6 +1817,7 @@ export {
   type SelectCommercialPlan,
   commercialSubscriptionBindings,
   commercialSubscriptionChargedTerms,
+  commercialSubscriptionConcessions,
 } from "../server/db/schema/commercial";
 
 export {

@@ -21,9 +21,23 @@ vi.mock("./_core/env", () => ({
 
 vi.mock("./db", () => ({
   getUserById: vi.fn(),
+  getDb: vi.fn(async () => null),
   createSubscriptionForRestaurant: vi.fn(),
   deleteUserSubscriptionById: vi.fn(),
   updateSubscriptionById: vi.fn(),
+}));
+
+vi.mock("./commercial/concessions", () => ({
+  loadCurrentCommercialConcession: vi.fn(async () => null),
+  persistAdminFreeFirstConcession: vi.fn(async () => ({
+    id: "con-1",
+    endsAt: "2026-10-15T00:00:00.000Z",
+  })),
+  cancelCommercialConcession: vi.fn(async () => null),
+  updateEnrollmentPlanIdOnly: vi.fn(async () => undefined),
+  rethrowConcessionAsTrpc: (error: unknown) => {
+    throw error;
+  },
 }));
 
 vi.mock("./commercial/chargedTermsSnapshots", () => ({
@@ -87,6 +101,7 @@ import { createSubscriptionForRestaurant, deleteUserSubscriptionById, getUserByI
 import {
   persistAdminCreateChargedTerms,
 } from "./commercial/adminChargedTermsCompletion";
+import { persistAdminFreeFirstConcession } from "./commercial/concessions";
 import { applyAdminCommercialIdentityChange } from "./commercial/chargedTermsSnapshots";
 import {
   getOwnerAccountSubscriptionRow,
@@ -249,6 +264,43 @@ describe("subscriptionAudit PR-3", () => {
           }),
         })
       );
+    });
+
+    it("free-first create persists a concession and does not write Charged Terms", async () => {
+      await applyAdminUserSubscriptionCreate({
+        ctx: adminContext as any,
+        procedure: "admin.createUserSubscriptionByAdmin",
+        userId: TARGET_USER_ID,
+        planId: "22222222-2222-4222-8222-222222222222",
+        billingCycle: "monthly",
+        status: "active",
+        freePeriod: { unit: "month", duration: 2, reason: "promo" },
+      });
+
+      expect(persistAdminFreeFirstConcession).toHaveBeenCalledWith(
+        expect.objectContaining({
+          subscriptionId: SUBSCRIPTION_ID,
+          unit: "month",
+          duration: 2,
+          reason: "promo",
+        })
+      );
+      expect(persistAdminCreateChargedTerms).not.toHaveBeenCalled();
+    });
+
+    it("rejects trial together with a free period", async () => {
+      await expect(
+        applyAdminUserSubscriptionCreate({
+          ctx: adminContext as any,
+          procedure: "admin.createUserSubscriptionByAdmin",
+          userId: TARGET_USER_ID,
+          planId: "22222222-2222-4222-8222-222222222222",
+          billingCycle: "monthly",
+          status: "trial",
+          freePeriod: { unit: "day", duration: 7, reason: "no" },
+        })
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+      expect(createSubscriptionForRestaurant).not.toHaveBeenCalled();
     });
   });
 

@@ -81,6 +81,8 @@ describe("Live Plan is the sole current commercial price authority", () => {
     const src = read("server/commercial/chargedTermsSnapshots.ts");
     expect(src).not.toContain('chargedAmount: "0"');
     expect(src).not.toContain("chargedAmount: 0");
+    const concessions = read("server/commercial/concessions.ts");
+    expect(concessions).not.toContain("chargedAmount");
   });
 
   it("entitlements remain Live Plan based", () => {

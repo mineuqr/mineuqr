@@ -68,6 +68,24 @@ vi.mock("./commercial/adminChargedTermsCompletion", async (importOriginal) => {
   };
 });
 
+vi.mock("./commercial/concessions", () => ({
+  loadCurrentCommercialConcession: vi.fn(async () => null),
+  persistAdminFreeFirstConcession: vi.fn(),
+  rethrowConcessionAsTrpc: (error: unknown) => {
+    throw error;
+  },
+}));
+
+vi.mock("./commercial/chargedTermsSnapshots", () => ({
+  loadCurrentChargedTermsSnapshot: vi.fn(async () => ({
+    chargedAmount: "39.00",
+    chargedCurrency: "USD",
+    billingCycleCode: "monthly",
+  })),
+  applyAdminCommercialIdentityChange: vi.fn(),
+  insertImmutableChargedTermsSnapshot: vi.fn(),
+}));
+
 vi.mock("./local-uploads", () => ({
   putUploadedFile: vi.fn(async () => ({ url: "https://example.com/invoice.pdf" })),
 }));
@@ -86,6 +104,7 @@ import {
   createSubscriptionForRestaurant,
   createNotification,
 } from "./db";
+import { loadCurrentCommercialConcession } from "./commercial/concessions";
 import { appRouter } from "./routers";
 
 const adminUser = {
@@ -220,6 +239,57 @@ describe("Admin invoice billing hardening (ADMIN-AUDIT-FIX-1)", () => {
       ).rejects.toMatchObject({
         code: "BAD_REQUEST",
       } satisfies Partial<TRPCError>);
+    });
+
+    it("rejects invoice creation while a commercial concession is current", async () => {
+      setupDbForUser(5, [accountSub()]);
+      vi.mocked(loadCurrentCommercialConcession).mockResolvedValueOnce({
+        id: "con-1",
+        subscriptionId: 10,
+        planId: "11111111-1111-4111-8111-111111111111",
+        billingCycleCode: "monthly",
+        unit: "month",
+        duration: 2,
+        startsAt: "2026-08-15T00:00:00.000Z",
+        endsAt: "2026-10-15T00:00:00.000Z",
+        status: "active",
+        version: 1,
+        source: "admin_grant",
+        actorId: 1,
+        reason: "promo",
+        supersededBy: null,
+        cancelledAt: null,
+      });
+      const caller = createCaller();
+      await expect(
+        caller.admin.generateInvoicePDF({ userId: 5, subscriptionId: 10 })
+      ).rejects.toMatchObject({
+        code: "BAD_REQUEST",
+        message: expect.stringContaining("مجانية"),
+      } satisfies Partial<TRPCError>);
+      expect(createInvoice).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("commercial concession admin gate", () => {
+    it("rejects grant/revise/cancel for a non-admin caller", async () => {
+      const caller = appRouter.createCaller({
+        user: { ...adminUser, role: "user" },
+        req: { headers: { origin: "http://localhost:3000" } } as any,
+        res: { clearCookie: vi.fn() } as any,
+      });
+      const input = { userId: 5, unit: "day" as const, duration: 7, reason: "promo" };
+      await expect(caller.admin.grantCommercialConcession(input)).rejects.toMatchObject({
+        code: "FORBIDDEN",
+      });
+      await expect(caller.admin.reviseCommercialConcession(input)).rejects.toMatchObject({
+        code: "FORBIDDEN",
+      });
+      await expect(
+        caller.admin.cancelCommercialConcession({ userId: 5, reason: "stop" })
+      ).rejects.toMatchObject({
+        code: "FORBIDDEN",
+      });
     });
   });
 

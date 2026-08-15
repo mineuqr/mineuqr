@@ -372,7 +372,13 @@ export async function bindSubscriptionToLivePlan(input: {
     }
   }
 
+  const { loadCurrentCommercialConcession } = await import(
+    "../../commercial/concessions"
+  );
+  const activeConcession = await loadCurrentCommercialConcession(input.subscriptionId);
+
   if (
+    !activeConcession &&
     charged?.chargedAmount &&
     charged.chargedCurrency &&
     charged.billingCycleCode

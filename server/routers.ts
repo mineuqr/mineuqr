@@ -69,6 +69,12 @@ import {
   applyAdminUserSubscriptionUpdate,
 } from "./subscriptionAudit";
 import {
+  applyAdminConcessionCancel,
+  applyAdminConcessionGrant,
+  applyAdminConcessionRead,
+  applyAdminConcessionRevise,
+} from "./commercial/adminConcessions";
+import {
   assertProtectedUserClassificationModifiable,
   assertProtectedUserSubscriptionModifiable,
   deleteRestaurantCascade,
@@ -1328,6 +1334,13 @@ const adminCoreRouter = router({
       billingCycle: z.enum(["monthly", "yearly"]),
       subscriptionEndDate: z.string().optional(),
       status: z.enum(["active", "canceled", "expired", "trial"]).optional(),
+      freePeriod: z
+        .object({
+          unit: z.enum(["day", "month"]),
+          duration: z.number().int(),
+          reason: z.string().min(1).max(512),
+        })
+        .optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       assertAdminAccess(ctx, "admin.createUserSubscriptionByAdmin");
@@ -1340,6 +1353,7 @@ const adminCoreRouter = router({
         billingCycle: input.billingCycle,
         subscriptionEndDate: input.subscriptionEndDate,
         status: input.status,
+        freePeriod: input.freePeriod,
       });
       const { resolveLivePlanDisplayByPlanRef } = await import(
         "./services/commercial-catalog"
@@ -1442,6 +1456,68 @@ const adminCoreRouter = router({
       } catch (e) { /* notification failure is non-critical */ }
       return { success: true };
     }),
+  getCommercialConcession: protectedProcedure
+    .input(z.object({ userId: z.number() }))
+    .query(async ({ input, ctx }) => {
+      assertAdminAccess(ctx, "admin.getCommercialConcession");
+      return applyAdminConcessionRead({ userId: input.userId });
+    }),
+  grantCommercialConcession: protectedProcedure
+    .input(
+      z.object({
+        userId: z.number(),
+        unit: z.enum(["day", "month"]),
+        duration: z.number().int(),
+        reason: z.string().min(1).max(512),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      assertAdminAccess(ctx, "admin.grantCommercialConcession");
+      const row = await applyAdminConcessionGrant({
+        ctx,
+        userId: input.userId,
+        unit: input.unit,
+        duration: input.duration,
+        reason: input.reason,
+      });
+      return { success: true as const, concessionId: row.id, endsAt: row.endsAt };
+    }),
+  reviseCommercialConcession: protectedProcedure
+    .input(
+      z.object({
+        userId: z.number(),
+        unit: z.enum(["day", "month"]),
+        duration: z.number().int(),
+        reason: z.string().min(1).max(512),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      assertAdminAccess(ctx, "admin.reviseCommercialConcession");
+      const row = await applyAdminConcessionRevise({
+        ctx,
+        userId: input.userId,
+        unit: input.unit,
+        duration: input.duration,
+        reason: input.reason,
+      });
+      return { success: true as const, concessionId: row.id, endsAt: row.endsAt };
+    }),
+  cancelCommercialConcession: protectedProcedure
+    .input(
+      z.object({
+        userId: z.number(),
+        reason: z.string().min(1).max(512),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      assertAdminAccess(ctx, "admin.cancelCommercialConcession");
+      await applyAdminConcessionCancel({
+        ctx,
+        userId: input.userId,
+        reason: input.reason,
+      });
+      return { success: true as const };
+    }),
   sendCustomNotification: protectedProcedure
     .input(z.object({
       userId: z.number(),
@@ -1514,18 +1590,27 @@ const adminCoreRouter = router({
         });
       }
       assertSubscriptionEligibleForAdminInvoice(sub.status);
-      const {
-        getSubscriptionCommercialBinding,
-        resolveLivePlanDisplayByPlanRef,
-      } = await import("./services/commercial-catalog");
-      const binding = await getSubscriptionCommercialBinding(sub.id);
-      if (!binding?.chargedAmount) {
+      const { loadCurrentCommercialConcession } = await import("./commercial/concessions");
+      const { loadCurrentChargedTermsSnapshot } = await import(
+        "./commercial/chargedTermsSnapshots"
+      );
+      if (await loadCurrentCommercialConcession(sub.id)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "لا يمكن إنشاء فاتورة أثناء فترة مجانية نشطة.",
+        });
+      }
+      const snapshot = await loadCurrentChargedTermsSnapshot(sub.id);
+      if (!snapshot?.chargedAmount) {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "لا توجد شروط تجارية مسجلة لهذا الاشتراك",
         });
       }
-      const amount = binding.chargedAmount;
+      const { resolveLivePlanDisplayByPlanRef } = await import(
+        "./services/commercial-catalog"
+      );
+      const amount = snapshot.chargedAmount;
       const plan = await resolveLivePlanDisplayByPlanRef(sub.planId);
       // Generate invoice number
       const invoiceNumber = `INV-${Date.now()}-${input.userId}`;

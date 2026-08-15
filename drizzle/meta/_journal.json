@@ -631,6 +631,13 @@
       "when": 1784750000000,
       "tag": "0089_commercial_charged_terms_snapshots",
       "breakpoints": true
+    },
+    {
+      "idx": 90,
+      "version": "5",
+      "when": 1784760000000,
+      "tag": "0090_commercial_subscription_concessions",
+      "breakpoints": true
     }
   ]
 }

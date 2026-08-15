@@ -21,3 +21,4 @@ export {
 
 export { commercialSubscriptionBindings } from "./bindings";
 export { commercialSubscriptionChargedTerms } from "./chargedTerms";
+export { commercialSubscriptionConcessions } from "./concessions";
