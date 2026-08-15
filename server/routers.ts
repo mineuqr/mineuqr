@@ -317,9 +317,6 @@ const restaurantRouter = router({
       ownerUserId: z.number().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
-      if (ctx.user.role !== "admin") {
-        await assertRestaurantCreateAllowed(ctx.user.id);
-      }
       const ownerUserId =
         ctx.user.role === "admin"
           ? await resolveAdminRestaurantOwnerUserId({
@@ -328,6 +325,7 @@ const restaurantRouter = router({
               adminUserId: ctx.user.id,
             })
           : ctx.user.id;
+      await assertRestaurantCreateAllowed(ownerUserId);
       const ownerUser =
         ownerUserId === ctx.user.id ? ctx.user : await getUserById(ownerUserId);
       const slug = generateSlug(input.nameAr);

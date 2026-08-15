@@ -176,7 +176,13 @@ export class InMemoryDurableCatalogBackend implements DurableLivePlanBackend {
         ...sub.bundleFeatures,
       ],
       limitProfiles: mergeById(this.data.limitProfiles, sub.limitProfiles),
-      limitValues: mergeById(this.data.limitValues, sub.limitValues),
+      limitValues: [
+        ...this.data.limitValues.filter((v) => {
+          const profileIds = new Set(sub.limitProfiles.map((p) => p.id));
+          return !profileIds.has(v.profileId);
+        }),
+        ...sub.limitValues,
+      ],
       trialPolicies: mergeById(this.data.trialPolicies, sub.trialPolicies),
       regions: mergeById(this.data.regions, sub.regions),
       migrationPolicies: mergeById(
@@ -538,6 +544,44 @@ class DbDurableLivePlanBackend implements DurableLivePlanBackend {
             bundleId: f.bundleId,
             featureKey: f.featureKey,
             included: f.included,
+          });
+        }
+      }
+
+      if (plan.limitProfileId) {
+        const profile = store.limitProfiles.get(plan.limitProfileId);
+        if (profile) {
+          await tx
+            .insert(commercialLimitProfiles)
+            .values({
+              id: profile.id,
+              code: profile.code,
+              name: profile.name,
+              description: profile.description,
+              createdAt: profile.createdAt,
+              updatedAt: profile.updatedAt,
+            })
+            .onDuplicateKeyUpdate({
+              set: {
+                name: profile.name,
+                description: profile.description,
+                updatedAt: profile.updatedAt,
+              },
+            });
+        }
+        await tx
+          .delete(commercialLimitValues)
+          .where(eq(commercialLimitValues.profileId, plan.limitProfileId));
+        const values = Array.from(store.limitValues.values()).filter(
+          (v) => v.profileId === plan.limitProfileId
+        );
+        for (const v of values) {
+          await tx.insert(commercialLimitValues).values({
+            id: v.id,
+            profileId: v.profileId,
+            limitKey: v.limitKey,
+            value: v.value,
+            unit: v.unit,
           });
         }
       }

@@ -5,6 +5,7 @@
 
 import {
   validateLivePlanSave,
+  validateLivePlanLimitValues,
   type CommercialBillingCycle,
   type CommercialCatalogHealth,
   type CommercialFeatureBundle,
@@ -126,6 +127,7 @@ export class PlanService {
         regionId?: string | null;
       }>;
       capabilities?: Array<{ featureKey: string; included?: boolean }>;
+      limits?: Array<{ limitKey: string; value: number | null }>;
     }
   ): Promise<CommercialLivePlan> {
     const existing = this.store.plans.get(id);
@@ -136,6 +138,8 @@ export class PlanService {
     );
     const previousBundles = Array.from(this.store.featureBundles.entries());
     const previousFeatures = Array.from(this.store.bundleFeatures.entries());
+    const previousProfiles = Array.from(this.store.limitProfiles.entries());
+    const previousLimitValues = Array.from(this.store.limitValues.entries());
     const restore = () => {
       this.store.plans.set(id, before);
       for (const [priceId, price] of [...this.store.prices.entries()]) {
@@ -151,6 +155,14 @@ export class PlanService {
       this.store.bundleFeatures.clear();
       for (const [featureId, feature] of previousFeatures) {
         this.store.bundleFeatures.set(featureId, feature);
+      }
+      this.store.limitProfiles.clear();
+      for (const [profileId, profile] of previousProfiles) {
+        this.store.limitProfiles.set(profileId, profile);
+      }
+      this.store.limitValues.clear();
+      for (const [valueId, value] of previousLimitValues) {
+        this.store.limitValues.set(valueId, value);
       }
     };
     let updated: CommercialLivePlan = {
@@ -189,6 +201,36 @@ export class PlanService {
           this.store.plans.set(id, updated);
         } else {
           bundles.replaceIncludedFeatures(bundleId, included);
+        }
+      }
+      if (options?.limits) {
+        const checked = validateLivePlanLimitValues(options.limits);
+        if (!checked.ok) {
+          throw new CommercialCatalogError(
+            `Live plan limit validation failed: ${checked.issues.map((i) => i.message).join("; ")}`,
+            "publication_validation_failed"
+          );
+        }
+        const limits = new LimitProfileService(this.store);
+        let profileId = updated.limitProfileId;
+        if (!profileId) {
+          const created = limits.create(
+            {
+              code: `${updated.code}-limits`,
+              name: `${updated.name} Limits`,
+              values: checked.normalized.map((l) => ({
+                limitKey: l.limitKey,
+                value: l.value,
+                unit: "count",
+              })),
+            },
+            actor
+          );
+          profileId = created.id;
+          updated = { ...updated, limitProfileId: profileId };
+          this.store.plans.set(id, updated);
+        } else {
+          limits.replaceValues(profileId, checked.normalized);
         }
       }
     } catch (e) {
@@ -538,6 +580,36 @@ export class LimitProfileService {
     }
     auditCommercialCreated(actor, "limit_profile", profile.id, { ...profile });
     return profile;
+  }
+
+  replaceValues(
+    profileId: string,
+    values: { limitKey: string; value: number | null; unit?: string | null }[]
+  ): void {
+    if (!this.store.limitProfiles.get(profileId)) {
+      throw new CommercialCatalogError(`Limit profile ${profileId} not found`, "not_found");
+    }
+    const staleIds: string[] = [];
+    this.store.limitValues.forEach((row, id) => {
+      if (row.profileId === profileId) staleIds.push(id);
+    });
+    for (const id of staleIds) this.store.limitValues.delete(id);
+    for (const v of values) {
+      if (!isCommercialLimitFilterKey(v.limitKey)) {
+        throw new CommercialCatalogError(
+          `Unknown commercial limit filter key: ${v.limitKey}`,
+          "invalid_capability_filter"
+        );
+      }
+      const row = {
+        id: newCommercialId(),
+        profileId,
+        limitKey: v.limitKey,
+        value: v.value,
+        unit: v.unit ?? "count",
+      };
+      this.store.limitValues.set(row.id, row);
+    }
   }
 }
 

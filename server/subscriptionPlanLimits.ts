@@ -1,36 +1,12 @@
 import { TRPCError } from "@trpc/server";
 import type { SelectSubscriptionPlan } from "../drizzle/schema";
-import {
-  getRestaurantStats,
-  getRestaurantsByUser,
-  getSubscriptionPlanById,
-  getSubscriptionPlans,
-  getSubscriptionsByUser,
-  getUserById,
-} from "./db";
-import { isPlatformOwner } from "./platform-owner-access/identity";
-import { resolveOwnerEntitlements } from "./subscription-runtime";
-import { resolveSubscriptionEntitlement } from "./subscriptionEntitlement";
-import {
-  pickCanonicalSubscription,
-  resolveOrderingSubscriptionRow,
-} from "./subscriptionResolver";
-import {
-  getSubscriptionCommercialBinding,
-  resolveLivePlanCapabilities,
-} from "./services/commercial-catalog";
-import { commercialRuntimeAuthorityObservability } from "./services/commercial-catalog/runtimeAuthorityObservability";
+import { getRestaurantStats, getRestaurantsByUser } from "./db";
+import { checkLimit, resolveOwnerEntitlements } from "./subscription-runtime";
 
 export type PlanLimits = Pick<
   SelectSubscriptionPlan,
   "maxRestaurants" | "maxItemsPerRestaurant" | "maxCategories"
 >;
-
-const DEFAULT_LIMITS: PlanLimits = {
-  maxRestaurants: 1,
-  maxItemsPerRestaurant: 100,
-  maxCategories: 10,
-};
 
 const UNLIMITED_QUOTA = Number.MAX_SAFE_INTEGER;
 
@@ -38,97 +14,21 @@ function commercialLimitToQuota(value: number | null | undefined): number {
   return value == null ? UNLIMITED_QUOTA : value;
 }
 
-function livePlanQuotaLimits(
-  limits: { limitKey: string; value: number | null }[]
-): PlanLimits {
-  const map = new Map(limits.map((l) => [l.limitKey, l.value] as const));
-  return {
-    maxRestaurants: map.get("restaurants") ?? 0,
-    maxItemsPerRestaurant: map.get("items") ?? 0,
-    maxCategories: map.get("categories") ?? 0,
-  };
-}
-
-async function getFallbackBasicLimits(): Promise<PlanLimits> {
-  const plans = await getSubscriptionPlans();
-  const basic =
-    plans.find((p) => p.maxRestaurants === 1) ??
-    plans.sort((a, b) => a.maxRestaurants - b.maxRestaurants)[0];
-  if (!basic) return DEFAULT_LIMITS;
-  return {
-    maxRestaurants: basic.maxRestaurants,
-    maxItemsPerRestaurant: basic.maxItemsPerRestaurant,
-    maxCategories: basic.maxCategories,
-  };
-}
-
 /**
- * COMMERCIAL-LIVE-PLANS-SIMPLIFICATION-1
- * Bound subscription → current live plan limits.
- * Unbound → Legacy subscription_plans bridge ONLY.
+ * COMMERCIAL-LIVE-PLANS-LIMITS-REPAIR-1
+ * Quota adapter from the entitlement hub only. No PLAN_LIMITS, no
+ * subscription_plans.maxRestaurants, no Basic fallback.
  */
 export async function resolvePlanLimitsForUser(
   userId: number,
-  restaurantId?: number
+  _restaurantId?: number
 ): Promise<PlanLimits> {
-  const user = await getUserById(userId);
-  if (isPlatformOwner(user)) {
-    const result = await resolveOwnerEntitlements(userId);
-    const source = result.meta?.commercialResolutionSource;
-    if (source === "platform_owner_full_platform") {
-      return {
-        maxRestaurants: UNLIMITED_QUOTA,
-        maxItemsPerRestaurant: UNLIMITED_QUOTA,
-        maxCategories: UNLIMITED_QUOTA,
-      };
-    }
-    if (source === "platform_owner_simulated_plan") {
-      return {
-        maxRestaurants: commercialLimitToQuota(result.entitlements.limits.restaurants),
-        maxItemsPerRestaurant: commercialLimitToQuota(result.entitlements.limits.items),
-        maxCategories: commercialLimitToQuota(result.entitlements.limits.categories),
-      };
-    }
-    return { maxRestaurants: 0, maxItemsPerRestaurant: 0, maxCategories: 0 };
-  }
-
-  const rows = await getSubscriptionsByUser(userId);
-  const sub =
-    restaurantId != null
-      ? resolveOrderingSubscriptionRow(restaurantId, rows)
-      : pickCanonicalSubscription(rows);
-
-  if (sub && resolveSubscriptionEntitlement(sub).isEntitled) {
-    const binding = await getSubscriptionCommercialBinding(sub.id);
-    if (binding) {
-      const facts = await resolveLivePlanCapabilities(sub.id);
-      if (facts.source === "live_plan") {
-        commercialRuntimeAuthorityObservability.recordLivePlanResolved(sub.id);
-        return livePlanQuotaLimits(facts.limits);
-      }
-      commercialRuntimeAuthorityObservability.recordSnapshotCreationFailure(
-        `quota_bound_live_plan_unreadable:${binding.planId}`
-      );
-      return { maxRestaurants: 0, maxItemsPerRestaurant: 0, maxCategories: 0 };
-    }
-
-    commercialRuntimeAuthorityObservability.recordLegacyBridgeUsed(
-      "resolvePlanLimitsForUser"
-    );
-    const plan = await getSubscriptionPlanById(sub.planId);
-    if (plan) {
-      return {
-        maxRestaurants: plan.maxRestaurants,
-        maxItemsPerRestaurant: plan.maxItemsPerRestaurant,
-        maxCategories: plan.maxCategories,
-      };
-    }
-  }
-
-  commercialRuntimeAuthorityObservability.recordLegacyBridgeUsed(
-    "resolvePlanLimitsForUser:fallback"
-  );
-  return getFallbackBasicLimits();
+  const result = await resolveOwnerEntitlements(userId);
+  return {
+    maxRestaurants: commercialLimitToQuota(result.entitlements.limits.restaurants),
+    maxItemsPerRestaurant: commercialLimitToQuota(result.entitlements.limits.items),
+    maxCategories: commercialLimitToQuota(result.entitlements.limits.categories),
+  };
 }
 
 function locationWord(max: number): string {
@@ -137,11 +37,16 @@ function locationWord(max: number): string {
 
 export async function assertRestaurantCreateAllowed(userId: number): Promise<void> {
   const restaurants = await getRestaurantsByUser(userId);
-  const limits = await resolvePlanLimitsForUser(userId);
-  if (restaurants.length >= limits.maxRestaurants) {
+  const decision = await checkLimit({
+    ownerId: userId,
+    limitKey: "restaurants",
+    proposedTotal: restaurants.length + 1,
+  });
+  if (!decision.allowed) {
+    const cap = decision.cap ?? 0;
     throw new TRPCError({
       code: "FORBIDDEN",
-      message: `خطتك الحالية تسمح بحد أقصى ${limits.maxRestaurants} ${locationWord(limits.maxRestaurants)}.`,
+      message: `خطتك الحالية تسمح بحد أقصى ${cap} ${locationWord(cap)}.`,
     });
   }
 }
@@ -150,12 +55,16 @@ export async function assertCategoryCreateAllowed(
   userId: number,
   restaurantId: number
 ): Promise<void> {
-  const limits = await resolvePlanLimitsForUser(userId, restaurantId);
   const stats = await getRestaurantStats(restaurantId);
-  if (stats.totalCategories >= limits.maxCategories) {
+  const decision = await checkLimit({
+    ownerId: userId,
+    limitKey: "categories",
+    proposedTotal: stats.totalCategories + 1,
+  });
+  if (!decision.allowed) {
     throw new TRPCError({
       code: "FORBIDDEN",
-      message: `خطتك الحالية تسمح بحد أقصى ${limits.maxCategories} فئات لهذا الموقع.`,
+      message: `خطتك الحالية تسمح بحد أقصى ${decision.cap ?? 0} فئات لهذا الموقع.`,
     });
   }
 }
@@ -164,12 +73,16 @@ export async function assertMenuItemCreateAllowed(
   userId: number,
   restaurantId: number
 ): Promise<void> {
-  const limits = await resolvePlanLimitsForUser(userId, restaurantId);
   const stats = await getRestaurantStats(restaurantId);
-  if (stats.totalItems >= limits.maxItemsPerRestaurant) {
+  const decision = await checkLimit({
+    ownerId: userId,
+    limitKey: "items",
+    proposedTotal: stats.totalItems + 1,
+  });
+  if (!decision.allowed) {
     throw new TRPCError({
       code: "FORBIDDEN",
-      message: `خطتك الحالية تسمح بحد أقصى ${limits.maxItemsPerRestaurant} أصناف لهذا الموقع.`,
+      message: `خطتك الحالية تسمح بحد أقصى ${decision.cap ?? 0} أصناف لهذا الموقع.`,
     });
   }
 }

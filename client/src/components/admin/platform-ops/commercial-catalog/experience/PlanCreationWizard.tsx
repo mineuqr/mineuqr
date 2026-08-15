@@ -30,6 +30,12 @@ import {
 } from "@/components/ui/select";
 import { CapabilityFilterPicker } from "./CapabilityFilterPicker";
 import { normalizePlanFeatures } from "./capabilityExperienceModel";
+import {
+  LivePlanLimitsEditor,
+  limitsFromProfileValues,
+  type LivePlanLimitDraft,
+} from "./LivePlanLimitsEditor";
+import { validateLivePlanLimitValues } from "@shared/commercial-catalog";
 
 function featuresFromBundle(
   bundle:
@@ -55,12 +61,16 @@ export function PlanCreationWizard(props: {
   const selected = plans.find((p) => p.id === planId) ?? plans[0];
   const [name, setName] = useState(selected?.name ?? "");
   const [description, setDescription] = useState(selected?.description ?? "");
-  const [limitId, setLimitId] = useState(selected?.limitProfileId ?? "");
   const [trialId, setTrialId] = useState(selected?.trialPolicyId ?? "");
   const [capabilities, setCapabilities] = useState<Record<string, boolean>>({});
+  const [limits, setLimits] = useState<LivePlanLimitDraft[]>([]);
+  const [limitError, setLimitError] = useState<string | null>(null);
 
   const selectedBundle = (props.data.bundlesQuery.data ?? []).find(
     (b) => b.id === selected?.featureBundleId
+  );
+  const selectedLimitProfile = (props.data.limitsQuery.data ?? []).find(
+    (p) => p.id === selected?.limitProfileId
   );
 
   const validation = trpc.commercialCatalog.validatePlanSave.useQuery(
@@ -96,14 +106,16 @@ export function PlanCreationWizard(props: {
     if (!selected) return;
     setName(selected.name);
     setDescription(selected.description ?? "");
-    setLimitId(selected.limitProfileId ?? "");
     setTrialId(selected.trialPolicyId ?? "");
     setMonthlyAmountUsd(currentMonthly?.amount ?? "");
     setYearlyAmountUsd(currentYearly?.amount ?? "");
     setCapabilities(featuresFromBundle(selectedBundle));
+    setLimits(limitsFromProfileValues(selectedLimitProfile?.values));
+    setLimitError(null);
   }, [
     selected?.id,
     selectedBundle?.id,
+    selectedLimitProfile?.id,
     currentMonthly?.amount,
     currentYearly?.amount,
   ]);
@@ -152,16 +164,35 @@ export function PlanCreationWizard(props: {
         regionId: p.regionId,
       })),
     ];
+    const checked = validateLivePlanLimitValues(limits);
+    if (!checked.ok) {
+      setLimitError(checked.issues.map((i) => i.message).join("; "));
+      return;
+    }
+    setLimitError(null);
     await saveMut.mutateAsync({
       id: selected.id,
       name,
       description: description || null,
       featureBundleId: selected.featureBundleId ?? null,
-      limitProfileId: limitId || null,
+      limitProfileId: selected.limitProfileId ?? null,
       trialPolicyId: trialId || null,
       prices: prices.length ? prices : undefined,
       capabilities: capabilityPayload,
+      limits: checked.normalized,
     });
+  }
+
+  function revertUnsaved() {
+    if (!selected) return;
+    setName(selected.name);
+    setDescription(selected.description ?? "");
+    setTrialId(selected.trialPolicyId ?? "");
+    setMonthlyAmountUsd(currentMonthly?.amount ?? "");
+    setYearlyAmountUsd(currentYearly?.amount ?? "");
+    setCapabilities(featuresFromBundle(selectedBundle));
+    setLimits(limitsFromProfileValues(selectedLimitProfile?.values));
+    setLimitError(null);
   }
 
   return (
@@ -207,19 +238,15 @@ export function PlanCreationWizard(props: {
             onChange={setCapabilities}
           />
         </CatalogField>
-        <CatalogField label={cc("fields.limitProfile")}>
-          <Select value={limitId} onValueChange={setLimitId}>
-            <SelectTrigger>
-              <SelectValue placeholder={cc("placeholders.selectLimits")} />
-            </SelectTrigger>
-            <SelectContent>
-              {(props.data.limitsQuery.data ?? []).map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <CatalogField label={cc("headers.limits")}>
+          <p className="text-sm text-muted-foreground mb-2">
+            {cc("experience.livePlans.limitsHint")}
+          </p>
+          <LivePlanLimitsEditor
+            value={limits}
+            onChange={setLimits}
+            error={limitError}
+          />
         </CatalogField>
         <CatalogField label={cc("fields.trialPolicy")}>
           <Select value={trialId || "__none"} onValueChange={(v) => setTrialId(v === "__none" ? "" : v)}>
@@ -270,6 +297,13 @@ export function PlanCreationWizard(props: {
             disabled={saveMut.isPending || !selected}
           >
             {cc("actions.save")}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => revertUnsaved()}
+          >
+            {cc("experience.livePlans.revertUnsaved")}
           </Button>
           <Button
             type="button"

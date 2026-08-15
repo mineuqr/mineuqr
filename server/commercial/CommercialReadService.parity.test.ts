@@ -235,7 +235,7 @@ describe("EXEC-2 CommercialReadService parity — MISMATCH (legacy consumers)", 
     expect(authority.planCode).toBe("NONE");
   });
 
-  it("multi-scoped: resolvePlanLimitsForUser(restaurantId) uses scoped row, CRS uses account NONE", async () => {
+  it("multi-scoped: resolvePlanLimitsForUser and CRS both use account hub (NONE)", async () => {
     const userId = 14760004;
     const restaurantId = 720006;
     setupUserSubs(userId, [
@@ -246,7 +246,7 @@ describe("EXEC-2 CommercialReadService parity — MISMATCH (legacy consumers)", 
     const authority = await commercialReadService.getAuthorityForOwner(userId, FIXED_NOW);
     const limits = await resolvePlanLimitsForUser(userId, restaurantId);
 
-    expect(limits.maxRestaurants).toBe(5);
+    expect(limits.maxRestaurants).toBe(0);
     expect(authority.maxRestaurants).toBe(0);
     expect(authority.planCode).toBe("NONE");
   });

@@ -1729,6 +1729,9 @@
           "livePlans": {
             "editHint": "Edit the live plan definition. New capabilities apply immediately to all subscribers. Renewal uses the current published price.",
             "capabilitiesHint": "Enable or disable individual commercial capabilities for this live plan. Saving updates the live plan immediately — there is no publish step.",
+            "limitsHint": "Set how many restaurants, categories, and items this live plan allows. Unlimited is stored as the canonical empty quota.",
+            "limited": "Limited",
+            "revertUnsaved": "Revert unsaved changes",
             "noVersionCompare": "Live plans are not versioned. Edit each plan independently.",
             "editIndividually": "Edit each live plan individually. Version lifecycle bulk actions are removed.",
             "noVersionClone": "Live plans are not cloned as versions. Reuse feature bundles and limit profiles.",

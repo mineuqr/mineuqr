@@ -1,5 +1,18 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TRPCError } from "@trpc/server";
+
+vi.mock("./db", () => ({
+  getRestaurantsByUser: vi.fn(),
+  getRestaurantStats: vi.fn(),
+}));
+
+vi.mock("./subscription-runtime", () => ({
+  checkLimit: vi.fn(),
+  resolveOwnerEntitlements: vi.fn(),
+}));
+
+import { getRestaurantsByUser, getRestaurantStats } from "./db";
+import { checkLimit, resolveOwnerEntitlements } from "./subscription-runtime";
 import {
   assertCategoryCreateAllowed,
   assertMenuItemCreateAllowed,
@@ -7,152 +20,85 @@ import {
   resolvePlanLimitsForUser,
 } from "./subscriptionPlanLimits";
 
-vi.mock("./db", () => ({
-  getRestaurantsByUser: vi.fn(),
-  getRestaurantStats: vi.fn(),
-  getSubscriptionsByUser: vi.fn(),
-  getSubscriptionPlanById: vi.fn(),
-  getSubscriptionPlans: vi.fn(),
-  getUserById: vi.fn(async () => ({ id: 9, role: "user", openId: "customer-9" })),
-}));
-
-vi.mock("./services/commercial-catalog", () => ({
-  getSubscriptionCommercialBinding: vi.fn(async () => null),
-  resolveLivePlanCapabilities: vi.fn(async () => ({
-    source: "missing",
-    planId: null,
-    catalogPlanCode: null,
-    featureKeys: [],
-    limits: [],
-    chargedTerms: null,
-  })),
-}));
-
-vi.mock("./subscriptionEntitlement", () => ({
-  resolveSubscriptionEntitlement: vi.fn(() => ({ isEntitled: true })),
-}));
-
-import {
-  getRestaurantsByUser,
-  getRestaurantStats,
-  getSubscriptionsByUser,
-  getSubscriptionPlanById,
-  getSubscriptionPlans,
-} from "./db";
-
-const basicPlan = {
-  maxRestaurants: 1,
-  maxItemsPerRestaurant: 100,
-  maxCategories: 10,
-};
-
-const proPlan = {
-  maxRestaurants: 5,
-  maxItemsPerRestaurant: 500,
-  maxCategories: 25,
-};
-
-const enterprisePlan = {
-  maxRestaurants: 999,
-  maxItemsPerRestaurant: 9999,
-  maxCategories: 100,
-};
-
-describe("subscriptionPlanLimits", () => {
+describe("subscriptionPlanLimits hub authority", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
-    (getSubscriptionPlans as any).mockResolvedValue([
-      { id: 1, ...basicPlan },
-      { id: 2, ...proPlan },
-      { id: 3, ...enterprisePlan },
-    ]);
+    vi.mocked(getRestaurantsByUser).mockReset();
+    vi.mocked(getRestaurantStats).mockReset();
+    vi.mocked(checkLimit).mockReset();
+    vi.mocked(resolveOwnerEntitlements).mockReset();
   });
 
-  describe("resolvePlanLimitsForUser", () => {
-    it("uses entitled subscription plan limits", async () => {
-      (getSubscriptionsByUser as any).mockResolvedValue([
-        { id: 1, userId: 9, restaurantId: 0, planId: 2, status: "active" },
-      ]);
-      (getSubscriptionPlanById as any).mockResolvedValue({ id: 2, ...proPlan });
-
-      const limits = await resolvePlanLimitsForUser(9);
-      expect(limits.maxRestaurants).toBe(5);
-    });
-
-    it("falls back to basic when no subscription", async () => {
-      (getSubscriptionsByUser as any).mockResolvedValue([]);
-
-      const limits = await resolvePlanLimitsForUser(9);
-      expect(limits.maxRestaurants).toBe(1);
-    });
+  it("reads restaurant quota from the entitlement hub, not PLAN_LIMITS", async () => {
+    vi.mocked(resolveOwnerEntitlements).mockResolvedValue({
+      entitlements: { limits: { restaurants: 5, items: 500, categories: 25 } },
+    } as never);
+    const limits = await resolvePlanLimitsForUser(9);
+    expect(limits.maxRestaurants).toBe(5);
+    expect(resolveOwnerEntitlements).toHaveBeenCalledWith(9);
   });
 
-  describe("assertRestaurantCreateAllowed", () => {
-    it("allows create when under Basic limit", async () => {
-      (getRestaurantsByUser as any).mockResolvedValue([]);
-      (getSubscriptionsByUser as any).mockResolvedValue([
-        { id: 1, userId: 9, restaurantId: 0, planId: 1, status: "active" },
-      ]);
-      (getSubscriptionPlanById as any).mockResolvedValue({ id: 1, ...basicPlan });
+  it("maps hub null to unlimited quota", async () => {
+    vi.mocked(resolveOwnerEntitlements).mockResolvedValue({
+      entitlements: { limits: { restaurants: null, items: null, categories: null } },
+    } as never);
+    const limits = await resolvePlanLimitsForUser(9);
+    expect(limits.maxRestaurants).toBe(Number.MAX_SAFE_INTEGER);
+  });
 
-      await expect(assertRestaurantCreateAllowed(9)).resolves.toBeUndefined();
-    });
+  it("NONE / never-subscribed resolves to zero, not Basic 1", async () => {
+    vi.mocked(resolveOwnerEntitlements).mockResolvedValue({
+      entitlements: { limits: { restaurants: 0, items: 0, categories: 0 } },
+    } as never);
+    const limits = await resolvePlanLimitsForUser(9);
+    expect(limits.maxRestaurants).toBe(0);
+  });
 
-    it("rejects when Basic limit reached", async () => {
-      (getRestaurantsByUser as any).mockResolvedValue([{ id: 1 }]);
-      (getSubscriptionsByUser as any).mockResolvedValue([
-        { id: 1, userId: 9, restaurantId: 0, planId: 1, status: "active" },
-      ]);
-      (getSubscriptionPlanById as any).mockResolvedValue({ id: 1, ...basicPlan });
+  it("allows first Basic restaurant and denies the second", async () => {
+    vi.mocked(getRestaurantsByUser).mockResolvedValue([]);
+    vi.mocked(checkLimit).mockResolvedValue({ allowed: true, cap: 1 } as never);
+    await expect(assertRestaurantCreateAllowed(9)).resolves.toBeUndefined();
 
-      await expect(assertRestaurantCreateAllowed(9)).rejects.toThrow(TRPCError);
-    });
-
-    it("allows fifth restaurant on Professional", async () => {
-      (getRestaurantsByUser as any).mockResolvedValue([
-        { id: 1 },
-        { id: 2 },
-        { id: 3 },
-        { id: 4 },
-      ]);
-      (getSubscriptionsByUser as any).mockResolvedValue([
-        { id: 1, userId: 9, restaurantId: 0, planId: 2, status: "active" },
-      ]);
-      (getSubscriptionPlanById as any).mockResolvedValue({ id: 2, ...proPlan });
-
-      await expect(assertRestaurantCreateAllowed(9)).resolves.toBeUndefined();
+    vi.mocked(getRestaurantsByUser).mockResolvedValue([{ id: 1 }]);
+    vi.mocked(checkLimit).mockResolvedValue({
+      allowed: false,
+      cap: 1,
+      reasonCode: "limit_exceeded",
+    } as never);
+    await expect(assertRestaurantCreateAllowed(9)).rejects.toBeInstanceOf(TRPCError);
+    expect(checkLimit).toHaveBeenCalledWith({
+      ownerId: 9,
+      limitKey: "restaurants",
+      proposedTotal: 2,
     });
   });
 
-  describe("assertCategoryCreateAllowed", () => {
-    it("rejects when category limit reached", async () => {
-      (getSubscriptionsByUser as any).mockResolvedValue([
-        { id: 1, userId: 9, restaurantId: 3, planId: 1, status: "active" },
-      ]);
-      (getSubscriptionPlanById as any).mockResolvedValue({ id: 1, ...basicPlan });
-      (getRestaurantStats as any).mockResolvedValue({
-        totalCategories: 10,
-        totalItems: 0,
-        viewCount: 0,
-      });
-
-      await expect(assertCategoryCreateAllowed(9, 3)).rejects.toThrow(TRPCError);
-    });
+  it("does not treat admin role as a grant — caller must still checkLimit", async () => {
+    vi.mocked(getRestaurantsByUser).mockResolvedValue([{ id: 1 }]);
+    vi.mocked(checkLimit).mockResolvedValue({
+      allowed: false,
+      cap: 1,
+    } as never);
+    await expect(assertRestaurantCreateAllowed(9)).rejects.toBeInstanceOf(TRPCError);
   });
 
-  describe("assertMenuItemCreateAllowed", () => {
-    it("rejects when item limit reached", async () => {
-      (getSubscriptionsByUser as any).mockResolvedValue([
-        { id: 1, userId: 9, restaurantId: 3, planId: 1, status: "active" },
-      ]);
-      (getSubscriptionPlanById as any).mockResolvedValue({ id: 1, ...basicPlan });
-      (getRestaurantStats as any).mockResolvedValue({
-        totalCategories: 1,
-        totalItems: 100,
-        viewCount: 0,
-      });
+  it("allows create when hub says unlimited", async () => {
+    vi.mocked(getRestaurantsByUser).mockResolvedValue([{ id: 1 }, { id: 2 }]);
+    vi.mocked(checkLimit).mockResolvedValue({
+      allowed: true,
+      cap: null,
+      policy: "unlimited",
+    } as never);
+    await expect(assertRestaurantCreateAllowed(9)).resolves.toBeUndefined();
+  });
 
-      await expect(assertMenuItemCreateAllowed(9, 3)).rejects.toThrow(TRPCError);
-    });
+  it("enforces category and item limits through the hub", async () => {
+    vi.mocked(getRestaurantStats).mockResolvedValue({
+      totalCategories: 10,
+      totalItems: 100,
+    } as never);
+    vi.mocked(checkLimit).mockResolvedValue({ allowed: false, cap: 10 } as never);
+    await expect(assertCategoryCreateAllowed(9, 3)).rejects.toBeInstanceOf(TRPCError);
+    vi.mocked(checkLimit).mockResolvedValue({ allowed: false, cap: 100 } as never);
+    await expect(assertMenuItemCreateAllowed(9, 3)).rejects.toBeInstanceOf(TRPCError);
   });
 });
