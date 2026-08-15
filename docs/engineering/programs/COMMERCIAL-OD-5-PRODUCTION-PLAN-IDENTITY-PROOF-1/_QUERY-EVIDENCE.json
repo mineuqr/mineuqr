@@ -1,0 +1,277 @@
+{
+  "queriedAt": "2026-08-15T11:39:27.932Z",
+  "utcNow": "2026-08-15T08:39:20.000Z",
+  "databaseConfirmed": "mineuqr",
+  "access": {
+    "hostKind": "tidb_cloud",
+    "database": "mineuqr",
+    "tls": true,
+    "port": 4000,
+    "hostPattern": "tidbcloud_prod",
+    "matchesKnownProductionShape": true
+  },
+  "statements": "SELECT_AND_INFORMATION_SCHEMA_ONLY",
+  "mutation": "NONE",
+  "schema": {
+    "userSubscriptionsPlanId": {
+      "IS_NULLABLE": "NO",
+      "COLUMN_TYPE": "int",
+      "COLUMN_KEY": ""
+    },
+    "commercialPlansCodeIndex": [
+      {
+        "INDEX_NAME": "commercial_plans_code_uq",
+        "NON_UNIQUE": "0",
+        "COLUMN_NAME": "code"
+      }
+    ],
+    "commercialPlansIdIndex": [
+      {
+        "INDEX_NAME": "PRIMARY",
+        "NON_UNIQUE": "0",
+        "COLUMN_NAME": "id"
+      }
+    ]
+  },
+  "population": {
+    "planIdPopulation": [
+      {
+        "planId": 30001,
+        "rowCount": 1,
+        "activeCount": "0",
+        "trialCount": "0",
+        "canceledCount": "0",
+        "expiredCount": "1",
+        "periodEndedCount": "0",
+        "stripeSubCount": "0"
+      },
+      {
+        "planId": 30002,
+        "rowCount": 4,
+        "activeCount": "3",
+        "trialCount": "0",
+        "canceledCount": "0",
+        "expiredCount": "1",
+        "periodEndedCount": "4",
+        "stripeSubCount": "0"
+      },
+      {
+        "planId": 30003,
+        "rowCount": 2,
+        "activeCount": "2",
+        "trialCount": "0",
+        "canceledCount": "0",
+        "expiredCount": "0",
+        "periodEndedCount": "0",
+        "stripeSubCount": "0"
+      }
+    ],
+    "statusTotals": [
+      {
+        "status": "expired",
+        "rowCount": 2
+      },
+      {
+        "status": "active",
+        "rowCount": 5
+      }
+    ],
+    "invalidPlanIds": {
+      "nullCount": "0",
+      "zeroCount": "0",
+      "negativeCount": "0"
+    },
+    "unexpectedPlanIds": [],
+    "classification": [
+      {
+        "planId": 30003,
+        "status": "active",
+        "accountClassification": "INTERNAL",
+        "role": "admin",
+        "identityKind": "non_local_openid_prefix",
+        "rowCount": 1
+      },
+      {
+        "planId": 30001,
+        "status": "expired",
+        "accountClassification": "COMMERCIAL",
+        "role": "user",
+        "identityKind": "local_openid_prefix",
+        "rowCount": 1
+      },
+      {
+        "planId": 30002,
+        "status": "expired",
+        "accountClassification": "COMMERCIAL",
+        "role": "user",
+        "identityKind": "local_openid_prefix",
+        "rowCount": 1
+      },
+      {
+        "planId": 30002,
+        "status": "active",
+        "accountClassification": "INTERNAL",
+        "role": "admin",
+        "identityKind": "non_local_openid_prefix",
+        "rowCount": 1
+      },
+      {
+        "planId": 30002,
+        "status": "active",
+        "accountClassification": "COMMERCIAL",
+        "role": "user",
+        "identityKind": "local_openid_prefix",
+        "rowCount": 2
+      },
+      {
+        "planId": 30003,
+        "status": "active",
+        "accountClassification": "COMMERCIAL",
+        "role": "user",
+        "identityKind": "local_openid_prefix",
+        "rowCount": 1
+      }
+    ]
+  },
+  "livePlans": [
+    {
+      "id": "79cf7bf7-c3b6-45de-8f20-42897cd493ac",
+      "code": "basic",
+      "isHidden": false
+    },
+    {
+      "id": "d836bd10-9d9f-4408-a076-f921354d785a",
+      "code": "enterprise",
+      "isHidden": false
+    },
+    {
+      "id": "0ade795a-02fa-4d3e-b9b5-262515bade09",
+      "code": "professional",
+      "isHidden": false
+    }
+  ],
+  "duplicateCodes": [],
+  "nullCodes": {
+    "rowCount": 0
+  },
+  "bindings": {
+    "total": 2,
+    "boundSubscriptions": 2,
+    "byPair": [
+      {
+        "legacyPlanId": 30001,
+        "bindingPlanId": "79cf7bf7-c3b6-45de-8f20-42897cd493ac",
+        "rowCount": 1,
+        "chargedAmountPresent": "1",
+        "chargedCurrencyPresent": "1",
+        "billingCyclePresent": "1"
+      },
+      {
+        "legacyPlanId": 30003,
+        "bindingPlanId": "d836bd10-9d9f-4408-a076-f921354d785a",
+        "rowCount": 1,
+        "chargedAmountPresent": "1",
+        "chargedCurrencyPresent": "1",
+        "billingCyclePresent": "1"
+      }
+    ],
+    "agreement": [
+      {
+        "legacyPlanId": 30001,
+        "bindingUuid": "79cf7bf7-c3b6-45de-8f20-42897cd493ac",
+        "expectedUuid": "79cf7bf7-c3b6-45de-8f20-42897cd493ac",
+        "rowCount": 1,
+        "chargedAmountPresent": 1,
+        "agrees": true
+      },
+      {
+        "legacyPlanId": 30003,
+        "bindingUuid": "d836bd10-9d9f-4408-a076-f921354d785a",
+        "expectedUuid": "d836bd10-9d9f-4408-a076-f921354d785a",
+        "rowCount": 1,
+        "chargedAmountPresent": 1,
+        "agrees": true
+      }
+    ]
+  },
+  "unbound": [
+    {
+      "planId": 30002,
+      "status": "expired",
+      "rowCount": 1
+    },
+    {
+      "planId": 30002,
+      "status": "active",
+      "rowCount": 3
+    },
+    {
+      "planId": 30003,
+      "status": "active",
+      "rowCount": 1
+    }
+  ],
+  "invoices": {
+    "byStatus": [
+      {
+        "status": "pending",
+        "rowCount": 8
+      }
+    ],
+    "paidCount": 0
+  },
+  "mapping": [
+    {
+      "productionInteger": 30001,
+      "rowCount": 1,
+      "statuses": {
+        "active": 0,
+        "trial": 0,
+        "canceled": 0,
+        "expired": 1
+      },
+      "bridgeCode": "basic",
+      "mappingKey": "BASIC",
+      "mappingAgreesWithBridge": true,
+      "catalogRowCount": 1,
+      "catalogUuid": "79cf7bf7-c3b6-45de-8f20-42897cd493ac",
+      "catalogHidden": false,
+      "result": "DETERMINISTIC"
+    },
+    {
+      "productionInteger": 30002,
+      "rowCount": 4,
+      "statuses": {
+        "active": 3,
+        "trial": 0,
+        "canceled": 0,
+        "expired": 1
+      },
+      "bridgeCode": "professional",
+      "mappingKey": "PROFESSIONAL",
+      "mappingAgreesWithBridge": true,
+      "catalogRowCount": 1,
+      "catalogUuid": "0ade795a-02fa-4d3e-b9b5-262515bade09",
+      "catalogHidden": false,
+      "result": "DETERMINISTIC"
+    },
+    {
+      "productionInteger": 30003,
+      "rowCount": 2,
+      "statuses": {
+        "active": 2,
+        "trial": 0,
+        "canceled": 0,
+        "expired": 0
+      },
+      "bridgeCode": "enterprise",
+      "mappingKey": "ENTERPRISE",
+      "mappingAgreesWithBridge": true,
+      "catalogRowCount": 1,
+      "catalogUuid": "d836bd10-9d9f-4408-a076-f921354d785a",
+      "catalogHidden": false,
+      "result": "DETERMINISTIC"
+    }
+  ],
+  "anomalies": []
+}
