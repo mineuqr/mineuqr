@@ -1,0 +1,91 @@
+{
+  "queriedAt": "2026-08-15T14:12:49.531Z",
+  "access": "PRODUCTION",
+  "mutation": "NONE",
+  "statements": "SELECT + INFORMATION_SCHEMA only",
+  "providerApisCalled": "NONE",
+  "target": {
+    "hostKind": "tidb_cloud",
+    "database": "mineuqr",
+    "tls": true,
+    "port": 4000,
+    "hostPattern": "tidbcloud_prod",
+    "matchesKnownProductionShape": true
+  },
+  "session": {
+    "db": "mineuqr",
+    "hostname": "localhost",
+    "server_ts": "2026-08-15T11:12:59.000Z"
+  },
+  "webhook_payload_tables": [],
+  "webhook_payload_columns": [
+    {
+      "TABLE_NAME": "order_domain_outbox",
+      "COLUMN_NAME": "payload",
+      "DATA_TYPE": "text"
+    },
+    {
+      "TABLE_NAME": "order_domain_outbox",
+      "COLUMN_NAME": "payloadVersion",
+      "DATA_TYPE": "int"
+    },
+    {
+      "TABLE_NAME": "print_jobs",
+      "COLUMN_NAME": "payloadJson",
+      "DATA_TYPE": "json"
+    },
+    {
+      "TABLE_NAME": "print_jobs",
+      "COLUMN_NAME": "payloadVersion",
+      "DATA_TYPE": "int"
+    }
+  ],
+  "known_related_tables": [
+    { "TABLE_NAME": "audit_events", "TABLE_ROWS": 2226 },
+    { "TABLE_NAME": "commercial_subscription_bindings", "TABLE_ROWS": 2 },
+    { "TABLE_NAME": "invoices", "TABLE_ROWS": 8 },
+    { "TABLE_NAME": "order_domain_outbox", "TABLE_ROWS": 396 },
+    { "TABLE_NAME": "renewal_notifications", "TABLE_ROWS": 52 },
+    { "TABLE_NAME": "user_subscriptions", "TABLE_ROWS": 6 }
+  ],
+  "user_subscriptions_provider_txn_id_presence": {
+    "n": 6,
+    "with_provider_txn_id": "0",
+    "without_provider_txn_id": "6"
+  },
+  "user_subscriptions_planId_shape": [{ "kind": "uuid", "n": 6 }],
+  "user_subscriptions_status": [
+    { "status": "active", "n": 5 },
+    { "status": "expired", "n": 1 }
+  ],
+  "invoices_status": [{ "status": "pending", "n": 8 }],
+  "bindings_legacyPlanId_nullness": [{ "legacy": "non_null", "n": 2 }],
+  "audit_events_by_category": [
+    { "category": "USER", "n": 1 },
+    { "category": "SECURITY", "n": 2036 },
+    { "category": "COMMERCIAL", "n": 184 },
+    { "category": "SUBSCRIPTION", "n": 6 }
+  ],
+  "audit_events_webhook_payload_signals": {
+    "n": 2227,
+    "webhookish_event_type": "0",
+    "metadata_planId": "0",
+    "metadata_plan_id": "0",
+    "metadata_custom_id": "0",
+    "metadata_provider": "0"
+  },
+  "order_domain_outbox_status": [{ "status": "published", "n": 396 }],
+  "order_domain_outbox_event_types": [
+    { "eventType": "OrderStatusChanged", "n": 176 },
+    { "eventType": "OrderCompleted", "n": 88 },
+    { "eventType": "OrderReady", "n": 44 },
+    { "eventType": "OrderCreated", "n": 44 },
+    { "eventType": "OrderLifecycleStageChanged", "n": 44 }
+  ],
+  "renewal_notifications_count": { "n": 52 },
+  "classification_notes": {
+    "stored_provider_webhook_bodies": "NONE_FOUND",
+    "in_app_webhook_retry_queue": "NOT_FOUND_IN_SCHEMA",
+    "integer_webhook_traffic": "UNKNOWN_NO_PAYLOAD_STORE"
+  }
+}
