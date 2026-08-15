@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { verifiedProcedure, router } from "../../../_core/trpc";
-import { assertRestaurantAccess } from "../../../restaurantAccess";
+import { assertDeviceManagementAccess } from "../../authorization/assertDeviceManagementAccess";
 import { fleetComposition } from "../../fleetComposition";
 
 const deviceRoleSchema = z.enum([
@@ -64,21 +64,21 @@ const fleetQueryInput = z.object({
 /** SCREEN-FLEET-SCALE-1 — fleet read queries (server-side search/filter/sort/pagination). */
 export const fleetReadRouter = router({
   queryScreens: verifiedProcedure.input(fleetQueryInput).query(async ({ input, ctx }) => {
-    await assertRestaurantAccess(ctx, input.restaurantId, "operationalDevice.fleet.queryScreens");
+    await assertDeviceManagementAccess(ctx, input.restaurantId, "operationalDevice.fleet.queryScreens");
     return fleetComposition.queryEngine.queryScreens(input);
   }),
 
   getKpis: verifiedProcedure
     .input(z.object({ restaurantId: z.coerce.number().int().positive() }))
     .query(async ({ input, ctx }) => {
-      await assertRestaurantAccess(ctx, input.restaurantId, "operationalDevice.fleet.getKpis");
+      await assertDeviceManagementAccess(ctx, input.restaurantId, "operationalDevice.fleet.getKpis");
       return fleetComposition.queryEngine.getKpis(input.restaurantId);
     }),
 
   getObservability: verifiedProcedure
     .input(z.object({ restaurantId: z.coerce.number().int().positive() }))
     .query(async ({ input, ctx }) => {
-      await assertRestaurantAccess(ctx, input.restaurantId, "operationalDevice.fleet.getObservability");
+      await assertDeviceManagementAccess(ctx, input.restaurantId, "operationalDevice.fleet.getObservability");
       const metrics = fleetComposition.queryEngine.getMetrics();
       return {
         generatedAt: new Date().toISOString(),

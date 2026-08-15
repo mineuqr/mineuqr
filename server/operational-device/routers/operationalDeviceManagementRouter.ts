@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { verifiedProcedure, router } from "../../_core/trpc";
-import { assertRestaurantAccess } from "../../restaurantAccess";
+import { assertDeviceManagementAccess } from "../authorization/assertDeviceManagementAccess";
 import { summarizeDeviceHealth, deriveDevicePresence } from "../domain/deviceHealth";
 import { operationalDeviceComposition } from "../operationalDeviceComposition";
 import {
@@ -55,12 +55,12 @@ async function presentIssuanceResponse(
 /** Operator device management — verified user session, not device tokens. */
 export const operationalDeviceManagementRouter = router({
   list: verifiedProcedure.input(restaurantInput).query(async ({ input, ctx }) => {
-    await assertRestaurantAccess(ctx, input.restaurantId, "operationalDevice.management.list");
+    await assertDeviceManagementAccess(ctx, input.restaurantId, "operationalDevice.management.list");
     return operationalDeviceComposition.registryService.listDevices(input.restaurantId);
   }),
 
   get: verifiedProcedure.input(deviceInput).query(async ({ input, ctx }) => {
-    await assertRestaurantAccess(ctx, input.restaurantId, "operationalDevice.management.get");
+    await assertDeviceManagementAccess(ctx, input.restaurantId, "operationalDevice.management.get");
     const device = await operationalDeviceComposition.registryService.getDevice(
       input.deviceId,
       input.restaurantId
@@ -72,7 +72,7 @@ export const operationalDeviceManagementRouter = router({
   }),
 
   create: verifiedProcedure.input(createDeviceInput).mutation(async ({ input, ctx }) => {
-    await assertRestaurantAccess(ctx, input.restaurantId, "operationalDevice.management.create");
+    await assertDeviceManagementAccess(ctx, input.restaurantId, "operationalDevice.management.create");
     const result = await operationalDeviceComposition.registryService.createDevice({
       restaurantId: input.restaurantId,
       branchId: input.branchId ?? null,
@@ -97,7 +97,7 @@ export const operationalDeviceManagementRouter = router({
   }),
 
   disable: verifiedProcedure.input(deviceInput).mutation(async ({ input, ctx }) => {
-    await assertRestaurantAccess(ctx, input.restaurantId, "operationalDevice.management.disable");
+    await assertDeviceManagementAccess(ctx, input.restaurantId, "operationalDevice.management.disable");
     const ok = await operationalDeviceComposition.registryService.disableDevice(
       input.deviceId,
       input.restaurantId
@@ -113,7 +113,7 @@ export const operationalDeviceManagementRouter = router({
   }),
 
   enable: verifiedProcedure.input(deviceInput).mutation(async ({ input, ctx }) => {
-    await assertRestaurantAccess(ctx, input.restaurantId, "operationalDevice.management.enable");
+    await assertDeviceManagementAccess(ctx, input.restaurantId, "operationalDevice.management.enable");
     const ok = await operationalDeviceComposition.registryService.enableDevice(
       input.deviceId,
       input.restaurantId
@@ -123,7 +123,7 @@ export const operationalDeviceManagementRouter = router({
   }),
 
   rotateToken: verifiedProcedure.input(deviceInput).mutation(async ({ input, ctx }) => {
-    await assertRestaurantAccess(ctx, input.restaurantId, "operationalDevice.management.rotateToken");
+    await assertDeviceManagementAccess(ctx, input.restaurantId, "operationalDevice.management.rotateToken");
     const token = await operationalDeviceComposition.registryService.rotateToken(
       input.deviceId,
       input.restaurantId
@@ -153,7 +153,7 @@ export const operationalDeviceManagementRouter = router({
   }),
 
   regenerateCredential: verifiedProcedure.input(deviceInput).mutation(async ({ input, ctx }) => {
-    await assertRestaurantAccess(
+    await assertDeviceManagementAccess(
       ctx,
       input.restaurantId,
       "operationalDevice.management.regenerateCredential"
@@ -187,7 +187,7 @@ export const operationalDeviceManagementRouter = router({
   }),
 
   getScreenCredential: verifiedProcedure.input(deviceInput).query(async ({ input, ctx }) => {
-    await assertRestaurantAccess(
+    await assertDeviceManagementAccess(
       ctx,
       input.restaurantId,
       "operationalDevice.management.getScreenCredential"
@@ -215,7 +215,7 @@ export const operationalDeviceManagementRouter = router({
   }),
 
   deleteScreen: verifiedProcedure.input(deviceInput).mutation(async ({ input, ctx }) => {
-    await assertRestaurantAccess(ctx, input.restaurantId, "operationalDevice.management.deleteScreen");
+    await assertDeviceManagementAccess(ctx, input.restaurantId, "operationalDevice.management.deleteScreen");
     const ok = await operationalDeviceComposition.registryService.deleteDevice(
       input.deviceId,
       input.restaurantId
@@ -231,7 +231,7 @@ export const operationalDeviceManagementRouter = router({
   }),
 
   revokeToken: verifiedProcedure.input(deviceInput).mutation(async ({ input, ctx }) => {
-    await assertRestaurantAccess(ctx, input.restaurantId, "operationalDevice.management.revokeToken");
+    await assertDeviceManagementAccess(ctx, input.restaurantId, "operationalDevice.management.revokeToken");
     const ok = await operationalDeviceComposition.registryService.revokeToken(
       input.deviceId,
       input.restaurantId
@@ -261,7 +261,7 @@ export const operationalDeviceManagementRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      await assertRestaurantAccess(
+      await assertDeviceManagementAccess(
         ctx,
         input.restaurantId,
         "operationalDevice.management.updateScreenSettings"
@@ -288,7 +288,7 @@ export const operationalDeviceManagementRouter = router({
     }),
 
   getHealthSummary: verifiedProcedure.input(restaurantInput).query(async ({ input, ctx }) => {
-    await assertRestaurantAccess(
+    await assertDeviceManagementAccess(
       ctx,
       input.restaurantId,
       "operationalDevice.management.getHealthSummary"

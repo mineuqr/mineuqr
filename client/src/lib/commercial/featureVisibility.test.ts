@@ -139,6 +139,18 @@ describe("featureVisibility by plan", () => {
     expect(shouldShowTemplatesUpgradeNotice(ent)).toBe(false);
   });
 
+  it("devices follows feature flag, not plan name", () => {
+    const basic = entitlementsForPlan("BASIC", { devices: false });
+    const professional = entitlementsForPlan("PROFESSIONAL", { devices: true });
+    const enterprise = entitlementsForPlan("ENTERPRISE", { devices: true });
+    const none = entitlementsForPlan("NONE", { devices: false });
+    expect(hasCommercialFeature(basic, "devices")).toBe(false);
+    expect(hasCommercialFeature(professional, "devices")).toBe(true);
+    expect(hasCommercialFeature(enterprise, "devices")).toBe(true);
+    expect(hasCommercialFeature(none, "devices")).toBe(false);
+    expect(isFeatureVisible(basic, "devices")).toBe(false);
+  });
+
   it("NONE: templates locked, upgrade notice shown", () => {
     const ent = entitlementsForPlan("NONE");
     expect(hasCommercialFeature(ent, "templates")).toBe(false);

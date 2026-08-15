@@ -81,7 +81,7 @@ export type CommercialCapabilityFilterRow = {
 function runtimeEnforcedFor(
   projectionId: CommercialProjectionId
 ): CommercialCapabilityFilterRow["runtimeEnforced"] {
-  if (projectionId === "ordering") return "full";
+  if (projectionId === "ordering" || projectionId === "devices") return "full";
   return "flags_only";
 }
 

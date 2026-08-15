@@ -120,6 +120,14 @@ export const CLIENT_GATE_REGISTRY: ClientGateEntry[] = [
     authorityPath: "canonicalPlanLabel with legacy fallback",
   },
   {
+    id: "screen-management-devices",
+    file: "client/src/components/dashboard/layout/RestaurantDashboardSidebar.tsx",
+    legacyLogic: "ungated Screens nav",
+    featureKey: "devices",
+    status: "MIGRATED",
+    authorityPath: "useCommercialFeatureVisibility().hasFeature(\"devices\")",
+  },
+  {
     id: "guest-ordering-ui",
     file: "client/src/pages/MenuView.tsx",
     legacyLogic: "order.canOrder",

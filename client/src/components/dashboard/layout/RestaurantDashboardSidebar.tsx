@@ -29,6 +29,7 @@ import {
   Wrench,
 } from "lucide-react";
 import { useLocation } from "wouter";
+import { useCommercialFeatureVisibility } from "@/hooks/useCommercialFeatureVisibility";
 import { restaurantDash } from "../restaurantDashStyles";
 import type { RestaurantDashboardSection, RestaurantTab } from "./types";
 
@@ -77,6 +78,8 @@ export function RestaurantDashboardSidebar({
 }) {
   const { t, language } = useLanguage();
   const [, setLocation] = useLocation();
+  const { hasFeature } = useCommercialFeatureVisibility();
+  const canManageScreens = hasFeature("devices");
   const inRestaurant = activeSection === "restaurant-detail" && !!onRestaurantTabChange;
 
   const restaurantWorkspaceNav: NavItem[] = inRestaurant
@@ -119,13 +122,17 @@ export function RestaurantDashboardSidebar({
         // REGISTER-CREATION-UX-CONSOLIDATION-1 /
         // REGISTER-CREATION-LABEL-ADOPTION-1 — Catalog removed from sidebar;
         // create lives in Register Ops (label: إنشاء صندوق).
-        {
-          id: "screens",
-          label: language === "ar" ? "إدارة الشاشات" : "Screens",
-          icon: Monitor,
-          active: restaurantTab === "screens" || restaurantTab === "devices",
-          onClick: () => onRestaurantTabChange!("screens"),
-        },
+        ...(canManageScreens
+          ? [
+              {
+                id: "screens",
+                label: language === "ar" ? "إدارة الشاشات" : "Screens",
+                icon: Monitor,
+                active: restaurantTab === "screens" || restaurantTab === "devices",
+                onClick: () => onRestaurantTabChange!("screens"),
+              } satisfies NavItem,
+            ]
+          : []),
         {
           id: "print",
           label: language === "ar" ? "مساحة الطباعة" : "Print Workspace",

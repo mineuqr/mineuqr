@@ -936,8 +936,14 @@ function RestaurantDetail({
     { restaurantId },
     { enabled: queriesEnabled && loadCategories }
   );
-  const { subscriptionExpiryWarning: subscriptionWarning } =
-    useCommercialFeatureVisibility();
+  const {
+    subscriptionExpiryWarning: subscriptionWarning,
+    hasFeature,
+    entitlements,
+    isReady: entitlementsReady,
+  } = useCommercialFeatureVisibility();
+  const canManageScreens = hasFeature("devices");
+  const uiLanguage = language === "ar" ? "ar" : "en";
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
 
   const detailPhase = resolveAsyncUiState({
@@ -1106,13 +1112,27 @@ function RestaurantDetail({
         />
       )}
 
-      {(activeTab === "screens" || activeTab === "devices") && (
-        <ScreenManagementWorkspacePanel restaurantId={restaurantId} language={language} />
-      )}
+      {(activeTab === "screens" || activeTab === "devices") &&
+        (entitlementsReady && !canManageScreens ? (
+          <CommercialUpgradeBanner
+            entitlements={entitlements}
+            featureKey="devices"
+            language={uiLanguage}
+          />
+        ) : (
+          <ScreenManagementWorkspacePanel restaurantId={restaurantId} language={language} />
+        ))}
 
-      {activeTab === "screen-provisioning" && (
-        <ProvisioningWorkspacePanel restaurantId={restaurantId} language={language} />
-      )}
+      {activeTab === "screen-provisioning" &&
+        (entitlementsReady && !canManageScreens ? (
+          <CommercialUpgradeBanner
+            entitlements={entitlements}
+            featureKey="devices"
+            language={uiLanguage}
+          />
+        ) : (
+          <ProvisioningWorkspacePanel restaurantId={restaurantId} language={language} />
+        ))}
 
       {activeTab === "print" && (
         <PrintWorkspacePanel

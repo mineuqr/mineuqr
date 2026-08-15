@@ -1,5 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { CommercialUpgradeBanner } from "@/components/commercial";
 import { VerificationRequiredPanel } from "@/components/auth/VerificationRequiredPanel";
+import { useCommercialFeatureVisibility } from "@/hooks/useCommercialFeatureVisibility";
 import { OperationalWorkspaceShell } from "@/components/operational-workspace/OperationalWorkspaceShell";
 import { WorkspaceFilters } from "@/components/operational-workspace/WorkspaceFilters";
 import {
@@ -55,9 +57,11 @@ type ViewMode = "grid" | "table";
 function FleetEmptyState({
   isAr,
   restaurantId,
+  canCreate,
 }: {
   isAr: boolean;
   restaurantId: number;
+  canCreate: boolean;
 }) {
   return (
     <SemanticEmptyState
@@ -70,10 +74,12 @@ function FleetEmptyState({
           : "Create a screen to connect a kitchen or service display on your device."
       }
       action={
-        <Button onClick={() => navigateToProvisioning({ restaurantId, mode: "create" })}>
-          <Plus className="mr-2 h-4 w-4" />
-          {isAr ? "إنشاء شاشة" : "Create screen"}
-        </Button>
+        canCreate ? (
+          <Button onClick={() => navigateToProvisioning({ restaurantId, mode: "create" })}>
+            <Plus className="mr-2 h-4 w-4" />
+            {isAr ? "إنشاء شاشة" : "Create screen"}
+          </Button>
+        ) : undefined
       }
     />
   );
@@ -114,6 +120,8 @@ export function ScreenManagementWorkspacePanel({
 }) {
   const isAr = language === "ar";
   const { isAuthenticated, authPending } = useAuth();
+  const { hasFeature, entitlements, isReady } = useCommercialFeatureVisibility();
+  const canManageScreens = hasFeature("devices");
   const enabled = restaurantQueriesEnabled(authPending, isAuthenticated, restaurantId);
 
   const [detailsScreenId, setDetailsScreenId] = useState<string | null>(null);
@@ -213,6 +221,16 @@ export function ScreenManagementWorkspacePanel({
     return <VerificationRequiredPanel variant="operations" />;
   }
 
+  if (isReady && !canManageScreens) {
+    return (
+      <CommercialUpgradeBanner
+        entitlements={entitlements}
+        featureKey="devices"
+        language={isAr ? "ar" : "en"}
+      />
+    );
+  }
+
   return (
     <OperationalWorkspaceShell
       title={isAr ? "الشاشات" : "Screens"}
@@ -223,13 +241,15 @@ export function ScreenManagementWorkspacePanel({
       }
       headerAside={
         <div className="flex gap-2">
-          <Button
-            size="sm"
-            onClick={() => navigateToProvisioning({ restaurantId, mode: "create" })}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            {isAr ? "إنشاء شاشة" : "Create screen"}
-          </Button>
+          {canManageScreens ? (
+            <Button
+              size="sm"
+              onClick={() => navigateToProvisioning({ restaurantId, mode: "create" })}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              {isAr ? "إنشاء شاشة" : "Create screen"}
+            </Button>
+          ) : null}
           <Button
             variant="outline"
             size="sm"
@@ -324,7 +344,11 @@ export function ScreenManagementWorkspacePanel({
       ) : fleetQuery.isLoading ? (
         <FleetLoadingState />
       ) : isEmptyFleet ? (
-        <FleetEmptyState isAr={isAr} restaurantId={restaurantId} />
+        <FleetEmptyState
+          isAr={isAr}
+          restaurantId={restaurantId}
+          canCreate={canManageScreens}
+        />
       ) : filteredItems.length === 0 ? (
         <FleetFilterEmptyState isAr={isAr} onClear={clearFilters} />
       ) : viewMode === "grid" ? (

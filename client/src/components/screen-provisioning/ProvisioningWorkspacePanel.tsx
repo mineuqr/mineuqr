@@ -1,5 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { CommercialUpgradeBanner } from "@/components/commercial";
 import { VerificationRequiredPanel } from "@/components/auth/VerificationRequiredPanel";
+import { useCommercialFeatureVisibility } from "@/hooks/useCommercialFeatureVisibility";
 import { OperationalWorkspaceShell } from "@/components/operational-workspace/OperationalWorkspaceShell";
 import { OperationsBar } from "@/components/operational-workspace/OperationsBar";
 import { ProvisioningActivationPanel } from "@/components/screen-provisioning/ProvisioningActivationPanel";
@@ -83,6 +85,8 @@ export function ProvisioningWorkspacePanel({
 }) {
   const isAr = language === "ar";
   const { isAuthenticated, authPending } = useAuth();
+  const { hasFeature, entitlements, isReady } = useCommercialFeatureVisibility();
+  const canManageScreens = hasFeature("devices");
   const enabled = restaurantQueriesEnabled(authPending, isAuthenticated, restaurantId);
   const urlState = useProvisioningUrlState();
 
@@ -209,6 +213,16 @@ export function ProvisioningWorkspacePanel({
 
   if (createMutation.error && isEmailNotVerifiedError(createMutation.error)) {
     return <VerificationRequiredPanel variant="operations" />;
+  }
+
+  if (isReady && !canManageScreens) {
+    return (
+      <CommercialUpgradeBanner
+        entitlements={entitlements}
+        featureKey="devices"
+        language={isAr ? "ar" : "en"}
+      />
+    );
   }
 
   const isOperational = health?.status === "operational";
