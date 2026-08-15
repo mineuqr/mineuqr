@@ -84,7 +84,7 @@ async function getAccessToken(): Promise<string> {
 
 export interface CreateOrderParams {
   userId: number;
-  planId: number;
+  planId: string;
   planName: string;
   amount: string;
   currency: string;

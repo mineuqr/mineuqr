@@ -87,11 +87,13 @@ export async function handlePayPalWebhook(req: Request, res: Response) {
       if (capturedOrder.status === "COMPLETED") {
         // Update user subscription
         const {
-          isKnownLegacyPlanId,
-          resolveLivePlanDisplayByLegacyId,
+          parseWebhookPlanRef,
+          resolveLivePlanDisplayByPlanRef,
           resolveCanonicalLivePlanId,
+          resolveLegacyPlanIdFromPlan,
         } = await import("./services/commercial-catalog");
-        if (!isKnownLegacyPlanId(planId)) {
+        const planRef = parseWebhookPlanRef(planId);
+        if (planRef == null) {
           opsLog({
             type: OPS_EVENT.webhook_processing_failed,
             category: "WEBHOOK",
@@ -104,8 +106,23 @@ export async function handlePayPalWebhook(req: Request, res: Response) {
           });
           return res.json({ status: "error", message: "Plan not found" });
         }
-        const plan = await resolveLivePlanDisplayByLegacyId(planId);
-        const livePlanId = await resolveCanonicalLivePlanId(planId);
+        let livePlanId: string;
+        try {
+          livePlanId = await resolveCanonicalLivePlanId(planRef);
+        } catch {
+          opsLog({
+            type: OPS_EVENT.webhook_processing_failed,
+            category: "WEBHOOK",
+            severity: "warn",
+            ts: new Date().toISOString(),
+            correlationId,
+            route,
+            method,
+            metadata: { provider, providerEventId: orderId, eventType, reason: "plan_not_found", planId },
+          });
+          return res.json({ status: "error", message: "Plan not found" });
+        }
+        const plan = await resolveLivePlanDisplayByPlanRef(livePlanId);
 
         const now = new Date();
         const periodEnd = new Date();
@@ -145,12 +162,15 @@ export async function handlePayPalWebhook(req: Request, res: Response) {
           return res.json({ status: "error", message: "No subscription row to activate" });
         }
 
-        await ensureLivePlanBoundForSubscription({
-          subscriptionId: activatedId,
-          legacyPlanId: planId,
-          event: "plan_selected",
-          actorId: userId,
-        });
+        const legacyForBind = resolveLegacyPlanIdFromPlan(livePlanId);
+        if (legacyForBind != null) {
+          await ensureLivePlanBoundForSubscription({
+            subscriptionId: activatedId,
+            legacyPlanId: legacyForBind,
+            event: "plan_selected",
+            actorId: userId,
+          });
+        }
 
         opsLog({
           type: OPS_EVENT.payment_subscription_activated,

@@ -93,11 +93,17 @@ export async function handleTapWebhook(req: Request, res: Response) {
       } else {
         endDate.setMonth(endDate.getMonth() + 1);
       }
-      const planId = metadata.plan_id ? parseInt(String(metadata.plan_id), 10) : undefined;
-      const planIdOpt = planId != null && !isNaN(planId) ? planId : undefined;
-      const { resolveCanonicalLivePlanId } = await import("./services/commercial-catalog");
-      const livePlanId =
-        planIdOpt != null ? await resolveCanonicalLivePlanId(planIdOpt) : undefined;
+      const { parseWebhookPlanRef, resolveCanonicalLivePlanId, resolveLegacyPlanIdFromPlan } =
+        await import("./services/commercial-catalog");
+      const planRef = parseWebhookPlanRef(metadata.plan_id);
+      let livePlanId: string | undefined;
+      if (planRef != null) {
+        try {
+          livePlanId = await resolveCanonicalLivePlanId(planRef);
+        } catch {
+          livePlanId = undefined;
+        }
+      }
       const activationPayload = {
         status: "active" as const,
         currentPeriodStart: now.toISOString(),
@@ -120,19 +126,21 @@ export async function handleTapWebhook(req: Request, res: Response) {
         }
       } else if (uid != null) {
         activatedId = await updateSubscriptionForActivation(uid, activationPayload, {
-          planId: livePlanId ?? planIdOpt,
+          planId: livePlanId,
         });
       }
 
       if (activatedId != null) {
-        const boundPlanId = planIdOpt ?? null;
-        if (boundPlanId != null) {
-          await ensureLivePlanBoundForSubscription({
-            subscriptionId: activatedId,
-            legacyPlanId: boundPlanId,
-            event: "plan_selected",
-            actorId: uid ?? null,
-          });
+        if (livePlanId) {
+          const boundLegacy = resolveLegacyPlanIdFromPlan(livePlanId);
+          if (boundLegacy != null) {
+            await ensureLivePlanBoundForSubscription({
+              subscriptionId: activatedId,
+              legacyPlanId: boundLegacy,
+              event: "plan_selected",
+              actorId: uid ?? null,
+            });
+          }
         }
 
         opsLog({
@@ -150,7 +158,7 @@ export async function handleTapWebhook(req: Request, res: Response) {
             subscriptionId: activatedId,
             userId: uid,
             billingCycle: billingCycle || "monthly",
-            planId: planIdOpt,
+            planId: livePlanId,
           },
         });
       }
@@ -170,10 +178,11 @@ export async function handleTapWebhook(req: Request, res: Response) {
         }
         const planId = metadata.plan_id;
         if (planId) {
-          const { resolveLivePlanDisplayByLegacyId } = await import(
+          const { parseWebhookPlanRef, resolveLivePlanDisplayByPlanRef } = await import(
             "./services/commercial-catalog"
           );
-          const plan = await resolveLivePlanDisplayByLegacyId(parseInt(planId, 10));
+          const ref = parseWebhookPlanRef(planId);
+          const plan = ref != null ? await resolveLivePlanDisplayByPlanRef(ref) : null;
           if (plan) planName = plan.nameAr || plan.nameEn;
         }
         await notifyOwnerNewSubscription({

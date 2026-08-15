@@ -70,4 +70,15 @@ describe("resolveCheckoutOfferFromLivePlan", () => {
   it("fails closed for unknown legacy ids", async () => {
     await expect(resolveCheckoutOfferFromLivePlan(999, "monthly")).resolves.toBeNull();
   });
+
+  it("returns the same Live Plan offer price for the canonical UUID", async () => {
+    const { planService } = await import("../../services/commercial-catalog");
+    const professional = planService.getByCode("professional");
+    expect(professional).toBeTruthy();
+    const byUuid = await resolveCheckoutOfferFromLivePlan(professional!.id, "monthly");
+    const byLegacy = await resolveCheckoutOfferFromLivePlan(30002, "monthly");
+    expect(byUuid?.amount).toBe("26.40");
+    expect(byUuid?.amount).toBe(byLegacy?.amount);
+    expect(byUuid?.planId).toBe(professional!.id);
+  });
 });

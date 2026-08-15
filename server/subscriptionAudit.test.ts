@@ -127,7 +127,7 @@ describe("subscriptionAudit PR-3", () => {
         ctx: adminContext as any,
         procedure: "admin.createUserSubscriptionByAdmin",
         userId: TARGET_USER_ID,
-        planId: 30002,
+        planId: "22222222-2222-4222-8222-222222222222",
         billingCycle: "monthly",
         status: "active",
       });
@@ -145,7 +145,7 @@ describe("subscriptionAudit PR-3", () => {
             actorRole: "admin",
             targetUserId: TARGET_USER_ID,
             subscriptionId: SUBSCRIPTION_ID,
-            plan: "live-30002",
+            plan: "22222222-2222-4222-8222-222222222222",
             status: "active",
             startDate: expect.any(String),
             endDate: expect.any(String),
@@ -185,16 +185,20 @@ describe("subscriptionAudit PR-3", () => {
         ctx: adminContext as any,
         procedure: "admin.updateUserSubscriptionByAdmin",
         userId: TARGET_USER_ID,
-        planId: 30003,
+        planId: "33333333-3333-4333-8333-333333333333",
       });
 
-      expect(updateSubscriptionById).toHaveBeenCalledWith(SUBSCRIPTION_ID, { planId: "live-30003" });
+      expect(updateSubscriptionById).toHaveBeenCalledWith(SUBSCRIPTION_ID, {
+        planId: "33333333-3333-4333-8333-333333333333",
+      });
       expect(opsLogMock).toHaveBeenCalledWith(
         expect.objectContaining({
           type: OPS_EVENT.subscription_updated_by_admin,
           metadata: expect.objectContaining({
             before: expect.objectContaining({ plan: "30002" }),
-            after: expect.objectContaining({ plan: "live-30003" }),
+            after: expect.objectContaining({
+              plan: "33333333-3333-4333-8333-333333333333",
+            }),
           }),
         })
       );
@@ -237,7 +241,7 @@ describe("subscriptionAudit PR-3", () => {
           ctx: adminContext as any,
           procedure: "admin.createUserSubscriptionByAdmin",
           userId: TARGET_USER_ID,
-          planId: 30002,
+          planId: "22222222-2222-4222-8222-222222222222",
           billingCycle: "monthly",
         })
       ).rejects.toBeInstanceOf(TRPCError);
@@ -355,7 +359,7 @@ describe("subscriptionAudit PR-3", () => {
           ctx: adminContext as any,
           procedure: "admin.createUserSubscriptionByAdmin",
           userId: PLATFORM_USER_ID,
-          planId: 30002,
+          planId: "22222222-2222-4222-8222-222222222222",
           billingCycle: "monthly",
         })
       ).rejects.toBeInstanceOf(TRPCError);

@@ -44,7 +44,7 @@ function PayPalCheckoutButton({
   planName,
   price,
 }: {
-  planId: number;
+  planId: string;
   billingCycle: "monthly" | "yearly";
   isAuthenticated: boolean;
   setLocation: (path: string) => void;
@@ -146,7 +146,7 @@ function TapCheckoutButton({
   planName,
   price,
 }: {
-  planId: number;
+  planId: string;
   billingCycle: "monthly" | "yearly";
   isAuthenticated: boolean;
   setLocation: (path: string) => void;
@@ -447,7 +447,7 @@ export default function Pricing() {
             const features = projectFeatureKeysForCommercialDisplay(
               offering.featureKeys
             );
-            const legacyPlanId = offering.legacyPlanId;
+            const checkoutPlanId = offering.planId;
             const displayName = offering.planName;
             const versionLabel = offering.planCode;
 
@@ -537,7 +537,7 @@ export default function Pricing() {
                     <Button disabled className="w-full bg-slate-700 text-slate-400">
                       {t('pricing.currentPlan')}
                     </Button>
-                  ) : legacyPlanId == null ? (
+                  ) : !checkoutPlanId ? (
                     <a
                       href={language === 'ar' 
                         ? `mailto:${MINEUQR_PUBLIC_SUPPORT_EMAIL}?subject=طلب اشتراك - ${displayName}&body=مرحباً،%0A%0Aأرغب في الاشتراك في ${displayName} (الدورة: ${selectedCycle === "yearly" ? "سنوية" : "شهرية"} - $${price}).%0A%0Aالاسم: %0Aاسم المطعم: %0Aرقم الهاتف: %0A%0Aشكراً`
@@ -551,7 +551,7 @@ export default function Pricing() {
                   ) : (
                     <div className="space-y-3">
                       <TapCheckoutButton
-                        planId={legacyPlanId}
+                        planId={checkoutPlanId}
                         billingCycle={selectedCycle}
                         isAuthenticated={isAuthenticated}
                         setLocation={setLocation}
@@ -565,7 +565,7 @@ export default function Pricing() {
                         }
                       />
                       <PayPalCheckoutButton
-                        planId={legacyPlanId}
+                        planId={checkoutPlanId}
                         billingCycle={selectedCycle}
                         isAuthenticated={isAuthenticated}
                         setLocation={setLocation}

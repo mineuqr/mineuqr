@@ -11,8 +11,20 @@ import {
 } from "./ownerAccountSubscriptionAuthority";
 import { commercialReadService } from "./CommercialReadService";
 import { appRouter } from "../routers";
+import {
+  ensureCatalogReady,
+  planService,
+} from "../services/commercial-catalog";
+
+async function professionalLivePlanId(): Promise<string> {
+  await ensureCatalogReady();
+  const plan = planService.getByCode("professional");
+  if (!plan) throw new Error("professional live plan missing");
+  return plan.id;
+}
 
 vi.mock("../db", () => ({
+  getDb: vi.fn(async () => null),
   generateOrderNumber: vi.fn(async () => "ORD-MOCK-001"),
   getSubscriptionsByUser: vi.fn(),
   getUserById: vi.fn(),
@@ -124,7 +136,7 @@ describe("AUTHORITY-CLEANUP-1 — canonical owner account subscription authority
       await expect(
         caller.admin.createUserSubscriptionByAdmin({
           userId: USER_ID,
-          planId: 30002,
+          planId: await professionalLivePlanId(),
           billingCycle: "monthly",
         })
       ).rejects.toMatchObject({
@@ -154,7 +166,7 @@ describe("AUTHORITY-CLEANUP-1 — canonical owner account subscription authority
       const caller = createCaller();
       const result = await caller.admin.createUserSubscriptionByAdmin({
         userId: USER_ID,
-        planId: 30002,
+        planId: await professionalLivePlanId(),
         billingCycle: "monthly",
       });
 
@@ -173,7 +185,7 @@ describe("AUTHORITY-CLEANUP-1 — canonical owner account subscription authority
         caller.admin.createUserSubscriptionByAdmin({
           userId: USER_ID,
           restaurantId: 720002,
-          planId: 30002,
+          planId: await professionalLivePlanId(),
           billingCycle: "monthly",
         })
       ).rejects.toMatchObject({
@@ -215,7 +227,7 @@ describe("AUTHORITY-CLEANUP-1 — canonical owner account subscription authority
       const caller = createCaller();
       const result = await caller.admin.createUserSubscriptionByAdmin({
         userId: USER_ID,
-        planId: 30002,
+        planId: await professionalLivePlanId(),
         billingCycle: "monthly",
       });
       expect(result.success).toBe(true);
@@ -228,7 +240,7 @@ describe("AUTHORITY-CLEANUP-1 — canonical owner account subscription authority
       await expect(
         caller.admin.createRestaurantSubscription({
           restaurantId: 1,
-          planId: 30002,
+          planId: "11111111-1111-4111-8111-111111111111",
           billingCycle: "monthly",
         })
       ).rejects.toMatchObject({

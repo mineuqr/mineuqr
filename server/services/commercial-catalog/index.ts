@@ -913,6 +913,8 @@ export {
   resolveSubscriptionPlanView,
   isKnownLegacyPlanId,
   isLivePlanUuid,
+  livePlanUuidInput,
+  parseWebhookPlanRef,
   parseLegacyPlanInteger,
   type LivePlanCheckoutOffer,
   type LivePlanDisplay,

@@ -98,7 +98,7 @@ describe("Admin Subscription Management — AUTHORITY-CLEANUP-1 retirement", () 
       await expect(
         caller.admin.createRestaurantSubscription({
           restaurantId: 1,
-          planId: 1,
+          planId: "11111111-1111-4111-8111-111111111111",
           billingCycle: "monthly",
         })
       ).rejects.toMatchObject(RETIRED);
@@ -109,7 +109,7 @@ describe("Admin Subscription Management — AUTHORITY-CLEANUP-1 retirement", () 
       await expect(
         caller.admin.createRestaurantSubscription({
           restaurantId: 1,
-          planId: 1,
+          planId: "11111111-1111-4111-8111-111111111111",
           billingCycle: "monthly",
         })
       ).rejects.toThrow();

@@ -10,19 +10,20 @@ vi.mock("./services/commercial-catalog", async (importOriginal) => {
       source: "catalog" as const,
       plans: [
         {
-          id: 1,
+          id: "11111111-1111-4111-8111-111111111111",
+          planCode: "basic",
           nameAr: "الخطة الأساسية",
           nameEn: "Basic Plan",
           priceMonthly: 29,
           priceYearly: 150,
-          catalogPlanId: "live-basic",
+          catalogPlanId: "11111111-1111-4111-8111-111111111111",
         },
       ],
     })),
-    resolveSubscriptionPlanView: vi.fn(async (planId: number) =>
-      planId === 1
+    resolveSubscriptionPlanView: vi.fn(async (planId: number | string) =>
+      String(planId) === "11111111-1111-4111-8111-111111111111" || planId === 1
         ? {
-            id: 1,
+            id: "11111111-1111-4111-8111-111111111111",
             nameAr: "الخطة الأساسية",
             nameEn: "Basic Plan",
             priceMonthly: "29",
@@ -31,11 +32,11 @@ vi.mock("./services/commercial-catalog", async (importOriginal) => {
         : null
     ),
     resolveCheckoutOfferFromLivePlan: vi.fn(
-      async (planId: number, billingCycle: "monthly" | "yearly") => {
-        if (planId !== 1) return null;
+      async (planId: number | string, billingCycle: "monthly" | "yearly") => {
+        if (planId !== "11111111-1111-4111-8111-111111111111") return null;
         return {
-          legacyPlanId: planId,
-          planId: "live-basic",
+          legacyPlanId: 30001,
+          planId: "11111111-1111-4111-8111-111111111111",
           planCode: "basic",
           commercialName: "الخطة الأساسية",
           amount: billingCycle === "yearly" ? "150" : "29",
@@ -255,7 +256,7 @@ describe("subscription router", () => {
       const caller = appRouter.createCaller(ctx);
 
       const result = await caller.subscription.createCheckoutSession({
-        planId: 1,
+        planId: "11111111-1111-4111-8111-111111111111",
         billingCycle: "yearly",
       });
 
@@ -267,11 +268,22 @@ describe("subscription router", () => {
       const caller = appRouter.createCaller(ctx);
 
       const result = await caller.subscription.createCheckoutSession({
-        planId: 1,
+        planId: "11111111-1111-4111-8111-111111111111",
         billingCycle: "monthly",
       });
 
       expect(result.orderId).toBe("PAYPAL-ORDER-ID-123");
+    });
+
+    it("rejects integer public planId after OD-3", async () => {
+      const ctx = createAuthContext(1);
+      const caller = appRouter.createCaller(ctx);
+      await expect(
+        caller.subscription.createCheckoutSession({
+          planId: 30002 as unknown as string,
+          billingCycle: "yearly",
+        })
+      ).rejects.toThrow();
     });
 
     it("should throw error for non-existent plan", async () => {
@@ -280,7 +292,7 @@ describe("subscription router", () => {
 
       await expect(
         caller.subscription.createCheckoutSession({
-          planId: 999,
+          planId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
           billingCycle: "yearly",
         })
       ).rejects.toThrow("الخطة غير موجودة");
@@ -291,7 +303,7 @@ describe("subscription router", () => {
 
       await expect(
         caller.subscription.createCheckoutSession({
-          planId: 1,
+          planId: "11111111-1111-4111-8111-111111111111",
           billingCycle: "yearly",
         })
       ).rejects.toThrow();
@@ -303,14 +315,14 @@ describe("subscription router", () => {
       const caller = appRouter.createCaller(ctx);
 
       await caller.subscription.createCheckoutSession({
-        planId: 1,
+        planId: "11111111-1111-4111-8111-111111111111",
         billingCycle: "yearly",
       });
 
       expect(createPayPalOrder).toHaveBeenCalledWith(
         expect.objectContaining({
           userId: 1,
-          planId: 1,
+          planId: "11111111-1111-4111-8111-111111111111",
           amount: "150",
           currency: "USD",
           returnUrl: expect.stringContaining("/subscription/success"),

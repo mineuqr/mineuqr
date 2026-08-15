@@ -761,7 +761,7 @@ export async function getAdminStatistics() {
     expiredSubscriptions.length
   );
 
-  const { planService, resolveLegacyPlanIdFromPlan } = await import(
+  const { planService } = await import(
     "./services/commercial-catalog"
   );
   const byPlan = new Map<string, number>();
@@ -780,7 +780,7 @@ export async function getAdminStatistics() {
     renewalRate,
     churnRate,
     subscriptionsByPlan: [...byPlan.entries()].map(([planId, count]) => ({
-      planId: resolveLegacyPlanIdFromPlan(planId) ?? planId,
+      planId,
       planName: planService.get(planId)?.name ?? `plan:${planId}`,
       count,
     })),

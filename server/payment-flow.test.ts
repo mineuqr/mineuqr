@@ -9,16 +9,17 @@ vi.mock("./services/commercial-catalog", async (importOriginal) => {
       source: "catalog" as const,
       plans: [
         {
-          id: 1,
+          id: "11111111-1111-4111-8111-111111111111",
+          planCode: "basic",
           nameAr: "الخطة الأساسية",
           nameEn: "Basic Plan",
           priceMonthly: 29,
           priceYearly: 150,
-          catalogPlanId: "live-basic",
+          catalogPlanId: "11111111-1111-4111-8111-111111111111",
         },
       ],
     })),
-    resolveSubscriptionPlanView: vi.fn(async (planId: number) => ({
+    resolveSubscriptionPlanView: vi.fn(async (planId: number | string) => ({
       id: planId,
       nameAr: "الخطة الأساسية",
       nameEn: "Basic Plan",
@@ -26,11 +27,12 @@ vi.mock("./services/commercial-catalog", async (importOriginal) => {
       priceYearly: 150,
     })),
     resolveCheckoutOfferFromLivePlan: vi.fn(
-      async (planId: number, billingCycle: "monthly" | "yearly") => {
-        if (planId === 999) return null;
+      async (planId: number | string, billingCycle: "monthly" | "yearly") => {
+        if (planId === "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa") return null;
+        if (planId !== "11111111-1111-4111-8111-111111111111") return null;
         return {
-          legacyPlanId: planId,
-          planId: "live-basic",
+          legacyPlanId: 30001,
+          planId: "11111111-1111-4111-8111-111111111111",
           planCode: "basic",
           commercialName: "الخطة الأساسية",
           amount: billingCycle === "yearly" ? "150" : "29",
@@ -148,7 +150,7 @@ describe("Payment Flow - End-to-End", () => {
       const caller = appRouter.createCaller(ctx);
 
       const checkoutSession = await caller.subscription.createCheckoutSession({
-        planId: 1,
+        planId: "11111111-1111-4111-8111-111111111111",
         billingCycle: "yearly",
       });
 
@@ -161,7 +163,7 @@ describe("Payment Flow - End-to-End", () => {
       const caller = appRouter.createCaller(ctx);
 
       const checkoutSession = await caller.subscription.createCheckoutSession({
-        planId: 1,
+        planId: "11111111-1111-4111-8111-111111111111",
         billingCycle: "monthly",
       });
 
@@ -174,7 +176,7 @@ describe("Payment Flow - End-to-End", () => {
       const caller = appRouter.createCaller(ctx);
 
       await caller.subscription.createCheckoutSession({
-        planId: 1,
+        planId: "11111111-1111-4111-8111-111111111111",
         billingCycle: "yearly",
       });
 
@@ -193,14 +195,14 @@ describe("Payment Flow - End-to-End", () => {
       const caller = appRouter.createCaller(ctx);
 
       await caller.subscription.createCheckoutSession({
-        planId: 1,
+        planId: "11111111-1111-4111-8111-111111111111",
         billingCycle: "yearly",
       });
 
       expect(createPayPalOrder).toHaveBeenCalledWith(
         expect.objectContaining({
           userId: userId,
-          planId: 1,
+          planId: "11111111-1111-4111-8111-111111111111",
           amount: "150",
           currency: "USD",
         })
@@ -213,7 +215,7 @@ describe("Payment Flow - End-to-End", () => {
 
       await expect(
         caller.subscription.createCheckoutSession({
-          planId: 999,
+          planId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
           billingCycle: "yearly",
         })
       ).rejects.toThrow("الخطة غير موجودة");
@@ -224,7 +226,7 @@ describe("Payment Flow - End-to-End", () => {
 
       await expect(
         caller.subscription.createCheckoutSession({
-          planId: 1,
+          planId: "11111111-1111-4111-8111-111111111111",
           billingCycle: "yearly",
         })
       ).rejects.toThrow();
@@ -239,7 +241,7 @@ describe("Payment Flow - End-to-End", () => {
       (db.getUserSubscription as any).mockResolvedValueOnce({
         id: 1,
         userId,
-        planId: 1,
+        planId: "11111111-1111-4111-8111-111111111111",
         status: "trial",
         billingCycle: "monthly",
         currentPeriodStart: new Date(),
@@ -252,7 +254,7 @@ describe("Payment Flow - End-to-End", () => {
       (db.getCanonicalUserSubscription as any).mockResolvedValueOnce({
         id: 1,
         userId,
-        planId: 1,
+        planId: "11111111-1111-4111-8111-111111111111",
         status: "trial",
         billingCycle: "monthly",
         currentPeriodStart: new Date(),
@@ -275,7 +277,9 @@ describe("Payment Flow - End-to-End", () => {
       const subscription = await caller.subscription.getCurrentSubscription();
 
       expect(subscription?.subscription.status).toBe("trial");
-      expect(subscription?.subscription.planId).toBe(1);
+      expect(subscription?.subscription.planId).toBe(
+        "11111111-1111-4111-8111-111111111111"
+      );
       expect(subscription?.plan.nameAr).toBe("الخطة الأساسية");
     });
 

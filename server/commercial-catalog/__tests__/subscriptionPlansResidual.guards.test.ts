@@ -38,7 +38,8 @@ describe("subscription_plans residual cleanup guards", () => {
   it("trial identity fallback does not read the legacy plan table", () => {
     const trial = read("server/create-trial-subscription.ts");
     expect(trial).not.toContain("getSubscriptionPlans");
-    expect(trial).toContain("resolveCanonicalLivePlanId");
+    expect(trial).toContain("professionalPlanId");
+    expect(trial).toContain("trial_plan_unresolved");
   });
 
   it("payment webhooks do not read the legacy plan table", () => {

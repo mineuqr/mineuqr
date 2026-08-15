@@ -1,7 +1,7 @@
 export type BillingCycle = "monthly" | "yearly";
 
 export type SubscriptionPlanLike = {
-  id: number;
+  id: number | string;
   nameAr: string;
   nameEn?: string | null;
   priceMonthly?: string | number | null;

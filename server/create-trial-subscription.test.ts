@@ -35,8 +35,19 @@ describe("create-trial-subscription (LAUNCH-5B)", () => {
   });
 
   describe("resolveTrialPlanId", () => {
-    it("assigns Professional compatibility id, not Basic", async () => {
+    it("assigns Professional Live Plan UUID, not Basic", async () => {
       await expect(resolveTrialPlanId()).resolves.toBe("live-professional");
+    });
+
+    it("fails closed when catalog trial policy has no Professional UUID", async () => {
+      const catalog = await import("./services/commercial-catalog");
+      vi.mocked(catalog.resolveTrialPolicyFromCatalog).mockResolvedValueOnce({
+        professionalPlanId: null,
+        legacyPlanId: 30002,
+        durationDays: 14,
+        trialPolicyId: null,
+      });
+      await expect(resolveTrialPlanId()).rejects.toThrow("trial_plan_unresolved");
     });
   });
 

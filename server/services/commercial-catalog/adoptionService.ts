@@ -25,6 +25,7 @@ import {
 import { commercialAdoptionObservability } from "./adoptionObservability";
 import { commercialRuntimeAuthorityObservability } from "./runtimeAuthorityObservability";
 import { ensureCommercialCatalogAdoptionSeed } from "./seedAdoptionCatalog";
+import { z } from "zod";
 import { emitAuditEvent } from "../../audit/auditEmitter";
 import { OPS_EVENT } from "../../_core/opsTaxonomy";
 import { getDb } from "../../db";
@@ -151,7 +152,8 @@ export async function listPlansForSelectionLegacyShape(): Promise<
   | {
       source: "catalog";
       plans: Array<{
-        id: number;
+        id: string;
+        planCode: string;
         nameEn: string;
         nameAr: string;
         descriptionEn: string | null;
@@ -171,24 +173,21 @@ export async function listPlansForSelectionLegacyShape(): Promise<
   | { source: "legacy_required" }
 > {
   const offerings = await listLivePlanOfferings();
-  const withLegacy = offerings.filter((o) => o.legacyPlanId != null);
-  if (!withLegacy.length) {
-    commercialAdoptionObservability.recordLegacyLookup(
-      "listPlansForSelectionLegacyShape"
-    );
-    return { source: "legacy_required" };
+  if (!offerings.length) {
+    return { source: "catalog", plans: [] };
   }
 
   return {
     source: "catalog",
-    plans: withLegacy.map((o, idx) => {
+    plans: offerings.map((o, idx) => {
       const restaurants =
         o.limits.find((l) => l.limitKey === "restaurants")?.value ?? 1;
       const items = o.limits.find((l) => l.limitKey === "items")?.value ?? 100;
       const categories =
         o.limits.find((l) => l.limitKey === "categories")?.value ?? 10;
       return {
-        id: o.legacyPlanId!,
+        id: o.planId,
+        planCode: o.planCode,
         nameEn: o.planName,
         nameAr: o.planName,
         descriptionEn: o.planName,
@@ -635,19 +634,16 @@ export async function resolveSubscriptionPlanView(
 ) {
   const legacy = parseLegacyPlanInteger(planRef);
   if (legacy != null) {
-    const adopted = await listPlansForSelectionLegacyShape();
-    if (adopted.source === "catalog") {
-      const match = adopted.plans.find((p) => p.id === legacy);
-      if (match) return match;
-    }
+    const catalogPlanId = resolvePlanIdFromLegacyPlanId(legacy);
     const display = await resolveLivePlanDisplayByLegacyId(legacy);
-    if (!display) return null;
+    if (!display && !catalogPlanId) return null;
     return {
-      id: display.id,
-      nameEn: display.nameEn,
-      nameAr: display.nameAr,
-      descriptionEn: display.nameEn,
-      descriptionAr: display.nameAr,
+      id: catalogPlanId ?? String(display?.id ?? legacy),
+      planCode: bridgeByLegacyPlanId(legacy)?.catalogPlanCode ?? null,
+      nameEn: display?.nameEn ?? "Unknown",
+      nameAr: display?.nameAr ?? "Unknown",
+      descriptionEn: display?.nameEn ?? null,
+      descriptionAr: display?.nameAr ?? null,
       priceMonthly: null as string | null,
       priceYearly: null as string | null,
       maxRestaurants: null as number | null,
@@ -657,16 +653,16 @@ export async function resolveSubscriptionPlanView(
       featuresAr: null as string | null,
       isActive: true,
       sortOrder: 0,
-      catalogPlanId: resolvePlanIdFromLegacyPlanId(legacy),
+      catalogPlanId,
     };
   }
   if (typeof planRef === "string" && isLivePlanUuid(planRef)) {
     await ensureCatalogReady();
     const plan = planService.get(planRef);
     if (!plan) return null;
-    const legacyId = bridgeByCatalogPlanCode(plan.code)?.legacyPlanId ?? 0;
     return {
-      id: legacyId,
+      id: plan.id,
+      planCode: plan.code,
       nameEn: plan.name,
       nameAr: plan.name,
       descriptionEn: plan.description ?? plan.name,
@@ -709,6 +705,24 @@ const LIVE_PLAN_UUID_RE =
 
 export function isLivePlanUuid(value: string): boolean {
   return LIVE_PLAN_UUID_RE.test(value);
+}
+
+/** Public/admin plan identity input — canonical Live Plan UUID only. */
+export const livePlanUuidInput = z
+  .string()
+  .refine((value) => isLivePlanUuid(value), { message: "invalid_live_plan_id" });
+
+/**
+ * Webhook dual-read: UUID or leftover integer handle.
+ * Returns null for malformed values (caller fail-closes).
+ */
+export function parseWebhookPlanRef(raw: unknown): number | string | null {
+  if (raw == null || raw === "") return null;
+  if (typeof raw === "number" && Number.isInteger(raw)) return raw;
+  const text = String(raw).trim();
+  if (isLivePlanUuid(text)) return text;
+  if (/^\d+$/.test(text)) return Number(text);
+  return null;
 }
 
 export function parseLegacyPlanInteger(
@@ -782,18 +796,22 @@ export type LivePlanCheckoutOffer = {
 };
 
 export async function resolveCheckoutOfferFromLivePlan(
-  legacyPlanId: number,
+  planRef: number | string,
   billingCycle: "monthly" | "yearly"
 ): Promise<LivePlanCheckoutOffer | null> {
   await ensureCatalogReady();
-  const planId = resolvePlanIdFromLegacyPlanId(legacyPlanId);
-  if (!planId) return null;
+  let planId: string;
+  try {
+    planId = await resolveCanonicalLivePlanId(planRef);
+  } catch {
+    return null;
+  }
   const plan = planService.get(planId);
   if (!plan || plan.isHidden) return null;
   const price = pricingService.currentPriceForPlan(planId, billingCycle);
   if (!price?.amount) return null;
   return {
-    legacyPlanId,
+    legacyPlanId: bridgeByCatalogPlanCode(plan.code)?.legacyPlanId ?? 0,
     planId: plan.id,
     planCode: plan.code,
     commercialName: plan.name,

@@ -9,7 +9,6 @@ import {
   resolveTrialPolicyFromCatalog,
   bindSubscriptionToLivePlan,
   ensureCatalogReady,
-  resolveCanonicalLivePlanId,
   resolveLegacyPlanIdFromPlan,
 } from "./services/commercial-catalog";
 import { commercialAdoptionObservability } from "./services/commercial-catalog/adoptionObservability";
@@ -24,14 +23,12 @@ export const TRIAL_PLAN_SORT_ORDER = 2;
  * Plan for new trials — Catalog SSOT with legacy bridge fallback.
  */
 export async function resolveTrialPlanId(): Promise<string> {
-  try {
-    await ensureCatalogReady();
-    const policy = await resolveTrialPolicyFromCatalog();
-    if (policy.professionalPlanId) return policy.professionalPlanId;
-  } catch {
-    commercialAdoptionObservability.recordLegacyLookup("resolveTrialPlanId");
+  await ensureCatalogReady();
+  const policy = await resolveTrialPolicyFromCatalog();
+  if (!policy.professionalPlanId) {
+    throw new Error("trial_plan_unresolved");
   }
-  return resolveCanonicalLivePlanId(30002);
+  return policy.professionalPlanId;
 }
 
 export async function resolveTrialDurationDays(): Promise<number> {

@@ -104,7 +104,7 @@ describe("subscription + invoice verifiedProcedure (AUTH-POLICY-1B.3 Phase A)", 
       const caller = appRouter.createCaller(createContext(baseUser()));
       await expectForbiddenUnverified(() =>
         caller.subscription.createCheckoutSession({
-          planId: 1,
+          planId: "11111111-1111-4111-8111-111111111111",
           billingCycle: "monthly",
         })
       );

@@ -34,6 +34,13 @@ vi.mock("./services/commercial-catalog", async (importOriginal) => {
       nameEn: "Plan",
       nameAr: "باقة",
     })),
+    resolveLivePlanDisplayByPlanRef: vi.fn(async () => ({
+      id: 0,
+      nameEn: "Plan",
+      nameAr: "باقة",
+    })),
+    resolveCanonicalLivePlanId: vi.fn(async () => "11111111-1111-4111-8111-111111111111"),
+    resolveLegacyPlanIdFromPlan: vi.fn(() => 30002),
   };
 });
 
@@ -207,7 +214,7 @@ describe("Admin invoice billing hardening (ADMIN-AUDIT-FIX-1)", () => {
       const caller = createCaller();
       const result = await caller.admin.createUserSubscriptionByAdmin({
         userId: 7,
-        planId: 30002,
+        planId: "11111111-1111-4111-8111-111111111111",
         billingCycle: "monthly",
         status: "trial",
       });

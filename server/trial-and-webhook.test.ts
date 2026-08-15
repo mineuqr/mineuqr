@@ -77,6 +77,18 @@ vi.mock("./services/commercial-catalog", async (importOriginal) => {
         ? { id, nameAr: "الخطة الأساسية", nameEn: "Basic Plan" }
         : null
     ),
+    resolveLivePlanDisplayByPlanRef: vi.fn(async () => ({
+      id: 30002,
+      nameAr: "الخطة الأساسية",
+      nameEn: "Basic Plan",
+    })),
+    parseWebhookPlanRef: vi.fn((raw: unknown) => {
+      if (raw == null || raw === "") return null;
+      if (typeof raw === "number") return raw;
+      const text = String(raw);
+      if (/^\d+$/.test(text)) return Number(text);
+      return text;
+    }),
     ensureLivePlanBoundForSubscription: vi.fn(async () => ({
       planId: "plan-webhook-test",
     })),
@@ -206,6 +218,46 @@ describe("PayPal Webhook", () => {
           billingCycle: "monthly",
           amount: "29.00 USD",
         })
+      );
+    });
+
+    it("resolves new UUID custom_id.planId to the Live Plan UUID", async () => {
+      const { updateSubscriptionForActivation } = await import("./db");
+      const mockReq = {
+        body: {
+          event_type: "checkout.order.completed",
+          resource: {
+            id: "PAYPAL-ORDER-UUID",
+            purchase_units: [
+              {
+                custom_id: JSON.stringify({
+                  userId: 789,
+                  planId: "11111111-1111-4111-8111-111111111111",
+                }),
+                amount: { currency_code: "USD", value: "29.00" },
+              },
+            ],
+          },
+        },
+      } as unknown as Request;
+      const mockRes = {
+        json: vi.fn((data) => data),
+        status: vi.fn(function (code: number) {
+          this.statusCode = code;
+          return this;
+        }),
+        statusCode: 200,
+      } as unknown as Response;
+
+      await handlePayPalWebhook(mockReq, mockRes);
+
+      expect(updateSubscriptionForActivation).toHaveBeenCalledWith(
+        789,
+        expect.objectContaining({
+          planId: "plan-webhook-test",
+          status: "active",
+        }),
+        { planId: "plan-webhook-test" }
       );
     });
 

@@ -124,7 +124,7 @@ export async function applyAdminUserSubscriptionCreate(params: {
   procedure: string;
   userId: number;
   restaurantId?: number;
-  planId: number;
+  planId: string;
   billingCycle: BillingCycle;
   subscriptionEndDate?: string;
   status?: SubscriptionAuditStatus;
@@ -186,12 +186,16 @@ export async function applyAdminUserSubscriptionCreate(params: {
     snapshot,
   });
 
-  await ensureLivePlanBoundForSubscription({
-    subscriptionId: result.id,
-    legacyPlanId: planId,
-    event: "plan_selected",
-    actorId: ctx.user?.id ?? null,
-  });
+  const { resolveLegacyPlanIdFromPlan } = await import("./services/commercial-catalog");
+  const legacyForBind = resolveLegacyPlanIdFromPlan(livePlanId);
+  if (legacyForBind != null) {
+    await ensureLivePlanBoundForSubscription({
+      subscriptionId: result.id,
+      legacyPlanId: legacyForBind,
+      event: "plan_selected",
+      actorId: ctx.user?.id ?? null,
+    });
+  }
 
   const periodEnd = computeAdminSubscriptionPeriodEnd({
     billingCycle,
@@ -208,7 +212,7 @@ export async function applyAdminUserSubscriptionCreate(params: {
 }
 
 function buildAdminSubscriptionUpdateData(input: {
-  planId?: number;
+  planId?: string;
   billingCycle?: BillingCycle;
   status?: SubscriptionAuditStatus;
   subscriptionEndDate?: string;
@@ -228,7 +232,7 @@ export async function applyAdminUserSubscriptionUpdate(params: {
   ctx: TrpcContext;
   procedure: string;
   userId: number;
-  planId?: number;
+  planId?: string;
   billingCycle?: BillingCycle;
   status?: SubscriptionAuditStatus;
   subscriptionEndDate?: string;
@@ -250,7 +254,7 @@ export async function applyAdminUserSubscriptionUpdate(params: {
   }
 
   const updateData = buildAdminSubscriptionUpdateData(input);
-  if (typeof updateData.planId === "number") {
+  if (typeof updateData.planId === "string") {
     const { resolveCanonicalLivePlanId } = await import("./services/commercial-catalog");
     updateData.planId = await resolveCanonicalLivePlanId(updateData.planId);
   }
@@ -296,9 +300,9 @@ export async function applyAdminUserSubscriptionUpdate(params: {
         ? "renewal"
         : "plan_selected";
     const { resolveLegacyPlanIdFromPlan } = await import("./services/commercial-catalog");
-    const legacyForBind =
-      input.planId ??
-      (typeof nextPlanId === "number" ? nextPlanId : resolveLegacyPlanIdFromPlan(String(nextPlanId)));
+    const liveForBind =
+      typeof updateData.planId === "string" ? updateData.planId : String(nextPlanId);
+    const legacyForBind = resolveLegacyPlanIdFromPlan(liveForBind);
     if (legacyForBind != null) {
       await ensureLivePlanBoundForSubscription({
         subscriptionId: existing.id,

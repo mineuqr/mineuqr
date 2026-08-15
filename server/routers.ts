@@ -48,6 +48,7 @@ import {
 import {
   getOwnerAccountSubscriptionRow,
 } from "./commercial/ownerAccountSubscriptionAuthority";
+import { livePlanUuidInput } from "./services/commercial-catalog/adoptionService";
 import { ownerAccessRouter } from "./platform-owner-access";
 import { assertRestaurantScopedSubscriptionRetired } from "./commercial/retiredRestaurantSubscriptionApi";
 import {
@@ -915,7 +916,7 @@ const subscriptionRouter = router({
 
   createCheckoutSession: verifiedProcedure
     .input(z.object({
-      planId: z.number(),
+      planId: livePlanUuidInput,
       billingCycle: z.enum(["monthly", "yearly"]),
     }))
     .mutation(async ({ input, ctx }) => {
@@ -948,7 +949,7 @@ const subscriptionRouter = router({
 
   createTapCheckout: verifiedProcedure
     .input(z.object({
-      planId: z.number(),
+      planId: livePlanUuidInput,
       billingCycle: z.enum(["monthly", "yearly"]),
     }))
     .mutation(async ({ input, ctx }) => {
@@ -1107,7 +1108,7 @@ const adminCoreRouter = router({
     .input(z.object({
       restaurantId: z.number(),
       userId: z.number().optional(),
-      planId: z.number(),
+      planId: livePlanUuidInput,
       billingCycle: z.enum(["monthly", "yearly"]),
       subscriptionEndDate: z.string().optional(),
     }))
@@ -1120,7 +1121,7 @@ const adminCoreRouter = router({
   updateRestaurantSubscription: protectedProcedure
     .input(z.object({
       subscriptionId: z.number(),
-      planId: z.number().optional(),
+      planId: livePlanUuidInput.optional(),
       billingCycle: z.enum(["monthly", "yearly"]).optional(),
       status: z.enum(["active", "canceled", "expired", "trial"]).optional(),
       subscriptionEndDate: z.string().optional(),
@@ -1323,7 +1324,7 @@ const adminCoreRouter = router({
     .input(z.object({
       userId: z.number(),
       restaurantId: z.number().optional(),
-      planId: z.number(),
+      planId: livePlanUuidInput,
       billingCycle: z.enum(["monthly", "yearly"]),
       subscriptionEndDate: z.string().optional(),
       status: z.enum(["active", "canceled", "expired", "trial"]).optional(),
@@ -1340,10 +1341,10 @@ const adminCoreRouter = router({
         subscriptionEndDate: input.subscriptionEndDate,
         status: input.status,
       });
-      const { resolveLivePlanDisplayByLegacyId } = await import(
+      const { resolveLivePlanDisplayByPlanRef } = await import(
         "./services/commercial-catalog"
       );
-      const plan = await resolveLivePlanDisplayByLegacyId(input.planId);
+      const plan = await resolveLivePlanDisplayByPlanRef(input.planId);
       const planName = plan?.nameAr || plan?.nameEn || "غير معروف";
       const statusLabel =
         result.subscriptionStatus === "active"
@@ -1369,7 +1370,7 @@ const adminCoreRouter = router({
   updateUserSubscriptionByAdmin: protectedProcedure
     .input(z.object({
       userId: z.number(),
-      planId: z.number().optional(),
+      planId: livePlanUuidInput.optional(),
       billingCycle: z.enum(["monthly", "yearly"]).optional(),
       status: z.enum(["active", "canceled", "expired", "trial"]).optional(),
       subscriptionEndDate: z.string().optional(),
@@ -1389,11 +1390,11 @@ const adminCoreRouter = router({
         return { success: true };
       }
       const subscriptionId = result.subscriptionId;
-      const { resolveLivePlanDisplayByLegacyId } = await import(
+      const { resolveLivePlanDisplayByPlanRef } = await import(
         "./services/commercial-catalog"
       );
       const updatedPlan = input.planId
-        ? await resolveLivePlanDisplayByLegacyId(input.planId)
+        ? await resolveLivePlanDisplayByPlanRef(input.planId)
         : null;
       const changes: string[] = [];
       if (updatedPlan) changes.push(`الباقة: ${updatedPlan.nameAr || updatedPlan.nameEn}`);

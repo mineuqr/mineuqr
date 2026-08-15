@@ -163,7 +163,7 @@ describe("ADMIN-AUTH-1E platform subscription protection", () => {
     await expect(
       caller.admin.createUserSubscriptionByAdmin({
         userId: PLATFORM_USER_ID,
-        planId: 30002,
+        planId: "11111111-1111-4111-8111-111111111111",
         billingCycle: "monthly",
       })
     ).rejects.toMatchObject({

@@ -82,10 +82,8 @@ export function CustomerSuccessAccountsSection() {
     trpc.commercialCatalog.listPublishedOfferings.useQuery();
   const plans = useMemo(
     () =>
-      (publishedOfferings ?? [])
-        .filter((o) => o.legacyPlanId != null)
-        .map((o) => ({
-          id: o.legacyPlanId as number,
+      (publishedOfferings ?? []).map((o) => ({
+          id: o.planId,
           nameEn: o.planName,
           nameAr: o.planName,
           priceMonthly: o.priceMonthly,
@@ -192,7 +190,7 @@ export function CustomerSuccessAccountsSection() {
       if (!subPlanId) { toast.error('يرجى اختيار باقة'); return; }
       createSubMutation.mutate({
         userId: subDialogUser.id,
-        planId: parseInt(subPlanId),
+        planId: subPlanId,
         billingCycle: subBillingCycle,
         status: subStatus,
         subscriptionEndDate: subEndDate || undefined,
@@ -200,7 +198,7 @@ export function CustomerSuccessAccountsSection() {
     } else {
       updateSubMutation.mutate({
         userId: subDialogUser.id,
-        planId: subPlanId ? parseInt(subPlanId) : undefined,
+        planId: subPlanId || undefined,
         billingCycle: subBillingCycle,
         status: subStatus,
         subscriptionEndDate: subEndDate || undefined,
