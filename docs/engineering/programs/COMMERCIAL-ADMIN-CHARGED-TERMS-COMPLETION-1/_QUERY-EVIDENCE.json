@@ -1,0 +1,140 @@
+{
+  "queriedAt": "2026-08-15T16:03:04.423Z",
+  "access": "PRODUCTION",
+  "mutation": "NONE",
+  "target": {
+    "hostKind": "tidb_cloud",
+    "database": "mineuqr",
+    "tls": true,
+    "port": 4000,
+    "hostPattern": "tidbcloud_prod",
+    "matchesKnownProductionShape": true
+  },
+  "session": {
+    "db": "mineuqr",
+    "server_ts": "2026-08-15T13:03:07.000Z"
+  },
+  "subscription_780001_present": true,
+  "all_subscriptions": [
+    {
+      "id": 600001,
+      "userId": 1,
+      "restaurantId": 0,
+      "planId": "0ade795a-02fa-4d3e-b9b5-262515bade09",
+      "status": "active",
+      "billingCycle": "monthly",
+      "currentPeriodStart": "2026-06-08T03:08:15.000Z",
+      "currentPeriodEnd": "2026-08-07T21:00:00.000Z",
+      "createdAt": "2026-06-08T03:08:15.000Z",
+      "planCode": "professional",
+      "accountClassification": "INTERNAL",
+      "bindingId": null,
+      "chargedAmount": null,
+      "chargedCurrency": null,
+      "billingCycleCode": null
+    },
+    {
+      "id": 690001,
+      "userId": 14760004,
+      "restaurantId": 0,
+      "planId": "0ade795a-02fa-4d3e-b9b5-262515bade09",
+      "status": "active",
+      "billingCycle": "monthly",
+      "currentPeriodStart": "2026-06-09T14:08:19.000Z",
+      "currentPeriodEnd": "2026-06-13T21:00:00.000Z",
+      "createdAt": "2026-06-09T14:08:18.000Z",
+      "planCode": "professional",
+      "accountClassification": "COMMERCIAL",
+      "bindingId": null,
+      "chargedAmount": null,
+      "chargedCurrency": null,
+      "billingCycleCode": null
+    },
+    {
+      "id": 750001,
+      "userId": 14760004,
+      "restaurantId": 0,
+      "planId": "0ade795a-02fa-4d3e-b9b5-262515bade09",
+      "status": "active",
+      "billingCycle": "monthly",
+      "currentPeriodStart": "2026-06-16T18:26:17.000Z",
+      "currentPeriodEnd": "2026-07-16T21:00:00.000Z",
+      "createdAt": "2026-06-16T18:26:16.000Z",
+      "planCode": "professional",
+      "accountClassification": "COMMERCIAL",
+      "bindingId": null,
+      "chargedAmount": null,
+      "chargedCurrency": null,
+      "billingCycleCode": null
+    },
+    {
+      "id": 780001,
+      "userId": 21630002,
+      "restaurantId": 0,
+      "planId": "d836bd10-9d9f-4408-a076-f921354d785a",
+      "status": "active",
+      "billingCycle": "yearly",
+      "currentPeriodStart": "2026-06-21T10:47:36.000Z",
+      "currentPeriodEnd": "2027-06-21T10:47:36.000Z",
+      "createdAt": "2026-06-21T10:47:35.000Z",
+      "planCode": "enterprise",
+      "accountClassification": "INTERNAL",
+      "bindingId": null,
+      "chargedAmount": null,
+      "chargedCurrency": null,
+      "billingCycleCode": null
+    },
+    {
+      "id": 810001,
+      "userId": 14760004,
+      "restaurantId": 0,
+      "planId": "79cf7bf7-c3b6-45de-8f20-42897cd493ac",
+      "status": "expired",
+      "billingCycle": "monthly",
+      "currentPeriodStart": "2026-08-15T00:01:22.000Z",
+      "currentPeriodEnd": "2026-09-14T21:00:00.000Z",
+      "createdAt": "2026-08-15T00:01:21.000Z",
+      "planCode": "basic",
+      "accountClassification": "COMMERCIAL",
+      "bindingId": "7f2a2c6b-f946-4337-8642-911cb30853f5",
+      "chargedAmount": "19.00",
+      "chargedCurrency": "USD",
+      "billingCycleCode": "monthly"
+    },
+    {
+      "id": 840001,
+      "userId": 14760004,
+      "restaurantId": 0,
+      "planId": "79cf7bf7-c3b6-45de-8f20-42897cd493ac",
+      "status": "canceled",
+      "billingCycle": "monthly",
+      "currentPeriodStart": "2026-08-15T00:26:46.000Z",
+      "currentPeriodEnd": "2026-09-14T21:00:00.000Z",
+      "createdAt": "2026-08-15T00:26:45.000Z",
+      "planCode": "basic",
+      "accountClassification": "COMMERCIAL",
+      "bindingId": "dbf91042-5556-4dbf-bf14-b21af0b6a706",
+      "chargedAmount": "19.00",
+      "chargedCurrency": "USD",
+      "billingCycleCode": "monthly"
+    }
+  ],
+  "bindings": [
+    {
+      "subscriptionId": 810001,
+      "planId": "79cf7bf7-c3b6-45de-8f20-42897cd493ac",
+      "chargedAmount": "19.00",
+      "chargedCurrency": "USD",
+      "billingCycleCode": "monthly",
+      "legacyPlanId": 30001
+    },
+    {
+      "subscriptionId": 840001,
+      "planId": "79cf7bf7-c3b6-45de-8f20-42897cd493ac",
+      "chargedAmount": "19.00",
+      "chargedCurrency": "USD",
+      "billingCycleCode": "monthly",
+      "legacyPlanId": null
+    }
+  ]
+}

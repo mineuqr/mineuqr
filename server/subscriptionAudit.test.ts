@@ -22,6 +22,7 @@ vi.mock("./_core/env", () => ({
 vi.mock("./db", () => ({
   getUserById: vi.fn(),
   createSubscriptionForRestaurant: vi.fn(),
+  deleteUserSubscriptionById: vi.fn(),
   updateSubscriptionById: vi.fn(),
 }));
 
@@ -33,8 +34,31 @@ vi.mock("./services/commercial-catalog", () => ({
   resolveCanonicalLivePlanId: vi.fn(async (id: number | string) =>
     typeof id === "string" && id.includes("-") ? id : `live-${id}`
   ),
+  resolveLivePlanById: vi.fn(async (id: string) => id),
   resolveLegacyPlanIdFromPlan: vi.fn(() => 30002),
 }));
+
+vi.mock("./commercial/adminChargedTermsCompletion", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./commercial/adminChargedTermsCompletion")>();
+  return {
+    ...actual,
+    resolveChargedTermsForAdminCreate: vi.fn(async (input: { planId: string; billingCycleCode: string }) => ({
+      planId: "22222222-2222-4222-8222-222222222222",
+      catalogPlanCode: "professional",
+      commercialName: "Professional",
+      chargedAmount: input.billingCycleCode === "yearly" ? "999.00" : "79.00",
+      chargedCurrency: "USD",
+      billingCycleId: input.billingCycleCode === "yearly" ? "cycle-yearly" : "cycle-monthly",
+      billingCycleCode: input.billingCycleCode,
+      intervalCount: 1,
+      intervalUnit: input.billingCycleCode === "yearly" ? ("year" as const) : ("month" as const),
+    })),
+    persistAdminCreateChargedTerms: vi.fn(async () => ({
+      planId: "22222222-2222-4222-8222-222222222222",
+      chargedTerms: { chargedAmount: "79.00" },
+    })),
+  };
+});
 
 vi.mock("./commercial/ownerAccountSubscriptionAuthority", () => ({
   ownerHasEntitledAccountSubscription: vi.fn(),
@@ -49,7 +73,10 @@ vi.mock("./db/cascadeDeletes", async (importOriginal) => {
   };
 });
 
-import { createSubscriptionForRestaurant, getUserById, updateSubscriptionById } from "./db";
+import { createSubscriptionForRestaurant, deleteUserSubscriptionById, getUserById, updateSubscriptionById } from "./db";
+import {
+  persistAdminCreateChargedTerms,
+} from "./commercial/adminChargedTermsCompletion";
 import {
   getOwnerAccountSubscriptionRow,
   ownerHasEntitledAccountSubscription,
@@ -114,6 +141,11 @@ describe("subscriptionAudit PR-3", () => {
     (createSubscriptionForRestaurant as ReturnType<typeof vi.fn>).mockResolvedValue({
       id: SUBSCRIPTION_ID,
     });
+    (deleteUserSubscriptionById as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+    (persistAdminCreateChargedTerms as ReturnType<typeof vi.fn>).mockResolvedValue({
+      planId: "22222222-2222-4222-8222-222222222222",
+      chargedTerms: { chargedAmount: "79.00" },
+    });
     (updateSubscriptionById as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
     (deleteSubscriptionCascade as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
     (getOwnerAccountSubscriptionRow as ReturnType<typeof vi.fn>).mockResolvedValue(
@@ -133,6 +165,15 @@ describe("subscriptionAudit PR-3", () => {
       });
 
       expect(createSubscriptionForRestaurant).toHaveBeenCalled();
+      expect(persistAdminCreateChargedTerms).toHaveBeenCalledWith(
+        expect.objectContaining({
+          subscriptionId: SUBSCRIPTION_ID,
+          offer: expect.objectContaining({
+            billingCycleCode: "monthly",
+            chargedAmount: "79.00",
+          }),
+        })
+      );
       expect(opsLogMock).toHaveBeenCalledWith(
         expect.objectContaining({
           type: OPS_EVENT.subscription_created_by_admin,
@@ -150,6 +191,50 @@ describe("subscriptionAudit PR-3", () => {
             startDate: expect.any(String),
             endDate: expect.any(String),
             procedure: "admin.createUserSubscriptionByAdmin",
+          }),
+        })
+      );
+    });
+
+    it("compensates subscription when Charged Terms persist fails", async () => {
+      const { AdminChargedTermsCompletionError } = await import(
+        "./commercial/adminChargedTermsCompletion"
+      );
+      (persistAdminCreateChargedTerms as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+        new AdminChargedTermsCompletionError("binding_persist_failed")
+      );
+
+      await expect(
+        applyAdminUserSubscriptionCreate({
+          ctx: adminContext as any,
+          procedure: "admin.createUserSubscriptionByAdmin",
+          userId: TARGET_USER_ID,
+          planId: "22222222-2222-4222-8222-222222222222",
+          billingCycle: "monthly",
+          status: "active",
+        })
+      ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+
+      expect(deleteUserSubscriptionById).toHaveBeenCalledWith(SUBSCRIPTION_ID);
+      expect(opsLogMock).not.toHaveBeenCalled();
+    });
+
+    it("passes yearly billingCycleCode into Charged Terms persist", async () => {
+      await applyAdminUserSubscriptionCreate({
+        ctx: adminContext as any,
+        procedure: "admin.createUserSubscriptionByAdmin",
+        userId: TARGET_USER_ID,
+        planId: "22222222-2222-4222-8222-222222222222",
+        billingCycle: "yearly",
+        status: "active",
+      });
+
+      expect(persistAdminCreateChargedTerms).toHaveBeenCalledWith(
+        expect.objectContaining({
+          subscriptionId: SUBSCRIPTION_ID,
+          offer: expect.objectContaining({
+            billingCycleCode: "yearly",
+            chargedAmount: "999.00",
           }),
         })
       );
@@ -191,6 +276,7 @@ describe("subscriptionAudit PR-3", () => {
       expect(updateSubscriptionById).toHaveBeenCalledWith(SUBSCRIPTION_ID, {
         planId: "33333333-3333-4333-8333-333333333333",
       });
+      expect(persistAdminCreateChargedTerms).not.toHaveBeenCalled();
       expect(opsLogMock).toHaveBeenCalledWith(
         expect.objectContaining({
           type: OPS_EVENT.subscription_updated_by_admin,

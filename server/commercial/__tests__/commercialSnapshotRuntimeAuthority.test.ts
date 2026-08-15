@@ -55,7 +55,7 @@ describe("Live plan runtime authority architecture guards", () => {
       "ensureLivePlanBoundForSubscription"
     );
     expect(read("server/subscriptionAudit.ts")).toContain(
-      "ensureLivePlanBoundForSubscription"
+      "persistAdminCreateChargedTerms"
     );
   });
 

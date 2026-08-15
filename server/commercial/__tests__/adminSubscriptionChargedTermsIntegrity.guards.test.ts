@@ -49,19 +49,17 @@ describe("GUARD-ADMIN-CT Admin subscription financial integrity", () => {
     expect(table).not.toContain("chargedCurrency");
   });
 
-  it("GUARD-ADMIN-CT-03 Admin create bind call omits billingCycleCode", () => {
+  it("GUARD-ADMIN-CT-03 Admin create persist passes billingCycleCode and fail-closes", () => {
     const audit = read("server/subscriptionAudit.ts");
     const createFn = audit.slice(
       audit.indexOf("export async function applyAdminUserSubscriptionCreate"),
       audit.indexOf("function buildAdminSubscriptionUpdateData")
     );
-    expect(createFn).toContain("ensureLivePlanBoundForSubscription");
-    expect(createFn).not.toContain("billingCycleCode");
-    const bindCall = createFn.slice(
-      createFn.indexOf("await ensureLivePlanBoundForSubscription")
-    );
-    expect(bindCall).toContain('event: "plan_selected"');
-    expect(bindCall).not.toContain("billingCycleCode:");
+    expect(createFn).toContain("resolveChargedTermsForAdminCreate");
+    expect(createFn).toContain("persistAdminCreateChargedTerms");
+    expect(createFn).toContain("billingCycleCode: billingCycle");
+    expect(createFn).toContain("deleteUserSubscriptionById(result.id)");
+    expect(createFn).not.toContain("ensureLivePlanBoundForSubscription");
   });
 
   it("GUARD-ADMIN-CT-04 Admin UI mutate payload has no price/amount", () => {
@@ -82,5 +80,15 @@ describe("GUARD-ADMIN-CT Admin subscription financial integrity", () => {
     expect(mrr).toContain("if (!terms) continue");
     expect(mrr).not.toContain("currentPriceForPlan");
     expect(mrr).not.toContain("priceMonthly");
+  });
+
+  it("GUARD-ADMIN-CT-06 Admin update does not re-bind Charged Terms", () => {
+    const audit = read("server/subscriptionAudit.ts");
+    const updateFn = audit.slice(
+      audit.indexOf("export async function applyAdminUserSubscriptionUpdate")
+    );
+    expect(updateFn).not.toContain("ensureLivePlanBoundForSubscription");
+    expect(updateFn).not.toContain("persistAdminCreateChargedTerms");
+    expect(updateFn).not.toContain("deleteUserSubscriptionById");
   });
 });

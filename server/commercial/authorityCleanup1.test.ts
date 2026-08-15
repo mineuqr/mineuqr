@@ -32,10 +32,41 @@ vi.mock("../db", () => ({
   getSubscriptionPlans: vi.fn(),
   getRestaurantsByUser: vi.fn(async () => []),
   createSubscriptionForRestaurant: vi.fn(),
+  deleteUserSubscriptionById: vi.fn(),
   createNotification: vi.fn(),
   getRestaurantById: vi.fn(),
   createInvoice: vi.fn(),
   updateInvoice: vi.fn(),
+}));
+
+vi.mock("./adminChargedTermsCompletion", () => ({
+  persistAdminCreateChargedTerms: vi.fn(async () => ({
+    planId: "live-professional",
+    chargedTerms: { chargedAmount: "79.00" },
+  })),
+  resolveChargedTermsForAdminCreate: vi.fn(async (input: { planId: string; billingCycleCode: string }) => ({
+    planId: input.planId,
+    catalogPlanCode: "professional",
+    commercialName: "Professional",
+    chargedAmount: "79.00",
+    chargedCurrency: "USD",
+    billingCycleId: "cycle-monthly",
+    billingCycleCode: input.billingCycleCode,
+    intervalCount: 1,
+    intervalUnit: "month",
+  })),
+  rethrowAdminChargedTermsAsTrpc: (error: unknown) => {
+    throw error;
+  },
+  throwAdminFinancialIncomplete: () => {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "تعذر إكمال الاشتراك: الشروط المالية غير متوفرة.",
+    });
+  },
+  isAdminBillingCycleCode: (value: string) => value === "monthly" || value === "yearly",
+  ADMIN_BILLING_CYCLE_CODES: ["monthly", "yearly"],
+  ADMIN_FINANCIAL_INCOMPLETE_MESSAGE: "تعذر إكمال الاشتراك: الشروط المالية غير متوفرة.",
 }));
 
 import {
@@ -109,22 +140,24 @@ function createCaller() {
 describe("AUTHORITY-CLEANUP-1 — canonical owner account subscription authority", () => {
   installCommercialTestClock();
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
     setupPlansMock();
+    await ensureCatalogReady();
   });
 
   describe("Scenario A — active entitled account", () => {
-    const accountRow = subRow({
-      id: 660001,
-      userId: USER_ID,
-      restaurantId: 0,
-      planId: 30002,
-      status: "active",
-    });
-
-    beforeEach(() => {
-      setupUserSubs([accountRow]);
+    beforeEach(async () => {
+      const planId = await professionalLivePlanId();
+      setupUserSubs([
+        subRow({
+          id: 660001,
+          userId: USER_ID,
+          restaurantId: 0,
+          planId,
+          status: "active",
+        }),
+      ]);
     });
 
     it("CRS reports entitled; create guard blocks", async () => {

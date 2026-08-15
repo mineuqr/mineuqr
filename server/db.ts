@@ -726,6 +726,13 @@ export async function createSubscriptionForRestaurant(data: InsertUserSubscripti
   return { id: result[0].insertId };
 }
 
+/** Compensate a just-created Admin subscription when Charged Terms persist fails. */
+export async function deleteUserSubscriptionById(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(userSubscriptions).where(eq(userSubscriptions.id, id));
+}
+
 export async function updateSubscriptionById(id: number, data: Partial<InsertUserSubscription>) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");

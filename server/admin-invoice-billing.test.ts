@@ -11,6 +11,7 @@ vi.mock("./db", () => ({
   createInvoice: vi.fn(),
   updateInvoice: vi.fn(),
   createSubscriptionForRestaurant: vi.fn(),
+  deleteUserSubscriptionById: vi.fn(),
   getRestaurantById: vi.fn(),
   createNotification: vi.fn(),
 }));
@@ -40,7 +41,30 @@ vi.mock("./services/commercial-catalog", async (importOriginal) => {
       nameAr: "باقة",
     })),
     resolveCanonicalLivePlanId: vi.fn(async () => "11111111-1111-4111-8111-111111111111"),
+    resolveLivePlanById: vi.fn(async () => "11111111-1111-4111-8111-111111111111"),
     resolveLegacyPlanIdFromPlan: vi.fn(() => 30002),
+  };
+});
+
+vi.mock("./commercial/adminChargedTermsCompletion", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./commercial/adminChargedTermsCompletion")>();
+  return {
+    ...actual,
+    resolveChargedTermsForAdminCreate: vi.fn(async () => ({
+      planId: "11111111-1111-4111-8111-111111111111",
+      catalogPlanCode: "professional",
+      commercialName: "Plan",
+      chargedAmount: "39.00",
+      chargedCurrency: "USD",
+      billingCycleId: "cycle-monthly",
+      billingCycleCode: "monthly",
+      intervalCount: 1,
+      intervalUnit: "month",
+    })),
+    persistAdminCreateChargedTerms: vi.fn(async () => ({
+      planId: "11111111-1111-4111-8111-111111111111",
+      chargedTerms: { chargedAmount: "39.00" },
+    })),
   };
 });
 

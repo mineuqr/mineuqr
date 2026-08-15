@@ -16,12 +16,15 @@ import {
 } from "./commercial/ownerAccountSubscriptionAuthority";
 import {
   createSubscriptionForRestaurant,
+  deleteUserSubscriptionById,
   updateSubscriptionById,
 } from "./db";
 import {
-  classifyPlanTransitionEvent,
-  ensureLivePlanBoundForSubscription,
-} from "./services/commercial-catalog";
+  persistAdminCreateChargedTerms,
+  resolveChargedTermsForAdminCreate,
+  rethrowAdminChargedTermsAsTrpc,
+  throwAdminFinancialIncomplete,
+} from "./commercial/adminChargedTermsCompletion";
 import { cascadeAuditFromTrpc } from "./db/cascadeAudit";
 import {
   assertProtectedUserSubscriptionModifiable,
@@ -157,8 +160,24 @@ export async function applyAdminUserSubscriptionCreate(params: {
 
   const subscriptionStatus = status || "active";
   const now = new Date();
-  const { resolveCanonicalLivePlanId } = await import("./services/commercial-catalog");
-  const livePlanId = await resolveCanonicalLivePlanId(planId);
+  const { resolveLivePlanById } = await import("./services/commercial-catalog");
+  let livePlanId: string;
+  try {
+    livePlanId = await resolveLivePlanById(planId);
+  } catch {
+    throwAdminFinancialIncomplete();
+  }
+
+  let offer;
+  try {
+    offer = await resolveChargedTermsForAdminCreate({
+      planId: livePlanId,
+      billingCycleCode: billingCycle,
+    });
+  } catch (error) {
+    rethrowAdminChargedTermsAsTrpc(error);
+  }
+
   const insert = buildAdminSubscriptionInsert(
     {
       userId,
@@ -171,6 +190,22 @@ export async function applyAdminUserSubscriptionCreate(params: {
     now
   );
   const result = await createSubscriptionForRestaurant(insert);
+
+  try {
+    await persistAdminCreateChargedTerms({
+      subscriptionId: result.id,
+      offer,
+      actorId: ctx.user?.id ?? null,
+    });
+  } catch (error) {
+    try {
+      await deleteUserSubscriptionById(result.id);
+    } catch {
+      /* still fail closed; do not return a financially incomplete success */
+    }
+    rethrowAdminChargedTermsAsTrpc(error);
+  }
+
   const snapshot = subscriptionAuditSnapshotFromInsert({
     planId: insert.planId,
     status: subscriptionStatus,
@@ -184,13 +219,6 @@ export async function applyAdminUserSubscriptionCreate(params: {
     targetUserId: userId,
     subscriptionId: result.id,
     snapshot,
-  });
-
-  await ensureLivePlanBoundForSubscription({
-    subscriptionId: result.id,
-    planId: livePlanId,
-    event: "plan_selected",
-    actorId: ctx.user?.id ?? null,
   });
 
   const periodEnd = computeAdminSubscriptionPeriodEnd({
@@ -275,35 +303,6 @@ export async function applyAdminUserSubscriptionUpdate(params: {
     before,
     after,
   });
-
-  const nextPlanId =
-    typeof updateData.planId === "string" || typeof updateData.planId === "number"
-      ? updateData.planId
-      : existing.planId;
-  const planChanged =
-    (typeof updateData.planId === "string" || typeof updateData.planId === "number") &&
-    updateData.planId !== existing.planId;
-  const periodChanged =
-    typeof updateData.currentPeriodEnd === "string" &&
-    updateData.currentPeriodEnd !== existing.currentPeriodEnd;
-  const statusActivated =
-    updateData.status === "active" && existing.status !== "active";
-
-  if (planChanged || periodChanged || statusActivated) {
-    const event = planChanged
-      ? classifyPlanTransitionEvent(existing.planId, nextPlanId)
-      : periodChanged
-        ? "renewal"
-        : "plan_selected";
-    const liveForBind =
-      typeof updateData.planId === "string" ? updateData.planId : String(nextPlanId);
-    await ensureLivePlanBoundForSubscription({
-      subscriptionId: existing.id,
-      planId: liveForBind,
-      event,
-      actorId: ctx.user?.id ?? null,
-    });
-  }
 
   return { success: true as const, changed: true, subscriptionId: existing.id };
 }
