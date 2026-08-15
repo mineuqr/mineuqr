@@ -1,0 +1,106 @@
+{
+  "queriedAt": "2026-08-15T13:29:47.217Z",
+  "access": "PRODUCTION",
+  "mutation": "NONE",
+  "statements": "SELECT + INFORMATION_SCHEMA only",
+  "target": {
+    "hostKind": "tidb_cloud",
+    "database": "mineuqr",
+    "tls": true,
+    "port": 4000,
+    "hostPattern": "tidbcloud_prod",
+    "matchesKnownProductionShape": true
+  },
+  "session": {
+    "db": "mineuqr",
+    "hostname": "localhost",
+    "server_ts": "2026-08-15T10:29:52.000Z"
+  },
+  "user_subscriptions_planId_column": [
+    {
+      "COLUMN_NAME": "planId",
+      "DATA_TYPE": "varchar",
+      "COLUMN_TYPE": "varchar(36)",
+      "IS_NULLABLE": "NO",
+      "CHARACTER_MAXIMUM_LENGTH": 36
+    }
+  ],
+  "foreign_keys_involving_subscription_plans": [],
+  "subscription_plans_row_count": 3,
+  "subscription_plans_ids": [
+    { "id": 30001, "isActive": 1 },
+    { "id": 30002, "isActive": 1 },
+    { "id": 30003, "isActive": 1 }
+  ],
+  "user_subscriptions_row_count": 7,
+  "user_subscriptions_planId_null": "0",
+  "user_subscriptions_planId_shape": [{ "kind": "uuid", "n": 7 }],
+  "user_subscriptions_uuid_proof": {
+    "valid_live_uuid": "7",
+    "invalid_uuid": "0",
+    "distinct_plan_id": 3
+  },
+  "user_subscriptions_orphan_uuids": [],
+  "user_subscriptions_uuid_to_live_plan": [
+    {
+      "live_plan_uuid": "0ade795a-02fa-4d3e-b9b5-262515bade09",
+      "code": "professional",
+      "n": 4
+    },
+    {
+      "live_plan_uuid": "d836bd10-9d9f-4408-a076-f921354d785a",
+      "code": "enterprise",
+      "n": 2
+    },
+    {
+      "live_plan_uuid": "79cf7bf7-c3b6-45de-8f20-42897cd493ac",
+      "code": "basic",
+      "n": 1
+    }
+  ],
+  "user_subscriptions_ambiguous_identity": [],
+  "user_subscriptions_status": [
+    { "status": "active", "n": 5 },
+    { "status": "expired", "n": 2 }
+  ],
+  "bindings_row_count": 2,
+  "bindings_legacyPlanId": [
+    { "legacy": "30003", "n": 1 },
+    { "legacy": "30001", "n": 1 }
+  ],
+  "bindings_planId_shape": [{ "kind": "uuid", "n": 2 }],
+  "bindings_planId_disagreement_with_subscription": 0,
+  "bindings_orphan_planId": 0,
+  "charged_terms_completeness": {
+    "complete": "2",
+    "incomplete": "0",
+    "n": 2
+  },
+  "charged_terms_shape": [
+    {
+      "chargedCurrency": "USD",
+      "billingCycleCode": "monthly",
+      "n": 2
+    }
+  ],
+  "commercial_plans_row_count": 3,
+  "commercial_plans_id_code": [
+    { "id": "79cf7bf7-c3b6-45de-8f20-42897cd493ac", "code": "basic" },
+    { "id": "d836bd10-9d9f-4408-a076-f921354d785a", "code": "enterprise" },
+    { "id": "0ade795a-02fa-4d3e-b9b5-262515bade09", "code": "professional" }
+  ],
+  "journal_latest": [
+    {
+      "id": 6084102,
+      "hash": "0836fac35ca3515db9958e232320dd9e0f5d44bf60684d74badff8661daa243b"
+    },
+    {
+      "id": 6054102,
+      "hash": "d1d9b161c405cc8e448fbf74d3e40b99618d88d388f65479a43e8115fb4cc595"
+    },
+    {
+      "id": 6024102,
+      "hash": "cfaec30e54892eaf44222e15cd327fb4e7f67c106a544c0ded2ce65463908413"
+    }
+  ]
+}
