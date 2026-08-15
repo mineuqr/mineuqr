@@ -33,7 +33,7 @@ export type CommercialAuthority = {
   subscriptionId: number | null;
   subscriptionStatus: SubscriptionStatus | null;
 
-  planId: number | null;
+  planId: string | number | null;
   planCode: CommercialPlan;
   planName: string | null;
 

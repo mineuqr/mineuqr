@@ -30,6 +30,11 @@ vi.mock("../services/commercial-catalog", () => ({
     nameEn: "Professional",
     nameAr: "احترافي",
   })),
+  resolveLivePlanDisplayByPlanRef: vi.fn(async (ref: number | string) => ({
+    id: typeof ref === "number" ? ref : Number(ref) || 0,
+    nameEn: "Professional",
+    nameAr: "احترافي",
+  })),
   resolveLivePlanCapabilities: vi.fn(async () => ({
     source: "missing",
     planId: null,

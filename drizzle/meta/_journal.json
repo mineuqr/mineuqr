@@ -617,6 +617,13 @@
       "when": 1784730000000,
       "tag": "0087_platform_owner_access_mode",
       "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "5",
+      "when": 1784740000000,
+      "tag": "0088_user_subscriptions_live_plan_identity",
+      "breakpoints": true
     }
   ]
 }

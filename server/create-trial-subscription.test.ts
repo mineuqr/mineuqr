@@ -11,36 +11,18 @@ const FIXED_NOW = new Date("2026-06-08T12:00:00.000Z");
 
 vi.mock("./db", () => ({
   createUserSubscription: vi.fn(),
-  getSubscriptionPlans: vi.fn(async () => [
-    {
-      id: 30001,
-      nameEn: "Ordering Free",
-      sortOrder: 0,
-      maxRestaurants: 1,
-      isActive: true,
-    },
-    {
-      id: 101,
-      nameEn: "Basic Plan",
-      sortOrder: 1,
-      maxRestaurants: 1,
-      isActive: true,
-    },
-    {
-      id: 102,
-      nameEn: "Professional Plan",
-      sortOrder: 2,
-      maxRestaurants: 5,
-      isActive: true,
-    },
-    {
-      id: 103,
-      nameEn: "Enterprise Plan",
-      sortOrder: 3,
-      maxRestaurants: 999,
-      isActive: true,
-    },
-  ]),
+}));
+
+vi.mock("./services/commercial-catalog", () => ({
+  ensureCatalogReady: vi.fn(async () => undefined),
+  resolveTrialPolicyFromCatalog: vi.fn(async () => ({
+    professionalPlanId: "live-professional",
+    legacyPlanId: 30002,
+    durationDays: 14,
+  })),
+  resolveCanonicalLivePlanId: vi.fn(async () => "live-professional"),
+  resolveLegacyPlanIdFromPlan: vi.fn(() => 30002),
+  bindSubscriptionToLivePlan: vi.fn(),
 }));
 
 describe("create-trial-subscription (LAUNCH-5B)", () => {
@@ -54,7 +36,7 @@ describe("create-trial-subscription (LAUNCH-5B)", () => {
 
   describe("resolveTrialPlanId", () => {
     it("assigns Professional compatibility id, not Basic", async () => {
-      await expect(resolveTrialPlanId()).resolves.toBe(30002);
+      await expect(resolveTrialPlanId()).resolves.toBe("live-professional");
     });
   });
 
@@ -65,8 +47,8 @@ describe("create-trial-subscription (LAUNCH-5B)", () => {
     });
 
     it("creates 14-day trial with Professional plan id", () => {
-      const payload = buildTrialSubscriptionPayload(9, 102, 55);
-      expect(payload.planId).toBe(102);
+      const payload = buildTrialSubscriptionPayload(9, "live-professional", 55);
+      expect(payload.planId).toBe("live-professional");
       expect(payload.status).toBe("trial");
       expect(payload.billingCycle).toBe("monthly");
       expect(payload.restaurantId).toBe(55);

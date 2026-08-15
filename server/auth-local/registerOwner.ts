@@ -194,6 +194,7 @@ export async function registerLocalOwner(
       resolveTrialPolicyFromCatalog,
       bindSubscriptionToLivePlan,
       ensureCatalogReady,
+      resolveLegacyPlanIdFromPlan,
     } = await import("../services/commercial-catalog");
     await ensureCatalogReady();
     const sub = await getCanonicalUserSubscription(userId);
@@ -202,7 +203,7 @@ export async function registerLocalOwner(
       await bindSubscriptionToLivePlan({
         subscriptionId: sub.id,
         planId: policy.professionalPlanId,
-        legacyPlanId: sub.planId,
+        legacyPlanId: resolveLegacyPlanIdFromPlan(String(sub.planId)),
         event: "trial_activated",
         actorId: userId,
       });

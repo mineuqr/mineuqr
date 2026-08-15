@@ -161,7 +161,9 @@ export async function resolveOwnerEntitlements(
       featureKeys: loaded.data.featureKeys,
       limits: loaded.data.limits,
       chargedTerms: loaded.data.chargedTerms,
-      legacyPlanId: loaded.data.legacyPlanId ?? canonical.planId,
+      legacyPlanId:
+        loaded.data.legacyPlanId ??
+        (typeof canonical.planId === "number" ? canonical.planId : null),
       lifecycle,
       dbStatus,
       trialEndsAt,

@@ -7,7 +7,7 @@ import type { CommercialTrialStatus } from "./dto/commercialAuthority";
 /** AR-4 Category A — plan slice. */
 export type PlanSlice = {
   ownerId: number;
-  planId: number | null;
+  planId: string | number | null;
   planCode: CommercialPlan;
   planName: string | null;
 };

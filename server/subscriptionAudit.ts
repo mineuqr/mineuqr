@@ -157,11 +157,13 @@ export async function applyAdminUserSubscriptionCreate(params: {
 
   const subscriptionStatus = status || "active";
   const now = new Date();
+  const { resolveCanonicalLivePlanId } = await import("./services/commercial-catalog");
+  const livePlanId = await resolveCanonicalLivePlanId(planId);
   const insert = buildAdminSubscriptionInsert(
     {
       userId,
       restaurantId: 0,
-      planId,
+      planId: livePlanId,
       status: subscriptionStatus,
       billingCycle,
       subscriptionEndDate,
@@ -248,6 +250,10 @@ export async function applyAdminUserSubscriptionUpdate(params: {
   }
 
   const updateData = buildAdminSubscriptionUpdateData(input);
+  if (typeof updateData.planId === "number") {
+    const { resolveCanonicalLivePlanId } = await import("./services/commercial-catalog");
+    updateData.planId = await resolveCanonicalLivePlanId(updateData.planId);
+  }
   if (Object.keys(updateData).length === 0) {
     return { success: true as const, changed: false, subscriptionId: existing.id };
   }
@@ -271,9 +277,12 @@ export async function applyAdminUserSubscriptionUpdate(params: {
   });
 
   const nextPlanId =
-    typeof updateData.planId === "number" ? updateData.planId : existing.planId;
+    typeof updateData.planId === "string" || typeof updateData.planId === "number"
+      ? updateData.planId
+      : existing.planId;
   const planChanged =
-    typeof updateData.planId === "number" && updateData.planId !== existing.planId;
+    (typeof updateData.planId === "string" || typeof updateData.planId === "number") &&
+    updateData.planId !== existing.planId;
   const periodChanged =
     typeof updateData.currentPeriodEnd === "string" &&
     updateData.currentPeriodEnd !== existing.currentPeriodEnd;
@@ -286,12 +295,18 @@ export async function applyAdminUserSubscriptionUpdate(params: {
       : periodChanged
         ? "renewal"
         : "plan_selected";
-    await ensureLivePlanBoundForSubscription({
-      subscriptionId: existing.id,
-      legacyPlanId: nextPlanId,
-      event,
-      actorId: ctx.user?.id ?? null,
-    });
+    const { resolveLegacyPlanIdFromPlan } = await import("./services/commercial-catalog");
+    const legacyForBind =
+      input.planId ??
+      (typeof nextPlanId === "number" ? nextPlanId : resolveLegacyPlanIdFromPlan(String(nextPlanId)));
+    if (legacyForBind != null) {
+      await ensureLivePlanBoundForSubscription({
+        subscriptionId: existing.id,
+        legacyPlanId: legacyForBind,
+        event,
+        actorId: ctx.user?.id ?? null,
+      });
+    }
   }
 
   return { success: true as const, changed: true, subscriptionId: existing.id };

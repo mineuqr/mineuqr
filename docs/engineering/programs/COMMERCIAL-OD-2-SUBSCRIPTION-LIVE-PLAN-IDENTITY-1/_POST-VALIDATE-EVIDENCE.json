@@ -1,0 +1,37 @@
+{
+  "post": "OK",
+  "planIdType": "varchar(36)",
+  "nullable": "NO",
+  "leftoverUuidCol": 0,
+  "applied0088": true,
+  "appliedId": 6084102,
+  "latestHashPrefix": "0836fac35ca3515d",
+  "rows": 7,
+  "active": 5,
+  "expired": 2,
+  "trial": 0,
+  "canceled": 0,
+  "nullPlanId": 0,
+  "orphan": 0,
+  "nonUuid": 0,
+  "bindingDisagree": 0,
+  "bindings": 2,
+  "chargedAmountPresent": 2,
+  "byPlan": [
+    {
+      "uuid": "d836bd10-9d9f-4408-a076-f921354d785a",
+      "code": "enterprise",
+      "n": 2
+    },
+    {
+      "uuid": "0ade795a-02fa-4d3e-b9b5-262515bade09",
+      "code": "professional",
+      "n": 4
+    },
+    {
+      "uuid": "79cf7bf7-c3b6-45de-8f20-42897cd493ac",
+      "code": "basic",
+      "n": 1
+    }
+  ]
+}

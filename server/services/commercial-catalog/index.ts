@@ -906,10 +906,14 @@ export {
   invalidateCatalogReadyGate,
   resolveLegacyPlanIdFromPlan,
   resolvePlanIdFromLegacyPlanId,
+  resolveCanonicalLivePlanId,
+  resolveLivePlanDisplayByPlanRef,
   resolveCheckoutOfferFromLivePlan,
   resolveLivePlanDisplayByLegacyId,
   resolveSubscriptionPlanView,
   isKnownLegacyPlanId,
+  isLivePlanUuid,
+  parseLegacyPlanInteger,
   type LivePlanCheckoutOffer,
   type LivePlanDisplay,
 } from "./adoptionService";
@@ -935,4 +939,4 @@ export {
 } from "./livePlanPersistence";
 export { commercialAdoptionObservability } from "./adoptionObservability";
 export { commercialRuntimeAuthorityObservability } from "./runtimeAuthorityObservability";
-export { LEGACY_PLAN_BRIDGE, bridgeByLegacyPlanId } from "./legacyPlanBridge";
+export { LEGACY_PLAN_BRIDGE, bridgeByLegacyPlanId, bridgeByCatalogPlanCode } from "./legacyPlanBridge";

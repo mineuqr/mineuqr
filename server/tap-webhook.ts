@@ -93,13 +93,17 @@ export async function handleTapWebhook(req: Request, res: Response) {
       } else {
         endDate.setMonth(endDate.getMonth() + 1);
       }
+      const planId = metadata.plan_id ? parseInt(String(metadata.plan_id), 10) : undefined;
+      const planIdOpt = planId != null && !isNaN(planId) ? planId : undefined;
+      const { resolveCanonicalLivePlanId } = await import("./services/commercial-catalog");
+      const livePlanId =
+        planIdOpt != null ? await resolveCanonicalLivePlanId(planIdOpt) : undefined;
       const activationPayload = {
         status: "active" as const,
         currentPeriodStart: now.toISOString(),
         currentPeriodEnd: endDate.toISOString(),
+        ...(livePlanId ? { planId: livePlanId } : {}),
       };
-      const planId = metadata.plan_id ? parseInt(String(metadata.plan_id), 10) : undefined;
-      const planIdOpt = planId != null && !isNaN(planId) ? planId : undefined;
 
       const subIdRaw = subscriptionId ? parseInt(String(subscriptionId), 10) : NaN;
       const subId = !isNaN(subIdRaw) && subIdRaw > 0 ? subIdRaw : undefined;
@@ -116,15 +120,12 @@ export async function handleTapWebhook(req: Request, res: Response) {
         }
       } else if (uid != null) {
         activatedId = await updateSubscriptionForActivation(uid, activationPayload, {
-          planId: planIdOpt,
+          planId: livePlanId ?? planIdOpt,
         });
       }
 
       if (activatedId != null) {
-        const boundPlanId =
-          planIdOpt ??
-          (await getSubscriptionById(activatedId))?.planId ??
-          null;
+        const boundPlanId = planIdOpt ?? null;
         if (boundPlanId != null) {
           await ensureLivePlanBoundForSubscription({
             subscriptionId: activatedId,

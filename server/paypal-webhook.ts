@@ -86,8 +86,11 @@ export async function handlePayPalWebhook(req: Request, res: Response) {
 
       if (capturedOrder.status === "COMPLETED") {
         // Update user subscription
-        const { isKnownLegacyPlanId, resolveLivePlanDisplayByLegacyId } =
-          await import("./services/commercial-catalog");
+        const {
+          isKnownLegacyPlanId,
+          resolveLivePlanDisplayByLegacyId,
+          resolveCanonicalLivePlanId,
+        } = await import("./services/commercial-catalog");
         if (!isKnownLegacyPlanId(planId)) {
           opsLog({
             type: OPS_EVENT.webhook_processing_failed,
@@ -102,6 +105,7 @@ export async function handlePayPalWebhook(req: Request, res: Response) {
           return res.json({ status: "error", message: "Plan not found" });
         }
         const plan = await resolveLivePlanDisplayByLegacyId(planId);
+        const livePlanId = await resolveCanonicalLivePlanId(planId);
 
         const now = new Date();
         const periodEnd = new Date();
@@ -110,14 +114,14 @@ export async function handlePayPalWebhook(req: Request, res: Response) {
         const activatedId = await updateSubscriptionForActivation(
           userId,
           {
-            planId,
+            planId: livePlanId,
             status: "active",
             stripeSubscriptionId: orderId,
             currentPeriodStart: now.toISOString(),
             currentPeriodEnd: periodEnd.toISOString(),
             trialEndsAt: null,
           },
-          { planId }
+          { planId: livePlanId }
         );
 
         if (activatedId == null) {

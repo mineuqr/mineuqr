@@ -47,12 +47,12 @@ export class CommercialReadService {
         ? meta.commercialName ?? null
         : null;
 
-    const { resolveLivePlanDisplayByLegacyId } = await import(
+    const { resolveLivePlanDisplayByPlanRef } = await import(
       "../services/commercial-catalog"
     );
     const catalogPlan =
       snapshotName == null && canonicalRow != null
-        ? await resolveLivePlanDisplayByLegacyId(canonicalRow.planId)
+        ? await resolveLivePlanDisplayByPlanRef(canonicalRow.planId)
         : null;
 
     const authority = mapToCommercialAuthority(

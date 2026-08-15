@@ -38,7 +38,7 @@ export function buildAdminSubscriptionInsert(
   params: {
     userId: number;
     restaurantId: number;
-    planId: number;
+    planId: string;
     status: SubscriptionStatus;
     billingCycle: BillingCycle;
     subscriptionEndDate?: string;

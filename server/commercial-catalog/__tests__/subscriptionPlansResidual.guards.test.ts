@@ -32,13 +32,13 @@ describe("subscription_plans residual cleanup guards", () => {
   it("CRS unbound display does not read the legacy plan table", () => {
     const crs = read("server/commercial/CommercialReadService.ts");
     expect(crs).not.toContain("getSubscriptionPlanById");
-    expect(crs).toContain("resolveLivePlanDisplayByLegacyId");
+    expect(crs).toContain("resolveLivePlanDisplayByPlanRef");
   });
 
   it("trial identity fallback does not read the legacy plan table", () => {
     const trial = read("server/create-trial-subscription.ts");
     expect(trial).not.toContain("getSubscriptionPlans");
-    expect(trial).toContain("LEGACY_PLAN_BRIDGE");
+    expect(trial).toContain("resolveCanonicalLivePlanId");
   });
 
   it("payment webhooks do not read the legacy plan table", () => {

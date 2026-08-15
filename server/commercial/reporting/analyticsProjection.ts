@@ -34,7 +34,7 @@ export type CommercialAnalyticsProjection = {
       planName: string | null;
       subscriptionStatus: string | null;
       subscriptionId: number | null;
-      planId: number | null;
+      planId: string | number | null;
       billingCycle: string | null;
       currentPeriodEnd: string | null;
       commercialStatus: { isEntitled: boolean; invoiceEligible: boolean };

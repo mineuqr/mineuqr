@@ -761,12 +761,13 @@ export async function getAdminStatistics() {
     expiredSubscriptions.length
   );
 
-  const { bridgeByLegacyPlanId } = await import(
-    "./services/commercial-catalog/legacyPlanBridge"
+  const { planService, resolveLegacyPlanIdFromPlan } = await import(
+    "./services/commercial-catalog"
   );
-  const byPlan = new Map<number, number>();
+  const byPlan = new Map<string, number>();
   for (const sub of activeSubscriptions) {
-    byPlan.set(sub.planId, (byPlan.get(sub.planId) ?? 0) + 1);
+    const key = String(sub.planId);
+    byPlan.set(key, (byPlan.get(key) ?? 0) + 1);
   }
 
   return {
@@ -779,8 +780,8 @@ export async function getAdminStatistics() {
     renewalRate,
     churnRate,
     subscriptionsByPlan: [...byPlan.entries()].map(([planId, count]) => ({
-      planId,
-      planName: bridgeByLegacyPlanId(planId)?.catalogPlanName ?? `plan:${planId}`,
+      planId: resolveLegacyPlanIdFromPlan(planId) ?? planId,
+      planName: planService.get(planId)?.name ?? `plan:${planId}`,
       count,
     })),
   };

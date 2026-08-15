@@ -7,7 +7,7 @@ import {
 export type ActivationTargetOptions = {
   subscriptionId?: number;
   restaurantId?: number;
-  planId?: number;
+  planId?: number | string;
 };
 
 /**
@@ -33,8 +33,9 @@ export function resolveSubscriptionForActivationFromRows(
   }
 
   if (options.planId != null) {
+    const wanted = String(options.planId);
     return pickCanonicalSubscription(
-      rows.filter((r) => r.planId === options.planId)
+      rows.filter((r) => String(r.planId) === wanted)
     );
   }
 

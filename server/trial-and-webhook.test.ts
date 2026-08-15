@@ -86,11 +86,13 @@ vi.mock("./services/commercial-catalog", async (importOriginal) => {
     })),
     ensureCatalogReady: vi.fn(async () => {}),
     resolveTrialPolicyFromCatalog: vi.fn(async () => ({
-      professionalPlanId: null,
+      professionalPlanId: "plan-trial-test",
       durationDays: 14,
       trialPolicyId: null,
       legacyPlanId: 102,
     })),
+    resolveCanonicalLivePlanId: vi.fn(async () => "plan-webhook-test"),
+    resolveLegacyPlanIdFromPlan: vi.fn(() => 30002),
   };
 });
 
@@ -108,7 +110,7 @@ describe("Trial Subscription", () => {
       expect(createUserSubscription).toHaveBeenCalledWith(
         expect.objectContaining({
           userId: 123,
-          planId: 102,
+          planId: "plan-trial-test",
           restaurantId: 0,
           status: "trial",
           billingCycle: "monthly",
@@ -189,11 +191,11 @@ describe("PayPal Webhook", () => {
       expect(updateSubscriptionForActivation).toHaveBeenCalledWith(
         789,
         expect.objectContaining({
-          planId: 30002,
+          planId: "plan-webhook-test",
           status: "active",
           stripeSubscriptionId: "PAYPAL-ORDER-123",
         }),
-        { planId: 30002 }
+        { planId: "plan-webhook-test" }
       );
 
       expect(notifyOwnerNewSubscription).toHaveBeenCalledWith(

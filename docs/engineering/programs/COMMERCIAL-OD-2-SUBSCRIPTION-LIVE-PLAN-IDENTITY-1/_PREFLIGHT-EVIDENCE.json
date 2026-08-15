@@ -1,0 +1,156 @@
+{
+  "queriedAt": "2026-08-15T12:29:27.631Z",
+  "utcNow": "2026-08-15T09:29:29.000Z",
+  "dbName": "mineuqr",
+  "access": {
+    "hostKind": "tidb_cloud",
+    "database": "mineuqr",
+    "tls": true,
+    "port": 4000,
+    "hostPattern": "tidbcloud_prod",
+    "matchesKnownProductionShape": true
+  },
+  "mutation": "NONE",
+  "statements": "SELECT_AND_INFORMATION_SCHEMA",
+  "journal": {
+    "latestId": 6054102,
+    "latestHashPrefix": "d1d9b161c405cc8e",
+    "applied0087": true,
+    "applied0088": false,
+    "hash0087Prefix": "d1d9b161c405cc8e",
+    "hash0088Prefix": "0836fac35ca3515d"
+  },
+  "schema": {
+    "planId": {
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_DEFAULT": null,
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    "planIdIsInteger": true,
+    "planIdUuidPresent": false
+  },
+  "population": {
+    "total": 7,
+    "byPlan": [
+      {
+        "planId": 30001,
+        "n": 1,
+        "activeN": "0",
+        "trialN": "0",
+        "expiredN": "1",
+        "canceledN": "0"
+      },
+      {
+        "planId": 30002,
+        "n": 4,
+        "activeN": "3",
+        "trialN": "0",
+        "expiredN": "1",
+        "canceledN": "0"
+      },
+      {
+        "planId": 30003,
+        "n": 2,
+        "activeN": "2",
+        "trialN": "0",
+        "expiredN": "0",
+        "canceledN": "0"
+      }
+    ],
+    "byStatus": [
+      {
+        "status": "active",
+        "n": 5
+      },
+      {
+        "status": "expired",
+        "n": 2
+      }
+    ],
+    "invalid": {
+      "nullCount": "0",
+      "zeroCount": "0",
+      "negativeCount": "0"
+    },
+    "unknownIds": []
+  },
+  "livePlans": [
+    {
+      "code": "basic",
+      "id": "79cf7bf7-c3b6-45de-8f20-42897cd493ac",
+      "isHidden": 0
+    },
+    {
+      "code": "enterprise",
+      "id": "d836bd10-9d9f-4408-a076-f921354d785a",
+      "isHidden": 0
+    },
+    {
+      "code": "professional",
+      "id": "0ade795a-02fa-4d3e-b9b5-262515bade09",
+      "isHidden": 0
+    }
+  ],
+  "duplicateCodes": [],
+  "conversion": {
+    "ok": true,
+    "failureCodes": [],
+    "sourceCount": 7,
+    "convertedCount": 7
+  },
+  "preview": [
+    {
+      "integer": 30001,
+      "code": "basic",
+      "uuid": "79cf7bf7-c3b6-45de-8f20-42897cd493ac",
+      "catalogRows": 1,
+      "subscriptionCount": 1
+    },
+    {
+      "integer": 30002,
+      "code": "professional",
+      "uuid": "0ade795a-02fa-4d3e-b9b5-262515bade09",
+      "catalogRows": 1,
+      "subscriptionCount": 4
+    },
+    {
+      "integer": 30003,
+      "code": "enterprise",
+      "uuid": "d836bd10-9d9f-4408-a076-f921354d785a",
+      "catalogRows": 1,
+      "subscriptionCount": 2
+    }
+  ],
+  "bindings": {
+    "count": 2,
+    "boundSubscriptions": 2,
+    "unboundByPlanStatus": [
+      {
+        "planId": 30002,
+        "status": "expired",
+        "n": 1
+      },
+      {
+        "planId": 30002,
+        "status": "active",
+        "n": 3
+      },
+      {
+        "planId": 30003,
+        "status": "active",
+        "n": 1
+      }
+    ],
+    "disagreement": false,
+    "activeTrialMissingChargedAmount": 0
+  },
+  "migrationIntegrity": {
+    "hasSafetyHeader": true,
+    "mapsViaCode": true,
+    "noHardcodedProdUuids": true,
+    "gateBeforeDrop": true,
+    "noChargedTermsTouch": true
+  }
+}

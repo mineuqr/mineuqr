@@ -17,6 +17,9 @@ describe("GUARD-IDENTITY Live Plan canonical identity", () => {
     expect(schema).toContain('export const commercialPlans = mysqlTable(');
     expect(schema).toContain("id: varchar({ length: 36 }).primaryKey()");
     expect(schema).toContain('uniqueIndex("commercial_plans_code_uq")');
+    const subs = read("drizzle/schema.ts");
+    expect(subs).toMatch(/export const userSubscriptions = mysqlTable\("user_subscriptions"/);
+    expect(subs).toContain("planId: varchar({ length: 36 }).notNull()");
   });
 
   it("GUARD-IDENTITY-02 subscription_plans.id cannot determine checkout or MRR", () => {

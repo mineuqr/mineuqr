@@ -24,7 +24,23 @@ export async function buildCommercialContextFromDb(
     return buildCommercialContext({ ownerId, role, subscriptionRow: null, now });
   }
 
-  const catalogPlan = mapPlanIdToCatalogPlan(canonicalRow.planId);
+  const legacyPlanId =
+    typeof canonicalRow.planId === "number"
+      ? canonicalRow.planId
+      : /^\d+$/.test(String(canonicalRow.planId))
+        ? Number(canonicalRow.planId)
+        : null;
+  let catalogPlan = legacyPlanId != null ? mapPlanIdToCatalogPlan(legacyPlanId) : null;
+  if (!catalogPlan && typeof canonicalRow.planId === "string") {
+    const { planService, ensureCatalogReady, bridgeByCatalogPlanCode } = await import(
+      "../services/commercial-catalog"
+    );
+    await ensureCatalogReady();
+    const live = planService.get(canonicalRow.planId);
+    catalogPlan = live
+      ? (bridgeByCatalogPlanCode(live.code)?.catalogPlanKey ?? null)
+      : null;
+  }
   if (!catalogPlan) {
     console.warn(
       `[commercial] Unknown planId ${canonicalRow.planId} for owner ${ownerId}; treating as NONE`

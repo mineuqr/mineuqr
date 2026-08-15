@@ -39,7 +39,7 @@ export function commercialTestSubRow(
     Pick<UserSubscriptionRow, "id" | "userId" | "restaurantId">
 ): UserSubscriptionRow {
   return {
-    planId: 30002,
+    planId: "30002",
     status: "active",
     billingCycle: "monthly",
     stripeSubscriptionId: null,

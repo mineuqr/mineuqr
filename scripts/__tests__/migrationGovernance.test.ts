@@ -15,7 +15,7 @@ import {
 const repoRoot = join(__dirname, "../..");
 
 describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
-  it("journal contains canonical migrations 0000–0087 contiguously", () => {
+  it("journal contains canonical migrations 0000–0088 contiguously", () => {
     const journal = loadJournal();
     expect(journal.entries).toHaveLength(CANONICAL_JOURNAL_ENTRY_COUNT);
     expect(journal.entries[0]?.tag).toBe("0000_shiny_blizzard");
@@ -47,13 +47,14 @@ describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
     expect(journal.entries[84]?.tag).toBe("0084_commercial_catalog_foundation");
     expect(journal.entries[85]?.tag).toBe("0085_commercial_catalog_adoption_bindings");
     expect(journal.entries[86]?.tag).toBe("0086_commercial_live_plans");
-    expect(journal.entries[87]?.tag).toBe(CANONICAL_MIGRATION_TAIL_TAG);
+    expect(journal.entries[87]?.tag).toBe("0087_platform_owner_access_mode");
+    expect(journal.entries[88]?.tag).toBe(CANONICAL_MIGRATION_TAIL_TAG);
     expect(validateJournalOrdering()).toEqual([]);
   });
 
   it("exports certified migration tail constant", () => {
-    expect(CANONICAL_MIGRATION_TAIL_TAG).toBe("0087_platform_owner_access_mode");
-    expect(CANONICAL_JOURNAL_ENTRY_COUNT).toBe(88);
+    expect(CANONICAL_MIGRATION_TAIL_TAG).toBe("0088_user_subscriptions_live_plan_identity");
+    expect(CANONICAL_JOURNAL_ENTRY_COUNT).toBe(89);
     const tags = loadJournal().entries.map((e) => e.tag);
     expect(tags[tags.length - 1]).toBe(CANONICAL_MIGRATION_TAIL_TAG);
   });
@@ -105,6 +106,17 @@ describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
   it("vercel build runs governance guard before compile", () => {
     const vercel = readFileSync(join(repoRoot, "vercel.json"), "utf8");
     expect(vercel).toContain("migration-governance-guard");
+  });
+
+  it("0088 validates conversion before dropping integer planId", () => {
+    const sql = readFileSync(
+      join(repoRoot, "drizzle/0088_user_subscriptions_live_plan_identity.sql"),
+      "utf8"
+    );
+    const gate = sql.indexOf("INSERT INTO `_0088_live_plan_identity_gate` (`ok`)\nSELECT 1");
+    const drop = sql.indexOf("ALTER TABLE `user_subscriptions` DROP COLUMN `planId`");
+    expect(gate).toBeGreaterThan(-1);
+    expect(drop).toBeGreaterThan(gate);
   });
 
   it("recovery execute delegates to phased orchestrator (no bulk migrate)", () => {

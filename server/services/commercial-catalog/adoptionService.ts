@@ -437,25 +437,37 @@ export async function ensureLivePlanBoundForSubscription(input: {
   }
 }
 
+function catalogCodeFromPlanRef(
+  planRef: number | string | null | undefined
+): string | null {
+  if (planRef == null) return null;
+  const legacy = parseLegacyPlanInteger(planRef);
+  if (legacy != null) {
+    return bridgeByLegacyPlanId(legacy)?.catalogPlanCode ?? null;
+  }
+  if (typeof planRef === "string" && isLivePlanUuid(planRef)) {
+    return planService.get(planRef)?.code ?? null;
+  }
+  return null;
+}
+
 export function classifyPlanTransitionEvent(
-  previousPlanId: number | null | undefined,
-  nextPlanId: number
+  previousPlanId: number | string | null | undefined,
+  nextPlanId: number | string
 ): CommercialPlanBindEvent {
   if (previousPlanId == null || previousPlanId === nextPlanId) {
     return "renewal";
   }
-  const prev = bridgeByLegacyPlanId(previousPlanId);
-  const next = bridgeByLegacyPlanId(nextPlanId);
   const order = ["basic", "professional", "enterprise"] as const;
-  const pi = prev ? order.indexOf(prev.catalogPlanCode as (typeof order)[number]) : -1;
-  const ni = next ? order.indexOf(next.catalogPlanCode as (typeof order)[number]) : -1;
+  const prevCode = catalogCodeFromPlanRef(previousPlanId);
+  const nextCode = catalogCodeFromPlanRef(nextPlanId);
+  const pi = prevCode ? order.indexOf(prevCode as (typeof order)[number]) : -1;
+  const ni = nextCode ? order.indexOf(nextCode as (typeof order)[number]) : -1;
   if (pi >= 0 && ni >= 0) {
     if (ni > pi) return "upgrade";
     if (ni < pi) return "downgrade";
     return "renewal";
   }
-  if (nextPlanId > previousPlanId) return "upgrade";
-  if (nextPlanId < previousPlanId) return "downgrade";
   return "plan_selected";
 }
 
@@ -618,31 +630,60 @@ export async function resolveLivePlanDisplayByLegacyId(
  * Compatibility plan view for subscription DTOs. Live Plan catalog only.
  * Returns null when the integer id is unknown — no legacy table fallback.
  */
-export async function resolveSubscriptionPlanView(legacyPlanId: number) {
-  const adopted = await listPlansForSelectionLegacyShape();
-  if (adopted.source === "catalog") {
-    const match = adopted.plans.find((p) => p.id === legacyPlanId);
-    if (match) return match;
+export async function resolveSubscriptionPlanView(
+  planRef: number | string
+) {
+  const legacy = parseLegacyPlanInteger(planRef);
+  if (legacy != null) {
+    const adopted = await listPlansForSelectionLegacyShape();
+    if (adopted.source === "catalog") {
+      const match = adopted.plans.find((p) => p.id === legacy);
+      if (match) return match;
+    }
+    const display = await resolveLivePlanDisplayByLegacyId(legacy);
+    if (!display) return null;
+    return {
+      id: display.id,
+      nameEn: display.nameEn,
+      nameAr: display.nameAr,
+      descriptionEn: display.nameEn,
+      descriptionAr: display.nameAr,
+      priceMonthly: null as string | null,
+      priceYearly: null as string | null,
+      maxRestaurants: null as number | null,
+      maxItemsPerRestaurant: null as number | null,
+      maxCategories: null as number | null,
+      features: null as string | null,
+      featuresAr: null as string | null,
+      isActive: true,
+      sortOrder: 0,
+      catalogPlanId: resolvePlanIdFromLegacyPlanId(legacy),
+    };
   }
-  const display = await resolveLivePlanDisplayByLegacyId(legacyPlanId);
-  if (!display) return null;
-  return {
-    id: display.id,
-    nameEn: display.nameEn,
-    nameAr: display.nameAr,
-    descriptionEn: display.nameEn,
-    descriptionAr: display.nameAr,
-    priceMonthly: null as string | null,
-    priceYearly: null as string | null,
-    maxRestaurants: null as number | null,
-    maxItemsPerRestaurant: null as number | null,
-    maxCategories: null as number | null,
-    features: null as string | null,
-    featuresAr: null as string | null,
-    isActive: true,
-    sortOrder: 0,
-    catalogPlanId: null as string | null,
-  };
+  if (typeof planRef === "string" && isLivePlanUuid(planRef)) {
+    await ensureCatalogReady();
+    const plan = planService.get(planRef);
+    if (!plan) return null;
+    const legacyId = bridgeByCatalogPlanCode(plan.code)?.legacyPlanId ?? 0;
+    return {
+      id: legacyId,
+      nameEn: plan.name,
+      nameAr: plan.name,
+      descriptionEn: plan.description ?? plan.name,
+      descriptionAr: plan.description ?? plan.name,
+      priceMonthly: null as string | null,
+      priceYearly: null as string | null,
+      maxRestaurants: null as number | null,
+      maxItemsPerRestaurant: null as number | null,
+      maxCategories: null as number | null,
+      features: null as string | null,
+      featuresAr: null as string | null,
+      isActive: !plan.isHidden,
+      sortOrder: plan.sortOrder,
+      catalogPlanId: plan.id,
+    };
+  }
+  return null;
 }
 
 export function isKnownLegacyPlanId(legacyPlanId: number): boolean {
@@ -661,6 +702,68 @@ export function resolvePlanIdFromLegacyPlanId(
   const bridge = bridgeByLegacyPlanId(legacyPlanId);
   if (!bridge) return null;
   return planService.getByCode(bridge.catalogPlanCode)?.id ?? null;
+}
+
+const LIVE_PLAN_UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function isLivePlanUuid(value: string): boolean {
+  return LIVE_PLAN_UUID_RE.test(value);
+}
+
+export function parseLegacyPlanInteger(
+  planRef: number | string
+): number | null {
+  if (typeof planRef === "number" && Number.isInteger(planRef)) return planRef;
+  if (typeof planRef === "string" && /^\d+$/.test(planRef)) return Number(planRef);
+  return null;
+}
+
+/**
+ * COMMERCIAL-OD-2 — resolve a checkout/admin/trial handle to commercial_plans.id.
+ * Accepts a Live Plan UUID or a bridged legacy integer. Fail closed otherwise.
+ */
+export async function resolveCanonicalLivePlanId(
+  planRef: number | string
+): Promise<string> {
+  await ensureCatalogReady();
+  if (typeof planRef === "string" && isLivePlanUuid(planRef)) {
+    const plan = planService.get(planRef);
+    if (!plan) {
+      throw new Error(`unknown_live_plan:${planRef}`);
+    }
+    return plan.id;
+  }
+  const legacy = parseLegacyPlanInteger(planRef);
+  if (legacy == null) {
+    throw new Error("invalid_plan_ref");
+  }
+  const id = resolvePlanIdFromLegacyPlanId(legacy);
+  if (!id) {
+    throw new Error(`unmapped_legacy_plan:${legacy}`);
+  }
+  return id;
+}
+
+export async function resolveLivePlanDisplayByPlanRef(
+  planRef: number | string
+): Promise<LivePlanDisplay | null> {
+  const legacy = parseLegacyPlanInteger(planRef);
+  if (legacy != null) {
+    return resolveLivePlanDisplayByLegacyId(legacy);
+  }
+  if (typeof planRef === "string" && isLivePlanUuid(planRef)) {
+    try {
+      await ensureCatalogReady();
+      const plan = planService.get(planRef);
+      if (!plan) return null;
+      const legacyId = bridgeByCatalogPlanCode(plan.code)?.legacyPlanId ?? 0;
+      return { id: legacyId, nameEn: plan.name, nameAr: plan.name };
+    } catch {
+      return null;
+    }
+  }
+  return null;
 }
 
 /**

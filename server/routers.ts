@@ -1515,7 +1515,7 @@ const adminCoreRouter = router({
       assertSubscriptionEligibleForAdminInvoice(sub.status);
       const {
         getSubscriptionCommercialBinding,
-        resolveLivePlanDisplayByLegacyId,
+        resolveLivePlanDisplayByPlanRef,
       } = await import("./services/commercial-catalog");
       const binding = await getSubscriptionCommercialBinding(sub.id);
       if (!binding?.chargedAmount) {
@@ -1525,7 +1525,7 @@ const adminCoreRouter = router({
         });
       }
       const amount = binding.chargedAmount;
-      const plan = await resolveLivePlanDisplayByLegacyId(sub.planId);
+      const plan = await resolveLivePlanDisplayByPlanRef(sub.planId);
       // Generate invoice number
       const invoiceNumber = `INV-${Date.now()}-${input.userId}`;
       const now = new Date();

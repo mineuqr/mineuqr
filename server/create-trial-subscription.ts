@@ -9,8 +9,9 @@ import {
   resolveTrialPolicyFromCatalog,
   bindSubscriptionToLivePlan,
   ensureCatalogReady,
+  resolveCanonicalLivePlanId,
+  resolveLegacyPlanIdFromPlan,
 } from "./services/commercial-catalog";
-import { LEGACY_PLAN_BRIDGE } from "./services/commercial-catalog/legacyPlanBridge";
 import { commercialAdoptionObservability } from "./services/commercial-catalog/adoptionObservability";
 
 /** @deprecated Catalog trial policy is SSOT — kept as fallback only. */
@@ -22,22 +23,15 @@ export const TRIAL_PLAN_SORT_ORDER = 2;
 /**
  * Plan for new trials — Catalog SSOT with legacy bridge fallback.
  */
-export async function resolveTrialPlanId(): Promise<number> {
+export async function resolveTrialPlanId(): Promise<string> {
   try {
     await ensureCatalogReady();
     const policy = await resolveTrialPolicyFromCatalog();
-    if (policy.legacyPlanId) return policy.legacyPlanId;
+    if (policy.professionalPlanId) return policy.professionalPlanId;
   } catch {
     commercialAdoptionObservability.recordLegacyLookup("resolveTrialPlanId");
   }
-
-  commercialAdoptionObservability.recordLegacyLookup(
-    "resolveTrialPlanId:legacy_plan_bridge"
-  );
-  return (
-    LEGACY_PLAN_BRIDGE.find((b) => b.catalogPlanCode === "professional")
-      ?.legacyPlanId ?? 30002
-  );
+  return resolveCanonicalLivePlanId(30002);
 }
 
 export async function resolveTrialDurationDays(): Promise<number> {
@@ -52,7 +46,7 @@ export async function resolveTrialDurationDays(): Promise<number> {
 
 export function buildTrialSubscriptionPayload(
   userId: number,
-  planId: number,
+  planId: string,
   restaurantId = 0,
   trialDays = TRIAL_DAYS
 ): InsertUserSubscription {
@@ -108,7 +102,7 @@ export async function createTrialSubscription(
       await bindSubscriptionToLivePlan({
         subscriptionId,
         planId: policy.professionalPlanId,
-        legacyPlanId: trialSubscription.planId,
+        legacyPlanId: resolveLegacyPlanIdFromPlan(trialSubscription.planId),
         event: "trial_activated",
         actorId: userId,
       });

@@ -7,7 +7,7 @@ export function subscriptionContributesToCommercialRevenue(status: string): bool
 
 export type AdminKpiSubscriptionRow = {
   status: string;
-  planId: number;
+  planId: string | number;
   billingCycle: string;
   createdAt?: string;
 };

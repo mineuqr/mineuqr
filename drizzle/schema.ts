@@ -123,7 +123,7 @@ export const userSubscriptions = mysqlTable("user_subscriptions", {
 	id: int().autoincrement().notNull(),
 	userId: int().notNull(),
 	restaurantId: int().notNull(),
-	planId: int().notNull(),
+	planId: varchar({ length: 36 }).notNull(),
 	status: mysqlEnum(['active','canceled','expired','trial']).default('trial').notNull(),
 	billingCycle: mysqlEnum(['monthly','yearly']).default('monthly').notNull(),
 	stripeSubscriptionId: varchar({ length: 255 }),

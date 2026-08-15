@@ -7,7 +7,7 @@ export type SubscriptionAuditBillingCycle = "monthly" | "yearly";
 
 /** Audit-facing subscription fields (plan, status, period). */
 export type SubscriptionAuditSnapshot = {
-  plan: number;
+  plan: string | number;
   status: SubscriptionAuditStatus;
   startDate: string;
   expiration: string;
@@ -15,7 +15,7 @@ export type SubscriptionAuditSnapshot = {
 
 /** Subscription Snapshot Format v1 — change/delete metadata subset (plan, status, expiration). */
 export type SubscriptionAuditChangeFields = {
-  plan: number;
+  plan: string | number;
   status: SubscriptionAuditStatus;
   expiration: string;
 };
@@ -31,7 +31,7 @@ export function subscriptionAuditSnapshotToChangeFields(
 }
 
 export type SubscriptionAuditSnapshotSource = {
-  planId: number;
+  planId: string | number;
   status: SubscriptionAuditStatus;
   currentPeriodStart: string;
   currentPeriodEnd: string;
@@ -71,7 +71,7 @@ export function projectSubscriptionAuditSnapshot(
   updateData: Record<string, unknown>
 ): SubscriptionAuditSnapshot {
   return subscriptionAuditSnapshotFromRow({
-    planId: (updateData.planId as number | undefined) ?? existing.planId,
+    planId: (updateData.planId as string | number | undefined) ?? existing.planId,
     status: (updateData.status as SubscriptionAuditStatus | undefined) ?? existing.status,
     currentPeriodStart: existing.currentPeriodStart,
     currentPeriodEnd:

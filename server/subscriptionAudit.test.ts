@@ -30,6 +30,10 @@ vi.mock("./services/commercial-catalog", () => ({
     planId: "plan-test",
   })),
   classifyPlanTransitionEvent: vi.fn(() => "plan_selected"),
+  resolveCanonicalLivePlanId: vi.fn(async (id: number | string) =>
+    typeof id === "string" && id.includes("-") ? id : `live-${id}`
+  ),
+  resolveLegacyPlanIdFromPlan: vi.fn(() => 30002),
 }));
 
 vi.mock("./commercial/ownerAccountSubscriptionAuthority", () => ({
@@ -88,7 +92,7 @@ function accountSub(
 ): UserSubscriptionRow {
   return {
     restaurantId: 0,
-    planId: 30002,
+    planId: "30002",
     status: "active",
     billingCycle: "monthly",
     stripeSubscriptionId: null,
@@ -141,7 +145,7 @@ describe("subscriptionAudit PR-3", () => {
             actorRole: "admin",
             targetUserId: TARGET_USER_ID,
             subscriptionId: SUBSCRIPTION_ID,
-            plan: 30002,
+            plan: "live-30002",
             status: "active",
             startDate: expect.any(String),
             endDate: expect.any(String),
@@ -167,8 +171,8 @@ describe("subscriptionAudit PR-3", () => {
           type: OPS_EVENT.subscription_updated_by_admin,
           metadata: expect.objectContaining({
             subscriptionId: SUBSCRIPTION_ID,
-            before: { plan: 30002, status: "active", expiration: "2026-07-01T00:00:00.000Z" },
-            after: { plan: 30002, status: "canceled", expiration: "2026-07-01T00:00:00.000Z" },
+            before: { plan: "30002", status: "active", expiration: "2026-07-01T00:00:00.000Z" },
+            after: { plan: "30002", status: "canceled", expiration: "2026-07-01T00:00:00.000Z" },
           }),
         })
       );
@@ -184,13 +188,13 @@ describe("subscriptionAudit PR-3", () => {
         planId: 30003,
       });
 
-      expect(updateSubscriptionById).toHaveBeenCalledWith(SUBSCRIPTION_ID, { planId: 30003 });
+      expect(updateSubscriptionById).toHaveBeenCalledWith(SUBSCRIPTION_ID, { planId: "live-30003" });
       expect(opsLogMock).toHaveBeenCalledWith(
         expect.objectContaining({
           type: OPS_EVENT.subscription_updated_by_admin,
           metadata: expect.objectContaining({
-            before: expect.objectContaining({ plan: 30002 }),
-            after: expect.objectContaining({ plan: 30003 }),
+            before: expect.objectContaining({ plan: "30002" }),
+            after: expect.objectContaining({ plan: "live-30003" }),
           }),
         })
       );
@@ -275,7 +279,7 @@ describe("subscriptionAudit PR-3", () => {
         expect.objectContaining({
           procedure: "admin.deleteUserSubscriptionByAdmin",
           subscriptionBefore: {
-            plan: 30002,
+            plan: "30002",
             status: "active",
             expiration: "2026-07-01T00:00:00.000Z",
           },
@@ -324,7 +328,7 @@ describe("subscriptionAudit PR-3", () => {
       const changeFields = subscriptionAuditSnapshotToChangeFields(snapshot);
 
       expect(changeFields).toEqual({
-        plan: 30002,
+        plan: "30002",
         status: "active",
         expiration: "2026-07-01T00:00:00.000Z",
       });

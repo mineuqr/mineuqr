@@ -20,7 +20,7 @@ export type CommercialContext = {
 
 /** Minimal subscription row fields required to build CommercialContext. */
 export type SubscriptionRowForCommercialContext = {
-  planId: number;
+  planId: number | string;
   status: SubscriptionStatus;
   trialEndsAt: string | null;
   currentPeriodEnd: string | null;
@@ -47,7 +47,14 @@ export function buildCommercialContext(input: {
     };
   }
 
-  const catalogPlan = mapPlanIdToCatalogPlan(input.subscriptionRow.planId);
+  const legacyPlanId =
+    typeof input.subscriptionRow.planId === "number"
+      ? input.subscriptionRow.planId
+      : /^\d+$/.test(input.subscriptionRow.planId)
+        ? Number(input.subscriptionRow.planId)
+        : null;
+  const catalogPlan =
+    legacyPlanId != null ? mapPlanIdToCatalogPlan(legacyPlanId) : null;
   if (!catalogPlan) {
     return {
       ownerId: input.ownerId,
