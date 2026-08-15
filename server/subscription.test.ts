@@ -2,8 +2,33 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { appRouter } from "./routers";
 import type { TrpcContext } from "./_core/context";
 
+vi.mock("./services/commercial-catalog", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./services/commercial-catalog")>();
+  return {
+    ...actual,
+    listPlansForSelectionLegacyShape: vi.fn(async () => ({
+      source: "legacy_required" as const,
+    })),
+    resolveCheckoutOfferFromLivePlan: vi.fn(
+      async (planId: number, billingCycle: "monthly" | "yearly") => {
+        if (planId !== 1) return null;
+        return {
+          legacyPlanId: planId,
+          planId: "live-basic",
+          planCode: "basic",
+          commercialName: "الخطة الأساسية",
+          amount: billingCycle === "yearly" ? "150" : "29",
+          currency: "USD",
+          billingCycleCode: billingCycle,
+        };
+      }
+    ),
+  };
+});
+
 // Mock database functions
 vi.mock("./db", () => ({
+  getDb: vi.fn(async () => null),
   generateOrderNumber: vi.fn(async () => "ORD-MOCK-001"),
   getSubscriptionPlans: vi.fn(async () => [
     {

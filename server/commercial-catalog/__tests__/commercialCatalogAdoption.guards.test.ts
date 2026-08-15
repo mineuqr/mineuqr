@@ -38,6 +38,22 @@ describe("Live plan adoption contracts", () => {
     expect(trial).not.toContain("createImmutableCommercialSnapshotForSubscription");
   });
 
+  it("charges Checkout from Live Plan offer, not subscription_plans", () => {
+    const routers = read("server/routers.ts");
+    const checkoutStart = routers.indexOf("createCheckoutSession:");
+    const tapStart = routers.indexOf("createTapCheckout:");
+    const checkoutBlock = routers.slice(checkoutStart, tapStart);
+    const tapEnd = routers.indexOf("const invoiceRouter", tapStart);
+    const tapBlock = routers.slice(
+      tapStart,
+      tapEnd > tapStart ? tapEnd : tapStart + 4000
+    );
+    expect(checkoutBlock).toContain("resolveCheckoutOfferFromLivePlan");
+    expect(checkoutBlock).not.toContain("getSubscriptionPlanById");
+    expect(tapBlock).toContain("resolveCheckoutOfferFromLivePlan");
+    expect(tapBlock).not.toContain("getSubscriptionPlanById");
+  });
+
   it("keeps three standard plan identities on the legacy bridge", () => {
     expect(LEGACY_PLAN_BRIDGE.map((b) => b.catalogPlanCode)).toEqual([
       "basic",

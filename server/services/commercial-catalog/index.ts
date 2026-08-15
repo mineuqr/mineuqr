@@ -906,6 +906,8 @@ export {
   invalidateCatalogReadyGate,
   resolveLegacyPlanIdFromPlan,
   resolvePlanIdFromLegacyPlanId,
+  resolveCheckoutOfferFromLivePlan,
+  type LivePlanCheckoutOffer,
 } from "./adoptionService";
 
 export { ensureCommercialCatalogAdoptionSeed } from "./seedAdoptionCatalog";

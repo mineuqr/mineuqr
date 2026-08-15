@@ -596,3 +596,40 @@ export function resolvePlanIdFromLegacyPlanId(
   if (!bridge) return null;
   return planService.getByCode(bridge.catalogPlanCode)?.id ?? null;
 }
+
+/**
+ * COMMERCIAL-SUBSCRIPTION-PLANS-CONSOLIDATION-1
+ * Checkout offer from Live Plan only. Does not read subscription_plans.
+ * `legacyPlanId` is a compatibility handle, not a price authority.
+ */
+export type LivePlanCheckoutOffer = {
+  legacyPlanId: number;
+  planId: string;
+  planCode: string;
+  commercialName: string;
+  amount: string;
+  currency: string;
+  billingCycleCode: "monthly" | "yearly";
+};
+
+export async function resolveCheckoutOfferFromLivePlan(
+  legacyPlanId: number,
+  billingCycle: "monthly" | "yearly"
+): Promise<LivePlanCheckoutOffer | null> {
+  await ensureCatalogReady();
+  const planId = resolvePlanIdFromLegacyPlanId(legacyPlanId);
+  if (!planId) return null;
+  const plan = planService.get(planId);
+  if (!plan || plan.isHidden) return null;
+  const price = pricingService.currentPriceForPlan(planId, billingCycle);
+  if (!price?.amount) return null;
+  return {
+    legacyPlanId,
+    planId: plan.id,
+    planCode: plan.code,
+    commercialName: plan.name,
+    amount: price.amount,
+    currency: price.currency || COMMERCIAL_CANONICAL_CURRENCY,
+    billingCycleCode: billingCycle,
+  };
+}

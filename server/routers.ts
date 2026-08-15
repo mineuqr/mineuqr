@@ -914,22 +914,25 @@ const subscriptionRouter = router({
       billingCycle: z.enum(["monthly", "yearly"]),
     }))
     .mutation(async ({ input, ctx }) => {
-      const plan = await getSubscriptionPlanById(input.planId);
-      if (!plan) throw new TRPCError({ code: "NOT_FOUND", message: "الخطة غير موجودة" });
+      const { resolveCheckoutOfferFromLivePlan } = await import(
+        "./services/commercial-catalog"
+      );
+      const offer = await resolveCheckoutOfferFromLivePlan(
+        input.planId,
+        input.billingCycle
+      );
+      if (!offer) throw new TRPCError({ code: "NOT_FOUND", message: "الخطة غير موجودة" });
 
       const { createPayPalOrder } = await import("./paypal");
       const origin = ctx.req.headers.origin || "https://www.mineuqr.com";
       const returnUrl = `${origin}/subscription/success`;
       const cancelUrl = `${origin}/subscription/cancel`;
 
-      const amount = input.billingCycle === "yearly" ? plan.priceYearly : plan.priceMonthly;
-      if (!amount) throw new TRPCError({ code: "BAD_REQUEST", message: "السعر غير متوفر" });
-
       const { orderId, checkoutUrl } = await createPayPalOrder({
         userId: ctx.user.id,
         planId: input.planId,
-        planName: plan.nameAr,
-        amount: amount.toString(),
+        planName: offer.commercialName,
+        amount: offer.amount,
         currency: "USD",
         returnUrl,
         cancelUrl,
@@ -944,18 +947,24 @@ const subscriptionRouter = router({
       billingCycle: z.enum(["monthly", "yearly"]),
     }))
     .mutation(async ({ input, ctx }) => {
-      const plan = await getSubscriptionPlanById(input.planId);
-      if (!plan) throw new TRPCError({ code: "NOT_FOUND", message: "الخطة غير موجودة" });
+      const { resolveCheckoutOfferFromLivePlan } = await import(
+        "./services/commercial-catalog"
+      );
+      const offer = await resolveCheckoutOfferFromLivePlan(
+        input.planId,
+        input.billingCycle
+      );
+      if (!offer) throw new TRPCError({ code: "NOT_FOUND", message: "الخطة غير موجودة" });
 
       const { createTapCharge } = await import("./tap-payments");
       const origin = ctx.req.headers.origin || "https://www.mineuqr.com";
       const successUrl = `${origin}/subscription/success?tap_id={tap_id}`;
       const postUrl = `${origin}/api/tap/webhook`;
 
-      const amount = input.billingCycle === "yearly" ? plan.priceYearly : plan.priceMonthly;
-      if (!amount) throw new TRPCError({ code: "BAD_REQUEST", message: "السعر غير متوفر" });
-
-      const amountNum = parseFloat(amount.toString());
+      const amountNum = parseFloat(offer.amount);
+      if (!Number.isFinite(amountNum) || amountNum <= 0) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "السعر غير متوفر" });
+      }
 
       // Get user subscription to include in metadata
       const userSub = await getCanonicalUserSubscription(ctx.user.id);
@@ -963,7 +972,7 @@ const subscriptionRouter = router({
       const charge = await createTapCharge({
         amount: amountNum,
         currency: "SAR",
-        description: `اشتراك ${plan.nameAr} - ${input.billingCycle === "yearly" ? "سنوي" : "شهري"}`,
+        description: `اشتراك ${offer.commercialName} - ${input.billingCycle === "yearly" ? "سنوي" : "شهري"}`,
         customerFirstName: ctx.user.name || "عميل",
         customerLastName: "",
         customerEmail: ctx.user.email || "",
