@@ -15,6 +15,7 @@ import { newCommercialId, nowIso } from "../services/commercial-catalog/CatalogS
 export const CHARGED_TERMS_SNAPSHOT_SOURCES = [
   "admin_create",
   "admin_update",
+  "admin_reactivate",
   "webhook_bind",
 ] as const;
 
@@ -261,6 +262,100 @@ export async function applyAdminCommercialIdentityChange(input: {
       await tx.insert(commercialSubscriptionChargedTerms).values(inserted);
       snapshot = snapshotFromRow(inserted);
     }
+
+    await tx
+      .update(userSubscriptions)
+      .set(input.subscriptionUpdate)
+      .where(eq(userSubscriptions.id, input.subscriptionId));
+
+    const enrollment = await tx
+      .select({ id: commercialSubscriptionBindings.id })
+      .from(commercialSubscriptionBindings)
+      .where(
+        eq(commercialSubscriptionBindings.subscriptionId, input.subscriptionId)
+      )
+      .limit(1);
+    const touchedAt = nowIso();
+    if (enrollment[0]) {
+      await tx
+        .update(commercialSubscriptionBindings)
+        .set({ planId: input.offer.planId, updatedAt: touchedAt })
+        .where(
+          eq(commercialSubscriptionBindings.subscriptionId, input.subscriptionId)
+        );
+    } else {
+      await tx.insert(commercialSubscriptionBindings).values({
+        id: newCommercialId(),
+        subscriptionId: input.subscriptionId,
+        planId: input.offer.planId,
+        chargedAmount: input.offer.chargedAmount,
+        chargedCurrency: input.offer.chargedCurrency,
+        billingCycleId: input.offer.billingCycleId,
+        billingCycleCode: input.offer.billingCycleCode,
+        createdAt: touchedAt,
+        updatedAt: touchedAt,
+      });
+    }
+
+    return snapshot;
+  });
+}
+
+/**
+ * Paid Admin Reactivation: always INSERT Snapshot N+1, then activate the same row.
+ * Same amount as a historical snapshot is still a new commitment (effectiveFrom = now).
+ * Classification A — one transaction. Does not UPDATE old snapshots.
+ */
+export async function applyAdminPaidReactivation(input: {
+  subscriptionId: number;
+  offer: ChargedTermsSnapshotOffer;
+  subscriptionUpdate: Record<string, unknown>;
+  actorId?: number | null;
+}): Promise<ChargedTermsSnapshotRow> {
+  const amount = input.offer.chargedAmount?.trim() ?? "";
+  const currency = input.offer.chargedCurrency?.trim() ?? "";
+  if (!amount || !currency || !input.offer.billingCycleCode || !input.offer.planId) {
+    throw new Error("charged_terms_snapshot_incomplete");
+  }
+
+  const db = await getDb();
+  if (!db) {
+    throw new Error("charged_terms_snapshot_persist_failed");
+  }
+
+  return db.transaction(async (tx) => {
+    const existingRows = await tx
+      .select()
+      .from(commercialSubscriptionChargedTerms)
+      .where(
+        eq(commercialSubscriptionChargedTerms.subscriptionId, input.subscriptionId)
+      )
+      .orderBy(
+        desc(commercialSubscriptionChargedTerms.effectiveFrom),
+        desc(commercialSubscriptionChargedTerms.version)
+      )
+      .limit(1);
+    const existing = existingRows[0]
+      ? snapshotFromRow(existingRows[0])
+      : null;
+
+    const now = nowIso();
+    const inserted = {
+      id: newCommercialId(),
+      subscriptionId: input.subscriptionId,
+      planId: input.offer.planId,
+      chargedAmount: amount,
+      chargedCurrency: currency,
+      billingCycleId: input.offer.billingCycleId,
+      billingCycleCode: input.offer.billingCycleCode,
+      effectiveFrom: now,
+      version: (existing?.version ?? 0) + 1,
+      source: "admin_reactivate" as const,
+      actorId: input.actorId ?? null,
+      createdAt: now,
+    };
+    await tx.insert(commercialSubscriptionChargedTerms).values(inserted);
+    const snapshot = snapshotFromRow(inserted);
 
     await tx
       .update(userSubscriptions)

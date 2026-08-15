@@ -24,6 +24,7 @@ export const CONCESSION_SOURCES = [
   "admin_grant",
   "admin_revise",
   "admin_cancel",
+  "admin_reactivate",
 ] as const;
 
 export type ConcessionSource = (typeof CONCESSION_SOURCES)[number];
@@ -563,4 +564,101 @@ export async function persistAdminFreeFirstConcession(input: {
     ...input,
     alignPeriodEnd: true,
   });
+}
+
+/**
+ * Free Admin Reactivation: new concession from now + activate the same row.
+ * Does not write Charged Terms. Does not restore a cancelled concession.
+ * Classification A — one transaction.
+ */
+export async function applyAdminFreeReactivation(input: {
+  subscriptionId: number;
+  planId: string;
+  billingCycleCode: string;
+  unit: string;
+  duration: number;
+  reason: string;
+  actorId?: number | null;
+  subscriptionUpdate: Record<string, unknown>;
+}): Promise<CommercialConcessionRow> {
+  const unit = parseUnit(input.unit);
+  assertDuration(unit, input.duration);
+  const reason = normalizeReason(input.reason);
+  const startsAt = new Date();
+  const endsAt = computeConcessionEndsAt(startsAt, unit, input.duration);
+  if (!(endsAt > startsAt)) {
+    throw new CommercialConcessionError("invalid_duration");
+  }
+
+  const db = await getDbOrNull();
+  if (!db) throw new CommercialConcessionError("persist_failed");
+
+  const row = await db.transaction(async (tx) => {
+    const existing = await tx
+      .select()
+      .from(commercialSubscriptionConcessions)
+      .where(eq(commercialSubscriptionConcessions.subscriptionId, input.subscriptionId))
+      .orderBy(desc(commercialSubscriptionConcessions.version));
+    const latest = existing[0] ? rowFromDb(existing[0]) : null;
+    const current = existing.map(rowFromDb).find((item) => isCurrentRow(item, startsAt));
+    if (current) {
+      throw new CommercialConcessionError("overlap");
+    }
+
+    const now = nowIso();
+    const inserted: CommercialConcessionRow = {
+      id: newCommercialId(),
+      subscriptionId: input.subscriptionId,
+      planId: input.planId,
+      billingCycleCode: input.billingCycleCode,
+      unit,
+      duration: input.duration,
+      startsAt: startsAt.toISOString(),
+      endsAt: endsAt.toISOString(),
+      status: "active",
+      version: (latest?.version ?? 0) + 1,
+      source: "admin_reactivate",
+      actorId: input.actorId ?? null,
+      reason,
+      supersededBy: null,
+      cancelledAt: null,
+    };
+
+    await tx.insert(commercialSubscriptionConcessions).values({
+      ...inserted,
+      createdAt: now,
+    });
+
+    await tx
+      .update(userSubscriptions)
+      .set({
+        ...input.subscriptionUpdate,
+        currentPeriodEnd: inserted.endsAt,
+      })
+      .where(eq(userSubscriptions.id, input.subscriptionId));
+
+    const enrollment = await tx
+      .select({ id: commercialSubscriptionBindings.id })
+      .from(commercialSubscriptionBindings)
+      .where(eq(commercialSubscriptionBindings.subscriptionId, input.subscriptionId))
+      .limit(1);
+    if (enrollment[0]) {
+      await tx
+        .update(commercialSubscriptionBindings)
+        .set({ planId: input.planId, updatedAt: now })
+        .where(eq(commercialSubscriptionBindings.subscriptionId, input.subscriptionId));
+    }
+
+    return inserted;
+  });
+
+  emitConcessionAudit({
+    eventType: OPS_EVENT.commercial_concession_granted,
+    actorId: input.actorId ?? null,
+    subscriptionId: input.subscriptionId,
+    before: null,
+    after: row,
+    action: "reactivate",
+  });
+  return row;
 }

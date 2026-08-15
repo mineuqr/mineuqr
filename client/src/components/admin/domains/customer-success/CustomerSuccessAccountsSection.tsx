@@ -67,7 +67,8 @@ export function CustomerSuccessAccountsSection() {
   const [searchQuery, setSearchQuery] = useState("");
   const [classificationFilter, setClassificationFilter] = useState<AccountClassification | "all">("all");
   const [subDialogUser, setSubDialogUser] = useState<any>(null);
-  const [subDialogMode, setSubDialogMode] = useState<"create" | "edit">("create");
+  const [subDialogMode, setSubDialogMode] = useState<"create" | "edit" | "reactivate">("create");
+  const [reactivateReason, setReactivateReason] = useState("");
   const [subPlanId, setSubPlanId] = useState<string>("");
   const [subBillingCycle, setSubBillingCycle] = useState<"monthly" | "yearly">("monthly");
   const [subStatus, setSubStatus] = useState<"active" | "canceled" | "expired" | "trial">("active");
@@ -142,6 +143,17 @@ export function CustomerSuccessAccountsSection() {
     },
   });
 
+  const reactivateSubMutation = trpc.admin.reactivateUserSubscriptionByAdmin.useMutation({
+    onSuccess: () => {
+      toast.success(language === "ar" ? "تم إعادة تفعيل الاشتراك" : "Subscription reactivated");
+      setSubDialogUser(null);
+      refetchUsers();
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "حدث خطأ");
+    },
+  });
+
   const grantConcessionMutation = trpc.admin.grantCommercialConcession.useMutation({
     onSuccess: () => {
       toast.success(language === "ar" ? "تم منح الفترة المجانية" : "Free period granted");
@@ -211,6 +223,21 @@ export function CustomerSuccessAccountsSection() {
     setFreePeriodMode("none");
     setFreePeriodDuration("");
     setFreePeriodReason("");
+    setReactivateReason("");
+  };
+
+  const openReactivateSubDialog = (u: any) => {
+    setSubDialogUser(u);
+    setSubDialogMode("reactivate");
+    const c = u.commercial;
+    setSubPlanId(c?.planId?.toString() || "");
+    setSubBillingCycle(c?.billingCycle === "yearly" ? "yearly" : "monthly");
+    setSubStatus("active");
+    setSubEndDate("");
+    setFreePeriodMode("none");
+    setFreePeriodDuration("");
+    setFreePeriodReason("");
+    setReactivateReason("");
   };
 
   const openEditSubDialog = (u: any) => {
@@ -224,6 +251,7 @@ export function CustomerSuccessAccountsSection() {
     setFreePeriodMode("none");
     setFreePeriodDuration("");
     setFreePeriodReason("");
+    setReactivateReason("");
   };
 
   const handleSubSubmit = () => {
@@ -250,6 +278,26 @@ export function CustomerSuccessAccountsSection() {
         subscriptionEndDate: wantsFreePeriod ? undefined : (subEndDate || undefined),
         freePeriod: wantsFreePeriod
           ? { unit: freePeriodMode, duration, reason: freePeriodReason.trim() }
+          : undefined,
+      });
+      return;
+    }
+    if (subDialogMode === "reactivate") {
+      if (!subPlanId) { toast.error('يرجى اختيار باقة'); return; }
+      const reason = wantsFreePeriod ? freePeriodReason.trim() : reactivateReason.trim();
+      if (!reason) {
+        toast.error(language === "ar" ? "السبب مطلوب" : "Reason is required");
+        return;
+      }
+      reactivateSubMutation.mutate({
+        userId: subDialogUser.id,
+        planId: subPlanId,
+        billingCycle: subBillingCycle,
+        reason,
+        mode: wantsFreePeriod ? "free" : "paid",
+        subscriptionEndDate: wantsFreePeriod ? undefined : (subEndDate || undefined),
+        freePeriod: wantsFreePeriod
+          ? { unit: freePeriodMode, duration }
           : undefined,
       });
       return;
@@ -336,6 +384,15 @@ export function CustomerSuccessAccountsSection() {
                   )}
                 </AdminIconButton>
               </>
+            ) : u.commercial?.subscriptionId ? (
+              <AdminIconButton
+                compact
+                label={language === "ar" ? "إعادة تفعيل الاشتراك" : "Reactivate subscription"}
+                onClick={() => openReactivateSubDialog(u)}
+                className={adminActionBtn.success}
+              >
+                <CreditCard className="h-3 w-3" />
+              </AdminIconButton>
             ) : (
               <AdminIconButton
                 compact
@@ -585,7 +642,9 @@ export function CustomerSuccessAccountsSection() {
             <DialogTitle className="text-foreground">
               {subDialogMode === "create"
                 ? t("admin.createAccountSubscriptionTitle")
-                : t("admin.editAccountSubscriptionTitle")}
+                : subDialogMode === "reactivate"
+                  ? (language === "ar" ? "إعادة تفعيل الاشتراك" : "Reactivate subscription")
+                  : t("admin.editAccountSubscriptionTitle")}
             </DialogTitle>
             <DialogDescription className="text-muted-foreground">
               {subDialogUser?.name || subDialogUser?.email || 'المستخدم'}
@@ -610,7 +669,7 @@ export function CustomerSuccessAccountsSection() {
             endDateLabel={language === "ar" ? "تاريخ انتهاء الاشتراك (اختياري)" : "Subscription end (optional)"}
             status={subStatus}
             onStatusChange={setSubStatus}
-            showStatus
+            showStatus={subDialogMode !== "reactivate"}
             showFreePeriod
             freePeriodMode={freePeriodMode}
             onFreePeriodModeChange={setFreePeriodMode}
@@ -619,6 +678,19 @@ export function CustomerSuccessAccountsSection() {
             freePeriodReason={freePeriodReason}
             onFreePeriodReasonChange={setFreePeriodReason}
           />
+          {subDialogMode === "reactivate" && freePeriodMode === "none" ? (
+            <div className="space-y-2">
+              <label className="text-sm text-foreground">
+                {language === "ar" ? "سبب إعادة التفعيل" : "Reactivation reason"}
+              </label>
+              <Input
+                value={reactivateReason}
+                onChange={(e) => setReactivateReason(e.target.value)}
+                maxLength={512}
+                className="bg-background border-border"
+              />
+            </div>
+          ) : null}
           <DialogFooter>
             <Button variant="outline" onClick={() => setSubDialogUser(null)}>إلغاء</Button>
             {subDialogMode === "edit" && currentConcessionQuery.data ? (
@@ -641,14 +713,19 @@ export function CustomerSuccessAccountsSection() {
               disabled={
                 createSubMutation.isPending ||
                 updateSubMutation.isPending ||
+                reactivateSubMutation.isPending ||
                 grantConcessionMutation.isPending ||
                 reviseConcessionMutation.isPending
               }
             >
-              {(createSubMutation.isPending || updateSubMutation.isPending) ? (
+              {(createSubMutation.isPending || updateSubMutation.isPending || reactivateSubMutation.isPending) ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
-                subDialogMode === 'create' ? 'إنشاء' : 'تحديث'
+                subDialogMode === "create"
+                  ? "إنشاء"
+                  : subDialogMode === "reactivate"
+                    ? (language === "ar" ? "إعادة تفعيل" : "Reactivate")
+                    : "تحديث"
               )}
             </Button>
           </DialogFooter>

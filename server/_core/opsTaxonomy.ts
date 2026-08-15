@@ -205,6 +205,7 @@ export const OPS_EVENT = {
   commercial_concession_revised: "commercial_concession_revised",
   commercial_concession_cancelled: "commercial_concession_cancelled",
   commercial_snapshot_created: "commercial_snapshot_created",
+  commercial_subscription_reactivated: "commercial_subscription_reactivated",
   commercial_snapshot_bound: "commercial_snapshot_bound",
   commercial_snapshot_activated: "commercial_snapshot_activated",
   commercial_snapshot_resolved: "commercial_snapshot_resolved",

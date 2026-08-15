@@ -172,6 +172,21 @@ describe("ADMIN-AUTH-1E platform subscription protection", () => {
     expect(createSubscriptionForRestaurant).not.toHaveBeenCalled();
   });
 
+  it("cannot_reactivate_subscription_for_platform_account", async () => {
+    const caller = appRouter.createCaller(adminContext as any);
+    await expect(
+      caller.admin.reactivateUserSubscriptionByAdmin({
+        userId: PLATFORM_USER_ID,
+        planId: "11111111-1111-4111-8111-111111111111",
+        billingCycle: "monthly",
+        reason: "no",
+        mode: "paid",
+      })
+    ).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+    } satisfies Partial<TRPCError>);
+  });
+
   it("cannot_update_subscription_for_platform_account", async () => {
     const caller = appRouter.createCaller(adminContext as any);
     await expect(

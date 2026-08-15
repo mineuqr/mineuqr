@@ -109,6 +109,13 @@ export const CUSTOMER_SUCCESS_ASSET_DEFINITIONS: CustomerSuccessAssetDefinition[
     surfaces: ["operations"],
   },
   {
+    id: "api-reactivate-user-subscription",
+    category: "api",
+    ownerPath: "server/routers.ts",
+    queryKey: "admin.reactivateUserSubscriptionByAdmin",
+    surfaces: ["operations"],
+  },
+  {
     id: "api-delete-user-subscription",
     category: "api",
     ownerPath: "server/routers.ts",

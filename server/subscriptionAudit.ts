@@ -10,10 +10,8 @@ import {
   applyAdminTrialStatusUpdate,
   computeAdminSubscriptionPeriodEnd,
 } from "./adminSubscriptionHelpers";
-import {
-  getOwnerAccountSubscriptionRow,
-  ownerHasEntitledAccountSubscription,
-} from "./commercial/ownerAccountSubscriptionAuthority";
+import { getOwnerAccountSubscriptionRow } from "./commercial/ownerAccountSubscriptionAuthority";
+import { assertUpdateDoesNotImplicitlyReactivate } from "./commercial/adminReactivation";
 import {
   createSubscriptionForRestaurant,
   deleteUserSubscriptionById,
@@ -158,10 +156,10 @@ export async function applyAdminUserSubscriptionCreate(params: {
     });
   }
 
-  if (await ownerHasEntitledAccountSubscription(userId)) {
+  if (await getOwnerAccountSubscriptionRow(userId)) {
     throw new TRPCError({
       code: "CONFLICT",
-      message: "المستخدم لديه اشتراك بالفعل. استخدم التعديل بدلاً من الإنشاء.",
+      message: "المستخدم لديه اشتراك حساب. استخدم التعديل أو إعادة التفعيل بدلاً من الإنشاء.",
     });
   }
 
@@ -328,6 +326,25 @@ export async function applyAdminUserSubscriptionUpdate(params: {
   }
 
   const updateData = buildAdminSubscriptionUpdateData(input);
+  const projected = projectSubscriptionAuditSnapshot(existing, updateData);
+  assertUpdateDoesNotImplicitlyReactivate(
+    {
+      status: existing.status,
+      trialEndsAt: existing.trialEndsAt,
+      currentPeriodEnd: existing.currentPeriodEnd,
+    },
+    {
+      status: projected.status,
+      trialEndsAt:
+        typeof updateData.trialEndsAt === "string"
+          ? updateData.trialEndsAt
+          : existing.trialEndsAt,
+      currentPeriodEnd:
+        typeof updateData.currentPeriodEnd === "string"
+          ? updateData.currentPeriodEnd
+          : existing.currentPeriodEnd,
+    }
+  );
   if (typeof updateData.planId === "string") {
     const { resolveLivePlanById } = await import("./services/commercial-catalog");
     try {

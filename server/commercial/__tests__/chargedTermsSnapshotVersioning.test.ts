@@ -16,6 +16,7 @@ vi.mock("../../services/commercial-catalog/CatalogStore", () => ({
 
 import { getDb } from "../../db";
 import {
+  applyAdminPaidReactivation,
   chargedTermsSnapshotMatchesOffer,
   insertImmutableChargedTermsSnapshot,
   loadCurrentChargedTermsForSubscriptions,
@@ -240,6 +241,56 @@ describe("Charged Terms snapshot versioning", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]?.chargedAmount).toBe("149.00");
     expect(rows[0]?.version).toBe(2);
+  });
+
+  it("terminated reactivate inserts N+1 even when amount matches", async () => {
+    const existing = {
+      id: "snap-id-0",
+      subscriptionId: 10,
+      planId: PLAN_A,
+      chargedAmount: "99.00",
+      chargedCurrency: "USD",
+      billingCycleId: "cycle-monthly",
+      billingCycleCode: "monthly",
+      effectiveFrom: "2026-01-01T00:00:00.000Z",
+      version: 1,
+      source: "admin_create",
+      actorId: null,
+    };
+    const insert = vi.fn(async () => undefined);
+    const update = vi.fn(() => ({ set: () => ({ where: async () => undefined }) }));
+    const whereChain = {
+      orderBy: () => ({
+        limit: async () => [existing],
+      }),
+      limit: async () => [],
+    };
+    (getDb as ReturnType<typeof vi.fn>).mockResolvedValue({
+      transaction: async (fn: (tx: unknown) => Promise<unknown>) =>
+        fn({
+          select: () => ({
+            from: () => ({
+              where: () => whereChain,
+            }),
+          }),
+          insert: () => ({ values: insert }),
+          update,
+        }),
+    });
+    const row = await applyAdminPaidReactivation({
+      subscriptionId: 10,
+      offer: offer(),
+      subscriptionUpdate: { status: "active" },
+    });
+    expect(row.version).toBe(2);
+    expect(row.source).toBe("admin_reactivate");
+    expect(insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        chargedAmount: "99.00",
+        version: 2,
+        source: "admin_reactivate",
+      })
+    );
   });
 
   it("20–21. snapshot module does not read subscription_plans or legacyPlanId for price", () => {

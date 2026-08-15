@@ -68,6 +68,7 @@ import {
   applyAdminUserSubscriptionDelete,
   applyAdminUserSubscriptionUpdate,
 } from "./subscriptionAudit";
+import { applyAdminUserSubscriptionReactivate } from "./commercial/adminReactivation";
 import {
   applyAdminConcessionCancel,
   applyAdminConcessionGrant,
@@ -1517,6 +1518,44 @@ const adminCoreRouter = router({
         reason: input.reason,
       });
       return { success: true as const };
+    }),
+  reactivateUserSubscriptionByAdmin: protectedProcedure
+    .input(
+      z.object({
+        userId: z.number(),
+        planId: livePlanUuidInput,
+        billingCycle: z.enum(["monthly", "yearly"]),
+        reason: z.string().min(1).max(512),
+        mode: z.enum(["paid", "free"]),
+        subscriptionEndDate: z.string().optional(),
+        freePeriod: z
+          .object({
+            unit: z.enum(["day", "month"]),
+            duration: z.number().int(),
+          })
+          .optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      assertAdminAccess(ctx, "admin.reactivateUserSubscriptionByAdmin");
+      const result = await applyAdminUserSubscriptionReactivate({
+        ctx,
+        userId: input.userId,
+        planId: input.planId,
+        billingCycle: input.billingCycle,
+        reason: input.reason,
+        mode: input.mode,
+        subscriptionEndDate: input.subscriptionEndDate,
+        freePeriod: input.freePeriod,
+      });
+      return {
+        success: true as const,
+        changed: result.changed,
+        subscriptionId: result.subscriptionId,
+        mode: result.mode,
+        snapshotId: result.snapshotId,
+        concessionId: result.concessionId,
+      };
     }),
   sendCustomNotification: protectedProcedure
     .input(z.object({

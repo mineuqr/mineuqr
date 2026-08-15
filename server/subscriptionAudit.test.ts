@@ -105,7 +105,6 @@ import { persistAdminFreeFirstConcession } from "./commercial/concessions";
 import { applyAdminCommercialIdentityChange } from "./commercial/chargedTermsSnapshots";
 import {
   getOwnerAccountSubscriptionRow,
-  ownerHasEntitledAccountSubscription,
 } from "./commercial/ownerAccountSubscriptionAuthority";
 import { deleteSubscriptionCascade } from "./db/cascadeDeletes";
 import {
@@ -163,7 +162,6 @@ function accountSub(
 describe("subscriptionAudit PR-3", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (ownerHasEntitledAccountSubscription as ReturnType<typeof vi.fn>).mockResolvedValue(false);
     (createSubscriptionForRestaurant as ReturnType<typeof vi.fn>).mockResolvedValue({
       id: SUBSCRIPTION_ID,
     });
@@ -180,6 +178,10 @@ describe("subscriptionAudit PR-3", () => {
   });
 
   describe("Scenario 1 — create subscription", () => {
+    beforeEach(() => {
+      (getOwnerAccountSubscriptionRow as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+    });
+
     it("emits subscription_created_by_admin with snapshot", async () => {
       await applyAdminUserSubscriptionCreate({
         ctx: adminContext as any,
@@ -305,6 +307,26 @@ describe("subscriptionAudit PR-3", () => {
   });
 
   describe("Scenario 2 — update status", () => {
+    it("rejects canceled to active as implicit reactivation", async () => {
+      (getOwnerAccountSubscriptionRow as ReturnType<typeof vi.fn>).mockResolvedValue(
+        accountSub({
+          id: SUBSCRIPTION_ID,
+          userId: TARGET_USER_ID,
+          status: "canceled",
+          currentPeriodEnd: "2027-01-01T00:00:00.000Z",
+        })
+      );
+      await expect(
+        applyAdminUserSubscriptionUpdate({
+          ctx: adminContext as any,
+          procedure: "admin.updateUserSubscriptionByAdmin",
+          userId: TARGET_USER_ID,
+          status: "active",
+        })
+      ).rejects.toMatchObject({ code: "BAD_REQUEST", message: "use_reactivate" });
+      expect(updateSubscriptionById).not.toHaveBeenCalled();
+    });
+
     it("records before/after snapshots", async () => {
       await applyAdminUserSubscriptionUpdate({
         ctx: adminContext as any,
@@ -391,8 +413,10 @@ describe("subscriptionAudit PR-3", () => {
   });
 
   describe("Scenario 5 — failed operation", () => {
-    it("does not emit when user already has entitled subscription", async () => {
-      (ownerHasEntitledAccountSubscription as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+    it("does not emit when user already has an account subscription row", async () => {
+      (getOwnerAccountSubscriptionRow as ReturnType<typeof vi.fn>).mockResolvedValue(
+        accountSub({ id: SUBSCRIPTION_ID, userId: TARGET_USER_ID, status: "canceled" })
+      );
 
       await expect(
         applyAdminUserSubscriptionCreate({
@@ -402,7 +426,7 @@ describe("subscriptionAudit PR-3", () => {
           planId: "22222222-2222-4222-8222-222222222222",
           billingCycle: "monthly",
         })
-      ).rejects.toBeInstanceOf(TRPCError);
+      ).rejects.toMatchObject({ code: "CONFLICT" });
 
       expect(createSubscriptionForRestaurant).not.toHaveBeenCalled();
       expect(opsLogMock).not.toHaveBeenCalled();

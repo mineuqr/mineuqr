@@ -30,6 +30,7 @@ export type CustomerSuccessAssetId =
   | "api-create-subscriber-account"
   | "api-create-user-subscription"
   | "api-update-user-subscription"
+  | "api-reactivate-user-subscription"
   | "api-delete-user-subscription"
   | "api-send-custom-notification"
   | "api-send-bulk-notification"
