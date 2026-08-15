@@ -82,13 +82,15 @@ describe("GUARD-ADMIN-CT Admin subscription financial integrity", () => {
     expect(mrr).not.toContain("priceMonthly");
   });
 
-  it("GUARD-ADMIN-CT-06 Admin update does not re-bind Charged Terms", () => {
+  it("GUARD-ADMIN-CT-06 Admin plan/cycle update appends snapshot, does not overwrite", () => {
     const audit = read("server/subscriptionAudit.ts");
     const updateFn = audit.slice(
       audit.indexOf("export async function applyAdminUserSubscriptionUpdate")
     );
+    expect(updateFn).toContain("applyAdminCommercialIdentityChange");
     expect(updateFn).not.toContain("ensureLivePlanBoundForSubscription");
     expect(updateFn).not.toContain("persistAdminCreateChargedTerms");
     expect(updateFn).not.toContain("deleteUserSubscriptionById");
+    expect(updateFn).not.toContain("onDuplicateKeyUpdate");
   });
 });

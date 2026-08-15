@@ -624,6 +624,13 @@
       "when": 1784740000000,
       "tag": "0088_user_subscriptions_live_plan_identity",
       "breakpoints": true
+    },
+    {
+      "idx": 89,
+      "version": "5",
+      "when": 1784750000000,
+      "tag": "0089_commercial_charged_terms_snapshots",
+      "breakpoints": true
     }
   ]
 }

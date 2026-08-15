@@ -73,4 +73,21 @@ describe("chargedTermsMrr pure rules", () => {
     );
     expect(mrr).toBe(45);
   });
+
+  it("sums distinct Charged Terms for the same Live Plan (A=$10, B=$9) and ARR is MRR×12", () => {
+    const mrr = computeMrrFromChargedTerms(
+      [
+        { subscriptionId: 1, billingCycle: "monthly", commercialStatus: { countsInMrr: true } },
+        { subscriptionId: 2, billingCycle: "monthly", commercialStatus: { countsInMrr: true } },
+        { subscriptionId: 3, billingCycle: "yearly", commercialStatus: { countsInMrr: true } },
+      ],
+      new Map([
+        [1, { subscriptionId: 1, chargedAmount: "10.00", chargedCurrency: "USD", billingCycleCode: "monthly" }],
+        [2, { subscriptionId: 2, chargedAmount: "9.00", chargedCurrency: "USD", billingCycleCode: "monthly" }],
+        [3, { subscriptionId: 3, chargedAmount: "120.00", chargedCurrency: "USD", billingCycleCode: "yearly" }],
+      ])
+    );
+    expect(mrr).toBe(29);
+    expect(Math.round(mrr * 12 * 100) / 100).toBe(348);
+  });
 });

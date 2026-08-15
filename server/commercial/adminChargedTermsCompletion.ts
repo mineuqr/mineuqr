@@ -19,6 +19,7 @@ import { newCommercialId, nowIso } from "../services/commercial-catalog/CatalogS
 import { emitAuditEvent } from "../audit/auditEmitter";
 import { OPS_EVENT } from "../_core/opsTaxonomy";
 import type { CommercialChargedTerms } from "@shared/commercial-catalog";
+import { insertImmutableChargedTermsSnapshot } from "./chargedTermsSnapshots";
 
 export const ADMIN_BILLING_CYCLE_CODES = ["monthly", "yearly"] as const;
 export type AdminBillingCycleCode = (typeof ADMIN_BILLING_CYCLE_CODES)[number];
@@ -189,6 +190,12 @@ export async function persistAdminCreateChargedTerms(input: {
   const existing = await getSubscriptionCommercialBinding(input.subscriptionId);
   if (existing) {
     if (termsMatchExisting(existing, offer)) {
+      await insertImmutableChargedTermsSnapshot({
+        subscriptionId: input.subscriptionId,
+        offer,
+        source: "admin_create",
+        actorId: input.actorId,
+      });
       return {
         planId: offer.planId,
         chargedTerms: chargedTermsFromOffer(offer),
@@ -219,6 +226,12 @@ export async function persistAdminCreateChargedTerms(input: {
     if (isDuplicateKeyError(error)) {
       const raced = await getSubscriptionCommercialBinding(input.subscriptionId);
       if (raced && termsMatchExisting(raced, offer)) {
+        await insertImmutableChargedTermsSnapshot({
+          subscriptionId: input.subscriptionId,
+          offer,
+          source: "admin_create",
+          actorId: input.actorId,
+        });
         return {
           planId: offer.planId,
           chargedTerms: chargedTermsFromOffer(offer),
@@ -241,6 +254,20 @@ export async function persistAdminCreateChargedTerms(input: {
         .delete(commercialSubscriptionBindings)
         .where(eq(commercialSubscriptionBindings.subscriptionId, input.subscriptionId));
     }
+    throw new AdminChargedTermsCompletionError("charged_terms_incomplete");
+  }
+
+  try {
+    await insertImmutableChargedTermsSnapshot({
+      subscriptionId: input.subscriptionId,
+      offer,
+      source: "admin_create",
+      actorId: input.actorId,
+    });
+  } catch {
+    await db
+      .delete(commercialSubscriptionBindings)
+      .where(eq(commercialSubscriptionBindings.subscriptionId, input.subscriptionId));
     throw new AdminChargedTermsCompletionError("charged_terms_incomplete");
   }
 

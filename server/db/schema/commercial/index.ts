@@ -20,3 +20,4 @@ export {
 } from "./tables";
 
 export { commercialSubscriptionBindings } from "./bindings";
+export { commercialSubscriptionChargedTerms } from "./chargedTerms";

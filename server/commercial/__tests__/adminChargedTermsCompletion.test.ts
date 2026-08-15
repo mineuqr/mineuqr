@@ -32,6 +32,15 @@ vi.mock("../../audit/auditEmitter", () => ({
   emitAuditEvent: vi.fn(),
 }));
 
+vi.mock("../chargedTermsSnapshots", () => ({
+  insertImmutableChargedTermsSnapshot: vi.fn(async () => ({
+    id: "snap-create",
+    version: 1,
+  })),
+  loadCurrentChargedTermsSnapshot: vi.fn(async () => null),
+  applyAdminCommercialIdentityChange: vi.fn(),
+}));
+
 import { getDb } from "../../db";
 import {
   getSubscriptionCommercialBinding,
@@ -377,11 +386,12 @@ describe("Admin Charged Terms completion", () => {
     ).rejects.toMatchObject({ code: "historical_terms_immutable" });
   });
 
-  it("15. Admin update does not call financial persist", () => {
+  it("15. Admin update appends snapshot and does not overwrite via bind", () => {
     const update = read("server/subscriptionAudit.ts");
     const updateFn = update.slice(
       update.indexOf("export async function applyAdminUserSubscriptionUpdate")
     );
+    expect(updateFn).toContain("applyAdminCommercialIdentityChange");
     expect(updateFn).not.toContain("persistAdminCreateChargedTerms");
     expect(updateFn).not.toContain("ensureLivePlanBoundForSubscription");
     expect(updateFn).not.toContain("onDuplicateKeyUpdate");

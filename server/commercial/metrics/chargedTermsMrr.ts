@@ -1,12 +1,10 @@
 /**
- * COMMERCIAL-MRR-CHARGED-TERMS-MIGRATION-1
- * Canonical MRR value source: Charged Terms on commercial_subscription_bindings.
- * Does not read the legacy plan price table, Live Plan catalog price, payments, or Check Revenue.
+ * COMMERCIAL-CHARGED-TERMS-LIVE-PLAN-SOURCE-OF-TRUTH-1
+ * Canonical MRR value source: current Charged Terms snapshot only.
+ * Does not read leftover Binding charged fields, catalog price, or the legacy plan table.
  */
 
-import { inArray } from "drizzle-orm";
-import { getDb } from "../../db";
-import { commercialSubscriptionBindings } from "../../db/schema/commercial/bindings";
+import { loadCurrentChargedTermsForSubscriptions } from "../chargedTermsSnapshots";
 
 export type ChargedTermsMrrRow = {
   subscriptionId: number;
@@ -104,25 +102,11 @@ export async function loadChargedTermsForMrr(
   subscriptionIds: number[]
 ): Promise<ChargedTermsMrrRow[]> {
   if (subscriptionIds.length === 0) return [];
-  const db = await getDb();
-  if (!db) return [];
-  try {
-    const rows = await db
-      .select({
-        subscriptionId: commercialSubscriptionBindings.subscriptionId,
-        chargedAmount: commercialSubscriptionBindings.chargedAmount,
-        chargedCurrency: commercialSubscriptionBindings.chargedCurrency,
-        billingCycleCode: commercialSubscriptionBindings.billingCycleCode,
-      })
-      .from(commercialSubscriptionBindings)
-      .where(inArray(commercialSubscriptionBindings.subscriptionId, subscriptionIds));
-    return rows.map((row) => ({
-      subscriptionId: row.subscriptionId,
-      chargedAmount: row.chargedAmount != null ? String(row.chargedAmount) : null,
-      chargedCurrency: row.chargedCurrency ?? null,
-      billingCycleCode: row.billingCycleCode ?? null,
-    }));
-  } catch {
-    return [];
-  }
+  const snapshots = await loadCurrentChargedTermsForSubscriptions(subscriptionIds);
+  return snapshots.map((row) => ({
+    subscriptionId: row.subscriptionId,
+    chargedAmount: row.chargedAmount,
+    chargedCurrency: row.chargedCurrency,
+    billingCycleCode: row.billingCycleCode,
+  }));
 }

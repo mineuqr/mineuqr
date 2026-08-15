@@ -279,8 +279,71 @@ export async function applyAdminUserSubscriptionUpdate(params: {
 
   const updateData = buildAdminSubscriptionUpdateData(input);
   if (typeof updateData.planId === "string") {
-    const { resolveCanonicalLivePlanId } = await import("./services/commercial-catalog");
-    updateData.planId = await resolveCanonicalLivePlanId(updateData.planId);
+    const { resolveLivePlanById } = await import("./services/commercial-catalog");
+    try {
+      updateData.planId = await resolveLivePlanById(updateData.planId);
+    } catch {
+      throwAdminFinancialIncomplete();
+    }
+  }
+
+  const commercialPlanChanged =
+    typeof updateData.planId === "string" && updateData.planId !== existing.planId;
+  const commercialCycleChanged =
+    typeof updateData.billingCycle === "string" &&
+    updateData.billingCycle !== existing.billingCycle;
+
+  if (commercialPlanChanged || commercialCycleChanged) {
+    const nextPlanId =
+      typeof updateData.planId === "string" ? updateData.planId : String(existing.planId);
+    const nextCycle =
+      typeof updateData.billingCycle === "string"
+        ? updateData.billingCycle
+        : existing.billingCycle;
+    let offer;
+    try {
+      offer = await resolveChargedTermsForAdminCreate({
+        planId: nextPlanId,
+        billingCycleCode: nextCycle,
+      });
+    } catch (error) {
+      rethrowAdminChargedTermsAsTrpc(error);
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return { success: true as const, changed: false, subscriptionId: existing.id };
+    }
+
+    const before = subscriptionAuditSnapshotFromRow(existing);
+    const after = projectSubscriptionAuditSnapshot(existing, updateData);
+    if (subscriptionAuditSnapshotsEqual(before, after)) {
+      return { success: true as const, changed: false, subscriptionId: existing.id };
+    }
+
+    try {
+      const { applyAdminCommercialIdentityChange } = await import(
+        "./commercial/chargedTermsSnapshots"
+      );
+      await applyAdminCommercialIdentityChange({
+        subscriptionId: existing.id,
+        offer,
+        subscriptionUpdate: updateData,
+        actorId: ctx.user?.id ?? null,
+      });
+    } catch {
+      throwAdminFinancialIncomplete();
+    }
+
+    logSubscriptionUpdatedByAdmin({
+      ctx,
+      procedure,
+      targetUserId: userId,
+      subscriptionId: existing.id,
+      before,
+      after,
+    });
+
+    return { success: true as const, changed: true, subscriptionId: existing.id };
   }
   if (Object.keys(updateData).length === 0) {
     return { success: true as const, changed: false, subscriptionId: existing.id };

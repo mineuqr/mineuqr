@@ -39,6 +39,15 @@ describe("canonical MRR Charged Terms architecture guards", () => {
     expect(source).not.toContain("commercial_plans");
     expect(source).not.toContain("grandTotal");
     expect(source).toContain("chargedAmount");
-    expect(source).toContain("commercialSubscriptionBindings");
+    expect(source).toContain("loadCurrentChargedTermsForSubscriptions");
+    expect(source).not.toContain("commercialSubscriptionBindings");
+  });
+
+  it("ARR is MRR × 12 of Charged Terms, not catalog price", () => {
+    const cms = read("server/commercial/metrics/CanonicalMetricsService.ts");
+    expect(cms).toContain('arrMethod: "MRR_X12"');
+    expect(cms).toContain("mrr * 12");
+    expect(cms).not.toContain("currentPriceForPlan");
+    expect(cms).not.toContain("subscription_plans");
   });
 });

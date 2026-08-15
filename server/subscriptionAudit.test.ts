@@ -26,6 +26,16 @@ vi.mock("./db", () => ({
   updateSubscriptionById: vi.fn(),
 }));
 
+vi.mock("./commercial/chargedTermsSnapshots", () => ({
+  applyAdminCommercialIdentityChange: vi.fn(async () => ({
+    id: "snap-1",
+    version: 2,
+    planId: "33333333-3333-4333-8333-333333333333",
+  })),
+  insertImmutableChargedTermsSnapshot: vi.fn(),
+  loadCurrentChargedTermsSnapshot: vi.fn(),
+}));
+
 vi.mock("./services/commercial-catalog", () => ({
   ensureLivePlanBoundForSubscription: vi.fn(async () => ({
     planId: "plan-test",
@@ -77,6 +87,7 @@ import { createSubscriptionForRestaurant, deleteUserSubscriptionById, getUserByI
 import {
   persistAdminCreateChargedTerms,
 } from "./commercial/adminChargedTermsCompletion";
+import { applyAdminCommercialIdentityChange } from "./commercial/chargedTermsSnapshots";
 import {
   getOwnerAccountSubscriptionRow,
   ownerHasEntitledAccountSubscription,
@@ -273,9 +284,18 @@ describe("subscriptionAudit PR-3", () => {
         planId: "33333333-3333-4333-8333-333333333333",
       });
 
-      expect(updateSubscriptionById).toHaveBeenCalledWith(SUBSCRIPTION_ID, {
-        planId: "33333333-3333-4333-8333-333333333333",
-      });
+      expect(applyAdminCommercialIdentityChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          subscriptionId: SUBSCRIPTION_ID,
+          offer: expect.objectContaining({
+            billingCycleCode: "monthly",
+          }),
+          subscriptionUpdate: expect.objectContaining({
+            planId: "33333333-3333-4333-8333-333333333333",
+          }),
+        })
+      );
+      expect(updateSubscriptionById).not.toHaveBeenCalled();
       expect(persistAdminCreateChargedTerms).not.toHaveBeenCalled();
       expect(opsLogMock).toHaveBeenCalledWith(
         expect.objectContaining({

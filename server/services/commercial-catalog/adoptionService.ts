@@ -32,6 +32,7 @@ import { getDb } from "../../db";
 import { commercialSubscriptionBindings } from "../../db/schema/commercial/bindings";
 import { eq } from "drizzle-orm";
 import { newCommercialId, nowIso } from "./CatalogStore";
+import { insertImmutableChargedTermsSnapshot } from "../../commercial/chargedTermsSnapshots";
 
 export type CommercialPlanBindEvent =
   | "plan_selected"
@@ -357,10 +358,6 @@ export async function bindSubscriptionToLivePlan(input: {
         .onDuplicateKeyUpdate({
           set: {
             planId: binding.planId,
-            chargedAmount: binding.chargedAmount,
-            chargedCurrency: binding.chargedCurrency,
-            billingCycleId: binding.billingCycleId,
-            billingCycleCode: binding.billingCycleCode,
             legacyPlanId: binding.legacyPlanId,
             updatedAt: nowIso(),
           },
@@ -369,6 +366,31 @@ export async function bindSubscriptionToLivePlan(input: {
       commercialAdoptionObservability.recordResolutionError(
         e instanceof Error ? e.message : String(e)
       );
+      commercialRuntimeAuthorityObservability.recordSnapshotCreationFailure(
+        e instanceof Error ? e.message : String(e)
+      );
+    }
+  }
+
+  if (
+    charged?.chargedAmount &&
+    charged.chargedCurrency &&
+    charged.billingCycleCode
+  ) {
+    try {
+      await insertImmutableChargedTermsSnapshot({
+        subscriptionId: input.subscriptionId,
+        offer: {
+          planId: input.planId,
+          chargedAmount: charged.chargedAmount,
+          chargedCurrency: charged.chargedCurrency,
+          billingCycleId: charged.billingCycleId,
+          billingCycleCode: charged.billingCycleCode,
+        },
+        source: "webhook_bind",
+        actorId: input.actorId,
+      });
+    } catch (e) {
       commercialRuntimeAuthorityObservability.recordSnapshotCreationFailure(
         e instanceof Error ? e.message : String(e)
       );
@@ -470,13 +492,17 @@ export async function getSubscriptionCommercialBinding(
       .limit(1);
     const row = rows[0];
     if (!row) return null;
+    const { loadCurrentChargedTermsSnapshot } = await import(
+      "../../commercial/chargedTermsSnapshots"
+    );
+    const snapshot = await loadCurrentChargedTermsSnapshot(subscriptionId);
     return {
       subscriptionId: row.subscriptionId,
       planId: row.planId,
-      chargedAmount: row.chargedAmount != null ? String(row.chargedAmount) : null,
-      chargedCurrency: row.chargedCurrency ?? null,
-      billingCycleId: row.billingCycleId ?? null,
-      billingCycleCode: row.billingCycleCode ?? null,
+      chargedAmount: snapshot?.chargedAmount ?? (row.chargedAmount != null ? String(row.chargedAmount) : null),
+      chargedCurrency: snapshot?.chargedCurrency ?? row.chargedCurrency ?? null,
+      billingCycleId: snapshot?.billingCycleId ?? row.billingCycleId ?? null,
+      billingCycleCode: snapshot?.billingCycleCode ?? row.billingCycleCode ?? null,
       legacyPlanId: row.legacyPlanId ?? null,
       createdAt: String(row.createdAt),
     };
