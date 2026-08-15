@@ -1,0 +1,40 @@
+{
+  "program": "COMMERCIAL-SUBSCRIPTION-PLANS-LEGACY-RESIDUAL-FORENSICS-1",
+  "queriedAt": "2026-08-15T12:51:39.467Z",
+  "access": "PRODUCTION",
+  "mutation": "NONE",
+  "statements": "SELECT + INFORMATION_SCHEMA only",
+  "target": {
+    "hostKind": "tidb_cloud",
+    "database": "mineuqr",
+    "tls": true,
+    "port": 4000,
+    "hostPattern": "tidbcloud_prod",
+    "matchesKnownProductionShape": true
+  },
+  "subscription_plans_row_count": 3,
+  "subscription_plans_ids": [30001, 30002, 30003],
+  "foreign_keys_involving_subscription_plans": [],
+  "user_subscriptions_planId_column": "varchar(36) NOT NULL",
+  "user_subscriptions_row_count": 7,
+  "user_subscriptions_planId_shape": [{ "kind": "uuid", "n": 7 }],
+  "user_subscriptions_join_commercial_plans": [
+    { "code": "professional", "n": 4 },
+    { "code": "enterprise", "n": 2 },
+    { "code": "basic", "n": 1 }
+  ],
+  "user_subscriptions_status": [
+    { "status": "active", "n": 5 },
+    { "status": "expired", "n": 2 }
+  ],
+  "bindings_row_count": 2,
+  "bindings_planId_shape": [{ "kind": "uuid", "n": 2 }],
+  "bindings_legacyPlanId": [
+    { "legacy": "30003", "n": 1 },
+    { "legacy": "30001", "n": 1 }
+  ],
+  "bindings_planId_disagreement_with_subscription": 0,
+  "commercial_plans_row_count": 3,
+  "journal_latest_id": 6084102,
+  "journal_latest_hash_prefix": "0836fac35ca3515d"
+}
