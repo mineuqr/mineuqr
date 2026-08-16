@@ -61,6 +61,44 @@ describe("FinancialShiftDomainService + repository", () => {
     expect(expected).toBe("110.00");
   });
 
+  it("replays recordMovement when movementId matches", async () => {
+    await shifts.open({
+      restaurantId: 1,
+      registerId: "reg_1",
+      operatorUserId: 10,
+      openingFloatAmount: "100.00",
+      currencyCode: "SAR",
+      financialShiftId: "fsh_1",
+      at: "t2",
+    });
+    const first = await shifts.recordMovement({
+      restaurantId: 1,
+      financialShiftId: "fsh_1",
+      movementType: "paid_in",
+      amount: "10.00",
+      reason: "bag",
+      actorUserId: 10,
+      at: "t3",
+      movementId: "mov_retry",
+    });
+    const second = await shifts.recordMovement({
+      restaurantId: 1,
+      financialShiftId: "fsh_1",
+      movementType: "paid_in",
+      amount: "10.00",
+      reason: "bag",
+      actorUserId: 10,
+      at: "t4",
+      movementId: "mov_retry",
+    });
+    expect(second.alreadyApplied).toBe(true);
+    expect(second.shift.version).toBe(first.shift.version);
+    expect(
+      second.shift.drawer.movements.filter((m) => m.movementType === "paid_in")
+    ).toHaveLength(1);
+  });
+
+
   it("enforces one active shift per register", async () => {
     await shifts.open({
       restaurantId: 1,

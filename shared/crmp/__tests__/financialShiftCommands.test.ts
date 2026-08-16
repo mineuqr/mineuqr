@@ -107,6 +107,55 @@ describe("CRMP Financial Shift commands", () => {
     expect(computeExpectedCash(shift)).toBe("105.50"); // 100+20-50+35.50
   });
 
+  it("replays an equivalent drawer movement by movementId", () => {
+    const first = recordDrawerMovement({
+      shift: openShift(),
+      movementId: "mov_in",
+      movementType: "paid_in",
+      amount: "20.00",
+      reason: "change bag",
+      actorUserId: 10,
+      recordedAt: "t3",
+    });
+    const replay = recordDrawerMovement({
+      shift: first,
+      movementId: "mov_in",
+      movementType: "paid_in",
+      amount: "20.00",
+      reason: " change bag ",
+      actorUserId: 10,
+      recordedAt: "t9",
+    });
+    expect(replay.version).toBe(first.version);
+    expect(replay.drawer.movements.filter((m) => m.movementType === "paid_in")).toHaveLength(
+      1
+    );
+  });
+
+  it("rejects a conflicting drawer movement payload for the same movementId", () => {
+    const first = recordDrawerMovement({
+      shift: openShift(),
+      movementId: "mov_in",
+      movementType: "paid_in",
+      amount: "20.00",
+      reason: "change bag",
+      actorUserId: 10,
+      recordedAt: "t3",
+    });
+    expect(() =>
+      recordDrawerMovement({
+        shift: first,
+        movementId: "mov_in",
+        movementType: "paid_in",
+        amount: "99.00",
+        reason: "change bag",
+        actorUserId: 10,
+        recordedAt: "t4",
+      })
+    ).toThrow(CrmpConflictError);
+  });
+
+
   it("attribution is idempotent by settlementRecordId (D-INV-13)", () => {
     const shift = openShift();
     const first = createSettlementAttribution({

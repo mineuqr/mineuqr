@@ -17,8 +17,13 @@ import {
 function operatorMessage(error: CrmpDomainError): string {
   // Deterministic, operator-facing; no stack / SQL / path leakage.
   switch (error.code) {
-    case "NOT_FOUND":
+    case "NOT_FOUND": {
+      const m = error.message.toLowerCase();
+      if (m.includes("financial shift")) {
+        return "Financial Shift not found";
+      }
       return "Register not found";
+    }
     case "CONFLICT":
       return "Register operation conflict";
     case "INVALID_TRANSITION":
@@ -37,10 +42,18 @@ function operatorMessage(error: CrmpDomainError): string {
       if (m.includes("inactive register cannot resume")) {
         return "Inactive register cannot resume";
       }
+      if (m.includes("exceeds expected drawer cash")) {
+        return "Drawer movement exceeds expected cash";
+      }
       return "Register operation rejected";
     }
-    case "VALIDATION":
+    case "VALIDATION": {
+      const m = error.message.toLowerCase();
+      if (m.includes("currencycode")) {
+        return "Currency does not match the financial shift";
+      }
       return "Invalid register operation input";
+    }
     case "IMMUTABILITY_VIOLATION":
       return "Register operation not allowed";
     case "TENANT_ISOLATION":
@@ -63,9 +76,14 @@ export function throwCrmpApiError(error: unknown): never {
   }
 
   if (error instanceof CrmpConflictError) {
+    const m = error.message.toLowerCase();
     throw new TRPCError({
       code: "CONFLICT",
-      message: operatorMessage(error),
+      message: m.includes("idempotency")
+        ? "Drawer movement already recorded with a different payload"
+        : m.includes("does not match the active")
+          ? "Financial Shift does not match the active Register"
+          : operatorMessage(error),
     });
   }
 

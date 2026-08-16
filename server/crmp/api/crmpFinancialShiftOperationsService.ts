@@ -5,7 +5,7 @@
  * DRAP owns display-window policy; Shift remains Aggregate Root.
  */
 
-import { CrmpNotFoundError } from "@shared/crmp";
+import { CrmpConflictError, CrmpNotFoundError, CrmpValidationError } from "@shared/crmp";
 import type { FinancialShiftDomainService } from "../FinancialShiftDomainService";
 import type { RegisterDomainService } from "../RegisterDomainService";
 import {
@@ -15,13 +15,18 @@ import {
   type ShiftArchiveWindowPreset,
 } from "../retention/financialShiftDrapAdoption";
 import type {
+  DrawerMovementCommandResultDto,
   FinancialShiftArchiveListDto,
   FinancialShiftClosingReportDto,
   FinancialShiftCommandResultDto,
   FinancialShiftTenderSummaryDto,
   FinancialShiftViewDto,
 } from "./crmpApiDtos";
-import { toFinancialShiftCommandResultDto } from "./crmpApiMapper";
+import {
+  toDrawerMovementCommandResultDto,
+  toFinancialShiftCommandResultDto,
+} from "./crmpApiMapper";
+import { drawerMovementIdForRetry } from "./crmpDrawerMovementId";
 import {
   buildFinancialShiftTenderSummary,
   type SettlementRecordBatchLoader,
@@ -306,5 +311,91 @@ export class CrmpFinancialShiftOperationsService {
       settlementsCount: shift.attributions.length,
       tender,
     };
+  }
+
+  /**
+   * CRMP-DRAWER-MOVEMENT-API-1 — public drawer movement command.
+   * Register/Shift are resolved server-side. Actor is the authenticated user.
+   */
+  async recordDrawerMovement(input: {
+    restaurantId: number;
+    registerId: string;
+    actorUserId: number;
+    movementType: "paid_in" | "paid_out" | "safe_drop" | "manual_adjustment";
+    amount: string;
+    reason: string;
+    idempotencyKey: string;
+    financialShiftId?: string;
+    currencyCode?: string;
+    expectedVersion?: number;
+    at?: string;
+  }): Promise<DrawerMovementCommandResultDto> {
+    const register = this.registers
+      ? await this.registers.get(input.restaurantId, input.registerId)
+      : null;
+    if (!register) {
+      throw new CrmpNotFoundError(`Register not found: ${input.registerId}`);
+    }
+
+    const current = await this.shifts.resolveActive({
+      restaurantId: input.restaurantId,
+      registerId: input.registerId,
+    });
+    if (!current) {
+      throw new CrmpNotFoundError(
+        `No active Financial Shift for register: ${input.registerId}`
+      );
+    }
+    if (
+      input.financialShiftId &&
+      input.financialShiftId !== current.financialShiftId
+    ) {
+      throw new CrmpConflictError(
+        "Financial Shift does not match the active Register"
+      );
+    }
+    if (
+      input.currencyCode &&
+      input.currencyCode !== current.currencyCode
+    ) {
+      throw new CrmpValidationError(
+        "currencyCode does not match the Financial Shift"
+      );
+    }
+
+    const movementId = drawerMovementIdForRetry({
+      restaurantId: input.restaurantId,
+      registerId: input.registerId,
+      financialShiftId: current.financialShiftId,
+      actorUserId: input.actorUserId,
+      idempotencyKey: input.idempotencyKey,
+    });
+    const recorded = await this.shifts.recordMovement({
+      restaurantId: input.restaurantId,
+      financialShiftId: current.financialShiftId,
+      movementType: input.movementType,
+      amount: input.amount,
+      reason: input.reason,
+      actorUserId: input.actorUserId,
+      at: input.at,
+      expectedVersion: input.expectedVersion,
+      movementId,
+    });
+    const movement = recorded.shift.drawer.movements.find(
+      (m) => m.movementId === movementId
+    );
+    if (!movement) {
+      throw new CrmpNotFoundError("Drawer movement was not recorded");
+    }
+    const expectedCashAmount = await this.shifts.getExpectedCash(
+      input.restaurantId,
+      recorded.shift.financialShiftId
+    );
+    return toDrawerMovementCommandResultDto({
+      shift: recorded.shift,
+      movement,
+      expectedCashAmount,
+      alreadyApplied: recorded.alreadyApplied,
+    });
   }
 }

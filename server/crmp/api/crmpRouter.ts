@@ -1,8 +1,10 @@
 /**
  * CRMP-OPERATIONS-API-1 / REGISTER-CATALOG-MANAGEMENT-1 /
  * FINANCIAL-SHIFT-WORKFLOW-ADOPTION-1 /
- * FINANCIAL-SHIFT-RETENTION-ADOPTION-1 —
- * canonical tRPC exposure for Register Operations, Catalog, and Financial Shift workflow.
+ * FINANCIAL-SHIFT-RETENTION-ADOPTION-1 /
+ * CRMP-DRAWER-MOVEMENT-API-1 —
+ * canonical tRPC exposure for Register Operations, Catalog, Financial Shift workflow,
+ * and drawer cash movements.
  *
  * Authorization + validation + DTO serialization only.
  * Orchestrates RegisterDomainService / FinancialShiftDomainService via thin façades.
@@ -18,6 +20,7 @@ import {
   getCrmpRegisterCatalogService,
   getCrmpRegisterOperationsService,
 } from "./crmpApiComposition";
+import { DRAWER_MOVEMENT_API_TYPES } from "./crmpApiDtos";
 import { runCrmpRead, runCrmpWrite } from "./mapCrmpApiError";
 
 const restaurantInput = z.object({
@@ -138,6 +141,23 @@ const listFinancialShiftArchiveInput = restaurantInput.extend({
 const closingReportInput = restaurantInput.extend({
   financialShiftId: z.string().min(1).max(128),
 });
+
+const drawerAmountInput = z
+  .string()
+  .min(1)
+  .max(32)
+  .regex(/^-?\d+(\.\d{1,2})?$/, "invalid decimal amount");
+
+const recordDrawerMovementInput = registerIdentityInput
+  .merge(concurrencyInput)
+  .extend({
+    financialShiftId: z.string().min(1).max(128).optional(),
+    movementType: z.enum(DRAWER_MOVEMENT_API_TYPES),
+    amount: drawerAmountInput,
+    currencyCode: z.string().min(1).max(8).optional(),
+    reason: z.string().min(1).max(512),
+    idempotencyKey: z.string().min(1).max(128),
+  });
 
 /**
  * Canonical CRMP APIs:
@@ -770,6 +790,32 @@ export const crmpRouter = router({
         );
         const svc = getCrmpFinancialShiftOperationsService();
         return runCrmpRead(() => svc.getClosingReport(input));
+      }),
+
+    recordDrawerMovement: verifiedProcedure
+      .input(recordDrawerMovementInput)
+      .mutation(async ({ input, ctx }) => {
+        await assertRestaurantAccess(
+          ctx,
+          input.restaurantId,
+          "crmp.financialShift.recordDrawerMovement"
+        );
+        const svc = getCrmpFinancialShiftOperationsService();
+        return runCrmpWrite(() =>
+          svc.recordDrawerMovement({
+            restaurantId: input.restaurantId,
+            registerId: input.registerId,
+            actorUserId: ctx.user.id,
+            movementType: input.movementType,
+            amount: input.amount,
+            reason: input.reason,
+            idempotencyKey: input.idempotencyKey,
+            financialShiftId: input.financialShiftId,
+            currencyCode: input.currencyCode,
+            expectedVersion: input.expectedVersion,
+            at: input.at,
+          })
+        );
       }),
   }),
 });

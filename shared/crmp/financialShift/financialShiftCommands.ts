@@ -356,9 +356,34 @@ export type RecordDrawerMovementCommand = Readonly<{
   recordedAt: string;
 }>;
 
+function isEquivalentDrawerMovement(
+  existing: DrawerMovement,
+  command: RecordDrawerMovementCommand
+): boolean {
+  const reason = command.reason?.trim() ?? null;
+  return (
+    existing.movementType === command.movementType &&
+    existing.amount === normalizeAmount(command.amount) &&
+    existing.reason === reason &&
+    existing.actorUserId === command.actorUserId
+  );
+}
+
 export function recordDrawerMovement(
   command: RecordDrawerMovementCommand
 ): FinancialShift {
+  const existing = command.shift.drawer.movements.find(
+    (m) => m.movementId === command.movementId
+  );
+  if (existing) {
+    if (isEquivalentDrawerMovement(existing, command)) {
+      return command.shift;
+    }
+    throw new CrmpConflictError(
+      "Drawer movement idempotency key reused with conflicting payload"
+    );
+  }
+
   assertOpenMutable(command.shift);
   const { movementType, amount } = command;
 

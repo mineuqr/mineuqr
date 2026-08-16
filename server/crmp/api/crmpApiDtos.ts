@@ -111,6 +111,31 @@ export type FinancialShiftCommandResultDto = Readonly<{
   alreadyApplied: boolean;
 }>;
 
+export const DRAWER_MOVEMENT_API_TYPES = [
+  "paid_in",
+  "paid_out",
+  "safe_drop",
+  "manual_adjustment",
+] as const;
+
+export type DrawerMovementApiType = (typeof DRAWER_MOVEMENT_API_TYPES)[number];
+
+export type DrawerMovementDto = Readonly<{
+  movementId: string;
+  movementType: DrawerMovementApiType;
+  amount: string;
+  currencyCode: string;
+  reason: string | null;
+  actorUserId: number;
+  recordedAt: string;
+}>;
+
+export type DrawerMovementCommandResultDto = Readonly<{
+  shift: FinancialShiftViewDto;
+  movement: DrawerMovementDto;
+  alreadyApplied: boolean;
+}>;
+
 /**
  * FINANCIAL-SHIFT-SUMMARIES-ADOPTION-1 — shift-scoped tender summary.
  * Built from Attribution membership → Settlement Record payment snapshots.

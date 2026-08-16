@@ -4,8 +4,11 @@
  * No business rules. No event leakage.
  */
 
-import type { CashRegister, FinancialShift } from "@shared/crmp";
+import type { CashRegister, DrawerMovement, FinancialShift } from "@shared/crmp";
+import { CrmpInvariantError } from "@shared/crmp";
 import type {
+  DrawerMovementCommandResultDto,
+  DrawerMovementDto,
   FinancialShiftCommandResultDto,
   FinancialShiftRefDto,
   FinancialShiftViewDto,
@@ -95,6 +98,34 @@ export function toFinancialShiftCommandResultDto(input: {
 }): FinancialShiftCommandResultDto {
   return {
     shift: toFinancialShiftViewDto(input.shift, input.expectedCashAmount),
+    alreadyApplied: input.alreadyApplied === true,
+  };
+}
+
+export function toDrawerMovementDto(movement: DrawerMovement): DrawerMovementDto {
+  if (movement.movementType === "opening_float") {
+    throw new CrmpInvariantError("opening_float is not a public drawer movement");
+  }
+  return {
+    movementId: movement.movementId,
+    movementType: movement.movementType,
+    amount: movement.amount,
+    currencyCode: movement.currencyCode,
+    reason: movement.reason,
+    actorUserId: movement.actorUserId,
+    recordedAt: movement.recordedAt,
+  };
+}
+
+export function toDrawerMovementCommandResultDto(input: {
+  shift: FinancialShift;
+  movement: DrawerMovement;
+  expectedCashAmount: string;
+  alreadyApplied?: boolean;
+}): DrawerMovementCommandResultDto {
+  return {
+    shift: toFinancialShiftViewDto(input.shift, input.expectedCashAmount),
+    movement: toDrawerMovementDto(input.movement),
     alreadyApplied: input.alreadyApplied === true,
   };
 }

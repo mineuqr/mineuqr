@@ -9,7 +9,7 @@ import type { FinancialShiftDomainService } from "./FinancialShiftDomainService"
 export class DrawerDomainService {
   constructor(private readonly shifts: FinancialShiftDomainService) {}
 
-  recordMovement(input: {
+  async recordMovement(input: {
     restaurantId: number;
     financialShiftId: string;
     movementType: Exclude<MovementType, "opening_float">;
@@ -17,8 +17,10 @@ export class DrawerDomainService {
     reason: string | null;
     actorUserId: number;
     at?: string;
+    movementId?: string;
   }): Promise<FinancialShift> {
-    return this.shifts.recordMovement(input);
+    const result = await this.shifts.recordMovement(input);
+    return result.shift;
   }
 
   recordCount(input: {

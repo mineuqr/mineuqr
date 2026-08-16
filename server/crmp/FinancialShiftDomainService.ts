@@ -325,22 +325,50 @@ export class FinancialShiftDomainService {
     actorUserId: number;
     at?: string;
     expectedVersion?: number;
-  }): Promise<FinancialShift> {
+    movementId?: string;
+  }): Promise<{ shift: FinancialShift; alreadyApplied: boolean }> {
+    return this.persistDrawerMovement(input, input.expectedVersion == null);
+  }
+
+  private async persistDrawerMovement(
+    input: {
+      restaurantId: number;
+      financialShiftId: string;
+      movementType: Exclude<MovementType, "opening_float">;
+      amount: string;
+      reason: string | null;
+      actorUserId: number;
+      at?: string;
+      expectedVersion?: number;
+      movementId?: string;
+    },
+    retryOnConflict: boolean
+  ): Promise<{ shift: FinancialShift; alreadyApplied: boolean }> {
     const current = await this.requireShift(
       input.restaurantId,
       input.financialShiftId
     );
     const next = recordDrawerMovement({
       shift: current,
-      movementId: newCrmpId("mov"),
+      movementId: input.movementId ?? newCrmpId("mov"),
       movementType: input.movementType,
       amount: input.amount,
       reason: input.reason,
       actorUserId: input.actorUserId,
       recordedAt: input.at ?? new Date().toISOString(),
     });
-    await this.uow.shifts.save(next, input.expectedVersion ?? current.version);
-    return next;
+    if (next.version === current.version) {
+      return { shift: next, alreadyApplied: true };
+    }
+    try {
+      await this.uow.shifts.save(next, input.expectedVersion ?? current.version);
+      return { shift: next, alreadyApplied: false };
+    } catch (error) {
+      if (retryOnConflict && error instanceof CrmpConflictError) {
+        return this.persistDrawerMovement(input, false);
+      }
+      throw error;
+    }
   }
 
   async recordCount(input: {
