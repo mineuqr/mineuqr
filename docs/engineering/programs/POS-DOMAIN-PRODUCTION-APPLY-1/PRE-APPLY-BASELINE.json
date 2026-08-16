@@ -1,0 +1,153 @@
+{
+  "program": "POS-DOMAIN-PRODUCTION-APPLY-1",
+  "label": "pre",
+  "queriedAt": "2026-08-16T12:17:06.940Z",
+  "mutation": "NONE",
+  "access": "PRODUCTION",
+  "target": {
+    "hostKind": "tidb_cloud",
+    "database": "mineuqr",
+    "tls": true,
+    "port": 4000,
+    "hostPattern": "tidbcloud_prod",
+    "matchesKnownProductionShape": true
+  },
+  "sqlIntegrity": {
+    "hashes": {
+      "hash0090": "bd9989fa8f3fd1698c8b26df8d71c3dca44c6df21e2ba9dca44c4a60fc330997",
+      "hash0091": "05872dc0400bf5857760ef35dea1d7b5e7a9200ad5b375861f8b2138b9f01c21",
+      "hash0092": "e7bf4f7392e66eeae9c8b3aa953e3db12dc483f5e667f3702ec94cb3e3efcd5e",
+      "hash0093": "778caa62a7bb57ad8dd461abab7f34b82633e0608cb289b22c35d8998859236b"
+    },
+    "sql0091": {
+      "creates_expected_table": true,
+      "has_insert": false,
+      "has_update": false,
+      "has_delete": false,
+      "has_drop": false,
+      "has_truncate": false,
+      "has_alter": false,
+      "mentions_780001": false,
+      "mentions_orders": false,
+      "mentions_checks": false,
+      "mentions_settlement": false,
+      "mentions_register": false
+    },
+    "sql0092": {
+      "creates_expected_table": true,
+      "has_insert": false,
+      "has_update": false,
+      "has_delete": false,
+      "has_drop": false,
+      "has_truncate": false,
+      "has_alter": false,
+      "mentions_780001": false,
+      "mentions_orders": false,
+      "mentions_checks": false,
+      "mentions_settlement": false,
+      "mentions_register": false
+    },
+    "sql0093": {
+      "creates_expected_table": true,
+      "has_insert": false,
+      "has_update": false,
+      "has_delete": false,
+      "has_drop": false,
+      "has_truncate": false,
+      "has_alter": false,
+      "mentions_780001": false,
+      "mentions_orders": false,
+      "mentions_checks": false,
+      "mentions_settlement": true,
+      "mentions_register": false
+    },
+    "sql0091_safe": true,
+    "sql0092_safe": true,
+    "sql0093_safe": true
+  },
+  "session": {
+    "db": "mineuqr",
+    "server_ts": "2026-08-16T09:17:04.000Z"
+  },
+  "journal_latest": {
+    "id": 6144102,
+    "hash": "bd9989fa8f3fd1698c8b26df8d71c3dca44c6df21e2ba9dca44c4a60fc330997",
+    "created_at": 1784760000000
+  },
+  "journal_recent": [
+    {
+      "id": 6144102,
+      "hash": "bd9989fa8f3fd1698c8b26df8d71c3dca44c6df21e2ba9dca44c4a60fc330997",
+      "created_at": 1784760000000
+    },
+    {
+      "id": 6114102,
+      "hash": "45dd198fe62f78746ef245e5091fc146ee383235f6d5a01b5d2b590b06c37e6d",
+      "created_at": 1784750000000
+    },
+    {
+      "id": 6084102,
+      "hash": "0836fac35ca3515db9958e232320dd9e0f5d44bf60684d74badff8661daa243b",
+      "created_at": 1784740000000
+    },
+    {
+      "id": 6054102,
+      "hash": "d1d9b161c405cc8e448fbf74d3e40b99618d88d388f65479a43e8115fb4cc595",
+      "created_at": 1784730000000
+    },
+    {
+      "id": 6024102,
+      "hash": "cfaec30e54892eaf44222e15cd327fb4e7f67c106a544c0ded2ce65463908413",
+      "created_at": 1784720000000
+    }
+  ],
+  "hash_counts": {
+    "hash0090": 1,
+    "hash0091": 0,
+    "hash0092": 0,
+    "hash0093": 0
+  },
+  "unexpected_pos_tables": [],
+  "tables": {
+    "pos_terminals": {
+      "exists": false,
+      "rowCount": null,
+      "columns": [],
+      "indexes": []
+    },
+    "pos_permission_grants": {
+      "exists": false,
+      "rowCount": null,
+      "columns": [],
+      "indexes": []
+    },
+    "pos_sale_idempotency": {
+      "exists": false,
+      "rowCount": null,
+      "columns": [],
+      "indexes": []
+    }
+  },
+  "counts": {
+    "subscriptions": 8,
+    "bindings": 4,
+    "charged_terms": 1,
+    "concessions": 0,
+    "plans": 3,
+    "prices": 10,
+    "orders": 44,
+    "checks": 43,
+    "settlement_records": 41,
+    "registers": 2,
+    "financial_shifts": 6
+  },
+  "subscription_780001": [
+    {
+      "id": 780001,
+      "status": "active",
+      "billingCycle": "yearly",
+      "planId": "d836bd10-9d9f-4408-a076-f921354d785a",
+      "currentPeriodEnd": "2027-06-21T10:47:36.000Z"
+    }
+  ]
+}

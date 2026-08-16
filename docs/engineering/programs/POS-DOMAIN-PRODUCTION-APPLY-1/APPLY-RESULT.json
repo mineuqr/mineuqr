@@ -1,0 +1,48 @@
+{
+  "program": "POS-DOMAIN-PRODUCTION-APPLY-1",
+  "status": "PASS — PRODUCTION APPLY CERTIFIED",
+  "target": "mineuqr",
+  "access": "PRODUCTION",
+  "command": "pnpm db:migrate",
+  "start": "2026-08-16T12:18:33.186Z",
+  "end": "2026-08-16T12:19:01.872Z",
+  "exit": 0,
+  "migrationOrder": [
+    "0091_pos_terminals",
+    "0092_pos_permission_grants",
+    "0093_pos_sale_idempotency"
+  ],
+  "hashes": {
+    "0090": "bd9989fa8f3fd1698c8b26df8d71c3dca44c6df21e2ba9dca44c4a60fc330997",
+    "0091": "05872dc0400bf5857760ef35dea1d7b5e7a9200ad5b375861f8b2138b9f01c21",
+    "0092": "e7bf4f7392e66eeae9c8b3aa953e3db12dc483f5e667f3702ec94cb3e3efcd5e",
+    "0093": "778caa62a7bb57ad8dd461abab7f34b82633e0608cb289b22c35d8998859236b"
+  },
+  "journalIds": {
+    "0090": 6144102,
+    "0091": 6174102,
+    "0092": 6174103,
+    "0093": 6174104
+  },
+  "newTables": 3,
+  "rowsInserted": 0,
+  "rowsUpdated": 0,
+  "rowsDeleted": 0,
+  "posTerminalRecordsCreated": 0,
+  "posPermissionGrantsCreated": 0,
+  "posSaleIdempotencyRecordsCreated": 0,
+  "financialMutation": 0,
+  "subscriptionMutation": 0,
+  "concessionMutation": 0,
+  "chargedTermsMutation": 0,
+  "unrelatedProductionMutation": 0,
+  "restaurant780001": "UNTOUCHED",
+  "backup": "SKIPPED — EXPLICIT OPERATOR AUTHORIZATION",
+  "deploy": "NONE",
+  "commit": "NONE",
+  "push": "NONE",
+  "git": {
+    "branch": "main",
+    "head": "4278bdb3792c7ee3d3b98f7271a7452d346a9025"
+  }
+}
