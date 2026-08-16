@@ -12,11 +12,10 @@ function read(rel: string): string {
 }
 
 describe("POS persistence architecture guards", () => {
-  it("does not add a migration for tables already applied at 0093", () => {
+  it("keeps POS tables at 0091–0093 and places occupancy locks on commercial 0094", () => {
     const drizzleFiles = readdirSync(join(repoRoot, "drizzle")).filter((name) =>
       name.endsWith(".sql")
     );
-    expect(drizzleFiles.some((name) => name.startsWith("0094"))).toBe(false);
     expect(existsSync(join(repoRoot, "drizzle/0091_pos_terminals.sql"))).toBe(true);
     expect(existsSync(join(repoRoot, "drizzle/0092_pos_permission_grants.sql"))).toBe(
       true
@@ -24,6 +23,13 @@ describe("POS persistence architecture guards", () => {
     expect(existsSync(join(repoRoot, "drizzle/0093_pos_sale_idempotency.sql"))).toBe(
       true
     );
+    expect(
+      drizzleFiles.some((name) => name.startsWith("0094_commercial_limit_occupancy"))
+    ).toBe(true);
+    const occupancy = read("drizzle/0094_commercial_limit_occupancy_locks.sql");
+    expect(occupancy).toContain("commercial_limit_occupancy_locks");
+    expect(occupancy).not.toContain("pos_terminals");
+    expect(occupancy).not.toContain("CREATE TABLE `pos_");
   });
 
   it("wires production composition to Drizzle and tests to InMemory", () => {

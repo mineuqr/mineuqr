@@ -28,6 +28,19 @@ vi.mock("../../services/commercial-catalog", () => ({
     limits: [],
     chargedTerms: null,
   })),
+  isLivePlanUuid: (value: string) =>
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      value
+    ),
+  resolveLivePlanCapabilitiesByPlanId: vi.fn(async () => ({
+    source: "missing",
+    planId: null,
+    catalogPlanCode: null,
+    featureKeys: [],
+    limits: [],
+    chargedTerms: null,
+  })),
+  ensureCatalogReady: vi.fn(async () => undefined),
 }));
 
 vi.mock("../../commercial/buildCommercialContextFromDb", () => ({

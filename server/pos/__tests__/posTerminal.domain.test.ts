@@ -163,6 +163,26 @@ describe("POS Terminal domain", () => {
     expect(replacement.lifecycle).toBe("registered");
     await expect(
       terminals.register({ restaurantId: RESTAURANT_A, actorId: OWNER_A })
-    ).rejects.toMatchObject({ code: "POS_ENTITLEMENT_DENIED" });
+    ).rejects.toMatchObject({ code: "COMMERCIAL_LIMIT_EXCEEDED" });
+  });
+
+  it("rejects a second replacement of the same terminal", async () => {
+    const { terminals } = services();
+    const first = await terminals.register({
+      restaurantId: RESTAURANT_A,
+      actorId: OWNER_A,
+    });
+    await terminals.replace({
+      restaurantId: RESTAURANT_A,
+      terminalId: first.id,
+      actorId: OWNER_A,
+    });
+    await expect(
+      terminals.replace({
+        restaurantId: RESTAURANT_A,
+        terminalId: first.id,
+        actorId: OWNER_A,
+      })
+    ).rejects.toMatchObject({ code: "already_replaced" });
   });
 });

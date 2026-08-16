@@ -3,6 +3,7 @@
  * Children are always deleted before parents; one transaction per public entry point.
  */
 import { eq, inArray } from "drizzle-orm";
+import { lockRestaurantRowForUpdate } from "./restaurantRowLock";
 import {
   authTokens,
   categories,
@@ -11,6 +12,9 @@ import {
   offers,
   orderItems,
   orders,
+  posPermissionGrants,
+  posSaleIdempotency,
+  posTerminals,
   renewalNotifications,
   restaurantHolidays,
   restaurants,
@@ -160,6 +164,8 @@ export async function deleteRestaurantCascadeTx(
   tx: Tx,
   restaurantId: number
 ): Promise<void> {
+  await lockRestaurantRowForUpdate(tx, restaurantId);
+
   const orderRows = await tx
     .select({ id: orders.id })
     .from(orders)
@@ -182,6 +188,14 @@ export async function deleteRestaurantCascadeTx(
   await tx.delete(offers).where(eq(offers.restaurantId, restaurantId));
   await tx.delete(menuItems).where(eq(menuItems.restaurantId, restaurantId));
   await tx.delete(categories).where(eq(categories.restaurantId, restaurantId));
+
+  await tx
+    .delete(posSaleIdempotency)
+    .where(eq(posSaleIdempotency.restaurantId, restaurantId));
+  await tx
+    .delete(posPermissionGrants)
+    .where(eq(posPermissionGrants.restaurantId, restaurantId));
+  await tx.delete(posTerminals).where(eq(posTerminals.restaurantId, restaurantId));
 
   const subIds = await subscriptionIdsForRestaurant(tx, restaurantId);
   if (subIds.length > 0) {
@@ -211,9 +225,12 @@ export async function deleteRestaurantCascade(
     restaurantId,
   });
 
-  await db.transaction(async (tx) => {
-    await deleteRestaurantCascadeTx(tx, restaurantId);
-  });
+  await db.transaction(
+    async (tx) => {
+      await deleteRestaurantCascadeTx(tx, restaurantId);
+    },
+    { isolationLevel: "read committed" }
+  );
 
   logCascade(OPS_EVENT.cascade_restaurant_deleted, audit, {
     phase: "completed",
@@ -259,9 +276,12 @@ export async function deleteUserCascade(
     targetUserId: userId,
   });
 
-  await db.transaction(async (tx) => {
-    await deleteUserCascadeTx(tx, userId);
-  });
+  await db.transaction(
+    async (tx) => {
+      await deleteUserCascadeTx(tx, userId);
+    },
+    { isolationLevel: "read committed" }
+  );
 
   logCascade(OPS_EVENT.cascade_user_deleted, audit, {
     phase: "completed",

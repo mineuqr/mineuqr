@@ -4,7 +4,10 @@ import type { PosTerminalStore } from "./PosTerminalStore";
 export class InMemoryPosTerminalStore implements PosTerminalStore {
   private readonly rows = new Map<string, PosTerminal>();
 
-  async listByRestaurant(restaurantId: number): Promise<PosTerminal[]> {
+  async listByRestaurant(
+    restaurantId: number,
+    _tx?: unknown
+  ): Promise<PosTerminal[]> {
     return Array.from(this.rows.values())
       .filter((row) => row.restaurantId === restaurantId)
       .sort((a, b) => a.code.localeCompare(b.code));
@@ -25,14 +28,15 @@ export class InMemoryPosTerminalStore implements PosTerminalStore {
     );
   }
 
-  async insert(terminal: PosTerminal): Promise<void> {
+  async insert(terminal: PosTerminal, _tx?: unknown): Promise<void> {
     this.rows.set(terminal.id, { ...terminal });
   }
 
   async updateLifecycle(
     id: string,
     lifecycle: PosTerminalLifecycle,
-    extras?: { replacedByTerminalId?: string | null; version?: number }
+    extras?: { replacedByTerminalId?: string | null; version?: number },
+    _tx?: unknown
   ): Promise<PosTerminal | null> {
     const current = this.rows.get(id);
     if (!current) return null;

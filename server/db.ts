@@ -39,6 +39,9 @@ import {
 import { pickCanonicalSubscription } from "./subscriptionResolver";
 import { userHasSubscriptionEntitlement } from "./subscriptionEntitlement";
 import {
+  requireRestaurantRowForUpdate,
+} from "./db/restaurantRowLock";
+import {
   resolveSubscriptionForActivationFromRows,
   type ActivationTargetOptions,
 } from "./subscriptionActivation";
@@ -343,8 +346,14 @@ export async function getCategoryById(id: number) {
 export async function createCategory(data: InsertCategory) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(categories).values(data);
-  return { id: result[0].insertId };
+  return db.transaction(
+    async (tx) => {
+      await requireRestaurantRowForUpdate(tx, data.restaurantId);
+      const result = await tx.insert(categories).values(data);
+      return { id: result[0].insertId };
+    },
+    { isolationLevel: "read committed" }
+  );
 }
 
 export async function updateCategory(id: number, data: Partial<InsertCategory>) {
@@ -384,8 +393,14 @@ export async function getMenuItemById(id: number) {
 export async function createMenuItem(data: InsertMenuItem) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(menuItems).values(data);
-  return { id: result[0].insertId };
+  return db.transaction(
+    async (tx) => {
+      await requireRestaurantRowForUpdate(tx, data.restaurantId);
+      const result = await tx.insert(menuItems).values(data);
+      return { id: result[0].insertId };
+    },
+    { isolationLevel: "read committed" }
+  );
 }
 
 export async function updateMenuItem(id: number, data: Partial<InsertMenuItem>) {

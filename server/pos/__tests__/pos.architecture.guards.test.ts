@@ -126,4 +126,16 @@ describe("POS architecture guards", () => {
     expect(access).toContain("pos_permission_denied");
     expect(access).not.toContain("settlePaid");
   });
+
+  it("serializes provisioned terminal replacement through Commercial occupancyDelta 0", () => {
+    const service = read("server/pos/services/PosTerminalService.ts");
+    expect(service).toContain("withCommercialLimitOccupancy");
+    expect(service).toContain("occupancyDelta");
+    expect(service).toContain("isProvisionedLifecycle(previous.lifecycle)");
+    expect(service).toContain("? 0");
+    expect(service).not.toContain("performReplace(null)");
+    expect(service).not.toContain("PosOccupancyService");
+    expect(service).not.toContain("GET_LOCK");
+    expect(service).not.toContain("FROM commercial_limit_values");
+  });
 });

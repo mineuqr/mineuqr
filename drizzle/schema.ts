@@ -1906,6 +1906,7 @@ export {
   commercialBundleFeatures,
   commercialLimitProfiles,
   commercialLimitValues,
+  commercialLimitOccupancyLocks,
   commercialTrialPolicies,
   commercialPromotions,
   commercialRegions,

@@ -228,6 +228,17 @@ function createAuthContext(userId = 1): TrpcContext {
   };
 }
 
+function createAdminAuthContext(userId = 99): TrpcContext {
+  const ctx = createAuthContext(userId);
+  return {
+    ...ctx,
+    user: {
+      ...ctx.user!,
+      role: "admin",
+    },
+  };
+}
+
 function createPublicContext(): TrpcContext {
   return {
     user: null,
@@ -524,6 +535,15 @@ describe("category router", () => {
       restaurantId: 1,
       nameAr: "أطباق رئيسية",
       nameEn: "Main Dishes",
+    });
+    expect(result.id).toBe(2);
+  });
+
+  it("creates a category for admin through the same commercial occupancy path", async () => {
+    const caller = appRouter.createCaller(createAdminAuthContext(99));
+    const result = await caller.category.create({
+      restaurantId: 1,
+      nameAr: "فئة إدارية",
     });
     expect(result.id).toBe(2);
   });

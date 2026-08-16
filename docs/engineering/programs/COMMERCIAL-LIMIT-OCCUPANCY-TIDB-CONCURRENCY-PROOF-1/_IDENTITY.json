@@ -1,0 +1,28 @@
+{
+  "program": "COMMERCIAL-LIMIT-OCCUPANCY-TIDB-CONCURRENCY-PROOF-1",
+  "queriedAt": "2026-08-16T20:04:28.708Z",
+  "mutation": "NONE",
+  "connected": false,
+  "usedDatabaseUrlEnv": false,
+  "expectedBranch": "mineuqr-stagIn",
+  "expectedParent": "main",
+  "g07UrlPresent": false,
+  "g07SourceKey": null,
+  "g07": null,
+  "workspaceDatabaseUrl": {
+    "sourceEnvKey": "DATABASE_URL",
+    "host": "gateway01.eu-central-1.prod.aws.tidbcloud.com",
+    "port": 4000,
+    "database": "mineuqr",
+    "userPrefix": "43cECBySTU9sFco",
+    "tls": true,
+    "isTidbCloud": true,
+    "isExactProductionHost": true,
+    "sameSqlUserAsProductionMain": true,
+    "expectedBranch": "mineuqr-stagIn",
+    "expectedDatabase": "mineuqr",
+    "verdict": "REJECT_PRODUCTION",
+    "passwordPresent": true,
+    "userPresent": true
+  }
+}

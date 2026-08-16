@@ -107,6 +107,7 @@ describe("POS Settlement Initiation architecture guards", () => {
     expect(schema).not.toMatch(/export const posSettlementIdempotency/);
     expect(schema).toContain("export const posSaleIdempotency");
     expect(journal).toContain("0093_pos_sale_idempotency");
-    expect(journal).not.toContain("0094_");
+    expect(journal).toContain("0094_commercial_limit_occupancy_locks");
+    expect(journal).not.toContain("0094_pos_");
   });
 });

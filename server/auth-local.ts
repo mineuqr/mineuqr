@@ -85,6 +85,10 @@ import {
   RegisterOnboardingError,
   RegisterValidationError,
 } from "./auth-local/registerOwner";
+import {
+  CommercialLimitExceededError,
+  CommercialOccupancyUnavailableError,
+} from "./subscription-runtime";
 
 const router = Router();
 
@@ -184,6 +188,22 @@ router.post("/api/auth/register", async (req: Request, res: Response) => {
     }
     if (error instanceof RegisterDuplicateEmailError) {
       return res.status(409).json({ error: error.messageAr });
+    }
+    if (error instanceof CommercialLimitExceededError) {
+      const cap = error.cap ?? 0;
+      const locationWord = cap === 1 ? "موقع" : "مواقع";
+      return res.status(403).json({
+        error: `خطتك الحالية تسمح بحد أقصى ${cap} ${locationWord}.`,
+        code: error.reasonCode,
+        limitKey: "restaurants",
+      });
+    }
+    if (error instanceof CommercialOccupancyUnavailableError) {
+      return res.status(403).json({
+        error: "تعذر التحقق من سعة الخطة التجارية. لم يتم إنشاء الحساب.",
+        code: "commercial_capacity_unavailable",
+        limitKey: "restaurants",
+      });
     }
     if (error instanceof RegisterOnboardingError) {
       return res.status(500).json({ error: error.messageAr });

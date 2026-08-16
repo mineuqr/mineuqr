@@ -37,11 +37,18 @@ vi.mock("../db", () => ({
 
 import { OPS_EVENT } from "../_core/opsTaxonomy";
 import {
+  posPermissionGrants,
+  posSaleIdempotency,
+  posTerminals,
+  restaurants,
+} from "../../drizzle/schema";
+import {
   assertProtectedUserClassificationModifiable,
   assertProtectedUserPasswordResetAllowed,
   assertProtectedUserRoleModifiable,
   assertProtectedUserSubscriptionModifiable,
   assertUserDeletable,
+  deleteRestaurantCascade,
   deleteSubscriptionCascade,
   ProtectedUserDeleteError,
   ProtectedUserModifyError,
@@ -58,6 +65,7 @@ describe("cascadeDeletes", () => {
       const tx = {
         delete: txMocks.delete,
         select: txMocks.select,
+        execute: vi.fn().mockResolvedValue([[{ id: 41, userId: 9 }]]),
       };
       await fn(tx);
     });
@@ -147,6 +155,41 @@ describe("cascadeDeletes", () => {
     const completedEvents = opsLogMock.mock.calls.filter(
       ([entry]) =>
         entry?.type === OPS_EVENT.cascade_subscription_deleted &&
+        entry?.metadata?.phase === "completed"
+    );
+    expect(completedEvents).toHaveLength(0);
+  });
+
+  it("deletes restaurant-owned POS rows on the same transaction before the restaurant", async () => {
+    await deleteRestaurantCascade(41);
+    expect(txMocks.transaction).toHaveBeenCalledTimes(1);
+    const deleted = txMocks.delete.mock.calls.map((call) => call[0]);
+    expect(deleted).toContain(posSaleIdempotency);
+    expect(deleted).toContain(posPermissionGrants);
+    expect(deleted).toContain(posTerminals);
+    expect(deleted).toContain(restaurants);
+    expect(deleted.indexOf(posSaleIdempotency)).toBeLessThan(
+      deleted.indexOf(posTerminals)
+    );
+    expect(deleted.indexOf(posPermissionGrants)).toBeLessThan(
+      deleted.indexOf(posTerminals)
+    );
+    expect(deleted.indexOf(posTerminals)).toBeLessThan(deleted.indexOf(restaurants));
+  });
+
+  it("does not emit completed audit when restaurant delete fails after POS cleanup", async () => {
+    txMocks.delete.mockImplementation((table: unknown) => {
+      if (table === restaurants) {
+        throw new Error("restaurant_delete_failed");
+      }
+      return txMocks.deleteChain;
+    });
+    await expect(deleteRestaurantCascade(41)).rejects.toThrow(
+      "restaurant_delete_failed"
+    );
+    const completedEvents = opsLogMock.mock.calls.filter(
+      ([entry]) =>
+        entry?.type === OPS_EVENT.cascade_restaurant_deleted &&
         entry?.metadata?.phase === "completed"
     );
     expect(completedEvents).toHaveLength(0);

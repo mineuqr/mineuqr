@@ -36,6 +36,11 @@ import { PosSettlementInitiateError } from "../services/PosSettlementInitiateSer
 import { PosRegisterShiftContextError } from "../services/PosRegisterShiftContextService";
 import { PosCashierCrmpError } from "../services/PosCashierCrmpOperationsService";
 import { PosTerminalError } from "../services/PosTerminalService";
+import {
+  CommercialLimitExceededError,
+  CommercialOccupancyUnavailableError,
+  throwCommercialOccupancyTrpcError,
+} from "../../subscription-runtime";
 
 const restaurantInput = z.object({
   restaurantId: z.number().int().positive(),
@@ -127,6 +132,15 @@ const SALE_FORBIDDEN_CODES = new Set([
 ]);
 
 function mapPosError(err: unknown): never {
+  if (
+    err instanceof CommercialLimitExceededError ||
+    err instanceof CommercialOccupancyUnavailableError
+  ) {
+    throwCommercialOccupancyTrpcError(err, (cap) => {
+      const word = cap === 1 ? "نقطة بيع" : "نقاط بيع";
+      return `خطتك الحالية تسمح بحد أقصى ${cap} ${word}.`;
+    });
+  }
   if (err instanceof PosEntitlementDeniedError) {
     throw new TRPCError({
       code: "FORBIDDEN",

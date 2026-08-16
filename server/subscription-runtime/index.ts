@@ -77,6 +77,31 @@ export type { EntitlementDecision, LimitDecision } from "./enforcement";
 export { requireRestaurantPlanFeature } from "./requireRestaurantPlanFeature";
 
 export {
+  withCommercialLimitOccupancy,
+  CommercialLimitExceededError,
+  CommercialOccupancyUnavailableError,
+} from "./commercialLimitOccupancy";
+export {
+  throwCommercialOccupancyTrpcError,
+  COMMERCIAL_LIMIT_EXCEEDED_CLIENT_CODE,
+  COMMERCIAL_OCCUPANCY_UNAVAILABLE_CLIENT_CODE,
+  COMMERCIAL_OCCUPANCY_UNAVAILABLE_CLIENT_MESSAGE,
+} from "./commercialOccupancyTrpc";
+export type {
+  CommercialOccupancyScope,
+  CommercialOccupancyTx,
+  WithCommercialLimitOccupancyInput,
+} from "./commercialLimitOccupancy";
+
+export {
+  assertOnboardingFirstRestaurantPermitted,
+  decideOnboardingRestaurantCapacity,
+  resolveOnboardingRestaurantCapacity,
+  ONBOARDING_FIRST_RESTAURANT_PROPOSED_TOTAL,
+  ONBOARDING_RESTAURANT_LIMIT_KEY,
+} from "./onboardingRestaurantCapacity";
+
+export {
   getCachedEntitlements,
   setCachedEntitlements,
   invalidateEntitlementCache,

@@ -1,0 +1,433 @@
+{
+  "program": "COMMERCIAL-LIMIT-OCCUPANCY-PRODUCTION-APPLY-1",
+  "label": "pre",
+  "queriedAt": "2026-08-16T18:11:34.627Z",
+  "mutation": "NONE",
+  "access": "PRODUCTION",
+  "target": {
+    "hostKind": "tidb_cloud",
+    "database": "mineuqr",
+    "tls": true,
+    "port": 4000,
+    "hostPattern": "tidbcloud_prod",
+    "matchesKnownProductionShape": true
+  },
+  "sqlIntegrity": {
+    "hashes": {
+      "hash0091": "05872dc0400bf5857760ef35dea1d7b5e7a9200ad5b375861f8b2138b9f01c21",
+      "hash0092": "e7bf4f7392e66eeae9c8b3aa953e3db12dc483f5e667f3702ec94cb3e3efcd5e",
+      "hash0093": "778caa62a7bb57ad8dd461abab7f34b82633e0608cb289b22c35d8998859236b",
+      "hash0094": "134a49bf9ce3e329e019bbd5f85b485aab48f46d0480140257915751caa85d47"
+    },
+    "sql0094": {
+      "creates_expected_table": true,
+      "has_insert": false,
+      "has_update": false,
+      "has_delete": false,
+      "has_drop": false,
+      "has_truncate": false,
+      "has_alter": false,
+      "mentions_780001": false,
+      "mentions_pos_lock": false,
+      "mentions_commercial_limit_values": false,
+      "mentions_occupied_counter": false
+    },
+    "sql0094_safe": true
+  },
+  "session": {
+    "db": "mineuqr",
+    "server_ts": "2026-08-16T15:11:28.000Z"
+  },
+  "journal_latest": {
+    "id": 6174104,
+    "hash": "778caa62a7bb57ad8dd461abab7f34b82633e0608cb289b22c35d8998859236b",
+    "created_at": 1784790000000
+  },
+  "journal_recent": [
+    {
+      "id": 6174104,
+      "hash": "778caa62a7bb57ad8dd461abab7f34b82633e0608cb289b22c35d8998859236b",
+      "created_at": 1784790000000
+    },
+    {
+      "id": 6174103,
+      "hash": "e7bf4f7392e66eeae9c8b3aa953e3db12dc483f5e667f3702ec94cb3e3efcd5e",
+      "created_at": 1784780000000
+    },
+    {
+      "id": 6174102,
+      "hash": "05872dc0400bf5857760ef35dea1d7b5e7a9200ad5b375861f8b2138b9f01c21",
+      "created_at": 1784770000000
+    },
+    {
+      "id": 6144102,
+      "hash": "bd9989fa8f3fd1698c8b26df8d71c3dca44c6df21e2ba9dca44c4a60fc330997",
+      "created_at": 1784760000000
+    },
+    {
+      "id": 6114102,
+      "hash": "45dd198fe62f78746ef245e5091fc146ee383235f6d5a01b5d2b590b06c37e6d",
+      "created_at": 1784750000000
+    },
+    {
+      "id": 6084102,
+      "hash": "0836fac35ca3515db9958e232320dd9e0f5d44bf60684d74badff8661daa243b",
+      "created_at": 1784740000000
+    },
+    {
+      "id": 6054102,
+      "hash": "d1d9b161c405cc8e448fbf74d3e40b99618d88d388f65479a43e8115fb4cc595",
+      "created_at": 1784730000000
+    },
+    {
+      "id": 6024102,
+      "hash": "cfaec30e54892eaf44222e15cd327fb4e7f67c106a544c0ded2ce65463908413",
+      "created_at": 1784720000000
+    }
+  ],
+  "hash_counts": {
+    "hash0091": 1,
+    "hash0092": 1,
+    "hash0093": 1,
+    "hash0094": 0
+  },
+  "table_count": 87,
+  "occupancy_like_tables": [],
+  "tables": {
+    "commercial_limit_occupancy_locks": {
+      "exists": false,
+      "rowCount": null,
+      "columns": [],
+      "indexes": []
+    },
+    "pos_terminals": {
+      "exists": true,
+      "rowCount": 0,
+      "columns": [
+        {
+          "COLUMN_NAME": "id",
+          "DATA_TYPE": "varchar",
+          "COLUMN_TYPE": "varchar(36)",
+          "IS_NULLABLE": "NO",
+          "COLUMN_KEY": "PRI",
+          "COLUMN_DEFAULT": null
+        },
+        {
+          "COLUMN_NAME": "restaurantId",
+          "DATA_TYPE": "int",
+          "COLUMN_TYPE": "int",
+          "IS_NULLABLE": "NO",
+          "COLUMN_KEY": "MUL",
+          "COLUMN_DEFAULT": null
+        },
+        {
+          "COLUMN_NAME": "code",
+          "DATA_TYPE": "varchar",
+          "COLUMN_TYPE": "varchar(32)",
+          "IS_NULLABLE": "NO",
+          "COLUMN_KEY": "",
+          "COLUMN_DEFAULT": null
+        },
+        {
+          "COLUMN_NAME": "lifecycle",
+          "DATA_TYPE": "enum",
+          "COLUMN_TYPE": "enum('registered','active','deactivated','replaced')",
+          "IS_NULLABLE": "NO",
+          "COLUMN_KEY": "",
+          "COLUMN_DEFAULT": null
+        },
+        {
+          "COLUMN_NAME": "replacedByTerminalId",
+          "DATA_TYPE": "varchar",
+          "COLUMN_TYPE": "varchar(36)",
+          "IS_NULLABLE": "YES",
+          "COLUMN_KEY": "",
+          "COLUMN_DEFAULT": null
+        },
+        {
+          "COLUMN_NAME": "optionalDeviceId",
+          "DATA_TYPE": "varchar",
+          "COLUMN_TYPE": "varchar(64)",
+          "IS_NULLABLE": "YES",
+          "COLUMN_KEY": "",
+          "COLUMN_DEFAULT": null
+        },
+        {
+          "COLUMN_NAME": "version",
+          "DATA_TYPE": "int",
+          "COLUMN_TYPE": "int",
+          "IS_NULLABLE": "NO",
+          "COLUMN_KEY": "",
+          "COLUMN_DEFAULT": "1"
+        },
+        {
+          "COLUMN_NAME": "createdAt",
+          "DATA_TYPE": "timestamp",
+          "COLUMN_TYPE": "timestamp",
+          "IS_NULLABLE": "NO",
+          "COLUMN_KEY": "",
+          "COLUMN_DEFAULT": null
+        },
+        {
+          "COLUMN_NAME": "updatedAt",
+          "DATA_TYPE": "timestamp",
+          "COLUMN_TYPE": "timestamp",
+          "IS_NULLABLE": "NO",
+          "COLUMN_KEY": "",
+          "COLUMN_DEFAULT": null
+        }
+      ],
+      "indexes": [
+        {
+          "INDEX_NAME": "PRIMARY",
+          "NON_UNIQUE": "0",
+          "cols": "id"
+        },
+        {
+          "INDEX_NAME": "pos_terminals_restaurant_code_unique",
+          "NON_UNIQUE": "0",
+          "cols": "restaurantId,code"
+        },
+        {
+          "INDEX_NAME": "pos_terminals_restaurant_lifecycle",
+          "NON_UNIQUE": "1",
+          "cols": "restaurantId,lifecycle"
+        }
+      ]
+    },
+    "pos_permission_grants": {
+      "exists": true,
+      "rowCount": 0,
+      "columns": [
+        {
+          "COLUMN_NAME": "id",
+          "DATA_TYPE": "varchar",
+          "COLUMN_TYPE": "varchar(36)",
+          "IS_NULLABLE": "NO",
+          "COLUMN_KEY": "PRI",
+          "COLUMN_DEFAULT": null
+        },
+        {
+          "COLUMN_NAME": "restaurantId",
+          "DATA_TYPE": "int",
+          "COLUMN_TYPE": "int",
+          "IS_NULLABLE": "NO",
+          "COLUMN_KEY": "MUL",
+          "COLUMN_DEFAULT": null
+        },
+        {
+          "COLUMN_NAME": "userId",
+          "DATA_TYPE": "int",
+          "COLUMN_TYPE": "int",
+          "IS_NULLABLE": "NO",
+          "COLUMN_KEY": "",
+          "COLUMN_DEFAULT": null
+        },
+        {
+          "COLUMN_NAME": "permission",
+          "DATA_TYPE": "varchar",
+          "COLUMN_TYPE": "varchar(32)",
+          "IS_NULLABLE": "NO",
+          "COLUMN_KEY": "",
+          "COLUMN_DEFAULT": null
+        },
+        {
+          "COLUMN_NAME": "version",
+          "DATA_TYPE": "int",
+          "COLUMN_TYPE": "int",
+          "IS_NULLABLE": "NO",
+          "COLUMN_KEY": "",
+          "COLUMN_DEFAULT": "1"
+        },
+        {
+          "COLUMN_NAME": "createdAt",
+          "DATA_TYPE": "timestamp",
+          "COLUMN_TYPE": "timestamp",
+          "IS_NULLABLE": "NO",
+          "COLUMN_KEY": "",
+          "COLUMN_DEFAULT": null
+        },
+        {
+          "COLUMN_NAME": "updatedAt",
+          "DATA_TYPE": "timestamp",
+          "COLUMN_TYPE": "timestamp",
+          "IS_NULLABLE": "NO",
+          "COLUMN_KEY": "",
+          "COLUMN_DEFAULT": null
+        }
+      ],
+      "indexes": [
+        {
+          "INDEX_NAME": "PRIMARY",
+          "NON_UNIQUE": "0",
+          "cols": "id"
+        },
+        {
+          "INDEX_NAME": "pos_permission_grants_unique",
+          "NON_UNIQUE": "0",
+          "cols": "restaurantId,userId,permission"
+        },
+        {
+          "INDEX_NAME": "pos_permission_grants_restaurant_user",
+          "NON_UNIQUE": "1",
+          "cols": "restaurantId,userId"
+        }
+      ]
+    },
+    "pos_sale_idempotency": {
+      "exists": true,
+      "rowCount": 0,
+      "columns": [
+        {
+          "COLUMN_NAME": "id",
+          "DATA_TYPE": "varchar",
+          "COLUMN_TYPE": "varchar(36)",
+          "IS_NULLABLE": "NO",
+          "COLUMN_KEY": "PRI",
+          "COLUMN_DEFAULT": null
+        },
+        {
+          "COLUMN_NAME": "restaurantId",
+          "DATA_TYPE": "int",
+          "COLUMN_TYPE": "int",
+          "IS_NULLABLE": "NO",
+          "COLUMN_KEY": "MUL",
+          "COLUMN_DEFAULT": null
+        },
+        {
+          "COLUMN_NAME": "terminalId",
+          "DATA_TYPE": "varchar",
+          "COLUMN_TYPE": "varchar(36)",
+          "IS_NULLABLE": "NO",
+          "COLUMN_KEY": "",
+          "COLUMN_DEFAULT": null
+        },
+        {
+          "COLUMN_NAME": "userId",
+          "DATA_TYPE": "int",
+          "COLUMN_TYPE": "int",
+          "IS_NULLABLE": "NO",
+          "COLUMN_KEY": "",
+          "COLUMN_DEFAULT": null
+        },
+        {
+          "COLUMN_NAME": "idempotencyKey",
+          "DATA_TYPE": "varchar",
+          "COLUMN_TYPE": "varchar(128)",
+          "IS_NULLABLE": "NO",
+          "COLUMN_KEY": "",
+          "COLUMN_DEFAULT": null
+        },
+        {
+          "COLUMN_NAME": "fingerprint",
+          "DATA_TYPE": "varchar",
+          "COLUMN_TYPE": "varchar(64)",
+          "IS_NULLABLE": "NO",
+          "COLUMN_KEY": "",
+          "COLUMN_DEFAULT": null
+        },
+        {
+          "COLUMN_NAME": "orderId",
+          "DATA_TYPE": "int",
+          "COLUMN_TYPE": "int",
+          "IS_NULLABLE": "NO",
+          "COLUMN_KEY": "MUL",
+          "COLUMN_DEFAULT": null
+        },
+        {
+          "COLUMN_NAME": "orderNumber",
+          "DATA_TYPE": "varchar",
+          "COLUMN_TYPE": "varchar(32)",
+          "IS_NULLABLE": "NO",
+          "COLUMN_KEY": "",
+          "COLUMN_DEFAULT": null
+        },
+        {
+          "COLUMN_NAME": "trackingToken",
+          "DATA_TYPE": "varchar",
+          "COLUMN_TYPE": "varchar(64)",
+          "IS_NULLABLE": "NO",
+          "COLUMN_KEY": "",
+          "COLUMN_DEFAULT": null
+        },
+        {
+          "COLUMN_NAME": "displayReference",
+          "DATA_TYPE": "varchar",
+          "COLUMN_TYPE": "varchar(64)",
+          "IS_NULLABLE": "NO",
+          "COLUMN_KEY": "",
+          "COLUMN_DEFAULT": null
+        },
+        {
+          "COLUMN_NAME": "totalAmount",
+          "DATA_TYPE": "varchar",
+          "COLUMN_TYPE": "varchar(16)",
+          "IS_NULLABLE": "NO",
+          "COLUMN_KEY": "",
+          "COLUMN_DEFAULT": null
+        },
+        {
+          "COLUMN_NAME": "itemCount",
+          "DATA_TYPE": "int",
+          "COLUMN_TYPE": "int",
+          "IS_NULLABLE": "NO",
+          "COLUMN_KEY": "",
+          "COLUMN_DEFAULT": null
+        },
+        {
+          "COLUMN_NAME": "createdAt",
+          "DATA_TYPE": "timestamp",
+          "COLUMN_TYPE": "timestamp",
+          "IS_NULLABLE": "NO",
+          "COLUMN_KEY": "",
+          "COLUMN_DEFAULT": null
+        }
+      ],
+      "indexes": [
+        {
+          "INDEX_NAME": "PRIMARY",
+          "NON_UNIQUE": "0",
+          "cols": "id"
+        },
+        {
+          "INDEX_NAME": "pos_sale_idempotency_unique",
+          "NON_UNIQUE": "0",
+          "cols": "restaurantId,terminalId,userId,idempotencyKey"
+        },
+        {
+          "INDEX_NAME": "pos_sale_idempotency_order",
+          "NON_UNIQUE": "1",
+          "cols": "orderId"
+        }
+      ]
+    }
+  },
+  "counts": {
+    "subscriptions": 8,
+    "bindings": 4,
+    "charged_terms": 1,
+    "concessions": 0,
+    "plans": 3,
+    "prices": 10,
+    "restaurants": 4,
+    "categories": 7,
+    "menu_items": 11,
+    "orders": 44,
+    "checks": 43,
+    "settlement_records": 41,
+    "registers": 2,
+    "financial_shifts": 7,
+    "pos_terminals": 0,
+    "pos_permission_grants": 0,
+    "pos_sale_idempotency": 0
+  },
+  "subscription_780001": [
+    {
+      "id": 780001,
+      "status": "active",
+      "billingCycle": "yearly",
+      "planId": "d836bd10-9d9f-4408-a076-f921354d785a",
+      "currentPeriodEnd": "2027-06-21T10:47:36.000Z"
+    }
+  ]
+}

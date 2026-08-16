@@ -37,7 +37,8 @@ describe("CRMP drawer movement architecture guards", () => {
       /export const posCashMovements|export const posDrawerMovements|export const posCashLedger/
     );
     expect(journal).toContain("0093_pos_sale_idempotency");
-    expect(journal).not.toContain("0094_");
+    expect(journal).toContain("0094_commercial_limit_occupancy_locks");
+    expect(journal).not.toContain("0094_pos_");
   });
 
   it("lets POS adapt drawer movement without owning persistence or domain writes", () => {

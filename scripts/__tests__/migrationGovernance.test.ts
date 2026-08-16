@@ -15,7 +15,7 @@ import {
 const repoRoot = join(__dirname, "../..");
 
 describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
-  it("journal contains canonical migrations 0000–0093 contiguously", () => {
+  it("journal contains canonical migrations 0000–0094 contiguously", () => {
     const journal = loadJournal();
     expect(journal.entries).toHaveLength(CANONICAL_JOURNAL_ENTRY_COUNT);
     expect(journal.entries[0]?.tag).toBe("0000_shiny_blizzard");
@@ -53,13 +53,16 @@ describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
     expect(journal.entries[90]?.tag).toBe("0090_commercial_subscription_concessions");
     expect(journal.entries[91]?.tag).toBe("0091_pos_terminals");
     expect(journal.entries[92]?.tag).toBe("0092_pos_permission_grants");
-    expect(journal.entries[93]?.tag).toBe(CANONICAL_MIGRATION_TAIL_TAG);
+    expect(journal.entries[93]?.tag).toBe("0093_pos_sale_idempotency");
+    expect(journal.entries[94]?.tag).toBe(CANONICAL_MIGRATION_TAIL_TAG);
     expect(validateJournalOrdering()).toEqual([]);
   });
 
   it("exports certified migration tail constant", () => {
-    expect(CANONICAL_MIGRATION_TAIL_TAG).toBe("0093_pos_sale_idempotency");
-    expect(CANONICAL_JOURNAL_ENTRY_COUNT).toBe(94);
+    expect(CANONICAL_MIGRATION_TAIL_TAG).toBe(
+      "0094_commercial_limit_occupancy_locks"
+    );
+    expect(CANONICAL_JOURNAL_ENTRY_COUNT).toBe(95);
     const tags = loadJournal().entries.map((e) => e.tag);
     expect(tags[tags.length - 1]).toBe(CANONICAL_MIGRATION_TAIL_TAG);
   });
@@ -160,6 +163,24 @@ describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
     expect(sql).not.toMatch(/CREATE TABLE `crmp_registers`/);
     expect(sql).not.toMatch(/ALTER TABLE `orders`/);
     expect(sql).not.toMatch(/ALTER TABLE `operational_checks`/);
+  });
+
+  it("0094 is additive occupancy lock table and is not a counter or limit", () => {
+    const sql = readFileSync(
+      join(repoRoot, "drizzle/0094_commercial_limit_occupancy_locks.sql"),
+      "utf8"
+    );
+    expect(sql).toContain("CREATE TABLE `commercial_limit_occupancy_locks`");
+    expect(sql).toContain("commercial_limit_occupancy_locks_pk");
+    expect(sql).toContain("PRIMARY KEY(`scopeKind`,`scopeId`,`limitKey`)");
+    expect(sql).not.toMatch(/INSERT\s+INTO/i);
+    expect(sql).not.toMatch(/UPDATE\s+/i);
+    expect(sql).not.toMatch(/DELETE\s+/i);
+    expect(sql).not.toMatch(/DROP\s+/i);
+    expect(sql).not.toMatch(/ALTER TABLE/i);
+    expect(hashMigrationSql("0094_commercial_limit_occupancy_locks")).toBe(
+      "134a49bf9ce3e329e019bbd5f85b485aab48f46d0480140257915751caa85d47"
+    );
   });
 
   it("0093 is additive POS sale idempotency map and is not a POS Order table", () => {

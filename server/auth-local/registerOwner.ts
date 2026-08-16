@@ -11,6 +11,11 @@ import { logSuccessfulLogin } from "../_core/authAudit";
 import { authOpsLog } from "../_core/authOpsMetadata";
 import { OPS_EVENT } from "../_core/opsTaxonomy";
 import { sendVerificationEmailForUser } from "./sendVerificationEmail";
+import {
+  assertOnboardingFirstRestaurantPermitted,
+  CommercialLimitExceededError,
+  CommercialOccupancyUnavailableError,
+} from "../subscription-runtime";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 8;
@@ -96,7 +101,7 @@ export function parseRegisterBody(body: unknown): RegisterOwnerInput {
   return { restaurantName, email, password, name, phone };
 }
 
-async function registerOwnerTransactional(
+export async function registerOwnerTransactional(
   input: RegisterOwnerInput
 ): Promise<{ userId: number; openId: string; restaurantId: number }> {
   const existing = await getUserByEmail(input.email);
@@ -114,6 +119,8 @@ async function registerOwnerTransactional(
   if (openIdTaken) {
     throw new RegisterDuplicateEmailError();
   }
+
+  await assertOnboardingFirstRestaurantPermitted();
 
   const passwordHash = await bcrypt.hash(input.password, 12);
   const slug = generateSlug(input.restaurantName);
@@ -157,7 +164,9 @@ async function registerOwnerTransactional(
     if (
       error instanceof RegisterDuplicateEmailError ||
       error instanceof RegisterOnboardingError ||
-      error instanceof RegisterValidationError
+      error instanceof RegisterValidationError ||
+      error instanceof CommercialLimitExceededError ||
+      error instanceof CommercialOccupancyUnavailableError
     ) {
       throw error;
     }

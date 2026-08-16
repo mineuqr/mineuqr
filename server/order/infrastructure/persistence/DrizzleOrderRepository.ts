@@ -1,5 +1,8 @@
 import { and, eq } from "drizzle-orm";
 import { getDb } from "../../../db";
+import {
+  requireRestaurantRowForUpdate,
+} from "../../../db/restaurantRowLock";
 import { orders, orderItems } from "../../../../drizzle/schema";
 import { Order } from "../../domain/aggregate/Order";
 import { ConcurrencyConflictError } from "../../domain/errors/OrderDomainErrors";
@@ -134,6 +137,7 @@ export class DrizzleOrderRepository implements OrderRepository {
     options?: SaveOrderOptions
   ): Promise<SaveOrderResult> {
     const snapshot = order.snapshotForCreate();
+    await requireRestaurantRowForUpdate(tx, snapshot.restaurantId);
     const insertResult = await tx.insert(orders).values({
       restaurantId: snapshot.restaurantId,
       tableId: snapshot.tableId,

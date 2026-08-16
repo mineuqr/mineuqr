@@ -7,9 +7,9 @@ import { nanoid } from "nanoid";
 import {
   getRestaurantsByUser, getRestaurantById, getRestaurantBySlug,
   createRestaurant, updateRestaurant, incrementViewCount,
-  getCategoriesByRestaurant, getCategoryById, createCategory, updateCategory, deleteCategory,
+  getCategoriesByRestaurant, getCategoryById, updateCategory, deleteCategory,
   getMenuItemsByCategory, getMenuItemsByRestaurant, getMenuItemById,
-  createMenuItem, updateMenuItem, deleteMenuItem, getRestaurantStats,
+  updateMenuItem, deleteMenuItem, getRestaurantStats,
   createUserSubscription, getCanonicalUserSubscription,
   getOffersByRestaurant, getActiveOffersByRestaurant, getOfferById, createOffer, updateOffer, deleteOffer,
   getInvoicesByUser, getInvoiceById, getUnpaidInvoices,
@@ -36,9 +36,9 @@ import {
 import { assertRestaurantAccess } from "./restaurantAccess";
 import { requireRestaurantPlanFeature } from "./subscription-runtime";
 import {
-  assertCategoryCreateAllowed,
-  assertMenuItemCreateAllowed,
-  assertRestaurantCreateAllowed,
+  createCategoryWithCommercialLimit,
+  createMenuItemWithCommercialLimit,
+  createRestaurantWithCommercialLimit,
 } from "./subscriptionPlanLimits";
 import { assertAdminAccess, assertNotSelfAdminTarget } from "./_core/assertAdminAccess";
 import {
@@ -334,12 +334,11 @@ const restaurantRouter = router({
               adminUserId: ctx.user.id,
             })
           : ctx.user.id;
-      await assertRestaurantCreateAllowed(ownerUserId);
       const ownerUser =
         ownerUserId === ctx.user.id ? ctx.user : await getUserById(ownerUserId);
       const slug = generateSlug(input.nameAr);
       const { ownerUserId: _ownerUserId, ...restaurantInput } = input;
-      const result = await createRestaurant({
+      const result = await createRestaurantWithCommercialLimit({
         ...restaurantInput,
         userId: ownerUserId,
         slug,
@@ -586,10 +585,7 @@ const categoryRouter = router({
     .mutation(async ({ input, ctx }) => {
       await assertRestaurantAccess(ctx, input.restaurantId, "category.create");
       await requireRestaurantPlanFeature(input.restaurantId, "menuManagement");
-      if (ctx.user.role !== "admin") {
-        await assertCategoryCreateAllowed(ctx.user.id, input.restaurantId);
-      }
-      return createCategory(input);
+      return createCategoryWithCommercialLimit(input);
     }),
 
   update: verifiedProcedure
@@ -668,11 +664,7 @@ const menuItemRouter = router({
         throw new TRPCError({ code: "FORBIDDEN", message: "غير مصرح بالوصول" });
       }
 
-      if (ctx.user.role !== "admin") {
-        await assertMenuItemCreateAllowed(ctx.user.id, input.restaurantId);
-      }
-
-      return createMenuItem(input);
+      return createMenuItemWithCommercialLimit(input);
     }),
 
   update: verifiedProcedure

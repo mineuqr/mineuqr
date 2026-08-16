@@ -12,6 +12,7 @@ import {
 import { posTerminals } from "../../../drizzle/schema";
 import { getDb } from "../../db";
 import type { PosTerminalStore } from "./PosTerminalStore";
+import type { CommercialOccupancyTx } from "../../subscription-runtime/commercialLimitOccupancy";
 import {
   POS_DATABASE_UNAVAILABLE,
   type LoadPosDb,
@@ -46,14 +47,18 @@ function mapTerminal(row: typeof posTerminals.$inferSelect): PosTerminal {
 export class DrizzlePosTerminalStore implements PosTerminalStore {
   constructor(private readonly loadDb: LoadPosDb = getDb) {}
 
-  private async requireDb() {
+  private async requireDb(tx?: CommercialOccupancyTx | null) {
+    if (tx) return tx;
     const db = await this.loadDb();
     if (!db) throw new Error(POS_DATABASE_UNAVAILABLE);
     return db;
   }
 
-  async listByRestaurant(restaurantId: number): Promise<PosTerminal[]> {
-    const db = await this.requireDb();
+  async listByRestaurant(
+    restaurantId: number,
+    tx?: CommercialOccupancyTx | null
+  ): Promise<PosTerminal[]> {
+    const db = await this.requireDb(tx);
     const rows = await db
       .select()
       .from(posTerminals)
@@ -62,8 +67,11 @@ export class DrizzlePosTerminalStore implements PosTerminalStore {
     return rows.map(mapTerminal);
   }
 
-  async getById(id: string): Promise<PosTerminal | null> {
-    const db = await this.requireDb();
+  async getById(
+    id: string,
+    tx?: CommercialOccupancyTx | null
+  ): Promise<PosTerminal | null> {
+    const db = await this.requireDb(tx);
     const [row] = await db
       .select()
       .from(posTerminals)
@@ -74,9 +82,10 @@ export class DrizzlePosTerminalStore implements PosTerminalStore {
 
   async getByRestaurantAndCode(
     restaurantId: number,
-    code: string
+    code: string,
+    tx?: CommercialOccupancyTx | null
   ): Promise<PosTerminal | null> {
-    const db = await this.requireDb();
+    const db = await this.requireDb(tx);
     const [row] = await db
       .select()
       .from(posTerminals)
@@ -90,8 +99,11 @@ export class DrizzlePosTerminalStore implements PosTerminalStore {
     return row ? mapTerminal(row) : null;
   }
 
-  async insert(terminal: PosTerminal): Promise<void> {
-    const db = await this.requireDb();
+  async insert(
+    terminal: PosTerminal,
+    tx?: CommercialOccupancyTx | null
+  ): Promise<void> {
+    const db = await this.requireDb(tx);
     try {
       await db.insert(posTerminals).values({
         id: terminal.id,
@@ -115,9 +127,10 @@ export class DrizzlePosTerminalStore implements PosTerminalStore {
   async updateLifecycle(
     id: string,
     lifecycle: PosTerminalLifecycle,
-    extras?: { replacedByTerminalId?: string | null; version?: number }
+    extras?: { replacedByTerminalId?: string | null; version?: number },
+    tx?: CommercialOccupancyTx | null
   ): Promise<PosTerminal | null> {
-    const db = await this.requireDb();
+    const db = await this.requireDb(tx);
     const patch: {
       lifecycle: PosTerminalLifecycle;
       updatedAt: string;
@@ -140,6 +153,6 @@ export class DrizzlePosTerminalStore implements PosTerminalStore {
       .set(patch)
       .where(eq(posTerminals.id, id));
 
-    return this.getById(id);
+    return this.getById(id, tx);
   }
 }

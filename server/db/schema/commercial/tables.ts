@@ -11,6 +11,7 @@ import {
   json,
   mysqlEnum,
   mysqlTable,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -190,6 +191,26 @@ export const commercialPromotions = mysqlTable(
     updatedAt: timestamp({ mode: "string" }).defaultNow().onUpdateNow().notNull(),
   },
   (t) => [uniqueIndex("commercial_promotions_code_uq").on(t.code)]
+);
+
+/**
+ * COMMERCIAL-LIMIT-OCCUPANCY-IMPLEMENTATION-1
+ * Tenant-scoped serialization token. Not occupancy, not a cap, not a resource.
+ */
+export const commercialLimitOccupancyLocks = mysqlTable(
+  "commercial_limit_occupancy_locks",
+  {
+    scopeKind: varchar({ length: 16 }).notNull(),
+    scopeId: int().notNull(),
+    limitKey: varchar({ length: 128 }).notNull(),
+    createdAt: timestamp({ mode: "string" }).defaultNow().notNull(),
+  },
+  (t) => [
+    primaryKey({
+      columns: [t.scopeKind, t.scopeId, t.limitKey],
+      name: "commercial_limit_occupancy_locks_pk",
+    }),
+  ]
 );
 
 export type InsertCommercialPlan = typeof commercialPlans.$inferInsert;

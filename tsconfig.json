@@ -1,6 +1,16 @@
 {
   "include": ["client/src/**/*", "shared/**/*", "server/**/*", "src/**/*", "drizzle/**/*", "api/**/*"],
-  "exclude": ["node_modules", "build", "dist", "**/*.test.ts"],
+  "exclude": [
+    "node_modules",
+    "build",
+    "dist",
+    "**/*.test.ts",
+    "server/subscription-runtime/__tests__/occupancyTestTidb.ts",
+    "server/subscription-runtime/__tests__/occupancyTidbWorker.ts",
+    "server/subscription-runtime/__tests__/occupancyG08Tidb.ts",
+    "server/subscription-runtime/__tests__/occupancyG08Worker.ts",
+    "server/subscription-runtime/__tests__/occupancyTestMysql.ts"
+  ],
   "compilerOptions": {
     "incremental": true,
     "tsBuildInfoFile": "./node_modules/typescript/tsbuildinfo",

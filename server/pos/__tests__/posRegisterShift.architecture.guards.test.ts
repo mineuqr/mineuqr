@@ -35,7 +35,8 @@ describe("POS Register/Shift wiring architecture guards", () => {
       /export const posRegisters|export const posShifts|export const posCashboxes|export const posCashDrawers/
     );
     expect(journal).toContain("0093_pos_sale_idempotency");
-    expect(journal).not.toContain("0094_");
+    expect(journal).toContain("0094_commercial_limit_occupancy_locks");
+    expect(journal).not.toContain("0094_pos_");
   });
 
   it("keeps POS Terminal distinct from Operational Device and CRMP Register", () => {

@@ -70,7 +70,8 @@ describe("COMMERCIAL-LIVE-PLANS-LIMITS-REPAIR-1", () => {
     expect(editor).not.toMatch(/Basic\s*=\s*1/);
     expect(router).toContain("limits:");
     expect(persist).toContain("commercialLimitValues");
-    expect(create).toContain("await assertRestaurantCreateAllowed(ownerUserId)");
+    expect(create).toContain("createRestaurantWithCommercialLimit");
+    expect(create).not.toContain("await assertRestaurantCreateAllowed(ownerUserId)");
     expect(create).not.toContain(
       "if (ctx.user.role !== \"admin\") {\n        await assertRestaurantCreateAllowed"
     );

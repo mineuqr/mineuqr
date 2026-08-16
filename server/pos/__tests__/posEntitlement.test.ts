@@ -10,6 +10,7 @@ import {
   PosEntitlementService,
 } from "../services/PosEntitlementService";
 import { PosTerminalService } from "../services/PosTerminalService";
+import { CommercialLimitExceededError } from "../../subscription-runtime/commercialLimitOccupancy";
 import { readLimitValue } from "../../subscription-runtime/entitlementResolver";
 
 vi.mock("../../db", () => ({
@@ -78,7 +79,7 @@ describe("POS entitlement and provisioning", () => {
     expect(first.code).toBe("POS-001");
     await expect(
       terminals.register({ restaurantId: 1, actorId: 10 })
-    ).rejects.toBeInstanceOf(PosEntitlementDeniedError);
+    ).rejects.toBeInstanceOf(CommercialLimitExceededError);
     const resolved = await new PosEntitlementService(store).resolve(1);
     expect(resolved.included).toBe(1);
     expect(resolved.provisioned).toBe(1);
@@ -91,7 +92,7 @@ describe("POS entitlement and provisioning", () => {
     const terminals = new PosTerminalService(store, new PosEntitlementService(store));
     await expect(
       terminals.register({ restaurantId: 1, actorId: 10, code: "POS-HACK" })
-    ).rejects.toBeInstanceOf(PosEntitlementDeniedError);
+    ).rejects.toBeInstanceOf(CommercialLimitExceededError);
     expect(checkLimit).toHaveBeenCalledWith(
       expect.objectContaining({
         limitKey: POS_TERMINALS_LIMIT_KEY,
