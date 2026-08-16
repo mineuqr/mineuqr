@@ -21,6 +21,7 @@ describe("POS domain foundation", () => {
     ]);
     expect(POS_PERMISSIONS).toContain("POS_ACCESS");
     expect(POS_PERMISSIONS).toContain("SALE_CREATE");
+    expect(POS_PERMISSIONS).toContain("CHECK_INTAKE");
     expect(isPosPermission("POS_ACCESS")).toBe(true);
     expect(isPosPermission("owner")).toBe(false);
   });

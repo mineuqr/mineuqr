@@ -1,11 +1,14 @@
 import { identityPlaceOrderService } from "../order/placeOrderComposition";
+import { InMemoryPosCheckIntakeIdempotencyStore } from "./infrastructure/InMemoryPosCheckIntakeIdempotencyStore";
 import { InMemoryPosPermissionGrantStore } from "./infrastructure/InMemoryPosPermissionGrantStore";
 import { InMemoryPosSaleIdempotencyStore } from "./infrastructure/InMemoryPosSaleIdempotencyStore";
 import { InMemoryPosTerminalStore } from "./infrastructure/InMemoryPosTerminalStore";
+import type { PosCheckIntakeIdempotencyStore } from "./infrastructure/PosCheckIntakeIdempotencyStore";
 import type { PosPermissionGrantStore } from "./infrastructure/PosPermissionGrantStore";
 import type { PosSaleIdempotencyStore } from "./infrastructure/PosSaleIdempotencyStore";
 import type { PosTerminalStore } from "./infrastructure/PosTerminalStore";
 import { PosAccessService } from "./services/PosAccessService";
+import { PosCheckIntakeService } from "./services/PosCheckIntakeService";
 import { PosEntitlementService } from "./services/PosEntitlementService";
 import { PosSaleService } from "./services/PosSaleService";
 import { PosTerminalService } from "./services/PosTerminalService";
@@ -13,9 +16,11 @@ import { PosTerminalService } from "./services/PosTerminalService";
 const defaultStore = new InMemoryPosTerminalStore();
 const defaultGrants = new InMemoryPosPermissionGrantStore();
 const defaultSaleIdempotency = new InMemoryPosSaleIdempotencyStore();
+const defaultCheckIntakeIdempotency = new InMemoryPosCheckIntakeIdempotencyStore();
 let storeOverride: PosTerminalStore | null = null;
 let grantOverride: PosPermissionGrantStore | null = null;
 let saleIdempotencyOverride: PosSaleIdempotencyStore | null = null;
+let checkIntakeIdempotencyOverride: PosCheckIntakeIdempotencyStore | null = null;
 
 export function setPosStoreForTests(store: PosTerminalStore | null): void {
   storeOverride = store;
@@ -69,5 +74,23 @@ export function getPosSaleService(): PosSaleService {
     getPosAccessService(),
     identityPlaceOrderService,
     getPosSaleIdempotencyStore()
+  );
+}
+
+export function setPosCheckIntakeIdempotencyStoreForTests(
+  store: PosCheckIntakeIdempotencyStore | null
+): void {
+  checkIntakeIdempotencyOverride = store;
+}
+
+function getPosCheckIntakeIdempotencyStore(): PosCheckIntakeIdempotencyStore {
+  return checkIntakeIdempotencyOverride ?? defaultCheckIntakeIdempotency;
+}
+
+export function getPosCheckIntakeService(): PosCheckIntakeService {
+  return new PosCheckIntakeService(
+    getPosGrantStore(),
+    getPosAccessService(),
+    getPosCheckIntakeIdempotencyStore()
   );
 }

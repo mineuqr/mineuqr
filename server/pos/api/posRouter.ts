@@ -2,7 +2,7 @@
  * POS-DOMAIN-ARCHITECTURE-IMPLEMENTATION-1
  * POS-TERMINAL-ACCESS-IMPLEMENTATION-1
  * POS-SALE-ORDER-IMPLEMENTATION-1
- * Thin POS router. Sale orchestrates through PosSaleService.
+ * Thin POS router. Sale and Check Intake orchestrate through POS services.
  * No payment, settlement, refund, Register, or Shift APIs.
  */
 
@@ -16,9 +16,11 @@ import {
   getPosAccessService,
   getPosEntitlementService,
   getPosGrantStore,
+  getPosCheckIntakeService,
   getPosSaleService,
   getPosTerminalService,
 } from "../posComposition";
+import { PosCheckIntakeError } from "../services/PosCheckIntakeService";
 import { PosEntitlementDeniedError } from "../services/PosEntitlementService";
 import { PosSaleError } from "../services/PosSaleService";
 import { PosTerminalError } from "../services/PosTerminalService";
@@ -50,6 +52,11 @@ const saleCreateInput = terminalInput.extend({
   idempotencyKey: z.string().min(8).max(128),
 });
 
+const checkIntakeInput = terminalInput.extend({
+  orderId: z.number().int().positive(),
+  idempotencyKey: z.string().min(8).max(128),
+});
+
 const SALE_FORBIDDEN_CODES = new Set([
   "pos_permission_denied",
   "terminal_not_found",
@@ -57,6 +64,10 @@ const SALE_FORBIDDEN_CODES = new Set([
   "terminal_inactive",
   "entitlement_unavailable",
   "invalid_session",
+  "order_wrong_restaurant",
+  "order_not_found",
+  "order_not_eligible",
+  "check_not_open",
 ]);
 
 function mapPosError(err: unknown): never {
@@ -73,7 +84,7 @@ function mapPosError(err: unknown): never {
       message: err.message,
     });
   }
-  if (err instanceof PosSaleError) {
+  if (err instanceof PosSaleError || err instanceof PosCheckIntakeError) {
     if (err.code === "idempotency_conflict") {
       throw new TRPCError({ code: "CONFLICT", message: err.message });
     }
@@ -248,6 +259,23 @@ export const posRouter = router({
             items: input.items,
             notes: input.notes,
             sessionId: input.sessionId,
+            idempotencyKey: input.idempotencyKey,
+          },
+        });
+      } catch (err) {
+        mapPosError(err);
+      }
+    }),
+  }),
+  check: router({
+    intake: verifiedProcedure.input(checkIntakeInput).mutation(async ({ input, ctx }) => {
+      try {
+        return await getPosCheckIntakeService().intake({
+          user: ctx.user,
+          command: {
+            restaurantId: input.restaurantId,
+            terminalId: input.terminalId,
+            orderId: input.orderId,
             idempotencyKey: input.idempotencyKey,
           },
         });
