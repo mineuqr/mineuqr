@@ -46,9 +46,20 @@ describe("resolveBusinessIdentityScope", () => {
     expect(resolveBusinessIdentityScope({})).toBe("TABLE");
   });
 
+  it("honors explicit POS scope so cashier_pos does not share the Kiosk sequence", () => {
+    expect(
+      resolveBusinessIdentityScope({
+        identityScope: "POS",
+        fulfilmentAnchorType: "station",
+        serviceMode: "counter",
+      })
+    ).toBe("POS");
+  });
+
   it("maps scope codes for display formatting", () => {
     expect(businessIdentityScopeCode("TABLE")).toBe("T");
     expect(businessIdentityScopeCode("KIOSK")).toBe("K");
     expect(businessIdentityScopeCode("WAITER")).toBe("WT");
+    expect(businessIdentityScopeCode("POS")).toBe("P");
   });
 });

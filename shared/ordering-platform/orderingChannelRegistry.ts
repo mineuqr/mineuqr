@@ -14,6 +14,7 @@ export const ORDERING_CHANNEL_WAITER_TABLET = "waiter_tablet" as const;
 export const ORDERING_CHANNEL_MARKETPLACE = "marketplace" as const;
 export const ORDERING_CHANNEL_DELIVERY_PARTNER = "delivery_partner" as const;
 export const ORDERING_CHANNEL_CALL_CENTER = "call_center" as const;
+export const ORDERING_CHANNEL_CASHIER_POS = "cashier_pos" as const;
 
 export type OrderingChannelId =
   | typeof ORDERING_CHANNEL_TABLE_SESSION
@@ -23,7 +24,8 @@ export type OrderingChannelId =
   | typeof ORDERING_CHANNEL_WAITER_TABLET
   | typeof ORDERING_CHANNEL_MARKETPLACE
   | typeof ORDERING_CHANNEL_DELIVERY_PARTNER
-  | typeof ORDERING_CHANNEL_CALL_CENTER;
+  | typeof ORDERING_CHANNEL_CALL_CENTER
+  | typeof ORDERING_CHANNEL_CASHIER_POS;
 
 export type OrderingChannelLifecycle = "active" | "registered";
 
@@ -118,6 +120,14 @@ export const ORDERING_CHANNEL_REGISTRY = [
     reportingSalesChannelId: "call_center",
     reportingVisible: false,
     orderingBehavior: "voice",
+  },
+  {
+    id: ORDERING_CHANNEL_CASHIER_POS,
+    lifecycle: "registered",
+    displayName: { en: "Cashier POS", ar: "نقطة البيع" },
+    reportingSalesChannelId: "cashier_pos",
+    reportingVisible: false,
+    orderingBehavior: "staff_assisted",
   },
 ] as const satisfies readonly OrderingChannelRegistryEntry[];
 

@@ -35,6 +35,7 @@ describe("ORDERING-CHANNEL-GOVERNANCE-1 registry", () => {
     expect(ids).toContain("delivery_partner");
     expect(ids).toContain("call_center");
     expect(ids).toContain("mobile");
+    expect(ids).toContain("cashier_pos");
     expect(ORDERING_CHANNEL_IDS).toEqual(ids);
   });
 

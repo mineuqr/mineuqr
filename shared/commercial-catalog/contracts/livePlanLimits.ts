@@ -6,6 +6,12 @@
 export const LIVE_PLAN_LIMIT_KEYS = ["restaurants", "categories", "items"] as const;
 export type LivePlanLimitKey = (typeof LIVE_PLAN_LIMIT_KEYS)[number];
 
+/** POS-DOMAIN-ARCHITECTURE-IMPLEMENTATION-1 — quantity limit, not a capability. */
+export const POS_TERMINALS_LIMIT_KEY = "posTerminals" as const;
+export type PosTerminalsLimitKey = typeof POS_TERMINALS_LIMIT_KEY;
+
+export type RecognizedLivePlanLimitKey = LivePlanLimitKey | PosTerminalsLimitKey;
+
 export type LivePlanLimitInput = {
   limitKey: string;
   value: number | null;
@@ -21,6 +27,12 @@ export function isLivePlanLimitKey(key: string): key is LivePlanLimitKey {
   return (LIVE_PLAN_LIMIT_KEYS as readonly string[]).includes(key);
 }
 
+export function isRecognizedLivePlanLimitKey(
+  key: string
+): key is RecognizedLivePlanLimitKey {
+  return isLivePlanLimitKey(key) || key === POS_TERMINALS_LIMIT_KEY;
+}
+
 export function validateLivePlanLimitValues(
   values: LivePlanLimitInput[]
 ): { ok: boolean; issues: LivePlanLimitIssue[]; normalized: LivePlanLimitInput[] } {
@@ -28,7 +40,7 @@ export function validateLivePlanLimitValues(
   const byKey = new Map<string, number | null>();
 
   for (const row of values) {
-    if (!isLivePlanLimitKey(row.limitKey)) {
+    if (!isRecognizedLivePlanLimitKey(row.limitKey)) {
       issues.push({
         code: "unknown_limit_key",
         message: `Unknown Live Plan limit key: ${row.limitKey}`,
@@ -69,9 +81,16 @@ export function validateLivePlanLimitValues(
   return {
     ok: issues.length === 0,
     issues,
-    normalized: LIVE_PLAN_LIMIT_KEYS.filter((k) => byKey.has(k)).map((limitKey) => ({
-      limitKey,
-      value: byKey.get(limitKey) ?? null,
-    })),
+    normalized: (
+      [
+        ...LIVE_PLAN_LIMIT_KEYS,
+        ...(byKey.has(POS_TERMINALS_LIMIT_KEY) ? [POS_TERMINALS_LIMIT_KEY] : []),
+      ] as const
+    )
+      .filter((k) => byKey.has(k))
+      .map((limitKey) => ({
+        limitKey,
+        value: byKey.get(limitKey) ?? null,
+      })),
   };
 }

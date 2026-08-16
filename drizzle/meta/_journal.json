@@ -638,6 +638,27 @@
       "when": 1784760000000,
       "tag": "0090_commercial_subscription_concessions",
       "breakpoints": true
+    },
+    {
+      "idx": 91,
+      "version": "5",
+      "when": 1784770000000,
+      "tag": "0091_pos_terminals",
+      "breakpoints": true
+    },
+    {
+      "idx": 92,
+      "version": "5",
+      "when": 1784780000000,
+      "tag": "0092_pos_permission_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 93,
+      "version": "5",
+      "when": 1784790000000,
+      "tag": "0093_pos_sale_idempotency",
+      "breakpoints": true
     }
   ]
 }

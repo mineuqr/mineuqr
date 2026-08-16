@@ -42,6 +42,20 @@ describe("OrderDisplayIdentityResolver", () => {
     expect(identity.displayReference).toBe("WT #001");
   });
 
+  it("resolves POS-scoped display identity from explicit identityScope", () => {
+    const identity = resolveOrderDisplayIdentity({
+      orderNumber: "ORD-0042",
+      businessDay: "2026-07-10",
+      dailyDisplayNumber: 1,
+      identityScope: "POS",
+      fulfilmentAnchorType: "station",
+      serviceMode: "counter",
+    });
+
+    expect(identity.identityScope).toBe("POS");
+    expect(identity.displayReference).toBe("P #001");
+  });
+
   it("falls back to legacy orderNumber for historic orders", () => {
     const identity = resolveOrderDisplayIdentity({
       orderNumber: "ORD-0042",

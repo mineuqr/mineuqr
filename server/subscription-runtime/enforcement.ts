@@ -123,7 +123,7 @@ export async function checkCapability(input: {
 
 export async function checkLimit(input: {
   ownerId: number;
-  limitKey: LimitEntitlementKey | "restaurants" | "categories" | "items";
+  limitKey: LimitEntitlementKey | "restaurants" | "categories" | "items" | "posTerminals";
   /** Current usage + proposed delta (e.g. existing + 1). */
   proposedTotal: number;
   now?: Date;

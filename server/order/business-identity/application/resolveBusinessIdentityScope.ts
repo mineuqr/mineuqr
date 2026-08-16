@@ -4,7 +4,7 @@
  * Single identity system; scopes partition the daily sequence only.
  */
 
-export const BUSINESS_IDENTITY_SCOPES = ["TABLE", "KIOSK", "WAITER"] as const;
+export const BUSINESS_IDENTITY_SCOPES = ["TABLE", "KIOSK", "WAITER", "POS"] as const;
 export type BusinessIdentityScope = (typeof BUSINESS_IDENTITY_SCOPES)[number];
 
 export function resolveBusinessIdentityScope(input: {
@@ -13,7 +13,12 @@ export function resolveBusinessIdentityScope(input: {
   identityScope?: string | null;
 }): BusinessIdentityScope {
   const explicit = input.identityScope?.trim().toUpperCase();
-  if (explicit === "TABLE" || explicit === "KIOSK" || explicit === "WAITER") {
+  if (
+    explicit === "TABLE" ||
+    explicit === "KIOSK" ||
+    explicit === "WAITER" ||
+    explicit === "POS"
+  ) {
     return explicit;
   }
 
@@ -41,8 +46,9 @@ export function resolveBusinessIdentityScope(input: {
 
 export function businessIdentityScopeCode(
   scope: BusinessIdentityScope
-): "T" | "K" | "WT" {
+): "T" | "K" | "WT" | "P" {
   if (scope === "KIOSK") return "K";
   if (scope === "WAITER") return "WT";
+  if (scope === "POS") return "P";
   return "T";
 }

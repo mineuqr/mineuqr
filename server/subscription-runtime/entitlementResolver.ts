@@ -52,6 +52,9 @@ function limitsFromRows(
     restaurants: map.has("restaurants") ? (map.get("restaurants") ?? null) : 0,
     categories: map.has("categories") ? (map.get("categories") ?? null) : 0,
     items: map.has("items") ? (map.get("items") ?? null) : 0,
+    ...(map.has("posTerminals")
+      ? { posTerminals: map.get("posTerminals") ?? null }
+      : {}),
   };
 }
 
@@ -288,5 +291,14 @@ export function readLimitValue(
   if (limitKey === "restaurants") return entitlements.limits.restaurants;
   if (limitKey === "categories") return entitlements.limits.categories;
   if (limitKey === "items") return entitlements.limits.items;
+  if (limitKey === "posTerminals") {
+    if (entitlements.limits.posTerminals !== undefined) {
+      return entitlements.limits.posTerminals;
+    }
+    if (entitlements.plan === "ADMIN" || entitlements.commercial.isAdmin) {
+      return null;
+    }
+    return 0;
+  }
   return undefined;
 }

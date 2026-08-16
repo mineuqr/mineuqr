@@ -14,6 +14,8 @@ export type CommercialLimits = {
   restaurants: CommercialLimitValue;
   categories: CommercialLimitValue;
   items: CommercialLimitValue;
+  /** Undefined = not configured. POS resolver fail-closes to 0. null = unlimited. */
+  posTerminals?: CommercialLimitValue;
 };
 
 export type CommercialFeatures = Record<FeatureKey, boolean>;

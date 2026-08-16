@@ -57,6 +57,7 @@ export const COMMERCIAL_LIMIT_FILTER_KEYS = [
   "staffAccounts",
   "branches",
   "devices",
+  "posTerminals",
 ] as const;
 
 export type CommercialLimitFilterKey =

@@ -15,7 +15,7 @@ import {
 const repoRoot = join(__dirname, "../..");
 
 describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
-  it("journal contains canonical migrations 0000–0090 contiguously", () => {
+  it("journal contains canonical migrations 0000–0093 contiguously", () => {
     const journal = loadJournal();
     expect(journal.entries).toHaveLength(CANONICAL_JOURNAL_ENTRY_COUNT);
     expect(journal.entries[0]?.tag).toBe("0000_shiny_blizzard");
@@ -50,13 +50,16 @@ describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
     expect(journal.entries[87]?.tag).toBe("0087_platform_owner_access_mode");
     expect(journal.entries[88]?.tag).toBe("0088_user_subscriptions_live_plan_identity");
     expect(journal.entries[89]?.tag).toBe("0089_commercial_charged_terms_snapshots");
-    expect(journal.entries[90]?.tag).toBe(CANONICAL_MIGRATION_TAIL_TAG);
+    expect(journal.entries[90]?.tag).toBe("0090_commercial_subscription_concessions");
+    expect(journal.entries[91]?.tag).toBe("0091_pos_terminals");
+    expect(journal.entries[92]?.tag).toBe("0092_pos_permission_grants");
+    expect(journal.entries[93]?.tag).toBe(CANONICAL_MIGRATION_TAIL_TAG);
     expect(validateJournalOrdering()).toEqual([]);
   });
 
   it("exports certified migration tail constant", () => {
-    expect(CANONICAL_MIGRATION_TAIL_TAG).toBe("0090_commercial_subscription_concessions");
-    expect(CANONICAL_JOURNAL_ENTRY_COUNT).toBe(91);
+    expect(CANONICAL_MIGRATION_TAIL_TAG).toBe("0093_pos_sale_idempotency");
+    expect(CANONICAL_JOURNAL_ENTRY_COUNT).toBe(94);
     const tags = loadJournal().entries.map((e) => e.tag);
     expect(tags[tags.length - 1]).toBe(CANONICAL_MIGRATION_TAIL_TAG);
   });
@@ -142,6 +145,54 @@ describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
     expect(sql).not.toContain("780001");
     expect(sql).not.toContain("subscription_plans");
     expect(sql).not.toContain("chargedAmount");
+  });
+
+  it("0091 is additive POS terminal table and does not touch devices or registers", () => {
+    const sql = readFileSync(join(repoRoot, "drizzle/0091_pos_terminals.sql"), "utf8");
+    expect(sql).toContain("CREATE TABLE `pos_terminals`");
+    expect(sql).toContain("pos_terminals_restaurant_code_unique");
+    expect(sql).toContain("pos_terminals_restaurant_lifecycle");
+    expect(sql).not.toMatch(/INSERT\s+INTO/i);
+    expect(sql).not.toMatch(/UPDATE\s+/i);
+    expect(sql).not.toMatch(/DELETE\s+/i);
+    expect(sql).not.toMatch(/DROP\s+/i);
+    expect(sql).not.toMatch(/CREATE TABLE `operational_devices`/);
+    expect(sql).not.toMatch(/CREATE TABLE `crmp_registers`/);
+    expect(sql).not.toMatch(/ALTER TABLE `orders`/);
+    expect(sql).not.toMatch(/ALTER TABLE `operational_checks`/);
+  });
+
+  it("0093 is additive POS sale idempotency map and is not a POS Order table", () => {
+    const sql = readFileSync(
+      join(repoRoot, "drizzle/0093_pos_sale_idempotency.sql"),
+      "utf8"
+    );
+    expect(sql).toContain("CREATE TABLE `pos_sale_idempotency`");
+    expect(sql).toContain("pos_sale_idempotency_unique");
+    expect(sql).not.toMatch(/CREATE TABLE `pos_sales`/);
+    expect(sql).not.toMatch(/CREATE TABLE `pos_orders`/);
+    expect(sql).not.toMatch(/CREATE TABLE `pos_order_lines`/);
+    expect(sql).not.toMatch(/ALTER TABLE `orders`/);
+    expect(sql).not.toMatch(/INSERT\s+INTO/i);
+    expect(sql).not.toMatch(/UPDATE\s+/i);
+    expect(sql).not.toMatch(/DELETE\s+/i);
+    expect(sql).not.toMatch(/DROP\s+/i);
+  });
+
+  it("0092 is additive POS grant table and is not restaurant RBAC", () => {
+    const sql = readFileSync(
+      join(repoRoot, "drizzle/0092_pos_permission_grants.sql"),
+      "utf8"
+    );
+    expect(sql).toContain("CREATE TABLE `pos_permission_grants`");
+    expect(sql).toContain("pos_permission_grants_unique");
+    expect(sql).not.toMatch(/INSERT\s+INTO/i);
+    expect(sql).not.toMatch(/UPDATE\s+/i);
+    expect(sql).not.toMatch(/DELETE\s+/i);
+    expect(sql).not.toMatch(/DROP\s+/i);
+    expect(sql).not.toMatch(/CREATE TABLE `users`/);
+    expect(sql).not.toMatch(/CREATE TABLE `roles`/);
+    expect(sql).not.toMatch(/ALTER TABLE `pos_terminals`/);
   });
 
   it("0088 validates conversion before dropping integer planId", () => {

@@ -1800,6 +1800,103 @@ export type SelectCrmpRegister = typeof crmpRegisters.$inferSelect;
 export type InsertCrmpFinancialShift = typeof crmpFinancialShifts.$inferInsert;
 export type SelectCrmpFinancialShift = typeof crmpFinancialShifts.$inferSelect;
 
+// ─── POS Terminal (POS-DOMAIN-ARCHITECTURE-IMPLEMENTATION-1) ─
+/** Logical authorized point of sale. Not Operational Device. Not Register. Not Cashier. */
+export const posTerminals = mysqlTable(
+	"pos_terminals",
+	{
+		id: varchar({ length: 36 }).notNull(),
+		restaurantId: int().notNull(),
+		code: varchar({ length: 32 }).notNull(),
+		lifecycle: mysqlEnum(["registered", "active", "deactivated", "replaced"]).notNull(),
+		replacedByTerminalId: varchar({ length: 36 }),
+		/** Optional later association. Never canonical terminal identity. */
+		optionalDeviceId: varchar({ length: 64 }),
+		version: int().default(1).notNull(),
+		createdAt: timestamp({ mode: "string" }).notNull(),
+		updatedAt: timestamp({ mode: "string" }).notNull(),
+	},
+	(table) => [
+		primaryKey({ columns: [table.id], name: "pos_terminals_id" }),
+		uniqueIndex("pos_terminals_restaurant_code_unique").on(
+			table.restaurantId,
+			table.code
+		),
+		index("pos_terminals_restaurant_lifecycle").on(
+			table.restaurantId,
+			table.lifecycle
+		),
+	]
+);
+
+export type InsertPosTerminal = typeof posTerminals.$inferInsert;
+export type SelectPosTerminal = typeof posTerminals.$inferSelect;
+
+/** POS-scoped permission grants. Not restaurant RBAC. Owner/admin ≠ cashier. */
+export const posPermissionGrants = mysqlTable(
+	"pos_permission_grants",
+	{
+		id: varchar({ length: 36 }).notNull(),
+		restaurantId: int().notNull(),
+		userId: int().notNull(),
+		permission: varchar({ length: 32 }).notNull(),
+		version: int().default(1).notNull(),
+		createdAt: timestamp({ mode: "string" }).notNull(),
+		updatedAt: timestamp({ mode: "string" }).notNull(),
+	},
+	(table) => [
+		primaryKey({ columns: [table.id], name: "pos_permission_grants_id" }),
+		uniqueIndex("pos_permission_grants_unique").on(
+			table.restaurantId,
+			table.userId,
+			table.permission
+		),
+		index("pos_permission_grants_restaurant_user").on(
+			table.restaurantId,
+			table.userId
+		),
+	]
+);
+
+export type InsertPosPermissionGrant = typeof posPermissionGrants.$inferInsert;
+export type SelectPosPermissionGrant = typeof posPermissionGrants.$inferSelect;
+
+/**
+ * POS-SALE-ORDER-IMPLEMENTATION-1
+ * Idempotency map for POS Sale → canonical Order. Not a POS Order table.
+ */
+export const posSaleIdempotency = mysqlTable(
+	"pos_sale_idempotency",
+	{
+		id: varchar({ length: 36 }).notNull(),
+		restaurantId: int().notNull(),
+		terminalId: varchar({ length: 36 }).notNull(),
+		userId: int().notNull(),
+		idempotencyKey: varchar({ length: 128 }).notNull(),
+		fingerprint: varchar({ length: 64 }).notNull(),
+		orderId: int().notNull(),
+		orderNumber: varchar({ length: 32 }).notNull(),
+		trackingToken: varchar({ length: 64 }).notNull(),
+		displayReference: varchar({ length: 64 }).notNull(),
+		totalAmount: varchar({ length: 16 }).notNull(),
+		itemCount: int().notNull(),
+		createdAt: timestamp({ mode: "string" }).notNull(),
+	},
+	(table) => [
+		primaryKey({ columns: [table.id], name: "pos_sale_idempotency_id" }),
+		uniqueIndex("pos_sale_idempotency_unique").on(
+			table.restaurantId,
+			table.terminalId,
+			table.userId,
+			table.idempotencyKey
+		),
+		index("pos_sale_idempotency_order").on(table.orderId),
+	]
+);
+
+export type InsertPosSaleIdempotency = typeof posSaleIdempotency.$inferInsert;
+export type SelectPosSaleIdempotency = typeof posSaleIdempotency.$inferSelect;
+
 // ─── Live Commercial Plans (COMMERCIAL-LIVE-PLANS-SIMPLIFICATION-1) ───
 export {
   commercialPlans,

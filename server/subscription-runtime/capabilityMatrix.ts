@@ -22,7 +22,8 @@ export type LimitEntitlementKey =
   | "images"
   | "staffAccounts"
   | "branches"
-  | "devices";
+  | "devices"
+  | "posTerminals";
 
 export type CapabilityKind = "feature" | "limit";
 
@@ -64,6 +65,7 @@ export const CAPABILITY_ENTITLEMENT_MATRIX: readonly CapabilityEntitlement[] = [
   { capabilityId: "cap.limit.staffAccounts", kind: "limit", entitlementKey: "staffAccounts", description: "Staff accounts" },
   { capabilityId: "cap.limit.branches", kind: "limit", entitlementKey: "branches", description: "Branches" },
   { capabilityId: "cap.limit.devices", kind: "limit", entitlementKey: "devices", description: "Devices" },
+  { capabilityId: "cap.limit.posTerminals", kind: "limit", entitlementKey: "posTerminals", description: "POS terminals" },
 ] as const;
 
 const byCapability = new Map(

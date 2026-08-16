@@ -142,6 +142,7 @@ import { settlementRecordReadService } from "./operational-session/check/api/set
 import { mapOrderDisplayIdentityFields } from "./order/read/presentation/mapOrderDisplayIdentity";
 import { printWorkspaceRouter } from "./print-workspace/printWorkspaceRouter";
 import { operationalDeviceRouter } from "./operational-device/operationalDeviceRouter";
+import { posRouter } from "./pos/api/posRouter";
 import { printConnectorRouter } from "./print-connector/printConnectorRouter";
 import { printerManagementRouter } from "./printer-management/printerManagementRouter";
 import { toPublicOrderStatus } from "./orderPublicStatus";
@@ -3047,6 +3048,7 @@ export const appRouter = router({
   crmp: crmpRouter,
   printWorkspace: printWorkspaceRouter,
   operationalDevice: operationalDeviceRouter,
+  pos: posRouter,
   printConnector: printConnectorRouter,
   printerManagement: printerManagementRouter,
 });
