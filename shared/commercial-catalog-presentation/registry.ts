@@ -65,40 +65,40 @@ export const COMMERCIAL_PRESENTATION_REGISTRY: readonly CommercialPresentationCa
     {
       presentationId: "sessionTableManagement",
       class: "commercial",
-      projectionKeys: [],
+      projectionKeys: ["sessionTableManagement"],
       commercialVisible: true,
       comparisonVisible: true,
-      alwaysEnabled: true,
+      alwaysEnabled: false,
       experienceDomain: "sessions",
       discoveryCapabilityIds: ["CAP-06", "CAP-07"],
     },
     {
       presentationId: "menuManagement",
       class: "commercial",
-      projectionKeys: [],
+      projectionKeys: ["menuManagement"],
       commercialVisible: true,
       comparisonVisible: true,
-      alwaysEnabled: true,
+      alwaysEnabled: false,
       experienceDomain: "menu",
       discoveryCapabilityIds: ["CAP-05"],
     },
     {
       presentationId: "menuDesign",
       class: "commercial",
-      projectionKeys: [],
+      projectionKeys: ["menuDesign"],
       commercialVisible: true,
       comparisonVisible: true,
-      alwaysEnabled: true,
+      alwaysEnabled: false,
       experienceDomain: "design",
       discoveryCapabilityIds: ["CAP-05"],
     },
     {
       presentationId: "smartQr",
       class: "commercial",
-      projectionKeys: [],
+      projectionKeys: ["smartQr"],
       commercialVisible: true,
       comparisonVisible: true,
-      alwaysEnabled: true,
+      alwaysEnabled: false,
       experienceDomain: "qr",
       discoveryCapabilityIds: ["CAP-06"],
     },
@@ -381,15 +381,10 @@ export function projectFeatureKeysForCommercialDisplay(
   const set = new Set(featureKeys);
   const out: string[] = [];
 
-  // Always-on commercial presentation (core platform value).
-  for (const id of [
-    "sessionTableManagement",
-    "menuManagement",
-    "menuDesign",
-    "smartQr",
-  ] as const) {
-    out.push(id);
-  }
+  if (set.has("sessionTableManagement")) out.push("sessionTableManagement");
+  if (set.has("menuManagement")) out.push("menuManagement");
+  if (set.has("menuDesign")) out.push("menuDesign");
+  if (set.has("smartQr")) out.push("smartQr");
 
   if (set.has("ordering")) out.push("ordering");
   if (set.has("waiter")) out.push("waiter");

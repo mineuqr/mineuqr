@@ -47,6 +47,7 @@ import { CatalogCountrySelect } from "./CatalogCountrySelect";
 import { catalogManagementUiObservability } from "./catalogManagementObservability";
 import { CapabilityFilterPicker } from "./experience/CapabilityFilterPicker";
 import { normalizePlanFeatures } from "./experience/capabilityExperienceModel";
+import { CATALOG_PROMOTED_PROJECTION_IDS } from "@shared/commercial-projection";
 import type { CatalogManagementData } from "./useCatalogManagementData";
 
 type Props = { data: CatalogManagementData };
@@ -582,7 +583,11 @@ export function FeatureBundlesManagementPanel({ data }: Props) {
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [selected, setSelected] = useState<Record<string, boolean>>({});
+  const [selected, setSelected] = useState<Record<string, boolean>>(() => {
+    const next: Record<string, boolean> = {};
+    for (const id of CATALOG_PROMOTED_PROJECTION_IDS) next[id] = true;
+    return next;
+  });
 
   const createMut = trpc.commercialCatalog.createFeatureBundle.useMutation(
     useMutationToast(data, cc("toasts.featureBundleCreated"), cc("toasts.operationFailed"))

@@ -11,7 +11,6 @@ import {
   getMenuItemsByCategory, getMenuItemsByRestaurant, getMenuItemById,
   createMenuItem, updateMenuItem, deleteMenuItem, getRestaurantStats,
   createUserSubscription, getCanonicalUserSubscription,
-  isSubscriptionActive,
   getOffersByRestaurant, getActiveOffersByRestaurant, getOfferById, createOffer, updateOffer, deleteOffer,
   getInvoicesByUser, getInvoiceById, getUnpaidInvoices,
   getNotificationsByUser, getUnreadNotifications, markNotificationAsRead, createNotification,
@@ -35,6 +34,7 @@ import {
   normalizeAccountEmailOrNull,
 } from "./_core/normalizeAccountEmail";
 import { assertRestaurantAccess } from "./restaurantAccess";
+import { requireRestaurantPlanFeature } from "./subscription-runtime";
 import {
   assertCategoryCreateAllowed,
   assertMenuItemCreateAllowed,
@@ -463,16 +463,7 @@ const restaurantRouter = router({
     .mutation(async ({ input, ctx }) => {
       // Keep FORBIDDEN behavior; route deny decisions through centralized tenant guard + audit log.
       await assertRestaurantAccess(ctx, input.id, "restaurant.updateTemplate");
-      // Check subscription for premium templates
-      const premiumTemplates = ["elegant", "modern", "dark", "warm", "ocean", "royal", "neon"];
-      if (premiumTemplates.includes(input.menuTemplate)) {
-        // Allow admin/owner to use premium templates without subscription
-        if (ctx.user.role !== "admin") {
-          if (!(await isSubscriptionActive(ctx.user.id))) {
-            throw new TRPCError({ code: "FORBIDDEN", message: "هذا القالب متاح فقط للمشتركين في الخطة المدفوعة" });
-          }
-        }
-      }
+      await requireRestaurantPlanFeature(input.id, "menuDesign");
       // Clear custom colors when changing template to use new template's defaults
       await updateRestaurant(input.id, { menuTemplate: input.menuTemplate, customColors: null });
       return { success: true };
@@ -493,12 +484,7 @@ const restaurantRouter = router({
     .mutation(async ({ input, ctx }) => {
       // Keep FORBIDDEN behavior; route deny decisions through centralized tenant guard + audit log.
       await assertRestaurantAccess(ctx, input.id, "restaurant.updateCustomColors");
-      // Allow admin/owner to customize colors without subscription
-      if (ctx.user.role !== "admin") {
-        if (!(await isSubscriptionActive(ctx.user.id))) {
-          throw new TRPCError({ code: "FORBIDDEN", message: "\u062a\u062e\u0635\u064a\u0635 \u0627\u0644\u0623\u0644\u0648\u0627\u0646 \u0645\u062a\u0627\u062d \u0641\u0642\u0637 \u0644\u0644\u0645\u0634\u062a\u0631\u0643\u064a\u0646 \u0641\u064a \u0627\u0644\u062e\u0637\u0629 \u0627\u0644\u0645\u062f\u0641\u0648\u0639\u0629" });
-        }
-      }
+      await requireRestaurantPlanFeature(input.id, "menuDesign");
       await updateRestaurant(input.id, { customColors: input.customColors ? JSON.stringify(input.customColors) : null });
       return { success: true };
     }),
@@ -520,12 +506,7 @@ const restaurantRouter = router({
     .mutation(async ({ input, ctx }) => {
       // Keep FORBIDDEN behavior; route deny decisions through centralized tenant guard + audit log.
       await assertRestaurantAccess(ctx, input.id, "restaurant.updateCustomFonts");
-      // Allow admin/owner to customize fonts without subscription
-      if (ctx.user.role !== "admin") {
-        if (!(await isSubscriptionActive(ctx.user.id))) {
-          throw new TRPCError({ code: "FORBIDDEN", message: "\u062a\u062e\u0635\u0635 \u0627\u0644\u062e\u0637\u0648\u0637 \u0645\u062a\u0627\u062d \u0641\u0642\u0637 \u0644\u0644\u0645\u0634\u062a\u0631\u0643\u064a\u0646 \u0641\u064a \u0627\u0644\u062e\u0637\u0629 \u0627\u0644\u0645\u062f\u0641\u0648\u0639\u0629" });
-        }
-      }
+      await requireRestaurantPlanFeature(input.id, "menuDesign");
       await updateRestaurant(input.id, { customFonts: input.customFonts ? JSON.stringify(input.customFonts) : null });
       return { success: true };
     }),
@@ -540,6 +521,7 @@ const restaurantRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       await assertRestaurantAccess(ctx, input.restaurantId, "restaurant.uploadImage");
+      await requireRestaurantPlanFeature(input.restaurantId, "menuDesign");
       const buffer = Buffer.from(input.imageData, "base64");
       const safeFileName = input.fileName.replace(/[^\w.\-]+/g, "_");
       const folder = input.imageType === "logo" ? "logos" : "covers";
@@ -560,6 +542,7 @@ const restaurantRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       await assertRestaurantAccess(ctx, input.restaurantId, "restaurant.deleteImage");
+      await requireRestaurantPlanFeature(input.restaurantId, "menuDesign");
       if (input.imageType === "logo") {
         await updateRestaurant(input.restaurantId, { logoUrl: null });
       } else {
@@ -579,6 +562,7 @@ const categoryRouter = router({
       } catch {
         return [];
       }
+      await requireRestaurantPlanFeature(input.restaurantId, "menuManagement");
       return getCategoriesByRestaurant(input.restaurantId);
     }),
 
@@ -600,6 +584,7 @@ const categoryRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       await assertRestaurantAccess(ctx, input.restaurantId, "category.create");
+      await requireRestaurantPlanFeature(input.restaurantId, "menuManagement");
       if (ctx.user.role !== "admin") {
         await assertCategoryCreateAllowed(ctx.user.id, input.restaurantId);
       }
@@ -623,6 +608,7 @@ const categoryRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "الفئة غير موجودة" });
       }
       await assertRestaurantAccess(ctx, category.restaurantId, "category.update");
+      await requireRestaurantPlanFeature(category.restaurantId, "menuManagement");
       const { id, ...data } = input;
       await updateCategory(id, data);
       return { success: true };
@@ -636,6 +622,7 @@ const categoryRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "الفئة غير موجودة" });
       }
       await assertRestaurantAccess(ctx, category.restaurantId, "category.delete");
+      await requireRestaurantPlanFeature(category.restaurantId, "menuManagement");
       await deleteCategory(input.id);
       return { success: true };
     }),
@@ -648,6 +635,7 @@ const menuItemRouter = router({
       const category = await getCategoryById(input.categoryId);
       if (!category) return [];
       await assertRestaurantAccess(ctx, category.restaurantId);
+      await requireRestaurantPlanFeature(category.restaurantId, "menuManagement");
       return getMenuItemsByCategory(input.categoryId);
     }),
 
@@ -671,6 +659,7 @@ const menuItemRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       await assertRestaurantAccess(ctx, input.restaurantId, "menuItem.create");
+      await requireRestaurantPlanFeature(input.restaurantId, "menuManagement");
 
       // Relational tenant integrity: prevents cross-tenant category linkage on create.
       const category = await getCategoryById(input.categoryId);
@@ -705,6 +694,7 @@ const menuItemRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "الصنف غير موجود" });
       }
       await assertRestaurantAccess(ctx, item.restaurantId, "menuItem.update");
+      await requireRestaurantPlanFeature(item.restaurantId, "menuManagement");
 
       // Relational tenant integrity: prevents cross-tenant category reassignment on update.
       if (input.categoryId !== undefined) {
@@ -727,6 +717,7 @@ const menuItemRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "الصنف غير موجود" });
       }
       await assertRestaurantAccess(ctx, item.restaurantId, "menuItem.delete");
+      await requireRestaurantPlanFeature(item.restaurantId, "menuManagement");
       await deleteMenuItem(input.id);
       return { success: true };
     }),
@@ -744,6 +735,7 @@ const menuItemRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "الصنف غير موجود" });
       }
       await assertRestaurantAccess(ctx, item.restaurantId, "menuItem.uploadImage");
+      await requireRestaurantPlanFeature(item.restaurantId, "menuManagement");
       const buffer = Buffer.from(input.imageData, "base64");
       const safeFileName = input.fileName.replace(/[^\w.\-]+/g, "_");
       const key = `items/${item.restaurantId}/${input.itemId}-${nanoid(8)}-${safeFileName}`;
@@ -763,6 +755,7 @@ const offerRouter = router({
       } catch {
         return [];
       }
+      await requireRestaurantPlanFeature(input.restaurantId, "menuManagement");
       return getOffersByRestaurant(input.restaurantId);
     }),
 
@@ -788,6 +781,7 @@ const offerRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       await assertRestaurantAccess(ctx, input.restaurantId, "offer.create");
+      await requireRestaurantPlanFeature(input.restaurantId, "menuManagement");
       return createOffer({
         ...input,
         startDate: new Date(input.startDate).toISOString(),
@@ -816,6 +810,7 @@ const offerRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "العرض غير موجود" });
       }
       await assertRestaurantAccess(ctx, offer.restaurantId, "offer.update");
+      await requireRestaurantPlanFeature(offer.restaurantId, "menuManagement");
       const { id, ...data } = input;
       const updateData: Record<string, unknown> = { ...data };
       if (data.startDate) updateData.startDate = new Date(data.startDate);
@@ -832,6 +827,7 @@ const offerRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "العرض غير موجود" });
       }
       await assertRestaurantAccess(ctx, offer.restaurantId, "offer.delete");
+      await requireRestaurantPlanFeature(offer.restaurantId, "menuManagement");
       await deleteOffer(input.id);
       return { success: true };
     }),
@@ -849,6 +845,7 @@ const offerRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "العرض غير موجود" });
       }
       await assertRestaurantAccess(ctx, offer.restaurantId, "offer.uploadImage");
+      await requireRestaurantPlanFeature(offer.restaurantId, "menuManagement");
       const buffer = Buffer.from(input.imageData, "base64");
       const { mimeType, fileSize } = validateEntityImageUpload({
         buffer,
@@ -1936,6 +1933,7 @@ const tableRouter = router({
     .input(z.object({ restaurantId: z.number() }))
     .query(async ({ input, ctx }) => {
       await assertRestaurantAccess(ctx, input.restaurantId);
+      await requireRestaurantPlanFeature(input.restaurantId, "smartQr");
       return getTablesByRestaurant(input.restaurantId);
     }),
   getById: protectedProcedure
@@ -1944,6 +1942,7 @@ const tableRouter = router({
       const table = await getTableById(input.id);
       if (!table) return null;
       await assertRestaurantAccess(ctx, table.restaurantId);
+      await requireRestaurantPlanFeature(table.restaurantId, "smartQr");
       return table;
     }),
   create: verifiedProcedure
@@ -1955,6 +1954,7 @@ const tableRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       await assertRestaurantAccess(ctx, input.restaurantId);
+      await requireRestaurantPlanFeature(input.restaurantId, "smartQr");
       return createTable(input);
     }),
   createMultiple: verifiedProcedure
@@ -1965,6 +1965,7 @@ const tableRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       await assertRestaurantAccess(ctx, input.restaurantId);
+      await requireRestaurantPlanFeature(input.restaurantId, "smartQr");
       return createMultipleTables(input.restaurantId, input.count, input.startFrom);
     }),
   update: verifiedProcedure
@@ -1984,6 +1985,7 @@ const tableRouter = router({
         });
       }
       await assertRestaurantAccess(ctx, table.restaurantId);
+      await requireRestaurantPlanFeature(table.restaurantId, "smartQr");
       const { id, ...data } = input;
       await updateTable(id, data);
       return { success: true };
@@ -1999,6 +2001,7 @@ const tableRouter = router({
         });
       }
       await assertRestaurantAccess(ctx, table.restaurantId);
+      await requireRestaurantPlanFeature(table.restaurantId, "smartQr");
       await deleteTable(input.id);
       return { success: true };
     }),
@@ -2136,6 +2139,7 @@ const sessionRouter = router({
     )
     .query(async ({ input, ctx }) => {
       await assertRestaurantAccess(ctx, input.restaurantId);
+      await requireRestaurantPlanFeature(input.restaurantId, "sessionTableManagement");
       try {
         return await getOwnerSessionTimeline(input.restaurantId, input.sessionId);
       } catch (err) {
@@ -2151,6 +2155,7 @@ const sessionRouter = router({
     )
     .query(async ({ input, ctx }) => {
       await assertRestaurantAccess(ctx, input.restaurantId);
+      await requireRestaurantPlanFeature(input.restaurantId, "sessionTableManagement");
       try {
         return await getOwnerSessionWorkspace(input.restaurantId, input.sessionId);
       } catch (err) {
@@ -2196,6 +2201,7 @@ const sessionRouter = router({
     )
     .mutation(async ({ input, ctx }) => {
       await assertRestaurantAccess(ctx, input.restaurantId);
+      await requireRestaurantPlanFeature(input.restaurantId, "sessionTableManagement");
       try {
         await markPaid({
           restaurantId: input.restaurantId,
@@ -2240,6 +2246,7 @@ const sessionRouter = router({
     )
     .mutation(async ({ input, ctx }) => {
       await assertRestaurantAccess(ctx, input.restaurantId);
+      await requireRestaurantPlanFeature(input.restaurantId, "sessionTableManagement");
       try {
         await markComplimentary({
           restaurantId: input.restaurantId,
@@ -2263,6 +2270,7 @@ const sessionRouter = router({
     )
     .mutation(async ({ input, ctx }) => {
       await assertRestaurantAccess(ctx, input.restaurantId);
+      await requireRestaurantPlanFeature(input.restaurantId, "sessionTableManagement");
       try {
         await closeSession({
           restaurantId: input.restaurantId,

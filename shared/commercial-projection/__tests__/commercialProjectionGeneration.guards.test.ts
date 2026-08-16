@@ -37,7 +37,7 @@ describe("COMMERCIAL-PROJECTION-GENERATION-1", () => {
     expect(COMMERCIAL_PROJECTION_REGISTRY).toHaveLength(
       COMMERCIAL_PROJECTION_IDS.length
     );
-    expect(COMMERCIAL_PROJECTION_IDS).toHaveLength(15);
+    expect(COMMERCIAL_PROJECTION_IDS).toHaveLength(19);
     // Regeneration is deterministic and covers every eligible CAP.
     expect(generateCommercialProjectionRegistry()).toEqual([
       ...COMMERCIAL_PROJECTION_REGISTRY,
@@ -56,7 +56,7 @@ describe("COMMERCIAL-PROJECTION-GENERATION-1", () => {
     expect([...COMMERCIAL_CAPABILITY_FILTER_KEYS]).toEqual([
       ...COMMERCIAL_PROJECTION_IDS,
     ]);
-    expect(COMMERCIAL_CAPABILITY_FILTER_REGISTRY).toHaveLength(15);
+    expect(COMMERCIAL_CAPABILITY_FILTER_REGISTRY).toHaveLength(19);
     for (const row of COMMERCIAL_CAPABILITY_FILTER_REGISTRY) {
       expect(row.discoveryCapIds.length).toBeGreaterThan(0);
       expect(row.runtimeCapabilityId.startsWith("cap.")).toBe(true);

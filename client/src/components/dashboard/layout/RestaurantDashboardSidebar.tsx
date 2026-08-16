@@ -80,6 +80,10 @@ export function RestaurantDashboardSidebar({
   const [, setLocation] = useLocation();
   const { hasFeature } = useCommercialFeatureVisibility();
   const canManageScreens = hasFeature("devices");
+  const canManageSessions = hasFeature("sessionTableManagement");
+  const canManageMenu = hasFeature("menuManagement");
+  const canManageDesign = hasFeature("menuDesign");
+  const canManageQr = hasFeature("smartQr");
   const inRestaurant = activeSection === "restaurant-detail" && !!onRestaurantTabChange;
 
   const restaurantWorkspaceNav: NavItem[] = inRestaurant
@@ -91,13 +95,17 @@ export function RestaurantDashboardSidebar({
           active: restaurantTab === "home",
           onClick: () => onRestaurantTabChange!("home"),
         },
-        {
-          id: "sessions",
-          label: language === "ar" ? "الجلسات" : "Sessions",
-          icon: UsersRound,
-          active: restaurantTab === "sessions",
-          onClick: () => onRestaurantTabChange!("sessions"),
-        },
+        ...(canManageSessions
+          ? [
+              {
+                id: "sessions",
+                label: language === "ar" ? "الجلسات" : "Sessions",
+                icon: UsersRound,
+                active: restaurantTab === "sessions",
+                onClick: () => onRestaurantTabChange!("sessions"),
+              } satisfies NavItem,
+            ]
+          : []),
         {
           id: "orders",
           label: language === "ar" ? "الطلبات" : "Orders",
@@ -152,41 +160,53 @@ export function RestaurantDashboardSidebar({
 
   const restaurantMenuNav: NavItem[] = inRestaurant
     ? [
-        {
-          id: "categories",
-          label: t("dashboard.categoriesAndItems"),
-          icon: LayoutGrid,
-          active: restaurantTab === "categories",
-          onClick: () => onRestaurantTabChange!("categories"),
-        },
-        {
-          id: "offers",
-          label: t("dashboard.offers"),
-          icon: Tag,
-          active: restaurantTab === "offers",
-          onClick: () => onRestaurantTabChange!("offers"),
-        },
-        {
-          id: "tables",
-          label: tablesLabel ?? (language === "ar" ? "الطاولات" : "Tables"),
-          icon: Grid3X3,
-          active: restaurantTab === "tables",
-          onClick: () => onRestaurantTabChange!("tables"),
-        },
-        {
-          id: "qr",
-          label: language === "ar" ? "رموز QR" : "QR Codes",
-          icon: QrCode,
-          active: restaurantTab === "qr",
-          onClick: () => onRestaurantTabChange!("qr"),
-        },
-        {
-          id: "templates",
-          label: language === "ar" ? "قوالب المنيو" : "Menu Templates",
-          icon: Palette,
-          active: restaurantTab === "templates",
-          onClick: () => onRestaurantTabChange!("templates"),
-        },
+        ...(canManageMenu
+          ? [
+              {
+                id: "categories",
+                label: t("dashboard.categoriesAndItems"),
+                icon: LayoutGrid,
+                active: restaurantTab === "categories",
+                onClick: () => onRestaurantTabChange!("categories"),
+              } satisfies NavItem,
+              {
+                id: "offers",
+                label: t("dashboard.offers"),
+                icon: Tag,
+                active: restaurantTab === "offers",
+                onClick: () => onRestaurantTabChange!("offers"),
+              } satisfies NavItem,
+            ]
+          : []),
+        ...(canManageQr
+          ? [
+              {
+                id: "tables",
+                label: tablesLabel ?? (language === "ar" ? "الطاولات" : "Tables"),
+                icon: Grid3X3,
+                active: restaurantTab === "tables",
+                onClick: () => onRestaurantTabChange!("tables"),
+              } satisfies NavItem,
+              {
+                id: "qr",
+                label: language === "ar" ? "رموز QR" : "QR Codes",
+                icon: QrCode,
+                active: restaurantTab === "qr",
+                onClick: () => onRestaurantTabChange!("qr"),
+              } satisfies NavItem,
+            ]
+          : []),
+        ...(canManageDesign
+          ? [
+              {
+                id: "templates",
+                label: language === "ar" ? "قوالب المنيو" : "Menu Templates",
+                icon: Palette,
+                active: restaurantTab === "templates",
+                onClick: () => onRestaurantTabChange!("templates"),
+              } satisfies NavItem,
+            ]
+          : []),
         {
           id: "printer-management",
           label: language === "ar" ? "إدارة الطابعات" : "Printer Management",

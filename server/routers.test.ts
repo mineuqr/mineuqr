@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { TrpcContext } from "./_core/context";
 
 // ─── Mock data must be defined inside factory or use vi.hoisted ─
@@ -191,6 +191,16 @@ vi.mock("./storage", () => ({
   storagePut: vi.fn().mockResolvedValue({ url: "https://cdn.example.com/test.png", key: "test.png" }),
 }));
 
+const gatingMocks = vi.hoisted(() => ({
+  resolveOwnerEntitlements: vi.fn(),
+}));
+
+vi.mock("./subscription-runtime/subscriptionRuntimeService", () => ({
+  resolveOwnerEntitlements: gatingMocks.resolveOwnerEntitlements,
+  notifySubscriptionLifecycleChanged: vi.fn(),
+  subscriptionRuntimeService: {},
+}));
+
 // Must import AFTER mocks
 import { appRouter } from "./routers";
 
@@ -225,6 +235,44 @@ function createPublicContext(): TrpcContext {
     res: { clearCookie: vi.fn() } as unknown as TrpcContext["res"],
   };
 }
+
+function entitlementsWithFeatures(enabled: Record<string, boolean> = {}) {
+  return {
+    context: { ownerId: 1, role: "user", subscription: null, now: new Date() },
+    entitlements: {
+      accountType: "PAYING",
+      plan: "PROFESSIONAL",
+      status: "active",
+      limits: { restaurants: 5, categories: 25, items: 500 },
+      features: new Proxy(
+        {},
+        {
+          get: (_t, key: string) =>
+            Object.prototype.hasOwnProperty.call(enabled, key)
+              ? enabled[key]
+              : true,
+        }
+      ),
+      commercial: {
+        isTrial: false,
+        isPaid: true,
+        isEnterprise: false,
+        isAdmin: false,
+        countsInMrr: true,
+        countsInRevenue: true,
+        invoiceEligible: true,
+      },
+    },
+    meta: { commercialAccountState: "active" },
+  };
+}
+
+beforeEach(() => {
+  gatingMocks.resolveOwnerEntitlements.mockReset();
+  gatingMocks.resolveOwnerEntitlements.mockResolvedValue(
+    entitlementsWithFeatures()
+  );
+});
 
 // ─── Restaurant Tests ───────────────────────────────────────
 
@@ -668,13 +716,13 @@ describe("restaurant.updateTemplate", () => {
     expect(result.success).toBe(true);
   });
 
-  it("rejects premium template for non-subscribed user", async () => {
-    const db = await import("./db");
-    (db.isSubscriptionActive as any).mockResolvedValueOnce(false);
-    (db.getTrialEndDate as any).mockResolvedValueOnce(null);
+  it("rejects premium template when menuDesign is OFF", async () => {
+    gatingMocks.resolveOwnerEntitlements.mockResolvedValue(
+      entitlementsWithFeatures({ menuDesign: false })
+    );
 
     const caller = appRouter.createCaller(createAuthContext(1));
-    await expect(caller.restaurant.updateTemplate({ id: 1, menuTemplate: "elegant" })).rejects.toThrow("المدفوعة");
+    await expect(caller.restaurant.updateTemplate({ id: 1, menuTemplate: "elegant" })).rejects.toThrow();
   });
 
   it("rejects template update for non-owner", async () => {
@@ -692,10 +740,7 @@ describe("restaurant.updateTemplate", () => {
     await expect(caller.restaurant.updateTemplate({ id: 999, menuTemplate: "classic" })).rejects.toThrow();
   });
 
-  it("allows premium template during active trial", async () => {
-    const db = await import("./db");
-    (db.isSubscriptionActive as any).mockResolvedValueOnce(true);
-
+  it("allows premium template when menuDesign is ON", async () => {
     const caller = appRouter.createCaller(createAuthContext(1));
     const result = await caller.restaurant.updateTemplate({ id: 1, menuTemplate: "neon" });
     expect(result.success).toBe(true);
@@ -743,10 +788,10 @@ describe("restaurant.updateCustomColors", () => {
     expect(result.success).toBe(true);
   });
 
-  it("rejects custom colors for non-subscribed user", async () => {
-    const db = await import("./db");
-    (db.isSubscriptionActive as any).mockResolvedValueOnce(false);
-    (db.getTrialEndDate as any).mockResolvedValueOnce(null);
+  it("rejects custom colors when menuDesign is OFF", async () => {
+    gatingMocks.resolveOwnerEntitlements.mockResolvedValue(
+      entitlementsWithFeatures({ menuDesign: false })
+    );
 
     const caller = appRouter.createCaller(createAuthContext(1));
     await expect(
@@ -754,13 +799,10 @@ describe("restaurant.updateCustomColors", () => {
         id: 1,
         customColors: { accent: "#ff0000" },
       })
-    ).rejects.toThrow("المدفوعة");
+    ).rejects.toThrow();
   });
 
-  it("allows custom colors during active trial", async () => {
-    const db = await import("./db");
-    (db.isSubscriptionActive as any).mockResolvedValueOnce(true);
-
+  it("allows custom colors when menuDesign is ON", async () => {
     const caller = appRouter.createCaller(createAuthContext(1));
     const result = await caller.restaurant.updateCustomColors({
       id: 1,

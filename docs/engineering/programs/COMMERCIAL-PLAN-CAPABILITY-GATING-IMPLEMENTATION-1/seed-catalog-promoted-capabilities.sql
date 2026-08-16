@@ -1,0 +1,22 @@
+-- COMMERCIAL-PLAN-CAPABILITY-GATING-IMPLEMENTATION-1
+-- Prepared DML for a later Production Apply program.
+-- DO NOT RUN against Production from this program.
+-- Always-On preservation only. Not a Basic=OFF matrix.
+--
+-- For each Live Plan feature bundle, insert the four catalog-promoted
+-- keys as included=true if missing. Unique (bundleId, featureKey).
+
+-- INSERT INTO commercial_bundle_features (id, bundleId, featureKey, included)
+-- SELECT UUID(), p.featureBundleId, k.featureKey, 1
+-- FROM commercial_plans p
+-- CROSS JOIN (
+--   SELECT 'sessionTableManagement' AS featureKey
+--   UNION ALL SELECT 'menuManagement'
+--   UNION ALL SELECT 'menuDesign'
+--   UNION ALL SELECT 'smartQr'
+-- ) k
+-- WHERE p.featureBundleId IS NOT NULL
+--   AND NOT EXISTS (
+--     SELECT 1 FROM commercial_bundle_features b
+--     WHERE b.bundleId = p.featureBundleId AND b.featureKey = k.featureKey
+--   );

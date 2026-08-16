@@ -112,9 +112,9 @@ describe("COMMERCIAL-CAPABILITY-PLATFORM-ADOPTION-1 Operational Validation", () 
   });
 
   it("1. Capability Registry — Projection SSOT loaded, unique, no unknown keys", () => {
-    expect(COMMERCIAL_CAPABILITY_FILTER_KEYS).toHaveLength(15);
-    expect(new Set(COMMERCIAL_CAPABILITY_FILTER_KEYS).size).toBe(15);
-    expect(COMMERCIAL_CAPABILITY_FILTER_REGISTRY).toHaveLength(15);
+    expect(COMMERCIAL_CAPABILITY_FILTER_KEYS).toHaveLength(19);
+    expect(new Set(COMMERCIAL_CAPABILITY_FILTER_KEYS).size).toBe(19);
+    expect(COMMERCIAL_CAPABILITY_FILTER_REGISTRY).toHaveLength(19);
     for (const key of COMMERCIAL_CAPABILITY_FILTER_KEYS) {
       expect(FEATURE_KEYS).toContain(key);
     }
@@ -147,7 +147,7 @@ describe("COMMERCIAL-CAPABILITY-PLATFORM-ADOPTION-1 Operational Validation", () 
 
     const { bundle } = await seedOperationalPlan("cap-plan");
     const features = featureBundleService.listFeatures(bundle.id);
-    expect(features).toHaveLength(15);
+    expect(features).toHaveLength(19);
     expect(features.every((f) => isCommercialCapabilityFilterKey(f.featureKey)))
       .toBe(true);
     expect(features.filter((f) => f.included).map((f) => f.featureKey).sort()).toEqual(

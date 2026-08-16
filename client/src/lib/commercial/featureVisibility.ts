@@ -32,7 +32,10 @@ export function isPremiumTemplateLocked(
   entitlements: CommercialEntitlements | null | undefined
 ): boolean {
   if (!templateIsPremium) return false;
-  return !hasCommercialFeature(entitlements, "templates");
+  return (
+    !hasCommercialFeature(entitlements, "menuDesign") ||
+    !hasCommercialFeature(entitlements, "templates")
+  );
 }
 
 /** Whether to show the premium templates upgrade notice. */
@@ -41,7 +44,9 @@ export function shouldShowTemplatesUpgradeNotice(
 ): boolean {
   if (!entitlements) return false;
   if (entitlements.commercial.isAdmin) return false;
-  return !entitlements.features.templates;
+  return (
+    !entitlements.features.menuDesign || !entitlements.features.templates
+  );
 }
 
 export function isTrialActiveForMessaging(
@@ -55,13 +60,19 @@ export function isTrialActiveForMessaging(
 export function showCustomColorsPanel(
   entitlements: CommercialEntitlements | null | undefined
 ): boolean {
-  return hasCommercialFeature(entitlements, "customColors");
+  return (
+    hasCommercialFeature(entitlements, "menuDesign") &&
+    hasCommercialFeature(entitlements, "customColors")
+  );
 }
 
 export function showCustomFontsPanel(
   entitlements: CommercialEntitlements | null | undefined
 ): boolean {
-  return hasCommercialFeature(entitlements, "customFonts");
+  return (
+    hasCommercialFeature(entitlements, "menuDesign") &&
+    hasCommercialFeature(entitlements, "customFonts")
+  );
 }
 
 export function showReportsUpgradeNotice(

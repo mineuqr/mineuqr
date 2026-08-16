@@ -2,9 +2,15 @@
  * COMMERCIAL-PROJECTION-GENERATION-1 — Projection schema.
  */
 
-import type { DiscoveryCapabilityId } from "../capability-discovery/commercialEligible";
-
 export const COMMERCIAL_PROJECTION_VERSION = "1.0.0" as const;
+
+/** Catalog-promoted Projection IDs (COMMERCIAL-PLAN-CAPABILITY-GATING-1). */
+export const CATALOG_PROMOTED_PROJECTION_IDS = [
+  "sessionTableManagement",
+  "menuManagement",
+  "menuDesign",
+  "smartQr",
+] as const;
 
 export const COMMERCIAL_PROJECTION_IDS = [
   "ordering",
@@ -22,6 +28,7 @@ export const COMMERCIAL_PROJECTION_IDS = [
   "kiosk",
   "counterPickup",
   "expo",
+  ...CATALOG_PROMOTED_PROJECTION_IDS,
 ] as const;
 
 export type CommercialProjectionId =
@@ -43,8 +50,9 @@ export type CommercialProjectionRecord = {
   commercialEligibility: "COMMERCIAL_ELIGIBLE";
   visibility: "plan";
   lifecycle: "active";
-  /** Discovery CAP IDs this projection is generated from */
-  discoveryCapabilityIds: readonly DiscoveryCapabilityId[];
+  /** Discovery CAP IDs, or documentation CAP IDs for catalog-promoted rows */
+  discoveryCapabilityIds: readonly string[];
+  origin: "discovery" | "catalog_promoted";
   dependencies: readonly CommercialProjectionId[];
   planAvailability: true;
   publicVisibility: true;

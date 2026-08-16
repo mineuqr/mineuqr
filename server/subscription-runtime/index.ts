@@ -74,6 +74,8 @@ export {
 } from "./enforcement";
 export type { EntitlementDecision, LimitDecision } from "./enforcement";
 
+export { requireRestaurantPlanFeature } from "./requireRestaurantPlanFeature";
+
 export {
   getCachedEntitlements,
   setCachedEntitlements,

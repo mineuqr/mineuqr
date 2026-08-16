@@ -115,8 +115,9 @@ export {
 export type { CommercialProjectionId, CommercialProjectionRecord, LegacyCompatFeatureKey };
 export {
   COMMERCIAL_PROJECTION_IDS,
+  CATALOG_PROMOTED_PROJECTION_IDS,
   isCommercialProjectionId,
-};
+} from "./schema";
 export { generateCommercialProjectionRegistry } from "./packaging";
 export { COMMERCIAL_PROJECTION_VERSION } from "./schema";
 export {

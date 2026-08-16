@@ -37,6 +37,10 @@ function entitlementsForPlan(
     templates: true,
     customColors: true,
     customFonts: true,
+    sessionTableManagement: true,
+    menuManagement: true,
+    menuDesign: true,
+    smartQr: true,
   };
 
   const basicFeatures: CommercialEntitlements["features"] = {

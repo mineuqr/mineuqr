@@ -17,10 +17,13 @@ import {
 
 type PackagingRule = {
   projectionId: CommercialProjectionId;
-  discoveryCapabilityIds: readonly DiscoveryCapabilityId[];
+  origin?: "discovery" | "catalog_promoted";
+  discoveryCapabilityIds: readonly string[];
   capabilityName: string;
   category: string;
   runtimeCapabilityId: string;
+  owner?: string;
+  domain?: string;
   dependencies?: readonly CommercialProjectionId[];
   defaultState?: boolean;
 };
@@ -146,6 +149,50 @@ const PACKAGING_RULES: readonly PackagingRule[] = [
     runtimeCapabilityId: "cap.expo.display",
     dependencies: ["kitchen", "devices"],
   },
+  {
+    projectionId: "sessionTableManagement",
+    origin: "catalog_promoted",
+    discoveryCapabilityIds: ["CAP-06", "CAP-07"],
+    capabilityName: "Session Management",
+    category: "sessions",
+    runtimeCapabilityId: "cap.session.management",
+    owner: "Session Platform",
+    domain: "sessions",
+    defaultState: true,
+  },
+  {
+    projectionId: "menuManagement",
+    origin: "catalog_promoted",
+    discoveryCapabilityIds: ["CAP-05"],
+    capabilityName: "Menu & Item Management",
+    category: "menu",
+    runtimeCapabilityId: "cap.menu.management",
+    owner: "Menu Platform",
+    domain: "menu",
+    defaultState: true,
+  },
+  {
+    projectionId: "menuDesign",
+    origin: "catalog_promoted",
+    discoveryCapabilityIds: ["CAP-05"],
+    capabilityName: "Menu Design",
+    category: "design",
+    runtimeCapabilityId: "cap.menu.design",
+    owner: "Menu Design",
+    domain: "design",
+    defaultState: true,
+  },
+  {
+    projectionId: "smartQr",
+    origin: "catalog_promoted",
+    discoveryCapabilityIds: ["CAP-06"],
+    capabilityName: "QR Codes",
+    category: "qr",
+    runtimeCapabilityId: "cap.qr.smart",
+    owner: "QR Platform",
+    domain: "qr",
+    defaultState: true,
+  },
 ] as const;
 
 function eligibleById(): Map<DiscoveryCapabilityId, DiscoveryEligibleCapability> {
@@ -164,15 +211,42 @@ export function generateCommercialProjectionRegistry(
   const out: CommercialProjectionRecord[] = [];
 
   for (const rule of rules) {
+    const origin = rule.origin ?? "discovery";
+    if (origin === "catalog_promoted") {
+      if (!rule.owner || !rule.domain) {
+        throw new Error(
+          `COMMERCIAL-PROJECTION: catalog-promoted ${rule.projectionId} requires owner and domain`
+        );
+      }
+      out.push({
+        projectionId: rule.projectionId,
+        capabilityName: rule.capabilityName,
+        owner: rule.owner,
+        domain: rule.domain,
+        category: rule.category,
+        commercialEligibility: "COMMERCIAL_ELIGIBLE",
+        visibility: "plan",
+        lifecycle: "active",
+        discoveryCapabilityIds: rule.discoveryCapabilityIds,
+        origin: "catalog_promoted",
+        dependencies: rule.dependencies ?? [],
+        planAvailability: true,
+        publicVisibility: true,
+        defaultState: rule.defaultState ?? true,
+        runtimeCapabilityId: rule.runtimeCapabilityId,
+        projectionVersion: COMMERCIAL_PROJECTION_VERSION,
+      });
+      continue;
+    }
     for (const id of rule.discoveryCapabilityIds) {
-      if (!eligible.has(id)) {
+      if (!eligible.has(id as DiscoveryCapabilityId)) {
         throw new Error(
           `COMMERCIAL-PROJECTION: packaging references non-eligible ${id} for ${rule.projectionId}`
         );
       }
-      used.add(id);
+      used.add(id as DiscoveryCapabilityId);
     }
-    const primary = eligible.get(rule.discoveryCapabilityIds[0]!)!;
+    const primary = eligible.get(rule.discoveryCapabilityIds[0] as DiscoveryCapabilityId)!;
     out.push({
       projectionId: rule.projectionId,
       capabilityName: rule.capabilityName,
@@ -183,6 +257,7 @@ export function generateCommercialProjectionRegistry(
       visibility: "plan",
       lifecycle: "active",
       discoveryCapabilityIds: rule.discoveryCapabilityIds,
+      origin: "discovery",
       dependencies: rule.dependencies ?? [],
       planAvailability: true,
       publicVisibility: true,

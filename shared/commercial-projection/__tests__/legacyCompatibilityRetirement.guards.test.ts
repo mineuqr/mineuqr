@@ -59,7 +59,7 @@ describe("LEGACY-COMPATIBILITY-RETIREMENT-1", () => {
   });
 
   it("Projection SSOT unchanged (15 IDs); legacy remains Runtime-only", () => {
-    expect(COMMERCIAL_PROJECTION_IDS).toHaveLength(15);
+    expect(COMMERCIAL_PROJECTION_IDS).toHaveLength(19);
     expect(COMMERCIAL_PROJECTION_IDS).not.toContain("qrMenu");
     expect(COMMERCIAL_PROJECTION_IDS).not.toContain("reports");
     expect(LEGACY_COMPAT_FEATURE_KEYS).toContain("reports");

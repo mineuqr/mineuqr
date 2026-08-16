@@ -19,7 +19,7 @@ describe("COMMERCIAL-CATALOG-RATIONALIZATION-1", () => {
     expect(COMMERCIAL_CATALOG_RATIONALIZATION_PROGRAM).toBe(
       "COMMERCIAL-CATALOG-RATIONALIZATION-1"
     );
-    expect(COMMERCIAL_PROJECTION_IDS).toHaveLength(15);
+    expect(COMMERCIAL_PROJECTION_IDS).toHaveLength(19);
   });
 
   it("hides expo, foundation, and devices from commercial comparison", () => {
@@ -91,7 +91,20 @@ describe("COMMERCIAL-CATALOG-RATIONALIZATION-1", () => {
     expect(display).toContain("ordering");
     expect(display).toContain("financialSettlement");
     expect(display).toContain("kitchen");
-    expect(display).toContain("sessionTableManagement");
+    expect(display).not.toContain("sessionTableManagement");
+    expect(
+      projectFeatureKeysForCommercialDisplay([
+        "sessionTableManagement",
+        "menuManagement",
+        "menuDesign",
+        "smartQr",
+      ])
+    ).toEqual([
+      "sessionTableManagement",
+      "menuManagement",
+      "menuDesign",
+      "smartQr",
+    ]);
     expect(display).not.toContain("printing");
     expect(display).not.toContain("realtime");
     expect(display).not.toContain("devices");
@@ -105,5 +118,14 @@ describe("COMMERCIAL-CATALOG-RATIONALIZATION-1", () => {
       expect(next[key]).toBe(true);
     }
     expect(next.expo).toBe(false);
+  });
+
+  it("catalog-promoted cards toggle independently", () => {
+    const off = setPresentationCapabilityEnabled({}, "menuDesign", false);
+    expect(off.menuDesign).toBe(false);
+    const on = setPresentationCapabilityEnabled(off, "menuDesign", true);
+    expect(on.menuDesign).toBe(true);
+    expect(on.sessionTableManagement).toBe(false);
+    expect(on.smartQr).toBe(false);
   });
 });

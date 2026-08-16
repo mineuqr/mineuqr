@@ -949,6 +949,10 @@ function RestaurantDetail({
     isReady: entitlementsReady,
   } = useCommercialFeatureVisibility();
   const canManageScreens = hasFeature("devices");
+  const canManageSessions = hasFeature("sessionTableManagement");
+  const canManageMenu = hasFeature("menuManagement");
+  const canManageDesign = hasFeature("menuDesign");
+  const canManageQr = hasFeature("smartQr");
   const uiLanguage = language === "ar" ? "ar" : "en";
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
 
@@ -1053,7 +1057,14 @@ function RestaurantDetail({
         />
       )}
 
-      {activeTab === "sessions" && (
+      {activeTab === "sessions" &&
+        (entitlementsReady && !canManageSessions ? (
+          <CommercialUpgradeBanner
+            entitlements={entitlements}
+            featureKey="sessionTableManagement"
+            language={uiLanguage}
+          />
+        ) : (
         <SessionsWorkspacePanel
           restaurantId={restaurantId}
           language={language}
@@ -1061,7 +1072,7 @@ function RestaurantDetail({
           tableLabel={(restaurant as { tableLabel?: string })?.tableLabel}
           workingHoursRaw={(restaurant as { workingHours?: string | null })?.workingHours}
         />
-      )}
+        ))}
 
       {activeTab === "orders" && (
         <OrdersWorkspacePanel
@@ -1176,7 +1187,14 @@ function RestaurantDetail({
         />
       )}
 
-      {activeTab === "categories" && (
+      {activeTab === "categories" &&
+        (entitlementsReady && !canManageMenu ? (
+          <CommercialUpgradeBanner
+            entitlements={entitlements}
+            featureKey="menuManagement"
+            language={uiLanguage}
+          />
+        ) : (
         <CategoriesTab
           restaurantId={restaurantId}
           categories={categoriesList || []}
@@ -1185,17 +1203,49 @@ function RestaurantDetail({
           onSelectCategory={setSelectedCategoryId}
           currencySymbol={(restaurant as { currencySymbol?: string })?.currencySymbol}
         />
-      )}
+        ))}
 
-      {activeTab === "offers" && (
+      {activeTab === "offers" &&
+        (entitlementsReady && !canManageMenu ? (
+          <CommercialUpgradeBanner
+            entitlements={entitlements}
+            featureKey="menuManagement"
+            language={uiLanguage}
+          />
+        ) : (
         <OffersTab restaurantId={restaurantId} currencySymbol={(restaurant as { currencySymbol?: string })?.currencySymbol} />
-      )}
+        ))}
 
-      {activeTab === "tables" && <TablesTab restaurantId={restaurantId} restaurant={restaurant} />}
+      {activeTab === "tables" &&
+        (entitlementsReady && !canManageQr ? (
+          <CommercialUpgradeBanner
+            entitlements={entitlements}
+            featureKey="smartQr"
+            language={uiLanguage}
+          />
+        ) : (
+        <TablesTab restaurantId={restaurantId} restaurant={restaurant} />
+        ))}
 
-      {activeTab === "qr" && <QRTab restaurant={restaurant} />}
+      {activeTab === "qr" &&
+        (entitlementsReady && !canManageQr ? (
+          <CommercialUpgradeBanner
+            entitlements={entitlements}
+            featureKey="smartQr"
+            language={uiLanguage}
+          />
+        ) : (
+        <QRTab restaurant={restaurant} />
+        ))}
 
-      {activeTab === "templates" && (
+      {activeTab === "templates" &&
+        (entitlementsReady && !canManageDesign ? (
+          <CommercialUpgradeBanner
+            entitlements={entitlements}
+            featureKey="menuDesign"
+            language={uiLanguage}
+          />
+        ) : (
         <div className="py-10 text-center sm:py-14">
           <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-border/45 bg-muted/20">
             <Palette className="h-8 w-8 text-primary" />
@@ -1211,7 +1261,7 @@ function RestaurantDetail({
             </Button>
           </a>
         </div>
-      )}
+        ))}
 
       {activeTab === "settings" && <SettingsTab restaurant={restaurant} onBack={onBack} />}
     </div>

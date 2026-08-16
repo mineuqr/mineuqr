@@ -120,6 +120,40 @@ export const CLIENT_GATE_REGISTRY: ClientGateEntry[] = [
     authorityPath: "canonicalPlanLabel with legacy fallback",
   },
   {
+    id: "session-management-nav",
+    file: "client/src/components/dashboard/layout/RestaurantDashboardSidebar.tsx",
+    legacyLogic: "ungated Sessions nav",
+    featureKey: "sessionTableManagement",
+    status: "MIGRATED",
+    authorityPath:
+      "useCommercialFeatureVisibility().hasFeature(\"sessionTableManagement\")",
+  },
+  {
+    id: "menu-management-nav",
+    file: "client/src/components/dashboard/layout/RestaurantDashboardSidebar.tsx",
+    legacyLogic: "ungated Categories/Offers nav",
+    featureKey: "menuManagement",
+    status: "MIGRATED",
+    authorityPath:
+      "useCommercialFeatureVisibility().hasFeature(\"menuManagement\")",
+  },
+  {
+    id: "menu-design-nav",
+    file: "client/src/components/dashboard/layout/RestaurantDashboardSidebar.tsx",
+    legacyLogic: "ungated Templates nav",
+    featureKey: "menuDesign",
+    status: "MIGRATED",
+    authorityPath: "useCommercialFeatureVisibility().hasFeature(\"menuDesign\")",
+  },
+  {
+    id: "smart-qr-nav",
+    file: "client/src/components/dashboard/layout/RestaurantDashboardSidebar.tsx",
+    legacyLogic: "ungated Tables/QR nav",
+    featureKey: "smartQr",
+    status: "MIGRATED",
+    authorityPath: "useCommercialFeatureVisibility().hasFeature(\"smartQr\")",
+  },
+  {
     id: "screen-management-devices",
     file: "client/src/components/dashboard/layout/RestaurantDashboardSidebar.tsx",
     legacyLogic: "ungated Screens nav",

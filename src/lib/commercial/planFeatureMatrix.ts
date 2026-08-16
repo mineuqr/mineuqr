@@ -14,6 +14,7 @@ import { FEATURE_KEYS, type FeatureKey } from "./featureKeys";
 import type { CommercialPlan } from "./planTypes";
 import type { CommercialFeatures, CommercialFlags, CommercialLimits } from "./types";
 import {
+  CATALOG_PROMOTED_PROJECTION_IDS,
   COMMERCIAL_PROJECTION_IDS,
   LEGACY_COMPAT_FEATURE_KEYS,
   LEGACY_TO_PROJECTION,
@@ -59,7 +60,10 @@ function buildFeatureRow(
 
 const ALL = new Set<CommercialProjectionId>(COMMERCIAL_PROJECTION_IDS);
 
-const BASIC_PROJECTIONS = new Set<CommercialProjectionId>(["ordering"]);
+const BASIC_PROJECTIONS = new Set<CommercialProjectionId>([
+  "ordering",
+  ...CATALOG_PROMOTED_PROJECTION_IDS,
+]);
 
 const PROFESSIONAL_PROJECTIONS = new Set<CommercialProjectionId>([
   "ordering",
@@ -71,6 +75,7 @@ const PROFESSIONAL_PROJECTIONS = new Set<CommercialProjectionId>([
   "printing",
   "devices",
   "counterPickup",
+  ...CATALOG_PROMOTED_PROJECTION_IDS,
 ]);
 
 /** PG-1C.1B §3.2 — availability matrix (Y/N). */

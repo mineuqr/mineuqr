@@ -19,6 +19,10 @@ describe("COMMERCIAL-ENTITLEMENT-ENFORCEMENT-REPAIR-1 — Screens UI", () => {
     expect(sidebar).toContain("useCommercialFeatureVisibility");
     expect(sidebar).toContain('hasFeature("devices")');
     expect(sidebar).toContain("canManageScreens");
+    expect(sidebar).toContain('hasFeature("sessionTableManagement")');
+    expect(sidebar).toContain('hasFeature("menuManagement")');
+    expect(sidebar).toContain('hasFeature("menuDesign")');
+    expect(sidebar).toContain('hasFeature("smartQr")');
     expect(sidebar).not.toMatch(/plan === ["']BASIC["']/);
     expect(sidebar).not.toMatch(/plan === ["']basic["']/);
   });
@@ -32,6 +36,10 @@ describe("COMMERCIAL-ENTITLEMENT-ENFORCEMENT-REPAIR-1 — Screens UI", () => {
       "client/src/components/screen-provisioning/ProvisioningWorkspacePanel.tsx"
     );
     expect(dashboard).toContain('featureKey="devices"');
+    expect(dashboard).toContain('featureKey="sessionTableManagement"');
+    expect(dashboard).toContain('featureKey="menuManagement"');
+    expect(dashboard).toContain('featureKey="menuDesign"');
+    expect(dashboard).toContain('featureKey="smartQr"');
     expect(workspace).toContain('hasFeature("devices")');
     expect(provisioning).toContain('hasFeature("devices")');
     expect(provisioning).toContain("CommercialUpgradeBanner");

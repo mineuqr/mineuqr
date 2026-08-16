@@ -36,6 +36,10 @@ function sampleEntitlements(
       templates: true,
       customColors: true,
       customFonts: true,
+      sessionTableManagement: true,
+      menuManagement: true,
+      menuDesign: true,
+      smartQr: true,
     },
     commercial: {
       isTrial: false,
