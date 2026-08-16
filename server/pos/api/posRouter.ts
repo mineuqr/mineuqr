@@ -4,9 +4,10 @@
  * POS-SALE-ORDER-IMPLEMENTATION-1
  * POS-CHECK-INTAKE-IMPLEMENTATION-1
  * POS-SETTLEMENT-INITIATE-IMPLEMENTATION-1
+ * POS-REGISTER-SHIFT-IMPLEMENTATION-1
  * Thin POS router. Sale, Check Intake, and Settlement Initiation orchestrate
- * through POS services. No public paid-settlement endpoint, payment, refund,
- * Register, or Shift APIs.
+ * through POS services. Register/Shift lifecycle remains on existing CRMP APIs.
+ * No public paid-settlement endpoint, payment, refund, or POS Register/Shift APIs.
  */
 
 import { z } from "zod";
@@ -22,12 +23,14 @@ import {
   getPosCheckIntakeService,
   getPosSaleService,
   getPosSettlementInitiateService,
+  getPosRegisterShiftContextService,
   getPosTerminalService,
 } from "../posComposition";
 import { PosCheckIntakeError } from "../services/PosCheckIntakeService";
 import { PosEntitlementDeniedError } from "../services/PosEntitlementService";
 import { PosSaleError } from "../services/PosSaleService";
 import { PosSettlementInitiateError } from "../services/PosSettlementInitiateService";
+import { PosRegisterShiftContextError } from "../services/PosRegisterShiftContextService";
 import { PosTerminalError } from "../services/PosTerminalService";
 
 const restaurantInput = z.object({
@@ -79,6 +82,7 @@ const SALE_FORBIDDEN_CODES = new Set([
   "order_not_eligible",
   "check_not_open",
   "check_wrong_restaurant",
+  "register_wrong_restaurant",
 ]);
 
 function mapPosError(err: unknown): never {
@@ -93,6 +97,12 @@ function mapPosError(err: unknown): never {
     throw new TRPCError({
       code: err.code === "not_found" ? "NOT_FOUND" : "BAD_REQUEST",
       message: err.message,
+    });
+  }
+  if (err instanceof PosRegisterShiftContextError) {
+    throw new TRPCError({
+      code: err.code === "register_wrong_restaurant" ? "FORBIDDEN" : "BAD_REQUEST",
+      message: err.code === "register_wrong_restaurant" ? "غير مصرح بالوصول" : err.message,
     });
   }
   if (
@@ -317,5 +327,37 @@ export const posRouter = router({
           mapPosError(err);
         }
       }),
+  }),
+  registerShift: router({
+    context: verifiedProcedure.input(terminalInput).query(async ({ input, ctx }) => {
+      const scope = await assertRestaurantPosScope(
+        ctx,
+        input.restaurantId,
+        getPosGrantStore(),
+        "pos.registerShift.context"
+      );
+      try {
+        const decision = await getPosAccessService().resolvePosTerminalAccess({
+          restaurantId: input.restaurantId,
+          terminalId: input.terminalId,
+          userId: ctx.user.id,
+          requiredPermission: "POS_ACCESS",
+          restaurantScope: scope.kind,
+        });
+        if (!decision.allowed || !decision.context) {
+          throw new PosSettlementInitiateError(
+            decision.reasonCode || "pos_permission_denied",
+            "غير مصرح بالوصول"
+          );
+        }
+        return await getPosRegisterShiftContextService().resolveForTerminal({
+          restaurantId: decision.context.restaurantId,
+          terminalId: decision.context.terminalId,
+          operatorUserId: decision.context.userId,
+        });
+      } catch (err) {
+        mapPosError(err);
+      }
+    }),
   }),
 });

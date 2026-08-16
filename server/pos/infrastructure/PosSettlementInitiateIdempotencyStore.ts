@@ -17,6 +17,8 @@ export type PosSettlementInitiateIdempotencyRecord = {
   grandTotal: string;
   settlementRecordId: string | null;
   sessionId: number | null;
+  registerId: string | null;
+  financialShiftId: string | null;
   createdAt: string;
 };
 

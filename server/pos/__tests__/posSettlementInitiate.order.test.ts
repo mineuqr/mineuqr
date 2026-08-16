@@ -16,6 +16,8 @@ import {
 import { CheckTransitionError } from "../../operational-session/check/CheckService";
 import type { SelectUser } from "../../../drizzle/schema";
 import type { PosPermission } from "@shared/pos";
+import type { SettlementContext } from "@shared/crmp";
+import { PosRegisterShiftContextService } from "../services/PosRegisterShiftContextService";
 
 vi.mock("../../db", () => ({
   getRestaurantById: vi.fn(),
@@ -46,8 +48,9 @@ const TERMINAL_A = "11111111-1111-4111-8111-111111111111";
 const TERMINAL_B = "66666666-6666-4666-8666-666666666666";
 const ORDER_A = 401;
 const CHECK_A = 9001;
-const CHECK_B = 9002;
 const GRAND_TOTAL = "42.50";
+const REGISTER_ID = "reg_1_front";
+const FINANCIAL_SHIFT_ID = "fs_1_open";
 
 function user(id: number, role: SelectUser["role"] = "user"): SelectUser {
   return { id, role } as SelectUser;
@@ -129,6 +132,23 @@ function openCheck(overrides?: Partial<{
   };
 }
 
+function resolvedContext(
+  overrides?: Partial<SettlementContext>
+): SettlementContext {
+  return {
+    restaurantId: RESTAURANT_A,
+    registerId: REGISTER_ID,
+    financialShiftId: FINANCIAL_SHIFT_ID,
+    operatorUserId: STAFF_A,
+    deviceId: null,
+    operationalScreenId: null,
+    resolvedAt: "2026-08-16T00:00:00.000Z",
+    status: "resolved",
+    gaps: [],
+    ...overrides,
+  };
+}
+
 function harness(options?: {
   orders?: Array<{
     id: number;
@@ -140,6 +160,7 @@ function harness(options?: {
   check?: ReturnType<typeof openCheck> | null;
   settleDelayMs?: number;
   settleOnce?: boolean;
+  settlementContext?: SettlementContext;
 }) {
   const store = new InMemoryPosTerminalStore();
   const grants = new InMemoryPosPermissionGrantStore();
@@ -164,7 +185,15 @@ function harness(options?: {
       : options.membership;
   const findMembership = vi.fn(async () => membership);
   const getCheck = vi.fn(async () => liveCheck);
-  const settle = vi.fn(async (input: { restaurantId: number; checkId: number }) => {
+  const settle = vi.fn(async (input: {
+    restaurantId: number;
+    checkId: number;
+    settlementContextHints?: {
+      registerId: string;
+      operatorUserId: number;
+      deviceId?: string | null;
+    };
+  }) => {
     if (options?.settleDelayMs) {
       await new Promise((resolve) => setTimeout(resolve, options.settleDelayMs));
     }
@@ -185,16 +214,31 @@ function harness(options?: {
       settlementRecordId: "sr-pos-1",
     };
   });
+  const resolveContext = vi.fn(async () => options?.settlementContext ?? resolvedContext());
+  const registerShift = new PosRegisterShiftContextService(
+    resolveContext,
+    async () => null
+  );
   const service = new PosSettlementInitiateService(
     grants,
     access,
     idempotency,
+    registerShift,
     async (orderId) => orders.find((row) => row.id === orderId) ?? null,
     findMembership,
     getCheck,
     settle
   );
-  return { store, grants, access, service, settle, getCheck, findMembership };
+  return {
+    store,
+    grants,
+    access,
+    service,
+    settle,
+    getCheck,
+    findMembership,
+    resolveContext,
+  };
 }
 
 const command = {
@@ -231,12 +275,19 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
       orderingChannel: ORDERING_CHANNEL_CASHIER_POS,
       terminalId: TERMINAL_A,
       cashierUserId: STAFF_A,
+      registerId: REGISTER_ID,
+      financialShiftId: FINANCIAL_SHIFT_ID,
       replayed: false,
     });
     expect(settle).toHaveBeenCalledTimes(1);
     expect(settle).toHaveBeenCalledWith({
       restaurantId: RESTAURANT_A,
       checkId: CHECK_A,
+      settlementContextHints: {
+        registerId: REGISTER_ID,
+        operatorUserId: STAFF_A,
+        deviceId: null,
+      },
     });
     expect(settle.mock.calls[0][0]).not.toHaveProperty("settlements");
     expect(settle.mock.calls[0][0]).not.toHaveProperty("totalAmount");
@@ -419,6 +470,11 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
     expect(settle).toHaveBeenCalledWith({
       restaurantId: RESTAURANT_A,
       checkId: CHECK_A,
+      settlementContextHints: {
+        registerId: REGISTER_ID,
+        operatorUserId: STAFF_A,
+        deviceId: null,
+      },
     });
   });
 
@@ -514,13 +570,84 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
     expect(settle).not.toHaveBeenCalled();
   });
 
-  it("does not require Register or Shift and does not rewrite Order channel", async () => {
+  it("rejects settlement without resolved CRMP Register/Shift context", async () => {
+    const { store, grants, service, settle } = harness({
+      settlementContext: resolvedContext({
+        registerId: null,
+        financialShiftId: null,
+        status: "unavailable",
+        gaps: ["no_operational_hints"],
+      }),
+    });
+    await seedTerminal(store);
+    await grantSettle(grants);
+    await expect(
+      service.initiate({ user: user(STAFF_A), command })
+    ).rejects.toMatchObject({ code: "register_required" });
+    expect(settle).not.toHaveBeenCalled();
+  });
+
+  it("rejects a closed Register and a missing Financial Shift", async () => {
+    const closed = harness({
+      settlementContext: resolvedContext({
+        financialShiftId: null,
+        status: "partial",
+        gaps: ["register_duty_closed"],
+      }),
+    });
+    await seedTerminal(closed.store);
+    await grantSettle(closed.grants);
+    await expect(
+      closed.service.initiate({ user: user(STAFF_A), command })
+    ).rejects.toMatchObject({ code: "register_closed" });
+    expect(closed.settle).not.toHaveBeenCalled();
+
+    const noShift = harness({
+      settlementContext: resolvedContext({
+        financialShiftId: null,
+        status: "partial",
+        gaps: ["no_active_shift"],
+      }),
+    });
+    await seedTerminal(noShift.store);
+    await grantSettle(noShift.grants);
+    await expect(
+      noShift.service.initiate({ user: user(STAFF_A), command })
+    ).rejects.toMatchObject({ code: "shift_required" });
+    expect(noShift.settle).not.toHaveBeenCalled();
+  });
+
+  it("rejects a Register from another restaurant and ignores client register/shift ids", async () => {
+    const { store, grants, service, settle } = harness({
+      settlementContext: resolvedContext({ restaurantId: RESTAURANT_B }),
+    });
+    await seedTerminal(store);
+    await grantSettle(grants);
+    await expect(
+      service.initiate({
+        user: user(STAFF_A),
+        command: {
+          ...command,
+          registerId: "reg_forged",
+          shiftId: "fs_forged",
+        } as typeof command,
+      })
+    ).rejects.toMatchObject({ code: "register_wrong_restaurant" });
+    expect(settle).not.toHaveBeenCalled();
+  });
+
+  it("uses canonical CRMP Register/Shift and does not rewrite Order channel", async () => {
     const { store, grants, service, settle } = harness();
     await seedTerminal(store);
     await grantSettle(grants);
     const result = await service.initiate({ user: user(STAFF_A), command });
     expect(result.orderingChannel).toBe(ORDERING_CHANNEL_CASHIER_POS);
+    expect(result.registerId).toBe(REGISTER_ID);
+    expect(result.financialShiftId).toBe(FINANCIAL_SHIFT_ID);
     expect(settle.mock.calls[0][0]).not.toHaveProperty("registerId");
     expect(settle.mock.calls[0][0]).not.toHaveProperty("shiftId");
+    expect(settle.mock.calls[0][0].settlementContextHints.registerId).toBe(
+      REGISTER_ID
+    );
   });
 });

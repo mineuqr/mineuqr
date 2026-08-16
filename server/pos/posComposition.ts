@@ -14,6 +14,7 @@ import { PosCheckIntakeService } from "./services/PosCheckIntakeService";
 import { PosEntitlementService } from "./services/PosEntitlementService";
 import { PosSaleService } from "./services/PosSaleService";
 import { PosSettlementInitiateService } from "./services/PosSettlementInitiateService";
+import { PosRegisterShiftContextService } from "./services/PosRegisterShiftContextService";
 import { PosTerminalService } from "./services/PosTerminalService";
 
 const defaultStore = new InMemoryPosTerminalStore();
@@ -112,10 +113,15 @@ function getPosSettlementInitiateIdempotencyStore(): PosSettlementInitiateIdempo
   return settlementInitiateIdempotencyOverride ?? defaultSettlementInitiateIdempotency;
 }
 
+export function getPosRegisterShiftContextService(): PosRegisterShiftContextService {
+  return PosRegisterShiftContextService.withTerminalStore(getStore());
+}
+
 export function getPosSettlementInitiateService(): PosSettlementInitiateService {
   return new PosSettlementInitiateService(
     getPosGrantStore(),
     getPosAccessService(),
-    getPosSettlementInitiateIdempotencyStore()
+    getPosSettlementInitiateIdempotencyStore(),
+    getPosRegisterShiftContextService()
   );
 }

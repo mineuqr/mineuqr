@@ -69,14 +69,16 @@ describe("POS Settlement Initiation architecture guards", () => {
     expect(routers).not.toMatch(/pos[\s\S]{0,200}settlePaid/);
   });
 
-  it("does not rewrite Order channel or require Register/Shift", () => {
+  it("does not rewrite Order channel or own Register/Shift", () => {
     const service = read("server/pos/services/PosSettlementInitiateService.ts");
     expect(ORDERING_CHANNEL_CASHIER_POS).toBe("cashier_pos");
     expect(service).not.toMatch(/UPDATE.*orderingChannel/i);
-    expect(service).not.toContain("registerId:");
-    expect(service).not.toContain("shiftId:");
     expect(service).not.toContain("insertSession(");
     expect(service).not.toContain("createPosSession");
+    expect(service).not.toContain("createRegister");
+    expect(service).not.toContain("openFinancialShift");
+    expect(service).toContain("settlementContextHints");
+    expect(service).toContain("requireForSettlement");
   });
 
   it("does not accept client financial values or persist POS tender/payment", () => {

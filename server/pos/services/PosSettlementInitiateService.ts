@@ -19,6 +19,10 @@ import { assertRestaurantPosScope } from "../authorization/assertRestaurantPosSc
 import type { PosSettlementInitiateIdempotencyStore } from "../infrastructure/PosSettlementInitiateIdempotencyStore";
 import type { PosPermissionGrantStore } from "../infrastructure/PosPermissionGrantStore";
 import { PosAccessService } from "./PosAccessService";
+import {
+  PosRegisterShiftContextError,
+  PosRegisterShiftContextService,
+} from "./PosRegisterShiftContextService";
 import type { SelectUser } from "../../../drizzle/schema";
 
 export class PosSettlementInitiateError extends Error {
@@ -48,6 +52,8 @@ export type PosSettlementInitiateResult = {
   orderingChannel: typeof ORDERING_CHANNEL_CASHIER_POS;
   terminalId: string;
   cashierUserId: number;
+  registerId: string | null;
+  financialShiftId: string | null;
   replayed: boolean;
 };
 
@@ -79,6 +85,11 @@ export type PosSettlementCheckLookup = (input: {
 export type PosSettlementSettlePaid = (input: {
   restaurantId: number;
   checkId: number;
+  settlementContextHints: {
+    registerId: string;
+    operatorUserId: number;
+    deviceId?: string | null;
+  };
 }) => Promise<{
   check: PosSettlementCheckView;
   settlementRecordId: string | null;
@@ -146,6 +157,11 @@ async function defaultCheckLookup(input: {
 async function defaultSettlePaid(input: {
   restaurantId: number;
   checkId: number;
+  settlementContextHints: {
+    registerId: string;
+    operatorUserId: number;
+    deviceId?: string | null;
+  };
 }): Promise<{
   check: PosSettlementCheckView;
   settlementRecordId: string | null;
@@ -153,6 +169,11 @@ async function defaultSettlePaid(input: {
   const financial = await settleCheckPaidByIdDetailed({
     restaurantId: input.restaurantId,
     checkId: input.checkId,
+    settlementContextHints: {
+      registerId: input.settlementContextHints.registerId,
+      operatorUserId: input.settlementContextHints.operatorUserId,
+      deviceId: input.settlementContextHints.deviceId,
+    },
   });
   return {
     check: {
@@ -176,6 +197,8 @@ function resultFrom(fields: {
   sessionId: number | null;
   terminalId: string;
   cashierUserId: number;
+  registerId: string | null;
+  financialShiftId: string | null;
   replayed: boolean;
 }): PosSettlementInitiateResult {
   return {
@@ -189,6 +212,8 @@ function resultFrom(fields: {
     orderingChannel: ORDERING_CHANNEL_CASHIER_POS,
     terminalId: fields.terminalId,
     cashierUserId: fields.cashierUserId,
+    registerId: fields.registerId,
+    financialShiftId: fields.financialShiftId,
     replayed: fields.replayed,
   };
 }
@@ -198,6 +223,7 @@ export class PosSettlementInitiateService {
     private readonly grants: PosPermissionGrantStore,
     private readonly access: PosAccessService,
     private readonly idempotency: PosSettlementInitiateIdempotencyStore,
+    private readonly registerShift: PosRegisterShiftContextService = new PosRegisterShiftContextService(),
     private readonly orderLookup: PosSettlementInitiateOrderLookup = getOrderById,
     private readonly membershipLookup: PosSettlementMembershipLookup = defaultMembershipLookup,
     private readonly checkLookup: PosSettlementCheckLookup = defaultCheckLookup,
@@ -299,6 +325,8 @@ export class PosSettlementInitiateService {
           sessionId: existing.sessionId,
           terminalId: context.terminalId,
           cashierUserId: context.userId,
+          registerId: existing.registerId,
+          financialShiftId: existing.financialShiftId,
           replayed: true,
         });
       }
@@ -343,11 +371,30 @@ export class PosSettlementInitiateService {
         );
       }
 
+      let operational;
+      try {
+        operational = await this.registerShift.requireForSettlement({
+          restaurantId: context.restaurantId,
+          terminalId: context.terminalId,
+          operatorUserId: context.userId,
+        });
+      } catch (err) {
+        if (err instanceof PosRegisterShiftContextError) {
+          throw new PosSettlementInitiateError(err.code, err.message);
+        }
+        throw err;
+      }
+
       let settled: Awaited<ReturnType<PosSettlementSettlePaid>>;
       try {
         settled = await this.settlePaid({
           restaurantId: context.restaurantId,
           checkId: check.id,
+          settlementContextHints: {
+            registerId: operational.registerId,
+            operatorUserId: context.userId,
+            deviceId: operational.deviceId,
+          },
         });
       } catch (err) {
         if (err instanceof CheckTransitionError) {
@@ -372,6 +419,8 @@ export class PosSettlementInitiateService {
               grandTotal: raced.grandTotal,
               settlementRecordId: null,
               sessionId: raced.sessionId,
+              registerId: operational.registerId,
+              financialShiftId: operational.financialShiftId,
               createdAt: new Date().toISOString(),
             });
             return resultFrom({
@@ -383,6 +432,8 @@ export class PosSettlementInitiateService {
               sessionId: raced.sessionId,
               terminalId: context.terminalId,
               cashierUserId: context.userId,
+              registerId: operational.registerId,
+              financialShiftId: operational.financialShiftId,
               replayed: true,
             });
           }
@@ -419,6 +470,8 @@ export class PosSettlementInitiateService {
         grandTotal: settled.check.grandTotal,
         settlementRecordId: settled.settlementRecordId,
         sessionId: settled.check.sessionId,
+        registerId: operational.registerId,
+        financialShiftId: operational.financialShiftId,
         createdAt: new Date().toISOString(),
       });
 
@@ -435,6 +488,8 @@ export class PosSettlementInitiateService {
           checkId: settled.check.id,
           terminalId: context.terminalId,
           orderingChannel: ORDERING_CHANNEL_CASHIER_POS,
+          registerId: operational.registerId,
+          financialShiftId: operational.financialShiftId,
         },
       });
 
@@ -447,6 +502,8 @@ export class PosSettlementInitiateService {
         sessionId: settled.check.sessionId,
         terminalId: context.terminalId,
         cashierUserId: context.userId,
+        registerId: operational.registerId,
+        financialShiftId: operational.financialShiftId,
         replayed: false,
       });
     });
