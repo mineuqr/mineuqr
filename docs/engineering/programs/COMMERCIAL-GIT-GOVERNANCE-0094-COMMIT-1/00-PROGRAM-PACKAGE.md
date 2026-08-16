@@ -9,6 +9,7 @@
 | Item | Value |
 |------|--------|
 | Branch | `main` |
+| Commit | `bc865626c1cde8dd0434b6ca797786077ed280bb` |
 | Governance tail | `0094_commercial_limit_occupancy_locks` |
 | Journal entries | 95 |
 | 0094 SQL hash | `134a49bf9ce3e329e019bbd5f85b485aab48f46d0480140257915751caa85d47` (unchanged) |
