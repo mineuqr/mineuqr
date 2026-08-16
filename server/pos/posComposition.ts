@@ -10,6 +10,7 @@ import type { PosSaleIdempotencyStore } from "./infrastructure/PosSaleIdempotenc
 import type { PosSettlementInitiateIdempotencyStore } from "./infrastructure/PosSettlementInitiateIdempotencyStore";
 import type { PosTerminalStore } from "./infrastructure/PosTerminalStore";
 import { PosAccessService } from "./services/PosAccessService";
+import { PosCashierCrmpOperationsService } from "./services/PosCashierCrmpOperationsService";
 import { PosCheckIntakeService } from "./services/PosCheckIntakeService";
 import { PosEntitlementService } from "./services/PosEntitlementService";
 import { PosSaleService } from "./services/PosSaleService";
@@ -115,6 +116,14 @@ function getPosSettlementInitiateIdempotencyStore(): PosSettlementInitiateIdempo
 
 export function getPosRegisterShiftContextService(): PosRegisterShiftContextService {
   return PosRegisterShiftContextService.withTerminalStore(getStore());
+}
+
+export function getPosCashierCrmpOperationsService(): PosCashierCrmpOperationsService {
+  return new PosCashierCrmpOperationsService(
+    getPosGrantStore(),
+    getPosAccessService(),
+    getStore()
+  );
 }
 
 export function getPosSettlementInitiateService(): PosSettlementInitiateService {

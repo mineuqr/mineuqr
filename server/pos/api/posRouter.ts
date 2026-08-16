@@ -5,9 +5,9 @@
  * POS-CHECK-INTAKE-IMPLEMENTATION-1
  * POS-SETTLEMENT-INITIATE-IMPLEMENTATION-1
  * POS-REGISTER-SHIFT-IMPLEMENTATION-1
- * Thin POS router. Sale, Check Intake, and Settlement Initiation orchestrate
- * through POS services. Register/Shift lifecycle remains on existing CRMP APIs.
- * No public paid-settlement endpoint, payment, refund, or POS Register/Shift APIs.
+ * POS-CASHIER-CRMP-OPERATIONS-1
+ * Thin POS router. Cashier Register/Shift commands orchestrate through CRMP
+ * façades. No POS Register/Shift persistence, payment, refund, or cash-movement APIs.
  */
 
 import { z } from "zod";
@@ -24,6 +24,7 @@ import {
   getPosSaleService,
   getPosSettlementInitiateService,
   getPosRegisterShiftContextService,
+  getPosCashierCrmpOperationsService,
   getPosTerminalService,
 } from "../posComposition";
 import { PosCheckIntakeError } from "../services/PosCheckIntakeService";
@@ -31,6 +32,7 @@ import { PosEntitlementDeniedError } from "../services/PosEntitlementService";
 import { PosSaleError } from "../services/PosSaleService";
 import { PosSettlementInitiateError } from "../services/PosSettlementInitiateService";
 import { PosRegisterShiftContextError } from "../services/PosRegisterShiftContextService";
+import { PosCashierCrmpError } from "../services/PosCashierCrmpOperationsService";
 import { PosTerminalError } from "../services/PosTerminalService";
 
 const restaurantInput = z.object({
@@ -70,6 +72,27 @@ const settlementInitiateInput = terminalInput.extend({
   idempotencyKey: z.string().min(8).max(128),
 });
 
+const cashierRegisterInput = terminalInput.extend({
+  registerId: z.string().min(1).max(128),
+});
+
+const moneyAmountInput = z
+  .string()
+  .min(1)
+  .max(32)
+  .regex(/^\d+(\.\d{1,2})?$/, "invalid decimal amount");
+
+const cashierShiftOpenInput = cashierRegisterInput.extend({
+  openingFloatAmount: moneyAmountInput,
+  currencyCode: z.string().min(1).max(8),
+  idempotencyKey: z.string().min(8).max(128),
+});
+
+const cashierShiftCloseInput = cashierRegisterInput.extend({
+  actualCashAmount: moneyAmountInput,
+  financialShiftId: z.string().min(1).max(128).optional(),
+});
+
 const SALE_FORBIDDEN_CODES = new Set([
   "pos_permission_denied",
   "terminal_not_found",
@@ -83,6 +106,7 @@ const SALE_FORBIDDEN_CODES = new Set([
   "check_not_open",
   "check_wrong_restaurant",
   "register_wrong_restaurant",
+  "register_terminal_mismatch",
 ]);
 
 function mapPosError(err: unknown): never {
@@ -104,6 +128,15 @@ function mapPosError(err: unknown): never {
       code: err.code === "register_wrong_restaurant" ? "FORBIDDEN" : "BAD_REQUEST",
       message: err.code === "register_wrong_restaurant" ? "غير مصرح بالوصول" : err.message,
     });
+  }
+  if (err instanceof PosCashierCrmpError) {
+    if (err.code === "idempotency_conflict" || err.code === "concurrency_conflict") {
+      throw new TRPCError({ code: "CONFLICT", message: err.message });
+    }
+    if (SALE_FORBIDDEN_CODES.has(err.code)) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "غير مصرح بالوصول" });
+    }
+    throw new TRPCError({ code: "BAD_REQUEST", message: err.message });
   }
   if (
     err instanceof PosSaleError ||
@@ -358,6 +391,81 @@ export const posRouter = router({
       } catch (err) {
         mapPosError(err);
       }
+    }),
+  }),
+  cashier: router({
+    register: router({
+      open: verifiedProcedure
+        .input(cashierRegisterInput)
+        .mutation(async ({ input, ctx }) => {
+          try {
+            return await getPosCashierCrmpOperationsService().openRegister({
+              user: ctx.user,
+              command: {
+                restaurantId: input.restaurantId,
+                terminalId: input.terminalId,
+                registerId: input.registerId,
+              },
+            });
+          } catch (err) {
+            mapPosError(err);
+          }
+        }),
+      close: verifiedProcedure
+        .input(cashierRegisterInput)
+        .mutation(async ({ input, ctx }) => {
+          try {
+            return await getPosCashierCrmpOperationsService().closeRegister({
+              user: ctx.user,
+              command: {
+                restaurantId: input.restaurantId,
+                terminalId: input.terminalId,
+                registerId: input.registerId,
+              },
+            });
+          } catch (err) {
+            mapPosError(err);
+          }
+        }),
+    }),
+    financialShift: router({
+      open: verifiedProcedure
+        .input(cashierShiftOpenInput)
+        .mutation(async ({ input, ctx }) => {
+          try {
+            return await getPosCashierCrmpOperationsService().openShift({
+              user: ctx.user,
+              command: {
+                restaurantId: input.restaurantId,
+                terminalId: input.terminalId,
+                registerId: input.registerId,
+                openingFloatAmount: input.openingFloatAmount,
+                currencyCode: input.currencyCode,
+                idempotencyKey: input.idempotencyKey,
+              },
+            });
+          } catch (err) {
+            mapPosError(err);
+          }
+        }),
+      close: verifiedProcedure
+        .input(cashierShiftCloseInput)
+        .mutation(async ({ input, ctx }) => {
+          try {
+            return await getPosCashierCrmpOperationsService().closeShift({
+              user: ctx.user,
+              command: {
+                restaurantId: input.restaurantId,
+                terminalId: input.terminalId,
+                registerId: input.registerId,
+                actualCashAmount: input.actualCashAmount,
+                financialShiftId: input.financialShiftId,
+              },
+            });
+          } catch (err) {
+            mapPosError(err);
+          }
+        }),
     }),
   }),
 });
