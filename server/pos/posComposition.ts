@@ -2,25 +2,32 @@ import { identityPlaceOrderService } from "../order/placeOrderComposition";
 import { InMemoryPosCheckIntakeIdempotencyStore } from "./infrastructure/InMemoryPosCheckIntakeIdempotencyStore";
 import { InMemoryPosPermissionGrantStore } from "./infrastructure/InMemoryPosPermissionGrantStore";
 import { InMemoryPosSaleIdempotencyStore } from "./infrastructure/InMemoryPosSaleIdempotencyStore";
+import { InMemoryPosSettlementInitiateIdempotencyStore } from "./infrastructure/InMemoryPosSettlementInitiateIdempotencyStore";
 import { InMemoryPosTerminalStore } from "./infrastructure/InMemoryPosTerminalStore";
 import type { PosCheckIntakeIdempotencyStore } from "./infrastructure/PosCheckIntakeIdempotencyStore";
 import type { PosPermissionGrantStore } from "./infrastructure/PosPermissionGrantStore";
 import type { PosSaleIdempotencyStore } from "./infrastructure/PosSaleIdempotencyStore";
+import type { PosSettlementInitiateIdempotencyStore } from "./infrastructure/PosSettlementInitiateIdempotencyStore";
 import type { PosTerminalStore } from "./infrastructure/PosTerminalStore";
 import { PosAccessService } from "./services/PosAccessService";
 import { PosCheckIntakeService } from "./services/PosCheckIntakeService";
 import { PosEntitlementService } from "./services/PosEntitlementService";
 import { PosSaleService } from "./services/PosSaleService";
+import { PosSettlementInitiateService } from "./services/PosSettlementInitiateService";
 import { PosTerminalService } from "./services/PosTerminalService";
 
 const defaultStore = new InMemoryPosTerminalStore();
 const defaultGrants = new InMemoryPosPermissionGrantStore();
 const defaultSaleIdempotency = new InMemoryPosSaleIdempotencyStore();
 const defaultCheckIntakeIdempotency = new InMemoryPosCheckIntakeIdempotencyStore();
+const defaultSettlementInitiateIdempotency =
+  new InMemoryPosSettlementInitiateIdempotencyStore();
 let storeOverride: PosTerminalStore | null = null;
 let grantOverride: PosPermissionGrantStore | null = null;
 let saleIdempotencyOverride: PosSaleIdempotencyStore | null = null;
 let checkIntakeIdempotencyOverride: PosCheckIntakeIdempotencyStore | null = null;
+let settlementInitiateIdempotencyOverride: PosSettlementInitiateIdempotencyStore | null =
+  null;
 
 export function setPosStoreForTests(store: PosTerminalStore | null): void {
   storeOverride = store;
@@ -92,5 +99,23 @@ export function getPosCheckIntakeService(): PosCheckIntakeService {
     getPosGrantStore(),
     getPosAccessService(),
     getPosCheckIntakeIdempotencyStore()
+  );
+}
+
+export function setPosSettlementInitiateIdempotencyStoreForTests(
+  store: PosSettlementInitiateIdempotencyStore | null
+): void {
+  settlementInitiateIdempotencyOverride = store;
+}
+
+function getPosSettlementInitiateIdempotencyStore(): PosSettlementInitiateIdempotencyStore {
+  return settlementInitiateIdempotencyOverride ?? defaultSettlementInitiateIdempotency;
+}
+
+export function getPosSettlementInitiateService(): PosSettlementInitiateService {
+  return new PosSettlementInitiateService(
+    getPosGrantStore(),
+    getPosAccessService(),
+    getPosSettlementInitiateIdempotencyStore()
   );
 }

@@ -2,8 +2,11 @@
  * POS-DOMAIN-ARCHITECTURE-IMPLEMENTATION-1
  * POS-TERMINAL-ACCESS-IMPLEMENTATION-1
  * POS-SALE-ORDER-IMPLEMENTATION-1
- * Thin POS router. Sale and Check Intake orchestrate through POS services.
- * No payment, settlement, refund, Register, or Shift APIs.
+ * POS-CHECK-INTAKE-IMPLEMENTATION-1
+ * POS-SETTLEMENT-INITIATE-IMPLEMENTATION-1
+ * Thin POS router. Sale, Check Intake, and Settlement Initiation orchestrate
+ * through POS services. No public paid-settlement endpoint, payment, refund,
+ * Register, or Shift APIs.
  */
 
 import { z } from "zod";
@@ -18,11 +21,13 @@ import {
   getPosGrantStore,
   getPosCheckIntakeService,
   getPosSaleService,
+  getPosSettlementInitiateService,
   getPosTerminalService,
 } from "../posComposition";
 import { PosCheckIntakeError } from "../services/PosCheckIntakeService";
 import { PosEntitlementDeniedError } from "../services/PosEntitlementService";
 import { PosSaleError } from "../services/PosSaleService";
+import { PosSettlementInitiateError } from "../services/PosSettlementInitiateService";
 import { PosTerminalError } from "../services/PosTerminalService";
 
 const restaurantInput = z.object({
@@ -57,6 +62,11 @@ const checkIntakeInput = terminalInput.extend({
   idempotencyKey: z.string().min(8).max(128),
 });
 
+const settlementInitiateInput = terminalInput.extend({
+  orderId: z.number().int().positive(),
+  idempotencyKey: z.string().min(8).max(128),
+});
+
 const SALE_FORBIDDEN_CODES = new Set([
   "pos_permission_denied",
   "terminal_not_found",
@@ -68,6 +78,7 @@ const SALE_FORBIDDEN_CODES = new Set([
   "order_not_found",
   "order_not_eligible",
   "check_not_open",
+  "check_wrong_restaurant",
 ]);
 
 function mapPosError(err: unknown): never {
@@ -84,8 +95,12 @@ function mapPosError(err: unknown): never {
       message: err.message,
     });
   }
-  if (err instanceof PosSaleError || err instanceof PosCheckIntakeError) {
-    if (err.code === "idempotency_conflict") {
+  if (
+    err instanceof PosSaleError ||
+    err instanceof PosCheckIntakeError ||
+    err instanceof PosSettlementInitiateError
+  ) {
+    if (err.code === "idempotency_conflict" || err.code === "concurrency_conflict") {
       throw new TRPCError({ code: "CONFLICT", message: err.message });
     }
     if (SALE_FORBIDDEN_CODES.has(err.code)) {
@@ -283,5 +298,24 @@ export const posRouter = router({
         mapPosError(err);
       }
     }),
+  }),
+  settlement: router({
+    initiate: verifiedProcedure
+      .input(settlementInitiateInput)
+      .mutation(async ({ input, ctx }) => {
+        try {
+          return await getPosSettlementInitiateService().initiate({
+            user: ctx.user,
+            command: {
+              restaurantId: input.restaurantId,
+              terminalId: input.terminalId,
+              orderId: input.orderId,
+              idempotencyKey: input.idempotencyKey,
+            },
+          });
+        } catch (err) {
+          mapPosError(err);
+        }
+      }),
   }),
 });
