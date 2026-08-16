@@ -1,7 +1,9 @@
 /**
  * POS-CASHIER-CRMP-OPERATIONS-1
+ * POS-CASHIER-DRAWER-MOVEMENT-1
  * Thin POS adapter over existing CRMP Register / Financial Shift operations.
  * POS does not own cashier identity, Register, Shift, or cash movements.
+ * Drawer Movement authority remains CRMP; POS only authorizes and forwards.
  */
 
 import { createHash } from "node:crypto";
@@ -11,7 +13,13 @@ import {
 } from "../../crmp/api/crmpApiComposition";
 import type { CrmpFinancialShiftOperationsService } from "../../crmp/api/crmpFinancialShiftOperationsService";
 import type { CrmpRegisterOperationsService } from "../../crmp/api/crmpRegisterOperationsService";
-import { CrmpConflictError, CrmpNotFoundError } from "@shared/crmp";
+import {
+  CrmpConflictError,
+  CrmpImmutabilityError,
+  CrmpInvariantError,
+  CrmpNotFoundError,
+  CrmpValidationError,
+} from "@shared/crmp";
 import { assertRestaurantPosScope } from "../authorization/assertRestaurantPosScope";
 import type { PosPermissionGrantStore } from "../infrastructure/PosPermissionGrantStore";
 import type { PosTerminalStore } from "../infrastructure/PosTerminalStore";
@@ -45,12 +53,61 @@ export type PosCashierCrmpCommandBase = {
 function mapCrmpError(err: unknown): never {
   if (err instanceof PosCashierCrmpError) throw err;
   if (err instanceof CrmpNotFoundError) {
+    const message = err.message.toLowerCase();
+    if (message.includes("financial shift")) {
+      throw new PosCashierCrmpError(
+        "shift_required",
+        "An open Financial Shift is required"
+      );
+    }
     throw new PosCashierCrmpError("register_not_found", "Register not found");
   }
   if (err instanceof CrmpConflictError) {
+    const message = err.message.toLowerCase();
+    if (message.includes("idempotency")) {
+      throw new PosCashierCrmpError(
+        "idempotency_conflict",
+        "Drawer movement already recorded with a different payload"
+      );
+    }
+    if (message.includes("does not match the active")) {
+      throw new PosCashierCrmpError(
+        "shift_mismatch",
+        "Shift does not match the active Register"
+      );
+    }
     throw new PosCashierCrmpError(
       "concurrency_conflict",
       "Register/Shift operation conflicted"
+    );
+  }
+  if (err instanceof CrmpImmutabilityError) {
+    throw new PosCashierCrmpError(
+      "shift_closed",
+      "Closed Financial Shift is immutable"
+    );
+  }
+  if (err instanceof CrmpValidationError) {
+    const message = err.message.toLowerCase();
+    if (message.includes("currencycode")) {
+      throw new PosCashierCrmpError(
+        "currency_mismatch",
+        "Currency does not match the financial shift"
+      );
+    }
+    throw new PosCashierCrmpError("invalid_input", "Invalid drawer movement input");
+  }
+  if (err instanceof CrmpInvariantError) {
+    const message = err.message.toLowerCase();
+    if (message.includes("exceeds expected drawer cash")) {
+      throw new PosCashierCrmpError(
+        "drawer_overdraft",
+        "Drawer movement exceeds expected cash"
+      );
+    }
+    throw new PosCashierCrmpError(
+      "drawer_rejected",
+      "Drawer movement rejected by CRMP"
     );
   }
   throw err;
@@ -328,6 +385,68 @@ export class PosCashierCrmpOperationsService {
       });
       return {
         shift: result.shift,
+        alreadyApplied: result.alreadyApplied,
+        cashierUserId: context.userId,
+        terminalId: context.terminalId,
+      };
+    } catch (err) {
+      mapCrmpError(err);
+    }
+  }
+
+  /**
+   * POS-CASHIER-DRAWER-MOVEMENT-1
+   * Authorize POS cashier, then forward to CRMP recordDrawerMovement.
+   * POS does not persist, derive movement identity, or calculate expected cash.
+   */
+  async recordDrawerMovement(input: {
+    user: SelectUser;
+    command: PosCashierCrmpCommandBase & {
+      movementType: "paid_in" | "paid_out" | "safe_drop" | "manual_adjustment";
+      amount: string;
+      reason: string;
+      idempotencyKey: string;
+      currencyCode?: string;
+      financialShiftId?: string;
+    };
+  }) {
+    const context = await this.authorize({
+      user: input.user,
+      restaurantId: input.command.restaurantId,
+      terminalId: input.command.terminalId,
+      requiredPermission: "REGISTER_ADJUST",
+      action: "pos.cashier.financialShift.recordDrawerMovement",
+    });
+    if (
+      !input.command.idempotencyKey.trim() ||
+      input.command.idempotencyKey.length < 8 ||
+      input.command.idempotencyKey.length > 128
+    ) {
+      throw new PosCashierCrmpError(
+        "invalid_idempotency_key",
+        "Idempotency key is required"
+      );
+    }
+    try {
+      await this.assertRegisterForTerminal({
+        restaurantId: context.restaurantId,
+        terminalId: context.terminalId,
+        registerId: input.command.registerId,
+      });
+      const result = await this.shifts.recordDrawerMovement({
+        restaurantId: context.restaurantId,
+        registerId: input.command.registerId,
+        actorUserId: context.userId,
+        movementType: input.command.movementType,
+        amount: input.command.amount,
+        reason: input.command.reason,
+        idempotencyKey: input.command.idempotencyKey,
+        financialShiftId: input.command.financialShiftId,
+        currencyCode: input.command.currencyCode,
+      });
+      return {
+        shift: result.shift,
+        movement: result.movement,
         alreadyApplied: result.alreadyApplied,
         cashierUserId: context.userId,
         terminalId: context.terminalId,

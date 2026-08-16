@@ -19,14 +19,16 @@ describe("POS cashier CRMP operations architecture guards", () => {
     const journal = read("drizzle/meta/_journal.json");
     expect(POS_PERMISSIONS).toContain("SHIFT_OPEN");
     expect(POS_PERMISSIONS).toContain("SHIFT_CLOSE");
+    expect(POS_PERMISSIONS).toContain("REGISTER_ADJUST");
     expect(service).toContain("getCrmpRegisterOperationsService");
     expect(service).toContain("getCrmpFinancialShiftOperationsService");
     expect(service).toContain('requiredPermission: "SHIFT_OPEN"');
     expect(service).toContain('requiredPermission: "SHIFT_CLOSE"');
+    expect(service).toContain('requiredPermission: "REGISTER_ADJUST"');
     expect(service).toContain("operatorUserId: context.userId");
     expect(service).toContain("actorUserId: context.userId");
-    expect(service).not.toContain("recordMovement");
-    expect(service).not.toContain("paid_in");
+    expect(service).toContain("this.shifts.recordDrawerMovement");
+    expect(service).not.toContain("persistDrawerMovement");
     expect(service).not.toContain("pos_cashiers");
     expect(service).not.toContain("StaffCounterPickupSettlementService");
     expect(service).not.toMatch(/from ["'].*reporting-platform/);
@@ -49,16 +51,14 @@ describe("POS cashier CRMP operations architecture guards", () => {
     expect(service).not.toMatch(/role === ["']admin["']/);
   });
 
-  it("keeps the POS router as a thin adapter and does not expose cash movements", () => {
+  it("keeps the POS router as a thin adapter over CRMP façades", () => {
     const router = read("server/pos/api/posRouter.ts");
     const crmpRouter = read("server/crmp/api/crmpRouter.ts");
     expect(router).toContain("getPosCashierCrmpOperationsService()");
     expect(router).toContain("cashier:");
+    expect(router).toContain("recordDrawerMovement");
     expect(router).not.toContain("RegisterDomainService");
     expect(router).not.toContain("FinancialShiftDomainService");
-    expect(router).not.toContain("recordMovement");
-    expect(router).not.toContain("paid_in");
-    expect(router).not.toContain("paid_out");
     expect(crmpRouter).toContain("assertRestaurantAccess");
     expect(crmpRouter).toContain("crmp.register.open");
   });

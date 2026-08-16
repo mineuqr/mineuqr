@@ -6,8 +6,10 @@
  * POS-SETTLEMENT-INITIATE-IMPLEMENTATION-1
  * POS-REGISTER-SHIFT-IMPLEMENTATION-1
  * POS-CASHIER-CRMP-OPERATIONS-1
- * Thin POS router. Cashier Register/Shift commands orchestrate through CRMP
- * façades. No POS Register/Shift persistence, payment, refund, or cash-movement APIs.
+ * POS-CASHIER-DRAWER-MOVEMENT-1
+ * Thin POS router. Cashier Register/Shift/Drawer Movement commands orchestrate
+ * through CRMP façades. No POS Register/Shift/cash persistence. Drawer Movement
+ * remains CRMP-owned; POS only authorizes and forwards.
  */
 
 import { z } from "zod";
@@ -93,6 +95,21 @@ const cashierShiftCloseInput = cashierRegisterInput.extend({
   financialShiftId: z.string().min(1).max(128).optional(),
 });
 
+const cashierDrawerAmountInput = z
+  .string()
+  .min(1)
+  .max(32)
+  .regex(/^-?\d+(\.\d{1,2})?$/, "invalid decimal amount");
+
+const cashierDrawerMovementInput = cashierRegisterInput.extend({
+  movementType: z.enum(["paid_in", "paid_out", "safe_drop", "manual_adjustment"]),
+  amount: cashierDrawerAmountInput,
+  reason: z.string().min(1).max(512),
+  idempotencyKey: z.string().min(8).max(128),
+  currencyCode: z.string().min(1).max(8).optional(),
+  financialShiftId: z.string().min(1).max(128).optional(),
+});
+
 const SALE_FORBIDDEN_CODES = new Set([
   "pos_permission_denied",
   "terminal_not_found",
@@ -130,7 +147,12 @@ function mapPosError(err: unknown): never {
     });
   }
   if (err instanceof PosCashierCrmpError) {
-    if (err.code === "idempotency_conflict" || err.code === "concurrency_conflict") {
+    if (
+      err.code === "idempotency_conflict" ||
+      err.code === "concurrency_conflict" ||
+      err.code === "drawer_overdraft" ||
+      err.code === "shift_closed"
+    ) {
       throw new TRPCError({ code: "CONFLICT", message: err.message });
     }
     if (SALE_FORBIDDEN_CODES.has(err.code)) {
@@ -459,6 +481,28 @@ export const posRouter = router({
                 terminalId: input.terminalId,
                 registerId: input.registerId,
                 actualCashAmount: input.actualCashAmount,
+                financialShiftId: input.financialShiftId,
+              },
+            });
+          } catch (err) {
+            mapPosError(err);
+          }
+        }),
+      recordDrawerMovement: verifiedProcedure
+        .input(cashierDrawerMovementInput)
+        .mutation(async ({ input, ctx }) => {
+          try {
+            return await getPosCashierCrmpOperationsService().recordDrawerMovement({
+              user: ctx.user,
+              command: {
+                restaurantId: input.restaurantId,
+                terminalId: input.terminalId,
+                registerId: input.registerId,
+                movementType: input.movementType,
+                amount: input.amount,
+                reason: input.reason,
+                idempotencyKey: input.idempotencyKey,
+                currencyCode: input.currencyCode,
                 financialShiftId: input.financialShiftId,
               },
             });

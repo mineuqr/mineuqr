@@ -40,17 +40,20 @@ describe("CRMP drawer movement architecture guards", () => {
     expect(journal).not.toContain("0094_");
   });
 
-  it("does not let POS own or bypass drawer movement persistence", () => {
+  it("lets POS adapt drawer movement without owning persistence or domain writes", () => {
     const posRouter = read("server/pos/api/posRouter.ts");
     const posCashier = read(
       "server/pos/services/PosCashierCrmpOperationsService.ts"
     );
-    expect(posRouter).not.toContain("recordDrawerMovement");
-    expect(posRouter).not.toContain("recordMovement");
-    expect(posRouter).not.toContain("paid_in");
-    expect(posCashier).not.toContain("recordMovement");
-    expect(posCashier).not.toContain("paid_in");
+    expect(posCashier).toContain("this.shifts.recordDrawerMovement");
+    expect(posCashier).toContain('requiredPermission: "REGISTER_ADJUST"');
+    expect(posCashier).not.toContain("persistDrawerMovement");
+    expect(posCashier).not.toContain("FinancialShiftDomainService");
     expect(posCashier).not.toContain("pos_cash_movements");
+    expect(posCashier).not.toContain("computeExpectedCash");
+    expect(posRouter).toContain("recordDrawerMovement");
+    expect(posRouter).not.toContain("FinancialShiftDomainService");
+    expect(posRouter).not.toContain("RegisterDomainService");
   });
 
   it("does not expose update/delete of historical movements or opening_float", () => {
