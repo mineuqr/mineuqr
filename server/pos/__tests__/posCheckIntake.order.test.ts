@@ -3,7 +3,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TRPCError } from "@trpc/server";
-import { ORDERING_CHANNEL_CASHIER_POS } from "@shared/ordering-platform/orderingChannelRegistry";
+import { ORDERING_CHANNEL_CASHIER_POS } from "../../../shared/ordering-platform/orderingChannelRegistry";
 import { InMemoryPosCheckIntakeIdempotencyStore } from "../infrastructure/InMemoryPosCheckIntakeIdempotencyStore";
 import { InMemoryPosPermissionGrantStore } from "../infrastructure/InMemoryPosPermissionGrantStore";
 import { InMemoryPosTerminalStore } from "../infrastructure/InMemoryPosTerminalStore";
