@@ -11,6 +11,7 @@ import {
 } from "@shared/pos";
 import { opsLog } from "../../_core/opsLog";
 import type { PosTerminalStore } from "../infrastructure/PosTerminalStore";
+import { PosTerminalCodeConflictError } from "../infrastructure/posPersistenceErrors";
 import { PosEntitlementDeniedError, PosEntitlementService } from "./PosEntitlementService";
 
 export class PosTerminalError extends Error {
@@ -167,8 +168,18 @@ export class PosTerminalService {
       createdAt: now,
       updatedAt: now,
     };
-    await this.store.insert(terminal);
-    return terminal;
+    try {
+      await this.store.insert(terminal);
+      return terminal;
+    } catch (error) {
+      if (!(error instanceof PosTerminalCodeConflictError)) throw error;
+      const winner = await this.store.getByRestaurantAndCode(
+        input.restaurantId,
+        code
+      );
+      if (!winner) throw error;
+      return winner;
+    }
   }
 
   async requireOwned(restaurantId: number, terminalId: string): Promise<PosTerminal> {

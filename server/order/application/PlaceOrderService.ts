@@ -1,7 +1,10 @@
 import type { OrderLineInput } from "../../orderPricing";
 import type { OrderDomainEvent } from "../domain/events/OrderDomainEvents";
 import { Order } from "../domain/aggregate/Order";
-import type { OrderRepository } from "../repositories/OrderRepository";
+import type {
+  OrderRepository,
+  SaveOrderOptions,
+} from "../repositories/OrderRepository";
 import type {
   OrderNumberPort,
   OrderPricingPort,
@@ -95,7 +98,10 @@ export class PlaceOrderService {
     private readonly trackingTokens: TrackingTokenPort
   ) {}
 
-  async execute(command: PlaceOrderCommand): Promise<PlaceOrderResult> {
+  async execute(
+    command: PlaceOrderCommand,
+    persist?: Pick<SaveOrderOptions, "afterPersistInTransaction">
+  ): Promise<PlaceOrderResult> {
     const orderNoteResult = validateOrderNote(
       resolveOrderNoteInput({
         orderNotes: command.orderNotes,
@@ -195,6 +201,7 @@ export class PlaceOrderService {
       },
       identityScope: command.identityScope,
       orderingChannel,
+      afterPersistInTransaction: persist?.afterPersistInTransaction,
     });
     persisted.clearDomainEvents();
 

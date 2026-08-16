@@ -22,6 +22,7 @@ const SALE_OWNED = [
   "server/pos/services/PosSaleService.ts",
   "server/pos/infrastructure/PosSaleIdempotencyStore.ts",
   "server/pos/infrastructure/InMemoryPosSaleIdempotencyStore.ts",
+  "server/pos/infrastructure/DrizzlePosSaleIdempotencyStore.ts",
 ];
 
 describe("POS Sale architecture guards", () => {
@@ -98,5 +99,20 @@ describe("POS Sale architecture guards", () => {
     expect(sale).not.toMatch(/cashierId:\s*input\.command/);
     expect(sale).not.toMatch(/channel:\s*input\.command/);
     expect(sale).not.toMatch(/grandTotal:\s*input/);
+  });
+
+  it("joins POS sale mapping to the Order save transaction and does not fall back to legacy", () => {
+    const sale = read("server/pos/services/PosSaleService.ts");
+    const repo = read("server/order/infrastructure/persistence/DrizzleOrderRepository.ts");
+    const drizzle = read("server/pos/infrastructure/DrizzlePosSaleIdempotencyStore.ts");
+    expect(sale).toContain("afterPersistInTransaction");
+    expect(sale).toContain("putInTransaction");
+    expect(sale).toContain("PosSaleIdempotencyUniqueCollisionError");
+    expect(sale).not.toContain("createPosOrder");
+    expect(repo).toContain("afterPersistInTransaction");
+    expect(repo).toContain("requireSameTransactionCompanion");
+    expect(repo).toContain('throw new Error("database_unavailable")');
+    expect(drizzle).toContain("putInTransaction");
+    expect(drizzle).toContain("PosSaleIdempotencyUniqueCollisionError");
   });
 });

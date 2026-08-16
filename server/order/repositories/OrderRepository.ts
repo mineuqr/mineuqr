@@ -1,5 +1,20 @@
 import type { OrderDomainEvent } from "../domain/events/OrderDomainEvents";
 
+export type SaveOrderResult = {
+  order: import("../domain/aggregate/Order").Order;
+  /** Event IDs written to outbox (empty when legacy path / no DB). */
+  outboxEventIds: string[];
+  /**
+   * ORDER-CONFIRMATION-PRESENTATION-ADOPTION-1 — BI assignment from allocate
+   * (when present). Confirmation APIs resolve displayReference from this.
+   */
+  businessIdentity?: {
+    businessDay: string;
+    dailyDisplayNumber: number;
+    identityScope: string;
+  };
+};
+
 export type SaveOrderOptions = {
   expectedUpdatedAt?: string;
   /** Domain events to persist in outbox (same transaction). */
@@ -18,21 +33,16 @@ export type SaveOrderOptions = {
    * Provenance only — does not change PlaceOrder ownership or identity.
    */
   orderingChannel?: string | null;
-};
-
-export type SaveOrderResult = {
-  order: import("../domain/aggregate/Order").Order;
-  /** Event IDs written to outbox (empty when legacy path / no DB). */
-  outboxEventIds: string[];
   /**
-   * ORDER-CONFIRMATION-PRESENTATION-ADOPTION-1 — BI assignment from allocate
-   * (when present). Confirmation APIs resolve displayReference from this.
+   * POS-SALE-TRANSACTIONAL-SAFETY-HARDENING-1
+   * Companion write on the same DB transaction as Order insert (items, BI, outbox).
+   * Caller owns the extra row (e.g. POS sale idempotency). Order still owns Order rows.
+   * When set, save must not fall back to the non-transactional legacy path.
    */
-  businessIdentity?: {
-    businessDay: string;
-    dailyDisplayNumber: number;
-    identityScope: string;
-  };
+  afterPersistInTransaction?: (
+    tx: unknown,
+    result: SaveOrderResult
+  ) => Promise<void>;
 };
 
 export interface OrderRepository {

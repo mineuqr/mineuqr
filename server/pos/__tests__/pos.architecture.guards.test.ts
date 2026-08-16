@@ -29,6 +29,10 @@ const POS_OWNED = [
   "server/pos/services/PosAccessService.ts",
   "server/pos/api/posRouter.ts",
   "server/pos/infrastructure/InMemoryPosTerminalStore.ts",
+  "server/pos/infrastructure/DrizzlePosTerminalStore.ts",
+  "server/pos/infrastructure/DrizzlePosPermissionGrantStore.ts",
+  "server/pos/infrastructure/posPersistenceErrors.ts",
+  "server/pos/infrastructure/posStoreSelection.ts",
 ];
 
 describe("POS architecture guards", () => {

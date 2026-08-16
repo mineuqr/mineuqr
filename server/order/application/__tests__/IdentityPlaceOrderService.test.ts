@@ -91,4 +91,29 @@ describe("NON-TABLE-PLACE-ORDER-1 IdentityPlaceOrderService", () => {
     // Persist dual-write is inside PlaceOrderService; orchestrator leaves table fields unset.
     expect(LEGACY_NON_TABLE_TABLE_ID).toBe(0);
   });
+
+  it("forwards afterPersistInTransaction into PlaceOrder and still enrolls Check after commit", async () => {
+    const hook = vi.fn();
+    await service.execute(
+      {
+        restaurantId: 1,
+        serviceMode: "counter",
+        fulfilmentAnchor: createStationFulfilmentAnchor({
+          stationId: "counter-1",
+          fulfilmentLabel: "Counter 1",
+        }),
+        orderingChannel: "kiosk",
+        items: [{ menuItemId: 1, quantity: 1 }],
+      },
+      { afterPersistInTransaction: hook }
+    );
+    expect(execute).toHaveBeenCalledWith(
+      expect.objectContaining({ restaurantId: 1 }),
+      { afterPersistInTransaction: hook }
+    );
+    expect(operationalSession.ensureCheckForOrder).toHaveBeenCalledWith({
+      restaurantId: 1,
+      orderId: 99,
+    });
+  });
 });

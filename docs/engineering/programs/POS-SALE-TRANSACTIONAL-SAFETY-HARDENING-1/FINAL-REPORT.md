@@ -1,0 +1,78 @@
+# FINAL REPORT
+
+PROGRAM:
+POS-SALE-TRANSACTIONAL-SAFETY-HARDENING-1
+
+STATUS:
+PASS â€” LOCALLY CERTIFIED
+
+TRANSACTIONAL SAFETY:
+PASS
+
+ATOMIC ORDER + IDEMPOTENCY:
+PASS
+
+CONCURRENT SAME-KEY:
+PASS
+
+ROLLBACK:
+PASS
+
+ORDER OWNERSHIP:
+PASS
+
+IDEMPOTENCY OWNERSHIP:
+PASS
+
+TENANT ISOLATION:
+PASS
+
+TERMINAL ISOLATION:
+PASS
+
+FINANCIAL ISOLATION:
+PASS
+
+REGRESSION:
+PASS
+
+TARGETED TESTS:
+12
+
+FULL POS TESTS:
+171
+
+ORDER / CHECK / SETTLEMENT / CRMP REGRESSION:
+108
+
+BUILD:
+PASS
+
+CHECK:
+188 preexisting `error TS*` â€” unchanged from POS-PERSISTENCE-WIRING-1
+
+DATABASE MUTATION:
+0
+
+PRODUCTION MUTATION:
+0
+
+COMMIT:
+NONE
+
+PUSH:
+NONE
+
+DEPLOY:
+NONE
+
+REMAINING RISKS:
+- Check enrollment remains after Order commit (pre-existing IdentityPlaceOrder best-effort)
+- Order number allocation remains outside the Order transaction (pre-existing PlaceOrder)
+- Companion-write rollback is proven by same `db.transaction` callback + throw; this environment does not run a live multi-instance TiDB race drill
+
+NEXT PROGRAM:
+POS-COMMERCIAL-ENTITLEMENT-VERIFICATION-1
+
+FINAL:
+STOP

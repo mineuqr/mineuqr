@@ -23,5 +23,10 @@ export type PosSaleIdempotencyKey = {
 export type PosSaleIdempotencyStore = {
   get(input: PosSaleIdempotencyKey): Promise<PosSaleIdempotencyRecord | null>;
   put(record: PosSaleIdempotencyRecord): Promise<void>;
+  /**
+   * Insert on the caller's DB transaction. Unique collision always throws
+   * (does not treat same-fingerprint as success) so the companion Order tx rolls back.
+   */
+  putInTransaction(tx: unknown, record: PosSaleIdempotencyRecord): Promise<void>;
   runExclusive<T>(input: PosSaleIdempotencyKey, fn: () => Promise<T>): Promise<T>;
 };

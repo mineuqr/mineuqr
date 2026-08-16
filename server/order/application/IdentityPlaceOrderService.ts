@@ -27,6 +27,7 @@ import {
   PlaceOrderService,
   type PlaceOrderResult,
 } from "./PlaceOrderService";
+import type { SaveOrderOptions } from "../repositories/OrderRepository";
 
 export type IdentityPlaceOrderCommand = {
   restaurantId: number;
@@ -63,7 +64,8 @@ export class IdentityPlaceOrderService {
    * Resolve Operational Session from Fulfilment Anchor, stamp identity, place order.
    */
   async execute(
-    command: IdentityPlaceOrderCommand
+    command: IdentityPlaceOrderCommand,
+    persist?: Pick<SaveOrderOptions, "afterPersistInTransaction">
   ): Promise<IdentityPlaceOrderResult> {
     const draftIdentity = createOrderIdentity({
       serviceMode: command.serviceMode,
@@ -89,7 +91,7 @@ export class IdentityPlaceOrderService {
       sessionToken: sessionResult.session?.sessionToken ?? null,
     });
 
-    const result = await this.placeOrder.execute({
+    const placeCommand = {
       restaurantId: command.restaurantId,
       identity,
       // Legacy dual-compat fields derived inside PlaceOrderService from identity.
@@ -109,7 +111,10 @@ export class IdentityPlaceOrderService {
       orderNotes: command.orderNotes,
       notes: command.notes,
       items: command.items,
-    });
+    };
+    const result = persist
+      ? await this.placeOrder.execute(placeCommand, persist)
+      : await this.placeOrder.execute(placeCommand);
 
     // CHECK-GENERALIZATION-M5 — sessionless / ephemeral channels enroll into Check + Membership.
     // Table Session path keeps Session Check create + dual-write (avoid duplicate sessionless Check).

@@ -57,16 +57,26 @@ export class DrizzleOrderRepository implements OrderRepository {
       db = null;
     }
 
+    const requireSameTransactionCompanion = options?.afterPersistInTransaction != null;
+
     if (db) {
       const { maxAttempts } = BUSINESS_IDENTITY_RETRY_POLICY;
-      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const attempts = requireSameTransactionCompanion ? 1 : maxAttempts;
+      for (let attempt = 1; attempt <= attempts; attempt++) {
         try {
-          return await db.transaction(async (tx) =>
-            order.isNew()
-              ? this.insertTransactional(tx, order, options)
-              : this.updateTransactional(tx, order, options)
-          );
+          return await db.transaction(async (tx) => {
+            const result = order.isNew()
+              ? await this.insertTransactional(tx, order, options)
+              : await this.updateTransactional(tx, order, options);
+            if (options?.afterPersistInTransaction) {
+              await options.afterPersistInTransaction(tx, result);
+            }
+            return result;
+          });
         } catch (error) {
+          if (requireSameTransactionCompanion) {
+            throw error;
+          }
           const retryable =
             isRetryableBusinessIdentityInfrastructureError(error) && attempt < maxAttempts;
           if (retryable) {
@@ -109,6 +119,9 @@ export class DrizzleOrderRepository implements OrderRepository {
           break;
         }
       }
+    }
+    if (requireSameTransactionCompanion) {
+      throw new Error("database_unavailable");
     }
     return order.isNew()
       ? this.insertLegacy(order, options)

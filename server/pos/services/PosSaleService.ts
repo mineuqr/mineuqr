@@ -11,8 +11,14 @@ import { opsLog } from "../../_core/opsLog";
 import { findSessionById } from "../../diningSession/sessionRepository";
 import type { IdentityPlaceOrderService } from "../../order/application/IdentityPlaceOrderService";
 import { runOrderCommand } from "../../order/application/mapOrderDomainError";
+import { resolveOrderDisplayIdentity } from "../../order/business-identity/application/OrderDisplayIdentityResolver";
+import type { SaveOrderResult } from "../../order/repositories/OrderRepository";
 import { assertRestaurantPosScope } from "../authorization/assertRestaurantPosScope";
 import type { PosSaleIdempotencyStore } from "../infrastructure/PosSaleIdempotencyStore";
+import {
+  PosSaleIdempotencyConflictError,
+  PosSaleIdempotencyUniqueCollisionError,
+} from "../infrastructure/posPersistenceErrors";
 import type { PosPermissionGrantStore } from "../infrastructure/PosPermissionGrantStore";
 import { PosAccessService } from "./PosAccessService";
 import type { SelectUser } from "../../../drizzle/schema";
@@ -221,75 +227,160 @@ export class PosSaleService {
         };
       }
 
-      const placed = await runOrderCommand(() =>
-        this.placeOrder.execute({
-          restaurantId: context.restaurantId,
-          serviceMode: "counter",
-          fulfilmentAnchor: createStationFulfilmentAnchor({
-            stationId: context.terminalId,
-            fulfilmentLabel: context.terminalId,
-          }),
-          identityScope: "POS",
-          orderingChannel: ORDERING_CHANNEL_CASHIER_POS,
-          notes: input.command.notes,
-          items: input.command.items.map((item) => ({
-            menuItemId: item.menuItemId,
-            quantity: item.quantity,
-            notes: item.notes,
-            modifiers: item.modifiers,
-          })),
-        })
-      );
+      const placed = await (async () => {
+        try {
+          return await runOrderCommand(() =>
+            this.placeOrder.execute(
+              {
+                restaurantId: context.restaurantId,
+                serviceMode: "counter",
+                fulfilmentAnchor: createStationFulfilmentAnchor({
+                  stationId: context.terminalId,
+                  fulfilmentLabel: context.terminalId,
+                }),
+                identityScope: "POS",
+                orderingChannel: ORDERING_CHANNEL_CASHIER_POS,
+                notes: input.command.notes,
+                items: input.command.items.map((item) => ({
+                  menuItemId: item.menuItemId,
+                  quantity: item.quantity,
+                  notes: item.notes,
+                  modifiers: item.modifiers,
+                })),
+              },
+              {
+                afterPersistInTransaction: async (tx, result) => {
+                  await this.persistSaleMappingInTransaction(
+                    tx,
+                    result,
+                    {
+                      restaurantId: context.restaurantId,
+                      terminalId: context.terminalId,
+                      userId: context.userId,
+                      idempotencyKey: input.command.idempotencyKey,
+                      fingerprint,
+                    }
+                  );
+                },
+              }
+            )
+          );
+        } catch (error) {
+          if (
+            error instanceof PosSaleIdempotencyUniqueCollisionError ||
+            error instanceof PosSaleIdempotencyConflictError
+          ) {
+            const winner = await this.idempotency.get(idempotencyKey);
+            if (winner && winner.fingerprint === fingerprint) {
+              return {
+                orderId: winner.orderId,
+                orderNumber: winner.orderNumber,
+                trackingToken: winner.trackingToken,
+                displayReference: winner.displayReference,
+                totalAmount: winner.totalAmount,
+                itemCount: winner.itemCount,
+                createdAt: winner.createdAt,
+                orderingChannel: ORDERING_CHANNEL_CASHIER_POS,
+                terminalId: context.terminalId,
+                cashierUserId: context.userId,
+                replayed: true,
+              };
+            }
+            throw new PosSaleError(
+              "idempotency_conflict",
+              "Idempotency key was already used for a different sale"
+            );
+          }
+          throw error;
+        }
+      })();
 
-      const orderId = placed.order.id;
-      if (orderId == null) {
-        throw new PosSaleError("order_create_failed", "Order was not persisted");
+      if ("replayed" in placed && placed.replayed) {
+        return placed;
       }
 
-      await this.idempotency.put({
-        restaurantId: context.restaurantId,
-        terminalId: context.terminalId,
-        userId: context.userId,
-        idempotencyKey: input.command.idempotencyKey,
-        fingerprint,
-        orderId,
-        orderNumber: placed.orderNumber,
-        trackingToken: placed.trackingToken,
-        displayReference: placed.displayReference,
-        totalAmount: placed.totalAmount,
-        itemCount: placed.itemCount,
-        createdAt: placed.createdAt,
-      });
+      const stored = await this.idempotency.get(idempotencyKey);
+      if (!stored) {
+        throw new PosSaleError("order_create_failed", "Sale was not recorded");
+      }
+      if (stored.fingerprint !== fingerprint) {
+        throw new PosSaleError(
+          "idempotency_conflict",
+          "Idempotency key was already used for a different sale"
+        );
+      }
 
       opsLog({
         type: "pos_sale_created",
         category: "ORDER",
         severity: "info",
-        ts: placed.createdAt,
+        ts: stored.createdAt,
         actorId: context.userId,
         restaurantId: context.restaurantId,
         action: "pos.sale.create",
         metadata: {
-          orderId,
+          orderId: stored.orderId,
           terminalId: context.terminalId,
           orderingChannel: ORDERING_CHANNEL_CASHIER_POS,
-          sessionPersistence: placed.sessionPersistence,
+          sessionPersistence:
+            "sessionPersistence" in placed
+              ? placed.sessionPersistence
+              : "ephemeral",
         },
       });
 
       return {
-        orderId,
-        orderNumber: placed.orderNumber,
-        trackingToken: placed.trackingToken,
-        displayReference: placed.displayReference,
-        totalAmount: placed.totalAmount,
-        itemCount: placed.itemCount,
-        createdAt: placed.createdAt,
+        orderId: stored.orderId,
+        orderNumber: stored.orderNumber,
+        trackingToken: stored.trackingToken,
+        displayReference: stored.displayReference,
+        totalAmount: stored.totalAmount,
+        itemCount: stored.itemCount,
+        createdAt: stored.createdAt,
         orderingChannel: ORDERING_CHANNEL_CASHIER_POS,
         terminalId: context.terminalId,
         cashierUserId: context.userId,
         replayed: false,
       };
+    });
+  }
+
+  private async persistSaleMappingInTransaction(
+    tx: unknown,
+    result: SaveOrderResult,
+    input: {
+      restaurantId: number;
+      terminalId: string;
+      userId: number;
+      idempotencyKey: string;
+      fingerprint: string;
+    }
+  ): Promise<void> {
+    const orderId = result.order.id;
+    if (orderId == null) {
+      throw new PosSaleError("order_create_failed", "Order was not persisted");
+    }
+    const displayReference = resolveOrderDisplayIdentity({
+      orderNumber: result.order.orderNumber,
+      businessDay: result.businessIdentity?.businessDay ?? null,
+      dailyDisplayNumber: result.businessIdentity?.dailyDisplayNumber ?? null,
+      identityScope: result.businessIdentity?.identityScope ?? "POS",
+      fulfilmentAnchorType: result.order.fulfilmentAnchorType,
+      serviceMode: result.order.serviceMode,
+    }).displayReference;
+    await this.idempotency.putInTransaction(tx, {
+      restaurantId: input.restaurantId,
+      terminalId: input.terminalId,
+      userId: input.userId,
+      idempotencyKey: input.idempotencyKey,
+      fingerprint: input.fingerprint,
+      orderId,
+      orderNumber: result.order.orderNumber,
+      trackingToken: result.order.trackingToken,
+      displayReference,
+      totalAmount: result.order.totalAmount,
+      itemCount: result.order.lines.reduce((sum, line) => sum + line.quantity, 0),
+      createdAt: result.order.createdAt,
     });
   }
 }

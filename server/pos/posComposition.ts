@@ -1,14 +1,16 @@
 import { identityPlaceOrderService } from "../order/placeOrderComposition";
 import { InMemoryPosCheckIntakeIdempotencyStore } from "./infrastructure/InMemoryPosCheckIntakeIdempotencyStore";
-import { InMemoryPosPermissionGrantStore } from "./infrastructure/InMemoryPosPermissionGrantStore";
-import { InMemoryPosSaleIdempotencyStore } from "./infrastructure/InMemoryPosSaleIdempotencyStore";
 import { InMemoryPosSettlementInitiateIdempotencyStore } from "./infrastructure/InMemoryPosSettlementInitiateIdempotencyStore";
-import { InMemoryPosTerminalStore } from "./infrastructure/InMemoryPosTerminalStore";
 import type { PosCheckIntakeIdempotencyStore } from "./infrastructure/PosCheckIntakeIdempotencyStore";
 import type { PosPermissionGrantStore } from "./infrastructure/PosPermissionGrantStore";
 import type { PosSaleIdempotencyStore } from "./infrastructure/PosSaleIdempotencyStore";
 import type { PosSettlementInitiateIdempotencyStore } from "./infrastructure/PosSettlementInitiateIdempotencyStore";
 import type { PosTerminalStore } from "./infrastructure/PosTerminalStore";
+import {
+  selectPosPermissionGrantStore,
+  selectPosSaleIdempotencyStore,
+  selectPosTerminalStore,
+} from "./infrastructure/posStoreSelection";
 import { PosAccessService } from "./services/PosAccessService";
 import { PosCashierCrmpOperationsService } from "./services/PosCashierCrmpOperationsService";
 import { PosCheckIntakeService } from "./services/PosCheckIntakeService";
@@ -18,9 +20,21 @@ import { PosSettlementInitiateService } from "./services/PosSettlementInitiateSe
 import { PosRegisterShiftContextService } from "./services/PosRegisterShiftContextService";
 import { PosTerminalService } from "./services/PosTerminalService";
 
-const defaultStore = new InMemoryPosTerminalStore();
-const defaultGrants = new InMemoryPosPermissionGrantStore();
-const defaultSaleIdempotency = new InMemoryPosSaleIdempotencyStore();
+/**
+ * POS-PERSISTENCE-WIRING-1
+ * Production / development: Drizzle stores against 0091–0093.
+ * Vitest (NODE_ENV=test): InMemory stores.
+ * Check/Settlement idempotency remain InMemory — no SQL tables exist.
+ */
+export {
+  selectPosPermissionGrantStore,
+  selectPosSaleIdempotencyStore,
+  selectPosTerminalStore,
+} from "./infrastructure/posStoreSelection";
+
+const defaultStore = selectPosTerminalStore();
+const defaultGrants = selectPosPermissionGrantStore();
+const defaultSaleIdempotency = selectPosSaleIdempotencyStore();
 const defaultCheckIntakeIdempotency = new InMemoryPosCheckIntakeIdempotencyStore();
 const defaultSettlementInitiateIdempotency =
   new InMemoryPosSettlementInitiateIdempotencyStore();

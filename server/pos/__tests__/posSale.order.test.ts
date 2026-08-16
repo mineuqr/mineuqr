@@ -99,22 +99,73 @@ async function seedTerminal(
 
 function fakePlaceOrder(delayMs = 0) {
   let seq = 100;
-  const execute = vi.fn(async (command: { items: readonly { quantity: number }[] }) => {
-    if (delayMs) await new Promise((resolve) => setTimeout(resolve, delayMs));
-    seq += 1;
-    return {
-      order: { id: seq },
-      events: [],
-      orderNumber: `ORD-${seq}`,
-      trackingToken: `tok-${seq}`,
-      displayReference: `P #${String(seq).padStart(3, "0")}`,
-      totalAmount: "12.50",
-      itemCount: command.items.reduce((sum, item) => sum + item.quantity, 0),
-      createdAt: "2026-08-16T01:00:00.000Z",
-      identity: {},
-      sessionPersistence: "ephemeral" as const,
-    };
-  });
+  const execute = vi.fn(
+    async (
+      command: { items: readonly { quantity: number }[] },
+      persist?: {
+        afterPersistInTransaction?: (
+          tx: unknown,
+          result: {
+            order: {
+              id: number;
+              orderNumber: string;
+              trackingToken: string;
+              totalAmount: string;
+              createdAt: string;
+              fulfilmentAnchorType: string;
+              serviceMode: string;
+              lines: Array<{ quantity: number }>;
+            };
+            outboxEventIds: string[];
+            businessIdentity?: {
+              businessDay: string;
+              dailyDisplayNumber: number;
+              identityScope: string;
+            };
+          }
+        ) => Promise<void>;
+      }
+    ) => {
+      if (delayMs) await new Promise((resolve) => setTimeout(resolve, delayMs));
+      seq += 1;
+      const order = {
+        id: seq,
+        orderNumber: `ORD-${seq}`,
+        trackingToken: `tok-${seq}`,
+        totalAmount: "12.50",
+        createdAt: "2026-08-16T01:00:00.000Z",
+        fulfilmentAnchorType: "station",
+        serviceMode: "counter",
+        lines: command.items.map((item) => ({ quantity: item.quantity })),
+      };
+      if (persist?.afterPersistInTransaction) {
+        await persist.afterPersistInTransaction(
+          {},
+          {
+            order,
+            outboxEventIds: [],
+            businessIdentity: {
+              businessDay: "2026-08-16",
+              dailyDisplayNumber: seq,
+              identityScope: "POS",
+            },
+          }
+        );
+      }
+      return {
+        order,
+        events: [],
+        orderNumber: order.orderNumber,
+        trackingToken: order.trackingToken,
+        displayReference: `P #${String(seq).padStart(3, "0")}`,
+        totalAmount: order.totalAmount,
+        itemCount: command.items.reduce((sum, item) => sum + item.quantity, 0),
+        createdAt: order.createdAt,
+        identity: {},
+        sessionPersistence: "ephemeral" as const,
+      };
+    }
+  );
   return { execute } as unknown as IdentityPlaceOrderService & {
     execute: ReturnType<typeof vi.fn>;
   };
@@ -198,7 +249,8 @@ describe("POS Sale → canonical Order", () => {
             modifiers: ["large"],
           }),
         ],
-      })
+      }),
+      expect.objectContaining({ afterPersistInTransaction: expect.any(Function) })
     );
     expect(place.execute.mock.calls[0][0]).not.toHaveProperty("subtotal");
     expect(place.execute.mock.calls[0][0]).not.toHaveProperty("tax");
@@ -487,7 +539,8 @@ describe("POS Sale → canonical Order", () => {
     expect(place.execute).toHaveBeenCalledWith(
       expect.objectContaining({
         orderingChannel: ORDERING_CHANNEL_CASHIER_POS,
-      })
+      }),
+      expect.objectContaining({ afterPersistInTransaction: expect.any(Function) })
     );
     const payload = place.execute.mock.calls[0][0];
     expect(payload).not.toHaveProperty("cashierId");
@@ -643,7 +696,8 @@ describe("POS Sale → canonical Order", () => {
           stationId: TERMINAL_A,
           fulfilmentLabel: TERMINAL_A,
         }),
-      })
+      }),
+      expect.objectContaining({ afterPersistInTransaction: expect.any(Function) })
     );
     expect(JSON.stringify(place.execute.mock.calls[0][0])).not.toContain("operational");
   });

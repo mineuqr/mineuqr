@@ -3,6 +3,7 @@ import type {
   PosSaleIdempotencyRecord,
   PosSaleIdempotencyStore,
 } from "./PosSaleIdempotencyStore";
+import { PosSaleIdempotencyConflictError, PosSaleIdempotencyUniqueCollisionError } from "./posPersistenceErrors";
 
 function key(input: PosSaleIdempotencyKey): string {
   return `${input.restaurantId}:${input.terminalId}:${input.userId}:${input.idempotencyKey}`;
@@ -17,6 +18,24 @@ export class InMemoryPosSaleIdempotencyStore implements PosSaleIdempotencyStore 
   }
 
   async put(record: PosSaleIdempotencyRecord): Promise<void> {
+    const existing = this.rows.get(key(record));
+    if (existing) {
+      if (existing.fingerprint !== record.fingerprint) {
+        throw new PosSaleIdempotencyConflictError();
+      }
+      return;
+    }
+    this.rows.set(key(record), record);
+  }
+
+  async putInTransaction(
+    _tx: unknown,
+    record: PosSaleIdempotencyRecord
+  ): Promise<void> {
+    const existing = this.rows.get(key(record));
+    if (existing) {
+      throw new PosSaleIdempotencyUniqueCollisionError();
+    }
     this.rows.set(key(record), record);
   }
 
