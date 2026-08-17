@@ -1,0 +1,221 @@
+{
+  "program": "POST-DEPLOYMENT-COMMERCIAL-OCCUPANCY-SMOKE-1",
+  "queriedAt": "2026-08-16T23:58:24.160Z",
+  "mutation": 0,
+  "statements": {
+    "kinds": [
+      "SELECT"
+    ],
+    "count": 17,
+    "refusedNonSelect": 0
+  },
+  "identity": {
+    "host": "gateway01.eu-central-1.prod.aws.tidbcloud.com",
+    "port": 4000,
+    "database": "mineuqr",
+    "userPrefix": "43cECBySTU9sFco",
+    "isTidbCloud": true,
+    "tls": true,
+    "isExactProductionHost": true,
+    "sameSqlUserAsG07": false,
+    "looksStagInUser": false,
+    "verdict": "ACCEPT_PRODUCTION"
+  },
+  "target": {
+    "hostPattern": "tidbcloud_prod",
+    "host": "gateway01.eu-central-1.prod.aws.tidbcloud.com",
+    "port": 4000,
+    "database": "mineuqr",
+    "tls": true
+  },
+  "session": {
+    "db": "mineuqr",
+    "version": "8.0.11-TiDB-v8.5.3-serverless",
+    "server_ts": "2026-08-16T20:58:18.000Z",
+    "currentUserPrefix": "43cECBySTU9sFco"
+  },
+  "journal": {
+    "hash0094": "134a49bf9ce3e329e019bbd5f85b485aab48f46d0480140257915751caa85d47",
+    "certified0094": "134a49bf9ce3e329e019bbd5f85b485aab48f46d0480140257915751caa85d47",
+    "hash0094MatchesCertified": true,
+    "count0094": 1,
+    "row0094": {
+      "id": 6204102,
+      "hash": "134a49bf9ce3e329e019bbd5f85b485aab48f46d0480140257915751caa85d47",
+      "created_at": 1784800000000
+    },
+    "latest": {
+      "id": 6204102,
+      "hash": "134a49bf9ce3e329e019bbd5f85b485aab48f46d0480140257915751caa85d47",
+      "created_at": 1784800000000
+    },
+    "journalEntryCount": 99,
+    "duplicateHashes": []
+  },
+  "schema": {
+    "lockTableExists": true,
+    "columns": [
+      "scopeKind",
+      "scopeId",
+      "limitKey",
+      "createdAt"
+    ],
+    "columnDetails": [
+      {
+        "COLUMN_NAME": "scopeKind",
+        "DATA_TYPE": "varchar",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "PRI"
+      },
+      {
+        "COLUMN_NAME": "scopeId",
+        "DATA_TYPE": "int",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "PRI"
+      },
+      {
+        "COLUMN_NAME": "limitKey",
+        "DATA_TYPE": "varchar",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "PRI"
+      },
+      {
+        "COLUMN_NAME": "createdAt",
+        "DATA_TYPE": "timestamp",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": ""
+      }
+    ],
+    "indexes": [
+      {
+        "INDEX_NAME": "PRIMARY",
+        "NON_UNIQUE": "0",
+        "cols": "scopeKind,scopeId,limitKey"
+      }
+    ],
+    "lockRowCount": 0,
+    "occupancyLikeTables": [
+      "commercial_limit_occupancy_locks"
+    ]
+  },
+  "commercial": {
+    "counts": {
+      "plans": 3,
+      "profiles": 3,
+      "limitValues": 9,
+      "bindings": 4,
+      "subscriptions": 8
+    },
+    "plans": [
+      {
+        "code": "basic",
+        "planId": "79cf7bf7-c3b6-45de-8f20-42897cd493ac",
+        "name": "Basic",
+        "isHidden": 0,
+        "posTerminals": null,
+        "restaurants": 1,
+        "categories": 10,
+        "items": 100
+      },
+      {
+        "code": "professional",
+        "planId": "0ade795a-02fa-4d3e-b9b5-262515bade09",
+        "name": "Professional",
+        "isHidden": 0,
+        "posTerminals": null,
+        "restaurants": 1,
+        "categories": 25,
+        "items": 500
+      },
+      {
+        "code": "enterprise",
+        "planId": "d836bd10-9d9f-4408-a076-f921354d785a",
+        "name": "Enterprise",
+        "isHidden": 0,
+        "posTerminals": null,
+        "restaurants": 1,
+        "categories": 100,
+        "items": null
+      }
+    ],
+    "plansMissingPosTerminals": [
+      "basic",
+      "professional",
+      "enterprise"
+    ]
+  },
+  "census": {
+    "resources": {
+      "restaurants": 4,
+      "restaurantsInactive": 0,
+      "categories": 7,
+      "categoriesInactive": 0,
+      "items": 11,
+      "itemsUnavailable": 0,
+      "posTerminals": 0,
+      "posProvisioned": 0,
+      "posDeactivated": 0,
+      "posReplaced": 0
+    },
+    "perOwnerRestaurants": [
+      {
+        "userId": 1,
+        "occupancy": 2,
+        "cap": 1
+      },
+      {
+        "userId": 14760004,
+        "occupancy": 1,
+        "cap": 1
+      },
+      {
+        "userId": 21630002,
+        "occupancy": 1,
+        "cap": 1
+      }
+    ],
+    "owner1": {
+      "userId": 1,
+      "occupancy": 2,
+      "cap": 1
+    },
+    "perRestaurantCategories": [
+      {
+        "restaurantId": 720002,
+        "occupancy": 2,
+        "cap": 25
+      },
+      {
+        "restaurantId": 720007,
+        "occupancy": 4,
+        "cap": 25
+      },
+      {
+        "restaurantId": 900001,
+        "occupancy": 1,
+        "cap": 100
+      }
+    ],
+    "perRestaurantItems": [
+      {
+        "restaurantId": 720007,
+        "occupancy": 11,
+        "cap": 500
+      }
+    ],
+    "perRestaurantPos": [],
+    "overCap": {
+      "restaurants": 1,
+      "categories": 0,
+      "items": 0,
+      "posTerminals": 0,
+      "restaurantOwners": [
+        {
+          "userId": 1,
+          "occupancy": 2,
+          "cap": 1
+        }
+      ]
+    }
+  }
+}
