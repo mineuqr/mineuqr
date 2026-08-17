@@ -16,6 +16,7 @@ function sectionToRestaurantTab(section: string | null | undefined): RestaurantT
   const map: Record<string, RestaurantTab> = {
     home: "home",
     orders: "orders",
+    cashier: "cashier",
     settlements: "settlements",
     register: "register",
     "register-catalog": "register-catalog",

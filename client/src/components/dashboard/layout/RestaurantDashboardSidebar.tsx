@@ -22,6 +22,7 @@ import {
   QrCode,
   Receipt,
   Settings,
+  ShoppingCart,
   Store,
   WalletCards,
   Tag,
@@ -112,6 +113,13 @@ export function RestaurantDashboardSidebar({
           icon: ClipboardList,
           active: restaurantTab === "orders",
           onClick: () => onRestaurantTabChange!("orders"),
+        },
+        {
+          id: "cashier",
+          label: language === "ar" ? "الكاشير" : "Cashier",
+          icon: ShoppingCart,
+          active: restaurantTab === "cashier",
+          onClick: () => onRestaurantTabChange!("cashier"),
         },
         {
           id: "settlements",

@@ -6,6 +6,7 @@ import { DiningSessionWorkspaceSheet } from "@/components/dashboard/DiningSessio
 import { ActiveSessionsPreviewSection } from "@/components/dashboard/ActiveSessionsPreviewSection";
 import { SessionsWorkspacePanel } from "@/components/dashboard/SessionsWorkspacePanel";
 import { OrdersWorkspacePanel } from "@/components/orders-workspace/OrdersWorkspacePanel";
+import { CashierWorkspacePanel } from "@/components/cashier-workspace/CashierWorkspacePanel";
 import {
   OperationalOrderCard,
   mapDashboardOrderPresentation,
@@ -154,6 +155,7 @@ function restaurantTabLabel(tab: RestaurantTab, language: string, t: (key: strin
     home: language === "ar" ? "لوحة التحكم" : "Dashboard",
     sessions: language === "ar" ? "الجلسات" : "Sessions",
     orders: language === "ar" ? "الطلبات" : "Orders",
+    cashier: language === "ar" ? "الكاشير" : "Cashier",
     settlements: language === "ar" ? "التسويات" : "Settlements",
     register: language === "ar" ? "عمليات الصندوق" : "Register Ops",
     "register-catalog": language === "ar" ? "إنشاء صندوق" : "Create register",
@@ -1080,6 +1082,13 @@ function RestaurantDetail({
           language={language}
           currencySymbol={(restaurant as { currencySymbol?: string })?.currencySymbol}
           tableLabel={(restaurant as { tableLabel?: string })?.tableLabel}
+        />
+      )}
+
+      {activeTab === "cashier" && (
+        <CashierWorkspacePanel
+          restaurantId={restaurantId}
+          language={language === "ar" ? "ar" : "en"}
         />
       )}
 
