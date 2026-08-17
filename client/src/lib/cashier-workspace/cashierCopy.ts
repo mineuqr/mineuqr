@@ -140,6 +140,7 @@ const COPY: Record<string, { ar: string; en: string }> = {
   preparingCheck: { ar: "جاري تجهيز الشيك…", en: "Preparing check…" },
   showActiveOrders: { ar: "الطلبات النشطة", en: "Active orders" },
   hideActiveOrders: { ar: "إخفاء الطلبات النشطة", en: "Hide active orders" },
+  cancelPayment: { ar: "إلغاء", en: "Cancel" },
 };
 
 export function cashierUiLabel(key: keyof typeof COPY, language: CashierLang): string {

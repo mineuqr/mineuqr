@@ -53,7 +53,7 @@ import { trpc } from "@/lib/trpc";
 import { cn, resolveImageUrl } from "@/lib/utils";
 import type { SelectablePaymentMethod } from "@shared/operational-session";
 import { Minus, Plus, ShoppingCart, Trash2 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 type TicketLine = {
@@ -143,6 +143,12 @@ export function CashierWorkspacePanel({
   const [cashReceived, setCashReceived] = useState("");
   const [ordersOpen, setOrdersOpen] = useState(false);
   const [printOpen, setPrintOpen] = useState(false);
+  const [paymentBusy, setPaymentBusy] = useState(false);
+  const saleInFlightRef = useRef(false);
+  const payInFlightRef = useRef(false);
+  const saleKeyRef = useRef<string | null>(null);
+  const settleKeyRef = useRef<string | null>(null);
+  const intakeByOrderRef = useRef(new Map<number, Promise<OpenCheckResult | null>>());
 
   useEffect(() => {
     setTerminalId(readCashierTerminalId(restaurantId));
@@ -337,6 +343,12 @@ export function CashierWorkspacePanel({
   }
 
   function selectOrder(orderId: number) {
+    if (directSale?.orderId === orderId && !paidCheckout) {
+      setSelectedOrderId(orderId);
+      setSalePhase("payment");
+      persistDirectSaleSnapshot({ phase: "payment" });
+      return;
+    }
     setSelectedOrderId(orderId);
     setOpenCheck(null);
     setPaidCheckout(null);
@@ -376,6 +388,12 @@ export function CashierWorkspacePanel({
   }
 
   function startNewSale() {
+    saleInFlightRef.current = false;
+    payInFlightRef.current = false;
+    setPaymentBusy(false);
+    saleKeyRef.current = null;
+    settleKeyRef.current = null;
+    intakeByOrderRef.current.clear();
     setTicket([]);
     setSelectedOrderId(null);
     setOpenCheck(null);
@@ -389,8 +407,28 @@ export function CashierWorkspacePanel({
     clearCashierDirectSale(restaurantId);
   }
 
+  function cancelPaymentSheet() {
+    if (payInFlightRef.current || settleMutation.isPending || paymentBusy) return;
+    // Presentation-only: close the payment sheet. Do not cancel the Order,
+    // void the Check, void a Settlement, or issue a refund.
+    setSalePhase("ticket");
+    setPrintOpen(false);
+    clearCashierDirectSale(restaurantId);
+  }
+
+  function resumePaymentSheet() {
+    if (!directSale || paidCheckout) return;
+    setSalePhase("payment");
+    persistDirectSaleSnapshot({ phase: "payment" });
+  }
+
   async function placeSale() {
     if (!terminalId || ticket.length === 0) return;
+    if (saleInFlightRef.current || saleMutation.isPending) return;
+    saleInFlightRef.current = true;
+    if (!saleKeyRef.current) {
+      saleKeyRef.current = newCashierIdempotencyKey("sale");
+    }
     try {
       const result = await saleMutation.mutateAsync({
         restaurantId,
@@ -399,14 +437,16 @@ export function CashierWorkspacePanel({
           menuItemId: line.menuItemId,
           quantity: line.quantity,
         })),
-        idempotencyKey: newCashierIdempotencyKey("sale"),
+        idempotencyKey: saleKeyRef.current,
       });
+      saleKeyRef.current = null;
       const sale: DirectSale = {
         orderId: result.orderId,
         orderNumber: result.orderNumber,
         displayReference: result.displayReference,
         totalAmount: result.totalAmount,
       };
+      settleKeyRef.current = newCashierIdempotencyKey("settle");
       setTicket([]);
       setSelectedOrderId(result.orderId);
       setOpenCheck(null);
@@ -428,85 +468,104 @@ export function CashierWorkspacePanel({
       void orchestrateIntake(result.orderId);
     } catch (error) {
       toast.error(userFacingError(error, t("errorTitle")));
+    } finally {
+      saleInFlightRef.current = false;
     }
   }
 
-  async function orchestrateIntake(orderId: number) {
-    if (!terminalId) return;
-    try {
-      const result = await intakeMutation.mutateAsync({
-        restaurantId,
-        terminalId,
-        orderId,
-        idempotencyKey: newCashierIdempotencyKey("check"),
-      });
-      const opened: OpenCheckResult = {
-        checkId: result.checkId,
-        orderId: result.orderId,
-        outcome: result.outcome,
-        replayed: result.replayed,
-      };
-      setOpenCheck(opened);
-      const current = readCashierDirectSale(restaurantId);
-      if (current) {
-        writeCashierDirectSale(restaurantId, {
-          ...current,
-          checkId: result.checkId,
+  function orchestrateIntake(orderId: number): Promise<OpenCheckResult | null> {
+    const existing = intakeByOrderRef.current.get(orderId);
+    if (existing) return existing;
+    const pending = (async (): Promise<OpenCheckResult | null> => {
+      if (!terminalId) return null;
+      try {
+        const result = await intakeMutation.mutateAsync({
+          restaurantId,
+          terminalId,
+          orderId,
+          idempotencyKey: newCashierIdempotencyKey("check"),
         });
+        const opened: OpenCheckResult = {
+          checkId: result.checkId,
+          orderId: result.orderId,
+          outcome: result.outcome,
+          replayed: result.replayed,
+        };
+        setOpenCheck(opened);
+        const current = readCashierDirectSale(restaurantId);
+        if (current) {
+          writeCashierDirectSale(restaurantId, {
+            ...current,
+            checkId: result.checkId,
+          });
+        }
+        void utils.pos.read.orderSettlement.listByOrder.invalidate();
+        return opened;
+      } catch (error) {
+        intakeByOrderRef.current.delete(orderId);
+        toast.error(userFacingError(error, t("errorTitle")));
+        return null;
       }
-      void utils.pos.read.orderSettlement.listByOrder.invalidate();
-    } catch (error) {
-      toast.error(userFacingError(error, t("errorTitle")));
-    }
+    })();
+    intakeByOrderRef.current.set(orderId, pending);
+    return pending;
   }
 
   async function completePayment() {
     if (!terminalId || selectedOrderId == null || !paymentMethod) return;
+    if (payInFlightRef.current || settleMutation.isPending) return;
     const due = amountDue ?? directSale?.totalAmount;
     if (paymentMethod === "cash" && (!due || !isCashReceivedSufficient(cashReceived, due))) {
       return;
     }
+    payInFlightRef.current = true;
+    setPaymentBusy(true);
+    if (!settleKeyRef.current) {
+      settleKeyRef.current = newCashierIdempotencyKey("settle");
+    }
     try {
-      if (openCheck == null) {
-        await orchestrateIntake(selectedOrderId);
+      const opened = openCheck ?? (await orchestrateIntake(selectedOrderId));
+      if (!opened) {
+        return;
       }
       const result = await settleMutation.mutateAsync({
         restaurantId,
         terminalId,
         orderId: selectedOrderId,
-        idempotencyKey: newCashierIdempotencyKey("settle"),
+        idempotencyKey: settleKeyRef.current,
         paymentMethod,
       });
-      setPaidCheckout({
+      const paid: PaidCheckoutResult = {
         checkId: result.checkId,
         orderId: result.orderId,
         grandTotal: result.grandTotal,
         settlementRecordId: result.settlementRecordId,
         paymentMethod,
-      });
+      };
+      setPaidCheckout(paid);
       setRegisterGap(null);
       setSalePhase("paid");
       persistDirectSaleSnapshot({
         phase: "paid",
         checkId: result.checkId,
-        paid: {
-          checkId: result.checkId,
-          orderId: result.orderId,
-          grandTotal: result.grandTotal,
-          settlementRecordId: result.settlementRecordId,
-          paymentMethod,
-        },
+        paid,
       });
       toast.success(
         `${t("paidSuccess")} · ${t("checkLabel")} #${result.checkId} · ${result.grandTotal}`
       );
       invalidateOrderReads();
+      if (result.settlementRecordId) {
+        setPrintOpen(true);
+      }
     } catch (error) {
       const gap = classifyCashierRegisterGap(error);
       if (gap) {
         setRegisterGap(gap);
       }
       toast.error(userFacingError(error, t("errorTitle")));
+    } finally {
+      payInFlightRef.current = false;
+      setPaymentBusy(false);
     }
   }
 
@@ -584,9 +643,10 @@ export function CashierWorkspacePanel({
     !terminalsQuery.isPending &&
     !listDenied &&
     activeTerminals.length === 0;
+  const paying = settleMutation.isPending || paymentBusy;
   const operationalStatus = saleMutation.isPending
     ? t("placing")
-    : settleMutation.isPending
+    : paying
       ? t("paying")
       : paidCheckout
         ? t("paidTitle")
@@ -602,6 +662,7 @@ export function CashierWorkspacePanel({
 
   return (
     <section dir={dir} className={cashierPos.root} aria-label={t("title")}>
+      <div className="flex min-h-0 flex-1 flex-col print:hidden">
       <header className={cashierPos.header}>
         <div className="min-w-0">
           <h1 className={cashierPos.headerTitle}>{t("title")}</h1>
@@ -878,6 +939,16 @@ export function CashierWorkspacePanel({
                 <ShoppingCart />
                 {saleMutation.isPending ? t("placing") : t("placeSale")}
               </Button>
+              {directSale && salePhase === "ticket" && !paidCheckout ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="mt-2 min-h-12 w-full"
+                  onClick={resumePaymentSheet}
+                >
+                  {t("completePayment")} · {directSale.displayReference}
+                </Button>
+              ) : null}
             </div>
 
             <div className={cashierPos.checkout}>
@@ -1008,6 +1079,7 @@ export function CashierWorkspacePanel({
                       type="button"
                       variant={paymentMethod === option.paymentMethod ? "default" : "outline"}
                       className="min-h-12"
+                      disabled={paying}
                       onClick={() => {
                         setPaymentMethod(option.paymentMethod);
                         if (option.paymentMethod === "cash" && amountDue) {
@@ -1028,6 +1100,7 @@ export function CashierWorkspacePanel({
                       id="cashier-cash-received"
                       className={cn(cashierPos.moneyInput, "mt-1")}
                       inputMode="decimal"
+                      disabled={paying}
                       value={cashReceived}
                       onChange={(event) => setCashReceived(event.target.value)}
                     />
@@ -1064,24 +1137,37 @@ export function CashierWorkspacePanel({
                     </Button>
                   </div>
                 ) : null}
-                <Button
-                  type="button"
-                  className={cn(cashierPos.primaryAction, "mt-4")}
-                  disabled={
-                    settleMutation.isPending ||
-                    paymentMethod == null ||
-                    !cashOk ||
-                    amountDue == null
-                  }
-                  onClick={() => void completePayment()}
-                >
-                  {settleMutation.isPending ? t("paying") : t("confirmPayment")}
-                </Button>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="min-h-12 min-w-28 flex-1"
+                    disabled={paying}
+                    onClick={cancelPaymentSheet}
+                  >
+                    {t("cancelPayment")}
+                  </Button>
+                  <Button
+                    type="button"
+                    className={cn(cashierPos.primaryAction, "flex-1")}
+                    disabled={
+                      paying ||
+                      intakeMutation.isPending ||
+                      paymentMethod == null ||
+                      !cashOk ||
+                      amountDue == null
+                    }
+                    onClick={() => void completePayment()}
+                  >
+                    {paying ? t("paying") : t("confirmPayment")}
+                  </Button>
+                </div>
               </>
             )}
           </div>
         </div>
       ) : null}
+      </div>
 
       <SettlementReceiptDialog
         open={printOpen}

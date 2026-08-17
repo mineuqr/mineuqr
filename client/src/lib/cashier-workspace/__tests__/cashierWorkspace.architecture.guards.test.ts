@@ -67,11 +67,19 @@ describe("POS-CASHIER-WORKSPACE-IMPLEMENTATION-1 architecture guards", () => {
     expect(panel).toContain('section: "register"');
     expect(panel).toContain("syncDashboardUrl");
     expect(panel).toContain("SettlementReceiptDialog");
+    expect(panel).toContain("cancelPaymentSheet");
+    expect(panel).toContain("resumePaymentSheet");
+    expect(panel).toContain("settleKeyRef");
+    expect(panel).toContain("payInFlightRef");
+    expect(panel).toContain("print:hidden");
+    expect(panel).not.toContain("voidCheck");
+    expect(panel).not.toContain("trpc.order.cancel");
+    expect(panel).not.toContain("window.print()");
     expect(panel).toContain('setSalePhase("payment")');
     expect(panel).not.toContain("RegisterOperationsPanel");
     const placeSaleFn = panel.slice(
       panel.indexOf("async function placeSale"),
-      panel.indexOf("async function orchestrateIntake")
+      panel.indexOf("function orchestrateIntake")
     );
     expect(placeSaleFn).not.toContain("invalidateOrderReads");
     expect(placeSaleFn).toContain('setSalePhase("payment")');

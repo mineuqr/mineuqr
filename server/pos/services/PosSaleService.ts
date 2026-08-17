@@ -306,48 +306,42 @@ export class PosSaleService {
         }
       })();
 
-      if ("replayed" in placed && placed.replayed) {
+      if (!("order" in placed)) {
         return placed;
       }
 
-      const stored = await this.idempotency.get(idempotencyKey);
-      if (!stored) {
+      const orderId = placed.order.id;
+      if (orderId == null) {
         throw new PosSaleError("order_create_failed", "Sale was not recorded");
       }
-      if (stored.fingerprint !== fingerprint) {
-        throw new PosSaleError(
-          "idempotency_conflict",
-          "Idempotency key was already used for a different sale"
-        );
-      }
 
+      // CASHIER-CHECKOUT-PRINT-FLOW-1 — mapping is already written in the
+      // Order save transaction. A post-commit idempotency.get is another
+      // round trip on the cashier HTTP path and is not required for safety.
       opsLog({
         type: "pos_sale_created",
         category: "ORDER",
         severity: "info",
-        ts: stored.createdAt,
+        ts: placed.createdAt,
         actorId: context.userId,
         restaurantId: context.restaurantId,
         action: "pos.sale.create",
         metadata: {
-          orderId: stored.orderId,
+          orderId,
           terminalId: context.terminalId,
           orderingChannel: ORDERING_CHANNEL_CASHIER_POS,
-          sessionPersistence:
-            "sessionPersistence" in placed
-              ? placed.sessionPersistence
-              : "ephemeral",
+          sessionPersistence: placed.sessionPersistence,
         },
       });
 
       return {
-        orderId: stored.orderId,
-        orderNumber: stored.orderNumber,
-        trackingToken: stored.trackingToken,
-        displayReference: stored.displayReference,
-        totalAmount: stored.totalAmount,
-        itemCount: stored.itemCount,
-        createdAt: stored.createdAt,
+        orderId,
+        orderNumber: placed.orderNumber,
+        trackingToken: placed.trackingToken,
+        displayReference: placed.displayReference,
+        totalAmount: placed.totalAmount,
+        itemCount: placed.itemCount,
+        createdAt: placed.createdAt,
         orderingChannel: ORDERING_CHANNEL_CASHIER_POS,
         terminalId: context.terminalId,
         cashierUserId: context.userId,
