@@ -5,9 +5,14 @@
  * Not a second Order. Not a frontend hide.
  */
 
-import { sql } from "drizzle-orm";
+import { and, eq, exists, inArray, isNull, ne, or, sql } from "drizzle-orm";
+import { QueryBuilder } from "drizzle-orm/mysql-core";
 import { ORDERING_CHANNEL_CASHIER_POS } from "@shared/ordering-platform/orderingChannelRegistry";
-import { orderReadOrders } from "../../../drizzle/schema";
+import {
+  checkOrderMembership,
+  operationalChecks,
+  orderReadOrders,
+} from "../../../drizzle/schema";
 import { isCashierPosOrderingChannel } from "../application/cashierPosOrderLifecycle";
 
 export { isCashierPosOrderingChannel };
@@ -23,23 +28,32 @@ export function isCashierPosOperationallyListed(input: {
 /**
  * SQL: list cashier_pos only when an active membership points at a
  * paid or complimentary Check. Other channels unchanged.
+ * Column names come from Drizzle table objects only.
  */
 export function cashierPosPaidOperationalVisibilitySql() {
-  return sql`
-    (
-      ${orderReadOrders.orderingChannel} is null
-      or ${orderReadOrders.orderingChannel} <> ${ORDERING_CHANNEL_CASHIER_POS}
-      or exists (
-        select 1
-        from check_order_membership m
-        inner join operational_checks c
-          on c.id = m.check_id
-         and c.restaurant_id = m.restaurant_id
-        where m.order_id = ${orderReadOrders.orderId}
-          and m.restaurant_id = ${orderReadOrders.restaurantId}
-          and m.active = 1
-          and c.outcome in ('paid', 'complimentary')
+  const qb = new QueryBuilder();
+  const paidCheckMembership = qb
+    .select({ present: sql`1` })
+    .from(checkOrderMembership)
+    .innerJoin(
+      operationalChecks,
+      and(
+        eq(checkOrderMembership.checkId, operationalChecks.id),
+        eq(operationalChecks.restaurantId, checkOrderMembership.restaurantId)
       )
     )
-  `;
+    .where(
+      and(
+        eq(checkOrderMembership.orderId, orderReadOrders.orderId),
+        eq(checkOrderMembership.restaurantId, orderReadOrders.restaurantId),
+        eq(checkOrderMembership.active, 1),
+        inArray(operationalChecks.outcome, ["paid", "complimentary"])
+      )
+    );
+
+  return or(
+    isNull(orderReadOrders.orderingChannel),
+    ne(orderReadOrders.orderingChannel, ORDERING_CHANNEL_CASHIER_POS),
+    exists(paidCheckMembership)
+  );
 }
