@@ -8,10 +8,13 @@
  * POS-CASHIER-CRMP-OPERATIONS-1
  * POS-CASHIER-DRAWER-MOVEMENT-1
  * Thin POS router. Cashier Register/Shift/Drawer Movement commands orchestrate
- * through CRMP façades. No POS Register/Shift/cash persistence. Drawer Movement
+ * through CRMP façades. POS-READ-APIS-IMPLEMENTATION-1 mounts `read` as a
+ * terminal-authorized façade over canonical Order Read / Order Settlement /
+ * Menu rows. No POS Register/Shift/cash persistence. Drawer Movement
  * remains CRMP-owned; POS only authorizes and forwards.
  */
 
+import { posReadRouter } from "./posReadRouter";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { POS_PERMISSIONS } from "@shared/pos";
@@ -191,6 +194,7 @@ function mapPosError(err: unknown): never {
 }
 
 export const posRouter = router({
+  read: posReadRouter,
   entitlement: router({
     get: verifiedProcedure.input(restaurantInput).query(async ({ input, ctx }) => {
       await assertRestaurantAccess(ctx, input.restaurantId, "pos.entitlement.get");

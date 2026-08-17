@@ -12,13 +12,18 @@ import {
   selectPosTerminalStore,
 } from "./infrastructure/posStoreSelection";
 import { PosAccessService } from "./services/PosAccessService";
+import { PosCatalogReadService } from "./services/PosCatalogReadService";
 import { PosCashierCrmpOperationsService } from "./services/PosCashierCrmpOperationsService";
 import { PosCheckIntakeService } from "./services/PosCheckIntakeService";
 import { PosEntitlementService } from "./services/PosEntitlementService";
+import { PosOrderReadService } from "./services/PosOrderReadService";
+import { PosOrderSettlementReadService } from "./services/PosOrderSettlementReadService";
 import { PosSaleService } from "./services/PosSaleService";
 import { PosSettlementInitiateService } from "./services/PosSettlementInitiateService";
 import { PosRegisterShiftContextService } from "./services/PosRegisterShiftContextService";
 import { PosTerminalService } from "./services/PosTerminalService";
+import { orderReadWorkspaceService } from "../order/read/services/OrderReadWorkspaceService";
+import { orderSettlementReadService } from "../operational-session/check/api/orderSettlementReadComposition";
 
 /**
  * POS-PERSISTENCE-WIRING-1
@@ -147,4 +152,24 @@ export function getPosSettlementInitiateService(): PosSettlementInitiateService 
     getPosSettlementInitiateIdempotencyStore(),
     getPosRegisterShiftContextService()
   );
+}
+
+export function getPosOrderReadService(): PosOrderReadService {
+  return new PosOrderReadService(
+    getPosGrantStore(),
+    getPosAccessService(),
+    orderReadWorkspaceService
+  );
+}
+
+export function getPosOrderSettlementReadService(): PosOrderSettlementReadService {
+  return new PosOrderSettlementReadService(
+    getPosGrantStore(),
+    getPosAccessService(),
+    orderSettlementReadService
+  );
+}
+
+export function getPosCatalogReadService(): PosCatalogReadService {
+  return new PosCatalogReadService(getPosGrantStore(), getPosAccessService());
 }
