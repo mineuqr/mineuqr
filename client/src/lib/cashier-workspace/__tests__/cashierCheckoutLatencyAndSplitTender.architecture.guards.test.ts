@@ -59,5 +59,16 @@ describe("CASHIER-CHECKOUT-LATENCY-AND-SPLIT-TENDER-1 architecture guards", () =
     expect(completeFn.indexOf("setPaidCheckout")).toBeLessThan(
       completeFn.indexOf('setSalePhase("paid")')
     );
+    expect(completeFn).not.toContain("await orchestrateIntake");
+  });
+
+  it("loads authoritative sale prices in one lookup wave", () => {
+    const pricing = read("server/orderPricing.ts");
+    const access = read("server/pos/services/PosAccessService.ts");
+    expect(pricing).toContain("Promise.all");
+    expect(pricing).toContain("items.map(async (item)");
+    expect(access).toContain("Promise.all");
+    expect(access).toContain("this.entitlements.resolve");
+    expect(access).toContain("this.listPermissions");
   });
 });

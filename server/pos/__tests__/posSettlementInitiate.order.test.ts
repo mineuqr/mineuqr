@@ -161,6 +161,10 @@ function harness(options?: {
   settleDelayMs?: number;
   settleOnce?: boolean;
   settlementContext?: SettlementContext;
+  ensureCheck?: (input: {
+    restaurantId: number;
+    orderId: number;
+  }) => Promise<{ id: number; outcome: string }>;
 }) {
   const store = new InMemoryPosTerminalStore();
   const grants = new InMemoryPosPermissionGrantStore();
@@ -227,7 +231,8 @@ function harness(options?: {
     async (orderId) => orders.find((row) => row.id === orderId) ?? null,
     findMembership,
     getCheck,
-    settle
+    settle,
+    options?.ensureCheck ?? null
   );
   return {
     store,
@@ -417,6 +422,20 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
       service.initiate({ user: user(STAFF_A), command })
     ).rejects.toMatchObject({ code: "check_not_found" });
     expect(settle).not.toHaveBeenCalled();
+  });
+
+  it("ensures a Check when membership is not ready yet then settles", async () => {
+    const { store, grants, service, settle } = harness({
+      membership: null,
+      check: openCheck(),
+      ensureCheck: async () => ({ id: CHECK_A, outcome: "open" }),
+    });
+    await seedTerminal(store);
+    await grantSettle(grants);
+    const result = await service.initiate({ user: user(STAFF_A), command });
+    expect(result.outcome).toBe("paid");
+    expect(result.checkId).toBe(CHECK_A);
+    expect(settle).toHaveBeenCalledTimes(1);
   });
 
   it("rejects already terminal Checks", async () => {

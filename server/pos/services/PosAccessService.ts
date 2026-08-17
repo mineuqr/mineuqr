@@ -161,11 +161,13 @@ export class PosAccessService {
     if (terminal.lifecycle !== "active") {
       return { allowed: false, reasonCode: "terminal_inactive" };
     }
-    const entitlement = await this.entitlements.resolve(input.restaurantId);
+    const [entitlement, permissions] = await Promise.all([
+      this.entitlements.resolve(input.restaurantId),
+      this.listPermissions(input.userId, input.restaurantId),
+    ]);
     if (!entitlement.available) {
       return { allowed: false, reasonCode: "entitlement_unavailable" };
     }
-    const permissions = await this.listPermissions(input.userId, input.restaurantId);
     if (!permissions.includes(input.requiredPermission)) {
       return { allowed: false, reasonCode: "pos_permission_denied" };
     }

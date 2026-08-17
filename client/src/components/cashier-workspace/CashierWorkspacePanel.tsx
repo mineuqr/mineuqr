@@ -553,9 +553,8 @@ export function CashierWorkspacePanel({
       settleKeyRef.current = newCashierIdempotencyKey("settle");
     }
     try {
-      const opened = openCheck ?? (await orchestrateIntake(selectedOrderId));
-      if (!opened) {
-        return;
+      if (!openCheck) {
+        void orchestrateIntake(selectedOrderId);
       }
       const result = await settleMutation.mutateAsync({
         restaurantId,

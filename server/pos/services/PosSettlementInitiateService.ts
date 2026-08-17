@@ -15,6 +15,7 @@ import { opsLog } from "../../_core/opsLog";
 import { getOrderById } from "../../db";
 import {
   CheckTransitionError,
+  ensureCheckForOrder,
   getCheckById,
   settleCheckPaidByIdDetailed,
 } from "../../operational-session/check/CheckService";
@@ -92,6 +93,11 @@ export type PosSettlementCheckLookup = (input: {
   restaurantId: number;
   checkId: number;
 }) => Promise<PosSettlementCheckView | null>;
+
+export type PosSettlementEnsureCheck = (input: {
+  restaurantId: number;
+  orderId: number;
+}) => Promise<{ id: number; outcome: string }>;
 
 export type PosSettlementSettlePaid = (input: {
   restaurantId: number;
@@ -283,7 +289,8 @@ export class PosSettlementInitiateService {
     private readonly orderLookup: PosSettlementInitiateOrderLookup = getOrderById,
     private readonly membershipLookup: PosSettlementMembershipLookup = defaultMembershipLookup,
     private readonly checkLookup: PosSettlementCheckLookup = defaultCheckLookup,
-    private readonly settlePaid: PosSettlementSettlePaid = defaultSettlePaid
+    private readonly settlePaid: PosSettlementSettlePaid = defaultSettlePaid,
+    private readonly ensureCheck: PosSettlementEnsureCheck | null = ensureCheckForOrder
   ) {}
 
   async initiate(input: {
@@ -389,7 +396,7 @@ export class PosSettlementInitiateService {
         });
       }
 
-      const [membership, operational] = await Promise.all([
+      const [foundMembership, operational] = await Promise.all([
         this.membershipLookup(context.restaurantId, order.id),
         this.registerShift
           .requireForSettlement({
@@ -404,6 +411,21 @@ export class PosSettlementInitiateService {
             throw err;
           }),
       ]);
+      let membership = foundMembership;
+      if (!membership && this.ensureCheck) {
+        try {
+          const created = await this.ensureCheck({
+            restaurantId: context.restaurantId,
+            orderId: order.id,
+          });
+          membership = {
+            checkId: created.id,
+            checkOutcome: created.outcome,
+          };
+        } catch {
+          membership = null;
+        }
+      }
       if (!membership) {
         throw new PosSettlementInitiateError(
           "check_not_found",

@@ -203,6 +203,7 @@ export class PosSaleService {
       idempotencyKey: input.command.idempotencyKey,
     };
 
+    const saleStartedAt = Date.now();
     return this.idempotency.runExclusive(idempotencyKey, async () => {
       const existing = await this.idempotency.get(idempotencyKey);
       if (existing) {
@@ -331,6 +332,7 @@ export class PosSaleService {
           terminalId: context.terminalId,
           orderingChannel: ORDERING_CHANNEL_CASHIER_POS,
           sessionPersistence: placed.sessionPersistence,
+          persistExclusiveMs: Date.now() - saleStartedAt,
         },
       });
 

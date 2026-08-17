@@ -76,8 +76,6 @@ export async function resolveAuthoritativeOrderLines(
   }
 
   const seen = new Set<number>();
-  const lines: ResolvedOrderLine[] = [];
-
   for (const item of items) {
     if (seen.has(item.menuItemId)) {
       throw new TRPCError({
@@ -86,10 +84,25 @@ export async function resolveAuthoritativeOrderLines(
       });
     }
     seen.add(item.menuItemId);
+  }
 
+  const catalog = await Promise.all(
+    items.map(async (item) => {
+      if (isOfferCartMenuItemId(item.menuItemId)) {
+        const offer = await getOfferById(cartMenuItemIdToOfferId(item.menuItemId));
+        return { item, offer, menuItem: undefined };
+      }
+      const menuItem = await getMenuItemById(item.menuItemId);
+      return { item, offer: undefined, menuItem };
+    })
+  );
+
+  const lines: ResolvedOrderLine[] = [];
+
+  for (const row of catalog) {
+    const item = row.item;
     if (isOfferCartMenuItemId(item.menuItemId)) {
-      const offerId = cartMenuItemIdToOfferId(item.menuItemId);
-      const offer = await getOfferById(offerId);
+      const offer = row.offer;
       if (!offer) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -132,7 +145,7 @@ export async function resolveAuthoritativeOrderLines(
       continue;
     }
 
-    const menuItem = await getMenuItemById(item.menuItemId);
+    const menuItem = row.menuItem;
     if (!menuItem) {
       throw new TRPCError({
         code: "BAD_REQUEST",
