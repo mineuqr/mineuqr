@@ -268,6 +268,10 @@ export class PosSaleService {
                       }
                     );
                   },
+                  // Check enrollment is not required for sale success (errors
+                  // are already swallowed). Awaiting it blocks the cashier
+                  // HTTP response; Cashier orchestrates pos.check.intake.
+                  enrollCheck: false,
                 }
               ),
             { awaitRelay: false }

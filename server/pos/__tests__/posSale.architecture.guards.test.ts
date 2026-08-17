@@ -109,6 +109,7 @@ describe("POS Sale architecture guards", () => {
     expect(sale).toContain("putInTransaction");
     expect(sale).toContain("PosSaleIdempotencyUniqueCollisionError");
     expect(sale).toContain("awaitRelay: false");
+    expect(sale).toContain("enrollCheck: false");
     expect(sale).not.toContain("createPosOrder");
     expect(repo).toContain("afterPersistInTransaction");
     expect(repo).toContain("requireSameTransactionCompanion");

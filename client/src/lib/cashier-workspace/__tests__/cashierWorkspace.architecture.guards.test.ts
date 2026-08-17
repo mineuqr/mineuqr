@@ -66,7 +66,15 @@ describe("POS-CASHIER-WORKSPACE-IMPLEMENTATION-1 architecture guards", () => {
     expect(panel).toContain("listMonetaryPaymentMethodOptions");
     expect(panel).toContain('section: "register"');
     expect(panel).toContain("syncDashboardUrl");
+    expect(panel).toContain("SettlementReceiptDialog");
+    expect(panel).toContain('setSalePhase("payment")');
     expect(panel).not.toContain("RegisterOperationsPanel");
+    const placeSaleFn = panel.slice(
+      panel.indexOf("async function placeSale"),
+      panel.indexOf("async function orchestrateIntake")
+    );
+    expect(placeSaleFn).not.toContain("invalidateOrderReads");
+    expect(placeSaleFn).toContain('setSalePhase("payment")');
   });
 
   it("does not auto-grant POS_ACCESS on dashboard load", () => {

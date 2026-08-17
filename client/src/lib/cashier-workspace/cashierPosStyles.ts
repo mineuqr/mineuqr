@@ -48,4 +48,11 @@ export const cashierPos = {
   orderBtn:
     "min-h-12 w-full rounded-xl border border-[#d8dee6] bg-white px-3 py-2 text-start",
   orderBtnActive: "min-h-12 w-full rounded-xl border-[#0f766e] bg-[#ecfdf8] px-3 py-2 text-start",
+  overlay:
+    "fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-3 sm:items-center",
+  sheet:
+    "flex max-h-[92dvh] w-full max-w-md flex-col overflow-auto rounded-2xl bg-white p-5 text-[#111827]",
+  amountDueHuge: "text-4xl font-bold tabular-nums text-[#0b3d36]",
+  moneyInput:
+    "min-h-12 w-full rounded-xl border border-[#d8dee6] bg-white px-3 text-lg tabular-nums text-[#111827]",
 } as const;

@@ -11,7 +11,12 @@ import {
   AppForbiddenState,
   AppLoadingState,
 } from "@/components/app-state";
+import { SettlementReceiptDialog } from "@/components/settlement-record/SettlementReceiptDialog";
 import { Button } from "@/components/ui/button";
+import {
+  displayCashChange,
+  isCashReceivedSufficient,
+} from "@/lib/cashier-workspace/cashierCashTender";
 import { newCashierIdempotencyKey } from "@/lib/cashier-workspace/cashierIdempotency";
 import {
   cashierUiLabel,
@@ -22,6 +27,11 @@ import {
   classifyCashierRegisterGap,
   type CashierRegisterGapKind,
 } from "@/lib/cashier-workspace/cashierRegisterGap";
+import {
+  clearCashierDirectSale,
+  readCashierDirectSale,
+  writeCashierDirectSale,
+} from "@/lib/cashier-workspace/cashierDirectSaleStorage";
 import {
   isCashierTerminalId,
   readCashierTerminalId,
@@ -69,10 +79,20 @@ type PaidCheckoutResult = {
   paymentMethod: SelectablePaymentMethod;
 };
 
+type DirectSale = {
+  orderId: number;
+  orderNumber: string;
+  displayReference: string;
+  totalAmount: string;
+};
+
+type DirectSalePhase = "ticket" | "payment" | "paid";
+
 type Props = {
   restaurantId: number;
   language: CashierLang;
   restaurantName?: string | null;
+  currencySymbol?: string | null;
 };
 
 function isForbidden(error: unknown): boolean {
@@ -97,6 +117,7 @@ export function CashierWorkspacePanel({
   restaurantId,
   language,
   restaurantName,
+  currencySymbol,
 }: Props) {
   const dir = language === "ar" ? "rtl" : "ltr";
   const t = (key: Parameters<typeof cashierUiLabel>[0]) =>
@@ -117,6 +138,11 @@ export function CashierWorkspacePanel({
   const [registerGap, setRegisterGap] = useState<CashierRegisterGapKind | null>(
     null
   );
+  const [directSale, setDirectSale] = useState<DirectSale | null>(null);
+  const [salePhase, setSalePhase] = useState<DirectSalePhase>("ticket");
+  const [cashReceived, setCashReceived] = useState("");
+  const [ordersOpen, setOrdersOpen] = useState(false);
+  const [printOpen, setPrintOpen] = useState(false);
 
   useEffect(() => {
     setTerminalId(readCashierTerminalId(restaurantId));
@@ -127,6 +153,36 @@ export function CashierWorkspacePanel({
     setPaidCheckout(null);
     setPaymentMethod(null);
     setRegisterGap(null);
+    setCashReceived("");
+    setOrdersOpen(false);
+    setPrintOpen(false);
+    const snapshot = readCashierDirectSale(restaurantId);
+    if (snapshot) {
+      setDirectSale({
+        orderId: snapshot.orderId,
+        orderNumber: snapshot.orderNumber,
+        displayReference: snapshot.displayReference,
+        totalAmount: snapshot.totalAmount,
+      });
+      setSelectedOrderId(snapshot.orderId);
+      setSalePhase(snapshot.phase);
+      setPaymentMethod(snapshot.paymentMethod);
+      setCashReceived(snapshot.cashReceived);
+      setOpenCheck(
+        snapshot.checkId != null
+          ? {
+              checkId: snapshot.checkId,
+              orderId: snapshot.orderId,
+              outcome: "open",
+              replayed: true,
+            }
+          : null
+      );
+      setPaidCheckout(snapshot.paid);
+    } else {
+      setDirectSale(null);
+      setSalePhase("ticket");
+    }
   }, [restaurantId]);
 
   const terminalsQuery = trpc.pos.terminal.list.useQuery(
@@ -167,7 +223,7 @@ export function CashierWorkspacePanel({
   );
   const ordersQuery = trpc.pos.read.orders.listActive.useQuery(
     { restaurantId, terminalId: terminalId ?? "", status: "all-active", limit: 50 },
-    { enabled: scoped && allowed, staleTime: 0 }
+    { enabled: scoped && allowed && ordersOpen, staleTime: 0 }
   );
   const detailQuery = trpc.pos.read.orders.getDetail.useQuery(
     {
@@ -175,7 +231,7 @@ export function CashierWorkspacePanel({
       terminalId: terminalId ?? "",
       orderId: selectedOrderId ?? 0,
     },
-    { enabled: scoped && allowed && selectedOrderId != null }
+    { enabled: scoped && allowed && ordersOpen && selectedOrderId != null }
   );
   const timelineQuery = trpc.pos.read.orders.getTimeline.useQuery(
     {
@@ -183,7 +239,7 @@ export function CashierWorkspacePanel({
       terminalId: terminalId ?? "",
       orderId: selectedOrderId ?? 0,
     },
-    { enabled: scoped && allowed && selectedOrderId != null }
+    { enabled: scoped && allowed && ordersOpen && selectedOrderId != null }
   );
   const settlementQuery = trpc.pos.read.orderSettlement.listByOrder.useQuery(
     {
@@ -191,7 +247,13 @@ export function CashierWorkspacePanel({
       terminalId: terminalId ?? "",
       orderId: selectedOrderId ?? 0,
     },
-    { enabled: scoped && allowed && selectedOrderId != null }
+    {
+      enabled:
+        scoped &&
+        allowed &&
+        selectedOrderId != null &&
+        (salePhase !== "ticket" || ordersOpen),
+    }
   );
 
   const grantMutation = trpc.pos.access.grant.useMutation();
@@ -282,6 +344,37 @@ export function CashierWorkspacePanel({
     setRegisterGap(null);
   }
 
+  function persistDirectSaleSnapshot(next?: {
+    phase?: DirectSalePhase;
+    sale?: DirectSale | null;
+    checkId?: number | null;
+    paid?: PaidCheckoutResult | null;
+    method?: SelectablePaymentMethod | null;
+    received?: string;
+  }) {
+    const sale = next?.sale === undefined ? directSale : next.sale;
+    const phase = next?.phase ?? salePhase;
+    if (!sale || phase === "ticket") {
+      clearCashierDirectSale(restaurantId);
+      return;
+    }
+    writeCashierDirectSale(restaurantId, {
+      v: 1,
+      orderId: sale.orderId,
+      orderNumber: sale.orderNumber,
+      displayReference: sale.displayReference,
+      totalAmount: sale.totalAmount,
+      checkId:
+        next?.checkId === undefined
+          ? (paidCheckout?.checkId ?? openCheck?.checkId ?? null)
+          : next.checkId,
+      phase,
+      paymentMethod: next?.method === undefined ? paymentMethod : next.method,
+      cashReceived: next?.received ?? cashReceived,
+      paid: next?.paid === undefined ? paidCheckout : next.paid,
+    });
+  }
+
   function startNewSale() {
     setTicket([]);
     setSelectedOrderId(null);
@@ -289,6 +382,11 @@ export function CashierWorkspacePanel({
     setPaidCheckout(null);
     setPaymentMethod(null);
     setRegisterGap(null);
+    setDirectSale(null);
+    setSalePhase("ticket");
+    setCashReceived("");
+    setPrintOpen(false);
+    clearCashierDirectSale(restaurantId);
   }
 
   async function placeSale() {
@@ -303,38 +401,60 @@ export function CashierWorkspacePanel({
         })),
         idempotencyKey: newCashierIdempotencyKey("sale"),
       });
+      const sale: DirectSale = {
+        orderId: result.orderId,
+        orderNumber: result.orderNumber,
+        displayReference: result.displayReference,
+        totalAmount: result.totalAmount,
+      };
       setTicket([]);
       setSelectedOrderId(result.orderId);
       setOpenCheck(null);
       setPaidCheckout(null);
       setPaymentMethod(null);
       setRegisterGap(null);
+      setDirectSale(sale);
+      setSalePhase("payment");
+      setCashReceived(result.totalAmount);
+      persistDirectSaleSnapshot({
+        sale,
+        phase: "payment",
+        checkId: null,
+        paid: null,
+        method: null,
+        received: result.totalAmount,
+      });
       toast.success(`${t("salePlaced")} ${result.displayReference}`);
-      invalidateOrderReads();
+      void orchestrateIntake(result.orderId);
     } catch (error) {
       toast.error(userFacingError(error, t("errorTitle")));
     }
   }
 
-  async function intakeCheck() {
-    if (!terminalId || selectedOrderId == null) return;
+  async function orchestrateIntake(orderId: number) {
+    if (!terminalId) return;
     try {
       const result = await intakeMutation.mutateAsync({
         restaurantId,
         terminalId,
-        orderId: selectedOrderId,
+        orderId,
         idempotencyKey: newCashierIdempotencyKey("check"),
       });
-      setOpenCheck({
+      const opened: OpenCheckResult = {
         checkId: result.checkId,
         orderId: result.orderId,
         outcome: result.outcome,
         replayed: result.replayed,
-      });
-      setPaidCheckout(null);
-      setRegisterGap(null);
-      toast.success(`${t("checkOpened")} #${result.checkId}`);
-      await utils.pos.read.orderSettlement.listByOrder.invalidate();
+      };
+      setOpenCheck(opened);
+      const current = readCashierDirectSale(restaurantId);
+      if (current) {
+        writeCashierDirectSale(restaurantId, {
+          ...current,
+          checkId: result.checkId,
+        });
+      }
+      void utils.pos.read.orderSettlement.listByOrder.invalidate();
     } catch (error) {
       toast.error(userFacingError(error, t("errorTitle")));
     }
@@ -342,7 +462,14 @@ export function CashierWorkspacePanel({
 
   async function completePayment() {
     if (!terminalId || selectedOrderId == null || !paymentMethod) return;
+    const due = amountDue ?? directSale?.totalAmount;
+    if (paymentMethod === "cash" && (!due || !isCashReceivedSufficient(cashReceived, due))) {
+      return;
+    }
     try {
+      if (openCheck == null) {
+        await orchestrateIntake(selectedOrderId);
+      }
       const result = await settleMutation.mutateAsync({
         restaurantId,
         terminalId,
@@ -358,8 +485,20 @@ export function CashierWorkspacePanel({
         paymentMethod,
       });
       setRegisterGap(null);
+      setSalePhase("paid");
+      persistDirectSaleSnapshot({
+        phase: "paid",
+        checkId: result.checkId,
+        paid: {
+          checkId: result.checkId,
+          orderId: result.orderId,
+          grandTotal: result.grandTotal,
+          settlementRecordId: result.settlementRecordId,
+          paymentMethod,
+        },
+      });
       toast.success(
-        `${t("paidTitle")} · ${t("checkLabel")} #${result.checkId} · ${result.grandTotal}`
+        `${t("paidSuccess")} · ${t("checkLabel")} #${result.checkId} · ${result.grandTotal}`
       );
       invalidateOrderReads();
     } catch (error) {
@@ -373,6 +512,14 @@ export function CashierWorkspacePanel({
 
   function returnToDashboard() {
     syncDashboardUrl({ restaurantId, section: "home" });
+  }
+
+  function openRegisterOps() {
+    persistDirectSaleSnapshot();
+    syncDashboardUrl({
+      restaurantId,
+      section: "register",
+    });
   }
 
   function openNewTab() {
@@ -406,17 +553,24 @@ export function CashierWorkspacePanel({
   const ticketTotal = displayTicketTotal(ticket);
   const paymentOptions = listMonetaryPaymentMethodOptions(language);
   const settlementRow = (settlementQuery.data ?? [])[0];
-  const visibleCheckId =
-    paidCheckout?.checkId ?? openCheck?.checkId ?? settlementRow?.checkId ?? null;
   const amountDue =
     paidCheckout?.grandTotal ??
     settlementRow?.outstandingAmount ??
-    detailQuery.data?.order.totalAmount ??
+    directSale?.totalAmount ??
     null;
   const amountDueIsOrderFallback =
     !paidCheckout &&
     !settlementRow?.outstandingAmount &&
-    Boolean(detailQuery.data?.order.totalAmount);
+    Boolean(directSale?.totalAmount);
+  const money = (value: string) =>
+    currencySymbol ? `${value} ${currencySymbol}` : value;
+  const cashOk =
+    paymentMethod !== "cash" ||
+    (amountDue != null && isCashReceivedSufficient(cashReceived, amountDue));
+  const cashChange =
+    paymentMethod === "cash" && amountDue
+      ? displayCashChange(cashReceived, amountDue)
+      : null;
 
   const listDenied = Boolean(
     terminalsQuery.error && isForbidden(terminalsQuery.error)
@@ -704,19 +858,16 @@ export function CashierWorkspacePanel({
               <div className={cashierPos.totalBox}>
                 <p className="flex justify-between text-sm text-[#6b7280]">
                   <span>{t("ticketSubtotal")}</span>
-                  <span className="tabular-nums">{ticketTotal ?? "0.00"}</span>
+                  <span className="tabular-nums">{money(ticketTotal ?? "0.00")}</span>
                 </p>
                 <p className="mt-2 flex items-end justify-between">
                   <span className="text-sm font-semibold text-[#111827]">
-                    {amountDue ? t("amountDue") : t("ticketTotal")}
+                    {t("ticketTotal")}
                   </span>
                   <span className={cashierPos.totalValue}>
-                    {amountDue ?? ticketTotal ?? "0.00"}
+                    {money(ticketTotal ?? "0.00")}
                   </span>
                 </p>
-                {amountDueIsOrderFallback ? (
-                  <p className="mt-1 text-xs text-[#6b7280]">{t("orderTotalHint")}</p>
-                ) : null}
               </div>
               <Button
                 type="button"
@@ -730,14 +881,19 @@ export function CashierWorkspacePanel({
             </div>
 
             <div className={cashierPos.checkout}>
-              <h2 className="mb-2 text-sm font-semibold text-[#111827]">{t("checkout")}</h2>
-              {ordersQuery.isPending ? (
-                <AppLoadingState label={t("loading")} />
-              ) : (
-                <>
-                  <p className="mb-2 text-xs font-medium text-[#6b7280]">{t("activeOrders")}</p>
-                  {orders.length === 0 ? (
-                    <p className="mb-3 text-sm text-[#6b7280]">{t("noOrders")}</p>
+              <button
+                type="button"
+                className={cashierPos.headerBtn}
+                onClick={() => setOrdersOpen((open) => !open)}
+              >
+                {ordersOpen ? t("hideActiveOrders") : t("showActiveOrders")}
+              </button>
+              {ordersOpen ? (
+                <div className="mt-3">
+                  {ordersQuery.isPending ? (
+                    <AppLoadingState label={t("loading")} />
+                  ) : orders.length === 0 ? (
+                    <p className="text-sm text-[#6b7280]">{t("noOrders")}</p>
                   ) : (
                     <ul className="mb-3 flex flex-col gap-2">
                       {orders.map((order) => (
@@ -762,184 +918,179 @@ export function CashierWorkspacePanel({
                       ))}
                     </ul>
                   )}
-                </>
-              )}
-
-              {selectedOrderId == null ? (
-                <p className="text-sm text-[#6b7280]">{t("noOrders")}</p>
-              ) : detailQuery.isPending ? (
-                <AppLoadingState label={t("loading")} />
-              ) : detailQuery.data ? (
-                <>
-                  <p className="text-sm text-[#111827]">
-                    {t("orderCreated")}: {detailQuery.data.order.displayReference} ·{" "}
-                    {detailQuery.data.order.status}
-                  </p>
-                  {detailQuery.data.order.notes ? (
-                    <p className="text-sm text-[#4b5563]">
-                      {t("notes")}: {detailQuery.data.order.notes}
-                    </p>
-                  ) : null}
-                  <ul className="my-2 text-sm text-[#374151]">
-                    {detailQuery.data.order.lineItems.map((line) => (
-                      <li key={line.lineItemId}>
-                        {language === "ar" ? line.nameAr : line.nameEn ?? line.nameAr} ×{" "}
-                        {line.quantity}
-                        {line.itemNotes ? ` — ${t("notes")}: ${line.itemNotes}` : ""}
-                        {line.modifiers.length > 0
-                          ? ` — ${t("modifiers")}: ${line.modifiers.join(", ")}`
-                          : ""}
-                      </li>
-                    ))}
-                  </ul>
-
-                  <div className={cashierPos.checkBox}>
-                    {visibleCheckId != null ? (
-                      <p className="text-sm text-[#111827]">
-                        {t("checkLabel")} #{visibleCheckId}
-                        {paidCheckout
-                          ? ` · ${t("paidTitle")}`
-                          : openCheck
-                            ? ` · ${t("checkOpenedResult")}`
-                            : ""}
-                      </p>
-                    ) : (
-                      <p className="text-sm text-[#6b7280]">{t("checkMissing")}</p>
-                    )}
-                    {amountDue ? (
-                      <p className="mt-2 text-lg font-semibold tabular-nums text-[#0b3d36]">
-                        {t("amountDue")}: {amountDue}
-                      </p>
-                    ) : null}
-                  </div>
-
-                  {paidCheckout ? (
-                    <div className={cn(cashierPos.paidBox, "mt-3")}>
-                      <p className="font-semibold">{t("paidTitle")}</p>
-                      <p className="mt-1 text-sm">
-                        {t("checkLabel")} #{paidCheckout.checkId} · {t("paymentMethod")}:{" "}
-                        {paymentOptions.find(
-                          (option) => option.paymentMethod === paidCheckout.paymentMethod
-                        )?.label ?? paidCheckout.paymentMethod}{" "}
-                        · {paidCheckout.grandTotal}
-                      </p>
-                      <p className="mt-2 text-xs">{t("paidBody")}</p>
-                      <p className="mt-1 text-xs opacity-80">{t("afterPayment")}</p>
-                      <Button
-                        type="button"
-                        className={cn(cashierPos.primaryAction, "mt-3")}
-                        onClick={startNewSale}
-                      >
-                        {t("newSale")}
-                      </Button>
-                    </div>
-                  ) : (
+                  {selectedOrderId != null && detailQuery.data ? (
                     <>
-                      <p className="mb-2 mt-3 text-sm font-medium text-[#111827]">
-                        {t("selectPaymentMethod")}
+                      <p className="text-sm text-[#111827]">
+                        {t("orderCreated")}: {detailQuery.data.order.displayReference} ·{" "}
+                        {detailQuery.data.order.status}
                       </p>
-                      <div className="grid grid-cols-2 gap-2">
-                        {paymentOptions.map((option) => (
-                          <Button
-                            key={option.paymentMethod}
-                            type="button"
-                            variant={
-                              paymentMethod === option.paymentMethod ? "default" : "outline"
-                            }
-                            className="min-h-12"
-                            disabled={visibleCheckId == null}
-                            onClick={() => setPaymentMethod(option.paymentMethod)}
-                          >
-                            {option.label}
-                          </Button>
-                        ))}
-                      </div>
-                      {registerGap ? (
-                        <div className={cn(cashierPos.warnBox, "mt-3")}>
-                          <p className="text-sm">
-                            {t(
-                              registerGap === "shift_required"
-                                ? "shiftRequired"
-                                : registerGap === "register_closed"
-                                  ? "registerClosed"
-                                  : "registerRequired"
-                            )}
-                          </p>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            className="mt-3 min-h-12"
-                            onClick={() =>
-                              syncDashboardUrl({
-                                restaurantId,
-                                section: "register",
-                              })
-                            }
-                          >
-                            {t("openRegisterOps")}
-                          </Button>
-                        </div>
-                      ) : (
-                        <p className="mt-2 text-xs text-[#6b7280]">{t("settlementGap")}</p>
-                      )}
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="min-h-12"
-                          disabled={intakeMutation.isPending}
-                          onClick={() => void intakeCheck()}
-                        >
-                          {t("intakeCheck")}
-                        </Button>
-                        <Button
-                          type="button"
-                          className="min-h-12"
-                          disabled={
-                            settleMutation.isPending ||
-                            visibleCheckId == null ||
-                            paymentMethod == null
-                          }
-                          onClick={() => void completePayment()}
-                        >
-                          {settleMutation.isPending ? t("paying") : t("completePayment")}
-                        </Button>
+                      <div className="mt-3">
+                        <h3 className="mb-1 text-xs font-semibold text-[#6b7280]">
+                          {t("timeline")}
+                        </h3>
+                        <ul className="text-xs text-[#6b7280]">
+                          {(timelineQuery.data?.events ?? []).map((event) => (
+                            <li key={event.eventId}>
+                              {event.toStatus} · {event.occurredAt}
+                            </li>
+                          ))}
+                        </ul>
                       </div>
                     </>
-                  )}
-
-                  <div className="mt-3">
-                    <h3 className="mb-1 text-xs font-semibold text-[#6b7280]">{t("timeline")}</h3>
-                    <ul className="text-xs text-[#6b7280]">
-                      {(timelineQuery.data?.events ?? []).map((event) => (
-                        <li key={event.eventId}>
-                          {event.toStatus} · {event.occurredAt}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  {(settlementQuery.data ?? []).length > 0 ? (
-                    <div className="mt-2">
-                      <h3 className="mb-1 text-xs font-semibold text-[#6b7280]">
-                        {t("settlement")}
-                      </h3>
-                      <ul className="text-sm text-[#374151]">
-                        {(settlementQuery.data ?? []).map((row) => (
-                          <li key={`${row.checkId}-${row.orderId}`}>
-                            {row.settlementStatus} · {row.outstandingAmount}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
                   ) : null}
-                </>
-              ) : (
-                <AppEmptyState title={t("noOrders")} />
-              )}
+                </div>
+              ) : null}
             </div>
           </aside>
         </div>
       ) : null}
+
+      {salePhase !== "ticket" && directSale ? (
+        <div className={cashierPos.overlay} role="dialog" aria-modal="true">
+          <div className={cashierPos.sheet} dir={dir}>
+            {salePhase === "paid" && paidCheckout ? (
+              <>
+                <h2 className="text-lg font-semibold">{t("paidSuccess")}</h2>
+                <p className="mt-3 text-sm text-[#6b7280]">{t("orderNumber")}</p>
+                <p className="text-base font-semibold">{directSale.displayReference}</p>
+                <p className="mt-2 text-sm text-[#6b7280]">{t("invoiceNumber")}</p>
+                <p className="text-base font-semibold">
+                  {t("checkLabel")} #{paidCheckout.checkId}
+                </p>
+                <p className="mt-2 text-sm text-[#6b7280]">{t("paymentMethod")}</p>
+                <p className="text-base font-semibold">
+                  {paymentOptions.find(
+                    (option) => option.paymentMethod === paidCheckout.paymentMethod
+                  )?.label ?? paidCheckout.paymentMethod}
+                </p>
+                <p className="mt-4 text-sm text-[#6b7280]">{t("amountDue")}</p>
+                <p className={cashierPos.amountDueHuge}>{money(paidCheckout.grandTotal)}</p>
+                <p className="mt-2 text-xs text-[#6b7280]">{t("afterPayment")}</p>
+                <Button
+                  type="button"
+                  className={cn(cashierPos.primaryAction, "mt-4")}
+                  disabled={!paidCheckout.settlementRecordId}
+                  onClick={() => setPrintOpen(true)}
+                >
+                  {t("printInvoice")}
+                </Button>
+                {!paidCheckout.settlementRecordId ? (
+                  <p className="mt-2 text-xs text-[#6b7280]">{t("printUnavailable")}</p>
+                ) : null}
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="mt-2 min-h-12 w-full"
+                  onClick={startNewSale}
+                >
+                  {t("newSale")}
+                </Button>
+              </>
+            ) : (
+              <>
+                <h2 className="text-lg font-semibold">{t("completePaymentTitle")}</h2>
+                <p className="mt-1 text-sm text-[#6b7280]">{directSale.displayReference}</p>
+                <p className="mt-4 text-sm font-medium text-[#6b7280]">{t("amountDue")}</p>
+                <p className={cashierPos.amountDueHuge}>
+                  {amountDue ? money(amountDue) : t("preparingCheck")}
+                </p>
+                {amountDueIsOrderFallback ? (
+                  <p className="mt-1 text-xs text-[#6b7280]">{t("orderTotalHint")}</p>
+                ) : null}
+                {intakeMutation.isPending ? (
+                  <p className="mt-2 text-sm text-[#6b7280]">{t("preparingCheck")}</p>
+                ) : null}
+                <p className="mb-2 mt-4 text-sm font-medium">{t("selectPaymentMethod")}</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {paymentOptions.map((option) => (
+                    <Button
+                      key={option.paymentMethod}
+                      type="button"
+                      variant={paymentMethod === option.paymentMethod ? "default" : "outline"}
+                      className="min-h-12"
+                      onClick={() => {
+                        setPaymentMethod(option.paymentMethod);
+                        if (option.paymentMethod === "cash" && amountDue) {
+                          setCashReceived((current) => current || amountDue);
+                        }
+                      }}
+                    >
+                      {option.label}
+                    </Button>
+                  ))}
+                </div>
+                {paymentMethod === "cash" && amountDue ? (
+                  <div className="mt-4">
+                    <label className="text-sm font-medium" htmlFor="cashier-cash-received">
+                      {t("amountReceived")}
+                    </label>
+                    <input
+                      id="cashier-cash-received"
+                      className={cn(cashierPos.moneyInput, "mt-1")}
+                      inputMode="decimal"
+                      value={cashReceived}
+                      onChange={(event) => setCashReceived(event.target.value)}
+                    />
+                    <p className="mt-2 flex justify-between text-sm">
+                      <span>{t("changeDue")}</span>
+                      <span className="tabular-nums font-semibold">
+                        {money(cashChange ?? "0.00")}
+                      </span>
+                    </p>
+                    {!cashOk ? (
+                      <p className="mt-1 text-sm text-red-700">{t("cashInsufficient")}</p>
+                    ) : null}
+                  </div>
+                ) : null}
+                {registerGap ? (
+                  <div className={cn(cashierPos.warnBox, "mt-4")}>
+                    <p className="text-sm font-medium">{t("shiftBeforePay")}</p>
+                    <p className="mt-1 text-sm">
+                      {t(
+                        registerGap === "shift_required"
+                          ? "shiftRequired"
+                          : registerGap === "register_closed"
+                            ? "registerClosed"
+                            : "registerRequired"
+                      )}
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="mt-3 min-h-12"
+                      onClick={openRegisterOps}
+                    >
+                      {t("openRegisterOps")}
+                    </Button>
+                  </div>
+                ) : null}
+                <Button
+                  type="button"
+                  className={cn(cashierPos.primaryAction, "mt-4")}
+                  disabled={
+                    settleMutation.isPending ||
+                    paymentMethod == null ||
+                    !cashOk ||
+                    amountDue == null
+                  }
+                  onClick={() => void completePayment()}
+                >
+                  {settleMutation.isPending ? t("paying") : t("confirmPayment")}
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+      ) : null}
+
+      <SettlementReceiptDialog
+        open={printOpen}
+        restaurantId={restaurantId}
+        settlementRecordId={paidCheckout?.settlementRecordId ?? null}
+        language={language}
+        restaurantName={restaurantName ?? undefined}
+        onOpenChange={setPrintOpen}
+      />
     </section>
   );
 }

@@ -65,7 +65,14 @@ export class IdentityPlaceOrderService {
    */
   async execute(
     command: IdentityPlaceOrderCommand,
-    persist?: Pick<SaveOrderOptions, "afterPersistInTransaction">
+    persist?: Pick<SaveOrderOptions, "afterPersistInTransaction"> & {
+      /**
+       * Default true (CHECK-GENERALIZATION-M5). POS sale HTTP sets false so
+       * Check enrollment is not awaited on the cashier response; Cashier
+       * orchestrates pos.check.intake. Kiosk/waiter keep the default.
+       */
+      enrollCheck?: boolean;
+    }
   ): Promise<IdentityPlaceOrderResult> {
     const draftIdentity = createOrderIdentity({
       serviceMode: command.serviceMode,
@@ -112,15 +119,21 @@ export class IdentityPlaceOrderService {
       notes: command.notes,
       items: command.items,
     };
-    const result = persist
-      ? await this.placeOrder.execute(placeCommand, persist)
+    const enrollCheck = persist?.enrollCheck !== false;
+    const saveOpts = persist
+      ? { afterPersistInTransaction: persist.afterPersistInTransaction }
+      : undefined;
+    const result = saveOpts
+      ? await this.placeOrder.execute(placeCommand, saveOpts)
       : await this.placeOrder.execute(placeCommand);
 
     // CHECK-GENERALIZATION-M5 — sessionless / ephemeral channels enroll into Check + Membership.
     // Table Session path keeps Session Check create + dual-write (avoid duplicate sessionless Check).
+    // POS cashier skips the HTTP await (enrollCheck: false); intake remains Check SSOT.
     if (
-      sessionResult.persistence === "ephemeral" ||
-      identity.operationalSession.sessionId == null
+      enrollCheck &&
+      (sessionResult.persistence === "ephemeral" ||
+        identity.operationalSession.sessionId == null)
     ) {
       try {
         const orderId = result.order.id;

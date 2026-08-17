@@ -115,7 +115,31 @@ const COPY: Record<string, { ar: string; en: string }> = {
   statusReady: { ar: "جاهز", en: "Ready" },
   statusShift: { ar: "يلزم وردية الصندوق", en: "Register shift required" },
   ticketSubtotal: { ar: "المجموع الفرعي", en: "Subtotal" },
+  ticketTax: { ar: "الضريبة", en: "Tax" },
   removeLine: { ar: "حذف الصنف", en: "Remove item" },
+  completePaymentTitle: { ar: "إتمام الدفع", en: "Complete payment" },
+  amountReceived: { ar: "المبلغ المدفوع", en: "Amount received" },
+  changeDue: { ar: "الباقي", en: "Change" },
+  confirmPayment: { ar: "تأكيد الدفع", en: "Confirm payment" },
+  paidSuccess: { ar: "تم الدفع بنجاح", en: "Payment successful" },
+  printInvoice: { ar: "طباعة الفاتورة", en: "Print invoice" },
+  printUnavailable: {
+    ar: "الفاتورة تطبع من سجل التسوية بعد نجاح الدفع. إن لم يظهر رقم التسوية، استخدم مساحة التسويات.",
+    en: "The invoice prints from the Settlement Record after payment. If no settlement id is available, use Settlements.",
+  },
+  shiftBeforePay: {
+    ar: "يجب فتح وردية الصندوق قبل إتمام الدفع",
+    en: "Open a register shift before completing payment",
+  },
+  cashInsufficient: {
+    ar: "المبلغ المدفوع أقل من المستحق.",
+    en: "Amount received is less than the amount due.",
+  },
+  orderNumber: { ar: "رقم الطلب", en: "Order number" },
+  invoiceNumber: { ar: "رقم الشيك", en: "Check number" },
+  preparingCheck: { ar: "جاري تجهيز الشيك…", en: "Preparing check…" },
+  showActiveOrders: { ar: "الطلبات النشطة", en: "Active orders" },
+  hideActiveOrders: { ar: "إخفاء الطلبات النشطة", en: "Hide active orders" },
 };
 
 export function cashierUiLabel(key: keyof typeof COPY, language: CashierLang): string {

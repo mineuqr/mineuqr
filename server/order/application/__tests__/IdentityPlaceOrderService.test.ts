@@ -116,4 +116,56 @@ describe("NON-TABLE-PLACE-ORDER-1 IdentityPlaceOrderService", () => {
       orderId: 99,
     });
   });
+
+  it("does not await Check enrollment when enrollCheck is false", async () => {
+    vi.mocked(operationalSession.ensureCheckForOrder).mockImplementation(
+      async () =>
+        await new Promise(() => {
+          /* never resolves — would hang the sale HTTP if still awaited */
+        })
+    );
+    const result = await service.execute(
+      {
+        restaurantId: 1,
+        serviceMode: "counter",
+        fulfilmentAnchor: createStationFulfilmentAnchor({
+          stationId: "pos-1",
+          fulfilmentLabel: "POS 1",
+        }),
+        orderingChannel: "cashier_pos",
+        items: [{ menuItemId: 1, quantity: 1 }],
+      },
+      { enrollCheck: false }
+    );
+    expect(result.order.id).toBe(99);
+    expect(operationalSession.ensureCheckForOrder).not.toHaveBeenCalled();
+  });
+
+  it("sale-path Check enrollment is on the HTTP await when enrollCheck is default", async () => {
+    const CHECK_MS = 80;
+    vi.mocked(operationalSession.ensureCheckForOrder).mockImplementation(
+      async () =>
+        new Promise((resolve) => {
+          setTimeout(() => {
+            resolve({
+              id: 200,
+              sessionId: null,
+            } as Awaited<ReturnType<typeof operationalSession.ensureCheckForOrder>>);
+          }, CHECK_MS);
+        })
+    );
+    const started = Date.now();
+    await service.execute({
+      restaurantId: 1,
+      serviceMode: "counter",
+      fulfilmentAnchor: createStationFulfilmentAnchor({
+        stationId: "pos-1",
+        fulfilmentLabel: "POS 1",
+      }),
+      orderingChannel: "cashier_pos",
+      items: [{ menuItemId: 1, quantity: 1 }],
+    });
+    expect(Date.now() - started).toBeGreaterThanOrEqual(CHECK_MS - 15);
+  });
 });
+

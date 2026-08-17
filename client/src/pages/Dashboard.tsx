@@ -1033,6 +1033,9 @@ function RestaurantDetail({
         restaurantId={restaurantId}
         language={language === "ar" ? "ar" : "en"}
         restaurantName={restaurantName ?? null}
+        currencySymbol={
+          (restaurant as { currencySymbol?: string | null })?.currencySymbol ?? null
+        }
       />
     );
   }
