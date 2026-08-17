@@ -266,6 +266,10 @@ export {
   type FinancialReference,
   type CheckFinancialResponsibility,
   type PaymentPortion,
+  type Tender,
+  type TenderAllocation,
+  type PaymentAllocation,
+  type PaymentAttemptStatus,
   type TenderMethod,
   SPLIT_PAYMENT_PROJECTION_PROGRAM_ID,
   SPLIT_PAYMENT_PROJECTION_SCHEMA_VERSION,
@@ -279,7 +283,9 @@ export {
   type SplitPaymentProjection,
   type SplitPaymentProjectionIdentity,
   type SplitPaymentOutstandingProjection,
+  type SplitPaymentOutstandingProjectionIdentity,
   type SplitPaymentAttemptProjection,
+  type SplitPaymentAttemptProjectionIdentity,
   type SplitPaymentProjectionEventClaimKey,
 } from "./splitPayment";
 

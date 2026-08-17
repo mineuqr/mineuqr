@@ -296,21 +296,18 @@ export function buildSplitPaymentProjectionEventClaimKey(
       typeof event.tenderAllocationId === "string"
         ? event.tenderAllocationId
         : "";
-    return [
-      event.eventType,
-      event.restaurantId,
-      event.checkId,
-      event.paymentId,
-      event.status,
-      allocationId,
-      tenderAllocationId,
-      event.occurredAt,
-    ].join("|");
-  }
   return [
     event.eventType,
     event.restaurantId,
     event.checkId,
+    event.paymentId,
+    event.status,
+    allocationId,
+    tenderAllocationId,
     event.occurredAt,
   ].join("|");
+  }
+  const exhaustive: never = event;
+  void exhaustive;
+  return "";
 }

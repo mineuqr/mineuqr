@@ -179,9 +179,10 @@ async function applyNewAllocationsToOrderSettlements(
   const newly = after.allocations.filter((a) => !beforeIds.has(a.allocationId));
   if (newly.length === 0) return EMPTY_OS;
 
-  const settlements = [];
-  const events = [];
-  const outcomes = [];
+  const settlements: CheckOrderSettlementMutationResult["settlements"][number][] =
+    [];
+  const events: CheckOrderSettlementMutationResult["events"][number][] = [];
+  const outcomes: CheckOrderSettlementMutationResult["outcomes"][number][] = [];
 
   for (const alloc of newly) {
     await ensureOrderSettlementForEnrollment(

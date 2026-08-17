@@ -1326,7 +1326,7 @@ export async function applyRefundOnCheck(input: {
     input.settlementContext ??
     (await resolveSettlementContextForSettle({
       restaurantId: input.restaurantId,
-      hints,
+      ...hints,
       at,
     }).catch(() =>
       unavailableSettlementContext(input.restaurantId, at, [

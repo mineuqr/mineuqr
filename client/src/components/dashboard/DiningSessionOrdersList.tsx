@@ -64,7 +64,12 @@ export function DiningSessionOrdersList({
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-mono text-sm font-semibold text-primary">
-                      {formatOperationalOrderHeading(order)}
+                      {formatOperationalOrderHeading({
+                        orderNumber: order.orderNumber,
+                        businessDay: order.businessDay ?? null,
+                        dailyDisplayNumber: order.dailyDisplayNumber ?? null,
+                        displayReference: order.displayReference,
+                      })}
                     </span>
                     <OperationalOrderStatus
                       status={order.status}

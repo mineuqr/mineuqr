@@ -92,7 +92,7 @@ export class DrizzleOrderRepository implements OrderRepository {
                 restaurantId: order.restaurantId,
                 attempt,
                 path: "hot",
-                correlationId: options?.correlationId,
+                correlationId: options?.correlationId ?? undefined,
                 error: error instanceof Error ? error.message : String(error),
               });
             } else if (kind === "unique_violation") {
@@ -102,7 +102,7 @@ export class DrizzleOrderRepository implements OrderRepository {
                 restaurantId: order.restaurantId,
                 attempt,
                 path: "hot",
-                correlationId: options?.correlationId,
+                correlationId: options?.correlationId ?? undefined,
                 error: error instanceof Error ? error.message : String(error),
               });
             }
@@ -111,7 +111,7 @@ export class DrizzleOrderRepository implements OrderRepository {
               restaurantId: order.restaurantId,
               attempt,
               path: "hot",
-              correlationId: options?.correlationId,
+              correlationId: options?.correlationId ?? undefined,
               errorKind: kind,
               error: error instanceof Error ? error.message : String(error),
             });
@@ -226,7 +226,7 @@ export class DrizzleOrderRepository implements OrderRepository {
       options?.onPersisted?.(persisted) ?? options?.domainEvents ?? [];
 
     const outboxInputs = domainEventsToOutboxInputs(events, {
-      correlationId: options?.correlationId,
+      correlationId: options?.correlationId ?? undefined,
       causationId: options?.causationId,
       restaurantId: persisted.restaurantId,
     });
@@ -280,7 +280,7 @@ export class DrizzleOrderRepository implements OrderRepository {
 
     const events = options?.domainEvents ?? [];
     const outboxInputs = domainEventsToOutboxInputs(events, {
-      correlationId: options?.correlationId,
+      correlationId: options?.correlationId ?? undefined,
       causationId: options?.causationId,
       restaurantId: order.restaurantId,
     });

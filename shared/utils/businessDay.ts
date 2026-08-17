@@ -12,6 +12,8 @@ import {
 } from "./restaurantHours";
 import { APP_TIMEZONE, getRestaurantNow, parseStoredUtcInstant } from "./timezone";
 
+export type { NormalizedWorkingHours };
+
 export type BusinessDayWindow = {
   businessDay: string;
   startIso: string;

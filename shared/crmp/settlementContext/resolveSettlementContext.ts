@@ -72,8 +72,9 @@ export function resolveSettlementContextFromFacts(
   );
 
   // 1) Explicit registerId
-  if (hints.registerId?.trim()) {
-    const hit = registers.find((r) => r.registerId === hints.registerId.trim());
+  const hintedRegisterId = hints.registerId?.trim();
+  if (hintedRegisterId) {
+    const hit = registers.find((r) => r.registerId === hintedRegisterId);
     if (!hit) {
       gaps.push("register_not_found");
     } else if (hit.status !== "active") {

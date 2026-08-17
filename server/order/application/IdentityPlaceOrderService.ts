@@ -123,9 +123,13 @@ export class IdentityPlaceOrderService {
       identity.operationalSession.sessionId == null
     ) {
       try {
+        const orderId = result.order.id;
+        if (orderId == null) {
+          throw new Error("Persisted order identity is required for Check enrollment");
+        }
         await ensureCheckForOrder({
           restaurantId: command.restaurantId,
-          orderId: result.order.id,
+          orderId,
         });
       } catch (e) {
         opsLog({

@@ -25,7 +25,7 @@ import {
   singleTenderSettlements,
 } from "@/lib/settlementPaymentMethodPresentation";
 import { cn } from "@/lib/utils";
-import type { MonetaryPaymentMethod, StaffSettlementLineInput } from "@shared/operational-session";
+import type { SelectablePaymentMethod, StaffSettlementLineInput } from "@shared/operational-session";
 import { Loader2 } from "lucide-react";
 
 type MarkPaidSettlementDialogProps = {
@@ -48,7 +48,7 @@ export function MarkPaidSettlementDialog({
   onOpenChange,
   onConfirm,
 }: MarkPaidSettlementDialogProps) {
-  const [selected, setSelected] = useState<MonetaryPaymentMethod | null>(null);
+  const [selected, setSelected] = useState<SelectablePaymentMethod | null>(null);
   const [amountPaid, setAmountPaid] = useState(outstandingAmount);
   const options = listMonetaryPaymentMethodOptions(language);
   const remaining = computeRemainingDisplay(outstandingAmount, amountPaid);

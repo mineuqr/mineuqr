@@ -77,6 +77,9 @@ export async function backfillCheckOrderMembership(input: {
     restaurantIds.add(check.restaurantId);
     result.checksProcessed += 1;
     try {
+      if (check.sessionId == null) {
+        continue;
+      }
       const orders = await getOrdersBySessionId(
         check.restaurantId,
         check.sessionId
@@ -148,6 +151,9 @@ export async function dryRunCheckOrderMembershipBackfill(input: {
 
   let sessionOrders = 0;
   for (const check of checkRows) {
+    if (check.sessionId == null) {
+      continue;
+    }
     const orders = await getOrdersBySessionId(
       check.restaurantId,
       check.sessionId

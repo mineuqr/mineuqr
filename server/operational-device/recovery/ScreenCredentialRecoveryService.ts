@@ -58,9 +58,16 @@ export class ScreenCredentialRecoveryService {
     return this.presentRecovery(device, token);
   }
 
+  /**
+   * Recovery material is not a new issuance: pairingCode is issuance-only.
+   * presentRecovery consumes the stored token fields needed for QR payload.
+   */
   private async presentRecovery(
     device: OperationalDeviceRecord,
-    token: IssuedOperationalDeviceToken
+    token: Pick<
+      IssuedOperationalDeviceToken,
+      "tokenId" | "secret" | "deviceId" | "issuedAt" | "expiresAt"
+    >
   ): Promise<ScreenRecoveryPresentation> {
     const payload = this.buildPairingPayload(device, token);
     const recoveryQrSvg = await renderRecoveryQrSvg(JSON.stringify(payload));
