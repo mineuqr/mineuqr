@@ -1,0 +1,1776 @@
+{
+  "program": "ENGINEERING-PROGRAM-GOVERNANCE-HARDENING-1",
+  "command": "pnpm check → tsc --noEmit",
+  "source": "C:/mineuqr/docs/engineering/programs/TYPESCRIPT-ERROR-FORENSICS-AND-REMEDIATION-1/pnpm-check.after.raw.txt",
+  "total": 184,
+  "byCode": {
+    "TS2802": 118,
+    "TS2322": 21,
+    "TS2345": 7,
+    "TS2459": 7,
+    "TS2339": 6,
+    "TS2724": 5,
+    "TS2352": 3,
+    "TS2769": 3,
+    "TS7006": 3,
+    "TS2305": 2,
+    "TS2367": 2,
+    "TS1355": 1,
+    "TS18049": 1,
+    "TS2353": 1,
+    "TS2677": 1,
+    "TS2694": 1,
+    "TS2739": 1,
+    "TS7016": 1
+  },
+  "byFile": {
+    "server/services/commercial-catalog/livePlanPersistence.ts": 29,
+    "server/services/commercial-catalog/index.ts": 26,
+    "server/crmp/InMemoryCrmpStore.ts": 7,
+    "client/src/App.tsx": 6,
+    "server/services/commercial-catalog/adoptionService.ts": 6,
+    "server/operational-session/check/read/splitPaymentProjectionStore.ts": 5,
+    "shared/operational-session/check/splitPayment/projection/splitPaymentProjectionBuilder.ts": 5,
+    "client/src/components/admin/platform-ops/commercial-catalog/CatalogManagementPanels.tsx": 4,
+    "server/operational-session/check/read/multiCheckAllocationProjectionStore.ts": 4,
+    "server/operational-session/check/splitPaymentMapper.ts": 4,
+    "server/order/infrastructure/persistence/DrizzleOrderRepository.ts": 3,
+    "server/reporting-platform/financialReportingParity.ts": 3,
+    "server/reporting-platform/SalesChannelAnalyticsService.ts": 3,
+    "shared/data-retention/registry/policyRegistry.ts": 3,
+    "client/src/components/admin/platform-ops/commercial-catalog/experience/versionCompare.ts": 2,
+    "client/src/lib/reporting-exports/pdf/buildReportingExportPdf.ts": 2,
+    "client/src/lib/reporting-exports/salesSourceAnalysisPresentation.ts": 2,
+    "client/src/pages/Dashboard.tsx": 2,
+    "server/operational-session/check/CheckMembershipBackfillService.ts": 2,
+    "server/operational-session/check/read/orderSettlementProjectionStore.ts": 2,
+    "server/operational-session/check/refundDocumentNumberRepository.ts": 2,
+    "server/realtime-platform/tickets/RealtimeOpaqueTicketRegistry.ts": 2,
+    "server/reporting-platform/PaymentMethodAnalyticsService.ts": 2,
+    "shared/data-retention/holds/retentionHolds.ts": 2,
+    "shared/operational-session/check/multiCheckAllocation/multiCheckAllocationCommands.ts": 2,
+    "client/src/components/admin/platform-ops/commercial-catalog/experience/CapabilityFilterPicker.tsx": 1,
+    "client/src/components/admin/platform-ops/PlatformOpsReservedSection.tsx": 1,
+    "client/src/components/admin/platform-ops/PlatformOpsSubscriptionComposition.tsx": 1,
+    "client/src/components/dashboard/DiningSessionOrdersList.tsx": 1,
+    "client/src/components/dashboard/MarkPaidSettlementDialog.tsx": 1,
+    "client/src/components/dashboard/restaurantDashStyles.ts": 1,
+    "client/src/components/orders-workspace/OrdersWorkspacePanel.tsx": 1,
+    "client/src/design-system/semantic-badge/components/SemanticBadge.tsx": 1,
+    "client/src/design-system/semantic-card/tokens/domain.ts": 1,
+    "client/src/design-system/semantic-table/tokens/tableSurface.ts": 1,
+    "client/src/lib/currencyLocale.ts": 1,
+    "client/src/lib/operational-screen/interaction/useOperationalDeviceOrderActions.ts": 1,
+    "client/src/lib/operational-screen/kitchen/kitchenQueueInvalidationCoordinator.ts": 1,
+    "client/src/lib/operational-screen/kitchen/useKitchenRuntimeStream.ts": 1,
+    "client/src/lib/operational-screen/runtimeContextStore.ts": 1,
+    "client/src/lib/operational-screen/runtimeInstanceContext.ts": 1,
+    "client/src/lib/orders-workspace/ordersListActiveInvalidationCoordinator.ts": 1,
+    "client/src/lib/reporting-exports/paymentMethodAnalysisPresentation.ts": 1,
+    "client/src/lib/reporting-exports/pdf/arabicPdfText.ts": 1,
+    "client/src/pages/kiosk/KioskShell.tsx": 1,
+    "client/src/pages/MenuView.tsx": 1,
+    "server/commercial/metrics/CanonicalMetricsService.ts": 1,
+    "server/crmp/DrizzleCrmpRepository.ts": 1,
+    "server/db.ts": 1,
+    "server/operational-device/recovery/ScreenCredentialRecoveryService.ts": 1,
+    "server/operational-session/check/CheckService.ts": 1,
+    "server/operational-session/check/checkSplitPaymentIntegration.ts": 1,
+    "server/operational-session/check/multiCheckAllocationRepository.ts": 1,
+    "server/operational-session/check/settlementRecordRepository.ts": 1,
+    "server/operational-session/check/splitPaymentRepository.ts": 1,
+    "server/order/application/IdentityPlaceOrderService.ts": 1,
+    "server/order/business-identity/infrastructure/DrizzleBusinessIdentityAllocator.ts": 1,
+    "server/order/business-identity/infrastructure/RestaurantOpeningTimeResolver.ts": 1,
+    "server/order/read/infrastructure/backfill/OrderReadProjectionBackfillService.ts": 1,
+    "server/order/read/projections/materializers/orderAnalyticsDayKey.ts": 1,
+    "server/order/read/projections/materializers/OrderReadProjectionMaterializer.ts": 1,
+    "server/order/read/projections/materializers/projectionStatus.ts": 1,
+    "server/realtime-platform/gateway/RealtimeSseGateway.ts": 1,
+    "server/realtime-platform/observability/realtimeObservabilityStore.ts": 1,
+    "server/realtime-platform/pubsub/RealtimePubSub.ts": 1,
+    "server/reporting-platform/__scripts__/reportingUxRationalization.liveUat.ts": 1,
+    "server/reporting-platform/__scripts__/reportingUxRationalization.liveUatData.ts": 1,
+    "server/reporting-platform/businessMetricsAggregator.ts": 1,
+    "server/reporting-platform/OrderSalesMetricsService.ts": 1,
+    "server/reporting-platform/settlementTransactionReportingAdapter.ts": 1,
+    "server/services/commercial-catalog/persistentCatalogBootstrap.ts": 1,
+    "server/services/commercial-catalog/runtimeAuthorityObservability.ts": 1,
+    "shared/crmp/settlementContext/resolveSettlementContext.ts": 1,
+    "shared/data-retention/adapters/retentionAdapter.ts": 1,
+    "shared/operational-session/check/multiCheckAllocation/projection/multiCheckAllocationProjectionBuilder.ts": 1,
+    "shared/read-freshness/mergeOrderCaches.ts": 1,
+    "shared/reporting-platform/legacyReportingSurfaces.ts": 1,
+    "shared/reporting-platform/timeSeries/businessDayReporting.ts": 1,
+    "shared/reporting-platform/timeSeries/calendar.ts": 1
+  },
+  "appTsx": {
+    "count": 6,
+    "keys": [
+      "client/src/App.tsx:105:46:TS2322",
+      "client/src/App.tsx:106:45:TS2322",
+      "client/src/App.tsx:107:41:TS2322",
+      "client/src/App.tsx:108:41:TS2322",
+      "client/src/App.tsx:109:45:TS2322",
+      "client/src/App.tsx:110:36:TS2322"
+    ]
+  },
+  "diagnostics": [
+    {
+      "file": "client/src/App.tsx",
+      "line": 105,
+      "column": 46,
+      "code": "TS2322",
+      "message": "Type '({ activation }?: Readonly<{ activation?: Readonly<{ slug: string; stationId: string; restaurantId?: number | undefined; kioskId?: string | undefined; }> | undefined; }>) => Element | null' is not assignable to type 'ComponentType<RouteComponentProps<StringRouteParams<\"/kiosk/:slug/confirmed\">>> | undefined'.",
+      "key": "client/src/App.tsx:105:46:TS2322",
+      "identity": "client/src/App.tsx::TS2322::Type '({ activation }?: Readonly<{ activation?: Readonly<{ slug: string; stationId: string; restaurantId?: number | undefined; kioskId?: string | undefined; }> | undefined; }>) => Element | null' is not assignable to type 'ComponentType<RouteComponentProps<StringRouteParams<\"/kiosk/:slug/confirmed\">>> | undefined'."
+    },
+    {
+      "file": "client/src/App.tsx",
+      "line": 106,
+      "column": 45,
+      "code": "TS2322",
+      "message": "Type '({ activation }?: Readonly<{ activation?: Readonly<{ slug: string; stationId: string; restaurantId?: number | undefined; kioskId?: string | undefined; }> | undefined; }>) => Element | null' is not assignable to type 'ComponentType<RouteComponentProps<StringRouteParams<\"/kiosk/:slug/checkout\">>> | undefined'.",
+      "key": "client/src/App.tsx:106:45:TS2322",
+      "identity": "client/src/App.tsx::TS2322::Type '({ activation }?: Readonly<{ activation?: Readonly<{ slug: string; stationId: string; restaurantId?: number | undefined; kioskId?: string | undefined; }> | undefined; }>) => Element | null' is not assignable to type 'ComponentType<RouteComponentProps<StringRouteParams<\"/kiosk/:slug/checkout\">>> | undefined'."
+    },
+    {
+      "file": "client/src/App.tsx",
+      "line": 107,
+      "column": 41,
+      "code": "TS2322",
+      "message": "Type '({ activation }?: Readonly<{ activation?: Readonly<{ slug: string; stationId: string; restaurantId?: number | undefined; kioskId?: string | undefined; }> | undefined; }>) => Element | null' is not assignable to type 'ComponentType<RouteComponentProps<StringRouteParams<\"/kiosk/:slug/cart\">>> | undefined'.",
+      "key": "client/src/App.tsx:107:41:TS2322",
+      "identity": "client/src/App.tsx::TS2322::Type '({ activation }?: Readonly<{ activation?: Readonly<{ slug: string; stationId: string; restaurantId?: number | undefined; kioskId?: string | undefined; }> | undefined; }>) => Element | null' is not assignable to type 'ComponentType<RouteComponentProps<StringRouteParams<\"/kiosk/:slug/cart\">>> | undefined'."
+    },
+    {
+      "file": "client/src/App.tsx",
+      "line": 108,
+      "column": 41,
+      "code": "TS2322",
+      "message": "Type '({ activation }?: Readonly<{ activation?: Readonly<{ slug: string; stationId: string; restaurantId?: number | undefined; kioskId?: string | undefined; }> | undefined; }>) => Element | null' is not assignable to type 'ComponentType<RouteComponentProps<StringRouteParams<\"/kiosk/:slug/menu\">>> | undefined'.",
+      "key": "client/src/App.tsx:108:41:TS2322",
+      "identity": "client/src/App.tsx::TS2322::Type '({ activation }?: Readonly<{ activation?: Readonly<{ slug: string; stationId: string; restaurantId?: number | undefined; kioskId?: string | undefined; }> | undefined; }>) => Element | null' is not assignable to type 'ComponentType<RouteComponentProps<StringRouteParams<\"/kiosk/:slug/menu\">>> | undefined'."
+    },
+    {
+      "file": "client/src/App.tsx",
+      "line": 109,
+      "column": 45,
+      "code": "TS2322",
+      "message": "Type '({ activation }?: Readonly<{ activation?: Readonly<{ slug: string; stationId: string; restaurantId?: number | undefined; kioskId?: string | undefined; }> | undefined; }>) => Element | null' is not assignable to type 'ComponentType<RouteComponentProps<StringRouteParams<\"/kiosk/:slug/language\">>> | undefined'.",
+      "key": "client/src/App.tsx:109:45:TS2322",
+      "identity": "client/src/App.tsx::TS2322::Type '({ activation }?: Readonly<{ activation?: Readonly<{ slug: string; stationId: string; restaurantId?: number | undefined; kioskId?: string | undefined; }> | undefined; }>) => Element | null' is not assignable to type 'ComponentType<RouteComponentProps<StringRouteParams<\"/kiosk/:slug/language\">>> | undefined'."
+    },
+    {
+      "file": "client/src/App.tsx",
+      "line": 110,
+      "column": 36,
+      "code": "TS2322",
+      "message": "Type '({ activation }?: Readonly<{ activation?: Readonly<{ slug: string; stationId: string; restaurantId?: number | undefined; kioskId?: string | undefined; }> | undefined; }>) => Element | null' is not assignable to type 'ComponentType<RouteComponentProps<StringRouteParams<\"/kiosk/:slug\">>> | undefined'.",
+      "key": "client/src/App.tsx:110:36:TS2322",
+      "identity": "client/src/App.tsx::TS2322::Type '({ activation }?: Readonly<{ activation?: Readonly<{ slug: string; stationId: string; restaurantId?: number | undefined; kioskId?: string | undefined; }> | undefined; }>) => Element | null' is not assignable to type 'ComponentType<RouteComponentProps<StringRouteParams<\"/kiosk/:slug\">>> | undefined'."
+    },
+    {
+      "file": "client/src/components/admin/platform-ops/commercial-catalog/CatalogManagementPanels.tsx",
+      "line": 426,
+      "column": 44,
+      "code": "TS2345",
+      "message": "Argument of type 'string' is not assignable to parameter of type 'SetStateAction<\"USD\">'.",
+      "key": "client/src/components/admin/platform-ops/commercial-catalog/CatalogManagementPanels.tsx:426:44:TS2345",
+      "identity": "client/src/components/admin/platform-ops/commercial-catalog/CatalogManagementPanels.tsx::TS2345::Argument of type 'string' is not assignable to parameter of type 'SetStateAction<\"USD\">'."
+    },
+    {
+      "file": "client/src/components/admin/platform-ops/commercial-catalog/CatalogManagementPanels.tsx",
+      "line": 633,
+      "column": 51,
+      "code": "TS7006",
+      "message": "Parameter 'f' implicitly has an 'any' type.",
+      "key": "client/src/components/admin/platform-ops/commercial-catalog/CatalogManagementPanels.tsx:633:51:TS7006",
+      "identity": "client/src/components/admin/platform-ops/commercial-catalog/CatalogManagementPanels.tsx::TS7006::Parameter 'f' implicitly has an 'any' type."
+    },
+    {
+      "file": "client/src/components/admin/platform-ops/commercial-catalog/CatalogManagementPanels.tsx",
+      "line": 748,
+      "column": 20,
+      "code": "TS7006",
+      "message": "Parameter 'v' implicitly has an 'any' type.",
+      "key": "client/src/components/admin/platform-ops/commercial-catalog/CatalogManagementPanels.tsx:748:20:TS7006",
+      "identity": "client/src/components/admin/platform-ops/commercial-catalog/CatalogManagementPanels.tsx::TS7006::Parameter 'v' implicitly has an 'any' type."
+    },
+    {
+      "file": "client/src/components/admin/platform-ops/commercial-catalog/CatalogManagementPanels.tsx",
+      "line": 1102,
+      "column": 27,
+      "code": "TS2345",
+      "message": "Argument of type 'string' is not assignable to parameter of type 'SetStateAction<\"USD\">'.",
+      "key": "client/src/components/admin/platform-ops/commercial-catalog/CatalogManagementPanels.tsx:1102:27:TS2345",
+      "identity": "client/src/components/admin/platform-ops/commercial-catalog/CatalogManagementPanels.tsx::TS2345::Argument of type 'string' is not assignable to parameter of type 'SetStateAction<\"USD\">'."
+    },
+    {
+      "file": "client/src/components/admin/platform-ops/commercial-catalog/experience/CapabilityFilterPicker.tsx",
+      "line": 132,
+      "column": 11,
+      "code": "TS2322",
+      "message": "Type '\"healthy\"' is not assignable to type '\"default\" | \"primary\" | SemanticTone | \"emerald\" | \"amber\" | undefined'.",
+      "key": "client/src/components/admin/platform-ops/commercial-catalog/experience/CapabilityFilterPicker.tsx:132:11:TS2322",
+      "identity": "client/src/components/admin/platform-ops/commercial-catalog/experience/CapabilityFilterPicker.tsx::TS2322::Type '\"healthy\"' is not assignable to type '\"default\" | \"primary\" | SemanticTone | \"emerald\" | \"amber\" | undefined'."
+    },
+    {
+      "file": "client/src/components/admin/platform-ops/commercial-catalog/experience/versionCompare.ts",
+      "line": 39,
+      "column": 19,
+      "code": "TS2802",
+      "message": "Type 'Set<string>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "client/src/components/admin/platform-ops/commercial-catalog/experience/versionCompare.ts:39:19:TS2802",
+      "identity": "client/src/components/admin/platform-ops/commercial-catalog/experience/versionCompare.ts::TS2802::Type 'Set<string>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "client/src/components/admin/platform-ops/commercial-catalog/experience/versionCompare.ts",
+      "line": 54,
+      "column": 20,
+      "code": "TS2802",
+      "message": "Type 'Set<string>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "client/src/components/admin/platform-ops/commercial-catalog/experience/versionCompare.ts:54:20:TS2802",
+      "identity": "client/src/components/admin/platform-ops/commercial-catalog/experience/versionCompare.ts::TS2802::Type 'Set<string>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "client/src/components/admin/platform-ops/PlatformOpsReservedSection.tsx",
+      "line": 19,
+      "column": 7,
+      "code": "TS2739",
+      "message": "Type '{ audit: string[]; }' is missing the following properties from type 'Record<\"subscription\" | \"commercialCatalog\" | \"audit\", string[]>': subscription, commercialCatalog",
+      "key": "client/src/components/admin/platform-ops/PlatformOpsReservedSection.tsx:19:7:TS2739",
+      "identity": "client/src/components/admin/platform-ops/PlatformOpsReservedSection.tsx::TS2739::Type '{ audit: string[]; }' is missing the following properties from type 'Record<\"subscription\" | \"commercialCatalog\" | \"audit\", string[]>': subscription, commercialCatalog"
+    },
+    {
+      "file": "client/src/components/admin/platform-ops/PlatformOpsSubscriptionComposition.tsx",
+      "line": 63,
+      "column": 9,
+      "code": "TS2322",
+      "message": "Type '3' is not assignable to type 'PlatformOpsHeroColumns | undefined'.",
+      "key": "client/src/components/admin/platform-ops/PlatformOpsSubscriptionComposition.tsx:63:9:TS2322",
+      "identity": "client/src/components/admin/platform-ops/PlatformOpsSubscriptionComposition.tsx::TS2322::Type '3' is not assignable to type 'PlatformOpsHeroColumns | undefined'."
+    },
+    {
+      "file": "client/src/components/dashboard/DiningSessionOrdersList.tsx",
+      "line": 67,
+      "column": 54,
+      "code": "TS2345",
+      "message": "Argument of type 'WorkspaceOrderRow' is not assignable to parameter of type 'OperationalOrderIdentitySource'.",
+      "key": "client/src/components/dashboard/DiningSessionOrdersList.tsx:67:54:TS2345",
+      "identity": "client/src/components/dashboard/DiningSessionOrdersList.tsx::TS2345::Argument of type 'WorkspaceOrderRow' is not assignable to parameter of type 'OperationalOrderIdentitySource'."
+    },
+    {
+      "file": "client/src/components/dashboard/MarkPaidSettlementDialog.tsx",
+      "line": 75,
+      "column": 39,
+      "code": "TS2345",
+      "message": "Argument of type '\"card\" | \"cash\" | \"other\"' is not assignable to parameter of type '\"card\" | \"cash\"'.",
+      "key": "client/src/components/dashboard/MarkPaidSettlementDialog.tsx:75:39:TS2345",
+      "identity": "client/src/components/dashboard/MarkPaidSettlementDialog.tsx::TS2345::Argument of type '\"card\" | \"cash\" | \"other\"' is not assignable to parameter of type '\"card\" | \"cash\"'."
+    },
+    {
+      "file": "client/src/components/dashboard/restaurantDashStyles.ts",
+      "line": 189,
+      "column": 3,
+      "code": "TS2322",
+      "message": "Type 'SemanticTone' is not assignable to type 'RestaurantKpiTone'.",
+      "key": "client/src/components/dashboard/restaurantDashStyles.ts:189:3:TS2322",
+      "identity": "client/src/components/dashboard/restaurantDashStyles.ts::TS2322::Type 'SemanticTone' is not assignable to type 'RestaurantKpiTone'."
+    },
+    {
+      "file": "client/src/components/orders-workspace/OrdersWorkspacePanel.tsx",
+      "line": 106,
+      "column": 5,
+      "code": "TS2769",
+      "message": "No overload matches this call.",
+      "key": "client/src/components/orders-workspace/OrdersWorkspacePanel.tsx:106:5:TS2769",
+      "identity": "client/src/components/orders-workspace/OrdersWorkspacePanel.tsx::TS2769::No overload matches this call."
+    },
+    {
+      "file": "client/src/design-system/semantic-badge/components/SemanticBadge.tsx",
+      "line": 57,
+      "column": 6,
+      "code": "TS2322",
+      "message": "Type '{ children: (Element | ReactNode)[]; ref?: Ref<HTMLSpanElement> | undefined; key?: Key | null | undefined; defaultChecked?: boolean | undefined; ... 280 more ...; className: string; }' is not assignable to type 'ClassAttributes<HTMLButtonElement>'.",
+      "key": "client/src/design-system/semantic-badge/components/SemanticBadge.tsx:57:6:TS2322",
+      "identity": "client/src/design-system/semantic-badge/components/SemanticBadge.tsx::TS2322::Type '{ children: (Element | ReactNode)[]; ref?: Ref<HTMLSpanElement> | undefined; key?: Key | null | undefined; defaultChecked?: boolean | undefined; ... 280 more ...; className: string; }' is not assignable to type 'ClassAttributes<HTMLButtonElement>'."
+    },
+    {
+      "file": "client/src/design-system/semantic-card/tokens/domain.ts",
+      "line": 85,
+      "column": 5,
+      "code": "TS2322",
+      "message": "Type 'string' is not assignable to type '\"border-emerald-500/45 bg-gradient-to-b from-emerald-950/50 to-slate-900/85\" | \"border-sky-500/45 bg-gradient-to-b from-sky-950/45 to-slate-900/85\" | \"border-rose-500/45 bg-gradient-to-b from-rose-950/45 to-slate-900/85\" | \"border-violet-500/45 bg-gradient-to-b from-violet-950/45 to-slate-900/85\" | \"border-orange-50...'.",
+      "key": "client/src/design-system/semantic-card/tokens/domain.ts:85:5:TS2322",
+      "identity": "client/src/design-system/semantic-card/tokens/domain.ts::TS2322::Type 'string' is not assignable to type '\"border-emerald-500/45 bg-gradient-to-b from-emerald-950/50 to-slate-900/85\" | \"border-sky-500/45 bg-gradient-to-b from-sky-950/45 to-slate-900/85\" | \"border-rose-500/45 bg-gradient-to-b from-rose-950/45 to-slate-900/85\" | \"border-violet-500/45 bg-gradient-to-b from-violet-950/45 to-slate-900/85\" | \"border-orange-50...'."
+    },
+    {
+      "file": "client/src/design-system/semantic-table/tokens/tableSurface.ts",
+      "line": 18,
+      "column": 31,
+      "code": "TS1355",
+      "message": "A 'const' assertions can only be applied to references to enum members, or string, number, boolean, array, or object literals.",
+      "key": "client/src/design-system/semantic-table/tokens/tableSurface.ts:18:31:TS1355",
+      "identity": "client/src/design-system/semantic-table/tokens/tableSurface.ts::TS1355::A 'const' assertions can only be applied to references to enum members, or string, number, boolean, array, or object literals."
+    },
+    {
+      "file": "client/src/lib/currencyLocale.ts",
+      "line": 109,
+      "column": 11,
+      "code": "TS2769",
+      "message": "No overload matches this call.",
+      "key": "client/src/lib/currencyLocale.ts:109:11:TS2769",
+      "identity": "client/src/lib/currencyLocale.ts::TS2769::No overload matches this call."
+    },
+    {
+      "file": "client/src/lib/operational-screen/interaction/useOperationalDeviceOrderActions.ts",
+      "line": 30,
+      "column": 33,
+      "code": "TS2339",
+      "message": "Property 'restaurantId' does not exist on type 'RuntimeInstanceIdentity'.",
+      "key": "client/src/lib/operational-screen/interaction/useOperationalDeviceOrderActions.ts:30:33:TS2339",
+      "identity": "client/src/lib/operational-screen/interaction/useOperationalDeviceOrderActions.ts::TS2339::Property 'restaurantId' does not exist on type 'RuntimeInstanceIdentity'."
+    },
+    {
+      "file": "client/src/lib/operational-screen/kitchen/kitchenQueueInvalidationCoordinator.ts",
+      "line": 34,
+      "column": 23,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<Entry>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "client/src/lib/operational-screen/kitchen/kitchenQueueInvalidationCoordinator.ts:34:23:TS2802",
+      "identity": "client/src/lib/operational-screen/kitchen/kitchenQueueInvalidationCoordinator.ts::TS2802::Type 'MapIterator<Entry>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "client/src/lib/operational-screen/kitchen/useKitchenRuntimeStream.ts",
+      "line": 78,
+      "column": 7,
+      "code": "TS2769",
+      "message": "No overload matches this call.",
+      "key": "client/src/lib/operational-screen/kitchen/useKitchenRuntimeStream.ts:78:7:TS2769",
+      "identity": "client/src/lib/operational-screen/kitchen/useKitchenRuntimeStream.ts::TS2769::No overload matches this call."
+    },
+    {
+      "file": "client/src/lib/operational-screen/runtimeContextStore.ts",
+      "line": 66,
+      "column": 28,
+      "code": "TS2802",
+      "message": "Type 'Set<RuntimeContextSubscriber>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "client/src/lib/operational-screen/runtimeContextStore.ts:66:28:TS2802",
+      "identity": "client/src/lib/operational-screen/runtimeContextStore.ts::TS2802::Type 'Set<RuntimeContextSubscriber>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "client/src/lib/operational-screen/runtimeInstanceContext.ts",
+      "line": 126,
+      "column": 3,
+      "code": "TS2322",
+      "message": "Type 'Readonly<{ identity: Readonly<{ instanceId: string; businessId: string; displayIdentity: string; deviceId: string; }>; screen: Readonly<{ screenId: string; screenType: \"kitchen_display\" | \"expo_display\" | ... 4 more ... | \"waiter_display\"; displayName: string; location: string | null; zone: string | null; status: \"a...' is not assignable to type 'Readonly<RuntimeInstanceContext>'.",
+      "key": "client/src/lib/operational-screen/runtimeInstanceContext.ts:126:3:TS2322",
+      "identity": "client/src/lib/operational-screen/runtimeInstanceContext.ts::TS2322::Type 'Readonly<{ identity: Readonly<{ instanceId: string; businessId: string; displayIdentity: string; deviceId: string; }>; screen: Readonly<{ screenId: string; screenType: \"kitchen_display\" | \"expo_display\" | ... 4 more ... | \"waiter_display\"; displayName: string; location: string | null; zone: string | null; status: \"a...' is not assignable to type 'Readonly<RuntimeInstanceContext>'."
+    },
+    {
+      "file": "client/src/lib/orders-workspace/ordersListActiveInvalidationCoordinator.ts",
+      "line": 49,
+      "column": 23,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<Entry>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "client/src/lib/orders-workspace/ordersListActiveInvalidationCoordinator.ts:49:23:TS2802",
+      "identity": "client/src/lib/orders-workspace/ordersListActiveInvalidationCoordinator.ts::TS2802::Type 'MapIterator<Entry>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "client/src/lib/reporting-exports/paymentMethodAnalysisPresentation.ts",
+      "line": 75,
+      "column": 32,
+      "code": "TS2802",
+      "message": "Type 'ReadonlyMap<string, Readonly<{ paymentMethod: string; category: string; tenderAmount: string; transactionCount: number; checkCount: number; averageCheck: string; mixPercent: string; }>>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "client/src/lib/reporting-exports/paymentMethodAnalysisPresentation.ts:75:32:TS2802",
+      "identity": "client/src/lib/reporting-exports/paymentMethodAnalysisPresentation.ts::TS2802::Type 'ReadonlyMap<string, Readonly<{ paymentMethod: string; category: string; tenderAmount: string; transactionCount: number; checkCount: number; averageCheck: string; mixPercent: string; }>>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "client/src/lib/reporting-exports/pdf/arabicPdfText.ts",
+      "line": 6,
+      "column": 25,
+      "code": "TS7016",
+      "message": "Could not find a declaration file for module 'bidi-js'. 'C:/mineuqr/node_modules/.pnpm/bidi-js@1.0.3/node_modules/bidi-js/dist/bidi.js' implicitly has an 'any' type.",
+      "key": "client/src/lib/reporting-exports/pdf/arabicPdfText.ts:6:25:TS7016",
+      "identity": "client/src/lib/reporting-exports/pdf/arabicPdfText.ts::TS7016::Could not find a declaration file for module 'bidi-js'. 'C:/mineuqr/node_modules/.pnpm/bidi-js@1.0.3/node_modules/bidi-js/dist/bidi.js' implicitly has an 'any' type."
+    },
+    {
+      "file": "client/src/lib/reporting-exports/pdf/buildReportingExportPdf.ts",
+      "line": 32,
+      "column": 50,
+      "code": "TS2694",
+      "message": "Namespace 'doc' has no exported member 'default'.",
+      "key": "client/src/lib/reporting-exports/pdf/buildReportingExportPdf.ts:32:50:TS2694",
+      "identity": "client/src/lib/reporting-exports/pdf/buildReportingExportPdf.ts::TS2694::Namespace 'doc' has no exported member 'default'."
+    },
+    {
+      "file": "client/src/lib/reporting-exports/pdf/buildReportingExportPdf.ts",
+      "line": 495,
+      "column": 20,
+      "code": "TS2322",
+      "message": "Type 'Uint8Array<ArrayBufferLike>' is not assignable to type 'BlobPart'.",
+      "key": "client/src/lib/reporting-exports/pdf/buildReportingExportPdf.ts:495:20:TS2322",
+      "identity": "client/src/lib/reporting-exports/pdf/buildReportingExportPdf.ts::TS2322::Type 'Uint8Array<ArrayBufferLike>' is not assignable to type 'BlobPart'."
+    },
+    {
+      "file": "client/src/lib/reporting-exports/salesSourceAnalysisPresentation.ts",
+      "line": 90,
+      "column": 25,
+      "code": "TS2802",
+      "message": "Type 'Set<string>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "client/src/lib/reporting-exports/salesSourceAnalysisPresentation.ts:90:25:TS2802",
+      "identity": "client/src/lib/reporting-exports/salesSourceAnalysisPresentation.ts::TS2802::Type 'Set<string>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "client/src/lib/reporting-exports/salesSourceAnalysisPresentation.ts",
+      "line": 156,
+      "column": 25,
+      "code": "TS2802",
+      "message": "Type 'Set<string>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "client/src/lib/reporting-exports/salesSourceAnalysisPresentation.ts:156:25:TS2802",
+      "identity": "client/src/lib/reporting-exports/salesSourceAnalysisPresentation.ts::TS2802::Type 'Set<string>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "client/src/pages/Dashboard.tsx",
+      "line": 2325,
+      "column": 33,
+      "code": "TS2339",
+      "message": "Property 'emptyPanel' does not exist on type '{ shell: \"min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900\"; card: string; cardHover: string; hero: string; kpiCard: string; pageTitle: string; pageSub: string; ... 5 more ...; contentPanel: string; }'.",
+      "key": "client/src/pages/Dashboard.tsx:2325:33:TS2339",
+      "identity": "client/src/pages/Dashboard.tsx::TS2339::Property 'emptyPanel' does not exist on type '{ shell: \"min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900\"; card: string; cardHover: string; hero: string; kpiCard: string; pageTitle: string; pageSub: string; ... 5 more ...; contentPanel: string; }'."
+    },
+    {
+      "file": "client/src/pages/Dashboard.tsx",
+      "line": 3234,
+      "column": 17,
+      "code": "TS2322",
+      "message": "Type 'Readonly<{ version: number; components: readonly Readonly<{ id: string; name: string; ratePercent: string; }>[]; }>' is not assignable to type '{ components: { id: string; name: string; ratePercent: string; }[]; version?: number | undefined; }'.",
+      "key": "client/src/pages/Dashboard.tsx:3234:17:TS2322",
+      "identity": "client/src/pages/Dashboard.tsx::TS2322::Type 'Readonly<{ version: number; components: readonly Readonly<{ id: string; name: string; ratePercent: string; }>[]; }>' is not assignable to type '{ components: { id: string; name: string; ratePercent: string; }[]; version?: number | undefined; }'."
+    },
+    {
+      "file": "client/src/pages/kiosk/KioskShell.tsx",
+      "line": 235,
+      "column": 9,
+      "code": "TS2322",
+      "message": "Type '\"cart\" | \"checkout\" | \"browse\" | \"confirmation\" | \"tracking\"' is not assignable to type '\"cart\" | \"checkout\" | \"browse\" | \"confirmation\"'.",
+      "key": "client/src/pages/kiosk/KioskShell.tsx:235:9:TS2322",
+      "identity": "client/src/pages/kiosk/KioskShell.tsx::TS2322::Type '\"cart\" | \"checkout\" | \"browse\" | \"confirmation\" | \"tracking\"' is not assignable to type '\"cart\" | \"checkout\" | \"browse\" | \"confirmation\"'."
+    },
+    {
+      "file": "client/src/pages/MenuView.tsx",
+      "line": 253,
+      "column": 11,
+      "code": "TS2322",
+      "message": "Type 'string' is not assignable to type '\"tables\" | \"rooms\" | undefined'.",
+      "key": "client/src/pages/MenuView.tsx:253:11:TS2322",
+      "identity": "client/src/pages/MenuView.tsx::TS2322::Type 'string' is not assignable to type '\"tables\" | \"rooms\" | undefined'."
+    },
+    {
+      "file": "server/commercial/metrics/CanonicalMetricsService.ts",
+      "line": 279,
+      "column": 10,
+      "code": "TS2802",
+      "message": "Type 'Set<number>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/commercial/metrics/CanonicalMetricsService.ts:279:10:TS2802",
+      "identity": "server/commercial/metrics/CanonicalMetricsService.ts::TS2802::Type 'Set<number>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/crmp/DrizzleCrmpRepository.ts",
+      "line": 472,
+      "column": 25,
+      "code": "TS2352",
+      "message": "Conversion of type 'ResultSetHeader' to type '{ n: number; }[]' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.",
+      "key": "server/crmp/DrizzleCrmpRepository.ts:472:25:TS2352",
+      "identity": "server/crmp/DrizzleCrmpRepository.ts::TS2352::Conversion of type 'ResultSetHeader' to type '{ n: number; }[]' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first."
+    },
+    {
+      "file": "server/crmp/InMemoryCrmpStore.ts",
+      "line": 57,
+      "column": 18,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<Readonly<{ registerId: string; restaurantId: number; code: string; displayName: string; registerType: \"settlement_station\" | \"counter\" | \"mobile_pos\"; status: \"active\" | \"provisioned\" | \"inactive\"; ... 7 more ...; updatedAt: string; }>>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/crmp/InMemoryCrmpStore.ts:57:18:TS2802",
+      "identity": "server/crmp/InMemoryCrmpStore.ts::TS2802::Type 'MapIterator<Readonly<{ registerId: string; restaurantId: number; code: string; displayName: string; registerType: \"settlement_station\" | \"counter\" | \"mobile_pos\"; status: \"active\" | \"provisioned\" | \"inactive\"; ... 7 more ...; updatedAt: string; }>>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/crmp/InMemoryCrmpStore.ts",
+      "line": 85,
+      "column": 23,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<Readonly<{ financialShiftId: string; shiftNumber: number; restaurantId: number; registerId: string; operatorUserId: number; status: \"open\" | \"closed\" | \"archived\" | \"suspended\" | \"closing\" | \"handover_pending\"; ... 10 more ...; updatedAt: string; }>>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/crmp/InMemoryCrmpStore.ts:85:23:TS2802",
+      "identity": "server/crmp/InMemoryCrmpStore.ts::TS2802::Type 'MapIterator<Readonly<{ financialShiftId: string; shiftNumber: number; restaurantId: number; registerId: string; operatorUserId: number; status: \"open\" | \"closed\" | \"archived\" | \"suspended\" | \"closing\" | \"handover_pending\"; ... 10 more ...; updatedAt: string; }>>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/crmp/InMemoryCrmpStore.ts",
+      "line": 97,
+      "column": 18,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<Readonly<{ financialShiftId: string; shiftNumber: number; restaurantId: number; registerId: string; operatorUserId: number; status: \"open\" | \"closed\" | \"archived\" | \"suspended\" | \"closing\" | \"handover_pending\"; ... 10 more ...; updatedAt: string; }>>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/crmp/InMemoryCrmpStore.ts:97:18:TS2802",
+      "identity": "server/crmp/InMemoryCrmpStore.ts::TS2802::Type 'MapIterator<Readonly<{ financialShiftId: string; shiftNumber: number; restaurantId: number; registerId: string; operatorUserId: number; status: \"open\" | \"closed\" | \"archived\" | \"suspended\" | \"closing\" | \"handover_pending\"; ... 10 more ...; updatedAt: string; }>>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/crmp/InMemoryCrmpStore.ts",
+      "line": 107,
+      "column": 18,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<Readonly<{ financialShiftId: string; shiftNumber: number; restaurantId: number; registerId: string; operatorUserId: number; status: \"open\" | \"closed\" | \"archived\" | \"suspended\" | \"closing\" | \"handover_pending\"; ... 10 more ...; updatedAt: string; }>>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/crmp/InMemoryCrmpStore.ts:107:18:TS2802",
+      "identity": "server/crmp/InMemoryCrmpStore.ts::TS2802::Type 'MapIterator<Readonly<{ financialShiftId: string; shiftNumber: number; restaurantId: number; registerId: string; operatorUserId: number; status: \"open\" | \"closed\" | \"archived\" | \"suspended\" | \"closing\" | \"handover_pending\"; ... 10 more ...; updatedAt: string; }>>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/crmp/InMemoryCrmpStore.ts",
+      "line": 124,
+      "column": 22,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<Readonly<{ financialShiftId: string; shiftNumber: number; restaurantId: number; registerId: string; operatorUserId: number; status: \"open\" | \"closed\" | \"archived\" | \"suspended\" | \"closing\" | \"handover_pending\"; ... 10 more ...; updatedAt: string; }>>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/crmp/InMemoryCrmpStore.ts:124:22:TS2802",
+      "identity": "server/crmp/InMemoryCrmpStore.ts::TS2802::Type 'MapIterator<Readonly<{ financialShiftId: string; shiftNumber: number; restaurantId: number; registerId: string; operatorUserId: number; status: \"open\" | \"closed\" | \"archived\" | \"suspended\" | \"closing\" | \"handover_pending\"; ... 10 more ...; updatedAt: string; }>>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/crmp/InMemoryCrmpStore.ts",
+      "line": 161,
+      "column": 23,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<Readonly<{ financialShiftId: string; shiftNumber: number; restaurantId: number; registerId: string; operatorUserId: number; status: \"open\" | \"closed\" | \"archived\" | \"suspended\" | \"closing\" | \"handover_pending\"; ... 10 more ...; updatedAt: string; }>>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/crmp/InMemoryCrmpStore.ts:161:23:TS2802",
+      "identity": "server/crmp/InMemoryCrmpStore.ts::TS2802::Type 'MapIterator<Readonly<{ financialShiftId: string; shiftNumber: number; restaurantId: number; registerId: string; operatorUserId: number; status: \"open\" | \"closed\" | \"archived\" | \"suspended\" | \"closing\" | \"handover_pending\"; ... 10 more ...; updatedAt: string; }>>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/crmp/InMemoryCrmpStore.ts",
+      "line": 164,
+      "column": 12,
+      "code": "TS7006",
+      "message": "Parameter 'a' implicitly has an 'any' type.",
+      "key": "server/crmp/InMemoryCrmpStore.ts:164:12:TS7006",
+      "identity": "server/crmp/InMemoryCrmpStore.ts::TS7006::Parameter 'a' implicitly has an 'any' type."
+    },
+    {
+      "file": "server/db.ts",
+      "line": 804,
+      "column": 30,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<[string, number]>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/db.ts:804:30:TS2802",
+      "identity": "server/db.ts::TS2802::Type 'MapIterator<[string, number]>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/operational-device/recovery/ScreenCredentialRecoveryService.ts",
+      "line": 45,
+      "column": 41,
+      "code": "TS2345",
+      "message": "Argument of type '{ tokenId: string; secret: string; deviceId: string; issuedAt: string; expiresAt: string | null; }' is not assignable to parameter of type 'IssuedOperationalDeviceToken'.",
+      "key": "server/operational-device/recovery/ScreenCredentialRecoveryService.ts:45:41:TS2345",
+      "identity": "server/operational-device/recovery/ScreenCredentialRecoveryService.ts::TS2345::Argument of type '{ tokenId: string; secret: string; deviceId: string; issuedAt: string; expiresAt: string | null; }' is not assignable to parameter of type 'IssuedOperationalDeviceToken'."
+    },
+    {
+      "file": "server/operational-session/check/CheckMembershipBackfillService.ts",
+      "line": 82,
+      "column": 9,
+      "code": "TS2345",
+      "message": "Argument of type 'number | null' is not assignable to parameter of type 'number'.",
+      "key": "server/operational-session/check/CheckMembershipBackfillService.ts:82:9:TS2345",
+      "identity": "server/operational-session/check/CheckMembershipBackfillService.ts::TS2345::Argument of type 'number | null' is not assignable to parameter of type 'number'."
+    },
+    {
+      "file": "server/operational-session/check/CheckMembershipBackfillService.ts",
+      "line": 153,
+      "column": 7,
+      "code": "TS2345",
+      "message": "Argument of type 'number | null' is not assignable to parameter of type 'number'.",
+      "key": "server/operational-session/check/CheckMembershipBackfillService.ts:153:7:TS2345",
+      "identity": "server/operational-session/check/CheckMembershipBackfillService.ts::TS2345::Argument of type 'number | null' is not assignable to parameter of type 'number'."
+    },
+    {
+      "file": "server/operational-session/check/CheckService.ts",
+      "line": 1329,
+      "column": 7,
+      "code": "TS2353",
+      "message": "Object literal may only specify known properties, and 'hints' does not exist in type 'Readonly<{ registerId?: string | null | undefined; deviceId?: string | null | undefined; operatorUserId?: number | null | undefined; operationalScreenId?: string | null | undefined; }> & { ...; }'.",
+      "key": "server/operational-session/check/CheckService.ts:1329:7:TS2353",
+      "identity": "server/operational-session/check/CheckService.ts::TS2353::Object literal may only specify known properties, and 'hints' does not exist in type 'Readonly<{ registerId?: string | null | undefined; deviceId?: string | null | undefined; operatorUserId?: number | null | undefined; operationalScreenId?: string | null | undefined; }> & { ...; }'."
+    },
+    {
+      "file": "server/operational-session/check/checkSplitPaymentIntegration.ts",
+      "line": 209,
+      "column": 33,
+      "code": "TS2322",
+      "message": "Type 'string[]' is not assignable to type 'readonly OrderSettlementCommandOutcome[]'.",
+      "key": "server/operational-session/check/checkSplitPaymentIntegration.ts:209:33:TS2322",
+      "identity": "server/operational-session/check/checkSplitPaymentIntegration.ts::TS2322::Type 'string[]' is not assignable to type 'readonly OrderSettlementCommandOutcome[]'."
+    },
+    {
+      "file": "server/operational-session/check/multiCheckAllocationRepository.ts",
+      "line": 376,
+      "column": 8,
+      "code": "TS2802",
+      "message": "Type 'Set<string>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/operational-session/check/multiCheckAllocationRepository.ts:376:8:TS2802",
+      "identity": "server/operational-session/check/multiCheckAllocationRepository.ts::TS2802::Type 'Set<string>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/operational-session/check/read/multiCheckAllocationProjectionStore.ts",
+      "line": 120,
+      "column": 16,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<Readonly<{ restaurantId: number; allocationId: string; allocationReference: string; financialReference: string | null; sourceCheckId: number; sourcePaymentId: string | null; allocationStatus: \"pending\" | ... 5 more ... | \"completed\"; ... 34 more ...; metadata: Readonly<...>; }>>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/operational-session/check/read/multiCheckAllocationProjectionStore.ts:120:16:TS2802",
+      "identity": "server/operational-session/check/read/multiCheckAllocationProjectionStore.ts::TS2802::Type 'MapIterator<Readonly<{ restaurantId: number; allocationId: string; allocationReference: string; financialReference: string | null; sourceCheckId: number; sourcePaymentId: string | null; allocationStatus: \"pending\" | ... 5 more ... | \"completed\"; ... 34 more ...; metadata: Readonly<...>; }>>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/operational-session/check/read/multiCheckAllocationProjectionStore.ts",
+      "line": 139,
+      "column": 16,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<Readonly<{ restaurantId: number; allocationId: string; allocationReference: string; financialReference: string | null; sourceCheckId: number; sourcePaymentId: string | null; allocationStatus: \"pending\" | ... 5 more ... | \"completed\"; ... 34 more ...; metadata: Readonly<...>; }>>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/operational-session/check/read/multiCheckAllocationProjectionStore.ts:139:16:TS2802",
+      "identity": "server/operational-session/check/read/multiCheckAllocationProjectionStore.ts::TS2802::Type 'MapIterator<Readonly<{ restaurantId: number; allocationId: string; allocationReference: string; financialReference: string | null; sourceCheckId: number; sourcePaymentId: string | null; allocationStatus: \"pending\" | ... 5 more ... | \"completed\"; ... 34 more ...; metadata: Readonly<...>; }>>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/operational-session/check/read/multiCheckAllocationProjectionStore.ts",
+      "line": 157,
+      "column": 16,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<Readonly<{ restaurantId: number; allocationId: string; allocationReference: string; financialReference: string | null; sourceCheckId: number; sourcePaymentId: string | null; allocationStatus: \"pending\" | ... 5 more ... | \"completed\"; ... 34 more ...; metadata: Readonly<...>; }>>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/operational-session/check/read/multiCheckAllocationProjectionStore.ts:157:16:TS2802",
+      "identity": "server/operational-session/check/read/multiCheckAllocationProjectionStore.ts::TS2802::Type 'MapIterator<Readonly<{ restaurantId: number; allocationId: string; allocationReference: string; financialReference: string | null; sourceCheckId: number; sourcePaymentId: string | null; allocationStatus: \"pending\" | ... 5 more ... | \"completed\"; ... 34 more ...; metadata: Readonly<...>; }>>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/operational-session/check/read/multiCheckAllocationProjectionStore.ts",
+      "line": 174,
+      "column": 16,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<Readonly<{ restaurantId: number; allocationId: string; allocationReference: string; financialReference: string | null; sourceCheckId: number; sourcePaymentId: string | null; allocationStatus: \"pending\" | ... 5 more ... | \"completed\"; ... 16 more ...; projectionTimestamp: string; }>>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/operational-session/check/read/multiCheckAllocationProjectionStore.ts:174:16:TS2802",
+      "identity": "server/operational-session/check/read/multiCheckAllocationProjectionStore.ts::TS2802::Type 'MapIterator<Readonly<{ restaurantId: number; allocationId: string; allocationReference: string; financialReference: string | null; sourceCheckId: number; sourcePaymentId: string | null; allocationStatus: \"pending\" | ... 5 more ... | \"completed\"; ... 16 more ...; projectionTimestamp: string; }>>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/operational-session/check/read/orderSettlementProjectionStore.ts",
+      "line": 67,
+      "column": 16,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<Readonly<{ restaurantId: number; checkId: number; orderId: number; settlementStatus: \"pending\" | \"refunded\" | \"complimentary\" | \"voided\" | \"partially_settled\" | \"settled\" | \"cancelled\"; ... 14 more ...; projectionRevision: string; }>>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/operational-session/check/read/orderSettlementProjectionStore.ts:67:16:TS2802",
+      "identity": "server/operational-session/check/read/orderSettlementProjectionStore.ts::TS2802::Type 'MapIterator<Readonly<{ restaurantId: number; checkId: number; orderId: number; settlementStatus: \"pending\" | \"refunded\" | \"complimentary\" | \"voided\" | \"partially_settled\" | \"settled\" | \"cancelled\"; ... 14 more ...; projectionRevision: string; }>>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/operational-session/check/read/orderSettlementProjectionStore.ts",
+      "line": 78,
+      "column": 16,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<Readonly<{ restaurantId: number; checkId: number; orderId: number; settlementStatus: \"pending\" | \"refunded\" | \"complimentary\" | \"voided\" | \"partially_settled\" | \"settled\" | \"cancelled\"; ... 14 more ...; projectionRevision: string; }>>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/operational-session/check/read/orderSettlementProjectionStore.ts:78:16:TS2802",
+      "identity": "server/operational-session/check/read/orderSettlementProjectionStore.ts::TS2802::Type 'MapIterator<Readonly<{ restaurantId: number; checkId: number; orderId: number; settlementStatus: \"pending\" | \"refunded\" | \"complimentary\" | \"voided\" | \"partially_settled\" | \"settled\" | \"cancelled\"; ... 14 more ...; projectionRevision: string; }>>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/operational-session/check/read/splitPaymentProjectionStore.ts",
+      "line": 10,
+      "column": 3,
+      "code": "TS2724",
+      "message": "'\"@shared/operational-session\"' has no exported member named 'SplitPaymentAttemptProjectionIdentity'. Did you mean 'SplitPaymentProjectionIdentity'?",
+      "key": "server/operational-session/check/read/splitPaymentProjectionStore.ts:10:3:TS2724",
+      "identity": "server/operational-session/check/read/splitPaymentProjectionStore.ts::TS2724::'\"@shared/operational-session\"' has no exported member named 'SplitPaymentAttemptProjectionIdentity'. Did you mean 'SplitPaymentProjectionIdentity'?"
+    },
+    {
+      "file": "server/operational-session/check/read/splitPaymentProjectionStore.ts",
+      "line": 12,
+      "column": 3,
+      "code": "TS2724",
+      "message": "'\"@shared/operational-session\"' has no exported member named 'SplitPaymentOutstandingProjectionIdentity'. Did you mean 'SplitPaymentOutstandingProjection'?",
+      "key": "server/operational-session/check/read/splitPaymentProjectionStore.ts:12:3:TS2724",
+      "identity": "server/operational-session/check/read/splitPaymentProjectionStore.ts::TS2724::'\"@shared/operational-session\"' has no exported member named 'SplitPaymentOutstandingProjectionIdentity'. Did you mean 'SplitPaymentOutstandingProjection'?"
+    },
+    {
+      "file": "server/operational-session/check/read/splitPaymentProjectionStore.ts",
+      "line": 107,
+      "column": 16,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<Readonly<{ restaurantId: number; checkId: number; paymentId: string; paymentReference: string; financialReference: string | null; paymentStatus: \"pending\" | \"failed\" | \"refunded\" | \"voided\" | ... 4 more ... | \"applied\"; ... 30 more ...; projectionTimestamp: string; }>>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/operational-session/check/read/splitPaymentProjectionStore.ts:107:16:TS2802",
+      "identity": "server/operational-session/check/read/splitPaymentProjectionStore.ts::TS2802::Type 'MapIterator<Readonly<{ restaurantId: number; checkId: number; paymentId: string; paymentReference: string; financialReference: string | null; paymentStatus: \"pending\" | \"failed\" | \"refunded\" | \"voided\" | ... 4 more ... | \"applied\"; ... 30 more ...; projectionTimestamp: string; }>>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/operational-session/check/read/splitPaymentProjectionStore.ts",
+      "line": 120,
+      "column": 16,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<Readonly<{ restaurantId: number; checkId: number; paymentId: string; paymentReference: string; financialReference: string | null; paymentStatus: \"pending\" | \"failed\" | \"refunded\" | \"voided\" | ... 4 more ... | \"applied\"; ... 30 more ...; projectionTimestamp: string; }>>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/operational-session/check/read/splitPaymentProjectionStore.ts:120:16:TS2802",
+      "identity": "server/operational-session/check/read/splitPaymentProjectionStore.ts::TS2802::Type 'MapIterator<Readonly<{ restaurantId: number; checkId: number; paymentId: string; paymentReference: string; financialReference: string | null; paymentStatus: \"pending\" | \"failed\" | \"refunded\" | \"voided\" | ... 4 more ... | \"applied\"; ... 30 more ...; projectionTimestamp: string; }>>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/operational-session/check/read/splitPaymentProjectionStore.ts",
+      "line": 154,
+      "column": 16,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<Readonly<{ restaurantId: number; checkId: number; attemptId: string; paymentId: string | null; attemptStatus: PaymentAttemptStatus; amount: string; method: TenderMethod; ... 8 more ...; projectionTimestamp: string; }>>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/operational-session/check/read/splitPaymentProjectionStore.ts:154:16:TS2802",
+      "identity": "server/operational-session/check/read/splitPaymentProjectionStore.ts::TS2802::Type 'MapIterator<Readonly<{ restaurantId: number; checkId: number; attemptId: string; paymentId: string | null; attemptStatus: PaymentAttemptStatus; amount: string; method: TenderMethod; ... 8 more ...; projectionTimestamp: string; }>>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/operational-session/check/refundDocumentNumberRepository.ts",
+      "line": 51,
+      "column": 34,
+      "code": "TS2352",
+      "message": "Conversion of type 'ResultSetHeader' to type '{ n: number; }[]' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.",
+      "key": "server/operational-session/check/refundDocumentNumberRepository.ts:51:34:TS2352",
+      "identity": "server/operational-session/check/refundDocumentNumberRepository.ts::TS2352::Conversion of type 'ResultSetHeader' to type '{ n: number; }[]' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first."
+    },
+    {
+      "file": "server/operational-session/check/refundDocumentNumberRepository.ts",
+      "line": 128,
+      "column": 19,
+      "code": "TS2802",
+      "message": "Type 'Set<string>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/operational-session/check/refundDocumentNumberRepository.ts:128:19:TS2802",
+      "identity": "server/operational-session/check/refundDocumentNumberRepository.ts::TS2802::Type 'Set<string>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/operational-session/check/settlementRecordRepository.ts",
+      "line": 141,
+      "column": 19,
+      "code": "TS2802",
+      "message": "Type 'Set<string>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/operational-session/check/settlementRecordRepository.ts:141:19:TS2802",
+      "identity": "server/operational-session/check/settlementRecordRepository.ts::TS2802::Type 'Set<string>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/operational-session/check/splitPaymentMapper.ts",
+      "line": 16,
+      "column": 8,
+      "code": "TS2305",
+      "message": "Module '\"@shared/operational-session\"' has no exported member 'PaymentAllocation'.",
+      "key": "server/operational-session/check/splitPaymentMapper.ts:16:8:TS2305",
+      "identity": "server/operational-session/check/splitPaymentMapper.ts::TS2305::Module '\"@shared/operational-session\"' has no exported member 'PaymentAllocation'."
+    },
+    {
+      "file": "server/operational-session/check/splitPaymentMapper.ts",
+      "line": 18,
+      "column": 8,
+      "code": "TS2724",
+      "message": "'\"@shared/operational-session\"' has no exported member named 'PaymentAttemptStatus'. Did you mean 'PaymentAttempt'?",
+      "key": "server/operational-session/check/splitPaymentMapper.ts:18:8:TS2724",
+      "identity": "server/operational-session/check/splitPaymentMapper.ts::TS2724::'\"@shared/operational-session\"' has no exported member named 'PaymentAttemptStatus'. Did you mean 'PaymentAttempt'?"
+    },
+    {
+      "file": "server/operational-session/check/splitPaymentMapper.ts",
+      "line": 21,
+      "column": 8,
+      "code": "TS2305",
+      "message": "Module '\"@shared/operational-session\"' has no exported member 'Tender'.",
+      "key": "server/operational-session/check/splitPaymentMapper.ts:21:8:TS2305",
+      "identity": "server/operational-session/check/splitPaymentMapper.ts::TS2305::Module '\"@shared/operational-session\"' has no exported member 'Tender'."
+    },
+    {
+      "file": "server/operational-session/check/splitPaymentMapper.ts",
+      "line": 22,
+      "column": 8,
+      "code": "TS2724",
+      "message": "'\"@shared/operational-session\"' has no exported member named 'TenderAllocation'. Did you mean 'RefundAllocation'?",
+      "key": "server/operational-session/check/splitPaymentMapper.ts:22:8:TS2724",
+      "identity": "server/operational-session/check/splitPaymentMapper.ts::TS2724::'\"@shared/operational-session\"' has no exported member named 'TenderAllocation'. Did you mean 'RefundAllocation'?"
+    },
+    {
+      "file": "server/operational-session/check/splitPaymentRepository.ts",
+      "line": 34,
+      "column": 3,
+      "code": "TS2724",
+      "message": "'\"@shared/operational-session\"' has no exported member named 'PaymentAttemptStatus'. Did you mean 'PaymentAttempt'?",
+      "key": "server/operational-session/check/splitPaymentRepository.ts:34:3:TS2724",
+      "identity": "server/operational-session/check/splitPaymentRepository.ts::TS2724::'\"@shared/operational-session\"' has no exported member named 'PaymentAttemptStatus'. Did you mean 'PaymentAttempt'?"
+    },
+    {
+      "file": "server/order/application/IdentityPlaceOrderService.ts",
+      "line": 128,
+      "column": 11,
+      "code": "TS2322",
+      "message": "Type 'number | undefined' is not assignable to type 'number'.",
+      "key": "server/order/application/IdentityPlaceOrderService.ts:128:11:TS2322",
+      "identity": "server/order/application/IdentityPlaceOrderService.ts::TS2322::Type 'number | undefined' is not assignable to type 'number'."
+    },
+    {
+      "file": "server/order/business-identity/infrastructure/DrizzleBusinessIdentityAllocator.ts",
+      "line": 72,
+      "column": 40,
+      "code": "TS2352",
+      "message": "Conversion of type 'ResultSetHeader' to type '{ n: number; }[]' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.",
+      "key": "server/order/business-identity/infrastructure/DrizzleBusinessIdentityAllocator.ts:72:40:TS2352",
+      "identity": "server/order/business-identity/infrastructure/DrizzleBusinessIdentityAllocator.ts::TS2352::Conversion of type 'ResultSetHeader' to type '{ n: number; }[]' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first."
+    },
+    {
+      "file": "server/order/business-identity/infrastructure/RestaurantOpeningTimeResolver.ts",
+      "line": 6,
+      "column": 8,
+      "code": "TS2459",
+      "message": "Module '\"../../../../shared/utils/businessDay\"' declares 'NormalizedWorkingHours' locally, but it is not exported.",
+      "key": "server/order/business-identity/infrastructure/RestaurantOpeningTimeResolver.ts:6:8:TS2459",
+      "identity": "server/order/business-identity/infrastructure/RestaurantOpeningTimeResolver.ts::TS2459::Module '\"../../../../shared/utils/businessDay\"' declares 'NormalizedWorkingHours' locally, but it is not exported."
+    },
+    {
+      "file": "server/order/infrastructure/persistence/DrizzleOrderRepository.ts",
+      "line": 95,
+      "column": 17,
+      "code": "TS2322",
+      "message": "Type 'string | null | undefined' is not assignable to type 'string | undefined'.",
+      "key": "server/order/infrastructure/persistence/DrizzleOrderRepository.ts:95:17:TS2322",
+      "identity": "server/order/infrastructure/persistence/DrizzleOrderRepository.ts::TS2322::Type 'string | null | undefined' is not assignable to type 'string | undefined'."
+    },
+    {
+      "file": "server/order/infrastructure/persistence/DrizzleOrderRepository.ts",
+      "line": 105,
+      "column": 17,
+      "code": "TS2322",
+      "message": "Type 'string | null | undefined' is not assignable to type 'string | undefined'.",
+      "key": "server/order/infrastructure/persistence/DrizzleOrderRepository.ts:105:17:TS2322",
+      "identity": "server/order/infrastructure/persistence/DrizzleOrderRepository.ts::TS2322::Type 'string | null | undefined' is not assignable to type 'string | undefined'."
+    },
+    {
+      "file": "server/order/infrastructure/persistence/DrizzleOrderRepository.ts",
+      "line": 114,
+      "column": 15,
+      "code": "TS2322",
+      "message": "Type 'string | null | undefined' is not assignable to type 'string | undefined'.",
+      "key": "server/order/infrastructure/persistence/DrizzleOrderRepository.ts:114:15:TS2322",
+      "identity": "server/order/infrastructure/persistence/DrizzleOrderRepository.ts::TS2322::Type 'string | null | undefined' is not assignable to type 'string | undefined'."
+    },
+    {
+      "file": "server/order/read/infrastructure/backfill/OrderReadProjectionBackfillService.ts",
+      "line": 12,
+      "column": 15,
+      "code": "TS2459",
+      "message": "Module '\"@shared/utils/businessDay\"' declares 'NormalizedWorkingHours' locally, but it is not exported.",
+      "key": "server/order/read/infrastructure/backfill/OrderReadProjectionBackfillService.ts:12:15:TS2459",
+      "identity": "server/order/read/infrastructure/backfill/OrderReadProjectionBackfillService.ts::TS2459::Module '\"@shared/utils/businessDay\"' declares 'NormalizedWorkingHours' locally, but it is not exported."
+    },
+    {
+      "file": "server/order/read/projections/materializers/orderAnalyticsDayKey.ts",
+      "line": 18,
+      "column": 8,
+      "code": "TS2459",
+      "message": "Module '\"@shared/utils/businessDay\"' declares 'NormalizedWorkingHours' locally, but it is not exported.",
+      "key": "server/order/read/projections/materializers/orderAnalyticsDayKey.ts:18:8:TS2459",
+      "identity": "server/order/read/projections/materializers/orderAnalyticsDayKey.ts::TS2459::Module '\"@shared/utils/businessDay\"' declares 'NormalizedWorkingHours' locally, but it is not exported."
+    },
+    {
+      "file": "server/order/read/projections/materializers/OrderReadProjectionMaterializer.ts",
+      "line": 42,
+      "column": 15,
+      "code": "TS2459",
+      "message": "Module '\"@shared/utils/businessDay\"' declares 'NormalizedWorkingHours' locally, but it is not exported.",
+      "key": "server/order/read/projections/materializers/OrderReadProjectionMaterializer.ts:42:15:TS2459",
+      "identity": "server/order/read/projections/materializers/OrderReadProjectionMaterializer.ts::TS2459::Module '\"@shared/utils/businessDay\"' declares 'NormalizedWorkingHours' locally, but it is not exported."
+    },
+    {
+      "file": "server/order/read/projections/materializers/projectionStatus.ts",
+      "line": 4,
+      "column": 8,
+      "code": "TS2459",
+      "message": "Module '\"@shared/utils/businessDay\"' declares 'NormalizedWorkingHours' locally, but it is not exported.",
+      "key": "server/order/read/projections/materializers/projectionStatus.ts:4:8:TS2459",
+      "identity": "server/order/read/projections/materializers/projectionStatus.ts::TS2459::Module '\"@shared/utils/businessDay\"' declares 'NormalizedWorkingHours' locally, but it is not exported."
+    },
+    {
+      "file": "server/realtime-platform/gateway/RealtimeSseGateway.ts",
+      "line": 267,
+      "column": 26,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<string>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/realtime-platform/gateway/RealtimeSseGateway.ts:267:26:TS2802",
+      "identity": "server/realtime-platform/gateway/RealtimeSseGateway.ts::TS2802::Type 'MapIterator<string>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/realtime-platform/observability/realtimeObservabilityStore.ts",
+      "line": 297,
+      "column": 11,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<[number, number]>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/realtime-platform/observability/realtimeObservabilityStore.ts:297:11:TS2802",
+      "identity": "server/realtime-platform/observability/realtimeObservabilityStore.ts::TS2802::Type 'MapIterator<[number, number]>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/realtime-platform/pubsub/RealtimePubSub.ts",
+      "line": 43,
+      "column": 27,
+      "code": "TS2802",
+      "message": "Type 'Set<RealtimeBusSubscriber>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/realtime-platform/pubsub/RealtimePubSub.ts:43:27:TS2802",
+      "identity": "server/realtime-platform/pubsub/RealtimePubSub.ts::TS2802::Type 'Set<RealtimeBusSubscriber>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/realtime-platform/tickets/RealtimeOpaqueTicketRegistry.ts",
+      "line": 278,
+      "column": 30,
+      "code": "TS2802",
+      "message": "Type 'Map<string, RealtimeOpaqueTicketRecord>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/realtime-platform/tickets/RealtimeOpaqueTicketRegistry.ts:278:30:TS2802",
+      "identity": "server/realtime-platform/tickets/RealtimeOpaqueTicketRegistry.ts::TS2802::Type 'Map<string, RealtimeOpaqueTicketRecord>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/realtime-platform/tickets/RealtimeOpaqueTicketRegistry.ts",
+      "line": 329,
+      "column": 24,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<RealtimeOpaqueTicketRecord>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/realtime-platform/tickets/RealtimeOpaqueTicketRegistry.ts:329:24:TS2802",
+      "identity": "server/realtime-platform/tickets/RealtimeOpaqueTicketRegistry.ts::TS2802::Type 'MapIterator<RealtimeOpaqueTicketRecord>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/reporting-platform/__scripts__/reportingUxRationalization.liveUat.ts",
+      "line": 118,
+      "column": 9,
+      "code": "TS2367",
+      "message": "This comparison appears to be unintentional because the types 'ExecutiveSummaryCardId' and '\"refundRate\"' have no overlap.",
+      "key": "server/reporting-platform/__scripts__/reportingUxRationalization.liveUat.ts:118:9:TS2367",
+      "identity": "server/reporting-platform/__scripts__/reportingUxRationalization.liveUat.ts::TS2367::This comparison appears to be unintentional because the types 'ExecutiveSummaryCardId' and '\"refundRate\"' have no overlap."
+    },
+    {
+      "file": "server/reporting-platform/__scripts__/reportingUxRationalization.liveUatData.ts",
+      "line": 136,
+      "column": 9,
+      "code": "TS2367",
+      "message": "This comparison appears to be unintentional because the types 'ExecutiveSummaryCardId' and '\"refundRate\"' have no overlap.",
+      "key": "server/reporting-platform/__scripts__/reportingUxRationalization.liveUatData.ts:136:9:TS2367",
+      "identity": "server/reporting-platform/__scripts__/reportingUxRationalization.liveUatData.ts::TS2367::This comparison appears to be unintentional because the types 'ExecutiveSummaryCardId' and '\"refundRate\"' have no overlap."
+    },
+    {
+      "file": "server/reporting-platform/businessMetricsAggregator.ts",
+      "line": 203,
+      "column": 54,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<[string, TrendAcc]>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/reporting-platform/businessMetricsAggregator.ts:203:54:TS2802",
+      "identity": "server/reporting-platform/businessMetricsAggregator.ts::TS2802::Type 'MapIterator<[string, TrendAcc]>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/reporting-platform/financialReportingParity.ts",
+      "line": 93,
+      "column": 31,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<string>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/reporting-platform/financialReportingParity.ts:93:31:TS2802",
+      "identity": "server/reporting-platform/financialReportingParity.ts::TS2802::Type 'MapIterator<string>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/reporting-platform/financialReportingParity.ts",
+      "line": 93,
+      "column": 57,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<string>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/reporting-platform/financialReportingParity.ts:93:57:TS2802",
+      "identity": "server/reporting-platform/financialReportingParity.ts::TS2802::Type 'MapIterator<string>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/reporting-platform/financialReportingParity.ts",
+      "line": 94,
+      "column": 24,
+      "code": "TS2802",
+      "message": "Type 'Set<any>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/reporting-platform/financialReportingParity.ts:94:24:TS2802",
+      "identity": "server/reporting-platform/financialReportingParity.ts::TS2802::Type 'Set<any>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/reporting-platform/OrderSalesMetricsService.ts",
+      "line": 146,
+      "column": 18,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<[string, { orderCount: number; completedOrders: number; sales: number; }]>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/reporting-platform/OrderSalesMetricsService.ts:146:18:TS2802",
+      "identity": "server/reporting-platform/OrderSalesMetricsService.ts::TS2802::Type 'MapIterator<[string, { orderCount: number; completedOrders: number; sales: number; }]>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/reporting-platform/PaymentMethodAnalyticsService.ts",
+      "line": 83,
+      "column": 14,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<[\"card\" | \"cash\" | \"other\" | \"mada\" | \"visa\" | \"mastercard\" | \"apple_pay\" | \"stc_pay\" | \"bank_transfer\" | \"complimentary\", Acc]>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/reporting-platform/PaymentMethodAnalyticsService.ts:83:14:TS2802",
+      "identity": "server/reporting-platform/PaymentMethodAnalyticsService.ts::TS2802::Type 'MapIterator<[\"card\" | \"cash\" | \"other\" | \"mada\" | \"visa\" | \"mastercard\" | \"apple_pay\" | \"stc_pay\" | \"bank_transfer\" | \"complimentary\", Acc]>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/reporting-platform/PaymentMethodAnalyticsService.ts",
+      "line": 130,
+      "column": 21,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<Acc>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/reporting-platform/PaymentMethodAnalyticsService.ts:130:21:TS2802",
+      "identity": "server/reporting-platform/PaymentMethodAnalyticsService.ts::TS2802::Type 'MapIterator<Acc>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/reporting-platform/SalesChannelAnalyticsService.ts",
+      "line": 65,
+      "column": 29,
+      "code": "TS2802",
+      "message": "Type 'Map<string, Acc>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/reporting-platform/SalesChannelAnalyticsService.ts:65:29:TS2802",
+      "identity": "server/reporting-platform/SalesChannelAnalyticsService.ts::TS2802::Type 'Map<string, Acc>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/reporting-platform/SalesChannelAnalyticsService.ts",
+      "line": 71,
+      "column": 21,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<Acc>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/reporting-platform/SalesChannelAnalyticsService.ts:71:21:TS2802",
+      "identity": "server/reporting-platform/SalesChannelAnalyticsService.ts::TS2802::Type 'MapIterator<Acc>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/reporting-platform/SalesChannelAnalyticsService.ts",
+      "line": 77,
+      "column": 57,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<[string, Acc]>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/reporting-platform/SalesChannelAnalyticsService.ts:77:57:TS2802",
+      "identity": "server/reporting-platform/SalesChannelAnalyticsService.ts::TS2802::Type 'MapIterator<[string, Acc]>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/reporting-platform/settlementTransactionReportingAdapter.ts",
+      "line": 56,
+      "column": 14,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<[\"card\" | \"cash\" | \"other\" | \"mada\" | \"visa\" | \"mastercard\" | \"apple_pay\" | \"stc_pay\" | \"bank_transfer\" | \"complimentary\", { count: number; amount: number; }]>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/reporting-platform/settlementTransactionReportingAdapter.ts:56:14:TS2802",
+      "identity": "server/reporting-platform/settlementTransactionReportingAdapter.ts::TS2802::Type 'MapIterator<[\"card\" | \"cash\" | \"other\" | \"mada\" | \"visa\" | \"mastercard\" | \"apple_pay\" | \"stc_pay\" | \"bank_transfer\" | \"complimentary\", { count: number; amount: number; }]>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/adoptionService.ts",
+      "line": 101,
+      "column": 11,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialBundleFeature>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/adoptionService.ts:101:11:TS2802",
+      "identity": "server/services/commercial-catalog/adoptionService.ts::TS2802::Type 'MapIterator<CommercialBundleFeature>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/adoptionService.ts",
+      "line": 106,
+      "column": 11,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialLimitValue>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/adoptionService.ts:106:11:TS2802",
+      "identity": "server/services/commercial-catalog/adoptionService.ts::TS2802::Type 'MapIterator<CommercialLimitValue>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/adoptionService.ts",
+      "line": 563,
+      "column": 11,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialBundleFeature>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/adoptionService.ts:563:11:TS2802",
+      "identity": "server/services/commercial-catalog/adoptionService.ts::TS2802::Type 'MapIterator<CommercialBundleFeature>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/adoptionService.ts",
+      "line": 568,
+      "column": 11,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialLimitValue>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/adoptionService.ts:568:11:TS2802",
+      "identity": "server/services/commercial-catalog/adoptionService.ts::TS2802::Type 'MapIterator<CommercialLimitValue>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/adoptionService.ts",
+      "line": 636,
+      "column": 11,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialBundleFeature>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/adoptionService.ts:636:11:TS2802",
+      "identity": "server/services/commercial-catalog/adoptionService.ts::TS2802::Type 'MapIterator<CommercialBundleFeature>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/adoptionService.ts",
+      "line": 641,
+      "column": 11,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialLimitValue>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/adoptionService.ts:641:11:TS2802",
+      "identity": "server/services/commercial-catalog/adoptionService.ts::TS2802::Type 'MapIterator<CommercialLimitValue>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/index.ts",
+      "line": 51,
+      "column": 16,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialLivePlan>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/index.ts:51:16:TS2802",
+      "identity": "server/services/commercial-catalog/index.ts::TS2802::Type 'MapIterator<CommercialLivePlan>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/index.ts",
+      "line": 60,
+      "column": 11,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialLivePlan>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/index.ts:60:11:TS2802",
+      "identity": "server/services/commercial-catalog/index.ts::TS2802::Type 'MapIterator<CommercialLivePlan>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/index.ts",
+      "line": 79,
+      "column": 13,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialLivePlan>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/index.ts:79:13:TS2802",
+      "identity": "server/services/commercial-catalog/index.ts::TS2802::Type 'MapIterator<CommercialLivePlan>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/index.ts",
+      "line": 145,
+      "column": 42,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<[string, CommercialPrice]>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/index.ts:145:42:TS2802",
+      "identity": "server/services/commercial-catalog/index.ts::TS2802::Type 'MapIterator<[string, CommercialPrice]>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/index.ts",
+      "line": 323,
+      "column": 21,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialPrice>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/index.ts:323:21:TS2802",
+      "identity": "server/services/commercial-catalog/index.ts::TS2802::Type 'MapIterator<CommercialPrice>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/index.ts",
+      "line": 374,
+      "column": 31,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<[string, CommercialPrice]>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/index.ts:374:31:TS2802",
+      "identity": "server/services/commercial-catalog/index.ts::TS2802::Type 'MapIterator<[string, CommercialPrice]>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/index.ts",
+      "line": 387,
+      "column": 23,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialBillingCycle>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/index.ts:387:23:TS2802",
+      "identity": "server/services/commercial-catalog/index.ts::TS2802::Type 'MapIterator<CommercialBillingCycle>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/index.ts",
+      "line": 400,
+      "column": 16,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialBillingCycle>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/index.ts:400:16:TS2802",
+      "identity": "server/services/commercial-catalog/index.ts::TS2802::Type 'MapIterator<CommercialBillingCycle>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/index.ts",
+      "line": 412,
+      "column": 13,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialBillingCycle>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/index.ts:412:13:TS2802",
+      "identity": "server/services/commercial-catalog/index.ts::TS2802::Type 'MapIterator<CommercialBillingCycle>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/index.ts",
+      "line": 435,
+      "column": 16,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialFeatureBundle>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/index.ts:435:16:TS2802",
+      "identity": "server/services/commercial-catalog/index.ts::TS2802::Type 'MapIterator<CommercialFeatureBundle>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/index.ts",
+      "line": 443,
+      "column": 16,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialBundleFeature>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/index.ts:443:16:TS2802",
+      "identity": "server/services/commercial-catalog/index.ts::TS2802::Type 'MapIterator<CommercialBundleFeature>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/index.ts",
+      "line": 455,
+      "column": 13,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialFeatureBundle>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/index.ts:455:13:TS2802",
+      "identity": "server/services/commercial-catalog/index.ts::TS2802::Type 'MapIterator<CommercialFeatureBundle>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/index.ts",
+      "line": 532,
+      "column": 16,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialLimitProfile>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/index.ts:532:16:TS2802",
+      "identity": "server/services/commercial-catalog/index.ts::TS2802::Type 'MapIterator<CommercialLimitProfile>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/index.ts",
+      "line": 540,
+      "column": 16,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialLimitValue>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/index.ts:540:16:TS2802",
+      "identity": "server/services/commercial-catalog/index.ts::TS2802::Type 'MapIterator<CommercialLimitValue>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/index.ts",
+      "line": 552,
+      "column": 13,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialLimitProfile>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/index.ts:552:13:TS2802",
+      "identity": "server/services/commercial-catalog/index.ts::TS2802::Type 'MapIterator<CommercialLimitProfile>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/index.ts",
+      "line": 620,
+      "column": 16,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialPromotion>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/index.ts:620:16:TS2802",
+      "identity": "server/services/commercial-catalog/index.ts::TS2802::Type 'MapIterator<CommercialPromotion>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/index.ts",
+      "line": 635,
+      "column": 13,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialPromotion>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/index.ts:635:13:TS2802",
+      "identity": "server/services/commercial-catalog/index.ts::TS2802::Type 'MapIterator<CommercialPromotion>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/index.ts",
+      "line": 661,
+      "column": 16,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialMigrationPolicy>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/index.ts:661:16:TS2802",
+      "identity": "server/services/commercial-catalog/index.ts::TS2802::Type 'MapIterator<CommercialMigrationPolicy>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/index.ts",
+      "line": 677,
+      "column": 13,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialMigrationPolicy>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/index.ts:677:13:TS2802",
+      "identity": "server/services/commercial-catalog/index.ts::TS2802::Type 'MapIterator<CommercialMigrationPolicy>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/index.ts",
+      "line": 714,
+      "column": 16,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialRegion>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/index.ts:714:16:TS2802",
+      "identity": "server/services/commercial-catalog/index.ts::TS2802::Type 'MapIterator<CommercialRegion>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/index.ts",
+      "line": 733,
+      "column": 13,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialRegion>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/index.ts:733:13:TS2802",
+      "identity": "server/services/commercial-catalog/index.ts::TS2802::Type 'MapIterator<CommercialRegion>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/index.ts",
+      "line": 783,
+      "column": 16,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialTrialPolicy>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/index.ts:783:16:TS2802",
+      "identity": "server/services/commercial-catalog/index.ts::TS2802::Type 'MapIterator<CommercialTrialPolicy>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/index.ts",
+      "line": 799,
+      "column": 13,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialTrialPolicy>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/index.ts:799:13:TS2802",
+      "identity": "server/services/commercial-catalog/index.ts::TS2802::Type 'MapIterator<CommercialTrialPolicy>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/index.ts",
+      "line": 832,
+      "column": 24,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialPrice>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/index.ts:832:24:TS2802",
+      "identity": "server/services/commercial-catalog/index.ts::TS2802::Type 'MapIterator<CommercialPrice>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/index.ts",
+      "line": 836,
+      "column": 26,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialBillingCycle>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/index.ts:836:26:TS2802",
+      "identity": "server/services/commercial-catalog/index.ts::TS2802::Type 'MapIterator<CommercialBillingCycle>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/index.ts",
+      "line": 857,
+      "column": 21,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialLivePlan>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/index.ts:857:21:TS2802",
+      "identity": "server/services/commercial-catalog/index.ts::TS2802::Type 'MapIterator<CommercialLivePlan>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/livePlanPersistence.ts",
+      "line": 96,
+      "column": 22,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialPrice>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/livePlanPersistence.ts:96:22:TS2802",
+      "identity": "server/services/commercial-catalog/livePlanPersistence.ts::TS2802::Type 'MapIterator<CommercialPrice>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/livePlanPersistence.ts",
+      "line": 99,
+      "column": 20,
+      "code": "TS2802",
+      "message": "Type 'Set<any>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/livePlanPersistence.ts:99:20:TS2802",
+      "identity": "server/services/commercial-catalog/livePlanPersistence.ts::TS2802::Type 'Set<any>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/livePlanPersistence.ts",
+      "line": 106,
+      "column": 20,
+      "code": "TS2802",
+      "message": "Type 'Set<string>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/livePlanPersistence.ts:106:20:TS2802",
+      "identity": "server/services/commercial-catalog/livePlanPersistence.ts::TS2802::Type 'Set<string>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/livePlanPersistence.ts",
+      "line": 113,
+      "column": 21,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialBundleFeature>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/livePlanPersistence.ts:113:21:TS2802",
+      "identity": "server/services/commercial-catalog/livePlanPersistence.ts::TS2802::Type 'MapIterator<CommercialBundleFeature>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/livePlanPersistence.ts",
+      "line": 120,
+      "column": 21,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialLimitValue>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/livePlanPersistence.ts:120:21:TS2802",
+      "identity": "server/services/commercial-catalog/livePlanPersistence.ts::TS2802::Type 'MapIterator<CommercialLimitValue>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/livePlanPersistence.ts",
+      "line": 164,
+      "column": 18,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<T>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/livePlanPersistence.ts:164:18:TS2802",
+      "identity": "server/services/commercial-catalog/livePlanPersistence.ts::TS2802::Type 'MapIterator<T>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/livePlanPersistence.ts",
+      "line": 198,
+      "column": 18,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialLivePlan>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/livePlanPersistence.ts:198:18:TS2802",
+      "identity": "server/services/commercial-catalog/livePlanPersistence.ts::TS2802::Type 'MapIterator<CommercialLivePlan>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/livePlanPersistence.ts",
+      "line": 199,
+      "column": 19,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialPrice>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/livePlanPersistence.ts:199:19:TS2802",
+      "identity": "server/services/commercial-catalog/livePlanPersistence.ts::TS2802::Type 'MapIterator<CommercialPrice>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/livePlanPersistence.ts",
+      "line": 200,
+      "column": 26,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialBillingCycle>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/livePlanPersistence.ts:200:26:TS2802",
+      "identity": "server/services/commercial-catalog/livePlanPersistence.ts::TS2802::Type 'MapIterator<CommercialBillingCycle>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/livePlanPersistence.ts",
+      "line": 201,
+      "column": 27,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialFeatureBundle>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/livePlanPersistence.ts:201:27:TS2802",
+      "identity": "server/services/commercial-catalog/livePlanPersistence.ts::TS2802::Type 'MapIterator<CommercialFeatureBundle>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/livePlanPersistence.ts",
+      "line": 202,
+      "column": 27,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialBundleFeature>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/livePlanPersistence.ts:202:27:TS2802",
+      "identity": "server/services/commercial-catalog/livePlanPersistence.ts::TS2802::Type 'MapIterator<CommercialBundleFeature>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/livePlanPersistence.ts",
+      "line": 203,
+      "column": 26,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialLimitProfile>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/livePlanPersistence.ts:203:26:TS2802",
+      "identity": "server/services/commercial-catalog/livePlanPersistence.ts::TS2802::Type 'MapIterator<CommercialLimitProfile>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/livePlanPersistence.ts",
+      "line": 204,
+      "column": 24,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialLimitValue>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/livePlanPersistence.ts:204:24:TS2802",
+      "identity": "server/services/commercial-catalog/livePlanPersistence.ts::TS2802::Type 'MapIterator<CommercialLimitValue>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/livePlanPersistence.ts",
+      "line": 205,
+      "column": 26,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialTrialPolicy>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/livePlanPersistence.ts:205:26:TS2802",
+      "identity": "server/services/commercial-catalog/livePlanPersistence.ts::TS2802::Type 'MapIterator<CommercialTrialPolicy>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/livePlanPersistence.ts",
+      "line": 206,
+      "column": 20,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialRegion>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/livePlanPersistence.ts:206:20:TS2802",
+      "identity": "server/services/commercial-catalog/livePlanPersistence.ts::TS2802::Type 'MapIterator<CommercialRegion>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/livePlanPersistence.ts",
+      "line": 207,
+      "column": 30,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialMigrationPolicy>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/livePlanPersistence.ts:207:30:TS2802",
+      "identity": "server/services/commercial-catalog/livePlanPersistence.ts::TS2802::Type 'MapIterator<CommercialMigrationPolicy>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/livePlanPersistence.ts",
+      "line": 208,
+      "column": 23,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialPromotion>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/livePlanPersistence.ts:208:23:TS2802",
+      "identity": "server/services/commercial-catalog/livePlanPersistence.ts::TS2802::Type 'MapIterator<CommercialPromotion>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/livePlanPersistence.ts",
+      "line": 235,
+      "column": 21,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialLivePlan>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/livePlanPersistence.ts:235:21:TS2802",
+      "identity": "server/services/commercial-catalog/livePlanPersistence.ts::TS2802::Type 'MapIterator<CommercialLivePlan>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/livePlanPersistence.ts",
+      "line": 264,
+      "column": 21,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialBillingCycle>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/livePlanPersistence.ts:264:21:TS2802",
+      "identity": "server/services/commercial-catalog/livePlanPersistence.ts::TS2802::Type 'MapIterator<CommercialBillingCycle>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/livePlanPersistence.ts",
+      "line": 285,
+      "column": 21,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialFeatureBundle>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/livePlanPersistence.ts:285:21:TS2802",
+      "identity": "server/services/commercial-catalog/livePlanPersistence.ts::TS2802::Type 'MapIterator<CommercialFeatureBundle>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/livePlanPersistence.ts",
+      "line": 300,
+      "column": 21,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialBundleFeature>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/livePlanPersistence.ts:300:21:TS2802",
+      "identity": "server/services/commercial-catalog/livePlanPersistence.ts::TS2802::Type 'MapIterator<CommercialBundleFeature>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/livePlanPersistence.ts",
+      "line": 311,
+      "column": 21,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialLimitProfile>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/livePlanPersistence.ts:311:21:TS2802",
+      "identity": "server/services/commercial-catalog/livePlanPersistence.ts::TS2802::Type 'MapIterator<CommercialLimitProfile>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/livePlanPersistence.ts",
+      "line": 326,
+      "column": 21,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialLimitValue>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/livePlanPersistence.ts:326:21:TS2802",
+      "identity": "server/services/commercial-catalog/livePlanPersistence.ts::TS2802::Type 'MapIterator<CommercialLimitValue>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/livePlanPersistence.ts",
+      "line": 338,
+      "column": 21,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialTrialPolicy>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/livePlanPersistence.ts:338:21:TS2802",
+      "identity": "server/services/commercial-catalog/livePlanPersistence.ts::TS2802::Type 'MapIterator<CommercialTrialPolicy>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/livePlanPersistence.ts",
+      "line": 358,
+      "column": 21,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialMigrationPolicy>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/livePlanPersistence.ts:358:21:TS2802",
+      "identity": "server/services/commercial-catalog/livePlanPersistence.ts::TS2802::Type 'MapIterator<CommercialMigrationPolicy>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/livePlanPersistence.ts",
+      "line": 379,
+      "column": 21,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialRegion>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/livePlanPersistence.ts:379:21:TS2802",
+      "identity": "server/services/commercial-catalog/livePlanPersistence.ts::TS2802::Type 'MapIterator<CommercialRegion>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/livePlanPersistence.ts",
+      "line": 406,
+      "column": 21,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialPromotion>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/livePlanPersistence.ts:406:21:TS2802",
+      "identity": "server/services/commercial-catalog/livePlanPersistence.ts::TS2802::Type 'MapIterator<CommercialPromotion>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/livePlanPersistence.ts",
+      "line": 433,
+      "column": 21,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialPrice>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/livePlanPersistence.ts:433:21:TS2802",
+      "identity": "server/services/commercial-catalog/livePlanPersistence.ts::TS2802::Type 'MapIterator<CommercialPrice>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/livePlanPersistence.ts",
+      "line": 469,
+      "column": 24,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialPrice>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/livePlanPersistence.ts:469:24:TS2802",
+      "identity": "server/services/commercial-catalog/livePlanPersistence.ts::TS2802::Type 'MapIterator<CommercialPrice>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/persistentCatalogBootstrap.ts",
+      "line": 83,
+      "column": 33,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<CommercialBundleFeature>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/persistentCatalogBootstrap.ts:83:33:TS2802",
+      "identity": "server/services/commercial-catalog/persistentCatalogBootstrap.ts::TS2802::Type 'MapIterator<CommercialBundleFeature>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "server/services/commercial-catalog/runtimeAuthorityObservability.ts",
+      "line": 72,
+      "column": 34,
+      "code": "TS2802",
+      "message": "Type 'Set<string>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "server/services/commercial-catalog/runtimeAuthorityObservability.ts:72:34:TS2802",
+      "identity": "server/services/commercial-catalog/runtimeAuthorityObservability.ts::TS2802::Type 'Set<string>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "shared/crmp/settlementContext/resolveSettlementContext.ts",
+      "line": 76,
+      "column": 56,
+      "code": "TS18049",
+      "message": "'hints.registerId' is possibly 'null' or 'undefined'.",
+      "key": "shared/crmp/settlementContext/resolveSettlementContext.ts:76:56:TS18049",
+      "identity": "shared/crmp/settlementContext/resolveSettlementContext.ts::TS18049::'hints.registerId' is possibly 'null' or 'undefined'."
+    },
+    {
+      "file": "shared/data-retention/adapters/retentionAdapter.ts",
+      "line": 59,
+      "column": 21,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<Readonly<{ entityType: \"check\" | \"session\" | \"notification\" | \"order\" | \"register\" | \"settlement_record\" | \"financial_shift\" | \"audit_event\" | \"print_job\" | \"device_log\" | \"operational_log\" | \"kitchen_history\" | \"reporting_snapshot\" | \"generic\"; resolveEntity: (subject: Readonly<...>) => boolean | Promis...' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "shared/data-retention/adapters/retentionAdapter.ts:59:21:TS2802",
+      "identity": "shared/data-retention/adapters/retentionAdapter.ts::TS2802::Type 'MapIterator<Readonly<{ entityType: \"check\" | \"session\" | \"notification\" | \"order\" | \"register\" | \"settlement_record\" | \"financial_shift\" | \"audit_event\" | \"print_job\" | \"device_log\" | \"operational_log\" | \"kitchen_history\" | \"reporting_snapshot\" | \"generic\"; resolveEntity: (subject: Readonly<...>) => boolean | Promis...' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "shared/data-retention/holds/retentionHolds.ts",
+      "line": 54,
+      "column": 18,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<Readonly<{ holdId: string; kind: \"legal_hold\" | \"financial_hold\" | \"manual_hold\"; restaurantId: number; entityType: \"check\" | \"session\" | \"notification\" | \"order\" | \"register\" | \"settlement_record\" | ... 7 more ... | \"generic\"; ... 4 more ...; placedBy?: string | undefined; }>>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "shared/data-retention/holds/retentionHolds.ts:54:18:TS2802",
+      "identity": "shared/data-retention/holds/retentionHolds.ts::TS2802::Type 'MapIterator<Readonly<{ holdId: string; kind: \"legal_hold\" | \"financial_hold\" | \"manual_hold\"; restaurantId: number; entityType: \"check\" | \"session\" | \"notification\" | \"order\" | \"register\" | \"settlement_record\" | ... 7 more ... | \"generic\"; ... 4 more ...; placedBy?: string | undefined; }>>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "shared/data-retention/holds/retentionHolds.ts",
+      "line": 59,
+      "column": 18,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<Readonly<{ holdId: string; kind: \"legal_hold\" | \"financial_hold\" | \"manual_hold\"; restaurantId: number; entityType: \"check\" | \"session\" | \"notification\" | \"order\" | \"register\" | \"settlement_record\" | ... 7 more ... | \"generic\"; ... 4 more ...; placedBy?: string | undefined; }>>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "shared/data-retention/holds/retentionHolds.ts:59:18:TS2802",
+      "identity": "shared/data-retention/holds/retentionHolds.ts::TS2802::Type 'MapIterator<Readonly<{ holdId: string; kind: \"legal_hold\" | \"financial_hold\" | \"manual_hold\"; restaurantId: number; entityType: \"check\" | \"session\" | \"notification\" | \"order\" | \"register\" | \"settlement_record\" | ... 7 more ... | \"generic\"; ... 4 more ...; placedBy?: string | undefined; }>>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "shared/data-retention/registry/policyRegistry.ts",
+      "line": 95,
+      "column": 21,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<Readonly<{ policyId: string; entityType: \"check\" | \"session\" | \"notification\" | \"order\" | \"register\" | \"settlement_record\" | \"financial_shift\" | \"audit_event\" | \"print_job\" | \"device_log\" | \"operational_log\" | \"kitchen_history\" | \"reporting_snapshot\" | \"generic\"; ... 13 more ...; restaurantId?: number | ...' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "shared/data-retention/registry/policyRegistry.ts:95:21:TS2802",
+      "identity": "shared/data-retention/registry/policyRegistry.ts::TS2802::Type 'MapIterator<Readonly<{ policyId: string; entityType: \"check\" | \"session\" | \"notification\" | \"order\" | \"register\" | \"settlement_record\" | \"financial_shift\" | \"audit_event\" | \"print_job\" | \"device_log\" | \"operational_log\" | \"kitchen_history\" | \"reporting_snapshot\" | \"generic\"; ... 13 more ...; restaurantId?: number | ...' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "shared/data-retention/registry/policyRegistry.ts",
+      "line": 107,
+      "column": 28,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<Readonly<{ policyId: string; entityType: \"check\" | \"session\" | \"notification\" | \"order\" | \"register\" | \"settlement_record\" | \"financial_shift\" | \"audit_event\" | \"print_job\" | \"device_log\" | \"operational_log\" | \"kitchen_history\" | \"reporting_snapshot\" | \"generic\"; ... 13 more ...; restaurantId?: number | ...' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "shared/data-retention/registry/policyRegistry.ts:107:28:TS2802",
+      "identity": "shared/data-retention/registry/policyRegistry.ts::TS2802::Type 'MapIterator<Readonly<{ policyId: string; entityType: \"check\" | \"session\" | \"notification\" | \"order\" | \"register\" | \"settlement_record\" | \"financial_shift\" | \"audit_event\" | \"print_job\" | \"device_log\" | \"operational_log\" | \"kitchen_history\" | \"reporting_snapshot\" | \"generic\"; ... 13 more ...; restaurantId?: number | ...' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "shared/data-retention/registry/policyRegistry.ts",
+      "line": 118,
+      "column": 24,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<Readonly<{ policyId: string; entityType: \"check\" | \"session\" | \"notification\" | \"order\" | \"register\" | \"settlement_record\" | \"financial_shift\" | \"audit_event\" | \"print_job\" | \"device_log\" | \"operational_log\" | \"kitchen_history\" | \"reporting_snapshot\" | \"generic\"; ... 13 more ...; restaurantId?: number | ...' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "shared/data-retention/registry/policyRegistry.ts:118:24:TS2802",
+      "identity": "shared/data-retention/registry/policyRegistry.ts::TS2802::Type 'MapIterator<Readonly<{ policyId: string; entityType: \"check\" | \"session\" | \"notification\" | \"order\" | \"register\" | \"settlement_record\" | \"financial_shift\" | \"audit_event\" | \"print_job\" | \"device_log\" | \"operational_log\" | \"kitchen_history\" | \"reporting_snapshot\" | \"generic\"; ... 13 more ...; restaurantId?: number | ...' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "shared/operational-session/check/multiCheckAllocation/multiCheckAllocationCommands.ts",
+      "line": 159,
+      "column": 27,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<number>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "shared/operational-session/check/multiCheckAllocation/multiCheckAllocationCommands.ts:159:27:TS2802",
+      "identity": "shared/operational-session/check/multiCheckAllocation/multiCheckAllocationCommands.ts::TS2802::Type 'MapIterator<number>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "shared/operational-session/check/multiCheckAllocation/multiCheckAllocationCommands.ts",
+      "line": 174,
+      "column": 32,
+      "code": "TS2802",
+      "message": "Type 'Map<number, number>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "shared/operational-session/check/multiCheckAllocation/multiCheckAllocationCommands.ts:174:32:TS2802",
+      "identity": "shared/operational-session/check/multiCheckAllocation/multiCheckAllocationCommands.ts::TS2802::Type 'Map<number, number>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "shared/operational-session/check/multiCheckAllocation/projection/multiCheckAllocationProjectionBuilder.ts",
+      "line": 458,
+      "column": 8,
+      "code": "TS2802",
+      "message": "Type 'Set<number>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "shared/operational-session/check/multiCheckAllocation/projection/multiCheckAllocationProjectionBuilder.ts:458:8:TS2802",
+      "identity": "shared/operational-session/check/multiCheckAllocation/projection/multiCheckAllocationProjectionBuilder.ts::TS2802::Type 'Set<number>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "shared/operational-session/check/splitPayment/projection/splitPaymentProjectionBuilder.ts",
+      "line": 152,
+      "column": 8,
+      "code": "TS2802",
+      "message": "Type 'Set<TenderMethod>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "shared/operational-session/check/splitPayment/projection/splitPaymentProjectionBuilder.ts:152:8:TS2802",
+      "identity": "shared/operational-session/check/splitPayment/projection/splitPaymentProjectionBuilder.ts::TS2802::Type 'Set<TenderMethod>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "shared/operational-session/check/splitPayment/projection/splitPaymentProjectionBuilder.ts",
+      "line": 311,
+      "column": 11,
+      "code": "TS2339",
+      "message": "Property 'eventType' does not exist on type 'never'.",
+      "key": "shared/operational-session/check/splitPayment/projection/splitPaymentProjectionBuilder.ts:311:11:TS2339",
+      "identity": "shared/operational-session/check/splitPayment/projection/splitPaymentProjectionBuilder.ts::TS2339::Property 'eventType' does not exist on type 'never'."
+    },
+    {
+      "file": "shared/operational-session/check/splitPayment/projection/splitPaymentProjectionBuilder.ts",
+      "line": 312,
+      "column": 11,
+      "code": "TS2339",
+      "message": "Property 'restaurantId' does not exist on type 'never'.",
+      "key": "shared/operational-session/check/splitPayment/projection/splitPaymentProjectionBuilder.ts:312:11:TS2339",
+      "identity": "shared/operational-session/check/splitPayment/projection/splitPaymentProjectionBuilder.ts::TS2339::Property 'restaurantId' does not exist on type 'never'."
+    },
+    {
+      "file": "shared/operational-session/check/splitPayment/projection/splitPaymentProjectionBuilder.ts",
+      "line": 313,
+      "column": 11,
+      "code": "TS2339",
+      "message": "Property 'checkId' does not exist on type 'never'.",
+      "key": "shared/operational-session/check/splitPayment/projection/splitPaymentProjectionBuilder.ts:313:11:TS2339",
+      "identity": "shared/operational-session/check/splitPayment/projection/splitPaymentProjectionBuilder.ts::TS2339::Property 'checkId' does not exist on type 'never'."
+    },
+    {
+      "file": "shared/operational-session/check/splitPayment/projection/splitPaymentProjectionBuilder.ts",
+      "line": 314,
+      "column": 11,
+      "code": "TS2339",
+      "message": "Property 'occurredAt' does not exist on type 'never'.",
+      "key": "shared/operational-session/check/splitPayment/projection/splitPaymentProjectionBuilder.ts:314:11:TS2339",
+      "identity": "shared/operational-session/check/splitPayment/projection/splitPaymentProjectionBuilder.ts::TS2339::Property 'occurredAt' does not exist on type 'never'."
+    },
+    {
+      "file": "shared/read-freshness/mergeOrderCaches.ts",
+      "line": 125,
+      "column": 24,
+      "code": "TS2802",
+      "message": "Type 'MapIterator<KitchenTicketLike>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.",
+      "key": "shared/read-freshness/mergeOrderCaches.ts:125:24:TS2802",
+      "identity": "shared/read-freshness/mergeOrderCaches.ts::TS2802::Type 'MapIterator<KitchenTicketLike>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher."
+    },
+    {
+      "file": "shared/reporting-platform/legacyReportingSurfaces.ts",
+      "line": 150,
+      "column": 15,
+      "code": "TS2677",
+      "message": "A type predicate's type must be assignable to its parameter's type.",
+      "key": "shared/reporting-platform/legacyReportingSurfaces.ts:150:15:TS2677",
+      "identity": "shared/reporting-platform/legacyReportingSurfaces.ts::TS2677::A type predicate's type must be assignable to its parameter's type."
+    },
+    {
+      "file": "shared/reporting-platform/timeSeries/businessDayReporting.ts",
+      "line": 12,
+      "column": 8,
+      "code": "TS2459",
+      "message": "Module '\"../../utils/businessDay\"' declares 'NormalizedWorkingHours' locally, but it is not exported.",
+      "key": "shared/reporting-platform/timeSeries/businessDayReporting.ts:12:8:TS2459",
+      "identity": "shared/reporting-platform/timeSeries/businessDayReporting.ts::TS2459::Module '\"../../utils/businessDay\"' declares 'NormalizedWorkingHours' locally, but it is not exported."
+    },
+    {
+      "file": "shared/reporting-platform/timeSeries/calendar.ts",
+      "line": 12,
+      "column": 15,
+      "code": "TS2459",
+      "message": "Module '\"../../utils/businessDay\"' declares 'NormalizedWorkingHours' locally, but it is not exported.",
+      "key": "shared/reporting-platform/timeSeries/calendar.ts:12:15:TS2459",
+      "identity": "shared/reporting-platform/timeSeries/calendar.ts::TS2459::Module '\"../../utils/businessDay\"' declares 'NormalizedWorkingHours' locally, but it is not exported."
+    }
+  ]
+}

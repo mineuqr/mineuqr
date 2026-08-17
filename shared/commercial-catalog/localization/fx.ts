@@ -133,7 +133,7 @@ export class FxService {
     const from = fromCurrency.toUpperCase();
     const to = toCurrency.toUpperCase();
     if (from === to) return amount;
-    const table = { USD: 1, ...rates };
+    const table: FxRateTable = { USD: 1, ...rates };
     const fromRate = table[from];
     const toRate = table[to];
     if (fromRate == null || toRate == null || fromRate === 0) return null;

@@ -54,7 +54,7 @@ export function validateCheckoutNotes(input: {
     };
   }
 
-  const items: CheckoutDraftSnapshot["items"] = [];
+  const items: Array<CheckoutDraftSnapshot["items"][number]> = [];
   for (const item of input.items) {
     const itemNoteResult = validateItemNote(
       item.notes,

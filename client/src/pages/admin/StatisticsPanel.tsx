@@ -327,7 +327,9 @@ export function StatisticsPanel({ showExport = true }: StatisticsPanelProps) {
                     <SemanticTableCell density="comfortable">{ownerPlanLabel(entry.commercial)}</SemanticTableCell>
                     <SemanticTableCell density="comfortable">
                       <SemanticBadge
-                        tone={mapCommercialStatusToBadgeTone(entry.commercial.subscriptionStatus)}
+                        tone={mapCommercialStatusToBadgeTone(
+                          entry.commercial.subscriptionStatus ?? "inactive"
+                        )}
                       >
                         {ownerSubscriptionStatus(entry.commercial)}
                       </SemanticBadge>
