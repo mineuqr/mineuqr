@@ -201,7 +201,25 @@ export class PlaceOrderService {
     const { order: persisted, businessIdentity } = await this.repository.save(order, {
       onPersisted: (p) => {
         p.recordCreated(p.id!);
-        events = p.pullDomainEvents();
+        const createdEvents = p.pullDomainEvents();
+        // CASHIER-CHECKOUT-LATENCY-AND-SPLIT-TENDER-1 — fold the existing
+        // cashier_pos pending → preparing Accept into the first persist
+        // transaction. Same transition and actor; no second HTTP-blocking save.
+        if (
+          orderingChannel === ORDERING_CHANNEL_CASHIER_POS &&
+          p.status === "pending" &&
+          p.id != null
+        ) {
+          const actor = resolveOrderActorFromSystem("cashier-pos-inbound-accept", {
+            displayName: "Cashier POS",
+            restaurantId: command.restaurantId,
+          });
+          p.advanceStatus(CASHIER_POS_INBOUND_STATUS, actor, createdAt);
+          const acceptEvents = p.pullDomainEvents();
+          events = [...createdEvents, ...acceptEvents];
+          return events;
+        }
+        events = createdEvents;
         return events;
       },
       identityScope: command.identityScope,
@@ -220,36 +238,6 @@ export class PlaceOrderService {
       fulfilmentAnchorType: fulfilment.fulfilmentAnchorType,
       serviceMode: fulfilment.serviceMode,
     }).displayReference;
-
-    // ORDERS-POS-KITCHEN-LIFECYCLE-1 — Cashier Confirm Sale is inbound
-    // acceptance. Apply the existing pending → preparing transition so the
-    // Order enters Kitchen without a second Accept Order click.
-    if (
-      orderingChannel === ORDERING_CHANNEL_CASHIER_POS &&
-      persisted.status === "pending" &&
-      persisted.id != null
-    ) {
-      const actor = resolveOrderActorFromSystem("cashier-pos-inbound-accept", {
-        displayName: "Cashier POS",
-        restaurantId: command.restaurantId,
-      });
-      persisted.advanceStatus(CASHIER_POS_INBOUND_STATUS, actor, createdAt);
-      const acceptEvents = persisted.pullDomainEvents();
-      const accepted = await this.repository.save(persisted, {
-        domainEvents: acceptEvents,
-      });
-      accepted.order.clearDomainEvents();
-      return {
-        order: accepted.order,
-        events: [...events, ...acceptEvents],
-        orderNumber,
-        trackingToken,
-        displayReference,
-        totalAmount,
-        itemCount,
-        createdAt,
-      };
-    }
 
     return {
       order: persisted,

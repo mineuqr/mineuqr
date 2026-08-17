@@ -225,6 +225,19 @@ export class DrizzleOrderRepository implements OrderRepository {
     const events =
       options?.onPersisted?.(persisted) ?? options?.domainEvents ?? [];
 
+    if (
+      persisted.status !== snapshot.status ||
+      persisted.lifecycleStage !== snapshot.lifecycleStage
+    ) {
+      await tx
+        .update(orders)
+        .set({
+          status: persisted.status,
+          lifecycleStage: persisted.lifecycleStage,
+        })
+        .where(eq(orders.id, orderId));
+    }
+
     const outboxInputs = domainEventsToOutboxInputs(events, {
       correlationId: options?.correlationId ?? undefined,
       causationId: options?.causationId,
@@ -361,6 +374,10 @@ export class DrizzleOrderRepository implements OrderRepository {
     });
 
     options?.onPersisted?.(persisted);
+
+    if (persisted.status !== snapshot.status && persisted.id != null) {
+      await updateOrderStatus(persisted.id, persisted.status);
+    }
 
     return { order: persisted, outboxEventIds: [] };
   }

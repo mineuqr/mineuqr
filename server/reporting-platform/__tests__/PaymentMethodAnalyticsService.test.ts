@@ -5,6 +5,7 @@ import * as srAdapter from "../settlementRecordReportingAdapter";
 vi.mock("../settlementRecordReportingAdapter", () => ({
   listSettlementRecordPaymentLinesForReporting: vi.fn(),
   listSettlementRecordsForReporting: vi.fn(),
+  listRefundSettlementRecordPaymentLinesForReporting: vi.fn(),
 }));
 
 function line(
@@ -40,6 +41,12 @@ describe("PaymentMethodAnalyticsService (Settlement Record)", () => {
     vi.mocked(
       srAdapter.listSettlementRecordPaymentLinesForReporting
     ).mockReset();
+    vi.mocked(
+      srAdapter.listRefundSettlementRecordPaymentLinesForReporting
+    ).mockReset();
+    vi.mocked(
+      srAdapter.listRefundSettlementRecordPaymentLinesForReporting
+    ).mockResolvedValue([]);
   });
 
   it("aggregates monetary mix, check counts, and complimentary separately", async () => {

@@ -14,9 +14,10 @@ import {
 import { SettlementReceiptDialog } from "@/components/settlement-record/SettlementReceiptDialog";
 import { Button } from "@/components/ui/button";
 import {
-  displayCashChange,
-  isCashReceivedSufficient,
-} from "@/lib/cashier-workspace/cashierCashTender";
+  canConfirmCashierSettlement,
+  displayCents,
+  resolveCashierSettlementPlan,
+} from "@/lib/cashier-workspace/cashierSplitTender";
 import { newCashierIdempotencyKey } from "@/lib/cashier-workspace/cashierIdempotency";
 import {
   cashierUiLabel,
@@ -77,6 +78,7 @@ type PaidCheckoutResult = {
   grandTotal: string;
   settlementRecordId: string | null;
   paymentMethod: SelectablePaymentMethod;
+  settlements: readonly { paymentMethod: SelectablePaymentMethod; amount?: string }[];
 };
 
 type DirectSale = {
@@ -141,6 +143,7 @@ export function CashierWorkspacePanel({
   const [directSale, setDirectSale] = useState<DirectSale | null>(null);
   const [salePhase, setSalePhase] = useState<DirectSalePhase>("ticket");
   const [cashReceived, setCashReceived] = useState("");
+  const [cardTender, setCardTender] = useState("");
   const [ordersOpen, setOrdersOpen] = useState(false);
   const [printOpen, setPrintOpen] = useState(false);
   const [paymentBusy, setPaymentBusy] = useState(false);
@@ -160,6 +163,7 @@ export function CashierWorkspacePanel({
     setPaymentMethod(null);
     setRegisterGap(null);
     setCashReceived("");
+    setCardTender("");
     setOrdersOpen(false);
     setPrintOpen(false);
     const snapshot = readCashierDirectSale(restaurantId);
@@ -174,6 +178,7 @@ export function CashierWorkspacePanel({
       setSalePhase(snapshot.phase);
       setPaymentMethod(snapshot.paymentMethod);
       setCashReceived(snapshot.cashReceived);
+      setCardTender(snapshot.cardTender ?? "");
       setOpenCheck(
         snapshot.checkId != null
           ? {
@@ -184,7 +189,16 @@ export function CashierWorkspacePanel({
             }
           : null
       );
-      setPaidCheckout(snapshot.paid);
+      setPaidCheckout(
+        snapshot.paid
+          ? {
+              ...snapshot.paid,
+              settlements:
+                snapshot.paid.settlements ??
+                [{ paymentMethod: snapshot.paid.paymentMethod }],
+            }
+          : null
+      );
     } else {
       setDirectSale(null);
       setSalePhase("ticket");
@@ -363,6 +377,7 @@ export function CashierWorkspacePanel({
     paid?: PaidCheckoutResult | null;
     method?: SelectablePaymentMethod | null;
     received?: string;
+    card?: string;
   }) {
     const sale = next?.sale === undefined ? directSale : next.sale;
     const phase = next?.phase ?? salePhase;
@@ -383,6 +398,7 @@ export function CashierWorkspacePanel({
       phase,
       paymentMethod: next?.method === undefined ? paymentMethod : next.method,
       cashReceived: next?.received ?? cashReceived,
+      cardTender: next?.card ?? cardTender,
       paid: next?.paid === undefined ? paidCheckout : next.paid,
     });
   }
@@ -403,6 +419,7 @@ export function CashierWorkspacePanel({
     setDirectSale(null);
     setSalePhase("ticket");
     setCashReceived("");
+    setCardTender("");
     setPrintOpen(false);
     clearCashierDirectSale(restaurantId);
   }
@@ -456,6 +473,7 @@ export function CashierWorkspacePanel({
       setDirectSale(sale);
       setSalePhase("payment");
       setCashReceived(result.totalAmount);
+      setCardTender("");
       persistDirectSaleSnapshot({
         sale,
         phase: "payment",
@@ -463,6 +481,7 @@ export function CashierWorkspacePanel({
         paid: null,
         method: null,
         received: result.totalAmount,
+        card: "",
       });
       toast.success(`${t("salePlaced")} ${result.displayReference}`);
       void orchestrateIntake(result.orderId);
@@ -512,10 +531,20 @@ export function CashierWorkspacePanel({
   }
 
   async function completePayment() {
-    if (!terminalId || selectedOrderId == null || !paymentMethod) return;
+    if (!terminalId || selectedOrderId == null) return;
     if (payInFlightRef.current || settleMutation.isPending) return;
     const due = amountDue ?? directSale?.totalAmount;
-    if (paymentMethod === "cash" && (!due || !isCashReceivedSufficient(cashReceived, due))) {
+    if (!due) return;
+    const plan = resolveCashierSettlementPlan({
+      amountDue: due,
+      cashTender: cashReceived,
+      cardTender,
+    });
+    if (!plan || !canConfirmCashierSettlement({
+      amountDue: due,
+      cashTender: cashReceived,
+      cardTender,
+    })) {
       return;
     }
     payInFlightRef.current = true;
@@ -533,14 +562,16 @@ export function CashierWorkspacePanel({
         terminalId,
         orderId: selectedOrderId,
         idempotencyKey: settleKeyRef.current,
-        paymentMethod,
+        paymentMethod: plan.paymentMethod,
+        settlements: [...plan.settlements],
       });
       const paid: PaidCheckoutResult = {
         checkId: result.checkId,
         orderId: result.orderId,
         grandTotal: result.grandTotal,
         settlementRecordId: result.settlementRecordId,
-        paymentMethod,
+        paymentMethod: plan.paymentMethod,
+        settlements: plan.settlements,
       };
       setPaidCheckout(paid);
       setRegisterGap(null);
@@ -623,12 +654,22 @@ export function CashierWorkspacePanel({
     Boolean(directSale?.totalAmount);
   const money = (value: string) =>
     currencySymbol ? `${value} ${currencySymbol}` : value;
-  const cashOk =
-    paymentMethod !== "cash" ||
-    (amountDue != null && isCashReceivedSufficient(cashReceived, amountDue));
+  const tenderDraft =
+    amountDue != null
+      ? {
+          amountDue,
+          cashTender: cashReceived,
+          cardTender,
+        }
+      : null;
+  const tenderPlan = tenderDraft
+    ? resolveCashierSettlementPlan(tenderDraft)
+    : null;
+  const canConfirmPayment =
+    tenderDraft != null && canConfirmCashierSettlement(tenderDraft);
   const cashChange =
-    paymentMethod === "cash" && amountDue
-      ? displayCashChange(cashReceived, amountDue)
+    tenderPlan && tenderPlan.changeCents > 0
+      ? displayCents(tenderPlan.changeCents)
       : null;
 
   const listDenied = Boolean(
@@ -1029,11 +1070,26 @@ export function CashierWorkspacePanel({
                   {t("checkLabel")} #{paidCheckout.checkId}
                 </p>
                 <p className="mt-2 text-sm text-[#6b7280]">{t("paymentMethod")}</p>
-                <p className="text-base font-semibold">
-                  {paymentOptions.find(
-                    (option) => option.paymentMethod === paidCheckout.paymentMethod
-                  )?.label ?? paidCheckout.paymentMethod}
-                </p>
+                <ul className="mt-1 space-y-1">
+                  {(paidCheckout.settlements.length > 0
+                    ? paidCheckout.settlements
+                    : [{ paymentMethod: paidCheckout.paymentMethod }]
+                  ).map((line) => (
+                    <li
+                      key={`${line.paymentMethod}-${line.amount ?? "full"}`}
+                      className="flex justify-between text-base font-semibold"
+                    >
+                      <span>
+                        {paymentOptions.find(
+                          (option) => option.paymentMethod === line.paymentMethod
+                        )?.label ?? line.paymentMethod}
+                      </span>
+                      {line.amount ? (
+                        <span className="tabular-nums">{money(line.amount)}</span>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
                 <p className="mt-4 text-sm text-[#6b7280]">{t("amountDue")}</p>
                 <p className={cashierPos.amountDueHuge}>{money(paidCheckout.grandTotal)}</p>
                 <p className="mt-2 text-xs text-[#6b7280]">{t("afterPayment")}</p>
@@ -1072,48 +1128,76 @@ export function CashierWorkspacePanel({
                   <p className="mt-2 text-sm text-[#6b7280]">{t("preparingCheck")}</p>
                 ) : null}
                 <p className="mb-2 mt-4 text-sm font-medium">{t("selectPaymentMethod")}</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {paymentOptions.map((option) => (
-                    <Button
-                      key={option.paymentMethod}
-                      type="button"
-                      variant={paymentMethod === option.paymentMethod ? "default" : "outline"}
-                      className="min-h-12"
-                      disabled={paying}
-                      onClick={() => {
-                        setPaymentMethod(option.paymentMethod);
-                        if (option.paymentMethod === "cash" && amountDue) {
-                          setCashReceived((current) => current || amountDue);
-                        }
-                      }}
-                    >
-                      {option.label}
-                    </Button>
-                  ))}
+                <div className="space-y-3">
+                  {paymentOptions.map((option) => {
+                    const isCash = option.paymentMethod === "cash";
+                    const value = isCash ? cashReceived : cardTender;
+                    return (
+                      <div key={option.paymentMethod}>
+                        <label
+                          className="text-sm font-medium"
+                          htmlFor={`cashier-tender-${option.paymentMethod}`}
+                        >
+                          {option.label}
+                        </label>
+                        <input
+                          id={`cashier-tender-${option.paymentMethod}`}
+                          className={cn(cashierPos.moneyInput, "mt-1")}
+                          inputMode="decimal"
+                          disabled={paying}
+                          value={value}
+                          onChange={(event) => {
+                            const next = event.target.value;
+                            if (isCash) {
+                              setCashReceived(next);
+                              setPaymentMethod(next.trim() ? "cash" : cardTender.trim() ? "card" : null);
+                              persistDirectSaleSnapshot({
+                                received: next,
+                                method: next.trim() ? "cash" : cardTender.trim() ? "card" : null,
+                              });
+                            } else {
+                              setCardTender(next);
+                              setPaymentMethod(next.trim() ? "card" : cashReceived.trim() ? "cash" : null);
+                              persistDirectSaleSnapshot({
+                                card: next,
+                                method: next.trim() ? "card" : cashReceived.trim() ? "cash" : null,
+                              });
+                            }
+                          }}
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
-                {paymentMethod === "cash" && amountDue ? (
-                  <div className="mt-4">
-                    <label className="text-sm font-medium" htmlFor="cashier-cash-received">
-                      {t("amountReceived")}
-                    </label>
-                    <input
-                      id="cashier-cash-received"
-                      className={cn(cashierPos.moneyInput, "mt-1")}
-                      inputMode="decimal"
-                      disabled={paying}
-                      value={cashReceived}
-                      onChange={(event) => setCashReceived(event.target.value)}
-                    />
-                    <p className="mt-2 flex justify-between text-sm">
-                      <span>{t("changeDue")}</span>
-                      <span className="tabular-nums font-semibold">
-                        {money(cashChange ?? "0.00")}
-                      </span>
-                    </p>
-                    {!cashOk ? (
-                      <p className="mt-1 text-sm text-red-700">{t("cashInsufficient")}</p>
-                    ) : null}
-                  </div>
+                <p className="mt-3 flex justify-between text-sm">
+                  <span>{t("totalTendered")}</span>
+                  <span className="tabular-nums font-semibold">
+                    {money(displayCents(tenderPlan?.totalEnteredCents ?? 0))}
+                  </span>
+                </p>
+                <p className="mt-1 flex justify-between text-sm">
+                  <span>{t("remainingAmount")}</span>
+                  <span className="tabular-nums font-semibold">
+                    {money(
+                      tenderPlan
+                        ? displayCents(tenderPlan.remainingCents)
+                        : (amountDue ?? "0.00")
+                    )}
+                  </span>
+                </p>
+                {cashChange ? (
+                  <p className="mt-1 flex justify-between text-sm">
+                    <span>{t("changeDue")}</span>
+                    <span className="tabular-nums font-semibold">{money(cashChange)}</span>
+                  </p>
+                ) : null}
+                {tenderPlan && tenderPlan.remainingCents > 0 ? (
+                  <p className="mt-1 text-sm text-red-700">{t("underpayment")}</p>
+                ) : null}
+                {tenderPlan &&
+                tenderPlan.remainingCents === 0 &&
+                !canConfirmPayment ? (
+                  <p className="mt-1 text-sm text-red-700">{t("cardOverTender")}</p>
                 ) : null}
                 {registerGap ? (
                   <div className={cn(cashierPos.warnBox, "mt-4")}>
@@ -1152,9 +1236,7 @@ export function CashierWorkspacePanel({
                     className={cn(cashierPos.primaryAction, "flex-1")}
                     disabled={
                       paying ||
-                      intakeMutation.isPending ||
-                      paymentMethod == null ||
-                      !cashOk ||
+                      !canConfirmPayment ||
                       amountDue == null
                     }
                     onClick={() => void completePayment()}

@@ -20,6 +20,8 @@ describe("cashier presentation helpers", () => {
       "يجب فتح وردية الصندوق قبل إتمام الدفع"
     );
     expect(cashierUiLabel("cancelPayment", "ar")).toBe("إلغاء");
+    expect(cashierUiLabel("totalTendered", "ar")).toBe("إجمالي المدفوع");
+    expect(cashierUiLabel("remainingAmount", "ar")).toBe("المتبقي");
   });
 
   it("issues command idempotency keys in the existing POS length window", () => {

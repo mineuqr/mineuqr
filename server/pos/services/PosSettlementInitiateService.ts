@@ -43,8 +43,13 @@ export type PosSettlementInitiateCommand = {
   terminalId: string;
   orderId: number;
   idempotencyKey: string;
-  /** Canonical catalog key forwarded to Check. Not a POS tender/amount. */
+  /** Canonical catalog key forwarded to Check. Not a POS amount. */
   paymentMethod?: SelectablePaymentMethod;
+  /**
+   * Existing Check staff settlement lines. When present, forwarded as-is.
+   * Multi-line amounts must sum to Check grandTotal (Check-owned validation).
+   */
+  settlements?: readonly StaffSettlementLineInput[];
 };
 
 export type PosSettlementInitiateResult = {
@@ -110,13 +115,52 @@ const AUTH_DENIED_CODES = new Set([
   "entitlement_unavailable",
 ]);
 
+function normalizeFingerprintSettlements(
+  lines: readonly StaffSettlementLineInput[] | undefined
+): readonly { paymentMethod: string; amount: string | null }[] | null {
+  if (!lines || lines.length === 0) return null;
+  return [...lines]
+    .map((line) => ({
+      paymentMethod: line.paymentMethod,
+      amount:
+        line.amount != null && String(line.amount).trim().length > 0
+          ? String(line.amount)
+          : null,
+    }))
+    .sort((a, b) =>
+      a.paymentMethod === b.paymentMethod
+        ? (a.amount ?? "").localeCompare(b.amount ?? "")
+        : a.paymentMethod.localeCompare(b.paymentMethod)
+    );
+}
+
+function resolveCommandSettlements(
+  command: PosSettlementInitiateCommand
+): readonly StaffSettlementLineInput[] | undefined {
+  if (command.settlements && command.settlements.length > 0) {
+    return command.settlements;
+  }
+  if (command.paymentMethod) {
+    return [{ paymentMethod: command.paymentMethod }];
+  }
+  return undefined;
+}
+
 function fingerprintOf(input: {
   restaurantId: number;
   terminalId: string;
   userId: number;
   orderId: number;
   paymentMethod?: SelectablePaymentMethod | null;
+  settlements?: readonly StaffSettlementLineInput[];
 }): string {
+  const settlements = normalizeFingerprintSettlements(input.settlements);
+  const singleMethodOnly =
+    settlements != null &&
+    settlements.length === 1 &&
+    settlements[0].amount == null &&
+    settlements[0].paymentMethod ===
+      (input.paymentMethod ?? settlements[0].paymentMethod);
   return createHash("sha256")
     .update(
       JSON.stringify({
@@ -125,6 +169,7 @@ function fingerprintOf(input: {
         userId: input.userId,
         orderId: input.orderId,
         paymentMethod: input.paymentMethod ?? null,
+        ...(settlements && !singleMethodOnly ? { settlements } : {}),
       })
     )
     .digest("hex");
@@ -311,6 +356,7 @@ export class PosSettlementInitiateService {
       userId: context.userId,
       orderId: order.id,
       paymentMethod: input.command.paymentMethod ?? null,
+      settlements: input.command.settlements,
     });
     const idempotencyKey = {
       restaurantId: context.restaurantId,
@@ -343,10 +389,21 @@ export class PosSettlementInitiateService {
         });
       }
 
-      const membership = await this.membershipLookup(
-        context.restaurantId,
-        order.id
-      );
+      const [membership, operational] = await Promise.all([
+        this.membershipLookup(context.restaurantId, order.id),
+        this.registerShift
+          .requireForSettlement({
+            restaurantId: context.restaurantId,
+            terminalId: context.terminalId,
+            operatorUserId: context.userId,
+          })
+          .catch((err) => {
+            if (err instanceof PosRegisterShiftContextError) {
+              throw new PosSettlementInitiateError(err.code, err.message);
+            }
+            throw err;
+          }),
+      ]);
       if (!membership) {
         throw new PosSettlementInitiateError(
           "check_not_found",
@@ -383,24 +440,7 @@ export class PosSettlementInitiateService {
         );
       }
 
-      let operational;
-      try {
-        operational = await this.registerShift.requireForSettlement({
-          restaurantId: context.restaurantId,
-          terminalId: context.terminalId,
-          operatorUserId: context.userId,
-        });
-      } catch (err) {
-        if (err instanceof PosRegisterShiftContextError) {
-          throw new PosSettlementInitiateError(err.code, err.message);
-        }
-        throw err;
-      }
-
-      const settlements: readonly StaffSettlementLineInput[] | undefined =
-        input.command.paymentMethod
-          ? [{ paymentMethod: input.command.paymentMethod }]
-          : undefined;
+      const settlements = resolveCommandSettlements(input.command);
 
       let settled: Awaited<ReturnType<PosSettlementSettlePaid>>;
       try {

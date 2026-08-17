@@ -477,6 +477,135 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
     });
   });
 
+  it("forwards existing Check settlement lines for a split payment mix", async () => {
+    const { store, grants, service, settle } = harness();
+    await seedTerminal(store);
+    await grantSettle(grants);
+    const result = await service.initiate({
+      user: user(STAFF_A),
+      command: {
+        ...command,
+        paymentMethod: "cash",
+        settlements: [
+          { paymentMethod: "cash", amount: "6.00" },
+          { paymentMethod: "card", amount: "36.50" },
+        ],
+      },
+    });
+    expect(result.outcome).toBe("paid");
+    expect(settle).toHaveBeenCalledWith({
+      restaurantId: RESTAURANT_A,
+      checkId: CHECK_A,
+      settlementContextHints: {
+        registerId: REGISTER_ID,
+        operatorUserId: STAFF_A,
+        deviceId: null,
+      },
+      settlements: [
+        { paymentMethod: "cash", amount: "6.00" },
+        { paymentMethod: "card", amount: "36.50" },
+      ],
+    });
+  });
+
+  it("conflicts when the same idempotency key is reused for a different payment mix", async () => {
+    const { store, grants, service, settle } = harness();
+    await seedTerminal(store);
+    await grantSettle(grants);
+    await service.initiate({
+      user: user(STAFF_A),
+      command: {
+        ...command,
+        paymentMethod: "cash",
+        settlements: [
+          { paymentMethod: "cash", amount: "6.00" },
+          { paymentMethod: "card", amount: "36.50" },
+        ],
+      },
+    });
+    await expect(
+      service.initiate({
+        user: user(STAFF_A),
+        command: {
+          ...command,
+          paymentMethod: "card",
+        },
+      })
+    ).rejects.toMatchObject({ code: "idempotency_conflict" });
+    expect(settle).toHaveBeenCalledTimes(1);
+  });
+
+  it("replays the same split payment mix without a second Check settle", async () => {
+    const { store, grants, service, settle } = harness();
+    await seedTerminal(store);
+    await grantSettle(grants);
+    const split = {
+      ...command,
+      paymentMethod: "cash" as const,
+      settlements: [
+        { paymentMethod: "cash" as const, amount: "6.00" },
+        { paymentMethod: "card" as const, amount: "36.50" },
+      ],
+    };
+    const first = await service.initiate({ user: user(STAFF_A), command: split });
+    const second = await service.initiate({ user: user(STAFF_A), command: split });
+    expect(second.checkId).toBe(first.checkId);
+    expect(second.replayed).toBe(true);
+    expect(settle).toHaveBeenCalledTimes(1);
+  });
+
+  it("overlaps register-shift resolution with Check membership lookup", async () => {
+    const store = new InMemoryPosTerminalStore();
+    const grants = new InMemoryPosPermissionGrantStore();
+    const idempotency = new InMemoryPosSettlementInitiateIdempotencyStore();
+    const access = new PosAccessService(
+      store,
+      grants,
+      new PosEntitlementService(store)
+    );
+    let membershipStarted = 0;
+    let shiftStarted = 0;
+    const findMembership = vi.fn(async () => {
+      membershipStarted = Date.now();
+      await new Promise((resolve) => setTimeout(resolve, 40));
+      return { checkId: CHECK_A, checkOutcome: "open" };
+    });
+    const resolveContext = vi.fn(async () => {
+      shiftStarted = Date.now();
+      await new Promise((resolve) => setTimeout(resolve, 40));
+      return resolvedContext();
+    });
+    const registerShift = new PosRegisterShiftContextService(
+      resolveContext,
+      async () => null
+    );
+    const settle = vi.fn(async () => ({
+      check: openCheck({ outcome: "paid" }),
+      settlementRecordId: "sr-pos-1",
+    }));
+    const service = new PosSettlementInitiateService(
+      grants,
+      access,
+      idempotency,
+      registerShift,
+      async () => ({
+        id: ORDER_A,
+        restaurantId: RESTAURANT_A,
+        orderingChannel: ORDERING_CHANNEL_CASHIER_POS,
+        status: "pending",
+      }),
+      findMembership,
+      async () => openCheck(),
+      settle
+    );
+    await seedTerminal(store);
+    await grantSettle(grants);
+    await service.initiate({ user: user(STAFF_A), command });
+    expect(findMembership).toHaveBeenCalledTimes(1);
+    expect(resolveContext).toHaveBeenCalledTimes(1);
+    expect(Math.abs(membershipStarted - shiftStarted)).toBeLessThan(20);
+  });
+
   it("forwards a selectable payment method to Check as a single tender without client amounts", async () => {
     const { store, grants, service, settle } = harness();
     await seedTerminal(store);

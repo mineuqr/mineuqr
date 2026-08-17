@@ -77,22 +77,29 @@ const checkIntakeInput = terminalInput.extend({
   idempotencyKey: z.string().min(8).max(128),
 });
 
-const settlementInitiateInput = terminalInput.extend({
-  orderId: z.number().int().positive(),
-  idempotencyKey: z.string().min(8).max(128),
-  /** Catalog keys from SELECTABLE_PAYMENT_METHODS. Amounts stay Check-owned. */
-  paymentMethod: z.enum(["cash", "card"]).optional(),
-});
-
-const cashierRegisterInput = terminalInput.extend({
-  registerId: z.string().min(1).max(128),
-});
-
 const moneyAmountInput = z
   .string()
   .min(1)
   .max(32)
   .regex(/^\d+(\.\d{1,2})?$/, "invalid decimal amount");
+
+const settlementLineInput = z.object({
+  paymentMethod: z.enum(["cash", "card"]),
+  /** Optional; required by Check when more than one line is supplied. */
+  amount: moneyAmountInput.optional(),
+});
+
+const settlementInitiateInput = terminalInput.extend({
+  orderId: z.number().int().positive(),
+  idempotencyKey: z.string().min(8).max(128),
+  /** Catalog keys from SELECTABLE_PAYMENT_METHODS. Amounts stay Check-owned. */
+  paymentMethod: z.enum(["cash", "card"]).optional(),
+  settlements: z.array(settlementLineInput).min(1).max(8).optional(),
+});
+
+const cashierRegisterInput = terminalInput.extend({
+  registerId: z.string().min(1).max(128),
+});
 
 const cashierShiftOpenInput = cashierRegisterInput.extend({
   openingFloatAmount: moneyAmountInput,
@@ -397,6 +404,7 @@ export const posRouter = router({
               orderId: input.orderId,
               idempotencyKey: input.idempotencyKey,
               paymentMethod: input.paymentMethod,
+              settlements: input.settlements,
             },
           });
         } catch (err) {

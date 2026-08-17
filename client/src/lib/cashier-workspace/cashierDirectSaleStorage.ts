@@ -17,6 +17,8 @@ export type CashierDirectSaleSnapshot = {
   phase: CashierDirectSalePhase;
   paymentMethod: SelectablePaymentMethod | null;
   cashReceived: string;
+  /** Presentation-only card amount. Omitted on older snapshots. */
+  cardTender?: string;
   paid:
     | {
         checkId: number;
@@ -24,6 +26,10 @@ export type CashierDirectSaleSnapshot = {
         grandTotal: string;
         settlementRecordId: string | null;
         paymentMethod: SelectablePaymentMethod;
+        settlements?: readonly {
+          paymentMethod: SelectablePaymentMethod;
+          amount?: string;
+        }[];
       }
     | null;
 };

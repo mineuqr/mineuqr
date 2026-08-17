@@ -141,6 +141,16 @@ const COPY: Record<string, { ar: string; en: string }> = {
   showActiveOrders: { ar: "الطلبات النشطة", en: "Active orders" },
   hideActiveOrders: { ar: "إخفاء الطلبات النشطة", en: "Hide active orders" },
   cancelPayment: { ar: "إلغاء", en: "Cancel" },
+  totalTendered: { ar: "إجمالي المدفوع", en: "Total tendered" },
+  remainingAmount: { ar: "المتبقي", en: "Remaining" },
+  underpayment: {
+    ar: "لا يمكن إتمام الدفع والمبلغ المتبقي أكبر من صفر.",
+    en: "Payment cannot complete while an amount remains due.",
+  },
+  cardOverTender: {
+    ar: "مبلغ البطاقة يجب أن يساوي المستحق أو يُكمَّل نقدًا حتى المستحق.",
+    en: "Card must equal the amount due, or cash plus card must equal the amount due.",
+  },
 };
 
 export function cashierUiLabel(key: keyof typeof COPY, language: CashierLang): string {

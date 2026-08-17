@@ -63,9 +63,9 @@ describe("PlaceOrderService cashier_pos inbound acceptance", () => {
       items: [{ menuItemId: 1, quantity: 1 }],
     });
 
-    expect(statuses).toEqual(["pending", "preparing"]);
+    expect(statuses).toEqual(["preparing"]);
     expect(result.order.status).toBe("preparing");
-    expect(repo.save).toHaveBeenCalledTimes(2);
+    expect(repo.save).toHaveBeenCalledTimes(1);
   });
 
   it("does not auto-accept kiosk orders", async () => {
