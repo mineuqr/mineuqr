@@ -3,7 +3,7 @@ import { screenTrpc } from "@/lib/operational-screen/screenTrpc";
 import type { DeviceOrderActionId } from "../../../../../server/operational-device/domain/deviceOrderExecution";
 import type { OperationalActionId } from "@/lib/operational-workspace/operationalActions";
 import {
-  useRuntimeIdentity,
+  useRuntimeBusiness,
   useRuntimeRole,
 } from "@/components/operational-screen/OperationalScreenRuntimeProvider";
 import {
@@ -25,9 +25,9 @@ import { targetStatusForDeviceAction } from "../../../../../server/operational-d
  */
 export function useOperationalDeviceOrderActions() {
   const role = useRuntimeRole();
-  const identity = useRuntimeIdentity();
+  const business = useRuntimeBusiness();
   const canExecute = role.permissions.canExecuteOrderActions;
-  const restaurantId = identity.restaurantId;
+  const restaurantId = business.tenantId;
   const [pendingOrderId, setPendingOrderId] = useState<number | null>(null);
   const [successOrderId, setSuccessOrderId] = useState<number | null>(null);
   const successTimerRef = useRef<number | null>(null);
