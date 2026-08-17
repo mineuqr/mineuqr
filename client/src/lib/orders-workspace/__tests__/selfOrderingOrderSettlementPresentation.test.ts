@@ -47,6 +47,26 @@ describe("SELF-ORDERING-ORDER-SETTLEMENT-ADOPTION-1 presentation", () => {
     expect(paid.some((a) => a.id === "settle-self-ordering")).toBe(false);
   });
 
+  it("POS cashier_pos exposes تم التقديم when paid and cancel only when unpaid", () => {
+    const paidPending = getOrdersWorkspaceActions("pending", {
+      sessionless: true,
+      unpaidSessionless: false,
+      orderingChannel: "cashier_pos",
+    });
+    expect(paidPending.map((a) => a.id)).toEqual(["serve-order"]);
+    expect(paidPending[0]?.labelAr).toBe("تم التقديم");
+    expect(paidPending.some((a) => a.id === "accept-order")).toBe(false);
+
+    const unpaid = getOrdersWorkspaceActions("preparing", {
+      sessionless: true,
+      unpaidSessionless: true,
+      orderingChannel: "cashier_pos",
+    });
+    expect(unpaid.map((a) => a.id)).toEqual(["cancel-order"]);
+    expect(unpaid.some((a) => a.id === "accept-order")).toBe(false);
+    expect(unpaid.some((a) => a.id === "serve-order")).toBe(false);
+  });
+
   it("keeps Waiter / Table QR sessioned cancel unchanged", () => {
     const sessioned = getOrdersWorkspaceActions("pending", {
       sessionless: false,

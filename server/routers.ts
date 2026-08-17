@@ -155,12 +155,14 @@ import { orderingRouter } from "./orderingRouter";
 import { resolveTrialStatusRead } from "./commercial/wave1ReadAuthority";
 import {
   advanceOrderStatusService,
+  completeCashierPosOperationalService,
 } from "./order/composition";
 import {
   identityPlaceOrderService,
   placeOrderService,
 } from "./order/placeOrderComposition";
 import { runOrderCommand } from "./order/application/mapOrderDomainError";
+import { isCashierPosOrderingChannel } from "./order/application/cashierPosOrderLifecycle";
 import { resolveOrderActorFromUser } from "./order/application/resolveOrderActor";
 import {
   ORDERING_SERVICE_MODES,
@@ -2906,12 +2908,26 @@ const orderRouter = router({
         async () => {
           markOrderLifecycleLatency("authz");
           const result = await runOrderCommand(
-            () =>
-              advanceOrderStatusService.execute({
+            async () => {
+              if (
+                input.status === "served" &&
+                isCashierPosOrderingChannel(order.orderingChannel)
+              ) {
+                return completeCashierPosOperationalService.execute({
+                  orderId: input.id,
+                  restaurantId: order.restaurantId,
+                  sessionId: order.sessionId,
+                  orderingChannel: order.orderingChannel,
+                  currentStatus: order.status,
+                  actor,
+                });
+              }
+              return advanceOrderStatusService.execute({
                 orderId: input.id,
                 targetStatus: input.status,
                 actor,
-              }),
+              });
+            },
             { awaitRelay: false }
           );
 

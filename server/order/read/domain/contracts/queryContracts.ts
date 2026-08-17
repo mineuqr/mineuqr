@@ -159,6 +159,8 @@ export type ActiveOrderItemDto = {
   businessDay: string | null;
   dailyDisplayNumber: number | null;
   identityScope: string;
+  /** Canonical OrderingChannelId from the write-side stamp. Null/omitted if unstamped. */
+  orderingChannel?: string | null;
   displayOrderNumber: string;
   displayReference: string;
   status: string;

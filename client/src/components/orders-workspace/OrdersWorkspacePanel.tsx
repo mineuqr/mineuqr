@@ -193,11 +193,16 @@ export function OrdersWorkspacePanel({
   const { displayItems, isFading } = useGracePeriod(items, (o) => String(o.orderId));
 
   const settlementGateFor = useCallback(
-    (order: { sessionId?: number | null; orderId: number }) => {
+    (order: {
+      sessionId?: number | null;
+      orderId: number;
+      orderingChannel?: string | null;
+    }) => {
       const sessionless = isSessionlessSelfOrderingOrder(order);
       return {
         sessionless,
         unpaidSessionless: sessionless && unpaidIds.has(order.orderId),
+        orderingChannel: order.orderingChannel ?? null,
       };
     },
     [unpaidIds]
@@ -279,7 +284,7 @@ export function OrdersWorkspacePanel({
         (selectedOrderId === orderId ? detailQuery.data?.order : undefined);
       const gate = order
         ? settlementGateFor(order)
-        : { sessionless: false, unpaidSessionless: false };
+        : { sessionless: false, unpaidSessionless: false, orderingChannel: null };
 
       if (actionId === "settle-self-ordering") {
         openSettle(orderId);

@@ -25,6 +25,7 @@ function mapOrder(row: OrderRow, lineItems: LineItemRow[]): ActiveOrderItemDto {
     businessDay: row.businessDay ?? null,
     dailyDisplayNumber: row.dailyDisplayNumber ?? null,
     identityScope: row.identityScope ?? null,
+    orderingChannel: row.orderingChannel ?? null,
     status: row.status,
     lifecycle: row.lifecycleStage,
     tableNumber: row.tableNumber,

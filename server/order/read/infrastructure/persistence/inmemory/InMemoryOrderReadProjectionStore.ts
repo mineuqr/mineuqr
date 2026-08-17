@@ -358,6 +358,7 @@ export class InMemoryOrderReadProjectionStore {
       businessDay: order.businessDay ?? null,
       dailyDisplayNumber: order.dailyDisplayNumber ?? null,
       identityScope: identity.identityScope,
+      orderingChannel: order.orderingChannel ?? null,
       displayOrderNumber: identity.displayOrderNumber,
       displayReference: identity.displayReference,
       status: order.status,

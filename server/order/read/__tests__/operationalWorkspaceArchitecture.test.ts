@@ -36,7 +36,7 @@ describe("OPERATIONAL-WORKSPACE-1 architecture guards", () => {
   it("orders workspace owns lifecycle actions", () => {
     const ordersPanel = read("client/src/components/orders-workspace/OrdersWorkspacePanel.tsx");
     expect(ordersPanel).toContain("useOrderStatusActions");
-    expect(ordersPanel).toContain("getOrderWorkspaceActions");
+    expect(ordersPanel).toContain("getOrdersWorkspaceActions");
   });
 
   it("order read router is read-only over projections", () => {

@@ -1,4 +1,5 @@
 import type { OrderLifecycleStatus } from "@/lib/orderStatusDisplay";
+import { ORDERING_CHANNEL_CASHIER_POS } from "@shared/ordering-platform/orderingChannelRegistry";
 
 export type OperationalActionId =
   | "accept-order"
@@ -111,7 +112,32 @@ export function getOrderWorkspaceActions(status: OrderLifecycleStatus): Operatio
 export type OrdersSettlementGate = Readonly<{
   sessionless: boolean;
   unpaidSessionless: boolean;
+  /** Canonical OrderingChannelId — cashier_pos skips inbound Accept. */
+  orderingChannel?: string | null;
 }>;
+
+function isCashierPosOrder(channel: string | null | undefined): boolean {
+  return channel === ORDERING_CHANNEL_CASHIER_POS;
+}
+
+const CASHIER_POS_SERVE: OperationalAction = {
+  id: "serve-order",
+  targetStatus: "served",
+  labelEn: "Served",
+  labelAr: "تم التقديم",
+  variant: "secondary",
+};
+
+function getCashierPosOrdersActions(
+  status: OrderLifecycleStatus,
+  gate: OrdersSettlementGate
+): OperationalAction[] {
+  if (status === "served" || status === "cancelled") return [];
+  if (gate.unpaidSessionless) {
+    return [{ id: "cancel-order", ...ACTIONS["cancel-order"] }];
+  }
+  return [CASHIER_POS_SERVE];
+}
 
 export function getOrdersWorkspaceActions(
   status: OrderLifecycleStatus,
@@ -120,6 +146,9 @@ export function getOrdersWorkspaceActions(
     unpaidSessionless: false,
   }
 ): OperationalAction[] {
+  if (isCashierPosOrder(gate.orderingChannel)) {
+    return getCashierPosOrdersActions(status, gate);
+  }
   const base = getOrderWorkspaceActions(status);
   if (!gate.sessionless) return base;
 

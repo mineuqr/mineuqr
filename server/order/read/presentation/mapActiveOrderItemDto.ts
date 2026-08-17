@@ -8,6 +8,7 @@ export type OrderRowIdentitySource = {
   businessDay: string | null;
   dailyDisplayNumber: number | null;
   identityScope?: string | null;
+  orderingChannel?: string | null;
   status: string;
   lifecycle: string;
   tableNumber: number;
@@ -47,6 +48,7 @@ export function mapActiveOrderItemDto(row: OrderRowIdentitySource): ActiveOrderI
     businessDay: row.businessDay,
     dailyDisplayNumber: row.dailyDisplayNumber,
     identityScope: identity.identityScope,
+    orderingChannel: row.orderingChannel ?? null,
     displayOrderNumber: identity.displayOrderNumber,
     displayReference: identity.displayReference,
     status: row.status,

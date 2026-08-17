@@ -22,7 +22,12 @@ import {
   resolvePlaceOrderPersistFields,
   resolvePlaceOrderSessionId,
 } from "@shared/ordering-platform/orderingIdentityContract";
-import { assertOrderingChannelId } from "@shared/ordering-platform/orderingChannelRegistry";
+import {
+  assertOrderingChannelId,
+  ORDERING_CHANNEL_CASHIER_POS,
+} from "@shared/ordering-platform/orderingChannelRegistry";
+import { resolveOrderActorFromSystem } from "./resolveOrderActor";
+import { CASHIER_POS_INBOUND_STATUS } from "./cashierPosOrderLifecycle";
 import {
   fulfilmentProjectionFromIdentity,
   fulfilmentProjectionFromLegacyTable,
@@ -215,6 +220,36 @@ export class PlaceOrderService {
       fulfilmentAnchorType: fulfilment.fulfilmentAnchorType,
       serviceMode: fulfilment.serviceMode,
     }).displayReference;
+
+    // ORDERS-POS-KITCHEN-LIFECYCLE-1 — Cashier Confirm Sale is inbound
+    // acceptance. Apply the existing pending → preparing transition so the
+    // Order enters Kitchen without a second Accept Order click.
+    if (
+      orderingChannel === ORDERING_CHANNEL_CASHIER_POS &&
+      persisted.status === "pending" &&
+      persisted.id != null
+    ) {
+      const actor = resolveOrderActorFromSystem("cashier-pos-inbound-accept", {
+        displayName: "Cashier POS",
+        restaurantId: command.restaurantId,
+      });
+      persisted.advanceStatus(CASHIER_POS_INBOUND_STATUS, actor, createdAt);
+      const acceptEvents = persisted.pullDomainEvents();
+      const accepted = await this.repository.save(persisted, {
+        domainEvents: acceptEvents,
+      });
+      accepted.order.clearDomainEvents();
+      return {
+        order: accepted.order,
+        events: [...events, ...acceptEvents],
+        orderNumber,
+        trackingToken,
+        displayReference,
+        totalAmount,
+        itemCount,
+        createdAt,
+      };
+    }
 
     return {
       order: persisted,
