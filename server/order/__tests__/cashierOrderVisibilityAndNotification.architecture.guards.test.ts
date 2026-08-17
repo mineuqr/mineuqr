@@ -54,6 +54,7 @@ describe("CASHIER-ORDER-VISIBILITY-AND-NOTIFICATION-1 architecture guards", () =
     expect(complete).toContain('previousStatus === "served"');
     expect(complete).toContain("this.advance.execute");
     expect(actions).toContain("CASHIER_POS_SERVE");
+    expect(actions).toContain("settled Check cannot be voided");
     expect(actions).not.toContain('if (status === "served" || status === "cancelled") return []');
   });
 });

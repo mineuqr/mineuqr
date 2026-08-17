@@ -130,12 +130,12 @@ const CASHIER_POS_SERVE: OperationalAction = {
 
 function getCashierPosOrdersActions(
   status: OrderLifecycleStatus,
-  gate: OrdersSettlementGate
+  _gate: OrdersSettlementGate
 ): OperationalAction[] {
   if (status === "cancelled") return [];
-  if (gate.unpaidSessionless) {
-    return [{ id: "cancel-order", ...ACTIONS["cancel-order"] }];
-  }
+  // listActive / Kitchen only return cashier_pos after a Paid/Complimentary
+  // Check. Cancel is invalid on that surface (settled Check cannot be voided).
+  // Unpaid cashier_pos is not listed; void remains the existing money path.
   return [CASHIER_POS_SERVE];
 }
 

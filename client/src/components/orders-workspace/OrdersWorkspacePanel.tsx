@@ -48,6 +48,7 @@ import { scheduleOrdersListActiveInvalidation } from "@/lib/orders-workspace/ord
 import { useOrdersWorkspaceRealtime } from "@/lib/orders-workspace/useOrdersWorkspaceRealtime";
 import { isEmailNotVerifiedError } from "@/lib/trpcErrors";
 import { trpc } from "@/lib/trpc";
+import { ORDERING_CHANNEL_CASHIER_POS } from "@shared/ordering-platform/orderingChannelRegistry";
 import type { StaffSettlementLineInput } from "@shared/operational-session";
 import { SemanticEmptyState, SemanticLoadingState } from "@/design-system/semantic-section-state";
 import { Loader2, RefreshCw, ClipboardList, ChefHat, CheckCircle, AlertTriangle } from "lucide-react";
@@ -199,9 +200,14 @@ export function OrdersWorkspacePanel({
       orderingChannel?: string | null;
     }) => {
       const sessionless = isSessionlessSelfOrderingOrder(order);
+      const cashierPos = order.orderingChannel === ORDERING_CHANNEL_CASHIER_POS;
       return {
         sessionless,
-        unpaidSessionless: sessionless && unpaidIds.has(order.orderId),
+        // listActive already requires a Paid/Complimentary Check for cashier_pos.
+        // Counter Pickup unpaidIds can still list a stale open membership and
+        // would expose Cancel on a settled Order.
+        unpaidSessionless:
+          !cashierPos && sessionless && unpaidIds.has(order.orderId),
         orderingChannel: order.orderingChannel ?? null,
       };
     },
@@ -288,6 +294,18 @@ export function OrdersWorkspacePanel({
 
       if (actionId === "settle-self-ordering") {
         openSettle(orderId);
+        return;
+      }
+
+      if (
+        actionId === "cancel-order" &&
+        gate.orderingChannel === ORDERING_CHANNEL_CASHIER_POS
+      ) {
+        toast.error(
+          isAr
+            ? "لا يمكن إلغاء طلب الصندوق المسوّى — استخدم تم التقديم"
+            : "Cannot cancel a settled Cashier order — use Served"
+        );
         return;
       }
 
