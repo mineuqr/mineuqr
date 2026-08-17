@@ -24,6 +24,8 @@ export type RestaurantOperationsShellProps = {
   tablesLabel?: string;
   breadcrumbs?: AdminBreadcrumbItem[];
   className?: string;
+  /** CASHIER-UX-FULLSCREEN-AND-THEME-1 — hide Dashboard chrome for Cashier only. */
+  immersive?: boolean;
 };
 
 export function RestaurantOperationsShell({
@@ -37,6 +39,7 @@ export function RestaurantOperationsShell({
   tablesLabel,
   breadcrumbs = [],
   className,
+  immersive = false,
 }: RestaurantOperationsShellProps) {
   const { language } = useLanguage();
   const crumbTrail: AdminBreadcrumbItem[] =
@@ -47,6 +50,18 @@ export function RestaurantOperationsShell({
             label: language === "ar" ? "لوحة التحكم" : "Dashboard",
           },
         ];
+
+  if (immersive) {
+    return (
+      <div
+        className="min-h-svh w-full bg-[#f4f5f7]"
+        dir={language === "ar" ? "rtl" : "ltr"}
+        lang={language}
+      >
+        {children}
+      </div>
+    );
+  }
 
   return (
     <RestaurantSidebarProvider>

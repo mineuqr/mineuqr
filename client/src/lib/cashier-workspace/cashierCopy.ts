@@ -106,6 +106,16 @@ const COPY: Record<string, { ar: string; en: string }> = {
     en: "The register is not open. Open it in Register Ops, then complete payment here.",
   },
   openRegisterOps: { ar: "فتح عمليات الصندوق", en: "Open Register Ops" },
+  returnDashboard: { ar: "العودة إلى لوحة التحكم", en: "Return to Dashboard" },
+  openNewTab: { ar: "فتح الكاشير في تبويب جديد", en: "Open Cashier in a new tab" },
+  newTabBlocked: {
+    ar: "تعذر فتح تبويب جديد. استخدم الكاشير في هذه النافذة.",
+    en: "A new tab could not be opened. Continue in this window.",
+  },
+  statusReady: { ar: "جاهز", en: "Ready" },
+  statusShift: { ar: "يلزم وردية الصندوق", en: "Register shift required" },
+  ticketSubtotal: { ar: "المجموع الفرعي", en: "Subtotal" },
+  removeLine: { ar: "حذف الصنف", en: "Remove item" },
 };
 
 export function cashierUiLabel(key: keyof typeof COPY, language: CashierLang): string {

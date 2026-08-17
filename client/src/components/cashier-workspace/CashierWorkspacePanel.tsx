@@ -12,12 +12,12 @@ import {
   AppLoadingState,
 } from "@/components/app-state";
 import { Button } from "@/components/ui/button";
-import { restaurantDash } from "@/components/dashboard/restaurantDashStyles";
 import { newCashierIdempotencyKey } from "@/lib/cashier-workspace/cashierIdempotency";
 import {
   cashierUiLabel,
   type CashierLang,
 } from "@/lib/cashier-workspace/cashierCopy";
+import { cashierPos } from "@/lib/cashier-workspace/cashierPosStyles";
 import {
   classifyCashierRegisterGap,
   type CashierRegisterGapKind,
@@ -31,6 +31,9 @@ import {
   displayMoneyTimesQuantity,
   displayTicketTotal,
 } from "@/lib/cashier-workspace/cashierTicketTotals";
+import {
+  tryOpenCashierNewTab,
+} from "@/lib/cashier-workspace/cashierWorkspaceNav";
 import { CASHIER_V1_PERMISSIONS } from "@/lib/cashier-workspace/cashierWorkspacePermissions";
 import { syncDashboardUrl } from "@/lib/dashboardUrl";
 import { listMonetaryPaymentMethodOptions } from "@/lib/settlementPaymentMethodPresentation";
@@ -69,6 +72,7 @@ type PaidCheckoutResult = {
 type Props = {
   restaurantId: number;
   language: CashierLang;
+  restaurantName?: string | null;
 };
 
 function isForbidden(error: unknown): boolean {
@@ -89,7 +93,11 @@ function categoryLabel(
   return nameEn || nameAr || unknownLabel;
 }
 
-export function CashierWorkspacePanel({ restaurantId, language }: Props) {
+export function CashierWorkspacePanel({
+  restaurantId,
+  language,
+  restaurantName,
+}: Props) {
   const dir = language === "ar" ? "rtl" : "ltr";
   const t = (key: Parameters<typeof cashierUiLabel>[0]) =>
     cashierUiLabel(key, language);
@@ -363,6 +371,16 @@ export function CashierWorkspacePanel({ restaurantId, language }: Props) {
     }
   }
 
+  function returnToDashboard() {
+    syncDashboardUrl({ restaurantId, section: "home" });
+  }
+
+  function openNewTab() {
+    if (!tryOpenCashierNewTab(restaurantId)) {
+      toast.error(t("newTabBlocked"));
+    }
+  }
+
   const items = catalogQuery.data ?? [];
   const categories = useMemo(() => {
     const map = new Map<
@@ -412,22 +430,36 @@ export function CashierWorkspacePanel({ restaurantId, language }: Props) {
     !terminalsQuery.isPending &&
     !listDenied &&
     activeTerminals.length === 0;
+  const operationalStatus = saleMutation.isPending
+    ? t("placing")
+    : settleMutation.isPending
+      ? t("paying")
+      : paidCheckout
+        ? t("paidTitle")
+        : registerGap
+          ? t("statusShift")
+          : openCheck
+            ? t("checkOpenedResult")
+            : allowed
+              ? t("statusReady")
+              : t("loading");
+  const selectedTerminalCode =
+    activeTerminals.find((row) => row.id === terminalId)?.code ?? terminalId;
 
   return (
-    <section
-      dir={dir}
-      className={cn(restaurantDash.stack, "min-h-[70vh]")}
-      aria-label={t("title")}
-    >
-      <header className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h2 className={restaurantDash.sectionTitle}>{t("title")}</h2>
-          <p className={restaurantDash.sectionSub}>{t("subtitle")}</p>
+    <section dir={dir} className={cashierPos.root} aria-label={t("title")}>
+      <header className={cashierPos.header}>
+        <div className="min-w-0">
+          <h1 className={cashierPos.headerTitle}>{t("title")}</h1>
+          {restaurantName ? (
+            <p className={cashierPos.headerMeta}>{restaurantName}</p>
+          ) : null}
         </div>
-        <label className="flex min-h-12 items-center gap-2 text-sm text-slate-300">
+        <span className={cashierPos.status}>{operationalStatus}</span>
+        <label className="flex min-h-11 items-center gap-2 text-sm text-[#374151]">
           <span>{t("terminal")}</span>
           <select
-            className="min-h-12 min-w-[10rem] rounded-md border border-cyan-500/30 bg-slate-900 px-3 text-white"
+            className={cashierPos.select}
             value={terminalId ?? ""}
             onChange={(event) => {
               const next = event.target.value || null;
@@ -439,7 +471,7 @@ export function CashierWorkspacePanel({ restaurantId, language }: Props) {
             <option value="">{t("selectTerminal")}</option>
             {isCashierTerminalId(terminalId) &&
             !activeTerminals.some((row) => row.id === terminalId) ? (
-              <option value={terminalId}>{terminalId}</option>
+              <option value={terminalId}>{selectedTerminalCode}</option>
             ) : null}
             {activeTerminals.map((row) => (
               <option key={row.id} value={row.id}>
@@ -448,34 +480,50 @@ export function CashierWorkspacePanel({ restaurantId, language }: Props) {
             ))}
           </select>
         </label>
+        <div className="ms-auto flex flex-wrap gap-2">
+          <button type="button" className={cashierPos.headerBtn} onClick={openNewTab}>
+            {t("openNewTab")}
+          </button>
+          <button
+            type="button"
+            className={cashierPos.headerBtnPrimary}
+            onClick={returnToDashboard}
+          >
+            {t("returnDashboard")}
+          </button>
+        </div>
       </header>
 
       {terminalsQuery.isPending ? <AppLoadingState label={t("loading")} /> : null}
 
       {listDenied && !scoped ? (
-        <AppForbiddenState
-          title={t("accessDenied")}
-          description={t("terminalListDenied")}
-        />
+        <div className="p-4">
+          <AppForbiddenState
+            title={t("accessDenied")}
+            description={t("terminalListDenied")}
+          />
+        </div>
       ) : null}
 
       {showCreateOrActivateTerminal ? (
-        <AppEmptyState
-          title={t("noTerminal")}
-          description={t("enableAccessHint")}
-          action={
-            <Button
-              type="button"
-              className="min-h-12"
-              onClick={() => void ensureTerminal()}
-              disabled={registerMutation.isPending || activateMutation.isPending}
-            >
-              {activatableTerminals.length > 0
-                ? t("activateTerminal")
-                : t("createTerminal")}
-            </Button>
-          }
-        />
+        <div className="p-4">
+          <AppEmptyState
+            title={t("noTerminal")}
+            description={t("enableAccessHint")}
+            action={
+              <Button
+                type="button"
+                className="min-h-12"
+                onClick={() => void ensureTerminal()}
+                disabled={registerMutation.isPending || activateMutation.isPending}
+              >
+                {activatableTerminals.length > 0
+                  ? t("activateTerminal")
+                  : t("createTerminal")}
+              </Button>
+            }
+          />
+        </div>
       ) : null}
 
       {scoped && accessQuery.isPending ? (
@@ -483,79 +531,90 @@ export function CashierWorkspacePanel({ restaurantId, language }: Props) {
       ) : null}
 
       {scoped && !accessQuery.isPending && readsDenied ? (
-        <AppForbiddenState
-          title={t("accessDenied")}
-          description={t("enableAccessHint")}
-          action={
-            user?.id ? (
-              <Button
-                type="button"
-                className="min-h-12"
-                onClick={() => void enableCashierAccess()}
-                disabled={grantMutation.isPending}
-              >
-                {t("enableAccess")}
-              </Button>
-            ) : null
-          }
-        />
+        <div className="p-4">
+          <AppForbiddenState
+            title={t("accessDenied")}
+            description={t("enableAccessHint")}
+            action={
+              user?.id ? (
+                <Button
+                  type="button"
+                  className="min-h-12"
+                  onClick={() => void enableCashierAccess()}
+                  disabled={grantMutation.isPending}
+                >
+                  {t("enableAccess")}
+                </Button>
+              ) : null
+            }
+          />
+        </div>
       ) : null}
 
       {scoped && allowed && catalogQuery.isError && !isForbidden(catalogQuery.error) ? (
-        <AppErrorState
-          title={t("errorTitle")}
-          description={userFacingError(catalogQuery.error, t("errorTitle"))}
-          retryLabel={t("retry")}
-          onRetry={() => void catalogQuery.refetch()}
-        />
+        <div className="p-4">
+          <AppErrorState
+            title={t("errorTitle")}
+            description={userFacingError(catalogQuery.error, t("errorTitle"))}
+            retryLabel={t("retry")}
+            onRetry={() => void catalogQuery.refetch()}
+          />
+        </div>
       ) : null}
 
       {scoped && allowed && ordersQuery.isError && !isForbidden(ordersQuery.error) ? (
-        <AppErrorState
-          title={t("errorTitle")}
-          description={userFacingError(ordersQuery.error, t("errorTitle"))}
-          retryLabel={t("retry")}
-          onRetry={() => void ordersQuery.refetch()}
-        />
+        <div className="p-4">
+          <AppErrorState
+            title={t("errorTitle")}
+            description={userFacingError(ordersQuery.error, t("errorTitle"))}
+            retryLabel={t("retry")}
+            onRetry={() => void ordersQuery.refetch()}
+          />
+        </div>
       ) : null}
 
       {scoped && allowed ? (
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(18rem,0.8fr)]">
-          <div className={cn(restaurantDash.card, "p-4")}>
-            <h3 className="mb-3 text-base font-semibold text-white">{t("catalog")}</h3>
-            {catalogQuery.isPending ? (
-              <AppLoadingState label={t("loading")} />
-            ) : visibleItems.length === 0 ? (
-              <AppEmptyState title={t("emptyCatalog")} />
-            ) : (
-              <>
-                <div className="mb-3 flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    variant={categoryFilter === "all" ? "default" : "outline"}
-                    className="min-h-11"
-                    onClick={() => setCategoryFilter("all")}
-                  >
-                    {t("allCategories")}
-                  </Button>
-                  {categories.map((category) => (
-                    <Button
-                      key={category.id}
-                      type="button"
-                      variant={categoryFilter === category.id ? "default" : "outline"}
-                      className="min-h-11"
-                      onClick={() => setCategoryFilter(category.id)}
-                    >
-                      {categoryLabel(
-                        language,
-                        category.nameAr,
-                        category.nameEn,
-                        t("unknownCategory")
-                      )}
-                    </Button>
-                  ))}
-                </div>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+        <div className={cashierPos.body}>
+          <div className={cashierPos.catalog}>
+            <div className={cashierPos.categoryBar}>
+              <button
+                type="button"
+                className={
+                  categoryFilter === "all"
+                    ? cashierPos.categoryBtnActive
+                    : cashierPos.categoryBtn
+                }
+                onClick={() => setCategoryFilter("all")}
+              >
+                {t("allCategories")}
+              </button>
+              {categories.map((category) => (
+                <button
+                  key={category.id}
+                  type="button"
+                  className={
+                    categoryFilter === category.id
+                      ? cashierPos.categoryBtnActive
+                      : cashierPos.categoryBtn
+                  }
+                  onClick={() => setCategoryFilter(category.id)}
+                >
+                  {categoryLabel(
+                    language,
+                    category.nameAr,
+                    category.nameEn,
+                    t("unknownCategory")
+                  )}
+                </button>
+              ))}
+            </div>
+            <div className={cashierPos.catalogScroll}>
+              {catalogQuery.isPending ? (
+                <AppLoadingState label={t("loading")} />
+              ) : visibleItems.length === 0 ? (
+                <AppEmptyState title={t("emptyCatalog")} />
+              ) : (
+                <div className={cashierPos.productGrid}>
                   {visibleItems.map((item) => {
                     const imageSrc = resolveImageUrl(item.imageUrl);
                     const itemName =
@@ -564,7 +623,7 @@ export function CashierWorkspacePanel({ restaurantId, language }: Props) {
                       <button
                         key={item.menuItemId}
                         type="button"
-                        className="min-h-24 rounded-xl border border-cyan-500/25 bg-slate-900/70 p-3 text-start active:scale-[0.99]"
+                        className={cashierPos.productCard}
                         onClick={() =>
                           addItem({
                             menuItemId: item.menuItemId,
@@ -575,210 +634,208 @@ export function CashierWorkspacePanel({ restaurantId, language }: Props) {
                         }
                       >
                         {imageSrc ? (
-                          <img
-                            src={imageSrc}
-                            alt=""
-                            className="mb-2 h-16 w-full rounded-lg object-cover"
-                          />
+                          <img src={imageSrc} alt="" className={cashierPos.productImage} />
                         ) : (
-                          <span
-                            aria-hidden
-                            className="mb-2 flex h-16 items-center justify-center rounded-lg bg-slate-800 text-lg text-slate-500"
-                          >
+                          <span aria-hidden className={cashierPos.productFallback}>
                             {itemName.slice(0, 1)}
                           </span>
                         )}
-                        <span className="block text-sm font-semibold text-white">
-                          {itemName}
-                        </span>
-                        <span className="mt-2 block text-sm text-cyan-300">
-                          {item.price}
-                        </span>
+                        <span className={cashierPos.productName}>{itemName}</span>
+                        <span className={cashierPos.productPrice}>{item.price}</span>
                       </button>
                     );
                   })}
                 </div>
-              </>
-            )}
+              )}
+            </div>
           </div>
 
-          <div className={cn(restaurantDash.card, "flex flex-col gap-3 p-4")}>
-            <h3 className="text-base font-semibold text-white">{t("ticket")}</h3>
-            {ticket.length === 0 ? (
-              <p className="text-sm text-slate-400">{t("ticketEmpty")}</p>
-            ) : (
-              <ul className="flex flex-col gap-2">
-                {ticket.map((line) => (
-                  <li
-                    key={line.menuItemId}
-                    className="flex items-center justify-between gap-2 rounded-lg border border-slate-700/80 px-3 py-2"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate text-sm text-white">
-                        {language === "ar" ? line.nameAr : line.nameEn ?? line.nameAr}
-                      </p>
-                      <p className="text-xs text-slate-400">
-                        {line.price} × {line.quantity} ={" "}
+          <aside className={cashierPos.aside}>
+            <div className={cashierPos.ticket}>
+              <h2 className="mb-2 text-sm font-semibold text-[#111827]">{t("ticket")}</h2>
+              {ticket.length === 0 ? (
+                <p className="text-sm text-[#6b7280]">{t("ticketEmpty")}</p>
+              ) : (
+                <ul className="flex min-h-0 flex-1 flex-col gap-2 overflow-auto">
+                  {ticket.map((line) => (
+                    <li key={line.menuItemId} className={cashierPos.ticketLine}>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-[#111827]">
+                          {language === "ar" ? line.nameAr : line.nameEn ?? line.nameAr}
+                        </p>
+                        <p className="text-xs text-[#6b7280]">
+                          {line.price} × {line.quantity}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="outline"
+                          className="size-11"
+                          aria-label={
+                            line.quantity === 1 ? t("removeLine") : t("qty")
+                          }
+                          onClick={() => changeQty(line.menuItemId, -1)}
+                        >
+                          {line.quantity === 1 ? <Trash2 /> : <Minus />}
+                        </Button>
+                        <span className="w-8 text-center text-sm font-semibold text-[#111827]">
+                          {line.quantity}
+                        </span>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="outline"
+                          className="size-11"
+                          aria-label={t("qty")}
+                          onClick={() => changeQty(line.menuItemId, 1)}
+                        >
+                          <Plus />
+                        </Button>
+                      </div>
+                      <p className="w-16 text-end text-sm font-semibold tabular-nums text-[#111827]">
                         {displayMoneyTimesQuantity(line.price, line.quantity)}
                       </p>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="outline"
-                        className="size-11"
-                        aria-label={t("qty")}
-                        onClick={() => changeQty(line.menuItemId, -1)}
-                      >
-                        {line.quantity === 1 ? <Trash2 /> : <Minus />}
-                      </Button>
-                      <span className="w-8 text-center text-white">{line.quantity}</span>
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="outline"
-                        className="size-11"
-                        onClick={() => changeQty(line.menuItemId, 1)}
-                      >
-                        <Plus />
-                      </Button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-            {ticket.length > 0 && ticketTotal ? (
-              <p className="flex items-center justify-between text-sm text-white">
-                <span>{t("ticketTotal")}</span>
-                <span className="tabular-nums text-cyan-300">{ticketTotal}</span>
-              </p>
-            ) : null}
-            <Button
-              type="button"
-              className="mt-auto min-h-12"
-              disabled={ticket.length === 0 || saleMutation.isPending || !terminalId}
-              onClick={() => void placeSale()}
-            >
-              <ShoppingCart />
-              {saleMutation.isPending ? t("placing") : t("placeSale")}
-            </Button>
-          </div>
-        </div>
-      ) : null}
-
-      {scoped && allowed ? (
-        <div className="grid gap-4 lg:grid-cols-2">
-          <div className={cn(restaurantDash.card, "p-4")}>
-            <h3 className="mb-3 text-base font-semibold text-white">{t("activeOrders")}</h3>
-            {ordersQuery.isPending ? (
-              <AppLoadingState label={t("loading")} />
-            ) : orders.length === 0 ? (
-              <AppEmptyState title={t("noOrders")} />
-            ) : (
-              <ul className="flex flex-col gap-2">
-                {orders.map((order) => (
-                  <li key={order.orderId}>
-                    <button
-                      type="button"
-                      className={cn(
-                        "min-h-14 w-full rounded-xl border px-3 py-2 text-start",
-                        selectedOrderId === order.orderId
-                          ? "border-cyan-400 bg-cyan-500/10"
-                          : "border-slate-700 bg-slate-900/50"
-                      )}
-                      onClick={() => selectOrder(order.orderId)}
-                    >
-                      <span className="block font-medium text-white">
-                        {order.displayReference || order.orderNumber}
-                      </span>
-                      <span className="text-xs text-slate-400">
-                        {order.status} · {order.totalAmount}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          <div className={cn(restaurantDash.card, "flex flex-col gap-3 p-4")}>
-            <h3 className="text-base font-semibold text-white">{t("checkout")}</h3>
-            {selectedOrderId == null ? (
-              <p className="text-sm text-slate-400">{t("noOrders")}</p>
-            ) : detailQuery.isPending ? (
-              <AppLoadingState label={t("loading")} />
-            ) : detailQuery.data ? (
-              <>
-                <p className="text-white">
-                  {t("orderCreated")}: {detailQuery.data.order.displayReference} ·{" "}
-                  {detailQuery.data.order.status}
-                </p>
-                {detailQuery.data.order.notes ? (
-                  <p className="text-sm text-slate-300">
-                    {t("notes")}: {detailQuery.data.order.notes}
-                  </p>
-                ) : null}
-                <ul className="text-sm text-slate-200">
-                  {detailQuery.data.order.lineItems.map((line) => (
-                    <li key={line.lineItemId}>
-                      {language === "ar" ? line.nameAr : line.nameEn ?? line.nameAr} ×{" "}
-                      {line.quantity}
-                      {line.itemNotes ? ` — ${t("notes")}: ${line.itemNotes}` : ""}
-                      {line.modifiers.length > 0
-                        ? ` — ${t("modifiers")}: ${line.modifiers.join(", ")}`
-                        : ""}
                     </li>
                   ))}
                 </ul>
+              )}
+              <div className={cashierPos.totalBox}>
+                <p className="flex justify-between text-sm text-[#6b7280]">
+                  <span>{t("ticketSubtotal")}</span>
+                  <span className="tabular-nums">{ticketTotal ?? "0.00"}</span>
+                </p>
+                <p className="mt-2 flex items-end justify-between">
+                  <span className="text-sm font-semibold text-[#111827]">
+                    {amountDue ? t("amountDue") : t("ticketTotal")}
+                  </span>
+                  <span className={cashierPos.totalValue}>
+                    {amountDue ?? ticketTotal ?? "0.00"}
+                  </span>
+                </p>
+                {amountDueIsOrderFallback ? (
+                  <p className="mt-1 text-xs text-[#6b7280]">{t("orderTotalHint")}</p>
+                ) : null}
+              </div>
+              <Button
+                type="button"
+                className={cn(cashierPos.primaryAction, "mt-3")}
+                disabled={ticket.length === 0 || saleMutation.isPending || !terminalId}
+                onClick={() => void placeSale()}
+              >
+                <ShoppingCart />
+                {saleMutation.isPending ? t("placing") : t("placeSale")}
+              </Button>
+            </div>
 
-                <div className="rounded-xl border border-cyan-500/25 bg-slate-900/60 p-3">
-                  {visibleCheckId != null ? (
-                    <p className="text-sm text-white">
-                      {t("checkLabel")} #{visibleCheckId}
-                      {paidCheckout
-                        ? ` · ${t("paidTitle")}`
-                        : openCheck
-                          ? ` · ${t("checkOpenedResult")}`
-                          : ""}
-                    </p>
+            <div className={cashierPos.checkout}>
+              <h2 className="mb-2 text-sm font-semibold text-[#111827]">{t("checkout")}</h2>
+              {ordersQuery.isPending ? (
+                <AppLoadingState label={t("loading")} />
+              ) : (
+                <>
+                  <p className="mb-2 text-xs font-medium text-[#6b7280]">{t("activeOrders")}</p>
+                  {orders.length === 0 ? (
+                    <p className="mb-3 text-sm text-[#6b7280]">{t("noOrders")}</p>
                   ) : (
-                    <p className="text-sm text-slate-400">{t("checkMissing")}</p>
+                    <ul className="mb-3 flex flex-col gap-2">
+                      {orders.map((order) => (
+                        <li key={order.orderId}>
+                          <button
+                            type="button"
+                            className={
+                              selectedOrderId === order.orderId
+                                ? cashierPos.orderBtnActive
+                                : cashierPos.orderBtn
+                            }
+                            onClick={() => selectOrder(order.orderId)}
+                          >
+                            <span className="block font-medium text-[#111827]">
+                              {order.displayReference || order.orderNumber}
+                            </span>
+                            <span className="text-xs text-[#6b7280]">
+                              {order.status} · {order.totalAmount}
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
                   )}
-                  {amountDue ? (
-                    <p className="mt-2 text-lg font-semibold tabular-nums text-cyan-300">
-                      {t("amountDue")}: {amountDue}
-                    </p>
-                  ) : null}
-                  {amountDueIsOrderFallback ? (
-                    <p className="mt-1 text-xs text-slate-500">{t("orderTotalHint")}</p>
-                  ) : null}
-                </div>
+                </>
+              )}
 
-                {paidCheckout ? (
-                  <div className="rounded-xl border border-emerald-500/40 bg-emerald-950/40 p-3">
-                    <p className="font-semibold text-emerald-300">{t("paidTitle")}</p>
-                    <p className="mt-1 text-sm text-slate-200">
-                      {t("checkLabel")} #{paidCheckout.checkId} · {t("paymentMethod")}:{" "}
-                      {paymentOptions.find(
-                        (option) => option.paymentMethod === paidCheckout.paymentMethod
-                      )?.label ?? paidCheckout.paymentMethod}{" "}
-                      · {paidCheckout.grandTotal}
+              {selectedOrderId == null ? (
+                <p className="text-sm text-[#6b7280]">{t("noOrders")}</p>
+              ) : detailQuery.isPending ? (
+                <AppLoadingState label={t("loading")} />
+              ) : detailQuery.data ? (
+                <>
+                  <p className="text-sm text-[#111827]">
+                    {t("orderCreated")}: {detailQuery.data.order.displayReference} ·{" "}
+                    {detailQuery.data.order.status}
+                  </p>
+                  {detailQuery.data.order.notes ? (
+                    <p className="text-sm text-[#4b5563]">
+                      {t("notes")}: {detailQuery.data.order.notes}
                     </p>
-                    <p className="mt-2 text-xs text-slate-400">{t("paidBody")}</p>
-                    <p className="mt-1 text-xs text-slate-500">{t("afterPayment")}</p>
-                    <Button
-                      type="button"
-                      className="mt-3 min-h-12"
-                      onClick={startNewSale}
-                    >
-                      {t("newSale")}
-                    </Button>
+                  ) : null}
+                  <ul className="my-2 text-sm text-[#374151]">
+                    {detailQuery.data.order.lineItems.map((line) => (
+                      <li key={line.lineItemId}>
+                        {language === "ar" ? line.nameAr : line.nameEn ?? line.nameAr} ×{" "}
+                        {line.quantity}
+                        {line.itemNotes ? ` — ${t("notes")}: ${line.itemNotes}` : ""}
+                        {line.modifiers.length > 0
+                          ? ` — ${t("modifiers")}: ${line.modifiers.join(", ")}`
+                          : ""}
+                      </li>
+                    ))}
+                  </ul>
+
+                  <div className={cashierPos.checkBox}>
+                    {visibleCheckId != null ? (
+                      <p className="text-sm text-[#111827]">
+                        {t("checkLabel")} #{visibleCheckId}
+                        {paidCheckout
+                          ? ` · ${t("paidTitle")}`
+                          : openCheck
+                            ? ` · ${t("checkOpenedResult")}`
+                            : ""}
+                      </p>
+                    ) : (
+                      <p className="text-sm text-[#6b7280]">{t("checkMissing")}</p>
+                    )}
+                    {amountDue ? (
+                      <p className="mt-2 text-lg font-semibold tabular-nums text-[#0b3d36]">
+                        {t("amountDue")}: {amountDue}
+                      </p>
+                    ) : null}
                   </div>
-                ) : (
-                  <>
-                    <div>
-                      <p className="mb-2 text-sm font-medium text-slate-200">
+
+                  {paidCheckout ? (
+                    <div className={cn(cashierPos.paidBox, "mt-3")}>
+                      <p className="font-semibold">{t("paidTitle")}</p>
+                      <p className="mt-1 text-sm">
+                        {t("checkLabel")} #{paidCheckout.checkId} · {t("paymentMethod")}:{" "}
+                        {paymentOptions.find(
+                          (option) => option.paymentMethod === paidCheckout.paymentMethod
+                        )?.label ?? paidCheckout.paymentMethod}{" "}
+                        · {paidCheckout.grandTotal}
+                      </p>
+                      <p className="mt-2 text-xs">{t("paidBody")}</p>
+                      <p className="mt-1 text-xs opacity-80">{t("afterPayment")}</p>
+                      <Button
+                        type="button"
+                        className={cn(cashierPos.primaryAction, "mt-3")}
+                        onClick={startNewSale}
+                      >
+                        {t("newSale")}
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="mb-2 mt-3 text-sm font-medium text-[#111827]">
                         {t("selectPaymentMethod")}
                       </p>
                       <div className="grid grid-cols-2 gap-2">
@@ -787,9 +844,7 @@ export function CashierWorkspacePanel({ restaurantId, language }: Props) {
                             key={option.paymentMethod}
                             type="button"
                             variant={
-                              paymentMethod === option.paymentMethod
-                                ? "default"
-                                : "outline"
+                              paymentMethod === option.paymentMethod ? "default" : "outline"
                             }
                             className="min-h-12"
                             disabled={visibleCheckId == null}
@@ -799,88 +854,90 @@ export function CashierWorkspacePanel({ restaurantId, language }: Props) {
                           </Button>
                         ))}
                       </div>
-                    </div>
-                    {registerGap ? (
-                      <div className="rounded-xl border border-amber-500/40 bg-amber-950/30 p-3">
-                        <p className="text-sm text-amber-200">
-                          {t(registerGap === "shift_required"
-                            ? "shiftRequired"
-                            : registerGap === "register_closed"
-                              ? "registerClosed"
-                              : "registerRequired")}
-                        </p>
+                      {registerGap ? (
+                        <div className={cn(cashierPos.warnBox, "mt-3")}>
+                          <p className="text-sm">
+                            {t(
+                              registerGap === "shift_required"
+                                ? "shiftRequired"
+                                : registerGap === "register_closed"
+                                  ? "registerClosed"
+                                  : "registerRequired"
+                            )}
+                          </p>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="mt-3 min-h-12"
+                            onClick={() =>
+                              syncDashboardUrl({
+                                restaurantId,
+                                section: "register",
+                              })
+                            }
+                          >
+                            {t("openRegisterOps")}
+                          </Button>
+                        </div>
+                      ) : (
+                        <p className="mt-2 text-xs text-[#6b7280]">{t("settlementGap")}</p>
+                      )}
+                      <div className="mt-3 flex flex-wrap gap-2">
                         <Button
                           type="button"
                           variant="outline"
-                          className="mt-3 min-h-12"
-                          onClick={() =>
-                            syncDashboardUrl({
-                              restaurantId,
-                              section: "register",
-                            })
-                          }
+                          className="min-h-12"
+                          disabled={intakeMutation.isPending}
+                          onClick={() => void intakeCheck()}
                         >
-                          {t("openRegisterOps")}
+                          {t("intakeCheck")}
+                        </Button>
+                        <Button
+                          type="button"
+                          className="min-h-12"
+                          disabled={
+                            settleMutation.isPending ||
+                            visibleCheckId == null ||
+                            paymentMethod == null
+                          }
+                          onClick={() => void completePayment()}
+                        >
+                          {settleMutation.isPending ? t("paying") : t("completePayment")}
                         </Button>
                       </div>
-                    ) : (
-                      <p className="text-xs text-slate-500">{t("settlementGap")}</p>
-                    )}
-                    <div className="mt-auto flex flex-wrap gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="min-h-12"
-                        disabled={intakeMutation.isPending}
-                        onClick={() => void intakeCheck()}
-                      >
-                        {t("intakeCheck")}
-                      </Button>
-                      <Button
-                        type="button"
-                        className="min-h-12"
-                        disabled={
-                          settleMutation.isPending ||
-                          visibleCheckId == null ||
-                          paymentMethod == null
-                        }
-                        onClick={() => void completePayment()}
-                      >
-                        {settleMutation.isPending ? t("paying") : t("completePayment")}
-                      </Button>
-                    </div>
-                  </>
-                )}
+                    </>
+                  )}
 
-                <div>
-                  <h4 className="mb-1 text-sm font-semibold text-slate-300">{t("timeline")}</h4>
-                  <ul className="text-xs text-slate-400">
-                    {(timelineQuery.data?.events ?? []).map((event) => (
-                      <li key={event.eventId}>
-                        {event.toStatus} · {event.occurredAt}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                {(settlementQuery.data ?? []).length > 0 ? (
-                  <div>
-                    <h4 className="mb-1 text-sm font-semibold text-slate-300">
-                      {t("settlement")}
-                    </h4>
-                    <ul className="text-sm text-slate-200">
-                      {(settlementQuery.data ?? []).map((row) => (
-                        <li key={`${row.checkId}-${row.orderId}`}>
-                          {row.settlementStatus} · {row.outstandingAmount}
+                  <div className="mt-3">
+                    <h3 className="mb-1 text-xs font-semibold text-[#6b7280]">{t("timeline")}</h3>
+                    <ul className="text-xs text-[#6b7280]">
+                      {(timelineQuery.data?.events ?? []).map((event) => (
+                        <li key={event.eventId}>
+                          {event.toStatus} · {event.occurredAt}
                         </li>
                       ))}
                     </ul>
                   </div>
-                ) : null}
-              </>
-            ) : (
-              <AppEmptyState title={t("noOrders")} />
-            )}
-          </div>
+                  {(settlementQuery.data ?? []).length > 0 ? (
+                    <div className="mt-2">
+                      <h3 className="mb-1 text-xs font-semibold text-[#6b7280]">
+                        {t("settlement")}
+                      </h3>
+                      <ul className="text-sm text-[#374151]">
+                        {(settlementQuery.data ?? []).map((row) => (
+                          <li key={`${row.checkId}-${row.orderId}`}>
+                            {row.settlementStatus} · {row.outstandingAmount}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                </>
+              ) : (
+                <AppEmptyState title={t("noOrders")} />
+              )}
+            </div>
+          </aside>
         </div>
       ) : null}
     </section>

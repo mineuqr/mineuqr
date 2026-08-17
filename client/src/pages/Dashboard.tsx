@@ -6,6 +6,7 @@ import { DiningSessionWorkspaceSheet } from "@/components/dashboard/DiningSessio
 import { ActiveSessionsPreviewSection } from "@/components/dashboard/ActiveSessionsPreviewSection";
 import { SessionsWorkspacePanel } from "@/components/dashboard/SessionsWorkspacePanel";
 import { OrdersWorkspacePanel } from "@/components/orders-workspace/OrdersWorkspacePanel";
+import { CashierRouteFallback } from "@/components/cashier-workspace/CashierRouteFallback";
 import { CashierWorkspacePanel } from "@/components/cashier-workspace/CashierWorkspacePanel";
 import {
   OperationalOrderCard,
@@ -67,7 +68,7 @@ import {
   CheckCircle2,
   Menu, CreditCard, Sparkles, Globe
 } from "lucide-react";
-import { useState, useRef, useCallback, useEffect, useMemo, type ComponentType } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo, type ComponentType, type ReactElement } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -326,8 +327,11 @@ export default function Dashboard() {
         }
         tablesLabel={tablesLabel}
         breadcrumbs={shellBreadcrumbs}
+        immersive={activeSection === "restaurant-detail" && restaurantTab === "cashier"}
       >
-        {isAuthenticated ? <EmailVerificationBanner className="mb-6" /> : null}
+        {isAuthenticated && restaurantTab !== "cashier" ? (
+          <EmailVerificationBanner className="mb-6" />
+        ) : null}
         {gate.isPending ? (
           <DashboardMainSkeleton />
         ) : activeSection === "restaurants" ? (
@@ -970,11 +974,20 @@ function RestaurantDetail({
       !restaurantError && !restaurantPending && restaurant === null,
   });
 
+  const cashierGate = (node: ReactElement) =>
+    activeTab === "cashier" ? (
+      <CashierRouteFallback restaurantId={restaurantId} language={uiLanguage}>
+        {node}
+      </CashierRouteFallback>
+    ) : (
+      node
+    );
+
   if (detailPhase === "loading") {
-    return <AppLoadingState label={t("uiState.loading")} />;
+    return cashierGate(<AppLoadingState label={t("uiState.loading")} />);
   }
   if (detailPhase === "unauthorized") {
-    return (
+    return cashierGate(
       <AppUnauthorizedState
         title={t("uiState.unauthorizedTitle")}
         description={t("dashboard.pleaseLogin")}
@@ -984,7 +997,7 @@ function RestaurantDetail({
     );
   }
   if (detailPhase === "forbidden") {
-    return (
+    return cashierGate(
       <AppForbiddenState
         title={t("uiState.forbiddenTitle")}
         description={formatUserFacingQueryError(restaurantQueryError, t)}
@@ -992,7 +1005,7 @@ function RestaurantDetail({
     );
   }
   if (detailPhase === "error") {
-    return (
+    return cashierGate(
       <AppErrorState
         title={userFacingErrorTitle(restaurantQueryError, t)}
         description={formatUserFacingQueryError(restaurantQueryError, t)}
@@ -1005,10 +1018,24 @@ function RestaurantDetail({
     );
   }
   if (detailPhase === "empty" || !restaurant) {
-    return <AppEmptyState title={t("dashboard.restaurantNotFound")} />;
+    return cashierGate(<AppEmptyState title={t("dashboard.restaurantNotFound")} />);
   }
 
   const statsAriaLabel = language === "ar" ? "نظرة عامة" : "Overview";
+
+  if (activeTab === "cashier") {
+    const restaurantName =
+      language === "ar"
+        ? restaurant?.nameAr
+        : restaurant?.nameEn || restaurant?.nameAr;
+    return (
+      <CashierWorkspacePanel
+        restaurantId={restaurantId}
+        language={language === "ar" ? "ar" : "en"}
+        restaurantName={restaurantName ?? null}
+      />
+    );
+  }
 
   return (
     <div className={dash.stack}>
@@ -1082,13 +1109,6 @@ function RestaurantDetail({
           language={language}
           currencySymbol={(restaurant as { currencySymbol?: string })?.currencySymbol}
           tableLabel={(restaurant as { tableLabel?: string })?.tableLabel}
-        />
-      )}
-
-      {activeTab === "cashier" && (
-        <CashierWorkspacePanel
-          restaurantId={restaurantId}
-          language={language === "ar" ? "ar" : "en"}
         />
       )}
 

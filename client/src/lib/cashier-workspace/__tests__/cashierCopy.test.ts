@@ -10,7 +10,9 @@ describe("cashier presentation helpers", () => {
     expect(cashierUiLabel("subtitle", "ar")).toContain("عمليات الصندوق");
     expect(cashierUiLabel("completePayment", "en")).toBe("Complete payment");
     expect(cashierUiLabel("openRegisterOps", "en")).toBe("Open Register Ops");
-    expect(cashierUiLabel("checkOpenedResult", "ar")).toBe("الشيك مفتوح");
+    expect(cashierUiLabel("returnDashboard", "ar")).toBe("العودة إلى لوحة التحكم");
+    expect(cashierUiLabel("openNewTab", "ar")).toBe("فتح الكاشير في تبويب جديد");
+    expect(cashierUiLabel("allCategories", "ar")).toBe("الكل");
   });
 
   it("issues command idempotency keys in the existing POS length window", () => {
