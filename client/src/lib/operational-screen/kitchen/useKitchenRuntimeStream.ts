@@ -2,8 +2,9 @@
  * Kitchen / Expo runtime stream — fetch read model, apply category filter in runtime layer.
  * Presentation consumes the filtered stream only.
  *
- * REALTIME-KITCHEN-ADOPTION-1 — kitchen_display → kitchen channel
- * REALTIME-EXPO-ADOPTION-1 — expo_display → expo channel
+ * REALTIME-KITCHEN-ADOPTION-1 — kitchen channel
+ * REALTIME-EXPO-ADOPTION-1 — expo channel
+ * Queue fetch is gated by kitchen_queue capability, not display role.
  */
 
 import { useEffect, useMemo } from "react";

@@ -12,6 +12,11 @@ import KioskShell from "./pages/kiosk/KioskShell";
 import WaiterShell from "./pages/waiter/WaiterShell";
 import OrderConfirmationPage from "./pages/OrderConfirmationPage";
 
+/** Public `/kiosk/:slug/*` routes. KioskShell also accepts Screen Runtime `activation`; wouter Route props are unused (shell reads the path via useRoute). */
+function KioskShellRoute() {
+  return <KioskShell />;
+}
+
 /** Dashboard routes — WaiterShell also accepts optional Screen Runtime activation props. */
 function WaiterShellRoute() {
   return <WaiterShell />;
@@ -102,12 +107,12 @@ function Router() {
         <Route path="/menu/:slug/table/:tableNumber/checkout" component={TableOrderingShell} />
         <Route path="/menu/:slug/table/:tableNumber" component={TableOrderingShell} />
         <Route path="/menu/:slug" component={MenuView} />
-        <Route path="/kiosk/:slug/confirmed" component={KioskShell} />
-        <Route path="/kiosk/:slug/checkout" component={KioskShell} />
-        <Route path="/kiosk/:slug/cart" component={KioskShell} />
-        <Route path="/kiosk/:slug/menu" component={KioskShell} />
-        <Route path="/kiosk/:slug/language" component={KioskShell} />
-        <Route path="/kiosk/:slug" component={KioskShell} />
+        <Route path="/kiosk/:slug/confirmed" component={KioskShellRoute} />
+        <Route path="/kiosk/:slug/checkout" component={KioskShellRoute} />
+        <Route path="/kiosk/:slug/cart" component={KioskShellRoute} />
+        <Route path="/kiosk/:slug/menu" component={KioskShellRoute} />
+        <Route path="/kiosk/:slug/language" component={KioskShellRoute} />
+        <Route path="/kiosk/:slug" component={KioskShellRoute} />
         <Route path="/waiter/:slug/confirmed" component={WaiterShellRoute} />
         <Route path="/waiter/:slug/checkout" component={WaiterShellRoute} />
         <Route path="/waiter/:slug/cart" component={WaiterShellRoute} />
