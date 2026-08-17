@@ -94,4 +94,21 @@ describe("CompleteCashierPosOperationalService", () => {
     expect(statuses).toEqual(["preparing", "ready", "served"]);
     expect(result).toEqual({ previousStatus: "pending", newStatus: "served" });
   });
+
+  it("repairs leftover active lifecycle when the Order is already served", async () => {
+    const result = await svc.execute({
+      orderId: 8,
+      restaurantId: 1,
+      sessionId: null,
+      orderingChannel: "cashier_pos",
+      currentStatus: "served",
+      actor,
+    });
+    expect(advance.execute).toHaveBeenCalledWith({
+      orderId: 8,
+      targetStatus: "served",
+      actor,
+    });
+    expect(result).toEqual({ previousStatus: "served", newStatus: "served" });
+  });
 });

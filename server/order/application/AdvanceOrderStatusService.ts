@@ -30,6 +30,27 @@ export class AdvanceOrderStatusService {
 
     const previousStatus = order.status;
     if (previousStatus === command.targetStatus) {
+      // CASHIER-ORDER-VISIBILITY-AND-NOTIFICATION-1 — served/cancelled with
+      // leftover operational lifecycle must complete so listActive drops them.
+      if (
+        order.lifecycleStage === "active" &&
+        (command.targetStatus === "served" || command.targetStatus === "cancelled")
+      ) {
+        const expectedUpdatedAt = order.toPersistedProps().updatedAt;
+        const changedAt = new Date().toISOString().slice(0, 19).replace("T", " ");
+        order.advanceLifecycleStage("completed", changedAt);
+        const events = order.pullDomainEvents();
+        await this.repository.save(order, {
+          expectedUpdatedAt,
+          domainEvents: events,
+        });
+        order.clearDomainEvents();
+        return {
+          events,
+          previousStatus,
+          newStatus: command.targetStatus,
+        };
+      }
       return {
         events: [],
         previousStatus,

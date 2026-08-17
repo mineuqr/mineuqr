@@ -27,7 +27,7 @@ vi.mock("../../../../../customerPush/routes", () => ({
   cleanupPushSubscriptionsForOrder: vi.fn(async () => undefined),
 }));
 
-import { createNotification } from "../../../../../db";
+import { createNotification, getOrderById } from "../../../../../db";
 import { sendReadyPushForOrder } from "../../../../../customerPush/sendReadyPush";
 import { cleanupPushSubscriptionsForOrder } from "../../../../../customerPush/routes";
 
@@ -36,6 +36,12 @@ describe("OrderNotificationConsumer", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(getOrderById).mockReset();
+    vi.mocked(getOrderById).mockResolvedValue({
+      id: 7,
+      orderNumber: "ORD-7",
+      trackingToken: "tok-7",
+    } as never);
   });
 
   it("creates owner notification on OrderCreated", async () => {
@@ -74,6 +80,42 @@ describe("OrderNotificationConsumer", () => {
         notificationType: "new_order",
       })
     );
+  });
+
+  it("does not create inbound new_order for cashier_pos", async () => {
+    vi.mocked(getOrderById).mockResolvedValueOnce({
+      id: 55,
+      orderingChannel: "cashier_pos",
+    } as never);
+    await consumer.handle({
+      id: "o1-pos",
+      eventId: "e1-pos",
+      eventType: "OrderCreated",
+      aggregateType: "Order",
+      aggregateId: 55,
+      aggregateVersion: null,
+      restaurantId: 1,
+      sequenceNumber: 1,
+      occurredAt: "2026-06-27 10:00:00",
+      correlationId: null,
+      causationId: null,
+      payloadVersion: 1,
+      payload: {
+        type: "OrderCreated",
+        schemaVersion: 1,
+        orderId: 55,
+        restaurantId: 1,
+        tableId: 0,
+        tableNumber: 0,
+        orderNumber: "P-013",
+        trackingToken: "tok",
+        totalAmount: "10.00",
+        lineCount: 1,
+        sessionId: null,
+        createdAt: "2026-06-27 10:00:00",
+      },
+    });
+    expect(createNotification).not.toHaveBeenCalled();
   });
 
   it("sends ready push on OrderReady", async () => {

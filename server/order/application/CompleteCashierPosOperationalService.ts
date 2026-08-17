@@ -42,7 +42,12 @@ export class CompleteCashierPosOperationalService {
 
     const previousStatus = input.currentStatus;
     if (previousStatus === "served") {
-      return { previousStatus, newStatus: "served" };
+      const completed = await this.advance.execute({
+        orderId: input.orderId,
+        targetStatus: "served",
+        actor: input.actor,
+      });
+      return { previousStatus, newStatus: completed.newStatus };
     }
     if (previousStatus === "cancelled") {
       throw new InvalidTransitionError(previousStatus, "served");

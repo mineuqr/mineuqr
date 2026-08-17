@@ -108,7 +108,7 @@ describe("AdvanceOrderStatusService LIFECYCLE-SETTLEMENT-GUARDS-1", () => {
     expect(order.advanceStatus).toHaveBeenCalled();
   });
 
-  it("idempotent served request skips guard mutation path", async () => {
+  it("idempotent served request skips guard and completes leftover active lifecycle", async () => {
     const order = makeOrder({ sessionId: null, status: "served" });
     vi.mocked(repo.findById).mockResolvedValue(order as never);
 
@@ -118,9 +118,14 @@ describe("AdvanceOrderStatusService LIFECYCLE-SETTLEMENT-GUARDS-1", () => {
       actor: { type: "staff", userId: 1 } as never,
     });
 
-    expect(result.events).toEqual([]);
     expect(guardMocks.assertOrderCompletable).not.toHaveBeenCalled();
     expect(order.advanceStatus).not.toHaveBeenCalled();
+    expect(order.advanceLifecycleStage).toHaveBeenCalledWith(
+      "completed",
+      expect.any(String)
+    );
+    expect(repo.save).toHaveBeenCalled();
+    expect(result.newStatus).toBe("served");
   });
 
   it("does not gate cancel (pre-settlement cancel remains allowed)", async () => {

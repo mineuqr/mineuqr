@@ -1,3 +1,4 @@
+import { ORDERING_CHANNEL_CASHIER_POS } from "@shared/ordering-platform/orderingChannelRegistry";
 import {
   createNotification,
   getOrderById,
@@ -71,6 +72,12 @@ export class OrderNotificationConsumer implements OrderEventConsumer {
       notificationNewOrderKey(restaurantId, event.orderId)
     );
     if (!claimed) return;
+
+    const order = await getOrderById(event.orderId);
+    // CASHIER-ORDER-VISIBILITY-AND-NOTIFICATION-1 — cashier_pos is accepted
+    // at sale and is not inbound Table/Waiter/Kiosk work. Do not create
+    // unread new_order (owner alert sound has no Accept acknowledgement).
+    if (order?.orderingChannel === ORDERING_CHANNEL_CASHIER_POS) return;
 
     const restaurant = await getRestaurantById(event.restaurantId);
     if (!restaurant) return;

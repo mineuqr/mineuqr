@@ -11,6 +11,7 @@ import { mapActiveOrderItemDto } from "../../../order/read/presentation/mapActiv
 import { mapStoredOrderReadLineItem } from "../../../order/read/infrastructure/persistence/mapStoredOrderReadLineItem";
 import { KITCHEN_READ_DATABASE_UNAVAILABLE } from "../domain/kitchenReadErrorCodes";
 import { operationalLifecycleFilter } from "../../../order/read/projections/materializers/projectionLifecycle";
+import { cashierPosPaidOperationalVisibilitySql } from "../../../order/read/cashierPosOperationalVisibility";
 
 export type OrderReadPipelineOrderRow = {
   restaurantId: number;
@@ -69,7 +70,8 @@ export class DrizzleOrderReadQueryAdapter implements OrderReadQueryPort {
       .where(
         and(
           eq(orderReadOrders.restaurantId, restaurantId),
-          eq(orderReadOrders.lifecycleStage, operationalLifecycleFilter())
+          eq(orderReadOrders.lifecycleStage, operationalLifecycleFilter()),
+          cashierPosPaidOperationalVisibilitySql()
         )
       )
       .orderBy(asc(orderReadOrders.createdAt));

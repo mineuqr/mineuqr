@@ -132,7 +132,7 @@ function getCashierPosOrdersActions(
   status: OrderLifecycleStatus,
   gate: OrdersSettlementGate
 ): OperationalAction[] {
-  if (status === "served" || status === "cancelled") return [];
+  if (status === "cancelled") return [];
   if (gate.unpaidSessionless) {
     return [{ id: "cancel-order", ...ACTIONS["cancel-order"] }];
   }
