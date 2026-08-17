@@ -19,15 +19,26 @@ import {
   type CashierLang,
 } from "@/lib/cashier-workspace/cashierCopy";
 import {
+  classifyCashierRegisterGap,
+  type CashierRegisterGapKind,
+} from "@/lib/cashier-workspace/cashierRegisterGap";
+import {
   isCashierTerminalId,
   readCashierTerminalId,
   writeCashierTerminalId,
 } from "@/lib/cashier-workspace/cashierTerminalStorage";
+import {
+  displayMoneyTimesQuantity,
+  displayTicketTotal,
+} from "@/lib/cashier-workspace/cashierTicketTotals";
 import { CASHIER_V1_PERMISSIONS } from "@/lib/cashier-workspace/cashierWorkspacePermissions";
+import { syncDashboardUrl } from "@/lib/dashboardUrl";
+import { listMonetaryPaymentMethodOptions } from "@/lib/settlementPaymentMethodPresentation";
 import { formatTrpcErrorForUser } from "@/lib/trpcErrors";
 import { classifyQueryError } from "@/lib/ui-state/classifyQueryError";
 import { trpc } from "@/lib/trpc";
-import { cn } from "@/lib/utils";
+import { cn, resolveImageUrl } from "@/lib/utils";
+import type { SelectablePaymentMethod } from "@shared/operational-session";
 import { Minus, Plus, ShoppingCart, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -38,6 +49,21 @@ type TicketLine = {
   nameEn: string | null;
   price: string;
   quantity: number;
+};
+
+type OpenCheckResult = {
+  checkId: number;
+  orderId: number;
+  outcome: "open";
+  replayed: boolean;
+};
+
+type PaidCheckoutResult = {
+  checkId: number;
+  orderId: number;
+  grandTotal: string;
+  settlementRecordId: string | null;
+  paymentMethod: SelectablePaymentMethod;
 };
 
 type Props = {
@@ -53,6 +79,16 @@ function userFacingError(error: unknown, fallback: string): string {
   return formatTrpcErrorForUser(error, () => fallback);
 }
 
+function categoryLabel(
+  language: CashierLang,
+  nameAr: string | null,
+  nameEn: string | null,
+  unknownLabel: string
+): string {
+  if (language === "ar") return nameAr || nameEn || unknownLabel;
+  return nameEn || nameAr || unknownLabel;
+}
+
 export function CashierWorkspacePanel({ restaurantId, language }: Props) {
   const dir = language === "ar" ? "rtl" : "ltr";
   const t = (key: Parameters<typeof cashierUiLabel>[0]) =>
@@ -65,12 +101,24 @@ export function CashierWorkspacePanel({ restaurantId, language }: Props) {
   const [ticket, setTicket] = useState<TicketLine[]>([]);
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<number | "all">("all");
+  const [openCheck, setOpenCheck] = useState<OpenCheckResult | null>(null);
+  const [paidCheckout, setPaidCheckout] = useState<PaidCheckoutResult | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<SelectablePaymentMethod | null>(
+    null
+  );
+  const [registerGap, setRegisterGap] = useState<CashierRegisterGapKind | null>(
+    null
+  );
 
   useEffect(() => {
     setTerminalId(readCashierTerminalId(restaurantId));
     setTicket([]);
     setSelectedOrderId(null);
     setCategoryFilter("all");
+    setOpenCheck(null);
+    setPaidCheckout(null);
+    setPaymentMethod(null);
+    setRegisterGap(null);
   }, [restaurantId]);
 
   const terminalsQuery = trpc.pos.terminal.list.useQuery(
@@ -145,16 +193,11 @@ export function CashierWorkspacePanel({ restaurantId, language }: Props) {
   const intakeMutation = trpc.pos.check.intake.useMutation();
   const settleMutation = trpc.pos.settlement.initiate.useMutation();
 
-  async function invalidateCashierReads() {
-    if (!terminalId) return;
-    await Promise.all([
-      utils.pos.read.catalog.listItems.invalidate(),
-      utils.pos.read.orders.listActive.invalidate(),
-      utils.pos.read.orders.getDetail.invalidate(),
-      utils.pos.read.orders.getTimeline.invalidate(),
-      utils.pos.read.orderSettlement.listByOrder.invalidate(),
-      utils.pos.access.context.invalidate(),
-    ]);
+  function invalidateOrderReads() {
+    void utils.pos.read.orders.listActive.invalidate();
+    void utils.pos.read.orders.getDetail.invalidate();
+    void utils.pos.read.orders.getTimeline.invalidate();
+    void utils.pos.read.orderSettlement.listByOrder.invalidate();
   }
 
   async function enableCashierAccess() {
@@ -168,7 +211,8 @@ export function CashierWorkspacePanel({ restaurantId, language }: Props) {
         });
       }
       await accessQuery.refetch();
-      await invalidateCashierReads();
+      invalidateOrderReads();
+      void utils.pos.read.catalog.listItems.invalidate();
     } catch (error) {
       toast.error(userFacingError(error, t("errorTitle")));
     }
@@ -222,6 +266,23 @@ export function CashierWorkspacePanel({ restaurantId, language }: Props) {
     );
   }
 
+  function selectOrder(orderId: number) {
+    setSelectedOrderId(orderId);
+    setOpenCheck(null);
+    setPaidCheckout(null);
+    setPaymentMethod(null);
+    setRegisterGap(null);
+  }
+
+  function startNewSale() {
+    setTicket([]);
+    setSelectedOrderId(null);
+    setOpenCheck(null);
+    setPaidCheckout(null);
+    setPaymentMethod(null);
+    setRegisterGap(null);
+  }
+
   async function placeSale() {
     if (!terminalId || ticket.length === 0) return;
     try {
@@ -236,8 +297,12 @@ export function CashierWorkspacePanel({ restaurantId, language }: Props) {
       });
       setTicket([]);
       setSelectedOrderId(result.orderId);
+      setOpenCheck(null);
+      setPaidCheckout(null);
+      setPaymentMethod(null);
+      setRegisterGap(null);
       toast.success(`${t("salePlaced")} ${result.displayReference}`);
-      await invalidateCashierReads();
+      invalidateOrderReads();
     } catch (error) {
       toast.error(userFacingError(error, t("errorTitle")));
     }
@@ -246,45 +311,94 @@ export function CashierWorkspacePanel({ restaurantId, language }: Props) {
   async function intakeCheck() {
     if (!terminalId || selectedOrderId == null) return;
     try {
-      await intakeMutation.mutateAsync({
+      const result = await intakeMutation.mutateAsync({
         restaurantId,
         terminalId,
         orderId: selectedOrderId,
         idempotencyKey: newCashierIdempotencyKey("check"),
       });
-      toast.success(t("checkOpened"));
-      await invalidateCashierReads();
+      setOpenCheck({
+        checkId: result.checkId,
+        orderId: result.orderId,
+        outcome: result.outcome,
+        replayed: result.replayed,
+      });
+      setPaidCheckout(null);
+      setRegisterGap(null);
+      toast.success(`${t("checkOpened")} #${result.checkId}`);
+      await utils.pos.read.orderSettlement.listByOrder.invalidate();
     } catch (error) {
       toast.error(userFacingError(error, t("errorTitle")));
     }
   }
 
-  async function initiateSettlement() {
-    if (!terminalId || selectedOrderId == null) return;
+  async function completePayment() {
+    if (!terminalId || selectedOrderId == null || !paymentMethod) return;
     try {
-      await settleMutation.mutateAsync({
+      const result = await settleMutation.mutateAsync({
         restaurantId,
         terminalId,
         orderId: selectedOrderId,
         idempotencyKey: newCashierIdempotencyKey("settle"),
+        paymentMethod,
       });
-      toast.success(t("settlementStarted"));
-      await invalidateCashierReads();
+      setPaidCheckout({
+        checkId: result.checkId,
+        orderId: result.orderId,
+        grandTotal: result.grandTotal,
+        settlementRecordId: result.settlementRecordId,
+        paymentMethod,
+      });
+      setRegisterGap(null);
+      toast.success(
+        `${t("paidTitle")} · ${t("checkLabel")} #${result.checkId} · ${result.grandTotal}`
+      );
+      invalidateOrderReads();
     } catch (error) {
+      const gap = classifyCashierRegisterGap(error);
+      if (gap) {
+        setRegisterGap(gap);
+      }
       toast.error(userFacingError(error, t("errorTitle")));
     }
   }
 
   const items = catalogQuery.data ?? [];
-  const categoryIds = useMemo(
-    () => Array.from(new Set(items.map((item) => item.categoryId))).sort((a, b) => a - b),
-    [items]
-  );
+  const categories = useMemo(() => {
+    const map = new Map<
+      number,
+      { id: number; nameAr: string | null; nameEn: string | null }
+    >();
+    for (const item of items) {
+      if (!map.has(item.categoryId)) {
+        map.set(item.categoryId, {
+          id: item.categoryId,
+          nameAr: item.categoryNameAr,
+          nameEn: item.categoryNameEn,
+        });
+      }
+    }
+    return Array.from(map.values());
+  }, [items]);
   const visibleItems =
     categoryFilter === "all"
       ? items
       : items.filter((item) => item.categoryId === categoryFilter);
   const orders = ordersQuery.data?.items ?? [];
+  const ticketTotal = displayTicketTotal(ticket);
+  const paymentOptions = listMonetaryPaymentMethodOptions(language);
+  const settlementRow = (settlementQuery.data ?? [])[0];
+  const visibleCheckId =
+    paidCheckout?.checkId ?? openCheck?.checkId ?? settlementRow?.checkId ?? null;
+  const amountDue =
+    paidCheckout?.grandTotal ??
+    settlementRow?.outstandingAmount ??
+    detailQuery.data?.order.totalAmount ??
+    null;
+  const amountDueIsOrderFallback =
+    !paidCheckout &&
+    !settlementRow?.outstandingAmount &&
+    Boolean(detailQuery.data?.order.totalAmount);
 
   const listDenied = Boolean(
     terminalsQuery.error && isForbidden(terminalsQuery.error)
@@ -424,39 +538,65 @@ export function CashierWorkspacePanel({ restaurantId, language }: Props) {
                   >
                     {t("allCategories")}
                   </Button>
-                  {categoryIds.map((id) => (
+                  {categories.map((category) => (
                     <Button
-                      key={id}
+                      key={category.id}
                       type="button"
-                      variant={categoryFilter === id ? "default" : "outline"}
+                      variant={categoryFilter === category.id ? "default" : "outline"}
                       className="min-h-11"
-                      onClick={() => setCategoryFilter(id)}
+                      onClick={() => setCategoryFilter(category.id)}
                     >
-                      {t("category")} {id}
+                      {categoryLabel(
+                        language,
+                        category.nameAr,
+                        category.nameEn,
+                        t("unknownCategory")
+                      )}
                     </Button>
                   ))}
                 </div>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-                  {visibleItems.map((item) => (
-                    <button
-                      key={item.menuItemId}
-                      type="button"
-                      className="min-h-24 rounded-xl border border-cyan-500/25 bg-slate-900/70 p-3 text-start active:scale-[0.99]"
-                      onClick={() =>
-                        addItem({
-                          menuItemId: item.menuItemId,
-                          nameAr: item.nameAr,
-                          nameEn: item.nameEn,
-                          price: item.price,
-                        })
-                      }
-                    >
-                      <span className="block text-sm font-semibold text-white">
-                        {language === "ar" ? item.nameAr : item.nameEn ?? item.nameAr}
-                      </span>
-                      <span className="mt-2 block text-sm text-cyan-300">{item.price}</span>
-                    </button>
-                  ))}
+                  {visibleItems.map((item) => {
+                    const imageSrc = resolveImageUrl(item.imageUrl);
+                    const itemName =
+                      language === "ar" ? item.nameAr : item.nameEn ?? item.nameAr;
+                    return (
+                      <button
+                        key={item.menuItemId}
+                        type="button"
+                        className="min-h-24 rounded-xl border border-cyan-500/25 bg-slate-900/70 p-3 text-start active:scale-[0.99]"
+                        onClick={() =>
+                          addItem({
+                            menuItemId: item.menuItemId,
+                            nameAr: item.nameAr,
+                            nameEn: item.nameEn,
+                            price: item.price,
+                          })
+                        }
+                      >
+                        {imageSrc ? (
+                          <img
+                            src={imageSrc}
+                            alt=""
+                            className="mb-2 h-16 w-full rounded-lg object-cover"
+                          />
+                        ) : (
+                          <span
+                            aria-hidden
+                            className="mb-2 flex h-16 items-center justify-center rounded-lg bg-slate-800 text-lg text-slate-500"
+                          >
+                            {itemName.slice(0, 1)}
+                          </span>
+                        )}
+                        <span className="block text-sm font-semibold text-white">
+                          {itemName}
+                        </span>
+                        <span className="mt-2 block text-sm text-cyan-300">
+                          {item.price}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               </>
             )}
@@ -477,7 +617,10 @@ export function CashierWorkspacePanel({ restaurantId, language }: Props) {
                       <p className="truncate text-sm text-white">
                         {language === "ar" ? line.nameAr : line.nameEn ?? line.nameAr}
                       </p>
-                      <p className="text-xs text-slate-400">{line.price}</p>
+                      <p className="text-xs text-slate-400">
+                        {line.price} × {line.quantity} ={" "}
+                        {displayMoneyTimesQuantity(line.price, line.quantity)}
+                      </p>
                     </div>
                     <div className="flex items-center gap-1">
                       <Button
@@ -505,6 +648,12 @@ export function CashierWorkspacePanel({ restaurantId, language }: Props) {
                 ))}
               </ul>
             )}
+            {ticket.length > 0 && ticketTotal ? (
+              <p className="flex items-center justify-between text-sm text-white">
+                <span>{t("ticketTotal")}</span>
+                <span className="tabular-nums text-cyan-300">{ticketTotal}</span>
+              </p>
+            ) : null}
             <Button
               type="button"
               className="mt-auto min-h-12"
@@ -538,7 +687,7 @@ export function CashierWorkspacePanel({ restaurantId, language }: Props) {
                           ? "border-cyan-400 bg-cyan-500/10"
                           : "border-slate-700 bg-slate-900/50"
                       )}
-                      onClick={() => setSelectedOrderId(order.orderId)}
+                      onClick={() => selectOrder(order.orderId)}
                     >
                       <span className="block font-medium text-white">
                         {order.displayReference || order.orderNumber}
@@ -554,7 +703,7 @@ export function CashierWorkspacePanel({ restaurantId, language }: Props) {
           </div>
 
           <div className={cn(restaurantDash.card, "flex flex-col gap-3 p-4")}>
-            <h3 className="text-base font-semibold text-white">{t("orderDetail")}</h3>
+            <h3 className="text-base font-semibold text-white">{t("checkout")}</h3>
             {selectedOrderId == null ? (
               <p className="text-sm text-slate-400">{t("noOrders")}</p>
             ) : detailQuery.isPending ? (
@@ -562,7 +711,8 @@ export function CashierWorkspacePanel({ restaurantId, language }: Props) {
             ) : detailQuery.data ? (
               <>
                 <p className="text-white">
-                  {detailQuery.data.order.displayReference} · {detailQuery.data.order.status}
+                  {t("orderCreated")}: {detailQuery.data.order.displayReference} ·{" "}
+                  {detailQuery.data.order.status}
                 </p>
                 {detailQuery.data.order.notes ? (
                   <p className="text-sm text-slate-300">
@@ -581,6 +731,127 @@ export function CashierWorkspacePanel({ restaurantId, language }: Props) {
                     </li>
                   ))}
                 </ul>
+
+                <div className="rounded-xl border border-cyan-500/25 bg-slate-900/60 p-3">
+                  {visibleCheckId != null ? (
+                    <p className="text-sm text-white">
+                      {t("checkLabel")} #{visibleCheckId}
+                      {paidCheckout
+                        ? ` · ${t("paidTitle")}`
+                        : openCheck
+                          ? ` · ${t("checkOpenedResult")}`
+                          : ""}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-slate-400">{t("checkMissing")}</p>
+                  )}
+                  {amountDue ? (
+                    <p className="mt-2 text-lg font-semibold tabular-nums text-cyan-300">
+                      {t("amountDue")}: {amountDue}
+                    </p>
+                  ) : null}
+                  {amountDueIsOrderFallback ? (
+                    <p className="mt-1 text-xs text-slate-500">{t("orderTotalHint")}</p>
+                  ) : null}
+                </div>
+
+                {paidCheckout ? (
+                  <div className="rounded-xl border border-emerald-500/40 bg-emerald-950/40 p-3">
+                    <p className="font-semibold text-emerald-300">{t("paidTitle")}</p>
+                    <p className="mt-1 text-sm text-slate-200">
+                      {t("checkLabel")} #{paidCheckout.checkId} · {t("paymentMethod")}:{" "}
+                      {paymentOptions.find(
+                        (option) => option.paymentMethod === paidCheckout.paymentMethod
+                      )?.label ?? paidCheckout.paymentMethod}{" "}
+                      · {paidCheckout.grandTotal}
+                    </p>
+                    <p className="mt-2 text-xs text-slate-400">{t("paidBody")}</p>
+                    <p className="mt-1 text-xs text-slate-500">{t("afterPayment")}</p>
+                    <Button
+                      type="button"
+                      className="mt-3 min-h-12"
+                      onClick={startNewSale}
+                    >
+                      {t("newSale")}
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <div>
+                      <p className="mb-2 text-sm font-medium text-slate-200">
+                        {t("selectPaymentMethod")}
+                      </p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {paymentOptions.map((option) => (
+                          <Button
+                            key={option.paymentMethod}
+                            type="button"
+                            variant={
+                              paymentMethod === option.paymentMethod
+                                ? "default"
+                                : "outline"
+                            }
+                            className="min-h-12"
+                            disabled={visibleCheckId == null}
+                            onClick={() => setPaymentMethod(option.paymentMethod)}
+                          >
+                            {option.label}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                    {registerGap ? (
+                      <div className="rounded-xl border border-amber-500/40 bg-amber-950/30 p-3">
+                        <p className="text-sm text-amber-200">
+                          {t(registerGap === "shift_required"
+                            ? "shiftRequired"
+                            : registerGap === "register_closed"
+                              ? "registerClosed"
+                              : "registerRequired")}
+                        </p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="mt-3 min-h-12"
+                          onClick={() =>
+                            syncDashboardUrl({
+                              restaurantId,
+                              section: "register",
+                            })
+                          }
+                        >
+                          {t("openRegisterOps")}
+                        </Button>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-slate-500">{t("settlementGap")}</p>
+                    )}
+                    <div className="mt-auto flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="min-h-12"
+                        disabled={intakeMutation.isPending}
+                        onClick={() => void intakeCheck()}
+                      >
+                        {t("intakeCheck")}
+                      </Button>
+                      <Button
+                        type="button"
+                        className="min-h-12"
+                        disabled={
+                          settleMutation.isPending ||
+                          visibleCheckId == null ||
+                          paymentMethod == null
+                        }
+                        onClick={() => void completePayment()}
+                      >
+                        {settleMutation.isPending ? t("paying") : t("completePayment")}
+                      </Button>
+                    </div>
+                  </>
+                )}
+
                 <div>
                   <h4 className="mb-1 text-sm font-semibold text-slate-300">{t("timeline")}</h4>
                   <ul className="text-xs text-slate-400">
@@ -591,11 +862,11 @@ export function CashierWorkspacePanel({ restaurantId, language }: Props) {
                     ))}
                   </ul>
                 </div>
-                <div>
-                  <h4 className="mb-1 text-sm font-semibold text-slate-300">{t("settlement")}</h4>
-                  {(settlementQuery.data ?? []).length === 0 ? (
-                    <p className="text-sm text-slate-400">{t("noSettlement")}</p>
-                  ) : (
+                {(settlementQuery.data ?? []).length > 0 ? (
+                  <div>
+                    <h4 className="mb-1 text-sm font-semibold text-slate-300">
+                      {t("settlement")}
+                    </h4>
                     <ul className="text-sm text-slate-200">
                       {(settlementQuery.data ?? []).map((row) => (
                         <li key={`${row.checkId}-${row.orderId}`}>
@@ -603,28 +874,8 @@ export function CashierWorkspacePanel({ restaurantId, language }: Props) {
                         </li>
                       ))}
                     </ul>
-                  )}
-                  <p className="mt-2 text-xs text-slate-500">{t("settlementGap")}</p>
-                </div>
-                <div className="mt-auto flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="min-h-12"
-                    disabled={intakeMutation.isPending}
-                    onClick={() => void intakeCheck()}
-                  >
-                    {t("intakeCheck")}
-                  </Button>
-                  <Button
-                    type="button"
-                    className="min-h-12"
-                    disabled={settleMutation.isPending}
-                    onClick={() => void initiateSettlement()}
-                  >
-                    {t("initiateSettlement")}
-                  </Button>
-                </div>
+                  </div>
+                ) : null}
               </>
             ) : (
               <AppEmptyState title={t("noOrders")} />

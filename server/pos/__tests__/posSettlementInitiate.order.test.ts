@@ -460,7 +460,6 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
         grandTotal: "999.00",
         totalAmount: "999.00",
         tax: "1.00",
-        paymentMethod: "cash",
       } as typeof command,
     });
     expect(result.cashierUserId).toBe(STAFF_A);
@@ -475,6 +474,31 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
         operatorUserId: STAFF_A,
         deviceId: null,
       },
+    });
+  });
+
+  it("forwards a selectable payment method to Check as a single tender without client amounts", async () => {
+    const { store, grants, service, settle } = harness();
+    await seedTerminal(store);
+    await grantSettle(grants);
+    const result = await service.initiate({
+      user: user(STAFF_A),
+      command: {
+        ...command,
+        paymentMethod: "cash",
+      },
+    });
+    expect(result.outcome).toBe("paid");
+    expect(result.grandTotal).toBe(GRAND_TOTAL);
+    expect(settle).toHaveBeenCalledWith({
+      restaurantId: RESTAURANT_A,
+      checkId: CHECK_A,
+      settlementContextHints: {
+        registerId: REGISTER_ID,
+        operatorUserId: STAFF_A,
+        deviceId: null,
+      },
+      settlements: [{ paymentMethod: "cash" }],
     });
   });
 

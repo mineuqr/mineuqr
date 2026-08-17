@@ -6,7 +6,11 @@
 
 import { createHash } from "node:crypto";
 import { ORDERING_CHANNEL_CASHIER_POS } from "@shared/ordering-platform/orderingChannelRegistry";
-import { CHECK_TERMINAL_OUTCOMES } from "@shared/operational-session";
+import {
+  CHECK_TERMINAL_OUTCOMES,
+  type SelectablePaymentMethod,
+  type StaffSettlementLineInput,
+} from "@shared/operational-session";
 import { opsLog } from "../../_core/opsLog";
 import { getOrderById } from "../../db";
 import {
@@ -39,6 +43,8 @@ export type PosSettlementInitiateCommand = {
   terminalId: string;
   orderId: number;
   idempotencyKey: string;
+  /** Canonical catalog key forwarded to Check. Not a POS tender/amount. */
+  paymentMethod?: SelectablePaymentMethod;
 };
 
 export type PosSettlementInitiateResult = {
@@ -90,6 +96,7 @@ export type PosSettlementSettlePaid = (input: {
     operatorUserId: number;
     deviceId?: string | null;
   };
+  settlements?: readonly StaffSettlementLineInput[];
 }) => Promise<{
   check: PosSettlementCheckView;
   settlementRecordId: string | null;
@@ -108,6 +115,7 @@ function fingerprintOf(input: {
   terminalId: string;
   userId: number;
   orderId: number;
+  paymentMethod?: SelectablePaymentMethod | null;
 }): string {
   return createHash("sha256")
     .update(
@@ -116,6 +124,7 @@ function fingerprintOf(input: {
         terminalId: input.terminalId,
         userId: input.userId,
         orderId: input.orderId,
+        paymentMethod: input.paymentMethod ?? null,
       })
     )
     .digest("hex");
@@ -162,6 +171,7 @@ async function defaultSettlePaid(input: {
     operatorUserId: number;
     deviceId?: string | null;
   };
+  settlements?: readonly StaffSettlementLineInput[];
 }): Promise<{
   check: PosSettlementCheckView;
   settlementRecordId: string | null;
@@ -169,6 +179,7 @@ async function defaultSettlePaid(input: {
   const financial = await settleCheckPaidByIdDetailed({
     restaurantId: input.restaurantId,
     checkId: input.checkId,
+    settlements: input.settlements,
     settlementContextHints: {
       registerId: input.settlementContextHints.registerId,
       operatorUserId: input.settlementContextHints.operatorUserId,
@@ -299,6 +310,7 @@ export class PosSettlementInitiateService {
       terminalId: context.terminalId,
       userId: context.userId,
       orderId: order.id,
+      paymentMethod: input.command.paymentMethod ?? null,
     });
     const idempotencyKey = {
       restaurantId: context.restaurantId,
@@ -385,6 +397,11 @@ export class PosSettlementInitiateService {
         throw err;
       }
 
+      const settlements: readonly StaffSettlementLineInput[] | undefined =
+        input.command.paymentMethod
+          ? [{ paymentMethod: input.command.paymentMethod }]
+          : undefined;
+
       let settled: Awaited<ReturnType<PosSettlementSettlePaid>>;
       try {
         settled = await this.settlePaid({
@@ -395,6 +412,7 @@ export class PosSettlementInitiateService {
             operatorUserId: context.userId,
             deviceId: operational.deviceId,
           },
+          ...(settlements ? { settlements } : {}),
         });
       } catch (err) {
         if (err instanceof CheckTransitionError) {

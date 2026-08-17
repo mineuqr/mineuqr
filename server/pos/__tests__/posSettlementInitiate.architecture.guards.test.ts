@@ -81,16 +81,20 @@ describe("POS Settlement Initiation architecture guards", () => {
     expect(service).toContain("requireForSettlement");
   });
 
-  it("does not accept client financial values or persist POS tender/payment", () => {
+  it("does not accept client financial totals; payment method is a catalog key forwarded to Check", () => {
     const service = read("server/pos/services/PosSettlementInitiateService.ts");
     const router = read("server/pos/api/posRouter.ts");
     expect(service).not.toMatch(/grandTotal:\s*input\.command/);
     expect(service).not.toMatch(/totalAmount:\s*input/);
     expect(service).not.toMatch(/cashierId:\s*input\.command/);
-    expect(service).not.toMatch(/settlements:\s/);
     expect(router).not.toContain("totalAmount");
-    expect(router).not.toContain("paymentMethod");
     expect(router).not.toContain("tender");
+    expect(router).toContain("SELECTABLE_PAYMENT_METHODS");
+    expect(router).toContain('z.enum(["cash", "card"])');
+    expect(router).toContain("paymentMethod");
+    expect(router).not.toMatch(/from ["']@shared\/operational-session/);
+    expect(service).toContain("settleCheckPaidByIdDetailed");
+    expect(service).toContain("settlements");
     for (const file of SETTLEMENT_OWNED) {
       const src = read(file);
       expect(src, file).not.toContain("createPayment");

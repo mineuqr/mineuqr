@@ -61,6 +61,12 @@ describe("POS-CASHIER-WORKSPACE-IMPLEMENTATION-1 architecture guards", () => {
     expect(panel).not.toMatch(/SUM\s*\(\s*grandTotal/);
     expect(panel).not.toContain("pos_revenue");
     expect(panel).not.toContain("IdentityPlaceOrder");
+    expect(panel).toContain("resolveImageUrl");
+    expect(panel).toContain("categoryNameAr");
+    expect(panel).toContain("listMonetaryPaymentMethodOptions");
+    expect(panel).toContain('section: "register"');
+    expect(panel).toContain("syncDashboardUrl");
+    expect(panel).not.toContain("RegisterOperationsPanel");
   });
 
   it("does not auto-grant POS_ACCESS on dashboard load", () => {

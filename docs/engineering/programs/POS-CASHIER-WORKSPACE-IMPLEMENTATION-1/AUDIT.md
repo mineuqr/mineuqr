@@ -24,7 +24,7 @@ Register Operations remains `RegisterOperationsPanel` on `register`. Cashier is 
 `pos.read.orderSettlement.listByOrder`  
 `pos.read.catalog.listItems`
 
-Catalog DTO has `categoryId` but **no category name**. Group by id only.
+Catalog DTO projects Menu-owned `categoryNameAr` / `categoryNameEn` and nullable `imageUrl`. Cashier must not display category IDs or invent image storage.
 
 ## Existing POS commands (integrate, do not invent)
 

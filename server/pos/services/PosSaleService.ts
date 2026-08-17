@@ -229,41 +229,48 @@ export class PosSaleService {
 
       const placed = await (async () => {
         try {
-          return await runOrderCommand(() =>
-            this.placeOrder.execute(
-              {
-                restaurantId: context.restaurantId,
-                serviceMode: "counter",
-                fulfilmentAnchor: createStationFulfilmentAnchor({
-                  stationId: context.terminalId,
-                  fulfilmentLabel: context.terminalId,
-                }),
-                identityScope: "POS",
-                orderingChannel: ORDERING_CHANNEL_CASHIER_POS,
-                notes: input.command.notes,
-                items: input.command.items.map((item) => ({
-                  menuItemId: item.menuItemId,
-                  quantity: item.quantity,
-                  notes: item.notes,
-                  modifiers: item.modifiers,
-                })),
-              },
-              {
-                afterPersistInTransaction: async (tx, result) => {
-                  await this.persistSaleMappingInTransaction(
-                    tx,
-                    result,
-                    {
-                      restaurantId: context.restaurantId,
-                      terminalId: context.terminalId,
-                      userId: context.userId,
-                      idempotencyKey: input.command.idempotencyKey,
-                      fingerprint,
-                    }
-                  );
+          // ORDER-LIFECYCLE-LATENCY-REMEDIATION-1 — POS sale HTTP must not
+          // await runOrderEventRelayBatch (up to 50 pending outbox events,
+          // including unrelated backlog). Relay still runs via
+          // scheduleOrderEventRelay (setImmediate). Persist + idempotency
+          // stay inside the Order save transaction.
+          return await runOrderCommand(
+            () =>
+              this.placeOrder.execute(
+                {
+                  restaurantId: context.restaurantId,
+                  serviceMode: "counter",
+                  fulfilmentAnchor: createStationFulfilmentAnchor({
+                    stationId: context.terminalId,
+                    fulfilmentLabel: context.terminalId,
+                  }),
+                  identityScope: "POS",
+                  orderingChannel: ORDERING_CHANNEL_CASHIER_POS,
+                  notes: input.command.notes,
+                  items: input.command.items.map((item) => ({
+                    menuItemId: item.menuItemId,
+                    quantity: item.quantity,
+                    notes: item.notes,
+                    modifiers: item.modifiers,
+                  })),
                 },
-              }
-            )
+                {
+                  afterPersistInTransaction: async (tx, result) => {
+                    await this.persistSaleMappingInTransaction(
+                      tx,
+                      result,
+                      {
+                        restaurantId: context.restaurantId,
+                        terminalId: context.terminalId,
+                        userId: context.userId,
+                        idempotencyKey: input.command.idempotencyKey,
+                        fingerprint,
+                      }
+                    );
+                  },
+                }
+              ),
+            { awaitRelay: false }
           );
         } catch (error) {
           if (

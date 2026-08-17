@@ -19,6 +19,7 @@ import type { OrderSettlementDto } from "../../operational-session/check/api/ord
 vi.mock("../../db", () => ({
   getRestaurantById: vi.fn(),
   getMenuItemsByRestaurant: vi.fn(),
+  getCategoriesByRestaurant: vi.fn(async () => []),
   generateOrderNumber: vi.fn(async () => "ORD-MOCK-001"),
 }));
 vi.mock("../../subscription-runtime", () => ({
@@ -262,9 +263,10 @@ describe("POS order/catalog/settlement reads", () => {
           nameAr: "شاي",
           nameEn: "Tea",
           price: "4.50",
+          imageUrl: "https://cdn.example/tea.jpg",
           isAvailable: true,
           sortOrder: 1,
-          imageUrl: "secret",
+          secretColumn: "secret",
         } as never,
         {
           id: 6,
@@ -273,6 +275,7 @@ describe("POS order/catalog/settlement reads", () => {
           nameAr: "other",
           nameEn: null,
           price: "1.00",
+          imageUrl: null,
           isAvailable: true,
           sortOrder: 2,
         },
@@ -283,8 +286,17 @@ describe("POS order/catalog/settlement reads", () => {
           nameAr: "hidden",
           nameEn: null,
           price: "2.00",
+          imageUrl: null,
           isAvailable: false,
           sortOrder: 3,
+        },
+      ],
+      async () => [
+        {
+          id: 2,
+          restaurantId: RESTAURANT_A,
+          nameAr: "مقبلات",
+          nameEn: "Starters",
         },
       ]
     );
@@ -297,13 +309,16 @@ describe("POS order/catalog/settlement reads", () => {
     expect(all[0]).toEqual({
       menuItemId: 5,
       categoryId: 2,
+      categoryNameAr: "مقبلات",
+      categoryNameEn: "Starters",
       nameAr: "شاي",
       nameEn: "Tea",
       price: "4.50",
+      imageUrl: "https://cdn.example/tea.jpg",
       isAvailable: true,
       sortOrder: 1,
     });
-    expect(all[0]).not.toHaveProperty("imageUrl");
+    expect(all[0]).not.toHaveProperty("secretColumn");
 
     const available = await service.listItems({
       user: user(STAFF_A),

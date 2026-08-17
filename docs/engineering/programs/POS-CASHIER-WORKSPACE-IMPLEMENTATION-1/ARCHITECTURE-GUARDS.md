@@ -7,6 +7,8 @@
 | `RestaurantTab` includes `cashier`; URL map + sidebar `id: "cashier"`; Dashboard mounts `CashierWorkspacePanel` | Missing tab / hidden route |
 | Cashier tab is not Register Ops; Register Ops panel has no `CashierWorkspacePanel` / `trpc.pos.read` | Ownership merge |
 | Panel calls `pos.read.*` not `order.read` / `getDb` / `crmp` / `pos.cashier` | Second read model; Register/shift leak |
+| Catalog uses Menu `categoryNameAr` / `imageUrl` via POS DTO; `resolveImageUrl` fallback | Second catalog / image store |
+| Checkout uses `listMonetaryPaymentMethodOptions` + `pos.settlement.initiate`; Register gap links via `syncDashboardUrl` `section: "register"` | POS tender SSOT; merge into Register Ops |
 | No `SUM(grandTotal)` / `pos_revenue` / `IdentityPlaceOrder` | Reporting / Order rewrite |
 | Grant only inside `enableCashierAccess`; no `useEffect` grant; no `if (isOwner) return true` | Auto POS_ACCESS |
 | V1 permissions = POS_ACCESS, SALE_CREATE, CHECK_INTAKE, SETTLEMENT_INITIATE only | Shift/refund/staff catalog creep |

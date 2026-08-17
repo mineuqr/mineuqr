@@ -55,6 +55,7 @@ describe("POS read API architecture guards", () => {
     expect(settlement).toContain("OrderSettlementReadService");
     expect(settlement).toContain("this.settlements.listByOrder");
     expect(catalog).toContain("getMenuItemsByRestaurant");
+    expect(catalog).toContain("getCategoriesByRestaurant");
     expect(catalog).not.toContain("createMenuItem");
   });
 
@@ -69,10 +70,16 @@ describe("POS read API architecture guards", () => {
     expect(router).not.toContain("getMenuItemsByRestaurant");
   });
 
-  it("does not leak menu image URLs or invent a POS catalog schema", () => {
+  it("projects Menu-owned category names and imageUrl; does not invent POS catalog storage", () => {
     const dto = read("server/pos/read/posCatalogDto.ts");
+    const catalog = read("server/pos/services/PosCatalogReadService.ts");
     expect(dto).toContain("PosCatalogItemDto");
-    expect(dto).not.toContain("imageUrl");
+    expect(dto).toContain("categoryNameAr");
+    expect(dto).toContain("imageUrl");
     expect(dto).not.toContain("toFixed");
+    expect(catalog).toContain("getCategoriesByRestaurant");
+    expect(catalog).toContain("getMenuItemsByRestaurant");
+    expect(catalog).not.toContain("createMenuItem");
+    expect(catalog).not.toContain("createCategory");
   });
 });

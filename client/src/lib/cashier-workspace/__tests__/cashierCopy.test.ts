@@ -8,6 +8,9 @@ describe("cashier presentation helpers", () => {
     expect(cashierUiLabel("title", "en")).toBe("Cashier");
     expect(cashierUiLabel("subtitle", "en")).toContain("Register Ops");
     expect(cashierUiLabel("subtitle", "ar")).toContain("عمليات الصندوق");
+    expect(cashierUiLabel("completePayment", "en")).toBe("Complete payment");
+    expect(cashierUiLabel("openRegisterOps", "en")).toBe("Open Register Ops");
+    expect(cashierUiLabel("checkOpenedResult", "ar")).toBe("الشيك مفتوح");
   });
 
   it("issues command idempotency keys in the existing POS length window", () => {

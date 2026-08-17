@@ -80,6 +80,8 @@ const checkIntakeInput = terminalInput.extend({
 const settlementInitiateInput = terminalInput.extend({
   orderId: z.number().int().positive(),
   idempotencyKey: z.string().min(8).max(128),
+  /** Catalog keys from SELECTABLE_PAYMENT_METHODS. Amounts stay Check-owned. */
+  paymentMethod: z.enum(["cash", "card"]).optional(),
 });
 
 const cashierRegisterInput = terminalInput.extend({
@@ -394,6 +396,7 @@ export const posRouter = router({
               terminalId: input.terminalId,
               orderId: input.orderId,
               idempotencyKey: input.idempotencyKey,
+              paymentMethod: input.paymentMethod,
             },
           });
         } catch (err) {
