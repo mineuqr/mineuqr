@@ -1,0 +1,319 @@
+{
+  "totals": {
+    "before": 148,
+    "after": 28,
+    "allClasses": {
+      "UNCHANGED": 27,
+      "NEW": 1,
+      "REMOVED": 121
+    }
+  },
+  "ts2802": {
+    "before": 118,
+    "after": 0,
+    "removed": 118
+  },
+  "nonTS2802": {
+    "before": 30,
+    "after": 28,
+    "classes": {
+      "UNCHANGED": 27,
+      "NEW": 1,
+      "REMOVED": 3
+    },
+    "unchanged": [
+      {
+        "class": "UNCHANGED",
+        "code": "TS2345",
+        "key": "client/src/components/admin/platform-ops/commercial-catalog/CatalogManagementPanels.tsx:426:44:TS2345",
+        "beforeKey": "client/src/components/admin/platform-ops/commercial-catalog/CatalogManagementPanels.tsx:426:44:TS2345",
+        "afterKey": "client/src/components/admin/platform-ops/commercial-catalog/CatalogManagementPanels.tsx:426:44:TS2345",
+        "message": "Argument of type 'string' is not assignable to parameter of type 'SetStateAction<\"USD\">'."
+      },
+      {
+        "class": "UNCHANGED",
+        "code": "TS2345",
+        "key": "client/src/components/admin/platform-ops/commercial-catalog/CatalogManagementPanels.tsx:1102:27:TS2345",
+        "beforeKey": "client/src/components/admin/platform-ops/commercial-catalog/CatalogManagementPanels.tsx:1102:27:TS2345",
+        "afterKey": "client/src/components/admin/platform-ops/commercial-catalog/CatalogManagementPanels.tsx:1102:27:TS2345",
+        "message": "Argument of type 'string' is not assignable to parameter of type 'SetStateAction<\"USD\">'."
+      },
+      {
+        "class": "UNCHANGED",
+        "code": "TS2322",
+        "key": "client/src/components/admin/platform-ops/commercial-catalog/experience/CapabilityFilterPicker.tsx:132:11:TS2322",
+        "beforeKey": "client/src/components/admin/platform-ops/commercial-catalog/experience/CapabilityFilterPicker.tsx:132:11:TS2322",
+        "afterKey": "client/src/components/admin/platform-ops/commercial-catalog/experience/CapabilityFilterPicker.tsx:132:11:TS2322",
+        "message": "Type '\"healthy\"' is not assignable to type '\"default\" | \"primary\" | SemanticTone | \"emerald\" | \"amber\" | undefined'."
+      },
+      {
+        "class": "UNCHANGED",
+        "code": "TS2739",
+        "key": "client/src/components/admin/platform-ops/PlatformOpsReservedSection.tsx:19:7:TS2739",
+        "beforeKey": "client/src/components/admin/platform-ops/PlatformOpsReservedSection.tsx:19:7:TS2739",
+        "afterKey": "client/src/components/admin/platform-ops/PlatformOpsReservedSection.tsx:19:7:TS2739",
+        "message": "Type '{ audit: string[]; }' is missing the following properties from type 'Record<\"subscription\" | \"audit\" | \"commercial"
+      },
+      {
+        "class": "UNCHANGED",
+        "code": "TS2322",
+        "key": "client/src/components/admin/platform-ops/PlatformOpsSubscriptionComposition.tsx:63:9:TS2322",
+        "beforeKey": "client/src/components/admin/platform-ops/PlatformOpsSubscriptionComposition.tsx:63:9:TS2322",
+        "afterKey": "client/src/components/admin/platform-ops/PlatformOpsSubscriptionComposition.tsx:63:9:TS2322",
+        "message": "Type '3' is not assignable to type 'PlatformOpsHeroColumns | undefined'."
+      },
+      {
+        "class": "UNCHANGED",
+        "code": "TS2322",
+        "key": "client/src/components/dashboard/restaurantDashStyles.ts:189:3:TS2322",
+        "beforeKey": "client/src/components/dashboard/restaurantDashStyles.ts:189:3:TS2322",
+        "afterKey": "client/src/components/dashboard/restaurantDashStyles.ts:189:3:TS2322",
+        "message": "Type 'SemanticTone' is not assignable to type 'RestaurantKpiTone'."
+      },
+      {
+        "class": "UNCHANGED",
+        "code": "TS2769",
+        "key": "client/src/components/orders-workspace/OrdersWorkspacePanel.tsx:106:5:TS2769",
+        "beforeKey": "client/src/components/orders-workspace/OrdersWorkspacePanel.tsx:106:5:TS2769",
+        "afterKey": "client/src/components/orders-workspace/OrdersWorkspacePanel.tsx:106:5:TS2769",
+        "message": "No overload matches this call."
+      },
+      {
+        "class": "UNCHANGED",
+        "code": "TS2322",
+        "key": "client/src/design-system/semantic-badge/components/SemanticBadge.tsx:57:6:TS2322",
+        "beforeKey": "client/src/design-system/semantic-badge/components/SemanticBadge.tsx:57:6:TS2322",
+        "afterKey": "client/src/design-system/semantic-badge/components/SemanticBadge.tsx:57:6:TS2322",
+        "message": "Type '{ children: (Element | ReactNode)[]; ref?: Ref<HTMLSpanElement> | undefined; key?: Key | null | undefined; default"
+      },
+      {
+        "class": "UNCHANGED",
+        "code": "TS2322",
+        "key": "client/src/design-system/semantic-card/tokens/domain.ts:85:5:TS2322",
+        "beforeKey": "client/src/design-system/semantic-card/tokens/domain.ts:85:5:TS2322",
+        "afterKey": "client/src/design-system/semantic-card/tokens/domain.ts:85:5:TS2322",
+        "message": "Type 'string' is not assignable to type '\"border-emerald-500/45 bg-gradient-to-b from-emerald-950/50 to-slate-900/85\" | "
+      },
+      {
+        "class": "UNCHANGED",
+        "code": "TS1355",
+        "key": "client/src/design-system/semantic-table/tokens/tableSurface.ts:18:31:TS1355",
+        "beforeKey": "client/src/design-system/semantic-table/tokens/tableSurface.ts:18:31:TS1355",
+        "afterKey": "client/src/design-system/semantic-table/tokens/tableSurface.ts:18:31:TS1355",
+        "message": "A 'const' assertions can only be applied to references to enum members, or string, number, boolean, array, or object lit"
+      },
+      {
+        "class": "UNCHANGED",
+        "code": "TS2769",
+        "key": "client/src/lib/currencyLocale.ts:109:11:TS2769",
+        "beforeKey": "client/src/lib/currencyLocale.ts:109:11:TS2769",
+        "afterKey": "client/src/lib/currencyLocale.ts:109:11:TS2769",
+        "message": "No overload matches this call."
+      },
+      {
+        "class": "UNCHANGED",
+        "code": "TS2339",
+        "key": "client/src/lib/operational-screen/interaction/useOperationalDeviceOrderActions.ts:30:33:TS2339",
+        "beforeKey": "client/src/lib/operational-screen/interaction/useOperationalDeviceOrderActions.ts:30:33:TS2339",
+        "afterKey": "client/src/lib/operational-screen/interaction/useOperationalDeviceOrderActions.ts:30:33:TS2339",
+        "message": "Property 'restaurantId' does not exist on type 'RuntimeInstanceIdentity'."
+      },
+      {
+        "class": "UNCHANGED",
+        "code": "TS2769",
+        "key": "client/src/lib/operational-screen/kitchen/useKitchenRuntimeStream.ts:79:7:TS2769",
+        "beforeKey": "client/src/lib/operational-screen/kitchen/useKitchenRuntimeStream.ts:79:7:TS2769",
+        "afterKey": "client/src/lib/operational-screen/kitchen/useKitchenRuntimeStream.ts:79:7:TS2769",
+        "message": "No overload matches this call."
+      },
+      {
+        "class": "UNCHANGED",
+        "code": "TS2322",
+        "key": "client/src/lib/operational-screen/runtimeInstanceContext.ts:126:3:TS2322",
+        "beforeKey": "client/src/lib/operational-screen/runtimeInstanceContext.ts:126:3:TS2322",
+        "afterKey": "client/src/lib/operational-screen/runtimeInstanceContext.ts:126:3:TS2322",
+        "message": "Type 'Readonly<{ identity: Readonly<{ instanceId: string; businessId: string; displayIdentity: string; deviceId: string;"
+      },
+      {
+        "class": "UNCHANGED",
+        "code": "TS7016",
+        "key": "client/src/lib/reporting-exports/pdf/arabicPdfText.ts:6:25:TS7016",
+        "beforeKey": "client/src/lib/reporting-exports/pdf/arabicPdfText.ts:6:25:TS7016",
+        "afterKey": "client/src/lib/reporting-exports/pdf/arabicPdfText.ts:6:25:TS7016",
+        "message": "Could not find a declaration file for module 'bidi-js'. 'C:/mineuqr/node_modules/.pnpm/bidi-js@1.0.3/node_modules/bidi-j"
+      },
+      {
+        "class": "UNCHANGED",
+        "code": "TS2694",
+        "key": "client/src/lib/reporting-exports/pdf/buildReportingExportPdf.ts:32:50:TS2694",
+        "beforeKey": "client/src/lib/reporting-exports/pdf/buildReportingExportPdf.ts:32:50:TS2694",
+        "afterKey": "client/src/lib/reporting-exports/pdf/buildReportingExportPdf.ts:32:50:TS2694",
+        "message": "Namespace 'doc' has no exported member 'default'."
+      },
+      {
+        "class": "UNCHANGED",
+        "code": "TS2322",
+        "key": "client/src/lib/reporting-exports/pdf/buildReportingExportPdf.ts:495:20:TS2322",
+        "beforeKey": "client/src/lib/reporting-exports/pdf/buildReportingExportPdf.ts:495:20:TS2322",
+        "afterKey": "client/src/lib/reporting-exports/pdf/buildReportingExportPdf.ts:495:20:TS2322",
+        "message": "Type 'Uint8Array<ArrayBufferLike>' is not assignable to type 'BlobPart'."
+      },
+      {
+        "class": "UNCHANGED",
+        "code": "TS2339",
+        "key": "client/src/pages/Dashboard.tsx:2325:33:TS2339",
+        "beforeKey": "client/src/pages/Dashboard.tsx:2325:33:TS2339",
+        "afterKey": "client/src/pages/Dashboard.tsx:2325:33:TS2339",
+        "message": "Property 'emptyPanel' does not exist on type '{ shell: \"min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-s"
+      },
+      {
+        "class": "UNCHANGED",
+        "code": "TS2322",
+        "key": "client/src/pages/Dashboard.tsx:3234:17:TS2322",
+        "beforeKey": "client/src/pages/Dashboard.tsx:3234:17:TS2322",
+        "afterKey": "client/src/pages/Dashboard.tsx:3234:17:TS2322",
+        "message": "Type 'Readonly<{ version: number; components: readonly Readonly<{ id: string; name: string; ratePercent: string; }>[]; }"
+      },
+      {
+        "class": "UNCHANGED",
+        "code": "TS2322",
+        "key": "client/src/pages/kiosk/KioskShell.tsx:235:9:TS2322",
+        "beforeKey": "client/src/pages/kiosk/KioskShell.tsx:235:9:TS2322",
+        "afterKey": "client/src/pages/kiosk/KioskShell.tsx:235:9:TS2322",
+        "message": "Type '\"cart\" | \"checkout\" | \"tracking\" | \"browse\" | \"confirmation\"' is not assignable to type '\"cart\" | \"checkout\" | \"br"
+      },
+      {
+        "class": "UNCHANGED",
+        "code": "TS2322",
+        "key": "client/src/pages/MenuView.tsx:253:11:TS2322",
+        "beforeKey": "client/src/pages/MenuView.tsx:253:11:TS2322",
+        "afterKey": "client/src/pages/MenuView.tsx:253:11:TS2322",
+        "message": "Type 'string' is not assignable to type '\"tables\" | \"rooms\" | undefined'."
+      },
+      {
+        "class": "UNCHANGED",
+        "code": "TS2352",
+        "key": "server/crmp/DrizzleCrmpRepository.ts:472:25:TS2352",
+        "beforeKey": "server/crmp/DrizzleCrmpRepository.ts:472:25:TS2352",
+        "afterKey": "server/crmp/DrizzleCrmpRepository.ts:472:25:TS2352",
+        "message": "Conversion of type 'ResultSetHeader' to type '{ n: number; }[]' may be a mistake because neither type sufficiently overl"
+      },
+      {
+        "class": "UNCHANGED",
+        "code": "TS2352",
+        "key": "server/operational-session/check/refundDocumentNumberRepository.ts:51:34:TS2352",
+        "beforeKey": "server/operational-session/check/refundDocumentNumberRepository.ts:51:34:TS2352",
+        "afterKey": "server/operational-session/check/refundDocumentNumberRepository.ts:51:34:TS2352",
+        "message": "Conversion of type 'ResultSetHeader' to type '{ n: number; }[]' may be a mistake because neither type sufficiently overl"
+      },
+      {
+        "class": "UNCHANGED",
+        "code": "TS2352",
+        "key": "server/order/business-identity/infrastructure/DrizzleBusinessIdentityAllocator.ts:72:40:TS2352",
+        "beforeKey": "server/order/business-identity/infrastructure/DrizzleBusinessIdentityAllocator.ts:72:40:TS2352",
+        "afterKey": "server/order/business-identity/infrastructure/DrizzleBusinessIdentityAllocator.ts:72:40:TS2352",
+        "message": "Conversion of type 'ResultSetHeader' to type '{ n: number; }[]' may be a mistake because neither type sufficiently overl"
+      },
+      {
+        "class": "UNCHANGED",
+        "code": "TS2367",
+        "key": "server/reporting-platform/__scripts__/reportingUxRationalization.liveUat.ts:118:9:TS2367",
+        "beforeKey": "server/reporting-platform/__scripts__/reportingUxRationalization.liveUat.ts:118:9:TS2367",
+        "afterKey": "server/reporting-platform/__scripts__/reportingUxRationalization.liveUat.ts:118:9:TS2367",
+        "message": "This comparison appears to be unintentional because the types 'ExecutiveSummaryCardId' and '\"refundRate\"' have no overla"
+      },
+      {
+        "class": "UNCHANGED",
+        "code": "TS2367",
+        "key": "server/reporting-platform/__scripts__/reportingUxRationalization.liveUatData.ts:136:9:TS2367",
+        "beforeKey": "server/reporting-platform/__scripts__/reportingUxRationalization.liveUatData.ts:136:9:TS2367",
+        "afterKey": "server/reporting-platform/__scripts__/reportingUxRationalization.liveUatData.ts:136:9:TS2367",
+        "message": "This comparison appears to be unintentional because the types 'ExecutiveSummaryCardId' and '\"refundRate\"' have no overla"
+      },
+      {
+        "class": "UNCHANGED",
+        "code": "TS2677",
+        "key": "shared/reporting-platform/legacyReportingSurfaces.ts:150:15:TS2677",
+        "beforeKey": "shared/reporting-platform/legacyReportingSurfaces.ts:150:15:TS2677",
+        "afterKey": "shared/reporting-platform/legacyReportingSurfaces.ts:150:15:TS2677",
+        "message": "A type predicate's type must be assignable to its parameter's type."
+      }
+    ],
+    "moved": [],
+    "changed": [],
+    "neu": [
+      {
+        "class": "NEW",
+        "code": "TS2345",
+        "key": "client/src/components/admin/platform-ops/commercial-catalog/CatalogManagementPanels.tsx:1048:31:TS2345",
+        "afterKey": "client/src/components/admin/platform-ops/commercial-catalog/CatalogManagementPanels.tsx:1048:31:TS2345",
+        "message": "Argument of type 'string' is not assignable to parameter of type 'SetStateAction<\"USD\">'."
+      }
+    ],
+    "removed": [
+      {
+        "class": "REMOVED",
+        "code": "TS7006",
+        "key": "client/src/components/admin/platform-ops/commercial-catalog/CatalogManagementPanels.tsx:633:51:TS7006",
+        "beforeKey": "client/src/components/admin/platform-ops/commercial-catalog/CatalogManagementPanels.tsx:633:51:TS7006",
+        "message": "Parameter 'f' implicitly has an 'any' type."
+      },
+      {
+        "class": "REMOVED",
+        "code": "TS7006",
+        "key": "client/src/components/admin/platform-ops/commercial-catalog/CatalogManagementPanels.tsx:748:20:TS7006",
+        "beforeKey": "client/src/components/admin/platform-ops/commercial-catalog/CatalogManagementPanels.tsx:748:20:TS7006",
+        "message": "Parameter 'v' implicitly has an 'any' type."
+      },
+      {
+        "class": "REMOVED",
+        "code": "TS7006",
+        "key": "server/crmp/InMemoryCrmpStore.ts:164:12:TS7006",
+        "beforeKey": "server/crmp/InMemoryCrmpStore.ts:164:12:TS7006",
+        "message": "Parameter 'a' implicitly has an 'any' type."
+      }
+    ]
+  },
+  "catalog": {
+    "before": [
+      "client/src/components/admin/platform-ops/commercial-catalog/CatalogManagementPanels.tsx:426:44:TS2345 TS2345",
+      "client/src/components/admin/platform-ops/commercial-catalog/CatalogManagementPanels.tsx:633:51:TS7006 TS7006",
+      "client/src/components/admin/platform-ops/commercial-catalog/CatalogManagementPanels.tsx:748:20:TS7006 TS7006",
+      "client/src/components/admin/platform-ops/commercial-catalog/CatalogManagementPanels.tsx:1102:27:TS2345 TS2345"
+    ],
+    "after": [
+      "client/src/components/admin/platform-ops/commercial-catalog/CatalogManagementPanels.tsx:426:44:TS2345 TS2345",
+      "client/src/components/admin/platform-ops/commercial-catalog/CatalogManagementPanels.tsx:1048:31:TS2345 TS2345",
+      "client/src/components/admin/platform-ops/commercial-catalog/CatalogManagementPanels.tsx:1102:27:TS2345 TS2345"
+    ]
+  },
+  "arithmetic": {
+    "before": 148,
+    "ts2802Removed": 118,
+    "otherRemoved": 3,
+    "minusRemoved": 121,
+    "plusNew": 1,
+    "changed": 0,
+    "movedOnly": 0,
+    "unclassified": 0,
+    "unchangedNonTs2802": 27,
+    "formula": "148 - 118 - 3 + 1 = 28",
+    "expectAfter": 28,
+    "reconciles": true
+  },
+  "line1048": {
+    "key": "client/src/components/admin/platform-ops/commercial-catalog/CatalogManagementPanels.tsx:1048:31:TS2345",
+    "primaryClass": "C",
+    "exposure": "A",
+    "not": ["B", "D", "E"],
+    "relatedUnchanged": [
+      "client/src/components/admin/platform-ops/commercial-catalog/CatalogManagementPanels.tsx:426:44:TS2345",
+      "client/src/components/admin/platform-ops/commercial-catalog/CatalogManagementPanels.tsx:1102:27:TS2345"
+    ],
+    "es5IncrementalFalse": false,
+    "es2020IncrementalFalse": true,
+    "sourceCommit": "570e23cbe",
+    "fileModifiedByThisProgram": false,
+    "causal": "RegionalPolicyService.list() infers [...regions.values()]; ES5 TS2802 at server/services/commercial-catalog/index.ts:714 types tRPC listRegions as any; ES2020 types CommercialRegion[] so r.currency is string vs useState<\"USD\">"
+  }
+}

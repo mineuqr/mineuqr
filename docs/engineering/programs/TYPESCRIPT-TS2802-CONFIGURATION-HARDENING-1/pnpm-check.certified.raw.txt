@@ -1,0 +1,88 @@
+﻿
+> qr_menu@1.0.0 check C:\mineuqr
+> tsc --noEmit
+
+client/src/components/admin/platform-ops/commercial-catalog/CatalogManagementPanels.tsx(426,44): error TS2345: Argument of type 'string' is not assignable to parameter of type 'SetStateAction<"USD">'.
+client/src/components/admin/platform-ops/commercial-catalog/CatalogManagementPanels.tsx(1048,31): error TS2345: Argument of type 'string' is not assignable to parameter of type 'SetStateAction<"USD">'.
+client/src/components/admin/platform-ops/commercial-catalog/CatalogManagementPanels.tsx(1102,27): error TS2345: Argument of type 'string' is not assignable to parameter of type 'SetStateAction<"USD">'.
+client/src/components/admin/platform-ops/commercial-catalog/experience/CapabilityFilterPicker.tsx(132,11): error TS2322: Type '"healthy"' is not assignable to type '"default" | "primary" | SemanticTone | "emerald" | "amber" | undefined'.
+client/src/components/admin/platform-ops/PlatformOpsReservedSection.tsx(19,7): error TS2739: Type '{ audit: string[]; }' is missing the following properties from type 'Record<"subscription" | "audit" | "commercialCatalog", string[]>': subscription, commercialCatalog
+client/src/components/admin/platform-ops/PlatformOpsSubscriptionComposition.tsx(63,9): error TS2322: Type '3' is not assignable to type 'PlatformOpsHeroColumns | undefined'.
+client/src/components/dashboard/restaurantDashStyles.ts(189,3): error TS2322: Type 'SemanticTone' is not assignable to type 'RestaurantKpiTone'.
+  Type '"danger"' is not assignable to type 'RestaurantKpiTone'.
+client/src/components/orders-workspace/OrdersWorkspacePanel.tsx(106,5): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(input: { restaurantId: unknown; status?: "pending" | "preparing" | "ready" | "all-active" | undefined; limit?: number | undefined; cursor?: string | null | undefined; } | typeof skipToken, opts: DefinedUseTRPCQueryOptions<...>): DefinedUseTRPCQueryResult<...>', gave the following error.
+    Argument of type '{ readonly enabled: boolean; readonly refetchInterval: false | 15000 | 3000; readonly staleTime: 0; readonly structuralSharing: <T extends ActiveOrderListLike>(oldData: T | undefined, newData: T) => T; }' is not assignable to parameter of type 'DefinedUseTRPCQueryOptions<ActiveOrderListResult, ActiveOrderListResult, TRPCClientErrorLike<{ errorShape: DefaultErrorShape; transformer: true; }>, ActiveOrderListResult>'.
+      Property 'initialData' is missing in type '{ readonly enabled: boolean; readonly refetchInterval: false | 15000 | 3000; readonly staleTime: 0; readonly structuralSharing: <T extends ActiveOrderListLike>(oldData: T | undefined, newData: T) => T; }' but required in type 'DefinedUseTRPCQueryOptions<ActiveOrderListResult, ActiveOrderListResult, TRPCClientErrorLike<{ errorShape: DefaultErrorShape; transformer: true; }>, ActiveOrderListResult>'.
+  Overload 2 of 2, '(input: { restaurantId: unknown; status?: "pending" | "preparing" | "ready" | "all-active" | undefined; limit?: number | undefined; cursor?: string | null | undefined; } | typeof skipToken, opts?: UseTRPCQueryOptions<...> | undefined): UseTRPCQueryResult<...>', gave the following error.
+    Argument of type '{ readonly enabled: boolean; readonly refetchInterval: false | 15000 | 3000; readonly staleTime: 0; readonly structuralSharing: <T extends ActiveOrderListLike>(oldData: T | undefined, newData: T) => T; }' is not assignable to parameter of type 'UseTRPCQueryOptions<ActiveOrderListResult, ActiveOrderListResult, TRPCClientErrorLike<{ input: { restaurantId: unknown; status?: "pending" | "preparing" | "ready" | "all-active" | undefined; limit?: number | undefined; cursor?: string | ... 1 more ... | undefined; }; output: ActiveOrderListResult; transformer: true;...'.
+      Types of property 'structuralSharing' are incompatible.
+        Type '<T extends ActiveOrderListLike>(oldData: T | undefined, newData: T) => T' is not assignable to type 'boolean | ((oldData: unknown, newData: unknown) => unknown) | undefined'.
+          Type '<T extends ActiveOrderListLike>(oldData: T | undefined, newData: T) => T' is not assignable to type '(oldData: unknown, newData: unknown) => unknown'.
+            Types of parameters 'oldData' and 'oldData' are incompatible.
+              Type 'unknown' is not assignable to type 'ActiveOrderListLike | undefined'.
+client/src/design-system/semantic-badge/components/SemanticBadge.tsx(57,6): error TS2322: Type '{ children: (Element | ReactNode)[]; ref?: Ref<HTMLSpanElement> | undefined; key?: Key | null | undefined; defaultChecked?: boolean | undefined; ... 280 more ...; className: string; }' is not assignable to type 'ClassAttributes<HTMLButtonElement>'.
+  Types of property 'ref' are incompatible.
+    Type 'Ref<HTMLSpanElement> | undefined' is not assignable to type 'Ref<HTMLButtonElement> | undefined'.
+      Type 'RefObject<HTMLSpanElement | null>' is not assignable to type 'Ref<HTMLButtonElement> | undefined'.
+        Type 'RefObject<HTMLSpanElement | null>' is not assignable to type 'RefObject<HTMLButtonElement | null>'.
+          Type 'HTMLSpanElement | null' is not assignable to type 'HTMLButtonElement | null'.
+            Type 'HTMLSpanElement' is missing the following properties from type 'HTMLButtonElement': disabled, form, formAction, formEnctype, and 15 more.
+client/src/design-system/semantic-card/tokens/domain.ts(85,5): error TS2322: Type 'string' is not assignable to type '"border-emerald-500/45 bg-gradient-to-b from-emerald-950/50 to-slate-900/85" | "border-sky-500/45 bg-gradient-to-b from-sky-950/45 to-slate-900/85" | "border-rose-500/45 bg-gradient-to-b from-rose-950/45 to-slate-900/85" | "border-violet-500/45 bg-gradient-to-b from-violet-950/45 to-slate-900/85" | "border-orange-50...'.
+client/src/design-system/semantic-table/tokens/tableSurface.ts(18,31): error TS1355: A 'const' assertions can only be applied to references to enum members, or string, number, boolean, array, or object literals.
+client/src/lib/currencyLocale.ts(109,11): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(locales?: LocalesArgument, options?: NumberFormatOptions | undefined): NumberFormat', gave the following error.
+    Argument of type '{ style: string; currency: string; currencyDisplay: string; minimumFractionDigits: number; maximumFractionDigits: number; } & { numberingSystem: "latn"; }' is not assignable to parameter of type 'NumberFormatOptions | undefined'.
+      Type '{ style: string; currency: string; currencyDisplay: string; minimumFractionDigits: number; maximumFractionDigits: number; } & { numberingSystem: "latn"; }' is not assignable to type 'NumberFormatOptions'.
+        Types of property 'style' are incompatible.
+          Type 'string' is not assignable to type 'keyof NumberFormatOptionsStyleRegistry | undefined'.
+  Overload 2 of 2, '(locales?: string | string[] | undefined, options?: NumberFormatOptions | undefined): NumberFormat', gave the following error.
+    Argument of type '{ style: string; currency: string; currencyDisplay: string; minimumFractionDigits: number; maximumFractionDigits: number; } & { numberingSystem: "latn"; }' is not assignable to parameter of type 'NumberFormatOptions | undefined'.
+      Type '{ style: string; currency: string; currencyDisplay: string; minimumFractionDigits: number; maximumFractionDigits: number; } & { numberingSystem: "latn"; }' is not assignable to type 'NumberFormatOptions'.
+        Types of property 'style' are incompatible.
+          Type 'string' is not assignable to type 'keyof NumberFormatOptionsStyleRegistry | undefined'.
+client/src/lib/operational-screen/interaction/useOperationalDeviceOrderActions.ts(30,33): error TS2339: Property 'restaurantId' does not exist on type 'RuntimeInstanceIdentity'.
+client/src/lib/operational-screen/kitchen/useKitchenRuntimeStream.ts(79,7): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(input: { status?: "pending" | "preparing" | "ready" | "all" | undefined; limit?: number | undefined; } | typeof skipToken, opts: DefinedUseTRPCQueryOptions<KitchenQueueResult, KitchenQueueResult, TRPCClientErrorLike<...>, KitchenQueueResult>): DefinedUseTRPCQueryResult<...>', gave the following error.
+    Type '<T extends KitchenQueueLike>(oldData: T | undefined, newData: T) => T' is not assignable to type 'boolean | ((oldData: unknown, newData: unknown) => unknown) | undefined'.
+      Type '<T extends KitchenQueueLike>(oldData: T | undefined, newData: T) => T' is not assignable to type '(oldData: unknown, newData: unknown) => unknown'.
+        Types of parameters 'oldData' and 'oldData' are incompatible.
+          Type 'unknown' is not assignable to type 'KitchenQueueLike | undefined'.
+  Overload 2 of 2, '(input: { status?: "pending" | "preparing" | "ready" | "all" | undefined; limit?: number | undefined; } | typeof skipToken, opts?: UseTRPCQueryOptions<KitchenQueueResult, KitchenQueueResult, TRPCClientErrorLike<...>, KitchenQueueResult> | undefined): UseTRPCQueryResult<...>', gave the following error.
+    Type '<T extends KitchenQueueLike>(oldData: T | undefined, newData: T) => T' is not assignable to type 'boolean | ((oldData: unknown, newData: unknown) => unknown) | undefined'.
+      Type '<T extends KitchenQueueLike>(oldData: T | undefined, newData: T) => T' is not assignable to type '(oldData: unknown, newData: unknown) => unknown'.
+        Types of parameters 'oldData' and 'oldData' are incompatible.
+          Type 'unknown' is not assignable to type 'KitchenQueueLike | undefined'.
+client/src/lib/operational-screen/runtimeInstanceContext.ts(126,3): error TS2322: Type 'Readonly<{ identity: Readonly<{ instanceId: string; businessId: string; displayIdentity: string; deviceId: string; }>; screen: Readonly<{ screenId: string; screenType: "kitchen_display" | "expo_display" | ... 4 more ... | "waiter_display"; displayName: string; location: string | null; zone: string | null; status: "d...' is not assignable to type 'Readonly<RuntimeInstanceContext>'.
+  The types of 'capabilities.supportedActions' are incompatible between these types.
+    The type 'readonly string[]' is 'readonly' and cannot be assigned to the mutable type 'string[]'.
+client/src/lib/reporting-exports/pdf/arabicPdfText.ts(6,25): error TS7016: Could not find a declaration file for module 'bidi-js'. 'C:/mineuqr/node_modules/.pnpm/bidi-js@1.0.3/node_modules/bidi-js/dist/bidi.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/bidi-js` if it exists or add a new declaration (.d.ts) file containing `declare module 'bidi-js';`
+client/src/lib/reporting-exports/pdf/buildReportingExportPdf.ts(32,50): error TS2694: Namespace 'doc' has no exported member 'default'.
+client/src/lib/reporting-exports/pdf/buildReportingExportPdf.ts(495,20): error TS2322: Type 'Uint8Array<ArrayBufferLike>' is not assignable to type 'BlobPart'.
+  Type 'Uint8Array<ArrayBufferLike>' is not assignable to type 'ArrayBufferView<ArrayBuffer>'.
+    Types of property 'buffer' are incompatible.
+      Type 'ArrayBufferLike' is not assignable to type 'ArrayBuffer'.
+        Type 'SharedArrayBuffer' is missing the following properties from type 'ArrayBuffer': resizable, resize, detached, transfer, transferToFixedLength
+client/src/pages/Dashboard.tsx(2325,33): error TS2339: Property 'emptyPanel' does not exist on type '{ shell: "min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900"; card: string; cardHover: string; hero: string; kpiCard: string; pageTitle: string; pageSub: string; ... 5 more ...; contentPanel: string; }'.
+client/src/pages/Dashboard.tsx(3234,17): error TS2322: Type 'Readonly<{ version: number; components: readonly Readonly<{ id: string; name: string; ratePercent: string; }>[]; }>' is not assignable to type '{ components: { id: string; name: string; ratePercent: string; }[]; version?: number | undefined; }'.
+  Types of property 'components' are incompatible.
+    The type 'readonly Readonly<{ id: string; name: string; ratePercent: string; }>[]' is 'readonly' and cannot be assigned to the mutable type '{ id: string; name: string; ratePercent: string; }[]'.
+client/src/pages/kiosk/KioskShell.tsx(235,9): error TS2322: Type '"cart" | "checkout" | "tracking" | "browse" | "confirmation"' is not assignable to type '"cart" | "checkout" | "browse" | "confirmation"'.
+  Type '"tracking"' is not assignable to type '"cart" | "checkout" | "browse" | "confirmation"'.
+client/src/pages/MenuView.tsx(253,11): error TS2322: Type 'string' is not assignable to type '"tables" | "rooms" | undefined'.
+server/crmp/DrizzleCrmpRepository.ts(472,25): error TS2352: Conversion of type 'ResultSetHeader' to type '{ n: number; }[]' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type 'ResultSetHeader' is missing the following properties from type '{ n: number; }[]': length, pop, push, concat, and 35 more.
+server/operational-session/check/refundDocumentNumberRepository.ts(51,34): error TS2352: Conversion of type 'ResultSetHeader' to type '{ n: number; }[]' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type 'ResultSetHeader' is missing the following properties from type '{ n: number; }[]': length, pop, push, concat, and 35 more.
+server/order/business-identity/infrastructure/DrizzleBusinessIdentityAllocator.ts(72,40): error TS2352: Conversion of type 'ResultSetHeader' to type '{ n: number; }[]' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type 'ResultSetHeader' is missing the following properties from type '{ n: number; }[]': length, pop, push, concat, and 35 more.
+server/reporting-platform/__scripts__/reportingUxRationalization.liveUat.ts(118,9): error TS2367: This comparison appears to be unintentional because the types 'ExecutiveSummaryCardId' and '"refundRate"' have no overlap.
+server/reporting-platform/__scripts__/reportingUxRationalization.liveUatData.ts(136,9): error TS2367: This comparison appears to be unintentional because the types 'ExecutiveSummaryCardId' and '"refundRate"' have no overlap.
+shared/reporting-platform/legacyReportingSurfaces.ts(150,15): error TS2677: A type predicate's type must be assignable to its parameter's type.
+  Type 'Readonly<{ name: string; file: string; owner: string; purpose: string; canonicalReplacement: string | null; consumers: readonly string[]; status: LegacyReportingSurfaceStatus; sunsetRecommendation: string; gapProgram?: string | undefined; }> & { ...; }' is not assignable to type '{ readonly name: "admin.getRevenueByMonth"; readonly file: "server/routers.ts ظْ server/db.ts getRevenueByMonth"; readonly owner: "Admin / EXEC-6 legacy"; readonly purpose: "Legacy admin monthly revenue chart buckets (not restaurant Check Revenue)"; ... 4 more ...; readonly gapProgram: "ADMIN-REPORTING-PLATFORM-ADOPT...'.
+    Type 'Readonly<{ name: string; file: string; owner: string; purpose: string; canonicalReplacement: string | null; consumers: readonly string[]; status: LegacyReportingSurfaceStatus; sunsetRecommendation: string; gapProgram?: string | undefined; }> & { ...; }' is not assignable to type '{ readonly name: "admin.getRevenueByMonth"; readonly file: "server/routers.ts ظْ server/db.ts getRevenueByMonth"; readonly owner: "Admin / EXEC-6 legacy"; readonly purpose: "Legacy admin monthly revenue chart buckets (not restaurant Check Revenue)"; ... 4 more ...; readonly gapProgram: "ADMIN-REPORTING-PLATFORM-ADOPT...'.
+      Type 'Readonly<{ name: string; file: string; owner: string; purpose: string; canonicalReplacement: string | null; consumers: readonly string[]; status: LegacyReportingSurfaceStatus; sunsetRecommendation: string; gapProgram?: string | undefined; }> & { ...; }' is not assignable to type '{ readonly name: "db.getRevenueByMonth"; readonly file: "server/db.ts"; readonly owner: "Admin / EXEC-6 legacy"; readonly purpose: "S6 legacy revenue buckets for admin.getRevenueByMonth"; ... 4 more ...; readonly gapProgram: "ADMIN-REPORTING-PLATFORM-ADOPTION (recommended)"; }'.
+        Types of property 'name' are incompatible.
+          Type 'string' is not assignable to type '"db.getRevenueByMonth"'.
+ظëELIFECYCLEظë Command failed with exit code 1.
