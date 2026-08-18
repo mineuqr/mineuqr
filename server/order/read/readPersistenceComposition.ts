@@ -56,6 +56,11 @@ const innerRepos =
 
 export const orderReadProjectionRepositories = innerRepos;
 
+/**
+ * Live composition singleton. P-01/P-02/P-03/P-11 share this instance so the
+ * in-process rematerialization gate can collapse parallel consumers to one
+ * persist per event. Do not construct a second live materializer.
+ */
 export const orderReadProjectionMaterializer = new OrderReadProjectionMaterializer(
   orderReadProjectionRepositories,
   contextLoader,

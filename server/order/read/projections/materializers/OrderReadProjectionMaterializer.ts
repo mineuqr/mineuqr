@@ -40,6 +40,7 @@ import {
 import type { DrizzleBusinessIdentityAllocator } from "../../../business-identity/infrastructure/DrizzleBusinessIdentityAllocator";
 import { restaurantOpeningTimeResolver } from "../../../business-identity/infrastructure/RestaurantOpeningTimeResolver";
 import type { NormalizedWorkingHours } from "@shared/utils/businessDay";
+import { SharedOrderRematerializationGate } from "./SharedOrderRematerializationGate";
 
 function parsePayload(envelope: EventEnvelope): OrderDomainEvent {
   return envelope.payload as OrderDomainEvent;
@@ -53,6 +54,7 @@ export class OrderReadProjectionMaterializer {
   private readonly businessIdentityAllocator?: DrizzleBusinessIdentityAllocator;
   private readonly completionIdempotency: P10AnalyticsCompletionIdempotencyStore;
   private readonly kpiClaims: DurableBusinessClaimStore;
+  private readonly sharedRematerialization = new SharedOrderRematerializationGate();
 
   constructor(
     private readonly repos: OrderReadProjectionRepositories,
@@ -75,7 +77,24 @@ export class OrderReadProjectionMaterializer {
       options?.kpiClaims ?? new InMemoryDurableBusinessClaimStore();
   }
 
+  /**
+   * Consumer entry for shared Order rematerialization.
+   * RA-06 consumers must await this (not persist independently). Physical work
+   * (historic identity + persistFromSource) runs once per eventId in-flight
+   * on this materializer instance (process-local; not cluster-wide).
+   * Failure rejects every waiting consumer; those consumers are not marked processed.
+   */
+  async ensureSharedOrderRematerialized(orderId: number, eventId: string): Promise<void> {
+    return this.syncOrderProjections(orderId, eventId);
+  }
+
   async syncOrderProjections(orderId: number, eventId: string): Promise<void> {
+    return this.sharedRematerialization.run(eventId, () =>
+      this.rematerializeOrderProjections(orderId, eventId)
+    );
+  }
+
+  private async rematerializeOrderProjections(orderId: number, eventId: string): Promise<void> {
     if (this.businessIdentityAllocator) {
       const preview = await this.contextLoader.loadByOrderId(orderId);
       if (preview) {

@@ -28,6 +28,8 @@ export const orderProjectionConsumerRegistry = new OrderProjectionConsumerRegist
 /**
  * Phase 3B: materializing consumers registered on the projection registry.
  * Active when ENV.orderReadProjectionsEnabled is true (default on outside test).
+ * All RA-06 consumers close over the same materializer singleton so shared
+ * rematerialization stays process-local and once-per-event in this dispatch.
  */
 export function registerOrderProjectionConsumers(): void {
   const consumers = createOrderReadProjectionConsumers(orderReadProjectionMaterializer);

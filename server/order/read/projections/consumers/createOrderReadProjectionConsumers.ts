@@ -19,6 +19,13 @@ type ConsumerSpec = {
 
 const LIFECYCLE_STAGE_EVENT = "OrderLifecycleStageChanged" as const;
 
+/**
+ * RA-06: one producing consumer per projection. Shared rematerialization is
+ * `ensureSharedOrderRematerialized` (once per event, process-local gate).
+ * P-02/P-11 then run projection-specific realtime post-processing.
+ * P-04/P-06/P-10 do not enter the shared rematerialization gate.
+ * Live wiring must pass the composition singleton, not a new materializer.
+ */
 const CONSUMER_SPECS: ConsumerSpec[] = [
   {
     name: "OwnerOrdersProjectionConsumer",
@@ -32,7 +39,7 @@ const CONSUMER_SPECS: ConsumerSpec[] = [
       LIFECYCLE_STAGE_EVENT,
     ],
     handle: async (m, e) => {
-      await m.syncOrderProjections(resolveOrderId(e), e.eventId);
+      await m.ensureSharedOrderRematerialized(resolveOrderId(e), e.eventId);
     },
   },
   {
@@ -47,7 +54,7 @@ const CONSUMER_SPECS: ConsumerSpec[] = [
       LIFECYCLE_STAGE_EVENT,
     ],
     handle: async (m, e) => {
-      await m.syncOrderProjections(resolveOrderId(e), e.eventId);
+      await m.ensureSharedOrderRematerialized(resolveOrderId(e), e.eventId);
       // REALTIME-ORDERS-ADOPTION-1 — orders channel after durable P-02 sync.
       await publishOrdersRealtimeHintAfterProjection(e);
       // REALTIME-KITCHEN-ADOPTION-1 — kitchen channel after same durable sync.
@@ -68,7 +75,7 @@ const CONSUMER_SPECS: ConsumerSpec[] = [
       LIFECYCLE_STAGE_EVENT,
     ],
     handle: async (m, e) => {
-      await m.syncOrderProjections(resolveOrderId(e), e.eventId);
+      await m.ensureSharedOrderRematerialized(resolveOrderId(e), e.eventId);
     },
   },
   {
@@ -113,7 +120,7 @@ const CONSUMER_SPECS: ConsumerSpec[] = [
       LIFECYCLE_STAGE_EVENT,
     ],
     handle: async (m, e) => {
-      await m.syncOrderProjections(resolveOrderId(e), e.eventId);
+      await m.ensureSharedOrderRematerialized(resolveOrderId(e), e.eventId);
       // REALTIME-CUSTOMER-TRACKING-ADOPTION-1 — customer channel after durable P-11 sync.
       await publishCustomerRealtimeHintAfterProjection(e);
     },
