@@ -38,7 +38,10 @@ import {
   logBusinessIdentityUniqueConstraintRetry,
 } from "../../business-identity/observability/businessIdentityObservability";
 import { businessIdentityMetrics } from "../../business-identity/observability/BusinessIdentityMetrics";
-import { noteOrderLifecyclePhase } from "../../observability/orderLifecycleLatency";
+import {
+  noteOrderLifecyclePhase,
+  timeOrderLifecyclePhase,
+} from "../../observability/orderLifecycleLatency";
 import { orderLifecycleNowMs } from "@shared/order-lifecycle-latency";
 
 export class DrizzleOrderRepository implements OrderRepository {
@@ -152,44 +155,51 @@ export class DrizzleOrderRepository implements OrderRepository {
   ): Promise<SaveOrderResult> {
     const persistStarted = orderLifecycleNowMs();
     const snapshot = order.snapshotForCreate();
-    await requireRestaurantRowForUpdate(tx, snapshot.restaurantId);
-    const insertResult = await tx.insert(orders).values({
-      restaurantId: snapshot.restaurantId,
-      tableId: snapshot.tableId,
-      tableNumber: snapshot.tableNumber,
-      ...(snapshot.sessionId != null ? { sessionId: snapshot.sessionId } : {}),
-      serviceMode: snapshot.serviceMode,
-      fulfilmentAnchorType: snapshot.fulfilmentAnchorType,
-      fulfilmentLabel: snapshot.fulfilmentLabel,
-      customerName: snapshot.customerName,
-      customerPhone: snapshot.customerPhone,
-      notes: snapshot.notes,
-      totalAmount: snapshot.totalAmount,
-      orderNumber: snapshot.orderNumber,
-      trackingToken: snapshot.trackingToken,
-      status: snapshot.status,
-      lifecycleStage: snapshot.lifecycleStage,
-      ...(options?.orderingChannel != null
-        ? { orderingChannel: options.orderingChannel }
-        : {}),
-    });
+    // POS-SALE-PERSISTENCE-INTERNAL-INSTRUMENTATION-1 — wrap existing ops only.
+    await timeOrderLifecyclePhase("restaurant_lock_ms", () =>
+      requireRestaurantRowForUpdate(tx, snapshot.restaurantId)
+    );
+    const insertResult = await timeOrderLifecyclePhase("order_insert_ms", () =>
+      tx.insert(orders).values({
+        restaurantId: snapshot.restaurantId,
+        tableId: snapshot.tableId,
+        tableNumber: snapshot.tableNumber,
+        ...(snapshot.sessionId != null ? { sessionId: snapshot.sessionId } : {}),
+        serviceMode: snapshot.serviceMode,
+        fulfilmentAnchorType: snapshot.fulfilmentAnchorType,
+        fulfilmentLabel: snapshot.fulfilmentLabel,
+        customerName: snapshot.customerName,
+        customerPhone: snapshot.customerPhone,
+        notes: snapshot.notes,
+        totalAmount: snapshot.totalAmount,
+        orderNumber: snapshot.orderNumber,
+        trackingToken: snapshot.trackingToken,
+        status: snapshot.status,
+        lifecycleStage: snapshot.lifecycleStage,
+        ...(options?.orderingChannel != null
+          ? { orderingChannel: options.orderingChannel }
+          : {}),
+      })
+    );
 
     const orderId = Number(insertResult[0].insertId);
     if (!orderId) {
       throw new Error("Failed to persist order");
     }
 
-    await tx.insert(orderItems).values(
-      snapshot.lines.map((line) => ({
-        orderId,
-        menuItemId: line.menuItemId,
-        nameAr: line.nameAr,
-        nameEn: line.nameEn,
-        price: line.unitPrice,
-        quantity: line.quantity,
-        notes: line.notes,
-        modifiers: [...(line.modifiers ?? [])],
-      }))
+    await timeOrderLifecyclePhase("order_lines_ms", () =>
+      tx.insert(orderItems).values(
+        snapshot.lines.map((line) => ({
+          orderId,
+          menuItemId: line.menuItemId,
+          nameAr: line.nameAr,
+          nameEn: line.nameEn,
+          price: line.unitPrice,
+          quantity: line.quantity,
+          notes: line.notes,
+          modifiers: [...(line.modifiers ?? [])],
+        }))
+      )
     );
 
     let businessIdentity: SaveOrderResult["businessIdentity"];
@@ -244,13 +254,17 @@ export class DrizzleOrderRepository implements OrderRepository {
       persisted.status !== snapshot.status ||
       persisted.lifecycleStage !== snapshot.lifecycleStage
     ) {
-      await tx
-        .update(orders)
-        .set({
-          status: persisted.status,
-          lifecycleStage: persisted.lifecycleStage,
-        })
-        .where(eq(orders.id, orderId));
+      await timeOrderLifecyclePhase("accept_update_ms", () =>
+        tx
+          .update(orders)
+          .set({
+            status: persisted.status,
+            lifecycleStage: persisted.lifecycleStage,
+          })
+          .where(eq(orders.id, orderId))
+      );
+    } else {
+      noteOrderLifecyclePhase("accept_update_ms", 0);
     }
 
     const outboxInputs = domainEventsToOutboxInputs(events, {

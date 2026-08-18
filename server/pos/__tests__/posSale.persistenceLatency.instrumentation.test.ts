@@ -50,7 +50,12 @@ const STAGE_KEYS = [
   "pricing_ms",
   "number_ms",
   "persist_ms",
+  "restaurant_lock_ms",
+  "order_insert_ms",
+  "order_lines_ms",
+  "accept_update_ms",
   "outbox_ms",
+  "idempotency_put_ms",
   "commit_ms",
 ] as const;
 
@@ -131,6 +136,10 @@ function fakePlaceOrder(options?: { recordStages?: boolean }) {
         noteOrderLifecyclePhase("pricing_ms", 11);
         noteOrderLifecyclePhase("number_ms", 12);
         noteOrderLifecyclePhase("persist_ms", 13);
+        noteOrderLifecyclePhase("restaurant_lock_ms", 21);
+        noteOrderLifecyclePhase("order_insert_ms", 22);
+        noteOrderLifecyclePhase("order_lines_ms", 23);
+        noteOrderLifecyclePhase("accept_update_ms", 24);
         noteOrderLifecyclePhase("outbox_ms", 14);
         noteOrderLifecyclePhase("commit_ms", 15);
       }
@@ -288,8 +297,14 @@ describe("POS-SALE-PERSISTENCE-LATENCY-INSTRUMENTATION-1", () => {
     expect(metadata.pricing_ms).toBe(11);
     expect(metadata.number_ms).toBe(12);
     expect(metadata.persist_ms).toBe(13);
+    expect(metadata.restaurant_lock_ms).toBe(21);
+    expect(metadata.order_insert_ms).toBe(22);
+    expect(metadata.order_lines_ms).toBe(23);
+    expect(metadata.accept_update_ms).toBe(24);
     expect(metadata.outbox_ms).toBe(14);
     expect(metadata.commit_ms).toBe(15);
+    expect(metadata.idempotency_put_ms).toEqual(expect.any(Number));
+    expect(metadata.idempotency_put_ms as number).toBeGreaterThanOrEqual(0);
   });
 
   it("does not change sale result, replay, or duplicate protection", async () => {

@@ -50,6 +50,10 @@ describe("ORDER-SUBMISSION-LATENCY-INSTRUMENTATION-1", () => {
     expect(repo).toContain("persist_ms");
     expect(repo).toContain("outbox_ms");
     expect(repo).toContain("commit_ms");
+    expect(repo).toContain("restaurant_lock_ms");
+    expect(repo).toContain("order_insert_ms");
+    expect(repo).toContain("order_lines_ms");
+    expect(repo).toContain("accept_update_ms");
     expect(repo).toContain("appendInTransaction");
     expect(repo).toContain("requireRestaurantRowForUpdate");
   });

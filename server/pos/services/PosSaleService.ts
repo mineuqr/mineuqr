@@ -88,8 +88,10 @@ const AUTH_DENIED_CODES = new Set([
  * - pricing_ms: PlaceOrder `resolveAuthoritativeOrderLines` / resolveLines (nested)
  * - number_ms: PlaceOrder `generateOrderNumber` / allocate (nested; outside persist txn)
  * - persist_ms: insertTransactional lock→insert→lines→BI→Accept (nested; before outbox)
- * - outbox_ms: appendInTransaction only (nested; sibling of persist_ms)
- * - commit_ms: after txn callback until db.transaction resolves (nested; sibling)
+ *   - restaurant_lock_ms / order_insert_ms / order_lines_ms / accept_update_ms (nested in persist_ms)
+ * - outbox_ms: appendInTransaction only (sibling of persist_ms)
+ * - idempotency_put_ms: afterPersistInTransaction / putInTransaction (sibling; after outbox)
+ * - commit_ms: after txn callback until db.transaction resolves (sibling)
  * Business Identity durationMs remains on business_identity_assignment_completed (inside persist_ms).
  */
 const POS_SALE_PERSISTENCE_STAGE_KEYS = [
@@ -98,7 +100,12 @@ const POS_SALE_PERSISTENCE_STAGE_KEYS = [
   "pricing_ms",
   "number_ms",
   "persist_ms",
+  "restaurant_lock_ms",
+  "order_insert_ms",
+  "order_lines_ms",
+  "accept_update_ms",
   "outbox_ms",
+  "idempotency_put_ms",
   "commit_ms",
 ] as const;
 
@@ -313,16 +320,16 @@ export class PosSaleService {
                 },
                 {
                   afterPersistInTransaction: async (tx, result) => {
-                    await this.persistSaleMappingInTransaction(
-                      tx,
-                      result,
-                      {
+                    // POS-SALE-PERSISTENCE-INTERNAL-INSTRUMENTATION-1
+                    // Sibling of persist_ms / outbox_ms; not nested in persist_ms.
+                    await timeOrderLifecyclePhase("idempotency_put_ms", () =>
+                      this.persistSaleMappingInTransaction(tx, result, {
                         restaurantId: context.restaurantId,
                         terminalId: context.terminalId,
                         userId: context.userId,
                         idempotencyKey: input.command.idempotencyKey,
                         fingerprint,
-                      }
+                      })
                     );
                   },
                   // Check enrollment is not required for sale success (errors

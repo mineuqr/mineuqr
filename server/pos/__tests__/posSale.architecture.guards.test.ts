@@ -167,4 +167,43 @@ describe("POS Sale architecture guards", () => {
     expect(occupancy).toContain("occupancyDelta");
     expect(sale).not.toContain("withOrderLifecycleLatency");
   });
+
+  it("POS-SALE-PERSISTENCE-INTERNAL-INSTRUMENTATION-1 times persist internals without changing SQL or BI", () => {
+    const sale = read("server/pos/services/PosSaleService.ts");
+    const repo = read("server/order/infrastructure/persistence/DrizzleOrderRepository.ts");
+    const lock = read("server/db/restaurantRowLock.ts");
+    const allocator = read(
+      "server/order/business-identity/infrastructure/DrizzleBusinessIdentityAllocator.ts"
+    );
+    const occupancy = read("server/subscription-runtime/commercialLimitOccupancy.ts");
+
+    expect(sale).toContain("restaurant_lock_ms");
+    expect(sale).toContain("order_insert_ms");
+    expect(sale).toContain("order_lines_ms");
+    expect(sale).toContain("accept_update_ms");
+    expect(sale).toContain("idempotency_put_ms");
+    expect(sale).toContain("awaitRelay: false");
+    expect(sale).toContain("enrollCheck: false");
+    expect(sale).toContain("afterPersistInTransaction");
+    expect(sale).not.toContain("occupancyDelta");
+
+    expect(repo).toContain('timeOrderLifecyclePhase("restaurant_lock_ms"');
+    expect(repo).toContain('timeOrderLifecyclePhase("order_insert_ms"');
+    expect(repo).toContain('timeOrderLifecyclePhase("order_lines_ms"');
+    expect(repo).toContain('timeOrderLifecyclePhase("accept_update_ms"');
+    expect(repo).toContain('noteOrderLifecyclePhase("accept_update_ms", 0)');
+    expect(repo).toContain("requireRestaurantRowForUpdate");
+    expect(repo).toContain("tx.insert(orders)");
+    expect(repo).toContain("tx.insert(orderItems)");
+    expect(repo).toContain("appendInTransaction");
+    expect(repo.indexOf('noteOrderLifecyclePhase("persist_ms"')).toBeLessThan(
+      repo.indexOf("appendInTransaction")
+    );
+    expect(repo).not.toContain("timeOrderLifecyclePhase(\"business_identity");
+
+    expect(lock).toContain("FOR UPDATE");
+    expect(allocator).toContain("LAST_INSERT_ID");
+    expect(allocator).not.toContain("timeOrderLifecyclePhase");
+    expect(occupancy).toContain("occupancyDelta");
+  });
 });
