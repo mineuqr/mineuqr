@@ -155,6 +155,7 @@ export class DrizzleOrderRepository implements OrderRepository {
   ): Promise<SaveOrderResult> {
     const persistStarted = orderLifecycleNowMs();
     const snapshot = order.snapshotForCreate();
+    const createStatus = options?.createRowStatus ?? snapshot.status;
     // POS-SALE-PERSISTENCE-INTERNAL-INSTRUMENTATION-1 — wrap existing ops only.
     const lockedRestaurant = await timeOrderLifecyclePhase("restaurant_lock_ms", () =>
       requireRestaurantRowForOrderPersist(tx, snapshot.restaurantId)
@@ -197,7 +198,7 @@ export class DrizzleOrderRepository implements OrderRepository {
         totalAmount: snapshot.totalAmount,
         orderNumber: snapshot.orderNumber,
         trackingToken: snapshot.trackingToken,
-        status: snapshot.status,
+        status: createStatus,
         lifecycleStage: snapshot.lifecycleStage,
         ...(businessIdentity != null
           ? {
@@ -259,7 +260,7 @@ export class DrizzleOrderRepository implements OrderRepository {
       options?.onPersisted?.(persisted) ?? options?.domainEvents ?? [];
 
     if (
-      persisted.status !== snapshot.status ||
+      persisted.status !== createStatus ||
       persisted.lifecycleStage !== snapshot.lifecycleStage
     ) {
       await timeOrderLifecyclePhase("accept_update_ms", () =>

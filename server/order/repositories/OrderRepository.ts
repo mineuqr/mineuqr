@@ -34,6 +34,13 @@ export type SaveOrderOptions = {
    */
   orderingChannel?: string | null;
   /**
+   * POS-SALE-COMMAND-CRITICAL-PATH-HARDENING-1
+   * Persist-row status when onPersisted will advance the aggregate in the
+   * same transaction (cashier_pos inbound accept). Avoids a second UPDATE
+   * round trip. Events still come from onPersisted. Outbox write unchanged.
+   */
+  createRowStatus?: import("../domain/value-objects/OrderStatus").OrderStatus;
+  /**
    * POS-SALE-TRANSACTIONAL-SAFETY-HARDENING-1
    * Companion write on the same DB transaction as Order insert (items, BI, outbox).
    * Caller owns the extra row (e.g. POS sale idempotency). Order still owns Order rows.

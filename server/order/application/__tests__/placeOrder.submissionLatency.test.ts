@@ -93,6 +93,67 @@ describe("ORDER-SUBMISSION-LATENCY-INSTRUMENTATION-1 — PlaceOrder phases", () 
     expect(agg.phaseAvgs.number_ms).toBeGreaterThanOrEqual(STAGE_MS - 5);
   });
 
+  it("overlaps pricing and number allocation on the same wall-clock wave", async () => {
+    const overlapMs = 40;
+    const repo: OrderRepository = {
+      findById: vi.fn(),
+      save: vi.fn(async (order) => {
+        const persisted = Order.reconstitute({
+          ...order.snapshotForCreate(),
+          id: 93,
+          status: "pending",
+          lifecycleStage: "active",
+          readyAt: null,
+          createdAt: order.createdAt,
+          updatedAt: order.createdAt,
+        });
+        return { order: persisted, outboxEventIds: [] };
+      }),
+    };
+
+    const service = new PlaceOrderService(
+      repo,
+      {
+        resolveLines: async () => {
+          await wait(overlapMs);
+          return {
+            lines: [
+              {
+                menuItemId: 1,
+                nameAr: "شاي",
+                nameEn: "Tea",
+                price: "5.00",
+                quantity: 1,
+                notes: null,
+                modifiers: null,
+              },
+            ],
+            totalAmount: "5.00",
+          };
+        },
+      },
+      {
+        allocate: async () => {
+          await wait(overlapMs);
+          return "ORD-0093";
+        },
+      },
+      { issue: () => "track-submit-overlap" }
+    );
+
+    const started = Date.now();
+    await service.execute({
+      restaurantId: 1,
+      tableId: 3,
+      tableNumber: 3,
+      sessionId: null,
+      orderingChannel: "qr",
+      items: [{ menuItemId: 1, quantity: 1 }],
+    });
+    const elapsedMs = Date.now() - started;
+    expect(elapsedMs).toBeLessThan(overlapMs * 2 - 10);
+  });
+
   it("does not record phases when no lifecycle context is active", async () => {
     const service = new PlaceOrderService(
       {

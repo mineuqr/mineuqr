@@ -196,6 +196,38 @@ describe("DrizzleOrderRepository identity-on-create", () => {
     ]);
   });
 
+  it("skips Accept UPDATE when createRowStatus already matches inbound preparing", async () => {
+    await repository().save(placeOrder(), {
+      identityScope: "POS",
+      createRowStatus: "preparing",
+      onPersisted: (persisted) => {
+        persisted.advanceStatus(
+          "preparing",
+          resolveOrderActorFromSystem("cashier-pos-inbound-accept", {
+            displayName: "Cashier POS",
+            restaurantId: 41,
+          }),
+          persisted.createdAt
+        );
+        return persisted.pullDomainEvents();
+      },
+    });
+
+    expect(orderInsertValues).toMatchObject({
+      status: "preparing",
+      businessDay: "2026-08-18",
+      dailyDisplayNumber: 12,
+    });
+    expect(acceptUpdateSet).toBeUndefined();
+    expect(sequence).toEqual([
+      "lock",
+      "allocate",
+      "insert-orders",
+      "insert-lines",
+      "outbox",
+    ]);
+  });
+
   it("rolls back the persist callback when Order INSERT fails after sequence allocation", async () => {
     insertOrdersShouldFail = true;
     await expect(

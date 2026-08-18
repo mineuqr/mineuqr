@@ -140,14 +140,14 @@ export class PlaceOrderService {
       };
     });
 
-    const { lines, totalAmount } = await timeOrderLifecyclePhase(
-      "pricing_ms",
-      () => this.pricing.resolveLines(command.restaurantId, normalizedItems)
-    );
-
-    const orderNumber = await timeOrderLifecyclePhase("number_ms", () =>
-      this.orderNumbers.allocate(command.restaurantId)
-    );
+    const [{ lines, totalAmount }, orderNumber] = await Promise.all([
+      timeOrderLifecyclePhase("pricing_ms", () =>
+        this.pricing.resolveLines(command.restaurantId, normalizedItems)
+      ),
+      timeOrderLifecyclePhase("number_ms", () =>
+        this.orderNumbers.allocate(command.restaurantId)
+      ),
+    ]);
     const trackingToken = this.trackingTokens.issue();
     const createdAt = new Date().toISOString();
 
@@ -204,10 +204,10 @@ export class PlaceOrderService {
     const { order: persisted, businessIdentity } = await this.repository.save(order, {
       onPersisted: (p) => {
         p.recordCreated(p.id!);
-        const createdEvents = p.pullDomainEvents();
         // CASHIER-CHECKOUT-LATENCY-AND-SPLIT-TENDER-1 — fold the existing
         // cashier_pos pending → preparing Accept into the first persist
         // transaction. Same transition and actor; no second HTTP-blocking save.
+        // Domain event pull copies and does not drain — collect once after accept.
         if (
           orderingChannel === ORDERING_CHANNEL_CASHIER_POS &&
           p.status === "pending" &&
@@ -218,15 +218,16 @@ export class PlaceOrderService {
             restaurantId: command.restaurantId,
           });
           p.advanceStatus(CASHIER_POS_INBOUND_STATUS, actor, createdAt);
-          const acceptEvents = p.pullDomainEvents();
-          events = [...createdEvents, ...acceptEvents];
-          return events;
         }
-        events = createdEvents;
+        events = p.pullDomainEvents();
         return events;
       },
       identityScope: command.identityScope,
       orderingChannel,
+      createRowStatus:
+        orderingChannel === ORDERING_CHANNEL_CASHIER_POS
+          ? CASHIER_POS_INBOUND_STATUS
+          : undefined,
       afterPersistInTransaction: persist?.afterPersistInTransaction,
     });
     persisted.clearDomainEvents();

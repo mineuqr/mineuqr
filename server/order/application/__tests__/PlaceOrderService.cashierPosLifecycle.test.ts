@@ -65,7 +65,18 @@ describe("PlaceOrderService cashier_pos inbound acceptance", () => {
 
     expect(statuses).toEqual(["preparing"]);
     expect(result.order.status).toBe("preparing");
+    expect(result.events.map((event) => event.type)).toEqual([
+      "OrderCreated",
+      "OrderStatusChanged",
+    ]);
     expect(repo.save).toHaveBeenCalledTimes(1);
+    expect(repo.save).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        createRowStatus: "preparing",
+        orderingChannel: "cashier_pos",
+      })
+    );
   });
 
   it("does not auto-accept kiosk orders", async () => {
@@ -117,6 +128,14 @@ describe("PlaceOrderService cashier_pos inbound acceptance", () => {
     });
 
     expect(result.order.status).toBe("pending");
+    expect(result.events.map((event) => event.type)).toEqual(["OrderCreated"]);
     expect(repo.save).toHaveBeenCalledTimes(1);
+    expect(repo.save).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        orderingChannel: "kiosk",
+      })
+    );
+    expect(vi.mocked(repo.save).mock.calls[0]?.[1]?.createRowStatus).toBeUndefined();
   });
 });
