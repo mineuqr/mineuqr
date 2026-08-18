@@ -161,6 +161,13 @@ function harness(options?: {
   check?: ReturnType<typeof openCheck> | null;
   settleDelayMs?: number;
   settleOnce?: boolean;
+  finalizeStageMs?: {
+    checkReloadMs: number;
+    orderDiscoveryMs: number;
+    contextResolveMs: number;
+    moneyTxMs: number;
+    attributionMs: number;
+  };
   settlementContext?: SettlementContext;
   ensureCheck?: (input: {
     restaurantId: number;
@@ -217,6 +224,9 @@ function harness(options?: {
     return {
       check: liveCheck,
       settlementRecordId: "sr-pos-1",
+      ...(options?.finalizeStageMs
+        ? { finalizeStageMs: options.finalizeStageMs }
+        : {}),
     };
   });
   const resolveContext = vi.fn(async () => options?.settlementContext ?? resolvedContext());
@@ -877,5 +887,49 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
     expect((event?.metadata?.durationMs as number) >= 0).toBe(true);
     expect(event?.metadata).not.toHaveProperty("grandTotal");
     expect(event?.metadata).not.toHaveProperty("taxAmount");
+    expect(event?.metadata).not.toHaveProperty("subtotal");
+    expect(event?.metadata?.checkReloadMs).toBeNull();
+    expect(event?.metadata?.orderDiscoveryMs).toBeNull();
+    expect(event?.metadata?.contextResolveMs).toBeNull();
+    expect(event?.metadata?.moneyTxMs).toBeNull();
+    expect(event?.metadata?.attributionMs).toBeNull();
+    expect(event?.metadata?.unexplainedGapMs).toBeNull();
+  });
+
+  it("emits financialTxn stage timings without financial amounts when Check stages are present", async () => {
+    vi.mocked(opsLog).mockClear();
+    const stages = {
+      checkReloadMs: 11,
+      orderDiscoveryMs: 22,
+      contextResolveMs: 33,
+      moneyTxMs: 44,
+      attributionMs: 55,
+    };
+    const { store, grants, service } = harness({ finalizeStageMs: stages });
+    await seedTerminal(store);
+    await grantSettle(grants);
+    await service.initiate({ user: user(STAFF_A), command });
+    const event = vi.mocked(opsLog).mock.calls
+      .map((call) => call[0])
+      .find((row) => row?.type === "pos_settlement_initiate");
+    expect(event?.metadata).toEqual(
+      expect.objectContaining({
+        orderId: ORDER_A,
+        checkId: CHECK_A,
+        checkReloadMs: 11,
+        orderDiscoveryMs: 22,
+        contextResolveMs: 33,
+        moneyTxMs: 44,
+        attributionMs: 55,
+      })
+    );
+    const envelope = event?.metadata?.financialTxnMs as number;
+    expect(event?.metadata?.unexplainedGapMs).toBe(
+      envelope - (11 + 22 + 33 + 44 + 55)
+    );
+    expect(event?.metadata).not.toHaveProperty("grandTotal");
+    expect(event?.metadata).not.toHaveProperty("taxAmount");
+    expect(event?.metadata).not.toHaveProperty("subtotal");
+    expect(JSON.stringify(event?.metadata)).not.toMatch(/tender|grandTotal|taxAmount/i);
   });
 });

@@ -51,6 +51,7 @@ export {
   getCheckById,
   getActiveCheckForSession,
   CheckTransitionError,
+  type CheckFinancialFinalizeStageMs,
   type CheckFinancialMutationResult,
   type CheckSplitPaymentMutationResult,
   type CheckMultiCheckAllocationMutationResult,

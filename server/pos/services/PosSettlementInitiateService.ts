@@ -100,6 +100,15 @@ export type PosSettlementEnsureCheck = (input: {
   orderId: number;
 }) => Promise<{ id: number; outcome: string }>;
 
+/** Timing-only. Forwarded from Check finalizeStageMs. Not financial state. */
+export type PosSettlementFinancialStageMs = {
+  checkReloadMs: number;
+  orderDiscoveryMs: number;
+  contextResolveMs: number;
+  moneyTxMs: number;
+  attributionMs: number;
+};
+
 export type PosSettlementSettlePaid = (input: {
   restaurantId: number;
   checkId: number;
@@ -112,6 +121,7 @@ export type PosSettlementSettlePaid = (input: {
 }) => Promise<{
   check: PosSettlementCheckView;
   settlementRecordId: string | null;
+  finalizeStageMs?: PosSettlementFinancialStageMs;
 }>;
 
 const AUTH_DENIED_CODES = new Set([
@@ -227,6 +237,7 @@ async function defaultSettlePaid(input: {
 }): Promise<{
   check: PosSettlementCheckView;
   settlementRecordId: string | null;
+  finalizeStageMs?: PosSettlementFinancialStageMs;
 }> {
   const financial = await settleCheckPaidByIdDetailed({
     restaurantId: input.restaurantId,
@@ -248,7 +259,25 @@ async function defaultSettlePaid(input: {
     },
     settlementRecordId:
       financial.settlementRecord.record?.settlementRecordId ?? null,
+    finalizeStageMs: financial.finalizeStageMs,
   };
+}
+
+function unexplainedFinancialTxnGapMs(
+  envelopeMs: number | undefined,
+  stages: PosSettlementFinancialStageMs | undefined
+): number | null {
+  if (typeof envelopeMs !== "number" || !Number.isFinite(envelopeMs) || !stages) {
+    return null;
+  }
+  const sum =
+    stages.checkReloadMs +
+    stages.orderDiscoveryMs +
+    stages.contextResolveMs +
+    stages.moneyTxMs +
+    stages.attributionMs;
+  if (!Number.isFinite(sum)) return null;
+  return envelopeMs - sum;
 }
 
 function resultFrom(fields: {
@@ -579,6 +608,7 @@ export class PosSettlementInitiateService {
       });
 
       const timing = clock.finish();
+      const stages = settled.finalizeStageMs;
       opsLog({
         type: "pos_settlement_initiate",
         category: "ORDER",
@@ -602,6 +632,12 @@ export class PosSettlementInitiateService {
           settlementContextMs,
           checkLoadMs,
           financialTxnMs,
+          checkReloadMs: stages?.checkReloadMs ?? null,
+          orderDiscoveryMs: stages?.orderDiscoveryMs ?? null,
+          contextResolveMs: stages?.contextResolveMs ?? null,
+          moneyTxMs: stages?.moneyTxMs ?? null,
+          attributionMs: stages?.attributionMs ?? null,
+          unexplainedGapMs: unexplainedFinancialTxnGapMs(financialTxnMs, stages),
         },
       });
 

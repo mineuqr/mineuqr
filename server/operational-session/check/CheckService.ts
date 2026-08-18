@@ -143,6 +143,19 @@ export class CheckTransitionError extends Error {
   }
 }
 
+/**
+ * CASHIER-SETTLEMENT-FINANCIALTXN-STAGE-INSTRUMENTATION-1
+ * Observability-only elapsed stages inside finalizeOpenCheckById.
+ * Not financial state. Durations use Date.now() at existing source boundaries.
+ */
+export type CheckFinancialFinalizeStageMs = Readonly<{
+  checkReloadMs: number;
+  orderDiscoveryMs: number;
+  contextResolveMs: number;
+  moneyTxMs: number;
+  attributionMs: number;
+}>;
+
 /** Aggregate financial mutation result (events collected, not published). */
 export type CheckFinancialMutationResult = Readonly<{
   check: OperationalCheck;
@@ -161,6 +174,8 @@ export type CheckFinancialMutationResult = Readonly<{
    */
   settlementAttribution: SettlementAttributionAdoptionResult;
   settlementAttributionEvents: readonly SettlementAttributed[];
+  /** Timing-only. Absent on callers that do not go through finalizeOpenCheckById. */
+  finalizeStageMs: CheckFinancialFinalizeStageMs;
 }>;
 
 /**
@@ -177,6 +192,10 @@ async function withCheckOwnedTransaction<T>(
     throw new DiningSessionUnavailableError();
   }
   return db.transaction(async (tx) => fn(tx));
+}
+
+function elapsedSinceMs(startedAt: number): number {
+  return Date.now() - startedAt;
 }
 
 /**
@@ -464,10 +483,12 @@ async function finalizeOpenCheckById(
   },
   client?: SessionDbClient
 ): Promise<CheckFinancialMutationResult> {
+  const checkReloadStartedAt = Date.now();
   const check = await getCheckById({
     restaurantId: input.restaurantId,
     checkId: input.checkId,
   });
+  const checkReloadMs = elapsedSinceMs(checkReloadStartedAt);
   if (!check) {
     throw new DiningSessionUnavailableError("Check not found");
   }
@@ -477,10 +498,12 @@ async function finalizeOpenCheckById(
     );
   }
 
+  const orderDiscoveryStartedAt = Date.now();
   const ordersSubtotal = await loadOrdersSubtotal({
     restaurantId: input.restaurantId,
     checkId: check.id,
   });
+  const orderDiscoveryMs = elapsedSinceMs(orderDiscoveryStartedAt);
   const money = computeCheckMoney({
     ordersSubtotal,
     billDiscountAmount: check.billDiscountAmount,
@@ -497,6 +520,7 @@ async function finalizeOpenCheckById(
       hints.operatorUserId ||
       hints.operationalScreenId
   );
+  const contextResolveStartedAt = Date.now();
   const settlementContext =
     input.settlementContext ??
     (hasOperationalHints
@@ -508,6 +532,7 @@ async function finalizeOpenCheckById(
       : unavailableSettlementContext(input.restaurantId, now, [
           "no_operational_hints",
         ]));
+  const contextResolveMs = elapsedSinceMs(contextResolveStartedAt);
 
   let settlementLines: readonly SettlementTransactionInput[] | null = null;
   try {
@@ -525,6 +550,7 @@ async function finalizeOpenCheckById(
     throw err;
   }
 
+  const moneyTxStartedAt = Date.now();
   const financial = await withCheckOwnedTransaction(client, async (tx) => {
     const ownedRows = await finalizeCheckOutcome(
       {
@@ -642,8 +668,10 @@ async function finalizeOpenCheckById(
       settlementContext,
     };
   });
+  const moneyTxMs = elapsedSinceMs(moneyTxStartedAt);
 
   // SETTLEMENT-ATTRIBUTION-ADOPTION-1 — AFTER money+SR commit; fail-open.
+  const attributionStartedAt = Date.now();
   const attributionBundle = await adoptSettlementAttributionAfterFinalize({
     restaurantId: input.restaurantId,
     outcome: input.outcome,
@@ -652,11 +680,19 @@ async function finalizeOpenCheckById(
     settlementLines,
     at: now,
   });
+  const attributionMs = elapsedSinceMs(attributionStartedAt);
 
   return {
     ...financial,
     settlementAttribution: attributionBundle.attribution,
     settlementAttributionEvents: attributionBundle.events,
+    finalizeStageMs: {
+      checkReloadMs,
+      orderDiscoveryMs,
+      contextResolveMs,
+      moneyTxMs,
+      attributionMs,
+    },
   };
 }
 
