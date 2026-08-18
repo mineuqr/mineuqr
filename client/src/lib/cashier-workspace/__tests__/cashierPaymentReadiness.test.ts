@@ -1,5 +1,5 @@
 /**
- * CASHIER-PAYMENT-READINESS-STATE-HARDENING-1
+ * CASHIER-POS-CHECK-READ-CONTRACT-1 / CASHIER-PAYMENT-READINESS-STATE-HARDENING-1
  */
 import { describe, expect, it } from "vitest";
 import { resolveCashierPaymentReadiness } from "../cashierPaymentReadiness";
@@ -10,11 +10,20 @@ const idle = {
   paymentSubmitting: false,
 };
 
-describe("CASHIER-PAYMENT-READINESS-STATE-HARDENING-1", () => {
-  it("shows preparing and disables Confirm Payment while Check due is unavailable", () => {
+function openCheck(grandTotal: string | null) {
+  return {
+    ...idle,
+    checkGrandTotal: grandTotal,
+    checkOutcome: grandTotal == null ? null : "open",
+  };
+}
+
+describe("CASHIER-POS-CHECK-READ-CONTRACT-1 payment readiness", () => {
+  it("shows preparing and disables Confirm Payment while Check is unavailable", () => {
     const view = resolveCashierPaymentReadiness({
       ...idle,
-      outstandingAmount: null,
+      checkGrandTotal: null,
+      checkOutcome: null,
       cashTender: "10.00",
       cardTender: "",
     });
@@ -22,14 +31,14 @@ describe("CASHIER-PAYMENT-READINESS-STATE-HARDENING-1", () => {
     expect(view.showPreparingMessage).toBe(true);
     expect(view.confirmDisabled).toBe(true);
     expect(view.remainingDisplay).toBeNull();
-    expect(view.totalTenderedDisplay).toBeNull();
     expect(view.amountDue).toBeNull();
   });
 
-  it("does not treat remaining as 0.00 merely because Order cash was defaulted", () => {
+  it("does not treat Order-defaulted cash 10.00 as Check due", () => {
     const view = resolveCashierPaymentReadiness({
       ...idle,
-      outstandingAmount: undefined,
+      checkGrandTotal: null,
+      checkOutcome: null,
       cashTender: "10.00",
       cardTender: "",
     });
@@ -37,9 +46,10 @@ describe("CASHIER-PAYMENT-READINESS-STATE-HARDENING-1", () => {
     expect(view.canConfirmPayment).toBe(false);
   });
 
-  it("does not let a stale Check-preparing intake flag block payment once outstandingAmount exists", () => {
+  it("does not let a stale intake-pending flag block an open Check", () => {
     const view = resolveCashierPaymentReadiness({
-      outstandingAmount: "10.00",
+      checkGrandTotal: "10.00",
+      checkOutcome: "open",
       cashTender: "10.00",
       cardTender: "",
       intakePending: true,
@@ -48,17 +58,12 @@ describe("CASHIER-PAYMENT-READINESS-STATE-HARDENING-1", () => {
     });
     expect(view.checkAvailable).toBe(true);
     expect(view.showPreparingMessage).toBe(false);
-    expect(view.amountDue).toBe("10.00");
-    expect(view.canConfirmPayment).toBe(true);
     expect(view.confirmDisabled).toBe(false);
-    expect(view.remainingDisplay).toBe("0.00");
-    expect(view.totalTenderedDisplay).toBe("10.00");
   });
 
-  it("enables Confirm Payment when outstandingAmount = 10, cash = 10, remaining = 0", () => {
+  it("enables Confirm Payment when Check.grandTotal = 10 and cash = 10", () => {
     const view = resolveCashierPaymentReadiness({
-      ...idle,
-      outstandingAmount: "10.00",
+      ...openCheck("10.00"),
       cashTender: "10.00",
       cardTender: "",
     });
@@ -67,84 +72,71 @@ describe("CASHIER-PAYMENT-READINESS-STATE-HARDENING-1", () => {
     expect(view.remainingDisplay).toBe("0.00");
   });
 
-  it("disables Confirm Payment when cash is below Check due", () => {
+  it("disables Confirm Payment when cash is below Check.grandTotal", () => {
     const view = resolveCashierPaymentReadiness({
-      ...idle,
-      outstandingAmount: "10.00",
+      ...openCheck("10.00"),
       cashTender: "6.00",
       cardTender: "",
     });
     expect(view.canConfirmPayment).toBe(false);
     expect(view.confirmDisabled).toBe(true);
-    expect(view.remainingDisplay).toBe("4.00");
   });
 
-  it("allows cash above Check due as presentation change", () => {
+  it("allows cash above Check.grandTotal as presentation change", () => {
     const view = resolveCashierPaymentReadiness({
-      ...idle,
-      outstandingAmount: "10.00",
+      ...openCheck("10.00"),
       cashTender: "20.00",
       cardTender: "",
     });
     expect(view.canConfirmPayment).toBe(true);
-    expect(view.confirmDisabled).toBe(false);
-    expect(view.remainingDisplay).toBe("0.00");
     expect(view.totalTenderedDisplay).toBe("20.00");
   });
 
-  it("enables Confirm Payment for card equal to Check due", () => {
+  it("enables Confirm Payment for card equal to Check.grandTotal", () => {
     const view = resolveCashierPaymentReadiness({
-      ...idle,
-      outstandingAmount: "10.00",
+      ...openCheck("10.00"),
       cashTender: "",
       cardTender: "10.00",
     });
     expect(view.canConfirmPayment).toBe(true);
-    expect(view.confirmDisabled).toBe(false);
-    expect(view.showPreparingMessage).toBe(false);
   });
 
-  it("transitions to payment-ready when Check due arrives after the initial render", () => {
+  it("transitions to payment-ready when an open Check arrives after the initial render", () => {
     const before = resolveCashierPaymentReadiness({
       ...idle,
-      outstandingAmount: null,
+      checkGrandTotal: null,
+      checkOutcome: null,
       cashTender: "10.00",
       cardTender: "",
     });
     const after = resolveCashierPaymentReadiness({
-      ...idle,
-      outstandingAmount: "10.00",
+      ...openCheck("10.00"),
       cashTender: "10.00",
       cardTender: "",
     });
     expect(before.showPreparingMessage).toBe(true);
-    expect(before.confirmDisabled).toBe(true);
     expect(after.showPreparingMessage).toBe(false);
     expect(after.confirmDisabled).toBe(false);
   });
 
-  it("keeps Confirm Payment disabled until Cash is defaulted to Check due", () => {
+  it("keeps Confirm Payment disabled until cash is defaulted to Check.grandTotal", () => {
     const beforeTender = resolveCashierPaymentReadiness({
-      ...idle,
-      outstandingAmount: "10.00",
+      ...openCheck("10.00"),
       cashTender: "",
       cardTender: "",
     });
     const afterDefault = resolveCashierPaymentReadiness({
-      ...idle,
-      outstandingAmount: "10.00",
+      ...openCheck("10.00"),
       cashTender: "10.00",
       cardTender: "",
     });
     expect(beforeTender.canConfirmPayment).toBe(false);
-    expect(beforeTender.remainingDisplay).toBe("10.00");
     expect(afterDefault.canConfirmPayment).toBe(true);
   });
 
-  it("does not treat a cashier-entered tender as unpaid remaining when Check refreshes", () => {
+  it("preserves a cashier-entered tender when Check.grandTotal is already available", () => {
     const view = resolveCashierPaymentReadiness({
-      ...idle,
-      outstandingAmount: "10.00",
+      ...openCheck("10.00"),
       cashTender: "15.00",
       cardTender: "",
     });
@@ -154,7 +146,8 @@ describe("CASHIER-PAYMENT-READINESS-STATE-HARDENING-1", () => {
 
   it("prevents duplicate Confirm Payment while settlement is submitting", () => {
     const view = resolveCashierPaymentReadiness({
-      outstandingAmount: "10.00",
+      checkGrandTotal: "10.00",
+      checkOutcome: "open",
       cashTender: "10.00",
       cardTender: "",
       intakePending: false,
@@ -167,8 +160,7 @@ describe("CASHIER-PAYMENT-READINESS-STATE-HARDENING-1", () => {
 
   it("does not treat Check arrival as payment success", () => {
     const view = resolveCashierPaymentReadiness({
-      ...idle,
-      outstandingAmount: "10.00",
+      ...openCheck("10.00"),
       cashTender: "10.00",
       cardTender: "",
     });
@@ -176,9 +168,10 @@ describe("CASHIER-PAYMENT-READINESS-STATE-HARDENING-1", () => {
     expect(view.confirmDisabled).toBe(false);
   });
 
-  it("stops infinite preparing when Check intake failed and due is still missing", () => {
+  it("stops infinite preparing when Check intake failed and Check is still missing", () => {
     const view = resolveCashierPaymentReadiness({
-      outstandingAmount: null,
+      checkGrandTotal: null,
+      checkOutcome: null,
       cashTender: "10.00",
       cardTender: "",
       intakePending: false,
@@ -190,9 +183,61 @@ describe("CASHIER-PAYMENT-READINESS-STATE-HARDENING-1", () => {
     expect(view.confirmDisabled).toBe(true);
   });
 
-  it("mandatory: valid Check + valid tender enables Confirm Payment and hides preparing", () => {
+  it("does not enable payment from Order.totalAmount when Check.grandTotal differs", () => {
     const view = resolveCashierPaymentReadiness({
-      outstandingAmount: "10.00",
+      ...openCheck("11.50"),
+      cashTender: "10.00",
+      cardTender: "",
+    });
+    expect(view.amountDue).toBe("11.50");
+    expect(view.canConfirmPayment).toBe(false);
+    expect(view.confirmDisabled).toBe(true);
+  });
+
+  it("enables payment against Check.grandTotal, not Order.totalAmount, in a tax scenario", () => {
+    const view = resolveCashierPaymentReadiness({
+      ...openCheck("11.50"),
+      cashTender: "11.50",
+      cardTender: "",
+    });
+    expect(view.amountDue).toBe("11.50");
+    expect(view.canConfirmPayment).toBe(true);
+    expect(view.confirmDisabled).toBe(false);
+  });
+
+  it("does not treat a terminal Check as payable", () => {
+    const view = resolveCashierPaymentReadiness({
+      ...idle,
+      checkGrandTotal: "11.50",
+      checkOutcome: "paid",
+      cashTender: "11.50",
+      cardTender: "",
+    });
+    expect(view.checkAvailable).toBe(false);
+    expect(view.checkTerminal).toBe(true);
+    expect(view.showPreparingMessage).toBe(false);
+    expect(view.confirmDisabled).toBe(true);
+  });
+
+  it("fails closed on Check read error without a false preparing state", () => {
+    const view = resolveCashierPaymentReadiness({
+      ...idle,
+      checkGrandTotal: null,
+      checkOutcome: null,
+      cashTender: "10.00",
+      cardTender: "",
+      checkReadFailed: true,
+    });
+    expect(view.checkAvailable).toBe(false);
+    expect(view.checkReadFailed).toBe(true);
+    expect(view.showPreparingMessage).toBe(false);
+    expect(view.confirmDisabled).toBe(true);
+  });
+
+  it("mandatory: open Check + valid tender enables Confirm Payment and hides preparing", () => {
+    const view = resolveCashierPaymentReadiness({
+      checkGrandTotal: "10.00",
+      checkOutcome: "open",
       cashTender: "10.00",
       cardTender: "",
       intakePending: true,

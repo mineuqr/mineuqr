@@ -274,12 +274,20 @@ export function CashierWorkspacePanel({
         allowed &&
         selectedOrderId != null &&
         (salePhase !== "ticket" || ordersOpen),
-      refetchInterval: (query) => {
-        if (salePhase !== "payment") return false;
-        const due = query.state.data?.[0]?.outstandingAmount;
-        if (due != null && String(due).trim() !== "") return false;
-        return 1000;
-      },
+    }
+  );
+  const checkQuery = trpc.pos.read.check.getByOrder.useQuery(
+    {
+      restaurantId,
+      terminalId: terminalId ?? "",
+      orderId: selectedOrderId ?? 0,
+    },
+    {
+      enabled:
+        scoped &&
+        allowed &&
+        selectedOrderId != null &&
+        salePhase !== "ticket",
     }
   );
 
@@ -295,6 +303,7 @@ export function CashierWorkspacePanel({
     void utils.pos.read.orders.getDetail.invalidate();
     void utils.pos.read.orders.getTimeline.invalidate();
     void utils.pos.read.orderSettlement.listByOrder.invalidate();
+    void utils.pos.read.check.getByOrder.invalidate();
   }
 
   async function enableCashierAccess() {
@@ -526,6 +535,7 @@ export function CashierWorkspacePanel({
             checkId: result.checkId,
           });
         }
+        void utils.pos.read.check.getByOrder.invalidate();
         void utils.pos.read.orderSettlement.listByOrder.invalidate();
         return opened;
       } catch (error) {
@@ -650,13 +660,16 @@ export function CashierWorkspacePanel({
   const ticketTotal = displayTicketTotal(ticket);
   const paymentOptions = listMonetaryPaymentMethodOptions(language);
   const settlementRow = (settlementQuery.data ?? [])[0];
+  const orderCheck = checkQuery.data ?? null;
   const paymentReadiness = resolveCashierPaymentReadiness({
-    outstandingAmount: paidCheckout?.grandTotal ?? settlementRow?.outstandingAmount,
+    checkGrandTotal: orderCheck?.grandTotal,
+    checkOutcome: orderCheck?.outcome,
     cashTender: cashReceived,
     cardTender,
     intakePending: intakeMutation.isPending,
     intakeFailed: intakeMutation.isError,
     paymentSubmitting: settleMutation.isPending || paymentBusy,
+    checkReadFailed: checkQuery.isError,
   });
   const amountDue = paymentReadiness.amountDue;
   const amountDueIsOrderFallback =
@@ -666,7 +679,8 @@ export function CashierWorkspacePanel({
 
   useEffect(() => {
     if (salePhase !== "payment" || paidCheckout) return;
-    const checkDue = settlementRow?.outstandingAmount;
+    const checkDue =
+      orderCheck?.outcome === "open" ? orderCheck.grandTotal : null;
     if (!checkDue) return;
     setCashReceived((current) => {
       if (current === "" || current === directSale?.totalAmount) {
@@ -677,7 +691,8 @@ export function CashierWorkspacePanel({
   }, [
     salePhase,
     paidCheckout,
-    settlementRow?.outstandingAmount,
+    orderCheck?.grandTotal,
+    orderCheck?.outcome,
     directSale?.totalAmount,
   ]);
   const money = (value: string) =>
@@ -1151,7 +1166,8 @@ export function CashierWorkspacePanel({
                 <p className={cashierPos.amountDueHuge}>
                   {paymentReadiness.checkAvailable && amountDue
                     ? money(amountDue)
-                    : paymentReadiness.checkIntakeFailed
+                    : paymentReadiness.checkIntakeFailed ||
+                        paymentReadiness.checkReadFailed
                       ? t("checkMissing")
                       : t("preparingCheck")}
                 </p>

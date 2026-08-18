@@ -7,6 +7,7 @@ import { z } from "zod";
 import { verifiedProcedure, router } from "../../_core/trpc";
 import {
   getPosCatalogReadService,
+  getPosCheckReadService,
   getPosOrderReadService,
   getPosOrderSettlementReadService,
 } from "../posComposition";
@@ -62,6 +63,20 @@ export const posReadRouter = router({
       .query(async ({ input, ctx }) => {
         try {
           return await getPosOrderReadService().getTimeline({
+            user: ctx.user,
+            command: input,
+          });
+        } catch (err) {
+          mapPosReadError(err);
+        }
+      }),
+  }),
+  check: router({
+    getByOrder: verifiedProcedure
+      .input(orderDetailInput)
+      .query(async ({ input, ctx }) => {
+        try {
+          return await getPosCheckReadService().getByOrder({
             user: ctx.user,
             command: input,
           });

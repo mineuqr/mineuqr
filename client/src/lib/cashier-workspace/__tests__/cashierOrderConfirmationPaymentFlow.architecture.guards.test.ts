@@ -50,10 +50,12 @@ describe("CASHIER-ORDER-CONFIRMATION-PAYMENT-FLOW-1", () => {
     expect(sale).not.toContain("settleCheckPaid");
   });
 
-  it("shows Check outstanding as amount due and does not invent tax or card brands", () => {
+  it("shows Check.grandTotal as amount due and does not invent tax or card brands", () => {
     const panel = read(PANEL);
-    expect(panel).toContain("settlementRow?.outstandingAmount");
+    expect(panel).toContain("trpc.pos.read.check.getByOrder");
+    expect(panel).toContain("orderCheck?.grandTotal");
     expect(panel).toContain("amountDueIsOrderFallback");
+    expect(panel).not.toContain("settlementRow?.outstandingAmount");
     expect(panel).toContain("listMonetaryPaymentMethodOptions");
     expect(SELECTABLE_PAYMENT_METHODS).toEqual(["cash", "card"]);
     expect(panel).not.toContain("mada");

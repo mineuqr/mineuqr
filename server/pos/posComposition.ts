@@ -15,6 +15,7 @@ import { PosAccessService } from "./services/PosAccessService";
 import { PosCatalogReadService } from "./services/PosCatalogReadService";
 import { PosCashierCrmpOperationsService } from "./services/PosCashierCrmpOperationsService";
 import { PosCheckIntakeService } from "./services/PosCheckIntakeService";
+import { PosCheckReadService } from "./services/PosCheckReadService";
 import { PosEntitlementService } from "./services/PosEntitlementService";
 import { PosOrderReadService } from "./services/PosOrderReadService";
 import { PosOrderSettlementReadService } from "./services/PosOrderSettlementReadService";
@@ -168,6 +169,10 @@ export function getPosOrderSettlementReadService(): PosOrderSettlementReadServic
     getPosAccessService(),
     orderSettlementReadService
   );
+}
+
+export function getPosCheckReadService(): PosCheckReadService {
+  return new PosCheckReadService(getPosGrantStore(), getPosAccessService());
 }
 
 export function getPosCatalogReadService(): PosCatalogReadService {

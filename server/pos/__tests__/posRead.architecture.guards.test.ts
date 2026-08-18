@@ -18,6 +18,8 @@ const READ_OWNED = [
   "server/pos/services/PosCatalogReadService.ts",
   "server/pos/services/requirePosReadContext.ts",
 ];
+// PosCheckReadService is a dedicated Check read façade: it may call getCheckById.
+// It must not be added here as a blanket CheckService ban.
 
 describe("POS read API architecture guards", () => {
   it("exposes only query procedures under pos.read", () => {
@@ -65,6 +67,7 @@ describe("POS read API architecture guards", () => {
     expect(auth).toContain("assertRestaurantPosScope");
     expect(auth).toContain("resolvePosTerminalAccess");
     expect(auth).toContain("decision.context");
+    expect(router).toContain("getPosCheckReadService().getByOrder");
     expect(router).not.toContain("assertRestaurantAccess");
     expect(router).not.toContain("getDb");
     expect(router).not.toContain("getMenuItemsByRestaurant");
