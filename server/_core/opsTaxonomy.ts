@@ -178,6 +178,9 @@ export const OPS_EVENT = {
 
   // CHECK-GENERALIZATION-M1 — membership dual-write (best-effort)
   check_membership_dual_write_failed: "check_membership_dual_write_failed",
+  // CASHIER-SETTLEMENT-HTTP-AT-FINANCIAL-COMMIT-1 — detached post-commit Attribution
+  check_settlement_attribution_deferred_failed:
+    "check_settlement_attribution_deferred_failed",
 
   // SESSION-AGGREGATES-1 Phase B
   session_aggregate_reader_fallback: "session_aggregate_reader_fallback",

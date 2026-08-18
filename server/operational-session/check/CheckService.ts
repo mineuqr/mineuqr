@@ -124,6 +124,7 @@ import type {
   TenderMethod,
 } from "@shared/operational-session";
 import {
+  skippedAttribution,
   unavailableSettlementContext,
   type SettlementAttributed,
   type SettlementAttributionAdoptionResult,
@@ -131,6 +132,8 @@ import {
   type SettlementContextHints,
 } from "@shared/crmp";
 import { resolveSettlementContextForSettle } from "../../crmp/SettlementContextResolver";
+import { opsLog } from "../../_core/opsLog";
+import { OPS_EVENT } from "../../_core/opsTaxonomy";
 import {
   adoptRefundAttributionAfterFinalize,
   adoptSettlementAttributionAfterFinalize,
@@ -166,7 +169,8 @@ export type CheckFinancialFinalizeStageMs = Readonly<{
   attributionMs: number;
   financialTransactionStartedAt: string;
   financialTransactionCommittedAt: string;
-  attributionCompletedAt: string;
+  /** Null when Attribution is deferred after HTTP (Cashier POS path). */
+  attributionCompletedAt: string | null;
 }>;
 
 type CheckOwnedTransactionStageMs = {
@@ -529,6 +533,12 @@ async function finalizeOpenCheckById(
     settlementContext?: SettlementContext;
     /** Hints when context not pre-resolved — never fabricate. */
     settlementContextHints?: SettlementContextHints;
+    /**
+     * CASHIER-SETTLEMENT-HTTP-AT-FINANCIAL-COMMIT-1
+     * Default true keeps Session/refund callers awaiting fail-open Attribution.
+     * Cashier POS passes false so HTTP returns immediately after financial commit.
+     */
+    awaitAttribution?: boolean;
   },
   client?: SessionDbClient
 ): Promise<CheckFinancialMutationResult> {
@@ -731,16 +741,70 @@ async function finalizeOpenCheckById(
   const financialTransactionCommittedAt = new Date().toISOString();
 
   // SETTLEMENT-ATTRIBUTION-ADOPTION-1 — AFTER money+SR commit; fail-open.
+  // CASHIER-SETTLEMENT-HTTP-AT-FINANCIAL-COMMIT-1 — Cashier may return before Attribution.
   const postCommitStartedAt = Date.now();
   const attributionStartedAt = Date.now();
-  const attributionBundle = await adoptSettlementAttributionAfterFinalize({
+  const attributionInput = {
     restaurantId: input.restaurantId,
     outcome: input.outcome,
     settlementContext,
     settlementRecord: financial.settlementRecord.record,
     settlementLines,
     at: now,
-  });
+  };
+  const awaitAttribution = input.awaitAttribution !== false;
+
+  if (!awaitAttribution) {
+    void adoptSettlementAttributionAfterFinalize(attributionInput).catch(
+      (err: unknown) => {
+        opsLog({
+          type: OPS_EVENT.check_settlement_attribution_deferred_failed,
+          category: "ORDER",
+          severity: "warn",
+          ts: new Date().toISOString(),
+          restaurantId: input.restaurantId,
+          action: "adoptSettlementAttributionAfterFinalize",
+          metadata: {
+            checkId: input.checkId,
+            outcome: input.outcome,
+            settlementRecordId:
+              financial.settlementRecord.record?.settlementRecordId ?? null,
+            error: err instanceof Error ? err.message : String(err),
+          },
+        });
+      }
+    );
+    return {
+      ...financial,
+      settlementAttribution: skippedAttribution({
+        gaps: ["deferred_post_commit"],
+        reason:
+          "Attribution continues independently after financial commit",
+        settlementRecordId:
+          financial.settlementRecord.record?.settlementRecordId ?? null,
+      }),
+      settlementAttributionEvents: [],
+      finalizeStageMs: {
+        checkReloadMs,
+        orderDiscoveryMs,
+        contextResolveMs,
+        validationMs,
+        financialTransactionPreparationMs: txStages.current.preparationMs,
+        financialTransactionWriteMs: txStages.current.writeMs,
+        financialTransactionTxWallMs: txStages.current.txWallMs,
+        moneyTxMs,
+        postCommitProcessingMs: elapsedSinceMs(postCommitStartedAt),
+        attributionMs: 0,
+        financialTransactionStartedAt,
+        financialTransactionCommittedAt,
+        attributionCompletedAt: null,
+      },
+    };
+  }
+
+  const attributionBundle = await adoptSettlementAttributionAfterFinalize(
+    attributionInput
+  );
   const attributionMs = elapsedSinceMs(attributionStartedAt);
   const postCommitProcessingMs = elapsedSinceMs(postCommitStartedAt);
   const attributionCompletedAt = new Date().toISOString();
@@ -983,6 +1047,8 @@ export async function settleCheckPaidByIdDetailed(input: {
   settlements?: readonly StaffSettlementLineInput[];
   settlementContext?: SettlementContext;
   settlementContextHints?: SettlementContextHints;
+  /** Cashier POS: false. Session/default: omit (await fail-open Attribution). */
+  awaitAttribution?: boolean;
 }): Promise<CheckFinancialMutationResult> {
   return finalizeOpenCheckById({
     restaurantId: input.restaurantId,
@@ -991,6 +1057,7 @@ export async function settleCheckPaidByIdDetailed(input: {
     settlements: input.settlements,
     settlementContext: input.settlementContext,
     settlementContextHints: input.settlementContextHints,
+    awaitAttribution: input.awaitAttribution,
   });
 }
 

@@ -131,23 +131,34 @@ describe("CASHIER-SETTLEMENT-FINANCIALTXN-STAGE-INSTRUMENTATION-1 architecture",
     expect(panel).not.toContain("checkReloadMs");
   });
 
-  it("does not convert Attribution to async fire-and-forget or split the money TX", () => {
+  it("does not await Attribution on the Cashier POS path or split the money TX", () => {
     const finalize = sliceFinalizeOpenCheckById(
       read("server/operational-session/check/CheckService.ts")
     );
+    const pos = read("server/pos/services/PosSettlementInitiateService.ts");
     const adoption = read(
       "server/operational-session/check/checkSettlementAttributionAdoption.ts"
     );
-    expect(finalize).toContain("await adoptSettlementAttributionAfterFinalize(");
-    expect(finalize).not.toMatch(
-      /void adoptSettlementAttributionAfterFinalize/
+    const settlePaid = pos.slice(
+      pos.indexOf("async function defaultSettlePaid"),
+      pos.indexOf("function unexplainedFinancialTxnGapMs")
     );
-    expect(adoption).toContain("Never throws to caller");
-    expect(adoption).toContain("failedAttribution");
-    const moneyStartAt = finalize.indexOf("const moneyTxStartedAt = Date.now();");
+    expect(settlePaid).toContain("awaitAttribution: false");
+    expect(finalize).toContain("awaitAttribution !== false");
+    expect(finalize).toContain("void adoptSettlementAttributionAfterFinalize(");
+    expect(finalize).toContain("await adoptSettlementAttributionAfterFinalize(");
     const moneyEndAt = finalize.indexOf(
       "const moneyTxMs = elapsedSinceMs(moneyTxStartedAt);"
     );
+    expect(
+      finalize.indexOf("void adoptSettlementAttributionAfterFinalize(")
+    ).toBeGreaterThan(moneyEndAt);
+    expect(
+      finalize.indexOf("await adoptSettlementAttributionAfterFinalize(")
+    ).toBeGreaterThan(moneyEndAt);
+    expect(adoption).toContain("Never throws to caller");
+    expect(adoption).toContain("failedAttribution");
+    const moneyStartAt = finalize.indexOf("const moneyTxStartedAt = Date.now();");
     const moneySlice = finalize.slice(moneyStartAt, moneyEndAt);
     expect(moneySlice).toContain("createSettlementRecordForCheckFinalize");
     expect(moneySlice).not.toContain("adoptSettlementAttributionAfterFinalize");

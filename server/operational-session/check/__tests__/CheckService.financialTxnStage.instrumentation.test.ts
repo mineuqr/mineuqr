@@ -425,4 +425,140 @@ describe("CASHIER-SETTLEMENT-FINANCIALTXN-STAGE-INSTRUMENTATION-1", () => {
 
     expect(mocks.resolveSettlementContextForSettle).toHaveBeenCalledTimes(1);
   });
+
+  describe("CASHIER-SETTLEMENT-HTTP-AT-FINANCIAL-COMMIT-1", () => {
+  it("does not wait for slow Attribution when awaitAttribution is false", async () => {
+    let attributionFinished = false;
+    mocks.findCheckById
+      .mockResolvedValueOnce(openCheck)
+      .mockResolvedValueOnce({ ...openCheck, outcome: "paid" });
+    mocks.adoptSettlementAttributionAfterFinalize.mockImplementation(async () => {
+      await delay(80);
+      attributionFinished = true;
+      return {
+        attribution: skippedAttribution({
+          gaps: ["instrumentation_test"],
+          reason: "test",
+        }),
+        events: [],
+      };
+    });
+
+    const started = Date.now();
+    const detailed = await settleCheckPaidByIdDetailed({
+      restaurantId: 1,
+      checkId: 100,
+      settlementContextHints: hints,
+      awaitAttribution: false,
+    });
+    const elapsed = Date.now() - started;
+
+    expect(detailed.check.outcome).toBe("paid");
+    expect(detailed.settlementRecord.record?.settlementRecordId).toBe(
+      "sr:1:100:settlement:1"
+    );
+    expect(detailed.finalizeStageMs.attributionMs).toBe(0);
+    expect(detailed.finalizeStageMs.attributionCompletedAt).toBeNull();
+    expect(detailed.settlementAttribution.outcome).toBe("skipped");
+    expect(detailed.settlementAttribution.gaps).toContain("deferred_post_commit");
+    expect(elapsed).toBeLessThan(70);
+    expect(attributionFinished).toBe(false);
+    expect(mocks.adoptSettlementAttributionAfterFinalize).toHaveBeenCalled();
+
+    await delay(120);
+    expect(attributionFinished).toBe(true);
+  });
+
+  it("still waits for Attribution by default", async () => {
+    mocks.findCheckById
+      .mockResolvedValueOnce(openCheck)
+      .mockResolvedValueOnce({ ...openCheck, outcome: "paid" });
+    mocks.adoptSettlementAttributionAfterFinalize.mockImplementation(async () => {
+      await delay(50);
+      return {
+        attribution: skippedAttribution({
+          gaps: ["instrumentation_test"],
+          reason: "test",
+        }),
+        events: [],
+      };
+    });
+
+    const started = Date.now();
+    const detailed = await settleCheckPaidByIdDetailed({
+      restaurantId: 1,
+      checkId: 100,
+      settlementContextHints: hints,
+    });
+    const elapsed = Date.now() - started;
+
+    expect(elapsed).toBeGreaterThanOrEqual(40);
+    expect(detailed.finalizeStageMs.attributionMs).toBeGreaterThanOrEqual(40);
+    expect(detailed.finalizeStageMs.attributionCompletedAt).toEqual(
+      expect.any(String)
+    );
+  });
+
+  it("returns financial success when deferred Attribution throws", async () => {
+    mocks.findCheckById
+      .mockResolvedValueOnce(openCheck)
+      .mockResolvedValueOnce({ ...openCheck, outcome: "paid" });
+    mocks.adoptSettlementAttributionAfterFinalize.mockImplementation(async () => {
+      await delay(10);
+      throw new Error("attribution boom");
+    });
+
+    const detailed = await settleCheckPaidByIdDetailed({
+      restaurantId: 1,
+      checkId: 100,
+      settlementContextHints: hints,
+      awaitAttribution: false,
+    });
+
+    expect(detailed.check.outcome).toBe("paid");
+    expect(detailed.settlementRecord.record?.settlementRecordId).toBe(
+      "sr:1:100:settlement:1"
+    );
+    expect(detailed.finalizeStageMs.attributionMs).toBe(0);
+
+    await delay(40);
+    expect(mocks.finalizeCheckOutcome).toHaveBeenCalled();
+    expect(mocks.createSettlementRecordForCheckFinalize).toHaveBeenCalled();
+  });
+
+  it("starts deferred Attribution only after the financial transaction returns", async () => {
+    mocks.findCheckById
+      .mockResolvedValueOnce(openCheck)
+      .mockResolvedValueOnce({ ...openCheck, outcome: "paid" });
+    mocks.adoptSettlementAttributionAfterFinalize.mockImplementation(async () => {
+      await delay(50);
+      (
+        mocks.getDb as typeof mocks.getDb & { callOrder: string[] }
+      ).callOrder.push("attribution");
+      return {
+        attribution: skippedAttribution({
+          gaps: ["instrumentation_test"],
+          reason: "test",
+        }),
+        events: [],
+      };
+    });
+
+    const detailed = await settleCheckPaidByIdDetailed({
+      restaurantId: 1,
+      checkId: 100,
+      settlementContextHints: hints,
+      awaitAttribution: false,
+    });
+
+    const callOrder = (
+      mocks.getDb as typeof mocks.getDb & { callOrder: string[] }
+    ).callOrder;
+    expect(detailed.check.outcome).toBe("paid");
+    expect(callOrder).toEqual(["tx-enter", "tx-return"]);
+
+    await delay(80);
+    expect(callOrder).toEqual(["tx-enter", "tx-return", "attribution"]);
+  });
+  });
 });

@@ -114,7 +114,7 @@ export type PosSettlementFinancialStageMs = {
   postCommitProcessingMs?: number;
   financialTransactionStartedAt?: string;
   financialTransactionCommittedAt?: string;
-  attributionCompletedAt?: string;
+  attributionCompletedAt?: string | null;
 };
 
 export type PosSettlementSettlePaid = (input: {
@@ -256,6 +256,8 @@ async function defaultSettlePaid(input: {
       operatorUserId: input.settlementContextHints.operatorUserId,
       deviceId: input.settlementContextHints.deviceId,
     },
+    // CASHIER-SETTLEMENT-HTTP-AT-FINANCIAL-COMMIT-1 — do not wait for Attribution.
+    awaitAttribution: false,
   });
   return {
     check: {

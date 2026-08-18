@@ -87,7 +87,8 @@ describe("CASHIER-SETTLEMENT-UNKNOWN-RESULT-RECOVERY-1 architecture", () => {
     const check = read(CHECK);
     const settle = read(SETTLE);
     expect(check).toContain("await adoptSettlementAttributionAfterFinalize(");
-    expect(check).not.toMatch(/void adoptSettlementAttributionAfterFinalize/);
+    expect(check).toContain("void adoptSettlementAttributionAfterFinalize(");
+    expect(settle).toContain("awaitAttribution: false");
     expect(settle).toContain("this.idempotency.runExclusive");
     expect(settle).toContain("this.idempotency.put");
     expect(settle).toContain("check_already_terminal");
