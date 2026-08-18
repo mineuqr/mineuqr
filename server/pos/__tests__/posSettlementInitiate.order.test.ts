@@ -35,6 +35,7 @@ vi.mock("../../_core/opsLog", () => ({
 import { getRestaurantById } from "../../db";
 import { checkLimit } from "../../subscription-runtime";
 import { isPlatformOwner } from "../../platform-owner-access/identity";
+import { opsLog } from "../../_core/opsLog";
 
 const RESTAURANT_A = 1;
 const RESTAURANT_B = 2;
@@ -845,5 +846,36 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
     expect(settle.mock.calls[0][0].settlementContextHints.registerId).toBe(
       REGISTER_ID
     );
+  });
+
+  it("emits pos_settlement_initiate duration telemetry without tender amounts", async () => {
+    vi.mocked(opsLog).mockClear();
+    const { store, grants, service } = harness();
+    await seedTerminal(store);
+    await grantSettle(grants);
+    await service.initiate({ user: user(STAFF_A), command });
+    const event = vi.mocked(opsLog).mock.calls
+      .map((call) => call[0])
+      .find((row) => row?.type === "pos_settlement_initiate");
+    expect(event).toBeDefined();
+    expect(event?.metadata).toEqual(
+      expect.objectContaining({
+        orderId: ORDER_A,
+        checkId: CHECK_A,
+        terminalId: TERMINAL_A,
+        orderingChannel: ORDERING_CHANNEL_CASHIER_POS,
+        durationMs: expect.any(Number),
+        startedAt: expect.any(String),
+        completedAt: expect.any(String),
+        authMs: expect.any(Number),
+        orderLoadMs: expect.any(Number),
+        settlementContextMs: expect.any(Number),
+        checkLoadMs: expect.any(Number),
+        financialTxnMs: expect.any(Number),
+      })
+    );
+    expect((event?.metadata?.durationMs as number) >= 0).toBe(true);
+    expect(event?.metadata).not.toHaveProperty("grandTotal");
+    expect(event?.metadata).not.toHaveProperty("taxAmount");
   });
 });

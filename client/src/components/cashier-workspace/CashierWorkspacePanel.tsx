@@ -13,6 +13,8 @@ import {
 } from "@/components/app-state";
 import { SettlementReceiptDialog } from "@/components/settlement-record/SettlementReceiptDialog";
 import { Button } from "@/components/ui/button";
+import { cashierPaymentFlowTiming } from "@/lib/cashier-workspace/cashierPaymentFlowTiming";
+import type { CashierPaymentFlowOutcome } from "@/lib/cashier-workspace/cashierPaymentFlowTiming";
 import { resolveCashierPaymentReadiness } from "@/lib/cashier-workspace/cashierPaymentReadiness";
 import {
   canConfirmCashierSettlement,
@@ -153,8 +155,17 @@ export function CashierWorkspacePanel({
   const saleKeyRef = useRef<string | null>(null);
   const settleKeyRef = useRef<string | null>(null);
   const intakeByOrderRef = useRef(new Map<number, Promise<OpenCheckResult | null>>());
+  const cashierFlowIdRef = useRef<string | null>(null);
+
+  function endCashierPaymentFlow(outcome: CashierPaymentFlowOutcome) {
+    const flowId = cashierFlowIdRef.current;
+    if (!flowId) return;
+    cashierPaymentFlowTiming.complete(flowId, outcome);
+    cashierFlowIdRef.current = null;
+  }
 
   useEffect(() => {
+    endCashierPaymentFlow("abandoned");
     setTerminalId(readCashierTerminalId(restaurantId));
     setTicket([]);
     setSelectedOrderId(null);
@@ -205,6 +216,15 @@ export function CashierWorkspacePanel({
       setSalePhase("ticket");
     }
   }, [restaurantId]);
+
+  useEffect(() => {
+    return () => {
+      const flowId = cashierFlowIdRef.current;
+      if (!flowId) return;
+      cashierPaymentFlowTiming.complete(flowId, "abandoned");
+      cashierFlowIdRef.current = null;
+    };
+  }, []);
 
   const terminalsQuery = trpc.pos.terminal.list.useQuery(
     { restaurantId },
@@ -420,6 +440,7 @@ export function CashierWorkspacePanel({
   }
 
   function startNewSale() {
+    endCashierPaymentFlow("abandoned");
     saleInFlightRef.current = false;
     payInFlightRef.current = false;
     setPaymentBusy(false);
@@ -444,6 +465,7 @@ export function CashierWorkspacePanel({
     if (payInFlightRef.current || settleMutation.isPending || paymentBusy) return;
     // Presentation-only: close the payment sheet. Do not cancel the Order,
     // void the Check, void a Settlement, or issue a refund.
+    endCashierPaymentFlow("cancelled");
     setSalePhase("ticket");
     setPrintOpen(false);
     clearCashierDirectSale(restaurantId);
@@ -459,11 +481,24 @@ export function CashierWorkspacePanel({
     // Confirm Order → pos.sale.create. Does not pay Check or Settlement.
     if (!terminalId || ticket.length === 0) return;
     if (saleInFlightRef.current || saleMutation.isPending) return;
+    endCashierPaymentFlow("abandoned");
+    cashierFlowIdRef.current = cashierPaymentFlowTiming.beginFlow({
+      restaurantId,
+      terminalId,
+    });
+    cashierPaymentFlowTiming.mark(
+      cashierFlowIdRef.current,
+      "CASHIER_ORDER_CONFIRM_CLICK"
+    );
     saleInFlightRef.current = true;
     if (!saleKeyRef.current) {
       saleKeyRef.current = newCashierIdempotencyKey("sale");
     }
     try {
+      cashierPaymentFlowTiming.mark(
+        cashierFlowIdRef.current,
+        "CASHIER_SALE_REQUEST_START"
+      );
       const result = await saleMutation.mutateAsync({
         restaurantId,
         terminalId,
@@ -474,6 +509,14 @@ export function CashierWorkspacePanel({
         idempotencyKey: saleKeyRef.current,
       });
       saleKeyRef.current = null;
+      cashierPaymentFlowTiming.mark(
+        cashierFlowIdRef.current,
+        "CASHIER_SALE_RESPONSE"
+      );
+      cashierPaymentFlowTiming.attachOrderId(
+        cashierFlowIdRef.current,
+        result.orderId
+      );
       const sale: DirectSale = {
         orderId: result.orderId,
         orderNumber: result.orderNumber,
@@ -489,6 +532,10 @@ export function CashierWorkspacePanel({
       setRegisterGap(null);
       setDirectSale(sale);
       setSalePhase("payment");
+      cashierPaymentFlowTiming.mark(
+        cashierFlowIdRef.current,
+        "CASHIER_PAYMENT_WORKFLOW_START"
+      );
       setCashReceived(result.totalAmount);
       setCardTender("");
       persistDirectSaleSnapshot({
@@ -503,6 +550,7 @@ export function CashierWorkspacePanel({
       toast.success(`${t("salePlaced")} ${result.displayReference}`);
       void orchestrateIntake(result.orderId);
     } catch (error) {
+      endCashierPaymentFlow("failed");
       toast.error(userFacingError(error, t("errorTitle")));
     } finally {
       saleInFlightRef.current = false;
@@ -515,12 +563,24 @@ export function CashierWorkspacePanel({
     const pending = (async (): Promise<OpenCheckResult | null> => {
       if (!terminalId) return null;
       try {
+        cashierPaymentFlowTiming.mark(
+          cashierFlowIdRef.current,
+          "CASHIER_CHECK_INTAKE_START"
+        );
         const result = await intakeMutation.mutateAsync({
           restaurantId,
           terminalId,
           orderId,
           idempotencyKey: newCashierIdempotencyKey("check"),
         });
+        cashierPaymentFlowTiming.mark(
+          cashierFlowIdRef.current,
+          "CASHIER_CHECK_INTAKE_RESPONSE"
+        );
+        cashierPaymentFlowTiming.attachCheckId(
+          cashierFlowIdRef.current,
+          result.checkId
+        );
         const opened: OpenCheckResult = {
           checkId: result.checkId,
           orderId: result.orderId,
@@ -539,6 +599,10 @@ export function CashierWorkspacePanel({
         void utils.pos.read.orderSettlement.listByOrder.invalidate();
         return opened;
       } catch (error) {
+        cashierPaymentFlowTiming.mark(
+          cashierFlowIdRef.current,
+          "CASHIER_CHECK_INTAKE_RESPONSE"
+        );
         intakeByOrderRef.current.delete(orderId);
         toast.error(userFacingError(error, t("errorTitle")));
         return null;
@@ -565,6 +629,10 @@ export function CashierWorkspacePanel({
     })) {
       return;
     }
+    cashierPaymentFlowTiming.mark(
+      cashierFlowIdRef.current,
+      "CASHIER_PAYMENT_CONFIRM_CLICK"
+    );
     payInFlightRef.current = true;
     setPaymentBusy(true);
     if (!settleKeyRef.current) {
@@ -574,6 +642,10 @@ export function CashierWorkspacePanel({
       if (!openCheck) {
         void orchestrateIntake(selectedOrderId);
       }
+      cashierPaymentFlowTiming.mark(
+        cashierFlowIdRef.current,
+        "CASHIER_SETTLEMENT_REQUEST_START"
+      );
       const result = await settleMutation.mutateAsync({
         restaurantId,
         terminalId,
@@ -582,6 +654,14 @@ export function CashierWorkspacePanel({
         paymentMethod: plan.paymentMethod,
         settlements: [...plan.settlements],
       });
+      cashierPaymentFlowTiming.mark(
+        cashierFlowIdRef.current,
+        "CASHIER_SETTLEMENT_RESPONSE"
+      );
+      cashierPaymentFlowTiming.attachCheckId(
+        cashierFlowIdRef.current,
+        result.checkId
+      );
       const paid: PaidCheckoutResult = {
         checkId: result.checkId,
         orderId: result.orderId,
@@ -593,6 +673,11 @@ export function CashierWorkspacePanel({
       setPaidCheckout(paid);
       setRegisterGap(null);
       setSalePhase("paid");
+      cashierPaymentFlowTiming.mark(
+        cashierFlowIdRef.current,
+        "CASHIER_PAYMENT_SUCCESS"
+      );
+      endCashierPaymentFlow("completed");
       persistDirectSaleSnapshot({
         phase: "paid",
         checkId: result.checkId,
@@ -606,6 +691,7 @@ export function CashierWorkspacePanel({
         setPrintOpen(true);
       }
     } catch (error) {
+      endCashierPaymentFlow("failed");
       const gap = classifyCashierRegisterGap(error);
       if (gap) {
         setRegisterGap(gap);
@@ -713,6 +799,24 @@ export function CashierWorkspacePanel({
     tenderPlan && tenderPlan.changeCents > 0
       ? displayCents(tenderPlan.changeCents)
       : null;
+
+  useEffect(() => {
+    const flowId = cashierFlowIdRef.current;
+    if (!flowId || salePhase !== "payment") return;
+    if (paymentReadiness.checkAvailable) {
+      cashierPaymentFlowTiming.mark(flowId, "CASHIER_CHECK_READ_READY");
+    }
+    if (
+      paymentReadiness.checkAvailable &&
+      paymentReadiness.canConfirmPayment
+    ) {
+      cashierPaymentFlowTiming.mark(flowId, "CASHIER_PAYMENT_READY");
+    }
+  }, [
+    salePhase,
+    paymentReadiness.checkAvailable,
+    paymentReadiness.canConfirmPayment,
+  ]);
 
   const listDenied = Boolean(
     terminalsQuery.error && isForbidden(terminalsQuery.error)

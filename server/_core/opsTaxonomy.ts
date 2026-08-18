@@ -219,6 +219,12 @@ export const OPS_EVENT = {
   commercial_renewal: "commercial_renewal",
   commercial_promotion_applied: "commercial_promotion_applied",
   owner_access_mode_changed: "owner_access_mode_changed",
+
+  // CASHIER-PAYMENT-FLOW-BOUNDARY-INSTRUMENTATION-1
+  pos_check_intake: "pos_check_intake",
+  pos_check_read: "pos_check_read",
+  pos_settlement_initiate: "pos_settlement_initiate",
+  cashier_payment_flow: "cashier_payment_flow",
 } as const;
 
 export type OpsEventType = (typeof OPS_EVENT)[keyof typeof OPS_EVENT];

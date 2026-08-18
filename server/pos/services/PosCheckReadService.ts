@@ -6,12 +6,14 @@
  */
 
 import type { CheckOutcome, OperationalCheck } from "@shared/operational-session";
-import { CHECK_OUTCOMES } from "@shared/operational-session";
+import { CHECK_OUTCOMES, CHECK_TERMINAL_OUTCOMES } from "@shared/operational-session";
 import type { SelectUser } from "../../../drizzle/schema";
+import { opsLog } from "../../_core/opsLog";
 import { getOrderById } from "../../db";
 import { getCheckById } from "../../operational-session/check/CheckService";
 import { findBlockingMembershipForOrder } from "../../operational-session/check/checkOrderMembershipRepository";
 import type { PosPermissionGrantStore } from "../infrastructure/PosPermissionGrantStore";
+import { startPosCommandClock } from "../observability/posCommandClock";
 import type { PosOrderCheckDto } from "../read/posCheckDto";
 import { PosAccessService } from "./PosAccessService";
 import { PosReadError } from "./PosReadError";
@@ -42,6 +44,13 @@ function assertCheckOutcome(value: string): CheckOutcome {
   return value as CheckOutcome;
 }
 
+export type PosCheckReadResultState =
+  | "check_available"
+  | "no_membership"
+  | "check_not_found"
+  | "terminal_check"
+  | "read_error";
+
 async function defaultMembershipLookup(
   restaurantId: number,
   orderId: number
@@ -64,51 +73,85 @@ export class PosCheckReadService {
     user: SelectUser;
     command: { restaurantId: number; terminalId: string; orderId: number };
   }): Promise<PosOrderCheckDto | null> {
-    const context = await requirePosReadContext(this.access, this.grants, {
-      user: input.user,
-      restaurantId: input.command.restaurantId,
-      terminalId: input.command.terminalId,
-      procedure: "pos.read.check.getByOrder",
-    });
-    if (
-      !Number.isInteger(input.command.orderId) ||
-      input.command.orderId <= 0
-    ) {
-      throw new PosReadError("not_found", "Order not found");
-    }
+    const clock = startPosCommandClock();
+    let resultState: PosCheckReadResultState = "read_error";
+    let checkId: number | null = null;
+    try {
+      const context = await requirePosReadContext(this.access, this.grants, {
+        user: input.user,
+        restaurantId: input.command.restaurantId,
+        terminalId: input.command.terminalId,
+        procedure: "pos.read.check.getByOrder",
+      });
+      if (
+        !Number.isInteger(input.command.orderId) ||
+        input.command.orderId <= 0
+      ) {
+        throw new PosReadError("not_found", "Order not found");
+      }
 
-    const order = await this.orderLookup(input.command.orderId);
-    if (!order || order.restaurantId !== context.restaurantId) {
-      throw new PosReadError("not_found", "Order not found");
-    }
+      const order = await this.orderLookup(input.command.orderId);
+      if (!order || order.restaurantId !== context.restaurantId) {
+        throw new PosReadError("not_found", "Order not found");
+      }
 
-    const membership = await this.membershipLookup(
-      context.restaurantId,
-      order.id
-    );
-    if (!membership) {
-      return null;
-    }
+      const membership = await this.membershipLookup(
+        context.restaurantId,
+        order.id
+      );
+      if (!membership) {
+        resultState = "no_membership";
+        return null;
+      }
+      checkId = membership.checkId;
 
-    const check = await this.checkLookup({
-      restaurantId: context.restaurantId,
-      checkId: membership.checkId,
-    });
-    if (!check) {
-      throw new PosReadError("not_found", "Check not found");
-    }
-    if (check.restaurantId !== context.restaurantId) {
-      throw new PosReadError("not_found", "Check not found");
-    }
+      const check = await this.checkLookup({
+        restaurantId: context.restaurantId,
+        checkId: membership.checkId,
+      });
+      if (!check) {
+        resultState = "check_not_found";
+        throw new PosReadError("not_found", "Check not found");
+      }
+      if (check.restaurantId !== context.restaurantId) {
+        resultState = "check_not_found";
+        throw new PosReadError("not_found", "Check not found");
+      }
 
-    return {
-      checkId: check.id,
-      orderId: order.id,
-      restaurantId: context.restaurantId,
-      outcome: assertCheckOutcome(check.outcome),
-      grandTotal: String(check.grandTotal),
-      subtotal: String(check.subtotal),
-      taxAmount: String(check.taxAmount),
-    };
+      const outcome = assertCheckOutcome(check.outcome);
+      resultState = (CHECK_TERMINAL_OUTCOMES as readonly string[]).includes(
+        outcome
+      )
+        ? "terminal_check"
+        : "check_available";
+      return {
+        checkId: check.id,
+        orderId: order.id,
+        restaurantId: context.restaurantId,
+        outcome,
+        grandTotal: String(check.grandTotal),
+        subtotal: String(check.subtotal),
+        taxAmount: String(check.taxAmount),
+      };
+    } finally {
+      const timing = clock.finish();
+      opsLog({
+        type: "pos_check_read",
+        category: "ORDER",
+        severity: "info",
+        ts: timing.completedAt,
+        restaurantId: input.command.restaurantId,
+        action: "pos.read.check.getByOrder",
+        metadata: {
+          orderId: input.command.orderId,
+          terminalId: input.command.terminalId,
+          checkId,
+          resultState,
+          startedAt: timing.startedAt,
+          completedAt: timing.completedAt,
+          durationMs: timing.durationMs,
+        },
+      });
+    }
   }
 }

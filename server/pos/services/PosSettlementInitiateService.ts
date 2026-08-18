@@ -24,6 +24,7 @@ import { assertRestaurantPosScope } from "../authorization/assertRestaurantPosSc
 import type { PosSettlementInitiateIdempotencyStore } from "../infrastructure/PosSettlementInitiateIdempotencyStore";
 import type { PosPermissionGrantStore } from "../infrastructure/PosPermissionGrantStore";
 import { PosAccessService } from "./PosAccessService";
+import { startPosCommandClock } from "../observability/posCommandClock";
 import {
   PosRegisterShiftContextError,
   PosRegisterShiftContextService,
@@ -297,11 +298,18 @@ export class PosSettlementInitiateService {
     user: SelectUser;
     command: PosSettlementInitiateCommand;
   }): Promise<PosSettlementInitiateResult> {
+    const clock = startPosCommandClock();
+    let authMs: number | undefined;
+    let orderLoadMs: number | undefined;
+    let settlementContextMs: number | undefined;
+    let checkLoadMs: number | undefined;
+    let financialTxnMs: number | undefined;
     assertIdempotencyKey(input.command.idempotencyKey);
     if (!Number.isInteger(input.command.orderId) || input.command.orderId <= 0) {
       throw new PosSettlementInitiateError("order_not_found", "Order is invalid");
     }
 
+    const authStarted = clock.mark();
     const scope = await assertRestaurantPosScope(
       { user: input.user },
       input.command.restaurantId,
@@ -333,8 +341,11 @@ export class PosSettlementInitiateService {
         "غير مصرح بالوصول"
       );
     }
+    authMs = clock.since(authStarted);
 
+    const orderStarted = clock.mark();
     const order = await this.orderLookup(input.command.orderId);
+    orderLoadMs = clock.since(orderStarted);
     if (!order) {
       throw new PosSettlementInitiateError("order_not_found", "Order not found");
     }
@@ -396,6 +407,7 @@ export class PosSettlementInitiateService {
         });
       }
 
+      const contextStarted = clock.mark();
       const [foundMembership, operational] = await Promise.all([
         this.membershipLookup(context.restaurantId, order.id),
         this.registerShift
@@ -411,6 +423,7 @@ export class PosSettlementInitiateService {
             throw err;
           }),
       ]);
+      settlementContextMs = clock.since(contextStarted);
       let membership = foundMembership;
       if (!membership && this.ensureCheck) {
         try {
@@ -439,10 +452,12 @@ export class PosSettlementInitiateService {
         );
       }
 
+      const checkStarted = clock.mark();
       const check = await this.checkLookup({
         restaurantId: context.restaurantId,
         checkId: membership.checkId,
       });
+      checkLoadMs = clock.since(checkStarted);
       if (!check) {
         throw new PosSettlementInitiateError(
           "check_not_found",
@@ -472,6 +487,7 @@ export class PosSettlementInitiateService {
 
       let settled: Awaited<ReturnType<PosSettlementSettlePaid>>;
       try {
+        const txnStarted = clock.mark();
         settled = await this.settlePaid({
           restaurantId: context.restaurantId,
           checkId: check.id,
@@ -482,6 +498,7 @@ export class PosSettlementInitiateService {
           },
           ...(settlements ? { settlements } : {}),
         });
+        financialTxnMs = clock.since(txnStarted);
       } catch (err) {
         if (err instanceof CheckTransitionError) {
           const raced = await this.checkLookup({
@@ -561,11 +578,12 @@ export class PosSettlementInitiateService {
         createdAt: new Date().toISOString(),
       });
 
+      const timing = clock.finish();
       opsLog({
         type: "pos_settlement_initiate",
         category: "ORDER",
         severity: "info",
-        ts: new Date().toISOString(),
+        ts: timing.completedAt,
         actorId: context.userId,
         restaurantId: context.restaurantId,
         action: "pos.settlement.initiate",
@@ -576,6 +594,14 @@ export class PosSettlementInitiateService {
           orderingChannel: ORDERING_CHANNEL_CASHIER_POS,
           registerId: operational.registerId,
           financialShiftId: operational.financialShiftId,
+          startedAt: timing.startedAt,
+          completedAt: timing.completedAt,
+          durationMs: timing.durationMs,
+          authMs,
+          orderLoadMs,
+          settlementContextMs,
+          checkLoadMs,
+          financialTxnMs,
         },
       });
 

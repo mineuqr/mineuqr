@@ -32,6 +32,7 @@ vi.mock("../../_core/opsLog", () => ({
 import { getRestaurantById } from "../../db";
 import { checkLimit } from "../../subscription-runtime";
 import { isPlatformOwner } from "../../platform-owner-access/identity";
+import { opsLog } from "../../_core/opsLog";
 
 const RESTAURANT_A = 1;
 const RESTAURANT_B = 2;
@@ -423,5 +424,35 @@ describe("POS Check Intake → existing Check Domain", () => {
     expect(first.checkId).toBe(second.checkId);
     expect([first.replayed, second.replayed].filter(Boolean)).toHaveLength(1);
     expect(ensure).toHaveBeenCalledTimes(1);
+  });
+
+  it("emits pos_check_intake duration telemetry without financial amounts", async () => {
+    vi.mocked(opsLog).mockClear();
+    const { store, grants, intake } = harness();
+    await seedTerminal(store);
+    await grantIntake(grants);
+    await intake.intake({ user: user(STAFF_A), command });
+    const event = vi.mocked(opsLog).mock.calls
+      .map((call) => call[0])
+      .find((row) => row?.type === "pos_check_intake");
+    expect(event).toBeDefined();
+    expect(event?.metadata).toEqual(
+      expect.objectContaining({
+        orderId: ORDER_A,
+        checkId: 9000 + ORDER_A,
+        terminalId: TERMINAL_A,
+        orderingChannel: ORDERING_CHANNEL_CASHIER_POS,
+        durationMs: expect.any(Number),
+        startedAt: expect.any(String),
+        completedAt: expect.any(String),
+        authMs: expect.any(Number),
+        orderLoadMs: expect.any(Number),
+        checkEnsureMs: expect.any(Number),
+      })
+    );
+    expect((event?.metadata?.durationMs as number) >= 0).toBe(true);
+    expect(event?.metadata).not.toHaveProperty("grandTotal");
+    expect(event?.metadata).not.toHaveProperty("taxAmount");
+    expect(event?.metadata).not.toHaveProperty("subtotal");
   });
 });

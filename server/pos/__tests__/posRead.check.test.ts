@@ -35,6 +35,7 @@ import {
 } from "../posComposition";
 import { appRouter } from "../../routers";
 import type { TrpcContext } from "../../_core/context";
+import { opsLog } from "../../_core/opsLog";
 
 const RESTAURANT_A = 1;
 const RESTAURANT_B = 2;
@@ -397,5 +398,117 @@ describe("POS Check read by Order", () => {
         orderId: 55,
       })
     ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+  });
+
+  it("emits pos_check_read duration and resultState without financial amounts", async () => {
+    const store = new InMemoryPosTerminalStore();
+    const grants = new InMemoryPosPermissionGrantStore();
+    await seedTerminal(store);
+    await grant(grants);
+    vi.mocked(opsLog).mockClear();
+    await service({
+      grants,
+      store,
+      order: { id: 55, restaurantId: RESTAURANT_A },
+      membership: { checkId: 9, checkOutcome: "open" },
+      check: {
+        id: 9,
+        restaurantId: RESTAURANT_A,
+        outcome: "open",
+        grandTotal: "11.50",
+        subtotal: "10.00",
+        taxAmount: "1.50",
+      },
+    }).getByOrder({
+      user: user(STAFF_A),
+      command: {
+        restaurantId: RESTAURANT_A,
+        terminalId: TERMINAL_A,
+        orderId: 55,
+      },
+    });
+    const available = vi.mocked(opsLog).mock.calls
+      .map((call) => call[0])
+      .find((row) => row?.type === "pos_check_read");
+    expect(available?.metadata).toEqual(
+      expect.objectContaining({
+        resultState: "check_available",
+        durationMs: expect.any(Number),
+        startedAt: expect.any(String),
+        completedAt: expect.any(String),
+        orderId: 55,
+        checkId: 9,
+        terminalId: TERMINAL_A,
+      })
+    );
+    expect(available?.metadata).not.toHaveProperty("grandTotal");
+    expect(available?.metadata).not.toHaveProperty("taxAmount");
+    expect(available?.metadata).not.toHaveProperty("subtotal");
+
+    vi.mocked(opsLog).mockClear();
+    await service({
+      grants,
+      store,
+      order: { id: 55, restaurantId: RESTAURANT_A },
+      membership: null,
+      check: null,
+    }).getByOrder({
+      user: user(STAFF_A),
+      command: {
+        restaurantId: RESTAURANT_A,
+        terminalId: TERMINAL_A,
+        orderId: 55,
+      },
+    });
+    expect(
+      vi.mocked(opsLog).mock.calls.map((call) => call[0]?.metadata?.resultState)
+    ).toContain("no_membership");
+
+    vi.mocked(opsLog).mockClear();
+    await expect(
+      service({
+        grants,
+        store,
+        order: { id: 55, restaurantId: RESTAURANT_A },
+        membership: { checkId: 9, checkOutcome: "open" },
+        check: null,
+      }).getByOrder({
+        user: user(STAFF_A),
+        command: {
+          restaurantId: RESTAURANT_A,
+          terminalId: TERMINAL_A,
+          orderId: 55,
+        },
+      })
+    ).rejects.toMatchObject({ code: "not_found" });
+    expect(
+      vi.mocked(opsLog).mock.calls.map((call) => call[0]?.metadata?.resultState)
+    ).toContain("check_not_found");
+
+    vi.mocked(opsLog).mockClear();
+    await service({
+      grants,
+      store,
+      order: { id: 55, restaurantId: RESTAURANT_A },
+      membership: { checkId: 9, checkOutcome: "paid" },
+      check: {
+        id: 9,
+        restaurantId: RESTAURANT_A,
+        outcome: "paid",
+        grandTotal: "11.50",
+        subtotal: "10.00",
+        taxAmount: "1.50",
+      },
+    }).getByOrder({
+      user: user(STAFF_A),
+      command: {
+        restaurantId: RESTAURANT_A,
+        terminalId: TERMINAL_A,
+        orderId: 55,
+      },
+    });
+    expect(
+      vi.mocked(opsLog).mock.calls.map((call) => call[0]?.metadata?.resultState)
+    ).toContain("terminal_check");
   });
 });

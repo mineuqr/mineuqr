@@ -14,6 +14,7 @@ import type { OperationalCheck } from "@shared/operational-session";
 import { assertRestaurantPosScope } from "../authorization/assertRestaurantPosScope";
 import type { PosCheckIntakeIdempotencyStore } from "../infrastructure/PosCheckIntakeIdempotencyStore";
 import type { PosPermissionGrantStore } from "../infrastructure/PosPermissionGrantStore";
+import { startPosCommandClock } from "../observability/posCommandClock";
 import { PosAccessService } from "./PosAccessService";
 import type { SelectUser } from "../../../drizzle/schema";
 
@@ -102,11 +103,16 @@ export class PosCheckIntakeService {
     user: SelectUser;
     command: PosCheckIntakeCommand;
   }): Promise<PosCheckIntakeResult> {
+    const clock = startPosCommandClock();
+    let authMs: number | undefined;
+    let orderLoadMs: number | undefined;
+    let checkEnsureMs: number | undefined;
     assertIdempotencyKey(input.command.idempotencyKey);
     if (!Number.isInteger(input.command.orderId) || input.command.orderId <= 0) {
       throw new PosCheckIntakeError("order_not_found", "Order is invalid");
     }
 
+    const authStarted = clock.mark();
     const scope = await assertRestaurantPosScope(
       { user: input.user },
       input.command.restaurantId,
@@ -135,8 +141,11 @@ export class PosCheckIntakeService {
     ) {
       throw new PosCheckIntakeError("pos_permission_denied", "غير مصرح بالوصول");
     }
+    authMs = clock.since(authStarted);
 
+    const orderStarted = clock.mark();
     const order = await this.orderLookup(input.command.orderId);
+    orderLoadMs = clock.since(orderStarted);
     if (!order) {
       throw new PosCheckIntakeError("order_not_found", "Order not found");
     }
@@ -193,10 +202,12 @@ export class PosCheckIntakeService {
 
       let check: Awaited<ReturnType<PosCheckEnsure>>;
       try {
+        const ensureStarted = clock.mark();
         check = await this.ensureCheck({
           restaurantId: context.restaurantId,
           orderId: order.id,
         });
+        checkEnsureMs = clock.since(ensureStarted);
       } catch (err) {
         if (err instanceof CheckMembershipError) {
           throw new PosCheckIntakeError(
@@ -239,11 +250,12 @@ export class PosCheckIntakeService {
         createdAt: new Date().toISOString(),
       });
 
+      const timing = clock.finish();
       opsLog({
         type: "pos_check_intake",
         category: "ORDER",
         severity: "info",
-        ts: new Date().toISOString(),
+        ts: timing.completedAt,
         actorId: context.userId,
         restaurantId: context.restaurantId,
         action: "pos.check.intake",
@@ -252,6 +264,12 @@ export class PosCheckIntakeService {
           checkId: check.id,
           terminalId: context.terminalId,
           orderingChannel: ORDERING_CHANNEL_CASHIER_POS,
+          startedAt: timing.startedAt,
+          completedAt: timing.completedAt,
+          durationMs: timing.durationMs,
+          authMs,
+          orderLoadMs,
+          checkEnsureMs,
         },
       });
 
