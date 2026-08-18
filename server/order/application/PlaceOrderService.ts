@@ -33,6 +33,7 @@ import {
   fulfilmentProjectionFromLegacyTable,
 } from "@shared/ordering-platform/orderFulfilmentProjection";
 import { resolveOrderDisplayIdentity } from "../business-identity/application/OrderDisplayIdentityResolver";
+import { timeOrderLifecyclePhase } from "../observability/orderLifecycleLatency";
 
 export type PlaceOrderCommand = {
   restaurantId: number;
@@ -139,12 +140,14 @@ export class PlaceOrderService {
       };
     });
 
-    const { lines, totalAmount } = await this.pricing.resolveLines(
-      command.restaurantId,
-      normalizedItems
+    const { lines, totalAmount } = await timeOrderLifecyclePhase(
+      "pricing_ms",
+      () => this.pricing.resolveLines(command.restaurantId, normalizedItems)
     );
 
-    const orderNumber = await this.orderNumbers.allocate(command.restaurantId);
+    const orderNumber = await timeOrderLifecyclePhase("number_ms", () =>
+      this.orderNumbers.allocate(command.restaurantId)
+    );
     const trackingToken = this.trackingTokens.issue();
     const createdAt = new Date().toISOString();
 

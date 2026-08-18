@@ -17,6 +17,12 @@ import {
 } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { saveConfirmationDisplayIdentity } from "@/lib/orderConfirmationStorage";
+import {
+  beginOrderLifecycleClientTrace,
+  createOrderLifecycleTraceId,
+  endOrderLifecycleClientTrace,
+  markOrderLifecycleClient,
+} from "@/lib/order-lifecycle-latency";
 import { trpc } from "@/lib/trpc";
 import { useOrderingCart } from "../cart/OrderingCartProvider";
 import { useOptionalOrderingClientRuntime } from "../context/OrderingClientProvider";
@@ -175,6 +181,8 @@ export function OrderingCheckoutProvider({
         })
       );
 
+      let tableTrace: ReturnType<typeof beginOrderLifecycleClientTrace> | null =
+        null;
       try {
         let result:
           | Awaited<ReturnType<typeof placeWithIdentityMutation.mutateAsync>>
@@ -229,16 +237,30 @@ export function OrderingCheckoutProvider({
             items: linePayload,
           });
         } else {
-          result = await createOrderMutation.mutateAsync({
+          const traceId = createOrderLifecycleTraceId();
+          tableTrace = beginOrderLifecycleClientTrace({
+            traceId,
             restaurantId: request.restaurantId,
-            tableId: request.tableId,
-            tableNumber: request.tableNumber,
-            sessionToken: request.sessionToken,
-            customerName: customerName || undefined,
-            customerPhone: customerPhone || undefined,
-            notes: validated.orderNotes ?? undefined,
-            items: linePayload,
+            transition: "place",
+            surface: "order.create",
           });
+          markOrderLifecycleClient(tableTrace, "mutation_start");
+          result = await createOrderMutation.mutateAsync(
+            {
+              restaurantId: request.restaurantId,
+              tableId: request.tableId,
+              tableNumber: request.tableNumber,
+              sessionToken: request.sessionToken,
+              customerName: customerName || undefined,
+              customerPhone: customerPhone || undefined,
+              notes: validated.orderNotes ?? undefined,
+              items: linePayload,
+            },
+            {
+              trpc: { context: { lifecycleTraceId: traceId } },
+            } as never
+          );
+          markOrderLifecycleClient(tableTrace, "mutation_success");
         }
 
         if (!result.trackingToken) {
@@ -248,6 +270,7 @@ export function OrderingCheckoutProvider({
           };
           setLastError(error);
           setSubmissionStatus("failure");
+          endOrderLifecycleClientTrace(tableTrace, "error");
           return { ok: false, error };
         }
 
@@ -288,6 +311,8 @@ export function OrderingCheckoutProvider({
           resetForm();
         }
         setSubmissionStatus("success");
+        markOrderLifecycleClient(tableTrace, "visible_update");
+        endOrderLifecycleClientTrace(tableTrace, "ok");
 
         if (navigator && !request.deferTrackingNavigation) {
           navigator.goToTracking(result.trackingToken);
@@ -298,6 +323,8 @@ export function OrderingCheckoutProvider({
         const mapped = mapCheckoutSubmitError(error, language);
         setLastError(mapped);
         setSubmissionStatus("failure");
+        markOrderLifecycleClient(tableTrace, "mutation_error");
+        endOrderLifecycleClientTrace(tableTrace, "error");
         return { ok: false, error: mapped };
       }
     },

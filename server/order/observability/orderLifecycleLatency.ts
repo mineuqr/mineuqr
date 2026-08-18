@@ -97,6 +97,19 @@ export function noteOrderLifecycleMeta(
   store.meta[key] = value;
 }
 
+/** ORDER-SUBMISSION-LATENCY-INSTRUMENTATION-1 — time one existing await. No-op without ALS. */
+export async function timeOrderLifecyclePhase<T>(
+  phase: string,
+  fn: () => Promise<T>
+): Promise<T> {
+  const started = orderLifecycleNowMs();
+  try {
+    return await fn();
+  } finally {
+    noteOrderLifecyclePhase(phase, orderLifecycleNowMs() - started);
+  }
+}
+
 function buildSummary(store: OrderLifecycleLatencyContext): OrderLifecycleLatencySummary {
   const totalMs = Math.round(orderLifecycleNowMs() - store.t0);
   return {

@@ -38,6 +38,8 @@ import {
   logBusinessIdentityUniqueConstraintRetry,
 } from "../../business-identity/observability/businessIdentityObservability";
 import { businessIdentityMetrics } from "../../business-identity/observability/BusinessIdentityMetrics";
+import { noteOrderLifecyclePhase } from "../../observability/orderLifecycleLatency";
+import { orderLifecycleNowMs } from "@shared/order-lifecycle-latency";
 
 export class DrizzleOrderRepository implements OrderRepository {
   constructor(
@@ -67,15 +69,27 @@ export class DrizzleOrderRepository implements OrderRepository {
       const attempts = requireSameTransactionCompanion ? 1 : maxAttempts;
       for (let attempt = 1; attempt <= attempts; attempt++) {
         try {
-          return await db.transaction(async (tx) => {
-            const result = order.isNew()
+          const isNew = order.isNew();
+          let commitStarted = 0;
+          const result = await db.transaction(async (tx) => {
+            const saved = isNew
               ? await this.insertTransactional(tx, order, options)
               : await this.updateTransactional(tx, order, options);
             if (options?.afterPersistInTransaction) {
-              await options.afterPersistInTransaction(tx, result);
+              await options.afterPersistInTransaction(tx, saved);
             }
-            return result;
+            if (isNew) {
+              commitStarted = orderLifecycleNowMs();
+            }
+            return saved;
           });
+          if (isNew && commitStarted > 0) {
+            noteOrderLifecyclePhase(
+              "commit_ms",
+              orderLifecycleNowMs() - commitStarted
+            );
+          }
+          return result;
         } catch (error) {
           if (requireSameTransactionCompanion) {
             throw error;
@@ -136,6 +150,7 @@ export class DrizzleOrderRepository implements OrderRepository {
     order: Order,
     options?: SaveOrderOptions
   ): Promise<SaveOrderResult> {
+    const persistStarted = orderLifecycleNowMs();
     const snapshot = order.snapshotForCreate();
     await requireRestaurantRowForUpdate(tx, snapshot.restaurantId);
     const insertResult = await tx.insert(orders).values({
@@ -244,7 +259,10 @@ export class DrizzleOrderRepository implements OrderRepository {
       restaurantId: persisted.restaurantId,
     });
 
+    noteOrderLifecyclePhase("persist_ms", orderLifecycleNowMs() - persistStarted);
+    const outboxStarted = orderLifecycleNowMs();
     await this.outbox.appendInTransaction(tx, outboxInputs);
+    noteOrderLifecyclePhase("outbox_ms", orderLifecycleNowMs() - outboxStarted);
 
     return {
       order: persisted,

@@ -2754,100 +2754,142 @@ const orderRouter = router({
         .regex(SESSION_TOKEN_PATTERN)
         .optional(),
     }))
-    .mutation(async ({ input }) => {
-      await assertPublicOrderingRestaurant(input.restaurantId);
-
-      const table = await getTableByRestaurantAndNumber(input.restaurantId, input.tableNumber);
-      if (!table) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "الطاولة غير موجودة" });
-      }
-
-      let sessionId: number | undefined;
-      let sessionToken: string | undefined;
-      if (ENV.tableSessionDualWrite) {
-        try {
-          // OPERATIONAL-SESSION-PLATFORM-1 — QR table path via Operational Session Platform.
-          // Dining Session remains the table specialization (no rename / no behaviour change).
-          const sessionResult = await resolveOperationalSession({
-            restaurantId: input.restaurantId,
-            anchor: createTableSessionAnchor({
-              tableId: table.id,
-              tableNumber: table.tableNumber,
-            }),
-            sessionToken: input.sessionToken,
-          });
-          // Table specialization always returns a persistent session when successful.
-          if (!sessionResult.session) {
-            throw new Error("Table Operational Session resolution returned no session");
-          }
-          sessionId = sessionResult.session.id;
-          sessionToken = sessionResult.session.sessionToken;
-          opsLog({
-            type: sessionResult.created ? OPS_EVENT.session_created : OPS_EVENT.session_reused,
-            category: "ORDER",
-            severity: "info",
-            ts: new Date().toISOString(),
-            restaurantId: input.restaurantId,
-            procedure: "order.create",
-            metadata: {
-              sessionId: sessionResult.session.id,
-              tableId: table.id,
-              tableNumber: table.tableNumber,
-              anchorType: sessionResult.session.anchor.anchorType,
-            },
-          });
-        } catch (err) {
-          throwSessionServiceTrpcError(err);
-        }
-      }
-
-      // ORDER-IDENTITY-RUNTIME-1 — table ordering as Fulfilment Anchor type `table`.
-      const orderIdentity = createTableOrderIdentity({
-        tableId: table.id,
-        tableNumber: table.tableNumber,
-        sessionId: ENV.tableSessionDualWrite && sessionId != null ? sessionId : null,
-        sessionToken:
-          ENV.tableSessionDualWrite && sessionToken != null ? sessionToken : null,
-      });
-
-      const placeResult = await runOrderCommand(
-        () =>
-          placeOrderService.execute({
-            restaurantId: input.restaurantId,
-            identity: orderIdentity,
-            tableId: table.id,
-            tableNumber: table.tableNumber,
-            ...(ENV.tableSessionDualWrite && sessionId != null
-              ? { sessionId }
-              : {}),
-            orderingChannel: ORDERING_CHANNEL_QR,
-            customerName: input.customerName,
-            customerPhone: input.customerPhone,
-            notes: input.notes,
-            items: input.items.map((item) => ({
-              menuItemId: item.menuItemId,
-              quantity: item.quantity,
-              notes: item.notes,
-              modifiers: item.modifiers,
-            })),
-          }),
-        { awaitRelay: false }
+    .mutation(async ({ input, ctx }) => {
+      const {
+        withOrderLifecycleLatency,
+        markOrderLifecycleLatency,
+        noteOrderLifecyclePhase,
+        noteOrderLifecycleMeta,
+        timeOrderLifecyclePhase,
+        getOrderLifecycleLatencyContext,
+      } = await import("./order/observability/orderLifecycleLatency");
+      const { createOrderLifecycleTraceId } = await import(
+        "@shared/order-lifecycle-latency"
       );
 
-      return {
-        orderId: placeResult.order.id,
-        orderNumber: placeResult.orderNumber,
-        trackingToken: placeResult.trackingToken,
-        displayReference: placeResult.displayReference,
-        tableNumber: table.tableNumber,
-        totalAmount: placeResult.totalAmount,
-        itemCount: placeResult.itemCount,
-        createdAt: placeResult.createdAt,
-        status: "pending" as const,
-        ...(ENV.tableSessionDualWrite && sessionToken
-          ? { sessionToken }
-          : {}),
-      };
+      return withOrderLifecycleLatency(
+        {
+          traceId: ctx.correlationId ?? createOrderLifecycleTraceId(),
+          restaurantId: input.restaurantId,
+          transition: "place",
+          surface: "order.create",
+        },
+        async () => {
+          noteOrderLifecycleMeta(
+            "program",
+            "ORDER-SUBMISSION-LATENCY-INSTRUMENTATION-1"
+          );
+
+          await timeOrderLifecyclePhase("auth_ms", () =>
+            assertPublicOrderingRestaurant(input.restaurantId)
+          );
+          markOrderLifecycleLatency("authz");
+
+          const table = await timeOrderLifecyclePhase("table_ms", () =>
+            getTableByRestaurantAndNumber(input.restaurantId, input.tableNumber)
+          );
+          if (!table) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "الطاولة غير موجودة" });
+          }
+
+          let sessionId: number | undefined;
+          let sessionToken: string | undefined;
+          if (ENV.tableSessionDualWrite) {
+            await timeOrderLifecyclePhase("session_ms", async () => {
+              try {
+                // OPERATIONAL-SESSION-PLATFORM-1 — QR table path via Operational Session Platform.
+                // Dining Session remains the table specialization (no rename / no behaviour change).
+                const sessionResult = await resolveOperationalSession({
+                  restaurantId: input.restaurantId,
+                  anchor: createTableSessionAnchor({
+                    tableId: table.id,
+                    tableNumber: table.tableNumber,
+                  }),
+                  sessionToken: input.sessionToken,
+                });
+                // Table specialization always returns a persistent session when successful.
+                if (!sessionResult.session) {
+                  throw new Error("Table Operational Session resolution returned no session");
+                }
+                sessionId = sessionResult.session.id;
+                sessionToken = sessionResult.session.sessionToken;
+                opsLog({
+                  type: sessionResult.created ? OPS_EVENT.session_created : OPS_EVENT.session_reused,
+                  category: "ORDER",
+                  severity: "info",
+                  ts: new Date().toISOString(),
+                  restaurantId: input.restaurantId,
+                  procedure: "order.create",
+                  metadata: {
+                    sessionId: sessionResult.session.id,
+                    tableId: table.id,
+                    tableNumber: table.tableNumber,
+                    anchorType: sessionResult.session.anchor.anchorType,
+                  },
+                });
+              } catch (err) {
+                throwSessionServiceTrpcError(err);
+              }
+            });
+          } else {
+            noteOrderLifecyclePhase("session_ms", 0);
+            noteOrderLifecycleMeta("session_skipped", true);
+          }
+
+          // ORDER-IDENTITY-RUNTIME-1 — table ordering as Fulfilment Anchor type `table`.
+          const orderIdentity = createTableOrderIdentity({
+            tableId: table.id,
+            tableNumber: table.tableNumber,
+            sessionId: ENV.tableSessionDualWrite && sessionId != null ? sessionId : null,
+            sessionToken:
+              ENV.tableSessionDualWrite && sessionToken != null ? sessionToken : null,
+          });
+
+          const placeResult = await runOrderCommand(
+            () =>
+              placeOrderService.execute({
+                restaurantId: input.restaurantId,
+                identity: orderIdentity,
+                tableId: table.id,
+                tableNumber: table.tableNumber,
+                ...(ENV.tableSessionDualWrite && sessionId != null
+                  ? { sessionId }
+                  : {}),
+                orderingChannel: ORDERING_CHANNEL_QR,
+                customerName: input.customerName,
+                customerPhone: input.customerPhone,
+                notes: input.notes,
+                items: input.items.map((item) => ({
+                  menuItemId: item.menuItemId,
+                  quantity: item.quantity,
+                  notes: item.notes,
+                  modifiers: item.modifiers,
+                })),
+              }),
+            { awaitRelay: false }
+          );
+
+          const latency = getOrderLifecycleLatencyContext();
+          if (latency && placeResult.order.id != null) {
+            latency.orderId = placeResult.order.id;
+          }
+
+          return {
+            orderId: placeResult.order.id,
+            orderNumber: placeResult.orderNumber,
+            trackingToken: placeResult.trackingToken,
+            displayReference: placeResult.displayReference,
+            tableNumber: table.tableNumber,
+            totalAmount: placeResult.totalAmount,
+            itemCount: placeResult.itemCount,
+            createdAt: placeResult.createdAt,
+            status: "pending" as const,
+            ...(ENV.tableSessionDualWrite && sessionToken
+              ? { sessionToken }
+              : {}),
+          };
+        }
+      );
     }),
   // Verified: list orders for restaurant owner (live order operations)
   list: verifiedProcedure
