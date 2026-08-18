@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { LifecycleSettlementGuardError } from "@shared/operational-session";
+import { LifecycleSettlementGuardError } from "../../../../shared/operational-session";
 import { CompleteCashierPosOperationalService } from "../CompleteCashierPosOperationalService";
 import type { AdvanceOrderStatusService } from "../AdvanceOrderStatusService";
 
