@@ -33,6 +33,11 @@ describe("CompleteCashierPosOperationalService", () => {
         previousStatus: "ready",
         newStatus: targetStatus,
       })),
+      executeSequential: vi.fn(async ({ targetStatuses }) => ({
+        events: [],
+        previousStatus: "pending",
+        newStatus: targetStatuses[targetStatuses.length - 1] ?? "pending",
+      })),
     } as unknown as AdvanceOrderStatusService;
     svc = new CompleteCashierPosOperationalService(advance);
   });
@@ -72,16 +77,6 @@ describe("CompleteCashierPosOperationalService", () => {
   });
 
   it("walks pending → preparing → ready → served after settlement", async () => {
-    const statuses: string[] = [];
-    vi.mocked(advance.execute).mockImplementation(async ({ targetStatus }) => {
-      statuses.push(targetStatus);
-      return {
-        events: [],
-        previousStatus: "pending",
-        newStatus: targetStatus,
-      };
-    });
-
     const result = await svc.execute({
       orderId: 8,
       restaurantId: 1,
@@ -91,7 +86,12 @@ describe("CompleteCashierPosOperationalService", () => {
       actor,
     });
 
-    expect(statuses).toEqual(["preparing", "ready", "served"]);
+    expect(advance.execute).not.toHaveBeenCalled();
+    expect(advance.executeSequential).toHaveBeenCalledWith({
+      orderId: 8,
+      targetStatuses: ["preparing", "ready", "served"],
+      actor,
+    });
     expect(result).toEqual({ previousStatus: "pending", newStatus: "served" });
   });
 
@@ -109,6 +109,7 @@ describe("CompleteCashierPosOperationalService", () => {
       targetStatus: "served",
       actor,
     });
+    expect(advance.executeSequential).not.toHaveBeenCalled();
     expect(result).toEqual({ previousStatus: "served", newStatus: "served" });
   });
 });

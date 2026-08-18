@@ -227,30 +227,42 @@ export function mergeStatusBearingItem<T extends StatusBearing>(
   return incoming;
 }
 
+function isTerminalConfirmedOmission(orderId: number): boolean {
+  const confirmed = getOrderStatusWriteConfirmation(orderId);
+  if (!confirmed) return false;
+  const status = normalizeOrderFreshnessStatus(confirmed.status);
+  return status === "served" || status === "cancelled";
+}
+
 /**
  * Merge list payloads keyed by orderId. Items present only in existing and absent
  * from incoming are dropped (left the filtered read set).
+ *
+ * CASHIER-ORDER-AND-CHECKOUT-LATENCY-FORENSICS-1 — a confirmed terminal write
+ * that already removed the row from cache must not be resurrected by a stale
+ * listActive/Kitchen projection that still includes the Order.
  */
 export function mergeStatusBearingList<T extends StatusBearing>(
   existing: T[] | undefined,
   incoming: T[],
   onDecision?: (observation: ReadFreshnessObservation) => void
 ): T[] {
-  if (!existing?.length) {
-    for (const item of incoming) {
-      onDecision?.(
-        decideOrderStatusCacheReplacement({
-          existingStatus: undefined,
-          incomingStatus: item.status,
-          orderId: item.orderId,
-        })
-      );
+  const existingById = new Map((existing ?? []).map((item) => [item.orderId, item]));
+  const merged: T[] = [];
+  for (const item of incoming) {
+    const prev = existingById.get(item.orderId);
+    if (!prev && isTerminalConfirmedOmission(item.orderId)) {
+      const observation: ReadFreshnessObservation = {
+        decision: "keep_existing",
+        reason: "protected_by_confirmed_write",
+        orderId: item.orderId,
+        incomingStatus: item.status,
+      };
+      record(observation.decision);
+      onDecision?.(observation);
+      continue;
     }
-    return incoming;
+    merged.push(mergeStatusBearingItem(prev, item, onDecision));
   }
-
-  const existingById = new Map(existing.map((item) => [item.orderId, item]));
-  return incoming.map((item) =>
-    mergeStatusBearingItem(existingById.get(item.orderId), item, onDecision)
-  );
+  return merged;
 }

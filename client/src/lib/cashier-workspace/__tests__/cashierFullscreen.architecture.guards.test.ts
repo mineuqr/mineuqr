@@ -64,7 +64,13 @@ describe("CASHIER-UX-FULLSCREEN-AND-THEME-1 architecture guards", () => {
     expect(styles).toContain("bg-white");
     expect(read(INDEX_CSS)).not.toContain("cashier-pos");
     expect(read(RESTAURANT_DASH)).not.toContain("cashierPos");
-    expect(read(ORDERS)).not.toContain("cashierPos");
+    // CASHIER-ORDER-VISIBILITY-AND-NOTIFICATION-1 — Orders may identify
+    // cashier_pos by orderingChannel. It must not import Cashier theme tokens.
+    const orders = read(ORDERS);
+    expect(orders).toContain("ORDERING_CHANNEL_CASHIER_POS");
+    expect(orders).not.toContain("cashierPosStyles");
+    expect(orders).not.toContain("cashierPos.root");
+    expect(orders).not.toContain("cashier-pos");
     expect(read(SETTLEMENTS)).not.toContain("cashierPos");
     expect(read(REGISTER)).not.toContain("cashierPos");
     expect(read(REPORTS)).not.toContain("cashierPos");

@@ -423,7 +423,13 @@ export class PosSettlementInitiateService {
             checkOutcome: created.outcome,
           };
         } catch {
-          membership = null;
+          // CASHIER-ORDER-AND-CHECKOUT-LATENCY-FORENSICS-1 — background
+          // pos.check.intake may win the create race. Re-read membership
+          // instead of failing the first تأكيد الدفع as check_not_found.
+          membership = await this.membershipLookup(
+            context.restaurantId,
+            order.id
+          );
         }
       }
       if (!membership) {

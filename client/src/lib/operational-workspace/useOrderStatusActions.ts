@@ -34,6 +34,7 @@ const ACTION_MAP: Partial<
 function listActiveInputsFor(restaurantId: number) {
   return [
     { restaurantId, limit: 100 },
+    { restaurantId, status: undefined, limit: 100 },
     { restaurantId, status: "pending" as const, limit: 100 },
     { restaurantId, status: "preparing" as const, limit: 100 },
     { restaurantId, status: "ready" as const, limit: 100 },

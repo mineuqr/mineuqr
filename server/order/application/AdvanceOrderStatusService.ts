@@ -94,4 +94,69 @@ export class AdvanceOrderStatusService {
       newStatus: command.targetStatus,
     };
   }
+
+  /**
+   * CASHIER-ORDER-AND-CHECKOUT-LATENCY-FORENSICS-1
+   * Apply consecutive legal transitions on one load and one persist.
+   * Used by cashier_pos تم التقديم so the first click reaches served +
+   * lifecycleStage completed without intermediate projection windows.
+   */
+  async executeSequential(command: {
+    orderId: number;
+    targetStatuses: readonly OrderStatus[];
+    actor: OrderActor;
+  }): Promise<AdvanceOrderStatusResult> {
+    const order = await this.repository.findById(command.orderId);
+    if (!order) {
+      throw new OrderNotFoundError();
+    }
+
+    const previousStatus = order.status;
+    if (command.targetStatuses.length === 0) {
+      return {
+        events: [],
+        previousStatus,
+        newStatus: previousStatus,
+      };
+    }
+
+    const expectedUpdatedAt = order.toPersistedProps().updatedAt;
+    const changedAt = new Date().toISOString().slice(0, 19).replace("T", " ");
+
+    for (const targetStatus of command.targetStatuses) {
+      if (order.status === targetStatus) {
+        continue;
+      }
+      if (targetStatus === "served") {
+        await assertOrderCompletable({
+          restaurantId: order.restaurantId,
+          orderId: command.orderId,
+          sessionId: order.sessionId,
+        });
+      }
+      order.advanceStatus(targetStatus, command.actor, changedAt);
+    }
+
+    const events = order.pullDomainEvents();
+    const newStatus = order.status;
+    if (
+      order.lifecycleStage === "active" &&
+      (newStatus === "served" || newStatus === "cancelled")
+    ) {
+      order.advanceLifecycleStage("completed", changedAt);
+      events.push(...order.pullDomainEvents());
+    }
+
+    if (events.length === 0) {
+      return { events, previousStatus, newStatus };
+    }
+
+    await this.repository.save(order, {
+      expectedUpdatedAt,
+      domainEvents: events,
+    });
+    order.clearDomainEvents();
+
+    return { events, previousStatus, newStatus };
+  }
 }

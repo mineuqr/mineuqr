@@ -424,6 +424,30 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
     expect(settle).not.toHaveBeenCalled();
   });
 
+  it("recovers membership when ensureCheck loses the intake race", async () => {
+    let lookups = 0;
+    const raced = harness({
+      membership: null,
+      check: openCheck(),
+      ensureCheck: async () => {
+        throw new Error("duplicate membership");
+      },
+    });
+    raced.findMembership.mockImplementation(async () => {
+      lookups += 1;
+      return lookups === 1
+        ? null
+        : { checkId: CHECK_A, checkOutcome: "open" };
+    });
+    await seedTerminal(raced.store);
+    await grantSettle(raced.grants);
+    const result = await raced.service.initiate({ user: user(STAFF_A), command });
+    expect(result.outcome).toBe("paid");
+    expect(result.checkId).toBe(CHECK_A);
+    expect(raced.settle).toHaveBeenCalledTimes(1);
+    expect(lookups).toBe(2);
+  });
+
   it("ensures a Check when membership is not ready yet then settles", async () => {
     const { store, grants, service, settle } = harness({
       membership: null,

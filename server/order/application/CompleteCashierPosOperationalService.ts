@@ -59,6 +59,7 @@ export class CompleteCashierPosOperationalService {
       sessionId: input.sessionId,
     });
 
+    const targetStatuses: OrderStatus[] = [];
     let current: OrderStatus = previousStatus;
     for (;;) {
       if (current === "served") {
@@ -68,14 +69,16 @@ export class CompleteCashierPosOperationalService {
       if (!next) {
         throw new InvalidTransitionError(current, "served");
       }
-      const step = await this.advance.execute({
-        orderId: input.orderId,
-        targetStatus: next,
-        actor: input.actor,
-      });
-      current = step.newStatus;
+      targetStatuses.push(next);
+      current = next;
     }
 
-    return { previousStatus, newStatus: current };
+    const walked = await this.advance.executeSequential({
+      orderId: input.orderId,
+      targetStatuses,
+      actor: input.actor,
+    });
+
+    return { previousStatus, newStatus: walked.newStatus };
   }
 }

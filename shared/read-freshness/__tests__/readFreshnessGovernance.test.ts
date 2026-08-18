@@ -97,6 +97,34 @@ describe("mergeActiveOrderListCache", () => {
     expect(merged.items[0]?.readyAt).toBe("2026-01-01T00:00:00.000Z");
   });
 
+  it("does not resurrect an optimistically removed served order from a stale list", () => {
+    confirmOrderStatusWrite(8, "served");
+    const existing = {
+      items: [{ orderId: 9, status: "preparing", readyAt: null }],
+      generatedAt: "t0",
+    };
+    const incoming = {
+      items: [
+        { orderId: 8, status: "preparing", readyAt: null },
+        { orderId: 9, status: "preparing", readyAt: null },
+      ],
+      generatedAt: "t1",
+    };
+    const merged = mergeActiveOrderListCache(existing, incoming);
+    expect(merged.items.map((item) => item.orderId)).toEqual([9]);
+  });
+
+  it("keeps an empty optimistic list empty when the only order was served", () => {
+    confirmOrderStatusWrite(8, "served");
+    const existing = { items: [] as Array<{ orderId: number; status: string }>, generatedAt: "t0" };
+    const incoming = {
+      items: [{ orderId: 8, status: "ready", readyAt: null }],
+      generatedAt: "t1",
+    };
+    const merged = mergeActiveOrderListCache(existing, incoming);
+    expect(merged.items).toEqual([]);
+  });
+
   it("allows snapshot rollback after clearing confirmation", () => {
     confirmOrderStatusWrite(42, "ready");
     clearOrderStatusWriteConfirmation(42);
