@@ -13,6 +13,8 @@ import type {
   PosSaleIdempotencyRecord,
   PosSaleIdempotencyStore,
 } from "./PosSaleIdempotencyStore";
+import { orderLifecycleNowMs } from "@shared/order-lifecycle-latency";
+import { noteOrderLifecyclePhase } from "../../order/observability/orderLifecycleLatency";
 import {
   POS_DATABASE_UNAVAILABLE,
   type LoadPosDb,
@@ -136,7 +138,17 @@ export class DrizzlePosSaleIdempotencyStore implements PosSaleIdempotencyStore {
       release = resolve;
     });
     this.tails.set(id, previous.then(() => next));
+    // POS-SALE-PERSISTENCE-LATENCY-INSTRUMENTATION-1 — wait only (`await previous`).
+    const waitStarted = orderLifecycleNowMs();
     await previous;
+    try {
+      noteOrderLifecyclePhase(
+        "idempotency_wait_ms",
+        orderLifecycleNowMs() - waitStarted
+      );
+    } catch {
+      // Observability must not fail exclusive serialization.
+    }
     try {
       return await fn();
     } finally {

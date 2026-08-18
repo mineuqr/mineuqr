@@ -117,4 +117,54 @@ describe("POS Sale architecture guards", () => {
     expect(drizzle).toContain("putInTransaction");
     expect(drizzle).toContain("PosSaleIdempotencyUniqueCollisionError");
   });
+
+  it("POS-SALE-PERSISTENCE-LATENCY-INSTRUMENTATION-1 times exclusive stages without changing command behavior", () => {
+    const sale = read("server/pos/services/PosSaleService.ts");
+    const drizzle = read("server/pos/infrastructure/DrizzlePosSaleIdempotencyStore.ts");
+    const memory = read("server/pos/infrastructure/InMemoryPosSaleIdempotencyStore.ts");
+    const repo = read("server/order/infrastructure/persistence/DrizzleOrderRepository.ts");
+    const place = read("server/order/application/PlaceOrderService.ts");
+    const numbers = read("server/db.ts");
+    const occupancy = read("server/subscription-runtime/commercialLimitOccupancy.ts");
+
+    expect(sale).toContain("IdentityPlaceOrder");
+    expect(sale).toContain("persistExclusiveMs");
+    expect(sale).toContain("collectOrderLifecyclePhases");
+    expect(sale).toContain("idempotency_wait_ms");
+    expect(sale).toContain("idempotency_get_ms");
+    expect(sale).toContain("pricing_ms");
+    expect(sale).toContain("number_ms");
+    expect(sale).toContain("persist_ms");
+    expect(sale).toContain("outbox_ms");
+    expect(sale).toContain("commit_ms");
+    expect(sale).toContain("awaitRelay: false");
+    expect(sale).toContain("enrollCheck: false");
+    expect(sale).toContain("afterPersistInTransaction");
+    expect(sale).not.toContain("awaitRelay: true");
+    expect(sale).not.toContain("enrollCheck: true");
+    expect(sale).not.toContain("occupancyDelta");
+    expect(sale).not.toContain("checkLimit");
+    expect(sale).not.toMatch(/CREATE TABLE|ALTER TABLE/);
+    expect(sale).not.toMatch(/class PosOrder|POSOrder|PosOrderAggregate/);
+
+    expect(drizzle).toContain("await previous");
+    expect(drizzle).toContain("idempotency_wait_ms");
+    expect(memory).toContain("await previous");
+    expect(memory).toContain("idempotency_wait_ms");
+
+    expect(place).toContain("timeOrderLifecyclePhase");
+    expect(place).toContain("pricing_ms");
+    expect(place).toContain("this.pricing.resolveLines");
+    expect(place).toContain("this.orderNumbers.allocate");
+    expect(numbers).toContain("COUNT(*)");
+    expect(numbers).toContain("generateOrderNumber");
+
+    expect(repo).toContain("requireRestaurantRowForUpdate");
+    expect(repo).toContain("appendInTransaction");
+    expect(repo).toContain("persist_ms");
+    expect(repo).toContain("outbox_ms");
+    expect(repo).toContain("commit_ms");
+    expect(occupancy).toContain("occupancyDelta");
+    expect(sale).not.toContain("withOrderLifecycleLatency");
+  });
 });

@@ -12,6 +12,11 @@ import { findSessionById } from "../../diningSession/sessionRepository";
 import type { IdentityPlaceOrderService } from "../../order/application/IdentityPlaceOrderService";
 import { runOrderCommand } from "../../order/application/mapOrderDomainError";
 import { resolveOrderDisplayIdentity } from "../../order/business-identity/application/OrderDisplayIdentityResolver";
+import {
+  collectOrderLifecyclePhases,
+  getOrderLifecycleLatencyContext,
+  timeOrderLifecyclePhase,
+} from "../../order/observability/orderLifecycleLatency";
 import type { SaveOrderResult } from "../../order/repositories/OrderRepository";
 import { assertRestaurantPosScope } from "../authorization/assertRestaurantPosScope";
 import type { PosSaleIdempotencyStore } from "../infrastructure/PosSaleIdempotencyStore";
@@ -73,6 +78,54 @@ const AUTH_DENIED_CODES = new Set([
   "terminal_inactive",
   "entitlement_unavailable",
 ]);
+
+/**
+ * POS-SALE-PERSISTENCE-LATENCY-INSTRUMENTATION-1
+ * Stages copied onto `pos_sale_created`. Nested vs exclusive:
+ * - persistExclusiveMs: saleStartedAt → this log (enclosing, unchanged)
+ * - idempotency_wait_ms: `await previous` inside runExclusive (nested)
+ * - idempotency_get_ms: existing `idempotency.get` only (nested)
+ * - pricing_ms: PlaceOrder `resolveAuthoritativeOrderLines` / resolveLines (nested)
+ * - number_ms: PlaceOrder `generateOrderNumber` / allocate (nested; outside persist txn)
+ * - persist_ms: insertTransactional lock→insert→lines→BI→Accept (nested; before outbox)
+ * - outbox_ms: appendInTransaction only (nested; sibling of persist_ms)
+ * - commit_ms: after txn callback until db.transaction resolves (nested; sibling)
+ * Business Identity durationMs remains on business_identity_assignment_completed (inside persist_ms).
+ */
+const POS_SALE_PERSISTENCE_STAGE_KEYS = [
+  "idempotency_wait_ms",
+  "idempotency_get_ms",
+  "pricing_ms",
+  "number_ms",
+  "persist_ms",
+  "outbox_ms",
+  "commit_ms",
+] as const;
+
+type PosSalePersistenceStageKey = (typeof POS_SALE_PERSISTENCE_STAGE_KEYS)[number];
+
+function readPosSalePersistenceStages(): Record<
+  PosSalePersistenceStageKey,
+  number | null
+> {
+  const empty = Object.fromEntries(
+    POS_SALE_PERSISTENCE_STAGE_KEYS.map((key) => [key, null])
+  ) as Record<PosSalePersistenceStageKey, number | null>;
+  try {
+    const phases = getOrderLifecycleLatencyContext()?.phaseDurations;
+    if (!phases) return empty;
+    const next = { ...empty };
+    for (const key of POS_SALE_PERSISTENCE_STAGE_KEYS) {
+      const value = phases[key];
+      if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
+        next[key] = value;
+      }
+    }
+    return next;
+  } catch {
+    return empty;
+  }
+}
 
 function fingerprintOf(command: {
   restaurantId: number;
@@ -204,8 +257,11 @@ export class PosSaleService {
     };
 
     const saleStartedAt = Date.now();
-    return this.idempotency.runExclusive(idempotencyKey, async () => {
-      const existing = await this.idempotency.get(idempotencyKey);
+    return collectOrderLifecyclePhases(() =>
+      this.idempotency.runExclusive(idempotencyKey, async () => {
+        const existing = await timeOrderLifecyclePhase("idempotency_get_ms", () =>
+          this.idempotency.get(idempotencyKey)
+        );
       if (existing) {
         if (existing.fingerprint !== fingerprint) {
           throw new PosSaleError(
@@ -333,6 +389,7 @@ export class PosSaleService {
           orderingChannel: ORDERING_CHANNEL_CASHIER_POS,
           sessionPersistence: placed.sessionPersistence,
           persistExclusiveMs: Date.now() - saleStartedAt,
+          ...readPosSalePersistenceStages(),
         },
       });
 
@@ -349,7 +406,8 @@ export class PosSaleService {
         cashierUserId: context.userId,
         replayed: false,
       };
-    });
+    })
+    );
   }
 
   private async persistSaleMappingInTransaction(

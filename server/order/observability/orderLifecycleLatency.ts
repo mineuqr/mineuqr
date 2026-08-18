@@ -110,6 +110,35 @@ export async function timeOrderLifecyclePhase<T>(
   }
 }
 
+/**
+ * POS-SALE-PERSISTENCE-LATENCY-INSTRUMENTATION-1
+ * Activate existing ALS phase recording without emitting
+ * `order_lifecycle_latency_summary` and without changing `fn` behavior.
+ * If setup fails, `fn` still runs.
+ */
+export async function collectOrderLifecyclePhases<T>(
+  fn: () => Promise<T>
+): Promise<T> {
+  try {
+    if (!instrumentationEnabled() || als.getStore()) {
+      return await fn();
+    }
+  } catch {
+    return fn();
+  }
+
+  const store: OrderLifecycleLatencyContext = {
+    traceId: "pos_sale_phases",
+    t0: orderLifecycleNowMs(),
+    marks: {},
+    phaseDurations: {},
+    meta: {},
+    result: "ok",
+    detail: false,
+  };
+  return als.run(store, fn);
+}
+
 function buildSummary(store: OrderLifecycleLatencyContext): OrderLifecycleLatencySummary {
   const totalMs = Math.round(orderLifecycleNowMs() - store.t0);
   return {

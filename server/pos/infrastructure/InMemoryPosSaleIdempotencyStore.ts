@@ -1,3 +1,5 @@
+import { orderLifecycleNowMs } from "@shared/order-lifecycle-latency";
+import { noteOrderLifecyclePhase } from "../../order/observability/orderLifecycleLatency";
 import type {
   PosSaleIdempotencyKey,
   PosSaleIdempotencyRecord,
@@ -53,7 +55,17 @@ export class InMemoryPosSaleIdempotencyStore implements PosSaleIdempotencyStore 
       id,
       previous.then(() => next)
     );
+    // POS-SALE-PERSISTENCE-LATENCY-INSTRUMENTATION-1 — wait only (`await previous`).
+    const waitStarted = orderLifecycleNowMs();
     await previous;
+    try {
+      noteOrderLifecyclePhase(
+        "idempotency_wait_ms",
+        orderLifecycleNowMs() - waitStarted
+      );
+    } catch {
+      // Observability must not fail exclusive serialization.
+    }
     try {
       return await fn();
     } finally {

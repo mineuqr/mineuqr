@@ -29,6 +29,9 @@ describe("POS sale latency — deferred outbox relay", () => {
     const runCmd = read("server/order/application/mapOrderDomainError.ts");
     expect(sale).toContain("awaitRelay: false");
     expect(sale).toContain("enrollCheck: false");
+    expect(sale).toContain("persistExclusiveMs");
+    expect(sale).toContain("idempotency_wait_ms");
+    expect(sale).toContain("idempotency_get_ms");
     expect(sale).not.toContain("const stored = await this.idempotency.get");
     expect(sale).toContain("afterPersistInTransaction");
     expect(read("server/order/application/PlaceOrderService.ts")).not.toContain(
