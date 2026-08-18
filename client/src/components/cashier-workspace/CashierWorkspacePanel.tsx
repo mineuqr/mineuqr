@@ -13,6 +13,7 @@ import {
 } from "@/components/app-state";
 import { SettlementReceiptDialog } from "@/components/settlement-record/SettlementReceiptDialog";
 import { Button } from "@/components/ui/button";
+import { resolveCashierPaymentReadiness } from "@/lib/cashier-workspace/cashierPaymentReadiness";
 import {
   canConfirmCashierSettlement,
   displayCents,
@@ -273,6 +274,12 @@ export function CashierWorkspacePanel({
         allowed &&
         selectedOrderId != null &&
         (salePhase !== "ticket" || ordersOpen),
+      refetchInterval: (query) => {
+        if (salePhase !== "payment") return false;
+        const due = query.state.data?.[0]?.outstandingAmount;
+        if (due != null && String(due).trim() !== "") return false;
+        return 1000;
+      },
     }
   );
 
@@ -643,12 +650,18 @@ export function CashierWorkspacePanel({
   const ticketTotal = displayTicketTotal(ticket);
   const paymentOptions = listMonetaryPaymentMethodOptions(language);
   const settlementRow = (settlementQuery.data ?? [])[0];
-  const checkAmountDue =
-    paidCheckout?.grandTotal ?? settlementRow?.outstandingAmount ?? null;
-  const amountDue = checkAmountDue;
+  const paymentReadiness = resolveCashierPaymentReadiness({
+    outstandingAmount: paidCheckout?.grandTotal ?? settlementRow?.outstandingAmount,
+    cashTender: cashReceived,
+    cardTender,
+    intakePending: intakeMutation.isPending,
+    intakeFailed: intakeMutation.isError,
+    paymentSubmitting: settleMutation.isPending || paymentBusy,
+  });
+  const amountDue = paymentReadiness.amountDue;
   const amountDueIsOrderFallback =
     !paidCheckout &&
-    !settlementRow?.outstandingAmount &&
+    !paymentReadiness.checkAvailable &&
     Boolean(directSale?.totalAmount);
 
   useEffect(() => {
@@ -680,8 +693,7 @@ export function CashierWorkspacePanel({
   const tenderPlan = tenderDraft
     ? resolveCashierSettlementPlan(tenderDraft)
     : null;
-  const canConfirmPayment =
-    tenderDraft != null && canConfirmCashierSettlement(tenderDraft);
+  const canConfirmPayment = paymentReadiness.canConfirmPayment;
   const cashChange =
     tenderPlan && tenderPlan.changeCents > 0
       ? displayCents(tenderPlan.changeCents)
@@ -1137,7 +1149,11 @@ export function CashierWorkspacePanel({
                   {amountDue ? t("checkAmountDue") : t("amountDue")}
                 </p>
                 <p className={cashierPos.amountDueHuge}>
-                  {amountDue ? money(amountDue) : t("preparingCheck")}
+                  {paymentReadiness.checkAvailable && amountDue
+                    ? money(amountDue)
+                    : paymentReadiness.checkIntakeFailed
+                      ? t("checkMissing")
+                      : t("preparingCheck")}
                 </p>
                 {settlementRow &&
                 settlementRow.settledAmount &&
@@ -1152,7 +1168,7 @@ export function CashierWorkspacePanel({
                     {t("orderTotalHint")} · {money(directSale.totalAmount)}
                   </p>
                 ) : null}
-                {intakeMutation.isPending ? (
+                {paymentReadiness.showPreparingMessage ? (
                   <p className="mt-2 text-sm text-[#6b7280]">{t("preparingCheck")}</p>
                 ) : null}
                 <p className="mb-2 mt-4 text-sm font-medium">{t("selectPaymentMethod")}</p>
@@ -1197,22 +1213,22 @@ export function CashierWorkspacePanel({
                     );
                   })}
                 </div>
+                {paymentReadiness.checkAvailable ? (
+                  <>
                 <p className="mt-3 flex justify-between text-sm">
                   <span>{t("totalTendered")}</span>
                   <span className="tabular-nums font-semibold">
-                    {money(displayCents(tenderPlan?.totalEnteredCents ?? 0))}
+                    {money(paymentReadiness.totalTenderedDisplay ?? "0.00")}
                   </span>
                 </p>
                 <p className="mt-1 flex justify-between text-sm">
                   <span>{t("remainingAmount")}</span>
                   <span className="tabular-nums font-semibold">
-                    {money(
-                      tenderPlan
-                        ? displayCents(tenderPlan.remainingCents)
-                        : (amountDue ?? "0.00")
-                    )}
+                    {money(paymentReadiness.remainingDisplay ?? amountDue ?? "0.00")}
                   </span>
                 </p>
+                  </>
+                ) : null}
                 {cashChange ? (
                   <p className="mt-1 flex justify-between text-sm">
                     <span>{t("changeDue")}</span>
@@ -1263,10 +1279,7 @@ export function CashierWorkspacePanel({
                     type="button"
                     className={cn(cashierPos.primaryAction, "flex-1")}
                     disabled={
-                      paying ||
-                      !canConfirmPayment ||
-                      amountDue == null ||
-                      amountDueIsOrderFallback
+                      paymentReadiness.confirmDisabled || amountDueIsOrderFallback
                     }
                     onClick={() => void completePayment()}
                   >
