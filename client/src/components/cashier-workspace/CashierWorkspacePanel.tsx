@@ -440,6 +440,7 @@ export function CashierWorkspacePanel({
   }
 
   async function placeSale() {
+    // Confirm Order → pos.sale.create. Does not pay Check or Settlement.
     if (!terminalId || ticket.length === 0) return;
     if (saleInFlightRef.current || saleMutation.isPending) return;
     saleInFlightRef.current = true;
@@ -533,7 +534,7 @@ export function CashierWorkspacePanel({
   async function completePayment() {
     if (!terminalId || selectedOrderId == null) return;
     if (payInFlightRef.current || settleMutation.isPending) return;
-    const due = amountDue ?? directSale?.totalAmount;
+    const due = amountDue;
     if (!due) return;
     const plan = resolveCashierSettlementPlan({
       amountDue: due,
@@ -642,15 +643,30 @@ export function CashierWorkspacePanel({
   const ticketTotal = displayTicketTotal(ticket);
   const paymentOptions = listMonetaryPaymentMethodOptions(language);
   const settlementRow = (settlementQuery.data ?? [])[0];
-  const amountDue =
-    paidCheckout?.grandTotal ??
-    settlementRow?.outstandingAmount ??
-    directSale?.totalAmount ??
-    null;
+  const checkAmountDue =
+    paidCheckout?.grandTotal ?? settlementRow?.outstandingAmount ?? null;
+  const amountDue = checkAmountDue;
   const amountDueIsOrderFallback =
     !paidCheckout &&
     !settlementRow?.outstandingAmount &&
     Boolean(directSale?.totalAmount);
+
+  useEffect(() => {
+    if (salePhase !== "payment" || paidCheckout) return;
+    const checkDue = settlementRow?.outstandingAmount;
+    if (!checkDue) return;
+    setCashReceived((current) => {
+      if (current === "" || current === directSale?.totalAmount) {
+        return checkDue;
+      }
+      return current;
+    });
+  }, [
+    salePhase,
+    paidCheckout,
+    settlementRow?.outstandingAmount,
+    directSale?.totalAmount,
+  ]);
   const money = (value: string) =>
     currencySymbol ? `${value} ${currencySymbol}` : value;
   const tenderDraft =
@@ -1116,12 +1132,25 @@ export function CashierWorkspacePanel({
               <>
                 <h2 className="text-lg font-semibold">{t("completePaymentTitle")}</h2>
                 <p className="mt-1 text-sm text-[#6b7280]">{directSale.displayReference}</p>
-                <p className="mt-4 text-sm font-medium text-[#6b7280]">{t("amountDue")}</p>
+                <p className="mt-1 text-sm text-[#6b7280]">{t("unpaidOrderHint")}</p>
+                <p className="mt-4 text-sm font-medium text-[#6b7280]">
+                  {amountDue ? t("checkAmountDue") : t("amountDue")}
+                </p>
                 <p className={cashierPos.amountDueHuge}>
                   {amountDue ? money(amountDue) : t("preparingCheck")}
                 </p>
+                {settlementRow &&
+                settlementRow.settledAmount &&
+                settlementRow.settledAmount !== "0.00" ? (
+                  <p className="mt-1 flex justify-between text-sm text-[#6b7280]">
+                    <span>{t("checkSettledAmount")}</span>
+                    <span className="tabular-nums">{money(settlementRow.settledAmount)}</span>
+                  </p>
+                ) : null}
                 {amountDueIsOrderFallback ? (
-                  <p className="mt-1 text-xs text-[#6b7280]">{t("orderTotalHint")}</p>
+                  <p className="mt-1 text-xs text-[#6b7280]">
+                    {t("orderTotalHint")} · {money(directSale.totalAmount)}
+                  </p>
                 ) : null}
                 {intakeMutation.isPending ? (
                   <p className="mt-2 text-sm text-[#6b7280]">{t("preparingCheck")}</p>
@@ -1236,7 +1265,8 @@ export function CashierWorkspacePanel({
                     disabled={
                       paying ||
                       !canConfirmPayment ||
-                      amountDue == null
+                      amountDue == null ||
+                      amountDueIsOrderFallback
                     }
                     onClick={() => void completePayment()}
                   >

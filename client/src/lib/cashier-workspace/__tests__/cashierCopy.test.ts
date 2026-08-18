@@ -13,7 +13,13 @@ describe("cashier presentation helpers", () => {
     expect(cashierUiLabel("returnDashboard", "ar")).toBe("العودة إلى لوحة التحكم");
     expect(cashierUiLabel("openNewTab", "ar")).toBe("فتح الكاشير في تبويب جديد");
     expect(cashierUiLabel("allCategories", "ar")).toBe("الكل");
-    expect(cashierUiLabel("placeSale", "ar")).toBe("تأكيد البيع");
+    expect(cashierUiLabel("placeSale", "ar")).toBe("تأكيد الطلب");
+    expect(cashierUiLabel("placeSale", "en")).toBe("Confirm order");
+    expect(cashierUiLabel("salePlaced", "en")).toBe("Order confirmed");
+    expect(cashierUiLabel("confirmPayment", "ar")).toBe("تأكيد الدفع");
+    expect(cashierUiLabel("unpaidOrderHint", "ar")).toBe(
+      "الطلب مؤكد ولم يُدفع بعد."
+    );
     expect(cashierUiLabel("paidSuccess", "ar")).toBe("تم الدفع بنجاح");
     expect(cashierUiLabel("printInvoice", "ar")).toBe("طباعة الفاتورة");
     expect(cashierUiLabel("shiftBeforePay", "ar")).toBe(
