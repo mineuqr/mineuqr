@@ -159,7 +159,7 @@ describe("POS Sale architecture guards", () => {
     expect(numbers).toContain("COUNT(*)");
     expect(numbers).toContain("generateOrderNumber");
 
-    expect(repo).toContain("requireRestaurantRowForUpdate");
+    expect(repo).toContain("requireRestaurantRowForOrderPersist");
     expect(repo).toContain("appendInTransaction");
     expect(repo).toContain("persist_ms");
     expect(repo).toContain("outbox_ms");
@@ -192,7 +192,7 @@ describe("POS Sale architecture guards", () => {
     expect(repo).toContain('timeOrderLifecyclePhase("order_lines_ms"');
     expect(repo).toContain('timeOrderLifecyclePhase("accept_update_ms"');
     expect(repo).toContain('noteOrderLifecyclePhase("accept_update_ms", 0)');
-    expect(repo).toContain("requireRestaurantRowForUpdate");
+    expect(repo).toContain("requireRestaurantRowForOrderPersist");
     expect(repo).toContain("tx.insert(orders)");
     expect(repo).toContain("tx.insert(orderItems)");
     expect(repo).toContain("appendInTransaction");

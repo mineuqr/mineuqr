@@ -55,7 +55,7 @@ describe("ORDER-SUBMISSION-LATENCY-INSTRUMENTATION-1", () => {
     expect(repo).toContain("order_lines_ms");
     expect(repo).toContain("accept_update_ms");
     expect(repo).toContain("appendInTransaction");
-    expect(repo).toContain("requireRestaurantRowForUpdate");
+    expect(repo).toContain("requireRestaurantRowForOrderPersist");
   });
 
   it("Table checkout correlates lifecycleTraceId on order.create only", () => {

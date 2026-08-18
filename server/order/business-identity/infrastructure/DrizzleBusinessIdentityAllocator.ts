@@ -3,6 +3,7 @@ import { orders } from "../../../../drizzle/schema";
 import {
   resolveBusinessDayKey,
   resolveBusinessDayWindow,
+  resolveNormalizedOpeningHours,
 } from "../../../../shared/utils/businessDay";
 import type { BusinessIdentityAssignment, BusinessIdentityScope } from "../types";
 import {
@@ -28,12 +29,15 @@ export type BusinessIdentityAssignmentContext = {
 };
 
 export type AllocateForNewOrderInput = {
-  orderId: number;
   restaurantId: number;
   createdAt: string;
+  /** restaurants.workingHours from the Order persist FOR UPDATE row. */
+  workingHours: unknown;
   identityScope?: BusinessIdentityScope;
   fulfilmentAnchorType?: string | null;
   serviceMode?: string | null;
+  /** Optional log correlation only; sequence allocation does not use Order id. */
+  orderId?: number;
 };
 
 export class DrizzleBusinessIdentityAllocator {
@@ -59,7 +63,7 @@ export class DrizzleBusinessIdentityAllocator {
 
     logBusinessIdentityAssignmentStarted(logCtx);
 
-    const workingHours = await this.openingTimeResolver.getWorkingHours(input.restaurantId);
+    const workingHours = resolveNormalizedOpeningHours(input.workingHours);
     const businessDay = resolveBusinessDayKey(input.createdAt, workingHours);
 
     await tx.execute(sql`
@@ -69,16 +73,9 @@ export class DrizzleBusinessIdentityAllocator {
     `);
 
     const [seqRow] = await tx.execute(sql`SELECT LAST_INSERT_ID() AS n`);
-    const dailyDisplayNumber = Number((seqRow as { n: number }[])[0]?.n ?? 1);
-
-    await tx
-      .update(orders)
-      .set({
-        businessDay,
-        dailyDisplayNumber,
-        identityScope,
-      })
-      .where(eq(orders.id, input.orderId));
+    const dailyDisplayNumber = Number(
+      (seqRow as unknown as { n: number }[])[0]?.n ?? 1
+    );
 
     const durationMs = Date.now() - startedAt;
     this.metrics.recordAssignment(durationMs, "hot");

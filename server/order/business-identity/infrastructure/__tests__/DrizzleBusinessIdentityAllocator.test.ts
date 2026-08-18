@@ -120,13 +120,13 @@ describe("DrizzleBusinessIdentityAllocator.allocateForNewOrder", () => {
   it("assigns daily_display_number = 1 on first business day order after stale AUTO_INCREMENT", async () => {
     const simulator = createSequenceSimulator({ useFixedInsertPattern: true });
     simulator.simulatePriorAutoIncrementInsert(4860001);
-    const { tx, updatedOrders } = simulator.createTx("TABLE");
+    const { tx } = simulator.createTx("TABLE");
     const allocator = createAllocator();
 
     const result = await allocator.allocateForNewOrder(tx as never, {
-      orderId: 4860001,
       restaurantId: 720007,
       createdAt: "2026-07-10T19:47:33.000Z",
+      workingHours: DEFAULT_HOURS,
       fulfilmentAnchorType: "table",
       serviceMode: "table_service",
     });
@@ -136,8 +136,7 @@ describe("DrizzleBusinessIdentityAllocator.allocateForNewOrder", () => {
       dailyDisplayNumber: 1,
       identityScope: "TABLE",
     });
-    expect(updatedOrders.at(-1)?.dailyDisplayNumber).toBe(1);
-    expect(updatedOrders.at(-1)?.identityScope).toBe("TABLE");
+    expect(tx.update).not.toHaveBeenCalled();
     expect(simulator.state.sequences.get("720007:2026-07-10:TABLE")).toBe(1);
   });
 
@@ -148,9 +147,9 @@ describe("DrizzleBusinessIdentityAllocator.allocateForNewOrder", () => {
 
     const { tx: tx1 } = simulator.createTx("TABLE");
     const first = await allocator.allocateForNewOrder(tx1 as never, {
-      orderId: 4860001,
       restaurantId: 720007,
       createdAt: "2026-07-10T19:47:33.000Z",
+      workingHours: DEFAULT_HOURS,
       fulfilmentAnchorType: "table",
       serviceMode: "table_service",
     });
@@ -158,9 +157,9 @@ describe("DrizzleBusinessIdentityAllocator.allocateForNewOrder", () => {
     simulator.simulatePriorAutoIncrementInsert(4860002);
     const { tx: tx2 } = simulator.createTx("TABLE");
     const second = await allocator.allocateForNewOrder(tx2 as never, {
-      orderId: 4860002,
       restaurantId: 720007,
       createdAt: "2026-07-10T20:00:00.000Z",
+      workingHours: DEFAULT_HOURS,
       fulfilmentAnchorType: "table",
       serviceMode: "table_service",
     });
@@ -168,9 +167,9 @@ describe("DrizzleBusinessIdentityAllocator.allocateForNewOrder", () => {
     simulator.simulatePriorAutoIncrementInsert(4860003);
     const { tx: tx3 } = simulator.createTx("TABLE");
     const third = await allocator.allocateForNewOrder(tx3 as never, {
-      orderId: 4860003,
       restaurantId: 720007,
       createdAt: "2026-07-10T20:15:00.000Z",
+      workingHours: DEFAULT_HOURS,
       fulfilmentAnchorType: "table",
       serviceMode: "table_service",
     });
@@ -188,9 +187,9 @@ describe("DrizzleBusinessIdentityAllocator.allocateForNewOrder", () => {
     simulator.simulatePriorAutoIncrementInsert(1);
     const { tx: tableTx } = simulator.createTx("TABLE");
     const table = await allocator.allocateForNewOrder(tableTx as never, {
-      orderId: 1,
       restaurantId: 720007,
       createdAt: "2026-07-10T19:47:33.000Z",
+      workingHours: DEFAULT_HOURS,
       fulfilmentAnchorType: "table",
       serviceMode: "table_service",
     });
@@ -198,9 +197,9 @@ describe("DrizzleBusinessIdentityAllocator.allocateForNewOrder", () => {
     simulator.simulatePriorAutoIncrementInsert(2);
     const { tx: kioskTx } = simulator.createTx("KIOSK");
     const kiosk = await allocator.allocateForNewOrder(kioskTx as never, {
-      orderId: 2,
       restaurantId: 720007,
       createdAt: "2026-07-10T19:50:00.000Z",
+      workingHours: DEFAULT_HOURS,
       fulfilmentAnchorType: "station",
       serviceMode: "counter",
     });
@@ -217,6 +216,69 @@ describe("DrizzleBusinessIdentityAllocator.allocateForNewOrder", () => {
     });
     expect(simulator.state.sequences.get("720007:2026-07-10:TABLE")).toBe(1);
     expect(simulator.state.sequences.get("720007:2026-07-10:KIOSK")).toBe(1);
+  });
+
+  it("keeps POS and WAITER sequences independent of TABLE", async () => {
+    const simulator = createSequenceSimulator({ useFixedInsertPattern: true });
+    const getWorkingHours = vi.fn(async () => DEFAULT_HOURS);
+    const allocator = createAllocator({
+      getWorkingHours,
+    } as unknown as RestaurantOpeningTimeResolver);
+
+    const { tx: posTx } = simulator.createTx("POS");
+    const pos = await allocator.allocateForNewOrder(posTx as never, {
+      restaurantId: 720007,
+      createdAt: "2026-07-10T19:47:33.000Z",
+      workingHours: DEFAULT_HOURS,
+      identityScope: "POS",
+    });
+
+    const { tx: waiterTx } = simulator.createTx("WAITER");
+    const waiter = await allocator.allocateForNewOrder(waiterTx as never, {
+      restaurantId: 720007,
+      createdAt: "2026-07-10T19:47:33.000Z",
+      workingHours: DEFAULT_HOURS,
+      identityScope: "WAITER",
+    });
+
+    expect(pos).toEqual({
+      businessDay: "2026-07-10",
+      dailyDisplayNumber: 1,
+      identityScope: "POS",
+    });
+    expect(waiter).toEqual({
+      businessDay: "2026-07-10",
+      dailyDisplayNumber: 1,
+      identityScope: "WAITER",
+    });
+    expect(getWorkingHours).not.toHaveBeenCalled();
+    expect(posTx.update).not.toHaveBeenCalled();
+    expect(waiterTx.update).not.toHaveBeenCalled();
+  });
+
+  it("uses the provided workingHours for businessDay and does not SELECT hours", async () => {
+    const simulator = createSequenceSimulator({ useFixedInsertPattern: true });
+    const getWorkingHours = vi.fn(async () => DEFAULT_HOURS);
+    const allocator = createAllocator({
+      getWorkingHours,
+    } as unknown as RestaurantOpeningTimeResolver);
+
+    const lateOpen = resolveNormalizedOpeningHours({
+      friday: { open: "23:00", close: "02:00" },
+    });
+    const { tx, getExecuteCalls } = simulator.createTx("TABLE");
+    const result = await allocator.allocateForNewOrder(tx as never, {
+      restaurantId: 720007,
+      createdAt: "2026-07-10T19:47:33.000Z",
+      workingHours: lateOpen,
+      fulfilmentAnchorType: "table",
+      serviceMode: "table_service",
+    });
+
+    expect(result.businessDay).toBe("2026-07-09");
+    expect(getWorkingHours).not.toHaveBeenCalled();
+    expect(getExecuteCalls()).toBe(2);
+    expect(tx.update).not.toHaveBeenCalled();
   });
 
   it("regression: plain INSERT value 1 would have leaked stale orderId", () => {

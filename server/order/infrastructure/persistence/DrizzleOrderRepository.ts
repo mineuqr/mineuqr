@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { getDb } from "../../../db";
 import {
-  requireRestaurantRowForUpdate,
+  requireRestaurantRowForOrderPersist,
 } from "../../../db/restaurantRowLock";
 import { orders, orderItems } from "../../../../drizzle/schema";
 import { Order } from "../../domain/aggregate/Order";
@@ -156,9 +156,32 @@ export class DrizzleOrderRepository implements OrderRepository {
     const persistStarted = orderLifecycleNowMs();
     const snapshot = order.snapshotForCreate();
     // POS-SALE-PERSISTENCE-INTERNAL-INSTRUMENTATION-1 — wrap existing ops only.
-    await timeOrderLifecyclePhase("restaurant_lock_ms", () =>
-      requireRestaurantRowForUpdate(tx, snapshot.restaurantId)
+    const lockedRestaurant = await timeOrderLifecyclePhase("restaurant_lock_ms", () =>
+      requireRestaurantRowForOrderPersist(tx, snapshot.restaurantId)
     );
+
+    let businessIdentity: SaveOrderResult["businessIdentity"];
+    if (this.businessIdentityAllocator) {
+      const assignment = await this.businessIdentityAllocator.allocateForNewOrder(
+        tx,
+        {
+          restaurantId: snapshot.restaurantId,
+          createdAt: order.createdAt,
+          workingHours: lockedRestaurant.workingHours,
+          fulfilmentAnchorType: snapshot.fulfilmentAnchorType,
+          serviceMode: snapshot.serviceMode,
+          identityScope: (options?.identityScope ?? undefined) as
+            | import("../../business-identity/types").BusinessIdentityScope
+            | undefined,
+        }
+      );
+      businessIdentity = {
+        businessDay: assignment.businessDay,
+        dailyDisplayNumber: assignment.dailyDisplayNumber,
+        identityScope: assignment.identityScope,
+      };
+    }
+
     const insertResult = await timeOrderLifecyclePhase("order_insert_ms", () =>
       tx.insert(orders).values({
         restaurantId: snapshot.restaurantId,
@@ -176,6 +199,13 @@ export class DrizzleOrderRepository implements OrderRepository {
         trackingToken: snapshot.trackingToken,
         status: snapshot.status,
         lifecycleStage: snapshot.lifecycleStage,
+        ...(businessIdentity != null
+          ? {
+              businessDay: businessIdentity.businessDay,
+              dailyDisplayNumber: businessIdentity.dailyDisplayNumber,
+              identityScope: businessIdentity.identityScope,
+            }
+          : {}),
         ...(options?.orderingChannel != null
           ? { orderingChannel: options.orderingChannel }
           : {}),
@@ -201,28 +231,6 @@ export class DrizzleOrderRepository implements OrderRepository {
         }))
       )
     );
-
-    let businessIdentity: SaveOrderResult["businessIdentity"];
-    if (this.businessIdentityAllocator) {
-      const assignment = await this.businessIdentityAllocator.allocateForNewOrder(
-        tx,
-        {
-          orderId,
-          restaurantId: snapshot.restaurantId,
-          createdAt: order.createdAt,
-          fulfilmentAnchorType: snapshot.fulfilmentAnchorType,
-          serviceMode: snapshot.serviceMode,
-          identityScope: (options?.identityScope ?? undefined) as
-            | import("../../business-identity/types").BusinessIdentityScope
-            | undefined,
-        }
-      );
-      businessIdentity = {
-        businessDay: assignment.businessDay,
-        dailyDisplayNumber: assignment.dailyDisplayNumber,
-        identityScope: assignment.identityScope,
-      };
-    }
 
     const persisted = Order.reconstitute({
       id: orderId,

@@ -49,7 +49,9 @@ describe("ORDER-BUSINESS-IDENTITY-HARDENING-1 architecture guards", () => {
     expect(allocator).toContain(
       "ON DUPLICATE KEY UPDATE last_number = LAST_INSERT_ID(last_number + 1)"
     );
-    expect(allocator).toContain("VALUES (${input.restaurantId}, ${businessDay}, LAST_INSERT_ID(1))");
+    expect(allocator).toContain(
+      "VALUES (${input.restaurantId}, ${businessDay}, ${identityScope}, LAST_INSERT_ID(1))"
+    );
     expect(allocator).toContain("SELECT LAST_INSERT_ID() AS n");
     expect(allocator).not.toMatch(
       /VALUES \(\$\{input\.restaurantId\}, \$\{businessDay\}, 1\)\s*\n\s*ON DUPLICATE KEY UPDATE/
@@ -71,6 +73,53 @@ describe("ORDER-BUSINESS-IDENTITY-HARDENING-1 architecture guards", () => {
     expect(repository).toContain("BUSINESS_IDENTITY_RETRY_POLICY");
     expect(repository).toContain("isRetryableBusinessIdentityInfrastructureError");
     expect(repository).toContain("insertLegacy");
+  });
+
+  it("BUSINESS-IDENTITY-LATENCY-REMEDIATION-1 stamps identity on INSERT and keeps LAST_INSERT_ID", () => {
+    const allocator = read(
+      "server/order/business-identity/infrastructure/DrizzleBusinessIdentityAllocator.ts"
+    );
+    const repository = read("server/order/infrastructure/persistence/DrizzleOrderRepository.ts");
+    const lock = read("server/db/restaurantRowLock.ts");
+    const occupancy = read("server/subscription-runtime/commercialLimitOccupancy.ts");
+    const cascade = read("server/db/cascadeDeletes.ts");
+    const hot = allocator.slice(0, allocator.indexOf("async ensureAssigned("));
+
+    expect(hot).toContain("SELECT LAST_INSERT_ID() AS n");
+    expect(hot).toContain("LAST_INSERT_ID(last_number + 1)");
+    expect(hot).toContain("LAST_INSERT_ID(1)");
+    expect(hot).not.toContain(".update(orders)");
+    expect(hot).not.toContain("insertId");
+    expect(hot).not.toContain("RETURNING");
+    expect(hot).not.toContain("getWorkingHours");
+    expect(allocator).toContain("async ensureAssigned(");
+    expect(allocator).toContain(".for(\"update\")");
+    const historic = allocator.slice(allocator.indexOf("async ensureAssigned("));
+    expect(historic).toContain(".update(orders)");
+    expect(historic).toContain("COUNT(*)");
+    expect(historic).toContain("getWorkingHours");
+    expect(historic).toContain("GREATEST(last_number");
+
+    expect(repository).toContain("requireRestaurantRowForOrderPersist");
+    expect(repository).toContain("workingHours: lockedRestaurant.workingHours");
+    expect(repository).toContain("businessDay: businessIdentity.businessDay");
+    expect(repository).toContain("dailyDisplayNumber: businessIdentity.dailyDisplayNumber");
+    expect(repository).toContain("identityScope: businessIdentity.identityScope");
+    expect(repository).not.toContain("resolveBusinessDayKey");
+    expect(repository).not.toContain("setImmediate");
+    expect(repository).not.toContain("RETURNING");
+
+    const allocateAt = repository.indexOf("allocateForNewOrder");
+    const insertAt = repository.indexOf("tx.insert(orders)");
+    expect(allocateAt).toBeGreaterThan(0);
+    expect(insertAt).toBeGreaterThan(allocateAt);
+
+    expect(lock).toContain("SELECT id, userId\n    FROM restaurants");
+    expect(lock).toContain("SELECT id, userId, workingHours");
+    expect(occupancy).not.toContain("workingHours");
+    expect(occupancy).not.toContain("lockRestaurantRowForOrderPersist");
+    expect(cascade).not.toContain("lockRestaurantRowForOrderPersist");
+    expect(cascade).toContain("lockRestaurantRowForUpdate(tx, restaurantId)");
   });
 
   it("passes worker and correlation context from projection materializer", () => {

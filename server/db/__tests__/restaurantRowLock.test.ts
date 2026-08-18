@@ -5,7 +5,9 @@ import { describe, expect, it, vi } from "vitest";
 import { sql } from "drizzle-orm";
 import {
   lockRestaurantRowForUpdate,
+  lockRestaurantRowForOrderPersist,
   requireRestaurantRowForUpdate,
+  requireRestaurantRowForOrderPersist,
   RestaurantGoneError,
 } from "../restaurantRowLock";
 
@@ -14,6 +16,19 @@ describe("restaurantRowLock", () => {
     const execute = vi.fn().mockResolvedValue([[{ id: 41, userId: 9 }]]);
     const row = await lockRestaurantRowForUpdate({ execute }, 41);
     expect(row).toEqual({ id: 41, userId: 9 });
+    expect(execute).toHaveBeenCalledTimes(1);
+  });
+
+  it("Order persist lock returns workingHours under FOR UPDATE without changing the generic lock", async () => {
+    const execute = vi.fn().mockResolvedValue([
+      [{ id: 41, userId: 9, workingHours: '{"monday":{"open":"09:00","close":"23:00"}}' }],
+    ]);
+    const row = await lockRestaurantRowForOrderPersist({ execute }, 41);
+    expect(row).toEqual({
+      id: 41,
+      userId: 9,
+      workingHours: '{"monday":{"open":"09:00","close":"23:00"}}',
+    });
     expect(execute).toHaveBeenCalledTimes(1);
   });
 
@@ -30,5 +45,14 @@ describe("restaurantRowLock", () => {
       restaurantId: 77,
     });
     expect(RestaurantGoneError).toBeDefined();
+  });
+
+  it("Order persist require throws RestaurantGoneError when missing", async () => {
+    const execute = vi.fn().mockResolvedValue([[]]);
+    await expect(requireRestaurantRowForOrderPersist({ execute }, 77)).rejects.toMatchObject({
+      name: "RestaurantGoneError",
+      code: "RESTAURANT_GONE",
+      restaurantId: 77,
+    });
   });
 });

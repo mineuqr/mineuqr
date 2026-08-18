@@ -56,10 +56,16 @@ describe("restaurant cascade TOCTOU ownership guards", () => {
     const orders = read(
       "server/order/infrastructure/persistence/DrizzleOrderRepository.ts"
     );
-    const lockAt = orders.indexOf("requireRestaurantRowForUpdate(tx, snapshot.restaurantId)");
+    const lockAt = orders.indexOf("requireRestaurantRowForOrderPersist(tx, snapshot.restaurantId)");
     const insertAt = orders.indexOf("tx.insert(orders)");
     expect(lockAt).toBeGreaterThan(0);
     expect(insertAt).toBeGreaterThan(lockAt);
+    expect(read("server/db/restaurantRowLock.ts")).toContain(
+      "SELECT id, userId, workingHours"
+    );
+    expect(read("server/subscription-runtime/commercialLimitOccupancy.ts")).not.toContain(
+      "lockRestaurantRowForOrderPersist"
+    );
   });
 
   it("does not add an FK, 0095, POS lock, or occupancy counter", () => {
