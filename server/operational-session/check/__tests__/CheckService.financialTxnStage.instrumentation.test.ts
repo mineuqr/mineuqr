@@ -228,6 +228,10 @@ describe("CASHIER-SETTLEMENT-FINANCIALTXN-STAGE-INSTRUMENTATION-1", () => {
     expect(detailed.finalizeStageMs.contextResolveMs).toBeGreaterThanOrEqual(30);
     expect(detailed.finalizeStageMs.moneyTxMs).toBeGreaterThanOrEqual(30);
     expect(detailed.finalizeStageMs.attributionMs).toBeGreaterThanOrEqual(30);
+    expect(detailed.finalizeStageMs.validationMs).toBeGreaterThanOrEqual(0);
+    expect(detailed.finalizeStageMs.financialTransactionWriteMs).toBeGreaterThanOrEqual(
+      0
+    );
     expect(mocks.resolveSettlementContextForSettle).toHaveBeenCalledTimes(1);
     expect(mocks.adoptSettlementAttributionAfterFinalize).toHaveBeenCalledTimes(
       1
@@ -287,6 +291,56 @@ describe("CASHIER-SETTLEMENT-FINANCIALTXN-STAGE-INSTRUMENTATION-1", () => {
 
     expect(detailed.finalizeStageMs.attributionMs).toBeGreaterThanOrEqual(40);
     expect(detailed.finalizeStageMs.moneyTxMs).toBeLessThan(40);
+    expect(detailed.finalizeStageMs.financialTransactionWriteMs).toBeLessThan(40);
+  });
+
+  it("does not include getDb preparation in financialTransactionWriteMs", async () => {
+    mocks.findCheckById
+      .mockResolvedValueOnce(openCheck)
+      .mockResolvedValueOnce({ ...openCheck, outcome: "paid" });
+    mocks.getDb.mockImplementation(async () => {
+      await delay(50);
+      return {
+        transaction: async (fn: (tx: unknown) => Promise<unknown>) => fn(fakeTx),
+      };
+    });
+
+    const detailed = await settleCheckPaidByIdDetailed({
+      restaurantId: 1,
+      checkId: 100,
+      settlementContextHints: hints,
+    });
+
+    expect(
+      detailed.finalizeStageMs.financialTransactionPreparationMs
+    ).toBeGreaterThanOrEqual(40);
+    expect(detailed.finalizeStageMs.financialTransactionWriteMs).toBeLessThan(40);
+    expect(detailed.finalizeStageMs.moneyTxMs).toBeGreaterThanOrEqual(40);
+  });
+
+  it("puts in-TX writes in financialTransactionWriteMs, not attributionMs", async () => {
+    mocks.findCheckById
+      .mockResolvedValueOnce(openCheck)
+      .mockResolvedValueOnce({ ...openCheck, outcome: "paid" });
+    mocks.finalizeCheckOutcome.mockImplementation(async () => {
+      await delay(50);
+      return 1;
+    });
+
+    const detailed = await settleCheckPaidByIdDetailed({
+      restaurantId: 1,
+      checkId: 100,
+      settlementContextHints: hints,
+    });
+
+    expect(detailed.finalizeStageMs.financialTransactionWriteMs).toBeGreaterThanOrEqual(
+      40
+    );
+    expect(detailed.finalizeStageMs.attributionMs).toBeLessThan(40);
+    expect(
+      (detailed.finalizeStageMs as { financialTransactionCommitMs?: number })
+        .financialTransactionCommitMs
+    ).toBeUndefined();
   });
 
   it("starts attributionMs only after the financial transaction returns", async () => {

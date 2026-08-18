@@ -231,8 +231,18 @@ describe("ORDER-SETTLEMENT-INTEGRATION-1 Check Aggregate", () => {
     expect(detailed.finalizeStageMs.checkReloadMs).toBeGreaterThanOrEqual(0);
     expect(detailed.finalizeStageMs.orderDiscoveryMs).toBeGreaterThanOrEqual(0);
     expect(detailed.finalizeStageMs.contextResolveMs).toBeGreaterThanOrEqual(0);
+    expect(detailed.finalizeStageMs.validationMs).toBeGreaterThanOrEqual(0);
     expect(detailed.finalizeStageMs.moneyTxMs).toBeGreaterThanOrEqual(0);
+    expect(detailed.finalizeStageMs.financialTransactionWriteMs).toBeGreaterThanOrEqual(
+      0
+    );
+    expect(
+      detailed.finalizeStageMs.financialTransactionPreparationMs
+    ).toBeGreaterThanOrEqual(0);
     expect(detailed.finalizeStageMs.attributionMs).toBeGreaterThanOrEqual(0);
+    expect(detailed.finalizeStageMs.postCommitProcessingMs).toBeGreaterThanOrEqual(
+      0
+    );
   });
 
   it("rolls back complete financial operation when OS apply fails", async () => {

@@ -152,9 +152,28 @@ export type CheckFinancialFinalizeStageMs = Readonly<{
   checkReloadMs: number;
   orderDiscoveryMs: number;
   contextResolveMs: number;
+  validationMs: number;
+  financialTransactionPreparationMs: number;
+  financialTransactionWriteMs: number;
+  /**
+   * Wall of db.transaction (BEGIN + writes + COMMIT + driver).
+   * Null when an outer client is reused (no new transaction).
+   * COMMIT is not separately observable in this Drizzle boundary.
+   */
+  financialTransactionTxWallMs: number | null;
   moneyTxMs: number;
+  postCommitProcessingMs: number;
   attributionMs: number;
+  financialTransactionStartedAt: string;
+  financialTransactionCommittedAt: string;
+  attributionCompletedAt: string;
 }>;
+
+type CheckOwnedTransactionStageMs = {
+  preparationMs: number;
+  writeMs: number;
+  txWallMs: number | null;
+};
 
 /** Aggregate financial mutation result (events collected, not published). */
 export type CheckFinancialMutationResult = Readonly<{
@@ -178,24 +197,54 @@ export type CheckFinancialMutationResult = Readonly<{
   finalizeStageMs: CheckFinancialFinalizeStageMs;
 }>;
 
+function elapsedSinceMs(startedAt: number): number {
+  return Date.now() - startedAt;
+}
+
 /**
  * Check Aggregate owns the transaction boundary.
  * Repositories participate only — no nested transaction ownership.
  */
 async function withCheckOwnedTransaction<T>(
   client: SessionDbClient | undefined,
-  fn: (tx: SessionDbClient) => Promise<T>
+  fn: (tx: SessionDbClient) => Promise<T>,
+  stageMs?: { current: CheckOwnedTransactionStageMs }
 ): Promise<T> {
-  if (client) return fn(client);
+  if (client) {
+    const writeStartedAt = Date.now();
+    const result = await fn(client);
+    if (stageMs) {
+      stageMs.current = {
+        preparationMs: 0,
+        writeMs: elapsedSinceMs(writeStartedAt),
+        txWallMs: null,
+      };
+    }
+    return result;
+  }
+  const prepStartedAt = Date.now();
   const db = await getDb();
+  const preparationMs = elapsedSinceMs(prepStartedAt);
   if (!db) {
     throw new DiningSessionUnavailableError();
   }
-  return db.transaction(async (tx) => fn(tx));
-}
-
-function elapsedSinceMs(startedAt: number): number {
-  return Date.now() - startedAt;
+  if (!stageMs) {
+    return db.transaction(async (tx) => fn(tx));
+  }
+  let writeMs = 0;
+  const txWallStartedAt = Date.now();
+  const result = await db.transaction(async (tx) => {
+    const writeStartedAt = Date.now();
+    const inner = await fn(tx);
+    writeMs = elapsedSinceMs(writeStartedAt);
+    return inner;
+  });
+  stageMs.current = {
+    preparationMs,
+    writeMs,
+    txWallMs: elapsedSinceMs(txWallStartedAt),
+  };
+  return result;
 }
 
 /**
@@ -535,6 +584,7 @@ async function finalizeOpenCheckById(
   const contextResolveMs = elapsedSinceMs(contextResolveStartedAt);
 
   let settlementLines: readonly SettlementTransactionInput[] | null = null;
+  const validationStartedAt = Date.now();
   try {
     if (input.outcome === "paid") {
       settlementLines = input.settlements?.length
@@ -549,9 +599,16 @@ async function finalizeOpenCheckById(
     }
     throw err;
   }
+  const validationMs = elapsedSinceMs(validationStartedAt);
 
+  const txStages: { current: CheckOwnedTransactionStageMs } = {
+    current: { preparationMs: 0, writeMs: 0, txWallMs: null },
+  };
+  const financialTransactionStartedAt = new Date().toISOString();
   const moneyTxStartedAt = Date.now();
-  const financial = await withCheckOwnedTransaction(client, async (tx) => {
+  const financial = await withCheckOwnedTransaction(
+    client,
+    async (tx) => {
     const ownedRows = await finalizeCheckOutcome(
       {
         checkId: check.id,
@@ -667,10 +724,14 @@ async function finalizeOpenCheckById(
       settlementRecordEvents: settlementRecord.events,
       settlementContext,
     };
-  });
+  },
+    txStages
+  );
   const moneyTxMs = elapsedSinceMs(moneyTxStartedAt);
+  const financialTransactionCommittedAt = new Date().toISOString();
 
   // SETTLEMENT-ATTRIBUTION-ADOPTION-1 — AFTER money+SR commit; fail-open.
+  const postCommitStartedAt = Date.now();
   const attributionStartedAt = Date.now();
   const attributionBundle = await adoptSettlementAttributionAfterFinalize({
     restaurantId: input.restaurantId,
@@ -681,6 +742,8 @@ async function finalizeOpenCheckById(
     at: now,
   });
   const attributionMs = elapsedSinceMs(attributionStartedAt);
+  const postCommitProcessingMs = elapsedSinceMs(postCommitStartedAt);
+  const attributionCompletedAt = new Date().toISOString();
 
   return {
     ...financial,
@@ -690,8 +753,16 @@ async function finalizeOpenCheckById(
       checkReloadMs,
       orderDiscoveryMs,
       contextResolveMs,
+      validationMs,
+      financialTransactionPreparationMs: txStages.current.preparationMs,
+      financialTransactionWriteMs: txStages.current.writeMs,
+      financialTransactionTxWallMs: txStages.current.txWallMs,
       moneyTxMs,
+      postCommitProcessingMs,
       attributionMs,
+      financialTransactionStartedAt,
+      financialTransactionCommittedAt,
+      attributionCompletedAt,
     },
   };
 }

@@ -107,6 +107,14 @@ export type PosSettlementFinancialStageMs = {
   contextResolveMs: number;
   moneyTxMs: number;
   attributionMs: number;
+  validationMs?: number;
+  financialTransactionPreparationMs?: number;
+  financialTransactionWriteMs?: number;
+  financialTransactionTxWallMs?: number | null;
+  postCommitProcessingMs?: number;
+  financialTransactionStartedAt?: string;
+  financialTransactionCommittedAt?: string;
+  attributionCompletedAt?: string;
 };
 
 export type PosSettlementSettlePaid = (input: {
@@ -270,14 +278,44 @@ function unexplainedFinancialTxnGapMs(
   if (typeof envelopeMs !== "number" || !Number.isFinite(envelopeMs) || !stages) {
     return null;
   }
+  const validationMs = stages.validationMs ?? 0;
   const sum =
     stages.checkReloadMs +
     stages.orderDiscoveryMs +
     stages.contextResolveMs +
+    validationMs +
     stages.moneyTxMs +
     stages.attributionMs;
   if (!Number.isFinite(sum)) return null;
   return envelopeMs - sum;
+}
+
+function unaccountedHttpMs(input: {
+  durationMs: number;
+  authMs: number | undefined;
+  orderLoadMs: number | undefined;
+  idempotencyGetMs: number | undefined;
+  settlementContextMs: number | undefined;
+  ensureCheckMs: number | null;
+  checkLoadMs: number | undefined;
+  financialTxnMs: number | undefined;
+  responseConstructionMs: number | undefined;
+}): number | null {
+  const parts = [
+    input.authMs,
+    input.orderLoadMs,
+    input.idempotencyGetMs,
+    input.settlementContextMs,
+    input.ensureCheckMs,
+    input.checkLoadMs,
+    input.financialTxnMs,
+    input.responseConstructionMs,
+  ];
+  if (parts.some((value) => typeof value !== "number" || !Number.isFinite(value))) {
+    return null;
+  }
+  const sum = (parts as number[]).reduce((acc, value) => acc + value, 0);
+  return input.durationMs - sum;
 }
 
 function resultFrom(fields: {
@@ -330,9 +368,15 @@ export class PosSettlementInitiateService {
     const clock = startPosCommandClock();
     let authMs: number | undefined;
     let orderLoadMs: number | undefined;
+    let idempotencyGetMs: number | undefined;
     let settlementContextMs: number | undefined;
+    let ensureCheckMs: number | null = null;
     let checkLoadMs: number | undefined;
     let financialTxnMs: number | undefined;
+    let responseConstructionMs: number | undefined;
+    let settlementContextCompletedAt: string | undefined;
+    let checkLoadedAt: string | undefined;
+    let financialTransactionStartedAt: string | undefined;
     assertIdempotencyKey(input.command.idempotencyKey);
     if (!Number.isInteger(input.command.orderId) || input.command.orderId <= 0) {
       throw new PosSettlementInitiateError("order_not_found", "Order is invalid");
@@ -413,7 +457,9 @@ export class PosSettlementInitiateService {
     };
 
     return this.idempotency.runExclusive(idempotencyKey, async () => {
+      const idempotencyGetStarted = clock.mark();
       const existing = await this.idempotency.get(idempotencyKey);
+      idempotencyGetMs = clock.since(idempotencyGetStarted);
       if (existing) {
         if (existing.fingerprint !== fingerprint) {
           throw new PosSettlementInitiateError(
@@ -453,8 +499,10 @@ export class PosSettlementInitiateService {
           }),
       ]);
       settlementContextMs = clock.since(contextStarted);
+      settlementContextCompletedAt = new Date().toISOString();
       let membership = foundMembership;
       if (!membership && this.ensureCheck) {
+        const ensureStarted = clock.mark();
         try {
           const created = await this.ensureCheck({
             restaurantId: context.restaurantId,
@@ -473,6 +521,7 @@ export class PosSettlementInitiateService {
             order.id
           );
         }
+        ensureCheckMs = clock.since(ensureStarted);
       }
       if (!membership) {
         throw new PosSettlementInitiateError(
@@ -487,6 +536,7 @@ export class PosSettlementInitiateService {
         checkId: membership.checkId,
       });
       checkLoadMs = clock.since(checkStarted);
+      checkLoadedAt = new Date().toISOString();
       if (!check) {
         throw new PosSettlementInitiateError(
           "check_not_found",
@@ -517,6 +567,7 @@ export class PosSettlementInitiateService {
       let settled: Awaited<ReturnType<PosSettlementSettlePaid>>;
       try {
         const txnStarted = clock.mark();
+        financialTransactionStartedAt = new Date(txnStarted).toISOString();
         settled = await this.settlePaid({
           restaurantId: context.restaurantId,
           checkId: check.id,
@@ -590,6 +641,7 @@ export class PosSettlementInitiateService {
         );
       }
 
+      const responseStarted = clock.mark();
       await this.idempotency.put({
         restaurantId: context.restaurantId,
         terminalId: context.terminalId,
@@ -606,9 +658,21 @@ export class PosSettlementInitiateService {
         financialShiftId: operational.financialShiftId,
         createdAt: new Date().toISOString(),
       });
+      responseConstructionMs = clock.since(responseStarted);
 
       const timing = clock.finish();
       const stages = settled.finalizeStageMs;
+      const unaccountedMs = unaccountedHttpMs({
+        durationMs: timing.durationMs,
+        authMs,
+        orderLoadMs,
+        idempotencyGetMs,
+        settlementContextMs,
+        ensureCheckMs: ensureCheckMs ?? 0,
+        checkLoadMs,
+        financialTxnMs,
+        responseConstructionMs,
+      });
       opsLog({
         type: "pos_settlement_initiate",
         category: "ORDER",
@@ -624,20 +688,50 @@ export class PosSettlementInitiateService {
           orderingChannel: ORDERING_CHANNEL_CASHIER_POS,
           registerId: operational.registerId,
           financialShiftId: operational.financialShiftId,
+          settlement_request_started: timing.startedAt,
+          settlement_context_completed: settlementContextCompletedAt ?? null,
+          check_loaded: checkLoadedAt ?? null,
+          financial_transaction_started:
+            stages?.financialTransactionStartedAt ??
+            financialTransactionStartedAt ??
+            null,
+          financial_transaction_commit_completed:
+            stages?.financialTransactionCommittedAt ?? null,
+          post_commit_processing_started:
+            stages?.financialTransactionCommittedAt ?? null,
+          attribution_started: stages?.financialTransactionCommittedAt ?? null,
+          attribution_completed: stages?.attributionCompletedAt ?? null,
+          settlement_response_ready: timing.completedAt,
+          settlement_request_completed: timing.completedAt,
           startedAt: timing.startedAt,
           completedAt: timing.completedAt,
           durationMs: timing.durationMs,
+          totalHttpDurationMs: timing.durationMs,
           authMs,
           orderLoadMs,
+          idempotencyGetMs,
           settlementContextMs,
+          ensureCheckMs,
           checkLoadMs,
           financialTxnMs,
           checkReloadMs: stages?.checkReloadMs ?? null,
           orderDiscoveryMs: stages?.orderDiscoveryMs ?? null,
           contextResolveMs: stages?.contextResolveMs ?? null,
+          validationMs: stages?.validationMs ?? null,
+          financialTransactionPreparationMs:
+            stages?.financialTransactionPreparationMs ?? null,
+          financialTransactionWriteMs:
+            stages?.financialTransactionWriteMs ?? null,
+          financialTransactionTxWallMs:
+            stages?.financialTransactionTxWallMs ?? null,
+          financialTransactionCommitMs: null,
+          financialTransactionTotalMs: stages?.moneyTxMs ?? null,
           moneyTxMs: stages?.moneyTxMs ?? null,
+          postCommitProcessingMs: stages?.postCommitProcessingMs ?? null,
           attributionMs: stages?.attributionMs ?? null,
+          responseConstructionMs,
           unexplainedGapMs: unexplainedFinancialTxnGapMs(financialTxnMs, stages),
+          unaccountedMs,
         },
       });
 

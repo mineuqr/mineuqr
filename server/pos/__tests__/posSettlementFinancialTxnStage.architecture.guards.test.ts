@@ -42,6 +42,8 @@ describe("CASHIER-SETTLEMENT-FINANCIALTXN-STAGE-INSTRUMENTATION-1 architecture",
     expect(txAt).toBeGreaterThan(moneyStartAt);
     expect(moneyEndAt).toBeGreaterThan(txAt);
     expect(attributionAt).toBeGreaterThan(moneyEndAt);
+    expect(finalize).toContain("const validationStartedAt = Date.now();");
+    expect(finalize).toContain("txStages");
     const moneySlice = finalize.slice(moneyStartAt, moneyEndAt);
     expect(moneySlice).toContain("finalizeCheckOutcome");
     expect(moneySlice).toContain("insertSettlementTransactions");
@@ -100,6 +102,14 @@ describe("CASHIER-SETTLEMENT-FINANCIALTXN-STAGE-INSTRUMENTATION-1 architecture",
     expect(logSlice).toContain("moneyTxMs");
     expect(logSlice).toContain("attributionMs");
     expect(logSlice).toContain("unexplainedGapMs");
+    expect(logSlice).toContain("unaccountedMs");
+    expect(logSlice).toContain("validationMs");
+    expect(logSlice).toContain("financialTransactionWriteMs");
+    expect(logSlice).toContain("financialTransactionPreparationMs");
+    expect(logSlice).toContain("financialTransactionCommitMs: null");
+    expect(logSlice).toContain("responseConstructionMs");
+    expect(logSlice).toContain("settlement_request_started");
+    expect(logSlice).toContain("financial_transaction_commit_completed");
     expect(logSlice).not.toContain("grandTotal");
     expect(logSlice).not.toContain("taxAmount");
     expect(logSlice).not.toContain("subtotal");
@@ -119,5 +129,27 @@ describe("CASHIER-SETTLEMENT-FINANCIALTXN-STAGE-INSTRUMENTATION-1 architecture",
     expect(timing).not.toContain("attributionMs");
     expect(panel).not.toContain("moneyTxMs");
     expect(panel).not.toContain("checkReloadMs");
+  });
+
+  it("does not convert Attribution to async fire-and-forget or split the money TX", () => {
+    const finalize = sliceFinalizeOpenCheckById(
+      read("server/operational-session/check/CheckService.ts")
+    );
+    const adoption = read(
+      "server/operational-session/check/checkSettlementAttributionAdoption.ts"
+    );
+    expect(finalize).toContain("await adoptSettlementAttributionAfterFinalize(");
+    expect(finalize).not.toMatch(
+      /void adoptSettlementAttributionAfterFinalize/
+    );
+    expect(adoption).toContain("Never throws to caller");
+    expect(adoption).toContain("failedAttribution");
+    const moneyStartAt = finalize.indexOf("const moneyTxStartedAt = Date.now();");
+    const moneyEndAt = finalize.indexOf(
+      "const moneyTxMs = elapsedSinceMs(moneyTxStartedAt);"
+    );
+    const moneySlice = finalize.slice(moneyStartAt, moneyEndAt);
+    expect(moneySlice).toContain("createSettlementRecordForCheckFinalize");
+    expect(moneySlice).not.toContain("adoptSettlementAttributionAfterFinalize");
   });
 });

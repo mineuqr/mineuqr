@@ -893,7 +893,13 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
     expect(event?.metadata?.contextResolveMs).toBeNull();
     expect(event?.metadata?.moneyTxMs).toBeNull();
     expect(event?.metadata?.attributionMs).toBeNull();
+    expect(event?.metadata?.validationMs).toBeNull();
+    expect(event?.metadata?.financialTransactionCommitMs).toBeNull();
+    expect(event?.metadata?.financialTransactionWriteMs).toBeNull();
     expect(event?.metadata?.unexplainedGapMs).toBeNull();
+    expect(event?.metadata?.responseConstructionMs).toEqual(expect.any(Number));
+    expect(event?.metadata?.totalHttpDurationMs).toEqual(expect.any(Number));
+    expect(event?.metadata?.ensureCheckMs).toBeNull();
   });
 
   it("emits financialTxn stage timings without financial amounts when Check stages are present", async () => {
@@ -921,6 +927,11 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
         contextResolveMs: 33,
         moneyTxMs: 44,
         attributionMs: 55,
+        financialTransactionTotalMs: 44,
+        financialTransactionCommitMs: null,
+        validationMs: null,
+        responseConstructionMs: expect.any(Number),
+        unaccountedMs: expect.any(Number),
       })
     );
     const envelope = event?.metadata?.financialTxnMs as number;
