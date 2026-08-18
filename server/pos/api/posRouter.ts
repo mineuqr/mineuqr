@@ -191,13 +191,19 @@ function mapPosError(err: unknown): never {
     err instanceof PosCheckIntakeError ||
     err instanceof PosSettlementInitiateError
   ) {
+    // posCode is not a TRPCError constructor field in this tRPC version.
+    // Client classification uses HTTP code + message (e.g. already terminal).
     if (err.code === "idempotency_conflict" || err.code === "concurrency_conflict") {
-      throw new TRPCError({ code: "CONFLICT", message: err.message });
+      throw new TRPCError({ code: "CONFLICT", message: err.message, cause: err });
     }
     if (SALE_FORBIDDEN_CODES.has(err.code)) {
-      throw new TRPCError({ code: "FORBIDDEN", message: "غير مصرح بالوصول" });
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "غير مصرح بالوصول",
+        cause: err,
+      });
     }
-    throw new TRPCError({ code: "BAD_REQUEST", message: err.message });
+    throw new TRPCError({ code: "BAD_REQUEST", message: err.message, cause: err });
   }
   throw err;
 }
