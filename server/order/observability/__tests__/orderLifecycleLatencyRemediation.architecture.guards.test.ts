@@ -25,9 +25,38 @@ describe("ORDER-LIFECYCLE-LATENCY-REMEDIATION-1", () => {
       "server/operational-device/services/DeviceOrderExecutionService.ts"
     );
     expect(device).toContain("awaitRelay: false");
-
-    // Place-order path keeps default awaited relay (omit awaitRelay: false nearby).
     expect(runCmd).toContain("options?.awaitRelay !== false");
+  });
+
+  it("place-order HTTP paths persist then defer relay (do not await the batch)", () => {
+    const routers = read("server/routers.ts");
+    const waiterDevice = read(
+      "server/operational-device/services/WaiterDeviceOrderingService.ts"
+    );
+    const createStart = routers.indexOf("  create: publicProcedure");
+    const createFn = routers.slice(
+      createStart,
+      routers.indexOf("  list: verifiedProcedure", createStart)
+    );
+    const identityFn = routers.slice(
+      routers.indexOf("placeWithIdentity:"),
+      routers.indexOf("placeAsWaiter:")
+    );
+    const waiterFn = routers.slice(
+      routers.indexOf("placeAsWaiter:"),
+      routers.indexOf("  create: publicProcedure")
+    );
+    expect(createFn).toContain("placeOrderService.execute");
+    expect(createFn).toContain("awaitRelay: false");
+    expect(identityFn).toContain("identityPlaceOrderService.execute");
+    expect(identityFn).toContain("awaitRelay: false");
+    expect(waiterFn).toContain("identityPlaceOrderService.execute");
+    expect(waiterFn).toContain("awaitRelay: false");
+    expect(waiterDevice).toContain("identityPlaceOrderService.execute");
+    expect(waiterDevice).toContain("awaitRelay: false");
+    expect(createFn).not.toContain("await runOrderEventRelaySafe");
+    expect(identityFn).not.toContain("await runOrderEventRelaySafe");
+    expect(waiterFn).not.toContain("await runOrderEventRelaySafe");
   });
 
   it("client uses optimistic listActive patch and non-blocking invalidate", () => {

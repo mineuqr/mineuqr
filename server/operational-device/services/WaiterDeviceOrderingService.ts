@@ -132,24 +132,26 @@ export async function placeWaiterOrderForDevice(
   }
 
   try {
-    const placeResult = await runOrderCommand(() =>
-      identityPlaceOrderService.execute({
-        restaurantId,
-        serviceMode: "table_service",
-        fulfilmentAnchor,
-        sessionToken: input.sessionToken,
-        identityScope: "WAITER",
-        orderingChannel: ORDERING_CHANNEL_WAITER_TABLET,
-        customerName: input.customerName,
-        customerPhone: input.customerPhone,
-        notes: input.notes,
-        items: input.items.map((item) => ({
-          menuItemId: item.menuItemId,
-          quantity: item.quantity,
-          notes: item.notes,
-          modifiers: item.modifiers,
-        })),
-      })
+    const placeResult = await runOrderCommand(
+      () =>
+        identityPlaceOrderService.execute({
+          restaurantId,
+          serviceMode: "table_service",
+          fulfilmentAnchor,
+          sessionToken: input.sessionToken,
+          identityScope: "WAITER",
+          orderingChannel: ORDERING_CHANNEL_WAITER_TABLET,
+          customerName: input.customerName,
+          customerPhone: input.customerPhone,
+          notes: input.notes,
+          items: input.items.map((item) => ({
+            menuItemId: item.menuItemId,
+            quantity: item.quantity,
+            notes: item.notes,
+            modifiers: item.modifiers,
+          })),
+        }),
+      { awaitRelay: false }
     );
 
     if (!placeResult.identity.operationalSession.sessionId) {

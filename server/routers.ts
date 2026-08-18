@@ -2336,23 +2336,25 @@ const orderRouter = router({
       }
 
       try {
-        const placeResult = await runOrderCommand(() =>
-          identityPlaceOrderService.execute({
-            restaurantId: input.restaurantId,
-            serviceMode: input.serviceMode as OrderingServiceMode,
-            fulfilmentAnchor,
-            sessionToken: input.sessionToken,
-            orderingChannel: input.orderingChannel,
-            customerName: input.customerName,
-            customerPhone: input.customerPhone,
-            notes: input.notes,
-            items: input.items.map((item) => ({
-              menuItemId: item.menuItemId,
-              quantity: item.quantity,
-              notes: item.notes,
-              modifiers: item.modifiers,
-            })),
-          })
+        const placeResult = await runOrderCommand(
+          () =>
+            identityPlaceOrderService.execute({
+              restaurantId: input.restaurantId,
+              serviceMode: input.serviceMode as OrderingServiceMode,
+              fulfilmentAnchor,
+              sessionToken: input.sessionToken,
+              orderingChannel: input.orderingChannel,
+              customerName: input.customerName,
+              customerPhone: input.customerPhone,
+              notes: input.notes,
+              items: input.items.map((item) => ({
+                menuItemId: item.menuItemId,
+                quantity: item.quantity,
+                notes: item.notes,
+                modifiers: item.modifiers,
+              })),
+            }),
+          { awaitRelay: false }
         );
 
         return {
@@ -2687,24 +2689,26 @@ const orderRouter = router({
       }
 
       try {
-        const placeResult = await runOrderCommand(() =>
-          identityPlaceOrderService.execute({
-            restaurantId: input.restaurantId,
-            serviceMode: "table_service",
-            fulfilmentAnchor,
-            sessionToken: input.sessionToken,
-            identityScope: "WAITER",
-            orderingChannel: ORDERING_CHANNEL_WAITER_TABLET,
-            customerName: input.customerName,
-            customerPhone: input.customerPhone,
-            notes: input.notes,
-            items: input.items.map((item) => ({
-              menuItemId: item.menuItemId,
-              quantity: item.quantity,
-              notes: item.notes,
-              modifiers: item.modifiers,
-            })),
-          })
+        const placeResult = await runOrderCommand(
+          () =>
+            identityPlaceOrderService.execute({
+              restaurantId: input.restaurantId,
+              serviceMode: "table_service",
+              fulfilmentAnchor,
+              sessionToken: input.sessionToken,
+              identityScope: "WAITER",
+              orderingChannel: ORDERING_CHANNEL_WAITER_TABLET,
+              customerName: input.customerName,
+              customerPhone: input.customerPhone,
+              notes: input.notes,
+              items: input.items.map((item) => ({
+                menuItemId: item.menuItemId,
+                quantity: item.quantity,
+                notes: item.notes,
+                modifiers: item.modifiers,
+              })),
+            }),
+          { awaitRelay: false }
         );
 
         if (!placeResult.identity.operationalSession.sessionId) {
@@ -2806,26 +2810,28 @@ const orderRouter = router({
           ENV.tableSessionDualWrite && sessionToken != null ? sessionToken : null,
       });
 
-      const placeResult = await runOrderCommand(() =>
-        placeOrderService.execute({
-          restaurantId: input.restaurantId,
-          identity: orderIdentity,
-          tableId: table.id,
-          tableNumber: table.tableNumber,
-          ...(ENV.tableSessionDualWrite && sessionId != null
-            ? { sessionId }
-            : {}),
-          orderingChannel: ORDERING_CHANNEL_QR,
-          customerName: input.customerName,
-          customerPhone: input.customerPhone,
-          notes: input.notes,
-          items: input.items.map((item) => ({
-            menuItemId: item.menuItemId,
-            quantity: item.quantity,
-            notes: item.notes,
-            modifiers: item.modifiers,
-          })),
-        })
+      const placeResult = await runOrderCommand(
+        () =>
+          placeOrderService.execute({
+            restaurantId: input.restaurantId,
+            identity: orderIdentity,
+            tableId: table.id,
+            tableNumber: table.tableNumber,
+            ...(ENV.tableSessionDualWrite && sessionId != null
+              ? { sessionId }
+              : {}),
+            orderingChannel: ORDERING_CHANNEL_QR,
+            customerName: input.customerName,
+            customerPhone: input.customerPhone,
+            notes: input.notes,
+            items: input.items.map((item) => ({
+              menuItemId: item.menuItemId,
+              quantity: item.quantity,
+              notes: item.notes,
+              modifiers: item.modifiers,
+            })),
+          }),
+        { awaitRelay: false }
       );
 
       return {
