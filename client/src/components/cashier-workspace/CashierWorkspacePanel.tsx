@@ -17,6 +17,19 @@ import { cashierPaymentFlowTiming } from "@/lib/cashier-workspace/cashierPayment
 import type { CashierPaymentFlowOutcome } from "@/lib/cashier-workspace/cashierPaymentFlowTiming";
 import { resolveCashierPaymentReadiness } from "@/lib/cashier-workspace/cashierPaymentReadiness";
 import {
+  recoverCashierUnknownSettlement,
+  selectCanonicalSettlementRecord,
+  toCheckRecoveryView,
+  toSettlementRecordRecoveryViews,
+} from "@/lib/cashier-workspace/cashierSettlementRecovery";
+import {
+  emitCashierPaymentRecoveryCheckResult,
+  emitCashierPaymentRecoveryCompleted,
+  emitCashierPaymentRecoverySrResult,
+  emitCashierPaymentRecoveryStarted,
+} from "@/lib/cashier-workspace/cashierSettlementRecoveryTelemetry";
+import { classifyCashierSettlementFailure } from "@/lib/cashier-workspace/cashierSettlementUnknownResult";
+import {
   canConfirmCashierSettlement,
   displayCents,
   resolveCashierSettlementPlan,
@@ -150,6 +163,9 @@ export function CashierWorkspacePanel({
   const [ordersOpen, setOrdersOpen] = useState(false);
   const [printOpen, setPrintOpen] = useState(false);
   const [paymentBusy, setPaymentBusy] = useState(false);
+  const [paymentRecoveryUi, setPaymentRecoveryUi] = useState<
+    "idle" | "verifying" | "incomplete" | "unknown"
+  >("idle");
   const saleInFlightRef = useRef(false);
   const payInFlightRef = useRef(false);
   const saleKeyRef = useRef<string | null>(null);
@@ -444,6 +460,7 @@ export function CashierWorkspacePanel({
     saleInFlightRef.current = false;
     payInFlightRef.current = false;
     setPaymentBusy(false);
+    setPaymentRecoveryUi("idle");
     saleKeyRef.current = null;
     settleKeyRef.current = null;
     intakeByOrderRef.current.clear();
@@ -468,6 +485,7 @@ export function CashierWorkspacePanel({
     endCashierPaymentFlow("cancelled");
     setSalePhase("ticket");
     setPrintOpen(false);
+    setPaymentRecoveryUi("idle");
     clearCashierDirectSale(restaurantId);
   }
 
@@ -635,8 +653,27 @@ export function CashierWorkspacePanel({
     );
     payInFlightRef.current = true;
     setPaymentBusy(true);
+    setPaymentRecoveryUi("idle");
     if (!settleKeyRef.current) {
       settleKeyRef.current = newCashierIdempotencyKey("settle");
+    }
+    const presentationHint = {
+      paymentMethod: plan.paymentMethod,
+      settlements: plan.settlements,
+    };
+    async function rediscoverSettlementRecordId(
+      checkId: number,
+      orderId: number
+    ): Promise<string | null> {
+      const records = await utils.settlementRecord.getByCheck.fetch({
+        restaurantId,
+        checkId,
+      });
+      const selected = selectCanonicalSettlementRecord(
+        toSettlementRecordRecoveryViews(records),
+        { checkId, orderId }
+      );
+      return selected?.settlementRecordId ?? null;
     }
     try {
       if (!openCheck) {
@@ -662,17 +699,29 @@ export function CashierWorkspacePanel({
         cashierFlowIdRef.current,
         result.checkId
       );
+      let settlementRecordId = result.settlementRecordId;
+      if (!settlementRecordId) {
+        try {
+          settlementRecordId = await rediscoverSettlementRecordId(
+            result.checkId,
+            result.orderId
+          );
+        } catch {
+          settlementRecordId = null;
+        }
+      }
       const paid: PaidCheckoutResult = {
         checkId: result.checkId,
         orderId: result.orderId,
         grandTotal: result.grandTotal,
-        settlementRecordId: result.settlementRecordId,
+        settlementRecordId,
         paymentMethod: plan.paymentMethod,
         settlements: plan.settlements,
       };
       setPaidCheckout(paid);
       setRegisterGap(null);
       setSalePhase("paid");
+      setPaymentRecoveryUi("idle");
       cashierPaymentFlowTiming.mark(
         cashierFlowIdRef.current,
         "CASHIER_PAYMENT_SUCCESS"
@@ -687,16 +736,132 @@ export function CashierWorkspacePanel({
         `${t("paidSuccess")} · ${t("checkLabel")} #${result.checkId} · ${result.grandTotal}`
       );
       invalidateOrderReads();
-      if (result.settlementRecordId) {
+      if (paid.settlementRecordId) {
         setPrintOpen(true);
       }
     } catch (error) {
-      endCashierPaymentFlow("failed");
       const gap = classifyCashierRegisterGap(error);
       if (gap) {
+        endCashierPaymentFlow("failed");
         setRegisterGap(gap);
+        toast.error(userFacingError(error, t("errorTitle")));
+        return;
       }
-      toast.error(userFacingError(error, t("errorTitle")));
+      if (
+        classifyCashierSettlementFailure(error) !== "UNKNOWN_RESULT" ||
+        !terminalId ||
+        selectedOrderId == null
+      ) {
+        endCashierPaymentFlow("failed");
+        toast.error(userFacingError(error, t("errorTitle")));
+        return;
+      }
+      setPaymentRecoveryUi("verifying");
+      const recoveryStartedAt = Date.now();
+      emitCashierPaymentRecoveryStarted({
+        restaurantId,
+        terminalId,
+        orderId: selectedOrderId,
+      });
+      const recovered = await recoverCashierUnknownSettlement({
+        restaurantId,
+        orderId: selectedOrderId,
+        presentationHint,
+        readers: {
+          readCheck: async () => {
+            const dto = await utils.pos.read.check.getByOrder.fetch({
+              restaurantId,
+              terminalId,
+              orderId: selectedOrderId,
+            });
+            emitCashierPaymentRecoveryCheckResult({
+              restaurantId,
+              terminalId,
+              orderId: selectedOrderId,
+              checkId: dto?.checkId ?? null,
+              checkOutcome: dto?.outcome ?? null,
+            });
+            return dto ? toCheckRecoveryView(dto) : null;
+          },
+          readSettlementRecords: async (checkId) => {
+            const records = await utils.settlementRecord.getByCheck.fetch({
+              restaurantId,
+              checkId,
+            });
+            emitCashierPaymentRecoverySrResult({
+              restaurantId,
+              terminalId,
+              orderId: selectedOrderId,
+              checkId,
+              settlementRecordFound: records.length > 0,
+            });
+            return toSettlementRecordRecoveryViews(records);
+          },
+        },
+      });
+      emitCashierPaymentRecoveryCompleted({
+        restaurantId,
+        terminalId,
+        orderId: selectedOrderId,
+        checkId:
+          recovered.kind === "PAYMENT_CONFIRMED" ||
+          recovered.kind === "PAYMENT_CONFIRMED_RECEIPT_INCOMPLETE"
+            ? recovered.paid.checkId
+            : null,
+        recoveryOutcome: recovered.kind,
+        durationMs: Date.now() - recoveryStartedAt,
+      });
+      if (
+        recovered.kind === "PAYMENT_CONFIRMED" ||
+        recovered.kind === "PAYMENT_CONFIRMED_RECEIPT_INCOMPLETE"
+      ) {
+        const receiptIncomplete =
+          recovered.kind === "PAYMENT_CONFIRMED_RECEIPT_INCOMPLETE";
+        setPaidCheckout(recovered.paid);
+        setRegisterGap(null);
+        setSalePhase("paid");
+        setPaymentRecoveryUi(receiptIncomplete ? "incomplete" : "idle");
+        cashierPaymentFlowTiming.mark(
+          cashierFlowIdRef.current,
+          "CASHIER_PAYMENT_SUCCESS"
+        );
+        endCashierPaymentFlow("completed");
+        persistDirectSaleSnapshot({
+          phase: "paid",
+          checkId: recovered.paid.checkId,
+          paid: recovered.paid,
+        });
+        if (receiptIncomplete) {
+          toast.error(t("recoveryIncomplete"));
+        } else {
+          toast.success(
+            `${t("paidSuccess")} · ${t("checkLabel")} #${recovered.paid.checkId} · ${recovered.paid.grandTotal}`
+          );
+        }
+        invalidateOrderReads();
+        if (!receiptIncomplete && recovered.paid.settlementRecordId) {
+          setPrintOpen(true);
+        }
+        return;
+      }
+      if (
+        recovered.kind === "PAYMENT_NOT_CONFIRMED" &&
+        (recovered.reason === "complimentary" || recovered.reason === "voided")
+      ) {
+        endCashierPaymentFlow("failed");
+        setPaymentRecoveryUi("idle");
+        toast.error(t("recoveryInvalidTerminal"));
+        return;
+      }
+      if (recovered.kind === "PAYMENT_NOT_CONFIRMED") {
+        endCashierPaymentFlow("failed");
+        setPaymentRecoveryUi("idle");
+        toast.error(t("recoveryNotCommitted"));
+        return;
+      }
+      endCashierPaymentFlow("failed");
+      setPaymentRecoveryUi("unknown");
+      toast.error(t("recoveryUnknown"));
     } finally {
       payInFlightRef.current = false;
       setPaymentBusy(false);
@@ -1264,6 +1429,15 @@ export function CashierWorkspacePanel({
                 <h2 className="text-lg font-semibold">{t("completePaymentTitle")}</h2>
                 <p className="mt-1 text-sm text-[#6b7280]">{directSale.displayReference}</p>
                 <p className="mt-1 text-sm text-[#6b7280]">{t("unpaidOrderHint")}</p>
+                {paymentRecoveryUi === "verifying" ? (
+                  <p className="mt-2 text-sm font-medium">{t("verifyingPayment")}</p>
+                ) : null}
+                {paymentRecoveryUi === "incomplete" ? (
+                  <p className="mt-2 text-sm text-amber-700">{t("recoveryIncomplete")}</p>
+                ) : null}
+                {paymentRecoveryUi === "unknown" ? (
+                  <p className="mt-2 text-sm text-amber-700">{t("recoveryUnknown")}</p>
+                ) : null}
                 <p className="mt-4 text-sm font-medium text-[#6b7280]">
                   {amountDue ? t("checkAmountDue") : t("amountDue")}
                 </p>
@@ -1399,11 +1573,17 @@ export function CashierWorkspacePanel({
                     type="button"
                     className={cn(cashierPos.primaryAction, "flex-1")}
                     disabled={
-                      paymentReadiness.confirmDisabled || amountDueIsOrderFallback
+                      paymentReadiness.confirmDisabled ||
+                      amountDueIsOrderFallback ||
+                      paymentRecoveryUi !== "idle"
                     }
                     onClick={() => void completePayment()}
                   >
-                    {paying ? t("paying") : t("confirmPayment")}
+                    {paymentRecoveryUi === "verifying"
+                      ? t("verifyingPayment")
+                      : paying
+                        ? t("paying")
+                        : t("confirmPayment")}
                   </Button>
                 </div>
               </>

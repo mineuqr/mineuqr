@@ -21,6 +21,9 @@ describe("cashier presentation helpers", () => {
       "الطلب مؤكد ولم يُدفع بعد."
     );
     expect(cashierUiLabel("paidSuccess", "ar")).toBe("تم الدفع بنجاح");
+    expect(cashierUiLabel("verifyingPayment", "en")).toBe("Verifying payment…");
+    expect(cashierUiLabel("recoveryUnknown", "en")).toContain("Do not retry");
+    expect(cashierUiLabel("recoveryNotCommitted", "en")).toContain("may try again");
     expect(cashierUiLabel("printInvoice", "ar")).toBe("طباعة الفاتورة");
     expect(cashierUiLabel("shiftBeforePay", "ar")).toBe(
       "يجب فتح وردية الصندوق قبل إتمام الدفع"

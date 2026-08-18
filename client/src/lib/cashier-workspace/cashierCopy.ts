@@ -144,6 +144,26 @@ const COPY: Record<string, { ar: string; en: string }> = {
   orderNumber: { ar: "رقم الطلب", en: "Order number" },
   invoiceNumber: { ar: "رقم الشيك", en: "Check number" },
   preparingCheck: { ar: "جاري تجهيز الشيك…", en: "Preparing check…" },
+  verifyingPayment: {
+    ar: "جاري التحقق من الدفع…",
+    en: "Verifying payment…",
+  },
+  recoveryIncomplete: {
+    ar: "تم تسجيل الدفع. تعذر تحميل سجل التسوية للطباعة. لا تعِد المحاولة كدفعة جديدة.",
+    en: "Payment is recorded. The settlement receipt could not be loaded. Do not retry as a new payment.",
+  },
+  recoveryUnknown: {
+    ar: "تعذر تأكيد نتيجة الدفع. لا تعِد المحاولة كدفعة جديدة قبل التحقق.",
+    en: "Payment result could not be confirmed. Do not retry as a new payment until verified.",
+  },
+  recoveryInvalidTerminal: {
+    ar: "الشيك ليس مدفوعًا. لا يمكن اعتباره دفعًا ناجحًا.",
+    en: "The check is not paid. It cannot be treated as a successful payment.",
+  },
+  recoveryNotCommitted: {
+    ar: "لم يُسجَّل الدفع. يمكنك المحاولة مرة أخرى.",
+    en: "Payment was not recorded. You may try again.",
+  },
   showActiveOrders: { ar: "الطلبات النشطة", en: "Active orders" },
   hideActiveOrders: { ar: "إخفاء الطلبات النشطة", en: "Hide active orders" },
   cancelPayment: { ar: "إلغاء", en: "Cancel" },
