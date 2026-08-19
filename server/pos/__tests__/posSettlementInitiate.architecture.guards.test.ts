@@ -20,12 +20,17 @@ const SETTLEMENT_OWNED = [
 ];
 
 describe("POS Settlement Initiation architecture guards", () => {
-  it("uses existing settleCheckPaidByIdDetailed and does not create a POS settlement aggregate", () => {
+  it("routes Confirm Payment through confirmPayment and does not create a POS settlement aggregate", () => {
     const service = read("server/pos/services/PosSettlementInitiateService.ts");
+    const payment = read(
+      "server/operational-session/payment/PaymentConfirmService.ts"
+    );
     const schema = read("drizzle/schema.ts");
     expect(POS_PERMISSIONS).toContain("SETTLEMENT_INITIATE");
     expect(POS_PERMISSIONS).toContain("POS_ACCESS");
-    expect(service).toContain("settleCheckPaidByIdDetailed");
+    expect(service).toContain("confirmPayment");
+    expect(service).not.toContain("settleCheckPaidByIdDetailed");
+    expect(payment).toContain("settleCheckPaidByIdDetailed");
     expect(service).toContain('requiredPermission: "SETTLEMENT_INITIATE"');
     expect(service).toContain("resolvePosTerminalAccess");
     expect(service).toContain("ORDERING_CHANNEL_CASHIER_POS");
@@ -93,7 +98,7 @@ describe("POS Settlement Initiation architecture guards", () => {
     expect(router).toContain('z.enum(["cash", "card"])');
     expect(router).toContain("paymentMethod");
     expect(router).not.toMatch(/from ["']@shared\/operational-session/);
-    expect(service).toContain("settleCheckPaidByIdDetailed");
+    expect(service).toContain("confirmPayment");
     expect(service).toContain("settlements");
     for (const file of SETTLEMENT_OWNED) {
       const src = read(file);

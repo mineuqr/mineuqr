@@ -2,6 +2,9 @@
  * POS-SETTLEMENT-INITIATE-IMPLEMENTATION-1
  * POS Settlement Initiation is a command into the existing Check / Financial
  * Settlement Platform. POS does not own Check, Settlement, Register, or totals.
+ *
+ * PAYMENT-CONFIRM-SERVICE-1 — cashier Confirm Payment transport. Process
+ * ownership is confirmPayment. Check remains the monetary aggregate.
  */
 
 import { createHash } from "node:crypto";
@@ -17,8 +20,8 @@ import {
   CheckTransitionError,
   ensureCheckForOrder,
   getCheckById,
-  settleCheckPaidByIdDetailed,
 } from "../../operational-session/check/CheckService";
+import { confirmPayment } from "../../operational-session/payment/PaymentConfirmService";
 import { findBlockingMembershipForOrder } from "../../operational-session/check/checkOrderMembershipRepository";
 import { assertRestaurantPosScope } from "../authorization/assertRestaurantPosScope";
 import type { PosSettlementInitiateIdempotencyStore } from "../infrastructure/PosSettlementInitiateIdempotencyStore";
@@ -247,7 +250,7 @@ async function defaultSettlePaid(input: {
   settlementRecordId: string | null;
   finalizeStageMs?: PosSettlementFinancialStageMs;
 }> {
-  const financial = await settleCheckPaidByIdDetailed({
+  const financial = await confirmPayment({
     restaurantId: input.restaurantId,
     checkId: input.checkId,
     settlements: input.settlements,

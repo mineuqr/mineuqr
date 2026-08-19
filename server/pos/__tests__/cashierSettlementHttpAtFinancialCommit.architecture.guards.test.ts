@@ -41,7 +41,10 @@ describe("CASHIER-SETTLEMENT-HTTP-AT-FINANCIAL-COMMIT-1 architecture", () => {
       pos.indexOf("function unexplainedFinancialTxnGapMs")
     );
     expect(settlePaid).toContain("awaitAttribution: false");
-    expect(settlePaid).toContain("settleCheckPaidByIdDetailed");
+    expect(settlePaid).toContain("confirmPayment");
+    expect(
+      read("server/operational-session/payment/PaymentConfirmService.ts")
+    ).toContain("settleCheckPaidByIdDetailed");
     expect(finalize).toContain("awaitAttribution !== false");
     expect(finalize).toContain("void adoptSettlementAttributionAfterFinalize(");
     const moneyEndAt = finalize.indexOf(

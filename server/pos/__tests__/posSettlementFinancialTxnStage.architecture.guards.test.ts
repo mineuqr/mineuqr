@@ -60,7 +60,10 @@ describe("CASHIER-SETTLEMENT-FINANCIALTXN-STAGE-INSTRUMENTATION-1 architecture",
     const pos = read("server/pos/services/PosSettlementInitiateService.ts");
     const check = read("server/operational-session/check/CheckService.ts");
     expect(pos).toContain("settlementContextHints");
-    expect(pos).toContain("settleCheckPaidByIdDetailed");
+    expect(pos).toContain("confirmPayment");
+    expect(
+      read("server/operational-session/payment/PaymentConfirmService.ts")
+    ).toContain("settleCheckPaidByIdDetailed");
     const settlePaid = pos.slice(
       pos.indexOf("async function defaultSettlePaid"),
       pos.indexOf("function unexplainedFinancialTxnGapMs")

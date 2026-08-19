@@ -75,7 +75,10 @@ describe("POS Register/Shift wiring architecture guards", () => {
 
   it("leaves Check as financial authority and Settlement as settlement authority", () => {
     const settle = read("server/pos/services/PosSettlementInitiateService.ts");
-    expect(settle).toContain("settleCheckPaidByIdDetailed");
+    expect(settle).toContain("confirmPayment");
+    expect(
+      read("server/operational-session/payment/PaymentConfirmService.ts")
+    ).toContain("settleCheckPaidByIdDetailed");
     expect(settle).toContain("settlementContextHints");
     expect(settle).toContain("requireForSettlement");
     expect(settle).not.toContain("StaffCounterPickupSettlementService");
