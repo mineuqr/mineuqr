@@ -1083,16 +1083,22 @@ export function CashierWorkspacePanel({
     if (paymentReadiness.checkAvailable) {
       cashierPaymentFlowTiming.mark(flowId, "CASHIER_CHECK_READ_READY");
     }
+    // Observe the Confirm-usable gate. Do not change it.
     if (
-      paymentReadiness.checkAvailable &&
-      paymentReadiness.canConfirmPayment
+      !paymentReadiness.confirmDisabled &&
+      !amountDueIsOrderFallback &&
+      paymentRecoveryUi === "idle" &&
+      tenderMode != null
     ) {
       cashierPaymentFlowTiming.mark(flowId, "CASHIER_PAYMENT_READY");
     }
   }, [
     salePhase,
     paymentReadiness.checkAvailable,
-    paymentReadiness.canConfirmPayment,
+    paymentReadiness.confirmDisabled,
+    amountDueIsOrderFallback,
+    paymentRecoveryUi,
+    tenderMode,
   ]);
 
   const listDenied = Boolean(

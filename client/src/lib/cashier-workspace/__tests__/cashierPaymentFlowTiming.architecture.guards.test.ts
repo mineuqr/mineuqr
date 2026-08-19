@@ -33,6 +33,7 @@ describe("CASHIER-PAYMENT-FLOW-BOUNDARY-INSTRUMENTATION-1 architecture", () => {
     expect(panel).toContain("paymentReadiness.checkAvailable");
     expect(panel).toContain("paymentReadiness.canConfirmPayment");
     expect(timing).toContain("performance.now");
+    expect(timing).toContain("paymentReadinessDurationMs");
     expect(timing).not.toContain("grandTotal");
     expect(timing).not.toContain("taxAmount");
     expect(timing).not.toContain("subtotal");

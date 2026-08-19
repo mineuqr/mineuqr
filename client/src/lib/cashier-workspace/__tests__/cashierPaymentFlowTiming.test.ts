@@ -5,6 +5,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   CASHIER_PAYMENT_FLOW_EVENT,
+  CASHIER_PAYMENT_READINESS_EVENT,
   createCashierPaymentFlowTimingRegistry,
   type CashierPaymentFlowMark,
 } from "../cashierPaymentFlowTiming";
@@ -88,6 +89,7 @@ describe("cashier payment-flow timing registry", () => {
     expect(snap?.workflowEntryDurationMs).toBe(10);
     expect(snap?.intakeDurationMs).toBe(400);
     expect(snap?.checkReadinessDurationMs).toBe(310);
+    expect(snap?.paymentReadinessDurationMs).toBe(720);
     expect(snap?.userThinkTimeMs).toBe(4800);
     expect(snap?.settlementDurationMs).toBe(700);
     expect(snap?.postSettlementUiMs).toBe(100);
@@ -138,6 +140,7 @@ describe("cashier payment-flow timing registry", () => {
     clock.restore();
     expect(snap?.intakeDurationMs).toBe(400);
     expect(snap?.checkReadinessDurationMs).toBe(550);
+    expect(snap?.paymentReadinessDurationMs).toBeNull();
     expect(snap?.checkReadReadyAt).not.toBeNull();
     expect(snap?.intakeDurationMs).not.toEqual(snap?.checkReadinessDurationMs);
   });
@@ -239,6 +242,7 @@ describe("cashier payment-flow timing registry", () => {
     expect(snap?.saleDurationMs).toBeNull();
     expect(snap?.intakeDurationMs).toBeNull();
     expect(snap?.paymentReadyAt).toBeNull();
+    expect(snap?.paymentReadinessDurationMs).toBeNull();
     for (const mark of ALL_MARKS) {
       if (mark === "CASHIER_PAYMENT_CONFIRM_CLICK") continue;
       void mark;
@@ -296,5 +300,60 @@ describe("cashier payment-flow timing registry", () => {
     expect(thinkTimes).toEqual([5, 1800, 8]);
     expect(saleTimes).toEqual([1200, 1200, 1200]);
     expect(new Set(thinkTimes).size).toBe(3);
+  });
+
+  it("computes paymentReadinessDurationMs from workflow start to Confirm usable, including sale", () => {
+    const clock = installPerfClock();
+    const registry = createCashierPaymentFlowTimingRegistry();
+    const flowId = registry.beginFlow({
+      restaurantId: 1,
+      terminalId: "term-a",
+    });
+    registry.attachOrderId(flowId, 44);
+    registry.attachCheckId(flowId, 800);
+    markAt(registry, clock, flowId, "CASHIER_PAYMENT_WORKFLOW_START", 0);
+    markAt(registry, clock, flowId, "CASHIER_SALE_REQUEST_START", 5);
+    markAt(registry, clock, flowId, "CASHIER_SALE_RESPONSE", 1305);
+    markAt(registry, clock, flowId, "CASHIER_CHECK_INTAKE_START", 1310);
+    markAt(registry, clock, flowId, "CASHIER_CHECK_INTAKE_RESPONSE", 1710);
+    markAt(registry, clock, flowId, "CASHIER_CHECK_READ_READY", 2010);
+    markAt(registry, clock, flowId, "CASHIER_PAYMENT_READY", 2020);
+    const snap = registry.snapshot(flowId);
+    expect(snap?.paymentReadinessDurationMs).toBe(2020);
+    expect(snap?.saleDurationMs).toBe(1300);
+    expect(snap?.intakeDurationMs).toBe(400);
+    expect(snap?.checkReadinessDurationMs).toBe(310);
+    expect(snap?.paymentReadinessDurationMs).toBeGreaterThan(
+      snap?.checkReadinessDurationMs ?? 0
+    );
+    expect(registry.size()).toBe(1);
+    expect(info).toHaveBeenCalledWith(
+      `[OPS][ORDER][info] ${CASHIER_PAYMENT_READINESS_EVENT}`,
+      expect.objectContaining({
+        type: CASHIER_PAYMENT_READINESS_EVENT,
+        restaurantId: 1,
+        metadata: expect.objectContaining({
+          cashierFlowId: flowId,
+          orderId: 44,
+          checkId: 800,
+          terminalId: "term-a",
+          paymentReadinessDurationMs: 2020,
+          saleDurationMs: 1300,
+          intakeDurationMs: 400,
+        }),
+      })
+    );
+    expect(JSON.stringify(info.mock.calls)).not.toContain("grandTotal");
+    const readinessCalls = info.mock.calls.filter((call) =>
+      String(call[0]).includes(CASHIER_PAYMENT_READINESS_EVENT)
+    );
+    expect(readinessCalls).toHaveLength(1);
+    markAt(registry, clock, flowId, "CASHIER_PAYMENT_READY", 9999);
+    expect(
+      info.mock.calls.filter((call) =>
+        String(call[0]).includes(CASHIER_PAYMENT_READINESS_EVENT)
+      )
+    ).toHaveLength(1);
+    clock.restore();
   });
 });

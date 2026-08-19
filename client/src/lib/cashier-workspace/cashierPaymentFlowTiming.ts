@@ -1,7 +1,12 @@
 /**
  * CASHIER-PAYMENT-FLOW-BOUNDARY-INSTRUMENTATION-1
+ * CASHIER-PAYMENT-READINESS-INSTRUMENTATION-1
  * Observability-only Cashier payment-flow marks. Not financial identity.
  * Durations use performance.now(). Missing marks yield null (UNKNOWN).
+ *
+ * Primary L1 metric: paymentReadinessDurationMs
+ *   = CASHIER_PAYMENT_WORKFLOW_START → CASHIER_PAYMENT_READY
+ * Emitted when Confirm becomes usable. Does not wait for Confirm click (L3).
  */
 
 export const CASHIER_PAYMENT_FLOW_MARKS = [
@@ -53,6 +58,8 @@ export type CashierPaymentFlowSnapshot = {
   checkIntakeEndAt: string | null;
   checkReadReadyAt: string | null;
   paymentReadyAt: string | null;
+  /** L1: workflow start → Confirm usable. Not checkReadinessDurationMs. */
+  paymentReadinessDurationMs: number | null;
   paymentConfirmAt: string | null;
   settlementStartAt: string | null;
   settlementEndAt: string | null;
@@ -125,6 +132,9 @@ export class CashierPaymentFlowTimingRegistry {
     if (!flow || flow.outcome != null) return;
     if (flow.marks[name]) return;
     flow.marks[name] = { perfMs: nowPerf(), wallMs: Date.now() };
+    if (name === "CASHIER_PAYMENT_READY") {
+      emitCashierPaymentReadiness(this.snapshot(flowId));
+    }
   }
 
   attachOrderId(flowId: string | null | undefined, orderId: number): void {
@@ -162,6 +172,10 @@ export class CashierPaymentFlowTimingRegistry {
       checkIntakeEndAt: iso(m.CASHIER_CHECK_INTAKE_RESPONSE),
       checkReadReadyAt: iso(m.CASHIER_CHECK_READ_READY),
       paymentReadyAt: iso(m.CASHIER_PAYMENT_READY),
+      paymentReadinessDurationMs: elapsed(
+        m.CASHIER_PAYMENT_WORKFLOW_START,
+        m.CASHIER_PAYMENT_READY
+      ),
       paymentConfirmAt: iso(m.CASHIER_PAYMENT_CONFIRM_CLICK),
       settlementStartAt: iso(m.CASHIER_SETTLEMENT_REQUEST_START),
       settlementEndAt: iso(m.CASHIER_SETTLEMENT_RESPONSE),
@@ -212,6 +226,37 @@ export class CashierPaymentFlowTimingRegistry {
 }
 
 export const CASHIER_PAYMENT_FLOW_EVENT = "cashier_payment_flow";
+export const CASHIER_PAYMENT_READINESS_EVENT = "cashier_payment_readiness";
+
+function emitCashierPaymentReadiness(
+  snapshot: CashierPaymentFlowSnapshot | null
+): void {
+  if (!snapshot || snapshot.paymentReadyAt == null) return;
+  const payload = {
+    type: CASHIER_PAYMENT_READINESS_EVENT,
+    category: "ORDER",
+    severity: "info",
+    ts: new Date().toISOString(),
+    restaurantId: snapshot.restaurantId,
+    action: "cashier.payment_readiness",
+    metadata: {
+      cashierFlowId: snapshot.cashierFlowId,
+      orderId: snapshot.orderId,
+      checkId: snapshot.checkId,
+      terminalId: snapshot.terminalId,
+      paymentWorkflowStartAt: snapshot.paymentWorkflowStartAt,
+      paymentReadyAt: snapshot.paymentReadyAt,
+      paymentReadinessDurationMs: snapshot.paymentReadinessDurationMs,
+      saleDurationMs: snapshot.saleDurationMs,
+      intakeDurationMs: snapshot.intakeDurationMs,
+      checkReadinessDurationMs: snapshot.checkReadinessDurationMs,
+    },
+  };
+  console.info(
+    `[OPS][ORDER][info] ${CASHIER_PAYMENT_READINESS_EVENT}`,
+    payload
+  );
+}
 
 function emitCashierPaymentFlow(snapshot: CashierPaymentFlowSnapshot | null): void {
   if (!snapshot) return;
@@ -232,6 +277,7 @@ function emitCashierPaymentFlow(snapshot: CashierPaymentFlowSnapshot | null): vo
       workflowEntryDurationMs: snapshot.workflowEntryDurationMs,
       intakeDurationMs: snapshot.intakeDurationMs,
       checkReadinessDurationMs: snapshot.checkReadinessDurationMs,
+      paymentReadinessDurationMs: snapshot.paymentReadinessDurationMs,
       userThinkTimeMs: snapshot.userThinkTimeMs,
       settlementDurationMs: snapshot.settlementDurationMs,
       postSettlementUiMs: snapshot.postSettlementUiMs,
