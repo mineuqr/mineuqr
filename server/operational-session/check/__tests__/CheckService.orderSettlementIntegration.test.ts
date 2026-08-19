@@ -29,6 +29,8 @@ const mocks = vi.hoisted(() => ({
   cancelOrderSettlementForOrder: vi.fn(),
   applyPartialSettlementForOrder: vi.fn(),
   createSettlementRecordForCheckFinalize: vi.fn(),
+  loadChargesSubtotal: vi.fn(),
+  ensureOpenCheckChargeComposition: vi.fn(),
 }));
 
 const fakeTx = { __tx: true };
@@ -82,6 +84,14 @@ vi.mock("../checkOrderMembershipRepository", () => ({
     mocks.listActiveOrderIdsForCheck(...a),
   findBlockingMembershipForOrder: (...a: unknown[]) =>
     mocks.findBlockingMembershipForOrder(...a),
+}));
+
+vi.mock("../checkChargeComposition", () => ({
+  loadChargesSubtotal: (...a: unknown[]) => mocks.loadChargesSubtotal(...a),
+  ensureOpenCheckChargeComposition: (...a: unknown[]) =>
+    mocks.ensureOpenCheckChargeComposition(...a),
+  snapshotChargesForEnrolledOrder: vi.fn(),
+  compensateChargesForCancelledOrder: vi.fn(),
 }));
 
 vi.mock("../checkOrderSettlementIntegration", () => ({
@@ -148,6 +158,8 @@ describe("ORDER-SETTLEMENT-INTEGRATION-1 Check Aggregate", () => {
     mocks.getDb.mockResolvedValue({
       transaction: async (fn: (tx: unknown) => Promise<unknown>) => fn(fakeTx),
     });
+    mocks.ensureOpenCheckChargeComposition.mockResolvedValue(undefined);
+    mocks.loadChargesSubtotal.mockResolvedValue("20.00");
     mocks.listActiveOrderIdsForCheck.mockResolvedValue([55]);
     mocks.getOrdersByIds.mockResolvedValue([
       { id: 55, status: "served", totalAmount: "20.00" },

@@ -25,7 +25,7 @@ describe("CASHIER-SETTLEMENT-FINANCIALTXN-STAGE-INSTRUMENTATION-1 architecture",
     const check = read("server/operational-session/check/CheckService.ts");
     const finalize = sliceFinalizeOpenCheckById(check);
     const reloadAt = finalize.indexOf("await getCheckById(");
-    const discoveryAt = finalize.indexOf("await loadOrdersSubtotal(");
+    const discoveryAt = finalize.indexOf("await loadChargesSubtotal(");
     const contextAt = finalize.indexOf("await resolveSettlementContextForSettle(");
     const moneyStartAt = finalize.indexOf("const moneyTxStartedAt = Date.now();");
     const txAt = finalize.indexOf("await withCheckOwnedTransaction(");
@@ -50,7 +50,7 @@ describe("CASHIER-SETTLEMENT-FINANCIALTXN-STAGE-INSTRUMENTATION-1 architecture",
     expect(moneySlice).toContain("applyFullSettlementToCheckOrders");
     expect(moneySlice).toContain("createSettlementRecordForCheckFinalize");
     expect(moneySlice).not.toContain("getCheckById(");
-    expect(moneySlice).not.toContain("loadOrdersSubtotal(");
+    expect(moneySlice).not.toContain("loadChargesSubtotal(");
     expect(moneySlice).not.toContain("resolveSettlementContextForSettle");
     expect(moneySlice).not.toContain("adoptSettlementAttributionAfterFinalize");
     expect(moneySlice).not.toContain("Promise.all");

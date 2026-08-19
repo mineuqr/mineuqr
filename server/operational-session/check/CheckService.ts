@@ -1,7 +1,7 @@
 /**
  * CHECK-MANAGEMENT-ARCHITECTURE-1 — Check sub-domain application service.
  * CHECK-SETTLEMENT-METHODS-1 — settlement transactions under Check.
- * CHECK-GENERALIZATION-M3 — Membership is authoritative Order discovery for money.
+ * CHECK-GENERALIZATION-M3 — Membership remains Order correlation; Bill money is Charge composition.
  * CHECK-GENERALIZATION-M4 — Session optional for financial correctness (Check-centric APIs).
  * ORDER-SETTLEMENT-INTEGRATION-1 — Check Aggregate is sole Order Settlement mutation authority.
  * SPLIT-PAYMENT-INTEGRATION-1 — Check Aggregate is sole Split Payment mutation authority.
@@ -10,15 +10,14 @@
  * SETTLEMENT-FINALIZATION-IDEMPOTENCY-HOTFIX-1 — abort finalize when outcome ownership is lost (0-row UPDATE).
  * REFUND-DOMAIN-IMPLEMENTATION-1 — Check Aggregate is sole Refund mutation authority (ADR-ARCH-032).
  *
+ * BILL-CHARGE-COMPOSITION-IMPLEMENTATION-1 — Bill money from frozen Charges, not live Order totals.
  * Owned by Operational Session Platform. Does not modify Order Domain.
  */
 
 import {
   getDb,
-  getOrdersByIds,
   getRestaurantById,
 } from "../../db";
-import { computeOrdersTotalAmount } from "../../diningSession/sessionOrderTotals";
 import {
   findSessionById,
   updateSessionActiveCheckId,
@@ -64,8 +63,12 @@ import {
 } from "./checkMembershipService";
 import {
   findBlockingMembershipForOrder,
-  listActiveOrderIdsForCheck,
 } from "./checkOrderMembershipRepository";
+import {
+  ensureOpenCheckChargeComposition,
+  loadChargesSubtotal,
+  compensateChargesForCancelledOrder,
+} from "./checkChargeComposition";
 import {
   applyComplimentaryToCheckOrders,
   applyFullSettlementToCheckOrders,
@@ -252,24 +255,8 @@ async function withCheckOwnedTransaction<T>(
 }
 
 /**
- * COMPATIBILITY-CLEANUP-1 — Check Order money discovery is Membership-only.
+ * BILL-CHARGE-COMPOSITION-IMPLEMENTATION-1 — Bill money from frozen Charges.
  */
-async function loadOrdersSubtotal(
-  input: {
-    restaurantId: number;
-    checkId: number;
-  },
-  client?: SessionDbClient
-): Promise<string> {
-  const orderIds = await listActiveOrderIdsForCheck(
-    input.restaurantId,
-    input.checkId,
-    client
-  );
-  const orderRows = await getOrdersByIds(input.restaurantId, orderIds);
-  return computeOrdersTotalAmount(orderRows);
-}
-
 async function refreshOpenCheckMoneyFromDiscovery(
   input: {
     restaurantId: number;
@@ -279,7 +266,14 @@ async function refreshOpenCheckMoneyFromDiscovery(
   },
   client?: SessionDbClient
 ): Promise<void> {
-  const ordersSubtotal = await loadOrdersSubtotal(
+  await ensureOpenCheckChargeComposition(
+    {
+      restaurantId: input.restaurantId,
+      checkId: input.checkId,
+    },
+    client
+  );
+  const chargesSubtotal = await loadChargesSubtotal(
     {
       restaurantId: input.restaurantId,
       checkId: input.checkId,
@@ -287,7 +281,7 @@ async function refreshOpenCheckMoneyFromDiscovery(
     client
   );
   const money = computeCheckMoney({
-    ordersSubtotal,
+    chargesSubtotal,
     billDiscountAmount: input.billDiscountAmount,
     taxPolicySnapshot: input.taxPolicySnapshot,
   });
@@ -381,9 +375,9 @@ export async function createOpenCheckForSession(
 
   const { currencySnapshot, taxPolicySnapshot } =
     await captureSnapshotsFromBusinessSettings(input.restaurantId);
-  // Seed zeros; money authority comes from Membership after authoritative sync.
+  // Seed zeros; money authority comes from Charges after enroll/sync.
   const money = computeCheckMoney({
-    ordersSubtotal: "0.00",
+    chargesSubtotal: "0.00",
     billDiscountAmount: "0.00",
     taxPolicySnapshot,
   });
@@ -558,13 +552,17 @@ async function finalizeOpenCheckById(
   }
 
   const orderDiscoveryStartedAt = Date.now();
-  const ordersSubtotal = await loadOrdersSubtotal({
+  await ensureOpenCheckChargeComposition({
+    restaurantId: input.restaurantId,
+    checkId: check.id,
+  });
+  const chargesSubtotal = await loadChargesSubtotal({
     restaurantId: input.restaurantId,
     checkId: check.id,
   });
   const orderDiscoveryMs = elapsedSinceMs(orderDiscoveryStartedAt);
   const money = computeCheckMoney({
-    ordersSubtotal,
+    chargesSubtotal,
     billDiscountAmount: check.billDiscountAmount,
     taxPolicySnapshot: check.taxPolicySnapshot,
   });
@@ -887,7 +885,7 @@ export async function createOpenCheck(input: {
   const { currencySnapshot, taxPolicySnapshot } =
     await captureSnapshotsFromBusinessSettings(input.restaurantId);
   const money = computeCheckMoney({
-    ordersSubtotal: "0.00",
+    chargesSubtotal: "0.00",
     billDiscountAmount: "0.00",
     taxPolicySnapshot,
   });
@@ -1134,6 +1132,25 @@ export async function cancelOrderSettlementOnCheck(input: {
   return withCheckOwnedTransaction(undefined, async (tx) =>
     cancelOrderSettlementForOrder(input, tx)
   );
+}
+
+/**
+ * BILL-CHARGE-COMPOSITION-IMPLEMENTATION-1 — compensating Charges for a cancelled Order.
+ * Does not reopen a terminal Bill. Recalc is the caller's responsibility except
+ * sessionless cancel, which has no Session façade.
+ */
+export async function applyCancelledOrderChargeCompensation(input: {
+  restaurantId: number;
+  orderId: number;
+}): Promise<{ checkId: number | null; compensated: boolean }> {
+  const result = await compensateChargesForCancelledOrder(input);
+  if (result.compensated && result.checkId != null) {
+    await recalculateOpenCheck({
+      restaurantId: input.restaurantId,
+      checkId: result.checkId,
+    });
+  }
+  return result;
 }
 
 // ─── SPLIT-PAYMENT-INTEGRATION-1 — Aggregate commands ───────────────

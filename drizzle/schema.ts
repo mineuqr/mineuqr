@@ -477,6 +477,47 @@ export const checkOrderMembership = mysqlTable(
 export type InsertCheckOrderMembership = typeof checkOrderMembership.$inferInsert;
 export type SelectCheckOrderMembership = typeof checkOrderMembership.$inferSelect;
 
+// ─── Check Charges (BILL-CHARGE-COMPOSITION-IMPLEMENTATION-1) ──
+/** Frozen financial lines owned by Check/Bill. Not Order membership. Insert-only money. */
+export const checkCharges = mysqlTable(
+	"check_charges",
+	{
+		id: int().autoincrement().primaryKey(),
+		chargeId: varchar({ length: 128 }).notNull(),
+		restaurantId: int().notNull(),
+		checkId: int().notNull(),
+		sequence: int().notNull(),
+		description: varchar({ length: 255 }).notNull(),
+		quantity: int().notNull(),
+		unitPrice: decimal({ precision: 10, scale: 2 }).notNull(),
+		lineDiscount: decimal({ precision: 10, scale: 2 }).default("0.00").notNull(),
+		modifierAmount: decimal({ precision: 10, scale: 2 }).default("0.00").notNull(),
+		netAmount: decimal({ precision: 10, scale: 2 }).notNull(),
+		taxCategory: varchar({ length: 64 }),
+		taxAmount: decimal({ precision: 10, scale: 2 }).default("0.00").notNull(),
+		currencyCode: varchar({ length: 8 }).notNull(),
+		originOrderId: int(),
+		originOrderItemId: int(),
+		originChannel: varchar({ length: 32 }),
+		originReference: varchar({ length: 128 }),
+		createdAt: timestamp({ mode: "string" }).default("CURRENT_TIMESTAMP").notNull(),
+	},
+	(table) => [
+		uniqueIndex("check_charges_charge_id_unique").on(table.chargeId),
+		uniqueIndex("check_charges_check_sequence_unique").on(
+			table.checkId,
+			table.sequence
+		),
+		index("check_charges_restaurant_id").on(table.restaurantId),
+		index("check_charges_check_id").on(table.checkId),
+		index("check_charges_restaurant_check").on(table.restaurantId, table.checkId),
+		index("check_charges_origin_order").on(table.restaurantId, table.originOrderId),
+	]
+);
+
+export type InsertCheckCharge = typeof checkCharges.$inferInsert;
+export type SelectCheckCharge = typeof checkCharges.$inferSelect;
+
 // ─── Check Order Settlements (ORDER-SETTLEMENT-PERSISTENCE-1 / ADR-ARCH-022) ──
 /** Check-owned Order Settlement entity storage. Not an aggregate root. No Domain logic. */
 export const checkOrderSettlements = mysqlTable(

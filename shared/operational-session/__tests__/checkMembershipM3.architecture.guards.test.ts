@@ -13,13 +13,17 @@ function read(rel: string): string {
 }
 
 describe("CHECK-GENERALIZATION-M3 architecture guards", () => {
-  it("CheckService money path uses membership discovery (authoritative)", () => {
+  it("CheckService money path uses Charge composition (membership remains enroll-only)", () => {
     const svc = read("server/operational-session/check/CheckService.ts");
-    expect(svc).toContain("listActiveOrderIdsForCheck");
-    expect(svc).toContain("getOrdersByIds");
+    expect(svc).toContain("loadChargesSubtotal");
     expect(svc).toContain("syncSessionOrdersToCheck");
+    expect(svc).not.toContain("getOrdersByIds");
     expect(svc).not.toContain("checkMembershipAuthoritativeRead");
     expect(svc).not.toContain("loadOrdersSubtotalCompatibilitySessionScan");
+    const composition = read(
+      "server/operational-session/check/checkChargeComposition.ts"
+    );
+    expect(composition).toContain("listActiveOrderIdsForCheck");
   });
 
   it("membership compatibility env flags are removed", () => {

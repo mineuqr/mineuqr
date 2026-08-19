@@ -31,12 +31,17 @@ vi.mock("../_core/opsLog", () => ({
 vi.mock("../operational-session/check/CheckService", () => ({
   recalculateOpenCheck: vi.fn(async () => null),
   recalculateOpenCheckForSession: vi.fn(async () => null),
+  applyCancelledOrderChargeCompensation: vi.fn(async () => ({
+    checkId: null,
+    compensated: false,
+  })),
 }));
 
 vi.mock("../operational-session/check/checkMembershipService", () => ({
   enrollOrderForSessionCheck: vi.fn(async () => undefined),
 }));
 
+import { applyCancelledOrderChargeCompensation } from "../operational-session/check/CheckService";
 import { OPS_EVENT } from "../_core/opsTaxonomy";
 import {
   decrementSessionAggregatesForCancelledOrder,
@@ -233,6 +238,20 @@ describe("sessionAggregateWriters SESSION-AGGREGATES-1 Phase A", () => {
         sessionId: 10,
         totalOrdersDelta: -1,
         totalAmountDelta: "-45.00",
+      });
+    });
+
+    it("compensates Bill Charges when cancelled orderId is provided", async () => {
+      await decrementSessionAggregatesForCancelledOrder({
+        restaurantId: 1,
+        sessionId: 10,
+        orderTotalAmount: "45.00",
+        orderId: 55,
+      });
+
+      expect(applyCancelledOrderChargeCompensation).toHaveBeenCalledWith({
+        restaurantId: 1,
+        orderId: 55,
       });
     });
 

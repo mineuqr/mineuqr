@@ -24,13 +24,15 @@ describe("CHECK-GENERALIZATION-M1 architecture guards", () => {
     expect(schema).toContain("checkOrderMembership");
   });
 
-  it("CheckService money path uses Membership discovery only", () => {
+  it("CheckService money path uses Charge composition, not live Order totals", () => {
     const svc = read("server/operational-session/check/CheckService.ts");
-    expect(svc).toContain("loadOrdersSubtotal");
-    expect(svc).toContain("listActiveOrderIdsForCheck");
+    expect(svc).toContain("loadChargesSubtotal");
+    expect(svc).toContain("ensureOpenCheckChargeComposition");
     expect(svc).toContain("syncSessionOrdersToCheck");
+    expect(svc).not.toContain("loadOrdersSubtotal");
     expect(svc).not.toContain("loadOrdersSubtotalCompatibilitySessionScan");
     expect(svc).not.toContain("getOrdersBySessionId");
+    expect(svc).not.toContain("getOrdersByIds");
   });
 
   it("membership service is authoritative (no dual-write helpers)", () => {

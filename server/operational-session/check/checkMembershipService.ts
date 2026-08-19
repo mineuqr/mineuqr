@@ -19,6 +19,7 @@ import {
   reactivateCheckOrderMembership,
 } from "./checkOrderMembershipRepository";
 import { ensureOrderSettlementForEnrollment } from "./checkOrderSettlementIntegration";
+import { snapshotChargesForEnrolledOrder } from "./checkChargeComposition";
 
 export class CheckMembershipError extends Error {
   constructor(message: string) {
@@ -65,8 +66,26 @@ export async function enrollOrderInCheck(
     client
   );
   if (existingOnCheck) {
-    if (existingOnCheck.active === 1) return "already";
+    if (existingOnCheck.active === 1) {
+      await snapshotChargesForEnrolledOrder(
+        {
+          restaurantId: input.restaurantId,
+          checkId: input.checkId,
+          orderId: input.orderId,
+        },
+        client
+      );
+      return "already";
+    }
     await reactivateCheckOrderMembership(
+      {
+        restaurantId: input.restaurantId,
+        checkId: input.checkId,
+        orderId: input.orderId,
+      },
+      client
+    );
+    await snapshotChargesForEnrolledOrder(
       {
         restaurantId: input.restaurantId,
         checkId: input.checkId,
@@ -95,6 +114,14 @@ export async function enrollOrderInCheck(
       orderId: input.orderId,
       enrolledAt: formatDiningSessionTimestamp(),
       enrolledReason: input.enrolledReason,
+    },
+    client
+  );
+  await snapshotChargesForEnrolledOrder(
+    {
+      restaurantId: input.restaurantId,
+      checkId: input.checkId,
+      orderId: input.orderId,
     },
     client
   );

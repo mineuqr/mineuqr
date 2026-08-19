@@ -30,8 +30,8 @@ const CANONICAL_TAIL_TAGS = [
 ];
 
 /** PRODUCTION-MIGRATION-GOVERNANCE — certified production journal terminus. */
-const CANONICAL_MIGRATION_TAIL_TAG = "0094_commercial_limit_occupancy_locks";
-const CANONICAL_JOURNAL_ENTRY_COUNT = 95;
+const CANONICAL_MIGRATION_TAIL_TAG = "0095_check_charges";
+const CANONICAL_JOURNAL_ENTRY_COUNT = 96;
 
 function loadJournal() {
   return JSON.parse(fs.readFileSync(JOURNAL_PATH, "utf8"));

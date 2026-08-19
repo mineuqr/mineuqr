@@ -166,6 +166,37 @@ const REQUIRED = {
     ["multi_check_allocation_adjustments", "mca_adjustments_adjustment_id_unique"],
     ["multi_check_allocation_reversals", "mca_reversals_reversal_id_unique"],
   ],
+  /** BILL-CHARGE-COMPOSITION-IMPLEMENTATION-1 — Check-owned Charge composition. */
+  checkChargeTables: ["check_charges"],
+  checkChargeColumns: [
+    ["check_charges", "id"],
+    ["check_charges", "chargeId"],
+    ["check_charges", "restaurantId"],
+    ["check_charges", "checkId"],
+    ["check_charges", "sequence"],
+    ["check_charges", "description"],
+    ["check_charges", "quantity"],
+    ["check_charges", "unitPrice"],
+    ["check_charges", "lineDiscount"],
+    ["check_charges", "modifierAmount"],
+    ["check_charges", "netAmount"],
+    ["check_charges", "taxCategory"],
+    ["check_charges", "taxAmount"],
+    ["check_charges", "currencyCode"],
+    ["check_charges", "originOrderId"],
+    ["check_charges", "originOrderItemId"],
+    ["check_charges", "originChannel"],
+    ["check_charges", "originReference"],
+    ["check_charges", "createdAt"],
+  ],
+  checkChargeIndexes: [
+    ["check_charges", "check_charges_charge_id_unique"],
+    ["check_charges", "check_charges_check_sequence_unique"],
+    ["check_charges", "check_charges_restaurant_id"],
+    ["check_charges", "check_charges_check_id"],
+    ["check_charges", "check_charges_restaurant_check"],
+    ["check_charges", "check_charges_origin_order"],
+  ],
 };
 
 async function columnExists(conn, table, column) {
@@ -338,10 +369,25 @@ async function main() {
         missing.push(`index:${table}.${indexName}`);
       }
     }
+    for (const table of REQUIRED.checkChargeTables) {
+      if (!(await tableExists(conn, table))) {
+        missing.push(`table:${table}`);
+      }
+    }
+    for (const [table, column] of REQUIRED.checkChargeColumns) {
+      if (!(await columnExists(conn, table, column))) {
+        missing.push(`${table}.${column}`);
+      }
+    }
+    for (const [table, indexName] of REQUIRED.checkChargeIndexes) {
+      if (!(await indexExists(conn, table, indexName))) {
+        missing.push(`index:${table}.${indexName}`);
+      }
+    }
 
     if (missing.length === 0) {
       console.log(
-        "[schema-verify] OK — required schema objects present (auth, order-read, operational-device, fulfilment, business-identity-scope, waiter_display, check-order-membership, check-order-settlements)."
+        "[schema-verify] OK — required schema objects present (auth, order-read, operational-device, fulfilment, business-identity-scope, waiter_display, check-order-membership, check-order-settlements, check-charges)."
       );
       return;
     }

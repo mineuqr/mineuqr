@@ -50,6 +50,13 @@ vi.mock("../checkOrderSettlementIntegration", () => ({
     mocks.ensureOrderSettlementForEnrollment(...args),
 }));
 
+vi.mock("../checkChargeComposition", () => ({
+  snapshotChargesForEnrolledOrder: vi.fn(async () => undefined),
+  compensateChargesForCancelledOrder: vi.fn(),
+  loadChargesSubtotal: vi.fn(),
+  ensureOpenCheckChargeComposition: vi.fn(),
+}));
+
 import {
   enrollOrderInCheck,
   enrollOrderForSessionCheck,

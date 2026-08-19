@@ -40,6 +40,22 @@ export {
 } from "./checkMoney";
 
 export {
+  BILL_CHARGE_COMPOSITION_PROGRAM_ID,
+  BILL_CHARGE_MONEY_FIELDS,
+  ChargeCompositionError,
+  parseChargeMoney,
+  formatChargeMoney,
+  computeChargeNetAmount,
+  sumChargeNetAmounts,
+  originNetAmount,
+  assertChargeCreateInput,
+  buildReversalCharge,
+  type BillCharge,
+  type BillChargeCreateInput,
+  type BillChargeMoneyField,
+} from "./charge";
+
+export {
   CHECK_FREEZE_POLICY_ID,
   decideCheckRecalculation,
   snapshotsAreImmutable,

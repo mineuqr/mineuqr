@@ -24,6 +24,8 @@ const mocks = vi.hoisted(() => ({
   applyComplimentaryToCheckOrders: vi.fn(),
   voidOrderSettlementsForCheck: vi.fn(),
   createSettlementRecordForCheckFinalize: vi.fn(),
+  loadChargesSubtotal: vi.fn(),
+  ensureOpenCheckChargeComposition: vi.fn(),
 }));
 
 const fakeTx = { __tx: true };
@@ -84,6 +86,14 @@ vi.mock("../checkMembershipService", () => ({
 vi.mock("../checkOrderMembershipRepository", () => ({
   listActiveOrderIdsForCheck: (...a: unknown[]) =>
     mocks.listActiveOrderIdsForCheck(...a),
+}));
+
+vi.mock("../checkChargeComposition", () => ({
+  loadChargesSubtotal: (...a: unknown[]) => mocks.loadChargesSubtotal(...a),
+  ensureOpenCheckChargeComposition: (...a: unknown[]) =>
+    mocks.ensureOpenCheckChargeComposition(...a),
+  snapshotChargesForEnrolledOrder: vi.fn(),
+  compensateChargesForCancelledOrder: vi.fn(),
 }));
 
 vi.mock("../checkSettlementRecordIntegration", () => ({
@@ -166,25 +176,21 @@ describe("CHECK-GENERALIZATION-M3 CheckService cutover", () => {
       events: [],
       outcome: "applied",
     });
+    mocks.ensureOpenCheckChargeComposition.mockResolvedValue(undefined);
+    mocks.loadChargesSubtotal.mockResolvedValue("0.00");
   });
 
-  it("recalculate uses membership order ids", async () => {
+  it("recalculate uses Charge composition", async () => {
     mocks.findCheckById.mockResolvedValue(openCheckRow);
-    mocks.listActiveOrderIdsForCheck.mockResolvedValue([55, 56]);
-    mocks.getOrdersByIds.mockResolvedValue([
-      { id: 55, status: "served", totalAmount: "10.00" },
-      { id: 56, status: "pending", totalAmount: "5.00" },
-      { id: 56, status: "cancelled", totalAmount: "99.00" },
-    ]);
+    mocks.loadChargesSubtotal.mockResolvedValue("15.00");
 
     await recalculateOpenCheckForSession({ restaurantId: 1, sessionId: 10 });
 
-    expect(mocks.listActiveOrderIdsForCheck).toHaveBeenCalledWith(
-      1,
-      100,
+    expect(mocks.loadChargesSubtotal).toHaveBeenCalledWith(
+      { restaurantId: 1, checkId: 100 },
       undefined
     );
-    expect(mocks.getOrdersByIds).toHaveBeenCalledWith(1, [55, 56]);
+    expect(mocks.getOrdersByIds).not.toHaveBeenCalled();
     expect(mocks.updateCheckMoney).toHaveBeenCalledWith(
       expect.objectContaining({
         checkId: 100,
@@ -195,7 +201,7 @@ describe("CHECK-GENERALIZATION-M3 CheckService cutover", () => {
     );
   });
 
-  it("create syncs membership then refreshes money from membership", async () => {
+  it("create syncs membership then refreshes money from Charges", async () => {
     mocks.findSessionById.mockResolvedValue({
       id: 10,
       restaurantId: 1,
@@ -204,10 +210,7 @@ describe("CHECK-GENERALIZATION-M3 CheckService cutover", () => {
     });
     mocks.findOpenCheckBySessionId.mockResolvedValue(null);
     mocks.insertOperationalCheck.mockResolvedValue(100);
-    mocks.listActiveOrderIdsForCheck.mockResolvedValue([55]);
-    mocks.getOrdersByIds.mockResolvedValue([
-      { id: 55, status: "pending", totalAmount: "10.00" },
-    ]);
+    mocks.loadChargesSubtotal.mockResolvedValue("10.00");
     mocks.findCheckById.mockResolvedValue(openCheckRow);
 
     await createOpenCheckForSession({ restaurantId: 1, sessionId: 10 });
@@ -220,9 +223,8 @@ describe("CHECK-GENERALIZATION-M3 CheckService cutover", () => {
       },
       undefined
     );
-    expect(mocks.listActiveOrderIdsForCheck).toHaveBeenCalledWith(
-      1,
-      100,
+    expect(mocks.loadChargesSubtotal).toHaveBeenCalledWith(
+      { restaurantId: 1, checkId: 100 },
       undefined
     );
     expect(mocks.updateCheckMoney).toHaveBeenCalled();
@@ -239,20 +241,16 @@ describe("CHECK-GENERALIZATION-M3 CheckService cutover", () => {
         settledAt: "2026-07-22 11:00:00",
         grandTotal: "10.00",
       });
-    mocks.listActiveOrderIdsForCheck.mockResolvedValue([55]);
-    mocks.getOrdersByIds.mockResolvedValue([
-      { id: 55, status: "served", totalAmount: "10.00" },
-    ]);
+    mocks.loadChargesSubtotal.mockResolvedValue("10.00");
     mocks.finalizeCheckOutcome.mockResolvedValue(1);
     mocks.insertSettlementTransactions.mockResolvedValue(undefined);
 
     const result = await settleCheckPaidById({ restaurantId: 1, checkId: 100 });
 
-    expect(mocks.listActiveOrderIdsForCheck).toHaveBeenCalledWith(
-      1,
-      100,
-      undefined
-    );
+    expect(mocks.loadChargesSubtotal).toHaveBeenCalledWith({
+      restaurantId: 1,
+      checkId: 100,
+    });
     expect(mocks.finalizeCheckOutcome).toHaveBeenCalledWith(
       expect.objectContaining({
         outcome: "paid",
@@ -267,7 +265,7 @@ describe("CHECK-GENERALIZATION-M3 CheckService cutover", () => {
     expect(result.outcome).toBe("paid");
   });
 
-  it("voidCheckById uses membership discovery then deactivates memberships", async () => {
+  it("voidCheckById uses Charge composition then deactivates memberships", async () => {
     mocks.findCheckById
       .mockResolvedValueOnce(openCheckRow)
       .mockResolvedValueOnce({
@@ -276,17 +274,15 @@ describe("CHECK-GENERALIZATION-M3 CheckService cutover", () => {
         voidedAt: "2026-07-22 11:00:00",
         totalsFrozenAt: "2026-07-22 11:00:00",
       });
-    mocks.listActiveOrderIdsForCheck.mockResolvedValue([]);
-    mocks.getOrdersByIds.mockResolvedValue([]);
+    mocks.loadChargesSubtotal.mockResolvedValue("0.00");
     mocks.finalizeCheckOutcome.mockResolvedValue(1);
 
     await voidCheckById({ restaurantId: 1, checkId: 100 });
 
-    expect(mocks.listActiveOrderIdsForCheck).toHaveBeenCalledWith(
-      1,
-      100,
-      undefined
-    );
+    expect(mocks.loadChargesSubtotal).toHaveBeenCalledWith({
+      restaurantId: 1,
+      checkId: 100,
+    });
     expect(mocks.voidOrderSettlementsForCheck).toHaveBeenCalledWith(
       { restaurantId: 1, checkId: 100 },
       fakeTx

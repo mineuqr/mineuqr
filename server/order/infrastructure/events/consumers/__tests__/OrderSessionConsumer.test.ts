@@ -15,6 +15,10 @@ vi.mock("../../../../../diningSession/sessionAggregateWriters", () => ({
 
 vi.mock("../../../../../operational-session/check/CheckService", () => ({
   ensureCheckForOrder: vi.fn(async () => ({ id: 200, sessionId: null })),
+  applyCancelledOrderChargeCompensation: vi.fn(async () => ({
+    checkId: 200,
+    compensated: true,
+  })),
 }));
 
 vi.mock("../../../../../db", () => ({
@@ -26,7 +30,7 @@ import {
   decrementSessionAggregatesForCancelledOrder,
   incrementSessionAggregatesForOrder,
 } from "../../../../../diningSession/sessionAggregateWriters";
-import { ensureCheckForOrder } from "../../../../../operational-session/check/CheckService";
+import { ensureCheckForOrder, applyCancelledOrderChargeCompensation } from "../../../../../operational-session/check/CheckService";
 import { getOrderById } from "../../../../../db";
 
 describe("OrderSessionConsumer", () => {
@@ -166,8 +170,45 @@ describe("OrderSessionConsumer", () => {
         restaurantId: 1,
         sessionId: 10,
         orderTotalAmount: "20.00",
+        orderId: 55,
       },
       { procedure: "OrderSessionConsumer" }
     );
+  });
+
+  it("compensates Charges on sessionless OrderCancelled", async () => {
+    vi.mocked(getOrderById).mockResolvedValue({
+      id: 56,
+      restaurantId: 1,
+      sessionId: null,
+      totalAmount: "12.00",
+    } as Awaited<ReturnType<typeof getOrderById>>);
+
+    await consumer.handle({
+      id: "o3",
+      eventId: "e3",
+      eventType: "OrderCancelled",
+      aggregateType: "Order",
+      aggregateId: 56,
+      aggregateVersion: null,
+      restaurantId: 1,
+      sequenceNumber: 3,
+      occurredAt: "2026-06-27 11:00:00",
+      correlationId: null,
+      causationId: null,
+      payloadVersion: 1,
+      payload: {
+        type: "OrderCancelled",
+        schemaVersion: 1,
+        orderId: 56,
+        cancelledAt: "2026-06-27 11:00:00",
+      },
+    });
+
+    expect(applyCancelledOrderChargeCompensation).toHaveBeenCalledWith({
+      restaurantId: 1,
+      orderId: 56,
+    });
+    expect(decrementSessionAggregatesForCancelledOrder).not.toHaveBeenCalled();
   });
 });

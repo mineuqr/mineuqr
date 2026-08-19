@@ -27,6 +27,8 @@ const mocks = vi.hoisted(() => ({
   applyComplimentaryToCheckOrders: vi.fn(),
   voidOrderSettlementsForCheck: vi.fn(),
   createSettlementRecordForCheckFinalize: vi.fn(),
+  loadChargesSubtotal: vi.fn(),
+  ensureOpenCheckChargeComposition: vi.fn(),
 }));
 
 const fakeTx = { __tx: true };
@@ -98,6 +100,14 @@ vi.mock("../checkOrderMembershipRepository", () => ({
     mocks.listActiveOrderIdsForCheck(...a),
   findBlockingMembershipForOrder: (...a: unknown[]) =>
     mocks.findBlockingMembershipForOrder(...a),
+}));
+
+vi.mock("../checkChargeComposition", () => ({
+  loadChargesSubtotal: (...a: unknown[]) => mocks.loadChargesSubtotal(...a),
+  ensureOpenCheckChargeComposition: (...a: unknown[]) =>
+    mocks.ensureOpenCheckChargeComposition(...a),
+  snapshotChargesForEnrolledOrder: vi.fn(),
+  compensateChargesForCancelledOrder: vi.fn(),
 }));
 
 vi.mock("../checkSettlementRecordIntegration", () => ({
@@ -182,6 +192,8 @@ describe("CHECK-GENERALIZATION-M4 Session optionality", () => {
       events: [],
       outcome: "applied",
     });
+    mocks.ensureOpenCheckChargeComposition.mockResolvedValue(undefined);
+    mocks.loadChargesSubtotal.mockResolvedValue("0.00");
   });
 
   it("createOpenCheck creates a sessionless Check without Session lookup", async () => {
@@ -336,22 +348,22 @@ describe("CHECK-GENERALIZATION-M4 Session optionality", () => {
     );
   });
 
-  it("recalculateOpenCheck uses membership for sessionless Checks", async () => {
+  it("recalculateOpenCheck uses Charges for sessionless Checks", async () => {
     mocks.findCheckById.mockResolvedValue({
       ...sessionlessOpenCheck,
       subtotal: "10.00",
       grandTotal: "10.00",
     });
-    mocks.listActiveOrderIdsForCheck.mockResolvedValue([55]);
-    mocks.getOrdersByIds.mockResolvedValue([
-      { id: 55, status: "served", totalAmount: "10.00" },
-    ]);
+    mocks.loadChargesSubtotal.mockResolvedValue("10.00");
 
     await recalculateOpenCheck({ restaurantId: 1, checkId: 200 });
 
-    expect(mocks.listActiveOrderIdsForCheck).toHaveBeenCalledWith(
-      1,
-      200,
+    expect(mocks.ensureOpenCheckChargeComposition).toHaveBeenCalledWith(
+      { restaurantId: 1, checkId: 200 },
+      undefined
+    );
+    expect(mocks.loadChargesSubtotal).toHaveBeenCalledWith(
+      { restaurantId: 1, checkId: 200 },
       undefined
     );
     expect(mocks.updateCheckMoney).toHaveBeenCalledWith(

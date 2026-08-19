@@ -385,6 +385,13 @@ vi.mock("../checkOrderMembershipRepository", () => ({
   findBlockingMembershipForOrder: vi.fn(),
 }));
 
+vi.mock("../checkChargeComposition", () => ({
+  loadChargesSubtotal: vi.fn(async () => "20.00"),
+  ensureOpenCheckChargeComposition: vi.fn(async () => undefined),
+  snapshotChargesForEnrolledOrder: vi.fn(),
+  compensateChargesForCancelledOrder: vi.fn(),
+}));
+
 vi.mock("../checkOrderSettlementIntegration", () => ({
   ensureOrderSettlementForEnrollment: vi.fn(),
   recalculateOrderSettlementsForCheck: vi.fn(),

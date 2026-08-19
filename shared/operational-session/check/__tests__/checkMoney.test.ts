@@ -46,7 +46,7 @@ describe("CHECK-MANAGEMENT-ARCHITECTURE-1 check money", () => {
 
   it("applies exclusive tax on taxable base", () => {
     const result = computeCheckMoney({
-      ordersSubtotal: "100.00",
+      chargesSubtotal: "100.00",
       billDiscountAmount: "0.00",
       taxPolicySnapshot: exclusive15,
     });

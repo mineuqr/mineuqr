@@ -27,8 +27,16 @@ function parseRatePercent(ratePercent: string): number {
 }
 
 export type CheckMoneyInput = Readonly<{
-  /** Sum of non-cancelled order totals (order-line money). */
-  ordersSubtotal: string;
+  /**
+   * BILL-CHARGE-COMPOSITION-IMPLEMENTATION-1 — sum of Bill-owned Charge.netAmount.
+   * Prefer this over ordersSubtotal.
+   */
+  chargesSubtotal?: string;
+  /**
+   * Compatibility alias for chargesSubtotal.
+   * Must not be populated from live Order.totalAmount after Charge cutover.
+   */
+  ordersSubtotal?: string;
   /** Bill-level discount only. */
   billDiscountAmount: string;
   taxPolicySnapshot: TaxPolicySnapshot;
@@ -47,7 +55,11 @@ export type CheckMoneyResult = Readonly<{
  * (sum of component taxes). Compound stacking is not used.
  */
 export function computeCheckMoney(input: CheckMoneyInput): CheckMoneyResult {
-  const orders = parseMoney(input.ordersSubtotal);
+  const composition = input.chargesSubtotal ?? input.ordersSubtotal;
+  if (composition == null) {
+    throw new Error("computeCheckMoney requires chargesSubtotal");
+  }
+  const orders = parseMoney(composition);
   const discount = Math.max(0, parseMoney(input.billDiscountAmount));
   const taxableBase = Math.max(0, orders - discount);
   const subtotal = roundMoney(taxableBase);

@@ -8,7 +8,7 @@ import {
 } from "../../../../diningSession/sessionAggregateWriters";
 import { recordSessionEvent } from "../../../../diningSession/sessionService";
 import { TABLE_EVENT_TYPES } from "../../../../diningSession/sessionTypes";
-import { ensureCheckForOrder } from "../../../../operational-session/check/CheckService";
+import { ensureCheckForOrder, applyCancelledOrderChargeCompensation } from "../../../../operational-session/check/CheckService";
 import type {
   OrderCancelledEvent,
   OrderCreatedEvent,
@@ -154,7 +154,7 @@ export class OrderSessionConsumer implements OrderEventConsumer {
     restaurantId: number
   ): Promise<void> {
     const order = await getOrderById(event.orderId);
-    if (!order?.sessionId) return;
+    if (!order) return;
 
     const claimed = await this.businessClaims.tryClaim(
       BUSINESS_CLAIM_NS.sessionOrderCancelled,
@@ -163,11 +163,19 @@ export class OrderSessionConsumer implements OrderEventConsumer {
     if (!claimed) return;
 
     try {
+      if (!order.sessionId) {
+        await applyCancelledOrderChargeCompensation({
+          restaurantId: order.restaurantId,
+          orderId: order.id,
+        });
+        return;
+      }
       await decrementSessionAggregatesForCancelledOrder(
         {
           restaurantId: order.restaurantId,
           sessionId: order.sessionId,
           orderTotalAmount: String(order.totalAmount),
+          orderId: order.id,
         },
         { procedure: "OrderSessionConsumer" }
       );

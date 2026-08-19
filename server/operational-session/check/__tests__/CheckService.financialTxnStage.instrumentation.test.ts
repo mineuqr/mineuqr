@@ -16,6 +16,8 @@ const mocks = vi.hoisted(() => ({
   createSettlementRecordForCheckFinalize: vi.fn(),
   resolveSettlementContextForSettle: vi.fn(),
   adoptSettlementAttributionAfterFinalize: vi.fn(),
+  loadChargesSubtotal: vi.fn(),
+  ensureOpenCheckChargeComposition: vi.fn(),
 }));
 
 const fakeTx = { __tx: true };
@@ -68,6 +70,14 @@ vi.mock("../checkOrderMembershipRepository", () => ({
   listActiveOrderIdsForCheck: (...a: unknown[]) =>
     mocks.listActiveOrderIdsForCheck(...a),
   findBlockingMembershipForOrder: vi.fn(),
+}));
+
+vi.mock("../checkChargeComposition", () => ({
+  loadChargesSubtotal: (...a: unknown[]) => mocks.loadChargesSubtotal(...a),
+  ensureOpenCheckChargeComposition: (...a: unknown[]) =>
+    mocks.ensureOpenCheckChargeComposition(...a),
+  snapshotChargesForEnrolledOrder: vi.fn(),
+  compensateChargesForCancelledOrder: vi.fn(),
 }));
 
 vi.mock("../checkOrderSettlementIntegration", () => ({
@@ -156,6 +166,8 @@ describe("CASHIER-SETTLEMENT-FINANCIALTXN-STAGE-INSTRUMENTATION-1", () => {
     }));
     (mocks.getDb as typeof mocks.getDb & { callOrder: string[] }).callOrder =
       callOrder;
+    mocks.ensureOpenCheckChargeComposition.mockResolvedValue(undefined);
+    mocks.loadChargesSubtotal.mockResolvedValue("20.00");
     mocks.listActiveOrderIdsForCheck.mockResolvedValue([55]);
     mocks.getOrdersByIds.mockResolvedValue([
       { id: 55, status: "served", totalAmount: "20.00" },
@@ -194,9 +206,9 @@ describe("CASHIER-SETTLEMENT-FINANCIALTXN-STAGE-INSTRUMENTATION-1", () => {
         ? openCheck
         : { ...openCheck, outcome: "paid" as const };
     });
-    mocks.listActiveOrderIdsForCheck.mockImplementation(async () => {
+    mocks.loadChargesSubtotal.mockImplementation(async () => {
       await delay(40);
-      return [55];
+      return "20.00";
     });
     mocks.resolveSettlementContextForSettle.mockImplementation(async () => {
       await delay(40);
@@ -247,9 +259,9 @@ describe("CASHIER-SETTLEMENT-FINANCIALTXN-STAGE-INSTRUMENTATION-1", () => {
         ? openCheck
         : { ...openCheck, outcome: "paid" as const };
     });
-    mocks.listActiveOrderIdsForCheck.mockImplementation(async () => {
+    mocks.loadChargesSubtotal.mockImplementation(async () => {
       await delay(50);
-      return [55];
+      return "20.00";
     });
     mocks.resolveSettlementContextForSettle.mockImplementation(async () => {
       await delay(50);

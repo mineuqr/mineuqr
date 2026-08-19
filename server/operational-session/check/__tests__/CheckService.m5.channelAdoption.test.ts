@@ -14,6 +14,8 @@ const mocks = vi.hoisted(() => ({
   getRestaurantById: vi.fn(),
   listActiveOrderIdsForCheck: vi.fn(),
   syncSessionOrdersToCheck: vi.fn(),
+  loadChargesSubtotal: vi.fn(),
+  ensureOpenCheckChargeComposition: vi.fn(),
 }));
 
 vi.mock("../../../_core/opsLog", () => ({
@@ -76,6 +78,14 @@ vi.mock("../checkOrderMembershipRepository", () => ({
   findBlockingMembershipForOrder: vi.fn(),
 }));
 
+vi.mock("../checkChargeComposition", () => ({
+  loadChargesSubtotal: (...a: unknown[]) => mocks.loadChargesSubtotal(...a),
+  ensureOpenCheckChargeComposition: (...a: unknown[]) =>
+    mocks.ensureOpenCheckChargeComposition(...a),
+  snapshotChargesForEnrolledOrder: vi.fn(),
+  compensateChargesForCancelledOrder: vi.fn(),
+}));
+
 import { createOpenCheckForSession } from "../CheckService";
 
 describe("CHECK-GENERALIZATION-M5 createOpenCheckForSession", () => {
@@ -95,10 +105,8 @@ describe("CHECK-GENERALIZATION-M5 createOpenCheckForSession", () => {
     });
     mocks.insertOperationalCheck.mockResolvedValue(100);
     mocks.syncSessionOrdersToCheck.mockResolvedValue(undefined);
-    mocks.listActiveOrderIdsForCheck.mockResolvedValue([55]);
-    mocks.getOrdersByIds.mockResolvedValue([
-      { id: 55, status: "pending", totalAmount: "10.00" },
-    ]);
+    mocks.ensureOpenCheckChargeComposition.mockResolvedValue(undefined);
+    mocks.loadChargesSubtotal.mockResolvedValue("10.00");
     mocks.findCheckById.mockResolvedValue({
       id: 100,
       restaurantId: 1,
@@ -136,9 +144,8 @@ describe("CHECK-GENERALIZATION-M5 createOpenCheckForSession", () => {
       undefined
     );
     expect(mocks.syncSessionOrdersToCheck).toHaveBeenCalled();
-    expect(mocks.listActiveOrderIdsForCheck).toHaveBeenCalledWith(
-      1,
-      100,
+    expect(mocks.loadChargesSubtotal).toHaveBeenCalledWith(
+      { restaurantId: 1, checkId: 100 },
       undefined
     );
     expect(mocks.updateCheckMoney).toHaveBeenCalledWith(

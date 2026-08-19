@@ -15,7 +15,7 @@ import {
 const repoRoot = join(__dirname, "../..");
 
 describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
-  it("journal contains canonical migrations 0000–0094 contiguously", () => {
+  it("journal contains canonical migrations 0000–0095 contiguously", () => {
     const journal = loadJournal();
     expect(journal.entries).toHaveLength(CANONICAL_JOURNAL_ENTRY_COUNT);
     expect(journal.entries[0]?.tag).toBe("0000_shiny_blizzard");
@@ -54,15 +54,14 @@ describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
     expect(journal.entries[91]?.tag).toBe("0091_pos_terminals");
     expect(journal.entries[92]?.tag).toBe("0092_pos_permission_grants");
     expect(journal.entries[93]?.tag).toBe("0093_pos_sale_idempotency");
-    expect(journal.entries[94]?.tag).toBe(CANONICAL_MIGRATION_TAIL_TAG);
+    expect(journal.entries[94]?.tag).toBe("0094_commercial_limit_occupancy_locks");
+    expect(journal.entries[95]?.tag).toBe(CANONICAL_MIGRATION_TAIL_TAG);
     expect(validateJournalOrdering()).toEqual([]);
   });
 
   it("exports certified migration tail constant", () => {
-    expect(CANONICAL_MIGRATION_TAIL_TAG).toBe(
-      "0094_commercial_limit_occupancy_locks"
-    );
-    expect(CANONICAL_JOURNAL_ENTRY_COUNT).toBe(95);
+    expect(CANONICAL_MIGRATION_TAIL_TAG).toBe("0095_check_charges");
+    expect(CANONICAL_JOURNAL_ENTRY_COUNT).toBe(96);
     const tags = loadJournal().entries.map((e) => e.tag);
     expect(tags[tags.length - 1]).toBe(CANONICAL_MIGRATION_TAIL_TAG);
   });
@@ -109,6 +108,7 @@ describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
     expect(verify).toContain("check_order_membership");
     expect(verify).toContain("check_order_settlements");
     expect(verify).toContain("check_split_payments");
+    expect(verify).toContain("check_charges");
   });
 
   it("vercel build runs governance guard before compile", () => {
@@ -180,6 +180,28 @@ describe("MIGRATION-GOVERNANCE-RESTORATION-1 regression guards", () => {
     expect(sql).not.toMatch(/ALTER TABLE/i);
     expect(hashMigrationSql("0094_commercial_limit_occupancy_locks")).toBe(
       "134a49bf9ce3e329e019bbd5f85b485aab48f46d0480140257915751caa85d47"
+    );
+  });
+
+  it("0095 is additive check_charges and is not membership or a Payment table", () => {
+    const sql = readFileSync(
+      join(repoRoot, "drizzle/0095_check_charges.sql"),
+      "utf8"
+    );
+    expect(sql).toContain("CREATE TABLE `check_charges`");
+    expect(sql).toContain("`restaurantId` int NOT NULL");
+    expect(sql).toContain("check_charges_charge_id_unique");
+    expect(sql).toContain("check_charges_check_sequence_unique");
+    expect(sql).not.toMatch(/CREATE TABLE `bill_orders`/);
+    expect(sql).not.toMatch(/CREATE TABLE `check_payments`/);
+    expect(sql).not.toMatch(/ALTER TABLE `orders`/);
+    expect(sql).not.toMatch(/ALTER TABLE `operational_checks`/);
+    expect(sql).not.toMatch(/INSERT\s+INTO/i);
+    expect(sql).not.toMatch(/^\s*UPDATE\b/im);
+    expect(sql).not.toMatch(/^\s*DELETE\b/im);
+    expect(sql).not.toMatch(/DROP\s+/i);
+    expect(hashMigrationSql("0095_check_charges")).toBe(
+      "02f6ad22808cf79e6a54ae2d174d0bce310760f4b7de425c69e3739f12d08cca"
     );
   });
 

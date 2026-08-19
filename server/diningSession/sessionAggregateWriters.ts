@@ -9,6 +9,7 @@ import { computeOrdersTotalAmount } from "./sessionOrderTotals";
 import { findSessionById, updateSessionAggregates } from "./sessionRepository";
 import { DiningSessionValidationError } from "./sessionTypes";
 import {
+  applyCancelledOrderChargeCompensation,
   recalculateOpenCheck,
   recalculateOpenCheckForSession,
 } from "../operational-session/check/CheckService";
@@ -49,6 +50,7 @@ export type DecrementSessionAggregatesForCancelledOrderInput = {
   restaurantId: number;
   sessionId: number;
   orderTotalAmount: string;
+  orderId?: number;
 };
 
 function assertPositiveInteger(value: number, field: string): void {
@@ -186,6 +188,13 @@ export async function decrementSessionAggregatesForCancelledOrder(
     totalOrdersDelta: -1,
     totalAmountDelta: (-amount).toFixed(2),
   });
+
+  if (input.orderId != null) {
+    await applyCancelledOrderChargeCompensation({
+      restaurantId: input.restaurantId,
+      orderId: input.orderId,
+    });
+  }
 
   await recalculateCheckMoneyForSession({
     restaurantId: input.restaurantId,
