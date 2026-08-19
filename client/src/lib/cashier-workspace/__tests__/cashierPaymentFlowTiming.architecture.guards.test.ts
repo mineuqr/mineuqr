@@ -66,7 +66,10 @@ describe("CASHIER-PAYMENT-FLOW-BOUNDARY-INSTRUMENTATION-1 architecture", () => {
     expect(sale).toContain("awaitRelay: false");
     expect(sale).toContain("enrollCheck: false");
     expect(intake).toContain("ensureCheckForOrder");
-    expect(settle).toContain("settleCheckPaidByIdDetailed");
+    expect(settle).toContain("confirmPayment");
+    expect(
+      read("server/operational-session/payment/PaymentConfirmService.ts")
+    ).toContain("settleCheckPaidByIdDetailed");
     expect(settle).toContain("getCheckById");
     expect(readSvc).toContain("getCheckById");
     expect(readSvc).not.toContain("ensureCheckForOrder");

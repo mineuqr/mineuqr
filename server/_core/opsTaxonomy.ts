@@ -231,6 +231,7 @@ export const OPS_EVENT = {
   pos_check_read: "pos_check_read",
   pos_settlement_initiate: "pos_settlement_initiate",
   cashier_payment_flow: "cashier_payment_flow",
+  payment_confirm: "payment_confirm",
 } as const;
 
 export type OpsEventType = (typeof OPS_EVENT)[keyof typeof OPS_EVENT];

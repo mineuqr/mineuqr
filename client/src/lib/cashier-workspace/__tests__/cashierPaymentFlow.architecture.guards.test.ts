@@ -98,7 +98,10 @@ describe("CASHIER-PAYMENT-FLOW-IMPLEMENTATION-1 architecture", () => {
     expect(completeFn).not.toContain("directSale?.totalAmount");
     expect(sale).toContain("enrollCheck: false");
     expect(sale).toContain("awaitRelay: false");
-    expect(settle).toContain("settleCheckPaidByIdDetailed");
+    expect(settle).toContain("confirmPayment");
+    expect(
+      read("server/operational-session/payment/PaymentConfirmService.ts")
+    ).toContain("settleCheckPaidByIdDetailed");
     expect(visibility).toContain("cashierPosPaidOperationalVisibilitySql");
     expect(visibility).toContain('"paid"');
     expect(visibility).toContain('"complimentary"');
