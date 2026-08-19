@@ -189,7 +189,6 @@ export function CashierWorkspacePanel({
   const payInFlightRef = useRef(false);
   const saleKeyRef = useRef<string | null>(null);
   const settleKeyRef = useRef<string | null>(null);
-  const intakeByOrderRef = useRef(new Map<number, Promise<OpenCheckResult | null>>());
   const cashierFlowIdRef = useRef<string | null>(null);
 
   function endCashierPaymentFlow(outcome: CashierPaymentFlowOutcome) {
@@ -355,7 +354,6 @@ export function CashierWorkspacePanel({
   const registerMutation = trpc.pos.terminal.register.useMutation();
   const activateMutation = trpc.pos.terminal.activate.useMutation();
   const saleMutation = trpc.pos.sale.create.useMutation();
-  const intakeMutation = trpc.pos.check.intake.useMutation();
   const settleMutation = trpc.pos.settlement.initiate.useMutation();
 
   function invalidateOrderReads() {
@@ -533,8 +531,8 @@ export function CashierWorkspacePanel({
   }
 
   async function placeSale() {
-    // Open Payment immediately. sale.create + intake run behind the sheet.
-    // Confirm stays disabled until Check.grandTotal is ready.
+    // Open Payment immediately. sale.create runs behind the sheet.
+    // Confirm is enabled from sale + tender + preview money — not Check readiness.
     if (!terminalId || ticket.length === 0) return;
     if (saleInFlightRef.current || saleMutation.isPending) return;
     endCashierPaymentFlow("abandoned");
@@ -618,7 +616,6 @@ export function CashierWorkspacePanel({
         received: "",
         card: "",
       });
-      void orchestrateIntake(result.orderId, discount);
     } catch (error) {
       endCashierPaymentFlow("failed");
       setSalePhase("ticket");
@@ -626,67 +623,6 @@ export function CashierWorkspacePanel({
     } finally {
       saleInFlightRef.current = false;
     }
-  }
-
-  function orchestrateIntake(
-    orderId: number,
-    billDiscountAmount?: string
-  ): Promise<OpenCheckResult | null> {
-    const existing = intakeByOrderRef.current.get(orderId);
-    if (existing) return existing;
-    const pending = (async (): Promise<OpenCheckResult | null> => {
-      if (!terminalId) return null;
-      try {
-        cashierPaymentFlowTiming.mark(
-          cashierFlowIdRef.current,
-          "CASHIER_CHECK_INTAKE_START"
-        );
-        const result = await intakeMutation.mutateAsync({
-          restaurantId,
-          terminalId,
-          orderId,
-          idempotencyKey: newCashierIdempotencyKey("check"),
-          ...(billDiscountAmount && billDiscountAmount !== "0.00"
-            ? { billDiscountAmount }
-            : {}),
-        });
-        cashierPaymentFlowTiming.mark(
-          cashierFlowIdRef.current,
-          "CASHIER_CHECK_INTAKE_RESPONSE"
-        );
-        cashierPaymentFlowTiming.attachCheckId(
-          cashierFlowIdRef.current,
-          result.checkId
-        );
-        const opened: OpenCheckResult = {
-          checkId: result.checkId,
-          orderId: result.orderId,
-          outcome: result.outcome,
-          replayed: result.replayed,
-        };
-        setOpenCheck(opened);
-        const current = readCashierDirectSale(restaurantId);
-        if (current) {
-          writeCashierDirectSale(restaurantId, {
-            ...current,
-            checkId: result.checkId,
-          });
-        }
-        void utils.pos.read.check.getByOrder.invalidate();
-        void utils.pos.read.orderSettlement.listByOrder.invalidate();
-        return opened;
-      } catch (error) {
-        cashierPaymentFlowTiming.mark(
-          cashierFlowIdRef.current,
-          "CASHIER_CHECK_INTAKE_RESPONSE"
-        );
-        intakeByOrderRef.current.delete(orderId);
-        toast.error(userFacingError(error, t("errorTitle")));
-        return null;
-      }
-    })();
-    intakeByOrderRef.current.set(orderId, pending);
-    return pending;
   }
 
   async function completePayment() {
@@ -738,9 +674,6 @@ export function CashierWorkspacePanel({
       return selected?.settlementRecordId ?? null;
     }
     try {
-      if (!openCheck) {
-        void orchestrateIntake(selectedOrderId);
-      }
       cashierPaymentFlowTiming.mark(
         cashierFlowIdRef.current,
         "CASHIER_SETTLEMENT_REQUEST_START"
@@ -752,6 +685,9 @@ export function CashierWorkspacePanel({
         idempotencyKey: settleKeyRef.current,
         paymentMethod: plan.paymentMethod,
         settlements: [...plan.settlements],
+        ...(ticketDiscount && ticketDiscount !== "0.00"
+          ? { billDiscountAmount: ticketDiscount }
+          : {}),
       });
       cashierPaymentFlowTiming.mark(
         cashierFlowIdRef.current,
@@ -983,27 +919,29 @@ export function CashierWorkspacePanel({
     tenderMode === "network" || tenderMode == null ? "" : cashReceived;
   const effectiveCardTender =
     tenderMode === "cash" || tenderMode == null ? "" : cardTender;
+  const saleReady =
+    salePhase === "payment" &&
+    selectedOrderId != null &&
+    !saleMutation.isPending &&
+    !paidCheckout;
+  const previewGrandTotal =
+    paymentDisplayMoney?.grandTotal ??
+    ticketMoney?.grandTotal ??
+    null;
   const paymentReadiness = resolveCashierPaymentReadiness({
-    checkGrandTotal: orderCheck?.grandTotal,
-    checkOutcome: orderCheck?.outcome,
+    previewGrandTotal,
+    saleReady,
     cashTender: effectiveCashTender,
     cardTender: effectiveCardTender,
-    intakePending: intakeMutation.isPending || saleMutation.isPending,
-    intakeFailed: intakeMutation.isError,
     paymentSubmitting: settleMutation.isPending || paymentBusy,
-    checkReadFailed: checkQuery.isError,
   });
   const amountDue = paymentReadiness.amountDue;
-  const amountDueIsOrderFallback =
-    !paidCheckout &&
-    !paymentReadiness.checkAvailable &&
-    Boolean(directSale?.totalAmount);
-  const sheetMoney = paymentReadiness.checkAvailable && orderCheck
+  const sheetMoney = paidCheckout
     ? {
-        subtotal: orderCheck.subtotal,
-        discount: orderCheck.billDiscountAmount,
-        taxAmount: orderCheck.taxAmount,
-        grandTotal: orderCheck.grandTotal,
+        subtotal: orderCheck?.subtotal ?? paymentDisplayMoney?.subtotal ?? "",
+        discount: orderCheck?.billDiscountAmount ?? appliedDiscount,
+        taxAmount: orderCheck?.taxAmount ?? paymentDisplayMoney?.taxAmount ?? "",
+        grandTotal: paidCheckout.grandTotal,
       }
     : paymentDisplayMoney
       ? {
@@ -1080,13 +1018,11 @@ export function CashierWorkspacePanel({
   useEffect(() => {
     const flowId = cashierFlowIdRef.current;
     if (!flowId || salePhase !== "payment") return;
-    if (paymentReadiness.checkAvailable) {
+    if (amountDue) {
       cashierPaymentFlowTiming.mark(flowId, "CASHIER_CHECK_READ_READY");
     }
-    // Observe the Confirm-usable gate. Do not change it.
     if (
       !paymentReadiness.confirmDisabled &&
-      !amountDueIsOrderFallback &&
       paymentRecoveryUi === "idle" &&
       tenderMode != null
     ) {
@@ -1094,9 +1030,8 @@ export function CashierWorkspacePanel({
     }
   }, [
     salePhase,
-    paymentReadiness.checkAvailable,
+    amountDue,
     paymentReadiness.confirmDisabled,
-    amountDueIsOrderFallback,
     paymentRecoveryUi,
     tenderMode,
   ]);
@@ -1122,7 +1057,7 @@ export function CashierWorkspacePanel({
         ? t("paidTitle")
         : registerGap
           ? t("statusShift")
-          : openCheck
+          : directSale && salePhase === "payment"
             ? t("statusAwaitingPayment")
             : allowed
               ? t("statusReady")
@@ -1606,10 +1541,7 @@ export function CashierWorkspacePanel({
                     ? money(amountDue)
                     : sheetMoney
                       ? money(sheetMoney.grandTotal)
-                      : paymentReadiness.checkIntakeFailed ||
-                          paymentReadiness.checkReadFailed
-                        ? t("amountDueMissing")
-                        : money("0.00")}
+                      : money("0.00")}
                 </p>
                 {settlementRow &&
                 settlementRow.settledAmount &&
@@ -1619,7 +1551,7 @@ export function CashierWorkspacePanel({
                     <span className="tabular-nums">{money(settlementRow.settledAmount)}</span>
                   </p>
                 ) : null}
-                {!paymentReadiness.checkAvailable ? (
+                {saleMutation.isPending ? (
                   <p className="mt-1 text-xs text-[#6b7280]">{t("verifyingAmount")}</p>
                 ) : null}
                 <p className="mb-2 mt-4 text-sm font-medium">{t("selectPaymentMethod")}</p>
@@ -1771,7 +1703,6 @@ export function CashierWorkspacePanel({
                     className={cn(cashierPos.primaryAction, "flex-1")}
                     disabled={
                       paymentReadiness.confirmDisabled ||
-                      amountDueIsOrderFallback ||
                       paymentRecoveryUi !== "idle" ||
                       tenderMode == null
                     }

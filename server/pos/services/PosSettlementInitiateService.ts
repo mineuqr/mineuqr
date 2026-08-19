@@ -19,9 +19,9 @@ import { opsLog } from "../../_core/opsLog";
 import { getOrderById } from "../../db";
 import {
   CheckTransitionError,
-  ensureCheckForOrder,
   getCheckById,
 } from "../../operational-session/check/CheckService";
+import { CheckMembershipError } from "../../operational-session/check/checkMembershipService";
 import { confirmPayment } from "../../operational-session/payment/PaymentConfirmService";
 import { findBlockingMembershipForOrder } from "../../operational-session/check/checkOrderMembershipRepository";
 import { assertRestaurantPosScope } from "../authorization/assertRestaurantPosScope";
@@ -56,6 +56,8 @@ export type PosSettlementInitiateCommand = {
    * Multi-line amounts must sum to Check grandTotal (Check-owned validation).
    */
   settlements?: readonly StaffSettlementLineInput[];
+  /** Discount intent. Server applies inside Confirm. Not browser authority. */
+  billDiscountAmount?: string;
 };
 
 export type PosSettlementInitiateResult = {
@@ -124,7 +126,8 @@ export type PosSettlementFinancialStageMs = {
 
 export type PosSettlementSettlePaid = (input: {
   restaurantId: number;
-  checkId: number;
+  orderId: number;
+  billDiscountAmount?: string;
   settlementContext: SettlementContext;
   settlementContextHints: {
     registerId: string;
@@ -184,6 +187,7 @@ function fingerprintOf(input: {
   orderId: number;
   paymentMethod?: SelectablePaymentMethod | null;
   settlements?: readonly StaffSettlementLineInput[];
+  billDiscountAmount?: string | null;
 }): string {
   const settlements = normalizeFingerprintSettlements(input.settlements);
   const singleMethodOnly =
@@ -200,6 +204,7 @@ function fingerprintOf(input: {
         userId: input.userId,
         orderId: input.orderId,
         paymentMethod: input.paymentMethod ?? null,
+        billDiscountAmount: input.billDiscountAmount ?? null,
         ...(settlements && !singleMethodOnly ? { settlements } : {}),
       })
     )
@@ -241,7 +246,8 @@ async function defaultCheckLookup(input: {
 
 async function defaultSettlePaid(input: {
   restaurantId: number;
-  checkId: number;
+  orderId: number;
+  billDiscountAmount?: string;
   settlementContext: SettlementContext;
   settlementContextHints: {
     registerId: string;
@@ -256,7 +262,8 @@ async function defaultSettlePaid(input: {
 }> {
   const financial = await confirmPayment({
     restaurantId: input.restaurantId,
-    checkId: input.checkId,
+    orderId: input.orderId,
+    billDiscountAmount: input.billDiscountAmount,
     settlements: input.settlements,
     settlementContext: input.settlementContext,
     settlementContextHints: {
@@ -367,8 +374,7 @@ export class PosSettlementInitiateService {
     private readonly orderLookup: PosSettlementInitiateOrderLookup = getOrderById,
     private readonly membershipLookup: PosSettlementMembershipLookup = defaultMembershipLookup,
     private readonly checkLookup: PosSettlementCheckLookup = defaultCheckLookup,
-    private readonly settlePaid: PosSettlementSettlePaid = defaultSettlePaid,
-    private readonly ensureCheck: PosSettlementEnsureCheck | null = ensureCheckForOrder
+    private readonly settlePaid: PosSettlementSettlePaid = defaultSettlePaid
   ) {}
 
   async initiate(input: {
@@ -458,6 +464,7 @@ export class PosSettlementInitiateService {
       orderId: order.id,
       paymentMethod: input.command.paymentMethod ?? null,
       settlements: input.command.settlements,
+      billDiscountAmount: input.command.billDiscountAmount ?? null,
     });
     const idempotencyKey = {
       restaurantId: context.restaurantId,
@@ -511,62 +518,67 @@ export class PosSettlementInitiateService {
       const operational = crmp.operational;
       settlementContextMs = clock.since(contextStarted);
       settlementContextCompletedAt = new Date().toISOString();
-      let membership = foundMembership;
-      if (!membership && this.ensureCheck) {
-        const ensureStarted = clock.mark();
-        try {
-          const created = await this.ensureCheck({
-            restaurantId: context.restaurantId,
-            orderId: order.id,
-          });
-          membership = {
-            checkId: created.id,
-            checkOutcome: created.outcome,
-          };
-        } catch {
-          // CASHIER-ORDER-AND-CHECKOUT-LATENCY-FORENSICS-1 — background
-          // pos.check.intake may win the create race. Re-read membership
-          // instead of failing the first تأكيد الدفع as check_not_found.
-          membership = await this.membershipLookup(
-            context.restaurantId,
-            order.id
+      const membership = foundMembership;
+      ensureCheckMs = 0;
+      checkLoadMs = 0;
+
+      if (membership?.checkOutcome === "paid") {
+        const checkStarted = clock.mark();
+        const paid = await this.checkLookup({
+          restaurantId: context.restaurantId,
+          checkId: membership.checkId,
+        });
+        checkLoadMs = clock.since(checkStarted);
+        checkLoadedAt = new Date().toISOString();
+        if (!paid || paid.restaurantId !== context.restaurantId) {
+          throw new PosSettlementInitiateError(
+            "check_not_found",
+            "Check not found"
           );
         }
-        ensureCheckMs = clock.since(ensureStarted);
-      }
-      if (!membership) {
-        throw new PosSettlementInitiateError(
-          "check_not_found",
-          "Check not found"
-        );
+        await this.idempotency.put({
+          restaurantId: context.restaurantId,
+          terminalId: context.terminalId,
+          userId: context.userId,
+          idempotencyKey: input.command.idempotencyKey,
+          fingerprint,
+          orderId: order.id,
+          checkId: paid.id,
+          outcome: "paid",
+          grandTotal: paid.grandTotal,
+          settlementRecordId: null,
+          sessionId: paid.sessionId,
+          registerId: operational.registerId,
+          financialShiftId: operational.financialShiftId,
+          createdAt: new Date().toISOString(),
+        });
+        return resultFrom({
+          checkId: paid.id,
+          orderId: order.id,
+          restaurantId: context.restaurantId,
+          grandTotal: paid.grandTotal,
+          settlementRecordId: null,
+          sessionId: paid.sessionId,
+          terminalId: context.terminalId,
+          cashierUserId: context.userId,
+          registerId: operational.registerId,
+          financialShiftId: operational.financialShiftId,
+          replayed: true,
+        });
       }
 
-      const checkStarted = clock.mark();
-      const check = await this.checkLookup({
-        restaurantId: context.restaurantId,
-        checkId: membership.checkId,
-      });
-      checkLoadMs = clock.since(checkStarted);
-      checkLoadedAt = new Date().toISOString();
-      if (!check) {
-        throw new PosSettlementInitiateError(
-          "check_not_found",
-          "Check not found"
-        );
-      }
-      if (check.restaurantId !== context.restaurantId) {
-        throw new PosSettlementInitiateError(
-          "check_wrong_restaurant",
-          "Check does not belong to this restaurant"
-        );
-      }
-      if ((CHECK_TERMINAL_OUTCOMES as readonly string[]).includes(check.outcome)) {
+      if (
+        membership &&
+        (CHECK_TERMINAL_OUTCOMES as readonly string[]).includes(
+          membership.checkOutcome
+        )
+      ) {
         throw new PosSettlementInitiateError(
           "check_already_terminal",
           "Check is already terminal"
         );
       }
-      if (check.outcome !== "open") {
+      if (membership && membership.checkOutcome !== "open") {
         throw new PosSettlementInitiateError(
           "check_not_eligible",
           "Check is not eligible for settlement initiation"
@@ -581,7 +593,8 @@ export class PosSettlementInitiateService {
         financialTransactionStartedAt = new Date(txnStarted).toISOString();
         settled = await this.settlePaid({
           restaurantId: context.restaurantId,
-          checkId: check.id,
+          orderId: order.id,
+          billDiscountAmount: input.command.billDiscountAmount,
           settlementContext: crmp.settlementContext,
           settlementContextHints: {
             registerId: operational.registerId,
@@ -592,11 +605,21 @@ export class PosSettlementInitiateService {
         });
         financialTxnMs = clock.since(txnStarted);
       } catch (err) {
-        if (err instanceof CheckTransitionError) {
-          const raced = await this.checkLookup({
-            restaurantId: context.restaurantId,
-            checkId: check.id,
-          });
+        if (
+          err instanceof CheckTransitionError ||
+          err instanceof CheckMembershipError
+        ) {
+          const racedMembership = await this.membershipLookup(
+            context.restaurantId,
+            order.id
+          );
+          const raced =
+            racedMembership != null
+              ? await this.checkLookup({
+                  restaurantId: context.restaurantId,
+                  checkId: racedMembership.checkId,
+                })
+              : null;
           if (
             raced &&
             raced.restaurantId === context.restaurantId &&

@@ -17,8 +17,10 @@
 
 import {
   getDb,
+  getOrderById,
   getRestaurantById,
 } from "../../db";
+import { ORDERING_CHANNEL_CASHIER_POS } from "@shared/ordering-platform/orderingChannelRegistry";
 import {
   findSessionById,
   updateSessionActiveCheckId,
@@ -683,10 +685,13 @@ async function finalizeOpenCheckById(
   client?: SessionDbClient
 ): Promise<CheckFinancialMutationResult> {
   const checkReloadStartedAt = Date.now();
-  const check = await getCheckById({
-    restaurantId: input.restaurantId,
-    checkId: input.checkId,
-  });
+  const checkRow = client
+    ? await findCheckById(input.checkId, client)
+    : await findCheckById(input.checkId);
+  const check =
+    checkRow && checkRow.restaurantId === input.restaurantId
+      ? mapRowToOperationalCheck(checkRow)
+      : null;
   const checkReloadMs = elapsedSinceMs(checkReloadStartedAt);
   if (!check) {
     throw new DiningSessionUnavailableError("Check not found");
@@ -711,10 +716,18 @@ async function finalizeOpenCheckById(
   }
 
   const orderDiscoveryStartedAt = Date.now();
-  const chargesSubtotal = await ensureOpenCheckChargesSubtotal({
-    restaurantId: input.restaurantId,
-    checkId: check.id,
-  });
+  const chargesSubtotal = client
+    ? await ensureOpenCheckChargesSubtotal(
+        {
+          restaurantId: input.restaurantId,
+          checkId: check.id,
+        },
+        client
+      )
+    : await ensureOpenCheckChargesSubtotal({
+        restaurantId: input.restaurantId,
+        checkId: check.id,
+      });
   const orderDiscoveryMs = elapsedSinceMs(orderDiscoveryStartedAt);
   let money = computeCheckMoney({
     chargesSubtotal,
@@ -752,10 +765,18 @@ async function finalizeOpenCheckById(
   const validationStartedAt = Date.now();
   try {
     if (input.outcome === "paid") {
-      const existingCollection = await listSettlementTransactionsForCheck({
-        restaurantId: input.restaurantId,
-        checkId: check.id,
-      });
+      const existingCollection = client
+        ? await listSettlementTransactionsForCheck(
+            {
+              restaurantId: input.restaurantId,
+              checkId: check.id,
+            },
+            client
+          )
+        : await listSettlementTransactionsForCheck({
+            restaurantId: input.restaurantId,
+            checkId: check.id,
+          });
       settlementLines = resolvePaidCollectionLines({
         grandTotal: money.grandTotal,
         collection: existingCollection,
@@ -990,6 +1011,8 @@ async function finalizeOpenCheckById(
 
   // SETTLEMENT-ATTRIBUTION-ADOPTION-1 — AFTER money+SR commit; fail-open.
   // CASHIER-SETTLEMENT-HTTP-AT-FINANCIAL-COMMIT-1 — Cashier may return before Attribution.
+  // When an outer client is supplied, this function does not own COMMIT.
+  // Do not publish Attribution against an uncommitted financial outcome.
   const postCommitStartedAt = Date.now();
   const attributionStartedAt = Date.now();
   const attributionInput = {
@@ -1000,6 +1023,35 @@ async function finalizeOpenCheckById(
     settlementLines,
     at: now,
   };
+  const ownsCommit = client == null;
+  if (!ownsCommit) {
+    return {
+      ...financial,
+      settlementAttribution: skippedAttribution({
+        gaps: ["deferred_post_commit"],
+        reason: "Outer Check-owned transaction has not committed",
+        settlementRecordId:
+          financial.settlementRecord.record?.settlementRecordId ?? null,
+      }),
+      settlementAttributionEvents: [],
+      finalizeStageMs: {
+        checkReloadMs,
+        orderDiscoveryMs,
+        contextResolveMs,
+        validationMs,
+        financialTransactionPreparationMs: txStages.current.preparationMs,
+        financialTransactionWriteMs: txStages.current.writeMs,
+        financialTransactionTxWallMs: txStages.current.txWallMs,
+        moneyTxMs,
+        postCommitProcessingMs: elapsedSinceMs(postCommitStartedAt),
+        attributionMs: 0,
+        financialTransactionStartedAt,
+        financialTransactionCommittedAt,
+        attributionCompletedAt: null,
+        settlementContextReused,
+      },
+    };
+  }
   const awaitAttribution = input.awaitAttribution !== false;
 
   if (!awaitAttribution) {
@@ -1122,12 +1174,18 @@ export async function recalculateOpenCheck(input: {
 /**
  * Create an open Check with optional Session link.
  * `sessionId: null` → sessionless finance (kiosk/counter path).
+ * Optional `client` joins the INSERT to a Check-owned transaction (ADR-038).
  */
 export async function createOpenCheck(input: {
   restaurantId: number;
   sessionId: number | null;
   billDiscountAmount?: string;
   stageMs?: EnsureCheckForOrderStageMs;
+  client?: SessionDbClient;
+  snapshots?: {
+    currencySnapshot: OperationalCheck["currencySnapshot"];
+    taxPolicySnapshot: OperationalCheck["taxPolicySnapshot"];
+  };
 }): Promise<OperationalCheck> {
   if (input.sessionId != null) {
     return createOpenCheckForSession({
@@ -1139,7 +1197,8 @@ export async function createOpenCheck(input: {
   const billDiscountAmount = input.billDiscountAmount ?? "0.00";
   const snapshotStartedAt = Date.now();
   const { currencySnapshot, taxPolicySnapshot } =
-    await captureSnapshotsFromBusinessSettings(input.restaurantId);
+    input.snapshots ??
+    (await captureSnapshotsFromBusinessSettings(input.restaurantId));
   if (input.stageMs) {
     input.stageMs.taxSnapshotMs = elapsedSinceMs(snapshotStartedAt);
   }
@@ -1155,23 +1214,41 @@ export async function createOpenCheck(input: {
   const snapshotsFrozenAt = formatDiningSessionTimestamp();
 
   const insertStartedAt = Date.now();
-  const checkId = await insertOperationalCheck({
-    restaurantId: input.restaurantId,
-    sessionId: null,
-    currencySnapshot,
-    taxPolicySnapshot,
-    billDiscountAmount,
-    subtotal: money.subtotal,
-    taxAmount: money.taxAmount,
-    taxBreakdown: money.taxBreakdown,
-    grandTotal: money.grandTotal,
-    snapshotsFrozenAt,
-  });
+  const checkId = input.client
+    ? await insertOperationalCheck(
+        {
+          restaurantId: input.restaurantId,
+          sessionId: null,
+          currencySnapshot,
+          taxPolicySnapshot,
+          billDiscountAmount,
+          subtotal: money.subtotal,
+          taxAmount: money.taxAmount,
+          taxBreakdown: money.taxBreakdown,
+          grandTotal: money.grandTotal,
+          snapshotsFrozenAt,
+        },
+        input.client
+      )
+    : await insertOperationalCheck({
+        restaurantId: input.restaurantId,
+        sessionId: null,
+        currencySnapshot,
+        taxPolicySnapshot,
+        billDiscountAmount,
+        subtotal: money.subtotal,
+        taxAmount: money.taxAmount,
+        taxBreakdown: money.taxBreakdown,
+        grandTotal: money.grandTotal,
+        snapshotsFrozenAt,
+      });
   if (input.stageMs) {
     input.stageMs.checkInsertMs = elapsedSinceMs(insertStartedAt);
   }
 
-  const row = await findCheckById(checkId);
+  const row = input.client
+    ? await findCheckById(checkId, input.client)
+    : await findCheckById(checkId);
   if (!row) {
     throw new DiningSessionUnavailableError("Check not found after create");
   }
@@ -1324,6 +1401,201 @@ export async function settleCheckPaidByIdDetailed(input: {
     settlementContext: input.settlementContext,
     settlementContextHints: input.settlementContextHints,
     awaitAttribution: input.awaitAttribution,
+  });
+}
+
+async function materializeOrLoadCashierPosOpenCheck(
+  input: {
+    restaurantId: number;
+    orderId: number;
+    billDiscountAmount: string;
+    currencySnapshot: OperationalCheck["currencySnapshot"];
+    taxPolicySnapshot: OperationalCheck["taxPolicySnapshot"];
+  },
+  tx: SessionDbClient,
+  stages: EnsureCheckForOrderStageMs
+): Promise<OperationalCheck> {
+  const blocking = await findBlockingMembershipForOrder(
+    input.restaurantId,
+    input.orderId,
+    tx
+  );
+  if (blocking) {
+    if (blocking.checkOutcome === "paid") {
+      throw new CheckTransitionError(
+        `Cannot finalize check from outcome ${blocking.checkOutcome}`
+      );
+    }
+    if (blocking.checkOutcome !== "open") {
+      throw new CheckTransitionError(
+        `Cannot finalize check from outcome ${blocking.checkOutcome}`
+      );
+    }
+    const existing = await findCheckById(blocking.membership.checkId, tx);
+    if (!existing || existing.restaurantId !== input.restaurantId) {
+      throw new DiningSessionUnavailableError("Check not found for membership");
+    }
+    stages.checkCreated = false;
+    const mapped = mapRowToOperationalCheck(existing);
+    return enrollRefreshAndReloadCheck(
+      {
+        restaurantId: input.restaurantId,
+        checkId: existing.id,
+        orderId: input.orderId,
+        billDiscountAmount: input.billDiscountAmount,
+        taxPolicySnapshot: mapped.taxPolicySnapshot,
+        fallback: mapped,
+      },
+      tx,
+      stages
+    );
+  }
+
+  stages.checkCreated = true;
+  const created = await createOpenCheck({
+    restaurantId: input.restaurantId,
+    sessionId: null,
+    billDiscountAmount: input.billDiscountAmount,
+    client: tx,
+    snapshots: {
+      currencySnapshot: input.currencySnapshot,
+      taxPolicySnapshot: input.taxPolicySnapshot,
+    },
+    stageMs: stages,
+  });
+  return enrollRefreshAndReloadCheck(
+    {
+      restaurantId: input.restaurantId,
+      checkId: created.id,
+      orderId: input.orderId,
+      billDiscountAmount: created.billDiscountAmount,
+      taxPolicySnapshot: created.taxPolicySnapshot,
+      fallback: created,
+    },
+    tx,
+    stages
+  );
+}
+
+function adoptAttributionAfterOwnedCommit(input: {
+  restaurantId: number;
+  checkId: number;
+  result: CheckFinancialMutationResult;
+}): CheckFinancialMutationResult {
+  void adoptSettlementAttributionAfterFinalize({
+    restaurantId: input.restaurantId,
+    outcome: "paid",
+    settlementContext: input.result.settlementContext,
+    settlementRecord: input.result.settlementRecord.record,
+    settlementLines: [],
+    at: formatDiningSessionTimestamp(),
+  }).catch((err: unknown) => {
+    opsLog({
+      type: OPS_EVENT.check_settlement_attribution_deferred_failed,
+      category: "ORDER",
+      severity: "warn",
+      ts: new Date().toISOString(),
+      restaurantId: input.restaurantId,
+      action: "adoptSettlementAttributionAfterFinalize",
+      metadata: {
+        checkId: input.checkId,
+        outcome: "paid",
+        settlementRecordId:
+          input.result.settlementRecord.record?.settlementRecordId ?? null,
+        error: err instanceof Error ? err.message : String(err),
+      },
+    });
+  });
+  return input.result;
+}
+
+/**
+ * ADR-ARCH-038 — cashier_pos Confirm materializes Check inside the same
+ * Check-owned financial transaction that freezes PAID + ST + OS + SR.
+ * Not a public Confirm API. Application Confirm enters confirmPayment.
+ */
+export async function settleCashierPosOrderPaidByIdDetailed(input: {
+  restaurantId: number;
+  orderId: number;
+  billDiscountAmount?: string;
+  settlements?: readonly StaffSettlementLineInput[];
+  settlementContext?: SettlementContext;
+  settlementContextHints?: SettlementContextHints;
+  awaitAttribution?: boolean;
+}): Promise<CheckFinancialMutationResult> {
+  const order = await getOrderById(input.orderId);
+  if (!order || order.restaurantId !== input.restaurantId) {
+    throw new DiningSessionUnavailableError("Order not found");
+  }
+  if (order.orderingChannel !== ORDERING_CHANNEL_CASHIER_POS) {
+    throw new DiningSessionValidationError(
+      "Direct financial commit is limited to cashier_pos"
+    );
+  }
+  if (order.status === "cancelled") {
+    throw new DiningSessionValidationError("Order is not eligible");
+  }
+
+  const billDiscountAmount = input.billDiscountAmount ?? "0.00";
+  const snapshots = await captureSnapshotsFromBusinessSettings(
+    input.restaurantId
+  );
+  const stages = createEmptyEnsureCheckForOrderStageMs();
+  const txStages: { current: CheckOwnedTransactionStageMs } = {
+    current: { preparationMs: 0, writeMs: 0, txWallMs: null },
+  };
+
+  const financial = await withCheckOwnedTransaction(
+    undefined,
+    async (tx) => {
+      const check = await materializeOrLoadCashierPosOpenCheck(
+        {
+          restaurantId: input.restaurantId,
+          orderId: input.orderId,
+          billDiscountAmount,
+          currencySnapshot: snapshots.currencySnapshot,
+          taxPolicySnapshot: snapshots.taxPolicySnapshot,
+        },
+        tx,
+        stages
+      );
+      return finalizeOpenCheckById(
+        {
+          restaurantId: input.restaurantId,
+          checkId: check.id,
+          outcome: "paid",
+          settlements: input.settlements,
+          settlementContext: input.settlementContext,
+          settlementContextHints: input.settlementContextHints,
+          awaitAttribution: input.awaitAttribution,
+        },
+        tx
+      );
+    },
+    txStages
+  );
+
+  applyOwnedTransactionStages(stages, txStages);
+  emitEnsureCheckForOrderStages({
+    restaurantId: input.restaurantId,
+    orderId: input.orderId,
+    checkId: financial.check.id,
+    stages,
+  });
+
+  return adoptAttributionAfterOwnedCommit({
+    restaurantId: input.restaurantId,
+    checkId: financial.check.id,
+    result: {
+      ...financial,
+      finalizeStageMs: {
+        ...financial.finalizeStageMs,
+        financialTransactionPreparationMs: txStages.current.preparationMs,
+        financialTransactionWriteMs: txStages.current.writeMs,
+        financialTransactionTxWallMs: txStages.current.txWallMs,
+        financialTransactionCommittedAt: new Date().toISOString(),
+      },
+    },
   });
 }
 

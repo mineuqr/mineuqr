@@ -1,17 +1,16 @@
 /**
- * CASHIER-POS-CHECK-READ-CONTRACT-1
- * Presentation-only payment readiness. Check.grandTotal is the payable amount.
- * Does not settle, price, or invent payment methods.
+ * CASHIER-POS-CHECK-READ-CONTRACT-1 / ADR-ARCH-038
+ * Presentation-only payment readiness. Preview grandTotal is display/tender
+ * planning only — not payable authority. Confirm MUST NOT require an open Check.
  */
 
-import { CHECK_TERMINAL_OUTCOMES } from "@shared/operational-session";
 import {
   canConfirmCashierSettlement,
   displayCents,
   resolveCashierSettlementPlan,
 } from "./cashierSplitTender";
 
-export function isAuthoritativeCheckGrandTotal(
+export function isAuthoritativePreviewGrandTotal(
   grandTotal: string | null | undefined
 ): boolean {
   if (grandTotal == null) return false;
@@ -21,25 +20,18 @@ export function isAuthoritativeCheckGrandTotal(
 }
 
 export type CashierPaymentReadinessInput = {
-  checkGrandTotal: string | null | undefined;
-  checkOutcome: string | null | undefined;
+  /** Display-only preview (ticket / live restaurant tax). Not Check.grandTotal. */
+  previewGrandTotal: string | null | undefined;
+  /** Persisted cashier_pos sale (orderId) and payment sheet are ready. */
+  saleReady: boolean;
   cashTender: string;
   cardTender: string;
-  intakePending: boolean;
-  intakeFailed: boolean;
   paymentSubmitting: boolean;
-  checkReadFailed?: boolean;
 };
 
 export type CashierPaymentReadiness = {
-  checkAvailable: boolean;
-  checkPreparing: boolean;
-  checkIntakeFailed: boolean;
-  checkReadFailed: boolean;
-  checkTerminal: boolean;
   canConfirmPayment: boolean;
   confirmDisabled: boolean;
-  showPreparingMessage: boolean;
   amountDue: string | null;
   remainingDisplay: string | null;
   totalTenderedDisplay: string | null;
@@ -48,54 +40,29 @@ export type CashierPaymentReadiness = {
 export function resolveCashierPaymentReadiness(
   input: CashierPaymentReadinessInput
 ): CashierPaymentReadiness {
-  const amountDue = isAuthoritativeCheckGrandTotal(input.checkGrandTotal)
-    ? input.checkGrandTotal!.trim()
+  const amountDue = isAuthoritativePreviewGrandTotal(input.previewGrandTotal)
+    ? input.previewGrandTotal!.trim()
     : null;
-  const checkOpen = input.checkOutcome === "open";
-  const checkTerminal =
-    input.checkOutcome != null &&
-    (CHECK_TERMINAL_OUTCOMES as readonly string[]).includes(input.checkOutcome);
-  const checkAvailable = amountDue != null && checkOpen;
-  const checkIntakeFailed =
-    input.intakeFailed && !checkAvailable && !input.intakePending;
-  const checkReadFailed =
-    Boolean(input.checkReadFailed) && !checkAvailable && !input.intakePending;
-  const checkPreparing =
-    !checkAvailable &&
-    !checkIntakeFailed &&
-    !checkReadFailed &&
-    !checkTerminal &&
-    (input.checkOutcome == null ||
-      input.checkOutcome === "" ||
-      (checkOpen && amountDue == null));
-  const tenderDraft = checkAvailable
-    ? {
-        amountDue,
-        cashTender: input.cashTender,
-        cardTender: input.cardTender,
-      }
-    : null;
+  const tenderDraft =
+    input.saleReady && amountDue != null
+      ? {
+          amountDue,
+          cashTender: input.cashTender,
+          cardTender: input.cardTender,
+        }
+      : null;
   const plan = tenderDraft ? resolveCashierSettlementPlan(tenderDraft) : null;
   const canConfirmPayment =
     tenderDraft != null && canConfirmCashierSettlement(tenderDraft);
   return {
-    checkAvailable,
-    checkPreparing,
-    checkIntakeFailed,
-    checkReadFailed,
-    checkTerminal,
     canConfirmPayment,
-    confirmDisabled:
-      input.paymentSubmitting || !checkAvailable || !canConfirmPayment,
-    showPreparingMessage: checkPreparing,
-    amountDue: checkAvailable ? amountDue : null,
-    remainingDisplay: checkAvailable
-      ? plan
-        ? displayCents(plan.remainingCents)
-        : amountDue
-      : null,
-    totalTenderedDisplay: checkAvailable
-      ? displayCents(plan?.totalEnteredCents ?? 0)
-      : null,
+    confirmDisabled: input.paymentSubmitting || !canConfirmPayment,
+    amountDue,
+    remainingDisplay: plan ? displayCents(plan.remainingCents) : amountDue,
+    totalTenderedDisplay: plan
+      ? displayCents(plan.totalEnteredCents)
+      : amountDue != null
+        ? displayCents(0)
+        : null,
   };
 }

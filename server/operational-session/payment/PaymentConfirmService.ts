@@ -6,6 +6,7 @@
  * Callers: Cashier POS, Session markPaid, SettleOrderPaid, Counter Pickup.
  * I-PAY-01 process owner · I-PAY-02 Check remains the aggregate · I-PAY-14
  * CheckService may still host finalizeOpenCheckById.
+ * ADR-ARCH-038 — cashier_pos may Confirm with orderId (no pre-existing Check).
  */
 
 import { opsLog } from "../../_core/opsLog";
@@ -13,6 +14,7 @@ import { OPS_EVENT } from "../../_core/opsTaxonomy";
 import type { SettlementContext, SettlementContextHints } from "@shared/crmp";
 import type { StaffSettlementLineInput } from "@shared/operational-session";
 import {
+  settleCashierPosOrderPaidByIdDetailed,
   settleCheckPaidByIdDetailed,
   type CheckFinancialMutationResult,
 } from "../check/CheckService";
@@ -21,7 +23,11 @@ export const PAYMENT_CONFIRM_PROGRAM_ID = "PAYMENT-CONFIRM-SERVICE-1" as const;
 
 export type PaymentConfirmCommand = {
   restaurantId: number;
-  checkId: number;
+  checkId?: number;
+  /** ADR-ARCH-038 — cashier_pos direct commit when no Check exists yet. */
+  orderId?: number;
+  /** Discount intent. Server applies via Check billDiscountAmount. */
+  billDiscountAmount?: string;
   settlements?: readonly StaffSettlementLineInput[];
   settlementContext?: SettlementContext;
   settlementContextHints?: SettlementContextHints;
@@ -33,21 +39,34 @@ export type PaymentConfirmCommand = {
 };
 
 /**
- * Confirm a paid collection against an existing Check obligation.
+ * Confirm a paid collection.
+ * checkId path: existing OPEN Check (Session / kiosk / leftover OPEN).
+ * orderId path: cashier_pos materialize+finalize in one financial TX.
  * Does not compute grandTotal / amountDue / remaining. Check finalize does.
  */
 export async function confirmPayment(
   command: PaymentConfirmCommand
 ): Promise<CheckFinancialMutationResult> {
   const startedAt = Date.now();
-  const result = await settleCheckPaidByIdDetailed({
-    restaurantId: command.restaurantId,
-    checkId: command.checkId,
-    settlements: command.settlements,
-    settlementContext: command.settlementContext,
-    settlementContextHints: command.settlementContextHints,
-    awaitAttribution: command.awaitAttribution,
-  });
+  const result =
+    command.orderId != null
+      ? await settleCashierPosOrderPaidByIdDetailed({
+          restaurantId: command.restaurantId,
+          orderId: command.orderId,
+          billDiscountAmount: command.billDiscountAmount,
+          settlements: command.settlements,
+          settlementContext: command.settlementContext,
+          settlementContextHints: command.settlementContextHints,
+          awaitAttribution: command.awaitAttribution,
+        })
+      : await settleCheckPaidByIdDetailed({
+          restaurantId: command.restaurantId,
+          checkId: command.checkId as number,
+          settlements: command.settlements,
+          settlementContext: command.settlementContext,
+          settlementContextHints: command.settlementContextHints,
+          awaitAttribution: command.awaitAttribution,
+        });
   opsLog({
     type: OPS_EVENT.payment_confirm,
     category: "PAYMENT",
@@ -57,7 +76,8 @@ export async function confirmPayment(
     action: "payment.confirm",
     metadata: {
       program: PAYMENT_CONFIRM_PROGRAM_ID,
-      checkId: command.checkId,
+      checkId: command.checkId ?? result.check.id,
+      orderId: command.orderId ?? null,
       outcome: result.check.outcome,
       durationMs: Date.now() - startedAt,
       awaitAttribution: command.awaitAttribution !== false,

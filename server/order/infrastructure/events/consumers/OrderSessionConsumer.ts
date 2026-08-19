@@ -2,6 +2,7 @@ import { ENV } from "../../../../_core/env";
 import { opsLog } from "../../../../_core/opsLog";
 import { OPS_EVENT } from "../../../../_core/opsTaxonomy";
 import { getOrderById } from "../../../../db";
+import { isCashierPosOrderingChannel } from "../../../application/cashierPosOrderLifecycle";
 import {
   decrementSessionAggregatesForCancelledOrder,
   incrementSessionAggregatesForOrder,
@@ -60,6 +61,16 @@ export class OrderSessionConsumer implements OrderEventConsumer {
       );
       if (!claimed) return;
       try {
+        // ADR-ARCH-038 / I-PAY-21 — cashier_pos Confirm materializes Check
+        // inside the financial commit. Do not auto-enroll solely to feed
+        // the old Cashier readiness path. Other sessionless channels keep enroll.
+        const order = await getOrderById(event.orderId);
+        if (order && order.restaurantId !== event.restaurantId) {
+          return;
+        }
+        if (order && isCashierPosOrderingChannel(order.orderingChannel)) {
+          return;
+        }
         await ensureCheckForOrder({
           restaurantId: event.restaurantId,
           orderId: event.orderId,

@@ -96,6 +96,8 @@ const settlementInitiateInput = terminalInput.extend({
   /** Catalog keys from SELECTABLE_PAYMENT_METHODS. Amounts stay Check-owned. */
   paymentMethod: z.enum(["cash", "card"]).optional(),
   settlements: z.array(settlementLineInput).min(1).max(8).optional(),
+  /** Discount intent. Server calculates authoritative discount at Confirm. */
+  billDiscountAmount: moneyAmountInput.optional(),
 });
 
 const cashierRegisterInput = terminalInput.extend({
@@ -413,6 +415,7 @@ export const posRouter = router({
               idempotencyKey: input.idempotencyKey,
               paymentMethod: input.paymentMethod,
               settlements: input.settlements,
+              billDiscountAmount: input.billDiscountAmount,
             },
           });
         } catch (err) {
