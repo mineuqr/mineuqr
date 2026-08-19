@@ -45,15 +45,13 @@ describe("CASHIER-PAYMENT-READINESS-INSTRUMENTATION-1 architecture", () => {
       panel.indexOf("onClick={() => void completePayment()}")
     );
     expect(confirmDisabled).toContain("paymentReadiness.confirmDisabled");
-    expect(confirmDisabled).toContain("amountDueIsOrderFallback");
     expect(confirmDisabled).toContain('paymentRecoveryUi !== "idle"');
     expect(confirmDisabled).toContain("tenderMode == null");
     const readyMark = panel.slice(
-      panel.indexOf("// Observe the Confirm-usable gate"),
+      panel.indexOf("!paymentReadiness.confirmDisabled &&"),
       panel.indexOf("listDenied")
     );
     expect(readyMark).toContain("!paymentReadiness.confirmDisabled");
-    expect(readyMark).toContain("!amountDueIsOrderFallback");
     expect(readyMark).toContain('paymentRecoveryUi === "idle"');
     expect(readyMark).toContain("tenderMode != null");
     expect(readyMark).toContain('CASHIER_PAYMENT_READY');
@@ -75,7 +73,7 @@ describe("CASHIER-PAYMENT-READINESS-INSTRUMENTATION-1 architecture", () => {
     expect(timing).not.toContain("grandTotal");
     expect(timing).not.toContain("finalizeCheckOutcome");
     expect(timing).not.toContain("setTenderMode");
-    expect(ready).toContain("checkGrandTotal");
+    expect(ready).toContain("previewGrandTotal");
     expect(ready).not.toContain("cashierPaymentFlowTiming");
     expect(schema).not.toMatch(/export const payments\b/);
     expect(schema).not.toMatch(/cashier_payment_readiness/);

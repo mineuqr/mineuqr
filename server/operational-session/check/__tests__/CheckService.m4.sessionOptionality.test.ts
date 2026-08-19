@@ -125,6 +125,7 @@ vi.mock("../checkSettlementRecordIntegration", () => ({
 import {
   createOpenCheck,
   ensureCheckForOrder,
+  settleCashierPosOrderPaidByIdDetailed,
   settleCheckPaidById,
   settleCheckComplimentaryById,
   voidCheckById,
@@ -382,5 +383,167 @@ describe("CHECK-GENERALIZATION-M4 Session optionality", () => {
       undefined
     );
     expect(mocks.recalculateOrderSettlementsForCheck).toHaveBeenCalled();
+  });
+});
+
+describe("ADR-ARCH-038 cashier_pos direct financial commit", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.getRestaurantById.mockResolvedValue({
+      id: 1,
+      currencyCode: "SAR",
+      currencySymbol: "ر.س",
+      taxEnabled: false,
+    });
+    mocks.getDb.mockResolvedValue({
+      transaction: async (fn: (tx: unknown) => Promise<unknown>) => fn(fakeTx),
+    });
+    mocks.enrollOrderInCheck.mockResolvedValue("enrolled");
+    mocks.updateCheckMoney.mockResolvedValue(undefined);
+    mocks.ensureOrderSettlementForEnrollment.mockResolvedValue({
+      settlements: [],
+      events: [],
+      outcomes: ["applied"],
+    });
+    mocks.recalculateOrderSettlementsForCheck.mockResolvedValue({
+      settlements: [],
+      events: [],
+      outcomes: [],
+    });
+    mocks.applyFullSettlementToCheckOrders.mockResolvedValue({
+      settlements: [],
+      events: [],
+      outcomes: ["applied"],
+    });
+    mocks.createSettlementRecordForCheckFinalize.mockResolvedValue({
+      record: { settlementRecordId: "sr:1:200:settlement:1" },
+      events: [],
+      outcome: "applied",
+    });
+    mocks.ensureOpenCheckChargeComposition.mockResolvedValue(undefined);
+    mocks.loadChargesSubtotal.mockResolvedValue("10.00");
+    mocks.finalizeCheckOutcome.mockResolvedValue(1);
+    mocks.insertSettlementTransactions.mockResolvedValue(undefined);
+    mocks.insertOperationalCheck.mockResolvedValue(200);
+    mocks.findCheckById.mockResolvedValue({
+      ...sessionlessOpenCheck,
+      subtotal: "10.00",
+      grandTotal: "10.00",
+    });
+  });
+
+  it("rejects non-cashier_pos orders", async () => {
+    mocks.getOrderById.mockResolvedValue({
+      id: 55,
+      restaurantId: 1,
+      orderingChannel: "kiosk",
+      status: "pending",
+    });
+    await expect(
+      settleCashierPosOrderPaidByIdDetailed({
+        restaurantId: 1,
+        orderId: 55,
+        awaitAttribution: false,
+      })
+    ).rejects.toThrow(/cashier_pos/);
+    expect(mocks.insertOperationalCheck).not.toHaveBeenCalled();
+  });
+
+  it("rejects cross-tenant order ids", async () => {
+    mocks.getOrderById.mockResolvedValue({
+      id: 55,
+      restaurantId: 2,
+      orderingChannel: "cashier_pos",
+      status: "pending",
+    });
+    await expect(
+      settleCashierPosOrderPaidByIdDetailed({
+        restaurantId: 1,
+        orderId: 55,
+        awaitAttribution: false,
+      })
+    ).rejects.toThrow(/Order not found/);
+    expect(mocks.insertOperationalCheck).not.toHaveBeenCalled();
+  });
+
+  it("materializes Check inside the financial transaction and settles PAID", async () => {
+    mocks.getOrderById.mockResolvedValue({
+      id: 55,
+      restaurantId: 1,
+      orderingChannel: "cashier_pos",
+      status: "preparing",
+    });
+    mocks.findBlockingMembershipForOrder.mockResolvedValue(null);
+    let frozen = false;
+    mocks.finalizeCheckOutcome.mockImplementation(async () => {
+      frozen = true;
+      return 1;
+    });
+    mocks.findCheckById.mockImplementation(async () => ({
+      ...sessionlessOpenCheck,
+      outcome: frozen ? ("paid" as const) : ("open" as const),
+      subtotal: "10.00",
+      grandTotal: "10.00",
+      totalsFrozenAt: frozen ? "2026-07-22 11:00:00" : null,
+      settledAt: frozen ? "2026-07-22 11:00:00" : null,
+    }));
+
+    const result = await settleCashierPosOrderPaidByIdDetailed({
+      restaurantId: 1,
+      orderId: 55,
+      billDiscountAmount: "1.00",
+      awaitAttribution: false,
+    });
+
+    expect(mocks.insertOperationalCheck).toHaveBeenCalledWith(
+      expect.objectContaining({ restaurantId: 1, sessionId: null }),
+      fakeTx
+    );
+    expect(mocks.enrollOrderInCheck).toHaveBeenCalledWith(
+      expect.objectContaining({ orderId: 55, checkId: 200 }),
+      fakeTx,
+      expect.anything()
+    );
+    expect(mocks.finalizeCheckOutcome).toHaveBeenCalledWith(
+      expect.objectContaining({ checkId: 200, outcome: "paid" }),
+      fakeTx
+    );
+    expect(mocks.insertSettlementTransactions).toHaveBeenCalledWith(
+      expect.objectContaining({ checkId: 200 }),
+      fakeTx
+    );
+    expect(mocks.applyFullSettlementToCheckOrders).toHaveBeenCalledWith(
+      { restaurantId: 1, checkId: 200 },
+      fakeTx
+    );
+    expect(mocks.createSettlementRecordForCheckFinalize).toHaveBeenCalledWith(
+      expect.objectContaining({ restaurantId: 1 }),
+      fakeTx
+    );
+    expect(result.check.outcome).toBe("paid");
+  });
+
+  it("does not leave a committed OPEN Check when finalize fails", async () => {
+    mocks.getOrderById.mockResolvedValue({
+      id: 55,
+      restaurantId: 1,
+      orderingChannel: "cashier_pos",
+      status: "preparing",
+    });
+    mocks.findBlockingMembershipForOrder.mockResolvedValue(null);
+    mocks.finalizeCheckOutcome.mockRejectedValue(new Error("finalize failed"));
+
+    await expect(
+      settleCashierPosOrderPaidByIdDetailed({
+        restaurantId: 1,
+        orderId: 55,
+        awaitAttribution: false,
+      })
+    ).rejects.toThrow("finalize failed");
+    expect(mocks.insertOperationalCheck).toHaveBeenCalledWith(
+      expect.anything(),
+      fakeTx
+    );
+    expect(mocks.createSettlementRecordForCheckFinalize).not.toHaveBeenCalled();
   });
 });

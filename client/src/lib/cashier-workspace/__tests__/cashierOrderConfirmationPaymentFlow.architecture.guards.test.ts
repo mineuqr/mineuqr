@@ -35,7 +35,7 @@ describe("CASHIER-ORDER-CONFIRMATION-PAYMENT-FLOW-1", () => {
     const sale = read(SALE);
     const placeSaleFn = panel.slice(
       panel.indexOf("async function placeSale"),
-      panel.indexOf("function orchestrateIntake")
+      panel.indexOf("async function completePayment")
     );
     const completeFn = panel.slice(
       panel.indexOf("async function completePayment"),
@@ -54,8 +54,8 @@ describe("CASHIER-ORDER-CONFIRMATION-PAYMENT-FLOW-1", () => {
   it("shows Check.grandTotal as amount due and does not invent tax or card brands", () => {
     const panel = read(PANEL);
     expect(panel).toContain("trpc.pos.read.check.getByOrder");
-    expect(panel).toContain("orderCheck?.grandTotal");
-    expect(panel).toContain("amountDueIsOrderFallback");
+    expect(panel).toContain("previewGrandTotal");
+    expect(panel).not.toContain("amountDueIsOrderFallback");
     expect(panel).not.toContain("settlementRow?.outstandingAmount");
     expect(panel).toContain("tenderCash");
     expect(SELECTABLE_PAYMENT_METHODS).toEqual(["cash", "card"]);

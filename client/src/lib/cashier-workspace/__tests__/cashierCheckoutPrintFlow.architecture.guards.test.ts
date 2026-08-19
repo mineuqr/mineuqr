@@ -38,7 +38,7 @@ describe("CASHIER-CHECKOUT-PRINT-FLOW-1 architecture guards", () => {
     const panel = read(PANEL);
     const placeSaleFn = panel.slice(
       panel.indexOf("async function placeSale"),
-      panel.indexOf("function orchestrateIntake")
+      panel.indexOf("async function completePayment")
     );
     expect(placeSaleFn).toContain("saleKeyRef.current");
     expect(placeSaleFn).toContain("idempotencyKey: saleKeyRef.current");

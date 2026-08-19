@@ -17,13 +17,12 @@ const SETTLE = "server/pos/services/PosSettlementInitiateService.ts";
 const SALE = "server/pos/services/PosSaleService.ts";
 
 describe("CASHIER-POS-CHECK-READ-CONTRACT-1 architecture", () => {
-  it("derives Confirm Payment from Check.grandTotal via pos.read.check.getByOrder", () => {
+  it("derives Confirm Payment from sale + preview money, not Check.grandTotal", () => {
     const panel = read(PANEL);
     const ready = read(READY);
     expect(panel).toContain("trpc.pos.read.check.getByOrder");
     expect(panel).toContain("resolveCashierPaymentReadiness");
-    expect(panel).toContain("orderCheck?.grandTotal");
-    expect(panel).toContain("orderCheck?.outcome");
+    expect(panel).toContain("previewGrandTotal");
     expect(panel).toContain("paymentReadiness.confirmDisabled");
     expect(panel).toContain("t(\"verifyingAmount\")");
     expect(panel).not.toContain("settlementRow?.outstandingAmount");
@@ -32,8 +31,9 @@ describe("CASHIER-POS-CHECK-READ-CONTRACT-1 architecture", () => {
     expect(panel).toContain("cancelPaymentSheet");
     expect(panel).not.toContain("voidCheck");
     expect(panel).not.toContain("trpc.order.cancel");
-    expect(ready).toContain("checkGrandTotal");
-    expect(ready).toContain('input.checkOutcome === "open"');
+    expect(ready).toContain("previewGrandTotal");
+    expect(ready).toContain("saleReady");
+    expect(ready).not.toContain("checkGrandTotal");
     expect(ready).not.toContain("outstandingAmount");
     expect(ready).not.toContain("totalAmount");
     expect(ready).not.toMatch(/0\.15|\* 15/);

@@ -58,17 +58,17 @@ describe("CASHIER-PAYMENT-FLOW-IMPLEMENTATION-1 architecture", () => {
     const checkRead = read(CHECK_READ);
     const ticket = read(TICKET);
     const ready = read(READY);
-    expect(panel).toContain("orderCheck.subtotal");
-    expect(panel).toContain("orderCheck.taxAmount");
-    expect(panel).toContain("orderCheck.billDiscountAmount");
-    expect(panel).toContain("orderCheck?.grandTotal");
-    expect(panel).toContain("amountDueIsOrderFallback");
+    expect(panel).toContain("orderCheck?.subtotal");
+    expect(panel).toContain("orderCheck?.taxAmount");
+    expect(panel).toContain("orderCheck?.billDiscountAmount");
+    expect(panel).toContain("previewGrandTotal");
+    expect(panel).not.toContain("amountDueIsOrderFallback");
     expect(panel).toContain("paymentReadiness.confirmDisabled");
     expect(panel).not.toContain('t("ticketTax")');
     expect(panel).not.toMatch(/0\.15|\* 15/);
     expect(ticket).toContain("Display-only ticket arithmetic");
     expect(ticket).not.toContain("computeCheckMoney");
-    expect(ready).toContain("checkGrandTotal");
+    expect(ready).toContain("previewGrandTotal");
     expect(ready).not.toContain("computeCheckMoney");
     expect(dto).toContain("billDiscountAmount");
     expect(dto).not.toContain("computeCheckMoney");
@@ -84,7 +84,7 @@ describe("CASHIER-PAYMENT-FLOW-IMPLEMENTATION-1 architecture", () => {
     const visibility = read(VISIBILITY);
     const placeSaleFn = panel.slice(
       panel.indexOf("async function placeSale"),
-      panel.indexOf("function orchestrateIntake")
+      panel.indexOf("async function completePayment")
     );
     const completeFn = panel.slice(
       panel.indexOf("async function completePayment"),

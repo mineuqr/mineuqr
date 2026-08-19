@@ -24,7 +24,7 @@ describe("CASHIER-ORDER-AND-CHECKOUT-LATENCY-FORENSICS-1 architecture guards", (
     expect(place).toContain("enrollCheck: false");
     const placeSaleFn = panel.slice(
       panel.indexOf("async function placeSale"),
-      panel.indexOf("function orchestrateIntake")
+      panel.indexOf("async function completePayment")
     );
     expect(placeSaleFn).not.toContain("invalidateOrderReads");
     expect(placeSaleFn).toContain('setSalePhase("payment")');

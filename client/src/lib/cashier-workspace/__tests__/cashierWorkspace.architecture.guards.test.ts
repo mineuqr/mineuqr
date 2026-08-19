@@ -52,7 +52,7 @@ describe("POS-CASHIER-WORKSPACE-IMPLEMENTATION-1 architecture guards", () => {
     expect(panel).toContain("trpc.pos.read.orderSettlement.listByOrder");
     expect(panel).toContain("trpc.pos.read.check.getByOrder");
     expect(panel).toContain("trpc.pos.sale.create");
-    expect(panel).toContain("trpc.pos.check.intake");
+    expect(panel).toContain("trpc.pos.settlement.initiate");
     expect(panel).toContain("trpc.pos.settlement.initiate");
     expect(panel).not.toContain("trpc.order.read");
     expect(panel).not.toContain("trpc.crmp");
@@ -80,7 +80,7 @@ describe("POS-CASHIER-WORKSPACE-IMPLEMENTATION-1 architecture guards", () => {
     expect(panel).not.toContain("RegisterOperationsPanel");
     const placeSaleFn = panel.slice(
       panel.indexOf("async function placeSale"),
-      panel.indexOf("function orchestrateIntake")
+      panel.indexOf("async function completePayment")
     );
     expect(placeSaleFn).not.toContain("invalidateOrderReads");
     expect(placeSaleFn).toContain('setSalePhase("payment")');

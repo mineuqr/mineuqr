@@ -88,7 +88,7 @@ describe("CASHIER-UX-FULLSCREEN-AND-THEME-1 architecture guards", () => {
     expect(fallback).toContain("returnDashboard");
     expect(fallback).toContain('section: "home"');
     expect(panel).toContain("trpc.pos.sale.create");
-    expect(panel).toContain("trpc.pos.check.intake");
+    expect(panel).toContain("trpc.pos.settlement.initiate");
     expect(panel).toContain("trpc.pos.settlement.initiate");
     expect(panel).toContain("SettlementReceiptDialog");
     expect(panel).toContain("cancelPaymentSheet");

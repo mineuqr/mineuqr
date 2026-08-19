@@ -37,7 +37,7 @@ describe("CASHIER-PAYMENT-FLOW-UX-CORRECTION-1 architecture", () => {
     const panel = read(PANEL);
     const placeSaleFn = panel.slice(
       panel.indexOf("async function placeSale"),
-      panel.indexOf("function orchestrateIntake")
+      panel.indexOf("async function completePayment")
     );
     expect(panel).toContain('salePhase === "payment"');
     expect(placeSaleFn.indexOf('setSalePhase("payment")')).toBeLessThan(
@@ -60,11 +60,11 @@ describe("CASHIER-PAYMENT-FLOW-UX-CORRECTION-1 architecture", () => {
     expect(SELECTABLE_PAYMENT_METHODS).toEqual(["cash", "card"]);
     expect(panel).not.toContain("mada");
     expect(panel).not.toContain("apple_pay");
-    expect(read(READY)).toContain("checkGrandTotal");
+    expect(read(READY)).toContain("previewGrandTotal");
     expect(read(READY)).not.toContain("computeCheckMoney");
   });
 
-  it("keeps Confirm on Check.grandTotal and reuses Bill discount on intake", () => {
+  it("keeps Confirm on pos.settlement.initiate and sends discount intent, not browser totals", () => {
     const panel = read(PANEL);
     const intake = read(INTAKE);
     const router = read(ROUTER);
@@ -73,6 +73,7 @@ describe("CASHIER-PAYMENT-FLOW-UX-CORRECTION-1 architecture", () => {
       panel.indexOf("function returnToDashboard")
     );
     expect(completeFn).toContain("settleMutation.mutateAsync");
+    expect(completeFn).toContain("billDiscountAmount: ticketDiscount");
     expect(completeFn).not.toContain("ticketMoney");
     expect(completeFn).not.toContain("paymentDisplayMoney");
     expect(completeFn).not.toContain("directSale?.totalAmount");
@@ -80,9 +81,6 @@ describe("CASHIER-PAYMENT-FLOW-UX-CORRECTION-1 architecture", () => {
     expect(intake).toContain("ensureCheckForOrder");
     expect(intake).not.toMatch(/grandTotal:\s*input/);
     expect(router.indexOf("const moneyAmountInput")).toBeGreaterThan(-1);
-    expect(router.indexOf("const moneyAmountInput")).toBeLessThan(
-      router.indexOf("const checkIntakeInput")
-    );
     expect(router).toContain("billDiscountAmount: input.billDiscountAmount");
     expect(router).not.toContain("PaymentEngine");
     const journal = read("drizzle/meta/_journal.json");

@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   settleCheckPaidByIdDetailed: vi.fn(),
+  settleCashierPosOrderPaidByIdDetailed: vi.fn(),
   opsLog: vi.fn(),
 }));
 
@@ -15,6 +16,8 @@ vi.mock("../../../_core/opsLog", () => ({
 vi.mock("../../check/CheckService", () => ({
   settleCheckPaidByIdDetailed: (...a: unknown[]) =>
     mocks.settleCheckPaidByIdDetailed(...a),
+  settleCashierPosOrderPaidByIdDetailed: (...a: unknown[]) =>
+    mocks.settleCashierPosOrderPaidByIdDetailed(...a),
 }));
 
 import { confirmPayment } from "../PaymentConfirmService";
@@ -34,8 +37,10 @@ const FINANCIAL = {
 describe("confirmPayment", () => {
   beforeEach(() => {
     mocks.settleCheckPaidByIdDetailed.mockReset();
+    mocks.settleCashierPosOrderPaidByIdDetailed.mockReset();
     mocks.opsLog.mockReset();
     mocks.settleCheckPaidByIdDetailed.mockResolvedValue(FINANCIAL);
+    mocks.settleCashierPosOrderPaidByIdDetailed.mockResolvedValue(FINANCIAL);
   });
 
   it("forwards the confirm command to settleCheckPaidByIdDetailed and returns that result", async () => {
@@ -85,5 +90,25 @@ describe("confirmPayment", () => {
       confirmPayment({ restaurantId: 1, checkId: 100 })
     ).rejects.toBe(err);
     expect(mocks.opsLog).not.toHaveBeenCalled();
+  });
+
+  it("routes cashier_pos Confirm with orderId to settleCashierPosOrderPaidByIdDetailed", async () => {
+    const result = await confirmPayment({
+      restaurantId: 1,
+      orderId: 55,
+      billDiscountAmount: "1.00",
+      awaitAttribution: false,
+    });
+    expect(mocks.settleCashierPosOrderPaidByIdDetailed).toHaveBeenCalledWith({
+      restaurantId: 1,
+      orderId: 55,
+      billDiscountAmount: "1.00",
+      settlements: undefined,
+      settlementContext: undefined,
+      settlementContextHints: undefined,
+      awaitAttribution: false,
+    });
+    expect(mocks.settleCheckPaidByIdDetailed).not.toHaveBeenCalled();
+    expect(result).toBe(FINANCIAL);
   });
 });

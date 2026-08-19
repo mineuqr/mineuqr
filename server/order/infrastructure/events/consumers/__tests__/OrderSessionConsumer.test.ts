@@ -136,6 +136,47 @@ describe("OrderSessionConsumer", () => {
     expect(incrementSessionAggregatesForOrder).not.toHaveBeenCalled();
   });
 
+  it("does not enroll cashier_pos sessionless OrderCreated into an Open Check", async () => {
+    vi.mocked(getOrderById).mockResolvedValue({
+      id: 57,
+      restaurantId: 1,
+      sessionId: null,
+      orderingChannel: "cashier_pos",
+    } as Awaited<ReturnType<typeof getOrderById>>);
+
+    await consumer.handle({
+      id: "o1c",
+      eventId: "e1c",
+      eventType: "OrderCreated",
+      aggregateType: "Order",
+      aggregateId: 57,
+      aggregateVersion: null,
+      restaurantId: 1,
+      sequenceNumber: 1,
+      occurredAt: "2026-06-27 10:00:00",
+      correlationId: null,
+      causationId: null,
+      payloadVersion: 1,
+      payload: {
+        type: "OrderCreated",
+        schemaVersion: 1,
+        orderId: 57,
+        restaurantId: 1,
+        tableId: 0,
+        tableNumber: 0,
+        orderNumber: "ORD-C1",
+        trackingToken: "tok-c",
+        totalAmount: "12.00",
+        lineCount: 1,
+        sessionId: null,
+        createdAt: "2026-06-27 10:00:00",
+      },
+    });
+
+    expect(ensureCheckForOrder).not.toHaveBeenCalled();
+    expect(recordSessionEvent).not.toHaveBeenCalled();
+  });
+
   it("decrements aggregates on OrderCancelled when order has session", async () => {
     vi.mocked(getOrderById).mockResolvedValue({
       id: 55,

@@ -199,7 +199,8 @@ function harness(options?: {
   const getCheck = vi.fn(async () => liveCheck);
   const settle = vi.fn(async (input: {
     restaurantId: number;
-    checkId: number;
+    orderId: number;
+    billDiscountAmount?: string;
     settlementContextHints?: {
       registerId: string;
       operatorUserId: number;
@@ -215,7 +216,7 @@ function harness(options?: {
       );
     }
     liveCheck = {
-      id: input.checkId,
+      id: liveCheck?.id ?? CHECK_A,
       restaurantId: input.restaurantId,
       sessionId: liveCheck?.sessionId ?? null,
       outcome: "paid",
@@ -242,8 +243,7 @@ function harness(options?: {
     async (orderId) => orders.find((row) => row.id === orderId) ?? null,
     findMembership,
     getCheck,
-    settle,
-    options?.ensureCheck ?? null
+    settle
   );
   return {
     store,
@@ -298,7 +298,8 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
     expect(settle).toHaveBeenCalledTimes(1);
     expect(settle).toHaveBeenCalledWith({
       restaurantId: RESTAURANT_A,
-      checkId: CHECK_A,
+      orderId: ORDER_A,
+      billDiscountAmount: undefined,
       settlementContext: resolvedContext(),
       settlementContextHints: {
         registerId: REGISTER_ID,
@@ -411,60 +412,13 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
       foreignOrder.service.initiate({ user: user(STAFF_B), command })
     ).rejects.toBeInstanceOf(TRPCError);
 
-    const foreignCheck = harness({
-      check: openCheck({ restaurantId: RESTAURANT_B }),
-    });
-    await seedTerminal(foreignCheck.store);
-    await grantSettle(foreignCheck.grants);
-    await expect(
-      foreignCheck.service.initiate({ user: user(STAFF_A), command })
-    ).rejects.toMatchObject({ code: "check_wrong_restaurant" });
     expect(foreignOrder.settle).not.toHaveBeenCalled();
-    expect(foreignCheck.settle).not.toHaveBeenCalled();
   });
 
-  it("rejects a missing Check", async () => {
+  it("initiates Confirm without a pre-existing Check", async () => {
     const { store, grants, service, settle } = harness({
       membership: null,
       check: null,
-    });
-    await seedTerminal(store);
-    await grantSettle(grants);
-    await expect(
-      service.initiate({ user: user(STAFF_A), command })
-    ).rejects.toMatchObject({ code: "check_not_found" });
-    expect(settle).not.toHaveBeenCalled();
-  });
-
-  it("recovers membership when ensureCheck loses the intake race", async () => {
-    let lookups = 0;
-    const raced = harness({
-      membership: null,
-      check: openCheck(),
-      ensureCheck: async () => {
-        throw new Error("duplicate membership");
-      },
-    });
-    raced.findMembership.mockImplementation(async () => {
-      lookups += 1;
-      return lookups === 1
-        ? null
-        : { checkId: CHECK_A, checkOutcome: "open" };
-    });
-    await seedTerminal(raced.store);
-    await grantSettle(raced.grants);
-    const result = await raced.service.initiate({ user: user(STAFF_A), command });
-    expect(result.outcome).toBe("paid");
-    expect(result.checkId).toBe(CHECK_A);
-    expect(raced.settle).toHaveBeenCalledTimes(1);
-    expect(lookups).toBe(2);
-  });
-
-  it("ensures a Check when membership is not ready yet then settles", async () => {
-    const { store, grants, service, settle } = harness({
-      membership: null,
-      check: openCheck(),
-      ensureCheck: async () => ({ id: CHECK_A, outcome: "open" }),
     });
     await seedTerminal(store);
     await grantSettle(grants);
@@ -472,10 +426,30 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
     expect(result.outcome).toBe("paid");
     expect(result.checkId).toBe(CHECK_A);
     expect(settle).toHaveBeenCalledTimes(1);
+    expect(settle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        restaurantId: RESTAURANT_A,
+        orderId: ORDER_A,
+      })
+    );
   });
 
-  it("rejects already terminal Checks", async () => {
-    for (const outcome of ["paid", "complimentary", "voided"] as const) {
+  it("replays a paid Check as the same financial outcome", async () => {
+    const { store, grants, service, settle } = harness({
+      check: openCheck({ outcome: "paid" }),
+      membership: { checkId: CHECK_A, checkOutcome: "paid" },
+    });
+    await seedTerminal(store);
+    await grantSettle(grants);
+    const result = await service.initiate({ user: user(STAFF_A), command });
+    expect(result.outcome).toBe("paid");
+    expect(result.checkId).toBe(CHECK_A);
+    expect(result.replayed).toBe(true);
+    expect(settle).not.toHaveBeenCalled();
+  });
+
+  it("rejects complimentary and voided Checks", async () => {
+    for (const outcome of ["complimentary", "voided"] as const) {
       const { store, grants, service, settle } = harness({
         check: openCheck({ outcome }),
         membership: { checkId: CHECK_A, checkOutcome: outcome },
@@ -492,6 +466,7 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
   it("rejects an invalid Check lifecycle", async () => {
     const { store, grants, service, settle } = harness({
       check: openCheck({ outcome: "unknown" }),
+      membership: { checkId: CHECK_A, checkOutcome: "unknown" },
     });
     await seedTerminal(store);
     await grantSettle(grants);
@@ -523,7 +498,8 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
     expect(result.outcome).toBe("paid");
     expect(settle).toHaveBeenCalledWith({
       restaurantId: RESTAURANT_A,
-      checkId: CHECK_A,
+      orderId: ORDER_A,
+      billDiscountAmount: undefined,
       settlementContext: resolvedContext(),
       settlementContextHints: {
         registerId: REGISTER_ID,
@@ -551,7 +527,8 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
     expect(result.outcome).toBe("paid");
     expect(settle).toHaveBeenCalledWith({
       restaurantId: RESTAURANT_A,
-      checkId: CHECK_A,
+      orderId: ORDER_A,
+      billDiscountAmount: undefined,
       settlementContext: resolvedContext(),
       settlementContextHints: {
         registerId: REGISTER_ID,
@@ -563,6 +540,27 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
         { paymentMethod: "card", amount: "36.50" },
       ],
     });
+  });
+
+  it("forwards discount intent on Confirm and does not accept client grandTotal", async () => {
+    const { store, grants, service, settle } = harness();
+    await seedTerminal(store);
+    await grantSettle(grants);
+    await service.initiate({
+      user: user(STAFF_A),
+      command: {
+        ...command,
+        billDiscountAmount: "2.00",
+        grandTotal: "999.00",
+      } as typeof command,
+    });
+    expect(settle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderId: ORDER_A,
+        billDiscountAmount: "2.00",
+      })
+    );
+    expect(settle.mock.calls[0][0]).not.toHaveProperty("grandTotal");
   });
 
   it("conflicts when the same idempotency key is reused for a different payment mix", async () => {
@@ -678,7 +676,8 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
     expect(result.grandTotal).toBe(GRAND_TOTAL);
     expect(settle).toHaveBeenCalledWith({
       restaurantId: RESTAURANT_A,
-      checkId: CHECK_A,
+      orderId: ORDER_A,
+      billDiscountAmount: undefined,
       settlementContext: resolvedContext(),
       settlementContextHints: {
         registerId: REGISTER_ID,
@@ -753,14 +752,12 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
     const { store, grants, service, settle, getCheck } = harness();
     await seedTerminal(store);
     await grantSettle(grants);
-    let lookups = 0;
-    getCheck.mockImplementation(async () => {
-      lookups += 1;
-      return openCheck({
-        outcome: lookups === 1 ? "open" : "paid",
+    getCheck.mockImplementation(async () =>
+      openCheck({
+        outcome: "paid",
         grandTotal: GRAND_TOTAL,
-      });
-    });
+      })
+    );
     settle.mockRejectedValue(
       new CheckTransitionError("Cannot finalize check from outcome paid")
     );
@@ -906,7 +903,7 @@ describe("POS Settlement Initiation → existing Check Domain", () => {
     expect(event?.metadata?.unexplainedGapMs).toBeNull();
     expect(event?.metadata?.responseConstructionMs).toEqual(expect.any(Number));
     expect(event?.metadata?.totalHttpDurationMs).toEqual(expect.any(Number));
-    expect(event?.metadata?.ensureCheckMs).toBeNull();
+    expect(event?.metadata?.ensureCheckMs).toBe(0);
   });
 
   it("emits financialTxn stage timings without financial amounts when Check stages are present", async () => {

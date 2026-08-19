@@ -30,7 +30,6 @@ describe("CASHIER-PAYMENT-FLOW-BOUNDARY-INSTRUMENTATION-1 architecture", () => {
     expect(panel).toContain("CASHIER_PAYMENT_CONFIRM_CLICK");
     expect(panel).toContain("CASHIER_PAYMENT_READY");
     expect(panel).toContain("resolveCashierPaymentReadiness");
-    expect(panel).toContain("paymentReadiness.checkAvailable");
     expect(panel).toContain("paymentReadiness.canConfirmPayment");
     expect(timing).toContain("performance.now");
     expect(timing).toContain("paymentReadinessDurationMs");
@@ -38,7 +37,7 @@ describe("CASHIER-PAYMENT-FLOW-BOUNDARY-INSTRUMENTATION-1 architecture", () => {
     expect(timing).not.toContain("taxAmount");
     expect(timing).not.toContain("subtotal");
     expect(timing).not.toContain("computeCheckMoney");
-    expect(ready).toContain('input.checkOutcome === "open"');
+    expect(ready).toContain("previewGrandTotal");
   });
 
   it("does not persist cashierFlowId as business, financial, or idempotency identity", () => {
